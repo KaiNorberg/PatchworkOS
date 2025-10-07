@@ -28,10 +28,6 @@
 #include "sched/timer.h"
 #include "sched/wait.h"
 
-#ifndef NDEBUG
-#include "utils/testing.h"
-#endif
-
 #include <boot/boot_info.h>
 #include <libstd/_internal/init.h>
 #include <strings.h>
@@ -110,10 +106,6 @@ void kernel_init(boot_info_t* bootInfo)
 
     kernel_free_loader_data(&bootInfo->memory.map);
     vmm_unmap_lower_half();
-
-#ifndef NDEBUG
-    testing_run_tests();
-#endif
 }
 
 void kernel_other_init(void)

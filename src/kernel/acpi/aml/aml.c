@@ -9,7 +9,7 @@
 #include "log/log.h"
 #include "sched/timer.h"
 
-#ifndef NDEBUG
+#ifdef DEBUG_TESTING
 #include "aml_tests.h"
 #endif
 
@@ -101,7 +101,7 @@ uint64_t aml_init(void)
         return ERR;
     }
 
-#ifndef NDEBUG
+#ifdef DEBUG_TESTING
     if (aml_tests_post_init() == ERR)
     {
         DEREF(root);
@@ -134,7 +134,7 @@ uint64_t aml_init(void)
         return ERR;
     }
 
-#ifndef NDEBUG
+#ifdef DEBUG_TESTING
     if (aml_tests_post_parse_all() == ERR)
     {
         DEREF(root);

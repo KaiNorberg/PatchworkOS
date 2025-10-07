@@ -15,7 +15,7 @@ CFLAGS += $(CFLAGS_DISABLE_SIMD) -fno-pic -fno-stack-check -mcmodel=kernel \
 	-D__KERNEL__ \
 	-D__STDC_WANT_LIB_EXT1__=1
 
-ifeq ($(DEBUG),1)
+ifeq ($(DEBUG_MODE),1)
     CFLAGS += -DQEMU_ISA_DEBUG_EXIT
 endif
 
@@ -23,11 +23,7 @@ ASFLAGS += -D__KERNEL__ -Isrc/libstd
 
 LDFLAGS += -T$(SRCDIR)/linker.lds -z max-page-size=0x1000 -z norelro
 
-ifeq ($(DEBUG),1)
-all: generate_aml_test $(TARGET)
-else
 all: $(TARGET)
-endif
 
 generate_aml_test:
 	if [ ! -f src/kernel/acpi/aml/_aml_full_test.h ]; then \

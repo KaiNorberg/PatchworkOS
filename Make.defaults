@@ -1,3 +1,5 @@
+include Make.debug
+
 MKCWD = mkdir -p $(@D)
 
 GC = gcc
@@ -5,19 +7,7 @@ AS = nasm
 LD = ld
 OBJCOPY := objcopy
 
-ifeq ($(DEBUG),1)
-	CFLAGS_OPTIMIZATION = -O0
-	CFLAGS_DEBUG = -g3 -ggdb -fno-omit-frame-pointer -fno-inline
-	LDFLAGS_DEBUG = -g
-else
-	CFLAGS_OPTIMIZATION = -O3
-	CFLAGS_DEBUG = -DNDEBUG
-	LDFLAGS_DEBUG =
-endif
-
 CFLAGS := \
-	$(CFLAGS_OPTIMIZATION) \
-	$(CFLAGS_DEBUG) \
 	-std=gnu11 \
 	-Wall \
 	-Wextra \
@@ -61,6 +51,17 @@ LDFLAGS := \
   -nostdlib \
   -Lbin/libstd \
   -Lbin/libpatchwork
+
+ifeq ($(DEBUG_TESTING),1)
+	CFLAGS += -DDEBUG_TESTING
+endif
+
+ifeq ($(DEBUG_MODE),1)
+	CFLAGS += -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline
+	LDFLAGS += -g
+else
+	CFLAGS += -O3 -DNDEBUG
+endif
 
 ifeq ($(NOSTDLIB),1)
 	LDSTDLIB :=

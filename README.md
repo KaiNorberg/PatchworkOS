@@ -28,6 +28,7 @@ The goal is to eventually have a feature-complete and unique operating system av
 - From scratch and heavily documented [AML parser](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/acpi/aml/aml.h)
 - Tested on real hardware, see [Tested Configurations](#tested-configurations)
 - ACPI implementation was made to be easy to understand and useful for educational purposes
+- Tested against [ACPICA's](https://github.com/acpica/acpica) runtime test suite (WIP)
 - ACPI support is still work in progress check [acpi.h](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/acpi/acpi.h) for a checklist
 
 ### File System
@@ -268,8 +269,14 @@ make run
 # Clean build files
 make clean
 
+# Build with debug mode enabled
+make all DEBUG=1
+
+# Build with debug mode enabled and testing enabled (you will need to have iasl installed)
+make all DEBUG=2
+
 # Debug using qemu with one cpu and GDB
-make run DEBUG=1 QEMU_CPUS=1 GDB=1
+make all run DEBUG=1 QEMU_CPUS=1 GDB=1
 
 # Generate doxygen documentation
 make doxygen
@@ -306,7 +313,7 @@ You should now see a new entry in your GRUB boot menu allowing you to boot into 
 
 ## Testing
 
-Testing uses a GitHub action that compiles the project and runs it for one minute using QEMU, the kernel will run some tests and then start as normal. If QEMU crashes or the kernel panicks then the test fails, if it is still running after one-minute we call it a success. Its an simple approach but gets the job done. Testing in the kernel is still very limited as most systems either work or they dont, and most actual issues arise from hardware specific details which cant be tested for.
+Testing uses a GitHub action that compiles the project and runs it for one minute using QEMU both with the `DEBUG=2` flag enabled. This will run some additional tests in the kernel (for example it will clone ACPICA and run all its runtime tests), and if it has not crashed by the end of the minute, it is considered a success.
 
 ### Tested Configurations
 

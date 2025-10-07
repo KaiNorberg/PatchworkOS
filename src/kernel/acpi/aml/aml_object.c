@@ -437,6 +437,20 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
         return ERR;
     }
 
+    if (aml_object_find_child(parent, name) != NULL)
+    {
+        LOG_ERR("An object named '%.*s' already exists in parent '%s'\n", AML_NAME_LENGTH, name,
+            AML_OBJECT_GET_NAME(parent));
+        errno = EEXIST;
+        return ERR;
+    }
+
+    list_t* parentList = NULL;
+    if (aml_object_container_get_list(parent, &parentList) == ERR)
+    {
+        return ERR;
+    }
+
     list_entry_init(&child->name.entry);
     child->name.parent = parent;
     memcpy(child->name.segment, name, AML_NAME_LENGTH);
@@ -446,13 +460,6 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
     {
         LOG_ERR("Failed to create sysfs dir for object '%s' (errno '%s')\n", AML_OBJECT_GET_NAME(child),
             strerror(errno));
-        return ERR;
-    }
-
-    list_t* parentList = NULL;
-    if (aml_object_container_get_list(parent, &parentList) == ERR)
-    {
-        sysfs_dir_deinit(&child->name.dir);
         return ERR;
     }
 

@@ -28,7 +28,7 @@ $(BINDIR)/%.efi: $(OBJ)
 		-o $(BINDIR)/temp.so \
 		-lgnuefi -lefi
 
-ifeq ($(DEBUG),1)
+ifeq ($(DEBUG_MODE),1)
 	$(OBJCOPY) --only-keep-debug $(BINDIR)/temp.so $(BINDIR)/$*.debug
 
 	$(OBJCOPY) \
