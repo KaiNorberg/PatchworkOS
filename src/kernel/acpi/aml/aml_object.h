@@ -716,7 +716,8 @@ uint64_t aml_package_init(aml_object_t* object, uint64_t length);
  * @param resourceOrder The resource order of the power resource.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_power_resource_init(aml_object_t* object, aml_system_level_t systemLevel, aml_resource_order_t resourceOrder);
+uint64_t aml_power_resource_init(aml_object_t* object, aml_system_level_t systemLevel,
+    aml_resource_order_t resourceOrder);
 
 /**
  * @brief Initialize a object as a processor with the given ProcID, PblkAddr, and PblkLen.

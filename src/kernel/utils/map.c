@@ -2,6 +2,7 @@
 
 #include "mem/heap.h"
 
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -30,14 +31,14 @@ static uint64_t next_power_of_two(uint64_t n)
     return power;
 }
 
-uint64_t hash_buffer(const void* buffer, uint64_t length)
+uint64_t hash_object(const void* object, uint64_t length)
 {
     uint64_t hash = 0xcbf29ce484222325ULL;
     const uint64_t prime = 0x100000001b3ULL;
 
     for (uint64_t i = 0; i < length; ++i)
     {
-        hash ^= (uint64_t)((uint8_t*)buffer)[i];
+        hash ^= (uint64_t)((uint8_t*)object)[i];
         hash *= prime;
     }
 
@@ -100,7 +101,13 @@ static uint64_t map_find_slot(const map_t* map, const map_key_t* key, bool forIn
         }
     }
 
-    return forInsertion && firstTombstone != ERR ? firstTombstone : ERR;
+    if (forInsertion && firstTombstone != ERR)
+    {
+        return firstTombstone;
+    }
+
+    errno = ENOSPC;
+    return ERR;
 }
 
 static uint64_t map_resize(map_t* map, uint64_t newCapacity)
@@ -202,6 +209,7 @@ uint64_t map_insert(map_t* map, const map_key_t* key, map_entry_t* entry)
     if (map->entries[index] != NULL && map->entries[index] != MAP_TOMBSTONE &&
         map_key_is_equal(&map->entries[index]->key, key))
     {
+        errno = EEXIST;
         return ERR;
     }
 
@@ -228,6 +236,7 @@ map_entry_t* map_get(map_t* map, const map_key_t* key)
     map_entry_t* entry = map->entries[index];
     if (entry == NULL || entry == MAP_TOMBSTONE)
     {
+        errno = ENOENT;
         return NULL;
     }
 
@@ -236,28 +245,30 @@ map_entry_t* map_get(map_t* map, const map_key_t* key)
         return entry;
     }
 
+    errno = ENOENT;
     return NULL;
 }
 
-uint64_t map_remove(map_t* map, const map_key_t* key)
+void map_remove(map_t* map, const map_key_t* key)
 {
     uint64_t index = map_find_slot(map, key, false);
     if (index == ERR)
     {
-        return ERR;
+        errno = 0;
+        return;
     }
 
     map_entry_t* entry = map->entries[index];
     if (entry == NULL || entry == MAP_TOMBSTONE || !map_key_is_equal(&entry->key, key))
     {
-        return ERR;
+        return;
     }
 
     map->entries[index] = MAP_TOMBSTONE;
     map->length--;
     map->tombstones++;
 
-    return 0;
+    return;
 }
 
 uint64_t map_size(const map_t* map)

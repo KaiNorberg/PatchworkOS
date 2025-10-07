@@ -1278,7 +1278,8 @@ uint64_t aml_package_init(aml_object_t* object, uint64_t length)
     return 0;
 }
 
-uint64_t aml_power_resource_init(aml_object_t* object, aml_system_level_t systemLevel, aml_resource_order_t resourceOrder)
+uint64_t aml_power_resource_init(aml_object_t* object, aml_system_level_t systemLevel,
+    aml_resource_order_t resourceOrder)
 {
     if (object == NULL)
     {

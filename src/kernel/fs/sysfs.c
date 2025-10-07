@@ -92,7 +92,7 @@ sysfs_dir_t* sysfs_get_default(void)
 
 uint64_t sysfs_group_init(sysfs_group_t* group, const pathname_t* mountpoint)
 {
-    if (group == NULL || mountpoint == NULL || !mountpoint->isValid)
+    if (group == NULL || !PATHNAME_IS_VALID(mountpoint))
     {
         errno = EINVAL;
         return ERR;

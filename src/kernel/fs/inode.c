@@ -5,6 +5,36 @@
 #include "sched/timer.h"
 #include "vfs.h"
 
+static void inode_free(inode_t* inode)
+{
+    if (inode == NULL)
+    {
+        return;
+    }
+
+    vfs_remove_inode(inode);
+
+    if (inode->ops != NULL && inode->ops->cleanup != NULL)
+    {
+        inode->ops->cleanup(inode);
+    }
+
+    if (inode->superblock != NULL)
+    {
+        if (inode->superblock->ops != NULL && inode->superblock->ops->freeInode != NULL)
+        {
+            inode->superblock->ops->freeInode(inode->superblock, inode);
+        }
+        DEREF(inode->superblock);
+    }
+
+    // If freeInode was not called cleanup manually.
+    if (inode->superblock == NULL || inode->superblock->ops == NULL || inode->superblock->ops->freeInode == NULL)
+    {
+        heap_free(inode);
+    }
+}
+
 inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, const inode_ops_t* ops,
     const file_ops_t* fileOps)
 {
@@ -47,39 +77,13 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
     inode->fileOps = fileOps;
     mutex_init(&inode->mutex);
 
-    vfs_add_inode(inode);
+    if (vfs_add_inode(inode) == ERR)
+    {
+        DEREF(inode);
+        return NULL;
+    }
 
     return inode;
-}
-
-void inode_free(inode_t* inode)
-{
-    if (inode == NULL)
-    {
-        return;
-    }
-
-    vfs_remove_inode(inode);
-
-    if (inode->ops != NULL && inode->ops->cleanup != NULL)
-    {
-        inode->ops->cleanup(inode);
-    }
-
-    if (inode->superblock != NULL)
-    {
-        if (inode->superblock->ops != NULL && inode->superblock->ops->freeInode != NULL)
-        {
-            inode->superblock->ops->freeInode(inode->superblock, inode);
-        }
-        DEREF(inode->superblock);
-    }
-
-    // If freeInode was not called cleanup manually.
-    if (inode->superblock == NULL || inode->superblock->ops == NULL || inode->superblock->ops->freeInode == NULL)
-    {
-        heap_free(inode);
-    }
 }
 
 void inode_notify_access(inode_t* inode)

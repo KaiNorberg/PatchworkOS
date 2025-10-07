@@ -3,6 +3,9 @@
 #include "dentry.h"
 #include "inode.h"
 
+typedef struct file file_t;
+typedef struct file_ops file_ops_t;
+
 /**
  * @brief Filesystem for exposing kernel resources.
  * @ingroup kernel_fs
@@ -16,9 +19,6 @@
  * `/proc/10/status` is a dentry, which stores the inode of the process status file.
  *
  */
-
-typedef struct file file_t;
-typedef struct file_ops file_ops_t;
 
 #define SYSFS_NAME "sysfs"
 
@@ -124,3 +124,5 @@ uint64_t sysfs_file_init(sysfs_file_t* file, sysfs_dir_t* parent, const char* na
  * @param file The SysFS file to deinitialize.
  */
 void sysfs_file_deinit(sysfs_file_t* file);
+
+/** @} */

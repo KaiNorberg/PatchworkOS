@@ -9,43 +9,7 @@
 #include "sync/mutex.h"
 #include "vfs.h"
 
-dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name)
-{
-    if (strnlen_s(name, MAX_NAME) >= MAX_NAME)
-    {
-        errno = EINVAL;
-        return NULL;
-    }
-
-    assert(parent == NULL || superblock == parent->superblock);
-
-    dentry_t* dentry = heap_alloc(sizeof(dentry_t), HEAP_NONE);
-    if (dentry == NULL)
-    {
-        return NULL;
-    }
-
-    ref_init(&dentry->ref, dentry_free);
-    map_entry_init(&dentry->mapEntry);
-    dentry->id = vfs_get_new_id();
-    strncpy(dentry->name, name, MAX_NAME - 1);
-    dentry->name[MAX_NAME - 1] = '\0';
-    dentry->inode = NULL;
-    dentry->parent = parent != NULL
-        ? REF(parent)
-        : dentry; // We set its parent now but its only added to its list when it is made positive.
-    list_entry_init(&dentry->siblingEntry);
-    list_init(&dentry->children);
-    dentry->superblock = REF(superblock);
-    dentry->ops = dentry->superblock != NULL ? dentry->superblock->dentryOps : NULL;
-    dentry->private = NULL;
-    dentry->flags = DENTRY_NEGATIVE;
-    mutex_init(&dentry->mutex);
-
-    return dentry;
-}
-
-void dentry_free(dentry_t* dentry)
+static void dentry_free(dentry_t* dentry)
 {
     if (dentry == NULL)
     {
@@ -80,6 +44,42 @@ void dentry_free(dentry_t* dentry)
     }
 
     heap_free(dentry);
+}
+
+dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name)
+{
+    if (strnlen_s(name, MAX_NAME) >= MAX_NAME)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    assert(parent == NULL || superblock == parent->superblock);
+
+    dentry_t* dentry = heap_alloc(sizeof(dentry_t), HEAP_NONE);
+    if (dentry == NULL)
+    {
+        return NULL;
+    }
+
+    ref_init(&dentry->ref, dentry_free);
+    map_entry_init(&dentry->mapEntry);
+    dentry->id = vfs_get_new_id();
+    strncpy(dentry->name, name, MAX_NAME - 1);
+    dentry->name[MAX_NAME - 1] = '\0';
+    dentry->inode = NULL;
+    dentry->parent = parent != NULL
+        ? REF(parent)
+        : dentry; // We set its parent now but its only added to its list when it is made positive.
+    list_entry_init(&dentry->siblingEntry);
+    list_init(&dentry->children);
+    dentry->superblock = REF(superblock);
+    dentry->ops = dentry->superblock != NULL ? dentry->superblock->dentryOps : NULL;
+    dentry->private = NULL;
+    dentry->flags = DENTRY_NEGATIVE;
+    mutex_init(&dentry->mutex);
+
+    return dentry;
 }
 
 void dentry_make_positive(dentry_t* dentry, inode_t* inode)

@@ -57,7 +57,8 @@ uint64_t aml_tests_post_init(void)
     {
         // For now this is definetly going to fail as we havent implemented everything yet.
         // So just log it and continue.
-        LOG_WARN("full test parse failed (errno = '%s'), this is expected until the AML parser is fully implemented\n", strerror(errno));
+        LOG_WARN("full test parse failed (errno = '%s'), this is expected until the AML parser is fully implemented\n",
+            strerror(errno));
         // return ERR;
     }
 

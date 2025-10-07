@@ -4,6 +4,28 @@
 #include "mem/pmm.h"
 #include "vfs.h"
 
+static void superblock_free(superblock_t* superblock)
+{
+    if (superblock == NULL)
+    {
+        return;
+    }
+
+    vfs_remove_superblock(superblock);
+
+    if (superblock->ops != NULL && superblock->ops->cleanup != NULL)
+    {
+        superblock->ops->cleanup(superblock);
+    }
+
+    if (superblock->root != NULL)
+    {
+        DEREF(superblock->root);
+    }
+
+    heap_free(superblock);
+}
+
 superblock_t* superblock_new(filesystem_t* fs, const char* deviceName, superblock_ops_t* ops, dentry_ops_t* dentryOps)
 {
     superblock_t* superblock = heap_alloc(sizeof(superblock_t), HEAP_NONE);
@@ -25,28 +47,6 @@ superblock_t* superblock_new(filesystem_t* fs, const char* deviceName, superbloc
     strncpy(superblock->deviceName, deviceName, MAX_NAME - 1);
     superblock->deviceName[MAX_NAME - 1] = '\0';
     superblock->fs = fs;
-    // superblock::sysfs_dir is exposed in vfs_mount
+    // superblock::sysfsDir is exposed in vfs_mount
     return superblock;
-}
-
-void superblock_free(superblock_t* superblock)
-{
-    if (superblock == NULL)
-    {
-        return;
-    }
-
-    vfs_remove_superblock(superblock);
-
-    if (superblock->ops != NULL && superblock->ops->cleanup != NULL)
-    {
-        superblock->ops->cleanup(superblock);
-    }
-
-    if (superblock->root != NULL)
-    {
-        DEREF(superblock->root);
-    }
-
-    heap_free(superblock);
 }

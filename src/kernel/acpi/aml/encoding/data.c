@@ -329,8 +329,8 @@ uint64_t aml_num_elements_read(aml_state_t* state, uint8_t* out)
 static inline uint64_t aml_package_element_handle_name(aml_object_t* in, aml_object_t* out)
 {
     if (in->type &
-        (AML_INTEGER | AML_STRING | AML_BUFFER | AML_BUFFER_FIELD |
-            AML_FIELD_UNIT | AML_PACKAGE)) // "... resolved to actual data by the AML interpreter"
+        (AML_INTEGER | AML_STRING | AML_BUFFER | AML_BUFFER_FIELD | AML_FIELD_UNIT |
+            AML_PACKAGE)) // "... resolved to actual data by the AML interpreter"
     {
         // Unsure what the spec means by "actual data" but converting to DataObject seems to be the most sensible
         // interpretation.

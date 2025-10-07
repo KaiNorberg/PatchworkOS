@@ -668,7 +668,8 @@ uint64_t aml_resource_order_read(aml_state_t* state, aml_resource_order_t* out);
 /**
  * @brief Reads a DefPowerRes structure from the AML byte stream.
  *
- * The DefPowerRes structure is defined as `DefPowerRes := PowerResOp PkgLength NameString SystemLevel ResourceOrder TermList`.
+ * The DefPowerRes structure is defined as `DefPowerRes := PowerResOp PkgLength NameString SystemLevel ResourceOrder
+ * TermList`.
  *
  * @see Section 19.6.108 of the ACPI specification for more details.
  *
@@ -706,7 +707,8 @@ uint64_t aml_def_create_field_read(aml_state_t* state, aml_scope_t* scope);
 /**
  * @brief Reads a DefCreateField structure from the AML byte stream.
  *
- * The DefCreateField structure is defined as `DefCreateField := CreateFieldOp SourceBuff BitIndex FieldFlags NameString`.
+ * The DefCreateField structure is defined as `DefCreateField := CreateFieldOp SourceBuff BitIndex FieldFlags
+ * NameString`.
  *
  * A CreateField operation creates a field, with the name stored in the NameString, that accesses a field of arbitrary
  * size and alignment within the SourceBuff, starting at the bit index BitIndex, and with the access properties defined

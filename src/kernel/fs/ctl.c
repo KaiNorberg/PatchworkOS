@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <sys/argsplit.h>
 
-uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, uint64_t count)
+uint64_t ctl_dispatch(ctl_array_t ctls, file_t* file, const void* buffer, uint64_t count)
 {
     if (ctls == NULL || file == NULL || buffer == NULL || count == 0)
     {

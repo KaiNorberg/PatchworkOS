@@ -1,10 +1,32 @@
 #include "file.h"
 
+#include "dentry.h"
 #include "fs/path.h"
+#include "inode.h"
 #include "mem/heap.h"
-#include "sched/thread.h"
 #include "sync/mutex.h"
-#include "vfs.h"
+#include "utils/ref.h"
+
+#include <errno.h>
+
+static void file_free(file_t* file)
+{
+    if (file == NULL)
+    {
+        return;
+    }
+
+    if (file->ops != NULL && file->ops->close != NULL)
+    {
+        file->ops->close(file);
+    }
+
+    DEREF(file->inode);
+    file->inode = NULL;
+    path_put(&file->path);
+
+    heap_free(file);
+}
 
 file_t* file_new(inode_t* inode, const path_t* path, path_flags_t flags)
 {
@@ -24,25 +46,6 @@ file_t* file_new(inode_t* inode, const path_t* path, path_flags_t flags)
     file->private = NULL;
 
     return file;
-}
-
-void file_free(file_t* file)
-{
-    if (file == NULL)
-    {
-        return;
-    }
-
-    if (file->ops != NULL && file->ops->close != NULL)
-    {
-        file->ops->close(file);
-    }
-
-    DEREF(file->inode);
-    file->inode = NULL;
-    path_put(&file->path);
-
-    heap_free(file);
 }
 
 uint64_t file_generic_seek(file_t* file, int64_t offset, seek_origin_t origin)

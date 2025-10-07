@@ -428,7 +428,7 @@ static uint64_t vfs_get_cwd(path_t* outPath)
 
 uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flags)
 {
-    if (outPath == NULL || pathname == NULL || !pathname->isValid)
+    if (outPath == NULL || !PATHNAME_IS_VALID(pathname))
     {
         errno = EINVAL;
         return ERR;
@@ -446,7 +446,7 @@ uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flag
 
 uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outLastName, walk_flags_t flags)
 {
-    if (outPath == NULL || pathname == NULL || !pathname->isValid)
+    if (outPath == NULL || !PATHNAME_IS_VALID(pathname))
     {
         errno = EINVAL;
         return ERR;
@@ -490,7 +490,7 @@ uint64_t vfs_mount(const char* deviceName, const pathname_t* mountpoint, const c
         return ERR;
     }
 
-    if (globalRoot.mount != NULL && (mountpoint == NULL || !mountpoint->isValid))
+    if (globalRoot.mount != NULL && !PATHNAME_IS_VALID(mountpoint))
     {
         errno = EINVAL;
         return ERR;
@@ -561,7 +561,7 @@ uint64_t vfs_mount(const char* deviceName, const pathname_t* mountpoint, const c
     }
     rwlock_write_release(&mountCache.lock);
 
-    // superblock_expose(superblock); // TODO: Expose the sysfs_dir for the superblock
+    // superblock_expose(superblock); // TODO: Expose the sysfsDir for the superblock
 
     LOG_INFO("mounted %s on %s (type %s)\n", deviceName, mountpoint, fsName);
     return 0;
@@ -575,7 +575,7 @@ uint64_t vfs_unmount(const pathname_t* mountpoint)
     return ERR;
 
     // TODO: Reimplement unmount.
-    /*if (mountpoint == NULL || !mountpoint->isValid)
+    /*if (!PATHNAME_IS_VALID(pathname))
     {
         errno = EINVAL;
         return ERR;
@@ -646,7 +646,7 @@ bool vfs_is_name_valid(const char* name)
         return false;
     }
 
-    for (uint64_t i = 0; i < MAX_NAME; i++)
+    for (uint64_t i = 0; i < MAX_NAME - 1; i++)
     {
         if (name[i] == '\0')
         {
@@ -776,7 +776,7 @@ static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname)
 
 file_t* vfs_open(const pathname_t* pathname)
 {
-    if (pathname == NULL || !pathname->isValid)
+    if (!PATHNAME_IS_VALID(pathname))
     {
         errno = EINVAL;
         return NULL;
@@ -845,7 +845,7 @@ SYSCALL_DEFINE(SYS_OPEN, fd_t, const char* pathString)
 
 uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2])
 {
-    if (pathname == NULL || !pathname->isValid || files == NULL)
+    if (!PATHNAME_IS_VALID(pathname) || files == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -1473,7 +1473,7 @@ SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count
 
 uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer)
 {
-    if (pathname == NULL || !pathname->isValid || buffer == NULL)
+    if (!PATHNAME_IS_VALID(pathname) || buffer == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -1540,7 +1540,7 @@ SYSCALL_DEFINE(SYS_STAT, uint64_t, const char* pathString, stat_t* buffer)
 
 uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname)
 {
-    if (oldPathname == NULL || !oldPathname->isValid || newPathname == NULL || !newPathname->isValid)
+    if (!PATHNAME_IS_VALID(oldPathname) || !PATHNAME_IS_VALID(newPathname))
     {
         errno = EINVAL;
         return ERR;
@@ -1645,7 +1645,7 @@ SYSCALL_DEFINE(SYS_LINK, uint64_t, const char* oldPathString, const char* newPat
 
 uint64_t vfs_delete(const pathname_t* pathname)
 {
-    if (pathname == NULL || !pathname->isValid)
+    if (!PATHNAME_IS_VALID(pathname))
     {
         errno = EINVAL;
         return ERR;

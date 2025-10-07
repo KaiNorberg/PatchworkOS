@@ -20,11 +20,36 @@ typedef struct superblock superblock_t;
 typedef struct file_ops file_ops_t;
 typedef struct dentry dentry_t;
 
+/**
+ * @brief Index node.
+ * @defgroup kernel_fs_inode Inode
+ * @ingroup kernel_fs
+ *
+ * A inode represents the actual data and metadata of a file. It is referenced by dentries, which represent the name or
+ * "location" of the file but note that a inode can appear in multiple dentries due to hardlinks or becouse of
+ * mountpoints.
+ *
+ * So despite the name they are in no way "nodes" in some kind of tree structure, this confused me for a
+ * long time when first learning about filesystems.
+ *
+ * @{
+ */
+
+/**
+ * @brief Inode flags.
+ * @enum inode_flags_t
+ */
 typedef enum
 {
     INODE_NONE = 0, ///< None
 } inode_flags_t;
 
+/**
+ * @brief Inode structure.
+ * @struct inode_t
+ *
+ * Inodes are owned by the filesystem, not the VFS.
+ */
 typedef struct inode
 {
     ref_t ref;
@@ -51,7 +76,6 @@ typedef struct inode
  * @ingroup kernel_vfs
  *
  * Note that the inodes mutex will be acquired by the vfs.
- *
  */
 typedef struct inode_ops
 {
@@ -74,14 +98,59 @@ typedef struct inode_ops
     void (*cleanup)(inode_t* inode);
 } inode_ops_t;
 
+/**
+ * @brief Create a new inode.
+ *
+ * This DOES add the inode to the inode cache. It also does not associate the inode with a dentry, that is done when a
+ * dentry is made positive with `dentry_make_positive()`.
+ *
+ * There is no `inode_free()` instead use `DEREF()`.
+ *
+ * @param superblock The superblock the inode belongs to.
+ * @param number The inode number.
+ * @param type The inode type.
+ * @param ops The inode operations.
+ * @param fileOps The file operations for files opened on this inode.
+ * @return On success, the new inode. On failure, returns `NULL` and `errno` is set.
+ */
 inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, const inode_ops_t* ops,
     const file_ops_t* fileOps);
-void inode_free(inode_t* inode);
 
+/**
+ * @brief Notify the inode that it has been accessed.
+ *
+ * This updates the access time.
+ *
+ * @param inode The inode to notify.
+ */
 void inode_notify_access(inode_t* inode);
 
+/**
+ * @brief Notify the inode that its content has been modified.
+ *
+ * This updates the modify time and change time.
+ *
+ * @param inode The inode to notify.
+ */
 void inode_notify_modify(inode_t* inode);
 
+/**
+ * @brief Notify the inode that its metadata has changed.
+ *
+ * This updates the change time.
+ *
+ * @param inode The inode to notify.
+ */
 void inode_notify_change(inode_t* inode);
 
+/**
+ * @brief Truncate the inode.
+ *
+ * The filesystem should implement the actual truncation in the inode ops truncate function, this is just a helper to
+ * call it.
+ *
+ * @param inode The inode to truncate.
+ */
 void inode_truncate(inode_t* inode);
+
+/** @} */

@@ -15,6 +15,14 @@
 static map_t flagMap;
 static map_t flagShortMap;
 
+typedef struct path_flag_entry
+{
+    map_entry_t entry;
+    map_entry_t shortEntry;
+    path_flags_t flag;
+    const char* name;
+} path_flag_entry_t;
+
 static path_flag_entry_t flagEntries[] = {
     {.flag = PATH_NONBLOCK, .name = "nonblock"},
     {.flag = PATH_APPEND, .name = "append"},
@@ -376,7 +384,7 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
 
 uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* start, walk_flags_t flags)
 {
-    if (pathname == NULL || !pathname->isValid)
+    if (!PATHNAME_IS_VALID(pathname))
     {
         errno = EINVAL;
         return ERR;
@@ -516,7 +524,7 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
 uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName,
     walk_flags_t flags)
 {
-    if (pathname == NULL || !pathname->isValid || outPath == NULL || outLastName == NULL)
+    if (!PATHNAME_IS_VALID(pathname) || outPath == NULL || outLastName == NULL)
     {
         errno = EINVAL;
         return ERR;
