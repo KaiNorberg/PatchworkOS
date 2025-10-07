@@ -54,7 +54,7 @@ void simd_cpu_init(void)
         asm volatile("fxsave (%0)" : : "r"(initCtx));
     }
 
-    LOG_INFO("simd on cpu %d ", smp_self_unsafe()->id);
+    LOG_INFO("cpu%d simd ", smp_self_unsafe()->id);
     if (cpuid_is_xsave_avail())
     {
         LOG_INFO("xsave ");
@@ -67,7 +67,7 @@ void simd_cpu_init(void)
     {
         LOG_INFO("avx512 ");
     }
-    LOG_INFO("\n");
+    LOG_INFO("enabled\n");
 }
 
 uint64_t simd_ctx_init(simd_ctx_t* ctx)

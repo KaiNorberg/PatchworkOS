@@ -25,6 +25,78 @@ static bool aml_name_is_equal(const char* name1, const char* name2)
     return memcmp(name1, name2, AML_NAME_LENGTH) == 0;
 }
 
+static uint64_t aml_object_container_get_list(aml_object_t* object, list_t** outList)
+{
+    if (object == NULL || outList == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    *outList = NULL;
+    switch (object->type)
+    {
+    case AML_DEVICE:
+    {
+        *outList = &object->device.namedObjects;
+    }
+    break;
+    case AML_PROCESSOR:
+    {
+        *outList = &object->processor.namedObjects;
+    }
+    break;
+    case AML_METHOD:
+    {
+        *outList = &object->method.namedObjects;
+    }
+    break;
+    case AML_THERMAL_ZONE:
+    {
+        *outList = &object->thermalZone.namedObjects;
+    }
+    break;
+    default:
+        errno = EINVAL;
+        return ERR;
+    }
+
+    return 0;
+}
+
+static void aml_object_container_free_children(aml_object_t* object)
+{
+    if (object == NULL)
+    {
+        return;
+    }
+
+    list_t* list = NULL;
+    if (aml_object_container_get_list(object, &list) == ERR)
+    {
+        return;
+    }
+
+    if (list == NULL)
+    {
+        return;
+    }
+
+    while (!list_is_empty(list))
+    {
+        aml_object_t* child = CONTAINER_OF(list_pop(list), aml_object_t, name.entry);
+        if (child->flags & AML_OBJECT_NAMED)
+        {
+            child->name.parent = NULL;
+            sysfs_dir_deinit(&child->name.dir);
+            child->flags &= ~AML_OBJECT_NAMED;
+        }
+        DEREF(child);
+    }
+
+    return;
+}
+
 uint64_t aml_object_get_total_count(void)
 {
     return totalObjects;
@@ -123,11 +195,10 @@ void aml_object_deinit(aml_object_t* object)
         object->bufferField.bitSize = 0;
         break;
     case AML_DEVICE:
-        while (!list_is_empty(&object->device.namedObjects))
-        {
-            aml_object_t* child = CONTAINER_OF(list_pop(&object->device.namedObjects), aml_object_t, name.entry);
-            DEREF(child);
-        }
+        aml_object_container_free_children(object);
+        break;
+    case AML_EVENT:
+        // Nothing to deinitialize yet
         break;
     case AML_FIELD_UNIT:
         switch (object->fieldUnit.fieldType)
@@ -168,11 +239,7 @@ void aml_object_deinit(aml_object_t* object)
         object->method.methodFlags = (aml_method_flags_t){0};
         object->method.start = NULL;
         object->method.end = NULL;
-        while (!list_is_empty(&object->method.namedObjects))
-        {
-            aml_object_t* child = CONTAINER_OF(list_pop(&object->method.namedObjects), aml_object_t, name.entry);
-            DEREF(child);
-        }
+        aml_object_container_free_children(object);
         aml_mutex_id_deinit(&object->method.mutex);
         break;
     case AML_MUTEX:
@@ -207,11 +274,7 @@ void aml_object_deinit(aml_object_t* object)
         object->processor.procId = 0;
         object->processor.pblkAddr = 0;
         object->processor.pblkLen = 0;
-        while (!list_is_empty(&object->processor.namedObjects))
-        {
-            aml_object_t* child = CONTAINER_OF(list_pop(&object->processor.namedObjects), aml_object_t, name.entry);
-            DEREF(child);
-        }
+        aml_object_container_free_children(object);
         break;
     case AML_STRING:
         if (object->string.content != NULL)
@@ -229,6 +292,9 @@ void aml_object_deinit(aml_object_t* object)
         object->string.content = NULL;
         object->string.length = 0;
         object->string.byteFields = NULL;
+        break;
+    case AML_THERMAL_ZONE:
+        aml_object_container_free_children(object);
         break;
     case AML_ALIAS:
         if (object->alias.target != NULL)
@@ -263,38 +329,30 @@ uint64_t aml_object_count_children(aml_object_t* parent)
     }
 
     uint64_t count = 0;
+
+    if (parent->type & AML_CONTAINERS)
+    {
+        list_t* parentList = NULL;
+        if (aml_object_container_get_list(parent, &parentList) == ERR)
+        {
+            return 0;
+        }
+
+        if (parentList != NULL)
+        {
+            aml_object_t* child = NULL;
+            LIST_FOR_EACH(child, parentList, name.entry)
+            {
+                count++;
+                count += aml_object_count_children(child);
+            }
+        }
+
+        return count;
+    }
+
     switch (parent->type)
     {
-    case AML_DEVICE:
-    {
-        aml_object_t* child = NULL;
-        LIST_FOR_EACH(child, &parent->device.namedObjects, name.entry)
-        {
-            count++;
-            count += aml_object_count_children(child);
-        }
-    }
-    break;
-    case AML_METHOD:
-    {
-        aml_object_t* child = NULL;
-        LIST_FOR_EACH(child, &parent->method.namedObjects, name.entry)
-        {
-            count++;
-            count += aml_object_count_children(child);
-        }
-    }
-    break;
-    case AML_PROCESSOR:
-    {
-        aml_object_t* child = NULL;
-        LIST_FOR_EACH(child, &parent->processor.namedObjects, name.entry)
-        {
-            count++;
-            count += aml_object_count_children(child);
-        }
-    }
-    break;
     case AML_PACKAGE:
         for (uint64_t i = 0; i < parent->package.length; i++)
         {
@@ -347,42 +405,6 @@ uint64_t aml_object_count_children(aml_object_t* parent)
     return count;
 }
 
-static inline uint64_t aml_object_get_container_list(aml_object_t* object, list_t** outList)
-{
-    if (object == NULL || outList == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    *outList = NULL;
-    switch (object->type)
-    {
-    case AML_DEVICE:
-    {
-        *outList = &object->device.namedObjects;
-    }
-    break;
-    case AML_PROCESSOR:
-    {
-        *outList = &object->processor.namedObjects;
-    }
-    break;
-    case AML_METHOD:
-    {
-        *outList = &object->method.namedObjects;
-    }
-    break;
-    default:
-        LOG_ERR("Object '%s' is of type '%s' which is not a container\n", AML_OBJECT_GET_NAME(object),
-            aml_type_to_string(object->type));
-        errno = EINVAL;
-        return ERR;
-    }
-
-    return 0;
-}
-
 uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const char* name)
 {
     if (parent == NULL || child == NULL || name == NULL)
@@ -416,7 +438,7 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
     }
 
     list_t* parentList = NULL;
-    if (aml_object_get_container_list(parent, &parentList) == ERR)
+    if (aml_object_container_get_list(parent, &parentList) == ERR)
     {
         sysfs_dir_deinit(&child->name.dir);
         return ERR;
@@ -556,7 +578,7 @@ uint64_t aml_object_remove(aml_object_t* object)
     }
 
     list_t* parentList = NULL;
-    if (aml_object_get_container_list(object->name.parent, &parentList) == ERR)
+    if (aml_object_container_get_list(object->name.parent, &parentList) == ERR)
     {
         return ERR;
     }
@@ -578,7 +600,7 @@ aml_object_t* aml_object_find_child(aml_object_t* parent, const char* name)
     }
 
     list_t* parentList = NULL;
-    if (aml_object_get_container_list(parent, &parentList) == ERR)
+    if (aml_object_container_get_list(parent, &parentList) == ERR)
     {
         return NULL;
     }
@@ -979,6 +1001,23 @@ uint64_t aml_device_init(aml_object_t* object)
     return 0;
 }
 
+uint64_t aml_event_init(aml_object_t* object)
+{
+    if (object == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->type = AML_EVENT;
+    return 0;
+}
+
 uint64_t aml_field_unit_field_init(aml_object_t* object, aml_opregion_t* opregion, aml_field_flags_t flags,
     aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
 {
@@ -1287,6 +1326,24 @@ uint64_t aml_string_init(aml_object_t* object, const char* str)
         return ERR;
     }
     memcpy(object->string.content, str, length);
+    return 0;
+}
+
+uint64_t aml_thermal_zone_init(aml_object_t* object)
+{
+    if (object == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    list_init(&object->thermalZone.namedObjects);
+    object->type = AML_THERMAL_ZONE;
     return 0;
 }
 

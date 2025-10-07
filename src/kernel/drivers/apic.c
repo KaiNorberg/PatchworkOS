@@ -86,7 +86,7 @@ void lapic_cpu_init(void)
 
     lapic_write(LAPIC_REG_TASK_PRIORITY, 0);
 
-    LOG_INFO("local apic initialized id=%d msr=0x%016lx\n", lapic_self_id(), lapicMsr);
+    LOG_INFO("cpu%d local apic id=%d msr=0x%016lx\n", smp_self_unsafe()->id, lapic_self_id(), lapicMsr);
 }
 
 uint8_t lapic_self_id(void)

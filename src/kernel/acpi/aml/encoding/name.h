@@ -225,7 +225,8 @@ aml_object_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_object_
 /**
  * @brief Reads the next data as a NameString structure from the AML bytecode stream and resolves it to a object.
  *
- * Note that `errno` will only be set to `ENOENT` if the NameString is read correctly but fails to resolve, other values for `errno` might be set in other cases.
+ * Note that `errno` will only be set to `ENOENT` if the NameString is read correctly but fails to resolve, other values
+ * for `errno` might be set in other cases.
  *
  * @see Section 5.3 of the ACPI specification for more details.
  * @see aml_name_string_read() for reading the NameString from the AML byte stream.
@@ -242,7 +243,8 @@ uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope
  *
  * A SimpleName structure is defined as `SimpleName := NameString | ArgObj | LocalObj`.
  *
- * Note that `errno` will only be set to `ENOENT` if it is a NameString that fails to resolve, other values for `errno` might be set in other cases.
+ * Note that `errno` will only be set to `ENOENT` if it is a NameString that fails to resolve, other values for `errno`
+ * might be set in other cases.
  *
  * @param state The AML state.
  * @param scope The current AML scope.

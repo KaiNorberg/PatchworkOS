@@ -121,7 +121,6 @@ void vmm_unmap_lower_half(void)
 
 void vmm_cpu_init(void)
 {
-    LOG_INFO("global page enable\n");
     cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
 }
 

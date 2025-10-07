@@ -262,6 +262,22 @@ make all
 make run
 ```
 
+### Additional commands
+
+```bash
+# Clean build files
+make clean
+
+# Debug using qemu with one cpu and GDB
+make run DEBUG=1 QEMU_CPUS=1 GDB=1
+
+# Generate doxygen documentation
+make doxygen
+
+# Create compile commands file
+make compile_commands
+```
+
 ### Grub Loopback
 
 For frequent testing, it might be inconvenient to frequently flash to a USB. You can instead set up the `.img` file as a loopback device in GRUB.

@@ -55,7 +55,7 @@ uint64_t trampoline_wait_ready(cpuid_t cpuId, clock_t timeout)
     {
         if (atomic_load(&cpuReadyFlags[cpuId]))
         {
-            LOG_INFO("cpu %u ready after %u ms\n", cpuId, elapsed / (CLOCKS_PER_SEC / 1000));
+            LOG_INFO("cpu%d ready after %u ms\n", cpuId, elapsed / (CLOCKS_PER_SEC / 1000));
             return 0;
         }
 

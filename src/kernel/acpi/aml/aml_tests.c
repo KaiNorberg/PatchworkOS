@@ -2,7 +2,9 @@
 
 #ifndef NDEBUG
 
+// This file will be generated from the full.aml file using xxd -i
 #include "_aml_full_test.h"
+
 #include "aml.h"
 #include "aml_object.h"
 #include "aml_state.h"

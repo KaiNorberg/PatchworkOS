@@ -73,9 +73,9 @@ typedef enum
      */
     AML_DATA_REF_OBJECTS = AML_DATA_OBJECTS | AML_OBJECT_REFERENCE,
     /**
-     * All data types that can contain named objects.
+     * All data types that can contain named objects, packages contain unnamed objects only and are excluded.
      */
-    AML_CONTAINERS = AML_DEVICE | AML_PROCESSOR | AML_METHOD,
+    AML_CONTAINERS = AML_DEVICE | AML_PROCESSOR | AML_METHOD | AML_THERMAL_ZONE,
     /**
      * All data types.
      */
@@ -182,8 +182,10 @@ typedef struct aml_device
 } aml_device_t;
 
 /**
- * @brief Data for an event object.
+ * @brief Data placeholder for an event object.
  * @struct aml_event_t
+ *
+ * TODO: Implement event object functionality.
  */
 typedef struct aml_event
 {
@@ -317,6 +319,16 @@ typedef struct aml_string
 } aml_string_t;
 
 /**
+ * @brief Data for a thermal zone object.
+ * @struct aml_thermal_zone_t
+ */
+typedef struct aml_thermal_zone
+{
+    AML_OBJECT_COMMON_HEADER;
+    list_t namedObjects;
+} aml_thermal_zone_t;
+
+/**
  * @brief Data for an alias object.
  * @struct aml_alias_t
  */
@@ -358,6 +370,7 @@ typedef struct aml_object
         aml_buffer_t buffer;
         aml_buffer_field_t bufferField;
         aml_device_t device;
+        aml_event_t event;
         aml_field_unit_t fieldUnit;
         aml_integer_t integer;
         aml_integer_constant_t integerConstant;
@@ -368,6 +381,7 @@ typedef struct aml_object
         aml_package_t package;
         aml_processor_t processor;
         aml_string_t string;
+        aml_thermal_zone_t thermalZone;
         aml_alias_t alias;
         aml_unresolved_t unresolved;
     };
@@ -514,7 +528,7 @@ uint64_t aml_object_put_bits_at(aml_object_t* object, uint64_t value, aml_bit_si
 uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, uint64_t* out);
 
 /**
- * @brief Initialize a object to a buffer with the given content.
+ * @brief Initialize a object as a buffer with the given content.
  *
  * @param object Pointer to the object to initialize.
  * @param buffer Pointer to the buffer.
@@ -525,7 +539,7 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
 uint64_t aml_buffer_init(aml_object_t* object, const uint8_t* buffer, uint64_t bytesToCopy, uint64_t length);
 
 /**
- * @brief Initialize a object to an empty buffer with the given length.
+ * @brief Initialize a object as an empty buffer with the given length.
  *
  * @param object Pointer to the object to initialize.
  * @param length Length of the buffer will also be the capacity.
@@ -534,7 +548,7 @@ uint64_t aml_buffer_init(aml_object_t* object, const uint8_t* buffer, uint64_t b
 uint64_t aml_buffer_init_empty(aml_object_t* object, uint64_t length);
 
 /**
- * @brief Initialize a object to a buffer field with the given buffer, bit offset and bit size.
+ * @brief Initialize a object as a buffer field with the given buffer, bit offset and bit size.
  *
  * @param object Pointer to the object to initialize.
  * @param buffer Pointer to the buffer.
@@ -546,7 +560,7 @@ uint64_t aml_buffer_field_init_buffer(aml_object_t* object, aml_buffer_t* buffer
     aml_bit_size_t bitSize);
 
 /**
- * @brief Initialize a object to a buffer field with the given string, bit offset and bit size.
+ * @brief Initialize a object as a buffer field with the given string, bit offset and bit size.
  *
  * @param object Pointer to the object to initialize.
  * @param string Pointer to the string.
@@ -558,7 +572,7 @@ uint64_t aml_buffer_field_init_string(aml_object_t* object, aml_string_t* string
     aml_bit_size_t bitSize);
 
 /**
- * @brief Initialize a object to a device or bus.
+ * @brief Initialize a object as a device or bus.
  *
  * @param object Pointer to the object to initialize.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
@@ -566,7 +580,15 @@ uint64_t aml_buffer_field_init_string(aml_object_t* object, aml_string_t* string
 uint64_t aml_device_init(aml_object_t* object);
 
 /**
- * @brief Initialize a object to a field unit of type Field.
+ * @brief Initialize a object as an event.
+ *
+ * @param object Pointer to the object to initialize.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_event_init(aml_object_t* object);
+
+/**
+ * @brief Initialize a object as a field unit of type Field.
  *
  * @param object Pointer to the object to initialize.
  * @param opregion Pointer to the operation region.
@@ -579,7 +601,7 @@ uint64_t aml_field_unit_field_init(aml_object_t* object, aml_opregion_t* opregio
     aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
 
 /**
- * @brief Initialize a object to a field unit of type IndexField.
+ * @brief Initialize a object as a field unit of type IndexField.
  *
  * @param object Pointer to the object to initialize.
  * @param index Pointer to the index field.
@@ -593,7 +615,7 @@ uint64_t aml_field_unit_index_field_init(aml_object_t* object, aml_field_unit_t*
     aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
 
 /**
- * @brief Initialize a object to a field unit of type BankField.
+ * @brief Initialize a object as a field unit of type BankField.
  *
  * @param object Pointer to the object to initialize.
  * @param opregion Pointer to the operation region.
@@ -608,7 +630,7 @@ uint64_t aml_field_unit_bank_field_init(aml_object_t* object, aml_opregion_t* op
     uint64_t bankValue, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
 
 /**
- * @brief Initialize a object to an integer with the given value and bit width.
+ * @brief Initialize a object as an integer with the given value and bit width.
  *
  * @param object Pointer to the object to initialize.
  * @param value The integer value to set.
@@ -617,7 +639,7 @@ uint64_t aml_field_unit_bank_field_init(aml_object_t* object, aml_opregion_t* op
 uint64_t aml_integer_init(aml_object_t* object, uint64_t value);
 
 /**
- * @brief Initialize a object to an integer constant with the given value.
+ * @brief Initialize a object as an integer constant with the given value.
  *
  * @param object Pointer to the object to initialize.
  * @param value The integer constant value to set.
@@ -626,7 +648,7 @@ uint64_t aml_integer_init(aml_object_t* object, uint64_t value);
 uint64_t aml_integer_constant_init(aml_object_t* object, uint64_t value);
 
 /**
- * @brief Initialize a object to a method with the given flags and address range.
+ * @brief Initialize a object as a method with the given flags and address range.
  *
  * @param object Pointer to the object to initialize.
  * @param flags Flags for the method.
@@ -640,7 +662,7 @@ uint64_t aml_method_init(aml_object_t* object, aml_method_flags_t flags, const u
     aml_method_implementation_t implementation);
 
 /**
- * @brief Initialize a object to a mutex with the given synchronization level.
+ * @brief Initialize a object as a mutex with the given synchronization level.
  *
  * @param object Pointer to the object to initialize.
  * @param syncLevel The synchronization level of the mutex (0-15).
@@ -649,7 +671,7 @@ uint64_t aml_method_init(aml_object_t* object, aml_method_flags_t flags, const u
 uint64_t aml_mutex_init(aml_object_t* object, aml_sync_level_t syncLevel);
 
 /**
- * @brief Initialize a object to an ObjectReference to the given target object.
+ * @brief Initialize a object as an ObjectReference to the given target object.
  *
  * @param object Pointer to the object to initialize.
  * @param target Pointer to the target object the ObjectReference will point to.
@@ -658,7 +680,7 @@ uint64_t aml_mutex_init(aml_object_t* object, aml_sync_level_t syncLevel);
 uint64_t aml_object_reference_init(aml_object_t* object, aml_object_t* target);
 
 /**
- * @brief Initialize a object to an operation region with the given space, offset, and length.
+ * @brief Initialize a object as an operation region with the given space, offset, and length.
  *
  * @param object Pointer to the object to initialize.
  * @param space The address space of the operation region.
@@ -669,7 +691,7 @@ uint64_t aml_object_reference_init(aml_object_t* object, aml_object_t* target);
 uint64_t aml_operation_region_init(aml_object_t* object, aml_region_space_t space, uint64_t offset, uint32_t length);
 
 /**
- * @brief Initialize a object to a package with the given number of elements.
+ * @brief Initialize a object as a package with the given number of elements.
  *
  * @param object Pointer to the object to initialize.
  * @param length Number of elements the package will be able to hold.
@@ -678,7 +700,7 @@ uint64_t aml_operation_region_init(aml_object_t* object, aml_region_space_t spac
 uint64_t aml_package_init(aml_object_t* object, uint64_t length);
 
 /**
- * @brief Initialize a object to a processor with the given ProcID, PblkAddr, and PblkLen.
+ * @brief Initialize a object as a processor with the given ProcID, PblkAddr, and PblkLen.
  *
  * @param object Pointer to the object to initialize.
  * @param procId The processor ID.
@@ -690,7 +712,7 @@ uint64_t aml_processor_init(aml_object_t* object, aml_proc_id_t procId, aml_pblk
     aml_pblk_len_t pblkLen);
 
 /**
- * @brief Initialize a object to an empty string with the given length.
+ * @brief Initialize a object as an empty string with the given length.
  *
  * The string will be initalized with zero chars and be null terminated.
  *
@@ -701,7 +723,7 @@ uint64_t aml_processor_init(aml_object_t* object, aml_proc_id_t procId, aml_pblk
 uint64_t aml_string_init_empty(aml_object_t* object, uint64_t length);
 
 /**
- * @brief Initialize a object to a string with the given value.
+ * @brief Initialize a object as a string with the given value.
  *
  * @param object Pointer to the object to initialize.
  * @param str Pointer to the string.
@@ -710,7 +732,15 @@ uint64_t aml_string_init_empty(aml_object_t* object, uint64_t length);
 uint64_t aml_string_init(aml_object_t* object, const char* str);
 
 /**
- * @brief Initialize a object to an alias to the given target object.
+ * @brief Initialize a object as a thermal zone.
+ *
+ * @param object Pointer to the object to initialize.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_thermal_zone_init(aml_object_t* object);
+
+/**
+ * @brief Initialize a object as an alias to the given target object.
  *
  * This is used to implement the DefAlias structure.
  *
@@ -731,7 +761,7 @@ uint64_t aml_alias_init(aml_object_t* object, aml_object_t* target);
 aml_object_t* aml_alias_traverse(aml_alias_t* alias);
 
 /**
- * @brief Initialize a object to an unresolved reference with the given namestring and starting point.
+ * @brief Initialize a object as an unresolved reference with the given namestring and starting point.
  *
  * The object will be resolved later by calling `aml_patch_up_resolve_all()`.
  *

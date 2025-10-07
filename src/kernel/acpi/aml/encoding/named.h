@@ -621,6 +621,19 @@ uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_scope_t* scope)
 uint64_t aml_def_event_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
+ * @brief Reads a DefThermalZone structure from the AML byte stream.
+ *
+ * The DefThermalZone structure is defined as `DefThermalZone := ThermalZoneOp PkgLength NameString TermList`.
+ *
+ * @see Section 19.6.135 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_thermal_zone_read(aml_state_t* state, aml_scope_t* scope);
+
+/**
  * @brief Reads a NamedObj structure from the AML byte stream.
  *
  * Version 6.6 of the ACPI specification has a few mistakes in the definition of the NamedObj structure,
@@ -652,7 +665,6 @@ uint64_t aml_def_event_read(aml_state_t* state, aml_scope_t* scope);
  * - `DefDataRegion`
  * - `DefExternal`
  * - `DefPowerRes`
- * - `DefThermalZone`
  *
  * @param state The AML state.
  * @param scope The current AML scope.

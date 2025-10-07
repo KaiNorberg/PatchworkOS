@@ -43,7 +43,7 @@ void timer_cpu_init(void)
     cpu_t* self = smp_self_unsafe();
     self->timer.apicTicksPerNs = apic_timer_ticks_per_ns();
     self->timer.nextDeadline = CLOCKS_NEVER;
-    LOG_INFO("cpu apic timer initialized ticksPerNs=%lu\n", self->timer.apicTicksPerNs);
+    LOG_INFO("cpu%d apic timer ticksPerNs=%lu\n", self->id, self->timer.apicTicksPerNs);
 }
 
 clock_t timer_uptime(void)

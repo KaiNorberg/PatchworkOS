@@ -108,13 +108,8 @@ uint64_t aml_def_opregion_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_operation_region_init(newObject, regionSpace, regionOffset, regionLen) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to init opregion");
-        return ERR;
-    }
-
-    if (aml_object_add(newObject, scope->location, &nameString) == ERR)
+    if (aml_operation_region_init(newObject, regionSpace, regionOffset, regionLen) == ERR ||
+        aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -579,12 +574,8 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_method_init(newObject, methodFlags, state->current, end, NULL) == ERR)
-    {
-        return ERR;
-    }
-
-    if (aml_object_add(newObject, scope->location, &nameString) == ERR)
+    if (aml_method_init(newObject, methodFlags, state->current, end, NULL) == ERR ||
+        aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -630,12 +621,7 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_device_init(newObject) == ERR)
-    {
-        return ERR;
-    }
-
-    if (aml_object_add(newObject, scope->location, &nameString) == ERR)
+    if (aml_device_init(newObject) == ERR || aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -693,12 +679,7 @@ uint64_t aml_def_mutex_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_mutex_init(newObject, syncFlags) == ERR)
-    {
-        return ERR;
-    }
-
-    if (aml_object_add(newObject, scope->location, &nameString) == ERR)
+    if (aml_mutex_init(newObject, syncFlags) == ERR || aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -791,12 +772,8 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_processor_init(newObject, procId, pblkAddr, pblkLen) == ERR)
-    {
-        return ERR;
-    }
-
-    if (aml_object_add(newObject, scope->location, &nameString) == ERR)
+    if (aml_processor_init(newObject, procId, pblkAddr, pblkLen) == ERR ||
+        aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -876,12 +853,8 @@ uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_buffer_field_init_buffer(newObject, &sourceBuff->buffer, bitIndex, 1) == ERR)
-    {
-        return ERR;
-    }
-
-    if (aml_object_add(newObject, scope->location, &nameString) == ERR)
+    if (aml_buffer_field_init_buffer(newObject, &sourceBuff->buffer, bitIndex, 1) == ERR ||
+        aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -929,12 +902,8 @@ static inline uint64_t aml_def_create_field_read_helper(aml_state_t* state, aml_
     }
     DEREF_DEFER(newObject);
 
-    if (aml_buffer_field_init_buffer(newObject, &sourceBuff->buffer, byteIndex * 8, fieldWidth) == ERR)
-    {
-        return ERR;
-    }
-
-    if (aml_object_add(newObject, scope->location, &nameString) == ERR)
+    if (aml_buffer_field_init_buffer(newObject, &sourceBuff->buffer, byteIndex * 8, fieldWidth) == ERR ||
+        aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -965,10 +934,75 @@ uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_scope_t* scope)
 
 uint64_t aml_def_event_read(aml_state_t* state, aml_scope_t* scope)
 {
-    (void)scope;
-    errno = ENOSYS;
-    AML_DEBUG_ERROR(state, "EventOp not implemented");
-    return ERR;
+    if (aml_token_expect(state, AML_EVENT_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read EventOp");
+        return ERR;
+    }
+
+    aml_name_string_t nameString;
+    if (aml_name_string_read(state, &nameString) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read NameString");
+        return ERR;
+    }
+
+    aml_object_t* newObject = aml_object_new(state, AML_OBJECT_NONE);
+    if (newObject == NULL)
+    {
+        return ERR;
+    }
+    DEREF_DEFER(newObject);
+
+    if (aml_event_init(newObject) == ERR || aml_object_add(newObject, scope->location, &nameString) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t aml_def_thermal_zone_read(aml_state_t* state, aml_scope_t* scope)
+{
+    if (aml_token_expect(state, AML_THERMAL_ZONE_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read ThermalZoneOp");
+        return ERR;
+    }
+
+    const uint8_t* start = state->current;
+
+    aml_pkg_length_t pkgLength;
+    if (aml_pkg_length_read(state, &pkgLength) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read PkgLength");
+        return ERR;
+    }
+
+    aml_name_string_t nameString;
+    if (aml_name_string_read(state, &nameString) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read NameString");
+        return ERR;
+    }
+
+    const uint8_t* end = start + pkgLength;
+
+    aml_object_t* newObject = aml_object_new(state, AML_OBJECT_NONE);
+    if (newObject == NULL)
+    {
+        return ERR;
+    }
+    DEREF_DEFER(newObject);
+
+    if (aml_thermal_zone_init(newObject) == ERR || aml_object_add(newObject, scope->location, &nameString) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        return ERR;
+    }
+
+    return aml_term_list_read(state, newObject, end);
 }
 
 uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope)
@@ -1021,6 +1055,12 @@ uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope)
         break;
     case AML_CREATE_QWORD_FIELD_OP:
         result = aml_def_create_qword_field_read(state, scope);
+        break;
+    case AML_EVENT_OP:
+        result = aml_def_event_read(state, scope);
+        break;
+    case AML_THERMAL_ZONE_OP:
+        result = aml_def_thermal_zone_read(state, scope);
         break;
     default:
         AML_DEBUG_ERROR(state, "Unknown NamedObj '%s' (0x%x)", op.props->name, op.num);
