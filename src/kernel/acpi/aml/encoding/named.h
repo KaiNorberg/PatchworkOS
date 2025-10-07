@@ -679,6 +679,48 @@ uint64_t aml_resource_order_read(aml_state_t* state, aml_resource_order_t* out);
 uint64_t aml_def_power_res_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
+ * @brief Reads a NumBits structure from the AML byte stream.
+ *
+ * A NumBits structure is defined as `NumBits := TermArg => Integer`.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @param out The output buffer to store the number of bits.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_num_bits_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out);
+
+/**
+ * @brief Reads a DefCreateField structure from the AML byte stream.
+ *
+ * The DefCreateField structure is defined as `DefDataRegion := CreateFieldOp SourceBuff BitIndex NumBits NameString`.
+ *
+ * @see Section 19.6.21 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_create_field_read(aml_state_t* state, aml_scope_t* scope);
+
+/**
+ * @brief Reads a DefCreateField structure from the AML byte stream.
+ *
+ * The DefCreateField structure is defined as `DefCreateField := CreateFieldOp SourceBuff BitIndex FieldFlags NameString`.
+ *
+ * A CreateField operation creates a field, with the name stored in the NameString, that accesses a field of arbitrary
+ * size and alignment within the SourceBuff, starting at the bit index BitIndex, and with the access properties defined
+ * by FieldFlags.
+ *
+ * @see Section 19.6.21 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_create_field_read(aml_state_t* state, aml_scope_t* scope);
+
+/**
  * @brief Reads a NamedObj structure from the AML byte stream.
  *
  * Version 6.6 of the ACPI specification has a few mistakes in the definition of the NamedObj structure,
@@ -706,7 +748,6 @@ uint64_t aml_def_power_res_read(aml_state_t* state, aml_scope_t* scope);
  * DefIndexField | DefEvent`.
  *
  * Currently unimplemented Opcodes are:
- * - `DefCreateField`
  * - `DefDataRegion`
  * - `DefExternal`
  *

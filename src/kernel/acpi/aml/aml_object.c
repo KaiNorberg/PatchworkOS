@@ -444,6 +444,8 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
 
     if (sysfs_dir_init(&child->name.dir, &parent->name.dir, child->name.segment, NULL, NULL) == ERR)
     {
+        LOG_ERR("Failed to create sysfs dir for object '%s' (errno '%s')\n", AML_OBJECT_GET_NAME(child),
+            strerror(errno));
         return ERR;
     }
 
@@ -512,6 +514,7 @@ uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name
         object->name.parent = NULL;
         if (sysfs_dir_init(&object->name.dir, acpi_get_sysfs_root(), "namespace", NULL, NULL) == ERR)
         {
+            LOG_ERR("Failed to create sysfs dir for root object (errno '%s')\n", strerror(errno));
             return ERR;
         }
         object->flags |= AML_OBJECT_NAMED;

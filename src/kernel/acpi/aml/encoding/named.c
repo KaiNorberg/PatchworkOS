@@ -1082,6 +1082,72 @@ uint64_t aml_def_power_res_read(aml_state_t* state, aml_scope_t* scope)
     return aml_term_list_read(state, newObject, end);
 }
 
+uint64_t aml_num_bits_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
+{
+    if (aml_term_arg_read_integer(state, scope, out) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read TermArg");
+        return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t aml_def_create_field_read(aml_state_t* state, aml_scope_t* scope)
+{
+    if (aml_token_expect(state, AML_CREATE_FIELD_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read CreateFieldOp");
+        return ERR;
+    }
+
+    aml_object_t* sourceBuff = NULL;
+    if (aml_source_buff_read(state, scope, &sourceBuff) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read SourceBuff");
+        return ERR;
+    }
+
+    assert(sourceBuff->type == AML_BUFFER);
+
+    uint64_t bitIndex;
+    if (aml_bit_index_read(state, scope, &bitIndex) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read BitIndex");
+        return ERR;
+    }
+
+    uint64_t numBits;
+    if (aml_num_bits_read(state, scope, &numBits) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read NumBits");
+        return ERR;
+    }
+
+    aml_name_string_t nameString;
+    if (aml_name_string_read(state, &nameString) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read NameString");
+        return ERR;
+    }
+
+    aml_object_t* newObject = aml_object_new(state, AML_OBJECT_NONE);
+    if (newObject == NULL)
+    {
+        return ERR;
+    }
+    DEREF_DEFER(newObject);
+
+    if (aml_buffer_field_init_buffer(newObject, &sourceBuff->buffer, bitIndex, numBits) == ERR ||
+        aml_object_add(newObject, scope->location, &nameString) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        return ERR;
+    }
+
+    return 0;
+}
+
 uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope)
 {
     aml_token_t op;
@@ -1141,6 +1207,9 @@ uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope)
         break;
     case AML_POWER_RES_OP:
         result = aml_def_power_res_read(state, scope);
+        break;
+    case AML_CREATE_FIELD_OP:
+        result = aml_def_create_field_read(state, scope);
         break;
     default:
         AML_DEBUG_ERROR(state, "Unknown NamedObj '%s' (0x%x)", op.props->name, op.num);
