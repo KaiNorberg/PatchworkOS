@@ -43,11 +43,18 @@ static uint64_t aml_system_mem_read(aml_opregion_t* opregion, uint64_t address, 
 {
     (void)opregion;
 
-    void* physAddr = (void*)address;
-    void* virtAddr = aml_ensure_mem_is_mapped(address, accessSize);
-    if (virtAddr == NULL)
+    void* virtAddr = NULL;
+    if (address >= PML_LOWER_HALF_START)
     {
-        return ERR;
+        virtAddr = (void*)address;
+    }
+    else
+    {
+        virtAddr = aml_ensure_mem_is_mapped(address, accessSize);
+        if (virtAddr == NULL)
+        {
+            return ERR;
+        }
     }
 
     switch (accessSize)
@@ -77,10 +84,18 @@ static uint64_t aml_system_mem_write(aml_opregion_t* opregion, uint64_t address,
 {
     (void)opregion;
 
-    void* virtAddr = aml_ensure_mem_is_mapped(address, accessSize);
-    if (virtAddr == NULL)
+    void* virtAddr = NULL;
+    if (address >= PML_LOWER_HALF_START)
     {
-        return ERR;
+        virtAddr = (void*)address;
+    }
+    else
+    {
+        virtAddr = aml_ensure_mem_is_mapped(address, accessSize);
+        if (virtAddr == NULL)
+        {
+            return ERR;
+        }
     }
 
     switch (accessSize)
