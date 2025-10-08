@@ -32,7 +32,7 @@ typedef struct aml_state aml_state_t;
 uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out, aml_type_t allowedTypes);
 
 /**
- * @brief Wrapper around `aml_term_arg_read` that converts the result to an integer.
+ * @brief Wrapper around `aml_term_arg_read()` that converts the result to an integer.
  *
  * @param state The AML state.
  * @param scope The current AML scope.
@@ -40,6 +40,16 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_object_t*
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_scope_t* scope, uint64_t* out);
+
+/**
+ * @brief Wrapper around `aml_term_arg_read()` that converts the result to a string.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @param out Output pointer to the string pointer which will store the result.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_term_arg_read_string(aml_state_t* state, aml_scope_t* scope, aml_string_t** out);
 
 /**
  * @brief Reads an Object structure from the AML byte stream.

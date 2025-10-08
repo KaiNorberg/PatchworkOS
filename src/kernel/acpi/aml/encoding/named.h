@@ -723,6 +723,23 @@ uint64_t aml_def_create_field_read(aml_state_t* state, aml_scope_t* scope);
 uint64_t aml_def_create_field_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
+ * @brief Reads a DefDataRegion structure from the AML byte stream.
+ *
+ * The DefDataRegion structure is defined as `DefDataRegion := DataRegionOp NameString TermArg TermArg TermArg`.
+ *
+ * Despite the name the DefDataRegion structure is used to implement the DataTableRegion ASL operation.
+ *
+ * All it does is that it allows a System Descriptor Table to be accessed as an opregion.
+ *
+ * @see Section 19.6.25 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_data_region_read(aml_state_t* state, aml_scope_t* scope);
+
+/**
  * @brief Reads a NamedObj structure from the AML byte stream.
  *
  * Version 6.6 of the ACPI specification has a few mistakes in the definition of the NamedObj structure,
@@ -750,7 +767,6 @@ uint64_t aml_def_create_field_read(aml_state_t* state, aml_scope_t* scope);
  * DefIndexField | DefEvent`.
  *
  * Currently unimplemented Opcodes are:
- * - `DefDataRegion`
  * - `DefExternal`
  *
  * @param state The AML state.

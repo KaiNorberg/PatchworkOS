@@ -100,6 +100,21 @@ uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_scope_t* scope, uint6
     return 0;
 }
 
+uint64_t aml_term_arg_read_string(aml_state_t* state, aml_scope_t* scope, aml_string_t** out)
+{
+    aml_object_t* temp = NULL;
+    if (aml_term_arg_read(state, scope, &temp, AML_STRING) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read TermArg");
+        return ERR;
+    }
+
+    assert(temp->type == AML_STRING);
+
+    *out = &temp->string;
+    return 0;
+}
+
 uint64_t aml_object_read(aml_state_t* state, aml_scope_t* scope)
 {
     aml_token_t token;

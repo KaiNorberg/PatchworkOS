@@ -6,6 +6,7 @@
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_token.h"
+#include "acpi/tables.h"
 #include "data.h"
 #include "name.h"
 #include "package_length.h"
@@ -1148,6 +1149,111 @@ uint64_t aml_def_create_field_read(aml_state_t* state, aml_scope_t* scope)
     return 0;
 }
 
+uint64_t aml_def_data_region_read(aml_state_t* state, aml_scope_t* scope)
+{
+    if (aml_token_expect(state, AML_DATA_REGION_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read DataRegionOp");
+        return ERR;
+    }
+
+    aml_name_string_t regionName;
+    if (aml_name_string_read(state, &regionName) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read RegionName");
+        return ERR;
+    }
+
+    aml_string_t* signature = NULL;
+    if (aml_term_arg_read_string(state, scope, &signature) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read Signature");
+        return ERR;
+    }
+
+    aml_string_t* oemId = NULL;
+    if (aml_term_arg_read_string(state, scope, &oemId) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read OemId");
+        return ERR;
+    }
+
+    aml_string_t* oemTableId = NULL;
+    if (aml_term_arg_read_string(state, scope, &oemTableId) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read OemTableId");
+        return ERR;
+    }
+
+    if (signature->length != 4)
+    {
+        AML_DEBUG_ERROR(state, "Invalid signature length %d (expected 4)", signature->length);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    uint64_t index = 0;
+    sdt_header_t* table = NULL;
+    while (1)
+    {
+        table = acpi_tables_lookup(signature->content, index++);
+        if (table == NULL)
+        {
+            AML_DEBUG_ERROR(state, "Failed to find ACPI table with signature '%.4s', oemId '%s' and oemTableId '%s'",
+                signature->content, oemId->content, oemTableId->content);
+            errno = ENOENT;
+            return ERR;
+        }
+
+        if (oemId->length != 0)
+        {
+            if (oemId->length != 6)
+            {
+                AML_DEBUG_ERROR(state, "Invalid oemId length %d (expected 6)", oemId->length);
+                errno = EILSEQ;
+                return ERR;
+            }
+
+            if (strncmp((const char*)table->oemId, (const char*)oemId->content, 6) != 0)
+            {
+                continue;
+            }
+        }
+
+        if (oemTableId->length != 0)
+        {
+            if (oemTableId->length != 8)
+            {
+                AML_DEBUG_ERROR(state, "Invalid oemTableId length %d (expected 8)", oemTableId->length);
+                errno = EILSEQ;
+                return ERR;
+            }
+
+            if (strncmp((const char*)table->oemTableId, (const char*)oemTableId->content, 8) != 0)
+            {
+                continue;
+            }
+        }
+
+        aml_object_t* newObject = aml_object_new(state, AML_OBJECT_NONE);
+        if (newObject == NULL)
+        {
+            return ERR;
+        }
+        DEREF_DEFER(newObject);
+
+        if (aml_operation_region_init(newObject, AML_REGION_SYSTEM_MEMORY, (uint64_t)table,
+                table->length) == ERR ||
+            aml_object_add(newObject, scope->location, &regionName) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&regionName));
+            return ERR;
+        }
+
+        return 0;
+    }
+}
+
 uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope)
 {
     aml_token_t op;
@@ -1210,6 +1316,9 @@ uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope)
         break;
     case AML_CREATE_FIELD_OP:
         result = aml_def_create_field_read(state, scope);
+        break;
+    case AML_DATA_REGION_OP:
+        result = aml_def_data_region_read(state, scope);
         break;
     default:
         AML_DEBUG_ERROR(state, "Unknown NamedObj '%s' (0x%x)", op.props->name, op.num);
