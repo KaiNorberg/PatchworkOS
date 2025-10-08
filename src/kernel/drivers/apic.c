@@ -2,8 +2,8 @@
 
 #include "acpi/tables.h"
 #include "cpu/smp.h"
+#include "drivers/hpet.h"
 #include "drivers/pic.h"
-#include "drivers/time/hpet.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/vmm.h"

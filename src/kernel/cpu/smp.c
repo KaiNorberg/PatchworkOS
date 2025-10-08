@@ -3,7 +3,7 @@
 #include "acpi/tables.h"
 #include "cpu/vectors.h"
 #include "drivers/apic.h"
-#include "drivers/time/hpet.h"
+#include "drivers/hpet.h"
 #include "kernel.h"
 #include "log/log.h"
 #include "log/panic.h"

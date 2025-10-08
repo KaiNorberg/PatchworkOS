@@ -1242,8 +1242,7 @@ uint64_t aml_def_data_region_read(aml_state_t* state, aml_scope_t* scope)
         }
         DEREF_DEFER(newObject);
 
-        if (aml_operation_region_init(newObject, AML_REGION_SYSTEM_MEMORY, (uint64_t)table,
-                table->length) == ERR ||
+        if (aml_operation_region_init(newObject, AML_REGION_SYSTEM_MEMORY, (uint64_t)table, table->length) == ERR ||
             aml_object_add(newObject, scope->location, &regionName) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&regionName));

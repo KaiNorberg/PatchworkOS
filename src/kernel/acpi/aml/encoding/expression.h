@@ -732,6 +732,20 @@ uint64_t aml_def_to_integer_read(aml_state_t* state, aml_scope_t* scope, aml_obj
 uint64_t aml_def_to_string_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
+ * @brief Reads a DefTimer structure from the AML byte stream.
+ *
+ * A DefTimer structure is defined as `DefTimer := TimerOp`.
+ *
+ * @see Section 19.6.136 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @param out Output pointer to be filled with the object pointer storing the result.
+ * @return On success, the current value of the timer. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_timer_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+
+/**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.
  *
  * An ExpressionOpcode structure is defined as `ExpressionOpcode := DefAcquire | DefAdd | DefAnd | DefBuffer | DefConcat
@@ -755,7 +769,6 @@ uint64_t aml_def_to_string_read(aml_state_t* state, aml_scope_t* scope, aml_obje
  * - `DefObjectType`
  * - `DefRefOf`
  * - `DefSizeOf`
- * - `DefTimer`
  * - `DefWait`
  *
  * @param state The AML state.

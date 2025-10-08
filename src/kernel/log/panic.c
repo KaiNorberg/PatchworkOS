@@ -163,11 +163,11 @@ static void panic_stack_trace(const trap_frame_t* trapFrame)
     const char* symbol = panic_resolve_symbol(trapFrame->rip, &offset);
     if (symbol != NULL)
     {
-        LOG_PANIC(" [0x%016llx] <%s+0x%llx>\n", trapFrame->rip, symbol, offset);
+        LOG_PANIC("  [0x%016llx] <%s+0x%llx>\n", trapFrame->rip, symbol, offset);
     }
     else
     {
-        LOG_PANIC(" [0x%016llx] <unknown>\n", trapFrame->rip);
+        LOG_PANIC("  [0x%016llx] <unknown>\n", trapFrame->rip);
     }
 
     uint64_t depth = 0;
@@ -175,7 +175,7 @@ static void panic_stack_trace(const trap_frame_t* trapFrame)
     {
         if (depth >= 10)
         {
-            LOG_PANIC(" ...\n");
+            LOG_PANIC("  ...\n");
             break;
         }
 

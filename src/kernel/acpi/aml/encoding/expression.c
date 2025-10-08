@@ -1615,6 +1615,32 @@ uint64_t aml_def_to_integer_read(aml_state_t* state, aml_scope_t* scope, aml_obj
         AML_INTEGER | AML_STRING | AML_BUFFER, aml_def_to_integer_callback);
 }
 
+uint64_t aml_def_timer_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
+{
+    if (aml_token_expect(state, AML_TIMER_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read TimerOp");
+        return ERR;
+    }
+
+    // The period of the timer is supposed to be 100ns.
+    uint64_t time100ns = (timer_uptime() * 10000000) / CLOCKS_PER_SEC;
+
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
+    {
+        return ERR;
+    }
+
+    if (aml_integer_init(*out, time100ns) == ERR)
+    {
+        aml_object_deinit(*out);
+        return ERR;
+    }
+
+    return 0;
+}
+
 uint64_t aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
     assert(out != NULL);
@@ -1773,6 +1799,9 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope, aml_
         break;
     case AML_TO_INTEGER_OP:
         result = aml_def_to_integer_read(state, scope, out);
+        break;
+    case AML_TIMER_OP:
+        result = aml_def_timer_read(state, scope, out);
         break;
     default:
         AML_DEBUG_ERROR(state, "Unknown expression opcode '%s' (0x%04x)", op.props->name, op.num);

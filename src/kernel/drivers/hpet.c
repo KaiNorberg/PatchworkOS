@@ -57,7 +57,7 @@ uint64_t hpet_nanoseconds_per_tick(void)
 {
     if (!isInitialized)
     {
-        panic(NULL, "HPET not initialized");
+        return 0;
     }
     return period / 1000000ULL;
 }
@@ -66,7 +66,7 @@ uint64_t hpet_read_counter(void)
 {
     if (!isInitialized)
     {
-        panic(NULL, "HPET not initialized");
+        return 0;
     }
     return hpet_read(HPET_REG_MAIN_COUNTER_VALUE);
 }

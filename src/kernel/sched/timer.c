@@ -3,8 +3,8 @@
 #include "cpu/syscalls.h"
 #include "cpu/vectors.h"
 #include "drivers/apic.h"
-#include "drivers/time/hpet.h"
-#include "drivers/time/rtc.h"
+#include "drivers/hpet.h"
+#include "drivers/rtc.h"
 #include "log/log.h"
 #include "log/panic.h"
 
@@ -13,23 +13,15 @@
 #include <stdint.h>
 #include <sys/math.h>
 
-static _Atomic(clock_t) accumulator;
+static _Atomic(clock_t) accumulator = ATOMIC_VAR_INIT(0);
 static time_t bootEpoch;
 
 static timer_callback_t callbacks[TIMER_MAX_CALLBACK] = {0};
 
 static bool initialized = false;
 
-static void timer_accumulate(void)
-{
-    atomic_fetch_add(&accumulator, hpet_read_counter());
-    hpet_reset_counter();
-}
-
 void timer_init(void)
 {
-    timer_accumulate();
-
     struct tm time;
     rtc_read(&time);
     bootEpoch = mktime(&time);
@@ -68,6 +60,9 @@ time_t timer_unix_epoch(void)
 
 void timer_trap_handler(trap_frame_t* trapFrame, cpu_t* self)
 {
+    atomic_fetch_add(&accumulator, hpet_read_counter());
+    hpet_reset_counter();
+
     self->timer.nextDeadline = CLOCKS_NEVER;
     for (uint32_t i = 0; i < TIMER_MAX_CALLBACK; i++)
     {

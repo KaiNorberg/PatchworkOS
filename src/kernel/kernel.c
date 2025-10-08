@@ -10,7 +10,6 @@
 #include "drivers/const.h"
 #include "drivers/fb/gop.h"
 #include "drivers/ps2/ps2.h"
-#include "drivers/time/rtc.h"
 #include "fs/ramfs.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
@@ -75,15 +74,14 @@ void kernel_init(boot_info_t* bootInfo)
     ramfs_init(&bootInfo->disk);
     sysfs_init();
 
+    timer_init();
+
     acpi_init(bootInfo->rsdp, &bootInfo->memory.map);
 
     lapic_init();
     lapic_cpu_init();
     ioapic_all_init();
 
-    rtc_init();
-
-    timer_init();
     timer_cpu_init();
 
     log_file_expose();

@@ -4,7 +4,7 @@
 
 #include "acpi/tables.h"
 #include "cpu/port.h"
-#include "drivers/time/hpet.h"
+#include "drivers/hpet.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "sched/timer.h"

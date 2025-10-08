@@ -81,12 +81,16 @@ typedef struct PACKED
 /**
  * @brief Retrieve the number of nanoseconds per HPET tick
  *
+ * If the HPET is not initialized, this function will return 0.
+ *
  * @return Nanoseconds per tick
  */
 uint64_t hpet_nanoseconds_per_tick(void);
 
 /**
  * @brief Read the current value of the HPET main counter
+ *
+ * If the HPET is not initialized, this function will return 0.
  *
  * @return Current current value of the HPET main counter in ticks
  */

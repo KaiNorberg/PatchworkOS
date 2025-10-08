@@ -1,6 +1,6 @@
 #include "trampoline.h"
 
-#include "drivers/time/hpet.h"
+#include "drivers/hpet.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/pmm.h"
