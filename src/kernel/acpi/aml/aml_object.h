@@ -154,7 +154,6 @@ typedef struct aml_buffer
     AML_OBJECT_COMMON_HEADER;
     uint8_t* content;
     uint64_t length;
-    aml_object_t** byteFields; ///< Used by IndexOp, initalized lazily.
 } aml_buffer_t;
 
 /**
@@ -323,7 +322,6 @@ typedef struct aml_string
     AML_OBJECT_COMMON_HEADER;
     char* content;
     uint64_t length;
-    aml_object_t** byteFields; ///< Used by IndexOp, initalized lazily.
 } aml_string_t;
 
 /**

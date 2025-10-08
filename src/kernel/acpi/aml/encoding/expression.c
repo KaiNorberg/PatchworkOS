@@ -1038,47 +1038,25 @@ uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_object_t
             return ERR;
         }
 
-        if (buffer->byteFields == NULL)
-        {
-            buffer->byteFields = heap_calloc(buffer->length, sizeof(aml_object_t*), HEAP_NONE);
-            if (buffer->byteFields == NULL)
-            {
-                AML_DEBUG_ERROR(state, "Failed to allocate byteFields");
-                return ERR;
-            }
-        }
-
-        if (buffer->byteFields[index] != NULL)
-        {
-            if (aml_object_reference_init(*out, buffer->byteFields[index]) == ERR)
-            {
-                AML_DEBUG_ERROR(state, "Failed to init ObjectReference for buffer byteField");
-                return ERR;
-            }
-            break;
-        }
-
         aml_object_t* byteField = aml_object_new(state, AML_OBJECT_NONE);
         if (byteField == NULL)
         {
             AML_DEBUG_ERROR(state, "Failed to allocate byteField");
             return ERR;
         }
+        DEREF_DEFER(byteField);
 
         if (aml_buffer_field_init_buffer(byteField, buffer, index * 8, 8) == ERR)
         {
-            DEREF(byteField);
             AML_DEBUG_ERROR(state, "Failed to init byteField");
             return ERR;
         }
 
         if (aml_object_reference_init(*out, byteField) == ERR)
         {
-            DEREF(byteField);
             AML_DEBUG_ERROR(state, "Failed to init ObjectReference for buffer byteField");
             return ERR;
         }
-        buffer->byteFields[index] = byteField; // Takes ownership
     }
     break;
     case AML_STRING: // Section 19.6.63.3
@@ -1091,48 +1069,26 @@ uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_object_t
             return ERR;
         }
 
-        if (string->byteFields == NULL)
-        {
-            string->byteFields = heap_calloc(string->length, sizeof(aml_object_t*), HEAP_NONE);
-            if (string->byteFields == NULL)
-            {
-                AML_DEBUG_ERROR(state, "Failed to allocate byteFields");
-                return ERR;
-            }
-        }
-
-        if (string->byteFields[index] != NULL)
-        {
-            if (aml_object_reference_init(*out, string->byteFields[index]) == ERR)
-            {
-                AML_DEBUG_ERROR(state, "Failed to init ObjectReference for string byteField");
-                return ERR;
-            }
-            break;
-        }
-
         aml_object_t* byteField = aml_object_new(state, AML_OBJECT_NONE);
         if (byteField == NULL)
         {
             AML_DEBUG_ERROR(state, "Failed to allocate byteField");
             return ERR;
         }
+        DEREF_DEFER(byteField);
 
         if (aml_buffer_field_init_string(byteField, string, index * 8, 8) == ERR)
         {
-            DEREF(byteField);
             AML_DEBUG_ERROR(state, "Failed to init byteField");
             return ERR;
         }
 
-        if (aml_object_reference_init(*out, string->byteFields[index]) == ERR)
+        if (aml_object_reference_init(*out, byteField) == ERR)
         {
-            DEREF(byteField);
             AML_DEBUG_ERROR(state, "Failed to init ObjectReference for string byteField");
             return ERR;
         }
 
-        string->byteFields[index] = byteField; // Takes ownership
     }
     break;
     default:

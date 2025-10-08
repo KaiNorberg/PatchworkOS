@@ -167,20 +167,8 @@ void aml_object_deinit(aml_object_t* object)
         {
             heap_free(object->buffer.content);
         }
-        if (object->buffer.byteFields != NULL)
-        {
-            for (uint64_t i = 0; i < object->buffer.length; i++)
-            {
-                if (object->buffer.byteFields[i] != NULL)
-                {
-                    DEREF(object->buffer.byteFields[i]);
-                }
-            }
-            heap_free(object->buffer.byteFields);
-        }
         object->buffer.content = NULL;
         object->buffer.length = 0;
-        object->buffer.byteFields = NULL;
         break;
     case AML_BUFFER_FIELD:
         if (object->bufferField.buffer != NULL)
@@ -291,17 +279,8 @@ void aml_object_deinit(aml_object_t* object)
         {
             heap_free(object->string.content);
         }
-        if (object->string.byteFields != NULL)
-        {
-            for (uint64_t i = 0; i < object->string.length; i++)
-            {
-                DEREF(object->string.byteFields[i]);
-            }
-            heap_free(object->string.byteFields);
-        }
         object->string.content = NULL;
         object->string.length = 0;
-        object->string.byteFields = NULL;
         break;
     case AML_THERMAL_ZONE:
         aml_object_container_free_children(object);
@@ -371,34 +350,6 @@ uint64_t aml_object_count_children(aml_object_t* parent)
             {
                 count++;
                 count += aml_object_count_children(element);
-            }
-        }
-        break;
-    case AML_BUFFER:
-        if (parent->buffer.byteFields != NULL)
-        {
-            for (uint64_t i = 0; i < parent->buffer.length; i++)
-            {
-                aml_object_t* byteField = parent->buffer.byteFields[i];
-                if (byteField != NULL)
-                {
-                    count++;
-                    count += aml_object_count_children(byteField);
-                }
-            }
-        }
-        break;
-    case AML_STRING:
-        if (parent->string.byteFields != NULL)
-        {
-            for (uint64_t i = 0; i < parent->string.length; i++)
-            {
-                aml_object_t* byteField = parent->string.byteFields[i];
-                if (byteField != NULL)
-                {
-                    count++;
-                    count += aml_object_count_children(byteField);
-                }
             }
         }
         break;
@@ -935,7 +886,6 @@ uint64_t aml_buffer_init_empty(aml_object_t* object, uint64_t length)
     }
     memset(object->buffer.content, 0, length);
     object->buffer.length = length;
-    object->buffer.byteFields = NULL;
     object->type = AML_BUFFER;
     return 0;
 }
@@ -1356,7 +1306,6 @@ uint64_t aml_string_init_empty(aml_object_t* object, uint64_t length)
     }
     memset(object->string.content, 0, length + 1);
     object->string.length = length;
-    object->string.byteFields = NULL;
     object->type = AML_STRING;
     return 0;
 }

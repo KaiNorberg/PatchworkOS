@@ -4,7 +4,7 @@
 
 #include "cpu/trap.h"
 
-#define RWLOCK_DEADLOCK_TIMEOUT (CLOCKS_PER_SEC / 10)
+#define RWLOCK_DEADLOCK_TIMEOUT (CLOCKS_PER_SEC)
 
 typedef struct
 {

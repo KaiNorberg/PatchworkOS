@@ -44,13 +44,6 @@ static inline uint64_t aml_string_resize(aml_string_t* string, uint64_t newLengt
         return ERR;
     }
 
-    aml_object_t** newByteFields = heap_alloc(sizeof(aml_object_t*) * newLength, HEAP_NONE);
-    if (newByteFields == NULL)
-    {
-        heap_free(newContent);
-        return ERR;
-    }
-
     uint64_t copyLen = MIN(newLength, string->length);
     for (uint64_t i = 0; i < copyLen; i++)
     {
@@ -62,30 +55,11 @@ static inline uint64_t aml_string_resize(aml_string_t* string, uint64_t newLengt
     }
     newContent[newLength] = '\0';
 
-    uint64_t i = 0;
-    if (string->byteFields != NULL)
-    {
-        for (; i < copyLen; i++)
-        {
-            newByteFields[i] = string->byteFields[i] != NULL ? string->byteFields[i] : NULL;
-        }
-    }
-    for (; i < newLength; i++)
-    {
-        newByteFields[i] = NULL;
-    }
-
     if (string->content != NULL)
     {
         heap_free(string->content);
     }
-    if (string->byteFields != NULL)
-    {
-        heap_free(string->byteFields);
-    }
-
     string->content = newContent;
-    string->byteFields = newByteFields;
     string->length = newLength;
     return 0;
 }
