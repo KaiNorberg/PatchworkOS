@@ -75,7 +75,7 @@ void hpet_reset_counter(void)
 {
     if (!isInitialized)
     {
-        panic(NULL, "HPET not initialized");
+        return;
     }
     hpet_write(HPET_REG_GENERAL_CONFIG, 0);
     hpet_write(HPET_REG_MAIN_COUNTER_VALUE, 0);

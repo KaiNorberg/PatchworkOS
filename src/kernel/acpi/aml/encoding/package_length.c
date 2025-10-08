@@ -50,7 +50,7 @@ uint64_t aml_pkg_length_read(aml_state_t* state, aml_pkg_length_t* out)
 
     // Bits 0 to 3 in pkgLeadByte becomes the least significant bits in the length, followed by the next bytes.
     aml_pkg_length_t length = pkgLeadByte.leastSignificantNybble;
-    for (uint8_t i = 0; i < pkgLeadByte.byteDataCount; i++)
+    for (uint64_t i = 0; i < pkgLeadByte.byteDataCount; i++)
     {
         uint8_t byte;
         if (aml_byte_data_read(state, &byte) == ERR)

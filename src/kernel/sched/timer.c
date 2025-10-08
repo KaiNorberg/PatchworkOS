@@ -13,12 +13,33 @@
 #include <stdint.h>
 #include <sys/math.h>
 
-static _Atomic(clock_t) accumulator = ATOMIC_VAR_INIT(0);
 static time_t bootEpoch;
 
 static timer_callback_t callbacks[TIMER_MAX_CALLBACK] = {0};
 
 static bool initialized = false;
+
+static atomic_int8_t accumulatorLock = ATOMIC_VAR_INIT(0);
+static clock_t accumulator = 0;
+
+static clock_t timer_accumulate(void)
+{
+    // We cant use the lock_t here becouse in debug mode lock_t will use the timer to check for deadlocks.
+    cli_push();
+    while (!atomic_compare_exchange_strong(&accumulatorLock, &(int8_t){0}, 1))
+    {
+        asm volatile("pause");
+    }
+
+    accumulator += hpet_read_counter();
+    clock_t accumulatorCopy = accumulator;
+    hpet_reset_counter();
+
+    atomic_store(&accumulatorLock, 0);
+    cli_pop();
+
+    return accumulatorCopy;
+}
 
 void timer_init(void)
 {
@@ -45,7 +66,7 @@ clock_t timer_uptime(void)
         return 0;
     }
 
-    return (atomic_load(&accumulator) + hpet_read_counter()) * hpet_nanoseconds_per_tick();
+    return timer_accumulate();
 }
 
 time_t timer_unix_epoch(void)
@@ -60,8 +81,7 @@ time_t timer_unix_epoch(void)
 
 void timer_trap_handler(trap_frame_t* trapFrame, cpu_t* self)
 {
-    atomic_fetch_add(&accumulator, hpet_read_counter());
-    hpet_reset_counter();
+    timer_accumulate();
 
     self->timer.nextDeadline = CLOCKS_NEVER;
     for (uint32_t i = 0; i < TIMER_MAX_CALLBACK; i++)

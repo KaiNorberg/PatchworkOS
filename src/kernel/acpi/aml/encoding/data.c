@@ -305,8 +305,8 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml
         }
         return 0;
     default:
-        AML_DEBUG_ERROR(state, "Invalid computational data token: 0x%x", token.num);
-        errno = ENOSYS;
+        AML_DEBUG_ERROR(state, "Invalid ComputationalData '%s' (0x%x)", token.props->name, token.num);
+        errno = EILSEQ;
         return ERR;
     }
 }

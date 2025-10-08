@@ -98,6 +98,8 @@ uint64_t hpet_read_counter(void);
 
 /**
  * @brief Reset the HPET main counter to 0 and enable the HPET
+ *
+ * If the HPET is not initialized, this function does nothing.
  */
 void hpet_reset_counter(void);
 

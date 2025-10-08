@@ -327,7 +327,8 @@ static inline uint64_t aml_token_peek(aml_state_t* state, aml_token_t* out)
             num = AML_EXT_OP_PREFIX_BASE + buffer[1];
             length = 2;
         }
-        else if (buffer[0] == AML_LNOT_OP)
+        else if (buffer[0] == AML_LNOT_OP && buffer[1] >= (AML_LNOT_EQUAL_OP - AML_LNOT_OP_BASE) &&
+            (buffer[1] <= (AML_LGREATER_EQUAL_OP - AML_LNOT_OP_BASE)))
         {
             num = AML_LNOT_OP_BASE + buffer[1];
             length = 2;

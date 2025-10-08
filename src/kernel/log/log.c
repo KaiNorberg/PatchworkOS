@@ -177,7 +177,16 @@ static void log_print_header(log_level_t level, const char* prefix)
 {
     char buffer[MAX_PATH];
 
-    uint64_t uptime = timer_uptime();
+    uint64_t uptime;
+    if (level == LOG_LEVEL_PANIC)
+    {
+        uptime = UINT64_MAX;
+    }
+    else
+    {
+        uptime = timer_uptime();
+    }
+
     uint64_t seconds = uptime / CLOCKS_PER_SEC;
     uint64_t milliseconds = (uptime % CLOCKS_PER_SEC) / (CLOCKS_PER_SEC / 1000);
 
