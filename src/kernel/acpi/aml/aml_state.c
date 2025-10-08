@@ -90,7 +90,7 @@ uint64_t aml_state_deinit(aml_state_t* state)
     while (!list_is_empty(&state->createdObjects))
     {
         aml_object_t* child = CONTAINER_OF(list_pop(&state->createdObjects), aml_object_t, stateEntry);
-        DEREF(child); // Release our reference but dont remove it from the namespace
+        // Dont do anything.
     }
 
     return 0;
@@ -102,6 +102,5 @@ void aml_state_garbage_collect(aml_state_t* state)
     {
         aml_object_t* child = CONTAINER_OF(list_pop(&state->createdObjects), aml_object_t, stateEntry);
         aml_object_remove(child);
-        DEREF(child);
     }
 }

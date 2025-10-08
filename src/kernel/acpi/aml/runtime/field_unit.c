@@ -184,6 +184,8 @@ static uint64_t aml_pci_get_params(aml_opregion_t* opregion, pci_segment_group_t
     aml_object_t* adrObject = aml_object_find(location, "_ADR");
     if (adrObject != NULL)
     {
+        DEREF_DEFER(adrObject);
+
         uint64_t adrValue = 0;
         if (aml_method_evaluate_integer(adrObject, &adrValue) == ERR)
         {
@@ -199,6 +201,8 @@ static uint64_t aml_pci_get_params(aml_opregion_t* opregion, pci_segment_group_t
     aml_object_t* bbnObject = aml_object_find(location, "_BBN");
     if (bbnObject != NULL)
     {
+        DEREF_DEFER(bbnObject);
+
         uint64_t bbnValue = 0;
         if (aml_method_evaluate_integer(bbnObject, &bbnValue) == ERR)
         {
@@ -214,6 +218,8 @@ static uint64_t aml_pci_get_params(aml_opregion_t* opregion, pci_segment_group_t
     aml_object_t* segObject = aml_object_find(location, "_SEG");
     if (segObject != NULL)
     {
+        DEREF_DEFER(segObject);
+
         uint64_t segValue = 0;
         if (aml_method_evaluate_integer(segObject, &segValue) == ERR)
         {

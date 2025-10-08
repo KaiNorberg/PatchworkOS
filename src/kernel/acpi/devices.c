@@ -15,6 +15,7 @@ static inline uint64_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t
         *out = ACPI_STA_FLAGS_DEFAULT;
         return 0;
     }
+    DEREF_DEFER(sta);
 
     uint64_t value;
     if (aml_method_evaluate_integer(sta, &value) == ERR)
@@ -61,6 +62,8 @@ static inline uint64_t acpi_devices_init_children(aml_object_t* parent)
             aml_object_t* ini = aml_object_find_child(child, "_INI");
             if (ini != NULL)
             {
+                DEREF_DEFER(ini);
+
                 if (ini->type != AML_METHOD)
                 {
                     LOG_ERR("%s._INI is a '%s', not a method\n", AML_OBJECT_GET_NAME(child),
@@ -91,12 +94,13 @@ static inline uint64_t acpi_devices_init_children(aml_object_t* parent)
 
 uint64_t acpi_devices_init(void)
 {
-    // TODO: Implement all opcodes needed for _INI and device initalization
     MUTEX_SCOPE(aml_big_mutex_get());
 
     aml_object_t* sbIni = aml_object_find(NULL, "\\_SB_._INI");
     if (sbIni != NULL)
     {
+        DEREF_DEFER(sbIni);
+
         if (sbIni->type != AML_METHOD)
         {
             LOG_ERR("\\_SB_._INI is a '%s', not a method\n", aml_type_to_string(sbIni->type));
@@ -116,6 +120,7 @@ uint64_t acpi_devices_init(void)
         LOG_ERR("could not find \\_SB_\n");
         return ERR;
     }
+    DEREF_DEFER(sb);
 
     if (acpi_devices_init_children(sb) == ERR)
     {

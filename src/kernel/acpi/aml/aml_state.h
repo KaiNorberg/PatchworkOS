@@ -52,12 +52,14 @@ typedef struct aml_state
     uint64_t errorDepth;       ///< The length of the error traceback.
     aml_flow_control_t flowControl; ///< Used by `aml_term_list_read` to handle flow control statements.
     /**
-     * List of objects created as the state was executing. These objects should be freed if the state was
-     * used to execute a method, via the `aml_state_garbage_collect()` function.
+     * List of objects created as the state was executing. These objects should be removed from the namespace if the
+     * state was used to execute a method, via the `aml_state_garbage_collect()` function.
      *
      * If the state was not used to execute a method, instead it was used to parse a DSDT or SSDT table,
-     * then the states created objects should not be freed, as they are now part a permanent part of the ACPI
+     * then the states created objects should not be removed, as they are now part a permanent part of the ACPI
      * namespace.
+     *
+     * The state does not take a reference to the objects, it just keeps track of them for garbage collection.
      */
     list_t createdObjects;
 } aml_state_t;

@@ -12,7 +12,7 @@ typedef struct aml_scope aml_scope_t;
 
 /**
  * @brief Named Objects Encoding
- * @defgroup kernel_acpi_aml_name Named Objects
+ * @defgroup kernel_acpi_aml_encoding_name Named Objects
  * @ingroup kernel_acpi_aml
  *
  * Not to be confused with "ACPI AML Name Objects Encoding".
@@ -498,10 +498,9 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_scope_t* scope);
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Pointer to where the pointer to the resolved object will be stored.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, the buffer object. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_source_buff_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_source_buff_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a BitIndex structure from the AML byte stream.

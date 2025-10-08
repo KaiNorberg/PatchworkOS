@@ -246,141 +246,154 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
 
 aml_object_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_object_t* from)
 {
-    aml_object_t* start = from;
+    aml_object_t* current = NULL;
     if (nameString->rootChar.present)
     {
-        start = aml_root_get();
+        current = aml_root_get();
     }
-
-    if (start == NULL)
+    else
     {
-        return NULL;
-    }
-
-    if (!(start->flags & AML_OBJECT_NAMED))
-    {
-        return NULL;
-    }
-
-    aml_object_t* current = start;
-    for (uint64_t i = 0; i < nameString->prefixPath.depth; i++)
-    {
-        current = current->name.parent;
-        if (start == NULL)
+        if (from == NULL)
         {
             return NULL;
         }
+
+        current = REF(from);
+    }
+
+    if (!(current->flags & AML_OBJECT_NAMED))
+    {
+        DEREF(current);
+        return NULL;
+    }
+
+    for (uint64_t i = 0; i < nameString->prefixPath.depth; i++)
+    {
+        aml_object_t* next = REF(current->name.parent);
+        if (next == NULL)
+        {
+            DEREF(current);
+            return NULL;
+        }
+        DEREF(current);
+        current = next;
     }
 
     for (uint64_t i = 0; i < nameString->namePath.segmentCount; i++)
     {
         const aml_name_seg_t* segment = &nameString->namePath.segments[i];
-        current = aml_object_find_child(current, segment->name);
-        if (current == NULL)
+        aml_object_t* next = aml_object_find_child(current, segment->name);
+        if (next == NULL)
         {
-            if (start->name.parent != NULL)
+            DEREF(current);
+            if (from->name.parent != NULL)
             {
-                return aml_name_string_resolve(nameString, start->name.parent);
+                return aml_name_string_resolve(nameString, from->name.parent);
             }
             errno = 0;
             return NULL;
         }
+
+        DEREF(current);
+        current = next;
     }
 
-    return current;
+    return current; // Transfer ownership
 }
 
-uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
+aml_object_t* aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope)
 {
     aml_name_string_t nameStringLocal;
     if (aml_name_string_read(state, &nameStringLocal) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read NameString");
-        return ERR;
+        return NULL;
     }
 
-    *out = aml_name_string_resolve(&nameStringLocal, scope->location);
-    if (*out == NULL)
+    aml_object_t* out = aml_name_string_resolve(&nameStringLocal, scope->location);
+    if (out == NULL)
     {
         errno = ENOENT;
-        return ERR;
+        return NULL;
     }
 
-    return 0;
+    return out; // Transfer ownership
 }
 
-uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
+aml_object_t* aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope)
 {
     aml_token_t token;
     if (aml_token_peek(state, &token) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read token");
-        return ERR;
+        return NULL;
     }
 
+    aml_object_t* out = NULL;
     switch (token.props->type)
     {
     case AML_TOKEN_TYPE_NAME:
-        if (aml_name_string_read_and_resolve(state, scope, out) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to read and resolve NameString");
-            return ERR;
-        }
-        return 0;
+        out = aml_name_string_read_and_resolve(state, scope);
+        break;
     case AML_TOKEN_TYPE_ARG:
-        if (aml_arg_obj_read(state, out) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to read ArgObj");
-            return ERR;
-        }
-        return 0;
+        out = aml_arg_obj_read(state);
+        break;
     case AML_TOKEN_TYPE_LOCAL:
-        if (aml_local_obj_read(state, out) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to read LocalObj");
-            return ERR;
-        }
-        return 0;
+        out = aml_local_obj_read(state);
+        break;
     default:
         AML_DEBUG_ERROR(state, "Invalid token type '%s'", aml_token_type_to_string(token.props->type));
         errno = EILSEQ;
-        return ERR;
+        return NULL;
     }
+
+    if (out == NULL)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read '%s'", token.props->name);
+        return NULL;
+    }
+
+    return out; // Transfer ownership
 }
 
-uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
+aml_object_t* aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope)
 {
     aml_token_t token;
     if (aml_token_peek(state, &token) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to peek token");
-        return ERR;
+        return NULL;
     }
 
+    aml_object_t* out = NULL;
     switch (token.props->type)
     {
     case AML_TOKEN_TYPE_NAME:
     case AML_TOKEN_TYPE_ARG:
     case AML_TOKEN_TYPE_LOCAL:
-        if (aml_simple_name_read_and_resolve(state, scope, out) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to read and resolve NameString");
-            return ERR;
-        }
-        return 0;
+        out = aml_simple_name_read_and_resolve(state, scope);
+        break;
     case AML_TOKEN_TYPE_DEBUG:
         AML_DEBUG_ERROR(state, "DebugObj is unimplemented");
         errno = ENOSYS;
-        return ERR;
+        return NULL;
     case AML_TOKEN_TYPE_EXPRESSION:
         AML_DEBUG_ERROR(state, "ReferenceTypeOpcode is unimplemented");
         errno = ENOSYS;
-        return ERR;
+        return NULL;
     default:
         AML_DEBUG_ERROR(state, "Invalid token type: %d", token.props->type);
         errno = EILSEQ;
-        return ERR;
+        return NULL;
     }
+
+    if (out == NULL)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read '%s'", token.props->name);
+        return NULL;
+    }
+
+    return out; // Transfer ownership
 }
 
 uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
@@ -403,9 +416,10 @@ uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml
     }
     else
     {
-        if (aml_simple_name_read_and_resolve(state, scope, out) == ERR)
+        *out = aml_super_name_read_and_resolve(state, scope); // Transfer ownership
+        if (*out == NULL)
         {
-            AML_DEBUG_ERROR(state, "Failed to read and resolve simple name");
+            AML_DEBUG_ERROR(state, "Failed to read or resolve SuperName");
             return ERR;
         }
     }

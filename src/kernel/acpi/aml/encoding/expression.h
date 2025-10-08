@@ -8,7 +8,7 @@ typedef struct aml_state aml_state_t;
 
 /**
  * @brief Expression Opcodes Encoding
- * @defgroup kernel_acpi_aml_expression Expression Opcodes
+ * @defgroup kernel_acpi_aml_encoding_expression Expression Opcodes
  * @ingroup kernel_acpi_aml
  *
  * @see Section 20.2.5.4 of the ACPI specification for more details.
@@ -83,11 +83,9 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_scope_t* scope, uint64_t
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer which will store the result, if this points to `NULL`, a temp object
- * will be used.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_method_invocation_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_method_invocation_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefCondRefOf structure from the AML byte stream.
@@ -98,10 +96,9 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_scope_t* scope, aml_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_cond_ref_of_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefStore structure from the AML byte stream.
@@ -112,10 +109,9 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_scope_t* scope, aml_ob
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_store_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_store_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads an Operand structure from the AML byte stream.
@@ -137,7 +133,7 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_scope_t* scope, aml_object_t
  * @param allowedTypes The allowed types that the TermArg can evaluate to.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_operand_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out, aml_type_t allowedTypes);
+aml_object_t* aml_operand_read(aml_state_t* state, aml_scope_t* scope, aml_type_t allowedTypes);
 
 /**
  * @brief Reads a Dividend structure from the AML byte stream.
@@ -170,10 +166,9 @@ uint64_t aml_divisor_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_remainder_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_remainder_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a Quotient structure from the AML byte stream.
@@ -182,10 +177,9 @@ uint64_t aml_remainder_read(aml_state_t* state, aml_scope_t* scope, aml_object_t
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_quotient_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_quotient_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefAdd structure from the AML byte stream.
@@ -196,10 +190,9 @@ uint64_t aml_quotient_read(aml_state_t* state, aml_scope_t* scope, aml_object_t*
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_add_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_add_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefSubtract structure from the AML byte stream.
@@ -210,10 +203,9 @@ uint64_t aml_def_add_read(aml_state_t* state, aml_scope_t* scope, aml_object_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_subtract_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_subtract_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefMultiply structure from the AML byte stream.
@@ -224,10 +216,9 @@ uint64_t aml_def_subtract_read(aml_state_t* state, aml_scope_t* scope, aml_objec
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_multiply_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_multiply_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefDivide structure from the AML byte stream.
@@ -238,10 +229,9 @@ uint64_t aml_def_multiply_read(aml_state_t* state, aml_scope_t* scope, aml_objec
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_divide_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefMod structure from the AML byte stream.
@@ -252,10 +242,9 @@ uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_object_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_mod_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_mod_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefAnd structure from the AML byte stream.
@@ -266,10 +255,9 @@ uint64_t aml_def_mod_read(aml_state_t* state, aml_scope_t* scope, aml_object_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_and_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_and_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefNAnd structure from the AML byte stream.
@@ -280,10 +268,9 @@ uint64_t aml_def_and_read(aml_state_t* state, aml_scope_t* scope, aml_object_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_nand_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_nand_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefOr structure from the AML byte stream.
@@ -294,10 +281,9 @@ uint64_t aml_def_nand_read(aml_state_t* state, aml_scope_t* scope, aml_object_t*
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_or_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_or_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefNOr structure from the AML byte stream.
@@ -308,10 +294,9 @@ uint64_t aml_def_or_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_nor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_nor_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefXOr structure from the AML byte stream.
@@ -322,10 +307,9 @@ uint64_t aml_def_nor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_xor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_xor_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefNot structure from the AML byte stream.
@@ -336,10 +320,9 @@ uint64_t aml_def_xor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_not_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_not_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a ShiftCount structure from the AML byte stream.
@@ -362,10 +345,9 @@ uint64_t aml_shift_count_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_shift_left_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_shift_left_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefShiftRight structure from the AML byte stream.
@@ -376,10 +358,9 @@ uint64_t aml_def_shift_left_read(aml_state_t* state, aml_scope_t* scope, aml_obj
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefIncrement structure from the AML byte stream.
@@ -390,10 +371,9 @@ uint64_t aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope, aml_ob
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_increment_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_increment_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefDecrement structure from the AML byte stream.
@@ -404,10 +384,9 @@ uint64_t aml_def_increment_read(aml_state_t* state, aml_scope_t* scope, aml_obje
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_decrement_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_decrement_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads an ObjReference structure from the AML byte stream.
@@ -418,10 +397,9 @@ uint64_t aml_def_decrement_read(aml_state_t* state, aml_scope_t* scope, aml_obje
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_obj_reference_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_obj_reference_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefDerefOf structure from the AML byte stream.
@@ -432,10 +410,9 @@ uint64_t aml_obj_reference_read(aml_state_t* state, aml_scope_t* scope, aml_obje
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_deref_of_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_deref_of_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a BuffPkgStrObj structure from the AML byte stream.
@@ -448,10 +425,9 @@ uint64_t aml_def_deref_of_read(aml_state_t* state, aml_scope_t* scope, aml_objec
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_buff_pkg_str_obj_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_buff_pkg_str_obj_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads an IndexValue structure from the AML byte stream.
@@ -477,10 +453,9 @@ uint64_t aml_index_value_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_index_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefLAnd structure from the AML byte stream.
@@ -491,10 +466,9 @@ uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_object_t
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_land_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_land_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefLEqual structure from the AML byte stream.
@@ -505,10 +479,9 @@ uint64_t aml_def_land_read(aml_state_t* state, aml_scope_t* scope, aml_object_t*
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_lequal_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_lequal_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefLGreater structure from the AML byte stream.
@@ -519,10 +492,9 @@ uint64_t aml_def_lequal_read(aml_state_t* state, aml_scope_t* scope, aml_object_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_lgreater_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_lgreater_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefLGreaterEqual structure from the AML byte stream.
@@ -533,10 +505,9 @@ uint64_t aml_def_lgreater_read(aml_state_t* state, aml_scope_t* scope, aml_objec
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_lgreater_equal_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_lgreater_equal_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefLLess structure from the AML byte stream.
@@ -547,10 +518,9 @@ uint64_t aml_def_lgreater_equal_read(aml_state_t* state, aml_scope_t* scope, aml
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_lless_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_lless_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefLLessEqual structure from the AML byte stream.
@@ -561,10 +531,9 @@ uint64_t aml_def_lless_read(aml_state_t* state, aml_scope_t* scope, aml_object_t
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_lless_equal_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_lless_equal_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefLNot structure from the AML byte stream.
@@ -575,10 +544,9 @@ uint64_t aml_def_lless_equal_read(aml_state_t* state, aml_scope_t* scope, aml_ob
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_lnot_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_lnot_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefLNotEqual structure from the AML byte stream.
@@ -589,10 +557,9 @@ uint64_t aml_def_lnot_read(aml_state_t* state, aml_scope_t* scope, aml_object_t*
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_lnot_equal_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_lnot_equal_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefLOr structure from the AML byte stream.
@@ -603,10 +570,9 @@ uint64_t aml_def_lnot_equal_read(aml_state_t* state, aml_scope_t* scope, aml_obj
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_lor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_lor_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a MutexObject structure from the AML byte stream.
@@ -615,10 +581,9 @@ uint64_t aml_def_lor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_mutex_object_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_mutex_object_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a Timeout structure from the AML byte stream.
@@ -642,10 +607,9 @@ uint64_t aml_timeout_read(aml_state_t* state, uint16_t* out);
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_acquire_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_acquire_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefToBcd structure from the AML byte stream.
@@ -656,10 +620,9 @@ uint64_t aml_def_acquire_read(aml_state_t* state, aml_scope_t* scope, aml_object
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_to_bcd_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_to_bcd_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefToBuffer structure from the AML byte stream.
@@ -670,10 +633,9 @@ uint64_t aml_def_to_bcd_read(aml_state_t* state, aml_scope_t* scope, aml_object_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_to_buffer_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_to_buffer_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefToDecimalString structure from the AML byte stream.
@@ -684,10 +646,9 @@ uint64_t aml_def_to_buffer_read(aml_state_t* state, aml_scope_t* scope, aml_obje
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_to_decimal_string_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_to_decimal_string_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefToHexString structure from the AML byte stream.
@@ -698,10 +659,9 @@ uint64_t aml_def_to_decimal_string_read(aml_state_t* state, aml_scope_t* scope, 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_to_hex_string_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_to_hex_string_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefToInteger structure from the AML byte stream.
@@ -712,10 +672,9 @@ uint64_t aml_def_to_hex_string_read(aml_state_t* state, aml_scope_t* scope, aml_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_to_integer_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_to_integer_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefToString structure from the AML byte stream.
@@ -726,10 +685,9 @@ uint64_t aml_def_to_integer_read(aml_state_t* state, aml_scope_t* scope, aml_obj
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_to_string_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_to_string_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefTimer structure from the AML byte stream.
@@ -739,11 +697,9 @@ uint64_t aml_def_to_string_read(aml_state_t* state, aml_scope_t* scope, aml_obje
  * @see Section 19.6.136 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, the current value of the timer. On failure, `ERR` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_def_timer_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_def_timer_read(aml_state_t* state);
 
 /**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.
@@ -773,9 +729,8 @@ uint64_t aml_def_timer_read(aml_state_t* state, aml_scope_t* scope, aml_object_t
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope);
 
 /** @} */

@@ -10,7 +10,7 @@ typedef struct aml_package aml_package_t;
 
 /**
  * @brief Data Objects Encoding
- * @defgroup kernel_acpi_aml_data Data Objects
+ * @defgroup kernel_acpi_aml_encoding_data Data Objects
  * @ingroup kernel_acpi_aml
  *
  * @see Section 20.2.3 of the ACPI specification for more details.

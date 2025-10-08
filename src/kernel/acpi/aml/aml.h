@@ -59,7 +59,7 @@ uint64_t aml_parse(const uint8_t* start, const uint8_t* end);
 /**
  * @brief Get the root object of the ACPI namespace.
  *
- * @return A pointer to the root object.
+ * @return A reference to the root object.
  */
 aml_object_t* aml_root_get(void);
 

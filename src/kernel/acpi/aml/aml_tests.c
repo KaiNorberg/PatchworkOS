@@ -46,6 +46,7 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
         aml_state_deinit(&state);
         return ERR;
     }
+    DEREF_DEFER(mainObj);
 
     if (aml_method_evaluate(&mainObj->method, 0, NULL, NULL) == ERR)
     {

@@ -23,12 +23,13 @@ uint64_t aml_def_alias_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_object_t* source = NULL;
-    if (aml_name_string_read_and_resolve(state, scope, &source) == ERR)
+    aml_object_t* source = aml_name_string_read_and_resolve(state, scope);
+    if (source == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve source NameString");
         return ERR;
     }
+    DEREF_DEFER(source);
 
     aml_name_string_t targetNameString;
     if (aml_name_string_read(state, &targetNameString) == ERR)
@@ -104,12 +105,13 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_object_t* newLocation = NULL;
-    if (aml_name_string_read_and_resolve(state, scope, &newLocation) == ERR)
+    aml_object_t* newLocation = aml_name_string_read_and_resolve(state, scope);
+    if (newLocation == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve NameString");
         return ERR;
     }
+    DEREF_DEFER(newLocation);
 
     const uint8_t* end = start + pkgLength;
 

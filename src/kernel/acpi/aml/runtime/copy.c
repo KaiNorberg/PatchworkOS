@@ -158,16 +158,6 @@ uint64_t aml_copy_object(aml_object_t* src, aml_object_t* dest)
         return 0;
     }
 
-    // Technically not in the spec but this shouldent effect anything and will just make things easier.
-    /*if (dest->type == AML_UNINITIALIZED)
-    {
-        if (aml_copy_data_and_type(src, dest) == ERR)
-        {
-            return ERR;
-        }
-        return 0;
-    }*/
-
     LOG_ERR("illegal copy operation from type '%s' to type '%s'\n", aml_type_to_string(src->type),
         aml_type_to_string(dest->type));
     errno = ENOSYS;

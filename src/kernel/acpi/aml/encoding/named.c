@@ -340,12 +340,13 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_object_t* opregion = NULL;
-    if (aml_name_string_read_and_resolve(state, scope, &opregion) == ERR)
+    aml_object_t* opregion = aml_name_string_read_and_resolve(state, scope);
+    if (opregion == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve NameString");
         return ERR;
     }
+    DEREF_DEFER(opregion);
 
     if (opregion->type != AML_OPERATION_REGION)
     {
@@ -396,19 +397,21 @@ uint64_t aml_def_index_field_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_object_t* index = NULL;
-    if (aml_name_string_read_and_resolve(state, scope, &index) == ERR)
+    aml_object_t* index = aml_name_string_read_and_resolve(state, scope);
+    if (index == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve index NameString");
         return ERR;
     }
+    DEREF_DEFER(index);
 
-    aml_object_t* data = NULL;
-    if (aml_name_string_read_and_resolve(state, scope, &data) == ERR)
+    aml_object_t* data = aml_name_string_read_and_resolve(state, scope);
+    if (data == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve data NameString");
         return ERR;
     }
+    DEREF_DEFER(data);
 
     aml_field_flags_t fieldFlags;
     if (aml_field_flags_read(state, &fieldFlags) == ERR)
@@ -467,19 +470,21 @@ uint64_t aml_def_bank_field_read(aml_state_t* state, aml_scope_t* scope)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_object_t* opregion = NULL;
-    if (aml_name_string_read_and_resolve(state, scope, &opregion) == ERR)
+    aml_object_t* opregion = aml_name_string_read_and_resolve(state, scope);
+    if (opregion == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve opregion NameString");
         return ERR;
     }
+    DEREF_DEFER(opregion);
 
-    aml_object_t* bank = NULL;
-    if (aml_name_string_read_and_resolve(state, scope, &bank) == ERR)
+    aml_object_t* bank = aml_name_string_read_and_resolve(state, scope);
+    if (bank == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve bank NameString");
         return ERR;
     }
+    DEREF_DEFER(bank);
 
     uint64_t bankValue;
     if (aml_bank_value_read(state, scope, &bankValue) == ERR)
@@ -783,15 +788,16 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_scope_t* scope)
     return aml_term_list_read(state, newObject, end);
 }
 
-uint64_t aml_source_buff_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
+aml_object_t* aml_source_buff_read(aml_state_t* state, aml_scope_t* scope)
 {
-    if (aml_term_arg_read(state, scope, out, AML_BUFFER) == ERR)
+    aml_object_t* sourceBuff = aml_term_arg_read(state, scope, AML_BUFFER);
+    if (sourceBuff == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read TermArg");
-        return ERR;
+        return NULL;
     }
 
-    return 0;
+    return sourceBuff; // Transfer ownership
 }
 
 uint64_t aml_bit_index_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
@@ -824,12 +830,13 @@ uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_object_t* sourceBuff = NULL;
-    if (aml_source_buff_read(state, scope, &sourceBuff) == ERR)
+    aml_object_t* sourceBuff = aml_source_buff_read(state, scope);
+    if (sourceBuff == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read SourceBuff");
         return ERR;
     }
+    DEREF_DEFER(sourceBuff);
 
     assert(sourceBuff->type == AML_BUFFER);
 
@@ -873,8 +880,8 @@ static inline uint64_t aml_def_create_field_read_helper(aml_state_t* state, aml_
         return ERR;
     }
 
-    aml_object_t* sourceBuff = NULL;
-    if (aml_source_buff_read(state, scope, &sourceBuff) == ERR)
+    aml_object_t* sourceBuff = aml_source_buff_read(state, scope);
+    if (sourceBuff == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read SourceBuff");
         return ERR;
@@ -1102,8 +1109,8 @@ uint64_t aml_def_create_field_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_object_t* sourceBuff = NULL;
-    if (aml_source_buff_read(state, scope, &sourceBuff) == ERR)
+    aml_object_t* sourceBuff = aml_source_buff_read(state, scope);
+    if (sourceBuff == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read SourceBuff");
         return ERR;
@@ -1164,30 +1171,33 @@ uint64_t aml_def_data_region_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_string_t* signature = NULL;
-    if (aml_term_arg_read_string(state, scope, &signature) == ERR)
+    aml_string_t* signature = aml_term_arg_read_string(state, scope);
+    if (signature == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read Signature");
         return ERR;
     }
+    DEREF_DEFER(signature);
 
-    aml_string_t* oemId = NULL;
-    if (aml_term_arg_read_string(state, scope, &oemId) == ERR)
+    aml_string_t* oemId = aml_term_arg_read_string(state, scope);
+    if (oemId == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read OemId");
         return ERR;
     }
+    DEREF_DEFER(oemId);
 
-    aml_string_t* oemTableId = NULL;
-    if (aml_term_arg_read_string(state, scope, &oemTableId) == ERR)
+    aml_string_t* oemTableId = aml_term_arg_read_string(state, scope);
+    if (oemTableId == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read OemTableId");
         return ERR;
     }
+    DEREF_DEFER(oemTableId);
 
-    if (signature->length != 4)
+    if (signature->length != SDT_SIGNATURE_LENGTH)
     {
-        AML_DEBUG_ERROR(state, "Invalid signature length %d (expected 4)", signature->length);
+        AML_DEBUG_ERROR(state, "Invalid signature length %d", signature->length);
         errno = EILSEQ;
         return ERR;
     }
@@ -1199,7 +1209,7 @@ uint64_t aml_def_data_region_read(aml_state_t* state, aml_scope_t* scope)
         table = acpi_tables_lookup(signature->content, index++);
         if (table == NULL)
         {
-            AML_DEBUG_ERROR(state, "Failed to find ACPI table with signature '%.4s', oemId '%s' and oemTableId '%s'",
+            AML_DEBUG_ERROR(state, "Failed to find ACPI table with signature '%s', oemId '%s' and oemTableId '%s'",
                 signature->content, oemId->content, oemTableId->content);
             errno = ENOENT;
             return ERR;
@@ -1207,14 +1217,14 @@ uint64_t aml_def_data_region_read(aml_state_t* state, aml_scope_t* scope)
 
         if (oemId->length != 0)
         {
-            if (oemId->length != 6)
+            if (oemId->length != SDT_OEM_ID_LENGTH)
             {
-                AML_DEBUG_ERROR(state, "Invalid oemId length %d (expected 6)", oemId->length);
+                AML_DEBUG_ERROR(state, "Invalid oemId length %d", oemId->length);
                 errno = EILSEQ;
                 return ERR;
             }
 
-            if (strncmp((const char*)table->oemId, (const char*)oemId->content, 6) != 0)
+            if (strncmp((const char*)table->oemId, (const char*)oemId->content, SDT_OEM_ID_LENGTH) != 0)
             {
                 continue;
             }
@@ -1222,14 +1232,14 @@ uint64_t aml_def_data_region_read(aml_state_t* state, aml_scope_t* scope)
 
         if (oemTableId->length != 0)
         {
-            if (oemTableId->length != 8)
+            if (oemTableId->length != SDT_OEM_TABLE_ID_LENGTH)
             {
-                AML_DEBUG_ERROR(state, "Invalid oemTableId length %d (expected 8)", oemTableId->length);
+                AML_DEBUG_ERROR(state, "Invalid oemTableId length %d", oemTableId->length);
                 errno = EILSEQ;
                 return ERR;
             }
 
-            if (strncmp((const char*)table->oemTableId, (const char*)oemTableId->content, 8) != 0)
+            if (strncmp((const char*)table->oemTableId, (const char*)oemTableId->content, SDT_OEM_TABLE_ID_LENGTH) != 0)
             {
                 continue;
             }

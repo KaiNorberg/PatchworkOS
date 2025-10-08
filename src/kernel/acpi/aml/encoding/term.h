@@ -10,7 +10,7 @@ typedef struct aml_state aml_state_t;
 
 /**
  * @brief Term Objects Encoding
- * @defgroup kernel_acpi_aml_term Term Objects
+ * @defgroup kernel_acpi_aml_encoding_term Term Objects
  * @ingroup kernel_acpi_aml
  *
  * @see Section 20.2.5 of the ACPI specification for more details.
@@ -25,11 +25,10 @@ typedef struct aml_state aml_state_t;
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @param allowedTypes Bitmask of allowed types for the TermArg, the result will be evaluated to one of these types.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @param allowedTypes Bitmask of allowed types for the TermArg, the  will be evaluated to one of these types.
+ * @return On success, the TermArg object. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out, aml_type_t allowedTypes);
+aml_object_t* aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_type_t allowedTypes);
 
 /**
  * @brief Wrapper around `aml_term_arg_read()` that converts the result to an integer.
@@ -46,10 +45,9 @@ uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_scope_t* scope, uint6
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the string pointer which will store the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, the string. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_term_arg_read_string(aml_state_t* state, aml_scope_t* scope, aml_string_t** out);
+aml_string_t* aml_term_arg_read_string(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads an Object structure from the AML byte stream.

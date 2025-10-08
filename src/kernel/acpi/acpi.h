@@ -69,6 +69,16 @@
 #define SDT_SIGNATURE_LENGTH 4
 
 /**
+ * @brief The length of the OEM ID field in the SDT header structure.
+ */
+#define SDT_OEM_ID_LENGTH 6
+
+/**
+ * @brief The length of the OEM Table ID field in the SDT header structure.
+ */
+#define SDT_OEM_TABLE_ID_LENGTH 8
+
+/**
  * @brief System Description Table Header
  * @struct sdt_header_t
  *
@@ -80,8 +90,8 @@ typedef struct PACKED
     uint32_t length;
     uint8_t revision;
     uint8_t checkSum;
-    uint8_t oemId[6];
-    uint8_t oemTableId[8];
+    uint8_t oemId[SDT_OEM_ID_LENGTH];
+    uint8_t oemTableId[SDT_OEM_TABLE_ID_LENGTH];
     uint32_t oemRevision;
     uint32_t creatorID;
     uint32_t creatorRevision;

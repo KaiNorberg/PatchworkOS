@@ -15,80 +15,76 @@
 #include <errno.h>
 #include <stdint.h>
 
-uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out, aml_type_t allowedTypes)
+aml_object_t* aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_type_t allowedTypes)
 {
     aml_token_t op;
     if (aml_token_peek(state, &op) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to peek value");
-        return ERR;
+        return NULL;
     }
 
     aml_object_t* value = NULL;
-
     switch (op.props->type)
     {
     case AML_TOKEN_TYPE_EXPRESSION:
     case AML_TOKEN_TYPE_NAME: // MethodInvocation is a Name
-        if (aml_expression_opcode_read(state, scope, &value) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to read ExpressionOpcode");
-            return ERR;
-        }
+        value = aml_expression_opcode_read(state, scope);
         break;
     case AML_TOKEN_TYPE_ARG:
-        if (aml_arg_obj_read(state, &value) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to read ArgObj");
-            return ERR;
-        }
+        value = aml_arg_obj_read(state);
         break;
     case AML_TOKEN_TYPE_LOCAL:
-        if (aml_local_obj_read(state, &value) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to read LocalObj");
-            return ERR;
-        }
+        value = aml_local_obj_read(state);
         break;
     default:
-        value = aml_scope_get_temp(scope);
+        value = aml_object_new(state, AML_OBJECT_NONE);
         if (value == NULL)
         {
-            return ERR;
+            return NULL;
         }
 
         if (aml_data_object_read(state, scope, value) == ERR)
         {
+            DEREF(value);
             AML_DEBUG_ERROR(state, "Failed to read DataObject");
-            return ERR;
+            return NULL;
         }
     }
 
-    aml_type_t valueType = value->type;
-    if (valueType & allowedTypes)
+    if (value == NULL)
     {
-        *out = value;
-        return 0;
+        AML_DEBUG_ERROR(state, "Failed to read %s", op.props->name);
+        return NULL;
     }
 
-    *out = aml_scope_get_temp(scope);
-    if (*out == NULL)
+    if (value->type & allowedTypes)
     {
-        return ERR;
+        return value; // Transfer ownership
     }
 
-    if (aml_convert_source(value, *out, allowedTypes) == ERR)
+    aml_object_t* out = aml_object_new(state, AML_OBJECT_NONE);
+    if (out == NULL)
     {
-        return ERR;
+        DEREF(value);
+        return NULL;
     }
 
-    return 0;
+    if (aml_convert_source(value, out, allowedTypes) == ERR)
+    {
+        DEREF(value);
+        DEREF(out);
+        return NULL;
+    }
+
+    DEREF(value);
+    return out; // Transfer ownership
 }
 
 uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
 {
-    aml_object_t* temp = NULL;
-    if (aml_term_arg_read(state, scope, &temp, AML_INTEGER) == ERR)
+    aml_object_t* temp = aml_term_arg_read(state, scope, AML_INTEGER);
+    if (temp == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read TermArg");
         return ERR;
@@ -97,22 +93,22 @@ uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_scope_t* scope, uint6
     assert(temp->type == AML_INTEGER);
 
     *out = temp->integer.value;
+    DEREF(temp);
     return 0;
 }
 
-uint64_t aml_term_arg_read_string(aml_state_t* state, aml_scope_t* scope, aml_string_t** out)
+aml_string_t* aml_term_arg_read_string(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_object_t* temp = NULL;
-    if (aml_term_arg_read(state, scope, &temp, AML_STRING) == ERR)
+    aml_object_t* temp = aml_term_arg_read(state, scope, AML_STRING);
+    if (temp == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read TermArg");
-        return ERR;
+        return NULL;
     }
 
     assert(temp->type == AML_STRING);
 
-    *out = &temp->string;
-    return 0;
+    return &temp->string; // Transfer ownership
 }
 
 uint64_t aml_object_read(aml_state_t* state, aml_scope_t* scope)
@@ -158,12 +154,13 @@ uint64_t aml_term_obj_read(aml_state_t* state, aml_scope_t* scope)
     case AML_TOKEN_TYPE_NAME: // MethodInvocation is a Name
     case AML_TOKEN_TYPE_EXPRESSION:
     {
-        aml_object_t* temp = NULL;
-        if (aml_expression_opcode_read(state, scope, &temp) == ERR)
+        aml_object_t* temp = aml_expression_opcode_read(state, scope);
+        if (temp == NULL)
         {
             AML_DEBUG_ERROR(state, "Failed to read ExpressionOpcode");
             return ERR;
         }
+        DEREF(temp);
         return 0;
     }
     default:
@@ -194,8 +191,6 @@ uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* newLocation, const
             AML_DEBUG_ERROR(state, "Failed to read TermObj");
             return ERR;
         }
-
-        aml_scope_reset_temps(&scope);
     }
 
     aml_scope_deinit(&scope);

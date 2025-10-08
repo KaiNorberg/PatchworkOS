@@ -188,7 +188,7 @@ aml_object_t* aml_root_get(void)
         return NULL;
     }
 
-    return root;
+    return REF(root);
 }
 
 mutex_t* aml_big_mutex_get(void)

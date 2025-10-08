@@ -7,7 +7,7 @@ typedef struct aml_object aml_object_t;
 
 /**
  * @brief Local Objecs Encoding
- * @defgroup kernel_acpi_aml_local Locals
+ * @defgroup kernel_acpi_aml_encoding_local Locals
  * @ingroup kernel_acpi_aml
  *
  * @see Section 20.2.6.2 of the ACPI specification.
@@ -40,9 +40,8 @@ typedef struct aml_object aml_object_t;
  * @see Section 19.3.5.8.2 of the ACPI specification for more details.
  *
  * @param state Pointer to the AML state.
- * @param out Pointer to the pointer to store the resulting Local object.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, the LocalObj. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_local_obj_read(aml_state_t* state, aml_object_t** out);
+aml_object_t* aml_local_obj_read(aml_state_t* state);
 
 /** @} */

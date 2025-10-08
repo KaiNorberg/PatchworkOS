@@ -5,19 +5,19 @@
 #include "acpi/aml/aml_token.h"
 #include "expression.h"
 
-uint64_t aml_local_obj_read(aml_state_t* state, aml_object_t** out)
+aml_object_t* aml_local_obj_read(aml_state_t* state)
 {
     aml_token_t localOp;
     if (aml_token_read(state, &localOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ArgOp");
-        return ERR;
+        return NULL;
     }
 
     if (localOp.num < AML_LOCAL0_OP || localOp.num > AML_LOCAL7_OP)
     {
         AML_DEBUG_ERROR(state, "Invalid LocalOp %d", localOp.num);
-        return ERR;
+        return NULL;
     }
 
     uint64_t index = localOp.num - AML_LOCAL0_OP;
@@ -28,13 +28,11 @@ uint64_t aml_local_obj_read(aml_state_t* state, aml_object_t** out)
         if (target == NULL)
         {
             AML_DEBUG_ERROR(state, "Local%d is an ObjectReference to NULL", index);
-            return ERR;
+            return NULL;
         }
 
-        *out = target;
-        return 0;
+        return REF(target);
     }
 
-    *out = state->locals[index];
-    return 0;
+    return REF(state->locals[index]);
 }

@@ -134,15 +134,16 @@ uint64_t aml_def_noop_read(aml_state_t* state)
     return 0;
 }
 
-uint64_t aml_arg_object_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
+aml_object_t* aml_arg_object_read(aml_state_t* state, aml_scope_t* scope)
 {
-    if (aml_term_arg_read(state, scope, out, AML_DATA_REF_OBJECTS) == ERR)
+    aml_object_t* result = aml_term_arg_read(state, scope, AML_DATA_REF_OBJECTS);
+    if (result == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read TermArg");
-        return ERR;
+        return NULL;
     }
 
-    return 0;
+    return result; // Transfer ownership
 }
 
 uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope)
@@ -155,12 +156,13 @@ uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope)
 
     state->flowControl = AML_FLOW_CONTROL_RETURN;
 
-    aml_object_t* argObject = NULL;
-    if (aml_arg_object_read(state, scope, &argObject) == ERR)
+    aml_object_t* argObject = aml_arg_object_read(state, scope);
+    if (argObject == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read ArgObject");
         return ERR;
     }
+    DEREF_DEFER(argObject);
 
     if (state->returnValue != NULL)
     {
@@ -182,12 +184,13 @@ uint64_t aml_def_release_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_object_t* mutexObject = NULL;
-    if (aml_mutex_object_read(state, scope, &mutexObject) == ERR)
+    aml_object_t* mutexObject = aml_mutex_object_read(state, scope);
+    if (mutexObject == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read MutexObject");
         return ERR;
     }
+    DEREF_DEFER(mutexObject);
 
     assert(mutexObject->type == AML_MUTEX);
 

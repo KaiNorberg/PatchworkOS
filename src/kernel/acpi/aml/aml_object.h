@@ -143,7 +143,8 @@ typedef struct aml_name
     list_entry_t stateEntry; \
     aml_object_flags_t flags; \
     aml_name_t name; \
-    aml_type_t type
+    aml_type_t type; \
+    aml_state_t* state
 
 /**
  * @brief Data for a buffer object.
@@ -359,12 +360,6 @@ typedef struct aml_unresolved
 /**
  * @brief ACPI object.
  * @struct aml_object_t
- *
- * A note about reference counting, we dont need to reference count the object every time we copy it, since we are
- * always using the object on behalf of something else. For example, when we pass an object as an argument to a method,
- * we dont need to reference count it, since the caller is still responsible for the object. The only time we need to
- * reference count is when we store a reference to the object somewhere, for example, in a named object list, or in an
- * object reference.
  */
 typedef struct aml_object
 {
@@ -412,7 +407,7 @@ uint64_t aml_object_get_total_count(void);
 /**
  * @brief Allocate a new ACPI object.
  *
- * There is no `DEREF()` instead always use `DEREF()` to free an object, since objects are reference counted.
+ * There is no `aml_object_free()` instead always use `DEREF()` to free an object, since objects are reference counted.
  *
  * You could also use `DEREF_DEFER()` to dereference the object when the current scope ends.
  *
@@ -487,7 +482,7 @@ uint64_t aml_object_remove(aml_object_t* object);
  *
  * @param parent Pointer to the parent object.
  * @param name Name of the child object to find, must be `AML_NAME_LENGTH` chars long.
- * @return On success, a pointer to the found child object. On failure, `NULL` and `errno` is set.
+ * @return On success, a reference to the found child object. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_object_find_child(aml_object_t* parent, const char* name);
 
@@ -502,7 +497,7 @@ aml_object_t* aml_object_find_child(aml_object_t* parent, const char* name);
  *
  * @param start The object to start the search from, or `NULL` to start from the root.
  * @param path The path string to search for.
- * @return On success, a pointer to the found object. On failure, `NULL` and `errno` is set.
+ * @return On success, a reference to the found object. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_object_find(aml_object_t* start, const char* path);
 
@@ -577,6 +572,14 @@ uint64_t aml_buffer_field_init_buffer(aml_object_t* object, aml_buffer_t* buffer
  */
 uint64_t aml_buffer_field_init_string(aml_object_t* object, aml_string_t* string, aml_bit_size_t bitOffset,
     aml_bit_size_t bitSize);
+
+/**
+ * @brief Initialize a object as a debug object.
+ *
+ * @param object Pointer to the object to initialize.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_debug_object_init(aml_object_t* object);
 
 /**
  * @brief Initialize a object as a device or bus.
@@ -774,7 +777,7 @@ uint64_t aml_alias_init(aml_object_t* object, aml_object_t* target);
  * If the target is also an alias, it will be traversed recursively until a non-alias object is found.
  *
  * @param alias Pointer to the alias object to traverse.
- * @return On success, a pointer to the target object. On failure, `NULL` and `errno` is set.
+ * @return On success, a reference to the target object. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_alias_traverse(aml_alias_t* alias);
 

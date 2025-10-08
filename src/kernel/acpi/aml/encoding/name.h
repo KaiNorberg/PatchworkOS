@@ -9,7 +9,7 @@ typedef struct aml_scope aml_scope_t;
 
 /**
  * @brief Name Objects Encoding
- * @defgroup kernel_acpi_aml_name Name Objects
+ * @defgroup kernel_acpi_aml_encoding_name Name Objects
  * @ingroup kernel_acpi_aml
  *
  * Not to be confused with "ACPI AML Named Objects Encoding".
@@ -233,10 +233,9 @@ aml_object_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_object_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Pointer to where the pointer to the resolved object will be stored.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, a pointer to the resolved object. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a SimpleName structure from the AML byte stream and resolves it to a object.
@@ -248,10 +247,9 @@ uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Pointer to where the pointer to the resolved object will be stored.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, a pointer to the resolved object. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a SuperName structure from the AML byte stream and resolves it to a object.
@@ -260,10 +258,9 @@ uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Pointer to where the pointer to the resolved object will be stored.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, a pointer to the resolved object. On failure, `NULL` and `errno` is set.
  */
-uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+aml_object_t* aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a Target structure from the AML byte stream and resolves it to a object.

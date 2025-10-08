@@ -46,6 +46,8 @@ typedef struct ref
  * @brief RAII-style cleanup for scoped references
  *
  * Uses GCC's cleanup attribute to automatically call `ref_dec` when going out of scope.
+ *
+ * @param ptr Pointer to the struct containing `ref_t` as its first member, can be `NULL`.
  */
 #define DEREF_DEFER(ptr) __attribute__((cleanup(ref_defer_cleanup))) void* CONCAT(p, __COUNTER__) = (ptr)
 

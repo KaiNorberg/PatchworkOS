@@ -114,6 +114,12 @@ static void aml_object_free(aml_object_t* object)
         return;
     }
 
+    if (object->state != NULL)
+    {
+        list_remove(&object->state->createdObjects, &object->stateEntry);
+        object->state = NULL;
+    }
+
     if (object->flags & AML_OBJECT_NAMED)
     {
         object->name.parent = NULL;
@@ -139,10 +145,12 @@ aml_object_t* aml_object_new(aml_state_t* state, aml_object_flags_t flags)
     list_entry_init(&object->stateEntry);
     object->flags = flags;
     object->type = AML_UNINITIALIZED;
+    object->state = state;
 
     if (state != NULL)
     {
-        list_push(&state->createdObjects, &REF(object)->stateEntry);
+        // The state does not take a reference to the object, it just keeps track of it for garbage collection.
+        list_push(&state->createdObjects, &object->stateEntry);
     }
     totalObjects++;
     return object;
@@ -388,14 +396,6 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
         return ERR;
     }
 
-    if (aml_object_find_child(parent, name) != NULL)
-    {
-        LOG_ERR("An object named '%.*s' already exists in parent '%s'\n", AML_NAME_LENGTH, name,
-            AML_OBJECT_GET_NAME(parent));
-        errno = EEXIST;
-        return ERR;
-    }
-
     list_t* parentList = NULL;
     if (aml_object_container_get_list(parent, &parentList) == ERR)
     {
@@ -407,13 +407,6 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
     memcpy(child->name.segment, name, AML_NAME_LENGTH);
     child->name.segment[AML_NAME_LENGTH] = '\0';
 
-    if (sysfs_dir_init(&child->name.dir, &parent->name.dir, child->name.segment, NULL, NULL) == ERR)
-    {
-        LOG_ERR("Failed to create sysfs dir for object '%s' (errno '%s')\n", AML_OBJECT_GET_NAME(child),
-            strerror(errno));
-        return ERR;
-    }
-
     aml_object_t* existing = NULL;
     LIST_FOR_EACH(existing, parentList, name.entry)
     {
@@ -421,10 +414,16 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
         {
             LOG_ERR("An object named '%.*s' already exists in parent '%s'\n", AML_OBJECT_GET_NAME(parent),
                 AML_NAME_LENGTH, parent->name.segment);
-            sysfs_dir_deinit(&child->name.dir);
             errno = EEXIST;
             return ERR;
         }
+    }
+
+    if (sysfs_dir_init(&child->name.dir, &parent->name.dir, child->name.segment, NULL, NULL) == ERR)
+    {
+        LOG_ERR("Failed to create sysfs dir for object '%s' (errno '%s')\n", AML_OBJECT_GET_NAME(child),
+            strerror(errno));
+        return ERR;
     }
 
     list_push(parentList, &REF(child)->name.entry);
@@ -456,6 +455,7 @@ uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name
         }
 
         aml_object_t* root = aml_root_get();
+        DEREF_DEFER(root);
         if (root != NULL && root != object)
         {
             LOG_ERR("Root object already exists\n");
@@ -491,34 +491,45 @@ uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name
         return ERR;
     }
 
-    aml_object_t* current = from;
+    aml_object_t* current = NULL;
     if (from == NULL || nameString->rootChar.present)
     {
         current = aml_root_get();
     }
+    else
+    {
+        current = REF(from);
+    }
 
     for (uint64_t i = 0; i < nameString->prefixPath.depth; i++)
     {
-        current = current->name.parent;
-        if (current == NULL)
+        aml_object_t* next = current->name.parent;
+        if (next == NULL)
         {
+            DEREF(current);
             errno = ENOENT;
             return ERR;
         }
+        DEREF(current);
+        current = next;
     }
 
     for (uint8_t i = 0; i < nameString->namePath.segmentCount - 1; i++)
     {
         const aml_name_seg_t* segment = &nameString->namePath.segments[i];
-        current = aml_object_find_child(current, segment->name);
-        if (current == NULL)
+        aml_object_t* next = aml_object_find_child(current, segment->name);
+        if (next == NULL)
         {
+            DEREF(current);
             LOG_ERR("unable to find intermediate AML object '%s' in path '%s'\n", segment->name,
                 aml_name_string_to_string(nameString));
             return ERR;
         }
+        DEREF(current);
+        current = next;
     }
     aml_object_t* parent = current;
+    DEREF_DEFER(parent);
 
     char segmentName[AML_NAME_LENGTH + 1];
     aml_name_seg_t* segment = &nameString->namePath.segments[nameString->namePath.segmentCount - 1];
@@ -598,10 +609,10 @@ aml_object_t* aml_object_find_child(aml_object_t* parent, const char* name)
                     return NULL;
                 }
 
-                return target;
+                return target; // Transfer ownership
             }
 
-            return child;
+            return REF(child);
         }
     }
 
@@ -623,10 +634,11 @@ aml_object_t* aml_object_find(aml_object_t* start, const char* path)
         return NULL;
     }
 
+    aml_object_t* current = NULL;
     const char* p = path;
     if (p[0] == '\\')
     {
-        start = aml_root_get();
+        current = aml_root_get();
         p++;
     }
     else if (p[0] == '^')
@@ -637,14 +649,18 @@ aml_object_t* aml_object_find(aml_object_t* start, const char* path)
             return NULL;
         }
 
+        current = REF(start);
         while (p[0] == '^')
         {
-            start = start->name.parent;
-            if (start == NULL)
+            aml_object_t* next = current->name.parent;
+            if (next == NULL)
             {
+                DEREF(current);
                 errno = ENOENT;
                 return NULL;
             }
+            DEREF(current);
+            current = next;
             p++;
         }
     }
@@ -653,8 +669,11 @@ aml_object_t* aml_object_find(aml_object_t* start, const char* path)
         errno = EINVAL;
         return NULL;
     }
+    else
+    {
+        current = REF(start);
+    }
 
-    aml_object_t* current = start;
     while (*p != '\0')
     {
         const char* segmentStart = p;
@@ -666,6 +685,7 @@ aml_object_t* aml_object_find(aml_object_t* start, const char* path)
 
         if (segmentLength > AML_NAME_LENGTH)
         {
+            DEREF(current);
             errno = EILSEQ;
             return NULL;
         }
@@ -681,6 +701,7 @@ aml_object_t* aml_object_find(aml_object_t* start, const char* path)
 
         if (!(current->type & AML_CONTAINERS))
         {
+            DEREF(current);
             if (start->name.parent != NULL)
             {
                 return aml_object_find(start->name.parent, path);
@@ -689,18 +710,22 @@ aml_object_t* aml_object_find(aml_object_t* start, const char* path)
             return NULL;
         }
 
-        current = aml_object_find_child(current, segment);
-        if (current == NULL)
+        aml_object_t* next = aml_object_find_child(current, segment);
+        if (next == NULL)
         {
+            DEREF(current);
             if (start->name.parent != NULL)
             {
                 return aml_object_find(start->name.parent, path);
             }
             return NULL;
         }
+
+        DEREF(current);
+        current = next;
     }
 
-    return current;
+    return current; // Transfer ownership
 }
 
 uint64_t aml_object_put_bits_at(aml_object_t* object, uint64_t value, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
@@ -950,6 +975,23 @@ uint64_t aml_buffer_field_init_string(aml_object_t* object, aml_string_t* string
     object->bufferField.bitOffset = bitOffset;
     object->bufferField.bitSize = bitSize;
     object->type = AML_BUFFER_FIELD;
+    return 0;
+}
+
+uint64_t aml_debug_object_init(aml_object_t* object)
+{
+    if (object == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->type = AML_DEBUG_OBJECT;
     return 0;
 }
 
@@ -1370,14 +1412,16 @@ aml_object_t* aml_alias_traverse(aml_alias_t* alias)
         return NULL;
     }
 
-    aml_object_t* current = CONTAINER_OF(alias, aml_object_t, alias);
+    aml_object_t* current = REF(CONTAINER_OF(alias, aml_object_t, alias));
     while (current != NULL && current->type == AML_ALIAS)
     {
-        if (current->alias.target == NULL)
+        aml_object_t* next = REF(current->alias.target);
+        if (next == NULL)
         {
             return NULL;
         }
-        current = current->alias.target;
+        DEREF(current);
+        current = next;
     }
     return current;
 }
