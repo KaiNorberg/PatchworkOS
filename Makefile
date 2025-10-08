@@ -163,7 +163,7 @@ clone_acpica_and_compile_tests:
 				OUT_DIR=../acpica_tests/$${DIR#tests/aslts/src/runtime/collections/}; \
 				mkdir -p $$OUT_DIR; \
 				echo "Compiling asl test $$FILE to $$OUT_DIR/test.aml and $$OUT_DIR/test.h"; \
-				iasl -va -f -p $$OUT_DIR/test.aml $$FILE > /dev/null; \
+				iasl -va -f -r 2 -p $$OUT_DIR/test.aml $$FILE > /dev/null; \
 				xxd -i $$OUT_DIR/test.aml $$OUT_DIR/test.h > /dev/null; \
 			done; \
 		done; \

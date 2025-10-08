@@ -1617,6 +1617,39 @@ aml_object_t* aml_def_timer_read(aml_state_t* state)
     return result;
 }
 
+aml_object_t* aml_def_copy_object_read(aml_state_t* state, aml_scope_t* scope)
+{
+    if (aml_token_expect(state, AML_COPY_OBJECT_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read CopyObjectOp");
+        return NULL;
+    }
+
+    aml_object_t* source = aml_term_arg_read(state, scope, AML_DATA_REF_OBJECTS);
+    if (source == NULL)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read Source");
+        return NULL;
+    }
+    DEREF_DEFER(source);
+
+    aml_object_t* destination = aml_simple_name_read_and_resolve(state, scope);
+    if (destination == NULL)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read or resolve Destination");
+        return NULL;
+    }
+    DEREF_DEFER(destination);
+
+    if (aml_copy_object(source, destination) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to copy object");
+        return NULL;
+    }
+
+    return REF(source);
+}
+
 aml_object_t* aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope)
 {
     aml_token_t op;
@@ -1789,6 +1822,9 @@ aml_object_t* aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope)
         break;
     case AML_TIMER_OP:
         result = aml_def_timer_read(state);
+        break;
+    case AML_COPY_OBJECT_OP:
+        result = aml_def_copy_object_read(state, scope);
         break;
     default:
         AML_DEBUG_ERROR(state, "Unknown ExpressionOpcode '%s' (0x%04x)", op.props->name, op.num);

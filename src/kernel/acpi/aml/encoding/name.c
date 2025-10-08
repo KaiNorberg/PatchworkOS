@@ -4,9 +4,9 @@
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
-#include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_token.h"
 #include "data.h"
+#include "debug.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -374,9 +374,8 @@ aml_object_t* aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* s
         out = aml_simple_name_read_and_resolve(state, scope);
         break;
     case AML_TOKEN_TYPE_DEBUG:
-        AML_DEBUG_ERROR(state, "DebugObj is unimplemented");
-        errno = ENOSYS;
-        return NULL;
+        out = aml_debug_obj_read(state);
+        break;
     case AML_TOKEN_TYPE_EXPRESSION:
         AML_DEBUG_ERROR(state, "ReferenceTypeOpcode is unimplemented");
         errno = ENOSYS;

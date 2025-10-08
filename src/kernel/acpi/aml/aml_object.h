@@ -30,6 +30,8 @@ typedef struct aml_method aml_method_t;
  */
 #define AML_NAME_LENGTH 4
 
+#define AML_UNNAMED_NAME "_T__"
+
 /**
  * @brief ACPI data types.
  * @enum aml_type_t
@@ -393,9 +395,9 @@ typedef struct aml_object
  * @brief Macro to get the name of an ACPI object.
  *
  * @param obj Pointer to the object.
- * @return The name of the object, or "<unnamed>" if the object is not named.
+ * @return The name of the object, or `AML_UNNAMED_NAME` if the object is not named.
  */
-#define AML_OBJECT_GET_NAME(obj) ((obj)->flags & AML_OBJECT_NAMED ? (obj)->name.segment : "<unnamed>")
+#define AML_OBJECT_GET_NAME(obj) (obj->name.segment)
 
 /**
  * @brief Get the total amount of allocated ACPI objects.

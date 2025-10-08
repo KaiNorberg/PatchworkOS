@@ -70,6 +70,14 @@ uint64_t aml_copy_data_and_type(aml_object_t* src, aml_object_t* dest)
         return ERR;
     }
 
+    // To make debugging easier we copy the name of the object to if the dest is not already named.
+    // The copied name would be overwritten if the dest is named later.
+    if (!(dest->flags & AML_OBJECT_NAMED) && (src->flags & AML_OBJECT_NAMED))
+    {
+        strncpy(dest->name.segment, src->name.segment, AML_NAME_LENGTH);
+        dest->name.segment[AML_NAME_LENGTH] = '\0';
+    }
+
     return 0;
 }
 

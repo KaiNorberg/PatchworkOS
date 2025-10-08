@@ -15,12 +15,12 @@ aml_object_t* aml_debug_obj_read(aml_state_t* state)
     {
         return NULL;
     }
-    DEREF_DEFER(obj);
 
     if (aml_debug_object_init(obj) == ERR)
     {
+        DEREF(obj);
         return NULL;
     }
 
-    return REF(obj);
+    return obj; // Transfer ownership
 }

@@ -17,8 +17,7 @@
  *
  * Follows the rules in table 19.8 section 19.3.5.8 for the "Store" operator or any operator with a "Target" operand.
  *
- * Additionally if none of the rules apply and dest is uninitialized we use `aml_copy_data_and_type()` to perform the
- * copy.
+ * Additionally if dest is a debug object, we use `aml_convert()` which will print the value to the console.
  *
  * @see Section 19.3.5.8 of the ACPI specification for more details.
  *

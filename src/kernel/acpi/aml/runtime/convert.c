@@ -18,6 +18,8 @@
 
 typedef uint64_t (*aml_convert_func_t)(aml_object_t* src, aml_object_t* dest);
 
+// DebugObj handling is specified in section 19.6.26
+
 typedef struct
 {
     aml_type_t srcType;
@@ -150,10 +152,25 @@ static uint64_t aml_buffer_to_string(aml_object_t* buffer, aml_object_t* dest)
 
 static uint64_t aml_buffer_to_debug_object(aml_object_t* buffer, aml_object_t* dest)
 {
-    (void)buffer;
     (void)dest;
-    errno = ENOSYS;
-    return ERR;
+
+    if (buffer->buffer.length == 0)
+    {
+        LOG_INFO("DebugObj: %s = []\n", AML_OBJECT_GET_NAME(buffer));
+        return 0;
+    }
+
+    LOG_INFO("DebugObj: %s = [", AML_OBJECT_GET_NAME(buffer));
+    for (uint64_t i = 0; i < buffer->buffer.length; i++)
+    {
+        LOG_INFO("%02X", buffer->buffer.content[i]);
+        if (i < buffer->buffer.length - 1)
+        {
+            LOG_INFO(", ");
+        }
+    }
+    LOG_INFO("]\n");
+    return 0;
 }
 
 static aml_convert_entry_t bufferConverters[AML_TYPE_AMOUNT] = {
@@ -226,10 +243,9 @@ static uint64_t aml_integer_to_string(aml_object_t* integer, aml_object_t* dest)
 
 static uint64_t aml_integer_to_debug_object(aml_object_t* integer, aml_object_t* dest)
 {
-    (void)integer;
     (void)dest;
-    errno = ENOSYS;
-    return ERR;
+    LOG_INFO("DebugObj: %s = %llu\n", AML_OBJECT_GET_NAME(integer), integer->integer.value);
+    return 0;
 }
 
 static aml_convert_entry_t integerConverters[AML_TYPE_AMOUNT] = {
@@ -254,10 +270,9 @@ static uint64_t aml_integer_constant_to_integer(aml_object_t* integerConstant, a
 
 static uint64_t aml_integer_constant_to_debug_object(aml_object_t* integerConstant, aml_object_t* dest)
 {
-    (void)integerConstant;
     (void)dest;
-    errno = ENOSYS;
-    return ERR;
+    LOG_INFO("DebugObj: %s = %llu\n", AML_OBJECT_GET_NAME(integerConstant), integerConstant->integerConstant.value);
+    return 0;
 }
 
 static aml_convert_entry_t integerConstantConverters[AML_TYPE_AMOUNT] = {
@@ -267,10 +282,14 @@ static aml_convert_entry_t integerConstantConverters[AML_TYPE_AMOUNT] = {
 
 static uint64_t aml_package_to_debug_object(aml_object_t* package, aml_object_t* dest)
 {
-    (void)package;
     (void)dest;
-    errno = ENOSYS;
-    return ERR;
+    for (uint64_t i = 0; i < package->package.length; i++)
+    {
+        aml_object_t* elem = package->package.elements[i];
+        LOG_INFO("DebugObj: %s[%d] = (type: %s)\n", AML_OBJECT_GET_NAME(package), (int)i,
+            aml_type_to_string(elem->type));
+    }
+    return 0;
 }
 
 static aml_convert_entry_t packageConverters[AML_TYPE_AMOUNT] = {
@@ -338,10 +357,15 @@ static uint64_t aml_string_to_buffer(aml_object_t* string, aml_object_t* dest)
 
 static uint64_t aml_string_to_debug_object(aml_object_t* string, aml_object_t* dest)
 {
-    (void)string;
     (void)dest;
-    errno = ENOSYS;
-    return ERR;
+    if (string->string.length == 0)
+    {
+        LOG_INFO("DebugObj: %s = \"\"\n", AML_OBJECT_GET_NAME(string));
+        return 0;
+    }
+
+    LOG_INFO("DebugObj: %s = \"%s\"\n", AML_OBJECT_GET_NAME(string), string->string.content);
+    return 0;
 }
 
 static aml_convert_entry_t stringConverters[AML_TYPE_AMOUNT] = {

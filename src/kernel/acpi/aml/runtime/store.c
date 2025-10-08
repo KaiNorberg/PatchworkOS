@@ -72,6 +72,15 @@ uint64_t aml_store(aml_object_t* src, aml_object_t* dest)
         return 0;
     }
 
+    if (dest->type == AML_DEBUG_OBJECT)
+    {
+        if (aml_convert(src, dest, AML_DEBUG_OBJECT) == ERR)
+        {
+            return ERR;
+        }
+        return 0;
+    }
+
     LOG_ERR("Invalid destination object type '%s' or flags '0x%x'\n", aml_type_to_string(dest->type), dest->flags);
     errno = EINVAL;
     return ERR;

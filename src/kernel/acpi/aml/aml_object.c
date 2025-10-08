@@ -147,6 +147,9 @@ aml_object_t* aml_object_new(aml_state_t* state, aml_object_flags_t flags)
     object->type = AML_UNINITIALIZED;
     object->state = state;
 
+    strncpy(object->name.segment, AML_UNNAMED_NAME, AML_NAME_LENGTH);
+    object->name.segment[AML_NAME_LENGTH] = '\0';
+
     if (state != NULL)
     {
         // The state does not take a reference to the object, it just keeps track of it for garbage collection.
@@ -195,11 +198,12 @@ void aml_object_deinit(aml_object_t* object)
         object->bufferField.bitOffset = 0;
         object->bufferField.bitSize = 0;
         break;
+    case AML_DEBUG_OBJECT:
+        break;
     case AML_DEVICE:
         aml_object_container_free_children(object);
         break;
     case AML_EVENT:
-        // Nothing to deinitialize yet
         break;
     case AML_FIELD_UNIT:
         switch (object->fieldUnit.fieldType)
