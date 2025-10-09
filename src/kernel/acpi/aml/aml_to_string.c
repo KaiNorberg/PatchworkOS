@@ -44,6 +44,12 @@ const char* aml_type_to_string(aml_type_t type)
         return "String";
     case AML_THERMAL_ZONE:
         return "ThermalZone";
+    case AML_ALIAS:
+        return "Alias";
+    case AML_UNRESOLVED:
+        return "Unresolved";
+    case AML_PREDEFINED_SCOPE:
+        return "PredefinedScope";
     default:
         return "Unknown";
     }

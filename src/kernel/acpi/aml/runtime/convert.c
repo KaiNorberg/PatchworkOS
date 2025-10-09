@@ -156,11 +156,11 @@ static uint64_t aml_buffer_to_debug_object(aml_object_t* buffer, aml_object_t* d
 
     if (buffer->buffer.length == 0)
     {
-        LOG_INFO("DebugObj: %s = []\n", AML_OBJECT_GET_NAME(buffer));
+        LOG_INFO("%s = []\n", AML_OBJECT_GET_NAME(buffer));
         return 0;
     }
 
-    LOG_INFO("DebugObj: %s = [", AML_OBJECT_GET_NAME(buffer));
+    LOG_INFO("%s = [", AML_OBJECT_GET_NAME(buffer));
     for (uint64_t i = 0; i < buffer->buffer.length; i++)
     {
         LOG_INFO("%02X", buffer->buffer.content[i]);
@@ -244,7 +244,7 @@ static uint64_t aml_integer_to_string(aml_object_t* integer, aml_object_t* dest)
 static uint64_t aml_integer_to_debug_object(aml_object_t* integer, aml_object_t* dest)
 {
     (void)dest;
-    LOG_INFO("DebugObj: %s = %llu\n", AML_OBJECT_GET_NAME(integer), integer->integer.value);
+    LOG_INFO("%s = %llu\n", AML_OBJECT_GET_NAME(integer), integer->integer.value);
     return 0;
 }
 
@@ -271,7 +271,7 @@ static uint64_t aml_integer_constant_to_integer(aml_object_t* integerConstant, a
 static uint64_t aml_integer_constant_to_debug_object(aml_object_t* integerConstant, aml_object_t* dest)
 {
     (void)dest;
-    LOG_INFO("DebugObj: %s = %llu\n", AML_OBJECT_GET_NAME(integerConstant), integerConstant->integerConstant.value);
+    LOG_INFO("%s = %llu\n", AML_OBJECT_GET_NAME(integerConstant), integerConstant->integerConstant.value);
     return 0;
 }
 
@@ -286,7 +286,7 @@ static uint64_t aml_package_to_debug_object(aml_object_t* package, aml_object_t*
     for (uint64_t i = 0; i < package->package.length; i++)
     {
         aml_object_t* elem = package->package.elements[i];
-        LOG_INFO("DebugObj: %s[%d] = (type: %s)\n", AML_OBJECT_GET_NAME(package), (int)i,
+        LOG_INFO("%s[%d] = (type: %s)\n", AML_OBJECT_GET_NAME(package), (int)i,
             aml_type_to_string(elem->type));
     }
     return 0;
@@ -360,11 +360,11 @@ static uint64_t aml_string_to_debug_object(aml_object_t* string, aml_object_t* d
     (void)dest;
     if (string->string.length == 0)
     {
-        LOG_INFO("DebugObj: %s = \"\"\n", AML_OBJECT_GET_NAME(string));
+        LOG_INFO("\n");
         return 0;
     }
 
-    LOG_INFO("DebugObj: %s = \"%s\"\n", AML_OBJECT_GET_NAME(string), string->string.content);
+    LOG_INFO("%s\n", string->string.content);
     return 0;
 }
 

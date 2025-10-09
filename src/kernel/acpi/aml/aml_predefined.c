@@ -70,7 +70,7 @@ uint64_t aml_os_implementation(aml_method_t* method, uint64_t argCount, aml_obje
     return 0;
 }
 
-static inline uint64_t aml_create_predefined_device(const char* name)
+static inline uint64_t aml_create_predefined_scope(const char* name)
 {
     aml_object_t* root = aml_root_get();
     assert(root != NULL);
@@ -82,7 +82,7 @@ static inline uint64_t aml_create_predefined_device(const char* name)
     }
     DEREF_DEFER(object);
 
-    if (aml_device_init(object) == ERR || aml_object_add_child(root, object, name) == ERR)
+    if (aml_predefined_scope_init(object) == ERR || aml_object_add_child(root, object, name) == ERR)
     {
         return ERR;
     }
@@ -98,9 +98,9 @@ aml_mutex_t* aml_gl_get(void)
 uint64_t aml_predefined_init(void)
 {
     // Normal predefined root objects, see section 5.3.1 of the ACPI specification.
-    if (aml_create_predefined_device("_GPE") == ERR || aml_create_predefined_device("_PR_") == ERR ||
-        aml_create_predefined_device("_SB_") == ERR || aml_create_predefined_device("_SI_") == ERR ||
-        aml_create_predefined_device("_TZ_") == ERR)
+    if (aml_create_predefined_scope("_GPE") == ERR || aml_create_predefined_scope("_PR_") == ERR ||
+        aml_create_predefined_scope("_SB_") == ERR || aml_create_predefined_scope("_SI_") == ERR ||
+        aml_create_predefined_scope("_TZ_") == ERR)
     {
         return ERR;
     }

@@ -739,6 +739,45 @@ aml_object_t* aml_data_read(aml_state_t* state, aml_scope_t* scope);
 aml_object_t* aml_def_concat_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
+ * @brief Reads a DefSizeOf structure from the AML byte stream.
+ *
+ * A DefSizeOf structure is defined as `DefSizeOf := SizeOfOp SuperName`.
+ *
+ * @see Section 19.6.126 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ */
+aml_object_t* aml_def_size_of_read(aml_state_t* state, aml_scope_t* scope);
+
+/**
+ * @brief Reads a DefRefOf structure from the AML byte stream.
+ *
+ * A DefRefOf structure is defined as `DefRefOf := RefOfOp SuperName`.
+ *
+ * @see Section 19.6.115 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ */
+aml_object_t* aml_def_ref_of_read(aml_state_t* state, aml_scope_t* scope);
+
+/**
+ * @brief Reads a DefObjectType structure from the AML byte stream.
+ *
+ * A DefObjectType structure is defined as `DefObjectType := ObjectTypeOp <SimpleName | DebugObj | DefRefOf | DefDerefOf | DefIndex>`.
+ *
+ * @see Section 19.6.97 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ */
+aml_object_t* aml_def_object_type_read(aml_state_t* state, aml_scope_t* scope);
+
+/**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.
  *
  * An ExpressionOpcode structure is defined as `ExpressionOpcode := DefAcquire | DefAdd | DefAnd | DefBuffer | DefConcat
@@ -757,9 +796,6 @@ aml_object_t* aml_def_concat_read(aml_state_t* state, aml_scope_t* scope);
  * - `DefMid`
  * - `DefLoadTable`
  * - `DefMatch`
- * - `DefObjectType`
- * - `DefRefOf`
- * - `DefSizeOf`
  * - `DefWait`
  *
  * @param state The AML state.

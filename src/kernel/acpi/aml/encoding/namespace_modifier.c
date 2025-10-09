@@ -116,7 +116,7 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope)
     const uint8_t* end = start + pkgLength;
 
     aml_type_t type = newLocation->type;
-    if (type != AML_DEVICE && type != AML_PROCESSOR && type != AML_THERMAL_ZONE && type != AML_POWER_RESOURCE)
+    if (type != AML_PREDEFINED_SCOPE && type != AML_DEVICE && type != AML_PROCESSOR && type != AML_THERMAL_ZONE && type != AML_POWER_RESOURCE)
     {
         AML_DEBUG_ERROR(state, "Invalid object type '%s'", aml_type_to_string(type));
         errno = EILSEQ;

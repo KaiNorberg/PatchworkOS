@@ -12,6 +12,7 @@
 #include "acpi/aml/runtime/copy.h"
 #include "acpi/aml/runtime/method.h"
 #include "acpi/aml/runtime/store.h"
+#include "debug.h"
 #include "arg.h"
 #include "package_length.h"
 #include "term.h"
@@ -1718,6 +1719,192 @@ aml_object_t* aml_def_concat_read(aml_state_t* state, aml_scope_t* scope)
     return REF(result);
 }
 
+aml_object_t* aml_def_size_of_read(aml_state_t* state, aml_scope_t* scope)
+{
+    if (aml_token_expect(state, AML_SIZE_OF_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read SizeOfOp");
+        return NULL;
+    }
+
+    aml_object_t* object = aml_super_name_read_and_resolve(state, scope);
+    if (object == NULL)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read or resolve SuperName");
+        return NULL;
+    }
+    DEREF_DEFER(object);
+
+    aml_object_t* result = aml_object_new(state, AML_OBJECT_NONE);
+    if (result == NULL)
+    {
+        return NULL;
+    }
+    DEREF_DEFER(result);
+
+    uint64_t size;
+    switch (object->type)
+    {
+    case AML_BUFFER:
+        size = object->buffer.length;
+        break;
+    case AML_STRING:
+        size = object->string.length;
+        break;
+    case AML_PACKAGE:
+        size = object->package.length;
+        break;
+    default:
+        errno = EINVAL;
+        return NULL;
+    }
+
+    if (aml_integer_init(result, size) == ERR)
+    {
+        return NULL;
+    }
+
+    return REF(result);
+}
+
+aml_object_t* aml_def_ref_of_read(aml_state_t* state, aml_scope_t* scope)
+{
+    if (aml_token_expect(state, AML_REF_OF_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read RefOfOp");
+        return NULL;
+    }
+
+    aml_object_t* object = aml_super_name_read_and_resolve(state, scope);
+    if (object == NULL)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read or resolve SuperName");
+        return NULL;
+    }
+    DEREF_DEFER(object);
+
+    aml_object_t* result = aml_object_new(state, AML_OBJECT_NONE);
+    if (result == NULL)
+    {
+        return NULL;
+    }
+    DEREF_DEFER(result);
+
+    if (aml_object_reference_init(result, object) == ERR)
+    {
+        return NULL;
+    }
+
+    return REF(result);
+}
+
+aml_object_t* aml_def_object_type_read(aml_state_t* state, aml_scope_t* scope)
+{
+    if (aml_token_expect(state, AML_OBJECT_TYPE_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read ObjectTypeOp");
+        return NULL;
+    }
+
+    aml_token_t token;
+    if (aml_token_peek(state, &token) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to peek token");
+        return NULL;
+    }
+
+    aml_object_t* object;
+    switch (token.num)
+    {
+    case AML_DEBUG_OP:
+        object = aml_debug_obj_read(state);
+        break;
+    case AML_REF_OF_OP:
+        object = aml_def_ref_of_read(state, scope);
+        break;
+    case AML_DEREF_OF_OP:
+        object = aml_def_deref_of_read(state, scope);
+        break;
+    case AML_INDEX_OP:
+        object = aml_def_index_read(state, scope);
+        break;
+    default:
+        object = aml_simple_name_read_and_resolve(state, scope);
+        break;
+    }
+
+    if (object == NULL)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read object from '%s'", token.props->name);
+        return NULL;
+    }
+    DEREF_DEFER(object);
+
+    uint64_t typeNum;
+    switch (object->type == AML_OBJECT_REFERENCE ? object->objectReference.target->type : object->type)
+    {
+    case AML_INTEGER:
+        typeNum = 1;
+        break;
+    case AML_STRING:
+        typeNum = 2;
+        break;
+    case AML_BUFFER:
+        typeNum = 3;
+        break;
+    case AML_PACKAGE:
+        typeNum = 4;
+        break;
+    case AML_FIELD_UNIT:
+        typeNum = 5;
+        break;
+    case AML_DEVICE:
+        typeNum = 6;
+        break;
+    case AML_EVENT:
+        typeNum = 7;
+        break;
+    case AML_METHOD:
+        typeNum = 8;
+        break;
+    case AML_MUTEX:
+        typeNum = 9;
+        break;
+    case AML_OPERATION_REGION:
+        typeNum = 10;
+        break;
+    case AML_POWER_RESOURCE:
+        typeNum = 11;
+        break;
+    case AML_THERMAL_ZONE:
+        typeNum = 13;
+        break;
+    case AML_BUFFER_FIELD:
+        typeNum = 14;
+        break;
+    case AML_DEBUG_OBJECT:
+        typeNum = 15;
+        break;
+    default:
+        typeNum = 0;
+        break;
+    }
+
+    aml_object_t* result = aml_object_new(state, AML_OBJECT_NONE);
+    if (result == NULL)
+    {
+        return NULL;
+    }
+    DEREF_DEFER(result);
+
+    if (aml_integer_init(result, typeNum) == ERR)
+    {
+        return NULL;
+    }
+
+    return REF(result);
+}
+
 aml_object_t* aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope)
 {
     aml_token_t op;
@@ -1896,6 +2083,15 @@ aml_object_t* aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope)
         break;
     case AML_CONCAT_OP:
         result = aml_def_concat_read(state, scope);
+        break;
+    case AML_SIZE_OF_OP:
+        result = aml_def_size_of_read(state, scope);
+        break;
+    case AML_REF_OF_OP:
+        result = aml_def_ref_of_read(state, scope);
+        break;
+    case AML_OBJECT_TYPE_OP:
+        result = aml_def_object_type_read(state, scope);
         break;
     default:
         AML_DEBUG_ERROR(state, "Unknown ExpressionOpcode '%s' (0x%04x)", op.props->name, op.num);

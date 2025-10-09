@@ -64,6 +64,7 @@ typedef enum
     AML_THERMAL_ZONE = 1 << 17,
     AML_ALIAS = 1 << 18,      ///< Not in the spec, used internally to represent Aliases.
     AML_UNRESOLVED = 1 << 19, ///< Not in the spec, used internally to represent unresolved references.
+    AML_PREDEFINED_SCOPE = 1 << 20, ///< Not in the spec, used internally to represent \_SB, \_GPE, etc.
     /**
      * All data types that can be retrieved from a ComputationalData object (section 20.2.3).
      */
@@ -81,7 +82,7 @@ typedef enum
     /**
      * All data types that can contain named objects, packages contain unnamed objects only and are excluded.
      */
-    AML_CONTAINERS = AML_DEVICE | AML_PROCESSOR | AML_METHOD | AML_THERMAL_ZONE | AML_POWER_RESOURCE,
+    AML_CONTAINERS = AML_DEVICE | AML_PROCESSOR | AML_METHOD | AML_THERMAL_ZONE | AML_POWER_RESOURCE | AML_PREDEFINED_SCOPE,
     /**
      * All data types.
      */
@@ -364,6 +365,16 @@ typedef struct aml_unresolved
 } aml_unresolved_t;
 
 /**
+ * @brief Data for a predefined scope object, like \_SB, \_GPE, etc.
+ * @struct aml_predefined_scope_t
+ */
+typedef struct aml_predefined_scope
+{
+    AML_OBJECT_COMMON_HEADER;
+    list_t namedObjects;
+} aml_predefined_scope_t;
+
+/**
  * @brief ACPI object.
  * @struct aml_object_t
  */
@@ -392,6 +403,7 @@ typedef struct aml_object
         aml_thermal_zone_t thermalZone;
         aml_alias_t alias;
         aml_unresolved_t unresolved;
+        aml_predefined_scope_t predefinedScope;
     };
 } aml_object_t;
 
@@ -800,5 +812,15 @@ aml_object_t* aml_alias_traverse(aml_alias_t* alias);
  */
 uint64_t aml_unresolved_init(aml_object_t* object, const aml_name_string_t* nameString, aml_object_t* from,
     aml_patch_up_resolve_callback_t callback);
+
+/**
+ * @brief Initialize a object as a predefined scope with the given name.
+ *
+ * This is used to implement predefined scopes like \_SB, \_GPE, etc.
+ *
+ * @param object Pointer to the object to initialize.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_predefined_scope_init(aml_object_t* object);
 
 /** @} */

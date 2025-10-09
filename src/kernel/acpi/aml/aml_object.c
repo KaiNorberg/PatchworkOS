@@ -61,6 +61,11 @@ static uint64_t aml_object_container_get_list(aml_object_t* object, list_t** out
         *outList = &object->powerResource.namedObjects;
     }
     break;
+    case AML_PREDEFINED_SCOPE:
+    {
+        *outList = &object->predefinedScope.namedObjects;
+    }
+    break;
     default:
         errno = EINVAL;
         return ERR;
@@ -313,6 +318,9 @@ void aml_object_deinit(aml_object_t* object)
         object->unresolved.from = NULL;
         object->unresolved.nameString = (aml_name_string_t){0};
         object->unresolved.callback = NULL;
+        break;
+    case AML_PREDEFINED_SCOPE:
+        aml_object_container_free_children(object);
         break;
     default:
         panic(NULL, "Unknown AML data type %u", object->type);
@@ -1454,5 +1462,23 @@ uint64_t aml_unresolved_init(aml_object_t* object, const aml_name_string_t* name
         object->type = AML_UNINITIALIZED;
         return ERR;
     }
+    return 0;
+}
+
+uint64_t aml_predefined_scope_init(aml_object_t* object)
+{
+    if (object == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    list_init(&object->predefinedScope.namedObjects);
+    object->type = AML_PREDEFINED_SCOPE;
     return 0;
 }
