@@ -120,19 +120,19 @@ uint64_t aml_const_obj_read(aml_state_t* state, aml_object_t* out)
     switch (token.num)
     {
     case AML_ZERO_OP:
-        if (aml_integer_init(out, 0) == ERR)
+        if (aml_integer_set(out, 0) == ERR)
         {
             return ERR;
         }
         break;
     case AML_ONE_OP:
-        if (aml_integer_init(out, 1) == ERR)
+        if (aml_integer_set(out, 1) == ERR)
         {
             return ERR;
         }
         break;
     case AML_ONES_OP:
-        if (aml_integer_init(out, UINT64_MAX) == ERR)
+        if (aml_integer_set(out, aml_integer_ones()) == ERR)
         {
             return ERR;
         }
@@ -178,7 +178,7 @@ uint64_t aml_string_read(aml_state_t* state, aml_object_t* out)
         }
     }
 
-    if (aml_string_init(out, start) == ERR)
+    if (aml_string_set(out, start) == ERR)
     {
         return ERR;
     }
@@ -194,7 +194,7 @@ uint64_t aml_revision_op_read(aml_state_t* state, aml_object_t* out)
         return ERR;
     }
 
-    if (aml_integer_init(out, RSDP_CURRENT_REVISION) == ERR)
+    if (aml_integer_set(out, RSDP_CURRENT_REVISION) == ERR)
     {
         return ERR;
     }
@@ -223,7 +223,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml
             return ERR;
         }
 
-        if (aml_integer_init(out, byte) == ERR)
+        if (aml_integer_set(out, byte) == ERR)
         {
             return ERR;
         }
@@ -238,7 +238,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml
             return ERR;
         }
 
-        if (aml_integer_init(out, word) == ERR)
+        if (aml_integer_set(out, word) == ERR)
         {
             return ERR;
         }
@@ -253,7 +253,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml
             return ERR;
         }
 
-        if (aml_integer_init(out, dword) == ERR)
+        if (aml_integer_set(out, dword) == ERR)
         {
             return ERR;
         }
@@ -268,7 +268,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml
             return ERR;
         }
 
-        if (aml_integer_init(out, qword) == ERR)
+        if (aml_integer_set(out, qword) == ERR)
         {
             return ERR;
         }
@@ -343,7 +343,7 @@ static inline uint64_t aml_package_element_handle_name(aml_object_t* in, aml_obj
     }
     else // "... returned in the package as references"
     {
-        if (aml_object_reference_init(out, in) == ERR)
+        if (aml_object_reference_set(out, in) == ERR)
         {
             LOG_ERR("failed to init ObjectReference in aml_package_element_handle_name()\n");
             return ERR;
@@ -373,7 +373,7 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_ob
         aml_object_t* object = aml_name_string_resolve(&nameString, scope->location);
         if (object == NULL)
         {
-            if (aml_unresolved_init(out, &nameString, scope->location, aml_package_element_handle_name) == ERR)
+            if (aml_unresolved_set(out, &nameString, scope->location, aml_package_element_handle_name) == ERR)
             {
                 return ERR;
             }
@@ -398,7 +398,7 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_ob
     return 0;
 }
 
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_package_t* package,
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_package_obj_t* package,
     const uint8_t* end)
 {
     uint64_t i = 0;
@@ -408,7 +408,7 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, a
         {
             for (uint64_t j = 0; j < i; j++)
             {
-                aml_object_deinit(package->elements[j]);
+                aml_object_clear(package->elements[j]);
             }
             AML_DEBUG_ERROR(state, "Failed to read PackageElement %llu", i);
             return ERR;
@@ -446,14 +446,14 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_object
         return ERR;
     }
 
-    if (aml_package_init(out, numElements) == ERR)
+    if (aml_package_set(out, numElements) == ERR)
     {
         return ERR;
     }
 
     if (aml_package_element_list_read(state, scope, &out->package, end) == ERR)
     {
-        aml_object_deinit(out);
+        aml_object_clear(out);
         AML_DEBUG_ERROR(state, "Failed to read PackageElementList");
         return ERR;
     }
@@ -461,7 +461,7 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_object
     return 0;
 }
 
-uint64_t aml_def_var_num_elements_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
+uint64_t aml_def_var_num_elements_read(aml_state_t* state, aml_scope_t* scope, aml_integer_t* out)
 {
     if (aml_term_arg_read_integer(state, scope, out) == ERR)
     {
@@ -498,14 +498,14 @@ uint64_t aml_def_var_package_read(aml_state_t* state, aml_scope_t* scope, aml_ob
         return ERR;
     }
 
-    if (aml_package_init(out, numElements) == ERR)
+    if (aml_package_set(out, numElements) == ERR)
     {
         return ERR;
     }
 
     if (aml_package_element_list_read(state, scope, &out->package, end) == ERR)
     {
-        aml_object_deinit(out);
+        aml_object_clear(out);
         AML_DEBUG_ERROR(state, "Failed to read PackageElementList");
         return ERR;
     }

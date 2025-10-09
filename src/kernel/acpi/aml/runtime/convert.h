@@ -72,7 +72,7 @@ uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target);
  * @param out Pointer to the output buffer where the BCD representation will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_convert_integer_to_bcd(uint64_t value, uint64_t* out);
+uint64_t aml_convert_integer_to_bcd(aml_integer_t value, aml_integer_t* out);
 
 /**
  * @brief Converts a Integer, String or Buffer source object to a Buffer destination object.

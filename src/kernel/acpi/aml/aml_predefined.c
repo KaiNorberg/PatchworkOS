@@ -9,9 +9,9 @@
 
 #include <errno.h>
 
-static aml_mutex_t* globalMutex = NULL;
+static aml_mutex_obj_t* globalMutex = NULL;
 
-uint64_t aml_osi_implementation(aml_method_t* method, uint64_t argCount, aml_object_t** args, aml_object_t* returnValue)
+uint64_t aml_osi_implementation(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args, aml_object_t* returnValue)
 {
     (void)method; // Unused
 
@@ -24,7 +24,7 @@ uint64_t aml_osi_implementation(aml_method_t* method, uint64_t argCount, aml_obj
     LOG_DEBUG("_OSI called with argument: '%.*s'\n", (int)args[0]->string.length, args[0]->string.content);
 
     // TODO: Implement this properly.
-    if (aml_integer_init(returnValue, UINT64_MAX) == ERR)
+    if (aml_integer_set(returnValue, UINT64_MAX) == ERR)
     {
         return ERR;
     }
@@ -32,7 +32,7 @@ uint64_t aml_osi_implementation(aml_method_t* method, uint64_t argCount, aml_obj
     return 0;
 }
 
-uint64_t aml_rev_implementation(aml_method_t* method, uint64_t argCount, aml_object_t** args, aml_object_t* returnValue)
+uint64_t aml_rev_implementation(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args, aml_object_t* returnValue)
 {
     (void)method; // Unused
     (void)args;   // Unused
@@ -43,7 +43,7 @@ uint64_t aml_rev_implementation(aml_method_t* method, uint64_t argCount, aml_obj
         return ERR;
     }
 
-    if (aml_integer_init(returnValue, ACPI_REVISION) == ERR)
+    if (aml_integer_set(returnValue, ACPI_REVISION) == ERR)
     {
         return ERR;
     }
@@ -51,7 +51,7 @@ uint64_t aml_rev_implementation(aml_method_t* method, uint64_t argCount, aml_obj
     return 0;
 }
 
-uint64_t aml_os_implementation(aml_method_t* method, uint64_t argCount, aml_object_t** args, aml_object_t* returnValue)
+uint64_t aml_os_implementation(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args, aml_object_t* returnValue)
 {
     (void)method; // Unused
     (void)args;   // Unused
@@ -62,7 +62,7 @@ uint64_t aml_os_implementation(aml_method_t* method, uint64_t argCount, aml_obje
         return ERR;
     }
 
-    if (aml_string_init(returnValue, OS_NAME) == ERR)
+    if (aml_string_set(returnValue, OS_NAME) == ERR)
     {
         return ERR;
     }
@@ -82,7 +82,7 @@ static inline uint64_t aml_create_predefined_scope(const char* name)
     }
     DEREF_DEFER(object);
 
-    if (aml_predefined_scope_init(object) == ERR || aml_object_add_child(root, object, name) == ERR)
+    if (aml_predefined_scope_set(object) == ERR || aml_object_add_child(root, object, name) == ERR)
     {
         return ERR;
     }
@@ -90,7 +90,7 @@ static inline uint64_t aml_create_predefined_scope(const char* name)
     return 0;
 }
 
-aml_mutex_t* aml_gl_get(void)
+aml_mutex_obj_t* aml_gl_get(void)
 {
     return globalMutex;
 }
@@ -120,7 +120,7 @@ uint64_t aml_predefined_init(void)
         .isSerialized = true,
         .syncLevel = 15,
     };
-    if (aml_method_init(osi, osiFlags, NULL, NULL, aml_osi_implementation) == ERR ||
+    if (aml_method_set(osi, osiFlags, NULL, NULL, aml_osi_implementation) == ERR ||
         aml_object_add_child(root, osi, "_OSI") == ERR)
     {
         return ERR;
@@ -137,7 +137,7 @@ uint64_t aml_predefined_init(void)
         .isSerialized = true,
         .syncLevel = 15,
     };
-    if (aml_method_init(rev, revFlags, NULL, NULL, aml_rev_implementation) == ERR ||
+    if (aml_method_set(rev, revFlags, NULL, NULL, aml_rev_implementation) == ERR ||
         aml_object_add_child(root, rev, "_REV") == ERR)
     {
         return ERR;
@@ -154,7 +154,7 @@ uint64_t aml_predefined_init(void)
         .isSerialized = true,
         .syncLevel = 15,
     };
-    if (aml_method_init(os, osFlags, NULL, NULL, aml_os_implementation) == ERR ||
+    if (aml_method_set(os, osFlags, NULL, NULL, aml_os_implementation) == ERR ||
         aml_object_add_child(root, os, "_OS_") == ERR)
     {
         return ERR;
@@ -167,7 +167,7 @@ uint64_t aml_predefined_init(void)
         return ERR;
     }
     DEREF_DEFER(gl);
-    if (aml_mutex_init(gl, 0) == ERR || aml_object_add_child(root, gl, "_GL_") == ERR)
+    if (aml_mutex_set(gl, 0) == ERR || aml_object_add_child(root, gl, "_GL_") == ERR)
     {
         return ERR;
     }

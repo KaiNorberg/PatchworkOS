@@ -7,7 +7,7 @@
 #include "acpi/aml/encoding/name.h"
 #include "acpi/aml/encoding/named.h"
 
-typedef struct aml_unresolved aml_unresolved_t;
+typedef struct aml_unresolved_obj aml_unresolved_obj_t;
 typedef struct aml_object aml_object_t;
 typedef struct aml_data aml_data_t;
 
@@ -34,7 +34,7 @@ typedef uint64_t (*aml_patch_up_resolve_callback_t)(aml_object_t* match, aml_obj
 typedef struct aml_patch_up_entry
 {
     list_entry_t entry;           ///< List entry for the global list of unresolved references.
-    aml_unresolved_t* unresolved; ///< The unresolved object.
+    aml_unresolved_obj_t* unresolved; ///< The unresolved object.
 } aml_patch_up_entry_t;
 
 /**
@@ -53,14 +53,14 @@ uint64_t aml_patch_up_init(void);
  * @param unresolved The unresolved object to add, must be of type `AML_UNRESOLVED`.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_patch_up_add_unresolved(aml_unresolved_t* unresolved);
+uint64_t aml_patch_up_add_unresolved(aml_unresolved_obj_t* unresolved);
 
 /**
  * @brief Removes an unresolved reference from the global list.
  *
  * @param unresolved The unresolved object to remove.
  */
-void aml_patch_up_remove_unresolved(aml_unresolved_t* unresolved);
+void aml_patch_up_remove_unresolved(aml_unresolved_obj_t* unresolved);
 
 /**
  * @brief Attempts to resolve all unresolved references.

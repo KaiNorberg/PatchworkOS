@@ -11,7 +11,7 @@
 
 #include <errno.h>
 
-uint64_t aml_predicate_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
+uint64_t aml_predicate_read(aml_state_t* state, aml_scope_t* scope, aml_integer_t* out)
 {
     if (aml_term_arg_read_integer(state, scope, out) == ERR)
     {
@@ -88,7 +88,7 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_scope_t* scope)
     }
 
     bool isTrue = predicate != 0;
-    if (predicate != 0)
+    if (isTrue)
     {
         // Execute the TermList in the same scope
         if (aml_term_list_read(state, scope->location, end) == ERR)
@@ -271,18 +271,21 @@ uint64_t aml_def_while_read(aml_state_t* state, aml_scope_t* scope)
             return ERR;
         }
 
-        if (state->flowControl == AML_FLOW_CONTROL_BREAK || state->flowControl == AML_FLOW_CONTROL_RETURN)
+        if (state->flowControl == AML_FLOW_CONTROL_BREAK)
         {
-            // Advance the state to the end of the while loop
-            uint64_t offset = end - state->current;
-            aml_state_advance(state, offset);
+            state->current = end;
             state->flowControl = AML_FLOW_CONTROL_EXECUTE;
+            return 0;
+        }
+        else if (state->flowControl == AML_FLOW_CONTROL_RETURN)
+        {
+            // Propagate the return up the call stack
+            state->current = end;
             return 0;
         }
         else if (state->flowControl == AML_FLOW_CONTROL_CONTINUE)
         {
             state->flowControl = AML_FLOW_CONTROL_EXECUTE;
-            // Continue to the next iteration of the while loop
         }
         else if (state->flowControl != AML_FLOW_CONTROL_EXECUTE)
         {

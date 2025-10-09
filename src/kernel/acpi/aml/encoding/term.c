@@ -81,7 +81,7 @@ aml_object_t* aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_type
     return out; // Transfer ownership
 }
 
-uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
+uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_scope_t* scope, aml_integer_t* out)
 {
     aml_object_t* temp = aml_term_arg_read(state, scope, AML_INTEGER);
     if (temp == NULL)
@@ -97,7 +97,7 @@ uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_scope_t* scope, uint6
     return 0;
 }
 
-aml_string_t* aml_term_arg_read_string(aml_state_t* state, aml_scope_t* scope)
+aml_string_obj_t* aml_term_arg_read_string(aml_state_t* state, aml_scope_t* scope)
 {
     aml_object_t* temp = aml_term_arg_read(state, scope, AML_STRING);
     if (temp == NULL)

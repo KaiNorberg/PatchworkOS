@@ -16,7 +16,7 @@ aml_object_t* aml_debug_obj_read(aml_state_t* state)
         return NULL;
     }
 
-    if (aml_debug_object_init(obj) == ERR)
+    if (aml_debug_object_set(obj) == ERR)
     {
         DEREF(obj);
         return NULL;

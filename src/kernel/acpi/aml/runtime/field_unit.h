@@ -35,7 +35,7 @@
  * @param out Pointer to the buffer where the result will be stored, will be an integer or a buffer.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_field_unit_load(aml_field_unit_t* fieldUnit, aml_object_t* out);
+uint64_t aml_field_unit_load(aml_field_unit_obj_t* fieldUnit, aml_object_t* out);
 
 /**
  * @brief Write a value to a FieldUnit. FieldUnits include Fields, IndexFields and BankFields.
@@ -49,6 +49,6 @@ uint64_t aml_field_unit_load(aml_field_unit_t* fieldUnit, aml_object_t* out);
  * @param in Pointer to the object containing the value to write, must be an integer or a buffer.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_field_unit_store(aml_field_unit_t* fieldUnit, aml_object_t* in);
+uint64_t aml_field_unit_store(aml_field_unit_obj_t* fieldUnit, aml_object_t* in);
 
 /** @} */

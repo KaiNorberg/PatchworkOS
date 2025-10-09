@@ -46,7 +46,7 @@ uint64_t aml_def_alias_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(target);
 
-    if (aml_alias_init(target, source) == ERR || aml_object_add(target, scope->location, &targetNameString) == ERR)
+    if (aml_alias_set(target, source) == ERR || aml_object_add(target, scope->location, &targetNameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add alias object '%s'", aml_name_string_to_string(&targetNameString));
         return ERR;

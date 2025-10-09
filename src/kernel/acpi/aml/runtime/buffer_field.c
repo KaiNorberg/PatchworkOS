@@ -2,7 +2,7 @@
 
 #include <errno.h>
 
-uint64_t aml_buffer_field_load(aml_buffer_field_t* bufferField, aml_object_t* out)
+uint64_t aml_buffer_field_load(aml_buffer_field_obj_t* bufferField, aml_object_t* out)
 {
     if (bufferField == NULL || out == NULL)
     {
@@ -23,16 +23,16 @@ uint64_t aml_buffer_field_load(aml_buffer_field_t* bufferField, aml_object_t* ou
     aml_bit_size_t bitSize = bufferField->bitSize;
 
     uint64_t byteSize = (bitSize + 7) / 8;
-    if (byteSize > sizeof(uint64_t))
+    if (byteSize > aml_integer_byte_size())
     {
-        if (aml_buffer_init_empty(out, byteSize) == ERR)
+        if (aml_buffer_set_empty(out, byteSize) == ERR)
         {
             return ERR;
         }
     }
     else
     {
-        if (aml_integer_init(out, 0) == ERR)
+        if (aml_integer_set(out, 0) == ERR)
         {
             return ERR;
         }
@@ -57,22 +57,22 @@ uint64_t aml_buffer_field_load(aml_buffer_field_t* bufferField, aml_object_t* ou
 
         uint8_t bitValue = (buffer[srcByteIndex] >> srcBitInByte) & 1;
 
-        if (byteSize > sizeof(uint64_t))
+        if (byteSize > aml_integer_byte_size())
         {
             out->buffer.content[destByteIndex] &= ~(1 << destBitInByte);
             out->buffer.content[destByteIndex] |= (bitValue << destBitInByte);
         }
         else
         {
-            out->integer.value &= ~((uint64_t)1 << destBitIndex);
-            out->integer.value |= ((uint64_t)bitValue << destBitIndex);
+            out->integer.value &= ~((aml_integer_t)1 << destBitIndex);
+            out->integer.value |= ((aml_integer_t)bitValue << destBitIndex);
         }
     }
 
     return 0;
 }
 
-uint64_t aml_buffer_field_store(aml_buffer_field_t* bufferField, aml_object_t* in)
+uint64_t aml_buffer_field_store(aml_buffer_field_obj_t* bufferField, aml_object_t* in)
 {
     if (bufferField == NULL || in == NULL)
     {
@@ -130,7 +130,7 @@ uint64_t aml_buffer_field_store(aml_buffer_field_t* bufferField, aml_object_t* i
         }
         else if (inType == AML_INTEGER)
         {
-            if (srcBitIndex >= 64)
+            if (srcBitIndex >= aml_integer_bit_size())
             {
                 bitValue = 0;
             }

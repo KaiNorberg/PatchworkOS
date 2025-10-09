@@ -5,7 +5,7 @@
 
 #include <errno.h>
 
-static uint64_t aml_concat_resolve_to_integer(aml_object_t* source, uint64_t* out)
+static uint64_t aml_concat_resolve_to_integer(aml_object_t* source, aml_integer_t* out)
 {
     if (source->type == AML_INTEGER)
     {
@@ -194,19 +194,19 @@ static uint64_t aml_concat_resolve_to_buffer(aml_object_t* source, uint8_t** out
 static uint64_t aml_concat_integer(aml_object_t* source1, aml_object_t* source2, aml_object_t* result)
 {
     assert(source1->type == AML_INTEGER);
-    uint64_t value1 = source1->integer.value;
-    uint64_t value2;
+    aml_integer_t value1 = source1->integer.value;
+    aml_integer_t value2;
     if (aml_concat_resolve_to_integer(source2, &value2) == ERR)
     {
         return ERR;
     }
 
-    if (aml_buffer_init_empty(result, sizeof(uint64_t) * 2) == ERR)
+    if (aml_buffer_set_empty(result, aml_integer_byte_size() * 2) == ERR)
     {
         return ERR;
     }
-    memcpy(result->buffer.content, &value1, sizeof(uint64_t));
-    memcpy(result->buffer.content + sizeof(uint64_t), &value2, sizeof(uint64_t));
+    memcpy(result->buffer.content, &value1, aml_integer_byte_size());
+    memcpy(result->buffer.content + aml_integer_byte_size(), &value2, aml_integer_byte_size());
 
     return 0;
 }
@@ -226,7 +226,7 @@ static uint64_t aml_concat_string(aml_object_t* source1, aml_object_t* source2, 
     size_t len1 = strlen(str1);
     size_t len2 = strlen(str2);
 
-    if (aml_string_init_empty(result, len1 + len2) == ERR)
+    if (aml_string_set_empty(result, len1 + len2) == ERR)
     {
         return ERR;
     }
@@ -250,7 +250,7 @@ static uint64_t aml_concat_buffer(aml_object_t* source1, aml_object_t* source2, 
     }
     DEREF_DEFER(temp2);
 
-    if (aml_buffer_init_empty(result, len1 + len2) == ERR)
+    if (aml_buffer_set_empty(result, len1 + len2) == ERR)
     {
         return ERR;
     }
@@ -281,7 +281,7 @@ static uint64_t aml_concat_other_types(aml_object_t* source1, aml_object_t* sour
     size_t len1 = strlen(str1);
     size_t len2 = strlen(str2);
 
-    if (aml_string_init_empty(result, len1 + len2) == ERR)
+    if (aml_string_set_empty(result, len1 + len2) == ERR)
     {
         return ERR;
     }

@@ -13,8 +13,8 @@
 
 typedef struct aml_region_handler
 {
-    uint64_t (*read)(aml_opregion_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out);
-    uint64_t (*write)(aml_opregion_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t value);
+    uint64_t (*read)(aml_opregion_obj_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out);
+    uint64_t (*write)(aml_opregion_obj_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t value);
 } aml_region_handler_t;
 
 static void* aml_ensure_mem_is_mapped(uint64_t address, aml_bit_size_t accessSize)
@@ -38,7 +38,7 @@ static void* aml_ensure_mem_is_mapped(uint64_t address, aml_bit_size_t accessSiz
     return PML_LOWER_TO_HIGHER((void*)address);
 }
 
-static uint64_t aml_system_mem_read(aml_opregion_t* opregion, uint64_t address, aml_bit_size_t accessSize,
+static uint64_t aml_system_mem_read(aml_opregion_obj_t* opregion, uint64_t address, aml_bit_size_t accessSize,
     uint64_t* out)
 {
     (void)opregion;
@@ -79,7 +79,7 @@ static uint64_t aml_system_mem_read(aml_opregion_t* opregion, uint64_t address, 
     return 0;
 }
 
-static uint64_t aml_system_mem_write(aml_opregion_t* opregion, uint64_t address, aml_bit_size_t accessSize,
+static uint64_t aml_system_mem_write(aml_opregion_obj_t* opregion, uint64_t address, aml_bit_size_t accessSize,
     uint64_t value)
 {
     (void)opregion;
@@ -120,7 +120,7 @@ static uint64_t aml_system_mem_write(aml_opregion_t* opregion, uint64_t address,
     return 0;
 }
 
-static uint64_t aml_system_io_read(aml_opregion_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out)
+static uint64_t aml_system_io_read(aml_opregion_obj_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out)
 {
     (void)opregion;
 
@@ -143,7 +143,7 @@ static uint64_t aml_system_io_read(aml_opregion_t* opregion, uint64_t address, a
     return 0;
 }
 
-static uint64_t aml_system_io_write(aml_opregion_t* opregion, uint64_t address, aml_bit_size_t accessSize,
+static uint64_t aml_system_io_write(aml_opregion_obj_t* opregion, uint64_t address, aml_bit_size_t accessSize,
     uint64_t value)
 {
     (void)opregion;
@@ -167,7 +167,7 @@ static uint64_t aml_system_io_write(aml_opregion_t* opregion, uint64_t address, 
     return 0;
 }
 
-static uint64_t aml_pci_get_params(aml_opregion_t* opregion, pci_segment_group_t* segmentGroup, pci_bus_t* bus,
+static uint64_t aml_pci_get_params(aml_opregion_obj_t* opregion, pci_segment_group_t* segmentGroup, pci_bus_t* bus,
     pci_slot_t* slot, pci_function_t* function)
 {
     // Note that the aml_object_find function will recursively search parent scopes.
@@ -186,7 +186,7 @@ static uint64_t aml_pci_get_params(aml_opregion_t* opregion, pci_segment_group_t
     {
         DEREF_DEFER(adrObject);
 
-        uint64_t adrValue = 0;
+        aml_integer_t adrValue = 0;
         if (aml_method_evaluate_integer(adrObject, &adrValue) == ERR)
         {
             LOG_ERR("failed to evaluate _ADR for opregion '%s'\n", AML_OBJECT_GET_NAME(location));
@@ -203,7 +203,7 @@ static uint64_t aml_pci_get_params(aml_opregion_t* opregion, pci_segment_group_t
     {
         DEREF_DEFER(bbnObject);
 
-        uint64_t bbnValue = 0;
+        aml_integer_t bbnValue = 0;
         if (aml_method_evaluate_integer(bbnObject, &bbnValue) == ERR)
         {
             LOG_ERR("failed to evaluate _BBN for opregion '%s'\n", AML_OBJECT_GET_NAME(location));
@@ -220,7 +220,7 @@ static uint64_t aml_pci_get_params(aml_opregion_t* opregion, pci_segment_group_t
     {
         DEREF_DEFER(segObject);
 
-        uint64_t segValue = 0;
+        aml_integer_t segValue = 0;
         if (aml_method_evaluate_integer(segObject, &segValue) == ERR)
         {
             LOG_ERR("failed to evaluate _SEG for opregion '%s'\n", AML_OBJECT_GET_NAME(location));
@@ -234,7 +234,7 @@ static uint64_t aml_pci_get_params(aml_opregion_t* opregion, pci_segment_group_t
     return 0;
 }
 
-static uint64_t aml_pci_config_read(aml_opregion_t* opregion, uint64_t address, aml_bit_size_t accessSize,
+static uint64_t aml_pci_config_read(aml_opregion_obj_t* opregion, uint64_t address, aml_bit_size_t accessSize,
     uint64_t* out)
 {
     pci_segment_group_t segmentGroup;
@@ -265,7 +265,7 @@ static uint64_t aml_pci_config_read(aml_opregion_t* opregion, uint64_t address, 
     return 0;
 }
 
-static uint64_t aml_pci_config_write(aml_opregion_t* opregion, uint64_t address, aml_bit_size_t accessSize,
+static uint64_t aml_pci_config_write(aml_opregion_obj_t* opregion, uint64_t address, aml_bit_size_t accessSize,
     uint64_t value)
 {
     pci_segment_group_t segmentGroup;
@@ -304,7 +304,7 @@ static aml_region_handler_t regionHandlers[] = {
 
 #define AML_REGION_MAX (sizeof(regionHandlers) / sizeof(regionHandlers[0]))
 
-static inline uint64_t aml_opregion_read(aml_opregion_t* opregion, uint64_t address, aml_bit_size_t accessSize,
+static inline uint64_t aml_opregion_read(aml_opregion_obj_t* opregion, uint64_t address, aml_bit_size_t accessSize,
     uint64_t* out)
 {
     if (out == NULL)
@@ -322,7 +322,7 @@ static inline uint64_t aml_opregion_read(aml_opregion_t* opregion, uint64_t addr
     return regionHandlers[opregion->space].read(opregion, address, accessSize, out);
 }
 
-static inline uint64_t aml_opregion_write(aml_opregion_t* opregion, uint64_t address, aml_bit_size_t accessSize,
+static inline uint64_t aml_opregion_write(aml_opregion_obj_t* opregion, uint64_t address, aml_bit_size_t accessSize,
     uint64_t value)
 {
     if (opregion->space >= AML_REGION_MAX || regionHandlers[opregion->space].write == NULL)
@@ -346,7 +346,7 @@ typedef enum aml_access_direction
     AML_ACCESS_WRITE
 } aml_access_direction_t;
 
-static uint64_t aml_generic_field_read_at(aml_field_unit_t* fieldUnit, aml_bit_size_t accessSize, uint64_t byteOffset,
+static uint64_t aml_generic_field_read_at(aml_field_unit_obj_t* fieldUnit, aml_bit_size_t accessSize, uint64_t byteOffset,
     uint64_t* out)
 {
     switch (fieldUnit->fieldType)
@@ -354,7 +354,7 @@ static uint64_t aml_generic_field_read_at(aml_field_unit_t* fieldUnit, aml_bit_s
     case AML_FIELD_UNIT_FIELD:
     case AML_FIELD_UNIT_BANK_FIELD:
     {
-        aml_opregion_t* opregion = fieldUnit->opregion;
+        aml_opregion_obj_t* opregion = fieldUnit->opregion;
         uintptr_t address = opregion->offset + byteOffset;
         return aml_opregion_read(opregion, address, accessSize, out);
     }
@@ -367,7 +367,7 @@ static uint64_t aml_generic_field_read_at(aml_field_unit_t* fieldUnit, aml_bit_s
         }
         DEREF_DEFER(temp);
 
-        if (aml_integer_init(temp, byteOffset) == ERR)
+        if (aml_integer_set(temp, byteOffset) == ERR)
         {
             return ERR;
         }
@@ -377,7 +377,7 @@ static uint64_t aml_generic_field_read_at(aml_field_unit_t* fieldUnit, aml_bit_s
             return ERR;
         }
 
-        aml_object_deinit(temp);
+        aml_object_clear(temp);
 
         if (aml_field_unit_load(fieldUnit->data, temp) == ERR)
         {
@@ -396,7 +396,7 @@ static uint64_t aml_generic_field_read_at(aml_field_unit_t* fieldUnit, aml_bit_s
     }
 }
 
-static uint64_t aml_generic_field_write_at(aml_field_unit_t* fieldUnit, aml_bit_size_t accessSize, uint64_t byteOffset,
+static uint64_t aml_generic_field_write_at(aml_field_unit_obj_t* fieldUnit, aml_bit_size_t accessSize, uint64_t byteOffset,
     uint64_t value)
 {
     switch (fieldUnit->fieldType)
@@ -404,7 +404,7 @@ static uint64_t aml_generic_field_write_at(aml_field_unit_t* fieldUnit, aml_bit_
     case AML_FIELD_UNIT_FIELD:
     case AML_FIELD_UNIT_BANK_FIELD:
     {
-        aml_opregion_t* opregion = fieldUnit->opregion;
+        aml_opregion_obj_t* opregion = fieldUnit->opregion;
         uintptr_t address = opregion->offset + byteOffset;
         return aml_opregion_write(opregion, address, accessSize, value);
     }
@@ -417,7 +417,7 @@ static uint64_t aml_generic_field_write_at(aml_field_unit_t* fieldUnit, aml_bit_
         }
         DEREF_DEFER(temp);
 
-        if (aml_integer_init(temp, byteOffset) == ERR)
+        if (aml_integer_set(temp, byteOffset) == ERR)
         {
             return ERR;
         }
@@ -427,9 +427,9 @@ static uint64_t aml_generic_field_write_at(aml_field_unit_t* fieldUnit, aml_bit_
             return ERR;
         }
 
-        aml_object_deinit(temp);
+        aml_object_clear(temp);
 
-        if (aml_integer_init(temp, value) == ERR)
+        if (aml_integer_set(temp, value) == ERR)
         {
             return ERR;
         }
@@ -447,10 +447,13 @@ static uint64_t aml_generic_field_write_at(aml_field_unit_t* fieldUnit, aml_bit_
     }
 }
 
-static uint64_t aml_field_unit_access(aml_field_unit_t* fieldUnit, aml_object_t* data, aml_access_direction_t direction)
+static uint64_t aml_field_unit_access(aml_field_unit_obj_t* fieldUnit, aml_object_t* data, aml_access_direction_t direction)
 {
+    // The integer revision handling is enterily done by the aml_get_access_size function, so we dont need to
+    // do anything special here.
+
     uint64_t result = 0;
-    aml_mutex_t* globalMutex = NULL;
+    aml_mutex_obj_t* globalMutex = NULL;
     if (fieldUnit->fieldFlags.lockRule == AML_LOCK_RULE_LOCK)
     {
         globalMutex = aml_gl_get();
@@ -584,7 +587,7 @@ cleanup:
     return result;
 }
 
-uint64_t aml_field_unit_load(aml_field_unit_t* fieldUnit, aml_object_t* out)
+uint64_t aml_field_unit_load(aml_field_unit_obj_t* fieldUnit, aml_object_t* out)
 {
     if (fieldUnit == NULL || out == NULL)
     {
@@ -593,16 +596,16 @@ uint64_t aml_field_unit_load(aml_field_unit_t* fieldUnit, aml_object_t* out)
     }
 
     uint64_t byteSize = (fieldUnit->bitSize + 7) / 8;
-    if (byteSize > sizeof(uint64_t))
+    if (byteSize > aml_integer_byte_size())
     {
-        if (aml_buffer_init_empty(out, byteSize) == ERR)
+        if (aml_buffer_set_empty(out, byteSize) == ERR)
         {
             return ERR;
         }
     }
     else
     {
-        if (aml_integer_init(out, 0) == ERR)
+        if (aml_integer_set(out, 0) == ERR)
         {
             return ERR;
         }
@@ -611,7 +614,7 @@ uint64_t aml_field_unit_load(aml_field_unit_t* fieldUnit, aml_object_t* out)
     return aml_field_unit_access(fieldUnit, out, AML_ACCESS_READ);
 }
 
-uint64_t aml_field_unit_store(aml_field_unit_t* fieldUnit, aml_object_t* in)
+uint64_t aml_field_unit_store(aml_field_unit_obj_t* fieldUnit, aml_object_t* in)
 {
     if (fieldUnit == NULL || in == NULL)
     {

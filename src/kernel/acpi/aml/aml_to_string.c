@@ -169,6 +169,12 @@ const char* aml_object_to_string(aml_object_t* object)
         snprintf(buffer, sizeof(buffer), "BufferField(BitOffset=%llu, BitSize=%llu)", object->bufferField.bitOffset,
             object->bufferField.bitSize);
         return buffer;
+    case AML_DEBUG_OBJECT:
+        snprintf(buffer, sizeof(buffer), "DebugObject");
+        return buffer;
+    case AML_EVENT:
+        snprintf(buffer, sizeof(buffer), "Event");
+        return buffer;
     case AML_DEVICE:
         snprintf(buffer, sizeof(buffer), "Device");
         return buffer;
@@ -177,10 +183,10 @@ const char* aml_object_to_string(aml_object_t* object)
             object->fieldUnit.bitOffset, object->fieldUnit.bitSize);
         return buffer;
     case AML_INTEGER:
-        snprintf(buffer, sizeof(buffer), "Integer(0x%x)", object->integer.value);
+        snprintf(buffer, sizeof(buffer), "Integer(0x%llx)", object->integer.value);
         return buffer;
     case AML_INTEGER_CONSTANT:
-        snprintf(buffer, sizeof(buffer), "IntegerConstant(0x%x)", object->integerConstant.value);
+        snprintf(buffer, sizeof(buffer), "IntegerConstant(0x%llx)", object->integerConstant.value);
         return buffer;
     case AML_METHOD:
         snprintf(buffer, sizeof(buffer), "Method(ArgCount=0x%x, Start=0x%llx, End=0x%llx)",
@@ -207,6 +213,14 @@ const char* aml_object_to_string(aml_object_t* object)
     case AML_PACKAGE:
         snprintf(buffer, sizeof(buffer), "Package(Length=%llu)", object->package.length);
         return buffer;
+    case AML_POWER_RESOURCE:
+        snprintf(buffer, sizeof(buffer), "PowerResource(SystemLevel=%d, ResourceOrder=%d)",
+            object->powerResource.systemLevel, object->powerResource.resourceOrder);
+        return buffer;
+    case AML_PROCESSOR:
+        snprintf(buffer, sizeof(buffer), "Processor(ProcID=%d, PblkAddr=0x%llx, PblkLen=%d)", object->processor.procId,
+            object->processor.pblkAddr, object->processor.pblkLen);
+        return buffer;
     case AML_STRING:
     {
         uint64_t len = strlen(object->string.content);
@@ -220,6 +234,18 @@ const char* aml_object_to_string(aml_object_t* object)
         }
         return buffer;
     }
+    case AML_THERMAL_ZONE:
+        snprintf(buffer, sizeof(buffer), "ThermalZone");
+        return buffer;
+    case AML_ALIAS:
+        snprintf(buffer, sizeof(buffer), "Alias");
+        return buffer;
+    case AML_UNRESOLVED:
+        snprintf(buffer, sizeof(buffer), "Unresolved");
+        return buffer;
+    case AML_PREDEFINED_SCOPE:
+        snprintf(buffer, sizeof(buffer), "PredefinedScope");
+        return buffer;
     default:
         snprintf(buffer, sizeof(buffer), "Unknown(Type=%d)", object->type);
         return buffer;

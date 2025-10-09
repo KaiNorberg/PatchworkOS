@@ -1,6 +1,6 @@
 #include "compare.h"
 
-static inline bool aml_compare_integers(uint64_t a, uint64_t b, aml_compare_operation_t operation)
+static inline bool aml_compare_integers(aml_integer_t a, aml_integer_t b, aml_compare_operation_t operation)
 {
     switch (operation)
     {

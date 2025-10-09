@@ -131,7 +131,7 @@ static void aml_object_free(aml_object_t* object)
         sysfs_dir_deinit(&object->name.dir);
     }
 
-    aml_object_deinit(object);
+    aml_object_clear(object);
 
     heap_free(object);
     totalObjects--;
@@ -164,7 +164,7 @@ aml_object_t* aml_object_new(aml_state_t* state, aml_object_flags_t flags)
     return object;
 }
 
-void aml_object_deinit(aml_object_t* object)
+void aml_object_clear(aml_object_t* object)
 {
     if (object == NULL)
     {
@@ -606,7 +606,7 @@ aml_object_t* aml_object_find_child(aml_object_t* parent, const char* name)
         {
             if (child->type == AML_ALIAS)
             {
-                aml_alias_t* alias = &child->alias;
+                aml_alias_obj_t* alias = &child->alias;
                 if (alias->target == NULL)
                 {
                     LOG_ERR("Alias object '%s' has no target\n", AML_OBJECT_GET_NAME(child));
@@ -614,7 +614,7 @@ aml_object_t* aml_object_find_child(aml_object_t* parent, const char* name)
                     return NULL;
                 }
 
-                aml_object_t* target = aml_alias_traverse(alias);
+                aml_object_t* target = aml_alias_obj_traverse(alias);
                 if (target == NULL)
                 {
                     LOG_ERR("Failed to traverse alias object '%s'\n", AML_OBJECT_GET_NAME(child));
@@ -742,7 +742,7 @@ aml_object_t* aml_object_find(aml_object_t* start, const char* path)
 
 uint64_t aml_object_put_bits_at(aml_object_t* object, uint64_t value, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
 {
-    if (object == NULL || bitSize == 0 || bitSize > AML_INTEGER_BIT_WIDTH)
+    if (object == NULL || bitSize == 0 || bitSize > aml_integer_bit_size())
     {
         errno = EINVAL;
         return ERR;
@@ -752,7 +752,7 @@ uint64_t aml_object_put_bits_at(aml_object_t* object, uint64_t value, aml_bit_si
     {
     case AML_INTEGER:
     {
-        if (bitOffset + bitSize > AML_INTEGER_BIT_WIDTH)
+        if (bitOffset + bitSize > aml_integer_bit_size())
         {
             errno = EINVAL;
             return ERR;
@@ -817,7 +817,7 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
     {
     case AML_INTEGER:
     {
-        if (bitOffset + bitSize > AML_INTEGER_BIT_WIDTH)
+        if (bitOffset + bitSize > 64)
         {
             *out = 0;
             return 0;
@@ -838,7 +838,7 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
     break;
     case AML_INTEGER_CONSTANT:
     {
-        if (bitOffset + bitSize > AML_INTEGER_BIT_WIDTH)
+        if (bitOffset + bitSize > 64)
         {
             *out = 0;
             return 0;
@@ -897,13 +897,13 @@ static inline uint64_t aml_object_check_deinit(aml_object_t* object)
 
     if (object->type != AML_UNINITIALIZED)
     {
-        aml_object_deinit(object);
+        aml_object_clear(object);
     }
 
     return 0;
 }
 
-uint64_t aml_buffer_init_empty(aml_object_t* object, uint64_t length)
+uint64_t aml_buffer_set_empty(aml_object_t* object, uint64_t length)
 {
     if (object == NULL || length == 0)
     {
@@ -927,7 +927,7 @@ uint64_t aml_buffer_init_empty(aml_object_t* object, uint64_t length)
     return 0;
 }
 
-uint64_t aml_buffer_init(aml_object_t* object, const uint8_t* buffer, uint64_t bytesToCopy, uint64_t length)
+uint64_t aml_buffer_set(aml_object_t* object, const uint8_t* buffer, uint64_t bytesToCopy, uint64_t length)
 {
     if (object == NULL || buffer == NULL || length == 0 || bytesToCopy > length)
     {
@@ -935,7 +935,7 @@ uint64_t aml_buffer_init(aml_object_t* object, const uint8_t* buffer, uint64_t b
         return ERR;
     }
 
-    if (aml_buffer_init_empty(object, length) == ERR)
+    if (aml_buffer_set_empty(object, length) == ERR)
     {
         return ERR;
     }
@@ -944,7 +944,7 @@ uint64_t aml_buffer_init(aml_object_t* object, const uint8_t* buffer, uint64_t b
     return 0;
 }
 
-uint64_t aml_buffer_field_init_buffer(aml_object_t* object, aml_buffer_t* buffer, aml_bit_size_t bitOffset,
+uint64_t aml_buffer_field_set_buffer(aml_object_t* object, aml_buffer_obj_t* buffer, aml_bit_size_t bitOffset,
     aml_bit_size_t bitSize)
 {
     if (object == NULL || buffer == NULL || bitSize == 0)
@@ -967,7 +967,7 @@ uint64_t aml_buffer_field_init_buffer(aml_object_t* object, aml_buffer_t* buffer
     return 0;
 }
 
-uint64_t aml_buffer_field_init_string(aml_object_t* object, aml_string_t* string, aml_bit_size_t bitOffset,
+uint64_t aml_buffer_field_set_string(aml_object_t* object, aml_string_obj_t* string, aml_bit_size_t bitOffset,
     aml_bit_size_t bitSize)
 {
     if (object == NULL || string == NULL || bitSize == 0)
@@ -990,7 +990,7 @@ uint64_t aml_buffer_field_init_string(aml_object_t* object, aml_string_t* string
     return 0;
 }
 
-uint64_t aml_debug_object_init(aml_object_t* object)
+uint64_t aml_debug_object_set(aml_object_t* object)
 {
     if (object == NULL)
     {
@@ -1007,7 +1007,7 @@ uint64_t aml_debug_object_init(aml_object_t* object)
     return 0;
 }
 
-uint64_t aml_device_init(aml_object_t* object)
+uint64_t aml_device_set(aml_object_t* object)
 {
     if (object == NULL)
     {
@@ -1025,7 +1025,7 @@ uint64_t aml_device_init(aml_object_t* object)
     return 0;
 }
 
-uint64_t aml_event_init(aml_object_t* object)
+uint64_t aml_event_set(aml_object_t* object)
 {
     if (object == NULL)
     {
@@ -1042,7 +1042,7 @@ uint64_t aml_event_init(aml_object_t* object)
     return 0;
 }
 
-uint64_t aml_field_unit_field_init(aml_object_t* object, aml_opregion_t* opregion, aml_field_flags_t flags,
+uint64_t aml_field_unit_field_set(aml_object_t* object, aml_opregion_obj_t* opregion, aml_field_flags_t flags,
     aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
 {
     if (object == NULL || opregion == NULL || bitSize == 0)
@@ -1069,7 +1069,7 @@ uint64_t aml_field_unit_field_init(aml_object_t* object, aml_opregion_t* opregio
     return 0;
 }
 
-uint64_t aml_field_unit_index_field_init(aml_object_t* object, aml_field_unit_t* index, aml_field_unit_t* data,
+uint64_t aml_field_unit_index_field_set(aml_object_t* object, aml_field_unit_obj_t* index, aml_field_unit_obj_t* data,
     aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
 {
     if (object == NULL || index == NULL || data == NULL || bitSize == 0)
@@ -1096,7 +1096,7 @@ uint64_t aml_field_unit_index_field_init(aml_object_t* object, aml_field_unit_t*
     return 0;
 }
 
-uint64_t aml_field_unit_bank_field_init(aml_object_t* object, aml_opregion_t* opregion, aml_field_unit_t* bank,
+uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_obj_t* opregion, aml_field_unit_obj_t* bank,
     uint64_t bankValue, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
 {
     if (object == NULL || opregion == NULL || bank == NULL || bitSize == 0)
@@ -1119,7 +1119,7 @@ uint64_t aml_field_unit_bank_field_init(aml_object_t* object, aml_opregion_t* op
     {
         return ERR;
     }
-    if (aml_integer_init(bankValueObj, bankValue) == ERR)
+    if (aml_integer_set(bankValueObj, bankValue) == ERR)
     {
         DEREF(bankValueObj);
         return ERR;
@@ -1135,7 +1135,7 @@ uint64_t aml_field_unit_bank_field_init(aml_object_t* object, aml_opregion_t* op
     return 0;
 }
 
-uint64_t aml_integer_init(aml_object_t* object, uint64_t value)
+uint64_t aml_integer_set(aml_object_t* object, aml_integer_t value)
 {
     if (object == NULL)
     {
@@ -1143,17 +1143,23 @@ uint64_t aml_integer_init(aml_object_t* object, uint64_t value)
         return ERR;
     }
 
+    if (object->type == AML_INTEGER)
+    {
+        object->integer.value = value & aml_integer_ones();
+        return 0;
+    }
+
     if (aml_object_check_deinit(object) == ERR)
     {
         return ERR;
     }
 
-    object->integer.value = value;
+    object->integer.value = value & aml_integer_ones();
     object->type = AML_INTEGER;
     return 0;
 }
 
-uint64_t aml_integer_constant_init(aml_object_t* object, uint64_t value)
+uint64_t aml_integer_constant_set(aml_object_t* object, aml_integer_t value)
 {
     if (object == NULL)
     {
@@ -1166,12 +1172,12 @@ uint64_t aml_integer_constant_init(aml_object_t* object, uint64_t value)
         return ERR;
     }
 
-    object->integerConstant.value = value;
+    object->integerConstant.value = value & aml_integer_ones();
     object->type = AML_INTEGER_CONSTANT;
     return 0;
 }
 
-uint64_t aml_method_init(aml_object_t* object, aml_method_flags_t flags, const uint8_t* start, const uint8_t* end,
+uint64_t aml_method_set(aml_object_t* object, aml_method_flags_t flags, const uint8_t* start, const uint8_t* end,
     aml_method_implementation_t implementation)
 {
     if (object == NULL || ((start == 0 || end == 0 || start > end) && implementation == NULL))
@@ -1195,7 +1201,7 @@ uint64_t aml_method_init(aml_object_t* object, aml_method_flags_t flags, const u
     return 0;
 }
 
-uint64_t aml_mutex_init(aml_object_t* object, aml_sync_level_t syncLevel)
+uint64_t aml_mutex_set(aml_object_t* object, aml_sync_level_t syncLevel)
 {
     if (object == NULL || syncLevel > 15)
     {
@@ -1214,7 +1220,7 @@ uint64_t aml_mutex_init(aml_object_t* object, aml_sync_level_t syncLevel)
     return 0;
 }
 
-uint64_t aml_object_reference_init(aml_object_t* object, aml_object_t* target)
+uint64_t aml_object_reference_set(aml_object_t* object, aml_object_t* target)
 {
     if (object == NULL || target == NULL)
     {
@@ -1232,7 +1238,7 @@ uint64_t aml_object_reference_init(aml_object_t* object, aml_object_t* target)
     return 0;
 }
 
-uint64_t aml_operation_region_init(aml_object_t* object, aml_region_space_t space, uint64_t offset, uint32_t length)
+uint64_t aml_operation_region_set(aml_object_t* object, aml_region_space_t space, uintptr_t offset, uint32_t length)
 {
     if (object == NULL || length == 0)
     {
@@ -1252,7 +1258,7 @@ uint64_t aml_operation_region_init(aml_object_t* object, aml_region_space_t spac
     return 0;
 }
 
-uint64_t aml_package_init(aml_object_t* object, uint64_t length)
+uint64_t aml_package_set(aml_object_t* object, uint64_t length)
 {
     if (object == NULL)
     {
@@ -1297,7 +1303,7 @@ uint64_t aml_package_init(aml_object_t* object, uint64_t length)
     return 0;
 }
 
-uint64_t aml_power_resource_init(aml_object_t* object, aml_system_level_t systemLevel,
+uint64_t aml_power_resource_set(aml_object_t* object, aml_system_level_t systemLevel,
     aml_resource_order_t resourceOrder)
 {
     if (object == NULL)
@@ -1318,7 +1324,7 @@ uint64_t aml_power_resource_init(aml_object_t* object, aml_system_level_t system
     return 0;
 }
 
-uint64_t aml_processor_init(aml_object_t* object, aml_proc_id_t procId, aml_pblk_addr_t pblkAddr,
+uint64_t aml_processor_set(aml_object_t* object, aml_proc_id_t procId, aml_pblk_addr_t pblkAddr,
     aml_pblk_len_t pblkLen)
 {
     if (object == NULL)
@@ -1340,7 +1346,7 @@ uint64_t aml_processor_init(aml_object_t* object, aml_proc_id_t procId, aml_pblk
     return 0;
 }
 
-uint64_t aml_string_init_empty(aml_object_t* object, uint64_t length)
+uint64_t aml_string_set_empty(aml_object_t* object, uint64_t length)
 {
     if (object == NULL)
     {
@@ -1364,7 +1370,7 @@ uint64_t aml_string_init_empty(aml_object_t* object, uint64_t length)
     return 0;
 }
 
-uint64_t aml_string_init(aml_object_t* object, const char* str)
+uint64_t aml_string_set(aml_object_t* object, const char* str)
 {
     if (object == NULL || str == NULL)
     {
@@ -1373,7 +1379,7 @@ uint64_t aml_string_init(aml_object_t* object, const char* str)
     }
 
     size_t length = strlen(str);
-    if (aml_string_init_empty(object, length) == ERR)
+    if (aml_string_set_empty(object, length) == ERR)
     {
         return ERR;
     }
@@ -1381,7 +1387,7 @@ uint64_t aml_string_init(aml_object_t* object, const char* str)
     return 0;
 }
 
-uint64_t aml_thermal_zone_init(aml_object_t* object)
+uint64_t aml_thermal_zone_set(aml_object_t* object)
 {
     if (object == NULL)
     {
@@ -1399,7 +1405,7 @@ uint64_t aml_thermal_zone_init(aml_object_t* object)
     return 0;
 }
 
-uint64_t aml_alias_init(aml_object_t* object, aml_object_t* target)
+uint64_t aml_alias_set(aml_object_t* object, aml_object_t* target)
 {
     if (object == NULL || target == NULL)
     {
@@ -1417,7 +1423,7 @@ uint64_t aml_alias_init(aml_object_t* object, aml_object_t* target)
     return 0;
 }
 
-aml_object_t* aml_alias_traverse(aml_alias_t* alias)
+aml_object_t* aml_alias_obj_traverse(aml_alias_obj_t* alias)
 {
     if (alias == NULL)
     {
@@ -1438,7 +1444,7 @@ aml_object_t* aml_alias_traverse(aml_alias_t* alias)
     return current;
 }
 
-uint64_t aml_unresolved_init(aml_object_t* object, const aml_name_string_t* nameString, aml_object_t* from,
+uint64_t aml_unresolved_set(aml_object_t* object, const aml_name_string_t* nameString, aml_object_t* from,
     aml_patch_up_resolve_callback_t callback)
 {
     if (object == NULL || nameString == NULL || callback == NULL)
@@ -1465,7 +1471,7 @@ uint64_t aml_unresolved_init(aml_object_t* object, const aml_name_string_t* name
     return 0;
 }
 
-uint64_t aml_predefined_scope_init(aml_object_t* object)
+uint64_t aml_predefined_scope_set(aml_object_t* object)
 {
     if (object == NULL)
     {

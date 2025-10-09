@@ -3,6 +3,7 @@
 #include "aml_object.h"
 #include "log/log.h"
 #include "log/panic.h"
+#include "aml_to_string.h"
 
 uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t* end, uint64_t argCount,
     aml_object_t** args, aml_object_t* returnValue)
@@ -47,7 +48,7 @@ uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t*
     {
         // Im honestly not sure how arguments are supposed to be passed. The spec seems a bit vague or ive missed
         // something. But my interpretation is that arguments should always be ObjectReferences.
-        if (aml_object_reference_init(state->args[i], args[i]) == ERR)
+        if (aml_object_reference_set(state->args[i], args[i]) == ERR)
         {
             aml_state_deinit(state);
             return ERR;

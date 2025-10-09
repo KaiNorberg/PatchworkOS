@@ -26,25 +26,25 @@ uint64_t aml_copy_data_and_type(aml_object_t* src, aml_object_t* dest)
     switch (src->type)
     {
     case AML_INTEGER:
-        if (aml_integer_init(dest, src->integer.value) == ERR)
+        if (aml_integer_set(dest, src->integer.value) == ERR)
         {
             return ERR;
         }
         break;
     case AML_STRING:
-        if (aml_string_init(dest, src->string.content) == ERR)
+        if (aml_string_set(dest, src->string.content) == ERR)
         {
             return ERR;
         }
         break;
     case AML_BUFFER:
-        if (aml_buffer_init(dest, src->buffer.content, src->buffer.length, src->buffer.length) == ERR)
+        if (aml_buffer_set(dest, src->buffer.content, src->buffer.length, src->buffer.length) == ERR)
         {
             return ERR;
         }
         break;
     case AML_PACKAGE:
-        if (aml_package_init(dest, src->package.length) == ERR)
+        if (aml_package_set(dest, src->package.length) == ERR)
         {
             return ERR;
         }
@@ -53,13 +53,13 @@ uint64_t aml_copy_data_and_type(aml_object_t* src, aml_object_t* dest)
         {
             if (aml_copy_data_and_type(src->package.elements[i], dest->package.elements[i]) == ERR)
             {
-                aml_object_deinit(dest);
+                aml_object_clear(dest);
                 return ERR;
             }
         }
         break;
     case AML_OBJECT_REFERENCE:
-        if (aml_object_reference_init(dest, src->objectReference.target) == ERR)
+        if (aml_object_reference_set(dest, src->objectReference.target) == ERR)
         {
             return ERR;
         }

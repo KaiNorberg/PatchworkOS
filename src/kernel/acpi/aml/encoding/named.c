@@ -12,7 +12,7 @@
 #include "package_length.h"
 #include "term.h"
 
-uint64_t aml_bank_value_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
+uint64_t aml_bank_value_read(aml_state_t* state, aml_scope_t* scope, aml_integer_t* out)
 {
     if (aml_term_arg_read_integer(state, scope, out) == ERR)
     {
@@ -43,7 +43,7 @@ uint64_t aml_region_space_read(aml_state_t* state, aml_region_space_t* out)
     return 0;
 }
 
-uint64_t aml_region_offset_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
+uint64_t aml_region_offset_read(aml_state_t* state, aml_scope_t* scope, aml_integer_t* out)
 {
     if (aml_term_arg_read_integer(state, scope, out) == ERR)
     {
@@ -54,7 +54,7 @@ uint64_t aml_region_offset_read(aml_state_t* state, aml_scope_t* scope, uint64_t
     return 0;
 }
 
-uint64_t aml_region_len_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
+uint64_t aml_region_len_read(aml_state_t* state, aml_scope_t* scope, aml_integer_t* out)
 {
     if (aml_term_arg_read_integer(state, scope, out) == ERR)
     {
@@ -109,7 +109,7 @@ uint64_t aml_def_opregion_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_operation_region_init(newObject, regionSpace, regionOffset, regionLen) == ERR ||
+    if (aml_operation_region_set(newObject, regionSpace, regionOffset, regionLen) == ERR ||
         aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
@@ -186,7 +186,7 @@ uint64_t aml_name_field_read(aml_state_t* state, aml_scope_t* scope, aml_field_l
             return ERR;
         }
 
-        if (aml_field_unit_field_init(newObject, ctx->field.opregion, ctx->flags, ctx->currentOffset, pkgLength) == ERR)
+        if (aml_field_unit_field_set(newObject, ctx->field.opregion, ctx->flags, ctx->currentOffset, pkgLength) == ERR)
         {
             return ERR;
         }
@@ -208,7 +208,7 @@ uint64_t aml_name_field_read(aml_state_t* state, aml_scope_t* scope, aml_field_l
             return ERR;
         }
 
-        if (aml_field_unit_index_field_init(newObject, ctx->index.index, ctx->index.data, ctx->flags,
+        if (aml_field_unit_index_field_set(newObject, ctx->index.index, ctx->index.data, ctx->flags,
                 ctx->currentOffset, pkgLength) == ERR)
         {
             return ERR;
@@ -231,7 +231,7 @@ uint64_t aml_name_field_read(aml_state_t* state, aml_scope_t* scope, aml_field_l
             return ERR;
         }
 
-        if (aml_field_unit_bank_field_init(newObject, ctx->bank.opregion, ctx->bank.bank, ctx->bank.bankValue,
+        if (aml_field_unit_bank_field_set(newObject, ctx->bank.opregion, ctx->bank.bank, ctx->bank.bankValue,
                 ctx->flags, ctx->currentOffset, pkgLength) == ERR)
         {
             return ERR;
@@ -580,7 +580,7 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_method_init(newObject, methodFlags, state->current, end, NULL) == ERR ||
+    if (aml_method_set(newObject, methodFlags, state->current, end, NULL) == ERR ||
         aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
@@ -627,7 +627,7 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_device_init(newObject) == ERR || aml_object_add(newObject, scope->location, &nameString) == ERR)
+    if (aml_device_set(newObject) == ERR || aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -685,7 +685,7 @@ uint64_t aml_def_mutex_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_mutex_init(newObject, syncFlags) == ERR || aml_object_add(newObject, scope->location, &nameString) == ERR)
+    if (aml_mutex_set(newObject, syncFlags) == ERR || aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -778,7 +778,7 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_processor_init(newObject, procId, pblkAddr, pblkLen) == ERR ||
+    if (aml_processor_set(newObject, procId, pblkAddr, pblkLen) == ERR ||
         aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
@@ -800,7 +800,7 @@ aml_object_t* aml_source_buff_read(aml_state_t* state, aml_scope_t* scope)
     return sourceBuff; // Transfer ownership
 }
 
-uint64_t aml_bit_index_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
+uint64_t aml_bit_index_read(aml_state_t* state, aml_scope_t* scope, aml_integer_t* out)
 {
     if (aml_term_arg_read_integer(state, scope, out) == ERR)
     {
@@ -811,7 +811,7 @@ uint64_t aml_bit_index_read(aml_state_t* state, aml_scope_t* scope, uint64_t* ou
     return 0;
 }
 
-uint64_t aml_byte_index_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
+uint64_t aml_byte_index_read(aml_state_t* state, aml_scope_t* scope, aml_integer_t* out)
 {
     if (aml_term_arg_read_integer(state, scope, out) == ERR)
     {
@@ -861,7 +861,7 @@ uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_buffer_field_init_buffer(newObject, &sourceBuff->buffer, bitIndex, 1) == ERR ||
+    if (aml_buffer_field_set_buffer(newObject, &sourceBuff->buffer, bitIndex, 1) == ERR ||
         aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
@@ -910,7 +910,7 @@ static inline uint64_t aml_def_create_field_read_helper(aml_state_t* state, aml_
     }
     DEREF_DEFER(newObject);
 
-    if (aml_buffer_field_init_buffer(newObject, &sourceBuff->buffer, byteIndex * 8, fieldWidth) == ERR ||
+    if (aml_buffer_field_set_buffer(newObject, &sourceBuff->buffer, byteIndex * 8, fieldWidth) == ERR ||
         aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
@@ -962,7 +962,7 @@ uint64_t aml_def_event_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_event_init(newObject) == ERR || aml_object_add(newObject, scope->location, &nameString) == ERR)
+    if (aml_event_set(newObject) == ERR || aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -1004,7 +1004,7 @@ uint64_t aml_def_thermal_zone_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_thermal_zone_init(newObject) == ERR || aml_object_add(newObject, scope->location, &nameString) == ERR)
+    if (aml_thermal_zone_set(newObject) == ERR || aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -1080,7 +1080,7 @@ uint64_t aml_def_power_res_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_power_resource_init(newObject, systemLevel, resourceOrder) == ERR ||
+    if (aml_power_resource_set(newObject, systemLevel, resourceOrder) == ERR ||
         aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
@@ -1090,7 +1090,7 @@ uint64_t aml_def_power_res_read(aml_state_t* state, aml_scope_t* scope)
     return aml_term_list_read(state, newObject, end);
 }
 
-uint64_t aml_num_bits_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
+uint64_t aml_num_bits_read(aml_state_t* state, aml_scope_t* scope, aml_integer_t* out)
 {
     if (aml_term_arg_read_integer(state, scope, out) == ERR)
     {
@@ -1146,7 +1146,7 @@ uint64_t aml_def_create_field_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_buffer_field_init_buffer(newObject, &sourceBuff->buffer, bitIndex, numBits) == ERR ||
+    if (aml_buffer_field_set_buffer(newObject, &sourceBuff->buffer, bitIndex, numBits) == ERR ||
         aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
@@ -1171,7 +1171,7 @@ uint64_t aml_def_data_region_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_string_t* signature = aml_term_arg_read_string(state, scope);
+    aml_string_obj_t* signature = aml_term_arg_read_string(state, scope);
     if (signature == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read Signature");
@@ -1179,7 +1179,7 @@ uint64_t aml_def_data_region_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(signature);
 
-    aml_string_t* oemId = aml_term_arg_read_string(state, scope);
+    aml_string_obj_t* oemId = aml_term_arg_read_string(state, scope);
     if (oemId == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read OemId");
@@ -1187,7 +1187,7 @@ uint64_t aml_def_data_region_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(oemId);
 
-    aml_string_t* oemTableId = aml_term_arg_read_string(state, scope);
+    aml_string_obj_t* oemTableId = aml_term_arg_read_string(state, scope);
     if (oemTableId == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to read OemTableId");
@@ -1252,7 +1252,7 @@ uint64_t aml_def_data_region_read(aml_state_t* state, aml_scope_t* scope)
         }
         DEREF_DEFER(newObject);
 
-        if (aml_operation_region_init(newObject, AML_REGION_SYSTEM_MEMORY, (uint64_t)table, table->length) == ERR ||
+        if (aml_operation_region_set(newObject, AML_REGION_SYSTEM_MEMORY, (uint64_t)table, table->length) == ERR ||
             aml_object_add(newObject, scope->location, &regionName) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&regionName));

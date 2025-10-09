@@ -43,9 +43,10 @@ uint64_t aml_get_access_size(aml_bit_size_t bitSize, aml_access_type_t accessTyp
         //
         // Either way, its then reasonable to pick a power of two so we can access using bytes, words, dwords or qwords.
         // And to also limit the maximum access size to 32 bits generally (as ports can output a max of 32 bits) except
-        // for system memory opregions where 64 bit accesses are allowed (since the kernel is 64bit).
+        // for system memory opregions where 64 bit accesses are allowed (since the kernel is 64bit) but only if the
+        // acpi revision >= 2.
         //
-        // In short valid values are generally 8, 16 or 32 except for system memory where 64 is also valid. We then pick
+        // In short valid values are generally 8, 16 or 32 except for system memory where 64 is also valid (if acpi revision >= 2). We then pick
         // the smallest valid value that is >= the field size.
         //
         // Other implementations such as Lai seem to do the same.
@@ -55,7 +56,7 @@ uint64_t aml_get_access_size(aml_bit_size_t bitSize, aml_access_type_t accessTyp
         aml_bit_size_t maxAccessSize = 32;
         if (regionSpace == AML_REGION_SYSTEM_MEMORY)
         {
-            maxAccessSize = 64;
+            maxAccessSize = aml_integer_bit_size();
         }
 
         if (size > maxAccessSize)
