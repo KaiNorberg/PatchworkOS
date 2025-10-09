@@ -341,9 +341,7 @@ static inline uint64_t aml_package_element_handle_name(aml_object_t* in, aml_obj
         }
         return 0;
     }
-    else if (in->type &
-        (AML_DEVICE | AML_EVENT | AML_METHOD | AML_MUTEX | AML_OPERATION_REGION | AML_POWER_RESOURCE | AML_PROCESSOR |
-            AML_THERMAL_ZONE)) // "... returned in the package as references"
+    else // "... returned in the package as references"
     {
         if (aml_object_reference_init(out, in) == ERR)
         {
@@ -351,12 +349,6 @@ static inline uint64_t aml_package_element_handle_name(aml_object_t* in, aml_obj
             return ERR;
         }
         return 0;
-    }
-    else
-    {
-        LOG_ERR("invalid data type '%s' in aml_package_element_handle_name()\n", aml_type_to_string(in->type));
-        errno = EILSEQ;
-        return ERR;
     }
 }
 
