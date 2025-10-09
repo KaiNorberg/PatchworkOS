@@ -65,11 +65,15 @@ typedef enum
     AML_ALIAS = 1 << 18,      ///< Not in the spec, used internally to represent Aliases.
     AML_UNRESOLVED = 1 << 19, ///< Not in the spec, used internally to represent unresolved references.
     /**
+     * All data types that can be retrieved from a ComputationalData object (section 20.2.3).
+     */
+    AML_COMPUTATIONAL_DATA_OBJECTS = AML_INTEGER | AML_STRING | AML_BUFFER,
+    /**
      * All data types that can be retrieved from a DataObject (section 20.2.3).
      *
      * You could also define it as static data, as in not stored in some firmware register or similar.
      */
-    AML_DATA_OBJECTS = AML_INTEGER | AML_STRING | AML_BUFFER | AML_PACKAGE,
+    AML_DATA_OBJECTS = AML_COMPUTATIONAL_DATA_OBJECTS | AML_PACKAGE,
     /**
      * All data types that can be retrived from a DataRefObject (section 20.2.3).
      */

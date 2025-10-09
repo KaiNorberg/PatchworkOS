@@ -715,6 +715,30 @@ aml_object_t* aml_def_timer_read(aml_state_t* state);
 aml_object_t* aml_def_copy_object_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
+ * @brief Reads a Data structure from the AML byte stream.
+ *
+ * A Data structure is defined as `Data := TermArg => ComputationalData`.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ */
+aml_object_t* aml_data_read(aml_state_t* state, aml_scope_t* scope);
+
+/**
+ * @brief Reads a DefConcat structure from the AML byte stream.
+ *
+ * A DefConcat structure is defined as `DefConcat := ConcatOp Data Data Target`.
+ *
+ * @see Section 19.6.20 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ */
+aml_object_t* aml_def_concat_read(aml_state_t* state, aml_scope_t* scope);
+
+/**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.
  *
  * An ExpressionOpcode structure is defined as `ExpressionOpcode := DefAcquire | DefAdd | DefAnd | DefBuffer | DefConcat
@@ -726,9 +750,7 @@ aml_object_t* aml_def_copy_object_read(aml_state_t* state, aml_scope_t* scope);
  * DefToHexString | DefToInteger | DefToString | DefWait | DefXOr | MethodInvocation`.
  *
  * Currently unimplemented Opcodes are:
- * - `DefConcat`
  * - `DefConcatRes`
- * - `DefCopyObject`
  * - `DefFindSetLeftBit`
  * - `DefFindSetRightBit`
  * - `DefFromBCD`

@@ -7,12 +7,12 @@
 #include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_token.h"
 #include "acpi/aml/runtime/compare.h"
+#include "acpi/aml/runtime/concat.h"
 #include "acpi/aml/runtime/convert.h"
 #include "acpi/aml/runtime/copy.h"
 #include "acpi/aml/runtime/method.h"
 #include "acpi/aml/runtime/store.h"
 #include "arg.h"
-#include "mem/heap.h"
 #include "package_length.h"
 #include "term.h"
 
@@ -1650,6 +1650,74 @@ aml_object_t* aml_def_copy_object_read(aml_state_t* state, aml_scope_t* scope)
     return REF(source);
 }
 
+aml_object_t* aml_data_read(aml_state_t* state, aml_scope_t* scope)
+{
+    aml_object_t* result = aml_term_arg_read(state, scope, AML_COMPUTATIONAL_DATA_OBJECTS);
+    if (result == NULL)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read TermArg");
+        return NULL;
+    }
+
+    return result; // Transfer ownership
+}
+
+aml_object_t* aml_def_concat_read(aml_state_t* state, aml_scope_t* scope)
+{
+    if (aml_token_expect(state, AML_CONCAT_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read ConcatOp");
+        return NULL;
+    }
+
+    aml_object_t* source1 = aml_data_read(state, scope);
+    if (source1 == NULL)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read source1");
+        return NULL;
+    }
+    DEREF_DEFER(source1);
+
+    aml_object_t* source2 = aml_data_read(state, scope);
+    if (source2 == NULL)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read source2");
+        return NULL;
+    }
+    DEREF_DEFER(source2);
+
+    aml_object_t* target = NULL;
+    if (aml_target_read_and_resolve(state, scope, &target) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
+        return NULL;
+    }
+    DEREF_DEFER(target);
+
+    aml_object_t* result = aml_object_new(state, AML_OBJECT_NONE);
+    if (result == NULL)
+    {
+        return NULL;
+    }
+    DEREF_DEFER(result);
+
+    if (aml_concat(source1, source2, result) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to concatenate");
+        return NULL;
+    }
+
+    if (target != NULL)
+    {
+        if (aml_store(result, target) == ERR)
+        {
+            return NULL;
+        }
+    }
+
+    return REF(result);
+}
+
 aml_object_t* aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope)
 {
     aml_token_t op;
@@ -1825,6 +1893,9 @@ aml_object_t* aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope)
         break;
     case AML_COPY_OBJECT_OP:
         result = aml_def_copy_object_read(state, scope);
+        break;
+    case AML_CONCAT_OP:
+        result = aml_def_concat_read(state, scope);
         break;
     default:
         AML_DEBUG_ERROR(state, "Unknown ExpressionOpcode '%s' (0x%04x)", op.props->name, op.num);

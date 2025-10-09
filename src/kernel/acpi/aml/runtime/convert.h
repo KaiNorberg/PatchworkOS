@@ -25,7 +25,7 @@
  *
  * @param src Pointer to the source object to convert.
  * @param dest Pointer to the destination object where the converted value will be stored, can be of type
- * `AML_DEINITIALIZED`.
+ * `AML_UNINITIALIZED`.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_convert(aml_object_t* src, aml_object_t* dest, aml_type_t allowedTypes);
@@ -37,7 +37,7 @@ uint64_t aml_convert(aml_object_t* src, aml_object_t* dest, aml_type_t allowedTy
  * @see Section 19.3.5.4 of the ACPI specification for more details.
  *
  * @param src Pointer to the source object to convert.
- * @param dest Pointer to the object where the result will be stored, can be of type `AML_DEINITIALIZED`.
+ * @param dest Pointer to the object where the result will be stored, can be of type `AML_UNINITIALIZED`.
  * @param allowedTypes Bitmask of allowed destination types.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
@@ -84,7 +84,7 @@ uint64_t aml_convert_integer_to_bcd(uint64_t value, uint64_t* out);
  *
  * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
  * @param dest Pointer to the destination object where the converted Buffer will be stored, can be of type
- * `AML_DEINITIALIZED`.
+ * `AML_UNINITIALIZED`.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_convert_to_buffer(aml_object_t* src, aml_object_t* dest);
@@ -99,7 +99,7 @@ uint64_t aml_convert_to_buffer(aml_object_t* src, aml_object_t* dest);
  *
  * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
  * @param dest Pointer to the destination object where the converted Decimal String will be stored, can be of type
- * `AML_DEINITIALIZED`.
+ * `AML_UNINITIALIZED`.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t* dest);
@@ -114,7 +114,7 @@ uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t* dest);
  *
  * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
  * @param dest Pointer to the destination object where the converted Hex String will be stored, can be of type
- * `AML_DEINITIALIZED`.
+ * `AML_UNINITIALIZED`.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_convert_to_hex_string(aml_object_t* src, aml_object_t* dest);
@@ -129,7 +129,7 @@ uint64_t aml_convert_to_hex_string(aml_object_t* src, aml_object_t* dest);
  *
  * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
  * @param dest Pointer to the destination object where the converted Integer will be stored, can be of type
- * `AML_DEINITIALIZED`.
+ * `AML_UNINITIALIZED`.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_convert_to_integer(aml_object_t* src, aml_object_t* dest);
