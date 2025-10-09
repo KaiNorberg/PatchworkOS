@@ -793,6 +793,32 @@ aml_object_t* aml_def_object_type_read(aml_state_t* state, aml_scope_t* scope);
 aml_object_t* aml_reference_type_opcode_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
+ * @brief Reads a DefFindSetLeftBit structure from the AML byte stream.
+ *
+ * A DefFindSetLeftBit structure is defined as `DefFindSetLeftBit := FindSetLeftBitOp Operand Target`.
+ *
+ * @see Section 19.6.49 the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ */
+aml_object_t* aml_def_find_set_left_bit_read(aml_state_t* state, aml_scope_t* scope);
+
+/**
+ * @brief Reads a DefFindSetRightBit structure from the AML byte stream.
+ *
+ * A DefFindSetRightBit structure is defined as `DefFindSetRightBit := FindSetRightBitOp Operand Target`.
+ *
+ * @see Section 19.6.50 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ */
+aml_object_t* aml_def_find_set_right_bit_read(aml_state_t* state, aml_scope_t* scope);
+
+/**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.
  *
  * An ExpressionOpcode structure is defined as `ExpressionOpcode := DefAcquire | DefAdd | DefAnd | DefBuffer | DefConcat
@@ -805,8 +831,6 @@ aml_object_t* aml_reference_type_opcode_read(aml_state_t* state, aml_scope_t* sc
  *
  * Currently unimplemented Opcodes are:
  * - `DefConcatRes`
- * - `DefFindSetLeftBit`
- * - `DefFindSetRightBit`
  * - `DefFromBCD`
  * - `DefMid`
  * - `DefLoadTable`

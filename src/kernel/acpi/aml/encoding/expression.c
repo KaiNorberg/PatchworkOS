@@ -848,16 +848,12 @@ aml_object_t* aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope)
     return REF(result);
 }
 
-/**
- * Helper that reads a structure like `Op SuperName`.
- */
-static inline aml_object_t* aml_helper_op_supername_read(aml_state_t* state, aml_scope_t* scope,
-    aml_token_num_t expectedOp, aml_type_t allowedTypes,
-    uint64_t (*callback)(aml_state_t*, aml_scope_t*, aml_object_t*))
+
+aml_object_t* aml_def_increment_read(aml_state_t* state, aml_scope_t* scope)
 {
-    if (aml_token_expect(state, expectedOp) == ERR)
+    if (aml_token_expect(state, AML_INCREMENT_OP) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read %s", aml_token_lookup(expectedOp)->name);
+        AML_DEBUG_ERROR(state, "Failed to read IncrementOp");
         return NULL;
     }
 
@@ -876,15 +872,12 @@ static inline aml_object_t* aml_helper_op_supername_read(aml_state_t* state, aml
     }
     DEREF_DEFER(result);
 
-    if (aml_convert_source(superName, result, allowedTypes) == ERR)
+    if (aml_convert_source(superName, result, AML_INTEGER) == ERR)
     {
         return NULL;
     }
 
-    if (callback(state, scope, result) == ERR)
-    {
-        return NULL;
-    }
+    result->integer.value = (result->integer.value + 1) & aml_integer_ones();
 
     if (aml_convert_result(result, superName) == ERR)
     {
@@ -894,30 +887,42 @@ static inline aml_object_t* aml_helper_op_supername_read(aml_state_t* state, aml
     return REF(result);
 }
 
-static uint64_t aml_increment_callback(aml_state_t* state, aml_scope_t* scope, aml_object_t* out)
-{
-    (void)state;
-    (void)scope;
-    (out)->integer.value++;
-    return 0;
-}
-
-aml_object_t* aml_def_increment_read(aml_state_t* state, aml_scope_t* scope)
-{
-    return aml_helper_op_supername_read(state, scope, AML_INCREMENT_OP, AML_INTEGER, aml_increment_callback);
-}
-
-static uint64_t aml_decrement_callback(aml_state_t* state, aml_scope_t* scope, aml_object_t* out)
-{
-    (void)state;
-    (void)scope;
-    (out)->integer.value--;
-    return 0;
-}
-
 aml_object_t* aml_def_decrement_read(aml_state_t* state, aml_scope_t* scope)
 {
-    return aml_helper_op_supername_read(state, scope, AML_DECREMENT_OP, AML_INTEGER, aml_decrement_callback);
+    if (aml_token_expect(state, AML_DECREMENT_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read DecrementOp");
+        return NULL;
+    }
+
+    aml_object_t* superName = aml_super_name_read_and_resolve(state, scope);
+    if (superName == NULL)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read or resolve SuperName");
+        return NULL;
+    }
+    DEREF_DEFER(superName);
+
+    aml_object_t* result = aml_object_new(state, AML_OBJECT_NONE);
+    if (result == NULL)
+    {
+        return NULL;
+    }
+    DEREF_DEFER(result);
+
+    if (aml_convert_source(superName, result, AML_INTEGER) == ERR)
+    {
+        return NULL;
+    }
+
+    result->integer.value = (result->integer.value - 1) & aml_integer_ones();
+
+    if (aml_convert_result(result, superName) == ERR)
+    {
+        return NULL;
+    }
+
+    return REF(result);
 }
 
 aml_object_t* aml_obj_reference_read(aml_state_t* state, aml_scope_t* scope)
@@ -1961,6 +1966,135 @@ aml_object_t* aml_reference_type_opcode_read(aml_state_t* state, aml_scope_t* sc
     return REF(result);
 }
 
+aml_object_t* aml_def_find_set_left_bit_read(aml_state_t* state, aml_scope_t* scope)
+{
+    if (aml_token_expect(state, AML_FIND_SET_LEFT_BIT_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read FindSetLeftBitOp");
+        return NULL;
+    }
+
+    aml_object_t* operand = aml_operand_read(state, scope, AML_INTEGER);
+    if (operand == NULL)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read Operand");
+        return NULL;
+    }
+    DEREF_DEFER(operand);
+
+    aml_object_t* target = NULL;
+    if (aml_target_read_and_resolve(state, scope, &target) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
+        return NULL;
+    }
+    DEREF_DEFER(target);
+
+    aml_object_t* result = aml_object_new(state, AML_OBJECT_NONE);
+    if (result == NULL)
+    {
+        return NULL;
+    }
+    DEREF_DEFER(result);
+
+
+    if (operand->integer.value == 0)
+    {
+        if (aml_integer_set(result, 0) == ERR)
+        {
+            return NULL;
+        }
+    }
+    else
+    {
+        for (uint8_t i = 0; i < aml_integer_bit_size(); i++)
+        {
+            if (operand->integer.value & (1ULL << (aml_integer_bit_size() - 1 - i)))
+            {
+                if (aml_integer_set(result, aml_integer_bit_size() - i) == ERR)
+                {
+                    return NULL;
+                }
+                break;
+            }
+        }
+    }
+
+    if (target != NULL)
+    {
+        if (aml_store(result, target) == ERR)
+        {
+            return NULL;
+        }
+    }
+
+    return REF(result);
+}
+
+aml_object_t* aml_def_find_set_right_bit_read(aml_state_t* state, aml_scope_t* scope)
+{
+    if (aml_token_expect(state, AML_FIND_SET_RIGHT_BIT_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read FindSetRightBitOp");
+        return NULL;
+    }
+
+    aml_object_t* operand = aml_operand_read(state, scope, AML_INTEGER);
+    if (operand == NULL)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read Operand");
+        return NULL;
+    }
+    DEREF_DEFER(operand);
+
+    aml_object_t* target = NULL;
+    if (aml_target_read_and_resolve(state, scope, &target) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
+        return NULL;
+    }
+    DEREF_DEFER(target);
+
+    aml_object_t* result = aml_object_new(state, AML_OBJECT_NONE);
+    if (result == NULL)
+    {
+        return NULL;
+    }
+    DEREF_DEFER(result);
+
+    if (operand->integer.value == 0)
+    {
+        if (aml_integer_set(result, 0) == ERR)
+        {
+            return NULL;
+        }
+    }
+    else
+    {
+        for (uint8_t i = 0; i < aml_integer_bit_size(); i++)
+        {
+            if (operand->integer.value & (1ULL << i))
+            {
+                if (aml_integer_set(result, i + 1) == ERR)
+                {
+                    return NULL;
+                }
+                break;
+            }
+        }
+    }
+
+    if (target != NULL)
+    {
+        if (aml_store(result, target) == ERR)
+        {
+            return NULL;
+        }
+    }
+
+    return REF(result);
+}
+
 aml_object_t* aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope)
 {
     aml_token_t op;
@@ -2148,6 +2282,12 @@ aml_object_t* aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope)
         break;
     case AML_OBJECT_TYPE_OP:
         result = aml_def_object_type_read(state, scope);
+        break;
+    case AML_FIND_SET_LEFT_BIT_OP:
+        result = aml_def_find_set_left_bit_read(state, scope);
+        break;
+    case AML_FIND_SET_RIGHT_BIT_OP:
+        result = aml_def_find_set_right_bit_read(state, scope);
         break;
     default:
         AML_DEBUG_ERROR(state, "Unknown ExpressionOpcode '%s' (0x%04x)", op.props->name, op.num);

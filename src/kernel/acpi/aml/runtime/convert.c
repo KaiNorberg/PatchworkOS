@@ -156,11 +156,11 @@ static uint64_t aml_buffer_obj_to_debug_object(aml_object_t* buffer, aml_object_
 
     if (buffer->buffer.length == 0)
     {
-        LOG_INFO("%s = []\n", AML_OBJECT_GET_NAME(buffer));
+        LOG_INFO("[]\n");
         return 0;
     }
 
-    LOG_INFO("%s = [", AML_OBJECT_GET_NAME(buffer));
+    LOG_INFO("[");
     for (uint64_t i = 0; i < buffer->buffer.length; i++)
     {
         LOG_INFO("%02X", buffer->buffer.content[i]);
@@ -244,7 +244,7 @@ static uint64_t aml_integer_obj_to_string(aml_object_t* integer, aml_object_t* d
 static uint64_t aml_integer_obj_to_debug_object(aml_object_t* integer, aml_object_t* dest)
 {
     (void)dest;
-    LOG_INFO("%s = %llu\n", AML_OBJECT_GET_NAME(integer), integer->integer.value);
+    LOG_INFO("%llu\n", integer->integer.value);
     return 0;
 }
 
@@ -283,11 +283,16 @@ static aml_convert_entry_t integerConstantConverters[AML_TYPE_AMOUNT] = {
 static uint64_t aml_package_obj_to_debug_object(aml_object_t* package, aml_object_t* dest)
 {
     (void)dest;
+    LOG_INFO("[");
     for (uint64_t i = 0; i < package->package.length; i++)
     {
-        aml_object_t* elem = package->package.elements[i];
-        LOG_INFO("%s[%d] = (type: %s)\n", AML_OBJECT_GET_NAME(package), (int)i, aml_type_to_string(elem->type));
+        LOG_INFO("%s", aml_object_to_string(package->package.elements[i]));
+        if (i < package->package.length - 1)
+        {
+            LOG_INFO(", ");
+        }
     }
+    LOG_INFO("]\n");
     return 0;
 }
 
@@ -359,7 +364,7 @@ static uint64_t aml_string_obj_to_debug_object(aml_object_t* string, aml_object_
     (void)dest;
     if (string->string.length == 0)
     {
-        LOG_INFO("\n");
+        LOG_INFO("\"\"\n");
         return 0;
     }
 

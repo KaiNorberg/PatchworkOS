@@ -886,6 +886,7 @@ static inline uint64_t aml_def_create_field_read_helper(aml_state_t* state, aml_
         AML_DEBUG_ERROR(state, "Failed to read SourceBuff");
         return ERR;
     }
+    DEREF_DEFER(sourceBuff);
 
     assert(sourceBuff->type == AML_BUFFER);
 
