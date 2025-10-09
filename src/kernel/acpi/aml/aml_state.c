@@ -2,8 +2,7 @@
 
 #include "aml_object.h"
 #include "log/log.h"
-#include "log/panic.h"
-#include "aml_to_string.h"
+#include "runtime/copy.h"
 
 uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t* end, uint64_t argCount,
     aml_object_t** args, aml_object_t* returnValue)
@@ -28,11 +27,18 @@ uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t*
             return ERR;
         }
     }
-    for (uint8_t i = 0; i < AML_MAX_ARGS; i++)
+    for (uint8_t i = 0; i < argCount; i++)
     {
+        // Im honestly not sure how arguments are supposed to be passed. The spec seems a bit vague or ive missed
+        // something. But my interpretation is that arguments should be copies of the passed objects, so that if a method
+        // modifies an argument, it does not modify the caller's object.
         state->args[i] = aml_object_new(NULL, AML_OBJECT_ARG);
-        if (state->args[i] == NULL)
+        if (state->args[i] == NULL || aml_copy_data_and_type(args[i], state->args[i]) == ERR)
         {
+            if (state->args[i] != NULL)
+            {
+                DEREF(state->args[i]);
+            }
             for (uint8_t j = 0; j < AML_MAX_LOCALS; j++)
             {
                 DEREF(state->locals[j]);
@@ -44,15 +50,9 @@ uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t*
             return ERR;
         }
     }
-    for (uint8_t i = 0; i < argCount && i < AML_MAX_ARGS; i++)
+    for (uint8_t i = argCount; i < AML_MAX_ARGS; i++)
     {
-        // Im honestly not sure how arguments are supposed to be passed. The spec seems a bit vague or ive missed
-        // something. But my interpretation is that arguments should always be ObjectReferences.
-        if (aml_object_reference_set(state->args[i], args[i]) == ERR)
-        {
-            aml_state_deinit(state);
-            return ERR;
-        }
+        state->args[i] = NULL;
     }
     state->returnValue = returnValue;
     state->lastErrPos = NULL;

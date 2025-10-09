@@ -7,6 +7,7 @@
 #include "aml.h"
 #include "aml_object.h"
 #include "aml_state.h"
+#include "aml_to_string.h"
 #include "runtime/method.h"
 
 #include "acpi/tables.h"
@@ -48,13 +49,24 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
     }
     DEREF_DEFER(mainObj);
 
-    if (aml_method_evaluate(&mainObj->method, 0, NULL, NULL) == ERR)
+    aml_object_t* returnValue = aml_object_new(NULL, AML_OBJECT_NONE);
+    if (returnValue == NULL)
+    {
+        aml_state_garbage_collect(&state);
+        aml_state_deinit(&state);
+        return ERR;
+    }
+    DEREF_DEFER(returnValue);
+
+    if (aml_method_evaluate(&mainObj->method, 0, NULL, returnValue) == ERR)
     {
         LOG_ERR("test '%s' MAIN method evaluation failed\n", test->name);
         aml_state_garbage_collect(&state);
         aml_state_deinit(&state);
         return ERR;
     }
+
+    LOG_INFO("test '%s' MAIN method returned %s\n", test->name, aml_object_to_string(returnValue));
 
     aml_state_garbage_collect(&state);
 

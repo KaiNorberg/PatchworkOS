@@ -1,5 +1,8 @@
 #include "compare.h"
 
+#include "acpi/aml/aml_to_string.h"
+#include "log/log.h"
+
 static inline bool aml_compare_integers(aml_integer_t a, aml_integer_t b, aml_compare_operation_t operation)
 {
     switch (operation)

@@ -593,6 +593,13 @@ uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target)
                 aml_type_to_string(target->type));
             return ERR;
         }
+        return 0;
+    }
+
+    if (aml_copy_data_and_type(result, target) == ERR)
+    {
+        LOG_ERR("failed to copy result '%s' to target DataRefObject\n", aml_type_to_string(result->type));
+        return ERR;
     }
 
     return 0;

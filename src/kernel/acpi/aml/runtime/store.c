@@ -81,7 +81,7 @@ uint64_t aml_store(aml_object_t* src, aml_object_t* dest)
         return 0;
     }
 
-    LOG_ERR("Invalid destination object type '%s' or flags '0x%x'\n", aml_type_to_string(dest->type), dest->flags);
+    LOG_ERR("invalid destination object of type '%s' with flags '0x%x'\n", aml_type_to_string(dest->type), dest->flags);
     errno = EINVAL;
     return ERR;
 }
