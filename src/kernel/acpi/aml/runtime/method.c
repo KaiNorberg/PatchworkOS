@@ -6,7 +6,8 @@
 
 #include <errno.h>
 
-uint64_t aml_method_evaluate(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args, aml_object_t* returnValue)
+uint64_t aml_method_evaluate(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args,
+    aml_object_t* returnValue)
 {
     if (method == NULL)
     {

@@ -26,7 +26,8 @@
  * @param returnValue Pointer to the object where the return value will be stored, can be `NULL`.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_method_evaluate(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args, aml_object_t* returnValue);
+uint64_t aml_method_evaluate(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args,
+    aml_object_t* returnValue);
 
 /**
  * @brief Wrapper around aml_method_evaluate for zero argument methods that return an integer and for integer objects.

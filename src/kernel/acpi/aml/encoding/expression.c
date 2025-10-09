@@ -12,8 +12,9 @@
 #include "acpi/aml/runtime/copy.h"
 #include "acpi/aml/runtime/method.h"
 #include "acpi/aml/runtime/store.h"
-#include "debug.h"
+#include "sched/timer.h"
 #include "arg.h"
+#include "debug.h"
 #include "package_length.h"
 #include "term.h"
 
@@ -1926,8 +1927,7 @@ aml_object_t* aml_reference_type_opcode_read(aml_state_t* state, aml_scope_t* sc
         result = aml_def_index_read(state, scope);
         break;
     default:
-        AML_DEBUG_ERROR(state, "Invalid opcode '%s', expected RefOfOp, DerefOfOp or IndexOp",
-            op.props->name);
+        AML_DEBUG_ERROR(state, "Invalid opcode '%s', expected RefOfOp, DerefOfOp or IndexOp", op.props->name);
         errno = EILSEQ;
         return NULL;
     }
@@ -1938,7 +1938,27 @@ aml_object_t* aml_reference_type_opcode_read(aml_state_t* state, aml_scope_t* sc
         return NULL;
     }
 
-    return result; // Transfer ownership
+    // I am unsure about this. But it seems that ReferenceTypeOpcodes should dereference the result if its an ObjectReference.
+    // Mainly this is based of the examples found in section 19.6.63.2 and 19.6.63.3 of the Index Operator where we can see
+    // the Store Operator storing directly to the result of an Index Operator. And this seems to line up with testing.
+    // I could not find any explicit mention of this in the spec though.
+    //
+    // TODO: Stare at the spec some more.
+
+    DEREF_DEFER(result);
+    if (result->type == AML_OBJECT_REFERENCE)
+    {
+        aml_object_t* target = result->objectReference.target;
+        if (target == NULL)
+        {
+            AML_DEBUG_ERROR(state, "Object reference is NULL");
+            errno = EILSEQ;
+            return NULL;
+        }
+        return REF(target);
+    }
+
+    return REF(result);
 }
 
 aml_object_t* aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope)

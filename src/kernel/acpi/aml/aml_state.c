@@ -15,44 +15,58 @@ uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t*
     state->start = start;
     state->end = end;
     state->current = start;
+
+    // We give the locals and args names so they are identifiable when debugging but these names dont do anything.
+
     for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)
     {
-        state->locals[i] = aml_object_new(NULL, AML_OBJECT_LOCAL);
-        if (state->locals[i] == NULL)
+        aml_object_t* local = aml_object_new(NULL, AML_OBJECT_NONE);
+        if (local == NULL || aml_local_set(local) == ERR)
         {
+            if (local != NULL)
+            {
+                DEREF(local);
+            }
             for (uint8_t j = 0; j < i; j++)
             {
                 DEREF(state->locals[j]);
             }
             return ERR;
         }
+        state->locals[i] = &local->local;
+
+        state->locals[i]->name.segment[0] = 'L';
+        state->locals[i]->name.segment[1] = 'O';
+        state->locals[i]->name.segment[2] = 'C';
+        state->locals[i]->name.segment[3] = '0' + i;
+        state->locals[i]->name.segment[4] = '\0';
     }
-    for (uint8_t i = 0; i < argCount; i++)
+    for (uint8_t i = 0; i < AML_MAX_ARGS; i++)
     {
-        // Im honestly not sure how arguments are supposed to be passed. The spec seems a bit vague or ive missed
-        // something. But my interpretation is that arguments should be copies of the passed objects, so that if a method
-        // modifies an argument, it does not modify the caller's object.
-        state->args[i] = aml_object_new(NULL, AML_OBJECT_ARG);
-        if (state->args[i] == NULL || aml_copy_data_and_type(args[i], state->args[i]) == ERR)
+        aml_object_t* arg = aml_object_new(NULL, AML_OBJECT_NONE);
+        if (arg == NULL || aml_arg_set(arg, argCount > i ? args[i] : NULL) == ERR)
         {
-            if (state->args[i] != NULL)
+            if (arg != NULL)
             {
-                DEREF(state->args[i]);
-            }
-            for (uint8_t j = 0; j < AML_MAX_LOCALS; j++)
-            {
-                DEREF(state->locals[j]);
+                DEREF(arg);
             }
             for (uint8_t j = 0; j < i; j++)
             {
                 DEREF(state->args[j]);
             }
+            for (uint8_t j = 0; j < AML_MAX_LOCALS; j++)
+            {
+                DEREF(state->locals[j]);
+            }
             return ERR;
         }
-    }
-    for (uint8_t i = argCount; i < AML_MAX_ARGS; i++)
-    {
-        state->args[i] = NULL;
+        state->args[i] = &arg->arg;
+
+        state->args[i]->name.segment[0] = 'A';
+        state->args[i]->name.segment[1] = 'R';
+        state->args[i]->name.segment[2] = 'G';
+        state->args[i]->name.segment[3] = '0' + i;
+        state->args[i]->name.segment[4] = '\0';
     }
     state->returnValue = returnValue;
     state->lastErrPos = NULL;

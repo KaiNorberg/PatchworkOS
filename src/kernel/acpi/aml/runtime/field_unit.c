@@ -120,7 +120,8 @@ static uint64_t aml_system_mem_write(aml_opregion_obj_t* opregion, uint64_t addr
     return 0;
 }
 
-static uint64_t aml_system_io_read(aml_opregion_obj_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out)
+static uint64_t aml_system_io_read(aml_opregion_obj_t* opregion, uint64_t address, aml_bit_size_t accessSize,
+    uint64_t* out)
 {
     (void)opregion;
 
@@ -346,8 +347,8 @@ typedef enum aml_access_direction
     AML_ACCESS_WRITE
 } aml_access_direction_t;
 
-static uint64_t aml_generic_field_read_at(aml_field_unit_obj_t* fieldUnit, aml_bit_size_t accessSize, uint64_t byteOffset,
-    uint64_t* out)
+static uint64_t aml_generic_field_read_at(aml_field_unit_obj_t* fieldUnit, aml_bit_size_t accessSize,
+    uint64_t byteOffset, uint64_t* out)
 {
     switch (fieldUnit->fieldType)
     {
@@ -396,8 +397,8 @@ static uint64_t aml_generic_field_read_at(aml_field_unit_obj_t* fieldUnit, aml_b
     }
 }
 
-static uint64_t aml_generic_field_write_at(aml_field_unit_obj_t* fieldUnit, aml_bit_size_t accessSize, uint64_t byteOffset,
-    uint64_t value)
+static uint64_t aml_generic_field_write_at(aml_field_unit_obj_t* fieldUnit, aml_bit_size_t accessSize,
+    uint64_t byteOffset, uint64_t value)
 {
     switch (fieldUnit->fieldType)
     {
@@ -447,7 +448,8 @@ static uint64_t aml_generic_field_write_at(aml_field_unit_obj_t* fieldUnit, aml_
     }
 }
 
-static uint64_t aml_field_unit_access(aml_field_unit_obj_t* fieldUnit, aml_object_t* data, aml_access_direction_t direction)
+static uint64_t aml_field_unit_access(aml_field_unit_obj_t* fieldUnit, aml_object_t* data,
+    aml_access_direction_t direction)
 {
     // The integer revision handling is enterily done by the aml_get_access_size function, so we dont need to
     // do anything special here.

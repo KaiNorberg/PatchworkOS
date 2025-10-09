@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stdint.h>
 #include <common/defs.h>
+#include <stdint.h>
 
 /**
  * @brief Integer revision handling

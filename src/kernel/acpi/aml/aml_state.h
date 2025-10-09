@@ -36,7 +36,7 @@ typedef enum
  * @brief AML State
  * @struct aml_state_t
  *
- * Used in the `aml_parse()` function to keep track of the virtual machine's state and while invoking methods.
+ * Used to keep track of the virtual machine's state and while invoking methods or parsing DSDT/SSDT tables.
  *
  * Note that when a Method is evaluated a new `aml_state_t` is created for the Method's AML bytecode stream.
  */
@@ -45,12 +45,12 @@ typedef struct aml_state
     const uint8_t* start;                 ///< Pointer to the start of the AML bytecode.
     const uint8_t* end;                   ///< Pointer to the end of the AML bytecode.
     const uint8_t* current;               ///< Pointer to the current position in the AML bytecode.
-    aml_object_t* locals[AML_MAX_LOCALS]; ///< Local variables for the method, if any.
-    aml_object_t* args[AML_MAX_ARGS];     ///< Argument variables for the method, if any.
+    aml_local_obj_t* locals[AML_MAX_LOCALS]; ///< Local variables for the method, if any.
+    aml_arg_obj_t* args[AML_MAX_ARGS];     ///< Argument variables for the method, if any.
     aml_object_t* returnValue; ///< Pointer to where the return value should be stored, if the state is for a method.
     const uint8_t* lastErrPos; ///<  The position when the last error occurred.
     uint64_t errorDepth;       ///< The length of the error traceback.
-    aml_flow_control_t flowControl; ///< Used by `aml_term_list_read` to handle flow control statements.
+    aml_flow_control_t flowControl; ///< Used by `aml_term_list_read()` to handle flow control statements.
     /**
      * List of objects created as the state was executing. These objects should be removed from the namespace if the
      * state was used to execute a method, via the `aml_state_garbage_collect()` function.

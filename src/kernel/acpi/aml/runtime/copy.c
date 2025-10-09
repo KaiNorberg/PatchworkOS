@@ -95,75 +95,58 @@ uint64_t aml_copy_object(aml_object_t* src, aml_object_t* dest)
         return ERR;
     }
 
+    // TODO: Windows seems to allow this so we do the same but I need to do more reading on the whole Windows acpi weirdness thing.
     if (src == dest)
     {
         return 0;
     }
 
-    if (dest->flags & AML_OBJECT_ARG)
+    if (dest->type == AML_ARG)
     {
-        if (dest->type == AML_OBJECT_REFERENCE)
+        if (dest->arg.value == NULL)  // Is uninitialized
         {
-            aml_object_t* target = dest->objectReference.target;
-            if (target == NULL)
+            aml_object_t* newValue = aml_object_new(NULL, AML_OBJECT_NONE);
+            if (newValue == NULL)
             {
-                errno = EINVAL;
                 return ERR;
             }
 
-            if (aml_copy_data_and_type(src, target) == ERR)
-            {
-                return ERR;
-            }
+            dest->arg.value = newValue; // Transfer ownership
+            return aml_copy_data_and_type(src, dest->arg.value);
+        }
+
+        if (dest->arg.value->type == AML_OBJECT_REFERENCE)
+        {
+            return aml_copy_object(src, dest->arg.value->objectReference.target);
         }
         else
         {
-            if (aml_copy_data_and_type(src, dest) == ERR)
-            {
-                return ERR;
-            }
+            return aml_copy_data_and_type(src, dest->arg.value);
         }
-
-        return 0;
     }
 
-    if (dest->flags & AML_OBJECT_LOCAL)
+    if (dest->type == AML_LOCAL)
     {
-        if (aml_copy_data_and_type(src, dest) == ERR)
-        {
-            return ERR;
-        }
-
-        return 0;
+        return aml_copy_data_and_type(src, dest->local.value);
     }
 
     if (dest->type == AML_FIELD_UNIT)
     {
-        if (aml_field_unit_store(&dest->fieldUnit, src) == ERR)
-        {
-            return ERR;
-        }
-
-        return 0;
+        return aml_field_unit_store(&dest->fieldUnit, src);
     }
-    else if (dest->type == AML_BUFFER_FIELD)
+    if (dest->type == AML_BUFFER_FIELD)
     {
-        if (aml_buffer_field_store(&dest->bufferField, src) == ERR)
-        {
-            return ERR;
-        }
-
-        return 0;
+        return aml_buffer_field_store(&dest->bufferField, src);
     }
 
     if (dest->flags & AML_OBJECT_NAMED)
     {
-        if (aml_convert_result(src, dest) == ERR)
-        {
-            return ERR;
-        }
+        return aml_convert_result(src, dest);
+    }
 
-        return 0;
+    if (dest->type == AML_UNINITIALIZED)
+    {
+        return aml_copy_data_and_type(src, dest);
     }
 
     LOG_ERR("illegal copy operation from type '%s' to type '%s'\n", aml_type_to_string(src->type),

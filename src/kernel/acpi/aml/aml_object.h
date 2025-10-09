@@ -1,5 +1,6 @@
 #pragma once
 
+#include "aml_integer.h"
 #include "aml_patch_up.h"
 #include "encoding/data.h"
 #include "encoding/name.h"
@@ -7,7 +8,6 @@
 #include "fs/sysfs.h"
 #include "runtime/mutex.h"
 #include "utils/ref.h"
-#include "aml_integer.h"
 
 #include <stdint.h>
 
@@ -63,9 +63,11 @@ typedef enum
     AML_RAW_DATA_BUFFER = 1 << 15,
     AML_STRING = 1 << 16,
     AML_THERMAL_ZONE = 1 << 17,
-    AML_ALIAS = 1 << 18,      ///< Not in the spec, used internally to represent Aliases.
-    AML_UNRESOLVED = 1 << 19, ///< Not in the spec, used internally to represent unresolved references.
+    AML_ALIAS = 1 << 18,            ///< Not in the spec, used internally to represent Aliases.
+    AML_UNRESOLVED = 1 << 19,       ///< Not in the spec, used internally to represent unresolved references.
     AML_PREDEFINED_SCOPE = 1 << 20, ///< Not in the spec, used internally to represent \_SB, \_GPE, etc.
+    AML_ARG = 1 << 21,              ///< Not in the spec, used internally to represent method arguments.
+    AML_LOCAL = 1 << 22,            ///< Not in the spec, used internally to represent method local variables.
     /**
      * All data types that can be retrieved from a ComputationalData object (section 20.2.3).
      */
@@ -83,7 +85,8 @@ typedef enum
     /**
      * All data types that can contain named objects, packages contain unnamed objects only and are excluded.
      */
-    AML_CONTAINERS = AML_DEVICE | AML_PROCESSOR | AML_METHOD | AML_THERMAL_ZONE | AML_POWER_RESOURCE | AML_PREDEFINED_SCOPE,
+    AML_CONTAINERS =
+        AML_DEVICE | AML_PROCESSOR | AML_METHOD | AML_THERMAL_ZONE | AML_POWER_RESOURCE | AML_PREDEFINED_SCOPE,
     /**
      * All data types.
      */
@@ -102,10 +105,7 @@ typedef enum
     AML_OBJECT_NONE = 0,            ///< No flags.
     AML_OBJECT_ROOT = 1 << 0,       ///< Is the root object.
     AML_OBJECT_PREDEFINED = 1 << 1, ///< Is a predefined object.
-    AML_OBJECT_LOCAL = 1 << 2,      ///< Is a local variable.
-    AML_OBJECT_ARG = 1 << 3,        ///< Is a method argument.
-    AML_OBJECT_NAMED = 1 << 4,      ///< The object appears in the namespace tree. Will be set in `aml_object_add()`.
-    AML_OBJECT_ELEMENT = 1 << 5,    ///< Is an element of a package.
+    AML_OBJECT_NAMED = 1 << 3,      ///< The object appears in the namespace tree. Will be set in `aml_object_add()`.
 } aml_object_flags_t;
 
 /**
@@ -172,7 +172,7 @@ typedef struct aml_buffer_obj
 typedef struct aml_buffer_field_obj
 {
     AML_OBJECT_COMMON_HEADER;
-    bool isString;        ///< True if the buffer field was created from a string.
+    bool isString;            ///< True if the buffer field was created from a string.
     aml_buffer_obj_t* buffer; ///< Used if the buffer field is created from a buffer.
     aml_string_obj_t* string; ///< Used if the buffer field is created from a string.
     aml_bit_size_t bitOffset;
@@ -210,12 +210,12 @@ typedef struct aml_field_unit_obj
     aml_field_unit_obj_type_t fieldType; ///< The type of field unit.
     aml_field_unit_obj_t* index;         ///< Used for IndexField.
     aml_field_unit_obj_t* data;          ///< Used for IndexField.
-    aml_object_t* bankValue;         ///< Used for BankField.
+    aml_object_t* bankValue;             ///< Used for BankField.
     aml_field_unit_obj_t* bank;          ///< Used for BankField.
     aml_opregion_obj_t* opregion;        ///< Used for Field and BankField.
-    aml_field_flags_t fieldFlags;    ///< Used for Field, IndexField and BankField.
-    aml_bit_size_t bitOffset;        ///< Used for Field, IndexField and BankField.
-    aml_bit_size_t bitSize;          ///< Used for Field, IndexField and BankField.
+    aml_field_flags_t fieldFlags;        ///< Used for Field, IndexField and BankField.
+    aml_bit_size_t bitOffset;            ///< Used for Field, IndexField and BankField.
+    aml_bit_size_t bitSize;              ///< Used for Field, IndexField and BankField.
 } aml_field_unit_obj_t;
 
 /**
@@ -376,6 +376,29 @@ typedef struct aml_predefined_scope_obj
 } aml_predefined_scope_obj_t;
 
 /**
+ * @brief Data for an argument object.
+ * @struct aml_arg_obj_t
+ *
+ * Arguments are disgusting but the way passing arguments work is described in section 5.5.2.3 of the ACPI
+ * specification.
+ */
+typedef struct aml_arg_obj
+{
+    AML_OBJECT_COMMON_HEADER;
+    aml_object_t* value; ///< The object that was passed as the argument.
+} aml_arg_obj_t;
+
+/**
+ * @brief Data for a local variable object.
+ * @struct aml_local_obj_t
+ */
+typedef struct aml_local_obj
+{
+    AML_OBJECT_COMMON_HEADER;
+    aml_object_t* value; ///< The value of the local variable.
+} aml_local_obj_t;
+
+/**
  * @brief ACPI object.
  * @struct aml_object_t
  */
@@ -402,9 +425,12 @@ typedef struct aml_object
         aml_processor_obj_t processor;
         aml_string_obj_t string;
         aml_thermal_zone_obj_t thermalZone;
+
         aml_alias_obj_t alias;
         aml_unresolved_obj_t unresolved;
         aml_predefined_scope_obj_t predefinedScope;
+        aml_arg_obj_t arg;
+        aml_local_obj_t local;
     };
 } aml_object_t;
 
@@ -691,6 +717,14 @@ uint64_t aml_method_set(aml_object_t* object, aml_method_flags_t flags, const ui
     aml_method_implementation_t implementation);
 
 /**
+ * @brief Find the method which contains the provided address in its AML bytecode range.
+ *
+ * @param addr The address to search for.
+ * @return On success, a reference to the found method object. On failure, `NULL` and `errno` is set.
+ */
+aml_method_obj_t* aml_method_find(const uint8_t* addr);
+
+/**
  * @brief Set a object as a mutex with the given synchronization level.
  *
  * @param object Pointer to the object to initialize.
@@ -823,5 +857,22 @@ uint64_t aml_unresolved_set(aml_object_t* object, const aml_name_string_t* nameS
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_predefined_scope_set(aml_object_t* object);
+
+/**
+ * @brief Set a object as an argument with the given target object.
+ *
+ * @param object Pointer to the object to initialize.
+ * @param value Pointer to the object the argument will point to, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_arg_set(aml_object_t* object, aml_object_t* value);
+
+/**
+ * @brief Set a object as a empty local variable.
+ *
+ * @param object Pointer to the object to initialize.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_local_set(aml_object_t* object);
 
 /** @} */

@@ -50,6 +50,10 @@ const char* aml_type_to_string(aml_type_t type)
         return "Unresolved";
     case AML_PREDEFINED_SCOPE:
         return "PredefinedScope";
+    case AML_LOCAL:
+        return "Local";
+    case AML_ARG:
+        return "Arg";
     default:
         return "Unknown";
     }

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "data.h"
 #include "acpi/aml/aml_integer.h"
+#include "data.h"
 
 #include <stdint.h>
 

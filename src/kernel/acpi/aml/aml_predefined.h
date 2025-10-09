@@ -56,7 +56,8 @@ uint64_t aml_rev_implementation(aml_method_obj_t* method, uint64_t argCount, aml
  * @param returnValue The object to store the return value of the method.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_os_implementation(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args, aml_object_t* returnValue);
+uint64_t aml_os_implementation(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args,
+    aml_object_t* returnValue);
 
 /**
  * @brief Get the global AML mutex.

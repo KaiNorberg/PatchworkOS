@@ -147,7 +147,8 @@ static uint64_t aml_concat_resolve_to_string(aml_object_t* source, const char** 
     }
 }
 
-static uint64_t aml_concat_resolve_to_buffer(aml_object_t* source, uint8_t** outBuf, uint64_t* outLen, aml_object_t** outTemp)
+static uint64_t aml_concat_resolve_to_buffer(aml_object_t* source, uint8_t** outBuf, uint64_t* outLen,
+    aml_object_t** outTemp)
 {
     if (source->type == AML_BUFFER)
     {

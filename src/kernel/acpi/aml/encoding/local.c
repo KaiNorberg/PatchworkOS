@@ -21,18 +21,5 @@ aml_object_t* aml_local_obj_read(aml_state_t* state)
     }
 
     uint64_t index = localOp.num - AML_LOCAL0_OP;
-
-    if (state->locals[index]->type == AML_OBJECT_REFERENCE)
-    {
-        aml_object_t* target = state->locals[index]->objectReference.target;
-        if (target == NULL)
-        {
-            AML_DEBUG_ERROR(state, "Local%d is an ObjectReference to NULL", index);
-            return NULL;
-        }
-
-        return REF(target);
-    }
-
-    return REF(state->locals[index]);
+    return REF(CONTAINER_OF(state->locals[index], aml_object_t, local));
 }

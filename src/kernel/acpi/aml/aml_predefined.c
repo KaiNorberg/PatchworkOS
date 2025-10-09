@@ -11,7 +11,8 @@
 
 static aml_mutex_obj_t* globalMutex = NULL;
 
-uint64_t aml_osi_implementation(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args, aml_object_t* returnValue)
+uint64_t aml_osi_implementation(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args,
+    aml_object_t* returnValue)
 {
     (void)method; // Unused
 
@@ -32,7 +33,8 @@ uint64_t aml_osi_implementation(aml_method_obj_t* method, uint64_t argCount, aml
     return 0;
 }
 
-uint64_t aml_rev_implementation(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args, aml_object_t* returnValue)
+uint64_t aml_rev_implementation(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args,
+    aml_object_t* returnValue)
 {
     (void)method; // Unused
     (void)args;   // Unused
@@ -51,7 +53,8 @@ uint64_t aml_rev_implementation(aml_method_obj_t* method, uint64_t argCount, aml
     return 0;
 }
 
-uint64_t aml_os_implementation(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args, aml_object_t* returnValue)
+uint64_t aml_os_implementation(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args,
+    aml_object_t* returnValue)
 {
     (void)method; // Unused
     (void)args;   // Unused

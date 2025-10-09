@@ -1,10 +1,10 @@
 #include "aml.h"
 
 #include "acpi/tables.h"
+#include "aml_integer.h"
 #include "aml_patch_up.h"
 #include "aml_predefined.h"
 #include "aml_state.h"
-#include "aml_integer.h"
 #include "aml_to_string.h"
 #include "encoding/term.h"
 #include "log/log.h"

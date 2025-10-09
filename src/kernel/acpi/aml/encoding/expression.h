@@ -767,7 +767,8 @@ aml_object_t* aml_def_ref_of_read(aml_state_t* state, aml_scope_t* scope);
 /**
  * @brief Reads a DefObjectType structure from the AML byte stream.
  *
- * A DefObjectType structure is defined as `DefObjectType := ObjectTypeOp <SimpleName | DebugObj | DefRefOf | DefDerefOf | DefIndex>`.
+ * A DefObjectType structure is defined as `DefObjectType := ObjectTypeOp <SimpleName | DebugObj | DefRefOf | DefDerefOf
+ * | DefIndex>`.
  *
  * @see Section 19.6.97 of the ACPI specification for more details.
  *
@@ -780,7 +781,8 @@ aml_object_t* aml_def_object_type_read(aml_state_t* state, aml_scope_t* scope);
 /*
  * @brief Reads a ReferenceTypeOpcode structure from the AML byte stream.
  *
- * A ReferenceTypeOpcode structure is defined as `ReferenceTypeOpcode := DefRefOf | DefDerefOf | DefIndex | UserTermObj`.
+ * A ReferenceTypeOpcode structure is defined as `ReferenceTypeOpcode := DefRefOf | DefDerefOf | DefIndex |
+ * UserTermObj`.
  *
  * I have no idea what the `UserTermObj` is supposed to be, so its currently unimplemented.
  *

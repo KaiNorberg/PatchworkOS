@@ -1,7 +1,7 @@
 #pragma once
 
-#include "data_integers.h"
 #include "acpi/aml/aml_integer.h"
+#include "data_integers.h"
 
 #include <stdbool.h>
 

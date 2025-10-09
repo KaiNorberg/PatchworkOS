@@ -69,7 +69,18 @@ static void aml_debug_dump(aml_state_t* state)
     {
         LOG_ERR("   ");
     }
-    LOG_ERR("^^ error here\n");
+    LOG_ERR("^^");
+    uint64_t reminaingInLine = 15 - errorOffsetInLine;
+    for (uint64_t i = 0; i < reminaingInLine; i++)
+    {
+        LOG_ERR("   ");
+    }
+    LOG_ERR("    ");
+    for (uint64_t i = 0; i < errorOffsetInLine; i++)
+    {
+        LOG_ERR(" ");
+    }
+    LOG_ERR("^\n");
 
     if (nextLineStart < dataSize)
     {
@@ -87,14 +98,26 @@ void aml_debug_error_print(aml_state_t* state, const char* function, const char*
     if (state->lastErrPos != state->current)
     {
         state->errorDepth = 0;
-        LOG_ERR("AML ERROR in '%s()' at pos 0x%lx (", function, state->current - state->start);
+
+        LOG_ERR("AML ERROR in '%s()'", function);
+
+        aml_method_obj_t* method = aml_method_find(state->current);
+        if (method != NULL)
+        {
+            LOG_ERR(" at method '%s' and offset 0x%lx\n", method->name.segment, state->current - method->start);
+            DEREF(method);
+        }
+        else
+        {
+            LOG_ERR(" at top-level and offset 0x%lx\n", state->current - state->start);
+        }
 
         va_list args;
         va_start(args, format);
         log_vprint(LOG_LEVEL_ERR, FILE_BASENAME, format, args);
         va_end(args);
 
-        LOG_ERR(")\n");
+        LOG_ERR("\n");
 
         aml_debug_dump(state);
         LOG_ERR("Backtrace:\n");

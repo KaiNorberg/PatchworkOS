@@ -208,8 +208,8 @@ uint64_t aml_name_field_read(aml_state_t* state, aml_scope_t* scope, aml_field_l
             return ERR;
         }
 
-        if (aml_field_unit_index_field_set(newObject, ctx->index.index, ctx->index.data, ctx->flags,
-                ctx->currentOffset, pkgLength) == ERR)
+        if (aml_field_unit_index_field_set(newObject, ctx->index.index, ctx->index.data, ctx->flags, ctx->currentOffset,
+                pkgLength) == ERR)
         {
             return ERR;
         }

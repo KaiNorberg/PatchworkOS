@@ -36,7 +36,7 @@ uint64_t aml_convert(aml_object_t* src, aml_object_t* dest, aml_type_t allowedTy
  *
  * @see Section 19.3.5.4 of the ACPI specification for more details.
  *
- * @param src Pointer to the source object to convert.
+ * @param src Pointer to the source object to convert, if `AML_ARG` or `AML_LOCAL`, the value object will be used.
  * @param dest Pointer to the object where the result will be stored, can be of type `AML_UNINITIALIZED`.
  * @param allowedTypes Bitmask of allowed destination types.
  * @return On success, 0. On failure, `ERR` and `errno` is set.

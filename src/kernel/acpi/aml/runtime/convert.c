@@ -286,8 +286,7 @@ static uint64_t aml_package_obj_to_debug_object(aml_object_t* package, aml_objec
     for (uint64_t i = 0; i < package->package.length; i++)
     {
         aml_object_t* elem = package->package.elements[i];
-        LOG_INFO("%s[%d] = (type: %s)\n", AML_OBJECT_GET_NAME(package), (int)i,
-            aml_type_to_string(elem->type));
+        LOG_INFO("%s[%d] = (type: %s)\n", AML_OBJECT_GET_NAME(package), (int)i, aml_type_to_string(elem->type));
     }
     return 0;
 }
@@ -533,6 +532,16 @@ uint64_t aml_convert_source(aml_object_t* src, aml_object_t* dest, aml_type_t al
         return ERR;
     }
 
+    if (src->type == AML_ARG)
+    {
+        return aml_convert_source(src->arg.value, dest, allowedTypes);
+    }
+
+    if (src->type == AML_LOCAL)
+    {
+        return aml_convert_source(src->local.value, dest, allowedTypes);
+    }
+
     if (src->type & allowedTypes)
     {
         if (aml_copy_data_and_type(src, dest) == ERR)
@@ -574,7 +583,7 @@ uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target)
         return 0;
     }
 
-    if (target->flags & (AML_OBJECT_LOCAL | AML_OBJECT_ARG))
+    if (target->type == AML_ARG || target->type == AML_LOCAL)
     {
         if (aml_store(result, target) == ERR)
         {

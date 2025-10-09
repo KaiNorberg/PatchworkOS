@@ -26,6 +26,8 @@ uint64_t aml_copy_data_and_type(aml_object_t* src, aml_object_t* dest);
  *
  * Follows the rules in table 19.8 section 19.3.5.8 for the "CopyObject" operator are applied.
  *
+ * It will initialize uninitialized objects as specified in section 19.3.5 table 19.5.
+ *
  * @see Sections 19.3.5.8 of the ACPI specification for more details.
  *
  * @param src Pointer to the source object to copy from.
