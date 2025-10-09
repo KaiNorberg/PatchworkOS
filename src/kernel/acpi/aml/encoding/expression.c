@@ -1904,6 +1904,43 @@ aml_object_t* aml_def_object_type_read(aml_state_t* state, aml_scope_t* scope)
     return REF(result);
 }
 
+aml_object_t* aml_reference_type_opcode_read(aml_state_t* state, aml_scope_t* scope)
+{
+    aml_token_t op;
+    if (aml_token_peek(state, &op) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to peek op");
+        return NULL;
+    }
+
+    aml_object_t* result = NULL;
+    switch (op.num)
+    {
+    case AML_REF_OF_OP:
+        result = aml_def_ref_of_read(state, scope);
+        break;
+    case AML_DEREF_OF_OP:
+        result = aml_def_deref_of_read(state, scope);
+        break;
+    case AML_INDEX_OP:
+        result = aml_def_index_read(state, scope);
+        break;
+    default:
+        AML_DEBUG_ERROR(state, "Invalid opcode '%s', expected RefOfOp, DerefOfOp or IndexOp",
+            op.props->name);
+        errno = EILSEQ;
+        return NULL;
+    }
+
+    if (result == NULL)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read opcode '%s'", op.props->name);
+        return NULL;
+    }
+
+    return result; // Transfer ownership
+}
+
 aml_object_t* aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope)
 {
     aml_token_t op;

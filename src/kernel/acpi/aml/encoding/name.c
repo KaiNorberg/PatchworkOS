@@ -377,9 +377,8 @@ aml_object_t* aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* s
         out = aml_debug_obj_read(state);
         break;
     case AML_TOKEN_TYPE_EXPRESSION:
-        AML_DEBUG_ERROR(state, "ReferenceTypeOpcode is unimplemented");
-        errno = ENOSYS;
-        return NULL;
+        out = aml_reference_type_opcode_read(state, scope);
+        break;
     default:
         AML_DEBUG_ERROR(state, "Invalid token type: %d", token.props->type);
         errno = EILSEQ;

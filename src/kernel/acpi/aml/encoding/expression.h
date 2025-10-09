@@ -777,6 +777,19 @@ aml_object_t* aml_def_ref_of_read(aml_state_t* state, aml_scope_t* scope);
  */
 aml_object_t* aml_def_object_type_read(aml_state_t* state, aml_scope_t* scope);
 
+/*
+ * @brief Reads a ReferenceTypeOpcode structure from the AML byte stream.
+ *
+ * A ReferenceTypeOpcode structure is defined as `ReferenceTypeOpcode := DefRefOf | DefDerefOf | DefIndex | UserTermObj`.
+ *
+ * I have no idea what the `UserTermObj` is supposed to be, so its currently unimplemented.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ */
+aml_object_t* aml_reference_type_opcode_read(aml_state_t* state, aml_scope_t* scope);
+
 /**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.
  *
