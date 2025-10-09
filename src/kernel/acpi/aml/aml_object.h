@@ -52,7 +52,10 @@ typedef enum
     AML_EVENT = 1 << 4,
     AML_FIELD_UNIT = 1 << 5,
     AML_INTEGER = 1 << 6,
-    AML_INTEGER_CONSTANT = 1 << 7,
+    /**
+     * The spec does defined a separate Integer Constant type, but the spec seems very inconsistent about how to actually use it or even what it is. In 19.3.5 its "Created by the ASL terms 'Zero', 'One', 'Ones', and 'Revision'.". But in 19.6.102 the package creation example referes to a normal number "0x3400" as an Integer Constant. And there are also unanswered questions about what happens if a named object is created as an Integer Constant. The ACPICA tests seem to just treat even the result of 'Zero/One/Ones' as a normal Integer. I could go on. So unless ive missed something obvious, we just pretend it doesn't exist and treat it as a normal Integer.
+     */
+    // AML_INTEGER_CONSTANT = 1 << 7,
     AML_METHOD = 1 << 8,
     AML_MUTEX = 1 << 9,
     AML_OBJECT_REFERENCE = 1 << 10,
@@ -562,7 +565,7 @@ uint64_t aml_object_put_bits_at(aml_object_t* object, uint64_t value, aml_bit_si
 /**
  * @brief Retrieve bits from a object at the specified bit offset and size.
  *
- * Only supports Integers, IntegerConstants and Buffers.
+ * Only supports Integers and Buffers.
  *
  * If a out of bounds access is attempted, the bits that are out of bounds will be read as zero.
  *
@@ -692,15 +695,6 @@ uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_obj_t*
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_integer_set(aml_object_t* object, aml_integer_t value);
-
-/**
- * @brief Set a object as an integer constant with the given value.
- *
- * @param object Pointer to the object to initialize.
- * @param value The integer constant value to set.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_integer_constant_set(aml_object_t* object, aml_integer_t value);
 
 /**
  * @brief Set a object as a method with the given flags and address range.

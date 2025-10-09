@@ -241,9 +241,6 @@ void aml_object_clear(aml_object_t* object)
     case AML_INTEGER:
         object->integer.value = 0;
         break;
-    case AML_INTEGER_CONSTANT:
-        object->integerConstant.value = 0;
-        break;
     case AML_METHOD:
         object->method.implementation = NULL;
         object->method.methodFlags = (aml_method_flags_t){0};
@@ -850,27 +847,6 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
         *out = (object->integer.value >> bitOffset) & mask;
     }
     break;
-    case AML_INTEGER_CONSTANT:
-    {
-        if (bitOffset + bitSize > 64)
-        {
-            *out = 0;
-            return 0;
-        }
-
-        uint64_t mask;
-        if (bitSize == 64)
-        {
-            mask = ~UINT64_C(0);
-        }
-        else
-        {
-            mask = (UINT64_C(1) << bitSize) - 1;
-        }
-
-        *out = (object->integerConstant.value >> bitOffset) & mask;
-    }
-    break;
     case AML_BUFFER:
     {
         if (bitOffset + bitSize > object->buffer.length * 8)
@@ -1170,24 +1146,6 @@ uint64_t aml_integer_set(aml_object_t* object, aml_integer_t value)
 
     object->integer.value = value & aml_integer_ones();
     object->type = AML_INTEGER;
-    return 0;
-}
-
-uint64_t aml_integer_constant_set(aml_object_t* object, aml_integer_t value)
-{
-    if (object == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (aml_object_check_clear(object) == ERR)
-    {
-        return ERR;
-    }
-
-    object->integerConstant.value = value & aml_integer_ones();
-    object->type = AML_INTEGER_CONSTANT;
     return 0;
 }
 

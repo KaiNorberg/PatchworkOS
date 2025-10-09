@@ -268,30 +268,6 @@ static aml_convert_entry_t integerConverters[AML_TYPE_AMOUNT] = {
     {AML_INTEGER, AML_DEBUG_OBJECT, aml_integer_obj_to_debug_object},
 };
 
-static uint64_t aml_integer_constant_obj_to_integer(aml_object_t* integerConstant, aml_object_t* dest)
-{
-    uint64_t value = integerConstant->integerConstant.value;
-
-    if (dest->type == AML_INTEGER)
-    {
-        dest->integer.value = value;
-        return 0;
-    }
-    return aml_integer_set(dest, value);
-}
-
-static uint64_t aml_integer_constant_obj_to_debug_object(aml_object_t* integerConstant, aml_object_t* dest)
-{
-    (void)dest;
-    LOG_INFO("%s = %llu\n", AML_OBJECT_GET_NAME(integerConstant), integerConstant->integerConstant.value);
-    return 0;
-}
-
-static aml_convert_entry_t integerConstantConverters[AML_TYPE_AMOUNT] = {
-    {AML_INTEGER_CONSTANT, AML_INTEGER, aml_integer_constant_obj_to_integer},
-    {AML_INTEGER_CONSTANT, AML_DEBUG_OBJECT, aml_integer_constant_obj_to_debug_object},
-};
-
 static uint64_t aml_package_obj_to_debug_object(aml_object_t* package, aml_object_t* dest)
 {
     (void)dest;
@@ -398,8 +374,6 @@ static aml_convert_entry_t* aml_converters_get(aml_type_t srcType)
         return bufferConverters;
     case AML_INTEGER:
         return integerConverters;
-    case AML_INTEGER_CONSTANT:
-        return integerConstantConverters;
     case AML_PACKAGE:
         return packageConverters;
     case AML_STRING:

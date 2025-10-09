@@ -56,6 +56,11 @@ typedef enum
 #define HPET_ADDRESS_SPACE_IO 1
 
 /**
+ * @brief The number of femtoseconds in one second
+ */
+#define HPET_FEMTOSECONDS_PER_SECOND 1000000000000000ULL
+
+/**
  * @brief High Precision Event Timer structure
  * @struct hpet_t
  */
@@ -85,7 +90,7 @@ typedef struct PACKED
  *
  * @return Nanoseconds per tick
  */
-uint64_t hpet_nanoseconds_per_tick(void);
+clock_t hpet_nanoseconds_per_tick(void);
 
 /**
  * @brief Read the current value of the HPET main counter

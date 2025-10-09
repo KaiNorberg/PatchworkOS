@@ -20,8 +20,7 @@ typedef enum
     AML_COMPARE_EQUAL = 1,   ///< Section 19.6.70
     AML_COMPARE_GREATER = 2, ///< Section 19.6.71
     AML_COMPARE_LESS = 3,    ///< Section 19.6.73
-    AML_COMPARE_NOT = 4,     ///< Section 19.6.75, integer only
-    AML_COMPARE_OR = 5,      ///< Section 19.6.80, integer only
+    AML_COMPARE_OR = 4,      ///< Section 19.6.80, integer only
 
     AML_COMPARE_INVERT_BASE = 0xFF, ///< All operations above this value are inverted versions of the base operations.
     AML_COMPARE_NOT_EQUAL = AML_COMPARE_INVERT_BASE + AML_COMPARE_EQUAL,

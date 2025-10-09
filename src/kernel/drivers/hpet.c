@@ -37,7 +37,7 @@ static uint64_t hpet_init(sdt_header_t* table)
     uint64_t capabilities = hpet_read(HPET_REG_GENERAL_CAPABILITIES_ID);
     period = capabilities >> HPET_CAP_COUNTER_CLK_PERIOD_SHIFT;
 
-    if (period == 0 || period > 100000000)
+    if (period == 0 || period >= 0x05F5E100)
     {
         LOG_ERR("HPET reported an invalid counter period %llu fs\n", period);
         isInitialized = false;
@@ -45,7 +45,7 @@ static uint64_t hpet_init(sdt_header_t* table)
     }
 
     LOG_INFO("started HPET timer phys=0x%016lx virt=0x%016lx period=%lluns timers=%u %s-bit\n", hpet->address, address,
-        period / 1000000, hpet->comparatorCount + 1, hpet->counterIs64Bit ? "64" : "32");
+        period / (HPET_FEMTOSECONDS_PER_SECOND / CLOCKS_PER_SEC), hpet->comparatorCount + 1, hpet->counterIs64Bit ? "64" : "32");
 
     hpet_reset_counter();
     return 0;
@@ -53,13 +53,13 @@ static uint64_t hpet_init(sdt_header_t* table)
 
 ACPI_SDT_HANDLER_REGISTER("HPET", hpet_init);
 
-uint64_t hpet_nanoseconds_per_tick(void)
+clock_t hpet_nanoseconds_per_tick(void)
 {
     if (!isInitialized)
     {
         return 0;
     }
-    return period / 1000000ULL;
+    return period / (HPET_FEMTOSECONDS_PER_SECOND / CLOCKS_PER_SEC);
 }
 
 uint64_t hpet_read_counter(void)

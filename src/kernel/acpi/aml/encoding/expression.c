@@ -1316,7 +1316,7 @@ static inline uint64_t aml_def_lnot_callback(aml_state_t* state, aml_scope_t* sc
 {
     (void)state;
     (void)scope;
-    if (aml_integer_set(out, aml_compare(operand, NULL, AML_COMPARE_NOT)) == ERR)
+    if (aml_integer_set(out, operand->integer.value == 0) == ERR)
     {
         return ERR;
     }
@@ -1325,7 +1325,7 @@ static inline uint64_t aml_def_lnot_callback(aml_state_t* state, aml_scope_t* sc
 
 aml_object_t* aml_def_lnot_read(aml_state_t* state, aml_scope_t* scope)
 {
-    return aml_helper_op_operand_read(state, scope, AML_LNOT_OP, AML_INTEGER | AML_STRING | AML_BUFFER,
+    return aml_helper_op_operand_read(state, scope, AML_LNOT_OP, AML_INTEGER,
         aml_def_lnot_callback);
 }
 

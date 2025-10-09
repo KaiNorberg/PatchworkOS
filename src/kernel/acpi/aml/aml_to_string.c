@@ -22,8 +22,6 @@ const char* aml_type_to_string(aml_type_t type)
         return "FieldUnit";
     case AML_INTEGER:
         return "Integer";
-    case AML_INTEGER_CONSTANT:
-        return "IntegerConstant";
     case AML_METHOD:
         return "Method";
     case AML_MUTEX:
@@ -188,9 +186,6 @@ const char* aml_object_to_string(aml_object_t* object)
         return buffer;
     case AML_INTEGER:
         snprintf(buffer, sizeof(buffer), "Integer(0x%llx)", object->integer.value);
-        return buffer;
-    case AML_INTEGER_CONSTANT:
-        snprintf(buffer, sizeof(buffer), "IntegerConstant(0x%llx)", object->integerConstant.value);
         return buffer;
     case AML_METHOD:
         snprintf(buffer, sizeof(buffer), "Method(ArgCount=0x%x, Start=0x%llx, End=0x%llx)",

@@ -15,8 +15,6 @@ static inline bool aml_compare_integers(aml_integer_t a, aml_integer_t b, aml_co
         return a > b;
     case AML_COMPARE_LESS:
         return a < b;
-    case AML_COMPARE_NOT:
-        return a == 0;
     case AML_COMPARE_OR:
         return (a != 0) || (b != 0);
     default:
@@ -28,6 +26,7 @@ bool aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operation_t opera
 {
     if (a == NULL || b == NULL)
     {
+        LOG_ERR("cannot compare NULL objects\n");
         return false;
     }
 
