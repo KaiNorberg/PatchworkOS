@@ -20,6 +20,8 @@ typedef uint64_t (*aml_convert_func_t)(aml_object_t* src, aml_object_t* dest);
 
 // DebugObj handling is specified in section 19.6.26
 
+// Note that there is a mistake in the spec in table 19.6 where it says Buffer to BufferField conversion is not allowed, since in table 19.7 it defines how to do it and the ACPICA tests clearly expect it to work, we implement it as specified in table 19.7.
+
 typedef struct
 {
     aml_type_t srcType;
@@ -107,6 +109,15 @@ static inline uint8_t aml_hex_to_byte(char chr)
 // We create the arrays of converters here. The order of the list defines the priority of the converters. First ==
 // Highest Priority. Last == Lowest Priority. See section 19.3.5.7 table 19.6 for the conversion priority order.
 
+static uint64_t aml_buffer_obj_to_buffer_field(aml_object_t* buffer, aml_object_t* dest)
+{
+    if (dest->type != AML_BUFFER_FIELD)
+    {
+        return AML_CONVERT_TRY_NEXT_CONVERTER;
+    }
+    return aml_buffer_field_store(&dest->bufferField, buffer);
+}
+
 static uint64_t aml_buffer_obj_to_integer(aml_object_t* buffer, aml_object_t* dest)
 {
     aml_buffer_obj_t* bufferData = &buffer->buffer;
@@ -174,6 +185,7 @@ static uint64_t aml_buffer_obj_to_debug_object(aml_object_t* buffer, aml_object_
 }
 
 static aml_convert_entry_t bufferConverters[AML_TYPE_AMOUNT] = {
+    {AML_BUFFER, AML_BUFFER_FIELD, aml_buffer_obj_to_buffer_field},
     {AML_BUFFER, AML_INTEGER, aml_buffer_obj_to_integer},
     {AML_BUFFER, AML_STRING, aml_buffer_obj_to_string},
     {AML_BUFFER, AML_DEBUG_OBJECT, aml_buffer_obj_to_debug_object},

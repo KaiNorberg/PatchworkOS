@@ -1747,17 +1747,37 @@ aml_object_t* aml_def_size_of_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(result);
 
-    uint64_t size;
+    aml_object_t* sizeObject;
     switch (object->type)
     {
+    case AML_ARG:
+        sizeObject = object->arg.value;
+        break;
+    case AML_LOCAL:
+        sizeObject = object->local.value;
+        break;
+    default:
+        sizeObject = object;
+        break;
+    }
+
+    if (sizeObject == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    uint64_t size;
+    switch (sizeObject->type)
+    {
     case AML_BUFFER:
-        size = object->buffer.length;
+        size = sizeObject->buffer.length;
         break;
     case AML_STRING:
-        size = object->string.length;
+        size = sizeObject->string.length;
         break;
     case AML_PACKAGE:
-        size = object->package.length;
+        size = sizeObject->package.length;
         break;
     default:
         errno = EINVAL;
