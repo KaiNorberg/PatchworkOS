@@ -861,7 +861,7 @@ uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_buffer_field_set_buffer(newObject, &sourceBuff->buffer, bitIndex, 1) == ERR ||
+    if (aml_buffer_field_set(newObject, sourceBuff, bitIndex, 1) == ERR ||
         aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
@@ -911,7 +911,7 @@ static inline uint64_t aml_def_create_field_read_helper(aml_state_t* state, aml_
     }
     DEREF_DEFER(newObject);
 
-    if (aml_buffer_field_set_buffer(newObject, &sourceBuff->buffer, byteIndex * 8, fieldWidth) == ERR ||
+    if (aml_buffer_field_set(newObject, sourceBuff, byteIndex * 8, fieldWidth) == ERR ||
         aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
@@ -1148,7 +1148,7 @@ uint64_t aml_def_create_field_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_buffer_field_set_buffer(newObject, &sourceBuff->buffer, bitIndex, numBits) == ERR ||
+    if (aml_buffer_field_set(newObject, sourceBuff, bitIndex, numBits) == ERR ||
         aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));

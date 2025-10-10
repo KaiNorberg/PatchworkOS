@@ -516,7 +516,7 @@ static uint64_t aml_field_unit_access(aml_field_unit_obj_t* fieldUnit, aml_objec
 
             value = (value >> inAccessOffset) & mask;
 
-            if (aml_object_put_bits_at(data, value, currentPos, bitsToAccess) == ERR)
+            if (aml_object_set_bits_at(data, currentPos, bitsToAccess, value) == ERR)
             {
                 result = ERR;
                 goto cleanup;

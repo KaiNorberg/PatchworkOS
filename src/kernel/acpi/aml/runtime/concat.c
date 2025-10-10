@@ -14,19 +14,14 @@ static uint64_t aml_concat_resolve_to_integer(aml_object_t* source, aml_integer_
     }
     else if (source->type == AML_STRING || source->type == AML_BUFFER)
     {
-        aml_object_t* temp = aml_object_new(NULL, AML_OBJECT_NONE);
-        if (temp == NULL)
-        {
-            return ERR;
-        }
-        DEREF_DEFER(temp);
-
-        if (aml_convert_source(source, temp, AML_INTEGER) == ERR)
+        aml_object_t* temp = NULL;
+        if (aml_convert_source(source, &temp, AML_INTEGER) == ERR)
         {
             return ERR;
         }
 
         *out = temp->integer.value;
+        DEREF(temp);
         return 0;
     }
     else
@@ -46,20 +41,14 @@ static uint64_t aml_concat_resolve_to_string(aml_object_t* source, const char** 
     }
     else if (source->type == AML_INTEGER || source->type == AML_BUFFER)
     {
-        aml_object_t* temp = aml_object_new(NULL, AML_OBJECT_NONE);
-        if (temp == NULL)
-        {
-            return ERR;
-        }
-        DEREF_DEFER(temp);
-
-        if (aml_convert_source(source, temp, AML_STRING) == ERR)
+        aml_object_t* temp = NULL;
+        if (aml_convert_source(source, &temp, AML_STRING) == ERR)
         {
             return ERR;
         }
 
         *outStr = temp->string.content;
-        *outTemp = REF(temp); // Caller must deref
+        *outTemp = temp; // Caller must deref
         return 0;
     }
     else if (source->type == AML_UNINITIALIZED)
@@ -159,21 +148,15 @@ static uint64_t aml_concat_resolve_to_buffer(aml_object_t* source, uint8_t** out
     }
     else if (source->type == AML_INTEGER || source->type == AML_STRING)
     {
-        aml_object_t* temp = aml_object_new(NULL, AML_OBJECT_NONE);
-        if (temp == NULL)
-        {
-            return ERR;
-        }
-        DEREF_DEFER(temp);
-
-        if (aml_convert_source(source, temp, AML_BUFFER) == ERR)
+        aml_object_t* temp = NULL;
+        if (aml_convert_source(source, &temp, AML_BUFFER) == ERR)
         {
             return ERR;
         }
 
         *outBuf = temp->buffer.content;
         *outLen = temp->buffer.length;
-        *outTemp = REF(temp); // Caller must deref
+        *outTemp = temp; // Caller must deref
         return 0;
     }
     else

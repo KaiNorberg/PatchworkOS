@@ -10,19 +10,7 @@ uint64_t aml_buffer_field_load(aml_buffer_field_obj_t* bufferField, aml_object_t
         return ERR;
     }
 
-    uint8_t* buffer;
-    if (bufferField->isString)
-    {
-        buffer = (uint8_t*)bufferField->string->content;
-    }
-    else
-    {
-        buffer = bufferField->buffer->content;
-    }
-    aml_bit_size_t bitOffset = bufferField->bitOffset;
-    aml_bit_size_t bitSize = bufferField->bitSize;
-
-    uint64_t byteSize = (bitSize + 7) / 8;
+    uint64_t byteSize = (bufferField->bitSize + 7) / 8;
     if (byteSize > aml_integer_byte_size())
     {
         if (aml_buffer_set_empty(out, byteSize) == ERR)
@@ -38,35 +26,30 @@ uint64_t aml_buffer_field_load(aml_buffer_field_obj_t* bufferField, aml_object_t
         }
     }
 
-    if (bitOffset + bitSize >
-        (bufferField->isString ? bufferField->string->length * 8 : bufferField->buffer->length * 8))
+    uint64_t i = 0;
+    while (1)
     {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    for (aml_bit_size_t i = 0; i < bitSize; i++)
-    {
-        aml_bit_size_t srcBitIndex = bitOffset + i;
-        aml_bit_size_t srcByteIndex = srcBitIndex / 8;
-        aml_bit_size_t srcBitInByte = srcBitIndex % 8;
-
-        aml_bit_size_t destBitIndex = i;
-        aml_bit_size_t destByteIndex = destBitIndex / 8;
-        aml_bit_size_t destBitInByte = destBitIndex % 8;
-
-        uint8_t bitValue = (buffer[srcByteIndex] >> srcBitInByte) & 1;
-
-        if (byteSize > aml_integer_byte_size())
+        uint64_t remainingBits = bufferField->bitSize - i;
+        if (remainingBits == 0)
         {
-            out->buffer.content[destByteIndex] &= ~(1 << destBitInByte);
-            out->buffer.content[destByteIndex] |= (bitValue << destBitInByte);
+            break;
         }
-        else
+
+        aml_integer_t value;
+        uint64_t bitsToRead = remainingBits < aml_integer_bit_size() ? remainingBits : aml_integer_bit_size();
+        if (aml_object_get_bits_at(bufferField->target, bufferField->bitOffset + i, bitsToRead, &value) == ERR)
         {
-            out->integer.value &= ~((aml_integer_t)1 << destBitIndex);
-            out->integer.value |= ((aml_integer_t)bitValue << destBitIndex);
+            aml_object_clear(out);
+            return ERR;
         }
+
+        if (aml_object_set_bits_at(out, i, bitsToRead, value) == ERR)
+        {
+            aml_object_clear(out);
+            return ERR;
+        }
+
+        i += bitsToRead;
     }
 
     return 0;
@@ -80,18 +63,6 @@ uint64_t aml_buffer_field_store(aml_buffer_field_obj_t* bufferField, aml_object_
         return ERR;
     }
 
-    uint8_t* buffer;
-    if (bufferField->isString)
-    {
-        buffer = (uint8_t*)bufferField->string->content;
-    }
-    else
-    {
-        buffer = bufferField->buffer->content;
-    }
-    aml_bit_size_t bitOffset = bufferField->bitOffset;
-    aml_bit_size_t bitSize = bufferField->bitSize;
-
     aml_type_t inType = in->type;
     if (inType != AML_BUFFER && inType != AML_INTEGER)
     {
@@ -99,54 +70,28 @@ uint64_t aml_buffer_field_store(aml_buffer_field_obj_t* bufferField, aml_object_
         return ERR;
     }
 
-    if (bitOffset + bitSize >
-        (bufferField->isString ? bufferField->string->length * 8 : bufferField->buffer->length * 8))
+    uint64_t i = 0;
+    while (1)
     {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    for (aml_bit_size_t i = 0; i < bitSize; i++)
-    {
-        aml_bit_size_t destBitIndex = bitOffset + i;
-        aml_bit_size_t destByteIndex = destBitIndex / 8;
-        aml_bit_size_t destBitInByte = destBitIndex % 8;
-
-        aml_bit_size_t srcBitIndex = i;
-        aml_bit_size_t srcByteIndex = srcBitIndex / 8;
-        aml_bit_size_t srcBitInByte = srcBitIndex % 8;
-
-        uint8_t bitValue;
-        if (inType == AML_BUFFER)
+        uint64_t remainingBits = bufferField->bitSize - i;
+        if (remainingBits == 0)
         {
-            if (srcByteIndex >= in->buffer.length)
-            {
-                bitValue = 0;
-            }
-            else
-            {
-                bitValue = (in->buffer.content[srcByteIndex] >> srcBitInByte) & 1;
-            }
+            break;
         }
-        else if (inType == AML_INTEGER)
+
+        aml_integer_t value;
+        uint64_t bitsToWrite = remainingBits < aml_integer_bit_size() ? remainingBits : aml_integer_bit_size();
+        if (aml_object_get_bits_at(in, i, bitsToWrite, &value) == ERR)
         {
-            if (srcBitIndex >= aml_integer_bit_size())
-            {
-                bitValue = 0;
-            }
-            else
-            {
-                bitValue = (in->integer.value >> srcBitIndex) & 1;
-            }
-        }
-        else
-        {
-            errno = EINVAL;
             return ERR;
         }
 
-        buffer[destByteIndex] &= ~(1 << destBitInByte);
-        buffer[destByteIndex] |= (bitValue << destBitInByte);
+        if (aml_object_set_bits_at(bufferField->target, bufferField->bitOffset + i, bitsToWrite, value) == ERR)
+        {
+            return ERR;
+        }
+
+        i += bitsToWrite;
     }
 
     return 0;

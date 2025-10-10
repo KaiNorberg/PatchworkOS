@@ -334,7 +334,7 @@ static inline uint64_t aml_package_element_handle_name(aml_object_t* in, aml_obj
     {
         // Unsure what the spec means by "actual data" but converting to DataObject seems to be the most sensible
         // interpretation.
-        if (aml_convert_source(in, out, AML_DATA_OBJECTS) == ERR)
+        if (aml_convert_source(in, &out, AML_DATA_OBJECTS) == ERR)
         {
             LOG_ERR("failed to convert to data object in aml_package_element_handle_name()\n");
             return ERR;

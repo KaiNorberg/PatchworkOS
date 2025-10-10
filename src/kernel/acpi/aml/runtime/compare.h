@@ -37,8 +37,8 @@ typedef enum
  * @param a Pointer to the first object.
  * @param b Pointer to the second object.
  * @param operation The comparison operation to perform.
- * @return true if the comparison is true, false otherwise or on error.
+ * @return `AML_TRUE` if the comparison is true, `AML_FALSE` if the comparison is false.
  */
-bool aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operation_t operation);
+aml_integer_t aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operation_t operation);
 
 /** @} */

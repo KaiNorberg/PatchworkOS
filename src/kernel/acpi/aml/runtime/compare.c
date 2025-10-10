@@ -3,7 +3,7 @@
 #include "acpi/aml/aml_to_string.h"
 #include "log/log.h"
 
-static inline bool aml_compare_integers(aml_integer_t a, aml_integer_t b, aml_compare_operation_t operation)
+static inline aml_integer_t aml_compare_integers(aml_integer_t a, aml_integer_t b, aml_compare_operation_t operation)
 {
     switch (operation)
     {
@@ -18,21 +18,20 @@ static inline bool aml_compare_integers(aml_integer_t a, aml_integer_t b, aml_co
     case AML_COMPARE_OR:
         return (a != 0) || (b != 0);
     default:
-        return false;
+        return AML_FALSE;
     }
 }
 
-bool aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operation_t operation)
+aml_integer_t aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operation_t operation)
 {
     if (a == NULL || b == NULL)
     {
-        LOG_ERR("cannot compare NULL objects\n");
-        return false;
+        return AML_FALSE;
     }
 
     if (operation >= AML_COMPARE_INVERT_BASE)
     {
-        return !aml_compare(a, b, operation - AML_COMPARE_INVERT_BASE);
+        return aml_compare(a, b, operation - AML_COMPARE_INVERT_BASE) == AML_FALSE ? AML_TRUE : AML_FALSE;
     }
 
     aml_type_t aType = a->type;
@@ -40,7 +39,7 @@ bool aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operation_t opera
 
     if (aType != bType)
     {
-        return false;
+        return AML_FALSE;
     }
 
     if (aType == AML_INTEGER)
@@ -71,7 +70,7 @@ bool aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operation_t opera
     }
     break;
     default:
-        return false;
+        return AML_FALSE;
     }
 
     uint64_t minLen = (lenA < lenB) ? lenA : lenB;
@@ -81,36 +80,36 @@ bool aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operation_t opera
     case AML_COMPARE_EQUAL:
         if (lenA != lenB)
         {
-            return false;
+            return AML_FALSE;
         }
-        return memcmp(dataA, dataB, lenA) == 0;
+        return memcmp(dataA, dataB, lenA) == 0 ? AML_TRUE : AML_FALSE;
     case AML_COMPARE_GREATER:
         for (uint64_t i = 0; i < minLen; i++)
         {
             if (dataA[i] > dataB[i])
             {
-                return true;
+                return AML_TRUE;
             }
             else if (dataA[i] < dataB[i])
             {
-                return false;
+                return AML_FALSE;
             }
         }
-        return lenA > lenB;
+        return lenA > lenB ? AML_TRUE : AML_FALSE;
     case AML_COMPARE_LESS:
         for (uint64_t i = 0; i < minLen; i++)
         {
             if (dataA[i] < dataB[i])
             {
-                return true;
+                return AML_TRUE;
             }
             else if (dataA[i] > dataB[i])
             {
-                return false;
+                return AML_FALSE;
             }
         }
-        return lenA < lenB;
+        return lenA < lenB ? AML_TRUE : AML_FALSE;
     default:
-        return false;
+        return AML_FALSE;
     }
 }

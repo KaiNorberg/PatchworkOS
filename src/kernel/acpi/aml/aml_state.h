@@ -42,11 +42,11 @@ typedef enum
  */
 typedef struct aml_state
 {
-    const uint8_t* start;                 ///< Pointer to the start of the AML bytecode.
-    const uint8_t* end;                   ///< Pointer to the end of the AML bytecode.
-    const uint8_t* current;               ///< Pointer to the current position in the AML bytecode.
+    const uint8_t* start;                    ///< Pointer to the start of the AML bytecode.
+    const uint8_t* end;                      ///< Pointer to the end of the AML bytecode.
+    const uint8_t* current;                  ///< Pointer to the current position in the AML bytecode.
     aml_local_obj_t* locals[AML_MAX_LOCALS]; ///< Local variables for the method, if any.
-    aml_arg_obj_t* args[AML_MAX_ARGS];     ///< Argument variables for the method, if any.
+    aml_arg_obj_t* args[AML_MAX_ARGS];       ///< Argument variables for the method, if any.
     aml_object_t* returnValue; ///< Pointer to where the return value should be stored, if the state is for a method.
     const uint8_t* lastErrPos; ///<  The position when the last error occurred.
     uint64_t errorDepth;       ///< The length of the error traceback.

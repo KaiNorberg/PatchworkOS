@@ -53,7 +53,12 @@ typedef enum
     AML_FIELD_UNIT = 1 << 5,
     AML_INTEGER = 1 << 6,
     /**
-     * The spec does defined a separate Integer Constant type, but the spec seems very inconsistent about how to actually use it or even what it is. In 19.3.5 its "Created by the ASL terms 'Zero', 'One', 'Ones', and 'Revision'.". But in 19.6.102 the package creation example referes to a normal number "0x3400" as an Integer Constant. And there are also unanswered questions about what happens if a named object is created as an Integer Constant. The ACPICA tests seem to just treat even the result of 'Zero/One/Ones' as a normal Integer. I could go on. So unless ive missed something obvious, we just pretend it doesn't exist and treat it as a normal Integer.
+     * The spec does defined a separate Integer Constant type, but the spec seems very inconsistent about how to
+     * actually use it or even what it is. In 19.3.5 its "Created by the ASL terms 'Zero', 'One', 'Ones', and
+     * 'Revision'.". But in 19.6.102 the package creation example referes to a normal number "0x3400" as an Integer
+     * Constant. And there are also unanswered questions about what happens if a named object is created as an Integer
+     * Constant. The ACPICA tests seem to just treat even the result of 'Zero/One/Ones' as a normal Integer. I could go
+     * on. So unless ive missed something obvious, we just pretend it doesn't exist and treat it as a normal Integer.
      */
     // AML_INTEGER_CONSTANT = 1 << 7,
     AML_METHOD = 1 << 8,
@@ -175,9 +180,7 @@ typedef struct aml_buffer_obj
 typedef struct aml_buffer_field_obj
 {
     AML_OBJECT_COMMON_HEADER;
-    bool isString;            ///< True if the buffer field was created from a string.
-    aml_buffer_obj_t* buffer; ///< Used if the buffer field is created from a buffer.
-    aml_string_obj_t* string; ///< Used if the buffer field is created from a string.
+    aml_object_t* target;
     aml_bit_size_t bitOffset;
     aml_bit_size_t bitSize;
 } aml_buffer_field_obj_t;
@@ -552,30 +555,36 @@ aml_object_t* aml_object_find(aml_object_t* start, const char* path);
 /**
  * @brief Store bits into a object at the specified bit offset and size.
  *
- * Only supports Integers and Buffers.
+ * Only supports Integers, Strings and Buffers.
+ *
+ * If a out of bounds access is attempted, the bits that are out of bounds will be ignored.
+ *
+ * All objects, Intergers, Strings and Buffers are writen to as if they were little-endian Integers.
  *
  * @param object Pointer to the object to store bits into.
- * @param value The bits to store (only the least significant `bitSize` bits are used).
  * @param bitOffset The bit offset within the object's data to start storing to.
- * @param bitSize The number of bits to extract, up to 64.
+ * @param bitSize The number of bits to extract, up to `aml_integer_bit_size()`.
+ * @param value The bits to store.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_object_put_bits_at(aml_object_t* object, uint64_t value, aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
+uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, aml_integer_t value);
 
 /**
  * @brief Retrieve bits from a object at the specified bit offset and size.
  *
- * Only supports Integers and Buffers.
+ * Only supports Integers, Strings and Buffers.
  *
  * If a out of bounds access is attempted, the bits that are out of bounds will be read as zero.
  *
+ * All objects, Intergers, Strings and Buffers are read from as if they were little-endian Integers.
+ *
  * @param object Pointer to the object to extract bits from.
  * @param bitOffset The bit offset within the object's data to start extracting from.
- * @param bitSize The number of bits to extract, up to 64.
+ * @param bitSize The number of bits to extract, up to `aml_integer_bit_size()`.
  * @param out Pointer to a buffer where the extracted bits will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, uint64_t* out);
+uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, aml_integer_t* out);
 
 /**
  * @brief Set a object as a buffer with the given content.
@@ -601,24 +610,12 @@ uint64_t aml_buffer_set_empty(aml_object_t* object, uint64_t length);
  * @brief Set a object as a buffer field with the given buffer, bit offset and bit size.
  *
  * @param object Pointer to the object to initialize.
- * @param buffer Pointer to the buffer.
+ * @param target Pointer to the object to create the buffer field from, must be `AML_BUFFER` or `AML_STRING`.
  * @param bitOffset Bit offset within the buffer.
  * @param bitSize Size of the field in bits.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_buffer_field_set_buffer(aml_object_t* object, aml_buffer_obj_t* buffer, aml_bit_size_t bitOffset,
-    aml_bit_size_t bitSize);
-
-/**
- * @brief Set a object as a buffer field with the given string, bit offset and bit size.
- *
- * @param object Pointer to the object to initialize.
- * @param string Pointer to the string.
- * @param bitOffset Bit offset within the string.
- * @param bitSize Size of the field in bits.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_buffer_field_set_string(aml_object_t* object, aml_string_obj_t* string, aml_bit_size_t bitOffset,
+uint64_t aml_buffer_field_set(aml_object_t* object, aml_object_t* target, aml_bit_size_t bitOffset,
     aml_bit_size_t bitSize);
 
 /**

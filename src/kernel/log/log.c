@@ -179,7 +179,7 @@ static void log_print_header(log_level_t level, const char* prefix)
 
     if (level == LOG_LEVEL_PANIC)
     {
-        int length = sprintf(buffer, "[XXXX.XXX-XX-X-XXXXXXXXXX] ");
+        int length = sprintf(buffer, "\n[XXXX.XXX-XX-X-XXXXXXXXXX] ");
         log_write(buffer, length);
         return;
     }
@@ -190,7 +190,7 @@ static void log_print_header(log_level_t level, const char* prefix)
 
     cpu_t* self = smp_self_unsafe();
 
-    int length = sprintf(buffer, "[%4llu.%03llu-%02x-%s-%-10s] ", seconds, milliseconds, self->id, levelNames[level],
+    int length = sprintf(buffer, "\n[%4llu.%03llu-%02x-%s-%-10s] ", seconds, milliseconds, self->id, levelNames[level],
         prefix != NULL ? prefix : "unknown");
     log_write(buffer, length);
 }
@@ -211,6 +211,7 @@ static void log_handle_char(log_level_t level, const char* prefix, char chr)
             log_print_header(level, prefix);
         }
         state.isLastCharNewline = true;
+        return;
     }
 
     log_write(&chr, 1);

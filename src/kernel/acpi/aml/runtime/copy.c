@@ -95,7 +95,8 @@ uint64_t aml_copy_object(aml_object_t* src, aml_object_t* dest)
         return ERR;
     }
 
-    // TODO: Windows seems to allow this so we do the same but I need to do more reading on the whole Windows acpi weirdness thing.
+    // TODO: Windows seems to allow this so we do the same but I need to do more reading on the whole Windows acpi
+    // weirdness thing.
     if (src == dest)
     {
         return 0;
@@ -103,7 +104,7 @@ uint64_t aml_copy_object(aml_object_t* src, aml_object_t* dest)
 
     if (dest->type == AML_ARG)
     {
-        if (dest->arg.value == NULL)  // Is uninitialized
+        if (dest->arg.value == NULL) // Is uninitialized
         {
             aml_object_t* newValue = aml_object_new(NULL, AML_OBJECT_NONE);
             if (newValue == NULL)

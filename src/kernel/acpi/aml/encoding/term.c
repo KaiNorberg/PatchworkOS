@@ -63,17 +63,10 @@ aml_object_t* aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_type
         return value; // Transfer ownership
     }
 
-    aml_object_t* out = aml_object_new(state, AML_OBJECT_NONE);
-    if (out == NULL)
+    aml_object_t* out = NULL;
+    if (aml_convert_source(value, &out, allowedTypes) == ERR)
     {
         DEREF(value);
-        return NULL;
-    }
-
-    if (aml_convert_source(value, out, allowedTypes) == ERR)
-    {
-        DEREF(value);
-        DEREF(out);
         return NULL;
     }
 

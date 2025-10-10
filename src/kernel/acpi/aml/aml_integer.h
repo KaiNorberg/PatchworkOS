@@ -20,6 +20,16 @@
 typedef uint64_t aml_integer_t;
 
 /**
+ * @brief AML Boolean true value.
+ */
+#define AML_TRUE UINT64_MAX
+
+/**
+ * @brief AML Boolean false value.
+ */
+#define AML_FALSE 0
+
+/**
  * @brief Initialize integer handling.
  *
  * @return On success, 0. On failure, `ERR` and `errno` is set.

@@ -12,10 +12,10 @@
 #include "acpi/aml/runtime/copy.h"
 #include "acpi/aml/runtime/method.h"
 #include "acpi/aml/runtime/store.h"
-#include "sched/timer.h"
 #include "arg.h"
 #include "debug.h"
 #include "package_length.h"
+#include "sched/timer.h"
 #include "term.h"
 
 #include <sys/proc.h>
@@ -848,7 +848,6 @@ aml_object_t* aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope)
     return REF(result);
 }
 
-
 aml_object_t* aml_def_increment_read(aml_state_t* state, aml_scope_t* scope)
 {
     if (aml_token_expect(state, AML_INCREMENT_OP) == ERR)
@@ -865,14 +864,8 @@ aml_object_t* aml_def_increment_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(superName);
 
-    aml_object_t* result = aml_object_new(state, AML_OBJECT_NONE);
-    if (result == NULL)
-    {
-        return NULL;
-    }
-    DEREF_DEFER(result);
-
-    if (aml_convert_source(superName, result, AML_INTEGER) == ERR)
+    aml_object_t* result = NULL;
+    if (aml_convert_source(superName, &result, AML_INTEGER) == ERR)
     {
         return NULL;
     }
@@ -881,10 +874,11 @@ aml_object_t* aml_def_increment_read(aml_state_t* state, aml_scope_t* scope)
 
     if (aml_convert_result(result, superName) == ERR)
     {
+        DEREF(result);
         return NULL;
     }
 
-    return REF(result);
+    return result; // Transfer ownership
 }
 
 aml_object_t* aml_def_decrement_read(aml_state_t* state, aml_scope_t* scope)
@@ -903,14 +897,8 @@ aml_object_t* aml_def_decrement_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(superName);
 
-    aml_object_t* result = aml_object_new(state, AML_OBJECT_NONE);
-    if (result == NULL)
-    {
-        return NULL;
-    }
-    DEREF_DEFER(result);
-
-    if (aml_convert_source(superName, result, AML_INTEGER) == ERR)
+    aml_object_t* result = NULL;
+    if (aml_convert_source(superName, &result, AML_INTEGER) == ERR)
     {
         return NULL;
     }
@@ -919,10 +907,11 @@ aml_object_t* aml_def_decrement_read(aml_state_t* state, aml_scope_t* scope)
 
     if (aml_convert_result(result, superName) == ERR)
     {
+        DEREF(result);
         return NULL;
     }
 
-    return REF(result);
+    return result; // Transfer ownership
 }
 
 aml_object_t* aml_obj_reference_read(aml_state_t* state, aml_scope_t* scope)
@@ -1057,10 +1046,10 @@ aml_object_t* aml_def_index_read(aml_state_t* state, aml_scope_t* scope)
     break;
     case AML_BUFFER: // Section 19.6.63.2
     {
-        aml_buffer_obj_t* buffer = &buffPkgStrObj->buffer;
-        if (index >= buffer->length)
+        if (index >= buffPkgStrObj->buffer.length)
         {
-            AML_DEBUG_ERROR(state, "Index out of bounds for buffer (length %llu, index %llu)", buffer->length, index);
+            AML_DEBUG_ERROR(state, "Index out of bounds for buffer (length %llu, index %llu)",
+                buffPkgStrObj->buffer.length, index);
             errno = EILSEQ;
             return NULL;
         }
@@ -1072,7 +1061,7 @@ aml_object_t* aml_def_index_read(aml_state_t* state, aml_scope_t* scope)
         }
         DEREF_DEFER(byteField);
 
-        if (aml_buffer_field_set_buffer(byteField, buffer, index * 8, 8) == ERR)
+        if (aml_buffer_field_set(byteField, buffPkgStrObj, index * 8, 8) == ERR)
         {
             return NULL;
         }
@@ -1085,10 +1074,10 @@ aml_object_t* aml_def_index_read(aml_state_t* state, aml_scope_t* scope)
     break;
     case AML_STRING: // Section 19.6.63.3
     {
-        aml_string_obj_t* string = &buffPkgStrObj->string;
-        if (index >= string->length)
+        if (index >= buffPkgStrObj->string.length)
         {
-            AML_DEBUG_ERROR(state, "Index out of bounds for string (length %llu, index %llu)", string->length, index);
+            AML_DEBUG_ERROR(state, "Index out of bounds for string (length %llu, index %llu)",
+                buffPkgStrObj->string.length, index);
             errno = EILSEQ;
             return NULL;
         }
@@ -1100,7 +1089,7 @@ aml_object_t* aml_def_index_read(aml_state_t* state, aml_scope_t* scope)
         }
         DEREF_DEFER(byteField);
 
-        if (aml_buffer_field_set_string(byteField, string, index * 8, 8) == ERR)
+        if (aml_buffer_field_set(byteField, buffPkgStrObj, index * 8, 8) == ERR)
         {
             return NULL;
         }
@@ -1316,7 +1305,7 @@ static inline uint64_t aml_def_lnot_callback(aml_state_t* state, aml_scope_t* sc
 {
     (void)state;
     (void)scope;
-    if (aml_integer_set(out, operand->integer.value == 0) == ERR)
+    if (aml_integer_set(out, operand->integer.value == 0 ? AML_TRUE : AML_FALSE) == ERR)
     {
         return ERR;
     }
@@ -1325,8 +1314,7 @@ static inline uint64_t aml_def_lnot_callback(aml_state_t* state, aml_scope_t* sc
 
 aml_object_t* aml_def_lnot_read(aml_state_t* state, aml_scope_t* scope)
 {
-    return aml_helper_op_operand_read(state, scope, AML_LNOT_OP, AML_INTEGER,
-        aml_def_lnot_callback);
+    return aml_helper_op_operand_read(state, scope, AML_LNOT_OP, AML_INTEGER, aml_def_lnot_callback);
 }
 
 static inline uint64_t aml_def_lnot_equal_callback(aml_state_t* state, aml_scope_t* scope, aml_object_t* out,
@@ -1963,10 +1951,10 @@ aml_object_t* aml_reference_type_opcode_read(aml_state_t* state, aml_scope_t* sc
         return NULL;
     }
 
-    // I am unsure about this. But it seems that ReferenceTypeOpcodes should dereference the result if its an ObjectReference.
-    // Mainly this is based of the examples found in section 19.6.63.2 and 19.6.63.3 of the Index Operator where we can see
-    // the Store Operator storing directly to the result of an Index Operator. And this seems to line up with testing.
-    // I could not find any explicit mention of this in the spec though.
+    // I am unsure about this. But it seems that ReferenceTypeOpcodes should dereference the result if its an
+    // ObjectReference. Mainly this is based of the examples found in section 19.6.63.2 and 19.6.63.3 of the Index
+    // Operator where we can see the Store Operator storing directly to the result of an Index Operator. And this seems
+    // to line up with testing. I could not find any explicit mention of this in the spec though.
     //
     // TODO: Stare at the spec some more.
 
@@ -2016,7 +2004,6 @@ aml_object_t* aml_def_find_set_left_bit_read(aml_state_t* state, aml_scope_t* sc
         return NULL;
     }
     DEREF_DEFER(result);
-
 
     if (operand->integer.value == 0)
     {

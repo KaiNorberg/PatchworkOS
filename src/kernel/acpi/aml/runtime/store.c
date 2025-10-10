@@ -64,7 +64,8 @@ uint64_t aml_store(aml_object_t* src, aml_object_t* dest)
         return aml_copy_data_and_type(src, dest);
     }
 
-    LOG_ERR("illegal store of object %s with flags '0x%x' to destination object of type '%s' with flags '0x%x'\n", aml_object_to_string(src), src->flags, aml_type_to_string(dest->type), dest->flags);
+    LOG_ERR("illegal store of object %s with flags '0x%x' to destination object of type '%s' with flags '0x%x'\n",
+        aml_object_to_string(src), src->flags, aml_type_to_string(dest->type), dest->flags);
     errno = EINVAL;
     return ERR;
 }

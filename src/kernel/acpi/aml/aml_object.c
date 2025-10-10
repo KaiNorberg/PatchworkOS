@@ -187,19 +187,11 @@ void aml_object_clear(aml_object_t* object)
         object->buffer.length = 0;
         break;
     case AML_BUFFER_FIELD:
-        if (object->bufferField.buffer != NULL)
+        if (object->bufferField.target != NULL)
         {
-            assert(!object->bufferField.isString);
-            DEREF(object->bufferField.buffer);
+            DEREF(object->bufferField.target);
         }
-        if (object->bufferField.string != NULL)
-        {
-            assert(object->bufferField.isString);
-            DEREF(object->bufferField.string);
-        }
-        object->bufferField.isString = false;
-        object->bufferField.buffer = NULL;
-        object->bufferField.string = NULL;
+        object->bufferField.target = NULL;
         object->bufferField.bitOffset = 0;
         object->bufferField.bitSize = 0;
         break;
@@ -751,7 +743,7 @@ aml_object_t* aml_object_find(aml_object_t* start, const char* path)
     return current; // Transfer ownership
 }
 
-uint64_t aml_object_put_bits_at(aml_object_t* object, uint64_t value, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
+uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, aml_integer_t value)
 {
     if (object == NULL || bitSize == 0 || bitSize > aml_integer_bit_size())
     {
@@ -763,47 +755,56 @@ uint64_t aml_object_put_bits_at(aml_object_t* object, uint64_t value, aml_bit_si
     {
     case AML_INTEGER:
     {
+        uint64_t effectiveBitSize = bitSize;
+        if (bitOffset >= aml_integer_bit_size())
+        {
+            return 0;
+        }
         if (bitOffset + bitSize > aml_integer_bit_size())
         {
-            errno = EINVAL;
-            return ERR;
+            effectiveBitSize = aml_integer_bit_size() - bitOffset;
         }
 
         uint64_t mask;
-        if (bitSize == 64)
+        if (effectiveBitSize >= aml_integer_bit_size())
         {
-            mask = ~UINT64_C(0);
+            mask = aml_integer_ones();
         }
         else
         {
-            mask = (UINT64_C(1) << bitSize) - 1;
+            mask = ((1ULL << effectiveBitSize) - 1) << bitOffset;
         }
 
-        object->integer.value &= ~(mask << bitOffset);
-        object->integer.value |= (value & mask) << bitOffset;
+        object->integer.value = (object->integer.value & ~mask) | ((value << bitOffset) & mask);
     }
     break;
     case AML_BUFFER:
+    case AML_STRING:
     {
-        if (bitOffset + bitSize > object->buffer.length * 8)
-        {
-            errno = EINVAL;
-            return ERR;
-        }
+        uint64_t length = object->type == AML_BUFFER ? object->buffer.length : object->string.length;
+        uint8_t* content = object->type == AML_BUFFER ? object->buffer.content : (uint8_t*)object->string.content;
+        uint64_t totalBits = length * 8;
 
-        for (aml_bit_size_t i = 0; i < bitSize; i++) // TODO: Optimize
+        for (uint64_t i = 0; i < bitSize; i++)
         {
-            aml_bit_size_t totalBitPos = bitOffset + i;
-            aml_bit_size_t bytePos = totalBitPos / 8;
-            aml_bit_size_t bitPos = totalBitPos % 8;
-
-            if (value & (UINT64_C(1) << i))
+            uint64_t absoluteBitIndex = bitOffset + i;
+            if (absoluteBitIndex >= totalBits)
             {
-                object->buffer.content[bytePos] |= (1 << bitPos);
+                break;
+            }
+
+            uint64_t bitValue = (value >> i) & 1;
+
+            uint64_t byteIndex = absoluteBitIndex / 8;
+            uint8_t bitInByte = absoluteBitIndex % 8;
+
+            if (bitValue)
+            {
+                content[byteIndex] |= (1 << bitInByte);
             }
             else
             {
-                object->buffer.content[bytePos] &= ~(1 << bitPos);
+                content[byteIndex] &= ~(1 << bitInByte);
             }
         }
     }
@@ -816,9 +817,9 @@ uint64_t aml_object_put_bits_at(aml_object_t* object, uint64_t value, aml_bit_si
     return 0;
 }
 
-uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, uint64_t* out)
+uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, aml_integer_t* out)
 {
-    if (object == NULL || out == NULL || bitSize == 0 || bitSize > 64)
+    if (object == NULL || out == NULL || bitSize == 0 || bitSize > aml_integer_bit_size())
     {
         errno = EINVAL;
         return ERR;
@@ -828,44 +829,42 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
     {
     case AML_INTEGER:
     {
-        if (bitOffset + bitSize > 64)
+        *out = 0;
+        if (bitOffset >= aml_integer_bit_size())
         {
-            *out = 0;
             return 0;
         }
 
-        uint64_t mask;
-        if (bitSize == 64)
+        uint64_t effectiveBitSize = bitSize;
+        if (bitOffset + bitSize > aml_integer_bit_size())
         {
-            mask = ~UINT64_C(0);
-        }
-        else
-        {
-            mask = (UINT64_C(1) << bitSize) - 1;
+            effectiveBitSize = aml_integer_bit_size() - bitOffset;
         }
 
+        uint64_t mask = (effectiveBitSize >= aml_integer_bit_size()) ? aml_integer_ones() : ((1ULL << effectiveBitSize) - 1);
         *out = (object->integer.value >> bitOffset) & mask;
     }
     break;
     case AML_BUFFER:
+    case AML_STRING:
     {
-        if (bitOffset + bitSize > object->buffer.length * 8)
-        {
-            *out = 0;
-            return 0;
-        }
+        uint64_t length = object->type == AML_BUFFER ? object->buffer.length : object->string.length;
+        uint8_t* content = object->type == AML_BUFFER ? object->buffer.content : (uint8_t*)object->string.content;
+        uint64_t totalBits = length * 8;
 
         *out = 0;
-        for (aml_bit_size_t i = 0; i < bitSize; i++) // TODO: Optimize
+        for (uint64_t i = 0; i < bitSize; i++)
         {
-            aml_bit_size_t totalBitPos = bitOffset + i;
-            aml_bit_size_t bytePos = totalBitPos / 8;
-            aml_bit_size_t bitPos = totalBitPos % 8;
-
-            if (object->buffer.content[bytePos] & (1 << bitPos))
+            uint64_t absoluteBitIndex = bitOffset + i;
+            if (absoluteBitIndex >= totalBits)
             {
-                *out |= (UINT64_C(1) << i);
+                continue;
             }
+
+            uint64_t byteIndex = absoluteBitIndex / 8;
+            uint8_t bitInByte = absoluteBitIndex % 8;
+            uint8_t bitValue = (content[byteIndex] >> bitInByte) & 1;
+            *out |= ((uint64_t)bitValue << i);
         }
     }
     break;
@@ -934,10 +933,16 @@ uint64_t aml_buffer_set(aml_object_t* object, const uint8_t* buffer, uint64_t by
     return 0;
 }
 
-uint64_t aml_buffer_field_set_buffer(aml_object_t* object, aml_buffer_obj_t* buffer, aml_bit_size_t bitOffset,
+uint64_t aml_buffer_field_set(aml_object_t* object, aml_object_t* target, aml_bit_size_t bitOffset,
     aml_bit_size_t bitSize)
 {
-    if (object == NULL || buffer == NULL || bitSize == 0)
+    if (object == NULL || target == NULL || bitSize == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (target->type != AML_BUFFER && target->type != AML_STRING)
     {
         errno = EINVAL;
         return ERR;
@@ -948,32 +953,7 @@ uint64_t aml_buffer_field_set_buffer(aml_object_t* object, aml_buffer_obj_t* buf
         return ERR;
     }
 
-    object->bufferField.isString = false;
-    object->bufferField.buffer = REF(buffer);
-    object->bufferField.string = NULL;
-    object->bufferField.bitOffset = bitOffset;
-    object->bufferField.bitSize = bitSize;
-    object->type = AML_BUFFER_FIELD;
-    return 0;
-}
-
-uint64_t aml_buffer_field_set_string(aml_object_t* object, aml_string_obj_t* string, aml_bit_size_t bitOffset,
-    aml_bit_size_t bitSize)
-{
-    if (object == NULL || string == NULL || bitSize == 0)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (aml_object_check_clear(object) == ERR)
-    {
-        return ERR;
-    }
-
-    object->bufferField.isString = true;
-    object->bufferField.buffer = NULL;
-    object->bufferField.string = REF(string);
+    object->bufferField.target = REF(target);
     object->bufferField.bitOffset = bitOffset;
     object->bufferField.bitSize = bitSize;
     object->type = AML_BUFFER_FIELD;
