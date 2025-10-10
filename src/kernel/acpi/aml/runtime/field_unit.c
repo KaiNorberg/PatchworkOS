@@ -361,7 +361,7 @@ static uint64_t aml_generic_field_read_at(aml_field_unit_obj_t* fieldUnit, aml_b
     }
     case AML_FIELD_UNIT_INDEX_FIELD:
     {
-        aml_object_t* temp = aml_object_new(NULL, AML_OBJECT_NONE);
+        aml_object_t* temp = aml_object_new(NULL);
         if (temp == NULL)
         {
             return ERR;
@@ -411,7 +411,7 @@ static uint64_t aml_generic_field_write_at(aml_field_unit_obj_t* fieldUnit, aml_
     }
     case AML_FIELD_UNIT_INDEX_FIELD:
     {
-        aml_object_t* temp = aml_object_new(NULL, AML_OBJECT_NONE);
+        aml_object_t* temp = aml_object_new(NULL);
         if (temp == NULL)
         {
             return ERR;

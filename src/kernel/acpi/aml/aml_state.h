@@ -2,12 +2,10 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
 
 #include "acpi/aml/aml_object.h"
-#include "encoding/arg.h"
 #include "encoding/local.h"
-#include "encoding/term.h"
+#include "encoding/arg.h"
 
 /**
  * @brief State
@@ -21,18 +19,6 @@
  */
 
 /**
- * @brief Flow control types.
- * @enum aml_flow_control_t
- */
-typedef enum
-{
-    AML_FLOW_CONTROL_EXECUTE, ///< Normal execution
-    AML_FLOW_CONTROL_RETURN,  ///< A Return statement was hit
-    AML_FLOW_CONTROL_BREAK,   ///< A Break statement was hit
-    AML_FLOW_CONTROL_CONTINUE ///< A Continue statement was hit
-} aml_flow_control_t;
-
-/**
  * @brief AML State
  * @struct aml_state_t
  *
@@ -42,15 +28,10 @@ typedef enum
  */
 typedef struct aml_state
 {
-    const uint8_t* start;                    ///< Pointer to the start of the AML bytecode.
-    const uint8_t* end;                      ///< Pointer to the end of the AML bytecode.
-    const uint8_t* current;                  ///< Pointer to the current position in the AML bytecode.
     aml_local_obj_t* locals[AML_MAX_LOCALS]; ///< Local variables for the method, if any.
     aml_arg_obj_t* args[AML_MAX_ARGS];       ///< Argument variables for the method, if any.
-    aml_object_t* returnValue; ///< Pointer to where the return value should be stored, if the state is for a method.
-    const uint8_t* lastErrPos; ///<  The position when the last error occurred.
-    uint64_t errorDepth;       ///< The length of the error traceback.
-    aml_flow_control_t flowControl; ///< Used by `aml_term_list_read()` to handle flow control statements.
+    aml_object_t* result;                    ///< The return value, see `aml_method_evaluate()` for details.
+    uint64_t errorDepth;                     ///< The length of the error traceback, if 0 then no error has occurred.
     /**
      * List of objects created as the state was executing. These objects should be removed from the namespace if the
      * state was used to execute a method, via the `aml_state_garbage_collect()` function.
@@ -68,31 +49,22 @@ typedef struct aml_state
  * @brief Initialize an AML state.
  *
  * @param state Pointer to the state to initialize.
- * @param start Pointer to the start of the AML bytecode.
- * @param end Pointer to the end of the AML bytecode.
- * @param argCount Number of arguments, or 0 if not a method.
  * @param args Array of pointers to the objects to pass as arguments, or `NULL` if not a method or no arguments.
- * @param returnValue Pointer to where the return value should be stored, or `NULL` if not a method or no return value.
+ * @param argCount Number of arguments, or 0 if not a method.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t* end, uint64_t argCount,
-    aml_object_t** args, aml_object_t* returnValue);
+uint64_t aml_state_init(aml_state_t* state, aml_object_t** args,
+    uint64_t argCount);
 
 /**
  * @brief Deinitialize an AML state.
- *
- * Will error if the state is holding any mutexes or if `flowControl` is not `AML_FLOW_CONTROL_EXECUTE` or
- * `AML_FLOW_CONTROL_RETURN`.
- *
- * Even if an error occurs all resources will still be freed.
  *
  * Will not free any objects created by the state as that is not always wanted, for example when the state was used to
  * parse a DSDT or SSDT table. Use `aml_state_garbage_collect()` to free all objects created by the state.
  *
  * @param state Pointer to the state to deinitialize.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_state_deinit(aml_state_t* state);
+void aml_state_deinit(aml_state_t* state);
 
 /**
  * @brief Free all objects created by the state.
@@ -101,41 +73,24 @@ uint64_t aml_state_deinit(aml_state_t* state);
  */
 void aml_state_garbage_collect(aml_state_t* state);
 
-static inline uint64_t aml_state_read(aml_state_t* state, uint8_t* buffer, uint64_t count)
-{
-    uint64_t bytesAvailable = state->end - state->current;
-    if (count > bytesAvailable)
-    {
-        count = bytesAvailable;
-    }
+/**
+ * @brief Get the result object of the state.
+ *
+ * @see aml_method_evaluate() for more details.
+ *
+ * @param state Pointer to the state.
+ * @return A reference to the result object, or `NULL` if no result is available.
+ */
+aml_object_t* aml_state_result_get(aml_state_t* state);
 
-    memcpy(buffer, state->current, count);
-    state->current += count;
-    return count;
-}
-
-static inline uint64_t aml_state_peek(aml_state_t* state, uint8_t* buffer, uint64_t count)
-{
-    uint64_t bytesAvailable = state->end - state->current;
-    if (count > bytesAvailable)
-    {
-        count = bytesAvailable;
-    }
-
-    memcpy(buffer, state->current, count);
-    return count;
-}
-
-static inline uint64_t aml_state_advance(aml_state_t* state, uint64_t offset)
-{
-    uint64_t bytesAvailable = state->end - state->current;
-    if (offset > bytesAvailable)
-    {
-        offset = bytesAvailable;
-    }
-
-    state->current += offset;
-    return offset;
-}
+/**
+ * @brief Set the result object of the state.
+ *
+ * @see aml_method_evaluate() for more details.
+ *
+ * @param state Pointer to the state.
+ * @param result Pointer to the result object, or `NULL` to clear the result.
+ */
+void aml_state_result_set(aml_state_t* state, aml_object_t* result);
 
 /** @} */

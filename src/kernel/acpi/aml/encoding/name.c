@@ -2,11 +2,10 @@
 
 #include "acpi/aml/aml.h"
 #include "acpi/aml/aml_debug.h"
-#include "acpi/aml/aml_scope.h"
-#include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_token.h"
 #include "data.h"
 #include "debug.h"
+#include "term.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -14,30 +13,26 @@
 #include <string.h>
 #include <sys/list.h>
 
-uint64_t aml_seg_count_read(aml_state_t* state, uint8_t* out)
+uint64_t aml_seg_count_read(aml_term_list_ctx_t* ctx, uint8_t* out)
 {
-    if (aml_byte_data_read(state, out) == ERR)
+    if (aml_byte_data_read(ctx, out) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read ByteData");
+        AML_DEBUG_ERROR(ctx, "Failed to read ByteData");
         return ERR;
     }
     return 0;
 }
 
-uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t** out)
+uint64_t aml_name_seg_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out)
 {
-    const uint8_t* start = state->current;
+    const uint8_t* start = ctx->current;
 
     aml_token_t leadnamechar;
-    if (aml_token_read(state, &leadnamechar) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read LeadNameChar");
-        return ERR;
-    }
+    aml_token_read(ctx, &leadnamechar);
 
     if (!AML_IS_LEAD_NAME_CHAR(&leadnamechar))
     {
-        AML_DEBUG_ERROR(state, "Invalid LeadNameChar 0x%04x in NameSeg", leadnamechar.num);
+        AML_DEBUG_ERROR(ctx, "Invalid LeadNameChar 0x%04x in NameSeg", leadnamechar.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -45,15 +40,11 @@ uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t** out)
     for (uint8_t i = 0; i < 3; i++)
     {
         aml_token_t namechar;
-        if (aml_token_read(state, &namechar) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to read NameChar");
-            return ERR;
-        }
+        aml_token_read(ctx, &namechar);
 
         if (!AML_IS_NAME_CHAR(&namechar))
         {
-            AML_DEBUG_ERROR(state, "Invalid char 0x%04x in NameSeg", namechar.num);
+            AML_DEBUG_ERROR(ctx, "Invalid char 0x%04x in NameSeg", namechar.num);
             errno = EILSEQ;
             return ERR;
         }
@@ -63,21 +54,21 @@ uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t** out)
     return 0;
 }
 
-uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t** out)
+uint64_t aml_dual_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out)
 {
-    if (aml_token_expect(state, AML_DUAL_NAME_PREFIX) == ERR)
+    if (aml_token_expect(ctx, AML_DUAL_NAME_PREFIX) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read DualNamePrefix");
+        AML_DEBUG_ERROR(ctx, "Failed to read DualNamePrefix");
         return ERR;
     }
 
-    const uint8_t* start = state->current;
+    const uint8_t* start = ctx->current;
 
     // We just read the two NameSegs to verify they are valid.
     aml_name_seg_t* temp;
-    if (aml_name_seg_read(state, &temp) == ERR || aml_name_seg_read(state, &temp) == ERR)
+    if (aml_name_seg_read(ctx, &temp) == ERR || aml_name_seg_read(ctx, &temp) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read NameSeg");
+        AML_DEBUG_ERROR(ctx, "Failed to read NameSeg");
         return ERR;
     }
 
@@ -85,30 +76,30 @@ uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t** out)
     return 0;
 }
 
-uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegments, uint64_t* outSegCount)
+uint64_t aml_multi_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** outSegments, uint64_t* outSegCount)
 {
-    if (aml_token_expect(state, AML_MULTI_NAME_PREFIX) == ERR)
+    if (aml_token_expect(ctx, AML_MULTI_NAME_PREFIX) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read MultiNamePrefix");
+        AML_DEBUG_ERROR(ctx, "Failed to read MultiNamePrefix");
         return ERR;
     }
 
     uint8_t segCount;
-    if (aml_seg_count_read(state, &segCount) == ERR)
+    if (aml_seg_count_read(ctx, &segCount) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read SegCount");
+        AML_DEBUG_ERROR(ctx, "Failed to read SegCount");
         return ERR;
     }
 
-    const uint8_t* start = state->current;
+    const uint8_t* start = ctx->current;
 
     // We just read the NameSegs to verify they are valid.
     aml_name_seg_t* temp;
     for (size_t i = 0; i < segCount; i++)
     {
-        if (aml_name_seg_read(state, &temp) == ERR)
+        if (aml_name_seg_read(ctx, &temp) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read NameSeg");
+            AML_DEBUG_ERROR(ctx, "Failed to read NameSeg");
             return ERR;
         }
     }
@@ -118,49 +109,45 @@ uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegmen
     return 0;
 }
 
-uint64_t aml_null_name_read(aml_state_t* state)
+uint64_t aml_null_name_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(state, AML_NULL_NAME) == ERR)
+    if (aml_token_expect(ctx, AML_NULL_NAME) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read NullName");
+        AML_DEBUG_ERROR(ctx, "Failed to read NullName");
         return ERR;
     }
 
     return 0;
 }
 
-uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out)
+uint64_t aml_name_path_read(aml_term_list_ctx_t* ctx, aml_name_path_t* out)
 {
     aml_token_t firstToken;
-    if (aml_token_peek(state, &firstToken) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to peek token");
-        return ERR;
-    }
+    aml_token_peek(ctx, &firstToken);
 
     if (AML_IS_LEAD_NAME_CHAR(&firstToken))
     {
         out->segmentCount = 1;
-        return aml_name_seg_read(state, &out->segments);
+        return aml_name_seg_read(ctx, &out->segments);
     }
     else if (firstToken.num == AML_DUAL_NAME_PREFIX)
     {
         out->segmentCount = 2;
-        return aml_dual_name_path_read(state, &out->segments);
+        return aml_dual_name_path_read(ctx, &out->segments);
     }
     else if (firstToken.num == AML_MULTI_NAME_PREFIX)
     {
-        return aml_multi_name_path_read(state, &out->segments, &out->segmentCount);
+        return aml_multi_name_path_read(ctx, &out->segments, &out->segmentCount);
     }
     else if (firstToken.num == AML_NULL_NAME)
     {
         out->segmentCount = 0;
         out->segments = NULL;
-        return aml_null_name_read(state);
+        return aml_null_name_read(ctx);
     }
     else
     {
-        AML_DEBUG_ERROR(state, "Invalid name that starts with 0x%x", firstToken.num);
+        AML_DEBUG_ERROR(ctx, "Invalid name that starts with 0x%x", firstToken.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -168,33 +155,29 @@ uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out)
     return 0;
 }
 
-uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_t* out)
+uint64_t aml_prefix_path_read(aml_term_list_ctx_t* ctx, aml_prefix_path_t* out)
 {
     out->depth = 0;
     while (true)
     {
         aml_token_t chr;
-        if (aml_token_peek(state, &chr) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to peek value");
-            return ERR;
-        }
+        aml_token_peek(ctx, &chr);
 
         if (chr.num != AML_PARENT_PREFIX_CHAR)
         {
             return 0;
         }
 
-        aml_state_advance(state, chr.length);
+        ctx->current += chr.length;
         out->depth++;
     }
 }
 
-uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out)
+uint64_t aml_root_char_read(aml_term_list_ctx_t* ctx, aml_root_char_t* out)
 {
-    if (aml_token_expect(state, AML_ROOT_CHAR) == ERR)
+    if (aml_token_expect(ctx, AML_ROOT_CHAR) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read RootChar");
+        AML_DEBUG_ERROR(ctx, "Failed to read RootChar");
         return ERR;
     }
 
@@ -202,30 +185,26 @@ uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out)
     return 0;
 }
 
-uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
+uint64_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_string_t* out)
 {
     aml_token_t token;
-    if (aml_token_peek(state, &token) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to peek token");
-        return ERR;
-    }
+    aml_token_peek(ctx, &token);
 
     aml_name_string_t nameString = {0};
     // Starts with either rootchar or prefixpath.
     switch (token.num)
     {
     case AML_ROOT_CHAR:
-        if (aml_root_char_read(state, &nameString.rootChar) == ERR)
+        if (aml_root_char_read(ctx, &nameString.rootChar) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read root char");
+            AML_DEBUG_ERROR(ctx, "Failed to read root char");
             return ERR;
         }
         break;
     case AML_PARENT_PREFIX_CHAR:
-        if (aml_prefix_path_read(state, &nameString.prefixPath) == ERR)
+        if (aml_prefix_path_read(ctx, &nameString.prefixPath) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read prefix path");
+            AML_DEBUG_ERROR(ctx, "Failed to read prefix path");
             return ERR;
         }
         break;
@@ -234,9 +213,9 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
         break;
     }
 
-    if (aml_name_path_read(state, &nameString.namePath) == ERR)
+    if (aml_name_path_read(ctx, &nameString.namePath) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read name path");
+        AML_DEBUG_ERROR(ctx, "Failed to read name path");
         return ERR;
     }
 
@@ -301,69 +280,68 @@ aml_object_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_object_
     return current; // Transfer ownership
 }
 
-aml_object_t* aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope)
+aml_object_t* aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx)
 {
     aml_name_string_t nameStringLocal;
-    if (aml_name_string_read(state, &nameStringLocal) == ERR)
+    if (aml_name_string_read(ctx, &nameStringLocal) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read NameString");
+        AML_DEBUG_ERROR(ctx, "Failed to read NameString");
         return NULL;
     }
 
-    aml_object_t* out = aml_name_string_resolve(&nameStringLocal, scope->location);
+    aml_object_t* out = aml_name_string_resolve(&nameStringLocal, ctx->scope);
     if (out == NULL)
     {
         errno = ENOENT;
         return NULL;
     }
 
+    if (out->type == AML_UNINITIALIZED)
+    {
+        errno = ENOENT;
+        DEREF(out);
+        return NULL;
+    }
+
     return out; // Transfer ownership
 }
 
-aml_object_t* aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope)
+aml_object_t* aml_simple_name_read_and_resolve(aml_term_list_ctx_t* ctx)
 {
     aml_token_t token;
-    if (aml_token_peek(state, &token) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read token");
-        return NULL;
-    }
+    aml_token_peek(ctx, &token);
 
     aml_object_t* out = NULL;
     switch (token.props->type)
     {
     case AML_TOKEN_TYPE_NAME:
-        out = aml_name_string_read_and_resolve(state, scope);
+        out = aml_name_string_read_and_resolve(ctx);
         break;
     case AML_TOKEN_TYPE_ARG:
-        out = aml_arg_obj_read(state);
+        out = aml_arg_obj_read(ctx);
         break;
     case AML_TOKEN_TYPE_LOCAL:
-        out = aml_local_obj_read(state);
+        out = aml_local_obj_read(ctx);
         break;
     default:
-        AML_DEBUG_ERROR(state, "Invalid token type '%s'", aml_token_type_to_string(token.props->type));
+        AML_DEBUG_ERROR(ctx, "Invalid token type '%s'", aml_token_type_to_string(token.props->type));
         errno = EILSEQ;
         return NULL;
     }
 
     if (out == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to read '%s'", token.props->name);
+        AML_DEBUG_ERROR(ctx, "Failed to read '%s'", token.props->name);
         return NULL;
     }
 
     return out; // Transfer ownership
 }
 
-aml_object_t* aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope)
+aml_object_t* aml_super_name_read_and_resolve(aml_term_list_ctx_t* ctx)
 {
     aml_token_t token;
-    if (aml_token_peek(state, &token) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to peek token");
-        return NULL;
-    }
+    aml_token_peek(ctx, &token);
 
     aml_object_t* out = NULL;
     switch (token.props->type)
@@ -371,53 +349,49 @@ aml_object_t* aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* s
     case AML_TOKEN_TYPE_NAME:
     case AML_TOKEN_TYPE_ARG:
     case AML_TOKEN_TYPE_LOCAL:
-        out = aml_simple_name_read_and_resolve(state, scope);
+        out = aml_simple_name_read_and_resolve(ctx);
         break;
     case AML_TOKEN_TYPE_DEBUG:
-        out = aml_debug_obj_read(state);
+        out = aml_debug_obj_read(ctx);
         break;
     case AML_TOKEN_TYPE_EXPRESSION:
-        out = aml_reference_type_opcode_read(state, scope);
+        out = aml_reference_type_opcode_read(ctx);
         break;
     default:
-        AML_DEBUG_ERROR(state, "Invalid token type: %d", token.props->type);
+        AML_DEBUG_ERROR(ctx, "Invalid token type '%s'", aml_token_type_to_string(token.props->type));
         errno = EILSEQ;
         return NULL;
     }
 
     if (out == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to read '%s'", token.props->name);
+        AML_DEBUG_ERROR(ctx, "Failed to read '%s'", token.props->name);
         return NULL;
     }
 
     return out; // Transfer ownership
 }
 
-uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
+uint64_t aml_target_read_and_resolve(aml_term_list_ctx_t* ctx, aml_object_t** out)
 {
     aml_token_t token;
-    if (aml_token_peek(state, &token) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to peek token");
-        return ERR;
-    }
+    aml_token_peek(ctx, &token);
 
     if (token.num == AML_NULL_NAME)
     {
         *out = NULL;
-        if (aml_null_name_read(state) == ERR)
+        if (aml_null_name_read(ctx) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read null name");
+            AML_DEBUG_ERROR(ctx, "Failed to read null name");
             return ERR;
         }
     }
     else
     {
-        *out = aml_super_name_read_and_resolve(state, scope); // Transfer ownership
+        *out = aml_super_name_read_and_resolve(ctx); // Transfer ownership
         if (*out == NULL)
         {
-            AML_DEBUG_ERROR(state, "Failed to read or resolve SuperName");
+            AML_DEBUG_ERROR(ctx, "Failed to read or resolve SuperName");
             return ERR;
         }
     }

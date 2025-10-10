@@ -1,10 +1,7 @@
 #pragma once
 
-#include "acpi/aml/aml_object.h"
-#include "acpi/aml/aml_scope.h"
-#include "acpi/aml/aml_state.h"
-
-#include <stdint.h>
+typedef struct aml_object aml_object_t;
+typedef struct aml_term_list_ctx aml_term_list_ctx_t;
 
 /**
  * @brief Debug Objects Encoding
@@ -24,9 +21,9 @@
  *
  * @see Section 19.6.26 of the ACPI specification for more details.
  *
- * @param state The AML state.
+ * @param ctx The context of the TermList that this structure is part of.
  * @return On success, the DebugObj object. On failure, `NULL` and `errno` is set.
  */
-aml_object_t* aml_debug_obj_read(aml_state_t* state);
+aml_object_t* aml_debug_obj_read(aml_term_list_ctx_t* ctx);
 
 /** @} */

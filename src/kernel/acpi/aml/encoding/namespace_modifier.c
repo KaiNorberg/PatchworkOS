@@ -2,7 +2,6 @@
 
 #include "acpi/aml/aml.h"
 #include "acpi/aml/aml_debug.h"
-#include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_token.h"
@@ -15,30 +14,30 @@
 #include <errno.h>
 #include <stdint.h>
 
-uint64_t aml_def_alias_read(aml_state_t* state, aml_scope_t* scope)
+uint64_t aml_def_alias_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(state, AML_ALIAS_OP) == ERR)
+    if (aml_token_expect(ctx, AML_ALIAS_OP) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read AliasOp");
+        AML_DEBUG_ERROR(ctx, "Failed to read AliasOp");
         return ERR;
     }
 
-    aml_object_t* source = aml_name_string_read_and_resolve(state, scope);
+    aml_object_t* source = aml_name_string_read_and_resolve(ctx);
     if (source == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to read or resolve source NameString");
+        AML_DEBUG_ERROR(ctx, "Failed to read or resolve source NameString");
         return ERR;
     }
     DEREF_DEFER(source);
 
     aml_name_string_t targetNameString;
-    if (aml_name_string_read(state, &targetNameString) == ERR)
+    if (aml_name_string_read(ctx, &targetNameString) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read or resolve target NameString");
+        AML_DEBUG_ERROR(ctx, "Failed to read or resolve target NameString");
         return ERR;
     }
 
-    aml_object_t* target = aml_object_new(state, AML_OBJECT_NONE);
+    aml_object_t* target = aml_object_new(ctx);
     if (target == NULL)
     {
         errno = EILSEQ;
@@ -46,31 +45,31 @@ uint64_t aml_def_alias_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(target);
 
-    if (aml_alias_set(target, source) == ERR || aml_object_add(target, scope->location, &targetNameString) == ERR)
+    if (aml_alias_set(target, source) == ERR || aml_object_add(target, ctx->scope, &targetNameString) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to add alias object '%s'", aml_name_string_to_string(&targetNameString));
+        AML_DEBUG_ERROR(ctx, "Failed to add alias object '%s'", aml_name_string_to_string(&targetNameString));
         return ERR;
     }
 
     return 0;
 }
 
-uint64_t aml_def_name_read(aml_state_t* state, aml_scope_t* scope)
+uint64_t aml_def_name_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(state, AML_NAME_OP) == ERR)
+    if (aml_token_expect(ctx, AML_NAME_OP) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read NameOp");
+        AML_DEBUG_ERROR(ctx, "Failed to read NameOp");
         return ERR;
     }
 
     aml_name_string_t nameString;
-    if (aml_name_string_read(state, &nameString) == ERR)
+    if (aml_name_string_read(ctx, &nameString) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read NameString");
+        AML_DEBUG_ERROR(ctx, "Failed to read NameString");
         return ERR;
     }
 
-    aml_object_t* newObject = aml_object_new(state, AML_OBJECT_NONE);
+    aml_object_t* newObject = aml_object_new(ctx);
     if (newObject == NULL)
     {
         errno = EILSEQ;
@@ -78,95 +77,92 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_scope_t* scope)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_data_ref_object_read(state, scope, newObject) == ERR ||
-        aml_object_add(newObject, scope->location, &nameString) == ERR)
+    if (aml_data_ref_object_read(ctx, newObject) == ERR ||
+        aml_object_add(newObject, ctx->scope, &nameString) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
     }
 
     return 0;
 }
 
-uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope)
+uint64_t aml_def_scope_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(state, AML_SCOPE_OP) == ERR)
+    if (aml_token_expect(ctx, AML_SCOPE_OP) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read ScopeOp");
+        AML_DEBUG_ERROR(ctx, "Failed to read ScopeOp");
         return ERR;
     }
 
-    const uint8_t* start = state->current;
+    const uint8_t* start = ctx->current;
 
     aml_pkg_length_t pkgLength;
-    if (aml_pkg_length_read(state, &pkgLength) == ERR)
+    if (aml_pkg_length_read(ctx, &pkgLength) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read PkgLength");
+        AML_DEBUG_ERROR(ctx, "Failed to read PkgLength");
         return ERR;
     }
 
-    aml_object_t* newLocation = aml_name_string_read_and_resolve(state, scope);
-    if (newLocation == NULL)
+    aml_object_t* scope = aml_name_string_read_and_resolve(ctx);
+    if (scope == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to read or resolve NameString");
+        AML_DEBUG_ERROR(ctx, "Failed to read or resolve NameString");
         return ERR;
     }
-    DEREF_DEFER(newLocation);
+    DEREF_DEFER(scope);
 
     const uint8_t* end = start + pkgLength;
 
-    aml_type_t type = newLocation->type;
+    aml_type_t type = scope->type;
     if (type != AML_PREDEFINED_SCOPE && type != AML_DEVICE && type != AML_PROCESSOR && type != AML_THERMAL_ZONE &&
         type != AML_POWER_RESOURCE)
     {
-        AML_DEBUG_ERROR(state, "Invalid object type '%s'", aml_type_to_string(type));
+        AML_DEBUG_ERROR(ctx, "Invalid object type '%s'", aml_type_to_string(type));
         errno = EILSEQ;
         return ERR;
     }
 
-    if (aml_term_list_read(state, newLocation, end) == ERR)
+    if (aml_term_list_read(ctx->state, scope, ctx->current, end, ctx) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read TermList");
+        AML_DEBUG_ERROR(ctx, "Failed to read TermList");
         return ERR;
     }
+    ctx->current = end;
 
     return 0;
 }
 
-uint64_t aml_namespace_modifier_obj_read(aml_state_t* state, aml_scope_t* scope)
+uint64_t aml_namespace_modifier_obj_read(aml_term_list_ctx_t* ctx)
 {
     aml_token_t token;
-    if (aml_token_peek(state, &token) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to peek token");
-        return ERR;
-    }
+    aml_token_peek(ctx, &token);
 
     switch (token.num)
     {
     case AML_ALIAS_OP:
-        if (aml_def_alias_read(state, scope) == ERR)
+        if (aml_def_alias_read(ctx) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read DefAlias");
+            AML_DEBUG_ERROR(ctx, "Failed to read DefAlias");
             return ERR;
         }
         return 0;
     case AML_NAME_OP:
-        if (aml_def_name_read(state, scope) == ERR)
+        if (aml_def_name_read(ctx) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read DefName");
+            AML_DEBUG_ERROR(ctx, "Failed to read DefName");
             return ERR;
         }
         return 0;
     case AML_SCOPE_OP:
-        if (aml_def_scope_read(state, scope) == ERR)
+        if (aml_def_scope_read(ctx) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read DefScope");
+            AML_DEBUG_ERROR(ctx, "Failed to read DefScope");
             return ERR;
         }
         return 0;
     default:
-        AML_DEBUG_ERROR(state, "Invalid NamespaceModifierObj '0x%x'", token.num);
+        AML_DEBUG_ERROR(ctx, "Invalid NamespaceModifierObj '0x%x'", token.num);
         errno = EILSEQ;
         return ERR;
     }

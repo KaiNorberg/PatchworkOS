@@ -4,23 +4,14 @@
 #include "log/log.h"
 #include "runtime/copy.h"
 
-uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t* end, uint64_t argCount,
-    aml_object_t** args, aml_object_t* returnValue)
+uint64_t aml_state_init(aml_state_t* state, aml_object_t** args,
+    uint64_t argCount)
 {
-    if (start > end)
-    {
-        return ERR;
-    }
-
-    state->start = start;
-    state->end = end;
-    state->current = start;
-
     // We give the locals and args names so they are identifiable when debugging but these names dont do anything.
 
     for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)
     {
-        aml_object_t* local = aml_object_new(NULL, AML_OBJECT_NONE);
+        aml_object_t* local = aml_object_new(NULL);
         if (local == NULL || aml_local_set(local) == ERR)
         {
             if (local != NULL)
@@ -43,7 +34,7 @@ uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t*
     }
     for (uint8_t i = 0; i < AML_MAX_ARGS; i++)
     {
-        aml_object_t* arg = aml_object_new(NULL, AML_OBJECT_NONE);
+        aml_object_t* arg = aml_object_new(NULL);
         if (arg == NULL || aml_arg_set(arg, argCount > i ? args[i] : NULL) == ERR)
         {
             if (arg != NULL)
@@ -68,20 +59,14 @@ uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t*
         state->args[i]->name.segment[3] = '0' + i;
         state->args[i]->name.segment[4] = '\0';
     }
-    state->returnValue = returnValue;
-    state->lastErrPos = NULL;
+    state->result = NULL;
     state->errorDepth = 0;
-    state->flowControl = AML_FLOW_CONTROL_EXECUTE;
     list_init(&state->createdObjects);
     return 0;
 }
 
-uint64_t aml_state_deinit(aml_state_t* state)
+void aml_state_deinit(aml_state_t* state)
 {
-    state->start = NULL;
-    state->end = NULL;
-    state->current = NULL;
-
     for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)
     {
         DEREF(state->locals[i]);
@@ -90,25 +75,17 @@ uint64_t aml_state_deinit(aml_state_t* state)
     {
         DEREF(state->args[i]);
     }
-    state->returnValue = NULL;
-    state->lastErrPos = NULL;
-
-    if (state->flowControl != AML_FLOW_CONTROL_EXECUTE && state->flowControl != AML_FLOW_CONTROL_RETURN)
+    if (state->result != NULL)
     {
-        LOG_ERR("AML state deinitalized with invalid flow control state %d, possibly tried to Break or Continue "
-                "outside of While loop\n",
-            state->flowControl);
-        errno = EBUSY;
-        return ERR;
+        DEREF(state->result);
     }
+    state->result = NULL;
 
     while (!list_is_empty(&state->createdObjects))
     {
         aml_object_t* child = CONTAINER_OF(list_pop(&state->createdObjects), aml_object_t, stateEntry);
         // Dont do anything.
     }
-
-    return 0;
 }
 
 void aml_state_garbage_collect(aml_state_t* state)
@@ -117,5 +94,52 @@ void aml_state_garbage_collect(aml_state_t* state)
     {
         aml_object_t* child = CONTAINER_OF(list_pop(&state->createdObjects), aml_object_t, stateEntry);
         aml_object_remove(child);
+    }
+}
+
+aml_object_t* aml_state_result_get(aml_state_t* state)
+{
+    if (state == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    if (state->result == NULL)
+    {
+        aml_object_t* result = aml_object_new(NULL);
+        if (result == NULL)
+        {
+            return NULL;
+        }
+
+        if (aml_integer_set(result, 0) == ERR)
+        {
+            DEREF(result);
+            return NULL;
+        }
+
+        return result;
+    }
+
+    return REF(state->result);
+}
+
+void aml_state_result_set(aml_state_t* state, aml_object_t* result)
+{
+    if (state == NULL)
+    {
+        return;
+    }
+
+    if (state->result != NULL)
+    {
+        DEREF(state->result);
+        state->result = NULL;
+    }
+
+    if (result != NULL)
+    {
+        state->result = REF(result);
     }
 }

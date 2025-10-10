@@ -7,13 +7,12 @@
 #include <errno.h>
 #include <stdint.h>
 
-uint64_t aml_pkg_lead_byte_read(aml_state_t* state, aml_pkg_lead_byte_t* out)
+uint64_t aml_pkg_lead_byte_read(aml_term_list_ctx_t* ctx, aml_pkg_lead_byte_t* out)
 {
     uint8_t pkgLeadByte;
-    if (aml_state_read(state, &pkgLeadByte, 1) != 1)
+    if (aml_byte_data_read(ctx, &pkgLeadByte) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read PkgLeadByte");
-        errno = ENODATA;
+        AML_DEBUG_ERROR(ctx, "Failed to read ByteData");
         return ERR;
     }
 
@@ -24,7 +23,7 @@ uint64_t aml_pkg_lead_byte_read(aml_state_t* state, aml_pkg_lead_byte_t* out)
     // If more bytes follow, then bits 4 and 5 must be zero.
     if (out->byteDataCount != 0 && ((pkgLeadByte >> 4) & 0x03) != 0)
     {
-        AML_DEBUG_ERROR(state, "Invalid PkgLeadByte '0x%x'", pkgLeadByte);
+        AML_DEBUG_ERROR(ctx, "Invalid PkgLeadByte '0x%x'", pkgLeadByte);
         errno = EILSEQ;
         return ERR;
     }
@@ -32,12 +31,14 @@ uint64_t aml_pkg_lead_byte_read(aml_state_t* state, aml_pkg_lead_byte_t* out)
     return 0;
 }
 
-uint64_t aml_pkg_length_read(aml_state_t* state, aml_pkg_length_t* out)
+uint64_t aml_pkg_length_read(aml_term_list_ctx_t* ctx, aml_pkg_length_t* out)
 {
+    const uint8_t* start = ctx->current;
+
     aml_pkg_lead_byte_t pkgLeadByte;
-    if (aml_pkg_lead_byte_read(state, &pkgLeadByte) == ERR)
+    if (aml_pkg_lead_byte_read(ctx, &pkgLeadByte) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read PkgLeadByte");
+        AML_DEBUG_ERROR(ctx, "Failed to read PkgLeadByte");
         return ERR;
     }
 
@@ -53,9 +54,9 @@ uint64_t aml_pkg_length_read(aml_state_t* state, aml_pkg_length_t* out)
     for (uint64_t i = 0; i < pkgLeadByte.byteDataCount; i++)
     {
         uint8_t byte;
-        if (aml_byte_data_read(state, &byte) == ERR)
+        if (aml_byte_data_read(ctx, &byte) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read ByteData");
+            AML_DEBUG_ERROR(ctx, "Failed to read ByteData");
             return ERR;
         }
         length |= ((uint64_t)byte) << (4 + i * 8);
@@ -64,8 +65,15 @@ uint64_t aml_pkg_length_read(aml_state_t* state, aml_pkg_length_t* out)
     // Output must not be greater than 2^28.
     if (length > (1ULL << 28))
     {
-        AML_DEBUG_ERROR(state, "Package length out of range: %lu", length);
+        AML_DEBUG_ERROR(ctx, "Package length out of range: %lu", length);
         errno = ERANGE;
+        return ERR;
+    }
+
+    if (length > (uint64_t)(ctx->end - start))
+    {
+        AML_DEBUG_ERROR(ctx, "Package length exceeds available bytes (%lu > %lu)", length, ctx->end - start);
+        errno = ENODATA;
         return ERR;
     }
 

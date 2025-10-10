@@ -4,14 +4,14 @@
 
 #include "log/log.h"
 
-static void aml_debug_dump_print_line(aml_state_t* state, uint64_t lineStart, uint64_t lineEnd)
+static void aml_debug_dump_print_line(const uint8_t* start, uint64_t lineStart, uint64_t lineEnd)
 {
     LOG_ERR("  %08x: ", lineStart);
     for (uint64_t j = 0; j < 16; j++)
     {
         if (lineStart + j <= lineEnd)
         {
-            LOG_ERR("%02x ", ((uint8_t*)state->start)[lineStart + j]);
+            LOG_ERR("%02x ", start[lineStart + j]);
         }
         else
         {
@@ -23,7 +23,7 @@ static void aml_debug_dump_print_line(aml_state_t* state, uint64_t lineStart, ui
     {
         if (lineStart + j <= lineEnd)
         {
-            uint8_t c = ((uint8_t*)state->start)[lineStart + j];
+            uint8_t c = start[lineStart + j];
             if (c >= 32 && c <= 126)
             {
                 LOG_ERR("%c", c);
@@ -37,10 +37,10 @@ static void aml_debug_dump_print_line(aml_state_t* state, uint64_t lineStart, ui
     LOG_ERR("\n");
 }
 
-static void aml_debug_dump(aml_state_t* state)
+static void aml_debug_dump(const uint8_t* start, const uint8_t* end, const uint8_t* current)
 {
-    uint64_t index = state->current - state->start;
-    uint64_t dataSize = state->end - state->start;
+    uint64_t index = current - start;
+    uint64_t dataSize = end - start;
 
     uint64_t errorLineStart = (index / 16) * 16;
     uint64_t prevLineStart = errorLineStart >= 16 ? errorLineStart - 16 : 0;
@@ -53,7 +53,7 @@ static void aml_debug_dump(aml_state_t* state)
         {
             prevLineEnd = dataSize - 1;
         }
-        aml_debug_dump_print_line(state, prevLineStart, prevLineEnd);
+        aml_debug_dump_print_line(start, prevLineStart, prevLineEnd);
     }
 
     uint64_t errorLineEnd = errorLineStart + 15;
@@ -61,7 +61,7 @@ static void aml_debug_dump(aml_state_t* state)
     {
         errorLineEnd = dataSize - 1;
     }
-    aml_debug_dump_print_line(state, errorLineStart, errorLineEnd);
+    aml_debug_dump_print_line(start, errorLineStart, errorLineEnd);
 
     uint64_t errorOffsetInLine = index - errorLineStart;
     LOG_ERR("            ");
@@ -89,27 +89,34 @@ static void aml_debug_dump(aml_state_t* state)
         {
             nextLineEnd = dataSize - 1;
         }
-        aml_debug_dump_print_line(state, nextLineStart, nextLineEnd);
+        aml_debug_dump_print_line(start, nextLineStart, nextLineEnd);
     }
 }
 
-void aml_debug_error_print(aml_state_t* state, const char* function, const char* format, ...)
+void aml_debug_error_print(aml_term_list_ctx_t* ctx, const char* function, const char* format, ...)
 {
-    if (state->lastErrPos != state->current)
-    {
-        state->errorDepth = 0;
+    aml_state_t* state = ctx->state;
 
+    if (state->errorDepth++ == 0)
+    {
         LOG_ERR("AML ERROR in '%s()'", function);
 
-        aml_method_obj_t* method = aml_method_find(state->current);
+        const uint8_t* start = NULL;
+        const uint8_t* end = NULL;
+
+        aml_method_obj_t* method = aml_method_find(ctx->current);
         if (method != NULL)
         {
-            LOG_ERR(" at method '%s' and offset 0x%lx\n", method->name.segment, state->current - method->start);
+            LOG_ERR(" at method '%s' and offset 0x%lx\n", method->name.segment, ctx->current - method->start);
             DEREF(method);
+            start = method->start;
+            end = method->end;
         }
         else
         {
-            LOG_ERR(" at top-level and offset 0x%lx\n", state->current - state->start);
+            LOG_ERR(" at top-level and offset 0x%lx\n", ctx->current - ctx->start);
+            start = ctx->start;
+            end = ctx->end;
         }
 
         va_list args;
@@ -119,12 +126,11 @@ void aml_debug_error_print(aml_state_t* state, const char* function, const char*
 
         LOG_ERR("\n");
 
-        aml_debug_dump(state);
+        aml_debug_dump(start, end, ctx->current);
         LOG_ERR("Backtrace:\n");
     }
     else
     {
-        state->errorDepth++;
         if (state->errorDepth == 10)
         {
             LOG_ERR("  ...\n");
@@ -143,5 +149,4 @@ void aml_debug_error_print(aml_state_t* state, const char* function, const char*
 
         LOG_ERR("\n");
     }
-    state->lastErrPos = state->current;
 }

@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 
-typedef struct aml_state aml_state_t;
 typedef struct aml_object aml_object_t;
+typedef struct aml_term_list_ctx aml_term_list_ctx_t;
 
 /**
  * @brief Local Objecs Encoding
@@ -42,6 +42,6 @@ typedef struct aml_object aml_object_t;
  * @param state Pointer to the AML state.
  * @return On success, the LocalObj. On failure, `NULL` and `errno` is set.
  */
-aml_object_t* aml_local_obj_read(aml_state_t* state);
+aml_object_t* aml_local_obj_read(aml_term_list_ctx_t* ctx);
 
 /** @} */

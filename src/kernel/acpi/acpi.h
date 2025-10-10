@@ -46,6 +46,9 @@
  * @see [ACPI Specification Version 6.6](https://uefi.org/sites/default/files/resources/ACPI_Spec_6.6.pdf)
  * @see [ACPI Specification Version 6.3](https://uefi.org/sites/default/files/resources/ACPI_Spec_6_3_A_Oct_6_2020.pdf)
  * @see [ACPI Specification Version 4.0](https://uefi.org/sites/default/files/resources/ACPI_4.pdf)
+ * @see [ACPICA User Guide and Programmer
+ Reference
+ Version 6.3](https://www.intel.com/content/www/us/en/developer/topic-technology/open/acpica/documentation.html)
  * @see [LAI Library](https://github.com/managarm/lai)
  *
  * @{

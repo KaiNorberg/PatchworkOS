@@ -137,7 +137,7 @@ static void aml_object_free(aml_object_t* object)
     totalObjects--;
 }
 
-aml_object_t* aml_object_new(aml_state_t* state, aml_object_flags_t flags)
+aml_object_t* aml_object_new(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* object = heap_alloc(sizeof(aml_object_t), HEAP_NONE);
     if (object == NULL)
@@ -148,17 +148,17 @@ aml_object_t* aml_object_new(aml_state_t* state, aml_object_flags_t flags)
 
     ref_init(&object->ref, aml_object_free);
     list_entry_init(&object->stateEntry);
-    object->flags = flags;
+    object->flags = AML_OBJECT_NONE;
     object->type = AML_UNINITIALIZED;
-    object->state = state;
+    object->state = ctx != NULL ? ctx->state : NULL;
 
     strncpy(object->name.segment, AML_UNNAMED_NAME, AML_NAME_LENGTH);
     object->name.segment[AML_NAME_LENGTH] = '\0';
 
-    if (state != NULL)
+    if (object->state != NULL)
     {
         // The state does not take a reference to the object, it just keeps track of it for garbage collection.
-        list_push(&state->createdObjects, &object->stateEntry);
+        list_push(&object->state->createdObjects, &object->stateEntry);
     }
     totalObjects++;
     return object;
@@ -393,6 +393,13 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
 {
     if (parent == NULL || child == NULL || name == NULL)
     {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (child->type == AML_UNINITIALIZED)
+    {
+        LOG_ERR("Child object is uninitialized\n");
         errno = EINVAL;
         return ERR;
     }
@@ -1087,7 +1094,7 @@ uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_obj_t*
     object->fieldUnit.index = NULL;
     object->fieldUnit.data = NULL;
 
-    aml_object_t* bankValueObj = aml_object_new(NULL, AML_OBJECT_NONE);
+    aml_object_t* bankValueObj = aml_object_new(NULL);
     if (bankValueObj == NULL)
     {
         return ERR;
@@ -1299,7 +1306,7 @@ uint64_t aml_package_set(aml_object_t* object, uint64_t length)
     }
     for (uint64_t i = 0; i < length; i++)
     {
-        object->package.elements[i] = aml_object_new(NULL, AML_OBJECT_NONE);
+        object->package.elements[i] = aml_object_new(NULL);
         if (object->package.elements[i] == NULL)
         {
             for (uint64_t j = 0; j < i; j++)
@@ -1539,7 +1546,7 @@ uint64_t aml_local_set(aml_object_t* object)
         return ERR;
     }
 
-    object->local.value = aml_object_new(NULL, AML_OBJECT_NONE);
+    object->local.value = aml_object_new(NULL);
     if (object->local.value == NULL)
     {
         return ERR;

@@ -70,7 +70,7 @@ static inline uint64_t aml_init_parse_all(void)
 
 uint64_t aml_init(void)
 {
-    LOG_INFO("AML revision %d, init and parse all\n", RSDP_CURRENT_REVISION);
+    LOG_INFO("AML revision %d, init and parse all\n", AML_CURRENT_REVISION);
 
     mutex_init(&bigMutex);
     MUTEX_SCOPE(&bigMutex);
@@ -80,13 +80,14 @@ uint64_t aml_init(void)
         return ERR;
     }
 
-    root = aml_object_new(NULL, AML_OBJECT_ROOT | AML_OBJECT_PREDEFINED);
+    root = aml_object_new(NULL);
     if (root == NULL)
     {
         return ERR;
     }
+    root->flags |= AML_OBJECT_ROOT;
 
-    if (aml_device_set(root) == ERR || aml_object_add(root, NULL, NULL) == ERR)
+    if (aml_predefined_scope_set(root) == ERR || aml_object_add(root, NULL, NULL) == ERR)
     {
         DEREF(root);
         root = NULL;
@@ -171,18 +172,13 @@ uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
     // So the entire code is a termlist.
 
     aml_state_t state;
-    if (aml_state_init(&state, start, end, 0, NULL, NULL) == ERR)
+    if (aml_state_init(&state, NULL, 0) == ERR)
     {
         return ERR;
     }
 
-    uint64_t result = aml_term_list_read(&state, aml_root_get(), end);
-
-    if (aml_state_deinit(&state) == ERR)
-    {
-        LOG_ERR("failed to deinitialize AML state\n");
-        return ERR;
-    }
+    uint64_t result = aml_term_list_read(&state, aml_root_get(), start, end, NULL);
+    aml_state_deinit(&state);
     return result;
 }
 

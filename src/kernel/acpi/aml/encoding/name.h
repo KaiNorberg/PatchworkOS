@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <sys/list.h>
 
-typedef struct aml_state aml_state_t;
+typedef struct aml_term_list_ctx aml_term_list_ctx_t;
 typedef struct aml_object aml_object_t;
-typedef struct aml_scope aml_scope_t;
+typedef struct aml_term_list_ctx aml_term_list_ctx_t;
 
 /**
  * @brief Name Objects Encoding
@@ -103,69 +103,69 @@ typedef struct
  *
  * A SegCount structure is defined as `SegCount := ByteData`.
  *
- * @param state The AML state.
+ * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the SegCount will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_seg_count_read(aml_state_t* state, uint8_t* out);
+uint64_t aml_seg_count_read(aml_term_list_ctx_t* ctx, uint8_t* out);
 
 /**
  * @brief Reads the next data as a NameSeg from the AML bytecode stream.
  *
  * A NameSeg structure is defined as `NameSeg := <leadnamechar namechar namechar namechar>`.
  *
- * @param state The AML state.
+ * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to the destination where the pointer to the NameSeg will be stored. Will be located within the AML
  * bytecode stream.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t** out);
+uint64_t aml_name_seg_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out);
 
 /**
  * @brief Reads the next data as a DualNamePath structure from the AML bytecode stream.
  *
  * A DualNamePath structure is defined as `DualNamePath := DualNamePrefix NameSeg NameSeg`.
  *
- * @param state The AML state.
+ * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the pointer to the array of two NameSeg will be stored. Will be located
  * within the AML bytecode stream.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t** out);
+uint64_t aml_dual_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out);
 
 /**
  * @brief Reads the next data as a MultiNamePath structure from the AML bytecode stream.
  *
  * A MultiNamePath structure is defined as `MultiNamePath := MultiNamePrefix SegCount NameSeg(SegCount)`.
  *
- * @param state The AML state.
+ * @param ctx The context of the TermList that this structure is part of.
  * @param outSegments Pointer to destination where the pointer to the array of NameSeg will be stored. Will be located
  * within the AML bytecode stream.
  * @param outSegCount Pointer to destination where the number of segments will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegments, uint64_t* outSegCount);
+uint64_t aml_multi_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** outSegments, uint64_t* outSegCount);
 
 /**
  * Reads the next data as a NullName structure from the AML bytecode stream.
  *
  * A NullName structure is defined as `NullName := 0x00`.
  *
- * @param state The AML state.
+ * @param ctx The context of the TermList that this structure is part of.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_null_name_read(aml_state_t* state);
+uint64_t aml_null_name_read(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Reads the next data as a NamePath structure from the AML bytecode stream.
  *
  * A NamePath structure is defined as `NamePath := NameSeg | DualNamePath | MultiNamePath | NullName`.
  *
- * @param state The AML state.
+ * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the NamePath will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out);
+uint64_t aml_name_path_read(aml_term_list_ctx_t* ctx, aml_name_path_t* out);
 
 /**
  * @brief Reads the next data as a PrefixPath structure from the AML bytecode stream.
@@ -174,33 +174,33 @@ uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out);
  *
  * Note that `^` is just a `AML_PARENT_PREFIX_CHAR`.
  *
- * @param state The AML state.
+ * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the PrefixPath will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_t* out);
+uint64_t aml_prefix_path_read(aml_term_list_ctx_t* ctx, aml_prefix_path_t* out);
 
 /**
  * @brief Reads the next data as a RootChar from the AML bytecode stream.
  *
  * A RootChar is defined as `RootChar := 0x5C`.
  *
- * @param state The AML state.
+ * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the RootChar will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out);
+uint64_t aml_root_char_read(aml_term_list_ctx_t* ctx, aml_root_char_t* out);
 
 /**
  * @brief Reads the next data as a NameString structure from the AML bytecode stream.
  *
  * A NameString structure is defined as `NameString := <rootchar namepath> | <prefixpath namepath>`.
  *
- * @param state The AML state.
+ * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the NameString will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out);
+uint64_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_string_t* out);
 
 /**
  * @brief Resolves a NameString structure to an AML object in the namespace.
@@ -231,11 +231,10 @@ aml_object_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_object_
  * @see Section 5.3 of the ACPI specification for more details.
  * @see aml_name_string_read() for reading the NameString from the AML byte stream.
  *
- * @param state The AML state.
- * @param scope The current AML scope.
+ * @param ctx The context of the TermList that this structure is part of.
  * @return On success, a pointer to the resolved object. On failure, `NULL` and `errno` is set.
  */
-aml_object_t* aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope);
+aml_object_t* aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Reads a SimpleName structure from the AML byte stream and resolves it to a object.
@@ -245,22 +244,20 @@ aml_object_t* aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* 
  * Note that `errno` will only be set to `ENOENT` if it is a NameString that fails to resolve, other values for `errno`
  * might be set in other cases.
  *
- * @param state The AML state.
- * @param scope The current AML scope.
+ * @param ctx The context of the TermList that this structure is part of.
  * @return On success, a pointer to the resolved object. On failure, `NULL` and `errno` is set.
  */
-aml_object_t* aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope);
+aml_object_t* aml_simple_name_read_and_resolve(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Reads a SuperName structure from the AML byte stream and resolves it to a object.
  *
  * A SuperName structure is defined as `SuperName := SimpleName | DebugObj | ReferenceTypeOpcode`.
  *
- * @param state The AML state.
- * @param scope The current AML scope.
+ * @param ctx The context of the TermList that this structure is part of.
  * @return On success, a pointer to the resolved object. On failure, `NULL` and `errno` is set.
  */
-aml_object_t* aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope);
+aml_object_t* aml_super_name_read_and_resolve(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Reads a Target structure from the AML byte stream and resolves it to a object.
@@ -269,11 +266,10 @@ aml_object_t* aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* s
  *
  * If the Target is a NullName, then out will be set to point to `NULL` but its not considered an error.
  *
- * @param state The AML state.
- * @param scope The current AML scope.
+ * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to where the pointer to the resolved object will be stored, might be set to point to `NULL`.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+uint64_t aml_target_read_and_resolve(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /** @} */

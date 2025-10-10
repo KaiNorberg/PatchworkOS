@@ -19,7 +19,7 @@ uint64_t aml_store(aml_object_t* src, aml_object_t* dest)
     {
         if (dest->arg.value == NULL) // Is uninitialized
         {
-            aml_object_t* newValue = aml_object_new(NULL, AML_OBJECT_NONE);
+            aml_object_t* newValue = aml_object_new(NULL);
             if (newValue == NULL)
             {
                 return ERR;

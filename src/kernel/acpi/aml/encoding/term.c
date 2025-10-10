@@ -1,7 +1,6 @@
 #include "term.h"
 
 #include "acpi/aml/aml_debug.h"
-#include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_token.h"
 
@@ -15,71 +14,63 @@
 #include <errno.h>
 #include <stdint.h>
 
-aml_object_t* aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_type_t allowedTypes)
+aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedTypes)
 {
     aml_token_t op;
-    if (aml_token_peek(state, &op) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to peek value");
-        return NULL;
-    }
+    aml_token_peek(ctx, &op);
 
     aml_object_t* value = NULL;
     switch (op.props->type)
     {
     case AML_TOKEN_TYPE_EXPRESSION:
     case AML_TOKEN_TYPE_NAME: // MethodInvocation is a Name
-        value = aml_expression_opcode_read(state, scope);
+        value = aml_expression_opcode_read(ctx);
         break;
     case AML_TOKEN_TYPE_ARG:
-        value = aml_arg_obj_read(state);
+        value = aml_arg_obj_read(ctx);
         break;
     case AML_TOKEN_TYPE_LOCAL:
-        value = aml_local_obj_read(state);
+        value = aml_local_obj_read(ctx);
         break;
     default:
-        value = aml_object_new(state, AML_OBJECT_NONE);
+        value = aml_object_new(ctx);
         if (value == NULL)
         {
             return NULL;
         }
 
-        if (aml_data_object_read(state, scope, value) == ERR)
+        if (aml_data_object_read(ctx, value) == ERR)
         {
             DEREF(value);
-            AML_DEBUG_ERROR(state, "Failed to read DataObject");
+            AML_DEBUG_ERROR(ctx, "Failed to read DataObject");
             return NULL;
         }
     }
 
     if (value == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to read %s", op.props->name);
+        AML_DEBUG_ERROR(ctx, "Failed to read %s", op.props->name);
         return NULL;
     }
-
-    if (value->type & allowedTypes)
-    {
-        return value; // Transfer ownership
-    }
+    DEREF_DEFER(value);
 
     aml_object_t* out = NULL;
     if (aml_convert_source(value, &out, allowedTypes) == ERR)
     {
-        DEREF(value);
         return NULL;
     }
 
-    DEREF(value);
+    assert(out->type & allowedTypes);
+
     return out; // Transfer ownership
 }
 
-uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_scope_t* scope, aml_integer_t* out)
+uint64_t aml_term_arg_read_integer(aml_term_list_ctx_t* ctx, aml_integer_t* out)
 {
-    aml_object_t* temp = aml_term_arg_read(state, scope, AML_INTEGER);
+    aml_object_t* temp = aml_term_arg_read(ctx, AML_INTEGER);
     if (temp == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to read TermArg");
+        AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
         return ERR;
     }
 
@@ -90,12 +81,12 @@ uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_scope_t* scope, aml_i
     return 0;
 }
 
-aml_string_obj_t* aml_term_arg_read_string(aml_state_t* state, aml_scope_t* scope)
+aml_string_obj_t* aml_term_arg_read_string(aml_term_list_ctx_t* ctx)
 {
-    aml_object_t* temp = aml_term_arg_read(state, scope, AML_STRING);
+    aml_object_t* temp = aml_term_arg_read(ctx, AML_STRING);
     if (temp == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to read TermArg");
+        AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
         return NULL;
     }
 
@@ -104,88 +95,84 @@ aml_string_obj_t* aml_term_arg_read_string(aml_state_t* state, aml_scope_t* scop
     return &temp->string; // Transfer ownership
 }
 
-uint64_t aml_object_read(aml_state_t* state, aml_scope_t* scope)
+uint64_t aml_object_read(aml_term_list_ctx_t* ctx)
 {
     aml_token_t token;
-    if (aml_token_peek(state, &token) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to peek token");
-        return ERR;
-    }
+    aml_token_peek(ctx, &token);
 
     switch (token.props->type)
     {
     case AML_TOKEN_TYPE_NAMESPACE_MODIFIER:
-        return aml_namespace_modifier_obj_read(state, scope);
+        return aml_namespace_modifier_obj_read(ctx);
     case AML_TOKEN_TYPE_NAMED:
-        return aml_named_obj_read(state, scope);
+        return aml_named_obj_read(ctx);
     default:
-        AML_DEBUG_ERROR(state, "Invalid token type: %d", token.props->type);
+        AML_DEBUG_ERROR(ctx, "Invalid token type '%s'", aml_token_type_to_string(token.props->type));
         errno = EILSEQ;
         return ERR;
     }
 }
 
-uint64_t aml_term_obj_read(aml_state_t* state, aml_scope_t* scope)
+uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx)
 {
     aml_token_t token;
-    if (aml_token_peek(state, &token) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to peek token");
-        return ERR;
-    }
+    aml_token_peek(ctx, &token);
 
     switch (token.props->type)
     {
     case AML_TOKEN_TYPE_STATEMENT:
-        if (aml_statement_opcode_read(state, scope) == ERR)
+        if (aml_statement_opcode_read(ctx) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read StatementOpcode");
+            AML_DEBUG_ERROR(ctx, "Failed to read StatementOpcode");
             return ERR;
         }
         return 0;
     case AML_TOKEN_TYPE_NAME: // MethodInvocation is a Name
     case AML_TOKEN_TYPE_EXPRESSION:
     {
-        aml_object_t* temp = aml_expression_opcode_read(state, scope);
+        aml_object_t* temp = aml_expression_opcode_read(ctx);
         if (temp == NULL)
         {
-            AML_DEBUG_ERROR(state, "Failed to read ExpressionOpcode");
+            AML_DEBUG_ERROR(ctx, "Failed to read ExpressionOpcode");
             return ERR;
         }
         DEREF(temp);
         return 0;
     }
     default:
-        if (aml_object_read(state, scope) == ERR)
+        if (aml_object_read(ctx) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read Object");
+            AML_DEBUG_ERROR(ctx, "Failed to read Object");
             return ERR;
         }
         return 0;
     }
 }
 
-uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* newLocation, const uint8_t* end)
+uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* scope, const uint8_t* start, const uint8_t* end, aml_term_list_ctx_t* parentCtx)
 {
-    aml_scope_t scope;
-    if (aml_scope_init(&scope, newLocation) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to init scope");
-        return ERR;
-    }
+    aml_term_list_ctx_t ctx = {
+        .state = state,
+        .scope = scope,
+        .start = start,
+        .end = end,
+        .current = start,
+        .stopReason = AML_STOP_REASON_NONE,
+    };
 
-    while (end > state->current && state->flowControl == AML_FLOW_CONTROL_EXECUTE)
+    while (ctx.end > ctx.current && ctx.stopReason == AML_STOP_REASON_NONE)
     {
         // End of buffer not reached => byte is not nothing => must be a termobj.
-        if (aml_term_obj_read(state, &scope) == ERR)
+        if (aml_term_obj_read(&ctx) == ERR)
         {
-            aml_scope_deinit(&scope);
-            AML_DEBUG_ERROR(state, "Failed to read TermObj");
+            AML_DEBUG_ERROR(&ctx, "Failed to read TermObj");
             return ERR;
         }
     }
 
-    aml_scope_deinit(&scope);
+    if (parentCtx != NULL)
+    {
+        parentCtx->stopReason = ctx.stopReason;
+    }
     return 0;
 }

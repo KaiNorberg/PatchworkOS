@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 
-typedef struct aml_state aml_state_t;
-typedef struct aml_scope aml_scope_t;
+typedef struct aml_object aml_object_t;
+typedef struct aml_term_list_ctx aml_term_list_ctx_t;
 
 /**
  * @brief Package Length Encoding
@@ -40,11 +40,11 @@ typedef struct
  * - bit 5-4: only used if pkglength <= 63
  * - bit 3-0: least significant package length nybble
  *
- * @param state The AML state.
+ * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the lead byte.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_pkg_lead_byte_read(aml_state_t* state, aml_pkg_lead_byte_t* out);
+uint64_t aml_pkg_lead_byte_read(aml_term_list_ctx_t* ctx, aml_pkg_lead_byte_t* out);
 
 /**
  * @brief Reads a PkgLength structure from the AML byte stream.
@@ -57,10 +57,10 @@ uint64_t aml_pkg_lead_byte_read(aml_state_t* state, aml_pkg_lead_byte_t* out);
  *
  * @see Section 5.4.1 of the ACPI specification for more details.
  *
- * @param state The AML state.
+ * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the package length.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_pkg_length_read(aml_state_t* state, aml_pkg_length_t* out);
+uint64_t aml_pkg_length_read(aml_term_list_ctx_t* ctx, aml_pkg_length_t* out);
 
 /** @} */

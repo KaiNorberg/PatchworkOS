@@ -1,16 +1,17 @@
 #include "debug.h"
 
 #include "acpi/aml/aml_token.h"
+#include "acpi/aml/aml_debug.h"
 
-aml_object_t* aml_debug_obj_read(aml_state_t* state)
+aml_object_t* aml_debug_obj_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(state, AML_DEBUG_OP) == ERR)
+    if (aml_token_expect(ctx, AML_DEBUG_OP) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read DebugOp");
+        AML_DEBUG_ERROR(ctx, "Failed to read DebugOp");
         return NULL;
     }
 
-    aml_object_t* obj = aml_object_new(state, AML_OBJECT_NONE);
+    aml_object_t* obj = aml_object_new(ctx);
     if (obj == NULL)
     {
         return NULL;

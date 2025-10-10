@@ -2,17 +2,14 @@
 
 #include "aml_integer.h"
 #include "aml_patch_up.h"
-#include "encoding/data.h"
 #include "encoding/name.h"
-#include "encoding/named.h"
 #include "fs/sysfs.h"
 #include "runtime/mutex.h"
 #include "utils/ref.h"
 
 #include <stdint.h>
 
-typedef struct aml_term_arg_list aml_term_arg_list_t;
-
+typedef struct aml_state aml_state_t;
 typedef struct aml_object aml_object_t;
 typedef struct aml_opregion_obj aml_opregion_obj_t;
 typedef struct aml_string_obj aml_string_obj_t;
@@ -112,8 +109,7 @@ typedef enum
 {
     AML_OBJECT_NONE = 0,            ///< No flags.
     AML_OBJECT_ROOT = 1 << 0,       ///< Is the root object.
-    AML_OBJECT_PREDEFINED = 1 << 1, ///< Is a predefined object.
-    AML_OBJECT_NAMED = 1 << 3,      ///< The object appears in the namespace tree. Will be set in `aml_object_add()`.
+    AML_OBJECT_NAMED = 1 << 1,      ///< The object appears in the namespace tree. Will be set in `aml_object_add()`.
 } aml_object_flags_t;
 
 /**
@@ -137,7 +133,7 @@ typedef enum
  * @typedef aml_method_implementation_t
  */
 typedef uint64_t (
-    *aml_method_implementation_t)(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args, aml_object_t* out);
+    *aml_method_implementation_t)(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount, aml_object_t** out);
 
 /**
  * @brief Defines the location of an object in the ACPI namespace.
@@ -462,11 +458,10 @@ uint64_t aml_object_get_total_count(void);
  *
  * You could also use `DEREF_DEFER()` to dereference the object when the current scope ends.
  *
- * @param state Pointer to the AML state the object will belong to, can be `NULL`.
- * @param flags Flags for the new object, `AML_OBJECT_NAMED` is not allowed here.
+ * @param ctx The context of the TermList that was being read when the object was created, can be `NULL`.
  * @return On success, a pointer to the new object. On failure, `NULL` and `errno` is set.
  */
-aml_object_t* aml_object_new(aml_state_t* state, aml_object_flags_t flags);
+aml_object_t* aml_object_new(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Clear the data of a object, setting its type to `AML_UNINITIALIZED`.
@@ -494,7 +489,7 @@ uint64_t aml_object_count_children(aml_object_t* parent);
  * Creates a new reference to `child`, so you should `DEREF()` it after a successful call to this function.
  *
  * @param parent Pointer to the parent object.
- * @param child Pointer to the child object to add.
+ * @param child Pointer to the child object to add, must not be `AML_UNINITIALIZED`.
  * @param name Name of the child object to add, must be exactly `AML_NAME_LENGTH` chars long, does not need to be
  * null-terminated.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
@@ -508,7 +503,7 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
  *
  * Creates a new reference to `object`, so you should `DEREF()` it after a successful call to this function.
  *
- * @param object Pointer to the object to add.
+ * @param object Pointer to the object to add, must not be `AML_UNINITIALIZED`.
  * @param from Pointer to the object to start the search from, can be `NULL` to start from the root.
  * @param nameString Pointer to the name string, can be `NULL` if `object->flags & AML_OBJECT_ROOT`, must have atleast
  * one name segment otherwise.

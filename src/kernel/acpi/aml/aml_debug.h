@@ -1,9 +1,7 @@
 #pragma once
 
-#include "aml_state.h"
-#include "aml_token.h"
-#include "log/log.h"
+#include "encoding/term.h"
 
-void aml_debug_error_print(aml_state_t* state, const char* function, const char* format, ...);
+void aml_debug_error_print(aml_term_list_ctx_t* ctx, const char* function, const char* format, ...);
 
-#define AML_DEBUG_ERROR(state, format, ...) aml_debug_error_print(state, __func__, format, ##__VA_ARGS__)
+#define AML_DEBUG_ERROR(ctx, format, ...) aml_debug_error_print(ctx, __func__, format, ##__VA_ARGS__)

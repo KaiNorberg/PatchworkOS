@@ -2,12 +2,13 @@
 
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
+#include "acpi/aml/encoding/term.h"
 #include "log/log.h"
 
 #include <errno.h>
 
-uint64_t aml_method_evaluate(aml_method_obj_t* method, uint64_t argCount, aml_object_t** args,
-    aml_object_t* returnValue)
+uint64_t aml_method_evaluate(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount,
+    aml_object_t** returnValue)
 {
     if (method == NULL)
     {
@@ -44,12 +45,12 @@ uint64_t aml_method_evaluate(aml_method_obj_t* method, uint64_t argCount, aml_ob
 
     if (method->implementation != NULL)
     {
-        result = method->implementation(method, argCount, args, returnValue);
+        result = method->implementation(method, args, argCount, returnValue);
         goto cleanup;
     }
 
     aml_state_t state;
-    if (aml_state_init(&state, method->start, method->end, argCount, args, returnValue) == ERR)
+    if (aml_state_init(&state, args, argCount) == ERR)
     {
         LOG_ERR("could not initialize AML state\n");
         result = ERR;
@@ -60,18 +61,23 @@ uint64_t aml_method_evaluate(aml_method_obj_t* method, uint64_t argCount, aml_ob
     // control method execution for this package are relative to that location." - Section 19.6.85
 
     // The method body is just a TermList.
-    result = aml_term_list_read(&state, CONTAINER_OF(method, aml_object_t, method), method->end);
+    result = aml_term_list_read(&state, CONTAINER_OF(method, aml_object_t, method), method->start, method->end, NULL);
 
     // "Also notice that all namespace objects created by a method have temporary lifetime. When method execution exits,
     // the created objects will be destroyed." - Section 19.6.85
     aml_state_garbage_collect(&state);
 
-    if (aml_state_deinit(&state) == ERR)
+    if (result != ERR && returnValue != NULL)
     {
-        LOG_ERR("could not deinitialize AML state\n");
-        result = ERR;
-        goto cleanup;
+        *returnValue = aml_state_result_get(&state);
+        if (*returnValue == NULL)
+        {
+            LOG_ERR("could not get method result\n");
+            result = ERR;
+        }
     }
+
+    aml_state_deinit(&state);
 
 cleanup:
     if (method->methodFlags.isSerialized)
@@ -79,6 +85,8 @@ cleanup:
         if (aml_mutex_release(&method->mutex) == ERR)
         {
             LOG_ERR("could not release method mutex\n");
+            DEREF(*returnValue);
+            *returnValue = NULL;
             result = ERR;
         }
     }
@@ -107,25 +115,19 @@ uint64_t aml_method_evaluate_integer(aml_object_t* object, uint64_t* out)
         return ERR;
     }
 
-    aml_object_t* returnValue = aml_object_new(NULL, AML_OBJECT_NONE);
-    if (returnValue == NULL)
+    aml_object_t* result = NULL;
+    if (aml_method_evaluate(&object->method, NULL, 0, &result) == ERR)
     {
         return ERR;
     }
-    DEREF_DEFER(returnValue);
+    DEREF_DEFER(result);
 
-    if (aml_method_evaluate(&object->method, 0, NULL, returnValue) == ERR)
+    if (result->type != AML_INTEGER)
     {
+        LOG_ERR("method did not return an Integer, returned '%s' instead\n", aml_type_to_string(result->type));
         return ERR;
     }
 
-    aml_type_t returnType = returnValue->type;
-    if (returnType != AML_INTEGER)
-    {
-        LOG_ERR("method did not return an Integer, returned '%s' instead\n", aml_type_to_string(returnType));
-        return ERR;
-    }
-
-    *out = returnValue->integer.value;
+    *out = result->integer.value;
     return 0;
 }

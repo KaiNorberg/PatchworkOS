@@ -1,8 +1,7 @@
 #pragma once
 
-#include "aml_debug.h"
 #include "aml_state.h"
-#include "log/log.h"
+#include "encoding/term.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -296,41 +295,33 @@ static inline const aml_token_props_t* aml_token_lookup(aml_token_num_t num)
  *
  * If the stream is empty, the token will be set to `AML_UNKNOWN_TOKEN` and length 0.
  *
- * @param state The AML state to parse from.
- * @param out The destination for the parsed token.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @param ctx The AML term list context to parse from.
  */
-static inline uint64_t aml_token_peek(aml_state_t* state, aml_token_t* out)
+static inline void aml_token_peek(aml_term_list_ctx_t* ctx, aml_token_t* out)
 {
-    uint8_t buffer[2];
-    uint64_t byteAmount = aml_state_peek(state, buffer, sizeof(buffer));
+    uint64_t byteAmount = MIN(ctx->end - ctx->current, 2);
     if (byteAmount == 0)
     {
         out->num = AML_UNKNOWN_TOKEN;
         out->length = 0;
         out->props = &amlTokenProps[AML_UNKNOWN_TOKEN];
-        return 0;
+        return;
     }
 
-    if (byteAmount == ERR)
-    {
-        return ERR;
-    }
-
-    aml_token_num_t num = buffer[0];
+    aml_token_num_t num = ctx->current[0];
     uint8_t length = 1;
 
     if (byteAmount == 2)
     {
-        if (buffer[0] == AML_EXT_OP_PREFIX)
+        if (ctx->current[0] == AML_EXT_OP_PREFIX)
         {
-            num = AML_EXT_OP_PREFIX_BASE + buffer[1];
+            num = AML_EXT_OP_PREFIX_BASE + ctx->current[1];
             length = 2;
         }
-        else if (buffer[0] == AML_LNOT_OP && buffer[1] >= (AML_LNOT_EQUAL_OP - AML_LNOT_OP_BASE) &&
-            (buffer[1] <= (AML_LGREATER_EQUAL_OP - AML_LNOT_OP_BASE)))
+        else if (ctx->current[0] == AML_LNOT_OP && ctx->current[1] >= (AML_LNOT_EQUAL_OP - AML_LNOT_OP_BASE) &&
+            (ctx->current[1] <= (AML_LGREATER_EQUAL_OP - AML_LNOT_OP_BASE)))
         {
-            num = AML_LNOT_OP_BASE + buffer[1];
+            num = AML_LNOT_OP_BASE + ctx->current[1];
             length = 2;
         }
     }
@@ -338,25 +329,17 @@ static inline uint64_t aml_token_peek(aml_state_t* state, aml_token_t* out)
     out->num = num;
     out->length = length;
     out->props = &amlTokenProps[num];
-    return 0;
 }
 /**
  * @brief Attempt to read a token from the AML stream.
  *
- * @param state The AML state to parse from.
- * @param out The destination for the parsed token.
- * @return On success, 0. On failure, `ERR` and `errno` is set to `ENODATA` if the stream is empty or `EILSEQ`
- * if the current data is not a valid token.
+ * @param ctx The AML term list context to parse from.
+ * @param out The token to read into.
  */
-static inline uint64_t aml_token_read(aml_state_t* state, aml_token_t* out)
+static inline void aml_token_read(aml_term_list_ctx_t* ctx, aml_token_t* out)
 {
-    if (aml_token_peek(state, out) == ERR)
-    {
-        return ERR;
-    }
-
-    state->current += out->length;
-    return 0;
+    aml_token_peek(ctx, out);
+    ctx->current += out->length;
 }
 
 /**
@@ -366,13 +349,10 @@ static inline uint64_t aml_token_read(aml_state_t* state, aml_token_t* out)
  * @param expected The expected token number.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_token_expect(aml_state_t* state, aml_token_num_t expected)
+static inline uint64_t aml_token_expect(aml_term_list_ctx_t* ctx, aml_token_num_t expected)
 {
     aml_token_t token;
-    if (aml_token_read(state, &token) == ERR)
-    {
-        return ERR;
-    }
+    aml_token_read(ctx, &token);
 
     if (token.num != expected)
     {

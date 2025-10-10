@@ -9,6 +9,7 @@
 #include "aml_state.h"
 #include "aml_to_string.h"
 #include "runtime/method.h"
+#include "encoding/term.h"
 
 #include "acpi/tables.h"
 #include "log/log.h"
@@ -32,46 +33,58 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
     const uint8_t* end = (const uint8_t*)testAml + testAml->header.length;
 
     aml_state_t state;
-    if (aml_state_init(&state, testAml->definitionBlock, end, 0, NULL, NULL) == ERR)
+    if (aml_state_init(&state, NULL, 0) == ERR)
     {
         return ERR;
     }
 
-    uint64_t result = aml_term_list_read(&state, aml_root_get(), end);
+    uint64_t result = aml_term_list_read(&state, aml_root_get(), testAml->definitionBlock, end, NULL);
 
-    aml_object_t* mainObj = aml_object_find(NULL, "\\MAIN");
+    // Set the "Settings number, used to adjust the aslts tests for different releases of ACPICA".
+    // We set it to 6 as that is the latest version as of writing this.
+    aml_object_t* setn = aml_object_find(NULL, "\\SETN");
+    if (setn == NULL)
+    {
+        LOG_ERR("test '%s' does not contain a valid SETN method\n", test->name);
+        aml_state_garbage_collect(&state);
+        aml_state_deinit(&state);
+        return ERR;
+    }
+    DEREF_DEFER(setn);
+
+    if (aml_integer_set(setn, 6) == ERR)
+    {
+        LOG_ERR("test '%s' failed to set SETN value\n", test->name);
+        aml_state_garbage_collect(&state);
+        aml_state_deinit(&state);
+        return ERR;
+    }
+
+    // We dont use the \MAIN method directly instead we use the \MN01 method which enables "slack mode".
+    // Basically, certain features that would normally just result in a crash are allowed in slack mode, for example
+    // implicit returns, which some firmware depends on. See section 5.2 of the ACPICA reference for more details.
+    aml_object_t* mainObj = aml_object_find(NULL, "\\MN01");
     if (mainObj == NULL || mainObj->type != AML_METHOD)
     {
-        LOG_ERR("test '%s' does not contain a valid MAIN method\n", test->name);
+        LOG_ERR("test '%s' does not contain a valid method\n", test->name);
         aml_state_garbage_collect(&state);
         aml_state_deinit(&state);
         return ERR;
     }
     DEREF_DEFER(mainObj);
 
-    aml_object_t* returnValue = aml_object_new(NULL, AML_OBJECT_NONE);
-    if (returnValue == NULL)
+    aml_object_t* returnValue = NULL;
+    if (aml_method_evaluate(&mainObj->method, NULL, 0, &returnValue) == ERR)
     {
+        LOG_ERR("test '%s' method evaluation failed\n", test->name);
         aml_state_garbage_collect(&state);
         aml_state_deinit(&state);
         return ERR;
     }
     DEREF_DEFER(returnValue);
 
-    if (aml_method_evaluate(&mainObj->method, 0, NULL, returnValue) == ERR)
-    {
-        LOG_ERR("test '%s' MAIN method evaluation failed\n", test->name);
-        aml_state_garbage_collect(&state);
-        aml_state_deinit(&state);
-        return ERR;
-    }
-
     aml_state_garbage_collect(&state);
-
-    if (aml_state_deinit(&state) == ERR)
-    {
-        return ERR;
-    }
+    aml_state_deinit(&state);
 
     if (result == ERR)
     {
@@ -81,7 +94,7 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
 
     if (returnValue->type != AML_INTEGER)
     {
-        LOG_ERR("test '%s' MAIN method did not return an integer\n", test->name);
+        LOG_ERR("test '%s' method did not return an integer\n", test->name);
         return ERR;
     }
 

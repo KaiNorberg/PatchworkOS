@@ -249,7 +249,7 @@ static uint64_t aml_integer_to_string(aml_object_t* integer, aml_object_t* dest)
     for (uint64_t i = 0; i < aml_integer_byte_size(); i++)
     {
         uint8_t byte = (integerData->value >> (i * 8)) & 0xFF;
-        aml_byte_to_hex(byte, &content[i * 2]);
+        aml_byte_to_hex(byte, &content[aml_integer_byte_size() * 2 - i * 2 - 2]);
     }
 
     return 0;
@@ -258,7 +258,7 @@ static uint64_t aml_integer_to_string(aml_object_t* integer, aml_object_t* dest)
 static uint64_t aml_integer_to_debug_object(aml_object_t* integer, aml_object_t* dest)
 {
     (void)dest;
-    LOG_INFO("%llu\n", integer->integer.value);
+    LOG_INFO("0x%llx\n", integer->integer.value);
     return 0;
 }
 
@@ -408,7 +408,7 @@ uint64_t aml_convert(aml_object_t* src, aml_object_t* dest, aml_type_t allowedTy
     // BufferFields and FieldUnits are treated as either Buffers or Integers based on size
     if (src->type == AML_FIELD_UNIT || src->type == AML_BUFFER_FIELD)
     {
-        aml_object_t* temp = aml_object_new(NULL, AML_OBJECT_NONE);
+        aml_object_t* temp = aml_object_new(NULL);
         if (temp == NULL)
         {
             return ERR;
@@ -550,7 +550,7 @@ uint64_t aml_convert_source(aml_object_t* src, aml_object_t** dest, aml_type_t a
         return aml_convert(src, *dest, allowedTypes);
     }
 
-    *dest = aml_object_new(NULL, AML_OBJECT_NONE);
+    *dest = aml_object_new(NULL);
     if (*dest == NULL)
     {
         return ERR;

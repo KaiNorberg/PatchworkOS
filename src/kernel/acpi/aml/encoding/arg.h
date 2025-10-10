@@ -1,8 +1,7 @@
 #pragma once
 
-#include "acpi/aml/aml_object.h"
-
-typedef struct aml_state aml_state_t;
+typedef struct aml_object aml_object_t;
+typedef struct aml_term_list_ctx aml_term_list_ctx_t;
 
 /**
  * @brief Arg Objecs Encoding
@@ -39,6 +38,6 @@ typedef struct aml_state aml_state_t;
  * @param state Pointer to the AML state.
  * @return On success, the ArbObj. On failure, `NULL` and `errno` is set.
  */
-aml_object_t* aml_arg_obj_read(aml_state_t* state);
+aml_object_t* aml_arg_obj_read(aml_term_list_ctx_t* ctx);
 
 /** @} */

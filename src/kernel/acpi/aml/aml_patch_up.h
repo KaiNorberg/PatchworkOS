@@ -4,9 +4,6 @@
 #include <stdint.h>
 #include <sys/list.h>
 
-#include "acpi/aml/encoding/name.h"
-#include "acpi/aml/encoding/named.h"
-
 typedef struct aml_unresolved_obj aml_unresolved_obj_t;
 typedef struct aml_object aml_object_t;
 typedef struct aml_data aml_data_t;
