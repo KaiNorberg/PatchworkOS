@@ -59,11 +59,6 @@
 #define RSDP_CURRENT_REVISION 2
 
 /**
- * @brief The revision of the ACPI specification we support.
- */
-#define ACPI_REVISION 6
-
-/**
  * @brief The length of the signature field in the SDT header structure.
  */
 #define SDT_SIGNATURE_LENGTH 4

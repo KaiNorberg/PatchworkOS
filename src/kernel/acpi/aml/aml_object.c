@@ -743,7 +743,8 @@ aml_object_t* aml_object_find(aml_object_t* start, const char* path)
     return current; // Transfer ownership
 }
 
-uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, aml_integer_t value)
+uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize,
+    aml_integer_t value)
 {
     if (object == NULL || bitSize == 0 || bitSize > aml_integer_bit_size())
     {
@@ -817,7 +818,8 @@ uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
     return 0;
 }
 
-uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, aml_integer_t* out)
+uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize,
+    aml_integer_t* out)
 {
     if (object == NULL || out == NULL || bitSize == 0 || bitSize > aml_integer_bit_size())
     {
@@ -841,7 +843,8 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
             effectiveBitSize = aml_integer_bit_size() - bitOffset;
         }
 
-        uint64_t mask = (effectiveBitSize >= aml_integer_bit_size()) ? aml_integer_ones() : ((1ULL << effectiveBitSize) - 1);
+        uint64_t mask =
+            (effectiveBitSize >= aml_integer_bit_size()) ? aml_integer_ones() : ((1ULL << effectiveBitSize) - 1);
         *out = (object->integer.value >> bitOffset) & mask;
     }
     break;

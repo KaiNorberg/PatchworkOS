@@ -567,7 +567,8 @@ aml_object_t* aml_object_find(aml_object_t* start, const char* path);
  * @param value The bits to store.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, aml_integer_t value);
+uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize,
+    aml_integer_t value);
 
 /**
  * @brief Retrieve bits from a object at the specified bit offset and size.
@@ -584,7 +585,8 @@ uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
  * @param out Pointer to a buffer where the extracted bits will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, aml_integer_t* out);
+uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize,
+    aml_integer_t* out);
 
 /**
  * @brief Set a object as a buffer with the given content.

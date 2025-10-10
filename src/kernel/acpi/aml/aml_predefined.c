@@ -45,7 +45,7 @@ uint64_t aml_rev_implementation(aml_method_obj_t* method, uint64_t argCount, aml
         return ERR;
     }
 
-    if (aml_integer_set(returnValue, ACPI_REVISION) == ERR)
+    if (aml_integer_set(returnValue, RSDP_CURRENT_REVISION) == ERR)
     {
         return ERR;
     }

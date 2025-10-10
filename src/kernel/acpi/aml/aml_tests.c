@@ -66,8 +66,6 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
         return ERR;
     }
 
-    LOG_INFO("test '%s' MAIN method returned %s\n", test->name, aml_object_to_string(returnValue));
-
     aml_state_garbage_collect(&state);
 
     if (aml_state_deinit(&state) == ERR)
@@ -75,7 +73,26 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
         return ERR;
     }
 
-    return result;
+    if (result == ERR)
+    {
+        LOG_ERR("test '%s' parsing failed\n", test->name);
+        return ERR;
+    }
+
+    if (returnValue->type != AML_INTEGER)
+    {
+        LOG_ERR("test '%s' MAIN method did not return an integer\n", test->name);
+        return ERR;
+    }
+
+    if (returnValue->integer.value != 0)
+    {
+        LOG_ERR("test '%s' failed, returned %llu\n", test->name, returnValue->integer.value);
+        return ERR;
+    }
+
+    LOG_INFO("test '%s' passed\n", test->name);
+    return 0;
 }
 
 static uint64_t aml_tests_acpica_run_all(void)

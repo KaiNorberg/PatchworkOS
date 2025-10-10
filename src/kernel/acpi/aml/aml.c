@@ -70,7 +70,7 @@ static inline uint64_t aml_init_parse_all(void)
 
 uint64_t aml_init(void)
 {
-    LOG_INFO("AML revision %d, init and parse all\n", ACPI_REVISION);
+    LOG_INFO("AML revision %d, init and parse all\n", RSDP_CURRENT_REVISION);
 
     mutex_init(&bigMutex);
     MUTEX_SCOPE(&bigMutex);

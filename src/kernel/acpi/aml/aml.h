@@ -39,6 +39,14 @@
  */
 
 /**
+ * @brief The current revision of the AML subsystem.
+ *
+ * This number as far as i can tell just needs to be larger than 2. But the ACPICA tests expect it to be greater or
+ * equal 0x20140114 and less then or equal 0x20500000. So we just use a date code. There is no need to update this.
+ */
+#define AML_CURRENT_REVISION 0x20251010
+
+/**
  * @brief Initialize the AML subsystem.
  *
  * @return On success, 0. On failure, `ERR` and `errno` is set.

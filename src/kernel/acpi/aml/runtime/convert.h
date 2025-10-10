@@ -34,12 +34,16 @@ uint64_t aml_convert(aml_object_t* src, aml_object_t* dest, aml_type_t allowedTy
  * @brief Performs a "Implicit Source Operand Conversion" acording to the rules in section 19.3.5.4 of the ACPI
  * specification.
  *
- * If `dest` is `NULL` then either, a new object is allocated and assigned to `*dest`, or `*dest` will be set to a reference `src` if no conversion is needed.
+ * If `dest` is `NULL` then either, a new object is allocated and assigned to `*dest`, or `*dest` will be set to a
+ * reference `src` if no conversion is needed.
  *
- * If `dest` is not `NULL` then the object pointed to by `*dest` will be set to the converted value or a copy of `src` if no
- * conversion is needed.
+ * If `dest` is not `NULL` then the object pointed to by `*dest` will be set to the converted value or a copy of `src`
+ * if no conversion is needed.
  *
- * This `dest` handling is to allow for the common case where the source object does not need to be converted. In which case we can avoid a allocation and a copy buts its also just a requirement. For instance if we are implementing Index and the source in a buffer well then we need the created BufferField to point to the original buffer not a copy of it.
+ * This `dest` handling is to allow for the common case where the source object does not need to be converted. In which
+ * case we can avoid a allocation and a copy buts its also just a requirement. For instance if we are implementing Index
+ * and the source in a buffer well then we need the created BufferField to point to the original buffer not a copy of
+ * it.
  *
  * @see Section 19.3.5.4 of the ACPI specification for more details.
  *

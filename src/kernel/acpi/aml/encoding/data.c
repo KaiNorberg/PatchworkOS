@@ -1,11 +1,10 @@
 #include "data.h"
 
-#include "acpi/acpi.h"
+#include "acpi/aml/aml.h"
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_patch_up.h"
 #include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
-#include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_token.h"
 #include "acpi/aml/runtime/convert.h"
 #include "expression.h"
@@ -194,7 +193,7 @@ uint64_t aml_revision_op_read(aml_state_t* state, aml_object_t* out)
         return ERR;
     }
 
-    if (aml_integer_set(out, RSDP_CURRENT_REVISION) == ERR)
+    if (aml_integer_set(out, AML_CURRENT_REVISION) == ERR)
     {
         return ERR;
     }
