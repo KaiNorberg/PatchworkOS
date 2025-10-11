@@ -78,6 +78,16 @@ uint64_t aml_copy_data_and_type(aml_object_t* src, aml_object_t* dest)
         dest->name.segment[AML_NAME_LENGTH] = '\0';
     }
 
+    // Inherits the `AML_OBJECT_EXCEPTION_ON_USE` flag.
+    if (src->flags & AML_OBJECT_EXCEPTION_ON_USE)
+    {
+        dest->flags |= AML_OBJECT_EXCEPTION_ON_USE;
+    }
+    else
+    {
+        dest->flags &= ~AML_OBJECT_EXCEPTION_ON_USE;
+    }
+
     return 0;
 }
 

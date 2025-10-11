@@ -150,7 +150,7 @@ ACPICA_COLLECTIONS = functional
 
 clone_acpica_and_compile_tests:
 	@if [ ! -d "lib/acpica" ]; then \
-		git clone https://github.com/acpica/acpica.git lib/acpica; \
+		git clone https://github.com/KaiNorberg/acpica.git -b fix_runtime_implicit_return_test lib/acpica; \
 	fi
 	@if [ ! -d "lib/acpica_tests" ]; then \
 		mkdir -p lib/acpica_tests; \

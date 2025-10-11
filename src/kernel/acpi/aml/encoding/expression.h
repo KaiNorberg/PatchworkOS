@@ -79,6 +79,8 @@ uint64_t aml_term_arg_list_read(aml_term_list_ctx_t* ctx, uint64_t argCount, aml
  * this. I guess you could say that any object is being "invoked" when it is being read, it just happens to not take any
  * arguments.
  *
+ * The result may have the `AML_OBJECT_EXCEPTION_ON_USE` flag set.
+ *
  * @param ctx The TermList context.
  * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
@@ -778,6 +780,8 @@ aml_object_t* aml_def_find_set_right_bit_read(aml_term_list_ctx_t* ctx);
  * - `DefLoadTable`
  * - `DefMatch`
  * - `DefWait`
+ *
+ * The result may have the `AML_OBJECT_EXCEPTION_ON_USE` flag set.
  *
  * @param ctx The TermList context.
  * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.

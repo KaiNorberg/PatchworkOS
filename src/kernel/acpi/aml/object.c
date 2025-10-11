@@ -7,6 +7,7 @@
 #include "mem/heap.h"
 #include "to_string.h"
 #include "token.h"
+#include "exception.h"
 
 #include <errno.h>
 #include <stddef.h>
@@ -884,6 +885,16 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
     }
 
     return 0;
+}
+
+void aml_object_exception_check(aml_object_t* object)
+{
+    if (object->flags & AML_OBJECT_EXCEPTION_ON_USE)
+    {
+        AML_EXCEPTION_RAISE(AML_PARSE); // Not fatal.
+        object->flags &= ~AML_OBJECT_EXCEPTION_ON_USE;
+        // We can still use the object, so continue.
+    }
 }
 
 static inline uint64_t aml_object_check_clear(aml_object_t* object)

@@ -113,6 +113,8 @@ typedef enum
     /**
      * The first time this object is used an exception will be raised. This is used such that when a method fails to
      * implicitly or explicitly return a value the "synthetic" return value will raise an exception when used.
+     *
+     * Any copy of an object with this flag will also have this flag set.
      */
     AML_OBJECT_EXCEPTION_ON_USE = 1 << 2,
 } aml_object_flags_t;
@@ -586,6 +588,13 @@ uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
  */
 uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize,
     aml_integer_t* out);
+
+/**
+ * @brief Check if a object has the `AML_OBJECT_EXCEPTION_ON_USE` flag set and raise an exception if it is.
+ *
+ * @param object Pointer to the object to check.
+ */
+void aml_object_exception_check(aml_object_t* object);
 
 /**
  * @brief Set a object as a buffer with the given content.

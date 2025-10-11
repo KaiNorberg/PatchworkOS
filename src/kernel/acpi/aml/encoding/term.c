@@ -26,6 +26,10 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
     case AML_TOKEN_TYPE_EXPRESSION:
     case AML_TOKEN_TYPE_NAME: // MethodInvocation is a Name
         value = aml_expression_opcode_read(ctx);
+        if (value != NULL)
+        {
+            aml_object_exception_check(value);
+        }
         break;
     case AML_TOKEN_TYPE_ARG:
         value = aml_arg_obj_read(ctx);
@@ -54,13 +58,6 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
         return NULL;
     }
     DEREF_DEFER(value);
-
-    if (value->flags & AML_OBJECT_EXCEPTION_ON_USE)
-    {
-        AML_EXCEPTION_RAISE(AML_ERROR); // Not fatal.
-        value->flags &= ~AML_OBJECT_EXCEPTION_ON_USE;
-        // We can still use the object, so continue.
-    }
 
     aml_object_t* out = NULL;
     if (aml_convert_source(value, &out, allowedTypes) == ERR)
@@ -144,6 +141,9 @@ uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx)
             AML_DEBUG_ERROR(ctx, "Failed to read ExpressionOpcode");
             return ERR;
         }
+        // Set the result of the state to the last evaluated expression, check `aml_method_evaluate()` for more details.
+        // We cant just do this in `aml_expression_opcode_read()` because predicates are not supposed to be considered for implicit return.
+        //aml_state_result_set(ctx->state, result);
         DEREF(result);
         return 0;
     }

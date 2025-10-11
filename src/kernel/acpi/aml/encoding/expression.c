@@ -132,9 +132,12 @@ aml_object_t* aml_method_invocation_read(aml_term_list_ctx_t* ctx)
             args.args[i] = NULL;
         }
 
+        aml_state_result_set(ctx->state, result);
+
         return result; // Transfer ownership
     }
 
+    // Note that just resolving an object does not set the implicit return value.
     return REF(target);
 }
 
@@ -2063,6 +2066,10 @@ aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx)
     aml_object_t* result = NULL;
     if (op.props->type == AML_TOKEN_TYPE_NAME)
     {
+        // Note that just resolving an object does not set the implicit return value.
+        // So we only set the implicit return value if the resolved object in MethodInvocation is a method.
+        // Or one of the other expression opcodes is used.
+
         result = aml_method_invocation_read(ctx);
     }
     else
@@ -2245,6 +2252,11 @@ aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx)
             errno = ENOSYS;
             return NULL;
         }
+
+        if (result != NULL)
+        {
+            aml_state_result_set(ctx->state, result);
+        }
     }
 
     if (result == NULL)
@@ -2252,9 +2264,6 @@ aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx)
         AML_DEBUG_ERROR(ctx, "Failed to read ExpressionOpcode '%s' (0x%04x)", op.props->name, op.num);
         return NULL;
     }
-
-    // Set the result of the state to the last evaluated expression, check `aml_method_evaluate()` for more details.
-    aml_state_result_set(ctx->state, result);
 
     return result; // Transfer ownership
 }
