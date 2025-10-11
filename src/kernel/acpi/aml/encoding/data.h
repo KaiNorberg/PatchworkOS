@@ -1,6 +1,6 @@
 #pragma once
 
-#include "acpi/aml/aml_integer.h"
+#include "acpi/aml/integer.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -193,8 +193,7 @@ uint64_t aml_package_element_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
  * @param end Pointer to the end of the PackageElementList.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_package_element_list_read(aml_term_list_ctx_t* ctx, aml_package_obj_t* package,
-    const uint8_t* end);
+uint64_t aml_package_element_list_read(aml_term_list_ctx_t* ctx, aml_package_obj_t* package, const uint8_t* end);
 
 /**
  * @brief Reads a DefPackage structure from the AML byte stream.

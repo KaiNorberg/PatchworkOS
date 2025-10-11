@@ -1,12 +1,12 @@
-#include "aml_object.h"
+#include "object.h"
 
 #include "acpi/acpi.h"
 #include "aml.h"
-#include "aml_to_string.h"
-#include "aml_token.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
+#include "to_string.h"
+#include "token.h"
 
 #include <errno.h>
 #include <stddef.h>

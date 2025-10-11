@@ -1,9 +1,9 @@
-#include "aml_predefined.h"
+#include "predefined.h"
 
 #include "acpi/acpi.h"
 #include "aml.h"
-#include "aml_object.h"
 #include "log/log.h"
+#include "object.h"
 
 #include <common/version.h>
 
@@ -11,38 +11,35 @@
 
 static aml_mutex_obj_t* globalMutex = NULL;
 
-uint64_t aml_osi_implementation(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount,
-    aml_object_t** returnValue)
+aml_object_t* aml_osi_implementation(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount)
 {
     (void)method; // Unused
 
     if (argCount != 1 || args[0]->type != AML_STRING)
     {
         errno = EINVAL;
-        return ERR;
+        return NULL;
     }
 
     LOG_DEBUG("_OSI called with argument: '%.*s'\n", (int)args[0]->string.length, args[0]->string.content);
 
-    *returnValue = aml_object_new(NULL);
-    if (*returnValue == NULL)
+    aml_object_t* result = aml_object_new(NULL);
+    if (result == NULL)
     {
-        return ERR;
+        return NULL;
     }
 
     // TODO: Implement this properly.
-    if (aml_integer_set(*returnValue, UINT64_MAX) == ERR)
+    if (aml_integer_set(result, UINT64_MAX) == ERR)
     {
-        DEREF(*returnValue);
-        *returnValue = NULL;
-        return ERR;
+        DEREF(result);
+        return NULL;
     }
 
-    return 0;
+    return result;
 }
 
-uint64_t aml_rev_implementation(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount,
-    aml_object_t** returnValue)
+aml_object_t* aml_rev_implementation(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount)
 {
     (void)method; // Unused
     (void)args;   // Unused
@@ -50,27 +47,25 @@ uint64_t aml_rev_implementation(aml_method_obj_t* method, aml_object_t** args, u
     if (argCount != 0)
     {
         errno = EINVAL;
-        return ERR;
+        return NULL;
     }
 
-    *returnValue = aml_object_new(NULL);
-    if (*returnValue == NULL)
+    aml_object_t* result = aml_object_new(NULL);
+    if (result == NULL)
     {
-        return ERR;
+        return NULL;
     }
 
-    if (aml_integer_set(*returnValue, RSDP_CURRENT_REVISION) == ERR)
+    if (aml_integer_set(result, RSDP_CURRENT_REVISION) == ERR)
     {
-        DEREF(*returnValue);
-        *returnValue = NULL;
-        return ERR;
+        DEREF(result);
+        return NULL;
     }
 
-    return 0;
+    return result;
 }
 
-uint64_t aml_os_implementation(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount,
-    aml_object_t** returnValue)
+aml_object_t* aml_os_implementation(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount)
 {
     (void)method; // Unused
     (void)args;   // Unused
@@ -78,23 +73,22 @@ uint64_t aml_os_implementation(aml_method_obj_t* method, aml_object_t** args, ui
     if (argCount != 0)
     {
         errno = EINVAL;
-        return ERR;
+        return NULL;
     }
 
-    *returnValue = aml_object_new(NULL);
-    if (*returnValue == NULL)
+    aml_object_t* result = aml_object_new(NULL);
+    if (result == NULL)
     {
-        return ERR;
+        return NULL;
     }
 
-    if (aml_string_set(*returnValue, OS_NAME) == ERR)
+    if (aml_string_set(result, OS_NAME) == ERR)
     {
-        DEREF(*returnValue);
-        *returnValue = NULL;
-        return ERR;
+        DEREF(result);
+        return NULL;
     }
 
-    return 0;
+    return result;
 }
 
 static inline uint64_t aml_create_predefined_scope(const char* name)

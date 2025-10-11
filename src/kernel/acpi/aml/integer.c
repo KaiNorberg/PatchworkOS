@@ -1,4 +1,4 @@
-#include "aml_integer.h"
+#include "integer.h"
 
 #include "acpi/tables.h"
 #include "log/log.h"

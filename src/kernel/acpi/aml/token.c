@@ -1,4 +1,4 @@
-#include "aml_token.h"
+#include "token.h"
 
 #include <stdlib.h>
 

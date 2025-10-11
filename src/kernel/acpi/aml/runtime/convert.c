@@ -1,7 +1,7 @@
 #include "convert.h"
 
-#include "acpi/aml/aml_object.h"
-#include "acpi/aml/aml_to_string.h"
+#include "acpi/aml/object.h"
+#include "acpi/aml/to_string.h"
 #include "buffer_field.h"
 #include "copy.h"
 #include "field_unit.h"

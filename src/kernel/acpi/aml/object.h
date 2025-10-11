@@ -1,9 +1,9 @@
 #pragma once
 
-#include "aml_integer.h"
-#include "aml_patch_up.h"
 #include "encoding/name.h"
 #include "fs/sysfs.h"
+#include "integer.h"
+#include "patch_up.h"
 #include "runtime/mutex.h"
 #include "utils/ref.h"
 
@@ -107,9 +107,14 @@ typedef enum
  */
 typedef enum
 {
-    AML_OBJECT_NONE = 0,            ///< No flags.
-    AML_OBJECT_ROOT = 1 << 0,       ///< Is the root object.
-    AML_OBJECT_NAMED = 1 << 1,      ///< The object appears in the namespace tree. Will be set in `aml_object_add()`.
+    AML_OBJECT_NONE = 0,       ///< No flags.
+    AML_OBJECT_ROOT = 1 << 0,  ///< Is the root object.
+    AML_OBJECT_NAMED = 1 << 1, ///< Appears in the namespace tree. Will be set in `aml_object_add()`.
+    /**
+     * The first time this object is used an exception will be raised. This is used such that when a method fails to
+     * implicitly or explicitly return a value the "synthetic" return value will raise an exception when used.
+     */
+    AML_OBJECT_EXCEPTION_ON_USE = 1 << 2,
 } aml_object_flags_t;
 
 /**
@@ -132,8 +137,7 @@ typedef enum
  * @brief Method Implementation function type.
  * @typedef aml_method_implementation_t
  */
-typedef uint64_t (
-    *aml_method_implementation_t)(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount, aml_object_t** out);
+typedef aml_object_t* (*aml_method_implementation_t)(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount);
 
 /**
  * @brief Defines the location of an object in the ACPI namespace.

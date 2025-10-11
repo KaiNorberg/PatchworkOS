@@ -3,9 +3,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "acpi/aml/aml_object.h"
-#include "encoding/local.h"
+#include "acpi/aml/object.h"
 #include "encoding/arg.h"
+#include "encoding/local.h"
 
 /**
  * @brief State
@@ -53,8 +53,7 @@ typedef struct aml_state
  * @param argCount Number of arguments, or 0 if not a method.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_state_init(aml_state_t* state, aml_object_t** args,
-    uint64_t argCount);
+uint64_t aml_state_init(aml_state_t* state, aml_object_t** args, uint64_t argCount);
 
 /**
  * @brief Deinitialize an AML state.
@@ -76,15 +75,22 @@ void aml_state_garbage_collect(aml_state_t* state);
 /**
  * @brief Get the result object of the state.
  *
+ * If no result is available, a Integer object with value 0 is returned.
+ *
  * @see aml_method_evaluate() for more details.
  *
  * @param state Pointer to the state.
- * @return A reference to the result object, or `NULL` if no result is available.
+ * @return On success, a copy of the result object. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_state_result_get(aml_state_t* state);
 
 /**
  * @brief Set the result object of the state.
+ *
+ * Note that methods are supposed to return copies of objects, not references to existing objects. However, due to the
+ * behaviour of implicit returns, always returning the last evaluated object, means there is no way for the object to be
+ * modified between this function being called and the method returning. So in this case it is acceptable to store a
+ * reference to the object and only make a copy when the method actually returns.
  *
  * @see aml_method_evaluate() for more details.
  *

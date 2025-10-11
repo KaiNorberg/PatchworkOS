@@ -1,6 +1,6 @@
-#include "aml_debug.h"
+#include "debug.h"
 
-#include "aml_state.h"
+#include "state.h"
 
 #include "log/log.h"
 
@@ -93,7 +93,7 @@ static void aml_debug_dump(const uint8_t* start, const uint8_t* end, const uint8
     }
 }
 
-void aml_debug_error_print(aml_term_list_ctx_t* ctx, const char* function, const char* format, ...)
+void aml_debug_error(aml_term_list_ctx_t* ctx, const char* function, const char* format, ...)
 {
     aml_state_t* state = ctx->state;
 
@@ -119,6 +119,8 @@ void aml_debug_error_print(aml_term_list_ctx_t* ctx, const char* function, const
             end = ctx->end;
         }
 
+        LOG_ERR("message: ");
+
         va_list args;
         va_start(args, format);
         log_vprint(LOG_LEVEL_ERR, FILE_BASENAME, format, args);
@@ -127,7 +129,7 @@ void aml_debug_error_print(aml_term_list_ctx_t* ctx, const char* function, const
         LOG_ERR("\n");
 
         aml_debug_dump(start, end, ctx->current);
-        LOG_ERR("Backtrace:\n");
+        LOG_ERR("backtrace:\n");
     }
     else
     {

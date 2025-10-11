@@ -1,6 +1,6 @@
 #pragma once
 
-#include "acpi/aml/aml_object.h"
+#include "acpi/aml/object.h"
 
 #include <stdint.h>
 
@@ -16,17 +16,17 @@ typedef struct aml_state aml_state_t;
  * @{
  */
 
- /**
-  * @brief Stop reason.
-  * @enum aml_stop_reason_t
-  */
- typedef enum
- {
-     AML_STOP_REASON_NONE,   ///< No stop reason, continue execution or has reached the end of the TermList
-     AML_STOP_REASON_RETURN,  ///< A Return statement was hit
-     AML_STOP_REASON_BREAK,   ///< A Break statement was hit
-     AML_STOP_REASON_CONTINUE ///< A Continue statement was hit
- } aml_stop_reason_t;
+/**
+ * @brief Stop reason.
+ * @enum aml_stop_reason_t
+ */
+typedef enum
+{
+    AML_STOP_REASON_NONE,    ///< No stop reason, continue execution or has reached the end of the TermList
+    AML_STOP_REASON_RETURN,  ///< A Return statement was hit
+    AML_STOP_REASON_BREAK,   ///< A Break statement was hit
+    AML_STOP_REASON_CONTINUE ///< A Continue statement was hit
+} aml_stop_reason_t;
 
 /**
  * @brief Context for reading a TermList.
@@ -104,9 +104,11 @@ uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx);
  * @param scope The location in the namespace from which names will be resolved.
  * @param start Pointer to the start of the TermList in the AML byte stream.
  * @param end Pointer to the end of the TermList in the AML byte stream.
- * @param parentCtx The previous TermList context, or `NULL` if this is the top-level TermList, used to propagate stop reasons.
+ * @param parentCtx The previous TermList context, or `NULL` if this is the top-level TermList, used to propagate stop
+ * reasons.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* scope, const uint8_t* start, const uint8_t* end, aml_term_list_ctx_t* parentCtx);
+uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* scope, const uint8_t* start, const uint8_t* end,
+    aml_term_list_ctx_t* parentCtx);
 
 /** @} */

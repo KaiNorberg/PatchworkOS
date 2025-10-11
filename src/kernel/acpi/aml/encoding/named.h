@@ -1,6 +1,6 @@
 #pragma once
 
-#include "acpi/aml/aml_integer.h"
+#include "acpi/aml/integer.h"
 #include "data_integers.h"
 
 #include <stdbool.h>

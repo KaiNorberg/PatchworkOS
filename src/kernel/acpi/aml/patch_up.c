@@ -1,10 +1,10 @@
-#include "aml_patch_up.h"
+#include "patch_up.h"
 
-#include "aml_object.h"
-#include "aml_to_string.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
+#include "object.h"
+#include "to_string.h"
 
 #include <errno.h>
 #include <sys/list.h>

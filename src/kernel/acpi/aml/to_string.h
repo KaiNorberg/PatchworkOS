@@ -1,7 +1,7 @@
 #pragma once
 
-#include "aml_object.h"
 #include "encoding/named.h"
+#include "object.h"
 
 /**
  * @brief String Conversion

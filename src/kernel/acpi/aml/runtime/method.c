@@ -1,20 +1,20 @@
 #include "method.h"
 
-#include "acpi/aml/aml_state.h"
-#include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/encoding/term.h"
+#include "acpi/aml/runtime/copy.h"
+#include "acpi/aml/state.h"
+#include "acpi/aml/to_string.h"
 #include "log/log.h"
 
 #include <errno.h>
 
-uint64_t aml_method_evaluate(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount,
-    aml_object_t** returnValue)
+aml_object_t* aml_method_evaluate(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount)
 {
     if (method == NULL)
     {
         LOG_ERR("method is NULL\n");
         errno = EINVAL;
-        return ERR;
+        return NULL;
     }
 
     if (argCount > AML_MAX_ARGS || argCount != method->methodFlags.argCount)
@@ -22,7 +22,7 @@ uint64_t aml_method_evaluate(aml_method_obj_t* method, aml_object_t** args, uint
         LOG_ERR("method '%s' expects %u arguments, got %u\n", AML_OBJECT_GET_NAME(method), method->methodFlags.argCount,
             argCount);
         errno = EINVAL;
-        return ERR;
+        return NULL;
     }
 
     if (args == NULL && argCount > 0)
@@ -30,70 +30,80 @@ uint64_t aml_method_evaluate(aml_method_obj_t* method, aml_object_t** args, uint
         LOG_ERR("method '%s' expects %u arguments, got NULL\n", AML_OBJECT_GET_NAME(method),
             method->methodFlags.argCount);
         errno = EINVAL;
-        return ERR;
+        return NULL;
     }
 
-    uint64_t result = 0;
     if (method->methodFlags.isSerialized)
     {
         if (aml_mutex_acquire(&method->mutex, method->methodFlags.syncLevel, CLOCKS_NEVER) == ERR)
         {
             LOG_ERR("could not acquire method mutex\n");
-            return ERR;
+            return NULL;
         }
     }
 
     if (method->implementation != NULL)
     {
-        result = method->implementation(method, args, argCount, returnValue);
-        goto cleanup;
+        aml_object_t* temp = method->implementation(method, args, argCount);
+        if (method->methodFlags.isSerialized)
+        {
+            if (aml_mutex_release(&method->mutex) == ERR)
+            {
+                LOG_ERR("could not release method mutex\n");
+                return NULL;
+            }
+        }
+        return temp;
     }
 
     aml_state_t state;
     if (aml_state_init(&state, args, argCount) == ERR)
     {
         LOG_ERR("could not initialize AML state\n");
-        result = ERR;
-        goto cleanup;
+        if (method->methodFlags.isSerialized)
+        {
+            aml_mutex_release(&method->mutex); // Ignore errors
+        }
+        return NULL;
     }
 
     // "The current namespace location is assigned to the method package, and all namespace references that occur during
     // control method execution for this package are relative to that location." - Section 19.6.85
 
     // The method body is just a TermList.
-    result = aml_term_list_read(&state, CONTAINER_OF(method, aml_object_t, method), method->start, method->end, NULL);
-
-    // "Also notice that all namespace objects created by a method have temporary lifetime. When method execution exits,
-    // the created objects will be destroyed." - Section 19.6.85
-    aml_state_garbage_collect(&state);
-
-    if (result != ERR && returnValue != NULL)
+    if (aml_term_list_read(&state, CONTAINER_OF(method, aml_object_t, method), method->start, method->end, NULL) == ERR)
     {
-        *returnValue = aml_state_result_get(&state);
-        if (*returnValue == NULL)
+        LOG_ERR("failed to read method body for method '%s'\n", AML_OBJECT_GET_NAME(method));
+        aml_state_garbage_collect(&state);
+        aml_state_deinit(&state);
+        if (method->methodFlags.isSerialized)
         {
-            LOG_ERR("could not get method result\n");
-            result = ERR;
+            aml_mutex_release(&method->mutex); // Ignore errors
         }
+        return NULL;
     }
 
-    aml_state_deinit(&state);
-
-cleanup:
     if (method->methodFlags.isSerialized)
     {
         if (aml_mutex_release(&method->mutex) == ERR)
         {
             LOG_ERR("could not release method mutex\n");
-            DEREF(*returnValue);
-            *returnValue = NULL;
-            result = ERR;
+            aml_state_garbage_collect(&state);
+            aml_state_deinit(&state);
+            return NULL;
         }
     }
-    return result;
+
+    // "Also notice that all namespace objects created by a method have temporary lifetime. When method execution exits,
+    // the created objects will be destroyed." - Section 19.6.85
+    aml_state_garbage_collect(&state);
+
+    aml_object_t* result = aml_state_result_get(&state);
+    aml_state_deinit(&state);
+    return result; // Transfer ownership
 }
 
-uint64_t aml_method_evaluate_integer(aml_object_t* object, uint64_t* out)
+uint64_t aml_method_evaluate_integer(aml_object_t* object, aml_integer_t* out)
 {
     if (object == NULL || out == NULL)
     {
@@ -115,8 +125,8 @@ uint64_t aml_method_evaluate_integer(aml_object_t* object, uint64_t* out)
         return ERR;
     }
 
-    aml_object_t* result = NULL;
-    if (aml_method_evaluate(&object->method, NULL, 0, &result) == ERR)
+    aml_object_t* result = aml_method_evaluate(&object->method, NULL, 0);
+    if (result == NULL)
     {
         return ERR;
     }
@@ -128,6 +138,9 @@ uint64_t aml_method_evaluate_integer(aml_object_t* object, uint64_t* out)
         return ERR;
     }
 
-    *out = result->integer.value;
+    if (out != NULL)
+    {
+        *out = result->integer.value;
+    }
     return 0;
 }

@@ -1,8 +1,8 @@
 #include "field_unit.h"
 
 #include "access_type.h"
-#include "acpi/aml/aml_predefined.h"
-#include "acpi/aml/aml_to_string.h"
+#include "acpi/aml/predefined.h"
+#include "acpi/aml/to_string.h"
 #include "cpu/port.h"
 #include "drivers/pci/pci_config.h"
 #include "log/log.h"

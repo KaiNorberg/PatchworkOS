@@ -22,7 +22,7 @@ typedef uint64_t aml_integer_t;
 /**
  * @brief AML Boolean true value.
  */
-#define AML_TRUE UINT64_MAX
+#define AML_TRUE aml_integer_ones()
 
 /**
  * @brief AML Boolean false value.

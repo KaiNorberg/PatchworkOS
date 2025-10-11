@@ -1,8 +1,9 @@
 #include "term.h"
 
-#include "acpi/aml/aml_debug.h"
-#include "acpi/aml/aml_state.h"
-#include "acpi/aml/aml_token.h"
+#include "acpi/aml/debug.h"
+#include "acpi/aml/exception.h"
+#include "acpi/aml/state.h"
+#include "acpi/aml/token.h"
 
 #include "acpi/aml/runtime/convert.h"
 #include "data.h"
@@ -53,6 +54,13 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
         return NULL;
     }
     DEREF_DEFER(value);
+
+    if (value->flags & AML_OBJECT_EXCEPTION_ON_USE)
+    {
+        AML_EXCEPTION_RAISE(AML_ERROR); // Not fatal.
+        value->flags &= ~AML_OBJECT_EXCEPTION_ON_USE;
+        // We can still use the object, so continue.
+    }
 
     aml_object_t* out = NULL;
     if (aml_convert_source(value, &out, allowedTypes) == ERR)
@@ -130,13 +138,13 @@ uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx)
     case AML_TOKEN_TYPE_NAME: // MethodInvocation is a Name
     case AML_TOKEN_TYPE_EXPRESSION:
     {
-        aml_object_t* temp = aml_expression_opcode_read(ctx);
-        if (temp == NULL)
+        aml_object_t* result = aml_expression_opcode_read(ctx);
+        if (result == NULL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read ExpressionOpcode");
             return ERR;
         }
-        DEREF(temp);
+        DEREF(result);
         return 0;
     }
     default:
@@ -149,7 +157,8 @@ uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx)
     }
 }
 
-uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* scope, const uint8_t* start, const uint8_t* end, aml_term_list_ctx_t* parentCtx)
+uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* scope, const uint8_t* start, const uint8_t* end,
+    aml_term_list_ctx_t* parentCtx)
 {
     aml_term_list_ctx_t ctx = {
         .state = state,
@@ -165,7 +174,6 @@ uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* scope, const uint8
         // End of buffer not reached => byte is not nothing => must be a termobj.
         if (aml_term_obj_read(&ctx) == ERR)
         {
-            AML_DEBUG_ERROR(&ctx, "Failed to read TermObj");
             return ERR;
         }
     }

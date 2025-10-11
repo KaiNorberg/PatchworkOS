@@ -1,17 +1,17 @@
 #include "aml.h"
 
 #include "acpi/tables.h"
-#include "aml_integer.h"
-#include "aml_patch_up.h"
-#include "aml_predefined.h"
-#include "aml_state.h"
-#include "aml_to_string.h"
 #include "encoding/term.h"
+#include "integer.h"
 #include "log/log.h"
+#include "patch_up.h"
+#include "predefined.h"
 #include "sched/timer.h"
+#include "state.h"
+#include "to_string.h"
 
 #ifdef DEBUG_TESTING
-#include "aml_tests.h"
+#include "tests.h"
 #endif
 
 #include "log/log.h"

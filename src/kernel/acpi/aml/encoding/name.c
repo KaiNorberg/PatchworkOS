@@ -1,8 +1,8 @@
 #include "name.h"
 
 #include "acpi/aml/aml.h"
-#include "acpi/aml/aml_debug.h"
-#include "acpi/aml/aml_token.h"
+#include "acpi/aml/debug.h"
+#include "acpi/aml/token.h"
 #include "data.h"
 #include "debug.h"
 #include "term.h"

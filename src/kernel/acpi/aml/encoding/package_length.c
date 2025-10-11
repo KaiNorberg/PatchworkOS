@@ -1,7 +1,7 @@
 #include "package_length.h"
 
-#include "acpi/aml/aml_debug.h"
-#include "acpi/aml/aml_state.h"
+#include "acpi/aml/debug.h"
+#include "acpi/aml/state.h"
 #include "data.h"
 
 #include <errno.h>

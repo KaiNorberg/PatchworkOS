@@ -1,10 +1,11 @@
 #pragma once
 
-#include "aml_state.h"
 #include "encoding/term.h"
+#include "state.h"
 
 #include <errno.h>
 #include <stdint.h>
+#include <sys/math.h>
 
 /**
  * @brief Tokens

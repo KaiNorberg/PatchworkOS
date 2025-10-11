@@ -1,8 +1,8 @@
 #pragma once
 
+#include "acpi/aml/object.h"
 #include "arg.h"
 #include "data.h"
-#include "acpi/aml/aml_object.h"
 
 typedef struct aml_object aml_object_t;
 typedef struct aml_term_list_ctx aml_term_list_ctx_t;

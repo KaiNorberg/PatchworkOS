@@ -1,7 +1,7 @@
 #include "debug.h"
 
-#include "acpi/aml/aml_token.h"
-#include "acpi/aml/aml_debug.h"
+#include "acpi/aml/debug.h"
+#include "acpi/aml/token.h"
 
 aml_object_t* aml_debug_obj_read(aml_term_list_ctx_t* ctx)
 {

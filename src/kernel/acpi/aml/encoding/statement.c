@@ -1,11 +1,11 @@
 #include "statement.h"
 
-#include "acpi/aml/aml_debug.h"
-#include "acpi/aml/aml_token.h"
+#include "acpi/aml/debug.h"
+#include "acpi/aml/token.h"
 #include "expression.h"
+#include "log/log.h"
 #include "package_length.h"
 #include "term.h"
-#include "log/log.h"
 
 #include <errno.h>
 
@@ -90,6 +90,11 @@ uint64_t aml_def_if_else_read(aml_term_list_ctx_t* ctx)
             AML_DEBUG_ERROR(ctx, "Failed to read TermList");
             return ERR;
         }
+    }
+
+    if (ctx->stopReason != AML_STOP_REASON_NONE)
+    {
+        return 0;
     }
 
     ctx->current = end;
@@ -224,9 +229,10 @@ uint64_t aml_def_while_read(aml_term_list_ctx_t* ctx)
 
     const uint8_t* end = start + pkgLength;
 
+    const uint8_t* loopStart = ctx->current;
     while (true)
     {
-        const uint8_t* loopStart = ctx->current;
+        ctx->current = loopStart;
 
         aml_integer_t predicate;
         if (aml_predicate_read(ctx, &predicate) == ERR)
@@ -246,8 +252,6 @@ uint64_t aml_def_while_read(aml_term_list_ctx_t* ctx)
             AML_DEBUG_ERROR(ctx, "Failed to read TermList");
             return ERR;
         }
-
-        ctx->current = loopStart;
 
         if (ctx->stopReason == AML_STOP_REASON_RETURN || ctx->stopReason == AML_STOP_REASON_NONE)
         {

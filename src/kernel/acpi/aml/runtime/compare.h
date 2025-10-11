@@ -1,6 +1,6 @@
 #pragma once
 
-#include "acpi/aml/aml_object.h"
+#include "acpi/aml/object.h"
 
 /**
  * @brief Object Comparison

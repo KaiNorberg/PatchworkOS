@@ -1,8 +1,8 @@
 #include "arg.h"
 
-#include "acpi/aml/aml_debug.h"
-#include "acpi/aml/aml_state.h"
-#include "acpi/aml/aml_token.h"
+#include "acpi/aml/debug.h"
+#include "acpi/aml/state.h"
+#include "acpi/aml/token.h"
 #include "expression.h"
 
 aml_object_t* aml_arg_obj_read(aml_term_list_ctx_t* ctx)

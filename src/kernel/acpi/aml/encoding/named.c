@@ -1,10 +1,10 @@
 #include "named.h"
 
-#include "acpi/aml/aml_debug.h"
-#include "acpi/aml/aml_object.h"
-#include "acpi/aml/aml_state.h"
-#include "acpi/aml/aml_to_string.h"
-#include "acpi/aml/aml_token.h"
+#include "acpi/aml/debug.h"
+#include "acpi/aml/object.h"
+#include "acpi/aml/state.h"
+#include "acpi/aml/to_string.h"
+#include "acpi/aml/token.h"
 #include "acpi/tables.h"
 #include "data.h"
 #include "name.h"
@@ -185,7 +185,8 @@ uint64_t aml_name_field_read(aml_term_list_ctx_t* ctx, aml_field_list_ctx_t* fie
             return ERR;
         }
 
-        if (aml_field_unit_field_set(newObject, fieldCtx->field.opregion, fieldCtx->flags, fieldCtx->currentOffset, pkgLength) == ERR)
+        if (aml_field_unit_field_set(newObject, fieldCtx->field.opregion, fieldCtx->flags, fieldCtx->currentOffset,
+                pkgLength) == ERR)
         {
             return ERR;
         }
@@ -207,8 +208,8 @@ uint64_t aml_name_field_read(aml_term_list_ctx_t* ctx, aml_field_list_ctx_t* fie
             return ERR;
         }
 
-        if (aml_field_unit_index_field_set(newObject, fieldCtx->index.index, fieldCtx->index.data, fieldCtx->flags, fieldCtx->currentOffset,
-                pkgLength) == ERR)
+        if (aml_field_unit_index_field_set(newObject, fieldCtx->index.index, fieldCtx->index.data, fieldCtx->flags,
+                fieldCtx->currentOffset, pkgLength) == ERR)
         {
             return ERR;
         }
@@ -230,8 +231,8 @@ uint64_t aml_name_field_read(aml_term_list_ctx_t* ctx, aml_field_list_ctx_t* fie
             return ERR;
         }
 
-        if (aml_field_unit_bank_field_set(newObject, fieldCtx->bank.opregion, fieldCtx->bank.bank, fieldCtx->bank.bankValue,
-                fieldCtx->flags, fieldCtx->currentOffset, pkgLength) == ERR)
+        if (aml_field_unit_bank_field_set(newObject, fieldCtx->bank.opregion, fieldCtx->bank.bank,
+                fieldCtx->bank.bankValue, fieldCtx->flags, fieldCtx->currentOffset, pkgLength) == ERR)
         {
             return ERR;
         }

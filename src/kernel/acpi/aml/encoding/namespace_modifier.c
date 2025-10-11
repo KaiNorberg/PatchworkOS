@@ -1,10 +1,10 @@
 #include "namespace_modifier.h"
 
 #include "acpi/aml/aml.h"
-#include "acpi/aml/aml_debug.h"
-#include "acpi/aml/aml_state.h"
-#include "acpi/aml/aml_to_string.h"
-#include "acpi/aml/aml_token.h"
+#include "acpi/aml/debug.h"
+#include "acpi/aml/state.h"
+#include "acpi/aml/to_string.h"
+#include "acpi/aml/token.h"
 #include "name.h"
 #include "package_length.h"
 #include "term.h"
@@ -77,8 +77,7 @@ uint64_t aml_def_name_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_data_ref_object_read(ctx, newObject) == ERR ||
-        aml_object_add(newObject, ctx->scope, &nameString) == ERR)
+    if (aml_data_ref_object_read(ctx, newObject) == ERR || aml_object_add(newObject, ctx->scope, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;

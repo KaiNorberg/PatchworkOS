@@ -1,11 +1,11 @@
-#include "aml_state.h"
+#include "state.h"
 
-#include "aml_object.h"
+#include "exception.h"
 #include "log/log.h"
+#include "object.h"
 #include "runtime/copy.h"
 
-uint64_t aml_state_init(aml_state_t* state, aml_object_t** args,
-    uint64_t argCount)
+uint64_t aml_state_init(aml_state_t* state, aml_object_t** args, uint64_t argCount)
 {
     // We give the locals and args names so they are identifiable when debugging but these names dont do anything.
 
@@ -101,28 +101,33 @@ aml_object_t* aml_state_result_get(aml_state_t* state)
 {
     if (state == NULL)
     {
-        errno = EINVAL;
+        return NULL;
+    }
+
+    aml_object_t* result = aml_object_new(NULL);
+    if (result == NULL)
+    {
         return NULL;
     }
 
     if (state->result == NULL)
     {
-        aml_object_t* result = aml_object_new(NULL);
-        if (result == NULL)
-        {
-            return NULL;
-        }
-
+        // The method never had any expressions evaluated or explicitly returned a value.
         if (aml_integer_set(result, 0) == ERR)
         {
             DEREF(result);
             return NULL;
         }
-
+        result->flags |= AML_OBJECT_EXCEPTION_ON_USE;
         return result;
     }
 
-    return REF(state->result);
+    if (aml_copy_object(state->result, result) == ERR)
+    {
+        DEREF(result);
+        return NULL;
+    }
+    return result;
 }
 
 void aml_state_result_set(aml_state_t* state, aml_object_t* result)

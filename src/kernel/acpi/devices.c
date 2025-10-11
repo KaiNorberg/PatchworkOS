@@ -1,10 +1,10 @@
 #include "devices.h"
 
 #include "aml/aml.h"
-#include "aml/aml_object.h"
-#include "aml/aml_to_string.h"
+#include "aml/object.h"
 #include "aml/runtime/convert.h"
 #include "aml/runtime/method.h"
+#include "aml/to_string.h"
 #include "log/log.h"
 
 static inline uint64_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t* out)
@@ -17,7 +17,7 @@ static inline uint64_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t
     }
     DEREF_DEFER(sta);
 
-    uint64_t value;
+    aml_integer_t value;
     if (aml_method_evaluate_integer(sta, &value) == ERR)
     {
         LOG_ERR("could not evaluate %s._STA\n", AML_OBJECT_GET_NAME(device));
@@ -72,7 +72,7 @@ static inline uint64_t acpi_devices_init_children(aml_object_t* parent)
                 }
 
                 LOG_INFO("ACPI device '%s._INI'\n", AML_OBJECT_GET_NAME(child));
-                if (aml_method_evaluate(&ini->method, NULL, 0, NULL) == ERR)
+                if (aml_method_evaluate_integer(ini, NULL) == ERR)
                 {
                     LOG_ERR("could not evaluate %s._INI\n", AML_OBJECT_GET_NAME(child));
                     return ERR;
@@ -108,8 +108,9 @@ uint64_t acpi_devices_init(void)
         }
 
         LOG_INFO("found \\_SB_._INI\n");
-        if (aml_method_evaluate(&sbIni->method, NULL, 0, NULL) == ERR)
+        if (aml_method_evaluate_integer(sbIni, NULL) == ERR)
         {
+            LOG_ERR("could not evaluate \\_SB_._INI\n");
             return ERR;
         }
     }

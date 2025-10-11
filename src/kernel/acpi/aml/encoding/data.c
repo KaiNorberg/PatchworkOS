@@ -1,12 +1,12 @@
 #include "data.h"
 
 #include "acpi/aml/aml.h"
-#include "acpi/aml/aml_debug.h"
-#include "acpi/aml/aml_patch_up.h"
-#include "log/log.h"
-#include "acpi/aml/aml_token.h"
+#include "acpi/aml/debug.h"
+#include "acpi/aml/patch_up.h"
 #include "acpi/aml/runtime/convert.h"
+#include "acpi/aml/token.h"
 #include "expression.h"
+#include "log/log.h"
 #include "name.h"
 #include "package_length.h"
 
@@ -384,8 +384,7 @@ uint64_t aml_package_element_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
     return 0;
 }
 
-uint64_t aml_package_element_list_read(aml_term_list_ctx_t* ctx, aml_package_obj_t* package,
-    const uint8_t* end)
+uint64_t aml_package_element_list_read(aml_term_list_ctx_t* ctx, aml_package_obj_t* package, const uint8_t* end)
 {
     uint64_t i = 0;
     while (ctx->current < end && i < package->length)

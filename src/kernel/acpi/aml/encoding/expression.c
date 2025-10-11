@@ -1,16 +1,16 @@
 #include "expression.h"
 
-#include "acpi/aml/aml_debug.h"
-#include "acpi/aml/aml_object.h"
-#include "acpi/aml/aml_state.h"
-#include "acpi/aml/aml_to_string.h"
-#include "acpi/aml/aml_token.h"
+#include "acpi/aml/debug.h"
+#include "acpi/aml/object.h"
 #include "acpi/aml/runtime/compare.h"
 #include "acpi/aml/runtime/concat.h"
 #include "acpi/aml/runtime/convert.h"
 #include "acpi/aml/runtime/copy.h"
 #include "acpi/aml/runtime/method.h"
 #include "acpi/aml/runtime/store.h"
+#include "acpi/aml/state.h"
+#include "acpi/aml/to_string.h"
+#include "acpi/aml/token.h"
 #include "arg.h"
 #include "debug.h"
 #include "package_length.h"
@@ -113,8 +113,8 @@ aml_object_t* aml_method_invocation_read(aml_term_list_ctx_t* ctx)
             return NULL;
         }
 
-        aml_object_t* result = NULL;
-        if (aml_method_evaluate(&target->method, args.args, args.count, &result) == ERR)
+        aml_object_t* result = aml_method_evaluate(&target->method, args.args, args.count);
+        if (result == NULL)
         {
             for (uint8_t i = 0; i < args.count; i++)
             {
@@ -183,7 +183,7 @@ aml_object_t* aml_def_cond_ref_of_read(aml_term_list_ctx_t* ctx)
     if (result == NULL)
     {
         // Return true since source resolved to an object and result dident so we dont need to store anything.
-        if (aml_integer_set(output, 1) == ERR)
+        if (aml_integer_set(output, AML_TRUE) == ERR)
         {
             AML_DEBUG_ERROR(ctx, "Failed to init true integer");
             return NULL;
@@ -199,7 +199,7 @@ aml_object_t* aml_def_cond_ref_of_read(aml_term_list_ctx_t* ctx)
         return NULL;
     }
 
-    if (aml_integer_set(output, 1) == ERR)
+    if (aml_integer_set(output, AML_TRUE) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to init true integer");
         return NULL;
@@ -358,8 +358,8 @@ static inline aml_object_t* aml_helper_op_operand_operand_target_read(aml_term_l
     return REF(result);
 }
 
-static inline uint64_t aml_def_add_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand1, aml_object_t* operand2)
+static inline uint64_t aml_def_add_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand1,
+    aml_object_t* operand2)
 {
     (void)ctx;
 
@@ -375,8 +375,8 @@ aml_object_t* aml_def_add_read(aml_term_list_ctx_t* ctx)
     return aml_helper_op_operand_operand_target_read(ctx, AML_ADD_OP, AML_INTEGER, aml_def_add_callback);
 }
 
-static inline uint64_t aml_def_subtract_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand1, aml_object_t* operand2)
+static inline uint64_t aml_def_subtract_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand1,
+    aml_object_t* operand2)
 {
     (void)ctx;
 
@@ -389,12 +389,11 @@ static inline uint64_t aml_def_subtract_callback(aml_term_list_ctx_t* ctx, aml_o
 
 aml_object_t* aml_def_subtract_read(aml_term_list_ctx_t* ctx)
 {
-    return aml_helper_op_operand_operand_target_read(ctx, AML_SUBTRACT_OP, AML_INTEGER,
-        aml_def_subtract_callback);
+    return aml_helper_op_operand_operand_target_read(ctx, AML_SUBTRACT_OP, AML_INTEGER, aml_def_subtract_callback);
 }
 
-static inline uint64_t aml_def_multiply_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand1, aml_object_t* operand2)
+static inline uint64_t aml_def_multiply_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand1,
+    aml_object_t* operand2)
 {
     (void)ctx;
 
@@ -407,8 +406,7 @@ static inline uint64_t aml_def_multiply_callback(aml_term_list_ctx_t* ctx, aml_o
 
 aml_object_t* aml_def_multiply_read(aml_term_list_ctx_t* ctx)
 {
-    return aml_helper_op_operand_operand_target_read(ctx, AML_MULTIPLY_OP, AML_INTEGER,
-        aml_def_multiply_callback);
+    return aml_helper_op_operand_operand_target_read(ctx, AML_MULTIPLY_OP, AML_INTEGER, aml_def_multiply_callback);
 }
 
 aml_object_t* aml_def_divide_read(aml_term_list_ctx_t* ctx)
@@ -557,8 +555,8 @@ aml_object_t* aml_def_mod_read(aml_term_list_ctx_t* ctx)
     return REF(result);
 }
 
-static inline uint64_t aml_def_and_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand1, aml_object_t* operand2)
+static inline uint64_t aml_def_and_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand1,
+    aml_object_t* operand2)
 {
     (void)ctx;
 
@@ -574,8 +572,8 @@ aml_object_t* aml_def_and_read(aml_term_list_ctx_t* ctx)
     return aml_helper_op_operand_operand_target_read(ctx, AML_AND_OP, AML_INTEGER, aml_def_and_callback);
 }
 
-static inline uint64_t aml_def_nand_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand1, aml_object_t* operand2)
+static inline uint64_t aml_def_nand_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand1,
+    aml_object_t* operand2)
 {
     (void)ctx;
 
@@ -591,8 +589,8 @@ aml_object_t* aml_def_nand_read(aml_term_list_ctx_t* ctx)
     return aml_helper_op_operand_operand_target_read(ctx, AML_NAND_OP, AML_INTEGER, aml_def_nand_callback);
 }
 
-static inline uint64_t aml_def_or_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand1, aml_object_t* operand2)
+static inline uint64_t aml_def_or_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand1,
+    aml_object_t* operand2)
 {
     (void)ctx;
 
@@ -608,8 +606,8 @@ aml_object_t* aml_def_or_read(aml_term_list_ctx_t* ctx)
     return aml_helper_op_operand_operand_target_read(ctx, AML_OR_OP, AML_INTEGER, aml_def_or_callback);
 }
 
-static inline uint64_t aml_def_nor_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand1, aml_object_t* operand2)
+static inline uint64_t aml_def_nor_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand1,
+    aml_object_t* operand2)
 {
     (void)ctx;
 
@@ -625,8 +623,8 @@ aml_object_t* aml_def_nor_read(aml_term_list_ctx_t* ctx)
     return aml_helper_op_operand_operand_target_read(ctx, AML_NOR_OP, AML_INTEGER, aml_def_nor_callback);
 }
 
-static inline uint64_t aml_def_xor_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand1, aml_object_t* operand2)
+static inline uint64_t aml_def_xor_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand1,
+    aml_object_t* operand2)
 {
     (void)ctx;
 
@@ -1103,9 +1101,8 @@ aml_object_t* aml_def_index_read(aml_term_list_ctx_t* ctx)
     return REF(result);
 }
 
-static inline aml_object_t* aml_helper_operand_operand_read(aml_term_list_ctx_t* ctx,
-    aml_token_num_t expectedOp, aml_type_t allowedTypes,
-    uint64_t (*callback)(aml_term_list_ctx_t*, aml_object_t*, aml_object_t*, aml_object_t*))
+static inline aml_object_t* aml_helper_operand_operand_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
+    aml_type_t allowedTypes, uint64_t (*callback)(aml_term_list_ctx_t*, aml_object_t*, aml_object_t*, aml_object_t*))
 {
     if (aml_token_expect(ctx, expectedOp) == ERR)
     {
@@ -1145,9 +1142,8 @@ static inline aml_object_t* aml_helper_operand_operand_read(aml_term_list_ctx_t*
     return REF(result);
 }
 
-static inline aml_object_t* aml_helper_op_operand_read(aml_term_list_ctx_t* ctx,
-    aml_token_num_t expectedOp, aml_type_t allowedTypes,
-    uint64_t (*callback)(aml_term_list_ctx_t*, aml_object_t*, aml_object_t*))
+static inline aml_object_t* aml_helper_op_operand_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
+    aml_type_t allowedTypes, uint64_t (*callback)(aml_term_list_ctx_t*, aml_object_t*, aml_object_t*))
 {
     if (aml_token_expect(ctx, expectedOp) == ERR)
     {
@@ -1178,8 +1174,8 @@ static inline aml_object_t* aml_helper_op_operand_read(aml_term_list_ctx_t* ctx,
     return REF(result);
 }
 
-static inline uint64_t aml_def_land_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand1, aml_object_t* operand2)
+static inline uint64_t aml_def_land_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand1,
+    aml_object_t* operand2)
 {
     (void)ctx;
     if (aml_integer_set(out, aml_compare(operand1, operand2, AML_COMPARE_AND)) == ERR)
@@ -1194,8 +1190,8 @@ aml_object_t* aml_def_land_read(aml_term_list_ctx_t* ctx)
     return aml_helper_operand_operand_read(ctx, AML_LAND_OP, AML_INTEGER, aml_def_land_callback);
 }
 
-static inline uint64_t aml_def_lequal_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand1, aml_object_t* operand2)
+static inline uint64_t aml_def_lequal_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand1,
+    aml_object_t* operand2)
 {
     (void)ctx;
     if (aml_integer_set(out, aml_compare(operand1, operand2, AML_COMPARE_EQUAL)) == ERR)
@@ -1211,8 +1207,8 @@ aml_object_t* aml_def_lequal_read(aml_term_list_ctx_t* ctx)
         aml_def_lequal_callback);
 }
 
-static inline uint64_t aml_def_lgreater_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand1, aml_object_t* operand2)
+static inline uint64_t aml_def_lgreater_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand1,
+    aml_object_t* operand2)
 {
     (void)ctx;
     if (aml_integer_set(out, aml_compare(operand1, operand2, AML_COMPARE_GREATER)) == ERR)
@@ -1245,8 +1241,8 @@ aml_object_t* aml_def_lgreater_equal_read(aml_term_list_ctx_t* ctx)
         aml_def_lgreater_equal_callback);
 }
 
-static inline uint64_t aml_def_lless_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand1, aml_object_t* operand2)
+static inline uint64_t aml_def_lless_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand1,
+    aml_object_t* operand2)
 {
     (void)ctx;
     if (aml_integer_set(out, aml_compare(operand1, operand2, AML_COMPARE_LESS)) == ERR)
@@ -1262,8 +1258,8 @@ aml_object_t* aml_def_lless_read(aml_term_list_ctx_t* ctx)
         aml_def_lless_callback);
 }
 
-static inline uint64_t aml_def_lless_equal_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand1, aml_object_t* operand2)
+static inline uint64_t aml_def_lless_equal_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand1,
+    aml_object_t* operand2)
 {
     (void)ctx;
     if (aml_integer_set(out, aml_compare(operand1, operand2, AML_COMPARE_LESS_EQUAL)) == ERR)
@@ -1279,8 +1275,7 @@ aml_object_t* aml_def_lless_equal_read(aml_term_list_ctx_t* ctx)
         aml_def_lless_equal_callback);
 }
 
-static inline uint64_t aml_def_lnot_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand)
+static inline uint64_t aml_def_lnot_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand)
 {
     (void)ctx;
     if (aml_integer_set(out, operand->integer.value == 0 ? AML_TRUE : AML_FALSE) == ERR)
@@ -1295,8 +1290,8 @@ aml_object_t* aml_def_lnot_read(aml_term_list_ctx_t* ctx)
     return aml_helper_op_operand_read(ctx, AML_LNOT_OP, AML_INTEGER, aml_def_lnot_callback);
 }
 
-static inline uint64_t aml_def_lnot_equal_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand1, aml_object_t* operand2)
+static inline uint64_t aml_def_lnot_equal_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand1,
+    aml_object_t* operand2)
 {
     (void)ctx;
     if (aml_integer_set(out, aml_compare(operand1, operand2, AML_COMPARE_NOT_EQUAL)) == ERR)
@@ -1312,8 +1307,8 @@ aml_object_t* aml_def_lnot_equal_read(aml_term_list_ctx_t* ctx)
         aml_def_lnot_equal_callback);
 }
 
-static inline uint64_t aml_def_lor_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand1, aml_object_t* operand2)
+static inline uint64_t aml_def_lor_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand1,
+    aml_object_t* operand2)
 {
     (void)ctx;
     if (aml_integer_set(out, aml_compare(operand1, operand2, AML_COMPARE_OR)) == ERR)
@@ -1411,9 +1406,8 @@ aml_object_t* aml_def_acquire_read(aml_term_list_ctx_t* ctx)
 /**
  * Helper that reads a structure like `Op Operand Target`.
  */
-static inline aml_object_t* aml_helper_op_operand_target_read(aml_term_list_ctx_t* ctx,
-    aml_token_num_t expectedOp, aml_type_t allowedTypes,
-    uint64_t (*callback)(aml_term_list_ctx_t*, aml_object_t*, aml_object_t*))
+static inline aml_object_t* aml_helper_op_operand_target_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
+    aml_type_t allowedTypes, uint64_t (*callback)(aml_term_list_ctx_t*, aml_object_t*, aml_object_t*))
 {
     if (aml_token_expect(ctx, expectedOp) == ERR)
     {
@@ -1460,8 +1454,7 @@ static inline aml_object_t* aml_helper_op_operand_target_read(aml_term_list_ctx_
     return REF(result);
 }
 
-static inline uint64_t aml_def_to_bcd_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand)
+static inline uint64_t aml_def_to_bcd_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand)
 {
     (void)ctx;
 
@@ -1484,8 +1477,7 @@ aml_object_t* aml_def_to_bcd_read(aml_term_list_ctx_t* ctx)
     return aml_helper_op_operand_target_read(ctx, AML_TO_BCD_OP, AML_INTEGER, aml_def_to_bcd_callback);
 }
 
-static inline uint64_t aml_def_to_buffer_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand)
+static inline uint64_t aml_def_to_buffer_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand)
 {
     (void)ctx;
     if (aml_convert_to_buffer(operand, out) == ERR)
@@ -1534,12 +1526,10 @@ static inline uint64_t aml_def_to_hex_string_callback(aml_term_list_ctx_t* ctx, 
 
 aml_object_t* aml_def_to_hex_string_read(aml_term_list_ctx_t* ctx)
 {
-    return aml_helper_op_operand_target_read(ctx, AML_TO_HEX_STRING_OP, AML_INTEGER,
-        aml_def_to_hex_string_callback);
+    return aml_helper_op_operand_target_read(ctx, AML_TO_HEX_STRING_OP, AML_INTEGER, aml_def_to_hex_string_callback);
 }
 
-static inline uint64_t aml_def_to_integer_callback(aml_term_list_ctx_t* ctx, aml_object_t* out,
-    aml_object_t* operand)
+static inline uint64_t aml_def_to_integer_callback(aml_term_list_ctx_t* ctx, aml_object_t* out, aml_object_t* operand)
 {
     (void)ctx;
     if (aml_convert_to_integer(operand, out) == ERR)
@@ -2070,195 +2060,191 @@ aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx)
     aml_token_t op;
     aml_token_peek(ctx, &op);
 
+    aml_object_t* result = NULL;
     if (op.props->type == AML_TOKEN_TYPE_NAME)
     {
-        aml_object_t* result = aml_method_invocation_read(ctx);
-        if (result == NULL)
-        {
-            AML_DEBUG_ERROR(ctx, "Failed to read MethodInvocation");
-            return NULL;
-        }
-        return result;
+        result = aml_method_invocation_read(ctx);
     }
-
-    aml_object_t* result = NULL;
-    switch (op.num)
+    else
     {
-    case AML_BUFFER_OP:
-    {
-        result = aml_object_new(ctx);
-        if (result == NULL)
+        switch (op.num)
         {
-            return NULL;
-        }
+        case AML_BUFFER_OP:
+        {
+            result = aml_object_new(ctx);
+            if (result == NULL)
+            {
+                return NULL;
+            }
 
-        if (aml_def_buffer_read(ctx, result) == ERR)
-        {
-            AML_DEBUG_ERROR(ctx, "Failed to read opcode 'DefBuffer'");
-            return NULL;
+            if (aml_def_buffer_read(ctx, result) == ERR)
+            {
+                AML_DEBUG_ERROR(ctx, "Failed to read opcode 'DefBuffer'");
+                return NULL;
+            }
         }
-    }
-    break;
-    case AML_PACKAGE_OP:
-    {
-        aml_object_t* result = aml_object_new(ctx);
-        if (result == NULL)
+        break;
+        case AML_PACKAGE_OP:
         {
-            return NULL;
-        }
+            aml_object_t* result = aml_object_new(ctx);
+            if (result == NULL)
+            {
+                return NULL;
+            }
 
-        if (aml_def_package_read(ctx, result) == ERR)
-        {
-            AML_DEBUG_ERROR(ctx, "Failed to read opcode 'DefPackage'");
-            return NULL;
+            if (aml_def_package_read(ctx, result) == ERR)
+            {
+                AML_DEBUG_ERROR(ctx, "Failed to read opcode 'DefPackage'");
+                return NULL;
+            }
         }
-    }
-    break;
-    case AML_VAR_PACKAGE_OP:
-    {
-        result = aml_object_new(ctx);
-        if (result == NULL)
+        break;
+        case AML_VAR_PACKAGE_OP:
         {
-            return NULL;
-        }
+            result = aml_object_new(ctx);
+            if (result == NULL)
+            {
+                return NULL;
+            }
 
-        if (aml_def_var_package_read(ctx, result) == ERR)
-        {
-            AML_DEBUG_ERROR(ctx, "Failed to read opcode 'DefVarPackage'");
+            if (aml_def_var_package_read(ctx, result) == ERR)
+            {
+                AML_DEBUG_ERROR(ctx, "Failed to read opcode 'DefVarPackage'");
+                return NULL;
+            }
+        }
+        break;
+        case AML_COND_REF_OF_OP:
+            result = aml_def_cond_ref_of_read(ctx);
+            break;
+        case AML_STORE_OP:
+            result = aml_def_store_read(ctx);
+            break;
+        case AML_ADD_OP:
+            result = aml_def_add_read(ctx);
+            break;
+        case AML_SUBTRACT_OP:
+            result = aml_def_subtract_read(ctx);
+            break;
+        case AML_MULTIPLY_OP:
+            result = aml_def_multiply_read(ctx);
+            break;
+        case AML_DIVIDE_OP:
+            result = aml_def_divide_read(ctx);
+            break;
+        case AML_MOD_OP:
+            result = aml_def_mod_read(ctx);
+            break;
+        case AML_AND_OP:
+            result = aml_def_and_read(ctx);
+            break;
+        case AML_NAND_OP:
+            result = aml_def_nand_read(ctx);
+            break;
+        case AML_OR_OP:
+            result = aml_def_or_read(ctx);
+            break;
+        case AML_NOR_OP:
+            result = aml_def_nor_read(ctx);
+            break;
+        case AML_XOR_OP:
+            result = aml_def_xor_read(ctx);
+            break;
+        case AML_NOT_OP:
+            result = aml_def_not_read(ctx);
+            break;
+        case AML_SHIFT_LEFT_OP:
+            result = aml_def_shift_left_read(ctx);
+            break;
+        case AML_SHIFT_RIGHT_OP:
+            result = aml_def_shift_right_read(ctx);
+            break;
+        case AML_INCREMENT_OP:
+            result = aml_def_increment_read(ctx);
+            break;
+        case AML_DECREMENT_OP:
+            result = aml_def_decrement_read(ctx);
+            break;
+        case AML_DEREF_OF_OP:
+            result = aml_def_deref_of_read(ctx);
+            break;
+        case AML_INDEX_OP:
+            result = aml_def_index_read(ctx);
+            break;
+        case AML_LAND_OP:
+            result = aml_def_land_read(ctx);
+            break;
+        case AML_LEQUAL_OP:
+            result = aml_def_lequal_read(ctx);
+            break;
+        case AML_LGREATER_OP:
+            result = aml_def_lgreater_read(ctx);
+            break;
+        case AML_LGREATER_EQUAL_OP:
+            result = aml_def_lgreater_equal_read(ctx);
+            break;
+        case AML_LLESS_OP:
+            result = aml_def_lless_read(ctx);
+            break;
+        case AML_LLESS_EQUAL_OP:
+            result = aml_def_lless_equal_read(ctx);
+            break;
+        case AML_LNOT_OP:
+            result = aml_def_lnot_read(ctx);
+            break;
+        case AML_LNOT_EQUAL_OP:
+            result = aml_def_lnot_equal_read(ctx);
+            break;
+        case AML_LOR_OP:
+            result = aml_def_lor_read(ctx);
+            break;
+        case AML_ACQUIRE_OP:
+            result = aml_def_acquire_read(ctx);
+            break;
+        case AML_TO_BCD_OP:
+            result = aml_def_to_bcd_read(ctx);
+            break;
+        case AML_TO_BUFFER_OP:
+            result = aml_def_to_buffer_read(ctx);
+            break;
+        case AML_TO_DECIMAL_STRING_OP:
+            result = aml_def_to_decimal_string_read(ctx);
+            break;
+        case AML_TO_HEX_STRING_OP:
+            result = aml_def_to_hex_string_read(ctx);
+            break;
+        case AML_TO_INTEGER_OP:
+            result = aml_def_to_integer_read(ctx);
+            break;
+        case AML_TIMER_OP:
+            result = aml_def_timer_read(ctx);
+            break;
+        case AML_COPY_OBJECT_OP:
+            result = aml_def_copy_object_read(ctx);
+            break;
+        case AML_CONCAT_OP:
+            result = aml_def_concat_read(ctx);
+            break;
+        case AML_SIZE_OF_OP:
+            result = aml_def_size_of_read(ctx);
+            break;
+        case AML_REF_OF_OP:
+            result = aml_def_ref_of_read(ctx);
+            break;
+        case AML_OBJECT_TYPE_OP:
+            result = aml_def_object_type_read(ctx);
+            break;
+        case AML_FIND_SET_LEFT_BIT_OP:
+            result = aml_def_find_set_left_bit_read(ctx);
+            break;
+        case AML_FIND_SET_RIGHT_BIT_OP:
+            result = aml_def_find_set_right_bit_read(ctx);
+            break;
+        default:
+            AML_DEBUG_ERROR(ctx, "Unknown ExpressionOpcode '%s' (0x%04x)", op.props->name, op.num);
+            errno = ENOSYS;
             return NULL;
         }
-    }
-    break;
-    case AML_COND_REF_OF_OP:
-        result = aml_def_cond_ref_of_read(ctx);
-        break;
-    case AML_STORE_OP:
-        result = aml_def_store_read(ctx);
-        break;
-    case AML_ADD_OP:
-        result = aml_def_add_read(ctx);
-        break;
-    case AML_SUBTRACT_OP:
-        result = aml_def_subtract_read(ctx);
-        break;
-    case AML_MULTIPLY_OP:
-        result = aml_def_multiply_read(ctx);
-        break;
-    case AML_DIVIDE_OP:
-        result = aml_def_divide_read(ctx);
-        break;
-    case AML_MOD_OP:
-        result = aml_def_mod_read(ctx);
-        break;
-    case AML_AND_OP:
-        result = aml_def_and_read(ctx);
-        break;
-    case AML_NAND_OP:
-        result = aml_def_nand_read(ctx);
-        break;
-    case AML_OR_OP:
-        result = aml_def_or_read(ctx);
-        break;
-    case AML_NOR_OP:
-        result = aml_def_nor_read(ctx);
-        break;
-    case AML_XOR_OP:
-        result = aml_def_xor_read(ctx);
-        break;
-    case AML_NOT_OP:
-        result = aml_def_not_read(ctx);
-        break;
-    case AML_SHIFT_LEFT_OP:
-        result = aml_def_shift_left_read(ctx);
-        break;
-    case AML_SHIFT_RIGHT_OP:
-        result = aml_def_shift_right_read(ctx);
-        break;
-    case AML_INCREMENT_OP:
-        result = aml_def_increment_read(ctx);
-        break;
-    case AML_DECREMENT_OP:
-        result = aml_def_decrement_read(ctx);
-        break;
-    case AML_DEREF_OF_OP:
-        result = aml_def_deref_of_read(ctx);
-        break;
-    case AML_INDEX_OP:
-        result = aml_def_index_read(ctx);
-        break;
-    case AML_LAND_OP:
-        result = aml_def_land_read(ctx);
-        break;
-    case AML_LEQUAL_OP:
-        result = aml_def_lequal_read(ctx);
-        break;
-    case AML_LGREATER_OP:
-        result = aml_def_lgreater_read(ctx);
-        break;
-    case AML_LGREATER_EQUAL_OP:
-        result = aml_def_lgreater_equal_read(ctx);
-        break;
-    case AML_LLESS_OP:
-        result = aml_def_lless_read(ctx);
-        break;
-    case AML_LLESS_EQUAL_OP:
-        result = aml_def_lless_equal_read(ctx);
-        break;
-    case AML_LNOT_OP:
-        result = aml_def_lnot_read(ctx);
-        break;
-    case AML_LNOT_EQUAL_OP:
-        result = aml_def_lnot_equal_read(ctx);
-        break;
-    case AML_LOR_OP:
-        result = aml_def_lor_read(ctx);
-        break;
-    case AML_ACQUIRE_OP:
-        result = aml_def_acquire_read(ctx);
-        break;
-    case AML_TO_BCD_OP:
-        result = aml_def_to_bcd_read(ctx);
-        break;
-    case AML_TO_BUFFER_OP:
-        result = aml_def_to_buffer_read(ctx);
-        break;
-    case AML_TO_DECIMAL_STRING_OP:
-        result = aml_def_to_decimal_string_read(ctx);
-        break;
-    case AML_TO_HEX_STRING_OP:
-        result = aml_def_to_hex_string_read(ctx);
-        break;
-    case AML_TO_INTEGER_OP:
-        result = aml_def_to_integer_read(ctx);
-        break;
-    case AML_TIMER_OP:
-        result = aml_def_timer_read(ctx);
-        break;
-    case AML_COPY_OBJECT_OP:
-        result = aml_def_copy_object_read(ctx);
-        break;
-    case AML_CONCAT_OP:
-        result = aml_def_concat_read(ctx);
-        break;
-    case AML_SIZE_OF_OP:
-        result = aml_def_size_of_read(ctx);
-        break;
-    case AML_REF_OF_OP:
-        result = aml_def_ref_of_read(ctx);
-        break;
-    case AML_OBJECT_TYPE_OP:
-        result = aml_def_object_type_read(ctx);
-        break;
-    case AML_FIND_SET_LEFT_BIT_OP:
-        result = aml_def_find_set_left_bit_read(ctx);
-        break;
-    case AML_FIND_SET_RIGHT_BIT_OP:
-        result = aml_def_find_set_right_bit_read(ctx);
-        break;
-    default:
-        AML_DEBUG_ERROR(ctx, "Unknown ExpressionOpcode '%s' (0x%04x)", op.props->name, op.num);
-        errno = ENOSYS;
-        return NULL;
     }
 
     if (result == NULL)

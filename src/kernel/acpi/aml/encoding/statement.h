@@ -1,6 +1,6 @@
 #pragma once
 
-#include "acpi/aml/aml_integer.h"
+#include "acpi/aml/integer.h"
 
 #include <stdint.h>
 
@@ -47,8 +47,8 @@ uint64_t aml_def_else_read(aml_term_list_ctx_t* ctx, bool shouldExecute);
  *
  * A DefIfElse structure is defined as `DefIfElse := IfOp PkgLength Predicate TermList DefElse`.
  *
- * Note that the the DefIfElse structure is also used for normal If statements, just without a "Else" part, this is because
- * the DefElse part is optional.
+ * Note that the the DefIfElse structure is also used for normal If statements, just without a "Else" part, this is
+ * because the DefElse part is optional.
  *
  * @see Section 19.6.60 of the ACPI specification for more details.
  *

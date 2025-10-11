@@ -2,7 +2,7 @@
 
 #include <errno.h>
 
-#include "acpi/aml/aml_to_string.h"
+#include "acpi/aml/to_string.h"
 #include "convert.h"
 #include "copy.h"
 #include "log/log.h"

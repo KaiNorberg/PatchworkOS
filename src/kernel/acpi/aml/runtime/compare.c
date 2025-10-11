@@ -1,6 +1,6 @@
 #include "compare.h"
 
-#include "acpi/aml/aml_to_string.h"
+#include "acpi/aml/to_string.h"
 #include "log/log.h"
 
 static inline aml_integer_t aml_compare_integers(aml_integer_t a, aml_integer_t b, aml_compare_operation_t operation)
@@ -8,15 +8,15 @@ static inline aml_integer_t aml_compare_integers(aml_integer_t a, aml_integer_t 
     switch (operation)
     {
     case AML_COMPARE_AND:
-        return (a != 0) && (b != 0);
+        return (a != 0) && (b != 0) ? AML_TRUE : AML_FALSE;
     case AML_COMPARE_EQUAL:
-        return a == b;
+        return a == b ? AML_TRUE : AML_FALSE;
     case AML_COMPARE_GREATER:
-        return a > b;
+        return a > b ? AML_TRUE : AML_FALSE;
     case AML_COMPARE_LESS:
-        return a < b;
+        return a < b ? AML_TRUE : AML_FALSE;
     case AML_COMPARE_OR:
-        return (a != 0) || (b != 0);
+        return (a != 0) || (b != 0) ? AML_TRUE : AML_FALSE;
     default:
         return AML_FALSE;
     }
