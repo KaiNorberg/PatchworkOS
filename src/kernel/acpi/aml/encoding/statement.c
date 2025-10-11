@@ -253,7 +253,11 @@ uint64_t aml_def_while_read(aml_term_list_ctx_t* ctx)
             return ERR;
         }
 
-        if (ctx->stopReason == AML_STOP_REASON_RETURN || ctx->stopReason == AML_STOP_REASON_NONE)
+        if (ctx->stopReason == AML_STOP_REASON_NONE)
+        {
+            continue;
+        }
+        else if (ctx->stopReason == AML_STOP_REASON_RETURN)
         {
             break;
         }
