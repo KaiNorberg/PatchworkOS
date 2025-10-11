@@ -6,6 +6,7 @@
 #include "log/log.h"
 #include "mem/heap.h"
 
+#include <errno.h>
 #include <boot/boot_info.h>
 #include <stdio.h>
 #include <string.h>

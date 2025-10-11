@@ -18,6 +18,8 @@
 #include "ipc/shmem.h"
 #include "log/log.h"
 #include "log/panic.h"
+#include "log/log_screen.h"
+#include "log/log_file.h"
 #include "mem/heap.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"

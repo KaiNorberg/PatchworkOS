@@ -7,6 +7,8 @@
 #include "sched/timer.h"
 #include "sync/lock.h"
 #include "utils/ring.h"
+#include "log_screen.h"
+#include "log_file.h"
 
 #include <_internal/MAX_PATH.h>
 #include <boot/boot_info.h>
@@ -19,11 +21,14 @@
 #include <sys/io.h>
 #include <sys/proc.h>
 
-static log_state_t state = {0};
-static log_file_t klog = {0};
-static screen_t screen = {0};
+static log_screen_t screen = {0};
 
-static lock_t lock;
+static lock_t lock = LOCK_CREATE;
+
+static char lineBuffer[LOG_MAX_BUFFER] = {0};
+static log_output_t outputs = 0;
+static log_level_t minLevel = 0;
+static bool isLastCharNewline = 0;
 
 static const char* levelNames[] = {
     [LOG_LEVEL_DEBUG] = "D",
@@ -34,7 +39,7 @@ static const char* levelNames[] = {
     [LOG_LEVEL_PANIC] = "P",
 };
 
-static void log_splash_screen(void)
+static void log_splash(void)
 {
 #ifdef NDEBUG
     LOG_INFO("Booting %s-kernel %s (Built %s %s)\n", OS_NAME, OS_VERSION, __DATE__, __TIME__);
@@ -42,37 +47,32 @@ static void log_splash_screen(void)
     LOG_INFO("Booting %s-kernel DEBUG %s (Built %s %s)\n", OS_NAME, OS_VERSION, __DATE__, __TIME__);
 #endif
     LOG_INFO("Copyright (C) 2025 Kai Norberg. MIT Licensed. See /usr/license/LICENSE for details.\n");
-    LOG_INFO("min_level=%s outputs=%s%s%s\n", levelNames[state.config.minLevel],
-        (state.config.outputs & LOG_OUTPUT_SERIAL) ? "serial " : "",
-        (state.config.outputs & LOG_OUTPUT_SCREEN) ? "screen " : "",
-        (state.config.outputs & LOG_OUTPUT_FILE) ? "file " : "");
+    LOG_INFO("min_level=%s outputs=%s%s%s\n", levelNames[minLevel],
+        (outputs & LOG_OUTPUT_SERIAL) ? "serial " : "",
+        (outputs & LOG_OUTPUT_SCREEN) ? "screen " : "",
+        (outputs & LOG_OUTPUT_FILE) ? "file " : "");
 }
 
-void log_init(boot_gop_t* gop)
+void log_init(const boot_gop_t* gop)
 {
-    lock_init(&lock);
+    log_screen_init(gop);
 
-    state.config.outputs = 0;
+    outputs = 0;
 #ifndef NDEBUG
-    state.config.minLevel = LOG_LEVEL_DEBUG;
+    minLevel = LOG_LEVEL_DEBUG;
 #else
-    state.config.minLevel = LOG_LEVEL_USER;
+    minLevel = LOG_LEVEL_USER;
 #endif
-    atomic_init(&state.panickingCpuId, LOG_NO_PANIC_CPU_ID);
-    state.isLastCharNewline = true;
+    isLastCharNewline = true;
 
-    screen_init(&screen, gop);
-    state.config.outputs |= LOG_OUTPUT_SCREEN;
-
-    ring_init(&klog.ring, klog.buffer, LOG_MAX_BUFFER);
-    state.config.outputs |= LOG_OUTPUT_FILE;
-
+    outputs |= LOG_OUTPUT_SCREEN;
+    outputs |= LOG_OUTPUT_FILE;
 #if CONFIG_LOG_SERIAL
     com_init(COM1);
-    state.config.outputs |= LOG_OUTPUT_SERIAL;
+    outputs |= LOG_OUTPUT_SERIAL;
 #endif
 
-    log_splash_screen();
+    log_splash();
 }
 
 void log_screen_enable()
@@ -80,86 +80,30 @@ void log_screen_enable()
     LOG_INFO("screen enable\n");
     LOCK_SCOPE(&lock);
 
-    screen_enable(&screen, &klog.ring);
-    state.config.outputs |= LOG_OUTPUT_SCREEN;
+    if (outputs & LOG_OUTPUT_SCREEN)
+    {
+        return;
+    }
+
+    log_file_flush_to_screen();
 }
 
-void log_disable_screen(void)
+void log_screen_disable(void)
 {
     LOCK_SCOPE(&lock);
 
-    screen_disable(&screen);
-    state.config.outputs &= ~LOG_OUTPUT_SCREEN;
-}
-
-screen_t* log_get_screen(void)
-{
-    return &screen;
-}
-
-log_state_t* log_get_state(void)
-{
-    return &state;
-}
-
-static uint64_t klog_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
-{
-    (void)file; // Unused
-
-    LOCK_SCOPE(&lock);
-
-    uint64_t result = ring_read_at(&klog.ring, *offset, buffer, count);
-    *offset += result;
-    return result;
-}
-
-static uint64_t klog_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
-{
-    (void)file; // Unused
-
-    if (count == 0 || buffer == NULL || offset == NULL)
-    {
-        return 0;
-    }
-
-    if (count > MAX_PATH)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    char string[MAX_PATH];
-    memcpy(string, buffer, count);
-    string[count] = '\0';
-
-    log_print(LOG_LEVEL_USER, "user_space", string);
-    *offset += count;
-    return count;
-}
-
-static file_ops_t klogOps = {
-    .read = klog_read,
-    .write = klog_write,
-};
-
-void log_file_expose(void)
-{
-    LOCK_SCOPE(&lock);
-
-    if (sysfs_file_init(&klog.file, sysfs_get_default(), "klog", NULL, &klogOps, NULL) == ERR)
-    {
-        panic(NULL, "Failed to expose log file");
-    }
+    log_screen_clear();
+    outputs &= ~LOG_OUTPUT_SCREEN;
 }
 
 void log_write(const char* string, uint64_t length)
 {
-    if (state.config.outputs & LOG_OUTPUT_FILE)
+    if (outputs & LOG_OUTPUT_FILE)
     {
-        ring_write(&klog.ring, string, length);
+        log_file_write(string, length);
     }
 
-    if (state.config.outputs & LOG_OUTPUT_SERIAL)
+    if (outputs & LOG_OUTPUT_SERIAL)
     {
         for (uint64_t i = 0; i < length; i++)
         {
@@ -167,9 +111,9 @@ void log_write(const char* string, uint64_t length)
         }
     }
 
-    if (state.config.outputs & LOG_OUTPUT_SCREEN)
+    if (outputs & LOG_OUTPUT_SCREEN)
     {
-        screen_write(&screen, string, length);
+        log_screen_write(string, length);
     }
 }
 
@@ -197,20 +141,20 @@ static void log_print_header(log_level_t level, const char* prefix)
 
 static void log_handle_char(log_level_t level, const char* prefix, char chr)
 {
-    if (state.isLastCharNewline && chr != '\n')
+    if (isLastCharNewline && chr != '\n')
     {
-        state.isLastCharNewline = false;
+        isLastCharNewline = false;
 
         log_print_header(level, prefix);
     }
 
     if (chr == '\n')
     {
-        if (state.isLastCharNewline)
+        if (isLastCharNewline)
         {
             log_print_header(level, prefix);
         }
-        state.isLastCharNewline = true;
+        isLastCharNewline = true;
         return;
     }
 
@@ -230,12 +174,12 @@ uint64_t log_vprint(log_level_t level, const char* prefix, const char* format, v
 {
     LOCK_SCOPE(&lock);
 
-    if (level < state.config.minLevel)
+    if (level < minLevel)
     {
         return 0;
     }
 
-    int length = vsnprintf(state.lineBuffer, LOG_MAX_BUFFER, format, args);
+    int length = vsnprintf(lineBuffer, LOG_MAX_BUFFER, format, args);
     if (length < 0)
     {
         errno = EINVAL;
@@ -245,12 +189,12 @@ uint64_t log_vprint(log_level_t level, const char* prefix, const char* format, v
     if (length >= LOG_MAX_BUFFER)
     {
         length = LOG_MAX_BUFFER - 1;
-        state.lineBuffer[length] = '\0';
+        lineBuffer[length] = '\0';
     }
 
     for (int i = 0; i < length; i++)
     {
-        log_handle_char(level, prefix, state.lineBuffer[i]);
+        log_handle_char(level, prefix, lineBuffer[i]);
     }
 
     return 0;

@@ -2,12 +2,12 @@
 
 #include "acpi/acpi.h"
 #include "aml.h"
+#include "exception.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
 #include "to_string.h"
 #include "token.h"
-#include "exception.h"
 
 #include <errno.h>
 #include <stddef.h>

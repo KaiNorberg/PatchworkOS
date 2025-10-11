@@ -6,6 +6,8 @@
 #include "mem/heap.h"
 #include "net/net.h"
 #include "net/socket.h"
+
+#include <errno.h>
 #include <sys/list.h>
 
 static uint64_t socket_factory_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)

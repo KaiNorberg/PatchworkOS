@@ -5,8 +5,8 @@
 #include "acpica_tests/all_tests.h"
 
 #include "aml.h"
-#include "exception.h"
 #include "encoding/term.h"
+#include "exception.h"
 #include "object.h"
 #include "runtime/method.h"
 #include "state.h"
@@ -76,7 +76,7 @@ static void aml_tests_exception_handler(aml_exception_t code)
         return;
     }
 
-    aml_object_t* args[] = { arg0, arg1, arg2 };
+    aml_object_t* args[] = {arg0, arg1, arg2};
     aml_object_t* result = aml_method_evaluate(&err->method, args, 3);
     if (result == NULL)
     {

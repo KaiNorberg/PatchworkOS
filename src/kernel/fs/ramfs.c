@@ -15,6 +15,7 @@
 #include <_internal/ERR.h>
 #include <boot/boot_info.h>
 
+#include <errno.h>
 #include <assert.h>
 #include <string.h>
 #include <sys/list.h>

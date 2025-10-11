@@ -13,7 +13,7 @@ static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
 static void* fb_mmap(file_t* file, void* addr, uint64_t length, prot_t prot)
 {
-    log_disable_screen();
+    log_screen_disable();
 
     fb_t* fb = file->inode->private;
     return fb->mmap(fb, addr, length, prot);

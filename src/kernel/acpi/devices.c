@@ -2,10 +2,11 @@
 
 #include "aml/aml.h"
 #include "aml/object.h"
-#include "aml/runtime/convert.h"
 #include "aml/runtime/method.h"
 #include "aml/to_string.h"
 #include "log/log.h"
+
+#include <errno.h>
 
 static inline uint64_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t* out)
 {

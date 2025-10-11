@@ -4,7 +4,7 @@
 #include "cpu/smp.h"
 #include "cpu/vectors.h"
 #include "log/log.h"
-#include "log/screen.h"
+#include "log/log_screen.h"
 #include "mem/heap.h"
 #include "mem/pmm.h"
 #include "sched/thread.h"
@@ -25,8 +25,11 @@
 extern uint64_t _kernelStart;
 extern uint64_t _kernelEnd;
 
-static list_t symbols;
+static list_t symbols = LIST_CREATE(symbols);
 static bool symbolsLoaded = false;
+static char panicBuffer[LOG_MAX_BUFFER] = {0};
+
+static atomic_uint32_t panicCpudId = ATOMIC_VAR_INIT(PANIC_NO_CPU_ID);
 
 static bool panic_is_valid_stack_frame(void* ptr)
 {
@@ -173,7 +176,7 @@ static void panic_stack_trace(const trap_frame_t* trapFrame)
     uint64_t depth = 0;
     while (rbp != NULL && rbp != prevFrame)
     {
-        if (depth >= 10)
+        if (depth >= PANIC_MAX_STACK_FRAMES)
         {
             LOG_PANIC("  ...\n");
             break;
@@ -224,7 +227,7 @@ static void panic_direct_stack_trace(void)
     uint64_t depth = 0;
     while (currentFrame != NULL && currentFrame != prevFrame)
     {
-        if (depth >= 10)
+        if (depth >= PANIC_MAX_STACK_FRAMES)
         {
             LOG_PANIC("  ...\n");
             break;
@@ -381,15 +384,12 @@ void panic_symbols_init(const boot_kernel_t* kernel)
 
 void panic(const trap_frame_t* trapFrame, const char* format, ...)
 {
-    screen_t* screen = log_get_screen();
-    log_state_t* state = log_get_state();
-
     asm volatile("cli");
 
     cpu_t* self = smp_self_unsafe();
 
-    uint32_t expectedCpuId = LOG_NO_PANIC_CPU_ID;
-    if (!atomic_compare_exchange_strong(&state->panickingCpuId, &expectedCpuId, self->id))
+    uint32_t expectedCpuId = PANIC_NO_CPU_ID;
+    if (!atomic_compare_exchange_strong(&panicCpudId, &expectedCpuId, self->id))
     {
         if (expectedCpuId == self->id)
         {
@@ -404,19 +404,15 @@ void panic(const trap_frame_t* trapFrame, const char* format, ...)
 
     smp_halt_others();
 
-    if (screen->initialized && !(state->config.outputs & LOG_OUTPUT_SCREEN))
-    {
-        log_screen_enable();
-        state->config.outputs |= LOG_OUTPUT_SCREEN;
-    }
+    log_screen_enable();
 
     va_list args;
     va_start(args, format);
-    vsnprintf(state->panicBuffer, LOG_MAX_BUFFER, format, args);
+    vsnprintf(panicBuffer, LOG_MAX_BUFFER, format, args);
     va_end(args);
 
     LOG_PANIC("!!! KERNEL PANIC (%s version %s) !!!\n", OS_NAME, OS_VERSION);
-    LOG_PANIC("cause: %s\n", state->panicBuffer);
+    LOG_PANIC("cause: %s\n", panicBuffer);
 
     thread_t* currentThread = self->sched.runThread;
     if (currentThread == NULL)
