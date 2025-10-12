@@ -51,7 +51,7 @@ uint64_t aml_pkg_length_read(aml_term_list_ctx_t* ctx, aml_pkg_length_t* out)
 
     // Bits 0 to 3 in pkgLeadByte becomes the least significant bits in the length, followed by the next bytes.
     aml_pkg_length_t length = pkgLeadByte.leastSignificantNybble;
-    for (uint64_t i = 0; i < pkgLeadByte.byteDataCount; i++)
+    for (uint32_t i = 0; i < pkgLeadByte.byteDataCount; i++)
     {
         uint8_t byte;
         if (aml_byte_data_read(ctx, &byte) == ERR)
@@ -59,7 +59,7 @@ uint64_t aml_pkg_length_read(aml_term_list_ctx_t* ctx, aml_pkg_length_t* out)
             AML_DEBUG_ERROR(ctx, "Failed to read ByteData");
             return ERR;
         }
-        length |= ((uint64_t)byte) << (4 + i * 8);
+        length |= ((uint32_t)byte) << (4 + i * 8);
     }
 
     // Output must not be greater than 2^28.
@@ -67,13 +67,6 @@ uint64_t aml_pkg_length_read(aml_term_list_ctx_t* ctx, aml_pkg_length_t* out)
     {
         AML_DEBUG_ERROR(ctx, "Package length out of range: %lu", length);
         errno = ERANGE;
-        return ERR;
-    }
-
-    if (length > (uint64_t)(ctx->end - start))
-    {
-        AML_DEBUG_ERROR(ctx, "Package length exceeds available bytes (%lu > %lu)", length, ctx->end - start);
-        errno = ENODATA;
         return ERR;
     }
 

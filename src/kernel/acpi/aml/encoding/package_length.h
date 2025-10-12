@@ -18,7 +18,7 @@ typedef struct aml_term_list_ctx aml_term_list_ctx_t;
 /**
  * @brief PkgLength structure.
  */
-typedef uint64_t aml_pkg_length_t;
+typedef uint32_t aml_pkg_length_t;
 
 /**
  * @brief PkgLeadByte structure.

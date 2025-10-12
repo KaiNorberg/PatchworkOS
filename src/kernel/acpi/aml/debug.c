@@ -114,7 +114,7 @@ void aml_debug_error(aml_term_list_ctx_t* ctx, const char* function, const char*
         }
         else
         {
-            LOG_ERR(" at top-level and offset 0x%lx\n", ctx->current - ctx->start);
+            LOG_ERR(" at offset 0x%lx\n", ctx->current - ctx->start);
             start = ctx->start;
             end = ctx->end;
         }
