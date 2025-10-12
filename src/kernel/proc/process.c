@@ -24,6 +24,7 @@
 #include <sys/proc.h>
 
 static process_t kernelProcess;
+static bool kernelProcessInitalized = false;
 
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 
@@ -295,6 +296,8 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     process->id = atomic_fetch_add(&newPid, 1);
     atomic_init(&process->priority, priority);
     atomic_init(&process->status, EXIT_SUCCESS);
+
+    // Cant do memory allocations for the kernel process
     if (argv_init(&process->argv, argv) == ERR)
     {
         return ERR;
@@ -451,15 +454,6 @@ bool process_is_child(process_t* process, pid_t parentId)
     }
 }
 
-void process_kernel_init(void)
-{
-    if (process_init(&kernelProcess, NULL, NULL, NULL, PRIORITY_MAX - 1) == ERR)
-    {
-        panic(NULL, "Failed to init kernel process");
-    }
-    LOG_INFO("kernel process initialized with pid=%d\n", kernelProcess.id);
-}
-
 void process_procfs_init(void)
 {
     if (sysfs_group_init(&procGroup, PATHNAME("/proc")) == ERR)
@@ -471,6 +465,9 @@ void process_procfs_init(void)
         panic(NULL, "Failed to initialize process sysfs directory");
     }
 
+    assert(kernelProcessInitalized);
+
+    // Kernel process was created before sysfs was initialized, so we have to delay this until now.
     char name[MAX_NAME];
     snprintf(name, MAX_NAME, "%d", kernelProcess.id);
     if (process_dir_init(&kernelProcess.dir, "", &kernelProcess) == ERR)
@@ -481,6 +478,16 @@ void process_procfs_init(void)
 
 process_t* process_get_kernel(void)
 {
+    if (!kernelProcessInitalized)
+    {
+        if (process_init(&kernelProcess, NULL, NULL, NULL, PRIORITY_MAX - 1) == ERR)
+        {
+            panic(NULL, "Failed to init kernel process");
+        }
+        LOG_INFO("kernel process initialized with pid=%d\n", kernelProcess.id);
+        kernelProcessInitalized = true;
+    }
+
     return &kernelProcess;
 }
 

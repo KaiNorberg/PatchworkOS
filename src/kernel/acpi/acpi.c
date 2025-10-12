@@ -40,7 +40,7 @@ static bool acpi_is_rsdp_valid(rsdp_t* rsdp)
     return true;
 }
 
-static void acpi_reclaim_memory(boot_memory_map_t* map)
+static void acpi_reclaim_memory(const boot_memory_map_t* map)
 {
     for (uint64_t i = 0; i < map->length; i++)
     {
@@ -55,7 +55,7 @@ static void acpi_reclaim_memory(boot_memory_map_t* map)
     }
 }
 
-void acpi_init(rsdp_t* rsdp, boot_memory_map_t* map)
+void acpi_init(rsdp_t* rsdp, const boot_memory_map_t* map)
 {
     LOG_INFO("initializing acpi\n");
 

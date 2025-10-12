@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#ifdef DEBUG_TESTING
+#ifdef TESTING
 
 /**
  * @brief Tests for the AML parser.

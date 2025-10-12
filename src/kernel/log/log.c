@@ -2,13 +2,13 @@
 
 #include "cpu/smp.h"
 #include "drivers/com.h"
-#include "fs/file.h"
 #include "log/panic.h"
+#include "log_file.h"
+#include "log_screen.h"
 #include "sched/timer.h"
 #include "sync/lock.h"
-#include "utils/ring.h"
-#include "log_screen.h"
-#include "log_file.h"
+#include "sync/mutex.h"
+#include "sched/thread.h"
 
 #include <_internal/MAX_PATH.h>
 #include <boot/boot_info.h>
@@ -17,11 +17,8 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 #include <sys/io.h>
 #include <sys/proc.h>
-
-static log_screen_t screen = {0};
 
 static lock_t lock = LOCK_CREATE;
 
@@ -47,10 +44,8 @@ static void log_splash(void)
     LOG_INFO("Booting %s-kernel DEBUG %s (Built %s %s)\n", OS_NAME, OS_VERSION, __DATE__, __TIME__);
 #endif
     LOG_INFO("Copyright (C) 2025 Kai Norberg. MIT Licensed. See /usr/license/LICENSE for details.\n");
-    LOG_INFO("min_level=%s outputs=%s%s%s\n", levelNames[minLevel],
-        (outputs & LOG_OUTPUT_SERIAL) ? "serial " : "",
-        (outputs & LOG_OUTPUT_SCREEN) ? "screen " : "",
-        (outputs & LOG_OUTPUT_FILE) ? "file " : "");
+    LOG_INFO("min_level=%s outputs=%s%s%s\n", levelNames[minLevel], (outputs & LOG_OUTPUT_SERIAL) ? "serial " : "",
+        (outputs & LOG_OUTPUT_SCREEN) ? "screen " : "", (outputs & LOG_OUTPUT_FILE) ? "file " : "");
 }
 
 void log_init(const boot_gop_t* gop)
@@ -77,7 +72,6 @@ void log_init(const boot_gop_t* gop)
 
 void log_screen_enable()
 {
-    LOG_INFO("screen enable\n");
     LOCK_SCOPE(&lock);
 
     if (outputs & LOG_OUTPUT_SCREEN)
@@ -86,6 +80,7 @@ void log_screen_enable()
     }
 
     log_file_flush_to_screen();
+    outputs |= LOG_OUTPUT_SCREEN;
 }
 
 void log_screen_disable(void)
@@ -172,6 +167,13 @@ uint64_t log_print(log_level_t level, const char* prefix, const char* format, ..
 
 uint64_t log_vprint(log_level_t level, const char* prefix, const char* format, va_list args)
 {
+    // Logging seems to be a common place for stack overflows to be detected.
+    thread_t* thread = sched_thread();
+    if (thread != NULL && thread->canary != THREAD_CANARY)
+    {
+        panic(NULL, "Stack overflow detected in log_vprint");
+    }
+
     LOCK_SCOPE(&lock);
 
     if (level < minLevel)

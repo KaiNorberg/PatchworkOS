@@ -52,7 +52,7 @@ static void vmm_kernel_update_free_address(uintptr_t virtAddr, uint64_t pageAmou
     }
 }
 
-void vmm_init(boot_memory_t* memory, boot_gop_t* gop, boot_kernel_t* kernel)
+void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_kernel_t* kernel)
 {
     kernelFreeAddress = ROUND_UP((uintptr_t)&_kernelEnd, PAGE_SIZE);
     lock_init(&kernelLock);

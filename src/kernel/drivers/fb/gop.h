@@ -2,4 +2,4 @@
 
 #include <boot/boot_info.h>
 
-void gop_init(boot_gop_t* in);
+void gop_init(const boot_gop_t* in);

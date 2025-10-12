@@ -16,7 +16,7 @@ static lock_t lock = LOCK_CREATE;
 
 extern uint64_t _kernelEnd;
 
-#ifdef DEBUG_TESTING
+#ifdef TESTING
 static uint64_t heap_run_tests(void);
 #endif
 
@@ -25,7 +25,7 @@ void heap_init(void)
     memset(lookupTable, HEAP_LOOKUP_NONE, sizeof(lookupTable));
     LOG_INFO("heap initialized\n");
 
-#ifdef DEBUG_TESTING
+#ifdef TESTING
     LOG_INFO("running heap tests\n");
     heap_run_tests();
     LOG_INFO("heap tests completed\n");
@@ -169,7 +169,7 @@ void heap_free(void* ptr)
     slab_free(object->cache->slab, object);
 }
 
-#ifdef DEBUG_TESTING
+#ifdef TESTING
 
 static uint64_t heap_test_single(uint64_t size, uint8_t pattern)
 {

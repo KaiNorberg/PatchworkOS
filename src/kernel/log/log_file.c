@@ -1,12 +1,12 @@
 #include "log_file.h"
 
-#include "utils/ring.h"
-#include "mem/heap.h"
-#include "fs/sysfs.h"
 #include "fs/file.h"
+#include "fs/sysfs.h"
 #include "log.h"
 #include "log_screen.h"
+#include "mem/heap.h"
 #include "panic.h"
+#include "utils/ring.h"
 
 static lock_t lock = LOCK_CREATE;
 
@@ -70,7 +70,7 @@ static void log_file_advance_fake_cursor(char chr, uint64_t* lineLength, uint64_
         (*lineCount)++;
         *lineLength = 0;
     }
-    else if (*lineLength >= log_screen_get_width() - 1)
+    else if (*lineLength >= log_screen_get_width())
     {
         (*lineCount)++;
         *lineLength = SCREEN_WRAP_INDENT;

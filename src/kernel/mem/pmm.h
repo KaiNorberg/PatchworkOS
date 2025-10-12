@@ -24,7 +24,7 @@
  *
  * @param map The EFI memory map provided by the bootloader.
  */
-void pmm_init(boot_memory_map_t* map);
+void pmm_init(const boot_memory_map_t* map);
 
 /**
  * @brief Allocates a single physical page.

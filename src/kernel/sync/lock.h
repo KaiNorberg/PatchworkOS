@@ -56,12 +56,7 @@ typedef struct
  * @macro LOCK_CREATE
  */
 #ifndef NDEBUG
-#define LOCK_CREATE \
-    (lock_t) \
-    { \
-        .nextTicket = ATOMIC_VAR_INIT(0), .nowServing = ATOMIC_VAR_INIT(0), \
-            .canary = 0xDEADBEEF \
-    }
+#define LOCK_CREATE (lock_t){.nextTicket = ATOMIC_VAR_INIT(0), .nowServing = ATOMIC_VAR_INIT(0), .canary = 0xDEADBEEF}
 #else
 #define LOCK_CREATE \
     (lock_t) \

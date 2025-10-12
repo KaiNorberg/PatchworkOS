@@ -131,7 +131,7 @@ void aml_exception_unregister(aml_exception_handler_t handler)
 
 void aml_exception_raise(aml_exception_t code, const char* function)
 {
-#ifdef DEBUG_TESTING
+#ifdef TESTING
     LOG_WARN("AML EXCEPTION '%s' (0x%x) in '%s()'. (Probably intentional)\n", aml_exception_to_string(code), code,
         function);
 #else

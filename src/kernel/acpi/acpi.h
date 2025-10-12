@@ -134,7 +134,7 @@ typedef struct PACKED
  * @param rsdp Pointer to the RSDP structure provided by the bootloader.
  * @param map Pointer to the memory map provided by the bootloader.
  */
-void acpi_init(rsdp_t* rsdp, boot_memory_map_t* map);
+void acpi_init(rsdp_t* rsdp, const boot_memory_map_t* map);
 
 /**
  * @brief Check if the sum of all bytes in a table is 0.

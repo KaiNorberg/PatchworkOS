@@ -10,7 +10,7 @@
 #include "state.h"
 #include "to_string.h"
 
-#ifdef DEBUG_TESTING
+#ifdef TESTING
 #include "tests.h"
 #endif
 
@@ -108,7 +108,7 @@ uint64_t aml_init(void)
         return ERR;
     }
 
-#ifdef DEBUG_TESTING
+#ifdef TESTING
     if (aml_tests_post_init() == ERR)
     {
         DEREF(root);
@@ -141,7 +141,7 @@ uint64_t aml_init(void)
         return ERR;
     }
 
-#ifdef DEBUG_TESTING
+#ifdef TESTING
     if (aml_tests_post_parse_all() == ERR)
     {
         DEREF(root);

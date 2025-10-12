@@ -22,10 +22,10 @@ jobs:
         sudo apt-get install -y build-essential nasm qemu-system-x86 mtools iasl
 
     - name: Setup PatchworkOS
-      run: make setup DEBUG=2
+      run: make setup DEBUG=1 TESTING=1
 
     - name: Build PatchworkOS
-      run: make all DEBUG=2
+      run: make all DEBUG=1 TESTING=1
 
     - name: Verify PatchworkOS.img exists
       run: |

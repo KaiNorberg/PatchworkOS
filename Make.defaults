@@ -1,5 +1,3 @@
-include Make.debug
-
 MKCWD = mkdir -p $(@D)
 
 GC = gcc
@@ -52,12 +50,12 @@ LDFLAGS := \
   -Lbin/libstd \
   -Lbin/libpatchwork
 
-ifeq ($(DEBUG_TESTING),1)
-	CFLAGS += -DDEBUG_TESTING
+ifeq ($(TESTING),1)
+	CFLAGS += -DTESTING
 endif
 
-ifeq ($(DEBUG_MODE),1)
-	CFLAGS += -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline
+ifeq ($(DEBUG),1)
+	CFLAGS += -O3 -g3 -ggdb -fno-omit-frame-pointer -fno-inline
 	LDFLAGS += -g
 else
 	CFLAGS += -O3 -DNDEBUG

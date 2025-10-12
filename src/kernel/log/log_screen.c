@@ -1,13 +1,15 @@
 #include "log_screen.h"
 
+#include "drivers/com.h"
 #include "glyphs.h"
 #include "sync/lock.h"
 
+#include <string.h>
 #include <sys/math.h>
 
-static boot_gop_t gop;
-static log_screen_pos_t cursor;
-static log_screen_t screen;
+static boot_gop_t gop = {0};
+static log_screen_pos_t cursor = {0, 0};
+static log_screen_t screen = {0};
 
 static lock_t lock = LOCK_CREATE;
 
@@ -37,7 +39,7 @@ static void log_screen_invalidate(const log_screen_pos_t* pos)
     screen.invalidEnd.y = MIN(screen.invalidEnd.y, screen.height);
 }
 
-static void log_screen_put(const log_screen_pos_t* pos, char chr)
+static void log_screen_put(char chr)
 {
     if (chr == '\n' || chr < ' ')
     {
@@ -47,17 +49,17 @@ static void log_screen_put(const log_screen_pos_t* pos, char chr)
     const glyph_cache_t* cache = glyph_cache_get();
     const glyph_t* glyph = &cache->glyphs[(uint8_t)chr];
 
-    log_screen_line_t* line = log_screen_get_line(pos->y);
+    log_screen_line_t* line = log_screen_get_line(cursor.y);
 
-    uint64_t pixelX = pos->x * GLYPH_WIDTH;
+    uint64_t pixelX = cursor.x * GLYPH_WIDTH;
     for (uint64_t y = 0; y < GLYPH_HEIGHT; y++)
     {
         memcpy(&line->pixels[pixelX + y * SCREEN_LINE_STRIDE], &glyph->pixels[y * GLYPH_WIDTH],
             sizeof(uint32_t) * GLYPH_WIDTH);
     }
 
-    line->length = MAX(line->length, pos->x + 1);
-    log_screen_invalidate(pos);
+    line->length = MAX(line->length, cursor.x + 1);
+    log_screen_invalidate(&cursor);
 }
 
 static void log_screen_flush(void)
@@ -111,8 +113,7 @@ static void log_screen_scroll(void)
         {
             for (uint64_t offsetY = 0; offsetY < GLYPH_HEIGHT; offsetY++)
             {
-                memset32(&gop.virtAddr[(offsetY + y * GLYPH_HEIGHT) * gop.stride +
-                             newLine->length * GLYPH_WIDTH],
+                memset32(&gop.virtAddr[(offsetY + y * GLYPH_HEIGHT) * gop.stride + newLine->length * GLYPH_WIDTH],
                     0xFF000000, (line->length - newLine->length) * GLYPH_WIDTH);
             }
         }
@@ -136,8 +137,6 @@ static void log_screen_scroll(void)
 
 static void log_screen_advance_cursor(char chr)
 {
-    log_screen_line_t* line = &screen.lines[cursor.y];
-
     if (chr == '\n')
     {
         cursor.y++;
@@ -148,7 +147,7 @@ static void log_screen_advance_cursor(char chr)
             log_screen_scroll();
         }
     }
-    else if (cursor.x >= screen.width - 1)
+    else if (cursor.x >= screen.width)
     {
         cursor.y++;
         cursor.x = 0;
@@ -160,7 +159,7 @@ static void log_screen_advance_cursor(char chr)
 
         for (uint64_t i = 0; i < SCREEN_WRAP_INDENT; i++)
         {
-            log_screen_put(&cursor, ' ');
+            log_screen_put(' ');
             cursor.x++;
         }
     }
@@ -206,12 +205,10 @@ void log_screen_write(const char* string, uint64_t length)
 {
     LOCK_SCOPE(&lock);
 
-    log_screen_pos_t prevCursor = cursor;
-
     for (uint64_t i = 0; i < length; i++)
     {
         char chr = string[i];
-        log_screen_put(&cursor, chr);
+        log_screen_put(chr);
         log_screen_advance_cursor(chr);
     }
 

@@ -60,12 +60,6 @@
  */
 
 /**
- * @brief Processes.
- * @defgroup kernel_proc Processes
- * @ingroup kernel
- */
-
-/**
  * @brief Scheduling.
  * @defgroup kernel_sched Scheduling
  * @ingroup kernel

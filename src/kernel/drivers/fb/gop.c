@@ -35,7 +35,7 @@ static fb_t fb = {
     .mmap = gop_mmap,
 };
 
-void gop_init(boot_gop_t* in)
+void gop_init(const boot_gop_t* in)
 {
     fb.info.width = in->width;
     fb.info.height = in->height;

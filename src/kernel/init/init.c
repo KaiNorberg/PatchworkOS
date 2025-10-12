@@ -1,5 +1,3 @@
-#include "kernel.h"
-
 #include "acpi/acpi.h"
 #include "cpu/gdt.h"
 #include "cpu/idt.h"
@@ -17,9 +15,8 @@
 #include "ipc/pipe.h"
 #include "ipc/shmem.h"
 #include "log/log.h"
-#include "log/panic.h"
-#include "log/log_screen.h"
 #include "log/log_file.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
@@ -28,12 +25,32 @@
 #include "sched/sched.h"
 #include "sched/timer.h"
 #include "sched/wait.h"
+#include "sched/loader.h"
 
 #include <boot/boot_info.h>
 #include <libstd/_internal/init.h>
 #include <strings.h>
 
-static void kernel_free_loader_data(boot_memory_map_t* map)
+void kernel_early_init(const boot_info_t* bootInfo)
+{
+    gdt_cpu_init();
+    idt_cpu_init();
+
+    smp_bootstrap_init();
+    gdt_cpu_load_tss(&smp_self_unsafe()->tss);
+
+    log_init(&bootInfo->gop);
+
+    pmm_init(&bootInfo->memory.map);
+    vmm_init(&bootInfo->memory, &bootInfo->gop, &bootInfo->kernel);
+    heap_init();
+
+    sched_init();
+    timer_init();
+    wait_init();
+}
+
+static void kernel_free_loader_data(const boot_memory_map_t* map)
 {
     for (uint64_t i = 0; i < map->length; i++)
     {
@@ -50,33 +67,15 @@ static void kernel_free_loader_data(boot_memory_map_t* map)
     LOG_INFO("kernel initalized using %llu kb of memory\n", pmm_reserved_amount() * PAGE_SIZE / 1024);
 }
 
-void kernel_init(boot_info_t* bootInfo)
+void kernel_init(const boot_info_t* bootInfo)
 {
-    gdt_cpu_init();
-    idt_cpu_init();
-
-    smp_bootstrap_init();
-    gdt_cpu_load_tss(&smp_self_unsafe()->tss);
-
-    log_init(&bootInfo->gop);
-
-    pmm_init(&bootInfo->memory.map);
-    vmm_init(&bootInfo->memory, &bootInfo->gop, &bootInfo->kernel);
-    heap_init();
-
     panic_symbols_init(&bootInfo->kernel);
 
     _std_init();
 
-    process_kernel_init();
-    sched_init();
-    wait_init();
-
     vfs_init();
     ramfs_init(&bootInfo->disk);
     sysfs_init();
-
-    timer_init();
 
     acpi_init(bootInfo->rsdp, &bootInfo->memory.map);
 
@@ -108,7 +107,7 @@ void kernel_init(boot_info_t* bootInfo)
     vmm_unmap_lower_half();
 }
 
-void kernel_other_init(void)
+void kernel_other_cpu_init(void)
 {
     gdt_cpu_init();
     idt_cpu_init();
@@ -121,4 +120,32 @@ void kernel_other_init(void)
     vmm_cpu_init();
     syscalls_cpu_init();
     timer_cpu_init();
+}
+
+void kmain(void)
+{
+    LOG_INFO("spawning init thread\n");
+    const char* argv[] = {"/bin/init", NULL};
+    thread_t* initThread = loader_spawn(argv, PRIORITY_MAX_USER - 2, NULL);
+    if (initThread == NULL)
+    {
+        panic(NULL, "Failed to spawn init thread");
+    }
+
+    // Set klog as stdout for init process
+    file_t* klog = vfs_open(PATHNAME("/dev/klog"));
+    if (klog == NULL)
+    {
+        panic(NULL, "Failed to open klog");
+    }
+    if (vfs_ctx_openas(&initThread->process->vfsCtx, STDOUT_FILENO, klog) == ERR)
+    {
+        panic(NULL, "Failed to set klog as stdout for init process");
+    }
+    ref_dec(klog);
+
+    sched_push(initThread, NULL);
+
+    LOG_INFO("done with boot thread\n");
+    sched_done_with_boot_thread();
 }

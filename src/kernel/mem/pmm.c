@@ -110,7 +110,7 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
     }
 }
 
-static void pmm_detect_memory(boot_memory_map_t* map)
+static void pmm_detect_memory(const boot_memory_map_t* map)
 {
     LOG_INFO("UEFI-provided memory map\n");
 
@@ -127,7 +127,7 @@ static void pmm_detect_memory(boot_memory_map_t* map)
     LOG_INFO("page amount %llu\n", pageAmount);
 }
 
-static void pmm_load_memory(boot_memory_map_t* map)
+static void pmm_load_memory(const boot_memory_map_t* map)
 {
     for (uint64_t i = 0; i < map->length; i++)
     {
@@ -149,7 +149,7 @@ static void pmm_load_memory(boot_memory_map_t* map)
         (pmm_free_amount() * PAGE_SIZE) / 1000000, ((pageAmount - pmm_free_amount()) * PAGE_SIZE) / 1000000);
 }
 
-void pmm_init(boot_memory_map_t* map)
+void pmm_init(const boot_memory_map_t* map)
 {
     pmm_detect_memory(map);
 

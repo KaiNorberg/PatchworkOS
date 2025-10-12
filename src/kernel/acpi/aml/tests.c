@@ -1,6 +1,6 @@
 #include "tests.h"
 
-#ifdef DEBUG_TESTING
+#ifdef TESTING
 
 #include "acpica_tests/all_tests.h"
 

@@ -273,7 +273,7 @@ make clean
 make all DEBUG=1
 
 # Build with debug mode enabled and testing enabled (you will need to have iasl installed)
-make all DEBUG=2
+make all DEBUG=1 TESTING=1
 
 # Debug using qemu with one cpu and GDB
 make all run DEBUG=1 QEMU_CPUS=1 GDB=1
@@ -313,7 +313,7 @@ You should now see a new entry in your GRUB boot menu allowing you to boot into 
 
 ## Testing
 
-Testing uses a GitHub action that compiles the project and runs it for one minute using QEMU both with the `DEBUG=2` flag enabled. This will run some additional tests in the kernel (for example it will clone ACPICA and run all its runtime tests), and if it has not crashed by the end of the minute, it is considered a success.
+Testing uses a GitHub action that compiles the project and runs it for one minute using QEMU both with the `DEBUG=1` amd `TESTING=1` flags enabled. This will run some additional tests in the kernel (for example it will clone ACPICA and run all its runtime tests), and if it has not crashed by the end of the minute, it is considered a success.
 
 ### Tested Configurations
 

@@ -15,6 +15,44 @@
 #include <sys/list.h>
 #include <sys/math.h>
 
+static thread_t bootThread;
+static bool bootThreadInitalized = false;
+
+uint64_t thread_get_kernel_stack_top(thread_t* thread)
+{
+    return THREAD_KERNEL_STACK_TOP(thread);
+}
+
+static uint64_t thread_init(thread_t* thread, process_t* process, void* entry)
+{
+    list_entry_init(&thread->entry);
+    thread->process = process;
+    list_entry_init(&thread->processEntry);
+    thread->id = thread->process->threads.newTid++;
+    sched_thread_ctx_init(&thread->sched);
+    atomic_init(&thread->state, THREAD_PARKED);
+    thread->error = 0;
+    wait_thread_ctx_init(&thread->wait);
+    if (simd_ctx_init(&thread->simd) == ERR)
+    {
+        return ERR;
+    }
+    note_queue_init(&thread->notes);
+    syscall_ctx_init(&thread->syscall, THREAD_KERNEL_STACK_TOP(thread));
+    memset(&thread->trapFrame, 0, sizeof(trap_frame_t));
+    thread->canary = THREAD_CANARY;
+    thread->trapFrame.rip = (uint64_t)entry;
+    thread->trapFrame.rsp = THREAD_KERNEL_STACK_TOP(thread);
+    thread->trapFrame.cs = GDT_KERNEL_CODE;
+    thread->trapFrame.ss = GDT_KERNEL_DATA;
+    thread->trapFrame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+    memset(&thread->kernelStack, 0, THREAD_KERNEL_STACK_SIZE);
+
+    list_push(&process->threads.aliveThreads, &thread->processEntry);
+    LOG_DEBUG("created tid=%d pid=%d entry=%p\n", thread->id, process->id, entry);
+    return 0;
+}
+
 thread_t* thread_new(process_t* process, void* entry)
 {
     LOCK_SCOPE(&process->threads.lock);
@@ -29,32 +67,11 @@ thread_t* thread_new(process_t* process, void* entry)
     {
         return NULL;
     }
-    list_entry_init(&thread->entry);
-    thread->process = process;
-    list_entry_init(&thread->processEntry);
-    thread->id = thread->process->threads.newTid++;
-    sched_thread_ctx_init(&thread->sched);
-    atomic_init(&thread->state, THREAD_PARKED);
-    thread->error = 0;
-    wait_thread_ctx_init(&thread->wait);
-    if (simd_ctx_init(&thread->simd) == ERR)
+    if (thread_init(thread, process, entry) == ERR)
     {
         heap_free(thread);
         return NULL;
     }
-    note_queue_init(&thread->notes);
-    syscall_ctx_init(&thread->syscall, THREAD_KERNEL_STACK_TOP(thread));
-    memset(&thread->trapFrame, 0, sizeof(trap_frame_t));
-    thread->canary = THREAD_CANARY;
-    thread->trapFrame.rip = (uint64_t)entry;
-    thread->trapFrame.rsp = THREAD_KERNEL_STACK_TOP(thread);
-    thread->trapFrame.cs = GDT_KERNEL_CODE;
-    thread->trapFrame.ss = GDT_KERNEL_DATA;
-    thread->trapFrame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
-    memset(&thread->kernelStack, 0, CONFIG_KERNEL_STACK);
-
-    list_push(&process->threads.aliveThreads, &thread->processEntry);
-    LOG_DEBUG("created tid=%d pid=%d entry=%p\n", thread->id, process->id, entry);
     return thread;
 }
 
@@ -161,4 +178,18 @@ SYSCALL_DEFINE(SYS_ERRNO, errno_t)
 SYSCALL_DEFINE(SYS_GETTID, tid_t)
 {
     return sched_thread()->id;
+}
+
+thread_t* thread_get_boot(void)
+{
+    if (!bootThreadInitalized)
+    {
+        if (thread_init(&bootThread, process_get_kernel(), NULL) == ERR)
+        {
+            panic(NULL, "Failed to initialize boot thread");
+        }
+        LOG_INFO("boot thread initialized with pid=%d tid=%d\n", bootThread.process->id, bootThread.id);
+        bootThreadInitalized = true;
+    }
+    return &bootThread;
 }

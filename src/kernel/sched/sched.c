@@ -107,19 +107,12 @@ static void sched_init_spawn_boot_thread(void)
     cpu_t* self = smp_self_unsafe();
     assert(self->sched.runThread == NULL);
 
-    process_t* kernelProcess = process_get_kernel();
-    assert(kernelProcess != NULL);
+    thread_t* bootThread = thread_get_boot();
+    assert(bootThread != NULL);
 
-    thread_t* thread = thread_new(kernelProcess, NULL);
-    if (thread == NULL)
-    {
-        panic(NULL, "Failed to create boot thread");
-    }
-    thread->sched.deadline = UINT64_MAX;
-    atomic_store(&thread->state, THREAD_RUNNING);
-    self->sched.runThread = thread;
-
-    LOG_INFO("spawned boot thread pid=%d tid=%d\n", thread->process->id, thread->id);
+    bootThread->sched.deadline = UINT64_MAX;
+    atomic_store(&bootThread->state, THREAD_RUNNING);
+    self->sched.runThread = bootThread;
 }
 
 void sched_init(void)

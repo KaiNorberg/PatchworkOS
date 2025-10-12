@@ -1,5 +1,3 @@
-include Make.debug
-
 MODULES = boot kernel libstd libpatchwork
 TARGET_IMAGE = bin/PatchworkOS.img
 VERSION_HEADER = include/common/version.h
@@ -25,7 +23,7 @@ QEMU_FLAGS = \
 	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
 	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd
 
-ifeq ($(DEBUG_MODE),1)
+ifeq ($(DEBUG),1)
 	ifneq ($(GDB),1)
 		QEMU_FLAGS += -device isa-debug-exit
 	endif
@@ -54,7 +52,7 @@ generate_version:
 	echo "#define OS_VERSION \"$$GIT_VERSION_STRING\"" >> $(VERSION_HEADER); \
 	echo "" >> $(VERSION_HEADER)
 
-ifeq ($(DEBUG_TESTING),1)
+ifeq ($(TESTING),1)
 setup: generate_version clone_acpica_and_compile_tests
 	$(MAKE) -C lib/gnu-efi
 else

@@ -54,11 +54,12 @@ typedef struct
  */
 typedef struct
 {
-    uint64_t width;            ///< The width of the buffer in chars.
-    uint64_t height;           ///< The height of the buffer in chars.
-    uint64_t firstLineIndex;   ///< The index of the first line in the buffer.
-    log_screen_pos_t invalidStart; ///< The start of the invalid region in the buffer, forms a rectangle with invalidEnd.
-    log_screen_pos_t invalidEnd;   ///< The end of the invalid region in the buffer, forms a rectangle with invalidStart.
+    uint64_t width;          ///< The width of the buffer in chars.
+    uint64_t height;         ///< The height of the buffer in chars.
+    uint64_t firstLineIndex; ///< The index of the first line in the buffer.
+    log_screen_pos_t
+        invalidStart;            ///< The start of the invalid region in the buffer, forms a rectangle with invalidEnd.
+    log_screen_pos_t invalidEnd; ///< The end of the invalid region in the buffer, forms a rectangle with invalidStart.
     log_screen_line_t lines[CONFIG_SCREEN_MAX_LINES]; ///< The lines in the buffer, acts as a circular buffer.
 } log_screen_t;
 

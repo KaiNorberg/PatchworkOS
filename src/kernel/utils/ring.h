@@ -31,13 +31,7 @@ typedef struct
  * @param bufferSize Size of the buffer memory in bytes.
  */
 #define RING_CREATE(bufferPtr, bufferSize) \
-    {                             \
-        .buffer = bufferPtr,      \
-        .size = bufferSize,       \
-        .readIndex = 0,           \
-        .writeIndex = 0,          \
-        .dataLength = 0           \
-    }
+    {.buffer = bufferPtr, .size = bufferSize, .readIndex = 0, .writeIndex = 0, .dataLength = 0}
 
 /**
  * @brief Initialize a ring buffer.

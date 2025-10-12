@@ -48,6 +48,6 @@ typedef struct
  *
  * @param disk The boot disk from the bootloader.
  */
-void ramfs_init(boot_disk_t* disk);
+void ramfs_init(const boot_disk_t* disk);
 
 /** @} */

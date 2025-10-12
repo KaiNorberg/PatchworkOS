@@ -23,7 +23,7 @@
  * @param gop The graphics output protocol provided by the bootloader.
  * @param kernel The structure provided by the bootloader specifying for example the addresses of the kernel.
  */
-void vmm_init(boot_memory_t* memory, boot_gop_t* gop, boot_kernel_t* kernel);
+void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_kernel_t* kernel);
 
 /**
  * @brief Unmaps the lower half of the address space after kernel initialization.

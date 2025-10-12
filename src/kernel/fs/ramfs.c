@@ -15,8 +15,8 @@
 #include <_internal/ERR.h>
 #include <boot/boot_info.h>
 
-#include <errno.h>
 #include <assert.h>
+#include <errno.h>
 #include <string.h>
 #include <sys/list.h>
 #include <sys/math.h>
@@ -372,7 +372,7 @@ static filesystem_t ramfs = {
     .mount = ramfs_mount,
 };
 
-void ramfs_init(boot_disk_t* disk)
+void ramfs_init(const boot_disk_t* disk)
 {
     LOG_INFO("registering ramfs\n");
     if (vfs_register_fs(&ramfs) == ERR)
@@ -380,7 +380,7 @@ void ramfs_init(boot_disk_t* disk)
         panic(NULL, "Failed to register ramfs");
     }
     LOG_INFO("mounting ramfs\n");
-    if (vfs_mount(VFS_DEVICE_NAME_NONE, NULL, RAMFS_NAME, SUPER_NONE, disk) == ERR)
+    if (vfs_mount(VFS_DEVICE_NAME_NONE, NULL, RAMFS_NAME, SUPER_NONE, (void*)disk) == ERR)
     {
         panic(NULL, "Failed to mount ramfs");
     }

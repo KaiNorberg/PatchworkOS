@@ -53,6 +53,18 @@ typedef enum
 } thread_state_t;
 
 /**
+ * @brief The size of a threads kernel stack.
+ * @def THREAD_KERNEL_STACK_SIZE
+ *
+ * When debugging we need a bigger kernel stack as we are not using optimizations or simply becouse tests can be very memory intensive, especially the aml tests. So when in debug or testing mode we use a bigger kernel stack.
+ */
+#if !defined(NDEBUG) || defined(TESTING)
+#define THREAD_KERNEL_STACK_SIZE (CONFIG_KERNEL_STACK * 8)
+#else
+#define THREAD_KERNEL_STACK_SIZE (CONFIG_KERNEL_STACK )
+#endif
+
+/**
  * @brief Thread of execution structure.
  * @struct thread_t
  *
@@ -118,32 +130,40 @@ typedef struct thread
      * @brief The threads kernel stack, stored as part of the `thread_t` structure in
      * order to avoid an additional allocation when allocating a new thread.
      */
-    uint8_t kernelStack[CONFIG_KERNEL_STACK];
+    uint8_t kernelStack[THREAD_KERNEL_STACK_SIZE];
 } thread_t;
 
 /**
  * @brief Retrieves the top of a threads kernel stack.
  * @def THREAD_KERNEL_STACK_TOP
  *
- * The `THREAD_KERNEL_STACK_TOP()` macro retrieves the address of the top of a threads kernel stack.
- *
  * Note that in x86 the push operation moves the stack pointer first and then writes to the location of the stack
  * pointer, that means that even if this address is not inclusive the stack pointer of a thread should be initalized to
  * the result of the `THREAD_KERNEL_STACK_TOP()` macro.
  *
- * @return The address of the top of the kernel stack, this address is not inclusive and always page aligned.
+ * @return The address of the top of the kernel stack, this address is not inclusive.
  */
-#define THREAD_KERNEL_STACK_TOP(thread) ((uintptr_t)thread->kernelStack + CONFIG_KERNEL_STACK)
+#define THREAD_KERNEL_STACK_TOP(thread) ((uintptr_t)thread->kernelStack + THREAD_KERNEL_STACK_SIZE)
 
 /**
  * @brief Retrieves the bottom of a threads kernel stack.
  * @def THREAD_KERNEL_STACK_BOTTOM
  *
- * The `THREAD_KERNEL_STACK_BOTTOM()` macro retrieves the address of the bottom of a threads kernel.
- *
- * @return The address of the bottom of the kernel stack, this address is inclusive and always page aligned.
+ * @return The address of the bottom of the kernel stack, this address is inclusive.
  */
 #define THREAD_KERNEL_STACK_BOTTOM(thread) ((uintptr_t)thread->kernelStack)
+
+/**
+ * @brief Retrieves the top of a threads kernel stack.
+ *
+ * Used in `start.s`, since we cant use the `THREAD_KERNEL_STACK_TOP` macro in assembly.
+ *
+ * @see THREAD_KERNEL_STACK_TOP()
+ *
+ * @param thread The thread to query.
+ * @return The address of the top of the kernel stack, this address is not inclusive.
+ */
+uint64_t thread_get_kernel_stack_top(thread_t* thread);
 
 /**
  * @brief Creates a new thread structure.
@@ -208,5 +228,17 @@ bool thread_is_note_pending(thread_t* thread);
  * @return On success, returns 0. On failure, returns `ERR`.
  */
 uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length);
+
+/**
+ * @brief Retrieves the boot thread.
+ *
+ * The boot thread is the first thread created by the kernel. After boot it becomes the idle thread of the
+ * bootstrap CPU. Is initialized lazily on the first call to this function, which should happen during early boot.
+ *
+ * Will never return `NULL`.
+ *
+ * @return The boot thread.
+ */
+thread_t* thread_get_boot(void);
 
 /** @} */

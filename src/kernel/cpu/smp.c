@@ -4,7 +4,7 @@
 #include "cpu/vectors.h"
 #include "drivers/apic.h"
 #include "drivers/hpet.h"
-#include "kernel.h"
+#include "init/init.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
@@ -45,7 +45,7 @@ static void smp_entry(cpuid_t id)
     cpu_t* cpu = smp_self_unsafe();
     assert(cpu->id == id);
 
-    kernel_other_init();
+    kernel_other_cpu_init();
 
     trampoline_signal_ready(cpu->id);
 
