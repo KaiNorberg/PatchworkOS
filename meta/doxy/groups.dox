@@ -66,12 +66,6 @@
  */
 
 /**
- * @brief Kernel startup.
- * @defgroup kernel_start Startup
- * @ingroup kernel
- */
-
-/**
  * @brief Locks and concurrency primitives.
  * @defgroup kernel_sync Synchronization
  * @ingroup kernel

@@ -5,6 +5,7 @@
 /**
  * @brief Kernel initialization.
  * @defgroup kernel_init Kernel Initialization
+ * @ingroup kernel
  *
  * @{
  */
