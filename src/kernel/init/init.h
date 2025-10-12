@@ -3,8 +3,8 @@
 #include <boot/boot_info.h>
 
 /**
- * @brief Kernel initialization.
- * @defgroup kernel_init Kernel Initialization
+ * @brief Initialization and `kmain()`.
+ * @defgroup kernel_init Initialization
  * @ingroup kernel
  *
  * @{
