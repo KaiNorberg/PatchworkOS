@@ -16,6 +16,7 @@
 #include "package_length.h"
 #include "sched/timer.h"
 #include "term.h"
+#include "log/log.h"
 
 #include <sys/proc.h>
 
@@ -1549,6 +1550,77 @@ aml_object_t* aml_def_to_integer_read(aml_term_list_ctx_t* ctx)
         aml_def_to_integer_callback);
 }
 
+uint64_t aml_length_arg_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+{
+    if (aml_term_arg_read_integer(ctx, out) == ERR)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
+        return ERR;
+    }
+
+    return 0;
+}
+
+aml_object_t* aml_def_to_string_read(aml_term_list_ctx_t* ctx)
+{
+    if (aml_token_expect(ctx, AML_TO_STRING_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read ToStringOp");
+        return NULL;
+    }
+
+    aml_buffer_obj_t* source = aml_term_arg_read_buffer(ctx);
+    if (source == NULL)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
+        return NULL;
+    }
+    DEREF_DEFER(source);
+
+    aml_integer_t length;
+    if (aml_length_arg_read(ctx, &length) == ERR)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read LengthArg");
+        return NULL;
+    }
+
+    aml_object_t* target = NULL;
+    if (aml_target_read_and_resolve(ctx, &target) == ERR)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read or resolve Target");
+        return NULL;
+    }
+    DEREF_DEFER(target);
+
+    aml_object_t* result = aml_object_new(ctx);
+    if (result == NULL)
+    {
+        return NULL;
+    }
+    DEREF_DEFER(result);
+
+    length = MIN(length, source->length);
+    if (aml_string_set_empty(result, length) == ERR)
+    {
+        return NULL;
+    }
+
+    for (uint64_t i = 0; i < length; i++)
+    {
+        result->string.content[i] = (char)source->content[i];
+    }
+
+    if (target != NULL)
+    {
+        if (aml_store(result, target) == ERR)
+        {
+            return NULL;
+        }
+    }
+
+    return REF(result);
+}
+
 aml_object_t* aml_def_timer_read(aml_term_list_ctx_t* ctx)
 {
     if (aml_token_expect(ctx, AML_TIMER_OP) == ERR)
@@ -2222,6 +2294,9 @@ aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx)
             break;
         case AML_TO_INTEGER_OP:
             result = aml_def_to_integer_read(ctx);
+            break;
+        case AML_TO_STRING_OP:
+            result = aml_def_to_string_read(ctx);
             break;
         case AML_TIMER_OP:
             result = aml_def_timer_read(ctx);

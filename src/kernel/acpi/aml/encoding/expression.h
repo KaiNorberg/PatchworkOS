@@ -631,9 +631,20 @@ aml_object_t* aml_def_to_hex_string_read(aml_term_list_ctx_t* ctx);
 aml_object_t* aml_def_to_integer_read(aml_term_list_ctx_t* ctx);
 
 /**
+ * @brief Reads a LengthArg structure from the AML byte stream.
+ *
+ * A LengthArg structure is defined as `LengthArg := TermArg => Integer`.
+ *
+ * @param ctx The TermList context.
+ * @param out Output pointer where the integer result will be stored.
+ * @return On success, the integer value. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_length_arg_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+
+/**
  * @brief Reads a DefToString structure from the AML byte stream.
  *
- * A DefToString structure is defined as
+ * A DefToString structure is defined as `DefToString := ToStringOp TermArg LengthArg Target`.
  *
  * @see Section 19.6.143 of the ACPI specification for more details.
  *

@@ -915,7 +915,7 @@ static inline uint64_t aml_object_check_clear(aml_object_t* object)
 
 uint64_t aml_buffer_set_empty(aml_object_t* object, uint64_t length)
 {
-    if (object == NULL || length == 0)
+    if (object == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -924,6 +924,14 @@ uint64_t aml_buffer_set_empty(aml_object_t* object, uint64_t length)
     if (aml_object_check_clear(object) == ERR)
     {
         return ERR;
+    }
+
+    if (length == 0)
+    {
+        object->buffer.content = NULL;
+        object->buffer.length = 0;
+        object->type = AML_BUFFER;
+        return 0;
     }
 
     object->buffer.content = heap_alloc(length, HEAP_NONE);
@@ -939,7 +947,7 @@ uint64_t aml_buffer_set_empty(aml_object_t* object, uint64_t length)
 
 uint64_t aml_buffer_set(aml_object_t* object, const uint8_t* buffer, uint64_t bytesToCopy, uint64_t length)
 {
-    if (object == NULL || buffer == NULL || length == 0 || bytesToCopy > length)
+    if (object == NULL || buffer == NULL || bytesToCopy > length)
     {
         errno = EINVAL;
         return ERR;

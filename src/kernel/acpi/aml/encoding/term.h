@@ -72,6 +72,14 @@ uint64_t aml_term_arg_read_integer(aml_term_list_ctx_t* ctx, aml_integer_t* out)
 aml_string_obj_t* aml_term_arg_read_string(aml_term_list_ctx_t* ctx);
 
 /**
+ * @brief Wrapper around `aml_term_arg_read()` that converts the result to a buffer.
+ *
+ * @param ctx The context of the TermList that this structure is part of.
+ * @return On success, the buffer. On failure, `NULL` and `errno` is set.
+ */
+aml_buffer_obj_t* aml_term_arg_read_buffer(aml_term_list_ctx_t* ctx);
+
+/**
  * @brief Reads an Object structure from the AML byte stream.
  *
  * An Object is defined as `Object := NameSpaceModifierObj | NamedObj`.
