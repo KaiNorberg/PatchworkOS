@@ -136,6 +136,7 @@ typedef enum
      * Any copy of an object with this flag will also have this flag set.
      */
     AML_OBJECT_EXCEPTION_ON_USE = 1 << 2,
+    AML_OBJECT_EXPOSED_IN_SYSFS = 1 << 3, ///< The object is exposed in sysfs, must also be `AML_OBJECT_NAMED`.
 } aml_object_flags_t;
 
 /**
@@ -514,6 +515,16 @@ aml_object_t* aml_object_new(void);
  * @param object Pointer to the object to clear.
  */
 void aml_object_clear(aml_object_t* object);
+
+/**
+ * @brief Expose a named object and its children in sysfs.
+ *
+ * If the object is already exposed in sysfs, this function does nothing and returns success.
+ *
+ * @param object Pointer to the object to expose.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_object_expose_in_sysfs(aml_object_t* object);
 
 /**
  * @brief Recursively count how many children an object has.

@@ -30,6 +30,11 @@
 #define MAP_TOMBSTONE ((map_entry_t*)1)
 
 /**
+ * @brief The maximum length of a key in the map.
+ */
+#define MAP_KEY_MAX_LENGTH 40
+
+/**
  * @brief Map key stucture.
  *
  * Is used to implement a generic key for the map. The object is copied into `key` and hashed.
@@ -39,7 +44,7 @@
  */
 typedef struct
 {
-    uint8_t key[MAX_PATH];
+    uint8_t key[MAP_KEY_MAX_LENGTH];
     uint64_t len;
     uint64_t hash;
 } map_key_t;
@@ -93,7 +98,7 @@ uint64_t hash_object(const void* object, uint64_t length);
  */
 static inline map_key_t map_key_buffer(const void* buffer, uint64_t length)
 {
-    assert(length <= MAX_PATH);
+    assert(length <= MAP_KEY_MAX_LENGTH);
     map_key_t key;
     memcpy(key.key, buffer, length);
     key.len = length;

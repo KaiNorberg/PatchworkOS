@@ -25,9 +25,9 @@ static map_t objectMap;
 // Used to assign unique ids to containers
 static uint64_t newContainerId = 0;
 
-static map_key_t aml_object_map_key(aml_container_id_t containerId, const char* name)
+static inline map_key_t aml_object_map_key(aml_container_id_t containerId, const char* name)
 {
-    assert(strlen(name) == AML_NAME_LENGTH);
+    assert(strnlen_s(name, AML_NAME_LENGTH) == AML_NAME_LENGTH);
 
     // Pack the containerId and name into a single buffer for the map key
     uint8_t buffer[AML_NAME_LENGTH + sizeof(aml_container_id_t)] = {
@@ -145,9 +145,10 @@ aml_object_t* aml_object_new(void)
     aml_object_t* object = NULL;
     if (!list_is_empty(&objectsCache))
     {
-        object = CONTAINER_OF(list_pop(&objectsCache), aml_object_t, cacheEntry);
+        object = CONTAINER_OF_SAFE(list_pop(&objectsCache), aml_object_t, cacheEntry);
     }
-    else
+
+    if (object == NULL)
     {
         object = heap_alloc(sizeof(aml_object_t), HEAP_NONE);
         if (object == NULL)
@@ -338,6 +339,65 @@ void aml_object_clear(aml_object_t* object)
     object->type = AML_UNINITIALIZED;
 }
 
+uint64_t aml_object_expose_in_sysfs(aml_object_t *object)
+{
+    if (object == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (!(object->flags & AML_OBJECT_NAMED))
+    {
+        LOG_ERR("Object is not named\n");
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (!(object->flags & AML_OBJECT_EXPOSED_IN_SYSFS))
+    {
+        aml_container_t* container = aml_object_container_get(object->name.parent);
+        if (container == NULL)
+        {
+            LOG_ERR("Parent object of type '%s' cannot contain children\n", aml_type_to_string(object->type));
+            errno = EINVAL;
+            return ERR;
+        }
+
+        if (sysfs_dir_init(&object->name.dir, &object->name.parent->name.dir, object->name.segment, NULL, NULL) == ERR)
+        {
+            LOG_ERR("Failed to create sysfs dir for object '%s' (errno '%s')\n", AML_OBJECT_GET_NAME(object),
+                strerror(errno));
+            return ERR;
+        }
+
+        object->flags |= AML_OBJECT_EXPOSED_IN_SYSFS;
+    }
+
+    if (!(object->type & AML_CONTAINERS))
+    {
+        return 0;
+    }
+
+    aml_container_t* container = aml_object_container_get(object);
+    if (container == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    aml_object_t* child = NULL;
+    LIST_FOR_EACH(child, &container->namedObjects, name.parentEntry)
+    {
+        if (aml_object_expose_in_sysfs(child) == ERR)
+        {
+            return ERR;
+        }
+    }
+
+    return 0;
+}
+
 uint64_t aml_object_count_children(aml_object_t* parent)
 {
     if (parent == NULL)
@@ -425,13 +485,7 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
     child->name.parent = parent;
     memcpy(child->name.segment, name, AML_NAME_LENGTH);
     child->name.segment[AML_NAME_LENGTH] = '\0';
-
-    if (sysfs_dir_init(&child->name.dir, &parent->name.dir, child->name.segment, NULL, NULL) == ERR)
-    {
-        LOG_ERR("Failed to create sysfs dir for object '%s' (errno '%s')\n", AML_OBJECT_GET_NAME(child),
-            strerror(errno));
-        return ERR;
-    }
+    sysfs_dir_deinit(&child->name.dir); // Just in case
 
     aml_container_t* container = aml_object_container_get(parent);
     if (container == NULL)
@@ -444,7 +498,6 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
     map_key_t key = aml_object_map_key(container->id, child->name.segment);
     if (map_insert(&objectMap, &key, &child->name.mapEntry) == ERR) // Map does not get a reference
     {
-        sysfs_dir_deinit(&child->name.dir);
         LOG_ERR("Failed to insert object '%s' into object map (errno '%s')\n", AML_OBJECT_GET_NAME(child),
             strerror(errno));
         return ERR;
@@ -507,7 +560,7 @@ uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name
             LOG_ERR("Failed to create sysfs dir for root object (errno '%s')\n", strerror(errno));
             return ERR;
         }
-        object->flags |= AML_OBJECT_NAMED;
+        object->flags |= AML_OBJECT_NAMED | AML_OBJECT_EXPOSED_IN_SYSFS;
         return 0;
     }
 
@@ -608,7 +661,12 @@ uint64_t aml_object_remove(aml_object_t* object)
         object->name.state = NULL;
     }
 
-    sysfs_dir_deinit(&object->name.dir);
+    if (object->flags & AML_OBJECT_EXPOSED_IN_SYSFS)
+    {
+        sysfs_dir_deinit(&object->name.dir);
+        object->flags &= ~AML_OBJECT_EXPOSED_IN_SYSFS;
+    }
+
     object->flags &= ~AML_OBJECT_NAMED;
 
     list_remove(&container->namedObjects, &object->name.parentEntry);
@@ -747,10 +805,6 @@ aml_object_t* aml_object_find(aml_object_t* start, const char* path)
         if (!(current->type & AML_CONTAINERS))
         {
             DEREF(current);
-            if (start->name.parent != NULL)
-            {
-                return aml_object_find(start->name.parent, path);
-            }
             errno = ENOENT;
             return NULL;
         }
@@ -758,12 +812,23 @@ aml_object_t* aml_object_find(aml_object_t* start, const char* path)
         aml_object_t* next = aml_object_find_child(current, segment);
         if (next == NULL)
         {
-            DEREF(current);
-            if (start->name.parent != NULL)
+            aml_object_t* scope = current->name.parent;
+            while (scope != NULL)
             {
-                return aml_object_find(start->name.parent, path);
+                aml_object_t* found = aml_object_find_child(scope, segment);
+                if (found != NULL)
+                {
+                    next = found;
+                    break;
+                }
+                scope = scope->name.parent;
             }
-            return NULL;
+            if (next == NULL)
+            {
+                DEREF(current);
+                errno = ENOENT;
+                return NULL;
+            }
         }
 
         DEREF(current);

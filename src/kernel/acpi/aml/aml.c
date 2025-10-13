@@ -146,6 +146,13 @@ uint64_t aml_init(void)
         return ERR;
     }
 
+    if (aml_object_expose_in_sysfs(root) == ERR)
+    {
+        DEREF(root);
+        root = NULL;
+        return ERR;
+    }
+
 #ifdef TESTING
     if (aml_tests_post_parse_all() == ERR)
     {

@@ -212,7 +212,7 @@ uint64_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_string_t* out);
  * - If the NameString does not start with a root or parent prefix character, the search starts from the `start` object.
  *    If `start` is `NULL`, the search starts from the root object.
  * - Attempt to find a matching name in the current namespace scope (the `start` object and its children).
- * - If the matching name is not found, move up to the parent object and repeat the search.
+ * - If the matching name is not found, check if it can be found in the parent scope of the current object.
  * - This continues until either a match is found or the object does not have a parent (i.e., the root is reached).
  *
  * @param nameString The NameString to resolve.

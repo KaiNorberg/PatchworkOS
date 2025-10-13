@@ -264,13 +264,22 @@ aml_object_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_object_
         aml_object_t* next = aml_object_find_child(current, segment->name);
         if (next == NULL)
         {
-            DEREF(current);
-            if (from->name.parent != NULL)
+            aml_object_t* scope = current->name.parent;
+            while (scope != NULL)
             {
-                return aml_name_string_resolve(nameString, from->name.parent);
+                aml_object_t* found = aml_object_find_child(scope, segment->name);
+                if (found != NULL)
+                {
+                    next = found;
+                    break;
+                }
+                scope = scope->name.parent;
             }
-            errno = 0;
-            return NULL;
+            if (next == NULL)
+            {
+                DEREF(current);
+                return NULL;
+            }
         }
 
         DEREF(current);
