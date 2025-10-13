@@ -507,7 +507,7 @@ static uint64_t aml_field_unit_access(aml_field_unit_obj_t* fieldUnit, aml_objec
         {
         case AML_ACCESS_READ:
         {
-            uint64_t value;
+            uint64_t value = 0;
             if (aml_generic_field_read_at(fieldUnit, accessSize, byteOffset, &value) == ERR)
             {
                 result = ERR;
@@ -516,7 +516,8 @@ static uint64_t aml_field_unit_access(aml_field_unit_obj_t* fieldUnit, aml_objec
 
             value = (value >> inAccessOffset) & mask;
 
-            if (aml_object_set_bits_at(data, currentPos, bitsToAccess, value) == ERR)
+            // We treat value as a buffer of 8 bytes.
+            if (aml_object_set_bits_at(data, currentPos, bitsToAccess, (uint8_t*)&value) == ERR)
             {
                 result = ERR;
                 goto cleanup;
@@ -553,7 +554,8 @@ static uint64_t aml_field_unit_access(aml_field_unit_obj_t* fieldUnit, aml_objec
             value &= ~(mask << inAccessOffset);
 
             uint64_t newValue;
-            if (aml_object_get_bits_at(data, currentPos, bitsToAccess, &newValue) == ERR)
+            // We treat newValue as a buffer of 8 bytes.
+            if (aml_object_get_bits_at(data, currentPos, bitsToAccess, (uint8_t*)&newValue) == ERR)
             {
                 result = ERR;
                 goto cleanup;

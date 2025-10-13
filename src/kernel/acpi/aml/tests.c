@@ -204,6 +204,8 @@ uint64_t aml_tests_post_init(void)
     LOG_INFO("running post init tests\n");
     clock_t start = timer_uptime();
 
+    log_screen_disable();
+
     uint64_t startingObjects = aml_object_get_total_count();
 
     if (aml_tests_acpica_run_all() == ERR)
@@ -214,6 +216,9 @@ uint64_t aml_tests_post_init(void)
         // return ERR;
     }
 
+    clock_t end = timer_uptime();
+
+    log_screen_enable();
     aml_tests_perf_report();
 
     if (startingObjects != aml_object_get_total_count())
@@ -223,8 +228,11 @@ uint64_t aml_tests_post_init(void)
         return ERR;
     }
 
-    clock_t end = timer_uptime();
     LOG_INFO("post init tests passed in %llums\n", (end - start) * 1000 / CLOCKS_PER_SEC);
+    while (1)
+    {
+        asm volatile("hlt");
+    }
     return 0;
 }
 

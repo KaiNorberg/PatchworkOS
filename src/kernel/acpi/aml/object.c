@@ -840,10 +840,36 @@ aml_object_t* aml_object_find(aml_object_t* start, const char* path)
     return current; // Transfer ownership
 }
 
-uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize,
-    aml_integer_t value)
+static inline void aml_copy_bits(uint8_t* dst, uint64_t dstOffset, const uint8_t* src, uint64_t srcOffset,
+    uint64_t bitCount)
 {
-    if (object == NULL || bitSize == 0 || bitSize > aml_integer_bit_size())
+    while (bitCount > 0)
+    {
+        uint64_t dstByte = dstOffset / 8;
+        uint64_t dstBit = dstOffset % 8;
+        uint64_t srcByte = srcOffset / 8;
+        uint64_t srcBit = srcOffset % 8;
+
+        uint64_t bitsInDstByte = 8 - dstBit;
+        uint64_t bitsInSrcByte = 8 - srcBit;
+        uint64_t bitsToCopy = (bitsInDstByte < bitsInSrcByte) ? bitsInDstByte : bitsInSrcByte;
+        bitsToCopy = (bitsToCopy < bitCount) ? bitsToCopy : bitCount;
+
+        uint8_t srcMask = ((1 << bitsToCopy) - 1) << srcBit;
+        uint8_t bits = (src[srcByte] & srcMask) >> srcBit;
+
+        uint8_t dstMask = ((1 << bitsToCopy) - 1) << dstBit;
+        dst[dstByte] = (dst[dstByte] & ~dstMask) | (bits << dstBit);
+
+        dstOffset += bitsToCopy;
+        srcOffset += bitsToCopy;
+        bitCount -= bitsToCopy;
+    }
+}
+
+uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, uint8_t* data)
+{
+    if (object == NULL || data == NULL || bitSize == 0)
     {
         errno = EINVAL;
         return ERR;
@@ -853,6 +879,12 @@ uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
     {
     case AML_INTEGER:
     {
+        uint64_t value = 0;
+        for (uint64_t i = 0; i < (bitSize + 7) / 8; i++)
+        {
+            value |= ((uint64_t)data[i]) << (i * 8);
+        }
+
         uint64_t effectiveBitSize = bitSize;
         if (bitOffset >= aml_integer_bit_size())
         {
@@ -863,19 +895,12 @@ uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
             effectiveBitSize = aml_integer_bit_size() - bitOffset;
         }
 
-        uint64_t mask;
-        if (effectiveBitSize >= aml_integer_bit_size())
-        {
-            mask = aml_integer_ones();
-        }
-        else
-        {
-            mask = ((1ULL << effectiveBitSize) - 1) << bitOffset;
-        }
+        uint64_t mask = (effectiveBitSize >= aml_integer_bit_size()) ? aml_integer_ones()
+                                                                     : ((1ULL << effectiveBitSize) - 1) << bitOffset;
 
         object->integer.value = (object->integer.value & ~mask) | ((value << bitOffset) & mask);
+        break;
     }
-    break;
     case AML_BUFFER:
     case AML_STRING:
     {
@@ -883,30 +908,18 @@ uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
         uint8_t* content = object->type == AML_BUFFER ? object->buffer.content : (uint8_t*)object->string.content;
         uint64_t totalBits = length * 8;
 
-        for (uint64_t i = 0; i < bitSize; i++)
+        if (bitOffset >= totalBits)
         {
-            uint64_t absoluteBitIndex = bitOffset + i;
-            if (absoluteBitIndex >= totalBits)
-            {
-                break;
-            }
-
-            uint64_t bitValue = (value >> i) & 1;
-
-            uint64_t byteIndex = absoluteBitIndex / 8;
-            uint8_t bitInByte = absoluteBitIndex % 8;
-
-            if (bitValue)
-            {
-                content[byteIndex] |= (1 << bitInByte);
-            }
-            else
-            {
-                content[byteIndex] &= ~(1 << bitInByte);
-            }
+            return 0;
         }
+        if (bitOffset + bitSize > totalBits)
+        {
+            bitSize = totalBits - bitOffset;
+        }
+
+        aml_copy_bits(content, bitOffset, data, 0, bitSize);
+        break;
     }
-    break;
     default:
         errno = EINVAL;
         return ERR;
@@ -915,20 +928,20 @@ uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
     return 0;
 }
 
-uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize,
-    aml_integer_t* out)
+uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, uint8_t* out)
 {
-    if (object == NULL || out == NULL || bitSize == 0 || bitSize > aml_integer_bit_size())
+    if (object == NULL || out == NULL || bitSize == 0)
     {
         errno = EINVAL;
         return ERR;
     }
 
+    memset(out, 0, (bitSize + 7) / 8);
+
     switch (object->type)
     {
     case AML_INTEGER:
     {
-        *out = 0;
         if (bitOffset >= aml_integer_bit_size())
         {
             return 0;
@@ -942,9 +955,14 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
 
         uint64_t mask =
             (effectiveBitSize >= aml_integer_bit_size()) ? aml_integer_ones() : ((1ULL << effectiveBitSize) - 1);
-        *out = (object->integer.value >> bitOffset) & mask;
+        uint64_t value = (object->integer.value >> bitOffset) & mask;
+
+        for (uint64_t i = 0; i < (effectiveBitSize + 7) / 8; i++)
+        {
+            out[i] = (value >> (i * 8)) & 0xFF;
+        }
+        break;
     }
-    break;
     case AML_BUFFER:
     case AML_STRING:
     {
@@ -952,22 +970,18 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
         uint8_t* content = object->type == AML_BUFFER ? object->buffer.content : (uint8_t*)object->string.content;
         uint64_t totalBits = length * 8;
 
-        *out = 0;
-        for (uint64_t i = 0; i < bitSize; i++)
+        if (bitOffset >= totalBits)
         {
-            uint64_t absoluteBitIndex = bitOffset + i;
-            if (absoluteBitIndex >= totalBits)
-            {
-                continue;
-            }
-
-            uint64_t byteIndex = absoluteBitIndex / 8;
-            uint8_t bitInByte = absoluteBitIndex % 8;
-            uint8_t bitValue = (content[byteIndex] >> bitInByte) & 1;
-            *out |= ((uint64_t)bitValue << i);
+            return 0;
         }
+        if (bitOffset + bitSize > totalBits)
+        {
+            bitSize = totalBits - bitOffset;
+        }
+
+        aml_copy_bits(out, 0, content, bitOffset, bitSize);
+        break;
     }
-    break;
     default:
         errno = EINVAL;
         return ERR;
