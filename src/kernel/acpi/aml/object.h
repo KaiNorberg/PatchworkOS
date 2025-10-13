@@ -39,6 +39,17 @@ typedef struct aml_method_obj aml_method_obj_t;
 #define AML_SMALL_BUFFER_SIZE 32
 
 /**
+ * @brief Amount of objects to store in the cache before freeing them instead.
+ */
+#define AML_OBJECT_CACHE_SIZE 64
+
+/**
+ * @brief Id used to generate the hash for finding children in the objectMap.
+ * @typedef aml_container_id_t
+ */
+typedef uint64_t aml_container_id_t;
+
+/**
  * @brief ACPI data types.
  * @enum aml_type_t
  *
@@ -150,15 +161,26 @@ typedef enum
 typedef aml_object_t* (*aml_method_implementation_t)(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount);
 
 /**
+ * @brief Container for named objects.
+ * @struct aml_container_t
+ */
+typedef struct aml_container
+{
+    list_t namedObjects;
+    aml_container_id_t id;
+} aml_container_t;
+
+/**
  * @brief Defines the location of an object in the ACPI namespace.
  * @struct aml_name_t
  */
 typedef struct aml_name
 {
-    list_entry_t entry;                ///< Used to store the object in a its parent's named object list.
-    list_entry_t stateEntry;           ///< Used to store the object in the aml_state's namedObjects list.
-    aml_state_t* state;                ///< The state that added the object to the namespace, can be `NULL`.
-    aml_object_t* parent;              ///< Pointer to the parent object, can be `NULL`.
+    map_entry_t mapEntry;      ///< Used to store the object in a the object map.
+    list_entry_t parentEntry;      ///< Used to store the object in a its parent's named object list.
+    list_entry_t stateEntry; ///< Used to store the object in the aml_state's namedObjects list.
+    aml_state_t* state;      ///< The state that added the object to the namespace, can be `NULL`.
+    aml_object_t* parent;    ///< Pointer to the parent object, can be `NULL`.
     char segment[AML_NAME_LENGTH + 1]; ///< The name of the object.
     sysfs_dir_t dir;                   ///< Used to expose the object in the filesystem.
 } aml_name_t;
@@ -168,6 +190,7 @@ typedef struct aml_name
  */
 #define AML_OBJECT_COMMON_HEADER \
     ref_t ref; \
+    list_entry_t cacheEntry; \
     aml_object_flags_t flags; \
     aml_name_t name; \
     aml_type_t type
@@ -203,7 +226,7 @@ typedef struct aml_buffer_field_obj
 typedef struct aml_device_obj
 {
     AML_OBJECT_COMMON_HEADER;
-    list_t namedObjects;
+    aml_container_t container;
 } aml_device_obj_t;
 
 /**
@@ -270,7 +293,7 @@ typedef struct aml_method_obj
     aml_method_flags_t methodFlags;
     const uint8_t* start;
     const uint8_t* end;
-    list_t namedObjects;
+    aml_container_t container;
     aml_mutex_id_t mutex;
 } aml_method_obj_t;
 
@@ -323,7 +346,7 @@ typedef struct aml_power_resource_obj
     AML_OBJECT_COMMON_HEADER;
     aml_system_level_t systemLevel;
     aml_resource_order_t resourceOrder;
-    list_t namedObjects;
+    aml_container_t container;
 } aml_power_resource_obj_t;
 
 /**
@@ -336,7 +359,7 @@ typedef struct aml_processor_obj
     aml_proc_id_t procId;
     aml_pblk_addr_t pblkAddr;
     aml_pblk_len_t pblkLen;
-    list_t namedObjects;
+    aml_container_t container;
 } aml_processor_obj_t;
 
 /**
@@ -358,7 +381,7 @@ typedef struct aml_string_obj
 typedef struct aml_thermal_zone_obj
 {
     AML_OBJECT_COMMON_HEADER;
-    list_t namedObjects;
+    aml_container_t container;
 } aml_thermal_zone_obj_t;
 
 /**
@@ -390,7 +413,7 @@ typedef struct aml_unresolved_obj
 typedef struct aml_predefined_scope_obj
 {
     AML_OBJECT_COMMON_HEADER;
-    list_t namedObjects;
+    aml_container_t container;
 } aml_predefined_scope_obj_t;
 
 /**
@@ -466,6 +489,13 @@ typedef struct aml_object
  * @return The total amount of allocated ACPI objects.
  */
 uint64_t aml_object_get_total_count(void);
+
+/**
+ * @brief Initialize the map used to traverse the ACPI namespace tree.
+ *
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_object_map_init(void);
 
 /**
  * @brief Allocate a new ACPI object.

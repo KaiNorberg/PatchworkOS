@@ -16,6 +16,28 @@
 // Used to check for memory leaks
 static uint64_t totalObjects = 0;
 
+// Cache for aml_object_t to avoid frequent allocations
+static list_t objectsCache = LIST_CREATE(objectsCache);
+
+// Used to find the children of containers using their id and the name of the child.
+static map_t objectMap;
+
+// Used to assign unique ids to containers
+static uint64_t newContainerId = 0;
+
+static map_key_t aml_object_map_key(aml_container_id_t containerId, const char* name)
+{
+    assert(strlen(name) == AML_NAME_LENGTH);
+
+    // Pack the containerId and name into a single buffer for the map key
+    uint8_t buffer[AML_NAME_LENGTH + sizeof(aml_container_id_t)] = {
+        containerId & 0xFF, (containerId >> 8) & 0xFF, (containerId >> 16) & 0xFF, (containerId >> 24) & 0xFF,
+        (containerId >> 32) & 0xFF, (containerId >> 40) & 0xFF, (containerId >> 48) & 0xFF, (containerId >> 56) & 0xFF,
+        name[0], name[1], name[2], name[3]
+    };
+    return map_key_buffer(buffer, sizeof(buffer));
+}
+
 static bool aml_name_is_equal(const char* name1, const char* name2)
 {
     if (name1 == NULL || name2 == NULL)
@@ -26,91 +48,70 @@ static bool aml_name_is_equal(const char* name1, const char* name2)
     return memcmp(name1, name2, AML_NAME_LENGTH) == 0;
 }
 
-static uint64_t aml_object_container_get_list(aml_object_t* object, list_t** outList)
+static void aml_container_init(aml_container_t* container)
 {
-    if (object == NULL || outList == NULL)
+    if (container == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return;
     }
 
-    *outList = NULL;
-    switch (object->type)
-    {
-    case AML_DEVICE:
-    {
-        *outList = &object->device.namedObjects;
-    }
-    break;
-    case AML_PROCESSOR:
-    {
-        *outList = &object->processor.namedObjects;
-    }
-    break;
-    case AML_METHOD:
-    {
-        *outList = &object->method.namedObjects;
-    }
-    break;
-    case AML_THERMAL_ZONE:
-    {
-        *outList = &object->thermalZone.namedObjects;
-    }
-    break;
-    case AML_POWER_RESOURCE:
-    {
-        *outList = &object->powerResource.namedObjects;
-    }
-    break;
-    case AML_PREDEFINED_SCOPE:
-    {
-        *outList = &object->predefinedScope.namedObjects;
-    }
-    break;
-    default:
-        errno = EINVAL;
-        return ERR;
-    }
-
-    return 0;
+    list_init(&container->namedObjects);
+    container->id = newContainerId++;
 }
 
-static void aml_object_container_free_children(aml_object_t* object)
+static void aml_container_deinit(aml_container_t* container)
+{
+    if (container == NULL)
+    {
+        return;
+    }
+
+    while (!list_is_empty(&container->namedObjects))
+    {
+        aml_object_remove(CONTAINER_OF(list_first(&container->namedObjects), aml_object_t, name.parentEntry));
+    }
+}
+
+static aml_container_t* aml_object_container_get(aml_object_t* object)
 {
     if (object == NULL)
     {
-        return;
+        errno = EINVAL;
+        return NULL;
     }
 
-    list_t* list = NULL;
-    if (aml_object_container_get_list(object, &list) == ERR)
+    switch (object->type)
     {
-        return;
+    case AML_DEVICE:
+        return &object->device.container;
+    case AML_PROCESSOR:
+        return &object->processor.container;
+    case AML_METHOD:
+        return &object->method.container;
+    case AML_THERMAL_ZONE:
+        return &object->thermalZone.container;
+    case AML_POWER_RESOURCE:
+        return &object->powerResource.container;
+    case AML_PREDEFINED_SCOPE:
+        return &object->predefinedScope.container;
+    default:
+        errno = EINVAL;
+        return NULL;
     }
-
-    if (list == NULL)
-    {
-        return;
-    }
-
-    while (!list_is_empty(list))
-    {
-        aml_object_t* child = CONTAINER_OF(list_pop(list), aml_object_t, name.entry);
-        if (child->flags & AML_OBJECT_NAMED)
-        {
-            child->name.parent = NULL;
-            sysfs_dir_deinit(&child->name.dir);
-            child->flags &= ~AML_OBJECT_NAMED;
-        }
-        DEREF(child);
-    }
-
-    return;
 }
 
 uint64_t aml_object_get_total_count(void)
 {
     return totalObjects;
+}
+
+uint64_t aml_object_map_init(void)
+{
+    if (map_init(&objectMap) == ERR)
+    {
+        return ERR;
+    }
+    return 0;
 }
 
 static void aml_object_free(aml_object_t* object)
@@ -122,32 +123,42 @@ static void aml_object_free(aml_object_t* object)
 
     if (object->flags & AML_OBJECT_NAMED)
     {
-        if (object->name.state != NULL)
-        {
-            list_remove(&object->name.state->namedObjects, &object->name.stateEntry);
-            object->name.state = NULL;
-        }
-
-        object->name.parent = NULL;
-        sysfs_dir_deinit(&object->name.dir);
+        aml_object_remove(object);
     }
 
     aml_object_clear(object);
 
-    heap_free(object);
+    if (list_length(&objectsCache) < AML_OBJECT_CACHE_SIZE)
+    {
+        list_push(&objectsCache, &object->cacheEntry);
+    }
+    else
+    {
+        heap_free(object);
+    }
+
     totalObjects--;
 }
 
-aml_object_t* aml_object_new()
+aml_object_t* aml_object_new(void)
 {
-    aml_object_t* object = heap_alloc(sizeof(aml_object_t), HEAP_NONE);
-    if (object == NULL)
+    aml_object_t* object = NULL;
+    if (!list_is_empty(&objectsCache))
     {
-        return NULL;
+        object = CONTAINER_OF(list_pop(&objectsCache), aml_object_t, cacheEntry);
     }
-    memset(object, 0, sizeof(aml_object_t));
+    else
+    {
+        object = heap_alloc(sizeof(aml_object_t), HEAP_NONE);
+        if (object == NULL)
+        {
+            return NULL;
+        }
+        memset(object, 0, sizeof(aml_object_t));
+    }
 
     ref_init(&object->ref, aml_object_free);
+    list_entry_init(&object->cacheEntry);
     object->flags = AML_OBJECT_NONE;
     object->type = AML_UNINITIALIZED;
 
@@ -192,7 +203,7 @@ void aml_object_clear(aml_object_t* object)
     case AML_DEBUG_OBJECT:
         break;
     case AML_DEVICE:
-        aml_object_container_free_children(object);
+        aml_container_deinit(&object->device.container);
         break;
     case AML_EVENT:
         break;
@@ -232,7 +243,7 @@ void aml_object_clear(aml_object_t* object)
         object->method.methodFlags = (aml_method_flags_t){0};
         object->method.start = NULL;
         object->method.end = NULL;
-        aml_object_container_free_children(object);
+        aml_container_deinit(&object->method.container);
         aml_mutex_id_deinit(&object->method.mutex);
         break;
     case AML_MUTEX:
@@ -266,13 +277,13 @@ void aml_object_clear(aml_object_t* object)
     case AML_POWER_RESOURCE:
         object->powerResource.systemLevel = 0;
         object->powerResource.resourceOrder = 0;
-        aml_object_container_free_children(object);
+        aml_container_deinit(&object->powerResource.container);
         break;
     case AML_PROCESSOR:
         object->processor.procId = 0;
         object->processor.pblkAddr = 0;
         object->processor.pblkLen = 0;
-        aml_object_container_free_children(object);
+        aml_container_deinit(&object->processor.container);
         break;
     case AML_STRING:
         if (object->string.content != NULL && object->string.length > AML_SMALL_BUFFER_SIZE)
@@ -283,7 +294,7 @@ void aml_object_clear(aml_object_t* object)
         object->string.length = 0;
         break;
     case AML_THERMAL_ZONE:
-        aml_object_container_free_children(object);
+        aml_container_deinit(&object->thermalZone.container);
         break;
     case AML_ALIAS:
         if (object->alias.target != NULL)
@@ -303,7 +314,7 @@ void aml_object_clear(aml_object_t* object)
         object->unresolved.callback = NULL;
         break;
     case AML_PREDEFINED_SCOPE:
-        aml_object_container_free_children(object);
+        aml_container_deinit(&object->predefinedScope.container);
         break;
     case AML_LOCAL:
         if (object->local.value != NULL)
@@ -338,23 +349,18 @@ uint64_t aml_object_count_children(aml_object_t* parent)
 
     if (parent->type & AML_CONTAINERS)
     {
-        list_t* parentList = NULL;
-        if (aml_object_container_get_list(parent, &parentList) == ERR)
-        {
-            return 0;
-        }
-
-        if (parentList != NULL)
+        aml_container_t* container = aml_object_container_get(parent);
+        if (container != NULL)
         {
             aml_object_t* child = NULL;
-            LIST_FOR_EACH(child, parentList, name.entry)
+            LIST_FOR_EACH(child, &container->namedObjects, name.parentEntry)
             {
                 count++;
                 count += aml_object_count_children(child);
             }
-        }
 
-        return count;
+            return count;
+        }
     }
 
     switch (parent->type)
@@ -412,30 +418,13 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
         return ERR;
     }
 
-    list_t* parentList = NULL;
-    if (aml_object_container_get_list(parent, &parentList) == ERR)
-    {
-        return ERR;
-    }
-
-    list_entry_init(&child->name.entry);
+    map_entry_init(&child->name.mapEntry);
+    list_entry_init(&child->name.parentEntry);
     list_entry_init(&child->name.stateEntry);
     child->name.state = state;
     child->name.parent = parent;
     memcpy(child->name.segment, name, AML_NAME_LENGTH);
     child->name.segment[AML_NAME_LENGTH] = '\0';
-
-    aml_object_t* existing = NULL;
-    LIST_FOR_EACH(existing, parentList, name.entry)
-    {
-        if (aml_name_is_equal(existing->name.segment, child->name.segment))
-        {
-            LOG_ERR("An object named '%.*s' already exists in parent '%s'\n", AML_OBJECT_GET_NAME(parent),
-                AML_NAME_LENGTH, parent->name.segment);
-            errno = EEXIST;
-            return ERR;
-        }
-    }
 
     if (sysfs_dir_init(&child->name.dir, &parent->name.dir, child->name.segment, NULL, NULL) == ERR)
     {
@@ -444,14 +433,30 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
         return ERR;
     }
 
-    list_push(parentList, &REF(child)->name.entry);
-    child->flags |= AML_OBJECT_NAMED;
+    aml_container_t* container = aml_object_container_get(parent);
+    if (container == NULL)
+    {
+        LOG_ERR("Parent object of type '%s' cannot contain children\n", aml_type_to_string(parent->type));
+        errno = EINVAL;
+        return ERR;
+    }
 
+    map_key_t key = aml_object_map_key(container->id, child->name.segment);
+    if (map_insert(&objectMap, &key, &child->name.mapEntry) == ERR) // Map does not get a reference
+    {
+        sysfs_dir_deinit(&child->name.dir);
+        LOG_ERR("Failed to insert object '%s' into object map (errno '%s')\n", AML_OBJECT_GET_NAME(child),
+            strerror(errno));
+        return ERR;
+    }
+    list_push(&container->namedObjects, &REF(child)->name.parentEntry); // Parent gets a reference
     if (state != NULL)
     {
         // The state does not take a reference to the object, it just keeps track of it for garbage collection.
         list_push(&state->namedObjects, &child->name.stateEntry);
     }
+
+    child->flags |= AML_OBJECT_NAMED;
     return 0;
 }
 
@@ -488,7 +493,9 @@ uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name
             return ERR;
         }
 
-        list_entry_init(&object->name.entry);
+        map_entry_init(&object->name.mapEntry);
+        list_entry_init(&object->name.parentEntry);
+        list_entry_init(&object->name.stateEntry);
         object->name.segment[0] = '\\';
         object->name.segment[1] = '_';
         object->name.segment[2] = '_';
@@ -584,17 +591,30 @@ uint64_t aml_object_remove(aml_object_t* object)
         return ERR;
     }
 
-    list_t* parentList = NULL;
-    if (aml_object_container_get_list(object->name.parent, &parentList) == ERR)
+    aml_container_t* container = aml_object_container_get(object->name.parent);
+    if (container == NULL)
     {
+        LOG_ERR("Parent object of type '%s' cannot contain children\n", aml_type_to_string(object->name.parent->type));
+        errno = EINVAL;
         return ERR;
     }
 
-    list_remove(parentList, &object->name.entry);
-    object->name.parent = NULL;
+    map_key_t key = aml_object_map_key(container->id, object->name.segment);
+    map_remove(&objectMap, &key); // Map does not hold a reference
+
+    if (object->name.state != NULL)
+    {
+        list_remove(&object->name.state->namedObjects, &object->name.stateEntry);
+        object->name.state = NULL;
+    }
+
     sysfs_dir_deinit(&object->name.dir);
     object->flags &= ~AML_OBJECT_NAMED;
+
+    list_remove(&container->namedObjects, &object->name.parentEntry);
+    object->name.parent = NULL;
     DEREF(object);
+
     return 0;
 }
 
@@ -606,43 +626,43 @@ aml_object_t* aml_object_find_child(aml_object_t* parent, const char* name)
         return NULL;
     }
 
-    list_t* parentList = NULL;
-    if (aml_object_container_get_list(parent, &parentList) == ERR)
+    aml_container_t* container = aml_object_container_get(parent);
+    if (container == NULL)
     {
+        errno = EINVAL;
         return NULL;
     }
 
-    aml_object_t* child = NULL;
-    LIST_FOR_EACH(child, parentList, name.entry)
+    map_key_t key = aml_object_map_key(container->id, name);
+    map_entry_t* entry = map_get(&objectMap, &key);
+    if (entry == NULL)
     {
-        if (aml_name_is_equal(child->name.segment, name))
-        {
-            if (child->type == AML_ALIAS)
-            {
-                aml_alias_obj_t* alias = &child->alias;
-                if (alias->target == NULL)
-                {
-                    LOG_ERR("Alias object '%s' has no target\n", AML_OBJECT_GET_NAME(child));
-                    errno = ENOENT;
-                    return NULL;
-                }
-
-                aml_object_t* target = aml_alias_obj_traverse(alias);
-                if (target == NULL)
-                {
-                    LOG_ERR("Failed to traverse alias object '%s'\n", AML_OBJECT_GET_NAME(child));
-                    return NULL;
-                }
-
-                return target; // Transfer ownership
-            }
-
-            return REF(child);
-        }
+        errno = ENOENT;
+        return NULL;
     }
 
-    errno = ENOENT;
-    return NULL;
+    aml_object_t* child = CONTAINER_OF(entry, aml_object_t, name.mapEntry);
+    if (child->type == AML_ALIAS)
+    {
+        aml_alias_obj_t* alias = &child->alias;
+        if (alias->target == NULL)
+        {
+            LOG_ERR("Alias object '%s' has no target\n", AML_OBJECT_GET_NAME(child));
+            errno = ENOENT;
+            return NULL;
+        }
+
+        aml_object_t* target = aml_alias_obj_traverse(alias);
+        if (target == NULL)
+        {
+            LOG_ERR("Failed to traverse alias object '%s'\n", AML_OBJECT_GET_NAME(child));
+            return NULL;
+        }
+
+        return target; // Transfer ownership
+    }
+
+    return REF(child);
 }
 
 aml_object_t* aml_object_find(aml_object_t* start, const char* path)
@@ -1022,7 +1042,7 @@ uint64_t aml_device_set(aml_object_t* object)
         return ERR;
     }
 
-    list_init(&object->device.namedObjects);
+    aml_container_init(&object->device.container);
     object->type = AML_DEVICE;
     return 0;
 }
@@ -1179,7 +1199,7 @@ uint64_t aml_method_set(aml_object_t* object, aml_method_flags_t flags, const ui
     object->method.methodFlags = flags;
     object->method.start = start;
     object->method.end = end;
-    list_init(&object->method.namedObjects);
+    aml_container_init(&object->method.container);
     aml_mutex_id_init(&object->method.mutex);
     object->type = AML_METHOD;
     return 0;
@@ -1202,16 +1222,11 @@ static inline aml_method_obj_t* aml_method_find_recursive(aml_object_t* current,
 
     if (current->type & AML_CONTAINERS)
     {
-        list_t* currentList = NULL;
-        if (aml_object_container_get_list(current, &currentList) == ERR)
-        {
-            return NULL;
-        }
-
-        if (currentList != NULL)
+        aml_container_t* container = aml_object_container_get(current);
+        if (container != NULL)
         {
             aml_object_t* child = NULL;
-            LIST_FOR_EACH(child, currentList, name.entry)
+            LIST_FOR_EACH(child, &container->namedObjects, name.parentEntry)
             {
                 aml_method_obj_t* result = aml_method_find_recursive(child, addr);
                 if (result != NULL)
@@ -1361,7 +1376,7 @@ uint64_t aml_power_resource_set(aml_object_t* object, aml_system_level_t systemL
 
     object->powerResource.systemLevel = systemLevel;
     object->powerResource.resourceOrder = resourceOrder;
-    list_init(&object->powerResource.namedObjects);
+    aml_container_init(&object->powerResource.container);
     object->type = AML_POWER_RESOURCE;
     return 0;
 }
@@ -1382,7 +1397,7 @@ uint64_t aml_processor_set(aml_object_t* object, aml_proc_id_t procId, aml_pblk_
     object->processor.procId = procId;
     object->processor.pblkAddr = pblkAddr;
     object->processor.pblkLen = pblkLen;
-    list_init(&object->processor.namedObjects);
+    aml_container_init(&object->processor.container);
     object->type = AML_PROCESSOR;
     return 0;
 }
@@ -1524,7 +1539,7 @@ uint64_t aml_thermal_zone_set(aml_object_t* object)
         return ERR;
     }
 
-    list_init(&object->thermalZone.namedObjects);
+    aml_container_init(&object->thermalZone.container);
     object->type = AML_THERMAL_ZONE;
     return 0;
 }
@@ -1608,7 +1623,7 @@ uint64_t aml_predefined_scope_set(aml_object_t* object)
         return ERR;
     }
 
-    list_init(&object->predefinedScope.namedObjects);
+    aml_container_init(&object->predefinedScope.container);
     object->type = AML_PREDEFINED_SCOPE;
     return 0;
 }

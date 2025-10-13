@@ -828,7 +828,8 @@ uint64_t aml_start_index_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
 /**
  * @brief Reads a DefMatch structure from the AML byte stream.
  *
- * A DefMatch structure is defined as `DefMatch := MatchOp SearchPkg MatchOpcode Operand MatchOpcode Operand StartIndex`.
+ * A DefMatch structure is defined as `DefMatch := MatchOp SearchPkg MatchOpcode Operand MatchOpcode Operand
+ * StartIndex`.
  *
  * @see Section 19.6.81 of the ACPI specification for more details.
  *

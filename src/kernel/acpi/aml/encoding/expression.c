@@ -2413,8 +2413,7 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
         }
         DEREF_DEFER(convertedFor2);
 
-        if (aml_match_compare(convertedFor1, object1, op1) &&
-            aml_match_compare(convertedFor2, object2, op2))
+        if (aml_match_compare(convertedFor1, object1, op1) && aml_match_compare(convertedFor2, object2, op2))
         {
             if (aml_integer_set(result, i) == ERR)
             {

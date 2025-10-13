@@ -75,6 +75,11 @@ uint64_t aml_init(void)
     mutex_init(&bigMutex);
     MUTEX_SCOPE(&bigMutex);
 
+    if (aml_object_map_init() == ERR)
+    {
+        return ERR;
+    }
+
     if (aml_integer_handling_init() == ERR)
     {
         return ERR;

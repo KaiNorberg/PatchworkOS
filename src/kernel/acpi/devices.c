@@ -45,7 +45,7 @@ static inline uint64_t acpi_devices_init_children(aml_object_t* parent)
     }
 
     aml_object_t* child;
-    LIST_FOR_EACH(child, &parent->device.namedObjects, name.entry)
+    LIST_FOR_EACH(child, &parent->device.container.namedObjects, name.parentEntry)
     {
         if (child->type != AML_DEVICE)
         {

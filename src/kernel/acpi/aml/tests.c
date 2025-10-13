@@ -9,8 +9,8 @@
 #include "exception.h"
 #include "object.h"
 #include "runtime/method.h"
-#include "state.h"
 #include "sched/timer.h"
+#include "state.h"
 #include "to_string.h"
 
 #include "acpi/tables.h"
