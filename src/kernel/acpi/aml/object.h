@@ -28,7 +28,15 @@ typedef struct aml_method_obj aml_method_obj_t;
  */
 #define AML_NAME_LENGTH 4
 
+/**
+ * @brief Name used for unnamed objects.
+ */
 #define AML_UNNAMED_NAME "****"
+
+/**
+ * @brief Size of buffers/strings used for small objects optimization.
+ */
+#define AML_SMALL_BUFFER_SIZE 32
 
 /**
  * @brief ACPI data types.
@@ -173,6 +181,7 @@ typedef struct aml_buffer_obj
     AML_OBJECT_COMMON_HEADER;
     uint8_t* content;
     uint64_t length;
+    uint8_t smallBuffer[AML_SMALL_BUFFER_SIZE]; ///< Used for small object optimization.
 } aml_buffer_obj_t;
 
 /**
@@ -339,6 +348,7 @@ typedef struct aml_string_obj
     AML_OBJECT_COMMON_HEADER;
     char* content;
     uint64_t length;
+    char smallBuffer[AML_SMALL_BUFFER_SIZE + 1]; ///< Used for small object optimization.
 } aml_string_obj_t;
 
 /**
@@ -807,6 +817,17 @@ uint64_t aml_string_set_empty(aml_object_t* object, uint64_t length);
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_string_set(aml_object_t* object, const char* str);
+
+/**
+ * @brief Resize a string object to the new length.
+ *
+ * If the new length is greater than the current length, the new bytes will be initialized to zero.
+ *
+ * @param string Pointer to the string object to resize.
+ * @param newLength The new length of the string, not including the null terminator.
+ * @return On success, the new length of the string. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_string_resize(aml_string_obj_t* string, uint64_t newLength);
 
 /**
  * @brief Set a object as a thermal zone.

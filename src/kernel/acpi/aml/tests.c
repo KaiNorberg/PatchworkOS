@@ -10,6 +10,7 @@
 #include "object.h"
 #include "runtime/method.h"
 #include "state.h"
+#include "sched/timer.h"
 #include "to_string.h"
 
 #include "acpi/tables.h"
@@ -196,6 +197,9 @@ static uint64_t aml_tests_acpica_run_all(void)
 
 uint64_t aml_tests_post_init(void)
 {
+    LOG_INFO("running post init tests\n");
+    clock_t start = timer_uptime();
+
     uint64_t startingObjects = aml_object_get_total_count();
 
     if (aml_tests_acpica_run_all() == ERR)
@@ -213,7 +217,8 @@ uint64_t aml_tests_post_init(void)
         return ERR;
     }
 
-    LOG_INFO("post init tests passed\n");
+    clock_t end = timer_uptime();
+    LOG_INFO("post init tests passed in %llums\n", (end - start) * 1000 / CLOCKS_PER_SEC);
     return 0;
 }
 

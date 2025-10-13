@@ -173,7 +173,7 @@ void aml_object_clear(aml_object_t* object)
     switch (object->type)
     {
     case AML_BUFFER:
-        if (object->buffer.content != NULL)
+        if (object->buffer.content != NULL && object->buffer.length > AML_SMALL_BUFFER_SIZE)
         {
             heap_free(object->buffer.content);
         }
@@ -275,7 +275,7 @@ void aml_object_clear(aml_object_t* object)
         aml_object_container_free_children(object);
         break;
     case AML_STRING:
-        if (object->string.content != NULL)
+        if (object->string.content != NULL && object->string.length > AML_SMALL_BUFFER_SIZE)
         {
             heap_free(object->string.content);
         }
@@ -928,10 +928,11 @@ uint64_t aml_buffer_set_empty(aml_object_t* object, uint64_t length)
         return ERR;
     }
 
-    if (length == 0)
+    if (length <= AML_SMALL_BUFFER_SIZE)
     {
-        object->buffer.content = NULL;
-        object->buffer.length = 0;
+        object->buffer.content = object->buffer.smallBuffer;
+        memset(object->buffer.content, 0, length);
+        object->buffer.length = length;
         object->type = AML_BUFFER;
         return 0;
     }
@@ -1399,6 +1400,15 @@ uint64_t aml_string_set_empty(aml_object_t* object, uint64_t length)
         return ERR;
     }
 
+    if (length <= AML_SMALL_BUFFER_SIZE)
+    {
+        object->string.content = object->string.smallBuffer;
+        memset(object->string.content, 0, length + 1);
+        object->string.length = length;
+        object->type = AML_STRING;
+        return 0;
+    }
+
     object->string.content = heap_alloc(length + 1, HEAP_NONE);
     if (object->string.content == NULL)
     {
@@ -1425,6 +1435,80 @@ uint64_t aml_string_set(aml_object_t* object, const char* str)
     }
     memcpy(object->string.content, str, length);
     return 0;
+}
+
+uint64_t aml_string_resize(aml_string_obj_t* string, uint64_t newLength)
+{
+    if (string == NULL || newLength == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (newLength == string->length)
+    {
+        return 0;
+    }
+
+    if (newLength <= AML_SMALL_BUFFER_SIZE && string->length <= AML_SMALL_BUFFER_SIZE)
+    {
+        if (newLength > string->length)
+        {
+            memset(string->content + string->length, 0, newLength - string->length);
+        }
+        string->content[newLength] = '\0';
+        string->length = newLength;
+        return 0;
+    }
+
+    if (newLength <= AML_SMALL_BUFFER_SIZE && string->length > AML_SMALL_BUFFER_SIZE)
+    {
+        memcpy(string->smallBuffer, string->content, newLength);
+        string->smallBuffer[newLength] = '\0';
+        heap_free(string->content);
+        string->content = string->smallBuffer;
+        string->length = newLength;
+        return 0;
+    }
+
+    if (newLength > AML_SMALL_BUFFER_SIZE && string->length <= AML_SMALL_BUFFER_SIZE)
+    {
+        char* newBuffer = heap_alloc(newLength + 1, HEAP_NONE);
+        if (newBuffer == NULL)
+        {
+            return ERR;
+        }
+        memcpy(newBuffer, string->content, string->length);
+        memset(newBuffer + string->length, 0, newLength - string->length);
+        newBuffer[newLength] = '\0';
+        string->content = newBuffer;
+        string->length = newLength;
+        return 0;
+    }
+
+    if (newLength > AML_SMALL_BUFFER_SIZE && string->length > AML_SMALL_BUFFER_SIZE)
+    {
+        char* newBuffer = heap_alloc(newLength + 1, HEAP_NONE);
+        if (newBuffer == NULL)
+        {
+            return ERR;
+        }
+        size_t copyLen = (newLength < string->length ? newLength : string->length);
+        memcpy(newBuffer, string->content, copyLen);
+        if (newLength > string->length)
+        {
+            memset(newBuffer + string->length, 0, newLength - string->length);
+        }
+        newBuffer[newLength] = '\0';
+        heap_free(string->content);
+        string->content = newBuffer;
+        string->length = newLength;
+        return 0;
+    }
+
+    // Should never reach here
+    errno = EINVAL;
+    return ERR;
 }
 
 uint64_t aml_thermal_zone_set(aml_object_t* object)

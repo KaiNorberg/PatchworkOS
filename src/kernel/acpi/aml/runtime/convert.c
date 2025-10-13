@@ -31,45 +31,6 @@ typedef struct
     aml_convert_func_t convertFunc;
 } aml_convert_entry_t;
 
-static inline uint64_t aml_string_resize(aml_string_obj_t* string, uint64_t newLength)
-{
-    if (string == NULL || newLength == 0)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (newLength == string->length)
-    {
-        return 0;
-    }
-
-    char* newContent = heap_alloc(newLength + 1, HEAP_NONE);
-    if (newContent == NULL)
-    {
-        return ERR;
-    }
-
-    uint64_t copyLen = MIN(newLength, string->length);
-    for (uint64_t i = 0; i < copyLen; i++)
-    {
-        newContent[i] = string->content[i];
-    }
-    for (uint64_t i = copyLen; i < newLength; i++)
-    {
-        newContent[i] = '\0';
-    }
-    newContent[newLength] = '\0';
-
-    if (string->content != NULL)
-    {
-        heap_free(string->content);
-    }
-    string->content = newContent;
-    string->length = newLength;
-    return 0;
-}
-
 static inline uint64_t aml_string_prepare(aml_object_t* obj, uint64_t length)
 {
     aml_type_t type = obj->type;
