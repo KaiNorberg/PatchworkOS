@@ -124,6 +124,8 @@ nuke: clean
 	$(MAKE) -C lib/gnu-efi clean
 	rm -rf lib/doomgeneric-patchworkos
 	rm -rf lib/lua-5.4.7
+	rm -rf lib/acpica
+	rm -rf lib/acpica_tests
 
 # We use ACPICA's runtime test suite to validate our ACPI implementation.
 #
