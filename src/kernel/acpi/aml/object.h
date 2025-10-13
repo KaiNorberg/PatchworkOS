@@ -34,9 +34,19 @@ typedef struct aml_method_obj aml_method_obj_t;
 #define AML_UNNAMED_NAME "****"
 
 /**
- * @brief Size of buffers/strings used for small objects optimization.
+ * @brief Size of buffers used for small objects optimization.
  */
 #define AML_SMALL_BUFFER_SIZE 32
+
+/**
+ * @brief Size of string buffers used for small objects optimization, not including the null terminator.
+ */
+#define AML_SMALL_STRING_SIZE AML_SMALL_BUFFER_SIZE
+
+/**
+ * @brief Size of package element arrays used for small objects optimization.
+ */
+#define AML_SMALL_PACKAGE_SIZE 4
 
 /**
  * @brief Amount of objects to store in the cache before freeing them instead.
@@ -177,11 +187,11 @@ typedef struct aml_container
  */
 typedef struct aml_name
 {
-    map_entry_t mapEntry;      ///< Used to store the object in a the object map.
-    list_entry_t parentEntry;      ///< Used to store the object in a its parent's named object list.
-    list_entry_t stateEntry; ///< Used to store the object in the aml_state's namedObjects list.
-    aml_state_t* state;      ///< The state that added the object to the namespace, can be `NULL`.
-    aml_object_t* parent;    ///< Pointer to the parent object, can be `NULL`.
+    map_entry_t mapEntry;              ///< Used to store the object in a the object map.
+    list_entry_t parentEntry;          ///< Used to store the object in a its parent's named object list.
+    list_entry_t stateEntry;           ///< Used to store the object in the aml_state's namedObjects list.
+    aml_state_t* state;                ///< The state that added the object to the namespace, can be `NULL`.
+    aml_object_t* parent;              ///< Pointer to the parent object, can be `NULL`.
     char segment[AML_NAME_LENGTH + 1]; ///< The name of the object.
     sysfs_dir_t dir;                   ///< Used to expose the object in the filesystem.
 } aml_name_t;
@@ -334,12 +344,15 @@ typedef struct aml_opregion_obj
 /**
  * @brief Data for a package object.
  * @struct aml_package_obj_t
+ *
+ * Packages use an array to store the elements not a linked list since indexing is very common with packages.
  */
 typedef struct aml_package_obj
 {
     AML_OBJECT_COMMON_HEADER;
     aml_object_t** elements;
     uint64_t length;
+    aml_object_t* smallElements[AML_SMALL_PACKAGE_SIZE]; ///< Used for small object optimization.
 } aml_package_obj_t;
 
 typedef struct aml_power_resource_obj
@@ -372,7 +385,7 @@ typedef struct aml_string_obj
     AML_OBJECT_COMMON_HEADER;
     char* content;
     uint64_t length;
-    char smallBuffer[AML_SMALL_BUFFER_SIZE + 1]; ///< Used for small object optimization.
+    char smallString[AML_SMALL_STRING_SIZE + 1]; ///< Used for small object optimization.
 } aml_string_obj_t;
 
 /**

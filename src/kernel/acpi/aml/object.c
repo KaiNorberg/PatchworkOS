@@ -30,11 +30,9 @@ static inline map_key_t aml_object_map_key(aml_container_id_t containerId, const
     assert(strnlen_s(name, AML_NAME_LENGTH) == AML_NAME_LENGTH);
 
     // Pack the containerId and name into a single buffer for the map key
-    uint8_t buffer[AML_NAME_LENGTH + sizeof(aml_container_id_t)] = {
-        containerId & 0xFF, (containerId >> 8) & 0xFF, (containerId >> 16) & 0xFF, (containerId >> 24) & 0xFF,
-        (containerId >> 32) & 0xFF, (containerId >> 40) & 0xFF, (containerId >> 48) & 0xFF, (containerId >> 56) & 0xFF,
-        name[0], name[1], name[2], name[3]
-    };
+    uint8_t buffer[AML_NAME_LENGTH + sizeof(aml_container_id_t)] = {containerId & 0xFF, (containerId >> 8) & 0xFF,
+        (containerId >> 16) & 0xFF, (containerId >> 24) & 0xFF, (containerId >> 32) & 0xFF, (containerId >> 40) & 0xFF,
+        (containerId >> 48) & 0xFF, (containerId >> 56) & 0xFF, name[0], name[1], name[2], name[3]};
     return map_key_buffer(buffer, sizeof(buffer));
 }
 
@@ -269,8 +267,12 @@ void aml_object_clear(aml_object_t* object)
             for (uint64_t i = 0; i < object->package.length; i++)
             {
                 DEREF(object->package.elements[i]);
+                object->package.elements[i] = NULL;
             }
-            heap_free(object->package.elements);
+            if (object->package.length > AML_SMALL_PACKAGE_SIZE)
+            {
+                heap_free(object->package.elements);
+            }
         }
         object->package.elements = NULL;
         object->package.length = 0;
@@ -287,7 +289,7 @@ void aml_object_clear(aml_object_t* object)
         aml_container_deinit(&object->processor.container);
         break;
     case AML_STRING:
-        if (object->string.content != NULL && object->string.length > AML_SMALL_BUFFER_SIZE)
+        if (object->string.content != NULL && object->string.length > AML_SMALL_STRING_SIZE)
         {
             heap_free(object->string.content);
         }
@@ -339,7 +341,7 @@ void aml_object_clear(aml_object_t* object)
     object->type = AML_UNINITIALIZED;
 }
 
-uint64_t aml_object_expose_in_sysfs(aml_object_t *object)
+uint64_t aml_object_expose_in_sysfs(aml_object_t* object)
 {
     if (object == NULL)
     {
@@ -1393,19 +1395,20 @@ uint64_t aml_package_set(aml_object_t* object, uint64_t length)
         return ERR;
     }
 
-    if (length == 0)
+    if (length <= AML_SMALL_PACKAGE_SIZE)
     {
-        object->package.elements = NULL;
-        object->package.length = 0;
-        object->type = AML_PACKAGE;
-        return 0;
+        object->package.elements = object->package.smallElements;
     }
+    else
+    {
+        object->package.elements = heap_alloc(sizeof(aml_object_t*) * length, HEAP_NONE);
+        if (object->package.elements == NULL)
+        {
+            return ERR;
+        }
+    }
+    memset(object->package.elements, 0, sizeof(aml_object_t*) * length);
 
-    object->package.elements = heap_alloc(sizeof(aml_object_t*) * length, HEAP_NONE);
-    if (object->package.elements == NULL)
-    {
-        return ERR;
-    }
     for (uint64_t i = 0; i < length; i++)
     {
         object->package.elements[i] = aml_object_new();
@@ -1480,9 +1483,9 @@ uint64_t aml_string_set_empty(aml_object_t* object, uint64_t length)
         return ERR;
     }
 
-    if (length <= AML_SMALL_BUFFER_SIZE)
+    if (length <= AML_SMALL_STRING_SIZE)
     {
-        object->string.content = object->string.smallBuffer;
+        object->string.content = object->string.smallString;
         memset(object->string.content, 0, length + 1);
         object->string.length = length;
         object->type = AML_STRING;
@@ -1530,7 +1533,7 @@ uint64_t aml_string_resize(aml_string_obj_t* string, uint64_t newLength)
         return 0;
     }
 
-    if (newLength <= AML_SMALL_BUFFER_SIZE && string->length <= AML_SMALL_BUFFER_SIZE)
+    if (newLength <= AML_SMALL_STRING_SIZE && string->length <= AML_SMALL_STRING_SIZE)
     {
         if (newLength > string->length)
         {
@@ -1541,17 +1544,17 @@ uint64_t aml_string_resize(aml_string_obj_t* string, uint64_t newLength)
         return 0;
     }
 
-    if (newLength <= AML_SMALL_BUFFER_SIZE && string->length > AML_SMALL_BUFFER_SIZE)
+    if (newLength <= AML_SMALL_STRING_SIZE && string->length > AML_SMALL_STRING_SIZE)
     {
-        memcpy(string->smallBuffer, string->content, newLength);
-        string->smallBuffer[newLength] = '\0';
+        memcpy(string->smallString, string->content, newLength);
+        string->smallString[newLength] = '\0';
         heap_free(string->content);
-        string->content = string->smallBuffer;
+        string->content = string->smallString;
         string->length = newLength;
         return 0;
     }
 
-    if (newLength > AML_SMALL_BUFFER_SIZE && string->length <= AML_SMALL_BUFFER_SIZE)
+    if (newLength > AML_SMALL_STRING_SIZE && string->length <= AML_SMALL_STRING_SIZE)
     {
         char* newBuffer = heap_alloc(newLength + 1, HEAP_NONE);
         if (newBuffer == NULL)
@@ -1566,7 +1569,7 @@ uint64_t aml_string_resize(aml_string_obj_t* string, uint64_t newLength)
         return 0;
     }
 
-    if (newLength > AML_SMALL_BUFFER_SIZE && string->length > AML_SMALL_BUFFER_SIZE)
+    if (newLength > AML_SMALL_STRING_SIZE && string->length > AML_SMALL_STRING_SIZE)
     {
         char* newBuffer = heap_alloc(newLength + 1, HEAP_NONE);
         if (newBuffer == NULL)

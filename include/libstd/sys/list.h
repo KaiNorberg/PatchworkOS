@@ -161,7 +161,7 @@ typedef struct list
  * @param name The name of the list variable to initialize.
  * @return A `list_t` initializer for the specified list variable.
  */
-#define LIST_CREATE(name) (list_t){.head = { .prev = &(name).head, .next = &(name).head, .list = &(name) }, .length = 0}
+#define LIST_CREATE(name) (list_t){.head = {.prev = &(name).head, .next = &(name).head, .list = &(name)}, .length = 0}
 
 /**
  * @brief Initializes a list entry.

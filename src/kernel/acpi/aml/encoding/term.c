@@ -1,8 +1,8 @@
 #include "term.h"
 
 #include "acpi/aml/debug.h"
-#include "acpi/aml/exception.h"
 #include "acpi/aml/state.h"
+#include "acpi/aml/tests.h"
 #include "acpi/aml/token.h"
 
 #include "acpi/aml/runtime/convert.h"
@@ -19,6 +19,10 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
 {
     aml_token_t op;
     aml_token_peek(ctx, &op);
+
+#ifdef TESTING
+    aml_tests_perf_start(&op);
+#endif
 
     aml_object_t* value = NULL;
     switch (op.props->type)
@@ -41,19 +45,22 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
         value = aml_object_new();
         if (value == NULL)
         {
-            return NULL;
+            break;
         }
 
         if (aml_data_object_read(ctx, value) == ERR)
         {
             DEREF(value);
-            AML_DEBUG_ERROR(ctx, "Failed to read DataObject");
-            return NULL;
+            value = NULL;
+            break;
         }
     }
 
     if (value == NULL)
     {
+#ifdef TESTING
+        aml_tests_perf_end();
+#endif
         AML_DEBUG_ERROR(ctx, "Failed to read %s", op.props->name);
         return NULL;
     }
@@ -62,8 +69,15 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
     aml_object_t* out = NULL;
     if (aml_convert_source(value, &out, allowedTypes) == ERR)
     {
+#ifdef TESTING
+        aml_tests_perf_end();
+#endif
         return NULL;
     }
+
+#ifdef TESTING
+    aml_tests_perf_end();
+#endif
 
     assert(out->type & allowedTypes);
 
@@ -151,39 +165,50 @@ uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx)
     aml_token_t token;
     aml_token_peek(ctx, &token);
 
+#ifdef TESTING
+    aml_tests_perf_start(&token);
+#endif
+
+    uint64_t result = 0;
     switch (token.props->type)
     {
     case AML_TOKEN_TYPE_STATEMENT:
-        if (aml_statement_opcode_read(ctx) == ERR)
-        {
-            AML_DEBUG_ERROR(ctx, "Failed to read StatementOpcode");
-            return ERR;
-        }
-        return 0;
+        result = aml_statement_opcode_read(ctx);
+        break;
     case AML_TOKEN_TYPE_NAME: // MethodInvocation is a Name
     case AML_TOKEN_TYPE_EXPRESSION:
     {
-        aml_object_t* result = aml_expression_opcode_read(ctx);
-        if (result == NULL)
+        aml_object_t* expression = aml_expression_opcode_read(ctx);
+        if (expression == NULL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read ExpressionOpcode");
-            return ERR;
+            result = ERR;
+            break;
         }
         // Set the result of the state to the last evaluated expression, check `aml_method_evaluate()` for more details.
         // We cant just do this in `aml_expression_opcode_read()` because predicates are not supposed to be considered
         // for implicit return.
         // aml_state_result_set(ctx->state, result);
-        DEREF(result);
-        return 0;
+        DEREF(expression);
+        result = 0;
+        break;
     }
     default:
-        if (aml_object_read(ctx) == ERR)
-        {
-            AML_DEBUG_ERROR(ctx, "Failed to read Object");
-            return ERR;
-        }
-        return 0;
+        result = aml_object_read(ctx);
+        break;
     }
+
+#ifdef TESTING
+    aml_tests_perf_end();
+#endif
+
+    if (result == ERR)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read TermObj '%s' (0x%x)", token.props->name, token.num);
+        return ERR;
+    }
+
+    return 0;
 }
 
 uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* scope, const uint8_t* start, const uint8_t* end,

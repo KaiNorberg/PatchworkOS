@@ -14,6 +14,7 @@
 #include "acpi/aml/token.h"
 #include "arg.h"
 #include "debug.h"
+#include "log/log.h"
 #include "package_length.h"
 #include "sched/timer.h"
 #include "term.h"

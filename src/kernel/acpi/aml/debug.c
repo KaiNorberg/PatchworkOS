@@ -3,6 +3,7 @@
 #include "state.h"
 
 #include "log/log.h"
+#include "sched/timer.h"
 
 static void aml_debug_dump_print_line(const uint8_t* start, uint64_t lineStart, uint64_t lineEnd)
 {
