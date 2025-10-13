@@ -33,8 +33,8 @@ typedef struct aml_state
     aml_object_t* result;                    ///< The return value, see `aml_method_evaluate()` for details.
     uint64_t errorDepth;                     ///< The length of the error traceback, if 0 then no error has occurred.
     /**
-     * List of named objects added to the namespace as the state was executing. These objects should be removed from the namespace if the
-     * state was used to execute a method, via the `aml_state_garbage_collect()` function.
+     * List of named objects added to the namespace as the state was executing. These objects should be removed from the
+     * namespace if the state was used to execute a method, via the `aml_state_garbage_collect()` function.
      *
      * If the state was not used to execute a method, instead it was used to parse a DSDT or SSDT table,
      * then the states created objects should not be removed, as they are now part a permanent part of the ACPI

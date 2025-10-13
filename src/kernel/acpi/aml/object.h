@@ -149,7 +149,7 @@ typedef struct aml_name
 {
     list_entry_t entry;                ///< Used to store the object in a its parent's named object list.
     list_entry_t stateEntry;           ///< Used to store the object in the aml_state's namedObjects list.
-    aml_state_t* state;        ///< The state that added the object to the namespace, can be `NULL`.
+    aml_state_t* state;                ///< The state that added the object to the namespace, can be `NULL`.
     aml_object_t* parent;              ///< Pointer to the parent object, can be `NULL`.
     char segment[AML_NAME_LENGTH + 1]; ///< The name of the object.
     sysfs_dir_t dir;                   ///< Used to expose the object in the filesystem.
@@ -516,7 +516,8 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
  * @param state Pointer to the state that is adding the object, can be `NULL`. See `aml_state_t` for more details.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name_string_t* nameString, aml_state_t* state);
+uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name_string_t* nameString,
+    aml_state_t* state);
 
 /**
  * @brief Remove a object from the ACPI namespace tree.

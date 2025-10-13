@@ -56,12 +56,13 @@ typedef enum
  * @brief The size of a threads kernel stack.
  * @def THREAD_KERNEL_STACK_SIZE
  *
- * When debugging we need a bigger kernel stack as we are not using optimizations or simply becouse tests can be very memory intensive, especially the aml tests. So when in debug or testing mode we use a bigger kernel stack.
+ * When debugging we need a bigger kernel stack as we are not using optimizations or simply becouse tests can be very
+ * memory intensive, especially the aml tests. So when in debug or testing mode we use a bigger kernel stack.
  */
 #if !defined(NDEBUG) || defined(TESTING)
 #define THREAD_KERNEL_STACK_SIZE (CONFIG_KERNEL_STACK * 8)
 #else
-#define THREAD_KERNEL_STACK_SIZE (CONFIG_KERNEL_STACK )
+#define THREAD_KERNEL_STACK_SIZE (CONFIG_KERNEL_STACK)
 #endif
 
 /**

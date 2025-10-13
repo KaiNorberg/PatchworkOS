@@ -2,9 +2,9 @@
 
 #include <common/defs.h>
 
+#include <assert.h>
 #include <stdatomic.h>
 #include <stdint.h>
-#include <assert.h>
 
 /**
  * @brief Reference counting

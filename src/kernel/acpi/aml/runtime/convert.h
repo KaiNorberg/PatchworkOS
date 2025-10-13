@@ -76,7 +76,8 @@ uint64_t aml_convert_source(aml_object_t* src, aml_object_t** dest, aml_type_t a
  * @see Section 19.6.138 of the ACPI specification for more details.
  *
  * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
- * @param dest Pointer to the object pointer where the converted value will be stored, see `aml_convert_source` for details.
+ * @param dest Pointer to the object pointer where the converted value will be stored, see `aml_convert_source` for
+ * details.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_convert_to_buffer(aml_object_t* src, aml_object_t** dest);
@@ -90,7 +91,8 @@ uint64_t aml_convert_to_buffer(aml_object_t* src, aml_object_t** dest);
  * @see Section 19.6.139 of the ACPI specification for more details.
  *
  * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
- * @param dest Pointer to the object pointer where the converted value will be stored, see `aml_convert_source` for details.
+ * @param dest Pointer to the object pointer where the converted value will be stored, see `aml_convert_source` for
+ * details.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t** dest);
@@ -104,7 +106,8 @@ uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t** dest);
  * @see Section 19.6.140 of the ACPI specification for more details.
  *
  * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
- * @param dest Pointer to the object pointer where the converted value will be stored, see `aml_convert_source` for details.
+ * @param dest Pointer to the object pointer where the converted value will be stored, see `aml_convert_source` for
+ * details.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_convert_to_hex_string(aml_object_t* src, aml_object_t** dest);
@@ -118,7 +121,8 @@ uint64_t aml_convert_to_hex_string(aml_object_t* src, aml_object_t** dest);
  * @see Section 19.6.141 of the ACPI specification for more details.
  *
  * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
- * @param dest Pointer to the object pointer where the converted value will be stored, see `aml_convert_source` for details.
+ * @param dest Pointer to the object pointer where the converted value will be stored, see `aml_convert_source` for
+ * details.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_convert_to_integer(aml_object_t* src, aml_object_t** dest);

@@ -42,12 +42,16 @@
  * - [ ] Implement APIs supporting the system indicators.
  * - [ ] Support all system states S1-S5.
  *
+ * Included below is a list of deviations from the ACPI specification that we have made. Each deviation is marked with
+ the source of the diversion:
+ * - Copying an object to itself is a no-op. (Windows)
+ * - Converting a zero-length String to a Buffer still copies the null-terminator. (ACPICA)
+ *
  * @see [Easier to read version of the ACPI Specification](https://uefi.org/specs/ACPI/6.6/index.html)
  * @see [ACPI Specification Version 6.6](https://uefi.org/sites/default/files/resources/ACPI_Spec_6.6.pdf)
  * @see [ACPI Specification Version 6.3](https://uefi.org/sites/default/files/resources/ACPI_Spec_6_3_A_Oct_6_2020.pdf)
  * @see [ACPI Specification Version 4.0](https://uefi.org/sites/default/files/resources/ACPI_4.pdf)
- * @see [ACPICA User Guide and Programmer
- Reference
+ * @see [ACPICA Reference
  Version 6.3](https://www.intel.com/content/www/us/en/developer/topic-technology/open/acpica/documentation.html)
  * @see [LAI Library](https://github.com/managarm/lai)
  *

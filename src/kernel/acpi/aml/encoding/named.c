@@ -687,7 +687,8 @@ uint64_t aml_def_mutex_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(newObject);
 
-    if (aml_mutex_set(newObject, syncFlags) == ERR || aml_object_add(newObject, ctx->scope, &nameString, ctx->state) == ERR)
+    if (aml_mutex_set(newObject, syncFlags) == ERR ||
+        aml_object_add(newObject, ctx->scope, &nameString, ctx->state) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -1014,7 +1015,8 @@ uint64_t aml_def_thermal_zone_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(thermalZone);
 
-    if (aml_thermal_zone_set(thermalZone) == ERR || aml_object_add(thermalZone, ctx->scope, &nameString, ctx->state) == ERR)
+    if (aml_thermal_zone_set(thermalZone) == ERR ||
+        aml_object_add(thermalZone, ctx->scope, &nameString, ctx->state) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;

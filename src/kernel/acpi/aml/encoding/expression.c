@@ -1,6 +1,7 @@
 #include "expression.h"
 
 #include "acpi/aml/debug.h"
+#include "acpi/aml/exception.h"
 #include "acpi/aml/object.h"
 #include "acpi/aml/runtime/compare.h"
 #include "acpi/aml/runtime/concat.h"
@@ -16,7 +17,6 @@
 #include "package_length.h"
 #include "sched/timer.h"
 #include "term.h"
-#include "acpi/aml/exception.h"
 
 #include <sys/proc.h>
 
@@ -32,7 +32,8 @@ aml_object_t* aml_operand_read(aml_term_list_ctx_t* ctx, aml_type_t allowedTypes
     return result; // Transfer ownership
 }
 
-static inline uint64_t aml_op_operand_operand_target_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp, aml_type_t allowedTypes, aml_object_t** operand1, aml_object_t** operand2, aml_object_t** target)
+static inline uint64_t aml_op_operand_operand_target_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
+    aml_type_t allowedTypes, aml_object_t** operand1, aml_object_t** operand2, aml_object_t** target)
 {
     if (aml_token_expect(ctx, expectedOp) == ERR)
     {
@@ -67,7 +68,8 @@ static inline uint64_t aml_op_operand_operand_target_read(aml_term_list_ctx_t* c
     return 0;
 }
 
-static inline uint64_t aml_op_operand_operand_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp, aml_type_t allowedTypes, aml_object_t** operand1, aml_object_t** operand2)
+static inline uint64_t aml_op_operand_operand_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
+    aml_type_t allowedTypes, aml_object_t** operand1, aml_object_t** operand2)
 {
     if (aml_token_expect(ctx, expectedOp) == ERR)
     {
@@ -94,7 +96,8 @@ static inline uint64_t aml_op_operand_operand_read(aml_term_list_ctx_t* ctx, aml
     return 0;
 }
 
-static inline uint64_t aml_op_operand_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp, aml_type_t allowedTypes, aml_object_t** operand)
+static inline uint64_t aml_op_operand_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
+    aml_type_t allowedTypes, aml_object_t** operand)
 {
     if (aml_token_expect(ctx, expectedOp) == ERR)
     {
@@ -112,7 +115,8 @@ static inline uint64_t aml_op_operand_read(aml_term_list_ctx_t* ctx, aml_token_n
     return 0;
 }
 
-static inline uint64_t aml_op_operand_target_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp, aml_type_t allowedTypes, aml_object_t** operand, aml_object_t** target)
+static inline uint64_t aml_op_operand_target_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
+    aml_type_t allowedTypes, aml_object_t** operand, aml_object_t** target)
 {
     if (aml_token_expect(ctx, expectedOp) == ERR)
     {
@@ -137,7 +141,8 @@ static inline uint64_t aml_op_operand_target_read(aml_term_list_ctx_t* ctx, aml_
     return 0;
 }
 
-static inline uint64_t aml_op_operand_shiftcount_target_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp, aml_type_t allowedTypes, aml_object_t** operand, aml_integer_t* shiftCount, aml_object_t** target)
+static inline uint64_t aml_op_operand_shiftcount_target_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
+    aml_type_t allowedTypes, aml_object_t** operand, aml_integer_t* shiftCount, aml_object_t** target)
 {
     if (aml_token_expect(ctx, expectedOp) == ERR)
     {
@@ -169,7 +174,8 @@ static inline uint64_t aml_op_operand_shiftcount_target_read(aml_term_list_ctx_t
     return 0;
 }
 
-static inline uint64_t aml_op_data_data_target_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp, aml_object_t** data1, aml_object_t** data2, aml_object_t** target)
+static inline uint64_t aml_op_data_data_target_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
+    aml_object_t** data1, aml_object_t** data2, aml_object_t** target)
 {
     if (aml_token_expect(ctx, expectedOp) == ERR)
     {
@@ -203,7 +209,8 @@ static inline uint64_t aml_op_data_data_target_read(aml_term_list_ctx_t* ctx, am
     return 0;
 }
 
-static inline uint64_t aml_op_termarg_simplename_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp, aml_type_t allowedTypes, aml_object_t** termarg, aml_object_t** simplename)
+static inline uint64_t aml_op_termarg_simplename_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
+    aml_type_t allowedTypes, aml_object_t** termarg, aml_object_t** simplename)
 {
     if (aml_token_expect(ctx, expectedOp) == ERR)
     {
@@ -229,7 +236,8 @@ static inline uint64_t aml_op_termarg_simplename_read(aml_term_list_ctx_t* ctx, 
     return 0;
 }
 
-static inline uint64_t aml_op_supername_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp, aml_object_t** supername)
+static inline uint64_t aml_op_supername_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
+    aml_object_t** supername)
 {
     if (aml_token_expect(ctx, expectedOp) == ERR)
     {
@@ -247,7 +255,8 @@ static inline uint64_t aml_op_supername_read(aml_term_list_ctx_t* ctx, aml_token
     return 0;
 }
 
-static inline uint64_t aml_op_termarg_supername_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp, aml_type_t allowedTypes, aml_object_t** termarg, aml_object_t** supername)
+static inline uint64_t aml_op_termarg_supername_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
+    aml_type_t allowedTypes, aml_object_t** termarg, aml_object_t** supername)
 {
     if (aml_token_expect(ctx, expectedOp) == ERR)
     {
@@ -272,7 +281,6 @@ static inline uint64_t aml_op_termarg_supername_read(aml_term_list_ctx_t* ctx, a
 
     return 0;
 }
-
 
 uint64_t aml_buffer_size_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
 {
@@ -791,7 +799,8 @@ aml_object_t* aml_def_nand_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(result);
 
-    if (aml_integer_set(result, ~(operand1->integer.value & operand2->integer.value)) || aml_store(result, target) == ERR)
+    if (aml_integer_set(result, ~(operand1->integer.value & operand2->integer.value)) ||
+        aml_store(result, target) == ERR)
     {
         return NULL;
     }
@@ -849,7 +858,8 @@ aml_object_t* aml_def_nor_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(result);
 
-    if (aml_integer_set(result, ~(operand1->integer.value | operand2->integer.value)) || aml_store(result, target) == ERR)
+    if (aml_integer_set(result, ~(operand1->integer.value | operand2->integer.value)) ||
+        aml_store(result, target) == ERR)
     {
         return NULL;
     }
@@ -929,7 +939,8 @@ aml_object_t* aml_def_shift_left_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand = NULL;
     aml_object_t* target = NULL;
     aml_integer_t shiftCount;
-    if (aml_op_operand_shiftcount_target_read(ctx, AML_SHIFT_LEFT_OP, AML_INTEGER, &operand, &shiftCount, &target) == ERR)
+    if (aml_op_operand_shiftcount_target_read(ctx, AML_SHIFT_LEFT_OP, AML_INTEGER, &operand, &shiftCount, &target) ==
+        ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefShiftLeft structure");
         return NULL;
@@ -974,7 +985,8 @@ aml_object_t* aml_def_shift_right_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand = NULL;
     aml_object_t* target = NULL;
     aml_integer_t shiftCount;
-    if (aml_op_operand_shiftcount_target_read(ctx, AML_SHIFT_RIGHT_OP, AML_INTEGER, &operand, &shiftCount, &target) == ERR)
+    if (aml_op_operand_shiftcount_target_read(ctx, AML_SHIFT_RIGHT_OP, AML_INTEGER, &operand, &shiftCount, &target) ==
+        ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefShiftRight structure");
         return NULL;
@@ -1310,7 +1322,8 @@ aml_object_t* aml_def_lequal_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
-    if (aml_op_operand_operand_read(ctx, AML_LEQUAL_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand1, &operand2) == ERR)
+    if (aml_op_operand_operand_read(ctx, AML_LEQUAL_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand1, &operand2) ==
+        ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefLequal structure");
         return NULL;
@@ -1337,7 +1350,8 @@ aml_object_t* aml_def_lgreater_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
-    if (aml_op_operand_operand_read(ctx, AML_LGREATER_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand1, &operand2) == ERR)
+    if (aml_op_operand_operand_read(ctx, AML_LGREATER_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand1,
+            &operand2) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefLgreater structure");
         return NULL;
@@ -1364,8 +1378,8 @@ aml_object_t* aml_def_lgreater_equal_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
-    if (aml_op_operand_operand_read(ctx, AML_LGREATER_EQUAL_OP, AML_INTEGER | AML_STRING | AML_BUFFER,
-            &operand1, &operand2) == ERR)
+    if (aml_op_operand_operand_read(ctx, AML_LGREATER_EQUAL_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand1,
+            &operand2) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefLgreaterEqual structure");
         return NULL;
@@ -1392,7 +1406,8 @@ aml_object_t* aml_def_lless_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
-    if (aml_op_operand_operand_read(ctx, AML_LLESS_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand1, &operand2) == ERR)
+    if (aml_op_operand_operand_read(ctx, AML_LLESS_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand1, &operand2) ==
+        ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefLless structure");
         return NULL;
@@ -1419,8 +1434,8 @@ aml_object_t* aml_def_lless_equal_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
-    if (aml_op_operand_operand_read(ctx, AML_LLESS_EQUAL_OP, AML_INTEGER | AML_STRING | AML_BUFFER,
-            &operand1, &operand2) == ERR)
+    if (aml_op_operand_operand_read(ctx, AML_LLESS_EQUAL_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand1,
+            &operand2) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefLlessEqual structure");
         return NULL;
@@ -1472,8 +1487,8 @@ aml_object_t* aml_def_lnot_equal_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
-    if (aml_op_operand_operand_read(ctx, AML_LNOT_EQUAL_OP,
-            AML_INTEGER | AML_STRING | AML_BUFFER, &operand1, &operand2) == ERR)
+    if (aml_op_operand_operand_read(ctx, AML_LNOT_EQUAL_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand1,
+            &operand2) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefLnotEqual structure");
         return NULL;
@@ -1641,8 +1656,8 @@ aml_object_t* aml_def_to_buffer_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_target_read(ctx, AML_TO_BUFFER_OP,
-            AML_INTEGER | AML_STRING | AML_BUFFER, &operand, &target) == ERR)
+    if (aml_op_operand_target_read(ctx, AML_TO_BUFFER_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand, &target) ==
+        ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefToBuffer structure");
         return NULL;
@@ -1696,8 +1711,7 @@ aml_object_t* aml_def_to_hex_string_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_target_read(ctx, AML_TO_HEX_STRING_OP,
-            AML_INTEGER, &operand, &target) == ERR)
+    if (aml_op_operand_target_read(ctx, AML_TO_HEX_STRING_OP, AML_INTEGER, &operand, &target) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefToHexString structure");
         return NULL;
@@ -1724,8 +1738,8 @@ aml_object_t* aml_def_to_integer_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_target_read(ctx, AML_TO_INTEGER_OP,
-            AML_INTEGER | AML_STRING | AML_BUFFER, &operand, &target) == ERR)
+    if (aml_op_operand_target_read(ctx, AML_TO_INTEGER_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand, &target) ==
+        ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefToInteger structure");
         return NULL;

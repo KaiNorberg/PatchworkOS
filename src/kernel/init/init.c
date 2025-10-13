@@ -22,10 +22,10 @@
 #include "mem/vmm.h"
 #include "net/net.h"
 #include "proc/process.h"
+#include "sched/loader.h"
 #include "sched/sched.h"
 #include "sched/timer.h"
 #include "sched/wait.h"
-#include "sched/loader.h"
 
 #include <boot/boot_info.h>
 #include <libstd/_internal/init.h>

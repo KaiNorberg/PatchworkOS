@@ -455,7 +455,8 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
     return 0;
 }
 
-uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name_string_t* nameString, aml_state_t* state)
+uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name_string_t* nameString,
+    aml_state_t* state)
 {
     if (object == NULL)
     {

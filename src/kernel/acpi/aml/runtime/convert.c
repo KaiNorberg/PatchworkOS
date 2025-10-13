@@ -142,6 +142,7 @@ static uint64_t aml_buffer_to_integer(aml_object_t* buffer, aml_object_t* dest)
 static uint64_t aml_buffer_to_string(aml_object_t* buffer, aml_object_t* dest)
 {
     aml_buffer_obj_t* bufferData = &buffer->buffer;
+
     // Each byte becomes two hex chars with a space in between, except the last byte.
     uint64_t length = bufferData->length > 0 ? bufferData->length * 3 - 1 : 0;
 
@@ -319,15 +320,22 @@ static uint64_t aml_string_to_buffer(aml_object_t* string, aml_object_t* dest)
 {
     aml_string_obj_t* stringData = &string->string;
 
-    uint64_t bufferLength = 0;
+    // Regarding zero-length strings the spec says "... the string is treated as a buffer, with each
+    // ASCII string character copied to one buffer byte, including the null
+    // terminator. A null (zero-length) string will be converted to a zero-
+    // length buffer."
+    //
+    // The problem is zero-length strings are supposed to be converted to zero-length buffers. But testing with ACPICA
+    // shows that the null terminator is always added, even for zero-length strings, so we just do what ACPICA does.
 
+    uint64_t bufferLength = 0;
     if (dest->type == AML_BUFFER)
     {
         bufferLength = dest->buffer.length;
     }
     else
     {
-        bufferLength = stringData->length > 0 ? stringData->length + 1 : 0;
+        bufferLength = stringData->length + 1; // +1 for null terminator
         if (aml_buffer_set_empty(dest, bufferLength) == ERR)
         {
             return ERR;
@@ -338,11 +346,7 @@ static uint64_t aml_string_to_buffer(aml_object_t* string, aml_object_t* dest)
     {
         uint8_t* content = dest->buffer.content;
         uint64_t copyLen = MIN(stringData->length, bufferLength - 1);
-
-        for (uint64_t i = 0; i < copyLen; i++)
-        {
-            content[i] = (uint8_t)stringData->content[i];
-        }
+        memcpy(content, stringData->content, copyLen);
         content[bufferLength - 1] = 0;
     }
 
