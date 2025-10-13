@@ -774,6 +774,70 @@ aml_object_t* aml_def_find_set_left_bit_read(aml_term_list_ctx_t* ctx);
 aml_object_t* aml_def_find_set_right_bit_read(aml_term_list_ctx_t* ctx);
 
 /**
+ * @brief Reads a SearchPkg structure from the AML byte stream.
+ *
+ * A SearchPkg structure is defined as `SearchPkg := TermArg => Package`.
+ *
+ * @param ctx The TermList context.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ */
+aml_package_obj_t* aml_search_pkg_read(aml_term_list_ctx_t* ctx);
+
+/**
+ * @brief Match opcodes for DefMatch.
+ * @enum aml_match_opcode_t
+ */
+typedef enum
+{
+    AML_MATCH_MTR = 0,
+    AML_MATCH_MEQ = 1,
+    AML_MATCH_MLE = 2,
+    AML_MATCH_MLT = 3,
+    AML_MATCH_MGE = 4,
+    AML_MATCH_MGT = 5,
+} aml_match_opcode_t;
+
+/**
+ * @brief Reads a MatchOpcode structure from the AML byte stream.
+ *
+ * A MatchOpcode structure is defined as `MatchOpcode :=
+ *   ByteData // 0 MTR
+ *   // 1 MEQ
+ *   // 2 MLE
+ *   // 3 MLT
+ *   // 4 MGE
+ *   // 5 MGT`.
+ *
+ * @param ctx The TermList context.
+ * @param out Output pointer where the match opcode will be stored.
+ * @return On success, the match opcode. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_match_opcode_read(aml_term_list_ctx_t* ctx, aml_match_opcode_t* out);
+
+/**
+ * @brief Reads a StartIndex structure from the AML byte stream.
+ *
+ * A StartIndex structure is defined as `StartIndex := TermArg => Integer`.
+ *
+ * @param ctx The TermList context.
+ * @param out Output pointer where the integer result will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_start_index_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+
+/**
+ * @brief Reads a DefMatch structure from the AML byte stream.
+ *
+ * A DefMatch structure is defined as `DefMatch := MatchOp SearchPkg MatchOpcode Operand MatchOpcode Operand StartIndex`.
+ *
+ * @see Section 19.6.81 of the ACPI specification for more details.
+ *
+ * @param ctx The TermList context.
+ * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ */
+aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx);
+
+/**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.
  *
  * An ExpressionOpcode structure is defined as `ExpressionOpcode := DefAcquire | DefAdd | DefAnd | DefBuffer | DefConcat
@@ -789,7 +853,6 @@ aml_object_t* aml_def_find_set_right_bit_read(aml_term_list_ctx_t* ctx);
  * - `DefFromBCD`
  * - `DefMid`
  * - `DefLoadTable`
- * - `DefMatch`
  * - `DefWait`
  *
  * The result may have the `AML_OBJECT_EXCEPTION_ON_USE` flag set.

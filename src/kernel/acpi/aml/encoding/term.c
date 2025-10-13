@@ -114,6 +114,20 @@ aml_buffer_obj_t* aml_term_arg_read_buffer(aml_term_list_ctx_t* ctx)
     return &temp->buffer; // Transfer ownership
 }
 
+aml_package_obj_t* aml_term_arg_read_package(aml_term_list_ctx_t* ctx)
+{
+    aml_object_t* temp = aml_term_arg_read(ctx, AML_PACKAGE);
+    if (temp == NULL)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
+        return NULL;
+    }
+
+    assert(temp->type == AML_PACKAGE);
+
+    return &temp->package; // Transfer ownership
+}
+
 uint64_t aml_object_read(aml_term_list_ctx_t* ctx)
 {
     aml_token_t token;

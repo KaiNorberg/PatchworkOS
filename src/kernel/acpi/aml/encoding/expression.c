@@ -2258,6 +2258,179 @@ aml_object_t* aml_def_find_set_right_bit_read(aml_term_list_ctx_t* ctx)
     return REF(result);
 }
 
+aml_package_obj_t* aml_search_pkg_read(aml_term_list_ctx_t* ctx)
+{
+    aml_package_obj_t* pkg = aml_term_arg_read_package(ctx);
+    if (pkg == NULL)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
+        return NULL;
+    }
+
+    return pkg; // Transfer ownership
+}
+
+uint64_t aml_match_opcode_read(aml_term_list_ctx_t* ctx, aml_match_opcode_t* out)
+{
+    uint8_t byteData;
+    if (aml_byte_data_read(ctx, &byteData) == ERR)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read ByteData");
+        return ERR;
+    }
+
+    if (byteData > AML_MATCH_MGT)
+    {
+        AML_DEBUG_ERROR(ctx, "Invalid MatchOpcode value %u", byteData);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    *out = (aml_match_opcode_t)byteData;
+    return 0;
+}
+
+uint64_t aml_start_index_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+{
+    if (aml_term_arg_read_integer(ctx, out) == ERR)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
+        return ERR;
+    }
+
+    return 0;
+}
+
+static bool aml_match_compare(aml_object_t* obj1, aml_object_t* obj2, aml_match_opcode_t op)
+{
+    switch (op)
+    {
+    case AML_MATCH_MTR:
+        return true;
+    case AML_MATCH_MEQ:
+        return aml_compare(obj1, obj2, AML_COMPARE_EQUAL);
+    case AML_MATCH_MLE:
+        return aml_compare(obj1, obj2, AML_COMPARE_LESS_EQUAL);
+    case AML_MATCH_MLT:
+        return aml_compare(obj1, obj2, AML_COMPARE_LESS);
+    case AML_MATCH_MGE:
+        return aml_compare(obj1, obj2, AML_COMPARE_GREATER_EQUAL);
+    case AML_MATCH_MGT:
+        return aml_compare(obj1, obj2, AML_COMPARE_GREATER);
+    default:
+        // This should never happen as we validate the opcode when reading it.
+        AML_EXCEPTION_RAISE(AML_ERROR);
+        return false;
+    }
+}
+
+aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
+{
+    if (aml_token_expect(ctx, AML_MATCH_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read MatchOp");
+        return NULL;
+    }
+
+    aml_package_obj_t* searchPkg = aml_search_pkg_read(ctx);
+    if (searchPkg == NULL)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read SearchPkg");
+        return NULL;
+    }
+    DEREF_DEFER(searchPkg);
+
+    aml_match_opcode_t op1;
+    if (aml_match_opcode_read(ctx, &op1) == ERR)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read Op1");
+        return NULL;
+    }
+
+    aml_object_t* object1 = aml_operand_read(ctx, AML_INTEGER | AML_STRING | AML_BUFFER);
+    if (object1 == NULL)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read MatchObject1");
+        return NULL;
+    }
+    DEREF_DEFER(object1);
+
+    aml_match_opcode_t op2;
+    if (aml_match_opcode_read(ctx, &op2) == ERR)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read Op2");
+        return NULL;
+    }
+
+    aml_object_t* object2 = aml_operand_read(ctx, AML_INTEGER | AML_STRING | AML_BUFFER);
+    if (object2 == NULL)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read MatchObject2");
+        return NULL;
+    }
+    DEREF_DEFER(object2);
+
+    aml_integer_t startIndex;
+    if (aml_start_index_read(ctx, &startIndex) == ERR)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read StartIndex");
+        return NULL;
+    }
+
+    aml_object_t* result = aml_object_new();
+    if (result == NULL)
+    {
+        return NULL;
+    }
+    DEREF_DEFER(result);
+
+    for (uint64_t i = startIndex; i < searchPkg->length; i++)
+    {
+        aml_object_t* element = searchPkg->elements[i];
+        if (element == NULL)
+        {
+            continue;
+        }
+
+        if (element->type == AML_UNINITIALIZED)
+        {
+            continue;
+        }
+
+        aml_object_t* convertedFor1 = NULL;
+        if (aml_convert_source(element, &convertedFor1, object1->type) == ERR)
+        {
+            errno = 0;
+            continue;
+        }
+        DEREF_DEFER(convertedFor1);
+
+        aml_object_t* convertedFor2 = NULL;
+        if (aml_convert_source(element, &convertedFor2, object2->type) == ERR)
+        {
+            errno = 0;
+            continue;
+        }
+        DEREF_DEFER(convertedFor2);
+
+        if (aml_match_compare(convertedFor1, object1, op1) &&
+            aml_match_compare(convertedFor2, object2, op2))
+        {
+            if (aml_integer_set(result, i) == ERR)
+            {
+                return NULL;
+            }
+            return REF(result);
+        }
+    }
+
+    if (aml_integer_set(result, aml_integer_ones()) == ERR)
+    {
+        return NULL;
+    }
+    return REF(result);
+}
+
 aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx)
 {
     aml_token_t op;
@@ -2286,6 +2459,7 @@ aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx)
 
             if (aml_def_buffer_read(ctx, result) == ERR)
             {
+                DEREF(result);
                 AML_DEBUG_ERROR(ctx, "Failed to read opcode 'DefBuffer'");
                 return NULL;
             }
@@ -2293,7 +2467,7 @@ aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx)
         break;
         case AML_PACKAGE_OP:
         {
-            aml_object_t* result = aml_object_new();
+            result = aml_object_new();
             if (result == NULL)
             {
                 return NULL;
@@ -2301,6 +2475,7 @@ aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx)
 
             if (aml_def_package_read(ctx, result) == ERR)
             {
+                DEREF(result);
                 AML_DEBUG_ERROR(ctx, "Failed to read opcode 'DefPackage'");
                 return NULL;
             }
@@ -2316,6 +2491,7 @@ aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx)
 
             if (aml_def_var_package_read(ctx, result) == ERR)
             {
+                DEREF(result);
                 AML_DEBUG_ERROR(ctx, "Failed to read opcode 'DefVarPackage'");
                 return NULL;
             }
@@ -2449,6 +2625,9 @@ aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx)
             break;
         case AML_FIND_SET_RIGHT_BIT_OP:
             result = aml_def_find_set_right_bit_read(ctx);
+            break;
+        case AML_MATCH_OP:
+            result = aml_def_match_read(ctx);
             break;
         default:
             AML_DEBUG_ERROR(ctx, "Unknown ExpressionOpcode '%s' (0x%04x)", op.props->name, op.num);

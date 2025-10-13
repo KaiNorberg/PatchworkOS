@@ -43,7 +43,7 @@ jobs:
         echo "QEMU_PID=$QEMU_PID" >> $GITHUB_OUTPUT
 
         echo "Leting QEMU run for a bit..."
-        sleep 60
+        sleep 120
 
         if ps -p $QEMU_PID > /dev/null
         then

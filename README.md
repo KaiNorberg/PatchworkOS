@@ -313,7 +313,7 @@ You should now see a new entry in your GRUB boot menu allowing you to boot into 
 
 ## Testing
 
-Testing uses a GitHub action that compiles the project and runs it for one minute using QEMU both with the `DEBUG=1` amd `TESTING=1` flags enabled. This will run some additional tests in the kernel (for example it will clone ACPICA and run all its runtime tests), and if it has not crashed by the end of the minute, it is considered a success.
+Testing uses a GitHub action that compiles the project and runs it for some amount of time using QEMU both with the `DEBUG=1` amd `TESTING=1` flags enabled. This will run some additional tests in the kernel (for example it will clone ACPICA and run all its runtime tests), and if it has not crashed by the end of the allotted time, it is considered a success.
 
 ### Tested Configurations
 
