@@ -9,17 +9,22 @@
 
 uint64_t aml_store(aml_object_t* src, aml_object_t* dest)
 {
-    if (src == NULL || dest == NULL)
+    if (src == NULL)
     {
         errno = EINVAL;
         return ERR;
+    }
+
+    if (dest == NULL)
+    {
+        return 0;
     }
 
     if (dest->type == AML_ARG)
     {
         if (dest->arg.value == NULL) // Is uninitialized
         {
-            aml_object_t* newValue = aml_object_new(NULL);
+            aml_object_t* newValue = aml_object_new();
             if (newValue == NULL)
             {
                 return ERR;

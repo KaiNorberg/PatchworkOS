@@ -408,7 +408,7 @@ uint64_t aml_convert(aml_object_t* src, aml_object_t* dest, aml_type_t allowedTy
     // BufferFields and FieldUnits are treated as either Buffers or Integers based on size
     if (src->type == AML_FIELD_UNIT || src->type == AML_BUFFER_FIELD)
     {
-        aml_object_t* temp = aml_object_new(NULL);
+        aml_object_t* temp = aml_object_new();
         if (temp == NULL)
         {
             return ERR;
@@ -509,63 +509,6 @@ uint64_t aml_convert(aml_object_t* src, aml_object_t* dest, aml_type_t allowedTy
     return ERR;
 }
 
-uint64_t aml_convert_source(aml_object_t* src, aml_object_t** dest, aml_type_t allowedTypes)
-{
-    if (src == NULL || dest == NULL)
-    {
-        LOG_ERR("src/dest object is NULL\n");
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (src->type == AML_UNINITIALIZED)
-    {
-        LOG_ERR("source object is uninitialized\n");
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (src->type == AML_ARG)
-    {
-        return aml_convert_source(src->arg.value, dest, allowedTypes);
-    }
-
-    if (src->type == AML_LOCAL)
-    {
-        return aml_convert_source(src->local.value, dest, allowedTypes);
-    }
-
-    if (src->type & allowedTypes)
-    {
-        if (*dest != NULL)
-        {
-            return aml_copy_data_and_type(src, *dest);
-        }
-        *dest = REF(src);
-        return 0;
-    }
-
-    if (*dest != NULL)
-    {
-        return aml_convert(src, *dest, allowedTypes);
-    }
-
-    *dest = aml_object_new(NULL);
-    if (*dest == NULL)
-    {
-        return ERR;
-    }
-
-    if (aml_convert(src, *dest, allowedTypes) == ERR)
-    {
-        DEREF(*dest);
-        *dest = NULL;
-        return ERR;
-    }
-
-    return 0;
-}
-
 uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target)
 {
     if (result == NULL)
@@ -618,29 +561,64 @@ uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target)
     return 0;
 }
 
-uint64_t aml_convert_integer_to_bcd(aml_integer_t value, aml_integer_t* out)
+uint64_t aml_convert_source(aml_object_t* src, aml_object_t** dest, aml_type_t allowedTypes)
 {
-    if (out == NULL)
+    if (src == NULL || dest == NULL)
     {
+        LOG_ERR("src/dest object is NULL\n");
         errno = EINVAL;
         return ERR;
     }
 
-    aml_integer_t bcd = 0;
-    for (uint64_t i = 0; i < aml_integer_byte_size() * 2; i++) // 2 nibbles per byte
+    if (src->type == AML_UNINITIALIZED)
     {
-        uint8_t digit = value % 10;
-        bcd |= ((aml_integer_t)digit) << (i * 4);
-        value /= 10;
-        if (value == 0)
-            break;
+        LOG_ERR("source object is uninitialized\n");
+        errno = EINVAL;
+        return ERR;
     }
 
-    *out = bcd;
+    if (src->type == AML_ARG)
+    {
+        return aml_convert_source(src->arg.value, dest, allowedTypes);
+    }
+
+    if (src->type == AML_LOCAL)
+    {
+        return aml_convert_source(src->local.value, dest, allowedTypes);
+    }
+
+    if (src->type & allowedTypes)
+    {
+        if (*dest != NULL)
+        {
+            return aml_copy_data_and_type(src, *dest);
+        }
+        *dest = REF(src);
+        return 0;
+    }
+
+    if (*dest != NULL)
+    {
+        return aml_convert(src, *dest, allowedTypes);
+    }
+
+    *dest = aml_object_new();
+    if (*dest == NULL)
+    {
+        return ERR;
+    }
+
+    if (aml_convert(src, *dest, allowedTypes) == ERR)
+    {
+        DEREF(*dest);
+        *dest = NULL;
+        return ERR;
+    }
+
     return 0;
 }
 
-uint64_t aml_convert_to_buffer(aml_object_t* src, aml_object_t* dest)
+uint64_t aml_convert_to_buffer(aml_object_t* src, aml_object_t** dest)
 {
     if (src == NULL || dest == NULL)
     {
@@ -658,20 +636,34 @@ uint64_t aml_convert_to_buffer(aml_object_t* src, aml_object_t* dest)
 
     if (src->type == AML_BUFFER)
     {
-        if (aml_copy_data_and_type(src, dest) == ERR)
-        {
-            LOG_ERR("failed to copy Buffer to Buffer\n");
-            return ERR;
-        }
+        *dest = REF(src);
         return 0;
     }
-    else if (src->type == AML_INTEGER)
+
+    aml_object_t* temp = aml_object_new();
+    if (temp == NULL)
     {
-        return aml_integer_to_buffer(src, dest);
+        return ERR;
+    }
+    DEREF_DEFER(temp);
+
+    if (src->type == AML_INTEGER)
+    {
+        if (aml_integer_to_buffer(src, temp) == ERR)
+        {
+            return ERR;
+        }
+        *dest = REF(temp);
+        return 0;
     }
     else if (src->type == AML_STRING)
     {
-        return aml_string_to_buffer(src, dest);
+        if (aml_string_to_buffer(src, temp) == ERR)
+        {
+            return ERR;
+        }
+        *dest = REF(temp);
+        return 0;
     }
 
     LOG_ERR("cannot convert '%s' to Buffer\n", aml_type_to_string(src->type));
@@ -679,7 +671,7 @@ uint64_t aml_convert_to_buffer(aml_object_t* src, aml_object_t* dest)
     return ERR;
 }
 
-uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t* dest)
+uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t** dest)
 {
     if (src == NULL || dest == NULL)
     {
@@ -697,14 +689,18 @@ uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t* dest)
 
     if (src->type == AML_STRING)
     {
-        if (aml_copy_data_and_type(src, dest) == ERR)
-        {
-            LOG_ERR("failed to copy String to String\n");
-            return ERR;
-        }
+        *dest = REF(src);
         return 0;
     }
-    else if (src->type == AML_INTEGER)
+
+    aml_object_t* temp = aml_object_new();
+    if (temp == NULL)
+    {
+        return ERR;
+    }
+    DEREF_DEFER(temp);
+
+    if (src->type == AML_INTEGER)
     {
         char buffer[21]; // Max uint64_t is 20 digits + null terminator
         int length = snprintf(buffer, sizeof(buffer), "%llu", src->integer.value);
@@ -713,11 +709,12 @@ uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t* dest)
             return ERR;
         }
 
-        if (aml_string_prepare(dest, length) == ERR)
+        if (aml_string_set_empty(temp, length) == ERR)
         {
             return ERR;
         }
-        memcpy(dest->string.content, buffer, length);
+        memcpy(temp->string.content, buffer, length);
+        *dest = REF(temp);
         return 0;
     }
     else if (src->type == AML_BUFFER)
@@ -726,28 +723,29 @@ uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t* dest)
 
         if (bufferData->length == 0)
         {
-            if (aml_string_prepare(dest, 0) == ERR)
+            if (aml_string_set_empty(temp, 0) == ERR)
             {
                 return ERR;
             }
+            *dest = REF(temp);
             return 0;
         }
 
         uint64_t maxLen = bufferData->length * 4; // "255," per byte worst case
-        char* temp = heap_alloc(maxLen + 1, HEAP_NONE);
-        if (temp == NULL)
+        char* buff = heap_alloc(maxLen + 1, HEAP_NONE);
+        if (buff == NULL)
         {
             return ERR;
         }
 
-        char* p = temp;
+        char* p = buff;
         char* end = p + maxLen;
         for (uint64_t i = 0; i < bufferData->length; i++)
         {
             int written = snprintf(p, end - p, "%u", bufferData->content[i]);
             if (written < 0 || p + written >= end)
             {
-                heap_free(temp);
+                heap_free(buff);
                 errno = EILSEQ;
                 return ERR;
             }
@@ -760,14 +758,15 @@ uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t* dest)
         }
         *p = '\0';
 
-        uint64_t length = p - temp;
-        if (aml_string_prepare(dest, length) == ERR)
+        uint64_t length = p - buff;
+        if (aml_string_prepare(temp, length) == ERR)
         {
             heap_free(temp);
             return ERR;
         }
-        memcpy(dest->string.content, temp, length);
-        heap_free(temp);
+        memcpy(temp->string.content, temp, length);
+        heap_free(buff);
+        *dest = REF(temp);
         return 0;
     }
 
@@ -776,7 +775,7 @@ uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t* dest)
     return ERR;
 }
 
-uint64_t aml_convert_to_hex_string(aml_object_t* src, aml_object_t* dest)
+uint64_t aml_convert_to_hex_string(aml_object_t* src, aml_object_t** dest)
 {
     if (src == NULL || dest == NULL)
     {
@@ -794,23 +793,34 @@ uint64_t aml_convert_to_hex_string(aml_object_t* src, aml_object_t* dest)
 
     if (src->type == AML_STRING)
     {
-        if (aml_copy_data_and_type(src, dest) == ERR)
-        {
-            LOG_ERR("failed to copy String to String\n");
-            return ERR;
-        }
+        *dest = REF(src);
         return 0;
     }
-    else if (src->type == AML_INTEGER)
+
+    aml_object_t* temp = aml_object_new();
+    if (temp == NULL)
+    {
+        return ERR;
+    }
+    DEREF_DEFER(temp);
+
+    if (src->type == AML_INTEGER)
     {
         char buffer[17]; // 16 hex digits + null terminator
         int len = snprintf(buffer, sizeof(buffer), "%llx", (unsigned long long)src->integer.value);
-
-        if (len < 0 || aml_string_prepare(dest, len) == ERR)
+        if (len < 0)
         {
             return ERR;
         }
-        memcpy(dest->string.content, buffer, len + 1);
+
+        if (aml_string_set_empty(temp, len) == ERR)
+        {
+            DEREF(temp);
+            return ERR;
+        }
+        memcpy(temp->string.content, buffer, len + 1);
+        *dest = REF(temp);
+        return 0;
     }
     else if (src->type == AML_BUFFER)
     {
@@ -818,20 +828,23 @@ uint64_t aml_convert_to_hex_string(aml_object_t* src, aml_object_t* dest)
 
         if (bufferData->length == 0)
         {
-            if (aml_string_prepare(dest, 0) == ERR)
+            if (aml_string_set_empty(temp, 0) == ERR)
             {
+                DEREF(temp);
                 return ERR;
             }
+            *dest = REF(temp);
             return 0;
         }
 
-        uint64_t maxLen = bufferData->length * 3 - 1; // "XX," per byte except last
-        if (aml_string_prepare(dest, maxLen) == ERR)
+        uint64_t len = bufferData->length * 3 - 1; // "XX," per byte except last
+        if (aml_string_set_empty(temp, len) == ERR)
         {
+            DEREF(temp);
             return ERR;
         }
 
-        char* content = dest->string.content;
+        char* content = temp->string.content;
         for (uint64_t i = 0; i < bufferData->length; i++)
         {
             aml_byte_to_hex(bufferData->content[i], &content[i * 3]);
@@ -840,7 +853,8 @@ uint64_t aml_convert_to_hex_string(aml_object_t* src, aml_object_t* dest)
                 content[i * 3 + 2] = ',';
             }
         }
-        content[maxLen] = '\0';
+        content[len] = '\0';
+        *dest = REF(temp);
         return 0;
     }
 
@@ -849,7 +863,7 @@ uint64_t aml_convert_to_hex_string(aml_object_t* src, aml_object_t* dest)
     return ERR;
 }
 
-uint64_t aml_convert_to_integer(aml_object_t* src, aml_object_t* dest)
+uint64_t aml_convert_to_integer(aml_object_t* src, aml_object_t** dest)
 {
     if (src == NULL || dest == NULL)
     {
@@ -867,14 +881,18 @@ uint64_t aml_convert_to_integer(aml_object_t* src, aml_object_t* dest)
 
     if (src->type == AML_INTEGER)
     {
-        if (aml_copy_data_and_type(src, dest) == ERR)
-        {
-            LOG_ERR("failed to copy Integer to Integer\n");
-            return ERR;
-        }
+        *dest = REF(src);
         return 0;
     }
-    else if (src->type == AML_STRING)
+
+    aml_object_t* temp = aml_object_new();
+    if (temp == NULL)
+    {
+        return ERR;
+    }
+    DEREF_DEFER(temp);
+
+    if (src->type == AML_STRING)
     {
         aml_string_obj_t* stringData = &src->string;
         if (stringData->length == 0 || stringData->content == NULL)
@@ -921,14 +939,46 @@ uint64_t aml_convert_to_integer(aml_object_t* src, aml_object_t* dest)
             }
         }
 
-        return aml_integer_set(dest, value);
+        if (aml_integer_set(temp, value) == ERR)
+        {
+            return ERR;
+        }
+        *dest = REF(temp);
+        return 0;
     }
     else if (src->type == AML_BUFFER)
     {
-        return aml_buffer_to_integer(src, dest);
+        if (aml_buffer_to_integer(src, temp) == ERR)
+        {
+            return ERR;
+        }
+        *dest = REF(temp);
+        return 0;
     }
 
     LOG_ERR("cannot convert '%s' to Integer\n", aml_type_to_string(src->type));
     errno = EILSEQ;
     return ERR;
+}
+
+uint64_t aml_convert_integer_to_bcd(aml_integer_t value, aml_integer_t* out)
+{
+    if (out == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    aml_integer_t bcd = 0;
+    for (uint64_t i = 0; i < aml_integer_byte_size() * 2; i++) // 2 nibbles per byte
+    {
+        uint8_t digit = value % 10;
+        bcd |= ((aml_integer_t)digit) << (i * 4);
+        value /= 10;
+        if (value == 0)
+            break;
+    }
+
+    *out = bcd;
+    return 0;
 }

@@ -80,14 +80,14 @@ uint64_t aml_init(void)
         return ERR;
     }
 
-    root = aml_object_new(NULL);
+    root = aml_object_new();
     if (root == NULL)
     {
         return ERR;
     }
     root->flags |= AML_OBJECT_ROOT;
 
-    if (aml_predefined_scope_set(root) == ERR || aml_object_add(root, NULL, NULL) == ERR)
+    if (aml_predefined_scope_set(root) == ERR || aml_object_add(root, NULL, NULL, NULL) == ERR)
     {
         DEREF(root);
         root = NULL;

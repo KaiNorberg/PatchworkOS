@@ -11,7 +11,7 @@ aml_object_t* aml_debug_obj_read(aml_term_list_ctx_t* ctx)
         return NULL;
     }
 
-    aml_object_t* obj = aml_object_new(ctx);
+    aml_object_t* obj = aml_object_new();
     if (obj == NULL)
     {
         return NULL;

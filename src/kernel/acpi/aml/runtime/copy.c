@@ -116,7 +116,7 @@ uint64_t aml_copy_object(aml_object_t* src, aml_object_t* dest)
     {
         if (dest->arg.value == NULL) // Is uninitialized
         {
-            aml_object_t* newValue = aml_object_new(NULL);
+            aml_object_t* newValue = aml_object_new();
             if (newValue == NULL)
             {
                 return ERR;

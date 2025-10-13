@@ -22,6 +22,11 @@ static inline aml_integer_t aml_compare_integers(aml_integer_t a, aml_integer_t 
     }
 }
 
+aml_integer_t aml_compare_not(aml_integer_t value)
+{
+    return value == AML_FALSE ? AML_TRUE : AML_FALSE;
+}
+
 aml_integer_t aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operation_t operation)
 {
     if (a == NULL || b == NULL)
@@ -31,7 +36,7 @@ aml_integer_t aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operatio
 
     if (operation >= AML_COMPARE_INVERT_BASE)
     {
-        return aml_compare(a, b, operation - AML_COMPARE_INVERT_BASE) == AML_FALSE ? AML_TRUE : AML_FALSE;
+        return aml_compare_not(aml_compare(a, b, operation - AML_COMPARE_INVERT_BASE));
     }
 
     aml_type_t aType = a->type;

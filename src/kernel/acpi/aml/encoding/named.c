@@ -100,7 +100,7 @@ uint64_t aml_def_opregion_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_object_t* newObject = aml_object_new(ctx);
+    aml_object_t* newObject = aml_object_new();
     if (newObject == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to create object '%s'", aml_name_string_to_string(&nameString));
@@ -109,7 +109,7 @@ uint64_t aml_def_opregion_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(newObject);
 
     if (aml_operation_region_set(newObject, regionSpace, regionOffset, regionLen) == ERR ||
-        aml_object_add(newObject, ctx->scope, &nameString) == ERR)
+        aml_object_add(newObject, ctx->scope, &nameString, ctx->state) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -167,7 +167,7 @@ uint64_t aml_name_field_read(aml_term_list_ctx_t* ctx, aml_field_list_ctx_t* fie
         return ERR;
     }
 
-    aml_object_t* newObject = aml_object_new(ctx);
+    aml_object_t* newObject = aml_object_new();
     if (newObject == NULL)
     {
         return ERR;
@@ -244,7 +244,7 @@ uint64_t aml_name_field_read(aml_term_list_ctx_t* ctx, aml_field_list_ctx_t* fie
         return ERR;
     }
 
-    if (aml_object_add_child(ctx->scope, newObject, name->name) == ERR)
+    if (aml_object_add_child(ctx->scope, newObject, name->name, ctx->state) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to add object '%.*s'", AML_NAME_LENGTH, name->name);
         return ERR;
@@ -569,7 +569,7 @@ uint64_t aml_def_method_read(aml_term_list_ctx_t* ctx)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_object_t* newObject = aml_object_new(ctx);
+    aml_object_t* newObject = aml_object_new();
     if (newObject == NULL)
     {
         return ERR;
@@ -577,7 +577,7 @@ uint64_t aml_def_method_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(newObject);
 
     if (aml_method_set(newObject, methodFlags, ctx->current, end, NULL) == ERR ||
-        aml_object_add(newObject, ctx->scope, &nameString) == ERR)
+        aml_object_add(newObject, ctx->scope, &nameString, ctx->state) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -615,14 +615,14 @@ uint64_t aml_def_device_read(aml_term_list_ctx_t* ctx)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_object_t* device = aml_object_new(ctx);
+    aml_object_t* device = aml_object_new();
     if (device == NULL)
     {
         return ERR;
     }
     DEREF_DEFER(device);
 
-    if (aml_device_set(device) == ERR || aml_object_add(device, ctx->scope, &nameString) == ERR)
+    if (aml_device_set(device) == ERR || aml_object_add(device, ctx->scope, &nameString, ctx->state) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -680,14 +680,14 @@ uint64_t aml_def_mutex_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_object_t* newObject = aml_object_new(ctx);
+    aml_object_t* newObject = aml_object_new();
     if (newObject == NULL)
     {
         return ERR;
     }
     DEREF_DEFER(newObject);
 
-    if (aml_mutex_set(newObject, syncFlags) == ERR || aml_object_add(newObject, ctx->scope, &nameString) == ERR)
+    if (aml_mutex_set(newObject, syncFlags) == ERR || aml_object_add(newObject, ctx->scope, &nameString, ctx->state) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -773,7 +773,7 @@ uint64_t aml_def_processor_read(aml_term_list_ctx_t* ctx)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_object_t* processor = aml_object_new(ctx);
+    aml_object_t* processor = aml_object_new();
     if (processor == NULL)
     {
         return ERR;
@@ -781,7 +781,7 @@ uint64_t aml_def_processor_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(processor);
 
     if (aml_processor_set(processor, procId, pblkAddr, pblkLen) == ERR ||
-        aml_object_add(processor, ctx->scope, &nameString) == ERR)
+        aml_object_add(processor, ctx->scope, &nameString, ctx->state) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -863,7 +863,7 @@ uint64_t aml_def_create_bit_field_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_object_t* newObject = aml_object_new(ctx);
+    aml_object_t* newObject = aml_object_new();
     if (newObject == NULL)
     {
         return ERR;
@@ -871,7 +871,7 @@ uint64_t aml_def_create_bit_field_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(newObject);
 
     if (aml_buffer_field_set(newObject, sourceBuff, bitIndex, 1) == ERR ||
-        aml_object_add(newObject, ctx->scope, &nameString) == ERR)
+        aml_object_add(newObject, ctx->scope, &nameString, ctx->state) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -913,7 +913,7 @@ static inline uint64_t aml_def_create_field_read_helper(aml_term_list_ctx_t* ctx
         return ERR;
     }
 
-    aml_object_t* newObject = aml_object_new(ctx);
+    aml_object_t* newObject = aml_object_new();
     if (newObject == NULL)
     {
         return ERR;
@@ -921,7 +921,7 @@ static inline uint64_t aml_def_create_field_read_helper(aml_term_list_ctx_t* ctx
     DEREF_DEFER(newObject);
 
     if (aml_buffer_field_set(newObject, sourceBuff, byteIndex * 8, fieldWidth) == ERR ||
-        aml_object_add(newObject, ctx->scope, &nameString) == ERR)
+        aml_object_add(newObject, ctx->scope, &nameString, ctx->state) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -965,14 +965,14 @@ uint64_t aml_def_event_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_object_t* newObject = aml_object_new(ctx);
+    aml_object_t* newObject = aml_object_new();
     if (newObject == NULL)
     {
         return ERR;
     }
     DEREF_DEFER(newObject);
 
-    if (aml_event_set(newObject) == ERR || aml_object_add(newObject, ctx->scope, &nameString) == ERR)
+    if (aml_event_set(newObject) == ERR || aml_object_add(newObject, ctx->scope, &nameString, ctx->state) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -1007,14 +1007,14 @@ uint64_t aml_def_thermal_zone_read(aml_term_list_ctx_t* ctx)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_object_t* thermalZone = aml_object_new(ctx);
+    aml_object_t* thermalZone = aml_object_new();
     if (thermalZone == NULL)
     {
         return ERR;
     }
     DEREF_DEFER(thermalZone);
 
-    if (aml_thermal_zone_set(thermalZone) == ERR || aml_object_add(thermalZone, ctx->scope, &nameString) == ERR)
+    if (aml_thermal_zone_set(thermalZone) == ERR || aml_object_add(thermalZone, ctx->scope, &nameString, ctx->state) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -1090,7 +1090,7 @@ uint64_t aml_def_power_res_read(aml_term_list_ctx_t* ctx)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_object_t* powerResource = aml_object_new(ctx);
+    aml_object_t* powerResource = aml_object_new();
     if (powerResource == NULL)
     {
         return ERR;
@@ -1098,7 +1098,7 @@ uint64_t aml_def_power_res_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(powerResource);
 
     if (aml_power_resource_set(powerResource, systemLevel, resourceOrder) == ERR ||
-        aml_object_add(powerResource, ctx->scope, &nameString) == ERR)
+        aml_object_add(powerResource, ctx->scope, &nameString, ctx->state) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -1164,7 +1164,7 @@ uint64_t aml_def_create_field_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_object_t* newObject = aml_object_new(ctx);
+    aml_object_t* newObject = aml_object_new();
     if (newObject == NULL)
     {
         return ERR;
@@ -1172,7 +1172,7 @@ uint64_t aml_def_create_field_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(newObject);
 
     if (aml_buffer_field_set(newObject, sourceBuff, bitIndex, numBits) == ERR ||
-        aml_object_add(newObject, ctx->scope, &nameString) == ERR)
+        aml_object_add(newObject, ctx->scope, &nameString, ctx->state) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
@@ -1270,7 +1270,7 @@ uint64_t aml_def_data_region_read(aml_term_list_ctx_t* ctx)
             }
         }
 
-        aml_object_t* newObject = aml_object_new(ctx);
+        aml_object_t* newObject = aml_object_new();
         if (newObject == NULL)
         {
             return ERR;
@@ -1278,7 +1278,7 @@ uint64_t aml_def_data_region_read(aml_term_list_ctx_t* ctx)
         DEREF_DEFER(newObject);
 
         if (aml_operation_region_set(newObject, AML_REGION_SYSTEM_MEMORY, (uint64_t)table, table->length) == ERR ||
-            aml_object_add(newObject, ctx->scope, &regionName) == ERR)
+            aml_object_add(newObject, ctx->scope, &regionName, ctx->state) == ERR)
         {
             AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&regionName));
             return ERR;

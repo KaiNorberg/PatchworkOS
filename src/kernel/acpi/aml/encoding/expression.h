@@ -28,6 +28,27 @@ typedef struct aml_term_arg_list
 } aml_term_arg_list_t;
 
 /**
+ * @brief Reads an Operand structure from the AML byte stream.
+ *
+ * An Operand structure is defined as `Operand := TermArg => Integer` in the spec but this must be wrong.
+ *
+ * For example, Operand is used in the definition of DefLGreaterEqual which is defined as `DefLGreaterEqual :=
+ * LgreaterEqualOp Operand Operand`. Clearly using the Operand structure.
+ *
+ * However, this does not make any sense as in section 19.6.72, regarding LGreaterEqual, it states that "Source1 and
+ * Source2 must each evaluate to an integer, a string or a buffer" clearly contradicting the definition of Operand as
+ * only being able to evaluate to an integer. More examples of this can be found all over the place.
+ *
+ * So instead we use let the caller specify what types are allowed.
+ *
+ * @param ctx The TermList context.
+ * @param out Output pointer to be filled with the object pointer storing the result.
+ * @param allowedTypes The allowed types that the TermArg can evaluate to.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+aml_object_t* aml_operand_read(aml_term_list_ctx_t* ctx, aml_type_t allowedTypes);
+
+/**
  * @brief Reads a BufferSize structure from the AML byte stream.
  *
  * A BufferSize structure is defined as `BufferSize := TermArg => Integer`.
@@ -109,27 +130,6 @@ aml_object_t* aml_def_cond_ref_of_read(aml_term_list_ctx_t* ctx);
  * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_store_read(aml_term_list_ctx_t* ctx);
-
-/**
- * @brief Reads an Operand structure from the AML byte stream.
- *
- * An Operand structure is defined as `Operand := TermArg => Integer` in the spec but this must be wrong.
- *
- * For example, Operand is used in the definition of DefLGreaterEqual which is defined as `DefLGreaterEqual :=
- * LgreaterEqualOp Operand Operand`. Clearly using the Operand structure.
- *
- * However, this does not make any sense as in section 19.6.72, regarding LGreaterEqual, it states that "Source1 and
- * Source2 must each evaluate to an integer, a string or a buffer" clearly contradicting the definition of Operand as
- * only being able to evaluate to an integer. More examples of this can be found all over the place.
- *
- * So instead we use let the caller specify what types are allowed.
- *
- * @param ctx The TermList context.
- * @param out Output pointer to be filled with the object pointer storing the result.
- * @param allowedTypes The allowed types that the TermArg can evaluate to.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-aml_object_t* aml_operand_read(aml_term_list_ctx_t* ctx, aml_type_t allowedTypes);
 
 /**
  * @brief Reads a Dividend structure from the AML byte stream.

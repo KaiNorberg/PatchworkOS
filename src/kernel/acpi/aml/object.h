@@ -148,6 +148,8 @@ typedef aml_object_t* (*aml_method_implementation_t)(aml_method_obj_t* method, a
 typedef struct aml_name
 {
     list_entry_t entry;                ///< Used to store the object in a its parent's named object list.
+    list_entry_t stateEntry;           ///< Used to store the object in the aml_state's namedObjects list.
+    aml_state_t* state;        ///< The state that added the object to the namespace, can be `NULL`.
     aml_object_t* parent;              ///< Pointer to the parent object, can be `NULL`.
     char segment[AML_NAME_LENGTH + 1]; ///< The name of the object.
     sysfs_dir_t dir;                   ///< Used to expose the object in the filesystem.
@@ -158,11 +160,9 @@ typedef struct aml_name
  */
 #define AML_OBJECT_COMMON_HEADER \
     ref_t ref; \
-    list_entry_t stateEntry; \
     aml_object_flags_t flags; \
     aml_name_t name; \
-    aml_type_t type; \
-    aml_state_t* state
+    aml_type_t type
 
 /**
  * @brief Data for a buffer object.
@@ -464,10 +464,9 @@ uint64_t aml_object_get_total_count(void);
  *
  * You could also use `DEREF_DEFER()` to dereference the object when the current scope ends.
  *
- * @param ctx The context of the TermList that was being read when the object was created, can be `NULL`.
  * @return On success, a pointer to the new object. On failure, `NULL` and `errno` is set.
  */
-aml_object_t* aml_object_new(aml_term_list_ctx_t* ctx);
+aml_object_t* aml_object_new(void);
 
 /**
  * @brief Clear the data of a object, setting its type to `AML_UNINITIALIZED`.
@@ -498,9 +497,10 @@ uint64_t aml_object_count_children(aml_object_t* parent);
  * @param child Pointer to the child object to add, must not be `AML_UNINITIALIZED`.
  * @param name Name of the child object to add, must be exactly `AML_NAME_LENGTH` chars long, does not need to be
  * null-terminated.
+ * @param state Pointer to the state that is adding the object, can be `NULL`. See `aml_state_t` for more details.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const char* name);
+uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const char* name, aml_state_t* state);
 
 /**
  * @brief Make a object named by adding it to the ACPI namespace tree at the location specified by the namestring.
@@ -513,9 +513,10 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
  * @param from Pointer to the object to start the search from, can be `NULL` to start from the root.
  * @param nameString Pointer to the name string, can be `NULL` if `object->flags & AML_OBJECT_ROOT`, must have atleast
  * one name segment otherwise.
+ * @param state Pointer to the state that is adding the object, can be `NULL`. See `aml_state_t` for more details.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name_string_t* nameString);
+uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name_string_t* nameString, aml_state_t* state);
 
 /**
  * @brief Remove a object from the ACPI namespace tree.

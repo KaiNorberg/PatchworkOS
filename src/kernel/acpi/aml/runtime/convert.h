@@ -31,6 +31,19 @@
 uint64_t aml_convert(aml_object_t* src, aml_object_t* dest, aml_type_t allowedTypes);
 
 /**
+ * @brief Performs a "Implicit Result Object Conversion" acording to the rules in section 19.3.5.5 of the ACPI
+ * specification.
+ *
+ * @see Section 19.3.5.5 of the ACPI specification for more details.
+ *
+ * @param result Pointer to the result object to convert.
+ * @param target Pointer to the target object to store the result in. For convenience this can be `NULL`, in which case
+ * this does nothing.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target);
+
+/**
  * @brief Performs a "Implicit Source Operand Conversion" acording to the rules in section 19.3.5.4 of the ACPI
  * specification.
  *
@@ -55,17 +68,60 @@ uint64_t aml_convert(aml_object_t* src, aml_object_t* dest, aml_type_t allowedTy
 uint64_t aml_convert_source(aml_object_t* src, aml_object_t** dest, aml_type_t allowedTypes);
 
 /**
- * @brief Performs a "Implicit Result Object Conversion" acording to the rules in section 19.3.5.5 of the ACPI
- * specification.
+ * @brief Converts a Integer, String or Buffer source object to a Buffer destination object.
  *
- * @see Section 19.3.5.5 of the ACPI specification for more details.
+ * Note that this behaviour is different from the implicit source operand conversion and implicit result object
+ * conversion rules.
  *
- * @param result Pointer to the result object to convert.
- * @param target Pointer to the target object to store the result in. For convenience this can be `NULL`, in which case
- * this does nothing.
+ * @see Section 19.6.138 of the ACPI specification for more details.
+ *
+ * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
+ * @param dest Pointer to the object pointer where the converted value will be stored, see `aml_convert_source` for details.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target);
+uint64_t aml_convert_to_buffer(aml_object_t* src, aml_object_t** dest);
+
+/**
+ * @brief Converts a Integer, String or Buffer source object to a String destination object in decimal format.
+ *
+ * Note that this behaviour is different from the implicit source operand conversion and implicit result object
+ * conversion rules.
+ *
+ * @see Section 19.6.139 of the ACPI specification for more details.
+ *
+ * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
+ * @param dest Pointer to the object pointer where the converted value will be stored, see `aml_convert_source` for details.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t** dest);
+
+/**
+ * @brief Converts a Integer, String or Buffer source object to a String destination object in hexadecimal format.
+ *
+ * Note that this behaviour is different from the implicit source operand conversion and implicit result object
+ * conversion rules.
+ *
+ * @see Section 19.6.140 of the ACPI specification for more details.
+ *
+ * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
+ * @param dest Pointer to the object pointer where the converted value will be stored, see `aml_convert_source` for details.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_convert_to_hex_string(aml_object_t* src, aml_object_t** dest);
+
+/**
+ * @brief Converts a Integer, String or Buffer source object to an Integer destination object.
+ *
+ * Note that this behaviour is different from the implicit source operand conversion and implicit result object
+ * conversion rules.
+ *
+ * @see Section 19.6.141 of the ACPI specification for more details.
+ *
+ * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
+ * @param dest Pointer to the object pointer where the converted value will be stored, see `aml_convert_source` for details.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_convert_to_integer(aml_object_t* src, aml_object_t** dest);
 
 /**
  * @brief Converts an integer to its Binary-Coded Decimal (BCD) representation.
@@ -84,65 +140,5 @@ uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target);
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_convert_integer_to_bcd(aml_integer_t value, aml_integer_t* out);
-
-/**
- * @brief Converts a Integer, String or Buffer source object to a Buffer destination object.
- *
- * Note that this behaviour is different from the implicit source operand conversion and implicit result object
- * conversion rules.
- *
- * @see Section 19.6.138 of the ACPI specification for more details.
- *
- * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
- * @param dest Pointer to the destination object where the converted Buffer will be stored, can be of type
- * `AML_UNINITIALIZED`.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_convert_to_buffer(aml_object_t* src, aml_object_t* dest);
-
-/**
- * @brief Converts a Integer, String or Buffer source object to a String destination object in decimal format.
- *
- * Note that this behaviour is different from the implicit source operand conversion and implicit result object
- * conversion rules.
- *
- * @see Section 19.6.139 of the ACPI specification for more details.
- *
- * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
- * @param dest Pointer to the destination object where the converted Decimal String will be stored, can be of type
- * `AML_UNINITIALIZED`.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t* dest);
-
-/**
- * @brief Converts a Integer, String or Buffer source object to a String destination object in hexadecimal format.
- *
- * Note that this behaviour is different from the implicit source operand conversion and implicit result object
- * conversion rules.
- *
- * @see Section 19.6.140 of the ACPI specification for more details.
- *
- * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
- * @param dest Pointer to the destination object where the converted Hex String will be stored, can be of type
- * `AML_UNINITIALIZED`.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_convert_to_hex_string(aml_object_t* src, aml_object_t* dest);
-
-/**
- * @brief Converts a Integer, String or Buffer source object to an Integer destination object.
- *
- * Note that this behaviour is different from the implicit source operand conversion and implicit result object
- * conversion rules.
- *
- * @see Section 19.6.141 of the ACPI specification for more details.
- *
- * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
- * @param dest Pointer to the destination object where the converted Integer will be stored, can be of type
- * `AML_UNINITIALIZED`.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_convert_to_integer(aml_object_t* src, aml_object_t* dest);
 
 /** @} */

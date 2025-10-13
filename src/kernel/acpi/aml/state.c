@@ -11,7 +11,7 @@ uint64_t aml_state_init(aml_state_t* state, aml_object_t** args, uint64_t argCou
 
     for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)
     {
-        aml_object_t* local = aml_object_new(NULL);
+        aml_object_t* local = aml_object_new();
         if (local == NULL || aml_local_set(local) == ERR)
         {
             if (local != NULL)
@@ -34,7 +34,7 @@ uint64_t aml_state_init(aml_state_t* state, aml_object_t** args, uint64_t argCou
     }
     for (uint8_t i = 0; i < AML_MAX_ARGS; i++)
     {
-        aml_object_t* arg = aml_object_new(NULL);
+        aml_object_t* arg = aml_object_new();
         if (arg == NULL || aml_arg_set(arg, argCount > i ? args[i] : NULL) == ERR)
         {
             if (arg != NULL)
@@ -61,7 +61,7 @@ uint64_t aml_state_init(aml_state_t* state, aml_object_t** args, uint64_t argCou
     }
     state->result = NULL;
     state->errorDepth = 0;
-    list_init(&state->createdObjects);
+    list_init(&state->namedObjects);
     return 0;
 }
 
@@ -81,18 +81,18 @@ void aml_state_deinit(aml_state_t* state)
     }
     state->result = NULL;
 
-    while (!list_is_empty(&state->createdObjects))
+    while (!list_is_empty(&state->namedObjects))
     {
-        aml_object_t* child = CONTAINER_OF(list_pop(&state->createdObjects), aml_object_t, stateEntry);
+        aml_object_t* child = CONTAINER_OF(list_pop(&state->namedObjects), aml_object_t, name.stateEntry);
         // Dont do anything.
     }
 }
 
 void aml_state_garbage_collect(aml_state_t* state)
 {
-    while (!list_is_empty(&state->createdObjects))
+    while (!list_is_empty(&state->namedObjects))
     {
-        aml_object_t* child = CONTAINER_OF(list_pop(&state->createdObjects), aml_object_t, stateEntry);
+        aml_object_t* child = CONTAINER_OF(list_pop(&state->namedObjects), aml_object_t, name.stateEntry);
         aml_object_remove(child);
     }
 }
@@ -104,7 +104,7 @@ aml_object_t* aml_state_result_get(aml_state_t* state)
         return NULL;
     }
 
-    aml_object_t* result = aml_object_new(NULL);
+    aml_object_t* result = aml_object_new();
     if (result == NULL)
     {
         return NULL;

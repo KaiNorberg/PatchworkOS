@@ -40,7 +40,7 @@ static void aml_tests_exception_handler(aml_exception_t code)
     }
     DEREF_DEFER(err);
 
-    aml_object_t* arg0 = aml_object_new(NULL);
+    aml_object_t* arg0 = aml_object_new();
     if (arg0 == NULL)
     {
         return;
@@ -52,7 +52,7 @@ static void aml_tests_exception_handler(aml_exception_t code)
         return;
     }
 
-    aml_object_t* arg1 = aml_object_new(NULL);
+    aml_object_t* arg1 = aml_object_new();
     if (arg1 == NULL)
     {
         return;
@@ -64,7 +64,7 @@ static void aml_tests_exception_handler(aml_exception_t code)
         return;
     }
 
-    aml_object_t* arg2 = aml_object_new(NULL);
+    aml_object_t* arg2 = aml_object_new();
     if (arg2 == NULL)
     {
         return;

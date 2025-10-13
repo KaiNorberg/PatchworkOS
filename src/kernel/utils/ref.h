@@ -3,6 +3,8 @@
 #include <common/defs.h>
 
 #include <stdatomic.h>
+#include <stdint.h>
+#include <assert.h>
 
 /**
  * @brief Reference counting
@@ -87,7 +89,14 @@ typedef struct ref
  * @param ref Pointer to the reference counter structure
  * @param free Cleanup function to call when count reaches zero
  */
-void ref_init(ref_t* ref, void* free);
+static inline void ref_init(ref_t* ref, void* free)
+{
+#ifndef NDEBUG
+    ref->magic = REF_MAGIC;
+#endif
+    atomic_init(&ref->count, 1);
+    ref->free = free;
+}
 
 /**
  * @brief Increment reference count
@@ -95,7 +104,18 @@ void ref_init(ref_t* ref, void* free);
  * @param ptr Pointer to the struct containing `ref_t` as its first member
  * @return The `ptr` passed as input
  */
-void* ref_inc(void* ptr);
+static inline void* ref_inc(void* ptr)
+{
+    ref_t* ref = (ref_t*)ptr;
+    if (ref == NULL)
+    {
+        return NULL;
+    }
+
+    assert(ref->magic == REF_MAGIC);
+    atomic_fetch_add_explicit(&ref->count, 1, memory_order_relaxed);
+    return ptr;
+}
 
 /**
  * @brief Decrement reference count
@@ -104,7 +124,33 @@ void* ref_inc(void* ptr);
  *
  * @param ptr Pointer to the struct containing `ref_t` as its first member
  */
-void ref_dec(void* ptr);
+static inline void ref_dec(void* ptr)
+{
+    ref_t* ref = (ref_t*)ptr;
+    if (ref == NULL)
+    {
+        return;
+    }
+
+    assert(ref->magic == REF_MAGIC);
+    uint64_t count = atomic_fetch_sub_explicit(&ref->count, 1, memory_order_relaxed);
+    if (count > 1)
+    {
+        return;
+    }
+
+    atomic_thread_fence(memory_order_acquire);
+    assert(count == 1); // Count is now zero, if it was zero before then we have a double free.
+    if (ref->free == NULL)
+    {
+        return;
+    }
+
+#ifndef NDEBUG
+    ref->magic = 0;
+#endif
+    ref->free(ptr);
+}
 
 static inline void ref_defer_cleanup(void** ptr)
 {

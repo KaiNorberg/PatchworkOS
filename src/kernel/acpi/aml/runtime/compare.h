@@ -29,6 +29,14 @@ typedef enum
 } aml_compare_operation_t;
 
 /**
+ * @brief Perform a logical NOT operation on an integer value.
+ *
+ * @param value The integer value to negate.
+ * @return `AML_TRUE` if the input value is `AML_FALSE`, otherwise `AML_FALSE`.
+ */
+aml_integer_t aml_compare_not(aml_integer_t value);
+
+/**
  * @brief Compare two ACPI objects.
  *
  * Only objects of type `AML_OBJECT_INTEGER`, `AML_OBJECT_STRING` and `AML_OBJECT_BUFFER` can be compared, and certain

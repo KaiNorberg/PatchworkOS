@@ -120,14 +120,14 @@ static void aml_object_free(aml_object_t* object)
         return;
     }
 
-    if (object->state != NULL)
-    {
-        list_remove(&object->state->createdObjects, &object->stateEntry);
-        object->state = NULL;
-    }
-
     if (object->flags & AML_OBJECT_NAMED)
     {
+        if (object->name.state != NULL)
+        {
+            list_remove(&object->name.state->namedObjects, &object->name.stateEntry);
+            object->name.state = NULL;
+        }
+
         object->name.parent = NULL;
         sysfs_dir_deinit(&object->name.dir);
     }
@@ -138,7 +138,7 @@ static void aml_object_free(aml_object_t* object)
     totalObjects--;
 }
 
-aml_object_t* aml_object_new(aml_term_list_ctx_t* ctx)
+aml_object_t* aml_object_new()
 {
     aml_object_t* object = heap_alloc(sizeof(aml_object_t), HEAP_NONE);
     if (object == NULL)
@@ -148,19 +148,12 @@ aml_object_t* aml_object_new(aml_term_list_ctx_t* ctx)
     memset(object, 0, sizeof(aml_object_t));
 
     ref_init(&object->ref, aml_object_free);
-    list_entry_init(&object->stateEntry);
     object->flags = AML_OBJECT_NONE;
     object->type = AML_UNINITIALIZED;
-    object->state = ctx != NULL ? ctx->state : NULL;
 
     strncpy(object->name.segment, AML_UNNAMED_NAME, AML_NAME_LENGTH);
     object->name.segment[AML_NAME_LENGTH] = '\0';
 
-    if (object->state != NULL)
-    {
-        // The state does not take a reference to the object, it just keeps track of it for garbage collection.
-        list_push(&object->state->createdObjects, &object->stateEntry);
-    }
     totalObjects++;
     return object;
 }
@@ -390,7 +383,7 @@ uint64_t aml_object_count_children(aml_object_t* parent)
     return count;
 }
 
-uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const char* name)
+uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const char* name, aml_state_t* state)
 {
     if (parent == NULL || child == NULL || name == NULL)
     {
@@ -426,6 +419,8 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
     }
 
     list_entry_init(&child->name.entry);
+    list_entry_init(&child->name.stateEntry);
+    child->name.state = state;
     child->name.parent = parent;
     memcpy(child->name.segment, name, AML_NAME_LENGTH);
     child->name.segment[AML_NAME_LENGTH] = '\0';
@@ -451,10 +446,16 @@ uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const c
 
     list_push(parentList, &REF(child)->name.entry);
     child->flags |= AML_OBJECT_NAMED;
+
+    if (state != NULL)
+    {
+        // The state does not take a reference to the object, it just keeps track of it for garbage collection.
+        list_push(&state->namedObjects, &child->name.stateEntry);
+    }
     return 0;
 }
 
-uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name_string_t* nameString)
+uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name_string_t* nameString, aml_state_t* state)
 {
     if (object == NULL)
     {
@@ -559,7 +560,7 @@ uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name
     memcpy(segmentName, segment->name, AML_NAME_LENGTH);
     segmentName[AML_NAME_LENGTH] = '\0';
 
-    return aml_object_add_child(parent, object, segmentName);
+    return aml_object_add_child(parent, object, segmentName, state);
 }
 
 uint64_t aml_object_remove(aml_object_t* object)
@@ -1113,7 +1114,7 @@ uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_obj_t*
     object->fieldUnit.index = NULL;
     object->fieldUnit.data = NULL;
 
-    aml_object_t* bankValueObj = aml_object_new(NULL);
+    aml_object_t* bankValueObj = aml_object_new();
     if (bankValueObj == NULL)
     {
         return ERR;
@@ -1325,7 +1326,7 @@ uint64_t aml_package_set(aml_object_t* object, uint64_t length)
     }
     for (uint64_t i = 0; i < length; i++)
     {
-        object->package.elements[i] = aml_object_new(NULL);
+        object->package.elements[i] = aml_object_new();
         if (object->package.elements[i] == NULL)
         {
             for (uint64_t j = 0; j < i; j++)
@@ -1565,7 +1566,7 @@ uint64_t aml_local_set(aml_object_t* object)
         return ERR;
     }
 
-    object->local.value = aml_object_new(NULL);
+    object->local.value = aml_object_new();
     if (object->local.value == NULL)
     {
         return ERR;

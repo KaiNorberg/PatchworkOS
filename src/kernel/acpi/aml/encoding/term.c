@@ -38,7 +38,7 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
         value = aml_local_obj_read(ctx);
         break;
     default:
-        value = aml_object_new(ctx);
+        value = aml_object_new();
         if (value == NULL)
         {
             return NULL;

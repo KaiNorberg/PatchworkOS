@@ -23,7 +23,7 @@ aml_object_t* aml_osi_implementation(aml_method_obj_t* method, aml_object_t** ar
 
     LOG_DEBUG("_OSI called with argument: '%.*s'\n", (int)args[0]->string.length, args[0]->string.content);
 
-    aml_object_t* result = aml_object_new(NULL);
+    aml_object_t* result = aml_object_new();
     if (result == NULL)
     {
         return NULL;
@@ -50,7 +50,7 @@ aml_object_t* aml_rev_implementation(aml_method_obj_t* method, aml_object_t** ar
         return NULL;
     }
 
-    aml_object_t* result = aml_object_new(NULL);
+    aml_object_t* result = aml_object_new();
     if (result == NULL)
     {
         return NULL;
@@ -76,7 +76,7 @@ aml_object_t* aml_os_implementation(aml_method_obj_t* method, aml_object_t** arg
         return NULL;
     }
 
-    aml_object_t* result = aml_object_new(NULL);
+    aml_object_t* result = aml_object_new();
     if (result == NULL)
     {
         return NULL;
@@ -96,14 +96,14 @@ static inline uint64_t aml_create_predefined_scope(const char* name)
     aml_object_t* root = aml_root_get();
     assert(root != NULL);
 
-    aml_object_t* object = aml_object_new(NULL);
+    aml_object_t* object = aml_object_new();
     if (object == NULL)
     {
         return ERR;
     }
     DEREF_DEFER(object);
 
-    if (aml_predefined_scope_set(object) == ERR || aml_object_add_child(root, object, name) == ERR)
+    if (aml_predefined_scope_set(object) == ERR || aml_object_add_child(root, object, name, NULL) == ERR)
     {
         return ERR;
     }
@@ -130,7 +130,7 @@ uint64_t aml_predefined_init(void)
     assert(root != NULL);
 
     // OS specific predefined objects, see section 5.7 of the ACPI specification.
-    aml_object_t* osi = aml_object_new(NULL);
+    aml_object_t* osi = aml_object_new();
     if (osi == NULL)
     {
         return ERR;
@@ -142,12 +142,12 @@ uint64_t aml_predefined_init(void)
         .syncLevel = 15,
     };
     if (aml_method_set(osi, osiFlags, NULL, NULL, aml_osi_implementation) == ERR ||
-        aml_object_add_child(root, osi, "_OSI") == ERR)
+        aml_object_add_child(root, osi, "_OSI", NULL) == ERR)
     {
         return ERR;
     }
 
-    aml_object_t* rev = aml_object_new(NULL);
+    aml_object_t* rev = aml_object_new();
     if (rev == NULL)
     {
         return ERR;
@@ -159,12 +159,12 @@ uint64_t aml_predefined_init(void)
         .syncLevel = 15,
     };
     if (aml_method_set(rev, revFlags, NULL, NULL, aml_rev_implementation) == ERR ||
-        aml_object_add_child(root, rev, "_REV") == ERR)
+        aml_object_add_child(root, rev, "_REV", NULL) == ERR)
     {
         return ERR;
     }
 
-    aml_object_t* os = aml_object_new(NULL);
+    aml_object_t* os = aml_object_new();
     if (os == NULL)
     {
         return ERR;
@@ -176,19 +176,19 @@ uint64_t aml_predefined_init(void)
         .syncLevel = 15,
     };
     if (aml_method_set(os, osFlags, NULL, NULL, aml_os_implementation) == ERR ||
-        aml_object_add_child(root, os, "_OS_") == ERR)
+        aml_object_add_child(root, os, "_OS_", NULL) == ERR)
     {
         return ERR;
     }
 
     // TODO: Implement _GL properly.
-    aml_object_t* gl = aml_object_new(NULL);
+    aml_object_t* gl = aml_object_new();
     if (gl == NULL)
     {
         return ERR;
     }
     DEREF_DEFER(gl);
-    if (aml_mutex_set(gl, 0) == ERR || aml_object_add_child(root, gl, "_GL_") == ERR)
+    if (aml_mutex_set(gl, 0) == ERR || aml_object_add_child(root, gl, "_GL_", NULL) == ERR)
     {
         return ERR;
     }
