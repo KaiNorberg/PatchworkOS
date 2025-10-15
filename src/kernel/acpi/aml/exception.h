@@ -1,5 +1,7 @@
 #pragma once
 
+#include "state.h"
+
 #include <errno.h>
 #include <stdint.h>
 
@@ -63,7 +65,7 @@ typedef enum
  * @brief AML exception handler function type.
  * @typedef aml_exception_handler_t
  */
-typedef void (*aml_exception_handler_t)(aml_exception_t code);
+typedef void (*aml_exception_handler_t)(aml_state_t* state, aml_exception_t code);
 
 /**
  * @brief Converts an AML exception code to a string.
@@ -96,16 +98,18 @@ void aml_exception_unregister(aml_exception_handler_t handler);
 /**
  * @brief Raises an AML exception.
  *
+ * @param state The AML state in which the exception occurred.
  * @param code The exception code to raise.
  * @param function The name of the function raising the exception, used for logging.
  */
-void aml_exception_raise(aml_exception_t code, const char* function);
+void aml_exception_raise(aml_state_t* state, aml_exception_t code, const char* function);
 
 /**
  * @brief Macro to raise an AML exception with the current function name.
  *
+ * @param state The AML state in which the exception occurred.
  * @param code The exception code to raise.
  */
-#define AML_EXCEPTION_RAISE(code) aml_exception_raise(code, __func__)
+#define AML_EXCEPTION_RAISE(state, code) aml_exception_raise(state, code, __func__)
 
 /** @} */

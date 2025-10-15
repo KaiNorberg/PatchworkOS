@@ -4,6 +4,9 @@
 #include "acpi/aml/state.h"
 #include "acpi/aml/tests.h"
 #include "acpi/aml/token.h"
+#include "acpi/aml/exception.h"
+#include "sched/sched.h"
+#include "sched/thread.h"
 
 #include "acpi/aml/runtime/convert.h"
 #include "data.h"
@@ -32,7 +35,7 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
         value = aml_expression_opcode_read(ctx);
         if (value != NULL)
         {
-            aml_object_exception_check(value);
+            aml_object_exception_check(value, ctx->state);
         }
         break;
     case AML_TOKEN_TYPE_ARG:
@@ -67,7 +70,7 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
     DEREF_DEFER(value);
 
     aml_object_t* out = NULL;
-    if (aml_convert_source(value, &out, allowedTypes) == ERR)
+    if (aml_convert_source(ctx->state, value, &out, allowedTypes) == ERR)
     {
 #ifdef TESTING
         aml_tests_perf_end();
@@ -214,6 +217,12 @@ uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx)
 uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* scope, const uint8_t* start, const uint8_t* end,
     aml_term_list_ctx_t* parentCtx)
 {
+    if (state == NULL || scope == NULL || start == NULL || end == NULL || start > end)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     aml_term_list_ctx_t ctx = {
         .state = state,
         .scope = scope,

@@ -72,6 +72,12 @@ The goal is to eventually have a feature-complete and unique operating system av
 
 ---
 
+## Documentation
+
+As one of the main goals of PatchworkOS is to be educational, I have tried to document the codebase as much as possible along with providing citations to any sources used. Currently this is still a work in progress, but as old code is refactored and new code is added, I try to keep it well documented.
+
+If you are interested in knowing more, then you can check out the Doxygen generated [**documentation**](https://kainorberg.github.io/PatchworkOS/html/index.html).
+
 ## Shell Utilities
 
 Patchwork includes its own shell utilities designed around its [file flags](#file-flags) system. Included is a brief overview with some usage examples. For convenience the init program will create hardlinks for each shell utility to their unix equivalents, this can be configured in the [init cfg](https://github.com/KaiNorberg/PatchworkOS/tree/main/root/cfg/init-main.cfg).
@@ -214,10 +220,6 @@ And of course the third and final reason is because I think it's fun, and honest
 
 **Example:** Say we wanted to implement `waitpid()`. First we need to implement the kernel behavior itself, then the appropriate system call, then add in handling for that system call in the standard library, then the actual function itself in the standard library and finally create some `waitpid` shell utility. That's a lot of work for something as simple as a waiting for a process to die, and it means a whole new API to learn. Instead, we can just add a `status` file to the process directory, which is only a handful lines of code, and we are done. Reading from the status file will block until the process dies and then read its exit status and can be used via `read()` or in the shell via `read /proc/[pid]/status`.
 
-## Documentation
-
-If you are still interested in knowing more, then you can check out the Doxygen generated [**documentation**](https://kainorberg.github.io/PatchworkOS/html/index.html).
-
 ---
 
 ## Directories
@@ -313,7 +315,7 @@ You should now see a new entry in your GRUB boot menu allowing you to boot into 
 
 ## Testing
 
-Testing uses a GitHub action that compiles the project and runs it for some amount of time using QEMU both with the `DEBUG=1` amd `TESTING=1` flags enabled. This will run some additional tests in the kernel (for example it will clone ACPICA and run all its runtime tests), and if it has not crashed by the end of the allotted time, it is considered a success.
+Testing uses a GitHub action that compiles the project and runs it for some amount of time using QEMU both with the `DEBUG=1` and `TESTING=1` flags enabled. This will run some additional tests in the kernel (for example it will clone ACPICA and run all its runtime tests), and if it has not crashed by the end of the allotted time, it is considered a success.
 
 ### Tested Configurations
 

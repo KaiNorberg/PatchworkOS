@@ -23,8 +23,7 @@ typedef struct aml_term_list_ctx aml_term_list_ctx_t;
  */
 typedef struct aml_term_arg_list
 {
-    aml_object_t* args[AML_MAX_ARGS];
-    uint8_t count;
+    aml_object_t* args[AML_MAX_ARGS + 1]; // null-terminated
 } aml_term_arg_list_t;
 
 /**

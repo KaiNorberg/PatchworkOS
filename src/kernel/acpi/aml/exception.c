@@ -2,6 +2,7 @@
 
 #include "log/log.h"
 #include "mem/heap.h"
+#include "sched/thread.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -129,7 +130,7 @@ void aml_exception_unregister(aml_exception_handler_t handler)
     }
 }
 
-void aml_exception_raise(aml_exception_t code, const char* function)
+void aml_exception_raise(aml_state_t* state, aml_exception_t code, const char* function)
 {
 #ifdef TESTING
     LOG_WARN("AML EXCEPTION '%s' (0x%x) in '%s()'. (Probably intentional)\n", aml_exception_to_string(code), code,
@@ -140,6 +141,6 @@ void aml_exception_raise(aml_exception_t code, const char* function)
 
     for (uint64_t i = 0; i < handlerCount; i++)
     {
-        handlers[i](code);
+        handlers[i](state, code);
     }
 }

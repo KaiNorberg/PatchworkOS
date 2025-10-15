@@ -124,6 +124,11 @@ typedef struct thread
      */
     trap_frame_t trapFrame;
     /**
+     * @brief Padding such that if a stack overflow were to occur we have a safety margin before we start
+     * overwriting important data.
+     */
+    uint8_t safetyMargin[128];
+    /**
      * @brief The threads canary, for more info see `THREAD_CANARY`.
      */
     uint64_t canary;

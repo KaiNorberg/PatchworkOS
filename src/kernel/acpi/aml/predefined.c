@@ -91,11 +91,8 @@ aml_object_t* aml_os_implementation(aml_method_obj_t* method, aml_object_t** arg
     return result;
 }
 
-static inline uint64_t aml_create_predefined_scope(const char* name)
+static inline uint64_t aml_create_predefined_scope(aml_name_t name)
 {
-    aml_object_t* root = aml_root_get();
-    assert(root != NULL);
-
     aml_object_t* object = aml_object_new();
     if (object == NULL)
     {
@@ -103,7 +100,7 @@ static inline uint64_t aml_create_predefined_scope(const char* name)
     }
     DEREF_DEFER(object);
 
-    if (aml_predefined_scope_set(object) == ERR || aml_object_add_child(root, object, name, NULL) == ERR)
+    if (aml_predefined_scope_set(object) == ERR || aml_namespace_add_child(NULL, NULL, name, object) == ERR)
     {
         return ERR;
     }
@@ -119,15 +116,14 @@ aml_mutex_obj_t* aml_gl_get(void)
 uint64_t aml_predefined_init(void)
 {
     // Normal predefined root objects, see section 5.3.1 of the ACPI specification.
-    if (aml_create_predefined_scope("_GPE") == ERR || aml_create_predefined_scope("_PR_") == ERR ||
-        aml_create_predefined_scope("_SB_") == ERR || aml_create_predefined_scope("_SI_") == ERR ||
-        aml_create_predefined_scope("_TZ_") == ERR)
+    if (aml_create_predefined_scope(AML_NAME('_', 'G', 'P', 'E')) == ERR ||
+        aml_create_predefined_scope(AML_NAME('_', 'P', 'R', '_')) == ERR ||
+        aml_create_predefined_scope(AML_NAME('_', 'S', 'B', '_')) == ERR ||
+        aml_create_predefined_scope(AML_NAME('_', 'S', 'I', '_')) == ERR ||
+        aml_create_predefined_scope(AML_NAME('_', 'T', 'Z', '_')) == ERR)
     {
         return ERR;
     }
-
-    aml_object_t* root = aml_root_get();
-    assert(root != NULL);
 
     // OS specific predefined objects, see section 5.7 of the ACPI specification.
     aml_object_t* osi = aml_object_new();
@@ -142,7 +138,7 @@ uint64_t aml_predefined_init(void)
         .syncLevel = 15,
     };
     if (aml_method_set(osi, osiFlags, NULL, NULL, aml_osi_implementation) == ERR ||
-        aml_object_add_child(root, osi, "_OSI", NULL) == ERR)
+        aml_namespace_add_child(NULL, NULL, AML_NAME('_', 'O', 'S', 'I'), osi) == ERR)
     {
         return ERR;
     }
@@ -159,7 +155,7 @@ uint64_t aml_predefined_init(void)
         .syncLevel = 15,
     };
     if (aml_method_set(rev, revFlags, NULL, NULL, aml_rev_implementation) == ERR ||
-        aml_object_add_child(root, rev, "_REV", NULL) == ERR)
+        aml_namespace_add_child(NULL, NULL, AML_NAME('_', 'R', 'E', 'V'), rev) == ERR)
     {
         return ERR;
     }
@@ -176,7 +172,7 @@ uint64_t aml_predefined_init(void)
         .syncLevel = 15,
     };
     if (aml_method_set(os, osFlags, NULL, NULL, aml_os_implementation) == ERR ||
-        aml_object_add_child(root, os, "_OS_", NULL) == ERR)
+        aml_namespace_add_child(NULL, NULL, AML_NAME('_', 'O', 'S', '_'), os) == ERR)
     {
         return ERR;
     }
@@ -188,7 +184,7 @@ uint64_t aml_predefined_init(void)
         return ERR;
     }
     DEREF_DEFER(gl);
-    if (aml_mutex_set(gl, 0) == ERR || aml_object_add_child(root, gl, "_GL_", NULL) == ERR)
+    if (aml_mutex_set(gl, 0) == ERR || aml_namespace_add_child(NULL, NULL, AML_NAME('_', 'G', 'L', '_'), gl) == ERR)
     {
         return ERR;
     }

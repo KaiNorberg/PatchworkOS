@@ -23,6 +23,7 @@
 static lock_t lock = LOCK_CREATE;
 
 static char lineBuffer[LOG_MAX_BUFFER] = {0};
+static char workingBuffer[LOG_MAX_BUFFER] = {0};
 static log_output_t outputs = 0;
 static log_level_t minLevel = 0;
 static bool isLastCharNewline = 0;
@@ -114,12 +115,10 @@ void log_write(const char* string, uint64_t length)
 
 static void log_print_header(log_level_t level, const char* prefix)
 {
-    char buffer[MAX_PATH];
-
     if (level == LOG_LEVEL_PANIC)
     {
-        int length = sprintf(buffer, "\n[XXXX.XXX-XX-X-XXXXXXXXXX] ");
-        log_write(buffer, length);
+        int length = sprintf(workingBuffer, "\n[XXXX.XXX-XX-X-XXXXXXXXXX] ");
+        log_write(workingBuffer, length);
         return;
     }
 
@@ -129,9 +128,9 @@ static void log_print_header(log_level_t level, const char* prefix)
 
     cpu_t* self = smp_self_unsafe();
 
-    int length = sprintf(buffer, "\n[%4llu.%03llu-%02x-%s-%-10s] ", seconds, milliseconds, self->id, levelNames[level],
+    int length = sprintf(workingBuffer, "\n[%4llu.%03llu-%02x-%s-%-10s] ", seconds, milliseconds, self->id, levelNames[level],
         prefix != NULL ? prefix : "unknown");
-    log_write(buffer, length);
+    log_write(workingBuffer, length);
 }
 
 static void log_handle_char(log_level_t level, const char* prefix, char chr)

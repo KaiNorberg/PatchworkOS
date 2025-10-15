@@ -1,10 +1,11 @@
 #include "namespace_modifier.h"
 
-#include "acpi/aml/aml.h"
 #include "acpi/aml/debug.h"
 #include "acpi/aml/state.h"
 #include "acpi/aml/to_string.h"
 #include "acpi/aml/token.h"
+#include "data.h"
+#include "log/log.h"
 #include "name.h"
 #include "package_length.h"
 #include "term.h"
@@ -30,25 +31,24 @@ uint64_t aml_def_alias_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(source);
 
-    aml_name_string_t targetNameString;
-    if (aml_name_string_read(ctx, &targetNameString) == ERR)
+    aml_name_string_t nameString;
+    if (aml_name_string_read(ctx, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve target NameString");
         return ERR;
     }
 
-    aml_object_t* target = aml_object_new();
-    if (target == NULL)
+    aml_object_t* newObject = aml_object_new();
+    if (newObject == NULL)
     {
-        errno = EILSEQ;
         return ERR;
     }
-    DEREF_DEFER(target);
+    DEREF_DEFER(newObject);
 
-    if (aml_alias_set(target, source) == ERR ||
-        aml_object_add(target, ctx->scope, &targetNameString, ctx->state) == ERR)
+    if (aml_alias_set(newObject, source) == ERR ||
+        aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
     {
-        AML_DEBUG_ERROR(ctx, "Failed to add alias object '%s'", aml_name_string_to_string(&targetNameString));
+        AML_DEBUG_ERROR(ctx, "Failed to add alias object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
     }
 
@@ -73,13 +73,12 @@ uint64_t aml_def_name_read(aml_term_list_ctx_t* ctx)
     aml_object_t* newObject = aml_object_new();
     if (newObject == NULL)
     {
-        errno = EILSEQ;
         return ERR;
     }
     DEREF_DEFER(newObject);
 
     if (aml_data_ref_object_read(ctx, newObject) == ERR ||
-        aml_object_add(newObject, ctx->scope, &nameString, ctx->state) == ERR)
+        aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;

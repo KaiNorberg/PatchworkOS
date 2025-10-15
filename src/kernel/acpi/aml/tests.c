@@ -22,8 +22,11 @@
 
 static uint64_t aml_tests_check_object_leak(void)
 {
+    aml_object_t* root = aml_namespace_get_root();
+    DEREF_DEFER(root);
+
     uint64_t totalObjects = aml_object_get_total_count();
-    uint64_t rootChildren = aml_object_count_children(aml_root_get());
+    uint64_t rootChildren = aml_object_count_children(root);
     LOG_INFO("total objects after parsing %llu\n", totalObjects);
     if (totalObjects != rootChildren + 1)
     {
@@ -33,11 +36,11 @@ static uint64_t aml_tests_check_object_leak(void)
     return 0;
 }
 
-static void aml_tests_exception_handler(aml_exception_t code)
+static void aml_tests_exception_handler(aml_state_t* state, aml_exception_t code)
 {
     // Some tests will trigger exceptions to validate that they actually happen, we are then expected to notify
     // the code that an exception occurred using the \_ERR object.
-    aml_object_t* err = aml_object_find(NULL, "\\_ERR");
+    aml_object_t* err = aml_namespace_find(&state->overlay, NULL, 1, AML_NAME('_', 'E', 'R', 'R'));
     if (err == NULL)
     {
         LOG_ERR("test does not contain a valid _ERR object\n");
@@ -81,8 +84,8 @@ static void aml_tests_exception_handler(aml_exception_t code)
         return;
     }
 
-    aml_object_t* args[] = {arg0, arg1, arg2};
-    aml_object_t* result = aml_method_evaluate(&err->method, args, 3);
+    aml_object_t* args[] = {arg0, arg1, arg2, NULL};
+    aml_object_t* result = aml_method_evaluate(state, &err->method, args);
     if (result == NULL)
     {
         return;
@@ -104,26 +107,27 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
     const uint8_t* end = (const uint8_t*)testAml + testAml->header.length;
 
     aml_state_t state;
-    if (aml_state_init(&state, NULL, 0) == ERR)
+    if (aml_state_init(&state, NULL) == ERR)
     {
         return ERR;
     }
 
-    if (aml_term_list_read(&state, aml_root_get(), testAml->definitionBlock, end, NULL) == ERR)
+    aml_object_t* root = aml_namespace_get_root();
+    DEREF_DEFER(root);
+
+    if (aml_term_list_read(&state, root, testAml->definitionBlock, end, NULL) == ERR)
     {
         LOG_ERR("test '%s' failed to parse AML\n", test->name);
-        aml_state_garbage_collect(&state);
         aml_state_deinit(&state);
         return ERR;
     }
 
     // Set the "Settings number, used to adjust the aslts tests for different releases of ACPICA".
     // We set it to 6 as that is the latest version as of writing this.
-    aml_object_t* setn = aml_object_find(NULL, "\\SETN");
+    aml_object_t* setn = aml_namespace_find(&state.overlay, root, 1, AML_NAME('S', 'E', 'T', 'N'));
     if (setn == NULL)
     {
-        LOG_ERR("test '%s' does not contain a valid SETN method\n", test->name);
-        aml_state_garbage_collect(&state);
+        LOG_ERR("test '%s' does not contain a valid SETN object\n", test->name);
         aml_state_deinit(&state);
         return ERR;
     }
@@ -132,7 +136,6 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
     if (aml_integer_set(setn, 6) == ERR)
     {
         LOG_ERR("test '%s' failed to set SETN value\n", test->name);
-        aml_state_garbage_collect(&state);
         aml_state_deinit(&state);
         return ERR;
     }
@@ -140,27 +143,24 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
     // We dont use the \MAIN method directly instead we use the \MN01 method which enables "slack mode".
     // Basically, certain features that would normally just result in a crash are allowed in slack mode, for example
     // implicit returns, which some firmware depends on. See section 5.2 of the ACPICA reference for more details.
-    aml_object_t* mainObj = aml_object_find(NULL, "\\MN01");
+    aml_object_t* mainObj = aml_namespace_find(&state.overlay, root, 1, AML_NAME('M', 'N', '0', '1'));
     if (mainObj == NULL || mainObj->type != AML_METHOD)
     {
         LOG_ERR("test '%s' does not contain a valid method\n", test->name);
-        aml_state_garbage_collect(&state);
         aml_state_deinit(&state);
         return ERR;
     }
     DEREF_DEFER(mainObj);
 
-    aml_object_t* result = aml_method_evaluate(&mainObj->method, NULL, 0);
+    aml_object_t* result = aml_method_evaluate(&state, &mainObj->method, NULL);
     if (result == NULL)
     {
         LOG_ERR("test '%s' method evaluation failed\n", test->name);
-        aml_state_garbage_collect(&state);
         aml_state_deinit(&state);
         return ERR;
     }
     DEREF_DEFER(result);
 
-    aml_state_garbage_collect(&state);
     aml_state_deinit(&state);
 
     if (result->type != AML_INTEGER)
@@ -204,8 +204,6 @@ uint64_t aml_tests_post_init(void)
     LOG_INFO("running post init tests\n");
     clock_t start = timer_uptime();
 
-    log_screen_disable();
-
     uint64_t startingObjects = aml_object_get_total_count();
 
     if (aml_tests_acpica_run_all() == ERR)
@@ -218,7 +216,6 @@ uint64_t aml_tests_post_init(void)
 
     clock_t end = timer_uptime();
 
-    log_screen_enable();
     aml_tests_perf_report();
 
     if (startingObjects != aml_object_get_total_count())
@@ -229,10 +226,6 @@ uint64_t aml_tests_post_init(void)
     }
 
     LOG_INFO("post init tests passed in %llums\n", (end - start) * 1000 / CLOCKS_PER_SEC);
-    while (1)
-    {
-        asm volatile("hlt");
-    }
     return 0;
 }
 

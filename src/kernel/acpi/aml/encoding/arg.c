@@ -17,5 +17,12 @@ aml_object_t* aml_arg_obj_read(aml_term_list_ctx_t* ctx)
     }
 
     uint64_t index = argOp.num - AML_ARG0_OP;
+    if (ctx->state->args[index] == NULL)
+    {
+        AML_DEBUG_ERROR(ctx, "Arg%d is not set", index);
+        errno = EILSEQ;
+        return NULL;
+    }
+
     return REF(CONTAINER_OF(ctx->state->args[index], aml_object_t, arg));
 }

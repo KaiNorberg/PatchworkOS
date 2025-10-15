@@ -338,8 +338,8 @@ uint64_t aml_term_arg_list_read(aml_term_list_ctx_t* ctx, uint64_t argCount, aml
         return ERR;
     }
 
-    out->count = 0;
-    for (uint64_t i = 0; i < argCount; i++)
+    uint64_t i = 0;
+    for (; i < argCount; i++)
     {
         out->args[i] = aml_term_arg_read(ctx, AML_DATA_REF_OBJECTS);
         if (out->args[i] == NULL)
@@ -351,9 +351,8 @@ uint64_t aml_term_arg_list_read(aml_term_list_ctx_t* ctx, uint64_t argCount, aml
             }
             return ERR;
         }
-
-        out->count++;
     }
+    out->args[i] = NULL;
 
     return 0;
 }
@@ -377,20 +376,19 @@ aml_object_t* aml_method_invocation_read(aml_term_list_ctx_t* ctx)
             return NULL;
         }
 
-        aml_object_t* result = aml_method_evaluate(&target->method, args.args, args.count);
+        aml_object_t* result = aml_method_evaluate(ctx->state, &target->method, args.args);
         if (result == NULL)
         {
-            for (uint8_t i = 0; i < args.count; i++)
+            for (uint8_t i = 0; args.args[i] != NULL; i++)
             {
                 DEREF(args.args[i]);
                 args.args[i] = NULL;
             }
-            AML_DEBUG_ERROR(ctx, "Failed to evaluate method '%s' with %u arg(s)", AML_OBJECT_GET_NAME(target),
-                args.count);
+            AML_DEBUG_ERROR(ctx, "Failed to evaluate method '%s'", AML_NAME_TO_STRING(target->name));
             return NULL;
         }
 
-        for (uint8_t i = 0; i < args.count; i++)
+        for (uint8_t i = 0; args.args[i] != NULL; i++)
         {
             DEREF(args.args[i]);
             args.args[i] = NULL;
@@ -487,10 +485,10 @@ aml_object_t* aml_def_store_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(source);
     DEREF_DEFER(destination);
 
-    if (aml_store(source, destination) == ERR)
+    if (aml_store(ctx->state, source, destination) == ERR)
     {
-        AML_DEBUG_ERROR(ctx, "Failed to store source '%s' in destination '%s'", AML_OBJECT_GET_NAME(source),
-            AML_OBJECT_GET_NAME(destination));
+        AML_DEBUG_ERROR(ctx, "Failed to store source '%s' in destination '%s'", AML_NAME_TO_STRING(source->name),
+            AML_NAME_TO_STRING(destination->name));
         return NULL;
     }
 
@@ -564,7 +562,8 @@ aml_object_t* aml_def_add_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(result);
 
-    if (aml_integer_set(result, operand1->integer.value + operand2->integer.value) || aml_store(result, target) == ERR)
+    if (aml_integer_set(result, operand1->integer.value + operand2->integer.value) ||
+        aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -593,7 +592,8 @@ aml_object_t* aml_def_subtract_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(result);
 
-    if (aml_integer_set(result, operand1->integer.value - operand2->integer.value) || aml_store(result, target) == ERR)
+    if (aml_integer_set(result, operand1->integer.value - operand2->integer.value) ||
+        aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -622,7 +622,8 @@ aml_object_t* aml_def_multiply_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(result);
 
-    if (aml_integer_set(result, operand1->integer.value * operand2->integer.value) || aml_store(result, target) == ERR)
+    if (aml_integer_set(result, operand1->integer.value * operand2->integer.value) ||
+        aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -654,7 +655,7 @@ aml_object_t* aml_def_divide_read(aml_term_list_ctx_t* ctx)
 
     if (divisor == 0)
     {
-        AML_EXCEPTION_RAISE(AML_DIVIDE_BY_ZERO);
+        AML_EXCEPTION_RAISE(ctx->state, AML_DIVIDE_BY_ZERO);
         divisor = 1;
     }
 
@@ -682,14 +683,14 @@ aml_object_t* aml_def_divide_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(result);
 
     // Init with remainder.
-    if (aml_integer_set(result, dividend % divisor) == ERR || aml_store(result, remainderDest))
+    if (aml_integer_set(result, dividend % divisor) == ERR || aml_store(ctx->state, result, remainderDest))
     {
         AML_DEBUG_ERROR(ctx, "Failed to store remainder");
         return NULL;
     }
 
     // Init with quotient.
-    if (aml_integer_set(result, dividend / divisor) == ERR || aml_store(result, quotientDest))
+    if (aml_integer_set(result, dividend / divisor) == ERR || aml_store(ctx->state, result, quotientDest))
     {
         AML_DEBUG_ERROR(ctx, "Failed to store quotient");
         return NULL;
@@ -731,7 +732,7 @@ aml_object_t* aml_def_mod_read(aml_term_list_ctx_t* ctx)
 
     if (divisor == 0)
     {
-        AML_EXCEPTION_RAISE(AML_DIVIDE_BY_ZERO);
+        AML_EXCEPTION_RAISE(ctx->state, AML_DIVIDE_BY_ZERO);
         divisor = 1;
     }
 
@@ -742,7 +743,7 @@ aml_object_t* aml_def_mod_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(result);
 
-    if (aml_integer_set(result, dividend % divisor) == ERR || aml_store(result, target) == ERR)
+    if (aml_integer_set(result, dividend % divisor) == ERR || aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -771,7 +772,8 @@ aml_object_t* aml_def_and_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(result);
 
-    if (aml_integer_set(result, operand1->integer.value & operand2->integer.value) || aml_store(result, target) == ERR)
+    if (aml_integer_set(result, operand1->integer.value & operand2->integer.value) ||
+        aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -801,7 +803,7 @@ aml_object_t* aml_def_nand_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(result);
 
     if (aml_integer_set(result, ~(operand1->integer.value & operand2->integer.value)) ||
-        aml_store(result, target) == ERR)
+        aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -830,7 +832,8 @@ aml_object_t* aml_def_or_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(result);
 
-    if (aml_integer_set(result, operand1->integer.value | operand2->integer.value) || aml_store(result, target) == ERR)
+    if (aml_integer_set(result, operand1->integer.value | operand2->integer.value) ||
+        aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -860,7 +863,7 @@ aml_object_t* aml_def_nor_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(result);
 
     if (aml_integer_set(result, ~(operand1->integer.value | operand2->integer.value)) ||
-        aml_store(result, target) == ERR)
+        aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -889,7 +892,8 @@ aml_object_t* aml_def_xor_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(result);
 
-    if (aml_integer_set(result, operand1->integer.value ^ operand2->integer.value) || aml_store(result, target) == ERR)
+    if (aml_integer_set(result, operand1->integer.value ^ operand2->integer.value) ||
+        aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -916,7 +920,7 @@ aml_object_t* aml_def_not_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(result);
 
-    if (aml_integer_set(result, ~operand->integer.value) || aml_store(result, target) == ERR)
+    if (aml_integer_set(result, ~operand->integer.value) || aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -973,7 +977,7 @@ aml_object_t* aml_def_shift_left_read(aml_term_list_ctx_t* ctx)
         }
     }
 
-    if (aml_store(result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -1019,7 +1023,7 @@ aml_object_t* aml_def_shift_right_read(aml_term_list_ctx_t* ctx)
         }
     }
 
-    if (aml_store(result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -1038,7 +1042,7 @@ aml_object_t* aml_def_increment_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(superName);
 
     aml_object_t* source = NULL;
-    if (aml_convert_source(superName, &source, AML_INTEGER) == ERR)
+    if (aml_convert_source(ctx->state, superName, &source, AML_INTEGER) == ERR)
     {
         return NULL;
     }
@@ -1051,7 +1055,8 @@ aml_object_t* aml_def_increment_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(result);
 
-    if (aml_integer_set(result, source->integer.value + 1) == ERR || aml_convert_result(result, superName) == ERR)
+    if (aml_integer_set(result, source->integer.value + 1) == ERR ||
+        aml_convert_result(ctx->state, result, superName) == ERR)
     {
         return NULL;
     }
@@ -1070,7 +1075,7 @@ aml_object_t* aml_def_decrement_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(superName);
 
     aml_object_t* source = NULL;
-    if (aml_convert_source(superName, &source, AML_INTEGER) == ERR)
+    if (aml_convert_source(ctx->state, superName, &source, AML_INTEGER) == ERR)
     {
         return NULL;
     }
@@ -1083,7 +1088,8 @@ aml_object_t* aml_def_decrement_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(result);
 
-    if (aml_integer_set(result, source->integer.value - 1) == ERR || aml_convert_result(result, superName) == ERR)
+    if (aml_integer_set(result, source->integer.value - 1) == ERR ||
+        aml_convert_result(ctx->state, result, superName) == ERR)
     {
         return NULL;
     }
@@ -1107,7 +1113,7 @@ aml_object_t* aml_obj_reference_read(aml_term_list_ctx_t* ctx)
     }
     else if (termArg->type == AML_STRING)
     {
-        aml_object_t* target = aml_object_find(ctx->scope, termArg->string.content);
+        aml_object_t* target = aml_namespace_find_by_path(&ctx->state->overlay, ctx->scope, termArg->string.content);
         if (target == NULL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to find target scope '%s'", termArg->string.content);
@@ -1284,7 +1290,7 @@ aml_object_t* aml_def_index_read(aml_term_list_ctx_t* ctx)
         return NULL;
     }
 
-    if (aml_store(result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -1644,7 +1650,7 @@ aml_object_t* aml_def_to_bcd_read(aml_term_list_ctx_t* ctx)
         return NULL;
     }
 
-    if (aml_integer_set(result, bcd) == ERR || aml_store(result, target) == ERR)
+    if (aml_integer_set(result, bcd) == ERR || aml_store(ctx->state, result, target) == ERR)
     {
         DEREF(result);
         return NULL;
@@ -1667,12 +1673,12 @@ aml_object_t* aml_def_to_buffer_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(target);
 
     aml_object_t* result = NULL;
-    if (aml_convert_to_buffer(operand, &result) == ERR)
+    if (aml_convert_to_buffer(ctx->state, operand, &result) == ERR)
     {
         return NULL;
     }
 
-    if (aml_store(result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == ERR)
     {
         DEREF(result);
         return NULL;
@@ -1694,12 +1700,12 @@ aml_object_t* aml_def_to_decimal_string_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(target);
 
     aml_object_t* result = NULL;
-    if (aml_convert_to_decimal_string(operand, &result) == ERR)
+    if (aml_convert_to_decimal_string(ctx->state, operand, &result) == ERR)
     {
         return NULL;
     }
 
-    if (aml_store(result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == ERR)
     {
         DEREF(result);
         return NULL;
@@ -1721,12 +1727,12 @@ aml_object_t* aml_def_to_hex_string_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(target);
 
     aml_object_t* result = NULL;
-    if (aml_convert_to_hex_string(operand, &result) == ERR)
+    if (aml_convert_to_hex_string(ctx->state, operand, &result) == ERR)
     {
         return NULL;
     }
 
-    if (aml_store(result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == ERR)
     {
         DEREF(result);
         return NULL;
@@ -1749,12 +1755,12 @@ aml_object_t* aml_def_to_integer_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(target);
 
     aml_object_t* result = NULL;
-    if (aml_convert_to_integer(operand, &result) == ERR)
+    if (aml_convert_to_integer(ctx->state, operand, &result) == ERR)
     {
         return NULL;
     }
 
-    if (aml_store(result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == ERR)
     {
         DEREF(result);
         return NULL;
@@ -1823,7 +1829,7 @@ aml_object_t* aml_def_to_string_read(aml_term_list_ctx_t* ctx)
         result->string.content[i] = (char)source->content[i];
     }
 
-    if (aml_store(result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -1869,7 +1875,7 @@ aml_object_t* aml_def_copy_object_read(aml_term_list_ctx_t* ctx)
     DEREF_DEFER(source);
     DEREF_DEFER(destination);
 
-    if (aml_copy_object(source, destination) == ERR)
+    if (aml_copy_object(ctx->state, source, destination) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to copy object");
         return NULL;
@@ -1911,7 +1917,7 @@ aml_object_t* aml_def_concat_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(result);
 
-    if (aml_concat(source1, source2, result) == ERR || aml_store(result, target) == ERR)
+    if (aml_concat(ctx->state, source1, source2, result) == ERR || aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -2202,7 +2208,7 @@ aml_object_t* aml_def_find_set_left_bit_read(aml_term_list_ctx_t* ctx)
         }
     }
 
-    if (aml_store(result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -2251,7 +2257,7 @@ aml_object_t* aml_def_find_set_right_bit_read(aml_term_list_ctx_t* ctx)
         }
     }
 
-    if (aml_store(result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == ERR)
     {
         return NULL;
     }
@@ -2302,7 +2308,7 @@ uint64_t aml_start_index_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
     return 0;
 }
 
-static bool aml_match_compare(aml_object_t* obj1, aml_object_t* obj2, aml_match_opcode_t op)
+static bool aml_match_compare(aml_state_t* state, aml_object_t* obj1, aml_object_t* obj2, aml_match_opcode_t op)
 {
     switch (op)
     {
@@ -2320,7 +2326,7 @@ static bool aml_match_compare(aml_object_t* obj1, aml_object_t* obj2, aml_match_
         return aml_compare(obj1, obj2, AML_COMPARE_GREATER);
     default:
         // This should never happen as we validate the opcode when reading it.
-        AML_EXCEPTION_RAISE(AML_ERROR);
+        AML_EXCEPTION_RAISE(state, AML_ERROR);
         return false;
     }
 }
@@ -2399,7 +2405,7 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
         }
 
         aml_object_t* convertedFor1 = NULL;
-        if (aml_convert_source(element, &convertedFor1, object1->type) == ERR)
+        if (aml_convert_source(ctx->state, element, &convertedFor1, object1->type) == ERR)
         {
             errno = 0;
             continue;
@@ -2407,14 +2413,15 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
         DEREF_DEFER(convertedFor1);
 
         aml_object_t* convertedFor2 = NULL;
-        if (aml_convert_source(element, &convertedFor2, object2->type) == ERR)
+        if (aml_convert_source(ctx->state, element, &convertedFor2, object2->type) == ERR)
         {
             errno = 0;
             continue;
         }
         DEREF_DEFER(convertedFor2);
 
-        if (aml_match_compare(convertedFor1, object1, op1) && aml_match_compare(convertedFor2, object2, op2))
+        if (aml_match_compare(ctx->state, convertedFor1, object1, op1) &&
+            aml_match_compare(ctx->state, convertedFor2, object2, op2))
         {
             if (aml_integer_set(result, i) == ERR)
             {

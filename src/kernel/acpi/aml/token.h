@@ -250,7 +250,6 @@ typedef struct aml_token_props
  */
 typedef struct aml_token
 {
-    uint64_t index; ///< The index of the first byte of the token in the AML byte stream.
     aml_token_num_t num;
     uint8_t length;
     const aml_token_props_t* props;
@@ -346,7 +345,7 @@ static inline void aml_token_read(aml_term_list_ctx_t* ctx, aml_token_t* out)
 /**
  * @brief Reads a token from the AML stream and verifies it matches the expected token.
  *
- * @param state The AML state to parse from.
+ * @param state Pointer to the current AML state.
  * @param expected The expected token number.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */

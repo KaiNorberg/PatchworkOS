@@ -7,7 +7,7 @@
 #include "copy.h"
 #include "log/log.h"
 
-uint64_t aml_store(aml_object_t* src, aml_object_t* dest)
+uint64_t aml_store(aml_state_t* state, aml_object_t* src, aml_object_t* dest)
 {
     if (src == NULL)
     {
@@ -36,7 +36,7 @@ uint64_t aml_store(aml_object_t* src, aml_object_t* dest)
 
         if (dest->arg.value->type == AML_OBJECT_REFERENCE)
         {
-            return aml_copy_object(src, dest->arg.value->objectReference.target);
+            return aml_copy_object(state, src, dest->arg.value->objectReference.target);
         }
         else
         {
@@ -51,17 +51,17 @@ uint64_t aml_store(aml_object_t* src, aml_object_t* dest)
 
     if (dest->type == AML_FIELD_UNIT || dest->type == AML_BUFFER_FIELD)
     {
-        return aml_convert_result(src, dest);
+        return aml_convert_result(state, src, dest);
     }
 
     if (dest->flags & AML_OBJECT_NAMED)
     {
-        return aml_convert_result(src, dest);
+        return aml_convert_result(state, src, dest);
     }
 
     if (dest->type == AML_DEBUG_OBJECT)
     {
-        return aml_convert(src, dest, AML_DEBUG_OBJECT);
+        return aml_convert(state, src, dest, AML_DEBUG_OBJECT);
     }
 
     if (dest->type == AML_UNINITIALIZED)

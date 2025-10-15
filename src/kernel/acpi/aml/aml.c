@@ -4,6 +4,7 @@
 #include "encoding/term.h"
 #include "integer.h"
 #include "log/log.h"
+#include "namespace.h"
 #include "patch_up.h"
 #include "predefined.h"
 #include "sched/timer.h"
@@ -21,7 +22,43 @@
 
 static mutex_t bigMutex;
 
-static aml_object_t* root = NULL;
+static inline uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
+{
+    if (start == NULL || end == NULL || start > end)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (start == end)
+    {
+        // Im not sure why but some firmwares have empty SSDTs.
+        return 0;
+    }
+
+    // In section 20.2.1, we see the definition AMLCode := DefBlockHeader TermList.
+    // The DefBlockHeader is already read as thats the `sdt_header_t`.
+    // So the entire code is a termlist.
+
+    aml_state_t state;
+    if (aml_state_init(&state, NULL) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_object_t* root = aml_namespace_get_root();
+    DEREF_DEFER(root);
+
+    uint64_t result = aml_term_list_read(&state, root, start, end, NULL);
+
+    if (result != ERR)
+    {
+        aml_namespace_commit(&state.overlay);
+    }
+
+    aml_state_deinit(&state);
+    return result;
+}
 
 static inline uint64_t aml_init_parse_all(void)
 {
@@ -75,134 +112,88 @@ uint64_t aml_init(void)
     mutex_init(&bigMutex);
     MUTEX_SCOPE(&bigMutex);
 
-    if (aml_object_map_init() == ERR)
+    aml_object_t* root = aml_object_new();
+    if (root == NULL)
     {
+        LOG_ERR("failed to create root object\n");
+        return ERR;
+    }
+    DEREF_DEFER(root);
+
+    // We dont need to add the root to the namespace map as it has no name.
+    if (aml_predefined_scope_set(root) == ERR)
+    {
+        LOG_ERR("failed to set predefined scope on root object\n");
+
+        return ERR;
+    }
+
+    if (aml_namespace_init(root) == ERR)
+    {
+        LOG_ERR("failed to init namespace\n");
         return ERR;
     }
 
     if (aml_integer_handling_init() == ERR)
     {
-        return ERR;
-    }
-
-    root = aml_object_new();
-    if (root == NULL)
-    {
-        return ERR;
-    }
-    root->flags |= AML_OBJECT_ROOT;
-
-    if (aml_predefined_scope_set(root) == ERR || aml_object_add(root, NULL, NULL, NULL) == ERR)
-    {
-        DEREF(root);
-        root = NULL;
+        LOG_ERR("failed to init integer handling\n");
         return ERR;
     }
 
     if (aml_predefined_init() == ERR)
     {
-        DEREF(root);
-        root = NULL;
+        LOG_ERR("failed to init predefined names\n");
         return ERR;
     }
 
     if (aml_patch_up_init() == ERR)
     {
-        DEREF(root);
-        root = NULL;
+        LOG_ERR("failed to init patch up\n");
         return ERR;
     }
 
 #ifdef TESTING
     if (aml_tests_post_init() == ERR)
     {
-        DEREF(root);
-        root = NULL;
+        LOG_ERR("failed to run tests post init\n");
         return ERR;
     }
 #endif
 
     if (aml_init_parse_all() == ERR)
     {
-        DEREF(root);
-        root = NULL;
+        LOG_ERR("failed to parse all tables\n");
         return ERR;
     }
 
     LOG_INFO("resolving %llu unresolved objects\n", aml_patch_up_unresolved_count());
     if (aml_patch_up_resolve_all() == ERR)
     {
-        DEREF(root);
-        root = NULL;
         LOG_ERR("failed to resolve unresolved object\n");
         return ERR;
     }
 
     if (aml_patch_up_unresolved_count() > 0)
     {
-        DEREF(root);
-        root = NULL;
         LOG_ERR("there are still %llu unresolved object\n", aml_patch_up_unresolved_count());
         return ERR;
     }
 
-    if (aml_object_expose_in_sysfs(root) == ERR)
+    // TODO: Reimplement sysfs exposure of AML namespace.
+    /*if (aml_object_expose_in_sysfs(root) == ERR)
     {
-        DEREF(root);
-        root = NULL;
         return ERR;
-    }
+    }*/
 
 #ifdef TESTING
     if (aml_tests_post_parse_all() == ERR)
     {
-        DEREF(root);
-        root = NULL;
+        LOG_ERR("failed to run tests post parse all\n");
         return ERR;
     }
 #endif
 
     return 0;
-}
-
-uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
-{
-    if (start == NULL || end == NULL || start > end)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (start == end)
-    {
-        // Im not sure why but some firmwares have empty SSDTs.
-        return 0;
-    }
-
-    // In section 20.2.1, we see the definition AMLCode := DefBlockHeader TermList.
-    // The DefBlockHeader is already read as thats the `sdt_header_t`.
-    // So the entire code is a termlist.
-
-    aml_state_t state;
-    if (aml_state_init(&state, NULL, 0) == ERR)
-    {
-        return ERR;
-    }
-
-    uint64_t result = aml_term_list_read(&state, aml_root_get(), start, end, NULL);
-    aml_state_deinit(&state);
-    return result;
-}
-
-aml_object_t* aml_root_get(void)
-{
-    if (root == NULL)
-    {
-        errno = ENOSYS;
-        return NULL;
-    }
-
-    return REF(root);
 }
 
 mutex_t* aml_big_mutex_get(void)

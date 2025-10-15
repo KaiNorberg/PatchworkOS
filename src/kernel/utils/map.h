@@ -271,10 +271,12 @@ bool map_iter_has_next(const map_iter_t* iter);
 /**
  * @brief Helper macro to iterate over all entries in a map.
  *
+ * @param elem The loop variable, a pointer to a structure containing the `map_entry_t` member.
  * @param map The map to iterate over.
- * @param entry The variable to store the current entry in.
+ * @param member The name of the `map_entry_t` member in the structure.
  */
-#define MAP_FOR_EACH(map, entry) \
-    for (map_iter_t __iter = {0}; map_iter_init(&__iter, map), (entry = map_iter_next(&__iter)) != NULL;)
+#define MAP_FOR_EACH(elem, map, member) \
+    for (map_iter_t __iter = {0}; \
+        map_iter_init(&__iter, map), (elem = CONTAINER_OF(map_iter_next(&__iter), typeof(*elem), member)) != NULL;)
 
 /** @} */

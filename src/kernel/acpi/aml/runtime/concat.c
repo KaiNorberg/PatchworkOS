@@ -5,7 +5,7 @@
 
 #include <errno.h>
 
-static uint64_t aml_concat_resolve_to_integer(aml_object_t* source, aml_integer_t* out)
+static uint64_t aml_concat_resolve_to_integer(aml_state_t* state, aml_object_t* source, aml_integer_t* out)
 {
     if (source->type == AML_INTEGER)
     {
@@ -15,7 +15,7 @@ static uint64_t aml_concat_resolve_to_integer(aml_object_t* source, aml_integer_
     else if (source->type == AML_STRING || source->type == AML_BUFFER)
     {
         aml_object_t* temp = NULL;
-        if (aml_convert_source(source, &temp, AML_INTEGER) == ERR)
+        if (aml_convert_source(state, source, &temp, AML_INTEGER) == ERR)
         {
             return ERR;
         }
@@ -31,7 +31,8 @@ static uint64_t aml_concat_resolve_to_integer(aml_object_t* source, aml_integer_
     }
 }
 
-static uint64_t aml_concat_resolve_to_string(aml_object_t* source, const char** outStr, aml_object_t** outTemp)
+static uint64_t aml_concat_resolve_to_string(aml_state_t* state, aml_object_t* source, const char** outStr,
+    aml_object_t** outTemp)
 {
     if (source->type == AML_STRING)
     {
@@ -42,7 +43,7 @@ static uint64_t aml_concat_resolve_to_string(aml_object_t* source, const char** 
     else if (source->type == AML_INTEGER || source->type == AML_BUFFER)
     {
         aml_object_t* temp = NULL;
-        if (aml_convert_source(source, &temp, AML_STRING) == ERR)
+        if (aml_convert_source(state, source, &temp, AML_STRING) == ERR)
         {
             return ERR;
         }
@@ -136,8 +137,8 @@ static uint64_t aml_concat_resolve_to_string(aml_object_t* source, const char** 
     }
 }
 
-static uint64_t aml_concat_resolve_to_buffer(aml_object_t* source, uint8_t** outBuf, uint64_t* outLen,
-    aml_object_t** outTemp)
+static uint64_t aml_concat_resolve_to_buffer(aml_state_t* state, aml_object_t* source, uint8_t** outBuf,
+    uint64_t* outLen, aml_object_t** outTemp)
 {
     if (source->type == AML_BUFFER)
     {
@@ -149,7 +150,7 @@ static uint64_t aml_concat_resolve_to_buffer(aml_object_t* source, uint8_t** out
     else if (source->type == AML_INTEGER || source->type == AML_STRING)
     {
         aml_object_t* temp = NULL;
-        if (aml_convert_source(source, &temp, AML_BUFFER) == ERR)
+        if (aml_convert_source(state, source, &temp, AML_BUFFER) == ERR)
         {
             return ERR;
         }
@@ -164,7 +165,7 @@ static uint64_t aml_concat_resolve_to_buffer(aml_object_t* source, uint8_t** out
         // The spec seems a bit vague on this. But my assumption is that when resolving other types to a buffer,
         // we first convert them to a string, then take the string's bytes as the buffer content.
         const char* str;
-        if (aml_concat_resolve_to_string(source, &str, outTemp) == ERR)
+        if (aml_concat_resolve_to_string(state, source, &str, outTemp) == ERR)
         {
             return ERR;
         }
@@ -175,12 +176,13 @@ static uint64_t aml_concat_resolve_to_buffer(aml_object_t* source, uint8_t** out
     }
 }
 
-static uint64_t aml_concat_integer(aml_object_t* source1, aml_object_t* source2, aml_object_t* result)
+static uint64_t aml_concat_integer(aml_state_t* state, aml_object_t* source1, aml_object_t* source2,
+    aml_object_t* result)
 {
     assert(source1->type == AML_INTEGER);
     aml_integer_t value1 = source1->integer.value;
     aml_integer_t value2;
-    if (aml_concat_resolve_to_integer(source2, &value2) == ERR)
+    if (aml_concat_resolve_to_integer(state, source2, &value2) == ERR)
     {
         return ERR;
     }
@@ -195,13 +197,14 @@ static uint64_t aml_concat_integer(aml_object_t* source1, aml_object_t* source2,
     return 0;
 }
 
-static uint64_t aml_concat_string(aml_object_t* source1, aml_object_t* source2, aml_object_t* result)
+static uint64_t aml_concat_string(aml_state_t* state, aml_object_t* source1, aml_object_t* source2,
+    aml_object_t* result)
 {
     assert(source1->type == AML_STRING);
     const char* str1 = source1->string.content;
     const char* str2;
     aml_object_t* temp2 = NULL;
-    if (aml_concat_resolve_to_string(source2, &str2, &temp2) == ERR)
+    if (aml_concat_resolve_to_string(state, source2, &str2, &temp2) == ERR)
     {
         return ERR;
     }
@@ -220,7 +223,8 @@ static uint64_t aml_concat_string(aml_object_t* source1, aml_object_t* source2, 
     return 0;
 }
 
-static uint64_t aml_concat_buffer(aml_object_t* source1, aml_object_t* source2, aml_object_t* result)
+static uint64_t aml_concat_buffer(aml_state_t* state, aml_object_t* source1, aml_object_t* source2,
+    aml_object_t* result)
 {
     assert(source1->type == AML_BUFFER);
     uint8_t* buf1 = source1->buffer.content;
@@ -228,7 +232,7 @@ static uint64_t aml_concat_buffer(aml_object_t* source1, aml_object_t* source2, 
     uint8_t* buf2;
     uint64_t len2;
     aml_object_t* temp2 = NULL;
-    if (aml_concat_resolve_to_buffer(source2, &buf2, &len2, &temp2) == ERR)
+    if (aml_concat_resolve_to_buffer(state, source2, &buf2, &len2, &temp2) == ERR)
     {
         return ERR;
     }
@@ -244,11 +248,12 @@ static uint64_t aml_concat_buffer(aml_object_t* source1, aml_object_t* source2, 
     return 0;
 }
 
-static uint64_t aml_concat_other_types(aml_object_t* source1, aml_object_t* source2, aml_object_t* result)
+static uint64_t aml_concat_other_types(aml_state_t* state, aml_object_t* source1, aml_object_t* source2,
+    aml_object_t* result)
 {
     const char* str1;
     aml_object_t* temp1 = NULL;
-    if (aml_concat_resolve_to_string(source1, &str1, &temp1) == ERR)
+    if (aml_concat_resolve_to_string(state, source1, &str1, &temp1) == ERR)
     {
         return ERR;
     }
@@ -256,7 +261,7 @@ static uint64_t aml_concat_other_types(aml_object_t* source1, aml_object_t* sour
 
     const char* str2;
     aml_object_t* temp2 = NULL;
-    if (aml_concat_resolve_to_string(source2, &str2, &temp2) == ERR)
+    if (aml_concat_resolve_to_string(state, source2, &str2, &temp2) == ERR)
     {
         return ERR;
     }
@@ -275,7 +280,7 @@ static uint64_t aml_concat_other_types(aml_object_t* source1, aml_object_t* sour
     return 0;
 }
 
-uint64_t aml_concat(aml_object_t* source1, aml_object_t* source2, aml_object_t* result)
+uint64_t aml_concat(aml_state_t* state, aml_object_t* source1, aml_object_t* source2, aml_object_t* result)
 {
     if (source1 == NULL || source2 == NULL || result == NULL)
     {
@@ -292,12 +297,12 @@ uint64_t aml_concat(aml_object_t* source1, aml_object_t* source2, aml_object_t* 
     switch (source1->type)
     {
     case AML_INTEGER:
-        return aml_concat_integer(source1, source2, result);
+        return aml_concat_integer(state, source1, source2, result);
     case AML_STRING:
-        return aml_concat_string(source1, source2, result);
+        return aml_concat_string(state, source1, source2, result);
     case AML_BUFFER:
-        return aml_concat_buffer(source1, source2, result);
+        return aml_concat_buffer(state, source1, source2, result);
     default:
-        return aml_concat_other_types(source1, source2, result);
+        return aml_concat_other_types(state, source1, source2, result);
     }
 }

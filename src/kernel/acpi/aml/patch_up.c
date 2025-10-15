@@ -4,6 +4,7 @@
 #include "log/panic.h"
 #include "mem/heap.h"
 #include "object.h"
+#include "state.h"
 #include "to_string.h"
 
 #include <errno.h>
@@ -58,11 +59,19 @@ void aml_patch_up_remove_unresolved(aml_unresolved_obj_t* unresolved)
 
 uint64_t aml_patch_up_resolve_all(void)
 {
+    aml_state_t state;
+    if (aml_state_init(&state, NULL) == ERR)
+    {
+        LOG_PANIC("Failed to init AML state\n");
+        return ERR;
+    }
+
     aml_patch_up_entry_t* entry = NULL;
     aml_patch_up_entry_t* temp = NULL;
     LIST_FOR_EACH_SAFE(entry, temp, &unresolvedObjects, entry)
     {
-        aml_object_t* match = aml_name_string_resolve(&entry->unresolved->nameString, entry->unresolved->from);
+        aml_object_t* match =
+            aml_namespace_find_by_name_string(&state.overlay, entry->unresolved->from, &entry->unresolved->nameString);
         if (match == NULL)
         {
             LOG_DEBUG("Still could not resolve '%s'\n", aml_name_string_to_string(&entry->unresolved->nameString));
@@ -72,8 +81,9 @@ uint64_t aml_patch_up_resolve_all(void)
 
         aml_unresolved_obj_t* unresolved = entry->unresolved;
         aml_object_t* obj = CONTAINER_OF(unresolved, aml_object_t, unresolved);
-        if (unresolved->callback(match, obj) == ERR)
+        if (unresolved->callback(&state, match, obj) == ERR)
         {
+            aml_state_deinit(&state);
             LOG_ERR("Failed to patch up unresolved object\n");
             return ERR;
         }
@@ -81,12 +91,14 @@ uint64_t aml_patch_up_resolve_all(void)
         // When a unresolved object changes type it will call aml_patch_up_remove_unresolved itself.
         if (obj->type == AML_UNRESOLVED)
         {
+            aml_state_deinit(&state);
             LOG_ERR("Unresolved object did not change type\n");
             errno = EILSEQ;
             return ERR;
         }
     }
 
+    aml_state_deinit(&state);
     return 0;
 }
 

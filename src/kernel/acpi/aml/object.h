@@ -3,6 +3,7 @@
 #include "encoding/name.h"
 #include "fs/sysfs.h"
 #include "integer.h"
+#include "namespace.h"
 #include "patch_up.h"
 #include "runtime/mutex.h"
 #include "utils/ref.h"
@@ -24,16 +25,6 @@ typedef struct aml_method_obj aml_method_obj_t;
  */
 
 /**
- * @brief Maximum length of an ACPI name.
- */
-#define AML_NAME_LENGTH 4
-
-/**
- * @brief Name used for unnamed objects.
- */
-#define AML_UNNAMED_NAME "****"
-
-/**
  * @brief Size of buffers used for small objects optimization.
  */
 #define AML_SMALL_BUFFER_SIZE 32
@@ -52,12 +43,6 @@ typedef struct aml_method_obj aml_method_obj_t;
  * @brief Amount of objects to store in the cache before freeing them instead.
  */
 #define AML_OBJECT_CACHE_SIZE 64
-
-/**
- * @brief Id used to generate the hash for finding children in the objectMap.
- * @typedef aml_container_id_t
- */
-typedef uint64_t aml_container_id_t;
 
 /**
  * @brief ACPI data types.
@@ -119,7 +104,7 @@ typedef enum
     /**
      * All data types that can contain named objects, packages contain unnamed objects only and are excluded.
      */
-    AML_CONTAINERS =
+    AML_NAMESPACES =
         AML_DEVICE | AML_PROCESSOR | AML_METHOD | AML_THERMAL_ZONE | AML_POWER_RESOURCE | AML_PREDEFINED_SCOPE,
     /**
      * All data types.
@@ -146,8 +131,24 @@ typedef enum
      * Any copy of an object with this flag will also have this flag set.
      */
     AML_OBJECT_EXCEPTION_ON_USE = 1 << 2,
-    AML_OBJECT_EXPOSED_IN_SYSFS = 1 << 3, ///< The object is exposed in sysfs, must also be `AML_OBJECT_NAMED`.
+    /**
+     * The object is exposed in sysfs. Will be set in `aml_namespace_expose()`.
+     */
+    AML_OBJECT_EXPOSED_IN_SYSFS = 1 << 3,
 } aml_object_flags_t;
+
+/**
+ * @brief Object id type.
+ * @typedef aml_object_id_t
+ *
+ * Used in a namespace in combination with a childs name to generate a hash to locate the child in the namespace.
+ */
+typedef uint64_t aml_object_id_t;
+
+/**
+ * @brief Value for an invalid object id.
+ */
+#define AML_OBJECT_ID_NONE 0
 
 /**
  * @brief Field Unit types.
@@ -172,39 +173,35 @@ typedef enum
 typedef aml_object_t* (*aml_method_implementation_t)(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount);
 
 /**
- * @brief Container for named objects.
- * @struct aml_container_t
- */
-typedef struct aml_container
-{
-    list_t namedObjects;
-    aml_container_id_t id;
-} aml_container_t;
-
-/**
- * @brief Defines the location of an object in the ACPI namespace.
- * @struct aml_name_t
- */
-typedef struct aml_name
-{
-    map_entry_t mapEntry;              ///< Used to store the object in a the object map.
-    list_entry_t parentEntry;          ///< Used to store the object in a its parent's named object list.
-    list_entry_t stateEntry;           ///< Used to store the object in the aml_state's namedObjects list.
-    aml_state_t* state;                ///< The state that added the object to the namespace, can be `NULL`.
-    aml_object_t* parent;              ///< Pointer to the parent object, can be `NULL`.
-    char segment[AML_NAME_LENGTH + 1]; ///< The name of the object.
-    sysfs_dir_t dir;                   ///< Used to expose the object in the filesystem.
-} aml_name_t;
-
-/**
  * @brief Common header for all AML objects.
+ *
+ * Members:
+ * - `ref` Reference count for the object.
+ * - `id` The unique id of the object.
+ * - `name` The name of the object.
+ * - `mapEntry` Entry for the namespace `map` member.
+ * - `listEntry` Entry for the namespace `objects` member or the object cache list.
+ * - `overlay` The overlay this object is part of, `NULL` if part of the global namespace or unanamed.
+ * - `children` List of children, children hold references to the parent, parent does not hold references to children.
+ * - `siblingsEntry` Entry for the parent's `children` member.
+ * - `parent` Pointer to the parent object, `NULL` if root or unnamed.
+ * - `flags` Flags for the object, see `aml_object_flags_t` for more details.
+ * - `type` The type of the object, see `aml_type_t` for more details.
+ * - `dir` Sysfs directory for the object, only valid if `flags` has `AML_OBJECT_EXPOSED_IN_SYSFS` set.
  */
 #define AML_OBJECT_COMMON_HEADER \
     ref_t ref; \
-    list_entry_t cacheEntry; \
-    aml_object_flags_t flags; \
+    aml_object_id_t id; \
     aml_name_t name; \
-    aml_type_t type
+    map_entry_t mapEntry; \
+    list_entry_t listEntry; \
+    aml_namespace_overlay_t* overlay; \
+    list_t children; \
+    list_entry_t siblingsEntry; \
+    aml_object_t* parent; \
+    aml_object_flags_t flags; \
+    aml_type_t type; \
+    sysfs_dir_t dir
 
 /**
  * @brief Data for a buffer object.
@@ -229,16 +226,6 @@ typedef struct aml_buffer_field_obj
     aml_bit_size_t bitOffset;
     aml_bit_size_t bitSize;
 } aml_buffer_field_obj_t;
-
-/**
- * @brief Data for a device object.
- * @struct aml_device_obj_t
- */
-typedef struct aml_device_obj
-{
-    AML_OBJECT_COMMON_HEADER;
-    aml_container_t container;
-} aml_device_obj_t;
 
 /**
  * @brief Data placeholder for an event object.
@@ -304,7 +291,6 @@ typedef struct aml_method_obj
     aml_method_flags_t methodFlags;
     const uint8_t* start;
     const uint8_t* end;
-    aml_container_t container;
     aml_mutex_id_t mutex;
 } aml_method_obj_t;
 
@@ -360,7 +346,6 @@ typedef struct aml_power_resource_obj
     AML_OBJECT_COMMON_HEADER;
     aml_system_level_t systemLevel;
     aml_resource_order_t resourceOrder;
-    aml_container_t container;
 } aml_power_resource_obj_t;
 
 /**
@@ -373,7 +358,6 @@ typedef struct aml_processor_obj
     aml_proc_id_t procId;
     aml_pblk_addr_t pblkAddr;
     aml_pblk_len_t pblkLen;
-    aml_container_t container;
 } aml_processor_obj_t;
 
 /**
@@ -387,16 +371,6 @@ typedef struct aml_string_obj
     uint64_t length;
     char smallString[AML_SMALL_STRING_SIZE + 1]; ///< Used for small object optimization.
 } aml_string_obj_t;
-
-/**
- * @brief Data for a thermal zone object.
- * @struct aml_thermal_zone_obj_t
- */
-typedef struct aml_thermal_zone_obj
-{
-    AML_OBJECT_COMMON_HEADER;
-    aml_container_t container;
-} aml_thermal_zone_obj_t;
 
 /**
  * @brief Data for an alias object.
@@ -419,16 +393,6 @@ typedef struct aml_unresolved_obj
     aml_object_t* from;                       ///< The object to start the search from when resolving the reference.
     aml_patch_up_resolve_callback_t callback; ///< The callback to call when a matching object is found.
 } aml_unresolved_obj_t;
-
-/**
- * @brief Data for a predefined scope object, like \_SB, \_GPE, etc.
- * @struct aml_predefined_scope_obj_t
- */
-typedef struct aml_predefined_scope_obj
-{
-    AML_OBJECT_COMMON_HEADER;
-    aml_container_t container;
-} aml_predefined_scope_obj_t;
 
 /**
  * @brief Data for an argument object.
@@ -466,7 +430,6 @@ typedef struct aml_object
         };
         aml_buffer_obj_t buffer;
         aml_buffer_field_obj_t bufferField;
-        aml_device_obj_t device;
         aml_event_obj_t event;
         aml_field_unit_obj_t fieldUnit;
         aml_integer_obj_t integer;
@@ -479,23 +442,13 @@ typedef struct aml_object
         aml_power_resource_obj_t powerResource;
         aml_processor_obj_t processor;
         aml_string_obj_t string;
-        aml_thermal_zone_obj_t thermalZone;
 
         aml_alias_obj_t alias;
         aml_unresolved_obj_t unresolved;
-        aml_predefined_scope_obj_t predefinedScope;
         aml_arg_obj_t arg;
         aml_local_obj_t local;
     };
 } aml_object_t;
-
-/**
- * @brief Macro to get the name of an ACPI object.
- *
- * @param obj Pointer to the object.
- * @return The name of the object, or `AML_UNNAMED_NAME` if the object is not named.
- */
-#define AML_OBJECT_GET_NAME(obj) (obj->name.segment)
 
 /**
  * @brief Get the total amount of allocated ACPI objects.
@@ -503,13 +456,6 @@ typedef struct aml_object
  * @return The total amount of allocated ACPI objects.
  */
 uint64_t aml_object_get_total_count(void);
-
-/**
- * @brief Initialize the map used to traverse the ACPI namespace tree.
- *
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_object_map_init(void);
 
 /**
  * @brief Allocate a new ACPI object.
@@ -530,16 +476,6 @@ aml_object_t* aml_object_new(void);
 void aml_object_clear(aml_object_t* object);
 
 /**
- * @brief Expose a named object and its children in sysfs.
- *
- * If the object is already exposed in sysfs, this function does nothing and returns success.
- *
- * @param object Pointer to the object to expose.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_object_expose_in_sysfs(aml_object_t* object);
-
-/**
  * @brief Recursively count how many children an object has.
  *
  * This will also count package elements, any cached byteFields, etc. All objects that are owned by the parent
@@ -549,75 +485,6 @@ uint64_t aml_object_expose_in_sysfs(aml_object_t* object);
  * @return The total amount of children the object has.
  */
 uint64_t aml_object_count_children(aml_object_t* parent);
-
-/**
- * @brief Add a child object to a parent object with the given name.
- *
- * Will set the `AML_OBJECT_NAMED` flag in `child->flags` and initialize `child->named`.
- *
- * Creates a new reference to `child`, so you should `DEREF()` it after a successful call to this function.
- *
- * @param parent Pointer to the parent object.
- * @param child Pointer to the child object to add, must not be `AML_UNINITIALIZED`.
- * @param name Name of the child object to add, must be exactly `AML_NAME_LENGTH` chars long, does not need to be
- * null-terminated.
- * @param state Pointer to the state that is adding the object, can be `NULL`. See `aml_state_t` for more details.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const char* name, aml_state_t* state);
-
-/**
- * @brief Make a object named by adding it to the ACPI namespace tree at the location specified by the namestring.
- *
- * Will set the `AML_OBJECT_NAMED` flag in `object->flags` and initialize `object->named`.
- *
- * Creates a new reference to `object`, so you should `DEREF()` it after a successful call to this function.
- *
- * @param object Pointer to the object to add, must not be `AML_UNINITIALIZED`.
- * @param from Pointer to the object to start the search from, can be `NULL` to start from the root.
- * @param nameString Pointer to the name string, can be `NULL` if `object->flags & AML_OBJECT_ROOT`, must have atleast
- * one name segment otherwise.
- * @param state Pointer to the state that is adding the object, can be `NULL`. See `aml_state_t` for more details.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name_string_t* nameString,
-    aml_state_t* state);
-
-/**
- * @brief Remove a object from the ACPI namespace tree.
- *
- * Will clear the `AML_OBJECT_NAMED` flag in `object->flags` and deinitialize `object->named`.
- *
- * Does nothing if the object is not named.
- *
- * @param object Pointer to the object to remove.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_object_remove(aml_object_t* object);
-
-/**
- * @brief Find a child object with the given name.
- *
- * @param parent Pointer to the parent object.
- * @param name Name of the child object to find, must be `AML_NAME_LENGTH` chars long.
- * @return On success, a reference to the found child object. On failure, `NULL` and `errno` is set.
- */
-aml_object_t* aml_object_find_child(aml_object_t* parent, const char* name);
-
-/**
- * @brief Walks the ACPI namespace tree to find the object corresponding to the given path.
- *
- * The path is a null-terminated string with segments separated by dots (e.g., "DEV0.SUB0.METH").
- * A leading backslash indicates an absolute path from the root (e.g., "\DEV0.SUB0.METH").
- * A leading caret indicates a relative path from the start object's parent (e.g., "^SUB0.METH").
- *
- * @see aml_name_string_resolve() for more details on path resolution.
- *
- * @param start The object to start the search from, or `NULL` to start from the root.
- * @param path The path string to search for.
- * @return On success, a reference to the found object. On failure, `NULL` and `errno` is set.
- */
-aml_object_t* aml_object_find(aml_object_t* start, const char* path);
 
 /**
  * @brief Store bits into a object at the specified bit offset and size.
@@ -656,9 +523,12 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
 /**
  * @brief Check if a object has the `AML_OBJECT_EXCEPTION_ON_USE` flag set and raise an exception if it is.
  *
+ * This will also clear the flag so the exception is only raised once.
+ *
  * @param object Pointer to the object to check.
+ * @param state The current AML state, used to raise the exception.
  */
-void aml_object_exception_check(aml_object_t* object);
+void aml_object_exception_check(aml_object_t* object, aml_state_t* state);
 
 /**
  * @brief Set a object as a buffer with the given content.
