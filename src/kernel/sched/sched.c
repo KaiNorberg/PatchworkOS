@@ -1,5 +1,6 @@
 #include "sched.h"
 
+#include "cpu/gdt.h"
 #include "cpu/smp.h"
 #include "cpu/syscalls.h"
 #include "cpu/trap.h"
@@ -83,18 +84,25 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* cpu)
 
     // Bootstrap cpu is initalized early so we cant yet create the idle thread, the boot thread on the bootstrap cpu
     // will become the idle thread.
-    if (cpu->isBootstrap)
+    if (cpu->id == CPU_BOOTSTRAP_ID)
     {
         ctx->idleThread = NULL;
         ctx->runThread = NULL;
     }
     else
     {
-        ctx->idleThread = thread_new(process_get_kernel(), sched_idle_loop);
+        ctx->idleThread = thread_new(process_get_kernel());
         if (ctx->idleThread == NULL)
         {
             panic(NULL, "Failed to create idle thread");
         }
+
+        ctx->idleThread->trapFrame.rip = (uintptr_t)sched_idle_loop;
+        ctx->idleThread->trapFrame.rsp = ctx->idleThread->kernelStack.top;
+        ctx->idleThread->trapFrame.cs = GDT_CS_RING0;
+        ctx->idleThread->trapFrame.ss = GDT_SS_RING0;
+        ctx->idleThread->trapFrame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+
         ctx->runThread = ctx->idleThread;
         atomic_store(&ctx->runThread->state, THREAD_RUNNING);
     }
@@ -127,7 +135,7 @@ void sched_done_with_boot_thread(void)
     cpu_t* self = smp_self_unsafe();
     sched_cpu_ctx_t* ctx = &self->sched;
 
-    assert(self->isBootstrap && ctx->runThread->process == process_get_kernel() && ctx->runThread->id == 0);
+    assert(self->id == CPU_BOOTSTRAP_ID && ctx->runThread->process == process_get_kernel() && ctx->runThread->id == 0);
 
     // The boot thread becomes the bootstrap cpus idle thread.
     ctx->runThread->sched.deadline = 0;

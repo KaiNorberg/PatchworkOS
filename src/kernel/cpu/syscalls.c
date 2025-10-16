@@ -36,9 +36,6 @@ void syscall_table_init(void)
 
 void syscalls_cpu_init(void)
 {
-    // Read this to understand whats happening https://www.felixcloutier.com/x86/syscall,
-    // https://www.felixcloutier.com/x86/sysret.
-
     msr_write(MSR_EFER, msr_read(MSR_EFER) | EFER_SYSCALL_ENABLE);
 
     msr_write(MSR_STAR, ((uint64_t)(GDT_USER_CODE - 16) | GDT_RING3) << 48 | ((uint64_t)(GDT_KERNEL_CODE)) << 32);
@@ -48,9 +45,9 @@ void syscalls_cpu_init(void)
         RFLAGS_TRAP | RFLAGS_DIRECTION | RFLAGS_INTERRUPT_ENABLE | RFLAGS_IOPL | RFLAGS_AUX_CARRY | RFLAGS_NESTED_TASK);
 }
 
-void syscall_ctx_init(syscall_ctx_t* ctx, uint64_t kernelRsp)
+void syscall_ctx_init(syscall_ctx_t* ctx, stack_pointer_t* kernelStack)
 {
-    ctx->kernelRsp = kernelRsp;
+    ctx->kernelRsp = kernelStack->top;
     ctx->userRsp = 0;
     ctx->inSyscall = false;
 }
@@ -71,29 +68,27 @@ const syscall_descriptor_t* syscall_get_descriptor(uint64_t number)
     return &_syscallTableStart[number];
 }
 
-void syscall_handler(trap_frame_t* trapFrame)
+uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx, uint64_t r8, uint64_t r9, uint64_t number)
 {
-    uint64_t number = trapFrame->rax;
-
     const syscall_descriptor_t* desc = syscall_get_descriptor(number);
     if (desc == NULL)
     {
         LOG_DEBUG("Unknown syscall %u\n", number);
         errno = ENOSYS;
-        trapFrame->rax = ERR;
-        return;
+        return ERR;
     }
 
     thread_t* thread = sched_thread();
     thread->syscall.inSyscall = true;
 
-    uint64_t args[6] = {trapFrame->rdi, trapFrame->rsi, trapFrame->rdx, trapFrame->r10, trapFrame->r8, trapFrame->r9};
-
+    // This is safe for any input type and any number of arguments up to 6 as they will simply be ignored.
     uint64_t (*handler)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t) = desc->handler;
-    trapFrame->rax = handler(args[0], args[1], args[2], args[3], args[4], args[5]);
+    uint64_t result = handler(rdi, rsi, rdx, rcx, r8, r9);
 
     thread->syscall.inSyscall = false;
     note_dispatch_invoke();
+
+    return result;
 }
 
 bool syscall_is_pointer_valid(const void* pointer, uint64_t length)
@@ -162,6 +157,11 @@ bool syscall_is_string_valid(space_t* space, const char* string)
         if (*chr == '\0')
         {
             return true;
+        }
+
+        if ((uintptr_t)(chr - string) > PAGE_SIZE)
+        {
+            return false;
         }
 
         chr++;

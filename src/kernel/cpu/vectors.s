@@ -30,9 +30,7 @@ vector_common:
     mov rdi, rsp
     call trap_handler
 
-    TRAP_FRAME_REGS_POP
-    add rsp, 16
-    iretq
+    TRAP_FRAME_POP_AND_JUMP
 
 VECTOR_NO_ERR 0
 VECTOR_NO_ERR 1

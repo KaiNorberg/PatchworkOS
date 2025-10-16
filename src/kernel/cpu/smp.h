@@ -1,10 +1,8 @@
 #pragma once
 
-#include "sched/sched.h"
+#include "cpu.h"
 #include "sched/timer.h"
 #include "sched/wait.h"
-#include "trap.h"
-#include "tss.h"
 #include "utils/statistics.h"
 
 #include <stdint.h>
@@ -19,36 +17,6 @@
  *
  * @{
  */
-
-/**
- * @brief Maximum number of CPUs supported.
- *
- * This is limited by the size of cpuid_t.
- */
-#define SMP_CPU_MAX UINT8_MAX
-
-/**
- * @brief Type used to identify a CPU.
- */
-typedef uint8_t cpuid_t;
-
-/**
- * @brief CPU structure.
- * @struct cpu_t
- */
-typedef struct cpu
-{
-    cpuid_t id;
-    uint8_t lapicId;
-    bool isBootstrap;
-    uint64_t trapDepth;
-    tss_t tss;
-    cli_ctx_t cli;
-    timer_ctx_t timer;
-    sched_cpu_ctx_t sched;
-    wait_cpu_ctx_t wait;
-    statistics_cpu_ctx_t stat;
-} cpu_t;
 
 /**
  * @brief Initializes the bootstrap CPU structure.

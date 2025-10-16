@@ -1,7 +1,5 @@
 #pragma once
 
-#include "gdt.h"
-
 #include <stdint.h>
 
 /**
@@ -17,7 +15,7 @@
 #define PAGE_FAULT_PRESENT (1 << 0)
 
 /**
- * @brief Trap frame structure
+ * @brief Trap Frame Structure.
  * @struct trap_frame_t
  *
  * Stores the CPU state at the time of a trap or interrupt, usefull for context switching as we can modify the
@@ -51,21 +49,53 @@ typedef struct PACKED
     uint64_t ss;
 } trap_frame_t;
 
-#define TRAP_FRAME_IN_USER_SPACE(trapFrame) \
-    ((trapFrame)->ss == (GDT_USER_DATA | GDT_RING3) && (trapFrame)->cs == (GDT_USER_CODE | GDT_RING3))
+/**
+ * @brief Checks if a trap frame is from user space.
+ * @def TRAP_FRAME_IN_USER_SPACE
+ *
+ * @param trapFrame The trap frame to check.
+ * @return true if the trap frame is from user space, false otherwise.
+ */
+#define TRAP_FRAME_IN_USER_SPACE(trapFrame) ((trapFrame)->ss == (GDT_SS_RING3) && (trapFrame)->cs == (GDT_CS_RING3))
 
+/**
+ * @brief Per-CPU CLI Context.
+ * @struct cli_ctx_t
+ *
+ * Used to manage nested CLI (Clear Interrupt Flag) calls.
+ */
 typedef struct
 {
     uint64_t oldRflags;
     uint64_t depth;
 } cli_ctx_t;
 
+/**
+ * @brief Initializes the CLI context.
+ *
+ * @param cli The CLI context to initialize.
+ */
 void cli_ctx_init(cli_ctx_t* cli);
 
+/**
+ * @brief Disable interrupts and increment the CLI depth.
+ *
+ * Must have a matching `cli_pop()` call to re-enable interrupts.
+ */
 void cli_push(void);
 
+/**
+ * @brief Decrement the CLI depth and enable interrupts if depth reaches zero and interrupts were previously enabled.
+ */
 void cli_pop(void);
 
+/**
+ * @brief Handles CPU interrupts.
+ *
+ * This will be called from `vector_common` in `vectors.s`.
+ *
+ * @param trapFrame The trap frame containing the CPU state at the time of the exception.
+ */
 void trap_handler(trap_frame_t* trapFrame);
 
 /** @} */

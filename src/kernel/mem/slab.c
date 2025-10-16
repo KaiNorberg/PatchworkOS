@@ -6,7 +6,7 @@
 
 static cache_t* cache_new(slab_t* slab, uint64_t objectSize, uint64_t size)
 {
-    cache_t* cache = vmm_kernel_map(NULL, NULL, BYTES_TO_PAGES(size), PML_WRITE);
+    cache_t* cache = vmm_alloc(NULL, NULL, size, PML_WRITE | PML_INHERIT | PML_GLOBAL | PML_PRESENT);
     if (cache == NULL)
     {
         return NULL;
@@ -160,7 +160,7 @@ void slab_free(slab_t* slab, object_t* object)
         if (slab->emptyCacheCount >= SLAB_MAX_EMPTY_CACHES)
         {
             assert(list_length(&cache->freeList) == cache->objectCount);
-            vmm_kernel_unmap(cache, BYTES_TO_PAGES(slab->optimalCacheSize));
+            vmm_unmap(NULL, cache, slab->optimalCacheSize);
         }
         else
         {

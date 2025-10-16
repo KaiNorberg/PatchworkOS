@@ -25,6 +25,4 @@ note_dispatch_invoke:
     add rsp, 176 ; Pop the entire trap frame and discard
     ret
 .trap_frame_modified:
-    TRAP_FRAME_REGS_POP
-    add rsp, 16
-    iretq ; Original rflags are loaded here so the lack of a "sti" operation does not matter.
+    TRAP_FRAME_POP_AND_JUMP ; Original rflags are loaded here so the lack of a "sti" operation does not matter.

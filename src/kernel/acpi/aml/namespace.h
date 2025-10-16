@@ -312,6 +312,7 @@ void aml_namespace_overlay_set_parent(aml_namespace_overlay_t* overlay, aml_name
  * @param object The object to check for.
  * @return On success, the highest overlay that contains the object. On failure, `NULL`.
  */
-aml_namespace_overlay_t* aml_namespace_overlay_get_highest_that_contains(aml_namespace_overlay_t* overlay, aml_object_t* object);
+aml_namespace_overlay_t* aml_namespace_overlay_get_highest_that_contains(aml_namespace_overlay_t* overlay,
+    aml_object_t* object);
 
 /** @} */

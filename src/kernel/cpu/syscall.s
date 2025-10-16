@@ -6,26 +6,44 @@ extern syscall_handler
 
 section .text
 
+[bits 64]
+
+%include "cpu/trap.inc"
+
+extern syscall_handler
+
+section .text
+
+; rdi = first argument
+; rsi = second argument
+; rdx = third argument
+; r10 = fourth argument
+; r8  = fifth argument
+; r9  = sixth argument
+; rax = syscall number
+; rcx = user rip
+; r11 = user rflags
+; Return value in rax
 ALIGN 4096
 global syscall_entry
 syscall_entry:
     swapgs
-    mov [gs:0x8], rsp ; Save user stack to syscall ctx
-    mov rsp, [gs:0x0] ; Load kernel stack from syscall ctx
+    mov [gs:0x8], rsp
+    mov rsp, [gs:0x0]
+
+    push rcx ; user rip
+    push r11 ; user rflags
     sti
-    
-    ; Create trap frame, let the non registers be full of garbage
-    sub rsp, 7 * 8
-    TRAP_FRAME_REGS_PUSH
 
-    mov rbp, rsp
-    mov rdi, rsp
+    mov rcx, r10 ; Fourth argument
+    push rax ; Seventh argument (syscall number)
     call syscall_handler
+    add rsp, 8 ; Pop seventh argument
 
-    TRAP_FRAME_REGS_POP
-    add rsp, 7 * 8
-    
     cli
-    mov rsp, [gs:0x8] ; Load user stack from syscall ctx
+    pop r11
+    pop rcx
+
+    mov rsp, [gs:0x8]
     swapgs
     o64 sysret

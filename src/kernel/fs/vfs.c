@@ -1147,7 +1147,7 @@ SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, uint6
     return vfs_ioctl(file, request, argp, size);
 }
 
-void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
+void* vfs_mmap(file_t* file, void* address, uint64_t length, pml_flags_t flags)
 {
     if (file == NULL)
     {
@@ -1166,7 +1166,7 @@ void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    void* result = file->ops->mmap(file, address, length, prot);
+    void* result = file->ops->mmap(file, address, length, flags);
     if (result != NULL)
     {
         inode_notify_access(file->inode);
@@ -1186,7 +1186,14 @@ SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, uint64_t length, prot_t 
     }
     DEREF_DEFER(file);
 
-    return vfs_mmap(file, address, length, prot);
+    pml_flags_t flags = vmm_prot_to_flags(prot);
+    if (flags == PML_NONE)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    return vfs_mmap(file, address, length, flags | PML_USER);
 }
 
 typedef struct

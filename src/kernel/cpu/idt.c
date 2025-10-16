@@ -1,37 +1,50 @@
 #include "idt.h"
 
-#include "syscalls.h"
+#include "gdt.h"
+#include "tss.h"
+#include "vectors.h"
 
 #include <sys/proc.h>
 
-ALIGNED(PAGE_SIZE) static idt_t idt;
+static idt_t idt ALIGNED(PAGE_SIZE);
 
 extern void idt_load_descriptor(idt_desc_t* descriptor);
 
-static void idt_set_vector(uint8_t vector, void* isr, uint8_t privilegeLevel, uint8_t gateType)
+static idt_gate_t idt_gate(void* vectorHandler, idt_attributes_t attr, tss_ist_t ist)
 {
-    idt_entry_t* descriptor = &(idt.entries[vector]);
-
-    descriptor->isrLow = (uint64_t)isr & 0xFFFF;
-    descriptor->codeSegment = 0x08;
-    descriptor->ist = 0;
-    descriptor->attributes = 0b10000000 | (uint8_t)(privilegeLevel << 5) | gateType;
-    descriptor->isrMid = ((uint64_t)isr >> 16) & 0xFFFF;
-    descriptor->isrHigh = ((uint64_t)isr >> 32) & 0xFFFFFFFF;
-    descriptor->reserved = 0;
+    idt_gate_t gate;
+    gate.offsetLow = (uint64_t)vectorHandler & 0xFFFF;
+    gate.codeSegment = GDT_KERNEL_CODE;
+    gate.ist = ist;
+    gate.attributes = attr;
+    gate.offsetMid = ((uint64_t)vectorHandler >> 16) & 0xFFFF;
+    gate.offsetHigh = ((uint64_t)vectorHandler >> 32) & 0xFFFFFFFF;
+    gate.reserved = 0;
+    return gate;
 }
 
-void idt_cpu_init(void)
+void idt_init(void)
 {
-    for (uint16_t vector = 0; vector < VECTOR_AMOUNT; vector++)
+    idt_attributes_t attr = IDT_ATTR_PRESENT | IDT_ATTR_RING0 | IDT_ATTR_INTERRUPT;
+
+    for (vector_t vector = 0; vector < EXCEPTION_AMOUNT; vector++)
     {
-        idt_set_vector((uint8_t)vector, vectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
+        if (vector == EXCEPTION_DOUBLE_FAULT)
+        {
+            idt.entries[vector] = idt_gate(vectorTable[vector], attr, TSS_IST_DOUBLE_FAULT);
+            continue;
+        }
+
+        idt.entries[vector] = idt_gate(vectorTable[vector], attr, TSS_IST_EXCEPTION);
     }
 
-    idt_load();
+    for (vector_t vector = EXCEPTION_AMOUNT; vector < VECTOR_AMOUNT; vector++)
+    {
+        idt.entries[vector] = idt_gate(vectorTable[vector], attr, TSS_IST_NONE);
+    }
 }
 
-void idt_load(void)
+void idt_cpu_load(void)
 {
     idt_desc_t idtDesc;
     idtDesc.size = (sizeof(idt_t)) - 1;

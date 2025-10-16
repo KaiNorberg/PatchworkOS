@@ -43,9 +43,7 @@ void* heap_alloc(uint64_t size, heap_flags_t flags)
     if (size >= HEAP_MAX_SLAB_SIZE || flags & HEAP_VMM)
     {
         uint64_t allocSize = size + sizeof(object_t);
-        uint64_t pageAmount = BYTES_TO_PAGES(allocSize);
-
-        object_t* object = vmm_kernel_map(NULL, NULL, pageAmount, PML_WRITE);
+        object_t* object = vmm_alloc(NULL, NULL, allocSize, PML_WRITE | PML_INHERIT | PML_GLOBAL | PML_PRESENT);
         if (object == NULL)
         {
             errno = ENOMEM;
@@ -158,7 +156,7 @@ void heap_free(void* ptr)
     if (object->cache == NULL)
     {
         uint64_t allocSize = object->dataSize + sizeof(object_t);
-        vmm_kernel_unmap(object, BYTES_TO_PAGES(allocSize));
+        vmm_unmap(NULL, object, BYTES_TO_PAGES(allocSize));
         return;
     }
 

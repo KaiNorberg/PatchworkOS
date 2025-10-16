@@ -1,10 +1,10 @@
 #include "term.h"
 
 #include "acpi/aml/debug.h"
+#include "acpi/aml/exception.h"
 #include "acpi/aml/state.h"
 #include "acpi/aml/tests.h"
 #include "acpi/aml/token.h"
-#include "acpi/aml/exception.h"
 #include "sched/sched.h"
 #include "sched/thread.h"
 

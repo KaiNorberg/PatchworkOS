@@ -48,6 +48,12 @@ static void timer_accumulate(void)
     timer_release();
 }
 
+void timer_ctx_init(timer_ctx_t* ctx)
+{
+    ctx->apicTicksPerNs = 0;
+    ctx->nextDeadline = CLOCKS_NEVER;
+}
+
 void timer_init(void)
 {
     struct tm time;

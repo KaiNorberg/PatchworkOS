@@ -15,7 +15,7 @@
 
 static uintptr_t lapicBase;
 
-static ioapic_t ioapics[SMP_CPU_MAX];
+static ioapic_t ioapics[CPU_MAX];
 static uint32_t ioapicCount = 0;
 
 void apic_timer_one_shot(uint8_t vector, uint32_t ticks)
@@ -60,12 +60,12 @@ void lapic_init(void)
         panic(NULL, "Unable to find lapic address in MADT, hardware is not compatible");
     }
 
-    if (vmm_kernel_map(NULL, lapicPhysAddr, 1, PML_WRITE) == NULL &&
-        errno != EEXIST) // EEXIST means it was already mapped
+    lapicBase = (uintptr_t)PML_LOWER_TO_HIGHER(lapicPhysAddr);
+    if (vmm_map(NULL, (void*)lapicBase, lapicPhysAddr, PAGE_SIZE, PML_WRITE | PML_INHERIT | PML_GLOBAL | PML_PRESENT,
+            NULL, NULL) == NULL)
     {
         panic(NULL, "Unable to map lapic");
     }
-    lapicBase = (uintptr_t)PML_LOWER_TO_HIGHER(lapicPhysAddr);
 
     LOG_INFO("local apic mapped base=0x%016lx phys=0x%016lx\n", lapicBase, lapicPhysAddr);
 }
@@ -180,12 +180,12 @@ void ioapic_all_init(void)
         }
 
         void* physAddr = (void*)(uint64_t)ioapic->ioApicAddress;
-        if (vmm_kernel_map(NULL, physAddr, 1, PML_WRITE) == NULL &&
-            errno != EEXIST) // EEXIST means it was already mapped
+        void* virtAddr = PML_LOWER_TO_HIGHER(physAddr);
+        if (vmm_map(NULL, virtAddr, physAddr, PAGE_SIZE, PML_WRITE | PML_INHERIT | PML_GLOBAL | PML_PRESENT, NULL,
+                NULL) == NULL)
         {
             panic(NULL, "Failed to map ioapic");
         }
-        void* virtAddr = PML_LOWER_TO_HIGHER(physAddr);
 
         ioapic_id_t id = ioapicCount++;
 

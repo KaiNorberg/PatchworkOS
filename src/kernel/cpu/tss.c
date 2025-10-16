@@ -1,5 +1,7 @@
 #include "tss.h"
 
+#include <assert.h>
+
 void tss_init(tss_t* tss)
 {
     tss->rsp0 = 0;
@@ -8,9 +10,15 @@ void tss_init(tss_t* tss)
     tss->iopb = sizeof(tss_t);
 }
 
-void tss_stack_load(tss_t* tss, void* stackTop)
+void tss_kernel_stack_load(tss_t* tss, stack_pointer_t* stack)
 {
-    tss->rsp0 = (uint64_t)stackTop;
-    tss->rsp1 = (uint64_t)stackTop;
-    tss->rsp2 = (uint64_t)stackTop;
+    tss->rsp0 = stack->top;
+    tss->rsp1 = stack->top;
+    tss->rsp2 = stack->top;
+}
+
+void tss_ist_load(tss_t* tss, tss_ist_t ist, stack_pointer_t* stack)
+{
+    assert(ist < TSS_IST_COUNT && ist >= TSS_IST1);
+    tss->ist[ist - 1] = stack->top;
 }

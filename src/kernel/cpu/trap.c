@@ -51,52 +51,12 @@ void cli_pop(void)
 
 static void exception_handler(trap_frame_t* trapFrame)
 {
-    if (TRAP_FRAME_IN_USER_SPACE(trapFrame))
+    if (trapFrame->vector == EXCEPTION_PAGE_FAULT)
     {
-        thread_t* thread = sched_thread();
-        if (thread == NULL)
+        if (thread_handle_page_fault(trapFrame) == ERR)
         {
-            panic(trapFrame, "User exception on NULL thread");
+            panic(trapFrame, "Page fault could not be handled");
         }
-
-        switch (trapFrame->vector)
-        {
-        case VECTOR_PAGE_FAULT:
-        {
-            uintptr_t faultAddress = cr2_read();
-            if (faultAddress >= LOADER_GUARD_PAGE_BOTTOM(thread->id) &&
-                faultAddress <= LOADER_GUARD_PAGE_TOP(thread->id)) // Fault in guard page
-            {
-                LOG_WARN("process killed due to stack overflow tid=%d pid=%d address=%p rip=%p\n", thread->id,
-                    thread->process->id, faultAddress, trapFrame->rip);
-
-                break;
-            }
-            else if (faultAddress >= LOADER_USER_STACK_BOTTOM(thread->id) &&
-                faultAddress <= LOADER_USER_STACK_TOP(thread->id) &&
-                !(trapFrame->vector & PAGE_FAULT_PRESENT)) // Fault in user stack region due to non present page
-            {
-                uintptr_t pageAddress = ROUND_DOWN(faultAddress, PAGE_SIZE);
-                LOG_DEBUG("expanding user stack %p pid=%d tid=%d\n", pageAddress, thread->process->id, thread->id);
-                if (vmm_alloc(&thread->process->space, (void*)pageAddress, PAGE_SIZE, PROT_READ | PROT_WRITE) != NULL)
-                {
-                    return;
-                }
-            }
-
-            LOG_WARN("process killed due to page fault tid=%d pid=%d address=%p rip=%p error=0x%x\n", thread->id,
-                thread->process->id, faultAddress, trapFrame->rip, trapFrame->errorCode);
-        }
-        break;
-        default:
-        {
-            LOG_WARN("process killed due to exception tid=%d pid=%d vector=0x%x error=%p rip=%p cr2=%p\n", thread->id,
-                thread->process->id, trapFrame->vector, trapFrame->errorCode, trapFrame->rip, cr2_read());
-        }
-        }
-
-        sched_process_exit(0);
-        sched_schedule(trapFrame, smp_self_unsafe());
     }
     else
     {
@@ -106,7 +66,7 @@ static void exception_handler(trap_frame_t* trapFrame)
 
 void trap_handler(trap_frame_t* trapFrame)
 {
-    if (trapFrame->vector < VECTOR_IRQ_BASE)
+    if (trapFrame->vector < EXCEPTION_AMOUNT)
     {
         exception_handler(trapFrame);
         return;
@@ -140,7 +100,7 @@ void trap_handler(trap_frame_t* trapFrame)
     break;
     default:
     {
-        if (trapFrame->vector < VECTOR_IRQ_BASE + IRQ_AMOUNT)
+        if (trapFrame->vector < EXTERNAL_INTERRUPT_BASE + IRQ_AMOUNT)
         {
             irq_dispatch(trapFrame);
         }
@@ -151,16 +111,12 @@ void trap_handler(trap_frame_t* trapFrame)
     }
     }
 
+    // TODO: Consider removing this?
     sched_schedule(trapFrame, self);
 
     if (!self->sched.runThread->syscall.inSyscall)
     {
         note_dispatch(trapFrame, self);
-    }
-
-    if (self->sched.runThread->canary != THREAD_CANARY)
-    {
-        panic(trapFrame, "self->sched.runThread->canary != THREAD_CANARY");
     }
 
     statistics_trap_end(trapFrame, self);

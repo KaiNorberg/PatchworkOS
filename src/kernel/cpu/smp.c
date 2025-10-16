@@ -20,66 +20,20 @@
 #include <stdint.h>
 
 static cpu_t bootstrapCpu;
-static cpu_t* cpus[SMP_CPU_MAX];
+static cpu_t* cpus[CPU_MAX];
 static uint16_t cpuAmount = 0;
 static bool isReady = false;
 
 static atomic_uint16_t haltedAmount = ATOMIC_VAR_INIT(0);
 
-static void cpu_init(cpu_t* cpu, uint8_t id, uint8_t lapicId, bool isBootstrap)
-{
-    cpu->id = id;
-    cpu->lapicId = lapicId;
-    cpu->trapDepth = 0;
-    cpu->isBootstrap = isBootstrap;
-    tss_init(&cpu->tss);
-    cli_ctx_init(&cpu->cli);
-    sched_cpu_ctx_init(&cpu->sched, cpu);
-    wait_cpu_ctx_init(&cpu->wait);
-    statistics_cpu_ctx_init(&cpu->stat);
-}
-
-static void smp_entry(cpuid_t id)
-{
-    msr_write(MSR_CPU_ID, id);
-    cpu_t* cpu = smp_self_unsafe();
-    assert(cpu->id == id);
-
-    kernel_other_cpu_init();
-
-    trampoline_signal_ready(cpu->id);
-
-    sched_idle_loop();
-}
-
-static uint64_t cpu_start(cpu_t* cpu)
-{
-    assert(cpu->sched.idleThread != NULL);
-
-    if (trampoline_cpu_setup(cpu->id, THREAD_KERNEL_STACK_TOP(cpu->sched.idleThread), smp_entry) != 0)
-    {
-        LOG_ERR("failed to setup trampoline for cpu %u\n", cpu->id);
-        return -1;
-    }
-
-    lapic_send_init(cpu->lapicId);
-    hpet_wait(CLOCKS_PER_SEC / 100);
-    lapic_send_sipi(cpu->lapicId, (void*)TRAMPOLINE_BASE_ADDR);
-
-    if (trampoline_wait_ready(cpu->id, CLOCKS_PER_SEC) != 0)
-    {
-        LOG_ERR("cpu %d timed out\n", cpu->id);
-        return -1;
-    }
-
-    return 0;
-}
-
 void smp_bootstrap_init(void)
 {
     cpuAmount = 1;
-    cpus[0] = &bootstrapCpu;
-    cpu_init(cpus[0], 0, 0, true);
+    cpus[CPU_BOOTSTRAP_ID] = &bootstrapCpu;
+    if (cpu_init(cpus[0], CPU_BOOTSTRAP_ID, 0) == ERR)
+    {
+        panic(NULL, "Failed to initialize bootstrap cpu");
+    }
 
     msr_write(MSR_CPU_ID, cpus[0]->id);
 }
@@ -88,7 +42,7 @@ void smp_others_init(void)
 {
     trampoline_init();
 
-    cpus[0]->lapicId = lapic_self_id();
+    cpus[CPU_BOOTSTRAP_ID]->lapicId = lapic_self_id();
     LOG_INFO("bootstrap cpu %u with lapicid %u, ready\n", (uint64_t)cpus[0]->id, (uint64_t)cpus[0]->lapicId);
 
     madt_t* madt = MADT_GET();
@@ -101,7 +55,7 @@ void smp_others_init(void)
             continue;
         }
 
-        if (cpus[0]->lapicId == lapic->apicId)
+        if (cpus[CPU_BOOTSTRAP_ID]->lapicId == lapic->apicId)
         {
             continue;
         }
@@ -109,14 +63,17 @@ void smp_others_init(void)
         if (lapic->flags & MADT_PROCESSOR_LOCAL_APIC_ENABLED)
         {
             cpuid_t newId = cpuAmount++;
-            cpus[newId] = heap_alloc(sizeof(cpu_t), HEAP_NONE);
+            cpus[newId] = heap_alloc(sizeof(cpu_t), HEAP_VMM);
             if (cpus[newId] == NULL)
             {
                 panic(NULL, "Failed to allocate memory for cpu %d with lapicid %d", (uint64_t)newId,
                     (uint64_t)lapic->apicId);
             }
 
-            cpu_init(cpus[newId], newId, lapic->apicId, false);
+            if (cpu_init(cpus[newId], newId, lapic->apicId) == ERR)
+            {
+                panic(NULL, "Failed to initialize cpu %d with lapicid %d", (uint64_t)newId, (uint64_t)lapic->apicId);
+            }
 
             if (cpu_start(cpus[newId]) == ERR)
             {

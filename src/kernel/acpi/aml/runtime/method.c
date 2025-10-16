@@ -77,7 +77,8 @@ aml_object_t* aml_method_evaluate(aml_state_t* parentState, aml_method_obj_t* me
     aml_object_t* methodObj = CONTAINER_OF(method, aml_object_t, method);
 
     // This shit is a mess. Just check namespace.h for details.
-    aml_namespace_overlay_t* highestThatContainsMethod = aml_namespace_overlay_get_highest_that_contains(&parentState->overlay, methodObj);
+    aml_namespace_overlay_t* highestThatContainsMethod =
+        aml_namespace_overlay_get_highest_that_contains(&parentState->overlay, methodObj);
     if (highestThatContainsMethod == NULL)
     {
         // Should never happen.

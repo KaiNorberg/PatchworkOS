@@ -11,30 +11,101 @@
  * @defgroup kernel_cpu_gdt GDT
  * @ingroup kernel_cpu
  *
+ * The global descriptor table is a legacy feature from the days of 32-bit x86 and older. Most of its features are
+ * unused, but is still required in 64-bit mode to specify the current privilage level and to load the TSS.
+ *
+ * @see [OSDev Wiki GDT](https://wiki.osdev.org/Global_Descriptor_Table)
+ *
  * @{
  */
 
-// Note: The fliped order of user data and user code is needed for the sysret instruction, i have no idea why its
-// designed that way.
+typedef enum
+{
+    GDT_RING0 = 0,
+    GDT_RING1 = 1,
+    GDT_RING2 = 2,
+    GDT_RING3 = 3
+} gdt_ring_t;
 
-#define GDT_NULL 0x00
-#define GDT_KERNEL_CODE 0x08
-#define GDT_KERNEL_DATA 0x10
-#define GDT_USER_DATA 0x18
-#define GDT_USER_CODE 0x20
-#define GDT_TSS 0x28
+/**
+ * @brief Segment selectors.
+ * @enum gdt_segment_selector_t
+ *
+ * These values are stored in the segment registers (CS, DS, ES, FS, GS, SS) to tell the CPU which segment of the GDT to
+ * use.
+ */
+typedef enum
+{
+    GDT_NULL = 0,           ///< Null segment selector, unused but the gdt must start with it.
+    GDT_KERNEL_CODE = 0x08, ///< Kernel code segment selector.
+    GDT_KERNEL_DATA = 0x10, ///< Kernel data segment selector.
+    GDT_USER_DATA = 0x18,   ///< User data segment selector.
+    GDT_USER_CODE = 0x20,   ///< User code segment selector.
+    GDT_TSS = 0x28,         ///< TSS segment selector.
 
-#define GDT_RING3 3
-#define GDT_RING2 2
-#define GDT_RING1 1
-#define GDT_RING0 0
+    GDT_CS_RING0 = GDT_KERNEL_CODE | GDT_RING0, ///< Value to load into the CS register for kernel code.
+    GDT_SS_RING0 = GDT_KERNEL_DATA | GDT_RING0, ///< Value to load into the SS register for kernel data.
 
+    GDT_CS_RING3 = GDT_USER_CODE | GDT_RING3, ///< Value to load into the CS register for user code.
+    GDT_SS_RING3 = GDT_USER_DATA | GDT_RING3, ///< Value to load into the SS register for user data.
+} gdt_segment_selector_t;
+
+/**
+ * @brief Access byte.
+ * @enum gdt_access_t
+ */
+typedef enum
+{
+    GDT_ACCESS_ACCESSED = 1 << 0,   ///< Will be set to 1 when accessed, but its best to set it to 1 manually.
+    GDT_ACCESS_READ_WRITE = 1 << 1, ///< If set on a code segment, its readable. If set on a data segment, its writable.
+    GDT_ACCESS_DIRECTION_CONFORMING = 1 << 2, ///< If set on a data segment, the segment grows downwards. If
+                                              /// set on a code segment, conforming.
+    GDT_ACCESS_EXEC = 1 << 3,                 ///< If set, the segment is a code segment. If clear, its a data segment.
+    GDT_ACCESS_SYSTEM = 0 << 4,               ///< Is a system segment.
+    GDT_ACCESS_DATA_CODE = 1 << 4,            ///< Is a data or code segment.
+
+    GDT_ACCESS_TYPE_LDT = 0x2,           ///< Local Descriptor Table. Only used if the SYSTEM bit is 0.
+    GDT_ACCESS_TYPE_TSS_AVAILABLE = 0x9, ///< Available 64-bit Task State Segment. Only used if the SYSTEM bit is 0.
+    GDT_ACCESS_TYPE_TSS_BUSY = 0xB,      ///< Busy 64-bit Task State Segment. Only used if the SYSTEM bit is 0.
+
+    GDT_ACCESS_RING0 = 0 << 5, ///< Descriptor Privilege Level 0 (kernel).
+    GDT_ACCESS_RING1 = 1 << 5, ///< Descriptor Privilege Level 1, unused.
+    GDT_ACCESS_RING2 = 2 << 5, ///< Descriptor Privilege Level 2, unused.
+    GDT_ACCESS_RING3 = 3 << 5, ///< Descriptor Privilege Level 3 (user).
+
+    GDT_ACCESS_PRESENT = 1 << 7, ///< Must be 1 for all valid segments.
+} gdt_access_t;
+
+/**
+ * @brief Flags byte.
+ * @enum gdt_flags_t
+ */
+typedef enum
+{
+    GDT_FLAGS_NONE = 0,           ///< No flags set.
+    GDT_FLAGS_RESERVED = 1 << 0,  ///< Must be 0.
+    GDT_FLAGS_LONG_MODE = 1 << 1, ///< If set, its a 64-bit code segment.
+    GDT_FLAGS_SIZE = 1 << 2, ///< If set, its a 32-bit segment. If clear, its a 16-bit segment. Ignored in 64-bit mode.
+    GDT_FLAGS_4KB = 1 << 3   ///< If set, the limit is in 4KiB blocks. If clear, the limit is in bytes.
+} gdt_flags_t;
+
+/**
+ * @brief GDT descriptor structure.
+ *
+ * Used to load the GDT with the `lgdt` instruction.
+ */
 typedef struct PACKED
 {
-    uint16_t size;
-    uint64_t offset;
+    uint16_t size;   ///< Size of the GDT - 1.
+    uint64_t offset; ///< Address of the GDT.
 } gdt_desc_t;
 
+/**
+ * @brief A single GDT segment descriptor.
+ * @struct gdt_segment_t
+ *
+ * This stucture is the same for both 32-bit and 64-bit mode.
+ */
 typedef struct PACKED
 {
     uint16_t limitLow;
@@ -43,8 +114,14 @@ typedef struct PACKED
     uint8_t access;
     uint8_t flagsAndLimitHigh;
     uint8_t baseHigh;
-} gdt_entry_t;
+} gdt_segment_t;
 
+/**
+ * @brief A long mode system segment descriptor, used for TSS and LDT.
+ * @struct gdt_long_system_segment_t
+ *
+ * This structure is used for 64-bit TSS and LDT descriptors.
+ */
 typedef struct PACKED
 {
     uint16_t limitLow;
@@ -55,7 +132,7 @@ typedef struct PACKED
     uint8_t baseUpperMiddle;
     uint32_t baseHigh;
     uint32_t reserved;
-} gdt_long_entry_t;
+} gdt_long_system_segment_t;
 
 /**
  * @brief The actual GDT structure
@@ -66,20 +143,47 @@ typedef struct PACKED
  */
 typedef struct PACKED
 {
-    gdt_entry_t null;
-    gdt_entry_t kernelCode;
-    gdt_entry_t kernelData;
-    gdt_entry_t userData;
-    gdt_entry_t userCode;
-    gdt_long_entry_t tssDesc;
+    gdt_segment_t null;
+    gdt_segment_t kernelCode;
+    gdt_segment_t kernelData;
+    gdt_segment_t userData;
+    gdt_segment_t userCode;
+    gdt_long_system_segment_t tssDesc;
 } gdt_t;
 
+/**
+ * @brief Loads a GDT descriptor.
+ *
+ * Dont use this directly use `gdt_cpu_load()` instead.
+ *
+ * @param descriptor The GDT descriptor to load.
+ */
 extern void gdt_load_descriptor(gdt_desc_t* descriptor);
 
-void gdt_cpu_init(void);
+/**
+ * @brief Initialize the GDT.
+ *
+ * This will setup the GDT structure in memory, but will not load it. Loading is done in `gdt_cpu_load()`.
+ */
+void gdt_init(void);
 
-void gdt_load(void);
+/**
+ * @brief Load the GDT on the current CPU.
+ *
+ * This will load the GDT using the `lgdt` instruction and then reload all segment registers to use the new GDT.
+ *
+ * Must be called after `gdt_init()`.
+ */
+void gdt_cpu_load(void);
 
-void gdt_cpu_load_tss(tss_t* tss);
+/**
+ * @brief Load a TSS into the GDT and load it using the `ltr` instruction on the current CPU.
+ *
+ * Note that the actual TTS descriptor in the GDT can be shared between CPUs, as its only used while loading the TSS,
+ * after that its just useless.
+ *
+ * @param tss The TSS to load.
+ */
+void gdt_cpu_tss_load(tss_t* tss);
 
 /** @} */

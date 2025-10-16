@@ -517,7 +517,8 @@ void aml_namespace_overlay_set_parent(aml_namespace_overlay_t* overlay, aml_name
     overlay->parent = parent;
 }
 
-aml_namespace_overlay_t* aml_namespace_overlay_get_highest_that_contains(aml_namespace_overlay_t* overlay, aml_object_t* object)
+aml_namespace_overlay_t* aml_namespace_overlay_get_highest_that_contains(aml_namespace_overlay_t* overlay,
+    aml_object_t* object)
 {
     if (overlay == NULL || object == NULL)
     {

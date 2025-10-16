@@ -27,6 +27,7 @@ void* pmm_bitmap_alloc(pmm_bitmap_t* bitmap, uint64_t count, uintptr_t maxAddr, 
         return NULL;
     }
 
+    bitmap->free -= count;
     return (void*)(index * PAGE_SIZE + PML_HIGHER_HALF_START);
 }
 

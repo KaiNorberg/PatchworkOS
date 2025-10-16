@@ -13,13 +13,6 @@
  */
 
 /**
- * @brief CPU and multiprocessing.
- * @defgroup kernel_cpu CPU
- * @ingroup kernel
- *
- */
-
-/**
  * @brief Device drivers.
  * @defgroup kernel_drivers Drivers
  * @ingroup kernel

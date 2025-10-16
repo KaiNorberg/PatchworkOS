@@ -15,14 +15,14 @@
 
 static boot_gop_t gop;
 
-static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, prot_t prot)
+static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, pml_flags_t flags)
 {
     (void)fb; // Unused
 
     process_t* process = sched_process();
 
     length = MIN(gop.height * gop.stride * sizeof(uint32_t), length);
-    addr = vmm_map(&process->space, addr, gop.physAddr, length, prot, NULL, NULL);
+    addr = vmm_map(&process->space, addr, gop.physAddr, length, flags, NULL, NULL);
     if (addr == NULL)
     {
         return NULL;

@@ -11,12 +11,12 @@
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
-static void* fb_mmap(file_t* file, void* addr, uint64_t length, prot_t prot)
+static void* fb_mmap(file_t* file, void* addr, uint64_t length, pml_flags_t flags)
 {
     log_screen_disable();
 
     fb_t* fb = file->inode->private;
-    return fb->mmap(fb, addr, length, prot);
+    return fb->mmap(fb, addr, length, flags);
 }
 
 static uint64_t fb_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)

@@ -297,13 +297,13 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     atomic_init(&process->priority, priority);
     atomic_init(&process->status, EXIT_SUCCESS);
 
-    // Cant do memory allocations for the kernel process
     if (argv_init(&process->argv, argv) == ERR)
     {
         return ERR;
     }
 
-    if (space_init(&process->space) == ERR)
+    if (space_init(&process->space, vmm_get_kernel_space(), PML_LOWER_HALF_START, PML_LOWER_HALF_END, SPACE_NONE) ==
+        ERR)
     {
         return ERR;
     }

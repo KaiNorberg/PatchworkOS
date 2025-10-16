@@ -14,7 +14,7 @@ void irq_dispatch(trap_frame_t* trapFrame)
 {
     RWLOCK_READ_SCOPE(&lock);
 
-    uint64_t irq = trapFrame->vector - VECTOR_IRQ_BASE;
+    uint64_t irq = trapFrame->vector - EXTERNAL_INTERRUPT_BASE;
     irq_handler_t* handler = &handlers[irq];
 
     bool handled = false;
@@ -53,7 +53,7 @@ void irq_install(irq_t irq, irq_callback_func_t func, void* data)
 
     if (!handler->redirected)
     {
-        ioapic_set_redirect(VECTOR_IRQ_BASE + irq, irq, IOAPIC_DELIVERY_NORMAL, IOAPIC_POLARITY_HIGH,
+        ioapic_set_redirect(EXTERNAL_INTERRUPT_BASE + irq, irq, IOAPIC_DELIVERY_NORMAL, IOAPIC_POLARITY_HIGH,
             IOAPIC_TRIGGER_EDGE, smp_self_unsafe(), true);
     }
 

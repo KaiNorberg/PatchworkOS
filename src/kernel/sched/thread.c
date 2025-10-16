@@ -2,6 +2,7 @@
 
 #include "cpu/gdt.h"
 #include "cpu/smp.h"
+#include "init/init.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
@@ -20,10 +21,16 @@ static bool bootThreadInitalized = false;
 
 uint64_t thread_get_kernel_stack_top(thread_t* thread)
 {
-    return THREAD_KERNEL_STACK_TOP(thread);
+    LOG_DEBUG("thread_get_kernel_stack_top: tid=%d top=%p\n", thread->id, thread->kernelStack.top);
+    return thread->kernelStack.top;
 }
 
-static uint64_t thread_init(thread_t* thread, process_t* process, void* entry)
+static uintptr_t thread_id_to_offset(tid_t tid, uint64_t maxPages)
+{
+    return tid * ((maxPages + STACK_POINTER_GUARD_PAGES) * PAGE_SIZE);
+}
+
+static uint64_t thread_init(thread_t* thread, process_t* process)
 {
     list_entry_init(&thread->entry);
     thread->process = process;
@@ -32,28 +39,35 @@ static uint64_t thread_init(thread_t* thread, process_t* process, void* entry)
     sched_thread_ctx_init(&thread->sched);
     atomic_init(&thread->state, THREAD_PARKED);
     thread->error = 0;
+    if (stack_pointer_init(&thread->kernelStack,
+            PML_HIGHER_HALF_END - thread_id_to_offset(thread->id, CONFIG_MAX_KERNEL_STACK_PAGES),
+            CONFIG_MAX_KERNEL_STACK_PAGES) == ERR)
+    {
+        return ERR;
+    }
+    vmm_alloc(&thread->process->space, (void*)thread->kernelStack.bottom, CONFIG_MAX_KERNEL_STACK_PAGES * PAGE_SIZE,
+        PML_WRITE | PML_PRESENT);
+    if (stack_pointer_init(&thread->userStack,
+            PML_LOWER_HALF_END - thread_id_to_offset(thread->id, CONFIG_MAX_USER_STACK_PAGES),
+            CONFIG_MAX_USER_STACK_PAGES) == ERR)
+    {
+        return ERR;
+    }
     wait_thread_ctx_init(&thread->wait);
     if (simd_ctx_init(&thread->simd) == ERR)
     {
         return ERR;
     }
     note_queue_init(&thread->notes);
-    syscall_ctx_init(&thread->syscall, THREAD_KERNEL_STACK_TOP(thread));
+    syscall_ctx_init(&thread->syscall, &thread->kernelStack);
     memset(&thread->trapFrame, 0, sizeof(trap_frame_t));
-    thread->canary = THREAD_CANARY;
-    thread->trapFrame.rip = (uint64_t)entry;
-    thread->trapFrame.rsp = THREAD_KERNEL_STACK_TOP(thread);
-    thread->trapFrame.cs = GDT_KERNEL_CODE;
-    thread->trapFrame.ss = GDT_KERNEL_DATA;
-    thread->trapFrame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
-    memset(&thread->kernelStack, 0, THREAD_KERNEL_STACK_SIZE);
 
     list_push(&process->threads.aliveThreads, &thread->processEntry);
-    LOG_DEBUG("created tid=%d pid=%d entry=%p\n", thread->id, process->id, entry);
+    LOG_DEBUG("created tid=%d pid=%d\n", thread->id, process->id);
     return 0;
 }
 
-thread_t* thread_new(process_t* process, void* entry)
+thread_t* thread_new(process_t* process)
 {
     LOCK_SCOPE(&process->threads.lock);
 
@@ -67,7 +81,7 @@ thread_t* thread_new(process_t* process, void* entry)
     {
         return NULL;
     }
-    if (thread_init(thread, process, entry) == ERR)
+    if (thread_init(thread, process) == ERR)
     {
         heap_free(thread);
         return NULL;
@@ -95,6 +109,8 @@ void thread_free(thread_t* thread)
     }
 
     simd_ctx_deinit(&thread->simd);
+
+    stack_pointer_deinit(&thread->kernelStack, thread);
     heap_free(thread);
 }
 
@@ -138,9 +154,14 @@ void thread_load(thread_t* thread, trap_frame_t* trapFrame)
     *trapFrame = thread->trapFrame;
 
     space_load(&thread->process->space);
-    tss_stack_load(&self->tss, (void*)THREAD_KERNEL_STACK_TOP(thread));
+    tss_kernel_stack_load(&self->tss, &thread->kernelStack);
     simd_ctx_load(&thread->simd);
     syscall_ctx_load(&thread->syscall);
+}
+
+void thread_get_trap_frame(thread_t* thread, trap_frame_t* trapFrame)
+{
+    *trapFrame = thread->trapFrame;
 }
 
 bool thread_is_note_pending(thread_t* thread)
@@ -184,12 +205,62 @@ thread_t* thread_get_boot(void)
 {
     if (!bootThreadInitalized)
     {
-        if (thread_init(&bootThread, process_get_kernel(), NULL) == ERR)
+        if (thread_init(&bootThread, process_get_kernel()) == ERR)
         {
             panic(NULL, "Failed to initialize boot thread");
         }
+
+        bootThread.trapFrame.rip = (uintptr_t)kmain;
+        bootThread.trapFrame.rsp = bootThread.kernelStack.top;
+        bootThread.trapFrame.cs = GDT_CS_RING0;
+        bootThread.trapFrame.ss = GDT_SS_RING0;
+        bootThread.trapFrame.rflags = RFLAGS_ALWAYS_SET;
+
         LOG_INFO("boot thread initialized with pid=%d tid=%d\n", bootThread.process->id, bootThread.id);
         bootThreadInitalized = true;
     }
     return &bootThread;
+}
+
+uint64_t thread_handle_page_fault(const trap_frame_t* trapFrame)
+{
+    thread_t* thread = sched_thread();
+    if (thread == NULL)
+    {
+        return ERR;
+    }
+    uintptr_t faultAddr = (uintptr_t)cr2_read();
+
+    if (trapFrame->errorCode & PAGE_FAULT_PRESENT)
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    if (TRAP_FRAME_IN_USER_SPACE(trapFrame))
+    {
+        if (stack_pointer_handle_page_fault(&thread->userStack, thread, faultAddr,
+                PML_WRITE | PML_USER | PML_PRESENT) == ERR)
+        {
+            return ERR;
+        }
+        return 0;
+    }
+
+    if (stack_pointer_handle_page_fault(&thread->userStack, thread, faultAddr, PML_WRITE | PML_USER | PML_PRESENT) ==
+        ERR)
+    {
+        if (errno != ENOENT) // ENOENT means not in user stack, so try kernel stack.
+        {
+            return ERR;
+        }
+        errno = 0;
+
+        if (stack_pointer_handle_page_fault(&thread->kernelStack, thread, faultAddr, PML_WRITE | PML_PRESENT) == ERR)
+        {
+            return ERR;
+        }
+    }
+
+    return 0;
 }

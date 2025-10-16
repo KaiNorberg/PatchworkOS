@@ -8,7 +8,7 @@
 
 typedef struct fb fb_t;
 
-typedef void* (*fb_mmap_t)(fb_t*, void*, uint64_t, prot_t);
+typedef void* (*fb_mmap_t)(fb_t*, void*, uint64_t, pml_flags_t);
 
 typedef struct fb
 {

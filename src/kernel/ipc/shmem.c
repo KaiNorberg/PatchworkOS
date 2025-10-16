@@ -24,7 +24,7 @@ static shmem_object_t* shmem_object_new(void);
 static void shmem_object_free(shmem_object_t* shmem);
 static bool shmem_object_is_access_allowed(shmem_object_t* shmem, process_t* proccess);
 static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmount, space_t* space, void* address,
-    prot_t prot);
+    pml_flags_t flags);
 
 static void shmem_vmm_callback(void* private)
 {
@@ -37,7 +37,7 @@ static void shmem_vmm_callback(void* private)
     DEREF(shmem);
 }
 
-static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
+static void* shmem_mmap(file_t* file, void* address, uint64_t length, pml_flags_t flags)
 {
     shmem_object_t* shmem = file->private;
     if (shmem == NULL)
@@ -67,13 +67,13 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
     if (shmem->pageAmount == 0) // First call to mmap()
     {
         assert(shmem->pages == NULL);
-        return shmem_object_allocate_pages(shmem, pageAmount, space, address, prot);
+        return shmem_object_allocate_pages(shmem, pageAmount, space, address, flags);
     }
     else
     {
         assert(shmem->pages != NULL);
-        return vmm_map_pages(space, address, shmem->pages, MIN(pageAmount, shmem->pageAmount), prot, shmem_vmm_callback,
-            REF(shmem));
+        return vmm_map_pages(space, address, shmem->pages, MIN(pageAmount, shmem->pageAmount), flags,
+            shmem_vmm_callback, REF(shmem));
     }
 }
 
@@ -298,7 +298,7 @@ static bool shmem_object_is_access_allowed(shmem_object_t* shmem, process_t* pro
 }
 
 static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmount, space_t* space, void* address,
-    prot_t prot)
+    pml_flags_t flags)
 {
     shmem->pages = heap_alloc(sizeof(void*) * pageAmount, HEAP_VMM);
     if (shmem->pages == NULL)
@@ -325,7 +325,7 @@ static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmo
     }
 
     void* virtAddr =
-        vmm_map_pages(space, address, shmem->pages, shmem->pageAmount, prot, shmem_vmm_callback, REF(shmem));
+        vmm_map_pages(space, address, shmem->pages, shmem->pageAmount, flags, shmem_vmm_callback, REF(shmem));
     if (virtAddr == NULL)
     {
         for (uint64_t i = 0; i < shmem->pageAmount; i++)

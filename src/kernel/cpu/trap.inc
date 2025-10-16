@@ -1,3 +1,7 @@
+; The size of a trap frame in bytes
+%define TRAP_FRAME_SIZE 176
+
+; Will construct the registers section of a trap frame
 %macro TRAP_FRAME_REGS_PUSH 0
     push rax
     push rbx
@@ -16,6 +20,7 @@
     push r15
 %endmacro
 
+; Will pop the registers section of a trap frame
 %macro TRAP_FRAME_REGS_POP 0
     pop r15
     pop r14
@@ -32,6 +37,13 @@
     pop rcx
     pop rbx
     pop rax
+%endmacro
+
+%macro TRAP_FRAME_POP_AND_JUMP 0
+    TRAP_FRAME_REGS_POP
+
+    add rsp, 16
+    iretq
 %endmacro
 
 ; Constructs a trap frame from current cpu state
@@ -57,5 +69,3 @@
 
     TRAP_FRAME_REGS_PUSH
 %endmacro
-
-

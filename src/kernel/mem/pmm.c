@@ -11,6 +11,7 @@
 
 #include <boot/boot_info.h>
 
+#include <errno.h>
 #include <sys/math.h>
 
 static const char* efiMemTypeToString[] = {
@@ -54,7 +55,7 @@ static bool pmm_is_efi_mem_available(EFI_MEMORY_TYPE type)
     {
     case EfiConventionalMemory:
     case EfiLoaderCode:
-    // EfiLoaderData is intentionally not included here as it's freed later in `kernel_init()`.
+    // EfiLoaderData is intentionally not included here as it's freed later in `init()`.
     case EfiBootServicesCode:
     case EfiBootServicesData:
         return true;
@@ -165,7 +166,7 @@ void* pmm_alloc(void)
     void* address = pmm_stack_alloc(&stack);
     if (address == NULL)
     {
-        LOG_WARN("failed to allocate single page, free=%llu pages\n", pmm_free_amount());
+        LOG_WARN("failed to allocate single page, there are %llu stack pages left\n", stack.free);
         errno = ENOMEM;
         return NULL;
     }
@@ -178,8 +179,7 @@ void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
     void* address = pmm_bitmap_alloc(&bitmap, count, maxAddr, alignment);
     if (address == NULL)
     {
-        LOG_WARN("failed to allocate %llu pages from bitmap, free=%llu pages, maxAddr=0x%lx\n", count,
-            pmm_free_amount(), maxAddr);
+        LOG_WARN("failed to allocate %llu pages from bitmap, there are %llu bitmap pages left\n", count, bitmap.free);
         errno = ENOMEM;
         return NULL;
     }

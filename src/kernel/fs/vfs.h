@@ -348,10 +348,10 @@ uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size);
  * @param file The file to memory map.
  * @param address The address to map to, or `NULL` to let the kernel choose.
  * @param length The length to map.
- * @param prot The protection flags.
+ * @param flags The page table flags for the mapping.
  * @return On success, the mapped address. On failure, returns `NULL` and `errno` is set.
  */
-void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot);
+void* vfs_mmap(file_t* file, void* address, uint64_t length, pml_flags_t flags);
 
 /**
  * @brief Poll multiple files.

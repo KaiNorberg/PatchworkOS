@@ -5,9 +5,9 @@
 
 ![License](https://img.shields.io/badge/License-MIT-green) [![Build and Test](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg)](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml)
 
-**Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9, DOS and others while simplifying them and sprinkling in some new ideas of its own.
+**Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9, DOS and others while simplifying them and adding in some new ideas of its own.
 
-The goal is to eventually have a feature-complete and unique operating system avoiding easy shortcuts while still remaining approachable and educational.
+The goal is to eventually have a feature-complete and experimental operating system avoiding easy shortcuts while still remaining approachable and educational.
 
 ![Desktop Screenshot](meta/screenshots/desktop.png)
 ![Doom Screenshot](meta/screenshots/doom.png)
@@ -18,7 +18,8 @@ The goal is to eventually have a feature-complete and unique operating system av
 
 - Multithreading with a [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), fully preemptive and tickless
 - Symmetric Multi Processing
-- Constant-time memory management for both physical and virtual memory
+- Constant-time memory management for both physical and virtual memory in the common case
+- Dynamic kernel and user stack allocation
 - File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/note.h)
 - Synchronization primitives including mutexes, read-write locks and [futexes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sync/futex.h)
 - SIMD support
@@ -29,7 +30,7 @@ The goal is to eventually have a feature-complete and unique operating system av
 - Tested on real hardware, see [Tested Configurations](#tested-configurations)
 - ACPI implementation was made to be easy to understand and useful for educational purposes
 - Tested against [ACPICA's](https://github.com/acpica/acpica) runtime test suite (WIP)
-- ACPI support is still work in progress check [acpi.h](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/acpi/acpi.h) for a checklist
+- ACPI support is still work in progress, check [acpi.h](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/acpi/acpi.h) for a checklist
 
 ### File System
 
@@ -43,6 +44,7 @@ The goal is to eventually have a feature-complete and unique operating system av
 - Custom C standard library and system libraries
 - Highly modular shared memory based desktop environment
 - Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg)
+- Note that currently a heavy focus has been placed on the kernel and low-level stuff so user space is currently quite small
 
 *And much more...*
 

@@ -129,7 +129,7 @@ void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boot_gop_t
 
     // NOTE: I have no idea why its not enough to just identity map everything in the memory map, but this seems to be
     // required for paging to work properly on all platforms.
-    if (page_table_map(table, 0, 0, BYTES_TO_PAGES(maxAddress), PML_WRITE, PML_CALLBACK_NONE) == ERR)
+    if (page_table_map(table, 0, 0, BYTES_TO_PAGES(maxAddress), PML_WRITE | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
     {
         panic_without_boot_services(0xFF, 0xFF, 0x00);
     }
@@ -142,21 +142,21 @@ void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boot_gop_t
             panic_without_boot_services(0x00, 0x00, 0xFF);
         }
 
-        if (page_table_map(table, (void*)desc->VirtualStart, (void*)desc->PhysicalStart, desc->NumberOfPages, PML_WRITE,
-                PML_CALLBACK_NONE) == ERR)
+        if (page_table_map(table, (void*)desc->VirtualStart, (void*)desc->PhysicalStart, desc->NumberOfPages,
+                PML_WRITE | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
         {
             panic_without_boot_services(0xFF, 0x00, 0xFF);
         }
     }
 
     if (page_table_map(table, (void*)kernel->virtStart, (void*)kernel->physStart, BYTES_TO_PAGES(kernel->size),
-            PML_WRITE, PML_CALLBACK_NONE) == ERR)
+            PML_WRITE | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
     {
         panic_without_boot_services(0x00, 0xFF, 0xFF);
     }
 
-    if (page_table_map(table, (void*)gop->virtAddr, (void*)gop->physAddr, BYTES_TO_PAGES(gop->size), PML_WRITE,
-            PML_CALLBACK_NONE) == ERR)
+    if (page_table_map(table, (void*)gop->virtAddr, (void*)gop->physAddr, BYTES_TO_PAGES(gop->size),
+            PML_WRITE | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
     {
         panic_without_boot_services(0xFF, 0xFF, 0xFF);
     }

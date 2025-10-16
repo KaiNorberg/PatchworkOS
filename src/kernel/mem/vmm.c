@@ -1,10 +1,16 @@
 #include "vmm.h"
 
+#include "cpu/syscalls.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/space.h"
 #include "pmm.h"
+#include "proc/process.h"
+#include "sched/sched.h"
+#include "sched/thread.h"
 #include "sync/lock.h"
+#include "sync/rwmutex.h"
+#include "utils/bitmap.h"
 
 #include <boot/boot_info.h>
 #include <common/paging.h>
@@ -17,71 +23,30 @@
 
 extern uint64_t _kernelEnd;
 
-static lock_t kernelLock;
-static page_table_t kernelPageTable;
-static uintptr_t kernelFreeAddress;
-
-static void* vmm_kernel_find_free_region(uint64_t pageAmount)
-{
-    uintptr_t addr = kernelFreeAddress;
-
-    while (addr + pageAmount * PAGE_SIZE <= PML_HIGHER_HALF_END)
-    {
-        void* firstMappedPage;
-        if (page_table_find_first_mapped_page(&kernelPageTable, (void*)addr, (void*)(addr + pageAmount * PAGE_SIZE),
-                &firstMappedPage) == ERR)
-        {
-            kernelFreeAddress = addr + pageAmount * PAGE_SIZE;
-            return (void*)addr;
-        }
-
-        addr = (uintptr_t)firstMappedPage + PAGE_SIZE;
-    }
-
-    return NULL;
-}
-
-static void vmm_kernel_update_free_address(uintptr_t virtAddr, uint64_t pageAmount)
-{
-    if (virtAddr >= ((uintptr_t)&_kernelEnd) && virtAddr < PML_HIGHER_HALF_END)
-    {
-        if (virtAddr <= kernelFreeAddress && kernelFreeAddress < virtAddr + pageAmount * PAGE_SIZE)
-        {
-            kernelFreeAddress = virtAddr + pageAmount * PAGE_SIZE;
-        }
-    }
-}
+static space_t kernelSpace;
 
 void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_kernel_t* kernel)
 {
-    kernelFreeAddress = ROUND_UP((uintptr_t)&_kernelEnd, PAGE_SIZE);
-    lock_init(&kernelLock);
-
-    LOG_INFO("linker shows first free address 0x%lx\n", kernelFreeAddress);
-
-    // Kernel pml must be within 32 bit boundary because smp trampoline loads it as a dword.
-    kernelPageTable.pml4 = pmm_alloc_bitmap(1, UINT32_MAX, 0);
-    if (kernelPageTable.pml4 == NULL)
+    if (space_init(&kernelSpace, NULL, ROUND_UP(&_kernelEnd, PAGE_SIZE), PML_HIGHER_HALF_END, SPACE_USE_PMM_BITMAP) ==
+        ERR)
     {
-        panic(NULL, "Failed to allocate kernel PML");
+        panic(NULL, "Failed to initialize kernel address space");
     }
-    memset(kernelPageTable.pml4, 0, sizeof(pml_t));
-    kernelPageTable.allocPage = pmm_alloc;
-    kernelPageTable.freePage = pmm_free;
 
-    LOG_INFO("kernel pml4 allocated at 0x%lx\n", kernelPageTable.pml4);
+    LOG_INFO("kernel pml4 allocated at 0x%lx\n", kernelSpace.pageTable.pml4);
 
     // Keep using the bootloaders memory mappings during initialization.
     for (uint64_t i = 0; i < PML_ENTRY_AMOUNT / 2; i++)
     {
-        kernelPageTable.pml4->entries[i] = memory->table.pml4->entries[i];
+        kernelSpace.pageTable.pml4->entries[i] = memory->table.pml4->entries[i];
+        kernelSpace.pageTable.pml4->entries[i].inherit = true;
     }
 
     for (uint64_t i = 0; i < memory->map.length; i++)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(&memory->map, i);
-        if (page_table_map(&kernelPageTable, (void*)desc->VirtualStart, (void*)desc->PhysicalStart, desc->NumberOfPages,
-                PML_WRITE, PML_CALLBACK_NONE) == ERR)
+        if (page_table_map(&kernelSpace.pageTable, (void*)desc->VirtualStart, (void*)desc->PhysicalStart,
+                desc->NumberOfPages, PML_WRITE | PML_INHERIT | PML_GLOBAL | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
         {
             panic(NULL, "Failed to map memory descriptor %d (phys=0x%016lx-0x%016lx virt=0x%016lx)", i,
                 desc->PhysicalStart, desc->PhysicalStart + desc->NumberOfPages * PAGE_SIZE, desc->VirtualStart);
@@ -90,16 +55,16 @@ void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_ker
 
     LOG_INFO("kernel virt=[0x%016lx-0x%016lx] phys=[0x%016lx-0x%016lx]\n", kernel->virtStart,
         kernel->virtStart + kernel->size, kernel->physStart, kernel->physStart + kernel->size);
-    if (page_table_map(&kernelPageTable, (void*)kernel->virtStart, (void*)kernel->physStart,
-            BYTES_TO_PAGES(kernel->size), PML_WRITE, PML_CALLBACK_NONE) == ERR)
+    if (page_table_map(&kernelSpace.pageTable, (void*)kernel->virtStart, (void*)kernel->physStart,
+            BYTES_TO_PAGES(kernel->size), PML_WRITE | PML_INHERIT | PML_GLOBAL | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
     {
         panic(NULL, "Failed to map kernel memory");
     }
 
     LOG_INFO("   GOP virt=[0x%016lx-0x%016lx] phys=[0x%016lx-0x%016lx]\n", gop->virtAddr, gop->virtAddr + gop->size,
         gop->physAddr, gop->physAddr + gop->size);
-    if (page_table_map(&kernelPageTable, (void*)gop->virtAddr, (void*)gop->physAddr, BYTES_TO_PAGES(gop->size),
-            PML_WRITE, PML_CALLBACK_NONE) == ERR)
+    if (page_table_map(&kernelSpace.pageTable, (void*)gop->virtAddr, (void*)gop->physAddr, BYTES_TO_PAGES(gop->size),
+            PML_WRITE | PML_INHERIT | PML_GLOBAL | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
     {
         panic(NULL, "Failed to map GOP memory");
     }
@@ -107,16 +72,8 @@ void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_ker
     vmm_cpu_init();
 
     LOG_INFO("loading kernel page table... ");
-    page_table_load(&kernelPageTable);
+    space_load(&kernelSpace);
     LOG_INFO("done!\n");
-}
-
-void vmm_unmap_lower_half(void)
-{
-    for (uint64_t i = 0; i < PML_ENTRY_AMOUNT / 2; i++)
-    {
-        kernelPageTable.pml4->entries[i].raw = 0;
-    }
 }
 
 void vmm_cpu_init(void)
@@ -124,109 +81,28 @@ void vmm_cpu_init(void)
     cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
 }
 
-page_table_t* vmm_kernel_pml(void)
+void vmm_unmap_lower_half(thread_t* bootThread)
 {
-    return &kernelPageTable;
+    for (uint64_t i = 0; i < PML_ENTRY_AMOUNT / 2; i++)
+    {
+        kernelSpace.pageTable.pml4->entries[i].raw = 0;
+        bootThread->process->space.pageTable.pml4->entries[i].raw = 0;
+    }
 }
 
-void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t pageAmount, pml_flags_t flags)
+space_t* vmm_get_kernel_space(void)
 {
-    LOCK_SCOPE(&kernelLock);
-
-    // Sanity checks, if the kernel specifies weird values we assume some corruption or fundamental failure has
-    // taken place.
-    assert((uintptr_t)virtAddr % PAGE_SIZE == 0);
-    assert((uintptr_t)physAddr % PAGE_SIZE == 0);
-    assert(pageAmount != 0);
-
-    if (physAddr == NULL)
-    {
-        if (virtAddr == NULL)
-        {
-            virtAddr = vmm_kernel_find_free_region(pageAmount);
-            if (virtAddr == NULL)
-            {
-                errno = ENOMEM;
-                return NULL;
-            }
-        }
-        else
-        {
-            if (!page_table_is_unmapped(&kernelPageTable, virtAddr, pageAmount))
-            {
-                errno = EEXIST;
-                return NULL;
-            }
-        }
-
-        for (uint64_t i = 0; i < pageAmount; i++)
-        {
-            void* page = pmm_alloc();
-            void* vaddr = (void*)((uint64_t)virtAddr + i * PAGE_SIZE);
-
-            if (page == NULL ||
-                page_table_map(&kernelPageTable, vaddr, PML_HIGHER_TO_LOWER(page), 1,
-                    flags | PML_KERNEL_FLAGS | PML_OWNED, PML_CALLBACK_NONE) == ERR)
-            {
-                if (page != NULL)
-                {
-                    pmm_free(page);
-                }
-
-                // Page table will free the previously allocated pages as they are owned by the Page table.
-                page_table_unmap(&kernelPageTable, virtAddr, i);
-                LOG_WARN("failed to map kernel page at virt=0x%016lx (attempt %llu/%llu)\n", (uintptr_t)vaddr, i + 1,
-                    pageAmount);
-                errno = ENOMEM;
-                return NULL;
-            }
-        }
-
-        vmm_kernel_update_free_address((uintptr_t)virtAddr, pageAmount);
-    }
-    else
-    {
-        physAddr = PML_ENSURE_LOWER_HALF(physAddr);
-        bool identityMap = false;
-        if (virtAddr == NULL)
-        {
-            identityMap = true;
-            virtAddr = PML_LOWER_TO_HIGHER(physAddr);
-        }
-
-        if (!page_table_is_unmapped(&kernelPageTable, virtAddr, pageAmount))
-        {
-            errno = EEXIST;
-            return NULL;
-        }
-
-        if (page_table_map(&kernelPageTable, virtAddr, physAddr, pageAmount, flags | PML_KERNEL_FLAGS,
-                PML_CALLBACK_NONE) == ERR)
-        {
-            errno = ENOMEM;
-            return NULL;
-        }
-
-        if (identityMap)
-        {
-            LOG_DEBUG("map lower [0x%016lx-0x%016lx] to higher\n", physAddr,
-                (uintptr_t)physAddr + pageAmount * PAGE_SIZE);
-        }
-    }
-
-    return virtAddr;
+    return &kernelSpace;
 }
 
-void vmm_kernel_unmap(void* virtAddr, uint64_t pageAmount)
+pml_flags_t vmm_prot_to_flags(prot_t prot)
 {
-    LOCK_SCOPE(&kernelLock);
+    if (!(prot & PROT_READ))
+    {
+        return 0;
+    }
 
-    // Sanity checks, if the kernel specifies weird values we assume some corruption or fundamental failure has taken
-    // place.
-    assert((uintptr_t)virtAddr % 0x1000 == 0);
-    assert(pageAmount != 0);
-
-    page_table_unmap(&kernelPageTable, virtAddr, pageAmount);
+    return (prot & PROT_WRITE ? PML_WRITE : 0) | PML_PRESENT;
 }
 
 void vmm_align_region(void** virtAddr, uint64_t* length)
@@ -236,12 +112,28 @@ void vmm_align_region(void** virtAddr, uint64_t* length)
     *virtAddr = aligned;
 }
 
-void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, prot_t prot)
+void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t flags)
 {
+    if (length == 0 || !(flags & PML_PRESENT))
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    if (space == NULL)
+    {
+        space = vmm_get_kernel_space();
+    }
+
     space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, NULL, length, prot) == ERR)
+    if (space_mapping_start(space, &mapping, virtAddr, NULL, length, flags | PML_OWNED) == ERR)
     {
         return NULL;
+    }
+
+    if (!page_table_is_unmapped(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
+    {
+        page_table_unmap(&space->pageTable, mapping.virtAddr, mapping.pageAmount);
     }
 
     for (uint64_t i = 0; i < mapping.pageAmount; i++)
@@ -250,8 +142,8 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, prot_t prot)
         void* page = pmm_alloc();
 
         if (page == NULL ||
-            page_table_map(&space->pageTable, addr, PML_HIGHER_TO_LOWER(page), 1, mapping.flags | PML_OWNED,
-                PML_CALLBACK_NONE) == ERR)
+            page_table_map(&space->pageTable, addr, PML_HIGHER_TO_LOWER(page), 1, mapping.flags, PML_CALLBACK_NONE) ==
+                ERR)
         {
             if (page != NULL)
             {
@@ -267,11 +159,22 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, prot_t prot)
     return space_mapping_end(space, &mapping, 0);
 }
 
-void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, prot_t prot, space_callback_func_t func,
-    void* private)
+void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, pml_flags_t flags,
+    space_callback_func_t func, void* private)
 {
+    if (physAddr == NULL || length == 0 || !(flags & PML_PRESENT))
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    if (space == NULL)
+    {
+        space = vmm_get_kernel_space();
+    }
+
     space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, physAddr, length, prot) == ERR)
+    if (space_mapping_start(space, &mapping, virtAddr, physAddr, length, flags) == ERR)
     {
         return NULL;
     }
@@ -284,6 +187,11 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, p
         {
             return space_mapping_end(space, &mapping, ENOSPC);
         }
+    }
+
+    if (!page_table_is_unmapped(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
+    {
+        page_table_unmap(&space->pageTable, mapping.virtAddr, mapping.pageAmount);
     }
 
     if (page_table_map(&space->pageTable, mapping.virtAddr, mapping.physAddr, mapping.pageAmount, mapping.flags,
@@ -300,11 +208,22 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, p
     return space_mapping_end(space, &mapping, 0);
 }
 
-void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageAmount, prot_t prot,
+void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageAmount, pml_flags_t flags,
     space_callback_func_t func, void* private)
 {
+    if (pages == NULL || pageAmount == 0 || !(flags & PML_PRESENT))
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    if (space == NULL)
+    {
+        space = vmm_get_kernel_space();
+    }
+
     space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, NULL, pageAmount * PAGE_SIZE, prot) == ERR)
+    if (space_mapping_start(space, &mapping, virtAddr, NULL, pageAmount * PAGE_SIZE, flags) == ERR)
     {
         return NULL;
     }
@@ -317,6 +236,11 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
         {
             return space_mapping_end(space, &mapping, ENOSPC);
         }
+    }
+
+    if (!page_table_is_unmapped(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
+    {
+        page_table_unmap(&space->pageTable, mapping.virtAddr, mapping.pageAmount);
     }
 
     for (uint64_t i = 0; i < mapping.pageAmount; i++)
@@ -341,4 +265,117 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
     }
 
     return space_mapping_end(space, &mapping, 0);
+}
+
+uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length)
+{
+    if (virtAddr == NULL || length == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (space == NULL)
+    {
+        space = vmm_get_kernel_space();
+    }
+
+    vmm_align_region(&virtAddr, &length);
+    uint64_t pageAmount = BYTES_TO_PAGES(length);
+
+    RWMUTEX_WRITE_SCOPE(&space->mutex);
+
+    if (page_table_is_unmapped(&space->pageTable, virtAddr, pageAmount))
+    {
+        return 0;
+    }
+
+    // Stores the amount of pages that have each callback id within the region.
+    uint64_t callbacks[PML_MAX_CALLBACK] = {0};
+    page_table_collect_callbacks(&space->pageTable, virtAddr, pageAmount, callbacks);
+
+    page_table_unmap(&space->pageTable, virtAddr, pageAmount);
+
+    uint64_t index;
+    BITMAP_FOR_EACH_SET(&index, &space->callbackBitmap)
+    {
+        space_callback_t* callback = &space->callbacks[index];
+        assert(callback->pageAmount >= callbacks[index]);
+
+        callback->pageAmount -= callbacks[index];
+        if (callback->pageAmount == 0)
+        {
+            space->callbacks[index].func(space->callbacks[index].private);
+            space_free_callback(space, index);
+        }
+    }
+
+    return 0;
+}
+
+SYSCALL_DEFINE(SYS_MUNMAP, uint64_t, void* address, uint64_t length)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!syscall_is_pointer_valid(address, length))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    return vmm_unmap(space, address, length);
+}
+
+uint64_t vmm_protect(space_t* space, void* virtAddr, uint64_t length, pml_flags_t flags)
+{
+    if (space == NULL || virtAddr == NULL || length == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (!(flags & PML_PRESENT))
+    {
+        return vmm_unmap(space, virtAddr, length);
+    }
+
+    if (space == NULL)
+    {
+        space = vmm_get_kernel_space();
+    }
+
+    vmm_align_region(&virtAddr, &length);
+    uint64_t pageAmount = BYTES_TO_PAGES(length);
+
+    RWMUTEX_WRITE_SCOPE(&space->mutex);
+
+    if (page_table_is_unmapped(&space->pageTable, virtAddr, pageAmount))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    uint64_t result = page_table_set_flags(&space->pageTable, virtAddr, pageAmount, flags);
+    if (result == ERR)
+    {
+        errno = ENOENT;
+        return ERR;
+    }
+
+    return 0;
+}
+
+SYSCALL_DEFINE(SYS_MPROTECT, uint64_t, void* address, uint64_t length, prot_t prot)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!syscall_is_pointer_valid(address, length))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    return vmm_protect(space, address, length, vmm_prot_to_flags(prot) | PML_USER);
 }

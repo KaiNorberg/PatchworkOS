@@ -27,6 +27,7 @@ static char workingBuffer[LOG_MAX_BUFFER] = {0};
 static log_output_t outputs = 0;
 static log_level_t minLevel = 0;
 static bool isLastCharNewline = 0;
+static bool firstHeaderPrinted = false;
 
 static const char* levelNames[] = {
     [LOG_LEVEL_DEBUG] = "D",
@@ -115,9 +116,18 @@ void log_write(const char* string, uint64_t length)
 
 static void log_print_header(log_level_t level, const char* prefix)
 {
+    if (!firstHeaderPrinted)
+    {
+        firstHeaderPrinted = true;
+    }
+    else
+    {
+        log_write("\n", 1);
+    }
+
     if (level == LOG_LEVEL_PANIC)
     {
-        int length = sprintf(workingBuffer, "\n[XXXX.XXX-XX-X-XXXXXXXXXX] ");
+        int length = sprintf(workingBuffer, "[XXXX.XXX-XX-X-XXXXXXXXXX] ");
         log_write(workingBuffer, length);
         return;
     }
@@ -128,8 +138,8 @@ static void log_print_header(log_level_t level, const char* prefix)
 
     cpu_t* self = smp_self_unsafe();
 
-    int length = sprintf(workingBuffer, "\n[%4llu.%03llu-%02x-%s-%-10s] ", seconds, milliseconds, self->id, levelNames[level],
-        prefix != NULL ? prefix : "unknown");
+    int length = sprintf(workingBuffer, "[%4llu.%03llu-%02x-%s-%-10s] ", seconds, milliseconds, self->id,
+        levelNames[level], prefix != NULL ? prefix : "unknown");
     log_write(workingBuffer, length);
 }
 
@@ -166,13 +176,6 @@ uint64_t log_print(log_level_t level, const char* prefix, const char* format, ..
 
 uint64_t log_vprint(log_level_t level, const char* prefix, const char* format, va_list args)
 {
-    // Logging seems to be a common place for stack overflows to be detected.
-    thread_t* thread = sched_thread();
-    if (thread != NULL && thread->canary != THREAD_CANARY)
-    {
-        panic(NULL, "Stack overflow detected in log_vprint");
-    }
-
     LOCK_SCOPE(&lock);
 
     if (level < minLevel)

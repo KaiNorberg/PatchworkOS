@@ -1,7 +1,6 @@
 #pragma once
 
 #include "sched/wait.h"
-#include "sync/mutex.h"
 #include <stdint.h>
 
 #define RWMUTEX_READ_SCOPE(mutex) \

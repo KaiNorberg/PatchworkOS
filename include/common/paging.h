@@ -18,7 +18,7 @@ static inline pml_entry_t pml_entry_create(void* physAddr, pml_flags_t flags, pm
 {
     pml_entry_t entry = {0};
     entry.address = ((uintptr_t)physAddr >> 12);
-    entry.present = 1;
+    entry.present = (flags & PML_PRESENT) ? 1 : 0;
     entry.write = (flags & PML_WRITE) ? 1 : 0;
     entry.user = (flags & PML_USER) ? 1 : 0;
     entry.writeThrough = (flags & PML_WRITE_THROUGH) ? 1 : 0;
@@ -28,6 +28,7 @@ static inline pml_entry_t pml_entry_create(void* physAddr, pml_flags_t flags, pm
     entry.pageSize = (flags & PML_SIZE) ? 1 : 0;
     entry.global = (flags & PML_GLOBAL) ? 1 : 0;
     entry.owned = (flags & PML_OWNED) ? 1 : 0;
+    entry.inherit = (flags & PML_INHERIT) ? 1 : 0;
     entry.callbackId = callbackId;
     return entry;
 }
@@ -102,13 +103,7 @@ static inline void page_table_deinit(page_table_t* table)
 
 static inline void page_table_load(page_table_t* table)
 {
-#ifdef __BOOT__
-    uint64_t cr3 = (uint64_t)table->pml4;
-#elif __KERNEL__
-    uint64_t cr3 = (uint64_t)PML_HIGHER_TO_LOWER(table->pml4);
-#else
-#error
-#endif
+    uint64_t cr3 = (uint64_t)PML_ENSURE_LOWER_HALF((void*)table->pml4);
     if (cr3 != cr3_read())
     {
         cr3_write(cr3);
@@ -281,6 +276,11 @@ static inline uint64_t page_table_map(page_table_t* table, void* virtAddr, void*
         }
 
         uint64_t idx0 = PML_GET_INDEX((uintptr_t)virtAddr, 1);
+        if (traverse.pml1->entries[idx0].present)
+        {
+            return ERR;
+        }
+
         traverse.pml1->entries[idx0] = pml_entry_create(physAddr, flags, callbackId);
 
         physAddr = (void*)((uintptr_t)physAddr + PAGE_SIZE);

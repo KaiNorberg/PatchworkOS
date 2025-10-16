@@ -31,13 +31,20 @@
 #include <libstd/_internal/init.h>
 #include <strings.h>
 
-void kernel_early_init(const boot_info_t* bootInfo)
+static const boot_info_t* bootInfo;
+
+void init_early(const boot_info_t* info)
 {
-    gdt_cpu_init();
-    idt_cpu_init();
+    bootInfo = info;
+
+    gdt_init();
+    gdt_cpu_load();
+
+    idt_init();
+    idt_cpu_load();
 
     smp_bootstrap_init();
-    gdt_cpu_load_tss(&smp_self_unsafe()->tss);
+    gdt_cpu_tss_load(&smp_self_unsafe()->tss);
 
     log_init(&bootInfo->gop);
 
@@ -45,12 +52,34 @@ void kernel_early_init(const boot_info_t* bootInfo)
     vmm_init(&bootInfo->memory, &bootInfo->gop, &bootInfo->kernel);
     heap_init();
 
+    simd_cpu_init();
+
+    syscall_table_init();
+    syscalls_cpu_init();
+
     sched_init();
     timer_init();
     wait_init();
+
+    LOG_DEBUG("early init done, jumping to boot thread\n");
 }
 
-static void kernel_free_loader_data(const boot_memory_map_t* map)
+void init_other_cpu(void)
+{
+    gdt_cpu_load();
+    idt_cpu_load();
+
+    gdt_cpu_tss_load(&smp_self_unsafe()->tss);
+
+    lapic_cpu_init();
+    simd_cpu_init();
+
+    vmm_cpu_init();
+    syscalls_cpu_init();
+    timer_cpu_init();
+}
+
+static void init_free_loader_data(const boot_memory_map_t* map)
 {
     for (uint64_t i = 0; i < map->length; i++)
     {
@@ -63,11 +92,9 @@ static void kernel_free_loader_data(const boot_memory_map_t* map)
                 ((uintptr_t)desc->VirtualStart) + desc->NumberOfPages * PAGE_SIZE);
         }
     }
-
-    LOG_INFO("kernel initalized using %llu kb of memory\n", pmm_reserved_amount() * PAGE_SIZE / 1024);
 }
 
-void kernel_init(const boot_info_t* bootInfo)
+static void init_finalize(void)
 {
     panic_symbols_init(&bootInfo->kernel);
 
@@ -88,11 +115,6 @@ void kernel_init(const boot_info_t* bootInfo)
     log_file_expose();
     process_procfs_init();
 
-    simd_cpu_init();
-
-    syscall_table_init();
-    syscalls_cpu_init();
-
     const_init();
     ps2_init();
     net_init();
@@ -103,33 +125,20 @@ void kernel_init(const boot_info_t* bootInfo)
 
     smp_others_init();
 
-    kernel_free_loader_data(&bootInfo->memory.map);
-    vmm_unmap_lower_half();
+    init_free_loader_data(&bootInfo->memory.map);
+    vmm_unmap_lower_half(thread_get_boot());
+
+    LOG_INFO("kernel initalized using %llu kb of memory\n", pmm_reserved_amount() * PAGE_SIZE / 1024);
 }
 
-void kernel_other_cpu_init(void)
+static inline void init_process_spawn(void)
 {
-    gdt_cpu_init();
-    idt_cpu_init();
-
-    gdt_cpu_load_tss(&smp_self_unsafe()->tss);
-
-    lapic_cpu_init();
-    simd_cpu_init();
-
-    vmm_cpu_init();
-    syscalls_cpu_init();
-    timer_cpu_init();
-}
-
-void kmain(void)
-{
-    LOG_INFO("spawning init thread\n");
+    LOG_INFO("spawning init process\n");
     const char* argv[] = {"/bin/init", NULL};
     thread_t* initThread = loader_spawn(argv, PRIORITY_MAX_USER - 2, NULL);
     if (initThread == NULL)
     {
-        panic(NULL, "Failed to spawn init thread");
+        panic(NULL, "Failed to spawn init process");
     }
 
     // Set klog as stdout for init process
@@ -145,6 +154,18 @@ void kmain(void)
     ref_dec(klog);
 
     sched_push(initThread, NULL);
+}
+
+void kmain(void)
+{
+    // The stack pointer is expected to be somewhere near the top.
+    assert(rsp_read() > PML_HIGHER_HALF_END - 2 * PAGE_SIZE);
+
+    LOG_DEBUG("kmain entered\n");
+
+    init_finalize();
+
+    init_process_spawn();
 
     LOG_INFO("done with boot thread\n");
     sched_done_with_boot_thread();

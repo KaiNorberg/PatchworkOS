@@ -10,80 +10,90 @@
 #include <sys/proc.h>
 
 /**
+ * @brief Address Space handling.
+ * @defgroup kernel_mem_space Space
+ *
+ * @{
+ */
+
+/**
+ * @brief Flags for space initialization.
+ * @enum space_flags_t
+ */
+typedef enum
+{
+    SPACE_NONE = 0,
+    /**
+     * Use the PMM bitmap to allocate the page table, this is really only for the kernel page table as it
+     * must be within a 32 bit boundary because the smp trampoline loads it as a dword.
+     */
+    SPACE_USE_PMM_BITMAP = 1 << 0,
+} space_flags_t;
+
+/**
  * @brief Space callback function.
- * @ingroup kernel_mem_vmm
  */
 typedef void (*space_callback_func_t)(void* private);
 
 /**
  * @brief Space callback structure.
- * @ingroup kernel_mem_vmm
  * @struct vmm_callback_t
  */
 typedef struct
 {
-    /**
-     * @brief The callback function to be invoked.
-     */
     space_callback_func_t func;
-    /**
-     * @brief Private data to be passed to the callback function.
-     */
     void* private;
-    /**
-     * @brief The amount of pages associated with this callback, when this reaches zero the func is called.
-     */
     uint64_t pageAmount;
 } space_callback_t;
 
 /**
  * @brief Virtual address space structure.
- * @ingroup kernel_mem_vmm
  * @struct space_t
  *
  * The `space_t` structure represents a virtual address space.
- *
  */
-typedef struct
+typedef struct space
 {
+    page_table_t pageTable; ///< The page table associated with the address space.
     /**
-     * @brief The page table associated with the address space.
+     * The parent address space, the address space will inherit all mappings marked as inherit from the parent.
+     * These mappings will be copied directly into the address space when its loaded, if that would result in a mapping
+     * conflict then the kernel will panic. If `NULL`, the address space will not inherit any mappings.
      */
-    page_table_t pageTable;
+    struct space* parent;
+    uintptr_t endAddress;  ///< The end address for allocations in this address space.
+    uintptr_t freeAddress; ///< The next available free virtual address in this address space.
     /**
-     * @brief The next available free virtual address in this address space.
-     */
-    uintptr_t freeAddress;
-    /**
-     * @brief Array of callbacks for this address space, indexed by the callback ID.
+     * Array of callbacks for this address space, indexed by the callback ID.
      */
     space_callback_t callbacks[PML_MAX_CALLBACK];
+    bitmap_t callbackBitmap; ///< Bitmap to track available callback IDs.
     /**
-     * @brief Bitmap to track available callback IDs.
-     */
-    bitmap_t callbackBitmap;
-    /**
-     * @brief Buffer for the callback bitmap, see `bitmap_t` for more info.
+     * Buffer for the callback bitmap, see `bitmap_t` for more info.
      */
     uint64_t bitmapBuffer[BITMAP_BITS_TO_QWORDS(PML_MAX_CALLBACK)];
     /**
-     * @brief Mutex to protect this structure.
+     * Mutex to protect this structure and its mappings.
+     *
+     * Should be acquired in system calls that take in pointers to user space, to prevent TOCTOU attacks.
      */
     rwmutex_t mutex;
 } space_t;
 
 /**
  * @brief Initializes a virtual address space.
- * @ingroup kernel_mem_vmm
  *
  * @param space The address space to initialize.
- * @return ERR if an error occurred, 0 otherwise.
+ * @param parent The parent address space to inherit mappings from, can be `NULL`.
+ * @param startAddress The starting address for allocations in this address space.
+ * @param endAddress The ending address for allocations in this address space.
+ * @param flags Flags to control the initialization behavior.
+ * @return On success, returns 0. On failure, returns `ERR` and `errno` is set.
  */
-uint64_t space_init(space_t* space);
+uint64_t space_init(space_t* space, space_t* parent, uintptr_t startAddress, uintptr_t endAddress, space_flags_t flags);
 
 /**
  * @brief Deinitializes a virtual address space.
- * @ingroup kernel_mem_vmm
 
  * @param space The address space to deinitialize.
  */
@@ -91,12 +101,15 @@ void space_deinit(space_t* space);
 
 /**
  * @brief Loads a virtual address space.
- * @ingroup kernel_mem_vmm
  *
  * @param space The address space to load.
  */
 void space_load(space_t* space);
 
+/**
+ * @brief Helper structure for managing address space mappings.
+ * @struct space_mapping_t
+ */
 typedef struct
 {
     void* virtAddr;
@@ -107,18 +120,28 @@ typedef struct
 
 /**
  * @brief Prepare for changes to the address space mappings.
- * @ingroup kernel_mem_vmm
+ *
+ * Will return with the spaces mutex acquired for writing, which must be released by calling
+ * `space_mapping_end()`.
+ *
+ * If `flags & PML_USER` then the addresses must be in the user space range.
  *
  * @param space The target address space.
  * @param mapping Will be filled with parsed information about the mapping.
+ * @param virtAddr The desired virtual address. If `NULL`, the kernel chooses an available address.
+ * @param physAddr The physical address to map from. Can be `NULL`.
+ * @param length The length of the virtual memory region to allocate, in bytes.
+ * @param flags The page table flags for the mapping.
  * @return On success, returns 0. On failure, returns `ERR`.
  */
 uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, uint64_t length,
-    prot_t prot);
+    pml_flags_t flags);
 
 /**
  * @brief Allocate a callback.
- * @ingroup kernel_mem_vmm
+ *
+ * When `pageAmount` number of pages with this callback ID are unmapped or the address space is freed,
+ * the callback function will be called with the provided private data.
  *
  * @param space The target address space.
  * @param pageAmount The number of pages the callback is responsible for.
@@ -130,7 +153,8 @@ pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, spac
 
 /**
  * @brief Free a callback.
- * @ingroup kernel_mem_vmm
+ *
+ * Allows the callback ID to be reused. The callback function will not be called.
  *
  * @param space The target address space.
  * @param callbackId The callback ID to free.
@@ -139,41 +163,16 @@ void space_free_callback(space_t* space, pml_callback_id_t callbackId);
 
 /**
  * @brief Performs cleanup after changes to the address space mappings.
- * @ingroup kernel_mem_vmm
  *
  * @param space The target address space.
  * @param mapping The parsed information about the mapping.
  * @param err The error code, if 0 then no error.
- * @return On success, returns 0. On failure, returns `ERR`.
+ * @return On success, returns the virtual address. On failure, returns `NULL` and `errno` is set.
  */
 void* space_mapping_end(space_t* space, space_mapping_t* mapping, errno_t err);
 
 /**
- * @brief Unmaps virtual memory from a given address space.
- * @ingroup kernel_mem_vmm
- *
- * @param space The target address space.
- * @param virtAddr The virtual address of the memory region.
- * @param length The length of the memory region, in bytes.
- * @return On success, returns 0. On failure, returns `ERR`.
- */
-uint64_t space_unmap(space_t* space, void* virtAddr, uint64_t length);
-
-/**
- * @brief Changes memory protection flags for a virtual memory region.
- * @ingroup kernel_mem_vmm
- *
- * @param space The target address space.
- * @param virtAddr The virtual address of the memory region.
- * @param length The length of the memory region, in bytes.
- * @param prot The new memory protection flags.
- * @return On success, returns 0. On failure, returns `ERR`.
- */
-uint64_t space_protect(space_t* space, void* virtAddr, uint64_t length, prot_t prot);
-
-/**
  * @brief Checks if a virtual memory region is fully mapped.
- * @ingroup kernel_mem_vmm
  *
  * @param space The target address space.
  * @param virtAddr The virtual address of the memory region.
@@ -181,3 +180,5 @@ uint64_t space_protect(space_t* space, void* virtAddr, uint64_t length, prot_t p
  * @return `true` if the entire region is mapped, `false` otherwise.
  */
 bool space_is_mapped(space_t* space, const void* virtAddr, uint64_t length);
+
+/** @} */

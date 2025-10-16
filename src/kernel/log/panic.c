@@ -497,7 +497,7 @@ void panic(const trap_frame_t* trapFrame, const char* format, ...)
         LOG_PANIC("exception: %s (vector: %lld, error code: 0x%llx)\n", panic_get_exception_name(trapFrame->vector),
             trapFrame->vector, trapFrame->errorCode);
 
-        if (trapFrame->vector == VECTOR_PAGE_FAULT)
+        if (trapFrame->vector == EXCEPTION_PAGE_FAULT)
         {
             LOG_PANIC("page fault details: A %s operation to a %s page caused a %s.\n",
                 (trapFrame->errorCode & 2) ? "write" : "read", (trapFrame->errorCode & 4) ? "user-mode" : "kernel-mode",

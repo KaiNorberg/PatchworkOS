@@ -19,9 +19,9 @@ void pic_disable(void)
     port_outb(PIC2_COMMAND, ICW1_INIT | ICW1_ICW4);
     port_wait();
 
-    port_outb(PIC1_DATA, VECTOR_IRQ_BASE);
+    port_outb(PIC1_DATA, EXTERNAL_INTERRUPT_BASE);
     port_wait();
-    port_outb(PIC2_DATA, VECTOR_IRQ_BASE + 0x8);
+    port_outb(PIC2_DATA, EXTERNAL_INTERRUPT_BASE + 0x8);
     port_wait();
 
     port_outb(PIC1_DATA, 4);

@@ -28,9 +28,7 @@ sched_invoke:
     jnz .scheduling_occoured
 
     sti
-    add rsp, 176 ; Pop the entire trap frame and discard
+    add rsp, TRAP_FRAME_SIZE ; Pop the entire trap frame and discard
     ret
 .scheduling_occoured:
-    TRAP_FRAME_REGS_POP
-    add rsp, 16
-    iretq ; Original rflags are loaded here so the lack of a "sti" operation does not matter.
+    TRAP_FRAME_POP_AND_JUMP ; Original rflags are loaded here so the lack of a "sti" operation does not matter.
