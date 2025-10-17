@@ -13,25 +13,118 @@
 #include <assert.h>
 #include <common/defs.h>
 
+static bool initialized = false;
+static madt_t* madt;
 static uintptr_t lapicBase;
 
-static ioapic_t ioapics[CPU_MAX];
-static uint32_t ioapicCount = 0;
-
-void apic_timer_one_shot(uint8_t vector, uint32_t ticks)
+static uint64_t lapic_init(void)
 {
+    void* lapicPhysAddr = (void*)(uint64_t)madt->localInterruptControllerAddress;
+    if (lapicPhysAddr == NULL)
+    {
+        LOG_ERR("madt has invalid lapic address\n");
+        return ERR;
+    }
+
+    lapicBase = (uintptr_t)PML_LOWER_TO_HIGHER(lapicPhysAddr);
+    if (vmm_map(NULL, (void*)lapicBase, lapicPhysAddr, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) ==
+        NULL)
+    {
+        LOG_ERR("failed to map local apic\n");
+        return ERR;
+    }
+
+    LOG_INFO("local apic mapped base=0x%016lx phys=0x%016lx\n", lapicBase, lapicPhysAddr);
+    return 0;
+}
+
+static uint64_t ioapic_all_init(void)
+{
+    pic_disable();
+
+    ioapic_t* ioapic;
+    MADT_FOR_EACH(madt, ioapic)
+    {
+        if (ioapic->header.type != INTERRUPT_CONTROLLER_IO_APIC)
+        {
+            continue;
+        }
+
+        void* physAddr = (void*)(uint64_t)ioapic->ioApicAddress;
+        void* virtAddr = (void*)PML_LOWER_TO_HIGHER(physAddr);
+        if (vmm_map(NULL, virtAddr, physAddr, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) == NULL)
+        {
+            LOG_ERR("failed to map io apic\n");
+            return ERR;
+        }
+
+        uint32_t maxRedirs = ioapic_get_version(ioapic).maxRedirs;
+        // Mask all interrupts.
+        for (uint32_t i = 0; i < maxRedirs; i++)
+        {
+            ioapic_redirect_entry_t maskedEntry = {.mask = 1};
+            ioapic_write(ioapic, IOAPIC_REG_REDIRECTION(i, 0), maskedEntry.raw.low);
+            ioapic_write(ioapic, IOAPIC_REG_REDIRECTION(i, 1), maskedEntry.raw.high);
+        }
+
+        LOG_INFO("io apic initialized base=0x%016lx gsiBase=%u maxRedirs=%u\n", virtAddr,
+            ioapic->globalSystemInterruptBase, maxRedirs);
+    }
+
+    return 0;
+}
+
+static uint64_t apic_init(sdt_header_t* table)
+{
+    madt = (madt_t*)table;
+    if (initialized)
+    {
+        LOG_ERR("multiple MADT tables found\n");
+        return ERR;
+    }
+    initialized = true;
+
+    if (lapic_init() == ERR)
+    {
+        LOG_ERR("failed to initialize local apic\n");
+        return ERR;
+    }
+
+    if (ioapic_all_init() == ERR)
+    {
+        LOG_ERR("failed to initialize ioapics\n");
+        return ERR;
+    }
+
+    return 0;
+}
+
+ACPI_SDT_HANDLER_REGISTER(MADT_SIGNATURE, apic_init);
+
+void apic_timer_one_shot(vector_t vector, uint32_t ticks)
+{
+    if (!initialized)
+    {
+        panic(NULL, "apic timer used before apic initialized");
+    }
+
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
 
-    lapic_write(LAPIC_REG_TIMER_DIVIDER, APIC_TIMER_DEFAULT_DIV);
+    lapic_write(LAPIC_REG_TIMER_DIVIDER, APIC_TIMER_DIV_DEFAULT);
     lapic_write(LAPIC_REG_LVT_TIMER, ((uint32_t)vector) | APIC_TIMER_ONE_SHOT);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, ticks);
 }
 
 uint64_t apic_timer_ticks_per_ns(void)
 {
+    if (!initialized)
+    {
+        panic(NULL, "apic timer calibration used before apic initialized");
+    }
+
     interrupt_disable();
 
-    lapic_write(LAPIC_REG_TIMER_DIVIDER, APIC_TIMER_DEFAULT_DIV);
+    lapic_write(LAPIC_REG_TIMER_DIVIDER, APIC_TIMER_DIV_DEFAULT);
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, UINT32_MAX);
 
@@ -50,28 +143,13 @@ uint64_t apic_timer_ticks_per_ns(void)
     return ticksPerNs;
 }
 
-void lapic_init(void)
-{
-    madt_t* madt = MADT_GET();
-
-    void* lapicPhysAddr = (void*)(uint64_t)madt->localInterruptControllerAddress;
-    if (lapicPhysAddr == NULL)
-    {
-        panic(NULL, "Unable to find lapic address in MADT, hardware is not compatible");
-    }
-
-    lapicBase = (uintptr_t)PML_LOWER_TO_HIGHER(lapicPhysAddr);
-    if (vmm_map(NULL, (void*)lapicBase, lapicPhysAddr, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) ==
-        NULL)
-    {
-        panic(NULL, "Unable to map lapic");
-    }
-
-    LOG_INFO("local apic mapped base=0x%016lx phys=0x%016lx\n", lapicBase, lapicPhysAddr);
-}
-
 void lapic_cpu_init(void)
 {
+    if (!initialized)
+    {
+        panic(NULL, "local apic used before apic initialized");
+    }
+
     uint64_t lapicMsr = msr_read(MSR_LAPIC);
     msr_write(MSR_LAPIC, (lapicMsr | LAPIC_MSR_ENABLE) & ~LAPIC_MSR_BSP);
 
@@ -89,138 +167,150 @@ void lapic_cpu_init(void)
     LOG_INFO("cpu%d local apic id=%d msr=0x%016lx\n", smp_self_unsafe()->id, lapic_self_id(), lapicMsr);
 }
 
-uint8_t lapic_self_id(void)
+lapic_id_t lapic_self_id(void)
 {
-    return (uint8_t)(lapic_read(LAPIC_REG_ID) >> LAPIC_ID_OFFSET);
+    if (!initialized)
+    {
+        panic(NULL, "local apic used before apic initialized");
+    }
+
+    return (uint8_t)(lapic_read(LAPIC_REG_ID) >> LAPIC_REG_ICR1_ID_OFFSET);
 }
 
-void lapic_write(uint32_t reg, uint32_t value)
+void lapic_write(lapic_register_t reg, uint32_t value)
 {
+    if (!initialized)
+    {
+        panic(NULL, "local apic used before apic initialized");
+    }
+
     WRITE_32(lapicBase + reg, value);
 }
 
-uint32_t lapic_read(uint32_t reg)
+uint32_t lapic_read(lapic_register_t reg)
 {
+    if (!initialized)
+    {
+        panic(NULL, "local apic used before apic initialized");
+    }
+
     return READ_32(lapicBase + reg);
 }
 
-void lapic_send_init(uint32_t id)
+void lapic_send_init(lapic_id_t id)
 {
-    lapic_write(LAPIC_REG_ICR1, id << LAPIC_ID_OFFSET);
+    if (!initialized)
+    {
+        panic(NULL, "local apic used before apic initialized");
+    }
+
+    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ICR1_ID_OFFSET);
     lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_INIT);
 }
 
-void lapic_send_sipi(uint32_t id, void* entryPoint)
+void lapic_send_sipi(lapic_id_t id, void* entryPoint)
 {
+    if (!initialized)
+    {
+        panic(NULL, "local apic used before apic initialized");
+    }
+
     assert((uintptr_t)entryPoint % PAGE_SIZE == 0);
 
-    lapic_write(LAPIC_REG_ICR1, id << LAPIC_ID_OFFSET);
+    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ICR1_ID_OFFSET);
     lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_STARTUP | ((uintptr_t)entryPoint / PAGE_SIZE));
 }
 
-void lapic_send_ipi(uint32_t id, uint8_t vector)
+void lapic_send_ipi(lapic_id_t id, vector_t vector)
 {
-    lapic_write(LAPIC_REG_ICR1, id << LAPIC_ID_OFFSET);
+    if (!initialized)
+    {
+        panic(NULL, "local apic used before apic initialized");
+    }
+
+    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ICR1_ID_OFFSET);
     lapic_write(LAPIC_REG_ICR0, (uint32_t)vector | LAPIC_ICR_CLEAR_INIT_LEVEL);
 }
 
 void lapic_eoi(void)
 {
+    if (!initialized)
+    {
+        panic(NULL, "local apic used before apic initialized");
+    }
+
     lapic_write(LAPIC_REG_EOI, 0);
 }
 
-static uint32_t ioapic_read(ioapic_id_t id, uint32_t reg)
+uint32_t ioapic_read(ioapic_t* ioapic, ioapic_register_t reg)
 {
-    if (id >= ioapicCount || ioapics[id].base == 0)
+    if (!initialized)
     {
-        panic(NULL, "invalid i/o apic id %u and base 0x%016lx", id, ioapics[id].base);
+        panic(NULL, "ioapic used before apic initialized");
     }
 
-    uintptr_t base = ioapics[id].base;
-    WRITE_32(base + IOAPIC_REG_SELECT, reg);
-    return READ_32(base + IOAPIC_REG_DATA);
+    uintptr_t base = PML_LOWER_TO_HIGHER(ioapic->ioApicAddress);
+    WRITE_32(base + IOAPIC_MMIO_REG_SELECT, reg);
+    return READ_32(base + IOAPIC_MMIO_REG_DATA);
 }
 
-static void ioapic_write(ioapic_id_t id, uint32_t reg, uint32_t value)
+void ioapic_write(ioapic_t* ioapic, ioapic_register_t reg, uint32_t value)
 {
-    if (id >= ioapicCount || ioapics[id].base == 0)
+    if (!initialized)
     {
-        panic(NULL, "invalid i/o apic id %u and base 0x%016lx", id, ioapics[id].base);
+        panic(NULL, "ioapic used before apic initialized");
     }
 
-    uintptr_t base = ioapics[id].base;
-    WRITE_32(base + IOAPIC_REG_SELECT, reg);
-    WRITE_32(base + IOAPIC_REG_DATA, value);
+    uintptr_t base = PML_LOWER_TO_HIGHER(ioapic->ioApicAddress);
+    WRITE_32(base + IOAPIC_MMIO_REG_SELECT, reg);
+    WRITE_32(base + IOAPIC_MMIO_REG_DATA, value);
 }
 
-static ioapic_version_t ioapic_get_version(ioapic_id_t id)
+ioapic_version_t ioapic_get_version(ioapic_t* ioapic)
 {
+    if (!initialized)
+    {
+        panic(NULL, "ioapic used before apic initialized");
+    }
+
     ioapic_version_t version;
-    version.raw = ioapic_read(id, IOAPIC_REG_VERSION);
+    version.raw = ioapic_read(ioapic, IOAPIC_REG_VERSION);
     return version;
 }
 
-void ioapic_all_init(void)
+ioapic_t* ioapic_from_gsi(ioapic_gsi_t gsi)
 {
-    pic_disable();
-
-    madt_t* madt = MADT_GET();
-    if (madt == NULL)
+    if (!initialized)
     {
-        LOG_ERR("madt not found, kernel corruption likely\n");
-        return;
+        panic(NULL, "ioapic used before apic initialized");
     }
 
-    madt_ioapic_t* ioapic;
+    ioapic_t* ioapic;
     MADT_FOR_EACH(madt, ioapic)
     {
-        if (ioapic->header.type != MADT_INTERRUPT_CONTROLLER_IO_APIC)
+        if (ioapic->header.type != INTERRUPT_CONTROLLER_IO_APIC)
         {
             continue;
         }
 
-        void* physAddr = (void*)(uint64_t)ioapic->ioApicAddress;
-        void* virtAddr = (void*)PML_LOWER_TO_HIGHER(physAddr);
-        if (vmm_map(NULL, virtAddr, physAddr, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) == NULL)
+        ioapic_version_t version = ioapic_get_version(ioapic);
+        if (ioapic->globalSystemInterruptBase <= gsi && ioapic->globalSystemInterruptBase + version.maxRedirs > gsi)
         {
-            panic(NULL, "Failed to map ioapic");
-        }
-
-        ioapic_id_t id = ioapicCount++;
-
-        ioapics[id].base = (uintptr_t)virtAddr;
-        ioapics[id].gsiBase = ioapic->globalSystemInterruptBase;
-        ioapics[id].maxRedirs = ioapic_get_version(id).maxRedirs;
-
-        // Mask all interrupts.
-        for (uint32_t i = 0; i < ioapics[id].maxRedirs; i++)
-        {
-            ioapic_redirect_entry_t maskedEntry = {.mask = 1};
-            ioapic_write(id, IOAPIC_REG_REDIRECTION(i, 0), maskedEntry.raw.low);
-            ioapic_write(id, IOAPIC_REG_REDIRECTION(i, 1), maskedEntry.raw.high);
-        }
-
-        LOG_INFO("io apic initialized id=%u base=0x%016lx gsiBase=%u maxRedirs=%u\n", id, ioapics[id].base,
-            ioapics[id].gsiBase, ioapics[id].maxRedirs);
-    }
-}
-
-static ioapic_id_t ioapic_from_gsi(uint32_t gsi)
-{
-    for (uint32_t i = 0; i < ioapicCount; i++)
-    {
-        if (ioapics[i].gsiBase <= gsi && ioapics[i].gsiBase + ioapics[i].maxRedirs > gsi)
-        {
-            return i;
+            return ioapic;
         }
     }
 
     panic(NULL, "Failed to locate vector for gsi %d", gsi);
 }
 
-void ioapic_set_redirect(uint8_t vector, uint32_t gsi, ioapic_delivery_mode_t deliveryMode, ioapic_polarity_t polarity,
-    ioapic_trigger_mode_t triggerMode, cpu_t* cpu, bool enable)
+void ioapic_set_redirect(vector_t vector, ioapic_gsi_t gsi, ioapic_delivery_mode_t deliveryMode,
+    ioapic_polarity_t polarity, ioapic_trigger_mode_t triggerMode, cpu_t* cpu, bool enable)
 {
+    if (!initialized)
+    {
+        panic(NULL, "ioapic used before apic initialized");
+    }
+
     ioapic_redirect_entry_t redirect = {
         .vector = vector,
         .deliveryMode = deliveryMode,
@@ -232,11 +322,11 @@ void ioapic_set_redirect(uint8_t vector, uint32_t gsi, ioapic_delivery_mode_t de
         .destination = cpu->lapicId,
     };
 
-    ioapic_id_t ioapicId = ioapic_from_gsi(gsi);
-    uint32_t pin = gsi - ioapics[ioapicId].gsiBase;
+    ioapic_t* ioapic = ioapic_from_gsi(gsi);
+    uint32_t pin = gsi - ioapic->globalSystemInterruptBase;
 
-    ioapic_write(ioapicId, IOAPIC_REG_REDIRECTION(pin, 0), redirect.raw.low);
-    ioapic_write(ioapicId, IOAPIC_REG_REDIRECTION(pin, 1), redirect.raw.high);
+    ioapic_write(ioapic, IOAPIC_REG_REDIRECTION(pin, 0), redirect.raw.low);
+    ioapic_write(ioapic, IOAPIC_REG_REDIRECTION(pin, 1), redirect.raw.high);
 
     LOG_INFO("ioapic redirect set gsi=%u vector=0x%02x cpu=%u enable=%d\n", gsi, vector, cpu->id, enable);
 }

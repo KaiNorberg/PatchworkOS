@@ -40,9 +40,9 @@ static inline void page_invalidate(uintptr_t virtAddr)
 static inline uintptr_t pml_accessible_addr(pml_entry_t entry)
 {
 #ifdef __BOOT__
-    return PML_ADDR_GET(entry);
+    return entry.addr << PML_ADDR_OFFSET_BITS;
 #elif __KERNEL__
-    return PML_LOWER_TO_HIGHER(PML_ADDR_GET(entry));
+    return PML_LOWER_TO_HIGHER(entry.addr << PML_ADDR_OFFSET_BITS);
 #else
 #error
 #endif
@@ -84,7 +84,7 @@ static inline void pml_free(page_table_t* table, pml_t* pml, pml_level_t level)
     for (pml_index_t i = 0; i < PML_INDEX_AMOUNT; i++)
     {
         pml_entry_t* entry = &pml->entries[i];
-        if (!(*entry & PML_PRESENT))
+        if (!entry->present)
         {
             continue;
         }
@@ -93,7 +93,7 @@ static inline void pml_free(page_table_t* table, pml_t* pml, pml_level_t level)
         {
             pml_free(table, (pml_t*)pml_accessible_addr(*entry), level - 1);
         }
-        else if (*entry & PML_OWNED)
+        else if (entry->owned)
         {
             table->freePage((void*)pml_accessible_addr(*entry));
         }
@@ -165,7 +165,7 @@ static inline uint64_t page_table_get_pml(page_table_t* table, pml_t* currentPml
     pml_t** outPml)
 {
     pml_entry_t* entry = &currentPml->entries[index];
-    if (*entry & PML_PRESENT)
+    if (entry->present)
     {
         *outPml = (pml_t*)pml_accessible_addr(*entry);
         return 0;
@@ -177,7 +177,7 @@ static inline uint64_t page_table_get_pml(page_table_t* table, pml_t* currentPml
         {
             return ERR;
         }
-        currentPml->entries[index] = (flags & PML_FLAGS_MASK) | (PML_ENSURE_LOWER_HALF(nextPml) & PML_ADDR_MASK);
+        currentPml->entries[index].raw = (flags & PML_FLAGS_MASK) | (PML_ENSURE_LOWER_HALF(nextPml) & PML_ADDR_MASK);
         *outPml = nextPml;
         return 0;
     }
@@ -291,12 +291,12 @@ static inline uint64_t page_table_get_phys_addr(page_table_t* table, const void*
         return ERR;
     }
 
-    if (!(*traverse.entry & PML_PRESENT))
+    if (!traverse.entry->present)
     {
         return ERR;
     }
 
-    *outPhysAddr = (void*)(PML_ADDR_GET(*traverse.entry) + offset);
+    *outPhysAddr = (void*)((traverse.entry->addr << PML_ADDR_OFFSET_BITS) + offset);
     return 0;
 }
 
@@ -321,7 +321,7 @@ static inline bool page_table_is_mapped(page_table_t* table, const void* virtAdd
             return false;
         }
 
-        if (!(*traverse.entry & PML_PRESENT))
+        if (!traverse.entry->present)
         {
             return false;
         }
@@ -353,7 +353,7 @@ static inline bool page_table_is_unmapped(page_table_t* table, const void* virtA
             continue;
         }
 
-        if (*traverse.entry & PML_PRESENT)
+        if (traverse.entry->present)
         {
             return false;
         }
@@ -394,13 +394,14 @@ static inline uint64_t page_table_map(page_table_t* table, void* virtAddr, void*
             return ERR;
         }
 
-        if (*traverse.entry & PML_PRESENT)
+        if (traverse.entry->present)
         {
             return ERR;
         }
 
-        *traverse.entry = (flags & PML_FLAGS_MASK) | (PML_ENSURE_LOWER_HALF(physAddr) & PML_ADDR_MASK) |
-            (((uint64_t)callbackId << PML_CALLBACK_ID_SHIFT) & PML_CALLBACK_ID_MASK);
+        traverse.entry->raw = flags;
+        traverse.entry->addr = ((uintptr_t)PML_ENSURE_LOWER_HALF(physAddr)) >> PML_ADDR_OFFSET_BITS;
+        traverse.entry->callbackId = callbackId;
 
         physAddr = (void*)((uintptr_t)physAddr + PAGE_SIZE);
         virtAddr = (void*)((uintptr_t)virtAddr + PAGE_SIZE);
@@ -431,12 +432,12 @@ static inline void page_table_unmap(page_table_t* table, void* virtAddr, uint64_
             continue;
         }
 
-        if (*traverse.entry & PML_OWNED)
+        if (traverse.entry->owned)
         {
             table->freePage((void*)pml_accessible_addr(*traverse.entry));
         }
 
-        *traverse.entry &= ~PML_PRESENT;
+        traverse.entry->raw = 0;
         page_invalidate((uintptr_t)virtAddr);
 
         virtAddr = (void*)((uintptr_t)virtAddr + PAGE_SIZE);
@@ -463,12 +464,11 @@ static inline void page_table_collect_callbacks(page_table_t* table, void* virtA
             continue;
         }
 
-        if (*traverse.entry & PML_PRESENT)
+        if (traverse.entry->present)
         {
-            pml_callback_id_t callbackId = PML_CALLBACK_ID_GET(*traverse.entry);
-            if (callbackId != PML_CALLBACK_NONE)
+            if (traverse.entry->callbackId != PML_CALLBACK_NONE)
             {
-                callbacks[callbackId]++;
+                callbacks[traverse.entry->callbackId]++;
             }
         }
 
@@ -497,18 +497,18 @@ static inline uint64_t page_table_set_flags(page_table_t* table, void* virtAddr,
         {
             continue;
         }
-        if (!(*traverse.entry & PML_PRESENT))
+        if (!traverse.entry->present)
         {
             return ERR;
         }
 
-        if (*traverse.entry & PML_OWNED)
+        if (traverse.entry->owned)
         {
             flags |= PML_OWNED;
         }
 
         // Bit magic to only update the flags while preserving the address and callback ID.
-        *traverse.entry = (*traverse.entry & ~PML_FLAGS_MASK) | (flags & PML_FLAGS_MASK);
+        traverse.entry->raw = (traverse.entry->raw & ~PML_FLAGS_MASK) | (flags & PML_FLAGS_MASK);
 
         page_invalidate((uintptr_t)virtAddr);
 
@@ -537,7 +537,7 @@ static inline uint64_t page_table_find_first_mapped_page(page_table_t* table, vo
     {
         if (page_table_traverse(table, &traverse, currentAddr, PML_NONE))
         {
-            if (*traverse.entry & PML_PRESENT)
+            if (traverse.entry->present)
             {
                 *outAddr = currentAddr;
                 return 0;

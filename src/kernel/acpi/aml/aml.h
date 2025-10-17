@@ -48,10 +48,8 @@
 
 /**
  * @brief Initialize the AML subsystem.
- *
- * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_init(void);
+void aml_init(void);
 
 /**
  * @brief Get the mutex for the entire AML subsystem.

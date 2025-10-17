@@ -1,3 +1,5 @@
+%pragma once
+
 ; The size of a interrupt frame in bytes
 %define INTERRUPT_FRAME_SIZE 176
 

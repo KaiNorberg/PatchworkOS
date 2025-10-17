@@ -105,8 +105,8 @@ void vmm_unmap_bootloader_lower_half(thread_t* bootThread)
 {
     for (pml_index_t i = PML_INDEX_LOWER_HALF_MIN; i < PML_INDEX_LOWER_HALF_MAX; i++)
     {
-        bootThread->process->space.pageTable.pml4->entries[i] = 0;
-        kernelSpace.pageTable.pml4->entries[i] = 0;
+        bootThread->process->space.pageTable.pml4->entries[i].raw = 0;
+        kernelSpace.pageTable.pml4->entries[i].raw = 0;
     }
 }
 

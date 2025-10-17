@@ -50,8 +50,10 @@ static void timer_accumulate(void)
 
 void timer_ctx_init(timer_ctx_t* ctx)
 {
-    ctx->apicTicksPerNs = 0;
+    cpu_t* self = smp_self_unsafe();
+    ctx->apicTicksPerNs = apic_timer_ticks_per_ns();
     ctx->nextDeadline = CLOCKS_NEVER;
+    LOG_INFO("cpu%d apic timer ticksPerNs=%lu\n", self->id, self->timer.apicTicksPerNs);
 }
 
 void timer_init(void)
@@ -62,14 +64,6 @@ void timer_init(void)
 
     initialized = true;
     LOG_INFO("timer initialized epoch=%d\n", timer_unix_epoch());
-}
-
-void timer_cpu_init(void)
-{
-    cpu_t* self = smp_self_unsafe();
-    self->timer.apicTicksPerNs = apic_timer_ticks_per_ns();
-    self->timer.nextDeadline = CLOCKS_NEVER;
-    LOG_INFO("cpu%d apic timer ticksPerNs=%lu\n", self->id, self->timer.apicTicksPerNs);
 }
 
 clock_t timer_uptime(void)

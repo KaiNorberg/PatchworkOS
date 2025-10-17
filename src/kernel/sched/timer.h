@@ -47,20 +47,16 @@ typedef struct
 /**
  * @brief Initialize per-CPU timer context.
  *
+ * Must be called on the CPU who owns the context.
+ *
  * @param ctx The timer context to initialize.
  */
 void timer_ctx_init(timer_ctx_t* ctx);
 
 /**
  * @brief System time initialization.
- *
  */
 void timer_init(void);
-
-/**
- * @brief Initialize per-CPU timer.
- */
-void timer_cpu_init(void);
 
 /**
  * @brief Time since boot.

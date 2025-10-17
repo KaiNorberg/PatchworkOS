@@ -41,7 +41,7 @@ static inline void space_unmap_kernel_space_region(space_t* space, uintptr_t sta
 
     for (pml_index_t i = startIndex; i < endIndex; i++)
     {
-        space->pageTable.pml4->entries[i] = 0;
+        space->pageTable.pml4->entries[i].raw = 0;
     }
 }
 

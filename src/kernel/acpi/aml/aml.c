@@ -7,9 +7,8 @@
 #include "namespace.h"
 #include "patch_up.h"
 #include "predefined.h"
-#include "sched/timer.h"
 #include "state.h"
-#include "to_string.h"
+#include "log/panic.h"
 
 #ifdef TESTING
 #include "tests.h"
@@ -62,7 +61,7 @@ static inline uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
 
 static inline uint64_t aml_init_parse_all(void)
 {
-    dsdt_t* dsdt = DSDT_GET();
+    dsdt_t* dsdt = (dsdt_t*)acpi_tables_lookup(DSDT_SIGNATURE, 0);
     if (dsdt == NULL)
     {
         LOG_ERR("failed to retrieve DSDT\n");
@@ -82,7 +81,7 @@ static inline uint64_t aml_init_parse_all(void)
     ssdt_t* ssdt = NULL;
     while (true)
     {
-        ssdt = SSDT_GET(index);
+        ssdt = (ssdt_t*)acpi_tables_lookup(SSDT_SIGNATURE, index);
         if (ssdt == NULL)
         {
             break;
@@ -105,7 +104,7 @@ static inline uint64_t aml_init_parse_all(void)
     return 0;
 }
 
-uint64_t aml_init(void)
+void aml_init(void)
 {
     LOG_INFO("AML revision %d, init and parse all\n", AML_CURRENT_REVISION);
 
@@ -115,85 +114,70 @@ uint64_t aml_init(void)
     aml_object_t* root = aml_object_new();
     if (root == NULL)
     {
-        LOG_ERR("failed to create root object\n");
-        return ERR;
+        panic(NULL, "failed to create root AML object\n");
     }
     DEREF_DEFER(root);
 
     // We dont need to add the root to the namespace map as it has no name.
     if (aml_predefined_scope_set(root) == ERR)
     {
-        LOG_ERR("failed to set predefined scope on root object\n");
-
-        return ERR;
+        panic(NULL, "failed to set predefined scope for root object\n");
     }
 
     if (aml_namespace_init(root) == ERR)
     {
-        LOG_ERR("failed to init namespace\n");
-        return ERR;
+        panic(NULL, "failed to initialize AML namespace\n");
     }
 
     if (aml_integer_handling_init() == ERR)
     {
-        LOG_ERR("failed to init integer handling\n");
-        return ERR;
+        panic(NULL, "failed to initialize AML integer handling\n");
     }
 
     if (aml_predefined_init() == ERR)
     {
-        LOG_ERR("failed to init predefined names\n");
-        return ERR;
+        panic(NULL, "failed to initialize AML predefined names\n");
     }
 
     if (aml_patch_up_init() == ERR)
     {
-        LOG_ERR("failed to init patch up\n");
-        return ERR;
+        panic(NULL, "failed to initialize AML patch up\n");
     }
 
 #ifdef TESTING
     if (aml_tests_post_init() == ERR)
     {
-        LOG_ERR("failed to run tests post init\n");
-        return ERR;
+        panic(NULL, "failed to run tests post init\n");
     }
 #endif
 
     if (aml_init_parse_all() == ERR)
     {
-        LOG_ERR("failed to parse all tables\n");
-        return ERR;
+        panic(NULL, "failed to parse all AML code\n");
     }
 
     LOG_INFO("resolving %llu unresolved objects\n", aml_patch_up_unresolved_count());
     if (aml_patch_up_resolve_all() == ERR)
     {
-        LOG_ERR("failed to resolve unresolved object\n");
-        return ERR;
+        panic(NULL, "failed to resolve all unresolved objects\n");
     }
 
     if (aml_patch_up_unresolved_count() > 0)
     {
-        LOG_ERR("there are still %llu unresolved object\n", aml_patch_up_unresolved_count());
-        return ERR;
+        panic(NULL, "there are still %llu unresolved objects after patch up\n", aml_patch_up_unresolved_count());
     }
 
-    // TODO: Reimplement sysfs exposure of AML namespace.
-    /*if (aml_object_expose_in_sysfs(root) == ERR)
+    if (aml_namespace_expose() == ERR)
     {
-        return ERR;
-    }*/
+        panic(NULL, "failed to expose AML namespace in sysfs\n");
+    }
 
 #ifdef TESTING
     if (aml_tests_post_parse_all() == ERR)
     {
-        LOG_ERR("failed to run tests post parse all\n");
-        return ERR;
+        panic(NULL, "failed to run tests post parse all\n");
     }
 #endif
-
-    return 0;
 }
 
 mutex_t* aml_big_mutex_get(void)

@@ -6,6 +6,7 @@
 #include "aml/state.h"
 #include "aml/to_string.h"
 #include "log/log.h"
+#include "log/panic.h"
 
 #include <errno.h>
 
@@ -94,22 +95,21 @@ static inline uint64_t acpi_devices_init_children(aml_state_t* state, aml_object
     return 0;
 }
 
-uint64_t acpi_devices_init(void)
+void acpi_devices_init(void)
 {
     MUTEX_SCOPE(aml_big_mutex_get());
 
     aml_state_t state;
     if (aml_state_init(&state, NULL) == ERR)
     {
-        return ERR;
+        panic(NULL, "could not initialize AML state for ACPI device initialization\n");
     }
 
     aml_object_t* sb = aml_namespace_find(NULL, NULL, 1, AML_NAME('_', 'S', 'B', '_'));
     if (sb == NULL) // Should never happen
     {
         aml_state_deinit(&state);
-        LOG_ERR("could not find \\_SB_\n");
-        return ERR;
+        LOG_ERR("could not find \\_SB_ in namespace\n");
     }
     DEREF_DEFER(sb);
 
@@ -121,25 +121,22 @@ uint64_t acpi_devices_init(void)
         if (sbIni->type != AML_METHOD)
         {
             aml_state_deinit(&state);
-            LOG_ERR("\\_SB_._INI is a '%s', not a method\n", aml_type_to_string(sbIni->type));
-            return ERR;
+            panic(NULL, "\\_SB_._INI is a '%s', not a method\n", aml_type_to_string(sbIni->type));
         }
 
         LOG_INFO("found \\_SB_._INI\n");
         if (aml_method_evaluate_integer(&state, sbIni, NULL) == ERR)
         {
             aml_state_deinit(&state);
-            LOG_ERR("could not evaluate \\_SB_._INI\n");
-            return ERR;
+            panic(NULL, "could not evaluate \\_SB_._INI\n");
         }
     }
 
     if (acpi_devices_init_children(&state, sb) == ERR)
     {
         aml_state_deinit(&state);
-        return ERR;
+        panic(NULL, "could not initialize ACPI devices\n");
     }
 
     aml_state_deinit(&state);
-    return 0;
 }

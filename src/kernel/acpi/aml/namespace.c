@@ -79,6 +79,7 @@ uint64_t aml_namespace_init(aml_object_t* root)
 
 uint64_t aml_namespace_expose(void)
 {
+    // TODO: Expose ACPI namespace via sysfs
     return 0;
 }
 

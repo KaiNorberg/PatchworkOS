@@ -100,6 +100,11 @@ typedef struct PACKED
 } sdt_header_t;
 
 /**
+ * @brief Length of the signature field in the RSDP structure.
+ */
+#define RSDP_SIGNATURE_LENGTH 8
+
+/**
  * @brief Root System Description Pointer
  * @struct rsdp_t
  *
@@ -107,16 +112,21 @@ typedef struct PACKED
  */
 typedef struct PACKED
 {
-    char signature[8];
-    uint8_t checksum;
-    char oemId[6];
+    char signature[RSDP_SIGNATURE_LENGTH];
+    uint8_t checksum; ///< This is the checksum for the first 20 bytes only.
+    char oemId[SDT_OEM_ID_LENGTH];
     uint8_t revision;
     uint32_t rsdtAddress;
     uint32_t length;
     uint64_t xsdtAddress;
-    uint8_t extendedChecksum;
+    uint8_t extendedChecksum; ///< This is the checksum for the entire table.
     uint8_t reserved[3];
 } rsdp_t;
+
+/**
+ * @brief Length of the RSDP structure for ACPI version 1.0.
+ */
+#define RSDP_V1_LENGTH 20
 
 /**
  * @brief Extended System Description Table
@@ -131,16 +141,6 @@ typedef struct PACKED
 } xsdt_t;
 
 /**
- * @brief Initialize the entire ACPI subsystem.
- *
- * Will also initalize all ACPI subsystems, for example namespaces and tables.
- *
- * @param rsdp Pointer to the RSDP structure provided by the bootloader.
- * @param map Pointer to the memory map provided by the bootloader.
- */
-void acpi_init(rsdp_t* rsdp, const boot_memory_map_t* map);
-
-/**
  * @brief Check if the sum of all bytes in a table is 0.
  *
  * Used to validate the checksum of ACPI tables.
@@ -153,8 +153,21 @@ bool acpi_is_checksum_valid(void* table, uint64_t length);
 /**
  * @brief Retrieve the sysfs root directory for ACPI.
  *
+ * The acpi group and by extension its directory is lazily initialized.
+ *
  * @return sysfs_dir_t* Pointer to the ACPI sysfs root directory.
  */
 sysfs_dir_t* acpi_get_sysfs_root(void);
+
+/**
+ * @brief Reclaim ACPI memory regions.
+ *
+ * This function will free all memory regions marked as ACPI Reclaimable in the provided boot memory map.
+ *
+ * Should be called after all ACPI initialization is complete.
+ *
+ * @param map Pointer to the boot memory map.
+ */
+void acpi_reclaim_memory(const boot_memory_map_t* map);
 
 /** @} */

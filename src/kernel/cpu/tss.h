@@ -14,6 +14,8 @@
  * handling interrupts. This is done using the Interrupt Stack Table (IST).
  *
  * @see [OSDev Wiki TTS](https://wiki.osdev.org/Task_State_Segment)
+ *
+ * @{
  */
 
 /**

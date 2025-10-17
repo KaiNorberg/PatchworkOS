@@ -21,33 +21,25 @@
  * Having the scheduler running then lets us load the boot thread which will jump to `kmain()` where we can do the rest
  * of the kernel initialization. This thread will eventually become the idle thread of the bootstrap cpu.
  *
- * Swapping to the boot thread requires some assembly trickery which is why we need the `start.s` file.
- *
  * Will be called in the `_start()` function found in `start.s` with interrupts disabled.
+ *
+ * Will never return, instead it will jump to the boot thread.
  *
  * @param bootInfo Information provided by the bootloader.
  */
-void init_early(const boot_info_t* info);
-
-/**
- * @brief Initialize other CPUs.
- *
- * This will be called on the other CPUs to initalize their cpu specific stuff.
- */
-void init_other_cpu(cpuid_t id);
+_NORETURN void init_early(const boot_info_t* bootInfo);
 
 /**
  * @brief Kernel main function.
  *
- * This is the entry point for the boot thread. After `init_early()` the `_start()` function will load the boot thread
- * causing execution to jump to this function. We can then perform the rest of the kernel initialization here and start
- * the init process.
- *
- * Check `thread_get_boot()` for the boot threads initial interrupt frame.
+ * This is the entry point for the boot thread. When `init_early()` jumps to the boot thread we will end up here. We can
+ * then perform the rest of the kernel initialization here and start the init process.
  *
  * Note that this function will never return, instead it will call `sched_done_with_boot_thread()` which will turn the
  * boot thread into the idle thread of the bootstrap cpu and enable interrupts.
+ *
+ * @param bootInfo Information provided by the bootloader.
  */
-_NORETURN void kmain(void);
+_NORETURN void kmain(const boot_info_t* bootInfo);
 
 /** @} */

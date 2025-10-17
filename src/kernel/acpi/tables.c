@@ -5,6 +5,7 @@
 #include "fs/vfs.h"
 #include "log/log.h"
 #include "mem/heap.h"
+#include "log/panic.h"
 
 #include <boot/boot_info.h>
 #include <errno.h>
@@ -57,9 +58,7 @@ static bool acpi_is_table_valid(sdt_header_t* table)
 
     if (!acpi_is_checksum_valid(table, table->length))
     {
-        char sig[5] = {0};
-        memcpy(sig, table->signature, 4);
-        LOG_ERR("invalid checksum for table %s\n", sig);
+        LOG_ERR("invalid checksum for table %.*s\n", SDT_SIGNATURE_LENGTH, table->signature);
         return false;
     }
 
@@ -70,13 +69,46 @@ static bool acpi_is_xsdt_valid(xsdt_t* xsdt)
 {
     if (!acpi_is_table_valid(&xsdt->header))
     {
-        LOG_ERR("invalid checksum for xsdt\n");
         return false;
     }
 
-    if (memcmp(xsdt->header.signature, "XSDT", 4) != 0)
+    if (memcmp(xsdt->header.signature, "XSDT", SDT_SIGNATURE_LENGTH) != 0)
     {
         LOG_ERR("invalid XSDT signature\n");
+        return false;
+    }
+
+    return true;
+}
+
+static bool acpi_is_rsdp_valid(rsdp_t* rsdp)
+{
+    if (memcmp(rsdp->signature, "RSD PTR ", RSDP_SIGNATURE_LENGTH) != 0)
+    {
+        LOG_ERR("invalid RSDP signature\n");
+        return false;
+    }
+
+    if (!acpi_is_checksum_valid(rsdp, RSDP_V1_LENGTH))
+    {
+        LOG_ERR("invalid RSDP checksum\n");
+        return false;
+    }
+
+    if (!acpi_is_checksum_valid(rsdp, rsdp->length))
+    {
+        LOG_ERR("invalid extended RSDP checksum\n");
+        return false;
+    }
+
+    if (rsdp->revision != RSDP_CURRENT_REVISION)
+    {
+        LOG_ERR("unsupported ACPI revision %u\n", rsdp->revision);
+    }
+
+    if (!acpi_is_checksum_valid(rsdp, rsdp->length))
+    {
+        LOG_ERR("invalid extended RSDP checksum\n");
         return false;
     }
 
@@ -87,7 +119,7 @@ static uint64_t acpi_tables_push(sdt_header_t* table)
 {
     if (!acpi_is_table_valid(table))
     {
-        LOG_ERR("invalid table %.4s\n", table->signature);
+        LOG_ERR("invalid table %.*s\n", SDT_SIGNATURE_LENGTH, table->signature);
         return ERR;
     }
 
@@ -105,26 +137,10 @@ static uint64_t acpi_tables_push(sdt_header_t* table)
     }
 
     memcpy(cachedTable, table, table->length);
-
-    char name[MAX_PATH];
-    if (memcmp(cachedTable->signature, "SSDT", 4) == 0)
-    {
-        snprintf(name, MAX_PATH, "%.4s%llu", cachedTable->signature, ssdtAmount++);
-    }
-    else
-    {
-        memcpy(name, cachedTable->signature, 4);
-        name[4] = '\0';
-    }
-
-    if (sysfs_file_init(&cachedTables[tableAmount].file, &apicTablesDir, name, NULL, &tableFileOps, cachedTable) == ERR)
-    {
-        LOG_ERR("failed to create sysfs file for ACPI table %.4s\n", cachedTable->signature);
-        heap_free(cachedTable);
-        return ERR;
-    }
     cachedTables[tableAmount++].table = cachedTable;
 
+    LOG_INFO("%.*s 0x%016lx 0x%06x v%02X %.*s\n", SDT_SIGNATURE_LENGTH, cachedTable->signature, cachedTable,
+        cachedTable->length, cachedTable->revision, SDT_OEM_ID_LENGTH, cachedTable->oemId);
     return 0;
 }
 
@@ -132,7 +148,6 @@ static uint64_t acpi_tables_load_from_xsdt(xsdt_t* xsdt)
 {
     if (!acpi_is_xsdt_valid(xsdt))
     {
-        LOG_ERR("invalid XSDT\n");
         return ERR;
     }
 
@@ -185,43 +200,71 @@ static uint64_t acpi_tables_init_handlers(sdt_header_t* table)
     return 0;
 }
 
-uint64_t acpi_tables_init(xsdt_t* xsdt)
+void acpi_tables_init(rsdp_t* rsdp)
 {
-    if (sysfs_dir_init(&apicTablesDir, acpi_get_sysfs_root(), "tables", NULL, NULL) == ERR)
+    if (!acpi_is_rsdp_valid(rsdp))
     {
-        LOG_ERR("failed to create '/acpi/tables' sysfs directory\n");
-        return ERR;
+        panic(NULL, "invalid RSDP structure\n");
     }
+
+    xsdt_t* xsdt = (xsdt_t*)PML_LOWER_TO_HIGHER(rsdp->xsdtAddress);
+    LOG_INFO("located XSDT at 0x%016lx\n", rsdp->xsdtAddress);
 
     if (acpi_tables_load_from_xsdt(xsdt) == ERR)
     {
-        LOG_ERR("failed to load ACPI tables from XSDT\n");
-        return ERR;
+        panic(NULL, "failed to load ACPI tables from XSDT\n");
     }
 
     if (acpi_tables_load_from_fadt() == ERR)
     {
-        LOG_ERR("failed to load ACPI tables from FADT\n");
-        return ERR;
+        panic(NULL, "failed to load ACPI tables from FADT\n");
     }
 
     for (uint64_t i = 0; i < tableAmount; i++)
     {
         sdt_header_t* table = cachedTables[i].table;
-        LOG_INFO("%.4s 0x%016lx 0x%06x v%02X %.6s\n", table->signature, table, table->length, table->revision,
-            table->oemId);
         if (acpi_tables_init_handlers(table) == ERR)
         {
-            return ERR;
+            panic(NULL, "failed to initialize ACPI table %.4s\n", table->signature);
         }
     }
+}
 
-    return tableAmount;
+void acpi_tables_expose(void)
+{
+    sysfs_dir_t* acpiRoot = acpi_get_sysfs_root();
+
+    if (sysfs_dir_init(&apicTablesDir, acpiRoot, "tables", NULL, NULL) == ERR)
+    {
+        panic(NULL, "failed to create ACPI tables sysfs directory");
+    }
+
+    for (uint64_t i = 0; i < tableAmount; i++)
+    {
+        sdt_header_t* table = cachedTables[i].table;
+        sysfs_file_t* file = &cachedTables[i].file;
+
+        char name[SDT_SIGNATURE_LENGTH + 2];
+        if (memcmp(table->signature, "SSDT", SDT_SIGNATURE_LENGTH) == 0)
+        {
+            snprintf(name, MAX_PATH, "%.4s%llu", table->signature, ssdtAmount++);
+        }
+        else
+        {
+            memcpy(name, table->signature, SDT_SIGNATURE_LENGTH);
+            name[SDT_SIGNATURE_LENGTH] = '\0';
+        }
+
+        if (sysfs_file_init(file, acpiRoot, name, NULL, &tableFileOps, NULL) == ERR)
+        {
+            panic(NULL, "failed to create ACPI table sysfs file for %.*s", SDT_SIGNATURE_LENGTH, table->signature);
+        }
+    }
 }
 
 sdt_header_t* acpi_tables_lookup(const char* signature, uint64_t n)
 {
-    if (strlen(signature) != 4)
+    if (strlen(signature) != SDT_SIGNATURE_LENGTH)
     {
         LOG_ERR("invalid signature length\n");
         return NULL;
@@ -229,7 +272,7 @@ sdt_header_t* acpi_tables_lookup(const char* signature, uint64_t n)
 
     for (uint64_t i = 0; i < tableAmount; i++)
     {
-        if (memcmp(cachedTables[i].table->signature, signature, 4) == 0)
+        if (memcmp(cachedTables[i].table->signature, signature, SDT_SIGNATURE_LENGTH) == 0)
         {
             if (n-- == 0)
             {

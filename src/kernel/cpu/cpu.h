@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config.h"
+#include "drivers/apic.h"
 #include "interrupt.h"
 #include "sched/sched.h"
 #include "sched/timer.h"
@@ -44,7 +45,7 @@ typedef uint16_t cpuid_t;
 typedef struct cpu
 {
     cpuid_t id;
-    uint8_t lapicId;
+    lapic_id_t lapicId;
     tss_t tss;
     interrupt_ctx_t interrupt;
     statistics_cpu_ctx_t stat;
@@ -60,24 +61,14 @@ typedef struct cpu
 } cpu_t;
 
 /**
- * @brief Initializes a CPU structure.
+ * @brief Initializes a CPU structure as part of the boot process.
+ *
+ * Must be called on the CPU that will be represented by the `cpu` structure.
  *
  * @param cpu The CPU structure to initialize.
  * @param id The ID of the CPU.
- * @param lapicId The Local APIC ID of the CPU.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t cpu_init(cpu_t* cpu, cpuid_t id, uint8_t lapicId);
-
-/**
- * @brief Starts a CPU.
- *
- * The trampoline must already be initialized using `trampoline_init()` before calling this function as the CPU will
- * start executing in `trampoline_start()` which eventually calls `cpu_entry()`.
- *
- * @param cpu The CPU to start.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t cpu_start(cpu_t* cpu);
+uint64_t cpu_init(cpu_t* cpu, cpuid_t id);
 
 /** @} */

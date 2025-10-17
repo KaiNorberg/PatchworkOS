@@ -21,21 +21,17 @@
 
 static cpu_t bootstrapCpu ALIGNED(PAGE_SIZE) = {0};
 static cpu_t* cpus[CPU_MAX] = {0};
-static uint16_t cpuAmount = 0;
-static bool isReady = false;
+static uint16_t cpuAmount = 1; // Start with 1 for the bootstrap CPU
 
 static atomic_uint16_t haltedAmount = ATOMIC_VAR_INIT(0);
 
 void smp_bootstrap_init(void)
 {
-    cpuAmount = 1;
     cpus[CPU_BOOTSTRAP_ID] = &bootstrapCpu;
-    if (cpu_init(&bootstrapCpu, CPU_BOOTSTRAP_ID, 0) == ERR)
+    if (cpu_init(&bootstrapCpu, CPU_BOOTSTRAP_ID) == ERR)
     {
         panic(NULL, "Failed to initialize bootstrap cpu");
     }
-
-    msr_write(MSR_CPU_ID, bootstrapCpu.id);
 }
 
 void smp_others_init(void)
@@ -45,17 +41,24 @@ void smp_others_init(void)
     bootstrapCpu.lapicId = lapic_self_id();
     LOG_INFO("bootstrap cpu %u with lapicid %u, ready\n", (uint64_t)bootstrapCpu.id, (uint64_t)bootstrapCpu.lapicId);
 
-    madt_t* madt = MADT_GET();
-    madt_processor_local_apic_t* lapic;
+    madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, 0);
+    if (madt == NULL)
+    {
+        // Technically we dont need to panic here we could just assume the system is single cpu but the rest of the os
+        // needs the madt anyway so we might as well.
+        panic(NULL, "MADT table not found");
+    }
+
+    processor_local_apic_t* lapic;
     MADT_FOR_EACH(madt, lapic)
     {
-        if (lapic->header.type != MADT_INTERRUPT_CONTROLLER_PROCESSOR_LOCAL_APIC ||
+        if (lapic->header.type != INTERRUPT_CONTROLLER_PROCESSOR_LOCAL_APIC ||
             bootstrapCpu.lapicId == lapic->apicId)
         {
             continue;
         }
 
-        if (lapic->flags & MADT_PROCESSOR_LOCAL_APIC_ENABLED)
+        if (lapic->flags & PROCESSOR_LOCAL_APIC_ENABLED)
         {
             // We need the cpus to be page aligned so its stacks are also page aligned.
             cpuid_t newId = cpuAmount++;
@@ -65,16 +68,14 @@ void smp_others_init(void)
                 panic(NULL, "Failed to allocate memory for cpu %d with lapicid %d", (uint64_t)newId,
                     (uint64_t)lapic->apicId);
             }
+            memset(cpus[newId], 0, sizeof(cpu_t));
 
-            if (cpu_init(cpus[newId], newId, lapic->apicId) == ERR)
-            {
-                panic(NULL, "Failed to initialize cpu %d with lapicid %d", (uint64_t)newId, (uint64_t)lapic->apicId);
-            }
+            trampoline_send_startup_ipi(cpus[newId], newId, lapic->apicId);
 
-            if (cpu_start(cpus[newId]) == ERR)
+            if (trampoline_wait_ready(CLOCKS_PER_SEC) == ERR)
             {
-                panic(NULL, "Failed to start cpu %d with lapicid %d", (uint64_t)cpus[newId]->id,
-                    (uint64_t)cpus[newId]->lapicId);
+                panic(NULL, "Timeout waiting for cpu %d with lapicid %d to start", (uint64_t)newId,
+                    (uint64_t)lapic->apicId);
             }
         }
     }
@@ -126,12 +127,22 @@ cpu_t* smp_self_unsafe(void)
 {
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
+    if (cpuAmount == 1)
+    {
+        return &bootstrapCpu;
+    }
+
     return cpus[msr_read(MSR_CPU_ID)];
 }
 
 cpu_t* smp_self(void)
 {
     interrupt_disable();
+
+    if (cpuAmount == 1)
+    {
+        return &bootstrapCpu;
+    }
 
     return cpus[msr_read(MSR_CPU_ID)];
 }

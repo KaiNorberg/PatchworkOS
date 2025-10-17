@@ -1,19 +1,28 @@
 #include "cpu.h"
 
 #include "drivers/apic.h"
-#include "init/init.h"
+#include "gdt.h"
+#include "idt.h"
 #include "interrupt.h"
 #include "log/log.h"
 #include "sched/sched.h"
+#include "simd.h"
+#include "syscalls.h"
 #include "trampoline.h"
 #include "tss.h"
 #include "utils/statistics.h"
 
-uint64_t cpu_init(cpu_t* cpu, cpuid_t id, uint8_t lapicId)
+uint64_t cpu_init(cpu_t* cpu, cpuid_t id)
 {
+    gdt_cpu_load();
+    idt_cpu_load();
+
+    msr_write(MSR_CPU_ID, id);
     cpu->id = id;
-    cpu->lapicId = lapicId;
+    cpu->lapicId = lapic_self_id();
+
     tss_init(&cpu->tss);
+    gdt_cpu_tss_load(&cpu->tss);
     interrupt_ctx_init(&cpu->interrupt);
     statistics_cpu_ctx_init(&cpu->stat);
     timer_ctx_init(&cpu->timer);
@@ -48,19 +57,10 @@ uint64_t cpu_init(cpu_t* cpu, cpuid_t id, uint8_t lapicId)
     tss_ist_load(&cpu->tss, TSS_IST_INTERRUPT, &cpu->interruptStack);
     memset(cpu->interruptStackBuffer, 0, sizeof(cpu->interruptStackBuffer));
 
-    return 0;
-}
-
-uint64_t cpu_start(cpu_t* cpu)
-{
-    assert(cpu->sched.idleThread != NULL);
-    trampoline_send_startup_ipi(cpu);
-
-    if (trampoline_wait_ready(cpu->id, CLOCKS_PER_SEC) == ERR)
-    {
-        LOG_ERR("cpu %d timed out\n", cpu->id);
-        return ERR;
-    }
+    lapic_cpu_init();
+    simd_cpu_init();
+    vmm_cpu_init();
+    syscalls_cpu_init();
 
     return 0;
 }

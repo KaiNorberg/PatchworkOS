@@ -1,17 +1,18 @@
 %include "cpu/interrupt.inc"
 
-extern sched_thread
-extern thread_load
-extern init_other_cpu
+extern trampoline_c_entry
 
 %define TRAMPOLINE_PHYS(addr) (addr - trampoline_start + TRAMPOLINE_BASE_ADDR)
 
 %define TRAMPOLINE_ADDR(addr) (TRAMPOLINE_BASE_ADDR + (addr))
 
 TRAMPOLINE_BASE_ADDR equ 0x8000
-TRAMPOLINE_PML4_OFFSET equ 0x0FF0
-TRAMPOLINE_STACK_OFFSET equ 0x0FE8
-TRAMPOLINE_CPU_ID_OFFSET equ 0x0FD8
+TRAMPOLINE_DATA_OFFSET equ 0x0F00
+TRAMPOLINE_PML4_OFFSET equ (TRAMPOLINE_DATA_OFFSET + 0x00)
+TRAMPOLINE_ENTRY_OFFSET equ (TRAMPOLINE_DATA_OFFSET + 0x08)
+TRAMPOLINE_CPU_ID_OFFSET equ (TRAMPOLINE_DATA_OFFSET + 0x10)
+TRAMPOLINE_CPU_OFFSET equ (TRAMPOLINE_DATA_OFFSET + 0x18)
+TRAMPOLINE_STACK_OFFSET equ (TRAMPOLINE_DATA_OFFSET + 0x20)
 
 CR0_PE equ (1 << 0)
 CR0_PG equ (1 << 31)
@@ -95,24 +96,9 @@ trampoline_long_mode_entry:
     push 0x0
     popfq
 
-    ; init_other_cpu([TRAMPOLINE_ADDR(TRAMPOLINE_CPU_ID_OFFSET)])
-    mov rdi, [TRAMPOLINE_ADDR(TRAMPOLINE_CPU_ID_OFFSET)]
-    call init_other_cpu
-
-    ; r12 = sched_thread()
-    call sched_thread
-    mov r12, rax
-
-    ; Allocate buffer for interrupt frame
-    sub rsp, INTERRUPT_FRAME_SIZE
-
-    ; thread_load(r12, rsp)
-    mov rdi, r12
-    mov rsi, rsp
-    call thread_load
-
-    INTERRUPT_FRAME_POP_AND_JUMP
-    ud2 ; Should never be reached
+    mov rdi, [TRAMPOLINE_ADDR(TRAMPOLINE_CPU_OFFSET)]
+    mov rsi, [TRAMPOLINE_ADDR(TRAMPOLINE_CPU_ID_OFFSET)]
+    jmp [TRAMPOLINE_ADDR(TRAMPOLINE_ENTRY_OFFSET)]
 
 align 16
 protected_mode_gdtr:

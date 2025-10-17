@@ -19,12 +19,6 @@
 static thread_t bootThread;
 static bool bootThreadInitalized = false;
 
-uint64_t thread_get_kernel_stack_top(thread_t* thread)
-{
-    LOG_DEBUG("thread_get_kernel_stack_top: tid=%d top=%p\n", thread->id, thread->kernelStack.top);
-    return thread->kernelStack.top;
-}
-
 static uintptr_t thread_id_to_offset(tid_t tid, uint64_t maxPages)
 {
     return tid * ((maxPages + STACK_POINTER_GUARD_PAGES) * PAGE_SIZE);
@@ -205,13 +199,6 @@ thread_t* thread_get_boot(void)
         {
             panic(NULL, "Failed to initialize boot thread");
         }
-
-        bootThread.frame.rip = (uintptr_t)kmain;
-        bootThread.frame.rsp = bootThread.kernelStack.top;
-        bootThread.frame.cs = GDT_CS_RING0;
-        bootThread.frame.ss = GDT_SS_RING0;
-        bootThread.frame.rflags = RFLAGS_ALWAYS_SET;
-
         LOG_INFO("boot thread initialized with pid=%d tid=%d\n", bootThread.process->id, bootThread.id);
         bootThreadInitalized = true;
     }

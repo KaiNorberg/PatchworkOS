@@ -17,7 +17,8 @@
  *
  * For this implementation it was decided to try to derive every value from first principles, meaning that no values are
  * hardcoded, for example the lower and higher half bounderies are derived from the number of bits that can be used for
- * the address in a page table entry. This makes the code more complex, but also more flexible and easier to
+ * the address in a page table entry. This makes the code more complex, but means we rely on fewer potentially incorrect
+ * sources.
  *
  * @see [OSDev Paging](https://wiki.osdev.org/Paging)
  *
@@ -27,25 +28,52 @@
 /**
  * @brief One entry in a page table.
  * @typedef pml_entry_t
- *
- * The layour of a page table entry is as follows:
- * - Bit 0: Present flag
- * - Bit 1: Write flag
- * - Bit 2: User flag
- * - Bit 3: Write through flag
- * - Bit 4: Cache disabled flag
- * - Bit 5: Accessed flag
- * - Bit 6: Dirty flag
- * - Bit 7: Size flag (Unused)
- * - Bit 8: Global flag
- * - Bit 9: Owned flag (Defined by PatchworkOS)
- * - Bits 10-11: Available for OS use (Unused)
- * - Bits 12-51: Address
- * - Bits 52-58: Callback ID (Defined by PatchworkOS)
- * - Bits 59-62: Protection flags
- * - Bit 63: No execute flag
  */
-typedef uint64_t pml_entry_t;
+typedef struct
+{
+    union {
+        uint64_t raw;
+        struct
+        {
+            uint64_t present : 1;       ///< If set the page is present in memory and readable.
+            uint64_t write : 1;         ///< If set the page is writable.
+            uint64_t user : 1;          ///< If set the page is accessible from user mode.
+            uint64_t writeThrough : 1;  ///< If set write-through caching is enabled for the page.
+            uint64_t cacheDisabled : 1; ///< If set caching is disabled for the page.
+            uint64_t accessed : 1;      ///< If set the page has been accessed (read or written to).
+            uint64_t dirty : 1;         ///< If set the page has been written to.
+            uint64_t size : 1;          // Unused
+            uint64_t global : 1;        ///< If set the page is not flushed from the TLB on a context switch.
+            /**
+             * If set, then when the entry is unmapped or the page table is freed, the physical page will be freed.
+             * (Defined by PatchworkOS)
+             */
+            uint64_t owned : 1;
+            uint64_t available1 : 2; ///< Unused bits available for OS use.
+            uint64_t addr : 40; ///< The address contained in the entry, note that this is shifted right by 12 bits.
+            /**
+             * Check the virtual memory manager for more information. (Defined by PatchworkOS)
+             */
+            uint64_t callbackId : 7;
+            uint64_t protection : 4;
+            uint64_t noExecute : 1;
+        };
+    };
+} pml_entry_t;
+
+/**
+ * @brief Number of bits used for the offset within a page.
+ *
+ * Each page is 4KB (2^12 bytes).
+ */
+#define PML_ADDR_OFFSET_BITS 12
+
+/**
+ * @brief Mask for the address in a page table entry.
+ *
+ * The address is stored in bits 12-51 of the entry.
+ */
+#define PML_ADDR_MASK 0x000FFFFFFFFFF000ULL
 
 /**
  * @brief A entry in a page table without a specified address or callback ID.
@@ -53,79 +81,30 @@ typedef uint64_t pml_entry_t;
  *
  * Used to simplify setting or changing flags in a page table entry.
  */
-typedef uint64_t pml_flags_t;
-
-#define PML_NONE 0                     ///< No flags set.
-#define PML_PRESENT (1ULL << 0)        ///< If set the page is present in memory and readable.
-#define PML_WRITE (1ULL << 1)          ///< If set the page is writable.
-#define PML_USER (1ULL << 2)           ///< If set the page is accessible from user mode.
-#define PML_WRITE_THROUGH (1ULL << 3)  ///< If set write-through caching is enabled for the page.
-#define PML_CACHE_DISABLED (1ULL << 4) ///< If set caching is disabled for the page.
-#define PML_ACCESSED (1ULL << 5)       ///< If set the page has been accessed (read or written to).
-#define PML_DIRTY (1ULL << 6)          ///< If set the page has been written to.
-#define PML_SIZE (1ULL << 7)   ///< If set the entry maps a large page (4Mib) otherwise 4KiB pages are used. Unused.
-#define PML_GLOBAL (1ULL << 8) ///< If set the page is not flushed from the TLB on a context switch.
-/**
- * @brief If set the page table entry is owned by the page table.
- * @def PML_OWNED
- *
- * If this flag is set when the entry is unmapped or the page table is freed, the physical page will be freed. (Defined
- * by PatchworkOS)
- */
-#define PML_OWNED (1ULL << 9)
-#define PML_AVAILABLE1 (1ULL << 10) ///< Unused bit available for OS use.
-#define PML_AVAILABLE2 (1ULL << 11) ///< Unused bit available for OS use.
-
-#define PML_ADDR_OFFSET_BITS 12 ///< The number of bits used for the page offset.
-#define PML_ADDR_BITS 40        ///< The number of bits used for the address in a page table entry.
-/**
- * @brief Mask to extract the address from the entry.
- *
- * Note that retrieving the address does not require a bit shift. This means the top and bottom bits are cut off.
- */
-#define PML_ADDR_MASK (((1ULL << PML_ADDR_BITS) - 1) << PML_ADDR_OFFSET_BITS)
-
-#define PML_CALLBACK_ID_SHIFT (PML_ADDR_OFFSET_BITS + PML_ADDR_BITS) ///< The bit shift to get the callback ID.
-#define PML_CALLBACK_ID_BITS 7                                       ///< The number of bits used for the callback ID.
-/**
- * @brief Mask to extract the callback ID from the entry.
- *
- * Check the virtual memory manager for more information. (Defined by PatchworkOS)
- */
-#define PML_CALLBACK_ID_MASK (((1ULL << PML_CALLBACK_ID_BITS) - 1) << PML_CALLBACK_ID_SHIFT)
-
-#define PML_PROTECTION_SHIFT \
-    (PML_CALLBACK_ID_SHIFT + PML_CALLBACK_ID_BITS) ///< The bit shift to get the protection flags.
-#define PML_PROTECTION_MASK (((1ULL << 4) - 1) << (PML_PROTECTION_SHIFT)) ///< Mask to extract the protection flags.
-#define PML_NO_EXECUTE (1ULL << 63)                                       ///< If set execution is disabled on the page.
+typedef enum
+{
+    PML_NONE = 0,
+    PML_PRESENT = (1ULL << 0),
+    PML_WRITE = (1ULL << 1),
+    PML_USER = (1ULL << 2),
+    PML_WRITE_THROUGH = (1ULL << 3),
+    PML_CACHE_DISABLED = (1ULL << 4),
+    PML_ACCESSED = (1ULL << 5),
+    PML_DIRTY = (1ULL << 6),
+    PML_SIZE = (1ULL << 7),
+    PML_GLOBAL = (1ULL << 8),
+    PML_OWNED = (1ULL << 9),
+    PML_AVAILABLE1 = (1ULL << 10),
+    PML_AVAILABLE2 = (1ULL << 11),
+    PML_NO_EXECUTE = (1ULL << 63),
+} pml_flags_t;
 
 /**
- * @brief Mask that includes all the flags that can be set in a `pml_flags_t`. Excludes the address and callback ID.
+ * @brief Mask for all pml flags.
  */
 #define PML_FLAGS_MASK \
     (PML_PRESENT | PML_WRITE | PML_USER | PML_WRITE_THROUGH | PML_CACHE_DISABLED | PML_ACCESSED | PML_DIRTY | \
-        PML_SIZE | PML_GLOBAL | PML_OWNED | PML_NO_EXECUTE)
-
-/**
- * @brief Retrieves the address from a page table entry.
- *
- * Depending on the level of the entry this might point to the lower level or to the actual physical memory page.
- *
- * Note that this address will always be in the lower half of the address space, we use `pml_accessible_addr()`
- * to retrieve an address that we can actually access depending on if we are in the kernel or the bootloader.
- *
- * @param entry The page table entry.
- * @return The address contained in the entry.
- */
-#define PML_ADDR_GET(entry) (((entry) & PML_ADDR_MASK))
-
-/**
- * @brief Retrieves the callback ID from a page table entry.
- *
- * @param entry The page table entry.
- * @return The callback ID contained in the entry.
- */
-#define PML_CALLBACK_ID_GET(entry) (((entry) & PML_CALLBACK_ID_MASK) >> PML_CALLBACK_ID_SHIFT)
+        PML_SIZE | PML_GLOBAL | PML_OWNED | PML_AVAILABLE1 | PML_AVAILABLE2 | PML_NO_EXECUTE)
 
 /**
  * @brief Enums for the different page table levels.

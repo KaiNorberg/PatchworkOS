@@ -81,16 +81,6 @@ typedef struct thread
 } thread_t;
 
 /**
- * @brief Retrieves the top of a threads kernel stack.
- *
- * Really just used in `start.s` to avoid having to access structs in assembly.
- *
- * @param thread The thread to query.
- * @return The address of the top of the kernel stack, this address is not inclusive.
- */
-uint64_t thread_get_kernel_stack_top(thread_t* thread);
-
-/**
  * @brief Creates a new thread structure.
  *
  * Does not push the created thread to the scheduler or similar, merely handling allocation and initialization.
@@ -133,6 +123,17 @@ void thread_save(thread_t* thread, const interrupt_frame_t* frame);
  * @param frame The destination interrupt frame.
  */
 void thread_load(thread_t* thread, interrupt_frame_t* frame);
+
+/**
+ * @brief Jump to a thread by calling `thread_load()` and then loading its interrupt frame.
+ *
+ * Must be done in assembly as it requires directly modifying registers.
+ *
+ * Will never return instead it ends up at `thread->frame.rip`.
+ *
+ * @param thread The thread to jump to.
+ */
+_NORETURN extern void thread_jump(thread_t* thread);
 
 /**
  * @brief Retrieve the interrupt frame from a thread.

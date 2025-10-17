@@ -6,14 +6,6 @@ extern syscall_handler
 
 section .text
 
-[bits 64]
-
-%include "cpu/interrupt.inc"
-
-extern syscall_handler
-
-section .text
-
 ; rdi = first argument
 ; rsi = second argument
 ; rdx = third argument
