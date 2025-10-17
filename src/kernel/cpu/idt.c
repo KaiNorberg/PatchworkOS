@@ -40,7 +40,7 @@ void idt_init(void)
 
     for (vector_t vector = EXCEPTION_AMOUNT; vector < VECTOR_AMOUNT; vector++)
     {
-        idt.entries[vector] = idt_gate(vectorTable[vector], attr, TSS_IST_NONE);
+        idt.entries[vector] = idt_gate(vectorTable[vector], attr, TSS_IST_INTERRUPT);
     }
 }
 

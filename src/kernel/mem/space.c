@@ -15,16 +15,37 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-#ifndef NDEBUG
-extern uint64_t _kernelEnd;
-#endif
-
 static void* space_pmm_bitmap_alloc(void)
 {
     return pmm_alloc_bitmap(1, UINT32_MAX, 0);
 }
 
-uint64_t space_init(space_t* space, space_t* parent, uintptr_t startAddress, uintptr_t endAddress, space_flags_t flags)
+static inline void space_map_kernel_space_region(space_t* space, uintptr_t start, uintptr_t end)
+{
+    space_t* kernelSpace = vmm_get_kernel_space();
+    assert(kernelSpace != NULL);
+
+    pml_index_t startIndex = PML_ADDR_TO_INDEX(start, PML4);
+    pml_index_t endIndex = PML_ADDR_TO_INDEX(end - 1, PML4) + 1; // Inclusive end
+
+    for (pml_index_t i = startIndex; i < endIndex; i++)
+    {
+        space->pageTable.pml4->entries[i] = kernelSpace->pageTable.pml4->entries[i];
+    }
+}
+
+static inline void space_unmap_kernel_space_region(space_t* space, uintptr_t start, uintptr_t end)
+{
+    pml_index_t startIndex = PML_ADDR_TO_INDEX(start, PML4);
+    pml_index_t endIndex = PML_ADDR_TO_INDEX(end - 1, PML4) + 1; // Inclusive end
+
+    for (pml_index_t i = startIndex; i < endIndex; i++)
+    {
+        space->pageTable.pml4->entries[i] = 0;
+    }
+}
+
+uint64_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress, space_flags_t flags)
 {
     if (space == NULL)
     {
@@ -51,13 +72,28 @@ uint64_t space_init(space_t* space, space_t* parent, uintptr_t startAddress, uin
         }
     }
 
-    space->parent = parent;
     space->endAddress = endAddress;
     space->freeAddress = startAddress;
+    space->flags = flags;
     memset(space->callbacks, 0, sizeof(space_callback_t) * PML_MAX_CALLBACK);
     bitmap_init(&space->callbackBitmap, space->bitmapBuffer, PML_MAX_CALLBACK);
     memset(space->bitmapBuffer, 0, BITMAP_BITS_TO_BYTES(PML_MAX_CALLBACK));
     rwmutex_init(&space->mutex);
+
+    if (flags & SPACE_MAP_KERNEL_BINARY)
+    {
+        space_map_kernel_space_region(space, VMM_KERNEL_BINARY_MIN, VMM_KERNEL_BINARY_MAX);
+    }
+
+    if (flags & SPACE_MAP_KERNEL_HEAP)
+    {
+        space_map_kernel_space_region(space, VMM_KERNEL_HEAP_MIN, VMM_KERNEL_HEAP_MAX);
+    }
+
+    if (flags & SPACE_MAP_IDENTITY)
+    {
+        space_map_kernel_space_region(space, VMM_IDENTITY_MAPPED_MIN, VMM_IDENTITY_MAPPED_MAX);
+    }
 
     return 0;
 }
@@ -77,13 +113,19 @@ void space_deinit(space_t* space)
         space->callbacks[index].func(space->callbacks[index].private);
     }
 
-    for (uint64_t i = 0; i < PML_ENTRY_AMOUNT; i++)
+    if (space->flags & SPACE_MAP_KERNEL_BINARY)
     {
-        // Remove inherited mappings so they don't get freed.
-        if (space->pageTable.pml4->entries[i].inherit)
-        {
-            space->pageTable.pml4->entries[i].raw = 0;
-        }
+        space_unmap_kernel_space_region(space, VMM_KERNEL_BINARY_MIN, VMM_KERNEL_BINARY_MAX);
+    }
+
+    if (space->flags & SPACE_MAP_KERNEL_HEAP)
+    {
+        space_unmap_kernel_space_region(space, VMM_KERNEL_HEAP_MIN, VMM_KERNEL_HEAP_MAX);
+    }
+
+    if (space->flags & SPACE_MAP_IDENTITY)
+    {
+        space_unmap_kernel_space_region(space, VMM_IDENTITY_MAPPED_MIN, VMM_IDENTITY_MAPPED_MAX);
     }
 
     page_table_deinit(&space->pageTable);
@@ -96,24 +138,6 @@ void space_load(space_t* space)
         return;
     }
 
-    if (space->parent == NULL)
-    {
-        page_table_load(&space->pageTable);
-        return;
-    }
-
-    for (uint64_t i = 0; i < PML_ENTRY_AMOUNT; i++)
-    {
-        if (space->parent->pageTable.pml4->entries[i].inherit)
-        {
-            if (!space->pageTable.pml4->entries[i].inherit && space->pageTable.pml4->entries[i].present)
-            {
-                panic(NULL, "Address space inheritance conflict at PML4 entry %d", i);
-            }
-
-            space->pageTable.pml4->entries[i] = space->parent->pageTable.pml4->entries[i];
-        }
-    }
     page_table_load(&space->pageTable);
 }
 
@@ -129,8 +153,6 @@ static void* space_find_free_region(space_t* space, uint64_t pageAmount)
             addr = (uintptr_t)firstMappedPage + PAGE_SIZE;
             continue;
         }
-
-        assert(space != vmm_get_kernel_space() || addr >= (uint64_t)&_kernelEnd);
 
         space->freeAddress = addr + pageAmount * PAGE_SIZE;
         return (void*)addr;
@@ -148,15 +170,24 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
         return ERR;
     }
 
+    uintptr_t virtOverflow = (uintptr_t)virtAddr + length;
+    if (virtOverflow < (uintptr_t)virtAddr)
+    {
+        errno = EOVERFLOW;
+        return ERR;
+    }
+
+    uintptr_t physOverflow = (uintptr_t)physAddr + length;
+    if (physAddr != NULL && physOverflow < (uintptr_t)physAddr)
+    {
+        errno = EOVERFLOW;
+        return ERR;
+    }
+
     if (flags & PML_USER)
     {
-        if (virtAddr != NULL && ((uintptr_t)virtAddr >= PML_LOWER_HALF_END || (uintptr_t)virtAddr < PML_LOWER_HALF_START))
-        {
-            errno = EFAULT;
-            return ERR;
-        }
-
-        if (physAddr != NULL && ((uintptr_t)physAddr >= PML_LOWER_HALF_END || (uintptr_t)physAddr < PML_LOWER_HALF_START))
+        if (virtAddr != NULL &&
+            ((uintptr_t)virtAddr + length > VMM_USER_SPACE_MAX || (uintptr_t)virtAddr < VMM_USER_SPACE_MIN))
         {
             errno = EFAULT;
             return ERR;
@@ -184,9 +215,9 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
     }
 
     mapping->virtAddr = virtAddr;
-    if (mapping->physAddr != NULL)
+    if (physAddr != NULL)
     {
-        mapping->physAddr = PML_ENSURE_LOWER_HALF((void*)ROUND_DOWN(physAddr, PAGE_SIZE));
+        mapping->physAddr = (void*)PML_ENSURE_LOWER_HALF(ROUND_DOWN(physAddr, PAGE_SIZE));
     }
     else
     {

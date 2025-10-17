@@ -10,11 +10,11 @@
 static rwlock_t lock = RWLOCK_CREATE;
 static irq_handler_t handlers[IRQ_AMOUNT] = {0};
 
-void irq_dispatch(trap_frame_t* trapFrame)
+void irq_dispatch(interrupt_frame_t* frame)
 {
     RWLOCK_READ_SCOPE(&lock);
 
-    uint64_t irq = trapFrame->vector - EXTERNAL_INTERRUPT_BASE;
+    uint64_t irq = frame->vector - EXTERNAL_INTERRUPT_BASE;
     irq_handler_t* handler = &handlers[irq];
 
     bool handled = false;
@@ -30,7 +30,7 @@ void irq_dispatch(trap_frame_t* trapFrame)
 
     if (!handled)
     {
-        LOG_WARN("unhandled irq %llu (vector=0x%x)\n", irq, trapFrame->vector);
+        LOG_WARN("unhandled irq %llu (vector=0x%x)\n", irq, frame->vector);
     }
 
     lapic_eoi();

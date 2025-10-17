@@ -17,7 +17,7 @@ void rwlock_init(rwlock_t* lock)
 
 void rwlock_read_acquire(rwlock_t* lock)
 {
-    cli_push();
+    interrupt_disable();
 
 #ifndef NDEBUG
     clock_t start = timer_uptime();
@@ -57,12 +57,12 @@ void rwlock_read_release(rwlock_t* lock)
     atomic_fetch_sub(&lock->activeReaders, 1);
     atomic_fetch_add(&lock->readServe, 1);
 
-    cli_pop();
+    interrupt_enable();
 }
 
 void rwlock_write_acquire(rwlock_t* lock)
 {
-    cli_push();
+    interrupt_disable();
 
 #ifndef NDEBUG
     clock_t start = timer_uptime();
@@ -114,5 +114,5 @@ void rwlock_write_release(rwlock_t* lock)
     atomic_store(&lock->activeWriter, false);
     atomic_fetch_add(&lock->writeServe, 1);
 
-    cli_pop();
+    interrupt_enable();
 }

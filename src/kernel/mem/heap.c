@@ -14,8 +14,6 @@ static uint64_t usedSlabs = 0;
 
 static lock_t lock = LOCK_CREATE;
 
-extern uint64_t _kernelEnd;
-
 #ifdef TESTING
 static uint64_t heap_run_tests(void);
 #endif
@@ -43,7 +41,7 @@ void* heap_alloc(uint64_t size, heap_flags_t flags)
     if (size >= HEAP_MAX_SLAB_SIZE || flags & HEAP_VMM)
     {
         uint64_t allocSize = size + sizeof(object_t);
-        object_t* object = vmm_alloc(NULL, NULL, allocSize, PML_WRITE | PML_INHERIT | PML_GLOBAL | PML_PRESENT);
+        object_t* object = vmm_alloc(NULL, NULL, allocSize, PML_WRITE | PML_GLOBAL | PML_PRESENT);
         if (object == NULL)
         {
             errno = ENOMEM;
@@ -146,8 +144,6 @@ void heap_free(void* ptr)
     {
         return;
     }
-
-    assert(ptr > (void*)&_kernelEnd);
 
     LOCK_SCOPE(&lock);
 

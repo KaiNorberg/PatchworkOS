@@ -1,9 +1,9 @@
 #pragma once
 
+#include "cpu/interrupt.h"
 #include "cpu/simd.h"
 #include "cpu/stack_pointer.h"
 #include "cpu/syscalls.h"
-#include "cpu/trap.h"
 #include "ipc/note.h"
 #include "proc/process.h"
 #include "sched/sched.h"
@@ -48,7 +48,8 @@ typedef enum
  * long, and below it is the guard page. Below that is the user stack of the thread with id 1, below that is its guard
  * page, it then continues like that for however many threads there are.
  *
- * The kernel stack works the same way, but instead starts at the top of the higher half of the address space.
+ * The kernel stack works the same way, but instead starts just under the kernel code and data section, at the top of
+ * the kernel stacks region and each stack is `CONFIG_MAX_KERNEL_STACK_PAGES` pages long.
  *
  */
 typedef struct thread
@@ -73,10 +74,10 @@ typedef struct thread
     note_queue_t notes;
     syscall_ctx_t syscall;
     /**
-     * The threads trap frame is used to save the values in the CPU registers such that the scheduler can continue
+     * The threads interrupt frame is used to save the values in the CPU registers such that the scheduler can continue
      * executing the thread later on.
      */
-    trap_frame_t trapFrame;
+    interrupt_frame_t frame;
 } thread_t;
 
 /**
@@ -119,29 +120,29 @@ void thread_kill(thread_t* thread);
  * @brief Save state to a thread.
  *
  * @param thread The destination thread where the state will be saved.
- * @param trapFrame The source trapframe..
+ * @param frame The source frame..
  */
-void thread_save(thread_t* thread, const trap_frame_t* trapFrame);
+void thread_save(thread_t* thread, const interrupt_frame_t* frame);
 
 /**
  * @brief Load state from a thread.
  *
- * Will retrieve the trap frame and setup the CPU with the threads contexts/data.
+ * Will retrieve the interrupt frame and setup the CPU with the threads contexts/data.
  *
  * @param thread The source thread to load state from.
- * @param trapFrame The destination trap frame.
+ * @param frame The destination interrupt frame.
  */
-void thread_load(thread_t* thread, trap_frame_t* trapFrame);
+void thread_load(thread_t* thread, interrupt_frame_t* frame);
 
 /**
- * @brief Retrieve the trap frame from a thread.
+ * @brief Retrieve the interrupt frame from a thread.
  *
- * Will only retrieve the trap frame.
+ * Will only retrieve the interrupt frame.
  *
  * @param thread The source thread.
- * @param trapFrame The destination trap frame.
+ * @param frame The destination interrupt frame.
  */
-void thread_get_trap_frame(thread_t* thread, trap_frame_t* trapFrame);
+void thread_get_interrupt_frame(thread_t* thread, interrupt_frame_t* frame);
 
 /**
  * @brief Check if a thread has a note pending.
@@ -179,13 +180,13 @@ thread_t* thread_get_boot(void);
 /**
  * @brief Handles a page fault that occurred in the currently running thread.
  *
- * Called by the trap handler when a page fault occurs and allows the currently running thread to attempt to grow its
- * stacks if the faulting address is within one of its stack regions.
+ * Called by the interrupt handler when a page fault occurs and allows the currently running thread to attempt to grow
+ * its stacks if the faulting address is within one of its stack regions.
  *
- * @param trapFrame The trap frame containing the CPU state at the time of the page fault.
+ * @param frame The interrupt frame containing the CPU state at the time of the page fault.
  * @return If the page fault was handled and the thread can continue executing, returns 0. If the thread must be killed,
  * `ERR` and `errno` is set.
  */
-uint64_t thread_handle_page_fault(const trap_frame_t* trapFrame);
+uint64_t thread_handle_page_fault(const interrupt_frame_t* frame);
 
 /** @} */

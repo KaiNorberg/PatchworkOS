@@ -1,5 +1,7 @@
 #pragma once
 
+#include "cpu/cpu.h"
+
 #include <boot/boot_info.h>
 
 /**
@@ -32,7 +34,7 @@ void init_early(const boot_info_t* info);
  *
  * This will be called on the other CPUs to initalize their cpu specific stuff.
  */
-void init_other_cpu(void);
+void init_other_cpu(cpuid_t id);
 
 /**
  * @brief Kernel main function.
@@ -41,7 +43,7 @@ void init_other_cpu(void);
  * causing execution to jump to this function. We can then perform the rest of the kernel initialization here and start
  * the init process.
  *
- * Check `thread_get_boot()` for the boot threads initial trap frame.
+ * Check `thread_get_boot()` for the boot threads initial interrupt frame.
  *
  * Note that this function will never return, instead it will call `sched_done_with_boot_thread()` which will turn the
  * boot thread into the idle thread of the bootstrap cpu and enable interrupts.

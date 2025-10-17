@@ -162,15 +162,6 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* cpu);
 NORETURN extern void sched_idle_loop(void);
 
 /**
- * @brief Wrapper around `sched_schedule()`.
- *
- * The `sched_invoke()` function constructs a trap frame using current CPU state and then calls
- * `sched_schedule()`. This is typically used for voluntary context switches, such as when blocking.
- *
- */
-extern void sched_invoke(void);
-
-/**
  * @brief Initializes the scheduler.
  *
  * The `sched_init()` function performs global initialization for the scheduler, for example spawning the boot thread.
@@ -272,10 +263,9 @@ void sched_push_new_thread(thread_t* thread, thread_t* parent);
 /**
  * @brief Performs the core scheduling logic.
  *
- * @param trapFrame The current trap frame.
+ * @param frame The current interrupt frame.
  * @param self The currently running cpu
- * @return `true` if a context switch occurred, `false` otherwise.
  */
-bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self);
+void sched_schedule(interrupt_frame_t* frame, cpu_t* self);
 
 /** @} */

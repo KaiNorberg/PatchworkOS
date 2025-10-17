@@ -2,7 +2,7 @@
 
 #include <stdatomic.h>
 
-#include "cpu/trap.h"
+#include "cpu/interrupt.h"
 
 #define RWLOCK_DEADLOCK_TIMEOUT (CLOCKS_PER_SEC)
 

@@ -27,9 +27,9 @@ uint64_t pci_config_init(sdt_header_t* table)
         uint64_t busCount = entry->endBus - entry->startBus + 1;
         uint64_t length = busCount * 256 * 4096;
 
-        void* virtAddr = PML_LOWER_TO_HIGHER((void*)entry->base);
-        if (vmm_map(NULL, virtAddr, (void*)entry->base, length, PML_WRITE | PML_INHERIT | PML_GLOBAL | PML_PRESENT,
-                NULL, NULL) == NULL)
+        void* virtAddr = (void*)PML_LOWER_TO_HIGHER(entry->base);
+        if (vmm_map(NULL, virtAddr, (void*)entry->base, length, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) ==
+            NULL)
         {
             LOG_ERR("failed to map PCI-e configuration space at 0x%016lx\n", entry->base);
             return ERR;

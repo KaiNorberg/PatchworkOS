@@ -1,14 +1,17 @@
 #pragma once
 
 /**
- * @brief Exception stack configuration.
+ * @brief Interrupt stack configuration.
  * @ingroup kernel
- * @def CONFIG_EXCEPTION_STACK_PAGES
+ * @def CONFIG_INTERRUPT_STACK_PAGES
  *
- * The `CONFIG_EXCEPTION_STACK_PAGES` constant defines the amount of pages that are allocated for the exception stack
- * and the double fault stack.
+ * The `CONFIG_INTERRUPT_STACK_PAGES` constant defines the amount of pages that are allocated for the per-CPU interrupt,
+ * exception and doubleFault stacks.
+ *
+ * The interrupt stack can be much much smaller than regular kernel stacks as all interrupt handlers should be as short
+ * as possible and allocate as little memory as possible to reduce the amount of time when preemptions are disabled.
  */
-#define CONFIG_EXCEPTION_STACK_PAGES 4
+#define CONFIG_INTERRUPT_STACK_PAGES 1
 
 /**
  * @brief Kernel stack configuration.
@@ -16,7 +19,8 @@
  * @def CONFIG_MAX_KERNEL_STACK_PAGES
  *
  * The `CONFIG_MAX_KERNEL_STACK_PAGES` constant defines the maximum amount of pages that are allowed to be allocated for
- * a threads kernel stack, the kernel stack is used while the thread is in kernel space and NOT handling an exception.
+ * a threads kernel stack, the kernel stack is used while the thread is in kernel space and NOT handling an
+ * exception/interrupt.
  *
  */
 #define CONFIG_MAX_KERNEL_STACK_PAGES 100

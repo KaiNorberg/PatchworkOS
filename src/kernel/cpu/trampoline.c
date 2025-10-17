@@ -1,10 +1,14 @@
 #include "trampoline.h"
 
+#include "cpu.h"
+#include "drivers/apic.h"
 #include "drivers/hpet.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
+#include "sched/sched.h"
+#include "sched/thread.h"
 #include "utils/utils.h"
 
 #include <common/paging_types.h>
@@ -30,22 +34,20 @@ void trampoline_init(void)
 
     WRITE_64(TRAMPOLINE_ADDR(TRAMPOLINE_PML4_OFFSET), PML_ENSURE_LOWER_HALF(vmm_get_kernel_space()->pageTable.pml4));
     WRITE_64(TRAMPOLINE_ADDR(TRAMPOLINE_STACK_OFFSET), 0);
-    WRITE_64(TRAMPOLINE_ADDR(TRAMPOLINE_ENTRY_OFFSET), 0);
-    WRITE_64(TRAMPOLINE_ADDR(TRAMPOLINE_CPU_ID_OFFSET), 0);
 
     atomic_init(&cpuReadyFlag, false);
 
     LOG_DEBUG("trampoline initialized\n");
 }
 
-uint64_t trampoline_cpu_setup(cpuid_t cpuId, uintptr_t stackTop, void (*entry)(cpuid_t))
+void trampoline_send_startup_ipi(cpu_t* cpu)
 {
-    WRITE_64(TRAMPOLINE_ADDR(TRAMPOLINE_STACK_OFFSET), stackTop);
-    WRITE_64(TRAMPOLINE_ADDR(TRAMPOLINE_ENTRY_OFFSET), (uint64_t)entry);
-    WRITE_64(TRAMPOLINE_ADDR(TRAMPOLINE_CPU_ID_OFFSET), (uint64_t)cpuId);
-
+    WRITE_64(TRAMPOLINE_ADDR(TRAMPOLINE_STACK_OFFSET), cpu->interruptStack.top);
     atomic_store(&cpuReadyFlag, false);
-    return 0;
+
+    lapic_send_init(cpu->lapicId);
+    hpet_wait(CLOCKS_PER_SEC / 100);
+    lapic_send_sipi(cpu->lapicId, (void*)TRAMPOLINE_BASE_ADDR);
 }
 
 uint64_t trampoline_wait_ready(cpuid_t cpuId, clock_t timeout)

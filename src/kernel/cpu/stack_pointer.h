@@ -38,10 +38,11 @@
  */
 typedef struct
 {
-    uintptr_t top;         ///< The top of the stack, this address is not inclusive.
-    uintptr_t bottom;      ///< The bottom of the stack, this address is inclusive.
-    uintptr_t guardTop;    ///< The top of the guard page, this address is inclusive.
-    uintptr_t guardBottom; ///< The bottom of the guard page, this address is inclusive.
+    uintptr_t top;           ///< The top of the stack, this address is not inclusive.
+    uintptr_t bottom;        ///< The bottom of the stack, this address is inclusive.
+    uintptr_t guardTop;      ///< The top of the guard page, this address is inclusive.
+    uintptr_t guardBottom;   ///< The bottom of the guard page, this address is inclusive.
+    uintptr_t lastPageFault; ///< The last page that caused a page fault, used to prevent infinite loops.
 } stack_pointer_t;
 
 /**
@@ -94,13 +95,9 @@ void stack_pointer_deinit_buffer(stack_pointer_t* stack);
  * @brief Attempt to grow the stack to handle a page fault.
  *
  * This will check if the faulting address is within the stack's range, and if so, map a new page for the stack. If
- * the faulting address is within the guard page, it will always return `STACK_GROW_ERROR`.
+ * the faulting address is within the guard page or an otherwise invalid address, it will always fail.
  *
- * `errno` values:
- * - `EINVAL`: Invalid arguments.
- * - `ENOMEM`: Failed to allocate or map a new page.
- * - `EFAULT`: The faulting address is within the guard page.
- * - `ENOENT`: The faulting address is outside the stack's range.
+ * Will set `errno` to `ENOENT` if the faulting address is outside the stack's range.
  *
  * @param stack The stack pointer structure.
  * @param thread The thread that owns the stack, used to get the address space to map the new page in.

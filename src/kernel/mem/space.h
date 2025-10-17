@@ -12,6 +12,7 @@
 /**
  * @brief Address Space handling.
  * @defgroup kernel_mem_space Space
+ * @ingroup kernel_mem
  *
  * @{
  */
@@ -28,6 +29,9 @@ typedef enum
      * must be within a 32 bit boundary because the smp trampoline loads it as a dword.
      */
     SPACE_USE_PMM_BITMAP = 1 << 0,
+    SPACE_MAP_KERNEL_BINARY = 1 << 1, ///< Map the kernel binary into the address space.
+    SPACE_MAP_KERNEL_HEAP = 1 << 2,   ///< Map the kernel heap into the address space.
+    SPACE_MAP_IDENTITY = 1 << 3,      ///< Map the identity mapped physical memory into the address space.
 } space_flags_t;
 
 /**
@@ -55,14 +59,9 @@ typedef struct
 typedef struct space
 {
     page_table_t pageTable; ///< The page table associated with the address space.
-    /**
-     * The parent address space, the address space will inherit all mappings marked as inherit from the parent.
-     * These mappings will be copied directly into the address space when its loaded, if that would result in a mapping
-     * conflict then the kernel will panic. If `NULL`, the address space will not inherit any mappings.
-     */
-    struct space* parent;
-    uintptr_t endAddress;  ///< The end address for allocations in this address space.
-    uintptr_t freeAddress; ///< The next available free virtual address in this address space.
+    uintptr_t endAddress;   ///< The end address for allocations in this address space.
+    uintptr_t freeAddress;  ///< The next available free virtual address in this address space.
+    space_flags_t flags;    ///< Flags for the address space.
     /**
      * Array of callbacks for this address space, indexed by the callback ID.
      */
@@ -84,13 +83,12 @@ typedef struct space
  * @brief Initializes a virtual address space.
  *
  * @param space The address space to initialize.
- * @param parent The parent address space to inherit mappings from, can be `NULL`.
  * @param startAddress The starting address for allocations in this address space.
  * @param endAddress The ending address for allocations in this address space.
  * @param flags Flags to control the initialization behavior.
  * @return On success, returns 0. On failure, returns `ERR` and `errno` is set.
  */
-uint64_t space_init(space_t* space, space_t* parent, uintptr_t startAddress, uintptr_t endAddress, space_flags_t flags);
+uint64_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress, space_flags_t flags);
 
 /**
  * @brief Deinitializes a virtual address space.

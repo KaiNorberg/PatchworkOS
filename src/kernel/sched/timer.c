@@ -25,7 +25,7 @@ static clock_t accumulator = 0;
 static void timer_acquire(void)
 {
     // We cant use the lock_t here becouse in debug mode lock_t will use the timer to check for deadlocks.
-    cli_push();
+    interrupt_disable();
     while (!atomic_compare_exchange_strong(&accumulatorLock, &(int8_t){0}, 1))
     {
         asm volatile("pause");
@@ -35,7 +35,7 @@ static void timer_acquire(void)
 static void timer_release(void)
 {
     atomic_store(&accumulatorLock, 0);
-    cli_pop();
+    interrupt_enable();
 }
 
 static void timer_accumulate(void)
@@ -95,7 +95,7 @@ time_t timer_unix_epoch(void)
     return bootEpoch + timer_uptime() / CLOCKS_PER_SEC;
 }
 
-void timer_trap_handler(trap_frame_t* trapFrame, cpu_t* self)
+void timer_interrupt_handler(interrupt_frame_t* frame, cpu_t* self)
 {
     timer_accumulate();
 
@@ -104,7 +104,7 @@ void timer_trap_handler(trap_frame_t* trapFrame, cpu_t* self)
     {
         if (callbacks[i] != NULL)
         {
-            callbacks[i](trapFrame, self);
+            callbacks[i](frame, self);
         }
     }
 }
@@ -199,4 +199,9 @@ SYSCALL_DEFINE(SYS_UNIX_EPOCH, time_t, time_t* timePtr)
 void timer_notify(cpu_t* cpu)
 {
     lapic_send_ipi(cpu->lapicId, VECTOR_TIMER);
+}
+
+void timer_notify_self(void)
+{
+    asm volatile("int %0" : : "i"(VECTOR_TIMER));
 }

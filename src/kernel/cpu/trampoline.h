@@ -39,11 +39,6 @@
 #define TRAMPOLINE_STACK_OFFSET (TRAMPOLINE_DATA_OFFSET + 0xE8)
 
 /**
- * @brief Offset within the trampoline page where the entry point to jump to is stored.
- */
-#define TRAMPOLINE_ENTRY_OFFSET (TRAMPOLINE_DATA_OFFSET + 0xE0)
-
-/**
  * @brief Offset within the trampoline page where the CPU id is stored.
  */
 #define TRAMPOLINE_CPU_ID_OFFSET (TRAMPOLINE_DATA_OFFSET + 0xD8)
@@ -77,14 +72,11 @@ extern void trampoline_end(void);
 void trampoline_init(void);
 
 /**
- * @brief Sets up the trampoline for a specific CPU.
+ * @brief Sends the startup IPI to a CPU to start it up.
  *
- * @param cpuId The ID of the CPU to set up the trampoline for.
- * @param stackTop The top of the stack to use for the CPU.
- * @param entry The entry point function to jump to after the trampoline.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @param cpu The CPU to send the IPI to.
  */
-uint64_t trampoline_cpu_setup(cpuid_t cpuId, uintptr_t stackTop, void (*entry)(cpuid_t));
+void trampoline_send_startup_ipi(cpu_t* cpu);
 
 /**
  * @brief Waits for a CPU to signal that it is ready.

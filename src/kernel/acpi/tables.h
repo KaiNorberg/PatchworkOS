@@ -3,8 +3,8 @@
 #include "acpi.h"
 
 /**
- * @brief ACPI Tables
- * @defgroup kernel_acpi_tables ACPI Tables
+ * @brief System Description Tables
+ * @defgroup kernel_acpi_tables Tables
  * @ingroup kernel_acpi
  *
  * This module defines the ACPI tables found in the ACPI specification, tables defined outside of the specification, for

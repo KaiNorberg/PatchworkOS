@@ -9,7 +9,7 @@
 
 /**
  * @brief Wait queue implementation.
- * @defgroup kernel_sched_wait Wait
+ * @defgroup kernel_sched_wait Waiting subsystem
  * @ingroup kernel_sched
  *
  */
@@ -194,9 +194,9 @@ void wait_thread_ctx_init(wait_thread_ctx_t* wait);
 
 void wait_cpu_ctx_init(wait_cpu_ctx_t* wait);
 
-clock_t wait_next_deadline(trap_frame_t* trapFrame, cpu_t* self);
+clock_t wait_next_deadline(interrupt_frame_t* frame, cpu_t* self);
 
-bool wait_block_finalize(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread);
+bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread);
 
 void wait_unblock_thread(thread_t* thread, wait_result_t result);
 

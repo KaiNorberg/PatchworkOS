@@ -1,6 +1,6 @@
 #pragma once
 
-#include "trap.h"
+#include "interrupt.h"
 
 #include <stdbool.h>
 
@@ -72,12 +72,12 @@ typedef struct
 /**
  * @brief Dispatch an IRQ.
  *
- * This function is called from `trap_handler()` when an IRQ is received. It will call all registered callbacks
+ * This function is called from `interrupt_handler()` when an IRQ is received. It will call all registered callbacks
  * for the IRQ.
  *
- * @param trapFrame The trap frame of the IRQ.
+ * @param frame The interrupt frame of the IRQ.
  */
-void irq_dispatch(trap_frame_t* trapFrame);
+void irq_dispatch(interrupt_frame_t* frame);
 
 /**
  * @brief Install an IRQ handler.

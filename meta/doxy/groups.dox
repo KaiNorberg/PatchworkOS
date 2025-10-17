@@ -1,4 +1,11 @@
 /**
+ * @brief Shared definitions and utilities.
+ * @defgroup common Common
+ *
+ * Shared definitions and utilities used by both the kernel and the bootloader.
+ */
+
+/**
  * @brief UEFI bootloader.
  * @defgroup boot Bootloader
  *

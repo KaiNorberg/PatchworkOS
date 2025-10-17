@@ -29,7 +29,7 @@ void apic_timer_one_shot(uint8_t vector, uint32_t ticks)
 
 uint64_t apic_timer_ticks_per_ns(void)
 {
-    cli_push();
+    interrupt_disable();
 
     lapic_write(LAPIC_REG_TIMER_DIVIDER, APIC_TIMER_DEFAULT_DIV);
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
@@ -46,7 +46,7 @@ uint64_t apic_timer_ticks_per_ns(void)
     uint64_t ticksPerNs = (ticks << APIC_TIMER_TICKS_FIXED_POINT_OFFSET) / 10000000ULL;
 
     LOG_DEBUG("timer calibration ticks=%llu ticks_per_ns=%llu\n", ticks, ticksPerNs);
-    cli_pop();
+    interrupt_enable();
     return ticksPerNs;
 }
 
@@ -61,8 +61,8 @@ void lapic_init(void)
     }
 
     lapicBase = (uintptr_t)PML_LOWER_TO_HIGHER(lapicPhysAddr);
-    if (vmm_map(NULL, (void*)lapicBase, lapicPhysAddr, PAGE_SIZE, PML_WRITE | PML_INHERIT | PML_GLOBAL | PML_PRESENT,
-            NULL, NULL) == NULL)
+    if (vmm_map(NULL, (void*)lapicBase, lapicPhysAddr, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) ==
+        NULL)
     {
         panic(NULL, "Unable to map lapic");
     }
@@ -180,9 +180,8 @@ void ioapic_all_init(void)
         }
 
         void* physAddr = (void*)(uint64_t)ioapic->ioApicAddress;
-        void* virtAddr = PML_LOWER_TO_HIGHER(physAddr);
-        if (vmm_map(NULL, virtAddr, physAddr, PAGE_SIZE, PML_WRITE | PML_INHERIT | PML_GLOBAL | PML_PRESENT, NULL,
-                NULL) == NULL)
+        void* virtAddr = (void*)PML_LOWER_TO_HIGHER(physAddr);
+        if (vmm_map(NULL, virtAddr, physAddr, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) == NULL)
         {
             panic(NULL, "Failed to map ioapic");
         }

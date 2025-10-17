@@ -41,15 +41,15 @@ static bool panic_is_valid_stack_frame(void* ptr)
     {
         return false;
     }
-    if ((uintptr_t)ptr < PAGE_SIZE)
+    if ((uintptr_t)ptr < VMM_USER_SPACE_MIN)
     {
         return false;
     }
-    if ((uintptr_t)ptr >= PML_HIGHER_HALF_END)
+    if ((uintptr_t)ptr >= VMM_KERNEL_BINARY_MAX)
     {
         return false;
     }
-    if ((uintptr_t)ptr > PML_LOWER_HALF_END && (uintptr_t)ptr < PML_LOWER_HALF_START)
+    if ((uintptr_t)ptr > VMM_USER_SPACE_MAX && (uintptr_t)ptr < VMM_IDENTITY_MAPPED_MIN)
     {
         return false;
     }
@@ -133,44 +133,43 @@ static const char* panic_get_exception_name(uint64_t vector)
     return "unknown exception";
 }
 
-static void panic_registers(const trap_frame_t* trapFrame)
+static void panic_registers(const interrupt_frame_t* frame)
 {
-    LOG_PANIC("rip: %04llx:0x%016llx ", trapFrame->cs, trapFrame->rip);
+    LOG_PANIC("rip: %04llx:0x%016llx ", frame->cs, frame->rip);
 
     uintptr_t offset;
-    const char* symbol = panic_resolve_symbol(trapFrame->rip, &offset);
+    const char* symbol = panic_resolve_symbol(frame->rip, &offset);
     if (symbol != NULL)
     {
         LOG_PANIC("<%s+0x%llx>", symbol, offset);
     }
     LOG_PANIC("\n");
 
-    LOG_PANIC("rsp: %04llx:0x%016llx rflags: 0x%08llx\n", trapFrame->ss, trapFrame->rsp,
-        trapFrame->rflags & 0xFFFFFFFF);
+    LOG_PANIC("rsp: %04llx:0x%016llx rflags: 0x%08llx\n", frame->ss, frame->rsp, frame->rflags & 0xFFFFFFFF);
 
-    LOG_PANIC("rax: 0x%016llx rbx: 0x%016llx rcx: 0x%016llx\n", trapFrame->rax, trapFrame->rbx, trapFrame->rcx);
-    LOG_PANIC("rdx: 0x%016llx rsi: 0x%016llx rdi: 0x%016llx\n", trapFrame->rdx, trapFrame->rsi, trapFrame->rdi);
-    LOG_PANIC("rbp: 0x%016llx r08: 0x%016llx r09: 0x%016llx\n", trapFrame->rbp, trapFrame->r8, trapFrame->r9);
-    LOG_PANIC("r10: 0x%016llx r11: 0x%016llx r12: 0x%016llx\n", trapFrame->r10, trapFrame->r11, trapFrame->r12);
-    LOG_PANIC("r13: 0x%016llx r14: 0x%016llx r15: 0x%016llx\n", trapFrame->r13, trapFrame->r14, trapFrame->r15);
+    LOG_PANIC("rax: 0x%016llx rbx: 0x%016llx rcx: 0x%016llx\n", frame->rax, frame->rbx, frame->rcx);
+    LOG_PANIC("rdx: 0x%016llx rsi: 0x%016llx rdi: 0x%016llx\n", frame->rdx, frame->rsi, frame->rdi);
+    LOG_PANIC("rbp: 0x%016llx r08: 0x%016llx r09: 0x%016llx\n", frame->rbp, frame->r8, frame->r9);
+    LOG_PANIC("r10: 0x%016llx r11: 0x%016llx r12: 0x%016llx\n", frame->r10, frame->r11, frame->r12);
+    LOG_PANIC("r13: 0x%016llx r14: 0x%016llx r15: 0x%016llx\n", frame->r13, frame->r14, frame->r15);
 }
 
-static void panic_stack_trace(const trap_frame_t* trapFrame)
+static void panic_stack_trace(const interrupt_frame_t* frame)
 {
     LOG_PANIC("stack trace:\n");
 
-    uint64_t* rbp = (uint64_t*)trapFrame->rbp;
+    uint64_t* rbp = (uint64_t*)frame->rbp;
     uint64_t* prevFrame = NULL;
 
     uintptr_t offset;
-    const char* symbol = panic_resolve_symbol(trapFrame->rip, &offset);
+    const char* symbol = panic_resolve_symbol(frame->rip, &offset);
     if (symbol != NULL)
     {
-        LOG_PANIC("  [0x%016llx] <%s+0x%llx>\n", trapFrame->rip, symbol, offset);
+        LOG_PANIC("  [0x%016llx] <%s+0x%llx>\n", frame->rip, symbol, offset);
     }
     else
     {
-        LOG_PANIC("  [0x%016llx] <unknown>\n", trapFrame->rip);
+        LOG_PANIC("  [0x%016llx] <unknown>\n", frame->rip);
     }
 
     uint64_t depth = 0;
@@ -266,24 +265,28 @@ static void panic_direct_stack_trace(void)
 
 static bool panic_is_valid_address(uintptr_t addr)
 {
-    if (addr < PAGE_SIZE)
+    if (addr < VMM_USER_SPACE_MIN)
     {
         return false;
     }
-    if (addr >= PML_HIGHER_HALF_END)
+    if (addr >= VMM_KERNEL_BINARY_MAX)
     {
         return false;
     }
-    if (addr > PML_LOWER_HALF_END && addr < PML_LOWER_HALF_START)
+    if (addr > VMM_USER_SPACE_MAX && addr < VMM_IDENTITY_MAPPED_MIN)
+    {
+        return false;
+    }
+    if (addr > UINTPTR_MAX - 16)
     {
         return false;
     }
     return true;
 }
 
-static void panic_print_stack_dump(const trap_frame_t* trapFrame)
+static void panic_print_stack_dump(const interrupt_frame_t* frame)
 {
-    uint64_t rsp = trapFrame->rsp;
+    uint64_t rsp = frame->rsp;
     LOG_PANIC("stack dump (around rsp=0x%016llx):\n", rsp);
 
     const int linesToDump = 8;
@@ -382,7 +385,7 @@ void panic_symbols_init(const boot_kernel_t* kernel)
     symbolsLoaded = true;
 }
 
-void panic(const trap_frame_t* trapFrame, const char* format, ...)
+void panic(const interrupt_frame_t* frame, const char* format, ...)
 {
     asm volatile("cli");
 
@@ -492,32 +495,40 @@ void panic(const trap_frame_t* trapFrame, const char* format, ...)
     }
     LOG_PANIC("\n");
 
-    if (trapFrame != NULL)
+    if (frame != NULL)
     {
-        LOG_PANIC("exception: %s (vector: %lld, error code: 0x%llx)\n", panic_get_exception_name(trapFrame->vector),
-            trapFrame->vector, trapFrame->errorCode);
+        LOG_PANIC("exception: %s (vector: %lld, error code: 0x%llx)\n", panic_get_exception_name(frame->vector),
+            frame->vector, frame->errorCode);
 
-        if (trapFrame->vector == EXCEPTION_PAGE_FAULT)
+        if (frame->vector == EXCEPTION_PAGE_FAULT)
         {
             LOG_PANIC("page fault details: A %s operation to a %s page caused a %s.\n",
-                (trapFrame->errorCode & 2) ? "write" : "read", (trapFrame->errorCode & 4) ? "user-mode" : "kernel-mode",
-                (trapFrame->errorCode & 1) ? "protection violation" : "non-present page fault");
-            if (trapFrame->errorCode & 8)
+                (frame->errorCode & 2) ? "write" : "read", (frame->errorCode & 4) ? "user-mode" : "kernel-mode",
+                (frame->errorCode & 1) ? "protection violation" : "non-present page fault");
+            if (frame->errorCode & 8)
             {
                 LOG_PANIC("                      (Reserved bit violation)\n");
             }
-            if (trapFrame->errorCode & 16)
+            if (frame->errorCode & 16)
             {
                 LOG_PANIC("                       (Instruction fetch)\n");
             }
         }
     }
 
-    if (trapFrame != NULL)
+    if (frame != NULL)
     {
-        panic_registers(trapFrame);
-        panic_print_stack_dump(trapFrame);
-        panic_stack_trace(trapFrame);
+        panic_registers(frame);
+        if (frame->vector == EXCEPTION_PAGE_FAULT &&
+            (cr2 >= self->sched.runThread->kernelStack.guardBottom && cr2 < self->sched.runThread->kernelStack.top))
+        {
+            LOG_PANIC("skipping stack dump due to page fault in kernel stack region\n");
+        }
+        else
+        {
+            panic_print_stack_dump(frame);
+        }
+        panic_stack_trace(frame);
     }
     else
     {

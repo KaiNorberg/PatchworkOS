@@ -10,8 +10,8 @@
  * @defgroup kernel_cpu_tss TSS
  * @ingroup kernel_cpu
  *
- * The Task State Segment is more or less deprecated, we use it only to tell the cpu what stack pointer to load when
- * switching from userspace to kernelspace.
+ * The Task State Segment is more or less deprecated, we use it only to tell the cpu what stack pointer to use when
+ * handling interrupts. This is done using the Interrupt Stack Table (IST).
  *
  * @see [OSDev Wiki TTS](https://wiki.osdev.org/Task_State_Segment)
  */
@@ -43,22 +43,36 @@ typedef enum
 #define TSS_IST_DOUBLE_FAULT TSS_IST2
 
 /**
+ * @brief The IST index to use for other interrupts.
+ */
+#define TSS_IST_INTERRUPT TSS_IST3
+
+/**
  * @brief Task State Segment structure.
  * @struct tss_t
  *
- * The stack pointers `rsp*` store the stack to use when switching to a higher privilege level. Additionally we use the
- * ists to specify additional stacks for handling exceptions. All exceptions will use `TSS_IST1` except for double
- * faults which will use `TSS_IST2`.
+ * The stack pointers `rsp*` store the stack to use when switching to a higher privilege level which we do not use.
+ * Instead we have a total of 4 stacks used while in kernel space, 3 per-cpu stacks and 1 per-thread stack. Of course
+ * there is also the user stack used while in user space.
  *
- * So this means that when a double fault occurs the CPU switches to the stack in `ist[1]`, if any other exception
- * occurs the CPU switches to the stack in `ist[0]`, and if any other ring transition occurs (for example an interrupt
- * from userspace to kernelspace) the CPU switches to the stack in `rsp0`. Otherwise the current stack is used.
+ * The per-cpu stacks are:
+ * - Exception stack, used while handling exceptions, specified in ist[0].
+ * - Double fault stack, used while handling double faults, specified in ist[1].
+ * - Interrupt stack, used while handling all other interrupts, specified in ist[2].
+ *
+ * The per-thread stack is the kernel stack, used while the thread is in kernel space and NOT handling an exception or
+ * interrupt. In effect this is used in system calls, boot, inital thread loading and if the thread is a kernel thread
+ * it is used all the time. This stack is not handled by the TSS but instead by the system call and scheduler code.
+ *
+ * The way the interrupt stack table works is that when a interrupt occurs the cpu checks the IDT gate for that
+ * interrupt, if it has a non zero IST index it will then load that stack pointer from the TSS and switch to that stack,
+ * this happens regardless of the current privilege level.
  *
  */
 typedef struct PACKED
 {
     uint32_t reserved1;
-    uint64_t rsp0; ///< Stack pointer to load when switching to ring 0.
+    uint64_t rsp0; ///< Stack pointer to load when switching to ring 0, unused.
     uint64_t rsp1; ///< Stack pointer to load when switching to ring 1, unused.
     uint64_t rsp2; ///< Stack pointer to load when switching to ring 2, unused.
     uint64_t reserved2;
@@ -81,16 +95,6 @@ extern void tss_load(void);
  * @param tss The TSS structure to initialize.
  */
 void tss_init(tss_t* tss);
-
-/**
- * @brief Load a kernel stack into the TTS.
- *
- * Sets all the `rsp*` registers to the provided stack.
- *
- * @param tss The TSS structure to load the stack pointers into.
- * @param stack The stack to load into the TSS.
- */
-void tss_kernel_stack_load(tss_t* tss, stack_pointer_t* stack);
 
 /**
  * @brief Load a stack into an IST entry.

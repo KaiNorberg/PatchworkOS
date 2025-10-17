@@ -302,8 +302,8 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
         return ERR;
     }
 
-    if (space_init(&process->space, vmm_get_kernel_space(), PML_LOWER_HALF_START, PML_LOWER_HALF_END, SPACE_NONE) ==
-        ERR)
+    if (space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
+            SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY) == ERR)
     {
         return ERR;
     }

@@ -9,7 +9,7 @@ typedef struct
     uint64_t id;
     clock_t idleClocks;
     clock_t activeClocks;
-    clock_t trapClocks;
+    clock_t interruptClocks;
 } cpu_statistics_t;
 
 cpu_statistics_t* cpu_statistics_read(uint64_t* cpuAmount)
@@ -29,7 +29,7 @@ cpu_statistics_t* cpu_statistics_read(uint64_t* cpuAmount)
 
         cpu_statistics_t* current = &stat[*cpuAmount - 1];
         if (sscanf(buffer, "cpu%d %llu %llu %llu", &current->id, &current->idleClocks, &current->activeClocks,
-                &current->trapClocks) == 0)
+                &current->interruptClocks) == 0)
         {
             break;
         }
@@ -73,13 +73,13 @@ int main(void)
     {
         clock_t idleDelta = after[i].idleClocks - before[i].idleClocks;
         clock_t activeDelta = after[i].activeClocks - before[i].activeClocks;
-        clock_t trapDelta = after[i].trapClocks - before[i].trapClocks;
+        clock_t interruptDelta = after[i].interruptClocks - before[i].interruptClocks;
 
-        uint64_t totalDelta = activeDelta + trapDelta + idleDelta;
+        uint64_t totalDelta = activeDelta + interruptDelta + idleDelta;
         double percentage = 0;
         if (totalDelta > 0)
         {
-            percentage = ((double)(activeDelta + trapDelta) * 100.0) / (double)totalDelta;
+            percentage = ((double)(activeDelta + interruptDelta) * 100.0) / (double)totalDelta;
         }
         printf("cpu%d %d.%03d%% usage\n", before[i].id, (int)percentage,
             (int)((percentage - (int)percentage) * 1000.0));

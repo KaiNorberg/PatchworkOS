@@ -41,7 +41,6 @@ static void start_services(config_t* config)
 {
     priority_t servicePriority = config_get_int(config, "startup", "service_priority", 31);
 
-    printf("init: service priority: %d\n", servicePriority);
     config_array_t* services = config_get_array(config, "startup", "services");
     for (uint64_t i = 0; i < config_array_length(services); i++)
     {
@@ -49,7 +48,6 @@ static void start_services(config_t* config)
         spawn_program(service, servicePriority);
     }
 
-    printf("init: waiting for service files...\n");
     config_array_t* serviceFiles = config_get_array(config, "startup", "service_files");
     for (uint64_t i = 0; i < config_array_length(serviceFiles); i++)
     {
@@ -58,9 +56,7 @@ static void start_services(config_t* config)
         stat_t info;
         while (stat(file, &info) == ERR)
         {
-            printf("init: waiting for file %s...\n", file);
             thrd_yield();
-            printf("init: still waiting for file %s...\n", file);
         }
     }
 }

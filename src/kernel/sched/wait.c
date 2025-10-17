@@ -60,9 +60,9 @@ static void wait_block_cleanup(thread_t* thread, wait_result_t result, wait_queu
     }
 }
 
-static void wait_timer_handler(trap_frame_t* trapFrame, cpu_t* self)
+static void wait_timer_handler(interrupt_frame_t* frame, cpu_t* self)
 {
-    (void)trapFrame; // Unused
+    (void)frame; // Unused
 
     LOCK_SCOPE(&self->wait.lock);
 
@@ -128,9 +128,9 @@ void wait_cpu_ctx_init(wait_cpu_ctx_t* wait)
     lock_init(&wait->lock);
 }
 
-bool wait_block_finalize(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
+bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread)
 {
-    (void)trapFrame; // Unused
+    (void)frame; // Unused
 
     wait_cpu_ctx_t* cpuCtx = &self->wait;
     LOCK_SCOPE(&self->wait.lock);
@@ -311,7 +311,7 @@ wait_result_t wait_block_do(void)
 
     smp_put(); // Release cpu from wait_block_setup().
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    sched_invoke();
+    timer_notify_self();
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     return thread->wait.result;
 }

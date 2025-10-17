@@ -48,7 +48,7 @@ static void acpi_reclaim_memory(const boot_memory_map_t* map)
 
         if (desc->Type == EfiACPIReclaimMemory)
         {
-            pmm_free_pages(PML_LOWER_TO_HIGHER(desc->PhysicalStart), desc->NumberOfPages);
+            pmm_free_pages((void*)PML_LOWER_TO_HIGHER(desc->PhysicalStart), desc->NumberOfPages);
             LOG_INFO("reclaim memory [0x%016lx-0x%016lx]\n", desc->PhysicalStart,
                 ((uintptr_t)desc->PhysicalStart) + desc->NumberOfPages * PAGE_SIZE);
         }
@@ -69,7 +69,7 @@ void acpi_init(rsdp_t* rsdp, const boot_memory_map_t* map)
         panic(NULL, "invalid RSDP structure\n");
     }
 
-    xsdt_t* xsdt = PML_LOWER_TO_HIGHER(rsdp->xsdtAddress);
+    xsdt_t* xsdt = (xsdt_t*)PML_LOWER_TO_HIGHER(rsdp->xsdtAddress);
 
     if (acpi_tables_init(xsdt) == ERR)
     {

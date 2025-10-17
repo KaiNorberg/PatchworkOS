@@ -1,8 +1,8 @@
 #pragma once
 
 #include "cpu/stack_pointer.h"
+#include "interrupt.h"
 #include "mem/space.h"
-#include "trap.h"
 
 #include <kernel/syscalls.h>
 
@@ -119,8 +119,8 @@ void syscalls_cpu_init(void);
  * @param number The syscall number.
  * @return The return value of the syscall.
  */
-uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx, uint64_t r8, uint64_t r9, uint64_t number);
-
+uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx, uint64_t r8, uint64_t r9,
+    uint64_t number);
 
 /**
  * @brief Validate a pointer before using it in a syscall.

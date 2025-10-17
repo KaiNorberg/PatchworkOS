@@ -64,8 +64,10 @@ void init_early(const boot_info_t* info)
     LOG_DEBUG("early init done, jumping to boot thread\n");
 }
 
-void init_other_cpu(void)
+void init_other_cpu(cpuid_t id)
 {
+    msr_write(MSR_CPU_ID, id);
+
     gdt_cpu_load();
     idt_cpu_load();
 
@@ -96,6 +98,10 @@ static void init_free_loader_data(const boot_memory_map_t* map)
 
 static void init_finalize(void)
 {
+    thread_t* bootThread = thread_get_boot();
+    assert(bootThread != NULL);
+
+    vmm_map_bootloader_lower_half(bootThread);
     panic_symbols_init(&bootInfo->kernel);
 
     _std_init();
@@ -126,7 +132,7 @@ static void init_finalize(void)
     smp_others_init();
 
     init_free_loader_data(&bootInfo->memory.map);
-    vmm_unmap_lower_half(thread_get_boot());
+    vmm_unmap_bootloader_lower_half(bootThread);
 
     LOG_INFO("kernel initalized using %llu kb of memory\n", pmm_reserved_amount() * PAGE_SIZE / 1024);
 }
@@ -159,7 +165,7 @@ static inline void init_process_spawn(void)
 void kmain(void)
 {
     // The stack pointer is expected to be somewhere near the top.
-    assert(rsp_read() > PML_HIGHER_HALF_END - 2 * PAGE_SIZE);
+    assert(rsp_read() > VMM_KERNEL_STACKS_MAX - 2 * PAGE_SIZE);
 
     LOG_DEBUG("kmain entered\n");
 

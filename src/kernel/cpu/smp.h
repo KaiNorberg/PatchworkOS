@@ -56,7 +56,7 @@ cpu_t* smp_cpu(cpuid_t id) PURE_FUNC;
  * @brief Returns a pointer to the cpu_t structure of the current CPU.
  *
  * This function is unsafe because it does not disable interrupts, so it must be called with interrupts disabled.
- * It is useful in low-level code where disabling interrupts is necessary anyway, for example in trap handlers.
+ * It is useful in low-level code where disabling interrupts is necessary anyway, for example in interrupt handlers.
  *
  * @return A pointer to the current CPU.
  */
@@ -65,7 +65,7 @@ cpu_t* smp_self_unsafe(void) PURE_FUNC;
 /**
  * @brief Returns a pointer to the cpu_t structure of the current CPU.
  *
- * This function is safe because it disables interrupts using `cli_push()`, but it is less efficient than
+ * This function is safe because it disables interrupts using `interrupt_disable()`, but it is less efficient than
  * smp_self_unsafe(). It is important to always call `smp_put()` after using this function to re-enable interrupts.
  *
  * @return A pointer to the current CPU.

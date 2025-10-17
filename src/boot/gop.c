@@ -47,7 +47,7 @@ EFI_STATUS gop_buffer_init(boot_gop_t* buffer)
     gop_select_mode(gop, GOP_WIDTH, GOP_HEIGHT);
 #endif
     buffer->physAddr = (uint32_t*)gop->Mode->FrameBufferBase;
-    buffer->virtAddr = PML_LOWER_TO_HIGHER(buffer->physAddr);
+    buffer->virtAddr = (uint32_t*)PML_LOWER_TO_HIGHER(gop->Mode->FrameBufferBase);
     buffer->size = gop->Mode->FrameBufferSize;
     buffer->width = gop->Mode->Info->HorizontalResolution;
     buffer->height = gop->Mode->Info->VerticalResolution;

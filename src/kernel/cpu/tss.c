@@ -4,17 +4,18 @@
 
 void tss_init(tss_t* tss)
 {
+    tss->reserved1 = 0;
     tss->rsp0 = 0;
     tss->rsp1 = 0;
     tss->rsp2 = 0;
+    tss->reserved2 = 0;
+    for (int i = 0; i < 7; i++)
+    {
+        tss->ist[i] = 0;
+    }
+    tss->reserved3 = 0;
+    tss->reserved4 = 0;
     tss->iopb = sizeof(tss_t);
-}
-
-void tss_kernel_stack_load(tss_t* tss, stack_pointer_t* stack)
-{
-    tss->rsp0 = stack->top;
-    tss->rsp1 = stack->top;
-    tss->rsp2 = stack->top;
 }
 
 void tss_ist_load(tss_t* tss, tss_ist_t ist, stack_pointer_t* stack)

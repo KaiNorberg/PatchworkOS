@@ -1,6 +1,6 @@
 [bits 64]
 
-%include "cpu/trap.inc"
+%include "cpu/interrupt.inc"
 
 %macro VECTOR_NAME 1
     dq vector_%1
@@ -19,18 +19,18 @@ vector_%1:
     jmp vector_common
 %endmacro
 
-extern trap_handler
+extern interrupt_handler
 
 section .text
 
 vector_common:
-    TRAP_FRAME_REGS_PUSH
+    INTERRUPT_FRAME_REGS_PUSH
 
     mov rbp, rsp
     mov rdi, rsp
-    call trap_handler
+    call interrupt_handler
 
-    TRAP_FRAME_POP_AND_JUMP
+    INTERRUPT_FRAME_POP_AND_JUMP
 
 VECTOR_NO_ERR 0
 VECTOR_NO_ERR 1

@@ -66,11 +66,11 @@ static bool pmm_is_efi_mem_available(EFI_MEMORY_TYPE type)
 
 static void pmm_free_unlocked(void* address)
 {
-    if (address >= PML_LOWER_TO_HIGHER(CONFIG_PMM_BITMAP_MAX_ADDR))
+    if (address >= (void*)PML_LOWER_TO_HIGHER(CONFIG_PMM_BITMAP_MAX_ADDR))
     {
         pmm_stack_free(&stack, address);
     }
-    else if (address >= PML_LOWER_TO_HIGHER(0))
+    else if (address >= (void*)PML_LOWER_TO_HIGHER(0))
     {
         pmm_bitmap_free(&bitmap, address, 1);
     }
@@ -84,8 +84,8 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
 {
     address = (void*)ROUND_DOWN(address, PAGE_SIZE);
 
-    uint64_t physStart = (uint64_t)PML_HIGHER_TO_LOWER(address);
-    uint64_t physEnd = physStart + count * PAGE_SIZE;
+    uintptr_t physStart = PML_HIGHER_TO_LOWER(address);
+    uintptr_t physEnd = physStart + count * PAGE_SIZE;
 
     if (physEnd <= CONFIG_PMM_BITMAP_MAX_ADDR)
     {
@@ -96,17 +96,17 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
         uint64_t bitmapPageCount = (CONFIG_PMM_BITMAP_MAX_ADDR - physStart) / PAGE_SIZE;
         pmm_bitmap_free(&bitmap, address, bitmapPageCount);
 
-        void* stackAddr = PML_LOWER_TO_HIGHER(CONFIG_PMM_BITMAP_MAX_ADDR);
+        uintptr_t stackAddr = PML_LOWER_TO_HIGHER(CONFIG_PMM_BITMAP_MAX_ADDR);
         for (uint64_t i = 0; i < count - bitmapPageCount; i++)
         {
-            pmm_stack_free(&stack, (void*)((uint64_t)stackAddr + i * PAGE_SIZE));
+            pmm_stack_free(&stack, (void*)(stackAddr + i * PAGE_SIZE));
         }
     }
     else
     {
         for (uint64_t i = 0; i < count; i++)
         {
-            pmm_stack_free(&stack, (void*)((uint64_t)address + i * PAGE_SIZE));
+            pmm_stack_free(&stack, (void*)((uintptr_t)address + i * PAGE_SIZE));
         }
     }
 }

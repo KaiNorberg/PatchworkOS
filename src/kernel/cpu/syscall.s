@@ -1,6 +1,6 @@
 [bits 64]
 
-%include "cpu/trap.inc"
+%include "cpu/interrupt.inc"
 
 extern syscall_handler
 
@@ -8,7 +8,7 @@ section .text
 
 [bits 64]
 
-%include "cpu/trap.inc"
+%include "cpu/interrupt.inc"
 
 extern syscall_handler
 
@@ -31,8 +31,14 @@ syscall_entry:
     mov [gs:0x8], rsp
     mov rsp, [gs:0x0]
 
-    push rcx ; user rip
-    push r11 ; user rflags
+    push rdi
+    push rsi
+    push rdx
+    push rcx
+    push r8
+    push r9
+    push r10
+    push r11
     sti
 
     mov rcx, r10 ; Fourth argument
@@ -42,7 +48,13 @@ syscall_entry:
 
     cli
     pop r11
+    pop r10
+    pop r9
+    pop r8
     pop rcx
+    pop rdx
+    pop rsi
+    pop rdi
 
     mov rsp, [gs:0x8]
     swapgs

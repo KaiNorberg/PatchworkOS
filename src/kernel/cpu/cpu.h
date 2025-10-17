@@ -1,10 +1,10 @@
 #pragma once
 
 #include "config.h"
+#include "interrupt.h"
 #include "sched/sched.h"
 #include "sched/timer.h"
 #include "sched/wait.h"
-#include "trap.h"
 #include "tss.h"
 #include "utils/statistics.h"
 
@@ -38,22 +38,25 @@ typedef uint16_t cpuid_t;
  * @struct cpu_t
  *
  * We allocate the stack buffers inside the `cpu_t` structure to avoid memory allocation during early boot.
+ *
+ * Must be stored aligned to a page boundary.
  */
 typedef struct cpu
 {
     cpuid_t id;
     uint8_t lapicId;
-    uint32_t trapDepth;
     tss_t tss;
-    cli_ctx_t cli;
+    interrupt_ctx_t interrupt;
     statistics_cpu_ctx_t stat;
-    stack_pointer_t exceptionStack;
-    stack_pointer_t doubleFaultStack;
     timer_ctx_t timer;
     wait_cpu_ctx_t wait;
     sched_cpu_ctx_t sched;
-    uint8_t exceptionStackBuffer[CONFIG_EXCEPTION_STACK_PAGES * PAGE_SIZE] ALIGNED(PAGE_SIZE);
-    uint8_t doubleFaultStackBuffer[CONFIG_EXCEPTION_STACK_PAGES * PAGE_SIZE] ALIGNED(PAGE_SIZE);
+    stack_pointer_t exceptionStack;
+    stack_pointer_t doubleFaultStack;
+    stack_pointer_t interruptStack;
+    uint8_t exceptionStackBuffer[CONFIG_INTERRUPT_STACK_PAGES * PAGE_SIZE] ALIGNED(PAGE_SIZE);
+    uint8_t doubleFaultStackBuffer[CONFIG_INTERRUPT_STACK_PAGES * PAGE_SIZE] ALIGNED(PAGE_SIZE);
+    uint8_t interruptStackBuffer[CONFIG_INTERRUPT_STACK_PAGES * PAGE_SIZE] ALIGNED(PAGE_SIZE);
 } cpu_t;
 
 /**

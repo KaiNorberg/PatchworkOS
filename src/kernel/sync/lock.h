@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cpu/trap.h"
+#include "cpu/interrupt.h"
 
 #ifndef NDEBUG
 #include "log/panic.h"
@@ -22,6 +22,11 @@
  * This is only used in debug builds.
  */
 #define LOCK_DEADLOCK_ITERATIONS 100000000
+
+/**
+ * @brief Lock canary value to detect memory corruption.
+ */
+#define LOCK_CANARY 0xDEADBEEF
 
 /**
  * @brief A simple ticket lock implementation.
@@ -75,7 +80,7 @@ static inline void lock_init(lock_t* lock)
     atomic_init(&lock->nextTicket, 0);
     atomic_init(&lock->nowServing, 0);
 #ifndef NDEBUG
-    lock->canary = 0xDEADBEEF;
+    lock->canary = LOCK_CANARY;
 #endif
 }
 
@@ -89,12 +94,12 @@ static inline void lock_init(lock_t* lock)
  */
 static inline void lock_acquire(lock_t* lock)
 {
-    cli_push();
+    interrupt_disable();
 
 #ifndef NDEBUG
-    if (lock->canary != 0xDEADBEEF)
+    if (lock->canary != LOCK_CANARY)
     {
-        cli_pop();
+        interrupt_enable();
         panic(NULL, "Lock canary corrupted");
     }
     uint64_t iterations = 0;
@@ -108,7 +113,7 @@ static inline void lock_acquire(lock_t* lock)
 #ifndef NDEBUG
         if (++iterations >= LOCK_DEADLOCK_ITERATIONS)
         {
-            cli_pop();
+            interrupt_enable();
             panic(NULL,
                 "Deadlock in lock_acquire detected after %llu iterations (ticket=%u, nowServing=%u, nextTicket=%u)",
                 iterations, ticket, atomic_load_explicit(&lock->nowServing, memory_order_relaxed),
@@ -128,14 +133,14 @@ static inline void lock_acquire(lock_t* lock)
 static inline void lock_release(lock_t* lock)
 {
 #ifndef NDEBUG
-    if (lock->canary != 0xDEADBEEF)
+    if (lock->canary != LOCK_CANARY)
     {
         panic(NULL, "Lock canary corrupted");
     }
 #endif
 
     atomic_fetch_add_explicit(&lock->nowServing, 1, memory_order_release);
-    cli_pop();
+    interrupt_enable();
 }
 
 static inline void lock_cleanup(lock_t** lock)

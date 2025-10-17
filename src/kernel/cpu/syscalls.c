@@ -68,7 +68,8 @@ const syscall_descriptor_t* syscall_get_descriptor(uint64_t number)
     return &_syscallTableStart[number];
 }
 
-uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx, uint64_t r8, uint64_t r9, uint64_t number)
+uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx, uint64_t r8, uint64_t r9,
+    uint64_t number)
 {
     const syscall_descriptor_t* desc = syscall_get_descriptor(number);
     if (desc == NULL)
@@ -86,8 +87,6 @@ uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx,
     uint64_t result = handler(rdi, rsi, rdx, rcx, r8, r9);
 
     thread->syscall.inSyscall = false;
-    note_dispatch_invoke();
-
     return result;
 }
 
@@ -111,7 +110,7 @@ bool syscall_is_pointer_valid(const void* pointer, uint64_t length)
         return false;
     }
 
-    if (end > PML_LOWER_HALF_END || (uintptr_t)start < PML_LOWER_HALF_START)
+    if (end > VMM_USER_SPACE_MAX || start < VMM_USER_SPACE_MIN)
     {
         return false;
     }

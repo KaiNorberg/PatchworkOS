@@ -6,7 +6,7 @@
 
 static cache_t* cache_new(slab_t* slab, uint64_t objectSize, uint64_t size)
 {
-    cache_t* cache = vmm_alloc(NULL, NULL, size, PML_WRITE | PML_INHERIT | PML_GLOBAL | PML_PRESENT);
+    cache_t* cache = vmm_alloc(NULL, NULL, size, PML_WRITE | PML_GLOBAL | PML_PRESENT);
     if (cache == NULL)
     {
         return NULL;

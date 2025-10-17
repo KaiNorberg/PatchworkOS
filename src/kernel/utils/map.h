@@ -7,8 +7,8 @@
 #include <sys/io.h>
 
 /**
- * @brief Hash map
- * @defgroup kernel_utils_map Map
+ * @brief Hash Map
+ * @defgroup kernel_utils_map Hash Map
  * @ingroup kernel_utils
  *
  * @{

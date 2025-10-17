@@ -105,8 +105,8 @@ static char** loader_setup_argv(thread_t* thread)
         return NULL;
     }
 
-    char** argv = memcpy((void*)(thread->userStack.top - sizeof(uint64_t) - thread->process->argv.size), thread->process->argv.buffer,
-        thread->process->argv.size);
+    char** argv = memcpy((void*)(thread->userStack.top - sizeof(uint64_t) - thread->process->argv.size),
+        thread->process->argv.buffer, thread->process->argv.size);
 
     for (uint64_t i = 0; i < thread->process->argv.amount; i++)
     {
@@ -135,17 +135,17 @@ static void loader_process_entry(void)
     // Disable interrupts, they will be enabled by the IRETQ instruction.
     asm volatile("cli");
 
-    memset(&thread->trapFrame, 0, sizeof(trap_frame_t));
-    thread->trapFrame.rdi = thread->process->argv.amount;
-    thread->trapFrame.rsi = (uintptr_t)argv;
-    thread->trapFrame.rsp = (uintptr_t)ROUND_DOWN((uint64_t)argv - 1, 16);
-    thread->trapFrame.rip = (uintptr_t)rip;
-    thread->trapFrame.cs = GDT_CS_RING3;
-    thread->trapFrame.ss = GDT_SS_RING3;
-    thread->trapFrame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+    memset(&thread->frame, 0, sizeof(interrupt_frame_t));
+    thread->frame.rdi = thread->process->argv.amount;
+    thread->frame.rsi = (uintptr_t)argv;
+    thread->frame.rsp = (uintptr_t)ROUND_DOWN((uint64_t)argv - 1, 16);
+    thread->frame.rip = (uintptr_t)rip;
+    thread->frame.cs = GDT_CS_RING3;
+    thread->frame.ss = GDT_SS_RING3;
+    thread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
 
     LOG_DEBUG("jump to user space path=%s pid=%d rsp=%p rip=%p\n", thread->process->argv.buffer[0], thread->process->id,
-        (void*)thread->trapFrame.rsp, (void*)thread->trapFrame.rip);
+        (void*)thread->frame.rsp, (void*)thread->frame.rip);
     loader_jump_to_user_space(thread);
 }
 
@@ -190,11 +190,11 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
         return NULL;
     }
 
-    childThread->trapFrame.rip = (uintptr_t)loader_process_entry;
-    childThread->trapFrame.rsp = childThread->kernelStack.top;
-    childThread->trapFrame.cs = GDT_CS_RING0;
-    childThread->trapFrame.ss = GDT_SS_RING0;
-    childThread->trapFrame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+    childThread->frame.rip = (uintptr_t)loader_process_entry;
+    childThread->frame.rsp = childThread->kernelStack.top;
+    childThread->frame.cs = GDT_CS_RING0;
+    childThread->frame.ss = GDT_SS_RING0;
+    childThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
 
     LOG_INFO("spawn path=%s pid=%d\n", argv[0], child->id);
     return childThread;
@@ -208,12 +208,12 @@ thread_t* loader_thread_create(process_t* parent, void* entry, void* arg)
         return NULL;
     }
 
-    child->trapFrame.rip = (uint64_t)entry;
-    child->trapFrame.rsp = child->userStack.top;
-    child->trapFrame.rdi = (uint64_t)arg;
-    child->trapFrame.cs = GDT_CS_RING3;
-    child->trapFrame.ss = GDT_SS_RING3;
-    child->trapFrame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+    child->frame.rip = (uint64_t)entry;
+    child->frame.rsp = child->userStack.top;
+    child->frame.rdi = (uint64_t)arg;
+    child->frame.cs = GDT_CS_RING3;
+    child->frame.ss = GDT_SS_RING3;
+    child->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
     return child;
 }
 

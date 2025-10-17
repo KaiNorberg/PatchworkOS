@@ -29,9 +29,8 @@ static void* aml_ensure_mem_is_mapped(uint64_t address, aml_bit_size_t accessSiz
     for (uint64_t page = 0; page < (crossesBoundary ? 2 : 1); page++)
     {
         void* physAddr = (void*)((uintptr_t)address + page * PAGE_SIZE);
-        void* virtAddt = PML_LOWER_TO_HIGHER(physAddr);
-        if (vmm_map(NULL, virtAddt, physAddr, PAGE_SIZE, PML_GLOBAL | PML_INHERIT | PML_WRITE | PML_PRESENT, NULL,
-                NULL) == NULL)
+        void* virtAddt = (void*)PML_LOWER_TO_HIGHER(physAddr);
+        if (vmm_map(NULL, virtAddt, physAddr, PAGE_SIZE, PML_GLOBAL | PML_WRITE | PML_PRESENT, NULL, NULL) == NULL)
         {
             LOG_ERR("failed to map physical address %p for opregion access\n", physAddr);
             errno = EIO;
@@ -39,17 +38,17 @@ static void* aml_ensure_mem_is_mapped(uint64_t address, aml_bit_size_t accessSiz
         }
     }
 
-    return PML_LOWER_TO_HIGHER((void*)address);
+    return (void*)PML_LOWER_TO_HIGHER(address);
 }
 
-static uint64_t aml_system_mem_read(aml_state_t* state, aml_opregion_obj_t* opregion, uint64_t address,
+static uint64_t aml_system_mem_read(aml_state_t* state, aml_opregion_obj_t* opregion, uintptr_t address,
     aml_bit_size_t accessSize, uint64_t* out)
 {
     (void)state;
     (void)opregion;
 
     void* virtAddr = NULL;
-    if (address >= PML_LOWER_HALF_START)
+    if (address >= VMM_IDENTITY_MAPPED_MIN)
     {
         virtAddr = (void*)address;
     }
@@ -91,7 +90,7 @@ static uint64_t aml_system_mem_write(aml_state_t* state, aml_opregion_obj_t* opr
     (void)opregion;
 
     void* virtAddr = NULL;
-    if (address >= PML_LOWER_HALF_START)
+    if (address >= VMM_IDENTITY_MAPPED_MIN)
     {
         virtAddr = (void*)address;
     }

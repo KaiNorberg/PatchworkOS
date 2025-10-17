@@ -25,6 +25,7 @@ uint64_t stack_pointer_init(stack_pointer_t* stack, uintptr_t maxAddress, uint64
         errno = EOVERFLOW;
         return ERR;
     }
+    stack->lastPageFault = 0;
 
     return 0;
 }
@@ -39,9 +40,15 @@ uint64_t stack_pointer_init_buffer(stack_pointer_t* stack, void* buffer, uint64_
 
     stack->top = (uintptr_t)buffer + pages * PAGE_SIZE;
     stack->bottom = (uintptr_t)buffer;
+    if (stack->bottom >= stack->top) // Overflow
+    {
+        errno = EOVERFLOW;
+        return ERR;
+    }
     // No guard pages when using a buffer.
     stack->guardTop = stack->bottom;
     stack->guardBottom = stack->bottom;
+    stack->lastPageFault = 0;
 
     memset(buffer, 0, pages * PAGE_SIZE);
 
@@ -61,6 +68,7 @@ void stack_pointer_deinit(stack_pointer_t* stack, thread_t* thread)
     stack->bottom = 0;
     stack->guardTop = 0;
     stack->guardBottom = 0;
+    stack->lastPageFault = 0;
 }
 
 void stack_pointer_deinit_buffer(stack_pointer_t* stack)
@@ -74,6 +82,7 @@ void stack_pointer_deinit_buffer(stack_pointer_t* stack)
     stack->bottom = 0;
     stack->guardTop = 0;
     stack->guardBottom = 0;
+    stack->lastPageFault = 0;
 }
 
 uint64_t stack_pointer_handle_page_fault(stack_pointer_t* stack, thread_t* thread, uintptr_t faultAddr,
@@ -85,8 +94,16 @@ uint64_t stack_pointer_handle_page_fault(stack_pointer_t* stack, thread_t* threa
         return ERR;
     }
 
+    if (faultAddr > PML_LOWER_HALF_END && faultAddr < PML_HIGHER_HALF_START)
+    {
+        LOG_ERR("Stack page fault at non-canonical address %p\n", (void*)faultAddr);
+        errno = EFAULT;
+        return ERR;
+    }
+
     if (faultAddr >= stack->guardBottom && faultAddr < stack->guardTop)
     {
+        LOG_ERR("Stack overflow detected at address %p\n", (void*)faultAddr);
         errno = EFAULT;
         return ERR;
     }
@@ -98,9 +115,16 @@ uint64_t stack_pointer_handle_page_fault(stack_pointer_t* stack, thread_t* threa
     }
 
     uintptr_t pageAlignedAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
+    if (stack->lastPageFault == pageAlignedAddr)
+    {
+        LOG_ERR("Stack page fault loop detected at address %p\n", (void*)faultAddr);
+        errno = EFAULT;
+        return ERR;
+    }
+    stack->lastPageFault = pageAlignedAddr;
+
     if (vmm_alloc(&thread->process->space, (void*)pageAlignedAddr, PAGE_SIZE, flags) == NULL)
     {
-        LOG_ERR("Failed to allocate page for stack at %p\n", (void*)pageAlignedAddr);
         errno = ENOMEM;
         return ERR;
     }

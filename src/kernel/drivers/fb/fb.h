@@ -5,6 +5,7 @@
 #include <sys/proc.h>
 
 #include "fs/sysfs.h"
+#include "mem/vmm.h"
 
 typedef struct fb fb_t;
 

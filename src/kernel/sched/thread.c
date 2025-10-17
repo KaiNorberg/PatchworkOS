@@ -40,15 +40,13 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
     atomic_init(&thread->state, THREAD_PARKED);
     thread->error = 0;
     if (stack_pointer_init(&thread->kernelStack,
-            PML_HIGHER_HALF_END - thread_id_to_offset(thread->id, CONFIG_MAX_KERNEL_STACK_PAGES),
+            VMM_KERNEL_STACKS_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_KERNEL_STACK_PAGES),
             CONFIG_MAX_KERNEL_STACK_PAGES) == ERR)
     {
         return ERR;
     }
-    vmm_alloc(&thread->process->space, (void*)thread->kernelStack.bottom, CONFIG_MAX_KERNEL_STACK_PAGES * PAGE_SIZE,
-        PML_WRITE | PML_PRESENT);
     if (stack_pointer_init(&thread->userStack,
-            PML_LOWER_HALF_END - thread_id_to_offset(thread->id, CONFIG_MAX_USER_STACK_PAGES),
+            VMM_USER_SPACE_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_USER_STACK_PAGES),
             CONFIG_MAX_USER_STACK_PAGES) == ERR)
     {
         return ERR;
@@ -60,7 +58,7 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
     }
     note_queue_init(&thread->notes);
     syscall_ctx_init(&thread->syscall, &thread->kernelStack);
-    memset(&thread->trapFrame, 0, sizeof(trap_frame_t));
+    memset(&thread->frame, 0, sizeof(interrupt_frame_t));
 
     list_push(&process->threads.aliveThreads, &thread->processEntry);
     LOG_DEBUG("created tid=%d pid=%d\n", thread->id, process->id);
@@ -98,6 +96,9 @@ void thread_free(thread_t* thread)
     lock_acquire(&process->threads.lock);
     list_remove(&process->threads.zombieThreads, &thread->processEntry);
 
+    // Must happen before the process is potentially freed.
+    stack_pointer_deinit(&thread->kernelStack, thread);
+
     if (list_is_empty(&process->threads.aliveThreads) && list_is_empty(&process->threads.zombieThreads))
     {
         lock_release(&process->threads.lock);
@@ -109,8 +110,6 @@ void thread_free(thread_t* thread)
     }
 
     simd_ctx_deinit(&thread->simd);
-
-    stack_pointer_deinit(&thread->kernelStack, thread);
     heap_free(thread);
 }
 
@@ -141,27 +140,24 @@ void thread_kill(thread_t* thread)
     }
 }
 
-void thread_save(thread_t* thread, const trap_frame_t* trapFrame)
+void thread_save(thread_t* thread, const interrupt_frame_t* frame)
 {
     simd_ctx_save(&thread->simd);
-    thread->trapFrame = *trapFrame;
+    thread->frame = *frame;
 }
 
-void thread_load(thread_t* thread, trap_frame_t* trapFrame)
+void thread_load(thread_t* thread, interrupt_frame_t* frame)
 {
-    cpu_t* self = smp_self_unsafe();
-
-    *trapFrame = thread->trapFrame;
+    *frame = thread->frame;
 
     space_load(&thread->process->space);
-    tss_kernel_stack_load(&self->tss, &thread->kernelStack);
     simd_ctx_load(&thread->simd);
     syscall_ctx_load(&thread->syscall);
 }
 
-void thread_get_trap_frame(thread_t* thread, trap_frame_t* trapFrame)
+void thread_get_interrupt_frame(thread_t* thread, interrupt_frame_t* frame)
 {
-    *trapFrame = thread->trapFrame;
+    *frame = thread->frame;
 }
 
 bool thread_is_note_pending(thread_t* thread)
@@ -210,11 +206,11 @@ thread_t* thread_get_boot(void)
             panic(NULL, "Failed to initialize boot thread");
         }
 
-        bootThread.trapFrame.rip = (uintptr_t)kmain;
-        bootThread.trapFrame.rsp = bootThread.kernelStack.top;
-        bootThread.trapFrame.cs = GDT_CS_RING0;
-        bootThread.trapFrame.ss = GDT_SS_RING0;
-        bootThread.trapFrame.rflags = RFLAGS_ALWAYS_SET;
+        bootThread.frame.rip = (uintptr_t)kmain;
+        bootThread.frame.rsp = bootThread.kernelStack.top;
+        bootThread.frame.cs = GDT_CS_RING0;
+        bootThread.frame.ss = GDT_SS_RING0;
+        bootThread.frame.rflags = RFLAGS_ALWAYS_SET;
 
         LOG_INFO("boot thread initialized with pid=%d tid=%d\n", bootThread.process->id, bootThread.id);
         bootThreadInitalized = true;
@@ -222,7 +218,7 @@ thread_t* thread_get_boot(void)
     return &bootThread;
 }
 
-uint64_t thread_handle_page_fault(const trap_frame_t* trapFrame)
+uint64_t thread_handle_page_fault(const interrupt_frame_t* frame)
 {
     thread_t* thread = sched_thread();
     if (thread == NULL)
@@ -231,13 +227,13 @@ uint64_t thread_handle_page_fault(const trap_frame_t* trapFrame)
     }
     uintptr_t faultAddr = (uintptr_t)cr2_read();
 
-    if (trapFrame->errorCode & PAGE_FAULT_PRESENT)
+    if (frame->errorCode & PAGE_FAULT_PRESENT)
     {
         errno = EFAULT;
         return ERR;
     }
 
-    if (TRAP_FRAME_IN_USER_SPACE(trapFrame))
+    if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
     {
         if (stack_pointer_handle_page_fault(&thread->userStack, thread, faultAddr,
                 PML_WRITE | PML_USER | PML_PRESENT) == ERR)
