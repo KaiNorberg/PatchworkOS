@@ -1,8 +1,8 @@
 #include "argv.h"
 
 #include "mem/heap.h"
+#include "config.h"
 
-#include <stdlib.h>
 #include <string.h>
 #include <sys/io.h>
 
@@ -19,9 +19,14 @@ uint64_t argv_init(argv_t* argv, const char** src)
     }
 
     uint64_t argc = 0;
-    while (src[argc] != NULL)
+    while (src[argc] != NULL && argc < CONFIG_MAX_ARGC)
     {
         argc++;
+    }
+
+    if (argc == CONFIG_MAX_ARGC)
+    {
+        return ERR;
     }
 
     uint64_t size = sizeof(const char*) * (argc + 1);

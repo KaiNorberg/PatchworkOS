@@ -1,7 +1,9 @@
 #pragma once
 
-#include "sync/rwmutex.h"
+#include "sched/wait.h"
+#include "sync/lock.h"
 #include "utils/bitmap.h"
+#include "fs/path.h"
 
 #include <boot/boot_info.h>
 #include <common/paging_types.h>
@@ -59,6 +61,7 @@ typedef struct
 typedef struct space
 {
     page_table_t pageTable; ///< The page table associated with the address space.
+    uintptr_t startAddress; ///< The start address for allocations in this address space.
     uintptr_t endAddress;   ///< The end address for allocations in this address space.
     uintptr_t freeAddress;  ///< The next available free virtual address in this address space.
     space_flags_t flags;    ///< Flags for the address space.
@@ -71,15 +74,8 @@ typedef struct space
      * Buffer for the callback bitmap, see `bitmap_t` for more info.
      */
     uint64_t bitmapBuffer[BITMAP_BITS_TO_QWORDS(PML_MAX_CALLBACK)];
-    /**
-     * Lock to protect this structure and its mappings.
-     *
-     * Should be acquired in system calls that take in pointers to user space, to prevent TOCTOU attacks.
-     *
-     * TODO: Using a lock for this really is not ideal for performance, but we cant use a mutex becouse we need to be
-     * able to map memory during exceptions, so there is a need for a more sophisticated solution here.
-     */
-    rwmutex_t mutex;
+    wait_queue_t pinWaitQueue; ///< Wait queue for pinning operations.
+    lock_t lock;               ///< Lock that protects the structure but not its mappings.
 } space_t;
 
 /**
@@ -108,6 +104,107 @@ void space_deinit(space_t* space);
 void space_load(space_t* space);
 
 /**
+ * @brief Pins pages within a region of the address space.
+ *
+ * Used to prevent TOCTOU attacks, where a system call provides some user space region, the kernel then checks that its
+ * mapped and after that check a seperate thread in the user space process unmaps or modifies that regions mappings
+ * while the kernel is still using it.
+ *
+ * Our solution is to pin any user space pages that are accessed or modified during the syscall, meaning that a special
+ * flag is set in the address spaces page tables that prevent those pages from being unmapped or modified until they are
+ * unpinned which happens when the syscall is finished in `space_unpin()`.
+ *
+ * If the region is not fully mapped, or the region is not within the spaces `startAddress` and `endAddress` range, the
+ * function will fail.
+ *
+ * TODO: If the region is already pinned the function will block until it is unpinned. This is not ideal and a better
+ * solution should be found.
+ *
+ * @param space The target address space.
+ * @param address The address to pin, can be `NULL` if length is 0.
+ * @param length The length of the region pointed to by `address`, in bytes.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t space_pin(space_t* space, const void* address, uint64_t length);
+
+/**
+ * @brief Pins a region of memory terminated by a terminator value.
+ *
+ * Pins pages in the address space starting from `address` up to `maxSize` bytes or until the specified
+ * terminator is found.
+ *
+ * Used for null-terminated strings or other buffers that have a specific terminator.
+ *
+ * @param space The target address space.
+ * @param address The starting address of the region to pin.
+ * @param terminator The terminator value to search for.
+ * @param objectSize The size of each object to compare against the terminator, in bytes.
+ * @param maxCount The maximum number of objects to scan before failing.
+ * @return On success, the number of bytes pinned, not including the terminator. On failure, `ERR` and `errno` is set.
+ */
+uint64_t space_pin_terminated(space_t* space, const void* address, const void* terminator, uint8_t objectSize, uint64_t maxCount);
+
+/**
+ * @brief Unpins pages in a region previously pinned with `space_pin()` or `space_pin_string()`.
+ *
+ * Will wake up any threads waiting to pin the same pages.
+ *
+ * @param space The target address space.
+ * @param address The address of the region to unpin, can be `NULL` if length is 0.
+ * @param length The length of the region pointed to by `address`, in bytes.
+ */
+void space_unpin(space_t* space, const void* address, uint64_t length);
+
+/**
+ * @brief Safely pins the source buffer, copies data from it, and then unpins it.
+ *
+ * @param space The target address space.
+ * @param dest The destination buffer to copy data to.
+ * @param src The source buffer to copy data from.
+ * @param length The length of data to copy, in bytes.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t space_safe_copy_from(space_t* space, void* dest, const void* src, uint64_t length);
+
+/**
+ * @brief Safely pins the destination buffer, copies data to it, and then unpins it.
+ *
+ * @param space The target address space.
+ * @param dest The destination buffer to copy data to.
+ * @param src The source buffer to copy data from.
+ * @param length The length of data to copy, in bytes.
+ * @return On success, 0 On failure, `ERR` and `errno` is set.
+ */
+uint64_t space_safe_copy_to(space_t* space, void* dest, const void* src, uint64_t length);
+
+/**
+ * @brief Safely initializes a pathname by pinning the path string as its initialized.
+ *
+ * Pins the path string, initializes the pathname, and then unpins the string.
+ *
+ * @param space The target address space.
+ * @param pathname The pathname to initialize.
+ * @param path The path string.
+ * @param maxLength The maximum length of the path string, including the NULL-terminator.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t space_safe_pathname_init(space_t* space, pathname_t* pathname, const char* path, uint64_t maxLength);
+
+/**
+ * @brief Checks if a virtual memory region is within the allowed address range of the space.
+ *
+ * Checks that the given memory region is within the `startAddress` and `endAddress` range of the space, really only
+ * used in system calls that might access unmapped user space memory for example `mmap()`, in such cases we dont want to
+ * pin the "buffer" since we expect that it is not yet mapped.
+ *
+ * @param space The target address space.
+ * @param addr The starting address of the memory region, can be `NULL` if length is 0.
+ * @param length The length of the memory region, in bytes.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t space_check_access(space_t* space, const void* addr, uint64_t length);
+
+/**
  * @brief Helper structure for managing address space mappings.
  * @struct space_mapping_t
  */
@@ -129,9 +226,9 @@ typedef struct
  *
  * @param space The target address space.
  * @param mapping Will be filled with parsed information about the mapping.
- * @param virtAddr The desired virtual address. If `NULL`, the kernel chooses an available address.
+ * @param virtAddr The virtual address the mapping will apply to. Can be `NULL` to let the kernel choose an address.
  * @param physAddr The physical address to map from. Can be `NULL`.
- * @param length The length of the virtual memory region to allocate, in bytes.
+ * @param length The length of the virtual memory region to modify, in bytes.
  * @param flags The page table flags for the mapping.
  * @return On success, returns 0. On failure, returns `ERR`.
  */

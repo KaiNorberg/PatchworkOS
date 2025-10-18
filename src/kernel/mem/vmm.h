@@ -134,14 +134,6 @@ space_t* vmm_get_kernel_space(void);
 pml_flags_t vmm_prot_to_flags(prot_t prot);
 
 /**
- * @brief Aligns a virtual address and length to page boundaries.
- *
- * @param virtAddr The virtual address to align.
- * @param length The length of the memory region.
- */
-void vmm_align_region(void** virtAddr, uint64_t* length);
-
-/**
  * @brief Allocates and maps virtual memory in a given address space.
  *
  * Will overwrite any existing mappings in the specified range.

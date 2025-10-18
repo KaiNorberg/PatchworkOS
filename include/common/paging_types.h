@@ -20,6 +20,11 @@
  * the address in a page table entry. This makes the code more complex, but means we rely on fewer potentially incorrect
  * sources.
  *
+ * Note that most if not all of the paging functions will not check ahead of time if the operation will succeed, for
+ * example `page_table_map()` will not check that the target range is unmapped, if its not then the function will fail
+ * partway through and make a mess. Its simply best for performance and flexibility to have the caller ensure that the
+ * operation will succeed.
+ *
  * @see [OSDev Paging](https://wiki.osdev.org/Paging)
  *
  * @{
@@ -49,7 +54,14 @@ typedef struct
              * (Defined by PatchworkOS)
              */
             uint64_t owned : 1;
-            uint64_t available1 : 2; ///< Unused bits available for OS use.
+            /**
+             * If set, the page is pinned and cannot be unmapped or have its mappings modified.
+             *
+             * Used to prevent TOCTOU vulnerabilities by preventing a page from being unmapped or its mappings modified
+             * while its being used, in for example a system call. (Defined by PatchworkOS)
+             */
+            uint64_t pinned : 1;
+            uint64_t available : 1; ///< Available for use by the OS.
             uint64_t addr : 40; ///< The address contained in the entry, note that this is shifted right by 12 bits.
             /**
              * Check the virtual memory manager for more information. (Defined by PatchworkOS)
@@ -94,8 +106,8 @@ typedef enum
     PML_SIZE = (1ULL << 7),
     PML_GLOBAL = (1ULL << 8),
     PML_OWNED = (1ULL << 9),
-    PML_AVAILABLE1 = (1ULL << 10),
-    PML_AVAILABLE2 = (1ULL << 11),
+    PML_PINNED = (1ULL << 10),
+    PML_AVAILABLE = (1ULL << 11),
     PML_NO_EXECUTE = (1ULL << 63),
 } pml_flags_t;
 
@@ -104,7 +116,7 @@ typedef enum
  */
 #define PML_FLAGS_MASK \
     (PML_PRESENT | PML_WRITE | PML_USER | PML_WRITE_THROUGH | PML_CACHE_DISABLED | PML_ACCESSED | PML_DIRTY | \
-        PML_SIZE | PML_GLOBAL | PML_OWNED | PML_AVAILABLE1 | PML_AVAILABLE2 | PML_NO_EXECUTE)
+        PML_SIZE | PML_GLOBAL | PML_OWNED | PML_PINNED | PML_AVAILABLE | PML_NO_EXECUTE)
 
 /**
  * @brief Enums for the different page table levels.
@@ -282,7 +294,7 @@ typedef enum
 /**
  * @brief Special callback ID that indicates no callback is associated with the page.
  */
-#define PML_CALLBACK_NONE (1 << 7)
+#define PML_CALLBACK_NONE ((1 << 7) - 1)
 
 /**
  * @brief Callback ID type.

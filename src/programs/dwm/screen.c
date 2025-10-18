@@ -6,6 +6,7 @@
 #include <sys/fb.h>
 #include <sys/io.h>
 #include <sys/proc.h>
+#include <errno.h>
 
 static fb_info_t info;
 static void* frontbuffer;
@@ -19,10 +20,12 @@ static void frontbuffer_init(void)
     fd_t fb = open("/dev/fb0");
     if (fb == ERR)
     {
+        printf("dwm: failed to open framebuffer device (%s)\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
     if (ioctl(fb, IOCTL_FB_INFO, &info, sizeof(fb_info_t)) == ERR)
     {
+        printf("dwm: failed to get framebuffer info (%s)\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
 
@@ -33,6 +36,7 @@ static void frontbuffer_init(void)
         frontbuffer = mmap(fb, NULL, info.stride * info.height * sizeof(uint32_t), PROT_READ | PROT_WRITE);
         if (frontbuffer == NULL)
         {
+            printf("dwm: failed to map framebuffer memory (%s)\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
         memset(frontbuffer, 0, info.stride * info.height * sizeof(uint32_t));
@@ -40,6 +44,7 @@ static void frontbuffer_init(void)
     break;
     default:
     {
+        printf("dwm: unsupported framebuffer format\n");
         exit(EXIT_FAILURE);
     }
     }
@@ -52,6 +57,7 @@ static void backbuffer_init(void)
     backbuffer.buffer = malloc(info.stride * info.height * sizeof(pixel_t));
     if (backbuffer.buffer == NULL)
     {
+        printf("dwm: failed to allocate backbuffer memory\n");
         exit(EXIT_FAILURE);
     }
     backbuffer.width = info.width;
@@ -74,6 +80,7 @@ static void scanlines_init(void)
     scanlines = calloc(info.height, sizeof(scanline_t));
     if (scanlines == NULL)
     {
+        printf("dwm: failed to allocate scanlines memory\n");
         exit(EXIT_FAILURE);
     }
     scanlines_clear();
@@ -151,6 +158,7 @@ void screen_transfer_frontbuffer(surface_t* surface, const rect_t* rect)
     break;
     default:
     {
+        printf("dwm: unsupported framebuffer format\n");
         exit(EXIT_FAILURE);
     }
     }
@@ -179,6 +187,7 @@ void screen_swap(void)
     break;
     default:
     {
+        printf("dwm: unsupported framebuffer format\n");
         exit(EXIT_FAILURE);
     }
     }

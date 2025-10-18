@@ -4,6 +4,8 @@
 #include <sys/io.h>
 #include <sys/proc.h>
 #include <threads.h>
+#include <errno.h>
+#include <string.h>
 
 static void spawn_program(const char* path, priority_t priority)
 {
@@ -15,7 +17,7 @@ static void spawn_program(const char* path, priority_t priority)
     fd_t klog = open("/dev/klog");
     if (klog == ERR)
     {
-        printf("init: failed to open klog\n");
+        printf("init: failed to open klog (%s)\n", strerror(errno));
         return;
     }
 
@@ -28,12 +30,12 @@ static void spawn_program(const char* path, priority_t priority)
     spawn_attr_t attr = {.priority = priority};
     if (spawn(argv, fds, "/usr", &attr) == ERR)
     {
-        printf("init: failed to spawn program %s\n", path);
+        printf("init: failed to spawn program '%s' (%s)\n", path, strerror(errno));
     }
 
     if (close(klog) == ERR)
     {
-        printf("init: failed to close klog\n");
+        printf("init: failed to close klog (%s)\n", strerror(errno));
     }
 }
 
@@ -53,10 +55,16 @@ static void start_services(config_t* config)
     {
         const char* file = config_array_get_string(serviceFiles, i, "/");
 
+        clock_t start = uptime();
         stat_t info;
         while (stat(file, &info) == ERR)
         {
             thrd_yield();
+            if (uptime() - start > CLOCKS_PER_SEC)
+            {
+                printf("init: timeout waiting for service file '%s'\n", file);
+                exit(EXIT_FAILURE);
+            }
         }
     }
 }
@@ -81,17 +89,18 @@ static void execute_commands(config_t* config)
         const char* command = config_array_get_string(commands, i, NULL);
         if (system(command) != 0)
         {
-            printf("init: failed to execute command '%s'\n", command);
+            printf("init: failed to execute command '%s' (%s)\n", command, strerror(errno));
         }
     }
 }
 
 int main(void)
 {
+    printf("init: loading config file...\n");
     config_t* config = config_open("init", "main");
     if (config == NULL)
     {
-        printf("init: failed to open config file!\n");
+        printf("init: failed to open config file! (%s)\n", strerror(errno));
         return EXIT_FAILURE;
     }
 

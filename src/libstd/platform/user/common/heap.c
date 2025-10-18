@@ -13,11 +13,6 @@ static _heap_header_t* firstBlock;
 
 static fd_t zeroResource;
 
-static void* _heap_page_alloc(uint64_t amount)
-{
-    return mmap(zeroResource, NULL, amount * PAGE_SIZE, PROT_READ | PROT_WRITE);
-}
-
 void _heap_block_split(_heap_header_t* block, uint64_t size)
 {
     _heap_header_t* newBlock = (_heap_header_t*)((uint64_t)block + sizeof(_heap_header_t) + size);
@@ -34,7 +29,7 @@ _heap_header_t* _heap_block_new(uint64_t size)
 {
     uint64_t pageAmount = BYTES_TO_PAGES(size + sizeof(_heap_header_t));
 
-    _heap_header_t* newBlock = _heap_page_alloc(pageAmount);
+    _heap_header_t* newBlock = mmap(zeroResource, NULL, pageAmount * PAGE_SIZE, PROT_READ | PROT_WRITE);
     if (newBlock == NULL)
     {
         return NULL;

@@ -1,10 +1,7 @@
 #include "space.h"
 
-#include "cpu/syscalls.h"
 #include "mem/space.h"
 #include "pmm.h"
-#include "proc/process.h"
-#include "sync/rwmutex.h"
 #include "vmm.h"
 
 #include <common/paging.h>
@@ -72,13 +69,15 @@ uint64_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress
         }
     }
 
+    space->startAddress = startAddress;
     space->endAddress = endAddress;
     space->freeAddress = startAddress;
     space->flags = flags;
     memset(space->callbacks, 0, sizeof(space_callback_t) * PML_MAX_CALLBACK);
     bitmap_init(&space->callbackBitmap, space->bitmapBuffer, PML_MAX_CALLBACK);
     memset(space->bitmapBuffer, 0, BITMAP_BITS_TO_BYTES(PML_MAX_CALLBACK));
-    rwmutex_init(&space->mutex);
+    wait_queue_init(&space->pinWaitQueue);
+    lock_init(&space->lock);
 
     if (flags & SPACE_MAP_KERNEL_BINARY)
     {
@@ -126,8 +125,8 @@ void space_deinit(space_t* space)
         space_unmap_kernel_space_region(space, VMM_IDENTITY_MAPPED_MIN, VMM_IDENTITY_MAPPED_MAX);
     }
 
+    wait_queue_deinit(&space->pinWaitQueue);
     page_table_deinit(&space->pageTable);
-    rwmutex_deinit(&space->mutex);
 }
 
 void space_load(space_t* space)
@@ -138,6 +137,252 @@ void space_load(space_t* space)
     }
 
     page_table_load(&space->pageTable);
+}
+
+static void space_align_region(void** virtAddr, uint64_t* length)
+{
+    void* aligned = (void*)ROUND_DOWN(*virtAddr, PAGE_SIZE);
+    *length += ((uint64_t)*virtAddr - (uint64_t)aligned);
+    *virtAddr = aligned;
+}
+
+uint64_t space_pin(space_t* space, const void* buffer, uint64_t length)
+{
+    if (space == NULL || (buffer == NULL && length != 0))
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (length == 0)
+    {
+        return 0;
+    }
+
+    uintptr_t bufferOverflow = (uintptr_t)buffer + length;
+    if (bufferOverflow < (uintptr_t)buffer)
+    {
+        errno = EOVERFLOW;
+        return ERR;
+    }
+
+    LOCK_SCOPE(&space->lock);
+
+    space_align_region((void**)&buffer, &length);
+    uint64_t pageAmount = BYTES_TO_PAGES(length);
+
+    if (!page_table_is_mapped(&space->pageTable, buffer, pageAmount))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    if (WAIT_BLOCK_LOCK(&space->pinWaitQueue, &space->lock,
+            !page_table_is_pinned(&space->pageTable, buffer, pageAmount)) == ERR)
+    {
+        return ERR;
+    }
+
+    if (!page_table_is_mapped(&space->pageTable, buffer, pageAmount)) // Important recheck
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    if (page_table_pin(&space->pageTable, buffer, pageAmount) == ERR)
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t space_pin_terminated(space_t* space, const void* address, const void* terminator, uint8_t objectSize, uint64_t maxCount)
+{
+    if (space == NULL || address == NULL || terminator == NULL || objectSize == 0 || maxCount == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    LOCK_SCOPE(&space->lock);
+
+    uint64_t terminatorMatchedBytes = 0;
+    uintptr_t current = (uintptr_t)address;
+    uintptr_t end = (uintptr_t)address + (maxCount * objectSize);
+    uint64_t pinnedPages = 0;
+    while (current < end)
+    {
+        if (!page_table_is_mapped(&space->pageTable, (void*)current, 1))
+        {
+            errno = EFAULT;
+            goto error;
+        }
+
+        if (WAIT_BLOCK_LOCK(&space->pinWaitQueue, &space->lock,
+                !page_table_is_pinned(&space->pageTable, (void*)current, 1)) == ERR)
+        {
+            return ERR;
+        }
+
+        if (!page_table_is_mapped(&space->pageTable, (void*)current, 1)) // Important recheck
+        {
+            errno = EFAULT;
+            goto error;
+        }
+
+        if (page_table_pin(&space->pageTable, (void*)current, 1) == ERR)
+        {
+            errno = EFAULT;
+            goto error;
+        }
+        pinnedPages++;
+
+        // Scan ONLY the currently pinned page for the terminator.
+        uintptr_t scanEnd = MIN(ROUND_UP(current + 1, PAGE_SIZE), end);
+        for (uintptr_t scanAddr = current; scanAddr < scanEnd; scanAddr++)
+        {
+            // Terminator matched bytes will wrap around to the next page
+            if (*((uint8_t*)scanAddr) == ((uint8_t*)terminator)[terminatorMatchedBytes])
+            {
+                terminatorMatchedBytes++;
+                if (terminatorMatchedBytes == objectSize)
+                {
+                    return scanAddr - (uintptr_t)address + 1 - objectSize;
+                }
+            }
+            else
+            {
+                scanAddr += objectSize - terminatorMatchedBytes - 1; // Skip the rest of the object
+                terminatorMatchedBytes = 0;
+            }
+        }
+
+        current = scanEnd;
+    }
+
+error:
+    page_table_unpin(&space->pageTable, address, pinnedPages);
+    return ERR;
+}
+
+void space_unpin(space_t* space, const void* address, uint64_t length)
+{
+    if (space == NULL || (address == NULL && length != 0))
+    {
+        return;
+    }
+
+    if (length == 0)
+    {
+        return;
+    }
+
+    uintptr_t overflow = (uintptr_t)address + length;
+    if (overflow < (uintptr_t)address)
+    {
+        return;
+    }
+
+    LOCK_SCOPE(&space->lock);
+
+    space_align_region((void**)&address, &length);
+    uint64_t pageAmount = BYTES_TO_PAGES(length);
+
+    page_table_unpin(&space->pageTable, address, pageAmount);
+
+    //wait_unblock(&space->pinWaitQueue, WAIT_ALL, EOK);
+}
+
+uint64_t space_safe_copy_from(space_t* space, void* dest, const void* src, uint64_t length)
+{
+    if (space == NULL || dest == NULL || src == NULL || length == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (space_pin(space, src, length) == ERR)
+    {
+        return ERR;
+    }
+
+    memcpy(dest, src, length);
+    space_unpin(space, src, length);
+    return 0;
+}
+
+uint64_t space_safe_copy_to(space_t* space, void* dest, const void* src, uint64_t length)
+{
+    if (space == NULL || dest == NULL || src == NULL || length == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (space_pin(space, dest, length) == ERR)
+    {
+        return ERR;
+    }
+
+    memcpy(dest, src, length);
+    space_unpin(space, dest, length);
+    return 0;
+}
+
+uint64_t space_safe_pathname_init(space_t* space, pathname_t* pathname, const char* path, uint64_t maxLength)
+{
+    if (space == NULL || pathname == NULL || path == NULL || maxLength == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    char terminator = '\0';
+    uint64_t pathLength = space_pin_terminated(space, path, &terminator, sizeof(char), maxLength);
+    if (pathLength == ERR)
+    {
+        return ERR;
+    }
+
+    if (pathname_init(pathname, path) == ERR)
+    {
+        space_unpin(space, path, pathLength);
+        return ERR;
+    }
+
+    space_unpin(space, path, pathLength);
+    return 0;
+}
+
+uint64_t space_check_access(space_t* space, const void* addr, uint64_t length)
+{
+    if (space == NULL || (addr == NULL && length != 0))
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (length == 0)
+    {
+        return 0;
+    }
+
+    uintptr_t addrOverflow = (uintptr_t)addr + length;
+    if (addrOverflow < (uintptr_t)addr)
+    {
+        errno = EOVERFLOW;
+        return ERR;
+    }
+
+    if ((uintptr_t)addr < space->startAddress || addrOverflow > space->endAddress)
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    return 0;
 }
 
 static void* space_find_free_region(space_t* space, uint64_t pageAmount)
@@ -163,7 +408,7 @@ static void* space_find_free_region(space_t* space, uint64_t pageAmount)
 uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, uint64_t length,
     pml_flags_t flags)
 {
-    if (space == NULL || mapping == NULL || length == 0 || !(flags & PML_PRESENT))
+    if (space == NULL || mapping == NULL || length == 0)
     {
         errno = EINVAL;
         return ERR;
@@ -193,7 +438,7 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
         }
     }
 
-    rwmutex_write_acquire(&space->mutex);
+    lock_acquire(&space->lock);
 
     uint64_t pageAmount;
     if (virtAddr == NULL)
@@ -202,14 +447,14 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
         virtAddr = space_find_free_region(space, pageAmount);
         if (virtAddr == NULL)
         {
-            rwmutex_write_release(&space->mutex);
+            lock_release(&space->lock);
             errno = ENOMEM;
             return ERR;
         }
     }
     else
     {
-        vmm_align_region(&virtAddr, &length);
+        space_align_region(&virtAddr, &length);
         pageAmount = BYTES_TO_PAGES(length);
     }
 
@@ -223,9 +468,9 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
         mapping->physAddr = NULL;
     }
 
-    mapping->pageAmount = pageAmount;
     mapping->flags = flags;
-    return 0; // We return with the mutex still acquired.
+    mapping->pageAmount = pageAmount;
+    return 0; // We return with the lock still acquired.
 }
 
 pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, space_callback_func_t func, void* private)
@@ -277,19 +522,19 @@ void* space_mapping_end(space_t* space, space_mapping_t* mapping, errno_t err)
 
     if (err != EOK)
     {
-        rwmutex_write_release(&space->mutex); // Release the mutex from space_mapping_start.
+        lock_release(&space->lock); // Release the lock from space_mapping_start.
         errno = err;
         return NULL;
     }
 
     space_update_free_address(space, (uintptr_t)mapping->virtAddr, mapping->pageAmount);
-    rwmutex_write_release(&space->mutex); // Release the mutex from space_mapping_start.
+    lock_release(&space->lock); // Release the lock from space_mapping_start.
     return mapping->virtAddr;
 }
 
 bool space_is_mapped(space_t* space, const void* virtAddr, uint64_t length)
 {
-    vmm_align_region((void**)&virtAddr, &length);
-    RWMUTEX_READ_SCOPE(&space->mutex);
+    space_align_region((void**)&virtAddr, &length);
+    LOCK_SCOPE(&space->lock);
     return page_table_is_mapped(&space->pageTable, virtAddr, BYTES_TO_PAGES(length));
 }

@@ -30,11 +30,23 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 int main(void)
 {
     const theme_t* theme = theme_global_get();
+    if (theme == NULL)
+    {
+        printf("cursor: failed to get global theme\n");
+        return EXIT_FAILURE;
+    }
+
     display_t* disp = display_new();
+    if (disp == NULL)
+    {
+        printf("cursor: failed to create display\n");
+        return EXIT_FAILURE;
+    }
 
     image = image_new(disp, theme->cursorArrow);
     if (image == NULL)
     {
+        printf("cursor: failed to load cursor image\n");
         return EXIT_FAILURE;
     }
 
@@ -47,6 +59,7 @@ int main(void)
     window_t* win = window_new(disp, "Cursor", &rect, SURFACE_CURSOR, WINDOW_NONE, procedure, NULL);
     if (win == NULL)
     {
+        printf("cursor: failed to create window\n");
         return EXIT_FAILURE;
     }
 

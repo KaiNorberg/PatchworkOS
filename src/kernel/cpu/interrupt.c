@@ -51,21 +51,34 @@ void interrupt_enable(void)
 
 static void exception_handler(interrupt_frame_t* frame)
 {
-    if (frame->vector == EXCEPTION_PAGE_FAULT)
+    switch (frame->vector)
     {
-        if (frame->errorCode & PAGE_FAULT_PRESENT)
+    case EXCEPTION_PAGE_FAULT:
+        if (!(frame->errorCode & PAGE_FAULT_PRESENT))
         {
-            panic(frame, "Page fault caused by present page");
+            if (thread_handle_page_fault(frame) != ERR)
+            {
+                return;
+            }
         }
+        break;
+    default:
+        break;
+    }
 
-        if (thread_handle_page_fault(frame) == ERR)
-        {
-            panic(frame, "Page fault could not be handled");
-        }
+    if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
+    {
+        thread_t* thread = sched_thread();
+        process_t* process = thread->process;
+
+        LOG_DEBUG("unhandled user space exception in process pid=%d vector=%lld error=0x%llx rip=0x%llx\n",
+            process->id, frame->vector, frame->errorCode, frame->rip);
+
+        sched_process_exit(EFAULT);
     }
     else
     {
-        panic(frame, "Exception");
+        panic(frame, "unhandled kernel exception");
     }
 }
 

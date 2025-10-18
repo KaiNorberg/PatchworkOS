@@ -29,11 +29,13 @@ FILE* fopen(const char* _RESTRICT filename, const char* _RESTRICT mode)
     _file_flags_t flags = _file_flags_parse(mode);
     if (flags == 0)
     {
+        errno = EINVAL;
         return NULL;
     }
 
     if (filename == NULL || filename[0] == '\0')
     {
+        errno = EINVAL;
         return NULL;
     }
 
@@ -46,11 +48,14 @@ FILE* fopen(const char* _RESTRICT filename, const char* _RESTRICT mode)
     FILE* stream = _file_new();
     if (stream == NULL)
     {
+        errno = ENOMEM;
+        close(fd);
         return NULL;
     }
 
     if (_file_init(stream, fd, flags | _FILE_FULLY_BUFFERED, NULL, BUFSIZ) == ERR)
     {
+        errno = ENOMEM;
         close(fd);
         _file_free(stream);
         return NULL;

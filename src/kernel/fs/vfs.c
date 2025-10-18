@@ -819,16 +819,9 @@ SYSCALL_DEFINE(SYS_OPEN, fd_t, const char* pathString)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
-    RWMUTEX_READ_SCOPE(&space->mutex);
-
-    if (!syscall_is_string_accessible(space, pathString))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
 
     pathname_t pathname;
-    if (pathname_init(&pathname, pathString) == ERR)
+    if (space_safe_pathname_init(space, &pathname, pathString, MAX_PATH) == ERR)
     {
         return ERR;
     }
@@ -900,22 +893,14 @@ SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
-    RWMUTEX_READ_SCOPE(&space->mutex);
-
-    if (!syscall_is_string_accessible(space, pathString))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
-
-    if (!syscall_is_pointer_accessible(space, fds, sizeof(fd_t) * 2))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
 
     pathname_t pathname;
-    if (pathname_init(&pathname, pathString) == ERR)
+    if (space_safe_pathname_init(space, &pathname, pathString, MAX_PATH) == ERR)
+    {
+        return ERR;
+    }
+
+    if (space_pin(space, fds, sizeof(fd_t) * 2) == ERR)
     {
         return ERR;
     }
@@ -923,6 +908,7 @@ SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
     file_t* files[2];
     if (vfs_open2(&pathname, files) == ERR)
     {
+        space_unpin(space, fds, sizeof(fd_t) * 2);
         return ERR;
     }
     DEREF_DEFER(files[0]);
@@ -931,15 +917,18 @@ SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
     fds[0] = vfs_ctx_open(&process->vfsCtx, files[0]);
     if (fds[0] == ERR)
     {
+        space_unpin(space, fds, sizeof(fd_t) * 2);
         return ERR;
     }
     fds[1] = vfs_ctx_open(&process->vfsCtx, files[1]);
     if (fds[1] == ERR)
     {
+        space_unpin(space, fds, sizeof(fd_t) * 2);
         vfs_ctx_close(&process->vfsCtx, fds[0]);
         return ERR;
     }
 
+    space_unpin(space, fds, sizeof(fd_t) * 2);
     return 0;
 }
 
@@ -980,13 +969,6 @@ SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, uint64_t count)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
-    RWMUTEX_READ_SCOPE(&space->mutex);
-
-    if (!syscall_is_pointer_accessible(space, buffer, count))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
 
     file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
     if (file == NULL)
@@ -995,7 +977,13 @@ SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, uint64_t count)
     }
     DEREF_DEFER(file);
 
-    return vfs_read(file, buffer, count);
+    if (space_pin(space, buffer, count) == ERR)
+    {
+        return ERR;
+    }
+    uint64_t result = vfs_read(file, buffer, count);
+    space_unpin(space, buffer, count);
+    return result;
 }
 
 uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
@@ -1040,13 +1028,6 @@ SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, uint64_t count)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
-    RWMUTEX_READ_SCOPE(&space->mutex);
-
-    if (!syscall_is_pointer_accessible(space, buffer, count))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
 
     file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
     if (file == NULL)
@@ -1055,7 +1036,13 @@ SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, uint64_t count)
     }
     DEREF_DEFER(file);
 
-    return vfs_write(file, buffer, count);
+    if (space_pin(space, buffer, count) == ERR)
+    {
+        return ERR;
+    }
+    uint64_t result = vfs_write(file, buffer, count);
+    space_unpin(space, buffer, count);
+    return result;
 }
 
 uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
@@ -1123,19 +1110,6 @@ SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, uint6
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
-    RWMUTEX_READ_SCOPE(&space->mutex);
-
-    if (argp != NULL && !syscall_is_pointer_accessible(space, argp, size))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
-
-    if (argp == NULL && size != 0)
-    {
-        errno = EFAULT;
-        return ERR;
-    }
 
     file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
     if (file == NULL)
@@ -1144,7 +1118,13 @@ SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, uint6
     }
     DEREF_DEFER(file);
 
-    return vfs_ioctl(file, request, argp, size);
+    if (space_pin(space, argp, size) == ERR)
+    {
+        return ERR;
+    }
+    uint64_t result = vfs_ioctl(file, request, argp, size);
+    space_unpin(space, argp, size);
+    return result;
 }
 
 void* vfs_mmap(file_t* file, void* address, uint64_t length, pml_flags_t flags)
@@ -1176,19 +1156,13 @@ void* vfs_mmap(file_t* file, void* address, uint64_t length, pml_flags_t flags)
 
 SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, uint64_t length, prot_t prot)
 {
-    if (address != NULL && !syscall_is_pointer_valid(address, length))
-    {
-        errno = EFAULT;
-        return NULL;
-    }
-
     process_t* process = sched_process();
-    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
-    if (file == NULL)
+    space_t* space = &process->space;
+
+    if (address != NULL && space_check_access(space, address, length) == ERR)
     {
         return NULL;
     }
-    DEREF_DEFER(file);
 
     pml_flags_t flags = vmm_prot_to_flags(prot);
     if (flags == PML_NONE)
@@ -1196,6 +1170,13 @@ SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, uint64_t length, prot_t 
         errno = EINVAL;
         return NULL;
     }
+
+    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
+    if (file == NULL)
+    {
+        return NULL;
+    }
+    DEREF_DEFER(file);
 
     return vfs_mmap(file, address, length, flags | PML_USER);
 }
@@ -1368,7 +1349,6 @@ SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeo
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
-    RWMUTEX_READ_SCOPE(&space->mutex);
 
     if (amount == 0 || amount >= CONFIG_MAX_FD)
     {
@@ -1376,7 +1356,7 @@ SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeo
         return ERR;
     }
 
-    if (!syscall_is_pointer_accessible(space, fds, sizeof(pollfd_t) * amount))
+    if (space_pin(space, fds, sizeof(pollfd_t) * amount) == ERR)
     {
         errno = EFAULT;
         return ERR;
@@ -1396,15 +1376,16 @@ SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeo
             {
                 files[i].revents = POLLNVAL;
             }
+            space_unpin(space, fds, sizeof(pollfd_t) * amount);
             return ERR;
         }
 
         files[i].events = fds[i].events;
         files[i].revents = POLLNONE;
     }
+    space_unpin(space, fds, sizeof(pollfd_t) * amount);
 
     uint64_t result = vfs_poll(files, amount, timeout);
-
     if (result != ERR)
     {
         for (uint64_t i = 0; i < amount; i++)
@@ -1462,13 +1443,6 @@ SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
-    RWMUTEX_READ_SCOPE(&space->mutex);
-
-    if (!syscall_is_pointer_accessible(space, buffer, count))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
 
     file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
     if (file == NULL)
@@ -1477,7 +1451,13 @@ SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count
     }
     DEREF_DEFER(file);
 
-    return vfs_getdents(file, buffer, count);
+    if (space_pin(space, buffer, count) == ERR)
+    {
+        return ERR;
+    }
+    uint64_t result = vfs_getdents(file, buffer, count);
+    space_unpin(space, buffer, count);
+    return result;
 }
 
 uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer)
@@ -1524,27 +1504,20 @@ SYSCALL_DEFINE(SYS_STAT, uint64_t, const char* pathString, stat_t* buffer)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
-    RWMUTEX_READ_SCOPE(&space->mutex);
-
-    if (!syscall_is_string_accessible(space, pathString))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
-
-    if (!syscall_is_pointer_accessible(space, buffer, sizeof(stat_t)))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
 
     pathname_t pathname;
-    if (pathname_init(&pathname, pathString) == ERR)
+    if (space_safe_pathname_init(space, &pathname, pathString, MAX_PATH) == ERR)
     {
         return ERR;
     }
 
-    return vfs_stat(&pathname, buffer);
+    if (space_pin(space, buffer, sizeof(stat_t)) == ERR)
+    {
+        return ERR;
+    }
+    uint64_t result = vfs_stat(&pathname, buffer);
+    space_unpin(space, buffer, sizeof(stat_t));
+    return result;
 }
 
 uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname)
@@ -1629,22 +1602,15 @@ SYSCALL_DEFINE(SYS_LINK, uint64_t, const char* oldPathString, const char* newPat
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
-    RWMUTEX_READ_SCOPE(&space->mutex);
-
-    if (!syscall_is_string_accessible(space, oldPathString) || !syscall_is_string_accessible(space, newPathString))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
 
     pathname_t oldPathname;
-    if (pathname_init(&oldPathname, oldPathString) == ERR)
+    if (space_safe_pathname_init(space, &oldPathname, oldPathString, MAX_PATH) == ERR)
     {
         return ERR;
     }
 
     pathname_t newPathname;
-    if (pathname_init(&newPathname, newPathString) == ERR)
+    if (space_safe_pathname_init(space, &newPathname, newPathString, MAX_PATH) == ERR)
     {
         return ERR;
     }
@@ -1710,16 +1676,9 @@ SYSCALL_DEFINE(SYS_DELETE, uint64_t, const char* pathString)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
-    RWMUTEX_READ_SCOPE(&space->mutex);
-
-    if (!syscall_is_string_accessible(space, pathString))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
 
     pathname_t pathname;
-    if (pathname_init(&pathname, pathString) == ERR)
+    if (space_safe_pathname_init(space, &pathname, pathString, MAX_PATH) == ERR)
     {
         return ERR;
     }

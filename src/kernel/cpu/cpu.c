@@ -5,13 +5,13 @@
 #include "idt.h"
 #include "interrupt.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/vmm.h"
 #include "sched/sched.h"
 #include "simd.h"
 #include "syscalls.h"
 #include "tss.h"
 #include "utils/statistics.h"
-#include "log/panic.h"
 
 uint64_t cpu_init(cpu_t* cpu, cpuid_t id)
 {

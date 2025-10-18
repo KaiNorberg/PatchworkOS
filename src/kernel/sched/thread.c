@@ -40,7 +40,6 @@ static void thread_free(thread_t* thread)
     assert(atomic_load(&thread->state) == THREAD_ZOMBIE);
 
     simd_ctx_deinit(&thread->simd);
-    rwmutex_ctx_deinit(&thread->rwmutexCtx);
     heap_free(thread);
 }
 
@@ -73,7 +72,6 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
     }
     note_queue_init(&thread->notes);
     syscall_ctx_init(&thread->syscall, &thread->kernelStack);
-    rwmutex_ctx_init(&thread->rwmutexCtx);
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
 
     lock_acquire(&process->threads.lock);

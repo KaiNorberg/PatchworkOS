@@ -296,7 +296,7 @@ uint64_t stat(const char* path, stat_t* stat);
  *
  * @param fd The file descriptor of the file.
  * @param request The driver-dependent request code.
- * @param argp A pointer to an argument that depends on the request.
+ * @param argp A pointer to an argument that depends on the request, can be `NULL` if size is 0.
  * @param size The size of the argument pointed to by `argp`.
  * @return On success, the return value depends on the driver but is usually 0. On failure, returns `ERR` and errno is
  * set.

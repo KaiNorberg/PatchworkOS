@@ -68,6 +68,17 @@
 #define CONFIG_MAX_NOTES 8
 
 /**
+ * @brief Maximum argument vector configuration.
+ * @ingroup kernel
+ * @def CONFIG_MAX_ARGC
+ *
+ * The `CONFIG_MAX_ARGC` constant defines the maximum amount of arguments that can be passed to a process via its
+ * argument vector. Used to avoid vulnerabilities where extremely large argument vectors are passed to processes.
+ *
+ */
+#define CONFIG_MAX_ARGC 512
+
+/**
  * @brief Maximum time slice configuration.
  * @ingroup kernel
  * @def CONFIG_MAX_TIME_SLICE

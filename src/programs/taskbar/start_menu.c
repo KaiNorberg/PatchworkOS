@@ -4,6 +4,7 @@
 
 #include <libpatchwork/patchwork.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/io.h>
 #include <sys/proc.h>
 
@@ -163,6 +164,11 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 void start_menu_init(start_menu_t* startMenu, window_t* taskbar, display_t* disp)
 {
     const theme_t* theme = theme_global_get();
+    if (theme == NULL)
+    {
+        printf("taskbar: failed to get global theme for start menu\n");
+        exit(EXIT_FAILURE);
+    }
 
     rect_t screenRect;
     display_screen_rect(disp, &screenRect, 0);
@@ -173,6 +179,11 @@ void start_menu_init(start_menu_t* startMenu, window_t* taskbar, display_t* disp
 
     startMenu->taskbar = taskbar;
     startMenu->win = window_new(disp, "StartMenu", &rect, SURFACE_WINDOW, WINDOW_NONE, procedure, startMenu);
+    if (startMenu->win == NULL)
+    {
+        printf("tasbar: failed to create start menu window\n");
+        exit(EXIT_FAILURE);
+    }
     startMenu->state = START_MENU_CLOSED;
 }
 

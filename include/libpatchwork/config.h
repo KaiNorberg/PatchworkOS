@@ -10,6 +10,17 @@ extern "C"
 {
 #endif
 
+/**
+ * @brief System configuration files.
+ * @defgroup libpatchwork_config Config files.
+ * @ingroup libpatchwork
+ *
+ * Patchwork uses a `/cfg` folder for all system configuration files. These files are simple INI style text files that store
+ * key-value pairs in sections.
+ *
+ * @{
+ */
+
 typedef struct config config_t;
 
 typedef struct config_array config_array_t;
@@ -37,6 +48,8 @@ const char* config_array_get_string(config_array_t* array, uint64_t index, const
 int64_t config_array_get_int(config_array_t* array, uint64_t index, int64_t fallback);
 
 bool config_array_get_bool(config_array_t* array, uint64_t index, bool fallback);
+
+/** @} */
 
 #if defined(__cplusplus)
 }

@@ -105,7 +105,7 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
         return ERR;
     }
 
-    memset(pathname->string, 0, MAX_NAME);
+    memset(pathname->string, 0, MAX_PATH);
     pathname->flags = PATH_NONE;
     pathname->isValid = false;
 

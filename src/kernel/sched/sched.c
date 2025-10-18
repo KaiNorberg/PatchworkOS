@@ -485,15 +485,15 @@ void sched_schedule(interrupt_frame_t* frame, cpu_t* self)
     {
         lock_acquire(&self->sched.lock);
         lock_acquire(&neighbor->sched.lock);
-
-        sched_load_balance(self, neighbor);
-        lock_release(&neighbor->sched.lock);
     }
     else
     {
         lock_acquire(&neighbor->sched.lock);
         lock_acquire(&self->sched.lock);
+    }
 
+    if (neighbor != NULL)
+    {
         sched_load_balance(self, neighbor);
         lock_release(&neighbor->sched.lock);
     }
@@ -510,7 +510,9 @@ void sched_schedule(interrupt_frame_t* frame, cpu_t* self)
     {
         assert(ctx->runThread != ctx->idleThread);
 
-        // We no longer need to worry about using the threads kernel stack as when scheduling we are always in an interrupt meaning we are using the cpu's interrupt stack and can just free the thread as soon as its unloaded.
+        // We no longer need to worry about using the threads kernel stack as when scheduling we are always in an
+        // interrupt meaning we are using the cpu's interrupt stack and can just free the thread as soon as its
+        // unloaded.
         threadToFree = ctx->runThread;
         ctx->runThread = NULL; // Force a new thread to be loaded
     }

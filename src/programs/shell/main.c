@@ -10,6 +10,13 @@ void prompt_print(void)
 {
     char cwd[MAX_PATH];
     fd_t fd = open("/proc/self/cwd");
+    if (fd == ERR)
+    {
+        printf("\n?> ");
+        fflush(stdout);
+        return;
+    }
+
     uint64_t length = read(fd, cwd, MAX_PATH);
     cwd[length] = '\0';
     close(fd);
@@ -17,7 +24,7 @@ void prompt_print(void)
     fflush(stdout);
 }
 
-bool cmdline_read(char* buffer, uint64_t size)
+static uint64_t cmdline_read(char* buffer, uint64_t size)
 {
     uint64_t index = 0;
     buffer[0] = '\0';
@@ -26,12 +33,12 @@ bool cmdline_read(char* buffer, uint64_t size)
         char chr;
         if (read(STDIN_FILENO, &chr, 1) == 0)
         {
-            return false;
+            return ERR;
         }
         else if (chr == '\n')
         {
             buffer[index] = '\0';
-            return true;
+            return 0;
         }
         if (index + 1 < size)
         {
@@ -81,7 +88,7 @@ void run_interactive_shell(void)
     {
         prompt_print();
         char cmdline[MAX_PATH];
-        if (!cmdline_read(cmdline, MAX_PATH - 2))
+        if (cmdline_read(cmdline, MAX_PATH) == ERR)
         {
             break;
         }
@@ -102,5 +109,4 @@ int main(int argc, char* argv[])
         run_interactive_shell();
         return 0;
     }
-    return 0;
 }

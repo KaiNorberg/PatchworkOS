@@ -284,6 +284,7 @@ void taskbar_init(taskbar_t* taskbar, display_t* disp)
     taskbar->win = window_new(disp, "Taskbar", &rect, SURFACE_PANEL, WINDOW_NONE, procedure, taskbar);
     if (taskbar->win == NULL)
     {
+        printf("taskbar: failed to create taskbar window\n");
         exit(EXIT_FAILURE);
     }
     start_menu_init(&taskbar->startMenu, taskbar->win, disp);

@@ -48,7 +48,8 @@ void argv_deinit(argv_t* argv);
  * @brief Retrieves a pointer to the start of the first string.
  *
  * @param argv Pointer to the argument vector.
- * @param length Output parameter to store the total length of all strings in bytes, will be set to 0 if there are no strings.
+ * @param length Output parameter to store the total length of all strings in bytes, will be set to 0 if there are no
+ * strings.
  * @return Pointer to the start of the first string or `NULL` if there are no strings.
  */
 const char* argv_get_strings(const argv_t* argv, uint64_t* length);

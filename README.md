@@ -7,7 +7,7 @@
 
 **Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9 and others while simplifying them and adding in some new ideas of its own.
 
-The goal is to eventually have a feature-complete and experimental operating system while still remaining approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
+In the end this is a project made for fun, however the goal is to eventually have a feature-complete and experimental operating system that still remains approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
 
 ![Desktop Screenshot](meta/screenshots/desktop.png)
 ![Doom Screenshot](meta/screenshots/doom.png)

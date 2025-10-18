@@ -77,13 +77,15 @@ _file_flags_t _file_flags_parse(const char* mode)
     return 0;
 }
 
-// TODO: Slab allocator?
-
 FILE* _file_new(void)
 {
     FILE* stream = calloc(1, sizeof(FILE));
-    list_entry_init(&stream->entry);
+    if (stream == NULL)
+    {
+        return NULL;
+    }
 
+    list_entry_init(&stream->entry);
     return stream;
 }
 

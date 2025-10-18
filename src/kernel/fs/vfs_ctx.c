@@ -117,16 +117,9 @@ SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
-    RWMUTEX_READ_SCOPE(&space->mutex);
-
-    if (!syscall_is_string_accessible(space, pathString))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
 
     pathname_t pathname;
-    if (pathname_init(&pathname, pathString) == ERR)
+    if (space_safe_pathname_init(space, &pathname, pathString, MAX_PATH) == ERR)
     {
         return ERR;
     }
@@ -213,9 +206,7 @@ uint64_t vfs_ctx_close(vfs_ctx_t* ctx, fd_t fd)
 
 SYSCALL_DEFINE(SYS_CLOSE, uint64_t, fd_t fd)
 {
-    process_t* process = sched_process();
-
-    return vfs_ctx_close(&process->vfsCtx, fd);
+    return vfs_ctx_close(&sched_process()->vfsCtx, fd);
 }
 
 fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd)

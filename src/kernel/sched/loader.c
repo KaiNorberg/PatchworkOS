@@ -200,41 +200,11 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
     return childThread;
 }
 
-thread_t* loader_thread_create(process_t* parent, void* entry, void* arg)
-{
-    thread_t* child = thread_new(parent);
-    if (child == NULL)
-    {
-        return NULL;
-    }
-
-    child->frame.rip = (uint64_t)entry;
-    child->frame.rsp = child->userStack.top;
-    child->frame.rdi = (uint64_t)arg;
-    child->frame.cs = GDT_CS_RING3;
-    child->frame.ss = GDT_SS_RING3;
-    child->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
-    return child;
-}
-
 SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const char* cwdString, spawn_attr_t* attr)
 {
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
     space_t* space = &process->space;
-    RWMUTEX_READ_SCOPE(&space->mutex);
-
-    if (cwdString != NULL && !syscall_is_string_accessible(space, cwdString))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
-
-    if (attr != NULL && !syscall_is_pointer_accessible(space, attr, sizeof(spawn_attr_t)))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
 
     priority_t priority;
     if (attr == NULL || attr->flags & SPAWN_INHERIT_PRIORITY)
@@ -252,50 +222,15 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         return ERR;
     }
 
-    uint64_t argc = 0;
-    while (1)
+    char* argvTerminator = NULL;
+    uint64_t argvSize = space_pin_terminated(space, argv, &argvTerminator, sizeof(char*), CONFIG_MAX_ARGC);
+    if (argvSize == ERR)
     {
-        if (!syscall_is_pointer_accessible(space, &argv[argc], sizeof(const char*)))
-        {
-            errno = EFAULT;
-            return ERR;
-        }
-        else if (argv[argc] == NULL)
-        {
-            break;
-        }
-        else if (!syscall_is_string_accessible(space, argv[argc]))
-        {
-            errno = EFAULT;
-            return ERR;
-        }
-
-        argc++;
+        return ERR;
     }
+    uint64_t argc = argvSize / sizeof(char*);
 
-    uint64_t fdAmount = 0;
-    if (fds != NULL)
-    {
-        while (1)
-        {
-            if (fdAmount >= CONFIG_MAX_FD)
-            {
-                errno = EINVAL;
-                return ERR;
-            }
-            else if (!syscall_is_pointer_accessible(space, &fds[fdAmount], sizeof(fd_t)))
-            {
-                errno = EFAULT;
-                return ERR;
-            }
-            else if (fds[fdAmount].child == FD_NONE || fds[fdAmount].parent == FD_NONE)
-            {
-                break;
-            }
-
-            fdAmount++;
-        }
-    }
+    // TODO: This is not safe against TOCTOU attacks. We need to copy the entire argv array and all strings.
 
     thread_t* child;
     if (cwdString == NULL)
@@ -305,14 +240,16 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     else
     {
         pathname_t cwdPathname;
-        if (pathname_init(&cwdPathname, cwdString) == ERR)
+        if (space_safe_pathname_init(space, &cwdPathname, cwdString, MAX_PATH) == ERR)
         {
+            space_unpin(space, argv, argvSize);
             return ERR;
         }
 
         path_t cwdPath = PATH_EMPTY;
         if (vfs_walk(&cwdPath, &cwdPathname, WALK_NONE) == ERR)
         {
+            space_unpin(space, argv, argvSize);
             return ERR;
         }
 
@@ -320,21 +257,33 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
 
         path_put(&cwdPath);
     }
+    space_unpin(space, argv, argvSize);
 
     if (child == NULL)
     {
         return ERR;
     }
+    DEREF_DEFER(child);
+
+    spawn_fd_t fdsTerminator = SPAWN_FD_END;
+    uint64_t fdsSize = space_pin_terminated(space, fds, &fdsTerminator, sizeof(spawn_fd_t), CONFIG_MAX_FD);
+    if (fdsSize == ERR)
+    {
+        return ERR;
+    }
+    uint64_t fdAmount = fdsSize / sizeof(spawn_fd_t);
 
     vfs_ctx_t* parentVfsCtx = &process->vfsCtx;
     vfs_ctx_t* childVfsCtx = &child->process->vfsCtx;
 
     for (uint64_t i = 0; i < fdAmount; i++)
     {
+        LOG_DEBUG("spawn fd parent=%d child=%d\n", fds[i].parent, fds[i].child);
+
         file_t* file = vfs_ctx_get_file(parentVfsCtx, fds[i].parent);
         if (file == NULL)
         {
-            DEREF(child);
+            space_unpin(space, fds, fdsSize);
             errno = EBADF;
             return ERR;
         }
@@ -342,14 +291,32 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
 
         if (vfs_ctx_openas(childVfsCtx, fds[i].child, file) == ERR)
         {
-            DEREF(child);
+            space_unpin(space, fds, fdsSize);
             errno = EBADF;
             return ERR;
         }
     }
+    space_unpin(space, fds, fdsSize);
 
-    sched_push_new_thread(child, thread);
+    sched_push_new_thread(REF(child), thread);
     return child->process->id;
+}
+
+thread_t* loader_thread_create(process_t* parent, void* entry, void* arg)
+{
+    thread_t* child = thread_new(parent);
+    if (child == NULL)
+    {
+        return NULL;
+    }
+
+    child->frame.rip = (uint64_t)entry;
+    child->frame.rsp = child->userStack.top;
+    child->frame.rdi = (uint64_t)arg;
+    child->frame.cs = GDT_CS_RING3;
+    child->frame.ss = GDT_SS_RING3;
+    child->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+    return child;
 }
 
 SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)
@@ -358,11 +325,12 @@ SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)
     process_t* process = thread->process;
     space_t* space = &process->space;
 
-    if (!syscall_is_pointer_accessible(space, entry, sizeof(uint64_t)))
+    if (space_check_access(space, entry, sizeof(uint64_t)) == ERR)
     {
-        errno = EFAULT;
         return ERR;
     }
+
+    // Dont check arg user space can use it however it wants
 
     thread_t* newThread = loader_thread_create(process, entry, arg);
     if (newThread == NULL)

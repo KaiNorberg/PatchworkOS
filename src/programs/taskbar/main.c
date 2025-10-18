@@ -1,10 +1,17 @@
 #include "taskbar.h"
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <libpatchwork/patchwork.h>
 
 int main(void)
 {
     display_t* disp = display_new();
+    if (disp == NULL)
+    {
+        printf("Failed to create display\n");
+        return EXIT_FAILURE;
+    }
 
     taskbar_t taskbar;
     taskbar_init(&taskbar, disp);

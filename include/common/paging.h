@@ -229,7 +229,7 @@ static inline void page_table_traverse_init(page_table_traverse_t* traverse)
  * levels.
  * @return `true` if a pml1 exists for the current address or was successfully allocated, `false` otherwise.
  */
-static inline bool page_table_traverse(page_table_t* table, page_table_traverse_t* traverse, const void* virtAddr,
+static inline bool page_table_traverse(page_table_t* table, page_table_traverse_t* traverse, uintptr_t virtAddr,
     pml_flags_t flags)
 {
     pml_index_t newIdx3 = PML_ADDR_TO_INDEX(virtAddr, PML4);
@@ -286,7 +286,7 @@ static inline uint64_t page_table_get_phys_addr(page_table_t* table, const void*
 
     page_table_traverse_t traverse = {0};
     page_table_traverse_init(&traverse);
-    if (!page_table_traverse(table, &traverse, virtAddr, PML_NONE))
+    if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr, PML_NONE))
     {
         return ERR;
     }
@@ -316,7 +316,7 @@ static inline bool page_table_is_mapped(page_table_t* table, const void* virtAdd
     page_table_traverse_init(&traverse);
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        if (!page_table_traverse(table, &traverse, virtAddr, PML_NONE))
+        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
         {
             return false;
         }
@@ -325,8 +325,6 @@ static inline bool page_table_is_mapped(page_table_t* table, const void* virtAdd
         {
             return false;
         }
-
-        virtAddr = (void*)((uintptr_t)virtAddr + PAGE_SIZE);
     }
 
     return true;
@@ -348,7 +346,7 @@ static inline bool page_table_is_unmapped(page_table_t* table, const void* virtA
     page_table_traverse_init(&traverse);
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        if (!page_table_traverse(table, &traverse, virtAddr, PML_NONE))
+        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
         {
             continue;
         }
@@ -357,8 +355,6 @@ static inline bool page_table_is_unmapped(page_table_t* table, const void* virtA
         {
             return false;
         }
-
-        virtAddr = (void*)((uintptr_t)virtAddr + PAGE_SIZE);
     }
 
     return true;
@@ -389,7 +385,7 @@ static inline uint64_t page_table_map(page_table_t* table, void* virtAddr, void*
     page_table_traverse_init(&traverse);
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        if (!page_table_traverse(table, &traverse, virtAddr, flags))
+        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr, flags))
         {
             return ERR;
         }
@@ -427,7 +423,17 @@ static inline void page_table_unmap(page_table_t* table, void* virtAddr, uint64_
     page_table_traverse_init(&traverse);
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        if (!page_table_traverse(table, &traverse, virtAddr, PML_NONE))
+        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
+        {
+            continue;
+        }
+
+        if (!traverse.entry->present)
+        {
+            continue;
+        }
+
+        if (traverse.entry->pinned)
         {
             continue;
         }
@@ -439,8 +445,6 @@ static inline void page_table_unmap(page_table_t* table, void* virtAddr, uint64_
 
         traverse.entry->raw = 0;
         page_invalidate((uintptr_t)virtAddr);
-
-        virtAddr = (void*)((uintptr_t)virtAddr + PAGE_SIZE);
     }
 }
 
@@ -459,20 +463,20 @@ static inline void page_table_collect_callbacks(page_table_t* table, void* virtA
     page_table_traverse_init(&traverse);
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        if (!page_table_traverse(table, &traverse, virtAddr, PML_NONE))
+        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
         {
             continue;
         }
 
-        if (traverse.entry->present)
+        if (!traverse.entry->present)
         {
-            if (traverse.entry->callbackId != PML_CALLBACK_NONE)
-            {
-                callbacks[traverse.entry->callbackId]++;
-            }
+            continue;
         }
 
-        virtAddr = (void*)((uintptr_t)virtAddr + PAGE_SIZE);
+        if (traverse.entry->callbackId != PML_CALLBACK_NONE)
+        {
+            callbacks[traverse.entry->callbackId]++;
+        }
     }
 }
 
@@ -493,11 +497,17 @@ static inline uint64_t page_table_set_flags(page_table_t* table, void* virtAddr,
     page_table_traverse_init(&traverse);
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        if (!page_table_traverse(table, &traverse, virtAddr, PML_NONE))
+        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
         {
             continue;
         }
+
         if (!traverse.entry->present)
+        {
+            return ERR;
+        }
+
+        if (traverse.entry->pinned)
         {
             return ERR;
         }
@@ -509,10 +519,7 @@ static inline uint64_t page_table_set_flags(page_table_t* table, void* virtAddr,
 
         // Bit magic to only update the flags while preserving the address and callback ID.
         traverse.entry->raw = (traverse.entry->raw & ~PML_FLAGS_MASK) | (flags & PML_FLAGS_MASK);
-
         page_invalidate((uintptr_t)virtAddr);
-
-        virtAddr = (void*)((uintptr_t)virtAddr + PAGE_SIZE);
     }
 
     return 0;
@@ -530,24 +537,120 @@ static inline uint64_t page_table_set_flags(page_table_t* table, void* virtAddr,
 static inline uint64_t page_table_find_first_mapped_page(page_table_t* table, void* startAddr, void* endAddr,
     void** outAddr)
 {
-    void* currentAddr = (void*)ROUND_DOWN((uintptr_t)startAddr, PAGE_SIZE);
+    uintptr_t currentAddr = ROUND_DOWN((uintptr_t)startAddr, PAGE_SIZE);
     page_table_traverse_t traverse = {0};
     page_table_traverse_init(&traverse);
-    while ((uintptr_t)currentAddr < (uintptr_t)endAddr)
+    while (currentAddr < (uintptr_t)endAddr)
     {
         if (page_table_traverse(table, &traverse, currentAddr, PML_NONE))
         {
             if (traverse.entry->present)
             {
-                *outAddr = currentAddr;
+                *outAddr = (void*)currentAddr;
                 return 0;
             }
         }
 
-        currentAddr = (void*)((uintptr_t)currentAddr + PAGE_SIZE);
+        currentAddr = currentAddr + PAGE_SIZE;
     }
 
     return ERR;
+}
+
+/**
+ * @brief Pins a range of pages in the page table, preventing their mapping from being modified.
+ *
+ * @param table The page table.
+ * @param virtAddr The starting virtual address.
+ * @param pageAmount The number of pages to pin.
+ * @return On success, 0. On failure, `ERR`.
+ */
+static inline uint64_t page_table_pin(page_table_t* table, const void* virtAddr, uint64_t pageAmount)
+{
+    page_table_traverse_t traverse = {0};
+    page_table_traverse_init(&traverse);
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {
+        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
+        {
+            return ERR;
+        }
+
+        if (!traverse.entry->present)
+        {
+            return ERR;
+        }
+
+        if (traverse.entry->pinned)
+        {
+            return ERR;
+        }
+
+        traverse.entry->pinned = 1;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Unpins a range of pages in the page table, allowing their mapping to be modified.
+ *
+ * @param table The page table.
+ * @param virtAddr The starting virtual address.
+ * @param pageAmount The number of pages to unpin.
+ * @return On success, 0. On failure, `ERR`.
+ */
+static inline void page_table_unpin(page_table_t* table, const void* virtAddr, uint64_t pageAmount)
+{
+    page_table_traverse_t traverse = {0};
+    page_table_traverse_init(&traverse);
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {
+        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
+        {
+            continue;
+        }
+
+        if (!traverse.entry->present)
+        {
+            continue;
+        }
+
+        traverse.entry->pinned = 0;
+    }
+}
+
+/**
+ * @brief Checks if any page in a range is pinned.
+ *
+ * @param table The page table.
+ * @param virtAddr The starting virtual address.
+ * @param pageAmount The number of pages to check.
+ * @return `true` if any page in the range us pinned, `false` otherwise.
+ */
+static inline bool page_table_is_pinned(page_table_t* table, const void* virtAddr, uint64_t pageAmount)
+{
+    page_table_traverse_t traverse = {0};
+    page_table_traverse_init(&traverse);
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {
+        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
+        {
+            continue;
+        }
+
+        if (!traverse.entry->present)
+        {
+            continue;
+        }
+
+        if (traverse.entry->pinned)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /** @} */

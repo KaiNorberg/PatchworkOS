@@ -93,13 +93,13 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
-    RWMUTEX_READ_SCOPE(&space->mutex);
 
-    if (!syscall_is_pointer_valid(addr, sizeof(atomic_uint64_t)))
+    if (space_pin(space, addr, sizeof(atomic_uint64_t)) == ERR)
     {
         errno = EFAULT;
         return ERR;
     }
-
-    return futex_do(addr, val, op, timeout);
+    uint64_t result = futex_do(addr, val, op, timeout);
+    space_unpin(space, addr, sizeof(atomic_uint64_t));
+    return result;
 }

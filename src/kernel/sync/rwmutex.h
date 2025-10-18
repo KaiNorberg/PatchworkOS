@@ -32,45 +32,11 @@ typedef struct rwmutex rwmutex_t;
     rwmutex_write_acquire((mutex))
 
 /**
- * @brief Maximum amount of rwmutexes that a thread can acquire simultaneously.
- */
-#define RWMUTEX_MAX_MUTEXES 16
-
-/**
- * @brief Per-Thread Read-Write Mutex context entry structure.
- * @struct rwmutex_ctx_entry_t
- *
- * Tracks the read and write depth for a specific rwmutex acquired by the thread.
- */
-typedef struct
-{
-    rwmutex_t* mutex;
-    uint16_t readDepth;
-    uint16_t writeDepth;
-} rwmutex_ctx_entry_t;
-
-/**
- * @brief Per-Thread Read-Write Mutex context structure.
- * @struct rwmutex_ctx_t
- *
- * Allows for recursive locking by tracking what mutexes are currently acquired by the thread.
- */
-typedef struct
-{
-    rwmutex_ctx_entry_t entries[RWMUTEX_MAX_MUTEXES];
-} rwmutex_ctx_t;
-
-/**
  * @brief Read-Write Mutex structure.
  * @struct rwmutex_t
  *
  * A Read-Write Mutex allows one only writer or multiple readers to access a shared resource at the same time. This
- * implementation prioritizes writers over readers and supports recursive locking.
- *
- * A writer can recursively acquire the mutex for either reading or writing without much worry about deadlocks, however
- * while a reader can recursively acquire the mutex for either reading or writing, its important to be careful to avoid
- * deadlocks when upgrading from a read lock to a write lock as if multiple readers try to upgrade at the same time they
- * will all deadlock waiting to be the last reader.
+ * implementation prioritizes writers over readers and does not support recursive locking.
  */
 typedef struct rwmutex
 {
@@ -79,23 +45,8 @@ typedef struct rwmutex
     wait_queue_t readerQueue;
     wait_queue_t writerQueue;
     bool hasWriter;
-    bool isUpgradingReader; ///< Used to check for deadlocks by having multiple readers try to upgrade at the same time.
     lock_t lock;
 } rwmutex_t;
-
-/**
- * @brief Initializes a rwmutex context.
- *
- * @param ctx Pointer to the rwmutex context to initialize.
- */
-void rwmutex_ctx_init(rwmutex_ctx_t* ctx);
-
-/**
- * @brief Deinitializes a rwmutex context.
- *
- * @param ctx Pointer to the rwmutex context to deinitialize.
- */
-void rwmutex_ctx_deinit(rwmutex_ctx_t* ctx);
 
 /**
  * @brief Initializes a rwmutex.
@@ -154,16 +105,6 @@ void rwmutex_write_acquire(rwmutex_t* mtx);
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
 uint64_t rwmutex_write_try_acquire(rwmutex_t* mtx);
-
-/**
- * @brief Acquires a rwmutex for writing, without blocking.
- *
- * This function will spin until the rwmutex is acquired making it useful but not ideal for acquiring rwmutexes in a
- * interrupt handler.
- *
- * @param mtx Pointer to the rwmutex to acquire.
- */
-void rwmutex_write_spin_acquire(rwmutex_t* mtx);
 
 /**
  * @brief Releases a rwmutex from writing.

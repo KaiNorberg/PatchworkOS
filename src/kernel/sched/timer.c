@@ -7,6 +7,7 @@
 #include "drivers/hpet.h"
 #include "drivers/rtc.h"
 #include "log/log.h"
+#include "proc/process.h"
 #include "log/panic.h"
 
 #include <stdatomic.h>
@@ -179,13 +180,10 @@ SYSCALL_DEFINE(SYS_UNIX_EPOCH, time_t, time_t* timePtr)
     time_t epoch = timer_unix_epoch();
     if (timePtr != NULL)
     {
-        if (!syscall_is_pointer_valid(timePtr, sizeof(time_t)))
+        if (space_safe_copy_to(&sched_process()->space, timePtr, &epoch, sizeof(epoch)) == ERR)
         {
-            errno = EFAULT;
             return ERR;
         }
-
-        *timePtr = epoch;
     }
 
     return epoch;
