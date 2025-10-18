@@ -502,6 +502,7 @@ void sched_schedule(interrupt_frame_t* frame, cpu_t* self)
 
     sched_update_recent_idle_time(ctx->runThread, false);
 
+    thread_t* threadToFree = NULL;
     thread_state_t state = atomic_load(&ctx->runThread->state);
     switch (state)
     {
@@ -509,8 +510,8 @@ void sched_schedule(interrupt_frame_t* frame, cpu_t* self)
     {
         assert(ctx->runThread != ctx->idleThread);
 
-        // We no longer need to worry about using the threads kernel stack as when scheduling we are always in an interrupt meaning we are using the cpu's interrupt stack and can just free the thread right away.
-        DEREF(ctx->runThread);
+        // We no longer need to worry about using the threads kernel stack as when scheduling we are always in an interrupt meaning we are using the cpu's interrupt stack and can just free the thread as soon as its unloaded.
+        threadToFree = ctx->runThread;
         ctx->runThread = NULL; // Force a new thread to be loaded
     }
     break;
@@ -603,6 +604,11 @@ void sched_schedule(interrupt_frame_t* frame, cpu_t* self)
         assert(oldState == THREAD_READY);
         thread_load(next, frame);
         ctx->runThread = next;
+    }
+
+    if (threadToFree != NULL)
+    {
+        DEREF(threadToFree);
     }
 
     if (ctx->runThread != ctx->idleThread && ctx->runThread->sched.deadline > uptime)
