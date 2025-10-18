@@ -124,11 +124,16 @@ uint64_t stack_pointer_handle_page_fault(stack_pointer_t* stack, thread_t* threa
     }
     stack->lastPageFault = pageAlignedAddr;
 
+    // We cant block here since we are in an exception, so make sure the mutex is acquired before allocating.
+    rwmutex_write_acquire_spin(&thread->process->space.mutex);
     if (vmm_alloc(&thread->process->space, (void*)pageAlignedAddr, PAGE_SIZE, flags) == NULL)
     {
+        rwmutex_write_release(&thread->process->space.mutex);
         errno = ENOMEM;
         return ERR;
     }
+    rwmutex_write_release(&thread->process->space.mutex);
+
     memset((void*)pageAlignedAddr, 0, PAGE_SIZE);
 
     return 0;
