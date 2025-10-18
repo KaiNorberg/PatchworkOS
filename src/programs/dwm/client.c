@@ -60,7 +60,6 @@ void client_free(client_t* client)
         dwm_detach(surface);
         surface_free(surface);
     }
-    printf("test2\n");
 
     close(client->fd);
     free(client);
