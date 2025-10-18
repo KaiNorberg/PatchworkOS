@@ -65,8 +65,12 @@ typedef struct
  * @struct rwmutex_t
  *
  * A Read-Write Mutex allows one only writer or multiple readers to access a shared resource at the same time. This
- * implementation prioritizes writers over readers and supports recursive locking. A writer can recursively acquire the
- * mutex for either reading or writing, and a reader can recursively acquire the mutex for reading.
+ * implementation prioritizes writers over readers and supports recursive locking.
+ *
+ * A writer can recursively acquire the mutex for either reading or writing without much worry about deadlocks, however
+ * while a reader can recursively acquire the mutex for either reading or writing, its important to be careful to avoid
+ * deadlocks when upgrading from a read lock to a write lock as if multiple readers try to upgrade at the same time they
+ * will all deadlock waiting to be the last reader.
  */
 typedef struct rwmutex
 {
@@ -75,6 +79,7 @@ typedef struct rwmutex
     wait_queue_t readerQueue;
     wait_queue_t writerQueue;
     bool hasWriter;
+    bool isUpgradingReader; ///< Used to check for deadlocks by having multiple readers try to upgrade at the same time.
     lock_t lock;
 } rwmutex_t;
 
@@ -153,11 +158,12 @@ uint64_t rwmutex_write_try_acquire(rwmutex_t* mtx);
 /**
  * @brief Acquires a rwmutex for writing, without blocking.
  *
- * This function will spin until the rwmutex is acquired making it useful but not ideal for acquiring rwmutexes in a interrupt handler.
+ * This function will spin until the rwmutex is acquired making it useful but not ideal for acquiring rwmutexes in a
+ * interrupt handler.
  *
  * @param mtx Pointer to the rwmutex to acquire.
  */
-void rwmutex_write_acquire_spin(rwmutex_t* mtx);
+void rwmutex_write_spin_acquire(rwmutex_t* mtx);
 
 /**
  * @brief Releases a rwmutex from writing.

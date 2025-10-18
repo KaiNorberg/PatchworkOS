@@ -1,5 +1,6 @@
 #include "statistics.h"
 
+#include "cpu/cpu.h"
 #include "cpu/smp.h"
 #include "fs/file.h"
 #include "fs/sysfs.h"
@@ -8,9 +9,8 @@
 #include "mem/heap.h"
 #include "mem/pmm.h"
 #include "sched/sched.h"
-#include "sync/lock.h"
-#include "cpu/cpu.h"
 #include "sched/timer.h"
+#include "sync/lock.h"
 
 #include <stdint.h>
 #include <stdio.h>

@@ -94,6 +94,10 @@ thread_t* thread_new(process_t* process);
 /**
  * @brief Frees a thread structure.
  *
+ * Will not unmap the threads kernel or user stacks as the funtion could be called while we are in an interrupt,
+ * which means we cant acquire the mutexes needed to unmap memory. The stacks will be freed when the process is freed.
+ * This also prevents any strange behaviour with a process accessing stack memory of a freed thread.
+ *
  * @param thread The thread to be freed.
  */
 void thread_free(thread_t* thread);
@@ -101,7 +105,7 @@ void thread_free(thread_t* thread);
 /**
  * @brief Signals to a thread that it is dying.
  *
- * Does not perform free the thread and the thread will continue executing as a zombie after this function.
+ * Does not free the thread and the thread will continue executing as a zombie after this function.
  *
  * @param thread The thread to be killed.
  */

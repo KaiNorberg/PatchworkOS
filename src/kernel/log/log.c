@@ -1,12 +1,12 @@
 #include "log.h"
 
+#include "cpu/cpu.h"
 #include "cpu/smp.h"
 #include "drivers/com.h"
 #include "log_file.h"
 #include "log_screen.h"
 #include "sched/timer.h"
 #include "sync/lock.h"
-#include "cpu/cpu.h"
 
 #include <_internal/MAX_PATH.h>
 #include <boot/boot_info.h>

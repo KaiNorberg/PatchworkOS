@@ -1,4 +1,5 @@
 #include "timer.h"
+#include "cpu/cpu.h"
 #include "cpu/smp.h"
 #include "cpu/syscalls.h"
 #include "cpu/vectors.h"
@@ -7,7 +8,6 @@
 #include "drivers/rtc.h"
 #include "log/log.h"
 #include "log/panic.h"
-#include "cpu/cpu.h"
 
 #include <stdatomic.h>
 #include <stdbool.h>

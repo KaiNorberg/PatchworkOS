@@ -92,11 +92,6 @@ void thread_free(thread_t* thread)
     lock_acquire(&process->threads.lock);
     list_remove(&process->threads.zombieThreads, &thread->processEntry);
 
-    // Must happen before the process is potentially freed.
-    stack_pointer_deinit(&thread->kernelStack, thread);
-    // The user stack is not deinitalized in case a process is passing stack data between threads.
-    // It will be unmapped anyway when the process is freed.
-
     if (list_is_empty(&process->threads.aliveThreads) && list_is_empty(&process->threads.zombieThreads))
     {
         lock_release(&process->threads.lock);

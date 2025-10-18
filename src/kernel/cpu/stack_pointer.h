@@ -2,8 +2,8 @@
 
 #include "sched/sched.h"
 
-#include <stdint.h>
 #include <common/paging_types.h>
+#include <stdint.h>
 
 /**
  * @brief Helpers for managing stacks.
@@ -23,8 +23,7 @@
  *
  * A stack is defined as a region of page aligned memory that includes a guard page to catch stack overflows. The region
  * of memory starts unmapped and when a page fault occurs within the stack region a new page is mapped to the faulting
- * address. There is no mechanism to unmap pages from the stack, the user stack will be unmapped when its threads parent
- * process exits and the kernel stack will be unmapped when its thread is freed.
+ * address.
  *
  * The guard page is always the page just below the bottom of the stack, and is never mapped. If a thread tries to
  * access the guard page a page fault will occur, which can be used to detect stack overflows.

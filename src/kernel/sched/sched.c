@@ -1,10 +1,9 @@
 #include "sched.h"
 
+#include "cpu/cpu.h"
 #include "cpu/gdt.h"
 #include "cpu/interrupt.h"
 #include "cpu/smp.h"
-#include "cpu/interrupt.h"
-#include "cpu/cpu.h"
 #include "cpu/syscalls.h"
 #include "drivers/apic.h"
 #include "log/log.h"

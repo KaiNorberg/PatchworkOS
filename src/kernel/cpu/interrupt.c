@@ -1,8 +1,8 @@
 #include "interrupt.h"
 
+#include "cpu.h"
 #include "drivers/apic.h"
 #include "gdt.h"
-#include "cpu.h"
 #include "irq.h"
 #include "log/panic.h"
 #include "sched/thread.h"

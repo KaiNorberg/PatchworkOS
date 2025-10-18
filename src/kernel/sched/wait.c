@@ -1,7 +1,7 @@
 #include "wait.h"
 
-#include "cpu/smp.h"
 #include "cpu/cpu.h"
+#include "cpu/smp.h"
 #include "log/panic.h"
 #include "mem/heap.h"
 #include "sched.h"
