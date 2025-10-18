@@ -36,5 +36,5 @@ void _std_streams_init(void)
     _std_stream_init(STDIN_FILENO, &_stdin, &stdin, _stdin_buff, _FILE_LINE_BUFFERED | _FILE_READ);
     _std_stream_init(STDOUT_FILENO, &_stdout, &stdout, _stdout_buff, _FILE_LINE_BUFFERED | _FILE_WRITE);
     _std_stream_init(STDERR_FILENO, &_stderr, &stderr, _stderr_buff, _FILE_UNBUFFERED | _FILE_WRITE);
-    errno = 0;
+    errno = EOK;
 }

@@ -2407,7 +2407,7 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
         aml_object_t* convertedFor1 = NULL;
         if (aml_convert_source(ctx->state, element, &convertedFor1, object1->type) == ERR)
         {
-            errno = 0;
+            errno = EOK;
             continue;
         }
         DEREF_DEFER(convertedFor1);
@@ -2415,7 +2415,7 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
         aml_object_t* convertedFor2 = NULL;
         if (aml_convert_source(ctx->state, element, &convertedFor2, object2->type) == ERR)
         {
-            errno = 0;
+            errno = EOK;
             continue;
         }
         DEREF_DEFER(convertedFor2);

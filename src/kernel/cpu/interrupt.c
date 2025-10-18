@@ -1,9 +1,10 @@
 #include "interrupt.h"
 
 #include "drivers/apic.h"
+#include "gdt.h"
+#include "cpu.h"
 #include "irq.h"
 #include "log/panic.h"
-#include "sched/sched.h"
 #include "sched/thread.h"
 #include "sched/wait.h"
 #include "smp.h"
@@ -88,18 +89,29 @@ void interrupt_handler(interrupt_frame_t* frame)
 
     switch (frame->vector)
     {
-    case VECTOR_HALT:
+    case VECTOR_NOTE:
     {
-        while (1)
+        // Notes should only be handled when in user space otherwise we get so many edge cases to deal with.
+        // There is a check when a system call occurs to make sure that the note will eventually be handled.
+        if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
         {
-            asm volatile("hlt");
+            note_dispatch(frame, self);
         }
+        lapic_eoi();
     }
     break;
     case VECTOR_TIMER:
     {
         timer_interrupt_handler(frame, self);
         lapic_eoi();
+    }
+    break;
+    case VECTOR_HALT:
+    {
+        while (1)
+        {
+            asm volatile("hlt");
+        }
     }
     break;
     default:
@@ -113,14 +125,6 @@ void interrupt_handler(interrupt_frame_t* frame)
             panic(frame, "Unknown vector");
         }
     }
-    }
-
-    // TODO: Consider removing this?
-    sched_schedule(frame, self);
-
-    if (!self->sched.runThread->syscall.inSyscall)
-    {
-        note_dispatch(frame, self);
     }
 
     statistics_interrupt_end(frame, self);

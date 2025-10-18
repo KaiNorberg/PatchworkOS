@@ -1,7 +1,10 @@
 #include "syscalls.h"
 
 #include "cpu/gdt.h"
+#include "drivers/apic.h"
 #include "gdt.h"
+#include "log/log.h"
+#include "mem/vmm.h"
 #include "sched/sched.h"
 #include "sched/thread.h"
 
@@ -49,7 +52,6 @@ void syscall_ctx_init(syscall_ctx_t* ctx, stack_pointer_t* kernelStack)
 {
     ctx->kernelRsp = kernelStack->top;
     ctx->userRsp = 0;
-    ctx->inSyscall = false;
 }
 
 void syscall_ctx_load(syscall_ctx_t* ctx)
@@ -71,6 +73,8 @@ const syscall_descriptor_t* syscall_get_descriptor(uint64_t number)
 uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx, uint64_t r8, uint64_t r9,
     uint64_t number)
 {
+    asm volatile("sti");
+
     const syscall_descriptor_t* desc = syscall_get_descriptor(number);
     if (desc == NULL)
     {
@@ -80,13 +84,19 @@ uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx,
     }
 
     thread_t* thread = sched_thread();
-    thread->syscall.inSyscall = true;
 
     // This is safe for any input type and any number of arguments up to 6 as they will simply be ignored.
     uint64_t (*handler)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t) = desc->handler;
     uint64_t result = handler(rdi, rsi, rdx, rcx, r8, r9);
 
-    thread->syscall.inSyscall = false;
+    // Interrupts will be renabled when the sysret instruction executes, this means that if there is a pending note and
+    // we invoke an interrupt the actual interrupt handler will not run until we return to user space.
+    asm volatile("cli");
+    if (note_queue_length(&thread->notes) > 0)
+    {
+        lapic_send_ipi(lapic_self_id(), VECTOR_NOTE);
+    }
+
     return result;
 }
 
@@ -118,7 +128,7 @@ bool syscall_is_pointer_valid(const void* pointer, uint64_t length)
     return true;
 }
 
-bool syscall_is_buffer_valid(space_t* space, const void* pointer, uint64_t length)
+bool syscall_is_pointer_accessible(space_t* space, const void* pointer, uint64_t length)
 {
     if (length == 0)
     {
@@ -138,9 +148,9 @@ bool syscall_is_buffer_valid(space_t* space, const void* pointer, uint64_t lengt
     return true;
 }
 
-bool syscall_is_string_valid(space_t* space, const char* string)
+bool syscall_is_string_accessible(space_t* space, const char* string)
 {
-    if (!syscall_is_buffer_valid(space, string, sizeof(const char*)))
+    if (!syscall_is_pointer_accessible(space, string, sizeof(const char*)))
     {
         return false;
     }
@@ -148,7 +158,7 @@ bool syscall_is_string_valid(space_t* space, const char* string)
     const char* chr = string;
     while (true)
     {
-        if (!syscall_is_buffer_valid(space, chr, sizeof(char)))
+        if (!syscall_is_pointer_accessible(space, chr, sizeof(char)))
         {
             return false;
         }

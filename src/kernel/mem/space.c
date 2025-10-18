@@ -105,8 +105,6 @@ void space_deinit(space_t* space)
         return;
     }
 
-    rwmutex_deinit(&space->mutex);
-
     uint64_t index;
     BITMAP_FOR_EACH_SET(&index, &space->callbackBitmap)
     {
@@ -129,6 +127,7 @@ void space_deinit(space_t* space)
     }
 
     page_table_deinit(&space->pageTable);
+    rwmutex_deinit(&space->mutex);
 }
 
 void space_load(space_t* space)
@@ -276,7 +275,7 @@ void* space_mapping_end(space_t* space, space_mapping_t* mapping, errno_t err)
         return NULL;
     }
 
-    if (err != 0)
+    if (err != EOK)
     {
         rwmutex_write_release(&space->mutex); // Release the mutex from space_mapping_start.
         errno = err;

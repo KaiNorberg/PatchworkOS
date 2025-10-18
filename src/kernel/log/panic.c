@@ -4,9 +4,11 @@
 #include "cpu/smp.h"
 #include "cpu/vectors.h"
 #include "log/log.h"
-#include "log/log_screen.h"
 #include "mem/heap.h"
 #include "mem/pmm.h"
+#include "cpu/interrupt.h"
+#include "cpu/cpu.h"
+#include "mem/vmm.h"
 #include "sched/thread.h"
 #include "sched/timer.h"
 

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "mem/vmm.h"
 #include "path.h"
 #include "utils/ref.h"
 
+#include <common/paging_types.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <sys/io.h>

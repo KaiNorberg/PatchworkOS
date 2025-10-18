@@ -7,13 +7,13 @@
 #include "fs/path.h"
 #include "log/log.h"
 #include "log/panic.h"
+#include "mem/vmm.h"
 #include "proc/process.h"
 #include "sched/sched.h"
 #include "sched/timer.h"
 #include "sched/wait.h"
 #include "sync/mutex.h"
 #include "sync/rwlock.h"
-#include "sync/rwmutex.h"
 #include "sys/list.h"
 #include "sysfs.h"
 #include "utils/ref.h"
@@ -821,7 +821,7 @@ SYSCALL_DEFINE(SYS_OPEN, fd_t, const char* pathString)
     space_t* space = &process->space;
     RWMUTEX_READ_SCOPE(&space->mutex);
 
-    if (!syscall_is_string_valid(space, pathString))
+    if (!syscall_is_string_accessible(space, pathString))
     {
         errno = EFAULT;
         return ERR;
@@ -902,13 +902,13 @@ SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
     space_t* space = &process->space;
     RWMUTEX_READ_SCOPE(&space->mutex);
 
-    if (!syscall_is_string_valid(space, pathString))
+    if (!syscall_is_string_accessible(space, pathString))
     {
         errno = EFAULT;
         return ERR;
     }
 
-    if (!syscall_is_buffer_valid(space, fds, sizeof(fd_t) * 2))
+    if (!syscall_is_pointer_accessible(space, fds, sizeof(fd_t) * 2))
     {
         errno = EFAULT;
         return ERR;
@@ -982,7 +982,7 @@ SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, uint64_t count)
     space_t* space = &process->space;
     RWMUTEX_READ_SCOPE(&space->mutex);
 
-    if (!syscall_is_buffer_valid(space, buffer, count))
+    if (!syscall_is_pointer_accessible(space, buffer, count))
     {
         errno = EFAULT;
         return ERR;
@@ -1042,7 +1042,7 @@ SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, uint64_t count)
     space_t* space = &process->space;
     RWMUTEX_READ_SCOPE(&space->mutex);
 
-    if (!syscall_is_buffer_valid(space, buffer, count))
+    if (!syscall_is_pointer_accessible(space, buffer, count))
     {
         errno = EFAULT;
         return ERR;
@@ -1125,7 +1125,7 @@ SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, uint6
     space_t* space = &process->space;
     RWMUTEX_READ_SCOPE(&space->mutex);
 
-    if (argp != NULL && !syscall_is_buffer_valid(space, argp, size))
+    if (argp != NULL && !syscall_is_pointer_accessible(space, argp, size))
     {
         errno = EFAULT;
         return ERR;
@@ -1176,9 +1176,13 @@ void* vfs_mmap(file_t* file, void* address, uint64_t length, pml_flags_t flags)
 
 SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, uint64_t length, prot_t prot)
 {
-    process_t* process = sched_process();
-    space_t* space = &process->space;
+    if (address != NULL && !syscall_is_pointer_valid(address, length))
+    {
+        errno = EFAULT;
+        return NULL;
+    }
 
+    process_t* process = sched_process();
     file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
     if (file == NULL)
     {
@@ -1337,24 +1341,22 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         readyCount = vfs_poll_ctx_check_events(&ctx, files, amount);
         if (readyCount == ERR)
         {
-            wait_block_cancel(WAIT_ERROR);
+            wait_block_cancel(errno);
             return ERR;
         }
 
         if (readyCount > 0 || uptime >= deadline)
         {
-            wait_block_cancel(WAIT_NORM);
+            wait_block_cancel(EOK);
             break;
         }
 
-        wait_result_t result = wait_block_do();
-        if (result == WAIT_TIMEOUT)
+        if (wait_block_do() == ERR)
         {
-            break;
-        }
-        else if (result == WAIT_ERROR || result == WAIT_NOTE)
-        {
-            errno = EINTR;
+            if (errno == ETIMEDOUT)
+            {
+                break;
+            }
             return ERR;
         }
     }
@@ -1374,7 +1376,7 @@ SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeo
         return ERR;
     }
 
-    if (!syscall_is_buffer_valid(space, fds, sizeof(pollfd_t) * amount))
+    if (!syscall_is_pointer_accessible(space, fds, sizeof(pollfd_t) * amount))
     {
         errno = EFAULT;
         return ERR;
@@ -1462,7 +1464,7 @@ SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count
     space_t* space = &process->space;
     RWMUTEX_READ_SCOPE(&space->mutex);
 
-    if (!syscall_is_buffer_valid(space, buffer, count))
+    if (!syscall_is_pointer_accessible(space, buffer, count))
     {
         errno = EFAULT;
         return ERR;
@@ -1524,13 +1526,13 @@ SYSCALL_DEFINE(SYS_STAT, uint64_t, const char* pathString, stat_t* buffer)
     space_t* space = &process->space;
     RWMUTEX_READ_SCOPE(&space->mutex);
 
-    if (!syscall_is_string_valid(space, pathString))
+    if (!syscall_is_string_accessible(space, pathString))
     {
         errno = EFAULT;
         return ERR;
     }
 
-    if (!syscall_is_buffer_valid(space, buffer, sizeof(stat_t)))
+    if (!syscall_is_pointer_accessible(space, buffer, sizeof(stat_t)))
     {
         errno = EFAULT;
         return ERR;
@@ -1629,7 +1631,7 @@ SYSCALL_DEFINE(SYS_LINK, uint64_t, const char* oldPathString, const char* newPat
     space_t* space = &process->space;
     RWMUTEX_READ_SCOPE(&space->mutex);
 
-    if (!syscall_is_string_valid(space, oldPathString) || !syscall_is_string_valid(space, newPathString))
+    if (!syscall_is_string_accessible(space, oldPathString) || !syscall_is_string_accessible(space, newPathString))
     {
         errno = EFAULT;
         return ERR;
@@ -1710,7 +1712,7 @@ SYSCALL_DEFINE(SYS_DELETE, uint64_t, const char* pathString)
     space_t* space = &process->space;
     RWMUTEX_READ_SCOPE(&space->mutex);
 
-    if (!syscall_is_string_valid(space, pathString))
+    if (!syscall_is_string_accessible(space, pathString))
     {
         errno = EFAULT;
         return ERR;

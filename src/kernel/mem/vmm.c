@@ -174,7 +174,7 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t fla
         }
     }
 
-    return space_mapping_end(space, &mapping, 0);
+    return space_mapping_end(space, &mapping, EOK);
 }
 
 void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, pml_flags_t flags,
@@ -223,7 +223,7 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, p
         return space_mapping_end(space, &mapping, ENOMEM);
     }
 
-    return space_mapping_end(space, &mapping, 0);
+    return space_mapping_end(space, &mapping, EOK);
 }
 
 void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageAmount, pml_flags_t flags,
@@ -280,7 +280,7 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
         }
     }
 
-    return space_mapping_end(space, &mapping, 0);
+    return space_mapping_end(space, &mapping, EOK);
 }
 
 uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length)
@@ -333,8 +333,6 @@ SYSCALL_DEFINE(SYS_MUNMAP, uint64_t, void* address, uint64_t length)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
-
-    RWMUTEX_WRITE_SCOPE(&space->mutex);
 
     if (!syscall_is_pointer_valid(address, length))
     {
@@ -389,7 +387,7 @@ SYSCALL_DEFINE(SYS_MPROTECT, uint64_t, void* address, uint64_t length, prot_t pr
     process_t* process = sched_process();
     space_t* space = &process->space;
 
-    RWMUTEX_WRITE_SCOPE(&space->mutex);
+    RWMUTEX_READ_SCOPE(&space->mutex);
 
     if (!syscall_is_pointer_valid(address, length))
     {

@@ -28,7 +28,6 @@ typedef struct
 {
     uintptr_t kernelRsp;
     uintptr_t userRsp;
-    bool inSyscall;
 } syscall_ctx_t;
 
 /**
@@ -125,7 +124,7 @@ uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx,
 /**
  * @brief Validate a pointer before using it in a syscall.
  *
- * Will check that the location pointed to by `pointer` for the provided `length` is in the lower half of the
+ * Will check that the location pointed to by `pointer` for the provided `length` is in the user section of the
  * address space. Could still be unmapped memory.
  *
  * @param pointer The pointer to validate.
@@ -135,9 +134,9 @@ uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx,
 bool syscall_is_pointer_valid(const void* pointer, uint64_t length);
 
 /**
- * @brief Validate a buffer before using it in a syscall.
+ * @brief Check that a region is accessible before using it in a syscall.
  *
- * Will check that the location pointed to by `pointer` for the provided `length` is in the lower half of the
+ * Will check that the location pointed to by `pointer` for the provided `length` is in the user section of the
  * address space and is mapped in the provided address space.
  *
  * @param space The address space to check the mapping in.
@@ -145,18 +144,18 @@ bool syscall_is_pointer_valid(const void* pointer, uint64_t length);
  * @param length The length of the memory region to validate.
  * @return true if the buffer is valid, false otherwise.
  */
-bool syscall_is_buffer_valid(space_t* space, const void* pointer, uint64_t length);
+bool syscall_is_pointer_accessible(space_t* space, const void* pointer, uint64_t length);
 
 /**
  * @brief Validate a string before using it in a syscall.
  *
- * Will check that the string is in the lower half of the address space, is mapped in the provided address space and
+ * Will check that the string is in the user section of the address space, is mapped in the provided address space and
  * that it takes up no more then `PAGE_SIZE` bytes.
  *
  * @param space The address space to check the mapping in.
  * @param string The string to validate.
  * @return true if the string is valid, false otherwise.
  */
-bool syscall_is_string_valid(space_t* space, const char* string);
+bool syscall_is_string_accessible(space_t* space, const char* string);
 
 /** @} */

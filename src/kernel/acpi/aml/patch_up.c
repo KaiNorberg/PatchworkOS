@@ -75,7 +75,7 @@ uint64_t aml_patch_up_resolve_all(void)
         if (match == NULL)
         {
             LOG_DEBUG("Still could not resolve '%s'\n", aml_name_string_to_string(&entry->unresolved->nameString));
-            errno = 0;
+            errno = EOK;
             continue;
         }
 

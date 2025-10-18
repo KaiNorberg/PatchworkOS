@@ -1,6 +1,7 @@
 #include "apic.h"
 
 #include "acpi/tables.h"
+#include "cpu/cpu.h"
 #include "cpu/smp.h"
 #include "drivers/hpet.h"
 #include "drivers/pic.h"

@@ -53,8 +53,9 @@ typedef enum
 
     EXTERNAL_INTERRUPT_BASE = 0x20,
 
-    VECTOR_HALT = 0xFD,
-    VECTOR_TIMER = 0xFE,
+    VECTOR_NOTE = 0xFC,
+    VECTOR_TIMER = 0xFD,
+    VECTOR_HALT = 0xFE,
     VECTOR_AMOUNT = 0xFF
 } vector_t;
 

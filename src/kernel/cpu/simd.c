@@ -1,7 +1,8 @@
 #include "simd.h"
-#include "cpu/smp.h"
+#include "smp.h"
 #include "log/log.h"
 #include "mem/pmm.h"
+#include "cpu.h"
 
 #include <common/defs.h>
 

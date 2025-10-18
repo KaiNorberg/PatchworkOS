@@ -5,10 +5,10 @@
 #include "idt.h"
 #include "interrupt.h"
 #include "log/log.h"
+#include "mem/vmm.h"
 #include "sched/sched.h"
 #include "simd.h"
 #include "syscalls.h"
-#include "trampoline.h"
 #include "tss.h"
 #include "utils/statistics.h"
 

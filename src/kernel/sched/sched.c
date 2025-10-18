@@ -3,6 +3,8 @@
 #include "cpu/gdt.h"
 #include "cpu/interrupt.h"
 #include "cpu/smp.h"
+#include "cpu/interrupt.h"
+#include "cpu/cpu.h"
 #include "cpu/syscalls.h"
 #include "drivers/apic.h"
 #include "log/log.h"
@@ -84,7 +86,7 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* cpu)
 
     // Bootstrap cpu is initalized early so we cant yet create the idle thread, the boot thread on the bootstrap cpu
     // will become the idle thread.
-    if (cpu->id == CPU_BOOTSTRAP_ID)
+    if (cpu->id == CPU_ID_BOOTSTRAP)
     {
         ctx->idleThread = NULL;
         ctx->runThread = NULL;
@@ -108,6 +110,7 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* cpu)
     }
 
     lock_init(&ctx->lock);
+    ctx->owner = cpu;
 }
 
 static void sched_init_spawn_boot_thread(void)
@@ -123,9 +126,16 @@ static void sched_init_spawn_boot_thread(void)
     self->sched.runThread = bootThread;
 }
 
+static void sched_timer_handler(interrupt_frame_t* frame, cpu_t* self)
+{
+    sched_schedule(frame, self);
+}
+
 void sched_init(void)
 {
     sched_init_spawn_boot_thread();
+
+    timer_subscribe(sched_timer_handler);
 
     wait_queue_init(&sleepQueue);
 }
@@ -135,7 +145,7 @@ void sched_done_with_boot_thread(void)
     cpu_t* self = smp_self_unsafe();
     sched_cpu_ctx_t* ctx = &self->sched;
 
-    assert(self->id == CPU_BOOTSTRAP_ID && ctx->runThread->process == process_get_kernel() && ctx->runThread->id == 0);
+    assert(self->id == CPU_ID_BOOTSTRAP && ctx->runThread->process == process_get_kernel() && ctx->runThread->id == 0);
 
     // The boot thread becomes the bootstrap cpus idle thread.
     ctx->runThread->sched.deadline = 0;
@@ -148,7 +158,7 @@ void sched_done_with_boot_thread(void)
     sched_idle_loop();
 }
 
-wait_result_t sched_nanosleep(clock_t timeout)
+uint64_t sched_nanosleep(clock_t timeout)
 {
     return WAIT_BLOCK_TIMEOUT(&sleepQueue, false, timeout);
 }
@@ -287,18 +297,15 @@ SYSCALL_DEFINE(SYS_YIELD, uint64_t)
     return 0;
 }
 
-static bool sched_should_notify(cpu_t* self, cpu_t* target, priority_t priority)
+static bool sched_should_notify(cpu_t* target, priority_t priority)
 {
-    if (target != self)
+    if (target->sched.runThread == target->sched.idleThread)
     {
-        if (target->sched.runThread == target->sched.idleThread)
-        {
-            return true;
-        }
-        if (priority > target->sched.runThread->sched.actualPriority)
-        {
-            return true;
-        }
+        return true;
+    }
+    if (priority > target->sched.runThread->sched.actualPriority)
+    {
+        return true;
     }
 
     return false;
@@ -333,7 +340,7 @@ void sched_push(thread_t* thread, cpu_t* target)
     sched_compute_time_slice(thread, NULL);
     sched_compute_actual_priority(thread);
 
-    if (sched_should_notify(self, target, thread->sched.actualPriority))
+    if (sched_should_notify(target, thread->sched.actualPriority))
     {
         timer_notify(target);
     }
@@ -410,7 +417,7 @@ void sched_push_new_thread(thread_t* thread, thread_t* parent)
     sched_compute_time_slice(thread, parent);
     sched_compute_actual_priority(thread);
 
-    if (sched_should_notify(self, target, thread->sched.actualPriority))
+    if (sched_should_notify(target, thread->sched.actualPriority))
     {
         timer_notify(target);
     }
@@ -442,7 +449,7 @@ static void sched_load_balance(cpu_t* self, cpu_t* neighbor)
             break;
         }
 
-        if (sched_should_notify(self, neighbor, thread->sched.actualPriority))
+        if (sched_should_notify(neighbor, thread->sched.actualPriority))
         {
             shouldNotifyNeighbor = true;
         }

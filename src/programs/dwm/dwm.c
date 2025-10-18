@@ -66,10 +66,10 @@ static client_t* dwm_client_accept(void)
 
 static void dwm_client_disconnect(client_t* client)
 {
-    printf("dwm: disconnect client %d\n", client->fd);
     list_remove(&clients, &client->entry);
     client_free(client);
     clientAmount--;
+    printf("dwm: disconnect client\n");
 }
 
 static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* data, uint64_t size)

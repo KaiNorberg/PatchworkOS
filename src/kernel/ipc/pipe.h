@@ -5,6 +5,14 @@
 #include "sched/wait.h"
 #include "utils/ring.h"
 
+/**
+ * @brief Pipes.
+ * @defgroup kernel_ipc_pipe Pipes
+ * @ingroup kernel_ipc
+ *
+ * @{
+ */
+
 typedef struct
 {
     void* buffer;
@@ -19,3 +27,5 @@ typedef struct
 } pipe_private_t;
 
 void pipe_init(void);
+
+/** @} */

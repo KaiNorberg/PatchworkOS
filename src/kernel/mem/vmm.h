@@ -1,5 +1,6 @@
 #pragma once
 
+#include "sched/thread.h"
 #include "space.h"
 
 #include <boot/boot_info.h>

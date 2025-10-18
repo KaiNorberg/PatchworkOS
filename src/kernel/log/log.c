@@ -2,13 +2,11 @@
 
 #include "cpu/smp.h"
 #include "drivers/com.h"
-#include "log/panic.h"
 #include "log_file.h"
 #include "log_screen.h"
-#include "sched/thread.h"
 #include "sched/timer.h"
 #include "sync/lock.h"
-#include "sync/mutex.h"
+#include "cpu/cpu.h"
 
 #include <_internal/MAX_PATH.h>
 #include <boot/boot_info.h>

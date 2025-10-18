@@ -1,6 +1,7 @@
 #include "wait.h"
 
 #include "cpu/smp.h"
+#include "cpu/cpu.h"
 #include "log/panic.h"
 #include "mem/heap.h"
 #include "sched.h"
@@ -20,12 +21,11 @@ typedef enum
     WAIT_CLEANUP_REMOVE_FROM_LIST = 1 << 1,
 } wait_cleanup_flags_t;
 
-static void wait_block_cleanup(thread_t* thread, wait_result_t result, wait_queue_t* acquiredQueue,
-    wait_cleanup_flags_t flags)
+static void wait_block_cleanup(thread_t* thread, errno_t err, wait_queue_t* acquiredQueue, wait_cleanup_flags_t flags)
 {
     assert(atomic_load(&thread->state) == THREAD_UNBLOCKING);
 
-    thread->wait.result = result;
+    thread->wait.err = err;
 
     if (flags & WAIT_CLEANUP_REMOVE_FROM_LIST)
     {
@@ -86,7 +86,7 @@ static void wait_timer_handler(interrupt_frame_t* frame, cpu_t* self)
         thread_state_t expected = THREAD_BLOCKED;
         if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
         {
-            wait_block_cleanup(thread, WAIT_TIMEOUT, NULL, WAIT_CLEANUP_NONE);
+            wait_block_cleanup(thread, ETIMEDOUT, NULL, WAIT_CLEANUP_NONE);
             sched_push(thread, thread->wait.owner);
         }
     }
@@ -116,8 +116,7 @@ void wait_queue_deinit(wait_queue_t* waitQueue)
 void wait_thread_ctx_init(wait_thread_ctx_t* wait)
 {
     list_init(&wait->entries);
-    wait->entryAmount = 0;
-    wait->result = WAIT_NORM;
+    wait->err = EOK;
     wait->deadline = 0;
     wait->owner = NULL;
 }
@@ -163,7 +162,7 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
     thread_state_t expected = THREAD_PRE_BLOCK;
     if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_BLOCKED))
     {
-        wait_block_cleanup(thread, WAIT_NORM, NULL, WAIT_CLEANUP_REMOVE_FROM_LIST);
+        wait_block_cleanup(thread, ETIMEDOUT, NULL, WAIT_CLEANUP_REMOVE_FROM_LIST);
         return false;
     }
     else if (thread_is_note_pending(thread))
@@ -171,7 +170,7 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
         thread_state_t expected = THREAD_BLOCKED;
         if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
         {
-            wait_block_cleanup(thread, WAIT_NOTE, NULL, WAIT_CLEANUP_REMOVE_FROM_LIST);
+            wait_block_cleanup(thread, EINTR, NULL, WAIT_CLEANUP_REMOVE_FROM_LIST);
             return false;
         }
     }
@@ -180,16 +179,16 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
     return true;
 }
 
-void wait_unblock_thread(thread_t* thread, wait_result_t result)
+void wait_unblock_thread(thread_t* thread, errno_t err)
 {
     if (atomic_exchange(&thread->state, THREAD_UNBLOCKING) == THREAD_BLOCKED)
     {
-        wait_block_cleanup(thread, result, NULL, WAIT_CLEANUP_REMOVE_FROM_LIST | WAIT_CLEANUP_ACQUIRE_OWNER);
+        wait_block_cleanup(thread, err, NULL, WAIT_CLEANUP_REMOVE_FROM_LIST | WAIT_CLEANUP_ACQUIRE_OWNER);
         sched_push(thread, thread->wait.owner);
     }
 }
 
-uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
+uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount, errno_t err)
 {
     uint64_t amountUnblocked = 0;
 
@@ -208,8 +207,7 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
 
         if (atomic_exchange(&thread->state, THREAD_UNBLOCKING) == THREAD_BLOCKED)
         {
-            wait_block_cleanup(thread, WAIT_NORM, waitQueue,
-                WAIT_CLEANUP_REMOVE_FROM_LIST | WAIT_CLEANUP_ACQUIRE_OWNER);
+            wait_block_cleanup(thread, err, waitQueue, WAIT_CLEANUP_REMOVE_FROM_LIST | WAIT_CLEANUP_ACQUIRE_OWNER);
             sched_push(thread, thread->wait.owner);
             amountUnblocked++;
             amount--;
@@ -270,8 +268,7 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
         list_push(&entry->waitQueue->entries, &entry->queueEntry);
     }
 
-    thread->wait.entryAmount = amount;
-    thread->wait.result = WAIT_NORM;
+    thread->wait.err = EOK;
     thread->wait.deadline = timeout == CLOCKS_NEVER ? CLOCKS_NEVER : timer_uptime() + timeout;
     thread->wait.owner = NULL;
 
@@ -284,7 +281,7 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
     return 0;
 }
 
-void wait_block_cancel(wait_result_t result)
+void wait_block_cancel(errno_t err)
 {
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
@@ -296,7 +293,7 @@ void wait_block_cancel(wait_result_t result)
     // State might already be unblocking if the thread unblocked prematurely.
     assert(state == THREAD_PRE_BLOCK || state == THREAD_UNBLOCKING);
 
-    wait_block_cleanup(thread, result, NULL, WAIT_CLEANUP_NONE);
+    wait_block_cleanup(thread, err, NULL, WAIT_CLEANUP_NONE);
 
     thread_state_t newState = atomic_exchange(&thread->state, THREAD_RUNNING);
     assert(newState == THREAD_UNBLOCKING); // Make sure state did not change.
@@ -305,7 +302,7 @@ void wait_block_cancel(wait_result_t result)
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 }
 
-wait_result_t wait_block_do(void)
+uint64_t wait_block_do(void)
 {
     thread_t* thread = smp_self_unsafe()->sched.runThread;
 
@@ -313,5 +310,10 @@ wait_result_t wait_block_do(void)
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     timer_notify_self();
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    return thread->wait.result;
+    if (thread->wait.err != 0)
+    {
+        errno = thread->wait.err;
+        return ERR;
+    }
+    return 0;
 }

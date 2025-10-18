@@ -259,7 +259,7 @@ static uint64_t ps2_device_init(ps2_device_t device)
         return ERR;
     }
 
-    errno = 0;
+    errno = EOK;
     if (PS2_DEV_CMD_AND_READ(device, PS2_DEV_CMD_IDENTIFY, &info->firstIdByte) == ERR)
     {
         if (errno != ETIMEDOUT)

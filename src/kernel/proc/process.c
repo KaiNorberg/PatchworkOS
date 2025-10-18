@@ -7,6 +7,7 @@
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
+#include "mem/vmm.h"
 #include "sched/thread.h"
 #include "sched/wait.h"
 #include "sync/lock.h"
@@ -431,7 +432,7 @@ void process_kill(process_t* process, uint64_t status)
 
     vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_inode_cleanup, makes sure that files close
                                       // immediately to notify blocking threads.
-    wait_unblock(&process->dyingWaitQueue, WAIT_ALL);
+    wait_unblock(&process->dyingWaitQueue, WAIT_ALL, EOK);
 }
 
 bool process_is_child(process_t* process, pid_t parentId)

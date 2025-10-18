@@ -7,6 +7,7 @@
 #include "drivers/rtc.h"
 #include "log/log.h"
 #include "log/panic.h"
+#include "cpu/cpu.h"
 
 #include <stdatomic.h>
 #include <stdbool.h>

@@ -72,9 +72,12 @@ typedef struct space
      */
     uint64_t bitmapBuffer[BITMAP_BITS_TO_QWORDS(PML_MAX_CALLBACK)];
     /**
-     * Mutex to protect this structure and its mappings.
+     * Lock to protect this structure and its mappings.
      *
      * Should be acquired in system calls that take in pointers to user space, to prevent TOCTOU attacks.
+     *
+     * TODO: Using a lock for this really is not ideal for performance, but we cant use a mutex becouse we need to be
+     * able to map memory during exceptions, so there is a need for a more sophisticated solution here.
      */
     rwmutex_t mutex;
 } space_t;

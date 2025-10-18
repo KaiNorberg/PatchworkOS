@@ -31,14 +31,12 @@ syscall_entry:
     push r9
     push r10
     push r11
-    sti
 
     mov rcx, r10 ; Fourth argument
     push rax ; Seventh argument (syscall number)
     call syscall_handler
     add rsp, 8 ; Pop seventh argument
 
-    cli
     pop r11
     pop r10
     pop r9

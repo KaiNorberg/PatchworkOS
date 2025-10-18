@@ -83,7 +83,7 @@ static void pipe_close(file_t* file)
         private->isWriteClosed = true;
     }
 
-    wait_unblock(&private->waitQueue, WAIT_ALL);
+    wait_unblock(&private->waitQueue, WAIT_ALL, EOK);
     if (private->isWriteClosed && private->isReadClosed)
     {
         lock_release(&private->lock);
@@ -94,7 +94,6 @@ static void pipe_close(file_t* file)
     }
 
     lock_release(&private->lock);
-    LOG_DEBUG("cleanup\n");
 }
 
 static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
@@ -120,9 +119,9 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* 
     LOCK_SCOPE(&private->lock);
 
     if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
-            ring_data_length(&private->ring) != 0 || private->isWriteClosed) != WAIT_NORM)
+            ring_data_length(&private->ring) != 0 || private->isWriteClosed) == ERR)
     {
-        return 0;
+        return ERR;
     }
 
     count = MIN(count, ring_data_length(&private->ring));
@@ -131,7 +130,7 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* 
         panic(NULL, "Failed to read from pipe");
     }
 
-    wait_unblock(&private->waitQueue, WAIT_ALL);
+    wait_unblock(&private->waitQueue, WAIT_ALL, EOK);
 
     *offset += count;
     return count;
@@ -155,15 +154,14 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uin
     LOCK_SCOPE(&private->lock);
 
     if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
-            ring_free_length(&private->ring) >= count || private->isReadClosed) != WAIT_NORM)
+            ring_free_length(&private->ring) >= count || private->isReadClosed) == ERR)
     {
-        errno = EINTR;
         return ERR;
     }
 
     if (private->isReadClosed)
     {
-        wait_unblock(&private->waitQueue, WAIT_ALL);
+        wait_unblock(&private->waitQueue, WAIT_ALL, EOK);
         errno = EPIPE;
         return ERR;
     }
@@ -173,7 +171,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uin
         panic(NULL, "Failed to write to pipe");
     }
 
-    wait_unblock(&private->waitQueue, 1);
+    wait_unblock(&private->waitQueue, WAIT_ALL, EOK);
 
     *offset += count;
     return count;

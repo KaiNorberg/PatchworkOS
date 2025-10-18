@@ -8,13 +8,9 @@
 
 uint64_t argv_init(argv_t* argv, const char** src)
 {
-    if (src == NULL)
+    if (src == NULL || src[0] == NULL)
     {
-        argv->buffer = heap_alloc(sizeof(const char*), HEAP_NONE);
-        if (argv->buffer == NULL)
-        {
-            return ERR;
-        }
+        argv->buffer = argv->empty;
         argv->size = sizeof(const char*);
         argv->amount = 1;
 
@@ -63,5 +59,9 @@ uint64_t argv_init(argv_t* argv, const char** src)
 
 void argv_deinit(argv_t* argv)
 {
+    if (argv->buffer == argv->empty)
+    {
+        return;
+    }
     heap_free(argv->buffer);
 }

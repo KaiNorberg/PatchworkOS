@@ -4,8 +4,8 @@
 #include "fs/file.h"
 #include "fs/vfs.h"
 #include "log/log.h"
-#include "mem/heap.h"
 #include "log/panic.h"
+#include "mem/heap.h"
 
 #include <boot/boot_info.h>
 #include <errno.h>

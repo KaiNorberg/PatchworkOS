@@ -1,6 +1,7 @@
 #include "stack_pointer.h"
 
-#include "mem/pmm.h"
+#include "log/log.h"
+#include "mem/vmm.h"
 #include "sched/thread.h"
 
 uint64_t stack_pointer_init(stack_pointer_t* stack, uintptr_t maxAddress, uint64_t maxPages)

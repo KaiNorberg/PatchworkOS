@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config.h"
+#include "cpu_id.h"
 #include "drivers/apic.h"
 #include "interrupt.h"
 #include "sched/sched.h"
@@ -18,21 +19,6 @@
  *
  * @{
  */
-
-/**
- * @brief Maximum number of CPUs supported.
- */
-#define CPU_MAX UINT8_MAX
-
-/**
- * @brief ID of the bootstrap CPU.
- */
-#define CPU_BOOTSTRAP_ID 0
-
-/**
- * @brief Type used to identify a CPU.
- */
-typedef uint16_t cpuid_t;
 
 /**
  * @brief CPU structure.

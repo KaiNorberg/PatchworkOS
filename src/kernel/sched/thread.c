@@ -6,6 +6,7 @@
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
+#include "mem/vmm.h"
 #include "sched/sched.h"
 #include "sched/timer.h"
 #include "sched/wait.h"
@@ -52,6 +53,7 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
     }
     note_queue_init(&thread->notes);
     syscall_ctx_init(&thread->syscall, &thread->kernelStack);
+    rwmutex_ctx_init(&thread->rwmutexCtx);
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
 
     list_push(&process->threads.aliveThreads, &thread->processEntry);
@@ -92,6 +94,8 @@ void thread_free(thread_t* thread)
 
     // Must happen before the process is potentially freed.
     stack_pointer_deinit(&thread->kernelStack, thread);
+    // The user stack is not deinitalized in case a process is passing stack data between threads.
+    // It will be unmapped anyway when the process is freed.
 
     if (list_is_empty(&process->threads.aliveThreads) && list_is_empty(&process->threads.zombieThreads))
     {
@@ -104,6 +108,7 @@ void thread_free(thread_t* thread)
     }
 
     simd_ctx_deinit(&thread->simd);
+    rwmutex_ctx_deinit(&thread->rwmutexCtx);
     heap_free(thread);
 }
 
@@ -175,7 +180,7 @@ uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length
     thread_state_t expected = THREAD_BLOCKED;
     if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
     {
-        wait_unblock_thread(thread, WAIT_NOTE);
+        wait_unblock_thread(thread, EOK);
     }
 
     return 0;
@@ -237,7 +242,7 @@ uint64_t thread_handle_page_fault(const interrupt_frame_t* frame)
         {
             return ERR;
         }
-        errno = 0;
+        errno = EOK;
 
         if (stack_pointer_handle_page_fault(&thread->kernelStack, thread, faultAddr, PML_WRITE | PML_PRESENT) == ERR)
         {

@@ -8,7 +8,7 @@
 typedef struct thread thread_t;
 
 /**
- * @brief Mutex
+ * @brief Recursive Mutex
  * @defgroup kernel_sync_mutex Mutex
  * @ingroup kernel_sync
  *
@@ -26,6 +26,8 @@ typedef struct thread thread_t;
 
 /**
  * @brief Create a mutex initializer.
+ *
+ * @return A mutex initializer.
  */
 #define MUTEX_CREATE {.waitQueue = WAIT_QUEUE_CREATE, .owner = NULL, .depth = 0, .lock = LOCK_CREATE}
 

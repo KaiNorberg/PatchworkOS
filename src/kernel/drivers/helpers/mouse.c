@@ -6,6 +6,7 @@
 #include "sched/timer.h"
 #include "sync/lock.h"
 
+#include <errno.h>
 #include <sys/math.h>
 
 static sysfs_dir_t mouseDir = {0};
@@ -19,7 +20,7 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count, uint64_t*
     {
         LOCK_SCOPE(&mouse->lock);
 
-        if (WAIT_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, *offset != mouse->writeIndex) != WAIT_NORM)
+        if (WAIT_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, *offset != mouse->writeIndex) == ERR)
         {
             return i * sizeof(mouse_event_t);
         }
@@ -97,5 +98,5 @@ void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, int64_t deltaX, int64_t
         .deltaY = deltaY,
     };
     mouse->writeIndex = (mouse->writeIndex + 1) % MOUSE_MAX_EVENT;
-    wait_unblock(&mouse->waitQueue, WAIT_ALL);
+    wait_unblock(&mouse->waitQueue, WAIT_ALL, EOK);
 }

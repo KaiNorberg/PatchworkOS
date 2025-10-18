@@ -1,15 +1,13 @@
 #include "smp.h"
 
 #include "acpi/tables.h"
+#include "cpu/cpu.h"
 #include "cpu/vectors.h"
 #include "drivers/apic.h"
-#include "drivers/hpet.h"
-#include "init/init.h"
 #include "interrupt.h"
 #include "log/log.h"
 #include "log/panic.h"
-#include "mem/heap.h"
-#include "sched/thread.h"
+#include "mem/vmm.h"
 #include "trampoline.h"
 
 #include <common/defs.h>
@@ -27,8 +25,8 @@ static atomic_uint16_t haltedAmount = ATOMIC_VAR_INIT(0);
 
 void smp_bootstrap_init(void)
 {
-    cpus[CPU_BOOTSTRAP_ID] = &bootstrapCpu;
-    if (cpu_init(&bootstrapCpu, CPU_BOOTSTRAP_ID) == ERR)
+    cpus[CPU_ID_BOOTSTRAP] = &bootstrapCpu;
+    if (cpu_init(&bootstrapCpu, CPU_ID_BOOTSTRAP) == ERR)
     {
         panic(NULL, "Failed to initialize bootstrap cpu");
     }
@@ -52,8 +50,7 @@ void smp_others_init(void)
     processor_local_apic_t* lapic;
     MADT_FOR_EACH(madt, lapic)
     {
-        if (lapic->header.type != INTERRUPT_CONTROLLER_PROCESSOR_LOCAL_APIC ||
-            bootstrapCpu.lapicId == lapic->apicId)
+        if (lapic->header.type != INTERRUPT_CONTROLLER_PROCESSOR_LOCAL_APIC || bootstrapCpu.lapicId == lapic->apicId)
         {
             continue;
         }
@@ -133,6 +130,18 @@ cpu_t* smp_self_unsafe(void)
     }
 
     return cpus[msr_read(MSR_CPU_ID)];
+}
+
+cpuid_t smp_self_id_unsafe(void)
+{
+    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
+
+    if (cpuAmount == 1)
+    {
+        return CPU_ID_BOOTSTRAP;
+    }
+
+    return (cpuid_t)msr_read(MSR_CPU_ID);
 }
 
 cpu_t* smp_self(void)

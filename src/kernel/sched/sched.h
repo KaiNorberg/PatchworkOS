@@ -135,6 +135,7 @@ typedef struct
      * so no need for a lock.
      */
     list_t zombieThreads;
+    cpu_t* owner; ///< The cpu that owns this scheduling context.
 } sched_cpu_ctx_t;
 
 /**
@@ -182,17 +183,13 @@ NORETURN void sched_done_with_boot_thread(void);
 /**
  * @brief Puts the current thread to sleep.
  *
- * The `sched_nanosleep()` function causes the currently running thread to block, for a specified length of time.
- *
  * @param timeout The maximum time to sleep. If `CLOCKS_NEVER`, it sleeps forever.
- * @return Check 'wait_result_t' definition for more.
+ * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-wait_result_t sched_nanosleep(clock_t timeout);
+uint64_t sched_nanosleep(clock_t timeout);
 
 /**
  * @brief Checks if the current CPU is idle.
- *
- * The `sched_is_idle()` function returns if the current CPU is currently executing its idle thread.
  *
  * @return `true` if the CPU is idle, `false` otherwise.
  */
@@ -201,16 +198,12 @@ bool sched_is_idle(void);
 /**
  * @brief Retrieves the currently running thread.
  *
- * The `sched_thread()` function returns the currently running thread.
- *
  * @return The currently running thread.
  */
 thread_t* sched_thread(void);
 
 /**
  * @brief Retrieves the process of the currently running thread.
- *
- * The `sched_process()` function returns the process of the currently running thread.
  *
  * @return The process of the currently running thread.
  */
@@ -248,7 +241,7 @@ void sched_yield(void);
  * @brief Pushes a thread onto a scheduling queue.
  *
  * @param thread The thread to be pushed.
- * @param target The target cpu that the thread should run on (can be `NULL` to specify the currently running cpu).
+ * @param target The target cpu that the thread should run on, can be `NULL` to specify the currently running cpu-
  */
 void sched_push(thread_t* thread, cpu_t* target);
 
@@ -261,10 +254,12 @@ void sched_push(thread_t* thread, cpu_t* target);
 void sched_push_new_thread(thread_t* thread, thread_t* parent);
 
 /**
- * @brief Performs the core scheduling logic.
+ * @brief The main scheduling function.
+ *
+ * Note that this function should only be called in an interrupt handler.
  *
  * @param frame The current interrupt frame.
- * @param self The currently running cpu
+ * @param self The currently running cpu.
  */
 void sched_schedule(interrupt_frame_t* frame, cpu_t* self);
 

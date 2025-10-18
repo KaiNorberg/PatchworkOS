@@ -54,12 +54,6 @@
  */
 
 /**
- * @brief Networking and Sockets.
- * @defgroup kernel_net Networking
- * @ingroup kernel
- */
-
-/**
  * @brief Scheduling.
  * @defgroup kernel_sched Scheduling
  * @ingroup kernel

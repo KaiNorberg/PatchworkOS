@@ -224,13 +224,13 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     space_t* space = &process->space;
     RWMUTEX_READ_SCOPE(&space->mutex);
 
-    if (cwdString != NULL && !syscall_is_string_valid(space, cwdString))
+    if (cwdString != NULL && !syscall_is_string_accessible(space, cwdString))
     {
         errno = EFAULT;
         return ERR;
     }
 
-    if (attr != NULL && !syscall_is_buffer_valid(space, attr, sizeof(spawn_attr_t)))
+    if (attr != NULL && !syscall_is_pointer_accessible(space, attr, sizeof(spawn_attr_t)))
     {
         errno = EFAULT;
         return ERR;
@@ -255,7 +255,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     uint64_t argc = 0;
     while (1)
     {
-        if (!syscall_is_buffer_valid(space, &argv[argc], sizeof(const char*)))
+        if (!syscall_is_pointer_accessible(space, &argv[argc], sizeof(const char*)))
         {
             errno = EFAULT;
             return ERR;
@@ -264,7 +264,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         {
             break;
         }
-        else if (!syscall_is_string_valid(space, argv[argc]))
+        else if (!syscall_is_string_accessible(space, argv[argc]))
         {
             errno = EFAULT;
             return ERR;
@@ -283,7 +283,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
                 errno = EINVAL;
                 return ERR;
             }
-            else if (!syscall_is_buffer_valid(space, &fds[fdAmount], sizeof(fd_t)))
+            else if (!syscall_is_pointer_accessible(space, &fds[fdAmount], sizeof(fd_t)))
             {
                 errno = EFAULT;
                 return ERR;
@@ -358,7 +358,7 @@ SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)
     process_t* process = thread->process;
     space_t* space = &process->space;
 
-    if (!syscall_is_buffer_valid(space, entry, sizeof(uint64_t)))
+    if (!syscall_is_pointer_accessible(space, entry, sizeof(uint64_t)))
     {
         errno = EFAULT;
         return ERR;

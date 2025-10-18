@@ -45,15 +45,15 @@ void init_early(const boot_info_t* bootInfo)
     vmm_init(&bootInfo->memory, &bootInfo->gop, &bootInfo->kernel);
     heap_init();
 
-    panic_symbols_init(&bootInfo->kernel);
-
     acpi_tables_init(bootInfo->rsdp);
 
     smp_bootstrap_init();
 
-    sched_init();
     timer_init();
+    sched_init();
     wait_init();
+
+    panic_symbols_init(&bootInfo->kernel);
 
     LOG_DEBUG("early init done, jumping to boot thread\n");
     thread_t* bootThread = thread_get_boot();

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "mem/vmm.h"
 #include "sched/sched.h"
 
 #include <stdint.h>
+#include <common/paging_types.h>
 
 /**
  * @brief Helpers for managing stacks.

@@ -4,11 +4,11 @@
 #include "encoding/term.h"
 #include "integer.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "namespace.h"
 #include "patch_up.h"
 #include "predefined.h"
 #include "state.h"
-#include "log/panic.h"
 
 #ifdef TESTING
 #include "tests.h"

@@ -73,6 +73,7 @@ typedef struct thread
     simd_ctx_t simd;
     note_queue_t notes;
     syscall_ctx_t syscall;
+    rwmutex_ctx_t rwmutexCtx;
     /**
      * The threads interrupt frame is used to save the values in the CPU registers such that the scheduler can continue
      * executing the thread later on.

@@ -65,7 +65,7 @@ bool mutex_acquire_timeout(mutex_t* mtx, clock_t timeout)
     if (timeout == CLOCKS_NEVER)
     {
         lock_acquire(&mtx->lock);
-        while (WAIT_BLOCK_LOCK(&mtx->waitQueue, &mtx->lock, mtx->owner == NULL) != WAIT_NORM)
+        while (WAIT_BLOCK_LOCK(&mtx->waitQueue, &mtx->lock, mtx->owner == NULL) == ERR)
         {
         }
 
@@ -87,19 +87,16 @@ bool mutex_acquire_timeout(mutex_t* mtx, clock_t timeout)
         }
 
         clock_t waitTime = end - now;
-        int waitResult = WAIT_BLOCK_LOCK_TIMEOUT(&mtx->waitQueue, &mtx->lock, mtx->owner == NULL, waitTime);
-        if (waitResult == WAIT_NORM)
-        {
-            mtx->owner = self;
-            mtx->depth = 1;
-            lock_release(&mtx->lock);
-            return true;
-        }
-        else if (waitResult == WAIT_TIMEOUT)
+        if (WAIT_BLOCK_LOCK_TIMEOUT(&mtx->waitQueue, &mtx->lock, mtx->owner == NULL, waitTime) == ERR)
         {
             lock_release(&mtx->lock);
             return false;
         }
+
+        mtx->owner = self;
+        mtx->depth = 1;
+        lock_release(&mtx->lock);
+        return true;
     }
 }
 
@@ -114,6 +111,6 @@ void mutex_release(mutex_t* mtx)
     if (mtx->depth == 0)
     {
         mtx->owner = NULL;
-        wait_unblock(&mtx->waitQueue, 1);
+        wait_unblock(&mtx->waitQueue, 1, EOK);
     }
 }

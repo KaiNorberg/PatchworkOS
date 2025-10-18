@@ -39,7 +39,7 @@ uint64_t pci_config_init(sdt_header_t* table)
             entry->startBus, entry->endBus);
     }
 
-    errno = 0;
+    errno = EOK;
     return 0;
 }
 
