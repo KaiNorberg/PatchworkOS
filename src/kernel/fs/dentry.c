@@ -48,7 +48,14 @@ static void dentry_free(dentry_t* dentry)
 
 dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name)
 {
-    if (strnlen_s(name, MAX_NAME) >= MAX_NAME)
+    if (name == NULL || superblock == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    size_t nameLen = strnlen_s(name, MAX_NAME);
+    if (nameLen >= MAX_NAME || nameLen == 0)
     {
         errno = EINVAL;
         return NULL;

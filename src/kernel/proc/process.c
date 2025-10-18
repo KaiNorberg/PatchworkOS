@@ -483,7 +483,7 @@ void process_procfs_init(void)
     // Kernel process was created before sysfs was initialized, so we have to delay this until now.
     char name[MAX_NAME];
     snprintf(name, MAX_NAME, "%d", kernelProcess.id);
-    if (process_dir_init(&kernelProcess.dir, "", &kernelProcess) == ERR)
+    if (process_dir_init(&kernelProcess.dir, name, &kernelProcess) == ERR)
     {
         panic(NULL, "Failed to initialize kernel process sysfs directory");
     }
