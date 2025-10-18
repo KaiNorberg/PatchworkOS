@@ -145,15 +145,9 @@ static uint64_t process_cmdline_read(file_t* file, void* buffer, uint64_t count,
         return ERR;
     }
 
-    char* first = process->argv.buffer[0];
-    if (first == NULL)
-    {
-        return 0;
-    }
-
-    char* last = (char*)((uint64_t)process->argv.buffer + process->argv.size);
-    uint64_t length = last - first;
-    return BUFFER_READ(buffer, count, offset, last, length);
+    uint64_t length;
+    const char* strings = argv_get_strings(&process->argv, &length);
+    return BUFFER_READ(buffer, count, offset, strings, length);
 }
 
 static file_ops_t cmdlineOps = {

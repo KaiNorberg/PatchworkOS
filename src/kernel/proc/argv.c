@@ -65,3 +65,16 @@ void argv_deinit(argv_t* argv)
     }
     heap_free(argv->buffer);
 }
+
+const char* argv_get_strings(const argv_t* argv, uint64_t* length)
+{
+    if (argv->amount == 0)
+    {
+        *length = 0;
+        return NULL;
+    }
+
+    const char* first = (const char*)((uintptr_t)argv->buffer + sizeof(char*) * (argv->amount + 1));
+    *length = argv->size - (sizeof(char*) * (argv->amount + 1));
+    return first;
+}
