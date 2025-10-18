@@ -11,6 +11,7 @@
 #include "syscalls.h"
 #include "tss.h"
 #include "utils/statistics.h"
+#include "log/panic.h"
 
 uint64_t cpu_init(cpu_t* cpu, cpuid_t id)
 {
