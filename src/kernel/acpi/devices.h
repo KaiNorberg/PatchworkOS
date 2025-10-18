@@ -51,9 +51,7 @@ typedef enum
  *  - If the device is present and functional, the device's _INI is evaluated and its children are enumerated.
  *
  * @see Section 6.5.1 of the ACPI specification for more details.
- *
- * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t acpi_devices_init(void);
+void acpi_devices_init(void);
 
 /** @} */

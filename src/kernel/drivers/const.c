@@ -25,11 +25,11 @@ static uint64_t const_one_read(file_t* file, void* buffer, uint64_t count, uint6
     return count;
 }
 
-static void* const_one_mmap(file_t* file, void* addr, uint64_t length, prot_t prot)
+static void* const_one_mmap(file_t* file, void* addr, uint64_t length, pml_flags_t flags)
 {
     (void)file; // Unused
 
-    addr = vmm_alloc(&sched_process()->space, addr, length, prot);
+    addr = vmm_alloc(&sched_process()->space, addr, length, flags);
     if (addr == NULL)
     {
         return NULL;
@@ -53,11 +53,11 @@ static uint64_t const_zero_read(file_t* file, void* buffer, uint64_t count, uint
     return count;
 }
 
-static void* const_zero_mmap(file_t* file, void* addr, uint64_t length, prot_t prot)
+static void* const_zero_mmap(file_t* file, void* addr, uint64_t length, pml_flags_t flags)
 {
     (void)file; // Unused
 
-    addr = vmm_alloc(&sched_process()->space, addr, length, prot);
+    addr = vmm_alloc(&sched_process()->space, addr, length, flags);
     if (addr == NULL)
     {
         return NULL;

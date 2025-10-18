@@ -1,4 +1,11 @@
 /**
+ * @brief Shared definitions and utilities.
+ * @defgroup common Common
+ *
+ * Shared definitions and utilities used by both the kernel and the bootloader.
+ */
+
+/**
  * @brief UEFI bootloader.
  * @defgroup boot Bootloader
  *
@@ -10,13 +17,6 @@
  * @defgroup kernel Kernel
  *
  * The kernel of PatchworkOS.
- */
-
-/**
- * @brief CPU and multiprocessing.
- * @defgroup kernel_cpu CPU
- * @ingroup kernel
- *
  */
 
 /**
@@ -51,12 +51,6 @@
  * @defgroup kernel_mem Memory
  * @ingroup kernel
  *
- */
-
-/**
- * @brief Networking and Sockets.
- * @defgroup kernel_net Networking
- * @ingroup kernel
  */
 
 /**

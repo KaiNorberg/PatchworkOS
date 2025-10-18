@@ -21,7 +21,7 @@ void* pmm_stack_alloc(pmm_stack_t* stack)
     {
         address = stack->last;
         stack->last = stack->last->prev;
-        stack->index = PMM_BUFFER_MAX - 1;
+        stack->index = PMM_BUFFER_MAX;
     }
     else
     {

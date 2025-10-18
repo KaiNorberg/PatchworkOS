@@ -79,6 +79,11 @@ void* _heap_alloc(uint64_t size)
     size = ROUND_UP(size, _HEAP_ALIGNMENT);
 
     _heap_header_t* currentBlock = _heap_first_block();
+    if (currentBlock == NULL)
+    {
+        return NULL;
+    }
+
     while (true)
     {
         if (!currentBlock->reserved)

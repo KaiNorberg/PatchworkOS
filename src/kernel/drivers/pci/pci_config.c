@@ -26,10 +26,10 @@ uint64_t pci_config_init(sdt_header_t* table)
 
         uint64_t busCount = entry->endBus - entry->startBus + 1;
         uint64_t length = busCount * 256 * 4096;
-        uint64_t pageAmount = BYTES_TO_PAGES(length);
 
-        if (vmm_kernel_map(NULL, (void*)entry->base, pageAmount, PML_WRITE) == NULL &&
-            errno != EEXIST) // EEXIST means already mapped
+        void* virtAddr = (void*)PML_LOWER_TO_HIGHER(entry->base);
+        if (vmm_map(NULL, virtAddr, (void*)entry->base, length, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) ==
+            NULL)
         {
             LOG_ERR("failed to map PCI-e configuration space at 0x%016lx\n", entry->base);
             return ERR;
@@ -39,7 +39,7 @@ uint64_t pci_config_init(sdt_header_t* table)
             entry->startBus, entry->endBus);
     }
 
-    errno = 0;
+    errno = EOK;
     return 0;
 }
 

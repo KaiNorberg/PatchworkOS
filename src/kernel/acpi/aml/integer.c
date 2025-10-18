@@ -7,7 +7,7 @@ static uint8_t integerByteSize = 0;
 
 uint64_t aml_integer_handling_init(void)
 {
-    dsdt_t* dsdt = DSDT_GET();
+    dsdt_t* dsdt = (dsdt_t*)acpi_tables_lookup(DSDT_SIGNATURE, 0);
     if (dsdt == NULL)
     {
         LOG_ERR("failed to retrieve DSDT\n");

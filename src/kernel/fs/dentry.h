@@ -1,7 +1,6 @@
 #pragma once
 
 #include "fs/path.h"
-#include "sched/wait.h"
 #include "sync/mutex.h"
 #include "utils/map.h"
 #include "utils/ref.h"

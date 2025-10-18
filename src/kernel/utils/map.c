@@ -254,7 +254,7 @@ void map_remove(map_t* map, const map_key_t* key)
     uint64_t index = map_find_slot(map, key, false);
     if (index == ERR)
     {
-        errno = 0;
+        errno = EOK;
         return;
     }
 

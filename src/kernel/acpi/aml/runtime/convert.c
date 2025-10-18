@@ -16,7 +16,7 @@
 
 #define AML_CONVERT_TRY_NEXT_CONVERTER 1
 
-typedef uint64_t (*aml_convert_func_t)(aml_object_t* src, aml_object_t* dest);
+typedef uint64_t (*aml_convert_func_t)(aml_state_t* state, aml_object_t* src, aml_object_t* dest);
 
 // DebugObj handling is specified in section 19.6.26
 
@@ -72,8 +72,9 @@ static inline uint8_t aml_hex_to_byte(char chr)
 // We create the arrays of converters here. The order of the list defines the priority of the converters. First ==
 // Highest Priority. Last == Lowest Priority. See section 19.3.5.7 table 19.6 for the conversion priority order.
 
-static uint64_t aml_buffer_to_buffer_field(aml_object_t* buffer, aml_object_t* dest)
+static uint64_t aml_buffer_to_buffer_field(aml_state_t* state, aml_object_t* buffer, aml_object_t* dest)
 {
+    (void)state;
     if (dest->type != AML_BUFFER_FIELD)
     {
         return AML_CONVERT_TRY_NEXT_CONVERTER;
@@ -81,8 +82,9 @@ static uint64_t aml_buffer_to_buffer_field(aml_object_t* buffer, aml_object_t* d
     return aml_buffer_field_store(&dest->bufferField, buffer);
 }
 
-static uint64_t aml_buffer_to_integer(aml_object_t* buffer, aml_object_t* dest)
+static uint64_t aml_buffer_to_integer(aml_state_t* state, aml_object_t* buffer, aml_object_t* dest)
 {
+    (void)state;
     aml_buffer_obj_t* bufferData = &buffer->buffer;
 
     uint64_t value = 0;
@@ -100,8 +102,9 @@ static uint64_t aml_buffer_to_integer(aml_object_t* buffer, aml_object_t* dest)
     return aml_integer_set(dest, value);
 }
 
-static uint64_t aml_buffer_to_string(aml_object_t* buffer, aml_object_t* dest)
+static uint64_t aml_buffer_to_string(aml_state_t* state, aml_object_t* buffer, aml_object_t* dest)
 {
+    (void)state;
     aml_buffer_obj_t* bufferData = &buffer->buffer;
 
     // Each byte becomes two hex chars with a space in between, except the last byte.
@@ -125,8 +128,9 @@ static uint64_t aml_buffer_to_string(aml_object_t* buffer, aml_object_t* dest)
     return 0;
 }
 
-static uint64_t aml_buffer_to_debug_object(aml_object_t* buffer, aml_object_t* dest)
+static uint64_t aml_buffer_to_debug_object(aml_state_t* state, aml_object_t* buffer, aml_object_t* dest)
 {
+    (void)state;
     (void)dest;
 
     if (buffer->buffer.length == 0)
@@ -155,8 +159,9 @@ static aml_convert_entry_t bufferConverters[AML_TYPE_AMOUNT] = {
     {AML_BUFFER, AML_DEBUG_OBJECT, aml_buffer_to_debug_object},
 };
 
-static uint64_t aml_integer_to_buffer(aml_object_t* integer, aml_object_t* dest)
+static uint64_t aml_integer_to_buffer(aml_state_t* state, aml_object_t* integer, aml_object_t* dest)
 {
+    (void)state;
     aml_integer_obj_t* integerData = &integer->integer;
 
     if (dest->type == AML_BUFFER)
@@ -178,17 +183,18 @@ static uint64_t aml_integer_to_buffer(aml_object_t* integer, aml_object_t* dest)
     return aml_buffer_set(dest, (uint8_t*)&integerData->value, aml_integer_byte_size(), aml_integer_byte_size());
 }
 
-static uint64_t aml_integer_to_field_unit(aml_object_t* integer, aml_object_t* dest)
+static uint64_t aml_integer_to_field_unit(aml_state_t* state, aml_object_t* integer, aml_object_t* dest)
 {
     if (dest->type != AML_FIELD_UNIT)
     {
         return AML_CONVERT_TRY_NEXT_CONVERTER;
     }
-    return aml_field_unit_store(&dest->fieldUnit, integer);
+    return aml_field_unit_store(state, &dest->fieldUnit, integer);
 }
 
-static uint64_t aml_integer_to_buffer_field(aml_object_t* integer, aml_object_t* dest)
+static uint64_t aml_integer_to_buffer_field(aml_state_t* state, aml_object_t* integer, aml_object_t* dest)
 {
+    (void)state;
     if (dest->type != AML_BUFFER_FIELD)
     {
         return AML_CONVERT_TRY_NEXT_CONVERTER;
@@ -196,8 +202,9 @@ static uint64_t aml_integer_to_buffer_field(aml_object_t* integer, aml_object_t*
     return aml_buffer_field_store(&dest->bufferField, integer);
 }
 
-static uint64_t aml_integer_to_string(aml_object_t* integer, aml_object_t* dest)
+static uint64_t aml_integer_to_string(aml_state_t* state, aml_object_t* integer, aml_object_t* dest)
 {
+    (void)state;
     const uint64_t stringLength = aml_integer_byte_size() * 2; // Two hex chars per byte
 
     if (aml_string_prepare(dest, stringLength) == ERR)
@@ -217,8 +224,9 @@ static uint64_t aml_integer_to_string(aml_object_t* integer, aml_object_t* dest)
     return 0;
 }
 
-static uint64_t aml_integer_to_debug_object(aml_object_t* integer, aml_object_t* dest)
+static uint64_t aml_integer_to_debug_object(aml_state_t* state, aml_object_t* integer, aml_object_t* dest)
 {
+    (void)state;
     (void)dest;
     LOG_INFO("0x%llx\n", integer->integer.value);
     return 0;
@@ -232,8 +240,9 @@ static aml_convert_entry_t integerConverters[AML_TYPE_AMOUNT] = {
     {AML_INTEGER, AML_DEBUG_OBJECT, aml_integer_to_debug_object},
 };
 
-static uint64_t aml_package_to_debug_object(aml_object_t* package, aml_object_t* dest)
+static uint64_t aml_package_to_debug_object(aml_state_t* state, aml_object_t* package, aml_object_t* dest)
 {
+    (void)state;
     (void)dest;
     LOG_INFO("[");
     for (uint64_t i = 0; i < package->package.length; i++)
@@ -252,8 +261,9 @@ static aml_convert_entry_t packageConverters[AML_TYPE_AMOUNT] = {
     {AML_PACKAGE, AML_DEBUG_OBJECT, aml_package_to_debug_object},
 };
 
-static uint64_t aml_string_to_integer(aml_object_t* string, aml_object_t* dest)
+static uint64_t aml_string_to_integer(aml_state_t* state, aml_object_t* string, aml_object_t* dest)
 {
+    (void)state;
     aml_string_obj_t* stringData = &string->string;
 
     uint64_t value = 0;
@@ -277,8 +287,9 @@ static uint64_t aml_string_to_integer(aml_object_t* string, aml_object_t* dest)
     return aml_integer_set(dest, value);
 }
 
-static uint64_t aml_string_to_buffer(aml_object_t* string, aml_object_t* dest)
+static uint64_t aml_string_to_buffer(aml_state_t* state, aml_object_t* string, aml_object_t* dest)
 {
+    (void)state;
     aml_string_obj_t* stringData = &string->string;
 
     // Regarding zero-length strings the spec says "... the string is treated as a buffer, with each
@@ -314,8 +325,9 @@ static uint64_t aml_string_to_buffer(aml_object_t* string, aml_object_t* dest)
     return 0;
 }
 
-static uint64_t aml_string_to_debug_object(aml_object_t* string, aml_object_t* dest)
+static uint64_t aml_string_to_debug_object(aml_state_t* state, aml_object_t* string, aml_object_t* dest)
 {
+    (void)state;
     (void)dest;
     if (string->string.length == 0)
     {
@@ -354,7 +366,7 @@ static aml_convert_entry_t* aml_converters_get(aml_type_t srcType)
     }
 }
 
-uint64_t aml_convert(aml_object_t* src, aml_object_t* dest, aml_type_t allowedTypes)
+uint64_t aml_convert(aml_state_t* state, aml_object_t* src, aml_object_t* dest, aml_type_t allowedTypes)
 {
     if (dest == NULL || src == NULL)
     {
@@ -382,7 +394,7 @@ uint64_t aml_convert(aml_object_t* src, aml_object_t* dest, aml_type_t allowedTy
 
         if (src->type == AML_FIELD_UNIT)
         {
-            if (aml_field_unit_load(&src->fieldUnit, temp) == ERR)
+            if (aml_field_unit_load(state, &src->fieldUnit, temp) == ERR)
             {
                 LOG_ERR("failed to load FieldUnit\n");
                 return ERR;
@@ -408,7 +420,7 @@ uint64_t aml_convert(aml_object_t* src, aml_object_t* dest, aml_type_t allowedTy
             return 0;
         }
 
-        return aml_convert(temp, dest, allowedTypes);
+        return aml_convert(state, temp, dest, allowedTypes);
     }
 
     // AML seems to prioritize copying over conversion if the types match even if its not the
@@ -455,7 +467,7 @@ uint64_t aml_convert(aml_object_t* src, aml_object_t* dest, aml_type_t allowedTy
             return ERR;
         }
 
-        uint64_t result = entry->convertFunc(src, dest);
+        uint64_t result = entry->convertFunc(state, src, dest);
         if (result == ERR)
         {
             LOG_ERR("conversion from '%s' to '%s' failed\n", aml_type_to_string(src->type),
@@ -474,7 +486,7 @@ uint64_t aml_convert(aml_object_t* src, aml_object_t* dest, aml_type_t allowedTy
     return ERR;
 }
 
-uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target)
+uint64_t aml_convert_result(aml_state_t* state, aml_object_t* result, aml_object_t* target)
 {
     if (result == NULL)
     {
@@ -497,7 +509,7 @@ uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target)
 
     if (target->type == AML_ARG || target->type == AML_LOCAL)
     {
-        if (aml_store(result, target) == ERR)
+        if (aml_store(state, result, target) == ERR)
         {
             LOG_ERR("failed to copy result '%s' to target local/arg\n", aml_type_to_string(result->type));
             return ERR;
@@ -508,7 +520,7 @@ uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target)
     // I am assuming that "fixed type" means not a DataRefObject, let me know if this is wrong.
     if (!(target->type & AML_DATA_REF_OBJECTS))
     {
-        if (aml_convert(result, target, target->type) == ERR)
+        if (aml_convert(state, result, target, target->type) == ERR)
         {
             LOG_ERR("failed to convert result '%s' to target '%s'\n", aml_type_to_string(result->type),
                 aml_type_to_string(target->type));
@@ -526,7 +538,7 @@ uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target)
     return 0;
 }
 
-uint64_t aml_convert_source(aml_object_t* src, aml_object_t** dest, aml_type_t allowedTypes)
+uint64_t aml_convert_source(aml_state_t* state, aml_object_t* src, aml_object_t** dest, aml_type_t allowedTypes)
 {
     if (src == NULL || dest == NULL)
     {
@@ -544,12 +556,12 @@ uint64_t aml_convert_source(aml_object_t* src, aml_object_t** dest, aml_type_t a
 
     if (src->type == AML_ARG)
     {
-        return aml_convert_source(src->arg.value, dest, allowedTypes);
+        return aml_convert_source(state, src->arg.value, dest, allowedTypes);
     }
 
     if (src->type == AML_LOCAL)
     {
-        return aml_convert_source(src->local.value, dest, allowedTypes);
+        return aml_convert_source(state, src->local.value, dest, allowedTypes);
     }
 
     if (src->type & allowedTypes)
@@ -564,7 +576,7 @@ uint64_t aml_convert_source(aml_object_t* src, aml_object_t** dest, aml_type_t a
 
     if (*dest != NULL)
     {
-        return aml_convert(src, *dest, allowedTypes);
+        return aml_convert(state, src, *dest, allowedTypes);
     }
 
     *dest = aml_object_new();
@@ -573,7 +585,7 @@ uint64_t aml_convert_source(aml_object_t* src, aml_object_t** dest, aml_type_t a
         return ERR;
     }
 
-    if (aml_convert(src, *dest, allowedTypes) == ERR)
+    if (aml_convert(state, src, *dest, allowedTypes) == ERR)
     {
         DEREF(*dest);
         *dest = NULL;
@@ -583,7 +595,7 @@ uint64_t aml_convert_source(aml_object_t* src, aml_object_t** dest, aml_type_t a
     return 0;
 }
 
-uint64_t aml_convert_to_buffer(aml_object_t* src, aml_object_t** dest)
+uint64_t aml_convert_to_buffer(aml_state_t* state, aml_object_t* src, aml_object_t** dest)
 {
     if (src == NULL || dest == NULL)
     {
@@ -614,7 +626,7 @@ uint64_t aml_convert_to_buffer(aml_object_t* src, aml_object_t** dest)
 
     if (src->type == AML_INTEGER)
     {
-        if (aml_integer_to_buffer(src, temp) == ERR)
+        if (aml_integer_to_buffer(state, src, temp) == ERR)
         {
             return ERR;
         }
@@ -623,7 +635,7 @@ uint64_t aml_convert_to_buffer(aml_object_t* src, aml_object_t** dest)
     }
     else if (src->type == AML_STRING)
     {
-        if (aml_string_to_buffer(src, temp) == ERR)
+        if (aml_string_to_buffer(state, src, temp) == ERR)
         {
             return ERR;
         }
@@ -636,8 +648,10 @@ uint64_t aml_convert_to_buffer(aml_object_t* src, aml_object_t** dest)
     return ERR;
 }
 
-uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t** dest)
+uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, aml_object_t** dest)
 {
+    (void)state;
+
     if (src == NULL || dest == NULL)
     {
         LOG_ERR("src/dest object is NULL\n");
@@ -740,8 +754,10 @@ uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t** dest)
     return ERR;
 }
 
-uint64_t aml_convert_to_hex_string(aml_object_t* src, aml_object_t** dest)
+uint64_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_object_t** dest)
 {
+    (void)state;
+
     if (src == NULL || dest == NULL)
     {
         LOG_ERR("src/dest object is NULL\n");
@@ -828,8 +844,10 @@ uint64_t aml_convert_to_hex_string(aml_object_t* src, aml_object_t** dest)
     return ERR;
 }
 
-uint64_t aml_convert_to_integer(aml_object_t* src, aml_object_t** dest)
+uint64_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_object_t** dest)
 {
+    (void)state;
+
     if (src == NULL || dest == NULL)
     {
         LOG_ERR("src/dest object is NULL\n");
@@ -913,7 +931,7 @@ uint64_t aml_convert_to_integer(aml_object_t* src, aml_object_t** dest)
     }
     else if (src->type == AML_BUFFER)
     {
-        if (aml_buffer_to_integer(src, temp) == ERR)
+        if (aml_buffer_to_integer(state, src, temp) == ERR)
         {
             return ERR;
         }

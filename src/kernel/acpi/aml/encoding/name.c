@@ -5,6 +5,7 @@
 #include "acpi/aml/token.h"
 #include "data.h"
 #include "debug.h"
+#include "log/log.h"
 #include "term.h"
 
 #include <errno.h>
@@ -223,72 +224,6 @@ uint64_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_string_t* out)
     return 0;
 }
 
-aml_object_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_object_t* from)
-{
-    aml_object_t* current = NULL;
-    if (nameString->rootChar.present)
-    {
-        current = aml_root_get();
-    }
-    else
-    {
-        if (from == NULL)
-        {
-            return NULL;
-        }
-
-        current = REF(from);
-    }
-
-    if (!(current->flags & AML_OBJECT_NAMED))
-    {
-        DEREF(current);
-        return NULL;
-    }
-
-    for (uint64_t i = 0; i < nameString->prefixPath.depth; i++)
-    {
-        aml_object_t* next = REF(current->name.parent);
-        if (next == NULL)
-        {
-            DEREF(current);
-            return NULL;
-        }
-        DEREF(current);
-        current = next;
-    }
-
-    for (uint64_t i = 0; i < nameString->namePath.segmentCount; i++)
-    {
-        const aml_name_seg_t* segment = &nameString->namePath.segments[i];
-        aml_object_t* next = aml_object_find_child(current, segment->name);
-        if (next == NULL)
-        {
-            aml_object_t* scope = current->name.parent;
-            while (scope != NULL)
-            {
-                aml_object_t* found = aml_object_find_child(scope, segment->name);
-                if (found != NULL)
-                {
-                    next = found;
-                    break;
-                }
-                scope = scope->name.parent;
-            }
-            if (next == NULL)
-            {
-                DEREF(current);
-                return NULL;
-            }
-        }
-
-        DEREF(current);
-        current = next;
-    }
-
-    return current; // Transfer ownership
-}
-
 aml_object_t* aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx)
 {
     aml_name_string_t nameStringLocal;
@@ -298,7 +233,7 @@ aml_object_t* aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx)
         return NULL;
     }
 
-    aml_object_t* out = aml_name_string_resolve(&nameStringLocal, ctx->scope);
+    aml_object_t* out = aml_namespace_find_by_name_string(&ctx->state->overlay, ctx->scope, &nameStringLocal);
     if (out == NULL)
     {
         errno = ENOENT;

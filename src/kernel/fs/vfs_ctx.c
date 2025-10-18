@@ -119,7 +119,7 @@ SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
     space_t* space = &process->space;
     RWMUTEX_READ_SCOPE(&space->mutex);
 
-    if (!syscall_is_string_valid(space, pathString))
+    if (!syscall_is_string_accessible(space, pathString))
     {
         errno = EFAULT;
         return ERR;

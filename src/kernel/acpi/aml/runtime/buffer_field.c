@@ -1,6 +1,10 @@
 #include "buffer_field.h"
 
+#include <sys/math.h>
+
 #include <errno.h>
+
+#define AML_BUFFER_FIELD_TEMP_SIZE 256
 
 uint64_t aml_buffer_field_load(aml_buffer_field_obj_t* bufferField, aml_object_t* out)
 {
@@ -35,15 +39,15 @@ uint64_t aml_buffer_field_load(aml_buffer_field_obj_t* bufferField, aml_object_t
             break;
         }
 
-        aml_integer_t value;
-        uint64_t bitsToRead = remainingBits < aml_integer_bit_size() ? remainingBits : aml_integer_bit_size();
-        if (aml_object_get_bits_at(bufferField->target, bufferField->bitOffset + i, bitsToRead, &value) == ERR)
+        uint8_t temp[AML_BUFFER_FIELD_TEMP_SIZE] = {0};
+        uint64_t bitsToRead = MIN(remainingBits, AML_BUFFER_FIELD_TEMP_SIZE * 8);
+        if (aml_object_get_bits_at(bufferField->target, bufferField->bitOffset + i, bitsToRead, temp) == ERR)
         {
             aml_object_clear(out);
             return ERR;
         }
 
-        if (aml_object_set_bits_at(out, i, bitsToRead, value) == ERR)
+        if (aml_object_set_bits_at(out, i, bitsToRead, temp) == ERR)
         {
             aml_object_clear(out);
             return ERR;
@@ -79,14 +83,14 @@ uint64_t aml_buffer_field_store(aml_buffer_field_obj_t* bufferField, aml_object_
             break;
         }
 
-        aml_integer_t value;
-        uint64_t bitsToWrite = remainingBits < aml_integer_bit_size() ? remainingBits : aml_integer_bit_size();
-        if (aml_object_get_bits_at(in, i, bitsToWrite, &value) == ERR)
+        uint8_t temp[AML_BUFFER_FIELD_TEMP_SIZE] = {0};
+        uint64_t bitsToWrite = MIN(remainingBits, AML_BUFFER_FIELD_TEMP_SIZE * 8);
+        if (aml_object_get_bits_at(in, i, bitsToWrite, temp) == ERR)
         {
             return ERR;
         }
 
-        if (aml_object_set_bits_at(bufferField->target, bufferField->bitOffset + i, bitsToWrite, value) == ERR)
+        if (aml_object_set_bits_at(bufferField->target, bufferField->bitOffset + i, bitsToWrite, temp) == ERR)
         {
             return ERR;
         }

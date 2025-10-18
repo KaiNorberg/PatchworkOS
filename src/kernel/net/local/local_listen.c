@@ -114,7 +114,7 @@ void local_listen_free(local_listen_t* listen)
     {
         lock_acquire(&conn->lock);
         conn->isClosed = true;
-        wait_unblock(&conn->waitQueue, WAIT_ALL);
+        wait_unblock(&conn->waitQueue, WAIT_ALL, EOK);
         lock_release(&conn->lock);
         DEREF(conn);
     }

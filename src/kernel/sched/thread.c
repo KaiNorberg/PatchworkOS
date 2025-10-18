@@ -2,9 +2,11 @@
 
 #include "cpu/gdt.h"
 #include "cpu/smp.h"
+#include "init/init.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
+#include "mem/vmm.h"
 #include "sched/sched.h"
 #include "sched/timer.h"
 #include "sched/wait.h"
@@ -18,13 +20,33 @@
 static thread_t bootThread;
 static bool bootThreadInitalized = false;
 
-uint64_t thread_get_kernel_stack_top(thread_t* thread)
+static uintptr_t thread_id_to_offset(tid_t tid, uint64_t maxPages)
 {
-    return THREAD_KERNEL_STACK_TOP(thread);
+    return tid * ((maxPages + STACK_POINTER_GUARD_PAGES) * PAGE_SIZE);
 }
 
-static uint64_t thread_init(thread_t* thread, process_t* process, void* entry)
+static void thread_free(thread_t* thread)
 {
+    process_t* process = thread->process;
+    if (process != NULL)
+    {
+        lock_acquire(&process->threads.lock);
+        list_remove(&process->threads.list, &thread->processEntry);
+        lock_release(&process->threads.lock);
+        DEREF(process);
+        thread->process = NULL;
+    }
+
+    assert(atomic_load(&thread->state) == THREAD_ZOMBIE);
+
+    simd_ctx_deinit(&thread->simd);
+    rwmutex_ctx_deinit(&thread->rwmutexCtx);
+    heap_free(thread);
+}
+
+static uint64_t thread_init(thread_t* thread, process_t* process)
+{
+    ref_init(&thread->ref, thread_free);
     list_entry_init(&thread->entry);
     thread->process = process;
     list_entry_init(&thread->processEntry);
@@ -32,31 +54,38 @@ static uint64_t thread_init(thread_t* thread, process_t* process, void* entry)
     sched_thread_ctx_init(&thread->sched);
     atomic_init(&thread->state, THREAD_PARKED);
     thread->error = 0;
+    if (stack_pointer_init(&thread->kernelStack,
+            VMM_KERNEL_STACKS_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_KERNEL_STACK_PAGES),
+            CONFIG_MAX_KERNEL_STACK_PAGES) == ERR)
+    {
+        return ERR;
+    }
+    if (stack_pointer_init(&thread->userStack,
+            VMM_USER_SPACE_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_USER_STACK_PAGES),
+            CONFIG_MAX_USER_STACK_PAGES) == ERR)
+    {
+        return ERR;
+    }
     wait_thread_ctx_init(&thread->wait);
     if (simd_ctx_init(&thread->simd) == ERR)
     {
         return ERR;
     }
     note_queue_init(&thread->notes);
-    syscall_ctx_init(&thread->syscall, THREAD_KERNEL_STACK_TOP(thread));
-    memset(&thread->trapFrame, 0, sizeof(trap_frame_t));
-    thread->canary = THREAD_CANARY;
-    thread->trapFrame.rip = (uint64_t)entry;
-    thread->trapFrame.rsp = THREAD_KERNEL_STACK_TOP(thread);
-    thread->trapFrame.cs = GDT_KERNEL_CODE;
-    thread->trapFrame.ss = GDT_KERNEL_DATA;
-    thread->trapFrame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
-    memset(&thread->kernelStack, 0, THREAD_KERNEL_STACK_SIZE);
+    syscall_ctx_init(&thread->syscall, &thread->kernelStack);
+    rwmutex_ctx_init(&thread->rwmutexCtx);
+    memset(&thread->frame, 0, sizeof(interrupt_frame_t));
 
-    list_push(&process->threads.aliveThreads, &thread->processEntry);
-    LOG_DEBUG("created tid=%d pid=%d entry=%p\n", thread->id, process->id, entry);
+    lock_acquire(&process->threads.lock);
+    list_push(&process->threads.list, &thread->processEntry);
+    lock_release(&process->threads.lock);
+
+    LOG_DEBUG("created tid=%d pid=%d\n", thread->id, process->id);
     return 0;
 }
 
-thread_t* thread_new(process_t* process, void* entry)
+thread_t* thread_new(process_t* process)
 {
-    LOCK_SCOPE(&process->threads.lock);
-
     if (atomic_load(&process->isDying))
     {
         return NULL;
@@ -67,7 +96,7 @@ thread_t* thread_new(process_t* process, void* entry)
     {
         return NULL;
     }
-    if (thread_init(thread, process, entry) == ERR)
+    if (thread_init(thread, process) == ERR)
     {
         heap_free(thread);
         return NULL;
@@ -75,72 +104,32 @@ thread_t* thread_new(process_t* process, void* entry)
     return thread;
 }
 
-void thread_free(thread_t* thread)
-{
-    process_t* process = thread->process;
-
-    assert(atomic_load(&thread->state) == THREAD_ZOMBIE);
-
-    lock_acquire(&process->threads.lock);
-    list_remove(&process->threads.zombieThreads, &thread->processEntry);
-
-    if (list_is_empty(&process->threads.aliveThreads) && list_is_empty(&process->threads.zombieThreads))
-    {
-        lock_release(&process->threads.lock);
-        process_free(process);
-    }
-    else
-    {
-        lock_release(&process->threads.lock);
-    }
-
-    simd_ctx_deinit(&thread->simd);
-    heap_free(thread);
-}
-
 void thread_kill(thread_t* thread)
 {
-    lock_acquire(&thread->process->threads.lock);
-
     if (atomic_exchange(&thread->state, THREAD_ZOMBIE) != THREAD_RUNNING)
     {
         panic(NULL, "Invalid state while killing thread");
     }
-
-    list_remove(&thread->process->threads.aliveThreads, &thread->processEntry);
-    list_push(&thread->process->threads.zombieThreads, &thread->processEntry);
-
-    if (list_is_empty(&thread->process->threads.aliveThreads))
-    {
-        // We cant create more alive threads if there are no alive threads, so there is no race condition.
-        lock_release(&thread->process->threads.lock);
-
-        // We lose the ability to signal exit status of all threads are killed separately, this appears to be posix
-        // behaviour.
-        process_kill(thread->process, EXIT_SUCCESS);
-    }
-    else
-    {
-        lock_release(&thread->process->threads.lock);
-    }
 }
 
-void thread_save(thread_t* thread, const trap_frame_t* trapFrame)
+void thread_save(thread_t* thread, const interrupt_frame_t* frame)
 {
     simd_ctx_save(&thread->simd);
-    thread->trapFrame = *trapFrame;
+    thread->frame = *frame;
 }
 
-void thread_load(thread_t* thread, trap_frame_t* trapFrame)
+void thread_load(thread_t* thread, interrupt_frame_t* frame)
 {
-    cpu_t* self = smp_self_unsafe();
-
-    *trapFrame = thread->trapFrame;
+    *frame = thread->frame;
 
     space_load(&thread->process->space);
-    tss_stack_load(&self->tss, (void*)THREAD_KERNEL_STACK_TOP(thread));
     simd_ctx_load(&thread->simd);
     syscall_ctx_load(&thread->syscall);
+}
+
+void thread_get_interrupt_frame(thread_t* thread, interrupt_frame_t* frame)
+{
+    *frame = thread->frame;
 }
 
 bool thread_is_note_pending(thread_t* thread)
@@ -164,7 +153,7 @@ uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length
     thread_state_t expected = THREAD_BLOCKED;
     if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
     {
-        wait_unblock_thread(thread, WAIT_NOTE);
+        wait_unblock_thread(thread, EOK);
     }
 
     return 0;
@@ -184,7 +173,7 @@ thread_t* thread_get_boot(void)
 {
     if (!bootThreadInitalized)
     {
-        if (thread_init(&bootThread, process_get_kernel(), NULL) == ERR)
+        if (thread_init(&bootThread, process_get_kernel()) == ERR)
         {
             panic(NULL, "Failed to initialize boot thread");
         }
@@ -192,4 +181,47 @@ thread_t* thread_get_boot(void)
         bootThreadInitalized = true;
     }
     return &bootThread;
+}
+
+uint64_t thread_handle_page_fault(const interrupt_frame_t* frame)
+{
+    thread_t* thread = sched_thread();
+    if (thread == NULL)
+    {
+        return ERR;
+    }
+    uintptr_t faultAddr = (uintptr_t)cr2_read();
+
+    if (frame->errorCode & PAGE_FAULT_PRESENT)
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
+    {
+        if (stack_pointer_handle_page_fault(&thread->userStack, thread, faultAddr,
+                PML_WRITE | PML_USER | PML_PRESENT) == ERR)
+        {
+            return ERR;
+        }
+        return 0;
+    }
+
+    if (stack_pointer_handle_page_fault(&thread->userStack, thread, faultAddr, PML_WRITE | PML_USER | PML_PRESENT) ==
+        ERR)
+    {
+        if (errno != ENOENT) // ENOENT means not in user stack, so try kernel stack.
+        {
+            return ERR;
+        }
+        errno = EOK;
+
+        if (stack_pointer_handle_page_fault(&thread->kernelStack, thread, faultAddr, PML_WRITE | PML_PRESENT) == ERR)
+        {
+            return ERR;
+        }
+    }
+
+    return 0;
 }

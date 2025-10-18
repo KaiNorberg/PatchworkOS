@@ -64,7 +64,7 @@ uint64_t aml_def_if_else_read(aml_term_list_ctx_t* ctx);
  *
  * A Noop does nothing.
  *
- * @param state The AML state to parse from.
+ * @param state Pointer to the current AML state.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_noop_read(aml_term_list_ctx_t* ctx);
@@ -100,7 +100,7 @@ uint64_t aml_def_return_read(aml_term_list_ctx_t* ctx);
  *
  * @see Section 19.6.8 of the ACPI specification for more details.
  *
- * @param state The AML state to parse from.
+ * @param state Pointer to the current AML state.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_break_read(aml_term_list_ctx_t* ctx);
@@ -112,7 +112,7 @@ uint64_t aml_def_break_read(aml_term_list_ctx_t* ctx);
  *
  * @see Section 19.6.16 of the ACPI specification for more details.
  *
- * @param state The AML state to parse from.
+ * @param state Pointer to the current AML state.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_continue_read(aml_term_list_ctx_t* ctx);

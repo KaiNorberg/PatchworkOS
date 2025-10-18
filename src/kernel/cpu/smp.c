@@ -1,16 +1,14 @@
 #include "smp.h"
 
 #include "acpi/tables.h"
+#include "cpu/cpu.h"
 #include "cpu/vectors.h"
 #include "drivers/apic.h"
-#include "drivers/hpet.h"
-#include "init/init.h"
+#include "interrupt.h"
 #include "log/log.h"
 #include "log/panic.h"
-#include "mem/heap.h"
-#include "sched/thread.h"
+#include "mem/vmm.h"
 #include "trampoline.h"
-#include "trap.h"
 
 #include <common/defs.h>
 #include <common/regs.h>
@@ -19,109 +17,62 @@
 #include <stdatomic.h>
 #include <stdint.h>
 
-static cpu_t bootstrapCpu;
-static cpu_t* cpus[SMP_CPU_MAX];
-static uint16_t cpuAmount = 0;
-static bool isReady = false;
+static cpu_t bootstrapCpu ALIGNED(PAGE_SIZE) = {0};
+static cpu_t* cpus[CPU_MAX] = {0};
+static uint16_t cpuAmount = 1; // Start with 1 for the bootstrap CPU
 
 static atomic_uint16_t haltedAmount = ATOMIC_VAR_INIT(0);
 
-static void cpu_init(cpu_t* cpu, uint8_t id, uint8_t lapicId, bool isBootstrap)
-{
-    cpu->id = id;
-    cpu->lapicId = lapicId;
-    cpu->trapDepth = 0;
-    cpu->isBootstrap = isBootstrap;
-    tss_init(&cpu->tss);
-    cli_ctx_init(&cpu->cli);
-    sched_cpu_ctx_init(&cpu->sched, cpu);
-    wait_cpu_ctx_init(&cpu->wait);
-    statistics_cpu_ctx_init(&cpu->stat);
-}
-
-static void smp_entry(cpuid_t id)
-{
-    msr_write(MSR_CPU_ID, id);
-    cpu_t* cpu = smp_self_unsafe();
-    assert(cpu->id == id);
-
-    kernel_other_cpu_init();
-
-    trampoline_signal_ready(cpu->id);
-
-    sched_idle_loop();
-}
-
-static uint64_t cpu_start(cpu_t* cpu)
-{
-    assert(cpu->sched.idleThread != NULL);
-
-    if (trampoline_cpu_setup(cpu->id, THREAD_KERNEL_STACK_TOP(cpu->sched.idleThread), smp_entry) != 0)
-    {
-        LOG_ERR("failed to setup trampoline for cpu %u\n", cpu->id);
-        return -1;
-    }
-
-    lapic_send_init(cpu->lapicId);
-    hpet_wait(CLOCKS_PER_SEC / 100);
-    lapic_send_sipi(cpu->lapicId, (void*)TRAMPOLINE_BASE_ADDR);
-
-    if (trampoline_wait_ready(cpu->id, CLOCKS_PER_SEC) != 0)
-    {
-        LOG_ERR("cpu %d timed out\n", cpu->id);
-        return -1;
-    }
-
-    return 0;
-}
-
 void smp_bootstrap_init(void)
 {
-    cpuAmount = 1;
-    cpus[0] = &bootstrapCpu;
-    cpu_init(cpus[0], 0, 0, true);
-
-    msr_write(MSR_CPU_ID, cpus[0]->id);
+    cpus[CPU_ID_BOOTSTRAP] = &bootstrapCpu;
+    if (cpu_init(&bootstrapCpu, CPU_ID_BOOTSTRAP) == ERR)
+    {
+        panic(NULL, "Failed to initialize bootstrap cpu");
+    }
 }
 
 void smp_others_init(void)
 {
     trampoline_init();
 
-    cpus[0]->lapicId = lapic_self_id();
-    LOG_INFO("bootstrap cpu %u with lapicid %u, ready\n", (uint64_t)cpus[0]->id, (uint64_t)cpus[0]->lapicId);
+    bootstrapCpu.lapicId = lapic_self_id();
+    LOG_INFO("bootstrap cpu %u with lapicid %u, ready\n", (uint64_t)bootstrapCpu.id, (uint64_t)bootstrapCpu.lapicId);
 
-    madt_t* madt = MADT_GET();
+    madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, 0);
+    if (madt == NULL)
+    {
+        // Technically we dont need to panic here we could just assume the system is single cpu but the rest of the os
+        // needs the madt anyway so we might as well.
+        panic(NULL, "MADT table not found");
+    }
 
-    madt_processor_local_apic_t* lapic;
+    processor_local_apic_t* lapic;
     MADT_FOR_EACH(madt, lapic)
     {
-        if (lapic->header.type != MADT_INTERRUPT_CONTROLLER_PROCESSOR_LOCAL_APIC)
+        if (lapic->header.type != INTERRUPT_CONTROLLER_PROCESSOR_LOCAL_APIC || bootstrapCpu.lapicId == lapic->apicId)
         {
             continue;
         }
 
-        if (cpus[0]->lapicId == lapic->apicId)
+        if (lapic->flags & PROCESSOR_LOCAL_APIC_ENABLED)
         {
-            continue;
-        }
-
-        if (lapic->flags & MADT_PROCESSOR_LOCAL_APIC_ENABLED)
-        {
+            // We need the cpus to be page aligned so its stacks are also page aligned.
             cpuid_t newId = cpuAmount++;
-            cpus[newId] = heap_alloc(sizeof(cpu_t), HEAP_NONE);
+            cpus[newId] = vmm_alloc(NULL, NULL, sizeof(cpu_t), PML_WRITE | PML_PRESENT | PML_GLOBAL);
             if (cpus[newId] == NULL)
             {
                 panic(NULL, "Failed to allocate memory for cpu %d with lapicid %d", (uint64_t)newId,
                     (uint64_t)lapic->apicId);
             }
+            memset(cpus[newId], 0, sizeof(cpu_t));
 
-            cpu_init(cpus[newId], newId, lapic->apicId, false);
+            trampoline_send_startup_ipi(cpus[newId], newId, lapic->apicId);
 
-            if (cpu_start(cpus[newId]) == ERR)
+            if (trampoline_wait_ready(CLOCKS_PER_SEC) == ERR)
             {
-                panic(NULL, "Failed to start cpu %d with lapicid %d", (uint64_t)cpus[newId]->id,
-                    (uint64_t)cpus[newId]->lapicId);
+                panic(NULL, "Timeout waiting for cpu %d with lapicid %d to start", (uint64_t)newId,
+                    (uint64_t)lapic->apicId);
             }
         }
     }
@@ -129,9 +80,9 @@ void smp_others_init(void)
     trampoline_deinit();
 }
 
-static void smp_halt_ipi(trap_frame_t* trapFrame)
+static void smp_halt_ipi(interrupt_frame_t* frame)
 {
-    (void)trapFrame; // Unused
+    (void)frame; // Unused
 
     atomic_fetch_add(&haltedAmount, 1);
 
@@ -173,17 +124,39 @@ cpu_t* smp_self_unsafe(void)
 {
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
+    if (cpuAmount == 1)
+    {
+        return &bootstrapCpu;
+    }
+
     return cpus[msr_read(MSR_CPU_ID)];
+}
+
+cpuid_t smp_self_id_unsafe(void)
+{
+    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
+
+    if (cpuAmount == 1)
+    {
+        return CPU_ID_BOOTSTRAP;
+    }
+
+    return (cpuid_t)msr_read(MSR_CPU_ID);
 }
 
 cpu_t* smp_self(void)
 {
-    cli_push();
+    interrupt_disable();
+
+    if (cpuAmount == 1)
+    {
+        return &bootstrapCpu;
+    }
 
     return cpus[msr_read(MSR_CPU_ID)];
 }
 
 void smp_put(void)
 {
-    cli_pop();
+    interrupt_enable();
 }

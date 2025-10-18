@@ -20,11 +20,6 @@ typedef struct aml_term_list_ctx aml_term_list_ctx_t;
  */
 
 /**
- * @brief The exact length of a aml name not including a null character.
- */
-#define AML_NAME_LENGTH 4
-
-/**
  * @brief Check if a token is a LeadNameChar structure.
  *
  * @param token The token to check.
@@ -72,10 +67,7 @@ typedef struct
  * @brief A NameSeg strcture.
  * @struct aml_name_seg_t
  */
-typedef struct
-{
-    char name[AML_NAME_LENGTH];
-} aml_name_seg_t;
+typedef uint32_t aml_name_seg_t;
 
 /**
  * @brief Represents the NamePath, DualNamePath, MultiNamePath and NullPath structures.
@@ -203,33 +195,13 @@ uint64_t aml_root_char_read(aml_term_list_ctx_t* ctx, aml_root_char_t* out);
 uint64_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_string_t* out);
 
 /**
- * @brief Resolves a NameString structure to an AML object in the namespace.
- *
- * A search through the ACPI namespace follows these rules:
- * - If the NameString starts with a root character (`\`), the search starts from the root object.
- * - If the NameString starts with one or more parent prefix characters (`^`), the search starts from the parent of the
- *    `start` object, moving up one level for each `^`.
- * - If the NameString does not start with a root or parent prefix character, the search starts from the `start` object.
- *    If `start` is `NULL`, the search starts from the root object.
- * - Attempt to find a matching name in the current namespace scope (the `start` object and its children).
- * - If the matching name is not found, check if it can be found in the parent scope of the current object.
- * - This continues until either a match is found or the object does not have a parent (i.e., the root is reached).
- *
- * @param nameString The NameString to resolve.
- * @param from The object to start the search from, or `NULL` to start from the root.
- * @return A pointer to the resolved object, or `NULL` if the NameString does not resolve to an object. Does not set
- * `errno`.
- */
-aml_object_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_object_t* from);
-
-/**
  * @brief Reads the next data as a NameString structure from the AML bytecode stream and resolves it to a object.
  *
  * Note that `errno` will only be set to `ENOENT` if the NameString is read correctly but fails to resolve, other values
  * for `errno` might be set in other cases.
  *
  * @see Section 5.3 of the ACPI specification for more details.
- * @see aml_name_string_read() for reading the NameString from the AML byte stream.
+ * @see aml_name_string_find_by_name_string() for details on how the resolution is performed.
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @return On success, a pointer to the resolved object. On failure, `NULL` and `errno` is set.

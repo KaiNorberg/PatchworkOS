@@ -22,10 +22,10 @@ typedef struct aml_state aml_state_t;
  */
 typedef enum
 {
-    AML_STOP_REASON_NONE,    ///< No stop reason, continue execution or has reached the end of the TermList
-    AML_STOP_REASON_RETURN,  ///< A Return statement was hit
-    AML_STOP_REASON_BREAK,   ///< A Break statement was hit
-    AML_STOP_REASON_CONTINUE ///< A Continue statement was hit
+    AML_STOP_REASON_NONE,     ///< No stop reason, continue execution or has reached the end of the TermList
+    AML_STOP_REASON_RETURN,   ///< A Return statement was hit
+    AML_STOP_REASON_BREAK,    ///< A Break statement was hit
+    AML_STOP_REASON_CONTINUE, ///< A Continue statement was hit
 } aml_stop_reason_t;
 
 /**
@@ -116,7 +116,7 @@ uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx);
  *
  * Will not advance the parent TermLists current pointer.
  *
- * @param state The AML state.
+ * @param state Pointer to the current AML state.
  * @param scope The location in the namespace from which names will be resolved.
  * @param start Pointer to the start of the TermList in the AML byte stream.
  * @param end Pointer to the end of the TermList in the AML byte stream.

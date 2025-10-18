@@ -1,10 +1,13 @@
+#include "init.h"
+
 #include "acpi/acpi.h"
+#include "acpi/aml/aml.h"
+#include "acpi/devices.h"
+#include "acpi/tables.h"
 #include "cpu/gdt.h"
 #include "cpu/idt.h"
-#include "cpu/simd.h"
 #include "cpu/smp.h"
 #include "cpu/syscalls.h"
-#include "drivers/apic.h"
 #include "drivers/const.h"
 #include "drivers/fb/gop.h"
 #include "drivers/ps2/ps2.h"
@@ -31,13 +34,10 @@
 #include <libstd/_internal/init.h>
 #include <strings.h>
 
-void kernel_early_init(const boot_info_t* bootInfo)
+void init_early(const boot_info_t* bootInfo)
 {
-    gdt_cpu_init();
-    idt_cpu_init();
-
-    smp_bootstrap_init();
-    gdt_cpu_load_tss(&smp_self_unsafe()->tss);
+    gdt_init();
+    idt_init();
 
     log_init(&bootInfo->gop);
 
@@ -45,12 +45,31 @@ void kernel_early_init(const boot_info_t* bootInfo)
     vmm_init(&bootInfo->memory, &bootInfo->gop, &bootInfo->kernel);
     heap_init();
 
-    sched_init();
+    acpi_tables_init(bootInfo->rsdp);
+
+    smp_bootstrap_init();
+
     timer_init();
+    sched_init();
     wait_init();
+
+    panic_symbols_init(&bootInfo->kernel);
+
+    LOG_DEBUG("early init done, jumping to boot thread\n");
+    thread_t* bootThread = thread_get_boot();
+    assert(bootThread != NULL);
+    bootThread->frame.rdi = (uintptr_t)bootInfo;
+    bootThread->frame.rip = (uintptr_t)kmain;
+    bootThread->frame.rsp = bootThread->kernelStack.top;
+    bootThread->frame.cs = GDT_CS_RING0;
+    bootThread->frame.ss = GDT_SS_RING0;
+    bootThread->frame.rflags = RFLAGS_ALWAYS_SET;
+    // This will trigger a page fault. But thats intended as we use page faults to dynamically grow the
+    // threads kernel stack and the stack starts out unmapped.
+    thread_jump(bootThread);
 }
 
-static void kernel_free_loader_data(const boot_memory_map_t* map)
+static void init_free_loader_data(const boot_memory_map_t* map)
 {
     for (uint64_t i = 0; i < map->length; i++)
     {
@@ -63,13 +82,14 @@ static void kernel_free_loader_data(const boot_memory_map_t* map)
                 ((uintptr_t)desc->VirtualStart) + desc->NumberOfPages * PAGE_SIZE);
         }
     }
-
-    LOG_INFO("kernel initalized using %llu kb of memory\n", pmm_reserved_amount() * PAGE_SIZE / 1024);
 }
 
-void kernel_init(const boot_info_t* bootInfo)
+static void init_finalize(const boot_info_t* bootInfo)
 {
-    panic_symbols_init(&bootInfo->kernel);
+    thread_t* bootThread = thread_get_boot();
+    assert(bootThread != NULL);
+
+    vmm_map_bootloader_lower_half(bootThread);
 
     _std_init();
 
@@ -77,21 +97,14 @@ void kernel_init(const boot_info_t* bootInfo)
     ramfs_init(&bootInfo->disk);
     sysfs_init();
 
-    acpi_init(bootInfo->rsdp, &bootInfo->memory.map);
+    aml_init();
+    acpi_devices_init();
+    acpi_reclaim_memory(&bootInfo->memory.map);
 
-    lapic_init();
-    lapic_cpu_init();
-    ioapic_all_init();
-
-    timer_cpu_init();
-
+    acpi_tables_expose();
+    aml_namespace_expose();
     log_file_expose();
     process_procfs_init();
-
-    simd_cpu_init();
-
-    syscall_table_init();
-    syscalls_cpu_init();
 
     const_init();
     ps2_init();
@@ -103,33 +116,22 @@ void kernel_init(const boot_info_t* bootInfo)
 
     smp_others_init();
 
-    kernel_free_loader_data(&bootInfo->memory.map);
-    vmm_unmap_lower_half();
+    syscall_table_init();
+
+    init_free_loader_data(&bootInfo->memory.map);
+    vmm_unmap_bootloader_lower_half(bootThread);
+
+    LOG_INFO("kernel initalized using %llu kb of memory\n", pmm_reserved_amount() * PAGE_SIZE / 1024);
 }
 
-void kernel_other_cpu_init(void)
+static inline void init_process_spawn(void)
 {
-    gdt_cpu_init();
-    idt_cpu_init();
-
-    gdt_cpu_load_tss(&smp_self_unsafe()->tss);
-
-    lapic_cpu_init();
-    simd_cpu_init();
-
-    vmm_cpu_init();
-    syscalls_cpu_init();
-    timer_cpu_init();
-}
-
-void kmain(void)
-{
-    LOG_INFO("spawning init thread\n");
+    LOG_INFO("spawning init process\n");
     const char* argv[] = {"/bin/init", NULL};
     thread_t* initThread = loader_spawn(argv, PRIORITY_MAX_USER - 2, NULL);
     if (initThread == NULL)
     {
-        panic(NULL, "Failed to spawn init thread");
+        panic(NULL, "Failed to spawn init process");
     }
 
     // Set klog as stdout for init process
@@ -145,6 +147,18 @@ void kmain(void)
     ref_dec(klog);
 
     sched_push(initThread, NULL);
+}
+
+void kmain(const boot_info_t* bootInfo)
+{
+    // The stack pointer is expected to be somewhere near the top.
+    assert(rsp_read() > VMM_KERNEL_STACKS_MAX - 2 * PAGE_SIZE);
+
+    LOG_DEBUG("kmain entered\n");
+
+    init_finalize(bootInfo);
+
+    init_process_spawn();
 
     LOG_INFO("done with boot thread\n");
     sched_done_with_boot_thread();

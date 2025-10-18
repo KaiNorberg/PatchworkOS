@@ -6,7 +6,7 @@
 
 typedef struct aml_unresolved_obj aml_unresolved_obj_t;
 typedef struct aml_object aml_object_t;
-typedef struct aml_data aml_data_t;
+typedef struct aml_state aml_state_t;
 
 /**
  * @brief Patch-up system for forward references.
@@ -22,7 +22,7 @@ typedef struct aml_data aml_data_t;
  * Takes the now matched object and the previously unresolved object as parameters. The callback should patch
  * the unresolved object in whatever way it wants, for example performing type conversion or similar.
  */
-typedef uint64_t (*aml_patch_up_resolve_callback_t)(aml_object_t* match, aml_object_t* unresolved);
+typedef uint64_t (*aml_patch_up_resolve_callback_t)(aml_state_t* state, aml_object_t* match, aml_object_t* unresolved);
 
 /**
  * @brief Entry in the global list of unresolved references.

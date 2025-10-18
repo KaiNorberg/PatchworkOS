@@ -10,6 +10,7 @@
 
 static lock_t lock = LOCK_CREATE;
 
+static char workingBuffer[LOG_FILE_MAX_BUFFER] = {0};
 static char buffer[LOG_FILE_MAX_BUFFER] = {0};
 static ring_t ring = RING_CREATE(buffer, sizeof(buffer));
 static sysfs_file_t file = {0};
@@ -111,15 +112,13 @@ void log_file_flush_to_screen(void)
         log_file_advance_fake_cursor(chr, &lineLength, &lineCount);
     }
 
-    char buffer[1000];
-
     for (; i < ring_data_length(&ring);)
     {
-        uint64_t toRead = MIN(ring_data_length(&ring) - i, sizeof(buffer));
-        ring_read_at(&ring, i, buffer, toRead);
+        uint64_t toRead = MIN(ring_data_length(&ring) - i, sizeof(workingBuffer));
+        ring_read_at(&ring, i, workingBuffer, toRead);
         i += toRead;
 
-        log_screen_write(buffer, toRead);
+        log_screen_write(workingBuffer, toRead);
     }
 }
 

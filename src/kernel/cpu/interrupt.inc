@@ -1,4 +1,10 @@
-%macro TRAP_FRAME_REGS_PUSH 0
+%pragma once
+
+; The size of a interrupt frame in bytes
+%define INTERRUPT_FRAME_SIZE 176
+
+; Will construct the registers section of a interrupt frame
+%macro INTERRUPT_FRAME_REGS_PUSH 0
     push rax
     push rbx
     push rcx
@@ -16,7 +22,8 @@
     push r15
 %endmacro
 
-%macro TRAP_FRAME_REGS_POP 0
+; Will pop the registers section of a interrupt frame
+%macro INTERRUPT_FRAME_REGS_POP 0
     pop r15
     pop r14
     pop r13
@@ -34,15 +41,22 @@
     pop rax
 %endmacro
 
-; Constructs a trap frame from current cpu state
-%macro TRAP_FRAME_CONSTRUCT 0
+%macro INTERRUPT_FRAME_POP_AND_JUMP 0
+    INTERRUPT_FRAME_REGS_POP
+
+    add rsp, 16
+    iretq
+%endmacro
+
+; Constructs a interrupt frame from current cpu state
+%macro INTERRUPT_FRAME_CONSTRUCT 0
     xor rax, rax ; Set to zero to prevent weirdness with the ss and cs registers.
     mov r8, [rsp] ; Get the return address.
     ; Store the stack pointer from before this function was called
     mov r9, rsp
     add r9, 8
 
-    ; Construct trap frame
+    ; Construct interrupt frame
     mov ax, ss
     push rax
     push r9
@@ -55,7 +69,5 @@
     push qword 0
     push qword 0
 
-    TRAP_FRAME_REGS_PUSH
+    INTERRUPT_FRAME_REGS_PUSH
 %endmacro
-
-

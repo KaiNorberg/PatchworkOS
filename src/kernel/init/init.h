@@ -1,10 +1,12 @@
 #pragma once
 
+#include "cpu/cpu.h"
+
 #include <boot/boot_info.h>
 
 /**
  * @brief Initialization and `kmain()`.
- * @defgroup kernel_init Initialization
+ * @defgroup init Initialization
  * @ingroup kernel
  *
  * @{
@@ -16,46 +18,28 @@
  * This will do the absolute minimum to get the scheduler and smp up and running. Note that having smp "running" does
  * not mean the other cpus are started, just that we are keeping track of the currently active cpu.
  *
- * Having the scheduler running then lets us start using the kernel stack of the boot thread, which is just the first
- * thread created in the kernel process. This thread will eventually become the idle thread of the bootstrap cpu.
+ * Having the scheduler running then lets us load the boot thread which will jump to `kmain()` where we can do the rest
+ * of the kernel initialization. This thread will eventually become the idle thread of the bootstrap cpu.
  *
- * Swapping to the boot thread requires some assembly trickery which is why we need the `start.s` file.
+ * Will be called in the `_start()` function found in `start.s` with interrupts disabled.
  *
- * Will be called in `_start` found in `start.s`.
- *
- * @param bootInfo Information provided by the bootloader.
- */
-void kernel_early_init(const boot_info_t* bootInfo);
-
-/**
- * @brief Finish kernel initialization.
- *
- * This will finish the rest of the kernel initialization and will be called after `kernel_early_init()` while running
- * on the boot thread from `_start` found in `start.s`.
- *
- * Will not spawn the init process, that will be done in `kmain()`.
+ * Will never return, instead it will jump to the boot thread.
  *
  * @param bootInfo Information provided by the bootloader.
  */
-void kernel_init(const boot_info_t* bootInfo);
-
-/**
- * @brief Initialize other CPUs.
- *
- * This will be called on the other CPUs to initalize their cpu specific stuff.
- */
-void kernel_other_cpu_init(void);
+_NORETURN void init_early(const boot_info_t* bootInfo);
 
 /**
  * @brief Kernel main function.
  *
- * This will be called after `kernel_init()` while running on the boot thread from `_start` found in `start.s`.
- *
- * This will spawn the init process, which is the first user process.
+ * This is the entry point for the boot thread. When `init_early()` jumps to the boot thread we will end up here. We can
+ * then perform the rest of the kernel initialization here and start the init process.
  *
  * Note that this function will never return, instead it will call `sched_done_with_boot_thread()` which will turn the
  * boot thread into the idle thread of the bootstrap cpu and enable interrupts.
+ *
+ * @param bootInfo Information provided by the bootloader.
  */
-_NORETURN void kmain(void);
+_NORETURN void kmain(const boot_info_t* bootInfo);
 
 /** @} */

@@ -316,7 +316,7 @@ uint64_t aml_num_elements_read(aml_term_list_ctx_t* ctx, uint8_t* out)
  * Used to handle package elements that are names but mainly its used as a callback for
  * the @ref kernel_acpi_aml_patch_up system.
  */
-static inline uint64_t aml_package_element_handle_name(aml_object_t* in, aml_object_t* out)
+static inline uint64_t aml_package_element_handle_name(aml_state_t* state, aml_object_t* in, aml_object_t* out)
 {
     if (in->type &
         (AML_INTEGER | AML_STRING | AML_BUFFER | AML_BUFFER_FIELD | AML_FIELD_UNIT |
@@ -324,7 +324,7 @@ static inline uint64_t aml_package_element_handle_name(aml_object_t* in, aml_obj
     {
         // Unsure what the spec means by "actual data" but converting to DataObject seems to be the most sensible
         // interpretation.
-        if (aml_convert_source(in, &out, AML_DATA_OBJECTS) == ERR)
+        if (aml_convert_source(state, in, &out, AML_DATA_OBJECTS) == ERR)
         {
             LOG_ERR("failed to convert to data object in aml_package_element_handle_name()\n");
             return ERR;
@@ -356,7 +356,7 @@ uint64_t aml_package_element_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
             return ERR;
         }
 
-        aml_object_t* object = aml_name_string_resolve(&nameString, ctx->scope);
+        aml_object_t* object = aml_namespace_find_by_name_string(&ctx->state->overlay, ctx->scope, &nameString);
         if (object == NULL)
         {
             if (aml_unresolved_set(out, &nameString, ctx->scope, aml_package_element_handle_name) == ERR)
@@ -366,7 +366,7 @@ uint64_t aml_package_element_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
             return 0;
         }
 
-        if (aml_package_element_handle_name(object, out) == ERR)
+        if (aml_package_element_handle_name(ctx->state, object, out) == ERR)
         {
             AML_DEBUG_ERROR(ctx, "Failed to handle name in PackageElement");
             return ERR;

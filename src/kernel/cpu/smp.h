@@ -1,13 +1,11 @@
 #pragma once
 
-#include "sched/sched.h"
-#include "sched/timer.h"
-#include "sched/wait.h"
-#include "trap.h"
-#include "tss.h"
-#include "utils/statistics.h"
+#include "cpu_id.h"
 
+#include <common/defs.h>
 #include <stdint.h>
+
+typedef struct cpu cpu_t;
 
 /**
  * @brief Symmetric multi processing.
@@ -19,36 +17,6 @@
  *
  * @{
  */
-
-/**
- * @brief Maximum number of CPUs supported.
- *
- * This is limited by the size of cpuid_t.
- */
-#define SMP_CPU_MAX UINT8_MAX
-
-/**
- * @brief Type used to identify a CPU.
- */
-typedef uint8_t cpuid_t;
-
-/**
- * @brief CPU structure.
- * @struct cpu_t
- */
-typedef struct cpu
-{
-    cpuid_t id;
-    uint8_t lapicId;
-    bool isBootstrap;
-    uint64_t trapDepth;
-    tss_t tss;
-    cli_ctx_t cli;
-    timer_ctx_t timer;
-    sched_cpu_ctx_t sched;
-    wait_cpu_ctx_t wait;
-    statistics_cpu_ctx_t stat;
-} cpu_t;
 
 /**
  * @brief Initializes the bootstrap CPU structure.
@@ -88,17 +56,26 @@ cpu_t* smp_cpu(cpuid_t id) PURE_FUNC;
  * @brief Returns a pointer to the cpu_t structure of the current CPU.
  *
  * This function is unsafe because it does not disable interrupts, so it must be called with interrupts disabled.
- * It is useful in low-level code where disabling interrupts is necessary anyway, for example in trap handlers.
+ * It is useful in low-level code where disabling interrupts is necessary anyway, for example in interrupt handlers.
  *
  * @return A pointer to the current CPU.
  */
 cpu_t* smp_self_unsafe(void) PURE_FUNC;
 
 /**
+ * @brief Returns the id of the current CPU.
+ *
+ * This function is unsafe because it does not disable interrupts, so it must be called with interrupts disabled.
+ *
+ * @return The id of the current CPU.
+ */
+cpuid_t smp_self_id_unsafe(void) PURE_FUNC;
+
+/**
  * @brief Returns a pointer to the cpu_t structure of the current CPU.
  *
- * This function is safe because it disables interrupts using `cli_push()`, but it is less efficient than
- * smp_self_unsafe(). It is important to always call `smp_put()` after using this function to re-enable interrupts.
+ * This function is safe because it disables interrupts. It is important to always call `smp_put()` after using this
+ * function to re-enable interrupts.
  *
  * @return A pointer to the current CPU.
  */

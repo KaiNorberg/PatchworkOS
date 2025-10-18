@@ -12,11 +12,12 @@
  * The PMM bitmap provides a flexible allocator for more specific allocations, for example it can handle contiguous
  * pages, specific alignments and allocating below some specified address. This flexibility comes at the cost of
  * performance, so the bitmap should only be used when necessary.
+ *
+ * @{
  */
 
 /**
  * @brief Represents a bitmap allocator's state.
- * @ingroup kernel_mem_pmm_bitmap
  */
 typedef struct
 {
@@ -40,7 +41,6 @@ typedef struct
 
 /**
  * @brief Initializes a PMM bitmap.
- * @ingroup kernel_mem_pmm_bitmap
  *
  * @param bitmap The bitmap to initialize.
  * @param buffer The buffer to use for the bitmap data.
@@ -51,7 +51,6 @@ void pmm_bitmap_init(pmm_bitmap_t* bitmap, void* buffer, uint64_t size, uintptr_
 
 /**
  * @brief Allocates a contiguous region of pages from the bitmap.
- * @ingroup kernel_mem_pmm_bitmap
  *
  * @param bitmap The bitmap to allocate from.
  * @param count The number of pages to allocate.
@@ -63,10 +62,11 @@ void* pmm_bitmap_alloc(pmm_bitmap_t* bitmap, uint64_t count, uintptr_t maxAddr, 
 
 /**
  * @brief Frees a region of pages, returning them to the bitmap.
- * @ingroup kernel_mem_pmm_bitmap
  *
  * @param bitmap The bitmap to free to.
  * @param address The address of the region to free.
  * @param count The number of pages to free.
  */
 void pmm_bitmap_free(pmm_bitmap_t* bitmap, void* address, uint64_t count);
+
+/** @} */

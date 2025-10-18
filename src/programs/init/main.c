@@ -95,11 +95,15 @@ int main(void)
         return EXIT_FAILURE;
     }
 
+    printf("init: starting services...\n");
     start_services(config);
+    printf("init: starting programs...\n");
     start_programs(config);
 
+    printf("init: executing commands...\n");
     execute_commands(config);
 
+    printf("init: all startup tasks completed!\n");
     config_close(config);
     return 0;
 }

@@ -198,7 +198,7 @@ const char* aml_object_to_string(aml_object_t* object)
         if (object->objectReference.target != NULL)
         {
             snprintf(buffer, sizeof(buffer), "ObjectReference(Target='%s')",
-                AML_OBJECT_GET_NAME(object->objectReference.target));
+                AML_NAME_TO_STRING(object->objectReference.target->name));
         }
         else
         {
@@ -271,8 +271,8 @@ const char* aml_name_string_to_string(const aml_name_string_t* nameString)
         {
             offset += snprintf(buffer + offset, sizeof(buffer) - offset, ".");
         }
-        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%.*s", AML_NAME_LENGTH,
-            nameString->namePath.segments[i].name);
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%s",
+            AML_NAME_TO_STRING(nameString->namePath.segments[i]));
     }
     return buffer;
 }

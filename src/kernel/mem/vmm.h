@@ -1,5 +1,6 @@
 #pragma once
 
+#include "sched/thread.h"
 #include "space.h"
 
 #include <boot/boot_info.h>
@@ -13,11 +14,68 @@
  * @defgroup kernel_mem_vmm VMM
  * @ingroup kernel_mem
  *
+ * The Virtual Memory Manager (VMM) is responsible for allocating and mapping virtual memory.
+ *
+ * ## Address Space Layout
+ *
+ * The address space layout is split into several regions. For convenience, the regions are defined using page table
+ * indices, as in the entire virtual address space is divided into 512 regions, each mapped by one entry in the top
+ * level page table (PML4) with 256 entries for the lower half and 256 entries for the higher half. By doing this we can
+ * very easily copy mappings between address spaces by just copying the relevant PML4 entries.
+ *
+ * First, at the very top, we have the kernel binary itself and all its data, code, bss, rodata, etc. This region uses
+ * the the last index in the page table. This region will never be fully filled and the kernel itself is not guaranteed
+ * to be loaded at the very start of this region, the exact address is decided by the `linker.lds` script. This section
+ * is mapped identically for all processes.
+ *
+ * Secondly, we have the per-thread kernel stacks, one stack per thread. Each stack is allocated on demand and can grow
+ * dynamically up to `CONFIG_MAX_KERNEL_STACK_PAGES` pages not including its guard page. This section takes up 2 indices
+ * in the page table and will be process-specific as each process has its own threads and thus its own kernel stacks.
+ *
+ * Thirdly, we have the kernel heap, which is used for dynamic memory allocation in the kernel. The kernel heap starts
+ * at `VMM_KERNEL_HEAP_MIN` and grows up towards `VMM_KERNEL_HEAP_MAX`. This section takes up 2 indices in the
+ * page table and is mapped identically for all processes.
+ *
+ * Fourthly (is fourthly really a word?), we have the identity mapped physical memory. All physical memory will be
+ * mapped here by simply taking the original physical address and adding `0xFFFF800000000000` to it. This means that the
+ * physical address `0x123456` will be mapped to the virtual address `0xFFFF800000123456`. This section takes up all
+ * remaining indices below the kernel heap to the end of the higher half and is mapped identically for all processes.
+ *
+ * Fithly, we have non-canonical memory, which is impossible to access and will trigger a general protection fault if
+ * accessed. This section takes up the gap between the lower half and higher half of the address space.
+ *
+ * Finally, we have user space, which starts at `0x400000` (4MiB) and goes up to the top of the lower half. The first
+ * 4MiB is left unmapped to catch null pointer dereferences. This section is different for each process.
+ *
+ * @{
  */
+
+#define VMM_KERNEL_BINARY_MAX PML_HIGHER_HALF_END ///< The maximum address for the content of the kernel binary.
+#define VMM_KERNEL_BINARY_MIN \
+    PML_INDEX_TO_ADDR(PML_INDEX_AMOUNT - 1, PML4) ///< The minimum address for the content of the kernel binary.
+
+#define VMM_KERNEL_STACKS_MAX VMM_KERNEL_BINARY_MIN                         ///< The maximum address for kernel stacks.
+#define VMM_KERNEL_STACKS_MIN PML_INDEX_TO_ADDR(PML_INDEX_AMOUNT - 3, PML4) ///< The minimum address for kernel stacks.
+
+#define VMM_KERNEL_HEAP_MAX VMM_KERNEL_STACKS_MIN                         ///< The maximum address for the kernel heap.
+#define VMM_KERNEL_HEAP_MIN PML_INDEX_TO_ADDR(PML_INDEX_AMOUNT - 5, PML4) ///< The minimum address for the kernel heap.
+
+#define VMM_IDENTITY_MAPPED_MAX VMM_KERNEL_HEAP_MIN   ///< The maximum address for the identity mapped physical memory.
+#define VMM_IDENTITY_MAPPED_MIN PML_HIGHER_HALF_START ///< The minimum address for the identity mapped physical memory.
+
+#define VMM_USER_SPACE_MAX PML_LOWER_HALF_END ///< The maximum address for user space.
+#define VMM_USER_SPACE_MIN (0x400000)         ///< The minimum address for user space.
+
+/**
+ * @brief Check if an address is page aligned.
+ *
+ * @param addr The address to check.
+ * @return true if the address is page aligned, false otherwise.
+ */
+#define VMM_IS_PAGE_ALIGNED(addr) (((uintptr_t)(addr) & (PAGE_SIZE - 1)) == 0)
 
 /**
  * @brief Initializes the Virtual Memory Manager.
- * @ingroup kernel_mem_vmm
  *
  * @param memory The memory information provided by the bootloader.
  * @param gop The graphics output protocol provided by the bootloader.
@@ -26,15 +84,7 @@
 void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_kernel_t* kernel);
 
 /**
- * @brief Unmaps the lower half of the address space after kernel initialization.
- * @ingroup kernel_mem_vmm
- *
- */
-void vmm_unmap_lower_half(void);
-
-/**
  * @brief Initializes VMM for a CPU.
- * @ingroup kernel_mem_vmm
  *
  * The `vmm_cpu_init()` function performs per-CPU VMM initialization for the currently running CPU, for example enabling
  * global pages.
@@ -43,39 +93,48 @@ void vmm_unmap_lower_half(void);
 void vmm_cpu_init(void);
 
 /**
- * @brief Retrieves the kernel's page tables.
- * @ingroup kernel_mem_vmm
+ * @brief Maps the lower half of the address space to the boot thread during kernel initialization.
  *
- * @return The kernels page tables.
+ * We still need to access bootloader data like the memory map while the kernel is initializing, so we keep the lower
+ * half mapped until the kernel is fully initialized. After that we can unmap the lower half both from kernel space and
+ * the boot thread's address space.
+ *
+ * The bootloades lower half mappings will be transfered to the kernel space mappings during boot so we just copy them
+ * from there.
+ *
+ * @param bootThread The boot thread, which will have its address space modified.
  */
-page_table_t* vmm_kernel_pml(void);
+void vmm_map_bootloader_lower_half(thread_t* bootThread);
 
 /**
- * @brief Maps physical memory to kernel space virtual memory.
- * @ingroup kernel_mem_vmm
+ * @brief Unmaps the lower half of the address space after kernel initialization.
  *
- * @param virtAddr The desired virtual address to map to, must be page aligned, if `NULL` then we use the virtual
- * address `physAddr` + `PML_HIGHER_HALF_START`.
- * @param physAddr The physical address to map from, must be page aligned, if `NULL` then allocate pages using the pmm
- * and OR page table flags with PML_OWNED.
- * @param pageAmount The amount of pages to map, must not be 0.
- * @param flags The page table flags of the mapped pages, will OR with `VMM_KERNEL_PML_FLAGS`.
- * @return On success, returns the virtual address where the memory was mapped. On failure, returns `NULL`.
+ * Will unmap the lower half from both the kernel space and the boot thread's address space.
+ *
+ * After this is called the bootloaders lower half mappings will be destroyed and the kernel will only have its own
+ * mappings.
+ *
+ * @param bootThread The boot thread, which will have its address space modified.
  */
-void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t pageAmount, pml_flags_t flags);
+void vmm_unmap_bootloader_lower_half(thread_t* bootThread);
 
 /**
- * @brief Unmaps virtual memory from kernel space.
- * @ingroup kernel_mem_vmm
+ * @brief Retrieves the kernel's address space.
  *
- * @param virtAddr The virtual address of the memory region.
- * @param pageAmount The number of pages in the memory region.
+ * @return Pointer to the kernel's address space.
  */
-void vmm_kernel_unmap(void* virtAddr, uint64_t pageAmount);
+space_t* vmm_get_kernel_space(void);
+
+/**
+ * @brief Converts the user space memory protection flags to page table entry flags.
+ *
+ * @param prot The memory protection flags.
+ * @return The corresponding page table entry flags.
+ */
+pml_flags_t vmm_prot_to_flags(prot_t prot);
 
 /**
  * @brief Aligns a virtual address and length to page boundaries.
- * @ingroup kernel_mem_vmm
  *
  * @param virtAddr The virtual address to align.
  * @param length The length of the memory region.
@@ -84,46 +143,77 @@ void vmm_align_region(void** virtAddr, uint64_t* length);
 
 /**
  * @brief Allocates and maps virtual memory in a given address space.
- * @ingroup kernel_mem_vmm
  *
- * @param space The target address space.
+ * Will overwrite any existing mappings in the specified range.
+ *
+ * @param space The target address space, if `NULL`, the kernel space is used.
  * @param virtAddr The desired virtual address. If `NULL`, the kernel chooses an available address.
  * @param length The length of the virtual memory region to allocate, in bytes.
- * @param prot The memory protection flags (e.g., `PROT_READ`, `PROT_WRITE`).
- * @return On success, returns the allocated virtual address. On failure, returns `NULL`.
+ * @param flags The page table flags for the mapping, will always include `PML_OWNED`, must have `PML_PRESENT` set.
+ * @return On success, the virtual address. On failure, returns `NULL` and `errno` is set.
  */
-void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, prot_t prot);
+void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t flags);
 
 /**
  * @brief Maps physical memory to virtual memory in a given address space.
- * @ingroup kernel_mem_vmm
  *
- * @param space The target address space.
- * @param virtAddr The desired virtual address to map to.
- * @param physAddr The physical address to map from.
+ * Will overwrite any existing mappings in the specified range.
+ *
+ * @param space The target address space, if `NULL`, the kernel space is used.
+ * @param virtAddr The desired virtual address to map to, if `NULL`, the kernel chooses an available address.
+ * @param physAddr The physical address to map from. Must not be `NULL`.
  * @param length The length of the memory region to map, in bytes.
- * @param prot The memory protection flags.
+ * @param flags The page table flags for the mapping, must have `PML_PRESENT` set.
  * @param func The callback function to call when the mapped memory is unmapped or the address space is freed. If
  * `NULL`, then no callback will be called.
  * @param private Private data to pass to the callback function.
- * @return On success, returns the virtual address where the memory was mapped. On failure, returns `NULL`.
+ * @return On success, the virtual address. On failure, returns `NULL` and `errno` is set.
  */
-void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, prot_t prot, space_callback_func_t func,
-    void* private);
+void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, pml_flags_t flags,
+    space_callback_func_t func, void* private);
 
 /**
- * @brief Maps a list of physical pages to virtual memory in a given address space.
- * @ingroup kernel_mem_vmm
+ * @brief Maps an array of physical pages to virtual memory in a given address space.
  *
- * @param space The target address space.
- * @param virtAddr The desired virtual address to map to.
+ * Will overwrite any existing mappings in the specified range.
+ *
+ * @param space The target address space, if `NULL`, the kernel space is used.
+ * @param virtAddr The desired virtual address to map to, if `NULL`, the kernel chooses an available address.
  * @param pages An array of physical page addresses to map.
- * @param pageAmount The number of physical pages in the `pages` array.
- * @param prot The memory protection flags.
+ * @param pageAmount The number of physical pages in the `pages` array, must not be zero.
+ * @param flags The page table flags for the mapping, must have `PML_PRESENT` set.
  * @param func The callback function to call when the mapped memory is unmapped or the address space is freed. If
  * `NULL`, then no callback will be called.
  * @param private Private data to pass to the callback function.
- * @return On success, returns the virtual address where the memory was mapped. On failure, returns `NULL`.
+ * @return On success, the virtual address. On failure, returns `NULL` and `errno` is set.
  */
-void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageAmount, prot_t prot,
+void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageAmount, pml_flags_t flags,
     space_callback_func_t func, void* private);
+
+/**
+ * @brief Unmaps virtual memory from a given address space.
+ *
+ * If the memory is already unmapped, this function will do nothing.
+ *
+ * @param space The target address space, if `NULL`, the kernel space is used.
+ * @param virtAddr The virtual address of the memory region.
+ * @param length The length of the memory region, in bytes.
+ * @return On success, returns 0. On failure, returns `ERR` and `errno` is set.
+ */
+uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length);
+
+/**
+ * @brief Changes memory protection flags for a virtual memory region in a given address space.
+ *
+ * The memory region must be fully mapped, otherwise this function will fail.
+ *
+ * @param space The target address space, if `NULL`, the kernel space is used.
+ * @param virtAddr The virtual address of the memory region.
+ * @param length The length of the memory region, in bytes.
+ * @param flags The new page table flags for the memory region, if `PML_PRESENT` is not set, the memory will be
+ * unmapped.
+ * @return On success, returns 0. On failure, returns `ERR` and `errno` is set.
+ */
+uint64_t vmm_protect(space_t* space, void* virtAddr, uint64_t length, pml_flags_t flags);
+
+/** @} */

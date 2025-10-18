@@ -7,8 +7,10 @@
 #include "sched/timer.h"
 #include "sync/lock.h"
 
+#include <errno.h>
 #include <sys/io.h>
 #include <sys/math.h>
+#include <sys/proc.h>
 
 static sysfs_dir_t kbdDir = {0};
 
@@ -21,7 +23,7 @@ static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count, uint64_t* o
     {
         LOCK_SCOPE(&kbd->lock);
 
-        if (WAIT_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, *offset != kbd->writeIndex) != WAIT_NORM)
+        if (WAIT_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, *offset != kbd->writeIndex) == ERR)
         {
             return i * sizeof(kbd_event_t);
         }
@@ -138,5 +140,5 @@ void kbd_push(kbd_t* kbd, kbd_event_type_t type, keycode_t code)
         .type = type,
     };
     kbd->writeIndex = (kbd->writeIndex + 1) % KBD_MAX_EVENT;
-    wait_unblock(&kbd->waitQueue, WAIT_ALL);
+    wait_unblock(&kbd->waitQueue, WAIT_ALL, EOK);
 }

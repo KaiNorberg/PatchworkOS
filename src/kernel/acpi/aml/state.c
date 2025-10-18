@@ -1,67 +1,78 @@
 #include "state.h"
 
-#include "exception.h"
-#include "log/log.h"
 #include "object.h"
 #include "runtime/copy.h"
 
-uint64_t aml_state_init(aml_state_t* state, aml_object_t** args, uint64_t argCount)
-{
-    // We give the locals and args names so they are identifiable when debugging but these names dont do anything.
+#include <errno.h>
 
+uint64_t aml_state_init(aml_state_t* state, aml_object_t** args)
+{
     for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)
     {
-        aml_object_t* local = aml_object_new();
-        if (local == NULL || aml_local_set(local) == ERR)
-        {
-            if (local != NULL)
-            {
-                DEREF(local);
-            }
-            for (uint8_t j = 0; j < i; j++)
-            {
-                DEREF(state->locals[j]);
-            }
-            return ERR;
-        }
-        state->locals[i] = &local->local;
-
-        state->locals[i]->name.segment[0] = 'L';
-        state->locals[i]->name.segment[1] = 'O';
-        state->locals[i]->name.segment[2] = 'C';
-        state->locals[i]->name.segment[3] = '0' + i;
-        state->locals[i]->name.segment[4] = '\0';
+        state->locals[i] = NULL;
     }
-    for (uint8_t i = 0; i < AML_MAX_ARGS; i++)
+
+    uint8_t argIndex = 0;
+    if (args != NULL)
     {
-        aml_object_t* arg = aml_object_new();
-        if (arg == NULL || aml_arg_set(arg, argCount > i ? args[i] : NULL) == ERR)
+        while (args[argIndex] != NULL)
         {
-            if (arg != NULL)
+            if (argIndex >= AML_MAX_ARGS)
             {
-                DEREF(arg);
+                for (uint8_t j = 0; j < AML_MAX_LOCALS; j++)
+                {
+                    DEREF(state->locals[j]);
+                }
+                for (uint8_t k = 0; k < argIndex; k++)
+                {
+                    DEREF(state->args[k]);
+                }
+                errno = E2BIG;
+                return ERR;
             }
-            for (uint8_t j = 0; j < i; j++)
-            {
-                DEREF(state->args[j]);
-            }
-            for (uint8_t j = 0; j < AML_MAX_LOCALS; j++)
-            {
-                DEREF(state->locals[j]);
-            }
-            return ERR;
-        }
-        state->args[i] = &arg->arg;
 
-        state->args[i]->name.segment[0] = 'A';
-        state->args[i]->name.segment[1] = 'R';
-        state->args[i]->name.segment[2] = 'G';
-        state->args[i]->name.segment[3] = '0' + i;
-        state->args[i]->name.segment[4] = '\0';
+            aml_object_t* arg = aml_object_new();
+            if (arg == NULL || aml_arg_set(arg, args[argIndex]) == ERR)
+            {
+                if (arg != NULL)
+                {
+                    DEREF(arg);
+                }
+                for (uint8_t j = 0; j < AML_MAX_LOCALS; j++)
+                {
+                    DEREF(state->locals[j]);
+                }
+                for (uint8_t k = 0; k < argIndex; k++)
+                {
+                    DEREF(state->args[k]);
+                }
+                return ERR;
+            }
+
+            state->args[argIndex] = &arg->arg;
+            state->args[argIndex]->name = AML_NAME('A', 'R', 'G', '0' + argIndex);
+            argIndex++;
+        }
     }
+    for (; argIndex < AML_MAX_ARGS; argIndex++)
+    {
+        state->args[argIndex] = NULL;
+    }
+
     state->result = NULL;
     state->errorDepth = 0;
-    list_init(&state->namedObjects);
+    if (aml_namespace_overlay_init(&state->overlay) == ERR)
+    {
+        for (uint8_t i = 0; i < AML_MAX_ARGS; i++)
+        {
+            DEREF(state->args[i]);
+        }
+        for (uint8_t j = 0; j < AML_MAX_LOCALS; j++)
+        {
+            DEREF(state->locals[j]);
+        }
+        return ERR;
+    }
     return 0;
 }
 
@@ -81,20 +92,7 @@ void aml_state_deinit(aml_state_t* state)
     }
     state->result = NULL;
 
-    while (!list_is_empty(&state->namedObjects))
-    {
-        aml_object_t* child = CONTAINER_OF(list_pop(&state->namedObjects), aml_object_t, name.stateEntry);
-        // Dont do anything.
-    }
-}
-
-void aml_state_garbage_collect(aml_state_t* state)
-{
-    while (!list_is_empty(&state->namedObjects))
-    {
-        aml_object_t* child = CONTAINER_OF(list_pop(&state->namedObjects), aml_object_t, name.stateEntry);
-        aml_object_remove(child);
-    }
+    aml_namespace_overlay_deinit(&state->overlay);
 }
 
 aml_object_t* aml_state_result_get(aml_state_t* state)
@@ -119,15 +117,15 @@ aml_object_t* aml_state_result_get(aml_state_t* state)
             return NULL;
         }
         result->flags |= AML_OBJECT_EXCEPTION_ON_USE;
-        return result;
+        return result; // Transfer ownership
     }
 
-    if (aml_copy_object(state->result, result) == ERR)
+    if (aml_copy_object(state, state->result, result) == ERR)
     {
         DEREF(result);
         return NULL;
     }
-    return result;
+    return result; // Transfer ownership
 }
 
 void aml_state_result_set(aml_state_t* state, aml_object_t* result)

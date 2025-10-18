@@ -48,28 +48,8 @@
 
 /**
  * @brief Initialize the AML subsystem.
- *
- * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_init(void);
-
-/**
- * @brief Parse an AML bytecode stream.
- *
- * The `aml_parse()` function parses and executes a AML bytestream, which creates the ACPI object tree.
- *
- * @param start Pointer to the start of the AML bytecode.
- * @param end Pointer to the end of the AML bytecode.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_parse(const uint8_t* start, const uint8_t* end);
-
-/**
- * @brief Get the root object of the ACPI namespace.
- *
- * @return A reference to the root object.
- */
-aml_object_t* aml_root_get(void);
+void aml_init(void);
 
 /**
  * @brief Get the mutex for the entire AML subsystem.

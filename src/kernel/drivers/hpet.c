@@ -24,15 +24,15 @@ static uint64_t hpet_init(sdt_header_t* table)
         return ERR;
     }
 
-    if (vmm_kernel_map(NULL, (void*)hpet->address, 1, PML_WRITE) == NULL &&
-        errno != EEXIST) // EEXIST means it was already mapped
+    address = (uintptr_t)PML_LOWER_TO_HIGHER(hpet->address);
+    if (vmm_map(NULL, (void*)address, (void*)hpet->address, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL,
+            NULL) == NULL)
     {
         LOG_ERR("failed to map HPET memory at 0x%016lx\n", hpet->address);
         return ERR;
     }
 
     isInitialized = true;
-    address = (uintptr_t)PML_LOWER_TO_HIGHER(hpet->address);
 
     uint64_t capabilities = hpet_read(HPET_REG_GENERAL_CAPABILITIES_ID);
     period = capabilities >> HPET_CAP_COUNTER_CLK_PERIOD_SHIFT;

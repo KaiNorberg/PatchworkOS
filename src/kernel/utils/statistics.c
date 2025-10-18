@@ -1,5 +1,6 @@
 #include "statistics.h"
 
+#include "cpu/cpu.h"
 #include "cpu/smp.h"
 #include "fs/file.h"
 #include "fs/sysfs.h"
@@ -7,7 +8,9 @@
 #include "log/panic.h"
 #include "mem/heap.h"
 #include "mem/pmm.h"
+#include "sched/sched.h"
 #include "sched/timer.h"
+#include "sync/lock.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -22,9 +25,9 @@ void statistics_cpu_ctx_init(statistics_cpu_ctx_t* ctx)
 {
     ctx->idleClocks = 0;
     ctx->activeClocks = 0;
-    ctx->trapClocks = 0;
-    ctx->trapBegin = 0;
-    ctx->trapEnd = 0;
+    ctx->interruptClocks = 0;
+    ctx->interruptBegin = 0;
+    ctx->interruptEnd = 0;
     lock_init(&ctx->lock);
 }
 
@@ -38,7 +41,7 @@ static uint64_t statistics_cpu_read(file_t* file, void* buffer, uint64_t count, 
         return ERR;
     }
 
-    strcpy(string, "cpu idle_clocks active_clocks trap_clocks\n");
+    strcpy(string, "cpu idle_clocks active_clocks interrupt_clocks\n");
     for (uint64_t i = 0; i < smp_cpu_amount(); i++)
     {
         cpu_t* cpu = smp_cpu(i);
@@ -46,7 +49,7 @@ static uint64_t statistics_cpu_read(file_t* file, void* buffer, uint64_t count, 
         LOCK_SCOPE(&stat->lock);
 
         sprintf(&string[strlen(string)], "cpu%d %llu %llu %llu%c", cpu->id, stat->idleClocks, stat->activeClocks,
-            stat->trapClocks, i + 1 != smp_cpu_amount() ? '\n' : '\0');
+            stat->interruptClocks, i + 1 != smp_cpu_amount() ? '\n' : '\0');
     }
 
     uint64_t length = strlen(string);
@@ -98,16 +101,16 @@ void statistics_init(void)
     }
 }
 
-void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self)
+void statistics_interrupt_begin(interrupt_frame_t* frame, cpu_t* self)
 {
-    (void)trapFrame; // Unused
+    (void)frame; // Unused
 
     statistics_cpu_ctx_t* stat = &self->stat;
     LOCK_SCOPE(&stat->lock);
 
-    stat->trapBegin = timer_uptime();
+    stat->interruptBegin = timer_uptime();
 
-    clock_t timeBetweenTraps = stat->trapBegin - stat->trapEnd;
+    clock_t timeBetweenTraps = stat->interruptBegin - stat->interruptEnd;
     if (sched_is_idle())
     {
         stat->idleClocks += timeBetweenTraps;
@@ -118,13 +121,13 @@ void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self)
     }
 }
 
-void statistics_trap_end(trap_frame_t* trapFrame, cpu_t* self)
+void statistics_interrupt_end(interrupt_frame_t* frame, cpu_t* self)
 {
-    (void)trapFrame; // Unused
+    (void)frame; // Unused
 
     statistics_cpu_ctx_t* stat = &self->stat;
     LOCK_SCOPE(&stat->lock);
 
-    stat->trapEnd = timer_uptime();
-    stat->trapClocks += stat->trapEnd - stat->trapBegin;
+    stat->interruptEnd = timer_uptime();
+    stat->interruptClocks += stat->interruptEnd - stat->interruptBegin;
 }

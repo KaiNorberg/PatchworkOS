@@ -20,24 +20,24 @@ static void* loader_load_program(thread_t* thread)
     const char* executable = process->argv.buffer[0];
     if (executable == NULL)
     {
-        sched_process_exit(ESPAWNFAIL);
+        return NULL;
     }
 
     file_t* file = vfs_open(PATHNAME(executable));
     if (file == NULL)
     {
-        sched_process_exit(ESPAWNFAIL);
+        return NULL;
     }
     DEREF_DEFER(file);
 
     elf_hdr_t header;
     if (vfs_read(file, &header, sizeof(elf_hdr_t)) != sizeof(elf_hdr_t))
     {
-        sched_process_exit(ESPAWNFAIL);
+        return NULL;
     }
     if (!ELF_IS_VALID(&header))
     {
-        sched_process_exit(ESPAWNFAIL);
+        return NULL;
     }
 
     uint64_t min = UINT64_MAX;
@@ -47,13 +47,13 @@ static void* loader_load_program(thread_t* thread)
         uint64_t offset = sizeof(elf_hdr_t) + header.phdrSize * i;
         if (vfs_seek(file, offset, SEEK_SET) != offset)
         {
-            sched_process_exit(ESPAWNFAIL);
+            return NULL;
         }
 
         elf_phdr_t phdr;
         if (vfs_read(file, &phdr, sizeof(elf_phdr_t)) != sizeof(elf_phdr_t))
         {
-            sched_process_exit(ESPAWNFAIL);
+            return NULL;
         }
 
         switch (phdr.type)
@@ -64,29 +64,30 @@ static void* loader_load_program(thread_t* thread)
             max = MAX(max, phdr.virtAddr + phdr.memorySize);
             if (phdr.memorySize < phdr.fileSize)
             {
-                sched_process_exit(ESPAWNFAIL);
+                return NULL;
             }
 
-            if (vmm_alloc(space, (void*)phdr.virtAddr, phdr.memorySize, PROT_READ | PROT_WRITE) == NULL)
+            if (vmm_alloc(space, (void*)phdr.virtAddr, phdr.memorySize, PML_PRESENT | PML_WRITE | PML_USER) == NULL)
             {
-                sched_process_exit(ESPAWNFAIL);
+                return NULL;
             }
             memset((void*)phdr.virtAddr, 0, phdr.memorySize);
 
             if (vfs_seek(file, phdr.offset, SEEK_SET) != phdr.offset)
             {
-                sched_process_exit(ESPAWNFAIL);
+                return NULL;
             }
             if (vfs_read(file, (void*)phdr.virtAddr, phdr.fileSize) != phdr.fileSize)
             {
-                sched_process_exit(ESPAWNFAIL);
+                return NULL;
             }
 
             if (!(phdr.flags & ELF_PHDR_FLAGS_WRITE))
             {
-                if (space_protect(&thread->process->space, (void*)phdr.virtAddr, phdr.memorySize, PROT_READ) == ERR)
+                if (vmm_protect(&thread->process->space, (void*)phdr.virtAddr, phdr.memorySize,
+                        PML_PRESENT | PML_USER) == ERR)
                 {
-                    sched_process_exit(ESPAWNFAIL);
+                    return NULL;
                 }
             }
         }
@@ -97,27 +98,15 @@ static void* loader_load_program(thread_t* thread)
     return (void*)header.entry;
 }
 
-static void* loader_alloc_user_stack(thread_t* thread)
-{
-    uintptr_t stackTop = LOADER_USER_STACK_TOP(thread->id);
-
-    if (vmm_alloc(&thread->process->space, (void*)(stackTop - PAGE_SIZE), PAGE_SIZE, PROT_READ | PROT_WRITE) == NULL)
-    {
-        sched_process_exit(ESPAWNFAIL);
-    }
-
-    return (void*)stackTop;
-}
-
-static char** loader_setup_argv(thread_t* thread, void* rsp)
+static char** loader_setup_argv(thread_t* thread)
 {
     if (thread->process->argv.size >= PAGE_SIZE)
     {
-        sched_process_exit(ESPAWNFAIL);
+        return NULL;
     }
 
-    char** argv = memcpy(rsp - sizeof(uint64_t) - thread->process->argv.size, thread->process->argv.buffer,
-        thread->process->argv.size);
+    char** argv = memcpy((void*)(thread->userStack.top - sizeof(uint64_t) - thread->process->argv.size),
+        thread->process->argv.buffer, thread->process->argv.size);
 
     for (uint64_t i = 0; i < thread->process->argv.amount; i++)
     {
@@ -131,13 +120,33 @@ static void loader_process_entry(void)
 {
     thread_t* thread = sched_thread();
 
-    void* rsp = loader_alloc_user_stack(thread);
     void* rip = loader_load_program(thread);
-    char** argv = loader_setup_argv(thread, rsp);
-    rsp = (void*)ROUND_DOWN((uint64_t)argv - 1, 16);
+    if (rip == NULL)
+    {
+        sched_process_exit(ESPAWNFAIL);
+    }
 
-    LOG_DEBUG("jump to user space path=%s pid=%d\n", thread->process->argv.buffer[0], thread->process->id);
-    loader_jump_to_user_space(thread->process->argv.amount, argv, rsp, rip);
+    char** argv = loader_setup_argv(thread);
+    if (argv == NULL)
+    {
+        sched_process_exit(ESPAWNFAIL);
+    }
+
+    // Disable interrupts, they will be enabled by the IRETQ instruction.
+    asm volatile("cli");
+
+    memset(&thread->frame, 0, sizeof(interrupt_frame_t));
+    thread->frame.rdi = thread->process->argv.amount;
+    thread->frame.rsi = (uintptr_t)argv;
+    thread->frame.rsp = (uintptr_t)ROUND_DOWN((uint64_t)argv - 1, 16);
+    thread->frame.rip = (uintptr_t)rip;
+    thread->frame.cs = GDT_CS_RING3;
+    thread->frame.ss = GDT_SS_RING3;
+    thread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+
+    LOG_DEBUG("jump to user space path=%s pid=%d rsp=%p rip=%p\n", thread->process->argv.buffer[0], thread->process->id,
+        (void*)thread->frame.rsp, (void*)thread->frame.rip);
+    loader_jump_to_user_space(thread);
 }
 
 thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd)
@@ -174,12 +183,18 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
         return NULL;
     }
 
-    thread_t* childThread = thread_new(child, loader_process_entry);
+    thread_t* childThread = thread_new(child);
     if (childThread == NULL)
     {
-        process_free(child);
+        DEREF(child);
         return NULL;
     }
+
+    childThread->frame.rip = (uintptr_t)loader_process_entry;
+    childThread->frame.rsp = childThread->kernelStack.top;
+    childThread->frame.cs = GDT_CS_RING0;
+    childThread->frame.ss = GDT_SS_RING0;
+    childThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
 
     LOG_INFO("spawn path=%s pid=%d\n", argv[0], child->id);
     return childThread;
@@ -187,23 +202,18 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
 
 thread_t* loader_thread_create(process_t* parent, void* entry, void* arg)
 {
-    thread_t* child = thread_new(parent, entry);
+    thread_t* child = thread_new(parent);
     if (child == NULL)
     {
         return NULL;
     }
 
-    void* rsp = loader_alloc_user_stack(child);
-    if (rsp == NULL)
-    {
-        thread_free(child);
-        return NULL;
-    }
-
-    child->trapFrame.cs = GDT_USER_CODE | GDT_RING3;
-    child->trapFrame.ss = GDT_USER_DATA | GDT_RING3;
-    child->trapFrame.rsp = (uint64_t)rsp;
-    child->trapFrame.rdi = (uint64_t)arg;
+    child->frame.rip = (uint64_t)entry;
+    child->frame.rsp = child->userStack.top;
+    child->frame.rdi = (uint64_t)arg;
+    child->frame.cs = GDT_CS_RING3;
+    child->frame.ss = GDT_SS_RING3;
+    child->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
     return child;
 }
 
@@ -214,13 +224,13 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     space_t* space = &process->space;
     RWMUTEX_READ_SCOPE(&space->mutex);
 
-    if (cwdString != NULL && !syscall_is_string_valid(space, cwdString))
+    if (cwdString != NULL && !syscall_is_string_accessible(space, cwdString))
     {
         errno = EFAULT;
         return ERR;
     }
 
-    if (attr != NULL && !syscall_is_buffer_valid(space, attr, sizeof(spawn_attr_t)))
+    if (attr != NULL && !syscall_is_pointer_accessible(space, attr, sizeof(spawn_attr_t)))
     {
         errno = EFAULT;
         return ERR;
@@ -245,7 +255,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     uint64_t argc = 0;
     while (1)
     {
-        if (!syscall_is_buffer_valid(space, &argv[argc], sizeof(const char*)))
+        if (!syscall_is_pointer_accessible(space, &argv[argc], sizeof(const char*)))
         {
             errno = EFAULT;
             return ERR;
@@ -254,7 +264,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         {
             break;
         }
-        else if (!syscall_is_string_valid(space, argv[argc]))
+        else if (!syscall_is_string_accessible(space, argv[argc]))
         {
             errno = EFAULT;
             return ERR;
@@ -273,7 +283,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
                 errno = EINVAL;
                 return ERR;
             }
-            else if (!syscall_is_buffer_valid(space, &fds[fdAmount], sizeof(fd_t)))
+            else if (!syscall_is_pointer_accessible(space, &fds[fdAmount], sizeof(fd_t)))
             {
                 errno = EFAULT;
                 return ERR;
@@ -324,7 +334,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         file_t* file = vfs_ctx_get_file(parentVfsCtx, fds[i].parent);
         if (file == NULL)
         {
-            thread_free(child);
+            DEREF(child);
             errno = EBADF;
             return ERR;
         }
@@ -332,7 +342,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
 
         if (vfs_ctx_openas(childVfsCtx, fds[i].child, file) == ERR)
         {
-            thread_free(child);
+            DEREF(child);
             errno = EBADF;
             return ERR;
         }
@@ -348,7 +358,7 @@ SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)
     process_t* process = thread->process;
     space_t* space = &process->space;
 
-    if (!syscall_is_buffer_valid(space, entry, sizeof(uint64_t)))
+    if (!syscall_is_pointer_accessible(space, entry, sizeof(uint64_t)))
     {
         errno = EFAULT;
         return ERR;

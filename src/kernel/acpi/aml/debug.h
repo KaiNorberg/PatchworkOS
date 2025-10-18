@@ -1,6 +1,7 @@
 #pragma once
 
 #include "encoding/term.h"
+#include "token.h"
 
 /**
  * @brief Debugging

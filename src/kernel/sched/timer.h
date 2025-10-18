@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cpu/trap.h"
+#include "cpu/interrupt.h"
 
 #include <sys/proc.h>
 #include <time.h>
@@ -9,7 +9,7 @@ typedef struct cpu cpu_t;
 
 /**
  * @brief System time and timers.
- * @defgroup kernel_timer Timer
+ * @defgroup kernel_timer Time subsystem
  * @ingroup kernel_sched
  *
  * The timer subsystem provides kernel time management.
@@ -25,7 +25,7 @@ typedef struct cpu cpu_t;
 /**
  * @brief Timer callback function type.
  */
-typedef void (*timer_callback_t)(trap_frame_t* trapFrame, cpu_t* self);
+typedef void (*timer_callback_t)(interrupt_frame_t* frame, cpu_t* self);
 
 /**
  * @brief Per-CPU system time context.
@@ -45,15 +45,18 @@ typedef struct
 } timer_ctx_t;
 
 /**
- * @brief System time initialization.
+ * @brief Initialize per-CPU timer context.
  *
+ * Must be called on the CPU who owns the context.
+ *
+ * @param ctx The timer context to initialize.
  */
-void timer_init(void);
+void timer_ctx_init(timer_ctx_t* ctx);
 
 /**
- * @brief Initialize per-CPU timer.
+ * @brief System time initialization.
  */
-void timer_cpu_init(void);
+void timer_init(void);
 
 /**
  * @brief Time since boot.
@@ -70,39 +73,39 @@ clock_t timer_uptime(void);
 time_t timer_unix_epoch(void);
 
 /**
- * @brief Handle timer trap.
+ * @brief Handle timer interrupt.
  *
- * @param trapFrame The current trap frame.
+ * @param frame The current interrupt frame.
  * @param self The current cpu.
  */
-void timer_trap_handler(trap_frame_t* trapFrame, cpu_t* self);
+void timer_interrupt_handler(interrupt_frame_t* frame, cpu_t* self);
 
 /**
- * @brief Subscribe to timer traps.
+ * @brief Subscribe to timer interrupts.
  *
- * @param callback The callback function to be called on timer traps.
+ * @param callback The callback function to be called on timer interrupts.
  */
 void timer_subscribe(timer_callback_t callback);
 
 /**
- * @brief Unsubscribe from timer traps.
+ * @brief Unsubscribe from timer interrupts.
  *
- * @param callback The callback function to be removed from timer traps.
+ * @param callback The callback function to be removed from timer interrupts.
  */
 void timer_unsubscribe(timer_callback_t callback);
 
 /**
- * @brief Schedule a one-shot timer trap.
+ * @brief Schedule a one-shot timer interrupt.
  *
- * The `timer_one_shot()` function sets the per-cpu timer to generate a trap after the specified timeout.
+ * Sets the per-cpu timer to generate a interrupt after the specified timeout.
  * Multiple calls with different timeouts will result in the timer being set for the shortest requested timeout, this
- * will be reset after a timer trap.
+ * will be reset after a timer interrupt.
  *
- * The idea is that every system that wants timer traps calls the `timer_one_shot()` function with their desired
- * timeout and then when the timer trap occurs they check if their desired time has been reached, if it has they do what
- * they need to do, else they call the function once more respecifying their desired timeout, and we repeat the process.
- * This does technically result in some uneeded checks but its a very simply way of effectively eliminating the need to
- * care about timer related race conditions.
+ * The idea is that every system that wants timer interrupts calls the `timer_one_shot()` function with their desired
+ * timeout and then when the timer interrupt occurs they check if their desired time has been reached, if it has they do
+ * what they need to do, else they call the function once more respecifying their desired timeout, and we repeat the
+ * process. This does technically result in some uneeded checks but its a very simply way of effectively eliminating the
+ * need to care about timer related race conditions.
  *
  * @param self The currently running cpu.
  * @param uptime The time since boot, we need to specify this as an argument to avoid inconsistency in the
@@ -112,12 +115,19 @@ void timer_unsubscribe(timer_callback_t callback);
 void timer_one_shot(cpu_t* self, clock_t uptime, clock_t timeout);
 
 /**
- * @brief Trigger timer trap on cpu.
+ * @brief Trigger timer interrupt on cpu.
  *
- * The `timer_notify()` function triggers the timer interrupt on the specified cpu.
+ * Triggers the timer interrupt on the specified cpu.
  *
  * @param cpu The destination cpu.
  */
 void timer_notify(cpu_t* cpu);
+
+/**
+ * @brief Trigger timer interrupt on self.
+ *
+ * Triggers the timer interrupt on the current cpu.
+ */
+void timer_notify_self(void);
 
 /** @} */

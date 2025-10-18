@@ -68,8 +68,7 @@ uint64_t futex_do(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t ti
         }
 
         clock_t start = timer_uptime();
-        wait_result_t result = WAIT_BLOCK_LOCK_TIMEOUT(&futex->queue, &ctx->lock, atomic_load(addr) != val, timeout);
-        if (result == WAIT_TIMEOUT)
+        if (WAIT_BLOCK_LOCK_TIMEOUT(&futex->queue, &ctx->lock, atomic_load(addr) != val, timeout) == ERR)
         {
             return (timer_uptime() - start);
         }
@@ -77,7 +76,7 @@ uint64_t futex_do(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t ti
     break;
     case FUTEX_WAKE:
     {
-        return wait_unblock(&futex->queue, val);
+        return wait_unblock(&futex->queue, val, EOK);
     }
     break;
     default:

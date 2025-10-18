@@ -22,7 +22,7 @@ uint64_t note_queue_length(note_queue_t* queue)
 
 uint64_t note_queue_push(note_queue_t* queue, const void* message, uint64_t length, note_flags_t flags)
 {
-    if (length >= MAX_PATH)
+    if (length >= MAX_PATH - 1 || message == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -83,7 +83,7 @@ static bool note_queue_pop(note_queue_t* queue, note_t* note)
     return true;
 }
 
-bool note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
+void note_dispatch(interrupt_frame_t* frame, cpu_t* self)
 {
     // TODO: Implement more notes and implement user space "software interrupts" to receive notes.
 
@@ -98,8 +98,8 @@ bool note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
             LOG_DEBUG("kill note received tid=%d pid=%d\n", thread->id, thread->process->id);
 
             sched_process_exit(EXIT_SUCCESS);
-            sched_schedule(trapFrame, self);
-            return true;
+            sched_schedule(frame, self);
+            return;
         }
         else
         {
@@ -107,6 +107,4 @@ bool note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
             // TODO: Unknown note, send to userspace
         }
     }
-
-    return false;
 }

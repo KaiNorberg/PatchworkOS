@@ -18,7 +18,7 @@ static void display_receive_event(display_t* disp, event_t* event)
     {
         if (errno == EINTR)
         {
-            errno = 0;
+            errno = EOK;
             return display_receive_event(disp, event);
         }
     }

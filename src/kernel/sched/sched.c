@@ -1,8 +1,10 @@
 #include "sched.h"
 
+#include "cpu/cpu.h"
+#include "cpu/gdt.h"
+#include "cpu/interrupt.h"
 #include "cpu/smp.h"
 #include "cpu/syscalls.h"
-#include "cpu/trap.h"
 #include "drivers/apic.h"
 #include "log/log.h"
 #include "log/panic.h"
@@ -79,27 +81,34 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* cpu)
     sched_queues_init(&ctx->queues[1]);
     ctx->active = &ctx->queues[0];
     ctx->expired = &ctx->queues[1];
-    list_init(&ctx->zombieThreads);
 
     // Bootstrap cpu is initalized early so we cant yet create the idle thread, the boot thread on the bootstrap cpu
     // will become the idle thread.
-    if (cpu->isBootstrap)
+    if (cpu->id == CPU_ID_BOOTSTRAP)
     {
         ctx->idleThread = NULL;
         ctx->runThread = NULL;
     }
     else
     {
-        ctx->idleThread = thread_new(process_get_kernel(), sched_idle_loop);
+        ctx->idleThread = thread_new(process_get_kernel());
         if (ctx->idleThread == NULL)
         {
             panic(NULL, "Failed to create idle thread");
         }
+
+        ctx->idleThread->frame.rip = (uintptr_t)sched_idle_loop;
+        ctx->idleThread->frame.rsp = ctx->idleThread->kernelStack.top;
+        ctx->idleThread->frame.cs = GDT_CS_RING0;
+        ctx->idleThread->frame.ss = GDT_SS_RING0;
+        ctx->idleThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+
         ctx->runThread = ctx->idleThread;
         atomic_store(&ctx->runThread->state, THREAD_RUNNING);
     }
 
     lock_init(&ctx->lock);
+    ctx->owner = cpu;
 }
 
 static void sched_init_spawn_boot_thread(void)
@@ -115,9 +124,16 @@ static void sched_init_spawn_boot_thread(void)
     self->sched.runThread = bootThread;
 }
 
+static void sched_timer_handler(interrupt_frame_t* frame, cpu_t* self)
+{
+    sched_schedule(frame, self);
+}
+
 void sched_init(void)
 {
     sched_init_spawn_boot_thread();
+
+    timer_subscribe(sched_timer_handler);
 
     wait_queue_init(&sleepQueue);
 }
@@ -127,19 +143,20 @@ void sched_done_with_boot_thread(void)
     cpu_t* self = smp_self_unsafe();
     sched_cpu_ctx_t* ctx = &self->sched;
 
-    assert(self->isBootstrap && ctx->runThread->process == process_get_kernel() && ctx->runThread->id == 0);
+    assert(self->id == CPU_ID_BOOTSTRAP && ctx->runThread->process == process_get_kernel() && ctx->runThread->id == 0);
 
     // The boot thread becomes the bootstrap cpus idle thread.
     ctx->runThread->sched.deadline = 0;
     ctx->idleThread = ctx->runThread;
 
-    timer_notify(self);
+    asm volatile("sti");
 
-    // Will enable interrupts.
+    timer_notify_self();
+    // When we return here the boot thread will be an idle thread so we just enter the idle loop.
     sched_idle_loop();
 }
 
-wait_result_t sched_nanosleep(clock_t timeout)
+uint64_t sched_nanosleep(clock_t timeout)
 {
     return WAIT_BLOCK_TIMEOUT(&sleepQueue, false, timeout);
 }
@@ -178,16 +195,14 @@ process_t* sched_process(void)
 void sched_process_exit(uint64_t status)
 {
     thread_t* thread = sched_thread();
-    process_t* process = sched_process();
-
+    process_kill(thread->process, status);
     thread_kill(thread);
-    process_kill(process, status);
 }
 
 SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, uint64_t status)
 {
     sched_process_exit(status);
-    sched_invoke();
+    timer_notify_self();
     panic(NULL, "Return to syscall_process_exit");
 }
 
@@ -199,7 +214,7 @@ void sched_thread_exit(void)
 SYSCALL_DEFINE(SYS_THREAD_EXIT, void)
 {
     sched_thread_exit();
-    sched_invoke();
+    timer_notify_self();
     panic(NULL, "Return to syscall_thread_exit");
 }
 
@@ -274,22 +289,19 @@ void sched_yield(void)
 SYSCALL_DEFINE(SYS_YIELD, uint64_t)
 {
     sched_yield();
-    sched_invoke();
+    timer_notify_self();
     return 0;
 }
 
-static bool sched_should_notify(cpu_t* self, cpu_t* target, priority_t priority)
+static bool sched_should_notify(cpu_t* target, priority_t priority)
 {
-    if (target != self)
+    if (target->sched.runThread == target->sched.idleThread)
     {
-        if (target->sched.runThread == target->sched.idleThread)
-        {
-            return true;
-        }
-        if (priority > target->sched.runThread->sched.actualPriority)
-        {
-            return true;
-        }
+        return true;
+    }
+    if (priority > target->sched.runThread->sched.actualPriority)
+    {
+        return true;
     }
 
     return false;
@@ -324,7 +336,7 @@ void sched_push(thread_t* thread, cpu_t* target)
     sched_compute_time_slice(thread, NULL);
     sched_compute_actual_priority(thread);
 
-    if (sched_should_notify(self, target, thread->sched.actualPriority))
+    if (sched_should_notify(target, thread->sched.actualPriority))
     {
         timer_notify(target);
     }
@@ -401,7 +413,7 @@ void sched_push_new_thread(thread_t* thread, thread_t* parent)
     sched_compute_time_slice(thread, parent);
     sched_compute_actual_priority(thread);
 
-    if (sched_should_notify(self, target, thread->sched.actualPriority))
+    if (sched_should_notify(target, thread->sched.actualPriority))
     {
         timer_notify(target);
     }
@@ -433,7 +445,7 @@ static void sched_load_balance(cpu_t* self, cpu_t* neighbor)
             break;
         }
 
-        if (sched_should_notify(self, neighbor, thread->sched.actualPriority))
+        if (sched_should_notify(neighbor, thread->sched.actualPriority))
         {
             shouldNotifyNeighbor = true;
         }
@@ -460,21 +472,9 @@ static cpu_t* sched_get_neighbor(cpu_t* self)
     return self->id != smp_cpu_amount() - 1 ? smp_cpu(self->id + 1) : smp_cpu(0);
 }
 
-bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
+void sched_schedule(interrupt_frame_t* frame, cpu_t* self)
 {
     sched_cpu_ctx_t* ctx = &self->sched;
-
-    while (1)
-    {
-        thread_t* thread = CONTAINER_OF_SAFE(list_pop(&ctx->zombieThreads), thread_t, entry);
-        if (thread == NULL)
-        {
-            break;
-        }
-
-        thread_free(thread);
-    }
-
     cpu_t* neighbor = sched_get_neighbor(self);
     // Always use consistent lock ordering to avoid race conditions.
     if (neighbor == NULL)
@@ -498,7 +498,6 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
         lock_release(&neighbor->sched.lock);
     }
 
-    thread_t* oldThread = ctx->runThread;
     assert(ctx->runThread != NULL);
 
     sched_update_recent_idle_time(ctx->runThread, false);
@@ -510,9 +509,8 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
     {
         assert(ctx->runThread != ctx->idleThread);
 
-        // Push zombie thread to a separate list to deal with later to avoid its stack being freed while its still being
-        // used.
-        list_push(&ctx->zombieThreads, &ctx->runThread->entry);
+        // We no longer need to worry about using the threads kernel stack as when scheduling we are always in an interrupt meaning we are using the cpu's interrupt stack and can just free the thread right away.
+        DEREF(ctx->runThread);
         ctx->runThread = NULL; // Force a new thread to be loaded
     }
     break;
@@ -521,11 +519,11 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
     {
         assert(ctx->runThread != ctx->idleThread);
 
-        thread_save(ctx->runThread, trapFrame);
+        thread_save(ctx->runThread, frame);
 
-        if (wait_block_finalize(trapFrame, self, ctx->runThread)) // Block finalized
+        if (wait_block_finalize(frame, self, ctx->runThread)) // Block finalized
         {
-            thread_save(ctx->runThread, trapFrame);
+            thread_save(ctx->runThread, frame);
             ctx->runThread = NULL; // Force a new thread to be loaded
         }
         else // Early unblock
@@ -580,7 +578,7 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
         {
             thread_state_t oldState = atomic_exchange(&ctx->idleThread->state, THREAD_RUNNING);
             assert(oldState == THREAD_READY);
-            thread_load(ctx->idleThread, trapFrame);
+            thread_load(ctx->idleThread, frame);
             ctx->runThread = ctx->idleThread;
         }
     }
@@ -590,7 +588,7 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
         {
             thread_state_t oldState = atomic_exchange(&ctx->runThread->state, THREAD_READY);
             assert(oldState == THREAD_RUNNING);
-            thread_save(ctx->runThread, trapFrame);
+            thread_save(ctx->runThread, frame);
 
             if (ctx->runThread != ctx->idleThread)
             {
@@ -603,7 +601,7 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
         next->sched.deadline = uptime + next->sched.timeSlice;
         thread_state_t oldState = atomic_exchange(&next->state, THREAD_RUNNING);
         assert(oldState == THREAD_READY);
-        thread_load(next, trapFrame);
+        thread_load(next, frame);
         ctx->runThread = next;
     }
 
@@ -613,5 +611,4 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
     }
 
     lock_release(&self->sched.lock);
-    return oldThread != ctx->runThread;
 }

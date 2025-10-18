@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cpu/trap.h"
+#include "cpu/interrupt.h"
 
 #include <boot/boot_info.h>
 #include <common/defs.h>
@@ -47,6 +47,6 @@ void panic_symbols_init(const boot_kernel_t* kernel);
 /**
  * @brief Panic the kernel, printing a message and halting.
  */
-NORETURN void panic(const trap_frame_t* trapFrame, const char* format, ...);
+NORETURN void panic(const interrupt_frame_t* frame, const char* format, ...);
 
 /** @} */

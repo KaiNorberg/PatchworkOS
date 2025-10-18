@@ -366,7 +366,7 @@ static uint64_t (*actions[])(client_t*, const cmd_header_t*) = {
 
 uint64_t client_receive_cmds(client_t* client)
 {
-    errno = 0;
+    errno = EOK;
     uint64_t readSize = read(client->fd, &client->cmds, sizeof(cmd_buffer_t) + 1);
     if (readSize == ERR)
     {

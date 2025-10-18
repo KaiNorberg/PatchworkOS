@@ -5,9 +5,9 @@
 
 ![License](https://img.shields.io/badge/License-MIT-green) [![Build and Test](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg)](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml)
 
-**Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9, DOS and others while simplifying them and sprinkling in some new ideas of its own.
+**Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9 and others while simplifying them and adding in some new ideas of its own.
 
-The goal is to eventually have a feature-complete and unique operating system avoiding easy shortcuts while still remaining approachable and educational.
+The goal is to eventually have a feature-complete and experimental operating system while still remaining approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
 
 ![Desktop Screenshot](meta/screenshots/desktop.png)
 ![Doom Screenshot](meta/screenshots/doom.png)
@@ -18,7 +18,8 @@ The goal is to eventually have a feature-complete and unique operating system av
 
 - Multithreading with a [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), fully preemptive and tickless
 - Symmetric Multi Processing
-- Constant-time memory management for both physical and virtual memory
+- Constant-time memory management for both physical and virtual memory in the common case
+- Dynamic kernel and user stack allocation
 - File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/note.h)
 - Synchronization primitives including mutexes, read-write locks and [futexes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sync/futex.h)
 - SIMD support
@@ -29,7 +30,7 @@ The goal is to eventually have a feature-complete and unique operating system av
 - Tested on real hardware, see [Tested Configurations](#tested-configurations)
 - ACPI implementation was made to be easy to understand and useful for educational purposes
 - Tested against [ACPICA's](https://github.com/acpica/acpica) runtime test suite (WIP)
-- ACPI support is still work in progress check [acpi.h](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/acpi/acpi.h) for a checklist
+- ACPI support is still work in progress, check [acpi.h](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/acpi/acpi.h) for a checklist
 
 ### File System
 
@@ -43,6 +44,7 @@ The goal is to eventually have a feature-complete and unique operating system av
 - Custom C standard library and system libraries
 - Highly modular shared memory based desktop environment
 - Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg)
+- Note that currently a heavy focus has been placed on the kernel and low-level stuff so user space is currently quite small
 
 *And much more...*
 
@@ -71,6 +73,12 @@ The goal is to eventually have a feature-complete and unique operating system av
 - USB support (The holy grail)
 
 ---
+
+## Doxygen Documentation
+
+As one of the main goals of PatchworkOS is to be educational, I have tried to document the codebase as much as possible along with providing citations to any sources used. Currently this is still a work in progress, but as old code is refactored and new code is added, I try to add documentation.
+
+If you are interested in knowing more, then you can check out the Doxygen generated [**documentation**](https://kainorberg.github.io/PatchworkOS/html/index.html).
 
 ## Shell Utilities
 
@@ -214,10 +222,6 @@ And of course the third and final reason is because I think it's fun, and honest
 
 **Example:** Say we wanted to implement `waitpid()`. First we need to implement the kernel behavior itself, then the appropriate system call, then add in handling for that system call in the standard library, then the actual function itself in the standard library and finally create some `waitpid` shell utility. That's a lot of work for something as simple as a waiting for a process to die, and it means a whole new API to learn. Instead, we can just add a `status` file to the process directory, which is only a handful lines of code, and we are done. Reading from the status file will block until the process dies and then read its exit status and can be used via `read()` or in the shell via `read /proc/[pid]/status`.
 
-## Documentation
-
-If you are still interested in knowing more, then you can check out the Doxygen generated [**documentation**](https://kainorberg.github.io/PatchworkOS/html/index.html).
-
 ---
 
 ## Directories
@@ -313,7 +317,7 @@ You should now see a new entry in your GRUB boot menu allowing you to boot into 
 
 ## Testing
 
-Testing uses a GitHub action that compiles the project and runs it for some amount of time using QEMU both with the `DEBUG=1` amd `TESTING=1` flags enabled. This will run some additional tests in the kernel (for example it will clone ACPICA and run all its runtime tests), and if it has not crashed by the end of the allotted time, it is considered a success.
+Testing uses a GitHub action that compiles the project and runs it for some amount of time using QEMU both with the `DEBUG=1` and `TESTING=1` flags enabled. This will run some additional tests in the kernel (for example it will clone ACPICA and run all its runtime tests), and if it has not crashed by the end of the allotted time, it is considered a success.
 
 ### Tested Configurations
 

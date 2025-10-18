@@ -26,14 +26,21 @@
  * equal to the size specified on the first call to `mmap()`, subsequent calls to `mmap()` will map the same section.
  * Note that even if the file is closed the mapped memory sections will continue to be valid.
  *
+ * @{
  */
 
+/**
+ * @brief Keeps track of a process that is allowed to access a shared memory object.
+ */
 typedef struct
 {
     list_entry_t entry;
     pid_t pid;
 } shmem_allowed_process_t;
 
+/**
+ * @brief Represents a shared memory object.
+ */
 typedef struct
 {
     ref_t ref;
@@ -46,4 +53,9 @@ typedef struct
     lock_t lock;
 } shmem_object_t;
 
+/**
+ * @brief Initializes the shared memory subsystem.
+ */
 void shmem_init(void);
+
+/** @} */

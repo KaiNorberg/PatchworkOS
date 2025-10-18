@@ -3,33 +3,56 @@
 #include "mem/pmm.h"
 #include "tss.h"
 
-ALIGNED(PAGE_SIZE) static gdt_t gdt;
+static gdt_t gdt ALIGNED(PAGE_SIZE);
 
-static gdt_entry_t gdt_entry_create(uint8_t access, uint8_t flags)
+static gdt_segment_t gdt_segment(gdt_access_t access, gdt_flags_t flags)
 {
-    gdt_entry_t entry;
+    gdt_segment_t entry;
     entry.limitLow = 0;
     entry.baseLow = 0;
     entry.baseMiddle = 0;
     entry.access = access;
     entry.flagsAndLimitHigh = (flags << 4);
     entry.baseHigh = 0;
-
     return entry;
 }
 
-void gdt_cpu_init(void)
+static gdt_long_system_segment_t gdt_long_system_segment(gdt_access_t access, gdt_flags_t flags, uint64_t base,
+    uint32_t limit)
 {
-    gdt.null = gdt_entry_create(0, 0);
-    gdt.kernelCode = gdt_entry_create(0x9A, 0xA);
-    gdt.kernelData = gdt_entry_create(0x92, 0xC);
-    gdt.userData = gdt_entry_create(0xF2, 0xC);
-    gdt.userCode = gdt_entry_create(0xFA, 0xA);
-
-    gdt_load();
+    gdt_long_system_segment_t entry;
+    entry.limitLow = (uint16_t)(limit & 0xFFFF);
+    entry.baseLow = (uint16_t)(base & 0xFFFF);
+    entry.baseLowerMiddle = (uint8_t)((base >> 16) & 0xFF);
+    entry.access = access;
+    entry.flagsAndLimitHigh = ((flags << 4) & 0xF0) | ((limit >> 16) & 0x0F);
+    entry.baseUpperMiddle = (uint8_t)((base >> 24) & 0xFF);
+    entry.baseHigh = (uint32_t)((base >> 32) & 0xFFFFFFFF);
+    entry.reserved = 0;
+    return entry;
 }
 
-void gdt_load(void)
+void gdt_init(void)
+{
+    gdt.null = gdt_segment(0, 0);
+    gdt.kernelCode = gdt_segment(GDT_ACCESS_PRESENT | GDT_ACCESS_RING0 | GDT_ACCESS_DATA_CODE | GDT_ACCESS_EXEC |
+            GDT_ACCESS_READ_WRITE | GDT_ACCESS_ACCESSED,
+        GDT_FLAGS_LONG_MODE | GDT_FLAGS_4KB);
+    gdt.kernelData = gdt_segment(GDT_ACCESS_PRESENT | GDT_ACCESS_RING0 | GDT_ACCESS_DATA_CODE | GDT_ACCESS_READ_WRITE |
+            GDT_ACCESS_ACCESSED,
+        GDT_FLAGS_4KB);
+    gdt.userData = gdt_segment(GDT_ACCESS_PRESENT | GDT_ACCESS_RING3 | GDT_ACCESS_DATA_CODE | GDT_ACCESS_READ_WRITE |
+            GDT_ACCESS_ACCESSED,
+        GDT_FLAGS_4KB);
+    gdt.userCode = gdt_segment(GDT_ACCESS_PRESENT | GDT_ACCESS_RING3 | GDT_ACCESS_DATA_CODE | GDT_ACCESS_EXEC |
+            GDT_ACCESS_READ_WRITE | GDT_ACCESS_ACCESSED,
+        GDT_FLAGS_LONG_MODE | GDT_FLAGS_4KB);
+    gdt.tssDesc = gdt_long_system_segment(GDT_ACCESS_PRESENT | GDT_ACCESS_RING0 | GDT_ACCESS_SYSTEM |
+            GDT_ACCESS_TYPE_TSS_AVAILABLE | GDT_ACCESS_ACCESSED,
+        GDT_FLAGS_NONE, 0, 0);
+}
+
+void gdt_cpu_load(void)
 {
     gdt_desc_t gdtDesc;
     gdtDesc.size = sizeof(gdt_t) - 1;
@@ -37,14 +60,10 @@ void gdt_load(void)
     gdt_load_descriptor(&gdtDesc);
 }
 
-void gdt_cpu_load_tss(tss_t* tss)
+void gdt_cpu_tss_load(tss_t* tss)
 {
-    gdt.tssDesc.limitLow = sizeof(tss_t);
-    gdt.tssDesc.baseLow = (uint16_t)((uint64_t)tss);
-    gdt.tssDesc.baseLowerMiddle = (uint8_t)((uint64_t)tss >> 16);
-    gdt.tssDesc.access = 0x89;
-    gdt.tssDesc.flagsAndLimitHigh = 0x00; // Flags = 0x0, LimitHigh = 0x0
-    gdt.tssDesc.baseUpperMiddle = (uint8_t)((uint64_t)tss >> (16 + 8));
-    gdt.tssDesc.baseHigh = (uint32_t)((uint64_t)tss >> (16 + 8 + 8));
+    gdt.tssDesc = gdt_long_system_segment(GDT_ACCESS_PRESENT | GDT_ACCESS_RING0 | GDT_ACCESS_SYSTEM |
+            GDT_ACCESS_TYPE_TSS_AVAILABLE | GDT_ACCESS_ACCESSED,
+        GDT_FLAGS_NONE, (uint64_t)tss, sizeof(tss_t) - 1);
     tss_load();
 }

@@ -8,27 +8,34 @@
 
 #include <errno.h>
 
-aml_object_t* aml_method_evaluate(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount)
+aml_object_t* aml_method_evaluate(aml_state_t* parentState, aml_method_obj_t* method, aml_object_t** args)
 {
-    if (method == NULL)
+    if (method == NULL || parentState == NULL)
     {
-        LOG_ERR("method is NULL\n");
         errno = EINVAL;
         return NULL;
     }
 
-    if (argCount > AML_MAX_ARGS || argCount != method->methodFlags.argCount)
+    uint8_t argCount = 0;
+    if (args != NULL)
     {
-        LOG_ERR("method '%s' expects %u arguments, got %u\n", AML_OBJECT_GET_NAME(method), method->methodFlags.argCount,
-            argCount);
-        errno = EINVAL;
-        return NULL;
+        while (argCount < AML_MAX_ARGS + 1 && args[argCount] != NULL)
+        {
+            argCount++;
+        }
+
+        if (argCount == AML_MAX_ARGS + 1)
+        {
+            LOG_ERR("too many arguments, max is %u\n", AML_MAX_ARGS);
+            errno = E2BIG;
+            return NULL;
+        }
     }
 
-    if (args == NULL && argCount > 0)
+    if (argCount != method->methodFlags.argCount)
     {
-        LOG_ERR("method '%s' expects %u arguments, got NULL\n", AML_OBJECT_GET_NAME(method),
-            method->methodFlags.argCount);
+        LOG_ERR("method '%s' expects %u arguments, got %u\n", AML_NAME_TO_STRING(method->name),
+            method->methodFlags.argCount, argCount);
         errno = EINVAL;
         return NULL;
     }
@@ -57,7 +64,7 @@ aml_object_t* aml_method_evaluate(aml_method_obj_t* method, aml_object_t** args,
     }
 
     aml_state_t state;
-    if (aml_state_init(&state, args, argCount) == ERR)
+    if (aml_state_init(&state, args) == ERR)
     {
         LOG_ERR("could not initialize AML state\n");
         if (method->methodFlags.isSerialized)
@@ -67,14 +74,30 @@ aml_object_t* aml_method_evaluate(aml_method_obj_t* method, aml_object_t** args,
         return NULL;
     }
 
+    aml_object_t* methodObj = CONTAINER_OF(method, aml_object_t, method);
+
+    // This shit is a mess. Just check namespace.h for details.
+    aml_namespace_overlay_t* highestThatContainsMethod =
+        aml_namespace_overlay_get_highest_that_contains(&parentState->overlay, methodObj);
+    if (highestThatContainsMethod == NULL)
+    {
+        // Should never happen.
+        if (method->methodFlags.isSerialized)
+        {
+            aml_mutex_release(&method->mutex); // Ignore errors
+        }
+        errno = EIO;
+        return NULL;
+    }
+    aml_namespace_overlay_set_parent(&state.overlay, highestThatContainsMethod);
+
     // "The current namespace location is assigned to the method package, and all namespace references that occur during
     // control method execution for this package are relative to that location." - Section 19.6.85
 
     // The method body is just a TermList.
-    if (aml_term_list_read(&state, CONTAINER_OF(method, aml_object_t, method), method->start, method->end, NULL) == ERR)
+    if (aml_term_list_read(&state, methodObj, method->start, method->end, NULL) == ERR)
     {
-        LOG_ERR("failed to read method body for method '%s'\n", AML_OBJECT_GET_NAME(method));
-        aml_state_garbage_collect(&state);
+        LOG_ERR("failed to read method body for method '%s'\n", AML_NAME_TO_STRING(method->name));
         aml_state_deinit(&state);
         if (method->methodFlags.isSerialized)
         {
@@ -88,22 +111,17 @@ aml_object_t* aml_method_evaluate(aml_method_obj_t* method, aml_object_t** args,
         if (aml_mutex_release(&method->mutex) == ERR)
         {
             LOG_ERR("could not release method mutex\n");
-            aml_state_garbage_collect(&state);
             aml_state_deinit(&state);
             return NULL;
         }
     }
-
-    // "Also notice that all namespace objects created by a method have temporary lifetime. When method execution exits,
-    // the created objects will be destroyed." - Section 19.6.85
-    aml_state_garbage_collect(&state);
 
     aml_object_t* result = aml_state_result_get(&state);
     aml_state_deinit(&state);
     return result; // Transfer ownership
 }
 
-uint64_t aml_method_evaluate_integer(aml_object_t* object, aml_integer_t* out)
+uint64_t aml_method_evaluate_integer(aml_state_t* parentState, aml_object_t* object, aml_integer_t* out)
 {
     if (object == NULL || out == NULL)
     {
@@ -125,7 +143,7 @@ uint64_t aml_method_evaluate_integer(aml_object_t* object, aml_integer_t* out)
         return ERR;
     }
 
-    aml_object_t* result = aml_method_evaluate(&object->method, NULL, 0);
+    aml_object_t* result = aml_method_evaluate(parentState, &object->method, NULL);
     if (result == NULL)
     {
         return ERR;

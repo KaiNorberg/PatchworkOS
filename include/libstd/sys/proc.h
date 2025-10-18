@@ -185,7 +185,7 @@ typedef enum
  * address, will be rounded down to the nearest page multiple.
  * @param length The length of the segment to be mapped, note that this length will be rounded up to the nearest page
  * multiple by the kernel factoring in page boundaries.
- * @param prot Protection flags.
+ * @param prot Protection flags, must have at least `PROT_READ` set.
  * @return On success, returns the address of the mapped memory, will always be page aligned, on failure returns `NULL`
  * and errno is set.
  */
@@ -210,7 +210,8 @@ uint64_t munmap(void* address, uint64_t length);
  *
  * @param address  The starting virtual address of the memory area to be modified.
  * @param length The length of the memory area to be modifed.
- * @param prot The new protection flags of the memory area.
+ * @param prot The new protection flags of the memory area, if equal to `PROT_NONE` the memory area will be
+ * unmapped.
  * @return On success, returns 0, on failure returns `ERR` and errno is set.
  */
 uint64_t mprotect(void* address, uint64_t length, prot_t prot);

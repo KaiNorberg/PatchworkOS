@@ -74,8 +74,7 @@ uint64_t aml_copy_data_and_type(aml_object_t* src, aml_object_t* dest)
     // The copied name would be overwritten if the dest is named later.
     if (!(dest->flags & AML_OBJECT_NAMED) && (src->flags & AML_OBJECT_NAMED))
     {
-        strncpy(dest->name.segment, src->name.segment, AML_NAME_LENGTH);
-        dest->name.segment[AML_NAME_LENGTH] = '\0';
+        dest->name = src->name;
     }
 
     // Inherits the `AML_OBJECT_EXCEPTION_ON_USE` flag.
@@ -91,7 +90,7 @@ uint64_t aml_copy_data_and_type(aml_object_t* src, aml_object_t* dest)
     return 0;
 }
 
-uint64_t aml_copy_object(aml_object_t* src, aml_object_t* dest)
+uint64_t aml_copy_object(aml_state_t* state, aml_object_t* src, aml_object_t* dest)
 {
     if (src == NULL || dest == NULL)
     {
@@ -128,7 +127,7 @@ uint64_t aml_copy_object(aml_object_t* src, aml_object_t* dest)
 
         if (dest->arg.value->type == AML_OBJECT_REFERENCE)
         {
-            return aml_copy_object(src, dest->arg.value->objectReference.target);
+            return aml_copy_object(state, src, dest->arg.value->objectReference.target);
         }
         else
         {
@@ -143,7 +142,7 @@ uint64_t aml_copy_object(aml_object_t* src, aml_object_t* dest)
 
     if (dest->type == AML_FIELD_UNIT)
     {
-        return aml_field_unit_store(&dest->fieldUnit, src);
+        return aml_field_unit_store(state, &dest->fieldUnit, src);
     }
     if (dest->type == AML_BUFFER_FIELD)
     {
@@ -152,7 +151,7 @@ uint64_t aml_copy_object(aml_object_t* src, aml_object_t* dest)
 
     if (dest->flags & AML_OBJECT_NAMED)
     {
-        return aml_convert_result(src, dest);
+        return aml_convert_result(state, src, dest);
     }
 
     if (dest->type == AML_UNINITIALIZED)

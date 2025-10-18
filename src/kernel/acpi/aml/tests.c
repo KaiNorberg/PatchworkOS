@@ -7,6 +7,7 @@
 #include "aml.h"
 #include "encoding/term.h"
 #include "exception.h"
+#include "mem/heap.h"
 #include "object.h"
 #include "runtime/method.h"
 #include "sched/timer.h"
@@ -16,10 +17,16 @@
 #include "acpi/tables.h"
 #include "log/log.h"
 
+#include <string.h>
+#include <sys/list.h>
+
 static uint64_t aml_tests_check_object_leak(void)
 {
+    aml_object_t* root = aml_namespace_get_root();
+    DEREF_DEFER(root);
+
     uint64_t totalObjects = aml_object_get_total_count();
-    uint64_t rootChildren = aml_object_count_children(aml_root_get());
+    uint64_t rootChildren = aml_object_count_children(root);
     LOG_INFO("total objects after parsing %llu\n", totalObjects);
     if (totalObjects != rootChildren + 1)
     {
@@ -29,11 +36,11 @@ static uint64_t aml_tests_check_object_leak(void)
     return 0;
 }
 
-static void aml_tests_exception_handler(aml_exception_t code)
+static void aml_tests_exception_handler(aml_state_t* state, aml_exception_t code)
 {
     // Some tests will trigger exceptions to validate that they actually happen, we are then expected to notify
     // the code that an exception occurred using the \_ERR object.
-    aml_object_t* err = aml_object_find(NULL, "\\_ERR");
+    aml_object_t* err = aml_namespace_find(&state->overlay, NULL, 1, AML_NAME('_', 'E', 'R', 'R'));
     if (err == NULL)
     {
         LOG_ERR("test does not contain a valid _ERR object\n");
@@ -77,8 +84,8 @@ static void aml_tests_exception_handler(aml_exception_t code)
         return;
     }
 
-    aml_object_t* args[] = {arg0, arg1, arg2};
-    aml_object_t* result = aml_method_evaluate(&err->method, args, 3);
+    aml_object_t* args[] = {arg0, arg1, arg2, NULL};
+    aml_object_t* result = aml_method_evaluate(state, &err->method, args);
     if (result == NULL)
     {
         return;
@@ -100,26 +107,27 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
     const uint8_t* end = (const uint8_t*)testAml + testAml->header.length;
 
     aml_state_t state;
-    if (aml_state_init(&state, NULL, 0) == ERR)
+    if (aml_state_init(&state, NULL) == ERR)
     {
         return ERR;
     }
 
-    if (aml_term_list_read(&state, aml_root_get(), testAml->definitionBlock, end, NULL) == ERR)
+    aml_object_t* root = aml_namespace_get_root();
+    DEREF_DEFER(root);
+
+    if (aml_term_list_read(&state, root, testAml->definitionBlock, end, NULL) == ERR)
     {
         LOG_ERR("test '%s' failed to parse AML\n", test->name);
-        aml_state_garbage_collect(&state);
         aml_state_deinit(&state);
         return ERR;
     }
 
     // Set the "Settings number, used to adjust the aslts tests for different releases of ACPICA".
     // We set it to 6 as that is the latest version as of writing this.
-    aml_object_t* setn = aml_object_find(NULL, "\\SETN");
+    aml_object_t* setn = aml_namespace_find(&state.overlay, root, 1, AML_NAME('S', 'E', 'T', 'N'));
     if (setn == NULL)
     {
-        LOG_ERR("test '%s' does not contain a valid SETN method\n", test->name);
-        aml_state_garbage_collect(&state);
+        LOG_ERR("test '%s' does not contain a valid SETN object\n", test->name);
         aml_state_deinit(&state);
         return ERR;
     }
@@ -128,7 +136,6 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
     if (aml_integer_set(setn, 6) == ERR)
     {
         LOG_ERR("test '%s' failed to set SETN value\n", test->name);
-        aml_state_garbage_collect(&state);
         aml_state_deinit(&state);
         return ERR;
     }
@@ -136,27 +143,24 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
     // We dont use the \MAIN method directly instead we use the \MN01 method which enables "slack mode".
     // Basically, certain features that would normally just result in a crash are allowed in slack mode, for example
     // implicit returns, which some firmware depends on. See section 5.2 of the ACPICA reference for more details.
-    aml_object_t* mainObj = aml_object_find(NULL, "\\MN01");
+    aml_object_t* mainObj = aml_namespace_find(&state.overlay, root, 1, AML_NAME('M', 'N', '0', '1'));
     if (mainObj == NULL || mainObj->type != AML_METHOD)
     {
         LOG_ERR("test '%s' does not contain a valid method\n", test->name);
-        aml_state_garbage_collect(&state);
         aml_state_deinit(&state);
         return ERR;
     }
     DEREF_DEFER(mainObj);
 
-    aml_object_t* result = aml_method_evaluate(&mainObj->method, NULL, 0);
+    aml_object_t* result = aml_method_evaluate(&state, &mainObj->method, NULL);
     if (result == NULL)
     {
         LOG_ERR("test '%s' method evaluation failed\n", test->name);
-        aml_state_garbage_collect(&state);
         aml_state_deinit(&state);
         return ERR;
     }
     DEREF_DEFER(result);
 
-    aml_state_garbage_collect(&state);
     aml_state_deinit(&state);
 
     if (result->type != AML_INTEGER)
@@ -210,6 +214,10 @@ uint64_t aml_tests_post_init(void)
         // return ERR;
     }
 
+    clock_t end = timer_uptime();
+
+    aml_tests_perf_report();
+
     if (startingObjects != aml_object_get_total_count())
     {
         LOG_ERR("memory leak detected, total objects before test %llu, after test %llu\n", startingObjects,
@@ -217,7 +225,6 @@ uint64_t aml_tests_post_init(void)
         return ERR;
     }
 
-    clock_t end = timer_uptime();
     LOG_INFO("post init tests passed in %llums\n", (end - start) * 1000 / CLOCKS_PER_SEC);
     return 0;
 }
@@ -231,6 +238,126 @@ uint64_t aml_tests_post_parse_all(void)
 
     LOG_INFO("post parse all tests passed\n");
     return 0;
+}
+
+typedef struct
+{
+    list_entry_t entry;
+    aml_token_num_t token;
+    clock_t startTime;
+    clock_t childTime;
+} aml_perf_stack_entry_t;
+
+static clock_t timeTakenPerToken[AML_MAX_TOKEN] = {0};
+static uint64_t tokenOccurrences[AML_MAX_TOKEN] = {0};
+static list_t perfStack = LIST_CREATE(perfStack);
+
+void aml_tests_perf_start(aml_token_t* token)
+{
+    if (token->num >= AML_MAX_TOKEN)
+    {
+        return;
+    }
+
+    aml_perf_stack_entry_t* entry = heap_alloc(sizeof(aml_perf_stack_entry_t), HEAP_NONE);
+    if (entry == NULL)
+    {
+        LOG_ERR("Performance profiler stack allocation failed\n");
+        return;
+    }
+
+    list_entry_init(&entry->entry);
+    entry->token = token->num;
+    entry->startTime = timer_uptime();
+    entry->childTime = 0;
+
+    list_push(&perfStack, &entry->entry);
+
+    tokenOccurrences[token->num]++;
+}
+
+void aml_tests_perf_end(void)
+{
+    if (list_is_empty(&perfStack))
+    {
+        LOG_ERR("Performance profiler stack underflow\n");
+        return;
+    }
+
+    aml_perf_stack_entry_t* entry = CONTAINER_OF_SAFE(list_pop(&perfStack), aml_perf_stack_entry_t, entry);
+
+    clock_t totalTime = timer_uptime() - entry->startTime;
+    clock_t exclusiveTime = (entry->childTime >= totalTime) ? 0 : (totalTime - entry->childTime);
+    if (entry->token < AML_MAX_TOKEN)
+    {
+        timeTakenPerToken[entry->token] += exclusiveTime;
+    }
+
+    if (!list_is_empty(&perfStack))
+    {
+        aml_perf_stack_entry_t* perfStackTop = CONTAINER_OF(list_last(&perfStack), aml_perf_stack_entry_t, entry);
+        perfStackTop->childTime += totalTime;
+    }
+
+    heap_free(entry);
+}
+
+void aml_tests_perf_report(void)
+{
+    if (!list_is_empty(&perfStack))
+    {
+        LOG_WARN("Performance report called with %d unclosed measurements\n", list_length(&perfStack));
+        while (!list_is_empty(&perfStack))
+        {
+            aml_perf_stack_entry_t* entry = CONTAINER_OF_SAFE(list_pop(&perfStack), aml_perf_stack_entry_t, entry);
+            heap_free(entry);
+        }
+    }
+
+    typedef struct
+    {
+        aml_token_num_t tokenNum;
+        clock_t time;
+    } token_time_pair_t;
+
+    token_time_pair_t sorted[AML_MAX_TOKEN];
+    uint32_t count = 0;
+
+    for (uint32_t i = 0; i < AML_MAX_TOKEN; i++)
+    {
+        if (timeTakenPerToken[i] > 0)
+        {
+            sorted[count].tokenNum = i;
+            sorted[count].time = timeTakenPerToken[i];
+            count++;
+        }
+    }
+
+    for (uint32_t i = 1; i < count; i++)
+    {
+        token_time_pair_t key = sorted[i];
+        int32_t j = i - 1;
+
+        while (j >= 0 && sorted[j].time < key.time)
+        {
+            sorted[j + 1] = sorted[j];
+            j--;
+        }
+        sorted[j + 1] = key;
+    }
+
+    LOG_INFO("performance report:\n");
+    for (uint32_t i = 0; i < count; i++)
+    {
+        LOG_INFO("  %s: total=%llums, occurrences=%llu, avg=%lluns\n", aml_token_lookup(sorted[i].tokenNum)->name,
+            sorted[i].time / (CLOCKS_PER_SEC / 1000), tokenOccurrences[sorted[i].tokenNum],
+            sorted[i].time / tokenOccurrences[sorted[i].tokenNum]);
+    }
+
+    for (uint32_t i = 0; i < AML_MAX_TOKEN; i++)
+    {
+        timeTakenPerToken[i] = 0;
+    }
 }
 
 #endif

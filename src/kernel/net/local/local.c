@@ -75,7 +75,7 @@ static void local_socket_deinit(socket_t* sock)
         {
             lock_acquire(&data->listen.listen->lock);
             data->listen.listen->isClosed = true;
-            wait_unblock(&data->listen.listen->waitQueue, WAIT_ALL);
+            wait_unblock(&data->listen.listen->waitQueue, WAIT_ALL, EOK);
             lock_release(&data->listen.listen->lock);
 
             DEREF(data->listen.listen);
@@ -87,7 +87,7 @@ static void local_socket_deinit(socket_t* sock)
         {
             lock_acquire(&data->conn.conn->lock);
             data->conn.conn->isClosed = true;
-            wait_unblock(&data->conn.conn->waitQueue, WAIT_ALL);
+            wait_unblock(&data->conn.conn->waitQueue, WAIT_ALL, EOK);
             lock_release(&data->conn.conn->lock);
 
             DEREF(data->conn.conn);
@@ -212,7 +212,7 @@ static uint64_t local_socket_connect(socket_t* sock, const char* address)
     listen->pendingAmount++;
     list_push(&listen->backlog, &conn->entry);
 
-    wait_unblock(&listen->waitQueue, WAIT_ALL);
+    wait_unblock(&listen->waitQueue, WAIT_ALL, EOK);
 
     data->conn.conn = REF(conn);
     data->conn.isServer = false;
@@ -263,10 +263,9 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
             return ERR;
         }
 
-        if (WAIT_BLOCK_LOCK(&listen->waitQueue, &listen->lock, listen->isClosed || !list_is_empty(&listen->backlog)) !=
-            WAIT_NORM)
+        if (WAIT_BLOCK_LOCK(&listen->waitQueue, &listen->lock, listen->isClosed || !list_is_empty(&listen->backlog)) ==
+            ERR)
         {
-            errno = EINTR;
             return ERR;
         }
     }
@@ -339,10 +338,9 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
             return ERR;
         }
 
-        if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock, conn->isClosed || ring_free_length(ring) >= totalSize) !=
-            WAIT_NORM)
+        if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock, conn->isClosed || ring_free_length(ring) >= totalSize) ==
+            ERR)
         {
-            errno = EINTR;
             return ERR;
         }
     }
@@ -354,7 +352,7 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
         return ERR;
     }
 
-    wait_unblock(&conn->waitQueue, WAIT_ALL);
+    wait_unblock(&conn->waitQueue, WAIT_ALL, EOK);
     return count;
 }
 
@@ -394,7 +392,7 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
         }
 
         if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-                conn->isClosed || ring_data_length(ring) >= sizeof(local_packet_header_t)) != WAIT_NORM)
+                conn->isClosed || ring_data_length(ring) >= sizeof(local_packet_header_t)) == ERR)
         {
             errno = EINTR;
             return ERR;
@@ -430,7 +428,7 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
 
     // Consume entire packet.
     ring_move_read_forward(ring, header.size);
-    wait_unblock(&conn->waitQueue, WAIT_ALL);
+    wait_unblock(&conn->waitQueue, WAIT_ALL, EOK);
     return readCount;
 }
 

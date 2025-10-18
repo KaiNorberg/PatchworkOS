@@ -3,17 +3,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "acpi/aml/object.h"
 #include "encoding/arg.h"
 #include "encoding/local.h"
+#include "namespace.h"
+#include "object.h"
 
 /**
  * @brief State
  * @defgroup kernel_acpi_aml_state State
  * @ingroup kernel_acpi_aml
- *
- * The ACPI AML State is used to keep track of the virtual machine's state during the parsing of AML bytecode and
- * provides wrappers to read data from the ACPI AML stream.
  *
  * @{
  */
@@ -28,49 +26,28 @@
  */
 typedef struct aml_state
 {
-    aml_local_obj_t* locals[AML_MAX_LOCALS]; ///< Local variables for the method, if any.
+    aml_local_obj_t* locals[AML_MAX_LOCALS]; ///< Local variables for the method, if any, initialized lazily.
     aml_arg_obj_t* args[AML_MAX_ARGS];       ///< Argument variables for the method, if any.
     aml_object_t* result;                    ///< The return value, see `aml_method_evaluate()` for details.
     uint64_t errorDepth;                     ///< The length of the error traceback, if 0 then no error has occurred.
-    /**
-     * List of named objects added to the namespace as the state was executing. These objects should be removed from the
-     * namespace if the state was used to execute a method, via the `aml_state_garbage_collect()` function.
-     *
-     * If the state was not used to execute a method, instead it was used to parse a DSDT or SSDT table,
-     * then the states created objects should not be removed, as they are now part a permanent part of the ACPI
-     * namespace.
-     *
-     * The state does not take a reference to the objects, it just keeps track of them for garbage collection.
-     */
-    list_t namedObjects;
+    aml_namespace_overlay_t overlay;         ///< Holds any named objects created during parsing.
 } aml_state_t;
 
 /**
  * @brief Initialize an AML state.
  *
  * @param state Pointer to the state to initialize.
- * @param args Array of pointers to the objects to pass as arguments, or `NULL` if not a method or no arguments.
- * @param argCount Number of arguments, or 0 if not a method.
+ * @param args Array of pointers to the objects to pass as arguments, or `NULL`. Must be null-terminated.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_state_init(aml_state_t* state, aml_object_t** args, uint64_t argCount);
+uint64_t aml_state_init(aml_state_t* state, aml_object_t** args);
 
 /**
  * @brief Deinitialize an AML state.
  *
- * Will not free any objects created by the state as that is not always wanted, for example when the state was used to
- * parse a DSDT or SSDT table. Use `aml_state_garbage_collect()` to free all objects created by the state.
- *
  * @param state Pointer to the state to deinitialize.
  */
 void aml_state_deinit(aml_state_t* state);
-
-/**
- * @brief Free all objects created by the state.
- *
- * @param state Pointer to the state to garbage collect.
- */
-void aml_state_garbage_collect(aml_state_t* state);
 
 /**
  * @brief Get the result object of the state.
