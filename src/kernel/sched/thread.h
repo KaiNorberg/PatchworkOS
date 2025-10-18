@@ -8,6 +8,7 @@
 #include "proc/process.h"
 #include "sched/sched.h"
 #include "sched/wait.h"
+#include "utils/ref.h"
 
 #include <sys/list.h>
 #include <sys/proc.h>
@@ -54,6 +55,7 @@ typedef enum
  */
 typedef struct thread
 {
+    ref_t ref;
     list_entry_t entry;        ///< The list entry used by for example the scheduler and wait system.
     process_t* process;        ///< The parent process that the thread executes within.
     list_entry_t processEntry; ///< The list entry used by the parent process.
@@ -86,21 +88,12 @@ typedef struct thread
  *
  * Does not push the created thread to the scheduler or similar, merely handling allocation and initialization.
  *
+ * There is no `thread_free()`, instead use `DEREF()`, `DEREF_DEFER()` or `thread_kill()` to free a thread.
+ *
  * @param process The parent process that the thread will execute within.
  * @return On success, returns the newly created thread. On failure, returns `NULL` and `errno` is set.
  */
 thread_t* thread_new(process_t* process);
-
-/**
- * @brief Frees a thread structure.
- *
- * Will not unmap the threads kernel or user stacks as the funtion could be called while we are in an interrupt,
- * which means we cant acquire the mutexes needed to unmap memory. The stacks will be freed when the process is freed.
- * This also prevents any strange behaviour with a process accessing stack memory of a freed thread.
- *
- * @param thread The thread to be freed.
- */
-void thread_free(thread_t* thread);
 
 /**
  * @brief Signals to a thread that it is dying.

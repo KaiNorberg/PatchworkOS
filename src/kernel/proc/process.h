@@ -7,6 +7,8 @@
 #include "sched/sched.h"
 #include "sched/wait.h"
 #include "sync/futex.h"
+#include "utils/ref.h"
+
 #include <stdatomic.h>
 
 /**
@@ -25,8 +27,7 @@
 typedef struct
 {
     tid_t newTid;
-    list_t aliveThreads;
-    list_t zombieThreads;
+    list_t list;
     lock_t lock;
 } process_threads_t;
 
@@ -51,6 +52,7 @@ typedef struct
  */
 typedef struct process
 {
+    ref_t ref;
     pid_t id;
     _Atomic(priority_t) priority;
     _Atomic(uint64_t) status;
@@ -70,6 +72,8 @@ typedef struct process
 /**
  * @brief Allocates and initializes a new process.
  *
+ * There is no `process_free()`, instead use `DEREF()`, `DEREF_DEFER()` or `process_kill()` to free a process.
+ *
  * @param parent The parent process, can be `NULL`.
  * @param argv The argument vector, must be `NULL` terminated.
  * @param cwd The current working directory, can be `NULL` to inherit from the parent.
@@ -79,17 +83,12 @@ typedef struct process
 process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority);
 
 /**
- * @brief Deinitializes and frees a process structure.
- *
- * @param process The process to free.
- */
-void process_free(process_t* process);
-
-/**
  * @brief Kills a process.
  *
  * Sends a kill note to all threads in the process and sets its exit status.
- * Also closes all files in the processes vfs context to notify blocking threads.
+ * Will also close all files opened by the process and deinitialize its `/proc` directory.
+ *
+ * When all threads have exited and all entires in its `/proc` directory have been closed, the process will be freed.
  *
  * @param process The process to kill.
  * @param status The exit status of the process.

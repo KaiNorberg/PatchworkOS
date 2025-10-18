@@ -177,7 +177,7 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
 
     LOCK_SCOPE(&process->threads.lock);
 
-    thread_t* thread = CONTAINER_OF_SAFE(list_first(&process->threads.aliveThreads), thread_t, processEntry);
+    thread_t* thread = CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
     if (thread == NULL)
     {
         errno = EINVAL;
@@ -219,48 +219,53 @@ static file_ops_t statusOps = {
 static void process_inode_cleanup(inode_t* inode)
 {
     process_t* process = inode->private;
-    LOG_DEBUG("cleaning up process pid=%d\n", process->id);
-    space_deinit(&process->space);
-    argv_deinit(&process->argv);
-    wait_queue_deinit(&process->dyingWaitQueue);
-    futex_ctx_deinit(&process->futexCtx);
-    heap_free(process);
+    DEREF(process);
 }
 
-static inode_ops_t processInodeOps = {
+static inode_ops_t inodeOps = {
     .cleanup = process_inode_cleanup,
 };
 
 static uint64_t process_dir_init(process_dir_t* dir, const char* name, process_t* process)
 {
-    if (sysfs_dir_init(&dir->dir, &procGroup.root, name, &processInodeOps, process) == ERR)
+    if (sysfs_dir_init(&dir->dir, &procGroup.root, name, &inodeOps, REF(process)) == ERR)
     {
         return ERR;
     }
 
-    if (sysfs_file_init(&dir->prioFile, &dir->dir, "prio", NULL, &prioOps, process) == ERR)
+    if (sysfs_file_init(&dir->prioFile, &dir->dir, "prio", &inodeOps, &prioOps, REF(process)) == ERR)
     {
+        DEREF(process);
         sysfs_dir_deinit(&dir->dir);
         return ERR;
     }
 
-    if (sysfs_file_init(&dir->cwdFile, &dir->dir, "cwd", NULL, &cwdOps, process) == ERR)
+    if (sysfs_file_init(&dir->cwdFile, &dir->dir, "cwd", &inodeOps, &cwdOps, REF(process)) == ERR)
     {
+        DEREF(process);
+        DEREF(process);
         sysfs_file_deinit(&dir->prioFile);
         sysfs_dir_deinit(&dir->dir);
         return ERR;
     }
 
-    if (sysfs_file_init(&dir->cmdlineFile, &dir->dir, "cmdline", NULL, &cmdlineOps, process) == ERR)
+    if (sysfs_file_init(&dir->cmdlineFile, &dir->dir, "cmdline", &inodeOps, &cmdlineOps, REF(process)) == ERR)
     {
+        DEREF(process);
+        DEREF(process);
+        DEREF(process);
         sysfs_file_deinit(&dir->prioFile);
         sysfs_file_deinit(&dir->cwdFile);
         sysfs_dir_deinit(&dir->dir);
         return ERR;
     }
 
-    if (sysfs_file_init(&dir->noteFile, &dir->dir, "note", NULL, &noteOps, process) == ERR)
+    if (sysfs_file_init(&dir->noteFile, &dir->dir, "note", &inodeOps, &noteOps, REF(process)) == ERR)
     {
+        DEREF(process);
+        DEREF(process);
+        DEREF(process);
+        DEREF(process);
         sysfs_file_deinit(&dir->prioFile);
         sysfs_file_deinit(&dir->cwdFile);
         sysfs_file_deinit(&dir->cmdlineFile);
@@ -268,8 +273,13 @@ static uint64_t process_dir_init(process_dir_t* dir, const char* name, process_t
         return ERR;
     }
 
-    if (sysfs_file_init(&dir->statusFile, &dir->dir, "status", NULL, &statusOps, process) == ERR)
+    if (sysfs_file_init(&dir->statusFile, &dir->dir, "status", &inodeOps, &statusOps, REF(process)) == ERR)
     {
+        DEREF(process);
+        DEREF(process);
+        DEREF(process);
+        DEREF(process);
+        DEREF(process);
         sysfs_file_deinit(&dir->noteFile);
         sysfs_file_deinit(&dir->prioFile);
         sysfs_file_deinit(&dir->cwdFile);
@@ -291,9 +301,43 @@ static void process_dir_deinit(process_dir_t* dir)
     sysfs_dir_deinit(&dir->dir);
 }
 
+static void process_free(process_t* process)
+{
+    LOG_DEBUG("freeing process pid=%d\n", process->id);
+    assert(list_is_empty(&process->threads.list));
+
+    if (atomic_load(&process->isDying) == false)
+    {
+        process_kill(process, EXIT_SUCCESS);
+    }
+
+    if (process->parent != NULL)
+    {
+        RWLOCK_WRITE_SCOPE(&treeLock);
+        list_remove(&process->parent->children, &process->entry);
+
+        process_t* child;
+        process_t* temp;
+        LIST_FOR_EACH_SAFE(child, temp, &process->children, entry)
+        {
+            list_remove(&process->children, &child->entry);
+            DEREF(child);
+            child->parent = NULL;
+        }
+        process->parent = NULL;
+    }
+
+    space_deinit(&process->space);
+    argv_deinit(&process->argv);
+    wait_queue_deinit(&process->dyingWaitQueue);
+    futex_ctx_deinit(&process->futexCtx);
+    heap_free(process);
+}
+
 static uint64_t process_init(process_t* process, process_t* parent, const char** argv, const path_t* cwd,
     priority_t priority)
 {
+    ref_init(&process->ref, process_free);
     process->id = atomic_fetch_add(&newPid, 1);
     atomic_init(&process->priority, priority);
     atomic_init(&process->status, EXIT_SUCCESS);
@@ -334,8 +378,7 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     wait_queue_init(&process->dyingWaitQueue);
     atomic_init(&process->isDying, false);
     process->threads.newTid = 0;
-    list_init(&process->threads.aliveThreads);
-    list_init(&process->threads.zombieThreads);
+    list_init(&process->threads.list);
     lock_init(&process->threads.lock);
 
     list_entry_init(&process->entry);
@@ -343,7 +386,7 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     if (parent != NULL)
     {
         RWLOCK_WRITE_SCOPE(&treeLock);
-        list_push(&parent->children, &process->entry);
+        list_push(&parent->children, &REF(process)->entry);
         process->parent = parent;
     }
     else
@@ -373,35 +416,11 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
     snprintf(name, MAX_NAME, "%d", process->id);
     if (process_dir_init(&process->dir, name, process))
     {
-        heap_free(process);
+        DEREF(process);
         return NULL;
     }
 
     return process;
-}
-
-void process_free(process_t* process)
-{
-    LOG_DEBUG("freeing process pid=%d\n", process->id);
-    assert(list_is_empty(&process->threads.aliveThreads));
-    assert(list_is_empty(&process->threads.zombieThreads));
-
-    if (process->parent != NULL)
-    {
-        RWLOCK_WRITE_SCOPE(&treeLock);
-        list_remove(&process->parent->children, &process->entry);
-
-        process_t* child;
-        process_t* temp;
-        LIST_FOR_EACH_SAFE(child, temp, &process->children, entry)
-        {
-            list_remove(&process->children, &child->entry);
-            child->parent = NULL;
-        }
-        process->parent = NULL;
-    }
-
-    process_dir_deinit(&process->dir);
 }
 
 void process_kill(process_t* process, uint64_t status)
@@ -417,11 +436,9 @@ void process_kill(process_t* process, uint64_t status)
 
     uint64_t killCount = 0;
     thread_t* thread;
-    LIST_FOR_EACH(thread, &process->threads.aliveThreads, processEntry)
+    LIST_FOR_EACH(thread, &process->threads.list, processEntry)
     {
-        const char* note = "kill";
-        uint64_t noteLen = 4;
-        thread_send_note(thread, note, noteLen);
+        thread_send_note(thread, "kill", 4);
         killCount++;
     }
 
@@ -432,6 +449,7 @@ void process_kill(process_t* process, uint64_t status)
 
     vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_inode_cleanup, makes sure that files close
                                       // immediately to notify blocking threads.
+    process_dir_deinit(&process->dir); // The dir entries have refs to the process, so we must deinit it here.
     wait_unblock(&process->dyingWaitQueue, WAIT_ALL, EOK);
 }
 

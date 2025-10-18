@@ -21,6 +21,14 @@
  */
 
 /**
+ * @brief CPU stack canary value.
+ *
+ * Placed at the bottom of CPU stacks, we then check in the interrupt handler if any of the stacks have overflowed by
+ * checking if its canary has been modified.
+ */
+#define CPU_STACK_CANARY 0x1234567890ABCDEFULL
+
+/**
  * @brief CPU structure.
  * @struct cpu_t
  *
@@ -56,5 +64,14 @@ typedef struct cpu
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t cpu_init(cpu_t* cpu, cpuid_t id);
+
+/**
+ * @brief Checks for CPU stack overflows.
+ *
+ * Checks the canary values at the bottom of each CPU stack and if its been modified panics.
+ *
+ * @param cpu The CPU to check.
+ */
+void cpu_stacks_overflow_check(cpu_t* cpu);
 
 /** @} */

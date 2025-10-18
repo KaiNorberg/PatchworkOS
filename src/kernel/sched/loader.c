@@ -186,7 +186,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
     thread_t* childThread = thread_new(child);
     if (childThread == NULL)
     {
-        process_free(child);
+        DEREF(child);
         return NULL;
     }
 
@@ -334,7 +334,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         file_t* file = vfs_ctx_get_file(parentVfsCtx, fds[i].parent);
         if (file == NULL)
         {
-            thread_free(child);
+            DEREF(child);
             errno = EBADF;
             return ERR;
         }
@@ -342,7 +342,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
 
         if (vfs_ctx_openas(childVfsCtx, fds[i].child, file) == ERR)
         {
-            thread_free(child);
+            DEREF(child);
             errno = EBADF;
             return ERR;
         }

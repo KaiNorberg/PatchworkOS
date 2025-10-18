@@ -25,8 +25,21 @@ static uintptr_t thread_id_to_offset(tid_t tid, uint64_t maxPages)
     return tid * ((maxPages + STACK_POINTER_GUARD_PAGES) * PAGE_SIZE);
 }
 
+static void thread_free(thread_t* thread)
+{
+    process_t* process = thread->process;
+    DEREF(process);
+
+    assert(atomic_load(&thread->state) == THREAD_ZOMBIE);
+
+    simd_ctx_deinit(&thread->simd);
+    rwmutex_ctx_deinit(&thread->rwmutexCtx);
+    heap_free(thread);
+}
+
 static uint64_t thread_init(thread_t* thread, process_t* process)
 {
+    ref_init(&thread->ref, thread_free);
     list_entry_init(&thread->entry);
     thread->process = process;
     list_entry_init(&thread->processEntry);
@@ -56,15 +69,16 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
     rwmutex_ctx_init(&thread->rwmutexCtx);
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
 
-    list_push(&process->threads.aliveThreads, &thread->processEntry);
+    lock_acquire(&process->threads.lock);
+    list_push(&process->threads.list, &thread->processEntry);
+    lock_release(&process->threads.lock);
+
     LOG_DEBUG("created tid=%d pid=%d\n", thread->id, process->id);
     return 0;
 }
 
 thread_t* thread_new(process_t* process)
 {
-    LOCK_SCOPE(&process->threads.lock);
-
     if (atomic_load(&process->isDying))
     {
         return NULL;
@@ -83,55 +97,17 @@ thread_t* thread_new(process_t* process)
     return thread;
 }
 
-void thread_free(thread_t* thread)
-{
-    process_t* process = thread->process;
-
-    assert(atomic_load(&thread->state) == THREAD_ZOMBIE);
-
-    lock_acquire(&process->threads.lock);
-    list_remove(&process->threads.zombieThreads, &thread->processEntry);
-
-    if (list_is_empty(&process->threads.aliveThreads) && list_is_empty(&process->threads.zombieThreads))
-    {
-        lock_release(&process->threads.lock);
-        process_free(process);
-    }
-    else
-    {
-        lock_release(&process->threads.lock);
-    }
-
-    simd_ctx_deinit(&thread->simd);
-    rwmutex_ctx_deinit(&thread->rwmutexCtx);
-    heap_free(thread);
-}
-
 void thread_kill(thread_t* thread)
 {
-    lock_acquire(&thread->process->threads.lock);
+    LOCK_SCOPE(&thread->process->threads.lock);
 
     if (atomic_exchange(&thread->state, THREAD_ZOMBIE) != THREAD_RUNNING)
     {
         panic(NULL, "Invalid state while killing thread");
     }
 
-    list_remove(&thread->process->threads.aliveThreads, &thread->processEntry);
-    list_push(&thread->process->threads.zombieThreads, &thread->processEntry);
-
-    if (list_is_empty(&thread->process->threads.aliveThreads))
-    {
-        // We cant create more alive threads if there are no alive threads, so there is no race condition.
-        lock_release(&thread->process->threads.lock);
-
-        // We lose the ability to signal exit status of all threads are killed separately, this appears to be posix
-        // behaviour.
-        process_kill(thread->process, EXIT_SUCCESS);
-    }
-    else
-    {
-        lock_release(&thread->process->threads.lock);
-    }
+    list_remove(&thread->process->threads.list, &thread->processEntry);
+    DEREF(thread->process);
 }
 
 void thread_save(thread_t* thread, const interrupt_frame_t* frame)

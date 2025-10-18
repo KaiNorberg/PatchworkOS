@@ -487,7 +487,7 @@ void sched_schedule(interrupt_frame_t* frame, cpu_t* self)
             break;
         }
 
-        thread_free(thread);
+        DEREF(thread);
     }
 
     cpu_t* neighbor = sched_get_neighbor(self);

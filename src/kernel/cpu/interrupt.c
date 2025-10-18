@@ -127,6 +127,8 @@ void interrupt_handler(interrupt_frame_t* frame)
     }
     }
 
+    cpu_stacks_overflow_check(self);
+
     statistics_interrupt_end(frame, self);
     self->interrupt.inInterrupt = false;
 

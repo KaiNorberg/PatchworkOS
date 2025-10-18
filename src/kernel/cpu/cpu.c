@@ -35,7 +35,7 @@ uint64_t cpu_init(cpu_t* cpu, cpuid_t id)
         return ERR;
     }
     tss_ist_load(&cpu->tss, TSS_IST_EXCEPTION, &cpu->exceptionStack);
-    memset(cpu->exceptionStackBuffer, 0, sizeof(cpu->exceptionStackBuffer));
+    *(uint64_t*)cpu->exceptionStack.bottom = CPU_STACK_CANARY;
 
     if (stack_pointer_init_buffer(&cpu->doubleFaultStack, cpu->doubleFaultStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) ==
         ERR)
@@ -45,7 +45,7 @@ uint64_t cpu_init(cpu_t* cpu, cpuid_t id)
         return ERR;
     }
     tss_ist_load(&cpu->tss, TSS_IST_DOUBLE_FAULT, &cpu->doubleFaultStack);
-    memset(cpu->doubleFaultStackBuffer, 0, sizeof(cpu->doubleFaultStackBuffer));
+    *(uint64_t*)cpu->doubleFaultStack.bottom = CPU_STACK_CANARY;
 
     if (stack_pointer_init_buffer(&cpu->interruptStack, cpu->interruptStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) == ERR)
     {
@@ -55,7 +55,7 @@ uint64_t cpu_init(cpu_t* cpu, cpuid_t id)
         return ERR;
     }
     tss_ist_load(&cpu->tss, TSS_IST_INTERRUPT, &cpu->interruptStack);
-    memset(cpu->interruptStackBuffer, 0, sizeof(cpu->interruptStackBuffer));
+    *(uint64_t*)cpu->interruptStack.bottom = CPU_STACK_CANARY;
 
     lapic_cpu_init();
     simd_cpu_init();
@@ -63,4 +63,20 @@ uint64_t cpu_init(cpu_t* cpu, cpuid_t id)
     syscalls_cpu_init();
 
     return 0;
+}
+
+void cpu_stacks_overflow_check(cpu_t* cpu)
+{
+    if (*(uint64_t*)cpu->exceptionStack.bottom != CPU_STACK_CANARY)
+    {
+        panic(NULL, "CPU%u exception stack overflow detected", cpu->id);
+    }
+    if (*(uint64_t*)cpu->doubleFaultStack.bottom != CPU_STACK_CANARY)
+    {
+        panic(NULL, "CPU%u double fault stack overflow detected", cpu->id);
+    }
+    if (*(uint64_t*)cpu->interruptStack.bottom != CPU_STACK_CANARY)
+    {
+        panic(NULL, "CPU%u interrupt stack overflow detected", cpu->id);
+    }
 }
