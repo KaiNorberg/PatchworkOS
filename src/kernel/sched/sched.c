@@ -81,7 +81,6 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* cpu)
     sched_queues_init(&ctx->queues[1]);
     ctx->active = &ctx->queues[0];
     ctx->expired = &ctx->queues[1];
-    list_init(&ctx->zombieThreads);
 
     // Bootstrap cpu is initalized early so we cant yet create the idle thread, the boot thread on the bootstrap cpu
     // will become the idle thread.
@@ -196,10 +195,8 @@ process_t* sched_process(void)
 void sched_process_exit(uint64_t status)
 {
     thread_t* thread = sched_thread();
-    process_t* process = sched_process();
-
+    process_kill(thread->process, status);
     thread_kill(thread);
-    process_kill(process, status);
 }
 
 SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, uint64_t status)
@@ -478,18 +475,6 @@ static cpu_t* sched_get_neighbor(cpu_t* self)
 void sched_schedule(interrupt_frame_t* frame, cpu_t* self)
 {
     sched_cpu_ctx_t* ctx = &self->sched;
-
-    while (1)
-    {
-        thread_t* thread = CONTAINER_OF_SAFE(list_pop(&ctx->zombieThreads), thread_t, entry);
-        if (thread == NULL)
-        {
-            break;
-        }
-
-        DEREF(thread);
-    }
-
     cpu_t* neighbor = sched_get_neighbor(self);
     // Always use consistent lock ordering to avoid race conditions.
     if (neighbor == NULL)
@@ -524,9 +509,8 @@ void sched_schedule(interrupt_frame_t* frame, cpu_t* self)
     {
         assert(ctx->runThread != ctx->idleThread);
 
-        // Push zombie thread to a separate list to deal with later to avoid its stack being freed while its still being
-        // used.
-        list_push(&ctx->zombieThreads, &ctx->runThread->entry);
+        // We no longer need to worry about using the threads kernel stack as when scheduling we are always in an interrupt meaning we are using the cpu's interrupt stack and can just free the thread right away.
+        DEREF(ctx->runThread);
         ctx->runThread = NULL; // Force a new thread to be loaded
     }
     break;

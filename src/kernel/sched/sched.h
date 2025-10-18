@@ -128,13 +128,6 @@ typedef struct
      * @brief The lock that protects this context, except the `zombieThreads` list.
      */
     lock_t lock;
-    /**
-     * @brief Stores threads after they have been killed.
-     *
-     * This is used to prevent the kernel from using the kernel stack of a freed thread. Only accessed by the owner CPU,
-     * so no need for a lock.
-     */
-    list_t zombieThreads;
     cpu_t* owner; ///< The cpu that owns this scheduling context.
 } sched_cpu_ctx_t;
 

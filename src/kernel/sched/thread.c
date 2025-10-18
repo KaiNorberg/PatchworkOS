@@ -28,7 +28,14 @@ static uintptr_t thread_id_to_offset(tid_t tid, uint64_t maxPages)
 static void thread_free(thread_t* thread)
 {
     process_t* process = thread->process;
-    DEREF(process);
+    if (process != NULL)
+    {
+        lock_acquire(&process->threads.lock);
+        list_remove(&process->threads.list, &thread->processEntry);
+        lock_release(&process->threads.lock);
+        DEREF(process);
+        thread->process = NULL;
+    }
 
     assert(atomic_load(&thread->state) == THREAD_ZOMBIE);
 
@@ -99,15 +106,10 @@ thread_t* thread_new(process_t* process)
 
 void thread_kill(thread_t* thread)
 {
-    LOCK_SCOPE(&thread->process->threads.lock);
-
     if (atomic_exchange(&thread->state, THREAD_ZOMBIE) != THREAD_RUNNING)
     {
         panic(NULL, "Invalid state while killing thread");
     }
-
-    list_remove(&thread->process->threads.list, &thread->processEntry);
-    DEREF(thread->process);
 }
 
 void thread_save(thread_t* thread, const interrupt_frame_t* frame)

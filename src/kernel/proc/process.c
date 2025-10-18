@@ -419,6 +419,7 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
 
 void process_kill(process_t* process, uint64_t status)
 {
+    LOG_DEBUG("killing process pid=%d with status=%llu refCount=%d\n", process->id, status, process->ref.count);
     LOCK_SCOPE(&process->threads.lock);
 
     if (atomic_exchange(&process->isDying, true))
