@@ -57,7 +57,6 @@ static futex_t* futex_ctx_get(futex_ctx_t* ctx, void* addr)
     return futex;
 }
 
-
 SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
     process_t* process = sched_process();

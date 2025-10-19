@@ -1,5 +1,6 @@
 #include "space.h"
 
+#include "mem/heap.h"
 #include "mem/space.h"
 #include "pmm.h"
 #include "vmm.h"
@@ -329,6 +330,45 @@ uint64_t space_safe_copy_to(space_t* space, void* dest, const void* src, uint64_
 
     memcpy(dest, src, length);
     space_unpin(space, dest, length);
+    return 0;
+}
+
+uint64_t space_safe_copy_from_terminated(space_t* space, const void* array, const void* terminator, uint8_t objectSize,
+    uint64_t maxCount, void** outArray, uint64_t* outCount)
+{
+    if (space == NULL || array == NULL || terminator == NULL || objectSize == 0 || maxCount == 0 || outArray == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    uint64_t arraySize = space_pin_terminated(space, array, terminator, objectSize, maxCount);
+    if (arraySize == ERR)
+    {
+        return ERR;
+    }
+
+    uint64_t elementCount = arraySize / objectSize;
+    uint64_t allocSize = (elementCount + 1) * objectSize; // +1 for terminator
+
+    void* kernelArray = heap_alloc(allocSize, HEAP_NONE);
+    if (kernelArray == NULL)
+    {
+        space_unpin(space, array, arraySize);
+        errno = ENOMEM;
+        return ERR;
+    }
+
+    memcpy(kernelArray, array, arraySize);
+    memcpy((uint8_t*)kernelArray + arraySize, terminator, objectSize); // Add terminator
+    space_unpin(space, array, arraySize);
+
+    *outArray = kernelArray;
+    if (outCount != NULL)
+    {
+        *outCount = elementCount;
+    }
+
     return 0;
 }
 

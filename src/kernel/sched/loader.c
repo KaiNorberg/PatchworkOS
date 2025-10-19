@@ -8,6 +8,7 @@
 #include "errno.h"
 #include "fs/vfs.h"
 #include "log/log.h"
+#include "mem/heap.h"
 #include "mem/vmm.h"
 #include "sched.h"
 #include "sched/thread.h"
@@ -222,84 +223,118 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         return ERR;
     }
 
+    char** argvCopy;
+    uint64_t argc;
     char* argvTerminator = NULL;
-    uint64_t argvSize = space_pin_terminated(space, argv, &argvTerminator, sizeof(char*), CONFIG_MAX_ARGC);
-    if (argvSize == ERR)
+    if (space_safe_copy_from_terminated(space, argv, &argvTerminator, sizeof(char*), CONFIG_MAX_ARGC, (void**)&argvCopy,
+            &argc) == ERR)
     {
         return ERR;
     }
-    uint64_t argc = argvSize / sizeof(char*);
 
-    // TODO: This is not safe against TOCTOU attacks. We need to copy the entire argv array and all strings.
-
-    thread_t* child;
-    if (cwdString == NULL)
+    for (uint64_t i = 0; i < argc; i++)
     {
-        child = loader_spawn(argv, priority, NULL);
+        char* userSpacePtr = argvCopy[i];
+        char* kernelStringCopy;
+        uint64_t stringLen;
+        char terminator = '\0';
+
+        if (space_safe_copy_from_terminated(space, userSpacePtr, &terminator, sizeof(char), MAX_PATH,
+                (void**)&kernelStringCopy, &stringLen) == ERR)
+        {
+            for (uint64_t j = 0; j < i; j++)
+            {
+                heap_free(argvCopy[j]);
+            }
+            heap_free(argvCopy);
+            return ERR;
+        }
+
+        argvCopy[i] = kernelStringCopy;
     }
-    else
+
+    path_t cwdPath = PATH_EMPTY;
+    if (cwdString != NULL)
     {
         pathname_t cwdPathname;
         if (space_safe_pathname_init(space, &cwdPathname, cwdString) == ERR)
         {
-            space_unpin(space, argv, argvSize);
-            return ERR;
+            goto cleanup_argv;
         }
 
-        path_t cwdPath = PATH_EMPTY;
         if (vfs_walk(&cwdPath, &cwdPathname, WALK_NONE) == ERR)
         {
-            space_unpin(space, argv, argvSize);
-            return ERR;
+            goto cleanup_argv;
         }
+    }
 
-        child = loader_spawn(argv, priority, &cwdPath);
+    thread_t* child = loader_spawn((const char**)argvCopy, priority, cwdString == NULL ? NULL : &cwdPath);
 
+    for (uint64_t i = 0; i < argc; i++)
+    {
+        heap_free(argvCopy[i]);
+    }
+    heap_free(argvCopy);
+
+    if (cwdString != NULL)
+    {
         path_put(&cwdPath);
     }
-    space_unpin(space, argv, argvSize);
 
     if (child == NULL)
     {
         return ERR;
     }
 
-    spawn_fd_t fdsTerminator = SPAWN_FD_END;
-    uint64_t fdsSize = space_pin_terminated(space, fds, &fdsTerminator, sizeof(spawn_fd_t), CONFIG_MAX_FD);
-    if (fdsSize == ERR)
+    if (fds != NULL)
     {
-        DEREF(child);
-        return ERR;
-    }
-    uint64_t fdAmount = fdsSize / sizeof(spawn_fd_t);
+        spawn_fd_t* fdsCopy;
+        uint64_t fdAmount;
+        spawn_fd_t fdsTerminator = SPAWN_FD_END;
 
-    vfs_ctx_t* parentVfsCtx = &process->vfsCtx;
-    vfs_ctx_t* childVfsCtx = &child->process->vfsCtx;
-
-    for (uint64_t i = 0; i < fdAmount; i++)
-    {
-        file_t* file = vfs_ctx_get_file(parentVfsCtx, fds[i].parent);
-        if (file == NULL)
+        if (space_safe_copy_from_terminated(space, fds, &fdsTerminator, sizeof(spawn_fd_t), CONFIG_MAX_FD,
+                (void**)&fdsCopy, &fdAmount) == ERR)
         {
             thread_free(child);
-            space_unpin(space, fds, fdsSize);
-            errno = EBADF;
             return ERR;
         }
-        DEREF_DEFER(file);
 
-        if (vfs_ctx_openas(childVfsCtx, fds[i].child, file) == ERR)
+        vfs_ctx_t* parentVfsCtx = &process->vfsCtx;
+        vfs_ctx_t* childVfsCtx = &child->process->vfsCtx;
+
+        for (uint64_t i = 0; i < fdAmount; i++)
         {
-            thread_free(child);
-            space_unpin(space, fds, fdsSize);
-            errno = EBADF;
-            return ERR;
+            file_t* file = vfs_ctx_get_file(parentVfsCtx, fdsCopy[i].parent);
+            if (file == NULL)
+            {
+                heap_free(fdsCopy);
+                thread_free(child);
+                errno = EBADF;
+                return ERR;
+            }
+            DEREF_DEFER(file);
+
+            if (vfs_ctx_openas(childVfsCtx, fdsCopy[i].child, file) == ERR)
+            {
+                heap_free(fdsCopy);
+                thread_free(child);
+                errno = EBADF;
+                return ERR;
+            }
         }
+        heap_free(fdsCopy);
     }
-    space_unpin(space, fds, fdsSize);
 
     sched_push_new_thread(child, thread);
     return child->process->id;
+
+cleanup_argv:
+    for (uint64_t i = 0; i < argc; i++)
+    {
+        heap_free(argvCopy[i]);
+    }
+    heap_free(argvCopy);
+    return ERR;
 }
 
 thread_t* loader_thread_create(process_t* parent, void* entry, void* arg)

@@ -179,6 +179,21 @@ uint64_t space_safe_copy_from(space_t* space, void* dest, const void* src, uint6
 uint64_t space_safe_copy_to(space_t* space, void* dest, const void* src, uint64_t length);
 
 /**
+ * @brief Safely pins a terminated array, copies data from it, and then unpins it.
+ *
+ * @param space The target address space.
+ * @param array The array to copy from.
+ * @param terminator The terminator value to search for.
+ * @param objectSize The size of each object in the array, in bytes.
+ * @param maxCount The maximum number of objects to copy.
+ * @param outArray Pointer to store the allocated array, must be freed with `heap_free()`.
+ * @param outCount Pointer to store the number of objects copied.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t space_safe_copy_from_terminated(space_t* space, const void* array, const void* terminator, uint8_t objectSize,
+    uint64_t maxCount, void** outArray, uint64_t* outCount);
+
+/**
  * @brief Safely initializes a pathname by pinning the path string as its initialized.
  *
  * Pins the path string, initializes the pathname, and then unpins the string.
