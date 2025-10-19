@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vectors.h"
+#include "interrupt.h"
 
 #include <common/defs.h>
 
@@ -70,7 +70,7 @@ typedef struct PACKED
  */
 typedef struct PACKED
 {
-    idt_gate_t entries[VECTOR_AMOUNT];
+    idt_gate_t entries[INTERRUPT_AMOUNT];
 } idt_t;
 
 /**

@@ -9,7 +9,7 @@
 #include "sched/wait.h"
 #include "smp.h"
 #include "utils/statistics.h"
-#include "vectors.h"
+#include "interrupt.h"
 
 #include <common/regs.h>
 
@@ -71,7 +71,7 @@ static void exception_handler(interrupt_frame_t* frame)
         thread_t* thread = sched_thread();
         process_t* process = thread->process;
 
-        LOG_DEBUG("unhandled user space exception in process pid=%d vector=%lld error=0x%llx rip=0x%llx\n", process->id,
+        LOG_WARN("unhandled user space exception in process pid=%d vector=%lld error=0x%llx rip=0x%llx\n", process->id,
             frame->vector, frame->errorCode, frame->rip);
 
         sched_process_exit(EFAULT);
@@ -102,7 +102,12 @@ void interrupt_handler(interrupt_frame_t* frame)
 
     switch (frame->vector)
     {
-    case VECTOR_NOTE:
+    case INTERRUPT_DIE:
+    {
+        sched_invoke(frame, self, SCHED_DIE);
+    }
+    break;
+    case INTERRUPT_NOTE:
     {
         // Notes should only be handled when in user space otherwise we get so many edge cases to deal with.
         // There is a check when a system call occurs to make sure that the note will eventually be handled.
@@ -113,13 +118,13 @@ void interrupt_handler(interrupt_frame_t* frame)
         lapic_eoi();
     }
     break;
-    case VECTOR_TIMER:
+    case INTERRUPT_TIMER:
     {
         timer_interrupt_handler(frame, self);
         lapic_eoi();
     }
     break;
-    case VECTOR_HALT:
+    case INTERRUPT_HALT:
     {
         while (1)
         {

@@ -40,17 +40,23 @@ _thread_t* _thread_new(_thread_entry_t entry, void* private)
 
     _thread_init(thread);
     thread->private = private;
-    thread->id = _syscall_thread_create(entry, thread);
-    if (thread->id == ERR)
-    {
-        errno = _syscall_errno();
-        free(thread);
-        return NULL;
-    }
 
     mtx_lock(&mutex);
     list_push(&threads, &thread->entry);
     mtx_unlock(&mutex);
+
+    thread->id = _syscall_thread_create(entry, thread);
+    if (thread->id == ERR)
+    {
+        errno = _syscall_errno();
+
+        mtx_lock(&mutex);
+        list_remove(&threads, &thread->entry);
+        mtx_unlock(&mutex);
+
+        free(thread);
+        return NULL;
+    }
 
     return thread;
 }

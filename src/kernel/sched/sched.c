@@ -126,7 +126,7 @@ static void sched_init_spawn_boot_thread(void)
 
 static void sched_timer_handler(interrupt_frame_t* frame, cpu_t* self)
 {
-    sched_schedule(frame, self);
+    sched_invoke(frame, self, SCHED_NORMAL);
 }
 
 void sched_init(void)
@@ -196,35 +196,25 @@ void sched_process_exit(uint64_t status)
 {
     thread_t* thread = sched_thread();
     process_kill(thread->process, status);
-
-    LOG_DEBUG("killing tid=%d pid=%d\n", thread->id, thread->process->id);
-    if (atomic_exchange(&thread->state, THREAD_ZOMBIE) != THREAD_RUNNING)
-    {
-        panic(NULL, "Invalid state while killing thread");
-    }
+    asm volatile ("int %0" : : "i"(INTERRUPT_DIE));
+    panic(NULL, "Return to sched_process_exit");
 }
 
 SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, uint64_t status)
 {
     sched_process_exit(status);
-    timer_notify_self();
     panic(NULL, "Return to syscall_process_exit");
 }
 
 void sched_thread_exit(void)
 {
-    thread_t* thread = sched_thread();
-    LOG_DEBUG("killing tid=%d pid=%d\n", thread->id, thread->process->id);
-    if (atomic_exchange(&thread->state, THREAD_ZOMBIE) != THREAD_RUNNING)
-    {
-        panic(NULL, "Invalid state while killing thread");
-    }
+    asm volatile ("int %0" : : "i"(INTERRUPT_DIE));
+    panic(NULL, "Return to sched_thread_exit");
 }
 
 SYSCALL_DEFINE(SYS_THREAD_EXIT, void)
 {
     sched_thread_exit();
-    timer_notify_self();
     panic(NULL, "Return to syscall_thread_exit");
 }
 
@@ -356,7 +346,7 @@ void sched_push(thread_t* thread, cpu_t* target)
 
 static uint64_t sched_get_load(sched_cpu_ctx_t* ctx)
 {
-    return ctx->active->length + ctx->expired->length + (ctx->runThread != NULL ? 1 : 0);
+    return ctx->active->length + ctx->expired->length + (ctx->runThread != ctx->idleThread ? 1 : 0);
 }
 
 static cpu_t* sched_find_least_loaded_cpu(cpu_t* exclude)
@@ -482,7 +472,7 @@ static cpu_t* sched_get_neighbor(cpu_t* self)
     return self->id != smp_cpu_amount() - 1 ? smp_cpu(self->id + 1) : smp_cpu(0);
 }
 
-void sched_schedule(interrupt_frame_t* frame, cpu_t* self)
+void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags)
 {
     sched_cpu_ctx_t* ctx = &self->sched;
     cpu_t* neighbor = sched_get_neighbor(self);
@@ -513,47 +503,47 @@ void sched_schedule(interrupt_frame_t* frame, cpu_t* self)
     sched_update_recent_idle_time(ctx->runThread, false);
 
     thread_t* threadToFree = NULL;
-    thread_state_t state = atomic_load(&ctx->runThread->state);
-    switch (state)
+    if (flags & SCHED_DIE)
     {
-    case THREAD_ZOMBIE:
-    {
-        assert(ctx->runThread != ctx->idleThread);
+        assert(atomic_load(&ctx->runThread->state) == THREAD_RUNNING);
 
-        // We no longer need to worry about using the threads kernel stack as when scheduling we are always in an
-        // interrupt meaning we are using the cpu's interrupt stack and can just free the thread as soon as its
-        // unloaded.
         threadToFree = ctx->runThread;
-        ctx->runThread = NULL; // Force a new thread to be loaded
+        ctx->runThread = NULL;
+        LOG_DEBUG("dying tid=%d pid=%d\n", threadToFree->id, threadToFree->process->id);
     }
-    break;
-    case THREAD_PRE_BLOCK:
-    case THREAD_UNBLOCKING:
+    else
     {
-        assert(ctx->runThread != ctx->idleThread);
-
-        thread_save(ctx->runThread, frame);
-
-        if (wait_block_finalize(frame, self, ctx->runThread)) // Block finalized
+        thread_state_t state = atomic_load(&ctx->runThread->state);
+        switch (state)
         {
+        case THREAD_PRE_BLOCK:
+        case THREAD_UNBLOCKING:
+        {
+            assert(ctx->runThread != ctx->idleThread);
+
             thread_save(ctx->runThread, frame);
-            ctx->runThread = NULL; // Force a new thread to be loaded
+
+            if (wait_block_finalize(frame, self, ctx->runThread)) // Block finalized
+            {
+                thread_save(ctx->runThread, frame);
+                ctx->runThread = NULL; // Force a new thread to be loaded
+            }
+            else // Early unblock
+            {
+                atomic_store(&ctx->runThread->state, THREAD_RUNNING);
+            }
         }
-        else // Early unblock
+        break;
+        case THREAD_RUNNING:
         {
-            atomic_store(&ctx->runThread->state, THREAD_RUNNING);
+            // Do nothing
         }
-    }
-    break;
-    case THREAD_RUNNING:
-    {
-        // Do nothing
-    }
-    break;
-    default:
-    {
-        panic(NULL, "Invalid thread state %d (pid=%d tid=%d)", state, ctx->runThread->process->id, ctx->runThread->id);
-    }
+        break;
+        default:
+        {
+            panic(NULL, "Invalid thread state %d (pid=%d tid=%d)", state, ctx->runThread->process->id, ctx->runThread->id);
+        }
+        }
     }
 
     clock_t uptime = timer_uptime();
@@ -618,14 +608,14 @@ void sched_schedule(interrupt_frame_t* frame, cpu_t* self)
         ctx->runThread = next;
     }
 
-    if (threadToFree != NULL)
-    {
-        thread_free(threadToFree);
-    }
-
     if (ctx->runThread != ctx->idleThread && ctx->runThread->sched.deadline > uptime)
     {
         timer_one_shot(self, uptime, ctx->runThread->sched.deadline - uptime);
+    }
+
+    if (threadToFree != NULL)
+    {
+        thread_free(threadToFree);
     }
 
     lock_release(&self->sched.lock);

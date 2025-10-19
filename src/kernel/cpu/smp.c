@@ -2,7 +2,7 @@
 
 #include "acpi/tables.h"
 #include "cpu/cpu.h"
-#include "cpu/vectors.h"
+#include "cpu/interrupt.h"
 #include "drivers/apic.h"
 #include "interrupt.h"
 #include "log/log.h"
@@ -100,7 +100,7 @@ void smp_halt_others(void)
     {
         if (self->id != id)
         {
-            lapic_send_ipi(cpus[id]->lapicId, VECTOR_HALT);
+            lapic_send_ipi(cpus[id]->lapicId, INTERRUPT_HALT);
         }
     }
 }

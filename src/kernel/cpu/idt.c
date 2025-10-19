@@ -2,7 +2,7 @@
 
 #include "gdt.h"
 #include "tss.h"
-#include "vectors.h"
+#include "interrupt.h"
 
 #include <sys/proc.h>
 
@@ -27,7 +27,7 @@ void idt_init(void)
 {
     idt_attributes_t attr = IDT_ATTR_PRESENT | IDT_ATTR_RING0 | IDT_ATTR_INTERRUPT;
 
-    for (vector_t vector = 0; vector < EXCEPTION_AMOUNT; vector++)
+    for (interrupt_t vector = 0; vector < EXCEPTION_AMOUNT; vector++)
     {
         if (vector == EXCEPTION_DOUBLE_FAULT)
         {
@@ -38,7 +38,7 @@ void idt_init(void)
         idt.entries[vector] = idt_gate(vectorTable[vector], attr, TSS_IST_EXCEPTION);
     }
 
-    for (vector_t vector = EXCEPTION_AMOUNT; vector < VECTOR_AMOUNT; vector++)
+    for (interrupt_t vector = EXCEPTION_AMOUNT; vector < INTERRUPT_AMOUNT; vector++)
     {
         idt.entries[vector] = idt_gate(vectorTable[vector], attr, TSS_IST_INTERRUPT);
     }

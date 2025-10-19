@@ -30,11 +30,10 @@ typedef enum
     THREAD_PARKED = 1 << 0,    ///< Is doing nothing, not in a queue, not blocking, think of it as "other".
     THREAD_READY = 1 << 1,     ///< Is ready to run and waiting to be scheduled.
     THREAD_RUNNING = 1 << 2,   ///< Is currently running on a cpu.
-    THREAD_ZOMBIE = 1 << 3,    ///< Has exited and is waiting to be freed, might still be executing.
-    THREAD_PRE_BLOCK = 1 << 4, ///< Has started the process of blocking but has not yet been given to a owner cpu.
-    THREAD_BLOCKED = 1 << 5,   ///< Is blocking and waiting in one or multiple wait queues.
+    THREAD_PRE_BLOCK = 1 << 3, ///< Has started the process of blocking but has not yet been given to a owner cpu.
+    THREAD_BLOCKED = 1 << 4,   ///< Is blocking and waiting in one or multiple wait queues.
     THREAD_UNBLOCKING =
-        1 << 6, ///< Has started unblocking, used to prevent the same thread being unblocked multiple times.
+        1 << 5, ///< Has started unblocking, used to prevent the same thread being unblocked multiple times.
 } thread_state_t;
 
 /**

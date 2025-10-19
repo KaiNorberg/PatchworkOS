@@ -209,20 +209,20 @@ process_t* sched_process(void);
  * @brief Exits the current process.
  *
  * The `sched_process_exit()` function terminates the currently executing process and all its threads. Note that this
- * does not actually schedule and the thread will only actually die when the scheduler is invoked.
+ * function will never return, instead it triggers an interrupt that kills the current thread.
  *
  * @param status The exit status of the process.
  */
-void sched_process_exit(uint64_t status);
+ _NORETURN void sched_process_exit(uint64_t status);
 
 /**
  * @brief Exits the current thread.
  *
- * The `sched_thread_exit()` function terminates the currently executing thread. Note that this does not actually
- * schedule and the thread will only actually die when the scheduler is invoked.
+ * The `sched_thread_exit()` function terminates the currently executing thread. Note that this function will never
+ * return, instead it triggers an interrupt that kills the thread.
  *
  */
-void sched_thread_exit(void);
+_NORETURN void sched_thread_exit(void);
 
 /**
  * @brief Yields the CPU to another thread.
@@ -250,11 +250,26 @@ void sched_push(thread_t* thread, cpu_t* target);
 void sched_push_new_thread(thread_t* thread, thread_t* parent);
 
 /**
+ * @brief Scheduling flags.
+ * @enum schedule_flags_t
+ *
+ * Flags that modify the behavior of the `sched_invoke()` function.
+ */
+typedef enum
+{
+    SCHED_NORMAL = 0, ///< No special flags.
+    SCHED_DIE = 1 << 0, ///< Kill and free the currently running thread.
+} schedule_flags_t;
+
+/**
  * @brief The main scheduling function.
+ *
+ * Must be called in an interrupt context.
  *
  * @param frame The current interrupt frame.
  * @param self The currently running cpu.
+ * @param flags Scheduling flags.
  */
-void sched_schedule(interrupt_frame_t* frame, cpu_t* self);
+void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags);
 
 /** @} */

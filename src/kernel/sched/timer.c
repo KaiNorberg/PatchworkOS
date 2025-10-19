@@ -2,7 +2,7 @@
 #include "cpu/cpu.h"
 #include "cpu/smp.h"
 #include "cpu/syscalls.h"
-#include "cpu/vectors.h"
+#include "cpu/interrupt.h"
 #include "drivers/apic.h"
 #include "drivers/hpet.h"
 #include "drivers/rtc.h"
@@ -166,7 +166,7 @@ void timer_one_shot(cpu_t* self, clock_t uptime, clock_t timeout)
         }
 
         self->timer.nextDeadline = deadline;
-        apic_timer_one_shot(VECTOR_TIMER, (uint32_t)ticks);
+        apic_timer_one_shot(INTERRUPT_TIMER, (uint32_t)ticks);
     }
 }
 
@@ -191,10 +191,10 @@ SYSCALL_DEFINE(SYS_UNIX_EPOCH, time_t, time_t* timePtr)
 
 void timer_notify(cpu_t* cpu)
 {
-    lapic_send_ipi(cpu->lapicId, VECTOR_TIMER);
+    lapic_send_ipi(cpu->lapicId, INTERRUPT_TIMER);
 }
 
 void timer_notify_self(void)
 {
-    asm volatile("int %0" : : "i"(VECTOR_TIMER));
+    asm volatile("int %0" : : "i"(INTERRUPT_TIMER));
 }

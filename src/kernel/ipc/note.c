@@ -97,8 +97,7 @@ void note_dispatch(interrupt_frame_t* frame, cpu_t* self)
         {
             LOG_DEBUG("kill note received tid=%d pid=%d\n", thread->id, thread->process->id);
 
-            sched_process_exit(EXIT_SUCCESS);
-            sched_schedule(frame, self);
+            sched_invoke(frame, self, SCHED_DIE);
             return;
         }
         else

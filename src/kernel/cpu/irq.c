@@ -5,7 +5,7 @@
 #include "log/log.h"
 #include "log/panic.h"
 #include "sync/rwlock.h"
-#include "vectors.h"
+#include "interrupt.h"
 
 static rwlock_t lock = RWLOCK_CREATE;
 static irq_handler_t handlers[IRQ_AMOUNT] = {0};

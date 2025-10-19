@@ -101,8 +101,6 @@ void thread_free(thread_t* thread)
     DEREF(process);
     thread->process = NULL;
 
-    assert(atomic_load(&thread->state) == THREAD_ZOMBIE);
-
     simd_ctx_deinit(&thread->simd);
     heap_free(thread);
 }

@@ -102,7 +102,7 @@ static uint64_t apic_init(sdt_header_t* table)
 
 ACPI_SDT_HANDLER_REGISTER(MADT_SIGNATURE, apic_init);
 
-void apic_timer_one_shot(vector_t vector, uint32_t ticks)
+void apic_timer_one_shot(interrupt_t vector, uint32_t ticks)
 {
     if (!initialized)
     {
@@ -222,7 +222,7 @@ void lapic_send_sipi(lapic_id_t id, void* entryPoint)
     lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_STARTUP | ((uintptr_t)entryPoint / PAGE_SIZE));
 }
 
-void lapic_send_ipi(lapic_id_t id, vector_t vector)
+void lapic_send_ipi(lapic_id_t id, interrupt_t vector)
 {
     if (!initialized)
     {
@@ -304,7 +304,7 @@ ioapic_t* ioapic_from_gsi(ioapic_gsi_t gsi)
     panic(NULL, "Failed to locate vector for gsi %d", gsi);
 }
 
-void ioapic_set_redirect(vector_t vector, ioapic_gsi_t gsi, ioapic_delivery_mode_t deliveryMode,
+void ioapic_set_redirect(interrupt_t vector, ioapic_gsi_t gsi, ioapic_delivery_mode_t deliveryMode,
     ioapic_polarity_t polarity, ioapic_trigger_mode_t triggerMode, cpu_t* cpu, bool enable)
 {
     if (!initialized)

@@ -4,7 +4,7 @@
 
 section .text
 
-extern sched_schedule
+extern sched_invoke
 extern smp_self_unsafe
 
 global sched_idle_loop

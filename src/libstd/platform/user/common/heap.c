@@ -1,8 +1,7 @@
 #include "heap.h"
 
-#include "platform/platform.h"
-
 #include <stdlib.h>
+#include <stdio.h>
 #include <sys/io.h>
 #include <sys/math.h>
 #include <sys/proc.h>
@@ -48,6 +47,7 @@ void _heap_init(void)
 {
     if (mtx_init(&mutex, mtx_recursive) != thrd_success)
     {
+        fprintf(stderr, "libstd: failed to initialize heap mutex\n");
         abort();
     }
 
@@ -56,6 +56,7 @@ void _heap_init(void)
     zeroResource = open("/dev/zero");
     if (zeroResource == ERR)
     {
+        fprintf(stderr, "libstd: failed to open /dev/zero for heap allocation\n");
         abort();
     }
 }
@@ -134,6 +135,7 @@ void _heap_free(void* ptr)
     _heap_header_t* block = (_heap_header_t*)((uint64_t)ptr - sizeof(_heap_header_t));
     if (block->magic != _HEAP_HEADER_MAGIC)
     {
+        fprintf(stderr, "libstd: heap corruption detected in _heap_free\n");
         abort();
     }
     block->reserved = false;

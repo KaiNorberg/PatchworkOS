@@ -102,7 +102,7 @@ static void benchmark(uint64_t threadAmount)
 
 int main(void)
 {
-    for (uint64_t threads = 1; threads <= 128; threads *= 2)
+    for (uint64_t threads = 1; threads <= 1024; threads *= 2)
     {
         benchmark(threads);
     }

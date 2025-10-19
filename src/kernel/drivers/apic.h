@@ -1,7 +1,7 @@
 #pragma once
 
 #include "acpi/tables.h"
-#include "cpu/vectors.h"
+#include "cpu/interrupt.h"
 
 #include <common/defs.h>
 #include <stdint.h>
@@ -275,7 +275,7 @@ typedef union {
  * @param vector The interrupt vector to fire when the timer expires.
  * @param ticks The amount of ticks to wait before firing the interrupt.
  */
-void apic_timer_one_shot(vector_t vector, uint32_t ticks);
+void apic_timer_one_shot(interrupt_t vector, uint32_t ticks);
 
 /**
  * @brief Apic timer ticks per nanosecond.
@@ -345,7 +345,7 @@ void lapic_send_sipi(lapic_id_t id, void* entryPoint);
  * @param id The lapic id to send the IPI to.
  * @param vector The interrupt vector to send.
  */
-void lapic_send_ipi(lapic_id_t id, vector_t vector);
+void lapic_send_ipi(lapic_id_t id, interrupt_t vector);
 
 /**
  * @brief Send an End Of Interrupt (EOI) signal to the local apic.
@@ -406,7 +406,7 @@ ioapic_t* ioapic_from_gsi(ioapic_gsi_t gsi);
  * @param cpu The target cpu to send the interrupt to.
  * @param enable Whether to enable or disable the redirection.
  */
-void ioapic_set_redirect(vector_t vector, ioapic_gsi_t gsi, ioapic_delivery_mode_t deliveryMode,
+void ioapic_set_redirect(interrupt_t vector, ioapic_gsi_t gsi, ioapic_delivery_mode_t deliveryMode,
     ioapic_polarity_t polarity, ioapic_trigger_mode_t triggerMode, cpu_t* cpu, bool enable);
 
 /** @} */

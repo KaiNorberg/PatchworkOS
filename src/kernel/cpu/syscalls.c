@@ -94,7 +94,7 @@ uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx,
     asm volatile("cli");
     if (note_queue_length(&thread->notes) > 0)
     {
-        lapic_send_ipi(lapic_self_id(), VECTOR_NOTE);
+        lapic_send_ipi(lapic_self_id(), INTERRUPT_NOTE);
     }
 
     return result;

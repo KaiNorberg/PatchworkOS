@@ -256,6 +256,7 @@ void _files_init(void)
     list_init(&files);
     if (mtx_init(&filesMtx, mtx_recursive) != thrd_success)
     {
+        fprintf(stderr, "libstd: failed to initialize files mutex\n");
         abort();
     }
 }
