@@ -117,8 +117,8 @@ void space_load(space_t* space);
  * If the region is not fully mapped, or the region is not within the spaces `startAddress` and `endAddress` range, the
  * function will fail.
  *
- * TODO: If the region is already pinned the function will block until it is unpinned. This is not ideal and a better
- * solution should be found.
+ * If any page in the region is already at its maximum pin depth, the calling thread will block until the page is unpinned by
+ * another thread.
  *
  * @param space The target address space.
  * @param address The address to pin, can be `NULL` if length is 0.

@@ -2,10 +2,10 @@
 
 #include "cpu/smp.h"
 #include "drivers/apic.h"
+#include "interrupt.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "sync/rwlock.h"
-#include "interrupt.h"
 
 static rwlock_t lock = RWLOCK_CREATE;
 static irq_handler_t handlers[IRQ_AMOUNT] = {0};

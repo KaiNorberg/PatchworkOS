@@ -213,7 +213,7 @@ process_t* sched_process(void);
  *
  * @param status The exit status of the process.
  */
- _NORETURN void sched_process_exit(uint64_t status);
+_NORETURN void sched_process_exit(uint64_t status);
 
 /**
  * @brief Exits the current thread.
@@ -257,7 +257,7 @@ void sched_push_new_thread(thread_t* thread, thread_t* parent);
  */
 typedef enum
 {
-    SCHED_NORMAL = 0, ///< No special flags.
+    SCHED_NORMAL = 0,   ///< No special flags.
     SCHED_DIE = 1 << 0, ///< Kill and free the currently running thread.
 } schedule_flags_t;
 

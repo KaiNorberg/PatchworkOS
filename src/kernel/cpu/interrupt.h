@@ -115,10 +115,10 @@ typedef enum
 
     EXTERNAL_INTERRUPT_BASE = 0x20,
 
-    INTERRUPT_DIE = 0xFB, ///< Kills and frees the current thread.
-    INTERRUPT_NOTE = 0xFC, ///< Nofify that a note is available.
+    INTERRUPT_DIE = 0xFB,   ///< Kills and frees the current thread.
+    INTERRUPT_NOTE = 0xFC,  ///< Nofify that a note is available.
     INTERRUPT_TIMER = 0xFD, ///< The timer subsystem interrupt.
-    INTERRUPT_HALT = 0xFE, ///< Halt the CPU.
+    INTERRUPT_HALT = 0xFE,  ///< Halt the CPU.
     INTERRUPT_AMOUNT = 0xFF
 } interrupt_t;
 

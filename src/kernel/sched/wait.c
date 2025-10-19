@@ -139,6 +139,7 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
     {
         list_remove(&self->wait.blockedThreads, &thread->entry);
         wait_remove_wait_entries(thread, EOK);
+        atomic_store(&thread->state, THREAD_RUNNING);
         return false;
     }
     else if (thread_is_note_pending(thread))
@@ -148,6 +149,7 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
         {
             list_remove(&self->wait.blockedThreads, &thread->entry);
             wait_remove_wait_entries(thread, EOK);
+            atomic_store(&thread->state, THREAD_RUNNING);
             return false;
         }
     }
@@ -240,7 +242,6 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
     thread_t* thread = smp_self()->sched.runThread;
 
     assert(thread != NULL);
-    assert(atomic_load(&thread->state) == THREAD_RUNNING);
 
     for (uint64_t i = 0; i < amount; i++)
     {
@@ -288,7 +289,16 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
         lock_release(&waitQueues[i]->lock);
     }
 
-    atomic_store(&thread->state, THREAD_PRE_BLOCK);
+    thread_state_t expected = THREAD_RUNNING;
+    if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_PRE_BLOCK))
+    {
+        if (expected != THREAD_UNBLOCKING)
+        {
+            panic(NULL, "Thread in invalid state in wait_block_setup() state=%d", expected);
+        }
+        // We wait until the wait_block_commit() or wait_block_cancel() to actually do the early unblock.
+    }
+
     // Return without enabling interrupts, they will be enabled in wait_block_commit() or wait_block_cancel().
     return 0;
 }
@@ -318,11 +328,27 @@ uint64_t wait_block_commit(void)
 {
     thread_t* thread = smp_self_unsafe()->sched.runThread;
 
-    smp_put(); // Release cpu from wait_block_setup().
+    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
+
+    thread_state_t state = atomic_load(&thread->state);
+    switch (state)
+    {
+    case THREAD_UNBLOCKING:
+        wait_remove_wait_entries(thread, EOK);
+        atomic_store(&thread->state, THREAD_RUNNING);
+        smp_put(); // Release cpu from wait_block_setup().
+        break;
+    case THREAD_PRE_BLOCK:
+        smp_put(); // Release cpu from wait_block_setup().
+        timer_notify_self();
+        break;
+    default:
+        panic(NULL, "Invalid thread state %d in wait_block_commit()", state);
+    }
+
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    timer_notify_self();
-    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    if (thread->wait.err != 0)
+
+    if (thread->wait.err != EOK)
     {
         errno = thread->wait.err;
         return ERR;

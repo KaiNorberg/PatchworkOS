@@ -172,19 +172,13 @@ uint64_t space_pin(space_t* space, const void* buffer, uint64_t length)
     space_align_region((void**)&buffer, &length);
     uint64_t pageAmount = BYTES_TO_PAGES(length);
 
-    if (!page_table_is_mapped(&space->pageTable, buffer, pageAmount))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
-
     if (WAIT_BLOCK_LOCK(&space->pinWaitQueue, &space->lock,
-            !page_table_is_pinned(&space->pageTable, buffer, pageAmount)) == ERR)
+            page_table_get_max_pin_depth(&space->pageTable, buffer, pageAmount) < PML_PIN_DEPTH_MAX) == ERR)
     {
         return ERR;
     }
 
-    if (!page_table_is_mapped(&space->pageTable, buffer, pageAmount)) // Important recheck
+    if (!page_table_is_mapped(&space->pageTable, buffer, pageAmount))
     {
         errno = EFAULT;
         return ERR;
@@ -216,19 +210,13 @@ uint64_t space_pin_terminated(space_t* space, const void* address, const void* t
     uint64_t pinnedPages = 0;
     while (current < end)
     {
-        if (!page_table_is_mapped(&space->pageTable, (void*)current, 1))
-        {
-            errno = EFAULT;
-            goto error;
-        }
-
         if (WAIT_BLOCK_LOCK(&space->pinWaitQueue, &space->lock,
-                !page_table_is_pinned(&space->pageTable, (void*)current, 1)) == ERR)
+                page_table_get_max_pin_depth(&space->pageTable, (void*)current, 1) < PML_PIN_DEPTH_MAX) == ERR)
         {
             return ERR;
         }
 
-        if (!page_table_is_mapped(&space->pageTable, (void*)current, 1)) // Important recheck
+        if (!page_table_is_mapped(&space->pageTable, (void*)current, 1))
         {
             errno = EFAULT;
             goto error;

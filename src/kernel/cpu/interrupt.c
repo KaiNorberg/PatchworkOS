@@ -3,13 +3,13 @@
 #include "cpu.h"
 #include "drivers/apic.h"
 #include "gdt.h"
+#include "interrupt.h"
 #include "irq.h"
 #include "log/panic.h"
 #include "sched/thread.h"
 #include "sched/wait.h"
 #include "smp.h"
 #include "utils/statistics.h"
-#include "interrupt.h"
 
 #include <common/regs.h>
 

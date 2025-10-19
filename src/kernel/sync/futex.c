@@ -93,23 +93,24 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
         bool firstCheck = true;
         while (true)
         {
+            // Must pin before we start setting up the block becouse pining might also block.
+            if (space_pin(space, addr, sizeof(atomic_uint64_t)) == ERR)
+            {
+                return ERR;
+            }
+
             uptime = timer_uptime();
             clock_t remaining = (deadline == CLOCKS_NEVER) ? CLOCKS_NEVER : deadline - uptime;
             wait_queue_t* queue = &futex->queue;
             if (wait_block_setup(&queue, 1, remaining) == ERR)
             {
+                space_unpin(space, addr, sizeof(atomic_uint64_t));
                 return ERR;
             }
 
-            uint64_t addrVal;
-            if (space_safe_atomic_uint64_t_load(space, addr, &addrVal) == ERR)
+            if (atomic_load(addr) != val)
             {
-                wait_block_cancel();
-                return ERR;
-            }
-
-            if (addrVal != val)
-            {
+                space_unpin(space, addr, sizeof(atomic_uint64_t));
                 wait_block_cancel();
                 if (firstCheck)
                 {
@@ -117,13 +118,17 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
                 }
                 return 0;
             }
+            firstCheck = false;
 
             // If a FUTEX_WAKE was called in between the check and the wait_block_commit() then we will unblock
             // immediately.
             if (wait_block_commit() == ERR)
             {
+                space_unpin(space, addr, sizeof(atomic_uint64_t));
                 return ERR;
             }
+
+            space_unpin(space, addr, sizeof(atomic_uint64_t));
         }
     }
     break;

@@ -196,7 +196,7 @@ void sched_process_exit(uint64_t status)
 {
     thread_t* thread = sched_thread();
     process_kill(thread->process, status);
-    asm volatile ("int %0" : : "i"(INTERRUPT_DIE));
+    asm volatile("int %0" : : "i"(INTERRUPT_DIE));
     panic(NULL, "Return to sched_process_exit");
 }
 
@@ -208,7 +208,7 @@ SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, uint64_t status)
 
 void sched_thread_exit(void)
 {
-    asm volatile ("int %0" : : "i"(INTERRUPT_DIE));
+    asm volatile("int %0" : : "i"(INTERRUPT_DIE));
     panic(NULL, "Return to sched_thread_exit");
 }
 
@@ -541,7 +541,8 @@ void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags)
         break;
         default:
         {
-            panic(NULL, "Invalid thread state %d (pid=%d tid=%d)", state, ctx->runThread->process->id, ctx->runThread->id);
+            panic(NULL, "Invalid thread state %d (pid=%d tid=%d)", state, ctx->runThread->process->id,
+                ctx->runThread->id);
         }
         }
     }

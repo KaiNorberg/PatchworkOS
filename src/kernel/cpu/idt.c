@@ -1,8 +1,8 @@
 #include "idt.h"
 
 #include "gdt.h"
-#include "tss.h"
 #include "interrupt.h"
+#include "tss.h"
 
 #include <sys/proc.h>
 

@@ -433,7 +433,7 @@ static inline void page_table_unmap(page_table_t* table, void* virtAddr, uint64_
             continue;
         }
 
-        if (traverse.entry->pinned)
+        if (traverse.entry->pinDepth != 0)
         {
             continue;
         }
@@ -507,7 +507,7 @@ static inline uint64_t page_table_set_flags(page_table_t* table, void* virtAddr,
             return ERR;
         }
 
-        if (traverse.entry->pinned)
+        if (traverse.entry->pinDepth != 0)
         {
             return ERR;
         }
@@ -558,7 +558,7 @@ static inline uint64_t page_table_find_first_mapped_page(page_table_t* table, vo
 }
 
 /**
- * @brief Pins a range of pages in the page table, preventing their mapping from being modified.
+ * @brief Pins a range of pages in the page table by increasing their pin depth.
  *
  * @param table The page table.
  * @param virtAddr The starting virtual address.
@@ -581,19 +581,19 @@ static inline uint64_t page_table_pin(page_table_t* table, const void* virtAddr,
             return ERR;
         }
 
-        if (traverse.entry->pinned)
+        if (traverse.entry->pinDepth == PML_PIN_DEPTH_MAX)
         {
             return ERR;
         }
 
-        traverse.entry->pinned = 1;
+        traverse.entry->pinDepth++;
     }
 
     return 0;
 }
 
 /**
- * @brief Unpins a range of pages in the page table, allowing their mapping to be modified.
+ * @brief Unpins a range of pages in the page table by decrementing their pin depth.
  *
  * @param table The page table.
  * @param virtAddr The starting virtual address.
@@ -616,8 +616,48 @@ static inline void page_table_unpin(page_table_t* table, const void* virtAddr, u
             continue;
         }
 
-        traverse.entry->pinned = 0;
+        if (traverse.entry->pinDepth == 0)
+        {
+            continue;
+        }
+
+        traverse.entry->pinDepth--;
     }
+}
+
+/**
+ * @brief Retrieves the maximum pin depth among a range of pages.
+ *
+ * @param table The page table.
+ * @param virtAddr The starting virtual address.
+ * @param pageAmount The number of pages to check.
+ * @return The maximum pin depth found in the range.
+ */
+static inline uint64_t page_table_get_max_pin_depth(page_table_t* table, const void* virtAddr, uint64_t pageAmount)
+{
+    uint64_t maxPinDepth = 0;
+
+    page_table_traverse_t traverse = {0};
+    page_table_traverse_init(&traverse);
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {
+        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
+        {
+            continue;
+        }
+
+        if (!traverse.entry->present)
+        {
+            continue;
+        }
+
+        if (traverse.entry->pinDepth > maxPinDepth)
+        {
+            maxPinDepth = traverse.entry->pinDepth;
+        }
+    }
+
+    return maxPinDepth;
 }
 
 /**
@@ -644,7 +684,7 @@ static inline bool page_table_is_pinned(page_table_t* table, const void* virtAdd
             continue;
         }
 
-        if (traverse.entry->pinned)
+        if (traverse.entry->pinDepth != 0)
         {
             return true;
         }

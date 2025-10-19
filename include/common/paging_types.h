@@ -55,14 +55,19 @@ typedef struct
              */
             uint64_t owned : 1;
             /**
-             * If set, the page is pinned and cannot be unmapped or have its mappings modified.
+             * If not 0, the page is pinned and cannot be unmapped or have its mappings modified.
              *
              * Used to prevent TOCTOU vulnerabilities by preventing a page from being unmapped or its mappings modified
-             * while its being used, in for example a system call. (Defined by PatchworkOS)
+             * while its being used, in for example a system call.
+             *
+             * Note that this does support recursive pins but since we only have 2 bits for the pin count, the maximum
+             * pin count is 3. In practice this is fine, as most pages will only ever be pinned once or twice at most
+             * and we just block if a thread tries to pin a page more then 3 times.
+             *
+             * (Defined by PatchworkOS)
              */
-            uint64_t pinned : 1;
-            uint64_t available : 1; ///< Available for use by the OS.
-            uint64_t addr : 40;     ///< The address contained in the entry, note that this is shifted right by 12 bits.
+            uint64_t pinDepth : 2;
+            uint64_t addr : 40; ///< The address contained in the entry, note that this is shifted right by 12 bits.
             /**
              * Check the virtual memory manager for more information. (Defined by PatchworkOS)
              */
@@ -72,6 +77,13 @@ typedef struct
         };
     };
 } pml_entry_t;
+
+/**
+ * @brief Maximum pin depth for a page.
+ *
+ * See `pml_entry_t::pinDepth` for more information.
+ */
+#define PML_PIN_DEPTH_MAX 3
 
 /**
  * @brief Number of bits used for the offset within a page.
@@ -106,7 +118,6 @@ typedef enum
     PML_SIZE = (1ULL << 7),
     PML_GLOBAL = (1ULL << 8),
     PML_OWNED = (1ULL << 9),
-    PML_PINNED = (1ULL << 10),
     PML_AVAILABLE = (1ULL << 11),
     PML_NO_EXECUTE = (1ULL << 63),
 } pml_flags_t;
@@ -116,7 +127,7 @@ typedef enum
  */
 #define PML_FLAGS_MASK \
     (PML_PRESENT | PML_WRITE | PML_USER | PML_WRITE_THROUGH | PML_CACHE_DISABLED | PML_ACCESSED | PML_DIRTY | \
-        PML_SIZE | PML_GLOBAL | PML_OWNED | PML_PINNED | PML_AVAILABLE | PML_NO_EXECUTE)
+        PML_SIZE | PML_GLOBAL | PML_OWNED | PML_AVAILABLE | PML_NO_EXECUTE)
 
 /**
  * @brief Enums for the different page table levels.

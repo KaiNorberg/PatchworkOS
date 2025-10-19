@@ -4,7 +4,6 @@
 #include "cpu/interrupt.h"
 #include "cpu/port.h"
 #include "cpu/smp.h"
-#include "cpu/interrupt.h"
 #include "log/log.h"
 #include "mem/heap.h"
 #include "mem/pmm.h"
