@@ -300,14 +300,15 @@ void wait_block_cancel(void)
     thread_t* thread = smp_self_unsafe()->sched.runThread;
     assert(thread != NULL);
 
-    thread_state_t expected = THREAD_PRE_BLOCK;
-    if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
-    {
-        wait_remove_wait_entries(thread, EOK);
+    thread_state_t state = atomic_exchange(&thread->state, THREAD_UNBLOCKING);
 
-        thread_state_t newState = atomic_exchange(&thread->state, THREAD_RUNNING);
-        assert(newState == THREAD_UNBLOCKING); // Make sure state did not change.
-    }
+    // State might already be unblocking if the thread unblocked prematurely.
+    assert(state == THREAD_PRE_BLOCK || state == THREAD_UNBLOCKING);
+
+    wait_remove_wait_entries(thread, EOK);
+
+    thread_state_t newState = atomic_exchange(&thread->state, THREAD_RUNNING);
+    assert(newState == THREAD_UNBLOCKING); // Make sure state did not change.
 
     smp_put(); // Release cpu from wait_block_setup().
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
