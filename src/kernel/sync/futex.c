@@ -61,8 +61,7 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
-
-    futex_ctx_t* ctx = &sched_process()->futexCtx;
+    futex_ctx_t* ctx = &process->futexCtx;
 
     futex_t* futex = futex_ctx_get(ctx, addr);
     if (futex == NULL)

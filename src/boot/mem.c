@@ -100,14 +100,20 @@ NORETURN static void panic_without_boot_services(uint8_t red, uint8_t green, uin
     }
 }
 
-static void* basic_allocator_alloc(void)
+static uint64_t basic_allocator_alloc_pages(void** pages, uint64_t amount)
 {
-    if (basicAllocator.pagesAllocated == basicAllocator.maxPages)
+    if (basicAllocator.pagesAllocated + amount >= basicAllocator.maxPages)
     {
         panic_without_boot_services(0xFF, 0x00, 0x00);
     }
 
-    return (void*)((uintptr_t)basicAllocator.buffer + (basicAllocator.pagesAllocated++) * EFI_PAGE_SIZE);
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        *pages = (void*)(basicAllocator.buffer + basicAllocator.pagesAllocated * PAGE_SIZE);
+        basicAllocator.pagesAllocated++;
+        pages++;
+    }
+    return 0;
 }
 
 void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boot_gop_t* gop, boot_kernel_t* kernel)
@@ -115,7 +121,7 @@ void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boot_gop_t
     basicAllocator.gop = gop;
     basicAllocator.map = map;
 
-    if (page_table_init(table, basic_allocator_alloc, NULL) == ERR)
+    if (page_table_init(table, basic_allocator_alloc_pages, NULL) == ERR)
     {
         panic_without_boot_services(0x00, 0xFF, 0x00);
     }

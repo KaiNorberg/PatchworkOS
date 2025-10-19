@@ -103,7 +103,7 @@ void trampoline_c_entry(cpu_t* cpu, cpuid_t cpuId)
         panic(NULL, "Failed to initialize CPU %u", cpuId);
     }
 
-    thread_t* thread = sched_thread();
+    thread_t* thread = sched_thread_unsafe();
     assert(thread != NULL);
     assert(sched_is_idle());
     thread->frame.rip = (uintptr_t)trampoline_after_jump;

@@ -83,8 +83,6 @@ uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx,
         return ERR;
     }
 
-    thread_t* thread = sched_thread();
-
     // This is safe for any input type and any number of arguments up to 6 as they will simply be ignored.
     uint64_t (*handler)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t) = desc->handler;
     uint64_t result = handler(rdi, rsi, rdx, rcx, r8, r9);
@@ -92,7 +90,7 @@ uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx,
     // Interrupts will be renabled when the sysret instruction executes, this means that if there is a pending note and
     // we invoke an interrupt the actual interrupt handler will not run until we return to user space.
     asm volatile("cli");
-    if (note_queue_length(&thread->notes) > 0)
+    if (note_queue_length(&sched_thread_unsafe()->notes) > 0)
     {
         lapic_send_ipi(lapic_self_id(), INTERRUPT_NOTE);
     }

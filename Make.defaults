@@ -30,7 +30,8 @@ CFLAGS := \
 	-Lbin/libpatchwork \
 	-Iinclude \
 	-Ilib \
-	-I$(SRCDIR)
+	-I$(SRCDIR) \
+	-D__PATCHWORK_OS__
 
 CFLAGS_DISABLE_SIMD := \
 	-mno-mmx -mno-3dnow \

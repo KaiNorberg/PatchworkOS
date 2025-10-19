@@ -39,6 +39,8 @@ void init_early(const boot_info_t* bootInfo)
     gdt_init();
     idt_init();
 
+    smp_early_bootstrap_init();
+
     log_init(&bootInfo->gop);
 
     pmm_init(&bootInfo->memory.map);
@@ -77,7 +79,7 @@ static void init_free_loader_data(const boot_memory_map_t* map)
 
         if (desc->Type == EfiLoaderData)
         {
-            pmm_free_pages((void*)desc->VirtualStart, desc->NumberOfPages);
+            pmm_free_region((void*)desc->VirtualStart, desc->NumberOfPages);
             LOG_INFO("free boot memory [0x%016lx-0x%016lx]\n", desc->VirtualStart,
                 ((uintptr_t)desc->VirtualStart) + desc->NumberOfPages * PAGE_SIZE);
         }

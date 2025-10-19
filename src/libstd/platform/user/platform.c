@@ -1,8 +1,8 @@
 #include "platform/platform.h"
+#include "common/clock.h"
 #include "common/exit_stack.h"
 #include "common/std_streams.h"
 #include "common/thread.h"
-#include "common/clock.h"
 #include "platform/user/common/heap.h"
 
 #include <stdarg.h>

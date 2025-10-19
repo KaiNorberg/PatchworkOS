@@ -1,8 +1,10 @@
 #pragma once
 
 #include "cpu_id.h"
+#include "interrupt.h"
 
 #include <common/defs.h>
+#include <common/regs.h>
 #include <stdint.h>
 
 typedef struct cpu cpu_t;
@@ -17,6 +19,25 @@ typedef struct cpu cpu_t;
  *
  * @{
  */
+
+/**
+ * @brief Array of pointers to cpu_t structures for each CPU.
+ */
+extern cpu_t* _cpus[CPU_MAX];
+
+/**
+ * @brief The number of CPUs currently identified.
+ */
+extern uint16_t _cpuAmount;
+
+/**
+ * @brief Early initialization of the bootstrap CPU.
+ *
+ * This function will set the CPU ID MSR to 0 for the bootstrap CPU, allowing other parts of the kernel that rely on
+ * being able to identify the CPU to function correctly during early boot. Note that the bootstrap cpu structure must
+ * not be actually utilized before calling `smp_bootstrap_init()` for anything other than identifying the cpu.
+ */
+void smp_early_bootstrap_init(void);
 
 /**
  * @brief Initializes the bootstrap CPU structure.
@@ -42,7 +63,10 @@ void smp_halt_others(void);
  *
  * @return The number of CPUs.
  */
-uint16_t smp_cpu_amount(void) PURE_FUNC;
+static inline uint16_t smp_cpu_amount(void)
+{
+    return _cpuAmount;
+}
 
 /**
  * @brief Returns a pointer to the cpu_t structure of the CPU with the given id.
@@ -50,7 +74,10 @@ uint16_t smp_cpu_amount(void) PURE_FUNC;
  * @param id The id of the CPU.
  * @return A pointer to the found CPU. If no CPU with the given id exists, the kernel panics.
  */
-cpu_t* smp_cpu(cpuid_t id) PURE_FUNC;
+static inline cpu_t* smp_cpu(cpuid_t id)
+{
+    return _cpus[id];
+}
 
 /**
  * @brief Returns a pointer to the cpu_t structure of the current CPU.
@@ -60,7 +87,10 @@ cpu_t* smp_cpu(cpuid_t id) PURE_FUNC;
  *
  * @return A pointer to the current CPU.
  */
-cpu_t* smp_self_unsafe(void) PURE_FUNC;
+static inline cpu_t* smp_self_unsafe(void)
+{
+    return _cpus[msr_read(MSR_CPU_ID)];
+}
 
 /**
  * @brief Returns the id of the current CPU.
@@ -69,7 +99,10 @@ cpu_t* smp_self_unsafe(void) PURE_FUNC;
  *
  * @return The id of the current CPU.
  */
-cpuid_t smp_self_id_unsafe(void) PURE_FUNC;
+static inline cpuid_t smp_self_id_unsafe(void)
+{
+    return (cpuid_t)msr_read(MSR_CPU_ID);
+}
 
 /**
  * @brief Returns a pointer to the cpu_t structure of the current CPU.
@@ -79,11 +112,19 @@ cpuid_t smp_self_id_unsafe(void) PURE_FUNC;
  *
  * @return A pointer to the current CPU.
  */
-cpu_t* smp_self(void);
+static inline cpu_t* smp_self(void)
+{
+    interrupt_disable();
+
+    return _cpus[msr_read(MSR_CPU_ID)];
+}
 
 /**
  * @brief Re-enables interrupts after a call to `smp_self()`.
  */
-void smp_put(void);
+static inline void smp_put(void)
+{
+    interrupt_enable();
+}
 
 /** @} */

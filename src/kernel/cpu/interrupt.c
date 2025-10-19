@@ -68,7 +68,7 @@ static void exception_handler(interrupt_frame_t* frame)
 
     if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
     {
-        thread_t* thread = sched_thread();
+        thread_t* thread = sched_thread_unsafe();
         process_t* process = thread->process;
 
         LOG_WARN("unhandled user space exception in process pid=%d vector=%lld error=0x%llx rip=0x%llx\n", process->id,

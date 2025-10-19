@@ -13,9 +13,22 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-static void* space_pmm_bitmap_alloc(void)
+static uint64_t space_pmm_bitmap_alloc_pages(void** pages, uint64_t pageAmount)
 {
-    return pmm_alloc_bitmap(1, UINT32_MAX, 0);
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {
+        void* page = pmm_alloc_bitmap(1, UINT32_MAX, 0);
+        if (page == NULL)
+        {
+            for (uint64_t j = 0; j < i; j++)
+            {
+                pmm_free(pages[j]);
+            }
+            return ERR;
+        }
+        pages[i] = page;
+    }
+    return 0;
 }
 
 static inline void space_map_kernel_space_region(space_t* space, uintptr_t start, uintptr_t end)
@@ -29,6 +42,7 @@ static inline void space_map_kernel_space_region(space_t* space, uintptr_t start
     for (pml_index_t i = startIndex; i < endIndex; i++)
     {
         space->pageTable.pml4->entries[i] = kernelSpace->pageTable.pml4->entries[i];
+        space->pageTable.pml4->entries[i].owned = 0;
     }
 }
 
@@ -53,17 +67,17 @@ uint64_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress
 
     if (flags & SPACE_USE_PMM_BITMAP)
     {
-        if (page_table_init(&space->pageTable, space_pmm_bitmap_alloc, pmm_free) == ERR)
+        if (page_table_init(&space->pageTable, space_pmm_bitmap_alloc_pages, pmm_free_pages) == ERR)
         {
             errno = ENOMEM;
             return ERR;
         }
         // We only use the specific pmm allocator for the page table itself, not for mappings.
-        space->pageTable.allocPage = pmm_alloc;
+        space->pageTable.allocPages = pmm_alloc_pages;
     }
     else
     {
-        if (page_table_init(&space->pageTable, pmm_alloc, pmm_free) == ERR)
+        if (page_table_init(&space->pageTable, pmm_alloc_pages, pmm_free_pages) == ERR)
         {
             errno = ENOMEM;
             return ERR;
@@ -437,19 +451,18 @@ uint64_t space_check_access(space_t* space, const void* addr, uint64_t length)
 
 static void* space_find_free_region(space_t* space, uint64_t pageAmount)
 {
-    uintptr_t addr = space->freeAddress;
-    while (addr < space->endAddress)
+    void* addr;
+    if (page_table_find_unmapped_region(&space->pageTable, (void*)space->freeAddress, (void*)space->endAddress,
+            pageAmount, &addr) != ERR)
     {
-        void* firstMappedPage;
-        if (page_table_find_first_mapped_page(&space->pageTable, (void*)addr, (void*)(addr + pageAmount * PAGE_SIZE),
-                &firstMappedPage) != ERR)
-        {
-            addr = (uintptr_t)firstMappedPage + PAGE_SIZE;
-            continue;
-        }
+        space->freeAddress = (uintptr_t)addr + pageAmount * PAGE_SIZE;
+        return addr;
+    }
 
-        space->freeAddress = addr + pageAmount * PAGE_SIZE;
-        return (void*)addr;
+    if (page_table_find_unmapped_region(&space->pageTable, (void*)space->startAddress, (void*)space->freeAddress,
+            pageAmount, &addr) != ERR)
+    {
+        return addr;
     }
 
     return NULL;

@@ -47,7 +47,7 @@ void acpi_reclaim_memory(const boot_memory_map_t* map)
 
         if (desc->Type == EfiACPIReclaimMemory)
         {
-            pmm_free_pages((void*)PML_LOWER_TO_HIGHER(desc->PhysicalStart), desc->NumberOfPages);
+            pmm_free_region((void*)PML_LOWER_TO_HIGHER(desc->PhysicalStart), desc->NumberOfPages);
             LOG_INFO("reclaim memory [0x%016lx-0x%016lx]\n", desc->PhysicalStart,
                 ((uintptr_t)desc->PhysicalStart) + desc->NumberOfPages * PAGE_SIZE);
         }

@@ -7,7 +7,7 @@ PROGRAMS = $(basename $(notdir $(wildcard make/programs/*.mk)))
 ROOT_PROGRAMS = init wall cursor taskbar dwm shell delete dir link move open read write
 USER_PROGRAMS = $(filter-out $(ROOT_PROGRAMS),$(PROGRAMS))
 
-QEMU_MEMORY ?= 1G
+QEMU_MEMORY ?= 2G
 QEMU_CPUS ?= $(shell nproc 2>/dev/null || echo 8)
 QEMU_MACHINE ?= q35
 QEMU_ARGS ?=

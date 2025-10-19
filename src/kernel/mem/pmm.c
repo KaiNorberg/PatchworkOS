@@ -166,11 +166,34 @@ void* pmm_alloc(void)
     void* address = pmm_stack_alloc(&stack);
     if (address == NULL)
     {
-        LOG_WARN("failed to allocate single page, there are %llu stack pages left\n", stack.free);
+        LOG_WARN("failed to allocate single page, there are %llu pages left\n", stack.free);
         errno = ENOMEM;
         return NULL;
     }
     return address;
+}
+
+uint64_t pmm_alloc_pages(void** addresses, uint64_t count)
+{
+    // LOCK_SCOPE(&lock);
+    for (uint64_t i = 0; i < count; i++)
+    {
+        void* address = pmm_stack_alloc(&stack);
+        if (address == NULL)
+        {
+            LOG_WARN("failed to allocate page %llu of %llu, there are %llu pages left\n", i, count, stack.free);
+            // Free previously allocated pages.
+            for (uint64_t j = 0; j < i; j++)
+            {
+                pmm_stack_free(&stack, addresses[j]);
+                addresses[j] = NULL;
+            }
+            errno = ENOMEM;
+            return ERR;
+        }
+        addresses[i] = address;
+    }
+    return 0;
 }
 
 void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
@@ -192,7 +215,16 @@ void pmm_free(void* address)
     pmm_free_unlocked(address);
 }
 
-void pmm_free_pages(void* address, uint64_t count)
+void pmm_free_pages(void** addresses, uint64_t count)
+{
+    LOCK_SCOPE(&lock);
+    for (uint64_t i = 0; i < count; i++)
+    {
+        pmm_free_unlocked(addresses[i]);
+    }
+}
+
+void pmm_free_region(void* address, uint64_t count)
 {
     LOCK_SCOPE(&lock);
     pmm_free_pages_unlocked(address, count);

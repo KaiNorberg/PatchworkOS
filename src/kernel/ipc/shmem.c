@@ -47,7 +47,7 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, pml_flags_
     }
     LOCK_SCOPE(&shmem->lock);
 
-    process_t* process = sched_process();
+    process_t* process = sched_process_unsafe();
 
     if (!shmem_object_is_access_allowed(shmem, process))
     {
@@ -89,7 +89,7 @@ static uint64_t shmem_ctl_grant(file_t* file, uint64_t argc, const char** argv)
     }
     LOCK_SCOPE(&shmem->lock);
 
-    process_t* process = sched_process();
+    process_t* process = sched_process_unsafe();
 
     if (!shmem_object_is_access_allowed(shmem, process))
     {
@@ -128,7 +128,7 @@ static uint64_t shmem_ctl_revoke(file_t* file, uint64_t argc, const char** argv)
     }
     LOCK_SCOPE(&shmem->lock);
 
-    process_t* process = sched_process();
+    process_t* process = sched_process_unsafe();
 
     if (!shmem_object_is_access_allowed(shmem, process))
     {
@@ -173,7 +173,7 @@ static uint64_t shmem_read(file_t* file, void* buffer, uint64_t count, uint64_t*
     }
     LOCK_SCOPE(&shmem->lock);
 
-    process_t* process = sched_process();
+    process_t* process = sched_process_unsafe();
 
     if (!shmem_object_is_access_allowed(shmem, process))
     {

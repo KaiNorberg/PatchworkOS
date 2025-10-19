@@ -107,10 +107,7 @@ static inline void ref_init(ref_t* ref, void* free)
 static inline void* ref_inc(void* ptr)
 {
     ref_t* ref = (ref_t*)ptr;
-    if (ref == NULL)
-    {
-        return NULL;
-    }
+    assert(ref != NULL);
 
     assert(ref->magic == REF_MAGIC);
     atomic_fetch_add_explicit(&ref->count, 1, memory_order_relaxed);
@@ -122,7 +119,7 @@ static inline void* ref_inc(void* ptr)
  *
  * If count reaches zero it calls the registered cleanup function.
  *
- * @param ptr Pointer to the struct containing `ref_t` as its first member
+ * @param ptr Pointer to the struct containing `ref_t` as its first member, can be `NULL`.
  */
 static inline void ref_dec(void* ptr)
 {

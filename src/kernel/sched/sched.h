@@ -206,6 +206,23 @@ thread_t* sched_thread(void);
 process_t* sched_process(void);
 
 /**
+ * @brief Retrieves the currently running thread without disabling interrupts.
+ *
+ * @return The currently running thread.
+ */
+thread_t* sched_thread_unsafe(void);
+
+/**
+ * @brief Retrieves the process of the currently running thread without disabling interrupts.
+ *
+ * Will not increment the reference count of the returned process, as we consider the currently running thread to always
+ * be referencing its process.
+ *
+ * @return The process of the currently running thread.
+ */
+process_t* sched_process_unsafe(void);
+
+/**
  * @brief Exits the current process.
  *
  * The `sched_process_exit()` function terminates the currently executing process and all its threads. Note that this

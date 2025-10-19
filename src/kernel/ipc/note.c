@@ -87,7 +87,7 @@ void note_dispatch(interrupt_frame_t* frame, cpu_t* self)
 {
     // TODO: Implement more notes and implement user space "software interrupts" to receive notes.
 
-    thread_t* thread = sched_thread();
+    thread_t* thread = sched_thread_unsafe();
     note_queue_t* queue = &thread->notes;
 
     note_t note;

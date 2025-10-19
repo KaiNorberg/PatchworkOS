@@ -178,7 +178,7 @@ thread_t* thread_get_boot(void)
 
 uint64_t thread_handle_page_fault(const interrupt_frame_t* frame)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = sched_thread_unsafe();
     if (thread == NULL)
     {
         return ERR;

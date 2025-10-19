@@ -192,6 +192,22 @@ process_t* sched_process(void)
     return thread->process;
 }
 
+thread_t* sched_thread_unsafe(void)
+{
+    return smp_self_unsafe()->sched.runThread;
+}
+
+process_t* sched_process_unsafe(void)
+{
+    thread_t* thread = sched_thread_unsafe();
+    if (thread == NULL)
+    {
+        return NULL;
+    }
+
+    return thread->process;
+}
+
 void sched_process_exit(uint64_t status)
 {
     thread_t* thread = sched_thread();

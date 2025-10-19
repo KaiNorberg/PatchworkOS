@@ -105,7 +105,7 @@ void mutex_release(mutex_t* mtx)
     assert(mtx != NULL);
     LOCK_SCOPE(&mtx->lock);
 
-    assert(mtx->owner == sched_thread());
+    assert(mtx->owner == sched_thread_unsafe());
 
     mtx->depth--;
     if (mtx->depth == 0)

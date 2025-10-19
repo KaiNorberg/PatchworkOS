@@ -117,12 +117,17 @@ space_t* vmm_get_kernel_space(void)
 
 pml_flags_t vmm_prot_to_flags(prot_t prot)
 {
-    if (!(prot & PROT_READ))
+    switch ((int)prot)
     {
+    case PROT_NONE:
+        return 0;
+    case PROT_READ:
+        return PML_PRESENT;
+    case PROT_READ | PROT_WRITE:
+        return PML_PRESENT | PML_WRITE;
+    default:
         return 0;
     }
-
-    return (prot & PROT_WRITE ? PML_WRITE : 0) | PML_PRESENT;
 }
 
 void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t flags)
@@ -154,22 +159,30 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t fla
         page_table_unmap(&space->pageTable, mapping.virtAddr, mapping.pageAmount);
     }
 
-    for (uint64_t i = 0; i < mapping.pageAmount; i++)
+    const uint64_t maxBatchSize = 64;
+    uint64_t remainingPages = mapping.pageAmount;
+    while (remainingPages != 0)
     {
-        void* addr = (void*)((uint64_t)mapping.virtAddr + i * PAGE_SIZE);
-        void* page = pmm_alloc();
+        uintptr_t currentVirtAddr = (uintptr_t)mapping.virtAddr + (mapping.pageAmount - remainingPages) * PAGE_SIZE;
 
-        if (page == NULL || page_table_map(&space->pageTable, addr, page, 1, mapping.flags, PML_CALLBACK_NONE) == ERR)
+        void* addresses[maxBatchSize];
+        uint64_t batchSize = MIN(remainingPages, maxBatchSize);
+        if (pmm_alloc_pages(addresses, batchSize) == ERR)
         {
-            if (page != NULL)
-            {
-                pmm_free(page);
-            }
-
             // Page table will free the previously allocated pages as they are owned by the Page table.
-            page_table_unmap(&space->pageTable, mapping.virtAddr, i);
+            page_table_unmap(&space->pageTable, mapping.virtAddr, mapping.pageAmount - remainingPages);
             return space_mapping_end(space, &mapping, ENOMEM);
         }
+
+        if (page_table_map_pages(&space->pageTable, (void*)currentVirtAddr, addresses, batchSize, mapping.flags,
+                PML_CALLBACK_NONE) == ERR)
+        {
+            // Page table will free the previously allocated pages as they are owned by the Page table.
+            page_table_unmap(&space->pageTable, mapping.virtAddr, mapping.pageAmount - remainingPages);
+            return space_mapping_end(space, &mapping, ENOMEM);
+        }
+
+        remainingPages -= batchSize;
     }
 
     return space_mapping_end(space, &mapping, EOK);
@@ -269,23 +282,15 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
         page_table_unmap(&space->pageTable, mapping.virtAddr, mapping.pageAmount);
     }
 
-    for (uint64_t i = 0; i < mapping.pageAmount; i++)
+    if (page_table_map_pages(&space->pageTable, mapping.virtAddr, pages, mapping.pageAmount, mapping.flags,
+            callbackId) == ERR)
     {
-        if (page_table_map(&space->pageTable, (void*)((uint64_t)mapping.virtAddr + i * PAGE_SIZE), pages[i], 1,
-                mapping.flags, callbackId) == ERR)
+        if (callbackId != PML_CALLBACK_NONE)
         {
-            for (uint64_t j = 0; j < i; j++)
-            {
-                page_table_unmap(&space->pageTable, (void*)((uint64_t)mapping.virtAddr + j * PAGE_SIZE), 1);
-            }
-
-            if (callbackId != PML_CALLBACK_NONE)
-            {
-                space_free_callback(space, callbackId);
-            }
-
-            return space_mapping_end(space, &mapping, ENOMEM);
+            space_free_callback(space, callbackId);
         }
+
+        return space_mapping_end(space, &mapping, ENOMEM);
     }
 
     return space_mapping_end(space, &mapping, EOK);

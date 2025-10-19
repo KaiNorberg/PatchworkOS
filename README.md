@@ -18,7 +18,7 @@ In the end this is a project made for fun, however the goal is to eventually hav
 
 - Multithreading with a [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), fully preemptive and tickless
 - Symmetric Multi Processing
-- Constant-time memory management for both physical and virtual memory in the common case
+- Physical and virtual memory management is O(1) per page and O(n) where n is the number of pages per allocation/mapping operation
 - Dynamic kernel and user stack allocation
 - File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/note.h)
 - Synchronization primitives including mutexes, read-write locks and [futexes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sync/futex.h)
@@ -64,12 +64,9 @@ In the end this is a project made for fun, however the goal is to eventually hav
 
 ## Notable Future Plans
 
+- Asynchronous I/O
 - Modular kernel
 - Shared libraries
-- Software interrupts for notes (signals)
-- Lua port
-- Capability based security model (currently has no well-defined security model)
-- Visual overhaul of the desktop environment (modernize it?)
 - USB support (The holy grail)
 
 ---

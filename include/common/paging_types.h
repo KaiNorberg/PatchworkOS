@@ -296,6 +296,21 @@ typedef enum
             : (PML_INDEX_TO_ADDR_NO_WRAP(index, level) | PML_HIGHER_HALF_START))
 
 /**
+ * @brief Size of the region mapped by a single PML2 entry.
+ */
+#define PML2_SIZE (1ULL << (PML_INDEX_BITS + PML_ADDR_OFFSET_BITS))
+
+/**
+ * @brief Size of the region mapped by a single PML3 entry.
+ */
+#define PML3_SIZE (1ULL << (2 * PML_INDEX_BITS + PML_ADDR_OFFSET_BITS))
+
+/**
+ * @brief Size of the region mapped by a single PML4 entry.
+ */
+#define PML4_SIZE (1ULL << (3 * PML_INDEX_BITS + PML_ADDR_OFFSET_BITS))
+
+/**
  * @brief Maximum number of callbacks that can be registered for a page table.
  *
  * This is limited by the number of bits available in the page table entry for storing the callback ID.
@@ -326,14 +341,19 @@ typedef struct
  *
  * Used to allow both the kernel and bootloader to provide their own page allocation functions.
  */
-typedef void* (*pml_alloc_page_t)(void);
+typedef uint64_t (*pml_alloc_pages_t)(void**, uint64_t);
 
 /**
  * @brief Generic page free function type.
  *
  * Used to allow both the kernel and bootloader to provide their own page free functions.
  */
-typedef void (*pml_free_page_t)(void*);
+typedef void (*pml_free_pages_t)(void**, uint64_t);
+
+/**
+ * @brief Size of the page buffer used to batch page allocations and frees.
+ */
+#define PML_PAGE_BUFFER_SIZE 64
 
 /**
  * @brief A page table structure.
@@ -345,8 +365,8 @@ typedef void (*pml_free_page_t)(void*);
  */
 typedef struct page_table
 {
-    pml_alloc_page_t allocPage;
-    pml_free_page_t freePage;
+    pml_alloc_pages_t allocPages;
+    pml_free_pages_t freePages;
     pml_t* pml4;
 } page_table_t;
 
