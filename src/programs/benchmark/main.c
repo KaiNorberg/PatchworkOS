@@ -1,13 +1,13 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/io.h>
-#include <sys/proc.h>
 #include <time.h>
 
 #define TEST_ITERATIONS 10000
 
 #ifdef __PATCHWORK_OS__
+#include <sys/io.h>
+#include <sys/proc.h>
 
 static fd_t zeroDev;
 
