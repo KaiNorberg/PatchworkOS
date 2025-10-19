@@ -13,9 +13,9 @@ int fflush(FILE* stream)
     }
     else
     {
-        _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
+        mtx_lock(&stream->mtx);
         result = _file_flush_buffer(stream);
-        _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+        mtx_unlock(&stream->mtx);
     }
 
     return result == ERR ? EOF : 0;

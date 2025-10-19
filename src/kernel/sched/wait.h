@@ -31,7 +31,7 @@ typedef struct cpu cpu_t;
  *
  * Blocks untill condition is true, condition will be tested after every time the thread wakes up.
  *
- * Check `wait_block_do()` for errno values.
+ * Check `wait_block_commit()` for errno values.
  *
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
@@ -47,7 +47,7 @@ typedef struct cpu cpu_t;
                 result = ERR; \
                 break; \
             } \
-            result = wait_block_do(); \
+            result = wait_block_commit(); \
         } \
         result; \
     })
@@ -58,7 +58,7 @@ typedef struct cpu cpu_t;
  * Blocks untill condition is true, condition will be tested after every time the thread wakes up.
  * Will also return after timeout is reached, the thread will automatically wake up whence the timeout is reached.
  *
- * Check `wait_block_do()` for errno values.
+ * Check `wait_block_commit()` for errno values.
  *
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
@@ -83,7 +83,7 @@ typedef struct cpu cpu_t;
                 result = ERR; \
                 break; \
             } \
-            result = wait_block_do(); \
+            result = wait_block_commit(); \
             uptime = timer_uptime(); \
         } \
         result; \
@@ -95,7 +95,7 @@ typedef struct cpu cpu_t;
  * Blocks untill condition is true, condition will be tested after every time the thread wakes up.
  * Should be called with the lock acquired, will release the lock before blocking and return with the lock acquired.
  *
- * Check `wait_block_do()` for errno values.
+ * Check `wait_block_commit()` for errno values.
  *
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
@@ -112,7 +112,7 @@ typedef struct cpu cpu_t;
                 break; \
             } \
             lock_release(lock); \
-            result = wait_block_do(); \
+            result = wait_block_commit(); \
             assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE); \
             lock_acquire(lock); \
         } \
@@ -126,7 +126,7 @@ typedef struct cpu cpu_t;
  * Should be called with lock acquired, will release lock before blocking and return with lock acquired.
  * Will also return after timeout is reached, timeout will be reached even if wait_unblock is never called.
  *
- * Check `wait_block_do()` for errno values.
+ * Check `wait_block_commit()` for errno values.
  *
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
@@ -151,7 +151,7 @@ typedef struct cpu cpu_t;
                 break; \
             } \
             lock_release(lock); \
-            result = wait_block_do(); \
+            result = wait_block_commit(); \
             assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE); \
             lock_acquire(lock); \
             uptime = timer_uptime(); \
@@ -185,21 +185,6 @@ typedef struct wait_entry
 } wait_entry_t;
 
 /**
- * @brief Per-thread wait context.
- * @struct wait_thread_ctx_t
- *
- * Each thread stores all wait queues it is currently waiting on in here to allow blocking on multiple wait queues,
- * since if one queue unblocks the thread must be removed from all other queues as well.
- */
-typedef struct
-{
-    list_t entries;   ///< List of wait entries, one for each wait queue the thread is waiting on.
-    errno_t err;      ///< Error number set when unblocking the thread, `EOK` for no error.
-    clock_t deadline; ///< Deadline for timeout, `CLOCKS_NEVER` for no timeout.
-    cpu_t* owner;     ///< The cpu the thread is currently blocked on, `NULL` if not blocked yet.
-} wait_thread_ctx_t;
-
-/**
  * @brief Per-CPU wait context.
  * @struct wait_cpu_ctx_t
  *
@@ -208,8 +193,24 @@ typedef struct
 typedef struct
 {
     list_t blockedThreads; ///< List of blocked threads, sorted by deadline.
+    cpu_t* cpu;            ///< The CPU this context belongs to.
     lock_t lock;
 } wait_cpu_ctx_t;
+
+/**
+ * @brief Per-thread wait context.
+ * @struct wait_thread_ctx_t
+ *
+ * Each thread stores all wait queues it is currently waiting on in here to allow blocking on multiple wait queues,
+ * since if one queue unblocks the thread must be removed from all other queues as well.
+ */
+typedef struct
+{
+    list_t entries;      ///< List of wait entries, one for each wait queue the thread is waiting on.
+    errno_t err;         ///< Error number set when unblocking the thread, `EOK` for no error.
+    clock_t deadline;    ///< Deadline for timeout, `CLOCKS_NEVER` for no timeout.
+    wait_cpu_ctx_t* cpu; ///< The wait cpu context of the cpu the thread is blocked on.
+} wait_thread_ctx_t;
 
 /**
  * @brief Alternative way to create a wait queue for static initialization.
@@ -246,17 +247,20 @@ void wait_thread_ctx_init(wait_thread_ctx_t* wait);
  * @brief Initialize per-CPU wait context.
  *
  * @param wait The CPU wait context to initialize.
+ * @param cpu The CPU the context belongs to.
  */
-void wait_cpu_ctx_init(wait_cpu_ctx_t* wait);
+void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* cpu);
 
 /**
  * @brief Finalize blocking of a thread.
  *
- * When `wait_block_do()` is called the thread will schedule, the scheduler will then call this function to finalize the
- * blocking of the thread.
+ * When `wait_block_commit()` is called the thread will schedule, the scheduler will then call this function to finalize
+ * the blocking of the thread.
  *
- * Its possible that during the gap between `wait_block_do()` and this function being called the thread was unblocked
- * already, in that case this function will return false and the thread will not be blocked.
+ * Its possible that during the gap between `wait_block_commit()` and this function being called the thread was
+ * unblocked already, in that case this function will return false and the thread will not be blocked.
+ *
+ * This function will add the thread to the cpu's `blockedThreads` list to handle timeouts.
  *
  * @param frame The interrupt frame.
  * @param self The CPU the thread is being blocked on.
@@ -289,7 +293,8 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount, errno_t err);
  * @brief Setup blocking but dont block yet.
  *
  * Adds the currently running thread to the provided wait queues, sets the threads state and disables interrupts. But it
- * does not yet actually block, the thread will continue executing code and will return from the function.
+ * does not yet actually block, and it does not add the thread to its cpus `blockedThreads` list, the thread will
+ * continue executing code and will return from the function.
  *
  * @param waitQueues Array of wait queues to add the thread to.
  * @param amount Number of wait queues to add the thread to.
@@ -301,20 +306,18 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
 /**
  * @brief Cancel blocking.
  *
- * Cancels the blocking of the currently running thread. Should only be called after
- * `wait_block_setup()` has been called. It removes the thread from the wait queues and sets the threads state to
- * `THREAD_RUNNING`. It also always enables interrupts.
- *
- * @param err The errno value to set for the thread or `EOK` for no error.
+ * Cancels the blocking of the currently running thread. Should only be called after`wait_block_setup()` has been
+ * called. It removes the thread from the wait queues and sets the threads state to`THREAD_RUNNING`. It also always
+ * enables interrupts.
  */
-void wait_block_cancel(errno_t err);
+void wait_block_cancel(void);
 
 /**
  * @brief Block the currently running thread.
  *
- * Blocks the currently running thread. Should only be called after `wait_block_setup()` has been called. It removes the
- * thread from the wait queues and sets the threads state to `THREAD_BLOCKED`. When the thread is rescheduled interrupts
- * will be enabled.
+ * Blocks the currently running thread. Should only be called after `wait_block_setup()` has been called. It invokes the
+ * scheduler which will end up calling `wait_block_finalize()` to finalize the blocking of the thread. Will enable
+ * interrupts again when the thread is unblocked.
  *
  * Noteworthy errno values:
  * - `ETIMEDOUT`: The wait timed out.
@@ -322,6 +325,6 @@ void wait_block_cancel(errno_t err);
  *
  * @return On success, 0. On failure, returns `ERR` and `errno` is set.
  */
-uint64_t wait_block_do(void);
+uint64_t wait_block_commit(void);
 
 /** @} */

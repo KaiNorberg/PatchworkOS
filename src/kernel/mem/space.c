@@ -198,7 +198,8 @@ uint64_t space_pin(space_t* space, const void* buffer, uint64_t length)
     return 0;
 }
 
-uint64_t space_pin_terminated(space_t* space, const void* address, const void* terminator, uint8_t objectSize, uint64_t maxCount)
+uint64_t space_pin_terminated(space_t* space, const void* address, const void* terminator, uint8_t objectSize,
+    uint64_t maxCount)
 {
     if (space == NULL || address == NULL || terminator == NULL || objectSize == 0 || maxCount == 0)
     {
@@ -292,7 +293,7 @@ void space_unpin(space_t* space, const void* address, uint64_t length)
 
     page_table_unpin(&space->pageTable, address, pageAmount);
 
-    //wait_unblock(&space->pinWaitQueue, WAIT_ALL, EOK);
+    wait_unblock(&space->pinWaitQueue, WAIT_ALL, EOK);
 }
 
 uint64_t space_safe_copy_from(space_t* space, void* dest, const void* src, uint64_t length)
@@ -331,28 +332,49 @@ uint64_t space_safe_copy_to(space_t* space, void* dest, const void* src, uint64_
     return 0;
 }
 
-uint64_t space_safe_pathname_init(space_t* space, pathname_t* pathname, const char* path, uint64_t maxLength)
+uint64_t space_safe_pathname_init(space_t* space, pathname_t* pathname, const char* path)
 {
-    if (space == NULL || pathname == NULL || path == NULL || maxLength == 0)
+    if (space == NULL || pathname == NULL || path == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
     char terminator = '\0';
-    uint64_t pathLength = space_pin_terminated(space, path, &terminator, sizeof(char), maxLength);
+    uint64_t pathLength = space_pin_terminated(space, path, &terminator, sizeof(char), MAX_PATH);
     if (pathLength == ERR)
     {
         return ERR;
     }
 
-    if (pathname_init(pathname, path) == ERR)
+    char copy[MAX_PATH];
+    memcpy(copy, path, pathLength);
+    copy[pathLength] = '\0';
+    space_unpin(space, path, pathLength);
+
+    if (pathname_init(pathname, copy) == ERR)
     {
-        space_unpin(space, path, pathLength);
         return ERR;
     }
 
-    space_unpin(space, path, pathLength);
+    return 0;
+}
+
+uint64_t space_safe_atomic_uint64_t_load(space_t* space, atomic_uint64_t* obj, uint64_t* outValue)
+{
+    if (space == NULL || obj == NULL || outValue == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (space_pin(space, obj, sizeof(atomic_uint64_t)) == ERR)
+    {
+        return ERR;
+    }
+
+    *outValue = atomic_load(obj);
+    space_unpin(space, obj, sizeof(atomic_uint64_t));
     return 0;
 }
 

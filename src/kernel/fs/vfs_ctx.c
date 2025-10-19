@@ -119,7 +119,7 @@ SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
     space_t* space = &process->space;
 
     pathname_t pathname;
-    if (space_safe_pathname_init(space, &pathname, pathString, MAX_PATH) == ERR)
+    if (space_safe_pathname_init(space, &pathname, pathString) == ERR)
     {
         return ERR;
     }

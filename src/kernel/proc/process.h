@@ -112,7 +112,9 @@ bool process_is_child(process_t* process, pid_t parentId);
  *
  * Will never return `NULL`.
  *
- * @return Tthe kernel process.
+ * Will not increment the reference count of the returned process as it should never be freed either way.
+ *
+ * @return The kernel process.
  */
 process_t* process_get_kernel(void);
 

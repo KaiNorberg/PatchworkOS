@@ -44,7 +44,7 @@ typedef struct FILE
     unsigned char ungetBuf[_UNGETC_MAX];
     uint64_t ungetIndex;
     _file_flags_t flags;
-    _platform_mutex_t mtx;
+    mtx_t mtx;
     char filename[MAX_PATH];
 } FILE;
 

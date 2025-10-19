@@ -1,11 +1,11 @@
+#include <errno.h>
 #include <libpatchwork/patchwork.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/io.h>
 #include <sys/proc.h>
 #include <threads.h>
-#include <errno.h>
-#include <string.h>
 
 static void spawn_program(const char* path, priority_t priority)
 {

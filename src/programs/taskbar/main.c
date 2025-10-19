@@ -1,8 +1,8 @@
 #include "taskbar.h"
 
+#include <libpatchwork/patchwork.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <libpatchwork/patchwork.h>
 
 int main(void)
 {

@@ -25,7 +25,7 @@ typedef struct _thread
     list_entry_t entry;
     atomic_uint64_t state;
     tid_t id;
-    int64_t result;
+    int result;
     errno_t err;
     void* private;
 } _thread_t;

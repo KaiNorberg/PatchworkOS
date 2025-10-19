@@ -25,17 +25,17 @@ long int ftell(FILE* stream)
         offset value.
     */
     long int result;
-    _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
+    mtx_lock(&stream->mtx);
 
     if ((stream->pos.offset - stream->bufEnd) > (LONG_MAX - (stream->bufIndex - stream->ungetIndex)))
     {
         /* integer overflow */
-        _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+        mtx_unlock(&stream->mtx);
         errno = ERANGE;
         return -1;
     }
 
     result = (stream->pos.offset - (((int)stream->bufEnd - (int)stream->bufIndex) + stream->ungetIndex));
-    _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+    mtx_unlock(&stream->mtx);
     return result;
 }

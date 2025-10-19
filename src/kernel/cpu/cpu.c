@@ -27,7 +27,7 @@ uint64_t cpu_init(cpu_t* cpu, cpuid_t id)
     interrupt_ctx_init(&cpu->interrupt);
     statistics_cpu_ctx_init(&cpu->stat);
     timer_ctx_init(&cpu->timer);
-    wait_cpu_ctx_init(&cpu->wait);
+    wait_cpu_ctx_init(&cpu->wait, cpu);
     sched_cpu_ctx_init(&cpu->sched, cpu);
 
     if (stack_pointer_init_buffer(&cpu->exceptionStack, cpu->exceptionStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) == ERR)

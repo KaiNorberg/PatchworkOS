@@ -1,12 +1,12 @@
 #include "screen.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fb.h>
 #include <sys/io.h>
 #include <sys/proc.h>
-#include <errno.h>
 
 static fb_info_t info;
 static void* frontbuffer;

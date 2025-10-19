@@ -18,11 +18,11 @@ int vfprintf(FILE* _RESTRICT stream, const char* _RESTRICT format, va_list arg)
     ctx.precision = EOF;
     ctx.stream = stream;
 
-    _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
+    mtx_lock(&stream->mtx);
 
     if (_file_prepare_write(stream) == ERR)
     {
-        _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+        mtx_unlock(&stream->mtx);
         return EOF;
     }
 
@@ -42,7 +42,7 @@ int vfprintf(FILE* _RESTRICT stream, const char* _RESTRICT format, va_list arg)
             {
                 if (_file_flush_buffer(stream) == ERR)
                 {
-                    _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+                    mtx_unlock(&stream->mtx);
                     return EOF;
                 }
             }
@@ -58,6 +58,6 @@ int vfprintf(FILE* _RESTRICT stream, const char* _RESTRICT format, va_list arg)
     }
 
     va_end(ctx.arg);
-    _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+    mtx_unlock(&stream->mtx);
     return ctx.totalChars;
 }

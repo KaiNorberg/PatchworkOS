@@ -7,7 +7,7 @@ int ungetc(int c, FILE* stream)
 {
     int rc;
 
-    _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
+    mtx_lock(&stream->mtx);
 
     if (c == EOF || stream->ungetIndex == _UNGETC_MAX)
     {
@@ -18,7 +18,7 @@ int ungetc(int c, FILE* stream)
         rc = stream->ungetBuf[stream->ungetIndex++] = (unsigned char)c;
     }
 
-    _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+    mtx_unlock(&stream->mtx);
 
     return rc;
 }

@@ -17,9 +17,9 @@ int thrd_sleep(const struct timespec* duration, struct timespec* remaining)
         nanosleep(nanoseconds);
         clock_t end = uptime();
 
-        clock_t timeTaken = end - start;
-        remaining->tv_sec = timeTaken / CLOCKS_PER_SEC;
-        remaining->tv_nsec = timeTaken % CLOCKS_PER_SEC;
+        clock_t timeLeft = nanoseconds - (end - start);
+        remaining->tv_sec = timeLeft / CLOCKS_PER_SEC;
+        remaining->tv_nsec = timeLeft % CLOCKS_PER_SEC;
     }
     else
     {

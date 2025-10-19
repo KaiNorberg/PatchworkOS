@@ -4,11 +4,11 @@
 
 int fputs(const char* _RESTRICT s, FILE* _RESTRICT stream)
 {
-    _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
+    mtx_lock(&stream->mtx);
 
     if (_file_prepare_write(stream) == ERR)
     {
-        _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+        mtx_unlock(&stream->mtx);
         return EOF;
     }
 
@@ -20,7 +20,7 @@ int fputs(const char* _RESTRICT s, FILE* _RESTRICT stream)
         {
             if (_file_flush_buffer(stream) == ERR)
             {
-                _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+                mtx_unlock(&stream->mtx);
                 return EOF;
             }
         }
@@ -32,12 +32,12 @@ int fputs(const char* _RESTRICT s, FILE* _RESTRICT stream)
     {
         if (_file_flush_buffer(stream) == ERR)
         {
-            _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+            mtx_unlock(&stream->mtx);
             return EOF;
         }
     }
 
-    _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+    mtx_unlock(&stream->mtx);
 
     return 0;
 }

@@ -1,9 +1,9 @@
 #pragma once
 
+#include "fs/path.h"
 #include "sched/wait.h"
 #include "sync/lock.h"
 #include "utils/bitmap.h"
-#include "fs/path.h"
 
 #include <boot/boot_info.h>
 #include <common/paging_types.h>
@@ -142,7 +142,8 @@ uint64_t space_pin(space_t* space, const void* address, uint64_t length);
  * @param maxCount The maximum number of objects to scan before failing.
  * @return On success, the number of bytes pinned, not including the terminator. On failure, `ERR` and `errno` is set.
  */
-uint64_t space_pin_terminated(space_t* space, const void* address, const void* terminator, uint8_t objectSize, uint64_t maxCount);
+uint64_t space_pin_terminated(space_t* space, const void* address, const void* terminator, uint8_t objectSize,
+    uint64_t maxCount);
 
 /**
  * @brief Unpins pages in a region previously pinned with `space_pin()` or `space_pin_string()`.
@@ -185,10 +186,21 @@ uint64_t space_safe_copy_to(space_t* space, void* dest, const void* src, uint64_
  * @param space The target address space.
  * @param pathname The pathname to initialize.
  * @param path The path string.
- * @param maxLength The maximum length of the path string, including the NULL-terminator.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t space_safe_pathname_init(space_t* space, pathname_t* pathname, const char* path, uint64_t maxLength);
+uint64_t space_safe_pathname_init(space_t* space, pathname_t* pathname, const char* path);
+
+/**
+ * @brief Safely loads an atomic uint64_t from the address space.
+ *
+ * Pins the atomic uint64_t, loads its value, and then unpins it.
+ *
+ * @param space The target address space.
+ * @param obj The atomic uint64_t to load.
+ * @param outValue Pointer to store the loaded value.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t space_safe_atomic_uint64_t_load(space_t* space, atomic_uint64_t* obj, uint64_t* outValue);
 
 /**
  * @brief Checks if a virtual memory region is within the allowed address range of the space.

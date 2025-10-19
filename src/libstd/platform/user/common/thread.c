@@ -8,18 +8,24 @@ static _thread_t thread0;
 static list_t threads;
 static mtx_t mutex;
 
+static void _thread_init(_thread_t* thread)
+{
+    list_entry_init(&thread->entry);
+    atomic_init(&thread->state, _THREAD_ATTACHED);
+    thread->id = 0;
+    thread->result = 0;
+    thread->err = EOK;
+    thread->private = NULL;
+}
+
 void _threading_init(void)
 {
     list_init(&threads);
     mtx_init(&mutex, mtx_recursive);
 
-    // We cant yet use the heap, so we do this weird stuff
-    list_entry_init(&thread0.entry);
-    atomic_init(&thread0.state, _THREAD_ATTACHED);
-    thread0.id = gettid();
-    thread0.result = 0;
-    thread0.err = 0;
-    thread0.private = NULL;
+    // We cant yet use the heap yet
+    _thread_init(&thread0);
+    thread0.id = _syscall_gettid();
 
     list_push(&threads, &thread0.entry);
 }
@@ -32,24 +38,17 @@ _thread_t* _thread_new(_thread_entry_t entry, void* private)
         return NULL;
     }
 
-    mtx_lock(&mutex);
-
-    list_entry_init(&thread->entry);
-    atomic_init(&thread->state, _THREAD_ATTACHED);
-    thread->result = 0;
-    thread->err = 0;
+    _thread_init(thread);
     thread->private = private;
-
     thread->id = _syscall_thread_create(entry, thread);
     if (thread->id == ERR)
     {
         errno = _syscall_errno();
-
-        mtx_unlock(&mutex);
         free(thread);
         return NULL;
     }
 
+    mtx_lock(&mutex);
     list_push(&threads, &thread->entry);
     mtx_unlock(&mutex);
 

@@ -7,11 +7,11 @@
 
 size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTRICT stream)
 {
-    _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
+    mtx_lock(&stream->mtx);
 
     if (_file_prepare_write(stream) == ERR)
     {
-        _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+        mtx_unlock(&stream->mtx);
         return 0;
     }
 
@@ -35,7 +35,7 @@ size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTR
             {
                 if (_file_flush_buffer(stream) == ERR)
                 {
-                    _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+                    mtx_unlock(&stream->mtx);
                     return n;
                 }
 
@@ -55,7 +55,7 @@ size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTR
                Catch 22. We'll return a value one short, to indicate the
                error, and can't really do anything about the inconsistency.
             */
-            _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+            mtx_unlock(&stream->mtx);
             return n - 1;
         }
     }
@@ -70,7 +70,7 @@ size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTR
             {
                 /* See comment above. */
                 stream->bufIndex = bufIndex;
-                _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+                mtx_unlock(&stream->mtx);
                 return n - 1;
             }
 
@@ -79,6 +79,6 @@ size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTR
         }
     }
 
-    _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+    mtx_unlock(&stream->mtx);
     return n;
 }

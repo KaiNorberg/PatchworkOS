@@ -182,11 +182,11 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
     {
         return NULL;
     }
+    DEREF_DEFER(child);
 
     thread_t* childThread = thread_new(child);
     if (childThread == NULL)
     {
-        DEREF(child);
         return NULL;
     }
 
@@ -240,7 +240,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     else
     {
         pathname_t cwdPathname;
-        if (space_safe_pathname_init(space, &cwdPathname, cwdString, MAX_PATH) == ERR)
+        if (space_safe_pathname_init(space, &cwdPathname, cwdString) == ERR)
         {
             space_unpin(space, argv, argvSize);
             return ERR;
@@ -263,12 +263,12 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     {
         return ERR;
     }
-    DEREF_DEFER(child);
 
     spawn_fd_t fdsTerminator = SPAWN_FD_END;
     uint64_t fdsSize = space_pin_terminated(space, fds, &fdsTerminator, sizeof(spawn_fd_t), CONFIG_MAX_FD);
     if (fdsSize == ERR)
     {
+        DEREF(child);
         return ERR;
     }
     uint64_t fdAmount = fdsSize / sizeof(spawn_fd_t);
@@ -278,11 +278,10 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
 
     for (uint64_t i = 0; i < fdAmount; i++)
     {
-        LOG_DEBUG("spawn fd parent=%d child=%d\n", fds[i].parent, fds[i].child);
-
         file_t* file = vfs_ctx_get_file(parentVfsCtx, fds[i].parent);
         if (file == NULL)
         {
+            thread_free(child);
             space_unpin(space, fds, fdsSize);
             errno = EBADF;
             return ERR;
@@ -291,6 +290,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
 
         if (vfs_ctx_openas(childVfsCtx, fds[i].child, file) == ERR)
         {
+            thread_free(child);
             space_unpin(space, fds, fdsSize);
             errno = EBADF;
             return ERR;
@@ -298,7 +298,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     }
     space_unpin(space, fds, fdsSize);
 
-    sched_push_new_thread(REF(child), thread);
+    sched_push_new_thread(child, thread);
     return child->process->id;
 }
 

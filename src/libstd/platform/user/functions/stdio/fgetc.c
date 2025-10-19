@@ -8,7 +8,7 @@ int fgetc(FILE* stream)
 {
     int result = EOF;
 
-    _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
+    mtx_lock(&stream->mtx);
 
     if (_file_prepare_read(stream) != ERR)
     {
@@ -18,7 +18,7 @@ int fgetc(FILE* stream)
         }
     }
 
-    _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+    mtx_unlock(&stream->mtx);
 
     return result;
 }

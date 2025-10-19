@@ -4,11 +4,11 @@
 
 int puts(const char* _RESTRICT s)
 {
-    _PLATFORM_MUTEX_ACQUIRE(&stdout->mtx);
+    mtx_lock(&stdout->mtx);
 
     if (_file_prepare_write(stdout) == ERR)
     {
-        _PLATFORM_MUTEX_RELEASE(&stdout->mtx);
+        mtx_unlock(&stdout->mtx);
         return EOF;
     }
 
@@ -20,7 +20,7 @@ int puts(const char* _RESTRICT s)
         {
             if (_file_flush_buffer(stdout) == ERR)
             {
-                _PLATFORM_MUTEX_RELEASE(&stdout->mtx);
+                mtx_unlock(&stdout->mtx);
                 return EOF;
             }
         }
@@ -31,12 +31,12 @@ int puts(const char* _RESTRICT s)
     if ((stdout->bufIndex == stdout->bufSize) || (stdout->flags & (_FILE_LINE_BUFFERED | _FILE_UNBUFFERED)))
     {
         uint64_t result = _file_flush_buffer(stdout);
-        _PLATFORM_MUTEX_RELEASE(&stdout->mtx);
+        mtx_unlock(&stdout->mtx);
         return result == ERR ? EOF : 0;
     }
     else
     {
-        _PLATFORM_MUTEX_RELEASE(&stdout->mtx);
+        mtx_unlock(&stdout->mtx);
         return 0;
     }
 }

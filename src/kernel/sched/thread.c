@@ -25,29 +25,10 @@ static uintptr_t thread_id_to_offset(tid_t tid, uint64_t maxPages)
     return tid * ((maxPages + STACK_POINTER_GUARD_PAGES) * PAGE_SIZE);
 }
 
-static void thread_free(thread_t* thread)
-{
-    process_t* process = thread->process;
-    if (process != NULL)
-    {
-        lock_acquire(&process->threads.lock);
-        list_remove(&process->threads.list, &thread->processEntry);
-        lock_release(&process->threads.lock);
-        DEREF(process);
-        thread->process = NULL;
-    }
-
-    assert(atomic_load(&thread->state) == THREAD_ZOMBIE);
-
-    simd_ctx_deinit(&thread->simd);
-    heap_free(thread);
-}
-
 static uint64_t thread_init(thread_t* thread, process_t* process)
 {
-    ref_init(&thread->ref, thread_free);
     list_entry_init(&thread->entry);
-    thread->process = process;
+    thread->process = REF(process);
     list_entry_init(&thread->processEntry);
     thread->id = thread->process->threads.newTid++;
     sched_thread_ctx_init(&thread->sched);
@@ -57,21 +38,25 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
             VMM_KERNEL_STACKS_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_KERNEL_STACK_PAGES),
             CONFIG_MAX_KERNEL_STACK_PAGES) == ERR)
     {
+        DEREF(process);
         return ERR;
     }
     if (stack_pointer_init(&thread->userStack,
             VMM_USER_SPACE_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_USER_STACK_PAGES),
             CONFIG_MAX_USER_STACK_PAGES) == ERR)
     {
+        DEREF(process);
         return ERR;
     }
     wait_thread_ctx_init(&thread->wait);
     if (simd_ctx_init(&thread->simd) == ERR)
     {
+        DEREF(process);
         return ERR;
     }
     note_queue_init(&thread->notes);
     syscall_ctx_init(&thread->syscall, &thread->kernelStack);
+
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
 
     lock_acquire(&process->threads.lock);
@@ -102,12 +87,24 @@ thread_t* thread_new(process_t* process)
     return thread;
 }
 
-void thread_kill(thread_t* thread)
+void thread_free(thread_t* thread)
 {
-    if (atomic_exchange(&thread->state, THREAD_ZOMBIE) != THREAD_RUNNING)
-    {
-        panic(NULL, "Invalid state while killing thread");
-    }
+    LOG_DEBUG("freeing tid=%d pid=%d\n", thread->id, thread->process->id);
+
+    process_t* process = thread->process;
+    assert(process != NULL);
+
+    lock_acquire(&process->threads.lock);
+    list_remove(&process->threads.list, &thread->processEntry);
+    lock_release(&process->threads.lock);
+
+    DEREF(process);
+    thread->process = NULL;
+
+    assert(atomic_load(&thread->state) == THREAD_ZOMBIE);
+
+    simd_ctx_deinit(&thread->simd);
+    heap_free(thread);
 }
 
 void thread_save(thread_t* thread, const interrupt_frame_t* frame)

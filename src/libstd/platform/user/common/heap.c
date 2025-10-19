@@ -6,8 +6,9 @@
 #include <sys/io.h>
 #include <sys/math.h>
 #include <sys/proc.h>
+#include <threads.h>
 
-static _platform_mutex_t mutex;
+static mtx_t mutex;
 
 static _heap_header_t* firstBlock;
 
@@ -45,13 +46,17 @@ _heap_header_t* _heap_block_new(uint64_t size)
 
 void _heap_init(void)
 {
-    _PLATFORM_MUTEX_INIT(&mutex);
+    if (mtx_init(&mutex, mtx_recursive) != thrd_success)
+    {
+        abort();
+    }
+
     firstBlock = NULL;
 
     zeroResource = open("/dev/zero");
     if (zeroResource == ERR)
     {
-        exit(EXIT_FAILURE);
+        abort();
     }
 }
 
@@ -127,15 +132,19 @@ void* _heap_alloc(uint64_t size)
 void _heap_free(void* ptr)
 {
     _heap_header_t* block = (_heap_header_t*)((uint64_t)ptr - sizeof(_heap_header_t));
+    if (block->magic != _HEAP_HEADER_MAGIC)
+    {
+        abort();
+    }
     block->reserved = false;
 }
 
 void _heap_acquire(void)
 {
-    _PLATFORM_MUTEX_ACQUIRE(&mutex);
+    mtx_lock(&mutex);
 }
 
 void _heap_release(void)
 {
-    _PLATFORM_MUTEX_RELEASE(&mutex);
+    mtx_unlock(&mutex);
 }

@@ -196,7 +196,12 @@ void sched_process_exit(uint64_t status)
 {
     thread_t* thread = sched_thread();
     process_kill(thread->process, status);
-    thread_kill(thread);
+
+    LOG_DEBUG("killing tid=%d pid=%d\n", thread->id, thread->process->id);
+    if (atomic_exchange(&thread->state, THREAD_ZOMBIE) != THREAD_RUNNING)
+    {
+        panic(NULL, "Invalid state while killing thread");
+    }
 }
 
 SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, uint64_t status)
@@ -208,7 +213,12 @@ SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, uint64_t status)
 
 void sched_thread_exit(void)
 {
-    thread_kill(sched_thread());
+    thread_t* thread = sched_thread();
+    LOG_DEBUG("killing tid=%d pid=%d\n", thread->id, thread->process->id);
+    if (atomic_exchange(&thread->state, THREAD_ZOMBIE) != THREAD_RUNNING)
+    {
+        panic(NULL, "Invalid state while killing thread");
+    }
 }
 
 SYSCALL_DEFINE(SYS_THREAD_EXIT, void)
@@ -610,7 +620,7 @@ void sched_schedule(interrupt_frame_t* frame, cpu_t* self)
 
     if (threadToFree != NULL)
     {
-        DEREF(threadToFree);
+        thread_free(threadToFree);
     }
 
     if (ctx->runThread != ctx->idleThread && ctx->runThread->sched.deadline > uptime)

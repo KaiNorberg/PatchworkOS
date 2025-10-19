@@ -7,8 +7,8 @@
 #include "drivers/hpet.h"
 #include "drivers/rtc.h"
 #include "log/log.h"
-#include "proc/process.h"
 #include "log/panic.h"
+#include "proc/process.h"
 
 #include <stdatomic.h>
 #include <stdbool.h>

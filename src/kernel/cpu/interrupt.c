@@ -71,8 +71,8 @@ static void exception_handler(interrupt_frame_t* frame)
         thread_t* thread = sched_thread();
         process_t* process = thread->process;
 
-        LOG_DEBUG("unhandled user space exception in process pid=%d vector=%lld error=0x%llx rip=0x%llx\n",
-            process->id, frame->vector, frame->errorCode, frame->rip);
+        LOG_DEBUG("unhandled user space exception in process pid=%d vector=%lld error=0x%llx rip=0x%llx\n", process->id,
+            frame->vector, frame->errorCode, frame->rip);
 
         sched_process_exit(EFAULT);
     }

@@ -55,7 +55,6 @@ typedef enum
  */
 typedef struct thread
 {
-    ref_t ref;
     list_entry_t entry;        ///< The list entry used by for example the scheduler and wait system.
     process_t* process;        ///< The parent process that the thread executes within.
     list_entry_t processEntry; ///< The list entry used by the parent process.
@@ -87,21 +86,17 @@ typedef struct thread
  *
  * Does not push the created thread to the scheduler or similar, merely handling allocation and initialization.
  *
- * There is no `thread_free()`, instead use `DEREF()`, `DEREF_DEFER()` or `thread_kill()` to free a thread.
- *
  * @param process The parent process that the thread will execute within.
  * @return On success, returns the newly created thread. On failure, returns `NULL` and `errno` is set.
  */
 thread_t* thread_new(process_t* process);
 
 /**
- * @brief Signals to a thread that it is dying.
+ * @brief Frees a thread structure.
  *
- * Does not free the thread and the thread will continue executing as a zombie after this function.
- *
- * @param thread The thread to be killed.
+ * @param thread The thread to be freed.
  */
-void thread_kill(thread_t* thread);
+void thread_free(thread_t* thread);
 
 /**
  * @brief Save state to a thread.

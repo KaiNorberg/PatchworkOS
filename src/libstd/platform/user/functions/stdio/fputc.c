@@ -6,11 +6,11 @@
 
 int fputc(int c, FILE* stream)
 {
-    _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
+    mtx_lock(&stream->mtx);
 
     if (_file_prepare_write(stream) == ERR)
     {
-        _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+        mtx_unlock(&stream->mtx);
         return EOF;
     }
 
@@ -22,7 +22,7 @@ int fputc(int c, FILE* stream)
         c = (_file_flush_buffer(stream) != ERR) ? c : EOF;
     }
 
-    _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+    mtx_unlock(&stream->mtx);
 
     return c;
 }

@@ -19,11 +19,11 @@ int vfscanf(FILE* _RESTRICT stream, const char* _RESTRICT format, va_list arg)
     ctx.precision = EOF;
     ctx.stream = stream;
 
-    _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
+    mtx_lock(&stream->mtx);
 
     if (_file_prepare_read(stream) == ERR || _FILE_CHECK_AVAIL(stream) == ERR)
     {
-        _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+        mtx_unlock(&stream->mtx);
         return EOF;
     }
 
@@ -64,11 +64,11 @@ int vfscanf(FILE* _RESTRICT stream, const char* _RESTRICT format, va_list arg)
                     }
                     else if (ctx.maxChars == 0)
                     {
-                        _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+                        mtx_unlock(&stream->mtx);
                         return EOF;
                     }
 
-                    _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+                    mtx_unlock(&stream->mtx);
                     return ctx.maxChars;
                 }
                 else
@@ -93,6 +93,6 @@ int vfscanf(FILE* _RESTRICT stream, const char* _RESTRICT format, va_list arg)
     }
 
     va_end(ctx.arg);
-    _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+    mtx_unlock(&stream->mtx);
     return ctx.maxChars;
 }

@@ -198,6 +198,9 @@ thread_t* sched_thread(void);
 /**
  * @brief Retrieves the process of the currently running thread.
  *
+ * Will not increment the reference count of the returned process, as we consider the currently running thread to always
+ * be referencing its process.
+ *
  * @return The process of the currently running thread.
  */
 process_t* sched_process(void);
@@ -248,8 +251,6 @@ void sched_push_new_thread(thread_t* thread, thread_t* parent);
 
 /**
  * @brief The main scheduling function.
- *
- * Note that this function should only be called in an interrupt handler.
  *
  * @param frame The current interrupt frame.
  * @param self The currently running cpu.

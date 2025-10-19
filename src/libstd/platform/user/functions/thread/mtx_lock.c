@@ -17,7 +17,7 @@ int mtx_lock(mtx_t* mutex)
         return thrd_success;
     }
 
-    for (uint64_t i = 0; i < _MTX_SPIN_COUNT; ++i)
+    for (uint64_t i = 0; i < _MTX_SPIN_COUNT; i++)
     {
         uint64_t expected = _MTX_UNLOCKED;
         if (atomic_compare_exchange_strong(&(mutex->state), &expected, _MTX_LOCKED))

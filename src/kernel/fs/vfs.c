@@ -821,7 +821,7 @@ SYSCALL_DEFINE(SYS_OPEN, fd_t, const char* pathString)
     space_t* space = &process->space;
 
     pathname_t pathname;
-    if (space_safe_pathname_init(space, &pathname, pathString, MAX_PATH) == ERR)
+    if (space_safe_pathname_init(space, &pathname, pathString) == ERR)
     {
         return ERR;
     }
@@ -895,7 +895,7 @@ SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
     space_t* space = &process->space;
 
     pathname_t pathname;
-    if (space_safe_pathname_init(space, &pathname, pathString, MAX_PATH) == ERR)
+    if (space_safe_pathname_init(space, &pathname, pathString) == ERR)
     {
         return ERR;
     }
@@ -1322,17 +1322,17 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         readyCount = vfs_poll_ctx_check_events(&ctx, files, amount);
         if (readyCount == ERR)
         {
-            wait_block_cancel(errno);
+            wait_block_cancel();
             return ERR;
         }
 
         if (readyCount > 0 || uptime >= deadline)
         {
-            wait_block_cancel(EOK);
+            wait_block_cancel();
             break;
         }
 
-        if (wait_block_do() == ERR)
+        if (wait_block_commit() == ERR)
         {
             if (errno == ETIMEDOUT)
             {
@@ -1506,7 +1506,7 @@ SYSCALL_DEFINE(SYS_STAT, uint64_t, const char* pathString, stat_t* buffer)
     space_t* space = &process->space;
 
     pathname_t pathname;
-    if (space_safe_pathname_init(space, &pathname, pathString, MAX_PATH) == ERR)
+    if (space_safe_pathname_init(space, &pathname, pathString) == ERR)
     {
         return ERR;
     }
@@ -1604,13 +1604,13 @@ SYSCALL_DEFINE(SYS_LINK, uint64_t, const char* oldPathString, const char* newPat
     space_t* space = &process->space;
 
     pathname_t oldPathname;
-    if (space_safe_pathname_init(space, &oldPathname, oldPathString, MAX_PATH) == ERR)
+    if (space_safe_pathname_init(space, &oldPathname, oldPathString) == ERR)
     {
         return ERR;
     }
 
     pathname_t newPathname;
-    if (space_safe_pathname_init(space, &newPathname, newPathString, MAX_PATH) == ERR)
+    if (space_safe_pathname_init(space, &newPathname, newPathString) == ERR)
     {
         return ERR;
     }
@@ -1678,7 +1678,7 @@ SYSCALL_DEFINE(SYS_DELETE, uint64_t, const char* pathString)
     space_t* space = &process->space;
 
     pathname_t pathname;
-    if (space_safe_pathname_init(space, &pathname, pathString, MAX_PATH) == ERR)
+    if (space_safe_pathname_init(space, &pathname, pathString) == ERR)
     {
         return ERR;
     }

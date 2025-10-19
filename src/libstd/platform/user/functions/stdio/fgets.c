@@ -18,7 +18,7 @@ char* fgets(char* _RESTRICT s, int size, FILE* _RESTRICT stream)
         return s;
     }
 
-    _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
+    mtx_lock(&stream->mtx);
 
     if (_file_prepare_read(stream) != ERR)
     {
@@ -35,7 +35,7 @@ char* fgets(char* _RESTRICT s, int size, FILE* _RESTRICT stream)
         } while (((*dest++ = _FILE_GETC(stream)) != '\n') && (--size > 0));
     }
 
-    _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+    mtx_unlock(&stream->mtx);
 
     *dest = '\0';
     return (dest == s) ? NULL : s;

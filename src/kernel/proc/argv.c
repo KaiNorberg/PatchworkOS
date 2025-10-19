@@ -1,7 +1,7 @@
 #include "argv.h"
 
-#include "mem/heap.h"
 #include "config.h"
+#include "mem/heap.h"
 
 #include <string.h>
 #include <sys/io.h>

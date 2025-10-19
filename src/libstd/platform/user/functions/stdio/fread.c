@@ -6,7 +6,7 @@
 
 size_t fread(void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTRICT stream)
 {
-    _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
+    mtx_lock(&stream->mtx);
 
     uint64_t n = 0;
 
@@ -19,7 +19,7 @@ size_t fread(void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTRICT str
             {
                 if (_FILE_CHECK_AVAIL(stream) == ERR)
                 {
-                    _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+                    mtx_unlock(&stream->mtx);
                     return n;
                 }
 
@@ -28,6 +28,6 @@ size_t fread(void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTRICT str
         }
     }
 
-    _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+    mtx_unlock(&stream->mtx);
     return n;
 }

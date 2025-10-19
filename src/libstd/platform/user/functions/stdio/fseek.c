@@ -5,13 +5,13 @@
 
 int fseek(FILE* stream, long offset, int whence)
 {
-    _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
+    mtx_lock(&stream->mtx);
 
     if (stream->flags & _FILE_WRITE)
     {
         if (_file_flush_buffer(stream) == ERR)
         {
-            _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+            mtx_unlock(&stream->mtx);
             return EOF;
         }
     }
@@ -29,6 +29,6 @@ int fseek(FILE* stream, long offset, int whence)
     }
 
     uint64_t result = (_file_seek(stream, offset, whence) != ERR) ? 0 : EOF;
-    _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+    mtx_unlock(&stream->mtx);
     return result;
 }

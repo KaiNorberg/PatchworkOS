@@ -6,18 +6,18 @@
 
 int fclose(struct FILE* stream)
 {
-    _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
+    mtx_lock(&stream->mtx);
 
     if (stream->flags & _FILE_WRITE)
     {
         if (_file_flush_buffer(stream) == ERR)
         {
-            _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+            mtx_unlock(&stream->mtx);
             return EOF;
         }
     }
 
-    _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+    mtx_unlock(&stream->mtx);
 
     _files_remove(stream);
     _file_deinit(stream);

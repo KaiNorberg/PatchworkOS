@@ -62,7 +62,7 @@ typedef struct
              */
             uint64_t pinned : 1;
             uint64_t available : 1; ///< Available for use by the OS.
-            uint64_t addr : 40; ///< The address contained in the entry, note that this is shifted right by 12 bits.
+            uint64_t addr : 40;     ///< The address contained in the entry, note that this is shifted right by 12 bits.
             /**
              * Check the virtual memory manager for more information. (Defined by PatchworkOS)
              */

@@ -35,6 +35,8 @@ void futex_ctx_deinit(futex_ctx_t* ctx)
 
 static futex_t* futex_ctx_get(futex_ctx_t* ctx, void* addr)
 {
+    LOCK_SCOPE(&ctx->lock);
+
     map_key_t key = map_key_uint64((uint64_t)addr);
     futex_t* futex = CONTAINER_OF(map_get(&ctx->futexes, &key), futex_t, entry);
     if (futex != NULL)
@@ -43,6 +45,11 @@ static futex_t* futex_ctx_get(futex_ctx_t* ctx, void* addr)
     }
 
     futex = heap_alloc(sizeof(futex_t), HEAP_NONE);
+    if (futex == NULL)
+    {
+        return NULL;
+    }
+
     map_entry_init(&futex->entry);
     wait_queue_init(&futex->queue);
 
@@ -50,33 +57,83 @@ static futex_t* futex_ctx_get(futex_ctx_t* ctx, void* addr)
     return futex;
 }
 
-uint64_t futex_do(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
+
+SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
     futex_ctx_t* ctx = &sched_process()->futexCtx;
-    LOCK_SCOPE(&ctx->lock);
 
     futex_t* futex = futex_ctx_get(ctx, addr);
+    if (futex == NULL)
+    {
+        return ERR;
+    }
 
     switch (op)
     {
     case FUTEX_WAIT:
     {
-        if (atomic_load(addr) != val)
+        clock_t uptime = timer_uptime();
+
+        clock_t deadline;
+        if (timeout == CLOCKS_NEVER)
         {
-            errno = EAGAIN;
-            return ERR;
+            deadline = CLOCKS_NEVER;
+        }
+        else if (timeout > CLOCKS_NEVER - uptime)
+        {
+            deadline = CLOCKS_NEVER;
+        }
+        else
+        {
+            deadline = uptime + timeout;
         }
 
-        clock_t start = timer_uptime();
-        if (WAIT_BLOCK_LOCK_TIMEOUT(&futex->queue, &ctx->lock, atomic_load(addr) != val, timeout) == ERR)
+        bool firstCheck = true;
+        while (true)
         {
-            return (timer_uptime() - start);
+            uptime = timer_uptime();
+            clock_t remaining = (deadline == CLOCKS_NEVER) ? CLOCKS_NEVER : deadline - uptime;
+            wait_queue_t* queue = &futex->queue;
+            if (wait_block_setup(&queue, 1, remaining) == ERR)
+            {
+                return ERR;
+            }
+
+            uint64_t addrVal;
+            if (space_safe_atomic_uint64_t_load(space, addr, &addrVal) == ERR)
+            {
+                wait_block_cancel();
+                return ERR;
+            }
+
+            if (addrVal != val)
+            {
+                wait_block_cancel();
+                if (firstCheck)
+                {
+                    errno = EAGAIN;
+                }
+                return 0;
+            }
+
+            // If a FUTEX_WAKE was called in between the check and the wait_block_commit() then we will unblock
+            // immediately.
+            if (wait_block_commit() == ERR)
+            {
+                return ERR;
+            }
         }
     }
     break;
     case FUTEX_WAKE:
     {
-        return wait_unblock(&futex->queue, val, EOK);
+        if (wait_unblock(&futex->queue, val, EOK) == ERR)
+        {
+            return ERR;
+        }
     }
     break;
     default:
@@ -85,21 +142,5 @@ uint64_t futex_do(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t ti
         return ERR;
     }
     }
-
     return 0;
-}
-
-SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
-{
-    process_t* process = sched_process();
-    space_t* space = &process->space;
-
-    if (space_pin(space, addr, sizeof(atomic_uint64_t)) == ERR)
-    {
-        errno = EFAULT;
-        return ERR;
-    }
-    uint64_t result = futex_do(addr, val, op, timeout);
-    space_unpin(space, addr, sizeof(atomic_uint64_t));
-    return result;
 }

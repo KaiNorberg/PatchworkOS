@@ -7,7 +7,7 @@
 #include <sys/io.h>
 
 static list_t files;
-static _platform_mutex_t filesMtx;
+static mtx_t filesMtx;
 
 _file_flags_t _file_flags_parse(const char* mode)
 {
@@ -131,8 +131,7 @@ uint64_t _file_init(FILE* stream, fd_t fd, _file_flags_t flags, void* buffer, ui
     stream->pos.status = 0;
     stream->ungetIndex = 0;
 
-#ifndef __STDC_NO_THREADS__
-    if (_PLATFORM_MUTEX_INIT(&stream->mtx) != thrd_success)
+    if (mtx_init(&stream->mtx, mtx_recursive) != thrd_success)
     {
         if (stream->flags & _FILE_OWNS_BUFFER)
         {
@@ -140,7 +139,6 @@ uint64_t _file_init(FILE* stream, fd_t fd, _file_flags_t flags, void* buffer, ui
         }
         return ERR;
     }
-#endif
 
     return 0;
 }
@@ -154,7 +152,7 @@ void _file_deinit(FILE* stream)
 
     close(stream->fd);
 
-    _PLATFORM_MUTEX_DESTROY(&stream->mtx);
+    mtx_destroy(&stream->mtx);
 }
 
 uint64_t _file_flush_buffer(FILE* stream)
@@ -256,26 +254,29 @@ uint64_t _file_prepare_write(FILE* stream)
 void _files_init(void)
 {
     list_init(&files);
-    _PLATFORM_MUTEX_INIT(&filesMtx);
+    if (mtx_init(&filesMtx, mtx_recursive) != thrd_success)
+    {
+        abort();
+    }
 }
 
 void _files_push(FILE* file)
 {
-    _PLATFORM_MUTEX_ACQUIRE(&filesMtx);
+    mtx_lock(&filesMtx);
     list_push(&files, &file->entry);
-    _PLATFORM_MUTEX_RELEASE(&filesMtx);
+    mtx_unlock(&filesMtx);
 }
 
 void _files_remove(FILE* file)
 {
-    _PLATFORM_MUTEX_ACQUIRE(&filesMtx);
+    mtx_lock(&filesMtx);
     list_remove(&files, &file->entry);
-    _PLATFORM_MUTEX_RELEASE(&filesMtx);
+    mtx_unlock(&filesMtx);
 }
 
 void _files_close(void)
 {
-    _PLATFORM_MUTEX_ACQUIRE(&filesMtx);
+    mtx_lock(&filesMtx);
 
     FILE* temp;
     FILE* stream;
@@ -284,13 +285,13 @@ void _files_close(void)
         fclose(stream);
     }
 
-    _PLATFORM_MUTEX_RELEASE(&filesMtx);
+    mtx_unlock(&filesMtx);
 }
 
 uint64_t _files_flush(void)
 {
     uint64_t result = 0;
-    _PLATFORM_MUTEX_ACQUIRE(&filesMtx);
+    mtx_lock(&filesMtx);
 
     FILE* stream;
     LIST_FOR_EACH(stream, &files, entry)
@@ -301,7 +302,7 @@ uint64_t _files_flush(void)
         }
     }
 
-    _PLATFORM_MUTEX_RELEASE(&filesMtx);
+    mtx_unlock(&filesMtx);
 
     return result;
 }

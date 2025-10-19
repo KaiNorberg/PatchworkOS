@@ -4,6 +4,10 @@
 #include <sys/proc.h>
 #include <threads.h>
 
+#undef _USE_ANNEX_K
+#define _USE_ANNEX_K 1
+#include "../../libstd/platform/user/common/syscalls.h"
+
 #define PRIME_MAX (10000000)
 
 static atomic_long count;
@@ -66,7 +70,7 @@ static int thread_entry(void* arg)
 
 static void benchmark(uint64_t threadAmount)
 {
-    printf("%d threads: starting... ", threadAmount);
+    printf("%d threads: starting...", threadAmount);
     fflush(stdout);
     clock_t start = uptime();
 
@@ -78,7 +82,7 @@ static void benchmark(uint64_t threadAmount)
     {
         if (thrd_create(&threads[i], thread_entry, NULL) != thrd_success)
         {
-            printf("(thrd_create error %d) ", i);
+            printf(" (thrd_create error %d) ", i);
             fflush(stdout);
         }
     }
@@ -87,20 +91,21 @@ static void benchmark(uint64_t threadAmount)
     {
         if (thrd_join(threads[i], NULL) != thrd_success)
         {
-            printf("(thrd_join error %d) ", i);
+            printf(" (thrd_join error %d) ", i);
             fflush(stdout);
         }
     }
 
     clock_t end = uptime();
-    printf("took %d ms to find %d primes\n", (end - start) / (CLOCKS_PER_SEC / 1000), atomic_load(&count));
+    printf(" took %d ms to find %d primes\n", (end - start) / (CLOCKS_PER_SEC / 1000), atomic_load(&count));
 }
 
 int main(void)
 {
-    benchmark(1);
-    benchmark(2);
-    benchmark(4);
+    for (uint64_t threads = 1; threads <= 128; threads *= 2)
+    {
+        benchmark(threads);
+    }
 
     printf("Testing complete.\n");
     return 0;
