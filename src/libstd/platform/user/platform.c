@@ -1,9 +1,8 @@
 #include "platform/platform.h"
 #include "common/exit_stack.h"
-#include "common/print.h"
 #include "common/std_streams.h"
-#include "common/syscalls.h"
 #include "common/thread.h"
+#include "common/clock.h"
 #include "platform/user/common/heap.h"
 
 #include <stdarg.h>
@@ -30,6 +29,7 @@ static void _populate_std_descriptors(void)
 
 void _platform_early_init(void)
 {
+    _clock_init();
     _threading_init();
     _populate_std_descriptors();
     _exit_stack_init();

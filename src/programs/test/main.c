@@ -1,42 +1,43 @@
-#include <setjmp.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/proc.h>
+#include <sys/io.h>
+#include <stdio.h>
 #include <time.h>
 
 #define TEST_ITERATIONS 100000
 
-#define TEST_MAX_SIZE 100000
-#define TEST_STEP_SIZE (TEST_MAX_SIZE / 10)
+#define TEST_MAX_PAGES (1 << 16)
 
-uint8_t src[TEST_MAX_SIZE];
-uint8_t dst[TEST_MAX_SIZE];
+static fd_t zeroDev;
 
-void benchmark_memcpy(uint64_t size)
+static void benchmark_mmap(uint64_t size)
 {
-    memset(src, 0xAA, size);
+    clock_t start = clock();
 
-    clock_t start = uptime();
-    for (int i = 0; i < TEST_ITERATIONS; i++)
+    for (uint64_t i = 0; i < TEST_ITERATIONS; i++)
     {
-        memcpy(dst, src, size);
-    }
-    clock_t end = uptime();
+        void* ptr = mmap(zeroDev, NULL, size * 0x1000, PROT_READ | PROT_WRITE);
 
-    uint64_t elapsed_ms = (uint64_t)((end - start) * 1000 / CLOCKS_PER_SEC);
-    printf("copy %zu bytes: %llu ms\n", size, elapsed_ms);
+        for (uint64_t j = 0; j < size; j++)
+        {
+            ((uint8_t*)ptr)[j] = 0;
+        }
+
+        munmap(ptr, size);
+    }
+
+    clock_t end = clock();
+    printf("mmap size=%llu bytes: %llums\n", size, (end - start) / (CLOCKS_PER_SEC / 1000));
 }
 
 int main()
 {
-    printf("memcpy Benchmark Results:\n");
-    printf("------------------------\n");
+    zeroDev = open("/dev/zero");
 
-    for (uint64_t i = TEST_STEP_SIZE; i <= TEST_MAX_SIZE; i += TEST_STEP_SIZE)
+    printf("Starting mmap benchmark with %llu iterations\n", TEST_ITERATIONS);
+    for (uint64_t i = 1; i <= TEST_MAX_PAGES; i *= 2)
     {
-        benchmark_memcpy(i);
+        benchmark_mmap(i);
     }
 
     return 0;
