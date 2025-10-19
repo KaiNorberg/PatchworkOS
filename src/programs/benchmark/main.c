@@ -41,6 +41,7 @@ static uint64_t munmap_generic(void* addr, size_t length)
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#define ERR ((uint64_t)-1)
 
 static void init_generic()
 {
