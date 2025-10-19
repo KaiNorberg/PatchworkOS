@@ -18,7 +18,7 @@ In the end this is a project made for fun, however the goal is to eventually hav
 
 - Multithreading with a [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), fully preemptive and tickless
 - Symmetric Multi Processing
-- Physical and virtual memory management is O(1) per page and O(n) where n is the number of pages per allocation/mapping operation
+- Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info
 - Dynamic kernel and user stack allocation
 - File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/note.h)
 - Synchronization primitives including mutexes, read-write locks and [futexes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sync/futex.h)
@@ -76,6 +76,33 @@ In the end this is a project made for fun, however the goal is to eventually hav
 As one of the main goals of PatchworkOS is to be educational, I have tried to document the codebase as much as possible along with providing citations to any sources used. Currently this is still a work in progress, but as old code is refactored and new code is added, I try to add documentation.
 
 If you are interested in knowing more, then you can check out the Doxygen generated [**documentation**](https://kainorberg.github.io/PatchworkOS/html/index.html).
+
+## Benchmarks
+
+All benchmarks were run on real hardware using a Lenovo ThinkPad E495. For comparison ive decided to use the Linux kernel, specifically Fedora since its what I normally use.
+
+Note that Fedora will obviously have a lot more background processes running, so these benchmarks are not exactly apples to apples, but they should still give a good idea of how PatchworkOS performs in comparison.
+
+All code for benchmarks can be found in the [benchmark program](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/programs/benchmark/benchmark.c), all tests were run using the optimization flag `-O3`.
+
+### Memory Allocation/Mapping
+
+The test maps and unmaps memory in varying page amounts for a set amount of iterations using generic mmap and munmap functions. Below is the results from PatchworkOS as of commit `b3f93f1` and Fedora 40, kernel version `6.14.5-100.fc40.x86_64`.
+
+```mermaid
+xychart-beta
+title "Blue: PatchworkOS, Green: Fedora, Lower is Better"
+x-axis "Page Amount" [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+y-axis "Time (ms)" 0 --> 30000
+line [48, 48, 48, 48, 68, 97, 164, 365, 632, 1176, 3125]
+line [118, 150, 216, 358, 627, 1167, 2193, 4313, 6487, 11221, 28519]
+```
+
+We see that PatchworkOS performs better both with a small number of pages, showing that each operation is more efficient, as well as with a large number of pages, showing that the algorithic complexity is better.
+
+There are a few potential reasons for this, one is that PatchworkOS does not use a seperate structure to manage virtual memory, instead it embeds metadata directly into the page tables, and since accesing a page table is just walking some pointers, its very efficent and it provides better caching since the page tables are likely already in the CPU cache. In the end we end up with a `O(1)` complexity per page operation, and `O(n)` complexity per allocation/mapping operation where n is the number of pages.
+
+Of course, there are limitations to this approach, for example it is in no way portable, which isent a concern in my case, and due to the limited number of bits available in the page table entries, each address space can only contain `2^7 - 1` unique shared memory regions.
 
 ## Shell Utilities
 
@@ -309,7 +336,7 @@ You should now see a new entry in your GRUB boot menu allowing you to boot into 
 
 ### Troubleshooting
 
-- **QEMU boot failure**: Check if you are using QEMU version 10.0.0, as that version is known to not work correctly, try using version 9.2.3
+- **QEMU boot failure**: Check if you are using QEMU version 10.0.0, as that version has previously caused issues. These issues appear to be fixed currently however consider using version 9.2.3
 - **Any other errors?**: If an error not listed here occurs or is not resolvable, please open an issue in the GitHub repository.
 
 ## Testing
