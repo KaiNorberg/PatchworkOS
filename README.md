@@ -98,9 +98,11 @@ line [48, 48, 48, 48, 68, 97, 164, 365, 632, 1176, 3125]
 line [118, 150, 216, 358, 627, 1167, 2193, 4313, 6487, 11221, 28519]
 ```
 
-We see that PatchworkOS performs better both with a small number of pages, showing that each operation is more efficient, as well as with a large number of pages, showing that the algorithic complexity is better.
+We see that PatchworkOS performs better with a small number of pages, showing that each operation is more efficient, and that it performs better with a large number of pages, showing that the algorithmic complexity is better.
 
-There are a few potential reasons for this, one is that PatchworkOS does not use a seperate structure to manage virtual memory, instead it embeds metadata directly into the page tables, and since accesing a page table is just walking some pointers, its very efficent and it provides better caching since the page tables are likely already in the CPU cache. In the end we end up with a `O(1)` complexity per page operation, and `O(n)` complexity per allocation/mapping operation where n is the number of pages.
+There are a few potential reasons for this, one is that PatchworkOS does not use a separate structure to manage virtual memory, instead it embeds metadata directly into the page tables, and since accessing a page table is just walking some pointers, its highly efficient, additionally it provides better caching since the page tables are likely already in the CPU cache.
+
+In the end we end up with a `O(1)` complexity per page operation, or technically, since the algorithm for finding unmapped memory sections is `O(r)` where `r` is the size of the address region to check in pages, having more memory allocated would potentially actually improve performance but only by a very small amount. We do of course get `O(n)` complexity per allocation/mapping operation where `n` is the number of pages
 
 Of course, there are limitations to this approach, for example it is in no way portable, which isent a concern in my case, and due to the limited number of bits available in the page table entries, each address space can only contain `2^7 - 1` unique shared memory regions.
 

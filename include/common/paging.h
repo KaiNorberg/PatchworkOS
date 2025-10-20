@@ -614,6 +614,10 @@ static inline uint64_t page_table_set_flags(page_table_t* table, void* virtAddr,
  *
  * Good luck with this function, im like 99% sure it works.
  *
+ * This function should be `O(r)` in the worse case where `r` is the amount of pages in the address range, note how the
+ * number of pages needed does not affect the complexity. This has the fun affect that the more memory is allocated the
+ * faster this function will run on average.
+ *
  * @param table The page table.
  * @param startAddr The start address to begin searching (inclusive).
  * @param endAddr The end address of the search range (exclusive).
