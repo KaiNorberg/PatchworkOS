@@ -102,7 +102,7 @@ We see that PatchworkOS performs better with a small number of pages, showing th
 
 There are a few potential reasons for this, one is that PatchworkOS does not use a separate structure to manage virtual memory, instead it embeds metadata directly into the page tables, and since accessing a page table is just walking some pointers, its highly efficient, additionally it provides better caching since the page tables are likely already in the CPU cache.
 
-In the end we end up with a `O(1)` complexity per page operation, or technically, since the algorithm for finding unmapped memory sections is `O(r)` where `r` is the size of the address region to check in pages, having more memory allocated would potentially actually improve performance but only by a very small amount. We do of course get `O(n)` complexity per allocation/mapping operation where `n` is the number of pages
+In the end we end up with a `O(1)` complexity per page operation, or technically, since the algorithm for finding unmapped memory sections is `O(r)` in the worst case where `r` is the size of the address region to check in pages, having more memory allocated would potentially actually improve performance but only by a very small amount. We do of course get `O(n)` complexity per allocation/mapping operation where `n` is the number of pages.
 
 Of course, there are limitations to this approach, for example it is in no way portable, which isent a concern in my case, and due to the limited number of bits available in the page table entries, each address space can only contain `2^7 - 1` unique shared memory regions.
 
