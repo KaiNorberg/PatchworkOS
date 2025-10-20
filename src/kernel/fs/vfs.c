@@ -34,9 +34,8 @@ static vfs_list_t filesystems;
 
 static vfs_map_t dentryCache;
 static vfs_map_t inodeCache;
-static vfs_map_t mountCache;
 
-static vfs_root_t globalRoot;
+static dentry_t* root = NULL;
 
 static map_key_t inode_cache_key(superblock_id_t superblockId, inode_number_t number)
 {
@@ -57,13 +56,6 @@ static map_key_t dentry_cache_key(dentry_id_t parentId, const char* name)
     offset += nameLen;
 
     return map_key_buffer(buffer, offset);
-}
-
-static map_key_t mount_cache_key(mount_id_t parentId, dentry_id_t mountpointId)
-{
-    uint64_t buffer[2] = {(uint64_t)parentId, (uint64_t)mountpointId};
-
-    return map_key_buffer(buffer, sizeof(buffer));
 }
 
 static void vfs_list_init(vfs_list_t* list)
@@ -88,10 +80,6 @@ void vfs_init(void)
 
     vfs_map_init(&dentryCache);
     vfs_map_init(&inodeCache);
-    vfs_map_init(&mountCache);
-
-    globalRoot.mount = NULL;
-    rwlock_init(&globalRoot.lock);
 
     path_flags_init();
 
@@ -167,49 +155,6 @@ filesystem_t* vfs_get_fs(const char* name)
     }
 
     return NULL;
-}
-
-uint64_t vfs_get_global_root(path_t* outPath)
-{
-    RWLOCK_READ_SCOPE(&globalRoot.lock);
-
-    if (globalRoot.mount == NULL || globalRoot.mount->superblock->root == NULL)
-    {
-        errno = ENOENT;
-        return ERR;
-    }
-
-    path_set(outPath, globalRoot.mount, globalRoot.mount->superblock->root);
-    return 0;
-}
-
-uint64_t vfs_mountpoint_to_fs_root(path_t* outRoot, const path_t* mountpoint)
-{
-    map_key_t mountKey = mount_cache_key(mountpoint->mount->id, mountpoint->dentry->id);
-
-    RWLOCK_READ_SCOPE(&mountCache.lock);
-
-    mount_t* mount = CONTAINER_OF_SAFE(map_get(&mountCache.map, &mountKey), mount_t, mapEntry);
-    if (mount == NULL)
-    {
-        errno = ENOENT;
-        return ERR;
-    }
-
-    if (atomic_load(&mount->ref.count) == 0) // Is currently being removed
-    {
-        errno = ESTALE;
-        return ERR;
-    }
-
-    if (mount->superblock == NULL || mount->superblock->root == NULL)
-    {
-        errno = ESTALE;
-        return ERR;
-    }
-
-    path_set(outRoot, mount, mount->superblock->root);
-    return 0;
 }
 
 inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number)
@@ -333,6 +278,7 @@ dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name)
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     if (parent->dentry->inode->ops->lookup(dir, dentry) == ERR)
     {
+        vfs_remove_dentry(dentry);
         return NULL;
     }
 
@@ -400,77 +346,61 @@ void vfs_remove_dentry(dentry_t* dentry)
     map_remove(&dentryCache.map, &key);
 }
 
-void vfs_remove_mount(mount_t* mount)
+dentry_t* vfs_get_root_dentry(void)
 {
-    if (mount == NULL)
-    {
-        return;
-    }
-
-    RWLOCK_WRITE_SCOPE(&mountCache.lock);
-    map_key_t key = mount_cache_key(mount->parent->id, mount->mountpoint->id);
-    map_remove(&mountCache.map, &key);
+    return REF(root);
 }
 
-static uint64_t vfs_get_cwd(path_t* outPath)
+uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flags, process_t* process)
 {
-    process_t* process = sched_process();
-    if (process == NULL)
-    {
-        RWLOCK_READ_SCOPE(&globalRoot.lock);
-        outPath->dentry = REF(globalRoot.mount->mountpoint);
-        outPath->mount = REF(globalRoot.mount);
-        return 0;
-    }
-
-    return vfs_ctx_get_cwd(&process->vfsCtx, outPath);
-}
-
-uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flags)
-{
-    if (outPath == NULL || !PATHNAME_IS_VALID(pathname))
+    if (outPath == NULL || !PATHNAME_IS_VALID(pathname) || process == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
     path_t cwd = PATH_EMPTY;
-    if (vfs_get_cwd(&cwd) == ERR)
+    if (vfs_ctx_get_cwd(&process->vfsCtx, &cwd) == ERR)
     {
         return ERR;
     }
     PATH_DEFER(&cwd);
 
-    return path_walk(outPath, pathname, &cwd, flags);
+    return path_walk(outPath, pathname, &cwd, flags, &process->namespace);
 }
 
-uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outLastName, walk_flags_t flags)
+uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outLastName, walk_flags_t flags,
+    process_t* process)
 {
-    if (outPath == NULL || !PATHNAME_IS_VALID(pathname))
+    if (outPath == NULL || !PATHNAME_IS_VALID(pathname) || process == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
     path_t cwd = PATH_EMPTY;
-    vfs_get_cwd(&cwd);
+    if (vfs_ctx_get_cwd(&process->vfsCtx, &cwd) == ERR)
+    {
+        return ERR;
+    }
     PATH_DEFER(&cwd);
 
-    return path_walk_parent(outPath, pathname, &cwd, outLastName, flags);
+    return path_walk_parent(outPath, pathname, &cwd, outLastName, flags, &process->namespace);
 }
 
-uint64_t vfs_walk_parent_and_child(path_t* outParent, path_t* outChild, const pathname_t* pathname, walk_flags_t flags)
+uint64_t vfs_walk_parent_and_child(path_t* outParent, path_t* outChild, const pathname_t* pathname, walk_flags_t flags,
+    process_t* process)
 {
     char lastName[MAX_NAME];
     path_t parent = PATH_EMPTY;
-    if (vfs_walk_parent(&parent, pathname, lastName, WALK_MOUNTPOINT_TO_ROOT) == ERR)
+    if (vfs_walk_parent(&parent, pathname, lastName, WALK_MOUNTPOINT_TO_ROOT, process) == ERR)
     {
         return ERR;
     }
     PATH_DEFER(&parent);
 
     path_t child = PATH_EMPTY;
-    if (path_walk_single_step(&child, &parent, lastName, flags) == ERR)
+    if (path_walk_single_step(&child, &parent, lastName, flags, &process->namespace) == ERR)
     {
         return ERR;
     }
@@ -479,164 +409,6 @@ uint64_t vfs_walk_parent_and_child(path_t* outParent, path_t* outChild, const pa
     path_copy(outParent, &parent);
     path_copy(outChild, &child);
     return 0;
-}
-
-uint64_t vfs_mount(const char* deviceName, const pathname_t* mountpoint, const char* fsName, superblock_flags_t flags,
-    void* private)
-{
-    if (deviceName == NULL || fsName == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (globalRoot.mount != NULL && !PATHNAME_IS_VALID(mountpoint))
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    filesystem_t* fs = vfs_get_fs(fsName);
-    if (fs == NULL)
-    {
-        errno = ENODEV;
-        return ERR;
-    }
-
-    dentry_t* root = fs->mount(fs, flags, deviceName, private);
-    if (root == NULL)
-    {
-        return ERR;
-    }
-    DEREF_DEFER(root);
-
-    MUTEX_SCOPE(&root->mutex);
-
-    if (root->flags & DENTRY_NEGATIVE)
-    {
-        errno = EIO;
-        return ERR;
-    }
-
-    if (globalRoot.mount == NULL) // Special handling for mounting inital file system, since this can only happen during
-                                  // boot there is no need for the lock before the if statement.
-    {
-        assert(mountpoint == NULL); // Sanity check.
-
-        RWLOCK_WRITE_SCOPE(&globalRoot.lock);
-        globalRoot.mount = mount_new(root->superblock, NULL);
-        assert(globalRoot.mount != NULL); // Only happens during boot, must not fail.
-        return 0;
-    }
-
-    path_t mountPath = PATH_EMPTY;
-    if (vfs_walk(&mountPath, mountpoint, WALK_NONE) == ERR)
-    {
-        return ERR;
-    }
-    PATH_DEFER(&mountPath);
-
-    MUTEX_SCOPE(&mountPath.dentry->mutex);
-    if (mountPath.dentry->flags & DENTRY_MOUNTPOINT)
-    {
-        errno = EBUSY;
-        return ERR;
-    }
-
-    mount_t* mount = mount_new(root->superblock, &mountPath);
-    if (mount == NULL)
-    {
-        return ERR;
-    }
-
-    mountPath.dentry->flags |= DENTRY_MOUNTPOINT;
-
-    map_key_t key = mount_cache_key(mountPath.mount->id, mountPath.dentry->id);
-    rwlock_write_acquire(&mountCache.lock);
-    if (map_insert(&mountCache.map, &key, &mount->mapEntry) == ERR)
-    {
-        DEREF(mount);
-        rwlock_write_release(&mountCache.lock);
-        return ERR;
-    }
-    rwlock_write_release(&mountCache.lock);
-
-    // superblock_expose(superblock); // TODO: Expose the sysfsDir for the superblock
-
-    LOG_INFO("mounted %s on %s (type %s)\n", deviceName, mountpoint, fsName);
-    return 0;
-}
-
-uint64_t vfs_unmount(const pathname_t* mountpoint)
-{
-    (void)mountpoint;
-
-    errno = ENOSYS;
-    return ERR;
-
-    // TODO: Reimplement unmount.
-    /*if (!PATHNAME_IS_VALID(pathname))
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    path_t path = PATH_EMPTY;
-    if (vfs_walk(&path, mountpoint, WALK_NONE) == ERR)
-    {
-        return ERR;
-    }
-    PATH_DEFER(&path);
-
-    RWLOCK_READ_SCOPE(&globalRoot.lock);
-    RWLOCK_WRITE_SCOPE(&mountCache.lock);
-    LOCK_SCOPE(&path.dentry->lock);
-
-    if (!(path.dentry->flags & DENTRY_MOUNTPOINT))
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (path.dentry->superblock->ops->unmount == NULL)
-    {
-        errno = EPERM;
-        return ERR;
-    }
-
-    if (path.dentry->superblock->ops->unmount(path.dentry->superblock) == ERR)
-    {
-        return ERR;
-    }
-
-    map_key_t key = mount_cache_key(path.mount->id, path.dentry->id);
-    mount_t* mount = CONTAINER_OF_SAFE(map_get(&mountCache.map, &key), mount_t, mapEntry);
-    if (mount == NULL)
-    {
-        return ERR;
-    }
-    mount = REF(mount);
-    DEREF_DEFER(mount);
-
-    if (mount == globalRoot.mount)
-    {
-        errno = EBUSY;
-        return ERR;
-    }
-
-    if (atomic_load(&mount->superblock->ref.count) > 1)
-    {
-        errno = EBUSY;
-        return ERR;
-    }
-
-    map_remove(&mountCache.map, &key);
-    DEREF(mount); // Remove reference in cache.
-
-    path.dentry->flags &= ~DENTRY_MOUNTPOINT;
-
-    LOG_INFO("unmounted %s\n", mountpoint);
-    return 0;*/
 }
 
 bool vfs_is_name_valid(const char* name)
@@ -661,12 +433,13 @@ bool vfs_is_name_valid(const char* name)
     return false;
 }
 
-static uint64_t vfs_create(path_t* outPath, const pathname_t* pathname)
+static uint64_t vfs_create(path_t* outPath, const pathname_t* pathname, process_t* process)
 {
     char lastComponent[MAX_NAME];
     path_t parent = PATH_EMPTY;
     path_t target = PATH_EMPTY;
-    if (vfs_walk_parent_and_child(&parent, &target, pathname, WALK_NEGATIVE_IS_OK | WALK_MOUNTPOINT_TO_ROOT) == ERR)
+    if (vfs_walk_parent_and_child(&parent, &target, pathname, WALK_NEGATIVE_IS_OK | WALK_MOUNTPOINT_TO_ROOT, process) ==
+        ERR)
     {
         return ERR;
     }
@@ -732,25 +505,25 @@ static uint64_t vfs_create(path_t* outPath, const pathname_t* pathname)
 
 static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname)
 {
-    *outPath = PATH_EMPTY;
+    process_t* process = sched_process();
+    assert(process != NULL);
 
     path_t target = PATH_EMPTY;
-    PATH_DEFER(&target);
-
     if (pathname->flags & PATH_CREATE)
     {
-        if (vfs_create(&target, pathname) == ERR)
+        if (vfs_create(&target, pathname, process) == ERR)
         {
             return ERR;
         }
     }
     else // Dont create dentry
     {
-        if (vfs_walk(&target, pathname, WALK_MOUNTPOINT_TO_ROOT) == ERR)
+        if (vfs_walk(&target, pathname, WALK_MOUNTPOINT_TO_ROOT, process) == ERR)
         {
             return ERR;
         }
     }
+    PATH_DEFER(&target);
 
     if (target.dentry->inode == NULL)
     {
@@ -1474,8 +1247,11 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer)
         return ERR;
     }
 
+    process_t* process = sched_process();
+    assert(process != NULL);
+
     path_t path = PATH_EMPTY;
-    if (vfs_walk(&path, pathname, WALK_NONE) == ERR)
+    if (vfs_walk(&path, pathname, WALK_NONE, process) == ERR)
     {
         return ERR;
     }
@@ -1534,9 +1310,12 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname)
         return ERR;
     }
 
+    process_t* process = sched_process();
+    assert(process != NULL);
+
     path_t oldParent = PATH_EMPTY;
     path_t old = PATH_EMPTY;
-    if (vfs_walk_parent_and_child(&oldParent, &old, oldPathname, WALK_NONE) == ERR)
+    if (vfs_walk_parent_and_child(&oldParent, &old, oldPathname, WALK_NONE, process) == ERR)
     {
         return ERR;
     }
@@ -1545,7 +1324,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname)
 
     path_t newParent = PATH_EMPTY;
     path_t target = PATH_EMPTY;
-    if (vfs_walk_parent_and_child(&newParent, &target, newPathname, WALK_NEGATIVE_IS_OK) == ERR)
+    if (vfs_walk_parent_and_child(&newParent, &target, newPathname, WALK_NEGATIVE_IS_OK, process) == ERR)
     {
         return ERR;
     }
@@ -1626,9 +1405,12 @@ uint64_t vfs_delete(const pathname_t* pathname)
         return ERR;
     }
 
+    process_t* process = sched_process();
+    assert(process != NULL);
+
     path_t parent = PATH_EMPTY;
     path_t target = PATH_EMPTY;
-    if (vfs_walk_parent_and_child(&parent, &target, pathname, WALK_NONE) == ERR)
+    if (vfs_walk_parent_and_child(&parent, &target, pathname, WALK_NONE, process) == ERR)
     {
         return ERR;
     }

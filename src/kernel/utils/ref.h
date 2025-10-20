@@ -59,7 +59,7 @@ typedef struct ref
  * Atomically increments the reference counter. Used to avoid the need for a typecast. The magic number checking makes
  * sure we cant accidentally misuse this.
  *
- * @param ptr Pointer to the struct containing `ref_t` as its first member
+ * @param ptr Pointer to the struct containing `ref_t` as its first member, can be `NULL`.
  * @return The `ptr` passed as input
  */
 #define REF(ptr) \
@@ -75,7 +75,7 @@ typedef struct ref
  * Atomically decrements the reference counter. Used to avoid the need for a typecast. The magic number checking makes
  * sure we cant accidentally misuse this.
  *
- * @param ptr Pointer to the struct containing `ref_t` as its first member
+ * @param ptr Pointer to the struct containing `ref_t` as its first member, can be `NULL`.
  */
 #define DEREF(ptr) \
     ({ \
@@ -101,13 +101,16 @@ static inline void ref_init(ref_t* ref, void* free)
 /**
  * @brief Increment reference count
  *
- * @param ptr Pointer to the struct containing `ref_t` as its first member
+ * @param ptr Pointer to the struct containing `ref_t` as its first member, can be `NULL`.
  * @return The `ptr` passed as input
  */
 static inline void* ref_inc(void* ptr)
 {
     ref_t* ref = (ref_t*)ptr;
-    assert(ref != NULL);
+    if (ref == NULL)
+    {
+        return NULL;
+    }
 
     assert(ref->magic == REF_MAGIC);
     atomic_fetch_add_explicit(&ref->count, 1, memory_order_relaxed);

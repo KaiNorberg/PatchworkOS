@@ -10,16 +10,14 @@ static void mount_free(mount_t* mount)
         return;
     }
 
-    vfs_remove_mount(mount);
-
     if (mount->superblock != NULL)
     {
         DEREF(mount->superblock);
     }
 
-    if (mount->mountpoint != NULL)
+    if (mount->dentry != NULL)
     {
-        DEREF(mount->mountpoint);
+        DEREF(mount->dentry);
     }
 
     if (mount->parent != NULL)
@@ -42,7 +40,7 @@ mount_t* mount_new(superblock_t* superblock, path_t* mountpoint)
     map_entry_init(&mount->mapEntry);
     mount->id = vfs_get_new_id();
     mount->superblock = REF(superblock);
-    mount->mountpoint = mountpoint != NULL ? REF(mountpoint->dentry) : NULL;
+    mount->dentry = mountpoint != NULL ? REF(mountpoint->dentry) : NULL;
     mount->parent = mountpoint != NULL ? REF(mountpoint->mount) : NULL;
 
     return mount;

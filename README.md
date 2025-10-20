@@ -34,7 +34,7 @@ In the end this is a project made for fun, however the goal is to eventually hav
 
 ### File System
 
-- Linux-style VFS with dentry+inode caching, negative dentrys, mountpoints, hardlinks, etc.
+- Linux-style VFS with dentry+inode caching, negative dentrys, mountpoints, hardlinks, per-process namespaces, etc.
 - Strict adherence to "everything is a file" philosophy
 - Custom image format [(.fbmp)](https://github.com/KaiNorberg/fbmp)
 - Custom font format [(.grf)](https://github.com/KaiNorberg/grf)
@@ -64,7 +64,7 @@ In the end this is a project made for fun, however the goal is to eventually hav
 
 ## Notable Future Plans
 
-- Asynchronous I/O
+- Asynchronous I/O, perhaps via a io_uring inspired API
 - Modular kernel
 - Shared libraries
 - USB support (The holy grail)
@@ -102,7 +102,7 @@ We see that PatchworkOS performs better both with a small number of pages, showi
 
 There are a few potential reasons for this, one is that PatchworkOS does not use a seperate structure to manage virtual memory, instead it embeds metadata directly into the page tables, and since accesing a page table is just walking some pointers, its very efficent and it provides better caching since the page tables are likely already in the CPU cache. In the end we end up with a `O(1)` complexity per page operation, and `O(n)` complexity per allocation/mapping operation where n is the number of pages.
 
-Of course, there are limitations to this approach, for example it is in no way portable, which isent a concern in my case, and due to the limited number of bits available in the page table entries, each address space can only contain `2^7 - 1` unique shared memory regions.
+Of course, there are limitations to this approach, it is in no way portable, which isent a concern for PatchworkOS, and due to the limited number of bits available in the page table entries, each address space can only contain `2^7 - 1` unique shared memory regions.
 
 ## Shell Utilities
 
@@ -185,15 +185,18 @@ In order to create a local seqpacket socket, you open the `/net/local/seqpacket`
 fd_t handle = open("/net/local/seqpacket");
 char id[32] = {0};
 read(handle, id, 31);
+close(handle);
 ```
 
-Note that when the handle is closed, the socket is also freed. The ID that the handle returns is also the name of a directory that has been created in the `/net/local` directory, in which are three files, these include:
+Note that even when the handle is closed the socket will persist until the process that created it and all its children have exited. The ID that the handle returns is the name of a directory that has been created in the `/net/local` directory, in which are three files, these include:
 
 - `data` - used to send and retrieve data
 - `ctl` - used to send commands
 - `accept` - used to accept incoming connections
 
 So, for example, the sockets data file is located at `/net/local/[id]/data`. Note that only the process that created the socket or its children can open these files.
+
+These "id" directories are mounted to in the namespace of the creating process, so only the process that created the socket and its children can see their contents, which acts as a basic form of access control.
 
 Say we want to make our socket into a server, we would then use the bind and listen commands with the `ctl` file, we can then write
 
@@ -210,7 +213,7 @@ Note the use of `openf()` which allows us to open files via a formatted path and
 fd_t fd = openf("/net/local/%s/accept", id);
 ```
 
-The returned file descriptor can be used to send and receive data, just like when calling `accept()` in for example Linux or other POSIX operating systems. The entire socket API attempts to mimic the POSIX socket API, apart from using these weird files everything (should) work as expected.
+The returned file descriptor can be used to send and receive data, just like when calling `accept()` in for example Linux or other POSIX operating systems. Note that the entire socket API does attempt to mimic the POSIX socket API, apart from using these weird files everything (should) work as expected.
 
 For the sake of completeness, if we wanted to connect to this server, we can do
 

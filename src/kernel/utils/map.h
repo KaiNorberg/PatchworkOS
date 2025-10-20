@@ -60,7 +60,18 @@ typedef struct
 } map_entry_t;
 
 /**
+ * @brief Check if a map entry pointer is valid (not NULL or tombstone).
+ *
+ * @param entryPtr The map entry pointer to check.
+ * @return true if the entry pointer is valid, false otherwise.
+ */
+#define MAP_ENTRY_PTR_IS_VALID(entryPtr) ((entryPtr) != NULL && (entryPtr) != MAP_TOMBSTONE)
+
+/**
  * @brief Hash map structure.
+ *
+ * The entries can be safely iterated over as an array as long sa the `MAP_ENTRY_PTR_IS_VALID` macro is used to check
+ * each entry before dereferencing it.
  */
 typedef struct
 {
@@ -69,16 +80,6 @@ typedef struct
     uint64_t length;
     uint64_t tombstones;
 } map_t;
-
-/**
- * @brief Map iterator structure.
- */
-typedef struct
-{
-    map_t* map;
-    uint64_t index;
-    map_entry_t* current;
-} map_iter_t;
 
 /**
  * @brief Hash a object.
@@ -243,40 +244,5 @@ void map_clear(map_t* map);
  * @return On success, 0. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t map_reserve(map_t* map, uint64_t minCapacity);
-
-/**
- * @brief Initialize a map iterator.
- *
- * @param iter The iterator to initialize.
- * @param map The map to iterate over.
- */
-void map_iter_init(map_iter_t* iter, map_t* map);
-
-/**
- * @brief Get the next entry in the map.
- *
- * @param iter The iterator.
- * @return The next entry in the map, or `NULL` if there are no more entries.
- */
-map_entry_t* map_iter_next(map_iter_t* iter);
-
-/**
- * @brief Check if the iterator has more entries.
- *
- * @param iter The iterator.
- * @return `true` if the iterator has more entries, `false` otherwise.
- */
-bool map_iter_has_next(const map_iter_t* iter);
-
-/**
- * @brief Helper macro to iterate over all entries in a map.
- *
- * @param elem The loop variable, a pointer to a structure containing the `map_entry_t` member.
- * @param map The map to iterate over.
- * @param member The name of the `map_entry_t` member in the structure.
- */
-#define MAP_FOR_EACH(elem, map, member) \
-    for (map_iter_t __iter = {0}; \
-        map_iter_init(&__iter, map), (elem = CONTAINER_OF(map_iter_next(&__iter), typeof(*elem), member)) != NULL;)
 
 /** @} */

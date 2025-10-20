@@ -1,6 +1,5 @@
 #pragma once
 
-#include "fs/vfs.h"
 #include "sched/wait.h"
 #include "utils/map.h"
 

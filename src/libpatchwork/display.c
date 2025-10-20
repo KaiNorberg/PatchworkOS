@@ -45,31 +45,30 @@ display_t* display_new(void)
         return NULL;
     }
 
-    disp->handle = open("/net/local/seqpacket");
-    if (disp->handle == ERR)
+    fd_t handle = open("/net/local/seqpacket");
+    if (handle == ERR)
     {
         free(disp);
         return NULL;
     }
     memset(disp->id, 0, MAX_NAME);
-    if (read(disp->handle, disp->id, MAX_NAME - 1) == ERR)
+    if (read(handle, disp->id, MAX_NAME - 1) == ERR)
     {
-        close(disp->handle);
+        close(handle);
         free(disp);
         return NULL;
     }
+    close(handle);
 
     fd_t ctl = openf("/net/local/%s/ctl", disp->id);
     if (ctl == ERR)
     {
-        close(disp->handle);
         free(disp);
         return NULL;
     }
     if (writef(ctl, "connect dwm") == ERR)
     {
         close(ctl);
-        close(disp->handle);
         free(disp);
         return NULL;
     }
@@ -78,7 +77,6 @@ display_t* display_new(void)
     disp->data = openf("/net/local/%s/data", disp->id);
     if (disp->data == ERR)
     {
-        close(disp->handle);
         free(disp);
     }
 
@@ -93,7 +91,6 @@ display_t* display_new(void)
     disp->defaultFont = font_new(disp, "default", "regular", 16);
     if (disp->defaultFont == NULL)
     {
-        close(disp->handle);
         close(disp->data);
         free(disp);
         return NULL;
@@ -125,7 +122,6 @@ void display_free(display_t* disp)
         image_free(image);
     }
 
-    close(disp->handle);
     close(disp->data);
     free(disp);
 }

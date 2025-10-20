@@ -160,6 +160,8 @@ void kmain(const boot_info_t* bootInfo)
 
     init_finalize(bootInfo);
 
+    asm volatile("sti");
+
     init_process_spawn();
 
     LOG_INFO("done with boot thread\n");

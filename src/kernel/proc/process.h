@@ -1,6 +1,7 @@
 #pragma once
 
 #include "argv.h"
+#include "fs/namespace.h"
 #include "fs/sysfs.h"
 #include "fs/vfs_ctx.h"
 #include "mem/space.h"
@@ -57,8 +58,9 @@ typedef struct process
     _Atomic(priority_t) priority;
     _Atomic(uint64_t) status;
     argv_t argv;
-    vfs_ctx_t vfsCtx;
+    namespace_t namespace;
     space_t space;
+    vfs_ctx_t vfsCtx;
     futex_ctx_t futexCtx;
     wait_queue_t dyingWaitQueue;
     atomic_bool isDying;

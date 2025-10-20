@@ -21,7 +21,7 @@ void futex_ctx_deinit(futex_ctx_t* ctx)
     for (uint64_t i = 0; i < ctx->futexes.capacity; i++)
     {
         map_entry_t* entry = ctx->futexes.entries[i];
-        if (entry == NULL)
+        if (!MAP_ENTRY_PTR_IS_VALID(entry))
         {
             continue;
         }

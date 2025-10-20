@@ -43,7 +43,6 @@ static void socket_factory_close(file_t* file)
     socket_t* sock = file->private;
     if (sock != NULL)
     {
-        socket_hide(sock);
         DEREF(sock);
     }
 }

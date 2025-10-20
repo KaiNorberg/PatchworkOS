@@ -26,7 +26,6 @@ typedef struct path path_t;
  * @brief Mount ID type.
  */
 typedef uint64_t mount_id_t;
-
 /**
  * @brief Mount structure.
  * @struct mount_t
@@ -37,10 +36,10 @@ typedef struct mount
 {
     ref_t ref;
     mount_id_t id;
-    superblock_t* superblock;
-    dentry_t* mountpoint;
-    mount_t* parent;
     map_entry_t mapEntry;
+    superblock_t* superblock; ///< The superblock of the mounted filesystem.
+    dentry_t* dentry;         ///< The dentry that this filesystem is mounted on, can be `NULL` for the root filesystem.
+    mount_t* parent;          ///< The parent mount, can be `NULL` for the root filesystem.
 } mount_t;
 
 /**

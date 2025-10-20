@@ -1,6 +1,8 @@
 #include "fb.h"
 
+#include "fs/file.h"
 #include "fs/sysfs.h"
+#include "fs/vfs.h"
 #include "log/log.h"
 #include "sched/thread.h"
 

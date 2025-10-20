@@ -305,21 +305,22 @@ static void process_free(process_t* process)
         process_kill(process, EXIT_SUCCESS);
     }
 
-    if (process->parent != NULL)
-    {
-        RWLOCK_WRITE_SCOPE(&treeLock);
-        list_remove(&process->parent->children, &process->entry);
+    process_t* parent = process->parent;
 
-        process_t* child;
-        process_t* temp;
-        LIST_FOR_EACH_SAFE(child, temp, &process->children, entry)
-        {
-            list_remove(&process->children, &child->entry);
-            DEREF(child);
-            child->parent = NULL;
-        }
-        process->parent = NULL;
+    rwlock_write_acquire(&treeLock);
+    list_remove(&process->parent->children, &process->entry);
+    process->parent = NULL;
+
+    process_t* child;
+    process_t* temp;
+    LIST_FOR_EACH_SAFE(child, temp, &process->children, entry)
+    {
+        list_remove(&process->children, &child->entry);
+        child->parent = NULL;
     }
+    rwlock_write_release(&treeLock);
+
+    DEREF(parent);
 
     space_deinit(&process->space);
     argv_deinit(&process->argv);
@@ -341,9 +342,17 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
         return ERR;
     }
 
+    if (namespace_init(&process->namespace, parent != NULL ? &parent->namespace : NULL, process) == ERR)
+    {
+        argv_deinit(&process->argv);
+        return ERR;
+    }
+
     if (space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
             SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY) == ERR)
     {
+        namespace_deinit(&process->namespace);
+        argv_deinit(&process->argv);
         return ERR;
     }
 
@@ -356,6 +365,9 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
         path_t parentCwd = PATH_EMPTY;
         if (vfs_ctx_get_cwd(&parent->vfsCtx, &parentCwd) == ERR)
         {
+            argv_deinit(&process->argv);
+            namespace_deinit(&process->namespace);
+            space_deinit(&process->space);
             return ERR;
         }
 
@@ -380,13 +392,15 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     if (parent != NULL)
     {
         RWLOCK_WRITE_SCOPE(&treeLock);
-        list_push(&parent->children, &REF(process)->entry);
-        process->parent = parent;
+        list_push(&parent->children, &process->entry);
+        process->parent = REF(parent);
     }
     else
     {
         process->parent = NULL;
     }
+
+    assert(process == &kernelProcess || process_is_child(process, kernelProcess.id));
 
     LOG_DEBUG("new pid=%d parent=%d priority=%d\n", process->id, parent ? parent->id : 0, priority);
     return 0;
@@ -470,7 +484,7 @@ bool process_is_child(process_t* process, pid_t parentId)
 
 void process_procfs_init(void)
 {
-    if (sysfs_group_init(&procGroup, PATHNAME("/proc")) == ERR)
+    if (sysfs_group_init(&procGroup, NULL, "proc", NULL) == ERR)
     {
         panic(NULL, "Failed to initialize process sysfs group");
     }

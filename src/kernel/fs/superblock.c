@@ -39,7 +39,6 @@ superblock_t* superblock_new(filesystem_t* fs, const char* deviceName, superbloc
     superblock->id = vfs_get_new_id();
     superblock->blockSize = PAGE_SIZE;
     superblock->maxFileSize = UINT64_MAX;
-    superblock->flags = SUPER_NONE;
     superblock->private = NULL;
     superblock->root = NULL;
     superblock->ops = ops;

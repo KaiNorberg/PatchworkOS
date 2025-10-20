@@ -11,6 +11,7 @@
 typedef struct path path_t;
 typedef struct mount mount_t;
 typedef struct dentry dentry_t;
+typedef struct namespace namespace_t;
 
 /**
  * @brief Unique location in the filesystem.
@@ -216,9 +217,11 @@ void path_put(path_t* path);
  * @param parent The parent path.
  * @param name The name of the child dentry.
  * @param flags Flags for the path walk.
+ * @param ns The namespace to access mountpoints.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* name, walk_flags_t flags);
+uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* name, walk_flags_t flags,
+    namespace_t* ns);
 
 /**
  * @brief Traverse a pathname from a specified starting path.
@@ -227,9 +230,11 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
  * @param pathname The patname to traverse to.
  * @param start The path to start at if the pathname is relative.
  * @param flags Flags for the path walk.
+ * @param ns The namespace to access mountpoints.
  * @return On success, 0. On failure, returns `ERR` and `errno` is set.
  */
-uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* start, walk_flags_t flags);
+uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* start, walk_flags_t flags,
+    namespace_t* ns);
 
 /**
  * @brief Traverse a pathname to its parent and get the last component name.
@@ -239,10 +244,11 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
  * @param start The path to start at if the pathname is relative.
  * @param outLastName The output last component name.
  * @param flags Flags for the path walk.
+ * @param ns The namespace to access mountpoints.
  * @return On success, 0. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName,
-    walk_flags_t flags);
+    walk_flags_t flags, namespace_t* ns);
 
 /**
  * @brief Convert a path to a pathname.

@@ -99,6 +99,7 @@ void dwm_init(void)
         printf("dwm: failed to read id (%s)\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
+    close(handle);
 
     fd_t ctl = openf("/net/local/%s/ctl", id);
     if (ctl == ERR)

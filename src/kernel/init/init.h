@@ -33,10 +33,10 @@ _NORETURN void init_early(const boot_info_t* bootInfo);
  * @brief Kernel main function.
  *
  * This is the entry point for the boot thread. When `init_early()` jumps to the boot thread we will end up here. We can
- * then perform the rest of the kernel initialization here and start the init process.
+ * then perform the rest of the kernel initialization here, enable interrupts and start the init process.
  *
  * Note that this function will never return, instead it will call `sched_done_with_boot_thread()` which will turn the
- * boot thread into the idle thread of the bootstrap cpu and enable interrupts.
+ * boot thread into the idle thread of the bootstrap cpu.
  *
  * @param bootInfo Information provided by the bootloader.
  */

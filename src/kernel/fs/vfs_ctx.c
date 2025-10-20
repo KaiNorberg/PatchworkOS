@@ -75,10 +75,13 @@ uint64_t vfs_ctx_get_cwd(vfs_ctx_t* ctx, path_t* outCwd)
     if (ctx->cwd.dentry == NULL || ctx->cwd.mount == NULL)
     {
         assert(ctx->cwd.dentry == NULL && ctx->cwd.mount == NULL);
-        if (vfs_get_global_root(&ctx->cwd) == ERR)
+        namespace_t* kernelNs = &process_get_kernel()->namespace;
+
+        if (namespace_get_root_path(kernelNs, outCwd) == ERR)
         {
             return ERR;
         }
+        return 0;
     }
 
     path_copy(outCwd, &ctx->cwd);
@@ -125,7 +128,7 @@ SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
     }
 
     path_t path = PATH_EMPTY;
-    if (vfs_walk(&path, &pathname, WALK_NONE) == ERR)
+    if (vfs_walk(&path, &pathname, WALK_NONE, process) == ERR)
     {
         return ERR;
     }

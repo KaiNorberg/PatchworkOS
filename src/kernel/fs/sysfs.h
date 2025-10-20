@@ -6,51 +6,19 @@
 typedef struct file file_t;
 typedef struct file_ops file_ops_t;
 
+typedef struct sysfs_group sysfs_group_t;
+
 /**
  * @brief Filesystem for exposing kernel resources.
  * @ingroup kernel_fs
  * @defgroup kernel_fs_sysfs SysFS
  *
- * The SysFS filesystem is a convenient helper used by various subsystems to expose kernel resources.
- *
- * A note about the distinction between dentrys and inodes. The dentrys in the SysFS are owned and managed by the SysFS,
- * these form the pseudo tree structure of the filesystem, meanwhile the inodes are to be considered as the actual
- * "object" being exposed by the SysFS and are owned by the subsystems. So if exposing a process then the file
- * `/proc/10/status` is a dentry, which stores the inode of the process status file.
+ * The SysFS filesystem is a convenient helper used by various subsystems to expose kernel resources to user space in
+ * the filesystem. For example, the process subsystem uses SysFS to expose process information under `/proc`.
  *
  */
 
 #define SYSFS_NAME "sysfs"
-
-/**
- * @brief Represents a file in a SysFS directory.
- */
-typedef struct sysfs_file
-{
-    dentry_t* dentry;
-} sysfs_file_t;
-
-/**
- * @brief Represents a directory in a SysFS group.
- */
-typedef struct sysfs_dir
-{
-    dentry_t* dentry;
-} sysfs_dir_t;
-
-/**
- * @brief Represents a mounted SysFS filesystem.
- *
- * A mounted SysFS filesystem is a virtual filesystem that exposes kernel resources. For example, `/dev`, and `/proc`
- * are two SysFS groups, the best way to think off it is that SysFS is the filesystem, and then each subsystem is the
- * "drive" that contains the files and directories. Instead of FAT32 on a SSD its SysFS on the process manager.
- *
- */
-typedef struct sysfs_group
-{
-    sysfs_dir_t root;
-    pathname_t mountpoint;
-} sysfs_group_t;
 
 /**
  * @brief Initializes the SysFS.
@@ -60,69 +28,67 @@ void sysfs_init(void);
 /**
  * @brief Gets the default SysFS directory.
  *
- * The default SysFS directory is the root of the `/dev` SysFS group. The `/dev` group is for devices or "other"
- * resources which may not warrant an entire group all by themselves.
+ * The default SysFS directory is the root of the `/dev` mount. The `/dev` directory is for devices or "other"
+ * resources which may not warrant an entire dedicated filesystem.
  *
  * @return The default SysFS directory.
  */
-sysfs_dir_t* sysfs_get_default(void);
+dentry_t* sysfs_get_default(void);
 
 /**
- * @brief Initializes a SysFS group.
+ * @brief Mount a new instance of SysFS.
  *
- * @param group The SysFS group to initialize.
- * @param mountpoint The mountpoint to attach the SysFS group to.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * Used to, for example, create `/dev`, `/proc` and directories whose contents should only be visible within a
+ * specific namespace.
+ *
+ * Note that if the resulting `mount_t` is dereferenced, the SysFS instance will NOT be unmounted. To unmount the SysFS
+ * instance, use `namespace_unmount()`. However, if the SysFS instance has already been unmounted elsewhere, for example
+ * by its namespace being deinitialized, dereferencing the `mount_t` will unmount it.
+ *
+ * In practice this means that if you want the mount to exist for the lifetime of the process which owns the namespace,
+ * you can just dereference the returned `mount_t` immediately. Otherwise it will exist until both the process has
+ * exited and you have dereferenced the `mount_t`.
+ *
+ * @param parent The parent dentry to mount the SysFS under. If `NULL`, the SysFS will be mounted at the root of the
+ * namespace.
+ * @param name The name of the mount point.
+ * @param ns The namespace to mount the SysFS in. If `NULL`, the kernel process's namespace is used.
+ * @return On success, the mounted SysFS instance. On failure, `NULL` and `errno` is set.
  */
-uint64_t sysfs_group_init(sysfs_group_t* group, const pathname_t* mountpoint);
+mount_t* sysfs_mount_new(dentry_t* parent, const char* name, namespace_t* ns);
 
 /**
- * @brief Deinitializes a SysFS group.
+ * @brief Create a new directory inside a mounted SysFS instance.
  *
- * @param group The SysFS group to deinitialize.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * Used to, for example, create a new directory for a device or resource inside `/dev` or `/proc`.
+ *
+ * Note that if the resulting `dentry_t` is dereferenced, the directory will NOT be removed since its parent dentry will
+ * hold a reference to it, meaning its parent must be dereferenced first. This is quite convenient as you can simply
+ * keep track of the parent dentry and dereference it when you want to remove all its children.
+ *
+ * @param parent The parent directory.
+ * @param name The name of the new directory.
+ * @param inodeOps The inode operations for the new directory, can be `NULL`.
+ * @param private Private data associated with the new directory, can be `NULL`.
+ * @return On success, the new SysFS directory. On failure, `NULL` and `errno` is set.
  */
-uint64_t sysfs_group_deinit(sysfs_group_t* group);
+dentry_t* sysfs_directory_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* private);
 
 /**
- * @brief Initializes a SysFS directory.
+ * @brief Create a new file inside a mounted SysFS instance.
  *
- * @param dir The SysFS directory to initialize.
- * @param parent The parent directory of the SysFS directory.
- * @param name The name of the SysFS directory.
- * @param inodeOps The inode operations for the SysFS directory, can be NULL.
- * @param private The private data for the SysFS directory, can be found in the inode after initialization, can be NULL.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * Used to, for example, create a new file for a device or resource inside `/dev` or `/proc`.
+ *
+ * The behaviour of the resulting `dentry_t` reference is identical to `sysfs_directory_new()`.
+ *
+ * @param parent The parent directory.
+ * @param name The name of the new file.
+ * @param inodeOps The inode operations for the new file, can be `NULL`.
+ * @param fileOps The file operations for the new file, can be `NULL`.
+ * @param private Private data associated with the new file, can be `NULL`.
+ * @return On success, the new SysFS file. On failure, `NULL` and `errno` is set.
  */
-uint64_t sysfs_dir_init(sysfs_dir_t* dir, sysfs_dir_t* parent, const char* name, const inode_ops_t* inodeOps,
+dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, const file_ops_t* fileOps,
     void* private);
-
-/**
- * @brief Deinitializes a SysFS directory.
- *
- * @param dir The SysFS directory to deinitialize.
- */
-void sysfs_dir_deinit(sysfs_dir_t* dir);
-
-/**
- * @brief Initializes a SysFS file.
- *
- * @param file The SysFS file to initialize.
- * @param parent The parent directory of the SysFS file.
- * @param name The name of the SysFS file.
- * @param inodeOps The inode operations for the SysFS file, can be NULL.
- * @param fileOps The file operations for the SysFS file, can be NULL.
- * @param private The private data for the SysFS file, can be found in the inode after initialization, can be NULL.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t sysfs_file_init(sysfs_file_t* file, sysfs_dir_t* parent, const char* name, const inode_ops_t* inodeOps,
-    const file_ops_t* fileOps, void* private);
-
-/**
- * @brief Deinitializes a SysFS file.
- *
- * @param file The SysFS file to deinitialize.
- */
-void sysfs_file_deinit(sysfs_file_t* file);
 
 /** @} */

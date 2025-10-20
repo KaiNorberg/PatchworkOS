@@ -253,6 +253,9 @@ void sched_yield(void);
 /**
  * @brief Pushes a thread onto a scheduling queue.
  *
+ * This will take ownership of the thread, so the caller should not deref it after calling this function as if a
+ * preemption occurs it could be freed by the time the function returns.
+ *
  * @param thread The thread to be pushed.
  * @param target The target cpu that the thread should run on, can be `NULL` to specify the currently running cpu-
  */
@@ -260,6 +263,9 @@ void sched_push(thread_t* thread, cpu_t* target);
 
 /**
  * @brief Pushes a newly created thread onto the scheduling queue.
+ *
+ * This will take ownership of the thread, so the caller should not deref it after calling this function as if a
+ * preemption occurs it could be freed by the time the function returns.
  *
  * @param thread The thread to be pushed.
  * @param parent The parent thread.

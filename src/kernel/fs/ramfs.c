@@ -2,6 +2,7 @@
 
 #include "fs/dentry.h"
 #include "fs/mount.h"
+#include "fs/namespace.h"
 #include "fs/path.h"
 #include "log/log.h"
 #include "log/panic.h"
@@ -255,8 +256,11 @@ static dentry_t* ramfs_load_file(superblock_t* superblock, dentry_t* parent, con
     }
     DEREF_DEFER(inode);
 
+    if (vfs_add_dentry(dentry) == ERR)
+    {
+        panic(NULL, "Failed to add ramfs dentry to cache");
+    }
     dentry_make_positive(dentry, inode);
-    vfs_add_dentry(dentry);
 
     return REF(dentry);
 }
@@ -284,8 +288,11 @@ static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     }
     DEREF_DEFER(inode);
 
+    if (vfs_add_dentry(dentry) == ERR)
+    {
+        panic(NULL, "Failed to add ramfs dentry to cache");
+    }
     dentry_make_positive(dentry, inode);
-    vfs_add_dentry(dentry);
 
     boot_file_t* file;
     LIST_FOR_EACH(file, &in->files, entry)
@@ -302,7 +309,7 @@ static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     return REF(dentry);
 }
 
-static dentry_t* ramfs_mount(filesystem_t* fs, superblock_flags_t flags, const char* devName, void* private)
+static dentry_t* ramfs_mount(filesystem_t* fs, const char* devName, void* private)
 {
     (void)devName; // Unused
 
@@ -315,7 +322,6 @@ static dentry_t* ramfs_mount(filesystem_t* fs, superblock_flags_t flags, const c
 
     superblock->blockSize = 0;
     superblock->maxFileSize = UINT64_MAX;
-    superblock->flags = flags;
 
     ramfs_superblock_data_t* data = heap_alloc(sizeof(ramfs_superblock_data_t), HEAP_NONE);
     if (data == NULL)
@@ -380,7 +386,7 @@ void ramfs_init(const boot_disk_t* disk)
         panic(NULL, "Failed to register ramfs");
     }
     LOG_INFO("mounting ramfs\n");
-    if (vfs_mount(VFS_DEVICE_NAME_NONE, NULL, RAMFS_NAME, SUPER_NONE, (void*)disk) == ERR)
+    if (namespace_mount(NULL, NULL, VFS_DEVICE_NAME_NONE, RAMFS_NAME, NULL, (void*)disk) == ERR)
     {
         panic(NULL, "Failed to mount ramfs");
     }

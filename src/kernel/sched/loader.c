@@ -207,6 +207,9 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     process_t* process = thread->process;
     space_t* space = &process->space;
 
+    LOG_DEBUG("spawn called by pid=%d argv=%p fds=%p cwd=%p attr=%p argv[0]=%s\n", process->id, argv, fds, cwdString,
+        attr, argv != NULL ? argv[0] : "NULL");
+
     priority_t priority;
     if (attr == NULL || attr->flags & SPAWN_INHERIT_PRIORITY)
     {
@@ -262,7 +265,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
             goto cleanup_argv;
         }
 
-        if (vfs_walk(&cwdPath, &cwdPathname, WALK_NONE) == ERR)
+        if (vfs_walk(&cwdPath, &cwdPathname, WALK_NONE, process) == ERR)
         {
             goto cleanup_argv;
         }
@@ -312,21 +315,23 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
                 errno = EBADF;
                 return ERR;
             }
-            DEREF_DEFER(file);
 
             if (vfs_ctx_openas(childVfsCtx, fdsCopy[i].child, file) == ERR)
             {
+                DEREF(file);
                 heap_free(fdsCopy);
                 thread_free(child);
                 errno = EBADF;
                 return ERR;
             }
+            DEREF(file);
         }
         heap_free(fdsCopy);
     }
 
+    pid_t childPid = child->process->id; // Important to not deref after pushing the thread
     sched_push_new_thread(child, thread);
-    return child->process->id;
+    return childPid;
 
 cleanup_argv:
     for (uint64_t i = 0; i < argc; i++)

@@ -28,7 +28,7 @@ sysfs_dir_t* acpi_get_sysfs_root(void)
 {
     if (!groupInitialized)
     {
-        if (sysfs_group_init(&acpiGroup, PATHNAME("/acpi")) == ERR)
+        if (sysfs_group_init(&acpiGroup, NULL, "acpi", NULL) == ERR)
         {
             panic(NULL, "failed to initialize ACPI sysfs group");
         }

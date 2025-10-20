@@ -335,7 +335,6 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
     sock->family = family;
     sock->type = type;
     sock->flags = flags;
-    sock->creator = sched_process()->id;
     sock->private = NULL;
     rwmutex_init(&sock->mutex);
     sock->isExposed = false;
@@ -376,31 +375,30 @@ uint64_t socket_expose(socket_t* sock)
         return ERR;
     }
 
-    if (sysfs_dir_init(&sock->dir, &sock->family->dir, sock->id, &inodeOps, REF(sock)) == ERR)
+    process_t* process = sched_process();
+    assert(process != NULL);
+
+    if (sysfs_group_init(&sock->group, &sock->family->dir, sock->id, &process->namespace) == ERR)
+    {
+        return ERR;
+    }
+
+    if (sysfs_file_init(&sock->ctlFile, &sock->group.root, "ctl", &inodeOps, &ctlOps, REF(sock)) == ERR)
     {
         DEREF(sock);
         return ERR;
     }
 
-    if (sysfs_file_init(&sock->ctlFile, &sock->dir, "ctl", &inodeOps, &ctlOps, REF(sock)) == ERR)
+    if (sysfs_file_init(&sock->dataFile, &sock->group.root, "data", &inodeOps, &dataOps, REF(sock)) == ERR)
     {
-        DEREF(sock);
-        DEREF(sock);
-        return ERR;
-    }
-
-    if (sysfs_file_init(&sock->dataFile, &sock->dir, "data", &inodeOps, &dataOps, REF(sock)) == ERR)
-    {
-        DEREF(sock);
         DEREF(sock);
         DEREF(sock);
         sysfs_file_deinit(&sock->ctlFile);
         return ERR;
     }
 
-    if (sysfs_file_init(&sock->acceptFile, &sock->dir, "accept", &inodeOps, &acceptOps, REF(sock)) == ERR)
+    if (sysfs_file_init(&sock->acceptFile, &sock->group.root, "accept", &inodeOps, &acceptOps, REF(sock)) == ERR)
     {
-        DEREF(sock);
         DEREF(sock);
         DEREF(sock);
         DEREF(sock);
@@ -423,7 +421,7 @@ void socket_hide(socket_t* sock)
     sysfs_file_deinit(&sock->ctlFile);
     sysfs_file_deinit(&sock->dataFile);
     sysfs_file_deinit(&sock->acceptFile);
-    sysfs_dir_deinit(&sock->dir);
+    sysfs_group_deinit(&sock->group);
     sock->isExposed = false;
 }
 

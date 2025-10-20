@@ -26,13 +26,16 @@ static void inode_free(inode_t* inode)
             inode->superblock->ops->freeInode(inode->superblock, inode);
         }
         DEREF(inode->superblock);
+
+        if (inode->superblock->ops == NULL || inode->superblock->ops->freeInode == NULL)
+        {
+            heap_free(inode);
+        }
+
+        return;
     }
 
-    // If freeInode was not called cleanup manually.
-    if (inode->superblock == NULL || inode->superblock->ops == NULL || inode->superblock->ops->freeInode == NULL)
-    {
-        heap_free(inode);
-    }
+    heap_free(inode);
 }
 
 inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, const inode_ops_t* ops,

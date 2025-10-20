@@ -35,15 +35,6 @@ typedef struct dentry dentry_t;
 typedef uint64_t superblock_id_t;
 
 /**
- * @brief Flags for a superblock.
- * @enum superblock_flags_t
- */
-typedef enum
-{
-    SUPER_NONE = 0,
-} superblock_flags_t;
-
-/**
  * @brief Superblock structure.
  * @struct superblock_t
  *
@@ -56,7 +47,6 @@ typedef struct superblock
     superblock_id_t id;
     uint64_t blockSize;
     uint64_t maxFileSize;
-    superblock_flags_t flags;
     void* private;
     dentry_t* root;
     const superblock_ops_t* ops;

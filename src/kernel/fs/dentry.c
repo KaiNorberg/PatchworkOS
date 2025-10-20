@@ -85,6 +85,7 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     dentry->private = NULL;
     dentry->flags = DENTRY_NEGATIVE;
     mutex_init(&dentry->mutex);
+    dentry->mountCount = 0;
 
     return dentry;
 }

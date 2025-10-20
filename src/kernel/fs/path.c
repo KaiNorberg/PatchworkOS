@@ -3,6 +3,7 @@
 #include "fs/dentry.h"
 #include "log/log.h"
 #include "log/panic.h"
+#include "namespace.h"
 
 #include "sync/mutex.h"
 #include "vfs.h"
@@ -277,13 +278,13 @@ static uint64_t path_handle_dotdot(path_t* current)
 
         while (current->dentry == current->mount->superblock->root && iter < PATH_HANDLE_DOTDOT_MAX_ITER)
         {
-            if (current->mount->parent == NULL || current->mount->mountpoint == NULL)
+            if (current->mount->parent == NULL || current->mount->dentry == NULL)
             {
                 return 0;
             }
 
             mount_t* newMount = REF(current->mount->parent);
-            dentry_t* newDentry = REF(current->mount->mountpoint);
+            dentry_t* newDentry = REF(current->mount->dentry);
 
             DEREF(current->mount);
             current->mount = newMount;
@@ -326,7 +327,8 @@ static uint64_t path_handle_dotdot(path_t* current)
     }
 }
 
-uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* component, walk_flags_t flags)
+uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* component, walk_flags_t flags,
+    namespace_t* ns)
 {
     if (!vfs_is_name_valid(component))
     {
@@ -339,10 +341,10 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
     PATH_DEFER(&current);
 
     mutex_acquire(&current.dentry->mutex);
-    if (current.dentry->flags & DENTRY_MOUNTPOINT)
+    if (current.dentry->mountCount != 0)
     {
         path_t nextRoot = PATH_EMPTY;
-        if (vfs_mountpoint_to_fs_root(&nextRoot, &current) == ERR)
+        if (namespace_traverse_mount(ns, &current, &nextRoot) == ERR)
         {
             mutex_release(&current.dentry->mutex);
             return ERR;
@@ -382,7 +384,8 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
     return 0;
 }
 
-uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* start, walk_flags_t flags)
+uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* start, walk_flags_t flags,
+    namespace_t* ns)
 {
     if (!PATHNAME_IS_VALID(pathname))
     {
@@ -398,10 +401,9 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
 
     path_t current = PATH_EMPTY;
     const char* p = pathname->string;
-
     if (pathname->string[0] == '/')
     {
-        if (vfs_get_global_root(&current) == ERR)
+        if (namespace_get_root_path(ns, &current) == ERR)
         {
             return ERR;
         }
@@ -416,10 +418,9 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
         }
         path_copy(&current, start);
     }
+    PATH_DEFER(&current);
 
     assert(current.dentry != NULL && current.mount != NULL);
-
-    PATH_DEFER(&current);
 
     if (*p == '\0')
     {
@@ -482,13 +483,13 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
         }
 
         path_t next = PATH_EMPTY;
-        if (path_walk_single_step(&next, &current, component, flags) == ERR)
+        if (path_walk_single_step(&next, &current, component, flags, ns) == ERR)
         {
             return ERR;
         }
-        PATH_DEFER(&next);
 
         path_copy(&current, &next);
+        path_put(&next);
 
         MUTEX_SCOPE(&current.dentry->mutex);
         if (current.dentry->flags & DENTRY_NEGATIVE)
@@ -505,16 +506,16 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
 
     MUTEX_SCOPE(&current.dentry->mutex);
 
-    if (flags & WALK_MOUNTPOINT_TO_ROOT && current.dentry->flags & DENTRY_MOUNTPOINT)
+    if (flags & WALK_MOUNTPOINT_TO_ROOT && current.dentry->mountCount != 0)
     {
         path_t root = PATH_EMPTY;
-        if (vfs_mountpoint_to_fs_root(&root, &current) == ERR)
+        if (namespace_traverse_mount(ns, &current, &root) == ERR)
         {
             return ERR;
         }
-        PATH_DEFER(&root);
 
         path_copy(&current, &root);
+        path_put(&root);
     }
 
     path_copy(outPath, &current);
@@ -522,7 +523,7 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
 }
 
 uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName,
-    walk_flags_t flags)
+    walk_flags_t flags, namespace_t* ns)
 {
     if (!PATHNAME_IS_VALID(pathname) || outPath == NULL || outLastName == NULL)
     {
@@ -590,7 +591,7 @@ uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const pat
         return ERR;
     }
 
-    return path_walk(outPath, &parentPathname, start, flags);
+    return path_walk(outPath, &parentPathname, start, flags, ns);
 }
 
 uint64_t path_to_name(const path_t* path, pathname_t* pathname)
@@ -621,7 +622,7 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
                 pathname->string[index] = '/';
                 break;
             }
-            path_set(&current, current.mount->parent, current.mount->mountpoint);
+            path_set(&current, current.mount->parent, current.mount->dentry);
             continue;
         }
 

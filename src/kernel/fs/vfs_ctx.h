@@ -40,7 +40,7 @@ typedef struct
  * @brief Initialize a VFS context.
  *
  * @param ctx The context to initialize.
- * @param cwd The initial current working directory.
+ * @param cwd The initial current working directory, can be `NULL`.
  */
 void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd);
 
@@ -64,6 +64,8 @@ file_t* vfs_ctx_get_file(vfs_ctx_t* ctx, fd_t fd);
 
 /**
  * @Get the current working directory of a VFS context.
+ *
+ * If the current directory is `NULL`, then returns a reference to the root of the kernel process's namespace.
  *
  * Will create a new reference to the cwd.
  *

@@ -9,6 +9,7 @@
 #include "inode.h"
 #include "mount.h"
 #include "path.h"
+#include "proc/process.h"
 #include "superblock.h"
 
 #include <sys/io.h>
@@ -16,15 +17,14 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-// TODO: Implement improved caching, LRU.
-// TODO: Implement per-process namespaces, inspired by Plan9.
-
 typedef struct filesystem filesystem_t;
 
 /**
  * @brief Virtual File System.
  * @ingroup kernel_fs
  * @defgroup kernel_fs_vfs VFS
+ *
+ * TODO: Implement improved caching, LRU.
  *
  * @{
  */
@@ -46,7 +46,7 @@ typedef struct filesystem
 {
     list_entry_t entry;
     const char* name;
-    dentry_t* (*mount)(filesystem_t* fs, superblock_flags_t flags, const char* devName, void* private);
+    dentry_t* (*mount)(filesystem_t* fs, const char* devName, void* private);
 } filesystem_t;
 
 /**
@@ -66,15 +66,6 @@ typedef struct
     map_t map;
     rwlock_t lock;
 } vfs_map_t;
-
-/**
- * @brief Helper structure for the global root mount.
- */
-typedef struct
-{
-    mount_t* mount;
-    rwlock_t lock;
-} vfs_root_t;
 
 /**
  * @brief Initializes the VFS.
@@ -113,27 +104,6 @@ uint64_t vfs_unregister_fs(filesystem_t* fs);
  * @return On success, the filesystem. On failure, returns `NULL`, does not set `errno`.
  */
 filesystem_t* vfs_get_fs(const char* name);
-
-/**
- * @brief Gets the global root path.
- * @ingroup kernel_vfs
- *
- * @param outRoot The output path.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
- */
-uint64_t vfs_get_global_root(path_t* outRoot);
-
-/**
- * @brief Traverse a mountpoint path to the root of the mounted filesystem.
- * @ingroup kernel_vfs
- *
- * @see dentry_flags_t for an explanation of the difference between a mountpoint and a root.
- *
- * @param outRoot The output path.
- * @param mountpoint The mountpoint path.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
- */
-uint64_t vfs_mountpoint_to_fs_root(path_t* outRoot, const path_t* mountpoint);
 
 /**
  * @brief Get an inode for the given superblock and inode number.
@@ -203,21 +173,15 @@ void vfs_remove_inode(inode_t* inode);
 void vfs_remove_dentry(dentry_t* dentry);
 
 /**
- * @brief Remove a mount from the mount cache.
- *
- * @param mount The mount to remove.
- */
-void vfs_remove_mount(mount_t* mount);
-
-/**
  * @brief Walk a pathname to a path, starting from the current process's working directory.
  *
  * @param outPath The output path.
  * @param pathname The pathname to walk.
  * @param flags Flags for the path walk.
+ * @param process The process whose namespace and working directory to use.
  * @return On success, 0. On failure, returns `ERR` and `errno` is set.
  */
-uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flags);
+uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flags, process_t* process);
 
 /**
  * @brief Walk a pathname to its parent path, starting from the current process's working directory.
@@ -226,9 +190,11 @@ uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flag
  * @param pathname The pathname to walk.
  * @param outLastName The output last component name.
  * @param flags Flags for the path walk.
+ * @param process The process whose namespace and working directory to use.
  * @return On success, 0. On failure, returns `ERR` and `errno` is set.
  */
-uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outLastName, walk_flags_t flags);
+uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outLastName, walk_flags_t flags,
+    process_t* process);
 
 /**
  * @brief Walk a pathname to path and its parent path, starting from the current process's working directory.
@@ -237,33 +203,11 @@ uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outL
  * @param outChild The output path.
  * @param pathname The pathname to walk.
  * @param flags Flags for the path walk.
+ * @param process The process whose namespace and working directory to use.
  * @return On success, 0. On failure, returns `ERR` and `errno` is set.
  */
-uint64_t vfs_walk_parent_and_child(path_t* outParent, path_t* outChild, const pathname_t* pathname, walk_flags_t flags);
-
-/**
- * @brief Mount a filesystem.
- * @ingroup kernel_vfs
- *
- * @param deviceName The device name, or `VFS_DEVICE_NAME_NONE` for no device.
- * @param mountpoint The mountpoint path.
- * @param fsName The filesystem name.
- * @param flags Superblock flags.
- * @param private Private data for the filesystem's mount function.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
- */
-uint64_t vfs_mount(const char* deviceName, const pathname_t* mountpoint, const char* fsName, superblock_flags_t flags,
-    void* private);
-
-/**
- * @brief Unmount a filesystem.
- *
- * TODO: Implement filesystem unmounting.
- *
- * @param mountpoint The mountpoint path.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
- */
-uint64_t vfs_unmount(const pathname_t* mountpoint);
+uint64_t vfs_walk_parent_and_child(path_t* outParent, path_t* outChild, const pathname_t* pathname, walk_flags_t flags,
+    process_t* process);
 
 /**
  * @brief Check if a name is valid.

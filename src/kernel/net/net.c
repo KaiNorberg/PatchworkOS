@@ -9,7 +9,7 @@ static sysfs_group_t group;
 
 void net_init(void)
 {
-    if (sysfs_group_init(&group, PATHNAME("/net")) == ERR)
+    if (sysfs_group_init(&group, NULL, "net", NULL) == ERR)
     {
         panic(NULL, "Failed to initialize network sysfs group");
     }
