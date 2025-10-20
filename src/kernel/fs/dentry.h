@@ -135,14 +135,13 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
 /**
  * @brief Make a dentry positive by associating it with an inode.
  *
- * This will also add the dentry to its parent's list of children.
- *
- * TODO: Combine this with `vfs_add_dentry()`.
+ * This will also add the dentry to its parent's list of children and call `vfs_add_dentry()` to add it to the dentry
+ * cache.
  *
  * @param dentry The dentry to make positive.
  * @param inode The inode to associate with the dentry.
  */
-void dentry_make_positive(dentry_t* dentry, inode_t* inode);
+uint64_t dentry_make_positive(dentry_t* dentry, inode_t* inode);
 
 /**
  * @brief Helper function for a basic getdents.

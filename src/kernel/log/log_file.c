@@ -58,7 +58,7 @@ void log_file_expose(void)
 {
     // LOCK_SCOPE(&lock); // Cant use lock here because sysfs_file_init might call back into log functions
 
-    if (sysfs_file_init(&file, sysfs_get_default(), "klog", NULL, &logFileOps, NULL) == ERR)
+    if (sysfs_file_init(&file, sysfs_get_dev(), "klog", NULL, &logFileOps, NULL) == ERR)
     {
         panic(NULL, "Failed to expose log file");
     }

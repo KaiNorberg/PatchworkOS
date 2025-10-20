@@ -86,12 +86,12 @@ uint64_t namespace_traverse_mount(namespace_t* ns, const path_t* mountpoint, pat
  * @param mountpoint The mountpoint path.
  * @param fsName The filesystem name.
  * @param flags Superblock flags.
- * @param outRoot The output root path of the mounted filesystem, can be `NULL`.
+ * @param outRoot Output pointer to the new mount, can be `NULL`.
  * @param private Private data for the filesystem's mount function.
  * @return On success, 0. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t namespace_mount(namespace_t* ns, path_t* mountpoint, const char* deviceName, const char* fsName,
-    path_t* outRoot, void* private);
+    mount_t** outRoot, void* private);
 
 /**
  * @brief Get the root path of a namespace.

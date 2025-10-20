@@ -256,11 +256,10 @@ static dentry_t* ramfs_load_file(superblock_t* superblock, dentry_t* parent, con
     }
     DEREF_DEFER(inode);
 
-    if (vfs_add_dentry(dentry) == ERR)
+    if (dentry_make_positive(dentry, inode) == ERR)
     {
-        panic(NULL, "Failed to add ramfs dentry to cache");
+        panic(NULL, "Failed to make ramfs file dentry positive");
     }
-    dentry_make_positive(dentry, inode);
 
     return REF(dentry);
 }
@@ -288,11 +287,10 @@ static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     }
     DEREF_DEFER(inode);
 
-    if (vfs_add_dentry(dentry) == ERR)
+    if (dentry_make_positive(dentry, inode) == ERR)
     {
-        panic(NULL, "Failed to add ramfs dentry to cache");
+        panic(NULL, "Failed to make ramfs dentry positive");
     }
-    dentry_make_positive(dentry, inode);
 
     boot_file_t* file;
     LIST_FOR_EACH(file, &in->files, entry)

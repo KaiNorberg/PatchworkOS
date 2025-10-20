@@ -205,7 +205,7 @@ static file_ops_t fileOps = {
 
 void pipe_init(void)
 {
-    if (sysfs_file_init(&pipeFile, sysfs_get_default(), "pipe", NULL, &fileOps, NULL) == ERR)
+    if (sysfs_file_init(&pipeFile, sysfs_get_dev(), "pipe", NULL, &fileOps, NULL) == ERR)
     {
         panic(NULL, "Failed to initialize pipe file");
     }

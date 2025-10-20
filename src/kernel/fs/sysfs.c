@@ -14,7 +14,7 @@
 
 static _Atomic(inode_number_t) newNum = ATOMIC_VAR_INIT(0);
 
-static dentry_t* defaultDir = NULL;
+static mount_t* devMount = NULL;
 
 static file_ops_t dirOps = {
     .seek = file_generic_seek,
@@ -32,23 +32,12 @@ static dentry_t* sysfs_mount(filesystem_t* fs, const char* devName, void* privat
 {
     (void)devName; // Unused
 
-    sysfs_group_t* group = private;
-    if (group == NULL)
-    {
-        LOG_ERR("sysfs_mount called with null group\n");
-        errno = EINVAL;
-        return NULL;
-    }
-
     superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, &superOps, &dentryOps);
     if (superblock == NULL)
     {
         return NULL;
     }
     DEREF_DEFER(superblock);
-
-    superblock->blockSize = 0;
-    superblock->maxFileSize = UINT64_MAX;
 
     inode_t* inode = inode_new(superblock, atomic_fetch_add(&newNum, 1), INODE_DIR, NULL, &dirOps);
     if (inode == NULL)
@@ -64,10 +53,11 @@ static dentry_t* sysfs_mount(filesystem_t* fs, const char* devName, void* privat
     }
     DEREF_DEFER(dentry);
 
-    dentry_make_positive(dentry, inode);
+    if (dentry_make_positive(dentry, inode) == ERR)
+    {
+        return NULL;
+    }
 
-    superblock->root = REF(dentry);
-    group->root.dentry = REF(dentry);
     return REF(superblock->root);
 }
 
@@ -83,205 +73,144 @@ void sysfs_init(void)
     {
         panic(NULL, "Failed to register sysfs");
     }
-    if (sysfs_group_init(&defaultGroup, NULL, "dev", NULL) == ERR)
+
+    devMount = sysfs_mount_new(NULL, "dev", NULL);
+    if (devMount == NULL)
     {
-        panic(NULL, "Failed to initialize default sysfs group");
+        panic(NULL, "Failed to create /dev filesystem");
     }
     LOG_INFO("sysfs initialized\n");
 }
 
-sysfs_dir_t* sysfs_get_default(void)
+dentry_t* sysfs_get_dev(void)
 {
-    return &defaultGroup.root;
+    return devMount->superblock->root;
 }
 
-uint64_t sysfs_group_init(sysfs_group_t* group, sysfs_dir_t* parent, const char* name, namespace_t* ns)
+mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns)
 {
-    if (group == NULL || name == NULL)
+    if (name == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return NULL;
     }
 
-    path_t mountpoint = PATH_EMPTY;
-    if (parent != NULL)
+    if (ns == NULL)
     {
-        dentry_t* dentry = dentry_new(parent->dentry->superblock, parent->dentry, name);
+        process_t* kernelProcess = process_get_kernel();
+        assert(kernelProcess != NULL);
+        ns = &kernelProcess->namespace;
+    }
+
+    if (parent == NULL)
+    {
+        path_t rootPath = PATH_EMPTY;
+        path_set(&rootPath, ns->rootMount, ns->rootMount->superblock->root);
+        PATH_DEFER(&rootPath);
+
+        dentry_t* dentry = vfs_get_or_lookup_dentry(&rootPath, name);
         if (dentry == NULL)
         {
-            LOG_ERR("failed to create dentry for sysfs group '%s'\n", name);
-            return ERR;
+            return NULL;
         }
         DEREF_DEFER(dentry);
 
-        inode_t* inode = inode_new(parent->dentry->superblock, atomic_fetch_add(&newNum, 1), INODE_DIR, NULL, &dirOps);
-        if (inode == NULL)
-        {
-            LOG_ERR("failed to create inode for sysfs group '%s'\n", name);
-            return ERR;
-        }
-        DEREF_DEFER(inode);
+        path_t mountpoint = PATH_EMPTY;
+        path_set(&mountpoint, ns->rootMount, dentry);
+        PATH_DEFER(&mountpoint);
 
-        if (vfs_add_dentry(dentry) == ERR)
+        mount_t* mount = NULL;
+        uint64_t result = namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, &mount, NULL);
+        if (result == ERR)
         {
-            LOG_ERR("failed to add dentry for sysfs group '%s'\n", name);
-            return ERR;
+            return NULL;
         }
-        dentry_make_positive(dentry, inode);
 
-        path_set(&mountpoint, parent->group->mount, dentry);
+        return mount;
     }
-    else
+
+    dentry_t* dentry = dentry_new(parent->dentry->superblock, parent->dentry, name);
+    if (dentry == NULL)
     {
-        path_t root = PATH_EMPTY;
-        if (namespace_get_root_path(ns, &root) == ERR)
-        {
-            return ERR;
-        }
-
-        dentry_t* dentry = vfs_get_dentry(root.dentry, name);
-        if (dentry == NULL)
-        {
-            path_put(&root);
-            LOG_ERR("failed to get dentry for sysfs group '%s' in namespace root\n", name);
-            return ERR;
-        }
-
-        path_set(&mountpoint, root.mount, dentry);
-
-        path_put(&root);
-        DEREF(dentry);
+        return NULL;
     }
+    DEREF_DEFER(dentry);
+
+    path_t mountpoint = PATH_EMPTY;
+    path_set(&mountpoint, parent->mount, dentry);
     PATH_DEFER(&mountpoint);
 
-    path_t mountedRoot = PATH_EMPTY;
-    if (namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, &mountedRoot, group) == ERR)
+    mount_t* mount = NULL;
+    uint64_t result = namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, &mount, NULL);
+    if (result == ERR)
     {
-        LOG_ERR("failed to mount sysfs group '%s'\n", name);
-        return ERR;
+        return NULL;
     }
-    PATH_DEFER(&mountedRoot);
 
-    group->root.dentry = REF(mountedRoot.dentry);
-    group->root.group = group;
-    group->mount = REF(mountedRoot.mount);
-    return 0;
+    return mount;
 }
 
-uint64_t sysfs_group_deinit(sysfs_group_t* group)
+dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* private)
 {
-    if (group == NULL)
+    if (parent == NULL || name == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return NULL;
     }
 
-    DEREF(group->root.dentry);
-    group->root.dentry = NULL;
-    group->root.group = NULL;
-    DEREF(group->mount);
-    group->mount = NULL;
-    return 0;
-}
-
-uint64_t sysfs_dir_init(sysfs_dir_t* dir, sysfs_dir_t* parent, const char* name, const inode_ops_t* inodeOps,
-    void* private)
-{
-    if (dir == NULL || parent == NULL || name == NULL)
-    {
-        LOG_ERR("dir, parent or name is null\n");
-        errno = EINVAL;
-        return ERR;
-    }
-
-    dentry_t* dentry = dentry_new(parent->dentry->superblock, parent->dentry, name);
-    if (dentry == NULL)
-    {
-        LOG_ERR("failed to create dentry for sysfs dir '%s'\n", name);
-        return ERR;
-    }
-    DEREF_DEFER(dentry);
-    dentry->private = dir;
-
-    inode_t* inode = inode_new(parent->dentry->superblock, atomic_fetch_add(&newNum, 1), INODE_DIR, inodeOps, &dirOps);
-    if (inode == NULL)
-    {
-        LOG_ERR("failed to create inode for sysfs dir '%s'\n", name);
-        return ERR;
-    }
-    DEREF_DEFER(inode);
-    inode->private = private;
-
-    if (vfs_add_dentry(dentry) == ERR)
-    {
-        LOG_ERR("failed to add dentry for sysfs dir '%s'\n", name);
-        return ERR;
-    }
-    dentry_make_positive(dentry, inode);
-
-    dir->dentry = REF(dentry);
-    dir->group = parent->group;
-    return 0;
-}
-
-void sysfs_dir_deinit(sysfs_dir_t* dir)
-{
+    dentry_t* dir = dentry_new(parent->superblock, parent, name);
     if (dir == NULL)
     {
-        return;
+        return NULL;
     }
+    DEREF_DEFER(dir);
 
-    DEREF(dir->dentry);
-    dir->dentry = NULL;
-    dir->group = NULL;
-}
-
-uint64_t sysfs_file_init(sysfs_file_t* file, sysfs_dir_t* parent, const char* name, const inode_ops_t* inodeOps,
-    const file_ops_t* fileOps, void* private)
-{
-    if (file == NULL || parent == NULL || name == NULL)
-    {
-        LOG_ERR("file, parent or name is null\n");
-        errno = EINVAL;
-        return ERR;
-    }
-
-    dentry_t* dentry = dentry_new(parent->dentry->superblock, parent->dentry, name);
-    if (dentry == NULL)
-    {
-        LOG_ERR("failed to create dentry for sysfs file '%s'\n", name);
-        return ERR;
-    }
-    DEREF_DEFER(dentry);
-    dentry->private = file;
-
-    inode_t* inode = inode_new(parent->dentry->superblock, atomic_fetch_add(&newNum, 1), INODE_FILE, inodeOps, fileOps);
+    inode_t* inode = inode_new(parent->superblock, atomic_fetch_add(&newNum, 1), INODE_DIR, inodeOps, &dirOps);
     if (inode == NULL)
     {
-        LOG_ERR("failed to create inode for sysfs file '%s'\n", name);
-        return ERR;
+        return NULL;
     }
     DEREF_DEFER(inode);
+
     inode->private = private;
 
-    if (vfs_add_dentry(dentry) == ERR)
+    if (dentry_make_positive(dir, inode) == ERR)
     {
-        LOG_ERR("failed to add dentry for sysfs file '%s'\n", name);
-        return ERR;
+        return NULL;
     }
-    dentry_make_positive(dentry, inode);
 
-    file->dentry = REF(dentry);
-    return 0;
+    return REF(dir);
 }
 
-void sysfs_file_deinit(sysfs_file_t* file)
+dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps,
+    const file_ops_t* fileOps, void* private)
 {
-    if (file == NULL)
+    if (parent == NULL || name == NULL)
     {
-        return;
+        errno = EINVAL;
+        return NULL;
     }
 
-    DEREF(file->dentry);
-    file->dentry = NULL;
+    dentry_t* file = dentry_new(parent->superblock, parent, name);
+    if (file == NULL)
+    {
+        return NULL;
+    }
+    DEREF_DEFER(file);
+
+    inode_t* inode = inode_new(parent->superblock, atomic_fetch_add(&newNum, 1), INODE_FILE, inodeOps, fileOps);
+    if (inode == NULL)
+    {
+        return NULL;
+    }
+    DEREF_DEFER(inode);
+
+    inode->private = private;
+
+    if (dentry_make_positive(file, inode) == ERR)
+    {
+        return NULL;
+    }
+
+    return REF(file);
 }

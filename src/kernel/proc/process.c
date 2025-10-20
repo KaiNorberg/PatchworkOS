@@ -32,8 +32,8 @@ static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 // Should be acquired whenever a process tree is being read or modified.
 static rwlock_t treeLock = RWLOCK_CREATE;
 
-static process_dir_t self;
-static sysfs_group_t procGroup;
+static dentry_t* selfDir = NULL;
+static mount_t* procMount = NULL;
 
 static process_t* process_file_get_process(file_t* file)
 {
@@ -220,79 +220,55 @@ static inode_ops_t inodeOps = {
     .cleanup = process_inode_cleanup,
 };
 
-static uint64_t process_dir_init(process_dir_t* dir, const char* name, process_t* process)
+static dentry_t* process_dir_new(const char* name, process_t* process)
 {
-    if (sysfs_dir_init(&dir->dir, &procGroup.root, name, &inodeOps, REF(process)) == ERR)
+    dentry_t* dir = sysfs_dir_new(procMount->superblock->root, name, &inodeOps, REF(process));
+    if (dir == NULL)
     {
-        return ERR;
+        return NULL;
     }
 
-    if (sysfs_file_init(&dir->prioFile, &dir->dir, "prio", &inodeOps, &prioOps, REF(process)) == ERR)
+    dentry_t* prioFile = sysfs_file_new(dir, "prio", &inodeOps, &prioOps, REF(process));
+    if (prioFile == NULL)
     {
-        DEREF(process);
-        sysfs_dir_deinit(&dir->dir);
-        return ERR;
+        DEREF(dir);
+        return NULL;
     }
+    DEREF(prioFile); // The `dir` already holds a reference.
 
-    if (sysfs_file_init(&dir->cwdFile, &dir->dir, "cwd", &inodeOps, &cwdOps, REF(process)) == ERR)
+    dentry_t* cwdFile = sysfs_file_new(dir, "cwd", &inodeOps, &cwdOps, REF(process));
+    if (cwdFile == NULL)
     {
-        DEREF(process);
-        DEREF(process);
-        sysfs_file_deinit(&dir->prioFile);
-        sysfs_dir_deinit(&dir->dir);
-        return ERR;
+        DEREF(dir);
+        return NULL;
     }
+    DEREF(cwdFile);
 
-    if (sysfs_file_init(&dir->cmdlineFile, &dir->dir, "cmdline", &inodeOps, &cmdlineOps, REF(process)) == ERR)
+    dentry_t* cmdlineFile = sysfs_file_new(dir, "cmdline", &inodeOps, &cmdlineOps, REF(process));
+    if (cmdlineFile == NULL)
     {
-        DEREF(process);
-        DEREF(process);
-        DEREF(process);
-        sysfs_file_deinit(&dir->prioFile);
-        sysfs_file_deinit(&dir->cwdFile);
-        sysfs_dir_deinit(&dir->dir);
-        return ERR;
+        DEREF(dir);
+        return NULL;
     }
+    DEREF(cmdlineFile);
 
-    if (sysfs_file_init(&dir->noteFile, &dir->dir, "note", &inodeOps, &noteOps, REF(process)) == ERR)
+    dentry_t* noteFile = sysfs_file_new(dir, "note", &inodeOps, &noteOps, REF(process));
+    if (noteFile == NULL)
     {
-        DEREF(process);
-        DEREF(process);
-        DEREF(process);
-        DEREF(process);
-        sysfs_file_deinit(&dir->prioFile);
-        sysfs_file_deinit(&dir->cwdFile);
-        sysfs_file_deinit(&dir->cmdlineFile);
-        sysfs_dir_deinit(&dir->dir);
-        return ERR;
+        DEREF(dir);
+        return NULL;
     }
+    DEREF(noteFile);
 
-    if (sysfs_file_init(&dir->statusFile, &dir->dir, "status", &inodeOps, &statusOps, REF(process)) == ERR)
+    dentry_t* statusFile = sysfs_file_new(dir, "status", &inodeOps, &statusOps, REF(process));
+    if (statusFile == NULL)
     {
-        DEREF(process);
-        DEREF(process);
-        DEREF(process);
-        DEREF(process);
-        DEREF(process);
-        sysfs_file_deinit(&dir->noteFile);
-        sysfs_file_deinit(&dir->prioFile);
-        sysfs_file_deinit(&dir->cwdFile);
-        sysfs_file_deinit(&dir->cmdlineFile);
-        sysfs_dir_deinit(&dir->dir);
-        return ERR;
+        DEREF(dir);
+        return NULL;
     }
+    DEREF(statusFile);
 
-    return 0;
-}
-
-static void process_dir_deinit(process_dir_t* dir)
-{
-    sysfs_file_deinit(&dir->prioFile);
-    sysfs_file_deinit(&dir->cwdFile);
-    sysfs_file_deinit(&dir->cmdlineFile);
-    sysfs_file_deinit(&dir->noteFile);
-    sysfs_file_deinit(&dir->statusFile);
-    sysfs_dir_deinit(&dir->dir);
+    return dir;
 }
 
 static void process_free(process_t* process)
@@ -422,7 +398,8 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
 
     char name[MAX_NAME];
     snprintf(name, MAX_NAME, "%d", process->id);
-    if (process_dir_init(&process->dir, name, process))
+    process->dir = process_dir_new(name, process);
+    if (process->dir == NULL)
     {
         DEREF(process);
         return NULL;
@@ -456,9 +433,9 @@ void process_kill(process_t* process, uint64_t status)
         LOG_DEBUG("sent kill note to %llu threads in process pid=%d\n", killCount, process->id);
     }
 
-    vfs_ctx_deinit(&process->vfsCtx);  // Here instead of in process_inode_cleanup, makes sure that files close
-                                       // immediately to notify blocking threads.
-    process_dir_deinit(&process->dir); // The dir entries have refs to the process, so we must deinit it here.
+    vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_inode_cleanup, makes sure that files close
+                                      // immediately to notify blocking threads.
+    DEREF(&process->dir);             // The dir entries have refs to the process, so we must deinit it here.
     wait_unblock(&process->dyingWaitQueue, WAIT_ALL, EOK);
 }
 
@@ -484,13 +461,16 @@ bool process_is_child(process_t* process, pid_t parentId)
 
 void process_procfs_init(void)
 {
-    if (sysfs_group_init(&procGroup, NULL, "proc", NULL) == ERR)
+    procMount = sysfs_mount_new(NULL, "proc", NULL);
+    if (procMount == NULL)
     {
-        panic(NULL, "Failed to initialize process sysfs group");
+        panic(NULL, "Failed to mount /proc filesystem");
     }
-    if (process_dir_init(&self, "self", NULL) == ERR)
+
+    selfDir = process_dir_new("self", NULL);
+    if (selfDir == NULL)
     {
-        panic(NULL, "Failed to initialize process sysfs directory");
+        panic(NULL, "Failed to create /proc/self directory");
     }
 
     assert(kernelProcessInitalized);
@@ -498,9 +478,10 @@ void process_procfs_init(void)
     // Kernel process was created before sysfs was initialized, so we have to delay this until now.
     char name[MAX_NAME];
     snprintf(name, MAX_NAME, "%d", kernelProcess.id);
-    if (process_dir_init(&kernelProcess.dir, name, &kernelProcess) == ERR)
+    kernelProcess.dir = process_dir_new(name, &kernelProcess);
+    if (kernelProcess.dir == NULL)
     {
-        panic(NULL, "Failed to initialize kernel process sysfs directory");
+        panic(NULL, "Failed to create /proc/[pid] directory for kernel process");
     }
 }
 

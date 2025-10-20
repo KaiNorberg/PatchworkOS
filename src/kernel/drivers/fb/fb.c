@@ -56,7 +56,7 @@ uint64_t fb_expose(fb_t* fb)
 {
     char name[MAX_NAME];
     sprintf(name, "fb%d", atomic_load(&newId));
-    if (sysfs_file_init(&fb->file, sysfs_get_default(), name, NULL, &fbOps, fb) == ERR)
+    if (sysfs_file_init(&fb->file, sysfs_get_dev(), name, NULL, &fbOps, fb) == ERR)
     {
         return ERR;
     }

@@ -28,12 +28,6 @@ static uint64_t socket_factory_open(file_t* file)
         return ERR;
     }
 
-    if (socket_expose(sock) == ERR)
-    {
-        socket_free(sock);
-        return ERR;
-    }
-
     file->private = sock;
     return 0;
 }

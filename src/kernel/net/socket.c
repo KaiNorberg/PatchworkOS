@@ -2,6 +2,8 @@
 
 #include "fs/ctl.h"
 #include "fs/path.h"
+#include "fs/mount.h"
+#include "fs/file.h"
 #include "mem/heap.h"
 #include "proc/process.h"
 #include "sched/sched.h"
@@ -268,7 +270,7 @@ static uint64_t socket_accept_open(file_t* file)
     if (sock->family->accept(sock, newSock) == ERR)
     {
         socket_end_transition(newSock, ERR);
-        socket_free(newSock);
+        DEREF(newSock);
         return ERR;
     }
 
@@ -313,6 +315,22 @@ static inode_ops_t inodeOps = {
     .cleanup = socket_inode_cleanup,
 };
 
+static void socket_free(socket_t* sock)
+{
+    if (sock == NULL)
+    {
+        return;
+    }
+
+    if (sock->family != NULL && sock->family->deinit != NULL)
+    {
+        sock->family->deinit(sock);
+    }
+
+    rwmutex_deinit(&sock->mutex);
+    heap_free(sock);
+}
+
 socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t flags)
 {
     if (family == NULL)
@@ -337,7 +355,6 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
     sock->flags = flags;
     sock->private = NULL;
     rwmutex_init(&sock->mutex);
-    sock->isExposed = false;
     sock->currentState = SOCKET_NEW;
     sock->nextState = SOCKET_NEW;
 
@@ -348,26 +365,34 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
         return NULL;
     }
 
+    mount_t* mount = sysfs_mount_new(sock->family->dir, sock->id, &sched_process()->namespace);
+    if (mount == NULL)
+    {
+        DEREF(sock);
+        return NULL;
+    }
+    DEREF_DEFER(mount); // The namespace holds a reference, when the namespace is destroyed, the mount will be destroyed too.
+
+    dentry_t* ctlFile = sysfs_file_new(mount->superblock->root, "ctl", &inodeOps, &ctlOps, REF(sock));
+    if (ctlFile == NULL)
+    {
+        namespace_unmount(&mount->dentry->mount->namespace, mount->dentry);
+        return NULL;
+    }
+    DEREF(ctlFile);
+
+    dentry_t* dataFile = sysfs_file_new(mount->superblock->root, "data", &inodeOps, &dataOps, REF(sock));
+    if (dataFile == NULL)
+    {
+        family->deinit(sock);
+        rwmutex_deinit(&sock->mutex);
+        heap_free(sock);
+        return NULL;
+
     return sock;
 }
 
-void socket_free(socket_t* sock)
-{
-    if (sock == NULL)
-    {
-        return;
-    }
-
-    if (sock->family != NULL && sock->family->deinit != NULL)
-    {
-        sock->family->deinit(sock);
-    }
-
-    rwmutex_deinit(&sock->mutex);
-    heap_free(sock);
-}
-
-uint64_t socket_expose(socket_t* sock)
+/*uint64_t socket_expose(socket_t* sock)
 {
     if (sock == NULL)
     {
@@ -409,21 +434,7 @@ uint64_t socket_expose(socket_t* sock)
 
     sock->isExposed = true;
     return 0;
-}
-
-void socket_hide(socket_t* sock)
-{
-    if (!sock->isExposed)
-    {
-        return;
-    }
-
-    sysfs_file_deinit(&sock->ctlFile);
-    sysfs_file_deinit(&sock->dataFile);
-    sysfs_file_deinit(&sock->acceptFile);
-    sysfs_group_deinit(&sock->group);
-    sock->isExposed = false;
-}
+}*/
 
 static const bool validTransitions[SOCKET_STATE_AMOUNT][SOCKET_STATE_AMOUNT] = {
     [SOCKET_NEW] =

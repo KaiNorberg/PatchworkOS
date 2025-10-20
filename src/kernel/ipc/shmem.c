@@ -362,7 +362,7 @@ static file_ops_t newFileOps = {
 
 void shmem_init(void)
 {
-    if (sysfs_dir_init(&shmemDir, sysfs_get_default(), "shmem", NULL, NULL) == ERR)
+    if (sysfs_dir_init(&shmemDir, sysfs_get_dev(), "shmem", NULL, NULL) == ERR)
     {
         panic(NULL, "Failed to initialize shmem directory");
     }

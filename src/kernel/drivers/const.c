@@ -97,15 +97,15 @@ static file_ops_t nullOps = {
 
 void const_init(void)
 {
-    if (sysfs_file_init(&oneFile, sysfs_get_default(), "one", NULL, &oneOps, NULL) == ERR)
+    if (sysfs_file_init(&oneFile, sysfs_get_dev(), "one", NULL, &oneOps, NULL) == ERR)
     {
         panic(NULL, "Failed to init one file");
     }
-    if (sysfs_file_init(&zeroFile, sysfs_get_default(), "zero", NULL, &zeroOps, NULL) == ERR)
+    if (sysfs_file_init(&zeroFile, sysfs_get_dev(), "zero", NULL, &zeroOps, NULL) == ERR)
     {
         panic(NULL, "Failed to init zero file");
     }
-    if (sysfs_file_init(&nullFile, sysfs_get_default(), "null", NULL, &nullOps, NULL) == ERR)
+    if (sysfs_file_init(&nullFile, sysfs_get_dev(), "null", NULL, &nullOps, NULL) == ERR)
     {
         panic(NULL, "Failed to init null file");
     }

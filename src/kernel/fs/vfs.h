@@ -138,6 +138,8 @@ dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name);
 /**
  * @brief Add a inode to the inode cache.
  *
+ * Should not be used manually, as it will be called in `inode_new()`.
+ *
  * @param inode The inode to add.
  * @return On success, 0. On failure, returns `ERR` and `errno` is set.
  */
@@ -145,6 +147,8 @@ uint64_t vfs_add_inode(inode_t* inode);
 
 /**
  * @brief Add a dentry to the dentry cache.
+ *
+ * Should not be used manually, instead use `dentry_make_positive()`.
  *
  * @param dentry The dentry to add.
  * @return On success, 0. On failure, returns `ERR` and `errno` is set.

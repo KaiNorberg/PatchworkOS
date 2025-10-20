@@ -33,21 +33,6 @@ typedef struct
 } process_threads_t;
 
 /**
- * @brief Process directory structure.
- *
- * Holds all the sysfs entries for a process.
- */
-typedef struct
-{
-    sysfs_dir_t dir;
-    sysfs_file_t prioFile;
-    sysfs_file_t cwdFile;
-    sysfs_file_t cmdlineFile;
-    sysfs_file_t noteFile;
-    sysfs_file_t statusFile;
-} process_dir_t;
-
-/**
  * @brief Process structure.
  * @struct process_t
  */
@@ -68,7 +53,7 @@ typedef struct process
     list_entry_t entry;
     list_t children;
     struct process* parent;
-    process_dir_t dir;
+    dentry_t* dir; ///< The `/proc/[pid]` directory for this process.
 } process_t;
 
 /**

@@ -90,11 +90,12 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     return dentry;
 }
 
-void dentry_make_positive(dentry_t* dentry, inode_t* inode)
+uint64_t dentry_make_positive(dentry_t* dentry, inode_t* inode)
 {
     if (dentry == NULL || inode == NULL)
     {
-        return;
+        errno = EINVAL;
+        return ERR;
     }
 
     MUTEX_SCOPE(&dentry->mutex);
@@ -102,6 +103,11 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode)
     // Sanity checks.
     assert(dentry->flags & DENTRY_NEGATIVE);
     assert(dentry->inode == NULL);
+
+    if (vfs_add_dentry(dentry) == ERR)
+    {
+        return ERR;
+    }
 
     dentry->inode = REF(inode);
     dentry->flags &= ~DENTRY_NEGATIVE;

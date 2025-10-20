@@ -66,7 +66,7 @@ kbd_t* kbd_new(const char* name)
 {
     if (kbdDir.dentry == NULL)
     {
-        if (sysfs_dir_init(&kbdDir, sysfs_get_default(), "kbd", NULL, NULL) == ERR)
+        if (sysfs_dir_init(&kbdDir, sysfs_get_dev(), "kbd", NULL, NULL) == ERR)
         {
             return NULL;
         }

@@ -33,7 +33,7 @@ void sysfs_init(void);
  *
  * @return The default SysFS directory.
  */
-dentry_t* sysfs_get_default(void);
+dentry_t* sysfs_get_dev(void);
 
 /**
  * @brief Mount a new instance of SysFS.
@@ -49,13 +49,16 @@ dentry_t* sysfs_get_default(void);
  * you can just dereference the returned `mount_t` immediately. Otherwise it will exist until both the process has
  * exited and you have dereferenced the `mount_t`.
  *
- * @param parent The parent dentry to mount the SysFS under. If `NULL`, the SysFS will be mounted at the root of the
- * namespace.
- * @param name The name of the mount point.
+ * If `parent` is `NULL`, then the sysfs instance will be mounted to a already existing directory in the root of the
+ * namespace. If it is not `NULL`, a new directory of the name `name` will be created inside the `parent` directory and the
+ * SysFS instance will be mounted there.
+ *
+ * @param parent The parent directory to mount the SysFS in. If `NULL`, the root of the namespace is used.
+ * @param name The name of the directory to mount the SysFS in.
  * @param ns The namespace to mount the SysFS in. If `NULL`, the kernel process's namespace is used.
  * @return On success, the mounted SysFS instance. On failure, `NULL` and `errno` is set.
  */
-mount_t* sysfs_mount_new(dentry_t* parent, const char* name, namespace_t* ns);
+mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns);
 
 /**
  * @brief Create a new directory inside a mounted SysFS instance.
@@ -69,17 +72,17 @@ mount_t* sysfs_mount_new(dentry_t* parent, const char* name, namespace_t* ns);
  * @param parent The parent directory.
  * @param name The name of the new directory.
  * @param inodeOps The inode operations for the new directory, can be `NULL`.
- * @param private Private data associated with the new directory, can be `NULL`.
+ * @param private Private data associated with the new directory, can be `NULL`, will be stored in the inode.
  * @return On success, the new SysFS directory. On failure, `NULL` and `errno` is set.
  */
-dentry_t* sysfs_directory_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* private);
+dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* private);
 
 /**
  * @brief Create a new file inside a mounted SysFS instance.
  *
  * Used to, for example, create a new file for a device or resource inside `/dev` or `/proc`.
  *
- * The behaviour of the resulting `dentry_t` reference is identical to `sysfs_directory_new()`.
+ * The behaviour of the resulting `dentry_t` reference is identical to `sysfs_dir_new()`.
  *
  * @param parent The parent directory.
  * @param name The name of the new file.

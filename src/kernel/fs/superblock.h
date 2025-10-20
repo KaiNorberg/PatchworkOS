@@ -53,7 +53,6 @@ typedef struct superblock
     const dentry_ops_t* dentryOps;
     filesystem_t* fs;
     char deviceName[MAX_NAME];
-    sysfs_dir_t sysfsDir;
 } superblock_t;
 
 /**

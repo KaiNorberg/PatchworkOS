@@ -100,7 +100,7 @@ uint64_t namespace_traverse_mount(namespace_t* ns, const path_t* mountpoint, pat
 }
 
 uint64_t namespace_mount(namespace_t* ns, path_t* mountpoint, const char* deviceName, const char* fsName,
-    path_t* outRoot, void* private)
+    mount_t** outRoot, void* private)
 {
     if (deviceName == NULL || fsName == NULL)
     {
@@ -152,7 +152,7 @@ uint64_t namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
 
         if (outRoot != NULL)
         {
-            path_set(outRoot, ns->rootMount, root);
+            *outRoot = REF(ns->rootMount);
         }
 
         LOG_INFO("mounted %s as root with %s\n", deviceName, fsName);
@@ -189,7 +189,7 @@ uint64_t namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
 
     if (outRoot != NULL)
     {
-        path_set(outRoot, mount, root);
+        *outRoot = REF(mount);
     }
 
     LOG_INFO("mounted %s with %s\n", deviceName, fsName);

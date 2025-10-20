@@ -63,7 +63,7 @@ mouse_t* mouse_new(const char* name)
 {
     if (mouseDir.dentry == NULL)
     {
-        if (sysfs_dir_init(&mouseDir, sysfs_get_default(), "mouse", NULL, NULL) == ERR)
+        if (sysfs_dir_init(&mouseDir, sysfs_get_dev(), "mouse", NULL, NULL) == ERR)
         {
             return NULL;
         }

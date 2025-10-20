@@ -1,17 +1,21 @@
 #include "net.h"
 
 #include "fs/sysfs.h"
+#include "fs/mount.h"
+#include "fs/superblock.h"
+#include "fs/dentry.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "net/local/local.h"
 
-static sysfs_group_t group;
+static mount_t* mount;
 
 void net_init(void)
 {
-    if (sysfs_group_init(&group, NULL, "net", NULL) == ERR)
+    mount = sysfs_mount_new(NULL, "net", NULL);
+    if (mount == NULL)
     {
-        panic(NULL, "Failed to initialize network sysfs group");
+        panic(NULL, "Failed to create /net filesystem");
     }
 
     net_local_init();
@@ -19,7 +23,7 @@ void net_init(void)
     LOG_INFO("networking initialized\n");
 }
 
-sysfs_dir_t* net_get_dir(void)
+dentry_t* net_get_dir(void)
 {
-    return &group.root;
+    return mount->superblock->root;
 }

@@ -87,7 +87,7 @@ static file_ops_t memOps = {
 
 void statistics_init(void)
 {
-    if (sysfs_dir_init(&statDir, sysfs_get_default(), "stat", NULL, NULL) == ERR)
+    if (sysfs_dir_init(&statDir, sysfs_get_dev(), "stat", NULL, NULL) == ERR)
     {
         panic(NULL, "Failed to initialize statistics directory");
     }

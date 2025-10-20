@@ -20,6 +20,6 @@ void net_init(void);
  *
  * @return Pointer to the networking sysfs directory (`/net`)
  */
-sysfs_dir_t* net_get_dir(void);
+dentry_t* net_get_dir(void);
 
 /** @} */
