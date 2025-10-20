@@ -91,7 +91,7 @@ The test maps and unmaps memory in varying page amounts for a set amount of iter
 
 ```mermaid
 xychart-beta
-title "Blue: PatchworkOS, Green: Fedora, Lower is Better"
+title "Blue: PatchworkOS, Green: Linux (Fedora), Lower is Better"
 x-axis "Page Amount" [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
 y-axis "Time (ms)" 0 --> 30000
 line [48, 48, 48, 48, 68, 97, 164, 365, 632, 1176, 3125]
