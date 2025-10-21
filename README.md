@@ -104,9 +104,9 @@ There are a few potential reasons for this, one is that PatchworkOS does not use
 
 In the end we end up with a `O(1)` complexity per page operation, or technically, since the algorithm for finding unmapped memory sections is `O(r)` in the worst case where `r` is the size of the address region to check in pages, having more memory allocated would potentially actually improve performance but only by a very small amount. We do of course get `O(n)` complexity per allocation/mapping operation where `n` is the number of pages.
 
-Of course, there are limitations to this approach, for example it is in no way portable (which isent a concern in my case), each address space can only contain `2^7 - 1` unique shared memory regions, and copy on write would not be easy to implement (however he need for this is reduced due to PatchworkOS using a `spawn()` instead of a `fork()`).
+Of course, there are limitations to this approach, for example, it is in no way portable (which isn't a concern in our case), each address space can only contain `2^7 - 1` unique shared memory regions, and copy-on-write would not be easy to implement (however, the need for this is reduced due to PatchworkOS using a `spawn()` instead of a `fork()`).
 
-All in all this algorithem would not be usuable as a replacement for existing algorithms but for PatchworkOS it serves its purpose very efficently.
+All in all, this algorithm would not be usable as a replacement for existing algorithms, but for PatchworkOS, it serves its purpose very efficiently.
 
 ## Shell Utilities
 
