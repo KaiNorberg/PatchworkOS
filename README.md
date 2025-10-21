@@ -179,7 +179,7 @@ There are also other utils available that work as expected, for example `stat` a
 
 ## Everything is a File
 
-Patchwork strictly follows the "everything is a file" philosophy in a way similar to Plan9, this can often result in unorthodox APIs or could just straight up seem overly complicated, but it has its advantages. I will give some examples and then after I will explain why this is not a complete waste of time. Let's start with sockets.
+Patchwork strictly follows the "everything is a file" philosophy in a way similar to Plan9, this can often result in unorthodox APIs or could just straight up seem overly complicated, but it has its advantages. We will use sockets to demonstrate the kinds of APIs this produces.
 
 ### Sockets
 
@@ -237,18 +237,6 @@ fd_t handle = open("/net/local/seqpacket:nonblock");
 ```
 
 Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `openf()` function. It is also possible to just specify the first letter of a flag, so instead of `:nonblock` you can use `:n`. Note that duplicate flags are ignored and that there are no read or write flags, all files are both read and write.
-
-### The Why
-
-So, finally, I can explain why I've decided to do this. It does seem overly complicated at first glance. There are three reasons in total.
-
-The first is that I want Patchwork to be easy to expand upon. Normally, to just implement a single system call requires large portions of the OS to be modified and a whole new API to learn, but with Patchwork, it's just a matter of adding a new file.
-
-The second reason is that it makes using the shell far more interesting, there is no need for special functions or any other magic keywords to for instance use sockets, all it takes is opening and reading from files.
-
-And of course the third and final reason is because I think it's fun, and honestly I think this kind of system is just kinda beautiful. There are downsides, of course, like the fact that these systems are less self documenting. But that is an argument for another time.
-
-**Example:** Say we wanted to implement `waitpid()`. First we need to implement the kernel behavior itself, then the appropriate system call, then add in handling for that system call in the standard library, then the actual function itself in the standard library and finally create some `waitpid` shell utility. That's a lot of work for something as simple as a waiting for a process to die, and it means a whole new API to learn. Instead, we can just add a `status` file to the process directory, which is only a handful lines of code, and we are done. Reading from the status file will block until the process dies and then read its exit status and can be used via `read()` or in the shell via `read /proc/[pid]/status`.
 
 ---
 
