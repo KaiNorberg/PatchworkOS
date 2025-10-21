@@ -59,7 +59,7 @@ In the end this is a project made for fun, however the goal is to eventually hav
 
 ## Limitations
 
-- Currently limited to RAM disks only
+- Currently limited to RAM disks only (Waiting for USB support)
 - Only support for x86_64
 
 ## Notable Future Plans
