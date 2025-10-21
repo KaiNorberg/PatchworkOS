@@ -6,7 +6,7 @@
 
 static cache_t* cache_new(slab_t* slab, uint64_t objectSize, uint64_t size)
 {
-    cache_t* cache = vmm_alloc(NULL, NULL, size, PML_WRITE | PML_GLOBAL | PML_PRESENT);
+    cache_t* cache = vmm_alloc(NULL, NULL, size, PML_WRITE | PML_GLOBAL | PML_PRESENT, VMM_ALLOC_NONE);
     if (cache == NULL)
     {
         return NULL;
@@ -79,7 +79,6 @@ void slab_init(slab_t* slab, uint64_t objectSize)
 object_t* slab_alloc(slab_t* slab)
 {
     cache_t* cache;
-
     if (!list_is_empty(&slab->partialCaches))
     {
         cache = CONTAINER_OF(list_first(&slab->partialCaches), cache_t, entry);

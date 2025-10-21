@@ -175,7 +175,7 @@ void* pmm_alloc(void)
 
 uint64_t pmm_alloc_pages(void** addresses, uint64_t count)
 {
-    // LOCK_SCOPE(&lock);
+    LOCK_SCOPE(&lock);
     for (uint64_t i = 0; i < count; i++)
     {
         void* address = pmm_stack_alloc(&stack);

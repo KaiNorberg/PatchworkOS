@@ -6,6 +6,7 @@
 #include "log/panic.h"
 #endif
 
+#include "drivers/com.h"
 #include <common/defs.h>
 #include <stdatomic.h>
 
@@ -21,7 +22,7 @@
  * @brief Number of iterations before we consider a deadlock has occurred in lock_acquire.
  * This is only used in debug builds.
  */
-#define LOCK_DEADLOCK_ITERATIONS 100000000
+#define LOCK_DEADLOCK_ITERATIONS 1000000
 
 /**
  * @brief Lock canary value to detect memory corruption.
@@ -44,6 +45,7 @@ typedef struct
     atomic_uint16_t nowServing;
 #ifndef NDEBUG
     uint32_t canary;
+    uintptr_t calledFrom;
 #endif
 } lock_t;
 
@@ -102,6 +104,7 @@ static inline void lock_acquire(lock_t* lock)
         interrupt_enable();
         panic(NULL, "Lock canary corrupted");
     }
+    lock->calledFrom = (uintptr_t)__builtin_return_address(0);
     uint64_t iterations = 0;
 #endif
 
@@ -111,13 +114,15 @@ static inline void lock_acquire(lock_t* lock)
         asm volatile("pause");
 
 #ifndef NDEBUG
+        if (lock->canary != LOCK_CANARY)
+        {
+            interrupt_enable();
+            panic(NULL, "Lock canary corrupted after %d iterations", iterations);
+        }
         if (++iterations >= LOCK_DEADLOCK_ITERATIONS)
         {
             interrupt_enable();
-            panic(NULL,
-                "Deadlock in lock_acquire detected after %llu iterations (ticket=%u, nowServing=%u, nextTicket=%u)",
-                iterations, ticket, atomic_load_explicit(&lock->nowServing, memory_order_relaxed),
-                atomic_load_explicit(&lock->nextTicket, memory_order_relaxed));
+            panic(NULL, "Deadlock detected in lock last acquired from %p", (void*)lock->calledFrom);
         }
 #endif
     }

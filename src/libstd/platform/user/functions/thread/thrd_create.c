@@ -8,6 +8,8 @@
 #include "platform/user/common/syscalls.h"
 #include "platform/user/common/thread.h"
 
+fd_t klog = ERR;
+
 typedef struct
 {
     thrd_start_t func;
@@ -27,6 +29,15 @@ _THREAD_ENTRY_ATTRIBUTES static void _thread_entry(_thread_t* thread)
 
 int thrd_create(thrd_t* thr, thrd_start_t func, void* arg)
 {
+    if (klog == ERR)
+    {
+        klog = openf("/dev/klog");
+        if (klog == ERR)
+        {
+            return thrd_error;
+        }
+    }
+
     _entry_ctx_t* ctx = malloc(sizeof(_entry_ctx_t));
     if (ctx == NULL)
     {

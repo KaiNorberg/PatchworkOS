@@ -23,24 +23,16 @@
  *
  * @param virtAddr The virtual address of the page to invalidate.
  */
-static inline void pml_invalidate_pages(page_table_t* table, uintptr_t virtAddr, uint64_t pageCount)
+static inline void tlb_invalidate(void* virtAddr, uint64_t pageCount)
 {
     if (pageCount == 0)
     {
         return;
     }
 
-    uint64_t cr3 = cr3_read();
-    if (cr3 != PML_ENSURE_LOWER_HALF(table->pml4))
-    {
-        // If the page table is not loaded we dont need to invalidate anything as the TLB is for the currently loaded
-        // page table.
-        return;
-    }
-
     if (pageCount > 16)
     {
-        cr3_write(cr3);
+        cr3_write(cr3_read());
     }
     else
     {
@@ -481,7 +473,9 @@ static inline uint64_t page_table_map_pages(page_table_t* table, void* virtAddr,
  *
  * If a page is not currently mapped, it is skipped.
  *
- * If the `PML_OWNED` flag is set on a page, the physical page will be freed.
+ * Will NOT free owned pages, instead it only sets the present flag to 0. This is to help with TLB shootdowns where we
+ * must unmap, wait for all CPUs to acknowledge the unmap, and only then free the pages. Use `page_table_clear()` to
+ * free owned pages separately.
  *
  * @param table The page table.
  * @param virtAddr The starting virtual address.
@@ -489,9 +483,6 @@ static inline uint64_t page_table_map_pages(page_table_t* table, void* virtAddr,
  */
 static inline void page_table_unmap(page_table_t* table, void* virtAddr, uint64_t pageAmount)
 {
-    void* pageBuffer[PML_PAGE_BUFFER_SIZE];
-    uint64_t pageBufferLength = 0;
-
     page_table_traverse_t traverse = {0};
     page_table_traverse_init(&traverse);
     for (uint64_t i = 0; i < pageAmount; i++)
@@ -507,6 +498,45 @@ static inline void page_table_unmap(page_table_t* table, void* virtAddr, uint64_
         }
 
         if (traverse.entry->pinDepth != 0)
+        {
+            continue;
+        }
+
+        traverse.entry->present = 0;
+    }
+
+    tlb_invalidate(virtAddr, pageAmount);
+}
+
+/**
+ * @brief Clears page table entries in the specified range and frees any owned pages.
+ *
+ * Intended to be used in conjunction with `page_table_unmap()` to first unmap pages and then free any owned pages after
+ * TLB shootdown is complete.
+ *
+ * Any still present or pinned entries will be skipped.
+ *
+ * All unskipped entries will be fully cleared (set to 0).
+ *
+ * @param table The page table.
+ * @param virtAddr The starting virtual address.
+ * @param pageAmount The number of pages to clear.
+ */
+static inline void page_table_clear(page_table_t* table, void* virtAddr, uint64_t pageAmount)
+{
+    void* pageBuffer[PML_PAGE_BUFFER_SIZE];
+    uint64_t pageBufferLength = 0;
+
+    page_table_traverse_t traverse = {0};
+    page_table_traverse_init(&traverse);
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {
+        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
+        {
+            continue;
+        }
+
+        if (traverse.entry->present)
         {
             continue;
         }
@@ -528,8 +558,6 @@ static inline void page_table_unmap(page_table_t* table, void* virtAddr, uint64_
     {
         table->freePages(pageBuffer, pageBufferLength);
     }
-
-    pml_invalidate_pages(table, (uintptr_t)virtAddr, pageAmount);
 }
 
 /**
@@ -605,7 +633,7 @@ static inline uint64_t page_table_set_flags(page_table_t* table, void* virtAddr,
         traverse.entry->raw = (traverse.entry->raw & ~PML_FLAGS_MASK) | (flags & PML_FLAGS_MASK);
     }
 
-    pml_invalidate_pages(table, (uintptr_t)virtAddr, pageAmount);
+    tlb_invalidate(virtAddr, pageAmount);
     return 0;
 }
 
@@ -872,14 +900,14 @@ static inline void page_table_unpin(page_table_t* table, const void* virtAddr, u
 }
 
 /**
- * @brief Retrieves the maximum pin depth among a range of pages.
+ * @brief Retrieves the highest pin depth among a range of pages.
  *
  * @param table The page table.
  * @param virtAddr The starting virtual address.
  * @param pageAmount The number of pages to check.
  * @return The maximum pin depth found in the range.
  */
-static inline uint64_t page_table_get_max_pin_depth(page_table_t* table, const void* virtAddr, uint64_t pageAmount)
+static inline uint64_t page_table_get_pin_depth(page_table_t* table, const void* virtAddr, uint64_t pageAmount)
 {
     uint64_t maxPinDepth = 0;
 

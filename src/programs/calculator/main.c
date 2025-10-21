@@ -139,8 +139,17 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 int main(void)
 {
     display_t* disp = display_new();
+    if (disp == NULL)
+    {
+        return EXIT_FAILURE;
+    }
 
     largeFont = font_new(disp, "default", "regular", 32);
+    if (largeFont == NULL)
+    {
+        display_free(disp);
+        return EXIT_FAILURE;
+    }
 
     rect_t rect = RECT_INIT_DIM(500, 200, WINDOW_WIDTH, WINDOW_HEIGHT);
     window_t* win = window_new(disp, "Calculator", &rect, SURFACE_WINDOW, WINDOW_DECO, procedure, NULL);

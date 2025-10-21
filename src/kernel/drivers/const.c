@@ -29,7 +29,7 @@ static void* const_one_mmap(file_t* file, void* addr, uint64_t length, pml_flags
 {
     (void)file; // Unused
 
-    addr = vmm_alloc(&sched_process()->space, addr, length, flags);
+    addr = vmm_alloc(&sched_process()->space, addr, length, flags, VMM_ALLOC_NONE);
     if (addr == NULL)
     {
         return NULL;
@@ -57,7 +57,7 @@ static void* const_zero_mmap(file_t* file, void* addr, uint64_t length, pml_flag
 {
     (void)file; // Unused
 
-    addr = vmm_alloc(&sched_process()->space, addr, length, flags);
+    addr = vmm_alloc(&sched_process()->space, addr, length, flags, VMM_ALLOC_NONE);
     if (addr == NULL)
     {
         return NULL;

@@ -234,9 +234,8 @@ SYSCALL_DEFINE(SYS_THREAD_EXIT, void)
     panic(NULL, "Return to syscall_thread_exit");
 }
 
-static void sched_update_recent_idle_time(thread_t* thread, bool wasBlocking)
+static void sched_update_recent_idle_time(thread_t* thread, bool wasBlocking, clock_t uptime)
 {
-    clock_t uptime = timer_uptime();
     clock_t delta = uptime - thread->sched.prevBlockCheck;
     if (wasBlocking)
     {
@@ -341,7 +340,7 @@ void sched_push(thread_t* thread, cpu_t* target)
     }
     else if (state == THREAD_UNBLOCKING)
     {
-        sched_update_recent_idle_time(thread, true);
+        sched_update_recent_idle_time(thread, true, timer_uptime());
         sched_queues_push(target->sched.active, thread);
     }
     else
@@ -362,6 +361,7 @@ void sched_push(thread_t* thread, cpu_t* target)
 
 static uint64_t sched_get_load(sched_cpu_ctx_t* ctx)
 {
+    LOCK_SCOPE(&ctx->lock);
     return ctx->active->length + ctx->expired->length + (ctx->runThread != ctx->idleThread ? 1 : 0);
 }
 
@@ -418,7 +418,7 @@ void sched_push_new_thread(thread_t* thread, thread_t* parent)
     }
     else if (state == THREAD_UNBLOCKING)
     {
-        sched_update_recent_idle_time(thread, true);
+        sched_update_recent_idle_time(thread, true, timer_uptime());
         sched_queues_push(target->sched.active, thread);
     }
     else
@@ -437,12 +437,28 @@ void sched_push_new_thread(thread_t* thread, thread_t* parent)
     smp_put();
 }
 
-static void sched_load_balance(cpu_t* self, cpu_t* neighbor)
+static cpu_t* sched_get_neighbor(cpu_t* self)
 {
+    if (smp_cpu_amount() == 1)
+    {
+        return NULL;
+    }
+
+    // Get the higher neighbor, the last cpu wraps around and gets the first.
+    return self->id != smp_cpu_amount() - 1 ? smp_cpu(self->id + 1) : smp_cpu(0);
+}
+
+static void sched_load_balance(cpu_t* self)
+{
+    // Technically there are race conditions here, but the worst case scenario is imperfect load balancing
+    // and we need to avoid holding the locks of two sched_cpu_ctx_t at the same time to prevent deadlocks.
+
     if (smp_cpu_amount() == 1)
     {
         return;
     }
+
+    cpu_t* neighbor = sched_get_neighbor(self);
 
     uint64_t selfLoad = sched_get_load(&self->sched);
     uint64_t neighborLoad = sched_get_load(&neighbor->sched);
@@ -455,7 +471,9 @@ static void sched_load_balance(cpu_t* self, cpu_t* neighbor)
     bool shouldNotifyNeighbor = false;
     while (selfLoad != neighborLoad)
     {
+        lock_acquire(&self->sched.lock);
         thread_t* thread = sched_queues_pop(self->sched.active, PRIORITY_MIN);
+        lock_release(&self->sched.lock);
         if (thread == NULL)
         {
             break;
@@ -466,7 +484,9 @@ static void sched_load_balance(cpu_t* self, cpu_t* neighbor)
             shouldNotifyNeighbor = true;
         }
 
+        lock_acquire(&neighbor->sched.lock);
         sched_queues_push(neighbor->sched.expired, thread);
+        lock_release(&neighbor->sched.lock);
         selfLoad--;
         neighborLoad++;
     }
@@ -477,46 +497,21 @@ static void sched_load_balance(cpu_t* self, cpu_t* neighbor)
     }
 }
 
-static cpu_t* sched_get_neighbor(cpu_t* self)
-{
-    if (smp_cpu_amount() == 1)
-    {
-        return NULL;
-    }
-
-    // Get the higher neighbor, the last cpu wraps around and gets the first.
-    return self->id != smp_cpu_amount() - 1 ? smp_cpu(self->id + 1) : smp_cpu(0);
-}
-
 void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags)
 {
     sched_cpu_ctx_t* ctx = &self->sched;
-    cpu_t* neighbor = sched_get_neighbor(self);
-    // Always use consistent lock ordering to avoid race conditions.
-    if (neighbor == NULL)
+    sched_load_balance(self);
+
+    lock_acquire(&ctx->lock);
+
+    if (ctx->runThread == NULL)
     {
-        lock_acquire(&self->sched.lock);
-    }
-    else if (neighbor->id > self->id)
-    {
-        lock_acquire(&self->sched.lock);
-        lock_acquire(&neighbor->sched.lock);
-    }
-    else
-    {
-        lock_acquire(&neighbor->sched.lock);
-        lock_acquire(&self->sched.lock);
+        lock_release(&ctx->lock);
+        panic(NULL, "ctx->runThread is NULL");
     }
 
-    if (neighbor != NULL)
-    {
-        sched_load_balance(self, neighbor);
-        lock_release(&neighbor->sched.lock);
-    }
-
-    assert(ctx->runThread != NULL);
-
-    sched_update_recent_idle_time(ctx->runThread, false);
+    clock_t uptime = timer_uptime();
+    sched_update_recent_idle_time(ctx->runThread, false, uptime);
 
     thread_t* threadToFree = NULL;
     if (flags & SCHED_DIE)
@@ -563,8 +558,6 @@ void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags)
         }
     }
 
-    clock_t uptime = timer_uptime();
-
     priority_t minPriority;
     if (ctx->runThread == NULL)
     {
@@ -591,7 +584,6 @@ void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags)
     }
 
     thread_t* next = sched_queues_pop(ctx->active, minPriority);
-
     if (next == NULL)
     {
         if (ctx->runThread == NULL)
@@ -635,5 +627,5 @@ void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags)
         thread_free(threadToFree);
     }
 
-    lock_release(&self->sched.lock);
+    lock_release(&ctx->lock);
 }

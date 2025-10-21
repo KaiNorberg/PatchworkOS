@@ -68,7 +68,7 @@ static void* loader_load_program(thread_t* thread)
                 return NULL;
             }
 
-            if (vmm_alloc(space, (void*)phdr.virtAddr, phdr.memorySize, PML_PRESENT | PML_WRITE | PML_USER) == NULL)
+            if (vmm_alloc(space, (void*)phdr.virtAddr, phdr.memorySize, PML_PRESENT | PML_WRITE | PML_USER, VMM_ALLOC_NONE) == NULL)
             {
                 return NULL;
             }
@@ -325,8 +325,9 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         heap_free(fdsCopy);
     }
 
+    pid_t childPid = child->process->id; // Important to not deref after pushing the thread
     sched_push_new_thread(child, thread);
-    return child->process->id;
+    return childPid;
 
 cleanup_argv:
     for (uint64_t i = 0; i < argc; i++)

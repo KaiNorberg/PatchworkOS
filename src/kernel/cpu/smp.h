@@ -33,11 +33,11 @@ extern uint16_t _cpuAmount;
 /**
  * @brief Early initialization of the bootstrap CPU.
  *
- * This function will set the CPU ID MSR to 0 for the bootstrap CPU, allowing other parts of the kernel that rely on
- * being able to identify the CPU to function correctly during early boot. Note that the bootstrap cpu structure must
- * not be actually utilized before calling `smp_bootstrap_init()` for anything other than identifying the cpu.
+ * This function will set the CPU ID MSR to 0 for the bootstrap CPU.
+ *
+ * This is really just to fix circular dependencies during memory initialization.
  */
-void smp_early_bootstrap_init(void);
+void smp_bootstrap_init_early(void);
 
 /**
  * @brief Initializes the bootstrap CPU structure.

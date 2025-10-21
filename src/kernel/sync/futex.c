@@ -107,9 +107,11 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
                 return ERR;
             }
 
-            if (atomic_load(addr) != val)
+            bool condition = atomic_load(addr) != val;
+            space_unpin(space, addr, sizeof(atomic_uint64_t));
+
+            if (condition)
             {
-                space_unpin(space, addr, sizeof(atomic_uint64_t));
                 wait_block_cancel();
                 if (firstCheck)
                 {
@@ -123,11 +125,8 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
             // immediately.
             if (wait_block_commit() == ERR)
             {
-                space_unpin(space, addr, sizeof(atomic_uint64_t));
                 return ERR;
             }
-
-            space_unpin(space, addr, sizeof(atomic_uint64_t));
         }
     }
     break;

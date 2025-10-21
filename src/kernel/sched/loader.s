@@ -11,6 +11,8 @@ section .text
 ;rdi = currently running thread
 global loader_jump_to_user_space
 loader_jump_to_user_space:
+    cli
+
     ; thread_get_interrupt_frame(rdi, rsp)
     sub rsp, INTERRUPT_FRAME_SIZE
     mov rsi, rsp

@@ -107,7 +107,10 @@ static inline void ref_init(ref_t* ref, void* free)
 static inline void* ref_inc(void* ptr)
 {
     ref_t* ref = (ref_t*)ptr;
-    assert(ref != NULL);
+    if (ref == NULL)
+    {
+        return NULL;
+    }
 
     assert(ref->magic == REF_MAGIC);
     atomic_fetch_add_explicit(&ref->count, 1, memory_order_relaxed);

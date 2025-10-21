@@ -71,8 +71,10 @@ static void exception_handler(interrupt_frame_t* frame)
         thread_t* thread = sched_thread_unsafe();
         process_t* process = thread->process;
 
-        LOG_WARN("unhandled user space exception in process pid=%d vector=%lld error=0x%llx rip=0x%llx\n", process->id,
-            frame->vector, frame->errorCode, frame->rip);
+        uint64_t cr2 = cr2_read();
+
+        LOG_WARN("unhandled user space exception in process pid=%d tid=%d vector=%lld error=0x%llx rip=0x%llx cr2=0x%llx\n", process->id, thread->id,
+            frame->vector, frame->errorCode, frame->rip, cr2);
 
         sched_process_exit(EFAULT);
     }
@@ -102,6 +104,12 @@ void interrupt_handler(interrupt_frame_t* frame)
 
     switch (frame->vector)
     {
+    case INTERRUPT_TLB_SHOOTDOWN:
+    {
+        vmm_shootdown_handler(frame, self);
+        lapic_eoi();
+    }
+    break;
     case INTERRUPT_DIE:
     {
         sched_invoke(frame, self, SCHED_DIE);

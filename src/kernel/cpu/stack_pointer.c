@@ -124,8 +124,15 @@ uint64_t stack_pointer_handle_page_fault(stack_pointer_t* stack, thread_t* threa
     }
     stack->lastPageFault = pageAlignedAddr;
 
-    if (vmm_alloc(&thread->process->space, (void*)pageAlignedAddr, PAGE_SIZE, flags) == NULL)
+    if (vmm_alloc(&thread->process->space, (void*)pageAlignedAddr, PAGE_SIZE, flags, VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
     {
+        if (errno == EEXIST) // Race condition
+        {
+            LOG_WARN("stack page at address %p already mapped\n", (void*)pageAlignedAddr);
+            return 0;
+        }
+
+        LOG_WARN("failed to allocate stack page at address %p (%s)n", (void*)pageAlignedAddr, strerror(errno));
         errno = ENOMEM;
         return ERR;
     }

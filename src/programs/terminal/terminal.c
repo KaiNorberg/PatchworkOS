@@ -336,14 +336,23 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
 void terminal_init(terminal_t* term)
 {
     term->disp = display_new();
+    if (term->disp == NULL)
+    {
+        abort();
+    }
     term->font = font_new(term->disp, "firacode", "retina", 16);
+    if (term->font == NULL)
+    {
+        display_free(term->disp);
+        abort();
+    }
 
     rect_t rect = RECT_INIT_DIM(500, 200, terminal_width(term), terminal_height(term));
     term->win = window_new(term->disp, "Terminal", &rect, SURFACE_WINDOW, WINDOW_DECO, terminal_procedure, term);
     if (term == NULL)
     {
-        exit(errno);
         display_free(term->disp);
+        abort();
     }
 
     term->cursorPos = (point_t){0};
@@ -355,7 +364,7 @@ void terminal_init(terminal_t* term)
     {
         window_free(term->win);
         display_free(term->disp);
-        exit(errno);
+        abort();
     }
 
     const char* argv[] = {"/bin/shell", NULL};
@@ -374,7 +383,7 @@ void terminal_init(terminal_t* term)
         close(term->stdout[1]);
         window_free(term->win);
         display_free(term->disp);
-        exit(errno);
+        abort();
     }
 }
 

@@ -249,9 +249,8 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
 
         if (!list_is_empty(&listen->backlog))
         {
-            list_entry_t* entry = list_first(&listen->backlog);
+            list_entry_t* entry = list_pop(&listen->backlog);
             local_conn_t* container = CONTAINER_OF(entry, local_conn_t, entry);
-            list_remove(&listen->backlog, entry);
             conn = REF(container);
             listen->pendingAmount--;
             break;
