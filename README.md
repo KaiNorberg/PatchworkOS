@@ -87,14 +87,14 @@ All code for benchmarks can be found in the [benchmark program](https://github.c
 
 ### Memory Allocation/Mapping
 
-The test maps and unmaps memory in varying page amounts for a set amount of iterations using generic mmap and munmap functions. Below is the results from PatchworkOS as of commit `b3f93f1` and Fedora 40, kernel version `6.14.5-100.fc40.x86_64`.
+The test maps and unmaps memory in varying page amounts for a set amount of iterations using generic mmap and munmap functions. Below is the results from PatchworkOS as of commit `cc69fab` and Fedora 40, kernel version `6.14.5-100.fc40.x86_64`.
 
 ```mermaid
 xychart-beta
 title "Blue: PatchworkOS, Green: Linux (Fedora), Lower is Better"
 x-axis "Page Amount" [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
 y-axis "Time (ms)" 0 --> 30000
-line [48, 48, 48, 48, 68, 97, 164, 365, 632, 1176, 3125]
+line [69, 69, 69, 75, 108, 127, 205, 413, 667, 1220, 3187]
 line [118, 150, 216, 358, 627, 1167, 2193, 4313, 6487, 11221, 28519]
 ```
 
