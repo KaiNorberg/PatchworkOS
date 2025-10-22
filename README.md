@@ -1,16 +1,29 @@
 # PatchworkOS
+<br>
+<div align="center">
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green" alt="License"/></a>
+    <a href="https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml"><img src="https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg" alt="Build and Test"/></a>
+    <br>
+    <i>PatchworkOS is currently in a very early stage of development, and may have both known and unknown bugs.</i>
+</div>
+<br>
 
-> **⚠ Warning**<br>
-> Keep in mind that PatchworkOS is currently in a very early stage of development, and may have both known and unknown bugs.
+**Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9 and others while simplifying them and adding in some new ideas of its own.
 
-![License](https://img.shields.io/badge/License-MIT-green) [![Build and Test](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg)](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml)
+In the end this is a project made for fun, however the goal is still to make a feature-complete and experimental operating system which attempts to use unique algorithms and designs over tried and tested ones. Sometimes this leads to bad results, and sometimes, hopefully, good ones.
 
-**Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9 and others while simplifying them and adding in some new ideas of its own.
+Additionally, the OS aims to, in spite of its experimental nature, remain approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
 
-In the end this is a project made for fun, however the goal is to eventually have a feature-complete and experimental operating system that still remains approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
-
-![Desktop Screenshot](meta/screenshots/desktop.png)
-![Doom Screenshot](meta/screenshots/doom.png)
+<table>
+<tr>
+<td width="50%">
+<img src="meta/screenshots/desktop.png" alt="Desktop Screenshot" />
+</td>
+<td width="50%">
+<img src="meta/screenshots/doom.png" alt="Doom Screenshot" />
+</td>
+</tr>
+</table>
 
 ## Features
 
@@ -50,11 +63,13 @@ In the end this is a project made for fun, however the goal is to eventually hav
 
 ---
 
-## Notable Differences with Unix
+## Notable Differences with POSIX
 
 - Replaced `fork(), exec()` with `spawn()`
-- Single-User
-- Non POSIX standard library
+- No "user" concept
+- Non-POSIX standard library
+- Even heavier focus on "everything is a file"
+- File flags instead of file modes/permissions
 - Custom [shell utilities](#shell-utilities)
 
 ## Limitations
@@ -63,6 +78,13 @@ In the end this is a project made for fun, however the goal is to eventually hav
 - Only support for x86_64
 
 ## Notable Future Plans
+
+- Per-process namespaces, being worked on in the [per process namespaces branch](https://github.com/KaiNorberg/PatchworkOS/tree/per_process_namespaces)
+- `share()`, `claim()` and `bind()` calls
+- Read, write, execute flags
+- Shell overhaul
+- Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions
+- Add configurability to `spawn()` for namespace inheritance
 
 - Asynchronous I/O
 - Modular kernel
@@ -129,6 +151,10 @@ From this we see that for $x \le 850$ the linear regression has a slightly bette
 Of course, there are limitations to this approach, for example, it is in no way portable (which isn't a concern in our case), each address space can only contain $2^7 - 1$ unique shared memory regions, and copy-on-write would not be easy to implement (however, the need for this is reduced due to PatchworkOS using a `spawn()` instead of a `fork()`).
 
 All in all, this algorithm would not be a viable replacement for existing algorithms, but for PatchworkOS, it serves its purpose very efficiently.
+
+[VMM Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/df0/group__kernel__mem__vmm.html)
+
+[Paging Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/df/d5f/group__common__paging.html)
 
 ## Shell Utilities
 
@@ -249,6 +275,9 @@ fd_t ctl = openf("/net/local/%s/ctl", id);
 writef(ctl, "connect myserver");
 close(ctl);
 ```
+which would create a new socket and connect it to the server named `myserver`.
+
+[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d0/d22/group__kernel__net.html)
 
 ### File Flags?
 
@@ -259,6 +288,8 @@ fd_t handle = open("/net/local/seqpacket:nonblock");
 ```
 
 Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `openf()` function. It is also possible to just specify the first letter of a flag, so instead of `:nonblock` you can use `:n`. Note that duplicate flags are ignored and that there are no read or write flags, all files are both read and write.
+
+[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html#ga82917c2c8f27ffa562957d5cfa4fdb2e)
 
 ---
 
@@ -372,3 +403,7 @@ Contributions are welcome! Anything from bug reports/fixes, performance improvem
 If you are unsure where to start, try searching for any "TODO" comments in the codebase.
 
 Check out the [**contribution guidelines**](CONTRIBUTING.md) to get started.
+
+## Nostalgia
+
+[The first Reddit post and image of PatchworkOS](https://www.reddit.com/r/osdev/comments/18gbsng/a_little_over_2_years_ago_i_posted_a_screenshot/) from back when getting to user space was a huge milestone.
