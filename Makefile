@@ -105,11 +105,13 @@ format:
 doxygen:
 	if [ ! -d "meta/docs/doxygen-awesome-css" ]; then \
 	    git clone https://github.com/jothepro/doxygen-awesome-css.git meta/docs/doxygen-awesome-css; \
-		cd meta/docs/doxy/doxygen-awesome-css; \
+		cd meta/docs/doxygen-awesome-css; \
 		git checkout v2.3.4; \
 		cd ../../../..; \
 	fi
 	doxygen meta/doxy/Doxyfile
+	mkdir -p meta/docs/html/meta/screenshots
+	cp meta/screenshots/* meta/docs/html/meta/screenshots/
 
 clean:
 	rm -rf build
@@ -126,6 +128,7 @@ nuke: clean
 	rm -rf lib/lua-5.4.7
 	rm -rf lib/acpica
 	rm -rf lib/acpica_tests
+	rm -rf meta/docs
 
 # We use ACPICA's runtime test suite to validate our ACPI implementation.
 #
