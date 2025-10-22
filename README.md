@@ -85,7 +85,6 @@ Additionally, the OS aims to, in spite of its experimental nature, remain approa
 - Shell overhaul
 - Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions
 - Add configurability to `spawn()` for namespace inheritance
-
 - Asynchronous I/O
 - Modular kernel
 - Shared libraries
