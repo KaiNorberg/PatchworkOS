@@ -24,6 +24,8 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
+// TODO: Reimplement "self" using a bind.
+
 static process_t kernelProcess;
 static bool kernelProcessInitalized = false;
 
@@ -32,15 +34,15 @@ static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 // Should be acquired whenever a process tree is being read or modified.
 static rwlock_t treeLock = RWLOCK_CREATE;
 
-static dentry_t* selfDir = NULL;
-static mount_t* procMount = NULL;
+static superblock_t* superblock = NULL;
 
 static process_t* process_file_get_process(file_t* file)
 {
     process_t* process = file->inode->private;
     if (process == NULL)
     {
-        process = sched_process();
+        errno = EINVAL;
+        return NULL;
     }
 
     if (process == &kernelProcess)
@@ -220,10 +222,9 @@ static inode_ops_t inodeOps = {
     .cleanup = process_inode_cleanup,
 };
 
-
 static uint64_t process_dir_init(process_t* process, const char* name)
 {
-    process->dir = sysfs_dir_new(procMount->superblock->root, name, &inodeOps, REF(process));
+    process->dir = sysfs_dir_new(superblock->root, name, &inodeOps, REF(process));
     if (process->dir == NULL)
     {
         return ERR;
@@ -463,16 +464,10 @@ bool process_is_child(process_t* process, pid_t parentId)
 
 void process_procfs_init(void)
 {
-    procMount = sysfs_mount_new(NULL, "proc", NULL, NULL);
-    if (procMount == NULL)
+    superblock = sysfs_superblock_new(NULL, "proc", NULL, NULL);
+    if (superblock == NULL)
     {
         panic(NULL, "Failed to mount /proc filesystem");
-    }
-
-    selfDir = process_dir_new("self", NULL);
-    if (selfDir == NULL)
-    {
-        panic(NULL, "Failed to create /proc/self directory");
     }
 
     assert(kernelProcessInitalized);
@@ -480,8 +475,7 @@ void process_procfs_init(void)
     // Kernel process was created before sysfs was initialized, so we have to delay this until now.
     char name[MAX_NAME];
     snprintf(name, MAX_NAME, "%d", kernelProcess.id);
-    kernelProcess.dir = process_dir_new(name, &kernelProcess);
-    if (kernelProcess.dir == NULL)
+    if (process_dir_init(&kernelProcess, name) == ERR)
     {
         panic(NULL, "Failed to create /proc/[pid] directory for kernel process");
     }

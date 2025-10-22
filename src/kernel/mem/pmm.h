@@ -42,7 +42,7 @@ void* pmm_alloc(void);
  *
  * @param addresses An array where the higher half physical addresses of the allocated pages will be stored.
  * @param count The number of pages to allocate.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t pmm_alloc_pages(void** addresses, uint64_t count);
 

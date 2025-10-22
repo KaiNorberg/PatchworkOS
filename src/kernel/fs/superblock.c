@@ -11,6 +11,8 @@ static void superblock_free(superblock_t* superblock)
         return;
     }
 
+    assert(atomic_load(&superblock->mountCount) == 0);
+
     vfs_remove_superblock(superblock);
 
     if (superblock->ops != NULL && superblock->ops->cleanup != NULL)
@@ -46,6 +48,22 @@ superblock_t* superblock_new(filesystem_t* fs, const char* deviceName, superbloc
     strncpy(superblock->deviceName, deviceName, MAX_NAME - 1);
     superblock->deviceName[MAX_NAME - 1] = '\0';
     superblock->fs = fs;
-    // superblock::sysfsDir is exposed in vfs_mount
+    atomic_init(&superblock->mountCount, 0);
     return superblock;
+}
+
+void superblock_inc_mount_count(superblock_t* superblock)
+{
+    atomic_fetch_add(&superblock->mountCount, 1);
+}
+
+void superblock_dec_mount_count(superblock_t* superblock)
+{
+    if (atomic_fetch_sub(&superblock->mountCount, 1) == 1)
+    {
+        if (superblock->ops != NULL && superblock->ops->unmount != NULL)
+        {
+            superblock->ops->unmount(superblock);
+        }
+    }
 }

@@ -82,7 +82,7 @@ void sysfs_init(void)
         panic(NULL, "Failed to register sysfs");
     }
 
-    devMount = sysfs_mount_new(NULL, "dev", NULL);
+    devMount = sysfs_superblock_new(NULL, "dev", NULL);
     if (devMount == NULL)
     {
         panic(NULL, "Failed to create /dev filesystem");
@@ -95,7 +95,7 @@ dentry_t* sysfs_get_dev(void)
     return REF(devMount->superblock->root);
 }
 
-mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns,
+superblock_t* sysfs_superblock_new(const path_t* parent, const char* name, namespace_t* ns,
     const superblock_ops_t* superblockOps)
 {
     if (name == NULL)
@@ -138,8 +138,15 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
         {
             return NULL;
         }
+        DEREF_DEFER(mount);
 
-        return mount;
+        return REF(mount->superblock);
+    }
+
+    if (parent->dentry->superblock->fs != &sysfs)
+    {
+        errno = EXDEV;
+        return NULL;
     }
 
     dentry_t* dentry = dentry_new(parent->dentry->superblock, parent->dentry, name);
@@ -159,8 +166,9 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
     {
         return NULL;
     }
+    DEREF_DEFER(mount);
 
-    return mount;
+    return REF(mount->superblock);
 }
 
 dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* private)

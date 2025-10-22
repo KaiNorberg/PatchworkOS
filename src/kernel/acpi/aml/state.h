@@ -38,7 +38,7 @@ typedef struct aml_state
  *
  * @param state Pointer to the state to initialize.
  * @param args Array of pointers to the objects to pass as arguments, or `NULL`. Must be null-terminated.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_state_init(aml_state_t* state, aml_object_t** args);
 

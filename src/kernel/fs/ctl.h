@@ -50,7 +50,7 @@
  * @param file The file the ctl command was sent to.
  * @param argc The number of arguments.
  * @param argv The arguments.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
 typedef uint64_t (*ctl_func_t)(file_t* file, uint64_t, const char**);
 

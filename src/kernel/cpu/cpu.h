@@ -61,7 +61,7 @@ typedef struct cpu
  *
  * @param cpu The CPU structure to initialize.
  * @param id The ID of the CPU.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t cpu_init(cpu_t* cpu, cpuid_t id);
 

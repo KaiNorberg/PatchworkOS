@@ -48,7 +48,7 @@ aml_object_t* aml_method_evaluate(aml_state_t* parentState, aml_method_obj_t* me
  * @param parentState The current AML state, this will not be used for anything other than getting the parent overlay.
  * @param method Pointer to the method or integer object to evaluate.
  * @param out Pointer to the variable where the integer return value will be stored, can be `NULL`.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_method_evaluate_integer(aml_state_t* parentState, aml_object_t* object, aml_integer_t* out);
 

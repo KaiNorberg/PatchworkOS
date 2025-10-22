@@ -109,6 +109,7 @@ kbd_t* kbd_new(const char* name)
     kbd->mods = KBD_MOD_NONE;
     wait_queue_init(&kbd->waitQueue);
     lock_init(&kbd->lock);
+
     kbd->dir = sysfs_dir_new(kbdDir, name, &dirInodeOps, kbd);
     if (kbd->dir == NULL)
     {
@@ -116,16 +117,17 @@ kbd_t* kbd_new(const char* name)
         heap_free(kbd);
         return NULL;
     }
-
-    dentry_t* eventsFile = sysfs_file_new(kbd->dir, "events", NULL, &eventsOps, kbd);
-    DEREF(eventsFile);
-    dentry_t* nameFile = sysfs_file_new(kbd->dir, "name", NULL, &nameOps, kbd);
-    DEREF(nameFile);
-    if (eventsFile == NULL || nameFile == NULL)
+    kbd->eventsFile = sysfs_file_new(kbd->dir, "events", NULL, &eventsOps, kbd);
+    if (kbd->eventsFile == NULL)
     {
+        DEREF(kbd->dir); // kbd will be freed in kbd_dir_cleanup
+        return NULL;
+    }
+    kbd->nameFile = sysfs_file_new(kbd->dir, "name", NULL, &nameOps, kbd);
+    if (kbd->nameFile == NULL)
+    {
+        DEREF(kbd->eventsFile);
         DEREF(kbd->dir);
-        wait_queue_deinit(&kbd->waitQueue);
-        heap_free(kbd);
         return NULL;
     }
 
@@ -140,6 +142,8 @@ void kbd_deinit(kbd_t* kbd)
     }
 
     DEREF(kbd->dir);
+    DEREF(kbd->eventsFile);
+    DEREF(kbd->nameFile);
     // kbd will be freed in kbd_dir_cleanup
 }
 

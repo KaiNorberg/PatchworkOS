@@ -28,7 +28,7 @@
  * @param accessType The access type of the field.
  * @param regionSpace The region space of the opregion the field belongs to.
  * @param out Pointer to the buffer where the access size will be stored.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_get_access_size(aml_bit_size_t bitSize, aml_access_type_t accessType, aml_region_space_t regionSpace,
     aml_bit_size_t* out);

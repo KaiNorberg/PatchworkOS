@@ -15,8 +15,16 @@
  * Shared memory is exposed in the `/dev/shmem` directory. Shared memory allows multiple processes to share a section of
  * memory for inter-process communication (IPC).
  *
+ * ## Creating Shared Memory
  *
- * TODO: Add namespace support and namespace sharing.
+ * Shared memory objects are created using the `/dev/shmem/new` file. Opening this file using `open()` will create a new
+ * shared memory object and return a file descriptor to it.
+ *
+ * ## Using Shared Memory
+ *
+ * Shared memory objects can be mapped to the current process's address space using the `mmap()` system call. The first
+ * call to `mmap()` will decide the size of the shared memory object. Subsequent calls to `mmap()` will map the existing
+ * shared memory object.
  *
  * @{
  */
@@ -27,9 +35,6 @@
 typedef struct
 {
     ref_t ref;
-    char id[MAX_NAME];
-    sysfs_file_t file;
-    pid_t owner;
     uint64_t pageAmount;
     void** pages;
     lock_t lock;

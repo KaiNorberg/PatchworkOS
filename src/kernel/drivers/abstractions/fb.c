@@ -100,21 +100,32 @@ fb_t* fb_new(const fb_info_t* info, fb_mmap_t mmap, const char* name)
     fb->name[MAX_NAME - 1] = '\0';
     memcpy(&fb->info, info, sizeof(fb_info_t));
     fb->mmap = mmap;
+
     fb->dir = sysfs_dir_new(fbDir, fb->id, &dirInodeOps, fb);
     if (fb->dir == NULL)
     {
+        heap_free(fb);
         return NULL;
     }
-
-    dentry_t* bufferFile = sysfs_file_new(fb->dir, "buffer", NULL, &bufferOps, fb);
-    DEREF(bufferFile);
-    dentry_t* infoFile = sysfs_file_new(fb->dir, "info", NULL, &infoOps, fb);
-    DEREF(infoFile);
-    dentry_t* nameFile = sysfs_file_new(fb->dir, "name", NULL, &nameOps, fb);
-    DEREF(nameFile);
-    if (bufferFile == NULL || infoFile == NULL || nameFile == NULL)
+    fb->bufferFile = sysfs_file_new(fb->dir, "buffer", NULL, &bufferOps, fb);
+    if (fb->bufferFile == NULL)
+    {
+        DEREF(fb->dir); // fb will be freed in fb_dir_cleanup
+        return NULL;
+    }
+    fb->infoFile = sysfs_file_new(fb->dir, "info", NULL, &infoOps, fb);
+    if (fb->infoFile == NULL)
     {
         DEREF(fb->dir);
+        DEREF(fb->bufferFile);
+        return NULL;
+    }
+    fb->nameFile = sysfs_file_new(fb->dir, "name", NULL, &nameOps, fb);
+    if (fb->nameFile == NULL)
+    {
+        DEREF(fb->dir);
+        DEREF(fb->bufferFile);
+        DEREF(fb->infoFile);
         return NULL;
     }
 
@@ -129,5 +140,8 @@ void fb_free(fb_t* fb)
     }
 
     DEREF(fb->dir);
+    DEREF(fb->bufferFile);
+    DEREF(fb->infoFile);
+    DEREF(fb->nameFile);
     // fb is freed in fb_dir_cleanup
 }

@@ -12,8 +12,8 @@
 #include <boot/boot_info.h>
 #include <string.h>
 
-static bool mountInitialized = false;
-static mount_t* acpiMount = NULL;
+static bool superInitialized = false;
+static superblock_t* superblock = NULL;
 
 bool acpi_is_checksum_valid(void* table, uint64_t length)
 {
@@ -28,17 +28,18 @@ bool acpi_is_checksum_valid(void* table, uint64_t length)
 
 dentry_t* acpi_get_sysfs_root(void)
 {
-    if (!mountInitialized)
+    if (!superInitialized)
     {
-        acpiMount = sysfs_mount_new(NULL, "acpi", NULL, NULL);
+        superblock = sysfs_superblock_new(NULL, "acpi", NULL, NULL);
+        if (superblock == NULL)
         {
             panic(NULL, "failed to initialize ACPI sysfs group");
         }
 
-        mountInitialized = true;
+        superInitialized = true;
     }
 
-    return REF(acpiMount->superblock->root);
+    return REF(superblock->root);
 }
 
 void acpi_reclaim_memory(const boot_memory_map_t* map)

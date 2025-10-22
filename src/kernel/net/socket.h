@@ -15,6 +15,20 @@ typedef struct socket_family socket_family_t;
  * @defgroup kernel_net_socket Sockets
  * @ingroup kernel_net
  *
+ * Sockets are exposed in the `/net` directory. Sockets provide communication endpoints for networking.
+ *
+ * ## Creating Sockets
+ *
+ * Sockets are created by opening a factory located in each socket families directory. For example, to create a local
+ * seqpacket socket, open the `/net/local/seqpacket/` file which gives you a handle that when read returns the socket's
+ * ID, which corresponds to the path `/net/<family_name>/<socket_id>/`, for example `/net/local/1234/`, which stores the
+ * files used to interact with the socket.
+ *
+ * ## Using Sockets
+ *
+ * Sockets are interacted with using the following files located in their directory:
+ * - `accept`: Used to accept incoming connections (only for listening sockets, does not exist otherwise).
+ *
  * @{
  */
 
@@ -50,6 +64,10 @@ typedef struct socket
     socket_state_t currentState;
     socket_state_t nextState;
     rwmutex_t mutex;
+    superblock_t* superblock;
+    dentry_t* acceptFile;
+    dentry_t* ctlFile;
+    dentry_t* dataFile;
 } socket_t;
 
 /**

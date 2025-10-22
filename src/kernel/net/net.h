@@ -7,6 +7,8 @@
  * @defgroup kernel_net Networking
  * @ingroup kernel
  *
+ * The networking subsystem is exposed as `/net`.
+ *
  * @{
  */
 
@@ -18,8 +20,8 @@ void net_init(void);
 /**
  * @brief Retrieve the sysfs directory for networking.
  *
- * @return Pointer to the networking sysfs directory (`/net`)
+ * @param out Output pointer to store the networking directory path (`/net`).
  */
-dentry_t* net_get_dir(void);
+void net_get_dir(path_t* out);
 
 /** @} */

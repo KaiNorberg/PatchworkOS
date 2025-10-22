@@ -13,7 +13,7 @@ static lock_t lock = LOCK_CREATE;
 static char workingBuffer[LOG_FILE_MAX_BUFFER] = {0};
 static char buffer[LOG_FILE_MAX_BUFFER] = {0};
 static ring_t ring = RING_CREATE(buffer, sizeof(buffer));
-static sysfs_file_t file = {0};
+static dentry_t* file = NULL;
 
 static uint64_t log_file_op_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -58,9 +58,10 @@ void log_file_expose(void)
 {
     // LOCK_SCOPE(&lock); // Cant use lock here because sysfs_file_init might call back into log functions
 
-    if (sysfs_file_init(&file, sysfs_get_dev(), "klog", NULL, &logFileOps, NULL) == ERR)
+    file = sysfs_file_new(NULL, "log", NULL, &logFileOps, NULL);
+    if (file == NULL)
     {
-        panic(NULL, "Failed to expose log file");
+        panic(NULL, "failed to create log sysfs file");
     }
 }
 

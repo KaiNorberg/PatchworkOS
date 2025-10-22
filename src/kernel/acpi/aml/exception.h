@@ -83,7 +83,7 @@ const char* aml_exception_to_string(aml_exception_t code);
  * Does not allow duplicates.
  *
  * @param handler The handler to register.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_exception_register(aml_exception_handler_t handler);
 
@@ -91,7 +91,7 @@ uint64_t aml_exception_register(aml_exception_handler_t handler);
  * @brief Unregisters an AML exception handler.
  *
  * @param handler The handler to unregister.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 void aml_exception_unregister(aml_exception_handler_t handler);
 

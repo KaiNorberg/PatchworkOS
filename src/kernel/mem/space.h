@@ -123,7 +123,7 @@ void space_load(space_t* space);
  * @param space The target address space.
  * @param address The address to pin, can be `NULL` if length is 0.
  * @param length The length of the region pointed to by `address`, in bytes.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t space_pin(space_t* space, const void* address, uint64_t length);
 
@@ -163,7 +163,7 @@ void space_unpin(space_t* space, const void* address, uint64_t length);
  * @param dest The destination buffer to copy data to.
  * @param src The source buffer to copy data from.
  * @param length The length of data to copy, in bytes.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t space_safe_copy_from(space_t* space, void* dest, const void* src, uint64_t length);
 
@@ -174,7 +174,7 @@ uint64_t space_safe_copy_from(space_t* space, void* dest, const void* src, uint6
  * @param dest The destination buffer to copy data to.
  * @param src The source buffer to copy data from.
  * @param length The length of data to copy, in bytes.
- * @return On success, 0 On failure, `ERR` and `errno` is set.
+ * @return On success, `0` On failure, `ERR` and `errno` is set.
  */
 uint64_t space_safe_copy_to(space_t* space, void* dest, const void* src, uint64_t length);
 
@@ -188,7 +188,7 @@ uint64_t space_safe_copy_to(space_t* space, void* dest, const void* src, uint64_
  * @param maxCount The maximum number of objects to copy.
  * @param outArray Pointer to store the allocated array, must be freed with `heap_free()`.
  * @param outCount Pointer to store the number of objects copied.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t space_safe_copy_from_terminated(space_t* space, const void* array, const void* terminator, uint8_t objectSize,
     uint64_t maxCount, void** outArray, uint64_t* outCount);
@@ -201,7 +201,7 @@ uint64_t space_safe_copy_from_terminated(space_t* space, const void* array, cons
  * @param space The target address space.
  * @param pathname The pathname to initialize.
  * @param path The path string.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t space_safe_pathname_init(space_t* space, pathname_t* pathname, const char* path);
 
@@ -213,7 +213,7 @@ uint64_t space_safe_pathname_init(space_t* space, pathname_t* pathname, const ch
  * @param space The target address space.
  * @param obj The atomic uint64_t to load.
  * @param outValue Pointer to store the loaded value.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t space_safe_atomic_uint64_t_load(space_t* space, atomic_uint64_t* obj, uint64_t* outValue);
 
@@ -227,7 +227,7 @@ uint64_t space_safe_atomic_uint64_t_load(space_t* space, atomic_uint64_t* obj, u
  * @param space The target address space.
  * @param addr The starting address of the memory region, can be `NULL` if length is 0.
  * @param length The length of the memory region, in bytes.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t space_check_access(space_t* space, const void* addr, uint64_t length);
 

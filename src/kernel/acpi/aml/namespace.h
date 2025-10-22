@@ -133,14 +133,14 @@ typedef uint32_t aml_name_t;
  * @brief Initialize the namespace heirarchy.
  *
  * @param root The object to use as the root of the namespace heirarchy.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_namespace_init(aml_object_t* root);
 
 /**
  * @brief Expose the entire namespace heirarchy to sysfs.
  *
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_namespace_expose(void);
 
@@ -241,7 +241,7 @@ aml_object_t* aml_namespace_find_by_path(aml_namespace_overlay_t* overlay, aml_o
  * @param parent The parent scope to add the object to, if `NULL` the object is added to the root object.
  * @param name The name to give the object.
  * @param object The object to add to the namespace.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_namespace_add_child(aml_namespace_overlay_t* overlay, aml_object_t* parent, aml_name_t name,
     aml_object_t* object);
@@ -254,7 +254,7 @@ uint64_t aml_namespace_add_child(aml_namespace_overlay_t* overlay, aml_object_t*
  * object.
  * @param nameString The name string to use to find the parent scope and name of the object.
  * @param object The object to add to the namespace.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_namespace_add_by_name_string(aml_namespace_overlay_t* overlay, aml_object_t* start,
     const aml_name_string_t* nameString, aml_object_t* object);
@@ -276,7 +276,7 @@ void aml_namespace_remove(aml_object_t* object);
  * After this call the overlay will be empty.
  *
  * @param overlay The overlay to commit.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_namespace_commit(aml_namespace_overlay_t* overlay);
 
@@ -286,7 +286,7 @@ uint64_t aml_namespace_commit(aml_namespace_overlay_t* overlay);
  * Its parent is set to the global overlay.
  *
  * @param overlay The overlay to initialize.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_namespace_overlay_init(aml_namespace_overlay_t* overlay);
 

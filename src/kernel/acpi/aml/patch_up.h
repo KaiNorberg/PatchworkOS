@@ -37,7 +37,7 @@ typedef struct aml_patch_up_entry
 /**
  * @brief Initialize the patch-up system.
  *
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_patch_up_init(void);
 
@@ -48,7 +48,7 @@ uint64_t aml_patch_up_init(void);
  * freed.
  *
  * @param unresolved The unresolved object to add, must be of type `AML_UNRESOLVED`.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_patch_up_add_unresolved(aml_unresolved_obj_t* unresolved);
 
@@ -69,7 +69,7 @@ void aml_patch_up_remove_unresolved(aml_unresolved_obj_t* unresolved);
  * Note that a failure to resolve a object is not considered an error, the function will just continue
  * to the next unresolved reference.
  *
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_patch_up_resolve_all(void);
 

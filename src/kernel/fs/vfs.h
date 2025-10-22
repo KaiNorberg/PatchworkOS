@@ -83,7 +83,7 @@ uint64_t vfs_get_new_id(void);
  * @ingroup kernel_vfs
  *
  * @param fs The filesystem to register.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t vfs_register_fs(filesystem_t* fs);
 
@@ -92,7 +92,7 @@ uint64_t vfs_register_fs(filesystem_t* fs);
  * @ingroup kernel_vfs
  *
  * @param fs The filesystem to unregister.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t vfs_unregister_fs(filesystem_t* fs);
 
@@ -141,7 +141,7 @@ dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name);
  * Should not be used manually, as it will be called in `inode_new()`.
  *
  * @param inode The inode to add.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t vfs_add_inode(inode_t* inode);
 
@@ -151,7 +151,7 @@ uint64_t vfs_add_inode(inode_t* inode);
  * Should not be used manually, instead use `dentry_make_positive()`.
  *
  * @param dentry The dentry to add.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t vfs_add_dentry(dentry_t* dentry);
 
@@ -183,7 +183,7 @@ void vfs_remove_dentry(dentry_t* dentry);
  * @param pathname The pathname to walk.
  * @param flags Flags for the path walk.
  * @param process The process whose namespace and working directory to use.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flags, process_t* process);
 
@@ -195,7 +195,7 @@ uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flag
  * @param outLastName The output last component name.
  * @param flags Flags for the path walk.
  * @param process The process whose namespace and working directory to use.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outLastName, walk_flags_t flags,
     process_t* process);
@@ -208,7 +208,7 @@ uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outL
  * @param pathname The pathname to walk.
  * @param flags Flags for the path walk.
  * @param process The process whose namespace and working directory to use.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t vfs_walk_parent_and_child(path_t* outParent, path_t* outChild, const pathname_t* pathname, walk_flags_t flags,
     process_t* process);
@@ -239,7 +239,7 @@ file_t* vfs_open(const pathname_t* pathname);
  *
  * @param pathname The pathname of the file to open.
  * @param files The output array of two file pointers.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2]);
 
@@ -326,7 +326,7 @@ uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count);
  *
  * @param pathname The pathname of the file to get information about.
  * @param buffer The buffer to store the file information in.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer);
 
@@ -335,7 +335,7 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer);
  *
  * @param oldPathname The existing file.
  * @param newPathname The new link to create, must not exist and be in the same filesystem as the oldPathname.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname);
 
@@ -343,7 +343,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname);
  * @brief Delete a file or directory.
  *
  * @param pathname The pathname of the file or directory to delete.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t vfs_delete(const pathname_t* pathname);
 

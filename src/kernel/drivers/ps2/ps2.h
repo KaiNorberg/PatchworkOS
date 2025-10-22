@@ -193,7 +193,7 @@ typedef enum
  * Waits for the output buffer to be full, then reads a byte from the data port.
  *
  * @param data Pointer to store the read byte.
- * @return On success, 0. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
+ * @return On success, `0`. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
  */
 #define PS2_READ(data) \
     ({ \
@@ -211,7 +211,7 @@ typedef enum
  * Waits for the input buffer to be empty, then writes a byte to the data port.
  *
  * @param data Byte to write.
- * @return On success, 0. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
+ * @return On success, `0`. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
  */
 #define PS2_WRITE(data) \
     ({ \
@@ -227,7 +227,7 @@ typedef enum
  * @brief Send a command to the PS/2 controller without reading response
  *
  * @param command Command to send.
- * @return On success, 0. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
+ * @return On success, `0`. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
  */
 #define PS2_CMD(command) \
     ({ \
@@ -240,7 +240,7 @@ typedef enum
  *
  * @param command Command to send.
  * @param data Pointer to store the response byte
- * @return On success, 0. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
+ * @return On success, `0`. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
  */
 #define PS2_CMD_AND_READ(command, data) \
     ({ \
@@ -257,7 +257,7 @@ typedef enum
  *
  * @param command Command to send.
  * @param data Data to write.
- * @return On success, 0. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
+ * @return On success, `0`. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
  */
 #define PS2_CMD_AND_WRITE(command, data) \
     ({ \
@@ -274,7 +274,7 @@ typedef enum
  *
  * @param device Device to send command to, specified by its port.
  * @param command Command to send.
- * @return On success, 0. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
+ * @return On success, `0`. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
  */
 #define PS2_DEV_CMD(device, command) \
     ({ \
@@ -288,7 +288,7 @@ typedef enum
  * @param device Device to send command to, specified by its port.
  * @param command Command to send.
  * @param data Pointer to store the response byte
- * @return On success, 0. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
+ * @return On success, `0`. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
  */
 #define PS2_DEV_CMD_AND_READ(device, command, data) \
     ({ \
@@ -306,7 +306,7 @@ typedef enum
  * @param device Device to send command to, specified by its port.
  * @param command Command to send.
  * @param subCommand Subcommand to send.
- * @return On success, 0. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
+ * @return On success, `0`. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
  */
 #define PS2_DEV_SUB_CMD(device, command, subCommand) \
     ({ \
@@ -337,7 +337,7 @@ void ps2_drain(void);
  * @brief Wait until status bit(s) is set
  *
  * @param status Status bit(s) to wait for.
- * @return On success, 0. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
+ * @return On success, `0`. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
  */
 uint64_t ps2_wait_until_set(ps2_status_bits_t status);
 
@@ -345,7 +345,7 @@ uint64_t ps2_wait_until_set(ps2_status_bits_t status);
  * @brief Wait until status bit(s) is clear
  *
  * @param status Status bit(s) to wait for.
- * @return On success, 0. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
+ * @return On success, `0`. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
  */
 uint64_t ps2_wait_until_clear(ps2_status_bits_t status);
 
@@ -353,7 +353,7 @@ uint64_t ps2_wait_until_clear(ps2_status_bits_t status);
  * @brief Send a command to the PS/2 controller
  *
  * @param command Command to send.
- * @return On success, 0. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
+ * @return On success, `0`. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
  */
 uint64_t ps2_send_cmd(ps2_cmd_t command);
 
@@ -362,7 +362,7 @@ uint64_t ps2_send_cmd(ps2_cmd_t command);
  *
  * @param device Device to send command to, specified by its port.
  * @param command Command to send.
- * @return On success, 0. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
+ * @return On success, `0`. On failure, ERR and errno is set to ETIMEOUT if timeout occurs.
  */
 uint64_t ps2_send_device_cmd(ps2_device_t device, ps2_device_cmd_t command);
 

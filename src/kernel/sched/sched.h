@@ -177,7 +177,7 @@ NORETURN void sched_done_with_boot_thread(void);
  * @brief Puts the current thread to sleep.
  *
  * @param timeout The maximum time to sleep. If `CLOCKS_NEVER`, it sleeps forever.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, `0`. On error, `ERR` and `errno` is set.
  */
 uint64_t sched_nanosleep(clock_t timeout);
 

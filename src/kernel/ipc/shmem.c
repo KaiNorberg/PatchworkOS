@@ -17,208 +17,11 @@
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
-static dentry_t* shmemDir;
+static dentry_t* shmemDir = NULL;
+static dentry_t* newFile = NULL;
 
-static shmem_object_t* shmem_object_new(void);
-static void shmem_object_free(shmem_object_t* shmem);
-static bool shmem_object_is_access_allowed(shmem_object_t* shmem, process_t* proccess);
-static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmount, space_t* space, void* address,
-    pml_flags_t flags);
-
-static void shmem_vmm_callback(void* private)
+static void shmem_object_free(shmem_object_t* shmem)
 {
-    shmem_object_t* shmem = private;
-    if (shmem == NULL)
-    {
-        return;
-    }
-
-    DEREF(shmem);
-}
-
-static void* shmem_mmap(file_t* file, void* address, uint64_t length, pml_flags_t flags)
-{
-    shmem_object_t* shmem = file->private;
-    if (shmem == NULL)
-    {
-        errno = EINVAL;
-        return NULL;
-    }
-    LOCK_SCOPE(&shmem->lock);
-
-    process_t* process = sched_process_unsafe();
-
-    if (!shmem_object_is_access_allowed(shmem, process))
-    {
-        errno = EACCES;
-        return NULL;
-    }
-
-    space_t* space = &process->space;
-
-    uint64_t pageAmount = BYTES_TO_PAGES(length);
-    if (pageAmount == 0)
-    {
-        errno = EINVAL;
-        return NULL;
-    }
-
-    if (shmem->pageAmount == 0) // First call to mmap()
-    {
-        assert(shmem->pages == NULL);
-        return shmem_object_allocate_pages(shmem, pageAmount, space, address, flags);
-    }
-    else
-    {
-        assert(shmem->pages != NULL);
-        return vmm_map_pages(space, address, shmem->pages, MIN(pageAmount, shmem->pageAmount), flags,
-            shmem_vmm_callback, REF(shmem));
-    }
-}
-
-static uint64_t shmem_ctl_grant(file_t* file, uint64_t argc, const char** argv)
-{
-    (void)argc; // Unused
-
-    shmem_object_t* shmem = file->private;
-    if (shmem == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-    LOCK_SCOPE(&shmem->lock);
-
-    process_t* process = sched_process_unsafe();
-
-    if (!shmem_object_is_access_allowed(shmem, process))
-    {
-        errno = EACCES;
-        return ERR;
-    }
-
-    pid_t pid = strtoll(argv[1], NULL, 10);
-    if (errno == ERANGE)
-    {
-        return ERR;
-    }
-
-    shmem_allowed_process_t* allowed = heap_alloc(sizeof(shmem_allowed_process_t), HEAP_NONE);
-    if (allowed == NULL)
-    {
-        return ERR;
-    }
-
-    list_entry_init(&allowed->entry);
-    allowed->pid = pid;
-
-    list_push(&shmem->allowedProcesses, &allowed->entry);
-    return 0;
-}
-
-static uint64_t shmem_ctl_revoke(file_t* file, uint64_t argc, const char** argv)
-{
-    (void)argc; // Unused
-
-    shmem_object_t* shmem = file->private;
-    if (shmem == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-    LOCK_SCOPE(&shmem->lock);
-
-    process_t* process = sched_process_unsafe();
-
-    if (!shmem_object_is_access_allowed(shmem, process))
-    {
-        errno = EACCES;
-        return ERR;
-    }
-
-    pid_t pid = strtoll(argv[1], NULL, 10);
-    if (errno == ERANGE)
-    {
-        return ERR;
-    }
-
-    shmem_allowed_process_t* allowed;
-    LIST_FOR_EACH(allowed, &shmem->allowedProcesses, entry)
-    {
-        if (allowed->pid == pid)
-        {
-            list_remove(&shmem->allowedProcesses, &allowed->entry);
-            return 0;
-        }
-    }
-
-    errno = ENOENT;
-    return ERR;
-}
-
-CTL_STANDARD_WRITE_DEFINE(shmem_write,
-    (ctl_array_t){
-        {"grant", shmem_ctl_grant, 2, 2},
-        {"revoke", shmem_ctl_revoke, 2, 2},
-        {0},
-    });
-
-static uint64_t shmem_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
-{
-    shmem_object_t* shmem = file->private;
-    if (shmem == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-    LOCK_SCOPE(&shmem->lock);
-
-    process_t* process = sched_process_unsafe();
-
-    if (!shmem_object_is_access_allowed(shmem, process))
-    {
-        errno = EACCES;
-        return ERR;
-    }
-
-    uint64_t size = strlen(shmem->id) + 1;
-    return BUFFER_READ(buffer, count, offset, shmem->id, size);
-}
-
-static uint64_t shmem_open(file_t* file)
-{
-    shmem_object_t* shmem = file->inode->private;
-    if (shmem == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    file->private = REF(shmem);
-    return 0;
-}
-
-static void shmem_close(file_t* file)
-{
-    shmem_object_t* shmem = file->private;
-    if (shmem == NULL)
-    {
-        return;
-    }
-
-    DEREF(shmem);
-}
-
-static file_ops_t normalFileOps = {
-    .open = shmem_open,
-    .read = shmem_read,
-    .write = shmem_write,
-    .mmap = shmem_mmap,
-    .close = shmem_close,
-};
-
-static void shmem_inode_cleanup(inode_t* inode)
-{
-    shmem_object_t* shmem = inode->private;
     if (shmem == NULL)
     {
         return;
@@ -235,12 +38,7 @@ static void shmem_inode_cleanup(inode_t* inode)
         shmem->pages = NULL;
     }
     heap_free(shmem);
-    inode->private = NULL;
 }
-
-static inode_ops_t inodeOps = {
-    .cleanup = shmem_inode_cleanup,
-};
 
 static shmem_object_t* shmem_object_new(void)
 {
@@ -249,51 +47,23 @@ static shmem_object_t* shmem_object_new(void)
     {
         return NULL;
     }
-
     ref_init(&shmem->ref, shmem_object_free);
-    snprintf(shmem->id, sizeof(shmem->id), "%lu", atomic_fetch_add(&newId, 1));
-    list_init(&shmem->allowedProcesses);
     shmem->pageAmount = 0;
     shmem->pages = NULL;
     lock_init(&shmem->lock);
-    shmem->owner = sched_process()->id; // Set owner to the current process
-
-    if (sysfs_file_init(&shmem->file, &shmemDir, shmem->id, &inodeOps, &normalFileOps, shmem) == ERR)
-    {
-        DEREF(shmem);
-        return NULL;
-    }
 
     return shmem;
 }
 
-static void shmem_object_free(shmem_object_t* shmem)
+static void shmem_vmm_callback(void* private)
 {
+    shmem_object_t* shmem = private;
     if (shmem == NULL)
     {
         return;
     }
 
-    sysfs_file_deinit(&shmem->file);
-}
-
-static bool shmem_object_is_access_allowed(shmem_object_t* shmem, process_t* proccess)
-{
-    if (proccess->id == shmem->owner || process_is_child(proccess, shmem->owner))
-    {
-        return true;
-    }
-
-    shmem_allowed_process_t* allowed;
-    LIST_FOR_EACH(allowed, &shmem->allowedProcesses, entry)
-    {
-        if (allowed->pid == proccess->id)
-        {
-            return true;
-        }
-    }
-
-    return false;
+    DEREF(shmem);
 }
 
 static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmount, space_t* space, void* address,
@@ -341,7 +111,7 @@ static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmo
     return virtAddr;
 }
 
-static uint64_t shmem_new_open(file_t* file)
+static uint64_t shmem_open(file_t* file)
 {
     shmem_object_t* shmem = shmem_object_new();
     if (shmem == NULL)
@@ -349,24 +119,73 @@ static uint64_t shmem_new_open(file_t* file)
         return ERR;
     }
 
-    file->ops = &normalFileOps;
     file->private = shmem;
     return 0;
 }
 
-static file_ops_t newFileOps = {
-    .open = shmem_new_open,
+static void shmem_close(file_t* file)
+{
+    shmem_object_t* shmem = file->private;
+    if (shmem == NULL)
+    {
+        return;
+    }
+
+    DEREF(shmem);
+}
+
+static void* shmem_mmap(file_t* file, void* address, uint64_t length, pml_flags_t flags)
+{
+    shmem_object_t* shmem = file->private;
+    if (shmem == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    LOCK_SCOPE(&shmem->lock);
+
+    process_t* process = sched_process_unsafe();
+    space_t* space = &process->space;
+
+    uint64_t pageAmount = BYTES_TO_PAGES(length);
+    if (pageAmount == 0)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    if (shmem->pageAmount == 0) // First call to mmap()
+    {
+        assert(shmem->pages == NULL);
+        return shmem_object_allocate_pages(shmem, pageAmount, space, address, flags);
+    }
+    else
+    {
+        assert(shmem->pages != NULL);
+        return vmm_map_pages(space, address, shmem->pages, MIN(pageAmount, shmem->pageAmount), flags,
+            shmem_vmm_callback, REF(shmem));
+    }
+}
+
+static file_ops_t fileOps = {
+    .open = shmem_open,
     .close = shmem_close,
+    .mmap = shmem_mmap,
 };
 
 void shmem_init(void)
 {
-    if (sysfs_dir_init(&shmemDir, sysfs_get_dev(), "shmem", NULL, NULL) == ERR)
+    shmemDir = sysfs_dir_new(NULL, "shmem", NULL, NULL);
+    if (shmemDir == NULL)
     {
-        panic(NULL, "Failed to initialize shmem directory");
+        panic(NULL, "Failed to create /dev/shmem directory");
     }
-    if (sysfs_file_init(&newFile, &shmemDir, "new", NULL, &newFileOps, NULL) == ERR)
+
+    newFile = sysfs_file_new(shmemDir, "new", NULL, &fileOps, NULL);
+    if (newFile == NULL)
     {
-        panic(NULL, "Failed to initialize shmem file");
+        DEREF(shmemDir);
+        panic(NULL, "Failed to create /dev/shmem/new file");
     }
 }

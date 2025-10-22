@@ -52,7 +52,7 @@ typedef struct
  * @param stack The stack pointer structure to initialize.
  * @param maxAddress The maximum address the stack will start at, must be page aligned.
  * @param maxPages The maximum amount of pages the stack can grow to, must not be 0.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t stack_pointer_init(stack_pointer_t* stack, uintptr_t maxAddress, uint64_t maxPages);
 
@@ -69,7 +69,7 @@ uint64_t stack_pointer_init(stack_pointer_t* stack, uintptr_t maxAddress, uint64
  * @param stack The stack pointer structure to initialize.
  * @param buffer The buffer to use for the stack, must be page aligned.
  * @param pages The amount of pages the stack will use, must not be 0.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t stack_pointer_init_buffer(stack_pointer_t* stack, void* buffer, uint64_t pages);
 

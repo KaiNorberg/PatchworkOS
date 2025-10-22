@@ -78,7 +78,7 @@ void rwmutex_read_acquire(rwmutex_t* mtx);
  * If the function succeeds, `rwmutex_read_release()` must be called to release the rwmutex.
  *
  * @param mtx Pointer to the rwmutex to acquire.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, `0`. On error, `ERR` and `errno` is set.
  */
 uint64_t rwmutex_read_try_acquire(rwmutex_t* mtx);
 
@@ -102,7 +102,7 @@ void rwmutex_write_acquire(rwmutex_t* mtx);
  * If the function succeeds, `rwmutex_write_release()` must be called to release the rwmutex.
  *
  * @param mtx Pointer to the rwmutex to acquire.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, `0`. On error, `ERR` and `errno` is set.
  */
 uint64_t rwmutex_write_try_acquire(rwmutex_t* mtx);
 

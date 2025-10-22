@@ -503,9 +503,7 @@ static wait_queue_t* local_socket_poll(socket_t* sock, poll_events_t* revents)
     }
 }
 
-static socket_family_t family = {
-    .name = "local",
-    .supportedTypes = SOCKET_SEQPACKET,
+static socket_family_ops_t ops = {
     .init = local_socket_init,
     .deinit = local_socket_deinit,
     .bind = local_socket_bind,
@@ -519,10 +517,10 @@ static socket_family_t family = {
 
 void net_local_init(void)
 {
-    if (socket_family_register(&family) == ERR)
+    if (socket_family_register(&ops, "local", SOCKET_SEQPACKET) == ERR)
     {
         panic(NULL, "Failed to register local socket family");
     }
 
-    local_listen_dir_init(&family);
+    local_listen_dir_init();
 }

@@ -10,6 +10,9 @@
 #include <errno.h>
 #include <sys/list.h>
 
+static list_t families;
+static lock_t lock;
+
 static uint64_t socket_factory_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     socket_t* sock = file->private;
@@ -41,30 +44,41 @@ static void socket_factory_close(file_t* file)
     }
 }
 
-static file_ops_t factoryOps = {
+static file_ops_t fileOps = {
     .read = socket_factory_read,
     .open = socket_factory_open,
     .close = socket_factory_close,
 };
 
-uint64_t socket_family_register(socket_family_t* family)
+uint64_t socket_family_register(const socket_family_ops_t* ops, const char* name, socket_type_t supportedTypes)
 {
-    if (family == NULL || family->name == NULL)
+    if (ops == NULL || name == NULL || supportedTypes == 0)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    if (family->init == NULL || family->deinit == NULL)
+    if (ops->init == NULL || ops->deinit == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
+    socket_family_t* family = heap_alloc(sizeof(socket_family_t), HEAP_NONE);
+    if (family == NULL)
+    {
+        return ERR;
+    }
+    list_entry_init(&family->entry);
+    strncpy(family->name, name, MAX_NAME - 1);
+    family->name[MAX_NAME - 1] = '\0';
+    family->ops = ops;
+    family->supportedTypes = supportedTypes;
     atomic_init(&family->newId, 0);
     list_init(&family->factories);
 
-    if (sysfs_dir_init(&family->dir, net_get_dir(), family->name, NULL, family) == ERR)
+    family->dir = sysfs_dir_new(net_get_dir(), family->name, NULL, family);
+    if (family->dir == NULL)
     {
         return ERR;
     }
@@ -87,7 +101,8 @@ uint64_t socket_family_register(socket_family_t* family)
         factory->family = family;
 
         const char* string = socket_type_to_string(type);
-        if (sysfs_file_init(&factory->file, &family->dir, string, NULL, &factoryOps, factory) == ERR)
+        factory->file = sysfs_file_new(family->dir, string, NULL, &fileOps, factory);
+        if (factory->file == NULL)
         {
             heap_free(factory);
             goto error;
@@ -105,18 +120,62 @@ error:;
     socket_factory_t* factory;
     LIST_FOR_EACH_SAFE(factory, temp, &family->factories, entry)
     {
-        sysfs_file_deinit(&factory->file);
+        DEREF(factory->file);
         heap_free(factory);
     }
-    list_init(&family->factories); // Reset the list
 
-    sysfs_dir_deinit(&family->dir);
+    DEREF(family->dir);
     return ERR;
 }
 
-void socket_family_unregister(socket_family_t* family)
+socket_family_t* socket_family_get(const char* name)
 {
-    sysfs_dir_deinit(&family->dir);
+    LOCK_SCOPE(&lock);
+    socket_family_t* family;
+    LIST_FOR_EACH(family, &families, entry)
+    {
+        if (strcmp(family->name, name) == 0)
+        {
+            return family;
+        }
+    }
+    return NULL;
+}
+
+static socket_family_t* socket_family_get_and_remove(const char* name)
+{
+    LOCK_SCOPE(&lock);
+    socket_family_t* family;
+    LIST_FOR_EACH(family, &families, entry)
+    {
+        if (strcmp(family->name, name) == 0)
+        {
+            list_remove(&families, &family->entry);
+            return family;
+        }
+    }
+    return NULL;
+}
+
+void socket_family_unregister(const char* name)
+{
+    socket_family_t* family = socket_family_get_and_remove(name);
+    if (family == NULL)
+    {
+        LOG_WARN("socket family %s not found for unregistration\n", name);
+        return;
+    }
+
+    socket_factory_t* temp;
+    socket_factory_t* factory;
+    LIST_FOR_EACH_SAFE(factory, temp, &family->factories, entry)
+    {
+        DEREF(factory->file);
+        heap_free(factory);
+    }
+
+    DEREF(family->dir);
+    heap_free(family);
     LOG_INFO("unregistered family %s\n", family->name);
     return;
 }

@@ -1,12 +1,12 @@
 #include "namespace.h"
 
+#include "cpu/syscalls.h"
 #include "dentry.h"
 #include "log/log.h"
 #include "mount.h"
 #include "path.h"
 #include "superblock.h"
 #include "vfs.h"
-#include "cpu/syscalls.h"
 
 #include <errno.h>
 
@@ -122,6 +122,15 @@ uint64_t namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
         errno = ENODEV;
         return ERR;
     }
+
+    mutex_acquire(&mountpoint->dentry->mutex);
+    if (mountpoint->dentry->flags & DENTRY_NEGATIVE)
+    {
+        mutex_release(&mountpoint->dentry->mutex);
+        errno = ENOENT;
+        return ERR;
+    }
+    mutex_release(&mountpoint->dentry->mutex);
 
     dentry_t* root = fs->mount(fs, deviceName, private);
     if (root == NULL)

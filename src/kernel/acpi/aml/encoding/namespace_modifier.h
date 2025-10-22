@@ -25,7 +25,7 @@ typedef struct aml_term_list_ctx aml_term_list_ctx_t;
  * @see Section 19.6.4 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_alias_read(aml_term_list_ctx_t* ctx);
 
@@ -37,7 +37,7 @@ uint64_t aml_def_alias_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.90 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_name_read(aml_term_list_ctx_t* ctx);
 
@@ -49,7 +49,7 @@ uint64_t aml_def_name_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.122 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_scope_read(aml_term_list_ctx_t* ctx);
 
@@ -60,7 +60,7 @@ uint64_t aml_def_scope_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param op The AML op, should have been read by the caller.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_namespace_modifier_obj_read(aml_term_list_ctx_t* ctx);
 

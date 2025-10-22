@@ -1,13 +1,18 @@
 # PatchworkOS
+<br>
+<div align="center">
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green" alt="License"/></a>
+    <a href="https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml"><img src="https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg" alt="Build and Test"/></a>
+    <br>
+    <i>PatchworkOS is currently in a very early stage of development, and may have both known and unknown bugs.</i>
+</div>
+<br>
 
-![License](https://img.shields.io/badge/License-MIT-green) [![Build and Test](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg)](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml)
+**Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9 and others while simplifying them and adding in some new ideas of its own.
 
-> **⚠ Warning**<br>
-> PatchworkOS is currently in a very early stage of development, and may have both known and unknown bugs.
+In the end this is a project made for fun, however the goal is still to make a feature-complete and experimental operating system which attempts to use unique algorithms and designs over tried and tested ones. Sometimes this leads to bad results, and sometimes, hopefully, good ones.
 
-**Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9 and others while simplifying them and adding in some new ideas of its own.
-
-In the end this is a project made for fun, however the goal is to eventually have a feature-complete and experimental operating system that still remains approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
+Additionally, the OS aims to, in spite of its experimental nature, remain approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
 
 <table>
 <tr>
@@ -53,17 +58,17 @@ In the end this is a project made for fun, however the goal is to eventually hav
 - Custom C standard library and system libraries
 - Highly modular shared memory based desktop environment
 - Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg)
-- Note that currently a heavy focus has been placed on the kernel and low-level stuff so user space is currently quite small
+- Note that currently a heavy focus has been placed on the kernel and low-level stuff, so user space is quite small... for now
 
 *And much more...*
 
----
-
-## Notable Differences with Unix
+## Notable Differences with POSIX
 
 - Replaced `fork(), exec()` with `spawn()`
-- Single-User
-- Non POSIX standard library
+- No "user" concept
+- Non-POSIX standard library
+- Even heavier focus on "everything is a file"
+- File flags instead of file modes/permissions
 - Custom [shell utilities](#shell-utilities)
 
 ## Limitations
@@ -72,6 +77,12 @@ In the end this is a project made for fun, however the goal is to eventually hav
 - Only support for x86_64
 
 ## Notable Future Plans
+
+- `share()`, `claim()` and `bind()` calls
+- Read, write, execute flags
+- Shell overhaul
+- Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions
+- Add configurability to `spawn()` for namespace inheritance
 
 - Asynchronous I/O
 - Modular kernel
@@ -82,15 +93,15 @@ In the end this is a project made for fun, however the goal is to eventually hav
 
 ## Doxygen Documentation
 
-As one of the main goals of PatchworkOS is to be educational, I have tried to document the codebase as much as possible along with providing citations to any sources used. Currently this is still a work in progress, but as old code is refactored and new code is added, I try to add documentation.
+As one of the main goals of PatchworkOS is to be educational, I have tried to document the codebase as much as possible along with providing citations to any sources used. Currently, this is still a work in progress, but as old code is refactored and new code is added, I try to add documentation.
 
-If you are interested in knowing more, then you can check out the Doxygen generated [**documentation**](https://kainorberg.github.io/PatchworkOS/html/index.html).
+If you are interested in knowing more, then you can check out the Doxygen generated [documentation](https://kainorberg.github.io/PatchworkOS/html/index.html).
 
 ## Benchmarks
 
-All benchmarks were run on real hardware using a Lenovo ThinkPad E495. For comparison ive decided to use the Linux kernel, specifically Fedora since its what I normally use.
+All benchmarks were run on real hardware using a Lenovo ThinkPad E495. For comparison, I've decided to use the Linux kernel, specifically Fedora since It's what I normally use.
 
-Note that Fedora will obviously have a lot more background processes running, so these benchmarks are not exactly apples to apples, but they should still give a good idea of how PatchworkOS performs in comparison.
+Note that Fedora will obviously have a lot more background processes running and security features that might impact performance, so these benchmarks are not exactly apples to apples, but they should still give a good baseline for how PatchworkOS performs.
 
 All code for benchmarks can be found in the [benchmark program](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/programs/benchmark/benchmark.c), all tests were run using the optimization flag `-O3`.
 
@@ -117,9 +128,13 @@ Of course, there are limitations to this approach, for example, it is in no way 
 
 All in all, this algorithm would not be usable as a replacement for existing algorithms, but for PatchworkOS, it serves its purpose very efficiently.
 
+[VMM Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/df0/group__kernel__mem__vmm.html)
+
+[Paging Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/df/d5f/group__common__paging.html)
+
 ## Shell Utilities
 
-Patchwork includes its own shell utilities designed around its [file flags](#file-flags) system. Included is a brief overview with some usage examples. For convenience the init program will create hardlinks for each shell utility to their unix equivalents, this can be configured in the [init cfg](https://github.com/KaiNorberg/PatchworkOS/tree/main/root/cfg/init-main.cfg).
+Patchwork includes its own shell utilities designed around its [file flags](#file-flags) system. Included is a brief overview with some usage examples. For convenience the init program will create hardlinks for each shell utility to their UNIX equivalents, this can be configured in the [init cfg](https://github.com/KaiNorberg/PatchworkOS/tree/main/root/cfg/init-main.cfg).
 
 ### `open`
 
@@ -184,7 +199,7 @@ delete file.txt
 delete mydir:recur
 ```
 
-There are also other utils available that work as expected, for example `stat` and `link`.
+There are other utils available that work as expected, for example `stat` and `link`.
 
 ## Everything is a File
 
@@ -232,45 +247,56 @@ For the sake of completeness, if we wanted to connect to this server, we can do
 fd_t handle = open("/net/local/seqpacket");
 char id[32] = {0};
 read(handle, id, 32);
+close(handle);
 
 fd_t ctl = openf("/net/local/%s/ctl", id);
 writef(ctl, "connect myserver");
 close(ctl);
 ```
 
+which would create a new socket and connect it to the server named `myserver`.
+
+[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d0/d22/group__kernel__net.html)
+
 ### Namespaces
 
-Namespaces are in practice just a set of mountpoints that is unique per process with each process able to access the mountpoints in its parent's namespace, which allows each process a unique view of the file system and can be used for basic access control.
+Namespaces are a set of mountpoints that is unique per process with each process able to access the mountpoints in its parent's namespace, which allows each process a unique view of the file system and is utilized for access control.
 
-Think of it like this, in the common case, for instance in Linux, you can mount a drive to `/mnt/mydrive` and all processes can that open the `/mnt/mydrive` path will see the contents of that drive. In PatchworkOS, this is also possible, but for certain IPC its usefull to hide the contents of a directory as a form of access control, so a mountpoint would just look like a empty directory to most processes, exept for the process that created the mountpoint and its children that would have that mountpoint in their namespace.
+Think of it like this, in the common case, for instance on Linux, you can mount a drive to `/mnt/mydrive` and all processes can then open the `/mnt/mydrive` path and see the contents of that drive. In PatchworkOS, this is also possible, but for security reasons we might not want every process to be able to see that drive, instead processes should see the original contents of `/mnt/mydrive` which might just be an empty directory. The exception is for the process that created the mountpoint and its children as they would have that mountpoint in their namespace.
 
-For example, the "id" directories mentioned above in the socket example are mounted in the namespace of the creating process, meaning that only that process and its children can see their contents.
+For example, the "id" directories mentioned in the socket example are a separate "sysfs" instance mounted in the namespace of the creating process, meaning that only that process and its children can see their contents.
+
+[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
 
 ### Namespace Sharing
 
-Its possible for two processes to voluntarily share a mountpoint in their namespaces using the `mount()` syscall, for example, if process A wants to share its `/net/local/[id]` directory with process B, they can do
+It's possible for two processes to voluntarily share a mountpoint in their namespaces using `bind()` in combination with two new system calls `share()` and `claim()`.
+
+For example, if process A wants to share its `/net/local/5` directory from the socket example with process B, they can do
 
 ```c
 // In process A
-// Process A creates a token to identify the shared namespace offer.
-// Tokens are uuids prefixed with ascii `ENQ` (0x05) to avoid collisions with normal file paths.
-char token[MAX_NAME];
-read(open("/dev/token"), token, MAX_NAME);
-// Now process A can "mount" the mountpoint it wants to share to the token.
-mount("/net/local/[id]", token, NULL, 0);
+fd_t dir = open("/net/local/5:dir");
+// Create a "key" for the file descriptor, this is a unique one time use randomly generated
+// integer that can be used to retrieve the file descriptor in another process.
+key_t key = share(dir);
 
 // In process B
-// Process B is given the token from process A (via a pipe, socket, argv, etc.)
-char token[MAX_NAME];
-// Now process B can mount the shared socket directory into its own namespace.
-// It can be mounted anywhere, but in real use it might be practical to mount it to the same path.
-mount(token, "/any/dir/it/wants", NULL, 0);
-// If process A unmounted `/net/local/[id]` before process B, process B will get an error here.
+// The key is somehow communicated to B via IPC, for example a pipe, socket, argv, etc.
+key_t key = ...;
+// Use the key to open a file descriptor to the directory, this will invalidate the key.
+fd_t dir = claim(key);
+// Will error here if the original file descriptor in process A has been closed.
+// Make "dir" ("/net/local/5" in A) available in B's namespace at "/any/path/it/wants"
+// In practice it might be best to mount it to the same path as in A to avoid confusion.
+bind(dir, "/any/path/it/wants");
 ```
 
 This system guarantees consent between processes, and can be used to implement more complex access control systems.
 
-A example of this system being used can be found in the Desktop Window Manager, where it creates shared memory regions for each window that its and the window's process can access, but no other process can.
+An interesting detail is that when process A opens the `net/local/5` directory, the dentry underlying the file descriptor is the root of the mounted file system, if process B were to try to open this directory, it would still succeed as the directory itself is visible, however process B would instead retrieve the dentry of the directory in the parent superblock, and would instead see the content of that directory in the parent superblock. If this means nothing to you, don't worry about it.
+
+[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
 
 ### File Flags?
 
@@ -281,6 +307,8 @@ fd_t handle = open("/net/local/seqpacket:nonblock");
 ```
 
 Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `openf()` function. It is also possible to just specify the first letter of a flag, so instead of `:nonblock` you can use `:n`. Note that duplicate flags are ignored and that there are no read or write flags, all files are both read and write.
+
+[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html#ga82917c2c8f27ffa562957d5cfa4fdb2e)
 
 ---
 
@@ -393,4 +421,8 @@ Contributions are welcome! Anything from bug reports/fixes, performance improvem
 
 If you are unsure where to start, try searching for any "TODO" comments in the codebase.
 
-Check out the [**contribution guidelines**](CONTRIBUTING.md) to get started.
+Check out the [contribution guidelines](CONTRIBUTING.md) to get started.
+
+## Nostalgia
+
+[The first Reddit post and image of PatchworkOS](https://www.reddit.com/r/osdev/comments/18gbsng/a_little_over_2_years_ago_i_posted_a_screenshot/) from back when getting to user space was a huge milestone.

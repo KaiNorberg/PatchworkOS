@@ -347,7 +347,7 @@ static inline void aml_token_read(aml_term_list_ctx_t* ctx, aml_token_t* out)
  *
  * @param state Pointer to the current AML state.
  * @param expected The expected token number.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 static inline uint64_t aml_token_expect(aml_term_list_ctx_t* ctx, aml_token_num_t expected)
 {

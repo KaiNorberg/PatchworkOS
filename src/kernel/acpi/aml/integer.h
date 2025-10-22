@@ -32,7 +32,7 @@ typedef uint64_t aml_integer_t;
 /**
  * @brief Initialize integer handling.
  *
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_integer_handling_init(void);
 

@@ -9,7 +9,7 @@
 #include "cpu/smp.h"
 #include "cpu/syscalls.h"
 #include "drivers/const.h"
-#include "drivers/fb/gop.h"
+#include "drivers/gop.h"
 #include "drivers/ps2/ps2.h"
 #include "fs/ramfs.h"
 #include "fs/sysfs.h"

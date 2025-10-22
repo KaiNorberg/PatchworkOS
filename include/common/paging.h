@@ -77,7 +77,7 @@ static inline uintptr_t pml_accessible_addr(pml_entry_t entry)
  *
  * @param table The page table.
  * @param outPml Will be filled with the newly allocated page table level.
- * @return On success, 0. On failure, `ERR`.
+ * @return On success, `0`. On failure, `ERR`.
  */
 static inline uint64_t pml_new(page_table_t* table, pml_t** outPml)
 {
@@ -133,7 +133,7 @@ static inline void pml_free(page_table_t* table, pml_t* pml, pml_level_t level)
  * @param table The page table to initialize.
  * @param allocPages The function to use for allocating pages.
  * @param freePages The function to use for freeing pages.
- * @return On success, 0. On failure, `ERR`.
+ * @return On success, `0`. On failure, `ERR`.
  */
 static inline uint64_t page_table_init(page_table_t* table, pml_alloc_pages_t allocPages, pml_free_pages_t freePages)
 {
@@ -184,7 +184,7 @@ static inline void page_table_load(page_table_t* table)
  * @param flags The flags to assign to a newly allocated page table level, if applicable.
  * @param callbackId The callback ID to assign to a newly allocated page table level, if applicable.
  * @param outPml Will be filled with the retrieved or newly allocated page table level.
- * @return On success, 0. On failure, `ERR`.
+ * @return On success, `0`. On failure, `ERR`.
  */
 static inline uint64_t page_table_get_pml(page_table_t* table, pml_t* currentPml, pml_index_t index, pml_flags_t flags,
     pml_t** outPml)
@@ -302,7 +302,7 @@ static inline bool page_table_traverse(page_table_t* table, page_table_traverse_
  * @param table The page table.
  * @param virtAddr The virtual address to look up.
  * @param outPhysAddr Will be filled with the corresponding physical address on success.
- * @return On success, 0. On failure, `ERR`.
+ * @return On success, `0`. On failure, `ERR`.
  */
 static inline uint64_t page_table_get_phys_addr(page_table_t* table, const void* virtAddr, void** outPhysAddr)
 {
@@ -396,7 +396,7 @@ static inline bool page_table_is_unmapped(page_table_t* table, const void* virtA
  * @param pageAmount The number of pages to map.
  * @param flags The flags to set for the mapped pages. Must include `PML_PRESENT`.
  * @param callbackId The callback ID to associate with the mapped pages or `PML_CALLBACK_NONE`.
- * @return On success, 0. On failure, `ERR`.
+ * @return On success, `0`. On failure, `ERR`.
  */
 static inline uint64_t page_table_map(page_table_t* table, void* virtAddr, void* physAddr, uint64_t pageAmount,
     pml_flags_t flags, pml_callback_id_t callbackId)
@@ -442,7 +442,7 @@ static inline uint64_t page_table_map(page_table_t* table, void* virtAddr, void*
  * @param pageAmount The number of pages in the array to map.
  * @param flags The flags to set for the mapped pages. Must include `PML_PRESENT`.
  * @param callbackId The callback ID to associate with the mapped pages or `PML_CALLBACK_NONE`.
- * @return On success, 0. On failure, `ERR`.
+ * @return On success, `0`. On failure, `ERR`.
  */
 static inline uint64_t page_table_map_pages(page_table_t* table, void* virtAddr, void** pages, uint64_t pageAmount,
     pml_flags_t flags, pml_callback_id_t callbackId)
@@ -573,7 +573,7 @@ static inline void page_table_collect_callbacks(page_table_t* table, void* virtA
  * @param virtAddr The starting virtual address.
  * @param pageAmount The number of pages to update.
  * @param flags The new flags to set. The `PML_OWNED` flag is preserved.
- * @return On success, 0. On failure, `ERR`.
+ * @return On success, `0`. On failure, `ERR`.
  */
 static inline uint64_t page_table_set_flags(page_table_t* table, void* virtAddr, uint64_t pageAmount, pml_flags_t flags)
 {
@@ -619,7 +619,7 @@ static inline uint64_t page_table_set_flags(page_table_t* table, void* virtAddr,
  * @param endAddr The end address of the search range (exclusive).
  * @param pageAmount The number of consecutive unmapped pages needed.
  * @param outAddr Will be filled with the start address of the unmapped region if found.
- * @return On success, 0. If no suitable region is found, `ERR`.
+ * @return On success, `0`. If no suitable region is found, `ERR`.
  */
 static inline uint64_t page_table_find_unmapped_region(page_table_t* table, void* startAddr, void* endAddr,
     uint64_t pageAmount, void** outAddr)
@@ -805,7 +805,7 @@ static inline uint64_t page_table_find_unmapped_region(page_table_t* table, void
  * @param table The page table.
  * @param virtAddr The starting virtual address.
  * @param pageAmount The number of pages to pin.
- * @return On success, 0. On failure, `ERR`.
+ * @return On success, `0`. On failure, `ERR`.
  */
 static inline uint64_t page_table_pin(page_table_t* table, const void* virtAddr, uint64_t pageAmount)
 {
@@ -840,7 +840,7 @@ static inline uint64_t page_table_pin(page_table_t* table, const void* virtAddr,
  * @param table The page table.
  * @param virtAddr The starting virtual address.
  * @param pageAmount The number of pages to unpin.
- * @return On success, 0. On failure, `ERR`.
+ * @return On success, `0`. On failure, `ERR`.
  */
 static inline void page_table_unpin(page_table_t* table, const void* virtAddr, uint64_t pageAmount)
 {

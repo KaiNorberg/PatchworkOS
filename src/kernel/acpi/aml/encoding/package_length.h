@@ -42,7 +42,7 @@ typedef struct
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the lead byte.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_pkg_lead_byte_read(aml_term_list_ctx_t* ctx, aml_pkg_lead_byte_t* out);
 
@@ -59,7 +59,7 @@ uint64_t aml_pkg_lead_byte_read(aml_term_list_ctx_t* ctx, aml_pkg_lead_byte_t* o
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the package length.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_pkg_length_read(aml_term_list_ctx_t* ctx, aml_pkg_length_t* out);
 

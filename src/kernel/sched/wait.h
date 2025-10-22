@@ -33,7 +33,7 @@ typedef struct cpu cpu_t;
  *
  * Check `wait_block_commit()` for errno values.
  *
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, `0`. On error, `ERR` and `errno` is set.
  */
 #define WAIT_BLOCK(waitQueue, condition) \
     ({ \
@@ -60,7 +60,7 @@ typedef struct cpu cpu_t;
  *
  * Check `wait_block_commit()` for errno values.
  *
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, `0`. On error, `ERR` and `errno` is set.
  */
 #define WAIT_BLOCK_TIMEOUT(waitQueue, condition, timeout) \
     ({ \
@@ -97,7 +97,7 @@ typedef struct cpu cpu_t;
  *
  * Check `wait_block_commit()` for errno values.
  *
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, `0`. On error, `ERR` and `errno` is set.
  */
 #define WAIT_BLOCK_LOCK(waitQueue, lock, condition) \
     ({ \
@@ -128,7 +128,7 @@ typedef struct cpu cpu_t;
  *
  * Check `wait_block_commit()` for errno values.
  *
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, `0`. On error, `ERR` and `errno` is set.
  */
 #define WAIT_BLOCK_LOCK_TIMEOUT(waitQueue, lock, condition, timeout) \
     ({ \
@@ -299,7 +299,7 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount, errno_t err);
  * @param waitQueues Array of wait queues to add the thread to.
  * @param amount Number of wait queues to add the thread to.
  * @param timeout Timeout.
- * @return On success, 0. On failure, interrupts are reenabled, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, interrupts are reenabled, returns `ERR` and `errno` is set.
  */
 uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t timeout);
 
@@ -323,7 +323,7 @@ void wait_block_cancel(void);
  * - `ETIMEDOUT`: The wait timed out.
  * - `EINTR`: The wait was interrupted (probably by a note.)
  *
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t wait_block_commit(void);
 

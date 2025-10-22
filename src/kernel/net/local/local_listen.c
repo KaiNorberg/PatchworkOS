@@ -15,14 +15,21 @@
 #include <_internal/MAX_NAME.h>
 #include <sys/list.h>
 
-static sysfs_dir_t listenDir;
+static dentry_t* listenDir = NULL;
 
 static map_t listeners;
 static rwlock_t listenersLock;
 
-void local_listen_dir_init(socket_family_t* family)
+void local_listen_dir_init(void)
 {
-    if (sysfs_dir_init(&listenDir, &family->dir, "listen", NULL, NULL) == ERR)
+    socket_family_t* family = socket_family_get("local");
+    if (family == NULL)
+    {
+        panic(NULL, "Failed to get local socket family");
+    }
+
+    listenDir = sysfs_dir_new(family->dir, "listen", NULL, NULL);
+    if (listenDir == NULL)
     {
         panic(NULL, "Failed to create local listen dir");
     }
@@ -51,7 +58,7 @@ local_listen_t* local_listen_new(const char* address)
 
     ref_init(&listen->ref, local_listen_free);
     map_entry_init(&listen->entry);
-    strncpy(listen->address, address, MAX_NAME);
+    strncpy(listen->address, address, MAX_NAME - 1);
     listen->address[MAX_NAME - 1] = '\0';
     list_init(&listen->backlog);
     listen->pendingAmount = 0;
@@ -59,8 +66,8 @@ local_listen_t* local_listen_new(const char* address)
     listen->isClosed = false;
     lock_init(&listen->lock);
     wait_queue_init(&listen->waitQueue);
-
-    if (sysfs_file_init(&listen->file, &listenDir, listen->address, NULL, NULL, listen) == ERR)
+    listen->file = sysfs_file_new(listenDir, listen->address, NULL, NULL, listen);
+    if (listen->file == NULL)
     {
         wait_queue_deinit(&listen->waitQueue);
         heap_free(listen);
@@ -70,10 +77,9 @@ local_listen_t* local_listen_new(const char* address)
     RWLOCK_WRITE_SCOPE(&listenersLock);
 
     map_key_t key = map_key_string(listen->address);
-
     if (map_get(&listeners, &key) != NULL)
     {
-        sysfs_file_deinit(&listen->file);
+        DEREF(listen->file);
         wait_queue_deinit(&listen->waitQueue);
         heap_free(listen);
 
@@ -83,7 +89,7 @@ local_listen_t* local_listen_new(const char* address)
 
     if (map_insert(&listeners, &key, &listen->entry) == ERR)
     {
-        sysfs_file_deinit(&listen->file);
+        DEREF(listen->file);
         wait_queue_deinit(&listen->waitQueue);
         heap_free(listen);
         return NULL;
@@ -99,14 +105,12 @@ void local_listen_free(local_listen_t* listen)
         return;
     }
 
-    lock_acquire(&listen->lock);
+    DEREF(listen->file);
 
     rwlock_write_acquire(&listenersLock);
     map_key_t key = map_key_string(listen->address);
     map_remove(&listeners, &key);
     rwlock_write_release(&listenersLock);
-
-    sysfs_file_deinit(&listen->file);
 
     local_conn_t* temp;
     local_conn_t* conn;
@@ -118,11 +122,8 @@ void local_listen_free(local_listen_t* listen)
         lock_release(&conn->lock);
         DEREF(conn);
     }
-    list_init(&listen->backlog); // Reset list.
 
     wait_queue_deinit(&listen->waitQueue);
-
-    lock_release(&listen->lock);
     heap_free(listen);
 }
 

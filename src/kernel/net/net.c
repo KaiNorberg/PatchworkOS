@@ -8,12 +8,12 @@
 #include "log/panic.h"
 #include "net/local/local.h"
 
-static mount_t* mount;
+static superblock_t* superblock;
 
 void net_init(void)
 {
-    mount = sysfs_mount_new(NULL, "net", NULL);
-    if (mount == NULL)
+    superblock = sysfs_superblock_new(NULL, "net", NULL, NULL);
+    if (superblock == NULL)
     {
         panic(NULL, "Failed to create /net filesystem");
     }
@@ -23,7 +23,7 @@ void net_init(void)
     LOG_INFO("networking initialized\n");
 }
 
-dentry_t* net_get_dir(void)
+void net_get_dir(void)
 {
-    return mount->superblock->root;
+    return superblock->root;
 }

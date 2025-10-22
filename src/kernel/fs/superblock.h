@@ -53,6 +53,7 @@ typedef struct superblock
     const dentry_ops_t* dentryOps;
     filesystem_t* fs;
     char deviceName[MAX_NAME];
+    atomic_uint64_t mountCount;
 } superblock_t;
 
 /**
@@ -77,7 +78,7 @@ typedef struct superblock_ops
      */
     void (*cleanup)(superblock_t* superblock);
     /**
-     * Called when the filesystem is being unmounted.
+     * Called when the the superblocks `mountCount` reaches zero, meaning it is not visible anywhere in any namespace.
      */
     uint64_t (*unmount)(superblock_t* superblock);
 } superblock_ops_t;
@@ -97,5 +98,21 @@ typedef struct superblock_ops
  * @return On success, the new superblock. On failure, returns `NULL` and `errno` is set.
  */
 superblock_t* superblock_new(filesystem_t* fs, const char* deviceName, superblock_ops_t* ops, dentry_ops_t* dentryOps);
+
+/**
+ * @brief Increment the mount count of a superblock.
+ *
+ * @param superblock Pointer to the superblock.
+ */
+void superblock_inc_mount_count(superblock_t* superblock);
+
+/**
+ * @brief Decrement the mount count of a superblock.
+ *
+ * If the mount count reaches zero, the `unmount` operation is called if its not `NULL`.
+ *
+ * @param superblock Pointer to the superblock.
+ */
+void superblock_dec_mount_count(superblock_t* superblock);
 
 /** @} */

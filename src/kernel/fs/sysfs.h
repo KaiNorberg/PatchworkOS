@@ -43,8 +43,8 @@ dentry_t* sysfs_get_dev(void);
  * specific namespace.
  *
  * If `parent` is `NULL`, then the sysfs instance will be mounted to a already existing directory in the root of the
- * namespace. If it is not `NULL`, a new directory of the name `name` will be created inside the `parent` directory and
- * the SysFS instance will be mounted there.
+ * namespace. If it is not `NULL`, then it must point to a sysfs directory, a new directory of the name `name` will
+ * be created inside it and the SysFS instance will be mounted there.
  *
  * @param parent The parent directory to mount the SysFS in. If `NULL`, the root of the namespace is used.
  * @param name The name of the directory to mount the SysFS in.
@@ -52,7 +52,8 @@ dentry_t* sysfs_get_dev(void);
  * @param superblockOps The superblock operations for the new SysFS instance, can be `NULL`.
  * @return On success, the mounted SysFS instance. On failure, `NULL` and `errno` is set.
  */
-mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns, const superblock_ops_t* superblockOps);
+superblock_t* sysfs_superblock_new(const path_t* parent, const char* name, namespace_t* ns,
+    const superblock_ops_t* superblockOps);
 
 /**
  * @brief Create a new directory inside a mounted SysFS instance.

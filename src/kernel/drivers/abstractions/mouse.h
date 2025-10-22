@@ -35,6 +35,8 @@ typedef struct
     wait_queue_t waitQueue;
     lock_t lock;
     dentry_t* dir;
+    dentry_t* eventsFile;
+    dentry_t* nameFile;
 } mouse_t;
 
 /**

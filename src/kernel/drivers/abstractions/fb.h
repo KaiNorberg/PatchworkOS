@@ -38,6 +38,9 @@ typedef struct fb
     fb_info_t info;
     fb_mmap_t mmap;
     dentry_t* dir;
+    dentry_t* bufferFile;
+    dentry_t* infoFile;
+    dentry_t* nameFile;
 } fb_t;
 
 /**

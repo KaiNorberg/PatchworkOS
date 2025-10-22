@@ -65,7 +65,7 @@ static file_ops_t nameOps = {
     .read = mouse_name_read,
 };
 
-static void moust_dir_cleanup(inode_t* inode)
+static void mouse_dir_cleanup(inode_t* inode)
 {
     mouse_t* mouse = inode->private;
     wait_queue_deinit(&mouse->waitQueue);
@@ -73,7 +73,7 @@ static void moust_dir_cleanup(inode_t* inode)
 }
 
 static inode_ops_t dirInodeOps = {
-    .cleanup = moust_dir_cleanup,
+    .cleanup = mouse_dir_cleanup,
 };
 
 mouse_t* mouse_new(const char* name)
@@ -104,6 +104,7 @@ mouse_t* mouse_new(const char* name)
     mouse->writeIndex = 0;
     wait_queue_init(&mouse->waitQueue);
     lock_init(&mouse->lock);
+
     mouse->dir = sysfs_dir_new(mouseDir, name, &dirInodeOps, mouse);
     if (mouse->dir == NULL)
     {
@@ -111,16 +112,17 @@ mouse_t* mouse_new(const char* name)
         heap_free(mouse);
         return NULL;
     }
-
-    dentry_t* eventsFile = sysfs_file_new(mouse->dir, "events", NULL, &eventsOps, mouse);
-    DEREF(eventsFile);
-    dentry_t* nameFile = sysfs_file_new(mouse->dir, "name", NULL, &nameOps, mouse);
-    DEREF(nameFile);
-    if (eventsFile == NULL || nameFile == NULL)
+    mouse->eventsFile = sysfs_file_new(mouse->dir, "events", NULL, &eventsOps, mouse);
+    if (mouse->eventsFile == NULL)
+    {
+        DEREF(mouse->dir); // mouse will be freed in mouse_dir_cleanup
+        return NULL;
+    }
+    mouse->nameFile = sysfs_file_new(mouse->dir, "name", NULL, &nameOps, mouse);
+    if (mouse->nameFile == NULL)
     {
         DEREF(mouse->dir);
-        wait_queue_deinit(&mouse->waitQueue);
-        heap_free(mouse);
+        DEREF(mouse->eventsFile);
         return NULL;
     }
 
@@ -130,7 +132,7 @@ mouse_t* mouse_new(const char* name)
 void mouse_free(mouse_t* mouse)
 {
     DEREF(mouse->dir);
-    // mouse will be freed in moust_dir_cleanup
+    // mouse will be freed in mouse_dir_cleanup
 }
 
 void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, int64_t deltaX, int64_t deltaY)

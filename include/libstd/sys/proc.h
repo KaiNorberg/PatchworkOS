@@ -247,7 +247,7 @@ typedef enum
  * @param val The value to compare against for `FUTEX_WAIT` or the number of threads to wake for `FUTEX_WAKE`.
  * @param op The futex operation to perform (e.g., `FUTEX_WAIT` or `FUTEX_WAKE`).
  * @param timeout An optional timeout for `FUTEX_WAIT`. If `CLOCKS_NEVER`, it waits forever.
- * @return On success, 0, except if using the `FUTEX_WAKE` operation then it returns the number of woken
+ * @return On success, `0`, except if using the `FUTEX_WAKE` operation then it returns the number of woken
  * threads. On failure, returns `ERR` and errno is set.
  */
 uint64_t futex(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout);

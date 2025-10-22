@@ -63,7 +63,7 @@ aml_mutex_obj_t* aml_gl_get(void);
 /**
  * @brief Initialize predefined AML names and objects.
  *
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_predefined_init(void);
 

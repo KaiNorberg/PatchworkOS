@@ -43,7 +43,7 @@ typedef struct aml_term_arg_list
  * @param ctx The TermList context.
  * @param out Output pointer to be filled with the object pointer storing the result.
  * @param allowedTypes The allowed types that the TermArg can evaluate to.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 aml_object_t* aml_operand_read(aml_term_list_ctx_t* ctx, aml_type_t allowedTypes);
 
@@ -69,7 +69,7 @@ uint64_t aml_buffer_size_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
  *
  * @param ctx The TermList context.
  * @param out Output pointer to the object to store the result.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_buffer_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
 
@@ -83,7 +83,7 @@ uint64_t aml_def_buffer_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
  * @param ctx The TermList context.
  * @param argCount The number of arguments to read.
  * @param out Pointer to the buffer where the TermArgList will be stored.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_term_arg_list_read(aml_term_list_ctx_t* ctx, uint64_t argCount, aml_term_arg_list_t* out);
 
@@ -137,7 +137,7 @@ aml_object_t* aml_def_store_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The TermList context.
  * @param out Output pointer where the integer value of the dividend will be stored.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_dividend_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
 
@@ -148,7 +148,7 @@ uint64_t aml_dividend_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
  *
  * @param ctx The TermList context.
  * @param out Output pointer where the integer value of the divisor will be stored.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_divisor_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
 
@@ -311,7 +311,7 @@ aml_object_t* aml_def_not_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The TermList context.
  * @param out Output pointer where the integer result will be stored.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_shift_count_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
 
@@ -408,7 +408,7 @@ aml_object_t* aml_buff_pkg_str_obj_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The TermList context.
  * @param out Output pointer where the integer result will be stored.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_index_value_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
 
@@ -552,7 +552,7 @@ aml_object_t* aml_mutex_object_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The TermList context.
  * @param out Output pointer where the integer result will be stored.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_timeout_read(aml_term_list_ctx_t* ctx, uint16_t* out);
 
@@ -820,7 +820,7 @@ uint64_t aml_match_opcode_read(aml_term_list_ctx_t* ctx, aml_match_opcode_t* out
  *
  * @param ctx The TermList context.
  * @param out Output pointer where the integer result will be stored.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_start_index_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
 

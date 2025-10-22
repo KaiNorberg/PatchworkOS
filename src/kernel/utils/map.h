@@ -152,7 +152,7 @@ void map_entry_init(map_entry_t* entry);
  * @brief Initialize a map.
  *
  * @param map The map to initialize.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t map_init(map_t* map);
 
@@ -171,7 +171,7 @@ void map_deinit(map_t* map);
  * @param map The map to insert into.
  * @param key The key to insert.
  * @param value The value to insert.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t map_insert(map_t* map, const map_key_t* key, map_entry_t* value);
 
@@ -241,7 +241,7 @@ void map_clear(map_t* map);
  *
  * @param map The map to reserve space in.
  * @param minCapacity The minimum capacity to reserve.
- * @return On success, 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t map_reserve(map_t* map, uint64_t minCapacity);
 
