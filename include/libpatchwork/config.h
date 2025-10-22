@@ -12,7 +12,7 @@ extern "C"
 
 /**
  * @brief System configuration files.
- * @defgroup libpatchwork_config Config files.
+ * @defgroup libpatchwork_config Config files
  * @ingroup libpatchwork
  *
  * Patchwork uses a `/cfg` folder for all system configuration files. These files are simple INI style text files that
