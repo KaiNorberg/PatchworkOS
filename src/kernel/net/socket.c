@@ -384,26 +384,43 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
         return NULL;
     }
 
-
-
-    sock->superblock = sysfs_superblock_new(sock->family->dir, sock->id, &sched_process()->namespace, &superblockOps);
-    if (sock->superblock == NULL)
+    path_t familyDir = PATH_EMPTY;
+    if (socket_family_get_dir(family, &familyDir) == ERR)
     {
-        DEREF(sock);
+        family->ops->deinit(sock);
+        rwmutex_deinit(&sock->mutex);
+        heap_free(sock);
         return NULL;
     }
 
-    dentry_t* ctlFile = sysfs_file_new(mount->superblock->root, "ctl", &inodeOps, &ctlOps, REF(sock));
+    mount_t* mount = sysfs_mount_new(&familyDir, sock->id, &sched_process()->namespace, &superblockOps);
+    path_put(&familyDir);
+    if (mount == NULL)
+    {
+        family->ops->deinit(sock);
+        rwmutex_deinit(&sock->mutex);
+        heap_free(sock);
+        return NULL;
+    }
+    sock->superblock = REF(mount->superblock);
+    DEREF(mount);
+
+    dentry_t* ctlFile = sysfs_file_new(mount->root, "ctl", &inodeOps, &ctlOps, REF(sock));
     if (ctlFile == NULL)
     {
-        namespace_unmount(&mount->dentry->mount->namespace, mount->dentry);
+        family->ops->deinit(sock);
+        DEREF(mount->superblock);
+        rwmutex_deinit(&sock->mutex);
+        heap_free(sock);
         return NULL;
     }
 
-    dentry_t* dataFile = sysfs_file_new(mount->superblock->root, "data", &inodeOps, &dataOps, REF(sock));
+    dentry_t* dataFile = sysfs_file_new(mount->root, "data", &inodeOps, &dataOps, REF(sock));
     if (dataFile == NULL)
     {
-        family->deinit(sock);
+        family->ops->deinit(sock);
+        DEREF(mount->superblock);
+        DEREF(ctlFile);
         rwmutex_deinit(&sock->mutex);
         heap_free(sock);
         return NULL;
@@ -499,10 +516,7 @@ void socket_end_transition(socket_t* sock, uint64_t result)
         sock->currentState = sock->nextState;
     }
 
-    if
-
-        sock
-        ->nextState = sock->currentState;
+    sock->nextState = sock->currentState;
 
     rwmutex_write_release(&sock->mutex);
 }

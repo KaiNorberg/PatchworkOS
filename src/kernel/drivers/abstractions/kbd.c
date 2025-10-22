@@ -131,10 +131,10 @@ kbd_t* kbd_new(const char* name)
         return NULL;
     }
 
-    return 0;
+    return kbd;
 }
 
-void kbd_deinit(kbd_t* kbd)
+void kbd_free(kbd_t* kbd)
 {
     if (kbd == NULL)
     {

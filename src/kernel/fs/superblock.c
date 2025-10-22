@@ -28,7 +28,7 @@ static void superblock_free(superblock_t* superblock)
     heap_free(superblock);
 }
 
-superblock_t* superblock_new(filesystem_t* fs, const char* deviceName, superblock_ops_t* ops, dentry_ops_t* dentryOps)
+superblock_t* superblock_new(const filesystem_t* fs, const char* deviceName, const superblock_ops_t* ops, const dentry_ops_t* dentryOps)
 {
     superblock_t* superblock = heap_alloc(sizeof(superblock_t), HEAP_NONE);
     if (superblock == NULL)

@@ -107,26 +107,48 @@ All code for benchmarks can be found in the [benchmark program](https://github.c
 
 ### Memory Allocation/Mapping
 
-The test maps and unmaps memory in varying page amounts for a set amount of iterations using generic mmap and munmap functions. Below is the results from PatchworkOS as of commit `cc69fab` and Fedora 40, kernel version `6.14.5-100.fc40.x86_64`.
+The test maps and unmaps memory in varying page amounts for a set amount of iterations using generic mmap and munmap functions. Below is the results from PatchworkOS as of commit `4b00a88` and Fedora 40, kernel version `6.14.5-100.fc40.x86_64`.
 
 ```mermaid
 xychart-beta
 title "Blue: PatchworkOS, Green: Linux (Fedora), Lower is Better"
-x-axis "Page Amount" [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
-y-axis "Time (ms)" 0 --> 30000
-line [69, 69, 69, 75, 108, 127, 205, 413, 667, 1220, 3187]
-line [118, 150, 216, 358, 627, 1167, 2193, 4313, 6487, 11221, 28519]
+x-axis "Page Amount (in 50s)" [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+y-axis "Time (ms)" 0 --> 40000
+line [157, 275, 420, 519, 622, 740, 838, 955, 1068, 1175, 1251, 1392, 1478, 1601, 1782, 1938, 2069, 2277, 2552, 2938, 3158, 3473, 3832, 4344, 4944, 5467, 6010, 6554, 7114, 7486]
+line [1138, 2226, 3275, 4337, 5453, 6537, 7627, 8757, 9921, 11106, 12358, 13535, 14751, 16081, 17065, 18308, 20254, 21247, 22653, 23754, 25056, 26210, 27459, 28110, 29682, 31096, 33547, 34840, 36455, 37660]
 ```
 
-We see that PatchworkOS performs better with a small number of pages, showing that each operation is more efficient, and that it performs better with a large number of pages, showing that the algorithmic complexity is better.
+We see that PatchworkOS performs better across the board, and the performance difference increases as we increase the page count.
 
 There are a few potential reasons for this, one is that PatchworkOS does not use a separate structure to manage virtual memory, instead it embeds metadata directly into the page tables, and since accessing a page table is just walking some pointers, its highly efficient, additionally it provides better caching since the page tables are likely already in the CPU cache.
 
-In the end we end up with a `O(1)` complexity per page operation, or technically, since the algorithm for finding unmapped memory sections is `O(r)` in the worst case where `r` is the size of the address region to check in pages, having more memory allocated would potentially actually improve performance but only by a very small amount. We do of course get `O(n)` complexity per allocation/mapping operation where `n` is the number of pages.
+In the end we end up with a $O(1)$ complexity per page operation, or technically, since the algorithm for finding unmapped memory sections is $O(r)$ in the worst case where $r$ is the size of the address region to check in pages, having more memory allocated would potentially actually improve performance but only by a very small amount. We do of course get $O(n)$ complexity per allocation/mapping operation where $n$ is the number of pages.
 
-Of course, there are limitations to this approach, for example, it is in no way portable (which isn't a concern in our case), each address space can only contain `2^7 - 1` unique shared memory regions, and copy-on-write would not be easy to implement (however, the need for this is reduced due to PatchworkOS using a `spawn()` instead of a `fork()`).
+For fun, we can throw the results into desmos to se that around $800$ to $900$ pages there is a "knee" in the curve. Saying that $x$ is the number of pages per iteration and $y$ is the time in milliseconds let us split the data into two sets. We can now perform linear regression which gives us
+```math
+y =
+\begin{cases}
+2.25874x+53.95918 & \text{if } x \leq 850, \quad R^2=0.9987,\\
+8.68659x-5762.6044 & \text{if } x > 850, \quad R^2=0.9904.
+\end{cases}
+```
+<br>
 
-All in all, this algorithm would not be usable as a replacement for existing algorithms, but for PatchworkOS, it serves its purpose very efficiently.
+Performing quadratic regression on the same data gives us
+```math
+y =
+\begin{cases}
+0.000237618x^{2}+2.06855x+77.77119 & \text{if } x \leq 850, \quad R^2=0.9979,\\
+0.00626813x^{2}-6.04352x+2636.69231 & \text{if } x > 850, \quad R^2=0.9973.
+\end{cases}
+```
+<br>
+
+From this we see that for $x \le 850$ the linear regression has a slightly better fit while for $x > 850$ the quadratic regression has a slightly better fit, this is most likely due to the CPU or TLB caches starting to get saturated. All in all this did not tell us much more than we already knew, but it was fun to do regardless.
+
+Of course, there are limitations to this approach, for example, it is in no way portable (which isn't a concern in our case), each address space can only contain $2^7 - 1$ unique shared memory regions, and copy-on-write would not be easy to implement (however, the need for this is reduced due to PatchworkOS using a `spawn()` instead of a `fork()`).
+
+All in all, this algorithm would not be a viable replacement for existing algorithms, but for PatchworkOS, it serves its purpose very efficiently.
 
 [VMM Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/df0/group__kernel__mem__vmm.html)
 
@@ -306,7 +328,7 @@ You may have noticed that in the above section sections, the `open()` function d
 fd_t handle = open("/net/local/seqpacket:nonblock");
 ```
 
-Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `openf()` function. It is also possible to just specify the first letter of a flag, so instead of `:nonblock` you can use `:n`. Note that duplicate flags are ignored and that there are no read or write flags, all files are both read and write.
+Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `openf()` function. It is also possible to just specify the first letter of a flag, so instead of `:nonblock` you can use `:n`.
 
 [Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html#ga82917c2c8f27ffa562957d5cfa4fdb2e)
 

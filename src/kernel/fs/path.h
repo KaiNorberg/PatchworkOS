@@ -25,6 +25,8 @@ typedef struct namespace namespace_t;
  * mountpoints. A dentry can exist in multiple places if its part of a filesystem that has been mounted in multiple
  * places.
  *
+ * TODO: Make path reference counting less error prone.
+ *
  * @{
  */
 
@@ -108,6 +110,11 @@ typedef struct pathname
 } pathname_t;
 
 /**
+ * @brief Initialize path flags resolution.
+ */
+void path_flags_init(void);
+
+/**
  * @brief Check if a pathname is valid.
  *
  * A valid pathname is not `NULL` and has its `isValid` flag set to true.
@@ -118,11 +125,6 @@ typedef struct pathname
  * @return true if the pathname is valid, false otherwise.
  */
 #define PATHNAME_IS_VALID(pathname) ((pathname) != NULL && (pathname)->isValid)
-
-/**
- * @brief Initialize path flags resolution.
- */
-void path_flags_init(void);
 
 /**
  * @brief Helper to create a pathname.

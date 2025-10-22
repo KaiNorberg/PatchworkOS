@@ -272,19 +272,19 @@ void path_put(path_t* path)
 
 static uint64_t path_handle_dotdot(path_t* current)
 {
-    if (current->dentry == current->mount->superblock->root)
+    if (current->dentry == current->mount->root)
     {
         uint64_t iter = 0;
 
-        while (current->dentry == current->mount->superblock->root && iter < PATH_HANDLE_DOTDOT_MAX_ITER)
+        while (current->dentry == current->mount->root && iter < PATH_HANDLE_DOTDOT_MAX_ITER)
         {
-            if (current->mount->parent == NULL || current->mount->dentry == NULL)
+            if (current->mount->parent == NULL || current->mount->mountpoint == NULL)
             {
                 return 0;
             }
 
             mount_t* newMount = REF(current->mount->parent);
-            dentry_t* newDentry = REF(current->mount->dentry);
+            dentry_t* newDentry = REF(current->mount->mountpoint);
 
             DEREF(current->mount);
             current->mount = newMount;
@@ -300,7 +300,7 @@ static uint64_t path_handle_dotdot(path_t* current)
             return ERR;
         }
 
-        if (current->dentry != current->mount->superblock->root)
+        if (current->dentry != current->mount->root)
         {
             dentry_t* parent = current->dentry->parent;
             if (parent == NULL || parent == current->dentry)
@@ -622,7 +622,7 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
                 pathname->string[index] = '/';
                 break;
             }
-            path_set(&current, current.mount->parent, current.mount->dentry);
+            path_set(&current, current.mount->parent, current.mount->mountpoint);
             continue;
         }
 

@@ -83,13 +83,13 @@ uint64_t namespace_traverse_mount(namespace_t* ns, const path_t* mountpoint, pat
                 return ERR;
             }
 
-            if (mount->superblock == NULL || mount->superblock->root == NULL)
+            if (mount->superblock == NULL || mount->root == NULL)
             {
                 errno = ESTALE;
                 return ERR;
             }
 
-            path_set(outRoot, mount, mount->superblock->root);
+            path_set(outRoot, mount, mount->root);
             return 0;
         }
 
@@ -100,13 +100,12 @@ uint64_t namespace_traverse_mount(namespace_t* ns, const path_t* mountpoint, pat
     return 0;
 }
 
-uint64_t namespace_mount(namespace_t* ns, path_t* mountpoint, const char* deviceName, const char* fsName,
-    mount_t** outRoot, void* private)
+mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* deviceName, const char* fsName, void* private)
 {
     if (deviceName == NULL || fsName == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return NULL;
     }
 
     if (ns == NULL)
@@ -120,22 +119,13 @@ uint64_t namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
     if (fs == NULL)
     {
         errno = ENODEV;
-        return ERR;
+        return NULL;
     }
-
-    mutex_acquire(&mountpoint->dentry->mutex);
-    if (mountpoint->dentry->flags & DENTRY_NEGATIVE)
-    {
-        mutex_release(&mountpoint->dentry->mutex);
-        errno = ENOENT;
-        return ERR;
-    }
-    mutex_release(&mountpoint->dentry->mutex);
 
     dentry_t* root = fs->mount(fs, deviceName, private);
     if (root == NULL)
     {
-        return ERR;
+        return NULL;
     }
     DEREF_DEFER(root);
     MUTEX_SCOPE(&root->mutex);
@@ -143,7 +133,7 @@ uint64_t namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
     if (root->flags & DENTRY_NEGATIVE)
     {
         errno = EIO; // This should never happen.
-        return ERR;
+        return NULL;
     }
 
     if (mountpoint == NULL)
@@ -151,36 +141,37 @@ uint64_t namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
         if (ns->rootMount != NULL) // No need for the lock as this will only be set during initialization.
         {
             errno = EBUSY;
-            return ERR;
+            return NULL;
         }
 
-        ns->rootMount = mount_new(root->superblock, NULL);
+        ns->rootMount = mount_new(root->superblock, root, NULL, NULL);
         if (ns->rootMount == NULL)
         {
-            return ERR;
-        }
-
-        if (outRoot != NULL)
-        {
-            *outRoot = REF(ns->rootMount);
+            return NULL;
         }
 
         LOG_INFO("mounted %s as root with %s\n", deviceName, fsName);
-        return 0;
+        return REF(ns->rootMount);
     }
 
     if (ns->rootMount == NULL)
     {
         errno = ENOENT;
-        return ERR;
+        return NULL;
     }
 
     MUTEX_SCOPE(&mountpoint->dentry->mutex);
 
-    mount_t* mount = mount_new(root->superblock, mountpoint);
+    if (mountpoint->dentry->flags & DENTRY_NEGATIVE)
+    {
+        errno = ENOENT;
+        return NULL;
+    }
+
+    mount_t* mount = mount_new(root->superblock, root, mountpoint->dentry, mountpoint->mount);
     if (mount == NULL)
     {
-        return ERR;
+        return NULL;
     }
 
     map_key_t key = mount_cache_key(mountpoint->mount->id, mountpoint->dentry->id);
@@ -189,7 +180,7 @@ uint64_t namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
     {
         DEREF(mount);
         rwlock_write_release(&ns->lock);
-        return ERR;
+        return NULL;
     }
     rwlock_write_release(&ns->lock);
 
@@ -197,13 +188,8 @@ uint64_t namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
 
     // superblock_expose(superblock); // TODO: Expose the sysfsDir for the superblock
 
-    if (outRoot != NULL)
-    {
-        *outRoot = REF(mount);
-    }
-
     LOG_INFO("mounted %s with %s\n", deviceName, fsName);
-    return 0;
+    return REF(mount);
 }
 
 uint64_t namespace_get_root_path(namespace_t* ns, path_t* outPath)
@@ -222,13 +208,13 @@ uint64_t namespace_get_root_path(namespace_t* ns, path_t* outPath)
     }
 
     rwlock_read_acquire(&ns->lock);
-    if (ns->rootMount == NULL || ns->rootMount->superblock == NULL || ns->rootMount->superblock->root == NULL)
+    if (ns->rootMount == NULL || ns->rootMount->superblock == NULL || ns->rootMount->root == NULL)
     {
         rwlock_read_release(&ns->lock);
         errno = ENOENT;
         return ERR;
     }
-    path_set(outPath, ns->rootMount, ns->rootMount->superblock->root);
+    path_set(outPath, ns->rootMount, ns->rootMount->root);
     rwlock_read_release(&ns->lock);
     return 0;
 }

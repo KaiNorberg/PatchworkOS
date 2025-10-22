@@ -34,7 +34,7 @@ static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 // Should be acquired whenever a process tree is being read or modified.
 static rwlock_t treeLock = RWLOCK_CREATE;
 
-static superblock_t* superblock = NULL;
+static mount_t* mount;
 
 static process_t* process_file_get_process(file_t* file)
 {
@@ -224,7 +224,7 @@ static inode_ops_t inodeOps = {
 
 static uint64_t process_dir_init(process_t* process, const char* name)
 {
-    process->dir = sysfs_dir_new(superblock->root, name, &inodeOps, REF(process));
+    process->dir = sysfs_dir_new(mount->root, name, &inodeOps, REF(process));
     if (process->dir == NULL)
     {
         return ERR;
@@ -438,7 +438,13 @@ void process_kill(process_t* process, uint64_t status)
 
     vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_inode_cleanup, makes sure that files close
                                       // immediately to notify blocking threads.
-    DEREF(&process->dir);             // The dir entries have refs to the process, so we must deinit it here.
+    // The dir entries have refs to the process, so we must deinit them here.
+    DEREF(process->dir);
+    DEREF(process->prioFile);
+    DEREF(process->cwdFile);
+    DEREF(process->cmdlineFile);
+    DEREF(process->noteFile);
+    DEREF(process->statusFile);
     wait_unblock(&process->dyingWaitQueue, WAIT_ALL, EOK);
 }
 
@@ -464,8 +470,8 @@ bool process_is_child(process_t* process, pid_t parentId)
 
 void process_procfs_init(void)
 {
-    superblock = sysfs_superblock_new(NULL, "proc", NULL, NULL);
-    if (superblock == NULL)
+    mount = sysfs_mount_new(NULL, "proc", NULL, NULL);
+    if (mount == NULL)
     {
         panic(NULL, "Failed to mount /proc filesystem");
     }

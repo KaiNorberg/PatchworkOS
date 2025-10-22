@@ -34,13 +34,14 @@ static dentry_t* sysfs_mount(filesystem_t* fs, const char* devName, void* privat
     (void)devName; // Unused
     (void)private; // Unused
 
-    systems_mount_ctx_t* ctx = (sysfs_mount_ctx_t*)private;
-    if (ctx == NULL)
+    superblock_ops_t* superblockOps = NULL;
+    if (private != NULL)
     {
-        return NULL;
+        sysfs_mount_ctx_t* ctx = (sysfs_mount_ctx_t*)private;
+        superblockOps = (superblock_ops_t*)ctx->superblockOps;
     }
 
-    superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, ctx->superblockOps, &dentryOps);
+    superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, superblockOps, &dentryOps);
     if (superblock == NULL)
     {
         return NULL;
@@ -66,6 +67,7 @@ static dentry_t* sysfs_mount(filesystem_t* fs, const char* devName, void* privat
         return NULL;
     }
 
+    superblock->root = REF(dentry);
     return REF(superblock->root);
 }
 
@@ -82,7 +84,7 @@ void sysfs_init(void)
         panic(NULL, "Failed to register sysfs");
     }
 
-    devMount = sysfs_superblock_new(NULL, "dev", NULL);
+    devMount = sysfs_mount_new(NULL, "dev", NULL, NULL);
     if (devMount == NULL)
     {
         panic(NULL, "Failed to create /dev filesystem");
@@ -92,10 +94,10 @@ void sysfs_init(void)
 
 dentry_t* sysfs_get_dev(void)
 {
-    return REF(devMount->superblock->root);
+    return REF(devMount->root);
 }
 
-superblock_t* sysfs_superblock_new(const path_t* parent, const char* name, namespace_t* ns,
+mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns,
     const superblock_ops_t* superblockOps)
 {
     if (name == NULL)
@@ -114,7 +116,7 @@ superblock_t* sysfs_superblock_new(const path_t* parent, const char* name, names
     if (parent == NULL)
     {
         path_t rootPath = PATH_EMPTY;
-        path_set(&rootPath, ns->rootMount, ns->rootMount->superblock->root);
+        path_set(&rootPath, ns->rootMount, ns->rootMount->root);
         PATH_DEFER(&rootPath);
 
         dentry_t* dentry = vfs_get_or_lookup_dentry(&rootPath, name);
@@ -132,15 +134,7 @@ superblock_t* sysfs_superblock_new(const path_t* parent, const char* name, names
             .superblockOps = superblockOps,
         };
 
-        mount_t* mount = NULL;
-        uint64_t result = namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, &mount, &ctx);
-        if (result == ERR)
-        {
-            return NULL;
-        }
-        DEREF_DEFER(mount);
-
-        return REF(mount->superblock);
+        return namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, &ctx);
     }
 
     if (parent->dentry->superblock->fs != &sysfs)
@@ -156,24 +150,14 @@ superblock_t* sysfs_superblock_new(const path_t* parent, const char* name, names
     }
     DEREF_DEFER(dentry);
 
-    path_t mountpoint = PATH_EMPTY;
-    path_set(&mountpoint, parent->mount, dentry);
+    path_t mountpoint = PATH_CREATE(parent->mount, dentry);
     PATH_DEFER(&mountpoint);
-
-    mount_t* mount = NULL;
-    uint64_t result = namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, &mount, NULL);
-    if (result == ERR)
-    {
-        return NULL;
-    }
-    DEREF_DEFER(mount);
-
-    return REF(mount->superblock);
+    return namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, NULL);
 }
 
 dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* private)
 {
-    if (parent == NULL || name == NULL)
+    if (name == NULL)
     {
         errno = EINVAL;
         return NULL;
@@ -181,7 +165,13 @@ dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* i
 
     if (parent == NULL)
     {
-        parent = devMount->superblock->root;
+        parent = devMount->root;
+    }
+
+    if (parent->superblock->fs != &sysfs)
+    {
+        errno = EXDEV;
+        return NULL;
     }
 
     dentry_t* dir = dentry_new(parent->superblock, parent, name);
@@ -197,7 +187,6 @@ dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* i
         return NULL;
     }
     DEREF_DEFER(inode);
-
     inode->private = private;
 
     if (dentry_make_positive(dir, inode) == ERR)
@@ -211,7 +200,7 @@ dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* i
 dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, const file_ops_t* fileOps,
     void* private)
 {
-    if (parent == NULL || name == NULL)
+    if (name == NULL)
     {
         errno = EINVAL;
         return NULL;
@@ -219,7 +208,13 @@ dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* 
 
     if (parent == NULL)
     {
-        parent = devMount->superblock->root;
+        parent = devMount->root;
+    }
+
+    if (parent->superblock->fs != &sysfs)
+    {
+        errno = EXDEV;
+        return NULL;
     }
 
     dentry_t* file = dentry_new(parent->superblock, parent, name);
@@ -235,7 +230,6 @@ dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* 
         return NULL;
     }
     DEREF_DEFER(inode);
-
     inode->private = private;
 
     if (dentry_make_positive(file, inode) == ERR)

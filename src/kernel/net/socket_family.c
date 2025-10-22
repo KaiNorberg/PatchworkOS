@@ -10,8 +10,8 @@
 #include <errno.h>
 #include <sys/list.h>
 
-static list_t families;
-static lock_t lock;
+static list_t families = LIST_CREATE(families);
+static lock_t lock = LOCK_CREATE;
 
 static uint64_t socket_factory_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -77,7 +77,15 @@ uint64_t socket_family_register(const socket_family_ops_t* ops, const char* name
     atomic_init(&family->newId, 0);
     list_init(&family->factories);
 
-    family->dir = sysfs_dir_new(net_get_dir(), family->name, NULL, family);
+    mount_t* mount = net_get_mount();
+    if (mount == NULL)
+    {
+        heap_free(family);
+        return ERR;
+    }
+
+    family->dir = sysfs_dir_new(mount->root, family->name, NULL, family);
+    DEREF(mount);
     if (family->dir == NULL)
     {
         return ERR;
@@ -110,6 +118,10 @@ uint64_t socket_family_register(const socket_family_ops_t* ops, const char* name
 
         list_push(&family->factories, &factory->entry);
     }
+
+    lock_acquire(&lock);
+    list_push(&families, &family->entry);
+    lock_release(&lock);
 
     LOG_INFO("registered family %s\n", family->name);
     return 0;
@@ -178,4 +190,24 @@ void socket_family_unregister(const char* name)
     heap_free(family);
     LOG_INFO("unregistered family %s\n", family->name);
     return;
+}
+
+uint64_t socket_family_get_dir(socket_family_t* family, path_t* outPath)
+{
+    if (family == NULL || outPath == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    mount_t* mount = net_get_mount();
+    if (mount == NULL)
+    {
+        return ERR;
+    }
+
+    path_set(outPath, mount, family->dir);
+    DEREF(mount);
+
+    return 0;
 }

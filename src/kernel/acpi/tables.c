@@ -255,7 +255,7 @@ void acpi_tables_expose(void)
         }
 
         cachedTables[i].file = sysfs_file_new(tablesDir, name, NULL, &tableFileOps, table);
-        if (cachedTables[i].file != NULL)
+        if (cachedTables[i].file == NULL)
         {
             panic(NULL, "failed to create ACPI table sysfs file for %.*s", SDT_SIGNATURE_LENGTH, table->signature);
         }

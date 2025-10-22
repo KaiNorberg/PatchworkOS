@@ -2,18 +2,17 @@
 
 #include "fs/dentry.h"
 #include "fs/mount.h"
-#include "fs/superblock.h"
 #include "fs/sysfs.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "net/local/local.h"
 
-static superblock_t* superblock;
+static mount_t* mount;
 
 void net_init(void)
 {
-    superblock = sysfs_superblock_new(NULL, "net", NULL, NULL);
-    if (superblock == NULL)
+    mount = sysfs_mount_new(NULL, "net", NULL, NULL);
+    if (mount == NULL)
     {
         panic(NULL, "Failed to create /net filesystem");
     }
@@ -23,7 +22,7 @@ void net_init(void)
     LOG_INFO("networking initialized\n");
 }
 
-void net_get_dir(void)
+mount_t* net_get_mount(void)
 {
-    return superblock->root;
+    return REF(mount);
 }

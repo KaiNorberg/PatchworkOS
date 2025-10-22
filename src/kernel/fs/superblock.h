@@ -51,7 +51,7 @@ typedef struct superblock
     dentry_t* root;
     const superblock_ops_t* ops;
     const dentry_ops_t* dentryOps;
-    filesystem_t* fs;
+    const filesystem_t* fs;
     char deviceName[MAX_NAME];
     atomic_uint64_t mountCount;
 } superblock_t;
@@ -91,13 +91,15 @@ typedef struct superblock_ops
  *
  * There is no `superblock_free()` instead use `DEREF()`.
  *
+ * Note that the superblock's `root` dentry must be created and assigned after calling this function.
+ *
  * @param fs The filesystem type of the superblock.
  * @param deviceName The device name, or `VFS_DEVICE_NAME_NONE` for no device.
  * @param ops The superblock operations, can be NULL.
  * @param dentryOps The dentry operations for dentries in this superblock, can be NULL.
  * @return On success, the new superblock. On failure, returns `NULL` and `errno` is set.
  */
-superblock_t* superblock_new(filesystem_t* fs, const char* deviceName, superblock_ops_t* ops, dentry_ops_t* dentryOps);
+superblock_t* superblock_new(const filesystem_t* fs, const char* deviceName, const superblock_ops_t* ops, const dentry_ops_t* dentryOps);
 
 /**
  * @brief Increment the mount count of a superblock.

@@ -266,6 +266,10 @@ static void panic_direct_stack_trace(void)
 
 static bool panic_is_valid_address(uintptr_t addr)
 {
+    if (addr == 0)
+    {
+        return false;
+    }
     if (addr < VMM_USER_SPACE_MIN)
     {
         return false;

@@ -17,15 +17,40 @@ static scanline_t* scanlines;
 
 static void frontbuffer_init(void)
 {
-    fd_t fb = open("/dev/fb0");
-    if (fb == ERR)
+    fd_t fbInfo = open("/dev/fb/0/info");
+    if (fbInfo == ERR)
     {
-        printf("dwm: failed to open framebuffer device (%s)\n", strerror(errno));
+        printf("dwm: failed to open framebuffer info device (%s)\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
-    if (ioctl(fb, IOCTL_FB_INFO, &info, sizeof(fb_info_t)) == ERR)
+    if (read(fbInfo, &info, sizeof(fb_info_t)) != sizeof(fb_info_t))
     {
-        printf("dwm: failed to get framebuffer info (%s)\n", strerror(errno));
+        printf("dwm: failed to read framebuffer info (%s)\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    close(fbInfo);
+
+    fd_t fbName = open("/dev/fb/0/name");
+    if (fbName == ERR)
+    {
+        printf("dwm: failed to open framebuffer name device (%s)\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    char name[MAX_NAME];
+    if (read(fbName, name, MAX_NAME) == ERR)
+    {
+        printf("dwm: failed to read framebuffer name (%s)\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    close(fbName);
+
+    printf("dwm: using framebuffer '%s' width=%lu height=%lu stride=%lu format=%u)\n",
+        name, info.width, info.height, info.stride, info.format);
+
+    fd_t fbBuffer = open("/dev/fb/0/buffer");
+    if (fbBuffer == ERR)
+    {
+        printf("dwm: failed to open framebuffer device (%s)\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
 
@@ -33,7 +58,7 @@ static void frontbuffer_init(void)
     {
     case FB_ARGB32:
     {
-        frontbuffer = mmap(fb, NULL, info.stride * info.height * sizeof(uint32_t), PROT_READ | PROT_WRITE);
+        frontbuffer = mmap(fbBuffer, NULL, info.stride * info.height * sizeof(uint32_t), PROT_READ | PROT_WRITE);
         if (frontbuffer == NULL)
         {
             printf("dwm: failed to map framebuffer memory (%s)\n", strerror(errno));
@@ -49,7 +74,7 @@ static void frontbuffer_init(void)
     }
     }
 
-    close(fb);
+    close(fbBuffer);
 }
 
 static void backbuffer_init(void)

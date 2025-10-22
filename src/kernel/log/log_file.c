@@ -56,12 +56,10 @@ static file_ops_t logFileOps = {
 
 void log_file_expose(void)
 {
-    // LOCK_SCOPE(&lock); // Cant use lock here because sysfs_file_init might call back into log functions
-
-    file = sysfs_file_new(NULL, "log", NULL, &logFileOps, NULL);
+    file = sysfs_file_new(NULL, "klog", NULL, &logFileOps, NULL);
     if (file == NULL)
     {
-        panic(NULL, "failed to create log sysfs file");
+        panic(NULL, "failed to create klog sysfs file");
     }
 }
 

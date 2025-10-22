@@ -22,6 +22,8 @@
 #include <sys/list.h>
 #include <sys/math.h>
 
+static mount_t* mount = NULL;
+
 static _Atomic(inode_number_t) newNumber = ATOMIC_VAR_INIT(1);
 
 static inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, void* buffer, uint64_t size);
@@ -384,7 +386,8 @@ void ramfs_init(const boot_disk_t* disk)
         panic(NULL, "Failed to register ramfs");
     }
     LOG_INFO("mounting ramfs\n");
-    if (namespace_mount(NULL, NULL, VFS_DEVICE_NAME_NONE, RAMFS_NAME, NULL, (void*)disk) == ERR)
+    mount = namespace_mount(NULL, NULL, VFS_DEVICE_NAME_NONE, RAMFS_NAME, (void*)disk);
+    if (mount == NULL)
     {
         panic(NULL, "Failed to mount ramfs");
     }

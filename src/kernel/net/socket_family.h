@@ -102,8 +102,9 @@ socket_family_t* socket_family_get(const char* name);
  * @brief Get the directory of a socket family.
  *
  * @param family Pointer to the socket family.
- * @param out Output path to store the directory path (`/net/<family_name>/`).
+ * @param outPath Output path for the directory (`/net/<family_name>/`).
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-void socket_family_get_dir(socket_family_t* family, path_t* out);
+uint64_t socket_family_get_dir(socket_family_t* family, path_t* outPath);
 
 /** @} */

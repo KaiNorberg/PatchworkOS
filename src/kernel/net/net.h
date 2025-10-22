@@ -18,10 +18,10 @@
 void net_init(void);
 
 /**
- * @brief Retrieve the sysfs directory for networking.
+ * @brief Retrieve the mount for the networking subsystem.
  *
- * @param out Output pointer to store the networking directory path (`/net`).
+ * @return The mount for the networking subsystem (`/net`).
  */
-void net_get_dir(path_t* out);
+mount_t* net_get_mount(void);
 
 /** @} */

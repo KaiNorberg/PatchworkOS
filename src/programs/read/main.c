@@ -44,7 +44,7 @@ int main(int argc, char** argv)
 {
     if (argc == 1)
     {
-        return read_fd(STDIN_FILENO, "stdin");
+        return read_fd(STDIN_FILENO, "stdin", false);
     }
 
     bool hexOutput = false;
