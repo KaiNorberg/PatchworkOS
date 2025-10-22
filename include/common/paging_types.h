@@ -174,7 +174,6 @@ typedef enum
     PML_INDEX_HIGHER_HALF_MIN = 256,
     PML_INDEX_HIGHER_HALF_MAX = 511,
     PML_INDEX_AMOUNT = 512,
-    PML_INDEX_INVALID = 512
 } pml_index_t;
 
 /**

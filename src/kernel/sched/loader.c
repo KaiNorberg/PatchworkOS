@@ -68,7 +68,8 @@ static void* loader_load_program(thread_t* thread)
                 return NULL;
             }
 
-            if (vmm_alloc(space, (void*)phdr.virtAddr, phdr.memorySize, PML_PRESENT | PML_WRITE | PML_USER, VMM_ALLOC_NONE) == NULL)
+            if (vmm_alloc(space, (void*)phdr.virtAddr, phdr.memorySize, PML_PRESENT | PML_WRITE | PML_USER,
+                    VMM_ALLOC_NONE) == NULL)
             {
                 return NULL;
             }

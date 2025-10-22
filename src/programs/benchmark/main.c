@@ -78,11 +78,6 @@ static void benchmark_mmap(uint64_t pages)
             return;
         }
 
-        for (uint64_t j = 0; j < pages; j++)
-        {
-            ((uint8_t*)ptr)[j * 0x1000] = 0;
-        }
-
         if (munmap_generic(ptr, pages * 0x1000) != 0)
         {
             perror("munmap failed");
@@ -99,7 +94,8 @@ int main()
     init_generic();
 
     printf("Starting mmap benchmark with %llu iterations\n", TEST_ITERATIONS);
-    for (uint64_t i = 1; i <= 1024; i *= 2)
+    benchmark_mmap(1);
+    for (uint64_t i = 50; i <= 1500; i += 50)
     {
         benchmark_mmap(i);
     }

@@ -7,8 +7,8 @@
 
 #define BLINK_INTERVAL (CLOCKS_PER_SEC / 2)
 
-#define TERMINAL_COLUMNS 80
-#define TERMINAL_ROWS 24
+#define TERMINAL_COLUMNS 100
+#define TERMINAL_ROWS 40
 
 // TODO: Implement ansi stuff
 #define TERMINAL_FOREGROUND ((pixel_t)0xFFFFFFFF)

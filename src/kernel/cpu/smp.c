@@ -65,7 +65,8 @@ void smp_others_init(void)
         {
             // We need the _cpus to be page aligned so its stacks are also page aligned.
             cpuid_t newId = _cpuAmount++;
-            _cpus[newId] = vmm_alloc(NULL, NULL, sizeof(cpu_t), PML_WRITE | PML_PRESENT | PML_GLOBAL, VMM_ALLOC_FAIL_IF_MAPPED);
+            _cpus[newId] =
+                vmm_alloc(NULL, NULL, sizeof(cpu_t), PML_WRITE | PML_PRESENT | PML_GLOBAL, VMM_ALLOC_FAIL_IF_MAPPED);
             if (_cpus[newId] == NULL)
             {
                 panic(NULL, "Failed to allocate memory for cpu %d with lapicid %d", (uint64_t)newId,
