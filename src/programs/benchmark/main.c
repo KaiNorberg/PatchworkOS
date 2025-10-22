@@ -78,6 +78,11 @@ static void benchmark_mmap(uint64_t pages)
             return;
         }
 
+        for (uint64_t j = 0; j < pages; j++)
+        {
+            ((uint8_t*)ptr)[j * 0x1000] = 0;
+        }
+
         if (munmap_generic(ptr, pages * 0x1000) != 0)
         {
             perror("munmap failed");
