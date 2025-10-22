@@ -1,7 +1,8 @@
 #include "mouse.h"
-#include "drivers/helpers/mouse.h"
+#include "drivers/abstractions/mouse.h"
 #include "fs/file.h"
 #include "fs/sysfs.h"
+#include "fs/vfs.h"
 #include "mem/heap.h"
 #include "sched/timer.h"
 #include "sync/lock.h"
@@ -9,9 +10,9 @@
 #include <errno.h>
 #include <sys/math.h>
 
-static sysfs_dir_t mouseDir = {0};
+static dentry_t* mouseDir = NULL;
 
-static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t mouse_events_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     mouse_t* mouse = file->inode->private;
 
@@ -32,7 +33,7 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count, uint64_t*
     return count;
 }
 
-static wait_queue_t* mouse_poll(file_t* file, poll_events_t* revents)
+static wait_queue_t* mouse_events_poll(file_t* file, poll_events_t* revents)
 {
     mouse_t* mouse = file->inode->private;
     LOCK_SCOPE(&mouse->lock);
@@ -43,38 +44,81 @@ static wait_queue_t* mouse_poll(file_t* file, poll_events_t* revents)
     return &mouse->waitQueue;
 }
 
-static file_ops_t fileOps = {
-    .read = mouse_read,
-    .poll = mouse_poll,
+static file_ops_t eventsOps = {
+    .read = mouse_events_read,
+    .poll = mouse_events_poll,
 };
 
-static void mouse_inode_cleanup(inode_t* inode)
+static uint64_t mouse_name_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    mouse_t* mouse = file->inode->private;
+    uint64_t nameLen = strnlen_s(mouse->name, MAX_NAME);
+    if (*offset >= nameLen)
+    {
+        return 0;
+    }
+
+    return BUFFER_READ(buffer, count, offset, mouse->name, nameLen);
+}
+
+static file_ops_t nameOps = {
+    .read = mouse_name_read,
+};
+
+static void moust_dir_cleanup(inode_t* inode)
 {
     mouse_t* mouse = inode->private;
     wait_queue_deinit(&mouse->waitQueue);
     heap_free(mouse);
 }
 
-static inode_ops_t inodeOps = {
-    .cleanup = mouse_inode_cleanup,
+static inode_ops_t dirInodeOps = {
+    .cleanup = moust_dir_cleanup,
 };
 
 mouse_t* mouse_new(const char* name)
 {
-    if (mouseDir.dentry == NULL)
+    if (name == NULL)
     {
-        if (sysfs_dir_init(&mouseDir, sysfs_get_dev(), "mouse", NULL, NULL) == ERR)
+        errno = EINVAL;
+        return NULL;
+    }
+
+    if (mouseDir == NULL)
+    {
+        mouseDir = sysfs_dir_new(NULL, "mouse", NULL, NULL);
+        if (mouseDir == NULL)
         {
             return NULL;
         }
     }
 
     mouse_t* mouse = heap_alloc(sizeof(mouse_t), HEAP_NONE);
+    if (mouse == NULL)
+    {
+        return NULL;
+    }
+    strncpy(mouse->name, name, MAX_NAME - 1);
+    mouse->name[MAX_NAME - 1] = '\0';
+    memset(mouse, 0, sizeof(mouse_t));
     mouse->writeIndex = 0;
     wait_queue_init(&mouse->waitQueue);
     lock_init(&mouse->lock);
-    if (sysfs_file_init(&mouse->file, &mouseDir, name, &inodeOps, &fileOps, mouse) == ERR)
+    mouse->dir = sysfs_dir_new(mouseDir, name, &dirInodeOps, mouse);
+    if (mouse->dir == NULL)
     {
+        wait_queue_deinit(&mouse->waitQueue);
+        heap_free(mouse);
+        return NULL;
+    }
+
+    dentry_t* eventsFile = sysfs_file_new(mouse->dir, "events", NULL, &eventsOps, mouse);
+    DEREF(eventsFile);
+    dentry_t* nameFile = sysfs_file_new(mouse->dir, "name", NULL, &nameOps, mouse);
+    DEREF(nameFile);
+    if (eventsFile == NULL || nameFile == NULL)
+    {
+        DEREF(mouse->dir);
         wait_queue_deinit(&mouse->waitQueue);
         heap_free(mouse);
         return NULL;
@@ -85,7 +129,8 @@ mouse_t* mouse_new(const char* name)
 
 void mouse_free(mouse_t* mouse)
 {
-    sysfs_file_deinit(&mouse->file);
+    DEREF(mouse->dir);
+    // mouse will be freed in moust_dir_cleanup
 }
 
 void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, int64_t deltaX, int64_t deltaY)

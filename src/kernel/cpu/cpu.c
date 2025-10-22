@@ -1,6 +1,7 @@
 #include "cpu.h"
 
 #include "drivers/apic.h"
+#include "drivers/statistics.h"
 #include "gdt.h"
 #include "idt.h"
 #include "interrupt.h"
@@ -11,7 +12,6 @@
 #include "simd.h"
 #include "syscalls.h"
 #include "tss.h"
-#include "utils/statistics.h"
 
 uint64_t cpu_init(cpu_t* cpu, cpuid_t id)
 {

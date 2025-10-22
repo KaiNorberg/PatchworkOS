@@ -6,6 +6,7 @@
 #include "path.h"
 #include "superblock.h"
 #include "vfs.h"
+#include "cpu/syscalls.h"
 
 #include <errno.h>
 

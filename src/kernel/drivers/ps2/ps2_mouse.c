@@ -1,7 +1,7 @@
 #include "ps2_mouse.h"
 
 #include "cpu/irq.h"
-#include "drivers/helpers/mouse.h"
+#include "drivers/abstractions/mouse.h"
 #include "log/log.h"
 #include "mem/heap.h"
 

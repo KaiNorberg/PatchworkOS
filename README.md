@@ -1,16 +1,24 @@
 # PatchworkOS
 
-> **⚠ Warning**<br>
-> Keep in mind that PatchworkOS is currently in a very early stage of development, and may have both known and unknown bugs.
-
 ![License](https://img.shields.io/badge/License-MIT-green) [![Build and Test](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg)](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml)
+
+> **⚠ Warning**<br>
+> PatchworkOS is currently in a very early stage of development, and may have both known and unknown bugs.
 
 **Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9 and others while simplifying them and adding in some new ideas of its own.
 
 In the end this is a project made for fun, however the goal is to eventually have a feature-complete and experimental operating system that still remains approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
 
-![Desktop Screenshot](meta/screenshots/desktop.png)
-![Doom Screenshot](meta/screenshots/doom.png)
+<table>
+<tr>
+<td width="50%">
+<img src="meta/screenshots/desktop.png" alt="Desktop Screenshot" />
+</td>
+<td width="50%">
+<img src="meta/screenshots/doom.png" alt="Doom Screenshot" />
+</td>
+</tr>
+</table>
 
 ## Features
 
@@ -21,6 +29,7 @@ In the end this is a project made for fun, however the goal is to eventually hav
 - Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info
 - Dynamic kernel and user stack allocation
 - File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/note.h)
+- File based device APIs, including [framebuffers](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/helpers/fb.h), [keyboards](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/helpers/kbd.h), [mice](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/helpers/mouse.h) and more
 - Synchronization primitives including mutexes, read-write locks and [futexes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sync/futex.h)
 - SIMD support
 
@@ -34,7 +43,7 @@ In the end this is a project made for fun, however the goal is to eventually hav
 
 ### File System
 
-- Linux-style VFS with dentry+inode caching, negative dentrys, mountpoints, hardlinks, per-process namespaces, etc.
+- Unix-style VFS with mountpoints, hardlinks, per-process namespaces, etc.
 - Strict adherence to "everything is a file" philosophy
 - Custom image format [(.fbmp)](https://github.com/KaiNorberg/fbmp)
 - Custom font format [(.grf)](https://github.com/KaiNorberg/grf)
@@ -59,12 +68,12 @@ In the end this is a project made for fun, however the goal is to eventually hav
 
 ## Limitations
 
-- Currently limited to RAM disks only
+- Currently limited to RAM disks only (Waiting for USB support)
 - Only support for x86_64
 
 ## Notable Future Plans
 
-- Asynchronous I/O, perhaps via a io_uring inspired API
+- Asynchronous I/O
 - Modular kernel
 - Shared libraries
 - USB support (The holy grail)
@@ -87,22 +96,26 @@ All code for benchmarks can be found in the [benchmark program](https://github.c
 
 ### Memory Allocation/Mapping
 
-The test maps and unmaps memory in varying page amounts for a set amount of iterations using generic mmap and munmap functions. Below is the results from PatchworkOS as of commit `b3f93f1` and Fedora 40, kernel version `6.14.5-100.fc40.x86_64`.
+The test maps and unmaps memory in varying page amounts for a set amount of iterations using generic mmap and munmap functions. Below is the results from PatchworkOS as of commit `cc69fab` and Fedora 40, kernel version `6.14.5-100.fc40.x86_64`.
 
 ```mermaid
 xychart-beta
-title "Blue: PatchworkOS, Green: Fedora, Lower is Better"
+title "Blue: PatchworkOS, Green: Linux (Fedora), Lower is Better"
 x-axis "Page Amount" [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
 y-axis "Time (ms)" 0 --> 30000
-line [48, 48, 48, 48, 68, 97, 164, 365, 632, 1176, 3125]
+line [69, 69, 69, 75, 108, 127, 205, 413, 667, 1220, 3187]
 line [118, 150, 216, 358, 627, 1167, 2193, 4313, 6487, 11221, 28519]
 ```
 
-We see that PatchworkOS performs better both with a small number of pages, showing that each operation is more efficient, as well as with a large number of pages, showing that the algorithic complexity is better.
+We see that PatchworkOS performs better with a small number of pages, showing that each operation is more efficient, and that it performs better with a large number of pages, showing that the algorithmic complexity is better.
 
-There are a few potential reasons for this, one is that PatchworkOS does not use a seperate structure to manage virtual memory, instead it embeds metadata directly into the page tables, and since accesing a page table is just walking some pointers, its very efficent and it provides better caching since the page tables are likely already in the CPU cache. In the end we end up with a `O(1)` complexity per page operation, and `O(n)` complexity per allocation/mapping operation where n is the number of pages.
+There are a few potential reasons for this, one is that PatchworkOS does not use a separate structure to manage virtual memory, instead it embeds metadata directly into the page tables, and since accessing a page table is just walking some pointers, its highly efficient, additionally it provides better caching since the page tables are likely already in the CPU cache.
 
-Of course, there are limitations to this approach, it is in no way portable, which isent a concern for PatchworkOS, and due to the limited number of bits available in the page table entries, each address space can only contain `2^7 - 1` unique shared memory regions.
+In the end we end up with a `O(1)` complexity per page operation, or technically, since the algorithm for finding unmapped memory sections is `O(r)` in the worst case where `r` is the size of the address region to check in pages, having more memory allocated would potentially actually improve performance but only by a very small amount. We do of course get `O(n)` complexity per allocation/mapping operation where `n` is the number of pages.
+
+Of course, there are limitations to this approach, for example, it is in no way portable (which isn't a concern in our case), each address space can only contain `2^7 - 1` unique shared memory regions, and copy-on-write would not be easy to implement (however, the need for this is reduced due to PatchworkOS using a `spawn()` instead of a `fork()`).
+
+All in all, this algorithm would not be usable as a replacement for existing algorithms, but for PatchworkOS, it serves its purpose very efficiently.
 
 ## Shell Utilities
 
@@ -175,7 +188,7 @@ There are also other utils available that work as expected, for example `stat` a
 
 ## Everything is a File
 
-Patchwork strictly follows the "everything is a file" philosophy in a way similar to Plan9, this can often result in unorthodox APIs or could just straight up seem overly complicated, but it has its advantages. I will give some examples and then after I will explain why this is not a complete waste of time. Let's start with sockets.
+Patchwork strictly follows the "everything is a file" philosophy in a way similar to Plan9, this can often result in unorthodox APIs or could just straight up seem overly complicated, but it has its advantages. We will use sockets to demonstrate the kinds of APIs this produces.
 
 ### Sockets
 
@@ -194,9 +207,7 @@ Note that even when the handle is closed the socket will persist until the proce
 - `ctl` - used to send commands
 - `accept` - used to accept incoming connections
 
-So, for example, the sockets data file is located at `/net/local/[id]/data`. Note that only the process that created the socket or its children can open these files.
-
-These "id" directories are mounted to in the namespace of the creating process, so only the process that created the socket and its children can see their contents, which acts as a basic form of access control.
+So, for example, the sockets data file is located at `/net/local/[id]/data`.
 
 Say we want to make our socket into a server, we would then use the bind and listen commands with the `ctl` file, we can then write
 
@@ -227,27 +238,49 @@ writef(ctl, "connect myserver");
 close(ctl);
 ```
 
+### Namespaces
+
+Namespaces are in practice just a set of mountpoints that is unique per process with each process able to access the mountpoints in its parent's namespace, which allows each process a unique view of the file system and can be used for basic access control.
+
+Think of it like this, in the common case, for instance in Linux, you can mount a drive to `/mnt/mydrive` and all processes can that open the `/mnt/mydrive` path will see the contents of that drive. In PatchworkOS, this is also possible, but for certain IPC its usefull to hide the contents of a directory as a form of access control, so a mountpoint would just look like a empty directory to most processes, exept for the process that created the mountpoint and its children that would have that mountpoint in their namespace.
+
+For example, the "id" directories mentioned above in the socket example are mounted in the namespace of the creating process, meaning that only that process and its children can see their contents.
+
+### Namespace Sharing
+
+Its possible for two processes to voluntarily share a mountpoint in their namespaces using the `mount()` syscall, for example, if process A wants to share its `/net/local/[id]` directory with process B, they can do
+
+```c
+// In process A
+// Process A creates a token to identify the shared namespace offer.
+// Tokens are uuids prefixed with ascii `ENQ` (0x05) to avoid collisions with normal file paths.
+char token[MAX_NAME];
+read(open("/dev/token"), token, MAX_NAME);
+// Now process A can "mount" the mountpoint it wants to share to the token.
+mount("/net/local/[id]", token, NULL, 0);
+
+// In process B
+// Process B is given the token from process A (via a pipe, socket, argv, etc.)
+char token[MAX_NAME];
+// Now process B can mount the shared socket directory into its own namespace.
+// It can be mounted anywhere, but in real use it might be practical to mount it to the same path.
+mount(token, "/any/dir/it/wants", NULL, 0);
+// If process A unmounted `/net/local/[id]` before process B, process B will get an error here.
+```
+
+This system guarantees consent between processes, and can be used to implement more complex access control systems.
+
+A example of this system being used can be found in the Desktop Window Manager, where it creates shared memory regions for each window that its and the window's process can access, but no other process can.
+
 ### File Flags?
 
-You may have noticed that in the above section, the `open()` function does not take in a flags argument. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you can write
+You may have noticed that in the above section sections, the `open()` function does not take in a flags argument. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you can write
 
 ```c
 fd_t handle = open("/net/local/seqpacket:nonblock");
 ```
 
 Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `openf()` function. It is also possible to just specify the first letter of a flag, so instead of `:nonblock` you can use `:n`. Note that duplicate flags are ignored and that there are no read or write flags, all files are both read and write.
-
-### The Why
-
-So, finally, I can explain why I've decided to do this. It does seem overly complicated at first glance. There are three reasons in total.
-
-The first is that I want Patchwork to be easy to expand upon. Normally, to just implement a single system call requires large portions of the OS to be modified and a whole new API to learn, but with Patchwork, it's just a matter of adding a new file.
-
-The second reason is that it makes using the shell far more interesting, there is no need for special functions or any other magic keywords to for instance use sockets, all it takes is opening and reading from files.
-
-And of course the third and final reason is because I think it's fun, and honestly I think this kind of system is just kinda beautiful. There are downsides, of course, like the fact that these systems are less self documenting. But that is an argument for another time.
-
-**Example:** Say we wanted to implement `waitpid()`. First we need to implement the kernel behavior itself, then the appropriate system call, then add in handling for that system call in the standard library, then the actual function itself in the standard library and finally create some `waitpid` shell utility. That's a lot of work for something as simple as a waiting for a process to die, and it means a whole new API to learn. Instead, we can just add a `status` file to the process directory, which is only a handful lines of code, and we are done. Reading from the status file will block until the process dies and then read its exit status and can be used via `read()` or in the shell via `read /proc/[pid]/status`.
 
 ---
 

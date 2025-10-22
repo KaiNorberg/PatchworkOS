@@ -17,9 +17,7 @@
 #include <sys/io.h>
 #include <sys/math.h>
 
-static sysfs_dir_t statDir;
-static sysfs_file_t cpuFile;
-static sysfs_file_t memFile;
+static dentry_t* statDir = NULL;
 
 void statistics_cpu_ctx_init(statistics_cpu_ctx_t* ctx)
 {
@@ -87,17 +85,19 @@ static file_ops_t memOps = {
 
 void statistics_init(void)
 {
-    if (sysfs_dir_init(&statDir, sysfs_get_dev(), "stat", NULL, NULL) == ERR)
+    statDir = sysfs_dir_new(NULL, "stat", NULL, NULL);
+    if (statDir == NULL)
     {
         panic(NULL, "Failed to initialize statistics directory");
     }
-    if (sysfs_file_init(&cpuFile, &statDir, "cpu", NULL, &cpuOps, NULL) == ERR)
+
+    dentry_t* cpuFile = sysfs_file_new(statDir, "cpu", NULL, &cpuOps, NULL);
+    DEREF(cpuFile);
+    dentry_t* memFile = sysfs_file_new(statDir, "mem", NULL, &memOps, NULL);
+    DEREF(memFile);
+    if (cpuFile == NULL || memFile == NULL)
     {
-        panic(NULL, "Failed to initialize CPU statistics file");
-    }
-    if (sysfs_file_init(&memFile, &statDir, "mem", NULL, &memOps, NULL) == ERR)
-    {
-        panic(NULL, "Failed to initialize memory statistics file");
+        panic(NULL, "Failed to initialize statistics files");
     }
 }
 

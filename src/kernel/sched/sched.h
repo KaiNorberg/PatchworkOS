@@ -13,8 +13,8 @@ typedef struct thread thread_t;
 
 /**
  * @brief The Scheduler.
- * @defgroup kernel_sched_sched The Scheduler
- * @ingroup kernel_sched
+ * @defgroup kernel_sched The Scheduler
+ * @ingroup kernel
  *
  * The scheduler used in Patchwork is loosely based of the Linux O(1) scheduler, so knowing how that scheduler works
  * could be useful, here is an article about it https://litux.nl/mirror/kerneldevelopment/0672327201/ch04lev1sec2.html.

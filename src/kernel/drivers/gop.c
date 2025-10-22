@@ -1,6 +1,6 @@
 #include "gop.h"
 
-#include "fb.h"
+#include "drivers/abstractions/fb.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/vmm.h"
@@ -14,6 +14,7 @@
 #include <sys/math.h>
 
 static boot_gop_t gop;
+static fb_t* fb;
 
 static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, pml_flags_t flags)
 {
@@ -30,21 +31,18 @@ static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, pml_flags_t flags)
     return addr;
 }
 
-static fb_t fb = {
-    .info = {0}, // Set in gop_init
-    .mmap = gop_mmap,
-};
-
 void gop_init(const boot_gop_t* in)
 {
-    fb.info.width = in->width;
-    fb.info.height = in->height;
-    fb.info.stride = in->stride;
-    fb.info.format = FB_ARGB32;
-    gop = *in;
+    fb_info_t info = {
+        .width = in->width,
+        .height = in->height,
+        .stride = in->stride,
+        .format = FB_ARGB32,
+    };
 
-    if (fb_expose(&fb) == ERR)
+    fb = fb_new(&info, gop_mmap, "GOP");
+    if (fb == NULL)
     {
-        panic(NULL, "Failed to expose gop framebuffer");
+        panic(NULL, "Failed to create GOP framebuffer");
     }
 }

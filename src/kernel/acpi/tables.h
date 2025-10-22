@@ -14,13 +14,6 @@
  */
 
 /**
- * @brief The maximum number of ACPI tables that are supported.
- *
- * As far as I know there should never be even close to this many on any machine.
- */
-#define ACPI_MAX_TABLES 64
-
-/**
  * @brief Enum for the `fadt_t::bootArchFlags` field.
  */
 typedef enum
@@ -257,6 +250,18 @@ typedef struct
     const char* signature;                 ///< The signature of the table to handle.
     uint64_t (*init)(sdt_header_t* table); ///< The handler function to call when the table is first loaded.
 } acpi_sdt_handler_t;
+
+/**
+ * @brief Cached ACPI table
+ * @struct acpi_cached_table_t
+ *
+ * This structure is used to cache ACPI tables that have been loaded.
+ */
+typedef struct
+{
+    sdt_header_t* table;
+    dentry_t* file; ///< The sysfs file representing the table.
+} acpi_cached_table_t;
 
 /**
  * @brief Macro to register an ACPI SDT handler

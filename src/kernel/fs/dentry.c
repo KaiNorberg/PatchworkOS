@@ -117,6 +117,8 @@ uint64_t dentry_make_positive(dentry_t* dentry, inode_t* inode)
         MUTEX_SCOPE(&dentry->parent->mutex);
         list_push(&dentry->parent->children, &dentry->siblingEntry);
     }
+
+    return 0;
 }
 
 typedef struct

@@ -307,8 +307,7 @@ typedef enum
  * @brief Keyboard event structure.
  * @ingroup libstd_sys_kbd
  *
- * The `kbd_event_t` structure read from keyboard files, for example `/dev/kbd/ps2`. Keyboard files will block
- * until a key event happens, keyboard files will never return partial events.
+ * The `kbd_event_t` structure read from a keyboards stream file, for example `/dev/kbd/0/events`.
  */
 typedef struct
 {

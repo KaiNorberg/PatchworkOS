@@ -2,6 +2,7 @@
 
 #include "cpu.h"
 #include "drivers/apic.h"
+#include "drivers/statistics.h"
 #include "gdt.h"
 #include "interrupt.h"
 #include "irq.h"
@@ -9,7 +10,6 @@
 #include "sched/thread.h"
 #include "sched/wait.h"
 #include "smp.h"
-#include "utils/statistics.h"
 
 #include <common/regs.h>
 

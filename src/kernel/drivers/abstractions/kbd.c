@@ -1,8 +1,9 @@
 #include "kbd.h"
 
-#include "drivers/helpers/kbd.h"
+#include "drivers/abstractions/kbd.h"
 #include "fs/file.h"
 #include "fs/sysfs.h"
+#include "fs/vfs.h"
 #include "mem/heap.h"
 #include "sched/timer.h"
 #include "sync/lock.h"
@@ -12,9 +13,9 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-static sysfs_dir_t kbdDir = {0};
+static dentry_t* kbdDir = NULL;
 
-static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t kbd_events_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     kbd_t* kbd = file->inode->private;
 
@@ -35,7 +36,7 @@ static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count, uint64_t* o
     return count;
 }
 
-static wait_queue_t* kbd_poll(file_t* file, poll_events_t* revents)
+static wait_queue_t* kbd_events_poll(file_t* file, poll_events_t* revents)
 {
     kbd_t* kbd = file->inode->private;
     LOCK_SCOPE(&kbd->lock);
@@ -46,50 +47,100 @@ static wait_queue_t* kbd_poll(file_t* file, poll_events_t* revents)
     return &kbd->waitQueue;
 }
 
-static file_ops_t fileOps = {
-    .read = kbd_read,
-    .poll = kbd_poll,
+static file_ops_t eventsOps = {
+    .read = kbd_events_read,
+    .poll = kbd_events_poll,
 };
 
-static void kbd_inode_cleanup(inode_t* inode)
+static uint64_t kbd_name_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    kbd_t* kbd = file->inode->private;
+    uint64_t nameLen = strnlen_s(kbd->name, MAX_NAME);
+    if (*offset >= nameLen)
+    {
+        return 0;
+    }
+
+    return BUFFER_READ(buffer, count, offset, kbd->name, nameLen);
+}
+
+static file_ops_t nameOps = {
+    .read = kbd_name_read,
+};
+
+static void kbd_dir_cleanup(inode_t* inode)
 {
     kbd_t* kbd = inode->private;
     wait_queue_deinit(&kbd->waitQueue);
     heap_free(kbd);
 }
 
-static inode_ops_t inodeOps = {
-    .cleanup = kbd_inode_cleanup,
+static inode_ops_t dirInodeOps = {
+    .cleanup = kbd_dir_cleanup,
 };
 
 kbd_t* kbd_new(const char* name)
 {
-    if (kbdDir.dentry == NULL)
+    if (name == NULL)
     {
-        if (sysfs_dir_init(&kbdDir, sysfs_get_dev(), "kbd", NULL, NULL) == ERR)
+        errno = EINVAL;
+        return NULL;
+    }
+
+    if (kbdDir == NULL)
+    {
+        kbdDir = sysfs_dir_new(NULL, "kbd", NULL, NULL);
+        if (kbdDir == NULL)
         {
             return NULL;
         }
     }
 
     kbd_t* kbd = heap_alloc(sizeof(kbd_t), HEAP_NONE);
+    if (kbd == NULL)
+    {
+        return NULL;
+    }
+
+    strncpy(kbd->name, name, MAX_NAME - 1);
+    kbd->name[MAX_NAME - 1] = '\0';
+    memset(kbd->events, 0, sizeof(kbd->events));
     kbd->writeIndex = 0;
     kbd->mods = KBD_MOD_NONE;
     wait_queue_init(&kbd->waitQueue);
     lock_init(&kbd->lock);
-    if (sysfs_file_init(&kbd->file, &kbdDir, name, &inodeOps, &fileOps, kbd) == ERR)
+    kbd->dir = sysfs_dir_new(kbdDir, name, &dirInodeOps, kbd);
+    if (kbd->dir == NULL)
     {
         wait_queue_deinit(&kbd->waitQueue);
         heap_free(kbd);
         return NULL;
     }
 
-    return kbd;
+    dentry_t* eventsFile = sysfs_file_new(kbd->dir, "events", NULL, &eventsOps, kbd);
+    DEREF(eventsFile);
+    dentry_t* nameFile = sysfs_file_new(kbd->dir, "name", NULL, &nameOps, kbd);
+    DEREF(nameFile);
+    if (eventsFile == NULL || nameFile == NULL)
+    {
+        DEREF(kbd->dir);
+        wait_queue_deinit(&kbd->waitQueue);
+        heap_free(kbd);
+        return NULL;
+    }
+
+    return 0;
 }
 
-void kbd_free(kbd_t* kbd)
+void kbd_deinit(kbd_t* kbd)
 {
-    sysfs_file_deinit(&kbd->file);
+    if (kbd == NULL)
+    {
+        return;
+    }
+
+    DEREF(kbd->dir);
+    // kbd will be freed in kbd_dir_cleanup
 }
 
 static void kbd_update_mod(kbd_t* kbd, kbd_event_type_t type, kbd_mods_t mod)

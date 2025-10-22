@@ -2,6 +2,8 @@
 
 #include "aml/aml.h"
 #include "devices.h"
+#include "fs/mount.h"
+#include "fs/superblock.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/pmm.h"
@@ -10,8 +12,8 @@
 #include <boot/boot_info.h>
 #include <string.h>
 
-static bool groupInitialized = false;
-static sysfs_group_t acpiGroup;
+static bool mountInitialized = false;
+static mount_t* acpiMount = NULL;
 
 bool acpi_is_checksum_valid(void* table, uint64_t length)
 {
@@ -24,19 +26,19 @@ bool acpi_is_checksum_valid(void* table, uint64_t length)
     return sum == 0;
 }
 
-sysfs_dir_t* acpi_get_sysfs_root(void)
+dentry_t* acpi_get_sysfs_root(void)
 {
-    if (!groupInitialized)
+    if (!mountInitialized)
     {
-        if (sysfs_group_init(&acpiGroup, NULL, "acpi", NULL) == ERR)
+        acpiMount = sysfs_mount_new(NULL, "acpi", NULL, NULL);
         {
             panic(NULL, "failed to initialize ACPI sysfs group");
         }
 
-        groupInitialized = true;
+        mountInitialized = true;
     }
 
-    return &acpiGroup.root;
+    return REF(acpiMount->superblock->root);
 }
 
 void acpi_reclaim_memory(const boot_memory_map_t* map)

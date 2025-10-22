@@ -102,7 +102,7 @@ uint64_t aml_term_arg_list_read(aml_term_list_ctx_t* ctx, uint64_t argCount, aml
  * The result may have the `AML_OBJECT_EXCEPTION_ON_USE` flag set.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_method_invocation_read(aml_term_list_ctx_t* ctx);
 
@@ -114,7 +114,7 @@ aml_object_t* aml_method_invocation_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.14 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_cond_ref_of_read(aml_term_list_ctx_t* ctx);
 
@@ -126,7 +126,7 @@ aml_object_t* aml_def_cond_ref_of_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.132 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_store_read(aml_term_list_ctx_t* ctx);
 
@@ -158,7 +158,7 @@ uint64_t aml_divisor_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
  * A Remainder structure is defined as `Remainder := Target`.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_remainder_read(aml_term_list_ctx_t* ctx);
 
@@ -168,7 +168,7 @@ aml_object_t* aml_remainder_read(aml_term_list_ctx_t* ctx);
  * A Quotient structure is defined as `Quotient := Target`.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_quotient_read(aml_term_list_ctx_t* ctx);
 
@@ -180,7 +180,7 @@ aml_object_t* aml_quotient_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.3 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_add_read(aml_term_list_ctx_t* ctx);
 
@@ -192,7 +192,7 @@ aml_object_t* aml_def_add_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.133 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_subtract_read(aml_term_list_ctx_t* ctx);
 
@@ -204,7 +204,7 @@ aml_object_t* aml_def_subtract_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.88 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_multiply_read(aml_term_list_ctx_t* ctx);
 
@@ -216,7 +216,7 @@ aml_object_t* aml_def_multiply_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.32 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_divide_read(aml_term_list_ctx_t* ctx);
 
@@ -228,7 +228,7 @@ aml_object_t* aml_def_divide_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.87 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_mod_read(aml_term_list_ctx_t* ctx);
 
@@ -240,7 +240,7 @@ aml_object_t* aml_def_mod_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.5 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_and_read(aml_term_list_ctx_t* ctx);
 
@@ -252,7 +252,7 @@ aml_object_t* aml_def_and_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.69 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_nand_read(aml_term_list_ctx_t* ctx);
 
@@ -264,7 +264,7 @@ aml_object_t* aml_def_nand_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.100 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_or_read(aml_term_list_ctx_t* ctx);
 
@@ -276,7 +276,7 @@ aml_object_t* aml_def_or_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.93 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_nor_read(aml_term_list_ctx_t* ctx);
 
@@ -288,7 +288,7 @@ aml_object_t* aml_def_nor_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.155 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_xor_read(aml_term_list_ctx_t* ctx);
 
@@ -300,7 +300,7 @@ aml_object_t* aml_def_xor_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.94 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_not_read(aml_term_list_ctx_t* ctx);
 
@@ -323,7 +323,7 @@ uint64_t aml_shift_count_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
  * @see Section 19.6.123 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_shift_left_read(aml_term_list_ctx_t* ctx);
 
@@ -335,7 +335,7 @@ aml_object_t* aml_def_shift_left_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.124 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_shift_right_read(aml_term_list_ctx_t* ctx);
 
@@ -347,7 +347,7 @@ aml_object_t* aml_def_shift_right_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.62 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_increment_read(aml_term_list_ctx_t* ctx);
 
@@ -359,7 +359,7 @@ aml_object_t* aml_def_increment_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.27 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_decrement_read(aml_term_list_ctx_t* ctx);
 
@@ -371,7 +371,7 @@ aml_object_t* aml_def_decrement_read(aml_term_list_ctx_t* ctx);
  * If a String is read then it is considered a path to an object and will be resolved to an ObjectReference.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_obj_reference_read(aml_term_list_ctx_t* ctx);
 
@@ -383,7 +383,7 @@ aml_object_t* aml_obj_reference_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.30 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_deref_of_read(aml_term_list_ctx_t* ctx);
 
@@ -397,7 +397,7 @@ aml_object_t* aml_def_deref_of_read(aml_term_list_ctx_t* ctx);
  * allowed.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_buff_pkg_str_obj_read(aml_term_list_ctx_t* ctx);
 
@@ -423,7 +423,7 @@ uint64_t aml_index_value_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
  * @see Section 19.6.63 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_index_read(aml_term_list_ctx_t* ctx);
 
@@ -435,7 +435,7 @@ aml_object_t* aml_def_index_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.69 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_land_read(aml_term_list_ctx_t* ctx);
 
@@ -447,7 +447,7 @@ aml_object_t* aml_def_land_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.70 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_lequal_read(aml_term_list_ctx_t* ctx);
 
@@ -459,7 +459,7 @@ aml_object_t* aml_def_lequal_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.71 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_lgreater_read(aml_term_list_ctx_t* ctx);
 
@@ -471,7 +471,7 @@ aml_object_t* aml_def_lgreater_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.72 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_lgreater_equal_read(aml_term_list_ctx_t* ctx);
 
@@ -483,7 +483,7 @@ aml_object_t* aml_def_lgreater_equal_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.73 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_lless_read(aml_term_list_ctx_t* ctx);
 
@@ -495,7 +495,7 @@ aml_object_t* aml_def_lless_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.74 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_lless_equal_read(aml_term_list_ctx_t* ctx);
 
@@ -507,7 +507,7 @@ aml_object_t* aml_def_lless_equal_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.75 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_lnot_read(aml_term_list_ctx_t* ctx);
 
@@ -519,7 +519,7 @@ aml_object_t* aml_def_lnot_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.76 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_lnot_equal_read(aml_term_list_ctx_t* ctx);
 
@@ -531,7 +531,7 @@ aml_object_t* aml_def_lnot_equal_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.80 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_lor_read(aml_term_list_ctx_t* ctx);
 
@@ -541,7 +541,7 @@ aml_object_t* aml_def_lor_read(aml_term_list_ctx_t* ctx);
  * A MutexObject structure is defined as `MutexObject := SuperName`.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_mutex_object_read(aml_term_list_ctx_t* ctx);
 
@@ -565,7 +565,7 @@ uint64_t aml_timeout_read(aml_term_list_ctx_t* ctx, uint16_t* out);
  * @see Section 19.6.89 of the ACPI specification for details about SyncLevel handling.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_acquire_read(aml_term_list_ctx_t* ctx);
 
@@ -577,7 +577,7 @@ aml_object_t* aml_def_acquire_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.137 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_to_bcd_read(aml_term_list_ctx_t* ctx);
 
@@ -589,7 +589,7 @@ aml_object_t* aml_def_to_bcd_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.138 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_to_buffer_read(aml_term_list_ctx_t* ctx);
 
@@ -601,7 +601,7 @@ aml_object_t* aml_def_to_buffer_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.139 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_to_decimal_string_read(aml_term_list_ctx_t* ctx);
 
@@ -613,7 +613,7 @@ aml_object_t* aml_def_to_decimal_string_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.140 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_to_hex_string_read(aml_term_list_ctx_t* ctx);
 
@@ -625,7 +625,7 @@ aml_object_t* aml_def_to_hex_string_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.141 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_to_integer_read(aml_term_list_ctx_t* ctx);
 
@@ -648,7 +648,7 @@ uint64_t aml_length_arg_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
  * @see Section 19.6.143 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_to_string_read(aml_term_list_ctx_t* ctx);
 
@@ -672,7 +672,7 @@ aml_object_t* aml_def_timer_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.17 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_copy_object_read(aml_term_list_ctx_t* ctx);
 
@@ -682,7 +682,7 @@ aml_object_t* aml_def_copy_object_read(aml_term_list_ctx_t* ctx);
  * A Data structure is defined as `Data := TermArg => ComputationalData`.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_data_read(aml_term_list_ctx_t* ctx);
 
@@ -694,7 +694,7 @@ aml_object_t* aml_data_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.20 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_concat_read(aml_term_list_ctx_t* ctx);
 
@@ -706,7 +706,7 @@ aml_object_t* aml_def_concat_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.126 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_size_of_read(aml_term_list_ctx_t* ctx);
 
@@ -718,7 +718,7 @@ aml_object_t* aml_def_size_of_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.115 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_ref_of_read(aml_term_list_ctx_t* ctx);
 
@@ -731,7 +731,7 @@ aml_object_t* aml_def_ref_of_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.97 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_object_type_read(aml_term_list_ctx_t* ctx);
 
@@ -744,7 +744,7 @@ aml_object_t* aml_def_object_type_read(aml_term_list_ctx_t* ctx);
  * I have no idea what the `UserTermObj` is supposed to be, so its currently unimplemented.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_reference_type_opcode_read(aml_term_list_ctx_t* ctx);
 
@@ -756,7 +756,7 @@ aml_object_t* aml_reference_type_opcode_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.49 the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_find_set_left_bit_read(aml_term_list_ctx_t* ctx);
 
@@ -768,7 +768,7 @@ aml_object_t* aml_def_find_set_left_bit_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.50 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_find_set_right_bit_read(aml_term_list_ctx_t* ctx);
 
@@ -778,7 +778,7 @@ aml_object_t* aml_def_find_set_right_bit_read(aml_term_list_ctx_t* ctx);
  * A SearchPkg structure is defined as `SearchPkg := TermArg => Package`.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_package_obj_t* aml_search_pkg_read(aml_term_list_ctx_t* ctx);
 
@@ -833,7 +833,7 @@ uint64_t aml_start_index_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
  * @see Section 19.6.81 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx);
 
@@ -858,7 +858,7 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx);
  * The result may have the `AML_OBJECT_EXCEPTION_ON_USE` flag set.
  *
  * @param ctx The TermList context.
- * @retun On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx);
 

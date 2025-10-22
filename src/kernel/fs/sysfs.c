@@ -24,15 +24,23 @@ static dentry_ops_t dentryOps = {
     .getdents = dentry_generic_getdents,
 };
 
-static superblock_ops_t superOps = {
-
-};
+typedef struct
+{
+    const superblock_ops_t* superblockOps;
+} sysfs_mount_ctx_t;
 
 static dentry_t* sysfs_mount(filesystem_t* fs, const char* devName, void* private)
 {
     (void)devName; // Unused
+    (void)private; // Unused
 
-    superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, &superOps, &dentryOps);
+    systems_mount_ctx_t* ctx = (sysfs_mount_ctx_t*)private;
+    if (ctx == NULL)
+    {
+        return NULL;
+    }
+
+    superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, ctx->superblockOps, &dentryOps);
     if (superblock == NULL)
     {
         return NULL;
@@ -84,10 +92,11 @@ void sysfs_init(void)
 
 dentry_t* sysfs_get_dev(void)
 {
-    return devMount->superblock->root;
+    return REF(devMount->superblock->root);
 }
 
-mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns)
+mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns,
+    const superblock_ops_t* superblockOps)
 {
     if (name == NULL)
     {
@@ -119,8 +128,12 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
         path_set(&mountpoint, ns->rootMount, dentry);
         PATH_DEFER(&mountpoint);
 
+        sysfs_mount_ctx_t ctx = {
+            .superblockOps = superblockOps,
+        };
+
         mount_t* mount = NULL;
-        uint64_t result = namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, &mount, NULL);
+        uint64_t result = namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, &mount, &ctx);
         if (result == ERR)
         {
             return NULL;
@@ -158,6 +171,11 @@ dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* i
         return NULL;
     }
 
+    if (parent == NULL)
+    {
+        parent = devMount->superblock->root;
+    }
+
     dentry_t* dir = dentry_new(parent->superblock, parent, name);
     if (dir == NULL)
     {
@@ -182,13 +200,18 @@ dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* i
     return REF(dir);
 }
 
-dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps,
-    const file_ops_t* fileOps, void* private)
+dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, const file_ops_t* fileOps,
+    void* private)
 {
     if (parent == NULL || name == NULL)
     {
         errno = EINVAL;
         return NULL;
+    }
+
+    if (parent == NULL)
+    {
+        parent = devMount->superblock->root;
     }
 
     dentry_t* file = dentry_new(parent->superblock, parent, name);

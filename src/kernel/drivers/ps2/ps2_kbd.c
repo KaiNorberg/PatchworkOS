@@ -2,7 +2,7 @@
 #include "ps2_scanmap.h"
 
 #include "cpu/irq.h"
-#include "drivers/helpers/kbd.h"
+#include "drivers/abstractions/kbd.h"
 #include "log/log.h"
 #include "mem/heap.h"
 

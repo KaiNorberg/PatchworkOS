@@ -14,13 +14,9 @@
 
 static uint64_t ssdtAmount = 0;
 static uint64_t tableAmount = 0;
-static struct
-{
-    sdt_header_t* table;
-    sysfs_file_t file;
-} cachedTables[ACPI_MAX_TABLES] = {0};
+static acpi_cached_table_t* cachedTables = NULL;
 
-static sysfs_dir_t apicTablesDir;
+static dentry_t* tablesDir = NULL;
 
 // Defined in the linker script
 extern const acpi_sdt_handler_t _acpiSdtHandlersStart[];
@@ -123,20 +119,21 @@ static uint64_t acpi_tables_push(sdt_header_t* table)
         return ERR;
     }
 
-    if (tableAmount >= ACPI_MAX_TABLES)
-    {
-        LOG_ERR("too many tables\n");
-        return ERR;
-    }
-
     sdt_header_t* cachedTable = heap_alloc(table->length, HEAP_NONE);
     if (cachedTable == NULL)
     {
         LOG_ERR("failed to allocate memory for ACPI table\n");
         return ERR;
     }
-
     memcpy(cachedTable, table, table->length);
+
+    cachedTables = heap_realloc(cachedTables, sizeof(acpi_cached_table_t) * (tableAmount + 1), HEAP_NONE);
+    if (cachedTables == NULL)
+    {
+        LOG_ERR("failed to allocate memory for ACPI table cache\n");
+        heap_free(cachedTable);
+        return ERR;
+    }
     cachedTables[tableAmount++].table = cachedTable;
 
     LOG_INFO("%.*s 0x%016lx 0x%06x v%02X %.*s\n", SDT_SIGNATURE_LENGTH, cachedTable->signature, cachedTable,
@@ -232,9 +229,12 @@ void acpi_tables_init(rsdp_t* rsdp)
 
 void acpi_tables_expose(void)
 {
-    sysfs_dir_t* acpiRoot = acpi_get_sysfs_root();
+    dentry_t* acpiRoot = acpi_get_sysfs_root();
+    assert(acpiRoot != NULL);
+    DEREF_DEFER(acpiRoot);
 
-    if (sysfs_dir_init(&apicTablesDir, acpiRoot, "tables", NULL, NULL) == ERR)
+    tablesDir = sysfs_dir_new(acpiRoot, "tables", NULL, NULL);
+    if (tablesDir == NULL)
     {
         panic(NULL, "failed to create ACPI tables sysfs directory");
     }
@@ -242,7 +242,6 @@ void acpi_tables_expose(void)
     for (uint64_t i = 0; i < tableAmount; i++)
     {
         sdt_header_t* table = cachedTables[i].table;
-        sysfs_file_t* file = &cachedTables[i].file;
 
         char name[SDT_SIGNATURE_LENGTH + 2];
         if (memcmp(table->signature, "SSDT", SDT_SIGNATURE_LENGTH) == 0)
@@ -255,7 +254,8 @@ void acpi_tables_expose(void)
             name[SDT_SIGNATURE_LENGTH] = '\0';
         }
 
-        if (sysfs_file_init(file, acpiRoot, name, NULL, &tableFileOps, NULL) == ERR)
+        cachedTables[i].file = sysfs_file_new(tablesDir, name, NULL, &tableFileOps, table);
+        if (cachedTables[i].file != NULL)
         {
             panic(NULL, "failed to create ACPI table sysfs file for %.*s", SDT_SIGNATURE_LENGTH, table->signature);
         }

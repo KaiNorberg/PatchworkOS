@@ -17,8 +17,7 @@
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
-static sysfs_dir_t shmemDir;
-static sysfs_file_t newFile;
+static dentry_t* shmemDir;
 
 static shmem_object_t* shmem_object_new(void);
 static void shmem_object_free(shmem_object_t* shmem);

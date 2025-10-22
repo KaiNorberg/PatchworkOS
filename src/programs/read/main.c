@@ -8,7 +8,7 @@
 
 #define BUFFER_SIZE 1024
 
-static uint64_t read_fd(fd_t fd, const char* name)
+static uint64_t read_fd(fd_t fd, const char* name, bool hexOutput)
 {
     while (1)
     {
@@ -25,6 +25,15 @@ static uint64_t read_fd(fd_t fd, const char* name)
             break;
         }
 
+        if (hexOutput)
+        {
+            for (uint64_t i = 0; i < count; i++)
+            {
+                writef(STDOUT_FILENO, "%02x ", (unsigned char)buffer[i]);
+            }
+            continue;
+        }
+
         write(STDOUT_FILENO, buffer, count);
     }
 
@@ -38,7 +47,15 @@ int main(int argc, char** argv)
         return read_fd(STDIN_FILENO, "stdin");
     }
 
-    for (int i = 1; i < argc; i++)
+    bool hexOutput = false;
+    int i = 1;
+    if (strcmp(argv[1], "-hex") == 0)
+    {
+        hexOutput = true;
+        i++;
+    }
+
+    for (; i < argc; i++)
     {
         fd_t fd = open(argv[i]);
         if (fd == ERR)
@@ -47,7 +64,7 @@ int main(int argc, char** argv)
             return EXIT_FAILURE;
         }
 
-        if (read_fd(fd, argv[i]) == ERR)
+        if (read_fd(fd, argv[i], hexOutput) == ERR)
         {
             return EXIT_FAILURE;
         }

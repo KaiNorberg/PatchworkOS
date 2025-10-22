@@ -20,13 +20,6 @@
  */
 
 /**
- * @brief Device drivers.
- * @defgroup kernel_drivers Drivers
- * @ingroup kernel
- *
- */
-
-/**
  * @brief Filesystems and Virtual File System.
  * @defgroup kernel_fs Filesystems
  * @ingroup kernel
@@ -40,23 +33,10 @@
  */
 
 /**
- * @brief Kernel logging.
- * @defgroup kernel_log Logging
- * @ingroup kernel
- *
- */
-
-/**
  * @brief Memory management.
  * @defgroup kernel_mem Memory
  * @ingroup kernel
  *
- */
-
-/**
- * @brief Scheduling.
- * @defgroup kernel_sched Scheduling
- * @ingroup kernel
  */
 
 /**

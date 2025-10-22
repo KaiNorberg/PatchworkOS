@@ -12,9 +12,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-static sysfs_file_t oneFile;
-static sysfs_file_t zeroFile;
-static sysfs_file_t nullFile;
+static dentry_t* oneFile;
+static dentry_t* zeroFile;
+static dentry_t* nullFile;
 
 static uint64_t const_one_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -97,16 +97,24 @@ static file_ops_t nullOps = {
 
 void const_init(void)
 {
-    if (sysfs_file_init(&oneFile, sysfs_get_dev(), "one", NULL, &oneOps, NULL) == ERR)
+    oneFile = sysfs_file_new(NULL, "one", NULL, &oneOps, NULL);
+    if (oneFile == NULL)
     {
         panic(NULL, "Failed to init one file");
     }
-    if (sysfs_file_init(&zeroFile, sysfs_get_dev(), "zero", NULL, &zeroOps, NULL) == ERR)
+
+    zeroFile = sysfs_file_new(NULL, "zero", NULL, &zeroOps, NULL);
+    if (zeroFile == NULL)
     {
+        DEREF(oneFile);
         panic(NULL, "Failed to init zero file");
     }
-    if (sysfs_file_init(&nullFile, sysfs_get_dev(), "null", NULL, &nullOps, NULL) == ERR)
+
+    nullFile = sysfs_file_new(NULL, "null", NULL, &nullOps, NULL);
+    if (nullFile == NULL)
     {
+        DEREF(oneFile);
+        DEREF(zeroFile);
         panic(NULL, "Failed to init null file");
     }
 }

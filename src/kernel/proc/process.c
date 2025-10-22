@@ -220,55 +220,51 @@ static inode_ops_t inodeOps = {
     .cleanup = process_inode_cleanup,
 };
 
-static dentry_t* process_dir_new(const char* name, process_t* process)
+
+static uint64_t process_dir_init(process_t* process, const char* name)
 {
-    dentry_t* dir = sysfs_dir_new(procMount->superblock->root, name, &inodeOps, REF(process));
-    if (dir == NULL)
+    process->dir = sysfs_dir_new(procMount->superblock->root, name, &inodeOps, REF(process));
+    if (process->dir == NULL)
     {
-        return NULL;
+        return ERR;
     }
 
-    dentry_t* prioFile = sysfs_file_new(dir, "prio", &inodeOps, &prioOps, REF(process));
-    if (prioFile == NULL)
+    process->prioFile = sysfs_file_new(process->dir, "prio", &inodeOps, &prioOps, REF(process));
+    if (process->prioFile == NULL)
     {
-        DEREF(dir);
-        return NULL;
+        DEREF(process->dir);
+        return ERR;
     }
-    DEREF(prioFile); // The `dir` already holds a reference.
 
-    dentry_t* cwdFile = sysfs_file_new(dir, "cwd", &inodeOps, &cwdOps, REF(process));
-    if (cwdFile == NULL)
+    process->cwdFile = sysfs_file_new(process->dir, "cwd", &inodeOps, &cwdOps, REF(process));
+    if (process->cwdFile == NULL)
     {
-        DEREF(dir);
-        return NULL;
+        DEREF(process->dir);
+        return ERR;
     }
-    DEREF(cwdFile);
 
-    dentry_t* cmdlineFile = sysfs_file_new(dir, "cmdline", &inodeOps, &cmdlineOps, REF(process));
-    if (cmdlineFile == NULL)
+    process->cmdlineFile = sysfs_file_new(process->dir, "cmdline", &inodeOps, &cmdlineOps, REF(process));
+    if (process->cmdlineFile == NULL)
     {
-        DEREF(dir);
-        return NULL;
+        DEREF(process->dir);
+        return ERR;
     }
-    DEREF(cmdlineFile);
 
-    dentry_t* noteFile = sysfs_file_new(dir, "note", &inodeOps, &noteOps, REF(process));
-    if (noteFile == NULL)
+    process->noteFile = sysfs_file_new(process->dir, "note", &inodeOps, &noteOps, REF(process));
+    if (process->noteFile == NULL)
     {
-        DEREF(dir);
-        return NULL;
+        DEREF(process->dir);
+        return ERR;
     }
-    DEREF(noteFile);
 
-    dentry_t* statusFile = sysfs_file_new(dir, "status", &inodeOps, &statusOps, REF(process));
-    if (statusFile == NULL)
+    process->statusFile = sysfs_file_new(process->dir, "status", &inodeOps, &statusOps, REF(process));
+    if (process->statusFile == NULL)
     {
-        DEREF(dir);
-        return NULL;
+        DEREF(process->dir);
+        return ERR;
     }
-    DEREF(statusFile);
 
-    return dir;
+    return 0;
 }
 
 static void process_free(process_t* process)
@@ -376,6 +372,13 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
         process->parent = NULL;
     }
 
+    process->dir = NULL;
+    process->prioFile = NULL;
+    process->cwdFile = NULL;
+    process->cmdlineFile = NULL;
+    process->noteFile = NULL;
+    process->statusFile = NULL;
+
     assert(process == &kernelProcess || process_is_child(process, kernelProcess.id));
 
     LOG_DEBUG("new pid=%d parent=%d priority=%d\n", process->id, parent ? parent->id : 0, priority);
@@ -398,8 +401,7 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
 
     char name[MAX_NAME];
     snprintf(name, MAX_NAME, "%d", process->id);
-    process->dir = process_dir_new(name, process);
-    if (process->dir == NULL)
+    if (process_dir_init(process, name) == ERR)
     {
         DEREF(process);
         return NULL;
@@ -461,7 +463,7 @@ bool process_is_child(process_t* process, pid_t parentId)
 
 void process_procfs_init(void)
 {
-    procMount = sysfs_mount_new(NULL, "proc", NULL);
+    procMount = sysfs_mount_new(NULL, "proc", NULL, NULL);
     if (procMount == NULL)
     {
         panic(NULL, "Failed to mount /proc filesystem");

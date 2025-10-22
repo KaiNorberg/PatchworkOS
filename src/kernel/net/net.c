@@ -1,9 +1,9 @@
 #include "net.h"
 
-#include "fs/sysfs.h"
+#include "fs/dentry.h"
 #include "fs/mount.h"
 #include "fs/superblock.h"
-#include "fs/dentry.h"
+#include "fs/sysfs.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "net/local/local.h"

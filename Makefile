@@ -110,6 +110,8 @@ doxygen:
 		cd ../../../..; \
 	fi
 	doxygen meta/doxy/Doxyfile
+	mkdir -p meta/docs/html/meta/screenshots
+	cp meta/screenshots/* meta/docs/html/meta/screenshots/
 
 clean:
 	rm -rf build

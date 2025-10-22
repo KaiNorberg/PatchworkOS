@@ -3,12 +3,12 @@
 #include "config.h"
 #include "cpu_id.h"
 #include "drivers/apic.h"
+#include "drivers/statistics.h"
 #include "interrupt.h"
 #include "sched/sched.h"
 #include "sched/timer.h"
 #include "sched/wait.h"
 #include "tss.h"
-#include "utils/statistics.h"
 
 #include <stdint.h>
 

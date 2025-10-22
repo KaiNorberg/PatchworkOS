@@ -1,5 +1,5 @@
 /**
- * @mainpage Welcome to PatchworkOS
+ * mainpage Welcome to PatchworkOS
  *
  * Welcome to the documentation for **PatchworkOS**, a 64-bit monolithic hobbyist operating system built from scratch in
  * C for the x86_64 architecture.

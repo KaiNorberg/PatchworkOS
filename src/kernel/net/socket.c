@@ -1,9 +1,9 @@
 #include "socket.h"
 
 #include "fs/ctl.h"
-#include "fs/path.h"
-#include "fs/mount.h"
 #include "fs/file.h"
+#include "fs/mount.h"
+#include "fs/path.h"
 #include "mem/heap.h"
 #include "proc/process.h"
 #include "sched/sched.h"
@@ -371,7 +371,8 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
         DEREF(sock);
         return NULL;
     }
-    DEREF_DEFER(mount); // The namespace holds a reference, when the namespace is destroyed, the mount will be destroyed too.
+    DEREF_DEFER(
+        mount); // The namespace holds a reference, when the namespace is destroyed, the mount will be destroyed too.
 
     dentry_t* ctlFile = sysfs_file_new(mount->superblock->root, "ctl", &inodeOps, &ctlOps, REF(sock));
     if (ctlFile == NULL)
@@ -389,141 +390,141 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
         heap_free(sock);
         return NULL;
 
-    return sock;
-}
-
-/*uint64_t socket_expose(socket_t* sock)
-{
-    if (sock == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
+        return sock;
     }
 
-    process_t* process = sched_process();
-    assert(process != NULL);
-
-    if (sysfs_group_init(&sock->group, &sock->family->dir, sock->id, &process->namespace) == ERR)
+    /*uint64_t socket_expose(socket_t* sock)
     {
-        return ERR;
-    }
-
-    if (sysfs_file_init(&sock->ctlFile, &sock->group.root, "ctl", &inodeOps, &ctlOps, REF(sock)) == ERR)
-    {
-        DEREF(sock);
-        return ERR;
-    }
-
-    if (sysfs_file_init(&sock->dataFile, &sock->group.root, "data", &inodeOps, &dataOps, REF(sock)) == ERR)
-    {
-        DEREF(sock);
-        DEREF(sock);
-        sysfs_file_deinit(&sock->ctlFile);
-        return ERR;
-    }
-
-    if (sysfs_file_init(&sock->acceptFile, &sock->group.root, "accept", &inodeOps, &acceptOps, REF(sock)) == ERR)
-    {
-        DEREF(sock);
-        DEREF(sock);
-        DEREF(sock);
-        sysfs_file_deinit(&sock->ctlFile);
-        sysfs_file_deinit(&sock->dataFile);
-        return ERR;
-    }
-
-    sock->isExposed = true;
-    return 0;
-}*/
-
-static const bool validTransitions[SOCKET_STATE_AMOUNT][SOCKET_STATE_AMOUNT] = {
-    [SOCKET_NEW] =
+        if (sock == NULL)
         {
-            [SOCKET_BOUND] = true,
-            [SOCKET_CONNECTING] = true,
-            [SOCKET_CLOSED] = true,
-        },
-    [SOCKET_BOUND] =
-        {
-            [SOCKET_LISTENING] = true,
-            [SOCKET_CONNECTING] = true,
-            [SOCKET_CONNECTED] = true,
-            [SOCKET_CLOSED] = true,
-        },
-    [SOCKET_LISTENING] =
-        {
-            [SOCKET_CONNECTED] = true,
-            [SOCKET_CLOSED] = true,
-        },
-    [SOCKET_CONNECTING] =
-        {
-            [SOCKET_CONNECTED] = true,
-        },
-    [SOCKET_CONNECTED] =
-        {
-            [SOCKET_CLOSING] = true,
-        },
-    [SOCKET_CLOSING] =
-        {
-            [SOCKET_CLOSED] = true,
-        },
-    [SOCKET_CLOSED] = {},
-};
+            errno = EINVAL;
+            return ERR;
+        }
 
-bool socket_can_transition(socket_state_t from, socket_state_t to)
-{
-    if (from >= SOCKET_STATE_AMOUNT || to >= SOCKET_STATE_AMOUNT || from < 0 || to < 0)
+        process_t* process = sched_process();
+        assert(process != NULL);
+
+        if (sysfs_group_init(&sock->group, &sock->family->dir, sock->id, &process->namespace) == ERR)
+        {
+            return ERR;
+        }
+
+        if (sysfs_file_init(&sock->ctlFile, &sock->group.root, "ctl", &inodeOps, &ctlOps, REF(sock)) == ERR)
+        {
+            DEREF(sock);
+            return ERR;
+        }
+
+        if (sysfs_file_init(&sock->dataFile, &sock->group.root, "data", &inodeOps, &dataOps, REF(sock)) == ERR)
+        {
+            DEREF(sock);
+            DEREF(sock);
+            sysfs_file_deinit(&sock->ctlFile);
+            return ERR;
+        }
+
+        if (sysfs_file_init(&sock->acceptFile, &sock->group.root, "accept", &inodeOps, &acceptOps, REF(sock)) == ERR)
+        {
+            DEREF(sock);
+            DEREF(sock);
+            DEREF(sock);
+            sysfs_file_deinit(&sock->ctlFile);
+            sysfs_file_deinit(&sock->dataFile);
+            return ERR;
+        }
+
+        sock->isExposed = true;
+        return 0;
+    }*/
+
+    static const bool validTransitions[SOCKET_STATE_AMOUNT][SOCKET_STATE_AMOUNT] = {
+        [SOCKET_NEW] =
+            {
+                [SOCKET_BOUND] = true,
+                [SOCKET_CONNECTING] = true,
+                [SOCKET_CLOSED] = true,
+            },
+        [SOCKET_BOUND] =
+            {
+                [SOCKET_LISTENING] = true,
+                [SOCKET_CONNECTING] = true,
+                [SOCKET_CONNECTED] = true,
+                [SOCKET_CLOSED] = true,
+            },
+        [SOCKET_LISTENING] =
+            {
+                [SOCKET_CONNECTED] = true,
+                [SOCKET_CLOSED] = true,
+            },
+        [SOCKET_CONNECTING] =
+            {
+                [SOCKET_CONNECTED] = true,
+            },
+        [SOCKET_CONNECTED] =
+            {
+                [SOCKET_CLOSING] = true,
+            },
+        [SOCKET_CLOSING] =
+            {
+                [SOCKET_CLOSED] = true,
+            },
+        [SOCKET_CLOSED] = {},
+    };
+
+    bool socket_can_transition(socket_state_t from, socket_state_t to)
     {
-        return false;
+        if (from >= SOCKET_STATE_AMOUNT || to >= SOCKET_STATE_AMOUNT || from < 0 || to < 0)
+        {
+            return false;
+        }
+        return validTransitions[from][to];
     }
-    return validTransitions[from][to];
-}
 
-uint64_t socket_start_transition(socket_t* sock, socket_state_t state)
-{
-    if (sock == NULL)
+    uint64_t socket_start_transition(socket_t * sock, socket_state_t state)
     {
-        errno = EINVAL;
-        return ERR;
+        if (sock == NULL)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        rwmutex_write_acquire(&sock->mutex);
+
+        if (!socket_can_transition(sock->currentState, state))
+        {
+            rwmutex_write_release(&sock->mutex);
+            errno = EINVAL;
+            return ERR;
+        }
+
+        if (sock->currentState == state)
+        {
+            rwmutex_write_release(&sock->mutex);
+            errno = EINVAL;
+            return ERR;
+        }
+
+        sock->nextState = state;
+        return 0;
     }
 
-    rwmutex_write_acquire(&sock->mutex);
-
-    if (!socket_can_transition(sock->currentState, state))
-    {
-        rwmutex_write_release(&sock->mutex);
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (sock->currentState == state)
-    {
-        rwmutex_write_release(&sock->mutex);
-        errno = EINVAL;
-        return ERR;
-    }
-
-    sock->nextState = state;
-    return 0;
-}
-
-void socket_continue_transition(socket_t* sock, socket_state_t state)
-{
-    sock->currentState = sock->nextState;
-
-    assert(socket_can_transition(sock->currentState, state)); // This should always pass.
-
-    sock->nextState = state;
-}
-
-void socket_end_transition(socket_t* sock, uint64_t result)
-{
-    if (result != ERR)
+    void socket_continue_transition(socket_t * sock, socket_state_t state)
     {
         sock->currentState = sock->nextState;
+
+        assert(socket_can_transition(sock->currentState, state)); // This should always pass.
+
+        sock->nextState = state;
     }
 
-    sock->nextState = sock->currentState;
+    void socket_end_transition(socket_t * sock, uint64_t result)
+    {
+        if (result != ERR)
+        {
+            sock->currentState = sock->nextState;
+        }
 
-    rwmutex_write_release(&sock->mutex);
-}
+        sock->nextState = sock->currentState;
+
+        rwmutex_write_release(&sock->mutex);
+    }

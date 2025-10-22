@@ -155,9 +155,9 @@ bool acpi_is_checksum_valid(void* table, uint64_t length);
  *
  * The acpi group and by extension its directory is lazily initialized.
  *
- * @return sysfs_dir_t* Pointer to the ACPI sysfs root directory.
+ * @return Pointer to the ACPI sysfs root directory.
  */
-sysfs_dir_t* acpi_get_sysfs_root(void);
+dentry_t* acpi_get_sysfs_root(void);
 
 /**
  * @brief Reclaim ACPI memory regions.

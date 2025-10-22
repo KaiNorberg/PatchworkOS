@@ -7,6 +7,8 @@
  * @defgroup kernel_mem_heap Heap
  * @ingroup kernel_mem
  *
+ * TODO: Consider a free-stack based allocator.
+ *
  * @{
  */
 

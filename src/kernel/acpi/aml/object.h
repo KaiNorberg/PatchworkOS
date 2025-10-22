@@ -201,7 +201,7 @@ typedef aml_object_t* (*aml_method_implementation_t)(aml_method_obj_t* method, a
     aml_object_t* parent; \
     aml_object_flags_t flags; \
     aml_type_t type; \
-    sysfs_dir_t dir
+    dentry_t* dir
 
 /**
  * @brief Data for a buffer object.

@@ -21,8 +21,8 @@ typedef struct filesystem filesystem_t;
 
 /**
  * @brief Virtual File System.
+ * @defgroup kernel_fs Virtual File System
  * @ingroup kernel_fs
- * @defgroup kernel_fs_vfs VFS
  *
  * TODO: Implement improved caching, LRU.
  *

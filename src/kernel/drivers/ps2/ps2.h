@@ -6,8 +6,8 @@
 #include <stdint.h>
 
 /**
- * @brief PS/2 Driver.
- * @defgroup kernel_drivers_ps2 PS/2 Driver
+ * @brief IBM Personal Computer/2 ports.
+ * @defgroup kernel_drivers_ps2 PS/2
  * @ingroup kernel_drivers
  *
  * Patchwork attempts to implement a comprehensive PS/2 driver, even if certain details would be completely irrelevant
