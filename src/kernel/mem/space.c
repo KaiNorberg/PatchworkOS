@@ -1,5 +1,8 @@
 #include "space.h"
 
+#include "cpu/cpu.h"
+#include "cpu/smp.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 #include "mem/space.h"
 #include "pmm.h"
@@ -92,6 +95,8 @@ uint64_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress
     bitmap_init(&space->callbackBitmap, space->bitmapBuffer, PML_MAX_CALLBACK);
     memset(space->bitmapBuffer, 0, BITMAP_BITS_TO_BYTES(PML_MAX_CALLBACK));
     wait_queue_init(&space->pinWaitQueue);
+    list_init(&space->cpus);
+    atomic_init(&space->shootdownAcks, 0);
     lock_init(&space->lock);
 
     if (flags & SPACE_MAP_KERNEL_BINARY)
@@ -117,6 +122,11 @@ void space_deinit(space_t* space)
     if (space == NULL)
     {
         return;
+    }
+
+    if (!list_is_empty(&space->cpus))
+    {
+        panic(NULL, "Attempted to free address space still in use by CPUs");
     }
 
     uint64_t index;
@@ -150,6 +160,46 @@ void space_load(space_t* space)
     {
         return;
     }
+
+    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
+
+    cpu_t* self = smp_self_unsafe();
+    assert(self != NULL);
+
+    assert(self->vmm.currentSpace != NULL);
+    if (space == self->vmm.currentSpace)
+    {
+        return;
+    }
+
+    space_t* oldSpace = self->vmm.currentSpace;
+    self->vmm.currentSpace = NULL;
+
+    lock_acquire(&oldSpace->lock);
+#ifndef NDEBUG
+    bool found = false;
+    cpu_t* cpu;
+    LIST_FOR_EACH(cpu, &oldSpace->cpus, vmm.entry)
+    {
+        if (self == cpu)
+        {
+            found = true;
+            break;
+        }
+    }
+    if (!found)
+    {
+        lock_release(&oldSpace->lock);
+        panic(NULL, "CPU not found in old space's CPU list");
+    }
+#endif
+    list_remove(&oldSpace->cpus, &self->vmm.entry);
+    lock_release(&oldSpace->lock);
+
+    lock_acquire(&space->lock);
+    list_push(&space->cpus, &self->vmm.entry);
+    lock_release(&space->lock);
+    self->vmm.currentSpace = space;
 
     page_table_load(&space->pageTable);
 }
@@ -187,7 +237,7 @@ uint64_t space_pin(space_t* space, const void* buffer, uint64_t length)
     uint64_t pageAmount = BYTES_TO_PAGES(length);
 
     if (WAIT_BLOCK_LOCK(&space->pinWaitQueue, &space->lock,
-            page_table_get_max_pin_depth(&space->pageTable, buffer, pageAmount) < PML_PIN_DEPTH_MAX) == ERR)
+            page_table_get_pin_depth(&space->pageTable, buffer, pageAmount) < PML_PIN_DEPTH_MAX) == ERR)
     {
         return ERR;
     }
@@ -225,7 +275,7 @@ uint64_t space_pin_terminated(space_t* space, const void* address, const void* t
     while (current < end)
     {
         if (WAIT_BLOCK_LOCK(&space->pinWaitQueue, &space->lock,
-                page_table_get_max_pin_depth(&space->pageTable, (void*)current, 1) < PML_PIN_DEPTH_MAX) == ERR)
+                page_table_get_pin_depth(&space->pageTable, (void*)current, 1) < PML_PIN_DEPTH_MAX) == ERR)
         {
             return ERR;
         }
@@ -456,12 +506,14 @@ static void* space_find_free_region(space_t* space, uint64_t pageAmount)
             pageAmount, &addr) != ERR)
     {
         space->freeAddress = (uintptr_t)addr + pageAmount * PAGE_SIZE;
+        assert(page_table_is_unmapped(&space->pageTable, addr, pageAmount));
         return addr;
     }
 
     if (page_table_find_unmapped_region(&space->pageTable, (void*)space->startAddress, (void*)space->freeAddress,
             pageAmount, &addr) != ERR)
     {
+        assert(page_table_is_unmapped(&space->pageTable, addr, pageAmount));
         return addr;
     }
 
@@ -560,6 +612,85 @@ pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, spac
 void space_free_callback(space_t* space, pml_callback_id_t callbackId)
 {
     bitmap_clear(&space->callbackBitmap, callbackId);
+}
+
+void space_tlb_shootdown(space_t* space, void* virtAddr, uint64_t pageAmount)
+{
+    if (space == NULL)
+    {
+        return;
+    }
+
+    uint64_t cpuAmount = smp_cpu_amount();
+    if (cpuAmount <= 1)
+    {
+        return;
+    }
+    cpu_t* self = smp_self_unsafe();
+
+    uint16_t expectedAcks = 0;
+    atomic_store(&space->shootdownAcks, 0);
+
+    cpu_t* cpu;
+    LIST_FOR_EACH(cpu, &space->cpus, vmm.entry)
+    {
+        if (cpu == self)
+        {
+            continue;
+        }
+
+        lock_acquire(&cpu->vmm.lock);
+        if (cpu->vmm.shootdownCount >= VMM_MAX_SHOOTDOWN_REQUESTS)
+        {
+            lock_release(&cpu->vmm.lock);
+            panic(NULL, "CPU %d shootdown buffer overflow", cpu->id);
+        }
+
+        vmm_shootdown_t* shootdown = &cpu->vmm.shootdowns[cpu->vmm.shootdownCount++];
+        shootdown->space = space;
+        shootdown->virtAddr = virtAddr;
+        shootdown->pageAmount = pageAmount;
+        lock_release(&cpu->vmm.lock);
+
+        lapic_send_ipi(cpu->lapicId, INTERRUPT_TLB_SHOOTDOWN);
+        expectedAcks++;
+    }
+
+    clock_t startTime = timer_uptime();
+    while (atomic_load(&space->shootdownAcks) < expectedAcks)
+    {
+        if (timer_uptime() - startTime > SPACE_TLB_SHOOTDOWN_TIMEOUT)
+        {
+            panic(NULL, "TLB shootdown timeout in space %p for region %p - %p", space, virtAddr,
+                (void*)((uintptr_t)virtAddr + pageAmount * PAGE_SIZE));
+        }
+
+        asm volatile("pause");
+    }
+
+#ifndef NDEBUG
+    LIST_FOR_EACH(cpu, &space->cpus, vmm.entry)
+    {
+        if (cpu == self)
+        {
+            continue;
+        }
+
+        lock_acquire(&cpu->vmm.lock);
+        for (uint8_t i = 0; i < cpu->vmm.shootdownCount; i++)
+        {
+            vmm_shootdown_t* shootdown = &cpu->vmm.shootdowns[i];
+            if (shootdown->space != space || shootdown->virtAddr != virtAddr || shootdown->pageAmount != pageAmount)
+            {
+                continue;
+            }
+
+            panic(NULL, "TLB shootdown entry not cleared in cpu %d for space %p region %p - %p", cpu->id, space,
+                virtAddr, (void*)((uintptr_t)virtAddr + pageAmount * PAGE_SIZE));
+        }
+        lock_release(&cpu->vmm.lock);
+    }
+#endif
 }
 
 static void space_update_free_address(space_t* space, uintptr_t virtAddr, uint64_t pageAmount)

@@ -9,9 +9,9 @@
  * exception and doubleFault stacks.
  *
  * The interrupt stack can be much much smaller than regular kernel stacks as all interrupt handlers should be as short
- * as possible and allocate as little memory as possible to reduce the amount of time when preemptions are disabled.
+ * as possible and allocate as little memory as possible to reduce the amount of time while preemptions are disabled.
  */
-#define CONFIG_INTERRUPT_STACK_PAGES 1
+#define CONFIG_INTERRUPT_STACK_PAGES 4
 
 /**
  * @brief Kernel stack configuration.

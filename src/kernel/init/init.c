@@ -39,7 +39,7 @@ void init_early(const boot_info_t* bootInfo)
     gdt_init();
     idt_init();
 
-    smp_early_bootstrap_init();
+    smp_bootstrap_init_early();
 
     log_init(&bootInfo->gop);
 

@@ -136,8 +136,15 @@ uint64_t stack_pointer_grow(stack_pointer_t* stack, thread_t* thread, uintptr_t 
     }
     stack->lastPageFault = alignedAddr;
 
-    if (vmm_alloc(&thread->process->space, (void*)alignedAddr, alignedLength, flags) == NULL)
+    if (vmm_alloc(&thread->process->space, (void*)alignedAddr, alignedLength, flags, VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
     {
+        if (errno == EEXIST) // Race condition
+        {
+            LOG_WARN("stack page at address %p already mapped\n", (void*)alignedAddr);
+            return 0;
+        }
+
+        LOG_WARN("failed to allocate stack page at address %p (%s)n", (void*)alignedAddr, strerror(errno));
         errno = ENOMEM;
         return ERR;
     }

@@ -512,11 +512,28 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
                 (frame->errorCode & 1) ? "protection violation" : "non-present page fault");
             if (frame->errorCode & 8)
             {
-                LOG_PANIC("                      (Reserved bit violation)\n");
+                LOG_PANIC("                    (Reserved bit violation)\n");
             }
             if (frame->errorCode & 16)
             {
-                LOG_PANIC("                       (Instruction fetch)\n");
+                LOG_PANIC("                    (Instruction fetch)\n");
+            }
+
+            if (cr2 == 0)
+            {
+                LOG_PANIC("                    (Faulting address is NULL)\n");
+            }
+            else if (cr2 >= VMM_KERNEL_BINARY_MIN && cr2 < VMM_KERNEL_BINARY_MAX)
+            {
+                LOG_PANIC("                    (Faulting address is in kernel binary region)\n");
+            }
+            else if (cr2 >= VMM_KERNEL_HEAP_MIN && cr2 < VMM_KERNEL_HEAP_MAX)
+            {
+                LOG_PANIC("                    (Faulting address is in kernel heap region)\n");
+            }
+            else if (cr2 >= VMM_KERNEL_STACKS_MIN && cr2 < VMM_KERNEL_STACKS_MAX)
+            {
+                LOG_PANIC("                    (Faulting address is in kernel stacks region)\n");
             }
         }
     }

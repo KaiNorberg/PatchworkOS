@@ -30,18 +30,14 @@ void heap_init(void)
 #endif
 }
 
-void* heap_alloc(uint64_t size, heap_flags_t flags)
+static void* heap_alloc_unlocked(uint64_t size, heap_flags_t flags)
 {
-    LOCK_SCOPE(&lock);
-
     assert(size > 0);
-
     size = ROUND_UP(size, HEAP_ALIGN);
-
     if (size >= HEAP_MAX_SLAB_SIZE || flags & HEAP_VMM)
     {
         uint64_t allocSize = size + sizeof(object_t);
-        object_t* object = vmm_alloc(NULL, NULL, allocSize, PML_WRITE | PML_GLOBAL | PML_PRESENT);
+        object_t* object = vmm_alloc(NULL, NULL, allocSize, PML_WRITE | PML_GLOBAL | PML_PRESENT, VMM_ALLOC_NONE);
         if (object == NULL)
         {
             errno = ENOMEM;
@@ -71,29 +67,58 @@ void* heap_alloc(uint64_t size, heap_flags_t flags)
     }
 
 #ifndef NDEBUG
-    memset32(object->data, HEAP_ALLOC_POISON, object->dataSize / sizeof(uint32_t));
+    memset(object->data, HEAP_ALLOC_POISON, object->dataSize);
 #endif
 
     return object->data;
 }
 
+static void heap_free_unlocked(void* ptr)
+{
+    if (ptr == NULL)
+    {
+        return;
+    }
+
+    object_t* object = CONTAINER_OF(ptr, object_t, data);
+    if (object->cache == NULL)
+    {
+        uint64_t allocSize = object->dataSize + sizeof(object_t);
+        vmm_unmap(NULL, object, BYTES_TO_PAGES(allocSize));
+        return;
+    }
+
+#ifndef NDEBUG
+    memset(object->data, HEAP_FREE_POISON, object->dataSize);
+#endif
+
+    slab_free(object->cache->slab, object);
+}
+
+void* heap_alloc(uint64_t size, heap_flags_t flags)
+{
+    LOCK_SCOPE(&lock);
+
+    return heap_alloc_unlocked(size, flags);
+}
+
 void* heap_realloc(void* oldPtr, uint64_t newSize, heap_flags_t flags)
 {
-    newSize = ROUND_UP(newSize, HEAP_ALIGN);
+    LOCK_SCOPE(&lock);
 
+    newSize = ROUND_UP(newSize, HEAP_ALIGN);
     if (oldPtr == NULL)
     {
-        return heap_alloc(newSize, flags);
+        return heap_alloc_unlocked(newSize, flags);
     }
 
     if (newSize == 0)
     {
-        heap_free(oldPtr);
+        heap_free_unlocked(oldPtr);
         return NULL;
     }
 
     object_t* object = CONTAINER_OF(oldPtr, object_t, data);
-
     if (object->cache == NULL)
     {
         uint64_t oldAllocSize = object->dataSize + sizeof(object_t);
@@ -112,7 +137,7 @@ void* heap_realloc(void* oldPtr, uint64_t newSize, heap_flags_t flags)
         return oldPtr;
     }
 
-    void* newPtr = heap_alloc(newSize, flags);
+    void* newPtr = heap_alloc_unlocked(newSize, flags);
     if (newPtr == NULL)
     {
         return NULL;
@@ -120,18 +145,19 @@ void* heap_realloc(void* oldPtr, uint64_t newSize, heap_flags_t flags)
 
     uint64_t copySize = newSize < object->dataSize ? newSize : object->dataSize;
     memcpy(newPtr, oldPtr, copySize);
-    heap_free(oldPtr);
+    heap_free_unlocked(oldPtr);
     return newPtr;
 }
 
 void* heap_calloc(uint64_t num, uint64_t size, heap_flags_t flags)
 {
-    uint64_t totalSize = num * size;
+    LOCK_SCOPE(&lock);
 
-    void* ptr = heap_alloc(totalSize, flags);
+    uint64_t totalSize = num * size;
+    void* ptr = heap_alloc_unlocked(totalSize, flags);
     if (ptr == NULL)
     {
-        return ptr;
+        return NULL;
     }
 
     memset(ptr, 0, totalSize);
@@ -140,27 +166,9 @@ void* heap_calloc(uint64_t num, uint64_t size, heap_flags_t flags)
 
 void heap_free(void* ptr)
 {
-    if (ptr == NULL)
-    {
-        return;
-    }
-
     LOCK_SCOPE(&lock);
 
-    object_t* object = CONTAINER_OF(ptr, object_t, data);
-
-    if (object->cache == NULL)
-    {
-        uint64_t allocSize = object->dataSize + sizeof(object_t);
-        vmm_unmap(NULL, object, BYTES_TO_PAGES(allocSize));
-        return;
-    }
-
-#ifndef NDEBUG
-    memset32(object->data, HEAP_FREE_POISON, object->dataSize / sizeof(uint32_t));
-#endif
-
-    slab_free(object->cache->slab, object);
+    heap_free_unlocked(ptr);
 }
 
 #ifdef TESTING

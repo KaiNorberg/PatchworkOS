@@ -304,6 +304,11 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     }
 
     cmd_surface_new_t* cmd = display_cmds_push(disp, CMD_SURFACE_NEW, sizeof(cmd_surface_new_t));
+    if (cmd == NULL)
+    {
+        free(win);
+        return NULL;
+    }
     cmd->type = win->type;
     cmd->rect = win->rect;
     cmd->owner = getpid();
@@ -381,6 +386,10 @@ void window_free(window_t* win)
     }
 
     cmd_surface_free_t* cmd = display_cmds_push(win->disp, CMD_SURFACE_FREE, sizeof(cmd_surface_free_t));
+    if (cmd == NULL)
+    {
+        abort();
+    }
     cmd->target = win->surface;
     display_cmds_flush(win->disp);
 

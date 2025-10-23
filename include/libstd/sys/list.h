@@ -156,6 +156,18 @@ typedef struct list
         (elem) = CONTAINER_OF((elem)->member.prev, typeof(*elem), member))
 
 /**
+ * @brief Creates a list entry initializer.
+ *
+ * @param name The name of the entry variable to initialize.
+ * @return A `list_entry_t` initializer for the specified entry variable.
+ */
+#define LIST_ENTRY_CREATE(name) \
+    (list_entry_t) \
+    { \
+        .prev = &(name), .next = &(name), .list = NULL \
+    }
+
+/**
  * @brief Creates a list initializer.
  *
  * @param name The name of the list variable to initialize.

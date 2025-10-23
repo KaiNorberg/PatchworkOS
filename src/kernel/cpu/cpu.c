@@ -19,10 +19,11 @@ uint64_t cpu_init(cpu_t* cpu, cpuid_t id)
     idt_cpu_load();
 
     msr_write(MSR_CPU_ID, id);
+
     cpu->id = id;
     cpu->lapicId = lapic_self_id();
-
     tss_init(&cpu->tss);
+    vmm_cpu_ctx_init(&cpu->vmm);
     gdt_cpu_tss_load(&cpu->tss);
     interrupt_ctx_init(&cpu->interrupt);
     statistics_cpu_ctx_init(&cpu->stat);
@@ -60,7 +61,6 @@ uint64_t cpu_init(cpu_t* cpu, cpuid_t id)
 
     lapic_cpu_init();
     simd_cpu_init();
-    vmm_cpu_init();
     syscalls_cpu_init();
 
     return 0;

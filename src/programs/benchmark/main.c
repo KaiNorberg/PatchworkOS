@@ -99,7 +99,8 @@ int main()
     init_generic();
 
     printf("Starting mmap benchmark with %llu iterations\n", TEST_ITERATIONS);
-    for (uint64_t i = 1; i <= 1024; i *= 2)
+    benchmark_mmap(1);
+    for (uint64_t i = 50; i <= 1500; i += 50)
     {
         benchmark_mmap(i);
     }

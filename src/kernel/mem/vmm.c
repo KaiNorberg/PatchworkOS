@@ -1,5 +1,7 @@
 #include "vmm.h"
 
+#include "cpu/cpu.h"
+#include "cpu/smp.h"
 #include "cpu/syscalls.h"
 #include "log/log.h"
 #include "log/panic.h"
@@ -22,6 +24,21 @@
 #include <sys/proc.h>
 
 static space_t kernelSpace;
+
+static void vmm_cpu_ctx_init_common(vmm_cpu_ctx_t* ctx)
+{
+    cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
+
+    list_entry_init(&ctx->entry);
+    ctx->shootdownCount = 0;
+    lock_init(&ctx->lock);
+
+    assert(cr3_read() == PML_ENSURE_LOWER_HALF(kernelSpace.pageTable.pml4));
+    ctx->currentSpace = &kernelSpace;
+    lock_acquire(&kernelSpace.lock);
+    list_push(&kernelSpace.cpus, &ctx->entry);
+    lock_release(&kernelSpace.lock);
+}
 
 void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_kernel_t* kernel)
 {
@@ -81,16 +98,26 @@ void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_ker
         panic(NULL, "Failed to map GOP memory");
     }
 
-    vmm_cpu_init();
+    LOG_INFO("loading kernel space... ");
+    cr3_write(PML_ENSURE_LOWER_HALF(kernelSpace.pageTable.pml4));
 
-    LOG_INFO("loading kernel page table... ");
-    space_load(&kernelSpace);
+    cpu_t* cpu = smp_self_unsafe();
+    assert(cpu != NULL);
+    assert(cpu->id == CPU_ID_BOOTSTRAP);
+    vmm_cpu_ctx_init_common(&cpu->vmm);
+
     LOG_INFO("done!\n");
 }
 
-void vmm_cpu_init(void)
+void vmm_cpu_ctx_init(vmm_cpu_ctx_t* ctx)
 {
-    cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
+    cpu_t* cpu = smp_self_unsafe();
+    if (cpu->id == CPU_ID_BOOTSTRAP) // Initalized early in vmm_init.
+    {
+        return;
+    }
+
+    vmm_cpu_ctx_init_common(ctx);
 }
 
 void vmm_map_bootloader_lower_half(thread_t* bootThread)
@@ -130,9 +157,19 @@ pml_flags_t vmm_prot_to_flags(prot_t prot)
     }
 }
 
-void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t flags)
+// Handles the logic of unmapping with a shootdown, should be called with the spaces lock acquired.
+// We need to make sure that any underlying physical pages owned by the page table are freed after every CPU
+// has invalidated their TLBs.
+static inline void vmm_page_table_unmap_with_shootdown(space_t* space, void* virtAddr, uint64_t pageAmount)
 {
-    if (length == 0 || !(flags & PML_PRESENT))
+    page_table_unmap(&space->pageTable, virtAddr, pageAmount);
+    space_tlb_shootdown(space, virtAddr, pageAmount);
+    page_table_clear(&space->pageTable, virtAddr, pageAmount);
+}
+
+void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t pmlFlags, vmm_alloc_flags_t allocFlags)
+{
+    if (length == 0 || !(pmlFlags & PML_PRESENT))
     {
         errno = EINVAL;
         return NULL;
@@ -144,7 +181,7 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t fla
     }
 
     space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, NULL, length, flags | PML_OWNED) == ERR)
+    if (space_mapping_start(space, &mapping, virtAddr, NULL, length, pmlFlags | PML_OWNED) == ERR)
     {
         return NULL;
     }
@@ -156,7 +193,12 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t fla
 
     if (!page_table_is_unmapped(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
     {
-        page_table_unmap(&space->pageTable, mapping.virtAddr, mapping.pageAmount);
+        if (allocFlags & VMM_ALLOC_FAIL_IF_MAPPED)
+        {
+            return space_mapping_end(space, &mapping, EEXIST);
+        }
+
+        vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount);
     }
 
     const uint64_t maxBatchSize = 64;
@@ -170,7 +212,7 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t fla
         if (pmm_alloc_pages(addresses, batchSize) == ERR)
         {
             // Page table will free the previously allocated pages as they are owned by the Page table.
-            page_table_unmap(&space->pageTable, mapping.virtAddr, mapping.pageAmount - remainingPages);
+            vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount - remainingPages);
             return space_mapping_end(space, &mapping, ENOMEM);
         }
 
@@ -178,7 +220,7 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t fla
                 PML_CALLBACK_NONE) == ERR)
         {
             // Page table will free the previously allocated pages as they are owned by the Page table.
-            page_table_unmap(&space->pageTable, mapping.virtAddr, mapping.pageAmount - remainingPages);
+            vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount - remainingPages);
             return space_mapping_end(space, &mapping, ENOMEM);
         }
 
@@ -225,7 +267,7 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, p
 
     if (!page_table_is_unmapped(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
     {
-        page_table_unmap(&space->pageTable, mapping.virtAddr, mapping.pageAmount);
+        vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount);
     }
 
     if (page_table_map(&space->pageTable, mapping.virtAddr, mapping.physAddr, mapping.pageAmount, flags, callbackId) ==
@@ -279,7 +321,7 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
 
     if (!page_table_is_unmapped(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
     {
-        page_table_unmap(&space->pageTable, mapping.virtAddr, mapping.pageAmount);
+        vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount);
     }
 
     if (page_table_map_pages(&space->pageTable, mapping.virtAddr, pages, mapping.pageAmount, mapping.flags,
@@ -324,7 +366,7 @@ uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length)
     uint64_t callbacks[PML_MAX_CALLBACK] = {0};
     page_table_collect_callbacks(&space->pageTable, mapping.virtAddr, mapping.pageAmount, callbacks);
 
-    page_table_unmap(&space->pageTable, mapping.virtAddr, mapping.pageAmount);
+    vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount);
 
     uint64_t index;
     BITMAP_FOR_EACH_SET(&index, &space->callbackBitmap)
@@ -396,6 +438,8 @@ uint64_t vmm_protect(space_t* space, void* virtAddr, uint64_t length, pml_flags_
         return space_mapping_end(space, &mapping, EINVAL) == NULL ? ERR : 0;
     }
 
+    space_tlb_shootdown(space, mapping.virtAddr, mapping.pageAmount);
+
     return space_mapping_end(space, &mapping, EOK) == NULL ? ERR : 0;
 }
 
@@ -410,4 +454,31 @@ SYSCALL_DEFINE(SYS_MPROTECT, uint64_t, void* address, uint64_t length, prot_t pr
     }
 
     return vmm_protect(space, address, length, vmm_prot_to_flags(prot) | PML_USER);
+}
+
+void vmm_shootdown_handler(interrupt_frame_t* frame, cpu_t* self)
+{
+    (void)frame;
+
+    vmm_cpu_ctx_t* ctx = &self->vmm;
+    while (true)
+    {
+        lock_acquire(&ctx->lock);
+        if (ctx->shootdownCount == 0)
+        {
+            lock_release(&ctx->lock);
+            break;
+        }
+
+        vmm_shootdown_t shootdown = ctx->shootdowns[ctx->shootdownCount - 1];
+        ctx->shootdownCount--;
+        lock_release(&ctx->lock);
+
+        assert(shootdown.space != NULL);
+        assert(shootdown.pageAmount != 0);
+        assert(shootdown.virtAddr != NULL);
+
+        tlb_invalidate(shootdown.virtAddr, shootdown.pageAmount);
+        atomic_fetch_add(&shootdown.space->shootdownAcks, 1);
+    }
 }

@@ -92,6 +92,11 @@ void font_free(font_t* font)
 
 int16_t font_kerning_offset(const font_t* font, char firstChar, char secondChar)
 {
+    if (font == NULL)
+    {
+        return 0;
+    }
+
     uint32_t offset = font->grf.kernOffsets[(uint8_t)firstChar];
     if (offset == GRF_NONE)
     {
@@ -118,6 +123,11 @@ int16_t font_kerning_offset(const font_t* font, char firstChar, char secondChar)
 
 uint64_t font_width(const font_t* font, const char* string, uint64_t length)
 {
+    if (string == NULL || length == 0)
+    {
+        return 0;
+    }
+
     uint64_t width = 0;
 
     for (uint64_t i = 0; i < length; ++i)

@@ -64,7 +64,7 @@ typedef struct space
     uintptr_t startAddress; ///< The start address for allocations in this address space.
     uintptr_t endAddress;   ///< The end address for allocations in this address space.
     uintptr_t freeAddress;  ///< The next available free virtual address in this address space.
-    space_flags_t flags;    ///< Flags for the address space.
+    space_flags_t flags;
     /**
      * Array of callbacks for this address space, indexed by the callback ID.
      */
@@ -75,8 +75,15 @@ typedef struct space
      */
     uint64_t bitmapBuffer[BITMAP_BITS_TO_QWORDS(PML_MAX_CALLBACK)];
     wait_queue_t pinWaitQueue; ///< Wait queue for pinning operations.
-    lock_t lock;               ///< Lock that protects the structure but not its mappings.
+    list_t cpus;               ///< List of CPUs using this address space.
+    atomic_uint16_t shootdownAcks;
+    lock_t lock;
 } space_t;
+
+/**
+ * @brief The maximum time to wait for the acknowledgements from other CPU's before panicking.
+ */
+#define SPACE_TLB_SHOOTDOWN_TIMEOUT (CLOCKS_PER_SEC)
 
 /**
  * @brief Initializes a virtual address space.
@@ -98,6 +105,10 @@ void space_deinit(space_t* space);
 
 /**
  * @brief Loads a virtual address space.
+ *
+ * Must be called with interrupts disabled.
+ *
+ * Will do nothing if the space is already loaded.
  *
  * @param space The address space to load.
  */
@@ -265,6 +276,8 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
 /**
  * @brief Allocate a callback.
  *
+ * Must be called between `space_mapping_start()` and `space_mapping_end()`.
+ *
  * When `pageAmount` number of pages with this callback ID are unmapped or the address space is freed,
  * the callback function will be called with the provided private data.
  *
@@ -279,6 +292,8 @@ pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, spac
 /**
  * @brief Free a callback.
  *
+ * Must be called between `space_mapping_start()` and `space_mapping_end()`.
+ *
  * Allows the callback ID to be reused. The callback function will not be called.
  *
  * @param space The target address space.
@@ -287,7 +302,27 @@ pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, spac
 void space_free_callback(space_t* space, pml_callback_id_t callbackId);
 
 /**
+ * @brief Performs a TLB shootdown for a region of the address space, and wait for acknowledgements.
+ *
+ * Must be called between `space_mapping_start()` and `space_mapping_end()`.
+ *
+ * This will cause all CPUs that have the address space loaded to invalidate their TLB entries for the specified region.
+ *
+ * Will not affect the current CPU's TLB, that is handled by the `page_table_t` directly when modifying page table
+ * entries.
+ *
+ * TODO: Currently this does a busy wait for acknowledgements. Use a wait queue?
+ *
+ * @param space The target address space.
+ * @param virtAddr The starting virtual address of the region.
+ * @param pageAmount The number of pages in the region.
+ */
+void space_tlb_shootdown(space_t* space, void* virtAddr, uint64_t pageAmount);
+
+/**
  * @brief Performs cleanup after changes to the address space mappings.
+ *
+ * Must be called after `space_mapping_start()`.
  *
  * @param space The target address space.
  * @param mapping The parsed information about the mapping.

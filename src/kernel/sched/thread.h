@@ -53,9 +53,9 @@ typedef enum
  */
 typedef struct thread
 {
-    list_entry_t entry;        ///< The list entry used by for example the scheduler and wait system.
+    list_entry_t entry;        ///< The entry for the scheduler and wait system.
     process_t* process;        ///< The parent process that the thread executes within.
-    list_entry_t processEntry; ///< The list entry used by the parent process.
+    list_entry_t processEntry; ///< The entry for the parent process.
     tid_t id;                  ///< The thread id, unique within a `process_t`.
     /**
      * The current state of the thread, used to prevent race conditions and make debugging easier.

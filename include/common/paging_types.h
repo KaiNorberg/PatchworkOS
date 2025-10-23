@@ -78,6 +78,8 @@ typedef struct
     };
 } pml_entry_t;
 
+static_assert(sizeof(pml_entry_t) == 8, "pml_entry_t must be 8 bytes");
+
 /**
  * @brief Maximum pin depth for a page.
  *
@@ -118,7 +120,6 @@ typedef enum
     PML_SIZE = (1ULL << 7),
     PML_GLOBAL = (1ULL << 8),
     PML_OWNED = (1ULL << 9),
-    PML_AVAILABLE = (1ULL << 11),
     PML_NO_EXECUTE = (1ULL << 63),
 } pml_flags_t;
 
@@ -127,7 +128,7 @@ typedef enum
  */
 #define PML_FLAGS_MASK \
     (PML_PRESENT | PML_WRITE | PML_USER | PML_WRITE_THROUGH | PML_CACHE_DISABLED | PML_ACCESSED | PML_DIRTY | \
-        PML_SIZE | PML_GLOBAL | PML_OWNED | PML_AVAILABLE | PML_NO_EXECUTE)
+        PML_SIZE | PML_GLOBAL | PML_OWNED | PML_NO_EXECUTE)
 
 /**
  * @brief Enums for the different page table levels.
@@ -173,7 +174,6 @@ typedef enum
     PML_INDEX_HIGHER_HALF_MIN = 256,
     PML_INDEX_HIGHER_HALF_MAX = 511,
     PML_INDEX_AMOUNT = 512,
-    PML_INDEX_INVALID = 512
 } pml_index_t;
 
 /**

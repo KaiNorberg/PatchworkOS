@@ -16,6 +16,14 @@
  *
  * The Virtual Memory Manager (VMM) is responsible for allocating and mapping virtual memory.
  *
+ * ## TLB Shootdowns
+ *
+ * When we change a mapping in a address space its possible that other CPUs have the same address space loaded and
+ * have the old mappings in their "TLB", which is a hardware feature letting the CPUs cache page table entries. This
+ * cache must be cleared when we change the mappings of a page table. This is called a TLB shootdown.
+ *
+ * Details can be found in `vmm_map()`, `vmm_unmap()` and `vmm_protect()`.
+ *
  * ## Address Space Layout
  *
  * The address space layout is split into several regions. For convenience, the regions are defined using page table
@@ -75,6 +83,48 @@
 #define VMM_IS_PAGE_ALIGNED(addr) (((uintptr_t)(addr) & (PAGE_SIZE - 1)) == 0)
 
 /**
+ * @brief TLB shootdown structure.
+ * @struct vmm_shootdown_t
+ *
+ * Stored in a CPU's shootdown list and will be processed when it receives a `INTERRUPT_TLB_SHOOTDOWN` interrupt.
+ */
+typedef struct
+{
+    list_entry_t entry;
+    space_t* space;
+    void* virtAddr;
+    uint64_t pageAmount;
+} vmm_shootdown_t;
+
+/**
+ * @brief Maximum number of shootdown requests that can be queued per CPU.
+ */
+#define VMM_MAX_SHOOTDOWN_REQUESTS 16
+
+/**
+ * @brief Per-CPU VMM context.
+ * @struct vmm_cpu_ctx_t
+ */
+typedef struct
+{
+    list_entry_t entry; ///< Used by a space to know which CPUs are using it, protected by the space lock.
+    vmm_shootdown_t shootdowns[VMM_MAX_SHOOTDOWN_REQUESTS];
+    uint8_t shootdownCount;
+    lock_t lock;
+    space_t* currentSpace; ///< Will only be accessed by the owner CPU, so no lock.
+} vmm_cpu_ctx_t;
+
+/**
+ * @brief Flags for `vmm_alloc()`.
+ * @enum vmm_alloc_flags_t
+ */
+typedef enum
+{
+    VMM_ALLOC_NONE = 0x0,
+    VMM_ALLOC_FAIL_IF_MAPPED = 0x1 ///< If set and any page is already mapped, fail and set `errno` to `EEXIST`.
+} vmm_alloc_flags_t;
+
+/**
  * @brief Initializes the Virtual Memory Manager.
  *
  * @param memory The memory information provided by the bootloader.
@@ -84,13 +134,13 @@
 void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_kernel_t* kernel);
 
 /**
- * @brief Initializes VMM for a CPU.
+ * @brief Initializes a per-CPU VMM context and performs per-CPU VMM initialization.
  *
- * The `vmm_cpu_init()` function performs per-CPU VMM initialization for the currently running CPU, for example enabling
- * global pages.
+ * Must be called on the CPU that owns the context.
  *
+ * @param ctx The CPU VMM context to initialize.
  */
-void vmm_cpu_init(void);
+void vmm_cpu_ctx_init(vmm_cpu_ctx_t* ctx);
 
 /**
  * @brief Maps the lower half of the address space to the boot thread during kernel initialization.
@@ -136,7 +186,9 @@ pml_flags_t vmm_prot_to_flags(prot_t prot);
 /**
  * @brief Allocates and maps virtual memory in a given address space.
  *
- * Will overwrite any existing mappings in the specified range.
+ * Will overwrite any existing mappings in the specified range if `VMM_ALLOC_FAIL_IF_MAPPED` is not set.
+ *
+ * @see `vmm_map()` for details on TLB shootdowns.
  *
  * @param space The target address space, if `NULL`, the kernel space is used.
  * @param virtAddr The desired virtual address. If `NULL`, the kernel chooses an available address.
@@ -144,12 +196,15 @@ pml_flags_t vmm_prot_to_flags(prot_t prot);
  * @param flags The page table flags for the mapping, will always include `PML_OWNED`, must have `PML_PRESENT` set.
  * @return On success, the virtual address. On failure, returns `NULL` and `errno` is set.
  */
-void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t flags);
+void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t pmlFlags, vmm_alloc_flags_t allocFlags);
 
 /**
  * @brief Maps physical memory to virtual memory in a given address space.
  *
  * Will overwrite any existing mappings in the specified range.
+ *
+ * When mapping a page there is no need for a TLN shootdown as any previous access to that page will cause a non-present
+ * page fault. However if the page is already mapped then it must first be unmapped as described in `vmm_unmap()`.
  *
  * @param space The target address space, if `NULL`, the kernel space is used.
  * @param virtAddr The desired virtual address to map to, if `NULL`, the kernel chooses an available address.
@@ -169,6 +224,8 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, p
  *
  * Will overwrite any existing mappings in the specified range.
  *
+ * @see `vmm_map()` for details on TLB shootdowns.
+ *
  * @param space The target address space, if `NULL`, the kernel space is used.
  * @param virtAddr The desired virtual address to map to, if `NULL`, the kernel chooses an available address.
  * @param pages An array of physical page addresses to map.
@@ -187,6 +244,10 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
  *
  * If the memory is already unmapped, this function will do nothing.
  *
+ * When unmapping memory, there is a need for TLB shootdowns on all CPUs that have the address space loaded. To perform
+ * the shootdown we first set all page entries for the region to be non-present, perform the shootdown, wait for
+ * acknowledgements from all CPUs, and finally free any underlying physical memory if the `PML_OWNED` flag is set.
+ *
  * @param space The target address space, if `NULL`, the kernel space is used.
  * @param virtAddr The virtual address of the memory region.
  * @param length The length of the memory region, in bytes.
@@ -199,6 +260,10 @@ uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length);
  *
  * The memory region must be fully mapped, otherwise this function will fail.
  *
+ * When changing memory protection flags, there is a need for TLB shootdowns on all CPUs that have the address space
+ * loaded. To perform the shootdown we first update the page entries for the region, perform the shootdown, and wait for
+ * acknowledgements from all CPUs and finally return.
+ *
  * @param space The target address space, if `NULL`, the kernel space is used.
  * @param virtAddr The virtual address of the memory region.
  * @param length The length of the memory region, in bytes.
@@ -207,5 +272,13 @@ uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length);
  * @return On success, returns 0. On failure, returns `ERR` and `errno` is set.
  */
 uint64_t vmm_protect(space_t* space, void* virtAddr, uint64_t length, pml_flags_t flags);
+
+/**
+ * @brief TLB shootdown interrupt handler.
+ *
+ * @param frame The interrupt frame.
+ * @param self The current CPU.
+ */
+void vmm_shootdown_handler(interrupt_frame_t* frame, cpu_t* self);
 
 /** @} */

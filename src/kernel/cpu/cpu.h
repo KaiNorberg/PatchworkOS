@@ -5,6 +5,7 @@
 #include "drivers/apic.h"
 #include "drivers/statistics.h"
 #include "interrupt.h"
+#include "mem/vmm.h"
 #include "sched/sched.h"
 #include "sched/timer.h"
 #include "sched/wait.h"
@@ -41,6 +42,7 @@ typedef struct cpu
     cpuid_t id;
     lapic_id_t lapicId;
     tss_t tss;
+    vmm_cpu_ctx_t vmm;
     interrupt_ctx_t interrupt;
     statistics_cpu_ctx_t stat;
     timer_ctx_t timer;
