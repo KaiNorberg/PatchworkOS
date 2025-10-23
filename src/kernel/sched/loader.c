@@ -207,9 +207,6 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     process_t* process = thread->process;
     space_t* space = &process->space;
 
-    LOG_DEBUG("spawn called by pid=%d argv=%p fds=%p cwd=%p attr=%p argv[0]=%s\n", process->id, argv, fds, cwdString,
-        attr, argv != NULL ? argv[0] : "NULL");
-
     priority_t priority;
     if (attr == NULL || attr->flags & SPAWN_INHERIT_PRIORITY)
     {

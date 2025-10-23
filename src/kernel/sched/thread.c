@@ -193,7 +193,7 @@ uint64_t thread_handle_page_fault(const interrupt_frame_t* frame)
 
     if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
     {
-        if (stack_pointer_handle_page_fault(&thread->userStack, thread, faultAddr,
+        if (stack_pointer_grow(&thread->userStack, thread, faultAddr, 1,
                 PML_WRITE | PML_USER | PML_PRESENT) == ERR)
         {
             return ERR;
@@ -201,7 +201,7 @@ uint64_t thread_handle_page_fault(const interrupt_frame_t* frame)
         return 0;
     }
 
-    if (stack_pointer_handle_page_fault(&thread->userStack, thread, faultAddr, PML_WRITE | PML_USER | PML_PRESENT) ==
+    if (stack_pointer_grow(&thread->userStack, thread, faultAddr, 1, PML_WRITE | PML_USER | PML_PRESENT) ==
         ERR)
     {
         if (errno != ENOENT) // ENOENT means not in user stack, so try kernel stack.
@@ -210,7 +210,7 @@ uint64_t thread_handle_page_fault(const interrupt_frame_t* frame)
         }
         errno = EOK;
 
-        if (stack_pointer_handle_page_fault(&thread->kernelStack, thread, faultAddr, PML_WRITE | PML_PRESENT) == ERR)
+        if (stack_pointer_grow(&thread->kernelStack, thread, faultAddr, 1, PML_WRITE | PML_PRESENT) == ERR)
         {
             return ERR;
         }

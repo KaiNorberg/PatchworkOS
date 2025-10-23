@@ -54,11 +54,11 @@ typedef struct process
     list_t children;
     struct process* parent;
     dentry_t* dir;         ///< The `/proc/[pid]` directory for this process.
-    dentry_t* prioFile;    ///< The `prio` file in the `/proc/[pid]` directory.
-    dentry_t* cwdFile;     ///< The `cwd` file in the `/proc/[pid]` directory.
-    dentry_t* cmdlineFile; ///< The `cmdline` file in the `/proc/[pid]` directory.
-    dentry_t* noteFile;    ///< The `note` file in the `/proc/[pid]` directory.
-    dentry_t* statusFile;  ///< The `status` file in the `/proc/[pid]` directory.
+    dentry_t* prioFile;    ///< The `/proc/[pid]/prio` file.
+    dentry_t* cwdFile;     ///< The `/proc/[pid]/cwd` file.
+    dentry_t* cmdlineFile; ///< The `/proc/[pid]/cmdline` file.
+    dentry_t* noteFile;    ///< The `/proc/[pid]/note` file.
+    dentry_t* statusFile;  ///< The `/proc/[pid]/status` file.
 } process_t;
 
 /**

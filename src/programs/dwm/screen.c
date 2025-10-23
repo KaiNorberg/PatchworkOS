@@ -44,8 +44,8 @@ static void frontbuffer_init(void)
     }
     close(fbName);
 
-    printf("dwm: using framebuffer '%s' width=%lu height=%lu stride=%lu format=%u)\n",
-        name, info.width, info.height, info.stride, info.format);
+    printf("dwm: using framebuffer '%s' width=%lu height=%lu stride=%lu format=%u)\n", name, info.width, info.height,
+        info.stride, info.format);
 
     fd_t fbBuffer = open("/dev/fb/0/buffer");
     if (fbBuffer == ERR)

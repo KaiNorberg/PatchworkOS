@@ -99,7 +99,8 @@ typedef struct superblock_ops
  * @param dentryOps The dentry operations for dentries in this superblock, can be NULL.
  * @return On success, the new superblock. On failure, returns `NULL` and `errno` is set.
  */
-superblock_t* superblock_new(const filesystem_t* fs, const char* deviceName, const superblock_ops_t* ops, const dentry_ops_t* dentryOps);
+superblock_t* superblock_new(const filesystem_t* fs, const char* deviceName, const superblock_ops_t* ops,
+    const dentry_ops_t* dentryOps);
 
 /**
  * @brief Increment the mount count of a superblock.

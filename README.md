@@ -290,7 +290,7 @@ For example, the "id" directories mentioned in the socket example are a separate
 
 [Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
 
-### Namespace Sharing
+### Namespace Sharing (WIP)
 
 It's possible for two processes to voluntarily share a mountpoint in their namespaces using `bind()` in combination with two new system calls `share()` and `claim()`.
 
@@ -299,19 +299,27 @@ For example, if process A wants to share its `/net/local/5` directory from the s
 ```c
 // In process A
 fd_t dir = open("/net/local/5:dir");
+
 // Create a "key" for the file descriptor, this is a unique one time use randomly generated
-// integer that can be used to retrieve the file descriptor in another process.
-key_t key = share(dir);
+// uint64_t that can be used to retrieve the file descriptor in another process.
+key_t key = share(dir, CLOCKS_PER_SEC * 60); // Key valid for 60 seconds (CLOCKS_NEVER is also allowed)
 
 // In process B
 // The key is somehow communicated to B via IPC, for example a pipe, socket, argv, etc.
 key_t key = ...;
+
 // Use the key to open a file descriptor to the directory, this will invalidate the key.
 fd_t dir = claim(key);
-// Will error here if the original file descriptor in process A has been closed.
+// Will error here if the original file descriptor in process A has been closed,
+// process A exited, or the key expired.
+
 // Make "dir" ("/net/local/5" in A) available in B's namespace at "/any/path/it/wants"
 // In practice it might be best to mount it to the same path as in A to avoid confusion.
 bind(dir, "/any/path/it/wants");
+
+// Alternatively, it is also possible to just open paths in the shared directory without
+// polluting the namespace using openat().
+fd_t somePath = openat(dir, "data");
 ```
 
 This system guarantees consent between processes, and can be used to implement more complex access control systems.

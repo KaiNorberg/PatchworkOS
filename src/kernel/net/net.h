@@ -7,7 +7,9 @@
  * @defgroup kernel_net Networking
  * @ingroup kernel
  *
- * The networking subsystem is exposed as `/net`.
+ * The networking subsystem is exposed as `/net` and is responsible for providing networking and IPC through sockets.
+ *
+ * @see kernel_net_socket for information about sockets.
  *
  * @{
  */

@@ -84,7 +84,7 @@ static void ps2_mouse_irq(irq_t irq, void* data)
 
 uint64_t ps2_mouse_init(ps2_device_info_t* info)
 {
-    mouse = mouse_new("ps2");
+    mouse = mouse_new(info->name);
     if (mouse == NULL)
     {
         LOG_ERR("failed to create PS/2 mouse\n");

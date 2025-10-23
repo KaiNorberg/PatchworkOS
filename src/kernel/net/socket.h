@@ -26,8 +26,33 @@ typedef struct socket_family socket_family_t;
  *
  * ## Using Sockets
  *
- * Sockets are interacted with using the following files located in their directory:
- * - `accept`: Used to accept incoming connections (only for listening sockets, does not exist otherwise).
+ * Sockets are interacted with using the following files located in their directory.
+ *
+ * ### accept
+ *
+ * The `/net/<family_name>/<socket_id>/accept` file can be opened on a listening socket to accept incoming connections.
+ * Working in an similiar way to the POSIX `accept()` function, the returned file descriptor represents the new
+ * connection.
+ *
+ * If opened with `:nonblock` and there are no incoming connections, the open will fail with `EAGAIN`, otherwise it will
+ * block until a connection is available.
+ *
+ * ### ctl
+ *
+ * The `/net/<family_name>/<socket_id>/ctl` file is used to send "commands" to the socket. Here is a list of supported
+ * commands:
+ * - `bind <address>`: Binds the socket to the specified address. (POSIX `bind()` function)
+ * - `listen <backlog>`: Puts the socket into listening mode with the specified backlog length. (POSIX `listen()`
+ * function)
+ * - `connect <address>`: Connects the socket to the specified address. (POSIX `connect()` function)
+ *
+ * ### data
+ *
+ * The `/net/<family_name>/<socket_id>/data` file is used to send and retrieve data using the socket. Writing to this
+ * file sends data, reading from it receives data. (POSIX `send()` and `recv()` functions)
+ *
+ * If opened with `:nonblock`, read and write operations will fail with `EAGAIN` if no data is available or there is no
+ * buffer space available, respectively, otherwise they will block, waiting for data or buffer space.
  *
  * @{
  */

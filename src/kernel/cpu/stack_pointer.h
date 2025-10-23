@@ -91,20 +91,21 @@ void stack_pointer_deinit(stack_pointer_t* stack, thread_t* thread);
 void stack_pointer_deinit_buffer(stack_pointer_t* stack);
 
 /**
- * @brief Attempt to grow the stack to handle a page fault.
+ * @brief Attempt to grow the stack.
  *
- * This will check if the faulting address is within the stack's range, and if so, map a new page for the stack. If
- * the faulting address is within the guard page or an otherwise invalid address, it will always fail.
+ * This will check if the `addr` is within the stack's range, and if so, map a new page for the stack. If
+ * the `addr` is within the guard page or an otherwise invalid address, it will always fail.
  *
- * Will set `errno` to `ENOENT` if the faulting address is outside the stack's range.
+ * Will set `errno` to `ENOENT` if the `addr` is outside the stack's range.
  *
  * @param stack The stack pointer structure.
  * @param thread The thread that owns the stack, used to get the address space to map the new page in.
- * @param faultAddr The faulting address.
+ * @param addr The address to grow the stack for, typically the faulting address from a page fault.
+ * @param pageAmount The amount of pages to grow the stack by.
  * @param flags The page table flags to use when mapping the new page.
  * @return If a new page was mapped, 0. Otherwise `ERR` and `errno` is set.
  */
-uint64_t stack_pointer_handle_page_fault(stack_pointer_t* stack, thread_t* thread, uintptr_t faultAddr,
+uint64_t stack_pointer_grow(stack_pointer_t* stack, thread_t* thread, uintptr_t addr, uint64_t length,
     pml_flags_t flags);
 
 /** @} */

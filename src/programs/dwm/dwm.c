@@ -87,9 +87,33 @@ static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* 
 
 void dwm_init(void)
 {
+    char name[MAX_NAME];
+
     fd_t handle = open("/net/local/seqpacket:nonblock");
     if (handle == ERR)
     {
+        fd_t dir = open("/net:dir");
+        if (dir == ERR)
+        {
+            printf("dwm: failed to open (%s)\n", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+        dirent_t entries[64];
+        uint64_t bytesRead;
+        while ((bytesRead = getdents(dir, entries, sizeof(entries))) > 0)
+        {
+            if (bytesRead == ERR)
+            {
+                printf("dwm: failed to read (%s)\n", strerror(errno));
+                break;
+            }
+
+            for (uint64_t i = 0; i < bytesRead / sizeof(dirent_t); i++)
+            {
+                printf("dwm: found %s\n", entries[i].name);
+            }
+        }
+
         printf("dwm: failed to create socket (%s)\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
@@ -126,18 +150,40 @@ void dwm_init(void)
         exit(EXIT_FAILURE);
     }
 
-    // TODO: Add system for choosing device
-    kbd = open("/dev/kbd/ps2");
+    kbd = open("/dev/kbd/0/events");
     if (kbd == ERR)
     {
         printf("dwm: failed to open keyboard (%s)\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
-    mouse = open("/dev/mouse/ps2");
+
+    fd_t kbdName = open("/dev/kbd/0/name");
+    if (kbdName != ERR)
+    {
+        if (read(kbdName, name, MAX_NAME - 1) != ERR)
+        {
+            name[MAX_NAME - 1] = '\0';
+            printf("dwm: using keyboard '%s'\n", name);
+        }
+        close(kbdName);
+    }
+
+    mouse = open("/dev/mouse/0/events");
     if (mouse == ERR)
     {
         printf("dwm: failed to open mouse (%s)\n", strerror(errno));
         exit(EXIT_FAILURE);
+    }
+
+    fd_t mouseName = open("/dev/mouse/0/name");
+    if (mouseName != ERR)
+    {
+        if (read(mouseName, name, MAX_NAME - 1) != ERR)
+        {
+            name[MAX_NAME - 1] = '\0';
+            printf("dwm: using mouse '%s'\n", name);
+        }
+        close(mouseName);
     }
 
     list_init(&clients);

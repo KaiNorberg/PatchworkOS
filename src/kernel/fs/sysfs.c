@@ -97,8 +97,7 @@ dentry_t* sysfs_get_dev(void)
     return REF(devMount->root);
 }
 
-mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns,
-    const superblock_ops_t* superblockOps)
+mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns, const superblock_ops_t* superblockOps)
 {
     if (name == NULL)
     {

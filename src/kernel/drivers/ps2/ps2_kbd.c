@@ -56,7 +56,7 @@ uint64_t ps2_kbd_init(ps2_device_info_t* info)
         return ERR;
     }
 
-    kbd = kbd_new("ps2");
+    kbd = kbd_new(info->name);
     if (kbd == NULL)
     {
         LOG_ERR("failed to create PS/2 keyboard\n");

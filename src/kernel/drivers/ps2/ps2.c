@@ -20,7 +20,7 @@ static const ps2_device_info_t knownDevices[] = {
     {.type = PS2_DEV_TYPE_MOUSE_STANDARD, .name = "Standard PS/2 mouse", .firstIdByte = 0x00},
     {.type = PS2_DEV_TYPE_MOUSE_SCROLL, .name = "Mouse with scroll wheel", .firstIdByte = 0x03},
     {.type = PS2_DEV_TYPE_MOUSE_5BUTTON, .name = "5-button mouse", .firstIdByte = 0x04},
-    {.type = PS2_DEV_TYPE_KEYBOARD, .name = "Standard keyboard", .firstIdByte = 0xAB},
+    {.type = PS2_DEV_TYPE_KEYBOARD, .name = "Standard PS/2 keyboard", .firstIdByte = 0xAB},
     {.type = PS2_DEV_TYPE_KEYBOARD, .name = "NCD Sun keyboard", .firstIdByte = 0xAC},
     {.type = PS2_DEV_TYPE_KEYBOARD, .name = "Trust keyboard", .firstIdByte = 0x5D},
     {.type = PS2_DEV_TYPE_KEYBOARD, .name = "NMB SGI keyboard", .firstIdByte = 0x47},
