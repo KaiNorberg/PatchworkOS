@@ -91,21 +91,23 @@ void stack_pointer_deinit(stack_pointer_t* stack, thread_t* thread);
 void stack_pointer_deinit_buffer(stack_pointer_t* stack);
 
 /**
- * @brief Attempt to grow the stack.
- *
- * This will check if the `addr` is within the stack's range, and if so, map a new page for the stack. If
- * the `addr` is within the guard page or an otherwise invalid address, it will always fail.
- *
- * Will set `errno` to `ENOENT` if the `addr` is outside the stack's range.
+ * @brief Check if an region is within the stack.
  *
  * @param stack The stack pointer structure.
- * @param thread The thread that owns the stack, used to get the address space to map the new page in.
- * @param addr The address to grow the stack for, typically the faulting address from a page fault.
- * @param pageAmount The amount of pages to grow the stack by.
- * @param flags The page table flags to use when mapping the new page.
- * @return If a new page was mapped, 0. Otherwise `ERR` and `errno` is set.
+ * @param addr The starting address of the region.
+ * @param length The length of the region, in bytes.
+ * @return `true` if the region is within the stack, `false` otherwise.
  */
-uint64_t stack_pointer_grow(stack_pointer_t* stack, thread_t* thread, uintptr_t addr, uint64_t length,
-    pml_flags_t flags);
+bool stack_pointer_is_in_stack(stack_pointer_t* stack, uintptr_t addr, uint64_t length);
+
+/**
+ * @brief Check if an region overlaps the guard.
+ *
+ * @param stack The stack pointer structure.
+ * @param addr The starting address of the region.
+ * @param length The length of the region, in bytes.
+ * @return `true` if the region overlaps the guard, `false` otherwise.
+ */
+bool stack_pointer_overlaps_guard(stack_pointer_t* stack, uintptr_t addr, uint64_t length);
 
 /** @} */

@@ -377,6 +377,7 @@ uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length)
         callback->pageAmount -= callbacks[index];
         if (callback->pageAmount == 0)
         {
+            assert(index < space->callbacksLength);
             space->callbacks[index].func(space->callbacks[index].private);
             space_free_callback(space, index);
         }

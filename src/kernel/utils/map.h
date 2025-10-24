@@ -15,9 +15,9 @@
  */
 
 /**
- * @brief The initial capacity of a map.
+ * @brief The minimum capacity of a map.
  */
-#define MAP_INITIAL_CAPACITY 16
+#define MAP_MIN_CAPACITY 16
 
 /**
  * @brief The maximum load percentage of a map before it resizes.
@@ -40,7 +40,6 @@
  * Is used to implement a generic key for the map. The object is copied into `key` and hashed.
  * We can then use the hash for quick comparisons and the key irself for full comparisons no matter
  * the type of the key.
- * The maximum size of the key is `MAX_PATH` bytes.
  */
 typedef struct
 {
@@ -180,7 +179,7 @@ uint64_t map_insert(map_t* map, const map_key_t* key, map_entry_t* value);
  *
  * @param map The map to get from.
  * @param key The key to get.
- * @return On success, the value. If the key does not exist, returns `NULL` and sets `errno`.
+ * @return On success, the value. If the key does not exist, returns `NULL`.
  */
 map_entry_t* map_get(map_t* map, const map_key_t* key);
 

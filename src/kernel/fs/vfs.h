@@ -109,6 +109,10 @@ filesystem_t* vfs_get_fs(const char* name);
  * @brief Get an inode for the given superblock and inode number.
  * @ingroup kernel_vfs
  *
+ * Note that there is a period of time where a inodes reference count has dropped to zero but its free function has not
+ * had the time to remove it from the cache yet. In this case, this function will return `NULL` and set `errno` to
+ * `ESTALE`.
+ *
  * @param superblock The superblock.
  * @param number The inode number.
  * @return On success, the inode. On failure, returns `NULL` and `errno` is set.
@@ -118,6 +122,10 @@ inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number);
 /**
  * @brief Get a dentry for the given name. Will NOT traverse mountpoints.
  * @ingroup kernel_vfs
+ *
+ * Note that there is a period of time where a dentrys reference count has dropped to zero but its free function has not
+ * had the time to remove it from the cache yet. In this case, this function will return `NULL` and set `errno` to
+ * `ESTALE`.
  *
  * @param parent The parent path.
  * @param name The name of the dentry.
@@ -228,9 +236,10 @@ bool vfs_is_name_valid(const char* name);
  * @brief Open a file.
  *
  * @param pathname The pathname of the file to open.
+ * @param process The process opening the file.
  * @return On success, the opened file. On failure, returns `NULL` and `errno` is set.
  */
-file_t* vfs_open(const pathname_t* pathname);
+file_t* vfs_open(const pathname_t* pathname, process_t* process);
 
 /**
  * @brief Open one file, returning two file handles.
@@ -239,9 +248,10 @@ file_t* vfs_open(const pathname_t* pathname);
  *
  * @param pathname The pathname of the file to open.
  * @param files The output array of two file pointers.
+ * @param process The process opening the file.
  * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
-uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2]);
+uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* process);
 
 /**
  * @brief Read from a file.

@@ -4,6 +4,7 @@
 #include "mem/heap.h"
 #include "proc/process.h"
 #include "sched/sched.h"
+#include "sched/thread.h"
 #include "sched/timer.h"
 #include "sched/wait.h"
 #include "utils/map.h"
@@ -59,7 +60,8 @@ static futex_t* futex_ctx_get(futex_ctx_t* ctx, void* addr)
 
 SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
-    process_t* process = sched_process();
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
     space_t* space = &process->space;
     futex_ctx_t* ctx = &process->futexCtx;
 
@@ -92,27 +94,23 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
         bool firstCheck = true;
         while (true)
         {
-            // Must pin before we start setting up the block becouse pining might also block.
-            if (space_pin(space, addr, sizeof(atomic_uint64_t)) == ERR)
-            {
-                return ERR;
-            }
-
             uptime = timer_uptime();
             clock_t remaining = (deadline == CLOCKS_NEVER) ? CLOCKS_NEVER : deadline - uptime;
             wait_queue_t* queue = &futex->queue;
             if (wait_block_setup(&queue, 1, remaining) == ERR)
             {
-                space_unpin(space, addr, sizeof(atomic_uint64_t));
                 return ERR;
             }
 
-            bool condition = atomic_load(addr) != val;
-            space_unpin(space, addr, sizeof(atomic_uint64_t));
-
-            if (condition)
+            uint64_t loadedVal;
+            if (thread_load_atomic_from_user(thread, addr, &loadedVal) == ERR)
             {
                 wait_block_cancel();
+                return ERR;
+            }
+
+            if (loadedVal != val)
+            {
                 if (firstCheck)
                 {
                     errno = EAGAIN;

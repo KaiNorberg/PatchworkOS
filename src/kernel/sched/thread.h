@@ -180,4 +180,67 @@ thread_t* thread_get_boot(void);
  */
 uint64_t thread_handle_page_fault(const interrupt_frame_t* frame);
 
+/**
+ * @brief Safely copy data from user space.
+ *
+ * Will pin the user pages in memory while performing the copy and expand the user stack if necessary.
+ *
+ * @param thread The thread performing the operation.
+ * @param dest The destination buffer in kernel space.
+ * @param userSrc The source buffer in user space.
+ * @param length The number of bytes to copy.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t thread_copy_from_user(thread_t* thread, void* dest, const void* userSrc, uint64_t length);
+
+/**
+ * @brief Safely copy data to user space.
+ *
+ * Will pin the user pages in memory while performing the copy and expand the user stack if necessary.
+ *
+ * @param thread The thread performing the operation.
+ * @param dest The destination buffer in user space.
+ * @param userSrc The source buffer in kernel space.
+ * @param length The number of bytes to copy.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t thread_copy_to_user(thread_t* thread, void* dest, const void* userSrc, uint64_t length);
+
+/**
+ * @brief Safely copy a null-terminated array of objects from user space.
+ *
+ * @param thread The thread performing the operation.
+ * @param userArray The source array in user space.
+ * @param terminator A pointer to the terminator object.
+ * @param objectSize The size of each object in the array.
+ * @param maxCount The maximum number of objects to copy.
+ * @param outArray Output pointer to store the allocated array in kernel space, must be freed by the caller.
+ * @param outCount Output pointer to store the number of objects copied, can be `NULL`.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t thread_copy_from_user_terminated(thread_t* thread, const void* userArray, const void* terminator,
+    uint8_t objectSize, uint64_t maxCount, void** outArray, uint64_t* outCount);
+
+/**
+ * @brief Safely copy a string from user space and use it to initialize a pathname.
+ *
+ * @param thread The thread performing the operation.
+ * @param pathname A pointer to the pathname to initialize.
+ * @param userPath The string in user space.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, const char* userPath);
+
+/**
+ * @brief Atomically load a 64-bit value from a user-space atomic variable.
+ *
+ * Will pin the user pages in memory while performing the load and expand the user stack if necessary.
+ *
+ * @param thread The thread performing the operation.
+ * @param userObj The user-space atomic variable to load from.
+ * @param outValue Output pointer to store the loaded value.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t thread_load_atomic_from_user(thread_t* thread, atomic_uint64_t* userObj, uint64_t* outValue);
+
 /** @} */

@@ -359,7 +359,6 @@ uint64_t aml_namespace_add_child(aml_namespace_overlay_t* overlay, aml_object_t*
             errno = EEXIST;
             return ERR;
         }
-        errno = EOK;
         currentOverlay = currentOverlay->parent;
     }
 

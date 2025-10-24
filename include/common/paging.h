@@ -246,10 +246,10 @@ typedef struct
  * @return A `page_table_traverse_t` initializer.
  */
 #define PAGE_TABLE_TRAVERSE_CREATE \
-    {                                      \
-        .pml3Valid = false,               \
-        .pml2Valid = false,               \
-        .pml1Valid = false,               \
+    { \
+        .pml3Valid = false, \
+        .pml2Valid = false, \
+        .pml1Valid = false, \
     }
 
 /**
@@ -260,15 +260,16 @@ typedef struct
  *
  * Note that higher level flags are or'd with `PML_WRITE | PML_USER` since only the permissions of a higher level will
  * apply to lower levels, meaning that the lowest level should be the one with the actual desired permissions.
+ * Additionally, the `PML_GLOBAL` flag is not allowed on the PML3 level.
  *
  * @param table The page table.
  * @param traverse The helper structure used to cache each layer.
  * @param virtAddr The target virtual address.
  * @param flags The flags to assigned to newly allocated levels, if the present flag is not set then dont allocate new
  * levels.
- * @return `true` if a pml1 exists for the current address or was successfully allocated, `false` otherwise.
+ * @return On success, `0`. On failure, `ERR`.
  */
-static inline bool page_table_traverse(page_table_t* table, page_table_traverse_t* traverse, uintptr_t virtAddr,
+static inline uint64_t page_table_traverse(page_table_t* table, page_table_traverse_t* traverse, uintptr_t virtAddr,
     pml_flags_t flags)
 {
     pml_index_t newIdx3 = PML_ADDR_TO_INDEX(virtAddr, PML4);
@@ -277,7 +278,7 @@ static inline bool page_table_traverse(page_table_t* table, page_table_traverse_
         if (page_table_get_pml(table, table->pml4, newIdx3, (flags | PML_WRITE | PML_USER) & ~PML_GLOBAL,
                 &traverse->pml3) == ERR)
         {
-            return false;
+            return ERR;
         }
         traverse->oldIdx3 = newIdx3;
         traverse->pml2Valid = false; // Invalidate cache for lower levels
@@ -288,7 +289,7 @@ static inline bool page_table_traverse(page_table_t* table, page_table_traverse_
     {
         if (page_table_get_pml(table, traverse->pml3, newIdx2, flags | PML_WRITE | PML_USER, &traverse->pml2) == ERR)
         {
-            return false;
+            return ERR;
         }
         traverse->oldIdx2 = newIdx2;
         traverse->pml1Valid = false; // Invalidate cache for lower levels
@@ -299,13 +300,13 @@ static inline bool page_table_traverse(page_table_t* table, page_table_traverse_
     {
         if (page_table_get_pml(table, traverse->pml2, newIdx1, flags | PML_WRITE | PML_USER, &traverse->pml1) == ERR)
         {
-            return false;
+            return ERR;
         }
         traverse->oldIdx1 = newIdx1;
     }
 
     traverse->entry = &traverse->pml1->entries[PML_ADDR_TO_INDEX(virtAddr, PML1)];
-    return true;
+    return 0;
 }
 
 /**
@@ -325,7 +326,7 @@ static inline uint64_t page_table_get_phys_addr(page_table_t* table, const void*
 
     page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
 
-    if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr, PML_NONE))
+    if (page_table_traverse(table, &traverse, (uintptr_t)virtAddr, PML_NONE) == ERR)
     {
         return ERR;
     }
@@ -354,7 +355,7 @@ static inline bool page_table_is_mapped(page_table_t* table, const void* virtAdd
     page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
+        if (page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE) == ERR)
         {
             return false;
         }
@@ -384,7 +385,7 @@ static inline bool page_table_is_unmapped(page_table_t* table, const void* virtA
 
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
+        if (page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE) == ERR)
         {
             continue;
         }
@@ -423,7 +424,7 @@ static inline uint64_t page_table_map(page_table_t* table, void* virtAddr, void*
 
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr, flags))
+        if (page_table_traverse(table, &traverse, (uintptr_t)virtAddr, flags) == ERR)
         {
             return ERR;
         }
@@ -435,7 +436,8 @@ static inline uint64_t page_table_map(page_table_t* table, void* virtAddr, void*
 
         traverse.entry->raw = flags;
         traverse.entry->addr = ((uintptr_t)PML_ENSURE_LOWER_HALF(physAddr)) >> PML_ADDR_OFFSET_BITS;
-        traverse.entry->callbackId = callbackId;
+        traverse.entry->lowCallbackId = callbackId & 1;
+        traverse.entry->highCallbackId = callbackId >> 1;
 
         physAddr = (void*)((uintptr_t)physAddr + PAGE_SIZE);
         virtAddr = (void*)((uintptr_t)virtAddr + PAGE_SIZE);
@@ -469,7 +471,7 @@ static inline uint64_t page_table_map_pages(page_table_t* table, void* virtAddr,
 
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr, flags))
+        if (page_table_traverse(table, &traverse, (uintptr_t)virtAddr, flags) == ERR)
         {
             return ERR;
         }
@@ -481,7 +483,8 @@ static inline uint64_t page_table_map_pages(page_table_t* table, void* virtAddr,
 
         traverse.entry->raw = flags;
         traverse.entry->addr = ((uintptr_t)PML_ENSURE_LOWER_HALF(pages[i])) >> PML_ADDR_OFFSET_BITS;
-        traverse.entry->callbackId = callbackId;
+        traverse.entry->lowCallbackId = callbackId & 1;
+        traverse.entry->highCallbackId = callbackId >> 1;
 
         virtAddr = (void*)((uintptr_t)virtAddr + PAGE_SIZE);
     }
@@ -508,17 +511,12 @@ static inline void page_table_unmap(page_table_t* table, void* virtAddr, uint64_
 
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
+        if (page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE) == ERR)
         {
             continue;
         }
 
         if (!traverse.entry->present)
-        {
-            continue;
-        }
-
-        if (traverse.entry->pinDepth != 0)
         {
             continue;
         }
@@ -633,7 +631,7 @@ static inline void page_table_clear(page_table_t* table, void* virtAddr, uint64_
 
         page_table_clear_pml1_pml2_pml3(table, &prevTraverse, &traverse, &pageBuffer);
 
-        if (!page_table_traverse(table, &traverse, currentVirtAddr, PML_NONE))
+        if (page_table_traverse(table, &traverse, currentVirtAddr, PML_NONE) == ERR)
         {
             prevTraverse.pml1Valid = false;
             prevTraverse.pml2Valid = false;
@@ -674,7 +672,7 @@ static inline void page_table_collect_callbacks(page_table_t* table, void* virtA
 
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
+        if (page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE) == ERR)
         {
             continue;
         }
@@ -684,9 +682,10 @@ static inline void page_table_collect_callbacks(page_table_t* table, void* virtA
             continue;
         }
 
-        if (traverse.entry->callbackId != PML_CALLBACK_NONE)
+        pml_callback_id_t callbackId = traverse.entry->lowCallbackId | (traverse.entry->highCallbackId << 1);
+        if (callbackId != PML_CALLBACK_NONE)
         {
-            callbacks[traverse.entry->callbackId]++;
+            callbacks[callbackId]++;
         }
     }
 }
@@ -708,17 +707,12 @@ static inline uint64_t page_table_set_flags(page_table_t* table, void* virtAddr,
 
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
+        if (page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE) == ERR)
         {
             continue;
         }
 
         if (!traverse.entry->present)
-        {
-            return ERR;
-        }
-
-        if (traverse.entry->pinDepth != 0)
         {
             return ERR;
         }
@@ -931,109 +925,6 @@ static inline uint64_t page_table_find_unmapped_region(page_table_t* table, void
 }
 
 /**
- * @brief Pins a range of pages in the page table by increasing their pin depth.
- *
- * @param table The page table.
- * @param virtAddr The starting virtual address.
- * @param pageAmount The number of pages to pin.
- * @return On success, `0`. On failure, `ERR`.
- */
-static inline uint64_t page_table_pin(page_table_t* table, const void* virtAddr, uint64_t pageAmount)
-{
-    page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
-
-    for (uint64_t i = 0; i < pageAmount; i++)
-    {
-        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
-        {
-            return ERR;
-        }
-
-        if (!traverse.entry->present)
-        {
-            return ERR;
-        }
-
-        if (traverse.entry->pinDepth == PML_PIN_DEPTH_MAX)
-        {
-            return ERR;
-        }
-
-        traverse.entry->pinDepth++;
-    }
-
-    return 0;
-}
-
-/**
- * @brief Unpins a range of pages in the page table by decrementing their pin depth.
- *
- * @param table The page table.
- * @param virtAddr The starting virtual address.
- * @param pageAmount The number of pages to unpin.
- * @return On success, `0`. On failure, `ERR`.
- */
-static inline void page_table_unpin(page_table_t* table, const void* virtAddr, uint64_t pageAmount)
-{
-    page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
-
-    for (uint64_t i = 0; i < pageAmount; i++)
-    {
-        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
-        {
-            continue;
-        }
-
-        if (!traverse.entry->present)
-        {
-            continue;
-        }
-
-        if (traverse.entry->pinDepth == 0)
-        {
-            continue;
-        }
-
-        traverse.entry->pinDepth--;
-    }
-}
-
-/**
- * @brief Retrieves the highest pin depth among a range of pages.
- *
- * @param table The page table.
- * @param virtAddr The starting virtual address.
- * @param pageAmount The number of pages to check.
- * @return The maximum pin depth found in the range.
- */
-static inline uint64_t page_table_get_pin_depth(page_table_t* table, const void* virtAddr, uint64_t pageAmount)
-{
-    uint64_t maxPinDepth = 0;
-
-    page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
-
-    for (uint64_t i = 0; i < pageAmount; i++)
-    {
-        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
-        {
-            continue;
-        }
-
-        if (!traverse.entry->present)
-        {
-            continue;
-        }
-
-        if (traverse.entry->pinDepth > maxPinDepth)
-        {
-            maxPinDepth = traverse.entry->pinDepth;
-        }
-    }
-
-    return maxPinDepth;
-}
-
-/**
  * @brief Checks if any page in a range is pinned.
  *
  * @param table The page table.
@@ -1047,7 +938,7 @@ static inline bool page_table_is_pinned(page_table_t* table, const void* virtAdd
 
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        if (!page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE))
+        if (page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE) == ERR)
         {
             continue;
         }
@@ -1057,7 +948,7 @@ static inline bool page_table_is_pinned(page_table_t* table, const void* virtAdd
             continue;
         }
 
-        if (traverse.entry->pinDepth != 0)
+        if (traverse.entry->pinned)
         {
             return true;
         }

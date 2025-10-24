@@ -83,7 +83,6 @@ Additionally, the OS aims to, in spite of its experimental nature, remain approa
 - Shell overhaul
 - Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions
 - Add configurability to `spawn()` for namespace inheritance
-
 - Asynchronous I/O
 - Modular kernel
 - Shared libraries
@@ -146,7 +145,7 @@ y =
 
 From this we see that for $x \le 850$ the linear regression has a slightly better fit while for $x > 850$ the quadratic regression has a slightly better fit, this is most likely due to the CPU or TLB caches starting to get saturated. All in all this did not tell us much more than we already knew, but it was fun to do regardless.
 
-Of course, there are limitations to this approach, for example, it is in no way portable (which isn't a concern in our case), each address space can only contain $2^7 - 1$ unique shared memory regions, and copy-on-write would not be easy to implement (however, the need for this is reduced due to PatchworkOS using a `spawn()` instead of a `fork()`).
+Of course, there are limitations to this approach, for example, it is in no way portable (which isn't a concern in our case), each address space can only contain $2^8 - 1$ unique shared memory regions, and copy-on-write would not be easy to implement (however, the need for this is reduced due to PatchworkOS using a `spawn()` instead of a `fork()`).
 
 All in all, this algorithm would not be a viable replacement for existing algorithms, but for PatchworkOS, it serves its purpose very efficiently.
 

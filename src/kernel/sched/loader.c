@@ -24,7 +24,7 @@ static void* loader_load_program(thread_t* thread)
         return NULL;
     }
 
-    file_t* file = vfs_open(PATHNAME(executable));
+    file_t* file = vfs_open(PATHNAME(executable), process);
     if (file == NULL)
     {
         return NULL;
@@ -206,7 +206,6 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
 {
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
-    space_t* space = &process->space;
 
     priority_t priority;
     if (attr == NULL || attr->flags & SPAWN_INHERIT_PRIORITY)
@@ -227,8 +226,8 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     char** argvCopy;
     uint64_t argc;
     char* argvTerminator = NULL;
-    if (space_safe_copy_from_terminated(space, argv, &argvTerminator, sizeof(char*), CONFIG_MAX_ARGC, (void**)&argvCopy,
-            &argc) == ERR)
+    if (thread_copy_from_user_terminated(thread, argv, &argvTerminator, sizeof(char*), CONFIG_MAX_ARGC,
+            (void**)&argvCopy, &argc) == ERR)
     {
         return ERR;
     }
@@ -240,7 +239,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         uint64_t stringLen;
         char terminator = '\0';
 
-        if (space_safe_copy_from_terminated(space, userSpacePtr, &terminator, sizeof(char), MAX_PATH,
+        if (thread_copy_from_user_terminated(thread, userSpacePtr, &terminator, sizeof(char), MAX_PATH,
                 (void**)&kernelStringCopy, &stringLen) == ERR)
         {
             for (uint64_t j = 0; j < i; j++)
@@ -258,7 +257,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     if (cwdString != NULL)
     {
         pathname_t cwdPathname;
-        if (space_safe_pathname_init(space, &cwdPathname, cwdString) == ERR)
+        if (thread_copy_from_user_pathname(thread, &cwdPathname, cwdString) == ERR)
         {
             goto cleanup_argv;
         }
@@ -293,7 +292,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         uint64_t fdAmount;
         spawn_fd_t fdsTerminator = SPAWN_FD_END;
 
-        if (space_safe_copy_from_terminated(space, fds, &fdsTerminator, sizeof(spawn_fd_t), CONFIG_MAX_FD,
+        if (thread_copy_from_user_terminated(thread, fds, &fdsTerminator, sizeof(spawn_fd_t), CONFIG_MAX_FD,
                 (void**)&fdsCopy, &fdAmount) == ERR)
         {
             thread_free(child);

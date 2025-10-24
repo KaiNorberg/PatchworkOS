@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cpu/stack_pointer.h"
 #include "fs/path.h"
 #include "sched/wait.h"
 #include "sync/lock.h"
@@ -53,13 +54,30 @@ typedef struct
 } space_callback_t;
 
 /**
+ * @brief Pinned page structure.
+ * @struct space_pinned_page_t
+ *
+ * Stored in the `pinnedPages` map in `space_t`.
+ */
+typedef struct
+{
+    map_entry_t mapEntry;
+    uint64_t pinCount; ///< The number of times this page is pinned, will be unpinned when it reaches 0.
+} space_pinned_page_t;
+
+/**
  * @brief Virtual address space structure.
  * @struct space_t
  *
  * The `space_t` structure represents a virtual address space.
+ *
+ * Note that the actual pin depth, if its is greater than 1, is tracked in the `pinnedPages` map, the page table only
+ * tracks if a page is pinned or not for faster access and to avoid having to access the map even when just pinning a
+ * page once.
  */
 typedef struct space
 {
+    map_t pinnedPages;      ///< Map of pages with a pin depth greater than 1.
     page_table_t pageTable; ///< The page table associated with the address space.
     uintptr_t startAddress; ///< The start address for allocations in this address space.
     uintptr_t endAddress;   ///< The end address for allocations in this address space.
@@ -67,15 +85,17 @@ typedef struct space
     space_flags_t flags;
     /**
      * Array of callbacks for this address space, indexed by the callback ID.
+     *
+     * Lazily initialized to a size equal to the largest used callback ID.
      */
-    space_callback_t callbacks[PML_MAX_CALLBACK];
-    bitmap_t callbackBitmap; ///< Bitmap to track available callback IDs.
+    space_callback_t* callbacks;
+    uint64_t callbacksLength; ///< Length of the `callbacks` array.
+    bitmap_t callbackBitmap;  ///< Bitmap to track available callback IDs.
     /**
      * Buffer for the callback bitmap, see `bitmap_t` for more info.
      */
     uint64_t bitmapBuffer[BITMAP_BITS_TO_QWORDS(PML_MAX_CALLBACK)];
-    wait_queue_t pinWaitQueue; ///< Wait queue for pinning operations.
-    list_t cpus;               ///< List of CPUs using this address space.
+    list_t cpus; ///< List of CPUs using this address space.
     atomic_uint16_t shootdownAcks;
     lock_t lock;
 } space_t;
@@ -131,12 +151,19 @@ void space_load(space_t* space);
  * If any page in the region is already at its maximum pin depth, the calling thread will block until the page is
  * unpinned by another thread.
  *
+ * If a user stack is provided and the region to pin is both unmapped and within the stack region, memory will be
+ * allocated and mapped to the relevant region in the user stack. This is needed as its possible for a user space
+ * process to pass an address to a system call that is in its user stack but not yet mapped. For example, it could
+ * create a big buffer on its stack then pass it to a syscall without first accessing it, meaning no page fault would
+ * have occurred to map the pages.
+ *
  * @param space The target address space.
  * @param address The address to pin, can be `NULL` if length is 0.
  * @param length The length of the region pointed to by `address`, in bytes.
+ * @param userStack Pointer to the user stack of the calling thread, can be `NULL, see above.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t space_pin(space_t* space, const void* address, uint64_t length);
+uint64_t space_pin(space_t* space, const void* address, uint64_t length, stack_pointer_t* userStack);
 
 /**
  * @brief Pins a region of memory terminated by a terminator value.
@@ -151,10 +178,11 @@ uint64_t space_pin(space_t* space, const void* address, uint64_t length);
  * @param terminator The terminator value to search for.
  * @param objectSize The size of each object to compare against the terminator, in bytes.
  * @param maxCount The maximum number of objects to scan before failing.
+ * @param userStack Pointer to the user stack of the calling thread, can be `NULL`, see `space_pin()`.
  * @return On success, the number of bytes pinned, not including the terminator. On failure, `ERR` and `errno` is set.
  */
 uint64_t space_pin_terminated(space_t* space, const void* address, const void* terminator, uint8_t objectSize,
-    uint64_t maxCount);
+    uint64_t maxCount, stack_pointer_t* userStack);
 
 /**
  * @brief Unpins pages in a region previously pinned with `space_pin()` or `space_pin_string()`.
@@ -166,67 +194,6 @@ uint64_t space_pin_terminated(space_t* space, const void* address, const void* t
  * @param length The length of the region pointed to by `address`, in bytes.
  */
 void space_unpin(space_t* space, const void* address, uint64_t length);
-
-/**
- * @brief Safely pins the source buffer, copies data from it, and then unpins it.
- *
- * @param space The target address space.
- * @param dest The destination buffer to copy data to.
- * @param src The source buffer to copy data from.
- * @param length The length of data to copy, in bytes.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t space_safe_copy_from(space_t* space, void* dest, const void* src, uint64_t length);
-
-/**
- * @brief Safely pins the destination buffer, copies data to it, and then unpins it.
- *
- * @param space The target address space.
- * @param dest The destination buffer to copy data to.
- * @param src The source buffer to copy data from.
- * @param length The length of data to copy, in bytes.
- * @return On success, `0` On failure, `ERR` and `errno` is set.
- */
-uint64_t space_safe_copy_to(space_t* space, void* dest, const void* src, uint64_t length);
-
-/**
- * @brief Safely pins a terminated array, copies data from it, and then unpins it.
- *
- * @param space The target address space.
- * @param array The array to copy from.
- * @param terminator The terminator value to search for.
- * @param objectSize The size of each object in the array, in bytes.
- * @param maxCount The maximum number of objects to copy.
- * @param outArray Pointer to store the allocated array, must be freed with `heap_free()`.
- * @param outCount Pointer to store the number of objects copied.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t space_safe_copy_from_terminated(space_t* space, const void* array, const void* terminator, uint8_t objectSize,
-    uint64_t maxCount, void** outArray, uint64_t* outCount);
-
-/**
- * @brief Safely initializes a pathname by pinning the path string as its initialized.
- *
- * Pins the path string, initializes the pathname, and then unpins the string.
- *
- * @param space The target address space.
- * @param pathname The pathname to initialize.
- * @param path The path string.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t space_safe_pathname_init(space_t* space, pathname_t* pathname, const char* path);
-
-/**
- * @brief Safely loads an atomic uint64_t from the address space.
- *
- * Pins the atomic uint64_t, loads its value, and then unpins it.
- *
- * @param space The target address space.
- * @param obj The atomic uint64_t to load.
- * @param outValue Pointer to store the loaded value.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t space_safe_atomic_uint64_t_load(space_t* space, atomic_uint64_t* obj, uint64_t* outValue);
 
 /**
  * @brief Checks if a virtual memory region is within the allowed address range of the space.

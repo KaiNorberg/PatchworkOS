@@ -49,6 +49,7 @@ static path_flag_entry_t* path_flags_get(const char* flag, uint64_t length)
         path_flag_entry_t* entry = CONTAINER_OF_SAFE(map_get(&flagShortMap, &key), path_flag_entry_t, shortEntry);
         if (entry == NULL)
         {
+            errno = EBADFLAG;
             return NULL;
         }
 
@@ -58,6 +59,7 @@ static path_flag_entry_t* path_flags_get(const char* flag, uint64_t length)
     path_flag_entry_t* entry = CONTAINER_OF_SAFE(map_get(&flagMap, &key), path_flag_entry_t, entry);
     if (entry == NULL)
     {
+        errno = EBADFLAG;
         return NULL;
     }
 

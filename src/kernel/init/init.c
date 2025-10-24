@@ -137,7 +137,7 @@ static inline void init_process_spawn(void)
     }
 
     // Set klog as stdout for init process
-    file_t* klog = vfs_open(PATHNAME("/dev/klog"));
+    file_t* klog = vfs_open(PATHNAME("/dev/klog"), initThread->process);
     if (klog == NULL)
     {
         panic(NULL, "Failed to open klog");

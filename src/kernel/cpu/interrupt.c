@@ -54,14 +54,10 @@ static void exception_handler(interrupt_frame_t* frame)
     switch (frame->vector)
     {
     case EXCEPTION_PAGE_FAULT:
-        if (!(frame->errorCode & PAGE_FAULT_PRESENT))
+        if (thread_handle_page_fault(frame) != ERR)
         {
-            if (thread_handle_page_fault(frame) != ERR)
-            {
-                return;
-            }
+            return;
         }
-        break;
     default:
         break;
     }

@@ -8,7 +8,7 @@
 #include "drivers/rtc.h"
 #include "log/log.h"
 #include "log/panic.h"
-#include "proc/process.h"
+#include "sched/thread.h"
 
 #include <stdatomic.h>
 #include <stdbool.h>
@@ -180,7 +180,7 @@ SYSCALL_DEFINE(SYS_UNIX_EPOCH, time_t, time_t* timePtr)
     time_t epoch = timer_unix_epoch();
     if (timePtr != NULL)
     {
-        if (space_safe_copy_to(&sched_process()->space, timePtr, &epoch, sizeof(epoch)) == ERR)
+        if (thread_copy_to_user(sched_thread(), timePtr, &epoch, sizeof(epoch)) == ERR)
         {
             return ERR;
         }

@@ -13,7 +13,23 @@
  * @{
  */
 
-#define PAGE_FAULT_PRESENT (1 << 0)
+/**
+ * @brief Page Fault Error Codes.
+ * @enum page_fault_errors_t
+ *
+ * Will be stored in the error code of the interrupt frame on a page fault.
+ */
+typedef enum
+{
+    PAGE_FAULT_PRESENT = 1 << 0,
+    PAGE_FAULT_WRITE = 1 << 1,
+    PAGE_FAULT_USER = 1 << 2,
+    PAGE_FAULT_RESERVED = 1 << 3,
+    PAGE_FAULT_INSTRUCTION = 1 << 4,
+    PAGE_FAULT_PROTECTION_KEY = 1 << 5,
+    PAGE_FAULT_SHADOW_STACK = 1 << 6,
+    PAGE_FAULT_SOFTWARE_GUARD_EXT = 1 << 7,
+} page_fault_errors_t;
 
 /**
  * @brief Trap Frame Structure.

@@ -3,8 +3,8 @@
 #include "mem/heap.h"
 
 #include <errno.h>
-#include <stdlib.h>
 #include <string.h>
+#include <sys/math.h>
 
 static bool is_power_of_two(uint64_t n)
 {
@@ -106,7 +106,6 @@ static uint64_t map_find_slot(const map_t* map, const map_key_t* key, bool forIn
         return firstTombstone;
     }
 
-    errno = ENOSPC;
     return ERR;
 }
 
@@ -163,14 +162,9 @@ static uint64_t map_resize(map_t* map, uint64_t newCapacity)
 uint64_t map_init(map_t* map)
 {
     map->length = 0;
-    map->capacity = MAP_INITIAL_CAPACITY;
+    map->capacity = 0;
     map->tombstones = 0;
-
-    map->entries = heap_calloc(map->capacity, sizeof(map_entry_t*), HEAP_NONE);
-    if (map->entries == NULL)
-    {
-        return ERR;
-    }
+    map->entries = NULL;
 
     return 0;
 }
@@ -188,14 +182,16 @@ uint64_t map_insert(map_t* map, const map_key_t* key, map_entry_t* entry)
 {
     if (entry == NULL)
     {
+        errno = EINVAL;
         return ERR;
     }
 
     uint32_t currentEntries = map->length + map->tombstones;
-    if ((currentEntries * 100) / map->capacity >= MAP_MAX_LOAD_PERCENTAGE)
+    if (currentEntries * 100 >= MAP_MAX_LOAD_PERCENTAGE * map->capacity)
     {
-        if (map_resize(map, map->capacity * 2) != 0)
+        if (map_resize(map, map->capacity + 1) == ERR)
         {
+            errno = ENOMEM;
             return ERR;
         }
     }
@@ -203,6 +199,7 @@ uint64_t map_insert(map_t* map, const map_key_t* key, map_entry_t* entry)
     uint64_t index = map_find_slot(map, key, true);
     if (index == ERR)
     {
+        errno = ENOMEM;
         return ERR;
     }
 
@@ -236,7 +233,6 @@ map_entry_t* map_get(map_t* map, const map_key_t* key)
     map_entry_t* entry = map->entries[index];
     if (entry == NULL || entry == MAP_TOMBSTONE)
     {
-        errno = ENOENT;
         return NULL;
     }
 
@@ -245,7 +241,6 @@ map_entry_t* map_get(map_t* map, const map_key_t* key)
         return entry;
     }
 
-    errno = ENOENT;
     return NULL;
 }
 
@@ -254,7 +249,6 @@ void map_remove(map_t* map, const map_key_t* key)
     uint64_t index = map_find_slot(map, key, false);
     if (index == ERR)
     {
-        errno = EOK;
         return;
     }
 
@@ -310,5 +304,10 @@ uint64_t map_reserve(map_t* map, uint64_t minCapacity)
     }
 
     uint64_t newCapacity = next_power_of_two(minCapacity);
-    return map_resize(map, newCapacity);
+    if (map_resize(map, newCapacity) == ERR)
+    {
+        errno = ENOMEM;
+        return ERR;
+    }
+    return 0;
 }

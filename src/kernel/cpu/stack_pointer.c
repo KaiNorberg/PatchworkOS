@@ -86,70 +86,34 @@ void stack_pointer_deinit_buffer(stack_pointer_t* stack)
     stack->lastPageFault = 0;
 }
 
-uint64_t stack_pointer_grow(stack_pointer_t* stack, thread_t* thread, uintptr_t addr, uint64_t length,
-    pml_flags_t flags)
+bool stack_pointer_is_in_stack(stack_pointer_t* stack, uintptr_t addr, uint64_t length)
 {
     if (stack == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return false;
     }
 
-    uint64_t pageAmount = BYTES_TO_PAGES(length);
-    uintptr_t alignedLength = pageAmount * PAGE_SIZE;
-
-    uintptr_t alignedAddr = ROUND_DOWN(addr, PAGE_SIZE);
-
-    uintptr_t endAddr = alignedAddr + alignedLength;
+    uintptr_t endAddr = addr + length;
     if (endAddr < addr)
     {
-        errno = EOVERFLOW;
-        return ERR;
+        return false;
     }
 
-    if ((alignedAddr > PML_LOWER_HALF_END && alignedAddr < PML_HIGHER_HALF_START) ||
-        (endAddr > PML_LOWER_HALF_END && endAddr < PML_HIGHER_HALF_START))
+    return addr > stack->bottom && endAddr < stack->top;
+}
+
+bool stack_pointer_overlaps_guard(stack_pointer_t* stack, uintptr_t addr, uint64_t length)
+{
+    if (stack == NULL)
     {
-        LOG_ERR("Stack page fault at non-canonical address %p\n", (void*)addr);
-        errno = EFAULT;
-        return ERR;
+        return false;
     }
 
-    if (alignedAddr < stack->guardTop && endAddr > stack->guardBottom)
+    uintptr_t endAddr = addr + length;
+    if (endAddr < addr)
     {
-        LOG_ERR("Stack overflow detected at address %p\n", (void*)addr);
-        errno = EFAULT;
-        return ERR;
+        return false;
     }
 
-    if (endAddr < stack->bottom || addr >= stack->top)
-    {
-        errno = ENOENT;
-        return ERR;
-    }
-
-    if (stack->lastPageFault == alignedAddr)
-    {
-        LOG_ERR("Stack page fault loop detected at address %p\n", (void*)addr);
-        errno = EFAULT;
-        return ERR;
-    }
-    stack->lastPageFault = alignedAddr;
-
-    if (vmm_alloc(&thread->process->space, (void*)alignedAddr, alignedLength, flags, VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
-    {
-        if (errno == EEXIST) // Race condition
-        {
-            LOG_WARN("stack page at address %p already mapped\n", (void*)alignedAddr);
-            return 0;
-        }
-
-        LOG_WARN("failed to allocate stack page at address %p (%s)n", (void*)alignedAddr, strerror(errno));
-        errno = ENOMEM;
-        return ERR;
-    }
-
-    memset((void*)alignedAddr, 0, alignedLength);
-
-    return 0;
+    return !(endAddr <= stack->guardBottom || addr >= stack->guardTop);
 }

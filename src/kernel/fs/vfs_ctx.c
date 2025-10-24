@@ -118,11 +118,11 @@ uint64_t vfs_ctx_set_cwd(vfs_ctx_t* ctx, const path_t* cwd)
 
 SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
 {
-    process_t* process = sched_process();
-    space_t* space = &process->space;
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
 
     pathname_t pathname;
-    if (space_safe_pathname_init(space, &pathname, pathString) == ERR)
+    if (thread_copy_from_user_pathname(thread, &pathname, pathString) == ERR)
     {
         return ERR;
     }

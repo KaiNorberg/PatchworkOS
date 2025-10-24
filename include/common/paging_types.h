@@ -55,23 +55,34 @@ typedef struct
              */
             uint64_t owned : 1;
             /**
-             * If not 0, the page is pinned and cannot be unmapped or have its mappings modified.
+             * If set, the page is pinned and cannot be unmapped or have its mappings modified.
              *
              * Used to prevent TOCTOU vulnerabilities by preventing a page from being unmapped or its mappings modified
              * while its being used, in for example a system call.
              *
-             * Note that this does support recursive pins but since we only have 2 bits for the pin count, the maximum
-             * pin count is 3. In practice this is fine, as most pages will only ever be pinned once or twice at most
-             * and we just block if a thread tries to pin a page more then 3 times.
+             * For performance the paging code will never check this flag instead its the responsibility of the virtual
+             * memory manager to check this flag.
+             *
+             * Note that recursive pinning is implemented in the virtual memory manager, not here, meaning that this
+             * flag only indicates if the page is pinned or not, for faster access, while the pin depth is tracked
+             * elsewhere.
              *
              * (Defined by PatchworkOS)
              */
-            uint64_t pinDepth : 2;
-            uint64_t addr : 40; ///< The address contained in the entry, note that this is shifted right by 12 bits.
+            uint64_t pinned : 1;
             /**
+             * The low bit of the callback ID associated with this page.
+             *
              * Check the virtual memory manager for more information. (Defined by PatchworkOS)
              */
-            uint64_t callbackId : 7;
+            uint64_t lowCallbackId : 1;
+            uint64_t addr : 40; ///< The address contained in the entry, note that this is shifted right by 12 bits.
+            /**
+             * The high bits of the callback ID associated with this page.
+             *
+             * Check the virtual memory manager for more information. (Defined by PatchworkOS)
+             */
+            uint64_t highCallbackId : 7;
             uint64_t protection : 4;
             uint64_t noExecute : 1;
         };
@@ -313,14 +324,15 @@ typedef enum
 /**
  * @brief Maximum number of callbacks that can be registered for a page table.
  *
- * This is limited by the number of bits available in the page table entry for storing the callback ID.
+ * This is limited by the number of bits available in the page table entry for storing the callback ID, one low bit and
+ * 7 high bits. We reserve the maximum value to indicate no callback is associated with the page.
  */
-#define PML_MAX_CALLBACK (1 << 7)
+#define PML_MAX_CALLBACK ((1 << 8) - 1)
 
 /**
  * @brief Special callback ID that indicates no callback is associated with the page.
  */
-#define PML_CALLBACK_NONE ((1 << 7) - 1)
+#define PML_CALLBACK_NONE ((1 << 8) - 1)
 
 /**
  * @brief Callback ID type.
