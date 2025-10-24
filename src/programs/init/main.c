@@ -63,7 +63,7 @@ static void start_services(config_t* config)
             if (uptime() - start > CLOCKS_PER_SEC)
             {
                 printf("init: timeout waiting for service file '%s'\n", file);
-                exit(EXIT_FAILURE);
+                abort();
             }
         }
     }

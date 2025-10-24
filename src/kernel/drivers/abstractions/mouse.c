@@ -8,9 +8,12 @@
 #include "sync/lock.h"
 
 #include <errno.h>
+#include <stdio.h>
 #include <sys/math.h>
 
 static dentry_t* mouseDir = NULL;
+
+static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
 static uint64_t mouse_events_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -100,12 +103,20 @@ mouse_t* mouse_new(const char* name)
     }
     strncpy(mouse->name, name, MAX_NAME - 1);
     mouse->name[MAX_NAME - 1] = '\0';
-    memset(mouse, 0, sizeof(mouse_t));
+    memset(mouse->events, 0, sizeof(mouse->events));
     mouse->writeIndex = 0;
     wait_queue_init(&mouse->waitQueue);
     lock_init(&mouse->lock);
 
-    mouse->dir = sysfs_dir_new(mouseDir, name, &dirInodeOps, mouse);
+    char id[MAX_NAME];
+    if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
+    {
+        wait_queue_deinit(&mouse->waitQueue);
+        heap_free(mouse);
+        return NULL;
+    }
+
+    mouse->dir = sysfs_dir_new(mouseDir, id, &dirInodeOps, mouse);
     if (mouse->dir == NULL)
     {
         wait_queue_deinit(&mouse->waitQueue);

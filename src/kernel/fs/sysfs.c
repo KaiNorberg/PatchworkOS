@@ -142,6 +142,13 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
         return NULL;
     }
 
+    inode_t* inode = inode_new(parent->dentry->superblock, atomic_fetch_add(&newNum, 1), INODE_DIR, NULL, &dirOps);
+    if (inode == NULL)
+    {
+        return NULL;
+    }
+    DEREF_DEFER(inode);
+
     dentry_t* dentry = dentry_new(parent->dentry->superblock, parent->dentry, name);
     if (dentry == NULL)
     {
@@ -149,9 +156,15 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
     }
     DEREF_DEFER(dentry);
 
+    if (dentry_make_positive(dentry, inode) == ERR)
+    {
+        return NULL;
+    }
+
     path_t mountpoint = PATH_CREATE(parent->mount, dentry);
-    PATH_DEFER(&mountpoint);
-    return namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, NULL);
+    mount_t* mount = namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, NULL);
+    path_put(&mountpoint);
+    return mount;
 }
 
 dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* private)

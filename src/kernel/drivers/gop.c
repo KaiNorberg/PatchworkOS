@@ -31,16 +31,19 @@ static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, pml_flags_t flags)
     return addr;
 }
 
+static fb_info_t info;
+
 void gop_init(const boot_gop_t* in)
 {
-    fb_info_t info = {
-        .width = in->width,
-        .height = in->height,
-        .stride = in->stride,
-        .format = FB_ARGB32,
-    };
+    gop = *in;
+    info.width = in->width;
+    info.height = in->height;
+    info.stride = in->stride;
+    info.format = FB_ARGB32;
+    strncpy(info.name, "GOP Framebuffer", MAX_NAME - 1);
+    info.name[MAX_NAME - 1] = '\0';
 
-    fb = fb_new(&info, gop_mmap, "GOP");
+    fb = fb_new(&info, gop_mmap);
     if (fb == NULL)
     {
         panic(NULL, "Failed to create GOP framebuffer");

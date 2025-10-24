@@ -23,7 +23,7 @@ typedef struct surface
     list_entry_t clientEntry;
     client_t* client;
     point_t pos;
-    char shmem[MAX_NAME];
+    fd_t shmem;
     gfx_t gfx;
     surface_id_t id;
     surface_type_t type;

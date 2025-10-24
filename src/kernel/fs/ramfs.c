@@ -156,7 +156,7 @@ static uint64_t ramfs_link(dentry_t* old, inode_t* dir, dentry_t* target)
     return 0;
 }
 
-static uint64_t ramfs_delete_file(inode_t* parent, dentry_t* target)
+static uint64_t ramfs_remove_file(inode_t* parent, dentry_t* target)
 {
     (void)parent; // Unused
 
@@ -165,7 +165,7 @@ static uint64_t ramfs_delete_file(inode_t* parent, dentry_t* target)
     return 0;
 }
 
-static uint64_t ramfs_delete_directory(inode_t* parent, dentry_t* target)
+static uint64_t ramfs_remove_directory(inode_t* parent, dentry_t* target)
 {
     (void)parent; // Unused
 
@@ -173,11 +173,11 @@ static uint64_t ramfs_delete_directory(inode_t* parent, dentry_t* target)
     return 0;
 }
 
-static uint64_t ramfs_delete(inode_t* parent, dentry_t* target, path_flags_t flags)
+static uint64_t ramfs_remove(inode_t* parent, dentry_t* target, path_flags_t flags)
 {
     if (target->inode->type == INODE_FILE)
     {
-        ramfs_delete_file(parent, target);
+        ramfs_remove_file(parent, target);
     }
     else if (target->inode->type == INODE_DIR)
     {
@@ -188,7 +188,7 @@ static uint64_t ramfs_delete(inode_t* parent, dentry_t* target, path_flags_t fla
             LIST_FOR_EACH_SAFE(child, temp, &target->children, siblingEntry)
             {
                 REF(child);
-                ramfs_delete(target->inode, child, flags);
+                ramfs_remove(target->inode, child, flags);
                 DEREF(child);
             }
         }
@@ -200,7 +200,7 @@ static uint64_t ramfs_delete(inode_t* parent, dentry_t* target, path_flags_t fla
                 return ERR;
             }
         }
-        ramfs_delete_directory(parent, target);
+        ramfs_remove_directory(parent, target);
     }
     return 0;
 }
@@ -218,7 +218,7 @@ static inode_ops_t inodeOps = {
     .create = ramfs_create,
     .truncate = ramfs_truncate,
     .link = ramfs_link,
-    .delete = ramfs_delete,
+    .remove = ramfs_remove,
     .cleanup = ramfs_inode_cleanup,
 };
 

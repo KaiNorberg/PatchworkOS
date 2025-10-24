@@ -94,7 +94,7 @@ typedef struct inode_ops
     /**
      * @brief Handles both directories and files.
      */
-    uint64_t (*delete)(inode_t* parent, dentry_t* target, path_flags_t flags);
+    uint64_t (*remove)(inode_t* parent, dentry_t* target, path_flags_t flags);
     void (*cleanup)(inode_t* inode);
 } inode_ops_t;
 

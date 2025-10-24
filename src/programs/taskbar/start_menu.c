@@ -167,7 +167,7 @@ void start_menu_init(start_menu_t* startMenu, window_t* taskbar, display_t* disp
     if (theme == NULL)
     {
         printf("taskbar: failed to get global theme for start menu\n");
-        exit(EXIT_FAILURE);
+        abort();
     }
 
     rect_t screenRect;
@@ -182,7 +182,7 @@ void start_menu_init(start_menu_t* startMenu, window_t* taskbar, display_t* disp
     if (startMenu->win == NULL)
     {
         printf("tasbar: failed to create start menu window\n");
-        exit(EXIT_FAILURE);
+        abort();
     }
     startMenu->state = START_MENU_CLOSED;
 }

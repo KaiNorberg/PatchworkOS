@@ -17,41 +17,20 @@ static scanline_t* scanlines;
 
 static void frontbuffer_init(void)
 {
-    fd_t fbInfo = open("/dev/fb/0/info");
-    if (fbInfo == ERR)
-    {
-        printf("dwm: failed to open framebuffer info device (%s)\n", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-    if (read(fbInfo, &info, sizeof(fb_info_t)) != sizeof(fb_info_t))
+    if (readfile("/dev/fb/0/info", &info, sizeof(fb_info_t), 0) == ERR)
     {
         printf("dwm: failed to read framebuffer info (%s)\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        abort();
     }
-    close(fbInfo);
 
-    fd_t fbName = open("/dev/fb/0/name");
-    if (fbName == ERR)
-    {
-        printf("dwm: failed to open framebuffer name device (%s)\n", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-    char name[MAX_NAME];
-    if (read(fbName, name, MAX_NAME) == ERR)
-    {
-        printf("dwm: failed to read framebuffer name (%s)\n", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-    close(fbName);
-
-    printf("dwm: using framebuffer '%s' width=%lu height=%lu stride=%lu format=%u)\n", name, info.width, info.height,
-        info.stride, info.format);
+    printf("dwm: using framebuffer '%s' width=%lu height=%lu stride=%lu format=%u\n", info.name, info.width,
+        info.height, info.stride, info.format);
 
     fd_t fbBuffer = open("/dev/fb/0/buffer");
     if (fbBuffer == ERR)
     {
         printf("dwm: failed to open framebuffer device (%s)\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        abort();
     }
 
     switch (info.format)
@@ -62,7 +41,7 @@ static void frontbuffer_init(void)
         if (frontbuffer == NULL)
         {
             printf("dwm: failed to map framebuffer memory (%s)\n", strerror(errno));
-            exit(EXIT_FAILURE);
+            abort();
         }
         memset(frontbuffer, 0, info.stride * info.height * sizeof(uint32_t));
     }
@@ -70,7 +49,7 @@ static void frontbuffer_init(void)
     default:
     {
         printf("dwm: unsupported framebuffer format\n");
-        exit(EXIT_FAILURE);
+        abort();
     }
     }
 
@@ -83,7 +62,7 @@ static void backbuffer_init(void)
     if (backbuffer.buffer == NULL)
     {
         printf("dwm: failed to allocate backbuffer memory\n");
-        exit(EXIT_FAILURE);
+        abort();
     }
     backbuffer.width = info.width;
     backbuffer.height = info.height;
@@ -106,7 +85,7 @@ static void scanlines_init(void)
     if (scanlines == NULL)
     {
         printf("dwm: failed to allocate scanlines memory\n");
-        exit(EXIT_FAILURE);
+        abort();
     }
     scanlines_clear();
 }
@@ -184,7 +163,7 @@ void screen_transfer_frontbuffer(surface_t* surface, const rect_t* rect)
     default:
     {
         printf("dwm: unsupported framebuffer format\n");
-        exit(EXIT_FAILURE);
+        abort();
     }
     }
     scanlines_clear();
@@ -213,7 +192,7 @@ void screen_swap(void)
     default:
     {
         printf("dwm: unsupported framebuffer format\n");
-        exit(EXIT_FAILURE);
+        abort();
     }
     }
     scanlines_clear();

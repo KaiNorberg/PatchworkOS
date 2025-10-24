@@ -27,28 +27,18 @@ surface_t* surface_new(client_t* client, pid_t owner, const char* name, const po
     surface->client = client;
     surface->pos = *point;
 
-    fd_t shmem = open("/dev/shmem/new");
-    if (shmem == ERR)
+    surface->shmem = open("/dev/shmem/new");
+    if (surface->shmem == ERR)
     {
         free(surface);
         printf("dwm surface error: failed to open shmem\n");
         return NULL;
     }
 
-    if (writef(shmem, "grant %llu", owner) == ERR)
-    {
-        close(shmem);
-        free(surface);
-        printf("dwm surface error: failed to grant shmem access\n");
-        return NULL;
-    }
-
-    surface->shmem[read(shmem, surface->shmem, MAX_NAME)] = '\0';
-    surface->gfx.buffer = mmap(shmem, NULL, width * height * sizeof(pixel_t), PROT_READ | PROT_WRITE);
-    close(shmem);
-
+    surface->gfx.buffer = mmap(surface->shmem, NULL, width * height * sizeof(pixel_t), PROT_READ | PROT_WRITE);
     if (surface->gfx.buffer == NULL)
     {
+        close(surface->shmem);
         free(surface);
         printf("dwm surface error: failed to allocate gfx buffer\n");
         return NULL;

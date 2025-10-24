@@ -17,17 +17,51 @@ extern "C"
 {
 #endif
 
-typedef uint16_t event_type_t;
+/**
+ * @brief Desktop Window Manager Events
+ * @defgroup libpatchwork_events Events
+ * @ingroup libpatchwork
+ *
+ * @{
+ */
 
-// This bitmask decides what events will be received by the display.
-// To allow for a maximum of 256 events we use a array of 4 uint64_t's.
-// The bitflag for each event is the n'th bit where n is the event type. Note that the 80 bit would be the 80-64=16'th
-// bit in the second uint64_t. Note that this only applies to events sent
-// by the dwm, all other events are always received.
-// By default events 0-63 inclusive are received (the first uint64_t is by deafult UINT64_MAX)
-typedef uint64_t event_bitmask_t[4];
+/**
+ * @brief Report flags.
+ *
+ * Used to specify what information changed in a report event.
+ */
+typedef enum
+{
+    REPORT_NONE = 0,
+    REPORT_RECT = 1 << 0,
+    REPORT_IS_VISIBLE = 1 << 1,
+    REPORT_IS_FOCUSED = 1 << 2,
+    REPORT_NAME = 1 << 3,
+} report_flags_t;
 
-// Dwm events, send by the dwm.
+/**
+ * @brief Event type.
+ *
+ * Used to identify the type of an event.
+ *
+ * Events are divided into 4 categories:
+ * - Standard events (0-63): Sent by the DWM to ONLY the display or surface that the event is targeted at, sent by
+ * default.
+ * - Global events (64-127): Sent by the DWM to all displays, not sent by default.
+ * - Library events (128-191): Sent by the libpatchwork library to elements using the library, cant be subscribed to or
+ * unsubscribed from.
+ * - User events (192-255): Defined by individual programs, cant be subscribed to or unsubscribed from.
+ */
+typedef uint8_t event_type_t;
+
+/**
+ * @brief Event bitmask type.
+ *
+ * Used to decide what events will be received by a display.
+ * By default events 0-63 inclusive are received (the first uint64_t is by deafult UINT64_MAX)
+ */
+typedef uint64_t event_bitmask_t[2];
+
 #define EVENT_SCREEN_INFO 0
 #define EVENT_SURFACE_NEW 1
 #define EVENT_KBD 2
@@ -35,17 +69,23 @@ typedef uint64_t event_bitmask_t[4];
 #define EVENT_TIMER 4
 #define EVENT_CURSOR_ENTER 5
 #define EVENT_CURSOR_LEAVE 6
-#define EVENT_REPORT 7 // Received whenever something about the surface is changed or from CMD_SURFACE_REPORT.
+#define EVENT_REPORT 7
 
-// Global events will be recieved from all surfaces, even if those surfaces were not created by the recieving client.
-#define EVENT_GLOBAL_ATTACH 64
-#define EVENT_GLOBAL_DETACH 65
-#define EVENT_GLOBAL_REPORT 66
-#define EVENT_GLOBAL_KBD 67
-#define EVENT_GLOBAL_MOUSE 68
+#define GEVENT_ATTACH 64
+#define GEVENT_DETACH 65
+#define GEVENT_REPORT 66
+#define GEVENT_KBD 67
+#define GEVENT_MOUSE 68
 
-// The dwm promises to never implement more events then this.
-#define EVENT_MAX (UINT8_MAX + 1)
+#define LEVENT_INIT 128
+#define LEVENT_FREE 129
+#define LEVENT_REDRAW 130
+#define LEVENT_ACTION 131
+#define LEVENT_QUIT 132
+#define LEVENT_FORCE_ACTION 133
+
+#define UEVENT_START 192
+#define UEVENT_END 255
 
 typedef struct
 {
@@ -55,7 +95,7 @@ typedef struct
 
 typedef struct
 {
-    char shmem[MAX_NAME];
+    key_t shmemKey;
 } event_surface_new_t;
 
 typedef struct
@@ -79,16 +119,6 @@ typedef struct
 typedef event_mouse_t event_cursor_enter_t;
 typedef event_mouse_t event_cursor_leave_t;
 
-// Stores what changed in the report. Note that there is no flag for the id and type as those never change.
-typedef enum
-{
-    REPORT_NONE = 0,
-    REPORT_RECT = 1 << 0,
-    REPORT_IS_VISIBLE = 1 << 1,
-    REPORT_IS_FOCUSED = 1 << 2,
-    REPORT_NAME = 1 << 3,
-} report_flags_t;
-
 typedef struct
 {
     report_flags_t flags;
@@ -110,18 +140,6 @@ typedef event_report_t event_global_report_t;
 typedef event_kbd_t event_global_kbd_t;
 
 typedef event_mouse_t event_global_mouse_t;
-
-// Library events, sent by libpatchwork.
-#define LEVENT_BASE EVENT_MAX
-#define LEVENT_INIT (LEVENT_BASE + 1)
-#define LEVENT_FREE (LEVENT_BASE + 2) // May be received outside of a dispatch call.
-#define LEVENT_REDRAW (LEVENT_BASE + 3)
-#define LEVENT_ACTION (LEVENT_BASE + 4)
-#define LEVENT_QUIT (LEVENT_BASE + 5)
-#define LEVENT_FORCE_ACTION (LEVENT_BASE + 6)
-
-// The libpatchwork library promises to never implement more events then this.
-#define LEVENT_MAX (1 << 9)
 
 typedef struct
 {
@@ -154,11 +172,6 @@ typedef struct
     action_type_t action;
 } levent_force_action_t;
 
-// We leave some space between library events and user events for other potential event sources in the future.
-
-// User events, defined by individual programs
-#define UEVENT_BASE (1 << 15)
-
 #define EVENT_MAX_DATA 128
 
 typedef struct event
@@ -189,6 +202,8 @@ typedef struct event
 #ifdef static_assert
 static_assert(sizeof(event_t) == 144, "invalid event_t size");
 #endif
+
+/** @} */
 
 #if defined(__cplusplus)
 }

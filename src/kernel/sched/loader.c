@@ -154,6 +154,7 @@ static void loader_process_entry(void)
 thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd)
 {
     process_t* process = sched_process();
+    assert(process != NULL);
 
     if (argv == NULL || argv[0] == NULL)
     {
@@ -168,7 +169,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
     }
 
     stat_t info;
-    if (vfs_stat(&executable, &info) == ERR)
+    if (vfs_stat(&executable, &info, process) == ERR)
     {
         return NULL;
     }

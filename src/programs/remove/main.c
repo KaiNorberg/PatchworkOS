@@ -8,7 +8,7 @@ int main(int argc, char** argv)
 {
     for (int i = 1; i < argc; i++)
     {
-        if (delete (argv[i]) == ERR)
+        if (remove(argv[i]) == EOF)
         {
             fprintf(stderr, "delete: %s\n", strerror(errno));
             return EXIT_FAILURE;

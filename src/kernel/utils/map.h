@@ -25,7 +25,7 @@
 #define MAP_MAX_LOAD_PERCENTAGE 75
 
 /**
- * @brief The value used to indicate a tombstone (deleted entry).
+ * @brief The value used to indicate a tombstone (removed entry).
  */
 #define MAP_TOMBSTONE ((map_entry_t*)1)
 

@@ -90,9 +90,9 @@ typedef struct socket
     socket_state_t nextState;
     rwmutex_t mutex;
     superblock_t* superblock;
-    dentry_t* acceptFile;
     dentry_t* ctlFile;
     dentry_t* dataFile;
+    dentry_t* acceptFile;
 } socket_t;
 
 /**

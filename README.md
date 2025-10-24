@@ -208,16 +208,16 @@ dir mydir
 dir mydir:recur
 ```
 
-### `delete`
+### `remove`
 
-Deletes a file or directory. Intended as a replacement for `rm`, `unlink` and `rmdir`.
+Removes a file or directory. Intended as a replacement for `rm`, `unlink` and `rmdir`.
 
 ```bash
-# Delete file.txt.
-delete file.txt
+# Remove file.txt.
+remove file.txt
 
-# Recursively delete mydir and its contents.
-delete mydir:recur
+# Recursively remove mydir and its contents.
+remove mydir:dir:recur
 ```
 
 There are other utils available that work as expected, for example `stat` and `link`.
@@ -231,10 +231,8 @@ Patchwork strictly follows the "everything is a file" philosophy in a way simila
 In order to create a local seqpacket socket, you open the `/net/local/seqpacket` file. The opened file will act as the handle for your socket. Reading from the handle will return the ID of your created socket so, for example, you can do
 
 ```c
-fd_t handle = open("/net/local/seqpacket");
 char id[32] = {0};
-read(handle, id, 31);
-close(handle);
+readfile("/net/local/seqpacket", id, 31, 0); // Helper function that opens, reads and closes a file.
 ```
 
 Note that even when the handle is closed the socket will persist until the process that created it and all its children have exited. The ID that the handle returns is the name of a directory that has been created in the `/net/local` directory, in which are three files, these include:
@@ -265,10 +263,8 @@ The returned file descriptor can be used to send and receive data, just like whe
 For the sake of completeness, if we wanted to connect to this server, we can do
 
 ```c
-fd_t handle = open("/net/local/seqpacket");
 char id[32] = {0};
-read(handle, id, 32);
-close(handle);
+readfile("/net/local/seqpacket", id, 31, 0);
 
 fd_t ctl = openf("/net/local/%s/ctl", id);
 writef(ctl, "connect myserver");

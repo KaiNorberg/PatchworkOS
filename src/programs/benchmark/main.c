@@ -17,7 +17,7 @@ static void init_generic()
     if (zeroDev == ERR)
     {
         perror("Failed to open /dev/zero");
-        exit(EXIT_FAILURE);
+        abort();
     }
 }
 

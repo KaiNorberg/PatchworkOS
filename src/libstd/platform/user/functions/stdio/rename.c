@@ -9,7 +9,7 @@ int rename(const char* oldpath, const char* newpath)
         errno = _syscall_errno();
         return EOF;
     }
-    if (_syscall_delete(oldpath) == ERR)
+    if (_syscall_remove(oldpath) == ERR)
     {
         errno = _syscall_errno();
         return EOF;

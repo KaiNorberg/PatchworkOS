@@ -43,22 +43,6 @@ static file_ops_t infoOps = {
     .read = fb_info_read,
 };
 
-static uint64_t fb_name_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
-{
-    fb_t* fb = file->inode->private;
-    uint64_t nameLen = strnlen_s(fb->name, MAX_NAME);
-    if (*offset >= nameLen)
-    {
-        return 0;
-    }
-
-    return BUFFER_READ(buffer, count, offset, fb->name, nameLen);
-}
-
-static file_ops_t nameOps = {
-    .read = fb_name_read,
-};
-
 static void fb_dir_cleanup(inode_t* inode)
 {
     fb_t* fb = inode->private;
@@ -69,9 +53,9 @@ static inode_ops_t dirInodeOps = {
     .cleanup = fb_dir_cleanup,
 };
 
-fb_t* fb_new(const fb_info_t* info, fb_mmap_t mmap, const char* name)
+fb_t* fb_new(const fb_info_t* info, fb_mmap_t mmap)
 {
-    if (info == NULL || mmap == NULL || name == NULL)
+    if (info == NULL || mmap == NULL)
     {
         errno = EINVAL;
         return NULL;
@@ -91,17 +75,17 @@ fb_t* fb_new(const fb_info_t* info, fb_mmap_t mmap, const char* name)
     {
         return NULL;
     }
-
-    if (sprintf(fb->id, "fb%d", atomic_fetch_add(&newId, 1)) < 0)
-    {
-        return NULL;
-    }
-    strncpy(fb->name, name, MAX_NAME - 1);
-    fb->name[MAX_NAME - 1] = '\0';
     memcpy(&fb->info, info, sizeof(fb_info_t));
     fb->mmap = mmap;
 
-    fb->dir = sysfs_dir_new(fbDir, fb->id, &dirInodeOps, fb);
+    char id[MAX_NAME];
+    if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
+    {
+        heap_free(fb);
+        return NULL;
+    }
+
+    fb->dir = sysfs_dir_new(fbDir, id, &dirInodeOps, fb);
     if (fb->dir == NULL)
     {
         heap_free(fb);
@@ -120,14 +104,6 @@ fb_t* fb_new(const fb_info_t* info, fb_mmap_t mmap, const char* name)
         DEREF(fb->bufferFile);
         return NULL;
     }
-    fb->nameFile = sysfs_file_new(fb->dir, "name", NULL, &nameOps, fb);
-    if (fb->nameFile == NULL)
-    {
-        DEREF(fb->dir);
-        DEREF(fb->bufferFile);
-        DEREF(fb->infoFile);
-        return NULL;
-    }
 
     return fb;
 }
@@ -142,6 +118,5 @@ void fb_free(fb_t* fb)
     DEREF(fb->dir);
     DEREF(fb->bufferFile);
     DEREF(fb->infoFile);
-    DEREF(fb->nameFile);
     // fb is freed in fb_dir_cleanup
 }

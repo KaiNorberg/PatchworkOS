@@ -87,59 +87,27 @@ static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* 
 
 void dwm_init(void)
 {
-    char name[MAX_NAME];
-
-    fd_t handle = open("/net/local/seqpacket:nonblock");
-    if (handle == ERR)
+    if (readfile("/net/local/seqpacket:nonblock", id, MAX_NAME - 1, 0) == ERR)
     {
-        fd_t dir = open("/net:dir");
-        if (dir == ERR)
-        {
-            printf("dwm: failed to open (%s)\n", strerror(errno));
-            exit(EXIT_FAILURE);
-        }
-        dirent_t entries[64];
-        uint64_t bytesRead;
-        while ((bytesRead = getdents(dir, entries, sizeof(entries))) > 0)
-        {
-            if (bytesRead == ERR)
-            {
-                printf("dwm: failed to read (%s)\n", strerror(errno));
-                break;
-            }
-
-            for (uint64_t i = 0; i < bytesRead / sizeof(dirent_t); i++)
-            {
-                printf("dwm: found %s\n", entries[i].name);
-            }
-        }
-
         printf("dwm: failed to create socket (%s)\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        abort();
     }
-    memset(id, 0, MAX_NAME);
-    if (read(handle, id, MAX_NAME - 1) == ERR)
-    {
-        printf("dwm: failed to read id (%s)\n", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-    close(handle);
 
     fd_t ctl = openf("/net/local/%s/ctl", id);
     if (ctl == ERR)
     {
         printf("dwm: failed to open control file (%s)\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        abort();
     }
     if (writef(ctl, "bind dwm") == ERR)
     {
         printf("dwm: failed to bind socket (%s)\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        abort();
     }
     if (writef(ctl, "listen") == ERR)
     {
         printf("dwm: failed to listen (%s)\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        abort();
     }
     close(ctl);
 
@@ -147,43 +115,33 @@ void dwm_init(void)
     if (data == ERR)
     {
         printf("dwm: failed to open data file (%s)\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        abort();
     }
 
     kbd = open("/dev/kbd/0/events");
     if (kbd == ERR)
     {
         printf("dwm: failed to open keyboard (%s)\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        abort();
     }
 
-    fd_t kbdName = open("/dev/kbd/0/name");
-    if (kbdName != ERR)
+    char name[MAX_NAME] = {0};
+    if (readfile("/dev/kbd/0/name", name, MAX_NAME - 1, 0) != ERR)
     {
-        if (read(kbdName, name, MAX_NAME - 1) != ERR)
-        {
-            name[MAX_NAME - 1] = '\0';
-            printf("dwm: using keyboard '%s'\n", name);
-        }
-        close(kbdName);
+        printf("dwm: using keyboard '%s'\n", name);
     }
 
     mouse = open("/dev/mouse/0/events");
     if (mouse == ERR)
     {
         printf("dwm: failed to open mouse (%s)\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        abort();
     }
 
-    fd_t mouseName = open("/dev/mouse/0/name");
-    if (mouseName != ERR)
+    memset(name, 0, MAX_NAME);
+    if (readfile("/dev/mouse/0/name", name, MAX_NAME - 1, 0) != ERR)
     {
-        if (read(mouseName, name, MAX_NAME - 1) != ERR)
-        {
-            name[MAX_NAME - 1] = '\0';
-            printf("dwm: using mouse '%s'\n", name);
-        }
-        close(mouseName);
+        printf("dwm: using mouse '%s'\n", name);
     }
 
     list_init(&clients);
@@ -223,7 +181,7 @@ void dwm_report_produce(surface_t* surface, client_t* client, report_flags_t fla
     globalEvent.flags = flags;
     globalEvent.info = event.info;
 
-    dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_REPORT, &globalEvent, sizeof(globalEvent));
+    dwm_send_event_to_all(SURFACE_ID_NONE, GEVENT_REPORT, &globalEvent, sizeof(globalEvent));
 }
 
 surface_t* dwm_surface_find(surface_id_t id)
@@ -320,7 +278,7 @@ uint64_t dwm_attach(surface_t* surface)
 
     event_global_attach_t event;
     surface_get_info(surface, &event.info);
-    dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_ATTACH, &event, sizeof(event));
+    dwm_send_event_to_all(SURFACE_ID_NONE, GEVENT_ATTACH, &event, sizeof(event));
     return 0;
 }
 
@@ -337,7 +295,7 @@ void dwm_detach(surface_t* surface)
 
     event_global_detach_t event;
     surface_get_info(surface, &event.info);
-    dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_DETACH, &event, sizeof(event));
+    dwm_send_event_to_all(SURFACE_ID_NONE, GEVENT_DETACH, &event, sizeof(event));
 
     switch (surface->type)
     {
@@ -370,7 +328,7 @@ void dwm_detach(surface_t* surface)
     default:
     {
         printf("dwm: attempt to detach invalid surface\n");
-        exit(EXIT_FAILURE);
+        abort();
     }
     }
 
@@ -530,7 +488,7 @@ static void dwm_kbd_read(void)
         client_send_event(focus->client, focus->id, EVENT_KBD, &event, sizeof(event_kbd_t));
 
         event_global_kbd_t globalEvent = event;
-        dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_KBD, &globalEvent, sizeof(globalEvent));
+        dwm_send_event_to_all(SURFACE_ID_NONE, GEVENT_KBD, &globalEvent, sizeof(globalEvent));
     }
 }
 
@@ -628,7 +586,7 @@ static void dwm_handle_mouse_event(const mouse_event_t* mouseEvent)
 
         event_global_mouse_t globalEvent = event;
         globalEvent.pos = globalEvent.screenPos;
-        dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_MOUSE, &globalEvent, sizeof(globalEvent));
+        dwm_send_event_to_all(SURFACE_ID_NONE, GEVENT_MOUSE, &globalEvent, sizeof(globalEvent));
     }
 
     prevHeld = held;
@@ -708,7 +666,7 @@ static void dwm_poll(void)
     if (events == ERR)
     {
         printf("dwm: poll failed (%s)\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        abort();
     }
 
     clock_t time = uptime();

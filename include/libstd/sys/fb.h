@@ -2,6 +2,7 @@
 #define _SYS_FB_H 1
 
 #include <stdint.h>
+#include <sys/io.h>
 
 /**
  * @brief Framebuffer device header.
@@ -40,6 +41,7 @@ typedef struct
     uint64_t height;
     uint64_t stride;
     fb_format_t format;
+    char name[MAX_NAME];
 } fb_info_t;
 
 #endif

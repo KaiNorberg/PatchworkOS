@@ -216,7 +216,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         element_emit(elem, LEVENT_FORCE_ACTION, &event, sizeof(event));
     }
     break;
-    case EVENT_GLOBAL_ATTACH:
+    case GEVENT_ATTACH:
     {
         if (event->globalAttach.info.type != SURFACE_WINDOW || strcmp(event->globalAttach.info.name, "StartMenu") == 0)
         {
@@ -226,12 +226,12 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         taskbar_entry_add(taskbar, elem, &event->globalAttach.info, event->globalAttach.info.name);
     }
     break;
-    case EVENT_GLOBAL_DETACH:
+    case GEVENT_DETACH:
     {
         taskbar_entry_remove(taskbar, elem, event->globalDetach.info.id);
     }
     break;
-    case EVENT_GLOBAL_REPORT:
+    case GEVENT_REPORT:
     {
         taskbar_entry_t* entry;
         LIST_FOR_EACH(entry, &taskbar->entries, entry)
@@ -247,7 +247,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         }
     }
     break;
-    case EVENT_GLOBAL_KBD:
+    case GEVENT_KBD:
     {
         if (event->globalKbd.type == KBD_RELEASE && event->globalKbd.code == KBD_LEFT_SUPER)
         {
@@ -275,17 +275,17 @@ void taskbar_init(taskbar_t* taskbar, display_t* disp)
     display_screen_rect(disp, &rect, 0);
     rect.top = rect.bottom - theme_global_get()->panelSize;
 
-    display_subscribe(disp, EVENT_GLOBAL_ATTACH);
-    display_subscribe(disp, EVENT_GLOBAL_DETACH);
-    display_subscribe(disp, EVENT_GLOBAL_REPORT);
-    display_subscribe(disp, EVENT_GLOBAL_KBD);
+    display_subscribe(disp, GEVENT_ATTACH);
+    display_subscribe(disp, GEVENT_DETACH);
+    display_subscribe(disp, GEVENT_REPORT);
+    display_subscribe(disp, GEVENT_KBD);
 
     taskbar->disp = disp;
     taskbar->win = window_new(disp, "Taskbar", &rect, SURFACE_PANEL, WINDOW_NONE, procedure, taskbar);
     if (taskbar->win == NULL)
     {
         printf("taskbar: failed to create taskbar window\n");
-        exit(EXIT_FAILURE);
+        abort();
     }
     start_menu_init(&taskbar->startMenu, taskbar->win, disp);
     list_init(&taskbar->entries);

@@ -9,11 +9,14 @@
 #include "sync/lock.h"
 
 #include <errno.h>
+#include <stdio.h>
 #include <sys/io.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 
 static dentry_t* kbdDir = NULL;
+
+static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
 static uint64_t kbd_events_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -110,7 +113,15 @@ kbd_t* kbd_new(const char* name)
     wait_queue_init(&kbd->waitQueue);
     lock_init(&kbd->lock);
 
-    kbd->dir = sysfs_dir_new(kbdDir, name, &dirInodeOps, kbd);
+    char id[MAX_NAME];
+    if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
+    {
+        wait_queue_deinit(&kbd->waitQueue);
+        heap_free(kbd);
+        return NULL;
+    }
+
+    kbd->dir = sysfs_dir_new(kbdDir, id, &dirInodeOps, kbd);
     if (kbd->dir == NULL)
     {
         wait_queue_deinit(&kbd->waitQueue);

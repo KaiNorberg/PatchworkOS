@@ -343,7 +343,10 @@ static void socket_unmount(superblock_t* superblock)
     {
         return;
     }
-    sock->family->ops->deinit(sock);
+    DEREF(sock->ctlFile);
+    DEREF(sock->dataFile);
+    DEREF(sock->acceptFile);
+    DEREF(sock);
     superblock->private = NULL;
 }
 
@@ -405,8 +408,8 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
     sock->superblock = REF(mount->superblock);
     DEREF(mount);
 
-    dentry_t* ctlFile = sysfs_file_new(mount->root, "ctl", &inodeOps, &ctlOps, REF(sock));
-    if (ctlFile == NULL)
+    sock->ctlFile = sysfs_file_new(mount->root, "ctl", &inodeOps, &ctlOps, REF(sock));
+    if (sock->ctlFile == NULL)
     {
         family->ops->deinit(sock);
         DEREF(mount->superblock);
@@ -415,12 +418,24 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
         return NULL;
     }
 
-    dentry_t* dataFile = sysfs_file_new(mount->root, "data", &inodeOps, &dataOps, REF(sock));
-    if (dataFile == NULL)
+    sock->dataFile = sysfs_file_new(mount->root, "data", &inodeOps, &dataOps, REF(sock));
+    if (sock->dataFile == NULL)
     {
         family->ops->deinit(sock);
         DEREF(mount->superblock);
-        DEREF(ctlFile);
+        DEREF(sock->ctlFile);
+        rwmutex_deinit(&sock->mutex);
+        heap_free(sock);
+        return NULL;
+    }
+
+    sock->acceptFile = sysfs_file_new(mount->root, "accept", &inodeOps, &acceptOps, REF(sock));
+    if (sock->acceptFile == NULL)
+    {
+        family->ops->deinit(sock);
+        DEREF(mount->superblock);
+        DEREF(sock->ctlFile);
+        DEREF(sock->dataFile);
         rwmutex_deinit(&sock->mutex);
         heap_free(sock);
         return NULL;

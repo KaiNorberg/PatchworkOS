@@ -1237,9 +1237,9 @@ SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count
     return result;
 }
 
-uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer)
+uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process)
 {
-    if (!PATHNAME_IS_VALID(pathname) || buffer == NULL)
+    if (!PATHNAME_IS_VALID(pathname) || buffer == NULL || process == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -1250,9 +1250,6 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer)
         errno = EBADFLAG;
         return ERR;
     }
-
-    process_t* process = sched_process();
-    assert(process != NULL);
 
     path_t path = PATH_EMPTY;
     if (vfs_walk(&path, pathname, WALK_NONE, process) == ERR)
@@ -1295,14 +1292,14 @@ SYSCALL_DEFINE(SYS_STAT, uint64_t, const char* pathString, stat_t* buffer)
     {
         return ERR;
     }
-    uint64_t result = vfs_stat(&pathname, buffer);
+    uint64_t result = vfs_stat(&pathname, buffer, process);
     space_unpin(&process->space, buffer, sizeof(stat_t));
     return result;
 }
 
-uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname)
+uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, process_t* process)
 {
-    if (!PATHNAME_IS_VALID(oldPathname) || !PATHNAME_IS_VALID(newPathname))
+    if (!PATHNAME_IS_VALID(oldPathname) || !PATHNAME_IS_VALID(newPathname) || process == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -1313,9 +1310,6 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname)
         errno = EBADFLAG;
         return ERR;
     }
-
-    process_t* process = sched_process();
-    assert(process != NULL);
 
     path_t oldParent = PATH_EMPTY;
     path_t old = PATH_EMPTY;
@@ -1398,19 +1392,16 @@ SYSCALL_DEFINE(SYS_LINK, uint64_t, const char* oldPathString, const char* newPat
         return ERR;
     }
 
-    return vfs_link(&oldPathname, &newPathname);
+    return vfs_link(&oldPathname, &newPathname, process);
 }
 
-uint64_t vfs_delete(const pathname_t* pathname)
+uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
 {
-    if (!PATHNAME_IS_VALID(pathname))
+    if (!PATHNAME_IS_VALID(pathname) || process == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
-
-    process_t* process = sched_process();
-    assert(process != NULL);
 
     path_t parent = PATH_EMPTY;
     path_t target = PATH_EMPTY;
@@ -1434,7 +1425,7 @@ uint64_t vfs_delete(const pathname_t* pathname)
     }
 
     inode_t* dir = parent.dentry->inode;
-    if (dir->ops == NULL || dir->ops->delete == NULL)
+    if (dir->ops == NULL || dir->ops->remove == NULL)
     {
         errno = EPERM;
         return ERR;
@@ -1444,7 +1435,7 @@ uint64_t vfs_delete(const pathname_t* pathname)
     mutex_acquire(&target.dentry->mutex);
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    uint64_t result = dir->ops->delete(dir, target.dentry, pathname->flags);
+    uint64_t result = dir->ops->remove(dir, target.dentry, pathname->flags);
     if (result != ERR)
     {
         vfs_remove_dentry(target.dentry);
@@ -1458,7 +1449,7 @@ uint64_t vfs_delete(const pathname_t* pathname)
     return result;
 }
 
-SYSCALL_DEFINE(SYS_DELETE, uint64_t, const char* pathString)
+SYSCALL_DEFINE(SYS_REMOVE, uint64_t, const char* pathString)
 {
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
@@ -1469,5 +1460,5 @@ SYSCALL_DEFINE(SYS_DELETE, uint64_t, const char* pathString)
         return ERR;
     }
 
-    return vfs_delete(&pathname);
+    return vfs_remove(&pathname, process);
 }

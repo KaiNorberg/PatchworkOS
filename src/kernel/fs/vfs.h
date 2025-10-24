@@ -336,26 +336,29 @@ uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count);
  *
  * @param pathname The pathname of the file to get information about.
  * @param buffer The buffer to store the file information in.
+ * @param process The process performing the stat.
  * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
-uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer);
+uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process);
 
 /**
  * @brief Make the same file appear twice in the filesystem.
  *
  * @param oldPathname The existing file.
  * @param newPathname The new link to create, must not exist and be in the same filesystem as the oldPathname.
+ * @param process The process performing the linking.
  * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
-uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname);
+uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, process_t* process);
 
 /**
- * @brief Delete a file or directory.
+ * @brief Remove a file or directory.
  *
- * @param pathname The pathname of the file or directory to delete.
+ * @param pathname The pathname of the file or directory to remove.
+ * @param process The process performing the removal.
  * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
  */
-uint64_t vfs_delete(const pathname_t* pathname);
+uint64_t vfs_remove(const pathname_t* pathname, process_t* process);
 
 /**
  * @brief Helper macros for implementing file operations dealing with simple buffers.

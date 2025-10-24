@@ -4,7 +4,7 @@ VERSION_HEADER = include/common/version.h
 
 PROGRAMS = $(basename $(notdir $(wildcard make/programs/*.mk)))
 
-ROOT_PROGRAMS = init wall cursor taskbar dwm shell delete dir link move open read write
+ROOT_PROGRAMS = init wall cursor taskbar dwm shell remove dir link move open read write
 USER_PROGRAMS = $(filter-out $(ROOT_PROGRAMS),$(PROGRAMS))
 
 QEMU_MEMORY ?= 2G
