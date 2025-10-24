@@ -155,69 +155,69 @@ All in all, this algorithm would not be a viable replacement for existing algori
 
 ## Shell Utilities
 
-Patchwork includes its own shell utilities designed around its [file flags](#file-flags) system. Included is a brief overview with some usage examples. For convenience the init program will create hardlinks for each shell utility to their UNIX equivalents, this can be configured in the [init cfg](https://github.com/KaiNorberg/PatchworkOS/tree/main/root/cfg/init-main.cfg).
+Patchwork includes its own shell utilities designed around its [file flags](#file-flags) system. Included is a brief overview with some usage examples. For convenience the shell utilities are named after their POSIX counterparts, however they are not drop-in replacements.
 
-### `open`
+### `touch`
 
-Opens a file path and then immediately closes it. Intended as a replacement for `touch`.
+Opens a file path and then immediately closes it.
 
 ```bash
 # Create the file.txt file only if it does not exist.
-open file.txt:create:excl
+touch file.txt:create:excl
 
 # Create the mydir directory.
-open mydir:create:dir
+touch mydir:create:dir
 ```
 
-### `read`
+### `cat`
 
-Reads from stdin or provided files and outputs to stdout. Intended as a replacement for `cat`.
+Reads from stdin or provided files and outputs to stdout.
 
 ```bash
 # Read the contents of file1.txt and file2.txt.
-read file1.txt file2.txt
+cat file1.txt file2.txt
 
 # Read process status (blocks until process exits)
-read /proc/1234/status
+cat /proc/1234/status
 
 # Copy contents of file.txt to dest.txt and create it.
-read < file.txt > dest.txt:create
+cat < file.txt > dest.txt:create
 ```
 
-### `write`
+### `echo`
 
-Writes to stdout. Intended as a replacement for `echo`.
+Writes to stdout.
 
 ```bash
 # Write to file.txt.
-write "..." > file.txt
+echo "..." > file.txt
 
 # Append to file.txt, makes ">>" unneeded.
-write "..." > file.txt:append
+echo "..." > file.txt:append
 ```
 
-### `dir`
+### `ls`
 
-Reads the contents of a directory to stdout. Intended as a replacement for `ls`.
+Reads the contents of a directory to stdout.
 
 ```bash
 # Prints the contents of mydir.
-dir mydir
+ls mydir
 
 # Recursively print the contents of mydir.
-dir mydir:recur
+ls mydir:recur
 ```
 
-### `remove`
+### `rm`
 
-Removes a file or directory. Intended as a replacement for `rm`, `unlink` and `rmdir`.
+Removes a file or directory.
 
 ```bash
 # Remove file.txt.
-remove file.txt
+rm file.txt
 
 # Recursively remove mydir and its contents.
-remove mydir:dir:recur
+rm mydir:dir:recur
 ```
 
 There are other utils available that work as expected, for example `stat` and `link`.

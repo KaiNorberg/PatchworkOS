@@ -40,6 +40,19 @@ typedef enum
 } report_flags_t;
 
 /**
+ * @brief Action type.
+ *
+ * Used to specify the type of an action event.
+ */
+typedef enum
+{
+    ACTION_NONE = 0,
+    ACTION_RELEASE,
+    ACTION_PRESS,
+    ACTION_CANCEL,
+} action_type_t;
+
+/**
  * @brief Event type.
  *
  * Used to identify the type of an event.
@@ -58,7 +71,7 @@ typedef uint8_t event_type_t;
  * @brief Event bitmask type.
  *
  * Used to decide what events will be received by a display.
- * By default events 0-63 inclusive are received (the first uint64_t is by deafult UINT64_MAX)
+ * By default events 0-63 inclusive are received (the first uint64_t is by default UINT64_MAX)
  */
 typedef uint64_t event_bitmask_t[2];
 
@@ -87,17 +100,32 @@ typedef uint64_t event_bitmask_t[2];
 #define UEVENT_START 192
 #define UEVENT_END 255
 
+/**
+ * @brief Screen Info event.
+ *
+ * Sent as the response to the `CMD_SCREEN_INFO` command.
+ */
 typedef struct
 {
     uint64_t width;
     uint64_t height;
 } event_screen_info_t;
 
+/**
+ * @brief Surface New event.
+ *
+ * Sent as the response to the `CMD_SURFACE_NEW` command.
+ */
 typedef struct
 {
-    key_t shmemKey;
+    key_t shmemKey; ///< Key that can be `claim()`ed to access the surface's shared memory.
 } event_surface_new_t;
 
+/**
+ * @brief Keyboard event.
+ *
+ * Sent when a key is pressed or released.
+ */
 typedef struct
 {
     kbd_event_type_t type;
@@ -106,6 +134,11 @@ typedef struct
     char ascii;
 } event_kbd_t;
 
+/**
+ * @brief Mouse event.
+ *
+ * Sent when the mouse is moved or a button is pressed or released.
+ */
 typedef struct
 {
     mouse_buttons_t held;
@@ -116,64 +149,126 @@ typedef struct
     point_t delta;
 } event_mouse_t;
 
+/**
+ * @brief Cursor Enter event.
+ *
+ * Sent when the cursor enters a surface.
+ */
 typedef event_mouse_t event_cursor_enter_t;
+
+/**
+ * @brief Cursor Leave event.
+ *
+ * Sent when the cursor leaves a surface.
+ */
 typedef event_mouse_t event_cursor_leave_t;
 
+/**
+ * @brief Report event.
+ *
+ * Sent when a surface's information changes.
+ */
 typedef struct
 {
     report_flags_t flags;
     surface_info_t info;
 } event_report_t;
 
+/**
+ * @brief Global Attach event.
+ *
+ * Sent when a display attaches to the DWM.
+ */
 typedef struct
 {
     surface_info_t info;
-} event_global_attach_t;
+} gevent_attach_t;
 
+/**
+ * @brief Global Detach event.
+ *
+ * Sent when a display detaches from the DWM.
+ */
 typedef struct
 {
     surface_info_t info;
-} event_global_detach_t;
+} gevent_detach_t;
 
-typedef event_report_t event_global_report_t;
+/**
+ * @brief Global Report event.
+ *
+ * Sent when any surface's information changes.
+ */
+typedef event_report_t gevent_report_t;
 
-typedef event_kbd_t event_global_kbd_t;
+/**
+ * @brief Global Keyboard event.
+ *
+ * Sent when a key is pressed or released regardless of which display is focused.
+ */
+typedef event_kbd_t gevent_kbd_t;
 
-typedef event_mouse_t event_global_mouse_t;
+/**
+ * @brief Global Mouse event.
+ *
+ * Sent when the mouse is moved or a button is pressed or released regardless of which display is focused or where
+ * the cursor is.
+ */
+typedef event_mouse_t gevent_mouse_t;
 
+/**
+ * @brief Library Init event.
+ *
+ * Sent to an element when it is initialized.
+ */
 typedef struct
 {
     element_id_t id;
 } levent_init_t;
 
+/**
+ * @brief Library Redraw event.
+ *
+ * Sent to an element when it should redraw itself.
+ */
 typedef struct
 {
     element_id_t id;
-    bool shouldPropagate;
+    bool shouldPropagate; ///< Whether the redraw event should be propagated to child elements.
 } levent_redraw_t;
 
-typedef enum
-{
-    ACTION_NONE = 0,
-    ACTION_RELEASE,
-    ACTION_PRESS,
-    ACTION_CANCEL,
-} action_type_t;
-
+/**
+ * @brief Library Action event.
+ *
+ * Sent to an element when an action occurs, for example a button element being clicked.
+ */
 typedef struct
 {
     element_id_t source;
     action_type_t type;
 } levent_action_t;
 
+/**
+ * @brief Library Force Action event.
+ *
+ * Sent to an element to force it to act as if an action occurred.
+ */
 typedef struct
 {
     element_id_t dest;
     action_type_t action;
 } levent_force_action_t;
 
+/**
+ * @brief Maximum size of event data.
+ */
 #define EVENT_MAX_DATA 128
 
+/**
+ * @brief Event structure.
+ *
+ * Represents an event sent by the DWM or libpatchwork.
+ */
 typedef struct event
 {
     event_type_t type;
@@ -186,11 +281,11 @@ typedef struct event
         event_cursor_enter_t cursorEnter;
         event_cursor_leave_t cursorLeave;
         event_report_t report;
-        event_global_attach_t globalAttach;
-        event_global_detach_t globalDetach;
-        event_global_report_t globalReport;
-        event_global_kbd_t globalKbd;
-        event_global_mouse_t globalMouse;
+        gevent_attach_t globalAttach;
+        gevent_detach_t globalDetach;
+        gevent_report_t globalReport;
+        gevent_kbd_t globalKbd;
+        gevent_mouse_t globalMouse;
         levent_init_t lInit;
         levent_redraw_t lRedraw;
         levent_action_t lAction;
