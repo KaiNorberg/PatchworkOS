@@ -58,6 +58,7 @@ static void exception_handler(interrupt_frame_t* frame)
         {
             return;
         }
+        break;
     default:
         break;
     }
@@ -69,9 +70,9 @@ static void exception_handler(interrupt_frame_t* frame)
 
         uint64_t cr2 = cr2_read();
 
-        LOG_WARN(
-            "unhandled user space exception in process pid=%d tid=%d vector=%lld error=0x%llx rip=0x%llx cr2=0x%llx\n",
-            process->id, thread->id, frame->vector, frame->errorCode, frame->rip, cr2);
+        LOG_WARN("unhandled user space exception in process pid=%d tid=%d vector=%lld error=0x%llx rip=0x%llx "
+                 "cr2=0x%llx errno='%s'\n",
+            process->id, thread->id, frame->vector, frame->errorCode, frame->rip, cr2, strerror(thread->error));
 
         sched_process_exit(EFAULT);
     }

@@ -1,16 +1,16 @@
 #pragma once
 
 #include "config.h"
+#include "cpu/tss.h"
 #include "cpu_id.h"
 #include "drivers/apic.h"
+#include "drivers/rand.h"
 #include "drivers/statistics.h"
 #include "interrupt.h"
 #include "mem/vmm.h"
 #include "sched/sched.h"
 #include "sched/timer.h"
 #include "sched/wait.h"
-#include "drivers/rand.h"
-#include "cpu/tss.h"
 
 #include <stdint.h>
 

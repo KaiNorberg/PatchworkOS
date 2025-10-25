@@ -10,94 +10,84 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
-typedef struct config_section config_section_t;
-
-typedef struct
+typedef struct config_pair
 {
+    char* key;
+    char* value;
     list_entry_t entry;
-    char key[MAX_PATH];
-    char value[MAX_PATH];
 } config_pair_t;
 
 typedef struct config_section
 {
+    char* name;
     list_entry_t entry;
-    list_t children;
     list_t pairs;
-    char name[MAX_PATH];
-    config_section_t* parent;
 } config_section_t;
 
 typedef struct config
 {
-    config_section_t* root;
+    list_t sections;
 } config_t;
 
-typedef struct config_array
+static char* config_trim_whitespace(char* str)
 {
-    char** strings;
-    uint64_t length;
-} config_array_t;
+    char* end;
+    while (isspace((unsigned char)*str))
+    {
+        str++;
+    }
 
-static config_pair_t* config_pair_new(const char* key, const char* value)
+    if (*str == 0)
+    {
+        return str;
+    }
+
+    end = str + strlen(str) - 1;
+    while (end > str && isspace((unsigned char)*end))
+    {
+        end--;
+    }
+
+    *(end + 1) = '\0';
+    return str;
+}
+
+static config_section_t* config_find_section(config_t* cfg, const char* section)
 {
-    config_pair_t* pair = malloc(sizeof(config_pair_t));
-    if (pair == NULL)
+    if (cfg == NULL || section == NULL)
     {
         return NULL;
     }
-    list_entry_init(&pair->entry);
 
-    strncpy(pair->key, key, MAX_PATH - 1);
-    pair->key[MAX_PATH - 1] = '\0';
-    strncpy(pair->value, value, MAX_PATH - 1);
-    pair->value[MAX_PATH - 1] = '\0';
+    config_section_t* sec;
+    LIST_FOR_EACH(sec, &cfg->sections, entry)
+    {
+        if (strcasecmp(sec->name, section) == 0)
+        {
+            return sec;
+        }
+    }
 
-    return pair;
+    return NULL;
 }
 
-static config_section_t* config_section_new(config_section_t* parent)
+static config_pair_t* config_find_pair(config_section_t* sec, const char* key)
 {
-    config_section_t* section = malloc(sizeof(config_section_t));
-    if (section == NULL)
+    if (sec == NULL || key == NULL)
     {
         return NULL;
-    }
-    list_entry_init(&section->entry);
-    list_init(&section->children);
-    list_init(&section->pairs);
-    section->name[0] = '\0';
-    section->parent = parent;
-    return section;
-}
-
-static void config_section_free(config_section_t* section)
-{
-    if (section == NULL)
-    {
-        return;
-    }
-
-    config_section_t* child;
-    config_section_t* temp1;
-    LIST_FOR_EACH_SAFE(child, temp1, &section->children, entry)
-    {
-        config_section_free(child);
     }
 
     config_pair_t* pair;
-    config_pair_t* temp2;
-    LIST_FOR_EACH_SAFE(pair, temp2, &section->pairs, entry)
+    LIST_FOR_EACH(pair, &sec->pairs, entry)
     {
-        list_remove(&section->pairs, &pair->entry);
-        free(pair);
+        if (strcasecmp(pair->key, key) == 0)
+        {
+            return pair;
+        }
     }
 
-    if (section->parent != NULL)
-    {
-        list_remove(&section->parent->children, &section->entry);
-    }
-    free(section);
+    return NULL;
 }
 
 config_t* config_open(const char* prefix, const char* name)
@@ -107,17 +97,8 @@ config_t* config_open(const char* prefix, const char* name)
         return NULL;
     }
 
-    if (strchr(prefix, '/') != NULL || strchr(name, '/') != NULL)
-    {
-        return NULL;
-    }
-
-    char path[MAX_PATH];
-    int ret = snprintf(path, sizeof(path), "/cfg/%s-%s.cfg", prefix, name);
-    if (ret < 0 || ret >= (int)sizeof(path))
-    {
-        return NULL;
-    }
+    char path[MAX_PATH] = {0};
+    snprintf(path, MAX_PATH - 1, "/cfg/%s-%s.cfg", prefix, name);
 
     FILE* file = fopen(path, "r");
     if (file == NULL)
@@ -125,214 +106,137 @@ config_t* config_open(const char* prefix, const char* name)
         return NULL;
     }
 
-    config_t* cfg = malloc(sizeof(config_t));
-    if (cfg == NULL)
+    config_t* config = malloc(sizeof(config_t));
+    if (config == NULL)
     {
         fclose(file);
         return NULL;
     }
+    list_init(&config->sections);
 
-    cfg->root = config_section_new(NULL);
-    if (cfg->root == NULL)
+    char lineBuffer[1024];
+    config_section_t* currentSection = NULL;
+    while (fgets(lineBuffer, sizeof(lineBuffer), file) != NULL)
     {
-        free(cfg);
-        fclose(file);
-        return NULL;
-    }
-
-    char buffer[MAX_PATH + 2];
-    config_section_t* currentSection = cfg->root;
-
-    while (fgets(buffer, sizeof(buffer), file) != NULL)
-    {
-        char* line = buffer;
-
-        // Trim leading whitespace
-        while (isspace((unsigned char)*line))
+        char* line = config_trim_whitespace(lineBuffer);
+        if (line[0] == '\0' || line[0] == '#' || line[0] == ';')
         {
-            line++;
-        }
-
-        // Trim trailing whitespace
-        char* end = line + strlen(line) - 1;
-        while (end >= line && isspace((unsigned char)*end))
-        {
-            *end = '\0';
-            end--;
-        }
-
-        uint64_t lineLen = strlen(line);
-
-        if (lineLen == 0)
-        {
-            continue; // Skip empty lines
-        }
-
-        if (line[0] == ';' || line[0] == '#')
-        {
-            continue; // Skip comments
-        }
-
-        if (line[0] == '[' && line[lineLen - 1] == ']')
-        {
-            char section[MAX_PATH];
-            uint64_t sectionLen = lineLen - 2;
-
-            if (sectionLen >= MAX_PATH)
-            {
-                goto error;
-            }
-
-            memcpy(section, line + 1, sectionLen);
-            section[sectionLen] = '\0';
-
-            config_section_t* newSection = config_section_new(cfg->root);
-            if (newSection == NULL)
-            {
-                goto error;
-            }
-
-            strncpy(newSection->name, section, MAX_PATH - 1);
-            newSection->name[MAX_PATH - 1] = '\0';
-
-            list_push(&cfg->root->children, &newSection->entry);
-            currentSection = newSection;
             continue;
         }
 
-        char* equals = strchr(line, '=');
-        if (equals != NULL)
+        if (line[0] == '[')
         {
-            char* keyStart = line;
-            char* keyEnd = equals - 1;
-
-            // Trim whitespace from key
-            while (keyEnd >= keyStart && isspace((unsigned char)*keyEnd))
+            char* end = strchr(line, ']');
+            if (end == NULL)
             {
-                keyEnd--;
+                continue;
+            }
+            *end = '\0';
+            char* name = config_trim_whitespace(line + 1);
+            if (name[0] == '\0')
+            {
+                continue;
             }
 
-            uint64_t keyLen = (keyEnd - keyStart) + 1;
-            if (keyLen == 0 || keyLen >= MAX_PATH)
-            {
-                goto error;
-            }
-
-            char key[MAX_PATH];
-            memcpy(key, keyStart, keyLen);
-            key[keyLen] = '\0';
-
-            char* valueStart = equals + 1;
-
-            // Trim leading whitespace from value
-            while (isspace((unsigned char)*valueStart))
-            {
-                valueStart++;
-            }
-
-            uint64_t valueLen = strlen(valueStart);
-            if (valueLen >= MAX_PATH)
+            config_section_t* section = malloc(sizeof(config_section_t));
+            if (section == NULL)
             {
                 goto error;
             }
+            section->name = strdup(name);
+            if (section->name == NULL)
+            {
+                free(section);
+                goto error;
+            }
+            list_entry_init(&section->entry);
+            list_init(&section->pairs);
 
-            char value[MAX_PATH];
-            strcpy(value, valueStart);
+            list_push(&config->sections, &section->entry);
+            currentSection = section;
+        }
+        else
+        {
+            char* equals = strchr(line, '=');
+            if (equals == NULL || currentSection == NULL)
+            {
+                continue;
+            }
+            *equals = '\0';
+            char* key = config_trim_whitespace(line);
+            char* value = config_trim_whitespace(equals + 1);
+            if (key[0] == '\0')
+            {
+                continue;
+            }
 
-            config_pair_t* pair = config_pair_new(key, value);
+            config_pair_t* pair = malloc(sizeof(config_pair_t));
             if (pair == NULL)
             {
                 goto error;
             }
+            pair->key = strdup(key);
+            pair->value = strdup(value);
+            if (pair->key == NULL || pair->value == NULL)
+            {
+                free(pair->key);
+                free(pair->value);
+                free(pair);
+                goto error;
+            }
+            list_entry_init(&pair->entry);
 
             list_push(&currentSection->pairs, &pair->entry);
-            continue;
         }
-
-        goto error;
     }
 
     fclose(file);
-    return cfg;
+    return config;
 
 error:
-    if (cfg != NULL)
-    {
-        config_section_free(cfg->root);
-        free(cfg);
-    }
     fclose(file);
+    config_close(config);
     return NULL;
 }
 
-void config_close(config_t* cfg)
+void config_close(config_t* config)
 {
-    if (cfg == NULL)
+    if (config == NULL)
     {
         return;
     }
 
-    config_section_free(cfg->root);
-    free(cfg);
-}
-
-uint64_t config_scanf(config_t* cfg, const char* section, const char* key, const char* format, ...)
-{
-    const char* str = config_get_string(cfg, section, key, NULL);
-    if (str == NULL)
+    while (!list_is_empty(&config->sections))
     {
-        return ERR;
+        config_section_t* sec = CONTAINER_OF(list_pop(&config->sections), config_section_t, entry);
+
+        while (!list_is_empty(&sec->pairs))
+        {
+            config_pair_t* pair = CONTAINER_OF(list_pop(&sec->pairs), config_pair_t, entry);
+            list_remove(&sec->pairs, &pair->entry);
+            free(pair->key);
+            free(pair->value);
+            free(pair);
+        }
+
+        list_remove(&config->sections, &sec->entry);
+        free(sec->name);
+        free(sec);
     }
 
-    va_list arg;
-    va_start(arg, format);
-    int result = vsscanf(str, format, arg);
-    va_end(arg);
-    return result;
+    free(config);
 }
 
-const char* config_get_string(config_t* cfg, const char* section, const char* key, const char* fallback)
+const char* config_get_string(config_t* config, const char* section, const char* key, const char* fallback)
 {
-    if (cfg == NULL || key == NULL)
+    config_section_t* sec = config_find_section(config, section);
+    if (sec == NULL)
     {
         return fallback;
     }
 
-    config_section_t* targetSection;
-    if (section == NULL || section[0] == '\0')
-    {
-        targetSection = cfg->root;
-    }
-    else
-    {
-        bool isFound = false;
-        LIST_FOR_EACH(targetSection, &cfg->root->children, entry)
-        {
-            if (strcasecmp(targetSection->name, section) == 0)
-            {
-                isFound = true;
-                break;
-            }
-        }
-
-        if (!isFound)
-        {
-            return fallback;
-        }
-    }
-
-    bool isFound = false;
-    config_pair_t* pair = NULL;
-    LIST_FOR_EACH(pair, &targetSection->pairs, entry)
-    {
-        if (strcasecmp(pair->key, key) == 0)
-        {
-            isFound = true;
-            break;
-        }
-    }
-
-    if (!isFound)
+    config_pair_t* pair = config_find_pair(sec, key);
+    if (pair == NULL)
     {
         return fallback;
     }
@@ -340,47 +244,39 @@ const char* config_get_string(config_t* cfg, const char* section, const char* ke
     return pair->value;
 }
 
-int64_t config_get_int(config_t* cfg, const char* section, const char* key, int64_t fallback)
+int64_t config_get_int(config_t* config, const char* section, const char* key, int64_t fallback)
 {
-    if (cfg == NULL || key == NULL)
-    {
-        return fallback;
-    }
-
-    const char* str = config_get_string(cfg, section, key, NULL);
+    const char* str = config_get_string(config, section, key, NULL);
     if (str == NULL)
     {
         return fallback;
     }
 
-    if (strlen(str) >= 3 && str[0] == '0' && (str[1] == 'x' || str[1] == 'X'))
+    char* end;
+    int64_t value = strtoll(str, &end, 0);
+    if (end == str || *end != '\0')
     {
-        return strtoll(&str[2], NULL, 16);
+        return fallback;
     }
-    else
-    {
-        return strtoll(&str[0], NULL, 10);
-    }
+
+    return value;
 }
 
-bool config_get_bool(config_t* cfg, const char* section, const char* key, bool fallback)
+bool config_get_bool(config_t* config, const char* section, const char* key, bool fallback)
 {
-    if (cfg == NULL || key == NULL)
-    {
-        return fallback;
-    }
-
-    const char* str = config_get_string(cfg, section, key, NULL);
+    const char* str = config_get_string(config, section, key, NULL);
     if (str == NULL)
     {
         return fallback;
     }
 
-    if (strcasecmp(str, "true") == 0)
+    if (strcasecmp(str, "true") == 0 || strcasecmp(str, "yes") == 0 ||
+        strcasecmp(str, "on") == 0 || strcmp(str, "1") == 0)
     {
         return true;
     }
-    else if (strcasecmp(str, "false") == 0)
+    else if (strcasecmp(str, "false") == 0 || strcasecmp(str, "no") == 0 ||
+             strcasecmp(str, "off") == 0 || strcmp(str, "0") == 0)
     {
         return false;
     }
@@ -388,135 +284,87 @@ bool config_get_bool(config_t* cfg, const char* section, const char* key, bool f
     return fallback;
 }
 
-config_array_t* config_get_array(config_t* cfg, const char* section, const char* key)
+config_array_t* config_get_array(config_t* config, const char* section, const char* key)
 {
-    const char* str = config_get_string(cfg, section, key, NULL);
-    if (str == NULL)
+    const char* str = config_get_string(config, section, key, NULL);
+    if (str == NULL || str[0] == '\0')
     {
-        return NULL;
+        config_array_t* emptyArray = malloc(sizeof(config_array_t));
+        if (emptyArray == NULL)
+        {
+            return NULL;
+        }
+        emptyArray->items = NULL;
+        emptyArray->length = 0;
+        return emptyArray;
     }
 
-    config_array_t* array = malloc(sizeof(config_array_t));
+    uint64_t length = strlen(str);
+    uint64_t maxSize = sizeof(config_array_t) + (length * sizeof(char*)) + length + 1;
+
+    config_array_t* array = malloc(maxSize);
     if (array == NULL)
     {
         return NULL;
     }
-
-    uint64_t strLen = strlen(str);
-
-    array->strings = malloc(sizeof(char*) * strLen); // Assume worst case
+    array->items = (char**)(array + 1);
     array->length = 0;
 
-    if (array->strings == NULL)
-    {
-        free(array);
-        return NULL;
-    }
+    char* data = (char*)(array->items + length);
 
-    char* temp = malloc(strLen + 1);
-    if (temp == NULL)
+    uint64_t index = 0;
+    while (*str != '\0')
     {
-        free(array->strings);
-        free(array);
-        return NULL;
-    }
-    strcpy(temp, str);
-
-    char* token = strtok(temp, ","); // TODO: NOT THREAD SAFE FIX
-    while (token != NULL)
-    {
-        while (isspace(*token))
+        while (isspace((unsigned char)*str))
         {
-            token++;
+            str++;
         }
 
-        uint64_t tokenLen = strlen(token);
-
-        while (tokenLen != 0 && isspace(token[tokenLen - 1]))
+        if (*str == '\0')
         {
-            tokenLen--;
-            token[tokenLen] = '\0';
+            break;
         }
 
-        if (tokenLen > 0)
+        const char* start = str;
+
+        while (*str != '\0' && *str != ',')
         {
-            array->strings[array->length] = malloc(tokenLen + 1);
-            if (array->strings[array->length] == NULL)
-            {
-                for (uint64_t i = 0; i < array->length; i++)
-                {
-                    free(array->strings[i]);
-                }
-                free(array->strings);
-                free(array);
-                free(temp);
-                return NULL;
-            }
-            strcpy(array->strings[array->length], token);
-            array->length++;
+            str++;
         }
-        token = strtok(NULL, ",");
+
+        const char* end = str;
+
+        while (end > start && isspace((unsigned char)*(end - 1)))
+        {
+            end--;
+        }
+
+        uint64_t len = (end > start) ? (end - start) : 0;
+        if (len > 0)
+        {
+            memcpy(data, start, len);
+            data[len] = '\0';
+
+            array->items[index] = data;
+
+            data += len + 1;
+            index++;
+        }
+
+        if (*str == ',')
+        {
+            str++;
+        }
     }
 
-    free(temp);
+    array->length = index;
     return array;
 }
 
 void config_array_free(config_array_t* array)
 {
-    if (array == NULL)
+    if (array != NULL)
     {
-        return;
+        free(array);
     }
-
-    for (uint64_t i = 0; i < array->length; i++)
-    {
-        free(array->strings[i]);
-    }
-    free(array->strings);
-    free(array);
-}
-
-uint64_t config_array_length(config_array_t* array)
-{
-    return array->length;
-}
-
-const char* config_array_get_string(config_array_t* array, uint64_t index, const char* fallback)
-{
-    if (index >= array->length)
-    {
-        return fallback;
-    }
-
-    return array->strings[index];
-}
-
-int64_t config_array_get_int(config_array_t* array, uint64_t index, int64_t fallback)
-{
-    if (index >= array->length)
-    {
-        return fallback;
-    }
-
-    return atoll(array->strings[index]);
-}
-
-bool config_array_get_bool(config_array_t* array, uint64_t index, bool fallback)
-{
-    if (index >= array->length)
-    {
-        return fallback;
-    }
-
-    if (strcasecmp(array->strings[index], "true") == 0)
-    {
-        return true;
-    }
-    else if (strcasecmp(array->strings[index], "false") == 0)
-    {
-        return false;
-    }
-
-    return fallback;
 }

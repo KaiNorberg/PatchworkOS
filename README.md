@@ -289,7 +289,7 @@ For example, the "id" directories mentioned in the socket example are a separate
 
 [Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
 
-### Namespace Sharing (WIP)
+### Namespace Sharing (Future plans, to be added)
 
 It's possible for two processes to voluntarily share a mountpoint in their namespaces using `bind()` in combination with two new system calls `share()` and `claim()`.
 
@@ -312,13 +312,13 @@ fd_t dir = claim(key);
 // Will error here if the original file descriptor in process A has been closed, process A exited, or the key expired.
 
 // Make "dir" ("/net/local/5" in A) available in B's namespace at "/any/path/it/wants". In practice it might be best to bind it to the same path as in A to avoid confusion.
-bind(dir, "/any/path/it/wants"); // (Not implemented yet)
+bind(dir, "/any/path/it/wants");
 
 // Its also possible to just open paths in the shared directory without polluting the namespace using openat().
-fd_t somePath = openat(dir, "data"); // (Not implemented yet)
+fd_t somePath = openat(dir, "data");
 
 // Finally, it could also use fchdir() to change its current working directory to the shared directory.
-fchdir(dir); // (Not implemented yet)
+fchdir(dir);
 ```
 
 This system guarantees consent between processes, and can be used to implement more complex access control systems.

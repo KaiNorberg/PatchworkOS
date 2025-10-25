@@ -119,8 +119,7 @@ static uint64_t client_action_surface_new(client_t* client, const cmd_header_t* 
 
     const rect_t* rect = &cmd->rect;
     point_t point = {.x = rect->left, .y = rect->top};
-    surface_t* surface =
-        surface_new(client, cmd->name, &point, RECT_WIDTH(rect), RECT_HEIGHT(rect), cmd->type);
+    surface_t* surface = surface_new(client, cmd->name, &point, RECT_WIDTH(rect), RECT_HEIGHT(rect), cmd->type);
     if (surface == NULL)
     {
         return ERR;

@@ -5,6 +5,7 @@
 #include "fs/inode.h"
 #include "fs/mount.h"
 #include "fs/path.h"
+#include "key.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/vmm.h"
@@ -16,7 +17,6 @@
 #include "sync/rwlock.h"
 #include "sys/list.h"
 #include "sysfs.h"
-#include "key.h"
 #include "utils/ref.h"
 #include "vfs_ctx.h"
 

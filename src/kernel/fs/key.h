@@ -23,7 +23,7 @@
  */
 typedef struct
 {
-    list_entry_t entry; ///< Used to store the key entry in a time sorted list.
+    list_entry_t entry;   ///< Used to store the key entry in a time sorted list.
     map_entry_t mapEntry; ///< Used to store the key entry in a map for fast lookup.
     key_t key;
     file_t* file;

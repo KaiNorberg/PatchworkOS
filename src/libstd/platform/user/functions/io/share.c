@@ -1,5 +1,5 @@
-#include <sys/io.h>
 #include <errno.h>
+#include <sys/io.h>
 
 #include "platform/user/common/syscalls.h"
 

@@ -192,7 +192,7 @@ uint64_t thread_handle_page_fault(const interrupt_frame_t* frame)
     }
 
     uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
-    if (stack_pointer_is_in_stack(&thread->userStack, faultAddr, 1))
+    if (stack_pointer_is_in_stack(&thread->userStack, alignedFaultAddr, 1))
     {
         if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PML_WRITE | PML_PRESENT | PML_USER,
                 VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
@@ -214,7 +214,7 @@ uint64_t thread_handle_page_fault(const interrupt_frame_t* frame)
         return ERR;
     }
 
-    if (stack_pointer_is_in_stack(&thread->kernelStack, faultAddr, 1))
+    if (stack_pointer_is_in_stack(&thread->kernelStack, alignedFaultAddr, 1))
     {
         if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PML_WRITE | PML_PRESENT,
                 VMM_ALLOC_FAIL_IF_MAPPED) == NULL)

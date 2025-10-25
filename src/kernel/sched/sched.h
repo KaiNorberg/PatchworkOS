@@ -160,7 +160,8 @@ NORETURN extern void sched_idle_loop(void);
 /**
  * @brief Specify that the boot thread is no longer needed.
  *
- * The `sched_done_with_boot_thread()` function is called when the kernel has finished booting and the boot thread is no longer needed, instead of just discarding it, the boot thread becomes the idle thread of the bootstrap cpu.
+ * The `sched_done_with_boot_thread()` function is called when the kernel has finished booting and the boot thread is no
+ * longer needed, instead of just discarding it, the boot thread becomes the idle thread of the bootstrap cpu.
  *
  */
 NORETURN void sched_done_with_boot_thread(void);

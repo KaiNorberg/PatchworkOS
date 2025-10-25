@@ -1,12 +1,12 @@
 #include "key.h"
 
-#include "log/panic.h"
-#include "sync/rwlock.h"
-#include "mem/heap.h"
+#include "cpu/syscalls.h"
 #include "drivers/rand.h"
+#include "log/panic.h"
+#include "mem/heap.h"
 #include "sched/thread.h"
 #include "sched/timer.h"
-#include "cpu/syscalls.h"
+#include "sync/rwlock.h"
 
 #include <errno.h>
 

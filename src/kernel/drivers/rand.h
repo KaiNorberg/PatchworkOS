@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 /**
  * @brief Random Number Generator
@@ -32,7 +32,8 @@ void rand_cpu_init(rand_cpu_ctx_t* ctx);
 /**
  * @brief Fills a buffer with random bytes.
  *
- * If the RDRAND instruction is available and working, it will be used. Otherwise, a fallback time based RNG will be used.
+ * If the RDRAND instruction is available and working, it will be used. Otherwise, a fallback time based RNG will be
+ * used.
  *
  * @param buffer A pointer to the buffer to fill.
  * @param size The number of bytes to fill.

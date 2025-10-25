@@ -605,8 +605,7 @@ pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, spac
 
     if (callbackId >= space->callbacksLength)
     {
-        space_callback_t* newCallbacks =
-            heap_alloc(sizeof(space_callback_t) * (callbackId + 1), HEAP_NONE);
+        space_callback_t* newCallbacks = heap_alloc(sizeof(space_callback_t) * (callbackId + 1), HEAP_NONE);
         if (newCallbacks == NULL)
         {
             return PML_MAX_CALLBACK;

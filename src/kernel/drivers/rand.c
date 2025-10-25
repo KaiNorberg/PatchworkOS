@@ -1,12 +1,12 @@
 #include "rand.h"
 
-#include "log/log.h"
-#include "cpu/smp.h"
 #include "cpu/cpu.h"
+#include "cpu/smp.h"
+#include "log/log.h"
 
-#include <sys/cpuid.h>
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <sys/cpuid.h>
 
 static atomic_uint64_t seed = ATOMIC_VAR_INIT(0x123456789ABCDEF0);
 

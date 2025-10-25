@@ -11,8 +11,8 @@
 
 static surface_id_t newId = 0;
 
-surface_t* surface_new(client_t* client, const char* name, const point_t* point, uint64_t width,
-    uint64_t height, surface_type_t type)
+surface_t* surface_new(client_t* client, const char* name, const point_t* point, uint64_t width, uint64_t height,
+    surface_type_t type)
 {
     surface_t* surface = malloc(sizeof(surface_t));
     if (surface == NULL)

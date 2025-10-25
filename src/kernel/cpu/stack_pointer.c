@@ -99,7 +99,7 @@ bool stack_pointer_is_in_stack(stack_pointer_t* stack, uintptr_t addr, uint64_t 
         return false;
     }
 
-    return addr > stack->bottom && endAddr < stack->top;
+    return addr >= stack->bottom && endAddr < stack->top;
 }
 
 bool stack_pointer_overlaps_guard(stack_pointer_t* stack, uintptr_t addr, uint64_t length)
