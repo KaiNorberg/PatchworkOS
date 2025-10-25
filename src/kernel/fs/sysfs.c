@@ -161,8 +161,12 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
         return NULL;
     }
 
+    sysfs_mount_ctx_t ctx = {
+        .superblockOps = superblockOps,
+    };
+
     path_t mountpoint = PATH_CREATE(parent->mount, dentry);
-    mount_t* mount = namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, NULL);
+    mount_t* mount = namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, &ctx);
     path_put(&mountpoint);
     return mount;
 }

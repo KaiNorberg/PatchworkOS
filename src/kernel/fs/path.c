@@ -342,23 +342,16 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
     path_copy(&current, parent);
     PATH_DEFER(&current);
 
-    mutex_acquire(&current.dentry->mutex);
-    if (current.dentry->mountCount != 0)
+    if (atomic_load(&current.dentry->mountCount) > 0)
     {
         path_t nextRoot = PATH_EMPTY;
         if (namespace_traverse_mount(ns, &current, &nextRoot) == ERR)
         {
-            mutex_release(&current.dentry->mutex);
             return ERR;
         }
         PATH_DEFER(&nextRoot);
 
-        mutex_release(&current.dentry->mutex);
         path_copy(&current, &nextRoot);
-    }
-    else
-    {
-        mutex_release(&current.dentry->mutex);
     }
 
     dentry_t* next = vfs_get_or_lookup_dentry(&current, component);
@@ -368,10 +361,8 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
     }
     DEREF_DEFER(next);
 
-    mutex_acquire(&next->mutex);
-    if (next->flags & DENTRY_NEGATIVE)
+    if (atomic_load(&next->flags) & DENTRY_NEGATIVE)
     {
-        mutex_release(&next->mutex);
         if (flags & WALK_NEGATIVE_IS_OK)
         {
             path_set(outPath, current.mount, next);
@@ -380,7 +371,6 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
         errno = ENOENT;
         return ERR;
     }
-    mutex_release(&next->mutex);
 
     path_set(outPath, current.mount, next);
     return 0;
@@ -493,8 +483,7 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
         path_copy(&current, &next);
         path_put(&next);
 
-        MUTEX_SCOPE(&current.dentry->mutex);
-        if (current.dentry->flags & DENTRY_NEGATIVE)
+        if (atomic_load(&current.dentry->flags) & DENTRY_NEGATIVE)
         {
             if (flags & WALK_NEGATIVE_IS_OK)
             {
@@ -506,9 +495,7 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
         }
     }
 
-    MUTEX_SCOPE(&current.dentry->mutex);
-
-    if (flags & WALK_MOUNTPOINT_TO_ROOT && current.dentry->mountCount != 0)
+    if (flags & WALK_MOUNTPOINT_TO_ROOT && atomic_load(&current.dentry->mountCount) > 0)
     {
         path_t root = PATH_EMPTY;
         if (namespace_traverse_mount(ns, &current, &root) == ERR)

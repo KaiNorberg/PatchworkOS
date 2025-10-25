@@ -28,15 +28,16 @@ static void dentry_free(dentry_t* dentry)
     if (dentry->inode != NULL)
     {
         DEREF(dentry->inode);
+        dentry->inode = NULL;
     }
 
     if (!DENTRY_IS_ROOT(dentry))
     {
-        if (!(dentry->flags & DENTRY_NEGATIVE))
+        if (!(atomic_load(&dentry->flags) & DENTRY_NEGATIVE))
         {
-            mutex_acquire(&dentry->parent->mutex);
+            mutex_acquire(&dentry->parent->childrenMutex);
             list_remove(&dentry->parent->children, &dentry->siblingEntry);
-            mutex_release(&dentry->parent->mutex);
+            mutex_release(&dentry->parent->childrenMutex);
         }
 
         DEREF(dentry->parent);
@@ -80,12 +81,12 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
         : dentry; // We set its parent now but its only added to its list when it is made positive.
     list_entry_init(&dentry->siblingEntry);
     list_init(&dentry->children);
+    mutex_init(&dentry->childrenMutex);
     dentry->superblock = REF(superblock);
     dentry->ops = dentry->superblock != NULL ? dentry->superblock->dentryOps : NULL;
     dentry->private = NULL;
-    dentry->flags = DENTRY_NEGATIVE;
-    mutex_init(&dentry->mutex);
-    dentry->mountCount = 0;
+    atomic_init(&dentry->flags, DENTRY_NEGATIVE);
+    atomic_init(&dentry->mountCount, 0);
 
     return dentry;
 }
@@ -98,10 +99,10 @@ uint64_t dentry_make_positive(dentry_t* dentry, inode_t* inode)
         return ERR;
     }
 
-    MUTEX_SCOPE(&dentry->mutex);
+    MUTEX_SCOPE(&dentry->childrenMutex);
 
     // Sanity checks.
-    assert(dentry->flags & DENTRY_NEGATIVE);
+    assert(atomic_load(&dentry->flags) & DENTRY_NEGATIVE);
     assert(dentry->inode == NULL);
 
     if (vfs_add_dentry(dentry) == ERR)
@@ -110,15 +111,26 @@ uint64_t dentry_make_positive(dentry_t* dentry, inode_t* inode)
     }
 
     dentry->inode = REF(inode);
-    dentry->flags &= ~DENTRY_NEGATIVE;
 
     if (!DENTRY_IS_ROOT(dentry))
     {
-        MUTEX_SCOPE(&dentry->parent->mutex);
+        MUTEX_SCOPE(&dentry->parent->childrenMutex);
         list_push(&dentry->parent->children, &dentry->siblingEntry);
     }
 
+    atomic_fetch_and(&dentry->flags, ~DENTRY_NEGATIVE);
+
     return 0;
+}
+
+void dentry_inc_mount_count(dentry_t* dentry)
+{
+    atomic_fetch_add(&dentry->mountCount, 1);
+}
+
+void dentry_dec_mount_count(dentry_t* dentry)
+{
+    atomic_fetch_sub(&dentry->mountCount, 1);
 }
 
 typedef struct
@@ -158,10 +170,11 @@ static void getdents_recursive_traversal(getdents_ctx_t* ctx, dentry_t* dentry)
         getdents_write(ctx, dentry->inode->number, dentry->inode->type, fullPath);
     }
 
+    MUTEX_SCOPE(&dentry->childrenMutex);
+
     dentry_t* child;
     LIST_FOR_EACH(child, &dentry->children, siblingEntry)
     {
-        MUTEX_SCOPE(&child->mutex);
         if (ctx->flags & PATH_RECURSIVE && child->inode->type == INODE_DIR)
         {
             char originalBasePath[MAX_PATH];
@@ -196,6 +209,8 @@ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t co
         .basePath = "",
     };
 
+    MUTEX_SCOPE(&dentry->childrenMutex);
+
     getdents_write(&ctx, dentry->inode->number, dentry->inode->type, ".");
     getdents_write(&ctx, dentry->parent->inode->number, dentry->parent->inode->type, "..");
 
@@ -204,7 +219,6 @@ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t co
         dentry_t* child;
         LIST_FOR_EACH(child, &dentry->children, siblingEntry)
         {
-            MUTEX_SCOPE(&child->mutex);
             if (child->inode->type == INODE_DIR)
             {
                 snprintf(ctx.basePath, MAX_PATH, "%s", child->name);
@@ -222,7 +236,6 @@ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t co
         dentry_t* child;
         LIST_FOR_EACH(child, &dentry->children, siblingEntry)
         {
-            MUTEX_SCOPE(&child->mutex);
             getdents_write(&ctx, child->inode->number, child->inode->type, child->name);
         }
     }

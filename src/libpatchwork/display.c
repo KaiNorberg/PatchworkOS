@@ -280,10 +280,31 @@ uint64_t display_wait_for_event(display_t* disp, event_t* event, event_type_t ex
         return ERR;
     }
 
+    uint64_t initReadIndex = disp->events.readIndex;
+    while (display_is_events_avail(disp))
+    {
+        display_events_pop(disp, event);
+        if (event->type == expected)
+        {
+            return 0;
+        }
+        else
+        {
+            display_events_push(disp, event->target, event->type, event->raw, EVENT_MAX_DATA);
+        }
+
+        if (disp->events.readIndex == initReadIndex)
+        {
+            break;
+        }
+    }
+
     while (true)
     {
-        if (display_next_event(disp, event, CLOCKS_NEVER) == ERR)
+        display_receive_event(disp, event);
+        if (!display_is_connected(disp))
         {
+            errno = ENOTCONN;
             return ERR;
         }
 
@@ -327,6 +348,7 @@ uint64_t display_dispatch(display_t* disp, const event_t* event)
         return ERR;
     }
 
+    printf("Display dispatching event type %u for target %llu\n", event->type, event->target);
     window_t* win;
     window_t* temp;
     LIST_FOR_EACH_SAFE(win, temp, &disp->windows, entry)
@@ -345,6 +367,7 @@ uint64_t display_dispatch(display_t* disp, const event_t* event)
         }
     }
 
+    printf("Display finished dispatching event type %u for target %llu\n", event->type, event->target);
     display_cmds_flush(disp);
     return 0;
 }

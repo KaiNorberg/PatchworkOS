@@ -274,10 +274,14 @@ void taskbar_init(taskbar_t* taskbar, display_t* disp)
     rect_t rect = display_screen_rect(disp, 0);
     rect.top = rect.bottom - theme_global_get()->panelSize;
 
-    display_subscribe(disp, GEVENT_ATTACH);
-    display_subscribe(disp, GEVENT_DETACH);
-    display_subscribe(disp, GEVENT_REPORT);
-    display_subscribe(disp, GEVENT_KBD);
+    if (display_subscribe(disp, GEVENT_ATTACH)  == ERR ||
+        display_subscribe(disp, GEVENT_DETACH)  == ERR ||
+        display_subscribe(disp, GEVENT_REPORT)  == ERR ||
+        display_subscribe(disp, GEVENT_KBD)     == ERR)
+    {
+        printf("taskbar: failed to subscribe to global events\n");
+        abort();
+    }
 
     taskbar->disp = disp;
     taskbar->win = window_new(disp, "Taskbar", &rect, SURFACE_PANEL, WINDOW_NONE, procedure, taskbar);
@@ -287,7 +291,11 @@ void taskbar_init(taskbar_t* taskbar, display_t* disp)
         abort();
     }
 
-    window_set_visible(taskbar->win, true);
+    if (window_set_visible(taskbar->win, true) == ERR)
+    {
+        printf("taskbar: failed to show taskbar window\n");
+        abort();
+    }
 
     start_menu_init(&taskbar->startMenu, taskbar->win, disp);
     list_init(&taskbar->entries);

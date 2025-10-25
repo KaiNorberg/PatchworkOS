@@ -46,6 +46,7 @@ void namespace_deinit(namespace_t* ns)
 
     DEREF(ns->rootMount);
 
+    rwlock_write_acquire(&ns->lock);
     for (uint64_t i = 0; i < ns->mountPoints.capacity; i++)
     {
         map_entry_t* entry = ns->mountPoints.entries[i];
@@ -56,6 +57,7 @@ void namespace_deinit(namespace_t* ns)
         mount_t* mount = CONTAINER_OF(entry, mount_t, mapEntry);
         DEREF(mount);
     }
+    rwlock_write_release(&ns->lock);
 
     map_deinit(&ns->mountPoints);
 }
@@ -77,12 +79,6 @@ uint64_t namespace_traverse_mount(namespace_t* ns, const path_t* mountpoint, pat
         mount_t* mount = CONTAINER_OF_SAFE(map_get(&currentNs->mountPoints, &key), mount_t, mapEntry);
         if (mount != NULL)
         {
-            if (atomic_load(&mount->ref.count) == 0) // Is currently being removed
-            {
-                errno = ESTALE;
-                return ERR;
-            }
-
             if (mount->superblock == NULL || mount->root == NULL)
             {
                 errno = ESTALE;
@@ -128,9 +124,8 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
         return NULL;
     }
     DEREF_DEFER(root);
-    MUTEX_SCOPE(&root->mutex);
 
-    if (root->flags & DENTRY_NEGATIVE)
+    if (atomic_load(&root->flags) & DENTRY_NEGATIVE)
     {
         errno = EIO; // This should never happen.
         return NULL;
@@ -138,7 +133,8 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
 
     if (mountpoint == NULL)
     {
-        if (ns->rootMount != NULL) // No need for the lock as this will only be set during initialization.
+        RWLOCK_WRITE_SCOPE(&ns->lock);
+        if (ns->rootMount != NULL)
         {
             errno = EBUSY;
             return NULL;
@@ -160,9 +156,7 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
         return NULL;
     }
 
-    MUTEX_SCOPE(&mountpoint->dentry->mutex);
-
-    if (mountpoint->dentry->flags & DENTRY_NEGATIVE)
+    if (atomic_load(&mountpoint->dentry->flags) & DENTRY_NEGATIVE)
     {
         errno = ENOENT;
         return NULL;
@@ -183,8 +177,6 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
         return NULL;
     }
     rwlock_write_release(&ns->lock);
-
-    mountpoint->dentry->mountCount++;
 
     // superblock_expose(superblock); // TODO: Expose the sysfsDir for the superblock
 

@@ -18,7 +18,13 @@ static void mount_free(mount_t* mount)
 
     if (mount->mountpoint != NULL)
     {
+        dentry_dec_mount_count(mount->mountpoint);
         DEREF(mount->mountpoint);
+    }
+
+    if (mount->root != NULL)
+    {
+        DEREF(mount->root);
     }
 
     if (mount->parent != NULL)
@@ -31,6 +37,12 @@ static void mount_free(mount_t* mount)
 
 mount_t* mount_new(superblock_t* superblock, dentry_t* root, dentry_t* mountpoint, mount_t* parent)
 {
+    if (superblock == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
     mount_t* mount = heap_alloc(sizeof(mount_t), HEAP_NONE);
     if (mount == NULL)
     {
@@ -42,8 +54,16 @@ mount_t* mount_new(superblock_t* superblock, dentry_t* root, dentry_t* mountpoin
     mount->id = vfs_get_new_id();
     mount->superblock = REF(superblock);
     superblock_inc_mount_count(superblock);
+    if (mountpoint != NULL)
+    {
+        mount->mountpoint = REF(mountpoint);
+        dentry_inc_mount_count(mountpoint);
+    }
+    else
+    {
+        mount->mountpoint = NULL;
+    }
     mount->root = root != NULL ? REF(root) : NULL;
-    mount->mountpoint = mountpoint != NULL ? REF(mountpoint) : NULL;
     mount->parent = parent != NULL ? REF(parent) : NULL;
 
     return mount;

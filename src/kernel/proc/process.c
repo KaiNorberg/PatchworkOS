@@ -436,8 +436,9 @@ void process_kill(process_t* process, uint64_t status)
         LOG_DEBUG("sent kill note to %llu threads in process pid=%d\n", killCount, process->id);
     }
 
-    vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_inode_cleanup, makes sure that files close
-                                      // immediately to notify blocking threads.
+    // Anything that another process could be waiting on must be cleaned up here.
+    namespace_deinit(&process->namespace);
+    vfs_ctx_deinit(&process->vfsCtx);
     // The dir entries have refs to the process, so we must deinit them here.
     DEREF(process->dir);
     DEREF(process->prioFile);

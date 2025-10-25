@@ -78,8 +78,6 @@ typedef struct dentry_ops
 /**
  * @brief Directory entry structure.
  * @struct dentry_t
- *
- * Dentries are owned by the VFS, not the filesystem.
  */
 typedef struct dentry
 {
@@ -90,12 +88,12 @@ typedef struct dentry
     dentry_t* parent;
     list_entry_t siblingEntry;
     list_t children;
+    mutex_t childrenMutex;
     superblock_t* superblock;
     const dentry_ops_t* ops;
     void* private;
-    dentry_flags_t flags;
-    mutex_t mutex;
     map_entry_t mapEntry;
+    _Atomic(dentry_flags_t) flags;
     /**
      * The number of mounts on this dentry.
      *
@@ -113,7 +111,7 @@ typedef struct dentry
      * process, a process can only traverse a mountpoint if it is visible in its namespace, if its not visible the
      * dentry acts exactly like a normal dentry.
      */
-    uint32_t mountCount;
+    atomic_uint64_t mountCount;
 } dentry_t;
 
 /**
@@ -144,9 +142,23 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
 uint64_t dentry_make_positive(dentry_t* dentry, inode_t* inode);
 
 /**
+ * @brief Increments the mount count of a dentry.
+ *
+ * @param dentry The dentry to increment the mount count of.
+ */
+void dentry_inc_mount_count(dentry_t* dentry);
+
+/**
+ * @brief Decrements the mount count of a dentry.
+ *
+ * @param dentry The dentry to decrement the mount count of.
+ */
+void dentry_dec_mount_count(dentry_t* dentry);
+
+/**
  * @brief Helper function for a basic getdents.
  *
- * This function can be used by filesystems that do not have any special requirements for getdents.
+ * This function can be used by filesystems that do not have any special requirements for getdents, in practice ram disks.
  */
 uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset,
     path_flags_t flags);

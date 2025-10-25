@@ -275,8 +275,6 @@ dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name)
 
     inode_t* dir = parent->dentry->inode;
     MUTEX_SCOPE(&dir->mutex);
-    MUTEX_SCOPE(&dentry->mutex);
-
     rwlock_write_release(&dentryCache.lock);
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
@@ -462,9 +460,7 @@ static uint64_t vfs_create(path_t* outPath, const pathname_t* pathname, process_
         return ERR;
     }
 
-    MUTEX_SCOPE(&target.dentry->mutex);
-
-    if (!(target.dentry->flags & DENTRY_NEGATIVE))
+    if (!(atomic_load(&target.dentry->flags) & DENTRY_NEGATIVE))
     {
         if (pathname->flags & PATH_EXCLUSIVE)
         {
@@ -497,7 +493,7 @@ static uint64_t vfs_create(path_t* outPath, const pathname_t* pathname, process_
         return ERR;
     }
 
-    if (target.dentry->flags & DENTRY_NEGATIVE)
+    if (atomic_load(&target.dentry->flags) & DENTRY_NEGATIVE)
     {
         errno = EIO;
         return ERR;
@@ -1209,10 +1205,8 @@ uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count)
         return ERR;
     }
 
-    mutex_acquire(&file->path.dentry->mutex);
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     uint64_t result = file->path.dentry->ops->getdents(file->path.dentry, buffer, count, &file->pos, file->flags);
-    mutex_release(&file->path.dentry->mutex);
     if (result != ERR)
     {
         inode_notify_access(file->inode);
@@ -1264,7 +1258,6 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
 
     memset(buffer, 0, sizeof(stat_t));
 
-    MUTEX_SCOPE(&path.dentry->mutex);
     MUTEX_SCOPE(&path.dentry->inode->mutex);
     buffer->number = path.dentry->inode->number;
     buffer->type = path.dentry->inode->type;
@@ -1350,10 +1343,8 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
     mutex_acquire(&old.dentry->inode->mutex);
     mutex_acquire(&newParent.dentry->inode->mutex);
 
-    MUTEX_SCOPE(&target.dentry->mutex);
-
     uint64_t result = 0;
-    if (!(target.dentry->flags & DENTRY_NEGATIVE))
+    if (!(atomic_load(&target.dentry->flags) & DENTRY_NEGATIVE))
     {
         errno = EEXIST;
         result = ERR;
@@ -1436,16 +1427,12 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
     }
 
     mutex_acquire(&dir->mutex);
-    mutex_acquire(&target.dentry->mutex);
-
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     uint64_t result = dir->ops->remove(dir, target.dentry, pathname->flags);
     if (result != ERR)
     {
         vfs_remove_dentry(target.dentry);
     }
-
-    mutex_release(&target.dentry->mutex);
     mutex_release(&dir->mutex);
 
     inode_notify_change(target.dentry->inode);

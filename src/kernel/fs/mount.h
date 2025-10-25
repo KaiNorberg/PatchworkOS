@@ -38,8 +38,8 @@ typedef struct mount
     mount_id_t id;
     map_entry_t mapEntry;
     superblock_t* superblock; ///< The superblock of the mounted filesystem.
-    dentry_t* root;           ///< The root dentry of the mounted filesystem.
     dentry_t* mountpoint;     ///< The dentry that this filesystem is mounted on, can be `NULL` for the root filesystem.
+    dentry_t* root;           ///< The root dentry of the mounted filesystem.
     mount_t* parent;          ///< The parent mount, can be `NULL` for the root filesystem.
 } mount_t;
 

@@ -53,6 +53,12 @@ typedef struct superblock
     const dentry_ops_t* dentryOps;
     const filesystem_t* fs;
     char deviceName[MAX_NAME];
+    /**
+     * The number of mounts of this superblock.
+     *
+     * Note that this does need to be separate from the reference count as a superblock is referenced by mounts,
+     * but it can also be referenced by other things like open files.
+     */
     atomic_uint64_t mountCount;
 } superblock_t;
 
