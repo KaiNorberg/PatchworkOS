@@ -24,7 +24,7 @@ typedef struct fb fb_t;
 /**
  * @brief Framebuffer mmap callback type.
  */
-typedef void* (*fb_mmap_t)(fb_t*, void*, uint64_t, pml_flags_t);
+typedef void* (*fb_mmap_t)(fb_t*, void*, uint64_t, uint64_t*, pml_flags_t);
 
 /**
  * @brief Framebuffer structure.

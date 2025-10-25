@@ -925,10 +925,12 @@ void* vfs_mmap(file_t* file, void* address, uint64_t length, pml_flags_t flags)
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    void* result = file->ops->mmap(file, address, length, flags);
+    uint64_t offset = file->pos;
+    void* result = file->ops->mmap(file, address, length, &offset, flags);
     if (result != NULL)
     {
         inode_notify_access(file->inode);
+        file->pos = offset;
     }
     return result;
 }

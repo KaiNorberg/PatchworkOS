@@ -408,17 +408,20 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
     if (header.magic != LOCAL_PACKET_MAGIC)
     {
         errno = EBADMSG;
+        conn->isClosed = true;
+        wait_unblock(&conn->waitQueue, WAIT_ALL, EOK);
         return ERR;
     }
 
     if (header.size > LOCAL_MAX_PACKET_SIZE)
     {
         errno = EMSGSIZE;
+        conn->isClosed = true;
+        wait_unblock(&conn->waitQueue, WAIT_ALL, EOK);
         return ERR;
     }
 
-    size_t readCount = header.size < count ? header.size : count;
-
+    uint64_t readCount = header.size < count ? header.size : count;
     if (ring_read_at(ring, 0, buffer, readCount) != readCount)
     {
         errno = EIO;

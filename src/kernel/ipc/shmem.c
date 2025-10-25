@@ -15,8 +15,6 @@
 #include <string.h>
 #include <sys/list.h>
 
-static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
-
 static dentry_t* shmemDir = NULL;
 static dentry_t* newFile = NULL;
 
@@ -134,7 +132,7 @@ static void shmem_close(file_t* file)
     DEREF(shmem);
 }
 
-static void* shmem_mmap(file_t* file, void* address, uint64_t length, pml_flags_t flags)
+static void* shmem_mmap(file_t* file, void* address, uint64_t length, uint64_t* offset, pml_flags_t flags)
 {
     shmem_object_t* shmem = file->private;
     if (shmem == NULL)
@@ -157,13 +155,26 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, pml_flags_
 
     if (shmem->pageAmount == 0) // First call to mmap()
     {
+        if (*offset != 0)
+        {
+            errno = EINVAL;
+            return NULL;
+        }
+
         assert(shmem->pages == NULL);
         return shmem_object_allocate_pages(shmem, pageAmount, space, address, flags);
     }
     else
     {
         assert(shmem->pages != NULL);
-        return vmm_map_pages(space, address, shmem->pages, MIN(pageAmount, shmem->pageAmount), flags,
+
+        if (*offset >= shmem->pageAmount * PAGE_SIZE)
+        {
+            errno = EINVAL;
+            return NULL;
+        }
+        uint64_t availablePages = shmem->pageAmount - BYTES_TO_PAGES(*offset);
+        return vmm_map_pages(space, address, &shmem->pages[*offset / PAGE_SIZE], MIN(pageAmount, availablePages), flags,
             shmem_vmm_callback, REF(shmem));
     }
 }

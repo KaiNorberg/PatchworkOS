@@ -16,12 +16,12 @@ static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
 static dentry_t* fbDir = NULL;
 
-static void* fb_buffer_mmap(file_t* file, void* addr, uint64_t length, pml_flags_t flags)
+static void* fb_buffer_mmap(file_t* file, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
 {
     log_screen_disable();
 
     fb_t* fb = file->inode->private;
-    return fb->mmap(fb, addr, length, flags);
+    return fb->mmap(fb, addr, length, offset, flags);
 }
 
 static file_ops_t bufferOps = {

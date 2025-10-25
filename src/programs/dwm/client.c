@@ -370,7 +370,6 @@ static uint64_t (*actions[])(client_t*, const cmd_header_t*) = {
 
 uint64_t client_receive_cmds(client_t* client)
 {
-    printf("dwm client: receiving commands from client fd %d\n", client->fd);
     errno = EOK;
     uint64_t readSize = read(client->fd, &client->cmds, sizeof(cmd_buffer_t) + 1);
     if (readSize == ERR)
@@ -380,7 +379,6 @@ uint64_t client_receive_cmds(client_t* client)
             perror("dwm client: read error");
             return ERR;
         }
-        printf("dwm client: no data to read\n");
         return 0;
     }
 
@@ -427,7 +425,6 @@ uint64_t client_receive_cmds(client_t* client)
 
     CMD_BUFFER_FOR_EACH(&client->cmds, cmd)
     {
-        printf("dwm client: processing command type %u\n", cmd->type);
         if (actions[cmd->type](client, cmd) == ERR)
         {
             printf("dwm client: command type %u caused error\n", cmd->type);

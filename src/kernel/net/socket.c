@@ -315,6 +315,9 @@ static inode_ops_t inodeOps = {
     .cleanup = socket_inode_cleanup,
 };
 
+/**
+ * Will only be called when the socket reference count reaches 0. Meaning the socket must be unmounted first.
+ */
 static void socket_free(socket_t* sock)
 {
     if (sock == NULL)
@@ -351,7 +354,7 @@ static void socket_unmount(superblock_t* superblock)
 }
 
 static superblock_ops_t superblockOps = {
-    .cleanup = socket_unmount,
+    .unmount = socket_unmount,
 };
 
 socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t flags)
@@ -405,7 +408,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
         heap_free(sock);
         return NULL;
     }
-    sock->superblock = REF(mount->superblock);
+    mount->superblock->private = REF(sock);
     DEREF(mount);
 
     sock->ctlFile = sysfs_file_new(mount->root, "ctl", &inodeOps, &ctlOps, REF(sock));

@@ -54,7 +54,7 @@ surface_t* surface_new(client_t* client, const char* name, const point_t* point,
     surface->timer.flags = TIMER_NONE;
     surface->timer.timeout = CLOCKS_NEVER;
     surface->timer.deadline = CLOCKS_NEVER;
-    surface->isInvalid = true;
+    surface->isInvalid = false;
     surface->hasMoved = false;
     surface->isVisible = false;
     surface->isFocused = false;

@@ -80,7 +80,7 @@ typedef struct superblock_ops
     /**
      * Called when the the superblocks `mountCount` reaches zero, meaning it is not visible anywhere in any namespace.
      */
-    uint64_t (*unmount)(superblock_t* superblock);
+    void (*unmount)(superblock_t* superblock);
 } superblock_ops_t;
 
 /**

@@ -16,14 +16,21 @@
 static boot_gop_t gop;
 static fb_t* fb;
 
-static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, pml_flags_t flags)
+static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
 {
     (void)fb; // Unused
 
     process_t* process = sched_process();
 
-    length = MIN(gop.height * gop.stride * sizeof(uint32_t), length);
-    addr = vmm_map(&process->space, addr, gop.physAddr, length, flags, NULL, NULL);
+    uintptr_t physAddr = (uint64_t)gop.physAddr + *offset;
+    uintptr_t endAddr = physAddr + length;
+    if (endAddr > (uint64_t)gop.physAddr + (gop.stride * gop.height * sizeof(uint32_t)))
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    addr = vmm_map(&process->space, addr, (void*)physAddr, length, flags, NULL, NULL);
     if (addr == NULL)
     {
         return NULL;

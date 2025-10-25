@@ -18,7 +18,7 @@ static uint64_t socket_factory_read(file_t* file, void* buffer, uint64_t count, 
     socket_t* sock = file->private;
 
     uint64_t length = strlen(sock->id);
-    return BUFFER_READ(buffer, count, offset, sock->id, length); // Include null terminator
+    return BUFFER_READ(buffer, count, offset, sock->id, length);
 }
 
 static uint64_t socket_factory_open(file_t* file)
