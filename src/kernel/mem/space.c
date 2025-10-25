@@ -606,14 +606,22 @@ pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, spac
     if (callbackId >= space->callbacksLength)
     {
         space_callback_t* newCallbacks =
-            heap_realloc(space->callbacks, sizeof(space_callback_t) * callbackId, HEAP_NONE);
+            heap_alloc(sizeof(space_callback_t) * (callbackId + 1), HEAP_NONE);
         if (newCallbacks == NULL)
         {
             return PML_MAX_CALLBACK;
         }
 
+        if (space->callbacks != NULL)
+        {
+            memcpy(newCallbacks, space->callbacks, sizeof(space_callback_t) * space->callbacksLength);
+            heap_free(space->callbacks);
+        }
+        memset(&newCallbacks[space->callbacksLength], 0,
+            sizeof(space_callback_t) * (callbackId + 1 - space->callbacksLength));
+
         space->callbacks = newCallbacks;
-        space->callbacksLength = callbackId;
+        space->callbacksLength = callbackId + 1;
     }
 
     bitmap_set(&space->callbackBitmap, callbackId);

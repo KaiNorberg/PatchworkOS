@@ -141,10 +141,12 @@ void sched_thread_ctx_init(sched_thread_ctx_t* ctx);
 /**
  * @brief Initializes a CPU's scheduling context.
  *
+ * Will also register the schedulers timer handler for the CPU.
+ *
  * @param ctx The `sched_cpu_ctx_t` structure to initialize.
- * @param cpu The `cpu_t` structure associated with this scheduling context.
+ * @param self The `cpu_t` structure associated with this scheduling context.
  */
-void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* cpu);
+void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* self);
 
 /**
  * @brief The idle loop for a CPU.
@@ -156,19 +158,9 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* cpu);
 NORETURN extern void sched_idle_loop(void);
 
 /**
- * @brief Initializes the scheduler.
- *
- * The `sched_init()` function performs global initialization for the scheduler, for example spawning the boot thread.
- *
- */
-void sched_init(void);
-
-/**
  * @brief Specify that the boot thread is no longer needed.
  *
- * The `sched_done_with_boot_thread()` function is called to tell the scheduler that the kernel has finished booting and
- * that the boot thread is no longer needed, instead of just discarding it, the boot thread becomes the idle thread of
- * the bootstrap cpu.
+ * The `sched_done_with_boot_thread()` function is called when the kernel has finished booting and the boot thread is no longer needed, instead of just discarding it, the boot thread becomes the idle thread of the bootstrap cpu.
  *
  */
 NORETURN void sched_done_with_boot_thread(void);

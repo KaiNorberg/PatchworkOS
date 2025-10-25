@@ -213,14 +213,12 @@ typedef struct
 } wait_thread_ctx_t;
 
 /**
- * @brief Alternative way to create a wait queue for static initialization.
+ * @brief Create a wait queue initializer.
+ *
+ * @param name The name of the wait queue variable.
+ * @return The wait queue initializer.
  */
-#define WAIT_QUEUE_CREATE {.lock = LOCK_CREATE, .entries = LIST_CREATE}
-
-/**
- * @brief Initialize wait subsystem.
- */
-void wait_init(void);
+#define WAIT_QUEUE_CREATE(name) {.lock = LOCK_CREATE, .entries = LIST_CREATE(name.entries)}
 
 /**
  * @brief Initialize wait queue.
@@ -246,10 +244,12 @@ void wait_thread_ctx_init(wait_thread_ctx_t* wait);
 /**
  * @brief Initialize per-CPU wait context.
  *
+ * Must be called on the CPU the context belongs to.
+ *
  * @param wait The CPU wait context to initialize.
- * @param cpu The CPU the context belongs to.
+ * @param self The CPU the context belongs to.
  */
-void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* cpu);
+void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* self);
 
 /**
  * @brief Finalize blocking of a thread.

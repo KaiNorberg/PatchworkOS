@@ -16,9 +16,6 @@
 #include <sys/math.h>
 
 static time_t bootEpoch;
-
-static timer_callback_t callbacks[TIMER_MAX_CALLBACK] = {0};
-
 static bool initialized = false;
 
 static atomic_int8_t accumulatorLock = ATOMIC_VAR_INIT(0);
@@ -55,24 +52,28 @@ void timer_ctx_init(timer_ctx_t* ctx)
     cpu_t* self = smp_self_unsafe();
     ctx->apicTicksPerNs = apic_timer_ticks_per_ns();
     ctx->nextDeadline = CLOCKS_NEVER;
+    lock_init(&ctx->lock);
+    for (uint32_t i = 0; i < TIMER_MAX_CALLBACK; i++)
+    {
+        ctx->callbacks[i] = NULL;
+    }
     LOG_INFO("cpu%d apic timer ticksPerNs=%lu\n", self->id, self->timer.apicTicksPerNs);
 }
 
-void timer_init(void)
+static void timer_init(void)
 {
     struct tm time;
     rtc_read(&time);
     bootEpoch = mktime(&time);
 
     initialized = true;
-    LOG_INFO("timer initialized epoch=%d\n", timer_unix_epoch());
 }
 
 clock_t timer_uptime(void)
 {
     if (!initialized)
     {
-        return 0;
+        timer_init();
     }
 
     timer_acquire();
@@ -85,7 +86,7 @@ time_t timer_unix_epoch(void)
 {
     if (!initialized)
     {
-        return 0;
+        timer_init();
     }
 
     return bootEpoch + timer_uptime() / CLOCKS_PER_SEC;
@@ -95,29 +96,31 @@ void timer_interrupt_handler(interrupt_frame_t* frame, cpu_t* self)
 {
     timer_accumulate();
 
+    LOCK_SCOPE(&self->timer.lock);
     self->timer.nextDeadline = CLOCKS_NEVER;
     for (uint32_t i = 0; i < TIMER_MAX_CALLBACK; i++)
     {
-        if (callbacks[i] != NULL)
+        if (self->timer.callbacks[i] != NULL)
         {
-            callbacks[i](frame, self);
+            self->timer.callbacks[i](frame, self);
         }
     }
 }
 
-void timer_subscribe(timer_callback_t callback)
+void timer_subscribe(timer_ctx_t* ctx, timer_callback_t callback)
 {
-    if (callback == NULL)
+    if (ctx == NULL || callback == NULL)
     {
         return;
     }
 
+    LOCK_SCOPE(&ctx->lock);
     for (uint32_t i = 0; i < TIMER_MAX_CALLBACK; i++)
     {
-        if (callbacks[i] == NULL)
+        if (ctx->callbacks[i] == NULL)
         {
             LOG_DEBUG("timer callback subscribed %p in slot %d\n", callback, i);
-            callbacks[i] = callback;
+            ctx->callbacks[i] = callback;
             return;
         }
     }
@@ -125,19 +128,20 @@ void timer_subscribe(timer_callback_t callback)
     panic(NULL, "Failed to subscribe timer callback, no free slots available");
 }
 
-void timer_unsubscribe(timer_callback_t callback)
+void timer_unsubscribe(timer_ctx_t* ctx, timer_callback_t callback)
 {
-    if (callback == NULL)
+    if (ctx == NULL || callback == NULL)
     {
         return;
     }
 
+    LOCK_SCOPE(&ctx->lock);
     for (uint32_t i = 0; i < TIMER_MAX_CALLBACK; i++)
     {
-        if (callbacks[i] == callback)
+        if (ctx->callbacks[i] == callback)
         {
             LOG_DEBUG("timer callback unsubscribed %p from slot %d\n", callback, i);
-            callbacks[i] = NULL;
+            ctx->callbacks[i] = NULL;
             return;
         }
     }
@@ -147,7 +151,7 @@ void timer_unsubscribe(timer_callback_t callback)
 
 void timer_one_shot(cpu_t* self, clock_t uptime, clock_t timeout)
 {
-    if (timeout == CLOCKS_NEVER)
+    if (self == NULL || timeout == CLOCKS_NEVER)
     {
         return;
     }

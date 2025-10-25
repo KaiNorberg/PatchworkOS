@@ -30,5 +30,7 @@
 #define SYS_FUTEX 27
 #define SYS_REMOVE 28
 #define SYS_LINK 29
+#define SYS_SHARE 30
+#define SYS_CLAIM 31
 
-#define SYS_TOTAL_AMOUNT 30
+#define SYS_TOTAL_AMOUNT 32

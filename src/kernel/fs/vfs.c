@@ -16,6 +16,7 @@
 #include "sync/rwlock.h"
 #include "sys/list.h"
 #include "sysfs.h"
+#include "key.h"
 #include "utils/ref.h"
 #include "vfs_ctx.h"
 
@@ -82,6 +83,7 @@ void vfs_init(void)
     vfs_map_init(&inodeCache);
 
     path_flags_init();
+    key_init();
 
     LOG_INFO("virtual file system initialized\n");
 }
@@ -605,7 +607,7 @@ SYSCALL_DEFINE(SYS_OPEN, fd_t, const char* pathString)
     }
     DEREF_DEFER(file);
 
-    return vfs_ctx_open(&process->vfsCtx, file);
+    return vfs_ctx_alloc_fd(&process->vfsCtx, file);
 }
 
 uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* process)
@@ -687,22 +689,22 @@ SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
     DEREF_DEFER(files[1]);
 
     fd_t fdsLocal[2];
-    fdsLocal[0] = vfs_ctx_open(&process->vfsCtx, files[0]);
+    fdsLocal[0] = vfs_ctx_alloc_fd(&process->vfsCtx, files[0]);
     if (fdsLocal[0] == ERR)
     {
         return ERR;
     }
-    fdsLocal[1] = vfs_ctx_open(&process->vfsCtx, files[1]);
+    fdsLocal[1] = vfs_ctx_alloc_fd(&process->vfsCtx, files[1]);
     if (fdsLocal[1] == ERR)
     {
-        vfs_ctx_close(&process->vfsCtx, fdsLocal[0]);
+        vfs_ctx_free_fd(&process->vfsCtx, fdsLocal[0]);
         return ERR;
     }
 
     if (thread_copy_to_user(thread, fds, fdsLocal, sizeof(fd_t) * 2) == ERR)
     {
-        vfs_ctx_close(&process->vfsCtx, fdsLocal[0]);
-        vfs_ctx_close(&process->vfsCtx, fdsLocal[1]);
+        vfs_ctx_free_fd(&process->vfsCtx, fdsLocal[0]);
+        vfs_ctx_free_fd(&process->vfsCtx, fdsLocal[1]);
         return ERR;
     }
 

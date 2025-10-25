@@ -20,11 +20,17 @@ static void simd_xsave_init(void)
 
     xcr0 = xcr0 | XCR0_XSAVE_SAVE_X87 | XCR0_XSAVE_SAVE_SSE;
 
-    if (cpuid_is_avx_avail())
+    cpuid_feature_info_t info;
+    cpuid_feature_info(&info);
+
+    cpuid_extended_feature_info_t extInfo;
+    cpuid_extended_feature_info(&extInfo);
+
+    if (info.featuresEcx & CPUID_ECX_AVX)
     {
         xcr0 = xcr0 | XCR0_AVX_ENABLE;
 
-        if (cpuid_is_avx512_avail())
+        if (extInfo.featuresEbx & CPUID_EBX_AVX512F)
         {
             xcr0 = xcr0 | XCR0_AVX512_ENABLE | XCR0_ZMM0_15_ENABLE | XCR0_ZMM16_32_ENABLE;
         }
@@ -40,13 +46,19 @@ void simd_cpu_init(void)
 
     cr4_write(cr4_read() | CR4_FXSR_ENABLE | CR4_SIMD_EXCEPTION);
 
-    if (cpuid_is_xsave_avail())
+    cpuid_feature_info_t info;
+    cpuid_feature_info(&info);
+
+    cpuid_extended_feature_info_t extInfo;
+    cpuid_extended_feature_info(&extInfo);
+
+    if (info.featuresEcx & CPUID_ECX_OSXSAVE)
     {
         simd_xsave_init();
     }
 
     asm volatile("fninit");
-    if (cpuid_is_xsave_avail())
+    if (info.featuresEcx & CPUID_ECX_OSXSAVE)
     {
         asm volatile("xsave %0" : : "m"(*initCtx), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
     }
@@ -56,15 +68,15 @@ void simd_cpu_init(void)
     }
 
     LOG_INFO("cpu%d simd ", smp_self_unsafe()->id);
-    if (cpuid_is_xsave_avail())
+    if (info.featuresEcx & CPUID_ECX_OSXSAVE)
     {
         LOG_INFO("xsave ");
     }
-    if (cpuid_is_avx_avail())
+    if (info.featuresEcx & CPUID_ECX_AVX)
     {
         LOG_INFO("avx ");
     }
-    if (cpuid_is_avx512_avail())
+    if (extInfo.featuresEbx & CPUID_EBX_AVX512F)
     {
         LOG_INFO("avx512 ");
     }
@@ -91,7 +103,10 @@ void simd_ctx_deinit(simd_ctx_t* ctx)
 
 void simd_ctx_save(simd_ctx_t* ctx)
 {
-    if (cpuid_is_xsave_avail())
+    cpuid_feature_info_t info;
+    cpuid_feature_info(&info);
+
+    if (info.featuresEcx & CPUID_ECX_OSXSAVE)
     {
         asm volatile("xsave %0" : : "m"(*ctx->buffer), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
     }
@@ -103,7 +118,10 @@ void simd_ctx_save(simd_ctx_t* ctx)
 
 void simd_ctx_load(simd_ctx_t* ctx)
 {
-    if (cpuid_is_xsave_avail())
+    cpuid_feature_info_t info;
+    cpuid_feature_info(&info);
+
+    if (info.featuresEcx & CPUID_ECX_OSXSAVE)
     {
         asm volatile("xrstor %0" : : "m"(*ctx->buffer), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
     }

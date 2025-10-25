@@ -314,7 +314,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
                 return ERR;
             }
 
-            if (vfs_ctx_openas(childVfsCtx, fdsCopy[i].child, file) == ERR)
+            if (vfs_ctx_set_fd(childVfsCtx, fdsCopy[i].child, file) == ERR)
             {
                 DEREF(file);
                 heap_free(fdsCopy);

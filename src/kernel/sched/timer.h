@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cpu/interrupt.h"
+#include "sync/lock.h"
 
 #include <sys/proc.h>
 #include <time.h>
@@ -42,6 +43,11 @@ typedef struct
      * `timer_one_shot()`.
      */
     clock_t nextDeadline;
+    /**
+     * @brief The registered timer callbacks for the owner cpu.
+     */
+    timer_callback_t callbacks[TIMER_MAX_CALLBACK];
+    lock_t lock;
 } timer_ctx_t;
 
 /**
@@ -52,11 +58,6 @@ typedef struct
  * @param ctx The timer context to initialize.
  */
 void timer_ctx_init(timer_ctx_t* ctx);
-
-/**
- * @brief System time initialization.
- */
-void timer_init(void);
 
 /**
  * @brief Time since boot.
@@ -83,16 +84,22 @@ void timer_interrupt_handler(interrupt_frame_t* frame, cpu_t* self);
 /**
  * @brief Subscribe to timer interrupts.
  *
+ * Note that subscribing to a callback only applies to the cpu that the timer context belongs to.
+ *
+ * @param ctx The timer context that the subscription is for.
  * @param callback The callback function to be called on timer interrupts.
  */
-void timer_subscribe(timer_callback_t callback);
+void timer_subscribe(timer_ctx_t* ctx, timer_callback_t callback);
 
 /**
  * @brief Unsubscribe from timer interrupts.
  *
+ * Note that unsubscribing from a callback only applies to the cpu that the timer context belongs to.
+ *
+ * @param ctx The timer context that the unsubscription is for.
  * @param callback The callback function to be removed from timer interrupts.
  */
-void timer_unsubscribe(timer_callback_t callback);
+void timer_unsubscribe(timer_ctx_t* ctx, timer_callback_t callback);
 
 /**
  * @brief Schedule a one-shot timer interrupt.

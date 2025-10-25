@@ -58,22 +58,22 @@ typedef enum
  * Used to identify the type of an event.
  *
  * Events are divided into 4 categories:
- * - Standard events (0-63): Sent by the DWM to ONLY the display or surface that the event is targeted at, sent by
+ * - Standard events (0-127): Sent by the DWM to ONLY the display or surface that the event is targeted at, sent by
  * default.
- * - Global events (64-127): Sent by the DWM to all displays, not sent by default.
- * - Library events (128-191): Sent by the libpatchwork library to elements using the library, cant be subscribed to or
+ * - Global events (128-255): Sent by the DWM to all displays, not sent by default.
+ * - Library events (256-1023): Sent by the libpatchwork library to elements using the library, cant be subscribed to or
  * unsubscribed from.
- * - User events (192-255): Defined by individual programs, cant be subscribed to or unsubscribed from.
+ * - User events (1024-65535): Defined by individual programs, cant be subscribed to or unsubscribed from.
  */
-typedef uint8_t event_type_t;
+typedef uint16_t event_type_t;
 
 /**
  * @brief Event bitmask type.
  *
- * Used to decide what events will be received by a display.
- * By default events 0-63 inclusive are received (the first uint64_t is by default UINT64_MAX)
+ * Used to decide what events will be received by a display, only applicable to events sent by the DWM.
+ * By default events 0-127 inclusive are received (the first uint64_t is by default UINT64_MAX)
  */
-typedef uint64_t event_bitmask_t[2];
+typedef uint64_t event_bitmask_t[4];
 
 #define EVENT_SCREEN_INFO 0
 #define EVENT_SURFACE_NEW 1
@@ -84,21 +84,23 @@ typedef uint64_t event_bitmask_t[2];
 #define EVENT_CURSOR_LEAVE 6
 #define EVENT_REPORT 7
 
-#define GEVENT_ATTACH 64
-#define GEVENT_DETACH 65
-#define GEVENT_REPORT 66
-#define GEVENT_KBD 67
-#define GEVENT_MOUSE 68
+#define GEVENT_ATTACH 128
+#define GEVENT_DETACH 129
+#define GEVENT_REPORT 130
+#define GEVENT_KBD 131
+#define GEVENT_MOUSE 132
 
-#define LEVENT_INIT 128
-#define LEVENT_FREE 129
-#define LEVENT_REDRAW 130
-#define LEVENT_ACTION 131
-#define LEVENT_QUIT 132
-#define LEVENT_FORCE_ACTION 133
+#define DWM_MAX_EVENT 256
 
-#define UEVENT_START 192
-#define UEVENT_END 255
+#define LEVENT_INIT 256
+#define LEVENT_FREE 257
+#define LEVENT_REDRAW 258
+#define LEVENT_ACTION 259
+#define LEVENT_QUIT 260
+#define LEVENT_FORCE_ACTION 261
+
+#define UEVENT_START 1024
+#define UEVENT_END 65535
 
 /**
  * @brief Screen Info event.

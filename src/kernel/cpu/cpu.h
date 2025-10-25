@@ -9,7 +9,8 @@
 #include "sched/sched.h"
 #include "sched/timer.h"
 #include "sched/wait.h"
-#include "tss.h"
+#include "drivers/rand.h"
+#include "cpu/tss.h"
 
 #include <stdint.h>
 
@@ -48,6 +49,7 @@ typedef struct cpu
     timer_ctx_t timer;
     wait_cpu_ctx_t wait;
     sched_cpu_ctx_t sched;
+    rand_cpu_ctx_t rand;
     stack_pointer_t exceptionStack;
     stack_pointer_t doubleFaultStack;
     stack_pointer_t interruptStack;

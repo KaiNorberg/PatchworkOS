@@ -137,7 +137,7 @@ SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
     return vfs_ctx_set_cwd(&process->vfsCtx, &path);
 }
 
-fd_t vfs_ctx_open(vfs_ctx_t* ctx, file_t* file)
+fd_t vfs_ctx_alloc_fd(vfs_ctx_t* ctx, file_t* file)
 {
     LOCK_SCOPE(&ctx->lock);
 
@@ -160,7 +160,7 @@ fd_t vfs_ctx_open(vfs_ctx_t* ctx, file_t* file)
     return ERR;
 }
 
-fd_t vfs_ctx_openas(vfs_ctx_t* ctx, fd_t fd, file_t* file)
+fd_t vfs_ctx_set_fd(vfs_ctx_t* ctx, fd_t fd, file_t* file)
 {
     LOCK_SCOPE(&ctx->lock);
 
@@ -186,7 +186,7 @@ fd_t vfs_ctx_openas(vfs_ctx_t* ctx, fd_t fd, file_t* file)
     return fd;
 }
 
-uint64_t vfs_ctx_close(vfs_ctx_t* ctx, fd_t fd)
+uint64_t vfs_ctx_free_fd(vfs_ctx_t* ctx, fd_t fd)
 {
     LOCK_SCOPE(&ctx->lock);
 
@@ -209,7 +209,7 @@ uint64_t vfs_ctx_close(vfs_ctx_t* ctx, fd_t fd)
 
 SYSCALL_DEFINE(SYS_CLOSE, uint64_t, fd_t fd)
 {
-    return vfs_ctx_close(&sched_process()->vfsCtx, fd);
+    return vfs_ctx_free_fd(&sched_process()->vfsCtx, fd);
 }
 
 fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd)

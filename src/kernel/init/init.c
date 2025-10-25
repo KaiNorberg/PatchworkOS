@@ -47,15 +47,11 @@ void init_early(const boot_info_t* bootInfo)
     vmm_init(&bootInfo->memory, &bootInfo->gop, &bootInfo->kernel);
     heap_init();
 
+    panic_symbols_init(&bootInfo->kernel);
+
     acpi_tables_init(bootInfo->rsdp);
 
     smp_bootstrap_init();
-
-    timer_init();
-    sched_init();
-    wait_init();
-
-    panic_symbols_init(&bootInfo->kernel);
 
     LOG_DEBUG("early init done, jumping to boot thread\n");
     thread_t* bootThread = thread_get_boot();
@@ -66,6 +62,11 @@ void init_early(const boot_info_t* bootInfo)
     bootThread->frame.cs = GDT_CS_RING0;
     bootThread->frame.ss = GDT_SS_RING0;
     bootThread->frame.rflags = RFLAGS_ALWAYS_SET;
+
+    atomic_store(&bootThread->state, THREAD_RUNNING);
+    bootThread->sched.deadline = CLOCKS_NEVER;
+    smp_self_unsafe()->sched.runThread = bootThread;
+
     // This will trigger a page fault. But thats intended as we use page faults to dynamically grow the
     // threads kernel stack and the stack starts out unmapped.
     thread_jump(bootThread);
@@ -142,7 +143,7 @@ static inline void init_process_spawn(void)
     {
         panic(NULL, "Failed to open klog");
     }
-    if (vfs_ctx_openas(&initThread->process->vfsCtx, STDOUT_FILENO, klog) == ERR)
+    if (vfs_ctx_set_fd(&initThread->process->vfsCtx, STDOUT_FILENO, klog) == ERR)
     {
         panic(NULL, "Failed to set klog as stdout for init process");
     }

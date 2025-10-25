@@ -87,7 +87,7 @@ uint64_t vfs_ctx_get_cwd(vfs_ctx_t* ctx, path_t* outCwd);
 uint64_t vfs_ctx_set_cwd(vfs_ctx_t* ctx, const path_t* cwd);
 
 /**
- * @brief Open a file descriptor in a VFS context.
+ * @brief Allocate a new file descriptor in a VFS context.
  *
  * Will create a new reference to the file.
  *
@@ -95,22 +95,22 @@ uint64_t vfs_ctx_set_cwd(vfs_ctx_t* ctx, const path_t* cwd);
  * @param file The file to open.
  * @return On success, the new file descriptor. On failure, returns `ERR` and sets `errno`.
  */
-fd_t vfs_ctx_open(vfs_ctx_t* ctx, file_t* file);
+fd_t vfs_ctx_alloc_fd(vfs_ctx_t* ctx, file_t* file);
 
 /**
- * @brief Open a file descriptor in a VFS context, reusing an existing file descriptor.
+ * @brief Allocate a specific file descriptor in a VFS context.
  *
  * Will create a new reference to the file and release the old one if it exists.
  *
  * @param ctx The context to open the file descriptor in.
- * @param fd The file descriptor to reuse.
+ * @param fd The file descriptor to set.
  * @param file The file to open.
  * @return On success, the file descriptor. On failure, returns `ERR` and sets `errno`.
  */
-fd_t vfs_ctx_openas(vfs_ctx_t* ctx, fd_t fd, file_t* file);
+fd_t vfs_ctx_set_fd(vfs_ctx_t* ctx, fd_t fd, file_t* file);
 
 /**
- * @brief Close a file descriptor in a VFS context.
+ * @brief Free a file descriptor in a VFS context.
  *
  * Will release the reference to the file.
  *
@@ -118,7 +118,7 @@ fd_t vfs_ctx_openas(vfs_ctx_t* ctx, fd_t fd, file_t* file);
  * @param fd The file descriptor to close.
  * @return On success, `0`. On failure, returns `ERR` and sets `errno`.
  */
-uint64_t vfs_ctx_close(vfs_ctx_t* ctx, fd_t fd);
+uint64_t vfs_ctx_free_fd(vfs_ctx_t* ctx, fd_t fd);
 
 /**
  * @brief Duplicate a file descriptor in a VFS context.

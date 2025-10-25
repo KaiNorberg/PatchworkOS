@@ -48,7 +48,6 @@ typedef struct window
     rect_t invalidRect;
     surface_type_t type;
     window_flags_t flags;
-    char shmem[MAX_NAME];
     surface_id_t surface;
     pixel_t* buffer;
     element_t* root;

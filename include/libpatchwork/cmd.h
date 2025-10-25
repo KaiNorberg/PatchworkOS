@@ -55,7 +55,6 @@ typedef struct
     cmd_header_t header;
     surface_type_t type;
     rect_t rect;
-    pid_t owner;
     char name[MAX_NAME];
 } cmd_surface_new_t;
 

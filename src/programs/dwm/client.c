@@ -120,9 +120,16 @@ static uint64_t client_action_surface_new(client_t* client, const cmd_header_t* 
     const rect_t* rect = &cmd->rect;
     point_t point = {.x = rect->left, .y = rect->top};
     surface_t* surface =
-        surface_new(client, cmd->owner, cmd->name, &point, RECT_WIDTH(rect), RECT_HEIGHT(rect), cmd->type);
+        surface_new(client, cmd->name, &point, RECT_WIDTH(rect), RECT_HEIGHT(rect), cmd->type);
     if (surface == NULL)
     {
+        return ERR;
+    }
+
+    event_surface_new_t event;
+    if (share(&event.shmemKey, surface->shmem, CLOCKS_NEVER) == ERR)
+    {
+        surface_free(surface);
         return ERR;
     }
 
@@ -133,12 +140,9 @@ static uint64_t client_action_surface_new(client_t* client, const cmd_header_t* 
     }
 
     list_push(&client->surfaces, &surface->clientEntry);
-
-    event_surface_new_t event;
-    strcpy_s(event.shmem, MAX_NAME, surface->shmem);
-    client_send_event(client, surface->id, EVENT_SURFACE_NEW, &event, sizeof(event));
-
     dwm_focus_set(surface);
+
+    client_send_event(client, surface->id, EVENT_SURFACE_NEW, &event, sizeof(event));
     return 0;
 }
 
@@ -321,7 +325,7 @@ static uint64_t client_action_subscribe(client_t* client, const cmd_header_t* he
     }
     cmd_subscribe_t* cmd = (cmd_subscribe_t*)header;
 
-    if (cmd->event >= EVENT_MAX)
+    if (cmd->event >= DWM_MAX_EVENT)
     {
         errno = EINVAL;
         return ERR;
@@ -340,7 +344,7 @@ static uint64_t client_action_unsubscribe(client_t* client, const cmd_header_t* 
     }
     cmd_unsubscribe_t* cmd = (cmd_unsubscribe_t*)header;
 
-    if (cmd->event >= EVENT_MAX)
+    if (cmd->event >= DWM_MAX_EVENT)
     {
         errno = EINVAL;
         return ERR;

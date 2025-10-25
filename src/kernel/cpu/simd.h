@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /**
  * @brief SIMD context management
@@ -9,6 +10,10 @@
  *
  * SIMD (Single Instruction, Multiple Data) context management allows saving and restoring the state of SIMD registers,
  * the fact that SIMD uses its own registers is the reason that we cant use SIMD in the kernel normally.
+ *
+ * @see [XSAVE Instruction](https://www.felixcloutier.com/x86/xsave)
+ * @see [FXSAVE Instruction](https://www.felixcloutier.com/x86/fxsave)
+ * @see [FNINIT Instruction](https://www.felixcloutier.com/x86/fninit)
  *
  * @{
  */

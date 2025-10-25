@@ -68,7 +68,7 @@ extern "C"
  * The `open()` function opens a file located at a given path.
  *
  * @param path The path to the desired file.
- * @return On success, the file descriptor, on failure returns `ERR` and errno is set.
+ * @return On success, the file descriptor, on failure returns `ERR` and `errno` is set.
  */
 fd_t open(const char* path);
 
@@ -80,7 +80,7 @@ fd_t open(const char* path);
  *
  * @param format The format string specifying the path to the desired file.
  * @param ... Variable arguments to be formatted into the path string.
- * @return On success, the file descriptor, on failure returns `ERR` and errno is set.
+ * @return On success, the file descriptor, on failure returns `ERR` and `errno` is set.
  */
 fd_t openf(const char* _RESTRICT format, ...);
 
@@ -89,7 +89,7 @@ fd_t openf(const char* _RESTRICT format, ...);
  *
  * @param format The format string specifying the path to the desired file.
  * @param args A `va_list` containing the arguments to be formatted into the path string.
- * @return On success, the file descriptor, on failure returns `ERR` and errno is set.
+ * @return On success, the file descriptor, on failure returns `ERR` and `errno` is set.
  */
 fd_t vopenf(const char* _RESTRICT format, va_list args);
 
@@ -106,7 +106,7 @@ fd_t vopenf(const char* _RESTRICT format, va_list args);
  *
  * @param path The path to the desired file.
  * @param fd An array of two `fd_t` where the new file descriptors will be stored.
- * @return On success, 0, on failure returns `ERR` and errno is set.
+ * @return On success, 0, on failure returns `ERR` and `errno` is set.
  */
 uint64_t open2(const char* path, fd_t fd[2]);
 
@@ -114,7 +114,7 @@ uint64_t open2(const char* path, fd_t fd[2]);
  * @brief System call for closing files.
  *
  * @param fd The file descriptor to close.
- * @return On success, 0, on failure returns `ERR` and errno is set.
+ * @return On success, 0, on failure returns `ERR` and `errno` is set.
  */
 uint64_t close(fd_t fd);
 
@@ -124,7 +124,7 @@ uint64_t close(fd_t fd);
  * @param fd The file descriptor to read from.
  * @param buffer A pointer to the buffer where the data will be stored.
  * @param count The maximum number of bytes to read.
- * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and errno
+ * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and `errno`
  * is set.
  */
 uint64_t read(fd_t fd, void* buffer, uint64_t count);
@@ -135,7 +135,7 @@ uint64_t read(fd_t fd, void* buffer, uint64_t count);
  * @param fd The file descriptor to read from.
  * @param format The format string.
  * @param ... Variable arguments to be formatted.
- * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and errno
+ * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and `errno`
  * is set.
  */
 uint64_t readf(fd_t fd, const char* _RESTRICT format, ...);
@@ -146,7 +146,7 @@ uint64_t readf(fd_t fd, const char* _RESTRICT format, ...);
  * @param fd The file descriptor to read from.
  * @param format The format string.
  * @param args A `va_list` containing the arguments to be formatted.
- * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and errno
+ * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and `errno`
  * is set.
  */
 uint64_t vreadf(fd_t fd, const char* _RESTRICT format, va_list args);
@@ -157,7 +157,7 @@ uint64_t vreadf(fd_t fd, const char* _RESTRICT format, va_list args);
  * @param fd The file descriptor to write to.
  * @param buffer A pointer to the buffer containing the data to write.
  * @param count The number of bytes to write.
- * @return On success, the number of bytes written. On failure, `ERR` and errno is set.
+ * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
  */
 uint64_t write(fd_t fd, const void* buffer, uint64_t count);
 
@@ -167,7 +167,7 @@ uint64_t write(fd_t fd, const void* buffer, uint64_t count);
  * @param fd The file descriptor to write to.
  * @param format The format string.
  * @param ... Variable arguments to be formatted.
- * @return On success, the number of bytes written. On failure, `ERR` and errno is set.
+ * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
  */
 uint64_t writef(fd_t fd, const char* _RESTRICT format, ...);
 
@@ -177,7 +177,7 @@ uint64_t writef(fd_t fd, const char* _RESTRICT format, ...);
  * @param fd The file descriptor to write to.
  * @param format The format string.
  * @param args A `va_list` containing the arguments to be formatted.
- * @return On success, the number of bytes written. On failure, `ERR` and errno is set.
+ * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
  */
 uint64_t vwritef(fd_t fd, const char* _RESTRICT format, va_list args);
 
@@ -190,7 +190,7 @@ uint64_t vwritef(fd_t fd, const char* _RESTRICT format, va_list args);
  * @param buffer A pointer to the buffer where the data will be stored.
  * @param count The maximum number of bytes to read.
  * @param offset The offset in the file to start reading from.
- * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and errno is set.
+ * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t readfile(const char* path, void* buffer, uint64_t count, uint64_t offset);
 
@@ -202,7 +202,7 @@ uint64_t readfile(const char* path, void* buffer, uint64_t count, uint64_t offse
  * @param path The path to the file.
  * @param format The format string.
  * @param ... Variable arguments to be formatted.
- * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and errno is set.
+ * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t readfilef(const char* path, const char* _RESTRICT format, ...);
 
@@ -214,7 +214,7 @@ uint64_t readfilef(const char* path, const char* _RESTRICT format, ...);
  * @param path The path to the file.
  * @param format The format string.
  * @param args A `va_list` containing the arguments to be formatted.
- * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and errno is set.
+ * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t vreadfilef(const char* path, const char* _RESTRICT format, va_list args);
 
@@ -227,7 +227,7 @@ uint64_t vreadfilef(const char* path, const char* _RESTRICT format, va_list args
  * @param buffer A pointer to the buffer containing the data to write.
  * @param count The number of bytes to write.
  * @param offset The offset in the file to start writing to.
- * @return On success, the number of bytes written. On failure, `ERR` and errno is set.
+ * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
  */
 uint64_t writefile(const char* path, const void* buffer, uint64_t count, uint64_t offset);
 
@@ -239,7 +239,7 @@ uint64_t writefile(const char* path, const void* buffer, uint64_t count, uint64_
  * @param path The path to the file.
  * @param format The format string.
  * @param ... Variable arguments to be formatted.
- * @return On success, the number of bytes written. On failure, `ERR` and errno is set.
+ * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
  */
 uint64_t writefilef(const char* path, const char* _RESTRICT format, ...);
 
@@ -251,7 +251,7 @@ uint64_t writefilef(const char* path, const char* _RESTRICT format, ...);
  * @param path The path to the file.
  * @param format The format string.
  * @param args A `va_list` containing the arguments to be formatted.
- * @return On success, the number of bytes written. On failure, `ERR` and errno is set.
+ * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
  */
 uint64_t vwritefilef(const char* path, const char* _RESTRICT format, va_list args);
 
@@ -267,7 +267,7 @@ typedef uint8_t seek_origin_t;
  * @param fd The file descriptor.
  * @param offset The offset to move the file pointer.
  * @param origin The origin that the offset is relative to (e.g., `SEEK_SET`, `SEEK_CUR`, `SEEK_END`).
- * @return On success, the new offset from the beginning of the file. On failure, `ERR` and errno is
+ * @return On success, the new offset from the beginning of the file. On failure, `ERR` and `errno` is
  * set.
  */
 uint64_t seek(fd_t fd, int64_t offset, seek_origin_t origin);
@@ -276,7 +276,7 @@ uint64_t seek(fd_t fd, int64_t offset, seek_origin_t origin);
  * @brief System call for changing the cwd.
  *
  * @param path The path to the new directory.
- * @return On success, 0. On failure, `ERR` and errno is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t chdir(const char* path);
 
@@ -318,7 +318,7 @@ typedef struct pollfd
  * @param amount The number of `pollfd_t` structures in the `fds` array.
  * @param timeout The maximum time (in clock ticks) to wait for an event. If `CLOCKS_NEVER`, it waits forever.
  * @return On success, the number of file descriptors for which the events occurred. On timeout, 0. On
- * failure, `ERR` and errno is set.
+ * failure, `ERR` and `errno` is set.
  */
 uint64_t poll(pollfd_t* fds, uint64_t amount, clock_t timeout);
 
@@ -332,7 +332,7 @@ uint64_t poll(pollfd_t* fds, uint64_t amount, clock_t timeout);
  * @param events The events to wait for (e.g., `POLLIN`, `POLLOUT`).
  * @param timeout The maximum time (in clock ticks) to wait for an event. If `CLOCKS_NEVER`, it waits forever.
  * @return On success, the events that occurred. On timeout, 0. On failure, the `POLLERR` event bit is
- * set and errno is set.
+ * set and `errno` is set.
  */
 poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);
 
@@ -380,7 +380,7 @@ static_assert(sizeof(stat_t) == 168, "invalid stat_t size");
  *
  * @param path The path to the file or directory.
  * @param stat A pointer to a `stat_t` structure where the file information will be stored.
- * @return On success, 0. On failure, `ERR` and errno is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t stat(const char* path, stat_t* stat);
 
@@ -394,7 +394,7 @@ uint64_t stat(const char* path, stat_t* stat);
  * @param request The driver-dependent request code.
  * @param argp A pointer to an argument that depends on the request, can be `NULL` if size is 0.
  * @param size The size of the argument pointed to by `argp`.
- * @return On success, the return value depends on the driver but is usually 0. On failure, `ERR` and errno is
+ * @return On success, the return value depends on the driver but is usually 0. On failure, `ERR` and `errno` is
  * set.
  */
 uint64_t ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size);
@@ -403,7 +403,7 @@ uint64_t ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size);
  * @brief System call for duplicating file descriptors.
  *
  * @param oldFd The open file descriptor to duplicate.
- * @return On success, the new file descriptor. On failure, `ERR` and errno is set.
+ * @return On success, the new file descriptor. On failure, `ERR` and `errno` is set.
  */
 fd_t dup(fd_t oldFd);
 
@@ -412,7 +412,7 @@ fd_t dup(fd_t oldFd);
  *
  * @param oldFd The open file descriptor to duplicate.
  * @param newFd The desired new file descriptor.
- * @return On success, the new file descriptor. On failure, `ERR` and errno is set.
+ * @return On success, the new file descriptor. On failure, `ERR` and `errno` is set.
  */
 fd_t dup2(fd_t oldFd, fd_t newFd);
 
@@ -434,7 +434,7 @@ typedef struct
  * @param buffer The destination buffer.
  * @param count The size of the buffer in bytes.
  * @return On success, the total number of bytes written to the buffer. On failure,
- * returns `ERR` and errno is set.
+ * returns `ERR` and `errno` is set.
  */
 uint64_t getdents(fd_t fd, dirent_t* buffer, uint64_t count);
 
@@ -442,7 +442,7 @@ uint64_t getdents(fd_t fd, dirent_t* buffer, uint64_t count);
  * @brief Wrapper for creating a directory.
  *
  * @param path The path of the directory to create.
- * @return On success, 0. On failure, `ERR` and errno is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t mkdir(const char* path);
 
@@ -450,7 +450,7 @@ uint64_t mkdir(const char* path);
  * @brief Wrapper for removing a directory.
  *
  * @param path The path of the directory to remove.
- * @return On success, 0. On failure, `ERR` and errno is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t rmdir(const char* path);
 
@@ -459,7 +459,7 @@ uint64_t rmdir(const char* path);
  *
  * @param oldPath
  * @param newPath
- * @return On success, 0. On failure, `ERR` and errno is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t link(const char* oldPath, const char* newPath);
 
@@ -467,7 +467,7 @@ uint64_t link(const char* oldPath, const char* newPath);
  * @brief Wrapper for removing a file.
  *
  * @param path The path of the file to remove.
- * @return On success, 0. On failure, `ERR` and errno is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t unlink(const char* path);
 
@@ -476,7 +476,7 @@ uint64_t unlink(const char* path);
  *
  * @param format The format string specifying the path of the file to remove.
  * @param ... Variable arguments to be formatted into the path string.
- * @return On success, 0. On failure, `ERR` and errno is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t removef(const char* format, ...);
 
@@ -485,9 +485,46 @@ uint64_t removef(const char* format, ...);
  *
  * @param format The format string specifying the path of the file to remove.
  * @param args A `va_list` containing the arguments to be formatted into the path string.
- * @return On success, 0. On failure, `ERR` and errno is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t vremovef(const char* format, va_list args);
+
+/**
+ * @brief Size of keys in bytes.
+ */
+#define KEY_SIZE 16
+
+/**
+ * @brief Key type.
+ *
+ * Used with `share()` and `claim()` to send file descriptors between processes.
+ */
+typedef struct
+{
+    uint8_t bytes[KEY_SIZE];
+} key_t;
+
+/**
+ * @brief System call for sharing a file descriptor with another process.
+ *
+ * Note that the file descriptor itself is not whats sent but the underlying file object.
+ *
+ * @param key Output pointer to store the generated key.
+ * @param fd The file descriptor to share.
+ * @param timeout The time until the shared file descriptor expires. If `CLOCKS_NEVER`, it never expires.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t share(key_t* key, fd_t fd, clock_t timeout);
+
+/**
+ * @brief System call for claiming a shared file descriptor.
+ *
+ * After claiming a shared file descriptor, the key is no longer valid and cannot be used again.
+ *
+ * @param key Pointer to the key identifying the shared file descriptor.
+ * @return On success, the claimed file descriptor. On failure, `ERR` and `errno` is set.
+ */
+fd_t claim(key_t* key);
 
 #if defined(__cplusplus)
 }

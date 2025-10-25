@@ -71,7 +71,7 @@ typedef enum
  * this happens regardless of the current privilege level.
  *
  */
-typedef struct PACKED tss
+typedef struct PACKED
 {
     uint32_t reserved1;
     uint64_t rsp0; ///< Stack pointer to load when switching to ring 0, unused.

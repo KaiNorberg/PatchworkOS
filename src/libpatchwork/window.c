@@ -311,16 +311,14 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     }
     cmd->type = win->type;
     cmd->rect = win->rect;
-    cmd->owner = getpid();
     strcpy(cmd->name, win->name);
     display_cmds_flush(disp);
 
     event_t event;
     display_wait_for_event(disp, &event, EVENT_SURFACE_NEW);
-    strcpy(win->shmem, event.surfaceNew.shmem);
     win->surface = event.target;
 
-    fd_t shmem = openf("/dev/shmem/%s", win->shmem);
+    fd_t shmem = claim(&event.surfaceNew.shmemKey);
     if (shmem == ERR)
     {
         window_free(win);

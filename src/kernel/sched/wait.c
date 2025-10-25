@@ -68,11 +68,6 @@ static void wait_timer_handler(interrupt_frame_t* frame, cpu_t* self)
     }
 }
 
-void wait_init(void)
-{
-    timer_subscribe(wait_timer_handler);
-}
-
 void wait_queue_init(wait_queue_t* waitQueue)
 {
     lock_init(&waitQueue->lock);
@@ -97,11 +92,12 @@ void wait_thread_ctx_init(wait_thread_ctx_t* wait)
     wait->cpu = NULL;
 }
 
-void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* cpu)
+void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* self)
 {
     list_init(&wait->blockedThreads);
-    wait->cpu = cpu;
+    wait->cpu = self;
     lock_init(&wait->lock);
+    timer_subscribe(&self->timer, wait_timer_handler);
 }
 
 bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread)

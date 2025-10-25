@@ -79,7 +79,9 @@ Additionally, the OS aims to, in spite of its experimental nature, remain approa
 ## Notable Future Plans
 
 - `share()`, `claim()` and `bind()` calls
-- Read, write, execute flags
+- Implement copy-on-write by extending the callback system in the VMM
+- File flags performance improvements
+- Read, write, execute permissions
 - Shell overhaul
 - Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions
 - Add configurability to `spawn()` for namespace inheritance
@@ -122,6 +124,8 @@ We see that PatchworkOS performs better across the board, and the performance di
 There are a few potential reasons for this, one is that PatchworkOS does not use a separate structure to manage virtual memory, instead it embeds metadata directly into the page tables, and since accessing a page table is just walking some pointers, its highly efficient, additionally it provides better caching since the page tables are likely already in the CPU cache.
 
 In the end we end up with a $O(1)$ complexity per page operation, or technically, since the algorithm for finding unmapped memory sections is $O(r)$ in the worst case where $r$ is the size of the address region to check in pages, having more memory allocated would potentially actually improve performance but only by a very small amount. We do of course get $O(n)$ complexity per allocation/mapping operation where $n$ is the number of pages.
+
+Note that as the number of pages increases we start to see less and less linear performance, this is most likely due to CPU cache saturation.
 
 For fun, we can throw the results into desmos to se that around $800$ to $900$ pages there is a "knee" in the curve. Saying that $x$ is the number of pages per iteration and $y$ is the time in milliseconds let us split the data into two sets. We can now perform linear regression which gives us
 ```math
@@ -295,9 +299,9 @@ For example, if process A wants to share its `/net/local/5` directory from the s
 // In process A
 fd_t dir = open("/net/local/5:dir");
 
-// Create a "key" for the file descriptor, this is a unique one time use randomly generated
-// uint64_t that can be used to retrieve the file descriptor in another process.
-key_t key = share(dir, CLOCKS_PER_SEC * 60); // Key valid for 60 seconds (CLOCKS_NEVER is also allowed)
+// Create a "key" for the file descriptor, this is a unique one time use randomly generated token that can be used to retrieve the file descriptor in another process.
+key_t key;
+share(&key, dir, CLOCKS_PER_SEC * 60); // Key valid for 60 seconds (CLOCKS_NEVER is also allowed)
 
 // In process B
 // The key is somehow communicated to B via IPC, for example a pipe, socket, argv, etc.
@@ -305,16 +309,16 @@ key_t key = ...;
 
 // Use the key to open a file descriptor to the directory, this will invalidate the key.
 fd_t dir = claim(key);
-// Will error here if the original file descriptor in process A has been closed,
-// process A exited, or the key expired.
+// Will error here if the original file descriptor in process A has been closed, process A exited, or the key expired.
 
-// Make "dir" ("/net/local/5" in A) available in B's namespace at "/any/path/it/wants"
-// In practice it might be best to mount it to the same path as in A to avoid confusion.
-bind(dir, "/any/path/it/wants");
+// Make "dir" ("/net/local/5" in A) available in B's namespace at "/any/path/it/wants". In practice it might be best to bind it to the same path as in A to avoid confusion.
+bind(dir, "/any/path/it/wants"); // (Not implemented yet)
 
-// Alternatively, it is also possible to just open paths in the shared directory without
-// polluting the namespace using openat().
-fd_t somePath = openat(dir, "data");
+// Its also possible to just open paths in the shared directory without polluting the namespace using openat().
+fd_t somePath = openat(dir, "data"); // (Not implemented yet)
+
+// Finally, it could also use fchdir() to change its current working directory to the shared directory.
+fchdir(dir); // (Not implemented yet)
 ```
 
 This system guarantees consent between processes, and can be used to implement more complex access control systems.

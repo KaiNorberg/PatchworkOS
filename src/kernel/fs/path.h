@@ -45,6 +45,8 @@ typedef struct namespace namespace_t;
  * A valid char is one of the following `abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.
  * ()[]{}~!@#$%^&?',;=+`.
  *
+ * TODO: Replace with array lookup.
+ *
  * @param ch The char to check.
  * @return true if the char is valid, false otherwise.
  */

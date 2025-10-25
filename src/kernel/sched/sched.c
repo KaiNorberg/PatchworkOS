@@ -20,7 +20,7 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-static wait_queue_t sleepQueue;
+static wait_queue_t sleepQueue = WAIT_QUEUE_CREATE(sleepQueue);
 
 static inline void sched_queues_init(sched_queues_t* queues)
 {
@@ -75,7 +75,12 @@ void sched_thread_ctx_init(sched_thread_ctx_t* ctx)
     ctx->prevBlockCheck = 0;
 }
 
-void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* cpu)
+static void sched_timer_handler(interrupt_frame_t* frame, cpu_t* self)
+{
+    sched_invoke(frame, self, SCHED_NORMAL);
+}
+
+void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* self)
 {
     sched_queues_init(&ctx->queues[0]);
     sched_queues_init(&ctx->queues[1]);
@@ -84,7 +89,7 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* cpu)
 
     // Bootstrap cpu is initalized early so we cant yet create the idle thread, the boot thread on the bootstrap cpu
     // will become the idle thread.
-    if (cpu->id == CPU_ID_BOOTSTRAP)
+    if (self->id == CPU_ID_BOOTSTRAP)
     {
         ctx->idleThread = NULL;
         ctx->runThread = NULL;
@@ -108,34 +113,9 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* cpu)
     }
 
     lock_init(&ctx->lock);
-    ctx->owner = cpu;
-}
+    ctx->owner = self;
 
-static void sched_init_spawn_boot_thread(void)
-{
-    cpu_t* self = smp_self_unsafe();
-    assert(self->sched.runThread == NULL);
-
-    thread_t* bootThread = thread_get_boot();
-    assert(bootThread != NULL);
-
-    bootThread->sched.deadline = UINT64_MAX;
-    atomic_store(&bootThread->state, THREAD_RUNNING);
-    self->sched.runThread = bootThread;
-}
-
-static void sched_timer_handler(interrupt_frame_t* frame, cpu_t* self)
-{
-    sched_invoke(frame, self, SCHED_NORMAL);
-}
-
-void sched_init(void)
-{
-    sched_init_spawn_boot_thread();
-
-    timer_subscribe(sched_timer_handler);
-
-    wait_queue_init(&sleepQueue);
+    timer_subscribe(&self->timer, sched_timer_handler);
 }
 
 void sched_done_with_boot_thread(void)
