@@ -96,8 +96,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     break;
     case EVENT_TIMER:
     {
-        rect_t screenRect;
-        display_screen_rect(window_get_display(win), &screenRect, 0);
+        rect_t screenRect = display_screen_rect(window_get_display(win), 0);
 
         int32_t startY = START_MENU_YPOS_START(&screenRect, theme->panelSize, theme->frameSize);
         int32_t endY = START_MENU_YPOS_END(&screenRect, theme->panelSize, theme->frameSize);
@@ -135,8 +134,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             return 0;
         }
 
-        rect_t rect;
-        window_get_rect(win, &rect);
+        rect_t rect = window_get_rect(win);
         uint64_t height = RECT_HEIGHT(&rect);
         rect.top = currentY;
         rect.bottom = currentY + height;
@@ -170,8 +168,7 @@ void start_menu_init(start_menu_t* startMenu, window_t* taskbar, display_t* disp
         abort();
     }
 
-    rect_t screenRect;
-    display_screen_rect(disp, &screenRect, 0);
+    rect_t screenRect = display_screen_rect(disp, 0);
 
     rect_t rect =
         RECT_INIT_DIM(theme->smallPadding, START_MENU_YPOS_START(&screenRect, theme->panelSize, theme->frameSize),
@@ -199,17 +196,14 @@ void start_menu_open(start_menu_t* startMenu)
         return;
     }
 
-    rect_t screenRect;
-
     element_t* elem = window_get_client_element(startMenu->win);
     const theme_t* theme = element_get_theme(elem);
 
-    display_screen_rect(window_get_display(startMenu->win), &screenRect, 0);
+    rect_t screenRect = display_screen_rect(window_get_display(startMenu->win), 0);
 
     int32_t startY = START_MENU_YPOS_START(&screenRect, theme->panelSize, theme->frameSize);
 
-    rect_t rect;
-    window_get_rect(startMenu->win, &rect);
+    rect_t rect = window_get_rect(startMenu->win);
     uint64_t height = RECT_HEIGHT(&rect);
     rect.top = startY;
     rect.bottom = startY + height;

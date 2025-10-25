@@ -15,6 +15,7 @@ extern "C"
 
 typedef enum
 {
+    SURFACE_NONE = 0,
     SURFACE_WINDOW,
     SURFACE_PANEL,
     SURFACE_CURSOR,

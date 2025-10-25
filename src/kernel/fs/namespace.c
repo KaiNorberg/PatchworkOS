@@ -188,7 +188,7 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
 
     // superblock_expose(superblock); // TODO: Expose the sysfsDir for the superblock
 
-    LOG_INFO("mounted %s with %s\n", deviceName, fsName);
+    LOG_DEBUG("mounted %s with %s\n", deviceName, fsName);
     return REF(mount);
 }
 

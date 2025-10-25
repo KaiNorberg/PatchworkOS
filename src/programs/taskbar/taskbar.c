@@ -271,8 +271,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
 void taskbar_init(taskbar_t* taskbar, display_t* disp)
 {
-    rect_t rect;
-    display_screen_rect(disp, &rect, 0);
+    rect_t rect = display_screen_rect(disp, 0);
     rect.top = rect.bottom - theme_global_get()->panelSize;
 
     display_subscribe(disp, GEVENT_ATTACH);
@@ -287,6 +286,9 @@ void taskbar_init(taskbar_t* taskbar, display_t* disp)
         printf("taskbar: failed to create taskbar window\n");
         abort();
     }
+
+    window_set_visible(taskbar->win, true);
+
     start_menu_init(&taskbar->startMenu, taskbar->win, disp);
     list_init(&taskbar->entries);
 }

@@ -56,7 +56,7 @@ surface_t* surface_new(client_t* client, const char* name, const point_t* point,
     surface->timer.deadline = CLOCKS_NEVER;
     surface->isInvalid = true;
     surface->hasMoved = false;
-    surface->isVisible = true;
+    surface->isVisible = false;
     surface->isFocused = false;
     surface->prevRect = RECT_INIT_DIM(surface->pos.x, surface->pos.y, width, height);
     strcpy(surface->name, name);

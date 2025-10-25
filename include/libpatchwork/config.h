@@ -104,7 +104,7 @@ bool config_get_bool(config_t* config, const char* section, const char* key, boo
  * @param config The configuration file.
  * @param section The section to get the value from, case insensitive.
  * @param key The key to get the value for, case insensitive.
- * @return The configuration array. If the key is not found, the array will have length 0 and items set to `NULL`.
+ * @return The configuration array or an empty array.
  */
 config_array_t* config_get_array(config_t* config, const char* section, const char* key);
 

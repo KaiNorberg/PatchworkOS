@@ -355,6 +355,8 @@ void terminal_init(terminal_t* term)
         abort();
     }
 
+    window_set_visible(term->win, true);
+
     term->cursorPos = (point_t){0};
     term->isCursorVisible = false;
     input_init(&term->input);
@@ -431,7 +433,7 @@ static void terminal_read_stdout(terminal_t* term)
 bool terminal_update(terminal_t* term)
 {
     pollfd_t fds[] = {{.fd = term->stdout[PIPE_READ], .events = POLLIN},
-        {.fd = display_fd(term->disp), .events = POLLIN}};
+        {.fd = display_data_fd(term->disp), .events = POLLIN}};
     poll(fds, 2, CLOCKS_NEVER);
 
     event_t event = {0};

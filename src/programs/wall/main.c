@@ -51,11 +51,20 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    display_unsubscribe(disp, EVENT_KBD);
-    display_unsubscribe(disp, EVENT_MOUSE);
+    if (display_unsubscribe(disp, EVENT_KBD) == ERR)
+    {
+        printf("wall: failed to unsubscribe from keyboard events (%s)\n", strerror(errno));
+        display_free(disp);
+        return EXIT_FAILURE;
+    }
+    if (display_unsubscribe(disp, EVENT_MOUSE) == ERR)
+    {
+        printf("wall: failed to unsubscribe from mouse events (%s)\n", strerror(errno));
+        display_free(disp);
+        return EXIT_FAILURE;
+    }
 
-    rect_t rect;
-    display_screen_rect(disp, &rect, 0);
+    rect_t rect = display_screen_rect(disp, 0);
 
     image = image_new(disp, theme_global_get()->wallpaper);
     if (image == NULL)
@@ -74,10 +83,18 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    event_t event = {0};
-    while (display_is_connected(disp))
+    if (window_set_visible(win, true) == ERR)
     {
-        display_next_event(disp, &event, CLOCKS_NEVER);
+        printf("wall: failed to show window (%s)\n", strerror(errno));
+        window_free(win);
+        image_free(image);
+        display_free(disp);
+        return EXIT_FAILURE;
+    }
+
+    event_t event = {0};
+    while (display_next_event(disp, &event, CLOCKS_NEVER) != ERR)
+    {
         display_dispatch(disp, &event);
     }
 

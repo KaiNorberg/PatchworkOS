@@ -59,6 +59,7 @@ typedef struct window
 typedef struct display
 {
     char id[MAX_NAME];
+    fd_t ctl;
     fd_t data;
     bool isConnected;
     cmd_buffer_t cmds;

@@ -92,8 +92,7 @@ popup_result_t popup_open(const char* text, const char* title, popup_type_t type
         return POPUP_RES_ERROR;
     }
 
-    rect_t screenRect;
-    display_screen_rect(disp, &screenRect, 0);
+    rect_t screenRect = display_screen_rect(disp, 0);
 
     popup_t popup = {
         .result = POPUP_RES_CLOSE,
@@ -111,9 +110,8 @@ popup_result_t popup_open(const char* text, const char* title, popup_type_t type
     }
 
     event_t event = {0};
-    while (display_is_connected(disp))
+    while (display_next_event(disp, &event, CLOCKS_NEVER) != ERR)
     {
-        display_next_event(disp, &event, CLOCKS_NEVER);
         display_dispatch(disp, &event);
     }
 

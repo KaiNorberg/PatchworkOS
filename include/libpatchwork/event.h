@@ -64,6 +64,9 @@ typedef enum
  * - Library events (256-1023): Sent by the libpatchwork library to elements using the library, cant be subscribed to or
  * unsubscribed from.
  * - User events (1024-65535): Defined by individual programs, cant be subscribed to or unsubscribed from.
+ *
+ * TODO: Global events are a security mess, when per-process namespaces stabilize we should consider if this could be
+ * done better.
  */
 typedef uint16_t event_type_t;
 

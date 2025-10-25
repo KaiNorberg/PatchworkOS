@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define WINDOW_CLIENT_ELEM_ID (UINT64_MAX)
+#define WINDOW_DECO_ELEM_ID (UINT64_MAX - 1)
+
 #define WINDOW_DECO_CLOSE_BUTTON_INDEX 0
 #define WINDOW_DECO_MINIMIZE_BUTTON_INDEX 1
 #define WINDOW_DECO_BUTTON_AMOUNT 2
@@ -29,7 +32,6 @@ static void window_deco_titlebar_rect(window_t* win, element_t* elem, rect_t* re
     (void)win; // Unused
 
     rect_t contentRect = element_get_content_rect(elem);
-
     const theme_t* theme = element_get_theme(elem);
 
     *rect = (rect_t){
@@ -52,11 +54,10 @@ static void window_deco_button_rect(window_t* win, element_t* elem, rect_t* rect
 static void window_deco_draw_titlebar(window_t* win, element_t* elem, drawable_t* draw)
 {
     deco_private_t* private = element_get_private(elem);
+    const theme_t* theme = element_get_theme(elem);
 
     rect_t titlebar;
     window_deco_titlebar_rect(win, elem, &titlebar);
-
-    const theme_t* theme = element_get_theme(elem);
 
     draw_frame(draw, &titlebar, theme->frameSize, theme->deco.shadow, theme->deco.highlight);
     RECT_SHRINK(&titlebar, theme->frameSize);
@@ -71,9 +72,8 @@ static void window_deco_draw_titlebar(window_t* win, element_t* elem, drawable_t
             DIRECTION_HORIZONTAL, false);
     }
 
-    // Make some space so the text does not touch the buttons or the edge of the titlebar
     titlebar.left += theme->bigPadding;
-    titlebar.right -= theme->panelSize;
+    titlebar.right -= theme->panelSize; // Space for buttons
     draw_text(draw, &titlebar, NULL, ALIGN_MIN, ALIGN_CENTER, theme->deco.foregroundNormal, win->name);
 }
 
@@ -92,16 +92,18 @@ static void window_deco_handle_dragging(window_t* win, element_t* elem, const ev
 
     if (private->isDragging)
     {
-        rect_t rect = RECT_INIT_DIM(event->screenPos.x - private->dragOffset.x,
-            event->screenPos.y - private->dragOffset.y, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
-        window_move(win, &rect);
-
-        if (!(event->held & MOUSE_LEFT))
+        if (event->held & MOUSE_LEFT)
+        {
+            rect_t rect = RECT_INIT_DIM(event->screenPos.x - private->dragOffset.x,
+                event->screenPos.y - private->dragOffset.y, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
+            window_move(win, &rect);
+        }
+        else
         {
             private->isDragging = false;
         }
     }
-    else if (RECT_CONTAINS_POINT(&titlebarWithoutButtons, &event->pos) && event->pressed & MOUSE_LEFT)
+    else if (RECT_CONTAINS_POINT(&titlebarWithoutButtons, &event->pos) && (event->pressed & MOUSE_LEFT))
     {
         private->dragOffset =
             (point_t){.x = event->screenPos.x - win->rect.left, .y = event->screenPos.y - win->rect.top};
@@ -109,155 +111,190 @@ static void window_deco_handle_dragging(window_t* win, element_t* elem, const ev
     }
 }
 
-static uint64_t window_deco_procedure(window_t* win, element_t* elem, const event_t* event)
+static uint64_t window_deco_init_controls(window_t* win, element_t* elem, deco_private_t* private)
 {
     const theme_t* theme = element_get_theme(elem);
+    element_t* closeButton = NULL;
+    element_t* minimizeButton = NULL;
 
+    rect_t closeRect;
+    window_deco_button_rect(win, elem, &closeRect, WINDOW_DECO_CLOSE_BUTTON_INDEX);
+    closeButton = button_new(elem, WINDOW_DECO_CLOSE_BUTTON_ID, &closeRect, "", ELEMENT_NO_OUTLINE);
+    if (closeButton == NULL)
+    {
+        goto error;
+    }
+
+    rect_t minimizeRect;
+    window_deco_button_rect(win, elem, &minimizeRect, WINDOW_DECO_MINIMIZE_BUTTON_INDEX);
+    minimizeButton = button_new(elem, WINDOW_DECO_MINIMIZE_BUTTON_ID, &minimizeRect, "", ELEMENT_NO_OUTLINE);
+    if (minimizeButton == NULL)
+    {
+        goto error;
+    }
+
+    private->closeIcon = image_new(window_get_display(win), theme->iconClose);
+    if (private->closeIcon == NULL)
+    {
+        goto error;
+    }
+
+    private->minimizeIcon = image_new(window_get_display(win), theme->iconMinimize);
+    if (private->minimizeIcon == NULL)
+    {
+        goto error;
+    }
+
+    element_set_image(closeButton, private->closeIcon);
+    element_set_image(minimizeButton, private->minimizeIcon);
+
+    return 0;
+
+error:
+    if (private->minimizeIcon != NULL)
+    {
+        image_free(private->minimizeIcon);
+    }
+    if (private->closeIcon != NULL)
+    {
+        image_free(private->closeIcon);
+    }
+    if (closeButton != NULL)
+    {
+        element_free(closeButton);
+    }
+    if (minimizeButton != NULL)
+    {
+        element_free(minimizeButton);
+    }
+    return ERR;
+}
+
+static uint64_t window_deco_init(window_t* win, element_t* elem)
+{
+    deco_private_t* private = malloc(sizeof(deco_private_t));
+    if (private == NULL)
+    {
+        return ERR;
+    }
+
+    private->isFocused = false;
+    private->isVisible = true;
+    private->isDragging = false;
+    private->minimizeIcon = NULL;
+    private->closeIcon = NULL;
+
+    if (!(win->flags & WINDOW_NO_CONTROLS))
+    {
+        if (window_deco_init_controls(win, elem, private) == ERR)
+        {
+            free(private);
+            return ERR;
+        }
+    }
+
+    element_set_private(elem, private);
+    return 0;
+}
+
+static void window_deco_free(element_t* elem)
+{
+    deco_private_t* private = element_get_private(elem);
+    if (private != NULL)
+    {
+        if (private->closeIcon != NULL)
+        {
+            image_free(private->closeIcon);
+        }
+        if (private->minimizeIcon != NULL)
+        {
+            image_free(private->minimizeIcon);
+        }
+        free(private);
+    }
+}
+
+static void window_deco_redraw(window_t* win, element_t* elem)
+{
+    const theme_t* theme = element_get_theme(elem);
+    rect_t rect = element_get_content_rect(elem);
+
+    drawable_t draw;
+    element_draw_begin(elem, &draw);
+
+    draw_frame(&draw, &rect, theme->frameSize, theme->deco.highlight, theme->deco.shadow);
+    RECT_SHRINK(&rect, theme->frameSize);
+    draw_rect(&draw, &rect, theme->deco.backgroundNormal);
+
+    window_deco_draw_titlebar(win, elem, &draw);
+
+    element_draw_end(elem, &draw);
+}
+
+static void window_deco_action(window_t* win, const levent_action_t* action)
+{
+    if (action->type != ACTION_RELEASE)
+    {
+        return;
+    }
+
+    switch (action->source)
+    {
+    case WINDOW_DECO_CLOSE_BUTTON_ID:
+        display_events_push(win->disp, win->surface, LEVENT_QUIT, NULL, 0);
+        break;
+    case WINDOW_DECO_MINIMIZE_BUTTON_ID:
+        display_set_is_visible(win->disp, win->surface, false);
+        break;
+    }
+}
+
+static void window_deco_report(window_t* win, element_t* elem, const event_report_t* report)
+{
+    if (!(report->flags & REPORT_IS_FOCUSED))
+    {
+        return;
+    }
+
+    deco_private_t* private = element_get_private(elem);
+    private->isFocused = report->info.isFocused;
+    private->isVisible = report->info.isVisible;
+
+    drawable_t draw;
+    element_draw_begin(elem, &draw);
+    window_deco_draw_titlebar(win, elem, &draw);
+    element_draw_end(elem, &draw);
+}
+
+static uint64_t window_deco_procedure(window_t* win, element_t* elem, const event_t* event)
+{
     switch (event->type)
     {
     case LEVENT_INIT:
-    {
-        deco_private_t* private = malloc(sizeof(deco_private_t));
-        if (private == NULL)
-        {
-            return ERR;
-        }
+        return window_deco_init(win, elem);
 
-        private->isFocused = false;
-        private->isVisible = true;
-        private->isDragging = false;
-        private->minimizeIcon = NULL;
-        private->closeIcon = NULL;
-
-        if (win->flags & WINDOW_NO_CONTROLS)
-        {
-            element_set_private(elem, private);
-            break;
-        }
-
-        rect_t closeRect;
-        window_deco_button_rect(win, elem, &closeRect, WINDOW_DECO_CLOSE_BUTTON_INDEX);
-        element_t* closeButton = button_new(elem, WINDOW_DECO_CLOSE_BUTTON_ID, &closeRect, "", ELEMENT_NO_OUTLINE);
-        if (closeButton == NULL)
-        {
-            free(private);
-            return ERR;
-        }
-
-        rect_t minimizeRect;
-        window_deco_button_rect(win, elem, &minimizeRect, WINDOW_DECO_MINIMIZE_BUTTON_INDEX);
-        element_t* minimizeButton =
-            button_new(elem, WINDOW_DECO_MINIMIZE_BUTTON_ID, &minimizeRect, "", ELEMENT_NO_OUTLINE);
-        if (closeButton == NULL)
-        {
-            element_free(closeButton);
-            free(private);
-            return ERR;
-        }
-
-        private->closeIcon = image_new(window_get_display(win), theme->iconClose);
-        if (private->closeIcon == NULL)
-        {
-            element_free(closeButton);
-            element_free(minimizeButton);
-            free(private);
-            return ERR;
-        }
-
-        private->minimizeIcon = image_new(window_get_display(win), theme->iconMinimize);
-        if (private->minimizeIcon == NULL)
-        {
-            image_free(private->closeIcon);
-            element_free(closeButton);
-            element_free(minimizeButton);
-            free(private);
-            return ERR;
-        }
-
-        element_set_image(closeButton, private->closeIcon);
-        element_set_image(minimizeButton, private->minimizeIcon);
-
-        element_set_private(elem, private);
-    }
-    break;
     case LEVENT_FREE:
-    {
-        deco_private_t* private = element_get_private(elem);
-        if (private != NULL)
-        {
-            if (private->closeIcon != NULL)
-            {
-                image_free(private->closeIcon);
-            }
-            if (private->minimizeIcon != NULL)
-            {
-                image_free(private->minimizeIcon);
-            }
-            free(private);
-        }
-    }
-    break;
+        window_deco_free(elem);
+        break;
+
     case LEVENT_REDRAW:
-    {
-        rect_t rect = element_get_content_rect(elem);
+        window_deco_redraw(win, elem);
+        break;
 
-        drawable_t draw;
-        element_draw_begin(elem, &draw);
-
-        draw_frame(&draw, &rect, theme->frameSize, theme->deco.highlight, theme->deco.shadow);
-        RECT_SHRINK(&rect, theme->frameSize);
-        draw_rect(&draw, &rect, theme->deco.backgroundNormal);
-        window_deco_draw_titlebar(win, elem, &draw);
-
-        element_draw_end(elem, &draw);
-    }
-    break;
     case LEVENT_ACTION:
-    {
-        if (event->lAction.type != ACTION_RELEASE)
-        {
-            break;
-        }
+        window_deco_action(win, &event->lAction);
+        break;
 
-        switch (event->lAction.source)
-        {
-        case WINDOW_DECO_CLOSE_BUTTON_ID:
-        {
-            display_events_push(win->disp, win->surface, LEVENT_QUIT, NULL, 0);
-        }
-        break;
-        case WINDOW_DECO_MINIMIZE_BUTTON_ID:
-        {
-            display_set_is_visible(win->disp, win->surface, false);
-        }
-        break;
-        }
-    }
-    break;
     case EVENT_REPORT:
-    {
-        if (!(event->report.flags & REPORT_IS_FOCUSED))
-        {
-            break;
-        }
+        window_deco_report(win, elem, &event->report);
+        break;
 
-        deco_private_t* private = element_get_private(elem);
-        private->isFocused = event->report.info.isFocused;
-        private->isVisible = event->report.info.isVisible;
-
-        drawable_t draw;
-        element_draw_begin(elem, &draw);
-
-        window_deco_draw_titlebar(win, elem, &draw);
-
-        element_draw_end(elem, &draw);
-    }
-    break;
     case EVENT_MOUSE:
-    {
         window_deco_handle_dragging(win, elem, &event->mouse);
-    }
-    break;
+        break;
+
+    default:
+        break;
     }
 
     return 0;
@@ -266,6 +303,12 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
 window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surface_type_t type, window_flags_t flags,
     procedure_t procedure, void* private)
 {
+    if (disp == NULL || name == NULL || rect == NULL || procedure == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
     if (strnlen_s(name, MAX_NAME + 1) >= MAX_NAME)
     {
         errno = EINVAL;
@@ -278,7 +321,6 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
         errno = ENOMEM;
         return NULL;
     }
-
     list_entry_init(&win->entry);
     win->disp = disp;
     strcpy(win->name, name);
@@ -291,19 +333,24 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     win->clientElement = NULL;
 
     const theme_t* theme = theme_global_get();
-    int64_t frameWidth = theme->frameSize;
-    int64_t titlebarSize = theme->titlebarSize;
+    if (theme == NULL)
+    {
+        errno = ENOMEM;
+        free(win);
+        return NULL;
+    }
 
+    rect_t originalRect = *rect;
     if (flags & WINDOW_DECO)
     {
         // Expand window to fit decorations
-        win->rect.left -= frameWidth;
-        win->rect.top -= frameWidth + titlebarSize;
-        win->rect.right += frameWidth;
-        win->rect.bottom += frameWidth;
+        win->rect.left -= theme->frameSize;
+        win->rect.top -= theme->frameSize + theme->titlebarSize;
+        win->rect.right += theme->frameSize;
+        win->rect.bottom += theme->frameSize;
     }
 
-    cmd_surface_new_t* cmd = display_cmds_push(disp, CMD_SURFACE_NEW, sizeof(cmd_surface_new_t));
+    cmd_surface_new_t* cmd = display_cmd_alloc(disp, CMD_SURFACE_NEW, sizeof(cmd_surface_new_t));
     if (cmd == NULL)
     {
         free(win);
@@ -315,15 +362,19 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     display_cmds_flush(disp);
 
     event_t event;
-    display_wait_for_event(disp, &event, EVENT_SURFACE_NEW);
+    if (display_wait_for_event(disp, &event, EVENT_SURFACE_NEW) == ERR)
+    {
+        window_free(win);
+        return NULL;
+    }
     win->surface = event.target;
-
     fd_t shmem = claim(&event.surfaceNew.shmemKey);
     if (shmem == ERR)
     {
         window_free(win);
         return NULL;
     }
+
     win->buffer =
         mmap(shmem, NULL, RECT_WIDTH(&win->rect) * RECT_HEIGHT(&win->rect) * sizeof(pixel_t), PROT_READ | PROT_WRITE);
     close(shmem);
@@ -335,24 +386,16 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
 
     if (flags & WINDOW_DECO)
     {
-        rect_t decoRect = RECT_INIT_DIM(0, 0, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
         win->root =
-            element_new_root(win, WINDOW_DECO_ELEM_ID, &decoRect, "deco", ELEMENT_NONE, window_deco_procedure, NULL);
+            element_new_root(win, WINDOW_DECO_ELEM_ID, &win->rect, "deco", ELEMENT_NONE, window_deco_procedure, NULL);
         if (win->root == NULL)
         {
             window_free(win);
             return NULL;
         }
 
-        // Client area should not contain the decorations
-        rect_t clientRect = {
-            .left = frameWidth,
-            .top = frameWidth + titlebarSize,
-            .right = frameWidth + RECT_WIDTH(rect),
-            .bottom = frameWidth + titlebarSize + RECT_HEIGHT(rect),
-        };
         win->clientElement =
-            element_new(win->root, WINDOW_CLIENT_ELEM_ID, &clientRect, "client", ELEMENT_NONE, procedure, private);
+            element_new(win->root, WINDOW_CLIENT_ELEM_ID, &originalRect, "client", ELEMENT_NONE, procedure, private);
         if (win->clientElement == NULL)
         {
             window_free(win);
@@ -361,9 +404,8 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     }
     else
     {
-        rect_t rootElemRect = RECT_INIT_DIM(0, 0, RECT_WIDTH(rect), RECT_HEIGHT(rect));
         win->root =
-            element_new_root(win, WINDOW_CLIENT_ELEM_ID, &rootElemRect, "client", ELEMENT_NONE, procedure, private);
+            element_new_root(win, WINDOW_CLIENT_ELEM_ID, &win->rect, "client", ELEMENT_NONE, procedure, private);
         if (win->root == NULL)
         {
             window_free(win);
@@ -378,12 +420,22 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
 
 void window_free(window_t* win)
 {
+    if (win == NULL)
+    {
+        return;
+    }
+
     if (win->root != NULL)
     {
         element_free(win->root);
     }
 
-    cmd_surface_free_t* cmd = display_cmds_push(win->disp, CMD_SURFACE_FREE, sizeof(cmd_surface_free_t));
+    if (win->buffer != NULL)
+    {
+        munmap(win->buffer, RECT_WIDTH(&win->rect) * RECT_HEIGHT(&win->rect) * sizeof(pixel_t));
+    }
+
+    cmd_surface_free_t* cmd = display_cmd_alloc(win->disp, CMD_SURFACE_FREE, sizeof(cmd_surface_free_t));
     if (cmd == NULL)
     {
         abort();
@@ -391,75 +443,123 @@ void window_free(window_t* win)
     cmd->target = win->surface;
     display_cmds_flush(win->disp);
 
-    if (win->buffer != NULL)
-    {
-        munmap(win->buffer, RECT_WIDTH(&win->rect) * RECT_HEIGHT(&win->rect) * sizeof(pixel_t));
-    }
-
     list_remove(&win->disp->windows, &win->entry);
     free(win);
 }
 
-void window_get_rect(window_t* win, rect_t* rect)
+rect_t window_get_rect(window_t* win)
 {
-    *rect = win->rect;
+    if (win == NULL)
+    {
+        return (rect_t){0};
+    }
+
+    return win->rect;
 }
 
-void window_get_local_rect(window_t* win, rect_t* rect)
+rect_t window_get_local_rect(window_t* win)
 {
-    *rect = RECT_INIT_DIM(0, 0, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
+    if (win == NULL)
+    {
+        return (rect_t){0};
+    }
+
+    return RECT_INIT_DIM(0, 0, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
 }
 
 display_t* window_get_display(window_t* win)
 {
+    if (win == NULL)
+    {
+        return NULL;
+    }
+
     return win->disp;
 }
 
 surface_id_t window_get_id(window_t* win)
 {
+    if (win == NULL)
+    {
+        return SURFACE_ID_NONE;
+    }
+
     return win->surface;
 }
 
 surface_type_t window_get_type(window_t* win)
 {
+    if (win == NULL)
+    {
+        return SURFACE_NONE;
+    }
+
     return win->type;
 }
 
 element_t* window_get_client_element(window_t* win)
 {
+    if (win == NULL)
+    {
+        return NULL;
+    }
+
     return win->clientElement;
 }
 
 uint64_t window_move(window_t* win, const rect_t* rect)
 {
-    bool isSizeChanged = RECT_WIDTH(&win->rect) != RECT_WIDTH(rect) || RECT_HEIGHT(&win->rect) != RECT_HEIGHT(rect);
-
-    if (isSizeChanged && !(win->flags & WINDOW_RESIZABLE))
+    if (win == NULL || rect == NULL)
     {
+        errno = EINVAL;
         return ERR;
     }
 
-    cmd_surface_move_t* cmd = display_cmds_push(win->disp, CMD_SURFACE_MOVE, sizeof(cmd_surface_move_t));
+    bool hasSizeChanged = RECT_WIDTH(&win->rect) != RECT_WIDTH(rect) || RECT_HEIGHT(&win->rect) != RECT_HEIGHT(rect);
+    if (hasSizeChanged && !(win->flags & WINDOW_RESIZABLE))
+    {
+        errno = EPERM;
+        return ERR;
+    }
+
+    cmd_surface_move_t* cmd = display_cmd_alloc(win->disp, CMD_SURFACE_MOVE, sizeof(cmd_surface_move_t));
+    if (cmd == NULL)
+    {
+        return ERR;
+    }
     cmd->target = win->surface;
     cmd->rect = *rect;
     display_cmds_flush(win->disp);
-
     return 0;
 }
 
 uint64_t window_set_timer(window_t* win, timer_flags_t flags, clock_t timeout)
 {
-    cmd_surface_timer_set_t* cmd = display_cmds_push(win->disp, CMD_SURFACE_TIMER_SET, sizeof(cmd_surface_timer_set_t));
+    if (win == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    cmd_surface_timer_set_t* cmd = display_cmd_alloc(win->disp, CMD_SURFACE_TIMER_SET, sizeof(cmd_surface_timer_set_t));
+    if (cmd == NULL)
+    {
+        return ERR;
+    }
     cmd->target = win->surface;
     cmd->flags = flags;
     cmd->timeout = timeout;
     display_cmds_flush(win->disp);
-
     return 0;
 }
 
 void window_invalidate(window_t* win, const rect_t* rect)
 {
+    if (win == NULL || rect == NULL)
+    {
+        return;
+    }
+
     if (RECT_AREA(&win->invalidRect) == 0)
     {
         win->invalidRect = *rect;
@@ -470,21 +570,42 @@ void window_invalidate(window_t* win, const rect_t* rect)
     }
 }
 
-void window_invalidate_flush(window_t* win)
+uint64_t window_invalidate_flush(window_t* win)
 {
-    if (RECT_AREA(&win->invalidRect) != 0)
+    if (win == NULL)
     {
-        cmd_surface_invalidate_t* cmd =
-            display_cmds_push(win->disp, CMD_SURFACE_INVALIDATE, sizeof(cmd_surface_invalidate_t));
-        cmd->target = win->surface;
-        cmd->invalidRect = win->invalidRect;
-
-        win->invalidRect = (rect_t){0};
+        errno = EINVAL;
+        return ERR;
     }
+
+    if (RECT_AREA(&win->invalidRect) == 0)
+    {
+        return 0;
+    }
+
+    cmd_surface_invalidate_t* cmd =
+        display_cmd_alloc(win->disp, CMD_SURFACE_INVALIDATE, sizeof(cmd_surface_invalidate_t));
+    if (cmd == NULL)
+    {
+        return ERR;
+    }
+
+    cmd->target = win->surface;
+    cmd->invalidRect = win->invalidRect;
+    display_cmds_flush(win->disp);
+
+    win->invalidRect = (rect_t){0};
+    return 0;
 }
 
 uint64_t window_dispatch(window_t* win, const event_t* event)
 {
+    if (win == NULL || event == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     switch (event->type)
     {
     case LEVENT_INIT:
@@ -563,24 +684,45 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
     }
 
     window_invalidate_flush(win);
-
     return 0;
 }
 
-void window_set_focus(window_t* win)
+uint64_t window_set_focus(window_t* win)
 {
-    cmd_surface_focus_set_t* cmd = display_cmds_push(win->disp, CMD_SURFACE_FOCUS_SET, sizeof(cmd_surface_focus_set_t));
+    if (win == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    cmd_surface_focus_set_t* cmd = display_cmd_alloc(win->disp, CMD_SURFACE_FOCUS_SET, sizeof(cmd_surface_focus_set_t));
+    if (cmd == NULL)
+    {
+        return ERR;
+    }
     cmd->isGlobal = false;
     cmd->target = win->surface;
     display_cmds_flush(win->disp);
+    return 0;
 }
 
-void window_set_is_visible(window_t* win, bool isVisible)
+uint64_t window_set_visible(window_t* win, bool isVisible)
 {
+    if (win == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     cmd_surface_visible_set_t* cmd =
-        display_cmds_push(win->disp, CMD_SURFACE_VISIBLE_SET, sizeof(cmd_surface_visible_set_t));
+        display_cmd_alloc(win->disp, CMD_SURFACE_VISIBLE_SET, sizeof(cmd_surface_visible_set_t));
+    if (cmd == NULL)
+    {
+        return ERR;
+    }
     cmd->isGlobal = false;
     cmd->target = win->surface;
     cmd->isVisible = isVisible;
     display_cmds_flush(win->disp);
+    return 0;
 }

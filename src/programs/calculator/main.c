@@ -158,10 +158,11 @@ int main(void)
         return EXIT_FAILURE;
     }
 
+    window_set_visible(win, true);
+
     event_t event = {0};
-    while (display_is_connected(disp))
+    while (display_next_event(disp, &event, CLOCKS_NEVER) != ERR)
     {
-        display_next_event(disp, &event, CLOCKS_NEVER);
         display_dispatch(disp, &event);
     }
 

@@ -120,7 +120,6 @@ void local_listen_free(local_listen_t* listen)
         conn->isClosed = true;
         wait_unblock(&conn->waitQueue, WAIT_ALL, EOK);
         lock_release(&conn->lock);
-        DEREF(conn);
     }
 
     wait_queue_deinit(&listen->waitQueue);

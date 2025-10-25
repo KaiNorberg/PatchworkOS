@@ -291,6 +291,7 @@ static uint64_t client_action_surface_visible_set(client_t* client, const cmd_he
     if (surface->isVisible != cmd->isVisible)
     {
         surface->isVisible = cmd->isVisible;
+        surface->hasMoved = true;
         compositor_set_total_redraw_needed();
         dwm_report_produce(surface, surface->client, REPORT_IS_VISIBLE);
     }
@@ -369,6 +370,7 @@ static uint64_t (*actions[])(client_t*, const cmd_header_t*) = {
 
 uint64_t client_receive_cmds(client_t* client)
 {
+    printf("dwm client: receiving commands from client fd %d\n", client->fd);
     errno = EOK;
     uint64_t readSize = read(client->fd, &client->cmds, sizeof(cmd_buffer_t) + 1);
     if (readSize == ERR)
@@ -378,6 +380,7 @@ uint64_t client_receive_cmds(client_t* client)
             perror("dwm client: read error");
             return ERR;
         }
+        printf("dwm client: no data to read\n");
         return 0;
     }
 
@@ -409,7 +412,7 @@ uint64_t client_receive_cmds(client_t* client)
         if (amount > client->cmds.amount || ((uint64_t)cmd + cmd->size - (uint64_t)&client->cmds) > readSize ||
             cmd->magic != CMD_MAGIC || cmd->type >= CMD_TYPE_AMOUNT)
         {
-            printf("dwm client: corrupt command detected (amount: %lu, size: %lu, magic: %x, type: %u)\n", amount,
+            printf("dwm client: corrupt command detected amount=%lu size=%lu magic=%x type=%u\n", amount,
                 cmd->size, cmd->magic, cmd->type);
             errno = EPROTO;
             return ERR;
@@ -424,6 +427,7 @@ uint64_t client_receive_cmds(client_t* client)
 
     CMD_BUFFER_FOR_EACH(&client->cmds, cmd)
     {
+        printf("dwm client: processing command type %u\n", cmd->type);
         if (actions[cmd->type](client, cmd) == ERR)
         {
             printf("dwm client: command type %u caused error\n", cmd->type);

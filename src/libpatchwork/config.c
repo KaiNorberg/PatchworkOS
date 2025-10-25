@@ -270,13 +270,13 @@ bool config_get_bool(config_t* config, const char* section, const char* key, boo
         return fallback;
     }
 
-    if (strcasecmp(str, "true") == 0 || strcasecmp(str, "yes") == 0 ||
-        strcasecmp(str, "on") == 0 || strcmp(str, "1") == 0)
+    if (strcasecmp(str, "true") == 0 || strcasecmp(str, "yes") == 0 || strcasecmp(str, "on") == 0 ||
+        strcmp(str, "1") == 0)
     {
         return true;
     }
-    else if (strcasecmp(str, "false") == 0 || strcasecmp(str, "no") == 0 ||
-             strcasecmp(str, "off") == 0 || strcmp(str, "0") == 0)
+    else if (strcasecmp(str, "false") == 0 || strcasecmp(str, "no") == 0 || strcasecmp(str, "off") == 0 ||
+        strcmp(str, "0") == 0)
     {
         return false;
     }
@@ -286,17 +286,11 @@ bool config_get_bool(config_t* config, const char* section, const char* key, boo
 
 config_array_t* config_get_array(config_t* config, const char* section, const char* key)
 {
+    static config_array_t emptyArray = {.items = NULL, .length = 0};
     const char* str = config_get_string(config, section, key, NULL);
     if (str == NULL || str[0] == '\0')
     {
-        config_array_t* emptyArray = malloc(sizeof(config_array_t));
-        if (emptyArray == NULL)
-        {
-            return NULL;
-        }
-        emptyArray->items = NULL;
-        emptyArray->length = 0;
-        return emptyArray;
+        return &emptyArray;
     }
 
     uint64_t length = strlen(str);
@@ -305,7 +299,7 @@ config_array_t* config_get_array(config_t* config, const char* section, const ch
     config_array_t* array = malloc(maxSize);
     if (array == NULL)
     {
-        return NULL;
+        return &emptyArray;
     }
     array->items = (char**)(array + 1);
     array->length = 0;
