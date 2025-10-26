@@ -128,9 +128,28 @@ static void taskbar_entry_remove(taskbar_t* taskbar, element_t* elem, surface_id
     }
 }
 
-static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
+static uint64_t taskbar_update_clock(element_t* elem)
 {
-    taskbar_t* taskbar = element_get_private(elem);
+    time_t epoch = time(NULL);
+    struct tm timeData;
+    localtime_r(&epoch, &timeData);
+    char buffer[MAX_PATH];
+    sprintf(buffer, "%02d:%02d %d-%02d-%02d", timeData.tm_hour, timeData.tm_min, timeData.tm_year + 1900,
+        timeData.tm_mon + 1, timeData.tm_mday);
+    element_t* clockLabel = element_find(elem, CLOCK_LABEL_ID);
+
+    if (element_set_text(clockLabel, buffer) == ERR)
+    {
+        printf("taskbar: failed to update clock label\n");
+        return ERR;
+    }
+    element_redraw(clockLabel, false);
+
+    return 0;
+}
+
+static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t* event)
+{
     const theme_t* theme = element_get_theme(elem);
 
     switch (event->type)
@@ -140,25 +159,74 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         rect_t rect = element_get_content_rect(elem);
 
         rect_t startRect = taskbar_get_start_rect(elem);
-        button_new(elem, START_ID, &startRect, "Start", ELEMENT_TOGGLE | ELEMENT_NO_OUTLINE);
+        if (button_new(elem, START_ID, &startRect, "Start", ELEMENT_TOGGLE | ELEMENT_NO_OUTLINE) == NULL)
+        {
+            printf("taskbar: failed to create start button\n");
+            return ERR;
+        }
 
         rect_t clockRect = taskbar_get_clock_rect(elem);
-        label_new(elem, CLOCK_LABEL_ID, &clockRect, "0", ELEMENT_NONE);
+        if (label_new(elem, CLOCK_LABEL_ID, &clockRect, "0", ELEMENT_NONE) == NULL)
+        {
+            printf("taskbar: failed to create clock label\n");
+            return ERR;
+        }
 
         window_set_timer(win, TIMER_REPEAT, CLOCKS_PER_SEC * 30);
-    }
-    case EVENT_TIMER: // Fall trough
-    {
-        time_t epoch = time(NULL);
-        struct tm timeData;
-        localtime_r(&epoch, &timeData);
-        char buffer[MAX_PATH];
-        sprintf(buffer, "%02d:%02d %d-%02d-%02d", timeData.tm_hour, timeData.tm_min, timeData.tm_year + 1900,
-            timeData.tm_mon + 1, timeData.tm_mday);
-        element_t* clockLabel = element_find(elem, CLOCK_LABEL_ID);
 
-        element_set_text(clockLabel, buffer);
-        element_redraw(clockLabel, false);
+        if (taskbar_update_clock(elem) == ERR)
+        {
+            printf("taskbar: failed to update clock\n");
+            return ERR;
+        }
+
+        taskbar_t* taskbar = malloc(sizeof(taskbar_t));
+        if (taskbar == NULL)
+        {
+            printf("taskbar: failed to allocate taskbar private data\n");
+            errno = ENOMEM;
+            return ERR;
+        }
+        taskbar->win = win;
+        taskbar->disp = window_get_display(win);
+        taskbar->startMenu = start_menu_new(taskbar->win, taskbar->disp);
+        if (taskbar->startMenu == NULL)
+        {
+            free(taskbar);
+            return ERR;
+        }
+        list_init(&taskbar->entries);
+
+        element_set_private(elem, taskbar);
+    }
+    break;
+    case LEVENT_DEINIT:
+    {
+        taskbar_t* taskbar = element_get_private(elem);
+        if (taskbar == NULL)
+        {
+            break;
+        }
+        window_free(taskbar->startMenu);
+
+        taskbar_entry_t* entry;
+        taskbar_entry_t* temp;
+        LIST_FOR_EACH_SAFE(entry, temp, &taskbar->entries, entry)
+        {
+            element_free(entry->button);
+            list_remove(&taskbar->entries, &entry->entry);
+            free(entry);
+        }
+
+        free(taskbar);
+    }
+    break;
+    case EVENT_TIMER:
+    {
+        if (taskbar_update_clock(elem) == ERR)
+        {
+            return ERR;
+        }
     }
     break;
     case LEVENT_REDRAW:
@@ -176,23 +244,25 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         rect_t leftSeparator = taskbar_get_left_separator_rect(elem);
         rect_t rightSeparator = taskbar_get_right_separator_rect(elem);
 
-        draw_separator(&draw, &leftSeparator, theme->deco.highlight, theme->deco.shadow, DIRECTION_HORIZONTAL);
-        draw_separator(&draw, &rightSeparator, theme->deco.highlight, theme->deco.shadow, DIRECTION_HORIZONTAL);
+        draw_separator(&draw, &leftSeparator, theme->deco.highlight, theme->deco.shadow, DIRECTION_VERTICAL);
+        draw_separator(&draw, &rightSeparator, theme->deco.highlight, theme->deco.shadow, DIRECTION_VERTICAL);
 
         element_draw_end(elem, &draw);
     }
     break;
     case LEVENT_ACTION:
     {
+        taskbar_t* taskbar = element_get_private(elem);
+
         if (event->lAction.source == START_ID)
         {
             if (event->lAction.type == ACTION_PRESS)
             {
-                start_menu_open(&taskbar->startMenu);
+                start_menu_open(taskbar->startMenu);
             }
             else if (event->lAction.type == ACTION_RELEASE)
             {
-                start_menu_close(&taskbar->startMenu);
+                start_menu_close(taskbar->startMenu);
             }
             break;
         }
@@ -211,6 +281,8 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     break;
     case UEVENT_START_MENU_CLOSE:
     {
+        taskbar_t* taskbar = element_get_private(elem);
+
         levent_force_action_t event;
         event.action = ACTION_RELEASE;
         element_emit(elem, LEVENT_FORCE_ACTION, &event, sizeof(event));
@@ -223,16 +295,20 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             break;
         }
 
+        taskbar_t* taskbar = element_get_private(elem);
         taskbar_entry_add(taskbar, elem, &event->globalAttach.info, event->globalAttach.info.name);
     }
     break;
     case GEVENT_DETACH:
     {
+        taskbar_t* taskbar = element_get_private(elem);
         taskbar_entry_remove(taskbar, elem, event->globalDetach.info.id);
     }
     break;
     case GEVENT_REPORT:
     {
+        taskbar_t* taskbar = element_get_private(elem);
+
         taskbar_entry_t* entry;
         LIST_FOR_EACH(entry, &taskbar->entries, entry)
         {
@@ -242,24 +318,27 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             }
 
             entry->info = event->globalReport.info;
-            element_force_action(entry->button, entry->info.isVisible ? ACTION_RELEASE : ACTION_PRESS);
+            element_force_action(entry->button, (entry->info.flags & SURFACE_VISIBLE) ? ACTION_RELEASE : ACTION_PRESS);
             break;
         }
     }
     break;
     case GEVENT_KBD:
     {
+        taskbar_t* taskbar = element_get_private(elem);
+
         if (event->globalKbd.type == KBD_RELEASE && event->globalKbd.code == KBD_LEFT_SUPER)
         {
-            if (taskbar->startMenu.state == START_MENU_OPEN || taskbar->startMenu.state == START_MENU_OPENING)
+            start_menu_state_t state = start_menu_get_state(taskbar->startMenu);
+            if (state == START_MENU_OPEN || state == START_MENU_OPENING)
             {
                 element_force_action(element_find(elem, START_ID), ACTION_RELEASE);
-                start_menu_close(&taskbar->startMenu);
+                start_menu_close(taskbar->startMenu);
             }
             else
             {
                 element_force_action(element_find(elem, START_ID), ACTION_PRESS);
-                start_menu_open(&taskbar->startMenu);
+                start_menu_open(taskbar->startMenu);
             }
         }
     }
@@ -269,39 +348,31 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     return 0;
 }
 
-void taskbar_init(taskbar_t* taskbar, display_t* disp)
+window_t* taskbar_new(display_t* disp)
 {
     rect_t rect = display_screen_rect(disp, 0);
     rect.top = rect.bottom - theme_global_get()->panelSize;
 
-    if (display_subscribe(disp, GEVENT_ATTACH)  == ERR ||
-        display_subscribe(disp, GEVENT_DETACH)  == ERR ||
-        display_subscribe(disp, GEVENT_REPORT)  == ERR ||
-        display_subscribe(disp, GEVENT_KBD)     == ERR)
+    if (display_subscribe(disp, GEVENT_ATTACH) == ERR || display_subscribe(disp, GEVENT_DETACH) == ERR ||
+        display_subscribe(disp, GEVENT_REPORT) == ERR || display_subscribe(disp, GEVENT_KBD) == ERR)
     {
         printf("taskbar: failed to subscribe to global events\n");
-        abort();
+        return NULL;
     }
 
-    taskbar->disp = disp;
-    taskbar->win = window_new(disp, "Taskbar", &rect, SURFACE_PANEL, WINDOW_NONE, procedure, taskbar);
-    if (taskbar->win == NULL)
+    window_t* win = window_new(disp, "Taskbar", &rect, SURFACE_PANEL, WINDOW_NONE, taskbar_procedure, NULL);
+    if (win == NULL)
     {
         printf("taskbar: failed to create taskbar window\n");
-        abort();
+        return NULL;
     }
 
-    if (window_set_visible(taskbar->win, true) == ERR)
+    if (window_set_visible(win, true) == ERR)
     {
         printf("taskbar: failed to show taskbar window\n");
-        abort();
+        window_free(win);
+        return NULL;
     }
 
-    start_menu_init(&taskbar->startMenu, taskbar->win, disp);
-    list_init(&taskbar->entries);
-}
-void taskbar_deinit(taskbar_t* taskbar)
-{
-    window_free(taskbar->win);
-    start_menu_deinit(&taskbar->startMenu);
+    return win;
 }

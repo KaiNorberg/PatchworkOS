@@ -38,6 +38,15 @@ typedef struct panic_symbol
 } panic_symbol_t;
 
 /**
+ * @brief Print a stack trace from a interrupt frame.
+ *
+ * Will NOT panic the kernel, just print the stack trace.
+ *
+ * @param frame Pointer to the interrupt frame.
+ */
+void panic_stack_trace(const interrupt_frame_t* frame);
+
+/**
  * @brief Initialize panic symbols from the bootloader-provided kernel information.
  *
  * @param kernel Pointer to the bootloader-provided kernel information.

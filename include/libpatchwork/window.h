@@ -56,8 +56,8 @@ typedef enum window_flags
  * @param rect The rectangle defining the position and size of the window.
  * @param type The type of surface to create, (e.g., panels, cursors, wallpapers, normal windows, etc).
  * @param flags The window flags.
- * @param procedure The window procedure to handle events for the window's client area.
- * @param private Private data to associate with the window's client area.
+ * @param procedure The procedure for the window's client element.
+ * @param private Private data to associate with the window's client element.
  * @return On success, the new window. On failure, returns `NULL` and sets `errno`.
  */
 window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surface_type_t type, window_flags_t flags,

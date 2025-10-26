@@ -13,8 +13,6 @@
 
 #define TASK_BUTTON_MAX_WIDTH 150
 
-#define UEVENT_CLOCK (UEVENT_START + 1)
-
 #define CLOCK_LABEL_ID (UINT64_MAX - 11)
 
 typedef struct
@@ -29,10 +27,8 @@ typedef struct
 {
     window_t* win;
     display_t* disp;
-    start_menu_t startMenu;
+    window_t* startMenu;
     list_t entries;
 } taskbar_t;
 
-void taskbar_init(taskbar_t* taskbar, display_t* disp);
-
-void taskbar_deinit(taskbar_t* taskbar);
+window_t* taskbar_new(display_t* disp);

@@ -2,9 +2,12 @@
 
 #include "surface.h"
 
+#include <libpatchwork/cmd.h>
 #include <libpatchwork/event.h>
 #include <sys/io.h>
 #include <sys/list.h>
+
+#define CLIENT_RECV_BUFFER_SIZE (sizeof(cmd_buffer_t) + 128)
 
 typedef struct client
 {
@@ -12,8 +15,9 @@ typedef struct client
     fd_t fd;
     list_t surfaces;
     cmd_buffer_t cmds;
-    uint64_t newId;
     event_bitmask_t bitmask;
+    char recvBuffer[CLIENT_RECV_BUFFER_SIZE];
+    size_t recvLen;
 } client_t;
 
 client_t* client_new(fd_t fd);

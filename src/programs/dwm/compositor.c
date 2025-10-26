@@ -26,18 +26,18 @@ static void compositor_compute_client_area(compositor_ctx_t* ctx)
     surface_t* panel;
     LIST_FOR_EACH(panel, ctx->panels, dwmEntry)
     {
-        uint64_t leftDist = panel->pos.x + panel->gfx.width;
-        uint64_t topDist = panel->pos.y + panel->gfx.height;
+        uint64_t leftDist = panel->pos.x + panel->width;
+        uint64_t topDist = panel->pos.y + panel->height;
         uint64_t rightDist = RECT_WIDTH(&screenRect) - panel->pos.x;
         uint64_t bottomDist = RECT_HEIGHT(&screenRect) - panel->pos.y;
 
         if (leftDist <= topDist && leftDist <= rightDist && leftDist <= bottomDist)
         {
-            clientRect.left = MAX(panel->pos.x + panel->gfx.width, clientRect.left);
+            clientRect.left = MAX(panel->pos.x + panel->width, clientRect.left);
         }
         else if (topDist <= leftDist && topDist <= rightDist && topDist <= bottomDist)
         {
-            clientRect.top = MAX(panel->pos.y + panel->gfx.height, clientRect.top);
+            clientRect.top = MAX(panel->pos.y + panel->height, clientRect.top);
         }
         else if (rightDist <= leftDist && rightDist <= topDist && rightDist <= bottomDist)
         {
@@ -52,7 +52,7 @@ static void compositor_compute_client_area(compositor_ctx_t* ctx)
 
 static void compositor_draw_other(surface_t* other, const rect_t* rect)
 {
-    rect_t otherRect = SURFACE_RECT(other);
+    rect_t otherRect = SURFACE_SCREEN_RECT(other);
     if (RECT_OVERLAP(rect, &otherRect))
     {
         rect_t overlapRect = *rect;
@@ -70,7 +70,7 @@ static void compositor_draw_others(compositor_ctx_t* ctx, surface_t* window, con
     surface_t* other;
     LIST_FOR_EACH(other, ctx->windows, dwmEntry)
     {
-        if (!other->isVisible)
+        if (!(other->flags & SURFACE_VISIBLE))
         {
             continue;
         }
@@ -85,7 +85,7 @@ static void compositor_draw_others(compositor_ctx_t* ctx, surface_t* window, con
 
     LIST_FOR_EACH(other, ctx->panels, dwmEntry)
     {
-        if (!other->isVisible)
+        if (!(other->flags & SURFACE_VISIBLE))
         {
             continue;
         }
@@ -101,12 +101,12 @@ static void compositor_draw_others(compositor_ctx_t* ctx, surface_t* window, con
 
 static void compositor_draw_cursor(compositor_ctx_t* ctx)
 {
-    if (ctx->cursor == NULL || !ctx->cursor->isVisible)
+    if (ctx->cursor == NULL || !(ctx->cursor->flags & SURFACE_VISIBLE))
     {
         return;
     }
 
-    rect_t cursorRect = SURFACE_RECT(ctx->cursor);
+    rect_t cursorRect = SURFACE_SCREEN_RECT(ctx->cursor);
     RECT_FIT(&cursorRect, &screenRect);
     screen_transfer_blend(ctx->cursor, &cursorRect);
     ctx->cursor->prevRect = cursorRect;
@@ -114,7 +114,7 @@ static void compositor_draw_cursor(compositor_ctx_t* ctx)
 
 void compositor_redraw_cursor(compositor_ctx_t* ctx)
 {
-    if (ctx->cursor == NULL || !ctx->cursor->isVisible)
+    if (ctx->cursor == NULL || !(ctx->cursor->flags & SURFACE_VISIBLE))
     {
         return;
     }
@@ -131,21 +131,21 @@ void compositor_redraw_cursor(compositor_ctx_t* ctx)
 static void compositor_draw_wall(compositor_ctx_t* ctx)
 {
     surface_t* wall = ctx->wall;
-    if (((!wall->isInvalid && !wall->hasMoved) || !wall->isVisible) && !isTotalRedrawNeeded)
+    if ((!isTotalRedrawNeeded && !(wall->flags & (SURFACE_INVALID | SURFACE_MOVED))) ||
+        !(wall->flags & SURFACE_VISIBLE))
     {
         return;
     }
-    wall->isInvalid = false;
-    wall->hasMoved = false;
+    wall->flags &= ~(SURFACE_INVALID | SURFACE_MOVED);
 
-    rect_t wallRect = SURFACE_RECT(wall);
+    rect_t wallRect = SURFACE_SCREEN_RECT(wall);
     RECT_FIT(&wallRect, &clientRect);
     screen_transfer(wall, &wallRect);
 
     surface_t* window;
     LIST_FOR_EACH(window, ctx->windows, dwmEntry)
     {
-        window->hasMoved = true;
+        window->flags |= SURFACE_MOVED;
     }
 
     if (isTotalRedrawNeeded)
@@ -153,7 +153,7 @@ static void compositor_draw_wall(compositor_ctx_t* ctx)
         surface_t* panel;
         LIST_FOR_EACH(panel, ctx->panels, dwmEntry)
         {
-            panel->hasMoved = true;
+            panel->flags |= SURFACE_MOVED;
         }
     }
 }
@@ -168,12 +168,12 @@ static void compositor_invalidate_others(compositor_ctx_t* ctx, surface_t* windo
             continue;
         }
 
-        if (!other->isVisible)
+        if (!(other->flags & SURFACE_VISIBLE))
         {
             continue;
         }
 
-        rect_t otherRect = SURFACE_RECT(other);
+        rect_t otherRect = SURFACE_SCREEN_RECT(other);
 
         bool overlap = false;
         bool contains = false;
@@ -200,8 +200,8 @@ static void compositor_invalidate_others(compositor_ctx_t* ctx, surface_t* windo
         invalidRect.right -= otherRect.left;
         invalidRect.bottom -= otherRect.top;
 
-        other->isInvalid = true;
-        gfx_invalidate(&other->gfx, &invalidRect);
+        other->flags |= SURFACE_INVALID;
+        surface_invalidate(other, &invalidRect);
 
         if (contains)
         {
@@ -215,9 +215,9 @@ static void compositor_draw_window_panel(compositor_ctx_t* ctx, surface_t* surfa
     rect_t* fitRect = surface->type == SURFACE_WINDOW ? &clientRect : &screenRect;
 
     rect_t rect;
-    if (surface->hasMoved)
+    if (surface->flags & SURFACE_MOVED)
     {
-        rect = SURFACE_RECT(surface);
+        rect = SURFACE_SCREEN_RECT(surface);
         RECT_FIT(&rect, fitRect);
 
         rect_subtract_t subtract;
@@ -228,16 +228,15 @@ static void compositor_draw_window_panel(compositor_ctx_t* ctx, surface_t* surfa
             compositor_draw_others(ctx, surface, &subtract.rects[i]);
         }
 
-        surface->hasMoved = false;
-        surface->isInvalid = false;
+        surface->flags &= ~(SURFACE_INVALID | SURFACE_MOVED);
         surface->prevRect = rect;
     }
-    else if (surface->isInvalid)
+    else if (surface->flags & SURFACE_INVALID)
     {
-        rect = SURFACE_INVALID_RECT(surface);
+        rect = SURFACE_SCREEN_INVALID_RECT(surface);
         RECT_FIT(&rect, fitRect);
 
-        surface->isInvalid = false;
+        surface->flags &= ~SURFACE_INVALID;
     }
     else
     {
@@ -258,7 +257,7 @@ static void compositor_draw_window_panel(compositor_ctx_t* ctx, surface_t* surfa
         printf("dwm: compositor_draw_window_panel invalid type\n");
     }
 
-    surface->gfx.invalidRect = (rect_t){0};
+    surface->invalidRect = (rect_t){0};
 }
 
 static void compositor_draw_windows_panels(compositor_ctx_t* ctx)
@@ -266,7 +265,7 @@ static void compositor_draw_windows_panels(compositor_ctx_t* ctx)
     surface_t* panel;
     LIST_FOR_EACH(panel, ctx->panels, dwmEntry)
     {
-        if (!panel->isVisible)
+        if (!(panel->flags & SURFACE_VISIBLE))
         {
             continue;
         }
@@ -277,7 +276,7 @@ static void compositor_draw_windows_panels(compositor_ctx_t* ctx)
     surface_t* window;
     LIST_FOR_EACH(window, ctx->windows, dwmEntry)
     {
-        if (!window->isVisible)
+        if (!(window->flags & SURFACE_VISIBLE))
         {
             continue;
         }
@@ -291,25 +290,24 @@ static void compositor_draw_fullscreen(compositor_ctx_t* ctx)
     surface_t* fullscreen = ctx->fullscreen;
 
     rect_t invalidRect;
-    if (!fullscreen->isVisible)
+    if (!(fullscreen->flags & SURFACE_VISIBLE))
     {
         return;
     }
-    else if (fullscreen->isInvalid)
+    else if (fullscreen->flags & SURFACE_INVALID)
     {
-        invalidRect = SURFACE_INVALID_RECT(fullscreen);
+        invalidRect = SURFACE_SCREEN_INVALID_RECT(fullscreen);
     }
-    else if (fullscreen->hasMoved)
+    else if (fullscreen->flags & SURFACE_MOVED)
     {
-        invalidRect = SURFACE_CONTENT_RECT(fullscreen);
+        invalidRect = SURFACE_SCREEN_RECT(fullscreen);
     }
     else
     {
         return;
     }
 
-    fullscreen->isInvalid = false;
-    fullscreen->hasMoved = false;
+    fullscreen->flags &= ~(SURFACE_INVALID | SURFACE_MOVED);
 
     RECT_FIT(&invalidRect, &screenRect);
     screen_transfer_frontbuffer(fullscreen, &invalidRect); // Draw directly to frontbuffer

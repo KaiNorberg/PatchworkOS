@@ -59,5 +59,5 @@ void _platform_abort(const char* message)
     (void)message; // Unused
 
     // raise( SIGABRT ); // TODO: Implement signals
-    abort();
+    exit(EXIT_FAILURE);
 }

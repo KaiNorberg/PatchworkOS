@@ -50,8 +50,6 @@ client_t* client_new(fd_t fd)
 
 void client_free(client_t* client)
 {
-    surface_t* wall = NULL;
-
     surface_t* surface;
     surface_t* temp;
     LIST_FOR_EACH_SAFE(surface, temp, &client->surfaces, clientEntry)
@@ -105,7 +103,10 @@ static uint64_t client_action_surface_new(client_t* client, const cmd_header_t* 
         errno = EINVAL;
         return ERR;
     }
-    if (RECT_WIDTH(&cmd->rect) <= 0 || RECT_HEIGHT(&cmd->rect) <= 0)
+
+    int32_t width = RECT_WIDTH(&cmd->rect);
+    int32_t height = RECT_HEIGHT(&cmd->rect);
+    if (width <= 0 || height <= 0)
     {
         errno = EINVAL;
         return ERR;
@@ -117,9 +118,8 @@ static uint64_t client_action_surface_new(client_t* client, const cmd_header_t* 
         return ERR;
     }
 
-    const rect_t* rect = &cmd->rect;
-    point_t point = {.x = rect->left, .y = rect->top};
-    surface_t* surface = surface_new(client, cmd->name, &point, RECT_WIDTH(rect), RECT_HEIGHT(rect), cmd->type);
+    point_t point = {.x = cmd->rect.left, .y = cmd->rect.top};
+    surface_t* surface = surface_new(client, cmd->name, &point, width, height, cmd->type);
     if (surface == NULL)
     {
         return ERR;
@@ -186,7 +186,7 @@ static uint64_t client_action_surface_move(client_t* client, const cmd_header_t*
     uint64_t width = RECT_WIDTH(&cmd->rect);
     uint64_t height = RECT_HEIGHT(&cmd->rect);
 
-    if (surface->gfx.width != width || surface->gfx.height != height)
+    if (surface->width != width || surface->height != height)
     {
         // TODO: Reimplement resizing
         errno = ENOSYS;
@@ -194,7 +194,7 @@ static uint64_t client_action_surface_move(client_t* client, const cmd_header_t*
     }
 
     surface->pos = (point_t){.x = cmd->rect.left, .y = cmd->rect.top};
-    surface->hasMoved = true;
+    surface->flags |= SURFACE_MOVED;
     compositor_set_redraw_needed();
 
     dwm_report_produce(surface, surface->client, REPORT_RECT);
@@ -248,8 +248,8 @@ static uint64_t client_action_surface_invalidate(client_t* client, const cmd_hea
     rect_t surfaceRect = SURFACE_CONTENT_RECT(surface);
     rect_t invalidRect = cmd->invalidRect;
     RECT_FIT(&invalidRect, &surfaceRect);
-    gfx_invalidate(&surface->gfx, &invalidRect);
-    surface->isInvalid = true;
+    surface_invalidate(surface, &invalidRect);
+    surface->flags |= SURFACE_INVALID;
     compositor_set_redraw_needed();
     return 0;
 }
@@ -288,10 +288,11 @@ static uint64_t client_action_surface_visible_set(client_t* client, const cmd_he
         return 0; // See client_action_surface_focus_set().
     }
 
-    if (surface->isVisible != cmd->isVisible)
+    bool isSurfaceVisible = surface->flags & SURFACE_VISIBLE;
+    if (isSurfaceVisible != cmd->isVisible)
     {
-        surface->isVisible = cmd->isVisible;
-        surface->hasMoved = true;
+        surface->flags ^= SURFACE_VISIBLE;
+        surface->flags |= SURFACE_MOVED;
         compositor_set_total_redraw_needed();
         dwm_report_produce(surface, surface->client, REPORT_IS_VISIBLE);
     }
@@ -368,62 +369,38 @@ static uint64_t (*actions[])(client_t*, const cmd_header_t*) = {
     [CMD_UNSUBSCRIBE] = client_action_unsubscribe,
 };
 
-uint64_t client_receive_cmds(client_t* client)
+static uint64_t client_process_cmds(client_t* client, cmd_buffer_t* cmds)
 {
-    errno = EOK;
-    uint64_t readSize = read(client->fd, &client->cmds, sizeof(cmd_buffer_t) + 1);
-    if (readSize == ERR)
+    if (cmds->size > CMD_BUFFER_MAX_DATA)
     {
-        if (errno != EWOULDBLOCK)
-        {
-            perror("dwm client: read error");
-            return ERR;
-        }
-        return 0;
-    }
-
-    if (readSize == 0)
-    {
-        printf("dwm client: end of file\n");
-        return ERR;
-    }
-
-    if (readSize > sizeof(cmd_buffer_t))
-    {
-        printf("dwm client: buffer overflow detected, client sent too much data\n");
-        errno = EMSGSIZE;
-        return ERR;
-    }
-
-    if (readSize != client->cmds.size || client->cmds.size > CMD_BUFFER_MAX_DATA)
-    {
-        printf("dwm client: invalid command buffer size, expected %lu, got %lu\n", client->cmds.size, readSize);
+        printf("dwm client: invalid command buffer size, got %lu\n", cmds->size);
         errno = EPROTO;
         return ERR;
     }
 
     uint64_t amount = 0;
     cmd_header_t* cmd;
-    CMD_BUFFER_FOR_EACH(&client->cmds, cmd)
+    CMD_BUFFER_FOR_EACH(cmds, cmd)
     {
         amount++;
-        if (amount > client->cmds.amount || ((uint64_t)cmd + cmd->size - (uint64_t)&client->cmds) > readSize ||
+        if (amount > cmds->amount || ((uint64_t)cmd + cmd->size - (uint64_t)cmds) > cmds->size ||
             cmd->magic != CMD_MAGIC || cmd->type >= CMD_TYPE_AMOUNT)
         {
-            printf("dwm client: corrupt command detected amount=%lu size=%lu magic=%x type=%u\n", amount,
-                cmd->size, cmd->magic, cmd->type);
+            printf("dwm client: corrupt command detected amount=%lu size=%lu magic=%x type=%u\n", amount, cmd->size,
+                cmd->magic, cmd->type);
             errno = EPROTO;
             return ERR;
         }
     }
-    if (amount != client->cmds.amount)
+
+    if (amount != cmds->amount)
     {
-        printf("dwm client: invalid command amount, expected %lu, got %lu\n", client->cmds.amount, amount);
+        printf("dwm client: invalid command amount, expected %lu, got %lu\n", cmds->amount, amount);
         errno = EPROTO;
         return ERR;
     }
 
-    CMD_BUFFER_FOR_EACH(&client->cmds, cmd)
+    CMD_BUFFER_FOR_EACH(cmds, cmd)
     {
         if (actions[cmd->type](client, cmd) == ERR)
         {
@@ -435,15 +412,104 @@ uint64_t client_receive_cmds(client_t* client)
     return 0;
 }
 
+uint64_t client_receive_cmds(client_t* client)
+{
+    errno = EOK;
+    uint64_t freeSpace = CLIENT_RECV_BUFFER_SIZE - client->recvLen;
+    if (freeSpace == 0)
+    {
+        printf("dwm client: receive buffer full\n");
+        errno = EMSGSIZE;
+        return ERR;
+    }
+
+    uint64_t readSize = read(client->fd, client->recvBuffer + client->recvLen, freeSpace);
+    if (readSize == ERR)
+    {
+        if (errno == EWOULDBLOCK)
+        {
+            return 0;
+        }
+        perror("dwm client: read error");
+        return ERR;
+    }
+
+    if (readSize == 0)
+    {
+        printf("dwm client: end of file\n");
+        errno = EPIPE;
+        return ERR;
+    }
+
+    client->recvLen += readSize;
+
+    while (client->recvLen > 0)
+    {
+        if (client->recvLen < sizeof(uint64_t))
+        {
+            break;
+        }
+
+        cmd_buffer_t* cmds = (cmd_buffer_t*)client->recvBuffer;
+        if (client->recvLen < cmds->size)
+        {
+            break;
+        }
+
+        if (client_process_cmds(client, cmds) == ERR)
+        {
+            return ERR;
+        }
+
+        client->recvLen -= cmds->size;
+        if (client->recvLen > 0)
+        {
+            memmove(client->recvBuffer, client->recvBuffer + cmds->size, client->recvLen);
+        }
+    }
+
+    return 0;
+}
+
+static uint64_t client_send_all(fd_t fd, const void* data, size_t size)
+{
+    const char* p = (const char*)data;
+    uint64_t sent = 0;
+    while (sent < size)
+    {
+        uint64_t n = write(fd, p + sent, size - sent);
+        if (n == ERR)
+        {
+            if (errno == EINTR)
+            {
+                continue;
+            }
+            perror("dwm client: write error");
+            return ERR;
+        }
+
+        if (n == 0)
+        {
+            errno = EPIPE;
+            perror("dwm client: write error (0 bytes written)");
+            return ERR;
+        }
+
+        sent += n;
+    }
+
+    return 0;
+}
+
 uint64_t client_send_event(client_t* client, surface_id_t target, event_type_t type, void* data, uint64_t size)
 {
     if (client->bitmask[type / 64] & (1ULL << (type % 64)))
     {
         event_t event = {.type = type, .target = target};
         memcpy(&event.raw, data, size);
-        if (write(client->fd, &event, sizeof(event_t)) == ERR)
+
+        if (client_send_all(client->fd, &event, sizeof(event_t)) == ERR)
         {
-            perror("dwm client: write error");
             return ERR;
         }
     }

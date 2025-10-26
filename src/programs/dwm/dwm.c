@@ -17,7 +17,6 @@
 #include <sys/proc.h>
 #include <threads.h>
 
-static fd_t handle;
 static char id[MAX_NAME];
 static fd_t data;
 
@@ -43,10 +42,7 @@ static client_t* dwm_client_accept(void)
     fd_t fd = openf("/net/local/%s/accept:nonblock", id);
     if (fd == ERR)
     {
-        if (errno != EINVAL)
-        {
-            printf("dwm: failed to open accept file (%s)\n", strerror(errno));
-        }
+        printf("dwm: failed to open accept file (%s)\n", strerror(errno));
         return NULL;
     }
 
@@ -163,7 +159,6 @@ void dwm_deinit(void)
 {
     close(kbd);
     close(mouse);
-    close(handle);
     close(data);
 
     free(pollCtx);
@@ -352,19 +347,19 @@ void dwm_focus_set(surface_t* surface)
 
     if (focus != NULL)
     {
-        focus->isFocused = false;
+        focus->flags &= ~SURFACE_FOCUSED;
         dwm_report_produce(focus, focus->client, REPORT_IS_FOCUSED);
     }
 
     if (surface != NULL)
     {
-        surface->isFocused = true;
+        surface->flags |= SURFACE_FOCUSED;
         if (surface->type == SURFACE_WINDOW)
         {
             // Move to end of list
             list_remove(&windows, &surface->dwmEntry);
             list_push(&windows, &surface->dwmEntry);
-            surface->hasMoved = true;
+            surface->flags |= SURFACE_MOVED;
         }
         focus = surface;
         dwm_report_produce(focus, focus->client, REPORT_IS_FOCUSED);
@@ -385,7 +380,7 @@ static surface_t* dwm_surface_under_point(const point_t* point)
     surface_t* panel;
     LIST_FOR_EACH_REVERSE(panel, &panels, dwmEntry)
     {
-        rect_t rect = SURFACE_RECT(panel);
+        rect_t rect = SURFACE_SCREEN_RECT(panel);
         if (RECT_CONTAINS_POINT(&rect, point))
         {
             return panel;
@@ -395,7 +390,7 @@ static surface_t* dwm_surface_under_point(const point_t* point)
     surface_t* window;
     LIST_FOR_EACH_REVERSE(window, &windows, dwmEntry)
     {
-        rect_t rect = SURFACE_RECT(window);
+        rect_t rect = SURFACE_SCREEN_RECT(window);
         if (RECT_CONTAINS_POINT(&rect, point))
         {
             return window;
@@ -407,7 +402,7 @@ static surface_t* dwm_surface_under_point(const point_t* point)
         return NULL;
     }
 
-    rect_t wallRect = SURFACE_RECT(wall);
+    rect_t wallRect = SURFACE_SCREEN_RECT(wall);
     if (RECT_CONTAINS_POINT(&wallRect, point))
     {
         return wall;
@@ -628,7 +623,16 @@ static void dwm_mouse_read(void)
 
 static void dwm_poll_ctx_update(void)
 {
-    pollCtx = realloc(pollCtx, sizeof(poll_ctx_t) + (sizeof(pollfd_t) * clientAmount));
+    void* newCtx = realloc(pollCtx, sizeof(poll_ctx_t) + (sizeof(pollfd_t) * clientAmount));
+    if (newCtx == NULL)
+    {
+        printf("dwm: failed to realloc pollCtx\n");
+        abort();
+    }
+    else
+    {
+        pollCtx = newCtx;
+    }
     pollCtx->data.fd = data;
     pollCtx->data.events = POLLIN;
     pollCtx->data.revents = 0;

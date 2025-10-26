@@ -27,10 +27,10 @@ typedef struct
     start_menu_state_t state;
 } start_menu_t;
 
-void start_menu_init(start_menu_t* startMenu, window_t* taskbar, display_t* disp);
+window_t* start_menu_new(window_t* taskbar, display_t* disp);
 
-void start_menu_deinit(start_menu_t* startMenu);
+void start_menu_open(window_t* startMenu);
 
-void start_menu_open(start_menu_t* startMenu);
+void start_menu_close(window_t* startMenu);
 
-void start_menu_close(start_menu_t* startMenu);
+start_menu_state_t start_menu_get_state(window_t* startMenu);

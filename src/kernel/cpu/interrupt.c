@@ -65,6 +65,7 @@ static void exception_handler(interrupt_frame_t* frame)
 
     if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
     {
+        cpu_t* self = smp_self_unsafe();
         thread_t* thread = sched_thread_unsafe();
         process_t* process = thread->process;
 
@@ -74,7 +75,12 @@ static void exception_handler(interrupt_frame_t* frame)
                  "cr2=0x%llx errno='%s'\n",
             process->id, thread->id, frame->vector, frame->errorCode, frame->rip, cr2, strerror(thread->error));
 
-        sched_process_exit(EFAULT);
+#ifndef NDEBUG
+        panic_stack_trace(frame);
+#endif
+
+        process_kill(process, EFAULT);
+        sched_invoke(frame, self, SCHED_DIE);
     }
     else
     {

@@ -257,8 +257,8 @@ static void window_deco_report(window_t* win, element_t* elem, const event_repor
     }
 
     deco_private_t* private = element_get_private(elem);
-    private->isFocused = report->info.isFocused;
-    private->isVisible = report->info.isVisible;
+    private->isFocused = report->info.flags & SURFACE_FOCUSED;
+    private->isVisible = report->info.flags & SURFACE_VISIBLE;
 
     drawable_t draw;
     element_draw_begin(elem, &draw);
@@ -273,7 +273,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
     case LEVENT_INIT:
         return window_deco_init(win, elem);
 
-    case LEVENT_FREE:
+    case LEVENT_DEINIT:
         window_deco_free(elem);
         break;
 
@@ -324,7 +324,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     list_entry_init(&win->entry);
     win->disp = disp;
     strcpy(win->name, name);
-    win->rect = *rect;
+    win->rect = (rect_t){0};
     win->invalidRect = (rect_t){0};
     win->type = type;
     win->flags = flags;
@@ -340,14 +340,17 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
         return NULL;
     }
 
-    rect_t originalRect = *rect;
     if (flags & WINDOW_DECO)
     {
         // Expand window to fit decorations
-        win->rect.left -= theme->frameSize;
-        win->rect.top -= theme->frameSize + theme->titlebarSize;
-        win->rect.right += theme->frameSize;
-        win->rect.bottom += theme->frameSize;
+        win->rect.left = rect->left - theme->frameSize;
+        win->rect.top = rect->top - theme->frameSize + theme->titlebarSize;
+        win->rect.right = rect->right + theme->frameSize;
+        win->rect.bottom = rect->bottom + theme->frameSize;
+    }
+    else
+    {
+        win->rect = *rect;
     }
 
     cmd_surface_new_t* cmd = display_cmd_alloc(disp, CMD_SURFACE_NEW, sizeof(cmd_surface_new_t));
@@ -383,19 +386,25 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
         window_free(win);
         return NULL;
     }
+    list_push(&disp->windows, &win->entry);
 
+    rect_t rootRect = RECT_INIT_DIM(0, 0, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
     if (flags & WINDOW_DECO)
     {
         win->root =
-            element_new_root(win, WINDOW_DECO_ELEM_ID, &win->rect, "deco", ELEMENT_NONE, window_deco_procedure, NULL);
+            element_new_root(win, WINDOW_DECO_ELEM_ID, &rootRect, "deco", ELEMENT_NONE, window_deco_procedure, NULL);
         if (win->root == NULL)
         {
             window_free(win);
             return NULL;
         }
 
+        rect_t clientRect = RECT_INIT(theme->frameSize,
+            theme->frameSize + theme->titlebarSize, RECT_WIDTH(&win->rect) - theme->frameSize,
+            RECT_HEIGHT(&win->rect) - theme->frameSize);
+
         win->clientElement =
-            element_new(win->root, WINDOW_CLIENT_ELEM_ID, &originalRect, "client", ELEMENT_NONE, procedure, private);
+            element_new(win->root, WINDOW_CLIENT_ELEM_ID, &clientRect, "client", ELEMENT_NONE, procedure, private);
         if (win->clientElement == NULL)
         {
             window_free(win);
@@ -404,17 +413,16 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     }
     else
     {
-        win->root =
-            element_new_root(win, WINDOW_CLIENT_ELEM_ID, &win->rect, "client", ELEMENT_NONE, procedure, private);
-        if (win->root == NULL)
+        win->clientElement =
+            element_new_root(win, WINDOW_CLIENT_ELEM_ID, &rootRect, "client", ELEMENT_NONE, procedure, private);
+        if (win->clientElement == NULL)
         {
             window_free(win);
             return NULL;
         }
-        win->clientElement = win->root;
+        win->root = win->clientElement;
     }
 
-    list_push(&disp->windows, &win->entry);
     return win;
 }
 
@@ -608,20 +616,6 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
 
     switch (event->type)
     {
-    case LEVENT_INIT:
-    {
-        element_t* elem = element_find(win->root, event->lInit.id);
-        if (elem == NULL)
-        {
-            return ERR;
-        }
-
-        if (element_dispatch(elem, event) == ERR)
-        {
-            return ERR;
-        }
-    }
-    break;
     case LEVENT_REDRAW:
     {
         element_t* elem = element_find(win->root, event->lRedraw.id);

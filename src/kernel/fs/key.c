@@ -16,6 +16,8 @@ static rwlock_t keyLock;
 
 static key_t key_generate(void)
 {
+    RWLOCK_READ_SCOPE(&keyLock);
+
     key_t key;
     map_key_t mapKey;
     do
@@ -24,12 +26,6 @@ static key_t key_generate(void)
         {
             panic(NULL, "failed to generate random key");
         }
-        LOG_DEBUG("generated key ");
-        for (size_t i = 0; i < sizeof(key); i++)
-        {
-            LOG_DEBUG("%02x", ((uint8_t*)&key)[i]);
-        }
-        LOG_DEBUG("\n");
         mapKey = map_key_buffer(&key, sizeof(key));
     } while (map_get(&keyMap, &mapKey) != NULL);
 

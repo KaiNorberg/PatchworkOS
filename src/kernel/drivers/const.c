@@ -27,7 +27,7 @@ static uint64_t const_one_read(file_t* file, void* buffer, uint64_t count, uint6
 
 static void* const_one_mmap(file_t* file, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
 {
-    (void)file; // Unused
+    (void)file;   // Unused
     (void)offset; // Unused
 
     addr = vmm_alloc(&sched_process()->space, addr, length, flags, VMM_ALLOC_NONE);
@@ -56,7 +56,7 @@ static uint64_t const_zero_read(file_t* file, void* buffer, uint64_t count, uint
 
 static void* const_zero_mmap(file_t* file, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
 {
-    (void)file; // Unused
+    (void)file;   // Unused
     (void)offset; // Unused
 
     addr = vmm_alloc(&sched_process()->space, addr, length, flags, VMM_ALLOC_NONE);

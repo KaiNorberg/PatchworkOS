@@ -5,6 +5,11 @@
 
 void draw_rect(drawable_t* draw, const rect_t* rect, pixel_t pixel)
 {
+    if (draw == NULL || rect == NULL)
+    {
+        return;
+    }
+
     rect_t fitRect = *rect;
     RECT_FIT(&fitRect, &draw->contentRect);
 
@@ -18,6 +23,11 @@ void draw_rect(drawable_t* draw, const rect_t* rect, pixel_t pixel)
 
 void draw_frame(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)
 {
+    if (draw == NULL || rect == NULL || width == 0)
+    {
+        return;
+    }
+
     rect_t fitRect = *rect;
     RECT_FIT(&fitRect, &draw->contentRect);
 
@@ -66,8 +76,13 @@ void draw_frame(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t fo
     draw_invalidate(draw, &fitRect);
 }
 
-void draw_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t length, int32_t width)
+void draw_dashed_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t length, int32_t width)
 {
+    if (draw == NULL || rect == NULL || length == 0 || width <= 0)
+    {
+        return;
+    }
+
     rect_t fitRect = *rect;
     RECT_FIT(&fitRect, &draw->contentRect);
 
@@ -141,9 +156,57 @@ void draw_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t 
     draw_invalidate(draw, &fitRect);
 }
 
+void draw_bezel(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t pixel)
+{
+    if (draw == NULL || rect == NULL || width == 0)
+    {
+        return;
+    }
+
+    rect_t fitRect = *rect;
+    RECT_FIT(&fitRect, &draw->contentRect);
+
+    rect_t leftRect = (rect_t){
+        .left = fitRect.left,
+        .top = fitRect.top + width - width / 2,
+        .right = fitRect.left + width,
+        .bottom = fitRect.bottom - width + width / 2,
+    };
+    draw_rect(draw, &leftRect, pixel);
+
+    rect_t topRect = (rect_t){
+        .left = fitRect.left + width - width / 2,
+        .top = fitRect.top,
+        .right = fitRect.right - width + width / 2,
+        .bottom = fitRect.top + width,
+    };
+    draw_rect(draw, &topRect, pixel);
+
+    rect_t rightRect = (rect_t){
+        .left = fitRect.right - width,
+        .top = fitRect.top + width - width / 2,
+        .right = fitRect.right,
+        .bottom = fitRect.bottom - width + width / 2,
+    };
+    draw_rect(draw, &rightRect, pixel);
+
+    rect_t bottomRect = (rect_t){
+        .left = fitRect.left + width - width / 2,
+        .top = fitRect.bottom - width,
+        .right = fitRect.right - width + width / 2,
+        .bottom = fitRect.bottom,
+    };
+    draw_rect(draw, &bottomRect, pixel);
+}
+
 void draw_gradient(drawable_t* draw, const rect_t* rect, pixel_t start, pixel_t end, direction_t direction,
     bool shouldAddNoise)
 {
+    if (draw == NULL || rect == NULL)
+    {
+        return;
+    }
+
     rect_t fitRect = *rect;
     RECT_FIT(&fitRect, &draw->contentRect);
 
@@ -216,6 +279,99 @@ void draw_gradient(drawable_t* draw, const rect_t* rect, pixel_t start, pixel_t 
     draw_invalidate(draw, &fitRect);
 }
 
+void draw_transfer(drawable_t* dest, drawable_t* src, const rect_t* destRect, const point_t* srcPoint)
+{
+    if (dest == NULL || src == NULL || destRect == NULL || srcPoint == NULL)
+    {
+        return;
+    }
+
+    int64_t width = RECT_WIDTH(destRect);
+    int64_t height = RECT_HEIGHT(destRect);
+
+    if (width <= 0 || height <= 0)
+    {
+        return;
+    }
+    if (srcPoint->x < 0 || srcPoint->y < 0 || srcPoint->x + width > RECT_WIDTH(&src->contentRect) ||
+        srcPoint->y + height > RECT_HEIGHT(&src->contentRect))
+    {
+        return;
+    }
+    if (destRect->left < 0 || destRect->top < 0 || destRect->left + width > RECT_WIDTH(&dest->contentRect) ||
+        destRect->top + height > RECT_HEIGHT(&dest->contentRect))
+    {
+        return;
+    }
+
+    if (dest == src)
+    {
+        for (int64_t y = 0; y < height; y++)
+        {
+            memmove(&dest->buffer[destRect->left + (y + destRect->top) * dest->stride],
+                &src->buffer[srcPoint->x + (y + srcPoint->y) * src->stride], width * sizeof(pixel_t));
+        }
+    }
+    else
+    {
+        for (int64_t y = 0; y < height; y++)
+        {
+            memcpy(&dest->buffer[destRect->left + (y + destRect->top) * dest->stride],
+                &src->buffer[srcPoint->x + (y + srcPoint->y) * src->stride], width * sizeof(pixel_t));
+        }
+    }
+
+    draw_invalidate(dest, destRect);
+}
+
+void draw_transfer_blend(drawable_t* dest, drawable_t* src, const rect_t* destRect, const point_t* srcPoint)
+{
+    if (dest == NULL || src == NULL || destRect == NULL || srcPoint == NULL)
+    {
+        return;
+    }
+
+    int64_t width = RECT_WIDTH(destRect);
+    int64_t height = RECT_HEIGHT(destRect);
+
+    if (width <= 0 || height <= 0)
+    {
+        return;
+    }
+    if (srcPoint->x < 0 || srcPoint->y < 0 || srcPoint->x + width > RECT_WIDTH(&src->contentRect) ||
+        srcPoint->y + height > RECT_HEIGHT(&src->contentRect))
+    {
+        return;
+    }
+    if (destRect->left < 0 || destRect->top < 0 || destRect->left + width > RECT_WIDTH(&dest->contentRect) ||
+        destRect->top + height > RECT_HEIGHT(&dest->contentRect))
+    {
+        return;
+    }
+
+    for (int64_t y = 0; y < height; y++)
+    {
+        for (int64_t x = 0; x < width; x++)
+        {
+            pixel_t srcPixel = src->buffer[(srcPoint->x + x) + (srcPoint->y + y) * src->stride];
+            pixel_t* destPixel = &dest->buffer[(destRect->left + x) + (destRect->top + y) * dest->stride];
+            PIXEL_BLEND(destPixel, &srcPixel);
+        }
+    }
+
+    draw_invalidate(dest, destRect);
+}
+
+void draw_image(drawable_t* draw, image_t* image, const rect_t* destRect, const point_t* srcPoint)
+{
+    draw_transfer(draw, image_draw(image), destRect, srcPoint);
+}
+
+void draw_image_blend(drawable_t* draw, image_t* image, const rect_t* destRect, const point_t* srcPoint)
+{
+    draw_transfer_blend(draw, image_draw(image), destRect, srcPoint);
+}
+
 static void draw_grf_char(drawable_t* draw, const font_t* font, const point_t* point, uint8_t chr, pixel_t pixel)
 {
     uint32_t offset = font->grf.glyphOffsets[chr];
@@ -255,6 +411,11 @@ static void draw_grf_char(drawable_t* draw, const font_t* font, const point_t* p
 void draw_string(drawable_t* draw, const font_t* font, const point_t* point, pixel_t pixel, const char* string,
     uint64_t length)
 {
+    if (draw == NULL || string == NULL || point == NULL || length == 0)
+    {
+        return;
+    }
+
     if (font == NULL)
     {
         font = font_default(draw->disp);
@@ -284,124 +445,6 @@ void draw_string(drawable_t* draw, const font_t* font, const point_t* point, pix
     }
 
     draw_invalidate(draw, &textArea);
-}
-
-void draw_transfer(drawable_t* dest, drawable_t* src, const rect_t* destRect, const point_t* srcPoint)
-{
-    int64_t width = RECT_WIDTH(destRect);
-    int64_t height = RECT_HEIGHT(destRect);
-
-    if (width <= 0 || height <= 0)
-    {
-        return;
-    }
-    if (srcPoint->x < 0 || srcPoint->y < 0 || srcPoint->x + width > RECT_WIDTH(&src->contentRect) ||
-        srcPoint->y + height > RECT_HEIGHT(&src->contentRect))
-    {
-        return;
-    }
-    if (destRect->left < 0 || destRect->top < 0 || destRect->left + width > RECT_WIDTH(&dest->contentRect) ||
-        destRect->top + height > RECT_HEIGHT(&dest->contentRect))
-    {
-        return;
-    }
-
-    if (dest == src)
-    {
-        for (int64_t y = 0; y < height; y++)
-        {
-            memmove(&dest->buffer[destRect->left + (y + destRect->top) * dest->stride],
-                &src->buffer[srcPoint->x + (y + srcPoint->y) * src->stride], width * sizeof(pixel_t));
-        }
-    }
-    else
-    {
-        for (int64_t y = 0; y < height; y++)
-        {
-            memcpy(&dest->buffer[destRect->left + (y + destRect->top) * dest->stride],
-                &src->buffer[srcPoint->x + (y + srcPoint->y) * src->stride], width * sizeof(pixel_t));
-        }
-    }
-
-    draw_invalidate(dest, destRect);
-}
-
-void draw_image(drawable_t* draw, image_t* image, const rect_t* destRect, const point_t* srcPoint)
-{
-    draw_transfer(draw, image_draw(image), destRect, srcPoint);
-}
-
-void draw_transfer_blend(drawable_t* dest, drawable_t* src, const rect_t* destRect, const point_t* srcPoint)
-{
-    int64_t width = RECT_WIDTH(destRect);
-    int64_t height = RECT_HEIGHT(destRect);
-
-    if (width <= 0 || height <= 0)
-    {
-        return;
-    }
-    if (srcPoint->x < 0 || srcPoint->y < 0 || srcPoint->x + width > RECT_WIDTH(&src->contentRect) ||
-        srcPoint->y + height > RECT_HEIGHT(&src->contentRect))
-    {
-        return;
-    }
-    if (destRect->left < 0 || destRect->top < 0 || destRect->left + width > RECT_WIDTH(&dest->contentRect) ||
-        destRect->top + height > RECT_HEIGHT(&dest->contentRect))
-    {
-        return;
-    }
-
-    for (int64_t y = 0; y < height; y++)
-    {
-        for (int64_t x = 0; x < width; x++)
-        {
-            pixel_t srcPixel = src->buffer[(srcPoint->x + x) + (srcPoint->y + y) * src->stride];
-            pixel_t* destPixel = &dest->buffer[(destRect->left + x) + (destRect->top + y) * dest->stride];
-            PIXEL_BLEND(destPixel, &srcPixel);
-        }
-    }
-
-    draw_invalidate(dest, destRect);
-}
-
-void draw_image_blend(drawable_t* draw, image_t* image, const rect_t* destRect, const point_t* srcPoint)
-{
-    draw_transfer_blend(draw, image_draw(image), destRect, srcPoint);
-}
-
-void draw_bezel(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t pixel)
-{
-    rect_t leftRect = (rect_t){
-        .left = rect->left,
-        .top = rect->top + width - width / 2,
-        .right = rect->left + width,
-        .bottom = rect->bottom - width + width / 2,
-    };
-    draw_rect(draw, &leftRect, pixel);
-
-    rect_t topRect = (rect_t){
-        .left = rect->left + width - width / 2,
-        .top = rect->top,
-        .right = rect->right - width + width / 2,
-        .bottom = rect->top + width,
-    };
-    draw_rect(draw, &topRect, pixel);
-
-    rect_t rightRect = (rect_t){
-        .left = rect->right - width,
-        .top = rect->top + width - width / 2,
-        .right = rect->right,
-        .bottom = rect->bottom - width + width / 2,
-    };
-    draw_rect(draw, &rightRect, pixel);
-
-    rect_t bottomRect = (rect_t){
-        .left = rect->left + width - width / 2,
-        .top = rect->bottom - width,
-        .right = rect->right - width + width / 2,
-        .bottom = rect->bottom,
-    };
-    draw_rect(draw, &bottomRect, pixel);
 }
 
 static void draw_calculate_aligned_text_pos(const rect_t* rect, const font_t* font, const char* string, uint64_t length,
@@ -446,7 +489,7 @@ static void draw_calculate_aligned_text_pos(const rect_t* rect, const font_t* fo
 void draw_text(drawable_t* draw, const rect_t* rect, const font_t* font, align_t xAlign, align_t yAlign, pixel_t pixel,
     const char* text)
 {
-    if (text == NULL || *text == '\0')
+    if (draw == NULL || rect == NULL || text == NULL || *text == '\0')
     {
         return;
     }
@@ -483,6 +526,11 @@ void draw_text(drawable_t* draw, const rect_t* rect, const font_t* font, align_t
             for (uint64_t i = 0; i < originalTextLen; ++i)
             {
                 uint64_t charWidth = font_width(font, text + i, 1);
+                if (i < originalTextLen - 1)
+                {
+                    charWidth += font_kerning_offset(font, text[i], text[i + 1]);
+                }
+
                 if (currentContentWidth + charWidth + ellipsisWidth <= maxWidth)
                 {
                     currentContentWidth += charWidth;
@@ -506,6 +554,11 @@ void draw_text(drawable_t* draw, const rect_t* rect, const font_t* font, align_t
             for (uint64_t i = 0; i < 3; ++i)
             {
                 uint64_t charWidth = font_width(font, ellipsis + i, 1);
+                if (i < 2)
+                {
+                    charWidth += font_kerning_offset(font, ellipsis[i], ellipsis[i + 1]);
+                }
+
                 if (currentContentWidth + charWidth <= maxWidth)
                 {
                     currentContentWidth += charWidth;
@@ -522,8 +575,51 @@ void draw_text(drawable_t* draw, const rect_t* rect, const font_t* font, align_t
             drawEllipsis = NULL;
         }
 
+        int64_t totalWidth;
+        if (drawEllipsis != NULL)
+        {
+            totalWidth = font_width(font, drawText, drawTextLen) + font_width(font, drawEllipsis, 3);
+        }
+        else
+        {
+            totalWidth = font_width(font, drawText, drawTextLen);
+        }
+
+        int32_t visualTextHeight = font->grf.ascender - font->grf.descender;
         point_t startPoint;
-        draw_calculate_aligned_text_pos(rect, font, drawText, drawTextLen + 3, xAlign, yAlign, &startPoint);
+
+        switch (xAlign)
+        {
+        case ALIGN_MIN:
+            startPoint.x = rect->left;
+            break;
+        case ALIGN_CENTER:
+            startPoint.x = MAX(rect->left + (RECT_WIDTH(rect) / 2) - (totalWidth / 2), rect->left);
+            break;
+        case ALIGN_MAX:
+            startPoint.x = MAX(rect->left + RECT_WIDTH(rect) - totalWidth, rect->left);
+            break;
+        default:
+            startPoint.x = rect->left;
+            break;
+        }
+
+        switch (yAlign)
+        {
+        case ALIGN_MIN:
+            startPoint.y = rect->top;
+            break;
+        case ALIGN_CENTER:
+            startPoint.y = rect->top + (RECT_HEIGHT(rect) / 2) - (visualTextHeight / 2);
+            break;
+        case ALIGN_MAX:
+            startPoint.y = rect->top + RECT_HEIGHT(rect) - visualTextHeight;
+            break;
+        default:
+            startPoint.y = rect->top;
+            break;
+        }
+
         draw_string(draw, font, &startPoint, pixel, drawText, drawTextLen);
 
         if (drawEllipsis != NULL)
@@ -538,7 +634,7 @@ void draw_text(drawable_t* draw, const rect_t* rect, const font_t* font, align_t
 void draw_text_multiline(drawable_t* draw, const rect_t* rect, const font_t* font, align_t xAlign, align_t yAlign,
     pixel_t pixel, const char* text)
 {
-    if (text == NULL || *text == '\0')
+    if (draw == NULL || rect == NULL || text == NULL || *text == '\0')
     {
         return;
     }
@@ -717,6 +813,11 @@ void draw_text_multiline(drawable_t* draw, const rect_t* rect, const font_t* fon
 
 void draw_ridge(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)
 {
+    if (draw == NULL || rect == NULL || width == 0)
+    {
+        return;
+    }
+
     draw_frame(draw, rect, width / 2, background, foreground);
 
     rect_t innerRect = *rect;
@@ -726,12 +827,17 @@ void draw_ridge(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t fo
 
 void draw_separator(drawable_t* draw, const rect_t* rect, pixel_t highlight, pixel_t shadow, direction_t direction)
 {
+    if (draw == NULL || rect == NULL)
+    {
+        return;
+    }
+
     rect_t fitRect = *rect;
     RECT_FIT(&fitRect, &draw->contentRect);
 
     switch (direction)
     {
-    case DIRECTION_HORIZONTAL:
+    case DIRECTION_VERTICAL:
     {
         int64_t width = RECT_WIDTH(&fitRect);
 
@@ -748,13 +854,13 @@ void draw_separator(drawable_t* draw, const rect_t* rect, pixel_t highlight, pix
         draw_rect(draw, &rightRect, shadow);
     }
     break;
-    case DIRECTION_VERTICAL:
+    case DIRECTION_HORIZONTAL:
     {
         int64_t height = RECT_HEIGHT(&fitRect);
 
         rect_t topRect = {.left = fitRect.left,
             .top = fitRect.top,
-            .right = fitRect.left,
+            .right = fitRect.right,
             .bottom = fitRect.top + height / 2};
         rect_t bottomRect = {.left = fitRect.left,
             .top = fitRect.top + height / 2,

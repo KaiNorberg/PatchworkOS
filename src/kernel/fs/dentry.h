@@ -158,7 +158,8 @@ void dentry_dec_mount_count(dentry_t* dentry);
 /**
  * @brief Helper function for a basic getdents.
  *
- * This function can be used by filesystems that do not have any special requirements for getdents, in practice ram disks.
+ * This function can be used by filesystems that do not have any special requirements for getdents, in practice ram
+ * disks.
  */
 uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset,
     path_flags_t flags);

@@ -173,8 +173,16 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, uint64_t* 
             errno = EINVAL;
             return NULL;
         }
-        uint64_t availablePages = shmem->pageAmount - BYTES_TO_PAGES(*offset);
-        return vmm_map_pages(space, address, &shmem->pages[*offset / PAGE_SIZE], MIN(pageAmount, availablePages), flags,
+
+        if (*offset % PAGE_SIZE != 0)
+        {
+            errno = EINVAL;
+            return NULL;
+        }
+
+        uint64_t pageOffset = *offset / PAGE_SIZE;
+        uint64_t availablePages = shmem->pageAmount - pageOffset;
+        return vmm_map_pages(space, address, &shmem->pages[pageOffset], MIN(pageAmount, availablePages), flags,
             shmem_vmm_callback, REF(shmem));
     }
 }

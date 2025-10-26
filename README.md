@@ -78,7 +78,7 @@ Additionally, the OS aims to, in spite of its experimental nature, remain approa
 
 ## Notable Future Plans
 
-- `share()`, `claim()` and `bind()` calls
+- `openat()`, `fchdir()` and `bind()` systems calls
 - Implement copy-on-write by extending the callback system in the VMM
 - File flags performance improvements
 - Read, write, execute permissions

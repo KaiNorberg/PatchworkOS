@@ -62,19 +62,29 @@ static bool panic_is_valid_stack_frame(void* ptr)
     return true;
 }
 
-static bool panic_is_valid_return_address(void* ptr)
+static bool panic_is_valid_address(uintptr_t addr)
 {
-    if (ptr == NULL)
+    if (addr == 0)
     {
         return false;
     }
-
-    if ((uintptr_t)ptr >= (uintptr_t)&_kernelStart && (uintptr_t)ptr < (uintptr_t)&_kernelEnd)
+    if (addr < VMM_USER_SPACE_MIN)
     {
-        return true;
+        return false;
     }
-
-    return false;
+    if (addr >= VMM_KERNEL_BINARY_MAX)
+    {
+        return false;
+    }
+    if (addr > VMM_USER_SPACE_MAX && addr < VMM_IDENTITY_MAPPED_MIN)
+    {
+        return false;
+    }
+    if (addr > UINTPTR_MAX - 16)
+    {
+        return false;
+    }
+    return true;
 }
 
 static const char* panic_resolve_symbol(uintptr_t addr, uintptr_t* offset)
@@ -155,140 +165,6 @@ static void panic_registers(const interrupt_frame_t* frame)
     LOG_PANIC("r13: 0x%016llx r14: 0x%016llx r15: 0x%016llx\n", frame->r13, frame->r14, frame->r15);
 }
 
-static void panic_stack_trace(const interrupt_frame_t* frame)
-{
-    LOG_PANIC("stack trace:\n");
-
-    uint64_t* rbp = (uint64_t*)frame->rbp;
-    uint64_t* prevFrame = NULL;
-
-    uintptr_t offset;
-    const char* symbol = panic_resolve_symbol(frame->rip, &offset);
-    if (symbol != NULL)
-    {
-        LOG_PANIC("  [0x%016llx] <%s+0x%llx>\n", frame->rip, symbol, offset);
-    }
-    else
-    {
-        LOG_PANIC("  [0x%016llx] <unknown>\n", frame->rip);
-    }
-
-    uint64_t depth = 0;
-    while (rbp != NULL && rbp != prevFrame)
-    {
-        if (depth >= PANIC_MAX_STACK_FRAMES)
-        {
-            LOG_PANIC("  ...\n");
-            break;
-        }
-
-        if (!panic_is_valid_stack_frame(rbp))
-        {
-            break;
-        }
-
-        if (prevFrame && rbp <= prevFrame)
-        {
-            break;
-        }
-
-        uint64_t returnAddress = rbp[1];
-        if (returnAddress == 0)
-        {
-            break;
-        }
-
-        if (panic_is_valid_return_address((void*)returnAddress))
-        {
-            symbol = panic_resolve_symbol(returnAddress, &offset);
-            if (symbol)
-            {
-                LOG_PANIC("  [0x%016llx] <%s+0x%llx>\n", returnAddress, symbol, offset);
-            }
-            else
-            {
-                LOG_PANIC("  [0x%016llx] <unknown>\n", returnAddress);
-            }
-        }
-
-        prevFrame = rbp;
-        rbp = (uint64_t*)rbp[0];
-        depth++;
-    }
-}
-
-static void panic_direct_stack_trace(void)
-{
-    LOG_PANIC("stack trace:\n");
-
-    void* currentFrame = __builtin_frame_address(0);
-    void* prevFrame = NULL;
-
-    uint64_t depth = 0;
-    while (currentFrame != NULL && currentFrame != prevFrame)
-    {
-        if (depth >= PANIC_MAX_STACK_FRAMES)
-        {
-            LOG_PANIC("  ...\n");
-            break;
-        }
-
-        if (!panic_is_valid_stack_frame(currentFrame))
-        {
-            break;
-        }
-
-        void* returnAddress = *((void**)currentFrame + 1);
-        if (returnAddress == NULL)
-        {
-            break;
-        }
-
-        if (panic_is_valid_return_address(returnAddress))
-        {
-            uintptr_t offset;
-            const char* symbol = panic_resolve_symbol((uintptr_t)returnAddress, &offset);
-            if (symbol != NULL)
-            {
-                LOG_PANIC("  [0x%016llx] <%s+0x%llx>\n", (uintptr_t)returnAddress, symbol, offset);
-            }
-            else
-            {
-                LOG_PANIC("  [0x%016llx] <unknown>\n", (uintptr_t)returnAddress);
-            }
-        }
-
-        prevFrame = currentFrame;
-        currentFrame = *((void**)currentFrame);
-        depth++;
-    }
-}
-
-static bool panic_is_valid_address(uintptr_t addr)
-{
-    if (addr == 0)
-    {
-        return false;
-    }
-    if (addr < VMM_USER_SPACE_MIN)
-    {
-        return false;
-    }
-    if (addr >= VMM_KERNEL_BINARY_MAX)
-    {
-        return false;
-    }
-    if (addr > VMM_USER_SPACE_MAX && addr < VMM_IDENTITY_MAPPED_MIN)
-    {
-        return false;
-    }
-    if (addr > UINTPTR_MAX - 16)
-    {
-        return false;
-    }
-    return true;
-}
-
 static void panic_print_stack_dump(const interrupt_frame_t* frame)
 {
     uint64_t rsp = frame->rsp;
@@ -345,6 +221,100 @@ static void panic_print_stack_dump(const interrupt_frame_t* frame)
             }
             LOG_PANIC("^^ RSP\n");
         }
+    }
+}
+
+static void panic_print_trace_address(uintptr_t addr)
+{
+    if (addr >= VMM_USER_SPACE_MIN && addr < VMM_USER_SPACE_MAX)
+    {
+        LOG_PANIC("  [0x%016llx] <user space address>\n", addr);
+        return;
+    }
+
+    uintptr_t offset;
+    const char* symbol = panic_resolve_symbol(addr, &offset);
+    if (symbol == NULL)
+    {
+        LOG_PANIC("  [0x%016llx] <unknown>\n", addr);
+        return;
+    }
+
+    LOG_PANIC("  [0x%016llx] <%s+0x%llx>\n", addr, symbol, offset);
+}
+
+static void panic_direct_stack_trace(void)
+{
+    LOG_PANIC("stack trace:\n");
+
+    void* currentFrame = __builtin_frame_address(0);
+    void* prevFrame = NULL;
+
+    uint64_t depth = 0;
+    while (currentFrame != NULL && currentFrame != prevFrame)
+    {
+        if (depth >= PANIC_MAX_STACK_FRAMES)
+        {
+            LOG_PANIC("  ...\n");
+            break;
+        }
+
+        if (!panic_is_valid_stack_frame(currentFrame))
+        {
+            break;
+        }
+
+        void* returnAddress = *((void**)currentFrame + 1);
+        if (returnAddress == NULL)
+        {
+            break;
+        }
+
+        panic_print_trace_address((uintptr_t)returnAddress);
+
+        prevFrame = currentFrame;
+        currentFrame = *((void**)currentFrame);
+        depth++;
+    }
+}
+
+void panic_stack_trace(const interrupt_frame_t* frame)
+{
+    LOG_PANIC("stack trace:\n");
+
+    uint64_t* rbp = (uint64_t*)frame->rbp;
+    uint64_t* prevFrame = NULL;
+
+    uint64_t depth = 0;
+    while (rbp != NULL && rbp != prevFrame)
+    {
+        //if (depth >= PANIC_MAX_STACK_FRAMES)
+        {
+            //LOG_PANIC("  ...\n");
+            //break;
+        }
+
+        if (!panic_is_valid_stack_frame(rbp))
+        {
+            break;
+        }
+
+        if (prevFrame && rbp <= prevFrame)
+        {
+            break;
+        }
+
+        uint64_t returnAddress = rbp[1];
+        if (returnAddress == 0)
+        {
+            break;
+        }
+
+        panic_print_trace_address(returnAddress);
+
+        prevFrame = rbp;
+        rbp = (uint64_t*)rbp[0];
+        depth++;
     }
 }
 

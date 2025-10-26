@@ -96,7 +96,7 @@ typedef uint64_t event_bitmask_t[4];
 #define DWM_MAX_EVENT 256
 
 #define LEVENT_INIT 256
-#define LEVENT_FREE 257
+#define LEVENT_DEINIT 257
 #define LEVENT_REDRAW 258
 #define LEVENT_ACTION 259
 #define LEVENT_QUIT 260
@@ -222,16 +222,6 @@ typedef event_kbd_t gevent_kbd_t;
 typedef event_mouse_t gevent_mouse_t;
 
 /**
- * @brief Library Init event.
- *
- * Sent to an element when it is initialized.
- */
-typedef struct
-{
-    element_id_t id;
-} levent_init_t;
-
-/**
  * @brief Library Redraw event.
  *
  * Sent to an element when it should redraw itself.
@@ -291,7 +281,6 @@ typedef struct event
         gevent_report_t globalReport;
         gevent_kbd_t globalKbd;
         gevent_mouse_t globalMouse;
-        levent_init_t lInit;
         levent_redraw_t lRedraw;
         levent_action_t lAction;
         levent_force_action_t lForceAction;

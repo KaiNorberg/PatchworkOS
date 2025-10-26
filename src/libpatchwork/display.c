@@ -253,7 +253,7 @@ uint64_t display_next_event(display_t* disp, event_t* event, clock_t timeout)
 
 void display_events_push(display_t* disp, surface_id_t target, event_type_t type, void* data, uint64_t size)
 {
-    if (disp == NULL || data == NULL || size > EVENT_MAX_DATA)
+    if (disp == NULL || (data == NULL && size > 0) || size > EVENT_MAX_DATA)
     {
         return;
     }
@@ -348,7 +348,6 @@ uint64_t display_dispatch(display_t* disp, const event_t* event)
         return ERR;
     }
 
-    printf("Display dispatching event type %u for target %llu\n", event->type, event->target);
     window_t* win;
     window_t* temp;
     LIST_FOR_EACH_SAFE(win, temp, &disp->windows, entry)
@@ -367,7 +366,6 @@ uint64_t display_dispatch(display_t* disp, const event_t* event)
         }
     }
 
-    printf("Display finished dispatching event type %u for target %llu\n", event->type, event->target);
     display_cmds_flush(disp);
     return 0;
 }

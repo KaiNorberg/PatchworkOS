@@ -11,7 +11,7 @@
 static fb_info_t info;
 static void* frontbuffer;
 
-static gfx_t backbuffer;
+static surface_t backbuffer; // A fake surface representing the backbuffer
 
 static scanline_t* scanlines;
 
@@ -58,7 +58,7 @@ static void frontbuffer_init(void)
 
 static void backbuffer_init(void)
 {
-    backbuffer.buffer = malloc(info.stride * info.height * sizeof(pixel_t));
+    backbuffer.buffer = malloc(info.width * info.height * sizeof(pixel_t));
     if (backbuffer.buffer == NULL)
     {
         printf("dwm: failed to allocate backbuffer memory\n");
@@ -66,7 +66,6 @@ static void backbuffer_init(void)
     }
     backbuffer.width = info.width;
     backbuffer.height = info.height;
-    backbuffer.stride = info.stride;
     backbuffer.invalidRect = (rect_t){0};
     memset(backbuffer.buffer, 0, info.width * info.height * sizeof(pixel_t));
 }
@@ -128,7 +127,7 @@ void screen_transfer(surface_t* surface, const rect_t* rect)
         .x = MAX(rect->left - surface->pos.x, 0),
         .y = MAX(rect->top - surface->pos.y, 0),
     };
-    gfx_transfer(&backbuffer, &surface->gfx, rect, &srcPoint);
+    surface_transfer(&backbuffer, surface, rect, &srcPoint);
     scanlines_invalidate(rect);
 }
 
@@ -138,7 +137,7 @@ void screen_transfer_blend(surface_t* surface, const rect_t* rect)
         .x = MAX(rect->left - surface->pos.x, 0),
         .y = MAX(rect->top - surface->pos.y, 0),
     };
-    gfx_transfer_blend(&backbuffer, &surface->gfx, rect, &srcPoint);
+    surface_transfer_blend(&backbuffer, surface, rect, &srcPoint);
     scanlines_invalidate(rect);
 }
 
@@ -155,7 +154,7 @@ void screen_transfer_frontbuffer(surface_t* surface, const rect_t* rect)
         for (int64_t y = 0; y < RECT_HEIGHT(rect); y++)
         {
             memcpy(&((pixel_t*)frontbuffer)[rect->left + (y + rect->top) * info.stride],
-                &surface->gfx.buffer[srcPoint.x + (y + srcPoint.y) * surface->gfx.stride],
+                &surface->buffer[srcPoint.x + (y + srcPoint.y) * surface->width],
                 RECT_WIDTH(rect) * sizeof(pixel_t));
         }
     }

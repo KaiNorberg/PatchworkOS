@@ -88,7 +88,8 @@ void display_disconnect(display_t* disp);
 /**
  * @brief Allocate a section of the displays command buffer.
  *
- * The display batches commands together in its command buffer, where each command is prefixed with a `cmd_header_t` and has a variable size.
+ * The display batches commands together in its command buffer, where each command is prefixed with a `cmd_header_t` and
+ * has a variable size.
  *
  * @param disp The display connection.
  * @param type Type of command to allocate.
@@ -119,15 +120,16 @@ uint64_t display_next_event(display_t* disp, event_t* event, clock_t timeout);
 /**
  * @brief Push an event to the display's internal event queue.
  *
- * This will not send the event to the DWM, instead it will be stored in the display's internal event queue and can be retrieved using `display_next_event()`.
+ * This will not send the event to the DWM, instead it will be stored in the display's internal event queue and can be
+ * retrieved using `display_next_event()`.
  *
  * If the event queue is full, the event at the front of the queue will be discarded to make room for the new event.
  *
  * @param disp The display connection.
  * @param target Target surface ID for the event.
  * @param type Type of event.
- * @param data Pointer to the event data.
- * @param size Size of the event data.
+ * @param data Pointer to the event data, can be `NULL` if `size` is `0`.
+ * @param size Size of the event data, must be less than `EVENT_MAX_DATA`.
  */
 void display_events_push(display_t* disp, surface_id_t target, event_type_t type, void* data, uint64_t size);
 
@@ -154,7 +156,7 @@ uint64_t display_wait_for_event(display_t* disp, event_t* event, event_type_t ex
  * @param target Target surface ID for the event, if `SURFACE_ID_NONE` the event is sent to all surfaces.
  * @param type Type of event.
  * @param data Pointer to the event data, can be `NULL` if `size` is `0`.
- * @param size Size of the event data.
+ * @param size Size of the event data, must be less than `EVENT_MAX_DATA`.
  * @return On success, `0`. On failure, returns `ERR` and sets `errno`.
  */
 uint64_t display_emit(display_t* disp, surface_id_t target, event_type_t type, void* data, uint64_t size);

@@ -30,9 +30,9 @@ typedef struct element
     rect_t rect;
     element_flags_t flags;
     char* text;
-    element_text_props_t textProps;
+    text_props_t textProps;
     image_t* image;
-    element_image_props_t imageProps;
+    image_props_t imageProps;
     theme_t theme;
 } element_t;
 

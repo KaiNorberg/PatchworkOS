@@ -9,12 +9,17 @@ int main(void)
     display_t* disp = display_new();
     if (disp == NULL)
     {
-        printf("Failed to create display\n");
+        printf("taskbar: failed to create display\n");
         return EXIT_FAILURE;
     }
 
-    taskbar_t taskbar;
-    taskbar_init(&taskbar, disp);
+    window_t* win = taskbar_new(disp);
+    if (win == NULL)
+    {
+        printf("taskbar: failed to create taskbar\n");
+        display_free(disp);
+        return EXIT_FAILURE;
+    }
 
     event_t event = {0};
     while (display_next_event(disp, &event, CLOCKS_NEVER) != ERR)
@@ -22,8 +27,7 @@ int main(void)
         display_dispatch(disp, &event);
     }
 
-    taskbar_deinit(&taskbar);
-
+    window_free(win);
     display_free(disp);
     return 0;
 }

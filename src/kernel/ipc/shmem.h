@@ -18,7 +18,7 @@
  * ## Creating Shared Memory
  *
  * Shared memory objects are created using the `/dev/shmem/new` file. Opening this file using `open()` will create a new
- * shared memory object and return a file descriptor to it.
+ * anonymous shared memory object and return a file descriptor to it.
  *
  * ## Using Shared Memory
  *

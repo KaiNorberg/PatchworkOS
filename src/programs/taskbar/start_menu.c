@@ -4,6 +4,7 @@
 
 #include <libpatchwork/patchwork.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <sys/io.h>
 #include <sys/proc.h>
@@ -30,15 +31,26 @@ static start_entry_t entries[] = {
 #define START_MENU_YPOS_END(screenRect, panelSize, frameSize) \
     (RECT_HEIGHT(screenRect) - START_MENU_HEIGHT(frameSize) - panelSize)
 
-static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
+static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_t* event)
 {
-    start_menu_t* startMenu = element_get_private(elem);
     const theme_t* theme = element_get_theme(elem);
 
     switch (event->type)
     {
     case LEVENT_INIT:
     {
+        start_menu_t* menu = malloc(sizeof(start_menu_t));
+        if (menu == NULL)
+        {
+            printf("startmenu: failed to allocate start menu private data\n");
+            errno = ENOMEM;
+            return ERR;
+        }
+        menu->win = win;
+        menu->taskbar = element_get_private(elem);
+        menu->animationStartTime = uptime();
+        menu->state = START_MENU_CLOSED;
+
         rect_t rect = element_get_content_rect(elem);
 
         for (uint64_t i = 0; i < ENTRY_AMOUNT; i++)
@@ -50,7 +62,17 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             button_new(elem, i, &buttonRect, entries[i].name, ELEMENT_FLAT);
         }
 
-        window_set_timer(win, TIMER_REPEAT, CLOCKS_PER_SEC / 60);
+        element_set_private(elem, menu);
+    }
+    break;
+    case LEVENT_DEINIT:
+    {
+        start_menu_t* menu = element_get_private(elem);
+        if (menu == NULL)
+        {
+            break;
+        }
+        free(menu);
     }
     break;
     case LEVENT_REDRAW:
@@ -73,41 +95,37 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     break;
     case LEVENT_ACTION:
     {
+        start_menu_t* menu = element_get_private(elem);
         if (event->lAction.type == ACTION_RELEASE)
         {
-            start_menu_close(startMenu);
-
-            fd_t klog = open("/dev/klog");
+            start_menu_close(win);
 
             const char* argv[] = {entries[event->lAction.source].path, NULL};
-            spawn_fd_t fds[] = {{.child = STDOUT_FILENO, .parent = klog}, {.child = STDERR_FILENO, .parent = klog},
-                SPAWN_FD_END};
-            if (spawn(argv, fds, NULL, NULL) == ERR)
+            if (spawn(argv, NULL, NULL, NULL) == ERR)
             {
                 char buffer[MAX_PATH];
                 sprintf(buffer, "Failed to spawn (%s)!", entries[event->lAction.source].path);
 
                 popup_open(buffer, "Error!", POPUP_OK);
             }
-
-            close(klog);
         }
     }
     break;
     case EVENT_TIMER:
     {
+        start_menu_t* menu = element_get_private(elem);
         rect_t screenRect = display_screen_rect(window_get_display(win), 0);
 
         int32_t startY = START_MENU_YPOS_START(&screenRect, theme->panelSize, theme->frameSize);
         int32_t endY = START_MENU_YPOS_END(&screenRect, theme->panelSize, theme->frameSize);
 
-        clock_t timeElapsed = uptime() - startMenu->animationStartTime;
+        clock_t timeElapsed = uptime() - menu->animationStartTime;
 
         double fraction;
         int64_t currentY = 0;
         bool isAnimComplete = false;
 
-        if (startMenu->state == START_MENU_OPENING)
+        if (menu->state == START_MENU_OPENING)
         {
             fraction = (double)timeElapsed / START_MENU_ANIMATION_TIME;
             if (fraction >= 1.0)
@@ -117,7 +135,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             }
             currentY = (int64_t)((double)startY + ((double)endY - startY) * fraction);
         }
-        else if (startMenu->state == START_MENU_CLOSING)
+        else if (menu->state == START_MENU_CLOSING)
         {
             fraction = (double)timeElapsed / START_MENU_ANIMATION_TIME;
             if (fraction >= 1.0)
@@ -129,8 +147,6 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         }
         else
         {
-
-            window_set_timer(win, TIMER_NONE, CLOCKS_NEVER);
             return 0;
         }
 
@@ -138,18 +154,24 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         uint64_t height = RECT_HEIGHT(&rect);
         rect.top = currentY;
         rect.bottom = currentY + height;
-        window_move(win, &rect);
+        if (window_move(win, &rect) == ERR)
+        {
+            printf("startmenu: failed to move window during animation (%s)\n", strerror(errno));
+        }
 
         if (isAnimComplete)
         {
-            window_set_timer(win, TIMER_NONE, CLOCKS_NEVER);
-            if (startMenu->state == START_MENU_OPENING)
+            if (window_set_timer(win, TIMER_NONE, CLOCKS_NEVER) == ERR)
             {
-                startMenu->state = START_MENU_OPEN;
+                printf("startmenu: failed to disable timer (%s)\n", strerror(errno));
             }
-            else if (startMenu->state == START_MENU_CLOSING)
+            if (menu->state == START_MENU_OPENING)
             {
-                startMenu->state = START_MENU_CLOSED;
+                menu->state = START_MENU_OPEN;
+            }
+            else if (menu->state == START_MENU_CLOSING)
+            {
+                menu->state = START_MENU_CLOSED;
             }
         }
     }
@@ -159,74 +181,84 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     return 0;
 }
 
-void start_menu_init(start_menu_t* startMenu, window_t* taskbar, display_t* disp)
+window_t* start_menu_new(window_t* taskbar, display_t* disp)
 {
     const theme_t* theme = theme_global_get();
-    if (theme == NULL)
-    {
-        printf("taskbar: failed to get global theme for start menu\n");
-        abort();
-    }
-
     rect_t screenRect = display_screen_rect(disp, 0);
 
     rect_t rect =
         RECT_INIT_DIM(theme->smallPadding, START_MENU_YPOS_START(&screenRect, theme->panelSize, theme->frameSize),
             START_MENU_WIDTH, START_MENU_HEIGHT(theme->frameSize));
 
-    startMenu->taskbar = taskbar;
-    startMenu->win = window_new(disp, "StartMenu", &rect, SURFACE_WINDOW, WINDOW_NONE, procedure, startMenu);
-    if (startMenu->win == NULL)
+    window_t* win = window_new(disp, "StartMenu", &rect, SURFACE_WINDOW, WINDOW_NONE, startmenu_procedure, taskbar);
+    if (win == NULL)
     {
-        printf("tasbar: failed to create start menu window\n");
-        abort();
+        printf("startmenu: failed to create start menu window\n");
+        return NULL;
     }
-    startMenu->state = START_MENU_CLOSED;
+
+    if (window_set_visible(win, true) == ERR)
+    {
+        window_free(win);
+        return NULL;
+    }
+
+    return win;
 }
 
-void start_menu_deinit(start_menu_t* startMenu)
+void start_menu_open(window_t* startMenu)
 {
-    window_free(startMenu->win);
-}
+    element_t* elem = window_get_client_element(startMenu);
+    const theme_t* theme = element_get_theme(elem);
+    start_menu_t* menu = element_get_private(elem);
 
-void start_menu_open(start_menu_t* startMenu)
-{
-    if (startMenu->state == START_MENU_OPEN || startMenu->state == START_MENU_OPENING)
+    if (menu->state == START_MENU_OPEN || menu->state == START_MENU_OPENING)
     {
         return;
     }
 
-    element_t* elem = window_get_client_element(startMenu->win);
-    const theme_t* theme = element_get_theme(elem);
-
-    rect_t screenRect = display_screen_rect(window_get_display(startMenu->win), 0);
+    rect_t screenRect = display_screen_rect(window_get_display(startMenu), 0);
 
     int32_t startY = START_MENU_YPOS_START(&screenRect, theme->panelSize, theme->frameSize);
 
-    rect_t rect = window_get_rect(startMenu->win);
+    rect_t rect = window_get_rect(startMenu);
     uint64_t height = RECT_HEIGHT(&rect);
     rect.top = startY;
     rect.bottom = startY + height;
-    window_move(startMenu->win, &rect);
+    window_move(startMenu, &rect);
 
-    startMenu->animationStartTime = uptime();
-    startMenu->state = START_MENU_OPENING;
-    window_set_timer(startMenu->win, TIMER_REPEAT, CLOCKS_PER_SEC / 60);
+    menu->animationStartTime = uptime();
+    menu->state = START_MENU_OPENING;
+    window_set_timer(startMenu, TIMER_REPEAT, CLOCKS_PER_SEC / 60);
 
-    window_set_focus(startMenu->win);
+    window_set_focus(startMenu);
 }
 
-void start_menu_close(start_menu_t* startMenu)
+void start_menu_close(window_t* startMenu)
 {
-    if (startMenu->state == START_MENU_CLOSED || startMenu->state == START_MENU_CLOSING)
+    element_t* elem = window_get_client_element(startMenu);
+    start_menu_t* menu = element_get_private(elem);
+    if (menu->state == START_MENU_CLOSED || menu->state == START_MENU_CLOSING)
     {
         return;
     }
 
-    startMenu->animationStartTime = uptime();
-    startMenu->state = START_MENU_CLOSING;
-    window_set_timer(startMenu->win, TIMER_REPEAT, CLOCKS_PER_SEC / 60);
+    menu->animationStartTime = uptime();
+    menu->state = START_MENU_CLOSING;
+    window_set_timer(startMenu, TIMER_REPEAT, CLOCKS_PER_SEC / 60);
 
-    display_events_push(window_get_display(startMenu->win), window_get_id(startMenu->taskbar), UEVENT_START_MENU_CLOSE,
+    display_events_push(window_get_display(startMenu), window_get_id(menu->taskbar), UEVENT_START_MENU_CLOSE,
         NULL, 0);
+}
+
+start_menu_state_t start_menu_get_state(window_t* startMenu)
+{
+    if (startMenu == NULL)
+    {
+        return START_MENU_CLOSED;
+    }
+
+    element_t* elem = window_get_client_element(startMenu);
+    start_menu_t* menu = element_get_private(elem);
+    return menu->state;
 }

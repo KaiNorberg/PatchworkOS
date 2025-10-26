@@ -58,7 +58,7 @@ static void button_draw(element_t* elem, button_t* button)
         RECT_SHRINK(&rect, theme->smallPadding);
         if (button->isFocused)
         {
-            draw_outline(&draw, &rect, theme->button.bezel, 2, 2);
+            draw_dashed_outline(&draw, &rect, theme->button.bezel, 2, 2);
         }
         RECT_SHRINK(&rect, 2);
     }
@@ -147,26 +147,39 @@ static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* 
 {
     (void)win; // Unused
 
-    button_t* button = element_get_private(elem);
-
     switch (event->type)
     {
     case LEVENT_INIT:
     {
+        button_t* button = malloc(sizeof(button_t));
+        if (button == NULL)
+        {
+            errno = ENOMEM;
+            return ERR;
+        }
+        button->mouseButtons = 0;
+        button->isPressed = false;
+        button->isHovered = false;
+        button->isFocused = false;
+
+        element_set_private(elem, button);
     }
     break;
-    case LEVENT_FREE:
+    case LEVENT_DEINIT:
     {
+        button_t* button = element_get_private(elem);
         free(button);
     }
     break;
     case LEVENT_REDRAW:
     {
+        button_t* button = element_get_private(elem);
         button_draw(elem, button);
     }
     break;
     case EVENT_MOUSE:
     {
+        button_t* button = element_get_private(elem);
         bool prevIsPressed = button->isPressed;
         bool prevIsHovered = button->isHovered;
         bool prevIsFocused = button->isFocused;
@@ -245,6 +258,7 @@ static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* 
     break;
     case EVENT_CURSOR_LEAVE:
     {
+        button_t* button = element_get_private(elem);
         if (button->isHovered)
         {
             button->isHovered = false;
@@ -254,7 +268,8 @@ static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* 
     break;
     case EVENT_REPORT:
     {
-        if (!event->report.info.isFocused && button->isFocused)
+        button_t* button = element_get_private(elem);
+        if (!(event->report.info.flags & SURFACE_FOCUSED) && button->isFocused)
         {
             button->isFocused = false;
             button_draw(elem, button);
@@ -263,6 +278,7 @@ static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* 
     break;
     case LEVENT_FORCE_ACTION:
     {
+        button_t* button = element_get_private(elem);
         switch (event->lForceAction.action)
         {
         case ACTION_PRESS:
@@ -291,20 +307,5 @@ static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* 
 
 element_t* button_new(element_t* parent, element_id_t id, const rect_t* rect, const char* text, element_flags_t flags)
 {
-    button_t* button = malloc(sizeof(button_t));
-    if (button == NULL)
-    {
-        return NULL;
-    }
-    button->isPressed = false;
-    button->isHovered = false;
-    button->isFocused = false;
-
-    element_t* elem = element_new(parent, id, rect, text, flags, button_procedure, button);
-    if (elem == NULL)
-    {
-        free(button);
-        return NULL;
-    }
-    return elem;
+    return element_new(parent, id, rect, text, flags, button_procedure, NULL);
 }
