@@ -9,13 +9,12 @@
 
 #define WINDOW_CLIENT_ELEM_ID (UINT64_MAX)
 #define WINDOW_DECO_ELEM_ID (UINT64_MAX - 1)
+#define WINDOW_DECO_CLOSE_BUTTON_ID (UINT64_MAX - 2)
+#define WINDOW_DECO_MINIMIZE_BUTTON_ID (UINT64_MAX - 3)
 
 #define WINDOW_DECO_CLOSE_BUTTON_INDEX 0
 #define WINDOW_DECO_MINIMIZE_BUTTON_INDEX 1
 #define WINDOW_DECO_BUTTON_AMOUNT 2
-
-#define WINDOW_DECO_CLOSE_BUTTON_ID (WINDOW_DECO_ELEM_ID - (1 + WINDOW_DECO_CLOSE_BUTTON_INDEX))
-#define WINDOW_DECO_MINIMIZE_BUTTON_ID (WINDOW_DECO_ELEM_ID - (1 + WINDOW_DECO_MINIMIZE_BUTTON_INDEX))
 
 typedef struct
 {
@@ -344,7 +343,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     {
         // Expand window to fit decorations
         win->rect.left = rect->left - theme->frameSize;
-        win->rect.top = rect->top - theme->frameSize + theme->titlebarSize;
+        win->rect.top = rect->top - theme->frameSize - theme->titlebarSize;
         win->rect.right = rect->right + theme->frameSize;
         win->rect.bottom = rect->bottom + theme->frameSize;
     }
