@@ -198,6 +198,8 @@ uint64_t window_set_focus(window_t* win);
  *
  * Windows are invisible by default, so they must be made visible after creation to be seen.
  *
+ * Will also dispatch all currently pending `LEVENT_REDRAW` events for the window.
+ *
  * @param win The window.
  * @param isVisible Whether the window should be visible.
  * @return On success, `0`. On failure, returns `ERR` and sets `errno`.

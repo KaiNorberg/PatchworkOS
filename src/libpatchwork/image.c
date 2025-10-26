@@ -11,7 +11,6 @@ image_t* image_new_blank(display_t* disp, uint64_t width, uint64_t height)
     {
         return NULL;
     }
-
     list_entry_init(&image->entry);
     image->draw.disp = disp;
     image->draw.stride = width;

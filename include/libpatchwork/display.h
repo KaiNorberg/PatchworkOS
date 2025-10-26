@@ -21,7 +21,7 @@ extern "C"
  *
  * A display represents a connection to the Desktop Window Manager (DWM).
  *
- * The display system is NOT thread safe, it is the responsibility of the application to ensure that windows are only
+ * The display system is NOT thread safe, it is the responsibility of the application to ensure that displays are only
  * accessed from a single thread at a time.
  * @{
  */
@@ -115,13 +115,13 @@ void display_cmds_flush(display_t* disp);
  * @param timeout Maximum time to wait for an event, if `CLOCKS_NEVER` will wait indefinitely.
  * @return On success, `0`. On failure, returns `ERR` and sets `errno`.
  */
-uint64_t display_next_event(display_t* disp, event_t* event, clock_t timeout);
+uint64_t display_next(display_t* disp, event_t* event, clock_t timeout);
 
 /**
  * @brief Push an event to the display's internal event queue.
  *
  * This will not send the event to the DWM, instead it will be stored in the display's internal event queue and can be
- * retrieved using `display_next_event()`.
+ * retrieved using `display_next()`.
  *
  * If the event queue is full, the event at the front of the queue will be discarded to make room for the new event.
  *
@@ -131,7 +131,7 @@ uint64_t display_next_event(display_t* disp, event_t* event, clock_t timeout);
  * @param data Pointer to the event data, can be `NULL` if `size` is `0`.
  * @param size Size of the event data, must be less than `EVENT_MAX_DATA`.
  */
-void display_events_push(display_t* disp, surface_id_t target, event_type_t type, void* data, uint64_t size);
+void display_push(display_t* disp, surface_id_t target, event_type_t type, void* data, uint64_t size);
 
 /**
  * @brief Wait for the display to receive an event of the expected type.
@@ -145,7 +145,7 @@ void display_events_push(display_t* disp, surface_id_t target, event_type_t type
  * @param expected The expected event type to wait for.
  * @return On success, `0`. On failure, returns `ERR` and sets `errno`.
  */
-uint64_t display_wait_for_event(display_t* disp, event_t* event, event_type_t expected);
+uint64_t display_wait(display_t* disp, event_t* event, event_type_t expected);
 
 /**
  * @brief Emit an event to a target surface.
@@ -169,6 +169,16 @@ uint64_t display_emit(display_t* disp, surface_id_t target, event_type_t type, v
  * @return On success, `0`. On failure, returns `ERR` and sets `errno`.
  */
 uint64_t display_dispatch(display_t* disp, const event_t* event);
+
+/**
+ * @brief Dispatch all events currently in the display's internal event queue of a specific type and target.
+ *
+ * @param disp The display connection.
+ * @param type The event type to check for.
+ * @param target The target surface ID for the events, if `SURFACE_ID_NONE` all events are dispatched.
+ * @return On success, `0`. On failure, returns `ERR` and sets `errno`.
+ */
+uint64_t display_dispatch_pending(display_t* disp, event_type_t type, surface_id_t target);
 
 /**
  * @brief Subscribe to events of a specific type.

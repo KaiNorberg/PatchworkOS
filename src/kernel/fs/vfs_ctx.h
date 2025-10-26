@@ -1,7 +1,7 @@
 #pragma once
 
-#include <sys/io.h>
 #include <sys/bitmap.h>
+#include <sys/io.h>
 
 #include "config.h"
 #include "fs/path.h"

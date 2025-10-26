@@ -49,7 +49,7 @@ typedef struct config_array
  *
  * @param prefix The prefix of the configuration file, for example `theme` for theme related settings.
  * @param name The name of the configuration file, for example `colors` for color related settings.
- * @return On success, the opened configuration file. On failure, returns `NULL` and `errno` is set.
+ * @return On success, the opened configuration file. On failure, returns `NULL`.
  */
 config_t* config_open(const char* prefix, const char* name);
 
@@ -62,6 +62,8 @@ void config_close(config_t* config);
 
 /**
  * @brief Get a string value from a configuration file.
+ *
+ * The value returned is owned by the configuration system and should not be freed or modified.
  *
  * @param config The configuration file.
  * @param section The section to get the value from, case insensitive.
@@ -104,7 +106,7 @@ bool config_get_bool(config_t* config, const char* section, const char* key, boo
  * @param config The configuration file.
  * @param section The section to get the value from, case insensitive.
  * @param key The key to get the value for, case insensitive.
- * @return The configuration array or an empty array.
+ * @return The configuration array or an empty array, will only be `NULL` on memory allocation failure.
  */
 config_array_t* config_get_array(config_t* config, const char* section, const char* key);
 

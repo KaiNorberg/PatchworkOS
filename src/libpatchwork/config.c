@@ -213,13 +213,11 @@ void config_close(config_t* config)
         while (!list_is_empty(&sec->pairs))
         {
             config_pair_t* pair = CONTAINER_OF(list_pop(&sec->pairs), config_pair_t, entry);
-            list_remove(&sec->pairs, &pair->entry);
             free(pair->key);
             free(pair->value);
             free(pair);
         }
 
-        list_remove(&config->sections, &sec->entry);
         free(sec->name);
         free(sec);
     }
@@ -229,6 +227,11 @@ void config_close(config_t* config)
 
 const char* config_get_string(config_t* config, const char* section, const char* key, const char* fallback)
 {
+    if (config == NULL || section == NULL || key == NULL)
+    {
+        return fallback;
+    }
+
     config_section_t* sec = config_find_section(config, section);
     if (sec == NULL)
     {
@@ -246,6 +249,11 @@ const char* config_get_string(config_t* config, const char* section, const char*
 
 int64_t config_get_int(config_t* config, const char* section, const char* key, int64_t fallback)
 {
+    if (config == NULL || section == NULL || key == NULL)
+    {
+        return fallback;
+    }
+
     const char* str = config_get_string(config, section, key, NULL);
     if (str == NULL)
     {
@@ -264,6 +272,11 @@ int64_t config_get_int(config_t* config, const char* section, const char* key, i
 
 bool config_get_bool(config_t* config, const char* section, const char* key, bool fallback)
 {
+    if (config == NULL || section == NULL || key == NULL)
+    {
+        return fallback;
+    }
+
     const char* str = config_get_string(config, section, key, NULL);
     if (str == NULL)
     {
@@ -287,10 +300,15 @@ bool config_get_bool(config_t* config, const char* section, const char* key, boo
 config_array_t* config_get_array(config_t* config, const char* section, const char* key)
 {
     static config_array_t emptyArray = {.items = NULL, .length = 0};
+    if (config == NULL || section == NULL || key == NULL)
+    {
+        goto return_empty;
+    }
+
     const char* str = config_get_string(config, section, key, NULL);
     if (str == NULL || str[0] == '\0')
     {
-        return &emptyArray;
+        goto return_empty;
     }
 
     uint64_t length = strlen(str);
@@ -299,7 +317,7 @@ config_array_t* config_get_array(config_t* config, const char* section, const ch
     config_array_t* array = malloc(maxSize);
     if (array == NULL)
     {
-        return &emptyArray;
+        return NULL;
     }
     array->items = (char**)(array + 1);
     array->length = 0;
@@ -353,6 +371,18 @@ config_array_t* config_get_array(config_t* config, const char* section, const ch
 
     array->length = index;
     return array;
+
+return_empty:
+    if (false) // to satisfy compiler
+    {
+    }
+    config_array_t* empty = malloc(sizeof(config_array_t));
+    if (empty != NULL)
+    {
+        empty->items = NULL;
+        empty->length = 0;
+    }
+    return empty;
 }
 
 void config_array_free(config_array_t* array)

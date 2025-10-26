@@ -140,7 +140,7 @@ rect_t display_screen_rect(display_t* disp, uint64_t index)
     display_cmds_flush(disp);
 
     event_t event;
-    if (display_wait_for_event(disp, &event, EVENT_SCREEN_INFO) == ERR)
+    if (display_wait(disp, &event, EVENT_SCREEN_INFO) == ERR)
     {
         return RECT_INIT(0, 0, 0, 0);
     }
@@ -214,7 +214,7 @@ void display_cmds_flush(display_t* disp)
     disp->cmds.amount = 0;
 }
 
-uint64_t display_next_event(display_t* disp, event_t* event, clock_t timeout)
+uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
 {
     if (disp == NULL || event == NULL)
     {
@@ -252,7 +252,7 @@ uint64_t display_next_event(display_t* disp, event_t* event, clock_t timeout)
     return 0;
 }
 
-void display_events_push(display_t* disp, surface_id_t target, event_type_t type, void* data, uint64_t size)
+void display_push(display_t* disp, surface_id_t target, event_type_t type, void* data, uint64_t size)
 {
     if (disp == NULL || (data == NULL && size > 0) || size > EVENT_MAX_DATA)
     {
@@ -273,7 +273,7 @@ void display_events_push(display_t* disp, surface_id_t target, event_type_t type
     disp->events.writeIndex = nextWriteIndex;
 }
 
-uint64_t display_wait_for_event(display_t* disp, event_t* event, event_type_t expected)
+uint64_t display_wait(display_t* disp, event_t* event, event_type_t expected)
 {
     if (disp == NULL || event == NULL)
     {
@@ -291,7 +291,7 @@ uint64_t display_wait_for_event(display_t* disp, event_t* event, event_type_t ex
         }
         else
         {
-            display_events_push(disp, event->target, event->type, event->raw, EVENT_MAX_DATA);
+            display_push(disp, event->target, event->type, event->raw, EVENT_MAX_DATA);
         }
 
         if (disp->events.readIndex == initReadIndex)
@@ -311,7 +311,7 @@ uint64_t display_wait_for_event(display_t* disp, event_t* event, event_type_t ex
 
         if (event->type != expected)
         {
-            display_events_push(disp, event->target, event->type, event->raw, EVENT_MAX_DATA);
+            display_push(disp, event->target, event->type, event->raw, EVENT_MAX_DATA);
         }
         else
         {
@@ -371,6 +371,40 @@ uint64_t display_dispatch(display_t* disp, const event_t* event)
     return 0;
 }
 
+uint64_t display_dispatch_pending(display_t* disp, event_type_t type, surface_id_t target)
+{
+    if (disp == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    uint64_t initReadIndex = disp->events.readIndex;
+    while (display_is_events_avail(disp))
+    {
+        event_t event;
+        display_events_pop(disp, &event);
+        if (event.type == type && (event.target == target || target == SURFACE_ID_NONE))
+        {
+            if (display_dispatch(disp, &event) == ERR)
+            {
+                return ERR;
+            }
+        }
+        else
+        {
+            display_push(disp, event.target, event.type, event.raw, EVENT_MAX_DATA);
+        }
+
+        if (disp->events.readIndex == initReadIndex)
+        {
+            break;
+        }
+    }
+
+    return 0;
+}
+
 uint64_t display_subscribe(display_t* disp, event_type_t type)
 {
     if (disp == NULL)
@@ -425,7 +459,7 @@ uint64_t display_get_surface_info(display_t* disp, surface_id_t id, surface_info
     display_cmds_flush(disp);
 
     event_t event;
-    if (display_wait_for_event(disp, &event, EVENT_REPORT) == ERR)
+    if (display_wait(disp, &event, EVENT_REPORT) == ERR)
     {
         return ERR;
     }

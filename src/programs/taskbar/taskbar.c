@@ -350,6 +350,20 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
 
 window_t* taskbar_new(display_t* disp)
 {
+    fd_t klog = open("/dev/klog");
+    if (klog == ERR)
+    {
+        printf("taskbar: failed to open klog\n");
+        return NULL;
+    }
+    if (dup2(klog, STDOUT_FILENO) == ERR || dup2(klog, STDERR_FILENO) == ERR)
+    {
+        printf("taskbar: failed to redirect stdout/stderr to klog\n");
+        close(klog);
+        return NULL;
+    }
+    close(klog);
+
     rect_t rect = display_screen_rect(disp, 0);
     rect.top = rect.bottom - theme_global_get()->panelSize;
 

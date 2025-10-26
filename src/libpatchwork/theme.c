@@ -9,7 +9,7 @@
 #include <string.h>
 
 static bool isLoaded = false;
-static theme_t theme;
+static theme_t theme = {0};
 
 static void theme_colors_load(config_t* config, const char* section, theme_color_set_t* dest)
 {
@@ -40,6 +40,10 @@ static void theme_lazy_load(void)
     // Config files have safe failures.
 
     config_t* colorsConfig = config_open("theme", "colors");
+    if (colorsConfig == NULL)
+    {
+        printf("theme: failed to open colors config, using defaults\n");
+    }
     theme_colors_load(colorsConfig, "button", &theme.button);
     theme_colors_load(colorsConfig, "view", &theme.view);
     theme_colors_load(colorsConfig, "element", &theme.element);
@@ -48,12 +52,16 @@ static void theme_lazy_load(void)
     config_close(colorsConfig);
 
     config_t* varsConfig = config_open("theme", "vars");
-    theme.wallpaper = config_get_string(varsConfig, "strings", "wallpaper", "");
-    theme.fontsDir = config_get_string(varsConfig, "strings", "fonts_dir", "");
-    theme.cursorArrow = config_get_string(varsConfig, "strings", "cursor_arrow", "");
-    theme.defaultFont = config_get_string(varsConfig, "strings", "default_font", "");
-    theme.iconClose = config_get_string(varsConfig, "strings", "icon_close", "");
-    theme.iconMinimize = config_get_string(varsConfig, "strings", "icon_minimize", "");
+    if (varsConfig == NULL)
+    {
+        printf("theme: failed to open vars config, using defaults\n");
+    }
+    strncpy(theme.wallpaper, config_get_string(varsConfig, "strings", "wallpaper", ""), MAX_NAME - 1);
+    strncpy(theme.fontsDir, config_get_string(varsConfig, "strings", "fonts_dir", ""), MAX_NAME - 1);
+    strncpy(theme.cursorArrow, config_get_string(varsConfig, "strings", "cursor_arrow", ""), MAX_NAME - 1);
+    strncpy(theme.defaultFont, config_get_string(varsConfig, "strings", "default_font", ""), MAX_NAME - 1);
+    strncpy(theme.iconClose, config_get_string(varsConfig, "strings", "icon_close", ""), MAX_NAME - 1);
+    strncpy(theme.iconMinimize, config_get_string(varsConfig, "strings", "icon_minimize", ""), MAX_NAME - 1);
 
     theme.frameSize = config_get_int(varsConfig, "integers", "frame_size", 1);
     theme.bezelSize = config_get_int(varsConfig, "integers", "bezel_size", 1);

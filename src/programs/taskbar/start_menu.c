@@ -247,7 +247,7 @@ void start_menu_close(window_t* startMenu)
     menu->state = START_MENU_CLOSING;
     window_set_timer(startMenu, TIMER_REPEAT, CLOCKS_PER_SEC / 60);
 
-    display_events_push(window_get_display(startMenu), window_get_id(menu->taskbar), UEVENT_START_MENU_CLOSE, NULL, 0);
+    display_push(window_get_display(startMenu), window_get_id(menu->taskbar), UEVENT_START_MENU_CLOSE, NULL, 0);
 }
 
 start_menu_state_t start_menu_get_state(window_t* startMenu)

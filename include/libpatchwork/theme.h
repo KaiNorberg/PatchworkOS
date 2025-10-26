@@ -58,12 +58,12 @@ typedef struct
     theme_color_set_t element;
     theme_color_set_t panel;
     theme_color_set_t deco;
-    const char* wallpaper;
-    const char* fontsDir;
-    const char* cursorArrow;
-    const char* defaultFont;
-    const char* iconClose;
-    const char* iconMinimize;
+    char wallpaper[MAX_NAME];
+    char fontsDir[MAX_NAME];
+    char cursorArrow[MAX_NAME];
+    char defaultFont[MAX_NAME];
+    char iconClose[MAX_NAME];
+    char iconMinimize[MAX_NAME];
     int64_t frameSize;
     int64_t bezelSize;
     int64_t titlebarSize;

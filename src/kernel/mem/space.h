@@ -8,9 +8,9 @@
 #include <boot/boot_info.h>
 #include <common/paging_types.h>
 
+#include <sys/bitmap.h>
 #include <sys/list.h>
 #include <sys/proc.h>
-#include <sys/bitmap.h>
 
 /**
  * @brief Address Space handling.

@@ -93,7 +93,7 @@ int main(void)
     }
 
     event_t event = {0};
-    while (display_next_event(disp, &event, CLOCKS_NEVER) != ERR)
+    while (display_next(disp, &event, CLOCKS_NEVER) != ERR)
     {
         display_dispatch(disp, &event);
     }

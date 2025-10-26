@@ -1,16 +1,16 @@
 #include "interrupt.h"
 
 #include "cpu.h"
+#include "cpu/gdt.h"
 #include "drivers/apic.h"
 #include "drivers/statistics.h"
-#include "log/log.h"
 #include "interrupt.h"
 #include "irq.h"
+#include "log/log.h"
 #include "log/panic.h"
 #include "sched/thread.h"
 #include "sched/wait.h"
 #include "smp.h"
-#include "cpu/gdt.h"
 
 #include <common/regs.h>
 

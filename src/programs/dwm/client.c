@@ -293,7 +293,7 @@ static uint64_t client_action_surface_visible_set(client_t* client, const cmd_he
     {
         surface->flags ^= SURFACE_VISIBLE;
         surface->flags |= SURFACE_MOVED;
-        compositor_set_total_redraw_needed();
+        compositor_set_redraw_needed();
         dwm_report_produce(surface, surface->client, REPORT_IS_VISIBLE);
     }
     return 0;

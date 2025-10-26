@@ -2,12 +2,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/bitmap.h>
 #include <sys/io.h>
 #include <sys/math.h>
 #include <sys/proc.h>
-#include <sys/bitmap.h>
 #include <threads.h>
-#include <string.h>
 
 #ifdef __KERNEL__
 #include "log/panic.h"

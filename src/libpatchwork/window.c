@@ -176,7 +176,6 @@ static uint64_t window_deco_init(window_t* win, element_t* elem)
     {
         return ERR;
     }
-
     private->isFocused = false;
     private->isVisible = true;
     private->isDragging = false;
@@ -240,7 +239,7 @@ static void window_deco_action(window_t* win, const levent_action_t* action)
     switch (action->source)
     {
     case WINDOW_DECO_CLOSE_BUTTON_ID:
-        display_events_push(win->disp, win->surface, LEVENT_QUIT, NULL, 0);
+        display_push(win->disp, win->surface, LEVENT_QUIT, NULL, 0);
         break;
     case WINDOW_DECO_MINIMIZE_BUTTON_ID:
         display_set_is_visible(win->disp, win->surface, false);
@@ -302,13 +301,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
 window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surface_type_t type, window_flags_t flags,
     procedure_t procedure, void* private)
 {
-    if (disp == NULL || name == NULL || rect == NULL || procedure == NULL)
-    {
-        errno = EINVAL;
-        return NULL;
-    }
-
-    if (strnlen_s(name, MAX_NAME + 1) >= MAX_NAME)
+    if (disp == NULL || name == NULL || rect == NULL || procedure == NULL || strnlen_s(name, MAX_NAME + 1) >= MAX_NAME)
     {
         errno = EINVAL;
         return NULL;
@@ -332,13 +325,6 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     win->clientElement = NULL;
 
     const theme_t* theme = theme_global_get();
-    if (theme == NULL)
-    {
-        errno = ENOMEM;
-        free(win);
-        return NULL;
-    }
-
     if (flags & WINDOW_DECO)
     {
         // Expand window to fit decorations
@@ -364,7 +350,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     display_cmds_flush(disp);
 
     event_t event;
-    if (display_wait_for_event(disp, &event, EVENT_SURFACE_NEW) == ERR)
+    if (display_wait(disp, &event, EVENT_SURFACE_NEW) == ERR)
     {
         window_free(win);
         return NULL;
@@ -653,7 +639,7 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
                 levent_redraw_t event;
                 event.id = win->root->id;
                 event.shouldPropagate = true;
-                display_events_push(win->disp, win->surface, LEVENT_REDRAW, &event, sizeof(levent_redraw_t));
+                display_push(win->disp, win->surface, LEVENT_REDRAW, &event, sizeof(levent_redraw_t));
             }
 
             win->rect = newRect;
@@ -703,6 +689,11 @@ uint64_t window_set_visible(window_t* win, bool isVisible)
     if (win == NULL)
     {
         errno = EINVAL;
+        return ERR;
+    }
+
+    if (display_dispatch_pending(win->disp, LEVENT_REDRAW, win->surface) == ERR)
+    {
         return ERR;
     }
 

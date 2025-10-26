@@ -83,7 +83,10 @@ typedef struct
 /**
  * @brief Allocate and initialize a new element.
  *
- * Will send a fake `LEVENT_INIT` event to the element after creation, followed by a fake `LEVENT_REDRAW` event.
+ * Will send a fake `LEVENT_INIT` event to the element after creation, followed by a real `LEVENT_REDRAW` event.
+ *
+ * A event being fake just means its sent by directly calling the element procedure, instead of being pushed to the
+ * display's event queue.
  *
  * @param parent The parent element.
  * @param id The element ID.

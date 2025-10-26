@@ -329,7 +329,7 @@ void dwm_detach(surface_t* surface)
 
     if (wall != NULL)
     {
-        compositor_set_total_redraw_needed();
+        wall->flags |= SURFACE_MOVED;
     }
 }
 

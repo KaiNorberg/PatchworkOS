@@ -69,8 +69,7 @@ void* realloc(void* ptr, size_t size)
     {
         _heap_header_t* next = CONTAINER_OF_SAFE(block->listEntry.next, _heap_header_t, listEntry);
 
-        if (next != NULL && !(next->flags & _HEAP_ALLOCATED) &&
-            (block->data + block->size == (uint8_t*)next))
+        if (next != NULL && !(next->flags & _HEAP_ALLOCATED) && (block->data + block->size == (uint8_t*)next))
         {
             uint64_t combinedSize = block->size + sizeof(_heap_header_t) + next->size;
             if (combinedSize >= alignedSize && combinedSize <= _HEAP_LARGE_ALLOC_THRESHOLD)

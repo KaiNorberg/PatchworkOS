@@ -437,7 +437,7 @@ bool terminal_update(terminal_t* term)
     poll(fds, 2, CLOCKS_NEVER);
 
     event_t event = {0};
-    while (display_next_event(term->disp, &event, 0) && event.type != LEVENT_QUIT && display_is_connected(term->disp))
+    while (display_next(term->disp, &event, 0) && event.type != LEVENT_QUIT && display_is_connected(term->disp))
     {
         display_dispatch(term->disp, &event);
     }

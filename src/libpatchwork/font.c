@@ -14,7 +14,6 @@ font_t* font_default(display_t* disp)
 font_t* font_new(display_t* disp, const char* family, const char* weight, uint64_t size)
 {
     const theme_t* theme = theme_global_get();
-
     if (strcmp(family, "default") == 0)
     {
         family = theme->defaultFont;

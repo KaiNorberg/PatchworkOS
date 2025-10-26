@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define LABEL_ID 1234
 #define LABEL_HEIGHT (42)
@@ -19,15 +20,19 @@
 #define WINDOW_WIDTH (NUMPAD_COLUMN_TO_WINDOW(NUMPAD_COLUMNS))
 #define WINDOW_HEIGHT (NUMPAD_ROW_TO_WINDOW(NUMPAD_ROWS))
 
-static void numpad_button_create(window_t* win, element_t* elem, font_t* font, uint64_t column, uint64_t row,
-    const char* name, element_id_t id)
+static uint64_t numpad_button_create(element_t* elem, font_t* font, uint64_t column, uint64_t row, const char* name,
+    element_id_t id)
 {
-    (void)win; // Unused
-
     rect_t rect = RECT_INIT_DIM(NUMPAD_COLUMN_TO_WINDOW(column), NUMPAD_ROW_TO_WINDOW(row), NUMPAD_BUTTON_WIDTH,
         NUMPAD_BUTTON_WIDTH);
     element_t* button = button_new(elem, id, &rect, name, ELEMENT_NONE);
+    if (button == NULL)
+    {
+        return ERR;
+    }
     element_get_text_props(button)->font = font;
+
+    return 0;
 }
 
 typedef struct
@@ -58,7 +63,6 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             free(calc);
             return ERR;
         }
-        element_set_private(elem, calc);
 
         for (uint64_t column = 0; column < 3; column++)
         {
@@ -67,16 +71,27 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
                 element_id_t id = 9 - ((2 - column) + row * 3);
                 char name[2] = {'0' + id, '\0'};
 
-                numpad_button_create(win, elem, calc->largeFont, column, row, name, id);
+                if (numpad_button_create(elem, calc->largeFont, column, row, name, id) == ERR)
+                {
+                    font_free(calc->largeFont);
+                    free(calc);
+                    return ERR;
+                }
             }
         }
-        numpad_button_create(win, elem, calc->largeFont, 1, 3, "0", 0);
-        numpad_button_create(win, elem, calc->largeFont, 3, 0, "/", '/');
-        numpad_button_create(win, elem, calc->largeFont, 3, 1, "*", '*');
-        numpad_button_create(win, elem, calc->largeFont, 3, 2, "-", '-');
-        numpad_button_create(win, elem, calc->largeFont, 3, 3, "+", '+');
-        numpad_button_create(win, elem, calc->largeFont, 0, 3, "<", '<');
-        numpad_button_create(win, elem, calc->largeFont, 2, 3, "=", '=');
+
+        if (numpad_button_create(elem, calc->largeFont, 1, 3, "0", 0) == ERR ||
+            numpad_button_create(elem, calc->largeFont, 3, 0, "/", '/') == ERR ||
+            numpad_button_create(elem, calc->largeFont, 3, 1, "*", '*') == ERR ||
+            numpad_button_create(elem, calc->largeFont, 3, 2, "-", '-') == ERR ||
+            numpad_button_create(elem, calc->largeFont, 3, 3, "+", '+') == ERR ||
+            numpad_button_create(elem, calc->largeFont, 0, 3, "<", '<') == ERR ||
+            numpad_button_create(elem, calc->largeFont, 2, 3, "=", '=') == ERR)
+        {
+            font_free(calc->largeFont);
+            free(calc);
+            return ERR;
+        }
 
         rect_t labelRect = RECT_INIT_DIM(NUMPAD_PADDING, NUMPAD_PADDING, LABEL_WIDTH, LABEL_HEIGHT);
         element_t* label = label_new(elem, LABEL_ID, &labelRect, "0", ELEMENT_NONE);
@@ -90,6 +105,8 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         text_props_t* props = element_get_text_props(label);
         props->font = calc->largeFont;
         props->xAlign = ALIGN_MAX;
+
+        element_set_private(elem, calc);
     }
     break;
     case LEVENT_DEINIT:
@@ -187,6 +204,7 @@ int main(void)
     window_t* win = window_new(disp, "Calculator", &rect, SURFACE_WINDOW, WINDOW_DECO, procedure, NULL);
     if (win == NULL)
     {
+        display_free(disp);
         return EXIT_FAILURE;
     }
 
@@ -198,12 +216,13 @@ int main(void)
     }
 
     event_t event = {0};
-    while (display_next_event(disp, &event, CLOCKS_NEVER) != ERR)
+    while (display_next(disp, &event, CLOCKS_NEVER) != ERR)
     {
         display_dispatch(disp, &event);
     }
 
     window_free(win);
     display_free(disp);
+    printf("Calculator exited cleanly.\n");
     return EXIT_SUCCESS;
 }

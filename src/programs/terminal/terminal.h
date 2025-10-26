@@ -28,8 +28,4 @@ typedef struct
     pid_t shell;
 } terminal_t;
 
-void terminal_init(terminal_t* term);
-
-void terminal_deinit(terminal_t* term);
-
-bool terminal_update(terminal_t* term);
+window_t* terminal_new(display_t* disp);

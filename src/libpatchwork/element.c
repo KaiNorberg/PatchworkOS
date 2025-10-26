@@ -11,12 +11,7 @@ static uint64_t element_send_init(element_t* elem)
         return ERR;
     }
 
-    event = (event_t){.target = elem->win->surface, .type = LEVENT_REDRAW};
-    if (elem->proc(elem->win, elem, &event) == ERR)
-    {
-        return ERR;
-    }
-
+    element_redraw(elem, false);
     return 0;
 }
 
@@ -462,7 +457,7 @@ void element_redraw(element_t* elem, bool shouldPropagate)
     levent_redraw_t event;
     event.id = elem->id;
     event.shouldPropagate = shouldPropagate;
-    display_events_push(elem->win->disp, elem->win->surface, LEVENT_REDRAW, &event, sizeof(levent_redraw_t));
+    display_push(elem->win->disp, elem->win->surface, LEVENT_REDRAW, &event, sizeof(levent_redraw_t));
 }
 
 void element_force_action(element_t* elem, action_type_t action)
@@ -475,7 +470,7 @@ void element_force_action(element_t* elem, action_type_t action)
     levent_force_action_t event;
     event.dest = elem->id;
     event.action = action;
-    display_events_push(elem->win->disp, elem->win->surface, LEVENT_FORCE_ACTION, &event,
+    display_push(elem->win->disp, elem->win->surface, LEVENT_FORCE_ACTION, &event,
         sizeof(levent_force_action_t));
 }
 

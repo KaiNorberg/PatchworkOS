@@ -140,7 +140,7 @@ static void button_draw(element_t* elem, button_t* button)
 static void button_send_action(element_t* elem, action_type_t type)
 {
     levent_action_t event = {.source = elem->id, .type = type};
-    display_events_push(elem->win->disp, elem->win->surface, LEVENT_ACTION, &event, sizeof(levent_action_t));
+    display_push(elem->win->disp, elem->win->surface, LEVENT_ACTION, &event, sizeof(levent_action_t));
 }
 
 static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* event)

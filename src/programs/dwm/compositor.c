@@ -6,7 +6,6 @@
 #include <stdio.h>
 
 static bool isRedrawNeeded;
-static bool isTotalRedrawNeeded;
 
 static rect_t screenRect;
 static rect_t clientRect;
@@ -14,7 +13,6 @@ static rect_t clientRect;
 void compositor_init(void)
 {
     isRedrawNeeded = false;
-    isTotalRedrawNeeded = false;
     screenRect = RECT_INIT_DIM(0, 0, screen_width(), screen_height());
     clientRect = screenRect;
 }
@@ -26,6 +24,11 @@ static void compositor_compute_client_area(compositor_ctx_t* ctx)
     surface_t* panel;
     LIST_FOR_EACH(panel, ctx->panels, dwmEntry)
     {
+        if (!(panel->flags & SURFACE_VISIBLE))
+        {
+            continue;
+        }
+
         uint64_t leftDist = panel->pos.x + panel->width;
         uint64_t topDist = panel->pos.y + panel->height;
         uint64_t rightDist = RECT_WIDTH(&screenRect) - panel->pos.x;
@@ -131,11 +134,16 @@ void compositor_redraw_cursor(compositor_ctx_t* ctx)
 static void compositor_draw_wall(compositor_ctx_t* ctx)
 {
     surface_t* wall = ctx->wall;
-    if ((!isTotalRedrawNeeded && !(wall->flags & (SURFACE_INVALID | SURFACE_MOVED))) ||
-        !(wall->flags & SURFACE_VISIBLE))
+    if (!(wall->flags & (SURFACE_INVALID | SURFACE_MOVED)))
     {
         return;
     }
+
+    if (!(wall->flags & SURFACE_VISIBLE))
+    {
+        return;
+    }
+
     wall->flags &= ~(SURFACE_INVALID | SURFACE_MOVED);
 
     rect_t wallRect = SURFACE_SCREEN_RECT(wall);
@@ -148,13 +156,10 @@ static void compositor_draw_wall(compositor_ctx_t* ctx)
         window->flags |= SURFACE_MOVED;
     }
 
-    if (isTotalRedrawNeeded)
+    surface_t* panel;
+    LIST_FOR_EACH(panel, ctx->panels, dwmEntry)
     {
-        surface_t* panel;
-        LIST_FOR_EACH(panel, ctx->panels, dwmEntry)
-        {
-            panel->flags |= SURFACE_MOVED;
-        }
+        panel->flags |= SURFACE_MOVED;
     }
 }
 
@@ -335,13 +340,6 @@ void compositor_draw(compositor_ctx_t* ctx)
     }
 
     isRedrawNeeded = false;
-    isTotalRedrawNeeded = false;
-}
-
-void compositor_set_total_redraw_needed(void)
-{
-    isRedrawNeeded = true;
-    isTotalRedrawNeeded = true;
 }
 
 void compositor_set_redraw_needed(void)

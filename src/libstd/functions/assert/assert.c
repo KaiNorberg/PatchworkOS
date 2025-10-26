@@ -1,7 +1,7 @@
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
 
 #ifdef __KERNEL__
 #include "log/panic.h"
