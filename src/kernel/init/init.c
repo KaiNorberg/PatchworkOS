@@ -20,7 +20,6 @@
 #include "log/log.h"
 #include "log/log_file.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
 #include "net/net.h"
@@ -32,6 +31,7 @@
 
 #include <boot/boot_info.h>
 #include <libstd/_internal/init.h>
+#include <stdlib.h>
 #include <strings.h>
 
 void init_early(const boot_info_t* bootInfo)
@@ -45,7 +45,7 @@ void init_early(const boot_info_t* bootInfo)
 
     pmm_init(&bootInfo->memory.map);
     vmm_init(&bootInfo->memory, &bootInfo->gop, &bootInfo->kernel);
-    heap_init();
+    _std_init();
 
     panic_symbols_init(&bootInfo->kernel);
 
@@ -93,8 +93,6 @@ static void init_finalize(const boot_info_t* bootInfo)
     assert(bootThread != NULL);
 
     vmm_map_bootloader_lower_half(bootThread);
-
-    _std_init();
 
     vfs_init();
     ramfs_init(&bootInfo->disk);

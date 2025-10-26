@@ -1,8 +1,7 @@
 #pragma once
 
-#include "utils/bitmap.h"
-
 #include <sys/proc.h>
+#include <sys/bitmap.h>
 
 /**
  * @brief A generic bitmap page allocator.

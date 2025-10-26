@@ -1,0 +1,30 @@
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+
+#ifdef __KERNEL__
+#include "log/panic.h"
+#endif
+
+void _assert_99(const char* const message1, const char* const function, const char* const message2)
+{
+#ifdef __KERNEL__
+    panic(NULL, "%s %s %s %s", message1, function, message2, errno != 0 ? strerror(errno) : "errno not set");
+#else
+    fputs(message1, stderr);
+    fputs(function, stderr);
+    fputs(message2, stderr);
+    abort();
+#endif
+}
+
+void _assert_89(const char* const message)
+{
+#ifdef __KERNEL__
+    panic(NULL, message);
+#else
+    fputs(message, stderr);
+    abort();
+#endif
+}

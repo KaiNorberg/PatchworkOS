@@ -4,12 +4,12 @@
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "log/log.h"
-#include "mem/heap.h"
 #include "sched/thread.h"
 
 #include <assert.h>
 #include <stdatomic.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/fb.h>
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
@@ -46,7 +46,7 @@ static file_ops_t infoOps = {
 static void fb_dir_cleanup(inode_t* inode)
 {
     fb_t* fb = inode->private;
-    heap_free(fb);
+    free(fb);
 }
 
 static inode_ops_t dirInodeOps = {
@@ -70,7 +70,7 @@ fb_t* fb_new(const fb_info_t* info, fb_mmap_t mmap)
         }
     }
 
-    fb_t* fb = heap_alloc(sizeof(fb_t), HEAP_NONE);
+    fb_t* fb = malloc(sizeof(fb_t));
     if (fb == NULL)
     {
         return NULL;
@@ -81,14 +81,14 @@ fb_t* fb_new(const fb_info_t* info, fb_mmap_t mmap)
     char id[MAX_NAME];
     if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
     {
-        heap_free(fb);
+        free(fb);
         return NULL;
     }
 
     fb->dir = sysfs_dir_new(fbDir, id, &dirInodeOps, fb);
     if (fb->dir == NULL)
     {
-        heap_free(fb);
+        free(fb);
         return NULL;
     }
     fb->bufferFile = sysfs_file_new(fb->dir, "buffer", NULL, &bufferOps, fb);

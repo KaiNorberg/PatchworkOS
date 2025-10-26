@@ -3,7 +3,6 @@
 #include "cpu/cpu.h"
 #include "cpu/smp.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "sched.h"
 #include "sched/thread.h"
 #include "sched/timer.h"
@@ -12,6 +11,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdatomic.h>
+#include <stdlib.h>
 #include <sys/list.h>
 
 static void wait_remove_wait_entries(thread_t* thread, errno_t err)
@@ -29,7 +29,7 @@ static void wait_remove_wait_entries(thread_t* thread, errno_t err)
         lock_release(&entry->waitQueue->lock);
 
         list_remove(&entry->thread->wait.entries, &entry->threadEntry); // Belongs to thread, no lock needed.
-        heap_free(entry);
+        free(entry);
     }
 }
 
@@ -198,7 +198,7 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount, errno_t err)
             {
                 list_remove(&waitQueue->entries, &waitEntry->queueEntry);
                 list_remove(&thread->wait.entries, &waitEntry->threadEntry);
-                heap_free(waitEntry);
+                free(waitEntry);
                 threads[collected] = thread;
                 collected++;
             }
@@ -246,7 +246,7 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
 
     for (uint64_t i = 0; i < amount; i++)
     {
-        wait_entry_t* entry = heap_alloc(sizeof(wait_entry_t), HEAP_NONE);
+        wait_entry_t* entry = malloc(sizeof(wait_entry_t));
         if (entry == NULL)
         {
             while (1)
@@ -256,7 +256,7 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
                 {
                     break;
                 }
-                heap_free(other);
+                free(other);
             }
 
             for (uint64_t j = 0; j < amount; j++)

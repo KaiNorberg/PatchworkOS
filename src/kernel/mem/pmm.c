@@ -6,13 +6,12 @@
 #include "mem/pmm_bitmap.h"
 #include "mem/pmm_stack.h"
 #include "sync/lock.h"
-#include "sys/proc.h"
-#include "utils/bitmap.h"
 
 #include <boot/boot_info.h>
 
 #include <errno.h>
 #include <sys/math.h>
+#include <sys/proc.h>
 
 static const char* efiMemTypeToString[] = {
     "reserved",

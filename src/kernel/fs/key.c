@@ -3,12 +3,12 @@
 #include "cpu/syscalls.h"
 #include "drivers/rand.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "sched/thread.h"
 #include "sched/timer.h"
 #include "sync/rwlock.h"
 
 #include <errno.h>
+#include <stdlib.h>
 
 static map_t keyMap;
 static list_t keyList;
@@ -53,7 +53,7 @@ static void key_timer_handler(interrupt_frame_t* frame, cpu_t* self)
         map_remove(&keyMap, &mapKey);
         list_remove(&keyList, &entry->entry);
         DEREF(entry->file);
-        heap_free(entry);
+        free(entry);
     }
 }
 
@@ -75,7 +75,7 @@ uint64_t key_share(key_t* key, file_t* file, clock_t timeout)
         return ERR;
     }
 
-    key_entry_t* entry = heap_alloc(sizeof(key_entry_t), HEAP_NONE);
+    key_entry_t* entry = malloc(sizeof(key_entry_t));
     if (entry == NULL)
     {
         return ERR;
@@ -91,7 +91,7 @@ uint64_t key_share(key_t* key, file_t* file, clock_t timeout)
     if (map_insert(&keyMap, &mapKey, &entry->mapEntry) == ERR)
     {
         DEREF(entry->file);
-        heap_free(entry);
+        free(entry);
         return ERR;
     }
 
@@ -170,7 +170,7 @@ file_t* key_claim(key_t* key)
     map_remove(&keyMap, &mapKey);
 
     file_t* file = entry->file;
-    heap_free(entry);
+    free(entry);
     return file;
 }
 

@@ -5,9 +5,7 @@ TARGET := $(BINDIR)/kernel
 
 SRC += $(wildcard src/libstd/*.c) $(wildcard src/libstd/*.s) \
  	$(wildcard src/libstd/functions/**/*.c) $(wildcard src/libstd/functions/**/*.s) \
-	$(wildcard src/libstd/common/*.c) $(wildcard src/libstd/common/*.s) \
-	$(wildcard src/libstd/platform/kernel/*.c) $(wildcard src/libstd/platform/kernel/*.s) \
-	$(wildcard src/libstd/platform/kernel/functions/**/*.c) $(wildcard src/libstd/platform/kernel/functions/**/*.s) \
+	$(wildcard src/libstd/common/*.c) $(wildcard src/libstd/common/*.s)
 
 CFLAGS += $(CFLAGS_DISABLE_SIMD) -fno-pic -fno-stack-check -mcmodel=kernel \
 	-mno-red-zone \

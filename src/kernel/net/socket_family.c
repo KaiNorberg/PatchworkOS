@@ -3,11 +3,11 @@
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "log/log.h"
-#include "mem/heap.h"
 #include "net/net.h"
 #include "net/socket.h"
 
 #include <errno.h>
+#include <stdlib.h>
 #include <sys/list.h>
 
 static list_t families = LIST_CREATE(families);
@@ -64,7 +64,7 @@ uint64_t socket_family_register(const socket_family_ops_t* ops, const char* name
         return ERR;
     }
 
-    socket_family_t* family = heap_alloc(sizeof(socket_family_t), HEAP_NONE);
+    socket_family_t* family = malloc(sizeof(socket_family_t));
     if (family == NULL)
     {
         return ERR;
@@ -80,7 +80,7 @@ uint64_t socket_family_register(const socket_family_ops_t* ops, const char* name
     mount_t* mount = net_get_mount();
     if (mount == NULL)
     {
-        heap_free(family);
+        free(family);
         return ERR;
     }
 
@@ -99,7 +99,7 @@ uint64_t socket_family_register(const socket_family_ops_t* ops, const char* name
             continue;
         }
 
-        socket_factory_t* factory = heap_alloc(sizeof(socket_factory_t), HEAP_NONE);
+        socket_factory_t* factory = malloc(sizeof(socket_factory_t));
         if (factory == NULL)
         {
             goto error;
@@ -112,7 +112,7 @@ uint64_t socket_family_register(const socket_family_ops_t* ops, const char* name
         factory->file = sysfs_file_new(family->dir, string, NULL, &fileOps, factory);
         if (factory->file == NULL)
         {
-            heap_free(factory);
+            free(factory);
             goto error;
         }
 
@@ -133,7 +133,7 @@ error:;
     LIST_FOR_EACH_SAFE(factory, temp, &family->factories, entry)
     {
         DEREF(factory->file);
-        heap_free(factory);
+        free(factory);
     }
 
     DEREF(family->dir);
@@ -183,11 +183,11 @@ void socket_family_unregister(const char* name)
     LIST_FOR_EACH_SAFE(factory, temp, &family->factories, entry)
     {
         DEREF(factory->file);
-        heap_free(factory);
+        free(factory);
     }
 
     DEREF(family->dir);
-    heap_free(family);
+    free(family);
     LOG_INFO("unregistered family %s\n", family->name);
     return;
 }

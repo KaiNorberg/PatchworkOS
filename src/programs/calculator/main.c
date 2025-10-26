@@ -19,8 +19,8 @@
 #define WINDOW_WIDTH (NUMPAD_COLUMN_TO_WINDOW(NUMPAD_COLUMNS))
 #define WINDOW_HEIGHT (NUMPAD_ROW_TO_WINDOW(NUMPAD_ROWS))
 
-static void numpad_button_create(window_t* win, element_t* elem, font_t* font, uint64_t column, uint64_t row, const char* name,
-    element_id_t id)
+static void numpad_button_create(window_t* win, element_t* elem, font_t* font, uint64_t column, uint64_t row,
+    const char* name, element_id_t id)
 {
     (void)win; // Unused
 

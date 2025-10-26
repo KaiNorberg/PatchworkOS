@@ -399,9 +399,8 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
             return NULL;
         }
 
-        rect_t clientRect = RECT_INIT(theme->frameSize,
-            theme->frameSize + theme->titlebarSize, RECT_WIDTH(&win->rect) - theme->frameSize,
-            RECT_HEIGHT(&win->rect) - theme->frameSize);
+        rect_t clientRect = RECT_INIT(theme->frameSize, theme->frameSize + theme->titlebarSize,
+            RECT_WIDTH(&win->rect) - theme->frameSize, RECT_HEIGHT(&win->rect) - theme->frameSize);
 
         win->clientElement =
             element_new(win->root, WINDOW_CLIENT_ELEM_ID, &clientRect, "client", ELEMENT_NONE, procedure, private);

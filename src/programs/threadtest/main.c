@@ -4,10 +4,6 @@
 #include <sys/proc.h>
 #include <threads.h>
 
-#undef _USE_ANNEX_K
-#define _USE_ANNEX_K 1
-#include "../../libstd/platform/user/common/syscalls.h"
-
 #define PRIME_MAX (10000000)
 
 static atomic_long count;

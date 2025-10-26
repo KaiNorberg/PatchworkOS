@@ -5,7 +5,6 @@
 #include "cpu/port.h"
 #include "cpu/smp.h"
 #include "log/log.h"
-#include "mem/heap.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
 #include "sched/thread.h"
@@ -14,6 +13,7 @@
 #include <boot/boot_info.h>
 #include <common/regs.h>
 #include <common/version.h>
+#include <stdlib.h>
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -288,10 +288,10 @@ void panic_stack_trace(const interrupt_frame_t* frame)
     uint64_t depth = 0;
     while (rbp != NULL && rbp != prevFrame)
     {
-        //if (depth >= PANIC_MAX_STACK_FRAMES)
+        if (depth >= PANIC_MAX_STACK_FRAMES)
         {
-            //LOG_PANIC("  ...\n");
-            //break;
+            LOG_PANIC("  ...\n");
+            break;
         }
 
         if (!panic_is_valid_stack_frame(rbp))
@@ -330,14 +330,13 @@ void panic_symbols_init(const boot_kernel_t* kernel)
             uintptr_t start = sym->value;
             uintptr_t end = start + (sym->size > 0 ? sym->size : 1);
 
-            panic_symbol_t* symbol = heap_alloc(sizeof(panic_symbol_t), HEAP_NONE);
+            panic_symbol_t* symbol = malloc(sizeof(panic_symbol_t));
             if (symbol == NULL)
             {
                 // This isent really recoverable, but we can at least continue without the other symbols.
                 symbolsLoaded = true;
                 break;
             }
-
             list_entry_init(&symbol->entry);
             symbol->start = start;
             symbol->end = end;

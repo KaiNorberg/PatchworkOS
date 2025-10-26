@@ -6,7 +6,6 @@
 #include "fs/path.h"
 #include "log/log.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "sync/lock.h"
 #include "sync/mutex.h"
 #include "sysfs.h"
@@ -15,6 +14,7 @@
 
 #include <_internal/ERR.h>
 #include <boot/boot_info.h>
+#include <stdlib.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -32,7 +32,7 @@ static uint64_t ramfs_dentry_init(dentry_t* dentry)
 {
     ramfs_superblock_data_t* superData = dentry->superblock->private;
 
-    ramfs_dentry_data_t* dentryData = heap_alloc(sizeof(ramfs_dentry_data_t), HEAP_NONE);
+    ramfs_dentry_data_t* dentryData = malloc(sizeof(ramfs_dentry_data_t));
     if (dentryData == NULL)
     {
         return ERR;
@@ -61,7 +61,7 @@ static void ramfs_dentry_deinit(dentry_t* dentry)
     list_remove(&superData->dentrys, &dentryData->entry);
     lock_release(&superData->lock);
 
-    heap_free(dentryData);
+    free(dentryData);
 }
 
 static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
@@ -82,7 +82,7 @@ static uint64_t ramfs_write(file_t* file, const void* buffer, uint64_t count, ui
 
     if (*offset + count > file->inode->size)
     {
-        void* newData = heap_realloc(file->inode->private, *offset + count, HEAP_VMM);
+        void* newData = realloc(file->inode->private, *offset + count);
         if (newData == NULL)
         {
             return ERR;
@@ -135,7 +135,7 @@ static void ramfs_truncate(inode_t* inode)
 {
     if (inode->private != NULL)
     {
-        heap_free(inode->private);
+        free(inode->private);
         inode->private = NULL;
     }
     inode->size = 0;
@@ -209,7 +209,7 @@ static void ramfs_inode_cleanup(inode_t* inode)
 {
     if (inode->private != NULL)
     {
-        heap_free(inode->private);
+        free(inode->private);
     }
 }
 
@@ -323,7 +323,7 @@ static dentry_t* ramfs_mount(filesystem_t* fs, const char* devName, void* privat
     superblock->blockSize = 0;
     superblock->maxFileSize = UINT64_MAX;
 
-    ramfs_superblock_data_t* data = heap_alloc(sizeof(ramfs_superblock_data_t), HEAP_NONE);
+    ramfs_superblock_data_t* data = malloc(sizeof(ramfs_superblock_data_t));
     if (data == NULL)
     {
         return NULL;
@@ -357,7 +357,7 @@ static inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, voi
 
     if (buffer != NULL)
     {
-        inode->private = heap_alloc(size, HEAP_VMM);
+        inode->private = malloc(size);
         if (inode->private == NULL)
         {
             return NULL;

@@ -186,6 +186,8 @@ pml_flags_t vmm_prot_to_flags(prot_t prot);
 /**
  * @brief Allocates and maps virtual memory in a given address space.
  *
+ * The allocated memory will be backed by newly allocated physical memory pages and is not guaranteed to be zeroed.
+ *
  * Will overwrite any existing mappings in the specified range if `VMM_ALLOC_FAIL_IF_MAPPED` is not set.
  *
  * @see `vmm_map()` for details on TLB shootdowns.

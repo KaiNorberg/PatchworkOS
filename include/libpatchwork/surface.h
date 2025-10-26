@@ -47,7 +47,7 @@ typedef enum
 typedef enum
 {
     SURFACE_INVALID = 1 << 0, ///< Will always be 0 when seen by a client.
-    SURFACE_MOVED = 1 << 1,///< Will always be 0 when seen by a client.
+    SURFACE_MOVED = 1 << 1,   ///< Will always be 0 when seen by a client.
     SURFACE_VISIBLE = 1 << 2,
     SURFACE_FOCUSED = 1 << 3,
 } surface_flags_t;

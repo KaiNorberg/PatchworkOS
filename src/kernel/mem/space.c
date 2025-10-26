@@ -3,12 +3,12 @@
 #include "cpu/cpu.h"
 #include "cpu/smp.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "mem/space.h"
 #include "pmm.h"
 #include "vmm.h"
 
 #include <common/paging.h>
+#include <stdlib.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -155,7 +155,7 @@ void space_deinit(space_t* space)
         space_unmap_kernel_space_region(space, VMM_IDENTITY_MAPPED_MIN, VMM_IDENTITY_MAPPED_MAX);
     }
 
-    heap_free(space->callbacks);
+    free(space->callbacks);
     page_table_deinit(&space->pageTable);
 }
 
@@ -276,7 +276,7 @@ static void space_pin_depth_dec(space_t* space, const void* address, uint64_t pa
         if (pinnedPage->pinCount == 0)
         {
             map_remove(&space->pinnedPages, &key);
-            heap_free(pinnedPage);
+            free(pinnedPage);
             traverse.entry->pinned = false;
         }
     }
@@ -315,7 +315,7 @@ static inline uint64_t space_pin_depth_inc(space_t* space, const void* address, 
             continue;
         }
 
-        space_pinned_page_t* newPinnedPage = heap_alloc(sizeof(space_pinned_page_t), HEAP_NONE);
+        space_pinned_page_t* newPinnedPage = malloc(sizeof(space_pinned_page_t));
         if (newPinnedPage == NULL)
         {
             return ERR;
@@ -324,7 +324,7 @@ static inline uint64_t space_pin_depth_inc(space_t* space, const void* address, 
         newPinnedPage->pinCount = 2; // One for the page table, one for the map
         if (map_insert(&space->pinnedPages, &key, &newPinnedPage->mapEntry) == ERR)
         {
-            heap_free(newPinnedPage);
+            free(newPinnedPage);
             return ERR;
         }
     }
@@ -605,7 +605,7 @@ pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, spac
 
     if (callbackId >= space->callbacksLength)
     {
-        space_callback_t* newCallbacks = heap_alloc(sizeof(space_callback_t) * (callbackId + 1), HEAP_NONE);
+        space_callback_t* newCallbacks = malloc(sizeof(space_callback_t) * (callbackId + 1));
         if (newCallbacks == NULL)
         {
             return PML_MAX_CALLBACK;
@@ -614,7 +614,7 @@ pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, spac
         if (space->callbacks != NULL)
         {
             memcpy(newCallbacks, space->callbacks, sizeof(space_callback_t) * space->callbacksLength);
-            heap_free(space->callbacks);
+            free(space->callbacks);
         }
         memset(&newCallbacks[space->callbacksLength], 0,
             sizeof(space_callback_t) * (callbackId + 1 - space->callbacksLength));

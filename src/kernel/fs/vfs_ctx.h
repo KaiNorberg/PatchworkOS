@@ -1,12 +1,11 @@
 #pragma once
 
 #include <sys/io.h>
+#include <sys/bitmap.h>
 
 #include "config.h"
 #include "fs/path.h"
-#include "log/log.h"
 #include "sync/lock.h"
-#include "utils/bitmap.h"
 
 typedef struct file file_t;
 typedef struct dir_entry dir_entry_t;
@@ -32,6 +31,8 @@ typedef struct
 {
     path_t cwd;
     file_t* files[CONFIG_MAX_FD];
+    bitmap_t allocBitmap; ///< Bitmap tracking allocated file descriptors.
+    uint64_t allocBitmapBuffer[BITMAP_BITS_TO_QWORDS(CONFIG_MAX_FD)];
     lock_t lock;
     bool initalized;
 } vfs_ctx_t;

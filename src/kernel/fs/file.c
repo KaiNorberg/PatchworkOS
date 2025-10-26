@@ -3,11 +3,11 @@
 #include "dentry.h"
 #include "fs/path.h"
 #include "inode.h"
-#include "mem/heap.h"
 #include "sync/mutex.h"
 #include "utils/ref.h"
 
 #include <errno.h>
+#include <stdlib.h>
 
 static void file_free(file_t* file)
 {
@@ -25,12 +25,12 @@ static void file_free(file_t* file)
     file->inode = NULL;
     path_put(&file->path);
 
-    heap_free(file);
+    free(file);
 }
 
 file_t* file_new(inode_t* inode, const path_t* path, path_flags_t flags)
 {
-    file_t* file = heap_alloc(sizeof(file_t), HEAP_NONE);
+    file_t* file = malloc(sizeof(file_t));
     if (file == NULL)
     {
         return NULL;

@@ -4,19 +4,21 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stddef.h>
 
 #include "common/digits.h"
-#include "platform/platform.h"
 
-#if _PLATFORM_HAS_IO == 1
-#include "platform/user/common/file.h"
+#ifndef __KERNEL__
+#include "user/common/file.h"
 #endif
 
 static int _scan_get(_format_ctx_t* ctx)
 {
     int rc = EOF;
 
-#if _PLATFORM_HAS_IO == 1
+#ifndef __KERNEL__
     if (ctx->stream != NULL)
     {
         if (_FILE_CHECK_AVAIL(ctx->stream) != ERR)
@@ -49,7 +51,7 @@ static int _scan_get(_format_ctx_t* ctx)
 */
 static void _scan_unget(int c, _format_ctx_t* ctx)
 {
-#if _PLATFORM_HAS_IO == 1
+#ifndef __KERNEL__
     if (ctx->stream != NULL)
     {
         ungetc(c, ctx->stream); /* TODO: Error? */

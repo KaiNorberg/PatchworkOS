@@ -4,7 +4,8 @@
 #include "cpu/irq.h"
 #include "drivers/abstractions/kbd.h"
 #include "log/log.h"
-#include "mem/heap.h"
+
+#include <stdlib.h>
 
 static kbd_t* kbd;
 
@@ -63,7 +64,7 @@ uint64_t ps2_kbd_init(ps2_device_info_t* info)
         return ERR;
     }
 
-    ps2_kbd_irq_context_t* context = heap_alloc(sizeof(ps2_kbd_irq_context_t), HEAP_NONE);
+    ps2_kbd_irq_context_t* context = malloc(sizeof(ps2_kbd_irq_context_t));
     if (context == NULL)
     {
         kbd_free(kbd);

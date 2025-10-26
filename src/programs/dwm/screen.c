@@ -154,8 +154,7 @@ void screen_transfer_frontbuffer(surface_t* surface, const rect_t* rect)
         for (int64_t y = 0; y < RECT_HEIGHT(rect); y++)
         {
             memcpy(&((pixel_t*)frontbuffer)[rect->left + (y + rect->top) * info.stride],
-                &surface->buffer[srcPoint.x + (y + srcPoint.y) * surface->width],
-                RECT_WIDTH(rect) * sizeof(pixel_t));
+                &surface->buffer[srcPoint.x + (y + srcPoint.y) * surface->width], RECT_WIDTH(rect) * sizeof(pixel_t));
         }
     }
     break;

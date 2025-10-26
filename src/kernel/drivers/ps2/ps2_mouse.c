@@ -3,7 +3,8 @@
 #include "cpu/irq.h"
 #include "drivers/abstractions/mouse.h"
 #include "log/log.h"
-#include "mem/heap.h"
+
+#include <stdlib.h>
 
 static mouse_t* mouse;
 
@@ -91,7 +92,7 @@ uint64_t ps2_mouse_init(ps2_device_info_t* info)
         return ERR;
     }
 
-    ps2_mouse_irq_context_t* context = heap_alloc(sizeof(ps2_mouse_irq_context_t), HEAP_NONE);
+    ps2_mouse_irq_context_t* context = malloc(sizeof(ps2_mouse_irq_context_t));
     if (context == NULL)
     {
         mouse_free(mouse);
@@ -103,7 +104,7 @@ uint64_t ps2_mouse_init(ps2_device_info_t* info)
     if (PS2_DEV_CMD(info->device, PS2_DEV_CMD_SET_DEFAULTS) == ERR)
     {
         LOG_ERR("failed to set default PS/2 mouse settings\n");
-        heap_free(context);
+        free(context);
         mouse_free(mouse);
         return ERR;
     }

@@ -1,9 +1,10 @@
 #include "inode.h"
 
-#include "mem/heap.h"
 #include "sched/thread.h"
 #include "sched/timer.h"
 #include "vfs.h"
+
+#include <stdlib.h>
 
 static void inode_free(inode_t* inode)
 {
@@ -29,13 +30,13 @@ static void inode_free(inode_t* inode)
 
         if (inode->superblock->ops == NULL || inode->superblock->ops->freeInode == NULL)
         {
-            heap_free(inode);
+            free(inode);
         }
 
         return;
     }
 
-    heap_free(inode);
+    free(inode);
 }
 
 inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, const inode_ops_t* ops,
@@ -54,7 +55,7 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
     }
     else
     {
-        inode = heap_alloc(sizeof(inode_t), HEAP_NONE);
+        inode = malloc(sizeof(inode_t));
     }
 
     if (inode == NULL)

@@ -5,12 +5,12 @@
 #include "exception.h"
 #include "log/log.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "to_string.h"
 #include "token.h"
 
 #include <errno.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <sys/math.h>
 
 // Used to check for memory leaks
@@ -45,7 +45,7 @@ static void aml_object_free(aml_object_t* object)
     }
     else
     {
-        heap_free(object);
+        free(object);
     }
 
     totalObjects--;
@@ -61,12 +61,11 @@ aml_object_t* aml_object_new(void)
 
     if (object == NULL)
     {
-        object = heap_alloc(sizeof(aml_object_t), HEAP_NONE);
+        object = calloc(1, sizeof(aml_object_t));
         if (object == NULL)
         {
             return NULL;
         }
-        memset(object, 0, sizeof(aml_object_t));
     }
 
     ref_init(&object->ref, aml_object_free);
@@ -112,7 +111,7 @@ void aml_object_clear(aml_object_t* object)
     case AML_BUFFER:
         if (object->buffer.content != NULL && object->buffer.length > AML_SMALL_BUFFER_SIZE)
         {
-            heap_free(object->buffer.content);
+            free(object->buffer.content);
         }
         object->buffer.content = NULL;
         object->buffer.length = 0;
@@ -196,7 +195,7 @@ void aml_object_clear(aml_object_t* object)
             }
             if (object->package.length > AML_SMALL_PACKAGE_SIZE)
             {
-                heap_free(object->package.elements);
+                free(object->package.elements);
             }
         }
         object->package.elements = NULL;
@@ -214,7 +213,7 @@ void aml_object_clear(aml_object_t* object)
     case AML_STRING:
         if (object->string.content != NULL && object->string.length > AML_SMALL_STRING_SIZE)
         {
-            heap_free(object->string.content);
+            free(object->string.content);
         }
         object->string.content = NULL;
         object->string.length = 0;
@@ -507,7 +506,7 @@ uint64_t aml_buffer_set_empty(aml_object_t* object, uint64_t length)
         return 0;
     }
 
-    object->buffer.content = heap_alloc(length, HEAP_NONE);
+    object->buffer.content = malloc(length);
     if (object->buffer.content == NULL)
     {
         return ERR;
@@ -886,7 +885,7 @@ uint64_t aml_package_set(aml_object_t* object, uint64_t length)
     }
     else
     {
-        object->package.elements = heap_alloc(sizeof(aml_object_t*) * length, HEAP_NONE);
+        object->package.elements = malloc(sizeof(aml_object_t*) * length);
         if (object->package.elements == NULL)
         {
             return ERR;
@@ -903,7 +902,7 @@ uint64_t aml_package_set(aml_object_t* object, uint64_t length)
             {
                 DEREF(object->package.elements[j]);
             }
-            heap_free(object->package.elements);
+            free(object->package.elements);
             object->package.elements = NULL;
             return ERR;
         }
@@ -975,7 +974,7 @@ uint64_t aml_string_set_empty(aml_object_t* object, uint64_t length)
         return 0;
     }
 
-    object->string.content = heap_alloc(length + 1, HEAP_NONE);
+    object->string.content = malloc(length + 1);
     if (object->string.content == NULL)
     {
         return ERR;
@@ -1031,7 +1030,7 @@ uint64_t aml_string_resize(aml_string_obj_t* string, uint64_t newLength)
     {
         memcpy(string->smallString, string->content, newLength);
         string->smallString[newLength] = '\0';
-        heap_free(string->content);
+        free(string->content);
         string->content = string->smallString;
         string->length = newLength;
         return 0;
@@ -1039,7 +1038,7 @@ uint64_t aml_string_resize(aml_string_obj_t* string, uint64_t newLength)
 
     if (newLength > AML_SMALL_STRING_SIZE && string->length <= AML_SMALL_STRING_SIZE)
     {
-        char* newBuffer = heap_alloc(newLength + 1, HEAP_NONE);
+        char* newBuffer = malloc(newLength + 1);
         if (newBuffer == NULL)
         {
             return ERR;
@@ -1054,7 +1053,7 @@ uint64_t aml_string_resize(aml_string_obj_t* string, uint64_t newLength)
 
     if (newLength > AML_SMALL_STRING_SIZE && string->length > AML_SMALL_STRING_SIZE)
     {
-        char* newBuffer = heap_alloc(newLength + 1, HEAP_NONE);
+        char* newBuffer = malloc(newLength + 1);
         if (newBuffer == NULL)
         {
             return ERR;
@@ -1066,7 +1065,7 @@ uint64_t aml_string_resize(aml_string_obj_t* string, uint64_t newLength)
             memset(newBuffer + string->length, 0, newLength - string->length);
         }
         newBuffer[newLength] = '\0';
-        heap_free(string->content);
+        free(string->content);
         string->content = newBuffer;
         string->length = newLength;
         return 0;

@@ -6,7 +6,6 @@
 #include "fs/vfs.h"
 #include "log/log.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "mem/vmm.h"
 #include "sched/thread.h"
 #include "sched/wait.h"
@@ -299,7 +298,7 @@ static void process_free(process_t* process)
     argv_deinit(&process->argv);
     wait_queue_deinit(&process->dyingWaitQueue);
     futex_ctx_deinit(&process->futexCtx);
-    heap_free(process);
+    free(process);
 }
 
 static uint64_t process_init(process_t* process, process_t* parent, const char** argv, const path_t* cwd,
@@ -388,7 +387,7 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
 
 process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority)
 {
-    process_t* process = heap_alloc(sizeof(process_t), HEAP_NONE);
+    process_t* process = malloc(sizeof(process_t));
     if (process == NULL)
     {
         return NULL;
@@ -396,7 +395,7 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
 
     if (process_init(process, parent, argv, cwd, priority) == ERR)
     {
-        heap_free(process);
+        free(process);
         return NULL;
     }
 

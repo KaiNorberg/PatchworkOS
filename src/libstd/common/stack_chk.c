@@ -1,8 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "platform/platform.h"
-
 #if UINT32_MAX == UINTPTR_MAX
 #define STACK_CHK_GUARD 0xe2dee396
 #else
@@ -13,5 +11,5 @@ uintptr_t __stack_chk_guard = STACK_CHK_GUARD;
 
 _NORETURN void __stack_chk_fail(void)
 {
-    _platform_abort("libstd __stack_chk_fail");
+    abort();
 }

@@ -4,12 +4,12 @@
 #include "fs/file.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
-#include "mem/heap.h"
 #include "sched/timer.h"
 #include "sync/lock.h"
 
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/io.h>
 #include <sys/math.h>
 #include <sys/proc.h>
@@ -75,7 +75,7 @@ static void kbd_dir_cleanup(inode_t* inode)
 {
     kbd_t* kbd = inode->private;
     wait_queue_deinit(&kbd->waitQueue);
-    heap_free(kbd);
+    free(kbd);
 }
 
 static inode_ops_t dirInodeOps = {
@@ -99,7 +99,7 @@ kbd_t* kbd_new(const char* name)
         }
     }
 
-    kbd_t* kbd = heap_alloc(sizeof(kbd_t), HEAP_NONE);
+    kbd_t* kbd = calloc(1, sizeof(kbd_t));
     if (kbd == NULL)
     {
         return NULL;
@@ -107,7 +107,6 @@ kbd_t* kbd_new(const char* name)
 
     strncpy(kbd->name, name, MAX_NAME - 1);
     kbd->name[MAX_NAME - 1] = '\0';
-    memset(kbd->events, 0, sizeof(kbd->events));
     kbd->writeIndex = 0;
     kbd->mods = KBD_MOD_NONE;
     wait_queue_init(&kbd->waitQueue);
@@ -117,7 +116,7 @@ kbd_t* kbd_new(const char* name)
     if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
     {
         wait_queue_deinit(&kbd->waitQueue);
-        heap_free(kbd);
+        free(kbd);
         return NULL;
     }
 
@@ -125,7 +124,7 @@ kbd_t* kbd_new(const char* name)
     if (kbd->dir == NULL)
     {
         wait_queue_deinit(&kbd->waitQueue);
-        heap_free(kbd);
+        free(kbd);
         return NULL;
     }
     kbd->eventsFile = sysfs_file_new(kbd->dir, "events", NULL, &eventsOps, kbd);

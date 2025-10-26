@@ -1,8 +1,9 @@
 #include "superblock.h"
 
-#include "mem/heap.h"
 #include "mem/pmm.h"
 #include "vfs.h"
+
+#include <stdlib.h>
 
 static void superblock_free(superblock_t* superblock)
 {
@@ -25,13 +26,13 @@ static void superblock_free(superblock_t* superblock)
         DEREF(superblock->root);
     }
 
-    heap_free(superblock);
+    free(superblock);
 }
 
 superblock_t* superblock_new(const filesystem_t* fs, const char* deviceName, const superblock_ops_t* ops,
     const dentry_ops_t* dentryOps)
 {
-    superblock_t* superblock = heap_alloc(sizeof(superblock_t), HEAP_NONE);
+    superblock_t* superblock = malloc(sizeof(superblock_t));
     if (superblock == NULL)
     {
         return NULL;

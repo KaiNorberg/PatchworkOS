@@ -4,7 +4,6 @@
 #include "fs/file.h"
 #include "fs/mount.h"
 #include "fs/path.h"
-#include "mem/heap.h"
 #include "proc/process.h"
 #include "sched/sched.h"
 #include "sched/wait.h"
@@ -331,7 +330,7 @@ static void socket_free(socket_t* sock)
     }
 
     rwmutex_deinit(&sock->mutex);
-    heap_free(sock);
+    free(sock);
 }
 
 static void socket_unmount(superblock_t* superblock)
@@ -365,7 +364,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
         return NULL;
     }
 
-    socket_t* sock = heap_alloc(sizeof(socket_t), HEAP_NONE);
+    socket_t* sock = calloc(1, sizeof(socket_t));
     if (sock == NULL)
     {
         errno = ENOMEM;
@@ -374,7 +373,6 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
 
     ref_init(&sock->ref, socket_free);
     snprintf(sock->id, sizeof(sock->id), "%llu", atomic_fetch_add(&family->newId, 1));
-    memset(sock->address, 0, MAX_NAME);
     sock->family = family;
     sock->type = type;
     sock->flags = flags;
@@ -386,7 +384,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
     if (family->ops->init(sock) == ERR)
     {
         rwmutex_deinit(&sock->mutex);
-        heap_free(sock);
+        free(sock);
         return NULL;
     }
 
@@ -395,7 +393,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
     {
         family->ops->deinit(sock);
         rwmutex_deinit(&sock->mutex);
-        heap_free(sock);
+        free(sock);
         return NULL;
     }
 
@@ -405,7 +403,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
     {
         family->ops->deinit(sock);
         rwmutex_deinit(&sock->mutex);
-        heap_free(sock);
+        free(sock);
         return NULL;
     }
     mount->superblock->private = REF(sock);
@@ -417,7 +415,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
         family->ops->deinit(sock);
         DEREF(mount->superblock);
         rwmutex_deinit(&sock->mutex);
-        heap_free(sock);
+        free(sock);
         return NULL;
     }
 
@@ -428,7 +426,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
         DEREF(mount->superblock);
         DEREF(sock->ctlFile);
         rwmutex_deinit(&sock->mutex);
-        heap_free(sock);
+        free(sock);
         return NULL;
     }
 
@@ -440,7 +438,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
         DEREF(sock->ctlFile);
         DEREF(sock->dataFile);
         rwmutex_deinit(&sock->mutex);
-        heap_free(sock);
+        free(sock);
         return NULL;
     }
 

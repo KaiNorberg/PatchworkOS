@@ -1,10 +1,10 @@
 #pragma once
 
+#include <libpatchwork/cmd.h>
+#include <libpatchwork/pixel.h>
 #include <libpatchwork/point.h>
 #include <libpatchwork/rect.h>
 #include <libpatchwork/surface.h>
-#include <libpatchwork/pixel.h>
-#include <libpatchwork/cmd.h>
 #include <sys/io.h>
 #include <sys/list.h>
 

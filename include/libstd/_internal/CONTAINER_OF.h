@@ -1,6 +1,8 @@
 #ifndef _AUX_CONTAINER_OF_H
 #define _AUX_CONTAINER_OF_H 1
 
+#include <stddef.h>
+
 /**
  * @brief Container of macro
  * @ingroup libstd

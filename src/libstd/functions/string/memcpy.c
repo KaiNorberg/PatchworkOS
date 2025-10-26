@@ -1,8 +1,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "platform/platform.h"
-
 void* memcpy(void* _RESTRICT s1, const void* _RESTRICT s2, size_t n)
 {
     uint8_t* d = s1;

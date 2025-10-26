@@ -4,7 +4,6 @@
 
 #include "fs/sysfs.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "net/local/local.h"
 #include "net/socket_family.h"
 #include "sched/wait.h"
@@ -13,6 +12,7 @@
 #include "utils/map.h"
 
 #include <_internal/MAX_NAME.h>
+#include <stdlib.h>
 #include <sys/list.h>
 
 static dentry_t* listenDir = NULL;
@@ -50,7 +50,7 @@ local_listen_t* local_listen_new(const char* address)
         return NULL;
     }
 
-    local_listen_t* listen = heap_alloc(sizeof(local_listen_t), HEAP_NONE);
+    local_listen_t* listen = malloc(sizeof(local_listen_t));
     if (listen == NULL)
     {
         return NULL;
@@ -70,7 +70,7 @@ local_listen_t* local_listen_new(const char* address)
     if (listen->file == NULL)
     {
         wait_queue_deinit(&listen->waitQueue);
-        heap_free(listen);
+        free(listen);
         return NULL;
     }
 
@@ -81,7 +81,7 @@ local_listen_t* local_listen_new(const char* address)
     {
         DEREF(listen->file);
         wait_queue_deinit(&listen->waitQueue);
-        heap_free(listen);
+        free(listen);
 
         errno = EADDRINUSE;
         return NULL;
@@ -91,7 +91,7 @@ local_listen_t* local_listen_new(const char* address)
     {
         DEREF(listen->file);
         wait_queue_deinit(&listen->waitQueue);
-        heap_free(listen);
+        free(listen);
         return NULL;
     }
 
@@ -123,7 +123,7 @@ void local_listen_free(local_listen_t* listen)
     }
 
     wait_queue_deinit(&listen->waitQueue);
-    heap_free(listen);
+    free(listen);
 }
 
 local_listen_t* local_listen_find(const char* address)

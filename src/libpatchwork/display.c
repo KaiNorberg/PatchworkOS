@@ -42,6 +42,7 @@ display_t* display_new(void)
         return NULL;
     }
 
+    memset(disp->id, 0, MAX_NAME);
     if (readfile("/net/local/seqpacket", disp->id, MAX_NAME, 0) == ERR)
     {
         free(disp);

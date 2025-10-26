@@ -1,11 +1,11 @@
 #include "mutex.h"
 
 #include "log/log.h"
-#include "mem/heap.h"
 #include "sched/sched.h"
 #include "sched/thread.h"
 
 #include <errno.h>
+#include <stdlib.h>
 
 typedef struct
 {
@@ -35,7 +35,7 @@ static inline uint64_t aml_mutex_stack_push(aml_mutex_id_t id, aml_sync_level_t 
         return ERR;
     }
 
-    aml_mutex_entry_t* entry = heap_alloc(sizeof(aml_mutex_entry_t), HEAP_NONE);
+    aml_mutex_entry_t* entry = malloc(sizeof(aml_mutex_entry_t));
     if (entry == NULL)
     {
         return ERR;
@@ -67,7 +67,7 @@ static inline uint64_t aml_mutex_stack_pop(aml_mutex_id_t id)
     }
 
     list_remove(&mutexStack, &topEntry->entry);
-    heap_free(topEntry);
+    free(topEntry);
 
     if (list_length(&mutexStack) == 0)
     {

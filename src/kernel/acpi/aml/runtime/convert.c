@@ -6,11 +6,11 @@
 #include "copy.h"
 #include "field_unit.h"
 #include "log/log.h"
-#include "mem/heap.h"
 #include "store.h"
 
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define AML_HEX_DIGITS "0123456789ABCDEF"
 
@@ -711,7 +711,7 @@ uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, am
         }
 
         uint64_t maxLen = bufferData->length * 4; // "255," per byte worst case
-        char* buff = heap_alloc(maxLen + 1, HEAP_NONE);
+        char* buff = malloc(maxLen + 1);
         if (buff == NULL)
         {
             return ERR;
@@ -724,7 +724,7 @@ uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, am
             int written = snprintf(p, end - p, "%u", bufferData->content[i]);
             if (written < 0 || p + written >= end)
             {
-                heap_free(buff);
+                free(buff);
                 errno = EILSEQ;
                 return ERR;
             }
@@ -740,11 +740,11 @@ uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, am
         uint64_t length = p - buff;
         if (aml_string_prepare(temp, length) == ERR)
         {
-            heap_free(temp);
+            free(temp);
             return ERR;
         }
         memcpy(temp->string.content, temp, length);
-        heap_free(buff);
+        free(buff);
         *dest = REF(temp);
         return 0;
     }

@@ -21,6 +21,8 @@ void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
     {
         ctx->files[i] = NULL;
     }
+    bitmap_init(&ctx->allocBitmap, ctx->allocBitmapBuffer, CONFIG_MAX_FD);
+    memset(ctx->allocBitmapBuffer, 0, sizeof(ctx->allocBitmapBuffer));
     lock_init(&ctx->lock);
     ctx->initalized = true;
 }
@@ -147,13 +149,12 @@ fd_t vfs_ctx_alloc_fd(vfs_ctx_t* ctx, file_t* file)
         return ERR;
     }
 
-    for (fd_t fd = 0; fd < CONFIG_MAX_FD; fd++)
+    uint64_t index = bitmap_find_first_clear(&ctx->allocBitmap);
+    if (index < CONFIG_MAX_FD)
     {
-        if (ctx->files[fd] == NULL)
-        {
-            ctx->files[fd] = REF(file);
-            return fd;
-        }
+        ctx->files[index] = REF(file);
+        bitmap_set(&ctx->allocBitmap, index);
+        return (fd_t)index;
     }
 
     errno = EMFILE;
@@ -183,6 +184,7 @@ fd_t vfs_ctx_set_fd(vfs_ctx_t* ctx, fd_t fd, file_t* file)
     }
 
     ctx->files[fd] = REF(file);
+    bitmap_set(&ctx->allocBitmap, fd);
     return fd;
 }
 
@@ -204,6 +206,7 @@ uint64_t vfs_ctx_free_fd(vfs_ctx_t* ctx, fd_t fd)
 
     DEREF(ctx->files[fd]);
     ctx->files[fd] = NULL;
+    bitmap_clear(&ctx->allocBitmap, fd);
     return 0;
 }
 
@@ -228,13 +231,12 @@ fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd)
         return ERR;
     }
 
-    for (fd_t fd = 0; fd < CONFIG_MAX_FD; fd++)
+    uint64_t index = bitmap_find_first_clear(&ctx->allocBitmap);
+    if (index < CONFIG_MAX_FD)
     {
-        if (ctx->files[fd] == NULL)
-        {
-            ctx->files[fd] = REF(ctx->files[oldFd]);
-            return fd;
-        }
+        ctx->files[index] = REF(ctx->files[oldFd]);
+        bitmap_set(&ctx->allocBitmap, index);
+        return (fd_t)index;
     }
 
     errno = EMFILE;
@@ -274,7 +276,7 @@ fd_t vfs_ctx_dup2(vfs_ctx_t* ctx, fd_t oldFd, fd_t newFd)
     }
 
     ctx->files[newFd] = REF(ctx->files[oldFd]);
-
+    bitmap_set(&ctx->allocBitmap, newFd);
     return newFd;
 }
 

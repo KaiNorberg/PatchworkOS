@@ -29,6 +29,8 @@ void pmm_init(const boot_memory_map_t* map);
 /**
  * @brief Allocates a single physical page.
  *
+ * The returned page will not be zeroed.
+ *
  * @return On success, returns the higher half physical address of the allocated page. On failure, returns `NULL`.
  */
 void* pmm_alloc(void);
@@ -39,6 +41,8 @@ void* pmm_alloc(void);
  * The `pmm_alloc_pages` function allocates `count` non-contiguous physical pages from the free stack, by using this
  * function its possible to avoid holding the lock for each page allocation, improving performance when allocating many
  * pages at once.
+ *
+ * The returned pages will not be zeroed.
  *
  * @param addresses An array where the higher half physical addresses of the allocated pages will be stored.
  * @param count The number of pages to allocate.
@@ -51,6 +55,8 @@ uint64_t pmm_alloc_pages(void** addresses, uint64_t count);
  *
  * The `pmm_alloc_bitmap` function allocates a contiguous block of `count` physical pages from the memory region
  * managed by the bitmap. It also enforces a maximum address and alignment for the allocation.
+ *
+ * The returned pages will not be zeroed.
  *
  * @param count The number of contiguous pages to allocate.
  * @param maxAddr The maximum physical address (exclusive) for the allocation.

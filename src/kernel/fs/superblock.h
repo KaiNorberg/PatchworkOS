@@ -75,7 +75,7 @@ typedef struct superblock_ops
      */
     inode_t* (*allocInode)(superblock_t* superblock);
     /**
-     * Called when the VFS wants to free an inode, if not specified `heap_free()` is used.
+     * Called when the VFS wants to free an inode, if not specified `free()` is used.
      */
     void (*freeInode)(superblock_t* superblock, inode_t* inode);
     /**

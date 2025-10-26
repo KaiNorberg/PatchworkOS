@@ -3,12 +3,12 @@
 #include "fs/file.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
-#include "mem/heap.h"
 #include "sched/timer.h"
 #include "sync/lock.h"
 
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/math.h>
 
 static dentry_t* mouseDir = NULL;
@@ -72,7 +72,7 @@ static void mouse_dir_cleanup(inode_t* inode)
 {
     mouse_t* mouse = inode->private;
     wait_queue_deinit(&mouse->waitQueue);
-    heap_free(mouse);
+    free(mouse);
 }
 
 static inode_ops_t dirInodeOps = {
@@ -96,14 +96,13 @@ mouse_t* mouse_new(const char* name)
         }
     }
 
-    mouse_t* mouse = heap_alloc(sizeof(mouse_t), HEAP_NONE);
+    mouse_t* mouse = calloc(1, sizeof(mouse_t));
     if (mouse == NULL)
     {
         return NULL;
     }
     strncpy(mouse->name, name, MAX_NAME - 1);
     mouse->name[MAX_NAME - 1] = '\0';
-    memset(mouse->events, 0, sizeof(mouse->events));
     mouse->writeIndex = 0;
     wait_queue_init(&mouse->waitQueue);
     lock_init(&mouse->lock);
@@ -112,7 +111,7 @@ mouse_t* mouse_new(const char* name)
     if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
     {
         wait_queue_deinit(&mouse->waitQueue);
-        heap_free(mouse);
+        free(mouse);
         return NULL;
     }
 
@@ -120,7 +119,7 @@ mouse_t* mouse_new(const char* name)
     if (mouse->dir == NULL)
     {
         wait_queue_deinit(&mouse->waitQueue);
-        heap_free(mouse);
+        free(mouse);
         return NULL;
     }
     mouse->eventsFile = sysfs_file_new(mouse->dir, "events", NULL, &eventsOps, mouse);

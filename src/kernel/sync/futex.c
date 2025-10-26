@@ -1,7 +1,6 @@
 #include "futex.h"
 #include "cpu/syscalls.h"
 #include "lock.h"
-#include "mem/heap.h"
 #include "proc/process.h"
 #include "sched/sched.h"
 #include "sched/thread.h"
@@ -10,6 +9,7 @@
 #include "utils/map.h"
 
 #include <errno.h>
+#include <stdlib.h>
 
 void futex_ctx_init(futex_ctx_t* ctx)
 {
@@ -29,7 +29,7 @@ void futex_ctx_deinit(futex_ctx_t* ctx)
 
         futex_t* futex = CONTAINER_OF(entry, futex_t, entry);
         wait_queue_deinit(&futex->queue);
-        heap_free(futex);
+        free(futex);
     }
     map_deinit(&ctx->futexes);
 }
@@ -45,7 +45,7 @@ static futex_t* futex_ctx_get(futex_ctx_t* ctx, void* addr)
         return futex;
     }
 
-    futex = heap_alloc(sizeof(futex_t), HEAP_NONE);
+    futex = malloc(sizeof(futex_t));
     if (futex == NULL)
     {
         return NULL;

@@ -3,11 +3,12 @@
 #include <stdio.h>
 
 #include "log/log.h"
-#include "mem/heap.h"
 #include "sched/thread.h"
 #include "sync/lock.h"
 #include "sync/mutex.h"
 #include "vfs.h"
+
+#include <stdlib.h>
 
 static void dentry_free(dentry_t* dentry)
 {
@@ -44,7 +45,7 @@ static void dentry_free(dentry_t* dentry)
         dentry->parent = NULL;
     }
 
-    heap_free(dentry);
+    free(dentry);
 }
 
 dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name)
@@ -64,7 +65,7 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
 
     assert(parent == NULL || superblock == parent->superblock);
 
-    dentry_t* dentry = heap_alloc(sizeof(dentry_t), HEAP_NONE);
+    dentry_t* dentry = malloc(sizeof(dentry_t));
     if (dentry == NULL)
     {
         return NULL;

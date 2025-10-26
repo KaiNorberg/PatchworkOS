@@ -6,7 +6,6 @@
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "mem/pmm.h"
 #include "sched/sched.h"
 #include "sched/timer.h"
@@ -14,6 +13,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/io.h>
 #include <sys/math.h>
 
@@ -33,7 +33,7 @@ static uint64_t statistics_cpu_read(file_t* file, void* buffer, uint64_t count, 
 {
     (void)file; // Unused
 
-    char* string = heap_alloc(MAX_PATH * (smp_cpu_amount() + 1), HEAP_VMM);
+    char* string = malloc(MAX_PATH * (smp_cpu_amount() + 1));
     if (string == NULL)
     {
         return ERR;
@@ -52,7 +52,7 @@ static uint64_t statistics_cpu_read(file_t* file, void* buffer, uint64_t count, 
 
     uint64_t length = strlen(string);
     uint64_t readCount = BUFFER_READ(buffer, count, offset, string, length);
-    heap_free(string);
+    free(string);
     return readCount;
 }
 
@@ -64,7 +64,7 @@ static uint64_t statistics_mem_read(file_t* file, void* buffer, uint64_t count, 
 {
     (void)file; // Unused
 
-    char* string = heap_alloc(MAX_PATH, HEAP_VMM);
+    char* string = malloc(MAX_PATH);
     if (string == NULL)
     {
         return ERR;
@@ -75,7 +75,7 @@ static uint64_t statistics_mem_read(file_t* file, void* buffer, uint64_t count, 
 
     uint64_t length = strlen(string);
     uint64_t readCount = BUFFER_READ(buffer, count, offset, string, length);
-    heap_free(string);
+    free(string);
     return readCount;
 }
 

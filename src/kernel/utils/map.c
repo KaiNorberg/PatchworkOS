@@ -1,8 +1,7 @@
 #include "map.h"
 
-#include "mem/heap.h"
-
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/math.h>
 
@@ -18,17 +17,26 @@ static uint64_t next_power_of_two(uint64_t n)
         return 2;
     }
 
-    if (is_power_of_two(n))
+    if ((n > 0 && (n & (n - 1)) == 0))
     {
         return n;
     }
 
-    uint64_t power = 1;
-    while (power < n && power < (UINT64_MAX >> 1))
+    n--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    n |= n >> 32;
+    n++;
+
+    if (n == 0)
     {
-        power <<= 1;
+        return (UINT64_MAX >> 1) + 1;
     }
-    return power;
+
+    return n;
 }
 
 uint64_t hash_object(const void* object, uint64_t length)
@@ -121,7 +129,7 @@ static uint64_t map_resize(map_t* map, uint64_t newCapacity)
         return 0;
     }
 
-    map_entry_t** newEntries = heap_calloc(newCapacity, sizeof(map_entry_t*), HEAP_NONE);
+    map_entry_t** newEntries = calloc(newCapacity, sizeof(map_entry_t*));
     if (newEntries == NULL)
     {
         return ERR;
@@ -130,6 +138,7 @@ static uint64_t map_resize(map_t* map, uint64_t newCapacity)
     map_entry_t** oldEntries = map->entries;
     uint64_t oldCapacity = map->capacity;
     uint64_t oldLength = map->length;
+    uint64_t oldTombstones = map->tombstones;
 
     map->entries = newEntries;
     map->capacity = newCapacity;
@@ -144,10 +153,11 @@ static uint64_t map_resize(map_t* map, uint64_t newCapacity)
             uint64_t newIndex = map_find_slot(map, &entry->key, true);
             if (newIndex == ERR)
             {
-                heap_free(newEntries);
+                free(newEntries);
                 map->entries = oldEntries;
                 map->capacity = oldCapacity;
                 map->length = oldLength;
+                map->tombstones = oldTombstones;
                 return ERR;
             }
             map->entries[newIndex] = entry;
@@ -155,7 +165,7 @@ static uint64_t map_resize(map_t* map, uint64_t newCapacity)
         }
     }
 
-    heap_free(oldEntries);
+    free(oldEntries);
     return 0;
 }
 
@@ -171,7 +181,7 @@ uint64_t map_init(map_t* map)
 
 void map_deinit(map_t* map)
 {
-    heap_free(map->entries);
+    free(map->entries);
     map->entries = NULL;
     map->length = 0;
     map->capacity = 0;
@@ -189,7 +199,8 @@ uint64_t map_insert(map_t* map, const map_key_t* key, map_entry_t* entry)
     uint32_t currentEntries = map->length + map->tombstones;
     if (currentEntries * 100 >= MAP_MAX_LOAD_PERCENTAGE * map->capacity)
     {
-        if (map_resize(map, map->capacity + 1) == ERR)
+        uint64_t newCapacity = (map->capacity == 0) ? MAP_MIN_CAPACITY : (map->capacity * 2);
+        if (map_resize(map, newCapacity) == ERR)
         {
             errno = ENOMEM;
             return ERR;

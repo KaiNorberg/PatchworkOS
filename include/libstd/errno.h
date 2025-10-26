@@ -9,7 +9,7 @@ extern "C"
 #include "_internal/ERR.h"
 #include "_internal/config.h"
 
-int* _platform_errno_get(void);
+int* _errno_get(void);
 
 /**
  * @brief Error values.
@@ -24,7 +24,7 @@ int* _platform_errno_get(void);
 /**
  * @brief Error number variable.
  */
-#define errno (*_platform_errno_get())
+#define errno (*_errno_get())
 
 /**
  * @brief No error

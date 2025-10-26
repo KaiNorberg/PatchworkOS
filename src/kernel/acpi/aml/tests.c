@@ -7,12 +7,13 @@
 #include "aml.h"
 #include "encoding/term.h"
 #include "exception.h"
-#include "mem/heap.h"
 #include "object.h"
 #include "runtime/method.h"
 #include "sched/timer.h"
 #include "state.h"
 #include "to_string.h"
+
+#include <stdlib.h>
 
 #include "acpi/tables.h"
 #include "log/log.h"
@@ -259,7 +260,7 @@ void aml_tests_perf_start(aml_token_t* token)
         return;
     }
 
-    aml_perf_stack_entry_t* entry = heap_alloc(sizeof(aml_perf_stack_entry_t), HEAP_NONE);
+    aml_perf_stack_entry_t* entry = malloc(sizeof(aml_perf_stack_entry_t));
     if (entry == NULL)
     {
         LOG_ERR("Performance profiler stack allocation failed\n");
@@ -299,7 +300,7 @@ void aml_tests_perf_end(void)
         perfStackTop->childTime += totalTime;
     }
 
-    heap_free(entry);
+    free(entry);
 }
 
 void aml_tests_perf_report(void)
@@ -310,7 +311,7 @@ void aml_tests_perf_report(void)
         while (!list_is_empty(&perfStack))
         {
             aml_perf_stack_entry_t* entry = CONTAINER_OF_SAFE(list_pop(&perfStack), aml_perf_stack_entry_t, entry);
-            heap_free(entry);
+            free(entry);
         }
     }
 

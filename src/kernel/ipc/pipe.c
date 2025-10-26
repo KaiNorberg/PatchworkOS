@@ -4,7 +4,6 @@
 #include "fs/vfs.h"
 #include "log/log.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "mem/pmm.h"
 #include "sched/thread.h"
 #include "sync/lock.h"
@@ -19,7 +18,7 @@ static dentry_t* pipeDir = NULL;
 
 static uint64_t pipe_open(file_t* file)
 {
-    pipe_private_t* private = heap_alloc(sizeof(pipe_private_t), HEAP_NONE);
+    pipe_private_t* private = malloc(sizeof(pipe_private_t));
     if (private == NULL)
     {
         return ERR;
@@ -27,7 +26,7 @@ static uint64_t pipe_open(file_t* file)
     private->buffer = pmm_alloc();
     if (private->buffer == NULL)
     {
-        heap_free(private);
+        free(private);
         return ERR;
     }
     ring_init(&private->ring, private->buffer, PAGE_SIZE);
@@ -45,7 +44,7 @@ static uint64_t pipe_open(file_t* file)
 
 static uint64_t pipe_open2(file_t* files[2])
 {
-    pipe_private_t* private = heap_alloc(sizeof(pipe_private_t), HEAP_NONE);
+    pipe_private_t* private = malloc(sizeof(pipe_private_t));
     if (private == NULL)
     {
         return ERR;
@@ -53,7 +52,7 @@ static uint64_t pipe_open2(file_t* files[2])
     private->buffer = pmm_alloc();
     if (private->buffer == NULL)
     {
-        heap_free(private);
+        free(private);
         return ERR;
     }
     ring_init(&private->ring, private->buffer, PAGE_SIZE);
@@ -89,7 +88,7 @@ static void pipe_close(file_t* file)
         lock_release(&private->lock);
         wait_queue_deinit(&private->waitQueue);
         pmm_free(private->buffer);
-        heap_free(private);
+        free(private);
         return;
     }
 

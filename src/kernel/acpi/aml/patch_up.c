@@ -2,12 +2,12 @@
 
 #include "log/log.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "object.h"
 #include "state.h"
 #include "to_string.h"
 
 #include <errno.h>
+#include <stdlib.h>
 #include <sys/list.h>
 
 static list_t unresolvedObjects;
@@ -26,7 +26,7 @@ uint64_t aml_patch_up_add_unresolved(aml_unresolved_obj_t* unresolved)
         return ERR;
     }
 
-    aml_patch_up_entry_t* entry = heap_alloc(sizeof(aml_patch_up_entry_t), HEAP_NONE);
+    aml_patch_up_entry_t* entry = malloc(sizeof(aml_patch_up_entry_t));
     if (entry == NULL)
     {
         return ERR;
@@ -51,7 +51,7 @@ void aml_patch_up_remove_unresolved(aml_unresolved_obj_t* unresolved)
         if (entry->unresolved == unresolved)
         {
             list_remove(&unresolvedObjects, &entry->entry);
-            heap_free(entry);
+            free(entry);
             return;
         }
     }

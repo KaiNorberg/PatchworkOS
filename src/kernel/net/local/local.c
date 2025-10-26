@@ -3,7 +3,6 @@
 #include "fs/path.h"
 #include "log/log.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "net/local/local_conn.h"
 #include "net/local/local_listen.h"
 #include "net/socket.h"
@@ -17,6 +16,7 @@
 #include <_internal/CONTAINER_OF.h>
 #include <_internal/MAX_NAME.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/io.h>
 #include <sys/list.h>
@@ -47,12 +47,11 @@ static local_conn_t* local_socket_data_get_conn(local_socket_data_t* data)
 
 static uint64_t local_socket_init(socket_t* sock)
 {
-    local_socket_data_t* data = heap_alloc(sizeof(local_socket_data_t), HEAP_NONE);
+    local_socket_data_t* data = calloc(1, sizeof(local_socket_data_t));
     if (data == NULL)
     {
         return ERR;
     }
-    memset(data, 0, sizeof(local_socket_data_t));
     lock_init(&data->lock);
     sock->private = data;
     return 0;
@@ -100,7 +99,7 @@ static void local_socket_deinit(socket_t* sock)
 
     lock_release(&data->lock);
 
-    heap_free(data);
+    free(data);
     sock->private = NULL;
 }
 

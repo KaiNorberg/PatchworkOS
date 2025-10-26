@@ -1,7 +1,8 @@
 #include "mount.h"
 
-#include "mem/heap.h"
 #include "vfs.h"
+
+#include <stdlib.h>
 
 static void mount_free(mount_t* mount)
 {
@@ -32,7 +33,7 @@ static void mount_free(mount_t* mount)
         DEREF(mount->parent);
     }
 
-    heap_free(mount);
+    free(mount);
 }
 
 mount_t* mount_new(superblock_t* superblock, dentry_t* root, dentry_t* mountpoint, mount_t* parent)
@@ -43,7 +44,7 @@ mount_t* mount_new(superblock_t* superblock, dentry_t* root, dentry_t* mountpoin
         return NULL;
     }
 
-    mount_t* mount = heap_alloc(sizeof(mount_t), HEAP_NONE);
+    mount_t* mount = malloc(sizeof(mount_t));
     if (mount == NULL)
     {
         return NULL;

@@ -4,9 +4,10 @@
 #include "fs/sysfs.h"
 #include "log.h"
 #include "log_screen.h"
-#include "mem/heap.h"
 #include "panic.h"
 #include "utils/ring.h"
+
+#include <stdlib.h>
 
 static lock_t lock = LOCK_CREATE;
 

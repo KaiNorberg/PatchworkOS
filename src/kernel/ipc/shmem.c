@@ -4,7 +4,6 @@
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
 #include "proc/process.h"
@@ -12,6 +11,7 @@
 #include <errno.h>
 #include <stdatomic.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/list.h>
 
@@ -35,12 +35,12 @@ static void shmem_object_free(shmem_object_t* shmem)
         shmem->pageAmount = 0;
         shmem->pages = NULL;
     }
-    heap_free(shmem);
+    free(shmem);
 }
 
 static shmem_object_t* shmem_object_new(void)
 {
-    shmem_object_t* shmem = heap_alloc(sizeof(shmem_object_t), HEAP_NONE);
+    shmem_object_t* shmem = malloc(sizeof(shmem_object_t));
     if (shmem == NULL)
     {
         return NULL;
@@ -67,7 +67,7 @@ static void shmem_vmm_callback(void* private)
 static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmount, space_t* space, void* address,
     pml_flags_t flags)
 {
-    shmem->pages = heap_alloc(sizeof(void*) * pageAmount, HEAP_VMM);
+    shmem->pages = malloc(sizeof(void*) * pageAmount);
     if (shmem->pages == NULL)
     {
         return NULL;
@@ -84,7 +84,7 @@ static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmo
                 pmm_free(shmem->pages[j]);
             }
 
-            heap_free(shmem->pages);
+            free(shmem->pages);
             shmem->pages = NULL;
             shmem->pageAmount = 0;
             return NULL;
@@ -100,7 +100,7 @@ static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmo
             pmm_free(shmem->pages[i]);
         }
 
-        heap_free(shmem->pages);
+        free(shmem->pages);
         shmem->pages = NULL;
         shmem->pageAmount = 0;
         return NULL;

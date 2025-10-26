@@ -1,8 +1,8 @@
 #include "argv.h"
 
 #include "config.h"
-#include "mem/heap.h"
 
+#include <stdlib.h>
 #include <string.h>
 #include <sys/io.h>
 
@@ -40,7 +40,7 @@ uint64_t argv_init(argv_t* argv, const char** src)
         size += strLen + 1;
     }
 
-    char** dest = heap_alloc(size, HEAP_NONE);
+    char** dest = malloc(size);
     if (dest == NULL)
     {
         return ERR;
@@ -68,7 +68,7 @@ void argv_deinit(argv_t* argv)
     {
         return;
     }
-    heap_free(argv->buffer);
+    free(argv->buffer);
 }
 
 const char* argv_get_strings(const argv_t* argv, uint64_t* length)

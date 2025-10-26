@@ -1,6 +1,5 @@
 #include "print.h"
 
-#include "../platform/platform.h"
 #include "common/digits.h"
 
 #include <inttypes.h>
@@ -12,8 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if _PLATFORM_HAS_IO == 1
-#include "platform/user/common/file.h"
+#ifndef __KERNEL__
+#include "user/common/file.h"
 #endif
 
 #define _DBL_SIGN(bytes) (((unsigned)bytes[7] & 0x80) >> 7)
@@ -50,7 +49,7 @@
 #define _LDBL_MANT_START(bytes) (bytes + 6)
 #endif
 
-#if _PLATFORM_HAS_IO == 1
+#ifndef __KERNEL__
 #define _PRINT_PUT(ctx, x) \
     ({ \
         int character = x; \
@@ -82,7 +81,7 @@
     })
 #endif
 
-#if _PLATFORM_HAS_SSE == 1
+#ifndef __KERNEL__
 
 static void _print_hexa(int sign, int exp, int dec, unsigned char const* mant, size_t mant_dig, _format_ctx_t* ctx)
 {
@@ -849,7 +848,7 @@ const char* _print(const char* spec, _format_ctx_t* ctx)
         if (ctx->flags & FORMAT_DOUBLE)
         {
             /* Floating Point conversions */
-#if _PLATFORM_HAS_SSE == 1
+#ifndef __KERNEL__
             if (ctx->flags & FORMAT_LDOUBLE)
             {
                 long double value = va_arg(ctx->arg, long double);

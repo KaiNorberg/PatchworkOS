@@ -1,7 +1,6 @@
 #include <stdio.h>
-
-#include "common/print.h"
-#include "platform/platform.h"
+#include <stdarg.h>
+#include <stdint.h>
 
 int vsprintf(char* _RESTRICT s, const char* _RESTRICT format, va_list arg)
 {

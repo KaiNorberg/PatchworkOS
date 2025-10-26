@@ -2,7 +2,6 @@
 
 #include "log/log.h"
 
-#include "utils/bitmap.h"
 #include <assert.h>
 #include <sys/math.h>
 
@@ -22,7 +21,7 @@ void* pmm_bitmap_alloc(pmm_bitmap_t* bitmap, uint64_t count, uintptr_t maxAddr, 
 
     uint64_t index =
         bitmap_find_clear_region_and_set(&bitmap->bitmap, count, maxAddr / PAGE_SIZE, alignment / PAGE_SIZE);
-    if (index == ERR)
+    if (index == bitmap->bitmap.length)
     {
         return NULL;
     }

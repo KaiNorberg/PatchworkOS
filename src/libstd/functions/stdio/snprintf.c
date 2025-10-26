@@ -1,8 +1,5 @@
 #include <stdio.h>
 
-#include "common/print.h"
-#include "platform/platform.h"
-
 int snprintf(char* _RESTRICT s, size_t n, const char* _RESTRICT format, ...)
 {
     int rc;

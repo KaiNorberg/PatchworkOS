@@ -1,10 +1,10 @@
 #include "exception.h"
 
 #include "log/log.h"
-#include "mem/heap.h"
 #include "sched/thread.h"
 
 #include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
 
 typedef struct
@@ -74,7 +74,7 @@ uint64_t aml_exception_register(aml_exception_handler_t handler)
         }
     }
 
-    aml_exception_handler_t* newHandlers = heap_alloc(sizeof(aml_exception_handler_t) * (handlerCount + 1), HEAP_NONE);
+    aml_exception_handler_t* newHandlers = malloc(sizeof(aml_exception_handler_t) * (handlerCount + 1));
     if (newHandlers == NULL)
     {
         return ERR;
@@ -89,7 +89,7 @@ uint64_t aml_exception_register(aml_exception_handler_t handler)
 
     if (handlers != NULL)
     {
-        heap_free(handlers);
+        free(handlers);
     }
     handlers = newHandlers;
 
@@ -124,7 +124,7 @@ void aml_exception_unregister(aml_exception_handler_t handler)
 
     if (handlerCount == 0)
     {
-        heap_free(handlers);
+        free(handlers);
         handlers = NULL;
         return;
     }

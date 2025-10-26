@@ -1,7 +1,6 @@
 #include "local_conn.h"
 
 #include "fs/sysfs.h"
-#include "mem/heap.h"
 #include "net/local/local.h"
 #include "net/local/local_listen.h"
 #include "net/socket.h"
@@ -10,6 +9,7 @@
 #include "sync/lock.h"
 
 #include <_internal/MAX_NAME.h>
+#include <stdlib.h>
 #include <sys/list.h>
 
 local_conn_t* local_conn_new(local_listen_t* listen)
@@ -20,24 +20,24 @@ local_conn_t* local_conn_new(local_listen_t* listen)
         return NULL;
     }
 
-    local_conn_t* conn = heap_alloc(sizeof(local_conn_t), HEAP_NONE);
+    local_conn_t* conn = malloc(sizeof(local_conn_t));
     if (conn == NULL)
     {
         return NULL;
     }
 
-    conn->clientToServerBuffer = heap_alloc(LOCAL_BUFFER_SIZE, HEAP_VMM);
+    conn->clientToServerBuffer = malloc(LOCAL_BUFFER_SIZE);
     if (conn->clientToServerBuffer == NULL)
     {
-        heap_free(conn);
+        free(conn);
         return NULL;
     }
 
-    conn->serverToClientBuffer = heap_alloc(LOCAL_BUFFER_SIZE, HEAP_VMM);
+    conn->serverToClientBuffer = malloc(LOCAL_BUFFER_SIZE);
     if (conn->serverToClientBuffer == NULL)
     {
-        heap_free(conn->clientToServerBuffer);
-        heap_free(conn);
+        free(conn->clientToServerBuffer);
+        free(conn);
         return NULL;
     }
 
@@ -65,7 +65,7 @@ void local_conn_free(local_conn_t* conn)
         DEREF(conn->listen);
     }
 
-    heap_free(conn->clientToServerBuffer);
-    heap_free(conn->serverToClientBuffer);
-    heap_free(conn);
+    free(conn->clientToServerBuffer);
+    free(conn->serverToClientBuffer);
+    free(conn);
 }

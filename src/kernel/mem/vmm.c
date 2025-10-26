@@ -11,8 +11,6 @@
 #include "sched/sched.h"
 #include "sched/thread.h"
 #include "sync/lock.h"
-#include "sync/rwmutex.h"
-#include "utils/bitmap.h"
 
 #include <boot/boot_info.h>
 #include <common/paging.h>

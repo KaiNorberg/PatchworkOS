@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _SYS_CPUID_H
+#define _SYS_CPUID_H 1
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -232,3 +233,5 @@ static inline void cpuid_extended_feature_info(cpuid_extended_feature_info_t* in
 }
 
 /** @} */
+
+#endif // _SYS_CPUID_H

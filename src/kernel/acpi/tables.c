@@ -5,11 +5,11 @@
 #include "fs/vfs.h"
 #include "log/log.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 
 #include <boot/boot_info.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static uint64_t ssdtAmount = 0;
@@ -119,7 +119,7 @@ static uint64_t acpi_tables_push(sdt_header_t* table)
         return ERR;
     }
 
-    sdt_header_t* cachedTable = heap_alloc(table->length, HEAP_NONE);
+    sdt_header_t* cachedTable = malloc(table->length);
     if (cachedTable == NULL)
     {
         LOG_ERR("failed to allocate memory for ACPI table\n");
@@ -127,11 +127,11 @@ static uint64_t acpi_tables_push(sdt_header_t* table)
     }
     memcpy(cachedTable, table, table->length);
 
-    cachedTables = heap_realloc(cachedTables, sizeof(acpi_cached_table_t) * (tableAmount + 1), HEAP_NONE);
+    cachedTables = realloc(cachedTables, sizeof(acpi_cached_table_t) * (tableAmount + 1));
     if (cachedTables == NULL)
     {
         LOG_ERR("failed to allocate memory for ACPI table cache\n");
-        heap_free(cachedTable);
+        free(cachedTable);
         return ERR;
     }
     cachedTables[tableAmount++].table = cachedTable;

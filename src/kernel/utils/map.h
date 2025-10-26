@@ -133,14 +133,6 @@ static inline map_key_t map_key_string(const char* str)
 }
 
 /**
- * @brief Create a map key from a generic object.
- *
- * @param generic The generic object to create the key from.
- * @return The map key.
- */
-#define MAP_KEY_GENERIC(generic) map_key_buffer(generic, sizeof(typeof(*generic)))
-
-/**
  * @brief Initialize a map entry.
  *
  * @param entry The map entry to initialize.

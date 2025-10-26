@@ -8,10 +8,11 @@
 #include "errno.h"
 #include "fs/vfs.h"
 #include "log/log.h"
-#include "mem/heap.h"
 #include "mem/vmm.h"
 #include "sched.h"
 #include "sched/thread.h"
+
+#include <stdlib.h>
 
 static void* loader_load_program(thread_t* thread)
 {
@@ -245,9 +246,9 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         {
             for (uint64_t j = 0; j < i; j++)
             {
-                heap_free(argvCopy[j]);
+                free(argvCopy[j]);
             }
-            heap_free(argvCopy);
+            free(argvCopy);
             return ERR;
         }
 
@@ -273,9 +274,9 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
 
     for (uint64_t i = 0; i < argc; i++)
     {
-        heap_free(argvCopy[i]);
+        free(argvCopy[i]);
     }
-    heap_free(argvCopy);
+    free(argvCopy);
 
     if (cwdString != NULL)
     {
@@ -308,7 +309,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
             file_t* file = vfs_ctx_get_file(parentVfsCtx, fdsCopy[i].parent);
             if (file == NULL)
             {
-                heap_free(fdsCopy);
+                free(fdsCopy);
                 thread_free(child);
                 errno = EBADF;
                 return ERR;
@@ -317,14 +318,14 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
             if (vfs_ctx_set_fd(childVfsCtx, fdsCopy[i].child, file) == ERR)
             {
                 DEREF(file);
-                heap_free(fdsCopy);
+                free(fdsCopy);
                 thread_free(child);
                 errno = EBADF;
                 return ERR;
             }
             DEREF(file);
         }
-        heap_free(fdsCopy);
+        free(fdsCopy);
     }
 
     pid_t childPid = child->process->id; // Important to not deref after pushing the thread
@@ -334,9 +335,9 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
 cleanup_argv:
     for (uint64_t i = 0; i < argc; i++)
     {
-        heap_free(argvCopy[i]);
+        free(argvCopy[i]);
     }
-    heap_free(argvCopy);
+    free(argvCopy);
     return ERR;
 }
 

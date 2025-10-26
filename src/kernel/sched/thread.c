@@ -5,7 +5,6 @@
 #include "init/init.h"
 #include "log/log.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "mem/vmm.h"
 #include "sched/sched.h"
 #include "sched/timer.h"
@@ -74,14 +73,14 @@ thread_t* thread_new(process_t* process)
         return NULL;
     }
 
-    thread_t* thread = heap_alloc(sizeof(thread_t), HEAP_NONE);
+    thread_t* thread = malloc(sizeof(thread_t));
     if (thread == NULL)
     {
         return NULL;
     }
     if (thread_init(thread, process) == ERR)
     {
-        heap_free(thread);
+        free(thread);
         return NULL;
     }
     return thread;
@@ -102,7 +101,7 @@ void thread_free(thread_t* thread)
     thread->process = NULL;
 
     simd_ctx_deinit(&thread->simd);
-    heap_free(thread);
+    free(thread);
 }
 
 void thread_save(thread_t* thread, const interrupt_frame_t* frame)
@@ -289,7 +288,7 @@ uint64_t thread_copy_from_user_terminated(thread_t* thread, const void* userArra
     uint64_t elementCount = arraySize / objectSize;
     uint64_t allocSize = (elementCount + 1) * objectSize; // +1 for terminator
 
-    void* kernelArray = heap_alloc(allocSize, HEAP_NONE);
+    void* kernelArray = malloc(allocSize);
     if (kernelArray == NULL)
     {
         space_unpin(&thread->process->space, userArray, arraySize);
