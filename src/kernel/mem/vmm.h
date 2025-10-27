@@ -253,7 +253,7 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
  * @param space The target address space, if `NULL`, the kernel space is used.
  * @param virtAddr The virtual address of the memory region.
  * @param length The length of the memory region, in bytes.
- * @return On success, returns 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length);
 
@@ -271,7 +271,7 @@ uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length);
  * @param length The length of the memory region, in bytes.
  * @param flags The new page table flags for the memory region, if `PML_PRESENT` is not set, the memory will be
  * unmapped.
- * @return On success, returns 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t vmm_protect(space_t* space, void* virtAddr, uint64_t length, pml_flags_t flags);
 

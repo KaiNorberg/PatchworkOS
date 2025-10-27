@@ -5,10 +5,10 @@
 #include "log/log.h"
 #include "mount.h"
 #include "path.h"
-#include "superblock.h"
-#include "vfs.h"
 #include "proc/process.h"
 #include "sched/thread.h"
+#include "superblock.h"
+#include "vfs.h"
 
 #include <errno.h>
 

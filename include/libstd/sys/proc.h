@@ -198,7 +198,7 @@ void* mmap(fd_t fd, void* address, uint64_t length, prot_t prot);
  *
  * @param address The starting virtual address of the memory area to be unmapped.
  * @param length The length of the memory area to be unmapped.
- * @return On success, returns 0, on failure returns `ERR` and errno is set.
+ * @return On success, `0`, on failure returns `ERR` and errno is set.
  */
 uint64_t munmap(void* address, uint64_t length);
 
@@ -212,7 +212,7 @@ uint64_t munmap(void* address, uint64_t length);
  * @param length The length of the memory area to be modifed.
  * @param prot The new protection flags of the memory area, if equal to `PROT_NONE` the memory area will be
  * unmapped.
- * @return On success, returns 0, on failure returns `ERR` and errno is set.
+ * @return On success, `0`, on failure returns `ERR` and errno is set.
  */
 uint64_t mprotect(void* address, uint64_t length, prot_t prot);
 
@@ -248,7 +248,7 @@ typedef enum
  * @param op The futex operation to perform (e.g., `FUTEX_WAIT` or `FUTEX_WAKE`).
  * @param timeout An optional timeout for `FUTEX_WAIT`. If `CLOCKS_NEVER`, it waits forever.
  * @return On success, `0`, except if using the `FUTEX_WAKE` operation then it returns the number of woken
- * threads. On failure, returns `ERR` and errno is set.
+ * threads. On failure, `ERR` and errno is set.
  */
 uint64_t futex(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout);
 
@@ -268,7 +268,7 @@ clock_t uptime(void);
  *
  * @param timeout The duration in nanoseconds for which to sleep, if equal to `CLOCKS_NEVER` then it will sleep forever,
  * not sure why you would want to do that but you can.
- * @return On success, returns 0. On failure, returns `ERR` and errno is set.
+ * @return On success, `0`. On failure, `ERR` and errno is set.
  */
 uint64_t nanosleep(clock_t timeout);
 

@@ -12,17 +12,18 @@ static uint64_t builtin_help(uint64_t argc, const char** argv);
 
 static builtin_t builtins[] = {
     {
-    .name = "cd",
-    .callback = builtin_cd,
-    .description = "Change the current working directory.",
-    .usage = "cd [directory]"
-},
-{
-    .name = "help",
-    .callback = builtin_help,
-    .description = "Show this help message.",
-    .usage = "help"
-},};
+        .name = "cd",
+        .callback = builtin_cd,
+        .description = "Change the current working directory.",
+        .usage = "cd [directory]",
+    },
+    {
+        .name = "help",
+        .callback = builtin_help,
+        .description = "Show this help message.",
+        .usage = "help",
+    },
+};
 
 static uint64_t builtin_cd(uint64_t argc, const char** argv)
 {

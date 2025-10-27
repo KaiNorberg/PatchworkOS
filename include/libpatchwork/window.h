@@ -58,7 +58,7 @@ typedef enum window_flags
  * @param flags The window flags.
  * @param procedure The procedure for the window's client element.
  * @param private Private data to associate with the window's client element.
- * @return On success, the new window. On failure, returns `NULL` and sets `errno`.
+ * @return On success, the new window. On failure, returns `NULL` and `errno` is set.
  */
 window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surface_type_t type, window_flags_t flags,
     procedure_t procedure, void* private);
@@ -130,7 +130,7 @@ element_t* window_get_client_element(window_t* win);
  *
  * @param win The window.
  * @param rect The new screen rectangle for the window.
- * @return On success, `0`. On failure, returns `ERR` and sets `errno`.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t window_move(window_t* win, const rect_t* rect);
 
@@ -143,7 +143,7 @@ uint64_t window_move(window_t* win, const rect_t* rect);
  * @param flags The timer flags.
  * @param timeout The timer timeout in clock ticks, or `CLOCKS_NEVER` to disable the timer. Setting a new timer will
  * overide the previous timer if one is set.
- * @return On success, `0`. On failure, returns `ERR` and sets `errno`.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t window_set_timer(window_t* win, timer_flags_t flags, clock_t timeout);
 
@@ -165,7 +165,7 @@ void window_invalidate(window_t* win, const rect_t* rect);
  * This will send the invalidated rectangle to the DWM and clear the invalid rectangle.
  *
  * @param win The window.
- * @return On success, `0`. On failure, returns `ERR` and sets `errno`.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t window_invalidate_flush(window_t* win);
 
@@ -189,7 +189,7 @@ uint64_t window_dispatch(window_t* win, const event_t* event);
  * Causes the window to be moved to the front and to, for example, receive keyboard input.
  *
  * @param win The window.
- * @return On success, `0`. On failure, returns `ERR` and sets `errno`.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t window_set_focus(window_t* win);
 
@@ -202,7 +202,7 @@ uint64_t window_set_focus(window_t* win);
  *
  * @param win The window.
  * @param isVisible Whether the window should be visible.
- * @return On success, `0`. On failure, returns `ERR` and sets `errno`.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t window_set_visible(window_t* win, bool isVisible);
 

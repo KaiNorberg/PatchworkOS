@@ -129,15 +129,9 @@ bool thread_is_note_pending(thread_t* thread)
     return note_queue_length(&thread->notes) != 0;
 }
 
-uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length)
+uint64_t thread_send_note(thread_t* thread, const void* buffer, uint64_t count)
 {
-    note_flags_t flags = 0;
-    if (strncmp(message, "kill", length) == 0)
-    {
-        flags |= NOTE_CRITICAL;
-    }
-
-    if (note_queue_push(&thread->notes, message, length, flags) == ERR)
+    if (note_queue_write(&thread->notes, buffer, count) == ERR)
     {
         return ERR;
     }
@@ -145,7 +139,8 @@ uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length
     thread_state_t expected = THREAD_BLOCKED;
     if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
     {
-        wait_unblock_thread(thread, EOK);
+        LOG_DEBUG("notifying thread tid=%d pid=%d of pending note\n", thread->id, thread->process->id);
+        wait_unblock_thread(thread, EINTR);
     }
 
     return 0;

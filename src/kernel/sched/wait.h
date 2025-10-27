@@ -274,6 +274,8 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
  *
  * Unblocks the provided thread, removing it from all wait queues it is waiting on.
  *
+ * The thread must be in the `THREAD_UNBLOCKING` state when this function is called.
+ *
  * @param thread The thread to unblock.
  * @param err The errno value to set for the thread or `EOK` for no error.
  */
@@ -323,7 +325,7 @@ void wait_block_cancel(void);
  * - `ETIMEDOUT`: The wait timed out.
  * - `EINTR`: The wait was interrupted (probably by a note.)
  *
- * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t wait_block_commit(void);
 

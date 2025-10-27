@@ -33,7 +33,7 @@ typedef struct
  * @param argv Pointer to the argument vector to initialize.
  * @param src NULL-terminated array of strings to copy into the argument vector. If NULL, initializes an empty argument
  * vector.
- * @return On success, returns 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t argv_init(argv_t* argv, const char** src);
 

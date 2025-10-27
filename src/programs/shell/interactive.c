@@ -1,7 +1,7 @@
 #include "interactive.h"
 #include "ansi.h"
-#include "pipeline.h"
 #include "history.h"
+#include "pipeline.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -115,11 +115,10 @@ static uint64_t interactive_handle_ansi(interactive_state_t* state, ansi_result_
             state->pos--;
             printf("\033[D");
         }
-        printf("\033[K");
         strncpy(state->buffer, previous, MAX_PATH - 1);
         state->buffer[MAX_PATH - 1] = '\0';
         state->pos = strlen(state->buffer);
-        printf("%s", state->buffer);
+        printf("\033[K%s", state->buffer);
         fflush(stdout);
     }
     break;

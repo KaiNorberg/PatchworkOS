@@ -126,7 +126,7 @@ void interrupt_handler(interrupt_frame_t* frame)
         // There is a check when a system call occurs to make sure that the note will eventually be handled.
         if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
         {
-            note_dispatch(frame, self);
+            note_interrupt_handler(frame, self);
         }
         lapic_eoi();
     }

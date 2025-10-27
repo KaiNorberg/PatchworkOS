@@ -50,7 +50,7 @@
  * @param file The file the ctl command was sent to.
  * @param argc The number of arguments.
  * @param argv The arguments.
- * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 typedef uint64_t (*ctl_func_t)(file_t* file, uint64_t, const char**);
 
@@ -78,7 +78,7 @@ typedef ctl_t ctl_array_t[];
  * @param file The file the ctl command was sent to.
  * @param buffer The buffer containing the command and its arguments.
  * @param count The number of bytes in the buffer.
- * @return On success, the number of bytes processed (count). On failure, returns `ERR` and `errno` is set.
+ * @return On success, the number of bytes processed (count). On failure, `ERR` and `errno` is set.
  */
 uint64_t ctl_dispatch(ctl_array_t ctls, file_t* file, const void* buffer, uint64_t count);
 

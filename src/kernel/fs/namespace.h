@@ -51,7 +51,7 @@ typedef struct namespace
  * @param ns The namespace to initialize.
  * @param parent The parent namespace, can be `NULL`.
  * @param owner The process that owns this namespace.
- * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t namespace_init(namespace_t* ns, namespace_t* parent, process_t* owner);
 
@@ -71,7 +71,7 @@ void namespace_deinit(namespace_t* ns);
  * @param outRoot The output root path.
  * @param ns The namespace to use.
  * @param mountpoint The mountpoint path to traverse.
- * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t namespace_traverse_mount(namespace_t* ns, const path_t* mountpoint, path_t* outRoot);
 
@@ -107,7 +107,7 @@ mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* mountpoint);
  *
  * @param ns The namespace, can be `NULL` to get the kernel process's namespace root.
  * @param outPath The output root path.
- * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t namespace_get_root_path(namespace_t* ns, path_t* outPath);
 

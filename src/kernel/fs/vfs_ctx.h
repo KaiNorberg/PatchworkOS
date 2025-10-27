@@ -59,7 +59,7 @@ void vfs_ctx_deinit(vfs_ctx_t* ctx);
  *
  * @param ctx The context to get the file from.
  * @param fd The file descriptor to get.
- * @return On success, a new reference to the file. On failure, returns `NULL` and sets `errno`.
+ * @return On success, a new reference to the file. On failure, returns `NULL` and `errno` is set.
  */
 file_t* vfs_ctx_get_file(vfs_ctx_t* ctx, fd_t fd);
 
@@ -72,7 +72,7 @@ file_t* vfs_ctx_get_file(vfs_ctx_t* ctx, fd_t fd);
  *
  * @param ctx The context to get the current working directory of.
  * @param outCwd The output path to store the current working directory in.
- * @return On success, `0`. On failure, returns `ERR` and sets `errno`.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t vfs_ctx_get_cwd(vfs_ctx_t* ctx, path_t* outCwd);
 
@@ -83,7 +83,7 @@ uint64_t vfs_ctx_get_cwd(vfs_ctx_t* ctx, path_t* outCwd);
  *
  * @param ctx The context to set the current working directory of.
  * @param cwd The new current working directory.
- * @return On success, `0`. On failure, returns `ERR` and sets `errno`.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t vfs_ctx_set_cwd(vfs_ctx_t* ctx, const path_t* cwd);
 
@@ -94,7 +94,7 @@ uint64_t vfs_ctx_set_cwd(vfs_ctx_t* ctx, const path_t* cwd);
  *
  * @param ctx The context to open the file descriptor in.
  * @param file The file to open.
- * @return On success, the new file descriptor. On failure, returns `ERR` and sets `errno`.
+ * @return On success, the new file descriptor. On failure, `ERR` and `errno` is set.
  */
 fd_t vfs_ctx_alloc_fd(vfs_ctx_t* ctx, file_t* file);
 
@@ -106,7 +106,7 @@ fd_t vfs_ctx_alloc_fd(vfs_ctx_t* ctx, file_t* file);
  * @param ctx The context to open the file descriptor in.
  * @param fd The file descriptor to set.
  * @param file The file to open.
- * @return On success, the file descriptor. On failure, returns `ERR` and sets `errno`.
+ * @return On success, the file descriptor. On failure, `ERR` and `errno` is set.
  */
 fd_t vfs_ctx_set_fd(vfs_ctx_t* ctx, fd_t fd, file_t* file);
 
@@ -117,7 +117,7 @@ fd_t vfs_ctx_set_fd(vfs_ctx_t* ctx, fd_t fd, file_t* file);
  *
  * @param ctx The context to close the file descriptor in.
  * @param fd The file descriptor to close.
- * @return On success, `0`. On failure, returns `ERR` and sets `errno`.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t vfs_ctx_free_fd(vfs_ctx_t* ctx, fd_t fd);
 
@@ -128,7 +128,7 @@ uint64_t vfs_ctx_free_fd(vfs_ctx_t* ctx, fd_t fd);
  *
  * @param ctx The context to duplicate the file descriptor in.
  * @param oldFd The file descriptor to duplicate.
- * @return On success, the new file descriptor. On failure, returns `ERR` and sets `errno`.
+ * @return On success, the new file descriptor. On failure, `ERR` and `errno` is set.
  */
 fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd);
 
@@ -140,7 +140,7 @@ fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd);
  * @param ctx The context to duplicate the file descriptor in.
  * @param oldFd The file descriptor to duplicate.
  * @param newFd The file descriptor to duplicate to.
- * @return On success, the new file descriptor. On failure, returns `ERR` and sets `errno`.
+ * @return On success, the new file descriptor. On failure, `ERR` and `errno` is set.
  */
 fd_t vfs_ctx_dup2(vfs_ctx_t* ctx, fd_t oldFd, fd_t newFd);
 

@@ -329,8 +329,7 @@ static uint64_t pipeline_execute_builtin(cmd_t* cmd)
         return ERR;
     }
 
-    if (dup2(cmd->stdin, STDIN_FILENO) == ERR ||
-        dup2(cmd->stdout, STDOUT_FILENO) == ERR ||
+    if (dup2(cmd->stdin, STDIN_FILENO) == ERR || dup2(cmd->stdout, STDOUT_FILENO) == ERR ||
         dup2(cmd->stderr, STDERR_FILENO) == ERR)
     {
         close(originalStdin);
@@ -340,8 +339,7 @@ static uint64_t pipeline_execute_builtin(cmd_t* cmd)
     }
 
     uint64_t result = builtin_execute(cmd->argc, cmd->argv);
-    if (dup2(originalStdin, STDIN_FILENO) == ERR ||
-        dup2(originalStdout, STDOUT_FILENO) == ERR ||
+    if (dup2(originalStdin, STDIN_FILENO) == ERR || dup2(originalStdout, STDOUT_FILENO) == ERR ||
         dup2(originalStderr, STDERR_FILENO) == ERR)
     {
         result = ERR;
@@ -487,7 +485,7 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
 
         pids[fdCount - 1] = pid;
 
-        fds[fdCount].fd = openf("/proc/%d/status", pid);
+        fds[fdCount].fd = openf("/proc/%d/wait", pid);
         if (fds[fdCount].fd == ERR)
         {
             result = ERR;

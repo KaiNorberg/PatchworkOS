@@ -30,9 +30,6 @@ static bool kernelProcessInitalized = false;
 
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 
-// Should be acquired whenever a process tree is being read or modified.
-static rwlock_t treeLock = RWLOCK_CREATE;
-
 static mount_t* procMount = NULL;
 static dentry_t* selfDir = NULL;
 
@@ -126,7 +123,7 @@ static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count, uin
     PATH_DEFER(&cwd);
 
     pathname_t cwdName;
-    if (path_to_name(&process->vfsCtx.cwd, &cwdName) == ERR)
+    if (path_to_name(&cwd, &cwdName) == ERR)
     {
         return ERR;
     }
@@ -192,7 +189,7 @@ static file_ops_t noteOps = {
     .write = process_note_write,
 };
 
-static uint64_t process_status_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t process_wait_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     process_t* process = process_file_get_process(file);
     if (process == NULL)
@@ -208,7 +205,7 @@ static uint64_t process_status_read(file_t* file, void* buffer, uint64_t count, 
     return BUFFER_READ(buffer, count, offset, status, strlen(status));
 }
 
-static wait_queue_t* process_status_poll(file_t* file, poll_events_t* revents)
+static wait_queue_t* process_wait_poll(file_t* file, poll_events_t* revents)
 {
     process_t* process = process_file_get_process(file);
     if (process == NULL)
@@ -225,9 +222,9 @@ static wait_queue_t* process_status_poll(file_t* file, poll_events_t* revents)
     return &process->dyingWaitQueue;
 }
 
-static file_ops_t statusOps = {
-    .read = process_status_read,
-    .poll = process_status_poll,
+static file_ops_t waitOps = {
+    .read = process_wait_read,
+    .poll = process_wait_poll,
 };
 
 static void process_inode_cleanup(inode_t* inode)
@@ -272,8 +269,8 @@ static uint64_t process_dir_init(process_t* process, const char* name)
         goto error;
     }
 
-    process->statusFile = sysfs_file_new(process->dir, "status", &inodeOps, &statusOps, REF(process));
-    if (process->statusFile == NULL)
+    process->waitFile = sysfs_file_new(process->dir, "wait", &inodeOps, &waitOps, REF(process));
+    if (process->waitFile == NULL)
     {
         goto error;
     }
@@ -289,7 +286,7 @@ static uint64_t process_dir_init(process_t* process, const char* name)
     return 0;
 
 error:
-    DEREF(process->statusFile);
+    DEREF(process->waitFile);
     DEREF(process->noteFile);
     DEREF(process->cmdlineFile);
     DEREF(process->cwdFile);
@@ -303,27 +300,25 @@ static void process_free(process_t* process)
     LOG_DEBUG("freeing process pid=%d\n", process->id);
     assert(list_is_empty(&process->threads.list));
 
-    if (atomic_load(&process->isDying) == false)
+    if (!atomic_load(&process->isDying))
     {
         process_kill(process, EXIT_SUCCESS);
     }
 
-    process_t* parent = process->parent;
-
-    rwlock_write_acquire(&treeLock);
-    list_remove(&process->parent->children, &process->entry);
-    process->parent = NULL;
-
-    process_t* child;
-    process_t* temp;
-    LIST_FOR_EACH_SAFE(child, temp, &process->children, entry)
+    if (process->parent != NULL)
     {
-        list_remove(&process->children, &child->entry);
-        child->parent = NULL;
+        RWLOCK_WRITE_SCOPE(&process->parent->childrenLock);
+        list_remove(&process->parent->children, &process->siblingEntry);
+        DEREF(process->parent);
+        process->parent = NULL;
     }
-    rwlock_write_release(&treeLock);
 
-    DEREF(parent);
+    rwlock_write_acquire(&process->childrenLock);
+    if (!list_is_empty(&process->children))
+    {
+        panic(NULL, "Freeing process pid=%d with children", process->id);
+    }
+    rwlock_write_release(&process->childrenLock);
 
     space_deinit(&process->space);
     argv_deinit(&process->argv);
@@ -390,12 +385,13 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     list_init(&process->threads.list);
     lock_init(&process->threads.lock);
 
-    list_entry_init(&process->entry);
+    rwlock_init(&process->childrenLock);
+    list_entry_init(&process->siblingEntry);
     list_init(&process->children);
     if (parent != NULL)
     {
-        RWLOCK_WRITE_SCOPE(&treeLock);
-        list_push(&parent->children, &process->entry);
+        RWLOCK_WRITE_SCOPE(&parent->childrenLock);
+        list_push(&parent->children, &process->siblingEntry);
         process->parent = REF(parent);
     }
     else
@@ -408,7 +404,7 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     process->cwdFile = NULL;
     process->cmdlineFile = NULL;
     process->noteFile = NULL;
-    process->statusFile = NULL;
+    process->waitFile = NULL;
     process->self = NULL;
 
     assert(process == &kernelProcess || process_is_child(process, kernelProcess.id));
@@ -476,29 +472,47 @@ void process_kill(process_t* process, uint64_t status)
     DEREF(process->cwdFile);
     DEREF(process->cmdlineFile);
     DEREF(process->noteFile);
-    DEREF(process->statusFile);
+    DEREF(process->waitFile);
     DEREF(process->self);
     wait_unblock(&process->dyingWaitQueue, WAIT_ALL, EOK);
 }
 
 bool process_is_child(process_t* process, pid_t parentId)
 {
-    RWLOCK_READ_SCOPE(&treeLock);
-
-    process_t* parent = process->parent;
-    while (1)
+    process_t* current = REF(process);
+    bool found = false;
+    while (current != NULL)
     {
-        if (parent == NULL)
+        process_t* parent = NULL;
+
+        if (current->parent == NULL)
         {
-            return false;
+            break;
         }
 
-        if (parent->id == parentId)
+        RWLOCK_READ_SCOPE(&current->parent->childrenLock);
+        if (current->parent == NULL)
         {
-            return true;
+            break;
         }
-        parent = parent->parent;
+
+        if (current->parent->id == parentId)
+        {
+            found = true;
+            break;
+        }
+
+        parent = REF(current->parent);
+        DEREF(current);
+        current = parent;
     }
+
+    if (current != NULL)
+    {
+        DEREF(current);
+    }
+
+    return found;
 }
 
 void process_procfs_init(void)

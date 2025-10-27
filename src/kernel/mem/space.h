@@ -112,7 +112,7 @@ typedef struct space
  * @param startAddress The starting address for allocations in this address space.
  * @param endAddress The ending address for allocations in this address space.
  * @param flags Flags to control the initialization behavior.
- * @return On success, returns 0. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress, space_flags_t flags);
 
@@ -235,7 +235,7 @@ typedef struct
  * @param physAddr The physical address to map from. Can be `NULL`.
  * @param length The length of the virtual memory region to modify, in bytes.
  * @param flags The page table flags for the mapping.
- * @return On success, returns 0. On failure, returns `ERR`.
+ * @return On success, `0`. On failure, `ERR`.
  */
 uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, uint64_t length,
     pml_flags_t flags);

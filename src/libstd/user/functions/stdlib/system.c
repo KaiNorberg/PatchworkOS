@@ -18,19 +18,19 @@ int system(const char* command)
         return -1;
     }
 
-    fd_t status = openf("/proc/%d/status", shell);
-    if (status == ERR)
+    fd_t wait = openf("/proc/%d/wait", shell);
+    if (wait == ERR)
     {
         return -1;
     }
 
     char buf[MAX_PATH];
-    if (read(status, buf, MAX_PATH) == ERR)
+    if (read(wait, buf, MAX_PATH) == ERR)
     {
-        close(status);
+        close(wait);
         return -1;
     }
 
-    close(status);
+    close(wait);
     return atoi(buf);
 }

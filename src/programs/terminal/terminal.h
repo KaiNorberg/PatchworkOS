@@ -3,10 +3,10 @@
 #include "ansi.h"
 
 #include <libpatchwork/patchwork.h>
+#include <stdint.h>
 #include <sys/io.h>
 #include <sys/kbd.h>
 #include <threads.h>
-#include <stdint.h>
 
 /**
  * @brief Terminal Program.

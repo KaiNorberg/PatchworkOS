@@ -17,6 +17,19 @@
  * @defgroup kernel_proc Processes
  * @ingroup kernel
  *
+ * Processes store the shared resources for threads of execution, for example the address space and open files.
+ *
+ * ## Process Filesystem
+ *
+ * Each process has a directory located at `/proc/[pid]`, which contains various files that can be used to interact with
+ * the process. Additionally, there is a `/proc/self` bound mount point that points to the `/proc/[pid]` directory of
+ * the current process. These files include:
+ * - `prio`: A readable and writable file that contains the scheduling priority of the process.
+ * - `cwd`: A readable file that contains the current working directory of the process.
+ * - `cmdline`: A readable file that contains the command line arguments of the process (argv).
+ * - `note`: A writable file that can be used to send notes (see `note_queue_t`) to the process.
+ * - `wait`: A readable and pollable file that can be used to wait for the process to exit and retrieve its exit status.
+ *
  * @{
  */
 
@@ -50,7 +63,8 @@ typedef struct process
     wait_queue_t dyingWaitQueue;
     atomic_bool isDying;
     process_threads_t threads;
-    list_entry_t entry;
+    rwlock_t childrenLock;
+    list_entry_t siblingEntry;
     list_t children;
     struct process* parent;
     dentry_t* dir;         ///< The `/proc/[pid]` directory for this process.
@@ -58,8 +72,8 @@ typedef struct process
     dentry_t* cwdFile;     ///< The `/proc/[pid]/cwd` file.
     dentry_t* cmdlineFile; ///< The `/proc/[pid]/cmdline` file.
     dentry_t* noteFile;    ///< The `/proc/[pid]/note` file.
-    dentry_t* statusFile;  ///< The `/proc/[pid]/status` file.
-    mount_t* self;       ///< The `/proc/[pid]/self` mount point.
+    dentry_t* waitFile;    ///< The `/proc/[pid]/wait` file.
+    mount_t* self;         ///< The `/proc/[pid]/self` mount point.
 } process_t;
 
 /**

@@ -150,11 +150,11 @@ bool thread_is_note_pending(thread_t* thread);
  * deciding how critical the sent note is and unblocking the thread to notify it of the received note.
  *
  * @param thread The destination thread.
- * @param message The string of text to send to the thread, does not need to be NULL-terminated.
- * @param length The length of the string.
- * @return On success, returns 0. On failure, returns `ERR` and `errno` is set.
+ * @param buffer The buffer to write.
+ * @param count The number of bytes to write.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length);
+uint64_t thread_send_note(thread_t* thread, const void* buffer, uint64_t count);
 
 /**
  * @brief Retrieves the boot thread.

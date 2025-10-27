@@ -235,7 +235,7 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
  * @param start The path to start at if the pathname is relative.
  * @param flags Flags for the path walk.
  * @param ns The namespace to access mountpoints.
- * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* start, walk_flags_t flags,
     namespace_t* ns);
@@ -249,7 +249,7 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
  * @param outLastName The output last component name.
  * @param flags Flags for the path walk.
  * @param ns The namespace to access mountpoints.
- * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName,
     walk_flags_t flags, namespace_t* ns);
@@ -261,7 +261,7 @@ uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const pat
  *
  * @param path The path to convert.
  * @param pathname The output pathname.
- * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t path_to_name(const path_t* path, pathname_t* pathname);
 

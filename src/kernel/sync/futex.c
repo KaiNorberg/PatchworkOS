@@ -1,6 +1,7 @@
 #include "futex.h"
 #include "cpu/syscalls.h"
 #include "lock.h"
+#include "log/log.h"
 #include "proc/process.h"
 #include "sched/sched.h"
 #include "sched/thread.h"
@@ -124,6 +125,7 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
             // immediately.
             if (wait_block_commit() == ERR)
             {
+                LOG_DEBUG("futex wait interrupted tid=%d\n", thread->id);
                 return ERR;
             }
         }

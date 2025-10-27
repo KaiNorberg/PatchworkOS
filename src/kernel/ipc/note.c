@@ -6,23 +6,34 @@
 
 #include <assert.h>
 
+static bool note_queue_compare_buffers(const void* a, uint64_t aLength, const void* b, uint64_t bLength)
+{
+    if (aLength != bLength)
+    {
+        return false;
+    }
+
+    return memcmp(a, b, aLength) == 0;
+}
+
 void note_queue_init(note_queue_t* queue)
 {
     queue->readIndex = 0;
     queue->writeIndex = 0;
     queue->length = 0;
+    queue->flags = NOTE_QUEUE_NONE;
     lock_init(&queue->lock);
 }
 
 uint64_t note_queue_length(note_queue_t* queue)
 {
     LOCK_SCOPE(&queue->lock);
-    return queue->length;
+    return queue->length + ((queue->flags & NOTE_QUEUE_RECIEVED_KILL) ? 1 : 0);
 }
 
-uint64_t note_queue_push(note_queue_t* queue, const void* message, uint64_t length, note_flags_t flags)
+uint64_t note_queue_write(note_queue_t* queue, const void* buffer, uint64_t count)
 {
-    if (length >= MAX_PATH - 1 || message == NULL)
+    if (queue == NULL || buffer == NULL || count == 0 || count >= NOTE_MAX_BUFFER)
     {
         errno = EINVAL;
         return ERR;
@@ -32,25 +43,17 @@ uint64_t note_queue_push(note_queue_t* queue, const void* message, uint64_t leng
 
     LOCK_SCOPE(&queue->lock);
 
+    if (note_queue_compare_buffers(buffer, count, "kill", 4))
+    {
+        queue->flags |= NOTE_QUEUE_RECIEVED_KILL;
+        return 0;
+    }
+
     note_t* note = NULL;
     if (queue->length == CONFIG_MAX_NOTES)
     {
-        if (!(flags & NOTE_CRITICAL))
-        {
-            // TODO: Implement blocking
-            errno = EWOULDBLOCK;
-            return ERR;
-        }
-
-        // Overwrite non critical note.
-        for (uint64_t i = 0; i < CONFIG_MAX_NOTES; i++)
-        {
-            if (!(queue->notes[i].flags & NOTE_CRITICAL))
-            {
-                note = &queue->notes[queue->writeIndex];
-                break;
-            }
-        }
+        note = &queue->notes[queue->readIndex];
+        queue->readIndex = (queue->readIndex + 1) % CONFIG_MAX_NOTES;
     }
     else
     {
@@ -61,49 +64,42 @@ uint64_t note_queue_push(note_queue_t* queue, const void* message, uint64_t leng
 
     assert(note != NULL);
 
-    memcpy(note->message, message, length);
-    note->message[length] = '\0';
+    memcpy(note->buffer, buffer, count);
+    note->buffer[count] = '\0';
+    note->length = count;
     note->sender = sender->id;
-    note->flags = flags;
     return 0;
 }
 
-static bool note_queue_pop(note_queue_t* queue, note_t* note)
+void note_interrupt_handler(interrupt_frame_t* frame, cpu_t* self)
 {
-    LOCK_SCOPE(&queue->lock);
-
-    if (queue->length == 0)
-    {
-        return false;
-    }
-
-    (*note) = queue->notes[queue->readIndex];
-    queue->readIndex = (queue->readIndex + 1) % CONFIG_MAX_NOTES;
-    queue->length--;
-    return true;
-}
-
-void note_dispatch(interrupt_frame_t* frame, cpu_t* self)
-{
-    // TODO: Implement more notes and implement user space "software interrupts" to receive notes.
-
     thread_t* thread = sched_thread_unsafe();
+    process_t* process = thread->process;
     note_queue_t* queue = &thread->notes;
 
-    note_t note;
-    while (note_queue_pop(queue, &note))
-    {
-        if (strcmp(note.message, "kill") == 0)
-        {
-            LOG_DEBUG("kill note received tid=%d pid=%d\n", thread->id, thread->process->id);
+    lock_acquire(&queue->lock);
 
-            sched_invoke(frame, self, SCHED_DIE);
+    if (queue->flags & NOTE_QUEUE_RECIEVED_KILL)
+    {
+        lock_release(&queue->lock);
+        process_kill(process, EXIT_FAILURE);
+        sched_invoke(frame, self, SCHED_DIE);
+        return;
+    }
+
+    while (true)
+    {
+        if (queue->length == 0)
+        {
+            lock_release(&queue->lock);
             return;
         }
-        else
-        {
-            LOG_WARN("unknown note type '%s' tid=%d pid=%d\n", note.message, thread->id, thread->process->id);
-            // TODO: Unknown note, send to userspace
-        }
+
+        note_t* note = &queue->notes[queue->readIndex];
+        queue->readIndex = (queue->readIndex + 1) % CONFIG_MAX_NOTES;
+        queue->length--;
+
+        LOG_WARN("unknown note '%.*s' received in thread tid=%d\n", note->length, note->buffer, thread->id);
+        // TODO: Software interrupts.
     }
 }

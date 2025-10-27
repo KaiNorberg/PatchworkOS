@@ -102,8 +102,7 @@ static void terminal_scroll(terminal_t* term, element_t* elem, drawable_t* draw)
     for (uint64_t col = 0; col < TERMINAL_COLUMNS; col++)
     {
         term->screen[term->firstRow][col] =
-            terminal_char_create(' ', theme->ansi.bright[7], theme->ansi.normal[0],
-                term->firstRow, col);
+            terminal_char_create(' ', theme->ansi.bright[7], theme->ansi.normal[0], term->firstRow, col);
     }
     term->firstRow = (term->firstRow + 1) % TERMINAL_ROWS;
 
@@ -113,22 +112,14 @@ static void terminal_scroll(terminal_t* term, element_t* elem, drawable_t* draw)
 
     uint64_t rowHeight = font_height(term->font);
 
-    rect_t destRect = RECT_INIT_DIM(
-        contentRect.left,
-        contentRect.top,
-        RECT_WIDTH(&contentRect),
-        RECT_HEIGHT(&contentRect) - rowHeight
-    );
-    point_t srcPoint = { contentRect.left, contentRect.top + rowHeight };
+    rect_t destRect = RECT_INIT_DIM(contentRect.left, contentRect.top, RECT_WIDTH(&contentRect),
+        RECT_HEIGHT(&contentRect) - rowHeight);
+    point_t srcPoint = {contentRect.left, contentRect.top + rowHeight};
 
     draw_transfer(draw, draw, &destRect, &srcPoint);
 
-    rect_t clearRect = RECT_INIT_DIM(
-        contentRect.left,
-        contentRect.bottom - rowHeight,
-        RECT_WIDTH(&contentRect),
-        rowHeight
-    );
+    rect_t clearRect =
+        RECT_INIT_DIM(contentRect.left, contentRect.bottom - rowHeight, RECT_WIDTH(&contentRect), rowHeight);
     draw_rect(draw, &clearRect, term->background);
 
     term->cursor = terminal_get_char(term, TERMINAL_ROWS - 1, 0);
@@ -654,8 +645,7 @@ void terminal_loop(window_t* win)
             uint64_t readCount = read(terminal->stdout[PIPE_READ], ueventData.buffer, TERMINAL_MAX_INPUT);
             ueventData.length = MIN(readCount, TERMINAL_MAX_INPUT);
 
-            display_push(disp, window_get_id(win), UEVENT_TERMINAL_DATA, &ueventData,
-                sizeof(uevent_terminal_data_t));
+            display_push(disp, window_get_id(win), UEVENT_TERMINAL_DATA, &ueventData, sizeof(uevent_terminal_data_t));
         }
 
         event_t event = {0};

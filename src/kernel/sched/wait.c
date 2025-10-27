@@ -138,13 +138,14 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
         atomic_store(&thread->state, THREAD_RUNNING);
         return false;
     }
-    else if (thread_is_note_pending(thread))
+
+    if (thread_is_note_pending(thread))
     {
         thread_state_t expected = THREAD_BLOCKED;
         if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
         {
             list_remove(&self->wait.blockedThreads, &thread->entry);
-            wait_remove_wait_entries(thread, EOK);
+            wait_remove_wait_entries(thread, EINTR);
             atomic_store(&thread->state, THREAD_RUNNING);
             return false;
         }
@@ -156,15 +157,14 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
 
 void wait_unblock_thread(thread_t* thread, errno_t err)
 {
-    if (atomic_exchange(&thread->state, THREAD_UNBLOCKING) == THREAD_BLOCKED)
-    {
-        lock_acquire(&thread->wait.cpu->lock);
-        list_remove(&thread->wait.cpu->blockedThreads, &thread->entry);
-        wait_remove_wait_entries(thread, err);
-        lock_release(&thread->wait.cpu->lock);
+    assert(atomic_load(&thread->state) == THREAD_UNBLOCKING);
 
-        sched_push(thread, thread->wait.cpu->cpu);
-    }
+    lock_acquire(&thread->wait.cpu->lock);
+    list_remove(&thread->wait.cpu->blockedThreads, &thread->entry);
+    wait_remove_wait_entries(thread, err);
+    lock_release(&thread->wait.cpu->lock);
+
+    sched_push(thread, thread->wait.cpu->cpu);
 }
 
 uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount, errno_t err)

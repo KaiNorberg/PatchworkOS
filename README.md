@@ -181,8 +181,8 @@ Reads from stdin or provided files and outputs to stdout.
 # Read the contents of file1.txt and file2.txt.
 cat file1.txt file2.txt
 
-# Read process status (blocks until process exits)
-cat /proc/1234/status
+# Read process exit status (blocks until process exits)
+cat /proc/1234/wait
 
 # Copy contents of file.txt to dest.txt and create it.
 cat < file.txt > dest.txt:create
