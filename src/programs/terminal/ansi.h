@@ -168,12 +168,6 @@ static inline void ansi_sending_init(ansi_sending_t* ansi)
  */
 static inline bool ansi_sending_parse(ansi_sending_t* ansi, char chr)
 {
-    if (ansi->length >= ANSI_MAX_LENGTH - 1)
-    {
-        ansi_sending_init(ansi);
-        return false;
-    }
-
     ansi->buffer[ansi->length++] = chr;
     ansi->buffer[ansi->length] = '\0';
 
@@ -205,6 +199,12 @@ static inline bool ansi_sending_parse(ansi_sending_t* ansi, char chr)
             ansi_sending_init(ansi);
             return false;
         }
+    }
+
+    if (ansi->length >= ANSI_MAX_LENGTH - 1)
+    {
+        ansi_sending_init(ansi);
+        return false;
     }
 
     if (isdigit(ansi->buffer[ansi->length - 1]))

@@ -126,6 +126,8 @@ static inline void lock_acquire(lock_t* lock)
         }
 #endif
     }
+
+    atomic_thread_fence(memory_order_seq_cst);
 }
 
 /**

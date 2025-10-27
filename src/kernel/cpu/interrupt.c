@@ -33,10 +33,14 @@ void interrupt_disable(void)
         ctx->oldRflags = rflags;
     }
     ctx->disableDepth++;
+
+    atomic_signal_fence(memory_order_seq_cst);
 }
 
 void interrupt_enable(void)
 {
+    atomic_signal_fence(memory_order_seq_cst); // Overkill?
+
     uint64_t rflags = rflags_read();
     assert(!(rflags & RFLAGS_INTERRUPT_ENABLE));
 
@@ -46,7 +50,7 @@ void interrupt_enable(void)
 
     if (ctx->disableDepth == 0 && (ctx->oldRflags & RFLAGS_INTERRUPT_ENABLE))
     {
-        asm volatile("sti");
+        asm volatile("sti" ::: "memory");
     }
 }
 

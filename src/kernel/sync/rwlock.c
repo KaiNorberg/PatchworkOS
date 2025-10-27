@@ -50,6 +50,8 @@ void rwlock_read_acquire(rwlock_t* lock)
     }
 
     atomic_fetch_add(&lock->activeReaders, 1);
+
+    atomic_thread_fence(memory_order_seq_cst);
 }
 
 void rwlock_read_release(rwlock_t* lock)
@@ -107,6 +109,8 @@ void rwlock_write_acquire(rwlock_t* lock)
         expected = false;
         asm volatile("pause");
     }
+
+    atomic_thread_fence(memory_order_seq_cst);
 }
 
 void rwlock_write_release(rwlock_t* lock)

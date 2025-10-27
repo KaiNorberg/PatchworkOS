@@ -166,8 +166,8 @@ static void terminal_put(terminal_t* term, element_t* elem, drawable_t* draw, ch
         backspaceChar->background = term->background;
         backspaceChar->flags = term->flags;
         terminal_char_draw(term, elem, draw, backspaceChar);
-        break;
     }
+    break;
     case '\t':
     {
         uint16_t spacesToNextTabStop = 4 - (term->cursor->col % 4);
@@ -226,7 +226,7 @@ static void ternminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t
     if (ansi->ascii)
     {
         terminal_put(term, elem, draw, ansi->command);
-        goto cursor_update;
+        return;
     }
 
     switch (ansi->command)
@@ -412,14 +412,24 @@ static void ternminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t
     }
     break;
     default:
+        terminal_put(term, elem, draw, '\033');
+        terminal_put(term, elem, draw, '[');
+        for (uint64_t i = 0; i < ansi->paramCount; i++)
+        {
+            if (i > 0)
+            {
+                terminal_put(term, elem, draw, ';');
+            }
+            char paramStr[MAX_NAME];
+            int paramLen = snprintf(paramStr, sizeof(paramStr), "%d", ansi->parameters[i]);
+            for (int j = 0; j < paramLen; j++)
+            {
+                terminal_put(term, elem, draw, paramStr[j]);
+            }
+        }
         terminal_put(term, elem, draw, ansi->command);
         break;
     }
-
-cursor_update:
-    term->isCursorVisible = true;
-    terminal_cursor_update(term, elem, draw);
-    window_set_timer(term->win, TIMER_NONE, TERMINAL_BLINK_INTERVAL);
 }
 
 static void terminal_handle_output(terminal_t* term, element_t* elem, drawable_t* draw, const char* buffer,
@@ -432,6 +442,10 @@ static void terminal_handle_output(terminal_t* term, element_t* elem, drawable_t
             ternminal_execute_ansi(term, elem, draw, &term->ansi);
         }
     }
+
+    term->isCursorVisible = true;
+    terminal_cursor_update(term, elem, draw);
+    window_set_timer(term->win, TIMER_NONE, TERMINAL_BLINK_INTERVAL);
 }
 
 static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t* event)

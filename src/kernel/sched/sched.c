@@ -484,44 +484,45 @@ void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags)
 
     lock_acquire(&ctx->lock);
 
-    if (ctx->runThread == NULL)
+    thread_t* volatile runThread = ctx->runThread; // Prevent the compiler from being annoying.
+    if (runThread == NULL)
     {
         lock_release(&ctx->lock);
-        panic(NULL, "ctx->runThread is NULL");
+        panic(NULL, "runThread is NULL");
     }
 
     clock_t uptime = timer_uptime();
-    sched_update_recent_idle_time(ctx->runThread, false, uptime);
+    sched_update_recent_idle_time(runThread, false, uptime);
 
-    thread_t* threadToFree = NULL;
+    thread_t* volatile threadToFree = NULL;
     if (flags & SCHED_DIE)
     {
-        assert(atomic_load(&ctx->runThread->state) == THREAD_RUNNING);
+        assert(atomic_load(&runThread->state) == THREAD_RUNNING);
 
-        threadToFree = ctx->runThread;
-        ctx->runThread = NULL;
+        threadToFree = runThread;
+        runThread = NULL;
         LOG_DEBUG("dying tid=%d pid=%d\n", threadToFree->id, threadToFree->process->id);
     }
     else
     {
-        thread_state_t state = atomic_load(&ctx->runThread->state);
+        thread_state_t state = atomic_load(&runThread->state);
         switch (state)
         {
         case THREAD_PRE_BLOCK:
         case THREAD_UNBLOCKING:
         {
-            assert(ctx->runThread != ctx->idleThread);
+            assert(runThread != ctx->idleThread);
 
-            thread_save(ctx->runThread, frame);
+            thread_save(runThread, frame);
 
-            if (wait_block_finalize(frame, self, ctx->runThread)) // Block finalized
+            if (wait_block_finalize(frame, self, runThread)) // Block finalized
             {
-                thread_save(ctx->runThread, frame);
-                ctx->runThread = NULL; // Force a new thread to be loaded
+                thread_save(runThread, frame);
+                runThread = NULL; // Force a new thread to be loaded
             }
             else // Early unblock
             {
-                atomic_store(&ctx->runThread->state, THREAD_RUNNING);
+                atomic_store(&runThread->state, THREAD_RUNNING);
             }
         }
         break;
@@ -532,28 +533,28 @@ void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags)
         break;
         default:
         {
-            panic(NULL, "Invalid thread state %d (pid=%d tid=%d)", state, ctx->runThread->process->id,
-                ctx->runThread->id);
+            panic(NULL, "Invalid thread state %d (pid=%d tid=%d)", state, runThread->process->id,
+                runThread->id);
         }
         }
     }
 
     priority_t minPriority;
-    if (ctx->runThread == NULL)
+    if (runThread == NULL)
     {
         minPriority = PRIORITY_MIN;
     }
-    else if (ctx->runThread == ctx->idleThread)
+    else if (runThread == ctx->idleThread)
     {
         minPriority = PRIORITY_MIN;
     }
-    else if (ctx->runThread->sched.deadline < uptime)
+    else if (runThread->sched.deadline < uptime)
     {
         minPriority = PRIORITY_MIN;
     }
     else
     {
-        minPriority = ctx->runThread->sched.actualPriority;
+        minPriority = runThread->sched.actualPriority;
     }
 
     if (ctx->active->length == 0)
@@ -566,27 +567,27 @@ void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags)
     thread_t* next = sched_queues_pop(ctx->active, minPriority);
     if (next == NULL)
     {
-        if (ctx->runThread == NULL)
+        if (runThread == NULL)
         {
             thread_state_t oldState = atomic_exchange(&ctx->idleThread->state, THREAD_RUNNING);
             assert(oldState == THREAD_READY);
             thread_load(ctx->idleThread, frame);
-            ctx->runThread = ctx->idleThread;
+            runThread = ctx->idleThread;
         }
     }
     else
     {
-        if (ctx->runThread != NULL)
+        if (runThread != NULL)
         {
-            thread_state_t oldState = atomic_exchange(&ctx->runThread->state, THREAD_READY);
+            thread_state_t oldState = atomic_exchange(&runThread->state, THREAD_READY);
             assert(oldState == THREAD_RUNNING);
-            thread_save(ctx->runThread, frame);
+            thread_save(runThread, frame);
 
-            if (ctx->runThread != ctx->idleThread)
+            if (runThread != ctx->idleThread)
             {
-                sched_compute_time_slice(ctx->runThread, NULL);
-                sched_compute_actual_priority(ctx->runThread);
-                sched_queues_push(ctx->expired, ctx->runThread);
+                sched_compute_time_slice(runThread, NULL);
+                sched_compute_actual_priority(runThread);
+                sched_queues_push(ctx->expired, runThread);
             }
         }
 
@@ -594,12 +595,12 @@ void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags)
         thread_state_t oldState = atomic_exchange(&next->state, THREAD_RUNNING);
         assert(oldState == THREAD_READY);
         thread_load(next, frame);
-        ctx->runThread = next;
+        runThread = next;
     }
 
-    if (ctx->runThread != ctx->idleThread && ctx->runThread->sched.deadline > uptime)
+    if (runThread != ctx->idleThread && runThread->sched.deadline > uptime)
     {
-        timer_one_shot(self, uptime, ctx->runThread->sched.deadline - uptime);
+        timer_one_shot(self, uptime, runThread->sched.deadline - uptime);
     }
 
     if (threadToFree != NULL)
@@ -607,5 +608,6 @@ void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags)
         thread_free(threadToFree);
     }
 
+    ctx->runThread = runThread;
     lock_release(&ctx->lock);
 }
