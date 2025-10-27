@@ -285,6 +285,61 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
     return 0;
 }
 
+uint64_t display_poll(display_t* disp, pollfd_t* fds, uint64_t nfds, clock_t timeout)
+{
+    if (disp == NULL || fds == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    pollfd_t* allFds = malloc(sizeof(pollfd_t) * (nfds + 2));
+    if (allFds == NULL)
+    {
+        errno = ENOMEM;
+        return ERR;
+    }
+
+    allFds[0].fd = disp->data;
+    allFds[0].events = POLLIN;
+    allFds[1].fd = disp->eventsPipe;
+    allFds[1].events = POLLIN;
+    for (uint64_t i = 0; i < nfds; i++)
+    {
+        allFds[i + 2] = fds[i];
+    }
+
+    uint64_t ready = poll(allFds, nfds + 2, timeout);
+    if (ready == ERR)
+    {
+        free(allFds);
+        return ERR;
+    }
+
+    if (allFds[0].revents & POLLERR || allFds[1].revents & POLLERR)
+    {
+        display_disconnect(disp);
+        free(allFds);
+        return ERR;
+    }
+
+    uint64_t totalReady = ready;
+    if (allFds[0].revents & POLLIN)
+    {
+        totalReady--;
+    }
+    if (allFds[1].revents & POLLIN)
+    {
+        totalReady--;
+    }
+    for (uint64_t i = 0; i < nfds; i++)
+    {
+        fds[i].revents = allFds[i + 2].revents;
+    }
+    free(allFds);
+    return totalReady;
+}
+
 void display_push(display_t* disp, surface_id_t target, event_type_t type, void* data, uint64_t size)
 {
     if (disp == NULL || (data == NULL && size > 0) || size > EVENT_MAX_DATA)

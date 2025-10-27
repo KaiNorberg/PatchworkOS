@@ -37,7 +37,7 @@
 /**
  * @brief Terminal rows.
  */
-#define TERMINAL_ROWS 24
+#define TERMINAL_ROWS 30
 
 /**
  * @brief Event sent from the terminals io thread to the main thread when there is data available.
@@ -115,8 +115,6 @@ typedef struct terminal
     terminal_char_t* prevCursor;
     terminal_char_t* cursor;
     pid_t shell;
-    thrd_t ioThread;
-    bool ioThreadStarted;
 } terminal_t;
 
 /**
@@ -137,5 +135,12 @@ typedef struct
  * @return On success, the terminal window. On failure, `NULL` and `errno` is set.
  */
 window_t* terminal_new(display_t* disp);
+
+/**
+ * @brief Terminal main loop.
+ *
+ * @param win The terminal window.
+ */
+void terminal_loop(window_t* win);
 
 /** @} */

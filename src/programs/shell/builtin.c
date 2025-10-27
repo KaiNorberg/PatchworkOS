@@ -7,6 +7,23 @@
 #include <sys/io.h>
 #include <sys/proc.h>
 
+static uint64_t builtin_cd(uint64_t argc, const char** argv);
+static uint64_t builtin_help(uint64_t argc, const char** argv);
+
+static builtin_t builtins[] = {
+    {
+    .name = "cd",
+    .callback = builtin_cd,
+    .description = "Change the current working directory.",
+    .usage = "cd [directory]"
+},
+{
+    .name = "help",
+    .callback = builtin_help,
+    .description = "Show this help message.",
+    .usage = "help"
+},};
+
 static uint64_t builtin_cd(uint64_t argc, const char** argv)
 {
     if (argc < 2)
@@ -26,33 +43,28 @@ static uint64_t builtin_cd(uint64_t argc, const char** argv)
 
 static uint64_t builtin_help(uint64_t argc, const char** argv)
 {
-    (void)argc; // Unused
-    (void)argv; // Unused
+    (void)argc;
+    (void)argv;
 
-    printf("BUILT-IN COMMANDS: ");
-    builtin_dump_list();
-    printf("\n\n");
+    printf("\033[33mBUILTINS:\033[0m\n");
+    for (uint64_t i = 0; i < sizeof(builtins) / sizeof(builtins[0]); i++)
+    {
+        printf("  %-20s\033[0m \t\033[90m%s\033[0m\n", builtins[i].usage, builtins[i].description);
+    }
 
-    printf("USAGE:\n");
-    printf("  Navigate:  cd [dir], ls [dir]\n");
-    printf("  Redirect:  command > file, command < file\n");
-    printf("  Pipe:      command1 | command2\n");
-    printf("  Interrupt: ctrl+C (terminate process)\n");
-    printf("  History:   up/down arrows to navigate command history\n");
-    printf("\n");
-    printf("Commands can be found in /bin and /usr/bin.\n");
+    printf("\n\033[33mFEATURES:\033[0m\n");
+    printf("  command1 | command2\t\033[90mPipe output\033[0m\n");
+    printf("  command > file     \t\033[90mRedirect standard output\033[0m\n");
+    printf("  command < file     \t\033[90mRedirect standard input\033[0m\n");
+    printf("\n\033[33mKEYBINDINGS:\033[0m\n");
+    printf("  Enter/Left/Right   \t\033[90mInput editing\033[0m\n");
+    printf("  Up/Down            \t\033[90mNavigate history\033[0m\n");
+    printf("  Ctrl+C             \t\033[90mTerminate process\033[0m\n");
+
+    printf("\n\033[90mExternal commands are executed from /bin and /usr/bin.\033[0m\n");
 
     return 0;
 }
-
-static builtin_t builtins[] = {{
-    .name = "cd",
-    .callback = builtin_cd,
-},
-{
-    .name = "help",
-    .callback = builtin_help,
-},};
 
 bool builtin_exists(const char* name)
 {
@@ -84,16 +96,4 @@ uint64_t builtin_execute(uint64_t argc, const char** argv)
     }
 
     return ERR;
-}
-
-void builtin_dump_list(void)
-{
-    for (uint64_t i = 0; i < sizeof(builtins) / sizeof(builtins[0]); i++)
-    {
-        printf("%s", builtins[i].name);
-        if (i + 1 < sizeof(builtins) / sizeof(builtins[0]))
-        {
-            printf(", ");
-        }
-    }
 }

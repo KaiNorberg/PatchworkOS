@@ -105,6 +105,17 @@ void display_cmds_flush(display_t* disp);
 uint64_t display_next(display_t* disp, event_t* event, clock_t timeout);
 
 /**
+ * @brief Poll the display connection for events together with other file descriptors.
+ *
+ * @param disp The display connection.
+ * @param fds Array of file descriptors to poll alongside the display connection.
+ * @param nfds Number of file descriptors in the array.
+ * @param timeout Maximum time to wait for an event, if `CLOCKS_NEVER` will wait indefinitely.
+ * @return On success, number of file descriptors with events (not including the display connection). On failure, returns `ERR` and sets `errno`.
+ */
+uint64_t display_poll(display_t* disp, pollfd_t* fds, uint64_t nfds, clock_t timeout);
+
+/**
  * @brief Push an event to the display's internal event queue.
  *
  * This will not send the event to the DWM, instead it will be stored in the display's internal event queue and can be

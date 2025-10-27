@@ -17,11 +17,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    event_t event = {0};
-    while (display_next(disp, &event, CLOCKS_NEVER) != ERR)
-    {
-        display_dispatch(disp, &event);
-    }
+    terminal_loop(term);
 
     window_free(term);
     display_free(disp);

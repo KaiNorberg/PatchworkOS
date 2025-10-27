@@ -443,23 +443,6 @@ static void terminal_handle_output(terminal_t* term, element_t* elem, drawable_t
     }
 }
 
-static int terminal_io_thread(void* arg)
-{
-    terminal_t* term = (terminal_t*)arg;
-
-    while (poll1(term->stdout[PIPE_READ], POLLIN, CLOCKS_NEVER) & POLLIN)
-    {
-        uevent_terminal_data_t ueventData;
-        uint64_t readCount = read(term->stdout[PIPE_READ], ueventData.buffer, TERMINAL_MAX_INPUT);
-        ueventData.length = MIN(readCount, TERMINAL_MAX_INPUT);
-
-        display_push(window_get_display(term->win), window_get_id(term->win), UEVENT_TERMINAL_DATA, &ueventData,
-            sizeof(uevent_terminal_data_t));
-    }
-
-    return 0;
-}
-
 static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t* event)
 {
     switch (event->type)
@@ -527,7 +510,6 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
             free(term);
             return ERR;
         }
-        term->ioThreadStarted = false;
 
         element_set_private(elem, term);
         window_set_timer(win, TIMER_NONE, TERMINAL_BLINK_INTERVAL);
@@ -549,8 +531,6 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         fd_t shellNote = openf("/proc/%d/note", term->shell);
         writef(shellNote, "kill");
         close(shellNote);
-
-        thrd_join(term->ioThread, NULL);
     }
     break;
     case LEVENT_QUIT:
@@ -566,12 +546,6 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         element_draw_begin(elem, &draw);
         terminal_clear(term, elem, &draw);
         element_draw_end(elem, &draw);
-
-        if (!term->ioThreadStarted)
-        {
-            thrd_create(&term->ioThread, terminal_io_thread, term);
-            term->ioThreadStarted = true;
-        }
     }
     break;
     case EVENT_TIMER:
@@ -658,4 +632,36 @@ window_t* terminal_new(display_t* disp)
     }
 
     return win;
+}
+
+void terminal_loop(window_t* win)
+{
+    terminal_t* terminal = element_get_private(window_get_client_element(win));
+    display_t* disp = window_get_display(win);
+
+    event_t event = {0};
+    pollfd_t fds[1] = {
+        {
+            .fd = terminal->stdout[PIPE_READ],
+            .events = POLLIN,
+        },
+    };
+    while (display_poll(disp, fds, 1, CLOCKS_NEVER) != ERR)
+    {
+        if (fds[0].revents & POLLIN)
+        {
+            uevent_terminal_data_t ueventData;
+            uint64_t readCount = read(terminal->stdout[PIPE_READ], ueventData.buffer, TERMINAL_MAX_INPUT);
+            ueventData.length = MIN(readCount, TERMINAL_MAX_INPUT);
+
+            display_push(disp, window_get_id(win), UEVENT_TERMINAL_DATA, &ueventData,
+                sizeof(uevent_terminal_data_t));
+        }
+
+        event_t event = {0};
+        if (display_next(disp, &event, 0) == 0)
+        {
+            display_dispatch(disp, &event);
+        }
+    }
 }
