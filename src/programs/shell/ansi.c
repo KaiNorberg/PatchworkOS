@@ -46,6 +46,10 @@ uint64_t ansi_parse(ansi_t* ansi, char input, ansi_result_t* result)
             result->type = ANSI_TAB;
             ansi->length = 0;
             return 0;
+        case '\003':
+            result->type = ANSI_CTRL_C;
+            ansi->length = 0;
+            return 0;
         default:
             ansi->length = 0;
             return ERR;

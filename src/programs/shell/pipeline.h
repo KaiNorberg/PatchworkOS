@@ -2,6 +2,7 @@
 
 #include <sys/io.h>
 #include <sys/list.h>
+#include <sys/proc.h>
 
 typedef struct
 {
@@ -21,6 +22,7 @@ typedef struct
     uint64_t capacity;
     uint64_t amount;
     int status;
+    fd_t globalStdin[2];
 } pipeline_t;
 
 uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline);

@@ -29,6 +29,7 @@ typedef enum
     ANSI_HOME,
     ANSI_END,
     ANSI_DELETE,
+    ANSI_CTRL_C,
 } ansi_result_type_t;
 
 typedef struct

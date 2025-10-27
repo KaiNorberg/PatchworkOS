@@ -35,14 +35,6 @@ typedef struct
  */
 void ansi_kbd_to_receiving(ansi_receiving_t* ansi, const event_kbd_t* kbd);
 
-typedef enum
-{
-    ANSI_SENDING_STILL_PARSING,
-    ANSI_SENDING_MOVE_TO,
-    ANSI_SENDING_MOVE_BY,
-
-} ansi_sending_type_t;
-
 /**
  * @brief ANSI sending structure.
  * @struct ansi_sending_t

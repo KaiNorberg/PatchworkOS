@@ -44,17 +44,19 @@ static uint64_t interactive_execute_command(interactive_state_t* state)
     pipeline_t pipeline;
     if (pipeline_init(&pipeline, state->buffer) == ERR)
     {
-        printf("shell: failed to initialize pipeline (%s)\n", strerror(errno));
-        state->status = EXIT_FAILURE;
-        return ERR;
+        return 0; // This is fine
     }
 
     if (pipeline_execute(&pipeline) == ERR)
     {
         pipeline_deinit(&pipeline);
-        return 0; // This is fine
+        return 0; // This is also fine
     }
 
+    if (pipeline.status != 0)
+    {
+        printf("shell: command exited with status %d (%s)\n", pipeline.status, strerror(errno));
+    }
     state->status = pipeline.status;
     pipeline_deinit(&pipeline);
     return 0;
@@ -175,6 +177,12 @@ static uint64_t interactive_handle_ansi(interactive_state_t* state, ansi_result_
             printf("\033[C");
         }
         fflush(stdout);
+        break;
+    case ANSI_CTRL_C:
+        printf("^C\n");
+        memset(state->buffer, 0, MAX_PATH);
+        state->pos = 0;
+        interactive_prompt();
         break;
     default:
         break;

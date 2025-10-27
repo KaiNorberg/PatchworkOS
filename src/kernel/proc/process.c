@@ -208,8 +208,26 @@ static uint64_t process_status_read(file_t* file, void* buffer, uint64_t count, 
     return BUFFER_READ(buffer, count, offset, status, strlen(status));
 }
 
+static wait_queue_t* process_status_poll(file_t* file, poll_events_t* revents)
+{
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return NULL;
+    }
+
+    if (atomic_load(&process->isDying))
+    {
+        *revents |= POLLIN;
+        return NULL;
+    }
+
+    return &process->dyingWaitQueue;
+}
+
 static file_ops_t statusOps = {
     .read = process_status_read,
+    .poll = process_status_poll,
 };
 
 static void process_inode_cleanup(inode_t* inode)

@@ -659,7 +659,7 @@ void terminal_loop(window_t* win)
         }
 
         event_t event = {0};
-        if (display_next(disp, &event, 0) == 0)
+        if (display_next(disp, &event, 0) != ERR)
         {
             display_dispatch(disp, &event);
         }

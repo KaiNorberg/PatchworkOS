@@ -42,13 +42,19 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
     pipeline->capacity = tokenAmount;
     pipeline->amount = 0;
     pipeline->status = 0;
+    if (open2("/dev/pipe/new", pipeline->globalStdin) == ERR)
+    {
+        free(pipeline->cmds);
+        free(tokens);
+        return ERR;
+    }
 
     for (uint64_t i = 0; i < tokenAmount; i++)
     {
         cmd_t* cmd = &pipeline->cmds[i];
         cmd->argv = NULL;
         cmd->argc = 0;
-        cmd->stdin = STDIN_FILENO;
+        cmd->stdin = pipeline->globalStdin[PIPE_READ];
         cmd->stdout = STDOUT_FILENO;
         cmd->stderr = STDERR_FILENO;
         cmd->shouldCloseStdin = false;
@@ -73,6 +79,11 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
             if (currentArg == 0)
             {
                 printf("error: empty command in pipeline\n");
+                if (pipeline->cmds[currentCmd].shouldCloseStdin)
+                {
+                    close(pipeline->cmds[currentCmd].stdin);
+                    pipeline->cmds[currentCmd].shouldCloseStdin = false;
+                }
                 goto token_parse_error;
             }
 
@@ -95,6 +106,11 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
             currentCmd++;
             currentArg = 0;
             currentArgv = malloc(sizeof(char*) * (tokenAmount + 1));
+            if (currentArgv == NULL)
+            {
+                printf("error: out of memory\n");
+                goto token_parse_error;
+            }
 
             cmd_t* nextCmd = &pipeline->cmds[currentCmd];
             nextCmd->stdin = pipe[PIPE_READ];
@@ -177,7 +193,13 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
         }
         else
         {
-            currentArgv[currentArg++] = tokens[i];
+            currentArgv[currentArg] = strdup(tokens[i]);
+            if (currentArgv[currentArg] == NULL)
+            {
+                printf("error: out of memory\n");
+                goto token_parse_error;
+            }
+            currentArg++;
         }
     }
 
@@ -191,6 +213,17 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
     else
     {
         free(currentArgv);
+        if (pipeline->amount > 0 && currentCmd > 0)
+        {
+            printf("error: pipeline ends with empty command\n");
+            cmd_t* emptyCmd = &pipeline->cmds[currentCmd];
+            if (emptyCmd->shouldCloseStdin)
+            {
+                close(emptyCmd->stdin);
+                emptyCmd->shouldCloseStdin = false;
+            }
+            goto token_parse_error_no_current_argv;
+        }
     }
 
     pipeline->amount = currentCmd;
@@ -198,7 +231,16 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
     return 0;
 
 token_parse_error:
+    if (currentArgv != NULL)
+    {
+        for (uint64_t k = 0; k < currentArg; k++)
+        {
+            free((void*)currentArgv[k]);
+        }
+    }
     free(currentArgv);
+
+token_parse_error_no_current_argv:
     for (uint64_t j = 0; j < currentCmd; j++)
     {
         if (pipeline->cmds[j].shouldCloseStdin)
@@ -213,8 +255,18 @@ token_parse_error:
         {
             close(pipeline->cmds[j].stderr);
         }
-        free(pipeline->cmds[j].argv);
+
+        if (pipeline->cmds[j].argv != NULL)
+        {
+            for (uint64_t k = 0; pipeline->cmds[j].argv[k] != NULL; k++)
+            {
+                free((void*)pipeline->cmds[j].argv[k]);
+            }
+            free(pipeline->cmds[j].argv);
+        }
     }
+    close(pipeline->globalStdin[PIPE_READ]);
+    close(pipeline->globalStdin[PIPE_WRITE]);
     free(pipeline->cmds);
     free(tokens);
     return ERR;
@@ -236,68 +288,94 @@ void pipeline_deinit(pipeline_t* pipeline)
         {
             close(pipeline->cmds[j].stderr);
         }
-        free(pipeline->cmds[j].argv);
+
+        if (pipeline->cmds[j].argv != NULL)
+        {
+            for (uint64_t k = 0; pipeline->cmds[j].argv[k] != NULL; k++)
+            {
+                free((void*)pipeline->cmds[j].argv[k]);
+            }
+            free(pipeline->cmds[j].argv);
+        }
     }
+    close(pipeline->globalStdin[PIPE_READ]);
+    close(pipeline->globalStdin[PIPE_WRITE]);
     if (pipeline->cmds != NULL)
     {
         free(pipeline->cmds);
     }
 }
 
+static uint64_t pipeline_execute_builtin(cmd_t* cmd)
+{
+    // The price of not having fork()
+
+    fd_t originalStdin = dup(STDIN_FILENO);
+    if (originalStdin == ERR)
+    {
+        return ERR;
+    }
+    fd_t originalStdout = dup(STDOUT_FILENO);
+    if (originalStdout == ERR)
+    {
+        close(originalStdin);
+        return ERR;
+    }
+    fd_t originalStderr = dup(STDERR_FILENO);
+    if (originalStderr == ERR)
+    {
+        close(originalStdin);
+        close(originalStdout);
+        return ERR;
+    }
+
+    if (dup2(cmd->stdin, STDIN_FILENO) == ERR ||
+        dup2(cmd->stdout, STDOUT_FILENO) == ERR ||
+        dup2(cmd->stderr, STDERR_FILENO) == ERR)
+    {
+        close(originalStdin);
+        close(originalStdout);
+        close(originalStderr);
+        return ERR;
+    }
+
+    uint64_t result = builtin_execute(cmd->argc, cmd->argv);
+    if (dup2(originalStdin, STDIN_FILENO) == ERR ||
+        dup2(originalStdout, STDOUT_FILENO) == ERR ||
+        dup2(originalStderr, STDERR_FILENO) == ERR)
+    {
+        result = ERR;
+    }
+
+    close(originalStdin);
+    close(originalStdout);
+    close(originalStderr);
+    return result;
+}
+
 static pid_t pipeline_execute_cmd(cmd_t* cmd)
 {
     pid_t result = ERR;
 
-    fd_t originalStdin = dup(STDIN_FILENO);
-    fd_t originalStdout = dup(STDOUT_FILENO);
-    fd_t originalStderr = dup(STDERR_FILENO);
-
-    if (originalStdin == ERR || originalStdout == ERR || originalStderr == ERR)
-    {
-        if (originalStdin != ERR)
-        {
-            close(originalStdin);
-        }
-        if (originalStdout != ERR)
-        {
-            close(originalStdout);
-        }
-        if (originalStderr != ERR)
-        {
-            close(originalStderr);
-        }
-        return ERR;
-    }
-
-    if (cmd->stdin != STDIN_FILENO)
-    {
-        dup2(cmd->stdin, STDIN_FILENO);
-    }
-    if (cmd->stdout != STDOUT_FILENO)
-    {
-        dup2(cmd->stdout, STDOUT_FILENO);
-    }
-    if (cmd->stderr != STDERR_FILENO)
-    {
-        dup2(cmd->stderr, STDERR_FILENO);
-    }
-
     spawn_fd_t fds[] = {
-        {.child = STDIN_FILENO, .parent = STDIN_FILENO},
-        {.child = STDOUT_FILENO, .parent = STDOUT_FILENO},
-        {.child = STDERR_FILENO, .parent = STDERR_FILENO},
+        {.child = STDIN_FILENO, .parent = cmd->stdin},
+        {.child = STDOUT_FILENO, .parent = cmd->stdout},
+        {.child = STDERR_FILENO, .parent = cmd->stderr},
         SPAWN_FD_END,
     };
-    const char** argv = cmd->argv;
-    uint64_t argc = 0;
-    while (argv[argc] != NULL)
-    {
-        argc++;
-    }
 
+    const char** argv = cmd->argv;
+    uint64_t argc = cmd->argc;
     if (builtin_exists(argv[0]))
     {
-        return builtin_execute(argc, argv) == ERR ? ERR : 0;
+        if (pipeline_execute_builtin(cmd) == ERR)
+        {
+            result = ERR;
+        }
+        else
+        {
+            result = 0;
+        }
     }
     else if (argv[0][0] == '.' && argv[0][1] == '/')
     {
@@ -344,13 +422,6 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
         }
     }
 
-    dup2(originalStdin, STDIN_FILENO);
-    dup2(originalStdout, STDOUT_FILENO);
-    dup2(originalStderr, STDERR_FILENO);
-    close(originalStdin);
-    close(originalStdout);
-    close(originalStderr);
-
     if (cmd->shouldCloseStdin)
     {
         close(cmd->stdin);
@@ -377,57 +448,157 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
         return 0;
     }
 
-    pid_t* pids = malloc(sizeof(pid_t) * pipeline->amount);
-    if (pids == NULL)
+    pollfd_t* fds = calloc(pipeline->amount + 1, sizeof(pollfd_t));
+    if (fds == NULL)
     {
         return ERR;
     }
+    fds[0].fd = STDIN_FILENO;
+    fds[0].events = POLLIN;
+    uint64_t fdCount = 1;
+
+    pid_t* pids = malloc(sizeof(pid_t) * pipeline->amount);
+    if (pids == NULL)
+    {
+        free(fds);
+        return ERR;
+    }
+
+    uint64_t result = 0;
+    pipeline->status = 0;
 
     for (uint64_t i = 0; i < pipeline->amount; i++)
     {
-        pids[i] = pipeline_execute_cmd(&pipeline->cmds[i]);
+        pid_t pid = pipeline_execute_cmd(&pipeline->cmds[i]);
+        if (pid == ERR)
+        {
+            pipeline->status = 1;
+            result = ERR;
+            goto cleanup;
+        }
+        if (pid == 0)
+        {
+            if (i == pipeline->amount - 1)
+            {
+                pipeline->status = 0;
+            }
+            continue;
+        }
+
+        pids[fdCount - 1] = pid;
+
+        fds[fdCount].fd = openf("/proc/%d/status", pid);
+        if (fds[fdCount].fd == ERR)
+        {
+            result = ERR;
+            goto cleanup;
+        }
+        fds[fdCount].events = POLLIN;
+        fdCount++;
     }
 
-    bool error = false;
-    for (uint64_t i = 0; i < pipeline->amount; i++)
+    if (fdCount == 1)
     {
-        if (pids[i] == ERR)
+        // All commands were builtins
+        goto cleanup;
+    }
+
+    while (true)
+    {
+        uint64_t ready = poll(fds, fdCount, CLOCKS_NEVER);
+        if (ready == ERR)
         {
-            error = true;
-            continue;
+            result = ERR;
+            goto cleanup;
         }
 
-        // Skip builtin commands
-        if (pids[i] == 0)
+        for (uint64_t i = 0; i < fdCount; i++)
         {
-            continue;
+            if (fds[i].revents & POLLERR)
+            {
+                result = ERR;
+                goto cleanup;
+            }
         }
 
-        fd_t status = openf("/proc/%d/status", pids[i]);
-        if (status == ERR)
+        if (fds[0].revents & POLLIN)
         {
-            error = true;
-            continue;
+            char buffer[MAX_PATH];
+            uint64_t bytesRead = read(STDIN_FILENO, buffer, sizeof(buffer));
+            if (bytesRead == ERR)
+            {
+                result = ERR;
+                goto cleanup;
+            }
+
+            for (uint64_t i = 0; i < bytesRead; i++)
+            {
+                if (buffer[i] != '\003') // Ctrl-C
+                {
+                    continue;
+                }
+
+                printf("^C\n");
+                for (uint64_t j = 1; j < fdCount; j++)
+                {
+                    fd_t note = openf("/proc/%d/note", pids[j - 1]);
+                    if (note == ERR)
+                    {
+                        continue;
+                    }
+
+                    writef(note, "kill");
+                    close(note);
+                }
+
+                break;
+            }
+
+            if (write(pipeline->globalStdin[PIPE_WRITE], buffer, bytesRead) == ERR)
+            {
+                result = ERR;
+                goto cleanup;
+            }
         }
 
-        char buf[64];
-        uint64_t readCount = read(status, buf, sizeof(buf) - 1);
-        close(status);
-
-        if (readCount == ERR)
+        bool allExited = true;
+        for (uint64_t i = 1; i < fdCount; i++)
         {
-            error = true;
-            continue;
+            if (fds[i].revents & POLLIN)
+            {
+                char buffer[64];
+                uint64_t readCount = read(fds[i].fd, buffer, sizeof(buffer) - 1);
+                if (readCount == ERR)
+                {
+                    result = ERR;
+                    goto cleanup;
+                }
+                buffer[readCount] = '\0';
+
+                int exitStatus = atoi(buffer);
+                if (i == fdCount - 1)
+                {
+                    pipeline->status = exitStatus;
+                }
+            }
+            else
+            {
+                allExited = false;
+            }
         }
 
-        buf[readCount] = '\0';
-        int exitStatus = atoi(buf);
-        if (exitStatus != 0)
+        if (allExited)
         {
-            error = true;
+            break;
         }
     }
 
+cleanup:
+    for (uint64_t i = 1; i < fdCount; i++)
+    {
+        close(fds[i].fd);
+    }
+    free(fds);
     free(pids);
-    return error ? ERR : 0;
+    return result;
 }
