@@ -92,7 +92,8 @@ popup_result_t popup_open(const char* text, const char* title, popup_type_t type
         return POPUP_RES_ERROR;
     }
 
-    rect_t screenRect = display_screen_rect(disp, 0);
+    rect_t screenRect;
+    display_get_screen(disp, &screenRect, 0);
 
     popup_t popup = {
         .result = POPUP_RES_CLOSE,

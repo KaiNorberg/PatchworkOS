@@ -72,6 +72,25 @@ static void theme_lazy_load(void)
     theme.separatorSize = config_get_int(varsConfig, "integers", "separator_size", 1);
     config_close(varsConfig);
 
+    config_t* ansiConfig = config_open("theme", "ansi");
+    if (ansiConfig == NULL)
+    {
+        printf("theme: failed to open ansi config, using defaults\n");
+    }
+    for (uint64_t i = 0; i < THEME_ANSI_COLOR_COUNT; i++)
+    {
+        char keyNormal[32];
+        char keyBright[32];
+        char keyDim[32];
+        snprintf(keyNormal, sizeof(keyNormal), "color%lu_normal", i);
+        snprintf(keyBright, sizeof(keyBright), "color%lu_bright", i);
+        snprintf(keyDim, sizeof(keyDim), "color%lu_dim", i);
+        theme.ansi.normal[i] = config_get_int(ansiConfig, "colors", keyNormal, THEME_COLOR_INVALID);
+        theme.ansi.bright[i] = config_get_int(ansiConfig, "colors", keyBright, THEME_COLOR_INVALID);
+        theme.ansi.dim[i] = config_get_int(ansiConfig, "colors", keyDim, THEME_COLOR_INVALID);
+    }
+    config_close(ansiConfig);
+
     isLoaded = true;
 }
 

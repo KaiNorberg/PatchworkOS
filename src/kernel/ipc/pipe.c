@@ -15,6 +15,7 @@
 #include <sys/math.h>
 
 static dentry_t* pipeDir = NULL;
+static dentry_t* newFile = NULL;
 
 static uint64_t pipe_open(file_t* file)
 {
@@ -210,8 +211,7 @@ void pipe_init(void)
         panic(NULL, "Failed to initialize pipe directory");
     }
 
-    dentry_t* newFile = sysfs_file_new(pipeDir, "new", NULL, &fileOps, NULL);
-    DEREF(newFile);
+    newFile = sysfs_file_new(pipeDir, "new", NULL, &fileOps, NULL);
     if (newFile == NULL)
     {
         panic(NULL, "Failed to initialize pipe new file");

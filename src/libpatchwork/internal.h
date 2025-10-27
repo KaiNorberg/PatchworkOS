@@ -2,6 +2,7 @@
 
 #include <sys/io.h>
 #include <sys/list.h>
+#include <threads.h>
 
 #include "grf.h"
 
@@ -61,16 +62,13 @@ typedef struct display
     char id[MAX_NAME];
     fd_t ctl;
     fd_t data;
+    fd_t eventsPipe;
+    uint64_t eventsInPipe;
     bool isConnected;
     cmd_buffer_t cmds;
-    struct
-    {
-        event_t buffer[DISPLAY_MAX_EVENT];
-        uint64_t readIndex;
-        uint64_t writeIndex;
-    } events;
     list_t windows;
     list_t fonts;
     list_t images;
     font_t* defaultFont;
+    mtx_t mutex;
 } display_t;

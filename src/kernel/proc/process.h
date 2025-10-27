@@ -59,6 +59,7 @@ typedef struct process
     dentry_t* cmdlineFile; ///< The `/proc/[pid]/cmdline` file.
     dentry_t* noteFile;    ///< The `/proc/[pid]/note` file.
     dentry_t* statusFile;  ///< The `/proc/[pid]/status` file.
+    mount_t* self;       ///< The `/proc/[pid]/self` mount point.
 } process_t;
 
 /**

@@ -348,7 +348,6 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     cmd->rect = win->rect;
     strcpy(cmd->name, win->name);
     display_cmds_flush(disp);
-
     event_t event;
     if (display_wait(disp, &event, EVENT_SURFACE_NEW) == ERR)
     {
@@ -356,13 +355,13 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
         return NULL;
     }
     win->surface = event.target;
+
     fd_t shmem = claim(&event.surfaceNew.shmemKey);
     if (shmem == ERR)
     {
         window_free(win);
         return NULL;
     }
-
     win->buffer =
         mmap(shmem, NULL, RECT_WIDTH(&win->rect) * RECT_HEIGHT(&win->rect) * sizeof(pixel_t), PROT_READ | PROT_WRITE);
     close(shmem);
@@ -371,7 +370,10 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
         window_free(win);
         return NULL;
     }
+
+    mtx_lock(&disp->mutex);
     list_push(&disp->windows, &win->entry);
+    mtx_unlock(&disp->mutex);
 
     rect_t rootRect = RECT_INIT_DIM(0, 0, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
     if (flags & WINDOW_DECO)
@@ -435,7 +437,10 @@ void window_free(window_t* win)
     cmd->target = win->surface;
     display_cmds_flush(win->disp);
 
+    mtx_lock(&win->disp->mutex);
     list_remove(&win->disp->windows, &win->entry);
+    mtx_unlock(&win->disp->mutex);
+
     free(win);
 }
 

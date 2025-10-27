@@ -1,320 +1,515 @@
 #include "terminal.h"
-#include "history.h"
-#include "input.h"
-#include "sys/io.h"
-#include "sys/kbd.h"
+#include "ansi.h"
 
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/io.h>
+#include <sys/proc.h>
 
-static uint64_t terminal_width(terminal_t* term)
+static terminal_char_t terminal_char_create(char chr, pixel_t foreground, pixel_t background, uint16_t row,
+    uint16_t col)
 {
-    const theme_t* theme = theme_global_get();
-    return TERMINAL_COLUMNS * font_width(term->font, "a", 1) + theme->frameSize * 2 + theme->smallPadding * 2;
+    terminal_char_t termChar;
+    termChar.chr = chr;
+    termChar.foreground = foreground;
+    termChar.background = background;
+    termChar.flags = 0;
+    termChar.physicalRow = row;
+    termChar.col = col;
+    return termChar;
 }
 
-static uint64_t terminal_height(terminal_t* term)
+static terminal_char_t* terminal_get_char(terminal_t* term, uint16_t row, uint16_t col)
 {
-    const theme_t* theme = theme_global_get();
-    return TERMINAL_ROWS * font_height(term->font) + theme->frameSize * 2 + theme->smallPadding * 2;
+    return &term->screen[(term->firstRow + row) % TERMINAL_ROWS][col];
 }
 
-static point_t terminal_cursor_pos_to_client_pos(terminal_t* term, element_t* elem, point_t* cursorPos)
+static uint16_t terminal_char_row(terminal_t* term, terminal_char_t* termChar)
+{
+    return (termChar->physicalRow + TERMINAL_ROWS - term->firstRow) % TERMINAL_ROWS;
+}
+
+static point_t terminal_char_pos(terminal_t* term, element_t* elem, terminal_char_t* termChar)
 {
     const theme_t* theme = element_get_theme(elem);
+
+    uint16_t row = terminal_char_row(term, termChar);
+    uint16_t col = termChar->col;
+
     return (point_t){
-        .x = ((cursorPos)->x * font_width(term->font, "a", 1)) + theme->frameSize + theme->smallPadding,
-        .y = ((cursorPos)->y * font_height(term->font)) + theme->frameSize + theme->smallPadding,
+        .x = (col * font_width(term->font, "a", 1)) + theme->frameSize + theme->bigPadding,
+        .y = (row * font_height(term->font)) + theme->frameSize + theme->bigPadding,
     };
 }
 
-static void terminal_cursor_draw(terminal_t* term, element_t* elem, drawable_t* draw)
+static rect_t terminal_char_rect(terminal_t* term, element_t* elem, terminal_char_t* termChar)
 {
-    char cursor = ' ';
-    point_t cursorPos = term->cursorPos;
-    if (term->input.length != 0)
-    {
-        if (term->input.index != term->input.length)
-        {
-            cursor = term->input.buffer[term->input.index];
-        }
-        cursorPos.x += term->input.index;
-    }
-    point_t point = terminal_cursor_pos_to_client_pos(term, elem, &cursorPos);
+    point_t clientPos = terminal_char_pos(term, elem, termChar);
+    return RECT_INIT_DIM(clientPos.x, clientPos.y, font_width(term->font, "a", 1), font_height(term->font));
+}
 
-    rect_t cursorRect = RECT_INIT_DIM(point.x, point.y, font_width(term->font, &cursor, 1), font_height(term->font));
+static void terminal_char_draw(terminal_t* term, element_t* elem, drawable_t* draw, terminal_char_t* termChar)
+{
+    point_t clientPos = terminal_char_pos(term, elem, termChar);
+    rect_t charRect = terminal_char_rect(term, elem, termChar);
+    draw_rect(draw, &charRect, termChar->flags & TERMINAL_INVERSE ? termChar->foreground : termChar->background);
+    draw_string(draw, term->font, &clientPos,
+        termChar->flags & TERMINAL_INVERSE ? termChar->background : termChar->foreground, &termChar->chr, 1);
 
-    if (cursor != ' ')
+    if (termChar->flags & TERMINAL_UNDERLINE)
     {
-        if (term->isCursorVisible)
-        {
-            draw_rect(draw, &cursorRect, TERMINAL_FOREGROUND);
-            draw_string(draw, term->font, &point, TERMINAL_BACKGROUND, &cursor, 1);
-        }
-        else
-        {
-            draw_rect(draw, &cursorRect, TERMINAL_BACKGROUND);
-            draw_string(draw, term->font, &point, TERMINAL_FOREGROUND, &cursor, 1);
-        }
+        rect_t underlineRect = RECT_INIT_DIM(charRect.left, charRect.bottom - 2, RECT_WIDTH(&charRect), 2);
+        draw_rect(draw, &underlineRect,
+            termChar->flags & TERMINAL_INVERSE ? termChar->background : termChar->foreground);
     }
-    else
+}
+
+static void terminal_cursor_update(terminal_t* term, element_t* elem, drawable_t* draw)
+{
+    term->prevCursor->flags &= ~TERMINAL_INVERSE;
+    terminal_char_draw(term, elem, draw, term->prevCursor);
+    if (term->isCursorVisible)
     {
-        if (term->isCursorVisible)
-        {
-            draw_rect(draw, &cursorRect, TERMINAL_FOREGROUND);
-        }
-        else
-        {
-            draw_rect(draw, &cursorRect, TERMINAL_BACKGROUND);
-        }
+        term->cursor->flags |= TERMINAL_INVERSE;
     }
+    terminal_char_draw(term, elem, draw, term->cursor);
+    term->prevCursor = term->cursor;
 }
 
 static void terminal_clear(terminal_t* term, element_t* elem, drawable_t* draw)
 {
-    term->isCursorVisible = false;
-    term->cursorPos = (point_t){0, 0};
-
     rect_t rect = element_get_content_rect(elem);
-
     const theme_t* theme = element_get_theme(elem);
 
-    draw_frame(draw, &rect, theme->frameSize, theme->element.shadow, theme->element.highlight);
     RECT_SHRINK(&rect, theme->frameSize);
-    draw_rect(draw, &rect, TERMINAL_BACKGROUND);
+    RECT_SHRINK(&rect, theme->smallPadding);
 
-    term->isCursorVisible = true;
-    terminal_cursor_draw(term, elem, draw);
+    draw_rect(draw, &rect, term->background);
+
+    term->cursor = &term->screen[0][0];
+    term->prevCursor = &term->screen[0][0];
 }
 
 static void terminal_scroll(terminal_t* term, element_t* elem, drawable_t* draw)
 {
-    term->cursorPos.y -= 1;
-
-    uint64_t fontHeight = font_height(term->font);
     const theme_t* theme = element_get_theme(elem);
 
-    rect_t destRect = element_get_content_rect(elem);
+    term->prevCursor->flags &= ~TERMINAL_INVERSE;
+    terminal_char_draw(term, elem, draw, term->prevCursor);
 
-    RECT_SHRINK(&destRect, theme->frameSize);
-    RECT_SHRINK(&destRect, theme->smallPadding);
-    destRect.bottom -= fontHeight;
+    for (uint64_t col = 0; col < TERMINAL_COLUMNS; col++)
+    {
+        term->screen[term->firstRow][col] =
+            terminal_char_create(' ', theme->ansi.bright[7], theme->ansi.normal[0],
+                term->firstRow, col);
+    }
+    term->firstRow = (term->firstRow + 1) % TERMINAL_ROWS;
 
-    point_t srcPoint = {.x = destRect.left, .y = destRect.top + fontHeight};
+    rect_t contentRect = element_get_content_rect(elem);
+    RECT_SHRINK(&contentRect, theme->frameSize);
+    RECT_SHRINK(&contentRect, theme->bigPadding);
+
+    uint64_t rowHeight = font_height(term->font);
+
+    rect_t destRect = RECT_INIT_DIM(
+        contentRect.left,
+        contentRect.top,
+        RECT_WIDTH(&contentRect),
+        RECT_HEIGHT(&contentRect) - rowHeight
+    );
+    point_t srcPoint = { contentRect.left, contentRect.top + rowHeight };
+
     draw_transfer(draw, draw, &destRect, &srcPoint);
 
-    rect_t bottomRect = RECT_INIT(destRect.left, destRect.bottom, destRect.right, destRect.bottom + fontHeight);
-    draw_rect(draw, &bottomRect, TERMINAL_BACKGROUND);
+    rect_t clearRect = RECT_INIT_DIM(
+        contentRect.left,
+        contentRect.bottom - rowHeight,
+        RECT_WIDTH(&contentRect),
+        rowHeight
+    );
+    draw_rect(draw, &clearRect, term->background);
+
+    term->cursor = terminal_get_char(term, TERMINAL_ROWS - 1, 0);
+    term->prevCursor = term->cursor;
 }
 
 static void terminal_put(terminal_t* term, element_t* elem, drawable_t* draw, char chr)
 {
     rect_t rect = element_get_content_rect(elem);
 
+    uint16_t cursorRow = terminal_char_row(term, term->cursor);
     switch (chr)
     {
     case '\n':
-    {
-        if (term->isCursorVisible)
-        {
-            term->isCursorVisible = false;
-            terminal_cursor_draw(term, elem, draw);
-        }
-
-        term->cursorPos.x = 0;
-        term->cursorPos.y++;
-
-        if (term->cursorPos.y >= TERMINAL_ROWS)
+        if (terminal_char_row(term, term->cursor) == TERMINAL_ROWS - 1)
         {
             terminal_scroll(term, elem, draw);
         }
-    }
-    break;
+        else
+        {
+            term->cursor = terminal_get_char(term, cursorRow + 1, 0);
+        }
+        break;
+    case '\r':
+        term->cursor = terminal_get_char(term, cursorRow, 0);
+        break;
     case '\b':
     {
-        if (term->cursorPos.x != 0)
+        if (term->cursor->col == 0)
         {
-            term->cursorPos.x--;
-        }
-    }
-    break;
-    default:
-    {
-        term->isCursorVisible = false;
-        terminal_cursor_draw(term, elem, draw);
-
-        point_t clientPos = terminal_cursor_pos_to_client_pos(term, elem, &term->cursorPos);
-        draw_string(draw, term->font, &clientPos, TERMINAL_FOREGROUND, &chr, 1);
-
-        term->cursorPos.x++;
-
-        if (term->cursorPos.x >= TERMINAL_COLUMNS)
-        {
-            terminal_put(term, elem, draw, '\n');
-        }
-    }
-    break;
-    }
-}
-
-static void terminal_write(terminal_t* term, element_t* elem, drawable_t* draw, const char* str)
-{
-    const char* chr = str;
-    while (*chr != '\0')
-    {
-        terminal_put(term, elem, draw, *chr);
-        chr++;
-    }
-
-    term->isCursorVisible = true;
-    terminal_cursor_draw(term, elem, draw);
-    window_set_timer(term->win, TIMER_NONE, BLINK_INTERVAL);
-}
-
-static void terminal_redraw_input(terminal_t* term, element_t* elem, drawable_t* draw, uint64_t prevLength)
-{
-    // Clear the previous line
-    point_t point = terminal_cursor_pos_to_client_pos(term, elem, &term->cursorPos);
-    rect_t previousRect =
-        RECT_INIT_DIM(point.x, point.y, (prevLength + 1) * font_width(term->font, "a", 1), font_height(term->font));
-    draw_rect(draw, &previousRect, TERMINAL_BACKGROUND);
-
-    draw_string(draw, term->font, &point, TERMINAL_FOREGROUND, term->input.buffer, strlen(term->input.buffer));
-
-    term->isCursorVisible = true;
-    terminal_cursor_draw(term, elem, draw);
-    window_set_timer(term->win, TIMER_NONE, BLINK_INTERVAL);
-}
-
-static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t* draw, keycode_t key, char ascii,
-    kbd_mods_t mods)
-{
-    (void)mods; // Currently unused
-
-    uint64_t prevLength = term->input.length;
-
-    switch (key)
-    {
-    case KBD_UP:
-    {
-        if (term->history.index == term->history.count)
-        {
-            input_save(&term->input);
-        }
-
-        const char* prev = history_previous(&term->history);
-        if (prev != NULL)
-        {
-            input_set(&term->input, prev);
-            terminal_redraw_input(term, elem, draw, prevLength);
-        }
-    }
-    break;
-    case KBD_DOWN:
-    {
-        const char* next = history_next(&term->history);
-        if (next != NULL)
-        {
-            input_set(&term->input, next);
+            if (cursorRow == 0)
+            {
+                break;
+            }
+            term->cursor = terminal_get_char(term, cursorRow - 1, TERMINAL_COLUMNS - 1);
         }
         else
         {
-            input_restore(&term->input);
+            term->cursor = terminal_get_char(term, cursorRow, term->cursor->col - 1);
         }
-        terminal_redraw_input(term, elem, draw, prevLength);
+        terminal_char_t* backspaceChar = term->cursor;
+        backspaceChar->chr = ' ';
+        backspaceChar->foreground = term->foreground;
+        backspaceChar->background = term->background;
+        backspaceChar->flags = term->flags;
+        terminal_char_draw(term, elem, draw, backspaceChar);
+        break;
     }
-    break;
-    case KBD_LEFT:
+    case '\t':
     {
-        if (input_move(&term->input, -1) != ERR)
+        uint16_t spacesToNextTabStop = 4 - (term->cursor->col % 4);
+        for (uint16_t i = 0; i < spacesToNextTabStop; i++)
         {
-            terminal_redraw_input(term, elem, draw, prevLength);
+            terminal_put(term, elem, draw, ' ');
         }
-    }
-    break;
-    case KBD_RIGHT:
-    {
-        if (input_move(&term->input, +1) != ERR)
-        {
-            terminal_redraw_input(term, elem, draw, prevLength);
-        }
-    }
-    break;
-    case KBD_ENTER:
-    {
-        writef(term->stdin[PIPE_WRITE], "%s\n", term->input.buffer);
-
-        term->isCursorVisible = false;
-        terminal_cursor_draw(term, elem, draw);
-
-        history_push(&term->history, term->input.buffer);
-        input_set(&term->input, "");
-        terminal_write(term, elem, draw, "\n");
-    }
-    break;
-    case KBD_BACKSPACE:
-    {
-        input_backspace(&term->input);
-        terminal_redraw_input(term, elem, draw, prevLength);
     }
     break;
     default:
     {
-        if (ascii == '\0')
-        {
-            break;
-        }
+        terminal_char_t* currentChar = term->cursor;
+        currentChar->chr = chr;
+        currentChar->foreground = term->foreground;
+        currentChar->background = term->background;
+        currentChar->flags = term->flags;
+        terminal_char_draw(term, elem, draw, currentChar);
 
-        if (term->cursorPos.x + (int64_t)term->input.length + 1 >= TERMINAL_COLUMNS)
+        uint16_t cursorRow = terminal_char_row(term, term->cursor);
+        if (term->cursor->col == TERMINAL_COLUMNS - 1)
         {
-            break;
+            if (cursorRow == TERMINAL_ROWS - 1)
+            {
+                terminal_scroll(term, elem, draw);
+            }
+            else
+            {
+                term->cursor = terminal_get_char(term, cursorRow + 1, 0);
+            }
         }
-
-        input_insert(&term->input, ascii);
-        terminal_redraw_input(term, elem, draw, prevLength);
+        else
+        {
+            term->cursor = terminal_get_char(term, cursorRow, term->cursor->col + 1);
+        }
     }
     break;
     }
+}
+
+static void terminal_write(terminal_t* term, element_t* elem, drawable_t* draw, const char* str, uint64_t length)
+{
+    for (uint64_t i = 0; i < length; i++)
+    {
+        terminal_put(term, elem, draw, str[i]);
+    }
+
+    term->isCursorVisible = true;
+    terminal_cursor_update(term, elem, draw);
+    window_set_timer(term->win, TIMER_NONE, TERMINAL_BLINK_INTERVAL);
+}
+
+static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t* draw, const event_kbd_t* kbd)
+{
+    (void)elem;
+    (void)draw;
+
+    ansi_receiving_t ansi;
+    ansi_kbd_to_receiving(&ansi, kbd);
+
+    if (ansi.length > 0)
+    {
+        write(term->stdin[PIPE_WRITE], ansi.buffer, ansi.length);
+    }
+}
+
+static void ternminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t* draw, ansi_sending_t* ansi)
+{
+    if (ansi->ascii)
+    {
+        terminal_write(term, elem, draw, &ansi->command, 1);
+        return;
+    }
+
+    switch (ansi->command)
+    {
+    case 'm':
+    {
+        if (ansi->paramCount != 1)
+        {
+            // TODO: Implement support for more advanced color stuff
+            return;
+        }
+
+        const theme_t* theme = element_get_theme(elem);
+        switch (ansi->parameters[0])
+        {
+        case 0:
+            term->foreground = theme->ansi.bright[7];
+            term->background = theme->ansi.normal[0];
+            term->flags = 0;
+            break;
+        case 1:
+            term->flags |= TERMINAL_BOLD;
+            break;
+        case 2:
+            term->flags |= TERMINAL_DIM;
+            break;
+        case 3:
+            term->flags |= TERMINAL_ITALIC;
+            break;
+        case 4:
+            term->flags |= TERMINAL_UNDERLINE;
+            break;
+        case 5:
+            term->flags |= TERMINAL_BLINK;
+            break;
+        case 6:
+            term->flags |= TERMINAL_INVERSE;
+            break;
+        case 7:
+            term->flags |= TERMINAL_HIDDEN;
+            break;
+        case 8:
+            term->flags |= TERMINAL_STRIKETHROUGH;
+            break;
+        case 9:
+            term->flags |= TERMINAL_STRIKETHROUGH;
+            break;
+        case 22:
+            term->flags &= ~(TERMINAL_BOLD | TERMINAL_DIM);
+            break;
+        case 23:
+            term->flags &= ~TERMINAL_ITALIC;
+            break;
+        case 24:
+            term->flags &= ~TERMINAL_UNDERLINE;
+            break;
+        case 25:
+            term->flags &= ~TERMINAL_BLINK;
+            break;
+        case 27:
+            term->flags &= ~TERMINAL_INVERSE;
+            break;
+        case 28:
+            term->flags &= ~TERMINAL_HIDDEN;
+            break;
+        case 29:
+            term->flags &= ~TERMINAL_STRIKETHROUGH;
+            break;
+        default:
+            if (ansi->parameters[0] >= 30 && ansi->parameters[0] <= 37)
+            {
+                term->foreground = theme->ansi.normal[ansi->parameters[0] - 30];
+            }
+            else if (ansi->parameters[0] == 39)
+            {
+                term->foreground = theme->ansi.bright[7];
+            }
+            else if (ansi->parameters[0] >= 90 && ansi->parameters[0] <= 97)
+            {
+                term->foreground = theme->ansi.bright[ansi->parameters[0] - 90];
+            }
+            else if (ansi->parameters[0] >= 40 && ansi->parameters[0] <= 47)
+            {
+                term->background = theme->ansi.normal[ansi->parameters[0] - 40];
+            }
+            else if (ansi->parameters[0] == 49)
+            {
+                term->background = theme->ansi.normal[0];
+            }
+            else if (ansi->parameters[0] >= 100 && ansi->parameters[0] <= 107)
+            {
+                term->background = theme->ansi.bright[ansi->parameters[0] - 100];
+            }
+            break;
+        }
+    }
+    break;
+    default:
+        terminal_write(term, elem, draw, &ansi->command, 1);
+        break;
+    }
+}
+
+static void terminal_handle_output(terminal_t* term, element_t* elem, drawable_t* draw, const char* buffer,
+    uint64_t length)
+{
+    for (uint64_t i = 0; i < length; i++)
+    {
+        if (ansi_sending_parse(&term->ansi, buffer[i]))
+        {
+            ternminal_execute_ansi(term, elem, draw, &term->ansi);
+        }
+    }
+}
+
+static int terminal_io_thread(void* arg)
+{
+    terminal_t* term = (terminal_t*)arg;
+
+    while (poll1(term->stdout[PIPE_READ], POLLIN, CLOCKS_NEVER) & POLLIN)
+    {
+        uevent_terminal_data_t ueventData;
+        uint64_t readCount = read(term->stdout[PIPE_READ], ueventData.buffer, TERMINAL_MAX_INPUT);
+        ueventData.length = MIN(readCount, TERMINAL_MAX_INPUT);
+
+        display_push(window_get_display(term->win), window_get_id(term->win), UEVENT_TERMINAL_DATA, &ueventData,
+            sizeof(uevent_terminal_data_t));
+    }
+
+    return 0;
 }
 
 static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t* event)
 {
-    terminal_t* term = element_get_private(elem);
-
     switch (event->type)
     {
     case LEVENT_INIT:
     {
-        window_set_timer(win, TIMER_NONE, BLINK_INTERVAL);
+        terminal_init_ctx_t* ctx = element_get_private(elem);
+
+        terminal_t* term = malloc(sizeof(terminal_t));
+        if (term == NULL)
+        {
+            return ERR;
+        }
+        term->win = win;
+        term->font = ctx->font;
+        term->isCursorVisible = false;
+
+        if (open2("/dev/pipe/new", term->stdin) == ERR)
+        {
+            font_free(term->font);
+            free(term);
+            return ERR;
+        }
+        if (open2("/dev/pipe/new", term->stdout) == ERR)
+        {
+            close(term->stdin[0]);
+            close(term->stdin[1]);
+            font_free(term->font);
+            free(term);
+            return ERR;
+        }
+
+        const theme_t* theme = element_get_theme(elem);
+        term->foreground = theme->ansi.bright[7];
+        term->background = theme->ansi.normal[0];
+        term->flags = 0;
+        ansi_sending_init(&term->ansi);
+        for (uint64_t row = 0; row < TERMINAL_ROWS; row++)
+        {
+            for (uint64_t col = 0; col < TERMINAL_COLUMNS; col++)
+            {
+                term->screen[row][col] = terminal_char_create(' ', term->foreground, term->background, row, col);
+            }
+        }
+        term->firstRow = 0;
+        term->cursor = &term->screen[0][0];
+        term->prevCursor = &term->screen[0][0];
+
+        const char* argv[] = {"/bin/shell", NULL};
+        spawn_fd_t fds[] = {
+            {.child = STDIN_FILENO, .parent = term->stdin[PIPE_READ]},
+            {.child = STDOUT_FILENO, .parent = term->stdout[PIPE_WRITE]},
+            {.child = STDERR_FILENO, .parent = term->stdout[PIPE_WRITE]},
+            SPAWN_FD_END,
+        };
+        term->shell = spawn(argv, fds, NULL, NULL);
+        if (term->shell == ERR)
+        {
+            close(term->stdin[0]);
+            close(term->stdin[1]);
+            close(term->stdout[0]);
+            close(term->stdout[1]);
+            font_free(term->font);
+            free(term);
+            return ERR;
+        }
+        term->ioThreadStarted = false;
+
+        element_set_private(elem, term);
+        window_set_timer(win, TIMER_NONE, TERMINAL_BLINK_INTERVAL);
+    }
+    break;
+    case LEVENT_DEINIT:
+    {
+        terminal_t* term = element_get_private(elem);
+        if (term == NULL)
+        {
+            break;
+        }
+
+        close(term->stdin[0]);
+        close(term->stdin[1]);
+        close(term->stdout[0]);
+        close(term->stdout[1]);
+
+        fd_t shellNote = openf("/proc/%d/note", term->shell);
+        writef(shellNote, "kill");
+        close(shellNote);
+
+        thrd_join(term->ioThread, NULL);
+    }
+    break;
+    case LEVENT_QUIT:
+    {
+        display_disconnect(window_get_display(win));
     }
     break;
     case LEVENT_REDRAW:
     {
+        terminal_t* term = element_get_private(elem);
+
         drawable_t draw;
         element_draw_begin(elem, &draw);
-
         terminal_clear(term, elem, &draw);
-
         element_draw_end(elem, &draw);
+
+        if (!term->ioThreadStarted)
+        {
+            thrd_create(&term->ioThread, terminal_io_thread, term);
+            term->ioThreadStarted = true;
+        }
     }
     break;
     case EVENT_TIMER:
     {
-        window_set_timer(win, TIMER_NONE, BLINK_INTERVAL);
+        terminal_t* term = element_get_private(elem);
+
+        window_set_timer(win, TIMER_NONE, TERMINAL_BLINK_INTERVAL);
 
         term->isCursorVisible = !term->isCursorVisible;
-
         drawable_t draw;
         element_draw_begin(elem, &draw);
-
-        terminal_cursor_draw(term, elem, &draw);
-
+        terminal_cursor_update(term, elem, &draw);
         element_draw_end(elem, &draw);
     }
     break;
     case EVENT_KBD:
     {
+        terminal_t* term = element_get_private(elem);
+
         if (event->kbd.type != KBD_PRESS || event->kbd.code == 0)
         {
             break;
@@ -322,136 +517,64 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
 
         drawable_t draw;
         element_draw_begin(elem, &draw);
-
-        terminal_handle_input(term, elem, &draw, event->kbd.code, event->kbd.ascii, event->kbd.mods);
-
+        terminal_handle_input(term, elem, &draw, &event->kbd);
         element_draw_end(elem, &draw);
     }
     break;
+    case UEVENT_TERMINAL_DATA:
+    {
+        terminal_t* term = element_get_private(elem);
+        uevent_terminal_data_t* ueventData = (uevent_terminal_data_t*)event->raw;
+
+        drawable_t draw;
+        element_draw_begin(elem, &draw);
+        terminal_handle_output(term, elem, &draw, ueventData->buffer, ueventData->length);
+        element_draw_end(elem, &draw);
+    }
+    break;
+    default:
+        break;
     }
 
     return 0;
 }
 
-void terminal_init(terminal_t* term)
+static uint64_t terminal_pixel_width(font_t* font)
 {
-    term->disp = display_new();
-    if (term->disp == NULL)
-    {
-        abort();
-    }
-    term->font = font_new(term->disp, "firacode", "retina", 16);
-    if (term->font == NULL)
-    {
-        display_free(term->disp);
-        abort();
-    }
+    const theme_t* theme = theme_global_get();
+    return TERMINAL_COLUMNS * font_width(font, "a", 1) + theme->frameSize * 2 + theme->bigPadding * 2;
+}
 
-    rect_t rect = RECT_INIT_DIM(500, 200, terminal_width(term), terminal_height(term));
-    term->win = window_new(term->disp, "Terminal", &rect, SURFACE_WINDOW, WINDOW_DECO, terminal_procedure, term);
-    if (term == NULL)
-    {
-        display_free(term->disp);
-        abort();
-    }
+static uint64_t terminal_pixel_height(font_t* font)
+{
+    const theme_t* theme = theme_global_get();
+    return TERMINAL_ROWS * font_height(font) + theme->frameSize * 2 + theme->bigPadding * 2;
+}
 
-    window_set_visible(term->win, true);
-
-    term->cursorPos = (point_t){0};
-    term->isCursorVisible = false;
-    input_init(&term->input);
-    history_init(&term->history);
-
-    if (open2("/dev/pipe", term->stdin) == ERR || open2("/dev/pipe", term->stdout) == ERR)
-    {
-        window_free(term->win);
-        display_free(term->disp);
-        abort();
-    }
-
-    const char* argv[] = {"/bin/shell", NULL};
-    spawn_fd_t fds[] = {
-        {.child = STDIN_FILENO, .parent = term->stdin[PIPE_READ]},
-        {.child = STDOUT_FILENO, .parent = term->stdout[PIPE_WRITE]},
-        {.child = STDERR_FILENO, .parent = term->stdout[PIPE_WRITE]},
-        SPAWN_FD_END,
+window_t* terminal_new(display_t* disp)
+{
+    terminal_init_ctx_t ctx = {
+        .font = font_new(disp, "firacode", "retina", 16),
     };
-    term->shell = spawn(argv, fds, NULL, NULL);
-    if (term->shell == ERR)
+    if (ctx.font == NULL)
     {
-        close(term->stdin[0]);
-        close(term->stdin[1]);
-        close(term->stdout[0]);
-        close(term->stdout[1]);
-        window_free(term->win);
-        display_free(term->disp);
-        abort();
-    }
-}
-
-void terminal_deinit(terminal_t* term)
-{
-    input_deinit(&term->input);
-    history_deinit(&term->history);
-
-    fd_t shellNote = openf("/proc/%d/note", term->shell);
-    writef(shellNote, "kill");
-    close(shellNote);
-
-    close(term->stdin[0]);
-    close(term->stdin[1]);
-    close(term->stdout[0]);
-    close(term->stdout[1]);
-
-    window_free(term->win);
-    display_free(term->disp);
-}
-
-static void terminal_read_stdout(terminal_t* term)
-{
-    char buffer[MAX_PATH];
-
-    do
-    {
-        uint64_t readCount = read(term->stdout[PIPE_READ], buffer, MAX_PATH - 1);
-        buffer[readCount] = '\0';
-
-        element_t* elem = window_get_client_element(term->win);
-
-        drawable_t draw;
-        element_draw_begin(elem, &draw);
-
-        terminal_write(term, elem, &draw, buffer);
-
-        element_draw_end(elem, &draw);
-        window_invalidate_flush(term->win);
-
-        input_set(&term->input, "");
-    } while (poll1(term->stdout[PIPE_READ], POLLIN, 0) & POLLIN);
-}
-
-bool terminal_update(terminal_t* term)
-{
-    pollfd_t fds[] = {{.fd = term->stdout[PIPE_READ], .events = POLLIN},
-        {.fd = display_data_fd(term->disp), .events = POLLIN}};
-    poll(fds, 2, CLOCKS_NEVER);
-
-    event_t event = {0};
-    while (display_next(term->disp, &event, 0) && event.type != LEVENT_QUIT && display_is_connected(term->disp))
-    {
-        display_dispatch(term->disp, &event);
+        return NULL;
     }
 
-    if (event.type == LEVENT_QUIT || !display_is_connected(term->disp))
+    rect_t rect = RECT_INIT_DIM(500, 200, terminal_pixel_width(ctx.font), terminal_pixel_height(ctx.font));
+    window_t* win = window_new(disp, "Terminal", &rect, SURFACE_WINDOW, WINDOW_DECO, terminal_procedure, &ctx);
+    if (win == NULL)
     {
-        return false;
+        font_free(ctx.font);
+        return NULL;
     }
 
-    if (fds[0].revents & POLLIN)
+    if (window_set_visible(win, true) == ERR)
     {
-        terminal_read_stdout(term);
-        display_cmds_flush(term->disp);
+        window_free(win);
+        font_free(ctx.font);
+        return NULL;
     }
 
-    return true;
+    return win;
 }

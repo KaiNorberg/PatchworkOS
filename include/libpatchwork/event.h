@@ -61,8 +61,9 @@ typedef enum
  * - Standard events (0-127): Sent by the DWM to ONLY the display or surface that the event is targeted at, sent by
  * default.
  * - Global events (128-255): Sent by the DWM to all displays, not sent by default.
- * - Library events (256-1023): Sent by the libpatchwork library to elements using the library, cant be subscribed to or
+ * - Library events (256-511): Sent by the libpatchwork library to elements using the library, cant be subscribed to or
  * unsubscribed from.
+ * - Internal Library events (512-1023): Used internally by libpatchwork, should not be used by programs.
  * - User events (1024-65535): Defined by individual programs, cant be subscribed to or unsubscribed from.
  *
  * TODO: Global events are a security mess, when per-process namespaces stabilize we should consider if this could be
@@ -101,6 +102,8 @@ typedef uint64_t event_bitmask_t[4];
 #define LEVENT_ACTION 259
 #define LEVENT_QUIT 260
 #define LEVENT_FORCE_ACTION 261
+
+#define LEVENT_INTERNAL_WAKE 512
 
 #define UEVENT_START 1024
 #define UEVENT_END 65535

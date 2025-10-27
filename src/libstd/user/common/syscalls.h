@@ -253,3 +253,8 @@ static inline fd_t _syscall_claim(key_t* key)
 {
     return _SYSCALL1(fd_t, SYS_CLAIM, key_t*, key);
 }
+
+static inline uint64_t _syscall_bind(fd_t source, const char* mountpoint)
+{
+    return _SYSCALL2(uint64_t, SYS_BIND, fd_t, source, const char*, mountpoint);
+}

@@ -6,7 +6,10 @@
 
 font_t* font_default(display_t* disp)
 {
-    return disp->defaultFont;
+    mtx_lock(&disp->mutex);
+    font_t* temp = disp->defaultFont;
+    mtx_unlock(&disp->mutex);
+    return temp;
 }
 
 #include <stdio.h>
@@ -79,13 +82,17 @@ font_t* font_new(display_t* disp, const char* family, const char* weight, uint64
     close(file);
     font->disp = disp;
     list_entry_init(&font->entry);
+    mtx_lock(&disp->mutex);
     list_push(&disp->fonts, &font->entry);
+    mtx_unlock(&disp->mutex);
     return font;
 }
 
 void font_free(font_t* font)
 {
+    mtx_lock(&font->disp->mutex);
     list_remove(&font->disp->fonts, &font->entry);
+    mtx_unlock(&font->disp->mutex);
     free(font);
 }
 

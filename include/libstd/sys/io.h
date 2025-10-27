@@ -25,7 +25,7 @@ extern "C"
  * @defgroup libstd_sys_io System IO
  *
  * The `sys/io.h` header handles interaction with PatchworkOS's file system,
- * following the philosophy that **everything is a file**. This means interacting with physical devices,
+ * following the philosophy that everything is a file. This means interacting with physical devices,
  * inter-process communication (like shared memory), and much more is handled via files.
  *
  * ### Flags
@@ -525,6 +525,15 @@ uint64_t share(key_t* key, fd_t fd, clock_t timeout);
  * @return On success, the claimed file descriptor. On failure, `ERR` and `errno` is set.
  */
 fd_t claim(key_t* key);
+
+/**
+ * @brief System call for binding a file descriptor to a mountpoint.
+ *
+ * @param source The file descriptor to bind, must represent a directory.
+ * @param mountpoint The mountpoint path.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t bind(fd_t source, const char* mountpoint);
 
 #if defined(__cplusplus)
 }

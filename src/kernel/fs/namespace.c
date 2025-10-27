@@ -7,6 +7,8 @@
 #include "path.h"
 #include "superblock.h"
 #include "vfs.h"
+#include "proc/process.h"
+#include "sched/thread.h"
 
 #include <errno.h>
 
@@ -182,6 +184,85 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
 
     LOG_DEBUG("mounted %s with %s\n", deviceName, fsName);
     return REF(mount);
+}
+
+mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* mountpoint)
+{
+    if (source == NULL || mountpoint == NULL || mountpoint->dentry == NULL || mountpoint->mount == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    if (atomic_load(&source->flags) & DENTRY_NEGATIVE)
+    {
+        errno = ENOENT;
+        return NULL;
+    }
+
+    if (ns == NULL)
+    {
+        process_t* kernelProcess = process_get_kernel();
+        assert(kernelProcess != NULL);
+        ns = &kernelProcess->namespace;
+    }
+
+    mount_t* mount = mount_new(source->superblock, source, mountpoint->dentry, mountpoint->mount);
+    if (mount == NULL)
+    {
+        return NULL;
+    }
+
+    map_key_t key = mount_cache_key(mountpoint->mount->id, mountpoint->dentry->id);
+    rwlock_write_acquire(&ns->lock);
+    if (map_insert(&ns->mountPoints, &key, &mount->mapEntry) == ERR)
+    {
+        DEREF(mount);
+        rwlock_write_release(&ns->lock);
+        return NULL;
+    }
+    rwlock_write_release(&ns->lock);
+
+    return REF(mount);
+}
+
+SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpointString)
+{
+    if (mountpointString == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
+
+    pathname_t pathname;
+    if (thread_copy_from_user_pathname(thread, &pathname, mountpointString) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t mountpoint;
+    if (vfs_walk(&mountpoint, &pathname, WALK_MOUNTPOINT_TO_ROOT, process) == ERR)
+    {
+        return ERR;
+    }
+
+    file_t* sourceFile = vfs_ctx_get_file(&process->vfsCtx, source);
+    if (sourceFile == NULL)
+    {
+        return ERR;
+    }
+    DEREF_DEFER(sourceFile);
+
+    mount_t* bind = namespace_bind(&process->namespace, sourceFile->path.dentry, &mountpoint);
+    if (bind == NULL)
+    {
+        return ERR;
+    }
+    DEREF(bind);
+    return 0;
 }
 
 uint64_t namespace_get_root_path(namespace_t* ns, path_t* outPath)

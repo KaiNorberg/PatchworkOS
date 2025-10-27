@@ -315,10 +315,10 @@ fd_t dir = claim(key);
 bind(dir, "/any/path/it/wants");
 
 // Its also possible to just open paths in the shared directory without polluting the namespace using openat().
-fd_t somePath = openat(dir, "data");
+fd_t somePath = openat(dir, "data"); // To be implemented
 
 // Finally, it could also use fchdir() to change its current working directory to the shared directory.
-fchdir(dir);
+fchdir(dir); // To be implemented
 ```
 
 This system guarantees consent between processes, and can be used to implement more complex access control systems.

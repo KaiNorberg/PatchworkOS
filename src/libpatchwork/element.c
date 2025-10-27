@@ -470,8 +470,7 @@ void element_force_action(element_t* elem, action_type_t action)
     levent_force_action_t event;
     event.dest = elem->id;
     event.action = action;
-    display_push(elem->win->disp, elem->win->surface, LEVENT_FORCE_ACTION, &event,
-        sizeof(levent_force_action_t));
+    display_push(elem->win->disp, elem->win->surface, LEVENT_FORCE_ACTION, &event, sizeof(levent_force_action_t));
 }
 
 uint64_t element_dispatch(element_t* elem, const event_t* event)

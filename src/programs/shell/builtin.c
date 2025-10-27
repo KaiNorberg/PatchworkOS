@@ -24,78 +24,35 @@ static uint64_t builtin_cd(uint64_t argc, const char** argv)
     return 0;
 }
 
-static uint64_t builtin_clear(uint64_t argc, const char** argv)
-{
-    (void)argc;
-    (void)argv;
-    return ERR;
-}
-
-static uint64_t builtin_help(uint64_t argc, const char** argv);
-
-static builtin_t builtins[] = {
-    {
-        .name = "cd",
-        .synopsis = "cd [DIRECTORY]",
-        .description = "If DIRECTORY is given, the current working directory will be set to DIRECTORY else it will be "
-                       "set to \"/usr\"",
-        .callback = builtin_cd,
-    },
-    /*{
-        .name = "clear",
-        .synopsis = "clear",
-        .description = "Clears the screen",
-        .callback = builtin_clear,
-    },*/
-    {
-        .name = "help",
-        .synopsis = "help [builtin]",
-        .description = "If builtin is given, information about builtin will be printed, else a list of available "
-                       "builtins will be printed.",
-        .callback = builtin_help,
-    },
-};
-
 static uint64_t builtin_help(uint64_t argc, const char** argv)
 {
-    if (argc < 2)
-    {
-        printf("Type help [builtin] for more information about builtin\n  ");
-        for (uint64_t i = 0; i < sizeof(builtins) / sizeof(builtins[0]); i++)
-        {
-            printf("%s ", builtins[i].name);
-        }
-        printf("./[BINARY IN CWD] [BINARY IN /bin OR /bin/usr/]");
-    }
-    else
-    {
-        builtin_t* builtin = NULL;
-        for (uint64_t i = 0; i < sizeof(builtins) / sizeof(builtins[0]); i++)
-        {
-            if (strcmp(argv[1], builtins[i].name) == 0)
-            {
-                builtin = &builtins[i];
-                break;
-            }
-        }
-        if (builtin == NULL)
-        {
-            printf("error: builtin not found");
-            return ERR;
-        }
+    (void)argc; // Unused
+    (void)argv; // Unused
 
-        printf("NAME\n  ");
-        printf(builtin->name);
+    printf("BUILT-IN COMMANDS: ");
+    builtin_dump_list();
+    printf("\n\n");
 
-        printf("\nSYNOPSIS\n  ");
-        printf(builtin->synopsis);
-
-        printf("\nDESCRIPTION\n  ");
-        printf(builtin->description);
-    }
+    printf("USAGE:\n");
+    printf("  Navigate:  cd [dir], ls [dir]\n");
+    printf("  Redirect:  command > file, command < file\n");
+    printf("  Pipe:      command1 | command2\n");
+    printf("  Interrupt: ctrl+C (terminate process)\n");
+    printf("  History:   up/down arrows to navigate command history\n");
+    printf("\n");
+    printf("Commands can be found in /bin and /usr/bin.\n");
 
     return 0;
 }
+
+static builtin_t builtins[] = {{
+    .name = "cd",
+    .callback = builtin_cd,
+},
+{
+    .name = "help",
+    .callback = builtin_help,
+},};
 
 bool builtin_exists(const char* name)
 {
@@ -127,4 +84,16 @@ uint64_t builtin_execute(uint64_t argc, const char** argv)
     }
 
     return ERR;
+}
+
+void builtin_dump_list(void)
+{
+    for (uint64_t i = 0; i < sizeof(builtins) / sizeof(builtins[0]); i++)
+    {
+        printf("%s", builtins[i].name);
+        if (i + 1 < sizeof(builtins) / sizeof(builtins[0]))
+        {
+            printf(", ");
+        }
+    }
 }

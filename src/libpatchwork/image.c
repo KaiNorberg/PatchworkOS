@@ -18,7 +18,9 @@ image_t* image_new_blank(display_t* disp, uint64_t width, uint64_t height)
     image->draw.contentRect = RECT_INIT_DIM(0, 0, width, height);
     image->draw.invalidRect = (rect_t){0};
 
+    mtx_lock(&disp->mutex);
     list_push(&disp->images, &image->entry);
+    mtx_unlock(&disp->mutex);
     return image;
 }
 
@@ -58,7 +60,12 @@ image_t* image_new(display_t* disp, const char* path)
         return NULL;
     }
 
-    read(file, image->draw.buffer, header.width * header.height * sizeof(pixel_t));
+    if (read(file, image->draw.buffer, header.width * header.height * sizeof(pixel_t)) == ERR)
+    {
+        image_free(image);
+        close(file);
+        return NULL;
+    }
     close(file);
 
     return image;
@@ -66,7 +73,9 @@ image_t* image_new(display_t* disp, const char* path)
 
 void image_free(image_t* image)
 {
+    mtx_lock(&image->draw.disp->mutex);
     list_remove(&image->draw.disp->images, &image->entry);
+    mtx_unlock(&image->draw.disp->mutex);
 
     free(image->draw.buffer);
     free(image);

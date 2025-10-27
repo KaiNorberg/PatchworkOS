@@ -6,31 +6,31 @@
 #include <string.h>
 #include <sys/list.h>
 
-static void display_receive_event(display_t* disp, event_t* event)
+static inline uint64_t display_events_pipe_read(display_t* disp, event_t* event)
 {
-    uint64_t result;
-    do
+    if (disp->eventsInPipe > 0)
     {
-        result = read(disp->data, event, sizeof(event_t));
-    } while (result == ERR && errno == EINTR);
-
-    if (result == sizeof(event_t))
-    {
-        return;
+        if (read(disp->eventsPipe, event, sizeof(event_t)) != sizeof(event_t))
+        {
+            disp->isConnected = false;
+            return ERR;
+        }
+        disp->eventsInPipe--;
+        return sizeof(event_t);
     }
 
-    disp->isConnected = false;
+    return 0;
 }
 
-static bool display_is_events_avail(display_t* disp)
+static inline uint64_t display_events_pipe_write(display_t* disp, const event_t* event)
 {
-    return disp->events.readIndex != disp->events.writeIndex;
-}
-
-static void display_events_pop(display_t* disp, event_t* event)
-{
-    *event = disp->events.buffer[disp->events.readIndex];
-    disp->events.readIndex = (disp->events.readIndex + 1) % DISPLAY_MAX_EVENT;
+    if (write(disp->eventsPipe, event, sizeof(event_t)) != sizeof(event_t))
+    {
+        disp->isConnected = false;
+        return ERR;
+    }
+    disp->eventsInPipe++;
+    return sizeof(event_t);
 }
 
 display_t* display_new(void)
@@ -70,9 +70,17 @@ display_t* display_new(void)
         return NULL;
     }
 
+    disp->eventsPipe = open("/dev/pipe/new");
+    if (disp->eventsPipe == ERR)
+    {
+        close(disp->data);
+        close(disp->ctl);
+        free(disp);
+        return NULL;
+    }
+    disp->eventsInPipe = 0;
+
     disp->isConnected = true;
-    disp->events.readIndex = 0;
-    disp->events.writeIndex = 0;
     disp->cmds.amount = 0;
     disp->cmds.size = offsetof(cmd_buffer_t, data);
     list_init(&disp->windows);
@@ -82,6 +90,17 @@ display_t* display_new(void)
     disp->defaultFont = font_new(disp, "default", "regular", 16);
     if (disp->defaultFont == NULL)
     {
+        close(disp->eventsPipe);
+        close(disp->data);
+        close(disp->ctl);
+        free(disp);
+        return NULL;
+    }
+
+    if (mtx_init(&disp->mutex, mtx_recursive) == thrd_error)
+    {
+        font_free(disp->defaultFont);
+        close(disp->eventsPipe);
         close(disp->data);
         close(disp->ctl);
         free(disp);
@@ -119,43 +138,11 @@ void display_free(display_t* disp)
         image_free(image);
     }
 
+    close(disp->eventsPipe);
     close(disp->ctl);
     close(disp->data);
+    mtx_destroy(&disp->mutex);
     free(disp);
-}
-
-rect_t display_screen_rect(display_t* disp, uint64_t index)
-{
-    if (disp == NULL)
-    {
-        return RECT_INIT(0, 0, 0, 0);
-    }
-
-    cmd_screen_info_t* cmd = display_cmd_alloc(disp, CMD_SCREEN_INFO, sizeof(cmd_screen_info_t));
-    if (cmd == NULL)
-    {
-        return RECT_INIT(0, 0, 0, 0);
-    }
-    cmd->index = index;
-    display_cmds_flush(disp);
-
-    event_t event;
-    if (display_wait(disp, &event, EVENT_SCREEN_INFO) == ERR)
-    {
-        return RECT_INIT(0, 0, 0, 0);
-    }
-    return RECT_INIT(0, 0, event.screenInfo.width, event.screenInfo.height);
-}
-
-fd_t display_data_fd(display_t* disp)
-{
-    if (disp == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    return disp->data;
 }
 
 bool display_is_connected(display_t* disp)
@@ -165,7 +152,10 @@ bool display_is_connected(display_t* disp)
         return false;
     }
 
-    return disp->isConnected;
+    mtx_lock(&disp->mutex);
+    bool temp = disp->isConnected;
+    mtx_unlock(&disp->mutex);
+    return temp;
 }
 
 void display_disconnect(display_t* disp)
@@ -175,7 +165,9 @@ void display_disconnect(display_t* disp)
         return;
     }
 
+    mtx_lock(&disp->mutex);
     disp->isConnected = false;
+    mtx_unlock(&disp->mutex);
 }
 
 void* display_cmd_alloc(display_t* disp, cmd_type_t type, uint64_t size)
@@ -186,6 +178,7 @@ void* display_cmd_alloc(display_t* disp, cmd_type_t type, uint64_t size)
         return NULL;
     }
 
+    mtx_lock(&disp->mutex);
     if (disp->cmds.size + size >= CMD_BUFFER_MAX_DATA)
     {
         display_cmds_flush(disp);
@@ -198,11 +191,13 @@ void* display_cmd_alloc(display_t* disp, cmd_type_t type, uint64_t size)
     cmd->magic = CMD_MAGIC;
     cmd->type = type;
     cmd->size = size;
+    mtx_unlock(&disp->mutex);
     return cmd;
 }
 
 void display_cmds_flush(display_t* disp)
 {
+    mtx_lock(&disp->mutex);
     if (disp->isConnected && disp->cmds.amount != 0)
     {
         if (write(disp->data, &disp->cmds, disp->cmds.size) != disp->cmds.size)
@@ -212,6 +207,7 @@ void display_cmds_flush(display_t* disp)
     }
     disp->cmds.size = offsetof(cmd_buffer_t, data);
     disp->cmds.amount = 0;
+    mtx_unlock(&disp->mutex);
 }
 
 uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
@@ -222,33 +218,70 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
         return ERR;
     }
 
-    if (display_is_events_avail(disp))
+    mtx_lock(&disp->mutex);
+    if (!disp->isConnected)
     {
-        display_events_pop(disp, event);
-        return 0;
-    }
-
-    if (timeout != CLOCKS_NEVER)
-    {
-        poll_events_t revents = poll1(disp->data, POLLIN, timeout);
-        if (revents & POLLERR)
-        {
-            disp->isConnected = false;
-            return ERR;
-        }
-        else if (!(revents & POLLIN))
-        {
-            errno = ETIMEDOUT;
-            return ERR;
-        }
-    }
-
-    display_receive_event(disp, event);
-    if (!display_is_connected(disp))
-    {
+        mtx_unlock(&disp->mutex);
         errno = ENOTCONN;
         return ERR;
     }
+    uint64_t readBytes = display_events_pipe_read(disp, event);
+    mtx_unlock(&disp->mutex);
+    if (readBytes == sizeof(event_t))
+    {
+        return 0;
+    }
+    else if (readBytes == ERR)
+    {
+        return ERR;
+    }
+
+    pollfd_t fds[] = {{.fd = disp->data, .events = POLLIN}, {.fd = disp->eventsPipe, .events = POLLIN}};
+    poll_events_t revents = poll(fds, 2, timeout);
+    if (revents & POLLERR)
+    {
+        display_disconnect(disp);
+        return ERR;
+    }
+    else if (!(revents & POLLIN))
+    {
+        errno = ETIMEDOUT;
+        return ERR;
+    }
+
+    mtx_lock(&disp->mutex);
+    if (!disp->isConnected)
+    {
+        mtx_unlock(&disp->mutex);
+        errno = ENOTCONN;
+        return ERR;
+    }
+    if (fds[1].revents & POLLIN)
+    {
+        readBytes = display_events_pipe_read(disp, event);
+        if (readBytes == sizeof(event_t))
+        {
+            mtx_unlock(&disp->mutex);
+            return 0;
+        }
+        else if (readBytes == ERR)
+        {
+            mtx_unlock(&disp->mutex);
+            return ERR;
+        }
+    }
+    if (fds[0].revents & POLLIN)
+    {
+        if (read(disp->data, event, sizeof(event_t)) != sizeof(event_t))
+        {
+            disp->isConnected = false;
+            mtx_unlock(&disp->mutex);
+            return ERR;
+        }
+        mtx_unlock(&disp->mutex);
+        return 0;
+    }
+    mtx_unlock(&disp->mutex);
     return 0;
 }
 
@@ -259,18 +292,15 @@ void display_push(display_t* disp, surface_id_t target, event_type_t type, void*
         return;
     }
 
-    uint64_t nextWriteIndex = (disp->events.writeIndex + 1) % DISPLAY_MAX_EVENT;
-    if (nextWriteIndex == disp->events.readIndex)
-    {
-        disp->events.readIndex = (disp->events.readIndex + 1) % DISPLAY_MAX_EVENT;
-    }
+    event_t event = {
+        .target = target,
+        .type = type,
+    };
+    memcpy(event.raw, data, MIN(EVENT_MAX_DATA, size));
 
-    event_t* event = &disp->events.buffer[disp->events.writeIndex];
-    event->type = type;
-    event->target = target;
-    memcpy(event->raw, data, size);
-
-    disp->events.writeIndex = nextWriteIndex;
+    mtx_lock(&disp->mutex);
+    display_events_pipe_write(disp, &event);
+    mtx_unlock(&disp->mutex);
 }
 
 uint64_t display_wait(display_t* disp, event_t* event, event_type_t expected)
@@ -281,41 +311,46 @@ uint64_t display_wait(display_t* disp, event_t* event, event_type_t expected)
         return ERR;
     }
 
-    uint64_t initReadIndex = disp->events.readIndex;
-    while (display_is_events_avail(disp))
+    mtx_lock(&disp->mutex);
+    uint64_t initEventsInPipe = disp->eventsInPipe;
+    for (uint64_t i = 0; i < initEventsInPipe; i++)
     {
-        display_events_pop(disp, event);
-        if (event->type == expected)
+        if (display_events_pipe_read(disp, event) == ERR)
         {
-            return 0;
-        }
-        else
-        {
-            display_push(disp, event->target, event->type, event->raw, EVENT_MAX_DATA);
-        }
-
-        if (disp->events.readIndex == initReadIndex)
-        {
-            break;
-        }
-    }
-
-    while (true)
-    {
-        display_receive_event(disp, event);
-        if (!display_is_connected(disp))
-        {
-            errno = ENOTCONN;
+            mtx_unlock(&disp->mutex);
             return ERR;
         }
 
         if (event->type != expected)
         {
-            display_push(disp, event->target, event->type, event->raw, EVENT_MAX_DATA);
+            display_events_pipe_write(disp, event);
         }
         else
         {
+            mtx_unlock(&disp->mutex);
             return 0;
+        }
+    }
+
+    while (true)
+    {
+        if (read(disp->data, event, sizeof(event_t)) != sizeof(event_t))
+        {
+            disp->isConnected = false;
+            mtx_unlock(&disp->mutex);
+            return ERR;
+        }
+
+        if (event->type == expected)
+        {
+            mtx_unlock(&disp->mutex);
+            return 0;
+        }
+        else
+        {
+            mtx_lock(&disp->mutex);
+            display_events_pipe_write(disp, event);
+            mtx_unlock(&disp->mutex);
         }
     }
 }
@@ -349,6 +384,7 @@ uint64_t display_dispatch(display_t* disp, const event_t* event)
         return ERR;
     }
 
+    mtx_lock(&disp->mutex);
     window_t* win;
     window_t* temp;
     LIST_FOR_EACH_SAFE(win, temp, &disp->windows, entry)
@@ -368,6 +404,7 @@ uint64_t display_dispatch(display_t* disp, const event_t* event)
     }
 
     display_cmds_flush(disp);
+    mtx_unlock(&disp->mutex);
     return 0;
 }
 
@@ -379,28 +416,31 @@ uint64_t display_dispatch_pending(display_t* disp, event_type_t type, surface_id
         return ERR;
     }
 
-    uint64_t initReadIndex = disp->events.readIndex;
-    while (display_is_events_avail(disp))
+    mtx_lock(&disp->mutex);
+    uint64_t initEventsInPipe = disp->eventsInPipe;
+    for (uint64_t i = 0; i < initEventsInPipe; i++)
     {
         event_t event;
-        display_events_pop(disp, &event);
+        if (display_events_pipe_read(disp, &event) == ERR)
+        {
+            mtx_unlock(&disp->mutex);
+            return ERR;
+        }
+
         if (event.type == type && (event.target == target || target == SURFACE_ID_NONE))
         {
             if (display_dispatch(disp, &event) == ERR)
             {
+                mtx_unlock(&disp->mutex);
                 return ERR;
             }
         }
         else
         {
-            display_push(disp, event.target, event.type, event.raw, EVENT_MAX_DATA);
-        }
-
-        if (disp->events.readIndex == initReadIndex)
-        {
-            break;
+            display_events_pipe_write(disp, &event);
         }
     }
+    mtx_unlock(&disp->mutex);
 
     return 0;
 }
@@ -416,6 +456,7 @@ uint64_t display_subscribe(display_t* disp, event_type_t type)
     cmd_subscribe_t* cmd = display_cmd_alloc(disp, CMD_SUBSCRIBE, sizeof(cmd_subscribe_t));
     if (cmd == NULL)
     {
+        mtx_unlock(&disp->mutex);
         return ERR;
     }
     cmd->event = type;
@@ -434,6 +475,7 @@ uint64_t display_unsubscribe(display_t* disp, event_type_t type)
     cmd_unsubscribe_t* cmd = display_cmd_alloc(disp, CMD_UNSUBSCRIBE, sizeof(cmd_unsubscribe_t));
     if (cmd == NULL)
     {
+        mtx_unlock(&disp->mutex);
         return ERR;
     }
     cmd->event = type;
@@ -452,6 +494,7 @@ uint64_t display_get_surface_info(display_t* disp, surface_id_t id, surface_info
     cmd_surface_report_t* cmd = display_cmd_alloc(disp, CMD_SURFACE_REPORT, sizeof(cmd_surface_report_t));
     if (cmd == NULL)
     {
+        mtx_unlock(&disp->mutex);
         return ERR;
     }
     cmd->isGlobal = true;
@@ -472,6 +515,7 @@ uint64_t display_set_focus(display_t* disp, surface_id_t id)
     cmd_surface_focus_set_t* cmd = display_cmd_alloc(disp, CMD_SURFACE_FOCUS_SET, sizeof(cmd_surface_focus_set_t));
     if (cmd == NULL)
     {
+        mtx_unlock(&disp->mutex);
         return ERR;
     }
     cmd->isGlobal = true;
@@ -492,5 +536,30 @@ uint64_t display_set_is_visible(display_t* disp, surface_id_t id, bool isVisible
     cmd->target = id;
     cmd->isVisible = isVisible;
     display_cmds_flush(disp);
+    return 0;
+}
+
+uint64_t display_get_screen(display_t* disp, rect_t* rect, uint64_t index)
+{
+    if (disp == NULL || rect == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    cmd_screen_info_t* cmd = display_cmd_alloc(disp, CMD_SCREEN_INFO, sizeof(cmd_screen_info_t));
+    if (cmd == NULL)
+    {
+        return ERR;
+    }
+    cmd->index = index;
+    display_cmds_flush(disp);
+
+    event_t event;
+    if (display_wait(disp, &event, EVENT_SCREEN_INFO) == ERR)
+    {
+        return ERR;
+    }
+    *rect = RECT_INIT(0, 0, event.screenInfo.width, event.screenInfo.height);
     return 0;
 }

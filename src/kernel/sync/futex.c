@@ -115,6 +115,7 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
                 {
                     errno = EAGAIN;
                 }
+                wait_block_cancel();
                 return 0;
             }
             firstCheck = false;

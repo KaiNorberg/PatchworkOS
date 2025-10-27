@@ -21,8 +21,14 @@ extern "C"
  *
  * A display represents a connection to the Desktop Window Manager (DWM).
  *
- * The display system is NOT thread safe, it is the responsibility of the application to ensure that displays are only
- * accessed from a single thread at a time.
+ * The display system IS thread safe, but the rest of the Patchwork library may not be. The display connection can thus
+ * be used to synchronize multiple threads when working with windows, etc.
+ *
+ * There are two things of note for performance when using a display. First, commands are batched and sent together when
+ * `display_cmds_flush()` is called. Second, the display uses a internal pipe to store events that cant be processed
+ * immediately and this means that if a thread calls `display_push()` another thread blocking on `display_next()` will
+ * unblock since its blocking on both the displays DWM connection and the internal pipe.
+ *
  * @{
  */
 
@@ -45,25 +51,6 @@ display_t* display_new(void);
  * @param disp The display connection.
  */
 void display_free(display_t* disp);
-
-/**
- * @brief Get the rectangle of a screen.
- *
- * @param disp The display connection.
- * @param index Index of the screen to query, only `0` is supported currently.
- * @return The rectangle of the screen, or a zero-area rectangle on failure.
- */
-rect_t display_screen_rect(display_t* disp, uint64_t index);
-
-/**
- * @brief Get the data file descriptor of the display connection.
- *
- * This file descriptor can be used with `poll()` to wait for events from the DWM and other files at the same time.
- *
- * @param disp The display connection.
- * @return On success, the data file descriptor. On failure, returns `ERR` and sets `errno`.
- */
-fd_t display_data_fd(display_t* disp);
 
 /**
  * @brief Check if the display connection is still connected.
@@ -123,8 +110,6 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout);
  * This will not send the event to the DWM, instead it will be stored in the display's internal event queue and can be
  * retrieved using `display_next()`.
  *
- * If the event queue is full, the event at the front of the queue will be discarded to make room for the new event.
- *
  * @param disp The display connection.
  * @param target Target surface ID for the event.
  * @param type Type of event.
@@ -163,6 +148,8 @@ uint64_t display_emit(display_t* disp, surface_id_t target, event_type_t type, v
 
 /**
  * @brief Dispatch an event to the appropriate surface.
+ *
+ * Will flush the display's command buffer after dispatching the event.
  *
  * @param disp The display connection.
  * @param event The event to dispatch.
@@ -232,6 +219,16 @@ uint64_t display_set_focus(display_t* disp, surface_id_t id);
  * @param isVisible Whether the surface should be visible.
  */
 uint64_t display_set_is_visible(display_t* disp, surface_id_t id, bool isVisible);
+
+/**
+ * @brief Get the rectangle of a screen.
+ *
+ * @param disp The display connection.
+ * @param rect Output pointer to store the rectangle of the screen.
+ * @param index Index of the screen to query, only `0` is supported currently.
+ * @return On success, `0`. On failure, returns `ERR` and sets `errno`.
+ */
+uint64_t display_get_screen(display_t* disp, rect_t* rect, uint64_t index);
 
 /** @} */
 

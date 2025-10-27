@@ -44,6 +44,20 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
 int main(void)
 {
+    fd_t klog = open("/dev/klog");
+    if (klog == ERR)
+    {
+        printf("taskbar: failed to open klog\n");
+        return EXIT_FAILURE;
+    }
+    if (dup2(klog, STDOUT_FILENO) == ERR || dup2(klog, STDERR_FILENO) == ERR)
+    {
+        printf("taskbar: failed to redirect stdout/stderr to klog\n");
+        close(klog);
+        return EXIT_FAILURE;
+    }
+    close(klog);
+
     display_t* disp = display_new();
     if (disp == NULL)
     {
@@ -64,7 +78,8 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    rect_t rect = display_screen_rect(disp, 0);
+    rect_t rect;
+    display_get_screen(disp, &rect, 0);
 
     image = image_new(disp, theme_global_get()->wallpaper);
     if (image == NULL)

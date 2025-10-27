@@ -47,6 +47,22 @@ typedef struct
 } theme_color_set_t;
 
 /**
+ * @brief Number of ANSI colors.
+ */
+#define THEME_ANSI_COLOR_COUNT 8
+
+/**
+ * @brief ANSI colors.
+ * @struct theme_ansi_t
+ */
+typedef struct
+{
+    pixel_t normal[THEME_ANSI_COLOR_COUNT];
+    pixel_t bright[THEME_ANSI_COLOR_COUNT];
+    pixel_t dim[THEME_ANSI_COLOR_COUNT];
+} theme_ansi_t;
+
+/**
  * @brief Theme structure
  *
  * This structure holds all theme related information.
@@ -72,8 +88,16 @@ typedef struct
     int64_t smallPadding;
     int64_t separatorSize;
     uint8_t reserved[512];
+    theme_ansi_t ansi;
 } theme_t;
 
+/**
+ * @brief Get the global theme.
+ *
+ * Will potentially load the theme if it is not already loaded.
+ *
+ * @return The global theme.
+ */
 theme_t* theme_global_get(void);
 
 /** @} */

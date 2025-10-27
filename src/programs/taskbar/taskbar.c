@@ -364,7 +364,8 @@ window_t* taskbar_new(display_t* disp)
     }
     close(klog);
 
-    rect_t rect = display_screen_rect(disp, 0);
+    rect_t rect;
+    display_get_screen(disp, &rect, 0);
     rect.top = rect.bottom - theme_global_get()->panelSize;
 
     if (display_subscribe(disp, GEVENT_ATTACH) == ERR || display_subscribe(disp, GEVENT_DETACH) == ERR ||

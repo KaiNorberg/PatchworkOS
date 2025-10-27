@@ -29,12 +29,19 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
 int main(void)
 {
-    const theme_t* theme = theme_global_get();
-    if (theme == NULL)
+    fd_t klog = open("/dev/klog");
+    if (klog == ERR)
     {
-        printf("cursor: failed to get global theme\n");
+        printf("cursor: failed to open klog\n");
         return EXIT_FAILURE;
     }
+    if (dup2(klog, STDOUT_FILENO) == ERR || dup2(klog, STDERR_FILENO) == ERR)
+    {
+        printf("cursor: failed to redirect stdout/stderr to klog\n");
+        close(klog);
+        return EXIT_FAILURE;
+    }
+    close(klog);
 
     display_t* disp = display_new();
     if (disp == NULL)
@@ -43,6 +50,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
+    const theme_t* theme = theme_global_get();
     image = image_new(disp, theme->cursorArrow);
     if (image == NULL)
     {
@@ -50,7 +58,8 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    rect_t screenRect = display_screen_rect(disp, 0);
+    rect_t screenRect;
+    display_get_screen(disp, &screenRect, 0);
     rect_t rect = RECT_INIT_DIM(RECT_WIDTH(&screenRect) / 2, RECT_HEIGHT(&screenRect) / 2, image_width(image),
         image_height(image));
 
@@ -61,7 +70,13 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    window_set_visible(win, true);
+    if (window_set_visible(win, true) == ERR)
+    {
+        printf("cursor: failed to show window\n");
+        window_free(win);
+        display_free(disp);
+        return EXIT_FAILURE;
+    }
 
     event_t event = {0};
     while (display_next(disp, &event, CLOCKS_NEVER) != ERR)

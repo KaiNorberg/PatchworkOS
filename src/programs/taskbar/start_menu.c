@@ -114,7 +114,8 @@ static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_
     case EVENT_TIMER:
     {
         start_menu_t* menu = element_get_private(elem);
-        rect_t screenRect = display_screen_rect(window_get_display(win), 0);
+        rect_t screenRect;
+        display_get_screen(window_get_display(win), &screenRect, 0);
 
         int32_t startY = START_MENU_YPOS_START(&screenRect, theme->panelSize, theme->frameSize);
         int32_t endY = START_MENU_YPOS_END(&screenRect, theme->panelSize, theme->frameSize);
@@ -184,7 +185,8 @@ static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_
 window_t* start_menu_new(window_t* taskbar, display_t* disp)
 {
     const theme_t* theme = theme_global_get();
-    rect_t screenRect = display_screen_rect(disp, 0);
+    rect_t screenRect;
+    display_get_screen(disp, &screenRect, 0);
 
     rect_t rect =
         RECT_INIT_DIM(theme->smallPadding, START_MENU_YPOS_START(&screenRect, theme->panelSize, theme->frameSize),
@@ -217,7 +219,8 @@ void start_menu_open(window_t* startMenu)
         return;
     }
 
-    rect_t screenRect = display_screen_rect(window_get_display(startMenu), 0);
+    rect_t screenRect;
+    display_get_screen(window_get_display(startMenu), &screenRect, 0);
 
     int32_t startY = START_MENU_YPOS_START(&screenRect, theme->panelSize, theme->frameSize);
 

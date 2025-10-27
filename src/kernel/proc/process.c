@@ -33,7 +33,8 @@ static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 // Should be acquired whenever a process tree is being read or modified.
 static rwlock_t treeLock = RWLOCK_CREATE;
 
-static mount_t* mount;
+static mount_t* procMount = NULL;
+static dentry_t* selfDir = NULL;
 
 static process_t* process_file_get_process(file_t* file)
 {
@@ -223,7 +224,7 @@ static inode_ops_t inodeOps = {
 
 static uint64_t process_dir_init(process_t* process, const char* name)
 {
-    process->dir = sysfs_dir_new(mount->root, name, &inodeOps, REF(process));
+    process->dir = sysfs_dir_new(procMount->root, name, &inodeOps, REF(process));
     if (process->dir == NULL)
     {
         return ERR;
@@ -232,39 +233,51 @@ static uint64_t process_dir_init(process_t* process, const char* name)
     process->prioFile = sysfs_file_new(process->dir, "prio", &inodeOps, &prioOps, REF(process));
     if (process->prioFile == NULL)
     {
-        DEREF(process->dir);
-        return ERR;
+        goto error;
     }
 
     process->cwdFile = sysfs_file_new(process->dir, "cwd", &inodeOps, &cwdOps, REF(process));
     if (process->cwdFile == NULL)
     {
-        DEREF(process->dir);
-        return ERR;
+        goto error;
     }
 
     process->cmdlineFile = sysfs_file_new(process->dir, "cmdline", &inodeOps, &cmdlineOps, REF(process));
     if (process->cmdlineFile == NULL)
     {
-        DEREF(process->dir);
-        return ERR;
+        goto error;
     }
 
     process->noteFile = sysfs_file_new(process->dir, "note", &inodeOps, &noteOps, REF(process));
     if (process->noteFile == NULL)
     {
-        DEREF(process->dir);
-        return ERR;
+        goto error;
     }
 
     process->statusFile = sysfs_file_new(process->dir, "status", &inodeOps, &statusOps, REF(process));
     if (process->statusFile == NULL)
     {
-        DEREF(process->dir);
-        return ERR;
+        goto error;
+    }
+
+    path_t selfPath = PATH_CREATE(procMount, selfDir);
+    process->self = namespace_bind(&process->namespace, process->dir, &selfPath);
+    path_put(&selfPath);
+    if (process->self == NULL)
+    {
+        goto error;
     }
 
     return 0;
+
+error:
+    DEREF(process->statusFile);
+    DEREF(process->noteFile);
+    DEREF(process->cmdlineFile);
+    DEREF(process->cwdFile);
+    DEREF(process->prioFile);
+    DEREF(process->dir);
+    return ERR;
 }
 
 static void process_free(process_t* process)
@@ -378,6 +391,7 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     process->cmdlineFile = NULL;
     process->noteFile = NULL;
     process->statusFile = NULL;
+    process->self = NULL;
 
     assert(process == &kernelProcess || process_is_child(process, kernelProcess.id));
 
@@ -445,6 +459,7 @@ void process_kill(process_t* process, uint64_t status)
     DEREF(process->cmdlineFile);
     DEREF(process->noteFile);
     DEREF(process->statusFile);
+    DEREF(process->self);
     wait_unblock(&process->dyingWaitQueue, WAIT_ALL, EOK);
 }
 
@@ -470,10 +485,16 @@ bool process_is_child(process_t* process, pid_t parentId)
 
 void process_procfs_init(void)
 {
-    mount = sysfs_mount_new(NULL, "proc", NULL, NULL);
-    if (mount == NULL)
+    procMount = sysfs_mount_new(NULL, "proc", NULL, NULL);
+    if (procMount == NULL)
     {
         panic(NULL, "Failed to mount /proc filesystem");
+    }
+
+    selfDir = sysfs_dir_new(procMount->root, "self", NULL, NULL);
+    if (selfDir == NULL)
+    {
+        panic(NULL, "Failed to create /proc/self directory");
     }
 
     assert(kernelProcessInitalized);

@@ -93,6 +93,16 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
     void* private);
 
 /**
+ * @brief Bind a directory to a mountpoint in a namespace.
+ *
+ * @param ns The namespace to mount in, can be `NULL`.
+ * @param source The source directory to bind.
+ * @param mountpoint The mountpoint path.
+ * @return On success, the new mount. On failure, returns `NULL` and `errno` is set.
+ */
+mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* mountpoint);
+
+/**
  * @brief Get the root path of a namespace.
  *
  * @param ns The namespace, can be `NULL` to get the kernel process's namespace root.
