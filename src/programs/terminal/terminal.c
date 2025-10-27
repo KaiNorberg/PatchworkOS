@@ -231,6 +231,144 @@ static void ternminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t
 
     switch (ansi->command)
     {
+    case 'H': // Cursot to (0, 0)
+        term->cursor = terminal_get_char(term, 0, 0);
+        break;
+    case 'A': // Cursor Up
+    {
+        uint16_t cursorRow = terminal_char_row(term, term->cursor);
+        uint16_t moveBy = ansi->parameters[0] == 0 ? 1 : ansi->parameters[0];
+        uint16_t startPos = cursorRow < moveBy ? 0 : cursorRow - moveBy;
+        term->cursor = terminal_get_char(term, startPos, term->cursor->col);
+    }
+    break;
+    case 'B': // Cursor Down
+    {
+        uint16_t cursorRow = terminal_char_row(term, term->cursor);
+        uint16_t moveBy = ansi->parameters[0] == 0 ? 1 : ansi->parameters[0];
+        uint16_t endPos = MIN(TERMINAL_ROWS - 1, cursorRow + moveBy);
+        term->cursor = terminal_get_char(term, endPos, term->cursor->col);
+    }
+    break;
+    case 'C': // Cursor Forward
+    {
+        uint16_t moveBy = ansi->parameters[0] == 0 ? 1 : ansi->parameters[0];
+        uint16_t endPos = MIN(TERMINAL_COLUMNS - 1, term->cursor->col + moveBy);
+        term->cursor = terminal_get_char(term, terminal_char_row(term, term->cursor), endPos);
+    }
+    break;
+    case 'D': // Cursor Backward
+    {
+        uint16_t moveBy = ansi->parameters[0] == 0 ? 1 : ansi->parameters[0];
+        uint16_t startPos = term->cursor->col < moveBy ? 0 : term->cursor->col - moveBy;
+        term->cursor = terminal_get_char(term, terminal_char_row(term, term->cursor), startPos);
+    }
+    break;
+    case 'n':
+    {
+        if (ansi->parameters[0] != 6)
+        {
+            break;
+        }
+
+        // Report Cursor Position
+        uint16_t cursorRow = terminal_char_row(term, term->cursor) + 1;
+        uint16_t cursorCol = term->cursor->col + 1;
+        char response[MAX_NAME];
+        int responseLen = snprintf(response, sizeof(response), "\033[%d;%dR", cursorRow, cursorCol);
+        write(term->stdin[PIPE_WRITE], response, responseLen);
+    }
+    break;
+    case 's': // Save Cursor Position
+        term->savedCursor = term->cursor;
+        break;
+    case 'u': // Restore Cursor Position
+        terminal_cursor_update(term, elem, draw);
+        term->prevCursor = term->cursor;
+        term->cursor = term->savedCursor;
+        break;
+    case 'J': // Erase in Screen
+    {
+        uint16_t cursorRow = terminal_char_row(term, term->cursor);
+        uint16_t cursorCol = term->cursor->col;
+        uint16_t startRow = 0;
+        uint16_t startCol = 0;
+        uint16_t endRow = 0;
+        uint16_t endCol = 0;
+        switch (ansi->parameters[0])
+        {
+        case 0: // From cursor to end of screen
+            startRow = cursorRow;
+            startCol = cursorCol;
+            endRow = TERMINAL_ROWS - 1;
+            endCol = TERMINAL_COLUMNS - 1;
+            break;
+        case 1: // From beginning of screen to cursor
+            startRow = 0;
+            startCol = 0;
+            endRow = cursorRow;
+            endCol = cursorCol;
+            break;
+        case 2: // Entire screen
+            startRow = 0;
+            startCol = 0;
+            endRow = TERMINAL_ROWS - 1;
+            endCol = TERMINAL_COLUMNS - 1;
+            break;
+        default:
+            break;
+        }
+
+        for (uint16_t row = startRow; row <= endRow; row++)
+        {
+            uint16_t colStart = (row == startRow) ? startCol : 0;
+            uint16_t colEnd = (row == endRow) ? endCol : TERMINAL_COLUMNS - 1;
+            for (uint16_t col = colStart; col <= colEnd; col++)
+            {
+                terminal_char_t* screenChar = terminal_get_char(term, row, col);
+                screenChar->chr = ' ';
+                screenChar->foreground = term->foreground;
+                screenChar->background = term->background;
+                screenChar->flags = term->flags;
+                terminal_char_draw(term, elem, draw, screenChar);
+            }
+        }
+    }
+    break;
+    case 'K': // Erase in Line
+    {
+        uint16_t cursorRow = terminal_char_row(term, term->cursor);
+        uint16_t startCol = 0;
+        uint16_t endCol = 0;
+        switch (ansi->parameters[0])
+        {
+        case 0: // From cursor to end of line
+            startCol = term->cursor->col;
+            endCol = TERMINAL_COLUMNS - 1;
+            break;
+        case 1: // From beginning of line to cursor
+            startCol = 0;
+            endCol = term->cursor->col;
+            break;
+        case 2: // Entire line
+            startCol = 0;
+            endCol = TERMINAL_COLUMNS - 1;
+            break;
+        default:
+            break;
+        }
+
+        for (uint16_t col = startCol; col <= endCol; col++)
+        {
+            terminal_char_t* lineChar = terminal_get_char(term, cursorRow, col);
+            lineChar->chr = ' ';
+            lineChar->foreground = term->foreground;
+            lineChar->background = term->background;
+            lineChar->flags = term->flags;
+            terminal_char_draw(term, elem, draw, lineChar);
+        }
+    }
+    break;
     case 'm': // Graphic Rendition
     {
         if (ansi->paramCount != 1)
@@ -321,93 +459,6 @@ static void ternminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t
                 term->background = theme->ansi.bright[ansi->parameters[0] - 100];
             }
             break;
-        }
-    }
-    break;
-    case 'A': // Cursor Up
-    {
-        uint16_t cursorRow = terminal_char_row(term, term->cursor);
-        uint16_t moveBy = ansi->parameters[0] == 0 ? 1 : ansi->parameters[0];
-        uint16_t startPos = cursorRow < moveBy ? 0 : cursorRow - moveBy;
-        term->cursor = terminal_get_char(term, startPos, term->cursor->col);
-    }
-    break;
-    case 'B': // Cursor Down
-    {
-        uint16_t cursorRow = terminal_char_row(term, term->cursor);
-        uint16_t moveBy = ansi->parameters[0] == 0 ? 1 : ansi->parameters[0];
-        uint16_t endPos = MIN(TERMINAL_ROWS - 1, cursorRow + moveBy);
-        term->cursor = terminal_get_char(term, endPos, term->cursor->col);
-    }
-    break;
-    case 'C': // Cursor Forward
-    {
-        uint16_t moveBy = ansi->parameters[0] == 0 ? 1 : ansi->parameters[0];
-        uint16_t endPos = MIN(TERMINAL_COLUMNS - 1, term->cursor->col + moveBy);
-        term->cursor = terminal_get_char(term, terminal_char_row(term, term->cursor), endPos);
-    }
-    break;
-    case 'D': // Cursor Backward
-    {
-        uint16_t moveBy = ansi->parameters[0] == 0 ? 1 : ansi->parameters[0];
-        uint16_t startPos = term->cursor->col < moveBy ? 0 : term->cursor->col - moveBy;
-        term->cursor = terminal_get_char(term, terminal_char_row(term, term->cursor), startPos);
-    }
-    break;
-    case 'n':
-    {
-        if (ansi->parameters[0] != 6)
-        {
-            break;
-        }
-
-        // Report Cursor Position
-        uint16_t cursorRow = terminal_char_row(term, term->cursor) + 1;
-        uint16_t cursorCol = term->cursor->col + 1;
-        char response[MAX_NAME];
-        int responseLen = snprintf(response, sizeof(response), "\033[%d;%dR", cursorRow, cursorCol);
-        write(term->stdin[PIPE_WRITE], response, responseLen);
-    }
-    break;
-    case 's': // Save Cursor Position
-        term->savedCursor = term->cursor;
-        break;
-    case 'u': // Restore Cursor Position
-        terminal_cursor_update(term, elem, draw);
-        term->prevCursor = term->cursor;
-        term->cursor = term->savedCursor;
-        break;
-    case 'K': // Erase in Line
-    {
-        uint16_t cursorRow = terminal_char_row(term, term->cursor);
-        uint16_t startCol = 0;
-        uint16_t endCol = 0;
-        switch (ansi->parameters[0])
-        {
-        case 0: // From cursor to end of line
-            startCol = term->cursor->col;
-            endCol = TERMINAL_COLUMNS - 1;
-            break;
-        case 1: // From beginning of line to cursor
-            startCol = 0;
-            endCol = term->cursor->col;
-            break;
-        case 2: // Entire line
-            startCol = 0;
-            endCol = TERMINAL_COLUMNS - 1;
-            break;
-        default:
-            break;
-        }
-
-        for (uint16_t col = startCol; col <= endCol; col++)
-        {
-            terminal_char_t* lineChar = terminal_get_char(term, cursorRow, col);
-            lineChar->chr = ' ';
-            lineChar->foreground = term->foreground;
-            lineChar->background = term->background;
-            lineChar->flags = term->flags;
-            terminal_char_draw(term, elem, draw, lineChar);
         }
     }
     break;

@@ -9,6 +9,7 @@
 
 static uint64_t builtin_cd(uint64_t argc, const char** argv);
 static uint64_t builtin_help(uint64_t argc, const char** argv);
+static uint64_t builtin_clear(uint64_t argc, const char** argv);
 
 static builtin_t builtins[] = {
     {
@@ -22,6 +23,12 @@ static builtin_t builtins[] = {
         .callback = builtin_help,
         .description = "Show this help message.",
         .usage = "help",
+    },
+    {
+        .name = "clear",
+        .callback = builtin_clear,
+        .description = "Clear the terminal screen.",
+        .usage = "clear",
     },
 };
 
@@ -64,6 +71,15 @@ static uint64_t builtin_help(uint64_t argc, const char** argv)
 
     printf("\n\033[90mExternal commands are executed from /bin and /usr/bin.\033[0m\n");
 
+    return 0;
+}
+
+static uint64_t builtin_clear(uint64_t argc, const char** argv)
+{
+    (void)argc;
+    (void)argv;
+
+    printf("\033[2J\033[H");
     return 0;
 }
 
