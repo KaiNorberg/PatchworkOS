@@ -495,7 +495,7 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
         }
     }
 
-    if (flags & WALK_MOUNTPOINT_TO_ROOT && atomic_load(&current.dentry->mountCount) > 0)
+    if (atomic_load(&current.dentry->mountCount) > 0)
     {
         path_t root = PATH_EMPTY;
         if (namespace_traverse_mount(ns, &current, &root) == ERR)

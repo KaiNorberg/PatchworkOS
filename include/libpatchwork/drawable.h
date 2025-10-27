@@ -251,7 +251,7 @@ void draw_separator(drawable_t* draw, const rect_t* rect, pixel_t highlight, pix
  * Flushing is handled by each element or other system using the drawable, not the drawable itself.
  *
  * @param draw The drawable.
- * @param rect The rectangle to invalidate.
+ * @param rect The rectangle to invalidate, or `NULL` to invalidate the entire content rectangle.
  */
 void draw_invalidate(drawable_t* draw, const rect_t* rect);
 

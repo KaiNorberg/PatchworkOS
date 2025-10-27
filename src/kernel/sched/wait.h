@@ -265,9 +265,10 @@ void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* self);
  * @param frame The interrupt frame.
  * @param self The CPU the thread is being blocked on.
  * @param thread The thread to block.
+ * @param uptime The current uptime.
  * @return `true` if the thread was blocked, `false` if the thread was already unblocked.
  */
-bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread);
+bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread, clock_t uptime);
 
 /**
  * @brief Unblock a specific thread.

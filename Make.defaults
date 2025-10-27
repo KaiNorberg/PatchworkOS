@@ -56,10 +56,10 @@ ifeq ($(TESTING),1)
 endif
 
 ifeq ($(DEBUG),1)
-	CFLAGS += -O3 -g3 -ggdb -fno-omit-frame-pointer -fno-inline
+	CFLAGS += -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline
 	LDFLAGS += -g
 else
-	CFLAGS += -O2 -DNDEBUG
+	CFLAGS += -O3 -DNDEBUG
 endif
 
 ifeq ($(NOSTDLIB),1)

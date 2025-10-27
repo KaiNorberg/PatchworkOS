@@ -515,7 +515,7 @@ void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags)
 
             thread_save(runThread, frame);
 
-            if (wait_block_finalize(frame, self, runThread)) // Block finalized
+            if (wait_block_finalize(frame, self, runThread, uptime)) // Block finalized
             {
                 thread_save(runThread, frame);
                 runThread = NULL; // Force a new thread to be loaded
@@ -533,8 +533,7 @@ void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags)
         break;
         default:
         {
-            panic(NULL, "Invalid thread state %d (pid=%d tid=%d)", state, runThread->process->id,
-                runThread->id);
+            panic(NULL, "Invalid thread state %d (pid=%d tid=%d)", state, runThread->process->id, runThread->id);
         }
         }
     }

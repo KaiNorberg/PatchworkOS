@@ -517,7 +517,6 @@ static void dwm_handle_mouse_event(const mouse_event_t* mouseEvent)
     }
 
     surface_t* surface = dwm_surface_under_point(&cursor->pos);
-
     if (surface != prevCursorTarget)
     {
         if (prevCursorTarget != NULL)

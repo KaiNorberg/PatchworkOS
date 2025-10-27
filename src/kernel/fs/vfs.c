@@ -40,23 +40,29 @@ static dentry_t* root = NULL;
 
 static map_key_t inode_cache_key(superblock_id_t superblockId, inode_number_t number)
 {
-    uint64_t buffer[2] = {(uint64_t)superblockId, (uint64_t)number};
+    struct
+    {
+        superblock_id_t superblockId;
+        inode_number_t number;
+    } buffer;
+    buffer.superblockId = superblockId;
+    buffer.number = number;
 
-    return map_key_buffer(buffer, sizeof(buffer));
+    return map_key_buffer(&buffer, sizeof(buffer));
 }
 
 static map_key_t dentry_cache_key(dentry_id_t parentId, const char* name)
 {
-    char buffer[MAX_PATH] = {0};
-    memcpy(buffer, &parentId, sizeof(dentry_id_t));
-    uint64_t offset = sizeof(dentry_id_t);
+    struct
+    {
+        dentry_id_t parentId;
+        char name[MAX_NAME];
+    } buffer;
+    buffer.parentId = parentId;
+    memset(buffer.name, 0, sizeof(buffer.name));
+    strncpy_s(buffer.name, sizeof(buffer.name), name, MAX_NAME - 1);
 
-    uint64_t nameLen = strlen(name);
-    assert(offset + nameLen < MAX_PATH);
-    memcpy(buffer + offset, name, nameLen);
-    offset += nameLen;
-
-    return map_key_buffer(buffer, offset);
+    return map_key_buffer(&buffer, sizeof(buffer));
 }
 
 static void vfs_list_init(vfs_list_t* list)
@@ -233,28 +239,9 @@ dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name)
         return dentry;
     }
 
-    // TODO: The lookup operation needs further verification.
-
-    rwlock_write_acquire(&dentryCache.lock);
-    dentry = CONTAINER_OF_SAFE(map_get(&dentryCache.map, &key), dentry_t, mapEntry);
-    if (dentry != NULL) // Check if the the dentry was added while the lock was released above.
-    {
-        if (atomic_load(&dentry->ref.count) == 0) // Is currently being removed
-        {
-            rwlock_write_release(&dentryCache.lock);
-            errno = ESTALE;
-            return NULL;
-        }
-
-        dentry = REF(dentry);
-        rwlock_write_release(&dentryCache.lock);
-        return dentry;
-    }
-
     if (parent->dentry->inode == NULL || parent->dentry->inode->ops == NULL ||
         parent->dentry->inode->ops->lookup == NULL)
     {
-        rwlock_write_release(&dentryCache.lock);
         errno = ENOENT;
         return NULL;
     }
@@ -262,23 +249,21 @@ dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name)
     dentry = dentry_new(parent->dentry->superblock, parent->dentry, name);
     if (dentry == NULL)
     {
-        rwlock_write_release(&dentryCache.lock);
+        // This logic is a bit complex, but im pretty confident its correct.
+        if (errno == EEXIST) // Dentry was created after we called vfs_get_dentry_internal but before dentry_new
+        {
+            // If this fails then the dentry was deleted in between dentry_new and here, which should be fine?
+            return vfs_get_dentry_internal(&key);
+        }
         return NULL;
     }
     DEREF_DEFER(dentry);
 
-    if (map_insert(&dentryCache.map, &key, &dentry->mapEntry) == ERR)
-    {
-        rwlock_write_release(&dentryCache.lock);
-        return NULL;
-    }
-
     inode_t* dir = parent->dentry->inode;
     MUTEX_SCOPE(&dir->mutex);
-    rwlock_write_release(&dentryCache.lock);
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    if (parent->dentry->inode->ops->lookup(dir, dentry) == ERR)
+    if (dir->ops->lookup(dir, dentry) == ERR)
     {
         vfs_remove_dentry(dentry);
         return NULL;
@@ -395,7 +380,7 @@ uint64_t vfs_walk_parent_and_child(path_t* outParent, path_t* outChild, const pa
 {
     char lastName[MAX_NAME];
     path_t parent = PATH_EMPTY;
-    if (vfs_walk_parent(&parent, pathname, lastName, WALK_MOUNTPOINT_TO_ROOT, process) == ERR)
+    if (vfs_walk_parent(&parent, pathname, lastName, WALK_NONE, process) == ERR)
     {
         return ERR;
     }
@@ -440,8 +425,7 @@ static uint64_t vfs_create(path_t* outPath, const pathname_t* pathname, process_
     char lastComponent[MAX_NAME];
     path_t parent = PATH_EMPTY;
     path_t target = PATH_EMPTY;
-    if (vfs_walk_parent_and_child(&parent, &target, pathname, WALK_NEGATIVE_IS_OK | WALK_MOUNTPOINT_TO_ROOT, process) ==
-        ERR)
+    if (vfs_walk_parent_and_child(&parent, &target, pathname, WALK_NEGATIVE_IS_OK, process) == ERR)
     {
         return ERR;
     }
@@ -515,7 +499,7 @@ static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname, pro
     }
     else // Dont create dentry
     {
-        if (vfs_walk(&target, pathname, WALK_MOUNTPOINT_TO_ROOT, process) == ERR)
+        if (vfs_walk(&target, pathname, WALK_NONE, process) == ERR)
         {
             return ERR;
         }

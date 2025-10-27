@@ -83,9 +83,8 @@ typedef enum
  */
 typedef enum
 {
-    WALK_NONE = 0,                    ///< No flags.
-    WALK_NEGATIVE_IS_OK = 1 << 0,     ///< If a negative dentry is ok, if not specified then it is considered an error.
-    WALK_MOUNTPOINT_TO_ROOT = 1 << 2, ///< If the pathname points to a mountpoint, return the root of the filesystem.
+    WALK_NONE = 0,                ///< No flags.
+    WALK_NEGATIVE_IS_OK = 1 << 0, ///< If a negative dentry is ok, if not specified then it is considered an error.
 } walk_flags_t;
 
 /**

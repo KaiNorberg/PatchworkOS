@@ -100,14 +100,12 @@ void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* self)
     timer_subscribe(&self->timer, wait_timer_handler);
 }
 
-bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread)
+bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread, clock_t uptime)
 {
     (void)frame; // Unused
 
     thread->wait.cpu = &self->wait;
     LOCK_SCOPE(&self->wait.lock);
-
-    clock_t uptime = timer_uptime();
 
     thread_t* lastThread = (CONTAINER_OF(list_last(&self->wait.blockedThreads), thread_t, entry));
 

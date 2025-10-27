@@ -14,9 +14,15 @@
 
 static map_key_t mount_cache_key(mount_id_t parentId, dentry_id_t mountpointId)
 {
-    uint64_t buffer[2] = {(uint64_t)parentId, (uint64_t)mountpointId};
+    struct
+    {
+        mount_id_t parentId;
+        dentry_id_t mountpointId;
+    } buffer;
+    buffer.parentId = parentId;
+    buffer.mountpointId = mountpointId;
 
-    return map_key_buffer(buffer, sizeof(buffer));
+    return map_key_buffer(&buffer, sizeof(buffer));
 }
 
 uint64_t namespace_init(namespace_t* ns, namespace_t* parent, process_t* owner)
@@ -244,7 +250,7 @@ SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpointString)
     }
 
     path_t mountpoint;
-    if (vfs_walk(&mountpoint, &pathname, WALK_MOUNTPOINT_TO_ROOT, process) == ERR)
+    if (vfs_walk(&mountpoint, &pathname, WALK_NONE, process) == ERR)
     {
         return ERR;
     }

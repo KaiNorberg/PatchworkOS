@@ -126,7 +126,10 @@ static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
         return ERR;
     }
 
-    dentry_make_positive(target, newInode);
+    if (dentry_make_positive(target, newInode) == ERR)
+    {
+        return ERR;
+    }
 
     return 0;
 }

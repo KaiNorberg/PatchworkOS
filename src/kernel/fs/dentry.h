@@ -117,9 +117,13 @@ typedef struct dentry
 /**
  * @brief Create a new dentry.
  *
- * This does not add the dentry to the dentry cache, that must be done separately with `vfs_add_dentry()`. It also does
- * not add the dentry to its parent's list of children, that is done when the dentry is made positive with
- * `dentry_make_positive()`.
+ * This does add the dentry to the dentry cache, however it will not be added to its parent's list of children and it
+ * will appear as a negative dentry until `dentry_make_positive()` is called. This is used to solve some race conditions
+ * when creating new files. While the dentry is negative it is not possible to create another dentry of the same name in
+ * the same parent, and any lookup to the dentry will fail until it is made positive.
+ *
+ * Note that this function will set `errno == EEXIST` if a dentry with the same name and parent already exists in the
+ * dentry cache, this is very useful for checking for race conditions when looking up dentries.
  *
  * There is no `dentry_free()` instead use `DEREF()`.
  *
@@ -133,8 +137,7 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
 /**
  * @brief Make a dentry positive by associating it with an inode.
  *
- * This will also add the dentry to its parent's list of children and call `vfs_add_dentry()` to add it to the dentry
- * cache.
+ * This will also add the dentry to its parent's list of children, set the dentrys inode and its flags to positive.
  *
  * @param dentry The dentry to make positive.
  * @param inode The inode to associate with the dentry.

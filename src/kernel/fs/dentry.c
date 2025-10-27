@@ -89,6 +89,12 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     atomic_init(&dentry->flags, DENTRY_NEGATIVE);
     atomic_init(&dentry->mountCount, 0);
 
+    if (vfs_add_dentry(dentry) == ERR)
+    {
+        DEREF(dentry);
+        return NULL;
+    }
+
     return dentry;
 }
 
@@ -105,11 +111,6 @@ uint64_t dentry_make_positive(dentry_t* dentry, inode_t* inode)
     // Sanity checks.
     assert(atomic_load(&dentry->flags) & DENTRY_NEGATIVE);
     assert(dentry->inode == NULL);
-
-    if (vfs_add_dentry(dentry) == ERR)
-    {
-        return ERR;
-    }
 
     dentry->inode = REF(inode);
 
