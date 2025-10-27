@@ -20,6 +20,7 @@ typedef struct
     cmd_t* cmds;
     uint64_t capacity;
     uint64_t amount;
+    int status;
 } pipeline_t;
 
 uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline);

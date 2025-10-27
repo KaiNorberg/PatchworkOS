@@ -41,6 +41,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
 
     pipeline->capacity = tokenAmount;
     pipeline->amount = 0;
+    pipeline->status = 0;
 
     for (uint64_t i = 0; i < tokenAmount; i++)
     {

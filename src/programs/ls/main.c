@@ -7,6 +7,34 @@
 #include <string.h>
 #include <sys/io.h>
 
+static uint64_t terminal_columns_get(void)
+{
+    uint32_t terminalWidth = 80;
+    printf("\033[999C\033[6n");
+    fflush(stdout);
+    char buffer[MAX_NAME] = {0};
+    for (uint32_t i = 0; i < sizeof(buffer) - 1; i++)
+    {
+        read(STDIN_FILENO, &buffer[i], 1);
+        if (buffer[i] == 'R')
+        {
+            break;
+        }
+    }
+    int row;
+    int cols;
+    sscanf(buffer, "\033[%d;%dR", &row, &cols);
+
+    if (cols != 0)
+    {
+        terminalWidth = (uint32_t)cols;
+    }
+
+    printf("\r");
+    fflush(stdout);
+    return terminalWidth;
+}
+
 static uint64_t print_dir(const char* path)
 {
     fd_t fd = openf("%s:dir", path);
@@ -70,7 +98,7 @@ static uint64_t print_dir(const char* path)
         }
     }
 
-    uint32_t terminalWidth = 80; // Just assume its 80 for now.
+    uint32_t terminalWidth = terminal_columns_get();
     uint32_t columnWidth = maxLength + 2;
     if (columnWidth > terminalWidth)
     {
@@ -93,7 +121,15 @@ static uint64_t print_dir(const char* path)
             {
                 const char* name = entries[index].name;
                 bool isDir = entries[index].type == INODE_DIR;
-                printf("%-*s", columnWidth, isDir ? strcat(strcpy((char[MAX_PATH]){0}, name), "/") : name);
+
+                if (isDir)
+                {
+                    printf("\033[34m%s\033[0m/%-*s", name, columnWidth - (int)strlen(name) - 1, "");
+                }
+                else
+                {
+                    printf("%-*s", columnWidth, name);
+                }
             }
         }
         printf("\n");

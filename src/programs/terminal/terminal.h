@@ -111,6 +111,7 @@ typedef struct terminal
     ansi_sending_t ansi;
     terminal_char_t screen[TERMINAL_ROWS][TERMINAL_COLUMNS];
     uint64_t firstRow; // For scrolling
+    terminal_char_t* savedCursor;
     terminal_char_t* prevCursor;
     terminal_char_t* cursor;
     pid_t shell;

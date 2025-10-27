@@ -112,6 +112,12 @@ void ansi_sending_init(ansi_sending_t* ansi)
 
 bool ansi_sending_parse(ansi_sending_t* ansi, char chr)
 {
+    if (ansi->length >= ANSI_MAX_LENGTH - 1)
+    {
+        ansi_sending_init(ansi);
+        return false;
+    }
+
     ansi->buffer[ansi->length++] = chr;
     ansi->buffer[ansi->length] = '\0';
 
@@ -140,7 +146,7 @@ bool ansi_sending_parse(ansi_sending_t* ansi, char chr)
         }
         else
         {
-            ansi->length = 0;
+            ansi_sending_init(ansi);
             return false;
         }
     }
@@ -153,6 +159,11 @@ bool ansi_sending_parse(ansi_sending_t* ansi, char chr)
     }
     else if (ansi->buffer[ansi->length - 1] == ';')
     {
+        if (ansi->paramCount >= ANSI_MAX_LENGTH - 1)
+        {
+            ansi_sending_init(ansi);
+            return false;
+        }
         ansi->paramCount++;
         return false;
     }

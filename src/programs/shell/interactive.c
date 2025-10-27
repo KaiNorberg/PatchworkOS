@@ -1,6 +1,7 @@
 #include "interactive.h"
 #include "ansi.h"
-#include "builtin.h"
+#include "pipeline.h"
+#include "history.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -25,6 +26,7 @@ static void interactive_prompt(void)
 typedef struct
 {
     ansi_t ansi;
+    history_t history;
     int status;
     char buffer[MAX_PATH];
     uint64_t pos;
@@ -37,7 +39,24 @@ static uint64_t interactive_execute_command(interactive_state_t* state)
         return 0;
     }
 
-    printf("Executing command: %s\n", state->buffer);
+    history_push(&state->history, state->buffer);
+
+    pipeline_t pipeline;
+    if (pipeline_init(&pipeline, state->buffer) == ERR)
+    {
+        printf("shell: failed to initialize pipeline (%s)\n", strerror(errno));
+        state->status = EXIT_FAILURE;
+        return ERR;
+    }
+
+    if (pipeline_execute(&pipeline) == ERR)
+    {
+        pipeline_deinit(&pipeline);
+        return 0; // This is fine
+    }
+
+    state->status = pipeline.status;
+    pipeline_deinit(&pipeline);
     return 0;
 }
 
@@ -62,10 +81,11 @@ static uint64_t interactive_handle_ansi(interactive_state_t* state, ansi_result_
         {
             break;
         }
+        memmove(&state->buffer[state->pos - 1], &state->buffer[state->pos], MAX_PATH - state->pos + 1);
+        state->buffer[MAX_PATH - 1] = '\0';
         state->pos--;
-        memmove(&state->buffer[state->pos], &state->buffer[state->pos + 1], MAX_PATH - state->pos - 1);
-        state->buffer[MAX_PATH - 1] = 0;
-        printf("\b \b");
+        // Move left, save cursor, print rest of line, clear to end, restore cursor
+        printf("\033[1D\033[s%s\033[K\033[u", &state->buffer[state->pos]);
         fflush(stdout);
         break;
     case ANSI_NEWLINE:
@@ -79,10 +99,84 @@ static uint64_t interactive_handle_ansi(interactive_state_t* state, ansi_result_
         interactive_prompt();
         break;
     case ANSI_TAB:
-        // Ignore tabs for now
+        // TODO: Ignore tabs for now
+        break;
+    case ANSI_ARROW_UP:
+    {
+        const char* previous = history_previous(&state->history);
+        if (previous == NULL)
+        {
+            break;
+        }
+        while (state->pos > 0) // Cant use \r because of prompt
+        {
+            state->pos--;
+            printf("\033[D");
+        }
+        printf("\033[K");
+        strncpy(state->buffer, previous, MAX_PATH - 1);
+        state->buffer[MAX_PATH - 1] = '\0';
+        state->pos = strlen(state->buffer);
+        printf("%s", state->buffer);
+        fflush(stdout);
+    }
+    break;
+    case ANSI_ARROW_DOWN:
+    {
+        const char* next = history_next(&state->history);
+        while (state->pos > 0) // Cant use \r because of prompt
+        {
+            state->pos--;
+            printf("\033[D");
+        }
+        printf("\033[K");
+        if (next == NULL)
+        {
+            memset(state->buffer, 0, MAX_PATH);
+            state->pos = 0;
+            fflush(stdout);
+            break;
+        }
+        strncpy(state->buffer, next, MAX_PATH - 1);
+        state->buffer[MAX_PATH - 1] = '\0';
+        state->pos = strlen(state->buffer);
+        printf("%s", state->buffer);
+        fflush(stdout);
+    }
+    break;
+    case ANSI_ARROW_RIGHT:
+        if (state->pos < strlen(state->buffer))
+        {
+            state->pos++;
+            printf("\033[C");
+            fflush(stdout);
+        }
+        break;
+    case ANSI_ARROW_LEFT:
+        if (state->pos > 0)
+        {
+            state->pos--;
+            printf("\033[D");
+            fflush(stdout);
+        }
+        break;
+    case ANSI_HOME:
+        while (state->pos > 0)
+        {
+            state->pos--;
+            printf("\033[D");
+        }
+        fflush(stdout);
+        break;
+    case ANSI_END:
+        while (state->pos < strlen(state->buffer))
+        {
+            state->pos++;
+            printf("\033[C");
+        }
+        fflush(stdout);
         break;
     default:
-        // Ignore other ANSI sequences for now
         break;
     }
 
@@ -123,6 +217,7 @@ int interactive_shell(void)
 
     interactive_state_t state;
     ansi_init(&state.ansi);
+    history_init(&state.history);
     state.status = 0;
     memset(state.buffer, 0, MAX_PATH);
     state.pos = 0;
@@ -139,6 +234,7 @@ int interactive_shell(void)
 
         if (interactive_handle_input(&state, buffer, readCount) == ERR)
         {
+            history_deinit(&state.history);
             return state.status;
         }
     }
