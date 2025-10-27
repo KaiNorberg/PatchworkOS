@@ -9,19 +9,16 @@
 #include <sys/io.h>
 #include <sys/proc.h>
 
+#define START_ENTRY_MAX 16
+
 typedef struct
 {
     const char* name;
     const char* path;
+    element_t* button;
 } start_entry_t;
 
-// TODO: Load this from config file.
-static start_entry_t entries[] = {
-    {.name = "Calculator", .path = "/usr/bin/calculator"},
-    {.name = "Terminal", .path = "/usr/bin/terminal"},
-    {.name = "Tetris", .path = "/usr/bin/tetris"},
-    {.name = "DOOM", .path = "/usr/bin/doom"},
-};
+static start_entry_t entries[START_ENTRY_MAX] = {0};
 
 #define ENTRY_AMOUNT (sizeof(entries) / sizeof(entries[0]))
 
@@ -52,15 +49,6 @@ static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_
         menu->state = START_MENU_CLOSED;
 
         rect_t rect = element_get_content_rect(elem);
-
-        for (uint64_t i = 0; i < ENTRY_AMOUNT; i++)
-        {
-            rect_t buttonRect =
-                RECT_INIT(theme->frameSize + theme->titlebarSize, theme->frameSize + i * START_BUTTON_HEIGHT,
-                    RECT_WIDTH(&rect) - theme->frameSize, (i + 1) * START_BUTTON_HEIGHT);
-
-            button_new(elem, i, &buttonRect, entries[i].name, ELEMENT_FLAT);
-        }
 
         element_set_private(elem, menu);
     }
@@ -208,6 +196,84 @@ window_t* start_menu_new(window_t* taskbar, display_t* disp)
     return win;
 }
 
+static void start_menu_load_entries(window_t* startMenu)
+{
+    config_t* config = config_open("taskbar", "main");
+    if (config == NULL)
+    {
+        printf("startmenu: failed to open start menu config\n");
+        return;
+    }
+
+    bool changed = false;
+    for (uint64_t i = 0; i < ENTRY_AMOUNT; i++)
+    {
+        char entryKey[32];
+        snprintf(entryKey, sizeof(entryKey), "entry%lu", i);
+        config_array_t* entryArray = config_get_array(config, "start", entryKey);
+        if (entryArray == NULL || entryArray->length != 2)
+        {
+            break;
+        }
+
+        if (entries[i].name != NULL || entries[i].path != NULL)
+        {
+            if (strcmp(entries[i].name, entryArray->items[0]) == 0 &&
+                strcmp(entries[i].path, entryArray->items[1]) == 0)
+            {
+                continue;
+            }
+            free((void*)entries[i].name);
+            free((void*)entries[i].path);
+        }
+
+        changed = true;
+        entries[i].name = strdup(entryArray->items[0]);
+        if (entries[i].name == NULL)
+        {
+            break;
+        }
+        entries[i].path = strdup(entryArray->items[1]);
+        if (entries[i].path == NULL)
+        {
+            free((void*)entries[i].name);
+            break;
+        }
+    }
+
+    config_close(config);
+
+    if (!changed)
+    {
+        return;
+    }
+
+    // Clear existing buttons
+    for (uint64_t i = 0; i < ENTRY_AMOUNT; i++)
+    {
+        if (entries[i].button != NULL)
+        {
+            element_free(entries[i].button);
+            entries[i].button = NULL;
+        }
+    }
+
+    const theme_t* theme = theme_global_get();
+    for (uint64_t i = 0; i < ENTRY_AMOUNT; i++)
+    {
+        if (entries[i].name == NULL || entries[i].path == NULL)
+        {
+            break;
+        }
+
+        rect_t buttonRect =
+            RECT_INIT(theme->frameSize + theme->titlebarSize, theme->frameSize + i * START_BUTTON_HEIGHT,
+                START_MENU_WIDTH - theme->frameSize, (i + 1) * START_BUTTON_HEIGHT);
+
+        entries[i].button = button_new(window_get_client_element(startMenu), i, &buttonRect, entries[i].name, ELEMENT_FLAT);
+    }
+}
+
 void start_menu_open(window_t* startMenu)
 {
     element_t* elem = window_get_client_element(startMenu);
@@ -218,6 +284,8 @@ void start_menu_open(window_t* startMenu)
     {
         return;
     }
+
+    start_menu_load_entries(startMenu);
 
     rect_t screenRect;
     display_get_screen(window_get_display(startMenu), &screenRect, 0);

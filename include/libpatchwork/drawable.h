@@ -73,6 +73,31 @@ typedef enum
 void draw_rect(drawable_t* draw, const rect_t* rect, pixel_t pixel);
 
 /**
+ * @brief Draw a filled polygon.
+ *
+ * Will clip the polygon to fit within the drawable's content rectangle.
+ *
+ * @param draw The drawable to draw to.
+ * @param points The points of the polygon.
+ * @param pointCount The number of points in the polygon, must be at least 3.
+ * @param pixel The pixel color to fill with.
+ */
+void draw_polygon(drawable_t* draw, const point_t* points, uint64_t pointCount, pixel_t pixel);
+
+/**
+ * @brief Draw a line between two points.
+ *
+ * Will clip the line to fit within the drawable's content rectangle.
+ *
+ * @param draw The drawable to draw to.
+ * @param start The starting point of the line, inclusive.
+ * @param end The ending point of the line, inclusive.
+ * @param pixel The pixel color to draw with.
+ * @param thickness The thickness of the line, must be at least 1.
+ */
+void draw_line(drawable_t* draw, const point_t* start, const point_t* end, pixel_t pixel, uint32_t thickness);
+
+/**
  * @brief Draw a skeuomorphic frame.
  *
  * Will draw a frame with the given width, using the foreground color for the top and left sides, and the background

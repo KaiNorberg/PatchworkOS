@@ -8,7 +8,7 @@ Copyright (c) 1999  Intel Corporation
 Module Name:
 
     PIflash64.h
-    
+
 Abstract:
 
     Iflash64.efi protocol to abstract iflash from
@@ -45,11 +45,11 @@ EFI_STATUS
 //
 // Status callback for a utility like IFLASH64
 //
-//  Token would map to a list like Ted proposed. The utility has no idea what 
+//  Token would map to a list like Ted proposed. The utility has no idea what
 //      happens on the other side.
-//  ErrorStatus - Level of Error or success. Independent of Token. If you 
+//  ErrorStatus - Level of Error or success. Independent of Token. If you
 //      don't know the token you will at least know pass or fail.
-//  String - Optional extra information about the error. Could be used for 
+//  String - Optional extra information about the error. Could be used for
 //      debug or future expansion
 //
 //  Attributes - Options screen attributes for String. Could allow the string to be different colors.
@@ -59,7 +59,7 @@ EFI_STATUS
 (EFIAPI *UTILITY_PROGRESS_API)(
     IN struct _IFLASH64_PROTOCOL_INTERFACE  *This,
     IN  UINTN                               Token,
-    IN  EFI_STATUS                          ErrorStatus, 
+    IN  EFI_STATUS                          ErrorStatus,
     IN  CHAR16                              *String,    OPTIONAL
     IN  UINTN                               *Attributes OPTIONAL
     );
@@ -105,12 +105,12 @@ EFI_STATUS
 #define IFLASH_PI_MINOR_VERSION 0x01
 
 typedef struct _IFLASH64_PROTOCOL_INTERFACE {
-    UINT32                  MajorVersion;       
-    UINT32                  MinorVersion;   
+    UINT32                  MajorVersion;
+    UINT32                  MinorVersion;
     UNLOCK_FLASH_API        UnlockFlash;
     LOCK_FLASH_API          LockFlash;
     UTILITY_PROGRESS_API    Progress;
-    
+
     //
     // Future expansion goes here
     //

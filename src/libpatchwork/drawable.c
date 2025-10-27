@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 void draw_rect(drawable_t* draw, const rect_t* rect, pixel_t pixel)
 {
@@ -19,6 +20,147 @@ void draw_rect(drawable_t* draw, const rect_t* rect, pixel_t pixel)
     }
 
     draw_invalidate(draw, &fitRect);
+}
+
+typedef struct edge
+{
+    int64_t yMin;    // scanline where edge starts
+    int64_t yMax;    // scanline where edge ends
+    double x;        // current x intersection
+    double invSlope; // dx/dy for incrementing x
+} edge_t;
+
+static inline int edge_compare(const void* a, const void* b)
+{
+    edge_t* edgeA = *(edge_t**)a;
+    edge_t* edgeB = *(edge_t**)b;
+    if (edgeA->x < edgeB->x)
+    {
+        return -1;
+    }
+    else if (edgeA->x > edgeB->x)
+    {
+        return 1;
+    }
+    return 0;
+}
+
+void draw_polygon(drawable_t* draw, const point_t* points, uint64_t pointCount, pixel_t pixel)
+{
+    if (draw == NULL || points == NULL || pointCount < 3)
+    {
+        return;
+    }
+
+    int64_t minY = UINT64_MAX;
+    int64_t maxY = 0;
+    for (uint64_t i = 0; i < pointCount; i++)
+    {
+        minY = MIN(minY, (uint64_t)points[i].y);
+        maxY = MAX(maxY, (uint64_t)points[i].y);
+    }
+
+    edge_t edges[pointCount];
+    uint64_t edgeCount = 0;
+    for (uint64_t i = 0; i < pointCount; i++)
+    {
+        point_t p1 = points[i];
+        point_t p2 = points[(i + 1) % pointCount];
+        if (p1.y == p2.y)
+        {
+            continue;
+        }
+        edge_t* edge = &edges[edgeCount++];
+        if (p1.y < p2.y)
+        {
+            edge->yMin = p1.y;
+            edge->yMax = p2.y;
+            edge->x = p1.x;
+            edge->invSlope = (double)(p2.x - p1.x) / (double)(p2.y - p1.y);
+        }
+        else
+        {
+            edge->yMin = p2.y;
+            edge->yMax = p1.y;
+            edge->x = p2.x;
+            edge->invSlope = (double)(p1.x - p2.x) / (double)(p1.y - p2.y);
+        }
+    }
+
+    edge_t* activeEdges[pointCount];
+    uint64_t activeEdgeCount = 0;
+    for (int64_t y = minY; y <= maxY; y++)
+    {
+        for (uint64_t i = 0; i < edgeCount; i++)
+        {
+            if (edges[i].yMin == y)
+            {
+                activeEdges[activeEdgeCount++] = &edges[i];
+            }
+        }
+
+        for (uint64_t i = 0; i < activeEdgeCount; i++)
+        {
+            if (activeEdges[i]->yMax <= y)
+            {
+                activeEdges[i] = activeEdges[--activeEdgeCount];
+                i--;
+            }
+        }
+
+        if (activeEdgeCount < 2)
+        {
+            continue;
+        }
+
+        qsort(activeEdges, activeEdgeCount, sizeof(edge_t*), edge_compare);
+
+        for (uint64_t i = 0; i < activeEdgeCount; i += 2)
+        {
+            int64_t xStart = (int64_t)(activeEdges[i]->x);
+            int64_t xEnd = (int64_t)(activeEdges[i + 1]->x);
+
+            if (y >= draw->contentRect.top && y < draw->contentRect.bottom && xEnd >= draw->contentRect.left && xStart < draw->contentRect.right)
+            {
+                xStart = MAX(xStart, draw->contentRect.left);
+                xEnd = MIN(xEnd, draw->contentRect.right - 1);
+                if (xEnd >= xStart)
+                {
+                    memset32(&draw->buffer[xStart + y * draw->stride], pixel, xEnd - xStart + 1);
+                }
+            }
+        }
+
+        for (uint64_t i = 0; i < activeEdgeCount; i++)
+        {
+            activeEdges[i]->x += activeEdges[i]->invSlope;
+        }
+    }
+}
+
+void draw_line(drawable_t* draw, const point_t* start, const point_t* end, pixel_t pixel, uint32_t thickness)
+{
+    if (draw == NULL || start == NULL || end == NULL || thickness == 0)
+    {
+        return;
+    }
+
+    point_t fitStart = {CLAMP(start->x, draw->contentRect.left, draw->contentRect.right - 1),
+                        CLAMP(start->y, draw->contentRect.top, draw->contentRect.bottom - 1)};
+    point_t fitEnd = {CLAMP(end->x, draw->contentRect.left, draw->contentRect.right - 1),
+                      CLAMP(end->y, draw->contentRect.top, draw->contentRect.bottom - 1)};
+
+    point_t points[4];
+    double angle = atan2((double)(fitEnd.y - fitStart.y), (double)(fitEnd.x - fitStart.x));
+    double halfThickness = (double)thickness / 2.0;
+    double sinAngle = sin(angle + M_PI_2) * halfThickness;
+    double cosAngle = cos(angle + M_PI_2) * halfThickness;
+    points[0] = (point_t){.x = (int64_t)(fitStart.x + cosAngle), .y = (int64_t)(fitStart.y + sinAngle)};
+    points[1] = (point_t){.x = (int64_t)(fitStart.x - cosAngle), .y = (int64_t)(fitStart.y - sinAngle)};
+    points[2] = (point_t){.x = (int64_t)(fitEnd.x - cosAngle), .y = (int64_t)(fitEnd.y - sinAngle)};
+    points[3] = (point_t){.x = (int64_t)(fitEnd.x + cosAngle), .y = (int64_t)(fitEnd.y + sinAngle)};
+
+    draw_polygon(draw, points, 4, pixel);
 }
 
 void draw_frame(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)

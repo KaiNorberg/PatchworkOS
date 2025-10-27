@@ -223,6 +223,5 @@ int main(void)
 
     window_free(win);
     display_free(disp);
-    printf("Calculator exited cleanly.\n");
     return EXIT_SUCCESS;
 }
