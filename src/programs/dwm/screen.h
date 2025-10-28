@@ -4,13 +4,6 @@
 
 #include "surface.h"
 
-typedef struct
-{
-    bool isInvalid;
-    int64_t start;
-    int64_t end;
-} scanline_t;
-
 void screen_init(void);
 
 void screen_deinit(void);

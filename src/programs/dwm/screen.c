@@ -1,5 +1,8 @@
 #include "screen.h"
 
+#include "surface.h"
+#include "region.h"
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,10 +13,10 @@
 
 static fb_info_t info;
 static void* frontbuffer;
+static void* backbuffer;
 
-static surface_t backbuffer; // A fake surface representing the backbuffer
-
-static scanline_t* scanlines;
+static rect_t screenRect;
+static region_t invalidRegion;
 
 static void frontbuffer_init(void)
 {
@@ -58,103 +61,95 @@ static void frontbuffer_init(void)
 
 static void backbuffer_init(void)
 {
-    backbuffer.buffer = malloc(info.width * info.height * sizeof(pixel_t));
-    if (backbuffer.buffer == NULL)
+    backbuffer = malloc(info.stride * info.height * sizeof(pixel_t));
+    if (backbuffer == NULL)
     {
         printf("dwm: failed to allocate backbuffer memory\n");
         abort();
     }
-    backbuffer.width = info.width;
-    backbuffer.height = info.height;
-    backbuffer.invalidRect = (rect_t){0};
-    memset(backbuffer.buffer, 0, info.width * info.height * sizeof(pixel_t));
 }
 
-static void scanlines_clear(void)
+static void screen_invalidate(const rect_t* rect)
 {
-    for (uint64_t i = 0; i < info.height; i++)
-    {
-        scanlines[i].isInvalid = false;
-    }
-}
-
-static void scanlines_init(void)
-{
-    scanlines = calloc(info.height, sizeof(scanline_t));
-    if (scanlines == NULL)
-    {
-        printf("dwm: failed to allocate scanlines memory\n");
-        abort();
-    }
-    scanlines_clear();
-}
-
-static void scanlines_invalidate(const rect_t* rect)
-{
-    for (int64_t i = rect->top; i < rect->bottom; i++)
-    {
-        if (scanlines[i].isInvalid)
-        {
-            scanlines[i].start = MIN(scanlines[i].start, rect->left);
-            scanlines[i].end = MAX(scanlines[i].end, rect->right);
-        }
-        else
-        {
-            scanlines[i].isInvalid = true;
-            scanlines[i].start = rect->left;
-            scanlines[i].end = rect->right;
-        }
-    }
+    rect_t fitRect = *rect;
+    RECT_FIT(&fitRect, &screenRect);
+    region_add(&invalidRegion, &fitRect);
 }
 
 void screen_init(void)
 {
     frontbuffer_init();
     backbuffer_init();
-    scanlines_init();
+    screenRect = RECT_INIT_DIM(0, 0, info.width, info.height);
+    region_init(&invalidRegion);
 }
 
 void screen_deinit(void)
 {
-    free(scanlines);
-    free(backbuffer.buffer);
+    free(backbuffer);
     munmap(frontbuffer, info.stride * info.height * sizeof(uint32_t));
 }
 
 void screen_transfer(surface_t* surface, const rect_t* rect)
 {
+    rect_t fitRect = *rect;
+    RECT_FIT(&fitRect, &screenRect);
+
     point_t srcPoint = {
-        .x = MAX(rect->left - surface->pos.x, 0),
-        .y = MAX(rect->top - surface->pos.y, 0),
+        .x = MAX(fitRect.left - surface->pos.x, 0),
+        .y = MAX(fitRect.top - surface->pos.y, 0),
     };
-    surface_transfer(&backbuffer, surface, rect, &srcPoint);
-    scanlines_invalidate(rect);
+    int64_t width = RECT_WIDTH(&fitRect);
+    int64_t height = RECT_HEIGHT(&fitRect);
+    for (int64_t y = 0; y < height; y++)
+    {
+        memcpy(&((pixel_t*)backbuffer)[(fitRect.left) + (fitRect.top + y) * info.stride],
+            &surface->buffer[(srcPoint.x) + (srcPoint.y + y) * surface->width], width * sizeof(pixel_t));
+    }
+    screen_invalidate(rect);
 }
 
 void screen_transfer_blend(surface_t* surface, const rect_t* rect)
 {
+    rect_t fitRect = *rect;
+    RECT_FIT(&fitRect, &screenRect);
+
     point_t srcPoint = {
-        .x = MAX(rect->left - surface->pos.x, 0),
-        .y = MAX(rect->top - surface->pos.y, 0),
+        .x = MAX(fitRect.left - surface->pos.x, 0),
+        .y = MAX(fitRect.top - surface->pos.y, 0),
     };
-    surface_transfer_blend(&backbuffer, surface, rect, &srcPoint);
-    scanlines_invalidate(rect);
+    int64_t width = RECT_WIDTH(&fitRect);
+    int64_t height = RECT_HEIGHT(&fitRect);
+    for (int64_t y = 0; y < height; y++)
+    {
+        for (int64_t x = 0; x < width; x++)
+        {
+            pixel_t* pixel = &surface->buffer[(srcPoint.x + x) + (srcPoint.y + y) * surface->width];
+            pixel_t* out = &((pixel_t*)backbuffer)[(fitRect.left + x) + (fitRect.top + y) * info.stride];
+            PIXEL_BLEND(out, pixel);
+        }
+    }
+    screen_invalidate(&fitRect);
 }
 
 void screen_transfer_frontbuffer(surface_t* surface, const rect_t* rect)
 {
+    rect_t fitRect = *rect;
+    RECT_FIT(&fitRect, &screenRect);
+
     point_t srcPoint = {
-        .x = MAX(rect->left - surface->pos.x, 0),
-        .y = MAX(rect->top - surface->pos.y, 0),
+        .x = MAX(fitRect.left - surface->pos.x, 0),
+        .y = MAX(fitRect.top - surface->pos.y, 0),
     };
     switch (info.format)
     {
     case FB_ARGB32:
     {
-        for (int64_t y = 0; y < RECT_HEIGHT(rect); y++)
+        for (int64_t y = 0; y < RECT_HEIGHT(&fitRect); y++)
         {
-            memcpy(&((pixel_t*)frontbuffer)[rect->left + (y + rect->top) * info.stride],
-                &surface->buffer[srcPoint.x + (y + srcPoint.y) * surface->width], RECT_WIDTH(rect) * sizeof(pixel_t));
+            memcpy(&((uint32_t*)frontbuffer)[(fitRect.left) + (fitRect.top + y) * info.stride],
+                &surface->buffer[(srcPoint.x) + (srcPoint.y + y) * surface->width],
+                RECT_WIDTH(&fitRect) * sizeof(uint32_t));
         }
     }
     break;
@@ -164,7 +159,8 @@ void screen_transfer_frontbuffer(surface_t* surface, const rect_t* rect)
         abort();
     }
     }
-    scanlines_clear();
+
+    region_clear(&invalidRegion);
 }
 
 void screen_swap(void)
@@ -173,17 +169,15 @@ void screen_swap(void)
     {
     case FB_ARGB32:
     {
-        for (uint64_t i = 0; i < info.height; i++)
+        for (uint64_t i = 0; i < invalidRegion.count; i++)
         {
-            if (!scanlines[i].isInvalid)
+            rect_t* rect = &invalidRegion.rects[i];
+            for (int64_t y = 0; y < RECT_HEIGHT(rect); y++)
             {
-                continue;
+                memcpy(&((uint32_t*)frontbuffer)[(rect->left) + (rect->top + y) * info.stride],
+                    &((pixel_t*)backbuffer)[(rect->left) + (rect->top + y) * info.stride],
+                    RECT_WIDTH(rect) * sizeof(uint32_t));
             }
-
-            uint64_t offset = (scanlines[i].start * sizeof(uint32_t)) + i * sizeof(uint32_t) * info.stride;
-            uint64_t size = (scanlines[i].end - scanlines[i].start) * sizeof(uint32_t);
-
-            memcpy((void*)((uint64_t)frontbuffer + offset), (void*)((uint64_t)backbuffer.buffer + offset), size);
         }
     }
     break;
@@ -193,7 +187,8 @@ void screen_swap(void)
         abort();
     }
     }
-    scanlines_clear();
+
+    region_clear(&invalidRegion);
 }
 
 uint64_t screen_width(void)
@@ -208,5 +203,5 @@ uint64_t screen_height(void)
 
 void screen_rect(rect_t* rect)
 {
-    *rect = RECT_INIT_DIM(0, 0, info.width, info.height);
+    *rect = screenRect;
 }

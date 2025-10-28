@@ -114,14 +114,22 @@ typedef struct
             } \
             if ((other)->left > (rect)->left) \
             { \
-                res.rects[res.count++] = (rect_t){(rect)->left, (other)->top, (other)->left, (other)->bottom}; \
+                res.rects[res.count++] = (rect_t){(rect)->left, MAX((rect)->top, (other)->top), (other)->left, MIN((rect)->bottom, (other)->bottom)}; \
             } \
             if ((other)->right < (rect)->right) \
             { \
-                res.rects[res.count++] = (rect_t){(other)->right, (other)->top, (rect)->right, (other)->bottom}; \
+                res.rects[res.count++] = (rect_t){(other)->right, MAX((rect)->top, (other)->top), (rect)->right, MIN((rect)->bottom, (other)->bottom)}; \
             } \
         } \
         *(result) = res; \
+    })
+
+#define RECT_INTERSECT(dest, src1, src2) \
+    ({ \
+        (dest)->left = MAX((src1)->left, (src2)->left); \
+        (dest)->top = MAX((src1)->top, (src2)->top); \
+        (dest)->right = MIN((src1)->right, (src2)->right); \
+        (dest)->bottom = MIN((src1)->bottom, (src2)->bottom); \
     })
 
 #if defined(__cplusplus)

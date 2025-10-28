@@ -14,7 +14,6 @@ typedef struct client
     list_entry_t entry;
     fd_t fd;
     list_t surfaces;
-    cmd_buffer_t cmds;
     event_bitmask_t bitmask;
     char recvBuffer[CLIENT_RECV_BUFFER_SIZE];
     size_t recvLen;

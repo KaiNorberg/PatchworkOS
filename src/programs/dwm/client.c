@@ -40,6 +40,7 @@ client_t* client_new(fd_t fd)
     list_entry_init(&client->entry);
     client->fd = fd;
     list_init(&client->surfaces);
+    // Subscibe to events 0-63 by default
     client->bitmask[0] = UINT64_MAX;
     client->bitmask[1] = 0;
     client->bitmask[2] = 0;
@@ -54,6 +55,9 @@ void client_free(client_t* client)
     surface_t* temp;
     LIST_FOR_EACH_SAFE(surface, temp, &client->surfaces, clientEntry)
     {
+        rect_t screenRect = SURFACE_SCREEN_RECT(surface);
+        compositor_invalidate(&screenRect);
+
         list_remove(&client->surfaces, &surface->clientEntry);
         dwm_detach(surface);
         surface_free(surface);
@@ -139,7 +143,6 @@ static uint64_t client_action_surface_new(client_t* client, const cmd_header_t* 
     }
 
     list_push(&client->surfaces, &surface->clientEntry);
-    dwm_focus_set(surface);
 
     client_send_event(client, surface->id, EVENT_SURFACE_NEW, &event, sizeof(event));
     return 0;
@@ -160,6 +163,9 @@ static uint64_t client_action_surface_free(client_t* client, const cmd_header_t*
         errno = ENOENT;
         return ERR;
     }
+
+    rect_t screenRect = SURFACE_SCREEN_RECT(surface);
+    compositor_invalidate(&screenRect);
 
     list_remove(&client->surfaces, &surface->clientEntry);
     dwm_detach(surface);
@@ -186,16 +192,18 @@ static uint64_t client_action_surface_move(client_t* client, const cmd_header_t*
     uint64_t width = RECT_WIDTH(&cmd->rect);
     uint64_t height = RECT_HEIGHT(&cmd->rect);
 
+    rect_t oldScreenRect = SURFACE_SCREEN_RECT(surface);
     if (surface->width != width || surface->height != height)
     {
         // TODO: Reimplement resizing
         errno = ENOSYS;
         return ERR;
     }
-
     surface->pos = (point_t){.x = cmd->rect.left, .y = cmd->rect.top};
-    surface->flags |= SURFACE_MOVED;
-    compositor_set_redraw_needed();
+    rect_t newScreenRect = SURFACE_SCREEN_RECT(surface);
+
+    compositor_invalidate(&oldScreenRect);
+    compositor_invalidate(&newScreenRect);
 
     dwm_report_produce(surface, surface->client, REPORT_RECT);
     return 0;
@@ -248,9 +256,13 @@ static uint64_t client_action_surface_invalidate(client_t* client, const cmd_hea
     rect_t surfaceRect = SURFACE_CONTENT_RECT(surface);
     rect_t invalidRect = cmd->invalidRect;
     RECT_FIT(&invalidRect, &surfaceRect);
-    surface_invalidate(surface, &invalidRect);
-    surface->flags |= SURFACE_INVALID;
-    compositor_set_redraw_needed();
+
+    rect_t screenInvalidRect = RECT_INIT_DIM(
+        surface->pos.x + invalidRect.left,
+        surface->pos.y + invalidRect.top,
+        RECT_WIDTH(&invalidRect),
+        RECT_HEIGHT(&invalidRect));
+    compositor_invalidate(&screenInvalidRect);
     return 0;
 }
 
@@ -271,6 +283,8 @@ static uint64_t client_action_surface_focus_set(client_t* client, const cmd_head
     }
 
     dwm_focus_set(surface);
+    rect_t screenRect = SURFACE_SCREEN_RECT(surface);
+    compositor_invalidate(&screenRect);
     return 0;
 }
 
@@ -292,8 +306,9 @@ static uint64_t client_action_surface_visible_set(client_t* client, const cmd_he
     if (isSurfaceVisible != cmd->isVisible)
     {
         surface->flags ^= SURFACE_VISIBLE;
-        surface->flags |= SURFACE_MOVED;
-        compositor_set_redraw_needed();
+        dwm_focus_set(surface);
+        rect_t screenRect = SURFACE_SCREEN_RECT(surface);
+        compositor_invalidate(&screenRect);
         dwm_report_produce(surface, surface->client, REPORT_IS_VISIBLE);
     }
     return 0;

@@ -326,11 +326,6 @@ void dwm_detach(surface_t* surface)
         abort();
     }
     }
-
-    if (wall != NULL)
-    {
-        wall->flags |= SURFACE_MOVED;
-    }
 }
 
 void dwm_focus_set(surface_t* surface)
@@ -359,7 +354,6 @@ void dwm_focus_set(surface_t* surface)
             // Move to end of list
             list_remove(&windows, &surface->dwmEntry);
             list_push(&windows, &surface->dwmEntry);
-            surface->flags |= SURFACE_MOVED;
         }
         focus = surface;
         dwm_report_produce(focus, focus->client, REPORT_IS_FOCUSED);
@@ -505,17 +499,6 @@ static void dwm_handle_mouse_event(const mouse_event_t* mouseEvent)
     cursor->pos.y = CLAMP(cursor->pos.y + mouseEvent->deltaY, 0, (int64_t)screen_height() - 1);
 
     point_t cursorDelta = {.x = cursor->pos.x - oldCursorPos.x, .y = cursor->pos.y - oldCursorPos.y};
-    if (fullscreen == NULL && (cursorDelta.x != 0 || cursorDelta.y != 0))
-    {
-        compositor_ctx_t ctx = {
-            .windows = &windows,
-            .panels = &panels,
-            .wall = wall,
-            .cursor = cursor,
-        };
-        compositor_redraw_cursor(&ctx);
-    }
-
     surface_t* surface = dwm_surface_under_point(&cursor->pos);
     if (surface != prevCursorTarget)
     {
@@ -553,6 +536,8 @@ static void dwm_handle_mouse_event(const mouse_event_t* mouseEvent)
     if (pressed != MOUSE_NONE)
     {
         dwm_focus_set(surface);
+        rect_t surfaceRect = SURFACE_SCREEN_RECT(surface);
+        compositor_invalidate(&surfaceRect);
     }
 
     surface_t* destSurface;
