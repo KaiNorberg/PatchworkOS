@@ -61,7 +61,7 @@ static uint64_t statistics_cpu_read(file_t* file, void* buffer, uint64_t count, 
         stat->interruptEnd = now;
 
         sprintf(&string[strlen(string)], "cpu%d %llu %llu %llu%c", cpu->id, stat->idleClocks, stat->activeClocks,
-                    stat->interruptClocks, i + 1 != smp_cpu_amount() ? '\n' : '\0');
+            stat->interruptClocks, i + 1 != smp_cpu_amount() ? '\n' : '\0');
     }
 
     uint64_t length = strlen(string);

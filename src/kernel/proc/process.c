@@ -1,5 +1,7 @@
 #include "process.h"
 
+#include "cpu/cpu.h"
+#include "cpu/smp.h"
 #include "fs/file.h"
 #include "fs/path.h"
 #include "fs/sysfs.h"
@@ -8,12 +10,10 @@
 #include "log/panic.h"
 #include "mem/vmm.h"
 #include "sched/thread.h"
+#include "sched/timer.h"
 #include "sched/wait.h"
 #include "sync/lock.h"
 #include "sync/rwlock.h"
-#include "sched/timer.h"
-#include "cpu/smp.h"
-#include "cpu/cpu.h"
 
 #include <_internal/MAX_PATH.h>
 #include <assert.h>
@@ -42,7 +42,7 @@ static lock_t zombiesLock = LOCK_CREATE;
 static void process_reaper_timer(interrupt_frame_t* frame, cpu_t* cpu)
 {
     (void)frame; // Unused
-    (void)cpu;  // Unused
+    (void)cpu;   // Unused
 
     LOCK_SCOPE(&zombiesLock);
 
@@ -509,7 +509,9 @@ void process_kill(process_t* process, uint64_t status)
     // Anything that another process could be waiting on must be cleaned up here.
     namespace_deinit(&process->namespace);
     vfs_ctx_deinit(&process->vfsCtx);
-    // The dir entries have refs to the process, but a parent process might want to read files in /proc/[pid] after the process has exited especially its wait file, so for now we defer dereferencing them until the reaper runs. This is really not ideal so
+    // The dir entries have refs to the process, but a parent process might want to read files in /proc/[pid] after the
+    // process has exited especially its wait file, so for now we defer dereferencing them until the reaper runs. This
+    // is really not ideal so
     // TODO: implement a proper reaper.
     /*DEREF(process->dir);
     DEREF(process->prioFile);

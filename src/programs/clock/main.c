@@ -1,8 +1,8 @@
 #include <libpatchwork/patchwork.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
-#include <math.h>
 
 #define WINDOW_WIDTH 500
 #define WINDOW_HEIGHT 500
@@ -34,12 +34,10 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     {
     case LEVENT_INIT:
     {
-
     }
     break;
     case LEVENT_DEINIT:
     {
-
     }
     break;
     case LEVENT_REDRAW:
@@ -57,7 +55,8 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
         for (int i = 0; i < 12; i++)
         {
-            draw_hand(&draw, center, (double)i * M_PI / 6.0, radius - 10, 4, PIXEL_ARGB(255, 0, 0, 0)); // Black hour marks
+            draw_hand(&draw, center, (double)i * M_PI / 6.0, radius - 10, 4,
+                PIXEL_ARGB(255, 0, 0, 0)); // Black hour marks
         }
 
         element_draw_end(elem, &draw);

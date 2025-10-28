@@ -270,7 +270,8 @@ static void start_menu_load_entries(window_t* startMenu)
             RECT_INIT(theme->frameSize + theme->titlebarSize, theme->frameSize + i * START_BUTTON_HEIGHT,
                 START_MENU_WIDTH - theme->frameSize, (i + 1) * START_BUTTON_HEIGHT);
 
-        entries[i].button = button_new(window_get_client_element(startMenu), i, &buttonRect, entries[i].name, ELEMENT_FLAT);
+        entries[i].button =
+            button_new(window_get_client_element(startMenu), i, &buttonRect, entries[i].name, ELEMENT_FLAT);
     }
 }
 

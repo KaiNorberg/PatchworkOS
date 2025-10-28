@@ -1,5 +1,5 @@
-#include <math.h>
 #include <errno.h>
+#include <math.h>
 
 // https://en.cppreference.com/w/c/numeric/math/fmod
 double fmod(double x, double y)

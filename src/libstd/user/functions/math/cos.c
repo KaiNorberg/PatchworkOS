@@ -1,5 +1,5 @@
-#include <math.h>
 #include <errno.h>
+#include <math.h>
 #include <stdbool.h>
 
 // https://cppreference.com/w/c/numeric/math/cos.html

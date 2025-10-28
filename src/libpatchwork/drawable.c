@@ -1,8 +1,8 @@
 #include "internal.h"
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 void draw_rect(drawable_t* draw, const rect_t* rect, pixel_t pixel)
 {
@@ -120,7 +120,8 @@ void draw_polygon(drawable_t* draw, const point_t* points, uint64_t pointCount, 
             int64_t xStart = (int64_t)(activeEdges[i]->x);
             int64_t xEnd = (int64_t)(activeEdges[i + 1]->x);
 
-            if (y >= draw->contentRect.top && y < draw->contentRect.bottom && xEnd >= draw->contentRect.left && xStart < draw->contentRect.right)
+            if (y >= draw->contentRect.top && y < draw->contentRect.bottom && xEnd >= draw->contentRect.left &&
+                xStart < draw->contentRect.right)
             {
                 xStart = MAX(xStart, draw->contentRect.left);
                 xEnd = MIN(xEnd, draw->contentRect.right - 1);
@@ -146,9 +147,9 @@ void draw_line(drawable_t* draw, const point_t* start, const point_t* end, pixel
     }
 
     point_t fitStart = {CLAMP(start->x, draw->contentRect.left, draw->contentRect.right - 1),
-                        CLAMP(start->y, draw->contentRect.top, draw->contentRect.bottom - 1)};
+        CLAMP(start->y, draw->contentRect.top, draw->contentRect.bottom - 1)};
     point_t fitEnd = {CLAMP(end->x, draw->contentRect.left, draw->contentRect.right - 1),
-                      CLAMP(end->y, draw->contentRect.top, draw->contentRect.bottom - 1)};
+        CLAMP(end->y, draw->contentRect.top, draw->contentRect.bottom - 1)};
 
     point_t points[4];
     double angle = atan2((double)(fitEnd.y - fitStart.y), (double)(fitEnd.x - fitStart.x));

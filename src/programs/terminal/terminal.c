@@ -231,7 +231,16 @@ static void ternminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t
 
     switch (ansi->command)
     {
-    case 'H': // Cursot to (0, 0)
+    case 'H': // Cursot to (0, 0) or specified position
+        if (ansi->paramCount >= 2)
+        {
+            uint16_t row = ansi->parameters[0] == 0 ? 0 : ansi->parameters[0] - 1;
+            uint16_t col = ansi->parameters[1] == 0 ? 0 : ansi->parameters[1] - 1;
+            row = MIN(row, TERMINAL_ROWS - 1);
+            col = MIN(col, TERMINAL_COLUMNS - 1);
+            term->cursor = terminal_get_char(term, row, col);
+            break;
+        }
         term->cursor = terminal_get_char(term, 0, 0);
         break;
     case 'A': // Cursor Up

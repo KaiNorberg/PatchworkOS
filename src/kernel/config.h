@@ -179,8 +179,8 @@
  * @ingroup kernel
  * @def CONFIG_PROCESS_REAPER_INTERVAL
  *
- * The `CONFIG_PROCESS_REAPER_INTERVAL` constant defines the minimum interval at which the process reaper runs to clean up
- * zombie processes. It might run less frequently.
+ * The `CONFIG_PROCESS_REAPER_INTERVAL` constant defines the minimum interval at which the process reaper runs to clean
+ * up zombie processes. It might run less frequently.
  *
  */
 #define CONFIG_PROCESS_REAPER_INTERVAL (CLOCKS_PER_SEC * 1)
