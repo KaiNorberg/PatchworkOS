@@ -80,8 +80,8 @@ Additionally, the OS aims to, in spite of its experimental nature, remain approa
 ## Notable Future Plans
 
 - `openat()` and `fchdir()` systems calls
-- File flags performance improvements
-- Read, write, execute permissions
+- File flags performance improvements and refactor
+- Read, write, execute, create permissions
 - Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions
 - Add configurability to `spawn()` for namespace inheritance
 - Asynchronous I/O
