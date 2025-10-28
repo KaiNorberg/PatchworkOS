@@ -10,7 +10,7 @@
 
 /**
  * @brief Terminal Program.
- * @defgroup program_terminal Terminal
+ * @defgroup programs_terminal Terminal
  * @ingroup programs
  *
  * A simple terminal emulator program.

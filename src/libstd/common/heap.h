@@ -8,7 +8,7 @@
 /**
  * @brief Heap memory allocation.
  * @defgroup libstd_common_heap Heap
- * @addtogroup libstd_common
+ * @ingroup libstd_common
  *
  * The heap uses a "segregated free list" allocator with a set of bins where each bin stores free blocks of size `n *
  * 64` bytes up to a threshold, beyond which large allocations are mapped directly.

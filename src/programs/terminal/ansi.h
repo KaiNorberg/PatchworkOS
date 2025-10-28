@@ -9,6 +9,7 @@
 /**
  * @brief ANSI.
  * @defgroup programs_terminal_ansi ANSI
+ * @ingroup programs_terminal
  *
  * @{
  */
