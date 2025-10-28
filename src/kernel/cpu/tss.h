@@ -53,22 +53,26 @@ typedef enum
  * @brief Task State Segment structure.
  * @struct tss_t
  *
- * The stack pointers `rsp*` store the stack to use when switching to a higher privilege level which we do not use.
- * Instead we have a total of 4 stacks used while in kernel space, 3 per-cpu stacks and 1 per-thread stack. Of course
- * there is also the user stack used while in user space.
+ * The `rsp*` members store the stack to use when switching to a higher privilege level, we dont use these.
+ *
+ *  Instead we have a total of 4 stacks used while in kernel space, 3 per-cpu stacks and 1 per-thread stack. Of course there is also the user stack used while in user space. But that is not relevant to the TSS and instead handled by the system call code.
+ *
+ * ## The per-cpu stacks
  *
  * The per-cpu stacks are:
  * - Exception stack, used while handling exceptions, specified in ist[0].
  * - Double fault stack, used while handling double faults, specified in ist[1].
  * - Interrupt stack, used while handling all other interrupts, specified in ist[2].
  *
- * The per-thread stack is the kernel stack, used while the thread is in kernel space and NOT handling an exception or
- * interrupt. In effect this is used in system calls, boot, inital thread loading and if the thread is a kernel thread
- * it is used all the time. This stack is not handled by the TSS but instead by the system call and scheduler code.
+ * We need three stacks as its possible for an exception to occur during an interrupt, and its possible for a double fault to occur during an exception, therefore we must ensure that in the worst case where each of these occur recursively we have a separate stack for each level.
  *
- * The way the interrupt stack table works is that when a interrupt occurs the cpu checks the IDT gate for that
- * interrupt, if it has a non zero IST index it will then load that stack pointer from the TSS and switch to that stack,
- * this happens regardless of the current privilege level.
+ * ## The per-thread stack
+ *
+ * The per-thread stack is called the "kernel stack" and is used while the thread is in kernel space and NOT handling an exception or interrupt. In effect this is used in system calls, boot, inital thread loading and if the thread is a kernel thread it is used all the time. This stack is not handled by the TSS, instead the system call code is responsible for switching to this stack when entering kernel space from user space.
+ *
+ * ## The Interrupt Stack Table
+ *
+ * The IST works by having the CPU check the IST index specified in the IDT gate for that interrupt or exception, if it has a non zero IST index it will then load that stack pointer from `ist[index - 1]` and switch to that stack before calling the interrupt or exception handler. This happens regardless of the current privilege level.
  *
  */
 typedef struct PACKED
