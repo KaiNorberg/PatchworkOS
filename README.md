@@ -71,7 +71,6 @@ Additionally, the OS aims to, in spite of its experimental nature, remain approa
 - Non-POSIX standard library
 - Even heavier focus on "everything is a file"
 - File flags instead of file modes/permissions
-- Custom [shell utilities](#shell-utilities)
 
 ## Limitations
 
@@ -347,7 +346,7 @@ Multiple flags are allowed, just separate them with the `:` character, this mean
 |:----------|:------------|
 | `include` | Public API |
 | `src` | Source code |
-| `root` | Files copied to the root directory of the generated .iso |
+| `root` | Files copied to the root directory of the generated .img |
 | `tools` | Build scripts (hacky alternative to cross-compiler) |
 | `make` | Make files |
 | `lib` | Third party dependencies |
@@ -454,4 +453,4 @@ Check out the [contribution guidelines](CONTRIBUTING.md) to get started.
 
 ## Nostalgia
 
-[The first Reddit post and image of PatchworkOS](https://www.reddit.com/r/osdev/comments/18gbsng/a_little_over_2_years_ago_i_posted_a_screenshot/) from back when getting to user space was a huge milestone.
+[The first Reddit post and image of PatchworkOS](https://www.reddit.com/r/osdev/comments/18gbsng/a_little_over_2_years_ago_i_posted_a_screenshot/) from back when getting to user space was a massive milestone and the kernel was supposed to be a microkernel.
