@@ -1,7 +1,7 @@
 #include "screen.h"
 
-#include "surface.h"
 #include "region.h"
+#include "surface.h"
 
 #include <errno.h>
 #include <stdio.h>

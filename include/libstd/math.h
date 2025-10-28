@@ -158,9 +158,9 @@ double logb(double x);
 float logbf(float x);
 long double logbl(long double x);
 
-double modf(double value, double* exp);
-float modff(float value, float* exp);
-long double modfl(long double value, long double* exp);
+double modf(double value, double* iptr);
+float modff(float value, float* iptr);
+long double modfl(long double value, long double* iptr);
 
 double scalbn(double x, int n);
 float scalbnf(float x, int n);

@@ -70,8 +70,9 @@ static uint64_t interactive_handle_ansi(interactive_state_t* state, ansi_result_
         {
             return 0;
         }
+        memmove(&state->buffer[state->pos + 1], &state->buffer[state->pos], MAX_PATH - state->pos - 1);
         state->buffer[state->pos++] = result->printable;
-        printf("%c", result->printable);
+        printf("%c\033[s%s\033[u", result->printable, &state->buffer[state->pos]);
         fflush(stdout);
         return 0;
     }

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <stdint.h>
-#include <stdbool.h>
 #include <libpatchwork/rect.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #define MAX_REGION_RECTS 128
 
@@ -12,10 +12,7 @@ typedef struct
     uint64_t count;
 } region_t;
 
-#define REGION_CREATE \
-    {                 \
-        .count = 0   \
-    }
+#define REGION_CREATE {.count = 0}
 
 static inline void region_init(region_t* region)
 {

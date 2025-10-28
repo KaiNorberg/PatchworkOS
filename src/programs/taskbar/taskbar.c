@@ -172,7 +172,7 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
             return ERR;
         }
 
-        window_set_timer(win, TIMER_REPEAT, CLOCKS_PER_SEC * 30);
+        window_set_timer(win, TIMER_REPEAT, CLOCKS_PER_SEC * 10);
 
         if (taskbar_update_clock(elem) == ERR)
         {

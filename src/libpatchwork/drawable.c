@@ -52,12 +52,17 @@ void draw_polygon(drawable_t* draw, const point_t* points, uint64_t pointCount, 
         return;
     }
 
-    int64_t minY = UINT64_MAX;
-    int64_t maxY = 0;
+    int64_t minY = INT64_MAX;
+    int64_t maxY = INT64_MIN;
+    int64_t minX = INT64_MAX;
+    int64_t maxX = INT64_MIN;
+
     for (uint64_t i = 0; i < pointCount; i++)
     {
-        minY = MIN(minY, (uint64_t)points[i].y);
-        maxY = MAX(maxY, (uint64_t)points[i].y);
+        minY = MIN(minY, points[i].y);
+        maxY = MAX(maxY, points[i].y);
+        minX = MIN(minX, points[i].x);
+        maxX = MAX(maxX, points[i].x);
     }
 
     edge_t edges[pointCount];
@@ -87,8 +92,12 @@ void draw_polygon(drawable_t* draw, const point_t* points, uint64_t pointCount, 
         }
     }
 
+    const double samples[4][2] = {{0.125, 0.375}, {0.375, 0.125}, {0.625, 0.875}, {0.875, 0.625}};
+    const int sampleCount = 4;
+
     edge_t* activeEdges[pointCount];
     uint64_t activeEdgeCount = 0;
+
     for (int64_t y = minY; y <= maxY; y++)
     {
         for (uint64_t i = 0; i < edgeCount; i++)
@@ -115,23 +124,51 @@ void draw_polygon(drawable_t* draw, const point_t* points, uint64_t pointCount, 
 
         qsort(activeEdges, activeEdgeCount, sizeof(edge_t*), edge_compare);
 
-        for (uint64_t i = 0; i < activeEdgeCount; i += 2)
-        {
-            int64_t xStart = (int64_t)(activeEdges[i]->x);
-            int64_t xEnd = (int64_t)(activeEdges[i + 1]->x);
+        int64_t scanMinX = (int64_t)(activeEdges[0]->x);
+        int64_t scanMaxX = (int64_t)(activeEdges[activeEdgeCount - 1]->x);
 
-            if (y >= draw->contentRect.top && y < draw->contentRect.bottom && xEnd >= draw->contentRect.left &&
-                xStart < draw->contentRect.right)
+        scanMinX = MAX(scanMinX - 1, draw->contentRect.left);
+        scanMaxX = MIN(scanMaxX + 1, draw->contentRect.right - 1);
+
+        if (y < draw->contentRect.top || y >= draw->contentRect.bottom)
+        {
+            goto update_edges;
+        }
+
+        for (int64_t x = scanMinX; x <= scanMaxX; x++)
+        {
+            int samplesInside = 0;
+
+            for (int s = 0; s < sampleCount; s++)
             {
-                xStart = MAX(xStart, draw->contentRect.left);
-                xEnd = MIN(xEnd, draw->contentRect.right - 1);
-                if (xEnd >= xStart)
+                double sampleX = x + samples[s][0];
+                double sampleY = y + samples[s][1];
+
+                if (polygon_contains(sampleX, sampleY, points, pointCount))
                 {
-                    memset32(&draw->buffer[xStart + y * draw->stride], pixel, xEnd - xStart + 1);
+                    samplesInside++;
                 }
+            }
+
+            if (samplesInside == 0)
+            {
+                continue;
+            }
+            else if (samplesInside == sampleCount)
+            {
+                draw->buffer[x + y * draw->stride] = pixel;
+            }
+            else
+            {
+                uint8_t originalAlpha = PIXEL_ALPHA(pixel);
+                uint8_t newAlpha = (originalAlpha * samplesInside) / sampleCount;
+
+                pixel_t aaPixel = PIXEL_ARGB(newAlpha, PIXEL_RED(pixel), PIXEL_GREEN(pixel), PIXEL_BLUE(pixel));
+                PIXEL_BLEND(&draw->buffer[x + y * draw->stride], &aaPixel);
             }
         }
 
+update_edges:
         for (uint64_t i = 0; i < activeEdgeCount; i++)
         {
             activeEdges[i]->x += activeEdges[i]->invSlope;

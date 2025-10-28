@@ -2,44 +2,73 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #define WINDOW_WIDTH 500
 #define WINDOW_HEIGHT 500
 
-static void draw_hand(drawable_t* draw, point_t center, double angle, uint64_t length, uint64_t width, pixel_t color)
-{
-    double cosAngle = cos(angle);
-    double sinAngle = sin(angle);
+static point_t hourMarker[] = {{-3, 0}, {3, 0}, {2, -30}, {-2, -30}};
 
-    for (int64_t w = -((int64_t)width / 2); w <= (int64_t)(width / 2); w++)
+static point_t minuteMarker[] = {{-1, 0}, {1, 0}, {1, -15}, {-1, -15}};
+
+static point_t hourHand[] = {{-8, 15}, {8, 15}, {6, -50}, {3, -75}, {0, -85}, {-3, -75}, {-6, -50}};
+
+static point_t minuteHand[] = {{-6, 15}, {6, 15}, {4, -120}, {2, -145}, {0, -155}, {-2, -145}, {-4, -120}};
+
+static point_t secondHand[] = {{-2, 30}, {2, 30}, {2, 0}, {1, -165}, {0, -175}, {-1, -165}, {-2, 0}};
+
+static void draw_marker(drawable_t* draw, point_t center, int64_t radius, const point_t* markerPoints,
+    uint64_t pointCount, double angle, pixel_t pixel)
+{
+    point_t rotatedMarker[pointCount];
+    memcpy(rotatedMarker, markerPoints, sizeof(point_t) * pointCount);
+
+    for (uint64_t i = 0; i < 4; i++)
     {
-        point_t start = {
-            .x = center.x + (int64_t)(-w * sinAngle),
-            .y = center.y + (int64_t)(w * cosAngle),
-        };
-        point_t end = {
-            .x = center.x + (int64_t)(length * cosAngle) - (int64_t)(w * sinAngle),
-            .y = center.y + (int64_t)(length * sinAngle) + (int64_t)(w * cosAngle),
-        };
-        draw_line(draw, &start, &end, color, 2);
+        rotatedMarker[i].x += center.x;
+        rotatedMarker[i].y += center.y - radius;
     }
+
+    polygon_rotate(rotatedMarker, pointCount, angle, center);
+    draw_polygon(draw, rotatedMarker, pointCount, pixel);
+}
+
+static void draw_hand(drawable_t* draw, point_t center, const point_t* handPoints, uint64_t pointCount, double angle,
+    pixel_t pixel)
+{
+    point_t rotatedHand[pointCount];
+    memcpy(rotatedHand, handPoints, sizeof(point_t) * pointCount);
+    for (uint64_t i = 0; i < pointCount; i++)
+    {
+        rotatedHand[i].x += center.x;
+        rotatedHand[i].y += center.y;
+    }
+    polygon_rotate(rotatedHand, pointCount, angle, center);
+    draw_polygon(draw, rotatedHand, pointCount, pixel);
 }
 
 static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
-    (void)win; // Unused
+    (void)win;
 
     switch (event->type)
     {
     case LEVENT_INIT:
     {
+        window_set_timer(win, TIMER_REPEAT, CLOCKS_PER_SEC);
     }
     break;
     case LEVENT_DEINIT:
     {
     }
     break;
+    case LEVENT_QUIT:
+    {
+        display_disconnect(window_get_display(win));
+    }
+    break;
+    case EVENT_TIMER:
     case LEVENT_REDRAW:
     {
         drawable_t draw;
@@ -48,17 +77,39 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         time_t now = time(NULL);
         struct tm* t = localtime(&now);
 
-        rect_t clockRect = RECT_INIT_DIM(50, 50, 400, 400);
-        draw_rect(&draw, &clockRect, PIXEL_ARGB(255, 255, 255, 255)); // White background
+        const theme_t* theme = element_get_theme(elem);
+
+        rect_t clockRect = element_get_content_rect(elem);
+        draw_rect(&draw, &clockRect, theme->deco.backgroundNormal);
         point_t center = {clockRect.left + RECT_WIDTH(&clockRect) / 2, clockRect.top + RECT_HEIGHT(&clockRect) / 2};
-        uint64_t radius = RECT_WIDTH(&clockRect) / 2 - 20;
+        uint64_t radius = RECT_WIDTH(&clockRect) / 2 - 75;
 
         for (int i = 0; i < 12; i++)
         {
-            draw_hand(&draw, center, (double)i * M_PI / 6.0, radius - 10, 4,
-                PIXEL_ARGB(255, 0, 0, 0)); // Black hour marks
+            double angle = i * (M_PI / 6);
+            draw_marker(&draw, center, radius, hourMarker, sizeof(hourMarker) / sizeof(hourMarker[0]), angle,
+                PIXEL_ARGB(255, 0, 0, 0));
         }
 
+        for (int i = 0; i < 60; i++)
+        {
+            if (i % 5 != 0)
+            {
+                double angle = i * (M_PI / 30);
+                draw_marker(&draw, center, radius, minuteMarker, sizeof(minuteMarker) / sizeof(minuteMarker[0]), angle,
+                    PIXEL_ARGB(255, 100, 100, 100));
+            }
+        }
+
+        double hourAngle = ((t->tm_hour % 12) + (double)t->tm_min / 60.0) * (M_PI / 6);
+        double minuteAngle = (t->tm_min + (double)t->tm_sec / 60.0) * (M_PI / 30);
+        double secondAngle = t->tm_sec * (M_PI / 30);
+
+        draw_hand(&draw, center, hourHand, sizeof(hourHand) / sizeof(hourHand[0]), hourAngle, PIXEL_ARGB(255, 0, 0, 0));
+        draw_hand(&draw, center, minuteHand, sizeof(minuteHand) / sizeof(minuteHand[0]), minuteAngle,
+            PIXEL_ARGB(255, 0, 0, 0));
+        draw_hand(&draw, center, secondHand, sizeof(secondHand) / sizeof(secondHand[0]), secondAngle,
+            PIXEL_ARGB(255, 255, 0, 0));
         element_draw_end(elem, &draw);
     }
     break;

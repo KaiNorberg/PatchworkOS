@@ -21,39 +21,7 @@ double sin(double x)
         return NAN;
     }
 
-    x = fmod(x, 2.0 * M_PI);
-    bool negate = false;
-    if (x < 0.0)
-    {
-        x = -x;
-        negate = true;
-    }
-
-    if (x > M_PI)
-    {
-        x = 2.0 * M_PI - x;
-        negate = !negate;
-    }
-
-    if (x > M_PI_2)
-    {
-        x = M_PI - x;
-    }
-
-    // sin(x) = x - x^3/3! + x^5/5! - x^7/7! + ...
-
-    double x2 = x * x;
-    double result = x;
-    double term = x;
-    for (int i = 1; i <= 10; i++)
-    {
-        term *= -x2 / ((2 * i) * (2 * i + 1));
-        result += term;
-        if (fabs(term) < 1e-16)
-        {
-            break;
-        }
-    }
-
-    return negate ? -result : result;
+    double result;
+    asm volatile("fsin" : "=t"(result) : "0"(x));
+    return result;
 }

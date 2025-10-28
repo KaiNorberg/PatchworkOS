@@ -257,11 +257,8 @@ static uint64_t client_action_surface_invalidate(client_t* client, const cmd_hea
     rect_t invalidRect = cmd->invalidRect;
     RECT_FIT(&invalidRect, &surfaceRect);
 
-    rect_t screenInvalidRect = RECT_INIT_DIM(
-        surface->pos.x + invalidRect.left,
-        surface->pos.y + invalidRect.top,
-        RECT_WIDTH(&invalidRect),
-        RECT_HEIGHT(&invalidRect));
+    rect_t screenInvalidRect = RECT_INIT_DIM(surface->pos.x + invalidRect.left, surface->pos.y + invalidRect.top,
+        RECT_WIDTH(&invalidRect), RECT_HEIGHT(&invalidRect));
     compositor_invalidate(&screenInvalidRect);
     return 0;
 }

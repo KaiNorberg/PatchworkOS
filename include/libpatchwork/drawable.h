@@ -4,6 +4,7 @@
 #include "cmd.h"
 #include "font.h"
 #include "pixel.h"
+#include "polygon.h"
 #include "rect.h"
 #include "surface.h"
 

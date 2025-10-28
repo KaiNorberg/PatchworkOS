@@ -114,11 +114,13 @@ typedef struct
             } \
             if ((other)->left > (rect)->left) \
             { \
-                res.rects[res.count++] = (rect_t){(rect)->left, MAX((rect)->top, (other)->top), (other)->left, MIN((rect)->bottom, (other)->bottom)}; \
+                res.rects[res.count++] = (rect_t){(rect)->left, MAX((rect)->top, (other)->top), (other)->left, \
+                    MIN((rect)->bottom, (other)->bottom)}; \
             } \
             if ((other)->right < (rect)->right) \
             { \
-                res.rects[res.count++] = (rect_t){(other)->right, MAX((rect)->top, (other)->top), (rect)->right, MIN((rect)->bottom, (other)->bottom)}; \
+                res.rects[res.count++] = (rect_t){(other)->right, MAX((rect)->top, (other)->top), (rect)->right, \
+                    MIN((rect)->bottom, (other)->bottom)}; \
             } \
         } \
         *(result) = res; \

@@ -1,8 +1,8 @@
 #include "compositor.h"
 
 #include "dwm.h"
-#include "screen.h"
 #include "region.h"
+#include "screen.h"
 #include "surface.h"
 
 #include <stdio.h>

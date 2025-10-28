@@ -175,12 +175,11 @@ static void stats_print(stats_t* stats)
     printf("\033[H\033[K\n");
 
     uint64_t cpuPrefixWidth = 20;
-    uint64_t cpuBarWidth = (terminalColumns > cpuPrefixWidth + 1) ?
-                           (terminalColumns - cpuPrefixWidth - 1) : PLOT_WIDTH;
+    uint64_t cpuBarWidth = (terminalColumns > cpuPrefixWidth + 1) ? (terminalColumns - cpuPrefixWidth - 1) : PLOT_WIDTH;
 
     uint64_t memPrefixWidth = 4;
-    uint64_t memBarWidth = (terminalColumns > memPrefixWidth + 2) ?
-                           (terminalColumns - memPrefixWidth - 2) : (PLOT_WIDTH * 2);
+    uint64_t memBarWidth =
+        (terminalColumns > memPrefixWidth + 2) ? (terminalColumns - memPrefixWidth - 2) : (PLOT_WIDTH * 2);
 
     printf("\033[1;33m  CPU Usage:\033[0m\033[K\n");
     for (uint64_t i = 0; i < stats->cpuAmount; i++)

@@ -8,6 +8,8 @@
 </div>
 <br>
 
+![desktop screenshot](meta/screenshots/desktop.png)
+
 **Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9 and others while simplifying them and adding in some new ideas of its own.
 
 In the end this is a project made for fun, however the goal is still to make a feature-complete and experimental operating system which attempts to use unique algorithms and designs over tried and tested ones. Sometimes this leads to bad results, and sometimes, hopefully, good ones.
@@ -17,7 +19,7 @@ Additionally, the OS aims to, in spite of its experimental nature, remain approa
 <table>
 <tr>
 <td width="50%">
-<img src="meta/screenshots/desktop.png" alt="Desktop Screenshot" />
+<img src="meta/screenshots/stresstest.png" alt="Stresstest Screenshot" />
 </td>
 <td width="50%">
 <img src="meta/screenshots/doom.png" alt="Doom Screenshot" />
@@ -287,7 +289,7 @@ For example, the "id" directories mentioned in the socket example are a separate
 
 [Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
 
-### Namespace Sharing (Future plans, to be added)
+### Namespace Sharing
 
 It's possible for two processes to voluntarily share a mountpoint in their namespaces using `bind()` in combination with two new system calls `share()` and `claim()`.
 

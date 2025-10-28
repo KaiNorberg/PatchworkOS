@@ -25,7 +25,20 @@ typedef struct namespace namespace_t;
  * mountpoints. A dentry can exist in multiple places if its part of a filesystem that has been mounted in multiple
  * places.
  *
- * TODO: Make path reference counting less error prone.
+ * ## Flags
+ *
+ * Paths can have flags appended to them which is how we handle general file flags. Each flag starts with `:` and the
+ * same path can contain multiples of different or the same flag, for example `/path/to/file:create:create:nonblock`.
+ *
+ * Included is a list of all available flags:
+ * - `nonblock`: Open the file in non-blocking mode.
+ * - `append`: Any data written to the file will be appended to the end.
+ * - `create`: Create the file if it does not exist.
+ * - `excl`: Will cause the open to fail if the file already exists. Must be used with `create`.
+ * - `trunc`: Truncate the file to zero length if it already exists.
+ * - `dir`: Allow opening directories.
+ * - `recur`: Behaviour differs, but allows for recursive operations, for example when used with `remove` it will remove
+ * directories and their children recursively.
  *
  * @{
  */
@@ -63,18 +76,20 @@ typedef struct namespace namespace_t;
 /**
  * @brief Path flags.
  * @enum path_flags_t
+ *
+ * Used to store parsed flags.
  */
 typedef enum
 {
-    PATH_NONE = 0,           ///< No flags.
-    PATH_NONBLOCK = 1 << 0,  ///< Do not block on operations that would normally block.
-    PATH_APPEND = 1 << 1,    ///< All writes will append to the end of the file.
-    PATH_CREATE = 1 << 2,    ///< Create the file if it does not exist.
-    PATH_EXCLUSIVE = 1 << 3, ///< When used with `PATH_CREATE`, fail if the file already exists.
-    PATH_TRUNCATE = 1 << 4,  ///< Truncate the file to 0 length if it already exists.
-    PATH_DIRECTORY = 1 << 5, ///< Fail if the path is not a directory, if not set then fail if it is a directory.
-    PATH_RECURSIVE = 1 << 6, ///< Create parent directories if they do not exist when creating a file.
-    PATH_FLAGS_AMOUNT = 7    ///< The amount of path flags.
+    PATH_NONE = 0,
+    PATH_NONBLOCK = 1 << 0,
+    PATH_APPEND = 1 << 1,
+    PATH_CREATE = 1 << 2,
+    PATH_EXCLUSIVE = 1 << 3,
+    PATH_TRUNCATE = 1 << 4,
+    PATH_DIRECTORY = 1 << 5,
+    PATH_RECURSIVE = 1 << 6,
+    PATH_FLAGS_AMOUNT = 7
 } path_flags_t;
 
 /**
