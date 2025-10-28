@@ -470,16 +470,13 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
         pid_t pid = pipeline_execute_cmd(&pipeline->cmds[i]);
         if (pid == ERR)
         {
-            pipeline->status = 1;
+            pipeline->status = EXIT_FAILURE;
             result = ERR;
             goto cleanup;
         }
         if (pid == 0)
         {
-            if (i == pipeline->amount - 1)
-            {
-                pipeline->status = 0;
-            }
+            pipeline->status = 0;
             continue;
         }
 
@@ -488,6 +485,7 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
         fds[fdCount].fd = openf("/proc/%d/wait", pid);
         if (fds[fdCount].fd == ERR)
         {
+            printf("shell: unable to open /proc/%d/wait (%s)\n", pid, strerror(errno));
             result = ERR;
             goto cleanup;
         }
@@ -506,6 +504,7 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
         uint64_t ready = poll(fds, fdCount, CLOCKS_NEVER);
         if (ready == ERR)
         {
+            printf("shell: poll failed (%s)\n", strerror(errno));
             result = ERR;
             goto cleanup;
         }
@@ -514,6 +513,7 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
         {
             if (fds[i].revents & POLLERR)
             {
+                printf("shell: poll error on fd %d\n", fds[i].fd);
                 result = ERR;
                 goto cleanup;
             }
@@ -525,6 +525,7 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
             uint64_t bytesRead = read(STDIN_FILENO, buffer, sizeof(buffer));
             if (bytesRead == ERR)
             {
+                printf("shell: failed to read stdin (%s)\n", strerror(errno));
                 result = ERR;
                 goto cleanup;
             }
@@ -554,6 +555,7 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
 
             if (write(pipeline->globalStdin[PIPE_WRITE], buffer, bytesRead) == ERR)
             {
+                printf("shell: failed to write to pipeline stdin (%s)\n", strerror(errno));
                 result = ERR;
                 goto cleanup;
             }
@@ -568,16 +570,18 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
                 uint64_t readCount = read(fds[i].fd, buffer, sizeof(buffer) - 1);
                 if (readCount == ERR)
                 {
+                    printf("shell: failed to read process %d exit status (%s)\n", pids[i - 1], strerror(errno));
                     result = ERR;
                     goto cleanup;
                 }
                 buffer[readCount] = '\0';
 
-                int exitStatus = atoi(buffer);
-                if (i == fdCount - 1)
-                {
-                    pipeline->status = exitStatus;
-                }
+                pipeline->status = atoi(buffer);
+
+                close(fds[i].fd);
+                memmove(&fds[i], &fds[i + 1], sizeof(pollfd_t) * (fdCount - i - 1));
+                memmove(&pids[i - 1], &pids[i], sizeof(pid_t) * (fdCount - i - 1));
+                fdCount--;
             }
             else
             {

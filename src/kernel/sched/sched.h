@@ -175,11 +175,12 @@ NORETURN void sched_done_with_boot_thread(void);
 uint64_t sched_nanosleep(clock_t timeout);
 
 /**
- * @brief Checks if the current CPU is idle.
+ * @brief Checks if the CPU is idle.
  *
+ * @param cpu The CPU to check.
  * @return `true` if the CPU is idle, `false` otherwise.
  */
-bool sched_is_idle(void);
+bool sched_is_idle(cpu_t* cpu);
 
 /**
  * @brief Retrieves the currently running thread.

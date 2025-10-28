@@ -30,7 +30,7 @@ typedef struct cpu cpu_t;
  *
  * The `/dev/stat/mem` file contains memory statistics in the following format:
  * ```
- * value kb
+ * value kib
  * total 1048576
  * free 524288
  * reserved 131072

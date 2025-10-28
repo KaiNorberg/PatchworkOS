@@ -18,6 +18,8 @@
 #include <sys/math.h>
 
 static dentry_t* statDir = NULL;
+static dentry_t* cpuFile = NULL;
+static dentry_t* memFile = NULL;
 
 void statistics_cpu_ctx_init(statistics_cpu_ctx_t* ctx)
 {
@@ -46,8 +48,20 @@ static uint64_t statistics_cpu_read(file_t* file, void* buffer, uint64_t count, 
         statistics_cpu_ctx_t* stat = &cpu->stat;
         LOCK_SCOPE(&stat->lock);
 
+        clock_t now = timer_uptime();
+        clock_t timeSinceLastEvent = now - stat->interruptEnd;
+        if (sched_is_idle(cpu))
+        {
+            stat->idleClocks += timeSinceLastEvent;
+        }
+        else
+        {
+            stat->activeClocks += timeSinceLastEvent;
+        }
+        stat->interruptEnd = now;
+
         sprintf(&string[strlen(string)], "cpu%d %llu %llu %llu%c", cpu->id, stat->idleClocks, stat->activeClocks,
-            stat->interruptClocks, i + 1 != smp_cpu_amount() ? '\n' : '\0');
+                    stat->interruptClocks, i + 1 != smp_cpu_amount() ? '\n' : '\0');
     }
 
     uint64_t length = strlen(string);
@@ -70,7 +84,7 @@ static uint64_t statistics_mem_read(file_t* file, void* buffer, uint64_t count, 
         return ERR;
     }
 
-    sprintf(string, "value kb\ntotal %llu\nfree %llu\nreserved %llu", pmm_total_amount() * PAGE_SIZE / 1024,
+    sprintf(string, "value kib\ntotal %llu\nfree %llu\nreserved %llu", pmm_total_amount() * PAGE_SIZE / 1024,
         pmm_free_amount() * PAGE_SIZE / 1024, pmm_reserved_amount() * PAGE_SIZE / 1024);
 
     uint64_t length = strlen(string);
@@ -91,13 +105,15 @@ void statistics_init(void)
         panic(NULL, "Failed to initialize statistics directory");
     }
 
-    dentry_t* cpuFile = sysfs_file_new(statDir, "cpu", NULL, &cpuOps, NULL);
-    DEREF(cpuFile);
-    dentry_t* memFile = sysfs_file_new(statDir, "mem", NULL, &memOps, NULL);
-    DEREF(memFile);
-    if (cpuFile == NULL || memFile == NULL)
+    cpuFile = sysfs_file_new(statDir, "cpu", NULL, &cpuOps, NULL);
+    if (cpuFile == NULL)
     {
-        panic(NULL, "Failed to initialize statistics files");
+        panic(NULL, "Failed to create CPU statistics file");
+    }
+    memFile = sysfs_file_new(statDir, "mem", NULL, &memOps, NULL);
+    if (memFile == NULL)
+    {
+        panic(NULL, "Failed to create memory statistics file");
     }
 }
 
@@ -111,7 +127,7 @@ void statistics_interrupt_begin(interrupt_frame_t* frame, cpu_t* self)
     stat->interruptBegin = timer_uptime();
 
     clock_t timeBetweenTraps = stat->interruptBegin - stat->interruptEnd;
-    if (sched_is_idle())
+    if (sched_is_idle(self))
     {
         stat->idleClocks += timeBetweenTraps;
     }

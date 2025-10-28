@@ -66,6 +66,7 @@ typedef struct process
     rwlock_t childrenLock;
     list_entry_t siblingEntry;
     list_t children;
+    list_entry_t zombieEntry;
     struct process* parent;
     dentry_t* dir;         ///< The `/proc/[pid]` directory for this process.
     dentry_t* prioFile;    ///< The `/proc/[pid]/prio` file.

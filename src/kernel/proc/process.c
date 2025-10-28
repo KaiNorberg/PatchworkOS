@@ -11,6 +11,9 @@
 #include "sched/wait.h"
 #include "sync/lock.h"
 #include "sync/rwlock.h"
+#include "sched/timer.h"
+#include "cpu/smp.h"
+#include "cpu/cpu.h"
 
 #include <_internal/MAX_PATH.h>
 #include <assert.h>
@@ -23,8 +26,6 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-// TODO: Reimplement "self" using a bind.
-
 static process_t kernelProcess;
 static bool kernelProcessInitalized = false;
 
@@ -33,11 +34,48 @@ static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 static mount_t* procMount = NULL;
 static dentry_t* selfDir = NULL;
 
+static list_t zombies = LIST_CREATE(zombies);
+static clock_t lastReaperTime = 0;
+static lock_t zombiesLock = LOCK_CREATE;
+
+// TODO: Implement a proper reaper.
+static void process_reaper_timer(interrupt_frame_t* frame, cpu_t* cpu)
+{
+    (void)frame; // Unused
+    (void)cpu;  // Unused
+
+    LOCK_SCOPE(&zombiesLock);
+
+    clock_t uptime = timer_uptime();
+    if (uptime - lastReaperTime < CONFIG_PROCESS_REAPER_INTERVAL)
+    {
+        return;
+    }
+    lastReaperTime = uptime;
+
+    list_t* current = &zombies;
+    while (!list_is_empty(current))
+    {
+        process_t* process = CONTAINER_OF(list_pop(current), process_t, zombieEntry);
+
+        DEREF(process->dir);
+        DEREF(process->prioFile);
+        DEREF(process->cwdFile);
+        DEREF(process->cmdlineFile);
+        DEREF(process->noteFile);
+        DEREF(process->waitFile);
+        DEREF(process->self);
+
+        DEREF(process);
+    }
+}
+
 static process_t* process_file_get_process(file_t* file)
 {
     process_t* process = file->inode->private;
     if (process == NULL)
     {
+        LOG_DEBUG("process_file_get_process: inode private is NULL\n");
         errno = EINVAL;
         return NULL;
     }
@@ -200,9 +238,13 @@ static uint64_t process_wait_read(file_t* file, void* buffer, uint64_t count, ui
     WAIT_BLOCK(&process->dyingWaitQueue, atomic_load(&process->isDying));
 
     char status[MAX_PATH];
-    snprintf(status, sizeof(status), "%llu", atomic_load(&process->status));
+    int length = snprintf(status, sizeof(status), "%llu", atomic_load(&process->status));
+    if (length < 0)
+    {
+        return ERR;
+    }
 
-    return BUFFER_READ(buffer, count, offset, status, strlen(status));
+    return BUFFER_READ(buffer, count, offset, status, (uint64_t)length);
 }
 
 static wait_queue_t* process_wait_poll(file_t* file, poll_events_t* revents)
@@ -216,7 +258,7 @@ static wait_queue_t* process_wait_poll(file_t* file, poll_events_t* revents)
     if (atomic_load(&process->isDying))
     {
         *revents |= POLLIN;
-        return NULL;
+        return &process->dyingWaitQueue;
     }
 
     return &process->dyingWaitQueue;
@@ -388,6 +430,7 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     rwlock_init(&process->childrenLock);
     list_entry_init(&process->siblingEntry);
     list_init(&process->children);
+    list_entry_init(&process->zombieEntry);
     if (parent != NULL)
     {
         RWLOCK_WRITE_SCOPE(&parent->childrenLock);
@@ -466,15 +509,20 @@ void process_kill(process_t* process, uint64_t status)
     // Anything that another process could be waiting on must be cleaned up here.
     namespace_deinit(&process->namespace);
     vfs_ctx_deinit(&process->vfsCtx);
-    // The dir entries have refs to the process, so we must deinit them here.
-    DEREF(process->dir);
+    // The dir entries have refs to the process, but a parent process might want to read files in /proc/[pid] after the process has exited especially its wait file, so for now we defer dereferencing them until the reaper runs. This is really not ideal so
+    // TODO: implement a proper reaper.
+    /*DEREF(process->dir);
     DEREF(process->prioFile);
     DEREF(process->cwdFile);
     DEREF(process->cmdlineFile);
     DEREF(process->noteFile);
     DEREF(process->waitFile);
-    DEREF(process->self);
+    DEREF(process->self);*/
     wait_unblock(&process->dyingWaitQueue, WAIT_ALL, EOK);
+
+    LOCK_SCOPE(&zombiesLock);
+    list_push(&zombies, &REF(process)->zombieEntry);
+    lastReaperTime = timer_uptime(); // Delay reaper run
 }
 
 bool process_is_child(process_t* process, pid_t parentId)
@@ -538,6 +586,8 @@ void process_procfs_init(void)
     {
         panic(NULL, "Failed to create /proc/[pid] directory for kernel process");
     }
+
+    timer_subscribe(&smp_self_unsafe()->timer, process_reaper_timer);
 }
 
 process_t* process_get_kernel(void)

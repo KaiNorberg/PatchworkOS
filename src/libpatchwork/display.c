@@ -293,6 +293,12 @@ uint64_t display_poll(display_t* disp, pollfd_t* fds, uint64_t nfds, clock_t tim
         return ERR;
     }
 
+    if (!display_is_connected(disp))
+    {
+        errno = ENOTCONN;
+        return ERR;
+    }
+
     pollfd_t* allFds = malloc(sizeof(pollfd_t) * (nfds + 2));
     if (allFds == NULL)
     {

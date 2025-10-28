@@ -50,12 +50,13 @@ static uint64_t interactive_execute_command(interactive_state_t* state)
     if (pipeline_execute(&pipeline) == ERR)
     {
         pipeline_deinit(&pipeline);
+        printf("shell: failed to execute command (%s)\n", strerror(errno));
         return 0; // This is also fine
     }
 
     if (pipeline.status != 0)
     {
-        printf("shell: command exited with status %d (%s)\n", pipeline.status, strerror(errno));
+        printf("shell: command exited with status %d (%s)\n", pipeline.status, strerror(pipeline.status));
     }
     state->status = pipeline.status;
     pipeline_deinit(&pipeline);

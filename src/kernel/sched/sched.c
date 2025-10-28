@@ -146,11 +146,11 @@ SYSCALL_DEFINE(SYS_NANOSLEEP, uint64_t, clock_t nanoseconds)
     return sched_nanosleep(nanoseconds);
 }
 
-bool sched_is_idle(void)
+bool sched_is_idle(cpu_t* cpu)
 {
-    sched_cpu_ctx_t* ctx = &smp_self()->sched;
+    sched_cpu_ctx_t* ctx = &cpu->sched;
+    LOCK_SCOPE(&ctx->lock);
     bool isIdle = ctx->runThread == ctx->idleThread;
-    smp_put();
     return isIdle;
 }
 
