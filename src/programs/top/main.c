@@ -195,8 +195,8 @@ static void stats_print(stats_t* stats)
     stat_percentage(totalActive, totalDelta, &activeWhole, &activeThousandths);
     stat_percentage(totalInterrupt, totalDelta, &interruptWhole, &interruptThousandths);
 
-    uint8_t cpuUsage = (uint8_t)((totalActive * 100) / totalDelta);
-    stats->totalCpuHistory[stats->historyIndex] = cpuUsage;
+    //uint8_t cpuUsage = (uint8_t)((totalActive * 100) / totalDelta);
+    //stats->totalCpuHistory[stats->historyIndex] = cpuUsage;
 
     //stats_big_plot_print("CPU Usage (%)", stats->totalCpuHistory, stats->historyIndex, 100);
 }
