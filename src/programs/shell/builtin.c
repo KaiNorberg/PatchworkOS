@@ -66,7 +66,7 @@ static uint64_t builtin_help(uint64_t argc, const char** argv)
     printf("  command < file     \t\033[90mRedirect standard input\033[0m\n");
     printf("  command 2> file    \t\033[90mRedirect standard error\033[0m\n");
     printf("\n\033[33mKEYBINDINGS:\033[0m\n");
-    printf("  Enter/Left/Right   \t\033[90mEdit input\033[0m\n");
+    printf("  Back/Left/Right    \t\033[90mEdit input\033[0m\n");
     printf("  Up/Down            \t\033[90mNavigate history\033[0m\n");
     printf("  Ctrl+C             \t\033[90mTerminate process\033[0m\n");
 
