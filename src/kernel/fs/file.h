@@ -96,6 +96,8 @@ file_t* file_new(inode_t* inode, const path_t* path, path_flags_t flags);
  * @brief Helper function for basic seeking.
  *
  * This can be used by filesystems that do not have any special requirements for seeking.
+ *
+ * Used by setting the file ops seek to this function.
  */
 uint64_t file_generic_seek(file_t* file, int64_t offset, seek_origin_t origin);
 

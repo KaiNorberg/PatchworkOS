@@ -117,13 +117,13 @@ typedef struct dentry
 /**
  * @brief Create a new dentry.
  *
- * This does add the dentry to the dentry cache, however it will not be added to its parent's list of children and it
- * will appear as a negative dentry until `dentry_make_positive()` is called. This is used to solve some race conditions
- * when creating new files. While the dentry is negative it is not possible to create another dentry of the same name in
- * the same parent, and any lookup to the dentry will fail until it is made positive.
+ * Will not add the dentry to its parent's list of children but it will appear in the dentry cache as a negative dentry
+ * until `dentry_make_positive()` is called making it positive. This is needed to solve some race conditions when
+ * creating new files. While the dentry is negative it is not possible to create another dentry of the same name in the
+ * same parent, and any lookup to the dentry will fail until it is made positive.
  *
  * Note that this function will set `errno == EEXIST` if a dentry with the same name and parent already exists in the
- * dentry cache, this is very useful for checking for race conditions when looking up dentries.
+ * dentry cache, this is very useful for solving race conditions when looking up dentries.
  *
  * There is no `dentry_free()` instead use `DEREF()`.
  *
@@ -161,8 +161,11 @@ void dentry_dec_mount_count(dentry_t* dentry);
 /**
  * @brief Helper function for a basic getdents.
  *
- * This function can be used by filesystems that do not have any special requirements for getdents, in practice ram
- * disks.
+ * This function can be used by filesystems that do not have any special requirements for getdents.
+ *
+ * In practice this is only useful for in-memory filesystems.
+ *
+ * Used by setting the dentry ops getdents to this function.
  */
 uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset,
     path_flags_t flags);

@@ -138,7 +138,6 @@ void dentry_dec_mount_count(dentry_t* dentry)
 typedef struct
 {
     uint64_t index;
-    uint64_t total;
     dirent_t* buffer;
     uint64_t count;
     uint64_t* offset;
@@ -159,18 +158,13 @@ static void getdents_write(getdents_ctx_t* ctx, inode_number_t number, inode_typ
         strncpy(dirent->name, name, MAX_PATH - 1);
         dirent->name[MAX_PATH - 1] = '\0';
     }
+
     ctx->index++;
-    ctx->total++;
 }
 
 static void getdents_recursive_traversal(getdents_ctx_t* ctx, dentry_t* dentry)
 {
-    if (strcmp(ctx->basePath, "") != 0)
-    {
-        char fullPath[MAX_PATH];
-        snprintf(fullPath, MAX_PATH, "%s/%s", ctx->basePath, dentry->name);
-        getdents_write(ctx, dentry->inode->number, dentry->inode->type, fullPath);
-    }
+    getdents_write(ctx, dentry->inode->number, dentry->inode->type, ctx->basePath);
 
     MUTEX_SCOPE(&dentry->childrenMutex);
 
@@ -203,7 +197,6 @@ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t co
 {
     getdents_ctx_t ctx = {
         .index = 0,
-        .total = 0,
         .buffer = buffer,
         .count = count,
         .offset = offset,
@@ -242,19 +235,14 @@ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t co
         }
     }
 
-    dentry->inode->size = sizeof(dirent_t) * ctx.total;
-
     uint64_t start = *offset / sizeof(dirent_t);
-    uint64_t max = count / sizeof(dirent_t);
-
-    if (start >= ctx.total)
+    if (start >= ctx.index)
     {
         return 0;
     }
 
-    uint64_t entriesWritten = MIN(ctx.total - start, max);
+    uint64_t entriesWritten = MIN(ctx.index - start, count / sizeof(dirent_t));
     uint64_t bytesWritten = entriesWritten * sizeof(dirent_t);
-
     *offset += bytesWritten;
     return bytesWritten;
 }

@@ -55,7 +55,9 @@ typedef enum
  *
  * The `rsp*` members store the stack to use when switching to a higher privilege level, we dont use these.
  *
- *  Instead we have a total of 4 stacks used while in kernel space, 3 per-cpu stacks and 1 per-thread stack. Of course there is also the user stack used while in user space. But that is not relevant to the TSS and instead handled by the system call code.
+ *  Instead we have a total of 4 stacks used while in kernel space, 3 per-cpu stacks and 1 per-thread stack. Of course
+ * there is also the user stack used while in user space. But that is not relevant to the TSS and instead handled by the
+ * system call code.
  *
  * ## The per-cpu stacks
  *
@@ -64,15 +66,22 @@ typedef enum
  * - Double fault stack, used while handling double faults, specified in ist[1].
  * - Interrupt stack, used while handling all other interrupts, specified in ist[2].
  *
- * We need three stacks as its possible for an exception to occur during an interrupt, and its possible for a double fault to occur during an exception, therefore we must ensure that in the worst case where each of these occur recursively we have a separate stack for each level.
+ * We need three stacks as its possible for an exception to occur during an interrupt, and its possible for a double
+ * fault to occur during an exception, therefore we must ensure that in the worst case where each of these occur
+ * recursively we have a separate stack for each level.
  *
  * ## The per-thread stack
  *
- * The per-thread stack is called the "kernel stack" and is used while the thread is in kernel space and NOT handling an exception or interrupt. In effect this is used in system calls, boot, inital thread loading and if the thread is a kernel thread it is used all the time. This stack is not handled by the TSS, instead the system call code is responsible for switching to this stack when entering kernel space from user space.
+ * The per-thread stack is called the "kernel stack" and is used while the thread is in kernel space and NOT handling an
+ * exception or interrupt. In effect this is used in system calls, boot, inital thread loading and if the thread is a
+ * kernel thread it is used all the time. This stack is not handled by the TSS, instead the system call code is
+ * responsible for switching to this stack when entering kernel space from user space.
  *
  * ## The Interrupt Stack Table
  *
- * The IST works by having the CPU check the IST index specified in the IDT gate for that interrupt or exception, if it has a non zero IST index it will then load that stack pointer from `ist[index - 1]` and switch to that stack before calling the interrupt or exception handler. This happens regardless of the current privilege level.
+ * The IST works by having the CPU check the IST index specified in the IDT gate for that interrupt or exception, if it
+ * has a non zero IST index it will then load that stack pointer from `ist[index - 1]` and switch to that stack before
+ * calling the interrupt or exception handler. This happens regardless of the current privilege level.
  *
  */
 typedef struct PACKED
