@@ -17,7 +17,7 @@ uint32_t main(uint32_t argc, char** argv)
 
     if (rename(argv[1], argv[2]) == EOF)
     {
-        fprintf(stderr, "move: failed to rename file (%s)\n", strerror(errno));
+        fprintf(stderr, "mv: failed to rename file (%s)\n", strerror(errno));
         return EXIT_FAILURE;
     }
 

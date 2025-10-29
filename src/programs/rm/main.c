@@ -10,7 +10,7 @@ int main(int argc, char** argv)
     {
         if (remove(argv[i]) == EOF)
         {
-            fprintf(stderr, "delete: %s\n", strerror(errno));
+            fprintf(stderr, "rm: %s\n", strerror(errno));
             return EXIT_FAILURE;
         }
     }

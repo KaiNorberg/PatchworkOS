@@ -40,7 +40,7 @@ static uint64_t print_dir(const char* path)
     fd_t fd = openf("%s:dir", path);
     if (fd == ERR)
     {
-        fprintf(stderr, "dir: can't open directory %s (%s)\n", path, strerror(errno));
+        fprintf(stderr, "ls: can't open directory %s (%s)\n", path, strerror(errno));
         return ERR;
     }
 
@@ -51,7 +51,7 @@ static uint64_t print_dir(const char* path)
     if (entries == NULL)
     {
         close(fd);
-        fprintf(stderr, "dir: memory allocation failed\n");
+        fprintf(stderr, "ls: memory allocation failed\n");
         return ERR;
     }
 
@@ -62,7 +62,7 @@ static uint64_t print_dir(const char* path)
         {
             close(fd);
             free(entries);
-            fprintf(stderr, "dir: can't read directory %s (%s)\n", path, strerror(errno));
+            fprintf(stderr, "ls: can't read directory %s (%s)\n", path, strerror(errno));
             return ERR;
         }
         entryCount += bytesRead / sizeof(dirent_t);
@@ -74,7 +74,7 @@ static uint64_t print_dir(const char* path)
             {
                 close(fd);
                 free(entries);
-                fprintf(stderr, "dir: re-allocation failed\n");
+                fprintf(stderr, "ls: re-allocation failed\n");
                 return ERR;
             }
             entries = newEntries;
