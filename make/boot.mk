@@ -3,8 +3,6 @@ include Make.defaults
 
 TARGET := $(BINDIR)/bootx64.efi
 
-SRC += $(wildcard src/libstd/functions/string/*)
-
 CFLAGS += \
 	$(CFLAGS_DISABLE_SIMD) \
 	-fpic -ffreestanding \

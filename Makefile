@@ -1,10 +1,11 @@
 MODULES = boot kernel libstd libpatchwork
+PROGRAMS = $(basename $(notdir $(wildcard make/programs/*.mk)))
 TARGET_IMAGE = bin/PatchworkOS.img
 VERSION_HEADER = include/common/version.h
 
-PROGRAMS = $(basename $(notdir $(wildcard make/programs/*.mk)))
-
+# Programs to copy to /bin instead of /usr/bin
 ROOT_PROGRAMS = init wall cursor taskbar dwm shell rm ls link mv touch cat echo
+# Programs to copy to /usr/bin
 USER_PROGRAMS = $(filter-out $(ROOT_PROGRAMS),$(PROGRAMS))
 
 QEMU_MEMORY ?= 2G

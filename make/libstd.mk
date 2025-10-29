@@ -3,7 +3,8 @@ include Make.defaults
 
 TARGET := $(BINDIR)/libstd.a
 
-SRC = $(wildcard src/libstd/*.c) $(wildcard src/libstd/*.s) \
+SRC = \
+	$(wildcard src/libstd/*.c) $(wildcard src/libstd/*.s) \
 	$(wildcard src/libstd/common/*.c) $(wildcard src/libstd/common/*.s) \
 	$(wildcard src/libstd/functions/**/*.c) $(wildcard src/libstd/functions/**/*.s) \
 	$(wildcard src/libstd/user/*.c) $(wildcard src/libstd/user/*.s) \

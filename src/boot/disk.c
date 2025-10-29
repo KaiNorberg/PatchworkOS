@@ -6,7 +6,6 @@
 
 #include <boot/boot_info.h>
 
-#include <string.h>
 #include <sys/list.h>
 
 static void boot_file_free(boot_file_t* file)

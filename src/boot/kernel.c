@@ -5,7 +5,6 @@
 
 #include <boot/boot_info.h>
 #include <stdint.h>
-#include <string.h>
 #include <sys/elf.h>
 #include <sys/math.h>
 #include <sys/proc.h>

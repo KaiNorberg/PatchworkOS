@@ -3,16 +3,22 @@ include Make.defaults
 
 TARGET := $(BINDIR)/kernel
 
-SRC += $(wildcard src/libstd/*.c) $(wildcard src/libstd/*.s) \
- 	$(wildcard src/libstd/functions/**/*.c) $(wildcard src/libstd/functions/**/*.s) \
-	$(wildcard src/libstd/common/*.c) $(wildcard src/libstd/common/*.s)
+# Only add the non user libstd files
+SRC += \
+	$(call find_sources,src/libstd/common) \
+	$(call find_sources,src/libstd/functions)
 
-CFLAGS += $(CFLAGS_DISABLE_SIMD) -fno-pic -fno-stack-check -mcmodel=kernel \
+CFLAGS += \
+	$(CFLAGS_DISABLE_SIMD)  \
+	-fno-pic \
+	-fno-stack-check \
+	-mcmodel=kernel \
 	-mno-red-zone \
 	-Isrc/libstd \
 	-D__KERNEL__ \
 	-D__STDC_WANT_LIB_EXT1__=1
 
+# Will cause a panic to trigger QEMU exit for testing purposes
 ifeq ($(DEBUG),1)
     CFLAGS += -DQEMU_ISA_DEBUG_EXIT
 endif

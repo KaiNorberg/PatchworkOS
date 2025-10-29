@@ -4,7 +4,7 @@ TARGET := $(BINDIR)/$(PROGRAM)
 
 LDFLAGS +=
 
-CFLAGS += -fno-stack-protector -Wno-infinite-recursion
+CFLAGS += -fno-stack-protector -Wno-infinite-recursion -O0
 
 all: $(TARGET)
 
