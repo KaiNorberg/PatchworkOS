@@ -17,22 +17,6 @@
  */
 
 /**
- * @brief ACPI Hardware ID (HID) structure.
- * @typedef acpi_hid_t
- *
- * Used to dynamically load device driver modules based on ACPI IDs.
- *
- * All ids are stored in a devices "_HID" object, for example "PNP0C0F".
- *
- * @see Section 6.1.5 of the ACPI specification for more details.
- * @see http://www.uefi.org/PNP_ACPI_Registry for a list of ACPI IDs.
- */
-typedef struct
-{
-    char id[MAX_NAME];
-} acpi_hid_t;
-
-/**
  * @brief Flags for the _STA method.
  * @enum acpi_sta_flags_t
  *

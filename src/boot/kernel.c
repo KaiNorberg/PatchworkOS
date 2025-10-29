@@ -311,7 +311,7 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle)
     EFI_STATUS status = EFI_SUCCESS;
     uint64_t kernelPageAmount = 0;
 
-    status = uefi_call_wrapper(rootHandle->Open, 5, rootHandle, &kernelDir, L"boot", EFI_FILE_MODE_READ, 0);
+    status = uefi_call_wrapper(rootHandle->Open, 5, rootHandle, &kernelDir, L"kernel", EFI_FILE_MODE_READ, 0);
     if (EFI_ERROR(status))
     {
         Print(L"failed to open boot directory (0x%x)!\n", status);

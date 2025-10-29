@@ -1,6 +1,5 @@
 #include <kernel/init/init.h>
 
-#include "gnu-efi/inc/efidef.h"
 #include <kernel/acpi/acpi.h>
 #include <kernel/acpi/aml/aml.h>
 #include <kernel/acpi/devices.h>
@@ -28,6 +27,7 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
+#include <kernel/module/module.h>
 
 #include <boot/boot_info.h>
 
@@ -106,6 +106,9 @@ static void init_finalize(const boot_info_t* bootInfo)
 
     acpi_tables_expose();
     aml_namespace_expose();
+
+    module_init();
+
     log_file_expose();
     process_procfs_init();
 

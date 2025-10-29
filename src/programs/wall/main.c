@@ -81,10 +81,11 @@ int main(void)
     rect_t rect;
     display_get_screen(disp, &rect, 0);
 
-    image = image_new(disp, theme_global_get()->wallpaper);
+    const theme_t* theme = theme_global_get();
+    image = image_new(disp, theme->wallpaper);
     if (image == NULL)
     {
-        printf("wall: failed to load image (%s)\n", strerror(errno));
+        printf("wall: failed to load image '%s' (%s)\n", theme->wallpaper, strerror(errno));
         display_free(disp);
         return EXIT_FAILURE;
     }

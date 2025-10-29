@@ -39,11 +39,11 @@ typedef struct module_event
     union {
         struct
         {
-            acpi_hid_t hid;
+            const char* hid;
         } load;
         struct
         {
-            acpi_hid_t hid;
+            const char* hid;
         } unload;
     };
 } module_event_t;
@@ -61,9 +61,21 @@ typedef struct module
     void (*procedure)(module_event_t* event);
 } module_t;
 
-#define MODULE_ACPI_HID_TABLE_DEFINE(...) \
-    static const acpi_hid_t MODULE_ACPI_HID_TABLE[] = {__VA_ARGS__}; \
-    static const size_t MODULE_ACPI_HID_TABLE_SIZE = sizeof(MODULE_ACPI_HID_TABLE) / sizeof(acpi_hid_t);
+/**
+ * @brief Macro to define what ACPI HIDs a module can handle.
+ *
+ * To define what ACPI HIDs a module can handle we define a separate section in the module's binary called `.module_acpi_hids` this section stores a concatenated string of all ACPI HIDs the module can handle. We dont need terminators for each string as their length is fixed depending on their prefix, we do have a null-terminator at the end of the entire list though.
+ *
+ * Example:
+ * ```c
+ * MODULE_ACPI_HIDS("PNP0C0A", "PNP0C0B", "ACPI0003");
+ * ```
+ *
+ * @param ... A variable amount of ACPI HIDs as string literals.
+ */
+#define MODULE_ACPI_HIDS(...) \
+    static const char* _moduleAcpiHids __attribute__((section(".module_acpi_hids"), used)) = \
+        __VA_ARGS__
 
 /**
  * @brief Initializes the module system.
@@ -73,8 +85,8 @@ void module_init(void);
 /**
  * @brief Propagates a module event to all registered modules.
  *
- * If the event is a load or unload event, then the event's `hid` field will be matched against all modules' HID tables,
- * if a match is found that module will be loaded/unloaded.
+ * If the event is a load or unload event, then the event's `hid` field will be matched against all modules' HIDs,
+ * if a match is found that module or modules will be loaded/unloaded.
  *
  * @param event The event to propagate.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.

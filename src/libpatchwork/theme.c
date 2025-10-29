@@ -56,12 +56,12 @@ static void theme_lazy_load(void)
     {
         printf("theme: failed to open vars config, using defaults\n");
     }
-    strncpy(theme.wallpaper, config_get_string(varsConfig, "strings", "wallpaper", ""), MAX_NAME - 1);
-    strncpy(theme.fontsDir, config_get_string(varsConfig, "strings", "fonts_dir", ""), MAX_NAME - 1);
-    strncpy(theme.cursorArrow, config_get_string(varsConfig, "strings", "cursor_arrow", ""), MAX_NAME - 1);
-    strncpy(theme.defaultFont, config_get_string(varsConfig, "strings", "default_font", ""), MAX_NAME - 1);
-    strncpy(theme.iconClose, config_get_string(varsConfig, "strings", "icon_close", ""), MAX_NAME - 1);
-    strncpy(theme.iconMinimize, config_get_string(varsConfig, "strings", "icon_minimize", ""), MAX_NAME - 1);
+    strncpy(theme.wallpaper, config_get_string(varsConfig, "strings", "wallpaper", ""), MAX_PATH - 1);
+    strncpy(theme.fontsDir, config_get_string(varsConfig, "strings", "fonts_dir", ""), MAX_PATH - 1);
+    strncpy(theme.cursorArrow, config_get_string(varsConfig, "strings", "cursor_arrow", ""), MAX_PATH - 1);
+    strncpy(theme.defaultFont, config_get_string(varsConfig, "strings", "default_font", ""), MAX_PATH - 1);
+    strncpy(theme.iconClose, config_get_string(varsConfig, "strings", "icon_close", ""), MAX_PATH - 1);
+    strncpy(theme.iconMinimize, config_get_string(varsConfig, "strings", "icon_minimize", ""), MAX_PATH - 1);
 
     theme.frameSize = config_get_int(varsConfig, "integers", "frame_size", 1);
     theme.bezelSize = config_get_int(varsConfig, "integers", "bezel_size", 1);
