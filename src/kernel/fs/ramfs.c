@@ -186,6 +186,8 @@ static uint64_t ramfs_remove(inode_t* parent, dentry_t* target, path_flags_t fla
     {
         if (flags & PATH_RECURSIVE)
         {
+            MUTEX_SCOPE(&target->inode->mutex);
+
             dentry_t* temp = NULL;
             dentry_t* child = NULL;
             LIST_FOR_EACH_SAFE(child, temp, &target->children, siblingEntry)
@@ -356,7 +358,6 @@ static inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, voi
     DEREF_DEFER(inode);
 
     inode->blocks = 0;
-    inode->size = size;
 
     if (buffer != NULL)
     {
@@ -366,6 +367,7 @@ static inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, voi
             return NULL;
         }
         memcpy(inode->private, buffer, size);
+        inode->size = size;
     }
     else
     {

@@ -1,9 +1,7 @@
 #include "disk.h"
-#include "efierr.h"
 #include "gop.h"
 #include "kernel.h"
 #include "mem.h"
-#include "rsdp.h"
 
 #include <boot/boot_info.h>
 #include <common/version.h>
@@ -23,6 +21,62 @@ static void splash_screen(void)
     Print(L"Copyright (C) 2025 Kai Norberg. MIT Licensed. See /usr/license/LICENSE for details.\n");
 }
 
+static EFI_STATUS open_root_volume(EFI_FILE** file, EFI_HANDLE imageHandle)
+{
+    EFI_LOADED_IMAGE* loaded_image = 0;
+    EFI_GUID lipGuid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
+    EFI_FILE_IO_INTERFACE* IOVolume;
+    EFI_GUID fsGuid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
+
+    EFI_STATUS status = uefi_call_wrapper(BS->HandleProtocol, 3, imageHandle, &lipGuid, (void**)&loaded_image);
+    if (EFI_ERROR(status))
+    {
+        return status;
+    }
+
+    status = uefi_call_wrapper(BS->HandleProtocol, 3, loaded_image->DeviceHandle, &fsGuid, (VOID*)&IOVolume);
+    if (EFI_ERROR(status))
+    {
+        return status;
+    }
+
+    status = uefi_call_wrapper(IOVolume->OpenVolume, 2, IOVolume, file);
+    if (EFI_ERROR(status))
+    {
+        return status;
+    }
+
+    return EFI_SUCCESS;
+}
+
+static void* rsdp_get(EFI_SYSTEM_TABLE* systemTable)
+{
+    Print(L"Searching for RSDP... ");
+    EFI_CONFIGURATION_TABLE* configTable = systemTable->ConfigurationTable;
+    EFI_GUID acpi2TableGuid = ACPI_20_TABLE_GUID;
+
+    void* rsdp = NULL;
+    for (uint64_t i = 0; i < systemTable->NumberOfTableEntries; i++)
+    {
+        if (CompareGuid(&configTable[i].VendorGuid, &acpi2TableGuid) &&
+            CompareMem("RSD PTR ", configTable->VendorTable, 8) == 0)
+        {
+            rsdp = configTable->VendorTable;
+        }
+        configTable++;
+    }
+
+    if (rsdp == NULL)
+    {
+        Print(L"failed to locate rsdp!\n");
+    }
+    else
+    {
+        Print(L"found at %p!\n", rsdp);
+    }
+    return rsdp;
+}
+
 static EFI_STATUS boot_info_populate(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, boot_info_t* bootInfo)
 {
     EFI_STATUS status = gop_buffer_init(&bootInfo->gop);
@@ -39,13 +93,21 @@ static EFI_STATUS boot_info_populate(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* s
 
     bootInfo->runtimeServices = systemTable->RuntimeServices;
 
-    status = disk_load(&bootInfo->disk, imageHandle);
+    EFI_FILE* rootHandle;
+    status = open_root_volume(&rootHandle, imageHandle);
+    if (EFI_ERROR(status))
+    {
+        Print(L"failed to open root volume (0x%x)!\n", status);
+        return EFI_LOAD_ERROR;
+    }
+
+    status = disk_load(&bootInfo->disk, rootHandle);
     if (EFI_ERROR(status))
     {
         return status;
     }
 
-    status = kernel_load(&bootInfo->kernel, imageHandle);
+    status = kernel_load(&bootInfo->kernel, rootHandle);
     if (EFI_ERROR(status))
     {
         return status;

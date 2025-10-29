@@ -87,7 +87,6 @@ void log_screen_disable(void)
 {
     LOCK_SCOPE(&lock);
 
-    log_screen_clear();
     outputs &= ~LOG_OUTPUT_SCREEN;
 }
 

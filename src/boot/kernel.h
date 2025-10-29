@@ -5,4 +5,4 @@
 
 #include <boot/boot_info.h>
 
-EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_HANDLE imageHandle);
+EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle);

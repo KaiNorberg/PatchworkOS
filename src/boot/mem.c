@@ -92,8 +92,14 @@ NORETURN static void panic_without_boot_services(uint8_t red, uint8_t green, uin
     // Getting here would be bad, we have exited boot services so we cant print to the screen, and are out of
     // memory. A better solution might be to implement a very basic logging system, but for now we just fill the screen
     // with a color and halt the CPU.
-    memset32(basicAllocator.gop->physAddr, 0xFF000000 | (red << 16) | (green << 8) | (blue),
-        basicAllocator.gop->size / sizeof(uint32_t));
+    uint32_t color = 0xFF000000 | (red << 16) | (green << 8) | (blue);
+    for (uint64_t y = 0; y < basicAllocator.gop->height; y++)
+    {
+        for (uint64_t x = 0; x < basicAllocator.gop->width; x++)
+        {
+            basicAllocator.gop->physAddr[x + y * basicAllocator.gop->stride] = color;
+        }
+    }
     for (;;)
     {
         asm("cli; hlt");

@@ -4,12 +4,11 @@ include Make.defaults
 TARGET := $(BINDIR)/libstd.a
 
 SRC = \
-	$(wildcard src/libstd/*.c) $(wildcard src/libstd/*.s) \
-	$(wildcard src/libstd/common/*.c) $(wildcard src/libstd/common/*.s) \
-	$(wildcard src/libstd/functions/**/*.c) $(wildcard src/libstd/functions/**/*.s) \
-	$(wildcard src/libstd/user/*.c) $(wildcard src/libstd/user/*.s) \
-	$(wildcard src/libstd/user/common/*.c) $(wildcard src/libstd/user/common/*.s) \
-	$(wildcard src/libstd/user/functions/**/*.c) $(wildcard src/libstd/user/functions/**/*.s)
+	$(call find_sources,src/libstd/common) \
+	$(call find_sources,src/libstd/functions) \
+	$(call find_sources,src/libstd/user/common) \
+	$(call find_sources,src/libstd/user/functions) \
+	src/libstd/user/user.c
 
 ASFLAGS += -Isrc/libstd
 

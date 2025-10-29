@@ -1,8 +1,6 @@
 #include "disk.h"
 
-#include "char16.h"
 #include "efilib.h"
-#include "fs.h"
 
 #include <boot/boot_info.h>
 
@@ -44,7 +42,7 @@ static void boot_dir_free(boot_dir_t* dir)
     FreePool(dir);
 }
 
-static boot_file_t* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
+static boot_file_t* ram_disk_load_file(EFI_FILE* volume, const CHAR16* path)
 {
     if (volume == NULL || path == NULL)
     {
@@ -52,25 +50,26 @@ static boot_file_t* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
     }
 
     EFI_FILE* efiFile;
-    EFI_STATUS status = fs_open(&efiFile, volume, (CHAR16*)path);
+    EFI_STATUS status = uefi_call_wrapper(volume->Open, 5, volume, &efiFile, path, EFI_FILE_MODE_READ,
+            EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     if (EFI_ERROR(status))
     {
         return NULL;
     }
 
-    char name[MAX_NAME];
-    char16_to_char(path, name);
-
     boot_file_t* file = AllocatePool(sizeof(boot_file_t));
     if (file == NULL)
     {
-        fs_close(efiFile);
+        uefi_call_wrapper(efiFile->Close, 1, efiFile);
         return NULL;
     }
 
     list_entry_init(&file->entry);
-    strncpy(file->name, name, MAX_NAME - 1);
-    file->name[MAX_NAME - 1] = '\0';
+    SetMem(file->name, MAX_NAME, 0);
+    for (size_t i = 0; i < MAX_NAME - 1 && path[i] != '\0'; i++)
+    {
+        file->name[i] = (char)path[i];
+    }
     file->data = NULL;
     file->size = 0;
 
@@ -78,7 +77,7 @@ static boot_file_t* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
     if (fileInfo == NULL)
     {
         boot_file_free(file);
-        fs_close(efiFile);
+        uefi_call_wrapper(efiFile->Close, 1, efiFile);
         return NULL;
     }
 
@@ -91,24 +90,24 @@ static boot_file_t* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
         if (file->data == NULL)
         {
             boot_file_free(file);
-            fs_close(efiFile);
+            uefi_call_wrapper(efiFile->Close, 1, efiFile);
             return NULL;
         }
 
-        status = fs_read(efiFile, file->size, file->data);
+        status = uefi_call_wrapper(efiFile->Read, 3, efiFile, &file->size, file->data);
         if (EFI_ERROR(status))
         {
             boot_file_free(file);
-            fs_close(efiFile);
+            uefi_call_wrapper(efiFile->Close, 1, efiFile);
             return NULL;
         }
     }
 
-    fs_close(efiFile);
+    uefi_call_wrapper(efiFile->Close, 1, efiFile);
     return file;
 }
 
-static boot_dir_t* disk_load_dir(EFI_FILE* volume, const char* name)
+static boot_dir_t* disk_load_dir(EFI_FILE* volume, const CHAR16* name)
 {
     if (volume == NULL || name == NULL)
     {
@@ -122,8 +121,11 @@ static boot_dir_t* disk_load_dir(EFI_FILE* volume, const char* name)
     }
 
     list_entry_init(&dir->entry);
-    strncpy(dir->name, name, MAX_NAME - 1);
-    dir->name[MAX_NAME - 1] = '\0';
+    SetMem(dir->name, MAX_NAME, 0);
+    for (size_t i = 0; i < MAX_NAME - 1 && name[i] != '\0'; i++)
+    {
+        dir->name[i] = (char)name[i];
+    }
     list_init(&dir->children);
     list_init(&dir->files);
 
@@ -158,7 +160,8 @@ static boot_dir_t* disk_load_dir(EFI_FILE* volume, const char* name)
             if (StrCmp(fileInfo->FileName, L".") != 0 && StrCmp(fileInfo->FileName, L"..") != 0)
             {
                 EFI_FILE* childVolume;
-                status = fs_open(&childVolume, volume, fileInfo->FileName);
+                status = uefi_call_wrapper(volume->Open, 5, volume, &childVolume, fileInfo->FileName, EFI_FILE_MODE_READ,
+                        EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
                 if (EFI_ERROR(status))
                 {
                     FreePool(fileInfo);
@@ -166,11 +169,8 @@ static boot_dir_t* disk_load_dir(EFI_FILE* volume, const char* name)
                     return NULL;
                 }
 
-                char childName[MAX_NAME];
-                char16_to_char(fileInfo->FileName, childName);
-
-                boot_dir_t* child = disk_load_dir(childVolume, childName);
-                fs_close(childVolume);
+                boot_dir_t* child = disk_load_dir(childVolume, fileInfo->FileName);
+                uefi_call_wrapper(childVolume->Close, 1, childVolume);
 
                 if (child == NULL)
                 {
@@ -200,29 +200,19 @@ static boot_dir_t* disk_load_dir(EFI_FILE* volume, const char* name)
     return dir;
 }
 
-EFI_STATUS disk_load(boot_disk_t* disk, EFI_HANDLE imageHandle)
+EFI_STATUS disk_load(boot_disk_t* disk, EFI_FILE* rootHandle)
 {
-    if (disk == NULL || imageHandle == NULL)
+    if (disk == NULL)
     {
         return EFI_INVALID_PARAMETER;
     }
 
     Print(L"Loading disk... ");
 
-    EFI_FILE* rootHandle;
-    EFI_STATUS status = fs_open_root_volume(&rootHandle, imageHandle);
-    if (EFI_ERROR(status))
-    {
-        Print(L"failed to open root volume (0x%x)!\n", status);
-        return EFI_LOAD_ERROR;
-    }
-
-    disk->root = disk_load_dir(rootHandle, "root");
-    fs_close(rootHandle);
-
+    disk->root = disk_load_dir(rootHandle, L"root");
     if (disk->root == NULL)
     {
-        Print(L"failed to load root directory (0x%x)!\n", status);
+        Print(L"failed to load root directory!\n");
         return EFI_LOAD_ERROR;
     }
 

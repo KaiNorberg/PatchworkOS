@@ -1,8 +1,5 @@
 #include "kernel.h"
 
-#include "fs.h"
-#include "mem.h"
-
 #include <boot/boot_info.h>
 #include <stdint.h>
 #include <sys/elf.h>
@@ -108,14 +105,14 @@ static EFI_STATUS load_section_headers(EFI_FILE* file, boot_kernel_t* kernel, ui
         return EFI_OUT_OF_RESOURCES;
     }
 
-    EFI_STATUS status = fs_seek(file, kernel->header.shdrOffset);
+    EFI_STATUS status = uefi_call_wrapper(file->SetPosition, 2, file, kernel->header.shdrOffset);
     if (EFI_ERROR(status))
     {
         Print(L"failed to seek to section header table (0x%x)!\n", status);
         return status;
     }
 
-    status = fs_read(file, shdrTableSize, kernel->shdrs);
+    status = uefi_call_wrapper(file->Read, 3, file, &shdrTableSize, kernel->shdrs);
     if (EFI_ERROR(status))
     {
         Print(L"failed to read section header table (0x%x)!\n", status);
@@ -195,14 +192,14 @@ static EFI_STATUS load_symbol_table(EFI_FILE* file, boot_kernel_t* kernel, uint6
         return EFI_OUT_OF_RESOURCES;
     }
 
-    EFI_STATUS status = fs_seek(file, symtabSection->offset);
+    EFI_STATUS status = uefi_call_wrapper(file->SetPosition, 2, file, symtabSection->offset);
     if (EFI_ERROR(status))
     {
         Print(L"failed to seek to symbol table (0x%x)!\n", status);
         return status;
     }
 
-    status = fs_read(file, symtabSection->size, kernel->symbols);
+    status = uefi_call_wrapper(file->Read, 3, file, &symtabSection->size, kernel->symbols);
     if (EFI_ERROR(status))
     {
         Print(L"failed to read symbol table (0x%x)!\n", status);
@@ -225,14 +222,14 @@ static EFI_STATUS load_symbol_table(EFI_FILE* file, boot_kernel_t* kernel, uint6
                 return EFI_OUT_OF_RESOURCES;
             }
 
-            status = fs_seek(file, strtabSection->offset);
+            status = uefi_call_wrapper(file->SetPosition, 2, file, strtabSection->offset);
             if (EFI_ERROR(status))
             {
                 Print(L"failed to seek to string table (0x%x)!\n", status);
                 return status;
             }
 
-            status = fs_read(file, strtabSection->size, kernel->stringTable);
+            status = uefi_call_wrapper(file->Read, 3, file, &strtabSection->size, kernel->stringTable);
             if (EFI_ERROR(status))
             {
                 Print(L"failed to read string table (0x%x)!\n", status);
@@ -270,7 +267,7 @@ static EFI_STATUS load_kernel_segments(EFI_FILE* file, uintptr_t physStart, uint
                 return EFI_INVALID_PARAMETER;
             }
 
-            EFI_STATUS status = fs_seek(file, phdr->offset);
+            EFI_STATUS status = uefi_call_wrapper(file->SetPosition, 2, file, phdr->offset);
             if (EFI_ERROR(status))
             {
                 return status;
@@ -282,11 +279,11 @@ static EFI_STATUS load_kernel_segments(EFI_FILE* file, uintptr_t physStart, uint
                 return EFI_INVALID_PARAMETER;
             }
 
-            memset((void*)dest, 0, phdr->memorySize);
+            SetMem((VOID*)dest, phdr->memorySize, 0);
 
             if (phdr->fileSize > 0)
             {
-                status = fs_read(file, phdr->fileSize, (void*)dest);
+                status = uefi_call_wrapper(file->Read, 3, file, &phdr->fileSize, (void*)dest);
                 if (EFI_ERROR(status))
                 {
                     return status;
@@ -298,39 +295,30 @@ static EFI_STATUS load_kernel_segments(EFI_FILE* file, uintptr_t physStart, uint
     return EFI_SUCCESS;
 }
 
-EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_HANDLE imageHandle)
+EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle)
 {
-    if (kernel == NULL || imageHandle == NULL)
+    if (kernel == NULL)
     {
         return EFI_INVALID_PARAMETER;
     }
 
-    memset(kernel, 0, sizeof(boot_kernel_t));
+    SetMem(kernel, sizeof(boot_kernel_t), 0);
 
     Print(L"Loading kernel... ");
 
-    // Makes cleanup easier, even if i usually avoid declaring variables at the top of the function.
-    EFI_FILE* root = NULL;
     EFI_FILE* kernelDir = NULL;
     EFI_FILE* file = NULL;
     EFI_STATUS status = EFI_SUCCESS;
     uint64_t kernelPageAmount = 0;
 
-    status = fs_open_root_volume(&root, imageHandle);
-    if (EFI_ERROR(status))
-    {
-        Print(L"failed to open root volume (0x%x)!\n", status);
-        goto cleanup;
-    }
-
-    status = fs_open(&kernelDir, root, L"boot");
+    status = uefi_call_wrapper(rootHandle->Open, 5, rootHandle, &kernelDir, L"boot", EFI_FILE_MODE_READ, 0);
     if (EFI_ERROR(status))
     {
         Print(L"failed to open boot directory (0x%x)!\n", status);
         goto cleanup;
     }
 
-    status = fs_open(&file, kernelDir, L"kernel");
+    status = uefi_call_wrapper(kernelDir->Open, 5, kernelDir, &file, L"kernel", EFI_FILE_MODE_READ, 0);
     if (EFI_ERROR(status))
     {
         Print(L"failed to open kernel file (0x%x)!\n", status);
@@ -354,7 +342,8 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_HANDLE imageHandle)
         goto cleanup;
     }
 
-    status = fs_read(file, sizeof(elf_hdr_t), &kernel->header);
+    uint64_t elfHdrSize = sizeof(elf_hdr_t);
+    status = uefi_call_wrapper(file->Read, 3, file, &elfHdrSize, &kernel->header);
     if (EFI_ERROR(status))
     {
         Print(L"failed to read ELF header (0x%x)!\n", status);
@@ -399,14 +388,14 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_HANDLE imageHandle)
         goto cleanup;
     }
 
-    status = fs_seek(file, kernel->header.phdrOffset);
+    status = uefi_call_wrapper(file->SetPosition, 2, file, kernel->header.phdrOffset);
     if (EFI_ERROR(status))
     {
         Print(L"failed to seek to program header table (0x%x)!\n", status);
         goto cleanup;
     }
 
-    status = fs_read(file, phdrTableSize, kernel->phdrs);
+    status = uefi_call_wrapper(file->Read, 3, file, &phdrTableSize, kernel->phdrs);
     if (EFI_ERROR(status))
     {
         Print(L"failed to read program header table (0x%x)!\n", status);
@@ -505,15 +494,11 @@ cleanup:
     }
     if (file != NULL)
     {
-        fs_close(file);
+        uefi_call_wrapper(file->Close, 1, file);
     }
     if (kernelDir != NULL)
     {
-        fs_close(kernelDir);
-    }
-    if (root != NULL)
-    {
-        fs_close(root);
+        uefi_call_wrapper(kernelDir->Close, 1, kernelDir);
     }
 
     return status;

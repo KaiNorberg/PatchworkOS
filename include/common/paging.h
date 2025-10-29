@@ -9,6 +9,11 @@
 #include <string.h>
 #include <sys/proc.h>
 
+#ifdef __BOOT__
+#include <efi.h>
+#include <efilib.h>
+#endif
+
 /**
  * @addtogroup common_paging
  * @{
@@ -98,7 +103,13 @@ static inline uint64_t pml_new(page_table_t* table, pml_t** outPml)
     {
         return ERR;
     }
+#ifdef __BOOT__
+    SetMem(pml, PAGE_SIZE, 0);
+#elif __KERNEL__
     memset(pml, 0, PAGE_SIZE);
+#else
+#error
+#endif
     *outPml = pml;
     return 0;
 }

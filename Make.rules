@@ -14,7 +14,7 @@ $(BINDIR)/%: $(OBJ)
 	$(MKCWD)
 	$(LD) $(LDFLAGS) -o $@ $^ $(LDSTDLIB)
 
-# Black magic, good luck. Used to compile the bootloader.
+# Black magic, good luck. Used to link the bootloader.
 $(BINDIR)/%.efi: $(OBJ)
 	$(MKCWD)
 
