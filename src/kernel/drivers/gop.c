@@ -1,11 +1,11 @@
-#include "gop.h"
+#include <kernel/drivers/gop.h>
 
-#include "drivers/abstractions/fb.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "mem/vmm.h"
-#include "proc/process.h"
-#include "sched/sched.h"
+#include <kernel/drivers/abstractions/fb.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/proc/process.h>
+#include <kernel/sched/sched.h>
 
 #include <assert.h>
 #include <errno.h>

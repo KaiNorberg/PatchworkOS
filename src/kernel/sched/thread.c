@@ -1,15 +1,15 @@
-#include "thread.h"
+#include <kernel/sched/thread.h>
 
-#include "cpu/gdt.h"
-#include "cpu/smp.h"
-#include "init/init.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "mem/vmm.h"
-#include "sched/sched.h"
-#include "sched/timer.h"
-#include "sched/wait.h"
-#include "sync/lock.h"
+#include <kernel/cpu/gdt.h>
+#include <kernel/cpu/smp.h>
+#include <kernel/init/init.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/sched/sched.h>
+#include <kernel/sched/timer.h>
+#include <kernel/sched/wait.h>
+#include <kernel/sync/lock.h>
 
 #include <stdlib.h>
 #include <string.h>

@@ -1,16 +1,15 @@
-#include "log.h"
+#include <kernel/log/log.h>
 
-#include "cpu/cpu.h"
-#include "cpu/smp.h"
-#include "drivers/com.h"
-#include "log_file.h"
-#include "log_screen.h"
-#include "sched/timer.h"
-#include "sync/lock.h"
+#include <kernel/cpu/cpu.h>
+#include <kernel/cpu/smp.h>
+#include <kernel/drivers/com.h>
+#include <kernel/log/log_file.h>
+#include <kernel/log/log_screen.h>
+#include <kernel/sched/timer.h>
+#include <kernel/sync/lock.h>
 
-#include <_internal/MAX_PATH.h>
 #include <boot/boot_info.h>
-#include <common/version.h>
+#include <kernel/version.h>
 
 #include <stdarg.h>
 #include <stdint.h>

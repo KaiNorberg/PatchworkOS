@@ -4,7 +4,8 @@
 #include "mem.h"
 
 #include <boot/boot_info.h>
-#include <common/version.h>
+#include <kernel/mem/paging.h>
+#include <kernel/version.h>
 
 #include <efi.h>
 #include <efilib.h>

@@ -1,12 +1,12 @@
-#include "shmem.h"
+#include <kernel/ipc/shmem.h>
 
-#include "fs/ctl.h"
-#include "fs/sysfs.h"
-#include "fs/vfs.h"
-#include "log/panic.h"
-#include "mem/pmm.h"
-#include "mem/vmm.h"
-#include "proc/process.h"
+#include <kernel/fs/ctl.h>
+#include <kernel/fs/sysfs.h>
+#include <kernel/fs/vfs.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/pmm.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/proc/process.h>
 
 #include <errno.h>
 #include <stdatomic.h>

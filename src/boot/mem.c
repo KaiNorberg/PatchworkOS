@@ -1,12 +1,12 @@
 #include "mem.h"
 #include "efidef.h"
 
-#include <common/defs.h>
-#include <common/paging_types.h>
 #include <efilib.h>
+#include <kernel/defs.h>
+#include <kernel/mem/paging_types.h>
 
 #include <boot/boot_info.h>
-#include <common/paging.h>
+#include <kernel/mem/paging.h>
 #include <sys/proc.h>
 
 // We cant use the normal memory allocator after exiting boot services so we use this basic one instead.

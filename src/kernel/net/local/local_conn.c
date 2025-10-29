@@ -1,14 +1,13 @@
-#include "local_conn.h"
+#include <kernel/net/local/local_conn.h>
 
-#include "fs/sysfs.h"
-#include "net/local/local.h"
-#include "net/local/local_listen.h"
-#include "net/socket.h"
-#include "net/socket_family.h"
-#include "sched/wait.h"
-#include "sync/lock.h"
+#include <kernel/fs/sysfs.h>
+#include <kernel/net/local/local.h>
+#include <kernel/net/local/local_listen.h>
+#include <kernel/net/socket.h>
+#include <kernel/net/socket_family.h>
+#include <kernel/sched/wait.h>
+#include <kernel/sync/lock.h>
 
-#include <_internal/MAX_NAME.h>
 #include <stdlib.h>
 #include <sys/list.h>
 

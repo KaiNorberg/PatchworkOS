@@ -2,7 +2,7 @@
 #include "mem.h"
 
 #include <boot/boot_info.h>
-#include <common/paging_types.h>
+#include <kernel/mem/paging_types.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/proc.h>

@@ -1,14 +1,14 @@
-#include "namespace.h"
+#include <kernel/fs/namespace.h>
 
-#include "cpu/syscalls.h"
-#include "dentry.h"
-#include "log/log.h"
-#include "mount.h"
-#include "path.h"
-#include "proc/process.h"
-#include "sched/thread.h"
-#include "superblock.h"
-#include "vfs.h"
+#include <kernel/cpu/syscalls.h>
+#include <kernel/fs/dentry.h>
+#include <kernel/fs/mount.h>
+#include <kernel/fs/path.h>
+#include <kernel/fs/superblock.h>
+#include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
+#include <kernel/proc/process.h>
+#include <kernel/sched/thread.h>
 
 #include <errno.h>
 

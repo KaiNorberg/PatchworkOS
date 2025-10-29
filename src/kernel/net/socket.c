@@ -1,16 +1,16 @@
-#include "socket.h"
+#include <kernel/net/socket.h>
 
-#include "fs/ctl.h"
-#include "fs/file.h"
-#include "fs/mount.h"
-#include "fs/path.h"
-#include "proc/process.h"
-#include "sched/sched.h"
-#include "sched/wait.h"
-#include "socket_family.h"
-#include "sync/lock.h"
-#include "sync/mutex.h"
-#include "sync/rwmutex.h"
+#include <kernel/fs/ctl.h>
+#include <kernel/fs/file.h>
+#include <kernel/fs/mount.h>
+#include <kernel/fs/path.h>
+#include <kernel/net/socket_family.h>
+#include <kernel/proc/process.h>
+#include <kernel/sched/sched.h>
+#include <kernel/sched/wait.h>
+#include <kernel/sync/lock.h>
+#include <kernel/sync/mutex.h>
+#include <kernel/sync/rwmutex.h>
 
 #include <errno.h>
 #include <stdio.h>

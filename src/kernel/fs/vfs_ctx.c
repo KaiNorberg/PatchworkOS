@@ -1,8 +1,8 @@
-#include "vfs_ctx.h"
+#include <kernel/fs/vfs_ctx.h>
 
-#include "log/log.h"
-#include "sched/thread.h"
-#include "vfs.h"
+#include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
+#include <kernel/sched/thread.h>
 
 #include <assert.h>
 #include <string.h>

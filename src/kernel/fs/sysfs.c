@@ -1,11 +1,11 @@
-#include "sysfs.h"
+#include <kernel/fs/sysfs.h>
 
-#include "fs/dentry.h"
-#include "fs/namespace.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "sync/lock.h"
-#include "vfs.h"
+#include <kernel/fs/dentry.h>
+#include <kernel/fs/namespace.h>
+#include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/sync/lock.h>
 
 #include <assert.h>
 #include <errno.h>

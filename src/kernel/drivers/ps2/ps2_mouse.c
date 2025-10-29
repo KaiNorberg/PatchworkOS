@@ -1,8 +1,8 @@
-#include "ps2_mouse.h"
+#include <kernel/drivers/ps2/ps2_mouse.h>
 
-#include "cpu/irq.h"
-#include "drivers/abstractions/mouse.h"
-#include "log/log.h"
+#include <kernel/cpu/irq.h>
+#include <kernel/drivers/abstractions/mouse.h>
+#include <kernel/log/log.h>
 
 #include <stdlib.h>
 

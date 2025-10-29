@@ -1,6 +1,6 @@
-#include "argv.h"
+#include <kernel/proc/argv.h>
 
-#include "config.h"
+#include <kernel/config.h>
 
 #include <stdlib.h>
 #include <string.h>

@@ -1,10 +1,10 @@
-#include "simd.h"
-#include "cpu.h"
-#include "log/log.h"
-#include "mem/pmm.h"
-#include "smp.h"
+#include <kernel/cpu/cpu.h>
+#include <kernel/cpu/simd.h>
+#include <kernel/cpu/smp.h>
+#include <kernel/log/log.h>
+#include <kernel/mem/pmm.h>
 
-#include <common/defs.h>
+#include <kernel/defs.h>
 
 #include <stdint.h>
 #include <string.h>

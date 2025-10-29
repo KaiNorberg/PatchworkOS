@@ -3,7 +3,7 @@
 #include "common/heap.h"
 
 #ifdef __KERNEL__
-#include "log/panic.h"
+#include <kernel/log/panic.h>
 #else
 #include <stdio.h>
 #endif

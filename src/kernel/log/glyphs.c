@@ -1,4 +1,4 @@
-#include "glyphs.h"
+#include <kernel/log/glyphs.h>
 
 #include <stdint.h>
 

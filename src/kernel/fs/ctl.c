@@ -1,7 +1,7 @@
-#include "ctl.h"
+#include <kernel/fs/ctl.h>
 
-#include "mem/pmm.h"
-#include "sched/thread.h"
+#include <kernel/mem/pmm.h>
+#include <kernel/sched/thread.h>
 
 #include <errno.h>
 #include <sys/argsplit.h>

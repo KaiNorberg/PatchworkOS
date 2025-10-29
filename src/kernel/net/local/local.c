@@ -1,20 +1,18 @@
-#include "local.h"
+#include <kernel/net/local/local.h>
 
-#include "fs/path.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "net/local/local_conn.h"
-#include "net/local/local_listen.h"
-#include "net/socket.h"
-#include "net/socket_family.h"
-#include "net/socket_type.h"
-#include "sched/wait.h"
-#include "sync/lock.h"
-#include "utils/ref.h"
-#include "utils/ring.h"
+#include <kernel/fs/path.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/net/local/local_conn.h>
+#include <kernel/net/local/local_listen.h>
+#include <kernel/net/socket.h>
+#include <kernel/net/socket_family.h>
+#include <kernel/net/socket_type.h>
+#include <kernel/sched/wait.h>
+#include <kernel/sync/lock.h>
+#include <kernel/utils/ref.h>
+#include <kernel/utils/ring.h>
 
-#include <_internal/CONTAINER_OF.h>
-#include <_internal/MAX_NAME.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

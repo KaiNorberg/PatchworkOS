@@ -1,16 +1,16 @@
-#include "named.h"
+#include <kernel/acpi/aml/encoding/named.h>
 
-#include "acpi/aml/debug.h"
-#include "acpi/aml/object.h"
-#include "acpi/aml/state.h"
-#include "acpi/aml/to_string.h"
-#include "acpi/aml/token.h"
-#include "acpi/tables.h"
-#include "data.h"
-#include "log/log.h"
-#include "name.h"
-#include "package_length.h"
-#include "term.h"
+#include <kernel/acpi/aml/debug.h>
+#include <kernel/acpi/aml/encoding/data.h>
+#include <kernel/acpi/aml/encoding/name.h>
+#include <kernel/acpi/aml/encoding/package_length.h>
+#include <kernel/acpi/aml/encoding/term.h>
+#include <kernel/acpi/aml/object.h>
+#include <kernel/acpi/aml/state.h>
+#include <kernel/acpi/aml/to_string.h>
+#include <kernel/acpi/aml/token.h>
+#include <kernel/acpi/tables.h>
+#include <kernel/log/log.h>
 
 uint64_t aml_bank_value_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
 {

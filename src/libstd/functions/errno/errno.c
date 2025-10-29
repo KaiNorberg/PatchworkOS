@@ -1,8 +1,8 @@
 #include <errno.h>
 
 #ifdef __KERNEL__
-#include "sched/sched.h"
-#include "sched/thread.h"
+#include <kernel/sched/sched.h>
+#include <kernel/sched/thread.h>
 #else
 #include "user/common/thread.h"
 #include <sys/proc.h>

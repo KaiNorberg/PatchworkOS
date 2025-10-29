@@ -1,12 +1,13 @@
-#include "tables.h"
+#include <kernel/acpi/tables.h>
 
-#include "acpi.h"
-#include "fs/file.h"
-#include "fs/vfs.h"
-#include "log/log.h"
-#include "log/panic.h"
+#include <kernel/acpi/acpi.h>
+#include <kernel/fs/file.h>
+#include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
 
 #include <boot/boot_info.h>
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>

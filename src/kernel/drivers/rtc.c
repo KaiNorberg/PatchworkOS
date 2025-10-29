@@ -1,5 +1,5 @@
-#include "rtc.h"
-#include "cpu/port.h"
+#include <kernel/cpu/port.h>
+#include <kernel/drivers/rtc.h>
 
 static uint8_t cmos_read(uint8_t reg)
 {

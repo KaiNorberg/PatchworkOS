@@ -1,11 +1,11 @@
-#include "irq.h"
+#include <kernel/cpu/irq.h>
 
-#include "cpu/smp.h"
-#include "drivers/apic.h"
-#include "interrupt.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "sync/rwlock.h"
+#include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/smp.h>
+#include <kernel/drivers/apic.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/sync/rwlock.h>
 
 static rwlock_t lock = RWLOCK_CREATE;
 static irq_handler_t handlers[IRQ_AMOUNT] = {0};

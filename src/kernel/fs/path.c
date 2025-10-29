@@ -1,15 +1,12 @@
-#include "path.h"
+#include <kernel/fs/path.h>
 
-#include "fs/dentry.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "namespace.h"
+#include <kernel/fs/dentry.h>
+#include <kernel/fs/namespace.h>
+#include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/sync/mutex.h>
 
-#include "sync/mutex.h"
-#include "vfs.h"
-
-#include <_internal/MAX_NAME.h>
-#include <_internal/MAX_PATH.h>
 #include <errno.h>
 #include <string.h>
 

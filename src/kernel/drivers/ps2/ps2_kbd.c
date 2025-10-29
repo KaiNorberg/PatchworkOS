@@ -1,9 +1,9 @@
-#include "ps2_kbd.h"
-#include "ps2_scanmap.h"
+#include <kernel/drivers/ps2/ps2_kbd.h>
+#include <kernel/drivers/ps2/ps2_scanmap.h>
 
-#include "cpu/irq.h"
-#include "drivers/abstractions/kbd.h"
-#include "log/log.h"
+#include <kernel/cpu/irq.h>
+#include <kernel/drivers/abstractions/kbd.h>
+#include <kernel/log/log.h>
 
 #include <stdlib.h>
 

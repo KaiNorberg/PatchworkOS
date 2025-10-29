@@ -64,7 +64,7 @@ lib/doomgeneric-patchworkos
 lib/lua*
 meta/docs
 meta/doxy/doxygen-awesome-css
-include/common/version.h
+include/kernel/version.h
 lib/acpica
 lib/acpica_tests
 temp.md

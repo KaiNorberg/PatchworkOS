@@ -1,5 +1,5 @@
-#include "com.h"
-#include "cpu/port.h"
+#include <kernel/cpu/port.h>
+#include <kernel/drivers/com.h>
 
 void com_init(com_port_t port)
 {

@@ -1,7 +1,7 @@
-#include "exception.h"
+#include <kernel/acpi/aml/exception.h>
 
-#include "log/log.h"
-#include "sched/thread.h"
+#include <kernel/log/log.h>
+#include <kernel/sched/thread.h>
 
 #include <stddef.h>
 #include <stdlib.h>

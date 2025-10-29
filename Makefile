@@ -1,12 +1,13 @@
-MODULES = boot kernel libstd libpatchwork
+SECTIONS = boot kernel libstd libpatchwork
 PROGRAMS = $(basename $(notdir $(wildcard make/programs/*.mk)))
 TARGET_IMAGE = bin/PatchworkOS.img
-VERSION_HEADER = include/common/version.h
+VERSION_HEADER = include/kernel/version.h
+ROOT_DIRS = acpi bin cfg dev efi efi/boot home kernel lib net proc sys tmp usr usr/bin usr/share usr/license var
 
 # Programs to copy to /bin instead of /usr/bin
 ROOT_PROGRAMS = init wall cursor taskbar dwm shell rm ls link mv touch cat echo
 # Programs to copy to /usr/bin
-USER_PROGRAMS = $(filter-out $(ROOT_PROGRAMS),$(PROGRAMS))
+USR_PROGRAMS = $(filter-out $(ROOT_PROGRAMS),$(PROGRAMS))
 
 QEMU_MEMORY ?= 2G
 QEMU_CPUS ?= $(shell nproc 2>/dev/null || echo 8)
@@ -36,9 +37,9 @@ ifeq ($(GDB),1)
 	QEMU_FLAGS += -s -S
 endif
 
-.PHONY: all setup modules programs deploy run clean generate_version compile_commands format doxygen clean clean_programs nuke grub_loopback clone_acpica_and_compile_tests
+.PHONY: all setup deploy run clean generate_version compile_commands format doxygen clean clean_programs nuke grub_loopback clone_acpica_and_compile_tests
 
-all: setup modules programs deploy
+all: setup $(SECTIONS) $(PROGRAMS) deploy
 
 generate_version:
 	@GIT_VERSION_STRING=$$(git describe --tags --always --dirty --long 2>/dev/null || echo "unknown"); \
@@ -61,7 +62,7 @@ setup: generate_version
 	$(MAKE) -C lib/gnu-efi
 endif
 
-$(MODULES): setup
+$(SECTIONS): setup
 	$(MAKE) -f make/$@.mk SRCDIR=src/$@ BUILDDIR=build/$@ BINDIR=bin/$@
 
 $(PROGRAMS): $(MODULES)
@@ -71,26 +72,15 @@ deploy: $(PROGRAMS)
 	dd if=/dev/zero of=$(TARGET_IMAGE) bs=2M count=64
 	mformat -F -C -t 256 -h 16 -s 63 -v "PATCHWORKOS" -i $(TARGET_IMAGE) ::
 	mlabel -i $(TARGET_IMAGE) ::PatchworkOS
-	mmd -i $(TARGET_IMAGE) ::/acpi
-	mmd -i $(TARGET_IMAGE) ::/boot
-	mmd -i $(TARGET_IMAGE) ::/bin
-	mmd -i $(TARGET_IMAGE) ::/efi
-	mmd -i $(TARGET_IMAGE) ::/efi/boot
-	mmd -i $(TARGET_IMAGE) ::/usr
-	mmd -i $(TARGET_IMAGE) ::/usr/bin
-	mmd -i $(TARGET_IMAGE) ::/usr/license
-	mmd -i $(TARGET_IMAGE) ::/home
-	mmd -i $(TARGET_IMAGE) ::/dev
-	mmd -i $(TARGET_IMAGE) ::/net
-	mmd -i $(TARGET_IMAGE) ::/proc
+	$(foreach dir,$(ROOT_DIRS),mmd -i $(TARGET_IMAGE) ::/$(dir);)
 	mcopy -i $(TARGET_IMAGE) -s root/* ::
 	mcopy -i $(TARGET_IMAGE) -s bin/boot/bootx64.efi ::/efi/boot
-	mcopy -i $(TARGET_IMAGE) -s bin/kernel/kernel ::/boot
+	mcopy -i $(TARGET_IMAGE) -s bin/kernel/kernel ::/kernel
 	mcopy -i $(TARGET_IMAGE) -s LICENSE ::/usr/license
 	$(foreach prog,$(ROOT_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/bin;)
-	$(foreach prog,$(USER_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/usr/bin;)
+	$(foreach prog,$(USR_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/usr/bin;)
 
-run: all
+run:
 	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_ARGS)
 
 # This will only work if you have setup a grub loopback entry as described in the README.md file.

@@ -1,6 +1,6 @@
-#include "mount.h"
+#include <kernel/fs/mount.h>
 
-#include "vfs.h"
+#include <kernel/fs/vfs.h>
 
 #include <stdlib.h>
 

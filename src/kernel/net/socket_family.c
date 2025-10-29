@@ -1,10 +1,10 @@
-#include "socket_family.h"
+#include <kernel/net/socket_family.h>
 
-#include "fs/sysfs.h"
-#include "fs/vfs.h"
-#include "log/log.h"
-#include "net/net.h"
-#include "net/socket.h"
+#include <kernel/fs/sysfs.h>
+#include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
+#include <kernel/net/net.h>
+#include <kernel/net/socket.h>
 
 #include <errno.h>
 #include <stdlib.h>

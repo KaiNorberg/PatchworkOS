@@ -1,11 +1,11 @@
-#include "kbd.h"
+#include <kernel/drivers/abstractions/kbd.h>
 
-#include "drivers/abstractions/kbd.h"
-#include "fs/file.h"
-#include "fs/sysfs.h"
-#include "fs/vfs.h"
-#include "sched/timer.h"
-#include "sync/lock.h"
+#include <kernel/drivers/abstractions/kbd.h>
+#include <kernel/fs/file.h>
+#include <kernel/fs/sysfs.h>
+#include <kernel/fs/vfs.h>
+#include <kernel/sched/timer.h>
+#include <kernel/sync/lock.h>
 
 #include <errno.h>
 #include <stdio.h>

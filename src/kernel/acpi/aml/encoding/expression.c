@@ -1,23 +1,23 @@
-#include "expression.h"
+#include <kernel/acpi/aml/encoding/expression.h>
 
-#include "acpi/aml/debug.h"
-#include "acpi/aml/exception.h"
-#include "acpi/aml/object.h"
-#include "acpi/aml/runtime/compare.h"
-#include "acpi/aml/runtime/concat.h"
-#include "acpi/aml/runtime/convert.h"
-#include "acpi/aml/runtime/copy.h"
-#include "acpi/aml/runtime/method.h"
-#include "acpi/aml/runtime/store.h"
-#include "acpi/aml/state.h"
-#include "acpi/aml/to_string.h"
-#include "acpi/aml/token.h"
-#include "arg.h"
-#include "debug.h"
-#include "log/log.h"
-#include "package_length.h"
-#include "sched/timer.h"
-#include "term.h"
+#include <kernel/acpi/aml/debug.h>
+#include <kernel/acpi/aml/encoding/arg.h>
+#include <kernel/acpi/aml/encoding/debug.h>
+#include <kernel/acpi/aml/encoding/package_length.h>
+#include <kernel/acpi/aml/encoding/term.h>
+#include <kernel/acpi/aml/exception.h>
+#include <kernel/acpi/aml/object.h>
+#include <kernel/acpi/aml/runtime/compare.h>
+#include <kernel/acpi/aml/runtime/concat.h>
+#include <kernel/acpi/aml/runtime/convert.h>
+#include <kernel/acpi/aml/runtime/copy.h>
+#include <kernel/acpi/aml/runtime/method.h>
+#include <kernel/acpi/aml/runtime/store.h>
+#include <kernel/acpi/aml/state.h>
+#include <kernel/acpi/aml/to_string.h>
+#include <kernel/acpi/aml/token.h>
+#include <kernel/log/log.h>
+#include <kernel/sched/timer.h>
 
 #include <sys/proc.h>
 

@@ -1,12 +1,12 @@
-#include "wait.h"
+#include <kernel/sched/wait.h>
 
-#include "cpu/cpu.h"
-#include "cpu/smp.h"
-#include "log/panic.h"
-#include "sched.h"
-#include "sched/thread.h"
-#include "sched/timer.h"
-#include "sync/lock.h"
+#include <kernel/cpu/cpu.h>
+#include <kernel/cpu/smp.h>
+#include <kernel/log/panic.h>
+#include <kernel/sched/sched.h>
+#include <kernel/sched/thread.h>
+#include <kernel/sched/timer.h>
+#include <kernel/sync/lock.h>
 
 #include <assert.h>
 #include <errno.h>

@@ -1,36 +1,38 @@
-#include "init.h"
+#include <kernel/init/init.h>
 
-#include "acpi/acpi.h"
-#include "acpi/aml/aml.h"
-#include "acpi/devices.h"
-#include "acpi/tables.h"
-#include "cpu/gdt.h"
-#include "cpu/idt.h"
-#include "cpu/smp.h"
-#include "cpu/syscalls.h"
-#include "drivers/const.h"
-#include "drivers/gop.h"
-#include "drivers/ps2/ps2.h"
-#include "fs/ramfs.h"
-#include "fs/sysfs.h"
-#include "fs/vfs.h"
-#include "gnu-efi/inc/efidef.h"
-#include "ipc/pipe.h"
-#include "ipc/shmem.h"
-#include "log/log.h"
-#include "log/log_file.h"
-#include "log/panic.h"
-#include "mem/pmm.h"
-#include "mem/vmm.h"
-#include "net/net.h"
-#include "proc/process.h"
-#include "sched/loader.h"
-#include "sched/sched.h"
-#include "sched/timer.h"
-#include "sched/wait.h"
+#include <kernel/acpi/acpi.h>
+#include <kernel/acpi/aml/aml.h>
+#include <kernel/acpi/devices.h>
+#include <kernel/acpi/tables.h>
+#include <kernel/cpu/gdt.h>
+#include <kernel/cpu/idt.h>
+#include <kernel/cpu/smp.h>
+#include <kernel/cpu/syscalls.h>
+#include <kernel/drivers/const.h>
+#include <kernel/drivers/gop.h>
+#include <kernel/drivers/ps2/ps2.h>
+#include <kernel/fs/ramfs.h>
+#include <kernel/fs/sysfs.h>
+#include <kernel/fs/vfs.h>
+#include <kernel/ipc/pipe.h>
+#include <kernel/ipc/shmem.h>
+#include <kernel/log/log.h>
+#include <kernel/log/log_file.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/pmm.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/net/net.h>
+#include <kernel/proc/process.h>
+#include <kernel/sched/loader.h>
+#include <kernel/sched/sched.h>
+#include <kernel/sched/timer.h>
+#include <kernel/sched/wait.h>
+#include <kernel/module/module.h>
 
 #include <boot/boot_info.h>
+
 #include <libstd/_internal/init.h>
+
 #include <stdlib.h>
 #include <strings.h>
 
@@ -104,6 +106,9 @@ static void init_finalize(const boot_info_t* bootInfo)
 
     acpi_tables_expose();
     aml_namespace_expose();
+
+    module_init();
+
     log_file_expose();
     process_procfs_init();
 

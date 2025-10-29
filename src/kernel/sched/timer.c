@@ -1,14 +1,15 @@
-#include "timer.h"
-#include "cpu/cpu.h"
-#include "cpu/interrupt.h"
-#include "cpu/smp.h"
-#include "cpu/syscalls.h"
-#include "drivers/apic.h"
-#include "drivers/hpet.h"
-#include "drivers/rtc.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "sched/thread.h"
+#include <kernel/cpu/cpu.h>
+#include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/smp.h>
+#include <kernel/cpu/syscalls.h>
+#include <kernel/drivers/apic.h>
+#include <kernel/drivers/hpet.h>
+#include <kernel/drivers/rtc.h>
+#include <kernel/log/log.h>
+#include <kernel/sched/timer.h>
+
+#include <kernel/log/panic.h>
+#include <kernel/sched/thread.h>
 
 #include <stdatomic.h>
 #include <stdbool.h>

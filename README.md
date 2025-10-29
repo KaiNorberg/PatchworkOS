@@ -85,7 +85,7 @@ Additionally, the OS aims to, in spite of its experimental nature, remain approa
 - Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions
 - Add configurability to `spawn()` for namespace inheritance
 - Asynchronous I/O
-- Modular kernel
+- Modular kernel <- Currently being worked on
 - Shared libraries
 - USB support (The holy grail)
 

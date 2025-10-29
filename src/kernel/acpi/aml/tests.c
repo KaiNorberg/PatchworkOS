@@ -1,23 +1,21 @@
-#include "tests.h"
+#include <kernel/acpi/aml/tests.h>
 
 #ifdef TESTING
 
 #include "acpica_tests/all_tests.h"
 
-#include "aml.h"
-#include "encoding/term.h"
-#include "exception.h"
-#include "object.h"
-#include "runtime/method.h"
-#include "sched/timer.h"
-#include "state.h"
-#include "to_string.h"
+#include <kernel/acpi/aml/aml.h>
+#include <kernel/acpi/aml/encoding/term.h>
+#include <kernel/acpi/aml/exception.h>
+#include <kernel/acpi/aml/object.h>
+#include <kernel/acpi/aml/runtime/method.h>
+#include <kernel/acpi/aml/state.h>
+#include <kernel/acpi/aml/to_string.h>
+#include <kernel/acpi/tables.h>
+#include <kernel/log/log.h>
+#include <kernel/sched/timer.h>
 
 #include <stdlib.h>
-
-#include "acpi/tables.h"
-#include "log/log.h"
-
 #include <string.h>
 #include <sys/list.h>
 

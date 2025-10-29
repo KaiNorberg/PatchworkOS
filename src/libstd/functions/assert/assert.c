@@ -2,9 +2,10 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef __KERNEL__
-#include "log/panic.h"
+#include <kernel/log/panic.h>
 #endif
 
 void _assert_99(const char* const message1, const char* const function, const char* const message2)

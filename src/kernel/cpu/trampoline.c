@@ -1,18 +1,18 @@
-#include "trampoline.h"
+#include <kernel/cpu/trampoline.h>
 
-#include "cpu.h"
-#include "drivers/apic.h"
-#include "drivers/hpet.h"
-#include "gdt.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "mem/pmm.h"
-#include "mem/vmm.h"
-#include "sched/sched.h"
-#include "sched/thread.h"
-#include "utils/utils.h"
+#include <kernel/cpu/cpu.h>
+#include <kernel/cpu/gdt.h>
+#include <kernel/drivers/apic.h>
+#include <kernel/drivers/hpet.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/pmm.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/sched/sched.h>
+#include <kernel/sched/thread.h>
+#include <kernel/utils/utils.h>
 
-#include <common/paging_types.h>
+#include <kernel/mem/paging_types.h>
 #include <string.h>
 
 static void* backupBuffer;

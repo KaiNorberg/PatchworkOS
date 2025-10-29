@@ -74,12 +74,12 @@ typedef struct
     theme_color_set_t element;
     theme_color_set_t panel;
     theme_color_set_t deco;
-    char wallpaper[MAX_NAME];
-    char fontsDir[MAX_NAME];
-    char cursorArrow[MAX_NAME];
-    char defaultFont[MAX_NAME];
-    char iconClose[MAX_NAME];
-    char iconMinimize[MAX_NAME];
+    char wallpaper[MAX_PATH];
+    char fontsDir[MAX_PATH];
+    char cursorArrow[MAX_PATH];
+    char defaultFont[MAX_PATH];
+    char iconClose[MAX_PATH];
+    char iconMinimize[MAX_PATH];
     int64_t frameSize;
     int64_t bezelSize;
     int64_t titlebarSize;
@@ -87,8 +87,8 @@ typedef struct
     int64_t bigPadding;
     int64_t smallPadding;
     int64_t separatorSize;
-    uint8_t reserved[512];
     theme_ansi_t ansi;
+    uint8_t reserved[512];
 } theme_t;
 
 /**

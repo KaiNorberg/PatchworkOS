@@ -1,8 +1,8 @@
-#include "rand.h"
+#include <kernel/drivers/rand.h>
 
-#include "cpu/cpu.h"
-#include "cpu/smp.h"
-#include "log/log.h"
+#include <kernel/cpu/cpu.h>
+#include <kernel/cpu/smp.h>
+#include <kernel/log/log.h>
 
 #include <stdbool.h>
 #include <stdint.h>

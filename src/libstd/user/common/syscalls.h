@@ -1,7 +1,8 @@
 #pragma once
 
+#include <kernel/cpu/syscalls.h>
+
 #include <errno.h>
-#include <kernel/syscalls.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <sys/io.h>

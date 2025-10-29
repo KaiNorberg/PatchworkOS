@@ -1,8 +1,8 @@
-#include "pci_config.h"
+#include <kernel/drivers/pci/pci_config.h>
 
-#include "acpi/tables.h"
-#include "log/log.h"
-#include "mem/vmm.h"
+#include <kernel/acpi/tables.h>
+#include <kernel/log/log.h>
+#include <kernel/mem/vmm.h>
 
 static uint64_t entryCount;
 static mcfg_t* mcfg;

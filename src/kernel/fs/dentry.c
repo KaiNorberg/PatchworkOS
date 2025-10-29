@@ -1,12 +1,12 @@
-#include "dentry.h"
+#include <kernel/fs/dentry.h>
 
 #include <stdio.h>
 
-#include "log/log.h"
-#include "sched/thread.h"
-#include "sync/lock.h"
-#include "sync/mutex.h"
-#include "vfs.h"
+#include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
+#include <kernel/sched/thread.h>
+#include <kernel/sync/lock.h>
+#include <kernel/sync/mutex.h>
 
 #include <stdlib.h>
 
