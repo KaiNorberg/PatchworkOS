@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 #include <boot/boot_info.h>
-#include <common/paging_types.h>
+#include <kernel/mem/paging_types.h>
 
 /**
  * @brief Basic memory managment.

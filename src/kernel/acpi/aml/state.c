@@ -1,7 +1,7 @@
-#include "state.h"
+#include <kernel/acpi/aml/state.h>
 
-#include "object.h"
-#include "runtime/copy.h"
+#include <kernel/acpi/aml/object.h>
+#include <kernel/acpi/aml/runtime/copy.h>
 
 #include <errno.h>
 

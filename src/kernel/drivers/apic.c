@@ -1,18 +1,18 @@
-#include "apic.h"
+#include <kernel/drivers/apic.h>
 
-#include "acpi/tables.h"
-#include "cpu/cpu.h"
-#include "cpu/smp.h"
-#include "drivers/hpet.h"
-#include "drivers/pic.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "mem/vmm.h"
-#include "sched/timer.h"
-#include "utils/utils.h"
+#include <kernel/acpi/tables.h>
+#include <kernel/cpu/cpu.h>
+#include <kernel/cpu/smp.h>
+#include <kernel/drivers/hpet.h>
+#include <kernel/drivers/pic.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/sched/timer.h>
+#include <kernel/utils/utils.h>
 
 #include <assert.h>
-#include <common/defs.h>
+#include <kernel/defs.h>
 
 static bool initialized = false;
 static madt_t* madt;

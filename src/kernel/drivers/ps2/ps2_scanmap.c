@@ -1,4 +1,4 @@
-#include "ps2_scanmap.h"
+#include <kernel/drivers/ps2/ps2_scanmap.h>
 #include <sys/kbd.h>
 
 static const keycode_t set2Map[256] = {

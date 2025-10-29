@@ -1,10 +1,10 @@
-#include "hpet.h"
+#include <kernel/drivers/hpet.h>
 
-#include "acpi/tables.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "mem/vmm.h"
-#include "utils/utils.h"
+#include <kernel/acpi/tables.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/utils/utils.h>
 
 #include <assert.h>
 

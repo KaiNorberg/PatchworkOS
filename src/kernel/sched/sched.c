@@ -1,19 +1,19 @@
-#include "sched.h"
+#include <kernel/sched/sched.h>
 
-#include "cpu/cpu.h"
-#include "cpu/gdt.h"
-#include "cpu/interrupt.h"
-#include "cpu/smp.h"
-#include "cpu/syscalls.h"
-#include "drivers/apic.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "proc/process.h"
-#include "sched/sched.h"
-#include "sched/thread.h"
-#include "sched/timer.h"
-#include "sched/wait.h"
-#include "sync/lock.h"
+#include <kernel/cpu/cpu.h>
+#include <kernel/cpu/gdt.h>
+#include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/smp.h>
+#include <kernel/cpu/syscalls.h>
+#include <kernel/drivers/apic.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/proc/process.h>
+#include <kernel/sched/sched.h>
+#include <kernel/sched/thread.h>
+#include <kernel/sched/timer.h>
+#include <kernel/sched/wait.h>
+#include <kernel/sync/lock.h>
 
 #include <assert.h>
 #include <sys/list.h>

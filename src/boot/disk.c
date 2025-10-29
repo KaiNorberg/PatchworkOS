@@ -51,7 +51,7 @@ static boot_file_t* ram_disk_load_file(EFI_FILE* volume, const CHAR16* path)
 
     EFI_FILE* efiFile;
     EFI_STATUS status = uefi_call_wrapper(volume->Open, 5, volume, &efiFile, path, EFI_FILE_MODE_READ,
-            EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+        EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     if (EFI_ERROR(status))
     {
         return NULL;
@@ -160,8 +160,8 @@ static boot_dir_t* disk_load_dir(EFI_FILE* volume, const CHAR16* name)
             if (StrCmp(fileInfo->FileName, L".") != 0 && StrCmp(fileInfo->FileName, L"..") != 0)
             {
                 EFI_FILE* childVolume;
-                status = uefi_call_wrapper(volume->Open, 5, volume, &childVolume, fileInfo->FileName, EFI_FILE_MODE_READ,
-                        EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+                status = uefi_call_wrapper(volume->Open, 5, volume, &childVolume, fileInfo->FileName,
+                    EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
                 if (EFI_ERROR(status))
                 {
                     FreePool(fileInfo);

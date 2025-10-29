@@ -1,13 +1,13 @@
-#include "pipe.h"
+#include <kernel/ipc/pipe.h>
 
-#include "fs/file.h"
-#include "fs/vfs.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "mem/pmm.h"
-#include "sched/thread.h"
-#include "sync/lock.h"
-#include "utils/ring.h"
+#include <kernel/fs/file.h>
+#include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/pmm.h>
+#include <kernel/sched/thread.h>
+#include <kernel/sync/lock.h>
+#include <kernel/utils/ring.h>
 
 #include <assert.h>
 #include <stdlib.h>

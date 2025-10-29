@@ -1,18 +1,18 @@
-#include "interrupt.h"
+#include <kernel/cpu/interrupt.h>
 
-#include "cpu.h"
-#include "cpu/gdt.h"
-#include "drivers/apic.h"
-#include "drivers/statistics.h"
-#include "interrupt.h"
-#include "irq.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "sched/thread.h"
-#include "sched/wait.h"
-#include "smp.h"
+#include <kernel/cpu/cpu.h>
+#include <kernel/cpu/gdt.h>
+#include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/irq.h>
+#include <kernel/cpu/smp.h>
+#include <kernel/drivers/apic.h>
+#include <kernel/drivers/statistics.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/sched/thread.h>
+#include <kernel/sched/wait.h>
 
-#include <common/regs.h>
+#include <kernel/cpu/regs.h>
 
 #include <assert.h>
 

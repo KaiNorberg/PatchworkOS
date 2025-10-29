@@ -1,7 +1,7 @@
 #include <stdlib.h>
 
 #ifdef __KERNEL__
-#include "log/panic.h"
+#include <kernel/log/panic.h>
 #endif
 
 void abort(void)

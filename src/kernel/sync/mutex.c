@@ -1,11 +1,11 @@
-#include "sync/mutex.h"
+#include <kernel/sync/mutex.h>
 
-#include "config.h"
-#include "sched/sched.h"
-#include "sched/thread.h"
-#include "sched/timer.h"
-#include "sched/wait.h"
-#include "sync/lock.h"
+#include <kernel/config.h>
+#include <kernel/sched/sched.h>
+#include <kernel/sched/thread.h>
+#include <kernel/sched/timer.h>
+#include <kernel/sched/wait.h>
+#include <kernel/sync/lock.h>
 
 #include <assert.h>
 

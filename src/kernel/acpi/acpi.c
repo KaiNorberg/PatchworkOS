@@ -1,12 +1,12 @@
-#include "acpi.h"
+#include <kernel/acpi/acpi.h>
 
-#include "aml/aml.h"
-#include "devices.h"
-#include "fs/mount.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "mem/pmm.h"
-#include "tables.h"
+#include <kernel/acpi/aml/aml.h>
+#include <kernel/acpi/devices.h>
+#include <kernel/acpi/tables.h>
+#include <kernel/fs/mount.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/pmm.h>
 
 #include <boot/boot_info.h>
 #include <string.h>

@@ -10,9 +10,9 @@
 #include <threads.h>
 
 #ifdef __KERNEL__
-#include "log/panic.h"
-#include "mem/vmm.h"
-#include "sync/lock.h"
+#include <kernel/log/panic.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/sync/lock.h>
 static lock_t mutex;
 
 void* _heap_map_memory(uint64_t size)

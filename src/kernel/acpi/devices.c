@@ -1,12 +1,12 @@
-#include "devices.h"
+#include <kernel/acpi/devices.h>
 
-#include "aml/aml.h"
-#include "aml/object.h"
-#include "aml/runtime/method.h"
-#include "aml/state.h"
-#include "aml/to_string.h"
-#include "log/log.h"
-#include "log/panic.h"
+#include <kernel/acpi/aml/aml.h>
+#include <kernel/acpi/aml/object.h>
+#include <kernel/acpi/aml/runtime/method.h>
+#include <kernel/acpi/aml/state.h>
+#include <kernel/acpi/aml/to_string.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
 
 #include <errno.h>
 

@@ -1,10 +1,10 @@
-#include "file.h"
+#include <kernel/fs/file.h>
 
-#include "dentry.h"
-#include "fs/path.h"
-#include "inode.h"
-#include "sync/mutex.h"
-#include "utils/ref.h"
+#include <kernel/fs/dentry.h>
+#include <kernel/fs/inode.h>
+#include <kernel/fs/path.h>
+#include <kernel/sync/mutex.h>
+#include <kernel/utils/ref.h>
 
 #include <errno.h>
 #include <stdlib.h>

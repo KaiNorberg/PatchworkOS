@@ -1,7 +1,7 @@
-#include "gdt.h"
+#include <kernel/cpu/gdt.h>
 
-#include "mem/pmm.h"
-#include "tss.h"
+#include <kernel/cpu/tss.h>
+#include <kernel/mem/pmm.h>
 
 static gdt_t gdt ALIGNED(PAGE_SIZE);
 

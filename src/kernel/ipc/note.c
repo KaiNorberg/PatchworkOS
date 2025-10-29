@@ -1,10 +1,13 @@
-#include "note.h"
+#include <kernel/ipc/note.h>
 
-#include "cpu/smp.h"
-#include "log/log.h"
-#include "sched/thread.h"
+#include <kernel/cpu/smp.h>
+#include <kernel/log/log.h>
+#include <kernel/sched/thread.h>
 
 #include <assert.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
 
 static bool note_queue_compare_buffers(const void* a, uint64_t aLength, const void* b, uint64_t bLength)
 {

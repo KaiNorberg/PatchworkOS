@@ -1,4 +1,4 @@
-#include "buffer_field.h"
+#include <kernel/acpi/aml/runtime/buffer_field.h>
 
 #include <sys/math.h>
 

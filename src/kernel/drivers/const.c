@@ -1,12 +1,12 @@
-#include "const.h"
+#include <kernel/drivers/const.h>
 
-#include "fs/sysfs.h"
-#include "fs/vfs.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "mem/vmm.h"
-#include "proc/process.h"
-#include "sched/sched.h"
+#include <kernel/fs/sysfs.h>
+#include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/proc/process.h>
+#include <kernel/sched/sched.h>
 
 #include <assert.h>
 #include <stdlib.h>

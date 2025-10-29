@@ -1,20 +1,20 @@
-#include "aml.h"
+#include <kernel/acpi/aml/aml.h>
 
-#include "acpi/tables.h"
-#include "encoding/term.h"
-#include "integer.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "namespace.h"
-#include "patch_up.h"
-#include "predefined.h"
-#include "state.h"
+#include <kernel/acpi/aml/encoding/term.h>
+#include <kernel/acpi/aml/integer.h>
+#include <kernel/acpi/aml/namespace.h>
+#include <kernel/acpi/aml/patch_up.h>
+#include <kernel/acpi/aml/predefined.h>
+#include <kernel/acpi/aml/state.h>
+#include <kernel/acpi/tables.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
 
 #ifdef TESTING
-#include "tests.h"
+#include <kernel/acpi/aml/tests.h>
 #endif
 
-#include "log/log.h"
+#include <kernel/log/log.h>
 
 #include <errno.h>
 #include <sys/math.h>

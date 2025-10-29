@@ -1,15 +1,15 @@
-#include "statistics.h"
+#include <kernel/drivers/statistics.h>
 
-#include "cpu/cpu.h"
-#include "cpu/smp.h"
-#include "fs/file.h"
-#include "fs/sysfs.h"
-#include "fs/vfs.h"
-#include "log/panic.h"
-#include "mem/pmm.h"
-#include "sched/sched.h"
-#include "sched/timer.h"
-#include "sync/lock.h"
+#include <kernel/cpu/cpu.h>
+#include <kernel/cpu/smp.h>
+#include <kernel/fs/file.h>
+#include <kernel/fs/sysfs.h>
+#include <kernel/fs/vfs.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/pmm.h>
+#include <kernel/sched/sched.h>
+#include <kernel/sched/timer.h>
+#include <kernel/sync/lock.h>
 
 #include <stdint.h>
 #include <stdio.h>

@@ -1,7 +1,7 @@
-#include "superblock.h"
+#include <kernel/fs/superblock.h>
 
-#include "mem/pmm.h"
-#include "vfs.h"
+#include <kernel/fs/vfs.h>
+#include <kernel/mem/pmm.h>
 
 #include <stdlib.h>
 

@@ -1,8 +1,8 @@
-#include "log_screen.h"
+#include <kernel/log/log_screen.h>
 
-#include "drivers/com.h"
-#include "glyphs.h"
-#include "sync/lock.h"
+#include <kernel/drivers/com.h>
+#include <kernel/log/glyphs.h>
+#include <kernel/sync/lock.h>
 
 #include <string.h>
 #include <sys/math.h>

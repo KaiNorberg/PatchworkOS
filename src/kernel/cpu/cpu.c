@@ -1,17 +1,17 @@
-#include "cpu.h"
+#include <kernel/cpu/cpu.h>
 
-#include "drivers/apic.h"
-#include "drivers/statistics.h"
-#include "gdt.h"
-#include "idt.h"
-#include "interrupt.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "mem/vmm.h"
-#include "sched/sched.h"
-#include "simd.h"
-#include "syscalls.h"
-#include "tss.h"
+#include <kernel/cpu/gdt.h>
+#include <kernel/cpu/idt.h>
+#include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/simd.h>
+#include <kernel/cpu/syscalls.h>
+#include <kernel/cpu/tss.h>
+#include <kernel/drivers/apic.h>
+#include <kernel/drivers/statistics.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/sched/sched.h>
 
 uint64_t cpu_init(cpu_t* cpu, cpuid_t id)
 {

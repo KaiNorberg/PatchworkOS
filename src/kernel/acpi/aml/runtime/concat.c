@@ -1,7 +1,7 @@
-#include "concat.h"
+#include <kernel/acpi/aml/runtime/concat.h>
 
-#include "convert.h"
-#include "log/log.h"
+#include <kernel/acpi/aml/runtime/convert.h>
+#include <kernel/log/log.h>
 
 #include <errno.h>
 

@@ -1,11 +1,11 @@
-#include "pmm.h"
+#include <kernel/mem/pmm.h>
 
-#include "config.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "mem/pmm_bitmap.h"
-#include "mem/pmm_stack.h"
-#include "sync/lock.h"
+#include <kernel/config.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/pmm_bitmap.h>
+#include <kernel/mem/pmm_stack.h>
+#include <kernel/sync/lock.h>
 
 #include <boot/boot_info.h>
 

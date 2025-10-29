@@ -1,10 +1,10 @@
-#include "fb.h"
+#include <kernel/drivers/abstractions/fb.h>
 
-#include "fs/file.h"
-#include "fs/sysfs.h"
-#include "fs/vfs.h"
-#include "log/log.h"
-#include "sched/thread.h"
+#include <kernel/fs/file.h>
+#include <kernel/fs/sysfs.h>
+#include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
+#include <kernel/sched/thread.h>
 
 #include <assert.h>
 #include <stdatomic.h>

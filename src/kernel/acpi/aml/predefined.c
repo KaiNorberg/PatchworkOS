@@ -1,11 +1,11 @@
-#include "predefined.h"
+#include <kernel/acpi/aml/predefined.h>
 
-#include "acpi/acpi.h"
-#include "aml.h"
-#include "log/log.h"
-#include "object.h"
+#include <kernel/acpi/acpi.h>
+#include <kernel/acpi/aml/aml.h>
+#include <kernel/acpi/aml/object.h>
+#include <kernel/log/log.h>
 
-#include <common/version.h>
+#include <kernel/version.h>
 
 #include <errno.h>
 

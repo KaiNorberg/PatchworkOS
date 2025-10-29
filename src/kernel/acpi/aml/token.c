@@ -1,4 +1,4 @@
-#include "token.h"
+#include <kernel/acpi/aml/token.h>
 
 #include <stdlib.h>
 

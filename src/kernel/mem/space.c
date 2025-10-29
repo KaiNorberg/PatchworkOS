@@ -1,17 +1,16 @@
-#include "space.h"
+#include <kernel/mem/space.h>
 
-#include "cpu/cpu.h"
-#include "cpu/smp.h"
-#include "log/panic.h"
-#include "mem/space.h"
-#include "pmm.h"
-#include "vmm.h"
-
-#include <common/paging.h>
-#include <stdlib.h>
+#include <kernel/cpu/cpu.h>
+#include <kernel/cpu/smp.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/paging.h>
+#include <kernel/mem/pmm.h>
+#include <kernel/mem/space.h>
+#include <kernel/mem/vmm.h>
 
 #include <assert.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/math.h>
 #include <sys/proc.h>

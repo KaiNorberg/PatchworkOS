@@ -1,11 +1,11 @@
-#include "net.h"
+#include <kernel/net/net.h>
 
-#include "fs/dentry.h"
-#include "fs/mount.h"
-#include "fs/sysfs.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "net/local/local.h"
+#include <kernel/fs/dentry.h>
+#include <kernel/fs/mount.h>
+#include <kernel/fs/sysfs.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/net/local/local.h>
 
 static mount_t* mount;
 

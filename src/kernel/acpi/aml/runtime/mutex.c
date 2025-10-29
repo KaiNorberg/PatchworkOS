@@ -1,8 +1,8 @@
-#include "mutex.h"
+#include <kernel/acpi/aml/runtime/mutex.h>
 
-#include "log/log.h"
-#include "sched/sched.h"
-#include "sched/thread.h"
+#include <kernel/log/log.h>
+#include <kernel/sched/sched.h>
+#include <kernel/sched/thread.h>
 
 #include <errno.h>
 #include <stdlib.h>

@@ -1,13 +1,12 @@
-#include "ps2.h"
-#include "ps2_kbd.h"
-#include "ps2_mouse.h"
+#include <kernel/drivers/hpet.h>
+#include <kernel/drivers/ps2/ps2.h>
+#include <kernel/drivers/ps2/ps2_kbd.h>
+#include <kernel/drivers/ps2/ps2_mouse.h>
 
-#include "acpi/tables.h"
-#include "cpu/port.h"
-#include "drivers/hpet.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "sched/timer.h"
+#include <kernel/acpi/tables.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/sched/timer.h>
 
 #include <errno.h>
 #include <string.h>

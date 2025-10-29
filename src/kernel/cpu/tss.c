@@ -1,4 +1,4 @@
-#include "tss.h"
+#include <kernel/cpu/tss.h>
 
 #include <assert.h>
 

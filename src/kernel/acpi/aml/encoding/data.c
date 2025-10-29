@@ -1,14 +1,14 @@
-#include "data.h"
+#include <kernel/acpi/aml/encoding/data.h>
 
-#include "acpi/aml/aml.h"
-#include "acpi/aml/debug.h"
-#include "acpi/aml/patch_up.h"
-#include "acpi/aml/runtime/convert.h"
-#include "acpi/aml/token.h"
-#include "expression.h"
-#include "log/log.h"
-#include "name.h"
-#include "package_length.h"
+#include <kernel/acpi/aml/aml.h>
+#include <kernel/acpi/aml/debug.h>
+#include <kernel/acpi/aml/encoding/expression.h>
+#include <kernel/acpi/aml/encoding/name.h>
+#include <kernel/acpi/aml/encoding/package_length.h>
+#include <kernel/acpi/aml/patch_up.h>
+#include <kernel/acpi/aml/runtime/convert.h>
+#include <kernel/acpi/aml/token.h>
+#include <kernel/log/log.h>
 
 #include <errno.h>
 #include <stdint.h>

@@ -1,9 +1,9 @@
-#include "namespace.h"
+#include <kernel/acpi/aml/namespace.h>
 
-#include "aml.h"
-#include "log/log.h"
-#include "object.h"
-#include "to_string.h"
+#include <kernel/acpi/aml/aml.h>
+#include <kernel/acpi/aml/object.h>
+#include <kernel/acpi/aml/to_string.h>
+#include <kernel/log/log.h>
 
 #include <errno.h>
 

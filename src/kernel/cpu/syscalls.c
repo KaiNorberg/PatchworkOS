@@ -1,14 +1,13 @@
-#include "syscalls.h"
+#include <kernel/cpu/syscalls.h>
 
-#include "cpu/gdt.h"
-#include "drivers/apic.h"
-#include "gdt.h"
-#include "log/log.h"
-#include "mem/vmm.h"
-#include "sched/sched.h"
-#include "sched/thread.h"
+#include <kernel/cpu/gdt.h>
+#include <kernel/drivers/apic.h>
+#include <kernel/log/log.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/sched/sched.h>
+#include <kernel/sched/thread.h>
 
-#include <common/defs.h>
+#include <kernel/defs.h>
 
 #include <assert.h>
 #include <errno.h>

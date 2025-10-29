@@ -1,8 +1,8 @@
-#include "pic.h"
+#include <kernel/drivers/pic.h>
 
-#include "cpu/interrupt.h"
-#include "cpu/port.h"
-#include "log/log.h"
+#include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/port.h>
+#include <kernel/log/log.h>
 
 void pic_disable(void)
 {

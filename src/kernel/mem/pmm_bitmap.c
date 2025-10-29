@@ -1,6 +1,5 @@
-#include "pmm_bitmap.h"
-
-#include "log/log.h"
+#include <kernel/log/log.h>
+#include <kernel/mem/pmm_bitmap.h>
 
 #include <assert.h>
 #include <sys/math.h>

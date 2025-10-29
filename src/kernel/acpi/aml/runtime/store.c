@@ -1,11 +1,11 @@
-#include "store.h"
+#include <kernel/acpi/aml/runtime/store.h>
+
+#include <kernel/acpi/aml/runtime/convert.h>
+#include <kernel/acpi/aml/runtime/copy.h>
+#include <kernel/acpi/aml/to_string.h>
+#include <kernel/log/log.h>
 
 #include <errno.h>
-
-#include "acpi/aml/to_string.h"
-#include "convert.h"
-#include "copy.h"
-#include "log/log.h"
 
 uint64_t aml_store(aml_state_t* state, aml_object_t* src, aml_object_t* dest)
 {

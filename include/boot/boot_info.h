@@ -1,6 +1,6 @@
 #pragma once
 
-#include <common/paging.h>
+#include <kernel/mem/paging_types.h>
 
 #include <gnu-efi/inc/efi.h>
 #include <gnu-efi/inc/efilib.h>

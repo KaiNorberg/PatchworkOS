@@ -1,23 +1,23 @@
-#include "panic.h"
+#include <kernel/log/panic.h>
 
-#include "cpu/cpu.h"
-#include "cpu/interrupt.h"
-#include "cpu/port.h"
-#include "cpu/smp.h"
-#include "log/log.h"
-#include "mem/pmm.h"
-#include "mem/vmm.h"
-#include "sched/thread.h"
-#include "sched/timer.h"
+#include <kernel/cpu/cpu.h>
+#include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/port.h>
+#include <kernel/cpu/regs.h>
+#include <kernel/cpu/smp.h>
+#include <kernel/log/log.h>
+#include <kernel/mem/pmm.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/sched/thread.h>
+#include <kernel/sched/timer.h>
+#include <kernel/version.h>
 
 #include <boot/boot_info.h>
-#include <common/regs.h>
-#include <common/version.h>
-#include <stdlib.h>
 
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/io.h>
 #include <sys/math.h>

@@ -1,12 +1,12 @@
-#include "object.h"
+#include <kernel/acpi/aml/object.h>
 
-#include "acpi/acpi.h"
-#include "aml.h"
-#include "exception.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "to_string.h"
-#include "token.h"
+#include <kernel/acpi/acpi.h>
+#include <kernel/acpi/aml/aml.h>
+#include <kernel/acpi/aml/exception.h>
+#include <kernel/acpi/aml/to_string.h>
+#include <kernel/acpi/aml/token.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
 
 #include <errno.h>
 #include <stddef.h>

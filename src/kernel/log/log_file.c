@@ -1,11 +1,11 @@
-#include "log_file.h"
+#include <kernel/log/log_file.h>
 
-#include "fs/file.h"
-#include "fs/sysfs.h"
-#include "log.h"
-#include "log_screen.h"
-#include "panic.h"
-#include "utils/ring.h"
+#include <kernel/fs/file.h>
+#include <kernel/fs/sysfs.h>
+#include <kernel/log/log.h>
+#include <kernel/log/log_screen.h>
+#include <kernel/log/panic.h>
+#include <kernel/utils/ring.h>
 
 #include <stdlib.h>
 

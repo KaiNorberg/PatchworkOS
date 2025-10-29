@@ -1,20 +1,20 @@
-#include "vmm.h"
+#include <kernel/mem/vmm.h>
 
-#include "cpu/cpu.h"
-#include "cpu/smp.h"
-#include "cpu/syscalls.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "mem/space.h"
-#include "pmm.h"
-#include "proc/process.h"
-#include "sched/sched.h"
-#include "sched/thread.h"
-#include "sync/lock.h"
+#include <kernel/cpu/cpu.h>
+#include <kernel/cpu/regs.h>
+#include <kernel/cpu/smp.h>
+#include <kernel/cpu/syscalls.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/paging.h>
+#include <kernel/mem/pmm.h>
+#include <kernel/mem/space.h>
+#include <kernel/proc/process.h>
+#include <kernel/sched/sched.h>
+#include <kernel/sched/thread.h>
+#include <kernel/sync/lock.h>
 
 #include <boot/boot_info.h>
-#include <common/paging.h>
-#include <common/regs.h>
 
 #include <assert.h>
 #include <errno.h>

@@ -1,8 +1,8 @@
-#include "inode.h"
+#include <kernel/fs/inode.h>
 
-#include "sched/thread.h"
-#include "sched/timer.h"
-#include "vfs.h"
+#include <kernel/fs/vfs.h>
+#include <kernel/sched/thread.h>
+#include <kernel/sched/timer.h>
 
 #include <stdlib.h>
 

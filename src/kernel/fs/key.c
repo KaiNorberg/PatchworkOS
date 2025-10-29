@@ -1,11 +1,11 @@
-#include "key.h"
+#include <kernel/fs/key.h>
 
-#include "cpu/syscalls.h"
-#include "drivers/rand.h"
-#include "log/panic.h"
-#include "sched/thread.h"
-#include "sched/timer.h"
-#include "sync/rwlock.h"
+#include <kernel/cpu/syscalls.h>
+#include <kernel/drivers/rand.h>
+#include <kernel/log/panic.h>
+#include <kernel/sched/thread.h>
+#include <kernel/sched/timer.h>
+#include <kernel/sync/rwlock.h>
 
 #include <errno.h>
 #include <stdlib.h>

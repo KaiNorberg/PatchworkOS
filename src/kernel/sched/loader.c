@@ -1,18 +1,17 @@
-#include "loader.h"
+#include <kernel/sched/loader.h>
 
+#include <kernel/cpu/gdt.h>
+#include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/sched/sched.h>
+#include <kernel/sched/thread.h>
+
+#include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/elf.h>
 #include <sys/math.h>
-
-#include "cpu/gdt.h"
-#include "errno.h"
-#include "fs/vfs.h"
-#include "log/log.h"
-#include "mem/vmm.h"
-#include "sched.h"
-#include "sched/thread.h"
-
-#include <stdlib.h>
 
 static void* loader_load_program(thread_t* thread)
 {

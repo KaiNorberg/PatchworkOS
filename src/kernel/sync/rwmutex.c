@@ -1,8 +1,8 @@
-#include "sync/rwmutex.h"
+#include <kernel/sync/rwmutex.h>
 
-#include "log/panic.h"
-#include "sched/wait.h"
-#include "sync/lock.h"
+#include <kernel/log/panic.h>
+#include <kernel/sched/wait.h>
+#include <kernel/sync/lock.h>
 
 #include <assert.h>
 #include <errno.h>

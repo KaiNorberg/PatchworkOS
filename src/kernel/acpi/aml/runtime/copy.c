@@ -1,10 +1,10 @@
-#include "copy.h"
+#include <kernel/acpi/aml/runtime/copy.h>
 
-#include "acpi/aml/to_string.h"
-#include "buffer_field.h"
-#include "convert.h"
-#include "field_unit.h"
-#include "log/log.h"
+#include <kernel/acpi/aml/runtime/buffer_field.h>
+#include <kernel/acpi/aml/runtime/convert.h>
+#include <kernel/acpi/aml/runtime/field_unit.h>
+#include <kernel/acpi/aml/to_string.h>
+#include <kernel/log/log.h>
 
 #include <errno.h>
 

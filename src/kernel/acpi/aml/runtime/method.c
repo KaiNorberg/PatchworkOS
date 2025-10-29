@@ -1,10 +1,10 @@
-#include "method.h"
+#include <kernel/acpi/aml/runtime/method.h>
 
-#include "acpi/aml/encoding/term.h"
-#include "acpi/aml/runtime/copy.h"
-#include "acpi/aml/state.h"
-#include "acpi/aml/to_string.h"
-#include "log/log.h"
+#include <kernel/acpi/aml/encoding/term.h>
+#include <kernel/acpi/aml/runtime/copy.h>
+#include <kernel/acpi/aml/state.h>
+#include <kernel/acpi/aml/to_string.h>
+#include <kernel/log/log.h>
 
 #include <errno.h>
 

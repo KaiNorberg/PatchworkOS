@@ -1,21 +1,20 @@
-#include "process.h"
+#include <kernel/proc/process.h>
 
-#include "cpu/cpu.h"
-#include "cpu/smp.h"
-#include "fs/file.h"
-#include "fs/path.h"
-#include "fs/sysfs.h"
-#include "fs/vfs.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "mem/vmm.h"
-#include "sched/thread.h"
-#include "sched/timer.h"
-#include "sched/wait.h"
-#include "sync/lock.h"
-#include "sync/rwlock.h"
+#include <kernel/cpu/cpu.h>
+#include <kernel/cpu/smp.h>
+#include <kernel/fs/file.h>
+#include <kernel/fs/path.h>
+#include <kernel/fs/sysfs.h>
+#include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/sched/thread.h>
+#include <kernel/sched/timer.h>
+#include <kernel/sched/wait.h>
+#include <kernel/sync/lock.h>
+#include <kernel/sync/rwlock.h>
 
-#include <_internal/MAX_PATH.h>
 #include <assert.h>
 #include <stdatomic.h>
 #include <stdint.h>

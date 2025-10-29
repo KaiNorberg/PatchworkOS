@@ -1,8 +1,8 @@
-#include "idt.h"
+#include <kernel/cpu/idt.h>
 
-#include "gdt.h"
-#include "interrupt.h"
-#include "tss.h"
+#include <kernel/cpu/gdt.h>
+#include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/tss.h>
 
 #include <sys/proc.h>
 

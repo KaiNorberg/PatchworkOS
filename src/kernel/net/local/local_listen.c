@@ -1,17 +1,15 @@
-#include "local_listen.h"
+#include <kernel/net/local/local_listen.h>
 
-#include "local_conn.h"
+#include <kernel/fs/sysfs.h>
+#include <kernel/log/panic.h>
+#include <kernel/net/local/local.h>
+#include <kernel/net/local/local_conn.h>
+#include <kernel/net/socket_family.h>
+#include <kernel/sched/wait.h>
+#include <kernel/sync/lock.h>
+#include <kernel/sync/rwlock.h>
+#include <kernel/utils/map.h>
 
-#include "fs/sysfs.h"
-#include "log/panic.h"
-#include "net/local/local.h"
-#include "net/socket_family.h"
-#include "sched/wait.h"
-#include "sync/lock.h"
-#include "sync/rwlock.h"
-#include "utils/map.h"
-
-#include <_internal/MAX_NAME.h>
 #include <stdlib.h>
 #include <sys/list.h>
 

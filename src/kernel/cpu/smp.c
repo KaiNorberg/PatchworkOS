@@ -1,17 +1,16 @@
-#include "smp.h"
+#include <kernel/cpu/smp.h>
 
-#include "acpi/tables.h"
-#include "cpu/cpu.h"
-#include "cpu/interrupt.h"
-#include "drivers/apic.h"
-#include "interrupt.h"
-#include "log/log.h"
-#include "log/panic.h"
-#include "mem/vmm.h"
-#include "trampoline.h"
+#include <kernel/acpi/tables.h>
+#include <kernel/cpu/cpu.h>
+#include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/trampoline.h>
+#include <kernel/drivers/apic.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/vmm.h>
 
-#include <common/defs.h>
-#include <common/regs.h>
+#include <kernel/cpu/regs.h>
+#include <kernel/defs.h>
 
 #include <assert.h>
 #include <stdatomic.h>
