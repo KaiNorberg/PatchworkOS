@@ -11,7 +11,7 @@ USR_PROGRAMS = $(filter-out $(ROOT_PROGRAMS),$(PROGRAMS))
 
 QEMU_MEMORY ?= 2G
 QEMU_CPUS ?= $(shell nproc 2>/dev/null || echo 8)
-QEMU_MACHINE ?= q35
+QEMU_MACHINE ?= pc
 QEMU_ARGS ?=
 
 QEMU_FLAGS = \

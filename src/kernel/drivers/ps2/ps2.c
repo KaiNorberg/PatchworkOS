@@ -323,7 +323,11 @@ static uint64_t ps2_device_init(ps2_device_t device)
 
 void ps2_init(void)
 {
-    fadt_t* fadt = FADT_GET();
+    fadt_t* fadt = (fadt_t*)acpi_tables_lookup(FADT_SIGNATURE, 0);
+    if (fadt == NULL)
+    {
+        panic(NULL, "ps2 not supported by hardware (ACPI FADT table not found)");
+    }
 
     if (!(fadt->bootArchFlags & FADT_BOOT_ARCH_PS2_EXISTS))
     {
