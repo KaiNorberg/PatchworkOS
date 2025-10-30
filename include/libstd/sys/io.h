@@ -424,7 +424,7 @@ typedef struct
 {
     inode_number_t number; ///< The number of the entries inode.
     inode_type_t type;     ///< The type of the entries inode.
-    char name[MAX_PATH];   ///< The relative name of the directory.
+    char path[MAX_PATH];   ///< The relative path of the directory.
 } dirent_t;
 
 /**

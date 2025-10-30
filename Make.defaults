@@ -72,6 +72,23 @@ else
 		bin/libstd/crtn.o
 endif
 
+CFLAGS_MODULE := \
+	$(CFLAGS_DISABLE_SIMD) \
+	-fno-pic \
+	-fno-stack-check \
+	-mcmodel=large \
+	-mno-red-zone \
+	-D_MODULE_ \
+	-D__STDC_WANT_LIB_EXT1__=1 \
+	-fPIC \
+    -shared
+
+LDFLAGS_MODULE := \
+    $(LDFLAGS) \
+    -shared \
+    -Bsymbolic \
+    -Tinclude/modules/linker.lds
+
 define find_sources
 $(shell find $(1) -name "*.c" -o -name "*.s")
 endef

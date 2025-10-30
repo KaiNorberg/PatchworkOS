@@ -4,12 +4,17 @@
 #include <kernel/acpi/aml/object.h>
 #include <kernel/acpi/aml/to_string.h>
 #include <kernel/log/log.h>
+#include <kernel/fs/sysfs.h>
+#include <kernel/acpi/acpi.h>
+#include <kernel/log/panic.h>
 
 #include <errno.h>
 
 static aml_namespace_overlay_t globalOverlay;
 
 static aml_object_t* namespaceRoot = NULL;
+
+static dentry_t* namespaceDir = NULL;
 
 static inline map_key_t aml_object_map_key(aml_object_id_t parentId, aml_name_t name)
 {
@@ -77,10 +82,56 @@ uint64_t aml_namespace_init(aml_object_t* root)
     return 0;
 }
 
-uint64_t aml_namespace_expose(void)
+static uint64_t aml_namespace_expose_object(aml_object_t* object, dentry_t* parentDir)
 {
-    // TODO: Expose ACPI namespace via sysfs
+    if (object == NULL || !(object->flags & AML_OBJECT_NAMED) || parentDir == NULL)
+    {
+        return ERR;
+    }
+
+    object->dir = sysfs_dir_new(parentDir, AML_NAME_TO_STRING(object->name), NULL, NULL);
+    if (object->dir == NULL)
+    {
+        return ERR;
+    }
+
+    if (object->type & AML_NAMESPACES)
+    {
+        aml_object_t* child = NULL;
+        LIST_FOR_EACH(child, &object->children, siblingsEntry)
+        {
+            if (aml_namespace_expose_object(child, object->dir) == ERR)
+            {
+                return ERR;
+            }
+        }
+    }
+
     return 0;
+}
+
+void aml_namespace_expose(void)
+{
+    dentry_t* acpiDir = acpi_get_sysfs_root();
+    assert(acpiDir != NULL);
+
+    namespaceDir = sysfs_dir_new(acpiDir, "namespace", NULL, NULL);
+    DEREF(acpiDir);
+    if (namespaceDir == NULL)
+    {
+        panic(NULL, "Failed to create ACPI namespace sysfs directory");
+    }
+
+    aml_object_t* child = NULL;
+    LIST_FOR_EACH(child, &namespaceRoot->children, siblingsEntry)
+    {
+        if (aml_namespace_expose_object(child, namespaceDir) == ERR)
+        {
+            DEREF(namespaceDir);
+            namespaceDir = NULL;
+            panic(NULL, "Failed to expose ACPI namespace in sysfs");
+        }
+    }
 }
 
 aml_object_t* aml_namespace_get_root(void)

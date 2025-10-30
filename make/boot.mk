@@ -11,7 +11,7 @@ CFLAGS += \
 	-fshort-wchar \
 	-mno-red-zone \
 	-maccumulate-outgoing-args \
-	-D__BOOT__ \
+	-D_BOOT_ \
 	-Iinclude/boot \
 	-Ilib/gnu-efi/inc \
 	-Isrc/libstd

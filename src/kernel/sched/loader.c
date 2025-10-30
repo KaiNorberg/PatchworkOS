@@ -36,6 +36,7 @@ static void* loader_load_program(thread_t* thread)
     {
         return NULL;
     }
+
     if (!ELF_IS_VALID(&header))
     {
         return NULL;

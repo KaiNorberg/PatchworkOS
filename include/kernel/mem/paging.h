@@ -9,7 +9,7 @@
 #include <string.h>
 #include <sys/proc.h>
 
-#ifdef __BOOT__
+#ifdef _BOOT_
 #include <efi.h>
 #include <efilib.h>
 #endif
@@ -60,7 +60,7 @@ static inline void tlb_invalidate(void* virtAddr, uint64_t pageCount)
  */
 static inline uintptr_t pml_accessible_addr(pml_entry_t entry)
 {
-#ifdef __BOOT__
+#ifdef _BOOT_
     return entry.addr << PML_ADDR_OFFSET_BITS;
 #else
     return PML_LOWER_TO_HIGHER(entry.addr << PML_ADDR_OFFSET_BITS);
@@ -101,7 +101,7 @@ static inline uint64_t pml_new(page_table_t* table, pml_t** outPml)
     {
         return ERR;
     }
-#ifdef __BOOT__
+#ifdef _BOOT_
     SetMem(pml, PAGE_SIZE, 0);
 #else
     memset(pml, 0, PAGE_SIZE);

@@ -140,6 +140,13 @@ static inline map_key_t map_key_string(const char* str)
 void map_entry_init(map_entry_t* entry);
 
 /**
+ * @brief Create a map initializer.
+ *
+ * @return A map initializer.
+ */
+#define MAP_CREATE { .entries = NULL, .capacity = 0, .length = 0, .tombstones = 0 }
+
+/**
  * @brief Initialize a map.
  *
  * @param map The map to initialize.

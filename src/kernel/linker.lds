@@ -34,24 +34,19 @@ SECTIONS
         *(.trampoline)
     }
 
-    .syscall_table : ALIGN(4K)
+    .syscall_table :
     {
         _syscallTableStart = .;
         KEEP(*(.syscall_table))
         _syscallTableEnd = .;
     }
 
-    .tests : ALIGN(4K)
+    .acpi_sdt_handlers :
     {
-        _testsStart = .;
-        KEEP(*(.tests))
-        _testsEnd = .;
-    }
-
-    .acpi_sdt_handlers : {
         _acpiSdtHandlersStart = .;
         KEEP(*(.acpi_sdt_handlers*))
         _acpiSdtHandlersEnd = .;
     }
+
     _kernelEnd = .;
 }

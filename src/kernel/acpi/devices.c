@@ -7,8 +7,35 @@
 #include <kernel/acpi/aml/to_string.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/module/module.h>
+#include <kernel/acpi/aml/runtime/eisa_id.h>
 
 #include <errno.h>
+
+static inline uint64_t acpi_hid_get(aml_state_t* state, aml_object_t* device, char* buffer)
+{
+    aml_object_t* hid = aml_namespace_find(&state->overlay, device, 1, AML_NAME('_', 'H', 'I', 'D'));
+    if (hid == NULL)
+    {
+        return 1;
+    }
+    DEREF_DEFER(hid);
+
+    if (hid->type == AML_INTEGER)
+    {
+        return aml_eisa_id_to_string(hid->integer.value, buffer);
+    }
+    else if (hid->type == AML_STRING)
+    {
+        strcpy(buffer, hid->string.content);
+        return 0;
+    }
+
+    LOG_ERR("%s._HID is a '%s', not an Integer or String\n", AML_NAME_TO_STRING(device->name),
+        aml_type_to_string(hid->type));
+    errno = EILSEQ;
+    return ERR;
+}
 
 static inline uint64_t acpi_sta_get_flags(aml_state_t* state, aml_object_t* device, acpi_sta_flags_t* out)
 {
@@ -39,25 +66,39 @@ static inline uint64_t acpi_sta_get_flags(aml_state_t* state, aml_object_t* devi
     return 0;
 }
 
-static inline uint64_t acpi_devices_init_children(aml_state_t* state, aml_object_t* parent)
+static inline uint64_t acpi_device_init_children(aml_state_t* state, aml_object_t* device, bool shouldCallIni)
 {
-    if (parent->type != AML_DEVICE)
-    {
-        return 0; // Nothing to do
-    }
-
     aml_object_t* child;
-    LIST_FOR_EACH(child, &parent->children, siblingsEntry)
+    LIST_FOR_EACH(child, &device->children, siblingsEntry)
     {
         if (child->type != AML_DEVICE)
         {
-            continue; // Only devices can have _STA and _INI
+            continue;
         }
 
         acpi_sta_flags_t sta;
         if (acpi_sta_get_flags(state, child, &sta) == ERR)
         {
             return ERR;
+        }
+
+        char hid[MAX_NAME];
+        uint64_t hidResult = acpi_hid_get(state, child, hid);
+        if (hidResult == ERR)
+        {
+            return ERR;
+        }
+        else if (hidResult == 0)
+        {
+            module_event_t event = {
+                .type = MODULE_EVENT_LOAD,
+                .load.hid = hid,
+            };
+            if (module_event(&event) == ERR)
+            {
+                LOG_WARN("could not load module for ACPI device '%s' with HID '%s'\n", AML_NAME_TO_STRING(child->name),
+                    hid);
+            }
         }
 
         if (sta & ACPI_STA_PRESENT)
@@ -83,12 +124,10 @@ static inline uint64_t acpi_devices_init_children(aml_state_t* state, aml_object
             }
         }
 
-        if (sta & (ACPI_STA_PRESENT | ACPI_STA_FUNCTIONAL))
+        bool childShouldCallIni = shouldCallIni && (sta & (ACPI_STA_PRESENT | ACPI_STA_FUNCTIONAL));
+        if (acpi_device_init_children(state, child, childShouldCallIni) == ERR)
         {
-            if (acpi_devices_init_children(state, child) == ERR)
-            {
-                return ERR;
-            }
+            return ERR;
         }
     }
 
@@ -132,7 +171,8 @@ void acpi_devices_init(void)
         }
     }
 
-    if (acpi_devices_init_children(&state, sb) == ERR)
+    LOG_DEBUG("initializing ACPI devices under \\_SB_\n");
+    if (acpi_device_init_children(&state, sb, true) == ERR)
     {
         aml_state_deinit(&state);
         panic(NULL, "could not initialize ACPI devices\n");

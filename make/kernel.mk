@@ -15,7 +15,7 @@ CFLAGS += \
 	-mcmodel=kernel \
 	-mno-red-zone \
 	-Isrc/libstd \
-	-D__KERNEL__ \
+	-D_KERNEL_ \
 	-D__STDC_WANT_LIB_EXT1__=1
 
 # Will cause a panic to trigger QEMU exit for testing purposes

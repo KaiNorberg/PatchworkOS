@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef __KERNEL__
+#ifndef _KERNEL_
 #include "user/common/file.h"
 #endif
 
@@ -49,7 +49,7 @@
 #define _LDBL_MANT_START(bytes) (bytes + 6)
 #endif
 
-#ifndef __KERNEL__
+#ifndef _KERNEL_
 #define _PRINT_PUT(ctx, x) \
     ({ \
         int character = x; \
@@ -81,7 +81,7 @@
     })
 #endif
 
-#ifndef __KERNEL__
+#ifndef _KERNEL_
 
 static void _print_hexa(int sign, int exp, int dec, unsigned char const* mant, size_t mant_dig, _format_ctx_t* ctx)
 {
@@ -848,7 +848,7 @@ const char* _print(const char* spec, _format_ctx_t* ctx)
         if (ctx->flags & FORMAT_DOUBLE)
         {
             /* Floating Point conversions */
-#ifndef __KERNEL__
+#ifndef _KERNEL_
             if (ctx->flags & FORMAT_LDOUBLE)
             {
                 long double value = va_arg(ctx->arg, long double);

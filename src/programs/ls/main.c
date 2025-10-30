@@ -91,7 +91,7 @@ static uint64_t print_dir(const char* path)
     uint64_t maxLength = 0;
     for (uint64_t i = 0; i < entryCount; i++)
     {
-        uint64_t nameLength = strlen(entries[i].name) + (entries[i].type == INODE_DIR ? 1 : 0);
+        uint64_t nameLength = strlen(entries[i].path) + (entries[i].type == INODE_DIR ? 1 : 0);
         if (nameLength > maxLength)
         {
             maxLength = nameLength;
@@ -119,7 +119,7 @@ static uint64_t print_dir(const char* path)
             uint64_t index = col * numRows + row;
             if (index < entryCount)
             {
-                const char* name = entries[index].name;
+                const char* name = entries[index].path;
                 bool isDir = entries[index].type == INODE_DIR;
 
                 if (isDir)

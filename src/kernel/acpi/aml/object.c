@@ -39,6 +39,12 @@ static void aml_object_free(aml_object_t* object)
 
     aml_object_clear(object);
 
+    if (object->dir != NULL)
+    {
+        DEREF(object->dir);
+        object->dir = NULL;
+    }
+
     if (list_length(&objectsCache) < AML_OBJECT_CACHE_SIZE)
     {
         list_push(&objectsCache, &object->listEntry);
@@ -79,6 +85,7 @@ aml_object_t* aml_object_new(void)
     object->parent = NULL;
     object->flags = AML_OBJECT_NONE;
     object->type = AML_UNINITIALIZED;
+    object->dir = NULL;
 
     totalObjects++;
     return object;

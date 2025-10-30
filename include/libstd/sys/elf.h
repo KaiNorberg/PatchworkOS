@@ -8,10 +8,7 @@
  * @ingroup libstd
  * @defgroup libstd_sys_elf ELF file
  *
- * The `sys/elf.h` header defines structs and constants for ELF files used in Patchwork, note that Patchwork only
- * supports ELF files.
- *
- * @see https://wiki.osdev.org/ELF for more information about the ELF format.
+ * @see [ELF Specification](https://gabi.xinuos.com/index.html) for more information.
  *
  * @{
  */
@@ -251,23 +248,6 @@ typedef uint64_t elf_shdr_flags_t;
 #define ELF_DT_HIGH_PROC 0x7fffffff
 
 /**
- * @brief Checks the validity of an ELF header.
- * @ingroup libstd_sys_elf
- *
- * The `ELF_IS_VALID()` macro checks that the ELF file header is using version 1, 64-bit, x86_64 with little endian and
- * System V ABI.
- *
- * @param hdr A pointer to the ELF header structure.
- * @return True if the ELF header is valid, false otherwise.
- */
-#define ELF_IS_VALID(hdr) \
-    ((hdr)->ident[ELF_IDENT_MAG0] == ELF_MAG0 && (hdr)->ident[ELF_IDENT_MAG1] == ELF_MAG1 && \
-        (hdr)->ident[ELF_IDENT_MAG2] == ELF_MAG2 && (hdr)->ident[ELF_IDENT_MAG3] == ELF_MAG3 && \
-        (hdr)->ident[ELF_IDENT_CLASS] == ELF_CLASS_64 && (hdr)->ident[ELF_IDENT_DATA] == ELF_DATA_2LSB && \
-        (hdr)->ident[ELF_IDENT_VERSION] == ELF_VERSION_CURRENT && (hdr)->ident[ELF_IDENT_OSABI] == ELF_OSABI_SYSV && \
-        (hdr)->machine == ELF_HDR_MACHINE_X86_64 && (hdr)->version == ELF_HDR_VERSION_1)
-
-/**
  * @brief ELF file header.
  *
  * The `elf_hdr_t` structure stored at the beginning of ELF files.
@@ -389,6 +369,16 @@ typedef struct
     uint32_t descSize;
     uint32_t type;
 } elf_note_t;
+
+typedef struct
+{
+    elf_hdr_t* data;
+    uint64_t size;
+} elf_file_t;
+
+uint64_t elf_file_init(elf_file_t* elf, void* data, uint64_t size);
+
+void elf_file_deinit(elf_file_t* elf);
 
 #endif
 

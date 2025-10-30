@@ -140,9 +140,9 @@ uint64_t aml_namespace_init(aml_object_t* root);
 /**
  * @brief Expose the entire namespace heirarchy to sysfs.
  *
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * Will panic on failure.
  */
-uint64_t aml_namespace_expose(void);
+void aml_namespace_expose(void);
 
 /**
  * @brief Get the root object of the namespace heirarchy.

@@ -9,7 +9,7 @@
 #include <sys/proc.h>
 #include <threads.h>
 
-#ifdef __KERNEL__
+#ifdef _KERNEL_
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/sync/lock.h>
@@ -31,7 +31,7 @@ void _heap_unmap_memory(void* addr, uint64_t size)
 {
     vmm_unmap(NULL, addr, size);
 }
-#else  // ndef __KERNEL__
+#else  // ndef _KERNEL_
 static mtx_t mutex;
 
 static fd_t zeroDev = ERR;
@@ -51,7 +51,7 @@ void _heap_unmap_memory(void* addr, uint64_t size)
 {
     munmap(addr, size);
 }
-#endif // ndef __KERNEL__
+#endif // ndef _KERNEL_
 
 static list_t freeLists[_HEAP_NUM_BINS] = {0};
 static bitmap_t freeBitmap = {0};
@@ -61,7 +61,7 @@ list_t _heapList = LIST_CREATE(_heapList);
 
 void _heap_init(void)
 {
-#ifdef __KERNEL__
+#ifdef _KERNEL_
     lock_init(&mutex);
 #else
     mtx_init(&mutex, mtx_plain);
@@ -80,7 +80,7 @@ void _heap_init(void)
 
 void _heap_acquire(void)
 {
-#ifdef __KERNEL__
+#ifdef _KERNEL_
     lock_acquire(&mutex);
 #else
     mtx_lock(&mutex);
@@ -89,7 +89,7 @@ void _heap_acquire(void)
 
 void _heap_release(void)
 {
-#ifdef __KERNEL__
+#ifdef _KERNEL_
     lock_release(&mutex);
 #else
     mtx_unlock(&mutex);

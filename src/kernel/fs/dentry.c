@@ -155,8 +155,8 @@ static void getdents_write(getdents_ctx_t* ctx, inode_number_t number, inode_typ
         dirent_t* dirent = &ctx->buffer[ctx->index - start];
         dirent->number = number;
         dirent->type = type;
-        strncpy(dirent->name, name, MAX_PATH - 1);
-        dirent->name[MAX_PATH - 1] = '\0';
+        strncpy(dirent->path, name, MAX_PATH - 1);
+        dirent->path[MAX_PATH - 1] = '\0';
     }
 
     ctx->index++;

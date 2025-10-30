@@ -1,13 +1,14 @@
 SECTIONS = boot kernel libstd libpatchwork
 PROGRAMS = $(basename $(notdir $(wildcard make/programs/*.mk)))
+MODULES = $(basename $(notdir $(wildcard make/modules/*.mk)))
 TARGET_IMAGE = bin/PatchworkOS.img
 VERSION_HEADER = include/kernel/version.h
-ROOT_DIRS = acpi bin cfg dev efi efi/boot home kernel lib net proc sys tmp usr usr/bin usr/share usr/license var
+ROOT_DIRS = acpi bin cfg dev efi efi/boot home kernel kernel/modules lib net proc sys tmp usr usr/bin usr/share usr/license var
 
 # Programs to copy to /bin instead of /usr/bin
-ROOT_PROGRAMS = init wall cursor taskbar dwm shell rm ls link mv touch cat echo
+BIN_PROGRAMS = init wall cursor taskbar dwm shell rm ls link mv touch cat echo
 # Programs to copy to /usr/bin
-USR_PROGRAMS = $(filter-out $(ROOT_PROGRAMS),$(PROGRAMS))
+USR_BIN_PROGRAMS = $(filter-out $(BIN_PROGRAMS),$(PROGRAMS))
 
 QEMU_MEMORY ?= 2G
 QEMU_CPUS ?= $(shell nproc 2>/dev/null || echo 8)
@@ -65,6 +66,9 @@ endif
 $(SECTIONS): setup
 	$(MAKE) -f make/$@.mk SRCDIR=src/$@ BUILDDIR=build/$@ BINDIR=bin/$@
 
+$(MODULES): $(SECTIONS)
+	$(MAKE) -f make/modules/$@.mk SRCDIR=src/modules/$@ BUILDDIR=build/modules/$@ BINDIR=bin/modules MODULE=$@
+
 $(PROGRAMS): $(MODULES)
 	$(MAKE) -f make/programs/$@.mk SRCDIR=src/programs/$@ BUILDDIR=build/programs/$@ BINDIR=bin/programs PROGRAM=$@
 
@@ -77,8 +81,9 @@ deploy: $(PROGRAMS)
 	mcopy -i $(TARGET_IMAGE) -s bin/boot/bootx64.efi ::/efi/boot
 	mcopy -i $(TARGET_IMAGE) -s bin/kernel/kernel ::/kernel
 	mcopy -i $(TARGET_IMAGE) -s LICENSE ::/usr/license
-	$(foreach prog,$(ROOT_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/bin;)
-	$(foreach prog,$(USR_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/usr/bin;)
+	$(foreach mod,$(MODULES),mcopy -i $(TARGET_IMAGE) -s bin/modules/$(mod) ::/kernel/modules;)
+	$(foreach prog,$(BIN_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/bin;)
+	$(foreach prog,$(USR_BIN_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/usr/bin;)
 
 run:
 	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_ARGS)

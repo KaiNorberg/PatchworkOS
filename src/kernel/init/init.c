@@ -21,13 +21,13 @@
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
+#include <kernel/module/module.h>
 #include <kernel/net/net.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/loader.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
-#include <kernel/module/module.h>
 
 #include <boot/boot_info.h>
 
@@ -63,7 +63,7 @@ void init_early(const boot_info_t* bootInfo)
     bootThread->frame.rsp = bootThread->kernelStack.top;
     bootThread->frame.cs = GDT_CS_RING0;
     bootThread->frame.ss = GDT_SS_RING0;
-    bootThread->frame.rflags = RFLAGS_ALWAYS_SET;
+    bootThread->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
 
     atomic_store(&bootThread->state, THREAD_RUNNING);
     bootThread->sched.deadline = CLOCKS_NEVER;
@@ -100,14 +100,14 @@ static void init_finalize(const boot_info_t* bootInfo)
     ramfs_init(&bootInfo->disk);
     sysfs_init();
 
+    module_init();
+
     aml_init();
     acpi_devices_init();
     acpi_reclaim_memory(&bootInfo->memory.map);
 
     acpi_tables_expose();
     aml_namespace_expose();
-
-    module_init();
 
     log_file_expose();
     process_procfs_init();
