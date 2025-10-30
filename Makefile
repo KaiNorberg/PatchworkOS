@@ -11,7 +11,7 @@ USR_PROGRAMS = $(filter-out $(ROOT_PROGRAMS),$(PROGRAMS))
 
 QEMU_MEMORY ?= 2G
 QEMU_CPUS ?= $(shell nproc 2>/dev/null || echo 8)
-QEMU_MACHINE ?= pc
+QEMU_MACHINE ?= q35
 QEMU_ARGS ?=
 
 QEMU_FLAGS = \
@@ -23,7 +23,8 @@ QEMU_FLAGS = \
 	-smp $(QEMU_CPUS) \
 	-cpu qemu64 \
 	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
-	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd
+	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
+	-device i8042
 
 ifeq ($(DEBUG),1)
 	ifneq ($(GDB),1)
