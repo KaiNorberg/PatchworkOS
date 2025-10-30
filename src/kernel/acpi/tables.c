@@ -165,16 +165,31 @@ static uint64_t acpi_tables_load_from_xsdt(xsdt_t* xsdt)
 
 static uint64_t acpi_tables_load_from_fadt(void)
 {
-    fadt_t* facp = FADT_GET();
-    if (facp == NULL)
+    fadt_t* fadt = (fadt_t*)acpi_tables_lookup(FADT_SIGNATURE, 0);
+    if (fadt == NULL)
     {
         LOG_ERR("failed to find FACP table\n");
         return ERR;
     }
 
-    if (acpi_tables_push((void*)facp->xDsdt) == ERR)
+    if (fadt->dsdt == 0 && fadt->xDsdt == 0)
     {
-        LOG_ERR("failed to cache DSDT table\n");
+        LOG_ERR("FADT has no DSDT pointer\n");
+        return ERR;
+    }
+
+    if (fadt->dsdt == 0)
+    {
+        if (acpi_tables_push((void*)fadt->xDsdt) == ERR)
+        {
+            LOG_ERR("failed to cache DSDT table from fadt_t::xDsdt\n");
+            return ERR;
+        }
+    }
+
+    if (acpi_tables_push((void*)((uint64_t)fadt->dsdt)) == ERR)
+    {
+        LOG_ERR("failed to cache DSDT table from fadt_t::dsdt\n");
         return ERR;
     }
 

@@ -1,11 +1,13 @@
 #pragma once
 
-#include <kernel/cpu/interrupt.h>
 #include <kernel/defs.h>
 
 #include <boot/boot_info.h>
 
 #include <sys/list.h>
+
+typedef struct interrupt_frame interrupt_frame_t;
+typedef struct cpu cpu_t;
 
 /**
  * @brief Panic handling
@@ -56,6 +58,10 @@ void panic_symbols_init(const boot_kernel_t* kernel);
 
 /**
  * @brief Panic the kernel, printing a message and halting.
+ *
+ * @param frame Pointer to the interrupt frame, can be `NULL`.
+ * @param format The format string for the panic message.
+ * @param ... Additional arguments for the format string.
  */
 NORETURN void panic(const interrupt_frame_t* frame, const char* format, ...);
 

@@ -38,7 +38,7 @@ typedef enum
  * Stores the CPU state at the time of a interrupt, usefull for context switching as we can modify the
  * registers before returning from the interrupt.
  */
-typedef struct PACKED
+typedef struct interrupt_frame
 {
     uint64_t r15;
     uint64_t r14;

@@ -548,11 +548,10 @@ void aml_namespace_overlay_deinit(aml_namespace_overlay_t* overlay)
         return;
     }
 
-    aml_object_t* object;
-    aml_object_t* temp;
-    LIST_FOR_EACH_SAFE(object, temp, &overlay->objects, listEntry)
+    while (!list_is_empty(&overlay->objects))
     {
-        aml_namespace_remove(object);
+        aml_object_t* obj = CONTAINER_OF(list_pop(&overlay->objects), aml_object_t, listEntry);
+        aml_namespace_remove(obj);
     }
 
     map_deinit(&overlay->map);

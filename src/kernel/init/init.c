@@ -74,19 +74,32 @@ void init_early(const boot_info_t* bootInfo)
     thread_jump(bootThread);
 }
 
+// We delay freeing bootloader data as we are still using it during initalization.
 static void init_free_loader_data(const boot_memory_map_t* map)
 {
-    for (uint64_t i = 0; i < map->length; i++)
+    // The memory map will be stored in the data we are freeing so we copy it first.
+    boot_memory_map_t volatile mapCopy = *map;
+    EFI_MEMORY_DESCRIPTOR* volatile descriptorsCopy = malloc(mapCopy.descSize * mapCopy.length);
+    if (descriptorsCopy == NULL)
     {
-        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
+        panic(NULL, "Failed to allocate memory for boot memory map copy");
+    }
+    memcpy(descriptorsCopy, map->descriptors, mapCopy.descSize * mapCopy.length);
+    mapCopy.descriptors = (EFI_MEMORY_DESCRIPTOR* const)descriptorsCopy;
+
+    for (uint64_t i = 0; i < mapCopy.length; i++)
+    {
+        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(&mapCopy, i);
 
         if (desc->Type == EfiLoaderData)
         {
-            pmm_free_region((void*)desc->VirtualStart, desc->NumberOfPages);
             LOG_INFO("free boot memory [0x%016lx-0x%016lx]\n", desc->VirtualStart,
                 ((uintptr_t)desc->VirtualStart) + desc->NumberOfPages * PAGE_SIZE);
+            pmm_free_region((void*)desc->VirtualStart, desc->NumberOfPages);
         }
     }
+
+    free(descriptorsCopy);
 }
 
 static void init_finalize(const boot_info_t* bootInfo)

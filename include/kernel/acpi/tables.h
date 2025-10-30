@@ -86,7 +86,7 @@ typedef struct PACKED
     uint8_t resetValue;
     uint8_t reserved3[3];
     uint64_t xFirmwareControl;
-    uint64_t xDsdt;
+    uint64_t xDsdt; ///< Extended pointer to dsdt, should be used if `dsdt` is 0.
     fadt_gas_t xPm1aEventBlock;
     fadt_gas_t xPm1bEventBlock;
     fadt_gas_t xPm1aControlBlock;
@@ -98,11 +98,9 @@ typedef struct PACKED
 } fadt_t;
 
 /**
- * @brief Type safe way to get the FADT table
- *
- * @return fadt_t* The FADT table pointer
+ * @brief FADT table signature
  */
-#define FADT_GET() ((fadt_t*)acpi_tables_lookup("FACP", 0))
+#define FADT_SIGNATURE "FACP"
 
 /**
  * @brief Multiple APIC Description Table flags.
