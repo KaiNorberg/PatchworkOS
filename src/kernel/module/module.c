@@ -7,7 +7,6 @@ static lock_t modulesLock = LOCK_CREATE;
 
 void module_init(void)
 {
-
 }
 
 uint64_t module_event(module_event_t* event)

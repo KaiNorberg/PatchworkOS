@@ -5,6 +5,7 @@
 #include <kernel/cpu/port.h>
 #include <kernel/cpu/regs.h>
 #include <kernel/cpu/smp.h>
+#include <kernel/init/init.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
@@ -55,6 +56,10 @@ static bool panic_is_valid_stack_frame(void* ptr)
         return false;
     }
     if ((uintptr_t)ptr > UINTPTR_MAX - 16)
+    {
+        return false;
+    }
+    if (ptr < (void*)&_kernelStart || ptr >= (void*)&_kernelEnd)
     {
         return false;
     }
@@ -299,11 +304,6 @@ void panic_stack_trace(const interrupt_frame_t* frame)
             break;
         }
 
-        if (prevFrame && rbp <= prevFrame)
-        {
-            break;
-        }
-
         uint64_t returnAddress = rbp[1];
         if (returnAddress == 0)
         {
@@ -363,12 +363,11 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
 {
     asm volatile("cli");
 
-    cpu_t* self = smp_self_unsafe();
-
+    cpuid_t selfId = smp_self_id_unsafe();
     uint32_t expectedCpuId = PANIC_NO_CPU_ID;
-    if (!atomic_compare_exchange_strong(&panicCpudId, &expectedCpuId, self->id))
+    if (!atomic_compare_exchange_strong(&panicCpudId, &expectedCpuId, selfId))
     {
-        if (expectedCpuId == self->id)
+        if (expectedCpuId == selfId)
         {
             const char* message = "!!! KERNEL DOUBLE PANIC ON SAME CPU !!!\n";
             log_write(message, strlen(message));
@@ -379,18 +378,19 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
         }
     }
 
+    va_list args;
+    va_start(args, format);
+    vsnprintf(panicBuffer, sizeof(panicBuffer), format, args);
+    va_end(args);
+
     smp_halt_others();
 
     log_screen_enable();
 
-    va_list args;
-    va_start(args, format);
-    vsnprintf(panicBuffer, LOG_MAX_BUFFER, format, args);
-    va_end(args);
-
     LOG_PANIC("!!! KERNEL PANIC (%s version %s) !!!\n", OS_NAME, OS_VERSION);
-    LOG_PANIC("cause: %s\n", panicBuffer);
+    LOG_PANIC("cause: %s\n", panicBuffer); // Filled in by panic()
 
+    cpu_t* self = smp_self_unsafe();
     thread_t* currentThread = self->sched.runThread;
     if (currentThread == NULL)
     {
@@ -510,15 +510,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
     if (frame != NULL)
     {
         panic_registers(frame);
-        if (frame->vector == EXCEPTION_PAGE_FAULT &&
-            (cr2 >= self->sched.runThread->kernelStack.guardBottom && cr2 < self->sched.runThread->kernelStack.top))
-        {
-            LOG_PANIC("skipping stack dump due to page fault in kernel stack region\n");
-        }
-        else
-        {
-            panic_print_stack_dump(frame);
-        }
+        panic_print_stack_dump(frame);
         panic_stack_trace(frame);
     }
     else

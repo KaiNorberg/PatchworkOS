@@ -21,13 +21,13 @@
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
+#include <kernel/module/module.h>
 #include <kernel/net/net.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/loader.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
-#include <kernel/module/module.h>
 
 #include <boot/boot_info.h>
 

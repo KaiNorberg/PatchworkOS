@@ -64,7 +64,10 @@ typedef struct module
 /**
  * @brief Macro to define what ACPI HIDs a module can handle.
  *
- * To define what ACPI HIDs a module can handle we define a separate section in the module's binary called `.module_acpi_hids` this section stores a concatenated string of all ACPI HIDs the module can handle. We dont need terminators for each string as their length is fixed depending on their prefix, we do have a null-terminator at the end of the entire list though.
+ * To define what ACPI HIDs a module can handle we define a separate section in the module's binary called
+ * `.module_acpi_hids` this section stores a concatenated string of all ACPI HIDs the module can handle. We dont need
+ * terminators for each string as their length is fixed depending on their prefix, we do have a null-terminator at the
+ * end of the entire list though.
  *
  * Example:
  * ```c
@@ -74,8 +77,7 @@ typedef struct module
  * @param ... A variable amount of ACPI HIDs as string literals.
  */
 #define MODULE_ACPI_HIDS(...) \
-    static const char* _moduleAcpiHids __attribute__((section(".module_acpi_hids"), used)) = \
-        __VA_ARGS__
+    static const char* _moduleAcpiHids __attribute__((section(".module_acpi_hids"), used)) = __VA_ARGS__
 
 /**
  * @brief Initializes the module system.
