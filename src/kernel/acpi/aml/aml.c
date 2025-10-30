@@ -153,7 +153,7 @@ void aml_init(void)
 
     if (aml_init_parse_all() == ERR)
     {
-        panic(NULL, "failed to parse all AML code\n");
+        //panic(NULL, "failed to parse all AML code\n");
     }
 
     LOG_INFO("resolving %llu unresolved objects\n", aml_patch_up_unresolved_count());
