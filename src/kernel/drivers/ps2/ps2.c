@@ -329,12 +329,6 @@ void ps2_init(void)
         panic(NULL, "ps2 not supported by hardware (ACPI FADT table not found)");
     }
 
-    if (!(fadt->bootArchFlags & FADT_BOOT_ARCH_PS2_EXISTS))
-    {
-        panic(NULL, "ps2 not supported by hardware (ACPI FADT indicates no PS/2 controller)");
-    }
-    LOG_INFO("ps2 controller detected via FADT\n");
-
     if (ps2_send_cmd(PS2_CMD_FIRST_DISABLE) == ERR)
     {
         panic(NULL, "ps2 first device disable failed");

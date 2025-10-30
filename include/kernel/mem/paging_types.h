@@ -274,14 +274,20 @@ typedef enum
 /**
  * @brief Ensures that the given address is in the lower half of the address space.
  *
- * If the address is in the higher half, it is converted to the lower half.
- * If the address is already in the lower half, it is returned unchanged.
- *
- * @param addr The address to ensure is in the lower half.
+ * @param addr The address.
  * @return The address in the lower half of the address space.
  */
 #define PML_ENSURE_LOWER_HALF(addr) \
     ((uintptr_t)(addr) >= PML_HIGHER_HALF_START ? PML_HIGHER_TO_LOWER(addr) : (uintptr_t)(addr))
+
+/**
+ * @brief Ensures that the given address is in the higher half of the address space.
+ *
+ * @param addr The address.
+ * @return The address in the higher half of the address space.
+ */
+#define PML_ENSURE_HIGHER_HALF(addr) \
+    ((uintptr_t)(addr) < PML_HIGHER_HALF_START ? PML_LOWER_TO_HIGHER(addr) : (uintptr_t)(addr))
 
 /**
  * @brief Calculates the index into a page table level for a given virtual address.

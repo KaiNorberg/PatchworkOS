@@ -23,8 +23,7 @@ QEMU_FLAGS = \
 	-smp $(QEMU_CPUS) \
 	-cpu qemu64 \
 	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
-	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
-	-device i8042
+	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd
 
 ifeq ($(DEBUG),1)
 	ifneq ($(GDB),1)
