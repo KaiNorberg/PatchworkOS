@@ -13,10 +13,7 @@
  */
 
 /**
- * @brief Evaluate a method with the given arguments.
- *
- * This function evaluates a method object with the provided arguments and stores the return value in the specified
- * returnValue object.
+ * @brief Invoke a method with the given arguments.
  *
  * Return values are a bit more complex then the spec suggests. The spec leaves "implicit returns", as in the method
  * just ends without a Return statement, undefined. In practice this means we can do whatever we want.
@@ -32,24 +29,13 @@
  *
  * @see Section 5.2 of the ACPICA reference for more details.
  * @see Section 19.6.85 of the ACPI specification for more details.
- * @see aml_namespace_overlay_t for more details about the parent overlay.
+ * @see aml_overlay_t for more details about the parent overlay.
  *
  * @param parentState The current AML state, this will not be used for anything other than getting the parent overlay.
- * @param method Pointer to the method to evaluate.
+ * @param method Pointer to the method to invoke.
  * @param args Array of pointers to the argument objects, can be `NULL`, must be null-terminated.
  * @return On success, the return value of the method. On failure, `ERR` and `errno` is set.
  */
-aml_object_t* aml_method_evaluate(aml_state_t* parentState, aml_method_obj_t* method, aml_object_t** args);
-
-/**
- * @brief Wrapper around aml_method_evaluate for zero argument methods that return an integer or nothing and for integer
- * objects.
- *
- * @param parentState The current AML state, this will not be used for anything other than getting the parent overlay.
- * @param method Pointer to the method or integer object to evaluate.
- * @param out Pointer to the variable where the integer return value will be stored, can be `NULL`.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_method_evaluate_integer(aml_state_t* parentState, aml_object_t* object, aml_integer_t* out);
+aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_obj_t* method, aml_object_t** args);
 
 /** @} */

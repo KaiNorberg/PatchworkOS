@@ -10,6 +10,17 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
+/**
+ * @brief Boot information.
+ * @defgroup boot_info Boot Information
+ * @ingroup boot
+ *
+ * The boot information structure is used to pass information from the bootloader to the kernel, such as memory map, or
+ * `rsdp`.
+ *
+ * @{
+ */
+
 static bool boot_is_mem_ram(EFI_MEMORY_TYPE type)
 {
     switch (type)
@@ -77,18 +88,8 @@ typedef struct boot_info boot_info_t;
 
 typedef struct
 {
-    elf_hdr_t header;
-    elf_phdr_t* phdrs;
-    elf_shdr_t* shdrs;
-    uint32_t shdrCount;
-    elf_sym_t* symbols;
-    uint32_t symbolCount;
-    char* stringTable;
-    uint64_t stringTableSize;
-    uintptr_t physStart;
-    uintptr_t virtStart;
-    void (*entry)(boot_info_t*);
-    uint64_t size;
+    Elf64_File elf;
+    void* physAddr;
 } boot_kernel_t;
 
 typedef struct
@@ -106,3 +107,5 @@ typedef struct boot_info
     boot_kernel_t kernel;
     boot_memory_t memory;
 } boot_info_t;
+
+/** @} */

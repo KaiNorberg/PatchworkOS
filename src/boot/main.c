@@ -204,7 +204,9 @@ EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
     }
 
     page_table_load(&bootInfo->memory.table);
-    bootInfo->kernel.entry(bootInfo);
+
+    void (*kernel_entry)(boot_info_t*) = (void (*)(boot_info_t*))bootInfo->kernel.elf.header->e_entry;
+    kernel_entry(bootInfo);
 
     // We should never end up back here.
     return EFI_ABORTED;

@@ -4,7 +4,7 @@
 
 #include "common/heap.h"
 
-#ifdef __KERNEL__
+#ifdef _KERNEL_
 #include <kernel/log/panic.h>
 #else
 #include <stdio.h>
@@ -28,7 +28,7 @@ void* realloc(void* ptr, size_t size)
     _heap_header_t* block = CONTAINER_OF(ptr, _heap_header_t, data);
     if (block->magic != _HEAP_HEADER_MAGIC)
     {
-#ifdef __KERNEL__
+#ifdef _KERNEL_
         panic(NULL, "heap corruption detected in free()");
 #else
         printf("heap corruption detected in free()\n");
@@ -38,7 +38,7 @@ void* realloc(void* ptr, size_t size)
 
     if (!(block->flags & _HEAP_ALLOCATED))
     {
-#ifdef __KERNEL__
+#ifdef _KERNEL_
         panic(NULL, "double free detected in free()");
 #else
         printf("double free detected in free()\n");

@@ -21,9 +21,9 @@
  */
 typedef struct
 {
-    char** buffer;   ///!< Stores both pointers and strings.
-    char* empty[1];  ///!< Used to avoid allocations for empty argv
-    uint64_t size;   ///!< Size of the buffer in bytes.
+    char** buffer;   ///< Stores both pointers and strings.
+    char* empty[1];  ///< Used to avoid allocations for empty argv
+    uint64_t size;   ///< Size of the buffer in bytes.
     uint64_t amount; ///< Number of arguments (excluding the NULL terminator).
 } argv_t;
 

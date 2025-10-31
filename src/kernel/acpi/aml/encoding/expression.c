@@ -376,7 +376,7 @@ aml_object_t* aml_method_invocation_read(aml_term_list_ctx_t* ctx)
             return NULL;
         }
 
-        aml_object_t* result = aml_method_evaluate(ctx->state, &target->method, args.args);
+        aml_object_t* result = aml_method_invoke(ctx->state, &target->method, args.args);
         if (result == NULL)
         {
             for (uint8_t i = 0; args.args[i] != NULL; i++)

@@ -22,6 +22,7 @@
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
+#include <kernel/module/symbol.h>
 #include <kernel/net/net.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/loader.h>
@@ -47,9 +48,10 @@ void init_early(const boot_info_t* bootInfo)
 
     pmm_init(&bootInfo->memory.map);
     vmm_init(&bootInfo->memory, &bootInfo->gop, &bootInfo->kernel);
+
     _std_init();
 
-    panic_symbols_init(&bootInfo->kernel);
+    symbol_load_kernel_symbols(&bootInfo->kernel);
 
     acpi_tables_init(bootInfo->rsdp);
 
@@ -60,11 +62,11 @@ void init_early(const boot_info_t* bootInfo)
     assert(bootThread != NULL);
     bootThread->frame.rdi = (uintptr_t)bootInfo;
     bootThread->frame.rip = (uintptr_t)kmain;
+    bootThread->frame.rbp = bootThread->kernelStack.top;
     bootThread->frame.rsp = bootThread->kernelStack.top;
     bootThread->frame.cs = GDT_CS_RING0;
     bootThread->frame.ss = GDT_SS_RING0;
-    bootThread->frame.rflags = RFLAGS_ALWAYS_SET;
-
+    bootThread->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
     atomic_store(&bootThread->state, THREAD_RUNNING);
     bootThread->sched.deadline = CLOCKS_NEVER;
     smp_self_unsafe()->sched.runThread = bootThread;
@@ -95,6 +97,10 @@ static void init_free_loader_data(const boot_memory_map_t* map)
         {
             LOG_INFO("free boot memory [0x%016lx-0x%016lx]\n", desc->VirtualStart,
                 ((uintptr_t)desc->VirtualStart) + desc->NumberOfPages * PAGE_SIZE);
+#ifndef NDEBUG
+            // Clear the memory to deliberatly cause corruption if the memory is actually being used.
+            memset((void*)desc->VirtualStart, 0xCC, desc->NumberOfPages * PAGE_SIZE);
+#endif
             pmm_free_region((void*)desc->VirtualStart, desc->NumberOfPages);
         }
     }
@@ -113,14 +119,14 @@ static void init_finalize(const boot_info_t* bootInfo)
     ramfs_init(&bootInfo->disk);
     sysfs_init();
 
+    module_init();
+
     aml_init();
     acpi_devices_init();
     acpi_reclaim_memory(&bootInfo->memory.map);
 
     acpi_tables_expose();
     aml_namespace_expose();
-
-    module_init();
 
     log_file_expose();
     process_procfs_init();

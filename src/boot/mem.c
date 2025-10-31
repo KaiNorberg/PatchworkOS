@@ -165,8 +165,13 @@ void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boot_gop_t
         }
     }
 
-    if (page_table_map(table, (void*)kernel->virtStart, (void*)kernel->physStart, BYTES_TO_PAGES(kernel->size),
-            PML_WRITE | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
+    Elf64_Addr minVaddr = 0;
+    Elf64_Addr maxVaddr = 0;
+    elf_file_get_loadable_bounds(&kernel->elf, &minVaddr, &maxVaddr);
+    uint64_t kernelPageAmount = BYTES_TO_PAGES(maxVaddr - minVaddr);
+
+    if (page_table_map(table, (void*)minVaddr, kernel->physAddr, kernelPageAmount, PML_WRITE | PML_PRESENT,
+            PML_CALLBACK_NONE) == ERR)
     {
         panic_without_boot_services(0x00, 0xFF, 0xFF);
     }

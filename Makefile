@@ -1,13 +1,14 @@
 SECTIONS = boot kernel libstd libpatchwork
 PROGRAMS = $(basename $(notdir $(wildcard make/programs/*.mk)))
+MODULES = $(basename $(notdir $(wildcard make/modules/*.mk)))
 TARGET_IMAGE = bin/PatchworkOS.img
 VERSION_HEADER = include/kernel/version.h
-ROOT_DIRS = acpi bin cfg dev efi efi/boot home kernel lib net proc sys tmp usr usr/bin usr/share usr/license var
+ROOT_DIRS = acpi bin cfg dev efi efi/boot home kernel kernel/modules lib net proc sys tmp usr usr/bin usr/share usr/license var
 
 # Programs to copy to /bin instead of /usr/bin
-ROOT_PROGRAMS = init wall cursor taskbar dwm shell rm ls link mv touch cat echo
+BIN_PROGRAMS = init wall cursor taskbar dwm shell rm ls link mv touch cat echo
 # Programs to copy to /usr/bin
-USR_PROGRAMS = $(filter-out $(ROOT_PROGRAMS),$(PROGRAMS))
+USR_BIN_PROGRAMS = $(filter-out $(BIN_PROGRAMS),$(PROGRAMS))
 
 QEMU_MEMORY ?= 2G
 QEMU_CPUS ?= $(shell nproc 2>/dev/null || echo 8)
@@ -26,11 +27,13 @@ QEMU_FLAGS = \
 	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd
 
 ifeq ($(DEBUG),1)
-	ifneq ($(GDB),1)
-		QEMU_FLAGS += -device isa-debug-exit
-	endif
+
 else
 	QEMU_FLAGS += -no-shutdown -no-reboot
+endif
+
+ifeq ($(QEMU_EXIT_ON_PANIC),1)
+	QEMU_FLAGS += -device isa-debug-exit
 endif
 
 ifeq ($(GDB),1)
@@ -65,6 +68,9 @@ endif
 $(SECTIONS): setup
 	$(MAKE) -f make/$@.mk SRCDIR=src/$@ BUILDDIR=build/$@ BINDIR=bin/$@
 
+$(MODULES): $(SECTIONS)
+	$(MAKE) -f make/modules/$@.mk SRCDIR=src/modules/$@ BUILDDIR=build/modules/$@ BINDIR=bin/modules MODULE=$@
+
 $(PROGRAMS): $(MODULES)
 	$(MAKE) -f make/programs/$@.mk SRCDIR=src/programs/$@ BUILDDIR=build/programs/$@ BINDIR=bin/programs PROGRAM=$@
 
@@ -77,8 +83,9 @@ deploy: $(PROGRAMS)
 	mcopy -i $(TARGET_IMAGE) -s bin/boot/bootx64.efi ::/efi/boot
 	mcopy -i $(TARGET_IMAGE) -s bin/kernel/kernel ::/kernel
 	mcopy -i $(TARGET_IMAGE) -s LICENSE ::/usr/license
-	$(foreach prog,$(ROOT_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/bin;)
-	$(foreach prog,$(USR_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/usr/bin;)
+	$(foreach mod,$(MODULES),mcopy -i $(TARGET_IMAGE) -s bin/modules/$(mod) ::/kernel/modules;)
+	$(foreach prog,$(BIN_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/bin;)
+	$(foreach prog,$(USR_BIN_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/usr/bin;)
 
 run:
 	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_ARGS)
@@ -123,13 +130,14 @@ nuke: clean
 
 # We use ACPICA's runtime test suite to validate our ACPI implementation.
 #
-# ACPICA runtime tests are all found in tests/aslts/src/runtime/collections in the ACPICA repository.
-# Each collection includes sub-collections and have a "FULL" sub-collection that includes all tests in the collection.
-# We want each sub-collection on their own, each sub-collection has a MAIN.asl file that contain a MAIN method, these are the files we want to compile.
+# The tests seem to be structured like this:
+# - ACPICA runtime tests are all found in tests/aslts/src/runtime/collections in the ACPICA repository.
+# - Each collection includes sub-collections and have a "FULL" sub-collection that includes all tests in the collection.
+# - We want each sub-collection on their own, each sub-collection has a MAIN.asl file that contain a MAIN method, these are the files we want to compile.
 #
 # At least this is my interpretation of the ACPICA test structure. Could be wrong but it seems to work.
 #
-# We clone the ACPICA repository if we don't have it already, then we find all MAIN.asl files that are not in a "FULL" sub-collection,
+# So what we do is clone the ACPICA repository if we don't have it already, then we find all MAIN.asl files that are not in a "FULL" sub-collection,
 # compile them to AML using iasl and convert the AML to a C header file using xxd, finally we create a single file that includes all tests.
 #
 # We can then in `aml_tests.c` include this generated file and run all tests in a loop.
@@ -158,7 +166,7 @@ clone_acpica_and_compile_tests:
 				mkdir -p $$OUT_DIR; \
 				echo "Compiling asl test $$FILE to $$OUT_DIR/test.aml and $$OUT_DIR/test.h"; \
 				iasl -va -oa -f -p $$OUT_DIR/test.aml $$FILE > /dev/null; \
-				xxd -i $$OUT_DIR/test.aml $$OUT_DIR/test.h > /dev/null; \
+				xxd -i $$OUT_DIR/test.aml | sed 's/^unsigned/static unsigned/' > $$OUT_DIR/test.h; \
 			done; \
 		done; \
 	fi

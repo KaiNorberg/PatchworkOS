@@ -10,11 +10,15 @@
 
 ![desktop screenshot](meta/screenshots/desktop.png)
 
-**Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9 and others while simplifying them and adding in some new ideas of its own.
+**Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended be an educational, experimental and "modern" operating system.
 
-In the end this is a project made for fun, however the goal is still to make a feature-complete and experimental operating system which attempts to use unique algorithms and designs over tried and tested ones. Sometimes this leads to bad results, and sometimes, hopefully, good ones.
+In the end this is a project made for fun, but the goal is still to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system, a floppy disk driver is not enough and neither is a round-robin array scheduler.
 
-Additionally, the OS aims to, in spite of its experimental nature, remain approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
+This is not a UNIX clone, its intended to be a (hopefully) interesting experiment in operating system design by attempting to use unique algorithms and designs over tried and tested ones. Sometimes this leads to bad results, and sometimes, with a bit of luck, good ones.
+
+Despite its experimental nature and scale, the project aims to remain approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
+
+Will this project ever reach its goals? Who knows, but the journey is the point regardless.
 
 <table>
 <tr>
@@ -31,8 +35,8 @@ Additionally, the OS aims to, in spite of its experimental nature, remain approa
 
 ### Kernel
 
-- Multithreading with a [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), fully preemptive and tickless
-- Symmetric Multi Processing without any "big locks"
+- Multithreading with a fully preemptive and tickless [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), based on
+- Symmetric Multi Processing with fine-grained locking, no big locks allowed
 - Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info
 - Dynamic kernel and user stack allocation
 - File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/note.h)
@@ -45,7 +49,7 @@ Additionally, the OS aims to, in spite of its experimental nature, remain approa
 - From scratch and heavily documented [AML parser](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/acpi/aml/aml.h)
 - Tested on real hardware, see [Tested Configurations](#tested-configurations)
 - ACPI implementation was made to be easy to understand and useful for educational purposes
-- Tested against [ACPICA's](https://github.com/acpica/acpica) runtime test suite (WIP)
+- Tested against [ACPICA's](https://github.com/acpica/acpica) runtime test suite
 - ACPI support is still work in progress, check [acpi.h](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/acpi/acpi.h) for a checklist
 
 ### File System
@@ -156,78 +160,9 @@ All in all, this algorithm would not be a viable replacement for existing algori
 
 [Paging Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/df/d5f/group__common__paging.html)
 
-## Shell Utilities
-
-Patchwork includes its own shell utilities designed around its [file flags](#file-flags) system. Included is a brief overview with some usage examples. For convenience the shell utilities are named after their POSIX counterparts, however they are not drop-in replacements.
-
-### `touch`
-
-Opens a file path and then immediately closes it.
-
-```bash
-# Create the file.txt file only if it does not exist.
-touch file.txt:create:excl
-
-# Create the mydir directory.
-touch mydir:create:dir
-```
-
-### `cat`
-
-Reads from stdin or provided files and outputs to stdout.
-
-```bash
-# Read the contents of file1.txt and file2.txt.
-cat file1.txt file2.txt
-
-# Read process exit status (blocks until process exits)
-cat /proc/1234/wait
-
-# Copy contents of file.txt to dest.txt and create it.
-cat < file.txt > dest.txt:create
-```
-
-### `echo`
-
-Writes to stdout.
-
-```bash
-# Write to file.txt.
-echo "..." > file.txt
-
-# Append to file.txt, makes ">>" unneeded.
-echo "..." > file.txt:append
-```
-
-### `ls`
-
-Reads the contents of a directory to stdout.
-
-```bash
-# Prints the contents of mydir.
-ls mydir
-
-# Recursively print the contents of mydir.
-ls mydir:recur
-```
-
-### `rm`
-
-Removes a file or directory.
-
-```bash
-# Remove file.txt.
-rm file.txt
-
-# Recursively remove mydir and its contents.
-rm mydir:dir:recur
-```
-
-There are other utils available that work as expected, for example `stat` and `link`.
-
 ## Everything is a File
 
-Patchwork strictly follows the "everything is a file" philosophy in a way similar to Plan9, this can often result in unorthodox APIs or could just straight up seem overly complicated, but it has its advantages. We will use sockets to demonstrate the kinds of APIs this produces.
+PatchworkOS strictly follows the "everything is a file" philosophy in a way similar to Plan9, this can often result in unorthodox APIs or could just straight up seem overly complicated, but it has its advantages. We will use sockets to demonstrate the kinds of APIs this produces.
 
 ### Sockets
 
@@ -338,6 +273,85 @@ Multiple flags are allowed, just separate them with the `:` character, this mean
 
 [Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html#ga82917c2c8f27ffa562957d5cfa4fdb2e)
 
+### But why?
+
+Im sure you have heard many an argument for and against the "everything is a file" philosophy. So I wont go over everything, but the primary reason for using it in PatchworkOS is "emergent behavior" or "composability" which ever term you prefer.
+
+Take the namespace sharing example, notice how there isent any actually dedicated "namespace sharing" system? There are instead a series of small, simple building blocks that when added together form a more complex whole. That is emergent behavior, by keeping things simple and most importantly interoperable, we can create very complex behaviour without needing to explicitly design it.
+
+Lets take another example, say you wanted to wait on multiple processes with a `waitpid()` syscall. Well, thats not possible. So now we suddenly need a new system call. Meanwhile, in a "everything is a file system" we just have a pollable `/proc/[pid]/wait` file that acts that returns the exit status, now any behaviour that can be implemented with `poll()` can be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination you can think of.
+
+Plus its fun.
+
+## Shell Utilities
+
+PatchworkOS includes its own shell utilities designed around its [file flags](#file-flags) system. Included is a brief overview with some usage examples. For convenience the shell utilities are named after their POSIX counterparts, however they are not drop-in replacements.
+
+### `touch`
+
+Opens a file path and then immediately closes it.
+
+```bash
+# Create the file.txt file only if it does not exist.
+touch file.txt:create:excl
+
+# Create the mydir directory.
+touch mydir:create:dir
+```
+
+### `cat`
+
+Reads from stdin or provided files and outputs to stdout.
+
+```bash
+# Read the contents of file1.txt and file2.txt.
+cat file1.txt file2.txt
+
+# Read process exit status (blocks until process exits)
+cat /proc/1234/wait
+
+# Copy contents of file.txt to dest.txt and create it.
+cat < file.txt > dest.txt:create
+```
+
+### `echo`
+
+Writes to stdout.
+
+```bash
+# Write to file.txt.
+echo "..." > file.txt
+
+# Append to file.txt, makes ">>" unneeded.
+echo "..." > file.txt:append
+```
+
+### `ls`
+
+Reads the contents of a directory to stdout.
+
+```bash
+# Prints the contents of mydir.
+ls mydir
+
+# Recursively print the contents of mydir.
+ls mydir:recur
+```
+
+### `rm`
+
+Removes a file or directory.
+
+```bash
+# Remove file.txt.
+rm file.txt
+
+# Recursively remove mydir and its contents.
+rm mydir:dir:recur
+```
+
+There are other utils available that work as expected, for example `stat` and `link`.
+
 ---
 
 ## Directories
@@ -358,6 +372,7 @@ Multiple flags are allowed, just separate them with the `:` character, this mean
 - **kernel**: The monolithic kernel handling everything from scheduling to IPC
 - **libstd**: C standard library extension with system call wrappers
 - **libpatchwork**: Higher-level library for windowing and user space services
+- **modules**: Kernel modules (currently empty, work in progress)
 - **programs**: Shell utilities, services, and desktop applications
 
 ## Setup
@@ -398,6 +413,9 @@ make all DEBUG=1 TESTING=1
 # Debug using qemu with one cpu and GDB
 make all run DEBUG=1 QEMU_CPUS=1 GDB=1
 
+# Debug using qemu and exit on panic
+make all run DEBUG=1 QEMU_EXIT_ON_PANIC=1
+
 # Generate doxygen documentation
 make doxygen
 
@@ -433,7 +451,9 @@ You should now see a new entry in your GRUB boot menu allowing you to boot into 
 
 ## Testing
 
-Testing uses a GitHub action that compiles the project and runs it for some amount of time using QEMU both with the `DEBUG=1` and `TESTING=1` flags enabled. This will run some additional tests in the kernel (for example it will clone ACPICA and run all its runtime tests), and if it has not crashed by the end of the allotted time, it is considered a success.
+Testing uses a GitHub action that compiles the project and runs it for some amount of time using QEMU with `DEBUG=1`, `TESTING=1` and `QEMU_EXIT_ON_PANIC=1` set. This will run some additional tests in the kernel (for example it will clone ACPICA and run all its runtime tests), and if QEMU has not crashed by the end of the allotted time, it is considered a success.
+
+Note that the `QEMU_EXIT_ON_PANIC` flag will cause any failed test, assert or panic in the kernel to exit QEMU using their "-device isa-debug-exit" feature with a non-zero exit code, thus causing the GitHub action to fail.
 
 ### Tested Configurations
 

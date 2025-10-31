@@ -54,7 +54,7 @@
  * As far as i can tell, this does NOT apply to If, While, or other statements, only methods. So if you
  * create a named object inside an If statement it will be visible outside of the If statement.
  *
- * To solve this we give the `aml_state_t` a `aml_namespace_overlay_t` where it can create its named objects. When
+ * To solve this we give the `aml_state_t` a `aml_overlay_t` where it can create its named objects. When
  * looking up names we first look in the overlay of the current state and then in the parent overlay and so on until we
  * reach a `NULL` overlay. The last overlay will always be the "global" overlay. When invoking a method it will be given
  * its own `aml_state_t` and its own overlay, the parent of this overlay will be the "highest" overlay that contains the
@@ -68,7 +68,7 @@
  * object `_FOO` is actually defined in the parent overlay.
  *
  * We also need the ability to commit any names created in a overlay to be globally visible if we are not
- * executing a method but instead parsing a DSDT or SSDT table. This is done using `aml_namespace_overlay_commit()`
+ * executing a method but instead parsing a DSDT or SSDT table. This is done using `aml_overlay_commit()`
  * which moves all the overlays objects to its parent overlay, which is usually the global overlay.
  *
  * Note that the term "namespace" in the ACPI specification does not refer to the entire "hierarchy" of named objects
@@ -81,14 +81,14 @@
 
 /**
  * @brief Namespace overlay.
- * @struct aml_namespace_overlay_t
+ * @struct aml_overlay_t
  */
-typedef struct aml_namespace_overlay
+typedef struct aml_overlay
 {
-    map_t map;      ///< Used to find the children of namespaces using their id and the name of the child.
-    list_t objects; ///< List of all objects in this namespace. Used for fast iteration.
-    struct aml_namespace_overlay* parent; ///< The parent overlay, or `NULL` if none.
-} aml_namespace_overlay_t;
+    map_t map;                  ///< Used to find the children of namespaces using their id and the name of the child.
+    list_t objects;             ///< List of all objects in this namespace. Used for fast iteration.
+    struct aml_overlay* parent; ///< The parent overlay, or `NULL` if none.
+} aml_overlay_t;
 
 /**
  * @brief Name type.
@@ -140,9 +140,9 @@ uint64_t aml_namespace_init(aml_object_t* root);
 /**
  * @brief Expose the entire namespace heirarchy to sysfs.
  *
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * Will panic on failure.
  */
-uint64_t aml_namespace_expose(void);
+void aml_namespace_expose(void);
 
 /**
  * @brief Get the root object of the namespace heirarchy.
@@ -161,7 +161,7 @@ aml_object_t* aml_namespace_get_root(void);
  * @param name The name of the child object to find.
  * @return The object reference or `NULL` if it could not be found.
  */
-aml_object_t* aml_namespace_find_child(aml_namespace_overlay_t* overlay, aml_object_t* parent, aml_name_t name);
+aml_object_t* aml_namespace_find_child(aml_overlay_t* overlay, aml_object_t* parent, aml_name_t name);
 
 /**
  * @brief Find an object in the namespace heirarchy by name segments.
@@ -183,7 +183,7 @@ aml_object_t* aml_namespace_find_child(aml_namespace_overlay_t* overlay, aml_obj
  * @param ... The name segments of the object to find.
  * @return The object reference or `NULL` if it could not be found.
  */
-aml_object_t* aml_namespace_find(aml_namespace_overlay_t* overlay, aml_object_t* start, uint64_t nameCount, ...);
+aml_object_t* aml_namespace_find(aml_overlay_t* overlay, aml_object_t* start, uint64_t nameCount, ...);
 
 /**
  * @brief Find an object in the namespace heirarchy by a name string.
@@ -207,7 +207,7 @@ aml_object_t* aml_namespace_find(aml_namespace_overlay_t* overlay, aml_object_t*
  * @param nameString The name string of the object to find.
  * @return The object reference or `NULL` if it could not be found.
  */
-aml_object_t* aml_namespace_find_by_name_string(aml_namespace_overlay_t* overlay, aml_object_t* start,
+aml_object_t* aml_namespace_find_by_name_string(aml_overlay_t* overlay, aml_object_t* start,
     const aml_name_string_t* nameString);
 
 /**
@@ -232,7 +232,7 @@ aml_object_t* aml_namespace_find_by_name_string(aml_namespace_overlay_t* overlay
  * @param path The path string of the object to find.
  * @return The object reference or `NULL` if it could not be found.
  */
-aml_object_t* aml_namespace_find_by_path(aml_namespace_overlay_t* overlay, aml_object_t* start, const char* path);
+aml_object_t* aml_namespace_find_by_path(aml_overlay_t* overlay, aml_object_t* start, const char* path);
 
 /**
  * @brief Add an child to a parent in the namespace heirarchy.
@@ -243,8 +243,7 @@ aml_object_t* aml_namespace_find_by_path(aml_namespace_overlay_t* overlay, aml_o
  * @param object The object to add to the namespace.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_namespace_add_child(aml_namespace_overlay_t* overlay, aml_object_t* parent, aml_name_t name,
-    aml_object_t* object);
+uint64_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, aml_name_t name, aml_object_t* object);
 
 /**
  * @brief Add an object to the namespace heirarchy using a name string.
@@ -256,7 +255,7 @@ uint64_t aml_namespace_add_child(aml_namespace_overlay_t* overlay, aml_object_t*
  * @param object The object to add to the namespace.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_namespace_add_by_name_string(aml_namespace_overlay_t* overlay, aml_object_t* start,
+uint64_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* start,
     const aml_name_string_t* nameString, aml_object_t* object);
 
 /**
@@ -278,7 +277,7 @@ void aml_namespace_remove(aml_object_t* object);
  * @param overlay The overlay to commit.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_namespace_commit(aml_namespace_overlay_t* overlay);
+uint64_t aml_namespace_commit(aml_overlay_t* overlay);
 
 /**
  * @brief Initialize a namespace overlay.
@@ -288,14 +287,14 @@ uint64_t aml_namespace_commit(aml_namespace_overlay_t* overlay);
  * @param overlay The overlay to initialize.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_namespace_overlay_init(aml_namespace_overlay_t* overlay);
+uint64_t aml_overlay_init(aml_overlay_t* overlay);
 
 /**
  * @brief Deinitialize a namespace overlay.
  *
  * @param overlay The overlay to deinitialize.
  */
-void aml_namespace_overlay_deinit(aml_namespace_overlay_t* overlay);
+void aml_overlay_deinit(aml_overlay_t* overlay);
 
 /**
  * @brief Set the parent of a namespace overlay.
@@ -303,7 +302,7 @@ void aml_namespace_overlay_deinit(aml_namespace_overlay_t* overlay);
  * @param overlay The overlay to set the parent of.
  * @param parent The new parent overlay, or `NULL` to set no parent.
  */
-void aml_namespace_overlay_set_parent(aml_namespace_overlay_t* overlay, aml_namespace_overlay_t* parent);
+void aml_overlay_set_parent(aml_overlay_t* overlay, aml_overlay_t* parent);
 
 /**
  * @brief Search a overlay and its parents for the first overlay that contains the given object.
@@ -312,7 +311,6 @@ void aml_namespace_overlay_set_parent(aml_namespace_overlay_t* overlay, aml_name
  * @param object The object to check for.
  * @return On success, the highest overlay that contains the object. On failure, `NULL`.
  */
-aml_namespace_overlay_t* aml_namespace_overlay_get_highest_that_contains(aml_namespace_overlay_t* overlay,
-    aml_object_t* object);
+aml_overlay_t* aml_overlay_find_topmost_containing(aml_overlay_t* overlay, aml_object_t* object);
 
 /** @} */

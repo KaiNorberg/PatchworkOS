@@ -1,6 +1,6 @@
 #include <errno.h>
 
-#ifdef __KERNEL__
+#ifdef _KERNEL_
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #else
@@ -12,7 +12,7 @@ int* _errno_get(void)
 {
     static int garbage;
 
-#ifdef __KERNEL__
+#ifdef _KERNEL_
     thread_t* thread = sched_thread();
     if (thread == NULL)
     {

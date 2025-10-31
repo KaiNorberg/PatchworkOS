@@ -11,6 +11,8 @@
  * @defgroup kernel_utils_map Hash Map
  * @ingroup kernel_utils
  *
+ * TODO: Dynamically sized keys without heap allocation?
+ *
  * @{
  */
 
@@ -32,19 +34,19 @@
 /**
  * @brief The maximum length of a key in the map.
  */
-#define MAP_KEY_MAX_LENGTH 40
+#define MAP_KEY_MAX_LENGTH 118
 
 /**
  * @brief Map key stucture.
  *
  * Is used to implement a generic key for the map. The object is copied into `key` and hashed.
- * We can then use the hash for quick comparisons and the key irself for full comparisons no matter
+ * We can then use the hash for quick comparisons and lookups while using the key itself for full comparisons no matter
  * the type of the key.
  */
 typedef struct
 {
     uint8_t key[MAP_KEY_MAX_LENGTH];
-    uint64_t len;
+    uint8_t len;
     uint64_t hash;
 } map_key_t;
 
@@ -98,7 +100,7 @@ uint64_t hash_object(const void* object, uint64_t length);
  */
 static inline map_key_t map_key_buffer(const void* buffer, uint64_t length)
 {
-    assert(length <= MAP_KEY_MAX_LENGTH);
+    assert(length < MAP_KEY_MAX_LENGTH);
     map_key_t key;
     memcpy(key.key, buffer, length);
     key.len = length;
@@ -129,7 +131,7 @@ static inline map_key_t map_key_uint64(uint64_t uint64)
  */
 static inline map_key_t map_key_string(const char* str)
 {
-    return map_key_buffer(str, strlen(str));
+    return map_key_buffer(str, strnlen_s(str, MAP_KEY_MAX_LENGTH));
 }
 
 /**
@@ -138,6 +140,13 @@ static inline map_key_t map_key_string(const char* str)
  * @param entry The map entry to initialize.
  */
 void map_entry_init(map_entry_t* entry);
+
+/**
+ * @brief Create a map initializer.
+ *
+ * @return A map initializer.
+ */
+#define MAP_CREATE {.entries = NULL, .capacity = 0, .length = 0, .tombstones = 0}
 
 /**
  * @brief Initialize a map.

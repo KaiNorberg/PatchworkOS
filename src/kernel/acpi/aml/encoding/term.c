@@ -187,7 +187,7 @@ uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx)
             result = ERR;
             break;
         }
-        // Set the result of the state to the last evaluated expression, check `aml_method_evaluate()` for more details.
+        // Set the result of the state to the last evaluated expression, check `aml_method_invoke()` for more details.
         // We cant just do this in `aml_expression_opcode_read()` because predicates are not supposed to be considered
         // for implicit return.
         // aml_state_result_set(ctx->state, result);

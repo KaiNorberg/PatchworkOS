@@ -10,7 +10,7 @@
 
 #include "common/digits.h"
 
-#ifndef __KERNEL__
+#ifndef _KERNEL_
 #include "user/common/file.h"
 #endif
 
@@ -18,7 +18,7 @@ static int _scan_get(_format_ctx_t* ctx)
 {
     int rc = EOF;
 
-#ifndef __KERNEL__
+#ifndef _KERNEL_
     if (ctx->stream != NULL)
     {
         if (_FILE_CHECK_AVAIL(ctx->stream) != ERR)
@@ -51,7 +51,7 @@ static int _scan_get(_format_ctx_t* ctx)
 */
 static void _scan_unget(int c, _format_ctx_t* ctx)
 {
-#ifndef __KERNEL__
+#ifndef _KERNEL_
     if (ctx->stream != NULL)
     {
         ungetc(c, ctx->stream); /* TODO: Error? */

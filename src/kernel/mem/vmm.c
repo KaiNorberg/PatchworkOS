@@ -80,10 +80,15 @@ void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_ker
         }
     }
 
-    LOG_INFO("kernel virt=[0x%016lx-0x%016lx] phys=[0x%016lx-0x%016lx]\n", kernel->virtStart,
-        kernel->virtStart + kernel->size, kernel->physStart, kernel->physStart + kernel->size);
-    if (page_table_map(&kernelSpace.pageTable, (void*)kernel->virtStart, (void*)kernel->physStart,
-            BYTES_TO_PAGES(kernel->size), PML_WRITE | PML_GLOBAL | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
+    Elf64_Addr minVaddr = 0;
+    Elf64_Addr maxVaddr = 0;
+    elf_file_get_loadable_bounds(&kernel->elf, &minVaddr, &maxVaddr);
+    uint64_t kernelPageAmount = BYTES_TO_PAGES(maxVaddr - minVaddr);
+
+    LOG_INFO("kernel virt=[0x%016lx-0x%016lx] phys=[0x%016lx-0x%016lx]\n", minVaddr, maxVaddr,
+        (uintptr_t)kernel->physAddr, (uintptr_t)kernel->physAddr + kernelPageAmount * PAGE_SIZE);
+    if (page_table_map(&kernelSpace.pageTable, (void*)minVaddr, kernel->physAddr, kernelPageAmount,
+            PML_WRITE | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
     {
         panic(NULL, "Failed to map kernel memory");
     }

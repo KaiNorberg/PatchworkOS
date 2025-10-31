@@ -4,7 +4,7 @@
 #include "heap.h"
 #include "time_utils.h"
 
-#ifndef __KERNEL__
+#ifndef _KERNEL_
 #include "user/user.h"
 #endif
 
@@ -12,7 +12,7 @@
 
 void _std_init(void)
 {
-#ifndef __KERNEL__
+#ifndef _KERNEL_
     _user_init();
 #endif
 

@@ -9,6 +9,7 @@
 #include <kernel/log/log.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
+#include <kernel/module/symbol.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/version.h>
@@ -27,93 +28,9 @@
 extern uint64_t _kernelStart;
 extern uint64_t _kernelEnd;
 
-static list_t symbols = LIST_CREATE(symbols);
-static bool symbolsLoaded = false;
 static char panicBuffer[LOG_MAX_BUFFER] = {0};
 
 static atomic_uint32_t panicCpudId = ATOMIC_VAR_INIT(PANIC_NO_CPU_ID);
-
-static bool panic_is_valid_stack_frame(void* ptr)
-{
-    if (ptr == NULL)
-    {
-        return false;
-    }
-    if ((uintptr_t)ptr & 0x7)
-    {
-        return false;
-    }
-    if ((uintptr_t)ptr < VMM_USER_SPACE_MIN)
-    {
-        return false;
-    }
-    if ((uintptr_t)ptr >= VMM_KERNEL_BINARY_MAX)
-    {
-        return false;
-    }
-    if ((uintptr_t)ptr > VMM_USER_SPACE_MAX && (uintptr_t)ptr < VMM_IDENTITY_MAPPED_MIN)
-    {
-        return false;
-    }
-    if ((uintptr_t)ptr > UINTPTR_MAX - 16)
-    {
-        return false;
-    }
-    if (ptr < (void*)&_kernelStart || ptr >= (void*)&_kernelEnd)
-    {
-        return false;
-    }
-
-    return true;
-}
-
-static bool panic_is_valid_address(uintptr_t addr)
-{
-    if (addr == 0)
-    {
-        return false;
-    }
-    if (addr < VMM_USER_SPACE_MIN)
-    {
-        return false;
-    }
-    if (addr >= VMM_KERNEL_BINARY_MAX)
-    {
-        return false;
-    }
-    if (addr > VMM_USER_SPACE_MAX && addr < VMM_IDENTITY_MAPPED_MIN)
-    {
-        return false;
-    }
-    if (addr > UINTPTR_MAX - 16)
-    {
-        return false;
-    }
-    return true;
-}
-
-static const char* panic_resolve_symbol(uintptr_t addr, uintptr_t* offset)
-{
-    if (!symbolsLoaded)
-    {
-        return NULL;
-    }
-
-    panic_symbol_t* symbol = NULL;
-    LIST_FOR_EACH(symbol, &symbols, entry)
-    {
-        if (addr >= symbol->start && addr < symbol->end)
-        {
-            if (offset)
-            {
-                *offset = addr - symbol->start;
-            }
-            return symbol->name;
-        }
-    }
-
-    return NULL;
-}
 
 static const char* panic_get_exception_name(uint64_t vector)
 {
@@ -153,11 +70,10 @@ static void panic_registers(const interrupt_frame_t* frame)
 {
     LOG_PANIC("rip: %04llx:0x%016llx ", frame->cs, frame->rip);
 
-    uintptr_t offset;
-    const char* symbol = panic_resolve_symbol(frame->rip, &offset);
-    if (symbol != NULL)
+    symbol_info_t symbol;
+    if (symbol_resolve_addr(&symbol, (void*)frame->rip) != ERR)
     {
-        LOG_PANIC("<%s+0x%llx>", symbol, offset);
+        LOG_PANIC("<%s+0x%llx>", symbol.name, frame->rip - (uintptr_t)symbol.addr);
     }
     LOG_PANIC("\n");
 
@@ -168,6 +84,57 @@ static void panic_registers(const interrupt_frame_t* frame)
     LOG_PANIC("rbp: 0x%016llx r08: 0x%016llx r09: 0x%016llx\n", frame->rbp, frame->r8, frame->r9);
     LOG_PANIC("r10: 0x%016llx r11: 0x%016llx r12: 0x%016llx\n", frame->r10, frame->r11, frame->r12);
     LOG_PANIC("r13: 0x%016llx r14: 0x%016llx r15: 0x%016llx\n", frame->r13, frame->r14, frame->r15);
+}
+
+static bool panic_is_valid_address(uintptr_t addr)
+{
+    if (addr == 0)
+    {
+        return false;
+    }
+    if (addr < VMM_USER_SPACE_MIN)
+    {
+        return false;
+    }
+    if (addr >= VMM_KERNEL_BINARY_MAX)
+    {
+        return false;
+    }
+    if (addr > VMM_USER_SPACE_MAX && addr < VMM_IDENTITY_MAPPED_MIN)
+    {
+        return false;
+    }
+    if (addr >= UINTPTR_MAX - sizeof(uint64_t) * 2)
+    {
+        return false;
+    }
+    if (addr >= VMM_KERNEL_STACKS_MAX - sizeof(uint64_t) * 4 && addr <= VMM_KERNEL_STACKS_MAX)
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool panic_is_valid_stack_frame(uintptr_t ptr)
+{
+    if (ptr == 0)
+    {
+        return false;
+    }
+    if (ptr & 0x7)
+    {
+        return false;
+    }
+    if (!panic_is_valid_address(ptr))
+    {
+        return false;
+    }
+    if (!panic_is_valid_address(ptr + sizeof(uintptr_t)))
+    {
+        return false;
+    }
+
+    return true;
 }
 
 static void panic_print_stack_dump(const interrupt_frame_t* frame)
@@ -229,68 +196,31 @@ static void panic_print_stack_dump(const interrupt_frame_t* frame)
     }
 }
 
-static void panic_print_trace_address(uintptr_t addr)
+static uint64_t panic_print_trace_address(uintptr_t addr)
 {
     if (addr >= VMM_USER_SPACE_MIN && addr < VMM_USER_SPACE_MAX)
     {
         LOG_PANIC("  [0x%016llx] <user space address>\n", addr);
-        return;
+        return ERR;
     }
 
-    uintptr_t offset;
-    const char* symbol = panic_resolve_symbol(addr, &offset);
-    if (symbol == NULL)
+    symbol_info_t symbol;
+    if (symbol_resolve_addr(&symbol, (void*)addr) == ERR)
     {
         LOG_PANIC("  [0x%016llx] <unknown>\n", addr);
-        return;
+        return ERR;
     }
 
-    LOG_PANIC("  [0x%016llx] <%s+0x%llx>\n", addr, symbol, offset);
+    LOG_PANIC("  [0x%016llx] <%s+0x%llx>\n", addr, symbol.name, addr - (uintptr_t)symbol.addr);
+    return 0;
 }
 
-static void panic_direct_stack_trace(void)
+static void panic_unwind_stack(uintptr_t* rbp)
 {
     LOG_PANIC("stack trace:\n");
-
-    void* currentFrame = __builtin_frame_address(0);
-    void* prevFrame = NULL;
-
+    uintptr_t* prevFrame = NULL;
     uint64_t depth = 0;
-    while (currentFrame != NULL && currentFrame != prevFrame)
-    {
-        if (depth >= PANIC_MAX_STACK_FRAMES)
-        {
-            LOG_PANIC("  ...\n");
-            break;
-        }
 
-        if (!panic_is_valid_stack_frame(currentFrame))
-        {
-            break;
-        }
-
-        void* returnAddress = *((void**)currentFrame + 1);
-        if (returnAddress == NULL)
-        {
-            break;
-        }
-
-        panic_print_trace_address((uintptr_t)returnAddress);
-
-        prevFrame = currentFrame;
-        currentFrame = *((void**)currentFrame);
-        depth++;
-    }
-}
-
-void panic_stack_trace(const interrupt_frame_t* frame)
-{
-    LOG_PANIC("stack trace:\n");
-
-    uint64_t* rbp = (uint64_t*)frame->rbp;
-    uint64_t* prevFrame = NULL;
-
-    uint64_t depth = 0;
     while (rbp != NULL && rbp != prevFrame)
     {
         if (depth >= PANIC_MAX_STACK_FRAMES)
@@ -299,64 +229,39 @@ void panic_stack_trace(const interrupt_frame_t* frame)
             break;
         }
 
-        if (!panic_is_valid_stack_frame(rbp))
+        if (!panic_is_valid_stack_frame((uintptr_t)rbp))
         {
+            LOG_PANIC("  [0x%016llx] <invalid frame pointer>\n", (uintptr_t)rbp);
             break;
         }
 
-        uint64_t returnAddress = rbp[1];
+        uintptr_t returnAddress = rbp[1];
         if (returnAddress == 0)
         {
+            LOG_PANIC("  [0x%016llx] <null return address>\n", returnAddress);
             break;
         }
 
-        panic_print_trace_address(returnAddress);
+        if (panic_print_trace_address(returnAddress) == ERR)
+        {
+            LOG_PANIC("  [0x%016llx] <failed to resolve>\n", returnAddress);
+            break;
+        }
 
         prevFrame = rbp;
-        rbp = (uint64_t*)rbp[0];
+        rbp = (uintptr_t*)rbp[0];
         depth++;
     }
 }
 
-void panic_symbols_init(const boot_kernel_t* kernel)
+static void panic_direct_stack_trace(void)
 {
-    list_init(&symbols);
+    panic_unwind_stack(__builtin_frame_address(0));
+}
 
-    for (uint32_t i = 0; i < kernel->symbolCount; i++)
-    {
-        elf_sym_t* sym = &kernel->symbols[i];
-        if (sym->shndx != ELF_SHN_UNDEF && sym->size > 0)
-        {
-            uintptr_t start = sym->value;
-            uintptr_t end = start + (sym->size > 0 ? sym->size : 1);
-
-            panic_symbol_t* symbol = malloc(sizeof(panic_symbol_t));
-            if (symbol == NULL)
-            {
-                // This isent really recoverable, but we can at least continue without the other symbols.
-                symbolsLoaded = true;
-                break;
-            }
-            list_entry_init(&symbol->entry);
-            symbol->start = start;
-            symbol->end = end;
-
-            if (sym->name >= kernel->stringTableSize)
-            {
-                strncpy(symbol->name, "invalid", MAX_NAME - 1);
-                symbol->name[MAX_NAME - 1] = '\0';
-                list_push(&symbols, &symbol->entry);
-                continue;
-            }
-
-            const char* name = &kernel->stringTable[sym->name];
-            strncpy(symbol->name, name, MAX_NAME - 1);
-            symbol->name[MAX_NAME - 1] = '\0';
-            list_push(&symbols, &symbol->entry);
-        }
-    }
-
-    symbolsLoaded = true;
+void panic_stack_trace(const interrupt_frame_t* frame)
+{
+    panic_unwind_stack((uintptr_t*)frame->rbp);
 }
 
 void panic(const interrupt_frame_t* frame, const char* format, ...)
@@ -369,6 +274,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
     {
         if (expectedCpuId == selfId)
         {
+            // Print basic message for double panic on same CPU but avoid using the full panic stuff again.
             const char* message = "!!! KERNEL DOUBLE PANIC ON SAME CPU !!!\n";
             log_write(message, strlen(message));
         }
@@ -520,8 +426,8 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
 
     LOG_PANIC("!!! Please restart your machine !!!\n");
 
-#ifdef QEMU_ISA_DEBUG_EXIT
-    port_outb(QEMU_ISA_DEBUG_EXIT_PORT, EXIT_FAILURE);
+#ifdef QEMU_EXIT_ON_PANIC
+    port_outb(QEMU_EXIT_ON_PANIC_PORT, EXIT_FAILURE);
 #endif
 
     while (true)

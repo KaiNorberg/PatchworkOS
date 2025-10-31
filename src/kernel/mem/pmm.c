@@ -10,6 +10,7 @@
 #include <boot/boot_info.h>
 
 #include <errno.h>
+#include <string.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 
@@ -135,6 +136,10 @@ static void pmm_load_memory(const boot_memory_map_t* map)
 
         if (pmm_is_efi_mem_available(desc->Type))
         {
+#ifndef NDEBUG
+            // Clear the memory to deliberatly cause corruption if the memory is actually being used.
+            memset((void*)desc->VirtualStart, 0xCC, desc->NumberOfPages * PAGE_SIZE);
+#endif
             pmm_free_pages_unlocked((void*)desc->VirtualStart, desc->NumberOfPages);
         }
         else

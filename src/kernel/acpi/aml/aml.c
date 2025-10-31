@@ -167,11 +167,6 @@ void aml_init(void)
         panic(NULL, "there are still %llu unresolved objects after patch up\n", aml_patch_up_unresolved_count());
     }
 
-    if (aml_namespace_expose() == ERR)
-    {
-        panic(NULL, "failed to expose AML namespace in sysfs\n");
-    }
-
 #ifdef TESTING
     if (aml_tests_post_parse_all() == ERR)
     {
