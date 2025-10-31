@@ -77,6 +77,8 @@ typedef struct
 /**
  * @brief Load all kernel symbols from the bootloader provided kernel ELF file.
  *
+ * Only non-local symbols are loaded, as in symbols that are globally visible (not `static`).
+ *
  * Will panic on failure.
  *
  * @param kernel The bootloader provided kernel information.

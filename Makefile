@@ -128,13 +128,14 @@ nuke: clean
 
 # We use ACPICA's runtime test suite to validate our ACPI implementation.
 #
-# ACPICA runtime tests are all found in tests/aslts/src/runtime/collections in the ACPICA repository.
-# Each collection includes sub-collections and have a "FULL" sub-collection that includes all tests in the collection.
-# We want each sub-collection on their own, each sub-collection has a MAIN.asl file that contain a MAIN method, these are the files we want to compile.
+# The tests seem to be structured like this:
+# - ACPICA runtime tests are all found in tests/aslts/src/runtime/collections in the ACPICA repository.
+# - Each collection includes sub-collections and have a "FULL" sub-collection that includes all tests in the collection.
+# - We want each sub-collection on their own, each sub-collection has a MAIN.asl file that contain a MAIN method, these are the files we want to compile.
 #
 # At least this is my interpretation of the ACPICA test structure. Could be wrong but it seems to work.
 #
-# We clone the ACPICA repository if we don't have it already, then we find all MAIN.asl files that are not in a "FULL" sub-collection,
+# So what we do is clone the ACPICA repository if we don't have it already, then we find all MAIN.asl files that are not in a "FULL" sub-collection,
 # compile them to AML using iasl and convert the AML to a C header file using xxd, finally we create a single file that includes all tests.
 #
 # We can then in `aml_tests.c` include this generated file and run all tests in a loop.
@@ -163,7 +164,7 @@ clone_acpica_and_compile_tests:
 				mkdir -p $$OUT_DIR; \
 				echo "Compiling asl test $$FILE to $$OUT_DIR/test.aml and $$OUT_DIR/test.h"; \
 				iasl -va -oa -f -p $$OUT_DIR/test.aml $$FILE > /dev/null; \
-				xxd -i $$OUT_DIR/test.aml $$OUT_DIR/test.h > /dev/null; \
+				xxd -i $$OUT_DIR/test.aml | sed 's/^unsigned/static unsigned/' > $$OUT_DIR/test.h; \
 			done; \
 		done; \
 	fi

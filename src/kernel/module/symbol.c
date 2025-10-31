@@ -49,7 +49,6 @@ uint64_t symbol_add(const char* name, void* addr)
     map_entry_init(&nameEntry->fromNameEntry);
     nameEntry->addr = addr;
 
-    LOG_DEBUG("Adding symbol: %s -> %p\n", name, addr);
     map_key_t key = map_key_string(name);
     if (map_insert(&fromNameMap, &key, &nameEntry->fromNameEntry) == ERR)
     {
