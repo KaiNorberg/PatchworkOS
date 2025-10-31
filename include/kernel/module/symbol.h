@@ -39,16 +39,41 @@
 #define SYMBOL_MAX_NAME MAP_KEY_MAX_LENGTH
 
 /**
+ * @brief Symbol flags.
+ * @enum symbol_flags_t
+ */
+typedef enum
+{
+    SYMBOL_FLAG_GLOBAL = 0,
+    SYMBOL_FLAG_STATIC = 1 << 0, ///< Symbol is static (local to translation unit)
+} symbol_flags_t;
+
+/**
  * @brief Symbol name mapping structure.
  * @struct symbol_name_t
  *
- * Stored in a name-keyed map for name to address resolution.
+ * Stored in a name-keyed map for name to address resolution, only used for global symbols.
  */
 typedef struct
 {
     map_entry_t fromNameEntry; ///< Map entry for name to symbol mapping
     void* addr;                ///< Address of the symbol
 } symbol_name_t;
+
+/**
+ * @brief Static symbol name structure.
+ * @struct symbol_static_name_t
+ *
+ * Used to represent static symbols (local to a translation unit).
+ *
+ * We need this to be stored separately since static symbols can have duplicate names across different translation units, so we cant use the name as a unique key like we do for global symbols.
+ */
+typedef struct
+{
+    list_entry_t listEntry;
+    char name[SYMBOL_MAX_NAME];
+    void* addr;
+} symbol_static_name_t;
 
 /**
  * @brief Symbol address mapping structure.
@@ -72,6 +97,7 @@ typedef struct
 {
     void* addr;
     char name[SYMBOL_MAX_NAME];
+    symbol_flags_t flags;
 } symbol_info_t;
 
 /**
@@ -88,13 +114,15 @@ void symbol_load_kernel_symbols(const boot_kernel_t* kernel);
 /**
  * @brief Add a symbol to the kernel symbol table.
  *
- * Duplicate symbol names are not allowed, but duplicate addresses with different names are allowed.
+ * Duplicate symbol names are not allowed, with the exception of static symbols.
+ *
+ * Duplicate addresses with different names are always allowed.
  *
  * @param name The name of the symbol.
  * @param addr The address of the symbol.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t symbol_add(const char* name, void* addr);
+uint64_t symbol_add(const char* name, void* addr, symbol_flags_t flags);
 
 /**
  * @brief Remove a symbol from the kernel symbol table by address.

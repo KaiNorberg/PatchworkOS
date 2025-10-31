@@ -10,7 +10,7 @@
 
 ![desktop screenshot](meta/screenshots/desktop.png)
 
-**Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, à la Plan9. Built from scratch in C and assembly, its intended be an educational, experimental and "modern" operating system.
+**Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended be an educational, experimental and "modern" operating system.
 
 In the end this is a project made for fun, but the goal is still to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system, a floppy disk driver is not enough and neither is a round-robin array scheduler.
 

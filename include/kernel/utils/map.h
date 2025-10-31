@@ -11,6 +11,8 @@
  * @defgroup kernel_utils_map Hash Map
  * @ingroup kernel_utils
  *
+ * TODO: Dynamically sized keys without heap allocation?
+ *
  * @{
  */
 
@@ -32,7 +34,7 @@
 /**
  * @brief The maximum length of a key in the map.
  */
-#define MAP_KEY_MAX_LENGTH 55
+#define MAP_KEY_MAX_LENGTH 118
 
 /**
  * @brief Map key stucture.
