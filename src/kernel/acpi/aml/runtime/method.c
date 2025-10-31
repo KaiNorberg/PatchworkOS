@@ -8,7 +8,7 @@
 
 #include <errno.h>
 
-aml_object_t* aml_method_evaluate(aml_state_t* parentState, aml_method_obj_t* method, aml_object_t** args)
+aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_obj_t* method, aml_object_t** args)
 {
     if (method == NULL || parentState == NULL)
     {
@@ -118,46 +118,4 @@ aml_object_t* aml_method_evaluate(aml_state_t* parentState, aml_method_obj_t* me
     aml_object_t* result = aml_state_result_get(&state);
     aml_state_deinit(&state);
     return result; // Transfer ownership
-}
-
-uint64_t aml_method_evaluate_integer(aml_state_t* parentState, aml_object_t* object, aml_integer_t* out)
-{
-    if (object == NULL || out == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    aml_type_t type = object->type;
-    if (type == AML_INTEGER)
-    {
-        *out = object->integer.value;
-        return 0;
-    }
-
-    if (type != AML_METHOD)
-    {
-        LOG_ERR("object is a '%s', not a method or integer\n", aml_type_to_string(type));
-        errno = EINVAL;
-        return ERR;
-    }
-
-    aml_object_t* result = aml_method_evaluate(parentState, &object->method, NULL);
-    if (result == NULL)
-    {
-        return ERR;
-    }
-    DEREF_DEFER(result);
-
-    if (result->type != AML_INTEGER)
-    {
-        LOG_ERR("method did not return an Integer, returned '%s' instead\n", aml_type_to_string(result->type));
-        return ERR;
-    }
-
-    if (out != NULL)
-    {
-        *out = result->integer.value;
-    }
-    return 0;
 }

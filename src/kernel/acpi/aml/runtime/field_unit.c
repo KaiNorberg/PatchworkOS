@@ -6,6 +6,7 @@
 #include <kernel/acpi/aml/state.h>
 #include <kernel/acpi/aml/to_string.h>
 #include <kernel/cpu/port.h>
+#include <kernel/acpi/aml/runtime/evaluate.h>
 #include <kernel/drivers/pci/pci_config.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>
@@ -195,12 +196,14 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_obj_t* opreg
     {
         DEREF_DEFER(adrObject);
 
-        aml_integer_t adrValue = 0;
-        if (aml_method_evaluate_integer(state, adrObject, &adrValue) == ERR)
+        aml_object_t* adrResult = aml_evaluate(state, adrObject, AML_INTEGER);
+        if (adrResult == NULL)
         {
             LOG_ERR("failed to evaluate _ADR for opregion '%s'\n", AML_NAME_TO_STRING(location->name));
             return ERR;
         }
+        aml_integer_t adrValue = adrResult->integer.value;
+        DEREF(adrResult);
 
         *slot = adrValue & 0x0000FFFF;             // Low word is slot
         *function = (adrValue >> 16) & 0x0000FFFF; // High word is function
@@ -212,12 +215,14 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_obj_t* opreg
     {
         DEREF_DEFER(bbnObject);
 
-        aml_integer_t bbnValue = 0;
-        if (aml_method_evaluate_integer(state, bbnObject, &bbnValue) == ERR)
+        aml_object_t* bbnResult = aml_evaluate(state, bbnObject, AML_INTEGER);
+        if (bbnResult == NULL)
         {
             LOG_ERR("failed to evaluate _BBN for opregion '%s'\n", AML_NAME_TO_STRING(location->name));
             return ERR;
         }
+        aml_integer_t bbnValue = bbnResult->integer.value;
+        DEREF(bbnResult);
 
         // Lower 8 bits is the bus number.
         *bus = bbnValue & 0xFF;
@@ -229,12 +234,14 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_obj_t* opreg
     {
         DEREF_DEFER(segObject);
 
-        aml_integer_t segValue = 0;
-        if (aml_method_evaluate_integer(state, segObject, &segValue) == ERR)
+        aml_object_t* segResult = aml_evaluate(state, segObject, AML_INTEGER);
+        if (segResult == NULL)
         {
             LOG_ERR("failed to evaluate _SEG for opregion '%s'\n", AML_NAME_TO_STRING(location->name));
             return ERR;
         }
+        aml_integer_t segValue = segResult->integer.value;
+        DEREF(segResult);
 
         // Lower 16 bits is the segment group number.
         *segmentGroup = segValue & 0xFFFF;

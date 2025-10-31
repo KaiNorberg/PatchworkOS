@@ -9,6 +9,7 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/module/module.h>
+#include <kernel/acpi/aml/runtime/evaluate.h>
 
 #include <errno.h>
 
@@ -21,20 +22,38 @@ static inline uint64_t acpi_hid_get(aml_state_t* state, aml_object_t* device, ch
     }
     DEREF_DEFER(hid);
 
-    if (hid->type == AML_INTEGER)
+    aml_object_t* hidResult = aml_evaluate(state, hid, AML_STRING | AML_INTEGER);
+    if (hidResult == NULL)
     {
-        return aml_eisa_id_to_string(hid->integer.value, buffer);
+        LOG_ERR("could not evaluate %s._HID\n", AML_NAME_TO_STRING(device->name));
+        return ERR;
     }
-    else if (hid->type == AML_STRING)
+    DEREF_DEFER(hidResult);
+
+    if (hidResult->type == AML_STRING)
     {
-        strcpy(buffer, hid->string.content);
-        return 0;
+        strncpy(buffer, hidResult->string.content, hidResult->string.length);
+        buffer[MAX_NAME - 1] = '\0';
+    }
+    else if (hidResult->type == AML_INTEGER)
+    {
+        if (aml_eisa_id_to_string(hidResult->integer.value, buffer) == ERR)
+        {
+            LOG_ERR("%s._HID returned invalid EISA ID 0x%llx\n", AML_NAME_TO_STRING(device->name),
+                hidResult->integer.value);
+            errno = EILSEQ;
+            return ERR;
+        }
+    }
+    else
+    {
+        LOG_ERR("%s._HID returned invalid type %s\n", AML_NAME_TO_STRING(device->name),
+            aml_type_to_string(hidResult->type));
+        errno = EILSEQ;
+        return ERR;
     }
 
-    LOG_ERR("%s._HID is a '%s', not an Integer or String\n", AML_NAME_TO_STRING(device->name),
-        aml_type_to_string(hid->type));
-    errno = EILSEQ;
-    return ERR;
+    return 0;
 }
 
 static inline uint64_t acpi_sta_get_flags(aml_state_t* state, aml_object_t* device, acpi_sta_flags_t* out)
@@ -47,12 +66,14 @@ static inline uint64_t acpi_sta_get_flags(aml_state_t* state, aml_object_t* devi
     }
     DEREF_DEFER(sta);
 
-    aml_integer_t value;
-    if (aml_method_evaluate_integer(state, sta, &value) == ERR)
+    aml_object_t* staResult = aml_evaluate(state, sta, AML_INTEGER);
+    if (staResult == NULL)
     {
         LOG_ERR("could not evaluate %s._STA\n", AML_NAME_TO_STRING(device->name));
         return ERR;
     }
+    aml_integer_t value = staResult->integer.value;
+    DEREF(staResult);
 
     if (value &
         ~(ACPI_STA_PRESENT | ACPI_STA_ENABLED | ACPI_STA_SHOW_IN_UI | ACPI_STA_FUNCTIONAL | ACPI_STA_BATTERY_PRESENT))
@@ -108,19 +129,14 @@ static inline uint64_t acpi_device_init_children(aml_state_t* state, aml_object_
             {
                 DEREF_DEFER(ini);
 
-                if (ini->type != AML_METHOD)
-                {
-                    LOG_ERR("%s._INI is a '%s', not a method\n", AML_NAME_TO_STRING(child->name),
-                        aml_type_to_string(ini->type));
-                    return ERR;
-                }
-
                 LOG_INFO("ACPI device '%s._INI'\n", AML_NAME_TO_STRING(child->name));
-                if (aml_method_evaluate_integer(state, ini, NULL) == ERR)
+                aml_object_t* iniResult = aml_evaluate(state, ini, AML_ALL_TYPES);
+                if (iniResult == NULL)
                 {
                     LOG_ERR("could not evaluate %s._INI\n", AML_NAME_TO_STRING(child->name));
                     return ERR;
                 }
+                DEREF(iniResult);
             }
         }
 
@@ -157,18 +173,14 @@ void acpi_devices_init(void)
     {
         DEREF_DEFER(sbIni);
 
-        if (sbIni->type != AML_METHOD)
-        {
-            aml_state_deinit(&state);
-            panic(NULL, "\\_SB_._INI is a '%s', not a method\n", aml_type_to_string(sbIni->type));
-        }
-
         LOG_INFO("found \\_SB_._INI\n");
-        if (aml_method_evaluate_integer(&state, sbIni, NULL) == ERR)
+        aml_object_t* iniResult = aml_evaluate(&state, sbIni, AML_ALL_TYPES);
+        if (iniResult == NULL)
         {
             aml_state_deinit(&state);
             panic(NULL, "could not evaluate \\_SB_._INI\n");
         }
+        DEREF(iniResult);
     }
 
     LOG_DEBUG("initializing ACPI devices under \\_SB_\n");

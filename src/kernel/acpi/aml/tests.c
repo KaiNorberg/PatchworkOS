@@ -84,7 +84,7 @@ static void aml_tests_exception_handler(aml_state_t* state, aml_exception_t code
     }
 
     aml_object_t* args[] = {arg0, arg1, arg2, NULL};
-    aml_object_t* result = aml_method_evaluate(state, &err->method, args);
+    aml_object_t* result = aml_method_invoke(state, &err->method, args);
     if (result == NULL)
     {
         return;
@@ -151,7 +151,7 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
     }
     DEREF_DEFER(mainObj);
 
-    aml_object_t* result = aml_method_evaluate(&state, &mainObj->method, NULL);
+    aml_object_t* result = aml_method_invoke(&state, &mainObj->method, NULL);
     if (result == NULL)
     {
         LOG_ERR("test '%s' method evaluation failed\n", test->name);
