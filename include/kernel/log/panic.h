@@ -39,6 +39,8 @@ void panic_stack_trace(const interrupt_frame_t* frame);
 /**
  * @brief Panic the kernel, printing a message and halting.
  *
+ * If `QEMU_EXIT_ON_PANIC` is defined and we are running in QEMU, will exit QEMU instead of halting.
+ *
  * @param frame Pointer to the interrupt frame, can be `NULL`.
  * @param format The format string for the panic message.
  * @param ... Additional arguments for the format string.

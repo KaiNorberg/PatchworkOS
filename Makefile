@@ -27,11 +27,13 @@ QEMU_FLAGS = \
 	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd
 
 ifeq ($(DEBUG),1)
-	ifneq ($(GDB),1)
-		QEMU_FLAGS += -device isa-debug-exit
-	endif
+
 else
 	QEMU_FLAGS += -no-shutdown -no-reboot
+endif
+
+ifeq ($(QEMU_EXIT_ON_PANIC),1)
+	QEMU_FLAGS += -device isa-debug-exit
 endif
 
 ifeq ($(GDB),1)

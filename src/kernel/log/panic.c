@@ -426,8 +426,8 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
 
     LOG_PANIC("!!! Please restart your machine !!!\n");
 
-#ifdef QEMU_ISA_DEBUG_EXIT
-    port_outb(QEMU_ISA_DEBUG_EXIT_PORT, EXIT_FAILURE);
+#ifdef QEMU_EXIT_ON_PANIC
+    port_outb(QEMU_EXIT_ON_PANIC_PORT, EXIT_FAILURE);
 #endif
 
     while (true)

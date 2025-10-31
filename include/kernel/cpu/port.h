@@ -24,7 +24,7 @@
 #define ICW4_BUF_MASTER 0x0C // Buffered mode/master
 #define ICW4_SFNM 0x10       // Special fully nested (not)
 
-#define QEMU_ISA_DEBUG_EXIT_PORT 0x501
+#define QEMU_EXIT_ON_PANIC_PORT 0x501
 
 static inline void port_outb(uint16_t port, uint8_t val)
 {

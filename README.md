@@ -35,7 +35,7 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 
 ### Kernel
 
-- Multithreading with a [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), fully preemptive and tickless
+- Multithreading with a fully preemptive and tickless [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), based on
 - Symmetric Multi Processing with fine-grained locking, no big locks allowed
 - Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info
 - Dynamic kernel and user stack allocation
@@ -283,7 +283,6 @@ Lets take another example, say you wanted to wait on multiple processes with a `
 
 Plus its fun.
 
-
 ## Shell Utilities
 
 PatchworkOS includes its own shell utilities designed around its [file flags](#file-flags) system. Included is a brief overview with some usage examples. For convenience the shell utilities are named after their POSIX counterparts, however they are not drop-in replacements.
@@ -414,6 +413,9 @@ make all DEBUG=1 TESTING=1
 # Debug using qemu with one cpu and GDB
 make all run DEBUG=1 QEMU_CPUS=1 GDB=1
 
+# Debug using qemu and exit on panic
+make all run DEBUG=1 QEMU_EXIT_ON_PANIC=1
+
 # Generate doxygen documentation
 make doxygen
 
@@ -449,7 +451,9 @@ You should now see a new entry in your GRUB boot menu allowing you to boot into 
 
 ## Testing
 
-Testing uses a GitHub action that compiles the project and runs it for some amount of time using QEMU both with the `DEBUG=1` and `TESTING=1` flags enabled. This will run some additional tests in the kernel (for example it will clone ACPICA and run all its runtime tests), and if it has not crashed by the end of the allotted time, it is considered a success.
+Testing uses a GitHub action that compiles the project and runs it for some amount of time using QEMU with `DEBUG=1`, `TESTING=1` and `QEMU_EXIT_ON_PANIC=1` set. This will run some additional tests in the kernel (for example it will clone ACPICA and run all its runtime tests), and if QEMU has not crashed by the end of the allotted time, it is considered a success.
+
+Note that the `QEMU_EXIT_ON_PANIC` flag will cause any failed test, assert or panic in the kernel to exit QEMU using their "-device isa-debug-exit" feature with a non-zero exit code, thus causing the GitHub action to fail.
 
 ### Tested Configurations
 
