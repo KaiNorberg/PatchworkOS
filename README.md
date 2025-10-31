@@ -1,14 +1,30 @@
 # PatchworkOS
 <br>
 <div align="center">
-    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green" alt="License"/></a>
-    <a href="https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml"><img src="https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg" alt="Build and Test"/></a>
+    <a href="https://github.com/KaiNorberg/PatchworkOS/issues">
+      <img src="https://img.shields.io/github/issues/KaiNorberg/PatchworkOS">
+    </a>
+    <a href="https://github.com/KaiNorberg/PatchworkOS/network">
+      <img src="https://img.shields.io/github/forks/KaiNorberg/PatchworkOS">
+    </a>
+    <a href="https://github.com/KaiNorberg/PatchworkOS/stargazers">
+      <img src="https://img.shields.io/github/stars/KaiNorberg/PatchworkOS">
+    </a>
+    <a href="https://kainorberg.github.io/PatchworkOS/html/index.html">
+      <img src="https://img.shields.io/badge/docs-Doxygen-blue">
+    </a>
+    <a href="https://github.com/KaiNorberg/PatchworkOS/blob/main/license">
+      <img src="https://img.shields.io/github/license/KaiNorberg/PatchworkOS">
+    </a>
+    <a href="https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml">
+        <img src="https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg" alt="Build and Test"/>
+    </a>
     <br>
     <i>PatchworkOS is currently in a very early stage of development, and may have both known and unknown bugs.</i>
 </div>
 <br>
 
-![desktop screenshot](meta/screenshots/desktop.png)
+![desktop screenshot](https://github.com/KaiNorberg/PatchworkOS/blob/main/meta/screenshots/desktop.png)
 
 **Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended be an educational, experimental and "modern" operating system.
 
@@ -22,11 +38,15 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 
 <table>
 <tr>
-<td width="50%">
-<img src="meta/screenshots/stresstest.png" alt="Stresstest Screenshot" />
+<td width="50%" valign="top" align="center">
+  <img src="https://github.com/KaiNorberg/PatchworkOS/blob/main/meta/screenshots/stresstest.png" alt="Stresstest Screenshot" />
+  <br>
+  <i>Stress test showing ~100% utilization across 12 CPUs.</i>
 </td>
-<td width="50%">
-<img src="meta/screenshots/doom.png" alt="Doom Screenshot" />
+<td width="50%" valign="top" align="center">
+  <img src="https://github.com/KaiNorberg/PatchworkOS/blob/main/meta/screenshots/doom.png" alt="Doom Screenshot" />
+  <br>
+  <i>DOOM running on PatchworkOS.</i>
 </td>
 </tr>
 </table>
@@ -35,7 +55,7 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 
 ### Kernel
 
-- Multithreading with a fully preemptive and tickless [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), based on
+- Multithreading with a fully preemptive and tickless [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), loosely based on Linux's O(1) scheduler
 - Symmetric Multi Processing with fine-grained locking, no big locks allowed
 - Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info
 - Dynamic kernel and user stack allocation
