@@ -97,6 +97,10 @@ static void init_free_loader_data(const boot_memory_map_t* map)
         {
             LOG_INFO("free boot memory [0x%016lx-0x%016lx]\n", desc->VirtualStart,
                 ((uintptr_t)desc->VirtualStart) + desc->NumberOfPages * PAGE_SIZE);
+#ifndef NDEBUG
+            // Clear the memory to deliberatly cause corruption if the memory is actually being used.
+            memset((void*)desc->VirtualStart, 0xCC, desc->NumberOfPages * PAGE_SIZE);
+#endif
             pmm_free_region((void*)desc->VirtualStart, desc->NumberOfPages);
         }
     }
