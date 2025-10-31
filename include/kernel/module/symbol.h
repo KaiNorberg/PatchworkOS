@@ -97,14 +97,14 @@ void symbol_load_kernel_symbols(const boot_kernel_t* kernel);
 uint64_t symbol_add(const char* name, void* addr);
 
 /**
- * @brief Remove a symbol from the kernel symbol table by address.
+ * @brief Remove all symbols from the kernel symbol table with the exact given address.
  *
- * @param addr The address of the symbol to remove, must be exact.
+ * @param addr The address of the symbols to remove, must be exact.
  */
 void symbol_remove_addr(void* addr);
 
 /**
- * @brief Remove a symbol from the kernel symbol table by name.
+ * @brief Remove all symbols from the kernel symbol table with the given name.
  *
  * @param name The name of the symbol to remove.
  */

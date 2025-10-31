@@ -79,8 +79,8 @@ static symbol_addr_t* symbol_insert_address(void* addr)
     list_entry_init(&addrEntry->entry);
     addrEntry->addr = addr;
 
-    addrArray[left] = addrEntry;
     memmove(&addrArray[left + 1], &addrArray[left], sizeof(symbol_addr_t*) * (addrAmount - left));
+    addrArray[left] = addrEntry;
     addrAmount++;
     return addrEntry;
 }
@@ -171,22 +171,33 @@ void symbol_remove_addr(void* addr)
 
     RWLOCK_WRITE_SCOPE(&lock);
 
-    uint64_t index = symbol_get_floor_index_for_addr(addr);
-    if (index == addrAmount || addrArray[index]->addr != addr)
+    uint64_t startIndex = symbol_get_floor_index_for_addr(addr);
+    if (startIndex == addrAmount || addrArray[startIndex]->addr != addr)
     {
         return;
     }
-
-    symbol_addr_t* addrEntry = addrArray[index];
-    symbol_name_t* nameEntry = CONTAINER_OF(addrEntry->entry.list, symbol_name_t, addrs);
-
-    list_remove(&nameEntry->addrs, &addrEntry->entry);
-    if (list_is_empty(&nameEntry->addrs))
+    uint64_t endIndex = startIndex;
+    while (endIndex < addrAmount && addrArray[endIndex]->addr == addr)
     {
-        map_key_t key = map_key_string(nameEntry->name);
-        map_remove(&nameMap, &key);
-        free(nameEntry);
+        endIndex++;
     }
+
+    for (uint64_t i = startIndex; i < endIndex; i++)
+    {
+        symbol_addr_t* addrEntry = addrArray[i];
+        symbol_name_t* nameEntry = CONTAINER_OF(addrEntry->entry.list, symbol_name_t, addrs);
+
+        list_remove(&nameEntry->addrs, &addrEntry->entry);
+        if (list_is_empty(&nameEntry->addrs))
+        {
+            map_key_t key = map_key_string(nameEntry->name);
+            map_remove(&nameMap, &key);
+            free(nameEntry);
+        }
+        free(addrEntry);
+    }
+    memmove(&addrArray[startIndex], &addrArray[endIndex], sizeof(symbol_addr_t*) * (addrAmount - endIndex));
+    addrAmount -= (endIndex - startIndex);
 }
 
 void symbol_remove_name(const char* name)
@@ -209,14 +220,14 @@ void symbol_remove_name(const char* name)
     {
         symbol_addr_t* addrEntry = CONTAINER_OF(list_pop(&nameEntry->addrs), symbol_addr_t, entry);
 
-        uint64_t startIndex = symbol_get_floor_index_for_addr(addrEntry->addr);
-        uint64_t endIndex = startIndex;
-        while (endIndex < addrAmount && addrArray[endIndex]->addr == addrEntry->addr)
+        uint64_t index = symbol_get_floor_index_for_addr(addrEntry->addr);
+        if (index == addrAmount || addrArray[index]->addr != addrEntry->addr)
         {
-            endIndex++;
+            panic(NULL, "Inconsistent symbol table state");
         }
-        memmove(&addrArray[startIndex], &addrArray[endIndex], sizeof(symbol_addr_t) * (addrAmount - endIndex));
-        addrAmount -= (endIndex - startIndex);
+        memmove(&addrArray[index], &addrArray[index + 1], sizeof(symbol_addr_t*) * (addrAmount - index - 1));
+        addrAmount--;
+        free(addrEntry);
     }
 
     map_remove(&nameMap, &key);
@@ -234,7 +245,7 @@ uint64_t symbol_resolve_addr(symbol_info_t* outSymbol, void* addr)
     RWLOCK_READ_SCOPE(&lock);
 
     uint64_t index = symbol_get_floor_index_for_addr(addr);
-    if (index == addrAmount || addrArray[index]->addr != addr)
+    if (index == addrAmount)
     {
         errno = ENOENT;
         return ERR;
