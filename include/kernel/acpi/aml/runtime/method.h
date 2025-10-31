@@ -32,7 +32,7 @@
  *
  * @see Section 5.2 of the ACPICA reference for more details.
  * @see Section 19.6.85 of the ACPI specification for more details.
- * @see aml_namespace_overlay_t for more details about the parent overlay.
+ * @see aml_overlay_t for more details about the parent overlay.
  *
  * @param parentState The current AML state, this will not be used for anything other than getting the parent overlay.
  * @param method Pointer to the method to evaluate.

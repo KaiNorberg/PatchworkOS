@@ -22,6 +22,7 @@
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
+#include <kernel/module/symbol.h>
 #include <kernel/net/net.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/loader.h>
@@ -47,9 +48,10 @@ void init_early(const boot_info_t* bootInfo)
 
     pmm_init(&bootInfo->memory.map);
     vmm_init(&bootInfo->memory, &bootInfo->gop, &bootInfo->kernel);
+
     _std_init();
 
-    panic_symbols_init(&bootInfo->kernel);
+    symbol_load_kernel_symbols(&bootInfo->kernel);
 
     acpi_tables_init(bootInfo->rsdp);
 
@@ -64,7 +66,6 @@ void init_early(const boot_info_t* bootInfo)
     bootThread->frame.cs = GDT_CS_RING0;
     bootThread->frame.ss = GDT_SS_RING0;
     bootThread->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
-
     atomic_store(&bootThread->state, THREAD_RUNNING);
     bootThread->sched.deadline = CLOCKS_NEVER;
     smp_self_unsafe()->sched.runThread = bootThread;

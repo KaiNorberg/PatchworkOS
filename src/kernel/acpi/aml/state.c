@@ -61,7 +61,7 @@ uint64_t aml_state_init(aml_state_t* state, aml_object_t** args)
 
     state->result = NULL;
     state->errorDepth = 0;
-    if (aml_namespace_overlay_init(&state->overlay) == ERR)
+    if (aml_overlay_init(&state->overlay) == ERR)
     {
         for (uint8_t i = 0; i < AML_MAX_ARGS; i++)
         {
@@ -92,7 +92,7 @@ void aml_state_deinit(aml_state_t* state)
     }
     state->result = NULL;
 
-    aml_namespace_overlay_deinit(&state->overlay);
+    aml_overlay_deinit(&state->overlay);
 }
 
 aml_object_t* aml_state_result_get(aml_state_t* state)

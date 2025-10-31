@@ -9,6 +9,7 @@
 #include <kernel/log/log.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
+#include <kernel/module/symbol.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/version.h>
@@ -27,8 +28,6 @@
 extern uint64_t _kernelStart;
 extern uint64_t _kernelEnd;
 
-static list_t symbols = LIST_CREATE(symbols);
-static bool symbolsLoaded = false;
 static char panicBuffer[LOG_MAX_BUFFER] = {0};
 
 static atomic_uint32_t panicCpudId = ATOMIC_VAR_INIT(PANIC_NO_CPU_ID);
@@ -92,29 +91,6 @@ static bool panic_is_valid_address(uintptr_t addr)
     return true;
 }
 
-static const char* panic_resolve_symbol(uintptr_t addr, uintptr_t* offset)
-{
-    if (!symbolsLoaded)
-    {
-        return NULL;
-    }
-
-    panic_symbol_t* symbol = NULL;
-    LIST_FOR_EACH(symbol, &symbols, entry)
-    {
-        if (addr >= symbol->start && addr < symbol->end)
-        {
-            if (offset)
-            {
-                *offset = addr - symbol->start;
-            }
-            return symbol->name;
-        }
-    }
-
-    return NULL;
-}
-
 static const char* panic_get_exception_name(uint64_t vector)
 {
     static const char* names[] = {
@@ -153,11 +129,10 @@ static void panic_registers(const interrupt_frame_t* frame)
 {
     LOG_PANIC("rip: %04llx:0x%016llx ", frame->cs, frame->rip);
 
-    uintptr_t offset;
-    const char* symbol = panic_resolve_symbol(frame->rip, &offset);
-    if (symbol != NULL)
+    symbol_info_t symbol;
+    if (symbol_resolve_addr(&symbol, (void*)frame->rip) != ERR)
     {
-        LOG_PANIC("<%s+0x%llx>", symbol, offset);
+        LOG_PANIC("<%s+0x%llx>", symbol.name, frame->rip - (uintptr_t)symbol.addr);
     }
     LOG_PANIC("\n");
 
@@ -237,15 +212,14 @@ static void panic_print_trace_address(uintptr_t addr)
         return;
     }
 
-    uintptr_t offset;
-    const char* symbol = panic_resolve_symbol(addr, &offset);
-    if (symbol == NULL)
+    symbol_info_t symbol;
+    if (symbol_resolve_addr(&symbol, (void*)addr) == ERR)
     {
         LOG_PANIC("  [0x%016llx] <unknown>\n", addr);
         return;
     }
 
-    LOG_PANIC("  [0x%016llx] <%s+0x%llx>\n", addr, symbol, offset);
+    LOG_PANIC("  [0x%016llx] <%s+0x%llx>\n", addr, symbol.name, addr - (uintptr_t)symbol.addr);
 }
 
 static void panic_direct_stack_trace(void)
@@ -316,47 +290,6 @@ void panic_stack_trace(const interrupt_frame_t* frame)
         rbp = (uint64_t*)rbp[0];
         depth++;
     }
-}
-
-void panic_symbols_init(const boot_kernel_t* kernel)
-{
-    list_init(&symbols);
-
-    for (uint32_t i = 0; i < kernel->symbolCount; i++)
-    {
-        elf_sym_t* sym = &kernel->symbols[i];
-        if (sym->shndx != ELF_SHN_UNDEF && sym->size > 0)
-        {
-            uintptr_t start = sym->value;
-            uintptr_t end = start + (sym->size > 0 ? sym->size : 1);
-
-            panic_symbol_t* symbol = malloc(sizeof(panic_symbol_t));
-            if (symbol == NULL)
-            {
-                // This isent really recoverable, but we can at least continue without the other symbols.
-                symbolsLoaded = true;
-                break;
-            }
-            list_entry_init(&symbol->entry);
-            symbol->start = start;
-            symbol->end = end;
-
-            if (sym->name >= kernel->stringTableSize)
-            {
-                strncpy(symbol->name, "invalid", MAX_NAME - 1);
-                symbol->name[MAX_NAME - 1] = '\0';
-                list_push(&symbols, &symbol->entry);
-                continue;
-            }
-
-            const char* name = &kernel->stringTable[sym->name];
-            strncpy(symbol->name, name, MAX_NAME - 1);
-            symbol->name[MAX_NAME - 1] = '\0';
-            list_push(&symbols, &symbol->entry);
-        }
-    }
-
-    symbolsLoaded = true;
 }
 
 void panic(const interrupt_frame_t* frame, const char* format, ...)

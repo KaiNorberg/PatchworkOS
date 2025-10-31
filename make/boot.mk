@@ -3,6 +3,9 @@ include Make.defaults
 
 TARGET := $(BINDIR)/bootx64.efi
 
+# We need the .elf file parsing stuff from libstd
+SRC += $(call find_sources,src/libstd/functions/elf)
+
 CFLAGS += \
 	$(CFLAGS_DISABLE_SIMD) \
 	-fpic -ffreestanding \

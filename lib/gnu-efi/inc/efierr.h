@@ -65,4 +65,3 @@ Revision History
 #define EFI_WARN_BUFFER_TOO_SMALL       EFIWARN(4)
 
 #endif
-

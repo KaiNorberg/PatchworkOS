@@ -10,11 +10,11 @@
 
 ![desktop screenshot](meta/screenshots/desktop.png)
 
-**Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9 and others while simplifying them and adding in some new ideas of its own.
+**Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9 and others while adding in some new ideas of its own.
 
-In the end this is a project made for fun, however the goal is still to make a feature-complete and experimental operating system which attempts to use unique algorithms and designs over tried and tested ones. Sometimes this leads to bad results, and sometimes, hopefully, good ones.
+In the end this is a project made for fun, but the goal is still to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system. All while still remaining a (hopefully) interesting experiment in operating system design by attempting to use unique algorithms and designs over tried and tested ones. Sometimes this leads to bad results, and sometimes, with a bit of luck, good ones.
 
-Additionally, the OS aims to, in spite of its experimental nature, remain approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
+Additionally, despite its experimental nature and scale, it aims to remain approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
 
 <table>
 <tr>
@@ -337,6 +337,16 @@ fd_t handle = open("/net/local/seqpacket:nonblock");
 Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `openf()` function. It is also possible to just specify the first letter of a flag, so instead of `:nonblock` you can use `:n`.
 
 [Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html#ga82917c2c8f27ffa562957d5cfa4fdb2e)
+
+### But why?
+
+Im sure you have heard many an argument for and against the "everything is a file" philosophy. So I wont go over everything, but the primary reason for using it in PatchworkOS is "emergent behavior".
+
+Take the namespace sharing example, notice how there isent any actually dedicated "namespace sharing" system? There are instead a series of small, simple building blocks that when added together form a more complex whole. That is emergent behavior, by keeping things simple and most importantly interoperable, we can create very complex behaviour without needing to explicitly design it.
+
+Lets take another example, say you wanted to wait on multiple processes with a `waitpid()` syscall. Well, thats not possible. So now we suddenly need a new system call. Meanwhile, in a "everything is a file system" we just have a pollable `/proc/[pid]/wait` file that acts that returns the exit status, now any behaviour that can be implemented with `poll()` can be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination you can think of.
+
+Plus its fun.
 
 ---
 

@@ -3,8 +3,8 @@
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <kernel/sync/lock.h>
 #include <kernel/mem/vmm.h>
+#include <kernel/sync/lock.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,14 +13,14 @@
 static map_t hidMap = MAP_CREATE;
 static mutex_t mutex;
 
-static uint8_t* module_elf_load_section(file_t* file, const elf_hdr_t* header, char* shstrtab, const char* sectionName)
+static uint8_t* module_elf_load_section(file_t* file, const void* header, char* shstrtab, const char* sectionName)
 {
     if (file == NULL || header == NULL || shstrtab == NULL || sectionName == NULL)
     {
         return NULL;
     }
 
-    for (uint32_t i = 0; i < header->shdrAmount; i++)
+    /*for (uint32_t i = 0; i < header->shdrAmount; i++)
     {
         uint64_t shdrOffset = header->shdrOffset + (i * header->shdrSize);
         if (vfs_seek(file, shdrOffset, SEEK_SET) == ERR)
@@ -56,19 +56,19 @@ static uint8_t* module_elf_load_section(file_t* file, const elf_hdr_t* header, c
             return NULL;
         }
         return sectionData;
-    }
+    }*/
 
     return NULL;
 }
 
-static char* module_elf_load_shstrtab(file_t* file, const elf_hdr_t* header)
+static char* module_elf_load_shstrtab(file_t* file, const void* header)
 {
     if (file == NULL || header == NULL)
     {
         return NULL;
     }
 
-    for (uint32_t i = 0; i < header->shdrAmount; i++)
+    /*for (uint32_t i = 0; i < header->shdrAmount; i++)
     {
         elf_shdr_t shdr;
         uint64_t shdrOffset = header->shdrOffset + (i * header->shdrSize);
@@ -104,14 +104,15 @@ static char* module_elf_load_shstrtab(file_t* file, const elf_hdr_t* header)
 
             return shstrtab;
         }
-    }
+    }*/
 
     return NULL;
 }
 
 static uint64_t module_register(const char* path)
 {
-    char fullPath[MAX_PATH];
+    (void)path;
+    /*char fullPath[MAX_PATH];
     int len = snprintf(fullPath, sizeof(fullPath), "/kernel/modules/%s", path);
     if (len < 0 || (uint64_t)len >= sizeof(fullPath))
     {
@@ -245,13 +246,13 @@ error:
     }
     free(moduleAcpiHids);
     free(moduleInfo);
-    free(module);
+    free(module);*/
     return ERR;
 }
 
 void module_init(void)
 {
-    mutex_init(&mutex);
+    /*mutex_init(&mutex);
 
     file_t* moduleDir = vfs_open(PATHNAME("/kernel/modules:dir:recur"), sched_process());
     if (moduleDir == NULL)
@@ -294,7 +295,7 @@ void module_init(void)
         }
     }
 
-    LOG_INFO("registered %llu modules\n", moduleCount);
+    LOG_INFO("registered %llu modules\n", moduleCount);*/
 }
 
 static uint64_t module_load(module_t* module)
@@ -315,15 +316,16 @@ static hid_handler_t* module_hid_handler_lookup(const char* hid)
     {
         return NULL;
     }
+    return NULL;
 
-    map_key_t mapKey = map_key_string(hid);
+    /*map_key_t mapKey = map_key_string(hid);
     map_entry_t* entry = map_get(&hidMap, &mapKey);
     if (entry == NULL)
     {
         return NULL;
     }
 
-    return CONTAINER_OF(entry, hid_handler_t, hidMapEntry);
+    return CONTAINER_OF(entry, hid_handler_t, hidMapEntry);*/
 }
 
 uint64_t module_event(module_event_t* event)
@@ -334,7 +336,7 @@ uint64_t module_event(module_event_t* event)
         return ERR;
     }
 
-    switch (event->type)
+    /*switch (event->type)
     {
     case MODULE_EVENT_LOAD:
     {
@@ -370,6 +372,6 @@ uint64_t module_event(module_event_t* event)
     break;
     default:
         return ERR;
-    }
+    }*/
     return 0;
 }

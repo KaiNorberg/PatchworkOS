@@ -1,16 +1,16 @@
 #include <kernel/acpi/aml/namespace.h>
 
+#include <kernel/acpi/acpi.h>
 #include <kernel/acpi/aml/aml.h>
 #include <kernel/acpi/aml/object.h>
 #include <kernel/acpi/aml/to_string.h>
-#include <kernel/log/log.h>
 #include <kernel/fs/sysfs.h>
-#include <kernel/acpi/acpi.h>
+#include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 
 #include <errno.h>
 
-static aml_namespace_overlay_t globalOverlay;
+static aml_overlay_t globalOverlay;
 
 static aml_object_t* namespaceRoot = NULL;
 
@@ -45,7 +45,7 @@ static inline aml_object_t* aml_namespace_traverse_parents(aml_object_t* current
     return current;
 }
 
-static inline aml_object_t* aml_namespace_search_single_name(aml_namespace_overlay_t* overlay, aml_object_t* current,
+static inline aml_object_t* aml_namespace_search_single_name(aml_overlay_t* overlay, aml_object_t* current,
     aml_name_t name)
 {
     aml_object_t* next = aml_namespace_find_child(overlay, current, name);
@@ -72,7 +72,7 @@ static inline aml_object_t* aml_namespace_search_single_name(aml_namespace_overl
 
 uint64_t aml_namespace_init(aml_object_t* root)
 {
-    if (aml_namespace_overlay_init(&globalOverlay) == ERR)
+    if (aml_overlay_init(&globalOverlay) == ERR)
     {
         return ERR;
     }
@@ -139,7 +139,7 @@ aml_object_t* aml_namespace_get_root(void)
     return REF(namespaceRoot);
 }
 
-aml_object_t* aml_namespace_find_child(aml_namespace_overlay_t* overlay, aml_object_t* parent, aml_name_t name)
+aml_object_t* aml_namespace_find_child(aml_overlay_t* overlay, aml_object_t* parent, aml_name_t name)
 {
     if (parent == NULL || !(parent->flags & AML_OBJECT_NAMED))
     {
@@ -177,7 +177,7 @@ aml_object_t* aml_namespace_find_child(aml_namespace_overlay_t* overlay, aml_obj
     return REF(child);
 }
 
-aml_object_t* aml_namespace_find(aml_namespace_overlay_t* overlay, aml_object_t* start, uint64_t nameCount, ...)
+aml_object_t* aml_namespace_find(aml_overlay_t* overlay, aml_object_t* start, uint64_t nameCount, ...)
 {
     if (nameCount == 0)
     {
@@ -222,7 +222,7 @@ aml_object_t* aml_namespace_find(aml_namespace_overlay_t* overlay, aml_object_t*
     return current; // Transfer ownership
 }
 
-aml_object_t* aml_namespace_find_by_name_string(aml_namespace_overlay_t* overlay, aml_object_t* start,
+aml_object_t* aml_namespace_find_by_name_string(aml_overlay_t* overlay, aml_object_t* start,
     const aml_name_string_t* nameString)
 {
     if (nameString == NULL)
@@ -273,7 +273,7 @@ aml_object_t* aml_namespace_find_by_name_string(aml_namespace_overlay_t* overlay
     return current; // Transfer ownership
 }
 
-aml_object_t* aml_namespace_find_by_path(aml_namespace_overlay_t* overlay, aml_object_t* start, const char* path)
+aml_object_t* aml_namespace_find_by_path(aml_overlay_t* overlay, aml_object_t* start, const char* path)
 {
     if (path == NULL || path[0] == '\0')
     {
@@ -380,8 +380,7 @@ aml_object_t* aml_namespace_find_by_path(aml_namespace_overlay_t* overlay, aml_o
     return current; // Transfer ownership
 }
 
-uint64_t aml_namespace_add_child(aml_namespace_overlay_t* overlay, aml_object_t* parent, aml_name_t name,
-    aml_object_t* object)
+uint64_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, aml_name_t name, aml_object_t* object)
 {
     if (object == NULL)
     {
@@ -402,7 +401,7 @@ uint64_t aml_namespace_add_child(aml_namespace_overlay_t* overlay, aml_object_t*
     }
 
     map_key_t key = aml_object_map_key(parent->id, name);
-    aml_namespace_overlay_t* currentOverlay = overlay;
+    aml_overlay_t* currentOverlay = overlay;
     while (currentOverlay != NULL)
     {
         if (map_get(&currentOverlay->map, &key) != NULL)
@@ -429,7 +428,7 @@ uint64_t aml_namespace_add_child(aml_namespace_overlay_t* overlay, aml_object_t*
     return 0;
 }
 
-uint64_t aml_namespace_add_by_name_string(aml_namespace_overlay_t* overlay, aml_object_t* start,
+uint64_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* start,
     const aml_name_string_t* nameString, aml_object_t* object)
 {
     if (nameString == NULL || nameString->namePath.segmentCount == 0)
@@ -491,7 +490,7 @@ void aml_namespace_remove(aml_object_t* object)
     DEREF(object);
 }
 
-uint64_t aml_namespace_commit(aml_namespace_overlay_t* overlay)
+uint64_t aml_namespace_commit(aml_overlay_t* overlay)
 {
     if (overlay == NULL || overlay->parent == NULL)
     {
@@ -524,7 +523,7 @@ uint64_t aml_namespace_commit(aml_namespace_overlay_t* overlay)
     return 0;
 }
 
-uint64_t aml_namespace_overlay_init(aml_namespace_overlay_t* overlay)
+uint64_t aml_overlay_init(aml_overlay_t* overlay)
 {
     if (overlay == NULL)
     {
@@ -541,7 +540,7 @@ uint64_t aml_namespace_overlay_init(aml_namespace_overlay_t* overlay)
     return 0;
 }
 
-void aml_namespace_overlay_deinit(aml_namespace_overlay_t* overlay)
+void aml_overlay_deinit(aml_overlay_t* overlay)
 {
     if (overlay == NULL)
     {
@@ -557,7 +556,7 @@ void aml_namespace_overlay_deinit(aml_namespace_overlay_t* overlay)
     map_deinit(&overlay->map);
 }
 
-void aml_namespace_overlay_set_parent(aml_namespace_overlay_t* overlay, aml_namespace_overlay_t* parent)
+void aml_overlay_set_parent(aml_overlay_t* overlay, aml_overlay_t* parent)
 {
     if (overlay == NULL)
     {
@@ -567,8 +566,7 @@ void aml_namespace_overlay_set_parent(aml_namespace_overlay_t* overlay, aml_name
     overlay->parent = parent;
 }
 
-aml_namespace_overlay_t* aml_namespace_overlay_get_highest_that_contains(aml_namespace_overlay_t* overlay,
-    aml_object_t* object)
+aml_overlay_t* aml_overlay_find_topmost_containing(aml_overlay_t* overlay, aml_object_t* object)
 {
     if (overlay == NULL || object == NULL)
     {
@@ -578,7 +576,7 @@ aml_namespace_overlay_t* aml_namespace_overlay_get_highest_that_contains(aml_nam
     aml_object_id_t parentId = object->parent != NULL ? object->parent->id : AML_OBJECT_ID_NONE;
     map_key_t key = aml_object_map_key(parentId, object->name);
 
-    aml_namespace_overlay_t* currentOverlay = overlay;
+    aml_overlay_t* currentOverlay = overlay;
     while (currentOverlay != NULL)
     {
         if (map_get(&currentOverlay->map, &key) != NULL)

@@ -1,9 +1,9 @@
 #pragma once
 
 #include <kernel/acpi/devices.h>
+#include <kernel/fs/file.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
-#include <kernel/fs/file.h>
 
 #include <stdint.h>
 #include <sys/io.h>
@@ -46,7 +46,8 @@ typedef struct module module_t;
  * @brief Module event types.
  * @typedef module_event_type_t
  *
- * If a module's procedure returns `ERR` while handling a `MODULE_EVENT_INIT` event, the module will be unloaded again, for all other events a warning will be logged.
+ * If a module's procedure returns `ERR` while handling a `MODULE_EVENT_INIT` event, the module will be unloaded again,
+ * for all other events a warning will be logged.
  */
 typedef enum module_event_type
 {
@@ -88,8 +89,8 @@ typedef struct module_event
  */
 typedef struct module
 {
-    void* baseAddr;       ///< The address where the modules image is loaded in memory.
-    uint64_t size;        ///< The size of the modules loaded image in memory.
+    void* baseAddr; ///< The address where the modules image is loaded in memory.
+    uint64_t size;  ///< The size of the modules loaded image in memory.
     uint64_t (*procedure)(module_event_t* event);
     list_t hidHandlers; ///< List of `hid_handler_t` entries for this module.
     file_t* file;

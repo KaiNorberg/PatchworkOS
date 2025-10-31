@@ -31,74 +31,66 @@ static void* loader_load_program(thread_t* thread)
     }
     DEREF_DEFER(file);
 
-    elf_hdr_t header;
-    if (vfs_read(file, &header, sizeof(elf_hdr_t)) != sizeof(elf_hdr_t))
+    uint64_t fileSize = vfs_seek(file, 0, SEEK_END);
+    vfs_seek(file, 0, SEEK_SET);
+
+    void* fileData = malloc(fileSize);
+    if (fileData == NULL)
     {
         return NULL;
     }
 
-    if (!ELF_IS_VALID(&header))
+    uint64_t readSize = vfs_read(file, fileData, fileSize);
+    if (readSize != fileSize)
     {
+        free(fileData);
         return NULL;
     }
 
-    uint64_t min = UINT64_MAX;
-    uint64_t max = 0;
-    for (uint64_t i = 0; i < header.phdrAmount; i++)
+    Elf64_File elf;
+    if (elf_file_validate(&elf, fileData, fileSize) != 0)
     {
-        uint64_t offset = sizeof(elf_hdr_t) + header.phdrSize * i;
-        if (vfs_seek(file, offset, SEEK_SET) != offset)
+        free(fileData);
+        return NULL;
+    }
+
+    Elf64_Addr minAddr = UINT64_MAX;
+    Elf64_Addr maxAddr = 0;
+    elf_file_get_loadable_bounds(&elf, &minAddr, &maxAddr);
+    uint64_t loadSize = maxAddr - minAddr;
+
+    if (vmm_alloc(&process->space, (void*)minAddr, loadSize, PML_USER | PML_WRITE | PML_PRESENT, VMM_ALLOC_NONE) ==
+        NULL)
+    {
+        free(fileData);
+        return NULL;
+    }
+
+    for (uint64_t i = 0; i < elf.header->e_phnum; i++)
+    {
+        Elf64_Phdr* phdr = ELF_FILE_GET_PHDR(&elf, i);
+        if (phdr->p_type != PT_LOAD)
         {
-            return NULL;
+            continue;
         }
 
-        elf_phdr_t phdr;
-        if (vfs_read(file, &phdr, sizeof(elf_phdr_t)) != sizeof(elf_phdr_t))
+        void* segmentData = ELF_FILE_AT_OFFSET(&elf, phdr->p_offset);
+        void* destAddr = (void*)phdr->p_vaddr;
+        memcpy(destAddr, segmentData, phdr->p_filesz);
+        if (phdr->p_memsz > phdr->p_filesz)
         {
-            return NULL;
+            memset((void*)((uint64_t)destAddr + phdr->p_filesz), 0, phdr->p_memsz - phdr->p_filesz);
         }
 
-        switch (phdr.type)
+        if (!(phdr->p_flags & PF_W))
         {
-        case ELF_PHDR_TYPE_LOAD:
-        {
-            min = MIN(min, phdr.virtAddr);
-            max = MAX(max, phdr.virtAddr + phdr.memorySize);
-            if (phdr.memorySize < phdr.fileSize)
-            {
-                return NULL;
-            }
-
-            if (vmm_alloc(space, (void*)phdr.virtAddr, phdr.memorySize, PML_PRESENT | PML_WRITE | PML_USER,
-                    VMM_ALLOC_NONE) == NULL)
-            {
-                return NULL;
-            }
-            memset((void*)phdr.virtAddr, 0, phdr.memorySize);
-
-            if (vfs_seek(file, phdr.offset, SEEK_SET) != phdr.offset)
-            {
-                return NULL;
-            }
-            if (vfs_read(file, (void*)phdr.virtAddr, phdr.fileSize) != phdr.fileSize)
-            {
-                return NULL;
-            }
-
-            if (!(phdr.flags & ELF_PHDR_FLAGS_WRITE))
-            {
-                if (vmm_protect(&thread->process->space, (void*)phdr.virtAddr, phdr.memorySize,
-                        PML_PRESENT | PML_USER) == ERR)
-                {
-                    return NULL;
-                }
-            }
-        }
-        break;
+            vmm_protect(space, destAddr, phdr->p_memsz, PML_USER | PML_PRESENT);
         }
     }
 
-    return (void*)header.entry;
+    void* entryPoint = (void*)elf.header->e_entry;
+    free(fileData);
+    return entryPoint;
 }
 
 static char** loader_setup_argv(thread_t* thread)

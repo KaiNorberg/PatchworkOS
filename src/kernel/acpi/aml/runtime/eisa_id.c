@@ -1,7 +1,7 @@
 #include <kernel/acpi/aml/runtime/eisa_id.h>
 
-#include <string.h>
 #include <errno.h>
+#include <string.h>
 
 #define AML_EISA_ID_BYTE(c) ((uint32_t)(((c) - 0x40) & 0x1F))
 
@@ -21,7 +21,7 @@ uint64_t aml_eisa_id_from_string(const char* str)
             return ERR;
         }
     }
-    for (uint64_t i = 3 ; i < 7; i++)
+    for (uint64_t i = 3; i < 7; i++)
     {
         if ((str[i] < '0' || str[i] > '9') && (str[i] < 'A' || str[i] > 'F'))
         {

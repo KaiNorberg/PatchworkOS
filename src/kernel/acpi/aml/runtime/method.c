@@ -77,8 +77,7 @@ aml_object_t* aml_method_evaluate(aml_state_t* parentState, aml_method_obj_t* me
     aml_object_t* methodObj = CONTAINER_OF(method, aml_object_t, method);
 
     // This shit is a mess. Just check namespace.h for details.
-    aml_namespace_overlay_t* highestThatContainsMethod =
-        aml_namespace_overlay_get_highest_that_contains(&parentState->overlay, methodObj);
+    aml_overlay_t* highestThatContainsMethod = aml_overlay_find_topmost_containing(&parentState->overlay, methodObj);
     if (highestThatContainsMethod == NULL)
     {
         // Should never happen.
@@ -89,7 +88,7 @@ aml_object_t* aml_method_evaluate(aml_state_t* parentState, aml_method_obj_t* me
         errno = EIO;
         return NULL;
     }
-    aml_namespace_overlay_set_parent(&state.overlay, highestThatContainsMethod);
+    aml_overlay_set_parent(&state.overlay, highestThatContainsMethod);
 
     // "The current namespace location is assigned to the method package, and all namespace references that occur during
     // control method execution for this package are relative to that location." - Section 19.6.85

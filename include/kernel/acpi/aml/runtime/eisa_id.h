@@ -5,7 +5,7 @@
 /**
  * @brief EISA ID to string and vice versa conversion
  * @defgroup kernel_acpi_aml_runtime_eisa_id EISA ID
- * @ingroup kernel_acpi_aml_runtime
+ * @ingroup kernel_acpi_aml
  *
  * @{
  */

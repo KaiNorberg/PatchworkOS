@@ -2,13 +2,13 @@
 
 #include <kernel/acpi/aml/aml.h>
 #include <kernel/acpi/aml/object.h>
+#include <kernel/acpi/aml/runtime/eisa_id.h>
 #include <kernel/acpi/aml/runtime/method.h>
 #include <kernel/acpi/aml/state.h>
 #include <kernel/acpi/aml/to_string.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/module/module.h>
-#include <kernel/acpi/aml/runtime/eisa_id.h>
 
 #include <errno.h>
 

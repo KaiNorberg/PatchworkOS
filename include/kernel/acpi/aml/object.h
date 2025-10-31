@@ -195,7 +195,7 @@ typedef aml_object_t* (*aml_method_implementation_t)(aml_method_obj_t* method, a
     aml_name_t name; \
     map_entry_t mapEntry; \
     list_entry_t listEntry; \
-    aml_namespace_overlay_t* overlay; \
+    aml_overlay_t* overlay; \
     list_t children; \
     list_entry_t siblingsEntry; \
     aml_object_t* parent; \

@@ -28,19 +28,6 @@ typedef struct cpu cpu_t;
 #define PANIC_MAX_STACK_FRAMES 16
 
 /**
- * @brief Panic symbol structure.
- *
- * Stores information about a symbol for panic stack traces.
- */
-typedef struct panic_symbol
-{
-    list_entry_t entry;
-    uintptr_t start;
-    uintptr_t end;
-    char name[MAX_NAME];
-} panic_symbol_t;
-
-/**
  * @brief Print a stack trace from a interrupt frame.
  *
  * Will NOT panic the kernel, just print the stack trace.
@@ -48,13 +35,6 @@ typedef struct panic_symbol
  * @param frame Pointer to the interrupt frame.
  */
 void panic_stack_trace(const interrupt_frame_t* frame);
-
-/**
- * @brief Initialize panic symbols from the bootloader-provided kernel information.
- *
- * @param kernel Pointer to the bootloader-provided kernel information.
- */
-void panic_symbols_init(const boot_kernel_t* kernel);
 
 /**
  * @brief Panic the kernel, printing a message and halting.

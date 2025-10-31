@@ -57,6 +57,8 @@ static list_t freeLists[_HEAP_NUM_BINS] = {0};
 static bitmap_t freeBitmap = {0};
 static uint64_t freeBitmapBuffer[BITMAP_BITS_TO_QWORDS(_HEAP_NUM_BINS)] = {0};
 
+static bool initialized = false;
+
 list_t _heapList = LIST_CREATE(_heapList);
 
 void _heap_init(void)
@@ -76,10 +78,16 @@ void _heap_init(void)
         list_init(&freeLists[i]);
     }
     bitmap_init(&freeBitmap, freeBitmapBuffer, _HEAP_NUM_BINS);
+    initialized = true;
 }
 
 void _heap_acquire(void)
 {
+    if (!initialized)
+    {
+        return;
+    }
+
 #ifdef _KERNEL_
     lock_acquire(&mutex);
 #else
@@ -89,6 +97,11 @@ void _heap_acquire(void)
 
 void _heap_release(void)
 {
+    if (!initialized)
+    {
+        return;
+    }
+
 #ifdef _KERNEL_
     lock_release(&mutex);
 #else
@@ -114,6 +127,11 @@ uint64_t _heap_get_bin_index(uint64_t size)
 _heap_header_t* _heap_block_new(uint64_t minSize)
 {
     if (minSize == 0)
+    {
+        return NULL;
+    }
+
+    if (!initialized)
     {
         return NULL;
     }
@@ -153,6 +171,16 @@ _heap_header_t* _heap_block_new(uint64_t minSize)
 
 void _heap_block_split(_heap_header_t* block, uint64_t newSize)
 {
+    if (block == NULL || newSize == 0)
+    {
+        return;
+    }
+
+    if (!initialized)
+    {
+        return;
+    }
+
     assert(newSize % _HEAP_ALIGNMENT == 0);
     uint64_t originalTotalSize = sizeof(_heap_header_t) + block->size;
     uint64_t newTotalSize = sizeof(_heap_header_t) + newSize;
@@ -173,6 +201,16 @@ void _heap_block_split(_heap_header_t* block, uint64_t newSize)
 
 void _heap_add_to_free_list(_heap_header_t* block)
 {
+    if (block == NULL)
+    {
+        return;
+    }
+
+    if (!initialized)
+    {
+        return;
+    }
+
     uint64_t binIndex = _heap_get_bin_index(block->size);
     if (binIndex == ERR)
     {
@@ -184,6 +222,16 @@ void _heap_add_to_free_list(_heap_header_t* block)
 
 void _heap_remove_from_free_list(_heap_header_t* block)
 {
+    if (block == NULL)
+    {
+        return;
+    }
+
+    if (!initialized)
+    {
+        return;
+    }
+
     uint64_t binIndex = _heap_get_bin_index(block->size);
     if (binIndex == ERR)
     {
@@ -199,6 +247,11 @@ void _heap_remove_from_free_list(_heap_header_t* block)
 _heap_header_t* _heap_alloc(uint64_t size)
 {
     if (size == 0)
+    {
+        return NULL;
+    }
+
+    if (!initialized)
     {
         return NULL;
     }
@@ -258,6 +311,16 @@ _heap_header_t* _heap_alloc(uint64_t size)
 
 void _heap_free(_heap_header_t* block)
 {
+    if (block == NULL)
+    {
+        return;
+    }
+
+    if (!initialized)
+    {
+        return;
+    }
+
     if (block->flags & _HEAP_MAPPED)
     {
         assert(block->size > _HEAP_LARGE_ALLOC_THRESHOLD);
