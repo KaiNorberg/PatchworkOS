@@ -25,7 +25,7 @@ aml_object_t* aml_evaluate(aml_state_t* state, aml_object_t* object, aml_type_t 
         }
         DEREF_DEFER(result);
 
-        aml_object_t* converted;
+        aml_object_t* converted = NULL;
         if (aml_convert_source(state, result, &converted, targetTypes) == ERR)
         {
             return NULL;
@@ -34,7 +34,7 @@ aml_object_t* aml_evaluate(aml_state_t* state, aml_object_t* object, aml_type_t 
         return converted;
     }
 
-    aml_object_t* converted;
+    aml_object_t* converted = NULL;
     if (aml_convert_source(state, object, &converted, targetTypes) == ERR)
     {
         return NULL;
