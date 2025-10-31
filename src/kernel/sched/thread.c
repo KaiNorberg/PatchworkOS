@@ -26,6 +26,11 @@ static uintptr_t thread_id_to_offset(tid_t tid, uint64_t maxPages)
 
 static uint64_t thread_init(thread_t* thread, process_t* process)
 {
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
     list_entry_init(&thread->entry);
     thread->process = REF(process);
     list_entry_init(&thread->processEntry);
@@ -68,8 +73,15 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
 
 thread_t* thread_new(process_t* process)
 {
+    if (process == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
     if (atomic_load(&process->isDying))
     {
+        errno = EINVAL;
         return NULL;
     }
 

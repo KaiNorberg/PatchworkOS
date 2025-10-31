@@ -531,15 +531,15 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
 void aml_object_exception_check(aml_object_t* object, aml_state_t* state);
 
 /**
- * @brief Set a object as a buffer with the given content.
+ * @brief Resize a buffer object to the new length.
  *
- * @param object Pointer to the object to initialize.
- * @param buffer Pointer to the buffer.
- * @param bytesToCopy Number of bytes to copy from `buffer` to the object, the rest will be zeroed.
- * @param length The total length of the buffer.
+ * If the new length is greater than the current length, the new bytes will be zeroed.
+ *
+ * @param buffer Pointer to the buffer object to resize.
+ * @param newLength The new length of the buffer.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_buffer_set(aml_object_t* object, const uint8_t* buffer, uint64_t bytesToCopy, uint64_t length);
+uint64_t aml_buffer_resize(aml_buffer_obj_t* buffer, uint64_t newLength);
 
 /**
  * @brief Set a object as an empty buffer with the given length.
@@ -549,6 +549,17 @@ uint64_t aml_buffer_set(aml_object_t* object, const uint8_t* buffer, uint64_t by
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_buffer_set_empty(aml_object_t* object, uint64_t length);
+
+/**
+ * @brief Set a object as a buffer with the given content.
+ *
+ * @param object Pointer to the object to initialize.
+ * @param buffer Pointer to the buffer.
+ * @param bytesToCopy Number of bytes to copy from `buffer` to the object, the rest will be zeroed.
+ * @param length The total length of the buffer.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_buffer_set(aml_object_t* object, const uint8_t* buffer, uint64_t bytesToCopy, uint64_t length);
 
 /**
  * @brief Set a object as a buffer field with the given buffer, bit offset and bit size.

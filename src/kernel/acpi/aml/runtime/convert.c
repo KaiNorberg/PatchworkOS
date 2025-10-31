@@ -228,7 +228,7 @@ static uint64_t aml_integer_to_debug_object(aml_state_t* state, aml_object_t* in
 {
     (void)state;
     (void)dest;
-    LOG_INFO("0x%llx\n", integer->integer.value);
+    log_print(LOG_LEVEL_INFO, "debugobj", "0x%llx\n", integer->integer.value);
     return 0;
 }
 
@@ -244,16 +244,16 @@ static uint64_t aml_package_to_debug_object(aml_state_t* state, aml_object_t* pa
 {
     (void)state;
     (void)dest;
-    LOG_INFO("[");
+    log_print(LOG_LEVEL_INFO, "debugobj", "[");
     for (uint64_t i = 0; i < package->package.length; i++)
     {
-        LOG_INFO("%s", aml_object_to_string(package->package.elements[i]));
+        log_print(LOG_LEVEL_INFO, "debugobj", "%s", aml_object_to_string(package->package.elements[i]));
         if (i < package->package.length - 1)
         {
-            LOG_INFO(", ");
+            log_print(LOG_LEVEL_INFO, "debugobj", ", ");
         }
     }
-    LOG_INFO("]\n");
+    log_print(LOG_LEVEL_INFO, "debugobj", "]\n");
     return 0;
 }
 
@@ -331,11 +331,11 @@ static uint64_t aml_string_to_debug_object(aml_state_t* state, aml_object_t* str
     (void)dest;
     if (string->string.length == 0)
     {
-        LOG_INFO("\"\"\n");
+        log_print(LOG_LEVEL_INFO, "debugobj", "<empty string>\n");
         return 0;
     }
 
-    LOG_INFO("\"%s\"\n", string->string.content);
+    log_print(LOG_LEVEL_INFO, "debugobj", "%s\n", string->string.content);
     return 0;
 }
 
@@ -511,7 +511,8 @@ uint64_t aml_convert_result(aml_state_t* state, aml_object_t* result, aml_object
     {
         if (aml_store(state, result, target) == ERR)
         {
-            LOG_ERR("failed to copy result '%s' to target local/arg\n", aml_type_to_string(result->type));
+            LOG_ERR("failed to store result '%s' of type '%s' to target '%s' of type '%s'\n", AML_NAME_TO_STRING(result->name),
+                aml_type_to_string(result->type), AML_NAME_TO_STRING(target->name), aml_type_to_string(target->type));
             return ERR;
         }
         return 0;
@@ -522,8 +523,8 @@ uint64_t aml_convert_result(aml_state_t* state, aml_object_t* result, aml_object
     {
         if (aml_convert(state, result, target, target->type) == ERR)
         {
-            LOG_ERR("failed to convert result '%s' to target '%s'\n", aml_type_to_string(result->type),
-                aml_type_to_string(target->type));
+            LOG_ERR("failed to convert result '%s' of type '%s' to target '%s' of '%s'\n", AML_NAME_TO_STRING(result->name),
+                aml_type_to_string(result->type), AML_NAME_TO_STRING(target->name), aml_type_to_string(target->type));
             return ERR;
         }
         return 0;
@@ -531,7 +532,8 @@ uint64_t aml_convert_result(aml_state_t* state, aml_object_t* result, aml_object
 
     if (aml_copy_data_and_type(result, target) == ERR)
     {
-        LOG_ERR("failed to copy result '%s' to target DataRefObject\n", aml_type_to_string(result->type));
+        LOG_ERR("failed to copy result '%s' of type '%s' to target '%s' of '%s'\n", AML_NAME_TO_STRING(result->name),
+            aml_type_to_string(result->type), AML_NAME_TO_STRING(target->name), aml_type_to_string(target->type));
         return ERR;
     }
 

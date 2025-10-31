@@ -499,6 +499,49 @@ static inline uint64_t aml_object_check_clear(aml_object_t* object)
     return 0;
 }
 
+uint64_t aml_buffer_resize(aml_buffer_obj_t* buffer, uint64_t newLength)
+{
+    if (buffer == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (newLength <= AML_SMALL_BUFFER_SIZE)
+    {
+        if (buffer->content != buffer->smallBuffer)
+        {
+            memcpy(buffer->smallBuffer, buffer->content, MIN(buffer->length, newLength));
+            free(buffer->content);
+            buffer->content = buffer->smallBuffer;
+        }
+        buffer->length = newLength;
+        return 0;
+    }
+
+    if (buffer->content == buffer->smallBuffer)
+    {
+        buffer->content = calloc(1, newLength);
+        if (buffer->content == NULL)
+        {
+            return ERR;
+        }
+        memcpy(buffer->content, buffer->smallBuffer, buffer->length);
+    }
+    else
+    {
+        uint8_t* newContent = realloc(buffer->content, newLength);
+        if (newContent == NULL)
+        {
+            return ERR;
+        }
+        buffer->content = newContent;
+        memset(&buffer->content[buffer->length], 0, newLength - buffer->length);
+    }
+    buffer->length = newLength;
+    return 0;
+}
+
 uint64_t aml_buffer_set_empty(aml_object_t* object, uint64_t length)
 {
     if (object == NULL)
@@ -507,26 +550,36 @@ uint64_t aml_buffer_set_empty(aml_object_t* object, uint64_t length)
         return ERR;
     }
 
-    if (aml_object_check_clear(object) == ERR)
+    if (object->type == AML_BUFFER)
     {
-        return ERR;
+        if (aml_buffer_resize(&object->buffer, length) == ERR)
+        {
+            return ERR;
+        }
     }
-
-    if (length <= AML_SMALL_BUFFER_SIZE)
+    else
     {
-        object->buffer.content = object->buffer.smallBuffer;
-        memset(object->buffer.content, 0, length);
+        if (aml_object_check_clear(object) == ERR)
+        {
+            return ERR;
+        }
+
+        if (length <= AML_SMALL_BUFFER_SIZE)
+        {
+            object->buffer.content = object->buffer.smallBuffer;
+            memset(object->buffer.content, 0, AML_SMALL_BUFFER_SIZE);
+        }
+        else
+        {
+            object->buffer.content = calloc(1, length);
+            if (object->buffer.content == NULL)
+            {
+                return ERR;
+            }
+        }
         object->buffer.length = length;
-        object->type = AML_BUFFER;
-        return 0;
     }
 
-    object->buffer.content = malloc(length);
-    if (object->buffer.content == NULL)
-    {
-        return ERR;
-    }
-    memset(object->buffer.content, 0, length);
     object->buffer.length = length;
     object->type = AML_BUFFER;
     return 0;
@@ -546,6 +599,7 @@ uint64_t aml_buffer_set(aml_object_t* object, const uint8_t* buffer, uint64_t by
     }
 
     memcpy(object->buffer.content, buffer, bytesToCopy);
+    memset(&object->buffer.content[bytesToCopy], 0, length - bytesToCopy);
     return 0;
 }
 
@@ -564,9 +618,16 @@ uint64_t aml_buffer_field_set(aml_object_t* object, aml_object_t* target, aml_bi
         return ERR;
     }
 
-    if (aml_object_check_clear(object) == ERR)
+    if (object->type != AML_BUFFER_FIELD)
     {
-        return ERR;
+        if (aml_object_check_clear(object) == ERR)
+        {
+            return ERR;
+        }
+    }
+    else
+    {
+        DEREF(object->bufferField.target);
     }
 
     object->bufferField.target = REF(target);
@@ -690,6 +751,17 @@ uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_obj_t*
         return ERR;
     }
 
+    aml_object_t* bankValueObj = aml_object_new();
+    if (bankValueObj == NULL)
+    {
+        return ERR;
+    }
+    DEREF_DEFER(bankValueObj);
+    if (aml_integer_set(bankValueObj, bankValue) == ERR)
+    {
+        return ERR;
+    }
+
     if (aml_object_check_clear(object) == ERR)
     {
         return ERR;
@@ -698,19 +770,7 @@ uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_obj_t*
     object->fieldUnit.fieldType = AML_FIELD_UNIT_BANK_FIELD;
     object->fieldUnit.index = NULL;
     object->fieldUnit.data = NULL;
-
-    aml_object_t* bankValueObj = aml_object_new();
-    if (bankValueObj == NULL)
-    {
-        return ERR;
-    }
-    if (aml_integer_set(bankValueObj, bankValue) == ERR)
-    {
-        DEREF(bankValueObj);
-        return ERR;
-    }
-    object->fieldUnit.bankValue = bankValueObj;
-
+    object->fieldUnit.bankValue = REF(bankValueObj);
     object->fieldUnit.bank = REF(bank);
     object->fieldUnit.opregion = REF(opregion);
     object->fieldUnit.fieldFlags = flags;
@@ -851,6 +911,13 @@ uint64_t aml_object_reference_set(aml_object_t* object, aml_object_t* target)
         return ERR;
     }
 
+    if (object->type == AML_OBJECT_REFERENCE)
+    {
+        DEREF(object->objectReference.target);
+        object->objectReference.target = REF(target);
+        return 0;
+    }
+
     if (aml_object_check_clear(object) == ERR)
     {
         return ERR;
@@ -975,27 +1042,36 @@ uint64_t aml_string_set_empty(aml_object_t* object, uint64_t length)
         return ERR;
     }
 
-    if (aml_object_check_clear(object) == ERR)
+    if (object->type == AML_STRING)
     {
-        return ERR;
+        if (aml_string_resize(&object->string, length) == ERR)
+        {
+            return ERR;
+        }
     }
-
-    if (length <= AML_SMALL_STRING_SIZE)
+    else
     {
-        object->string.content = object->string.smallString;
-        memset(object->string.content, 0, length + 1);
+        if (aml_object_check_clear(object) == ERR)
+        {
+            return ERR;
+        }
+
+        if (length <= AML_SMALL_STRING_SIZE)
+        {
+            object->string.content = object->string.smallString;
+            memset(object->string.smallString, 0, AML_SMALL_STRING_SIZE);
+        }
+        else
+        {
+            object->string.content = calloc(1, length + 1);
+            if (object->string.content == NULL)
+            {
+                return ERR;
+            }
+        }
         object->string.length = length;
-        object->type = AML_STRING;
-        return 0;
     }
 
-    object->string.content = malloc(length + 1);
-    if (object->string.content == NULL)
-    {
-        return ERR;
-    }
-    memset(object->string.content, 0, length + 1);
-    object->string.length = length;
     object->type = AML_STRING;
     return 0;
 }
@@ -1019,7 +1095,7 @@ uint64_t aml_string_set(aml_object_t* object, const char* str)
 
 uint64_t aml_string_resize(aml_string_obj_t* string, uint64_t newLength)
 {
-    if (string == NULL || newLength == 0)
+    if (string == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -1030,65 +1106,43 @@ uint64_t aml_string_resize(aml_string_obj_t* string, uint64_t newLength)
         return 0;
     }
 
-    if (newLength <= AML_SMALL_STRING_SIZE && string->length <= AML_SMALL_STRING_SIZE)
+    if (newLength <= AML_SMALL_STRING_SIZE)
     {
-        if (newLength > string->length)
+        if (string->content != string->smallString)
         {
-            memset(string->content + string->length, 0, newLength - string->length);
+            memcpy(string->smallString, string->content, MIN(string->length, newLength));
+            free(string->content);
+            string->content = string->smallString;
         }
-        string->content[newLength] = '\0';
         string->length = newLength;
-        return 0;
-    }
-
-    if (newLength <= AML_SMALL_STRING_SIZE && string->length > AML_SMALL_STRING_SIZE)
-    {
-        memcpy(string->smallString, string->content, newLength);
         string->smallString[newLength] = '\0';
-        free(string->content);
-        string->content = string->smallString;
-        string->length = newLength;
         return 0;
     }
 
-    if (newLength > AML_SMALL_STRING_SIZE && string->length <= AML_SMALL_STRING_SIZE)
+    if (string->content == string->smallString)
     {
-        char* newBuffer = malloc(newLength + 1);
-        if (newBuffer == NULL)
+        string->content = calloc(1, newLength + 1);
+        if (string->content == NULL)
         {
             return ERR;
         }
-        memcpy(newBuffer, string->content, string->length);
-        memset(newBuffer + string->length, 0, newLength - string->length);
-        newBuffer[newLength] = '\0';
-        string->content = newBuffer;
-        string->length = newLength;
-        return 0;
+        memcpy(string->content, string->smallString, MIN(string->length, newLength));
     }
-
-    if (newLength > AML_SMALL_STRING_SIZE && string->length > AML_SMALL_STRING_SIZE)
+    else
     {
-        char* newBuffer = malloc(newLength + 1);
-        if (newBuffer == NULL)
+        char* newContent = realloc(string->content, newLength + 1);
+        if (newContent == NULL)
         {
             return ERR;
         }
-        size_t copyLen = (newLength < string->length ? newLength : string->length);
-        memcpy(newBuffer, string->content, copyLen);
-        if (newLength > string->length)
-        {
-            memset(newBuffer + string->length, 0, newLength - string->length);
-        }
-        newBuffer[newLength] = '\0';
-        free(string->content);
-        string->content = newBuffer;
-        string->length = newLength;
-        return 0;
+        string->content = newContent;
+        memset(&string->content[string->length], 0, newLength - string->length + 1);
     }
 
-    // Should never reach here
-    errno = EINVAL;
-    return ERR;
+    string->length = newLength;
+    string->content[newLength] = '\0';
+    return 0;
+
 }
 
 uint64_t aml_thermal_zone_set(aml_object_t* object)
