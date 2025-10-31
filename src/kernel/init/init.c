@@ -151,8 +151,6 @@ static void init_finalize(const boot_info_t* bootInfo)
 
 static inline void init_process_spawn(void)
 {
-    asm volatile("ud2");
-
     LOG_INFO("spawning init process\n");
     const char* argv[] = {"/bin/init", NULL};
     thread_t* initThread = loader_spawn(argv, PRIORITY_MAX_USER - 2, NULL);
