@@ -602,7 +602,6 @@ process_t* process_get_kernel(void)
         LOG_INFO("kernel process initialized with pid=%d\n", kernelProcess.id);
         kernelProcessInitalized = true;
     }
-
     return &kernelProcess;
 }
 

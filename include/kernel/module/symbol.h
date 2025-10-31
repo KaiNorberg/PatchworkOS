@@ -39,52 +39,29 @@
 #define SYMBOL_MAX_NAME MAP_KEY_MAX_LENGTH
 
 /**
- * @brief Symbol flags.
- * @enum symbol_flags_t
- */
-typedef enum
-{
-    SYMBOL_FLAG_GLOBAL = 0,
-    SYMBOL_FLAG_STATIC = 1 << 0, ///< Symbol is static (local to translation unit)
-} symbol_flags_t;
-
-/**
  * @brief Symbol name mapping structure.
  * @struct symbol_name_t
  *
- * Stored in a name-keyed map for name to address resolution, only used for global symbols.
+ * Stored in a name-keyed map for name to address resolution.
  */
 typedef struct
 {
-    map_entry_t fromNameEntry; ///< Map entry for name to symbol mapping
-    void* addr;                ///< Address of the symbol
-} symbol_name_t;
-
-/**
- * @brief Static symbol name structure.
- * @struct symbol_static_name_t
- *
- * Used to represent static symbols (local to a translation unit).
- *
- * We need this to be stored separately since static symbols can have duplicate names across different translation units, so we cant use the name as a unique key like we do for global symbols.
- */
-typedef struct
-{
-    list_entry_t listEntry;
+    map_entry_t entry;
+    list_t addrs; ///< List of all addresses for this symbol name.
     char name[SYMBOL_MAX_NAME];
-    void* addr;
-} symbol_static_name_t;
+} symbol_name_t;
 
 /**
  * @brief Symbol address mapping structure.
  * @struct symbol_addr_t
  *
- * Stored in a addr-sorted array for address to name resolution using binary search.
+ * Stored in a addr-sorted array for address to name resolution using binary search and in the relevant `symbol_name_t`'s
+ * address list for name to address resolution.
  */
 typedef struct
 {
+    list_entry_t entry;
     void* addr;
-    char name[SYMBOL_MAX_NAME];
 } symbol_addr_t;
 
 /**
@@ -95,15 +72,12 @@ typedef struct
  */
 typedef struct
 {
-    void* addr;
     char name[SYMBOL_MAX_NAME];
-    symbol_flags_t flags;
+    void* addr;
 } symbol_info_t;
 
 /**
  * @brief Load all kernel symbols from the bootloader provided kernel ELF file.
- *
- * Only non-local symbols are loaded, as in symbols that are globally visible (not `static`).
  *
  * Will panic on failure.
  *
@@ -114,15 +88,13 @@ void symbol_load_kernel_symbols(const boot_kernel_t* kernel);
 /**
  * @brief Add a symbol to the kernel symbol table.
  *
- * Duplicate symbol names are not allowed, with the exception of static symbols.
- *
- * Duplicate addresses with different names are always allowed.
+ * Duplicate symbol names and/or addresses are allowed.
  *
  * @param name The name of the symbol.
  * @param addr The address of the symbol.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t symbol_add(const char* name, void* addr, symbol_flags_t flags);
+uint64_t symbol_add(const char* name, void* addr);
 
 /**
  * @brief Remove a symbol from the kernel symbol table by address.
@@ -141,8 +113,9 @@ void symbol_remove_name(const char* name);
 /**
  * @brief Resolve a symbol by address.
  *
- * Note that the resolved symbol is the closest symbol with an address less than or equal to the given address. The
- * `outSymbol->addr` will be the address of the symbol, not the given address.
+ * The resolved symbol is the closest symbol with an address less than or equal to the given address. The `outSymbol->addr` will be the address of the symbol, not the given address.
+ *
+ * If multiple symbols exist at the same address, one of them will be returned, but which one is undefined.
  *
  * @param outSymbol Output pointer to store the resolved symbol information.
  * @param addr The address of the symbol to resolve.

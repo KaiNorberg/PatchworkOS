@@ -373,6 +373,7 @@ There are other utils available that work as expected, for example `stat` and `l
 - **kernel**: The monolithic kernel handling everything from scheduling to IPC
 - **libstd**: C standard library extension with system call wrappers
 - **libpatchwork**: Higher-level library for windowing and user space services
+- **modules**: Kernel modules (currently empty, work in progress)
 - **programs**: Shell utilities, services, and desktop applications
 
 ## Setup

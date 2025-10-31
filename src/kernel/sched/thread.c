@@ -179,6 +179,7 @@ thread_t* thread_get_boot(void)
         LOG_INFO("boot thread initialized with pid=%d tid=%d\n", bootThread.process->id, bootThread.id);
         bootThreadInitalized = true;
     }
+    assert(bootThread.process != NULL);
     return &bootThread;
 }
 
