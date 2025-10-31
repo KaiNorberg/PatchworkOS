@@ -88,9 +88,11 @@ void symbol_load_kernel_symbols(const boot_kernel_t* kernel);
 /**
  * @brief Add a symbol to the kernel symbol table.
  *
+ * Duplicate symbol names are not allowed, but duplicate addresses with different names are allowed.
+ *
  * @param name The name of the symbol.
  * @param addr The address of the symbol.
- * @return On success, `0`. On failure, `ERR` and `errno`
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t symbol_add(const char* name, void* addr);
 

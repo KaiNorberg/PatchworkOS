@@ -15,6 +15,56 @@ static uint64_t fromAddrAmount = 0;
 static map_t fromNameMap = MAP_CREATE;
 static rwlock_t lock = RWLOCK_CREATE;
 
+// Needed since there could be multiple symbols with the same address, each of theses symbols are stored contiguously.
+static int64_t symbol_get_floor_index_for_addr(void* addr)
+{
+    if (fromAddrArray == NULL || fromAddrAmount == 0)
+    {
+        return fromAddrAmount;
+    }
+
+    int64_t left = 0;
+    int64_t right = fromAddrAmount - 1;
+    int64_t result = fromAddrAmount;
+
+    while (left <= right)
+    {
+        int64_t mid = left + (right - left) / 2;
+        if (fromAddrArray[mid].addr <= addr)
+        {
+            result = mid;
+            left = mid + 1;
+        }
+        else
+        {
+            right = mid - 1;
+        }
+    }
+
+    return result;
+}
+
+static uint64_t symbol_get_insertion_index_for_addr(void* addr)
+{
+    uint64_t left = 0;
+    uint64_t right = fromAddrAmount;
+
+    while (left < right)
+    {
+        uint64_t mid = left + (right - left) / 2;
+        if (fromAddrArray[mid].addr >= addr)
+        {
+            right = mid;
+        }
+        else
+        {
+            left = mid + 1;
+        }
+    }
+
+    return left;
+}
+
 void symbol_load_kernel_symbols(const boot_kernel_t* kernel)
 {
     Elf64_File_Symbol_Iterator it = ELF_FILE_SYMBOL_ITERATOR_CREATE(&kernel->elf);
@@ -65,60 +115,14 @@ uint64_t symbol_add(const char* name, void* addr)
     }
     fromAddrArray = newFromAddrArray;
 
-    for (uint64_t i = fromAddrAmount; i > 0; i--)
-    {
-        if (fromAddrArray[i - 1].addr > addr)
-        {
-            fromAddrArray[i] = fromAddrArray[i - 1];
-        }
-        else
-        {
-            fromAddrAmount++;
-            fromAddrArray[i].addr = addr;
-            strncpy_s(fromAddrArray[i].name, SYMBOL_MAX_NAME, name, SYMBOL_MAX_NAME - 1);
-            return 0;
-        }
-    }
-
+    uint64_t insertIndex = symbol_get_insertion_index_for_addr(addr);
+    memmove(&fromAddrArray[insertIndex + 1], &fromAddrArray[insertIndex],
+        sizeof(symbol_addr_t) * (fromAddrAmount - insertIndex));
+    fromAddrArray[insertIndex].addr = addr;
+    strncpy_s(fromAddrArray[insertIndex].name, SYMBOL_MAX_NAME, name, SYMBOL_MAX_NAME - 1);
     fromAddrAmount++;
-    fromAddrArray[0].addr = addr;
-    strncpy_s(fromAddrArray[0].name, SYMBOL_MAX_NAME, name, SYMBOL_MAX_NAME - 1);
 
     return 0;
-}
-
-static symbol_addr_t* symbol_get_entry_for_addr(void* addr)
-{
-    if (fromAddrArray == NULL || fromAddrAmount == 0)
-    {
-        return NULL;
-    }
-
-    int64_t left = 0;
-    int64_t right = fromAddrAmount - 1;
-    while (left <= right)
-    {
-        int64_t mid = left + (right - left) / 2;
-        if (fromAddrArray[mid].addr == addr)
-        {
-            return &fromAddrArray[mid];
-        }
-        else if (fromAddrArray[mid].addr < addr)
-        {
-            left = mid + 1;
-        }
-        else
-        {
-            right = mid - 1;
-        }
-    }
-
-    if (right < 0)
-    {
-        return NULL;
-    }
-
-    return &fromAddrArray[right];
 }
 
 void symbol_remove_addr(void* addr)
@@ -130,18 +134,33 @@ void symbol_remove_addr(void* addr)
 
     RWLOCK_WRITE_SCOPE(&lock);
 
-    symbol_addr_t* entry = symbol_get_entry_for_addr(addr);
-    if (entry == NULL || entry->addr != addr)
+    int64_t startIndex = symbol_get_floor_index_for_addr(addr);
+    if (startIndex >= (int64_t)fromAddrAmount)
     {
         return;
     }
+    uint64_t endIndex = (uint64_t)startIndex;
+    while (endIndex + 1 < fromAddrAmount && fromAddrArray[endIndex + 1].addr == addr)
+    {
+        endIndex++;
+    }
 
-    map_key_t key = map_key_string(entry->name);
-    map_remove(&fromNameMap, &key);
+    for (uint64_t i = startIndex; i <= endIndex; i++)
+    {
+        map_key_t key = map_key_string(fromAddrArray[i].name);
+        map_entry_t* entry = map_get(&fromNameMap, &key);
+        if (entry != NULL)
+        {
+            symbol_name_t* nameEntry = CONTAINER_OF(entry, symbol_name_t, fromNameEntry);
+            free(nameEntry);
+            map_remove(&fromNameMap, &key);
+        }
+    }
 
-    uint64_t index = entry - fromAddrArray;
-    memmove(&fromAddrArray[index], &fromAddrArray[index + 1], sizeof(symbol_addr_t) * (fromAddrAmount - index - 1));
-    fromAddrAmount--;
+    uint64_t removeCount = endIndex - (uint64_t)startIndex + 1;
+    memmove(&fromAddrArray[startIndex], &fromAddrArray[endIndex + 1],
+        sizeof(symbol_addr_t) * (fromAddrAmount - endIndex - 1));
+    fromAddrAmount -= removeCount;
 }
 
 void symbol_remove_name(const char* name)
@@ -166,14 +185,29 @@ void symbol_remove_name(const char* name)
     free(nameEntry);
     map_remove(&fromNameMap, &key);
 
-    symbol_addr_t* addrEntry = symbol_get_entry_for_addr(addr);
-    if (addrEntry == NULL || addrEntry->addr != addr)
+    int64_t startIndex = symbol_get_floor_index_for_addr(addr);
+    if (startIndex >= (int64_t)fromAddrAmount)
     {
-        return;
+        panic(NULL, "Inconsistent symbol table state");
     }
 
-    uint64_t index = addrEntry - fromAddrArray;
-    memmove(&fromAddrArray[index], &fromAddrArray[index + 1], sizeof(symbol_addr_t) * (fromAddrAmount - index - 1));
+    uint64_t actualIndex = (uint64_t)startIndex;
+    while (actualIndex < fromAddrAmount && fromAddrArray[actualIndex].addr == addr)
+    {
+        if (strncmp(fromAddrArray[actualIndex].name, name, SYMBOL_MAX_NAME) == 0)
+        {
+            break;
+        }
+        actualIndex++;
+    }
+
+    if (actualIndex >= fromAddrAmount || fromAddrArray[actualIndex].addr != addr)
+    {
+        panic(NULL, "Inconsistent symbol table state");
+    }
+
+    memmove(&fromAddrArray[actualIndex], &fromAddrArray[actualIndex + 1],
+        sizeof(symbol_addr_t) * (fromAddrAmount - actualIndex - 1));
     fromAddrAmount--;
 }
 
@@ -187,13 +221,14 @@ uint64_t symbol_resolve_addr(symbol_info_t* outSymbol, void* addr)
 
     RWLOCK_READ_SCOPE(&lock);
 
-    symbol_addr_t* entry = symbol_get_entry_for_addr(addr);
-    if (entry == NULL)
+    int64_t index = symbol_get_floor_index_for_addr(addr);
+    if (index >= (int64_t)fromAddrAmount)
     {
         errno = ENOENT;
         return ERR;
     }
 
+    symbol_addr_t* entry = &fromAddrArray[index];
     outSymbol->addr = entry->addr; // Might not be exactly equal to addr
     strncpy_s(outSymbol->name, SYMBOL_MAX_NAME, entry->name, SYMBOL_MAX_NAME - 1);
     return 0;
