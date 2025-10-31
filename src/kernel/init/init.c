@@ -62,6 +62,7 @@ void init_early(const boot_info_t* bootInfo)
     assert(bootThread != NULL);
     bootThread->frame.rdi = (uintptr_t)bootInfo;
     bootThread->frame.rip = (uintptr_t)kmain;
+    bootThread->frame.rbp = bootThread->kernelStack.top;
     bootThread->frame.rsp = bootThread->kernelStack.top;
     bootThread->frame.cs = GDT_CS_RING0;
     bootThread->frame.ss = GDT_SS_RING0;

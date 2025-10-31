@@ -35,7 +35,10 @@ static void aml_object_free(aml_object_t* object)
 
     // Named objects should never be able to be freed while still being named as the parent would still have a reference
     // to them, unless the object is root.
-    assert(!(object->flags & AML_OBJECT_NAMED) || (object->flags & AML_OBJECT_ROOT));
+    if ((object->flags & AML_OBJECT_NAMED) && !(object->flags & AML_OBJECT_ROOT))
+    {
+        panic(NULL, "Attempted to free named non-root AML object '%s'", AML_NAME_TO_STRING(object->name));
+    }
 
     aml_object_clear(object);
 
@@ -96,6 +99,11 @@ void aml_object_clear(aml_object_t* object)
     if (object == NULL)
     {
         return;
+    }
+
+    if (object->flags & AML_OBJECT_NAMED)
+    {
+        panic(NULL, "Attempted to clear named AML object '%s'", AML_NAME_TO_STRING(object->name));
     }
 
     if (object->type == AML_UNINITIALIZED)

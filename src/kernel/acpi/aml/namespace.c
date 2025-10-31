@@ -84,14 +84,24 @@ uint64_t aml_namespace_init(aml_object_t* root)
 
 static uint64_t aml_namespace_expose_object(aml_object_t* object, dentry_t* parentDir)
 {
-    if (object == NULL || !(object->flags & AML_OBJECT_NAMED) || parentDir == NULL)
+    if (object == NULL || parentDir == NULL)
     {
+        return ERR;
+    }
+
+    if (!(object->flags & AML_OBJECT_NAMED))
+    {
+        // Something is very wrong if we have an unnamed object in the namespace heirarchy
+        LOG_ERR("unnamed object %s of type %s found in the namespace heirarchy\n",
+            AML_NAME_TO_STRING(object->name), aml_type_to_string(object->type));
         return ERR;
     }
 
     object->dir = sysfs_dir_new(parentDir, AML_NAME_TO_STRING(object->name), NULL, NULL);
     if (object->dir == NULL)
     {
+        LOG_ERR("Failed to create sysfs directory %s\n",
+            AML_NAME_TO_STRING(object->name));
         return ERR;
     }
 
@@ -102,6 +112,9 @@ static uint64_t aml_namespace_expose_object(aml_object_t* object, dentry_t* pare
         {
             if (aml_namespace_expose_object(child, object->dir) == ERR)
             {
+                LOG_ERR("Failed to expose child %s of %s in sysfs\n",
+                    AML_NAME_TO_STRING(child->name),
+                    AML_NAME_TO_STRING(object->name));
                 return ERR;
             }
         }
@@ -383,6 +396,12 @@ aml_object_t* aml_namespace_find_by_path(aml_overlay_t* overlay, aml_object_t* s
 uint64_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, aml_name_t name, aml_object_t* object)
 {
     if (object == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (object->type == AML_UNINITIALIZED)
     {
         errno = EINVAL;
         return ERR;
