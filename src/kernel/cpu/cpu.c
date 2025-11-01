@@ -7,7 +7,7 @@
 #include <kernel/cpu/syscalls.h>
 #include <kernel/cpu/tss.h>
 #include <kernel/drivers/apic.h>
-#include <kernel/drivers/statistics.h>
+#include <kernel/drivers/perf.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
@@ -26,7 +26,7 @@ uint64_t cpu_init(cpu_t* cpu, cpuid_t id)
     vmm_cpu_ctx_init(&cpu->vmm);
     gdt_cpu_tss_load(&cpu->tss);
     interrupt_ctx_init(&cpu->interrupt);
-    statistics_cpu_ctx_init(&cpu->stat);
+    perf_cpu_ctx_init(&cpu->perf);
     timer_ctx_init(&cpu->timer);
     wait_cpu_ctx_init(&cpu->wait, cpu);
     sched_cpu_ctx_init(&cpu->sched, cpu);

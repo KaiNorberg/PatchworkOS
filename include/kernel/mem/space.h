@@ -308,4 +308,14 @@ void* space_mapping_end(space_t* space, space_mapping_t* mapping, errno_t err);
  */
 bool space_is_mapped(space_t* space, const void* virtAddr, uint64_t length);
 
+/**
+ * @brief Get the number of user pages allocated in the address space.
+ *
+ * Will count the number of pages with the `PML_OWNED` flag set in user space.
+ *
+ * @param space The target address space.
+ * @return The number of user pages mapped.
+ */
+uint64_t space_user_page_count(space_t* space);
+
 /** @} */

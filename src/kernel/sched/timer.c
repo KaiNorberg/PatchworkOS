@@ -19,33 +19,12 @@
 static time_t bootEpoch;
 static bool initialized = false;
 
-static atomic_int8_t accumulatorLock = ATOMIC_VAR_INIT(0);
-static clock_t accumulator = 0;
-
-static void timer_acquire(void)
-{
-    // We cant use the lock_t here becouse in debug mode lock_t will use the timer to check for deadlocks.
-    interrupt_disable();
-    while (!atomic_compare_exchange_strong(&accumulatorLock, &(int8_t){0}, 1))
-    {
-        asm volatile("pause");
-    }
-}
-
-static void timer_release(void)
-{
-    atomic_store(&accumulatorLock, 0);
-    interrupt_enable();
-}
+static _Atomic(clock_t) accumulator = ATOMIC_VAR_INIT(0);
 
 static void timer_accumulate(void)
 {
-    timer_acquire();
-
-    accumulator += hpet_read_counter() * hpet_nanoseconds_per_tick();
+    atomic_fetch_add(&accumulator, hpet_read_counter() * hpet_nanoseconds_per_tick());
     hpet_reset_counter();
-
-    timer_release();
 }
 
 void timer_ctx_init(timer_ctx_t* ctx)
@@ -77,10 +56,7 @@ clock_t timer_uptime(void)
         timer_init();
     }
 
-    timer_acquire();
-    clock_t time = accumulator + hpet_read_counter() * hpet_nanoseconds_per_tick();
-    timer_release();
-    return time;
+    return atomic_load(&accumulator) + hpet_read_counter() * hpet_nanoseconds_per_tick();
 }
 
 time_t timer_unix_epoch(void)

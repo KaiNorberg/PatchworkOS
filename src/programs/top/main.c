@@ -47,26 +47,26 @@ typedef struct
     clock_t idleClocks;
     clock_t activeClocks;
     clock_t interruptClocks;
-} cpu_stats_t;
+} cpu_perfs_t;
 
 typedef struct
 {
     uint64_t totalKiB;
     uint64_t freeKiB;
     uint64_t reservedKiB;
-} mem_stats_t;
+} mem_perfs_t;
 
 typedef struct
 {
     uint64_t cpuAmount;
-    cpu_stats_t* prevCpuStats;
-    cpu_stats_t* cpuStats;
-    mem_stats_t memStats;
-} stats_t;
+    cpu_perfs_t* prevCpuperfs;
+    cpu_perfs_t* cpuperfs;
+    mem_perfs_t memperfs;
+} perfs_t;
 
-static uint64_t cpu_stat_count_cpus(void)
+static uint64_t cpu_perf_count_cpus(void)
 {
-    FILE* file = fopen("/dev/stat/cpu", "r");
+    FILE* file = fopen("/dev/perf/cpu", "r");
     if (file == NULL)
     {
         return ERR;
@@ -83,9 +83,9 @@ static uint64_t cpu_stat_count_cpus(void)
     return cpuCount - 1; // -1 due to header
 }
 
-static uint64_t cpu_stat_read(cpu_stats_t* cpuStats, uint64_t cpuAmount)
+static uint64_t cpu_perf_read(cpu_perfs_t* cpuperfs, uint64_t cpuAmount)
 {
-    FILE* file = fopen("/dev/stat/cpu", "r");
+    FILE* file = fopen("/dev/perf/cpu", "r");
     if (file == NULL)
     {
         return ERR;
@@ -101,13 +101,13 @@ static uint64_t cpu_stat_read(cpu_stats_t* cpuStats, uint64_t cpuAmount)
             break;
         }
 
-        if (sscanf(line, "cpu%d %llu %llu %llu", &cpuStats[i].id, &cpuStats[i].idleClocks, &cpuStats[i].activeClocks,
-                &cpuStats[i].interruptClocks) != 4)
+        if (sscanf(line, "cpu%d %llu %llu %llu", &cpuperfs[i].id, &cpuperfs[i].idleClocks, &cpuperfs[i].activeClocks,
+                &cpuperfs[i].interruptClocks) != 4)
         {
-            cpuStats[i].id = 0;
-            cpuStats[i].idleClocks = 0;
-            cpuStats[i].activeClocks = 0;
-            cpuStats[i].interruptClocks = 0;
+            cpuperfs[i].id = 0;
+            cpuperfs[i].idleClocks = 0;
+            cpuperfs[i].activeClocks = 0;
+            cpuperfs[i].interruptClocks = 0;
         }
     }
 
@@ -115,47 +115,47 @@ static uint64_t cpu_stat_read(cpu_stats_t* cpuStats, uint64_t cpuAmount)
     return 0;
 }
 
-static uint64_t mem_stat_read(mem_stats_t* memStats)
+static uint64_t mem_perf_read(mem_perfs_t* memperfs)
 {
-    FILE* file = fopen("/dev/stat/mem", "r");
+    FILE* file = fopen("/dev/perf/mem", "r");
     if (file == NULL)
     {
         return ERR;
     }
 
-    if (fscanf(file, "value kib\ntotal %llu\nfree %llu\nreserved %llu", &memStats->totalKiB, &memStats->freeKiB,
-            &memStats->reservedKiB) != 3)
+    if (fscanf(file, "value kib\ntotal %llu\nfree %llu\nreserved %llu", &memperfs->totalKiB, &memperfs->freeKiB,
+            &memperfs->reservedKiB) != 3)
     {
-        memStats->totalKiB = 0;
-        memStats->freeKiB = 0;
-        memStats->reservedKiB = 0;
+        memperfs->totalKiB = 0;
+        memperfs->freeKiB = 0;
+        memperfs->reservedKiB = 0;
     }
 
     fclose(file);
     return 0;
 }
 
-static void stats_update(stats_t* stats)
+static void perfs_update(perfs_t* perfs)
 {
-    if (cpu_stat_read(stats->prevCpuStats, stats->cpuAmount) == ERR)
+    if (cpu_perf_read(perfs->prevCpuperfs, perfs->cpuAmount) == ERR)
     {
-        printf("Failed to read prev CPU statistics\n");
+        printf("Failed to read prev CPU perfistics\n");
     }
 
     nanosleep(SAMPLE_INTERVAL);
 
-    if (cpu_stat_read(stats->cpuStats, stats->cpuAmount) == ERR)
+    if (cpu_perf_read(perfs->cpuperfs, perfs->cpuAmount) == ERR)
     {
-        printf("Failed to read CPU statistics\n");
+        printf("Failed to read CPU perfistics\n");
     }
 
-    if (mem_stat_read(&stats->memStats) == ERR)
+    if (mem_perf_read(&perfs->memperfs) == ERR)
     {
-        printf("Failed to read memory statistics\n");
+        printf("Failed to read memory perfistics\n");
     }
 }
 
-static void stat_percentage(clock_t part, clock_t total, uint64_t* whole, uint64_t* thousandths)
+static void perf_percentage(clock_t part, clock_t total, uint64_t* whole, uint64_t* thousandths)
 {
     if (total == 0)
     {
@@ -170,7 +170,7 @@ static void stat_percentage(clock_t part, clock_t total, uint64_t* whole, uint64
     *thousandths = percent % 1000;
 }
 
-static void stats_print(stats_t* stats)
+static void perfs_print(perfs_t* perfs)
 {
     printf("\033[H\033[K\n");
 
@@ -182,19 +182,19 @@ static void stats_print(stats_t* stats)
         (terminalColumns > memPrefixWidth + 2) ? (terminalColumns - memPrefixWidth - 2) : (PLOT_WIDTH * 2);
 
     printf("\033[1;33m  CPU Usage:\033[0m\033[K\n");
-    for (uint64_t i = 0; i < stats->cpuAmount; i++)
+    for (uint64_t i = 0; i < perfs->cpuAmount; i++)
     {
-        clock_t prevTotal = stats->prevCpuStats[i].idleClocks + stats->prevCpuStats[i].activeClocks +
-            stats->prevCpuStats[i].interruptClocks;
+        clock_t prevTotal = perfs->prevCpuperfs[i].idleClocks + perfs->prevCpuperfs[i].activeClocks +
+            perfs->prevCpuperfs[i].interruptClocks;
         clock_t currTotal =
-            stats->cpuStats[i].idleClocks + stats->cpuStats[i].activeClocks + stats->cpuStats[i].interruptClocks;
+            perfs->cpuperfs[i].idleClocks + perfs->cpuperfs[i].activeClocks + perfs->cpuperfs[i].interruptClocks;
 
         clock_t totalDelta = currTotal - prevTotal;
-        clock_t activeDelta = (stats->cpuStats[i].activeClocks - stats->prevCpuStats[i].activeClocks) +
-            (stats->cpuStats[i].interruptClocks - stats->prevCpuStats[i].interruptClocks);
+        clock_t activeDelta = (perfs->cpuperfs[i].activeClocks - perfs->prevCpuperfs[i].activeClocks) +
+            (perfs->cpuperfs[i].interruptClocks - perfs->prevCpuperfs[i].interruptClocks);
 
         uint64_t whole, thousandths;
-        stat_percentage(activeDelta, totalDelta, &whole, &thousandths);
+        perf_percentage(activeDelta, totalDelta, &whole, &thousandths);
 
         const char* color;
         if (whole < 30)
@@ -230,9 +230,9 @@ static void stats_print(stats_t* stats)
     printf("\033[K\n");
 
     printf("\033[1;33m  Memory:\033[0m\033[K\n");
-    uint64_t usedKiB = stats->memStats.totalKiB - stats->memStats.freeKiB;
+    uint64_t usedKiB = perfs->memperfs.totalKiB - perfs->memperfs.freeKiB;
     uint64_t whole, thousandths;
-    stat_percentage(usedKiB, stats->memStats.totalKiB, &whole, &thousandths);
+    perf_percentage(usedKiB, perfs->memperfs.totalKiB, &whole, &thousandths);
 
     const char* color;
     if (whole < 50)
@@ -250,8 +250,8 @@ static void stats_print(stats_t* stats)
 
     printf("  \033[90mUsed:\033[0m   %s%5llu MiB\033[0m / %5llu MiB  "
            "\033[90m(%s%3llu.%03llu%%\033[0m\033[90m)\033[0m\033[K\n",
-        color, usedKiB / 1024, stats->memStats.totalKiB / 1024, color, whole, thousandths);
-    printf("  \033[90mFree:\033[0m   \033[32m%5llu MiB\033[0m\033[K\n", stats->memStats.freeKiB / 1024);
+        color, usedKiB / 1024, perfs->memperfs.totalKiB / 1024, color, whole, thousandths);
+    printf("  \033[90mFree:\033[0m   \033[32m%5llu MiB\033[0m\033[K\n", perfs->memperfs.freeKiB / 1024);
 
     printf("  [");
     uint64_t barLength = (whole * memBarWidth) / 100;
@@ -274,40 +274,40 @@ static void stats_print(stats_t* stats)
 
 int main(void)
 {
-    printf("\033[H\033[J");
+    printf("\033[H\033[J\033[?25l"); // Clear screen and hide cursor
 
-    stats_t stats = {0};
-    stats.cpuAmount = cpu_stat_count_cpus();
-    if (stats.cpuAmount == ERR)
+    perfs_t perfs = {0};
+    perfs.cpuAmount = cpu_perf_count_cpus();
+    if (perfs.cpuAmount == ERR)
     {
-        printf("Failed to read CPU statistics\n");
+        printf("Failed to read CPU perfistics\n");
         return EXIT_FAILURE;
     }
-    stats.prevCpuStats = calloc(stats.cpuAmount, sizeof(cpu_stats_t));
-    if (stats.prevCpuStats == NULL)
+    perfs.prevCpuperfs = calloc(perfs.cpuAmount, sizeof(cpu_perfs_t));
+    if (perfs.prevCpuperfs == NULL)
     {
-        printf("Failed to allocate memory for previous CPU statistics\n");
+        printf("Failed to allocate memory for previous CPU perfistics\n");
         return EXIT_FAILURE;
     }
-    stats.cpuStats = calloc(stats.cpuAmount, sizeof(cpu_stats_t));
-    if (stats.cpuStats == NULL)
+    perfs.cpuperfs = calloc(perfs.cpuAmount, sizeof(cpu_perfs_t));
+    if (perfs.cpuperfs == NULL)
     {
-        printf("Failed to allocate memory for CPU statistics\n");
-        free(stats.prevCpuStats);
+        printf("Failed to allocate memory for CPU perfistics\n");
+        free(perfs.prevCpuperfs);
         return EXIT_FAILURE;
     }
-    stats.memStats = (mem_stats_t){0};
+    perfs.memperfs = (mem_perfs_t){0};
 
     terminalColumns = terminal_columns_get();
 
     printf("Please wait...\n");
-    stats_update(&stats);
+    perfs_update(&perfs);
 
     while (1)
     {
-        stats_print(&stats);
+        perfs_print(&perfs);
 
-        stats_update(&stats);
+        perfs_update(&perfs);
     }
 
     return 0;

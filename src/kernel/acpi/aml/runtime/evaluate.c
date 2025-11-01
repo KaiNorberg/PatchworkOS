@@ -1,7 +1,7 @@
 #include <kernel/acpi/aml/runtime/evaluate.h>
 
-#include <kernel/acpi/aml/runtime/method.h>
 #include <kernel/acpi/aml/runtime/convert.h>
+#include <kernel/acpi/aml/runtime/method.h>
 
 aml_object_t* aml_evaluate(aml_state_t* state, aml_object_t* object, aml_type_t targetTypes)
 {

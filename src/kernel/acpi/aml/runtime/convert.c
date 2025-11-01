@@ -511,8 +511,9 @@ uint64_t aml_convert_result(aml_state_t* state, aml_object_t* result, aml_object
     {
         if (aml_store(state, result, target) == ERR)
         {
-            LOG_ERR("failed to store result '%s' of type '%s' to target '%s' of type '%s'\n", AML_NAME_TO_STRING(result->name),
-                aml_type_to_string(result->type), AML_NAME_TO_STRING(target->name), aml_type_to_string(target->type));
+            LOG_ERR("failed to store result '%s' of type '%s' to target '%s' of type '%s'\n",
+                AML_NAME_TO_STRING(result->name), aml_type_to_string(result->type), AML_NAME_TO_STRING(target->name),
+                aml_type_to_string(target->type));
             return ERR;
         }
         return 0;
@@ -523,8 +524,9 @@ uint64_t aml_convert_result(aml_state_t* state, aml_object_t* result, aml_object
     {
         if (aml_convert(state, result, target, target->type) == ERR)
         {
-            LOG_ERR("failed to convert result '%s' of type '%s' to target '%s' of '%s'\n", AML_NAME_TO_STRING(result->name),
-                aml_type_to_string(result->type), AML_NAME_TO_STRING(target->name), aml_type_to_string(target->type));
+            LOG_ERR("failed to convert result '%s' of type '%s' to target '%s' of '%s'\n",
+                AML_NAME_TO_STRING(result->name), aml_type_to_string(result->type), AML_NAME_TO_STRING(target->name),
+                aml_type_to_string(target->type));
             return ERR;
         }
         return 0;

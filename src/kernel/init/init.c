@@ -137,7 +137,7 @@ static void init_finalize(const boot_info_t* bootInfo)
     pipe_init();
     shmem_init();
     gop_init(&bootInfo->gop);
-    statistics_init();
+    perf_init();
 
     smp_others_init();
 

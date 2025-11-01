@@ -143,6 +143,7 @@ typedef struct
     uint8_t paramCount;
     char command;
     bool ascii;
+    bool extended; ///< The command contains a '?' indicating an extended command.
 } ansi_sending_t;
 
 /**
@@ -179,10 +180,12 @@ static inline bool ansi_sending_parse(ansi_sending_t* ansi, char chr)
         case '\033':
             ansi->parameters[0] = 0; // Reset
             ansi->paramCount = 0;
+            ansi->extended = false;
             return false;
         default:
             ansi->command = ansi->buffer[0];
             ansi->ascii = true;
+            ansi->extended = false;
             ansi->length = 0;
             ansi->paramCount = 0;
             return true;
@@ -200,6 +203,12 @@ static inline bool ansi_sending_parse(ansi_sending_t* ansi, char chr)
             ansi_sending_init(ansi);
             return false;
         }
+    }
+
+    if (ansi->length == 3 && ansi->buffer[2] == '?')
+    {
+        ansi->extended = true;
+        return false;
     }
 
     if (ansi->length >= ANSI_MAX_LENGTH - 1)

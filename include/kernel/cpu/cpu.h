@@ -5,8 +5,8 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/tss.h>
 #include <kernel/drivers/apic.h>
+#include <kernel/drivers/perf.h>
 #include <kernel/drivers/rand.h>
-#include <kernel/drivers/statistics.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/timer.h>
@@ -45,7 +45,7 @@ typedef struct cpu
     tss_t tss;
     vmm_cpu_ctx_t vmm;
     interrupt_ctx_t interrupt;
-    statistics_cpu_ctx_t stat;
+    perf_cpu_ctx_t perf;
     timer_ctx_t timer;
     wait_cpu_ctx_t wait;
     sched_cpu_ctx_t sched;

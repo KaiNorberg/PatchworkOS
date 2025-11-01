@@ -6,7 +6,7 @@
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/smp.h>
 #include <kernel/drivers/apic.h>
-#include <kernel/drivers/statistics.h>
+#include <kernel/drivers/perf.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/thread.h>
@@ -105,7 +105,14 @@ void interrupt_handler(interrupt_frame_t* frame)
     }
     self->interrupt.inInterrupt = true;
 
-    statistics_interrupt_begin(frame, self);
+    if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
+    {
+        perf_update(self, PERF_SWITCH_ENTER_USER_INTERRUPT);
+    }
+    else
+    {
+        perf_update(self, PERF_SWITCH_ENTER_KERNEL_INTERRUPT);
+    }
 
     switch (frame->vector)
     {
@@ -160,7 +167,8 @@ void interrupt_handler(interrupt_frame_t* frame)
 
     cpu_stacks_overflow_check(self);
 
-    statistics_interrupt_end(frame, self);
+    perf_update(self, PERF_SWITCH_LEAVE_INTERRUPT);
+
     self->interrupt.inInterrupt = false;
 
     // This is a sanity check to make sure blocking and scheduling is functioning correctly. For instance, a trap should

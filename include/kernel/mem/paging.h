@@ -942,7 +942,6 @@ static inline uint64_t page_table_find_unmapped_region(page_table_t* table, void
 static inline bool page_table_is_pinned(page_table_t* table, const void* virtAddr, uint64_t pageAmount)
 {
     page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
-
     for (uint64_t i = 0; i < pageAmount; i++)
     {
         if (page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE) == ERR)
@@ -962,6 +961,44 @@ static inline bool page_table_is_pinned(page_table_t* table, const void* virtAdd
     }
 
     return false;
+}
+
+/**
+ * @brief Counts the number of pages in a range that have all the specified flags set.
+ *
+ * Can be used to, for example, check the total amount of pages allocated to a process by counting the pages with the
+ * `PML_PRESENT | PML_USER | PML_OWNED` flags set.
+ *
+ * @param table The page table.
+ * @param virtAddr The starting virtual address.
+ * @param pageAmount The number of pages to check.
+ * @param flags The flags to check for.
+ * @return The number of pages with the specified flags set.
+ */
+static inline uint64_t page_table_count_pages_with_flags(page_table_t* table, void* virtAddr, uint64_t pageAmount,
+    pml_flags_t flags)
+{
+    uint64_t count = 0;
+    page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {
+        if (page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE) == ERR)
+        {
+            continue;
+        }
+
+        if (!traverse.entry->present)
+        {
+            continue;
+        }
+
+        if ((traverse.entry->raw & flags) == flags)
+        {
+            count++;
+        }
+    }
+
+    return count;
 }
 
 /** @} */
