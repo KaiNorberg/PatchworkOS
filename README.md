@@ -55,22 +55,22 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 
 ### Kernel
 
-- Multithreading with a fully preemptive and tickless [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), loosely based on Linux's O(1) scheduler
+- Multithreading with a fully preemptive and tickless [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sched/sched.h), loosely based on Linux's O(1) scheduler
 - Symmetric Multi Processing with fine-grained locking, no big locks allowed
 - Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info
 - Dynamic kernel and user stack allocation
-- File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/note.h)
-- File based device APIs, including [framebuffers](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/helpers/fb.h), [keyboards](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/helpers/kbd.h), [mice](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/helpers/mouse.h) and more
+- File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/note.h)
+- File based device APIs, including [framebuffers](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/fb.h), [keyboards](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/kbd.h), [mice](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/mouse.h) and more
 - [Synchronization primitives](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sync) including mutexes, read-write locks, sequential locks, futexes and others
 - SIMD support
 
 ### ACPI
 
-- From scratch and heavily documented [AML parser](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/acpi/aml/aml.h)
+- From scratch and heavily documented [AML parser](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/acpi/aml/aml.h)
 - Tested on real hardware, see [Tested Configurations](#tested-configurations)
 - ACPI implementation was made to be easy to understand and useful for educational purposes
 - Tested against [ACPICA's](https://github.com/acpica/acpica) runtime test suite
-- ACPI support is still work in progress, check [acpi.h](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/acpi/acpi.h) for a checklist
+- ACPI support is still work in progress, check [acpi.h](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/acpi/acpi.h) for a checklist
 
 ### File System
 
