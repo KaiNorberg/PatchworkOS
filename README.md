@@ -76,8 +76,8 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 
 - Unix-style VFS with mountpoints, hardlinks, per-process namespaces, etc.
 - Strict adherence to "everything is a file" philosophy
-- Custom image format [(.fbmp)](https://github.com/KaiNorberg/fbmp)
-- Custom font format [(.grf)](https://github.com/KaiNorberg/grf)
+- Custom [Framebuffer BitMaP](https://github.com/KaiNorberg/fbmp) (.fbmp) image format, allows for faster loading by removing the need for parsing
+- Custom [Grayscale Raster Font](https://github.com/KaiNorberg/grf) (.grf) font format, allows for antialiasing and kerning without complex vector graphics
 
 ### User Space
 
@@ -493,4 +493,4 @@ Check out the [contribution guidelines](CONTRIBUTING.md) to get started.
 
 ## Nostalgia
 
-[The first Reddit post and image of PatchworkOS](https://www.reddit.com/r/osdev/comments/18gbsng/a_little_over_2_years_ago_i_posted_a_screenshot/) from back when getting to user space was a massive milestone and the kernel was supposed to be a microkernel.
+[The first Reddit post and image of PatchworkOS](https://www.reddit.com/r/osdev/comments/18gbsng/a_little_over_2_years_ago_i_posted_a_screenshot/) from back when getting to user space was a massive milestone and the kernel was supposed to be a UNIX-like microkernel.
