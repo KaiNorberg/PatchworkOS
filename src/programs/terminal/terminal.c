@@ -234,7 +234,7 @@ static void ternminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t
 
     if (ansi->extended)
     {
-        switch(ansi->command)
+        switch (ansi->command)
         {
         case 'h': // Set Mode
             if (ansi->parameters[0] == 25)

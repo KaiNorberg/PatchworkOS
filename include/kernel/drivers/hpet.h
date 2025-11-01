@@ -11,6 +11,9 @@
  *
  * The HPET is initalized via the ACPI sdt registration system.
  *
+ * Note that since the HPET might be 32bit it could overflow rather quickly, so we implement a system for checking
+ * roughly when it will overflow and accumulate the counter into a 64 bit nanosecond counter.
+ *
  * @see [OSDev HPET](https://wiki.osdev.org/HPET)
  *
  * @{
@@ -84,48 +87,18 @@ typedef struct PACKED
 } hpet_t;
 
 /**
- * @brief Retrieve the number of nanoseconds per HPET tick
+ * @brief Read the current accumulated counter in nanoseconds
  *
  * If the HPET is not initialized, this function will return 0.
  *
- * @return Nanoseconds per tick
+ * @return Current currently accumulated counter in nanoseconds
  */
-clock_t hpet_ns_per_tick(void);
-
-/**
- * @brief Read the current value of the HPET main counter
- *
- * If the HPET is not initialized, this function will return 0.
- *
- * @return Current current value of the HPET main counter in ticks
- */
-uint64_t hpet_read_counter(void);
-
-/**
- * @brief Reset the HPET main counter to 0 and enable the HPET
- *
- * If the HPET is not initialized, this function does nothing.
- */
-void hpet_reset_counter(void);
-
-/**
- * @brief Write a value to an HPET register
- *
- * @param reg The register to write to
- * @param value The value to write
- */
-void hpet_write(uint64_t reg, uint64_t value);
-
-/**
- * @brief Read a value from an HPET register
- *
- * @param reg The register to read from
- * @return The value read from the register
- */
-uint64_t hpet_read(uint64_t reg);
+clock_t hpet_read_ns_counter(void);
 
 /**
  * @brief Wait for a specified number of nanoseconds using the HPET
+ *
+ * If the HPET is not initialized, this function will panic.
  *
  * This function uses a busy-wait loop, meaning its very CPU inefficient, but its usefull during early
  * initialization or when you are unable to block the current thread.

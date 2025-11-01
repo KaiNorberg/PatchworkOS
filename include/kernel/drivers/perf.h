@@ -50,10 +50,8 @@ typedef struct
     clock_t activeClocks;
     clock_t interruptClocks;
     clock_t idleClocks;
-    clock_t lastUpdate;
     clock_t interruptBegin;
     clock_t interruptEnd;
-    bool inInterrupt;
     lock_t lock;
 } perf_cpu_ctx_t;
 
@@ -63,9 +61,10 @@ typedef struct
  */
 typedef struct
 {
-    _Atomic(clock_t) userClocks;   ///< Total user mode CPU time used by this process.
-    _Atomic(clock_t) kernelClocks; ///< Total kernel mode CPU time used by this process, does not include interrupt time.
-    clock_t startTime;    ///< The time when the process was started.
+    _Atomic(clock_t) userClocks; ///< Total user mode CPU time used by this process.
+    _Atomic(clock_t)
+        kernelClocks;  ///< Total kernel mode CPU time used by this process, does not include interrupt time.
+    clock_t startTime; ///< The time when the process was started.
 } perf_process_ctx_t;
 
 /**

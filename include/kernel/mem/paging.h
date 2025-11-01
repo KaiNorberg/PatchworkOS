@@ -1019,7 +1019,8 @@ static inline uint64_t page_table_count_pages_with_flags(page_table_t* table, vo
         pml_t* pml1 = (pml_t*)pml_accessible_addr(*entry2);
         pml_index_t idx1 = PML_ADDR_TO_INDEX((uintptr_t)virtAddr, PML1);
 
-        for (; idx1 < PML_INDEX_AMOUNT && pageAmount > 0; idx1++, virtAddr = (void*)((uintptr_t)virtAddr + PAGE_SIZE), pageAmount--)
+        for (; idx1 < PML_INDEX_AMOUNT && pageAmount > 0;
+            idx1++, virtAddr = (void*)((uintptr_t)virtAddr + PAGE_SIZE), pageAmount--)
         {
             pml_entry_t* entry1 = &pml1->entries[idx1];
             if (!entry1->present)

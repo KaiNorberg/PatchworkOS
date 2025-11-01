@@ -1,8 +1,9 @@
 #include <stdatomic.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
-#include <sys/proc.h>
 #include <threads.h>
+#include <time.h>
 
 #define PRIME_MAX (10000000)
 
@@ -68,7 +69,7 @@ static void benchmark(uint64_t threadAmount)
 {
     printf("%d threads: starting...", threadAmount);
     fflush(stdout);
-    clock_t start = uptime();
+    clock_t start = clock();
 
     atomic_init(&count, 0);
     atomic_init(&next, 0);
@@ -92,7 +93,7 @@ static void benchmark(uint64_t threadAmount)
         }
     }
 
-    clock_t end = uptime();
+    clock_t end = clock();
     printf("\ttook %d ms to find %d primes\n", (end - start) / (CLOCKS_PER_SEC / 1000), atomic_load(&count));
 }
 

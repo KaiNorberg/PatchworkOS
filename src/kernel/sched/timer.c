@@ -17,7 +17,15 @@
 #include <sys/math.h>
 
 static time_t bootEpoch;
-static bool initialized = false;
+static bool bootEpochInitialized = false;
+
+static void timer_boot_epoch_init(void)
+{
+    struct tm time;
+    rtc_read(&time);
+    bootEpoch = mktime(&time);
+    bootEpochInitialized = true;
+}
 
 void timer_ctx_init(timer_ctx_t* ctx)
 {
@@ -32,29 +40,16 @@ void timer_ctx_init(timer_ctx_t* ctx)
     LOG_INFO("cpu%d apic timer ticksPerNs=%lu\n", self->id, self->timer.apicTicksPerNs);
 }
 
-static void timer_init(void)
-{
-    struct tm time;
-    rtc_read(&time);
-    bootEpoch = mktime(&time);
-
-    initialized = true;
-}
-
 clock_t timer_uptime(void)
 {
-    if (!initialized)
-    {
-        timer_init();
-    }
-    return hpet_read_counter() * hpet_ns_per_tick();
+    return hpet_read_ns_counter();
 }
 
 time_t timer_unix_epoch(void)
 {
-    if (!initialized)
+    if (!bootEpochInitialized)
     {
-        timer_init();
+        timer_boot_epoch_init();
     }
 
     return bootEpoch + timer_uptime() / CLOCKS_PER_SEC;

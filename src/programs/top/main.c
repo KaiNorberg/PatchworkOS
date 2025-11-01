@@ -8,12 +8,13 @@
 #include <time.h>
 
 #define SAMPLE_INTERVAL (CLOCKS_PER_SEC)
-#define PLOT_WIDTH 20
 
 static uint64_t terminalColumns;
 static uint64_t terminalRows;
+static uint64_t processScrollOffset = 0;
 
-typedef enum {
+typedef enum
+{
     SORT_PID,
     SORT_MEMORY,
     SORT_CPU
@@ -53,8 +54,6 @@ static void terminal_size_get(void)
 
     printf("\033[H\033[u");
     fflush(stdout);
-
-    printf("Detected terminal size: %ux%u\n", terminalWidth, terminalHeight);
 
     terminalColumns = terminalWidth;
     terminalRows = terminalHeight;
@@ -226,7 +225,8 @@ static proc_perfs_t* proc_perfs_read(uint64_t* procAmount)
 
             uint64_t userPages;
             proc_perfs_t procPerf;
-            if (fscanf(perfFile, "user_clocks %lu\nkernel_clocks %lu\nstart_clocks %lu\nuser_pages %lu\nthread_count %lu",
+            if (fscanf(perfFile,
+                    "user_clocks %lu\nkernel_clocks %lu\nstart_clocks %lu\nuser_pages %lu\nthread_count %lu",
                     &procPerf.userClocks, &procPerf.kernelClocks, &procPerf.startClocks, &userPages,
                     &procPerf.threadCount) != 5)
             {
@@ -317,8 +317,10 @@ static int compare_by_cpu(const void* a, const void* b)
 {
     const proc_perfs_t* pa = (const proc_perfs_t*)a;
     const proc_perfs_t* pb = (const proc_perfs_t*)b;
-    if (pb->cpuPercent > pa->cpuPercent) return 1;
-    if (pb->cpuPercent < pa->cpuPercent) return -1;
+    if (pb->cpuPercent > pa->cpuPercent)
+        return 1;
+    if (pb->cpuPercent < pa->cpuPercent)
+        return -1;
     return 0;
 }
 
@@ -326,15 +328,15 @@ static void sort_processes(perfs_t* perfs)
 {
     switch (currentSortMode)
     {
-        case SORT_PID:
-            qsort(perfs->procPerfs, perfs->procAmount, sizeof(proc_perfs_t), compare_by_pid);
-            break;
-        case SORT_MEMORY:
-            qsort(perfs->procPerfs, perfs->procAmount, sizeof(proc_perfs_t), compare_by_memory);
-            break;
-        case SORT_CPU:
-            qsort(perfs->procPerfs, perfs->procAmount, sizeof(proc_perfs_t), compare_by_cpu);
-            break;
+    case SORT_PID:
+        qsort(perfs->procPerfs, perfs->procAmount, sizeof(proc_perfs_t), compare_by_pid);
+        break;
+    case SORT_MEMORY:
+        qsort(perfs->procPerfs, perfs->procAmount, sizeof(proc_perfs_t), compare_by_memory);
+        break;
+    case SORT_CPU:
+        qsort(perfs->procPerfs, perfs->procAmount, sizeof(proc_perfs_t), compare_by_cpu);
+        break;
     }
 }
 
@@ -360,23 +362,37 @@ static void perfs_update(perfs_t* perfs)
         read(STDIN_FILENO, &c, 1);
         switch (c)
         {
-            case 'p':
-            case 'P':
-                currentSortMode = SORT_PID;
-                break;
-            case 'm':
-            case 'M':
-                currentSortMode = SORT_MEMORY;
-                break;
-            case 'c':
-            case 'C':
-                currentSortMode = SORT_CPU;
-                break;
-            case 'q':
-            case 'Q':
-                printf("\033[?25h\033[H\033[J");
-                exit(0);
-                break;
+        case 'p':
+        case 'P':
+            currentSortMode = SORT_PID;
+            processScrollOffset = 0;
+            break;
+        case 'm':
+        case 'M':
+            currentSortMode = SORT_MEMORY;
+            processScrollOffset = 0;
+            break;
+        case 'c':
+        case 'C':
+            currentSortMode = SORT_CPU;
+            processScrollOffset = 0;
+            break;
+        case 'j':
+        case 'J':
+            processScrollOffset++;
+            break;
+        case 'k':
+        case 'K':
+            if (processScrollOffset > 0)
+            {
+                processScrollOffset--;
+            }
+            break;
+        case 'q':
+        case 'Q':
+            printf("\033[?25h\033[H\033[J");
+            exit(0);
+            break;
         }
     }
 
@@ -421,18 +437,21 @@ static void perf_percentage(clock_t part, clock_t total, uint64_t* whole, uint64
 
 static void perfs_print(perfs_t* perfs)
 {
-    printf("\033[H");
+    printf("\033[H\n");
 
     uint64_t cpuPrefixWidth = 20;
-    uint64_t cpuBarWidth = (terminalColumns > cpuPrefixWidth + 1) ? (terminalColumns - cpuPrefixWidth - 1) : PLOT_WIDTH;
+    uint64_t singleColumnWidth = (terminalColumns + 1) / 2;
+    uint64_t cpuBarWidth = singleColumnWidth - cpuPrefixWidth;
 
     uint64_t memPrefixWidth = 4;
-    uint64_t memBarWidth =
-        (terminalColumns > memPrefixWidth + 2) ? (terminalColumns - memPrefixWidth - 2) : (PLOT_WIDTH * 2);
+    uint64_t memBarWidth = terminalColumns - memPrefixWidth - 2;
 
     printf("\033[1;33m  CPU Usage:\033[0m\033[K\n");
-    for (uint64_t i = 0; i < perfs->cpuAmount; i++)
+
+    uint64_t cpusPerColumn = (perfs->cpuAmount + 1) / 2;
+    for (uint64_t row = 0; row < cpusPerColumn; row++)
     {
+        uint64_t i = row;
         clock_t prevTotal = perfs->prevCpuPerfs[i].idleClocks + perfs->prevCpuPerfs[i].activeClocks +
             perfs->prevCpuPerfs[i].interruptClocks;
         clock_t currTotal =
@@ -473,7 +492,53 @@ static void perfs_print(perfs_t* perfs)
                 printf("\033[90m \033[0m");
             }
         }
-        printf("]\033[K\n");
+        printf("]");
+
+        uint64_t rightIdx = row + cpusPerColumn;
+        if (rightIdx < perfs->cpuAmount)
+        {
+            prevTotal = perfs->prevCpuPerfs[rightIdx].idleClocks + perfs->prevCpuPerfs[rightIdx].activeClocks +
+                perfs->prevCpuPerfs[rightIdx].interruptClocks;
+            currTotal = perfs->cpuPerfs[rightIdx].idleClocks + perfs->cpuPerfs[rightIdx].activeClocks +
+                perfs->cpuPerfs[rightIdx].interruptClocks;
+
+            totalDelta = currTotal - prevTotal;
+            activeDelta = (perfs->cpuPerfs[rightIdx].activeClocks - perfs->prevCpuPerfs[rightIdx].activeClocks) +
+                (perfs->cpuPerfs[rightIdx].interruptClocks - perfs->prevCpuPerfs[rightIdx].interruptClocks);
+
+            perf_percentage(activeDelta, totalDelta, &whole, &thousandths);
+
+            if (whole < 30)
+            {
+                color = "\033[32m";
+            }
+            else if (whole < 70)
+            {
+                color = "\033[33m";
+            }
+            else
+            {
+                color = "\033[31m";
+            }
+
+            printf("  \033[90mCPU%-2llu\033[0m %s%3llu.%03llu%%\033[0m [", rightIdx, color, whole, thousandths);
+
+            barLength = (whole * cpuBarWidth) / 100;
+            for (uint64_t j = 0; j < cpuBarWidth; j++)
+            {
+                if (j < barLength)
+                {
+                    printf("%s#\033[0m", color);
+                }
+                else
+                {
+                    printf("\033[90m \033[0m");
+                }
+            }
+            printf("]");
+        }
+
+        printf("\033[K\n");
     }
 
     printf("\033[K\n");
@@ -522,38 +587,53 @@ static void perfs_print(perfs_t* perfs)
     const char* sortIndicator = "";
     switch (currentSortMode)
     {
-        case SORT_PID:
-            sortIndicator = " \033[36m[PID]\033[0m";
-            break;
-        case SORT_MEMORY:
-            sortIndicator = " \033[36m[MEM]\033[0m";
-            break;
-        case SORT_CPU:
-            sortIndicator = " \033[36m[CPU]\033[0m";
-            break;
+    case SORT_PID:
+        sortIndicator = " \033[36m[PID]\033[0m";
+        break;
+    case SORT_MEMORY:
+        sortIndicator = " \033[36m[MEM]\033[0m";
+        break;
+    case SORT_CPU:
+        sortIndicator = " \033[36m[CPU]\033[0m";
+        break;
     }
 
-    printf("\033[33m  Processes:\033[0m%s  \033[90m(sort keybindings: p=PID, m=Memory, c=CPU)\033[0m\033[K\n", sortIndicator);
-    printf("  \033[90m%-8s %8s %8s %8s\033[0m\033[K\n", "PID", "CPU", "MEM(KiB)", "THREADS");
+    printf("  Processes:\033[0m%s  \033[90m(p=PID, m=Mem, c=CPU, j/k=scroll)\033[0m\033[K\n", sortIndicator);
+    printf("  \033[90mPID         CPU%%     KiB    Threads  Command\033[0m\033[K\n");
     printf("  \033[90m");
-    for (uint64_t i = 0; i < (terminalColumns > 38 ? 38 : terminalColumns - 2); i++)
+    for (uint64_t i = 0; i < terminalColumns - 4; i++)
     {
         printf("-");
     }
-    printf("\033[0m\033[K\n");
+    printf("\n\033[0m");
 
-    uint64_t headerLines = 4 + perfs->cpuAmount + 7;
-    uint64_t availableLines = (terminalRows > headerLines + 1) ? (terminalRows - headerLines - 1) : 10;
-    uint64_t displayCount = (perfs->procAmount < availableLines) ? perfs->procAmount : availableLines;
+    uint64_t headerLines = 4 + cpusPerColumn + 7;
+    uint64_t availableLines = (terminalRows - 1 > headerLines + 1) ? (terminalRows - 1 - headerLines - 1) : 10;
+
+    if (processScrollOffset > perfs->procAmount)
+    {
+        processScrollOffset = perfs->procAmount;
+    }
+    if (perfs->procAmount > availableLines && processScrollOffset > perfs->procAmount - availableLines)
+    {
+        processScrollOffset = perfs->procAmount - availableLines;
+    }
+
+    uint64_t displayCount = availableLines;
+    if (processScrollOffset + displayCount > perfs->procAmount)
+    {
+        displayCount = perfs->procAmount - processScrollOffset;
+    }
 
     for (uint64_t i = 0; i < displayCount; i++)
     {
+        uint64_t procIdx = processScrollOffset + i;
         const char* cpuColor;
-        if (perfs->procPerfs[i].cpuPercent < 10.0)
+        if (perfs->procPerfs[procIdx].cpuPercent < 10.0)
         {
             cpuColor = "\033[32m";
         }
-        else if (perfs->procPerfs[i].cpuPercent < 50.0)
+        else if (perfs->procPerfs[procIdx].cpuPercent < 50.0)
         {
             cpuColor = "\033[33m";
         }
@@ -563,11 +643,11 @@ static void perfs_print(perfs_t* perfs)
         }
 
         const char* memColor;
-        if (perfs->procPerfs[i].userKiB < 1024 * 50)
+        if (perfs->procPerfs[procIdx].userKiB < 1024 * 50)
         {
             memColor = "\033[32m";
         }
-        else if (perfs->procPerfs[i].userKiB < 1024 * 200)
+        else if (perfs->procPerfs[procIdx].userKiB < 1024 * 200)
         {
             memColor = "\033[33m";
         }
@@ -576,27 +656,24 @@ static void perfs_print(perfs_t* perfs)
             memColor = "\033[31m";
         }
 
-        uint64_t whole = (uint64_t)perfs->procPerfs[i].cpuPercent;
-        uint64_t thousandths = (uint64_t)((perfs->procPerfs[i].cpuPercent - whole) * 1000);
+        uint64_t cpuWhole = (uint64_t)perfs->procPerfs[procIdx].cpuPercent;
+        uint64_t cpuThousandths = (uint64_t)((perfs->procPerfs[procIdx].cpuPercent - cpuWhole) * 1000);
 
         char displayCmdline[terminalColumns - 40 + 1];
-        if (strlen(perfs->procPerfs[i].cmdline) > terminalColumns - 40)
+        if (strlen(perfs->procPerfs[procIdx].cmdline) > terminalColumns - 40)
         {
-            strncpy(displayCmdline, perfs->procPerfs[i].cmdline, terminalColumns - 43);
+            strncpy(displayCmdline, perfs->procPerfs[procIdx].cmdline, terminalColumns - 43);
             displayCmdline[terminalColumns - 43] = '\0';
             strcat(displayCmdline, "...");
         }
         else
         {
-            strcpy(displayCmdline, perfs->procPerfs[i].cmdline);
+            strcpy(displayCmdline, perfs->procPerfs[procIdx].cmdline);
         }
 
-        printf("  \033[90m%-8d\033[0m %s%3llu.%03llu%%\033[0m %s%7llu\033[0m  %7llu  %s\033[K\n",
-            perfs->procPerfs[i].pid,
-            cpuColor, whole, thousandths,
-            memColor, perfs->procPerfs[i].userKiB,
-            perfs->procPerfs[i].threadCount,
-            displayCmdline);
+        printf("  \033[90m%-8d\033[0m %s%4llu.%03llu%%\033[0m %s%7llu\033[0m  %7llu  %s\033[K\n",
+            perfs->procPerfs[procIdx].pid, cpuColor, cpuWhole, cpuThousandths, memColor,
+            perfs->procPerfs[procIdx].userKiB, perfs->procPerfs[procIdx].threadCount, displayCmdline);
     }
 
     for (uint64_t i = displayCount; i < availableLines; i++)

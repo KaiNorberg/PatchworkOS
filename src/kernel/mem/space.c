@@ -79,7 +79,7 @@ uint64_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress
             errno = ENOMEM;
             return ERR;
         }
-        // We only use the specific pmm allocator for the page table itself, not for mappings.
+        // We only use the bitmap pmm allocator for the page table itself, not for mappings.
         space->pageTable.allocPages = pmm_alloc_pages;
     }
     else

@@ -61,6 +61,8 @@ typedef struct
 /**
  * @brief Create a lock initializer.
  * @macro LOCK_CREATE
+ *
+ * @return A `lock_t` initializer.
  */
 #ifndef NDEBUG
 #define LOCK_CREATE (lock_t){.nextTicket = ATOMIC_VAR_INIT(0), .nowServing = ATOMIC_VAR_INIT(0), .canary = 0xDEADBEEF}

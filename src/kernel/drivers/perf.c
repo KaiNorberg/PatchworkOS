@@ -25,7 +25,7 @@ static uint64_t perf_cpu_read(file_t* file, void* buffer, uint64_t count, uint64
 {
     (void)file; // Unused
 
-    char* string = malloc(MAX_PATH * (smp_cpu_amount() + 1));
+    char* string = malloc(256 * (smp_cpu_amount() + 1));
     if (string == NULL)
     {
         return ERR;
@@ -56,8 +56,8 @@ static uint64_t perf_cpu_read(file_t* file, void* buffer, uint64_t count, uint64
         clock_t volatile idleClocks = cpu->perf.idleClocks;
         lock_release(&cpu->perf.lock);
 
-        int length = sprintf(string + strlen(string), "%lu %lu %lu %lu", cpu->id, idleClocks, activeClocks,
-            interruptClocks);
+        int length =
+            sprintf(string + strlen(string), "%lu %lu %lu %lu", cpu->id, idleClocks, activeClocks, interruptClocks);
         if (length < 0)
         {
             free(string);
@@ -80,15 +80,14 @@ static uint64_t perf_mem_read(file_t* file, void* buffer, uint64_t count, uint64
 {
     (void)file; // Unused
 
-    char* string = malloc(MAX_PATH);
+    char* string = malloc(256);
     if (string == NULL)
     {
         return ERR;
     }
 
-    int length =
-        sprintf(string, "total_pages %lu\nfree_pages %lu\nused_pages %lu", pmm_total_amount(),
-            pmm_free_amount(), pmm_used_amount());
+    int length = sprintf(string, "total_pages %lu\nfree_pages %lu\nused_pages %lu", pmm_total_amount(),
+        pmm_free_amount(), pmm_used_amount());
     if (length < 0)
     {
         free(string);
@@ -109,7 +108,7 @@ void perf_cpu_ctx_init(perf_cpu_ctx_t* ctx)
 {
     ctx->activeClocks = 0;
     ctx->interruptClocks = 0;
-    ctx->lastUpdate = 0;
+    ctx->idleClocks = 0;
     ctx->interruptBegin = 0;
     ctx->interruptEnd = 0;
     lock_init(&ctx->lock);
@@ -155,8 +154,8 @@ void perf_interrupt_begin(cpu_t* self)
 
     if (perf->interruptEnd < perf->interruptBegin)
     {
-        panic(NULL, "perf_interrupt_begin called while already in interrupt interuptBegin=%llu interruptEnd=%llu", perf->interruptBegin,
-            perf->interruptEnd);
+        panic(NULL, "perf_interrupt_begin called while already in interrupt interuptBegin=%llu interruptEnd=%llu",
+            perf->interruptBegin, perf->interruptEnd);
     }
 
     perf->interruptBegin = timer_uptime();
@@ -177,6 +176,11 @@ void perf_interrupt_begin(cpu_t* self)
         clock_t syscallDelta = perf->interruptBegin - thread->perf.syscallBegin;
         atomic_fetch_add(&thread->process->perf.kernelClocks, syscallDelta);
     }
+    else
+    {
+        clock_t userDelta = perf->interruptBegin - thread->perf.syscallEnd;
+        atomic_fetch_add(&thread->process->perf.userClocks, userDelta);
+    }
 }
 
 void perf_interrupt_end(cpu_t* self)
@@ -191,6 +195,10 @@ void perf_interrupt_end(cpu_t* self)
     {
         thread->perf.syscallBegin = self->perf.interruptEnd;
     }
+    else
+    {
+        thread->perf.syscallEnd = self->perf.interruptEnd;
+    }
 }
 
 void perf_syscall_begin(void)
@@ -201,9 +209,10 @@ void perf_syscall_begin(void)
     clock_t uptime = timer_uptime();
     if (perf->syscallEnd < perf->syscallBegin)
     {
-        panic(NULL, "perf_syscall_begin called while already in syscall syscallBegin=%llu syscallEnd=%llu", perf->syscallBegin,
-            perf->syscallEnd);
+        panic(NULL, "perf_syscall_begin called while already in syscall syscallBegin=%llu syscallEnd=%llu",
+            perf->syscallBegin, perf->syscallEnd);
     }
+
     if (perf->syscallEnd != 0)
     {
         atomic_fetch_add(&thread->process->perf.userClocks, uptime - perf->syscallEnd);

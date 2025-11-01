@@ -289,8 +289,8 @@ static uint64_t process_stat_read(file_t* file, void* buffer, uint64_t count, ui
 
     char statStr[MAX_PATH];
     int length = snprintf(statStr, sizeof(statStr),
-        "user_clocks %lu\nkernel_clocks %lu\nstart_clocks %lu\nuser_pages %lu\nthread_count %lu", userClocks, kernelClocks,
-        startTime, userPages, threadCount);
+        "user_clocks %lu\nkernel_clocks %lu\nstart_clocks %lu\nuser_pages %lu\nthread_count %lu", userClocks,
+        kernelClocks, startTime, userPages, threadCount);
     if (length < 0)
     {
         errno = EIO;
