@@ -24,7 +24,7 @@
 </div>
 <br>
 
-![desktop screenshot](https://github.com/KaiNorberg/PatchworkOS/blob/main/meta/screenshots/desktop.png)
+![desktop screenshot](meta/screenshots/desktop.png)
 
 **Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended be an educational, experimental and "modern" operating system.
 
@@ -39,12 +39,12 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 <table>
 <tr>
 <td width="50%" valign="top" align="center">
-  <img src="https://github.com/KaiNorberg/PatchworkOS/blob/main/meta/screenshots/stresstest.png" alt="Stresstest Screenshot" />
+  <img src="meta/screenshots/stresstest.png" alt="Stresstest Screenshot" />
   <br>
   <i>Stress test showing ~100% utilization across 12 CPUs.</i>
 </td>
 <td width="50%" valign="top" align="center">
-  <img src="https://github.com/KaiNorberg/PatchworkOS/blob/main/meta/screenshots/doom.png" alt="Doom Screenshot" />
+  <img src="meta/screenshots/doom.png" alt="Doom Screenshot" />
   <br>
   <i>DOOM running on PatchworkOS.</i>
 </td>
