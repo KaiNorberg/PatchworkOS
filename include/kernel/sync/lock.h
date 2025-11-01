@@ -61,6 +61,8 @@ typedef struct
 /**
  * @brief Create a lock initializer.
  * @macro LOCK_CREATE
+ *
+ * @return A `lock_t` initializer.
  */
 #ifndef NDEBUG
 #define LOCK_CREATE (lock_t){.nextTicket = ATOMIC_VAR_INIT(0), .nowServing = ATOMIC_VAR_INIT(0), .canary = 0xDEADBEEF}
@@ -89,7 +91,7 @@ static inline void lock_init(lock_t* lock)
 /**
  * @brief Acquires a lock, blocking until it is available.
  *
- * This function disables interrupts on the current CPU..
+ * This function disables interrupts on the current CPU.
  * It is not recursive, and attempting to acquire a lock that is already held by the same CPU will result in a deadlock.
  *
  * @param lock Pointer to the lock to acquire.

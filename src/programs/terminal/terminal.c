@@ -72,9 +72,12 @@ static void terminal_cursor_update(terminal_t* term, element_t* elem, drawable_t
     terminal_char_draw(term, elem, draw, term->prevCursor);
     if (term->isCursorVisible)
     {
-        term->cursor->flags |= TERMINAL_INVERSE;
+        if (term->cursorBlink)
+        {
+            term->cursor->flags |= TERMINAL_INVERSE;
+        }
+        terminal_char_draw(term, elem, draw, term->cursor);
     }
-    terminal_char_draw(term, elem, draw, term->cursor);
     term->prevCursor = term->cursor;
 }
 
@@ -229,9 +232,34 @@ static void ternminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t
         return;
     }
 
+    if (ansi->extended)
+    {
+        switch (ansi->command)
+        {
+        case 'h': // Set Mode
+            if (ansi->parameters[0] == 25)
+            {
+                term->isCursorVisible = true;
+                terminal_cursor_update(term, elem, draw);
+            }
+            break;
+        case 'l': // Reset Mode
+            if (ansi->parameters[0] == 25)
+            {
+                term->isCursorVisible = false;
+                terminal_cursor_update(term, elem, draw);
+            }
+            break;
+        default:
+            goto not_handled;
+        }
+
+        return;
+    }
+
     switch (ansi->command)
     {
-    case 'H': // Cursot to (0, 0) or specified position
+    case 'H': // Cursor to (0, 0) or specified position
         if (ansi->paramCount >= 2)
         {
             uint16_t row = ansi->parameters[0] == 0 ? 0 : ansi->parameters[0] - 1;
@@ -471,25 +499,26 @@ static void ternminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t
         }
     }
     break;
-    default:
-        terminal_put(term, elem, draw, '\033');
-        terminal_put(term, elem, draw, '[');
-        for (uint64_t i = 0; i < ansi->paramCount; i++)
-        {
-            if (i > 0)
-            {
-                terminal_put(term, elem, draw, ';');
-            }
-            char paramStr[MAX_NAME];
-            int paramLen = snprintf(paramStr, sizeof(paramStr), "%d", ansi->parameters[i]);
-            for (int j = 0; j < paramLen; j++)
-            {
-                terminal_put(term, elem, draw, paramStr[j]);
-            }
-        }
-        terminal_put(term, elem, draw, ansi->command);
-        break;
     }
+
+    return;
+not_handled:
+    terminal_put(term, elem, draw, '\033');
+    terminal_put(term, elem, draw, '[');
+    for (uint64_t i = 0; i < ansi->paramCount; i++)
+    {
+        if (i > 0)
+        {
+            terminal_put(term, elem, draw, ';');
+        }
+        char paramStr[MAX_NAME];
+        int paramLen = snprintf(paramStr, sizeof(paramStr), "%d", ansi->parameters[i]);
+        for (int j = 0; j < paramLen; j++)
+        {
+            terminal_put(term, elem, draw, paramStr[j]);
+        }
+    }
+    terminal_put(term, elem, draw, ansi->command);
 }
 
 static void terminal_handle_output(terminal_t* term, element_t* elem, drawable_t* draw, const char* buffer,
@@ -503,7 +532,7 @@ static void terminal_handle_output(terminal_t* term, element_t* elem, drawable_t
         }
     }
 
-    term->isCursorVisible = true;
+    term->cursorBlink = true;
     terminal_cursor_update(term, elem, draw);
     window_set_timer(term->win, TIMER_NONE, TERMINAL_BLINK_INTERVAL);
 }
@@ -523,7 +552,8 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         }
         term->win = win;
         term->font = ctx->font;
-        term->isCursorVisible = false;
+        term->cursorBlink = false;
+        term->isCursorVisible = true;
 
         if (open2("/dev/pipe/new", term->stdin) == ERR)
         {
@@ -619,7 +649,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
 
         window_set_timer(win, TIMER_NONE, TERMINAL_BLINK_INTERVAL);
 
-        term->isCursorVisible = !term->isCursorVisible;
+        term->cursorBlink = !term->cursorBlink;
         drawable_t draw;
         element_draw_begin(elem, &draw);
         terminal_cursor_update(term, elem, &draw);

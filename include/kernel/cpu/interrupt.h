@@ -85,7 +85,6 @@ typedef struct
 {
     uint64_t oldRflags;
     uint32_t disableDepth;
-    bool inInterrupt;
 } interrupt_ctx_t;
 
 /**

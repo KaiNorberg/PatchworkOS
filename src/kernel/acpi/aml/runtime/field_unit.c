@@ -2,11 +2,11 @@
 
 #include <kernel/acpi/aml/predefined.h>
 #include <kernel/acpi/aml/runtime/access_type.h>
+#include <kernel/acpi/aml/runtime/evaluate.h>
 #include <kernel/acpi/aml/runtime/method.h>
 #include <kernel/acpi/aml/state.h>
 #include <kernel/acpi/aml/to_string.h>
 #include <kernel/cpu/port.h>
-#include <kernel/acpi/aml/runtime/evaluate.h>
 #include <kernel/drivers/pci/pci_config.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>

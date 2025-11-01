@@ -13,7 +13,8 @@
 /**
  * @brief Evaluate an AML object.
  *
- * Will attempt to evaluate the given object to the desired target type, by invoking it if its a method and converting the result or just directly converting it.
+ * Will attempt to evaluate the given object to the desired target type, by invoking it if its a method and converting
+ * the result or just directly converting it.
  *
  * @param state The AML state to use for evaluation.
  * @param object The AML object to evaluate.

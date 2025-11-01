@@ -17,35 +17,14 @@
 #include <sys/math.h>
 
 static time_t bootEpoch;
-static bool initialized = false;
+static bool bootEpochInitialized = false;
 
-static atomic_int8_t accumulatorLock = ATOMIC_VAR_INIT(0);
-static clock_t accumulator = 0;
-
-static void timer_acquire(void)
+static void timer_boot_epoch_init(void)
 {
-    // We cant use the lock_t here becouse in debug mode lock_t will use the timer to check for deadlocks.
-    interrupt_disable();
-    while (!atomic_compare_exchange_strong(&accumulatorLock, &(int8_t){0}, 1))
-    {
-        asm volatile("pause");
-    }
-}
-
-static void timer_release(void)
-{
-    atomic_store(&accumulatorLock, 0);
-    interrupt_enable();
-}
-
-static void timer_accumulate(void)
-{
-    timer_acquire();
-
-    accumulator += hpet_read_counter() * hpet_nanoseconds_per_tick();
-    hpet_reset_counter();
-
-    timer_release();
+    struct tm time;
+    rtc_read(&time);
+    bootEpoch = mktime(&time);
+    bootEpochInitialized = true;
 }
 
 void timer_ctx_init(timer_ctx_t* ctx)
@@ -61,33 +40,16 @@ void timer_ctx_init(timer_ctx_t* ctx)
     LOG_INFO("cpu%d apic timer ticksPerNs=%lu\n", self->id, self->timer.apicTicksPerNs);
 }
 
-static void timer_init(void)
-{
-    struct tm time;
-    rtc_read(&time);
-    bootEpoch = mktime(&time);
-
-    initialized = true;
-}
-
 clock_t timer_uptime(void)
 {
-    if (!initialized)
-    {
-        timer_init();
-    }
-
-    timer_acquire();
-    clock_t time = accumulator + hpet_read_counter() * hpet_nanoseconds_per_tick();
-    timer_release();
-    return time;
+    return hpet_read_ns_counter();
 }
 
 time_t timer_unix_epoch(void)
 {
-    if (!initialized)
+    if (!bootEpochInitialized)
     {
-        timer_init();
+        timer_boot_epoch_init();
     }
 
     return bootEpoch + timer_uptime() / CLOCKS_PER_SEC;
@@ -95,8 +57,6 @@ time_t timer_unix_epoch(void)
 
 void timer_interrupt_handler(interrupt_frame_t* frame, cpu_t* self)
 {
-    timer_accumulate();
-
     LOCK_SCOPE(&self->timer.lock);
     self->timer.nextDeadline = CLOCKS_NEVER;
     for (uint32_t i = 0; i < TIMER_MAX_CALLBACK; i++)

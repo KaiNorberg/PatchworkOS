@@ -1,6 +1,7 @@
 #include <kernel/cpu/syscalls.h>
 
 #include <kernel/cpu/gdt.h>
+#include <kernel/cpu/smp.h>
 #include <kernel/drivers/apic.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>
@@ -72,8 +73,6 @@ const syscall_descriptor_t* syscall_get_descriptor(uint64_t number)
 uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx, uint64_t r8, uint64_t r9,
     uint64_t number)
 {
-    asm volatile("sti");
-
     const syscall_descriptor_t* desc = syscall_get_descriptor(number);
     if (desc == NULL)
     {
@@ -81,18 +80,19 @@ uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx,
         errno = ENOSYS;
         return ERR;
     }
+    perf_syscall_begin();
+    asm volatile("sti");
 
     // This is safe for any input type and any number of arguments up to 6 as they will simply be ignored.
-    uint64_t (*handler)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t) = desc->handler;
-    uint64_t result = handler(rdi, rsi, rdx, rcx, r8, r9);
+    uint64_t result = desc->handler(rdi, rsi, rdx, rcx, r8, r9);
 
     // Interrupts will be renabled when the sysret instruction executes, this means that if there is a pending note and
     // we invoke an interrupt the actual interrupt handler will not run until we return to user space.
     asm volatile("cli");
+    perf_syscall_end();
     if (note_queue_length(&sched_thread_unsafe()->notes) > 0)
     {
         lapic_send_ipi(lapic_self_id(), INTERRUPT_NOTE);
     }
-
     return result;
 }

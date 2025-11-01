@@ -97,6 +97,7 @@ static uint64_t interactive_handle_ansi(interactive_state_t* state, ansi_result_
         {
             return ERR;
         }
+        printf("\033[0m\033[?25h"); // Reset colors and cursor
         memset(state->buffer, 0, MAX_PATH);
         state->pos = 0;
         interactive_prompt();

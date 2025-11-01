@@ -137,7 +137,7 @@ static void init_finalize(const boot_info_t* bootInfo)
     pipe_init();
     shmem_init();
     gop_init(&bootInfo->gop);
-    statistics_init();
+    perf_init();
 
     smp_others_init();
 
@@ -146,7 +146,7 @@ static void init_finalize(const boot_info_t* bootInfo)
     init_free_loader_data(&bootInfo->memory.map);
     vmm_unmap_bootloader_lower_half(bootThread);
 
-    LOG_INFO("kernel initalized using %llu kb of memory\n", pmm_reserved_amount() * PAGE_SIZE / 1024);
+    LOG_INFO("kernel initalized using %llu kb of memory\n", pmm_used_amount() * PAGE_SIZE / 1024);
 }
 
 static inline void init_process_spawn(void)

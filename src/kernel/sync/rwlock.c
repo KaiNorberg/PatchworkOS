@@ -23,9 +23,9 @@ void rwlock_read_acquire(rwlock_t* lock)
     clock_t start = timer_uptime();
 #endif
 
-    uint_fast16_t ticket = atomic_fetch_add(&lock->readTicket, 1);
+    uint_fast16_t ticket = atomic_fetch_add_explicit(&lock->readTicket, 1, memory_order_relaxed);
 
-    while (atomic_load(&lock->readServe) != ticket)
+    while (atomic_load_explicit(&lock->readServe, memory_order_acquire) != ticket)
     {
         asm volatile("pause");
 #ifndef NDEBUG
@@ -37,7 +37,8 @@ void rwlock_read_acquire(rwlock_t* lock)
 #endif
     }
 
-    while (atomic_load(&lock->writeServe) != atomic_load(&lock->writeTicket))
+    while (atomic_load_explicit(&lock->writeServe, memory_order_relaxed) !=
+        atomic_load_explicit(&lock->writeTicket, memory_order_relaxed))
     {
 #ifndef NDEBUG
         clock_t now = timer_uptime();
@@ -49,15 +50,13 @@ void rwlock_read_acquire(rwlock_t* lock)
         asm volatile("pause");
     }
 
-    atomic_fetch_add(&lock->activeReaders, 1);
-
-    atomic_thread_fence(memory_order_seq_cst);
+    atomic_fetch_add_explicit(&lock->activeReaders, 1, memory_order_acquire);
 }
 
 void rwlock_read_release(rwlock_t* lock)
 {
-    atomic_fetch_sub(&lock->activeReaders, 1);
-    atomic_fetch_add(&lock->readServe, 1);
+    atomic_fetch_sub_explicit(&lock->activeReaders, 1, memory_order_release);
+    atomic_fetch_add_explicit(&lock->readServe, 1, memory_order_release);
 
     interrupt_enable();
 }
@@ -70,9 +69,9 @@ void rwlock_write_acquire(rwlock_t* lock)
     clock_t start = timer_uptime();
 #endif
 
-    uint_fast16_t ticket = atomic_fetch_add(&lock->writeTicket, 1);
+    uint_fast16_t ticket = atomic_fetch_add_explicit(&lock->writeTicket, 1, memory_order_relaxed);
 
-    while (atomic_load(&lock->writeServe) != ticket)
+    while (atomic_load_explicit(&lock->writeServe, memory_order_acquire) != ticket)
     {
 #ifndef NDEBUG
         clock_t now = timer_uptime();
@@ -84,7 +83,7 @@ void rwlock_write_acquire(rwlock_t* lock)
         asm volatile("pause");
     }
 
-    while (atomic_load(&lock->activeReaders) > 0)
+    while (atomic_load_explicit(&lock->activeReaders, memory_order_acquire) > 0)
     {
 #ifndef NDEBUG
         clock_t now = timer_uptime();
@@ -97,7 +96,8 @@ void rwlock_write_acquire(rwlock_t* lock)
     }
 
     bool expected = false;
-    while (!atomic_compare_exchange_weak(&lock->activeWriter, &expected, true))
+    while (!atomic_compare_exchange_weak_explicit(&lock->activeWriter, &expected, true, memory_order_acquire,
+        memory_order_relaxed))
     {
 #ifndef NDEBUG
         clock_t now = timer_uptime();
@@ -109,14 +109,12 @@ void rwlock_write_acquire(rwlock_t* lock)
         expected = false;
         asm volatile("pause");
     }
-
-    atomic_thread_fence(memory_order_seq_cst);
 }
 
 void rwlock_write_release(rwlock_t* lock)
 {
-    atomic_store(&lock->activeWriter, false);
-    atomic_fetch_add(&lock->writeServe, 1);
+    atomic_store_explicit(&lock->activeWriter, false, memory_order_release);
+    atomic_fetch_add_explicit(&lock->writeServe, 1, memory_order_release);
 
     interrupt_enable();
 }

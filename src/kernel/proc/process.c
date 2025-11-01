@@ -63,6 +63,7 @@ static void process_reaper_timer(interrupt_frame_t* frame, cpu_t* cpu)
         DEREF(process->cmdlineFile);
         DEREF(process->noteFile);
         DEREF(process->waitFile);
+        DEREF(process->perfFile);
         DEREF(process->self);
 
         DEREF(process);
@@ -268,6 +269,41 @@ static file_ops_t waitOps = {
     .poll = process_wait_poll,
 };
 
+static uint64_t process_stat_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    uint64_t userPages = space_user_page_count(&process->space);
+
+    lock_acquire(&process->threads.lock);
+    uint64_t threadCount = list_length(&process->threads.list);
+    lock_release(&process->threads.lock);
+
+    clock_t userClocks = atomic_load(&process->perf.userClocks);
+    clock_t kernelClocks = atomic_load(&process->perf.kernelClocks);
+    clock_t startTime = process->perf.startTime;
+
+    char statStr[MAX_PATH];
+    int length = snprintf(statStr, sizeof(statStr),
+        "user_clocks %lu\nkernel_clocks %lu\nstart_clocks %lu\nuser_pages %lu\nthread_count %lu", userClocks,
+        kernelClocks, startTime, userPages, threadCount);
+    if (length < 0)
+    {
+        errno = EIO;
+        return ERR;
+    }
+
+    return BUFFER_READ(buffer, count, offset, statStr, length);
+}
+
+static file_ops_t statOps = {
+    .read = process_stat_read,
+};
+
 static void process_inode_cleanup(inode_t* inode)
 {
     process_t* process = inode->private;
@@ -312,6 +348,12 @@ static uint64_t process_dir_init(process_t* process, const char* name)
 
     process->waitFile = sysfs_file_new(process->dir, "wait", &inodeOps, &waitOps, REF(process));
     if (process->waitFile == NULL)
+    {
+        goto error;
+    }
+
+    process->perfFile = sysfs_file_new(process->dir, "perf", &inodeOps, &statOps, REF(process));
+    if (process->perfFile == NULL)
     {
         goto error;
     }
@@ -420,8 +462,10 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     }
 
     futex_ctx_init(&process->futexCtx);
+    perf_process_ctx_init(&process->perf);
     wait_queue_init(&process->dyingWaitQueue);
     atomic_init(&process->isDying, false);
+
     process->threads.newTid = 0;
     list_init(&process->threads.list);
     lock_init(&process->threads.lock);
@@ -447,6 +491,7 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     process->cmdlineFile = NULL;
     process->noteFile = NULL;
     process->waitFile = NULL;
+    process->perfFile = NULL;
     process->self = NULL;
 
     assert(process == &kernelProcess || process_is_child(process, kernelProcess.id));
@@ -510,15 +555,7 @@ void process_kill(process_t* process, uint64_t status)
     vfs_ctx_deinit(&process->vfsCtx);
     // The dir entries have refs to the process, but a parent process might want to read files in /proc/[pid] after the
     // process has exited especially its wait file, so for now we defer dereferencing them until the reaper runs. This
-    // is really not ideal so
-    // TODO: implement a proper reaper.
-    /*DEREF(process->dir);
-    DEREF(process->prioFile);
-    DEREF(process->cwdFile);
-    DEREF(process->cmdlineFile);
-    DEREF(process->noteFile);
-    DEREF(process->waitFile);
-    DEREF(process->self);*/
+    // is really not ideal so TODO: implement a proper reaper.
     wait_unblock(&process->dyingWaitQueue, WAIT_ALL, EOK);
 
     LOCK_SCOPE(&zombiesLock);

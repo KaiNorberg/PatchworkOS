@@ -41,12 +41,12 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 <td width="50%" valign="top" align="center">
   <img src="meta/screenshots/stresstest.png" alt="Stresstest Screenshot" />
   <br>
-  <i>Stress test showing ~100% utilization across 12 CPUs.</i>
+  <i>Stress test showing ~100% utilization across 12 CPUs, demonstrating stability and low lock contention under load.</i>
 </td>
 <td width="50%" valign="top" align="center">
   <img src="meta/screenshots/doom.png" alt="Doom Screenshot" />
   <br>
-  <i>DOOM running on PatchworkOS.</i>
+  <i>DOOM running on PatchworkOS using a optimized <a href="https://github.com/ozkl/doomgeneric">doomgeneric</a> port.</i>
 </td>
 </tr>
 </table>
@@ -61,7 +61,7 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 - Dynamic kernel and user stack allocation
 - File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/note.h)
 - File based device APIs, including [framebuffers](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/helpers/fb.h), [keyboards](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/helpers/kbd.h), [mice](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/helpers/mouse.h) and more
-- Synchronization primitives including mutexes, read-write locks and [futexes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sync/futex.h)
+- [Synchronization primitives](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sync) including mutexes, read-write locks, sequential locks, futexes and others
 - SIMD support
 
 ### ACPI

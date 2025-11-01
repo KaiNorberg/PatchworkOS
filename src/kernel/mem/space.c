@@ -79,7 +79,7 @@ uint64_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress
             errno = ENOMEM;
             return ERR;
         }
-        // We only use the specific pmm allocator for the page table itself, not for mappings.
+        // We only use the bitmap pmm allocator for the page table itself, not for mappings.
         space->pageTable.allocPages = pmm_alloc_pages;
     }
     else
@@ -752,4 +752,17 @@ bool space_is_mapped(space_t* space, const void* virtAddr, uint64_t length)
     space_align_region((void**)&virtAddr, &length);
     LOCK_SCOPE(&space->lock);
     return page_table_is_mapped(&space->pageTable, virtAddr, BYTES_TO_PAGES(length));
+}
+
+uint64_t space_user_page_count(space_t* space)
+{
+    if (space == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    LOCK_SCOPE(&space->lock);
+    return page_table_count_pages_with_flags(&space->pageTable, (void*)VMM_USER_SPACE_MIN,
+        BYTES_TO_PAGES(VMM_USER_SPACE_MAX - VMM_USER_SPACE_MIN), PML_PRESENT | PML_USER | PML_OWNED);
 }

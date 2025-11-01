@@ -1,5 +1,6 @@
 #pragma once
 
+#include <kernel/drivers/perf.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs_ctx.h>
@@ -29,6 +30,15 @@
  * - `cmdline`: A readable file that contains the command line arguments of the process (argv).
  * - `note`: A writable file that can be used to send notes (see `note_queue_t`) to the process.
  * - `wait`: A readable and pollable file that can be used to wait for the process to exit and retrieve its exit status.
+ * - `perf`: A readable file that contains performance statistics for the process.
+ *
+ * ## Perf File Format
+ *
+ * The performance data in the `perf` file is presented in the following format:
+ * ```
+ * user_clocks kernel_clocks start_clocks user_pages thread_count
+ * %lu %lu %lu %lu %lu
+ * ```
  *
  * @{
  */
@@ -60,6 +70,7 @@ typedef struct process
     space_t space;
     vfs_ctx_t vfsCtx;
     futex_ctx_t futexCtx;
+    perf_process_ctx_t perf;
     wait_queue_t dyingWaitQueue;
     atomic_bool isDying;
     process_threads_t threads;
@@ -74,6 +85,7 @@ typedef struct process
     dentry_t* cmdlineFile; ///< The `/proc/[pid]/cmdline` file.
     dentry_t* noteFile;    ///< The `/proc/[pid]/note` file.
     dentry_t* waitFile;    ///< The `/proc/[pid]/wait` file.
+    dentry_t* perfFile;    ///< The `/proc/[pid]/perf` file.
     mount_t* self;         ///< The `/proc/[pid]/self` mount point.
 } process_t;
 

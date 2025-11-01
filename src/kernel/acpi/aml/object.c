@@ -1142,7 +1142,6 @@ uint64_t aml_string_resize(aml_string_obj_t* string, uint64_t newLength)
     string->length = newLength;
     string->content[newLength] = '\0';
     return 0;
-
 }
 
 uint64_t aml_thermal_zone_set(aml_object_t* object)

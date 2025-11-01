@@ -6,7 +6,7 @@
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/smp.h>
 #include <kernel/drivers/apic.h>
-#include <kernel/drivers/statistics.h>
+#include <kernel/drivers/perf.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/thread.h>
@@ -20,7 +20,6 @@ void interrupt_ctx_init(interrupt_ctx_t* ctx)
 {
     ctx->oldRflags = 0;
     ctx->disableDepth = 0;
-    ctx->inInterrupt = false;
 }
 
 void interrupt_disable(void)
@@ -99,14 +98,7 @@ void interrupt_handler(interrupt_frame_t* frame)
 
     cpu_t* self = smp_self_unsafe();
 
-    if (self->interrupt.inInterrupt)
-    {
-        panic(frame, "Interrupt handler called while already in an interrupt");
-    }
-    self->interrupt.inInterrupt = true;
-
-    statistics_interrupt_begin(frame, self);
-
+    perf_interrupt_begin(self);
     switch (frame->vector)
     {
     case INTERRUPT_TLB_SHOOTDOWN:
@@ -156,12 +148,11 @@ void interrupt_handler(interrupt_frame_t* frame)
             panic(frame, "Unknown vector");
         }
     }
+    break;
     }
+    perf_interrupt_end(self);
 
     cpu_stacks_overflow_check(self);
-
-    statistics_interrupt_end(frame, self);
-    self->interrupt.inInterrupt = false;
 
     // This is a sanity check to make sure blocking and scheduling is functioning correctly. For instance, a trap should
     // never return with a lock acquired nor should one be invoked with a lock acquired.

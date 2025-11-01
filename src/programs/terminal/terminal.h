@@ -102,6 +102,7 @@ typedef struct terminal
 {
     window_t* win;
     font_t* font;
+    bool cursorBlink;
     bool isCursorVisible;
     fd_t stdin[2];
     fd_t stdout[2]; // Also does stderr

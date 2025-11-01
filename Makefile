@@ -10,7 +10,7 @@ BIN_PROGRAMS = init wall cursor taskbar dwm shell rm ls link mv touch cat echo
 # Programs to copy to /usr/bin
 USR_BIN_PROGRAMS = $(filter-out $(BIN_PROGRAMS),$(PROGRAMS))
 
-QEMU_MEMORY ?= 2G
+QEMU_MEMORY ?= 256M
 QEMU_CPUS ?= $(shell nproc 2>/dev/null || echo 8)
 QEMU_MACHINE ?= q35
 QEMU_ARGS ?=

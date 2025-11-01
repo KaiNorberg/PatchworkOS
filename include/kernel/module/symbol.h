@@ -55,8 +55,8 @@ typedef struct
  * @brief Symbol address mapping structure.
  * @struct symbol_addr_t
  *
- * Stored in a addr-sorted array for address to name resolution using binary search and in the relevant `symbol_name_t`'s
- * address list for name to address resolution.
+ * Stored in a addr-sorted array for address to name resolution using binary search and in the relevant
+ * `symbol_name_t`'s address list for name to address resolution.
  */
 typedef struct
 {
@@ -113,7 +113,8 @@ void symbol_remove_name(const char* name);
 /**
  * @brief Resolve a symbol by address.
  *
- * The resolved symbol is the closest symbol with an address less than or equal to the given address. The `outSymbol->addr` will be the address of the symbol, not the given address.
+ * The resolved symbol is the closest symbol with an address less than or equal to the given address. The
+ * `outSymbol->addr` will be the address of the symbol, not the given address.
  *
  * If multiple symbols exist at the same address, one of them will be returned, but which one is undefined.
  *
