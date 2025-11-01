@@ -14,6 +14,16 @@ static uint64_t period; // Main counter tick period in femtoseconds (10^-15 s).
 
 static bool isInitialized = false;
 
+static atomic_uint64_t counter = ATOMIC_VAR_INIT(0);
+
+static void hpet_timer_handler(interrupt_frame_t* frame, cpu_t* cpu)
+{
+    (void)frame;
+    (void)cpu;
+
+    atomic_fetch_add(&counter, 1);
+}
+
 static uint64_t hpet_init(sdt_header_t* table)
 {
     hpet = (hpet_t*)table;
@@ -54,7 +64,7 @@ static uint64_t hpet_init(sdt_header_t* table)
 
 ACPI_SDT_HANDLER_REGISTER("HPET", hpet_init);
 
-clock_t hpet_nanoseconds_per_tick(void)
+clock_t hpet_ns_per_tick(void)
 {
     if (!isInitialized)
     {

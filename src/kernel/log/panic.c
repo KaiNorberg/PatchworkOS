@@ -315,7 +315,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
     LOG_PANIC("last errno: %d (%s)\n", lastError, strerror(lastError));
 
     uint64_t freePages = pmm_free_amount();
-    uint64_t reservedPages = pmm_reserved_amount();
+    uint64_t reservedPages = pmm_used_amount();
     uint64_t totalPages = freePages + reservedPages;
 
     LOG_PANIC("memory: %lluK/%lluK available (%lluK kernel code/data, %lluK reserved)\n",

@@ -74,7 +74,7 @@ typedef struct
 typedef struct
 {
     uint32_t number;
-    void* handler;
+    uint64_t (*handler)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
 } syscall_descriptor_t;
 
 /**

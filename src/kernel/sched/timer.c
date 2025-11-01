@@ -19,14 +19,6 @@
 static time_t bootEpoch;
 static bool initialized = false;
 
-static _Atomic(clock_t) accumulator = ATOMIC_VAR_INIT(0);
-
-static void timer_accumulate(void)
-{
-    atomic_fetch_add(&accumulator, hpet_read_counter() * hpet_nanoseconds_per_tick());
-    hpet_reset_counter();
-}
-
 void timer_ctx_init(timer_ctx_t* ctx)
 {
     cpu_t* self = smp_self_unsafe();
@@ -55,8 +47,7 @@ clock_t timer_uptime(void)
     {
         timer_init();
     }
-
-    return atomic_load(&accumulator) + hpet_read_counter() * hpet_nanoseconds_per_tick();
+    return hpet_read_counter() * hpet_ns_per_tick();
 }
 
 time_t timer_unix_epoch(void)
@@ -71,8 +62,6 @@ time_t timer_unix_epoch(void)
 
 void timer_interrupt_handler(interrupt_frame_t* frame, cpu_t* self)
 {
-    timer_accumulate();
-
     LOCK_SCOPE(&self->timer.lock);
     self->timer.nextDeadline = CLOCKS_NEVER;
     for (uint32_t i = 0; i < TIMER_MAX_CALLBACK; i++)

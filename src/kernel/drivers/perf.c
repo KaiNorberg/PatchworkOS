@@ -31,21 +31,39 @@ static uint64_t perf_cpu_read(file_t* file, void* buffer, uint64_t count, uint64
         return ERR;
     }
 
-    strcpy(string, "cpu active_clocks interrupt_clocks\n");
+    strcpy(string, "cpu idle_clocks active_clocks interrupt_clocks");
     for (uint64_t i = 0; i < smp_cpu_amount(); i++)
     {
+        sprintf(string + strlen(string), "\n");
+
         cpu_t* cpu = smp_cpu(i);
 
         lock_acquire(&cpu->perf.lock);
         clock_t uptime = timer_uptime();
-        clock_t activeClocks = cpu->perf.activeClocks;
-        clock_t interruptClocks = cpu->perf.interruptClocks;
+        clock_t delta = uptime - cpu->perf.interruptEnd;
+        if (sched_is_idle(cpu))
+        {
+            cpu->perf.idleClocks += delta;
+        }
+        else
+        {
+            cpu->perf.activeClocks += delta;
+        }
+        cpu->perf.interruptEnd = uptime;
+
+        clock_t volatile activeClocks = cpu->perf.activeClocks;
+        clock_t volatile interruptClocks = cpu->perf.interruptClocks;
+        clock_t volatile idleClocks = cpu->perf.idleClocks;
         lock_release(&cpu->perf.lock);
 
-        clock_t nonIdleClocks = activeClocks + interruptClocks;
-        clock_t idleClocks = uptime > nonIdleClocks ? uptime - nonIdleClocks : 0;
-        sprintf(&string[strlen(string)], "cpu%d %llu %llu %llu%c", cpu->id, idleClocks, activeClocks, interruptClocks,
-            i + 1 != smp_cpu_amount() ? '\n' : '\0');
+        int length = sprintf(string + strlen(string), "%lu %lu %lu %lu", cpu->id, idleClocks, activeClocks,
+            interruptClocks);
+        if (length < 0)
+        {
+            free(string);
+            errno = EIO;
+            return ERR;
+        }
     }
 
     uint64_t length = strlen(string);
@@ -69,11 +87,12 @@ static uint64_t perf_mem_read(file_t* file, void* buffer, uint64_t count, uint64
     }
 
     int length =
-        sprintf(string, "value kib\ntotal %llu\nfree %llu\nreserved %llu", pmm_total_amount() * PAGE_SIZE / 1024,
-            pmm_free_amount() * PAGE_SIZE / 1024, pmm_reserved_amount() * PAGE_SIZE / 1024);
+        sprintf(string, "total_pages %lu\nfree_pages %lu\nused_pages %lu", pmm_total_amount(),
+            pmm_free_amount(), pmm_used_amount());
     if (length < 0)
     {
         free(string);
+        errno = EIO;
         return ERR;
     }
 
@@ -91,16 +110,22 @@ void perf_cpu_ctx_init(perf_cpu_ctx_t* ctx)
     ctx->activeClocks = 0;
     ctx->interruptClocks = 0;
     ctx->lastUpdate = 0;
-    ctx->lastSwitch = PERF_SWITCH_NONE;
+    ctx->interruptBegin = 0;
+    ctx->interruptEnd = 0;
     lock_init(&ctx->lock);
 }
 
 void perf_process_ctx_init(perf_process_ctx_t* ctx)
 {
-    ctx->userClocks = 0;
-    ctx->kernelClocks = 0;
+    atomic_init(&ctx->userClocks, 0);
+    atomic_init(&ctx->kernelClocks, 0);
     ctx->startTime = timer_uptime();
-    lock_init(&ctx->lock);
+}
+
+void perf_thread_ctx_init(perf_thread_ctx_t* ctx)
+{
+    ctx->syscallBegin = 0;
+    ctx->syscallEnd = 0;
 }
 
 void perf_init(void)
@@ -123,60 +148,78 @@ void perf_init(void)
     }
 }
 
-void perf_update(cpu_t* self, perf_switch_t switchType)
+void perf_interrupt_begin(cpu_t* self)
 {
-    assert(self == smp_self_unsafe());
+    perf_cpu_ctx_t* perf = &self->perf;
+    LOCK_SCOPE(&perf->lock);
+
+    if (perf->interruptEnd < perf->interruptBegin)
+    {
+        panic(NULL, "perf_interrupt_begin called while already in interrupt interuptBegin=%llu interruptEnd=%llu", perf->interruptBegin,
+            perf->interruptEnd);
+    }
+
+    perf->interruptBegin = timer_uptime();
+    clock_t delta = perf->interruptBegin - perf->interruptEnd;
+    if (sched_is_idle(self))
+    {
+        perf->idleClocks += delta;
+    }
+    else
+    {
+        perf->activeClocks += delta;
+    }
+
+    thread_t* thread = sched_thread_unsafe();
+    // Do not count interrupt time as part of syscalls
+    if (thread->perf.syscallEnd < thread->perf.syscallBegin)
+    {
+        clock_t syscallDelta = perf->interruptBegin - thread->perf.syscallBegin;
+        atomic_fetch_add(&thread->process->perf.kernelClocks, syscallDelta);
+    }
+}
+
+void perf_interrupt_end(cpu_t* self)
+{
+    LOCK_SCOPE(&self->perf.lock);
+
+    self->perf.interruptEnd = timer_uptime();
+    self->perf.interruptClocks += self->perf.interruptEnd - self->perf.interruptBegin;
+
+    thread_t* thread = sched_thread_unsafe();
+    if (thread->perf.syscallEnd < thread->perf.syscallBegin)
+    {
+        thread->perf.syscallBegin = self->perf.interruptEnd;
+    }
+}
+
+void perf_syscall_begin(void)
+{
+    thread_t* thread = sched_thread_unsafe();
+    perf_thread_ctx_t* perf = &thread->perf;
 
     clock_t uptime = timer_uptime();
-
-    perf_cpu_ctx_t* cpuPerf = &self->perf;
-    LOCK_SCOPE(&cpuPerf->lock);
-    if (cpuPerf->lastUpdate == 0)
+    if (perf->syscallEnd < perf->syscallBegin)
     {
-        cpuPerf->lastUpdate = uptime;
-        if (switchType != PERF_SWITCH_NONE)
-        {
-            cpuPerf->lastSwitch = switchType;
-        }
-        return;
+        panic(NULL, "perf_syscall_begin called while already in syscall syscallBegin=%llu syscallEnd=%llu", perf->syscallBegin,
+            perf->syscallEnd);
+    }
+    if (perf->syscallEnd != 0)
+    {
+        atomic_fetch_add(&thread->process->perf.userClocks, uptime - perf->syscallEnd);
     }
 
-    clock_t timeSinceLastEvent = uptime - cpuPerf->lastUpdate;
-    switch (cpuPerf->lastSwitch)
-    {
-    case PERF_SWITCH_ENTER_KERNEL_INTERRUPT:
-    case PERF_SWITCH_ENTER_USER_INTERRUPT:
-        cpuPerf->interruptClocks += timeSinceLastEvent;
-        break;
-    default:
-    {
-        perf_process_ctx_t* procPerf = &self->sched.runThread->process->perf;
-        LOCK_SCOPE(&procPerf->lock);
-        if (self->sched.runThread == self->sched.idleThread)
-        {
-            break;
-        }
+    perf->syscallBegin = uptime;
+}
 
-        cpuPerf->activeClocks += timeSinceLastEvent;
-        switch (cpuPerf->lastSwitch)
-        {
-        case PERF_SWITCH_LEAVE_SYSCALL:
-        case PERF_SWITCH_LEAVE_INTERRUPT:
-            procPerf->userClocks += timeSinceLastEvent;
-            break;
-        case PERF_SWITCH_ENTER_SYSCALL:
-        case PERF_SWITCH_NONE:
-        default:
-            procPerf->kernelClocks += timeSinceLastEvent;
-            break;
-        }
-    }
-    break;
-    }
+void perf_syscall_end(void)
+{
+    thread_t* thread = sched_thread_unsafe();
+    perf_thread_ctx_t* perf = &thread->perf;
+    process_t* process = thread->process;
 
-    cpuPerf->lastUpdate = uptime;
-    if (switchType != PERF_SWITCH_NONE)
-    {
-        cpuPerf->lastSwitch = switchType;
-    }
+    perf->syscallEnd = timer_uptime();
+    clock_t delta = perf->syscallEnd - perf->syscallBegin;
+
+    atomic_fetch_add(&process->perf.kernelClocks, delta);
 }

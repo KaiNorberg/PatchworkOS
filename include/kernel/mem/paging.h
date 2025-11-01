@@ -979,22 +979,57 @@ static inline uint64_t page_table_count_pages_with_flags(page_table_t* table, vo
     pml_flags_t flags)
 {
     uint64_t count = 0;
-    page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
-    for (uint64_t i = 0; i < pageAmount; i++)
+    while (pageAmount > 0)
     {
-        if (page_table_traverse(table, &traverse, (uintptr_t)virtAddr + i * PAGE_SIZE, PML_NONE) == ERR)
+        pml_index_t idx4 = PML_ADDR_TO_INDEX((uintptr_t)virtAddr, PML4);
+        pml_entry_t* entry4 = &table->pml4->entries[idx4];
+
+        if (!entry4->present)
         {
+            uint64_t skipPages = MIN(pageAmount, (PML_INDEX_TO_ADDR(idx4 + 1, PML4) - (uintptr_t)virtAddr) / PAGE_SIZE);
+            virtAddr = (void*)((uintptr_t)virtAddr + skipPages * PAGE_SIZE);
+            pageAmount -= skipPages;
             continue;
         }
 
-        if (!traverse.entry->present)
+        pml_t* pml3 = (pml_t*)pml_accessible_addr(*entry4);
+        pml_index_t idx3 = PML_ADDR_TO_INDEX((uintptr_t)virtAddr, PML3);
+        pml_entry_t* entry3 = &pml3->entries[idx3];
+
+        if (!entry3->present)
         {
+            uint64_t skipPages = MIN(pageAmount, (PML_INDEX_TO_ADDR(idx3 + 1, PML3) - (uintptr_t)virtAddr) / PAGE_SIZE);
+            virtAddr = (void*)((uintptr_t)virtAddr + skipPages * PAGE_SIZE);
+            pageAmount -= skipPages;
             continue;
         }
 
-        if ((traverse.entry->raw & flags) == flags)
+        pml_t* pml2 = (pml_t*)pml_accessible_addr(*entry3);
+        pml_index_t idx2 = PML_ADDR_TO_INDEX((uintptr_t)virtAddr, PML2);
+        pml_entry_t* entry2 = &pml2->entries[idx2];
+
+        if (!entry2->present)
         {
-            count++;
+            uint64_t skipPages = MIN(pageAmount, (PML_INDEX_TO_ADDR(idx2 + 1, PML2) - (uintptr_t)virtAddr) / PAGE_SIZE);
+            virtAddr = (void*)((uintptr_t)virtAddr + skipPages * PAGE_SIZE);
+            pageAmount -= skipPages;
+            continue;
+        }
+
+        pml_t* pml1 = (pml_t*)pml_accessible_addr(*entry2);
+        pml_index_t idx1 = PML_ADDR_TO_INDEX((uintptr_t)virtAddr, PML1);
+
+        for (; idx1 < PML_INDEX_AMOUNT && pageAmount > 0; idx1++, virtAddr = (void*)((uintptr_t)virtAddr + PAGE_SIZE), pageAmount--)
+        {
+            pml_entry_t* entry1 = &pml1->entries[idx1];
+            if (!entry1->present)
+            {
+                continue;
+            }
+            if ((entry1->raw & flags) == flags)
+            {
+                count++;
+            }
         }
     }
 

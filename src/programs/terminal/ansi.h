@@ -17,7 +17,7 @@
 /**
  * @brief The size we use for buffers when parsing ANSI sequences.
  */
-#define ANSI_MAX_LENGTH 8
+#define ANSI_MAX_LENGTH 32
 
 /**
  * @brief ANSI receiving structure.
@@ -138,9 +138,9 @@ static inline void ansi_kbd_to_receiving(ansi_receiving_t* ansi, const event_kbd
 typedef struct
 {
     char buffer[ANSI_MAX_LENGTH];
-    uint8_t length;
-    uint8_t parameters[ANSI_MAX_LENGTH];
-    uint8_t paramCount;
+    uint32_t length;
+    uint32_t parameters[ANSI_MAX_LENGTH];
+    uint32_t paramCount;
     char command;
     bool ascii;
     bool extended; ///< The command contains a '?' indicating an extended command.

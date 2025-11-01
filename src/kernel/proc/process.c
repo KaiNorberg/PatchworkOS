@@ -283,15 +283,13 @@ static uint64_t process_stat_read(file_t* file, void* buffer, uint64_t count, ui
     uint64_t threadCount = list_length(&process->threads.list);
     lock_release(&process->threads.lock);
 
-    lock_acquire(&process->perf.lock);
-    clock_t userClocks = process->perf.userClocks;
-    clock_t kernelClocks = process->perf.kernelClocks;
+    clock_t userClocks = atomic_load(&process->perf.userClocks);
+    clock_t kernelClocks = atomic_load(&process->perf.kernelClocks);
     clock_t startTime = process->perf.startTime;
-    lock_release(&process->perf.lock);
 
     char statStr[MAX_PATH];
     int length = snprintf(statStr, sizeof(statStr),
-        "user_clocks kernel_clocks start_clocks user_pages thread_count\n%lu %lu %lu %lu %lu", userClocks, kernelClocks,
+        "user_clocks %lu\nkernel_clocks %lu\nstart_clocks %lu\nuser_pages %lu\nthread_count %lu", userClocks, kernelClocks,
         startTime, userPages, threadCount);
     if (length < 0)
     {

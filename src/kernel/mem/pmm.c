@@ -246,7 +246,7 @@ uint64_t pmm_free_amount(void)
     return stack.free + bitmap.free;
 }
 
-uint64_t pmm_reserved_amount(void)
+uint64_t pmm_used_amount(void)
 {
     LOCK_SCOPE(&lock);
     return pageAmount - (stack.free + bitmap.free);

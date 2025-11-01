@@ -6,6 +6,7 @@
 #include <time.h>
 
 typedef struct cpu cpu_t;
+typedef struct thread thread_t;
 
 /**
  * @brief Performance driver.
@@ -20,40 +21,25 @@ typedef struct cpu cpu_t;
  * The `/dev/perf/cpu` file contains per-CPU performance data in the following format:
  * ```
  * cpu idle_clocks active_clocks interrupt_clocks
- * cpu%d %lu %lu %lu
- * cpu%d %lu %lu %lu
+ * %lu %lu %lu %lu
+ * %lu %lu %lu %lu
  * ...
- * cpu%d %lu %lu %lu
+ * %lu %lu %lu %lu
  * ```
  *
  * ## Memory performance
  *
  * The `/dev/perf/mem` file contains memory performance data in the following format:
  * ```
- * value kib
- * total %lu
- * free %lu
- * reserved %lu
+ * total_pages %lu
+ * free_pages %lu
+ * used_pages %lu
  * ```
  *
  * @see @ref kernel_proc "Process" for per-process performance data.
  *
  * @{
  */
-
-/**
- * @brief Performance switch types.
- * @enum perf_switch_t
- */
-typedef enum
-{
-    PERF_SWITCH_NONE,                   //< No switch.
-    PERF_SWITCH_ENTER_SYSCALL,          ///< The current thread is entering a syscall.
-    PERF_SWITCH_LEAVE_SYSCALL,          ///< The current thread is leaving a syscall.
-    PERF_SWITCH_ENTER_KERNEL_INTERRUPT, ///< The current thread is entering an interrupt that occurred in kernel mode.
-    PERF_SWITCH_ENTER_USER_INTERRUPT,   ///< The current thread is entering an interrupt that occurred in user mode.
-    PERF_SWITCH_LEAVE_INTERRUPT,        ///< The current thread is leaving an interrupt.
-} perf_switch_t;
 
 /**
  * @brief Per-CPU performance context.
@@ -63,22 +49,37 @@ typedef struct
 {
     clock_t activeClocks;
     clock_t interruptClocks;
+    clock_t idleClocks;
     clock_t lastUpdate;
-    perf_switch_t lastSwitch;
+    clock_t interruptBegin;
+    clock_t interruptEnd;
+    bool inInterrupt;
     lock_t lock;
 } perf_cpu_ctx_t;
 
 /**
- * @brief Process performance structure.
+ * @brief Per-Process performance context.
  * @struct stat_process_ctx_t
  */
 typedef struct
 {
-    clock_t userClocks;   ///< Total user mode CPU time used by this process.
-    clock_t kernelClocks; ///< Total kernel mode CPU time used by this process, does not include interrupt time.
+    _Atomic(clock_t) userClocks;   ///< Total user mode CPU time used by this process.
+    _Atomic(clock_t) kernelClocks; ///< Total kernel mode CPU time used by this process, does not include interrupt time.
     clock_t startTime;    ///< The time when the process was started.
-    lock_t lock;
 } perf_process_ctx_t;
+
+/**
+ * @brief Per-Thread performance context.
+ * @struct perf_thread_ctx_t
+ *
+ * The thread context tracks tracks the time it spends in and outside of system calls, this is then accumulated into the
+ * process performance context.
+ */
+typedef struct
+{
+    clock_t syscallBegin; ///< The time the current syscall began. Also used to "skip" time spent in interrupts.
+    clock_t syscallEnd;
+} perf_thread_ctx_t;
 
 /**
  * @brief Initializes a per-CPU performance context, must be called on the CPU that owns the context.
@@ -95,18 +96,47 @@ void perf_cpu_ctx_init(perf_cpu_ctx_t* ctx);
 void perf_process_ctx_init(perf_process_ctx_t* ctx);
 
 /**
+ * @brief Initializes a per-thread performance context.
+ *
+ * @param ctx The context to initialize.
+ */
+void perf_thread_ctx_init(perf_thread_ctx_t* ctx);
+
+/**
  * @brief Initializes the performance driver.
  */
 void perf_init(void);
 
 /**
- * @brief Update performance statistics for the current CPU and process.
+ * @brief Called at the beginning of an interrupt to update cpu performance data.
  *
  * Must be called with interrupts disabled.
  *
  * @param self The current CPU.
- * @param switchType The type of context switch that occurred.
  */
-void perf_update(cpu_t* self, perf_switch_t switchType);
+void perf_interrupt_begin(cpu_t* self);
+
+/**
+ * @brief Called at the end of an interrupt to update cpu performance data.
+ *
+ * Must be called with interrupts disabled.
+ *
+ * @param self The current CPU.
+ */
+void perf_interrupt_end(cpu_t* self);
+
+/**
+ * @brief Called at the beginning of a syscall to update process performance data.
+ *
+ * Must be called with interrupts disabled.
+ */
+void perf_syscall_begin(void);
+
+/**
+ * @brief Called at the end of a syscall to update process performance data.
+ *
+ * Must be called with interrupts disabled.
+ */
+void perf_syscall_end(void);
 
 /** @} */

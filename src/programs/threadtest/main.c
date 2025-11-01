@@ -93,7 +93,7 @@ static void benchmark(uint64_t threadAmount)
     }
 
     clock_t end = uptime();
-    printf(" took %d ms to find %d primes\n", (end - start) / (CLOCKS_PER_SEC / 1000), atomic_load(&count));
+    printf("\ttook %d ms to find %d primes\n", (end - start) / (CLOCKS_PER_SEC / 1000), atomic_load(&count));
 }
 
 int main(void)

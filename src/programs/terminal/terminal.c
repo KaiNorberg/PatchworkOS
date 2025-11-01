@@ -259,7 +259,7 @@ static void ternminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t
 
     switch (ansi->command)
     {
-    case 'H': // Cursot to (0, 0) or specified position
+    case 'H': // Cursor to (0, 0) or specified position
         if (ansi->paramCount >= 2)
         {
             uint16_t row = ansi->parameters[0] == 0 ? 0 : ansi->parameters[0] - 1;

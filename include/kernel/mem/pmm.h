@@ -118,6 +118,6 @@ uint64_t pmm_free_amount(void);
  *
  * @return The amount of reserved physical memory in pages.
  */
-uint64_t pmm_reserved_amount(void);
+uint64_t pmm_used_amount(void);
 
 /** @} */

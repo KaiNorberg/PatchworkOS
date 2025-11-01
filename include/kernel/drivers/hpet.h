@@ -90,7 +90,7 @@ typedef struct PACKED
  *
  * @return Nanoseconds per tick
  */
-clock_t hpet_nanoseconds_per_tick(void);
+clock_t hpet_ns_per_tick(void);
 
 /**
  * @brief Read the current value of the HPET main counter

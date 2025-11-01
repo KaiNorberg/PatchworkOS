@@ -60,6 +60,7 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
     }
     note_queue_init(&thread->notes);
     syscall_ctx_init(&thread->syscall, &thread->kernelStack);
+    perf_thread_ctx_init(&thread->perf);
 
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
 

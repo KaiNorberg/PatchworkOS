@@ -20,7 +20,6 @@ void interrupt_ctx_init(interrupt_ctx_t* ctx)
 {
     ctx->oldRflags = 0;
     ctx->disableDepth = 0;
-    ctx->inInterrupt = false;
 }
 
 void interrupt_disable(void)
@@ -99,21 +98,7 @@ void interrupt_handler(interrupt_frame_t* frame)
 
     cpu_t* self = smp_self_unsafe();
 
-    if (self->interrupt.inInterrupt)
-    {
-        panic(frame, "Interrupt handler called while already in an interrupt");
-    }
-    self->interrupt.inInterrupt = true;
-
-    if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
-    {
-        perf_update(self, PERF_SWITCH_ENTER_USER_INTERRUPT);
-    }
-    else
-    {
-        perf_update(self, PERF_SWITCH_ENTER_KERNEL_INTERRUPT);
-    }
-
+    perf_interrupt_begin(self);
     switch (frame->vector)
     {
     case INTERRUPT_TLB_SHOOTDOWN:
@@ -163,13 +148,11 @@ void interrupt_handler(interrupt_frame_t* frame)
             panic(frame, "Unknown vector");
         }
     }
+    break;
     }
+    perf_interrupt_end(self);
 
     cpu_stacks_overflow_check(self);
-
-    perf_update(self, PERF_SWITCH_LEAVE_INTERRUPT);
-
-    self->interrupt.inInterrupt = false;
 
     // This is a sanity check to make sure blocking and scheduling is functioning correctly. For instance, a trap should
     // never return with a lock acquired nor should one be invoked with a lock acquired.
