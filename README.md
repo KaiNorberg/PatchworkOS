@@ -41,12 +41,12 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 <td width="50%" valign="top" align="center">
   <img src="meta/screenshots/stresstest.png" alt="Stresstest Screenshot" />
   <br>
-  <i>Stress test showing ~100% utilization across 12 CPUs, demonstrating a semblance of stability and low lock contention under load.</i>
+  <i>Stress test showing ~100% utilization across 12 CPUs, demonstrating stability and low lock contention under load.</i>
 </td>
 <td width="50%" valign="top" align="center">
   <img src="meta/screenshots/doom.png" alt="Doom Screenshot" />
   <br>
-  <i>DOOM running on PatchworkOS using a optimized <a href="https://github.com/ozkl/doomgeneric">DoomGeneric</a> port.</i>
+  <i>DOOM running on PatchworkOS using a optimized <a href="https://github.com/ozkl/doomgeneric">doomgeneric</a> port.</i>
 </td>
 </tr>
 </table>
