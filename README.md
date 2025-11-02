@@ -374,27 +374,6 @@ There are other utils available that work as expected, for example `stat` and `l
 
 ---
 
-## Directories
-
-| Directory | Description |
-|:----------|:------------|
-| `include` | Public API |
-| `src` | Source code |
-| `root` | Files copied to the root directory of the generated .img |
-| `tools` | Build scripts (hacky alternative to cross-compiler) |
-| `make` | Make files |
-| `lib` | Third party dependencies |
-| `meta` | Screenshots and repo metadata |
-
-### Sections
-
-- **boot**: Minimal UEFI bootloader that collects system info and loads the kernel
-- **kernel**: The monolithic kernel handling everything from scheduling to IPC
-- **libstd**: C standard library extension with system call wrappers
-- **libpatchwork**: Higher-level library for windowing and user space services
-- **modules**: Kernel modules (currently empty, work in progress)
-- **programs**: Shell utilities, services, and desktop applications
-
 ## Setup
 
 ### Requirements

@@ -27,6 +27,10 @@
  *
  * Methods return a copy of the result not a reference to the actual object. See section 19.6.120.
  *
+ * Technically if a method is non-serialized we are not supposed to allow recursive calls to it to create named objects
+ * that where created in the previous invocation, however allowing this does not cause any issues in practice and makes
+ * the implementation a lot simpler... so i dont care.
+ *
  * @see Section 5.2 of the ACPICA reference for more details.
  * @see Section 19.6.85 of the ACPI specification for more details.
  * @see aml_overlay_t for more details about the parent overlay.

@@ -200,6 +200,9 @@ uint64_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_string_t* out);
  * Note that `errno` will only be set to `ENOENT` if the NameString is read correctly but fails to resolve, other values
  * for `errno` might be set in other cases.
  *
+ * If the name string points to a non-existing object, a integer object containing `0` will be created and returned.
+ * This is as always for the sake of compatibility, even if the specification does not specify this behavior.
+ *
  * @see Section 5.3 of the ACPI specification for more details.
  * @see aml_name_string_find_by_name_string() for details on how the resolution is performed.
  *

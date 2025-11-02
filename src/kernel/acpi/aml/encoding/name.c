@@ -236,8 +236,19 @@ aml_object_t* aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx)
     aml_object_t* out = aml_namespace_find_by_name_string(&ctx->state->overlay, ctx->scope, &nameStringLocal);
     if (out == NULL)
     {
-        errno = ENOENT;
-        return NULL;
+        out = aml_object_new();
+        if (out == NULL)
+        {
+            return NULL;
+        }
+
+        if (aml_integer_set(out, 0) == ERR)
+        {
+            DEREF(out);
+            return NULL;
+        }
+
+        return out; // Transfer ownership
     }
 
     if (out->type == AML_UNINITIALIZED)

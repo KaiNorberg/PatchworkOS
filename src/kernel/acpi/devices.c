@@ -103,6 +103,24 @@ static inline uint64_t acpi_device_init_children(aml_state_t* state, aml_object_
             return ERR;
         }
 
+        if (sta & ACPI_STA_PRESENT)
+        {
+            aml_object_t* ini = aml_namespace_find(NULL, child, AML_NAME('_', 'I', 'N', 'I'));
+            if (ini != NULL)
+            {
+                DEREF_DEFER(ini);
+
+                LOG_INFO("ACPI device '%s._INI'\n", AML_NAME_TO_STRING(child->name));
+                aml_object_t* iniResult = aml_evaluate(state, ini, AML_ALL_TYPES);
+                if (iniResult == NULL)
+                {
+                    LOG_ERR("could not evaluate %s._INI\n", AML_NAME_TO_STRING(child->name));
+                    return ERR;
+                }
+                DEREF(iniResult);
+            }
+        }
+
         char hid[MAX_NAME];
         uint64_t hidResult = acpi_hid_get(state, child, hid);
         if (hidResult == ERR)
@@ -119,24 +137,6 @@ static inline uint64_t acpi_device_init_children(aml_state_t* state, aml_object_
             {
                 LOG_WARN("could not load module for ACPI device '%s' with HID '%s'\n", AML_NAME_TO_STRING(child->name),
                     hid);
-            }
-        }
-
-        if (sta & ACPI_STA_PRESENT)
-        {
-            aml_object_t* ini = aml_namespace_find(NULL, child, AML_NAME('_', 'I', 'N', 'I'));
-            if (ini != NULL)
-            {
-                DEREF_DEFER(ini);
-
-                LOG_INFO("ACPI device '%s._INI'\n", AML_NAME_TO_STRING(child->name));
-                aml_object_t* iniResult = aml_evaluate(state, ini, AML_ALL_TYPES);
-                if (iniResult == NULL)
-                {
-                    LOG_ERR("could not evaluate %s._INI\n", AML_NAME_TO_STRING(child->name));
-                    return ERR;
-                }
-                DEREF(iniResult);
             }
         }
 

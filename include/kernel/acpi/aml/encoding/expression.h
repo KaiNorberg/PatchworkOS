@@ -213,6 +213,9 @@ aml_object_t* aml_def_multiply_read(aml_term_list_ctx_t* ctx);
  *
  * The DefDivide structure is defined as `DefDivide := DivideOp Dividend Divisor Remainder Quotient`.
  *
+ * The specification says that a division by zero is not allowed, for the sake of compatibility we ignore this and
+ * instead set the divisor to 1.
+ *
  * @see Section 19.6.32 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
@@ -224,6 +227,9 @@ aml_object_t* aml_def_divide_read(aml_term_list_ctx_t* ctx);
  * @brief Reads a DefMod structure from the AML byte stream.
  *
  * The DefMod structure is defined as `DefMod := ModOp Dividend Divisor Target`.
+ *
+ * The specification says that a division by zero is not allowed, for the sake of compatibility we ignore this and
+ * instead set the divisor to 1.
  *
  * @see Section 19.6.87 of the ACPI specification for more details.
  *
@@ -836,6 +842,28 @@ uint64_t aml_start_index_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
  * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
 aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx);
+
+/**
+ * @brief Reads a MidObj structure from the AML byte stream.
+ *
+ * A MidObj structure is defined as `MidObj := TermArg => Buffer | String`.
+ *
+ * @param ctx The TermList context.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ */
+aml_object_t* aml_mid_obj_read(aml_term_list_ctx_t* ctx);
+
+/**
+ * @brief Reads a DefMid structure from the AML byte stream.
+ *
+ * A DefMid structure is defined as `DefMid := MidOp MidObj TermArg TermArg Target`.
+ *
+ * @see Section 19.6.86 of the ACPI specification for more details.
+ *
+ * @param ctx The TermList context.
+ * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ */
+aml_object_t* aml_def_mid_read(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.

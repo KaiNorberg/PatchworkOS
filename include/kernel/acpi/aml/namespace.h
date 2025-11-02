@@ -311,6 +311,6 @@ void aml_overlay_set_parent(aml_overlay_t* overlay, aml_overlay_t* parent);
  * @param object The object to check for.
  * @return On success, the highest overlay that contains the object. On failure, `NULL`.
  */
-aml_overlay_t* aml_overlay_find_topmost_containing(aml_overlay_t* overlay, aml_object_t* object);
+aml_overlay_t* aml_overlay_find_containing(aml_overlay_t* overlay, aml_object_t* object);
 
 /** @} */
