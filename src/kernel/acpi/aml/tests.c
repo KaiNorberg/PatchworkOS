@@ -6,7 +6,6 @@
 
 #include <kernel/acpi/aml/aml.h>
 #include <kernel/acpi/aml/encoding/term.h>
-#include <kernel/acpi/aml/exception.h>
 #include <kernel/acpi/aml/object.h>
 #include <kernel/acpi/aml/runtime/method.h>
 #include <kernel/acpi/aml/state.h>
@@ -33,69 +32,6 @@ static uint64_t aml_tests_check_object_leak(void)
         return ERR;
     }
     return 0;
-}
-
-static void aml_tests_exception_handler(aml_state_t* state, aml_exception_t code)
-{
-    // Some tests will trigger exceptions to validate that they actually happen, we are then expected to notify
-    // the code that an exception occurred using the \_ERR object.
-    aml_object_t* err = aml_namespace_find(&state->overlay, NULL, 1, AML_NAME('_', 'E', 'R', 'R'));
-    if (err == NULL)
-    {
-        LOG_ERR("test does not contain a valid _ERR object\n");
-        return;
-    }
-    DEREF_DEFER(err);
-
-    aml_object_t* arg0 = aml_object_new();
-    if (arg0 == NULL)
-    {
-        return;
-    }
-    DEREF_DEFER(arg0);
-
-    if (aml_integer_set(arg0, code) == ERR)
-    {
-        return;
-    }
-
-    aml_object_t* arg1 = aml_object_new();
-    if (arg1 == NULL)
-    {
-        return;
-    }
-    DEREF_DEFER(arg1);
-
-    if (aml_string_set(arg1, aml_exception_to_string(code)) == ERR)
-    {
-        return;
-    }
-
-    aml_object_t* arg2 = aml_object_new();
-    if (arg2 == NULL)
-    {
-        return;
-    }
-    DEREF_DEFER(arg2);
-
-    if (aml_integer_set(arg2, 0) == ERR) // Should be the thread id but just set to 0 for now.
-    {
-        return;
-    }
-
-    aml_object_t* args[] = {arg0, arg1, arg2, NULL};
-    aml_object_t* result = aml_method_invoke(state, &err->method, args);
-    if (result == NULL)
-    {
-        return;
-    }
-    DEREF_DEFER(result);
-
-    if (result->type != AML_INTEGER || result->integer.value != 0)
-    {
-        LOG_ERR("_ERR method did not return 0, returned '%s' instead\n", aml_type_to_string(result->type));
-        return;
-    }
 }
 
 static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
@@ -180,21 +116,14 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
 
 static uint64_t aml_tests_acpica_run_all(void)
 {
-    if (aml_exception_register(aml_tests_exception_handler) == ERR)
-    {
-        return ERR;
-    }
-
     for (uint32_t i = 0; i < ACPICA_TEST_COUNT; i++)
     {
         const acpica_test_t* test = &acpicaTests[i];
         if (aml_tests_acpica_do_test(test) == ERR)
         {
-            aml_exception_unregister(aml_tests_exception_handler);
             return ERR;
         }
     }
-    aml_exception_unregister(aml_tests_exception_handler);
     return 0;
 }
 

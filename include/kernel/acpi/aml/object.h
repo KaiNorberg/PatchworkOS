@@ -521,16 +521,6 @@ uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
 uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, uint8_t* out);
 
 /**
- * @brief Check if a object has the `AML_OBJECT_EXCEPTION_ON_USE` flag set and raise an exception if it is.
- *
- * This will also clear the flag so the exception is only raised once.
- *
- * @param object Pointer to the object to check.
- * @param state The current AML state, used to raise the exception.
- */
-void aml_object_exception_check(aml_object_t* object, aml_state_t* state);
-
-/**
  * @brief Resize a buffer object to the new length.
  *
  * If the new length is greater than the current length, the new bytes will be zeroed.

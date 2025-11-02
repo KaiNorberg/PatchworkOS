@@ -19,7 +19,7 @@
  * @param bufferString The buffer or string object to extract from.
  * @param index The starting index for the extraction.
  * @param length The length of the portion to extract.
- * @return On success, the new buffer or string object containing the extracted portion. On failure, `NULL` and `errno` is set.
+ * @return On success, the new buffer or string object containing the extracted portion. On failure, `NULL` and `errno`
+ * is set.
  */
-aml_object_t* aml_mid(aml_state_t* state, aml_object_t* bufferString, aml_integer_t index,
-    aml_integer_t length);
+aml_object_t* aml_mid(aml_state_t* state, aml_object_t* bufferString, aml_integer_t index, aml_integer_t length);

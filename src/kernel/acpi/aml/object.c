@@ -2,7 +2,6 @@
 
 #include <kernel/acpi/acpi.h>
 #include <kernel/acpi/aml/aml.h>
-#include <kernel/acpi/aml/exception.h>
 #include <kernel/acpi/aml/to_string.h>
 #include <kernel/acpi/aml/token.h>
 #include <kernel/log/log.h>
@@ -466,16 +465,6 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
     }
 
     return 0;
-}
-
-void aml_object_exception_check(aml_object_t* object, aml_state_t* state)
-{
-    if (object->flags & AML_OBJECT_EXCEPTION_ON_USE)
-    {
-        AML_EXCEPTION_RAISE(state, AML_PARSE); // Not fatal.
-        object->flags &= ~AML_OBJECT_EXCEPTION_ON_USE;
-        // We can still use the object, so continue.
-    }
 }
 
 static inline uint64_t aml_object_check_clear(aml_object_t* object)

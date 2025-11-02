@@ -157,6 +157,11 @@ clone_acpica_and_compile_tests:
 	@if [ ! -d "lib/acpica_tests" ]; then \
 		mkdir -p lib/acpica_tests; \
 		cd lib/acpica && \
+		# We disable exception checking as we instead just allow any behaviour that would cause an exception. \
+		# ACPICAs tests call the CH04 method to check for exceptions, so we just use a little search and replace \
+		# to add a "Return (0x00)" at the start of the CH04 method to disable it. \
+		sed -i '/Method (CH04, 7, NotSerialized)/{N;s/Method (CH04, 7, NotSerialized)\n    {/&\n        Return (0x00) \/* Disabled by clone_acpica_and_compile_tests *\//;}' tests/aslts/src/runtime/cntl/ehandle.asl && \
+        # Now we compile all tests. \
 		COLLECTIONS="$(ACPICA_COLLECTIONS)"; \
 		for COLLECTION in $$COLLECTIONS; do \
 			ALL_FILES=$$(find tests/aslts/src/runtime/collections/$$COLLECTION -type f -name 'MAIN.asl' ! -path '*FULL*' 2>/dev/null); \

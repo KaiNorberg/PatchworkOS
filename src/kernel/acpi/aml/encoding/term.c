@@ -6,7 +6,6 @@
 #include <kernel/acpi/aml/encoding/named.h>
 #include <kernel/acpi/aml/encoding/namespace_modifier.h>
 #include <kernel/acpi/aml/encoding/statement.h>
-#include <kernel/acpi/aml/exception.h>
 #include <kernel/acpi/aml/runtime/convert.h>
 #include <kernel/acpi/aml/state.h>
 #include <kernel/acpi/aml/tests.h>
@@ -32,10 +31,6 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
     case AML_TOKEN_TYPE_EXPRESSION:
     case AML_TOKEN_TYPE_NAME: // MethodInvocation is a Name
         value = aml_expression_opcode_read(ctx);
-        if (value != NULL)
-        {
-            aml_object_exception_check(value, ctx->state);
-        }
         break;
     case AML_TOKEN_TYPE_ARG:
         value = aml_arg_obj_read(ctx);

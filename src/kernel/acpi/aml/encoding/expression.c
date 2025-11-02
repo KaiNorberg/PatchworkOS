@@ -5,15 +5,14 @@
 #include <kernel/acpi/aml/encoding/debug.h>
 #include <kernel/acpi/aml/encoding/package_length.h>
 #include <kernel/acpi/aml/encoding/term.h>
-#include <kernel/acpi/aml/exception.h>
 #include <kernel/acpi/aml/object.h>
 #include <kernel/acpi/aml/runtime/compare.h>
 #include <kernel/acpi/aml/runtime/concat.h>
 #include <kernel/acpi/aml/runtime/convert.h>
 #include <kernel/acpi/aml/runtime/copy.h>
 #include <kernel/acpi/aml/runtime/method.h>
-#include <kernel/acpi/aml/runtime/store.h>
 #include <kernel/acpi/aml/runtime/mid.h>
+#include <kernel/acpi/aml/runtime/store.h>
 #include <kernel/acpi/aml/state.h>
 #include <kernel/acpi/aml/to_string.h>
 #include <kernel/acpi/aml/token.h>
@@ -656,7 +655,6 @@ aml_object_t* aml_def_divide_read(aml_term_list_ctx_t* ctx)
 
     if (divisor == 0)
     {
-        AML_EXCEPTION_RAISE(ctx->state, AML_DIVIDE_BY_ZERO);
         divisor = 1;
     }
 
@@ -733,7 +731,6 @@ aml_object_t* aml_def_mod_read(aml_term_list_ctx_t* ctx)
 
     if (divisor == 0)
     {
-        AML_EXCEPTION_RAISE(ctx->state, AML_DIVIDE_BY_ZERO);
         divisor = 1;
     }
 
@@ -2309,7 +2306,7 @@ uint64_t aml_start_index_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
     return 0;
 }
 
-static bool aml_match_compare(aml_state_t* state, aml_object_t* obj1, aml_object_t* obj2, aml_match_opcode_t op)
+static bool aml_match_compare(aml_object_t* obj1, aml_object_t* obj2, aml_match_opcode_t op)
 {
     switch (op)
     {
@@ -2327,7 +2324,6 @@ static bool aml_match_compare(aml_state_t* state, aml_object_t* obj1, aml_object
         return aml_compare(obj1, obj2, AML_COMPARE_GREATER);
     default:
         // This should never happen as we validate the opcode when reading it.
-        AML_EXCEPTION_RAISE(state, AML_ERROR);
         return false;
     }
 }
@@ -2421,8 +2417,7 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
         }
         DEREF_DEFER(convertedFor2);
 
-        if (aml_match_compare(ctx->state, convertedFor1, object1, op1) &&
-            aml_match_compare(ctx->state, convertedFor2, object2, op2))
+        if (aml_match_compare(convertedFor1, object1, op1) && aml_match_compare(convertedFor2, object2, op2))
         {
             if (aml_integer_set(result, i) == ERR)
             {

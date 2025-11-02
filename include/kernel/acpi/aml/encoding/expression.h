@@ -213,6 +213,9 @@ aml_object_t* aml_def_multiply_read(aml_term_list_ctx_t* ctx);
  *
  * The DefDivide structure is defined as `DefDivide := DivideOp Dividend Divisor Remainder Quotient`.
  *
+ * The specification says that a division by zero is not allowed, for the sake of compatibility we ignore this and
+ * instead set the divisor to 1.
+ *
  * @see Section 19.6.32 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
@@ -224,6 +227,9 @@ aml_object_t* aml_def_divide_read(aml_term_list_ctx_t* ctx);
  * @brief Reads a DefMod structure from the AML byte stream.
  *
  * The DefMod structure is defined as `DefMod := ModOp Dividend Divisor Target`.
+ *
+ * The specification says that a division by zero is not allowed, for the sake of compatibility we ignore this and
+ * instead set the divisor to 1.
  *
  * @see Section 19.6.87 of the ACPI specification for more details.
  *
