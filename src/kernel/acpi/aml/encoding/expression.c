@@ -13,6 +13,7 @@
 #include <kernel/acpi/aml/runtime/copy.h>
 #include <kernel/acpi/aml/runtime/method.h>
 #include <kernel/acpi/aml/runtime/store.h>
+#include <kernel/acpi/aml/runtime/mid.h>
 #include <kernel/acpi/aml/state.h>
 #include <kernel/acpi/aml/to_string.h>
 #include <kernel/acpi/aml/token.h>
@@ -2438,6 +2439,71 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
     return REF(result);
 }
 
+aml_object_t* aml_mid_obj_read(aml_term_list_ctx_t* ctx)
+{
+    aml_object_t* result = aml_term_arg_read(ctx, AML_STRING | AML_BUFFER);
+    if (result == NULL)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
+        return NULL;
+    }
+
+    return result; // Transfer ownership
+}
+
+aml_object_t* aml_def_mid_read(aml_term_list_ctx_t* ctx)
+{
+    if (aml_token_expect(ctx, AML_MID_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read MidOp");
+        return NULL;
+    }
+
+    aml_object_t* midObj = aml_mid_obj_read(ctx);
+    if (midObj == NULL)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read MidObj");
+        return NULL;
+    }
+    DEREF_DEFER(midObj);
+
+    aml_integer_t index;
+    if (aml_term_arg_read_integer(ctx, &index) == ERR)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read Index");
+        return NULL;
+    }
+
+    aml_integer_t length;
+    if (aml_term_arg_read_integer(ctx, &length) == ERR)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read Length");
+        return NULL;
+    }
+
+    aml_object_t* target = NULL;
+    if (aml_target_read_and_resolve(ctx, &target) == ERR)
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read or resolve Target");
+        return NULL;
+    }
+    DEREF_DEFER(target);
+
+    aml_object_t* result = aml_mid(ctx->state, midObj, index, length);
+    if (result == NULL)
+    {
+        return NULL;
+    }
+    DEREF_DEFER(result);
+
+    if (aml_store(ctx->state, result, target) == ERR)
+    {
+        return NULL;
+    }
+
+    return REF(result);
+}
+
 aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx)
 {
     aml_token_t op;
@@ -2635,6 +2701,9 @@ aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx)
             break;
         case AML_MATCH_OP:
             result = aml_def_match_read(ctx);
+            break;
+        case AML_MID_OP:
+            result = aml_def_mid_read(ctx);
             break;
         default:
             AML_DEBUG_ERROR(ctx, "Unknown ExpressionOpcode '%s' (0x%04x)", op.props->name, op.num);

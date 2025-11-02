@@ -244,6 +244,12 @@ aml_object_t* aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx)
             return NULL;
         }
 
+        if (aml_integer_set(out, 0) == ERR)
+        {
+            DEREF(out);
+            return NULL;
+        }
+
         return out; // Transfer ownership
     }
 
