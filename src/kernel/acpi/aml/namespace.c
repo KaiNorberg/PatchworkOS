@@ -455,7 +455,6 @@ uint64_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* 
     }
 
     aml_name_t targetName = nameString->namePath.segments[nameString->namePath.segmentCount - 1];
-
     if (nameString->namePath.segmentCount == 1)
     {
         aml_object_t* parent = (start == NULL || nameString->rootChar.present) ? REF(namespaceRoot) : REF(start);
@@ -465,10 +464,9 @@ uint64_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* 
         {
             return ERR;
         }
+        DEREF_DEFER(parent);
 
-        uint64_t result = aml_namespace_add_child(overlay, parent, targetName, object);
-        DEREF(parent);
-        return result;
+        return aml_namespace_add_child(overlay, parent, targetName, object);
     }
 
     aml_name_string_t parentNameString = *nameString;
@@ -480,8 +478,8 @@ uint64_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* 
         errno = ENOENT;
         return ERR;
     }
-
     DEREF_DEFER(parent);
+
     return aml_namespace_add_child(overlay, parent, targetName, object);
 }
 
@@ -583,7 +581,7 @@ void aml_overlay_set_parent(aml_overlay_t* overlay, aml_overlay_t* parent)
     overlay->parent = parent;
 }
 
-aml_overlay_t* aml_overlay_find_topmost_containing(aml_overlay_t* overlay, aml_object_t* object)
+aml_overlay_t* aml_overlay_find_containing(aml_overlay_t* overlay, aml_object_t* object)
 {
     if (overlay == NULL || object == NULL)
     {

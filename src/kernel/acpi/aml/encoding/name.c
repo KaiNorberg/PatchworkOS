@@ -7,6 +7,7 @@
 #include <kernel/acpi/aml/encoding/term.h>
 #include <kernel/acpi/aml/token.h>
 #include <kernel/log/log.h>
+#include <kernel/acpi/aml/exception.h>
 
 #include <errno.h>
 #include <stdint.h>
@@ -236,8 +237,14 @@ aml_object_t* aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx)
     aml_object_t* out = aml_namespace_find_by_name_string(&ctx->state->overlay, ctx->scope, &nameStringLocal);
     if (out == NULL)
     {
-        errno = ENOENT;
-        return NULL;
+        AML_EXCEPTION_RAISE(ctx->state, AML_NOT_FOUND);
+        out = aml_object_new();
+        if (out == NULL)
+        {
+            return NULL;
+        }
+
+        return out; // Transfer ownership
     }
 
     if (out->type == AML_UNINITIALIZED)
