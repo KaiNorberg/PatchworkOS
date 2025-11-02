@@ -11,7 +11,7 @@ static uint64_t label_procedure(window_t* win, element_t* elem, const event_t* e
 
     switch (event->type)
     {
-    case LEVENT_REDRAW:
+    case EVENT_LIB_REDRAW:
     {
         rect_t rect = element_get_content_rect(elem);
 

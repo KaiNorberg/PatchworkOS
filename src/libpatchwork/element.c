@@ -5,7 +5,7 @@
 
 static uint64_t element_send_init(element_t* elem)
 {
-    event_t event = {.target = elem->win->surface, .type = LEVENT_INIT};
+    event_t event = {.target = elem->win->surface, .type = EVENT_LIB_INIT};
     if (elem->proc(elem->win, elem, &event) == ERR)
     {
         return ERR;
@@ -117,7 +117,7 @@ void element_free(element_t* elem)
         return;
     }
 
-    event_t event = {.target = elem->win->surface, .type = LEVENT_DEINIT};
+    event_t event = {.target = elem->win->surface, .type = EVENT_LIB_DEINIT};
     elem->proc(elem->win, elem, &event);
 
     if (elem->parent != NULL)
@@ -454,10 +454,10 @@ void element_redraw(element_t* elem, bool shouldPropagate)
         return;
     }
 
-    levent_redraw_t event;
+    EVENT_LIB_redraw_t event;
     event.id = elem->id;
     event.shouldPropagate = shouldPropagate;
-    display_push(elem->win->disp, elem->win->surface, LEVENT_REDRAW, &event, sizeof(levent_redraw_t));
+    display_push(elem->win->disp, elem->win->surface, EVENT_LIB_REDRAW, &event, sizeof(EVENT_LIB_redraw_t));
 }
 
 void element_force_action(element_t* elem, action_type_t action)
@@ -467,10 +467,10 @@ void element_force_action(element_t* elem, action_type_t action)
         return;
     }
 
-    levent_force_action_t event;
+    EVENT_LIB_force_action_t event;
     event.dest = elem->id;
     event.action = action;
-    display_push(elem->win->disp, elem->win->surface, LEVENT_FORCE_ACTION, &event, sizeof(levent_force_action_t));
+    display_push(elem->win->disp, elem->win->surface, EVENT_LIB_FORCE_ACTION, &event, sizeof(EVENT_LIB_force_action_t));
 }
 
 uint64_t element_dispatch(element_t* elem, const event_t* event)
@@ -483,7 +483,7 @@ uint64_t element_dispatch(element_t* elem, const event_t* event)
 
     switch (event->type)
     {
-    case LEVENT_INIT:
+    case EVENT_LIB_INIT:
     {
         if (elem->proc(elem->win, elem, event) == ERR)
         {
@@ -491,7 +491,7 @@ uint64_t element_dispatch(element_t* elem, const event_t* event)
         }
     }
     break;
-    case LEVENT_REDRAW:
+    case EVENT_LIB_REDRAW:
     {
         if (elem->proc(elem->win, elem, event) == ERR)
         {

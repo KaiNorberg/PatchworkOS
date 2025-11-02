@@ -172,11 +172,11 @@ void dwm_report_produce(surface_t* surface, client_t* client, report_flags_t fla
 
     client_send_event(client, surface->id, EVENT_REPORT, &event, sizeof(event));
 
-    gevent_report_t globalEvent;
-    globalEvent.flags = flags;
-    globalEvent.info = event.info;
+    EVENT_GLOBAL_report_t globaEVENT_LIB;
+    globaEVENT_LIB.flags = flags;
+    globaEVENT_LIB.info = event.info;
 
-    dwm_send_event_to_all(SURFACE_ID_NONE, GEVENT_REPORT, &globalEvent, sizeof(globalEvent));
+    dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_REPORT, &globaEVENT_LIB, sizeof(globaEVENT_LIB));
 }
 
 surface_t* dwm_surface_find(surface_id_t id)
@@ -271,9 +271,9 @@ uint64_t dwm_attach(surface_t* surface)
     }
     }
 
-    gevent_attach_t event;
+    EVENT_GLOBAL_attach_t event;
     surface_get_info(surface, &event.info);
-    dwm_send_event_to_all(SURFACE_ID_NONE, GEVENT_ATTACH, &event, sizeof(event));
+    dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_ATTACH, &event, sizeof(event));
     return 0;
 }
 
@@ -288,9 +288,9 @@ void dwm_detach(surface_t* surface)
         prevCursorTarget = NULL;
     }
 
-    gevent_detach_t event;
+    EVENT_GLOBAL_detach_t event;
     surface_get_info(surface, &event.info);
-    dwm_send_event_to_all(SURFACE_ID_NONE, GEVENT_DETACH, &event, sizeof(event));
+    dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_DETACH, &event, sizeof(event));
 
     switch (surface->type)
     {
@@ -476,8 +476,8 @@ static void dwm_kbd_read(void)
         event.ascii = kbd_ascii(event.code, event.mods);
         client_send_event(focus->client, focus->id, EVENT_KBD, &event, sizeof(event_kbd_t));
 
-        gevent_kbd_t globalEvent = event;
-        dwm_send_event_to_all(SURFACE_ID_NONE, GEVENT_KBD, &globalEvent, sizeof(globalEvent));
+        EVENT_GLOBAL_kbd_t globaEVENT_LIB = event;
+        dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_KBD, &globaEVENT_LIB, sizeof(globaEVENT_LIB));
     }
 }
 
@@ -563,9 +563,9 @@ static void dwm_handle_mouse_event(const mouse_event_t* mouseEvent)
         };
         client_send_event(destSurface->client, destSurface->id, EVENT_MOUSE, &event, sizeof(event_mouse_t));
 
-        gevent_mouse_t globalEvent = event;
-        globalEvent.pos = globalEvent.screenPos;
-        dwm_send_event_to_all(SURFACE_ID_NONE, GEVENT_MOUSE, &globalEvent, sizeof(globalEvent));
+        EVENT_GLOBAL_mouse_t globaEVENT_LIB = event;
+        globaEVENT_LIB.pos = globaEVENT_LIB.screenPos;
+        dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_MOUSE, &globaEVENT_LIB, sizeof(globaEVENT_LIB));
     }
 
     prevHeld = held;

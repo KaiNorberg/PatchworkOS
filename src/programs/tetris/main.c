@@ -720,7 +720,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
     switch (event->type)
     {
-    case LEVENT_INIT:
+    case EVENT_LIB_INIT:
     {
         srand(uptime());
 
@@ -753,12 +753,12 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         pause();
     }
     break;
-    case LEVENT_QUIT:
+    case EVENT_LIB_QUIT:
     {
         display_disconnect(window_get_display(win));
     }
     break;
-    case LEVENT_REDRAW:
+    case EVENT_LIB_REDRAW:
     {
         drawable_t draw;
         element_draw_begin(elem, &draw);

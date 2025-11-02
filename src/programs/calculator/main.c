@@ -47,7 +47,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
     switch (event->type)
     {
-    case LEVENT_INIT:
+    case EVENT_LIB_INIT:
     {
         calculator_t* calc = malloc(sizeof(calculator_t));
         if (calc == NULL)
@@ -109,7 +109,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         element_set_private(elem, calc);
     }
     break;
-    case LEVENT_DEINIT:
+    case EVENT_LIB_DEINIT:
     {
         calculator_t* calc = element_get_private(elem);
         if (calc == NULL)
@@ -120,7 +120,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         free(calc);
     }
     break;
-    case LEVENT_ACTION:
+    case EVENT_LIB_ACTION:
     {
         if (event->lAction.type != ACTION_RELEASE)
         {
@@ -182,7 +182,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         element_redraw(label, false);
     }
     break;
-    case LEVENT_QUIT:
+    case EVENT_LIB_QUIT:
     {
         display_disconnect(window_get_display(win));
     }

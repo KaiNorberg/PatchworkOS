@@ -25,19 +25,13 @@ typedef struct module module_t;
  *
  * ## Writing Modules
  *
- * Modules are in effect just ELF binaries which export 2 special sections and 1 special symbol.
+ * Modules are in effect just ELF binaries which export some special sections and symbols that the kernel module loader can use to identify and load the module.
  *
  * The first special section is `.module_info` which contains metadata about the module. Check the `MODULE_INFO` macro
  * for more details.
  *
- * The second special section is `.module_acpi_hids` which contains a list of ACPI HIDs that the module can handle.
- * Check the `MODULE_ACPI_HIDS` macro for more details.
- *
- * Finally, there is the special symbol `_module_procedure` which can be thought of as the "main" function of the module
- * but it also does way more than just that, whenever any event occurs that the module should be aware of (like being
- * loaded or unloaded) this procedure will be called to notify the module of the event.
- *
- * TODO: There can only be one module per ACPI HID, priority system?
+ * Finally, there is the special symbol `_module_procedure()` which can be thought of as the "main" function of the module
+ * but it also does way more than just that, whenever any event occurs that the module should be aware of this procedure will be called to notify the module of the event.
  *
  * @{
  */
@@ -46,8 +40,6 @@ typedef struct module module_t;
  * @brief Module event types.
  * @typedef module_event_type_t
  *
- * If a module's procedure returns `ERR` while handling a `MODULE_EVENT_INIT` event, the module will be unloaded again,
- * for all other events a warning will be logged.
  */
 typedef enum module_event_type
 {
@@ -55,12 +47,6 @@ typedef enum module_event_type
     MODULE_EVENT_LOAD,
     MODULE_EVENT_UNLOAD,
 } module_event_type_t;
-
-typedef enum
-{
-    MODULE_FLAG_NONE = 0,
-    MODULE_FLAG_LOADED = 1 << 0,
-} module_flags_t;
 
 /**
  * @brief Module event structure.
@@ -72,14 +58,7 @@ typedef struct module_event
 {
     module_event_type_t type;
     union {
-        struct
-        {
-            const char* hid;
-        } load;
-        struct
-        {
-            const char* hid;
-        } unload;
+
     };
 } module_event_t;
 
@@ -92,24 +71,7 @@ typedef struct module
     void* baseAddr; ///< The address where the modules image is loaded in memory.
     uint64_t size;  ///< The size of the modules loaded image in memory.
     uint64_t (*procedure)(module_event_t* event);
-    list_t hidHandlers; ///< List of `hid_handler_t` entries for this module.
-    file_t* file;
-    module_flags_t flags;
 } module_t;
-
-/**
- * @brief HID handler structure.
- * @typedef hid_handler_t
- *
- * Used to assign a module to one or multiple ACPI HIDs.
- */
-typedef struct
-{
-    list_entry_t moduleEntry;
-    map_entry_t hidMapEntry;
-    module_t* module;
-    char hid[MAX_NAME];
-} hid_handler_t;
 
 /**
  * @brief Macro to define module information.
@@ -139,53 +101,11 @@ typedef struct
     const char _moduleInfo[] __attribute__((section(".module_info"), used)) = \
         _name "\0" _author "\0" _description "\0" _version "\0" _licence "\0\1"
 
-/**
- * @brief Macro to define what ACPI HIDs a module can handle.
- *
- * To define what ACPI HIDs a module can handle we define a separate section in the module's binary called
- * `.module_acpi_hids` this section stores a concatenated string of all ACPI HIDs the module can handle. We dont need
- * terminators for each string as their length is fixed depending on their prefix, we do have a null-terminator at the
- * end of the entire list though.
- *
- * For example
- * ```c
- * MODULE_ACPI_HIDS("PNP0C0A", "PNP0C0B", "ACPI0003")
- * ```
- * becomes
- * ```c
- * "PNP0C0APNP0C0BACPI0003\0"
- * ```
- *
- * Should only be used in a module.
- *
- * @see https://uefi.org/PNP_ACPI_Registry for lists of ACPI IDs.
- *
- * @param ... A variable amount of ACPI HIDs as string literals.
- */
-#define MODULE_ACPI_HIDS(...) \
-    static const char _moduleAcpiHids[] __attribute__((section(".module_acpi_hids"), used)) = __VA_ARGS__ "\0"
+/** */
+uint64_t module_load(const char* path);
 
-/**
- * @brief Initializes the module system.
- *
- * Will load the metadata of all modules in the `/kernel/modules` directory and register them with the module system.
- *
- * Note that this does not mean that the binary will be loaded into memory, that only happens when a module is needed,
- * it just means that the kernel reads the metadata so it knows what modules are available.
- *
- * TODO: Loading all modules like this will not scale well, in the future consider a "Linux depmod" style approach.
- */
-void module_init(void);
+uint64_t module_unload(const char* name);
 
-/**
- * @brief Propagates a module event to all registered modules.
- *
- * If the event is a load or unload event, then the event's `hid` field will be matched against all modules' HIDs,
- * if a match is found that module will be loaded/unloaded.
- *
- * @param event The event to propagate.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t module_event(module_event_t* event);
+module_t* module_get(const char* name);
 
 /** @} */

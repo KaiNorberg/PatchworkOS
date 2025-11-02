@@ -56,8 +56,6 @@ typedef enum
  *  - If the device is present and not functional, the device's _INI is evaluated and its children are enumerated.
  *  - If the device is present and functional, the device's _INI is evaluated and its children are enumerated.
  *
- * For all devices that contain a `_HID` object a `MODULE_EVENT_DEVICE_ADDED` will be sent to the module system.
- *
  * @see Section 6.5.1 of the ACPI specification for more details.
  */
 void acpi_devices_init(void);

@@ -18,7 +18,7 @@ extern "C"
  * @typedef element_id_t
  *
  * Used to send events to specific elements and to know which element sent an event, for example to know which button
- * was pressed in a `LEVENT_ACTION` event.
+ * was pressed in a `EVENT_LIB_ACTION` event.
  */
 typedef uint64_t element_id_t;
 

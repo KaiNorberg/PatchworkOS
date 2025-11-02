@@ -174,7 +174,7 @@ uint64_t window_invalidate_flush(window_t* win);
  *
  * Most events will be sent to the root element, which will then propagate the event to its children.
  *
- * Some events will be handled specially, for example `LEVENT_FORCE_ACTION` will be sent directly to the specified
+ * Some events will be handled specially, for example `EVENT_LIB_FORCE_ACTION` will be sent directly to the specified
  * element.
  *
  * @param win The window.
@@ -198,7 +198,7 @@ uint64_t window_set_focus(window_t* win);
  *
  * Windows are invisible by default, so they must be made visible after creation to be seen.
  *
- * Will also dispatch all currently pending `LEVENT_REDRAW` events for the window.
+ * Will also dispatch all currently pending `EVENT_LIB_REDRAW` events for the window.
  *
  * @param win The window.
  * @param isVisible Whether the window should be visible.

@@ -65,7 +65,7 @@ LibCreateProtocolNotifyEvent (
     // current installed drivers
     //
 
-    uefi_call_wrapper(BS->SignalEvent, 1, Event);
+    uefi_call_wrapper(BS->SignaEVENT_LIB, 1, Event);
     return Event;
 }
 
@@ -151,4 +151,3 @@ WaitForEventWithTimeout (
     } while (Timeout > 0);
     CopyMem(Key, &TimeoutKey, sizeof(EFI_INPUT_KEY));
 }
-

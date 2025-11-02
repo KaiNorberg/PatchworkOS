@@ -83,7 +83,7 @@ typedef struct
 /**
  * @brief Allocate and initialize a new element.
  *
- * Will send a fake `LEVENT_INIT` event to the element after creation, followed by a real `LEVENT_REDRAW` event.
+ * Will send a fake `EVENT_LIB_INIT` event to the element after creation, followed by a real `EVENT_LIB_REDRAW` event.
  *
  * A event being fake just means its sent by directly calling the element procedure, instead of being pushed to the
  * display's event queue.
@@ -103,7 +103,7 @@ element_t* element_new(element_t* parent, element_id_t id, const rect_t* rect, c
 /**
  * @brief Deinitialize and free an element and all its children.
  *
- * Will send a fake `LEVENT_DEINIT` event to the element before freeing it.
+ * Will send a fake `EVENT_LIB_DEINIT` event to the element before freeing it.
  *
  * @param elem The element to free.
  */
@@ -332,7 +332,7 @@ void element_draw_end(element_t* elem, drawable_t* draw);
 /**
  * @brief Redraw an element.
  *
- * Will push a `LEVENT_REDRAW` event to the display event queue for the element, meaning the redraw event is not
+ * Will push a `EVENT_LIB_REDRAW` event to the display event queue for the element, meaning the redraw event is not
  * processed immediately.
  *
  * @param elem The element to redraw.
@@ -343,7 +343,7 @@ void element_redraw(element_t* elem, bool shouldPropagate);
 /**
  * @brief Force an action on an element.
  *
- * Will push a `LEVENT_FORCE_ACTION` event to the display event queue for the element, meaning the action event is not
+ * Will push a `EVENT_LIB_FORCE_ACTION` event to the display event queue for the element, meaning the action event is not
  * processed immediately.
  *
  * @param elem The element.

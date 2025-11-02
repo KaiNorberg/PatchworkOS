@@ -42,7 +42,7 @@
 /**
  * @brief Event sent from the terminals io thread to the main thread when there is data available.
  */
-#define UEVENT_TERMINAL_DATA (UEVENT_START + 0)
+#define EVENT_USER_TERMINAL_DATA (EVENT_USER_START + 0)
 
 /**
  * @brief Maximum terminal input length.
@@ -51,7 +51,7 @@
 
 /**
  * @brief Terminal data event structure.
- * struct uevent_terminal_data_t
+ * struct EVENT_USER_terminal_data_t
  *
  * The data sent from the io thread to the main thread when there is data.
  */
@@ -59,7 +59,7 @@ typedef struct
 {
     char buffer[TERMINAL_MAX_INPUT];
     uint64_t length;
-} uevent_terminal_data_t;
+} EVENT_USER_terminal_data_t;
 
 /**
  * @brief Terminal flags.
