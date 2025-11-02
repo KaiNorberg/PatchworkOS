@@ -101,11 +101,6 @@ void aml_object_clear(aml_object_t* object)
         return;
     }
 
-    if (object->flags & AML_OBJECT_NAMED)
-    {
-        panic(NULL, "Attempted to clear named AML object '%s'", AML_NAME_TO_STRING(object->name));
-    }
-
     if (object->type == AML_UNINITIALIZED)
     {
         return;
