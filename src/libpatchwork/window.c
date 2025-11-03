@@ -229,7 +229,7 @@ static void window_deco_redraw(window_t* win, element_t* elem)
     element_draw_end(elem, &draw);
 }
 
-static void window_deco_action(window_t* win, const EVENT_LIB_action_t* action)
+static void window_deco_action(window_t* win, const event_lib_action_t* action)
 {
     if (action->type != ACTION_RELEASE)
     {
@@ -280,7 +280,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         break;
 
     case EVENT_LIB_ACTION:
-        window_deco_action(win, &event->lAction);
+        window_deco_action(win, &event->laction);
         break;
 
     case EVENT_REPORT:
@@ -607,7 +607,7 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
     {
     case EVENT_LIB_REDRAW:
     {
-        element_t* elem = element_find(win->root, event->lRedraw.id);
+        element_t* elem = element_find(win->root, event->redraw.id);
         if (elem == NULL)
         {
             return ERR;
@@ -621,7 +621,7 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
     break;
     case EVENT_LIB_FORCE_ACTION:
     {
-        element_t* elem = element_find(win->root, event->lForceAction.dest);
+        element_t* elem = element_find(win->root, event->forceAction.dest);
         if (elem == NULL)
         {
             return ERR;
@@ -641,10 +641,10 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
 
             if (RECT_WIDTH(&win->rect) != RECT_WIDTH(&newRect) || RECT_HEIGHT(&win->rect) != RECT_HEIGHT(&newRect))
             {
-                EVENT_LIB_redraw_t event;
+                event_lib_redraw_t event;
                 event.id = win->root->id;
                 event.shouldPropagate = true;
-                display_push(win->disp, win->surface, EVENT_LIB_REDRAW, &event, sizeof(EVENT_LIB_redraw_t));
+                display_push(win->disp, win->surface, EVENT_LIB_REDRAW, &event, sizeof(event_lib_redraw_t));
             }
 
             win->rect = newRect;

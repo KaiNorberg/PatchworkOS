@@ -190,7 +190,7 @@ typedef struct
 typedef struct
 {
     surface_info_t info;
-} EVENT_GLOBAL_attach_t;
+} event_global_attach_t;
 
 /**
  * @brief Global Detach event.
@@ -200,21 +200,21 @@ typedef struct
 typedef struct
 {
     surface_info_t info;
-} EVENT_GLOBAL_detach_t;
+} event_global_detach_t;
 
 /**
  * @brief Global Report event.
  *
  * Sent when any surface's information changes.
  */
-typedef event_report_t EVENT_GLOBAL_report_t;
+typedef event_report_t event_global_report_t;
 
 /**
  * @brief Global Keyboard event.
  *
  * Sent when a key is pressed or released regardless of which display is focused.
  */
-typedef event_kbd_t EVENT_GLOBAL_kbd_t;
+typedef event_kbd_t event_global_kbd_t;
 
 /**
  * @brief Global Mouse event.
@@ -222,7 +222,7 @@ typedef event_kbd_t EVENT_GLOBAL_kbd_t;
  * Sent when the mouse is moved or a button is pressed or released regardless of which display is focused or where
  * the cursor is.
  */
-typedef event_mouse_t EVENT_GLOBAL_mouse_t;
+typedef event_mouse_t event_global_mouse_t;
 
 /**
  * @brief Library Redraw event.
@@ -233,7 +233,7 @@ typedef struct
 {
     element_id_t id;
     bool shouldPropagate; ///< Whether the redraw event should be propagated to child elements.
-} EVENT_LIB_redraw_t;
+} event_lib_redraw_t;
 
 /**
  * @brief Library Action event.
@@ -244,7 +244,7 @@ typedef struct
 {
     element_id_t source;
     action_type_t type;
-} EVENT_LIB_action_t;
+} event_lib_action_t;
 
 /**
  * @brief Library Force Action event.
@@ -255,7 +255,7 @@ typedef struct
 {
     element_id_t dest;
     action_type_t action;
-} EVENT_LIB_force_action_t;
+} event_lib_force_action_t;
 
 /**
  * @brief Maximum size of event data.
@@ -279,14 +279,14 @@ typedef struct event
         event_cursor_enter_t cursorEnter;
         event_cursor_leave_t cursorLeave;
         event_report_t report;
-        EVENT_GLOBAL_attach_t globalAttach;
-        EVENT_GLOBAL_detach_t globalDetach;
-        EVENT_GLOBAL_report_t globalReport;
-        EVENT_GLOBAL_kbd_t globalKbd;
-        EVENT_GLOBAL_mouse_t globalMouse;
-        EVENT_LIB_redraw_t lRedraw;
-        EVENT_LIB_action_t lAction;
-        EVENT_LIB_force_action_t lForceAction;
+        event_global_attach_t globalAttach;
+        event_global_detach_t globalDetach;
+        event_global_report_t globalReport;
+        event_global_kbd_t globalKbd;
+        event_global_mouse_t globalMouse;
+        event_lib_redraw_t redraw;
+        event_lib_action_t laction;
+        event_lib_force_action_t forceAction;
         uint8_t raw[EVENT_MAX_DATA];
     };
 } event_t;

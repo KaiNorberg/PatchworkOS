@@ -454,10 +454,10 @@ void element_redraw(element_t* elem, bool shouldPropagate)
         return;
     }
 
-    EVENT_LIB_redraw_t event;
+    event_lib_redraw_t event;
     event.id = elem->id;
     event.shouldPropagate = shouldPropagate;
-    display_push(elem->win->disp, elem->win->surface, EVENT_LIB_REDRAW, &event, sizeof(EVENT_LIB_redraw_t));
+    display_push(elem->win->disp, elem->win->surface, EVENT_LIB_REDRAW, &event, sizeof(event_lib_redraw_t));
 }
 
 void element_force_action(element_t* elem, action_type_t action)
@@ -467,10 +467,10 @@ void element_force_action(element_t* elem, action_type_t action)
         return;
     }
 
-    EVENT_LIB_force_action_t event;
+    event_lib_force_action_t event;
     event.dest = elem->id;
     event.action = action;
-    display_push(elem->win->disp, elem->win->surface, EVENT_LIB_FORCE_ACTION, &event, sizeof(EVENT_LIB_force_action_t));
+    display_push(elem->win->disp, elem->win->surface, EVENT_LIB_FORCE_ACTION, &event, sizeof(event_lib_force_action_t));
 }
 
 uint64_t element_dispatch(element_t* elem, const event_t* event)
@@ -498,7 +498,7 @@ uint64_t element_dispatch(element_t* elem, const event_t* event)
             return ERR;
         }
 
-        if (event->lRedraw.shouldPropagate)
+        if (event->redraw.shouldPropagate)
         {
             element_t* child;
             LIST_FOR_EACH(child, &elem->children, entry)

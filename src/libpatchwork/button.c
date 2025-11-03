@@ -139,8 +139,8 @@ static void button_draw(element_t* elem, button_t* button)
 
 static void button_send_action(element_t* elem, action_type_t type)
 {
-    EVENT_LIB_action_t event = {.source = elem->id, .type = type};
-    display_push(elem->win->disp, elem->win->surface, EVENT_LIB_ACTION, &event, sizeof(EVENT_LIB_action_t));
+    event_lib_action_t event = {.source = elem->id, .type = type};
+    display_push(elem->win->disp, elem->win->surface, EVENT_LIB_ACTION, &event, sizeof(event_lib_action_t));
 }
 
 static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* event)
@@ -279,7 +279,7 @@ static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* 
     case EVENT_LIB_FORCE_ACTION:
     {
         button_t* button = element_get_private(elem);
-        switch (event->lForceAction.action)
+        switch (event->forceAction.action)
         {
         case ACTION_PRESS:
         {
