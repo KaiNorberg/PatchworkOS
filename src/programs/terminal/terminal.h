@@ -51,7 +51,7 @@
 
 /**
  * @brief Terminal data event structure.
- * struct EVENT_USER_terminal_data_t
+ * struct event_user_terminal_data_t
  *
  * The data sent from the io thread to the main thread when there is data.
  */
@@ -59,7 +59,7 @@ typedef struct
 {
     char buffer[TERMINAL_MAX_INPUT];
     uint64_t length;
-} EVENT_USER_terminal_data_t;
+} event_user_terminal_data_t;
 
 /**
  * @brief Terminal flags.

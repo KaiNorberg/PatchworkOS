@@ -498,7 +498,7 @@ uint64_t element_dispatch(element_t* elem, const event_t* event)
             return ERR;
         }
 
-        if (event->redraw.shouldPropagate)
+        if (event->libRedraw.shouldPropagate)
         {
             element_t* child;
             LIST_FOR_EACH(child, &elem->children, entry)

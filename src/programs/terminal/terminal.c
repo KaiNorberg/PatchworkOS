@@ -674,7 +674,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
     case EVENT_USER_TERMINAL_DATA:
     {
         terminal_t* term = element_get_private(elem);
-        EVENT_USER_terminal_data_t* EVENT_USERData = (EVENT_USER_terminal_data_t*)event->raw;
+        event_user_terminal_data_t* EVENT_USERData = (event_user_terminal_data_t*)event->raw;
 
         drawable_t draw;
         element_draw_begin(elem, &draw);
@@ -745,12 +745,12 @@ void terminal_loop(window_t* win)
     {
         if (fds[0].revents & POLLIN)
         {
-            EVENT_USER_terminal_data_t EVENT_USERData;
-            uint64_t readCount = read(terminal->stdout[PIPE_READ], EVENT_USERData.buffer, TERMINAL_MAX_INPUT);
-            EVENT_USERData.length = MIN(readCount, TERMINAL_MAX_INPUT);
+            event_user_terminal_data_t userData;
+            uint64_t readCount = read(terminal->stdout[PIPE_READ], userData.buffer, TERMINAL_MAX_INPUT);
+            userData.length = MIN(readCount, TERMINAL_MAX_INPUT);
 
-            display_push(disp, window_get_id(win), EVENT_USER_TERMINAL_DATA, &EVENT_USERData,
-                sizeof(EVENT_USER_terminal_data_t));
+            display_push(disp, window_get_id(win), EVENT_USER_TERMINAL_DATA, &userData,
+                sizeof(event_user_terminal_data_t));
         }
 
         event_t event = {0};

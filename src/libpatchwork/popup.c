@@ -70,12 +70,12 @@ static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* e
     break;
     case EVENT_LIB_ACTION:
     {
-        if (event->action.type != ACTION_RELEASE)
+        if (event->libAction.type != ACTION_RELEASE)
         {
             break;
         }
 
-        popup->result = event->action.source;
+        popup->result = event->libAction.source;
         display_disconnect(window_get_display(win));
     }
     break;

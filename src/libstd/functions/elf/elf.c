@@ -558,8 +558,7 @@ uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset
 
         for (uint64_t j = 0; j < relaCount; j++)
         {
-            Elf64_Addr* patchAddr =
-                (Elf64_Addr*)(base + (targetShdr->sh_addr + rela[j].r_offset - offset));
+            Elf64_Addr* patchAddr = (Elf64_Addr*)(base + (targetShdr->sh_addr + rela[j].r_offset - offset));
             Elf64_Xword type = ELF64_R_TYPE(rela[j].r_info);
             Elf64_Xword symIndex = ELF64_R_SYM(rela[j].r_info);
 

@@ -280,7 +280,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         break;
 
     case EVENT_LIB_ACTION:
-        window_deco_action(win, &event->action);
+        window_deco_action(win, &event->libAction);
         break;
 
     case EVENT_REPORT:
@@ -607,7 +607,7 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
     {
     case EVENT_LIB_REDRAW:
     {
-        element_t* elem = element_find(win->root, event->redraw.id);
+        element_t* elem = element_find(win->root, event->libRedraw.id);
         if (elem == NULL)
         {
             return ERR;
@@ -621,7 +621,7 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
     break;
     case EVENT_LIB_FORCE_ACTION:
     {
-        element_t* elem = element_find(win->root, event->forceAction.dest);
+        element_t* elem = element_find(win->root, event->libForceAction.dest);
         if (elem == NULL)
         {
             return ERR;

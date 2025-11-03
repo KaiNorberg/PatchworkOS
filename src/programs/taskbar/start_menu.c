@@ -84,15 +84,15 @@ static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_
     case EVENT_LIB_ACTION:
     {
         start_menu_t* menu = element_get_private(elem);
-        if (event->action.type == ACTION_RELEASE)
+        if (event->libAction.type == ACTION_RELEASE)
         {
             start_menu_close(win);
 
-            const char* argv[] = {entries[event->action.source].path, NULL};
+            const char* argv[] = {entries[event->libAction.source].path, NULL};
             if (spawn(argv, NULL, NULL, NULL) == ERR)
             {
                 char buffer[MAX_PATH];
-                sprintf(buffer, "Failed to spawn (%s)!", entries[event->action.source].path);
+                sprintf(buffer, "Failed to spawn (%s)!", entries[event->libAction.source].path);
 
                 popup_open(buffer, "Error!", POPUP_OK);
             }

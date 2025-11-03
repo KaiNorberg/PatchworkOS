@@ -279,7 +279,7 @@ static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* 
     case EVENT_LIB_FORCE_ACTION:
     {
         button_t* button = element_get_private(elem);
-        switch (event->forceAction.action)
+        switch (event->libForceAction.action)
         {
         case ACTION_PRESS:
         {
