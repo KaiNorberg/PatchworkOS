@@ -688,30 +688,6 @@ void space_tlb_shootdown(space_t* space, void* virtAddr, uint64_t pageAmount)
 
         asm volatile("pause");
     }
-
-#ifndef NDEBUG
-    LIST_FOR_EACH(cpu, &space->cpus, vmm.entry)
-    {
-        if (cpu == self)
-        {
-            continue;
-        }
-
-        lock_acquire(&cpu->vmm.lock);
-        for (uint8_t i = 0; i < cpu->vmm.shootdownCount; i++)
-        {
-            vmm_shootdown_t* shootdown = &cpu->vmm.shootdowns[i];
-            if (shootdown->space != space || shootdown->virtAddr != virtAddr || shootdown->pageAmount != pageAmount)
-            {
-                continue;
-            }
-
-            panic(NULL, "TLB shootdown entry not cleared in cpu %d for space %p region %p - %p", cpu->id, space,
-                virtAddr, (void*)((uintptr_t)virtAddr + pageAmount * PAGE_SIZE));
-        }
-        lock_release(&cpu->vmm.lock);
-    }
-#endif
 }
 
 static void space_update_free_address(space_t* space, uintptr_t virtAddr, uint64_t pageAmount)

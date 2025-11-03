@@ -303,15 +303,17 @@ static bool sched_should_notify(cpu_t* target, priority_t priority)
 }
 
 void sched_push(thread_t* thread, cpu_t* target)
-{
-    cpu_t* self = smp_self();
-
+{    
     if (target == NULL)
     {
-        target = self;
+        target = smp_self();
+        lock_acquire(&target->sched.lock);
+        smp_put();
     }
-
-    LOCK_SCOPE(&target->sched.lock);
+    else
+    {
+        lock_acquire(&target->sched.lock);
+    }
 
     thread_state_t state = atomic_exchange(&thread->state, THREAD_READY);
     if (state == THREAD_PARKED)
@@ -325,18 +327,21 @@ void sched_push(thread_t* thread, cpu_t* target)
     }
     else
     {
+        lock_release(&target->sched.lock);
         panic(NULL, "Invalid thread state for sched_push");
     }
 
     sched_compute_time_slice(thread, NULL);
     sched_compute_actual_priority(thread);
 
-    if (sched_should_notify(target, thread->sched.actualPriority))
+    bool shouldNotify = sched_should_notify(target, thread->sched.actualPriority);
+
+    lock_release(&target->sched.lock);
+
+    if (shouldNotify)
     {
         timer_notify(target);
     }
-
-    smp_put();
 }
 
 static uint64_t sched_get_load(sched_cpu_ctx_t* ctx)
@@ -355,7 +360,6 @@ static cpu_t* sched_find_least_loaded_cpu(cpu_t* exclude)
     cpu_t* bestCpu = NULL;
     uint64_t bestLoad = UINT64_MAX;
 
-    // Find the cpu with the best load ;)
     for (uint64_t i = 0; i < smp_cpu_amount(); i++)
     {
         cpu_t* cpu = smp_cpu(i);
@@ -384,7 +388,7 @@ static cpu_t* sched_find_least_loaded_cpu(cpu_t* exclude)
 
 void sched_push_new_thread(thread_t* thread, thread_t* parent)
 {
-    cpu_t* self = smp_self();
+    smp_self();
 
     cpu_t* target = sched_find_least_loaded_cpu(NULL);
     assert(target != NULL);

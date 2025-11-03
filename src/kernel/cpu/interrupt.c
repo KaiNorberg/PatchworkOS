@@ -2,7 +2,6 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
-#include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/smp.h>
 #include <kernel/drivers/apic.h>
@@ -25,7 +24,7 @@ void interrupt_ctx_init(interrupt_ctx_t* ctx)
 void interrupt_disable(void)
 {
     uint64_t rflags = rflags_read();
-    asm volatile("cli");
+    asm volatile("cli" ::: "memory");
     interrupt_ctx_t* ctx = &smp_self_unsafe()->interrupt;
     if (ctx->disableDepth == 0)
     {
@@ -36,8 +35,7 @@ void interrupt_disable(void)
 
 void interrupt_enable(void)
 {
-    uint64_t rflags = rflags_read();
-    assert(!(rflags & RFLAGS_INTERRUPT_ENABLE));
+    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
     interrupt_ctx_t* ctx = &smp_self_unsafe()->interrupt;
     assert(ctx->disableDepth != 0);
