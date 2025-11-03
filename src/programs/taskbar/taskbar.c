@@ -154,7 +154,7 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
 
     switch (event->type)
     {
-    case LEVENT_INIT:
+    case EVENT_LIB_INIT:
     {
         rect_t rect = element_get_content_rect(elem);
 
@@ -200,7 +200,7 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
         element_set_private(elem, taskbar);
     }
     break;
-    case LEVENT_DEINIT:
+    case EVENT_LIB_DEINIT:
     {
         taskbar_t* taskbar = element_get_private(elem);
         if (taskbar == NULL)
@@ -229,7 +229,7 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
         }
     }
     break;
-    case LEVENT_REDRAW:
+    case EVENT_LIB_REDRAW:
     {
         rect_t rect = element_get_content_rect(elem);
 
@@ -250,17 +250,17 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
         element_draw_end(elem, &draw);
     }
     break;
-    case LEVENT_ACTION:
+    case EVENT_LIB_ACTION:
     {
         taskbar_t* taskbar = element_get_private(elem);
 
-        if (event->lAction.source == START_ID)
+        if (event->libAction.source == START_ID)
         {
-            if (event->lAction.type == ACTION_PRESS)
+            if (event->libAction.type == ACTION_PRESS)
             {
                 start_menu_open(taskbar->startMenu);
             }
-            else if (event->lAction.type == ACTION_RELEASE)
+            else if (event->libAction.type == ACTION_RELEASE)
             {
                 start_menu_close(taskbar->startMenu);
             }
@@ -269,26 +269,26 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
 
         display_t* disp = window_get_display(win);
 
-        if (event->lAction.type == ACTION_PRESS)
+        if (event->libAction.type == ACTION_PRESS)
         {
-            display_set_is_visible(disp, event->lAction.source, false);
+            display_set_is_visible(disp, event->libAction.source, false);
         }
-        else if (event->lAction.type == ACTION_RELEASE)
+        else if (event->libAction.type == ACTION_RELEASE)
         {
-            display_set_is_visible(disp, event->lAction.source, true);
+            display_set_is_visible(disp, event->libAction.source, true);
         }
     }
     break;
-    case UEVENT_START_MENU_CLOSE:
+    case EVENT_USER_START_MENU_CLOSE:
     {
         taskbar_t* taskbar = element_get_private(elem);
 
-        levent_force_action_t event;
+        event_lib_force_action_t event;
         event.action = ACTION_RELEASE;
-        element_emit(elem, LEVENT_FORCE_ACTION, &event, sizeof(event));
+        element_emit(elem, EVENT_LIB_FORCE_ACTION, &event, sizeof(event));
     }
     break;
-    case GEVENT_ATTACH:
+    case EVENT_GLOBAL_ATTACH:
     {
         if (event->globalAttach.info.type != SURFACE_WINDOW || strcmp(event->globalAttach.info.name, "StartMenu") == 0)
         {
@@ -299,13 +299,13 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
         taskbar_entry_add(taskbar, elem, &event->globalAttach.info, event->globalAttach.info.name);
     }
     break;
-    case GEVENT_DETACH:
+    case EVENT_GLOBAL_DETACH:
     {
         taskbar_t* taskbar = element_get_private(elem);
         taskbar_entry_remove(taskbar, elem, event->globalDetach.info.id);
     }
     break;
-    case GEVENT_REPORT:
+    case EVENT_GLOBAL_REPORT:
     {
         taskbar_t* taskbar = element_get_private(elem);
 
@@ -323,7 +323,7 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
         }
     }
     break;
-    case GEVENT_KBD:
+    case EVENT_GLOBAL_KBD:
     {
         taskbar_t* taskbar = element_get_private(elem);
 
@@ -368,8 +368,8 @@ window_t* taskbar_new(display_t* disp)
     display_get_screen(disp, &rect, 0);
     rect.top = rect.bottom - theme_global_get()->panelSize;
 
-    if (display_subscribe(disp, GEVENT_ATTACH) == ERR || display_subscribe(disp, GEVENT_DETACH) == ERR ||
-        display_subscribe(disp, GEVENT_REPORT) == ERR || display_subscribe(disp, GEVENT_KBD) == ERR)
+    if (display_subscribe(disp, EVENT_GLOBAL_ATTACH) == ERR || display_subscribe(disp, EVENT_GLOBAL_DETACH) == ERR ||
+        display_subscribe(disp, EVENT_GLOBAL_REPORT) == ERR || display_subscribe(disp, EVENT_GLOBAL_KBD) == ERR)
     {
         printf("taskbar: failed to subscribe to global events\n");
         return NULL;

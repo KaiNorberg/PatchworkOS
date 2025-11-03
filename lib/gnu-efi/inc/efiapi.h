@@ -849,7 +849,7 @@ typedef struct _EFI_BOOT_SERVICES {
     EFI_CREATE_EVENT                CreateEvent;
     EFI_SET_TIMER                   SetTimer;
     EFI_WAIT_FOR_EVENT              WaitForEvent;
-    EFI_SIGNAL_EVENT                SignalEvent;
+    EFI_SIGNAL_EVENT                SignaEVENT_LIB;
     EFI_CLOSE_EVENT                 CloseEvent;
     EFI_CHECK_EVENT                 CheckEvent;
 

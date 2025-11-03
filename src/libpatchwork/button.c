@@ -139,8 +139,8 @@ static void button_draw(element_t* elem, button_t* button)
 
 static void button_send_action(element_t* elem, action_type_t type)
 {
-    levent_action_t event = {.source = elem->id, .type = type};
-    display_push(elem->win->disp, elem->win->surface, LEVENT_ACTION, &event, sizeof(levent_action_t));
+    event_lib_action_t event = {.source = elem->id, .type = type};
+    display_push(elem->win->disp, elem->win->surface, EVENT_LIB_ACTION, &event, sizeof(event_lib_action_t));
 }
 
 static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* event)
@@ -149,7 +149,7 @@ static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* 
 
     switch (event->type)
     {
-    case LEVENT_INIT:
+    case EVENT_LIB_INIT:
     {
         button_t* button = malloc(sizeof(button_t));
         if (button == NULL)
@@ -165,13 +165,13 @@ static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* 
         element_set_private(elem, button);
     }
     break;
-    case LEVENT_DEINIT:
+    case EVENT_LIB_DEINIT:
     {
         button_t* button = element_get_private(elem);
         free(button);
     }
     break;
-    case LEVENT_REDRAW:
+    case EVENT_LIB_REDRAW:
     {
         button_t* button = element_get_private(elem);
         button_draw(elem, button);
@@ -276,10 +276,10 @@ static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* 
         }
     }
     break;
-    case LEVENT_FORCE_ACTION:
+    case EVENT_LIB_FORCE_ACTION:
     {
         button_t* button = element_get_private(elem);
-        switch (event->lForceAction.action)
+        switch (event->libForceAction.action)
         {
         case ACTION_PRESS:
         {

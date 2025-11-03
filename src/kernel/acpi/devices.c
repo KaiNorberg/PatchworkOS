@@ -121,25 +121,6 @@ static inline uint64_t acpi_device_init_children(aml_state_t* state, aml_object_
             }
         }
 
-        char hid[MAX_NAME];
-        uint64_t hidResult = acpi_hid_get(state, child, hid);
-        if (hidResult == ERR)
-        {
-            return ERR;
-        }
-        else if (hidResult == 0)
-        {
-            module_event_t event = {
-                .type = MODULE_EVENT_LOAD,
-                .load.hid = hid,
-            };
-            if (module_event(&event) == ERR)
-            {
-                LOG_WARN("could not load module for ACPI device '%s' with HID '%s'\n", AML_NAME_TO_STRING(child->name),
-                    hid);
-            }
-        }
-
         bool childShouldCallIni = shouldCallIni && (sta & (ACPI_STA_PRESENT | ACPI_STA_FUNCTIONAL));
         if (acpi_device_init_children(state, child, childShouldCallIni) == ERR)
         {

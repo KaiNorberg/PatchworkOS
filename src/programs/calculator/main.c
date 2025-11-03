@@ -47,7 +47,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
     switch (event->type)
     {
-    case LEVENT_INIT:
+    case EVENT_LIB_INIT:
     {
         calculator_t* calc = malloc(sizeof(calculator_t));
         if (calc == NULL)
@@ -109,7 +109,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         element_set_private(elem, calc);
     }
     break;
-    case LEVENT_DEINIT:
+    case EVENT_LIB_DEINIT:
     {
         calculator_t* calc = element_get_private(elem);
         if (calc == NULL)
@@ -120,9 +120,9 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         free(calc);
     }
     break;
-    case LEVENT_ACTION:
+    case EVENT_LIB_ACTION:
     {
-        if (event->lAction.type != ACTION_RELEASE)
+        if (event->libAction.type != ACTION_RELEASE)
         {
             break;
         }
@@ -135,11 +135,11 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             return ERR;
         }
 
-        if (event->lAction.source <= 9)
+        if (event->libAction.source <= 9)
         {
-            calc->input = calc->input * 10 + event->lAction.source;
+            calc->input = calc->input * 10 + event->libAction.source;
         }
-        else if (event->lAction.source == '<')
+        else if (event->libAction.source == '<')
         {
             calc->input /= 10;
         }
@@ -173,16 +173,16 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             }
             calc->input = 0;
 
-            calc->operation = event->lAction.source;
+            calc->operation = event->libAction.source;
         }
 
         char buffer[32];
-        ulltoa(event->lAction.source == '=' ? calc->accumulator : calc->input, buffer, 10);
+        ulltoa(event->libAction.source == '=' ? calc->accumulator : calc->input, buffer, 10);
         element_set_text(label, buffer);
         element_redraw(label, false);
     }
     break;
-    case LEVENT_QUIT:
+    case EVENT_LIB_QUIT:
     {
         display_disconnect(window_get_display(win));
     }

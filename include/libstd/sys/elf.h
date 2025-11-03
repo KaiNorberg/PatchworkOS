@@ -18,6 +18,7 @@
  * from the usual conventions used in PatchworkOS.
  *
  * @see [ELF Specification](https://gabi.xinuos.com/index.html) for more information.
+ * @see [https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf] for the x86_64 ABI specification.
  *
  * @{
  */
@@ -81,7 +82,7 @@ typedef enum
     EI_ABIVERSION = 8, ///< Index of the ABI version byte
     EI_PAD = 9,        ///< Index of the start of padding bytes
     EI_NIDENT = 16     ///< Total size of e_ident
-} Elf_Ident_Indexes;
+} Elf64_Ident_Indexes;
 
 /**
  * @brief ELF64 Header
@@ -132,7 +133,7 @@ typedef enum
     ELFMAG1 = 'E',  ///< Expected value for `e_ident[EI_MAG1]`
     ELFMAG2 = 'L',  ///< Expected value for `e_ident[EI_MAG2]`
     ELFMAG3 = 'F'   ///< Expected value for `e_ident[EI_MAG3]`
-} Elf_Magic;
+} Elf64_Magic;
 
 /**
  * @brief File class values for `e_ident[EI_CLASS]`.
@@ -146,7 +147,7 @@ typedef enum
     ELFCLASSNONE = 0, ///< Invalid class
     ELFCLASS32 = 1,   ///< 32-bit objects
     ELFCLASS64 = 2    ///< 64-bit objects, we always expect this value
-} Elf_Class;
+} Elf64_Class;
 
 /**
  * @brief Data encoding values for `e_ident[EI_DATA]`.
@@ -160,7 +161,7 @@ typedef enum
     ELFDATANONE = 0, ///< Invalid data encoding
     ELFDATALSB = 1,  ///< Little-endian encoding, we always expect this value
     ELFDATAMSB = 2   ///< Big-endian encoding
-} Elf_Data;
+} Elf64_Data;
 
 /**
  * @brief Version values for `e_ident[EI_VERSION]` and `e_version`.
@@ -170,7 +171,7 @@ typedef enum
 {
     EV_NONE = 0,   ///< Invalid version
     EV_CURRENT = 1 ///< Current version, we always expect this value
-} Elf_Version;
+} Elf64_Version;
 
 /**
  * @brief OS/ABI identification values for `e_ident[EI_OSABI]`.
@@ -204,7 +205,7 @@ typedef enum
     ELFOSABI_FENIXOS = 16,  ///< Fenix OS
     ELFOSABI_CLOUDABI = 17, ///< Nuxi CloudABI
     ELFOSABI_OPENVOS = 18   ///< Stratus Technologies OpenVOS
-} Elf_OsAbi;
+} Elf64_OsAbi;
 
 /**
  * @brief Object file type values for `e_type`.
@@ -217,7 +218,7 @@ typedef enum
     ET_EXEC = 2, ///< Executable file
     ET_DYN = 3,  ///< Shared object file
     ET_CORE = 4  ///< Core file
-} Elf_Type;
+} Elf64_Type;
 
 /**
  * @brief Machine architecture values for `e_machine`.
@@ -434,7 +435,7 @@ typedef enum
     EM_LOONGGPU = 267,        ///< Loongson LoongGPU
     EM_SW64 = 268,            ///< Wuxi Institute of Advanced Technology SW64
     EM_AIECTRLCODE = 269,     ///< AMD/Xilinx AIEngine ctrlcode
-} Elf_Machine;
+} Elf64_Machine;
 
 /**
  * @brief Special section indexes.
@@ -452,7 +453,7 @@ typedef enum
     SHN_COMMON = 0xfff2,    ///< Symbols defined relative to this section are common symbols
     SHN_XINDEX = 0xffff,    ///< Indicates that the actual index is too large to fit and is stored elsewhere
     SHN_HIRESERVE = 0xffff  ///< End of reserved indexes
-} Shn_Indexes;
+} Elf64_Shn_Indexes;
 
 /**
  * @brief ELF64 Section Header
@@ -509,7 +510,7 @@ typedef enum
     SHT_HIPROC = 0x7fffffff, ///< End of processor-specific section types
     SHT_LOUSER = 0x80000000, ///< Start of application-specific section types
     SHT_HIUSER = 0xffffffff, ///< End of application-specific section types
-} Elf_Section_Types;
+} Elf64_Section_Types;
 
 /**
  * @brief Section flag values for `sh_flags`.
@@ -530,7 +531,7 @@ typedef enum
     SHF_COMPRESSED = 0x800,       ///< Section holds compressed data
     SHF_MASKOS = 0x0ff00000,      ///< All bits in this mask are reserved for OS-specific semantics
     SHF_MASKPROC = 0xf0000000,    ///< All bits in this mask are reserved for processor-specific semantics
-} Elf_Section_Flags;
+} Elf64_Section_Flags;
 
 /**
  * @brief ELF64 Symbol Table Entry
@@ -569,7 +570,7 @@ typedef enum
     STB_HIOS = 12,   ///< End of OS-specific symbol bindings
     STB_LOPROC = 13, ///< Start of processor-specific symbol bindings
     STB_HIPROC = 15  ///< End of processor-specific symbol bindings
-} Elf_Symbol_Binding;
+} Elf64_Symbol_Binding;
 
 /**
  * @brief Extract the type from `st_info`.
@@ -594,10 +595,12 @@ typedef enum
     STT_HIOS = 12,   ///< End of OS-specific symbol types
     STT_LOPROC = 13, ///< Start of processor-specific symbol types
     STT_HIPROC = 15  ///< End of processor-specific symbol types
-} Elf_Symbol_Types;
+} Elf64_Symbol_Types;
 
 /**
  * @brief Create an `st_info` value from binding and type.
+ *
+ * @see https://gabi.xinuos.com/elf/05-symtab.html
  *
  * @param b The binding value
  * @param t The type value
@@ -625,6 +628,93 @@ typedef struct
     Elf64_Xword r_info;
     Elf64_Sxword r_addend;
 } Elf64_Rela;
+
+/**
+ * @brief Extract the symbol index from `r_info`.
+ *
+ * @see https://gabi.xinuos.com/elf/06-reloc.html
+ *
+ * @param i The `r_info` value
+ * @return The symbol index
+ */
+#define ELF64_R_SYM(i) ((i) >> 32)
+
+/**
+ * @brief Extract the type from `r_info`.
+ *
+ * @see https://gabi.xinuos.com/elf/06-reloc.html
+ *
+ * @param i The `r_info` value
+ * @return The type value
+ */
+#define ELF64_R_TYPE(i) ((i) & 0xffffffffL)
+
+/**
+ * @brief Relocation type values for `r_info`.
+ *
+ * The associated comments describe the calculation performed for each relocation type where:
+ * - A = The addend used to compute the value of the relocatable field.
+ * - B = The base address at which the object is loaded into memory
+ * - G = The offset into the Global Offset Table
+ * - GOT = The address of the Global Offset Table
+ * - L = The address of the procedure linkage table entry for the symbol
+ * - P = The place (section offset or address) of the storage unit being relocated
+ * - S = value of the symbol in the relocation entry
+ * - Z = The size of the symbol
+ *
+ * Additionally the size of the relocated field is indicated (word8, word16, word32, word64).
+ *
+ * Most of these are not used.
+ *
+ * @see https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf table 4.10
+ */
+typedef enum
+{
+    R_X86_64_NONE = 0,             ///< none none
+    R_X86_64_64 = 1,               ///< word64 S + A
+    R_X86_64_PC32 = 2,             ///< word32 S + A - P
+    R_X86_64_GOT32 = 3,            ///< word32 G + A
+    R_X86_64_PLT32 = 4,            ///< word32 L + A - P
+    R_X86_64_COPY = 5,             ///< none none
+    R_X86_64_GLOB_DAT = 6,         ///< word64 S
+    R_X86_64_JUMP_SLOT = 7,        ///< word64 S
+    R_X86_64_RELATIVE = 8,         ///< word64 B + A
+    R_X86_64_GOTPCREL = 9,         ///< word32 G + GOT + A - P
+    R_X86_64_32 = 10,              ///<  word32 S + A
+    R_X86_64_32S = 11,             ///<  word32 S + A
+    R_X86_64_16 = 12,              ///<  word16 S + A
+    R_X86_64_PC16 = 13,            ///<  word16 S + A - P
+    R_X86_64_8 = 14,               ///<  word8 S + A
+    R_X86_64_PC8 = 15,             ///<  word8 S + A - P
+    R_X86_64_DTPMOD64 = 16,        ///<  word64
+    R_X86_64_DTPOFF64 = 17,        ///<  word64
+    R_X86_64_TPOFF64 = 18,         ///<  word64
+    R_X86_64_TLSGD = 19,           ///<  word32
+    R_X86_64_TLSLD = 20,           ///<  word32
+    R_X86_64_DTPOFF32 = 21,        ///<  word32
+    R_X86_64_GOTTPOFF = 22,        ///<  word32
+    R_X86_64_TPOFF32 = 23,         ///<  word32
+    R_X86_64_PC64 = 24,            ///<  word64 S + A - P
+    R_X86_64_GOTOFF64 = 25,        ///<  word64 S + A - GOT
+    R_X86_64_GOTPC32 = 26,         ///<  word32 GOT + A - P
+    R_X86_64_SIZE32 = 32,          ///<  word32 Z + A
+    R_X86_64_SIZE64 = 33,          ///<  word64 Z + A
+    R_X86_64_GOTPC32_TLSDESC = 34, ///<  word32
+    R_X86_64_TLSDESC_CALL = 35,    ///<  none
+    R_X86_64_TLSDESC = 36,         ///<  word64×2
+    R_X86_64_IRELATIVE = 37,       ///<  word64 indirect (B + A)
+} Elf64_Relocation_Types_x86_64;
+
+/**
+ * @brief Create an `r_info` value from symbol index and type.
+ *
+ * @see https://gabi.xinuos.com/elf/06-reloc.html
+ *
+ * @param s The symbol index
+ * @param t The type value
+ * @return The combined `r_info` value
+ */
+#define ELF64_R_INFO(s, t) (((s) << 32) + ((t) & 0xffffffffL))
 
 /**
  * @brief ELF64 Program Header
@@ -666,7 +756,7 @@ typedef enum
     PT_HIOS = 0x6fffffff,   ///< End of OS-specific segment types
     PT_LOPROC = 0x70000000, ///< Start of processor-specific segment types
     PT_HIPROC = 0x7fffffff  ///< End of processor-specific segment types
-} Elf_Program_Types;
+} Elf64_Program_Types;
 
 /**
  * @brief Segment flag values for `p_flags`.
@@ -681,7 +771,7 @@ typedef enum
     PF_R = 0x4,              ///< Readable segment
     PF_MASKOS = 0x0ff00000,  ///< All bits in this mask are reserved for OS-specific semantics
     PF_MASKPROC = 0xf0000000 ///< All bits in this mask are reserved for processor-specific semantics
-} Elf_Program_Flags;
+} Elf64_Program_Flags;
 
 /**
  * @brief ELF File Helper structure
@@ -691,6 +781,8 @@ typedef struct
 {
     Elf64_Ehdr* header; ///< The data in the file, pointed to the start of the ELF header
     uint64_t size;      ///< The size of the file in bytes
+    Elf64_Shdr* symtab; ///< The symbol table section, or `NULL` if not found
+    Elf64_Shdr* dynsym; ///< The dynamic symbol table section, or `NULL` if not found
 } Elf64_File;
 
 /**
@@ -700,7 +792,7 @@ typedef struct
  * @param index The program header index
  * @return Pointer to the program header
  */
-#define ELF_FILE_GET_PHDR(elf, index) \
+#define ELF64_GET_PHDR(elf, index) \
     ((Elf64_Phdr*)((uint8_t*)(elf)->header + (elf)->header->e_phoff + ((index) * (elf)->header->e_phentsize)))
 
 /**
@@ -710,7 +802,7 @@ typedef struct
  * @param index The section header index
  * @return Pointer to the section header
  */
-#define ELF_FILE_GET_SHDR(elf, index) \
+#define ELF64_GET_SHDR(elf, index) \
     ((Elf64_Shdr*)((uint8_t*)(elf)->header + (elf)->header->e_shoff + ((index) * (elf)->header->e_shentsize)))
 /**
  * @brief Get a pointer to a location in the ELF file at the given offset
@@ -719,10 +811,13 @@ typedef struct
  * @param offset The offset in bytes
  * @return Pointer to the location in the ELF file
  */
-#define ELF_FILE_AT_OFFSET(elf, offset) ((void*)((uint8_t*)(elf)->header + (offset)))
+#define ELF64_AT_OFFSET(elf, offset) ((void*)((uint8_t*)(elf)->header + (offset)))
 
 /**
  * @brief Validate a files content and initalize a `ELF64_File` structure using it
+ *
+ * The idea behind this function is to verify every aspect of a ELF file such that other functions acting on the ELF64
+ * file do not need to perform any validation.
  *
  * The reason this does not read from a file is such that it will be generic and usable in user space, in the kernel and
  * the bootloader.
@@ -736,7 +831,7 @@ typedef struct
  * @param size Size of the ELF file data in bytes
  * @return On success, `0`. On failure, a non-zero error code. Check the implementation. Does not use `ERR` or `errno`.
  */
-uint64_t elf_file_validate(Elf64_File* elf, void* data, uint64_t size);
+uint64_t elf64_validate(Elf64_File* elf, void* data, uint64_t size);
 
 /**
  * @brief Get the loadable virtual memory bounds of an ELF file
@@ -745,7 +840,62 @@ uint64_t elf_file_validate(Elf64_File* elf, void* data, uint64_t size);
  * @param minAddr Output pointer to store the minimum loadable virtual address
  * @param maxAddr Output pointer to store the maximum loadable virtual address
  */
-void elf_file_get_loadable_bounds(const Elf64_File* elf, Elf64_Addr* minAddr, Elf64_Addr* maxAddr);
+void elf64_get_loadable_bounds(const Elf64_File* elf, Elf64_Addr* minAddr, Elf64_Addr* maxAddr);
+
+/**
+ * @brief Load all loadable segments of an ELF file into memory
+ *
+ * Each segment has virtual addresses specified in `p_vaddr` which is where the segment is intended to be loaded in
+ * memory. But we may not want to load it directly to that address, we might have a buffer where we wish to place the
+ * segments instead. Either way, we must still place the segments at the correct offsets relative to each other. Leading
+ * to the slightly unintuitive parameters of this function.
+ *
+ * The final address where a segment is loaded is calculated as `base + (p_vaddr - offset)`, meaning that if you wish to
+ * load a file directly to its intended virtual addresses, you would do:
+ * ```c
+ * elf64_load_segments(elf, (void*)0x0, 0x0);
+ * ```
+ * If you wanted to load the contents to a buffer located at `buffer` which could later be mapped to the intended
+ * virtual addresses or if you wanted to load relocatable code, you would do:
+ * ```c
+ * Elf64_Addr minAddr, maxAddr;
+ * elf64_get_loadable_bounds(elf, &minAddr, &maxAddr);
+ * elf64_load_segments(elf, buffer, minAddr);
+ * ```
+ *
+ * @note This function does not allocate memory, it assumes that the caller has already allocated enough memory at `base
+ * + (p_vaddr - offset)` for each segment.
+ *
+ * @param elf The ELF file
+ * @param base The base address to load the segments into
+ * @param offset The offset in bytes to subtract from each segment's virtual address when loading
+ */
+void elf64_load_segments(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset);
+
+/**
+ * @brief Perform relocations on an ELF file loaded into memory
+ *
+ * This function will process all relocation sections in the ELF file and apply the relocations to the loaded segments
+ * in memory, including resolving symbol addresses using the provided callback as necessary.
+ *
+ * Relocations are necessary when a ELF file contains references to symbols whose addresses are not known at compile
+ * time, for example the ELF file might be a shared library or kernel module.
+ *
+ * Check `elf64_load_segments()` for an explanation of the `base` and `offset` parameters.
+ *
+ * The `resolve_symbol` callback is used to resolve symbol names to addresses, this will be utilized for relocations of
+ * undefined symbols. Should return `0` if the symbol could not be resolved.
+ *
+ * TOOD: Implement more relocation types as needed.
+ *
+ * @param elf The ELF file
+ * @param base The base address where the segments are loaded in memory
+ * @param offset The offset in bytes that was subtracted from each segment's virtual address when loading
+ * @param resolve_symbol Callback function to resolve symbol names to addresses
+ * @return On success, `0`. On failure, `ERR`.
+ */
+uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset,
+    Elf64_Addr (*resolve_symbol)(const char* name));
 
 /**
  * @brief Get a string from the string table section at the given offset
@@ -755,39 +905,63 @@ void elf_file_get_loadable_bounds(const Elf64_File* elf, Elf64_Addr* minAddr, El
  * @param offset The offset in bytes into the string table
  * @return Pointer to the string in the ELF file or `NULL` if not found
  */
-const char* elf_file_get_string(const Elf64_File* elf, Elf64_Xword strTabIndex, Elf64_Off offset);
+const char* elf64_get_string(const Elf64_File* elf, Elf64_Xword strTabIndex, Elf64_Off offset);
 
 /**
- * @brief ELF64 File Symbol Iterator Helper structure
- * @struct Elf64_File_Symbol_Iterator
+ * @brief Get a section by its name
+ *
+ * @param elf The ELF file
+ * @param name The name of the section to find
+ * @return Pointer to the section header or `NULL` if not found
  */
-typedef struct
-{
-    const Elf64_File* elf;
-    Elf64_Xword currentShdrIndex;
-    Elf64_Xword currentSymbolIndex;
-    Elf64_Sym* symbol;
-    char* symbolName;
-} Elf64_File_Symbol_Iterator;
+Elf64_Shdr* elf64_get_section_by_name(const Elf64_File* elf, const char* name);
 
 /**
- * @brief Create a elf file symbol iterator initializer
+ * @brief Get the name of a section
  *
- * @param elfPtr Pointer to the ELF file
- * @return A new ELF file symbol iterator
+ * @param elf The ELF file
+ * @param section The section to get the name of
+ * @return Pointer to the section name string or `NULL` if not found
  */
-#define ELF_FILE_SYMBOL_ITERATOR_CREATE(elfPtr) \
-    (Elf64_File_Symbol_Iterator){.elf = (elfPtr), .currentShdrIndex = 0, .currentSymbolIndex = 0}
+const char* elf64_get_section_name(const Elf64_File* elf, const Elf64_Shdr* section);
 
 /**
- * @brief Get the next symbol from the ELF file using the iterator
+ * @brief Get a symbol by its index from the symbol table
  *
- * Will set `iterator->symbol` and `iterator->symbolName` to point to the current symbol and its name.
- *
- * @param iterator The symbol iterator
- * @return `true` if a symbol was returned, `false` if there are no more symbols
+ * @param elf The ELF file
+ * @param symbolIndex The index of the symbol to get
+ * @return Pointer to the symbol or `NULL` if not found
  */
-bool elf_file_symbol_iterator_next(Elf64_File_Symbol_Iterator* iterator);
+Elf64_Sym* elf64_get_symbol_by_index(const Elf64_File* elf, Elf64_Xword symbolIndex);
+
+/**
+ * @brief Get the name of a symbol
+ *
+ * @param elf The ELF file
+ * @param symbol The symbol to get the name of
+ * @return Pointer to the symbol name string or `NULL` if not found
+ */
+const char* elf64_get_symbol_name(const Elf64_File* elf, const Elf64_Sym* symbol);
+
+/**
+ * @brief Get a dynamic symbol by its index from the dynamic symbol table
+ *
+ * Dynamic symbols are, for example, found in `.rela.*` sections used for dynamic linking.
+ *
+ * @param elf The ELF file
+ * @param symbolIndex The index of the dynamic symbol to get
+ * @return Pointer to the dynamic symbol or `NULL` if not found
+ */
+Elf64_Sym* elf64_get_dynamic_symbol_by_index(const Elf64_File* elf, Elf64_Xword symbolIndex);
+
+/**
+ * @brief Get the name of a dynamic symbol
+ *
+ * @param elf The ELF file
+ * @param symbol The dynamic symbol to get the name of
+ * @return Pointer to the dynamic symbol name string or `NULL` if not found
+ */
+const char* elf64_get_dynamic_symbol_name(const Elf64_File* elf, const Elf64_Sym* symbol);
 
 /** @} */
 

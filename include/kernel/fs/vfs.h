@@ -79,7 +79,6 @@ uint64_t vfs_get_new_id(void);
 
 /**
  * @brief Registers a filesystem.
- * @ingroup kernel_vfs
  *
  * @param fs The filesystem to register.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
@@ -88,7 +87,6 @@ uint64_t vfs_register_fs(filesystem_t* fs);
 
 /**
  * @brief Unregisters a filesystem.
- * @ingroup kernel_vfs
  *
  * @param fs The filesystem to unregister.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
@@ -97,7 +95,6 @@ uint64_t vfs_unregister_fs(filesystem_t* fs);
 
 /**
  * @brief Gets a filesystem by name.
- * @ingroup kernel_vfs
  *
  * @param name The name of the filesystem.
  * @return On success, the filesystem. On failure, returns `NULL`, does not set `errno`.
@@ -106,7 +103,6 @@ filesystem_t* vfs_get_fs(const char* name);
 
 /**
  * @brief Get an inode for the given superblock and inode number.
- * @ingroup kernel_vfs
  *
  * Note that there is a period of time where a inodes reference count has dropped to zero but its free function has not
  * had the time to remove it from the cache yet. In this case, this function will return `NULL` and set `errno` to
@@ -120,7 +116,6 @@ inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number);
 
 /**
  * @brief Get a dentry for the given name. Will NOT traverse mountpoints.
- * @ingroup kernel_vfs
  *
  * Note that there is a period of time where a dentrys reference count has dropped to zero but its free function has not
  * had the time to remove it from the cache yet. In this case, this function will return `NULL` and set `errno` to
@@ -134,7 +129,6 @@ dentry_t* vfs_get_dentry(const dentry_t* parent, const char* name);
 
 /**
  * @brief Get or lookup a dentry for the given name. Will NOT traverse mountpoints.
- * @ingroup kernel_vfs
  *
  * @param parent The parent path.
  * @param name The name of the dentry.

@@ -14,7 +14,7 @@ static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* e
 
     switch (event->type)
     {
-    case LEVENT_INIT:
+    case EVENT_LIB_INIT:
     {
         rect_t rect = element_get_content_rect(elem);
 
@@ -52,7 +52,7 @@ static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* e
         }
     }
     break;
-    case LEVENT_REDRAW:
+    case EVENT_LIB_REDRAW:
     {
         rect_t rect = element_get_content_rect(elem);
         rect.bottom -= POPUP_BUTTON_AREA_HEIGHT;
@@ -68,14 +68,14 @@ static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* e
         element_draw_end(elem, &draw);
     }
     break;
-    case LEVENT_ACTION:
+    case EVENT_LIB_ACTION:
     {
-        if (event->lAction.type != ACTION_RELEASE)
+        if (event->libAction.type != ACTION_RELEASE)
         {
             break;
         }
 
-        popup->result = event->lAction.source;
+        popup->result = event->libAction.source;
         display_disconnect(window_get_display(win));
     }
     break;

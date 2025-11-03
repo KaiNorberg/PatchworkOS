@@ -48,13 +48,13 @@ PROJECT_NAME           = "PatchworkOS"
 # could be handy for archiving the generated documentation or if some version
 # control system is used.
 
-PROJECT_NUMBER         =
+PROJECT_NUMBER           = "253e54f8-dirty"
 
 # Using the PROJECT_BRIEF tag one can provide an optional one line description
 # for a project that appears at the top of each page and should give viewers a
 # quick idea about the purpose of the project. Keep the description short.
 
-PROJECT_BRIEF          =
+PROJECT_BRIEF          = "A non-POSIX operating system."
 
 # With the PROJECT_LOGO tag one can specify a logo or an icon that is included
 # in the documentation. The maximum height of the logo should not exceed 55
@@ -1376,7 +1376,7 @@ HTML_FILE_EXTENSION    = .html
 # of the possible markers and block names see the documentation.
 # This tag requires that the tag GENERATE_HTML is set to YES.
 
-HTML_HEADER            =
+HTML_HEADER            = meta/doxy/header.html
 
 # The HTML_FOOTER tag can be used to specify a user-defined HTML footer for each
 # generated HTML page. If the tag is left blank Doxygen will generate a standard
@@ -1417,7 +1417,9 @@ HTML_STYLESHEET        =
 # This tag requires that the tag GENERATE_HTML is set to YES.
 
 HTML_EXTRA_STYLESHEET  = meta/docs/doxygen-awesome-css/doxygen-awesome.css \
-                        meta/docs/doxygen-awesome-css/doxygen-awesome-sidebar-only.css
+                        meta/docs/doxygen-awesome-css/doxygen-awesome-sidebar-only.css \
+                        meta/docs/doxygen-awesome-css/doxygen-awesome-sidebar-only-darkmode-toggle.css \
+                        meta/doxy/custom.css
 
 # The HTML_EXTRA_FILES tag can be used to specify one or more extra images or
 # other source files which should be copied to the HTML output directory. Note
@@ -1427,7 +1429,8 @@ HTML_EXTRA_STYLESHEET  = meta/docs/doxygen-awesome-css/doxygen-awesome.css \
 # files will be copied as-is; there are no commands or markers available.
 # This tag requires that the tag GENERATE_HTML is set to YES.
 
-HTML_EXTRA_FILES       = meta/screenshots/desktop.png meta/screenshots/doom.png
+HTML_EXTRA_FILES       = meta/screenshots/desktop.png meta/screenshots/doom.png \
+                        meta/docs/doxygen-awesome-css/doxygen-awesome-darkmode-toggle.js
 
 # The HTML_COLORSTYLE tag can be used to specify if the generated HTML output
 # should be rendered with a dark or light theme.
@@ -1529,7 +1532,7 @@ HTML_PROJECT_COOKIE    =
 # Minimum value: 0, maximum value: 9999, default value: 100.
 # This tag requires that the tag GENERATE_HTML is set to YES.
 
-HTML_INDEX_NUM_ENTRIES = 100
+HTML_INDEX_NUM_ENTRIES = 1
 
 # If the GENERATE_DOCSET tag is set to YES, additional index files will be
 # generated that can be used as input for Apple's Xcode 3 integrated development

@@ -229,7 +229,7 @@ static void window_deco_redraw(window_t* win, element_t* elem)
     element_draw_end(elem, &draw);
 }
 
-static void window_deco_action(window_t* win, const levent_action_t* action)
+static void window_deco_action(window_t* win, const event_lib_action_t* action)
 {
     if (action->type != ACTION_RELEASE)
     {
@@ -239,7 +239,7 @@ static void window_deco_action(window_t* win, const levent_action_t* action)
     switch (action->source)
     {
     case WINDOW_DECO_CLOSE_BUTTON_ID:
-        display_push(win->disp, win->surface, LEVENT_QUIT, NULL, 0);
+        display_push(win->disp, win->surface, EVENT_LIB_QUIT, NULL, 0);
         break;
     case WINDOW_DECO_MINIMIZE_BUTTON_ID:
         display_set_is_visible(win->disp, win->surface, false);
@@ -268,19 +268,19 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
 {
     switch (event->type)
     {
-    case LEVENT_INIT:
+    case EVENT_LIB_INIT:
         return window_deco_init(win, elem);
 
-    case LEVENT_DEINIT:
+    case EVENT_LIB_DEINIT:
         window_deco_free(elem);
         break;
 
-    case LEVENT_REDRAW:
+    case EVENT_LIB_REDRAW:
         window_deco_redraw(win, elem);
         break;
 
-    case LEVENT_ACTION:
-        window_deco_action(win, &event->lAction);
+    case EVENT_LIB_ACTION:
+        window_deco_action(win, &event->libAction);
         break;
 
     case EVENT_REPORT:
@@ -605,9 +605,9 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
 
     switch (event->type)
     {
-    case LEVENT_REDRAW:
+    case EVENT_LIB_REDRAW:
     {
-        element_t* elem = element_find(win->root, event->lRedraw.id);
+        element_t* elem = element_find(win->root, event->libRedraw.id);
         if (elem == NULL)
         {
             return ERR;
@@ -619,9 +619,9 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
         }
     }
     break;
-    case LEVENT_FORCE_ACTION:
+    case EVENT_LIB_FORCE_ACTION:
     {
-        element_t* elem = element_find(win->root, event->lForceAction.dest);
+        element_t* elem = element_find(win->root, event->libForceAction.dest);
         if (elem == NULL)
         {
             return ERR;
@@ -641,10 +641,10 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
 
             if (RECT_WIDTH(&win->rect) != RECT_WIDTH(&newRect) || RECT_HEIGHT(&win->rect) != RECT_HEIGHT(&newRect))
             {
-                levent_redraw_t event;
+                event_lib_redraw_t event;
                 event.id = win->root->id;
                 event.shouldPropagate = true;
-                display_push(win->disp, win->surface, LEVENT_REDRAW, &event, sizeof(levent_redraw_t));
+                display_push(win->disp, win->surface, EVENT_LIB_REDRAW, &event, sizeof(event_lib_redraw_t));
             }
 
             win->rect = newRect;
@@ -697,7 +697,7 @@ uint64_t window_set_visible(window_t* win, bool isVisible)
         return ERR;
     }
 
-    if (display_dispatch_pending(win->disp, LEVENT_REDRAW, win->surface) == ERR)
+    if (display_dispatch_pending(win->disp, EVENT_LIB_REDRAW, win->surface) == ERR)
     {
         return ERR;
     }

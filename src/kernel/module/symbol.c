@@ -115,18 +115,33 @@ static symbol_name_t* symbol_find_or_create_name(const char* name)
 
 void symbol_load_kernel_symbols(const boot_kernel_t* kernel)
 {
-    Elf64_File_Symbol_Iterator it = ELF_FILE_SYMBOL_ITERATOR_CREATE(&kernel->elf);
-    while (elf_file_symbol_iterator_next(&it))
+    const Elf64_File* elf = &kernel->elf;
+    uint64_t index = 0;
+    while (true)
     {
-        if (it.symbol->st_name == 0 || it.symbol->st_value == 0)
+        Elf64_Sym* sym = elf64_get_symbol_by_index(elf, index++);
+        if (sym == NULL)
+        {
+            break;
+        }
+
+        if (ELF64_ST_TYPE(sym->st_info) != STT_FUNC && ELF64_ST_TYPE(sym->st_info) != STT_OBJECT)
         {
             continue;
         }
-        if (symbol_add(it.symbolName, (void*)it.symbol->st_value) == ERR)
+
+        const char* symName = elf64_get_symbol_name(elf, sym);
+        if (symName == NULL || symName[0] == '\0')
         {
-            panic(NULL, "Failed to add kernel symbol '%s' at address 0x%llx", it.symbolName, it.symbol->st_value);
+            continue;
+        }
+        void* symAddr = (void*)(uintptr_t)sym->st_value;
+        if (symbol_add(symName, symAddr) == ERR)
+        {
+            panic(NULL, "Failed to load kernel symbol '%s' (%s)", symName, strerror(errno));
         }
     }
+
     LOG_INFO("Loaded %llu kernel symbols\n", addrAmount);
 }
 

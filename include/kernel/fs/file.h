@@ -79,7 +79,6 @@ typedef struct poll_file
 
 /**
  * @brief Create a new file structure.
- * @ingroup kernel_vfs
  *
  * This does not open the file, instead its used internally by the VFS when opening files.
  *

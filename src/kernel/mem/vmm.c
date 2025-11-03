@@ -82,7 +82,7 @@ void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_ker
 
     Elf64_Addr minVaddr = 0;
     Elf64_Addr maxVaddr = 0;
-    elf_file_get_loadable_bounds(&kernel->elf, &minVaddr, &maxVaddr);
+    elf64_get_loadable_bounds(&kernel->elf, &minVaddr, &maxVaddr);
     uint64_t kernelPageAmount = BYTES_TO_PAGES(maxVaddr - minVaddr);
 
     LOG_INFO("kernel virt=[0x%016lx-0x%016lx] phys=[0x%016lx-0x%016lx]\n", minVaddr, maxVaddr,

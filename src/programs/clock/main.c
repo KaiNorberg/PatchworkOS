@@ -54,22 +54,22 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
     switch (event->type)
     {
-    case LEVENT_INIT:
+    case EVENT_LIB_INIT:
     {
         window_set_timer(win, TIMER_REPEAT, CLOCKS_PER_SEC);
     }
     break;
-    case LEVENT_DEINIT:
+    case EVENT_LIB_DEINIT:
     {
     }
     break;
-    case LEVENT_QUIT:
+    case EVENT_LIB_QUIT:
     {
         display_disconnect(window_get_display(win));
     }
     break;
     case EVENT_TIMER:
-    case LEVENT_REDRAW:
+    case EVENT_LIB_REDRAW:
     {
         drawable_t draw;
         element_draw_begin(elem, &draw);

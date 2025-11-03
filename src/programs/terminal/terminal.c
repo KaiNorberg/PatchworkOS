@@ -541,7 +541,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
 {
     switch (event->type)
     {
-    case LEVENT_INIT:
+    case EVENT_LIB_INIT:
     {
         terminal_init_ctx_t* ctx = element_get_private(elem);
 
@@ -610,7 +610,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         window_set_timer(win, TIMER_NONE, TERMINAL_BLINK_INTERVAL);
     }
     break;
-    case LEVENT_DEINIT:
+    case EVENT_LIB_DEINIT:
     {
         terminal_t* term = element_get_private(elem);
         if (term == NULL)
@@ -628,12 +628,12 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         close(shellNote);
     }
     break;
-    case LEVENT_QUIT:
+    case EVENT_LIB_QUIT:
     {
         display_disconnect(window_get_display(win));
     }
     break;
-    case LEVENT_REDRAW:
+    case EVENT_LIB_REDRAW:
     {
         terminal_t* term = element_get_private(elem);
 
@@ -671,14 +671,14 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         element_draw_end(elem, &draw);
     }
     break;
-    case UEVENT_TERMINAL_DATA:
+    case EVENT_USER_TERMINAL_DATA:
     {
         terminal_t* term = element_get_private(elem);
-        uevent_terminal_data_t* ueventData = (uevent_terminal_data_t*)event->raw;
+        event_user_terminal_data_t* EVENT_USERData = (event_user_terminal_data_t*)event->raw;
 
         drawable_t draw;
         element_draw_begin(elem, &draw);
-        terminal_handle_output(term, elem, &draw, ueventData->buffer, ueventData->length);
+        terminal_handle_output(term, elem, &draw, EVENT_USERData->buffer, EVENT_USERData->length);
         element_draw_end(elem, &draw);
     }
     break;
@@ -745,11 +745,12 @@ void terminal_loop(window_t* win)
     {
         if (fds[0].revents & POLLIN)
         {
-            uevent_terminal_data_t ueventData;
-            uint64_t readCount = read(terminal->stdout[PIPE_READ], ueventData.buffer, TERMINAL_MAX_INPUT);
-            ueventData.length = MIN(readCount, TERMINAL_MAX_INPUT);
+            event_user_terminal_data_t userData;
+            uint64_t readCount = read(terminal->stdout[PIPE_READ], userData.buffer, TERMINAL_MAX_INPUT);
+            userData.length = MIN(readCount, TERMINAL_MAX_INPUT);
 
-            display_push(disp, window_get_id(win), UEVENT_TERMINAL_DATA, &ueventData, sizeof(uevent_terminal_data_t));
+            display_push(disp, window_get_id(win), EVENT_USER_TERMINAL_DATA, &userData,
+                sizeof(event_user_terminal_data_t));
         }
 
         event_t event = {0};

@@ -34,7 +34,7 @@ static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_
 
     switch (event->type)
     {
-    case LEVENT_INIT:
+    case EVENT_LIB_INIT:
     {
         start_menu_t* menu = malloc(sizeof(start_menu_t));
         if (menu == NULL)
@@ -53,7 +53,7 @@ static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_
         element_set_private(elem, menu);
     }
     break;
-    case LEVENT_DEINIT:
+    case EVENT_LIB_DEINIT:
     {
         start_menu_t* menu = element_get_private(elem);
         if (menu == NULL)
@@ -63,7 +63,7 @@ static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_
         free(menu);
     }
     break;
-    case LEVENT_REDRAW:
+    case EVENT_LIB_REDRAW:
     {
         rect_t rect = element_get_content_rect(elem);
 
@@ -81,18 +81,18 @@ static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_
         element_draw_end(elem, &draw);
     }
     break;
-    case LEVENT_ACTION:
+    case EVENT_LIB_ACTION:
     {
         start_menu_t* menu = element_get_private(elem);
-        if (event->lAction.type == ACTION_RELEASE)
+        if (event->libAction.type == ACTION_RELEASE)
         {
             start_menu_close(win);
 
-            const char* argv[] = {entries[event->lAction.source].path, NULL};
+            const char* argv[] = {entries[event->libAction.source].path, NULL};
             if (spawn(argv, NULL, NULL, NULL) == ERR)
             {
                 char buffer[MAX_PATH];
-                sprintf(buffer, "Failed to spawn (%s)!", entries[event->lAction.source].path);
+                sprintf(buffer, "Failed to spawn (%s)!", entries[event->libAction.source].path);
 
                 popup_open(buffer, "Error!", POPUP_OK);
             }
@@ -319,7 +319,7 @@ void start_menu_close(window_t* startMenu)
     menu->state = START_MENU_CLOSING;
     window_set_timer(startMenu, TIMER_REPEAT, CLOCKS_PER_SEC / 60);
 
-    display_push(window_get_display(startMenu), window_get_id(menu->taskbar), UEVENT_START_MENU_CLOSE, NULL, 0);
+    display_push(window_get_display(startMenu), window_get_id(menu->taskbar), EVENT_USER_START_MENU_CLOSE, NULL, 0);
 }
 
 start_menu_state_t start_menu_get_state(window_t* startMenu)

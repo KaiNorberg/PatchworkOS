@@ -88,25 +88,25 @@ typedef uint64_t event_bitmask_t[4];
 #define EVENT_CURSOR_LEAVE 6
 #define EVENT_REPORT 7
 
-#define GEVENT_ATTACH 128
-#define GEVENT_DETACH 129
-#define GEVENT_REPORT 130
-#define GEVENT_KBD 131
-#define GEVENT_MOUSE 132
+#define EVENT_GLOBAL_ATTACH 128
+#define EVENT_GLOBAL_DETACH 129
+#define EVENT_GLOBAL_REPORT 130
+#define EVENT_GLOBAL_KBD 131
+#define EVENT_GLOBAL_MOUSE 132
 
 #define DWM_MAX_EVENT 256
 
-#define LEVENT_INIT 256
-#define LEVENT_DEINIT 257
-#define LEVENT_REDRAW 258
-#define LEVENT_ACTION 259
-#define LEVENT_QUIT 260
-#define LEVENT_FORCE_ACTION 261
+#define EVENT_LIB_INIT 256
+#define EVENT_LIB_DEINIT 257
+#define EVENT_LIB_REDRAW 258
+#define EVENT_LIB_ACTION 259
+#define EVENT_LIB_QUIT 260
+#define EVENT_LIB_FORCE_ACTION 261
 
-#define LEVENT_INTERNAL_WAKE 512
+#define EVENT_LIB_INTERNAL_WAKE 512
 
-#define UEVENT_START 1024
-#define UEVENT_END 65535
+#define EVENT_USER_START 1024
+#define EVENT_USER_END 65535
 
 /**
  * @brief Screen Info event.
@@ -190,7 +190,7 @@ typedef struct
 typedef struct
 {
     surface_info_t info;
-} gevent_attach_t;
+} event_global_attach_t;
 
 /**
  * @brief Global Detach event.
@@ -200,21 +200,21 @@ typedef struct
 typedef struct
 {
     surface_info_t info;
-} gevent_detach_t;
+} event_global_detach_t;
 
 /**
  * @brief Global Report event.
  *
  * Sent when any surface's information changes.
  */
-typedef event_report_t gevent_report_t;
+typedef event_report_t event_global_report_t;
 
 /**
  * @brief Global Keyboard event.
  *
  * Sent when a key is pressed or released regardless of which display is focused.
  */
-typedef event_kbd_t gevent_kbd_t;
+typedef event_kbd_t event_global_kbd_t;
 
 /**
  * @brief Global Mouse event.
@@ -222,7 +222,7 @@ typedef event_kbd_t gevent_kbd_t;
  * Sent when the mouse is moved or a button is pressed or released regardless of which display is focused or where
  * the cursor is.
  */
-typedef event_mouse_t gevent_mouse_t;
+typedef event_mouse_t event_global_mouse_t;
 
 /**
  * @brief Library Redraw event.
@@ -233,7 +233,7 @@ typedef struct
 {
     element_id_t id;
     bool shouldPropagate; ///< Whether the redraw event should be propagated to child elements.
-} levent_redraw_t;
+} event_lib_redraw_t;
 
 /**
  * @brief Library Action event.
@@ -244,7 +244,7 @@ typedef struct
 {
     element_id_t source;
     action_type_t type;
-} levent_action_t;
+} event_lib_action_t;
 
 /**
  * @brief Library Force Action event.
@@ -255,7 +255,7 @@ typedef struct
 {
     element_id_t dest;
     action_type_t action;
-} levent_force_action_t;
+} event_lib_force_action_t;
 
 /**
  * @brief Maximum size of event data.
@@ -279,14 +279,14 @@ typedef struct event
         event_cursor_enter_t cursorEnter;
         event_cursor_leave_t cursorLeave;
         event_report_t report;
-        gevent_attach_t globalAttach;
-        gevent_detach_t globalDetach;
-        gevent_report_t globalReport;
-        gevent_kbd_t globalKbd;
-        gevent_mouse_t globalMouse;
-        levent_redraw_t lRedraw;
-        levent_action_t lAction;
-        levent_force_action_t lForceAction;
+        event_global_attach_t globalAttach;
+        event_global_detach_t globalDetach;
+        event_global_report_t globalReport;
+        event_global_kbd_t globalKbd;
+        event_global_mouse_t globalMouse;
+        event_lib_redraw_t libRedraw;
+        event_lib_action_t libAction;
+        event_lib_force_action_t libForceAction;
         uint8_t raw[EVENT_MAX_DATA];
     };
 } event_t;

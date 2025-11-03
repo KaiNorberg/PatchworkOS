@@ -61,7 +61,7 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle)
         goto cleanup;
     }
 
-    uint64_t result = elf_file_validate(&kernel->elf, fileData, fileSize);
+    uint64_t result = elf64_validate(&kernel->elf, fileData, fileSize);
     if (result != 0)
     {
         Print(L"invalid kernel ELF file %d!\n", result);
@@ -72,7 +72,7 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle)
 
     Elf64_Addr minVaddr = 0;
     Elf64_Addr maxVaddr = 0;
-    elf_file_get_loadable_bounds(&kernel->elf, &minVaddr, &maxVaddr);
+    elf64_get_loadable_bounds(&kernel->elf, &minVaddr, &maxVaddr);
     uint64_t kernelPageAmount = BYTES_TO_PAGES(maxVaddr - minVaddr);
 
     Print(L"allocating %llu pages... ", kernelPageAmount);
@@ -84,19 +84,8 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle)
         goto cleanup;
     }
 
-    SetMem(physStart, kernelPageAmount * PAGE_SIZE, 0);
-
-    for (uint32_t i = 0; i < kernel->elf.header->e_phnum; i++)
-    {
-        Elf64_Phdr* phdr = ELF_FILE_GET_PHDR(&kernel->elf, i);
-        if (phdr->p_type == PT_LOAD)
-        {
-            void* src = ELF_FILE_AT_OFFSET(&kernel->elf, phdr->p_offset);
-            void* dest = (void*)(physStart + (phdr->p_vaddr - minVaddr));
-            CopyMem(dest, src, phdr->p_filesz);
-        }
-    }
-
+    Print(L"loading segments to 0x%p... ", physStart);
+    elf64_load_segments(&kernel->elf, (Elf64_Addr)physStart, minVaddr);
     kernel->physAddr = physStart;
 
     Print(L"done!\n");
