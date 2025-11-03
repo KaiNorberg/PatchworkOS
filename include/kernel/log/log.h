@@ -1,5 +1,7 @@
 #pragma once
 
+#include <kernel/defs.h>
+
 #include <boot/boot_info.h>
 
 #include <stdarg.h>

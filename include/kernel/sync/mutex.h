@@ -30,7 +30,8 @@ typedef struct thread thread_t;
  * @param name Name of the mutex variable.
  * @return A mutex initializer.
  */
-#define MUTEX_CREATE(name) {.waitQueue = WAIT_QUEUE_CREATE(name.waitQueue), .owner = NULL, .depth = 0, .lock = LOCK_CREATE}
+#define MUTEX_CREATE(name) \
+    {.waitQueue = WAIT_QUEUE_CREATE(name.waitQueue), .owner = NULL, .depth = 0, .lock = LOCK_CREATE}
 
 /**
  * @brief Mutex structure.
@@ -43,7 +44,6 @@ typedef struct
     uint32_t depth;
     lock_t lock;
 } mutex_t;
-
 
 /**
  * @brief Initializes a mutex.

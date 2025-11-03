@@ -4,8 +4,8 @@
 
 /**
  * @brief Extract Portion of Buffer or String
- * @defgroup kernel_acpi_aml_runtime_mid Mid
- * @ingroup kernel_acpi_aml_runtime
+ * @defgroup kernel_acpi_aml_mid Mid
+ * @ingroup kernel_acpi_aml
  *
  * @see Section 19.6.86 of the ACPI specification for more details.
  *

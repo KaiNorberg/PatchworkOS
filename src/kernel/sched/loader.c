@@ -48,7 +48,7 @@ static void* loader_load_program(thread_t* thread)
     }
 
     Elf64_File elf;
-    if (elf_file_validate(&elf, fileData, fileSize) != 0)
+    if (elf64_validate(&elf, fileData, fileSize) != 0)
     {
         free(fileData);
         return NULL;
@@ -56,7 +56,7 @@ static void* loader_load_program(thread_t* thread)
 
     Elf64_Addr minAddr = UINT64_MAX;
     Elf64_Addr maxAddr = 0;
-    elf_file_get_loadable_bounds(&elf, &minAddr, &maxAddr);
+    elf64_get_loadable_bounds(&elf, &minAddr, &maxAddr);
     uint64_t loadSize = maxAddr - minAddr;
 
     if (vmm_alloc(&process->space, (void*)minAddr, loadSize, PML_USER | PML_WRITE | PML_PRESENT, VMM_ALLOC_NONE) ==
@@ -66,15 +66,17 @@ static void* loader_load_program(thread_t* thread)
         return NULL;
     }
 
-    for (uint64_t i = 0; i < elf.header->e_phnum; i++)
+    elf64_load_segments(&elf, 0, 0);
+
+    /*for (uint64_t i = 0; i < elf.header->e_phnum; i++)
     {
-        Elf64_Phdr* phdr = ELF_FILE_GET_PHDR(&elf, i);
+        Elf64_Phdr* phdr = ELF64_GET_PHDR(&elf, i);
         if (phdr->p_type != PT_LOAD)
         {
             continue;
         }
 
-        void* segmentData = ELF_FILE_AT_OFFSET(&elf, phdr->p_offset);
+        void* segmentData = ELF64_AT_OFFSET(&elf, phdr->p_offset);
         void* destAddr = (void*)phdr->p_vaddr;
         memcpy(destAddr, segmentData, phdr->p_filesz);
         if (phdr->p_memsz > phdr->p_filesz)
@@ -86,7 +88,7 @@ static void* loader_load_program(thread_t* thread)
         {
             vmm_protect(space, destAddr, phdr->p_memsz, PML_USER | PML_PRESENT);
         }
-    }
+    }*/
 
     void* entryPoint = (void*)elf.header->e_entry;
     free(fileData);

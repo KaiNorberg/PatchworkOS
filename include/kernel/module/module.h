@@ -2,6 +2,7 @@
 
 #include <kernel/acpi/devices.h>
 #include <kernel/fs/file.h>
+#include <kernel/fs/path.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 
@@ -25,21 +26,30 @@ typedef struct module module_t;
  *
  * ## Writing Modules
  *
- * Modules are in effect just ELF binaries which export some special sections and symbols that the kernel module loader can use to identify and load the module.
+ * Modules are in effect just ELF binaries which export some special sections and symbols that the kernel module loader
+ * can use to identify and load the module.
  *
  * The first special section is `.module_info` which contains metadata about the module. Check the `MODULE_INFO` macro
  * for more details.
  *
- * Finally, there is the special symbol `_module_procedure()` which can be thought of as the "main" function of the module
- * but it also does way more than just that, whenever any event occurs that the module should be aware of this procedure will be called to notify the module of the event.
+ * Finally, there is the special symbol `module_procedure()` which can be thought of as the "main" function of the
+ * module but it also does way more than just that, whenever any event occurs that the module should be aware of this
+ * procedure will be called to notify the module of the event.
  *
  * @{
  */
 
+#define MODULE_MAX_NAME 64
+#define MODULE_MAX_AUTHOR 64
+#define MODULE_MAX_DESCRIPTION 256
+#define MODULE_MAX_VERSION 32
+#define MODULE_MAX_LICENCE 64
+#define MODULE_MAX_INFO \
+    (MODULE_MAX_NAME + MODULE_MAX_AUTHOR + MODULE_MAX_DESCRIPTION + MODULE_MAX_VERSION + MODULE_MAX_LICENCE + 6)
+
 /**
  * @brief Module event types.
  * @typedef module_event_type_t
- *
  */
 typedef enum module_event_type
 {
@@ -58,9 +68,14 @@ typedef struct module_event
 {
     module_event_type_t type;
     union {
-
     };
 } module_event_t;
+
+/**
+ * @brief Module procedure and entry point.
+ * @typedef module_procedure_t
+ */
+typedef uint64_t (*module_procedure_t)(module_event_t* event);
 
 /**
  * @brief Module structure.
@@ -68,9 +83,16 @@ typedef struct module_event
  */
 typedef struct module
 {
-    void* baseAddr; ///< The address where the modules image is loaded in memory.
-    uint64_t size;  ///< The size of the modules loaded image in memory.
-    uint64_t (*procedure)(module_event_t* event);
+    ref_t ref;
+    list_entry_t entry;
+    void* baseAddr;                           ///< The address where the modules image is loaded in memory.
+    uint64_t size;                            ///< The size of the modules loaded image in memory.
+    module_procedure_t procedure;             ///< The module's procedure function and entry point.
+    char name[MODULE_MAX_NAME];               ///< The name of the module, from the `.module_info` section.
+    char author[MODULE_MAX_AUTHOR];           ///< The author of the module, from the `.module_info` section.
+    char description[MODULE_MAX_DESCRIPTION]; ///< A short description of the module, from the `.module_info` section.
+    char version[MODULE_MAX_VERSION];         ///< The version of the module, from the `.module_info` section.
+    char licence[MODULE_MAX_LICENCE];         ///< The licence of the module, from the `.module_info` section.
 } module_t;
 
 /**

@@ -72,21 +72,22 @@ else
 		bin/libstd/crtn.o
 endif
 
+# Compiler flags for kernel modules
 CFLAGS_MODULE := \
 	$(CFLAGS_DISABLE_SIMD) \
-	-fno-pic \
-	-fno-stack-check \
-	-mcmodel=large \
+	-fno-strict-aliasing \
+	-fno-common \
+	-fno-pie \
 	-mno-red-zone \
-	-D_MODULE_ \
-	-D__STDC_WANT_LIB_EXT1__=1 \
 	-fPIC \
-    -shared
+	-D_KERNEL_MODULE_\
+	-D__STDC_WANT_LIB_EXT1__=1
 
+# Linker flags for kernel modules
 LDFLAGS_MODULE := \
     $(LDFLAGS) \
     -shared \
-    -Bsymbolic \
+    -fPIC \
     -Tinclude/modules/linker.lds
 
 define find_sources

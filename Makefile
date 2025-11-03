@@ -100,17 +100,6 @@ compile_commands: clean
 format:
 	find src/ include/ meta/doxy tools/ -iname '*.h' -o -iname '*.c' -o -iname '*.dox' | xargs clang-format -style=file -i
 
-doxygen:
-	if [ ! -d "meta/docs/doxygen-awesome-css" ]; then \
-	    git clone https://github.com/jothepro/doxygen-awesome-css.git meta/docs/doxygen-awesome-css; \
-		cd meta/docs/doxygen-awesome-css; \
-		git checkout v2.3.4; \
-		cd ../../../..; \
-	fi
-	doxygen meta/doxy/Doxyfile
-	mkdir -p meta/docs/html/meta/screenshots
-	cp meta/screenshots/* meta/docs/html/meta/screenshots/
-
 clean:
 	rm -rf build
 	rm -rf bin
@@ -127,6 +116,19 @@ nuke: clean
 	rm -rf lib/acpica
 	rm -rf lib/acpica_tests
 	rm -rf meta/docs
+
+doxygen:
+	if [ ! -d "meta/docs/doxygen-awesome-css" ]; then \
+	    git clone https://github.com/jothepro/doxygen-awesome-css.git meta/docs/doxygen-awesome-css; \
+		cd meta/docs/doxygen-awesome-css; \
+		git checkout v2.3.4; \
+		cd ../../../..; \
+	fi
+	@GIT_VERSION_STRING=$$(git describe --tags --always --dirty --long 2>/dev/null || echo "unknown"); \
+    sed -i "s/^PROJECT_NUMBER.*/PROJECT_NUMBER           = \"$$GIT_VERSION_STRING\"/" meta/doxy/Doxyfile
+	doxygen meta/doxy/Doxyfile
+	mkdir -p meta/docs/html/meta/screenshots
+	cp meta/screenshots/* meta/docs/html/meta/screenshots/
 
 # We use ACPICA's runtime test suite to validate our ACPI implementation.
 #

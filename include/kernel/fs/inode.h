@@ -73,7 +73,6 @@ typedef struct inode
 
 /**
  * Inode operations structure.
- * @ingroup kernel_vfs
  *
  * Note that the inodes mutex will be acquired by the vfs.
  */

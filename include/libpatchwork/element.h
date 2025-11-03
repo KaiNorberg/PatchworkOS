@@ -343,8 +343,8 @@ void element_redraw(element_t* elem, bool shouldPropagate);
 /**
  * @brief Force an action on an element.
  *
- * Will push a `EVENT_LIB_FORCE_ACTION` event to the display event queue for the element, meaning the action event is not
- * processed immediately.
+ * Will push a `EVENT_LIB_FORCE_ACTION` event to the display event queue for the element, meaning the action event is
+ * not processed immediately.
  *
  * @param elem The element.
  * @param action The action to force.

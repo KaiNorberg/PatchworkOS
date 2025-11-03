@@ -749,7 +749,8 @@ void terminal_loop(window_t* win)
             uint64_t readCount = read(terminal->stdout[PIPE_READ], EVENT_USERData.buffer, TERMINAL_MAX_INPUT);
             EVENT_USERData.length = MIN(readCount, TERMINAL_MAX_INPUT);
 
-            display_push(disp, window_get_id(win), EVENT_USER_TERMINAL_DATA, &EVENT_USERData, sizeof(EVENT_USER_terminal_data_t));
+            display_push(disp, window_get_id(win), EVENT_USER_TERMINAL_DATA, &EVENT_USERData,
+                sizeof(EVENT_USER_terminal_data_t));
         }
 
         event_t event = {0};
