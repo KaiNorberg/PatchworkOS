@@ -254,13 +254,13 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
     {
         taskbar_t* taskbar = element_get_private(elem);
 
-        if (event->laction.source == START_ID)
+        if (event->action.source == START_ID)
         {
-            if (event->laction.type == ACTION_PRESS)
+            if (event->action.type == ACTION_PRESS)
             {
                 start_menu_open(taskbar->startMenu);
             }
-            else if (event->laction.type == ACTION_RELEASE)
+            else if (event->action.type == ACTION_RELEASE)
             {
                 start_menu_close(taskbar->startMenu);
             }
@@ -269,13 +269,13 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
 
         display_t* disp = window_get_display(win);
 
-        if (event->laction.type == ACTION_PRESS)
+        if (event->action.type == ACTION_PRESS)
         {
-            display_set_is_visible(disp, event->laction.source, false);
+            display_set_is_visible(disp, event->action.source, false);
         }
-        else if (event->laction.type == ACTION_RELEASE)
+        else if (event->action.type == ACTION_RELEASE)
         {
-            display_set_is_visible(disp, event->laction.source, true);
+            display_set_is_visible(disp, event->action.source, true);
         }
     }
     break;

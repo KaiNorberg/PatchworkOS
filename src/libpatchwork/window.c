@@ -280,7 +280,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         break;
 
     case EVENT_LIB_ACTION:
-        window_deco_action(win, &event->laction);
+        window_deco_action(win, &event->action);
         break;
 
     case EVENT_REPORT:

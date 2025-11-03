@@ -122,7 +122,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     break;
     case EVENT_LIB_ACTION:
     {
-        if (event->laction.type != ACTION_RELEASE)
+        if (event->action.type != ACTION_RELEASE)
         {
             break;
         }
@@ -135,11 +135,11 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             return ERR;
         }
 
-        if (event->laction.source <= 9)
+        if (event->action.source <= 9)
         {
-            calc->input = calc->input * 10 + event->laction.source;
+            calc->input = calc->input * 10 + event->action.source;
         }
-        else if (event->laction.source == '<')
+        else if (event->action.source == '<')
         {
             calc->input /= 10;
         }
@@ -173,11 +173,11 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             }
             calc->input = 0;
 
-            calc->operation = event->laction.source;
+            calc->operation = event->action.source;
         }
 
         char buffer[32];
-        ulltoa(event->laction.source == '=' ? calc->accumulator : calc->input, buffer, 10);
+        ulltoa(event->action.source == '=' ? calc->accumulator : calc->input, buffer, 10);
         element_set_text(label, buffer);
         element_redraw(label, false);
     }

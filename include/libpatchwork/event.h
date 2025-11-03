@@ -285,7 +285,7 @@ typedef struct event
         event_global_kbd_t globalKbd;
         event_global_mouse_t globalMouse;
         event_lib_redraw_t redraw;
-        event_lib_action_t laction;
+        event_lib_action_t action;
         event_lib_force_action_t forceAction;
         uint8_t raw[EVENT_MAX_DATA];
     };
