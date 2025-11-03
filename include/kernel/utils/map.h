@@ -27,6 +27,11 @@
 #define MAP_MAX_LOAD_PERCENTAGE 75
 
 /**
+ * @brief The minimum load percentage of a map before it resizes down.
+ */
+#define MAP_MIN_LOAD_PERCENTAGE 25
+
+/**
  * @brief The value used to indicate a tombstone (removed entry).
  */
 #define MAP_TOMBSTONE ((map_entry_t*)1)

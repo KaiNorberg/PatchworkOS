@@ -144,9 +144,9 @@ static void init_finalize(const boot_info_t* bootInfo)
     init_free_loader_data(&bootInfo->memory.map);
     vmm_unmap_bootloader_lower_half(bootThread);
 
-    if (module_load("/kernel/modules/helloworld") == ERR)
+    if (module_load("/kernel/modules", "helloworld") == ERR)
     {
-        LOG_WARN("Failed to load hello world module (%s)\n", strerror(errno));
+        LOG_WARN("failed to load hello world module (%s)\n", strerror(errno));
     }
 
     LOG_INFO("kernel initalized using %llu kb of memory\n", pmm_used_amount() * PAGE_SIZE / 1024);

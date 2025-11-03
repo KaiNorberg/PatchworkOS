@@ -539,7 +539,7 @@ const char* elf64_get_dynamic_symbol_name(const Elf64_File* elf, const Elf64_Sym
 }
 
 uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset,
-    Elf64_Addr (*resolve_symbol)(const char* name))
+    Elf64_Addr (*resolve_symbol)(const char* name, void* private), void* private)
 {
     for (uint64_t i = 0; i < elf->header->e_shnum; i++)
     {
@@ -567,7 +567,7 @@ uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset
 
             if (sym->st_shndx == SHN_UNDEF)
             {
-                Elf64_Addr symAddr = resolve_symbol(symName);
+                Elf64_Addr symAddr = resolve_symbol(symName, private);
                 if (symAddr == 0)
                 {
                     return ERR;
