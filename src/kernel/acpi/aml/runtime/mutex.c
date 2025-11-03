@@ -44,7 +44,7 @@ static inline uint64_t aml_mutex_stack_push(aml_mutex_id_t id, aml_sync_level_t 
     entry->id = id;
     entry->syncLevel = syncLevel;
 
-    list_push(&mutexStack, &entry->entry);
+    list_push_back(&mutexStack, &entry->entry);
     currentSyncLevel = syncLevel;
     return 0;
 }

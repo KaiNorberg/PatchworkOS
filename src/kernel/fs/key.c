@@ -98,7 +98,7 @@ uint64_t key_share(key_t* key, file_t* file, clock_t timeout)
     *key = entry->key;
     if (list_length(&keyList) == 0)
     {
-        list_push(&keyList, &entry->entry);
+        list_push_back(&keyList, &entry->entry);
         return 0;
     }
 
@@ -112,7 +112,7 @@ uint64_t key_share(key_t* key, file_t* file, clock_t timeout)
         }
     }
 
-    list_push(&keyList, &entry->entry);
+    list_push_back(&keyList, &entry->entry);
     return 0;
 }
 

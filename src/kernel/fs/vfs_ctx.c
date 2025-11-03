@@ -129,8 +129,15 @@ SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
         return ERR;
     }
 
+    path_t cwd = PATH_EMPTY;
+    if (vfs_ctx_get_cwd(&process->vfsCtx, &cwd) == ERR)
+    {
+        return ERR;
+    }
+    PATH_DEFER(&cwd);
+
     path_t path = PATH_EMPTY;
-    if (vfs_walk(&path, &pathname, WALK_NONE, process) == ERR)
+    if (path_walk(&path, &pathname, &cwd, WALK_NONE, &process->namespace) == ERR)
     {
         return ERR;
     }

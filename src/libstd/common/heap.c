@@ -159,7 +159,7 @@ _heap_header_t* _heap_block_new(uint64_t minSize)
 
     if (last == NULL)
     {
-        list_push(&_heapList, &newBlock->listEntry);
+        list_push_back(&_heapList, &newBlock->listEntry);
     }
     else
     {
@@ -216,7 +216,7 @@ void _heap_add_to_free_list(_heap_header_t* block)
     {
         return;
     }
-    list_push(&freeLists[binIndex], &block->freeEntry);
+    list_push_back(&freeLists[binIndex], &block->freeEntry);
     bitmap_set(&freeBitmap, binIndex);
 }
 
@@ -284,7 +284,7 @@ _heap_header_t* _heap_alloc(uint64_t size)
     uint64_t freeBinIndex = bitmap_find_first_set(&freeBitmap, index);
     if (freeBinIndex != freeBitmap.length)
     {
-        suitableBlock = CONTAINER_OF(list_pop(&freeLists[freeBinIndex]), _heap_header_t, freeEntry);
+        suitableBlock = CONTAINER_OF(list_pop_first(&freeLists[freeBinIndex]), _heap_header_t, freeEntry);
         if (list_is_empty(&freeLists[freeBinIndex]))
         {
             bitmap_clear(&freeBitmap, freeBinIndex);

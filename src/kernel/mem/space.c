@@ -201,7 +201,7 @@ void space_load(space_t* space)
     lock_release(&oldSpace->lock);
 
     lock_acquire(&space->lock);
-    list_push(&space->cpus, &self->vmm.entry);
+    list_push_back(&space->cpus, &self->vmm.entry);
     lock_release(&space->lock);
     self->vmm.currentSpace = space;
 

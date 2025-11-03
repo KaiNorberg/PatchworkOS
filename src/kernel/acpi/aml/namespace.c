@@ -433,8 +433,8 @@ uint64_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, a
     {
         return ERR;
     }
-    list_push(&overlay->objects, &object->listEntry);
-    list_push(&parent->children, &object->siblingsEntry);
+    list_push_back(&overlay->objects, &object->listEntry);
+    list_push_back(&parent->children, &object->siblingsEntry);
 
     object->flags |= AML_OBJECT_NAMED;
     object->overlay = overlay;
@@ -527,7 +527,7 @@ uint64_t aml_namespace_commit(aml_overlay_t* overlay)
         }
 
         list_remove(&overlay->objects, &object->listEntry);
-        list_push(&overlay->parent->objects, &object->listEntry);
+        list_push_back(&overlay->parent->objects, &object->listEntry);
 
         object->overlay = overlay->parent;
     }
@@ -564,7 +564,7 @@ void aml_overlay_deinit(aml_overlay_t* overlay)
 
     while (!list_is_empty(&overlay->objects))
     {
-        aml_object_t* obj = CONTAINER_OF(list_pop(&overlay->objects), aml_object_t, listEntry);
+        aml_object_t* obj = CONTAINER_OF(list_pop_first(&overlay->objects), aml_object_t, listEntry);
         aml_namespace_remove(obj);
     }
 

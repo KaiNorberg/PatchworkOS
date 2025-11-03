@@ -342,7 +342,7 @@ static inline void list_remove(list_t* list, list_entry_t* entry)
  * @param list A pointer to the `list_t` to push the entry to.
  * @param entry A pointer to the `list_entry_t` to push.
  */
-static inline void list_push(list_t* list, list_entry_t* entry)
+static inline void list_push_back(list_t* list, list_entry_t* entry)
 {
     assert(list != NULL);
     assert(entry != NULL);
@@ -352,13 +352,29 @@ static inline void list_push(list_t* list, list_entry_t* entry)
 }
 
 /**
+ * @brief Pushes an entry to the front of the list.
+ * @ingroup libstd_sys_list
+ *
+ * @param list A pointer to the `list_t` to push the entry to.
+ * @param entry A pointer to the `list_entry_t` to push.
+ */
+static inline void list_push_front(list_t* list, list_entry_t* entry)
+{
+    assert(list != NULL);
+    assert(entry != NULL);
+    assert(entry->next == entry && entry->prev == entry);
+
+    list_add(list, &list->head, list->head.next, entry);
+}
+
+/**
  * @brief Pops the first entry from the list.
  * @ingroup libstd_sys_list
  *
  * @param list A pointer to the `list_t` to pop the entry from.
  * @return A pointer to the removed `list_entry_t`, or `NULL` if the list is empty.
  */
-static inline list_entry_t* list_pop(list_t* list)
+static inline list_entry_t* list_pop_first(list_t* list)
 {
     assert(list != NULL);
 
@@ -368,6 +384,27 @@ static inline list_entry_t* list_pop(list_t* list)
     }
 
     list_entry_t* entry = list->head.next;
+    list_remove(list, entry);
+    return entry;
+}
+
+/**
+ * @brief Pops the last entry from the list.
+ * @ingroup libstd_sys_list
+ *
+ * @param list A pointer to the `list_t` to pop the entry from.
+ * @return A pointer to the removed `list_entry_t`, or `NULL` if the list is empty.
+ */
+static inline list_entry_t* list_pop_last(list_t* list)
+{
+    assert(list != NULL);
+
+    if (list_is_empty(list))
+    {
+        return NULL;
+    }
+
+    list_entry_t* entry = list->head.prev;
     list_remove(list, entry);
     return entry;
 }

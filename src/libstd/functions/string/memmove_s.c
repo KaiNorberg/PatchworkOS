@@ -8,38 +8,95 @@
 
 errno_t memmove_s(void* s1, rsize_t s1max, const void* s2, rsize_t n)
 {
-    char* dest = (char*)s1;
-    const char* src = (const char*)s2;
-
+    uint8_t* d = (uint8_t*)s1;
+    const uint8_t* s = (const uint8_t*)s2;
+    
     if (s1 == NULL || s2 == NULL || s1max > RSIZE_MAX || n > RSIZE_MAX || n > s1max)
     {
         if (s1 != NULL && s1max <= RSIZE_MAX)
         {
             memset(s1, 0, s1max);
         }
-
+        
         _constraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
         return EINVAL;
     }
-
-    while (n)
+    
+    if (d > s && d < (s + n))
     {
-        if (dest == s2 || src == s1)
+        d += n;
+        s += n;
+        
+        while ((((uintptr_t)d & 7) != ((uintptr_t)s & 7)) && n)
         {
-            src += n;
-            dest += n;
-
-            while (n--)
-            {
-                *--dest = *--src;
-            }
-
-            return 0;
+            *(--d) = *(--s);
+            n--;
         }
-
-        *dest++ = *src++;
-        --n;
+        
+        while (n >= 64)
+        {
+            d -= 64;
+            s -= 64;
+            *(uint64_t*)(d + 56) = *(const uint64_t*)(s + 56);
+            *(uint64_t*)(d + 48) = *(const uint64_t*)(s + 48);
+            *(uint64_t*)(d + 40) = *(const uint64_t*)(s + 40);
+            *(uint64_t*)(d + 32) = *(const uint64_t*)(s + 32);
+            *(uint64_t*)(d + 24) = *(const uint64_t*)(s + 24);
+            *(uint64_t*)(d + 16) = *(const uint64_t*)(s + 16);
+            *(uint64_t*)(d + 8) = *(const uint64_t*)(s + 8);
+            *(uint64_t*)(d + 0) = *(const uint64_t*)(s + 0);
+            n -= 64;
+        }
+        
+        while (n >= 8)
+        {
+            d -= 8;
+            s -= 8;
+            *(uint64_t*)d = *(const uint64_t*)s;
+            n -= 8;
+        }
+        
+        while (n--)
+        {
+            *(--d) = *(--s);
+        }
     }
-
+    else
+    {        
+        while (((uintptr_t)d & 7) && n)
+        {
+            *d++ = *s++;
+            n--;
+        }
+        
+        while (n >= 64)
+        {
+            *(uint64_t*)(d + 0) = *(const uint64_t*)(s + 0);
+            *(uint64_t*)(d + 8) = *(const uint64_t*)(s + 8);
+            *(uint64_t*)(d + 16) = *(const uint64_t*)(s + 16);
+            *(uint64_t*)(d + 24) = *(const uint64_t*)(s + 24);
+            *(uint64_t*)(d + 32) = *(const uint64_t*)(s + 32);
+            *(uint64_t*)(d + 40) = *(const uint64_t*)(s + 40);
+            *(uint64_t*)(d + 48) = *(const uint64_t*)(s + 48);
+            *(uint64_t*)(d + 56) = *(const uint64_t*)(s + 56);
+            d += 64;
+            s += 64;
+            n -= 64;
+        }
+        
+        while (n >= 8)
+        {
+            *(uint64_t*)d = *(const uint64_t*)s;
+            d += 8;
+            s += 8;
+            n -= 8;
+        }
+        
+        while (n--)
+        {
+            *d++ = *s++;
+        }
+    }
+    
     return 0;
 }

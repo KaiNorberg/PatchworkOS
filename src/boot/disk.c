@@ -27,14 +27,14 @@ static void boot_dir_free(boot_dir_t* dir)
 
     while (!list_is_empty(&dir->children))
     {
-        list_entry_t* entry = list_pop(&dir->children);
+        list_entry_t* entry = list_pop_first(&dir->children);
         boot_dir_t* child = CONTAINER_OF(entry, boot_dir_t, entry);
         boot_dir_free(child);
     }
 
     while (!list_is_empty(&dir->files))
     {
-        list_entry_t* entry = list_pop(&dir->files);
+        list_entry_t* entry = list_pop_first(&dir->files);
         boot_file_t* file = CONTAINER_OF(entry, boot_file_t, entry);
         boot_file_free(file);
     }
@@ -179,7 +179,7 @@ static boot_dir_t* disk_load_dir(EFI_FILE* volume, const CHAR16* name)
                     return NULL;
                 }
 
-                list_push(&dir->children, &child->entry);
+                list_push_back(&dir->children, &child->entry);
             }
         }
         else
@@ -191,7 +191,7 @@ static boot_dir_t* disk_load_dir(EFI_FILE* volume, const CHAR16* name)
                 boot_dir_free(dir);
                 return NULL;
             }
-            list_push(&dir->files, &file->entry);
+            list_push_back(&dir->files, &file->entry);
         }
 
         FreePool(fileInfo);

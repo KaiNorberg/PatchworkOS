@@ -41,7 +41,8 @@
  * - An addr-sorted array of symbol addresses (`symbol_addr_t`), used to resolve addresses to names using binary search.
  *
  * These structures form a kind of circular graph, where from a group we can retrieve the names, from the names we can
- * retrieve the addresses and from the addresses we can retrieve the group again. Its also possible to go from a address to its name using the `CONTAINER_OF` macro.
+ * retrieve the addresses and from the addresses we can retrieve the group again. Its also possible to go from a address
+ * to its name using the `CONTAINER_OF` macro.
  *
  * Note that we cant use a map for the addresses as we need to be able to find non-exact matches when resolving an
  * address. If a address inside a function is provided we still want to be able to resolve it to the function name, this
@@ -133,18 +134,10 @@ typedef struct
 symbol_group_id_t symbol_generate_group_id(void);
 
 /**
- * @brief Load all kernel symbols from the bootloader provided kernel ELF file.
- *
- * Will panic on failure.
- *
- * @param kernel The bootloader provided kernel information.
- */
-void symbol_load_kernel_symbols(const boot_kernel_t* kernel);
-
-/**
  * @brief Add a symbol to the kernel symbol table.
  *
- * Symbols of binding `STB_GLOBAL` must have unique names but can have duplicated addresses, symbols of other bindings can be duplicated in name, address or both.
+ * Symbols of binding `STB_GLOBAL` must have unique names but can have duplicated addresses, symbols of other bindings
+ * can be duplicated in name, address or both.
  *
  * If the symbol is not of type `STT_OBJECT` or `STT_FUNC` the function is a no-op and returns success.
  *

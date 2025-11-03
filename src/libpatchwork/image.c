@@ -19,7 +19,7 @@ image_t* image_new_blank(display_t* disp, uint64_t width, uint64_t height)
     image->draw.invalidRect = (rect_t){0};
 
     mtx_lock(&disp->mutex);
-    list_push(&disp->images, &image->entry);
+    list_push_back(&disp->images, &image->entry);
     mtx_unlock(&disp->mutex);
     return image;
 }

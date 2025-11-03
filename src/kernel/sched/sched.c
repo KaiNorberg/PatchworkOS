@@ -38,7 +38,7 @@ static inline void sched_queues_push(sched_queues_t* queues, thread_t* thread)
 
     queues->length++;
     queues->bitmap |= (1ULL << thread->sched.actualPriority);
-    list_push(&queues->lists[thread->sched.actualPriority], &thread->entry);
+    list_push_back(&queues->lists[thread->sched.actualPriority], &thread->entry);
 }
 
 static inline thread_t* sched_queues_pop(sched_queues_t* queues, priority_t minPriority)
@@ -56,7 +56,7 @@ static inline thread_t* sched_queues_pop(sched_queues_t* queues, priority_t minP
     }
 
     queues->length--;
-    thread_t* thread = CONTAINER_OF(list_pop(&queues->lists[highestPriority]), thread_t, entry);
+    thread_t* thread = CONTAINER_OF(list_pop_first(&queues->lists[highestPriority]), thread_t, entry);
 
     if (list_is_empty(&queues->lists[highestPriority]))
     {

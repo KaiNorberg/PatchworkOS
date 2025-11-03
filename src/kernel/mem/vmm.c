@@ -34,7 +34,7 @@ static void vmm_cpu_ctx_init_common(vmm_cpu_ctx_t* ctx)
     assert(cr3_read() == PML_ENSURE_LOWER_HALF(kernelSpace.pageTable.pml4));
     ctx->currentSpace = &kernelSpace;
     lock_acquire(&kernelSpace.lock);
-    list_push(&kernelSpace.cpus, &ctx->entry);
+    list_push_back(&kernelSpace.cpus, &ctx->entry);
     lock_release(&kernelSpace.lock);
 }
 

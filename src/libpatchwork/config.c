@@ -152,7 +152,7 @@ config_t* config_open(const char* prefix, const char* name)
             list_entry_init(&section->entry);
             list_init(&section->pairs);
 
-            list_push(&config->sections, &section->entry);
+            list_push_back(&config->sections, &section->entry);
             currentSection = section;
         }
         else
@@ -186,7 +186,7 @@ config_t* config_open(const char* prefix, const char* name)
             }
             list_entry_init(&pair->entry);
 
-            list_push(&currentSection->pairs, &pair->entry);
+            list_push_back(&currentSection->pairs, &pair->entry);
         }
     }
 
@@ -208,11 +208,11 @@ void config_close(config_t* config)
 
     while (!list_is_empty(&config->sections))
     {
-        config_section_t* sec = CONTAINER_OF(list_pop(&config->sections), config_section_t, entry);
+        config_section_t* sec = CONTAINER_OF(list_pop_first(&config->sections), config_section_t, entry);
 
         while (!list_is_empty(&sec->pairs))
         {
-            config_pair_t* pair = CONTAINER_OF(list_pop(&sec->pairs), config_pair_t, entry);
+            config_pair_t* pair = CONTAINER_OF(list_pop_first(&sec->pairs), config_pair_t, entry);
             free(pair->key);
             free(pair->value);
             free(pair);

@@ -113,7 +113,7 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
     if (thread->wait.deadline == CLOCKS_NEVER || list_is_empty(&self->wait.blockedThreads) ||
         lastThread->wait.deadline <= thread->wait.deadline)
     {
-        list_push(&self->wait.blockedThreads, &thread->entry);
+        list_push_back(&self->wait.blockedThreads, &thread->entry);
     }
     else
     {
@@ -249,7 +249,8 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
         {
             while (1)
             {
-                wait_entry_t* other = CONTAINER_OF_SAFE(list_pop(&thread->wait.entries), wait_entry_t, threadEntry);
+                wait_entry_t* other =
+                    CONTAINER_OF_SAFE(list_pop_first(&thread->wait.entries), wait_entry_t, threadEntry);
                 if (other == NULL)
                 {
                     break;
@@ -270,8 +271,8 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
         entry->waitQueue = waitQueues[i];
         entry->thread = thread;
 
-        list_push(&thread->wait.entries, &entry->threadEntry);
-        list_push(&entry->waitQueue->entries, &entry->queueEntry);
+        list_push_back(&thread->wait.entries, &entry->threadEntry);
+        list_push_back(&entry->waitQueue->entries, &entry->queueEntry);
     }
 
     thread->wait.err = EOK;

@@ -41,7 +41,7 @@ static uint64_t ramfs_dentry_init(dentry_t* dentry)
     dentry->private = dentryData;
 
     lock_acquire(&superData->lock);
-    list_push(&superData->dentrys, &dentryData->entry);
+    list_push_back(&superData->dentrys, &dentryData->entry);
     lock_release(&superData->lock);
     return 0;
 }

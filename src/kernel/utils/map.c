@@ -273,8 +273,7 @@ void map_remove(map_t* map, const map_key_t* key)
     map->length--;
     map->tombstones++;
 
-    if (map->capacity > MAP_MIN_CAPACITY &&
-        map->length * 100 < MAP_MIN_LOAD_PERCENTAGE * map->capacity)
+    if (map->capacity > MAP_MIN_CAPACITY && map->length * 100 < MAP_MIN_LOAD_PERCENTAGE * map->capacity)
     {
         uint64_t newCapacity = map->capacity / 2;
         if (newCapacity < MAP_MIN_CAPACITY)

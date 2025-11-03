@@ -372,7 +372,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     }
 
     mtx_lock(&disp->mutex);
-    list_push(&disp->windows, &win->entry);
+    list_push_back(&disp->windows, &win->entry);
     mtx_unlock(&disp->mutex);
 
     rect_t rootRect = RECT_INIT_DIM(0, 0, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));

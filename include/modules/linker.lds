@@ -1,5 +1,5 @@
 OUTPUT_FORMAT(elf64-x86-64)
-ENTRY(module_procedure)
+ENTRY(_module_procedure)
 
 SECTIONS
 {

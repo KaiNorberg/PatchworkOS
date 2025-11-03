@@ -207,7 +207,7 @@ static uint64_t local_socket_connect(socket_t* sock, const char* address)
     }
 
     listen->pendingAmount++;
-    list_push(&listen->backlog, &conn->entry);
+    list_push_back(&listen->backlog, &conn->entry);
 
     wait_unblock(&listen->waitQueue, WAIT_ALL, EOK);
 
@@ -246,7 +246,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
 
         if (!list_is_empty(&listen->backlog))
         {
-            list_entry_t* entry = list_pop(&listen->backlog);
+            list_entry_t* entry = list_pop_first(&listen->backlog);
             local_conn_t* container = CONTAINER_OF(entry, local_conn_t, entry);
             conn = REF(container);
             listen->pendingAmount--;

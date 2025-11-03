@@ -103,7 +103,6 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 
 ## Notable Future Plans
 
-- `openat()` and `fchdir()` systems calls
 - File flags performance improvements and refactor
 - Read, write, execute, create permissions
 - Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions
@@ -269,10 +268,7 @@ fd_t dir = claim(key);
 bind(dir, "/any/path/it/wants");
 
 // Its also possible to just open paths in the shared directory without polluting the namespace using openat().
-fd_t somePath = openat(dir, "data"); // To be implemented
-
-// Finally, it could also use fchdir() to change its current working directory to the shared directory.
-fchdir(dir); // To be implemented
+fd_t somePath = openat(dir, "data");
 ```
 
 This system guarantees consent between processes, and can be used to implement more complex access control systems.

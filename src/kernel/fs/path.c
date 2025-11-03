@@ -373,8 +373,7 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
     return 0;
 }
 
-uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* start, walk_flags_t flags,
-    namespace_t* ns)
+uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* from, walk_flags_t flags, namespace_t* ns)
 {
     if (!PATHNAME_IS_VALID(pathname))
     {
@@ -400,12 +399,12 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
     }
     else
     {
-        if (start == NULL || start->dentry == NULL || start->mount == NULL)
+        if (from == NULL || from->dentry == NULL || from->mount == NULL)
         {
             errno = EINVAL;
             return ERR;
         }
-        path_copy(&current, start);
+        path_copy(&current, from);
     }
     PATH_DEFER(&current);
 
@@ -508,7 +507,7 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
     return 0;
 }
 
-uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName,
+uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* from, char* outLastName,
     walk_flags_t flags, namespace_t* ns)
 {
     if (!PATHNAME_IS_VALID(pathname) || outPath == NULL || outLastName == NULL)
@@ -545,7 +544,7 @@ uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const pat
     char* lastSlash = strrchr(string, '/');
     if (lastSlash == NULL)
     {
-        if (start == NULL)
+        if (from == NULL)
         {
             errno = EINVAL;
             return ERR;
@@ -554,7 +553,7 @@ uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const pat
         strncpy(outLastName, string, MAX_NAME - 1);
         outLastName[MAX_NAME - 1] = '\0';
 
-        path_copy(outPath, start);
+        path_copy(outPath, from);
         return 0;
     }
 
@@ -577,7 +576,31 @@ uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const pat
         return ERR;
     }
 
-    return path_walk(outPath, &parentPathname, start, flags, ns);
+    return path_walk(outPath, &parentPathname, from, flags, ns);
+}
+
+uint64_t path_walk_parent_and_child(path_t* outParent, path_t* outChild, const pathname_t* pathname, const path_t* from,
+    walk_flags_t flags, namespace_t* ns)
+{
+    if (outParent == NULL || outChild == NULL || !PATHNAME_IS_VALID(pathname) || from == NULL || ns == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    char lastName[MAX_NAME];
+    if (path_walk_parent(outParent, pathname, from, lastName, flags, ns) == ERR)
+    {
+        return ERR;
+    }
+
+    if (path_walk_single_step(outChild, outParent, lastName, flags, ns) == ERR)
+    {
+        path_put(outParent);
+        return ERR;
+    }
+
+    return 0;
 }
 
 uint64_t path_to_name(const path_t* path, pathname_t* pathname)

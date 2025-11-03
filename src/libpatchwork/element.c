@@ -63,7 +63,7 @@ element_t* element_new(element_t* parent, element_id_t id, const rect_t* rect, c
 
     elem->parent = parent;
     elem->win = parent->win;
-    list_push(&parent->children, &elem->entry);
+    list_push_back(&parent->children, &elem->entry);
 
     if (element_send_init(elem) == ERR)
     {

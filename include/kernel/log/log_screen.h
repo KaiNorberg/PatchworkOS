@@ -19,7 +19,7 @@
 /**
  * @brief Number of spaces to indent when a line wraps.
  */
-#define SCREEN_WRAP_INDENT 4
+#define SCREEN_WRAP_INDENT 29
 
 /**
  * @brief Maximum number of characters in a single line.

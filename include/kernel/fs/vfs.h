@@ -178,43 +178,6 @@ void vfs_remove_inode(inode_t* inode);
 void vfs_remove_dentry(dentry_t* dentry);
 
 /**
- * @brief Walk a pathname to a path, starting from the current process's working directory.
- *
- * @param outPath The output path.
- * @param pathname The pathname to walk.
- * @param flags Flags for the path walk.
- * @param process The process whose namespace and working directory to use.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flags, process_t* process);
-
-/**
- * @brief Walk a pathname to its parent path, starting from the current process's working directory.
- *
- * @param outPath The output parent path.
- * @param pathname The pathname to walk.
- * @param outLastName The output last component name.
- * @param flags Flags for the path walk.
- * @param process The process whose namespace and working directory to use.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outLastName, walk_flags_t flags,
-    process_t* process);
-
-/**
- * @brief Walk a pathname to path and its parent path, starting from the current process's working directory.
- *
- * @param outParent The output parent path.
- * @param outChild The output path.
- * @param pathname The pathname to walk.
- * @param flags Flags for the path walk.
- * @param process The process whose namespace and working directory to use.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t vfs_walk_parent_and_child(path_t* outParent, path_t* outChild, const pathname_t* pathname, walk_flags_t flags,
-    process_t* process);
-
-/**
  * @brief Check if a name is valid.
  *
  * A valid name is not "." or "..", only contains chars considered valid by `PATH_VALID_CHAR`, and is not longer than
@@ -245,6 +208,16 @@ file_t* vfs_open(const pathname_t* pathname, process_t* process);
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* process);
+
+/**
+ * @brief Open a file relative to another path.
+ *
+ * @param from The path to open the file relative to.
+ * @param pathname The pathname of the file to open.
+ * @param process The process opening the file.
+ * @return On success, the opened file. On failure, returns `NULL` and `errno` is set.
+ */
+file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* process);
 
 /**
  * @brief Read from a file.

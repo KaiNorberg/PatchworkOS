@@ -83,7 +83,7 @@ font_t* font_new(display_t* disp, const char* family, const char* weight, uint64
     font->disp = disp;
     list_entry_init(&font->entry);
     mtx_lock(&disp->mutex);
-    list_push(&disp->fonts, &font->entry);
+    list_push_back(&disp->fonts, &font->entry);
     mtx_unlock(&disp->mutex);
     return font;
 }

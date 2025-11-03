@@ -117,7 +117,7 @@ uint64_t dentry_make_positive(dentry_t* dentry, inode_t* inode)
     if (!DENTRY_IS_ROOT(dentry))
     {
         MUTEX_SCOPE(&dentry->parent->childrenMutex);
-        list_push(&dentry->parent->children, &dentry->siblingEntry);
+        list_push_back(&dentry->parent->children, &dentry->siblingEntry);
     }
 
     atomic_fetch_and(&dentry->flags, ~DENTRY_NEGATIVE);
