@@ -116,11 +116,11 @@ uint64_t socket_family_register(const socket_family_ops_t* ops, const char* name
             goto error;
         }
 
-        list_push(&family->factories, &factory->entry);
+        list_push_back(&family->factories, &factory->entry);
     }
 
     lock_acquire(&lock);
-    list_push(&families, &family->entry);
+    list_push_back(&families, &family->entry);
     lock_release(&lock);
 
     LOG_INFO("registered family %s\n", family->name);

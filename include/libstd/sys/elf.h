@@ -595,7 +595,7 @@ typedef enum
     STT_HIOS = 12,   ///< End of OS-specific symbol types
     STT_LOPROC = 13, ///< Start of processor-specific symbol types
     STT_HIPROC = 15  ///< End of processor-specific symbol types
-} Elf64_Symbol_Types;
+} Elf64_Symbol_Type;
 
 /**
  * @brief Create an `st_info` value from binding and type.
@@ -884,7 +884,7 @@ void elf64_load_segments(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offse
  * Check `elf64_load_segments()` for an explanation of the `base` and `offset` parameters.
  *
  * The `resolve_symbol` callback is used to resolve symbol names to addresses, this will be utilized for relocations of
- * undefined symbols. Should return `0` if the symbol could not be resolved.
+ * undefined symbols. Should return `NULL` if the symbol could not be resolved.
  *
  * TOOD: Implement more relocation types as needed.
  *
@@ -892,10 +892,11 @@ void elf64_load_segments(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offse
  * @param base The base address where the segments are loaded in memory
  * @param offset The offset in bytes that was subtracted from each segment's virtual address when loading
  * @param resolve_symbol Callback function to resolve symbol names to addresses
+ * @param private Private data pointer passed to the `resolve_symbol` callback
  * @return On success, `0`. On failure, `ERR`.
  */
 uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset,
-    Elf64_Addr (*resolve_symbol)(const char* name));
+    void* (*resolve_symbol)(const char* name, void* private), void* private);
 
 /**
  * @brief Get a string from the string table section at the given offset
@@ -933,6 +934,15 @@ const char* elf64_get_section_name(const Elf64_File* elf, const Elf64_Shdr* sect
  * @return Pointer to the symbol or `NULL` if not found
  */
 Elf64_Sym* elf64_get_symbol_by_index(const Elf64_File* elf, Elf64_Xword symbolIndex);
+
+/**
+ * @brief Get a symbol by its name from the symbol table
+ *
+ * @param elf The ELF file
+ * @param name The name of the symbol to find
+ * @return Pointer to the symbol or `NULL` if not found
+ */
+Elf64_Sym* elf64_get_symbol_by_name(const Elf64_File* elf, const char* name);
 
 /**
  * @brief Get the name of a symbol

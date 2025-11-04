@@ -9,7 +9,7 @@ void tss_init(tss_t* tss)
     tss->rsp1 = 0;
     tss->rsp2 = 0;
     tss->reserved2 = 0;
-    for (int i = 0; i < 7; i++)
+    for (int i = 0; i < TSS_IST_COUNT; i++)
     {
         tss->ist[i] = 0;
     }

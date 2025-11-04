@@ -65,7 +65,7 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
 
     lock_acquire(&process->threads.lock);
-    list_push(&process->threads.list, &thread->processEntry);
+    list_push_back(&process->threads.list, &thread->processEntry);
     lock_release(&process->threads.lock);
 
     LOG_DEBUG("created tid=%d pid=%d\n", thread->id, process->id);

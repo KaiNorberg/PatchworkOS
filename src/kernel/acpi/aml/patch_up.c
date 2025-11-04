@@ -34,7 +34,7 @@ uint64_t aml_patch_up_add_unresolved(aml_unresolved_obj_t* unresolved)
 
     list_entry_init(&entry->entry);
     entry->unresolved = unresolved;
-    list_push(&unresolvedObjects, &entry->entry);
+    list_push_back(&unresolvedObjects, &entry->entry);
     return 0;
 }
 

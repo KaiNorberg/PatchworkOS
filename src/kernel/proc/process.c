@@ -55,7 +55,7 @@ static void process_reaper_timer(interrupt_frame_t* frame, cpu_t* cpu)
     list_t* current = &zombies;
     while (!list_is_empty(current))
     {
-        process_t* process = CONTAINER_OF(list_pop(current), process_t, zombieEntry);
+        process_t* process = CONTAINER_OF(list_pop_first(current), process_t, zombieEntry);
 
         DEREF(process->dir);
         DEREF(process->prioFile);
@@ -477,7 +477,7 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     if (parent != NULL)
     {
         RWLOCK_WRITE_SCOPE(&parent->childrenLock);
-        list_push(&parent->children, &process->siblingEntry);
+        list_push_back(&parent->children, &process->siblingEntry);
         process->parent = REF(parent);
     }
     else
@@ -559,7 +559,7 @@ void process_kill(process_t* process, uint64_t status)
     wait_unblock(&process->dyingWaitQueue, WAIT_ALL, EOK);
 
     LOCK_SCOPE(&zombiesLock);
-    list_push(&zombies, &REF(process)->zombieEntry);
+    list_push_back(&zombies, &REF(process)->zombieEntry);
     lastReaperTime = timer_uptime(); // Delay reaper run
 }
 

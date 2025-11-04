@@ -27,7 +27,7 @@ void _threading_init(void)
     _thread_init(&thread0);
     thread0.id = _syscall_gettid();
 
-    list_push(&threads, &thread0.entry);
+    list_push_back(&threads, &thread0.entry);
 }
 
 _thread_t* _thread_new(_thread_entry_t entry, void* private)
@@ -52,7 +52,7 @@ _thread_t* _thread_new(_thread_entry_t entry, void* private)
         return NULL;
     }
 
-    list_push(&threads, &thread->entry);
+    list_push_back(&threads, &thread->entry);
     mtx_unlock(&mutex);
 
     return thread;

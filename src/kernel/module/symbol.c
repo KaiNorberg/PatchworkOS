@@ -5,6 +5,7 @@
 #include <kernel/sync/rwlock.h>
 
 #include <errno.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/list.h>
@@ -12,26 +13,35 @@
 
 static symbol_addr_t** addrArray = NULL;
 static uint64_t addrAmount = 0;
+static uint64_t addrCapacity = 0;
 
 static map_t nameMap = MAP_CREATE;
 
+static map_t groupMap = MAP_CREATE;
+
 static rwlock_t lock = RWLOCK_CREATE;
 
-// Needed since there could be multiple symbols with the same address, each of theses symbols are stored contiguously.
-static int64_t symbol_get_floor_index_for_addr(void* addr)
+symbol_group_id_t symbol_generate_group_id(void)
+{
+    static _Atomic(symbol_group_id_t) nextGroupId = ATOMIC_VAR_INIT(0);
+    return atomic_fetch_add_explicit(&nextGroupId, 1, memory_order_relaxed);
+}
+
+// Needed since there could be multiple symbols with the same address, each of these symbols are stored contiguously.
+static uint64_t symbol_get_floor_index_for_addr(void* addr)
 {
     if (addrArray == NULL || addrAmount == 0)
     {
         return addrAmount;
     }
 
-    int64_t left = 0;
-    int64_t right = addrAmount - 1;
-    int64_t result = addrAmount;
+    uint64_t left = 0;
+    uint64_t right = addrAmount - 1;
+    uint64_t result = addrAmount;
 
     while (left <= right)
     {
-        int64_t mid = left + (right - left) / 2;
+        uint64_t mid = left + ((right - left) / 2);
         if (addrArray[mid]->addr <= addr)
         {
             result = mid;
@@ -46,14 +56,15 @@ static int64_t symbol_get_floor_index_for_addr(void* addr)
     return result;
 }
 
-static symbol_addr_t* symbol_insert_address(void* addr)
+static symbol_addr_t* symbol_insert_address(void* addr, symbol_group_id_t groupId, Elf64_Symbol_Binding binding,
+    Elf64_Symbol_Type type, symbol_name_t* symbolName)
 {
     uint64_t left = 0;
     uint64_t right = addrAmount;
 
     while (left < right)
     {
-        uint64_t mid = left + (right - left) / 2;
+        uint64_t mid = left + ((right - left) / 2);
         if (addrArray[mid]->addr >= addr)
         {
             right = mid;
@@ -64,200 +75,45 @@ static symbol_addr_t* symbol_insert_address(void* addr)
         }
     }
 
-    void* newAddrArray = realloc(addrArray, sizeof(symbol_addr_t*) * (addrAmount + 1));
-    if (newAddrArray == NULL)
+    if (addrAmount + 1 > addrCapacity)
     {
-        return NULL;
+        uint64_t newCapacity = addrCapacity == 0 ? 16 : addrCapacity * 2;
+        symbol_addr_t** newArray = (symbol_addr_t**)realloc((void*)addrArray, sizeof(symbol_addr_t*) * newCapacity);
+        if (newArray == NULL)
+        {
+            return NULL;
+        }
+        addrArray = newArray;
+        addrCapacity = newCapacity;
     }
-    addrArray = newAddrArray;
 
     symbol_addr_t* addrEntry = malloc(sizeof(symbol_addr_t));
     if (addrEntry == NULL)
     {
         return NULL;
     }
-    list_entry_init(&addrEntry->entry);
+    list_entry_init(&addrEntry->nameEntry);
     addrEntry->addr = addr;
+    addrEntry->groupId = groupId;
+    addrEntry->binding = binding;
+    addrEntry->type = type;
 
-    memmove(&addrArray[left + 1], &addrArray[left], sizeof(symbol_addr_t*) * (addrAmount - left));
+    uint64_t moveSize = sizeof(symbol_addr_t*) * (addrAmount - left);
+    memmove_s((void*)&addrArray[left + 1], moveSize, (void*)&addrArray[left], moveSize);
     addrArray[left] = addrEntry;
     addrAmount++;
+
+    list_push_back(&symbolName->addrs, &addrEntry->nameEntry);
     return addrEntry;
 }
 
-static symbol_name_t* symbol_find_or_create_name(const char* name)
-{
-    map_key_t key = map_key_string(name);
-    symbol_name_t* nameEntry = CONTAINER_OF_SAFE(map_get(&nameMap, &key), symbol_name_t, entry);
-    if (nameEntry != NULL)
-    {
-        return nameEntry;
-    }
-
-    nameEntry = malloc(sizeof(symbol_name_t));
-    if (nameEntry == NULL)
-    {
-        return NULL;
-    }
-    map_entry_init(&nameEntry->entry);
-    list_init(&nameEntry->addrs);
-    strncpy(nameEntry->name, name, SYMBOL_MAX_NAME - 1);
-    nameEntry->name[SYMBOL_MAX_NAME - 1] = '\0';
-
-    if (map_insert(&nameMap, &key, &nameEntry->entry) == ERR)
-    {
-        free(nameEntry);
-        return NULL;
-    }
-
-    return nameEntry;
-}
-
-void symbol_load_kernel_symbols(const boot_kernel_t* kernel)
-{
-    const Elf64_File* elf = &kernel->elf;
-    uint64_t index = 0;
-    while (true)
-    {
-        Elf64_Sym* sym = elf64_get_symbol_by_index(elf, index++);
-        if (sym == NULL)
-        {
-            break;
-        }
-
-        if (ELF64_ST_TYPE(sym->st_info) != STT_FUNC && ELF64_ST_TYPE(sym->st_info) != STT_OBJECT)
-        {
-            continue;
-        }
-
-        const char* symName = elf64_get_symbol_name(elf, sym);
-        if (symName == NULL || symName[0] == '\0')
-        {
-            continue;
-        }
-        void* symAddr = (void*)(uintptr_t)sym->st_value;
-        if (symbol_add(symName, symAddr) == ERR)
-        {
-            panic(NULL, "Failed to load kernel symbol '%s' (%s)", symName, strerror(errno));
-        }
-    }
-
-    LOG_INFO("Loaded %llu kernel symbols\n", addrAmount);
-}
-
-uint64_t symbol_add(const char* name, void* addr)
-{
-    if (name == NULL || addr == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    RWLOCK_WRITE_SCOPE(&lock);
-
-    symbol_name_t* nameEntry = symbol_find_or_create_name(name);
-    if (nameEntry == NULL)
-    {
-        return ERR;
-    }
-
-    symbol_addr_t* addrEntry = symbol_insert_address(addr);
-    if (addrEntry == NULL)
-    {
-        if (list_is_empty(&nameEntry->addrs))
-        {
-            map_key_t key = map_key_string(nameEntry->name);
-            map_remove(&nameMap, &key);
-            free(nameEntry);
-        }
-        return ERR;
-    }
-
-    list_push(&nameEntry->addrs, &addrEntry->entry);
-    return 0;
-}
-
-void symbol_remove_addr(void* addr)
-{
-    if (addr == NULL)
-    {
-        return;
-    }
-
-    RWLOCK_WRITE_SCOPE(&lock);
-
-    uint64_t startIndex = symbol_get_floor_index_for_addr(addr);
-    if (startIndex == addrAmount || addrArray[startIndex]->addr != addr)
-    {
-        return;
-    }
-    uint64_t endIndex = startIndex;
-    while (endIndex < addrAmount && addrArray[endIndex]->addr == addr)
-    {
-        endIndex++;
-    }
-
-    for (uint64_t i = startIndex; i < endIndex; i++)
-    {
-        symbol_addr_t* addrEntry = addrArray[i];
-        symbol_name_t* nameEntry = CONTAINER_OF(addrEntry->entry.list, symbol_name_t, addrs);
-
-        list_remove(&nameEntry->addrs, &addrEntry->entry);
-        if (list_is_empty(&nameEntry->addrs))
-        {
-            map_key_t key = map_key_string(nameEntry->name);
-            map_remove(&nameMap, &key);
-            free(nameEntry);
-        }
-        free(addrEntry);
-    }
-    memmove(&addrArray[startIndex], &addrArray[endIndex], sizeof(symbol_addr_t*) * (addrAmount - endIndex));
-    addrAmount -= (endIndex - startIndex);
-}
-
-void symbol_remove_name(const char* name)
-{
-    if (name == NULL)
-    {
-        return;
-    }
-
-    RWLOCK_WRITE_SCOPE(&lock);
-
-    map_key_t key = map_key_string(name);
-    symbol_name_t* nameEntry = CONTAINER_OF_SAFE(map_get(&nameMap, &key), symbol_name_t, entry);
-    if (nameEntry == NULL)
-    {
-        return;
-    }
-
-    while (!list_is_empty(&nameEntry->addrs))
-    {
-        symbol_addr_t* addrEntry = CONTAINER_OF(list_pop(&nameEntry->addrs), symbol_addr_t, entry);
-
-        uint64_t index = symbol_get_floor_index_for_addr(addrEntry->addr);
-        if (index == addrAmount || addrArray[index]->addr != addrEntry->addr)
-        {
-            panic(NULL, "Inconsistent symbol table state");
-        }
-        memmove(&addrArray[index], &addrArray[index + 1], sizeof(symbol_addr_t*) * (addrAmount - index - 1));
-        addrAmount--;
-        free(addrEntry);
-    }
-
-    map_remove(&nameMap, &key);
-    free(nameEntry);
-}
-
-uint64_t symbol_resolve_addr(symbol_info_t* outSymbol, void* addr)
+static uint64_t symbol_resolve_addr_unlocked(symbol_info_t* outSymbol, void* addr)
 {
     if (outSymbol == NULL || addr == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
-
-    RWLOCK_READ_SCOPE(&lock);
 
     uint64_t index = symbol_get_floor_index_for_addr(addr);
     if (index == addrAmount)
@@ -267,16 +123,19 @@ uint64_t symbol_resolve_addr(symbol_info_t* outSymbol, void* addr)
     }
 
     symbol_addr_t* addrEntry = addrArray[index];
-    symbol_name_t* nameEntry = CONTAINER_OF(addrEntry->entry.list, symbol_name_t, addrs);
+    symbol_name_t* nameEntry = CONTAINER_OF(addrEntry->nameEntry.list, symbol_name_t, addrs);
 
-    strncpy(outSymbol->name, nameEntry->name, SYMBOL_MAX_NAME - 1);
+    strncpy_s(outSymbol->name, SYMBOL_MAX_NAME, nameEntry->name, SYMBOL_MAX_NAME - 1);
     outSymbol->name[SYMBOL_MAX_NAME - 1] = '\0';
     outSymbol->addr = addrEntry->addr;
+    outSymbol->groupId = addrEntry->groupId;
+    outSymbol->binding = addrEntry->binding;
+    outSymbol->type = addrEntry->type;
 
     return 0;
 }
 
-uint64_t symbol_resolve_name(symbol_info_t* outSymbol, const char* name)
+static uint64_t symbol_resolve_name_unlocked(symbol_info_t* outSymbol, const char* name)
 {
     if (outSymbol == NULL || name == NULL)
     {
@@ -284,20 +143,208 @@ uint64_t symbol_resolve_name(symbol_info_t* outSymbol, const char* name)
         return ERR;
     }
 
-    RWLOCK_READ_SCOPE(&lock);
-
     map_key_t key = map_key_string(name);
-    symbol_name_t* nameEntry = CONTAINER_OF_SAFE(map_get(&nameMap, &key), symbol_name_t, entry);
+    symbol_name_t* nameEntry = CONTAINER_OF_SAFE(map_get(&nameMap, &key), symbol_name_t, mapEntry);
     if (nameEntry == NULL || list_is_empty(&nameEntry->addrs))
     {
         errno = ENOENT;
         return ERR;
     }
-    symbol_addr_t* addrEntry = CONTAINER_OF(list_first(&nameEntry->addrs), symbol_addr_t, entry);
+    symbol_addr_t* addrEntry = CONTAINER_OF(list_first(&nameEntry->addrs), symbol_addr_t, nameEntry);
 
-    strncpy(outSymbol->name, nameEntry->name, SYMBOL_MAX_NAME - 1);
+    strncpy_s(outSymbol->name, SYMBOL_MAX_NAME, nameEntry->name, SYMBOL_MAX_NAME - 1);
     outSymbol->name[SYMBOL_MAX_NAME - 1] = '\0';
     outSymbol->addr = addrEntry->addr;
+    outSymbol->groupId = addrEntry->groupId;
+    outSymbol->binding = addrEntry->binding;
+    outSymbol->type = addrEntry->type;
 
     return 0;
+}
+
+uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf64_Symbol_Binding binding,
+    Elf64_Symbol_Type type)
+{
+    if (type != STT_OBJECT && type != STT_FUNC)
+    {
+        return 0;
+    }
+
+    if (name == NULL || addr == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    RWLOCK_WRITE_SCOPE(&lock);
+
+    if (binding == STB_GLOBAL)
+    {
+        symbol_info_t existingSymbol;
+        if (symbol_resolve_name_unlocked(&existingSymbol, name) != ERR)
+        {
+            LOG_DEBUG("global symbol name conflict for '%s'\n", name);
+            errno = EEXIST;
+            return ERR;
+        }
+    }
+
+    symbol_group_t* symbolGroup = NULL;
+    symbol_name_t* symbolName = NULL;
+    symbol_addr_t* symbolAddr = NULL;
+    bool groupWasCreated = false;
+    bool nameWasCreated = false;
+
+    map_key_t groupKey = map_key_uint64(groupId);
+    symbolGroup = CONTAINER_OF_SAFE(map_get(&groupMap, &groupKey), symbol_group_t, entry);
+    if (symbolGroup == NULL)
+    {
+        symbolGroup = malloc(sizeof(symbol_group_t));
+        if (symbolGroup == NULL)
+        {
+            goto error;
+        }
+        map_entry_init(&symbolGroup->entry);
+        list_init(&symbolGroup->names);
+        symbolGroup->id = groupId;
+
+        if (map_insert(&groupMap, &groupKey, &symbolGroup->entry) == ERR)
+        {
+            free(symbolGroup);
+            symbolGroup = NULL;
+            goto error;
+        }
+        groupWasCreated = true;
+    }
+
+    map_key_t nameKey = map_key_string(name);
+    symbolName = CONTAINER_OF_SAFE(map_get(&nameMap, &nameKey), symbol_name_t, mapEntry);
+    if (symbolName == NULL)
+    {
+        symbolName = malloc(sizeof(symbol_name_t));
+        if (symbolName == NULL)
+        {
+            goto error;
+        }
+        list_entry_init(&symbolName->groupEntry);
+        map_entry_init(&symbolName->mapEntry);
+        list_init(&symbolName->addrs);
+        strncpy_s(symbolName->name, SYMBOL_MAX_NAME, name, SYMBOL_MAX_NAME - 1);
+        symbolName->name[SYMBOL_MAX_NAME - 1] = '\0';
+
+        if (map_insert(&nameMap, &nameKey, &symbolName->mapEntry) == ERR)
+        {
+            free(symbolName);
+            symbolName = NULL;
+            goto error;
+        }
+        list_push_back(&symbolGroup->names, &symbolName->groupEntry);
+        nameWasCreated = true;
+    }
+
+    symbolAddr = symbol_insert_address(addr, groupId, binding, type, symbolName);
+    if (symbolAddr == NULL)
+    {
+        goto error;
+    }
+
+    return 0;
+
+error:
+    if (symbolAddr == NULL)
+    {
+        if (symbolName != NULL && nameWasCreated)
+        {
+            map_key_t key = map_key_string(symbolName->name);
+            map_remove(&nameMap, &key);
+            list_remove(&symbolGroup->names, &symbolName->groupEntry);
+            free(symbolName);
+        }
+    }
+
+    if (symbolName == NULL)
+    {
+        if (symbolGroup != NULL && groupWasCreated)
+        {
+            map_key_t key = map_key_uint64(symbolGroup->id);
+            map_remove(&groupMap, &key);
+            free(symbolGroup);
+        }
+    }
+    
+    LOG_DEBUG("failed to add symbol '%s' at address %p (%s)\n", name, addr, strerror(errno));
+    return ERR;
+}
+
+void symbol_remove_group(symbol_group_id_t groupId)
+{
+    RWLOCK_WRITE_SCOPE(&lock);
+
+    map_key_t groupKey = map_key_uint64(groupId);
+    symbol_group_t* groupEntry = CONTAINER_OF_SAFE(map_get(&groupMap, &groupKey), symbol_group_t, entry);
+    if (groupEntry == NULL)
+    {
+        return;
+    }
+
+    uint64_t writeIdx = 0;
+    for (uint64_t readIdx = 0; readIdx < addrAmount; readIdx++)
+    {
+        if (addrArray[readIdx]->groupId != groupId)
+        {
+            if (writeIdx != readIdx)
+            {
+                addrArray[writeIdx] = addrArray[readIdx];
+            }
+            writeIdx++;
+        }
+    }
+    addrAmount = writeIdx;
+
+    while (!list_is_empty(&groupEntry->names))
+    {
+        symbol_name_t* nameEntry = CONTAINER_OF(list_pop_first(&groupEntry->names), symbol_name_t, groupEntry);
+
+        while (!list_is_empty(&nameEntry->addrs))
+        {
+            symbol_addr_t* addrEntry = CONTAINER_OF(list_pop_first(&nameEntry->addrs), symbol_addr_t, nameEntry);
+            free(addrEntry);
+        }
+
+        map_key_t nameKey = map_key_string(nameEntry->name);
+        map_remove(&nameMap, &nameKey);
+        free(nameEntry);
+    }
+
+    map_remove(&groupMap, &groupKey);
+    free(groupEntry);
+
+    if (addrAmount == 0)
+    {
+        free((void*)addrArray);
+        addrArray = NULL;
+        addrCapacity = 0;
+    }
+    else if (addrArray != NULL && addrAmount < addrCapacity / 4)
+    {
+        uint64_t newCapacity = addrCapacity / 2;
+        symbol_addr_t** newArray = (symbol_addr_t**)realloc((void*)addrArray, sizeof(symbol_addr_t*) * newCapacity);
+        if (newArray != NULL)
+        {
+            addrArray = newArray;
+            addrCapacity = newCapacity;
+        }
+    }
+}
+
+uint64_t symbol_resolve_addr(symbol_info_t* outSymbol, void* addr)
+{
+    RWLOCK_READ_SCOPE(&lock);
+    return symbol_resolve_addr_unlocked(outSymbol, addr);
+}
+
+uint64_t symbol_resolve_name(symbol_info_t* outSymbol, const char* name)
+{
+    RWLOCK_READ_SCOPE(&lock);
+    return symbol_resolve_name_unlocked(outSymbol, name);
 }

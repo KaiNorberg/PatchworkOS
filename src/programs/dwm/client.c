@@ -142,7 +142,7 @@ static uint64_t client_action_surface_new(client_t* client, const cmd_header_t* 
         return ERR;
     }
 
-    list_push(&client->surfaces, &surface->clientEntry);
+    list_push_back(&client->surfaces, &surface->clientEntry);
 
     client_send_event(client, surface->id, EVENT_SURFACE_NEW, &event, sizeof(event));
     return 0;

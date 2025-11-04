@@ -22,7 +22,7 @@
  * @brief Number of iterations before we consider a deadlock has occurred in lock_acquire.
  * This is only used in debug builds.
  */
-#define LOCK_DEADLOCK_ITERATIONS 1000000
+#define LOCK_DEADLOCK_ITERATIONS 10000000
 
 /**
  * @brief Lock canary value to detect memory corruption.

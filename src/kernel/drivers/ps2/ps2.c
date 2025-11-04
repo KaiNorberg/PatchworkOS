@@ -295,7 +295,7 @@ static uint64_t ps2_device_init(ps2_device_t device)
         LOG_ERR("ps2 %s device type unknown\n", ps2_device_to_string(device));
         return ERR;
     }
-    else if (info->type == PS2_DEV_TYPE_KEYBOARD)
+    if (info->type == PS2_DEV_TYPE_KEYBOARD)
     {
         if (ps2_kbd_init(info) == ERR)
         {

@@ -91,7 +91,7 @@ typedef struct PACKED
     uint64_t rsp1; ///< Stack pointer to load when switching to ring 1, unused.
     uint64_t rsp2; ///< Stack pointer to load when switching to ring 2, unused.
     uint64_t reserved2;
-    uint64_t ist[7]; // Interrupt Stack Table.
+    uint64_t ist[TSS_IST_COUNT]; ///< Interrupt Stack Table
     uint64_t reserved3;
     uint16_t reserved4;
     uint16_t iopb; ///< Offset to the I/O permission bitmap, we set this to the size of the TSS to disable the bitmap.

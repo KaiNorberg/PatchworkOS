@@ -54,7 +54,7 @@ static client_t* dwm_client_accept(void)
         return NULL;
     }
 
-    list_push(&clients, &client->entry);
+    list_push_back(&clients, &client->entry);
     clientAmount++;
     printf("dwm: accepted client %d total %lu\n", client->fd, clientAmount);
     return client;
@@ -218,12 +218,12 @@ uint64_t dwm_attach(surface_t* surface)
     {
     case SURFACE_WINDOW:
     {
-        list_push(&windows, &surface->dwmEntry);
+        list_push_back(&windows, &surface->dwmEntry);
     }
     break;
     case SURFACE_PANEL:
     {
-        list_push(&panels, &surface->dwmEntry);
+        list_push_back(&panels, &surface->dwmEntry);
     }
     break;
     case SURFACE_CURSOR:
@@ -353,7 +353,7 @@ void dwm_focus_set(surface_t* surface)
         {
             // Move to end of list
             list_remove(&windows, &surface->dwmEntry);
-            list_push(&windows, &surface->dwmEntry);
+            list_push_back(&windows, &surface->dwmEntry);
         }
         focus = surface;
         dwm_report_produce(focus, focus->client, REPORT_IS_FOCUSED);

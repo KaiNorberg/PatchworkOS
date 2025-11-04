@@ -52,8 +52,9 @@
 #define SYS_SHARE 30
 #define SYS_CLAIM 31
 #define SYS_BIND 32
+#define SYS_OPENAT 33
 
-#define SYS_TOTAL_AMOUNT 33
+#define SYS_TOTAL_AMOUNT 34
 
 /**
  * @brief Per thread syscall context.

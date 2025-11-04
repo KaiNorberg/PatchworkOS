@@ -25,10 +25,28 @@
  * vital for implementing kernel modules, as the kernel effectively acts as a "runtime linker" for the kernel module
  * binaries, resolving any kernel symbols (which are stored in the module binary by its name since it cant know the
  * address beforehand) to their actual addresses in the kernel so that the module can call into the kernel and of course
- * vice versa.
+ * vice versa. We can also use this to resolve symbols between modules.
  *
- * In the end we have a large set of all currently loaded symbols in the kernel or modules, and we can search this set
- * by name or by address.
+ * In the end we have a large structure of all currently loaded symbols in the kernel or modules, and we can search this
+ * structure by name or by address.
+ *
+ * ## The Structure
+ *
+ * The kernel stores symbols using three main structures, which when combined form a slightly over optimized way to
+ * retrieve symbols by name or address and to easily remove symbols when a module is unloaded.
+ *
+ * The structures are:
+ * - A id-keyed map of symbol groups (`symbol_group_t`), used to group symbols for easy removal later.
+ * - A name-keyed map of symbol names (`symbol_name_t`), used to resolve names to addresses.
+ * - An addr-sorted array of symbol addresses (`symbol_addr_t`), used to resolve addresses to names using binary search.
+ *
+ * These structures form a kind of circular graph, where from a group we can retrieve the names, from the names we can
+ * retrieve the addresses and from the addresses we can retrieve the group again. Its also possible to go from a address
+ * to its name using the `CONTAINER_OF` macro.
+ *
+ * Note that we cant use a map for the addresses as we need to be able to find non-exact matches when resolving an
+ * address. If a address inside a function is provided we still want to be able to resolve it to the function name, this
+ * is done by finding the closest symbol with an address less than or equal to the provided address.
  *
  * @{
  */
@@ -39,6 +57,29 @@
 #define SYMBOL_MAX_NAME MAP_KEY_MAX_LENGTH
 
 /**
+ * @brief Symbol group identifier type.
+ * @typedef symbol_group_id_t
+ *
+ * Used to easily group symbols for removal later, mostly used by modules to remove all their symbols when unloaded.
+ *
+ * A value of `0` indicates that its part of the kernel and not a module.
+ */
+typedef uint64_t symbol_group_id_t;
+
+/**
+ * @brief Symbol group structure.
+ * @typedef symbol_group_t
+ *
+ * Stored in a id-keyed map.
+ */
+typedef struct
+{
+    map_entry_t entry;
+    symbol_group_id_t id;
+    list_t names;
+} symbol_group_t;
+
+/**
  * @brief Symbol name mapping structure.
  * @struct symbol_name_t
  *
@@ -46,8 +87,9 @@
  */
 typedef struct
 {
-    map_entry_t entry;
-    list_t addrs; ///< List of all addresses for this symbol name.
+    list_entry_t groupEntry;
+    map_entry_t mapEntry;
+    list_t addrs;
     char name[SYMBOL_MAX_NAME];
 } symbol_name_t;
 
@@ -60,8 +102,11 @@ typedef struct
  */
 typedef struct
 {
-    list_entry_t entry;
+    list_entry_t nameEntry;
     void* addr;
+    symbol_group_id_t groupId;
+    Elf64_Symbol_Binding binding;
+    Elf64_Symbol_Type type;
 } symbol_addr_t;
 
 /**
@@ -74,41 +119,44 @@ typedef struct
 {
     char name[SYMBOL_MAX_NAME];
     void* addr;
+    symbol_group_id_t groupId;
+    Elf64_Symbol_Binding binding;
+    Elf64_Symbol_Type type;
 } symbol_info_t;
 
 /**
- * @brief Load all kernel symbols from the bootloader provided kernel ELF file.
+ * @brief Generate a unique symbol group identifier.
  *
- * Will panic on failure.
+ * All identifiers are generated sequentially.
  *
- * @param kernel The bootloader provided kernel information.
+ * @return The symbol group identifier.
  */
-void symbol_load_kernel_symbols(const boot_kernel_t* kernel);
+symbol_group_id_t symbol_generate_group_id(void);
 
 /**
  * @brief Add a symbol to the kernel symbol table.
  *
- * Duplicate symbol names and/or addresses are allowed.
+ * Symbols of binding `STB_GLOBAL` must have unique names but can have duplicated addresses, symbols of other bindings
+ * can be duplicated in name, address or both.
+ *
+ * If the symbol is not of type `STT_OBJECT` or `STT_FUNC` the function is a no-op and returns success.
  *
  * @param name The name of the symbol.
  * @param addr The address of the symbol.
+ * @param groupId The group identifier of the symbol.
+ * @param binding The binding of the symbol, specifies visibility and linkage.
+ * @param type The type of the symbol, specifies what the symbol represents.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t symbol_add(const char* name, void* addr);
+uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf64_Symbol_Binding binding,
+    Elf64_Symbol_Type type);
 
 /**
- * @brief Remove all symbols from the kernel symbol table with the exact given address.
+ * @brief Remove all symbols from the kernel symbol table in the given group.
  *
- * @param addr The address of the symbols to remove, must be exact.
+ * @param groupId The group identifier of the symbols to remove.
  */
-void symbol_remove_addr(void* addr);
-
-/**
- * @brief Remove all symbols from the kernel symbol table with the given name.
- *
- * @param name The name of the symbol to remove.
- */
-void symbol_remove_name(const char* name);
+void symbol_remove_group(symbol_group_id_t groupId);
 
 /**
  * @brief Resolve a symbol by address.
@@ -116,7 +164,8 @@ void symbol_remove_name(const char* name);
  * The resolved symbol is the closest symbol with an address less than or equal to the given address. The
  * `outSymbol->addr` will be the address of the symbol, not the given address.
  *
- * If multiple symbols exist at the same address, one of them will be returned, but which one is undefined.
+ * If multiple symbols exist at the same address, one of them will be returned, but which one is undefined. Dont rely on
+ * this behaviour being predictable.
  *
  * @param outSymbol Output pointer to store the resolved symbol information.
  * @param addr The address of the symbol to resolve.

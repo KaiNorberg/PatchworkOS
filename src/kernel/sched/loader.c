@@ -258,7 +258,14 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
             goto cleanup_argv;
         }
 
-        if (vfs_walk(&cwdPath, &cwdPathname, WALK_NONE, process) == ERR)
+        path_t currentCwd = PATH_EMPTY;
+        if (vfs_ctx_get_cwd(&process->vfsCtx, &currentCwd) == ERR)
+        {
+            goto cleanup_argv;
+        }
+        PATH_DEFER(&currentCwd);
+
+        if (path_walk(&cwdPath, &cwdPathname, &currentCwd, WALK_NONE, &process->namespace) == ERR)
         {
             goto cleanup_argv;
         }

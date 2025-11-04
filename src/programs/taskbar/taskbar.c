@@ -93,7 +93,7 @@ static void taskbar_entry_add(taskbar_t* taskbar, element_t* elem, const surface
     entry->info = *info;
     strcpy(entry->name, name);
 
-    list_push(&taskbar->entries, &entry->entry);
+    list_push_back(&taskbar->entries, &entry->entry);
 
     element_redraw(elem, true);
 

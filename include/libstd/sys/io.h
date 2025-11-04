@@ -111,6 +111,16 @@ fd_t vopenf(const char* _RESTRICT format, va_list args);
 uint64_t open2(const char* path, fd_t fd[2]);
 
 /**
+ * @brief System call for opening files relative to another file descriptor.
+ *
+ * @param from The file descriptor to open the file relative to, or `FD_NONE` to open from the current working
+ * directory.
+ * @param path The path to the desired file.
+ * @return On success, the file descriptor, on failure returns `ERR` and `errno` is set.
+ */
+fd_t openat(fd_t from, const char* path);
+
+/**
  * @brief System call for closing files.
  *
  * @param fd The file descriptor to close.

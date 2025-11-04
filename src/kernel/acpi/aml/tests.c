@@ -199,7 +199,7 @@ void aml_tests_perf_start(aml_token_t* token)
     entry->startTime = timer_uptime();
     entry->childTime = 0;
 
-    list_push(&perfStack, &entry->entry);
+    list_push_back(&perfStack, &entry->entry);
 
     tokenOccurrences[token->num]++;
 }
@@ -212,7 +212,7 @@ void aml_tests_perf_end(void)
         return;
     }
 
-    aml_perf_stack_entry_t* entry = CONTAINER_OF_SAFE(list_pop(&perfStack), aml_perf_stack_entry_t, entry);
+    aml_perf_stack_entry_t* entry = CONTAINER_OF_SAFE(list_pop_first(&perfStack), aml_perf_stack_entry_t, entry);
 
     clock_t totalTime = timer_uptime() - entry->startTime;
     clock_t exclusiveTime = (entry->childTime >= totalTime) ? 0 : (totalTime - entry->childTime);
@@ -237,7 +237,8 @@ void aml_tests_perf_report(void)
         LOG_WARN("Performance report called with %d unclosed measurements\n", list_length(&perfStack));
         while (!list_is_empty(&perfStack))
         {
-            aml_perf_stack_entry_t* entry = CONTAINER_OF_SAFE(list_pop(&perfStack), aml_perf_stack_entry_t, entry);
+            aml_perf_stack_entry_t* entry =
+                CONTAINER_OF_SAFE(list_pop_first(&perfStack), aml_perf_stack_entry_t, entry);
             free(entry);
         }
     }

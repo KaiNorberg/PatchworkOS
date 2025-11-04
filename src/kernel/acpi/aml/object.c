@@ -49,7 +49,7 @@ static void aml_object_free(aml_object_t* object)
 
     if (list_length(&objectsCache) < AML_OBJECT_CACHE_SIZE)
     {
-        list_push(&objectsCache, &object->listEntry);
+        list_push_back(&objectsCache, &object->listEntry);
     }
     else
     {
@@ -64,7 +64,7 @@ aml_object_t* aml_object_new(void)
     aml_object_t* object = NULL;
     if (!list_is_empty(&objectsCache))
     {
-        object = CONTAINER_OF_SAFE(list_pop(&objectsCache), aml_object_t, listEntry);
+        object = CONTAINER_OF_SAFE(list_pop_first(&objectsCache), aml_object_t, listEntry);
     }
 
     if (object == NULL)

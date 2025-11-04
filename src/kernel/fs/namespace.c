@@ -249,8 +249,15 @@ SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpointString)
         return ERR;
     }
 
+    path_t cwd = PATH_EMPTY;
+    if (vfs_ctx_get_cwd(&process->vfsCtx, &cwd) == ERR)
+    {
+        return ERR;
+    }
+    PATH_DEFER(&cwd);
+
     path_t mountpoint;
-    if (vfs_walk(&mountpoint, &pathname, WALK_NONE, process) == ERR)
+    if (path_walk(&mountpoint, &pathname, &cwd, WALK_NONE, &process->namespace) == ERR)
     {
         return ERR;
     }

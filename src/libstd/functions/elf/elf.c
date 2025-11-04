@@ -379,6 +379,71 @@ void elf64_load_segments(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offse
     }
 }
 
+uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset,
+    void* (*resolve_symbol)(const char* name, void* private), void* private)
+{
+    for (uint64_t i = 0; i < elf->header->e_shnum; i++)
+    {
+        Elf64_Shdr* shdr = ELF64_GET_SHDR(elf, i);
+        if (shdr->sh_type != SHT_RELA)
+        {
+            continue;
+        }
+
+        const char* sectionName = elf64_get_section_name(elf, shdr);
+
+        Elf64_Shdr* targetShdr = ELF64_GET_SHDR(elf, shdr->sh_info);
+
+        Elf64_Rela* rela = ELF64_AT_OFFSET(elf, shdr->sh_offset);
+        uint64_t relaCount = shdr->sh_size / sizeof(Elf64_Rela);
+
+        for (uint64_t j = 0; j < relaCount; j++)
+        {
+            Elf64_Addr* patchAddr = (Elf64_Addr*)(base + (targetShdr->sh_addr + rela[j].r_offset - offset));
+            Elf64_Xword type = ELF64_R_TYPE(rela[j].r_info);
+            Elf64_Xword symIndex = ELF64_R_SYM(rela[j].r_info);
+
+            Elf64_Sym* sym = elf64_get_dynamic_symbol_by_index(elf, symIndex);
+            const char* symName = elf64_get_dynamic_symbol_name(elf, sym);
+
+            if (sym->st_shndx == SHN_UNDEF)
+            {
+                void* symAddr = resolve_symbol(symName, private);
+                if (symAddr == NULL)
+                {
+                    return ERR;
+                }
+
+                switch (type)
+                {
+                case R_X86_64_GLOB_DAT:
+                case R_X86_64_JUMP_SLOT:
+                    *patchAddr = (Elf64_Addr)symAddr;
+                    break;
+                case R_X86_64_RELATIVE:
+                    *patchAddr = base + rela[j].r_addend;
+                    break;
+                default:
+                    return ERR;
+                }
+
+                continue;
+            }
+
+            switch (type)
+            {
+            case R_X86_64_RELATIVE:
+                *patchAddr = base + rela[j].r_addend;
+                break;
+            default:
+                return ERR;
+            }
+        }
+    }
+
+    return 0;
+}
+
 const char* elf64_get_string(const Elf64_File* elf, Elf64_Xword strTabIndex, Elf64_Off offset)
 {
     if (elf == NULL)
@@ -482,6 +547,36 @@ Elf64_Sym* elf64_get_symbol_by_index(const Elf64_File* elf, Elf64_Xword symbolIn
     return (Elf64_Sym*)((uintptr_t)symTableBase + (symbolIndex * elf->symtab->sh_entsize));
 }
 
+Elf64_Sym* elf64_get_symbol_by_name(const Elf64_File* elf, const char* name)
+{
+    if (elf == NULL || name == NULL)
+    {
+        return NULL;
+    }
+
+    if (elf->symtab == NULL)
+    {
+        return NULL;
+    }
+
+    uint64_t symCount = elf->symtab->sh_size / elf->symtab->sh_entsize;
+    void* symTableBase = ELF64_AT_OFFSET(elf, elf->symtab->sh_offset);
+    Elf64_Shdr* strtabHdr = ELF64_GET_SHDR(elf, elf->symtab->sh_link);
+    char* strTable = ELF64_AT_OFFSET(elf, strtabHdr->sh_offset);
+
+    for (uint64_t i = 0; i < symCount; i++)
+    {
+        Elf64_Sym* symbol = (Elf64_Sym*)((uintptr_t)symTableBase + (i * elf->symtab->sh_entsize));
+        const char* symbolName = &strTable[symbol->st_name];
+        if (elf_strcmp(symbolName, name) == 0)
+        {
+            return symbol;
+        }
+    }
+
+    return NULL;
+}
+
 const char* elf64_get_symbol_name(const Elf64_File* elf, const Elf64_Sym* symbol)
 {
     if (elf == NULL || symbol == NULL)
@@ -536,69 +631,4 @@ const char* elf64_get_dynamic_symbol_name(const Elf64_File* elf, const Elf64_Sym
     Elf64_Shdr* strtabHdr = ELF64_GET_SHDR(elf, elf->dynsym->sh_link);
     char* strTable = ELF64_AT_OFFSET(elf, strtabHdr->sh_offset);
     return &strTable[symbol->st_name];
-}
-
-uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset,
-    Elf64_Addr (*resolve_symbol)(const char* name))
-{
-    for (uint64_t i = 0; i < elf->header->e_shnum; i++)
-    {
-        Elf64_Shdr* shdr = ELF64_GET_SHDR(elf, i);
-        if (shdr->sh_type != SHT_RELA)
-        {
-            continue;
-        }
-
-        const char* sectionName = elf64_get_section_name(elf, shdr);
-
-        Elf64_Shdr* targetShdr = ELF64_GET_SHDR(elf, shdr->sh_info);
-
-        Elf64_Rela* rela = ELF64_AT_OFFSET(elf, shdr->sh_offset);
-        uint64_t relaCount = shdr->sh_size / sizeof(Elf64_Rela);
-
-        for (uint64_t j = 0; j < relaCount; j++)
-        {
-            Elf64_Addr* patchAddr = (Elf64_Addr*)(base + (targetShdr->sh_addr + rela[j].r_offset - offset));
-            Elf64_Xword type = ELF64_R_TYPE(rela[j].r_info);
-            Elf64_Xword symIndex = ELF64_R_SYM(rela[j].r_info);
-
-            Elf64_Sym* sym = elf64_get_dynamic_symbol_by_index(elf, symIndex);
-            const char* symName = elf64_get_dynamic_symbol_name(elf, sym);
-
-            if (sym->st_shndx == SHN_UNDEF)
-            {
-                Elf64_Addr symAddr = resolve_symbol(symName);
-                if (symAddr == 0)
-                {
-                    return ERR;
-                }
-
-                switch (type)
-                {
-                case R_X86_64_GLOB_DAT:
-                case R_X86_64_JUMP_SLOT:
-                    *patchAddr = symAddr;
-                    break;
-                case R_X86_64_RELATIVE:
-                    *patchAddr = base + rela[j].r_addend;
-                    break;
-                default:
-                    return ERR;
-                }
-
-                continue;
-            }
-
-            switch (type)
-            {
-            case R_X86_64_RELATIVE:
-                *patchAddr = base + rela[j].r_addend;
-                break;
-            default:
-                return ERR;
-            }
-        }
-    }
-
-    return 0;
 }

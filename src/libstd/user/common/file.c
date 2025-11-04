@@ -264,7 +264,7 @@ void _files_init(void)
 void _files_push(FILE* file)
 {
     mtx_lock(&filesMtx);
-    list_push(&files, &file->entry);
+    list_push_back(&files, &file->entry);
     mtx_unlock(&filesMtx);
 }
 

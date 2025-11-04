@@ -35,6 +35,7 @@
 #include <libstd/_internal/init.h>
 
 #include <stdlib.h>
+#include <string.h>
 #include <strings.h>
 
 void init_early(const boot_info_t* bootInfo)
@@ -51,7 +52,7 @@ void init_early(const boot_info_t* bootInfo)
 
     _std_init();
 
-    symbol_load_kernel_symbols(&bootInfo->kernel);
+    module_init_fake_kernel_module(&bootInfo->kernel);
 
     acpi_tables_init(bootInfo->rsdp);
 
@@ -71,22 +72,23 @@ void init_early(const boot_info_t* bootInfo)
     bootThread->sched.deadline = CLOCKS_NEVER;
     smp_self_unsafe()->sched.runThread = bootThread;
 
-    // This will trigger a page fault. But thats intended as we use page faults to dynamically grow the
+    // This will trigger a page fault. But that's intended as we use page faults to dynamically grow the
     // threads kernel stack and the stack starts out unmapped.
     thread_jump(bootThread);
 }
 
-// We delay freeing bootloader data as we are still using it during initalization.
+// We delay freeing bootloader data as we are still using it during initialization.
 static void init_free_loader_data(const boot_memory_map_t* map)
 {
     // The memory map will be stored in the data we are freeing so we copy it first.
     boot_memory_map_t volatile mapCopy = *map;
-    EFI_MEMORY_DESCRIPTOR* volatile descriptorsCopy = malloc(mapCopy.descSize * mapCopy.length);
+    uint64_t descriptorsSize = map->descSize * map->length;
+    EFI_MEMORY_DESCRIPTOR* volatile descriptorsCopy = malloc(descriptorsSize);
     if (descriptorsCopy == NULL)
     {
         panic(NULL, "Failed to allocate memory for boot memory map copy");
     }
-    memcpy(descriptorsCopy, map->descriptors, mapCopy.descSize * mapCopy.length);
+    memcpy_s(descriptorsCopy, descriptorsSize, map->descriptors, descriptorsSize);
     mapCopy.descriptors = (EFI_MEMORY_DESCRIPTOR* const)descriptorsCopy;
 
     for (uint64_t i = 0; i < mapCopy.length; i++)
@@ -96,9 +98,9 @@ static void init_free_loader_data(const boot_memory_map_t* map)
         if (desc->Type == EfiLoaderData)
         {
             LOG_INFO("free boot memory [0x%016lx-0x%016lx]\n", desc->VirtualStart,
-                ((uintptr_t)desc->VirtualStart) + desc->NumberOfPages * PAGE_SIZE);
+                (uintptr_t)desc->VirtualStart + (desc->NumberOfPages * PAGE_SIZE));
 #ifndef NDEBUG
-            // Clear the memory to deliberatly cause corruption if the memory is actually being used.
+            // Clear the memory to deliberately cause corruption if the memory is actually being used.
             memset((void*)desc->VirtualStart, 0xCC, desc->NumberOfPages * PAGE_SIZE);
 #endif
             pmm_free_region((void*)desc->VirtualStart, desc->NumberOfPages);
@@ -118,6 +120,10 @@ static void init_finalize(const boot_info_t* bootInfo)
     vfs_init();
     ramfs_init(&bootInfo->disk);
     sysfs_init();
+
+#ifdef TESTING
+    module_test();
+#endif
 
     aml_init();
     acpi_devices_init();
@@ -143,11 +149,6 @@ static void init_finalize(const boot_info_t* bootInfo)
 
     init_free_loader_data(&bootInfo->memory.map);
     vmm_unmap_bootloader_lower_half(bootThread);
-
-    if (module_load("/kernel/modules/helloworld") == ERR)
-    {
-        LOG_WARN("Failed to load hello world module (%s)\n", strerror(errno));
-    }
 
     LOG_INFO("kernel initalized using %llu kb of memory\n", pmm_used_amount() * PAGE_SIZE / 1024);
 }
