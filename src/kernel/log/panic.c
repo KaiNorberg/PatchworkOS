@@ -19,7 +19,6 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/io.h>
 #include <sys/math.h>
@@ -30,7 +29,7 @@ extern uint64_t _kernelEnd;
 
 static char panicBuffer[LOG_MAX_BUFFER] = {0};
 
-static atomic_uint32_t panicCpudId = ATOMIC_VAR_INIT(PANIC_NO_CPU_ID);
+static atomic_uint32_t panicCpuId = ATOMIC_VAR_INIT(PANIC_NO_CPU_ID);
 
 static const char* panic_get_exception_name(uint64_t vector)
 {
@@ -270,7 +269,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
 
     cpuid_t selfId = smp_self_id_unsafe();
     uint32_t expectedCpuId = PANIC_NO_CPU_ID;
-    if (!atomic_compare_exchange_strong(&panicCpudId, &expectedCpuId, selfId))
+    if (!atomic_compare_exchange_strong(&panicCpuId, &expectedCpuId, selfId))
     {
         if (expectedCpuId == selfId)
         {

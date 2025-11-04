@@ -72,23 +72,23 @@ void log_write(const char* string, uint64_t length);
 /**
  * @brief Print a formatted log message.
  */
-uint64_t log_print(log_level_t level, const char* prefix, const char* format, ...);
+uint64_t log_print(log_level_t level, const char* format, ...);
 
 /**
  * @brief Print a formatted log message with a va_list.
  */
-uint64_t log_vprint(log_level_t level, const char* prefix, const char* format, va_list args);
+uint64_t log_vprint(log_level_t level, const char* format, va_list args);
 
 #ifndef NDEBUG
-#define LOG_DEBUG(format, ...) log_print(LOG_LEVEL_DEBUG, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_DEBUG(format, ...) log_print(LOG_LEVEL_DEBUG, format __VA_OPT__(, ) __VA_ARGS__)
 #else
 #define LOG_DEBUG(format, ...) ((void)0)
 #endif
 
-#define LOG_USER(format, ...) log_print(LOG_LEVEL_USER, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
-#define LOG_INFO(format, ...) log_print(LOG_LEVEL_INFO, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
-#define LOG_WARN(format, ...) log_print(LOG_LEVEL_WARN, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
-#define LOG_ERR(format, ...) log_print(LOG_LEVEL_ERR, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
-#define LOG_PANIC(format, ...) log_print(LOG_LEVEL_PANIC, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_USER(format, ...) log_print(LOG_LEVEL_USER, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_INFO(format, ...) log_print(LOG_LEVEL_INFO, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_WARN(format, ...) log_print(LOG_LEVEL_WARN, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_ERR(format, ...) log_print(LOG_LEVEL_ERR, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_PANIC(format, ...) log_print(LOG_LEVEL_PANIC, format __VA_OPT__(, ) __VA_ARGS__)
 
 /** @} */

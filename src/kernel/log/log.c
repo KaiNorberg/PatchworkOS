@@ -110,7 +110,7 @@ void log_write(const char* string, uint64_t length)
     }
 }
 
-static void log_print_header(log_level_t level, const char* prefix)
+static void log_print_header(log_level_t level)
 {
     if (!firstHeaderPrinted)
     {
@@ -123,7 +123,7 @@ static void log_print_header(log_level_t level, const char* prefix)
 
     if (level == LOG_LEVEL_PANIC)
     {
-        int length = sprintf(workingBuffer, "[XXXX.XXX-XX-X-XXXXXXXXXX] ");
+        int length = snprintf(workingBuffer, sizeof(workingBuffer), "[XXXX.XXX-XX-X] ");
         log_write(workingBuffer, length);
         return;
     }
@@ -134,25 +134,25 @@ static void log_print_header(log_level_t level, const char* prefix)
 
     cpu_t* self = smp_self_unsafe();
 
-    int length = sprintf(workingBuffer, "[%4llu.%03llu-%02x-%s-%-10s] ", seconds, milliseconds, self->id,
-        levelNames[level], prefix != NULL ? prefix : "unknown");
+    int length = snprintf(workingBuffer, sizeof(workingBuffer), "[%4llu.%03llu-%02x-%s] ", seconds, milliseconds, self->id,
+        levelNames[level]);
     log_write(workingBuffer, length);
 }
 
-static void log_handle_char(log_level_t level, const char* prefix, char chr)
+static void log_handle_char(log_level_t level, char chr)
 {
     if (isLastCharNewline && chr != '\n')
     {
         isLastCharNewline = false;
 
-        log_print_header(level, prefix);
+        log_print_header(level);
     }
 
     if (chr == '\n')
     {
         if (isLastCharNewline)
         {
-            log_print_header(level, prefix);
+            log_print_header(level);
         }
         isLastCharNewline = true;
         return;
@@ -161,16 +161,16 @@ static void log_handle_char(log_level_t level, const char* prefix, char chr)
     log_write(&chr, 1);
 }
 
-uint64_t log_print(log_level_t level, const char* prefix, const char* format, ...)
+uint64_t log_print(log_level_t level, const char* format, ...)
 {
     va_list args;
     va_start(args, format);
-    uint64_t result = log_vprint(level, prefix, format, args);
+    uint64_t result = log_vprint(level, format, args);
     va_end(args);
     return result;
 }
 
-uint64_t log_vprint(log_level_t level, const char* prefix, const char* format, va_list args)
+uint64_t log_vprint(log_level_t level, const char* format, va_list args)
 {
     LOCK_SCOPE(&lock);
 
@@ -194,7 +194,7 @@ uint64_t log_vprint(log_level_t level, const char* prefix, const char* format, v
 
     for (int i = 0; i < length; i++)
     {
-        log_handle_char(level, prefix, lineBuffer[i]);
+        log_handle_char(level, lineBuffer[i]);
     }
 
     return 0;

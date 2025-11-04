@@ -124,7 +124,7 @@ void aml_debug_error(aml_term_list_ctx_t* ctx, const char* function, const char*
 
         va_list args;
         va_start(args, format);
-        log_vprint(LOG_LEVEL_ERR, FILE_BASENAME, format, args);
+        log_vprint(LOG_LEVEL_ERR, format, args);
         va_end(args);
 
         LOG_ERR("\n");
@@ -147,7 +147,7 @@ void aml_debug_error(aml_term_list_ctx_t* ctx, const char* function, const char*
 
         va_list args;
         va_start(args, format);
-        log_vprint(LOG_LEVEL_ERR, FILE_BASENAME, format, args);
+        log_vprint(LOG_LEVEL_ERR, format, args);
         va_end(args);
 
         LOG_ERR("\n");

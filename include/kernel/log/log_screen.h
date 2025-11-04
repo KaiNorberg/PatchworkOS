@@ -18,8 +18,10 @@
 
 /**
  * @brief Number of spaces to indent when a line wraps.
+ *
+ * Header length (15) + 2 for indentation
  */
-#define SCREEN_WRAP_INDENT 29
+#define SCREEN_WRAP_INDENT 17 
 
 /**
  * @brief Maximum number of characters in a single line.

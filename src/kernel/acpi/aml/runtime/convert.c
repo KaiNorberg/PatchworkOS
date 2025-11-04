@@ -228,7 +228,7 @@ static uint64_t aml_integer_to_debug_object(aml_state_t* state, aml_object_t* in
 {
     (void)state;
     (void)dest;
-    log_print(LOG_LEVEL_INFO, "debugobj", "0x%llx\n", integer->integer.value);
+    log_print(LOG_LEVEL_INFO, "0x%llx\n", integer->integer.value);
     return 0;
 }
 
@@ -244,16 +244,16 @@ static uint64_t aml_package_to_debug_object(aml_state_t* state, aml_object_t* pa
 {
     (void)state;
     (void)dest;
-    log_print(LOG_LEVEL_INFO, "debugobj", "[");
+    log_print(LOG_LEVEL_INFO, "[");
     for (uint64_t i = 0; i < package->package.length; i++)
     {
-        log_print(LOG_LEVEL_INFO, "debugobj", "%s", aml_object_to_string(package->package.elements[i]));
+        log_print(LOG_LEVEL_INFO, "%s", aml_object_to_string(package->package.elements[i]));
         if (i < package->package.length - 1)
         {
-            log_print(LOG_LEVEL_INFO, "debugobj", ", ");
+            log_print(LOG_LEVEL_INFO, ", ");
         }
     }
-    log_print(LOG_LEVEL_INFO, "debugobj", "]\n");
+    log_print(LOG_LEVEL_INFO, "]\n");
     return 0;
 }
 
@@ -331,11 +331,11 @@ static uint64_t aml_string_to_debug_object(aml_state_t* state, aml_object_t* str
     (void)dest;
     if (string->string.length == 0)
     {
-        log_print(LOG_LEVEL_INFO, "debugobj", "<empty string>\n");
+        log_print(LOG_LEVEL_INFO, "<empty string>\n");
         return 0;
     }
 
-    log_print(LOG_LEVEL_INFO, "debugobj", "%s\n", string->string.content);
+    log_print(LOG_LEVEL_INFO, "%s\n", string->string.content);
     return 0;
 }
 
