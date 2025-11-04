@@ -17,13 +17,32 @@
 #include <sys/elf.h>
 #include <sys/list.h>
 
-// Keyed by symbol group ids
+// Keyed by symbol group id
 static map_t dependencyMap = MAP_CREATE;
 
 // Keyed by name
 static map_t moduleMap = MAP_CREATE;
 
+// Keyed by device id
+static map_t deviceMap = MAP_CREATE;
+
 static mutex_t lock = MUTEX_CREATE(lock);
+
+static inline uint64_t module_parse_string(const char* str, char* out, size_t outSize)
+{
+    if (outSize == 0)
+    {
+        return 0;
+    }
+
+    size_t len = 0;
+    while (str[len] != '\0' && str[len] != ';' && len < outSize - 1)
+    {
+        len++;
+    }
+    strncpy_s(out, outSize, str, len + 1);
+    return len + 1;
+}
 
 static uint64_t module_add(module_t* module)
 {
@@ -54,6 +73,27 @@ static void module_remove(module_t* module)
     map_remove(&dependencyMap, &dependKey);
     map_key_t moduleKey = map_key_string(module->info.name);
     map_remove(&moduleMap, &moduleKey);
+
+    if (module->flags & MODULE_FLAG_HANDLING_DEVICE)
+    {
+        assert(module->deviceIds != NULL);
+        char* deviceIdPtr = module->deviceIds;
+        while (*deviceIdPtr != '\0')
+        {
+            char deviceId[MODULE_MAX_ID];
+            uint64_t parsed = module_parse_string(deviceIdPtr, deviceId, MODULE_MAX_ID);
+            if (parsed == 0)
+            {
+                break;
+            }
+            deviceIdPtr += parsed;
+
+            map_key_t deviceKey = map_key_string(deviceId);
+            map_remove(&deviceMap, &deviceKey);
+        }
+    }
+
+    free(module->deviceIds);
 }
 
 static void module_call_unload_event(module_t* module)
@@ -67,6 +107,34 @@ static void module_call_unload_event(module_t* module)
         module->procedure(&unloadEvent);
         module->flags &= ~MODULE_FLAG_LOADED;
     }
+}
+
+static module_t* module_new(module_info_t* info, char* deviceIds)
+{
+    module_t* module = malloc(sizeof(module_t));
+    if (module == NULL)
+    {
+        return NULL;
+    }
+    map_entry_init(&module->dependencyMapEntry);
+    map_entry_init(&module->moduleMapEntry);
+    list_entry_init(&module->entry);
+    module->flags = MODULE_FLAG_NONE;
+    module->baseAddr = NULL;
+    module->size = 0;
+    module->procedure = NULL;
+    module->symbolGroupId = symbol_generate_group_id();
+    map_init(&module->dependencies);
+    memcpy_s(&module->info, sizeof(module_info_t), info, sizeof(module_info_t));
+    module->deviceIds = deviceIds;
+
+    if (module_add(module) == ERR)
+    {
+        free(module);
+        return NULL;
+    }
+
+    return module;
 }
 
 static void module_free(module_t* module)
@@ -96,34 +164,6 @@ static void module_free(module_t* module)
     free(module);
 }
 
-static module_t* module_new(module_info_t* info)
-{
-    module_t* module = malloc(sizeof(module_t));
-    if (module == NULL)
-    {
-        LOG_ERR("failed to allocate memory for module structure (%s)", strerror(errno));
-        return NULL;
-    }
-    map_entry_init(&module->dependencyMapEntry);
-    map_entry_init(&module->moduleMapEntry);
-    list_entry_init(&module->entry);
-    module->flags = MODULE_FLAG_NONE;
-    module->baseAddr = NULL;
-    module->size = 0;
-    module->procedure = NULL;
-    module->symbolGroupId = symbol_generate_group_id();
-    map_init(&module->dependencies);
-    memcpy_s(&module->info, sizeof(module_info_t), info, sizeof(module_info_t));
-
-    if (module_add(module) == ERR)
-    {
-        free(module);
-        return NULL;
-    }
-
-    return module;
-}
-
 void module_init_fake_kernel_module(const boot_kernel_t* kernel)
 {
     module_info_t kernelInfo = {
@@ -134,7 +174,7 @@ void module_init_fake_kernel_module(const boot_kernel_t* kernel)
         .licence = "MIT",
     };
 
-    module_t* kernelModule = module_new(&kernelInfo);
+    module_t* kernelModule = module_new(&kernelInfo, NULL);
     if (kernelModule == NULL)
     {
         panic(NULL, "Failed to create fake kernel module (%s)", strerror(errno));
@@ -164,7 +204,7 @@ void module_init_fake_kernel_module(const boot_kernel_t* kernel)
     LOG_INFO("loaded %llu kernel symbols\n", index);
 }
 
-static inline uint64_t module_load_parse_module_info(const char* moduleInfo, module_info_t* info)
+static inline uint64_t module_parse_module_info(const char* moduleInfo, module_info_t* info)
 {
     if (moduleInfo == NULL || info == NULL)
     {
@@ -172,51 +212,85 @@ static inline uint64_t module_load_parse_module_info(const char* moduleInfo, mod
     }
 
     size_t offset = 0;
-    size_t len = strnlen_s(&moduleInfo[offset], MODULE_MAX_NAME);
-    if (len == MODULE_MAX_NAME)
+    size_t parsed = module_parse_string(&moduleInfo[offset], info->name, MODULE_MAX_NAME);
+    if (parsed == 0)
     {
         return ERR;
     }
-    strncpy_s(info->name, MODULE_MAX_NAME, &moduleInfo[offset], len + 1);
-    offset += len + 1;
+    info->name[parsed - 1] = '\0';
+    offset += parsed;
 
-    len = strnlen_s(&moduleInfo[offset], MODULE_MAX_AUTHOR);
-    if (len == MODULE_MAX_AUTHOR)
+    parsed = module_parse_string(&moduleInfo[offset], info->author, MODULE_MAX_AUTHOR);
+    if (parsed == 0)
     {
         return ERR;
     }
-    strncpy_s(info->author, MODULE_MAX_AUTHOR, &moduleInfo[offset], len + 1);
-    offset += len + 1;
+    info->author[parsed - 1] = '\0';
+    offset += parsed;
 
-    len = strnlen_s(&moduleInfo[offset], MODULE_MAX_DESCRIPTION);
-    if (len == MODULE_MAX_DESCRIPTION)
+    parsed = module_parse_string(&moduleInfo[offset], info->description, MODULE_MAX_DESCRIPTION);
+    if (parsed == 0)
     {
         return ERR;
     }
-    strncpy_s(info->description, MODULE_MAX_DESCRIPTION, &moduleInfo[offset], len + 1);
-    offset += len + 1;
+    info->description[parsed - 1] = '\0';
+    offset += parsed;
 
-    len = strnlen_s(&moduleInfo[offset], MODULE_MAX_VERSION);
-    if (len == MODULE_MAX_VERSION)
+    parsed = module_parse_string(&moduleInfo[offset], info->version, MODULE_MAX_VERSION);
+    if (parsed == 0)
     {
         return ERR;
     }
-    strncpy_s(info->version, MODULE_MAX_VERSION, &moduleInfo[offset], len + 1);
-    offset += len + 1;
+    info->version[parsed - 1] = '\0';
+    offset += parsed;
 
-    len = strnlen_s(&moduleInfo[offset], MODULE_MAX_LICENCE);
-    if (len == MODULE_MAX_LICENCE)
+    parsed = module_parse_string(&moduleInfo[offset], info->licence, MODULE_MAX_LICENCE);
+    if (parsed == 0)
     {
         return ERR;
     }
-    strncpy_s(info->licence, MODULE_MAX_LICENCE, &moduleInfo[offset], len + 1);
-    offset += len + 1;
+    info->licence[parsed - 1] = '\0';
+    offset += parsed;
 
-    if (moduleInfo[offset] != '\1')
+    parsed = module_parse_string(&moduleInfo[offset], info->osVersion, MODULE_MAX_VERSION);
+    if (parsed == 0)
+    {
+        return ERR;
+    }
+    info->osVersion[parsed - 1] = '\0';
+    offset += parsed;
+
+    if (strcmp(info->osVersion, OS_VERSION) != 0)
+    {
+        LOG_ERR("module '%s' requires OS version '%s' but running version is '%s'\n", info->name,
+            info->osVersion, OS_VERSION);
+        return ERR;
+    }
+
+    return 0;
+}
+
+static inline uint64_t module_parse_module_device_ids(const char* deviceTable, char** outDeviceIds)
+{
+    if (deviceTable == NULL || outDeviceIds == NULL)
     {
         return ERR;
     }
 
+    size_t tableLength = strnlen_s(deviceTable, MODULE_MAX_ALL_IDS);
+    if (tableLength == 0 || tableLength >= MODULE_MAX_ALL_IDS)
+    {
+        return ERR;
+    }
+
+    char* deviceIds = malloc(tableLength + 1);
+    if (deviceIds == NULL)
+    {
+        return ERR;
+    }
+    strncpy_s(deviceIds, tableLength + 1, deviceTable, tableLength + 1);
+
+    *outDeviceIds = deviceIds;
     return 0;
 }
 
@@ -231,7 +305,7 @@ typedef struct
 
 static void* module_resolve_callback(const char* name, void* private);
 
-static uint64_t module_load_file(Elf64_File* outFile, module_info_t* outInfo, module_load_ctx_t* ctx,
+static uint64_t module_load_file(Elf64_File* outFile, module_info_t* outInfo, char** deviceIds, module_load_ctx_t* ctx,
     const char* filename)
 {
     file_t* file = vfs_openat(&ctx->dir->path, PATHNAME(filename), ctx->process);
@@ -267,7 +341,7 @@ static uint64_t module_load_file(Elf64_File* outFile, module_info_t* outInfo, mo
         return ERR;
     }
 
-    Elf64_Shdr* moduleInfoShdr = elf64_get_section_by_name(outFile, ".module_info");
+    Elf64_Shdr* moduleInfoShdr = elf64_get_section_by_name(outFile, MODULE_INFO_SECTION);
     if (moduleInfoShdr == NULL || moduleInfoShdr->sh_size < MODULE_MIN_INFO ||
         moduleInfoShdr->sh_size > MODULE_MAX_INFO)
     {
@@ -276,11 +350,32 @@ static uint64_t module_load_file(Elf64_File* outFile, module_info_t* outInfo, mo
         return ERR;
     }
 
-    if (module_load_parse_module_info(ELF64_AT_OFFSET(outFile, moduleInfoShdr->sh_offset), outInfo) == ERR)
+    if (module_parse_module_info(ELF64_AT_OFFSET(outFile, moduleInfoShdr->sh_offset), outInfo) == ERR)
     {
         free(fileData);
         errno = EILSEQ;
         return ERR;
+    }
+
+    Elf64_Shdr* moduleDevicesShdr = elf64_get_section_by_name(outFile, MODULE_DEVICE_IDS_SECTION);
+    if (moduleDevicesShdr != NULL)
+    {
+        if (moduleDevicesShdr->sh_size == 0 || moduleDevicesShdr->sh_size >= MODULE_MAX_ALL_IDS)
+        {
+            free(fileData);
+            errno = EILSEQ;
+            return ERR;
+        }
+        if (module_parse_module_device_ids(ELF64_AT_OFFSET(outFile, moduleDevicesShdr->sh_offset), deviceIds) == ERR)
+        {
+            free(fileData);
+            errno = EILSEQ;
+            return ERR;
+        }
+    }
+    else
+    {
+        *deviceIds = NULL;
     }
 
     return 0; // Caller owns fileData in outFile->header
@@ -372,7 +467,8 @@ static uint64_t module_find_and_load_dependency(module_load_ctx_t* ctx, const ch
 
             Elf64_File elf;
             module_info_t info;
-            if (module_load_file(&elf, &info, ctx, buffer[i].path) == ERR)
+            char* deviceIds = NULL;
+            if (module_load_file(&elf, &info, &deviceIds, ctx, buffer[i].path) == ERR)
             {
                 return ERR;
             }
@@ -380,6 +476,7 @@ static uint64_t module_find_and_load_dependency(module_load_ctx_t* ctx, const ch
             if (elf64_get_symbol_by_name(&elf, symbolName) == NULL)
             {
                 free(elf.header);
+                free(deviceIds);
                 continue;
             }
 
@@ -388,13 +485,15 @@ static uint64_t module_find_and_load_dependency(module_load_ctx_t* ctx, const ch
             if (existingModule != NULL)
             {
                 free(elf.header);
+                free(deviceIds);
                 return 0;
             }
 
-            module_t* dependency = module_new(&info);
+            module_t* dependency = module_new(&info, deviceIds);
             if (dependency == NULL)
             {
                 free(elf.header);
+                free(deviceIds);
                 return ERR;
             }
             dependency->flags |= MODULE_FLAG_DEPENDENCY;
@@ -471,9 +570,9 @@ static void* module_resolve_callback(const char* name, void* private)
     return symbolInfo.addr;
 }
 
-uint64_t module_load(const char* directory, const char* filename)
+uint64_t module_load(const char* filename)
 {
-    if (directory == NULL || filename == NULL)
+    if (filename == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -482,7 +581,7 @@ uint64_t module_load(const char* directory, const char* filename)
     MUTEX_SCOPE(&lock);
 
     module_load_ctx_t ctx = {
-        .dir = vfs_open(PATHNAME(directory), sched_process()),
+        .dir = vfs_open(PATHNAME(MODULE_DIR), sched_process()),
         .filename = filename,
         .process = sched_process(),
         .dependencies = LIST_CREATE(ctx.dependencies),
@@ -495,7 +594,8 @@ uint64_t module_load(const char* directory, const char* filename)
 
     Elf64_File elf;
     module_info_t info;
-    if (module_load_file(&elf, &info, &ctx, filename) == ERR)
+    char* deviceIds = NULL;
+    if (module_load_file(&elf, &info, &deviceIds, &ctx, filename) == ERR)
     {
         return ERR;
     }
@@ -509,10 +609,12 @@ uint64_t module_load(const char* directory, const char* filename)
             existingModule->flags &= ~MODULE_FLAG_DEPENDENCY;
         }
 
+        free(elf.header);
+        free(deviceIds);
         return 0;
     }
 
-    module_t* module = module_new(&info);
+    module_t* module = module_new(&info, deviceIds);
     if (module == NULL)
     {
         free(elf.header);
@@ -702,13 +804,44 @@ uint64_t module_unload(const char* name)
     return 0;
 }
 
+uint64_t module_load_device_modules(const char** deviceIds, uint64_t deviceIdCount)
+{
+    if (deviceIds == NULL || deviceIdCount == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    MUTEX_SCOPE(&lock);
+
+    /*for (uint64_t i = 0; i < deviceIdCount; i++)
+    {
+        const char* deviceId = deviceIds[i];
+        if (deviceId == NULL || deviceId[0] == '\0')
+        {
+            continue;
+        }
+
+        map_key_t deviceKey = map_key_string(deviceId);
+        module_device_t* existingDevice = CONTAINER_OF_SAFE(map_get(&deviceMap, &deviceKey), module_device_t, entry);
+        if (existingDevice != NULL)
+        {
+            continue;
+        }
+
+        dirent_t buffer[64];
+    }*/
+
+    return 0;
+}
+
 #ifdef TESTING
 void module_test()
 {
     LOG_INFO("starting module tests...\n");
     for (uint64_t i = 0; i < 3; i++)
     {
-        if (module_load("/kernel/modules:dir", "helloworld") == ERR)
+        if (module_load("helloworld") == ERR)
         {
             panic(NULL, "Failed to load hello world module (%s)\n", strerror(errno));
         }
@@ -724,7 +857,7 @@ void module_test()
 
     for (uint64_t i = 0; i < 3; i++)
     {
-        if (module_load("/kernel/modules:dir", "circular_depend1") == ERR)
+        if (module_load("circular_depend1") == ERR)
         {
             panic(NULL, "Failed to load circular depend modules (%s)\n", strerror(errno));
         }

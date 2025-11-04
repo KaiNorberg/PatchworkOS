@@ -134,8 +134,8 @@ static void log_print_header(log_level_t level)
 
     cpu_t* self = smp_self_unsafe();
 
-    int length = snprintf(workingBuffer, sizeof(workingBuffer), "[%4llu.%03llu-%02x-%s] ", seconds, milliseconds, self->id,
-        levelNames[level]);
+    int length = snprintf(workingBuffer, sizeof(workingBuffer), "[%4llu.%03llu-%02x-%s] ", seconds, milliseconds,
+        self->id, levelNames[level]);
     log_write(workingBuffer, length);
 }
 

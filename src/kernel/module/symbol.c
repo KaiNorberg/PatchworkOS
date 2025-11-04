@@ -271,7 +271,7 @@ error:
             free(symbolGroup);
         }
     }
-    
+
     LOG_DEBUG("failed to add symbol '%s' at address %p (%s)\n", name, addr, strerror(errno));
     return ERR;
 }

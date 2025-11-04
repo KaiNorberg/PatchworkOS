@@ -6,6 +6,7 @@
 #include <kernel/module/symbol.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
+#include <kernel/version.h>
 
 #include <stdint.h>
 #include <sys/io.h>
@@ -33,8 +34,11 @@ typedef struct module module_t;
  * Modules are in effect just ELF binaries which export some special sections and symbols that the kernel module loader
  * can use to identify and load the module.
  *
- * The first special section is `.module_info` which contains metadata about the module. Check the `MODULE_INFO` macro
+ * The first special section is `._module_info` which contains metadata about the module. Check the `MODULE_INFO` macro
  * for more details.
+ *
+ * The second special section is `._module_device_ids` which contains a semicolon-separated list of device IDs that specify
+ * what devices the module can handle. Check the `MODULE_DEVICE_IDS` macro for more details.
  *
  * Finally, there is the entry point, defined by the module linker script as `_module_procedure()`, which can be thought
  * of as the "main" function of the module but it also does way more than just that, whenever any event occurs that the
@@ -42,7 +46,7 @@ typedef struct module module_t;
  *
  * Note that since all global symbols will be exposed to other modules, its a good idea to prefix all global symbols
  * with some unique prefix to avoid naming collisions with other modules, for example `mymodule_*`. The exception to
- * this is symbols starting with '_module*' which are reserved for the kernel module system.
+ * this is symbols starting with '_mod*' which will not be exported or visible to other modules.
  *
  * ## Dependencies
  *
@@ -52,12 +56,12 @@ typedef struct module module_t;
  *
  * There are many, many ways of handling dependencies. In PatchworkOS it works like this.
  *
- * First, we load some module file, lets say "/kernel/modules/module2". This module wants to call `module_1_func()`
- * which is defined in "/kernel/modules/module1". When resolving the symbols for module2 we will fail to resolve
+ * First, we load some module file, lets say "/kernel/modules/<OS_VERSION>/module2". This module wants to call `module_1_func()`
+ * which is defined in "/kernel/modules/<OS_VERSION>/module1". When resolving the symbols for module2 we will fail to resolve
  * `module_1_func()`.
  *
  * The failure to resolve a symbol will cause the kernel to check all other module files in the same directory as
- * module2, in this case "/kernel/modules/", it checks all the symbols in each module eventually finding that module1
+ * module2, in this case "/kernel/modules/<OS_VERSION>/", it checks all the symbols in each module eventually finding that module1
  * defines `module_1_func()`. The kernel will then load module1 and retry the symbol resolution for module2, this time
  * succeeding. This repeats until all symbols are resolved or no more modules are found to load.
  *
@@ -98,8 +102,8 @@ typedef struct module module_t;
  */
 
 /**
- * @brief Maximum sizes for module information fields.
- * @typedef module_info_size_enum_t
+ * @brief Maximum sizes for module string fields.
+ * @typedef module_string_size_t
  */
 typedef enum
 {
@@ -110,15 +114,33 @@ typedef enum
     MODULE_MAX_LICENCE = 64,
     MODULE_MAX_INFO = MODULE_MAX_NAME + MODULE_MAX_AUTHOR + MODULE_MAX_DESCRIPTION + MODULE_MAX_VERSION +
         MODULE_MAX_LICENCE + 5, ///< +5 for null-terminators
-    MODULE_MIN_INFO = 6         ///< Minimum size of module info section (5 null-terminators + 1 byte)
-} module_info_size_t;
+    MODULE_MIN_INFO = 6,        ///< Minimum size of module info section (5 null-terminators + 1 byte)
+    MODULE_MAX_ID = 32,         ///< Maximum length of a device ID string.
+    MODULE_MAX_ALL_IDS = 1024,  ///< Maximum length of all device ID strings combined.
+} module_string_size_t;
+
+/**
+ * @brief Module information structure.
+ * @typedef module_info_t
+ *
+ * Used to store module information from the `.module_info` section.
+ */
+typedef struct module_info
+{
+    char name[MODULE_MAX_NAME];
+    char author[MODULE_MAX_AUTHOR];
+    char description[MODULE_MAX_DESCRIPTION];
+    char version[MODULE_MAX_VERSION];
+    char licence[MODULE_MAX_LICENCE];
+    char osVersion[MODULE_MAX_VERSION];
+} module_info_t;
 
 /**
  * @brief Reserved prefix for module global symbols.
  *
  * Any symbol with this prefix will not be loaded or exported.
  */
-#define MODULE_RESERVED_PREFIX "_module"
+#define MODULE_RESERVED_PREFIX "_mod"
 
 /**
  * @brief Length of `MODULE_RESERVED_PREFIX`.
@@ -126,7 +148,7 @@ typedef enum
  */
 typedef enum
 {
-    MODULE_RESERVED_PREFIX_LENGTH = 7
+    MODULE_RESERVED_PREFIX_LENGTH = 4
 } module_reserved_prefix_length_t;
 
 /**
@@ -148,7 +170,21 @@ typedef enum module_event_type
      * Return value is ignored.
      */
     MODULE_EVENT_UNLOAD,
+    /**
+     * @brief Device attach event.
+     *
+     * This event is sent when a device is attached that the module specified it supports.
+     *
+     * A return value of `ERR` can be used to specify that the module is unable to handle the device.
+     */
     MODULE_EVENT_DEVICE_ATTACH,
+    /**
+     * @brief Device detach event.
+     *
+     * This event is sent when a device is detached that the module specified it supports.
+     *
+     * Return value is ignored.
+     */
     MODULE_EVENT_DEVICE_DETACH,
 } module_event_type_t;
 
@@ -162,6 +198,14 @@ typedef struct module_event
 {
     module_event_type_t type;
     union {
+        struct
+        {
+            char id[MODULE_MAX_ID]; ///< Device ID string.
+        } deviceAttach;
+        struct
+        {
+            char id[MODULE_MAX_ID]; ///< Device ID string.
+        } deviceDetach;
     };
 } module_event_t;
 
@@ -175,7 +219,7 @@ typedef uint64_t (*module_procedure_t)(module_event_t* event);
  * @brief Module dependency structure.
  * @typedef module_dependency_t
  *
- * Will be stored in a module's dependency map.
+ * Stored in a module's dependency map.
  */
 typedef struct module_dependency
 {
@@ -184,19 +228,17 @@ typedef struct module_dependency
 } module_dependency_t;
 
 /**
- * @brief Module information structure.
- * @typedef module_info_t
+ * @brief Module device structure.
+ * @typedef module_device_t
  *
- * Used to store module information from the `.module_info` section.
+ * Stored in the global device map.
  */
-typedef struct module_info
+typedef struct module_device
 {
-    char name[MODULE_MAX_NAME];
-    char author[MODULE_MAX_AUTHOR];
-    char description[MODULE_MAX_DESCRIPTION];
-    char version[MODULE_MAX_VERSION];
-    char licence[MODULE_MAX_LICENCE];
-} module_info_t;
+    map_entry_t entry;
+    module_t* module;       ///< The module handling this device.
+    char id[MODULE_MAX_ID]; ///< The devices ID string.
+} module_device_t;
 
 /**
  * @brief Module flags.
@@ -214,9 +256,10 @@ typedef enum module_flags
      * If a module without this flag is explicitly unloaded, but modules depend on it, this flag will be set again.
      */
     MODULE_FLAG_DEPENDENCY = 1 << 0,
-    MODULE_FLAG_LOADED = 1 << 1,       ///< If set, the module has received the `MODULE_EVENT_LOAD` event.
-    MODULE_FLAG_GC_REACHABLE = 1 << 2, ///< Used by the GC to mark reachable modules.
-    MODULE_FLAG_UNLOADING = 1 << 3,    ///< Prevents re-entrant calls to module_free.
+    MODULE_FLAG_LOADED = 1 << 1,          ///< If set, the module has received the `MODULE_EVENT_LOAD` event.
+    MODULE_FLAG_GC_REACHABLE = 1 << 2,    ///< Used by the GC to mark reachable modules.
+    MODULE_FLAG_UNLOADING = 1 << 3,       ///< Prevents re-entrant calls to module_free.
+    MODULE_FLAG_HANDLING_DEVICE = 1 << 4, ///< If set, the module is assigned to handle a device.
 } module_flags_t;
 
 /**
@@ -235,14 +278,24 @@ typedef struct module
     symbol_group_id_t symbolGroupId; ///< See `symbol_group_id_t`.
     map_t dependencies; ///< Map of dependencies, key is `symbol_group_id_t`, value is `module_dependency_t`.
     module_info_t info;
+    char* deviceIds; ///< Null-terminated semicolon-separated list of device ID strings.
 } module_t;
+
+/*
+ * Section for module information.
+ */
+#define MODULE_INFO_SECTION "._module_info"
+
+/*
+ * Section for module device ID table.
+ */
+#define MODULE_DEVICE_IDS_SECTION "._module_device_ids"
 
 /**
  * @brief Macro to define module information.
  *
  * To define module information we define a separate section in the module's binary called `.module_info` this section
- * stores a concatenated string of the module's name, author, description, version and licence, each separated by a
- * null-terminator. We also add a final null-terminator and a byte `1` at the end to signify the end of the module info.
+ * stores a concatenated string of the module's name, author, description, version, licence and the OS version, each separated by a `;` and ending with a null-terminator.
  *
  * For example
  * ```c
@@ -250,10 +303,12 @@ typedef struct module
  * ```
  * becomes
  * ```c
- * "My Module\0John Doe\0A sample module\01.0.0\0MIT\0\1"
+ * "My Module;John Doe;A sample module;1.0.0;MIT;ac516767\0"
  * ```
  *
  * Should only be used in a module.
+ *
+ * This section is mandatory.
  *
  * @param _name The name of the module.
  * @param _author The author of the module.
@@ -262,8 +317,45 @@ typedef struct module
  * @param _licence The licence of the module.
  */
 #define MODULE_INFO(_name, _author, _description, _version, _licence) \
-    const char _moduleInfo[] __attribute__((section(".module_info"), used)) = \
-        _name "\0" _author "\0" _description "\0" _version "\0" _licence "\0\1"
+    const char _moduleInfo[] __attribute__((section(MODULE_INFO_SECTION), used)) = \
+        _name ";" _author ";" _description ";" _version ";" _licence ";" OS_VERSION "\0"
+
+/**
+ * @brief Macro to define what device IDs a module supports.
+ *
+ * This macro is used to specify a set of generic device ID strings that the module supports.
+ *
+ * These strings can be anything, the module loader does not interpret them in any way, all it does is check for matches
+ * when loading modules to handle a specific device ID. For example, this IDs may be ACPI HIDs, PCI IDs, USB IDs or
+ * completely custom strings defined by the module itself.
+ *
+ * To define the device IDs we define a separate section in the module's binary called `.module_devices` this section
+ * stores a concatenated string of all device IDs, each separated by a `;` and ending with a null-terminator.
+ *
+ * For example
+ * ```
+ * MODULE_DEVICE_IDS("ID1", "ID234", "ID56");
+ * ```
+ * becomes
+ * ```
+ * "ID1;ID234;ID56\0"
+ * ```
+ *
+ * Should only be used in a module.
+ *
+ * This section is optional.
+ *
+ * @param _string A semicolon-separated list of device ID strings.
+ */
+#define MODULE_DEVICE_IDS(_string) \
+    const char _moduleDeviceIds[] __attribute__((section(MODULE_DEVICE_IDS_SECTION), used)) = _string "\0"
+
+/**
+ * @brief The directory where the kernel will look for modules.
+ *
+ * Note how the OS version is part of the path.
+ */
+#define MODULE_DIR "/kernel/modules/" OS_VERSION "/:dir"
 
 /**
  * @brief Initialize a fake module representing the kernel itself.
@@ -282,11 +374,10 @@ void module_init_fake_kernel_module(const boot_kernel_t* kernel);
  *
  * If a module of the same name is already loaded this function is a no-op and returns success.
  *
- * @param directory The directory containing the module file.
  * @param filename The module file name.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t module_load(const char* directory, const char* filename);
+uint64_t module_load(const char* filename);
 
 /**
  * @brief Unload a module by its name.
@@ -299,6 +390,17 @@ uint64_t module_load(const char* directory, const char* filename);
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t module_unload(const char* name);
+
+/**
+ * @brief Load device modules until at least one module is found for each device ID.
+ *
+ * If a already loaded module supports a device ID, then the ID is considered handled.
+ *
+ * @param deviceIds Array of device ID strings.
+ * @param deviceIdCount Number of device IDs in the array.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t module_load_device_modules(const char** deviceIds, uint64_t deviceIdCount);
 
 /** @} */
 

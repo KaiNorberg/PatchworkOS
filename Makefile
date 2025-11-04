@@ -1,9 +1,11 @@
+VERSION_STRING := $(shell git describe --tags --always --dirty --long 2>/dev/null || echo "unknown")
+
 SECTIONS = boot kernel libstd libpatchwork
 PROGRAMS = $(basename $(notdir $(wildcard make/programs/*.mk)))
 MODULES = $(basename $(notdir $(wildcard make/modules/*.mk)))
 TARGET_IMAGE = bin/PatchworkOS.img
 VERSION_HEADER = include/kernel/version.h
-ROOT_DIRS = acpi bin cfg dev efi efi/boot home kernel kernel/modules lib net proc sys tmp usr usr/bin usr/share usr/license var
+ROOT_DIRS = acpi bin cfg dev efi efi/boot home kernel kernel/modules kernel/modules/$(VERSION_STRING) lib net proc sys tmp usr usr/bin usr/share usr/license var
 
 # Programs to copy to /bin instead of /usr/bin
 BIN_PROGRAMS = init wall cursor taskbar dwm shell rm ls link mv touch cat echo
@@ -45,7 +47,6 @@ endif
 all: setup $(SECTIONS) $(PROGRAMS) deploy
 
 generate_version:
-	@GIT_VERSION_STRING=$$(git describe --tags --always --dirty --long 2>/dev/null || echo "unknown"); \
 	echo "#pragma once" > $(VERSION_HEADER); \
 	echo "" >> $(VERSION_HEADER); \
 	echo "/**" >> $(VERSION_HEADER); \
@@ -54,7 +55,7 @@ generate_version:
 	echo " */" >> $(VERSION_HEADER); \
 	echo "" >> $(VERSION_HEADER); \
 	echo "#define OS_NAME \"PatchworkOS\"" >> $(VERSION_HEADER); \
-	echo "#define OS_VERSION \"$$GIT_VERSION_STRING\"" >> $(VERSION_HEADER); \
+	echo "#define OS_VERSION \"$(VERSION_STRING)\"" >> $(VERSION_HEADER); \
 	echo "" >> $(VERSION_HEADER)
 
 ifeq ($(TESTING),1)
@@ -83,7 +84,7 @@ deploy: $(PROGRAMS)
 	mcopy -i $(TARGET_IMAGE) -s bin/boot/bootx64.efi ::/efi/boot
 	mcopy -i $(TARGET_IMAGE) -s bin/kernel/kernel ::/kernel
 	mcopy -i $(TARGET_IMAGE) -s LICENSE ::/usr/license
-	$(foreach mod,$(MODULES),mcopy -i $(TARGET_IMAGE) -s bin/modules/$(mod) ::/kernel/modules;)
+	$(foreach mod,$(MODULES),mcopy -i $(TARGET_IMAGE) -s bin/modules/$(mod) ::/kernel/modules/$(VERSION_STRING);)
 	$(foreach prog,$(BIN_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/bin;)
 	$(foreach prog,$(USR_BIN_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/usr/bin;)
 

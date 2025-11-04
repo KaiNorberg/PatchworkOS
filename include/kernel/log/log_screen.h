@@ -21,7 +21,7 @@
  *
  * Header length (15) + 2 for indentation
  */
-#define SCREEN_WRAP_INDENT 17 
+#define SCREEN_WRAP_INDENT 17
 
 /**
  * @brief Maximum number of characters in a single line.

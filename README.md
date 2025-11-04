@@ -1,4 +1,5 @@
 # PatchworkOS
+
 <br>
 <div align="center">
     <a href="https://github.com/KaiNorberg/PatchworkOS/issues">
@@ -150,6 +151,7 @@ In the end we end up with a $O(1)$ complexity per page operation, or technically
 Note that as the number of pages increases we start to see less and less linear performance, this is most likely due to CPU cache saturation.
 
 For fun, we can throw the results into desmos to se that around $800$ to $900$ pages there is a "knee" in the curve. Saying that $x$ is the number of pages per iteration and $y$ is the time in milliseconds let us split the data into two sets. We can now perform linear regression which gives us
+
 ```math
 y =
 \begin{cases}
@@ -157,9 +159,11 @@ y =
 8.68659x-5762.6044 & \text{if } x > 850, \quad R^2=0.9904.
 \end{cases}
 ```
+
 <br>
 
 Performing quadratic regression on the same data gives us
+
 ```math
 y =
 \begin{cases}
@@ -167,6 +171,7 @@ y =
 0.00626813x^{2}-6.04352x+2636.69231 & \text{if } x > 850, \quad R^2=0.9973.
 \end{cases}
 ```
+
 <br>
 
 From this we see that for $x \le 850$ the linear regression has a slightly better fit while for $x > 850$ the quadratic regression has a slightly better fit, this is most likely due to the CPU or TLB caches starting to get saturated. All in all this did not tell us much more than we already knew, but it was fun to do regardless.
