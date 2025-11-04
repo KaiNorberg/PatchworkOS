@@ -66,9 +66,9 @@ typedef struct process
     _Atomic(priority_t) priority;
     _Atomic(uint64_t) status;
     argv_t argv;
-    namespace_t namespace;
     space_t space;
     vfs_ctx_t vfsCtx;
+    namespace_t namespace;
     futex_ctx_t futexCtx;
     perf_process_ctx_t perf;
     wait_queue_t dyingWaitQueue;

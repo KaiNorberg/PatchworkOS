@@ -8,6 +8,7 @@
 #include <kernel/sync/rwlock.h>
 
 #include <errno.h>
+#include <kernel/utils/map.h>
 #include <stdlib.h>
 
 static map_t keyMap;
@@ -49,8 +50,7 @@ static void key_timer_handler(interrupt_frame_t* frame, cpu_t* self)
             break;
         }
 
-        map_key_t mapKey = map_key_buffer(&entry->key, sizeof(entry->key));
-        map_remove(&keyMap, &mapKey);
+        map_remove(&keyMap, &entry->mapEntry);
         list_remove(&keyList, &entry->entry);
         DEREF(entry->file);
         free(entry);
@@ -59,10 +59,7 @@ static void key_timer_handler(interrupt_frame_t* frame, cpu_t* self)
 
 void key_init(void)
 {
-    if (map_init(&keyMap) == ERR)
-    {
-        panic(NULL, "key: failed to initialize key map");
-    }
+    map_init(&keyMap);
     list_init(&keyList);
     rwlock_init(&keyLock);
 }
@@ -158,7 +155,7 @@ file_t* key_claim(key_t* key)
 
     RWLOCK_WRITE_SCOPE(&keyLock);
     map_key_t mapKey = map_key_buffer(key, sizeof(*key));
-    map_entry_t* mapEntry = map_get(&keyMap, &mapKey);
+    map_entry_t* mapEntry = map_get_and_remove(&keyMap, &mapKey);
     if (mapEntry == NULL)
     {
         errno = ENOENT;
@@ -167,7 +164,6 @@ file_t* key_claim(key_t* key)
 
     key_entry_t* entry = CONTAINER_OF(mapEntry, key_entry_t, mapEntry);
     list_remove(&keyList, &entry->entry);
-    map_remove(&keyMap, &mapKey);
 
     file_t* file = entry->file;
     free(entry);

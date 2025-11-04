@@ -61,18 +61,7 @@ uint64_t aml_state_init(aml_state_t* state, aml_object_t** args)
 
     state->result = NULL;
     state->errorDepth = 0;
-    if (aml_overlay_init(&state->overlay) == ERR)
-    {
-        for (uint8_t i = 0; i < AML_MAX_ARGS; i++)
-        {
-            DEREF(state->args[i]);
-        }
-        for (uint8_t j = 0; j < AML_MAX_LOCALS; j++)
-        {
-            DEREF(state->locals[j]);
-        }
-        return ERR;
-    }
+    aml_overlay_init(&state->overlay);
     return 0;
 }
 

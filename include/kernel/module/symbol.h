@@ -74,7 +74,7 @@ typedef uint64_t symbol_group_id_t;
  */
 typedef struct
 {
-    map_entry_t entry;
+    map_entry_t mapEntry;
     symbol_group_id_t id;
     list_t names;
 } symbol_group_t;

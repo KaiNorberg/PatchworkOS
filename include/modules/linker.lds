@@ -28,9 +28,4 @@ SECTIONS
     {
         KEEP(*(._module_info))
     }
-
-    ._module_device_ids :
-    {
-        KEEP(*(._module_device_ids))
-    }
 }

@@ -1,3 +1,5 @@
+#include <kernel/fs/dentry.h>
+#include <kernel/fs/sysfs.h>
 #include <kernel/module/module.h>
 
 #include <kernel/fs/vfs.h>
@@ -11,19 +13,21 @@
 #include <kernel/utils/map.h>
 #include <kernel/version.h>
 
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/elf.h>
+#include <sys/io.h>
 #include <sys/list.h>
 
-// Keyed by symbol group id
+// Keyed = module symbol group ID, value = module_t*
 static map_t dependencyMap = MAP_CREATE;
 
-// Keyed by name
+// Keyed = module name, value = module_t*
 static map_t moduleMap = MAP_CREATE;
 
-// Keyed by device id
+// Keyed = device ID, value = module_device_t*
 static map_t deviceMap = MAP_CREATE;
 
 static mutex_t lock = MUTEX_CREATE(lock);
@@ -52,10 +56,10 @@ static uint64_t module_add(module_t* module)
         return ERR;
     }
 
-    map_key_t moduleKey = map_key_string(module->info.name);
+    map_key_t moduleKey = map_key_string(module->info->name);
     if (map_insert(&moduleMap, &moduleKey, &module->moduleMapEntry) == ERR)
     {
-        map_remove(&dependencyMap, &dependKey);
+        map_remove(&dependencyMap, &module->dependencyMapEntry);
         return ERR;
     }
 
@@ -69,47 +73,11 @@ static void module_remove(module_t* module)
         return;
     }
 
-    map_key_t dependKey = map_key_uint64(module->symbolGroupId);
-    map_remove(&dependencyMap, &dependKey);
-    map_key_t moduleKey = map_key_string(module->info.name);
-    map_remove(&moduleMap, &moduleKey);
-
-    if (module->flags & MODULE_FLAG_HANDLING_DEVICE)
-    {
-        assert(module->deviceIds != NULL);
-        char* deviceIdPtr = module->deviceIds;
-        while (*deviceIdPtr != '\0')
-        {
-            char deviceId[MODULE_MAX_ID];
-            uint64_t parsed = module_parse_string(deviceIdPtr, deviceId, MODULE_MAX_ID);
-            if (parsed == 0)
-            {
-                break;
-            }
-            deviceIdPtr += parsed;
-
-            map_key_t deviceKey = map_key_string(deviceId);
-            map_remove(&deviceMap, &deviceKey);
-        }
-    }
-
-    free(module->deviceIds);
+    map_remove(&dependencyMap, &module->dependencyMapEntry);
+    map_remove(&moduleMap, &module->moduleMapEntry);
 }
 
-static void module_call_unload_event(module_t* module)
-{
-    if (module->flags & MODULE_FLAG_LOADED)
-    {
-        LOG_DEBUG("calling unload event for module '%s'\n", module->info.name);
-        module_event_t unloadEvent = {
-            .type = MODULE_EVENT_UNLOAD,
-        };
-        module->procedure(&unloadEvent);
-        module->flags &= ~MODULE_FLAG_LOADED;
-    }
-}
-
-static module_t* module_new(module_info_t* info, char* deviceIds)
+static module_t* module_new(module_info_t* info)
 {
     module_t* module = malloc(sizeof(module_t));
     if (module == NULL)
@@ -124,10 +92,10 @@ static module_t* module_new(module_info_t* info, char* deviceIds)
     module->size = 0;
     module->procedure = NULL;
     module->symbolGroupId = symbol_generate_group_id();
+    map_init(&module->deviceHandlers);
     map_init(&module->dependencies);
-    memcpy_s(&module->info, sizeof(module_info_t), info, sizeof(module_info_t));
-    module->deviceIds = deviceIds;
-
+    module->info = info;
+    
     if (module_add(module) == ERR)
     {
         free(module);
@@ -137,9 +105,36 @@ static module_t* module_new(module_info_t* info, char* deviceIds)
     return module;
 }
 
+static uint64_t module_call_load_event(module_t* module)
+{
+    LOG_DEBUG("calling load event for module '%s'\n", module->info->name);
+    module_event_t loadEvent = {
+        .type = MODULE_EVENT_LOAD,
+    };
+    if (module->procedure(&loadEvent) == ERR)
+    {
+        return ERR;
+    }
+    module->flags |= MODULE_FLAG_LOADED;
+    return 0;
+}
+
+static void module_call_unload_event(module_t* module)
+{
+    if (module->flags & MODULE_FLAG_LOADED)
+    {
+        LOG_DEBUG("calling unload event for module '%s'\n", module->info->name);
+        module_event_t unloadEvent = {
+            .type = MODULE_EVENT_UNLOAD,
+        };
+        module->procedure(&unloadEvent);
+        module->flags &= ~MODULE_FLAG_LOADED;
+    }
+}
+
 static void module_free(module_t* module)
 {
-    LOG_DEBUG("freeing resources for module '%s'\n", module->info.name);
+    LOG_DEBUG("freeing resources for module '%s'\n", module->info->name);
 
     module_remove(module);
     symbol_remove_group(module->symbolGroupId);
@@ -161,20 +156,75 @@ static void module_free(module_t* module)
     }
     map_deinit(&module->dependencies);
 
+    free(module->info);
     free(module);
+}
+
+static inline uint64_t module_device_attach(module_device_t* device, module_t* module)
+{
+    module_device_handler_t* handler = malloc(sizeof(module_device_handler_t));
+    if (handler == NULL)
+    {
+        return ERR;
+    }
+    list_entry_init(&handler->deviceEntry);
+    map_entry_init(&handler->moduleEntry);
+    handler->module = module;
+    handler->device = device;
+
+    map_key_t deviceKey = map_key_string(device->id);
+    if (map_insert(&module->deviceHandlers, &deviceKey, &handler->moduleEntry) == ERR)
+    {
+        free(handler);
+        return ERR;
+    }
+
+    module_event_t attachEvent = {
+        .type = MODULE_EVENT_DEVICE_ATTACH,
+        .deviceAttach.id = device->id,
+    };
+    if (module->procedure(&attachEvent) == ERR)
+    {
+        map_remove(&module->deviceHandlers, &handler->moduleEntry);
+        free(handler);
+        return ERR;
+    }
+
+    list_push_back(&device->handlers, &handler->deviceEntry);
+    return 0;
+}
+
+static inline uint64_t module_device_detach(module_device_t* device, module_t* module)
+{
+    map_key_t deviceKey = map_key_string(device->id);
+    map_entry_t* entry = map_get_and_remove(&module->deviceHandlers, &deviceKey);
+    if (entry == NULL)
+    {
+        return ERR;
+    }
+
+    module_device_handler_t* handler = CONTAINER_OF(entry, module_device_handler_t, moduleEntry);
+
+    module_event_t detachEvent = {
+        .type = MODULE_EVENT_DEVICE_DETACH,
+        .deviceDetach.id = device->id,
+    };
+    module->procedure(&detachEvent);
+
+    list_remove(&device->handlers, &handler->deviceEntry);
+    free(handler);
+
+    if (list_is_empty(&device->handlers))
+    {
+        map_remove(&deviceMap, &device->mapEntry);
+        free(device);
+    }
+    return 0;
 }
 
 void module_init_fake_kernel_module(const boot_kernel_t* kernel)
 {
-    module_info_t kernelInfo = {
-        .name = "Kernel",
-        .author = "Kai Norberg",
-        .description = "The PatchworkOS kernel",
-        .version = OS_VERSION,
-        .licence = "MIT",
-    };
-
-    module_t* kernelModule = module_new(&kernelInfo, NULL);
+    module_t* kernelModule = module_new(NULL);
     if (kernelModule == NULL)
     {
         panic(NULL, "Failed to create fake kernel module (%s)", strerror(errno));
@@ -204,58 +254,162 @@ void module_init_fake_kernel_module(const boot_kernel_t* kernel)
     LOG_INFO("loaded %llu kernel symbols\n", index);
 }
 
-static inline uint64_t module_parse_module_info(const char* moduleInfo, module_info_t* info)
+static void module_gc_mark_reachable(module_t* module)
 {
-    if (moduleInfo == NULL || info == NULL)
+    if (module == NULL || module->flags & MODULE_FLAG_GC_REACHABLE)
     {
-        return ERR;
+        return;
+    }
+
+    module->flags |= MODULE_FLAG_GC_REACHABLE;
+    for (uint64_t i = 0; i < module->dependencies.capacity; i++)
+    {
+        map_entry_t* entry = module->dependencies.entries[i];
+        if (!MAP_ENTRY_PTR_IS_VALID(entry))
+        {
+            continue;
+        }
+        module_dependency_t* dependency = CONTAINER_OF(entry, module_dependency_t, entry);
+        module_gc_mark_reachable(dependency->module);
+    }
+}
+
+// This makes sure we collect unreachable modules in dependency order
+static void module_gc_collect_unreachable(module_t* module, list_t* toFree)
+{
+    if (module == NULL || module->flags & MODULE_FLAG_GC_REACHABLE)
+    {
+        return;
+    }
+    module->flags |= MODULE_FLAG_GC_REACHABLE; // Prevent re-entrance
+
+    list_push_back(toFree, &module->entry);
+
+    for (uint64_t i = 0; i < module->dependencies.capacity; i++)
+    {
+        map_entry_t* entry = module->dependencies.entries[i];
+        if (!MAP_ENTRY_PTR_IS_VALID(entry))
+        {
+            continue;
+        }
+        module_dependency_t* dependency = CONTAINER_OF(entry, module_dependency_t, entry);
+        module_gc_collect_unreachable(dependency->module, toFree);
+    }
+}
+
+static void module_collect_garbage(void)
+{
+    for (uint64_t i = 0; i < moduleMap.capacity; i++)
+    {
+        map_entry_t* entry = moduleMap.entries[i];
+        if (!MAP_ENTRY_PTR_IS_VALID(entry))
+        {
+            continue;
+        }
+        module_t* module = CONTAINER_OF(entry, module_t, moduleMapEntry);
+        if (!map_is_empty(&module->deviceHandlers))
+        {
+            module_gc_mark_reachable(module);
+        }
+    }
+
+    list_t toFree = LIST_CREATE(toFree);
+    for (uint64_t i = 0; i < moduleMap.capacity; i++)
+    {
+        map_entry_t* entry = moduleMap.entries[i];
+        if (!MAP_ENTRY_PTR_IS_VALID(entry))
+        {
+            continue;
+        }
+        module_t* module = CONTAINER_OF(entry, module_t, moduleMapEntry);
+        module_gc_collect_unreachable(module, &toFree);
+    }
+
+    module_t* module;
+    LIST_FOR_EACH(module, &toFree, entry)
+    {
+        // Be extra safe and call unload event before freeing any resources
+        module_call_unload_event(module);
+    }
+
+    while (!list_is_empty(&toFree))
+    {
+        module = CONTAINER_OF(list_pop_first(&toFree), module_t, entry);
+        module_free(module);
+    }
+}
+
+static inline module_info_t* module_info_parse(const char* moduleInfo)
+{
+    if (moduleInfo == NULL)
+    {
+        return NULL;
+    }
+
+    size_t totalSize = strnlen_s(moduleInfo, MODULE_MAX_INFO);
+    if (totalSize < MODULE_MIN_INFO || totalSize >= MODULE_MAX_INFO)
+    {
+        errno = EILSEQ;
+        return NULL;
+    }
+
+    module_info_t* info = malloc(sizeof(module_info_t) + totalSize + 1);
+    if (info == NULL)
+    {
+        return NULL;
     }
 
     size_t offset = 0;
+    info->name = &info->data[offset];
     size_t parsed = module_parse_string(&moduleInfo[offset], info->name, MODULE_MAX_NAME);
     if (parsed == 0)
     {
-        return ERR;
+        goto error;
     }
     info->name[parsed - 1] = '\0';
     offset += parsed;
 
+    info->author = &info->data[offset];
     parsed = module_parse_string(&moduleInfo[offset], info->author, MODULE_MAX_AUTHOR);
     if (parsed == 0)
     {
-        return ERR;
+        goto error;
     }
     info->author[parsed - 1] = '\0';
     offset += parsed;
 
+    info->description = &info->data[offset];
     parsed = module_parse_string(&moduleInfo[offset], info->description, MODULE_MAX_DESCRIPTION);
     if (parsed == 0)
     {
-        return ERR;
+        goto error;
     }
     info->description[parsed - 1] = '\0';
     offset += parsed;
 
+    info->version = &info->data[offset];
     parsed = module_parse_string(&moduleInfo[offset], info->version, MODULE_MAX_VERSION);
     if (parsed == 0)
     {
-        return ERR;
+        goto error;
     }
     info->version[parsed - 1] = '\0';
     offset += parsed;
 
+    info->licence = &info->data[offset];
     parsed = module_parse_string(&moduleInfo[offset], info->licence, MODULE_MAX_LICENCE);
     if (parsed == 0)
     {
-        return ERR;
+        goto error;
     }
     info->licence[parsed - 1] = '\0';
     offset += parsed;
 
+    info->osVersion = &info->data[offset];
     parsed = module_parse_string(&moduleInfo[offset], info->osVersion, MODULE_MAX_VERSION);
     if (parsed == 0)
     {
-        return ERR;
+        goto error;
     }
     info->osVersion[parsed - 1] = '\0';
     offset += parsed;
@@ -264,34 +418,46 @@ static inline uint64_t module_parse_module_info(const char* moduleInfo, module_i
     {
         LOG_ERR("module '%s' requires OS version '%s' but running version is '%s'\n", info->name,
             info->osVersion, OS_VERSION);
-        return ERR;
+        goto error;
     }
 
-    return 0;
+    size_t deviceIdsLength = totalSize - offset;
+    info->deviceIds = &info->data[offset];
+    strncpy_s(info->deviceIds, deviceIdsLength + 1, &moduleInfo[offset], deviceIdsLength + 1);
+
+    return info;
+    
+error:
+    free(info);
+    errno = EILSEQ;
+    return NULL;
 }
 
-static inline uint64_t module_parse_module_device_ids(const char* deviceTable, char** outDeviceIds)
+static bool module_info_has_device_id(module_info_t* info, const char* deviceId)
 {
-    if (deviceTable == NULL || outDeviceIds == NULL)
+    if (info == NULL || deviceId == NULL)
     {
-        return ERR;
+        return false;
     }
 
-    size_t tableLength = strnlen_s(deviceTable, MODULE_MAX_ALL_IDS);
-    if (tableLength == 0 || tableLength >= MODULE_MAX_ALL_IDS)
+    const char* deviceIdPtr = info->deviceIds;
+    while (*deviceIdPtr != '\0')
     {
-        return ERR;
+        char currentDeviceId[MODULE_MAX_DEVICE_ID];
+        uint64_t parsed = module_parse_string(deviceIdPtr, currentDeviceId, MODULE_MAX_DEVICE_ID);
+        if (parsed == 0)
+        {
+            break;
+        }
+        deviceIdPtr += parsed;
+
+        if (strncmp(currentDeviceId, deviceId, MODULE_MAX_DEVICE_ID) == 0)
+        {
+            return true;
+        }
     }
 
-    char* deviceIds = malloc(tableLength + 1);
-    if (deviceIds == NULL)
-    {
-        return ERR;
-    }
-    strncpy_s(deviceIds, tableLength + 1, deviceTable, tableLength + 1);
-
-    *outDeviceIds = deviceIds;
-    return 0;
+    return false;
 }
 
 typedef struct
@@ -305,8 +471,7 @@ typedef struct
 
 static void* module_resolve_callback(const char* name, void* private);
 
-static uint64_t module_load_file(Elf64_File* outFile, module_info_t* outInfo, char** deviceIds, module_load_ctx_t* ctx,
-    const char* filename)
+static uint64_t module_load_file(Elf64_File* outFile, module_info_t** outInfo, module_load_ctx_t* ctx, const char* filename)
 {
     file_t* file = vfs_openat(&ctx->dir->path, PATHNAME(filename), ctx->process);
     if (file == NULL)
@@ -350,35 +515,15 @@ static uint64_t module_load_file(Elf64_File* outFile, module_info_t* outInfo, ch
         return ERR;
     }
 
-    if (module_parse_module_info(ELF64_AT_OFFSET(outFile, moduleInfoShdr->sh_offset), outInfo) == ERR)
+    *outInfo = module_info_parse((const char*)((uintptr_t)outFile->header + moduleInfoShdr->sh_offset));
+    if (*outInfo == NULL)
     {
         free(fileData);
         errno = EILSEQ;
         return ERR;
     }
 
-    Elf64_Shdr* moduleDevicesShdr = elf64_get_section_by_name(outFile, MODULE_DEVICE_IDS_SECTION);
-    if (moduleDevicesShdr != NULL)
-    {
-        if (moduleDevicesShdr->sh_size == 0 || moduleDevicesShdr->sh_size >= MODULE_MAX_ALL_IDS)
-        {
-            free(fileData);
-            errno = EILSEQ;
-            return ERR;
-        }
-        if (module_parse_module_device_ids(ELF64_AT_OFFSET(outFile, moduleDevicesShdr->sh_offset), deviceIds) == ERR)
-        {
-            free(fileData);
-            errno = EILSEQ;
-            return ERR;
-        }
-    }
-    else
-    {
-        *deviceIds = NULL;
-    }
-
-    return 0; // Caller owns fileData in outFile->header
+    return 0; // Caller owns fileData in outFile->header and outInfo
 }
 
 static uint64_t module_load_from_file(module_t* module, Elf64_File* elf, module_load_ctx_t* ctx)
@@ -466,9 +611,8 @@ static uint64_t module_find_and_load_dependency(module_load_ctx_t* ctx, const ch
             }
 
             Elf64_File elf;
-            module_info_t info;
-            char* deviceIds = NULL;
-            if (module_load_file(&elf, &info, &deviceIds, ctx, buffer[i].path) == ERR)
+            module_info_t* info;
+            if (module_load_file(&elf, &info, ctx, buffer[i].path) == ERR)
             {
                 return ERR;
             }
@@ -476,32 +620,31 @@ static uint64_t module_find_and_load_dependency(module_load_ctx_t* ctx, const ch
             if (elf64_get_symbol_by_name(&elf, symbolName) == NULL)
             {
                 free(elf.header);
-                free(deviceIds);
+                free(info);
                 continue;
             }
 
-            map_key_t moduleKey = map_key_string(info.name);
+            map_key_t moduleKey = map_key_string(info->name);
             module_t* existingModule = CONTAINER_OF_SAFE(map_get(&moduleMap, &moduleKey), module_t, moduleMapEntry);
             if (existingModule != NULL)
             {
                 free(elf.header);
-                free(deviceIds);
-                return 0;
+                free(info);
+                return 0; // Already loaded
             }
 
-            module_t* dependency = module_new(&info, deviceIds);
+            module_t* dependency = module_new(info);
             if (dependency == NULL)
             {
                 free(elf.header);
-                free(deviceIds);
+                free(info);
                 return ERR;
             }
-            dependency->flags |= MODULE_FLAG_DEPENDENCY;
 
             LOG_INFO(
                 "loading dependency '%s'\n  Author:      %s\n  Description: %s\n  Version:     %s\n  Licence:     %s\n",
-                dependency->info.name, dependency->info.author, dependency->info.description, dependency->info.version,
-                dependency->info.licence);
+                dependency->info->name, dependency->info->author, dependency->info->description, dependency->info->version,
+                dependency->info->licence);
 
             list_push_back(&ctx->dependencies, &dependency->entry);
 
@@ -570,66 +713,64 @@ static void* module_resolve_callback(const char* name, void* private)
     return symbolInfo.addr;
 }
 
-uint64_t module_load(const char* filename)
+static module_t* module_get_or_load_filename(file_t* dir, const char* filename, const char* deviceId)
 {
     if (filename == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return NULL;
     }
 
-    MUTEX_SCOPE(&lock);
-
     module_load_ctx_t ctx = {
-        .dir = vfs_open(PATHNAME(MODULE_DIR), sched_process()),
+        .dir = dir,
         .filename = filename,
         .process = sched_process(),
         .dependencies = LIST_CREATE(ctx.dependencies),
     };
-    if (ctx.dir == NULL)
-    {
-        return ERR;
-    }
-    DEREF_DEFER(ctx.dir);
 
     Elf64_File elf;
-    module_info_t info;
-    char* deviceIds = NULL;
-    if (module_load_file(&elf, &info, &deviceIds, &ctx, filename) == ERR)
+    module_info_t* info;
+    if (module_load_file(&elf, &info, &ctx, filename) == ERR)
     {
-        return ERR;
+        return NULL;
     }
 
-    map_key_t moduleKey = map_key_string(info.name);
+    if (!module_info_has_device_id(info, deviceId))
+    {
+        free(elf.header);
+        free(info);
+        errno = ENODEV;
+        return NULL;
+    }
+
+    map_key_t moduleKey = map_key_string(info->name);
     module_t* existingModule = CONTAINER_OF_SAFE(map_get(&moduleMap, &moduleKey), module_t, moduleMapEntry);
     if (existingModule != NULL)
     {
-        if (existingModule->flags & MODULE_FLAG_DEPENDENCY)
-        {
-            existingModule->flags &= ~MODULE_FLAG_DEPENDENCY;
-        }
-
         free(elf.header);
-        free(deviceIds);
-        return 0;
+        free(info);
+        return existingModule;
     }
 
-    module_t* module = module_new(&info, deviceIds);
+    module_t* module = module_new(info);
     if (module == NULL)
     {
         free(elf.header);
-        return ERR;
+        free(info);
+        return NULL;
     }
 
-    LOG_INFO("loading module '%s'\n  Author:      %s\n  Description: %s\n  Version:     %s\n  Licence:     %s\n",
-        module->info.name, module->info.author, module->info.description, module->info.version, module->info.licence);
+    list_t loadedDependencies = LIST_CREATE(loadedDependencies);
 
-    uint64_t result = module_load_from_file(module, &elf, &ctx);
+    LOG_INFO("loading module '%s'\n  Author:      %s\n  Description: %s\n  Version:     %s\n  Licence:     %s\n",
+        module->info->name, module->info->author, module->info->description, module->info->version, module->info->licence);
+    
+    uint64_t loadResult = module_load_from_file(module, &elf, &ctx);
     free(elf.header);
-    if (result == ERR)
+    if (loadResult == ERR)
     {
         module_free(module);
-        goto dependency_error;
+        goto error;
     }
 
     while (!list_is_empty(&ctx.dependencies))
@@ -641,141 +782,162 @@ uint64_t module_load(const char* filename)
             break;
         }
 
-        module_event_t loadEvent = {
-            .type = MODULE_EVENT_LOAD,
-        };
-        if (dependency->procedure(&loadEvent) == ERR)
+        if (module_call_load_event(dependency) == ERR)
         {
             module_free(dependency);
-            goto dependency_error;
+            goto error;
         }
-        dependency->flags |= MODULE_FLAG_LOADED;
 
-        LOG_DEBUG("finished loading dependency module '%s'\n", dependency->info.name);
+        list_push_back(&loadedDependencies, &dependency->entry);
+        LOG_DEBUG("finished loading dependency module '%s'\n", dependency->info->name);
     }
 
-    module_event_t loadEvent = {
-        .type = MODULE_EVENT_LOAD,
-    };
-    if (module->procedure(&loadEvent) == ERR)
+    if (module_call_load_event(module) == ERR)
     {
-        for (uint64_t i = 0; i < module->dependencies.capacity; i++)
-        {
-            map_entry_t* entry = module->dependencies.entries[i];
-            if (!MAP_ENTRY_PTR_IS_VALID(entry))
-            {
-                continue;
-            }
-            module_dependency_t* dependency = CONTAINER_OF(entry, module_dependency_t, entry);
-            module_call_unload_event(dependency->module);
-            module_free(dependency->module);
-        }
-        module_free(module);
-        return ERR;
+        goto error;
     }
-    module->flags |= MODULE_FLAG_LOADED;
 
-    LOG_DEBUG("finished loading module '%s'\n", module->info.name);
+    LOG_DEBUG("finished loading module '%s'\n", module->info->name);
 
-    return 0;
+    return module;
 
-dependency_error:
+error:
+    while (!list_is_empty(&loadedDependencies))
+    {
+        module_dependency_t* dependency = CONTAINER_OF(list_pop_last(&loadedDependencies), module_dependency_t, entry);
+        module_call_unload_event(dependency->module);
+        module_free(dependency->module);
+    }
     while (!list_is_empty(&ctx.dependencies))
     {
         module_t* dependency = CONTAINER_OF(list_pop_first(&ctx.dependencies), module_t, entry);
         module_free(dependency);
     }
+    module_free(module);
+    return NULL;
+}
+
+static module_device_t* module_device_get_or_create(const char* deviceId)
+{
+    map_key_t deviceKey = map_key_string(deviceId);
+    module_device_t* moduleDevice =
+        CONTAINER_OF_SAFE(map_get(&deviceMap, &deviceKey), module_device_t, mapEntry);
+    if (moduleDevice == NULL)
+    {
+        moduleDevice = malloc(sizeof(module_device_t));
+        if (moduleDevice == NULL)
+        {
+            return NULL;
+        }
+        map_entry_init(&moduleDevice->mapEntry);
+        list_init(&moduleDevice->handlers);
+        strncpy_s(moduleDevice->id, MODULE_MAX_DEVICE_ID, deviceId, MODULE_MAX_DEVICE_ID);
+
+        if (map_insert(&deviceMap, &deviceKey, &moduleDevice->mapEntry) == ERR)
+        {
+            free(moduleDevice);
+            return NULL;
+        }
+    }
+
+    return moduleDevice;
+}
+
+uint64_t module_load(const char* deviceId, module_load_flags_t flags)
+{
+    if (deviceId == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    MUTEX_SCOPE(&lock);
+
+    file_t* dir = vfs_open(PATHNAME(MODULE_DIR), sched_process());
+    if (dir == NULL)
+    {
+        return ERR;
+    }
+    DEREF_DEFER(dir);
+
+    module_device_t* device = module_device_get_or_create(deviceId);
+    if (device == NULL)
+    {
+        return ERR;
+    }
+
+    if (!(flags & MODULE_LOAD_ALL) && !list_is_empty(&device->handlers))
+    {
+        return 0;
+    }
+
+    dirent_t buffer[64];
+
+    list_t modulesLoaded = LIST_CREATE(modulesLoaded);
+    while (true)
+    {
+        uint64_t readCount = vfs_getdents(dir, buffer, sizeof(buffer));
+        if (readCount == ERR)
+        {
+            goto error;
+        }
+        if (readCount == 0)
+        {
+            break;
+        }
+
+        uint64_t direntCount = readCount / sizeof(dirent_t);
+        for (uint64_t i = 0; i < direntCount; i++)
+        {
+            if (buffer[i].path[0] == '.' || buffer[i].type != INODE_FILE)
+            {
+                continue;
+            }
+
+            module_t* module = module_get_or_load_filename(dir, buffer[i].path, deviceId);
+            if (module == NULL)
+            {
+                if (errno == ENODEV)
+                {
+                    continue;
+                }
+                goto error;
+            }
+            list_push_back(&modulesLoaded, &module->entry);
+
+            if (module_device_attach(device, module) == ERR)
+            {
+                goto error;
+            }
+
+            if (!(flags & MODULE_LOAD_ALL))
+            {
+                break;
+            }
+        }
+    }
+
+    while (!list_is_empty(&modulesLoaded))
+    {
+        module_t* module = CONTAINER_OF(list_pop_first(&modulesLoaded), module_t, entry);
+        LOG_DEBUG("successfully loaded module '%s' for device '%s'\n", module->info->name, deviceId);
+    }
+
+    return 0;
+
+error:
+    while (!list_is_empty(&modulesLoaded))
+    {
+        module_t* module = CONTAINER_OF(list_pop_first(&modulesLoaded), module_t, entry);
+        module_device_detach(device, module);
+    }
+    module_collect_garbage();
     return ERR;
 }
 
-static void module_gc_mark_reachable(module_t* module)
+uint64_t module_unload(const char* deviceId)
 {
-    if (module == NULL || module->flags & MODULE_FLAG_GC_REACHABLE)
-    {
-        return;
-    }
-
-    module->flags |= MODULE_FLAG_GC_REACHABLE;
-    for (uint64_t i = 0; i < module->dependencies.capacity; i++)
-    {
-        map_entry_t* entry = module->dependencies.entries[i];
-        if (!MAP_ENTRY_PTR_IS_VALID(entry))
-        {
-            continue;
-        }
-        module_dependency_t* dependency = CONTAINER_OF(entry, module_dependency_t, entry);
-        module_gc_mark_reachable(dependency->module);
-    }
-}
-
-// This makes sure we collect unreachable modules in dependency order
-static void module_gc_collect_unreachable(module_t* module, list_t* toFree)
-{
-    if (module == NULL || module->flags & MODULE_FLAG_GC_REACHABLE)
-    {
-        return;
-    }
-    module->flags |= MODULE_FLAG_GC_REACHABLE; // Prevent re-entrance
-
-    list_push_back(toFree, &module->entry);
-
-    for (uint64_t i = 0; i < module->dependencies.capacity; i++)
-    {
-        map_entry_t* entry = module->dependencies.entries[i];
-        if (!MAP_ENTRY_PTR_IS_VALID(entry))
-        {
-            continue;
-        }
-        module_dependency_t* dependency = CONTAINER_OF(entry, module_dependency_t, entry);
-        module_gc_collect_unreachable(dependency->module, toFree);
-    }
-}
-
-static void module_collect_garbage(void)
-{
-    for (uint64_t i = 0; i < moduleMap.capacity; i++)
-    {
-        map_entry_t* entry = moduleMap.entries[i];
-        if (!MAP_ENTRY_PTR_IS_VALID(entry))
-        {
-            continue;
-        }
-        module_t* module = CONTAINER_OF(entry, module_t, moduleMapEntry);
-        if (!(module->flags & MODULE_FLAG_DEPENDENCY))
-        {
-            module_gc_mark_reachable(module);
-        }
-    }
-
-    list_t toFree = LIST_CREATE(toFree);
-    for (uint64_t i = 0; i < moduleMap.capacity; i++)
-    {
-        map_entry_t* entry = moduleMap.entries[i];
-        if (!MAP_ENTRY_PTR_IS_VALID(entry))
-        {
-            continue;
-        }
-        module_t* module = CONTAINER_OF(entry, module_t, moduleMapEntry);
-        module_gc_collect_unreachable(module, &toFree);
-    }
-
-    module_t* module;
-    LIST_FOR_EACH(module, &toFree, entry)
-    {
-        // Be extra safe and call unload event before freeing any resources
-        module_call_unload_event(module);
-    }
-
-    while (!list_is_empty(&toFree))
-    {
-        module = CONTAINER_OF(list_pop_first(&toFree), module_t, entry);
-        module_free(module);
-    }
-}
-
-uint64_t module_unload(const char* name)
-{
-    if (name == NULL)
+    if (deviceId == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -783,94 +945,27 @@ uint64_t module_unload(const char* name)
 
     MUTEX_SCOPE(&lock);
 
-    map_key_t moduleKey = map_key_string(name);
-    module_t* module = CONTAINER_OF_SAFE(map_get(&moduleMap, &moduleKey), module_t, moduleMapEntry);
-    if (module == NULL)
+    map_key_t deviceKey = map_key_string(deviceId);
+    module_device_t* device =
+        CONTAINER_OF_SAFE(map_get(&deviceMap, &deviceKey), module_device_t, mapEntry);
+    if (device == NULL)
     {
-        return ERR;
+        return 0;
     }
 
-    if (module->flags & MODULE_FLAG_DEPENDENCY)
+    while (device->handlers.length > 0)
     {
-        LOG_WARN("module '%s' is a dependency and cannot be unloaded directly\n", module->info.name);
-        errno = EBUSY;
-        return ERR;
+        uint64_t volatile handlerCount = device->handlers.length;
+
+        module_device_handler_t* handler =
+            CONTAINER_OF(list_first(&device->handlers), module_device_handler_t, deviceEntry);
+        module_device_detach(device, handler->module);
+
+        if (handlerCount == 1) // Avoid use after free
+        {
+            break;
+        }
     }
-
-    LOG_DEBUG("demoting module '%s' to a dependency\n", module->info.name);
-    module->flags |= MODULE_FLAG_DEPENDENCY;
-
     module_collect_garbage();
     return 0;
 }
-
-uint64_t module_load_device_modules(const char** deviceIds, uint64_t deviceIdCount)
-{
-    if (deviceIds == NULL || deviceIdCount == 0)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    MUTEX_SCOPE(&lock);
-
-    /*for (uint64_t i = 0; i < deviceIdCount; i++)
-    {
-        const char* deviceId = deviceIds[i];
-        if (deviceId == NULL || deviceId[0] == '\0')
-        {
-            continue;
-        }
-
-        map_key_t deviceKey = map_key_string(deviceId);
-        module_device_t* existingDevice = CONTAINER_OF_SAFE(map_get(&deviceMap, &deviceKey), module_device_t, entry);
-        if (existingDevice != NULL)
-        {
-            continue;
-        }
-
-        dirent_t buffer[64];
-    }*/
-
-    return 0;
-}
-
-#ifdef TESTING
-void module_test()
-{
-    LOG_INFO("starting module tests...\n");
-    for (uint64_t i = 0; i < 3; i++)
-    {
-        if (module_load("helloworld") == ERR)
-        {
-            panic(NULL, "Failed to load hello world module (%s)\n", strerror(errno));
-        }
-
-        module_unload("Hello World");
-    }
-
-    if (moduleMap.length != 1) // Kernel module remains
-    {
-        panic(NULL, "Module map not empty after unloading hello world module, %llu modules remaining\n",
-            moduleMap.length);
-    }
-
-    for (uint64_t i = 0; i < 3; i++)
-    {
-        if (module_load("circular_depend1") == ERR)
-        {
-            panic(NULL, "Failed to load circular depend modules (%s)\n", strerror(errno));
-        }
-
-        module_unload("Circular Depend1");
-    }
-
-    if (moduleMap.length != 1)
-    {
-        panic(NULL, "Module map not empty after unloading circular depend modules, %llu modules remaining\n",
-            moduleMap.length);
-    }
-
-    LOG_INFO("module tests completed\n");
-}
-#endif

@@ -133,9 +133,8 @@ typedef uint32_t aml_name_t;
  * @brief Initialize the namespace heirarchy.
  *
  * @param root The object to use as the root of the namespace heirarchy.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_namespace_init(aml_object_t* root);
+void aml_namespace_init(aml_object_t* root);
 
 /**
  * @brief Expose the entire namespace heirarchy to sysfs.
@@ -285,9 +284,8 @@ uint64_t aml_namespace_commit(aml_overlay_t* overlay);
  * Its parent is set to the global overlay.
  *
  * @param overlay The overlay to initialize.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_overlay_init(aml_overlay_t* overlay);
+void aml_overlay_init(aml_overlay_t* overlay);
 
 /**
  * @brief Deinitialize a namespace overlay.

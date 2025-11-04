@@ -10,6 +10,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <kernel/utils/map.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/math.h>
@@ -67,11 +68,6 @@ uint64_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress
         return ERR;
     }
 
-    if (map_init(&space->pinnedPages) == ERR)
-    {
-        return ERR;
-    }
-
     if (flags & SPACE_USE_PMM_BITMAP)
     {
         if (page_table_init(&space->pageTable, space_pmm_bitmap_alloc_pages, pmm_free_pages) == ERR)
@@ -91,6 +87,7 @@ uint64_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress
         }
     }
 
+    map_init(&space->pinnedPages);
     space->startAddress = startAddress;
     space->endAddress = endAddress;
     space->freeAddress = startAddress;
@@ -274,7 +271,7 @@ static void space_pin_depth_dec(space_t* space, const void* address, uint64_t pa
         pinnedPage->pinCount--;
         if (pinnedPage->pinCount == 0)
         {
-            map_remove(&space->pinnedPages, &key);
+            map_remove(&space->pinnedPages, &pinnedPage->mapEntry);
             free(pinnedPage);
             traverse.entry->pinned = false;
         }

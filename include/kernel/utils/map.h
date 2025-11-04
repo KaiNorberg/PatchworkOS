@@ -6,6 +6,10 @@
 #include <string.h>
 #include <sys/io.h>
 
+typedef struct map_key map_key_t;
+typedef struct map_entry map_entry_t;
+typedef struct map map_t;
+
 /**
  * @brief Hash Map
  * @defgroup kernel_utils_map Hash Map
@@ -48,7 +52,7 @@
  * We can then use the hash for quick comparisons and lookups while using the key itself for full comparisons no matter
  * the type of the key.
  */
-typedef struct
+typedef struct map_key
 {
     uint8_t key[MAP_KEY_MAX_LENGTH];
     uint8_t len;
@@ -58,11 +62,13 @@ typedef struct
 /**
  * @brief Map entry structure.
  *
- * Place this in a structure to make it adable to a map and then use `CONTAINER_OF` to get the structure back.
+ * Place this in a structure to make it addable to a map and then use `CONTAINER_OF` to get the structure back.
  */
-typedef struct
+typedef struct map_entry
 {
     map_key_t key;
+    uint64_t index;
+    map_t* map;
 } map_entry_t;
 
 /**
@@ -79,7 +85,7 @@ typedef struct
  * The entries can be safely iterated over as an array as long sa the `MAP_ENTRY_PTR_IS_VALID` macro is used to check
  * each entry before dereferencing it.
  */
-typedef struct
+typedef struct map
 {
     map_entry_t** entries;
     uint64_t capacity;
@@ -105,7 +111,7 @@ uint64_t hash_object(const void* object, uint64_t length);
  */
 static inline map_key_t map_key_buffer(const void* buffer, uint64_t length)
 {
-    assert(length < MAP_KEY_MAX_LENGTH);
+    assert(length <= MAP_KEY_MAX_LENGTH);
     map_key_t key;
     memcpy(key.key, buffer, length);
     key.len = length;
@@ -157,9 +163,8 @@ void map_entry_init(map_entry_t* entry);
  * @brief Initialize a map.
  *
  * @param map The map to initialize.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t map_init(map_t* map);
+void map_init(map_t* map);
 
 /**
  * @brief Deinitialize a map.
@@ -190,14 +195,23 @@ uint64_t map_insert(map_t* map, const map_key_t* key, map_entry_t* value);
 map_entry_t* map_get(map_t* map, const map_key_t* key);
 
 /**
- * @brief Remove a key-value pair from the map.
+ * @brief Get and remove a key-value pair from the map.
  *
- * If the key does not exist, nothing happens.
+ * @param map The map to get from.
+ * @param key The key to get and remove.
+ * @return On success, the value. If the key does not exist, returns `NULL`.
+ */
+map_entry_t* map_get_and_remove(map_t* map, const map_key_t* key);
+
+/**
+ * @brief Remove a entry from the map.
+ *
+ * If the entry does not exist, nothing happens.
  *
  * @param map The map to remove from.
- * @param key The key to remove.
+ * @param entry The entry to remove.
  */
-void map_remove(map_t* map, const map_key_t* key);
+void map_remove(map_t* map, map_entry_t* entry);
 
 /**
  * @brief Get the number of entries in the map.

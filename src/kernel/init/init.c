@@ -121,10 +121,6 @@ static void init_finalize(const boot_info_t* bootInfo)
     ramfs_init(&bootInfo->disk);
     sysfs_init();
 
-#ifdef TESTING
-    module_test();
-#endif
-
     aml_init();
     acpi_devices_init();
     acpi_reclaim_memory(&bootInfo->memory.map);
@@ -186,8 +182,15 @@ void kmain(const boot_info_t* bootInfo)
     LOG_DEBUG("kmain entered\n");
 
     init_finalize(bootInfo);
-
+    
     asm volatile("sti");
+
+    if (module_load(MODULE_LOAD_ON_BOOT_ID, MODULE_LOAD_ALL) == ERR)
+    {
+        panic(NULL, "Failed to load modules with LOAD_ON_BOOT");
+    }
+
+    module_unload(MODULE_LOAD_ON_BOOT_ID);
 
     init_process_spawn();
 
