@@ -1,5 +1,6 @@
 #pragma once
 
+#include <_internal/MAX_PATH.h>
 #include <kernel/acpi/devices.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/path.h>
@@ -58,8 +59,7 @@ that the module should be aware of this procedure will be called to notify the m
  * which is defined in "/kernel/modules/<OS_VERSION>/module1". When resolving the symbols for module2 we will fail to resolve
  * `module_1_func()`.
  *
- * The failure to resolve a symbol will cause the kernel to check all other module files in the same directory as
- * module2, in this case "/kernel/modules/<OS_VERSION>/", it checks all the symbols in each module eventually finding that module1
+ * The failure to resolve a symbol will cause the kernel to search for a module that provides the symbol, it checks all the symbols in each module eventually finding that module1
  * defines `module_1_func()`. The kernel will then load module1 and retry the symbol resolution for module2, this time
  * succeeding. This repeats until all symbols are resolved or no more modules are found to load.
  *
@@ -71,9 +71,7 @@ that the module should be aware of this procedure will be called to notify the m
  * but later a module depending on it is loaded then it will also wait to be unloaded until all modules depending on it
  * are unloaded.
  *
- * TODO: In the future, there will need to be some form of cache for knowing what modules provide what symbols to avoid
- * having to scan all modules in the directory every time a symbol cant be resolved, but considering how few modules we
- * currently have... its a non-issue for now. Creating a on-disk cache would almost certainly be the best approach.
+ * TODO: Currently module symbols and device ids are cached in memory after the first load, for now this is fine. But in the future this cache could become very large so we might need a Linux-style cache file on disk or atleast a way to invalidate the cache.
  *
  * ## Circular Dependencies
  *
@@ -107,7 +105,7 @@ typedef enum
     MODULE_MAX_AUTHOR = 64,
     MODULE_MAX_DESCRIPTION = 256,
     MODULE_MAX_VERSION = 32,
-    MODULE_MAX_LICENCE = 64,
+    MODULE_MAX_LICENSE = 64,
     MODULE_MIN_INFO = 6,
     MODULE_MAX_INFO = 1024,
     MODULE_MAX_DEVICE_ID = 32,
@@ -125,7 +123,7 @@ typedef struct module_info
     char* author;
     char* description;
     char* version;
-    char* licence;
+    char* license;
     char* osVersion;
     char* deviceIds; ///< Null-terminated semicolon-separated list of device ID strings.
     char data[];
@@ -300,15 +298,37 @@ typedef struct module_device_handler
 } module_device_handler_t;
 
 /**
+ * @brief Module symbol cache entry structure.
+ * @struct module_cached_symbol_t
+ */
+typedef struct
+{
+    map_entry_t mapEntry;
+    char* modulePath; ///< Path to the module defining the symbol.
+} module_cached_symbol_t;
+
+/**
+ * @brief Module device cache entry structure.
+ * @struct module_cached_device_t
+ */
+typedef struct
+{
+    map_entry_t mapEntry;
+    char* paths; ///< Null-separated list of paths to modules supporting the device ID.
+    uint64_t pathCount;
+    uint64_t pathsSize;
+} module_cached_device_t;
+
+/**
  * @brief Module flags.
  * @typedef module_flags_t
  */
 typedef enum module_flags
 {
     MODULE_FLAG_NONE = 0,
-    MODULE_FLAG_LOADED = 1 << 1,          ///< If set, the module has received the `MODULE_EVENT_LOAD` event.
-    MODULE_FLAG_GC_REACHABLE = 1 << 2,    ///< Used by the GC to mark reachable modules.
-    MODULE_FLAG_UNLOADING = 1 << 3,       ///< Prevents re-entrant calls to module_free.
+    MODULE_FLAG_LOADED = 1 << 0,          ///< If set, the module has received the `MODULE_EVENT_LOAD` event.
+    MODULE_FLAG_GC_REACHABLE = 1 << 1,    ///< Used by the GC to mark reachable modules.
+    MODULE_FLAG_GC_PINNED = 1 << 2,          ///< If set, the module will never be collected by the GC, used for the fake kernel module.
 } module_flags_t;
 
 /**

@@ -190,8 +190,6 @@ void kmain(const boot_info_t* bootInfo)
         panic(NULL, "Failed to load modules with LOAD_ON_BOOT");
     }
 
-    module_unload(MODULE_LOAD_ON_BOOT_ID);
-
     init_process_spawn();
 
     LOG_INFO("done with boot thread\n");

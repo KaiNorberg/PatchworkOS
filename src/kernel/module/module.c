@@ -1,3 +1,4 @@
+#include <_internal/MAX_PATH.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/module/module.h>
@@ -21,16 +22,39 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
-// Keyed = module symbol group ID, value = module_t*
+static module_info_t fakeKernelModuleInfo = {
+    .name = "kernel",
+    .author = "The PatchworkOS Authors",
+    .description = "The PatchworkOS Kernel",
+    .version = OS_VERSION,
+    .license = "MIT",
+    .osVersion = OS_VERSION,
+    .deviceIds = "",
+};
+
+// Key = module symbol group ID, value = module_t*
 static map_t dependencyMap = MAP_CREATE;
 
-// Keyed = module name, value = module_t*
+// Key = module name, value = module_t*
 static map_t moduleMap = MAP_CREATE;
 
-// Keyed = device ID, value = module_device_t*
+// Key = device ID, value = module_device_t*
 static map_t deviceMap = MAP_CREATE;
 
+// Key = symbol name, value = module_cached_symbol_t*
+static map_t symbolCache = MAP_CREATE;
+
+// Key = device ID, value = module_cached_device_t*
+static map_t deviceIdCache = MAP_CREATE;
+
+static bool cacheValid = false;
+
 static mutex_t lock = MUTEX_CREATE(lock);
+
+#define MODULE_SYMBOL_ALLOWED(type, binding, name) \
+    ((type == STT_OBJECT || type == STT_FUNC) && \
+     (binding == STB_GLOBAL) && \
+     (strncmp(name, MODULE_RESERVED_PREFIX, MODULE_RESERVED_PREFIX_LENGTH) != 0))
 
 static inline uint64_t module_parse_string(const char* str, char* out, size_t outSize)
 {
@@ -46,35 +70,6 @@ static inline uint64_t module_parse_string(const char* str, char* out, size_t ou
     }
     strncpy_s(out, outSize, str, len + 1);
     return len + 1;
-}
-
-static uint64_t module_add(module_t* module)
-{
-    map_key_t dependKey = map_key_uint64(module->symbolGroupId);
-    if (map_insert(&dependencyMap, &dependKey, &module->dependencyMapEntry) == ERR)
-    {
-        return ERR;
-    }
-
-    map_key_t moduleKey = map_key_string(module->info->name);
-    if (map_insert(&moduleMap, &moduleKey, &module->moduleMapEntry) == ERR)
-    {
-        map_remove(&dependencyMap, &module->dependencyMapEntry);
-        return ERR;
-    }
-
-    return 0;
-}
-
-static void module_remove(module_t* module)
-{
-    if (module == NULL)
-    {
-        return;
-    }
-
-    map_remove(&dependencyMap, &module->dependencyMapEntry);
-    map_remove(&moduleMap, &module->moduleMapEntry);
 }
 
 static module_t* module_new(module_info_t* info)
@@ -96,9 +91,18 @@ static module_t* module_new(module_info_t* info)
     map_init(&module->dependencies);
     module->info = info;
     
-    if (module_add(module) == ERR)
+    map_key_t dependKey = map_key_uint64(module->symbolGroupId);
+    if (map_insert(&dependencyMap, &dependKey, &module->dependencyMapEntry) == ERR)
     {
         free(module);
+        return NULL;
+    }
+
+    map_key_t moduleKey = map_key_string(module->info->name);
+    if (map_insert(&moduleMap, &moduleKey, &module->moduleMapEntry) == ERR)
+    {
+        free(module);
+        map_remove(&dependencyMap, &module->dependencyMapEntry);
         return NULL;
     }
 
@@ -136,7 +140,9 @@ static void module_free(module_t* module)
 {
     LOG_DEBUG("freeing resources for module '%s'\n", module->info->name);
 
-    module_remove(module);
+    map_remove(&dependencyMap, &module->dependencyMapEntry);
+    map_remove(&moduleMap, &module->moduleMapEntry);
+
     symbol_remove_group(module->symbolGroupId);
 
     if (module->baseAddr != NULL)
@@ -224,12 +230,12 @@ static inline uint64_t module_device_detach(module_device_t* device, module_t* m
 
 void module_init_fake_kernel_module(const boot_kernel_t* kernel)
 {
-    module_t* kernelModule = module_new(NULL);
+    module_t* kernelModule = module_new(&fakeKernelModuleInfo);
     if (kernelModule == NULL)
     {
         panic(NULL, "Failed to create fake kernel module (%s)", strerror(errno));
     }
-    kernelModule->flags |= MODULE_FLAG_LOADED;
+    kernelModule->flags |= MODULE_FLAG_LOADED | MODULE_FLAG_GC_PINNED;
 
     const Elf64_File* elf = &kernel->elf;
     uint64_t index = 0;
@@ -275,9 +281,9 @@ static void module_gc_mark_reachable(module_t* module)
 }
 
 // This makes sure we collect unreachable modules in dependency order
-static void module_gc_collect_unreachable(module_t* module, list_t* toFree)
+static void module_gc_sweep_unreachable(module_t* module, list_t* toFree)
 {
-    if (module == NULL || module->flags & MODULE_FLAG_GC_REACHABLE)
+    if (module == NULL || module->flags & MODULE_FLAG_GC_REACHABLE || module->flags & MODULE_FLAG_GC_PINNED)
     {
         return;
     }
@@ -293,7 +299,7 @@ static void module_gc_collect_unreachable(module_t* module, list_t* toFree)
             continue;
         }
         module_dependency_t* dependency = CONTAINER_OF(entry, module_dependency_t, entry);
-        module_gc_collect_unreachable(dependency->module, toFree);
+        module_gc_sweep_unreachable(dependency->module, toFree);
     }
 }
 
@@ -322,7 +328,18 @@ static void module_collect_garbage(void)
             continue;
         }
         module_t* module = CONTAINER_OF(entry, module_t, moduleMapEntry);
-        module_gc_collect_unreachable(module, &toFree);
+        module_gc_sweep_unreachable(module, &toFree);
+    }
+
+    for (uint64_t i = 0; i < moduleMap.capacity; i++)
+    {
+        map_entry_t* entry = moduleMap.entries[i];
+        if (!MAP_ENTRY_PTR_IS_VALID(entry))
+        {
+            continue;
+        }
+        module_t* module = CONTAINER_OF(entry, module_t, moduleMapEntry);
+        module->flags &= ~MODULE_FLAG_GC_REACHABLE;
     }
 
     module_t* module;
@@ -396,13 +413,13 @@ static inline module_info_t* module_info_parse(const char* moduleInfo)
     info->version[parsed - 1] = '\0';
     offset += parsed;
 
-    info->licence = &info->data[offset];
-    parsed = module_parse_string(&moduleInfo[offset], info->licence, MODULE_MAX_LICENCE);
+    info->license = &info->data[offset];
+    parsed = module_parse_string(&moduleInfo[offset], info->license, MODULE_MAX_LICENSE);
     if (parsed == 0)
     {
         goto error;
     }
-    info->licence[parsed - 1] = '\0';
+    info->license[parsed - 1] = '\0';
     offset += parsed;
 
     info->osVersion = &info->data[offset];
@@ -471,9 +488,9 @@ typedef struct
 
 static void* module_resolve_callback(const char* name, void* private);
 
-static uint64_t module_load_file(Elf64_File* outFile, module_info_t** outInfo, module_load_ctx_t* ctx, const char* filename)
+static uint64_t module_read_metadata(Elf64_File* outFile, module_info_t** outInfo, const path_t* dirPath, process_t* process, const char* filename)
 {
-    file_t* file = vfs_openat(&ctx->dir->path, PATHNAME(filename), ctx->process);
+    file_t* file = vfs_openat(dirPath, PATHNAME(filename), process);
     if (file == NULL)
     {
         return ERR;
@@ -526,7 +543,7 @@ static uint64_t module_load_file(Elf64_File* outFile, module_info_t** outInfo, m
     return 0; // Caller owns fileData in outFile->header and outInfo
 }
 
-static uint64_t module_load_from_file(module_t* module, Elf64_File* elf, module_load_ctx_t* ctx)
+static uint64_t module_load_and_relocate_elf(module_t* module, Elf64_File* elf, module_load_ctx_t* ctx)
 {
     Elf64_Addr minVaddr;
     Elf64_Addr maxVaddr;
@@ -559,15 +576,14 @@ static uint64_t module_load_from_file(module_t* module, Elf64_File* elf, module_
         }
 
         const char* symName = elf64_get_symbol_name(elf, sym);
-        void* symAddr = (void*)((uintptr_t)module->baseAddr + (sym->st_value - minVaddr));
         Elf64_Symbol_Binding binding = ELF64_ST_BIND(sym->st_info);
         Elf64_Symbol_Type type = ELF64_ST_TYPE(sym->st_info);
-
-        if (strncmp(symName, MODULE_RESERVED_PREFIX, MODULE_RESERVED_PREFIX_LENGTH) == 0)
+        if (!MODULE_SYMBOL_ALLOWED(type, binding, symName))
         {
             continue;
         }
 
+        void* symAddr = (void*)((uintptr_t)module->baseAddr + (sym->st_value - minVaddr));
         if (symbol_add(symName, symAddr, module->symbolGroupId, binding, type) == ERR)
         {
             return ERR;
@@ -585,84 +601,58 @@ static uint64_t module_load_from_file(module_t* module, Elf64_File* elf, module_
     return 0;
 }
 
-static uint64_t module_find_and_load_dependency(module_load_ctx_t* ctx, const char* symbolName)
+static uint64_t module_load_dependency_for_symbol(module_load_ctx_t* ctx, const char* symbolName)
 {
-    dirent_t buffer[64];
-    vfs_seek(ctx->dir, 0, SEEK_SET);
-
-    while (true)
+    map_key_t cacheKey = map_key_string(symbolName);
+    module_cached_symbol_t* cacheEntry =
+        CONTAINER_OF_SAFE(map_get(&symbolCache, &cacheKey), module_cached_symbol_t, mapEntry);
+    if (cacheEntry == NULL)
     {
-        uint64_t readCount = vfs_getdents(ctx->dir, buffer, sizeof(buffer));
-        if (readCount == ERR)
-        {
-            return ERR;
-        }
-        if (readCount == 0)
-        {
-            break;
-        }
-
-        uint64_t direntCount = readCount / sizeof(dirent_t);
-        for (uint64_t i = 0; i < direntCount; i++)
-        {
-            if (buffer[i].path[0] == '.' || buffer[i].type != INODE_FILE || strcmp(buffer[i].path, ctx->filename) == 0)
-            {
-                continue;
-            }
-
-            Elf64_File elf;
-            module_info_t* info;
-            if (module_load_file(&elf, &info, ctx, buffer[i].path) == ERR)
-            {
-                return ERR;
-            }
-
-            if (elf64_get_symbol_by_name(&elf, symbolName) == NULL)
-            {
-                free(elf.header);
-                free(info);
-                continue;
-            }
-
-            map_key_t moduleKey = map_key_string(info->name);
-            module_t* existingModule = CONTAINER_OF_SAFE(map_get(&moduleMap, &moduleKey), module_t, moduleMapEntry);
-            if (existingModule != NULL)
-            {
-                free(elf.header);
-                free(info);
-                return 0; // Already loaded
-            }
-
-            module_t* dependency = module_new(info);
-            if (dependency == NULL)
-            {
-                free(elf.header);
-                free(info);
-                return ERR;
-            }
-
-            LOG_INFO(
-                "loading dependency '%s'\n  Author:      %s\n  Description: %s\n  Version:     %s\n  Licence:     %s\n",
-                dependency->info->name, dependency->info->author, dependency->info->description, dependency->info->version,
-                dependency->info->licence);
-
-            list_push_back(&ctx->dependencies, &dependency->entry);
-
-            if (module_load_from_file(dependency, &elf, ctx) == ERR)
-            {
-                free(elf.header);
-                list_remove(&ctx->dependencies, &dependency->entry);
-                module_free(dependency);
-                return ERR;
-            }
-
-            free(elf.header);
-            return 0;
-        }
+        LOG_DEBUG("no cached module found for symbol '%s'\n", symbolName);
+        return ERR;
+    }
+    
+    Elf64_File elf;
+    module_info_t* info;
+    if (module_read_metadata(&elf, &info, &ctx->dir->path, ctx->process, cacheEntry->modulePath) == ERR)
+    {
+        return ERR;
     }
 
-    LOG_ERR("failed to find module providing symbol '%s'\n", symbolName);
-    return ERR;
+    map_key_t moduleKey = map_key_string(info->name);
+    module_t* existingModule = CONTAINER_OF_SAFE(map_get(&moduleMap, &moduleKey), module_t, moduleMapEntry);
+    if (existingModule != NULL)
+    {
+        free(elf.header);
+        free(info);
+        return 0; // Already loaded
+    }
+
+    module_t* dependency = module_new(info);
+    if (dependency == NULL)
+    {
+        free(elf.header);
+        free(info);
+        return ERR;
+    }
+
+    LOG_INFO(
+        "loading dependency '%s'\n  Author:      %s\n  Description: %s\n  Version:     %s\n  Licence:     %s\n",
+        dependency->info->name, dependency->info->author, dependency->info->description, dependency->info->version,
+        dependency->info->license);
+
+    list_push_back(&ctx->dependencies, &dependency->entry);
+
+    if (module_load_and_relocate_elf(dependency, &elf, ctx) == ERR)
+    {
+        free(elf.header);
+        list_remove(&ctx->dependencies, &dependency->entry);
+        module_free(dependency);
+        return ERR;
+    }
+
+    free(elf.header);
+    return 0;
 }
 
 static void* module_resolve_callback(const char* name, void* private)
@@ -672,7 +662,7 @@ static void* module_resolve_callback(const char* name, void* private)
     symbol_info_t symbolInfo;
     if (symbol_resolve_name(&symbolInfo, name) == ERR)
     {
-        if (module_find_and_load_dependency(ctx, name) == ERR)
+        if (module_load_dependency_for_symbol(ctx, name) == ERR)
         {
             return NULL;
         }
@@ -730,7 +720,7 @@ static module_t* module_get_or_load_filename(file_t* dir, const char* filename, 
 
     Elf64_File elf;
     module_info_t* info;
-    if (module_load_file(&elf, &info, &ctx, filename) == ERR)
+    if (module_read_metadata(&elf, &info, &ctx.dir->path, ctx.process, filename) == ERR)
     {
         return NULL;
     }
@@ -763,9 +753,9 @@ static module_t* module_get_or_load_filename(file_t* dir, const char* filename, 
     list_t loadedDependencies = LIST_CREATE(loadedDependencies);
 
     LOG_INFO("loading module '%s'\n  Author:      %s\n  Description: %s\n  Version:     %s\n  Licence:     %s\n",
-        module->info->name, module->info->author, module->info->description, module->info->version, module->info->licence);
+        module->info->name, module->info->author, module->info->description, module->info->version, module->info->license);
     
-    uint64_t loadResult = module_load_from_file(module, &elf, &ctx);
+    uint64_t loadResult = module_load_and_relocate_elf(module, &elf, &ctx);
     free(elf.header);
     if (loadResult == ERR)
     {
@@ -789,6 +779,11 @@ static module_t* module_get_or_load_filename(file_t* dir, const char* filename, 
         }
 
         list_push_back(&loadedDependencies, &dependency->entry);
+    }
+
+    while (!list_is_empty(&loadedDependencies))
+    {
+        module_t* dependency = CONTAINER_OF(list_pop_first(&loadedDependencies), module_t, entry);
         LOG_DEBUG("finished loading dependency module '%s'\n", dependency->info->name);
     }
 
@@ -843,6 +838,225 @@ static module_device_t* module_device_get_or_create(const char* deviceId)
     return moduleDevice;
 }
 
+static void module_cache_clear(void)
+{
+    for (uint64_t i = 0; i < symbolCache.capacity; i++)
+    {
+        map_entry_t* entry = symbolCache.entries[i];
+        if (!MAP_ENTRY_PTR_IS_VALID(entry))
+        {
+            continue;
+        }
+        module_cached_symbol_t* symbolEntry = CONTAINER_OF(entry, module_cached_symbol_t, mapEntry);
+        free(symbolEntry->modulePath);
+        free(symbolEntry);
+    }
+    map_clear(&symbolCache);
+
+    for (uint64_t i = 0; i < deviceIdCache.capacity; i++)
+    {
+        map_entry_t* entry = deviceIdCache.entries[i];
+        if (!MAP_ENTRY_PTR_IS_VALID(entry))
+        {
+            continue;
+        }
+        module_cached_device_t* deviceEntry = CONTAINER_OF(entry, module_cached_device_t, mapEntry);
+        free(deviceEntry->paths);
+        free(deviceEntry);
+    }
+    map_clear(&deviceIdCache);
+
+    cacheValid = false;
+}
+
+static uint64_t module_cache_symbols_add(Elf64_File* elf, const char* path)
+{
+    uint64_t index = 0;
+    while (true)
+    {
+        Elf64_Sym* sym = elf64_get_symbol_by_index(elf, index++);
+        if (sym == NULL)
+        {
+            break;
+        }
+
+        if (sym->st_shndx == SHN_UNDEF || sym->st_shndx == SHN_ABS)
+        {
+            continue;
+        }
+
+        Elf64_Symbol_Binding binding = ELF64_ST_BIND(sym->st_info);
+        Elf64_Symbol_Type type = ELF64_ST_TYPE(sym->st_info);
+        const char* symName = elf64_get_symbol_name(elf, sym);
+        if (!MODULE_SYMBOL_ALLOWED(type, binding, symName))
+        {
+            continue;
+        }
+
+        module_cached_symbol_t* symbolEntry = malloc(sizeof(module_cached_symbol_t));
+        if (symbolEntry == NULL)
+        {
+            return ERR;
+        }
+        map_entry_init(&symbolEntry->mapEntry);
+        symbolEntry->modulePath = strdup(path);
+        if (symbolEntry->modulePath == NULL)
+        {
+            free(symbolEntry);
+            return ERR;
+        }
+    
+        map_key_t symbolKey = map_key_string(symName);
+        if (map_insert(&symbolCache, &symbolKey, &symbolEntry->mapEntry) == ERR)
+        {
+            if (errno == EEXIST)
+            {
+                LOG_ERR("symbol name collision for '%s' in module '%s'\n", symName, path);
+            }
+            free(symbolEntry);
+            return ERR;
+        }
+    }
+
+    return 0;
+}
+
+static uint64_t module_cache_device_ids_add(module_info_t* info, const char* path)
+{
+    const char* deviceIdPtr = info->deviceIds;
+    while (*deviceIdPtr != '\0')
+    {
+        char currentDeviceId[MODULE_MAX_DEVICE_ID];
+        uint64_t parsed = module_parse_string(deviceIdPtr, currentDeviceId, MODULE_MAX_DEVICE_ID);
+        if (parsed == 0)
+        {
+            break;
+        }
+        deviceIdPtr += parsed;
+
+        map_key_t deviceKey = map_key_string(currentDeviceId);
+        module_cached_device_t* deviceEntry = CONTAINER_OF_SAFE(map_get(&deviceIdCache, &deviceKey), module_cached_device_t, mapEntry);
+        if (deviceEntry == NULL)
+        {
+            deviceEntry = malloc(sizeof(module_cached_device_t));
+            if (deviceEntry == NULL)
+            {
+                return ERR;
+            }
+            map_entry_init(&deviceEntry->mapEntry);
+            deviceEntry->paths = strdup(path);
+            if (deviceEntry->paths == NULL)
+            {
+                free(deviceEntry);
+                return ERR;
+            }
+            deviceEntry->pathCount = 1;
+            deviceEntry->pathsSize = strlen(path) + 1;
+            if (map_insert(&deviceIdCache, &deviceKey, &deviceEntry->mapEntry) == ERR)
+            {
+                free(deviceEntry->paths);
+                free(deviceEntry);
+                return ERR;
+            }
+            continue;
+        }
+
+        size_t currentLen = deviceEntry->pathsSize - 1;
+        size_t additionalLen = strlen(path);
+        char* newPaths = realloc(deviceEntry->paths, deviceEntry->pathsSize + additionalLen + 1);
+        if (newPaths == NULL)
+        {
+            return ERR;
+        }
+        deviceEntry->paths = newPaths;
+        deviceEntry->pathCount++;
+        deviceEntry->pathsSize += additionalLen + 1;
+        
+        memcpy(&newPaths[currentLen + 1], path, additionalLen + 1);
+    }
+
+    return 0;
+}
+
+static uint64_t module_cache_build(void)
+{
+    if (cacheValid)
+    {
+        return 0;
+    }
+
+    process_t* process = sched_process();
+    assert(process != NULL);
+
+    file_t* dir = vfs_open(PATHNAME(MODULE_DIR), process);
+    if (dir == NULL)
+    {
+        return ERR;
+    }
+    DEREF_DEFER(dir);
+
+    dirent_t buffer[64];
+    while (true)
+    {
+        uint64_t readCount = vfs_getdents(dir, buffer, sizeof(buffer));
+        if (readCount == ERR)
+        {
+            module_cache_clear();
+            return ERR;
+        }
+        if (readCount == 0)
+        {
+            break;
+        }
+
+        uint64_t direntCount = readCount / sizeof(dirent_t);
+        for (uint64_t i = 0; i < direntCount; i++)
+        {
+            if (buffer[i].path[0] == '.' || buffer[i].type != INODE_FILE)
+            {
+                continue;
+            }
+
+            Elf64_File elf;
+            module_info_t* info;
+            if (module_read_metadata(&elf, &info, &dir->path, process, buffer[i].path) == ERR)
+            {
+                if (errno == EILSEQ)
+                {
+                    LOG_ERR("skipping invalid module file '%s'\n", buffer[i].path);
+                    continue;
+                }
+                module_cache_clear();
+                return ERR;
+            }
+
+            if (module_cache_symbols_add(&elf, buffer[i].path) == ERR)
+            {
+                free(elf.header);
+                free(info);
+                module_cache_clear();
+                return ERR;
+            }
+
+            if (module_cache_device_ids_add(info, buffer[i].path) == ERR)
+            {
+                free(elf.header);
+                free(info);
+                module_cache_clear();
+                return ERR;
+            }
+
+            LOG_DEBUG("cached module '%s'\n", info->name);
+
+            free(elf.header);
+            free(info);
+        }
+    }
+
+    cacheValid = true;
+    return 0;
+}
+
 uint64_t module_load(const char* deviceId, module_load_flags_t flags)
 {
     if (deviceId == NULL)
@@ -852,6 +1066,11 @@ uint64_t module_load(const char* deviceId, module_load_flags_t flags)
     }
 
     MUTEX_SCOPE(&lock);
+
+    if (module_cache_build() == ERR)
+    {
+        return ERR;
+    }
 
     file_t* dir = vfs_open(PATHNAME(MODULE_DIR), sched_process());
     if (dir == NULL)
@@ -871,50 +1090,48 @@ uint64_t module_load(const char* deviceId, module_load_flags_t flags)
         return 0;
     }
 
-    dirent_t buffer[64];
-
     list_t modulesLoaded = LIST_CREATE(modulesLoaded);
-    while (true)
+    map_key_t deviceKey = map_key_string(deviceId);
+    module_cached_device_t* deviceEntry = CONTAINER_OF_SAFE(map_get(&deviceIdCache, &deviceKey), module_cached_device_t, mapEntry);
+    if (deviceEntry == NULL)
     {
-        uint64_t readCount = vfs_getdents(dir, buffer, sizeof(buffer));
-        if (readCount == ERR)
+        LOG_DEBUG("no cached modules for device id '%s'\n", deviceId);
+        return 0;
+    }
+
+    char* pathPtr = deviceEntry->paths;
+    for (uint64_t i = 0; i < deviceEntry->pathCount; i++)
+    {
+        size_t pathLen = strnlen_s(pathPtr, MAX_PATH);
+        if (pathLen == 0 || pathLen >= MAX_PATH)
+        {
+            errno = EILSEQ;
+            goto error;
+        }
+
+        module_t* module = module_get_or_load_filename(dir, pathPtr, deviceId);
+        if (module == NULL)
+        {
+            if (errno == ENODEV)
+            {
+                pathPtr += pathLen + 1;
+                continue;
+            }
+            goto error;
+        }
+
+        list_push_back(&modulesLoaded, &module->entry);
+        if (module_device_attach(device, module) == ERR)
         {
             goto error;
         }
-        if (readCount == 0)
+
+        if (!(flags & MODULE_LOAD_ALL))
         {
             break;
         }
 
-        uint64_t direntCount = readCount / sizeof(dirent_t);
-        for (uint64_t i = 0; i < direntCount; i++)
-        {
-            if (buffer[i].path[0] == '.' || buffer[i].type != INODE_FILE)
-            {
-                continue;
-            }
-
-            module_t* module = module_get_or_load_filename(dir, buffer[i].path, deviceId);
-            if (module == NULL)
-            {
-                if (errno == ENODEV)
-                {
-                    continue;
-                }
-                goto error;
-            }
-            list_push_back(&modulesLoaded, &module->entry);
-
-            if (module_device_attach(device, module) == ERR)
-            {
-                goto error;
-            }
-
-            if (!(flags & MODULE_LOAD_ALL))
-            {
-                break;
-            }
-        }
+        pathPtr += pathLen + 1;
     }
 
     while (!list_is_empty(&modulesLoaded))
