@@ -68,8 +68,8 @@ static inline uint64_t module_parse_string(const char* str, char* out, size_t ou
     {
         len++;
     }
-    strncpy_s(out, outSize, str, len + 1);
-    return len + 1;
+    strncpy_s(out, outSize, str, len);
+    return len;
 }
 
 static module_t* module_new(module_info_t* info)
@@ -94,6 +94,7 @@ static module_t* module_new(module_info_t* info)
     map_key_t dependKey = map_key_uint64(module->symbolGroupId);
     if (map_insert(&dependencyMap, &dependKey, &module->dependencyMapEntry) == ERR)
     {
+        LOG_ERR("failed to insert module '%s' into dependency map\n", info->name);
         free(module);
         return NULL;
     }
@@ -101,6 +102,7 @@ static module_t* module_new(module_info_t* info)
     map_key_t moduleKey = map_key_string(module->info->name);
     if (map_insert(&moduleMap, &moduleKey, &module->moduleMapEntry) == ERR)
     {
+        LOG_ERR("failed to insert module '%s' into module map\n", info->name);
         free(module);
         map_remove(&dependencyMap, &module->dependencyMapEntry);
         return NULL;
@@ -117,6 +119,7 @@ static uint64_t module_call_load_event(module_t* module)
     };
     if (module->procedure(&loadEvent) == ERR)
     {
+        LOG_ERR("call to load event for module '%s' failed\n", module->info->name);
         return ERR;
     }
     module->flags |= MODULE_FLAG_LOADED;
@@ -191,6 +194,7 @@ static inline uint64_t module_device_attach(module_device_t* device, module_t* m
     };
     if (module->procedure(&attachEvent) == ERR)
     {
+        LOG_ERR("call to attach event for module '%s' failed\n", module->info->name);
         map_remove(&module->deviceHandlers, &handler->moduleEntry);
         free(handler);
         return ERR;
@@ -206,6 +210,7 @@ static inline uint64_t module_device_detach(module_device_t* device, module_t* m
     map_entry_t* entry = map_get_and_remove(&module->deviceHandlers, &deviceKey);
     if (entry == NULL)
     {
+        LOG_ERR("failed to detach device '%s' from module '%s'\n", device->id, module->info->name);
         return ERR;
     }
 
@@ -358,14 +363,10 @@ static void module_collect_garbage(void)
 
 static inline module_info_t* module_info_parse(const char* moduleInfo)
 {
-    if (moduleInfo == NULL)
-    {
-        return NULL;
-    }
-
     size_t totalSize = strnlen_s(moduleInfo, MODULE_MAX_INFO);
     if (totalSize < MODULE_MIN_INFO || totalSize >= MODULE_MAX_INFO)
     {
+        LOG_ERR("module info string is of invalid size %zu\n", totalSize);
         errno = EILSEQ;
         return NULL;
     }
@@ -381,55 +382,61 @@ static inline module_info_t* module_info_parse(const char* moduleInfo)
     size_t parsed = module_parse_string(&moduleInfo[offset], info->name, MODULE_MAX_NAME);
     if (parsed == 0)
     {
+        LOG_ERR("failed to parse module name\n");
         goto error;
     }
-    info->name[parsed - 1] = '\0';
-    offset += parsed;
+    info->name[parsed] = '\0';
+    offset += parsed + 1;
 
     info->author = &info->data[offset];
     parsed = module_parse_string(&moduleInfo[offset], info->author, MODULE_MAX_AUTHOR);
     if (parsed == 0)
     {
+        LOG_ERR("failed to parse module author\n");
         goto error;
     }
-    info->author[parsed - 1] = '\0';
-    offset += parsed;
+    info->author[parsed] = '\0';
+    offset += parsed + 1;
 
     info->description = &info->data[offset];
     parsed = module_parse_string(&moduleInfo[offset], info->description, MODULE_MAX_DESCRIPTION);
     if (parsed == 0)
     {
+        LOG_ERR("failed to parse module description\n");
         goto error;
     }
-    info->description[parsed - 1] = '\0';
-    offset += parsed;
+    info->description[parsed] = '\0';
+    offset += parsed + 1;
 
     info->version = &info->data[offset];
     parsed = module_parse_string(&moduleInfo[offset], info->version, MODULE_MAX_VERSION);
     if (parsed == 0)
     {
+        LOG_ERR("failed to parse module version\n");
         goto error;
     }
-    info->version[parsed - 1] = '\0';
-    offset += parsed;
+    info->version[parsed] = '\0';
+    offset += parsed + 1;
 
     info->license = &info->data[offset];
     parsed = module_parse_string(&moduleInfo[offset], info->license, MODULE_MAX_LICENSE);
     if (parsed == 0)
     {
+        LOG_ERR("failed to parse module license\n");
         goto error;
     }
-    info->license[parsed - 1] = '\0';
-    offset += parsed;
+    info->license[parsed] = '\0';
+    offset += parsed + 1;
 
     info->osVersion = &info->data[offset];
     parsed = module_parse_string(&moduleInfo[offset], info->osVersion, MODULE_MAX_VERSION);
     if (parsed == 0)
     {
+        LOG_ERR("failed to parse module OS version\n");
         goto error;
     }
-    info->osVersion[parsed - 1] = '\0';
-    offset += parsed;
+    info->osVersion[parsed] = '\0';
+    offset += parsed + 1;
 
     if (strcmp(info->osVersion, OS_VERSION) != 0)
     {
@@ -460,13 +467,13 @@ static bool module_info_has_device_id(module_info_t* info, const char* deviceId)
     const char* deviceIdPtr = info->deviceIds;
     while (*deviceIdPtr != '\0')
     {
-        char currentDeviceId[MODULE_MAX_DEVICE_ID];
+        char currentDeviceId[MODULE_MAX_DEVICE_ID] = {0};
         uint64_t parsed = module_parse_string(deviceIdPtr, currentDeviceId, MODULE_MAX_DEVICE_ID);
         if (parsed == 0)
         {
             break;
         }
-        deviceIdPtr += parsed;
+        deviceIdPtr += parsed + 1;
 
         if (strncmp(currentDeviceId, deviceId, MODULE_MAX_DEVICE_ID) == 0)
         {
@@ -518,6 +525,7 @@ static uint64_t module_read_metadata(Elf64_File* outFile, module_info_t** outInf
 
     if (elf64_validate(outFile, fileData, fileSize) == ERR)
     {
+        LOG_ERR("failed to validate ELF file '%s' while reading module metadata\n", filename);
         free(fileData);
         errno = EILSEQ;
         return ERR;
@@ -527,6 +535,7 @@ static uint64_t module_read_metadata(Elf64_File* outFile, module_info_t** outInf
     if (moduleInfoShdr == NULL || moduleInfoShdr->sh_size < MODULE_MIN_INFO ||
         moduleInfoShdr->sh_size > MODULE_MAX_INFO)
     {
+        LOG_ERR("failed to find valid module info section in ELF file '%s'\n", filename);
         free(fileData);
         errno = EILSEQ;
         return ERR;
@@ -586,6 +595,7 @@ static uint64_t module_load_and_relocate_elf(module_t* module, Elf64_File* elf, 
         void* symAddr = (void*)((uintptr_t)module->baseAddr + (sym->st_value - minVaddr));
         if (symbol_add(symName, symAddr, module->symbolGroupId, binding, type) == ERR)
         {
+            LOG_ERR("failed to add symbol '%s' to module '%s'\n", symName, module->info->name);
             return ERR;
         }
     }
@@ -636,10 +646,9 @@ static uint64_t module_load_dependency_for_symbol(module_load_ctx_t* ctx, const 
         return ERR;
     }
 
-    LOG_INFO(
-        "loading dependency '%s'\n  Author:      %s\n  Description: %s\n  Version:     %s\n  Licence:     %s\n",
-        dependency->info->name, dependency->info->author, dependency->info->description, dependency->info->version,
-        dependency->info->license);
+    LOG_INFO("loading dependency '%s' version %s by %s\n", dependency->info->name, dependency->info->version,
+        dependency->info->author);
+    LOG_DEBUG("  description: %s\n  licence:     %s\n", dependency->info->description, dependency->info->license);
 
     list_push_back(&ctx->dependencies, &dependency->entry);
 
@@ -669,6 +678,7 @@ static void* module_resolve_callback(const char* name, void* private)
 
         if (symbol_resolve_name(&symbolInfo, name) == ERR)
         {
+            LOG_ERR("failed to resolve symbol '%s' after loading dependency\n", name);
             return NULL;
         }
     }
@@ -752,14 +762,13 @@ static module_t* module_get_or_load_filename(file_t* dir, const char* filename, 
 
     list_t loadedDependencies = LIST_CREATE(loadedDependencies);
 
-    LOG_INFO("loading module '%s'\n  Author:      %s\n  Description: %s\n  Version:     %s\n  Licence:     %s\n",
-        module->info->name, module->info->author, module->info->description, module->info->version, module->info->license);
-    
+    LOG_INFO("loading '%s' version %s by %s\n", module->info->name, module->info->version, module->info->author);
+    LOG_DEBUG("  description: %s\n  licence:     %s\n", module->info->description, module->info->license);
+
     uint64_t loadResult = module_load_and_relocate_elf(module, &elf, &ctx);
     free(elf.header);
     if (loadResult == ERR)
     {
-        module_free(module);
         goto error;
     }
 
@@ -926,13 +935,13 @@ static uint64_t module_cache_device_ids_add(module_info_t* info, const char* pat
     const char* deviceIdPtr = info->deviceIds;
     while (*deviceIdPtr != '\0')
     {
-        char currentDeviceId[MODULE_MAX_DEVICE_ID];
+        char currentDeviceId[MODULE_MAX_DEVICE_ID] = {0};
         uint64_t parsed = module_parse_string(deviceIdPtr, currentDeviceId, MODULE_MAX_DEVICE_ID);
         if (parsed == 0)
         {
             break;
         }
-        deviceIdPtr += parsed;
+        deviceIdPtr += parsed + 1;
 
         map_key_t deviceKey = map_key_string(currentDeviceId);
         module_cached_device_t* deviceEntry = CONTAINER_OF_SAFE(map_get(&deviceIdCache, &deviceKey), module_cached_device_t, mapEntry);
@@ -1046,7 +1055,7 @@ static uint64_t module_cache_build(void)
                 return ERR;
             }
 
-            LOG_DEBUG("cached module '%s'\n", info->name);
+            LOG_DEBUG("built cache entry for module '%s'\n", info->name);
 
             free(elf.header);
             free(info);
@@ -1095,7 +1104,6 @@ uint64_t module_load(const char* deviceId, module_load_flags_t flags)
     module_cached_device_t* deviceEntry = CONTAINER_OF_SAFE(map_get(&deviceIdCache, &deviceKey), module_cached_device_t, mapEntry);
     if (deviceEntry == NULL)
     {
-        LOG_DEBUG("no cached modules for device id '%s'\n", deviceId);
         return 0;
     }
 

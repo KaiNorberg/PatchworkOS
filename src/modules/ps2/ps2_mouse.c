@@ -1,4 +1,4 @@
-#include <kernel/drivers/ps2/ps2_mouse.h>
+#include "ps2_mouse.h"
 
 #include <kernel/cpu/irq.h>
 #include <kernel/drivers/abstractions/mouse.h>

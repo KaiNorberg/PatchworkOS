@@ -10,7 +10,6 @@
 #include <kernel/cpu/syscalls.h>
 #include <kernel/drivers/const.h>
 #include <kernel/drivers/gop.h>
-#include <kernel/drivers/ps2/ps2.h>
 #include <kernel/fs/ramfs.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
@@ -132,7 +131,6 @@ static void init_finalize(const boot_info_t* bootInfo)
     process_procfs_init();
 
     const_init();
-    ps2_init();
     net_init();
     pipe_init();
     shmem_init();

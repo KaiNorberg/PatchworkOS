@@ -161,7 +161,7 @@ static uint64_t map_resize(map_t* map, uint64_t newCapacity)
                 map->tombstones = oldTombstones;
                 return ERR;
             }
-            
+
             entry->index = newIndex;
             entry->map = map;
             map->entries[newIndex] = entry;

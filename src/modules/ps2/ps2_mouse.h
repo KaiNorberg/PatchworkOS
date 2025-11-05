@@ -1,11 +1,11 @@
 #pragma once
 
-#include <kernel/drivers/ps2/ps2.h>
+#include "ps2.h"
 
 /**
  * @brief PS/2 Mouse Driver.
  * @defgroup kernel_drivers_ps2_mouse PS/2 Mouse Driver
- * @ingroup kernel_drivers_ps2
+ * @ingroup modules_ps2
  *
  * TODO: Implement scrolling and buttons 4 and 5.
  *

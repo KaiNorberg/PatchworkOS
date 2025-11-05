@@ -513,7 +513,8 @@ uint64_t aml_namespace_commit(aml_overlay_t* overlay)
     {
         map_remove(&overlay->map, &object->mapEntry);
 
-        map_key_t key = aml_object_map_key(object->parent != NULL ? object->parent->id : AML_OBJECT_ID_NONE, object->name);
+        map_key_t key =
+            aml_object_map_key(object->parent != NULL ? object->parent->id : AML_OBJECT_ID_NONE, object->name);
         if (map_insert(&overlay->parent->map, &key, &object->mapEntry) == ERR)
         {
             return ERR;

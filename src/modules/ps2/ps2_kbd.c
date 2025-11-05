@@ -1,5 +1,5 @@
-#include <kernel/drivers/ps2/ps2_kbd.h>
-#include <kernel/drivers/ps2/ps2_scanmap.h>
+#include "ps2_kbd.h"
+#include "ps2_scanmap.h"
 
 #include <kernel/cpu/irq.h>
 #include <kernel/drivers/abstractions/kbd.h>

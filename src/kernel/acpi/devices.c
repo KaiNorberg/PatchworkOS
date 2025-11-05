@@ -13,12 +13,13 @@
 
 #include <errno.h>
 
-static inline uint64_t acpi_hid_get(aml_state_t* state, aml_object_t* device, char* buffer)
+static inline uint64_t acpi_hid_get(aml_state_t* state, aml_object_t* device, char* buffer, size_t bufferSize)
 {
+    memset(buffer, 0, bufferSize);
+
     aml_object_t* hid = aml_namespace_find(&state->overlay, device, 1, AML_NAME('_', 'H', 'I', 'D'));
     if (hid == NULL)
     {
-        buffer[0] = '\0';
         return 0;
     }
     DEREF_DEFER(hid);
@@ -33,12 +34,11 @@ static inline uint64_t acpi_hid_get(aml_state_t* state, aml_object_t* device, ch
 
     if (hidResult->type == AML_STRING)
     {
-        strncpy_s(buffer, MAX_NAME, hidResult->string.content, hidResult->string.length);
-        buffer[MAX_NAME - 1] = '\0';
+        strncpy_s(buffer, bufferSize, hidResult->string.content, hidResult->string.length);
     }
     else if (hidResult->type == AML_INTEGER)
     {
-        if (aml_eisa_id_to_string(hidResult->integer.value, buffer) == ERR)
+        if (aml_eisa_id_to_string(hidResult->integer.value, buffer, bufferSize) == ERR)
         {
             LOG_ERR("%s._HID returned invalid EISA ID 0x%llx\n", AML_NAME_TO_STRING(device->name),
                 hidResult->integer.value);
@@ -122,27 +122,19 @@ static inline uint64_t acpi_device_init_children(aml_state_t* state, aml_object_
             }
         }
 
-        /*char hid[MAX_NAME];
-        if (acpi_hid_get(state, child, hid) == ERR)
+        char hid[MAX_NAME];
+        if (acpi_hid_get(state, child, hid, sizeof(hid)) == ERR)
         {
             return ERR;
         }
 
         if (hid[0] != '\0')
         {
-            LOG_INFO("ACPI device found '%s' with HID '%s' and STA 0x%02x\n", AML_NAME_TO_STRING(child->name), hid,
-                sta);
-            module_event_t event = {
-                .type = MODULE_EVENT_DEVICE_ATTACH,
-            };
-            strncpy_s(event.device_attach.hid, MAX_NAME, hid);
-            event.device_attach.acpiDevice = REF(child);
-
-            if (module_broadcast_event(&event) == ERR)
+            if (module_load(hid, MODULE_LOAD_NONE) == ERR)
             {
-                LOG_ERR("failed to attach ACPI device '%s' (HID: %s)\n", AML_NAME_TO_STRING(child->name), hid);
+                LOG_ERR("failed to attach ACPI device '%s' with HID '%s'\n", AML_NAME_TO_STRING(child->name), hid);
             }
-        }*/
+        }
 
         bool childShouldCallIni = shouldCallIni && (sta & (ACPI_STA_PRESENT | ACPI_STA_FUNCTIONAL));
         if (acpi_device_init_children(state, child, childShouldCallIni) == ERR)

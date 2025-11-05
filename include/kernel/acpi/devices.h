@@ -13,6 +13,8 @@
  *
  * TODO: Implement hotplugging support.
  *
+ * @see [PNP ACPI Registry](https://uefi.org/PNP_ACPI_Registry) for a list of known ACPI IDs.
+ * 
  * @{
  */
 

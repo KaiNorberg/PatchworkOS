@@ -7,7 +7,7 @@
 
 /**
  * @brief IBM Personal Computer/2 ports.
- * @defgroup kernel_drivers_ps2 PS/2
+ * @defgroup modules_ps2 PS/2
  * @ingroup kernel_drivers
  *
  * Patchwork attempts to implement a comprehensive PS/2 driver, even if certain details would be completely irrelevant
@@ -317,14 +317,6 @@ typedef enum
         } \
         result; \
     })
-
-/**
- * @brief Initialize the PS/2 controller
- *
- * Performs controller initialization including self-test, device detection,
- * and device initialization.
- */
-void ps2_init(void);
 
 /**
  * @brief Drain the PS/2 output buffer
