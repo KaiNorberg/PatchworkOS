@@ -27,7 +27,7 @@
 
 ![desktop screenshot](meta/screenshots/desktop.png)
 
-**Patchwork** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended be an educational, experimental and "modern" operating system.
+**Patchwork** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended be an educational and experimental operating system.
 
 In the end this is a project made for fun, but the goal is still to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system, a floppy disk driver is not enough and neither is a round-robin array scheduler.
 
@@ -64,7 +64,7 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 - File based device APIs, including [framebuffers](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/fb.h), [keyboards](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/kbd.h), [mice](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/mouse.h) and more
 - [Synchronization primitives](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sync) including mutexes, read-write locks, sequential locks, futexes and others
 - SIMD support
-- [Modular design](#modules) with fully automatic module dependency resolution and generic device ID based module loading
+- [Modular design](#modules) with automatic module dependency resolution and generic device ID based module loading
 
 ### ACPI
 
@@ -122,78 +122,80 @@ As one of the main goals of PatchworkOS is to be educational, I have tried to do
 
 If you are interested in knowing more, then you can check out the Doxygen generated [documentation](https://kainorberg.github.io/PatchworkOS/html/index.html). For an overview check the `topics` section in the sidebar.
 
-## Benchmarks
-
-All benchmarks were run on real hardware using a Lenovo ThinkPad E495. For comparison, I've decided to use the Linux kernel, specifically Fedora since It's what I normally use.
-
-Note that Fedora will obviously have a lot more background processes running and security features that might impact performance, so these benchmarks are not exactly apples to apples, but they should still give a good baseline for how PatchworkOS performs.
-
-All code for benchmarks can be found in the [benchmark program](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/programs/benchmark/benchmark.c), all tests were run using the optimization flag `-O3`.
-
-### Memory Allocation/Mapping
-
-The test maps and unmaps memory in varying page amounts for a set amount of iterations using generic mmap and munmap functions. Below is the results from PatchworkOS as of commit `4b00a88` and Fedora 40, kernel version `6.14.5-100.fc40.x86_64`.
-
-```mermaid
-xychart-beta
-title "Blue: PatchworkOS, Green: Linux (Fedora), Lower is Better"
-x-axis "Page Amount (in 50s)" [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
-y-axis "Time (ms)" 0 --> 40000
-line [157, 275, 420, 519, 622, 740, 838, 955, 1068, 1175, 1251, 1392, 1478, 1601, 1782, 1938, 2069, 2277, 2552, 2938, 3158, 3473, 3832, 4344, 4944, 5467, 6010, 6554, 7114, 7486]
-line [1138, 2226, 3275, 4337, 5453, 6537, 7627, 8757, 9921, 11106, 12358, 13535, 14751, 16081, 17065, 18308, 20254, 21247, 22653, 23754, 25056, 26210, 27459, 28110, 29682, 31096, 33547, 34840, 36455, 37660]
-```
-
-We see that PatchworkOS performs better across the board, and the performance difference increases as we increase the page count.
-
-There are a few potential reasons for this, one is that PatchworkOS does not use a separate structure to manage virtual memory, instead it embeds metadata directly into the page tables, and since accessing a page table is just walking some pointers, its highly efficient, additionally it provides better caching since the page tables are likely already in the CPU cache.
-
-In the end we end up with a $O(1)$ complexity per page operation, or technically, since the algorithm for finding unmapped memory sections is $O(r)$ in the worst case where $r$ is the size of the address region to check in pages, having more memory allocated would potentially actually improve performance but only by a very small amount. We do of course get $O(n)$ complexity per allocation/mapping operation where $n$ is the number of pages.
-
-Note that as the number of pages increases we start to see less and less linear performance, this is most likely due to CPU cache saturation.
-
-For fun, we can throw the results into desmos to se that around $800$ to $900$ pages there is a "knee" in the curve. Saying that $x$ is the number of pages per iteration and $y$ is the time in milliseconds let us split the data into two sets. We can now perform linear regression which gives us
-
-```math
-y =
-\begin{cases}
-2.25874x+53.95918 & \text{if } x \leq 850, \quad R^2=0.9987,\\
-8.68659x-5762.6044 & \text{if } x > 850, \quad R^2=0.9904.
-\end{cases}
-```
-
-<br>
-
-Performing quadratic regression on the same data gives us
-
-```math
-y =
-\begin{cases}
-0.000237618x^{2}+2.06855x+77.77119 & \text{if } x \leq 850, \quad R^2=0.9979,\\
-0.00626813x^{2}-6.04352x+2636.69231 & \text{if } x > 850, \quad R^2=0.9973.
-\end{cases}
-```
-
-<br>
-
-From this we see that for $x \le 850$ the linear regression has a slightly better fit while for $x > 850$ the quadratic regression has a slightly better fit, this is most likely due to the CPU or TLB caches starting to get saturated. All in all this did not tell us much more than we already knew, but it was fun to do regardless.
-
-Of course, there are limitations to this approach, for example, it is in no way portable (which isn't a concern in our case), each address space can only contain $2^8 - 1$ unique shared memory regions, and copy-on-write would not be easy to implement (however, the need for this is reduced due to PatchworkOS using a `spawn()` instead of a `fork()`).
-
-All in all, this algorithm would not be a viable replacement for existing algorithms, but for PatchworkOS, it serves its purpose very efficiently.
-
-[VMM Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/df0/group__kernel__mem__vmm.html)
-
-[Paging Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/df/d5f/group__common__paging.html)
-
 ## Modules
 
 PatchworkOS uses a "modular" kernel design, meaning that instead of having one big kernel binary, the kernel is split into several smaller "modules" that can be loaded and unloaded at runtime. In effect, the kernel can rewrite itself by adding and removing functionality as needed.
 
-This is highly convenient for development but it also has practical uses, for example, there is no need to load a driver for a device that is not attached to the system, saving memory.
+This is highly convenient for development but it also has practical advantages, for example, there is no need to load a driver for a device that is not attached to the system, saving memory.
 
 ### Make your own Module
 
 The process of making a module is intended to be as straightforward as possible. For the sake of demonstration, we will create a simple "Hello, World!" module.
+
+First, we create a new directory in `src/kernel/modules/` named `hello`, and inside that directory we create a `hello.c` file to which we write the following code:
+
+```c
+#include <kernel/module/module.h>
+#include <kernel/log/log.h>
+
+#include <stdint.h>
+
+uint64_t _module_procedure(const module_event_t* event)
+{
+    switch (event->type)
+    {
+    case MODULE_EVENT_LOAD:
+        LOG_INFO("Hello, World!\n");
+        break;
+    default:
+        break;
+    }
+
+    return 0;
+}
+
+MODULE_INFO("Hello", "<author>", "A simple hello world module", "1.0", "MIT", "LOAD_ON_BOOT");
+```
+
+An explanation of the code will be provided later.
+
+Now we need to add the module to the build system. To do this, just copy a existing module's `.mk` file without making any modifications. For example, we can copy `make/modules/ps2.mk` to `make/modules/hello.mk`. The build system will handle the rest, including copying the module to the final image.
+
+Now, we can build and run PatchworkOS using `make all run`, or we could use `make all` and then flash the generated `bin/PatchworkOS.img` file to a USB drive.
+
+Now to validate that the module is working, you can either watch the boot log and spot the `Hello, World!` message, or you could use `grep` on the `/dev/klog` file in the terminal program like so:
+
+```bash
+cat /dev/klog | grep "Hello, World!"
+```
+
+This should output something like:
+
+```bash
+[   0.747-00-I] Hello, World!
+```
+
+Thats all, if this did not work, make sure you followed all the steps correctly, if there is still issues, feel free to open an issue.
+
+### What can I do now?
+
+Whatever you want. You can include any kernel header, or even headers from other modules, create your own modules and include their headers or anything else. There is no need to worry about linking or dependencies, the kernels module loader will handle all of it for you. Go nuts.
+
+### Code Explanation
+
+This code in the `hello.c` file does a few things. First, it includes the relevant kernel headers.
+
+Second, it defines a `_module_procedure()` function. This function serves as the entry point for the module and will be called by the kernel to notify the module of events, for example the module being loaded or a device attached. On the load event, it will print using the kernels logging system `"Hello, World!"`, resulting in the message being readable from `/dev/klog`.
+
+Finally, it defines the modules information. This information is, in order, the name of the module, the author of the module (thats you), a short description of the module, the module version, the licence of the module, and finally a list of "device IDs", we could make this multiple IDs by seperating them with semicolons.
+
+The list of device IDs is what causes the kernel to actually load the module. Il avoid going into to much detail (you can check the documentation for that), but il explain it briefly.
+
+The module loader itself has no idea what these IDs actually are, but subsytems within the kernel can specify that "a device represented by this string is now availble", the module loader can then load either one or all modules that have specified in their list of device IDs that it can handle the specified device. This means that any new subsystem, ACPI, USB, PCI, etc, can implement dynamic module loading using whatever IDs they want.
+
+So, why did we specify `LOAD_ON_BOOT`? That does not seem like a device ID, and thats becouse it isent, its a special ID that the kernel will pretend to "attach" during boot, thus loading any module with that ID specified. In this case, it causes our hello module to be loaded during boot.
+
+For more information, check the [Module Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/d41/group__kernel__module.html).
 
 ## Everything is a File
 
@@ -314,6 +316,69 @@ Take the namespace sharing example, notice how there isent any actually dedicate
 Lets take another example, say you wanted to wait on multiple processes with a `waitpid()` syscall. Well, thats not possible. So now we suddenly need a new system call. Meanwhile, in a "everything is a file system" we just have a pollable `/proc/[pid]/wait` file that acts that returns the exit status, now any behaviour that can be implemented with `poll()` can be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination you can think of.
 
 Plus its fun.
+
+## Benchmarks
+
+All benchmarks were run on real hardware using a Lenovo ThinkPad E495. For comparison, I've decided to use the Linux kernel, specifically Fedora since It's what I normally use.
+
+Note that Fedora will obviously have a lot more background processes running and security features that might impact performance, so these benchmarks are not exactly apples to apples, but they should still give a good baseline for how PatchworkOS performs.
+
+All code for benchmarks can be found in the [benchmark program](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/programs/benchmark/benchmark.c), all tests were run using the optimization flag `-O3`.
+
+### Memory Allocation/Mapping
+
+The test maps and unmaps memory in varying page amounts for a set amount of iterations using generic mmap and munmap functions. Below is the results from PatchworkOS as of commit `4b00a88` and Fedora 40, kernel version `6.14.5-100.fc40.x86_64`.
+
+```mermaid
+xychart-beta
+title "Blue: PatchworkOS, Green: Linux (Fedora), Lower is Better"
+x-axis "Page Amount (in 50s)" [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+y-axis "Time (ms)" 0 --> 40000
+line [157, 275, 420, 519, 622, 740, 838, 955, 1068, 1175, 1251, 1392, 1478, 1601, 1782, 1938, 2069, 2277, 2552, 2938, 3158, 3473, 3832, 4344, 4944, 5467, 6010, 6554, 7114, 7486]
+line [1138, 2226, 3275, 4337, 5453, 6537, 7627, 8757, 9921, 11106, 12358, 13535, 14751, 16081, 17065, 18308, 20254, 21247, 22653, 23754, 25056, 26210, 27459, 28110, 29682, 31096, 33547, 34840, 36455, 37660]
+```
+
+We see that PatchworkOS performs better across the board, and the performance difference increases as we increase the page count.
+
+There are a few potential reasons for this, one is that PatchworkOS does not use a separate structure to manage virtual memory, instead it embeds metadata directly into the page tables, and since accessing a page table is just walking some pointers, its highly efficient, additionally it provides better caching since the page tables are likely already in the CPU cache.
+
+In the end we end up with a $O(1)$ complexity per page operation, or technically, since the algorithm for finding unmapped memory sections is $O(r)$ in the worst case where $r$ is the size of the address region to check in pages, having more memory allocated would potentially actually improve performance but only by a very small amount. We do of course get $O(n)$ complexity per allocation/mapping operation where $n$ is the number of pages.
+
+Note that as the number of pages increases we start to see less and less linear performance, this is most likely due to CPU cache saturation.
+
+For fun, we can throw the results into desmos to se that around $800$ to $900$ pages there is a "knee" in the curve. Saying that $x$ is the number of pages per iteration and $y$ is the time in milliseconds let us split the data into two sets. We can now perform linear regression which gives us
+
+```math
+y =
+\begin{cases}
+2.25874x+53.95918 & \text{if } x \leq 850, \quad R^2=0.9987,\\
+8.68659x-5762.6044 & \text{if } x > 850, \quad R^2=0.9904.
+\end{cases}
+```
+
+<br>
+
+Performing quadratic regression on the same data gives us
+
+```math
+y =
+\begin{cases}
+0.000237618x^{2}+2.06855x+77.77119 & \text{if } x \leq 850, \quad R^2=0.9979,\\
+0.00626813x^{2}-6.04352x+2636.69231 & \text{if } x > 850, \quad R^2=0.9973.
+\end{cases}
+```
+
+<br>
+
+From this we see that for $x \le 850$ the linear regression has a slightly better fit while for $x > 850$ the quadratic regression has a slightly better fit, this is most likely due to the CPU or TLB caches starting to get saturated. All in all this did not tell us much more than we already knew, but it was fun to do regardless.
+
+Of course, there are limitations to this approach, for example, it is in no way portable (which isn't a concern in our case), each address space can only contain $2^8 - 1$ unique shared memory regions, and copy-on-write would not be easy to implement (however, the need for this is reduced due to PatchworkOS using a `spawn()` instead of a `fork()`).
+
+All in all, this algorithm would not be a viable replacement for existing algorithms, but for PatchworkOS, it serves its purpose very efficiently.
+
+[VMM Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/df0/group__kernel__mem__vmm.html)
+
+[Paging Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/df/d5f/group__common__paging.html)
 
 ## Shell Utilities
 
