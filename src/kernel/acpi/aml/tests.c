@@ -13,6 +13,7 @@
 #include <kernel/acpi/tables.h>
 #include <kernel/log/log.h>
 #include <kernel/sched/timer.h>
+#include <kernel/sched/sys_time.h>
 
 #include <stdlib.h>
 #include <string.h>
