@@ -50,9 +50,9 @@ uint64_t aml_eisa_id_from_string(const char* str)
 
 #define AML_EISA_ID_CHAR(b) ((char)(((b) & 0x1F) + 0x40))
 
-uint64_t aml_eisa_id_to_string(uint32_t eisaId, char* buffer)
+uint64_t aml_eisa_id_to_string(uint32_t eisaId, char* buffer, size_t bufferSize)
 {
-    if (buffer == NULL)
+    if (buffer == NULL || bufferSize < 8)
     {
         errno = EINVAL;
         return ERR;

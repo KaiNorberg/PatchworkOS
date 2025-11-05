@@ -35,6 +35,10 @@ static void* elf_memchr(const void* ptr, int value, size_t num)
 
 #endif
 
+#ifdef _KERNEL_
+#include <kernel/log/log.h>
+#endif
+
 uint64_t elf64_validate(Elf64_File* elf, void* data, uint64_t size)
 {
     // This is a big function, but all it does just verify that every single thing that i can think of is as it should
@@ -390,8 +394,6 @@ uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset
             continue;
         }
 
-        const char* sectionName = elf64_get_section_name(elf, shdr);
-
         Elf64_Shdr* targetShdr = ELF64_GET_SHDR(elf, shdr->sh_info);
 
         Elf64_Rela* rela = ELF64_AT_OFFSET(elf, shdr->sh_offset);
@@ -406,36 +408,25 @@ uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset
             Elf64_Sym* sym = elf64_get_dynamic_symbol_by_index(elf, symIndex);
             const char* symName = elf64_get_dynamic_symbol_name(elf, sym);
 
-            if (sym->st_shndx == SHN_UNDEF)
-            {
-                void* symAddr = resolve_symbol(symName, private);
-                if (symAddr == NULL)
-                {
-                    return ERR;
-                }
-
-                switch (type)
-                {
-                case R_X86_64_GLOB_DAT:
-                case R_X86_64_JUMP_SLOT:
-                    *patchAddr = (Elf64_Addr)symAddr;
-                    break;
-                case R_X86_64_RELATIVE:
-                    *patchAddr = base + rela[j].r_addend;
-                    break;
-                default:
-                    return ERR;
-                }
-
-                continue;
-            }
+            Elf64_Addr value = sym->st_shndx != SHN_UNDEF ? sym->st_value : 0;
 
             switch (type)
             {
+            case R_X86_64_GLOB_DAT:
+            case R_X86_64_JUMP_SLOT:
+                *patchAddr = (uint64_t)resolve_symbol(symName, private);
+                if (*patchAddr == 0)
+                {
+                    return ERR;
+                }
+                break;
             case R_X86_64_RELATIVE:
                 *patchAddr = base + rela[j].r_addend;
                 break;
             default:
+#ifdef _KERNEL_
+                LOG_ERR("unsupported relocation type %llu for symbol '%s'\n", type, symName);
+#endif
                 return ERR;
             }
         }

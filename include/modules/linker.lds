@@ -5,7 +5,6 @@ SECTIONS
 {
     .text : ALIGN(4K)
     {
-        *(.multiboot)
         *(.text)
     }
 
@@ -25,13 +24,8 @@ SECTIONS
         *(.bss)
     }
 
-    .module_info : ALIGN(4K)
+    ._module_info : 
     {
-        KEEP(*(.module_info))
-    }
-
-    .module_acpi_hids : ALIGN(4K)
-    {
-        KEEP(*(.module_acpi_hids))
+        KEEP(*(._module_info))
     }
 }

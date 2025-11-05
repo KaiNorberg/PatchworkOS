@@ -303,7 +303,7 @@ static bool sched_should_notify(cpu_t* target, priority_t priority)
 }
 
 void sched_push(thread_t* thread, cpu_t* target)
-{    
+{
     if (target == NULL)
     {
         target = smp_self();

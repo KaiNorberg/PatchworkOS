@@ -32,11 +32,7 @@ void local_listen_dir_init(void)
         panic(NULL, "Failed to create local listen dir");
     }
 
-    if (map_init(&listeners) == ERR)
-    {
-        panic(NULL, "Failed to initialize listeners map");
-    }
-
+    map_init(&listeners);
     rwlock_init(&listenersLock);
 }
 
@@ -106,8 +102,7 @@ void local_listen_free(local_listen_t* listen)
     DEREF(listen->file);
 
     rwlock_write_acquire(&listenersLock);
-    map_key_t key = map_key_string(listen->address);
-    map_remove(&listeners, &key);
+    map_remove(&listeners, &listen->entry);
     rwlock_write_release(&listenersLock);
 
     local_conn_t* temp;

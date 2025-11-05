@@ -423,12 +423,6 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
         return ERR;
     }
 
-    if (namespace_init(&process->namespace, parent != NULL ? &parent->namespace : NULL, process) == ERR)
-    {
-        argv_deinit(&process->argv);
-        return ERR;
-    }
-
     if (space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
             SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY) == ERR)
     {
@@ -461,6 +455,7 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
         vfs_ctx_init(&process->vfsCtx, NULL);
     }
 
+    namespace_init(&process->namespace, parent != NULL ? &parent->namespace : NULL, process);
     futex_ctx_init(&process->futexCtx);
     perf_process_ctx_init(&process->perf);
     wait_queue_init(&process->dyingWaitQueue);

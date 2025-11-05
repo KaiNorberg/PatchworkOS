@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
 
 /**
  * @brief EISA ID to string and vice versa conversion
@@ -27,8 +28,9 @@ uint64_t aml_eisa_id_from_string(const char* str);
  *
  * @param eisaId The numeric EISA ID.
  * @param buffer Pointer to a buffer to write the string EISA ID to. Must be at least 8 bytes long.
+ * @param bufferSize The size of the buffer in bytes.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_eisa_id_to_string(uint32_t eisaId, char* buffer);
+uint64_t aml_eisa_id_to_string(uint32_t eisaId, char* buffer, size_t bufferSize);
 
 /** @} */

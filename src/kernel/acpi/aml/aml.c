@@ -124,10 +124,7 @@ void aml_init(void)
         panic(NULL, "failed to set predefined scope for root object\n");
     }
 
-    if (aml_namespace_init(root) == ERR)
-    {
-        panic(NULL, "failed to initialize AML namespace\n");
-    }
+    aml_namespace_init(root);
 
     if (aml_integer_handling_init() == ERR)
     {

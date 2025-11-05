@@ -13,12 +13,14 @@
 
 #include <errno.h>
 
-static inline uint64_t acpi_hid_get(aml_state_t* state, aml_object_t* device, char* buffer)
+static inline uint64_t acpi_hid_get(aml_state_t* state, aml_object_t* device, char* buffer, size_t bufferSize)
 {
+    memset(buffer, 0, bufferSize);
+
     aml_object_t* hid = aml_namespace_find(&state->overlay, device, 1, AML_NAME('_', 'H', 'I', 'D'));
     if (hid == NULL)
     {
-        return 1;
+        return 0;
     }
     DEREF_DEFER(hid);
 
@@ -32,12 +34,11 @@ static inline uint64_t acpi_hid_get(aml_state_t* state, aml_object_t* device, ch
 
     if (hidResult->type == AML_STRING)
     {
-        strncpy(buffer, hidResult->string.content, hidResult->string.length);
-        buffer[MAX_NAME - 1] = '\0';
+        strncpy_s(buffer, bufferSize, hidResult->string.content, hidResult->string.length);
     }
     else if (hidResult->type == AML_INTEGER)
     {
-        if (aml_eisa_id_to_string(hidResult->integer.value, buffer) == ERR)
+        if (aml_eisa_id_to_string(hidResult->integer.value, buffer, bufferSize) == ERR)
         {
             LOG_ERR("%s._HID returned invalid EISA ID 0x%llx\n", AML_NAME_TO_STRING(device->name),
                 hidResult->integer.value);
@@ -89,7 +90,7 @@ static inline uint64_t acpi_sta_get_flags(aml_state_t* state, aml_object_t* devi
 
 static inline uint64_t acpi_device_init_children(aml_state_t* state, aml_object_t* device, bool shouldCallIni)
 {
-    aml_object_t* child;
+    aml_object_t* child = NULL;
     LIST_FOR_EACH(child, &device->children, siblingsEntry)
     {
         if (child->type != AML_DEVICE)
@@ -118,6 +119,20 @@ static inline uint64_t acpi_device_init_children(aml_state_t* state, aml_object_
                     return ERR;
                 }
                 DEREF(iniResult);
+            }
+        }
+
+        char hid[MAX_NAME];
+        if (acpi_hid_get(state, child, hid, sizeof(hid)) == ERR)
+        {
+            return ERR;
+        }
+
+        if (hid[0] != '\0')
+        {
+            if (module_load(hid, MODULE_LOAD_NONE) == ERR)
+            {
+                LOG_ERR("failed to attach ACPI device '%s' with HID '%s'\n", AML_NAME_TO_STRING(child->name), hid);
             }
         }
 

@@ -51,9 +51,8 @@ typedef struct namespace
  * @param ns The namespace to initialize.
  * @param parent The parent namespace, can be `NULL`.
  * @param owner The process that owns this namespace.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t namespace_init(namespace_t* ns, namespace_t* parent, process_t* owner);
+void namespace_init(namespace_t* ns, namespace_t* parent, process_t* owner);
 
 /**
  * @brief Deinitializes a namespace.

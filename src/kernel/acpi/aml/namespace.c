@@ -7,6 +7,7 @@
 #include <kernel/fs/sysfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/utils/map.h>
 
 #include <errno.h>
 
@@ -70,16 +71,12 @@ static inline aml_object_t* aml_namespace_search_single_name(aml_overlay_t* over
     return next;
 }
 
-uint64_t aml_namespace_init(aml_object_t* root)
+void aml_namespace_init(aml_object_t* root)
 {
-    if (aml_overlay_init(&globalOverlay) == ERR)
-    {
-        return ERR;
-    }
+    aml_overlay_init(&globalOverlay);
     root->flags |= AML_OBJECT_NAMED | AML_OBJECT_ROOT;
     root->name = AML_NAME('\\', '_', '_', '_');
     namespaceRoot = REF(root);
-    return 0;
 }
 
 static uint64_t aml_namespace_expose_object(aml_object_t* object, dentry_t* parentDir)
@@ -490,10 +487,7 @@ void aml_namespace_remove(aml_object_t* object)
         return;
     }
 
-    aml_object_id_t parentId = object->parent != NULL ? object->parent->id : AML_OBJECT_ID_NONE;
-    map_key_t key = aml_object_map_key(parentId, object->name);
-
-    map_remove(&object->overlay->map, &key);
+    map_remove(&object->overlay->map, &object->mapEntry);
     list_remove(&object->overlay->objects, &object->listEntry);
     list_remove(&object->parent->children, &object->siblingsEntry);
 
@@ -517,10 +511,10 @@ uint64_t aml_namespace_commit(aml_overlay_t* overlay)
     aml_object_t* temp;
     LIST_FOR_EACH_SAFE(object, temp, &overlay->objects, listEntry)
     {
-        aml_object_id_t parentId = object->parent != NULL ? object->parent->id : AML_OBJECT_ID_NONE;
-        map_key_t key = aml_object_map_key(parentId, object->name);
+        map_remove(&overlay->map, &object->mapEntry);
 
-        map_remove(&overlay->map, &key);
+        map_key_t key =
+            aml_object_map_key(object->parent != NULL ? object->parent->id : AML_OBJECT_ID_NONE, object->name);
         if (map_insert(&overlay->parent->map, &key, &object->mapEntry) == ERR)
         {
             return ERR;
@@ -538,21 +532,16 @@ uint64_t aml_namespace_commit(aml_overlay_t* overlay)
     return 0;
 }
 
-uint64_t aml_overlay_init(aml_overlay_t* overlay)
+void aml_overlay_init(aml_overlay_t* overlay)
 {
     if (overlay == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return;
     }
 
-    if (map_init(&overlay->map) == ERR)
-    {
-        return ERR;
-    }
+    map_init(&overlay->map);
     list_init(&overlay->objects);
     overlay->parent = overlay != &globalOverlay ? &globalOverlay : NULL;
-    return 0;
 }
 
 void aml_overlay_deinit(aml_overlay_t* overlay)

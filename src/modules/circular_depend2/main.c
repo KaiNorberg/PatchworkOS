@@ -28,4 +28,4 @@ uint64_t _module_procedure(module_event_t* event)
     return 0;
 }
 
-MODULE_INFO("Circular Depend2", "Kai Norberg", "A simple circular dependency module for testing", "1.0.0", "MIT");
+MODULE_INFO("Circular Depend2", "Kai Norberg", "A simple circular dependency module for testing", "1.0.0", "MIT", "");

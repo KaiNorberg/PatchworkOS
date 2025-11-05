@@ -1,12 +1,15 @@
 #include <kernel/drivers/hpet.h>
-#include <kernel/drivers/ps2/ps2.h>
-#include <kernel/drivers/ps2/ps2_kbd.h>
-#include <kernel/drivers/ps2/ps2_mouse.h>
+
+#include "ps2.h"
+#include "gnu-efi/inc/efilink.h"
+#include "ps2_kbd.h"
+#include "ps2_mouse.h"
 
 #include <kernel/acpi/tables.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/timer.h>
+#include <kernel/module/module.h>
 
 #include <errno.h>
 #include <string.h>
@@ -321,7 +324,7 @@ static uint64_t ps2_device_init(ps2_device_t device)
     return 0;
 }
 
-void ps2_init(void)
+static void ps2_init(void)
 {
     fadt_t* fadt = (fadt_t*)acpi_tables_lookup(FADT_SIGNATURE, 0);
     if (fadt == NULL)
@@ -405,6 +408,25 @@ void ps2_init(void)
         if (PS2_CMD(PS2_CMD_SECOND_ENABLE) == ERR)
         {
             panic(NULL, "ps2 second device enable failed");
+        }
+    }
+}
+
+static void ps2_deinit(void)
+{
+    if (devices[0].active)
+    {
+        if (PS2_CMD(PS2_CMD_FIRST_DISABLE) == ERR)
+        {
+            LOG_WARN("ps2 first device disable failed during deinit\n");
+        }
+    }
+
+    if (devices[1].active)
+    {
+        if (PS2_CMD(PS2_CMD_SECOND_DISABLE) == ERR)
+        {
+            LOG_WARN("ps2 second device disable failed during deinit\n");
         }
     }
 }
@@ -500,3 +522,30 @@ uint64_t ps2_send_device_cmd(ps2_device_t device, ps2_device_cmd_t command)
         PS2_COMMAND_RETRIES);
     return ERR;
 }
+
+static bool initialized = false;
+
+uint64_t _module_procedure(module_event_t* event)
+{
+    switch (event->type)
+    {
+    case MODULE_EVENT_DEVICE_ATTACH:
+        if (initialized)
+        {
+            break;
+        }
+        initialized = true;
+        ps2_init();
+        break;
+    case MODULE_EVENT_UNLOAD:
+        ps2_deinit();
+        break;
+    default:
+        break;
+    }
+
+    return 0;
+}
+
+// All the ids are from https://uefi.org/PNP_ACPI_Registry, its just all the PNP ids for PS/2 keyboards and mice. 
+MODULE_INFO("PS2 Driver", "Kai Norberg", "A PS/2 keyboard and mouse driver", OS_VERSION, "MIT", "PNP0300;PNP0301;PNP0302;PNP0303;PNP0304;PNP0305;PNP0306;PNP0307;PNP0308;PNP0309;PNP030A;PNP030B;PNP0320;PNP0321;PNP0322;PNP0323;PNP0324;PNP0325;PNP0326;PNP0327;PNP0340;PNP0341;PNP0342;PNP0343;PNP0343;PNP0344;PNP0F00;PNP0F01;PNP0F02;PNP0F03;PNP0F04;PNP0F05;PNP0F06;PNP0F07;PNP0F08;PNP0F09;PNP0F0A;PNP0F0B;PNP0F0C;PNP0F0D;PNP0F0E;PNP0F0F;PNP0F10;PNP0F11;PNP0F12;PNP0F13;PNP0F14;PNP0F15;PNP0F16;PNP0F17;PNP0F18;PNP0F19;PNP0F1A;PNP0F1B;PNP0F1C;PNP0F1D;PNP0F1E");

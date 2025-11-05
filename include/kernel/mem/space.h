@@ -77,8 +77,8 @@ typedef struct
  */
 typedef struct space
 {
-    map_t pinnedPages;      ///< Map of pages with a pin depth greater than 1.
     page_table_t pageTable; ///< The page table associated with the address space.
+    map_t pinnedPages;      ///< Map of pages with a pin depth greater than 1.
     uintptr_t startAddress; ///< The start address for allocations in this address space.
     uintptr_t endAddress;   ///< The end address for allocations in this address space.
     uintptr_t freeAddress;  ///< The next available free virtual address in this address space.

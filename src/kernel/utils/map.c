@@ -73,6 +73,7 @@ void map_entry_init(map_entry_t* entry)
     memset(entry->key.key, 0, sizeof(entry->key.key));
     entry->key.len = 0;
     entry->key.hash = 0;
+    entry->index = ERR;
 }
 
 static uint64_t map_find_slot(const map_t* map, const map_key_t* key, bool forInsertion)
@@ -160,6 +161,9 @@ static uint64_t map_resize(map_t* map, uint64_t newCapacity)
                 map->tombstones = oldTombstones;
                 return ERR;
             }
+
+            entry->index = newIndex;
+            entry->map = map;
             map->entries[newIndex] = entry;
             map->length++;
         }
@@ -169,14 +173,12 @@ static uint64_t map_resize(map_t* map, uint64_t newCapacity)
     return 0;
 }
 
-uint64_t map_init(map_t* map)
+void map_init(map_t* map)
 {
     map->length = 0;
     map->capacity = 0;
     map->tombstones = 0;
     map->entries = NULL;
-
-    return 0;
 }
 
 void map_deinit(map_t* map)
@@ -196,7 +198,7 @@ uint64_t map_insert(map_t* map, const map_key_t* key, map_entry_t* entry)
         return ERR;
     }
 
-    uint32_t currentEntries = map->length + map->tombstones;
+    uint64_t currentEntries = map->length + map->tombstones;
     if (currentEntries * 100 >= MAP_MAX_LOAD_PERCENTAGE * map->capacity)
     {
         uint64_t newCapacity = (map->capacity == 0) ? MAP_MIN_CAPACITY : (map->capacity * 2);
@@ -226,8 +228,11 @@ uint64_t map_insert(map_t* map, const map_key_t* key, map_entry_t* entry)
         map->tombstones--;
     }
 
-    map->entries[index] = entry;
     entry->key = *key;
+    entry->index = index;
+    entry->map = map;
+
+    map->entries[index] = entry;
     map->length++;
 
     return 0;
@@ -255,16 +260,10 @@ map_entry_t* map_get(map_t* map, const map_key_t* key)
     return NULL;
 }
 
-void map_remove(map_t* map, const map_key_t* key)
+static void map_remove_index(map_t* map, uint64_t index)
 {
-    uint64_t index = map_find_slot(map, key, false);
-    if (index == ERR)
-    {
-        return;
-    }
-
     map_entry_t* entry = map->entries[index];
-    if (entry == NULL || entry == MAP_TOMBSTONE || !map_key_is_equal(&entry->key, key))
+    if (entry == NULL || entry == MAP_TOMBSTONE)
     {
         return;
     }
@@ -283,7 +282,37 @@ void map_remove(map_t* map, const map_key_t* key)
         map_resize(map, newCapacity); // If we fail here, we can just ignore it
     }
 
-    return;
+    entry->index = ERR;
+    entry->map = NULL;
+}
+
+map_entry_t* map_get_and_remove(map_t* map, const map_key_t* key)
+{
+    uint64_t index = map_find_slot(map, key, false);
+    if (index == ERR)
+    {
+        return NULL;
+    }
+
+    map_entry_t* entry = map->entries[index];
+    if (entry == NULL || entry == MAP_TOMBSTONE || !map_key_is_equal(&entry->key, key))
+    {
+        return NULL;
+    }
+
+    map_remove_index(map, index);
+    return entry;
+}
+
+void map_remove(map_t* map, map_entry_t* entry)
+{
+    if (entry == NULL || entry->index == ERR)
+    {
+        return;
+    }
+    assert(entry->map == map);
+
+    map_remove_index(map, entry->index);
 }
 
 uint64_t map_size(const map_t* map)
@@ -310,6 +339,12 @@ void map_clear(map_t* map)
 {
     for (uint64_t i = 0; i < map->capacity; i++)
     {
+        map_entry_t* entry = map->entries[i];
+        if (entry != NULL && entry != MAP_TOMBSTONE)
+        {
+            entry->index = ERR;
+            entry->map = NULL;
+        }
         map->entries[i] = NULL;
     }
 
@@ -319,7 +354,7 @@ void map_clear(map_t* map)
 
 uint64_t map_reserve(map_t* map, uint64_t minCapacity)
 {
-    if (minCapacity <= map->capacity)
+    if (minCapacity < map->length)
     {
         return 0;
     }

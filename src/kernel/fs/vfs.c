@@ -73,10 +73,7 @@ static void vfs_list_init(vfs_list_t* list)
 
 static void vfs_map_init(vfs_map_t* map)
 {
-    if (map_init(&map->map) == ERR)
-    {
-        panic(NULL, "vfs: failed to initialize map");
-    }
+    map_init(&map->map);
     rwlock_init(&map->lock);
 }
 
@@ -317,8 +314,7 @@ void vfs_remove_inode(inode_t* inode)
     }
 
     RWLOCK_WRITE_SCOPE(&inodeCache.lock);
-    map_key_t key = inode_cache_key(inode->superblock->id, inode->number);
-    map_remove(&inodeCache.map, &key);
+    map_remove(&inodeCache.map, &inode->mapEntry);
 }
 
 void vfs_remove_dentry(dentry_t* dentry)
@@ -329,8 +325,7 @@ void vfs_remove_dentry(dentry_t* dentry)
     }
 
     RWLOCK_WRITE_SCOPE(&dentryCache.lock);
-    map_key_t key = dentry_cache_key(dentry->parent->id, dentry->name);
-    map_remove(&dentryCache.map, &key);
+    map_remove(&dentryCache.map, &dentry->mapEntry);
 }
 
 dentry_t* vfs_get_root_dentry(void)

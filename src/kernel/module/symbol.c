@@ -196,7 +196,7 @@ uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf
     bool nameWasCreated = false;
 
     map_key_t groupKey = map_key_uint64(groupId);
-    symbolGroup = CONTAINER_OF_SAFE(map_get(&groupMap, &groupKey), symbol_group_t, entry);
+    symbolGroup = CONTAINER_OF_SAFE(map_get(&groupMap, &groupKey), symbol_group_t, mapEntry);
     if (symbolGroup == NULL)
     {
         symbolGroup = malloc(sizeof(symbol_group_t));
@@ -204,11 +204,11 @@ uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf
         {
             goto error;
         }
-        map_entry_init(&symbolGroup->entry);
+        map_entry_init(&symbolGroup->mapEntry);
         list_init(&symbolGroup->names);
         symbolGroup->id = groupId;
 
-        if (map_insert(&groupMap, &groupKey, &symbolGroup->entry) == ERR)
+        if (map_insert(&groupMap, &groupKey, &symbolGroup->mapEntry) == ERR)
         {
             free(symbolGroup);
             symbolGroup = NULL;
@@ -256,7 +256,7 @@ error:
         if (symbolName != NULL && nameWasCreated)
         {
             map_key_t key = map_key_string(symbolName->name);
-            map_remove(&nameMap, &key);
+            map_remove(&nameMap, &symbolName->mapEntry);
             list_remove(&symbolGroup->names, &symbolName->groupEntry);
             free(symbolName);
         }
@@ -266,12 +266,11 @@ error:
     {
         if (symbolGroup != NULL && groupWasCreated)
         {
-            map_key_t key = map_key_uint64(symbolGroup->id);
-            map_remove(&groupMap, &key);
+            map_remove(&groupMap, &symbolGroup->mapEntry);
             free(symbolGroup);
         }
     }
-    
+
     LOG_DEBUG("failed to add symbol '%s' at address %p (%s)\n", name, addr, strerror(errno));
     return ERR;
 }
@@ -281,7 +280,7 @@ void symbol_remove_group(symbol_group_id_t groupId)
     RWLOCK_WRITE_SCOPE(&lock);
 
     map_key_t groupKey = map_key_uint64(groupId);
-    symbol_group_t* groupEntry = CONTAINER_OF_SAFE(map_get(&groupMap, &groupKey), symbol_group_t, entry);
+    symbol_group_t* groupEntry = CONTAINER_OF_SAFE(map_get(&groupMap, &groupKey), symbol_group_t, mapEntry);
     if (groupEntry == NULL)
     {
         return;
@@ -311,12 +310,11 @@ void symbol_remove_group(symbol_group_id_t groupId)
             free(addrEntry);
         }
 
-        map_key_t nameKey = map_key_string(nameEntry->name);
-        map_remove(&nameMap, &nameKey);
+        map_remove(&nameMap, &nameEntry->mapEntry);
         free(nameEntry);
     }
 
-    map_remove(&groupMap, &groupKey);
+    map_remove(&groupMap, &groupEntry->mapEntry);
     free(groupEntry);
 
     if (addrAmount == 0)

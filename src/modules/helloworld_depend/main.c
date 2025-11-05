@@ -26,4 +26,4 @@ uint64_t _module_procedure(module_event_t* event)
     return 0;
 }
 
-MODULE_INFO("Hello World Depend1", "Kai Norberg", "A simple module used to test module dependencies", "1.0.0", "MIT");
+MODULE_INFO("Hello World Depend1", "Kai Norberg", "A simple module used to test module dependencies", "1.0.0", "MIT", "");

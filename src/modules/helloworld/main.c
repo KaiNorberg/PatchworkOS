@@ -23,4 +23,4 @@ uint64_t _module_procedure(module_event_t* event)
     return 0;
 }
 
-MODULE_INFO("Hello World", "Kai Norberg", "A simple hello world module for testing", "1.0.0", "MIT");
+MODULE_INFO("Hello World", "Kai Norberg", "A simple hello world module for testing", "1.0.0", "MIT", "LOAD_ON_BOOT");

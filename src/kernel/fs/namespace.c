@@ -25,24 +25,18 @@ static map_key_t mount_cache_key(mount_id_t parentId, dentry_id_t mountpointId)
     return map_key_buffer(&buffer, sizeof(buffer));
 }
 
-uint64_t namespace_init(namespace_t* ns, namespace_t* parent, process_t* owner)
+void namespace_init(namespace_t* ns, namespace_t* parent, process_t* owner)
 {
     if (ns == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return;
     }
 
-    if (map_init(&ns->mountPoints) == ERR)
-    {
-        return ERR;
-    }
-
+    map_init(&ns->mountPoints);
     rwlock_init(&ns->lock);
     ns->parent = parent;
     ns->owner = owner;
     ns->rootMount = (parent != NULL && parent->rootMount != NULL) ? REF(parent->rootMount) : NULL;
-    return 0;
 }
 
 void namespace_deinit(namespace_t* ns)

@@ -9,7 +9,7 @@
  * @defgroup libstd_sys_elf ELF file
  * @ingroup libstd
  *
- * The ELF (Executable and Linkable Format) is a commonly utailized file format for generic binary files, including
+ * The ELF (Executable and Linkable Format) is a commonly utilized file format for generic binary files, including
  * executables, object code, shared libraries, etc. and we utilize it in various parts of the operating system.
  *
  * Only 64-bit ELF is implemented/handled in PatchworkOS.
