@@ -9,6 +9,7 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
+#include <kernel/sched/sys_time.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
@@ -45,7 +46,7 @@ static void process_reaper_timer(interrupt_frame_t* frame, cpu_t* cpu)
 
     LOCK_SCOPE(&zombiesLock);
 
-    clock_t uptime = timer_uptime();
+    clock_t uptime = sys_time_uptime();
     if (uptime - lastReaperTime < CONFIG_PROCESS_REAPER_INTERVAL)
     {
         return;
@@ -555,7 +556,7 @@ void process_kill(process_t* process, uint64_t status)
 
     LOCK_SCOPE(&zombiesLock);
     list_push_back(&zombies, &REF(process)->zombieEntry);
-    lastReaperTime = timer_uptime(); // Delay reaper run
+    lastReaperTime = sys_time_uptime(); // Delay reaper run
 }
 
 bool process_is_child(process_t* process, pid_t parentId)
@@ -620,7 +621,7 @@ void process_procfs_init(void)
         panic(NULL, "Failed to create /proc/[pid] directory for kernel process");
     }
 
-    timer_subscribe(&smp_self_unsafe()->timer, process_reaper_timer);
+    timer_register_callback(&smp_self_unsafe()->timer, process_reaper_timer);
 }
 
 process_t* process_get_kernel(void)

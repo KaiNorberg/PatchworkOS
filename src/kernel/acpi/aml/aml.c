@@ -141,13 +141,6 @@ void aml_init(void)
         panic(NULL, "failed to initialize AML patch up\n");
     }
 
-#ifdef TESTING
-    if (aml_tests_post_init() == ERR)
-    {
-        panic(NULL, "failed to run tests post init\n");
-    }
-#endif
-
     if (aml_init_parse_all() == ERR)
     {
         panic(NULL, "failed to parse all AML code\n");
@@ -165,7 +158,7 @@ void aml_init(void)
     }
 
 #ifdef TESTING
-    if (aml_tests_post_parse_all() == ERR)
+    if (aml_tests_run_all() == ERR)
     {
         panic(NULL, "failed to run tests post parse all\n");
     }

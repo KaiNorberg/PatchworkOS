@@ -44,7 +44,7 @@
 /**
  * @brief Number of retries for commands
  */
-#define PS2_COMMAND_RETRIES 3
+#define PS2_COMMAND_RETRIES 10
 
 /**
  * @brief PS/2 controller I/O ports

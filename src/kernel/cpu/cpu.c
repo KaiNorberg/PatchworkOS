@@ -27,7 +27,7 @@ uint64_t cpu_init(cpu_t* cpu, cpuid_t id)
     gdt_cpu_tss_load(&cpu->tss);
     interrupt_ctx_init(&cpu->interrupt);
     perf_cpu_ctx_init(&cpu->perf);
-    timer_ctx_init(&cpu->timer);
+    timer_cpu_ctx_init(&cpu->timer);
     wait_cpu_ctx_init(&cpu->wait, cpu);
     sched_cpu_ctx_init(&cpu->sched, cpu);
 

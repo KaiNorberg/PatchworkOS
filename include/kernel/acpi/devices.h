@@ -11,10 +11,14 @@
  * Handles enumeration and configuration of ACPI devices, along with dynamic loading of device drivers based on ACPI
  * IDs.
  *
+ * For the sake of ensuring consistency across different systems, all modules will be initialized based on their ACPI
+ * IDs in alphanumerical order. This means that a device with the ACPI ID "ACPI0001" will be initialized before a device
+ * with the ACPI ID "ACPI0002" and that one before the device with the ACPI ID "PNP0000".
+ *
  * TODO: Implement hotplugging support.
  *
  * @see [PNP ACPI Registry](https://uefi.org/PNP_ACPI_Registry) for a list of known ACPI IDs.
- * 
+ *
  * @{
  */
 
@@ -58,6 +62,8 @@ typedef enum
  *  - If the device is present and not functional, the device's _INI is evaluated and its children are enumerated.
  *  - If the device is present and functional, the device's _INI is evaluated and its children are enumerated.
  *
+ * After all devices have been enumerated, their Hardware IDs (HIDs) are collected and the module system is notified of each HID.
+ * 
  * @see Section 6.5.1 of the ACPI specification for more details.
  */
 void acpi_devices_init(void);

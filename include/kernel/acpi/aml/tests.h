@@ -15,18 +15,11 @@
  */
 
 /**
- * @brief Tests to run after the parser is initialized but before any AML is parsed.
+ * @brief Run all AML tests.
  *
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_tests_post_init(void);
-
-/**
- * @brief Tests to run after all AML is parsed.
- *
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_tests_post_parse_all(void);
+uint64_t aml_tests_run_all(void);
 
 /**
  * @brief Start performance measurement for a specific AML token.

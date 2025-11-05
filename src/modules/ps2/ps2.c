@@ -1,18 +1,15 @@
-#include <kernel/drivers/hpet.h>
-
 #include "ps2.h"
-#include "gnu-efi/inc/efilink.h"
 #include "ps2_kbd.h"
 #include "ps2_mouse.h"
 
 #include <kernel/acpi/tables.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <kernel/sched/timer.h>
 #include <kernel/module/module.h>
+#include <kernel/sched/sys_time.h>
+#include <kernel/sched/timer.h>
 
 #include <errno.h>
-#include <string.h>
 
 static bool isDualChannel = false;
 static ps2_device_info_t devices[PS2_DEV_COUNT] = {0};
@@ -236,7 +233,7 @@ static uint64_t ps2_device_init(ps2_device_t device)
         LOG_ERR("%s port reset failed\n", ps2_device_to_string(device));
         return ERR;
     }
-    hpet_wait(PS2_LARGE_DELAY);
+    sys_time_wait(PS2_LARGE_DELAY);
 
     ps2_device_response_t response = 0;
     if (PS2_READ(&response) == ERR)
@@ -433,20 +430,20 @@ static void ps2_deinit(void)
 
 void ps2_drain(void)
 {
-    hpet_wait(PS2_SMALL_DELAY);
+    sys_time_wait(PS2_SMALL_DELAY);
     while (port_inb(PS2_PORT_STATUS) & PS2_STATUS_OUT_FULL)
     {
         port_inb(PS2_PORT_DATA);
-        hpet_wait(PS2_SMALL_DELAY);
+        sys_time_wait(PS2_SMALL_DELAY);
     }
 }
 
 uint64_t ps2_wait_until_set(ps2_status_bits_t status)
 {
-    uint64_t startTime = timer_uptime();
+    uint64_t startTime = sys_time_uptime();
     while ((port_inb(PS2_PORT_STATUS) & status) == 0)
     {
-        if ((timer_uptime() - startTime) > PS2_WAIT_TIMEOUT)
+        if ((sys_time_uptime() - startTime) > PS2_WAIT_TIMEOUT)
         {
             errno = ETIMEDOUT;
             return ERR;
@@ -458,10 +455,10 @@ uint64_t ps2_wait_until_set(ps2_status_bits_t status)
 
 uint64_t ps2_wait_until_clear(ps2_status_bits_t status)
 {
-    uint64_t startTime = timer_uptime();
+    uint64_t startTime = sys_time_uptime();
     while ((port_inb(PS2_PORT_STATUS) & status) != 0)
     {
-        if ((timer_uptime() - startTime) > PS2_WAIT_TIMEOUT)
+        if ((sys_time_uptime() - startTime) > PS2_WAIT_TIMEOUT)
         {
             errno = ETIMEDOUT;
             return ERR;
@@ -525,7 +522,7 @@ uint64_t ps2_send_device_cmd(ps2_device_t device, ps2_device_cmd_t command)
 
 static bool initialized = false;
 
-uint64_t _module_procedure(module_event_t* event)
+uint64_t _module_procedure(const module_event_t* event)
 {
     switch (event->type)
     {
@@ -547,5 +544,10 @@ uint64_t _module_procedure(module_event_t* event)
     return 0;
 }
 
-// All the ids are from https://uefi.org/PNP_ACPI_Registry, its just all the PNP ids for PS/2 keyboards and mice. 
-MODULE_INFO("PS2 Driver", "Kai Norberg", "A PS/2 keyboard and mouse driver", OS_VERSION, "MIT", "PNP0300;PNP0301;PNP0302;PNP0303;PNP0304;PNP0305;PNP0306;PNP0307;PNP0308;PNP0309;PNP030A;PNP030B;PNP0320;PNP0321;PNP0322;PNP0323;PNP0324;PNP0325;PNP0326;PNP0327;PNP0340;PNP0341;PNP0342;PNP0343;PNP0343;PNP0344;PNP0F00;PNP0F01;PNP0F02;PNP0F03;PNP0F04;PNP0F05;PNP0F06;PNP0F07;PNP0F08;PNP0F09;PNP0F0A;PNP0F0B;PNP0F0C;PNP0F0D;PNP0F0E;PNP0F0F;PNP0F10;PNP0F11;PNP0F12;PNP0F13;PNP0F14;PNP0F15;PNP0F16;PNP0F17;PNP0F18;PNP0F19;PNP0F1A;PNP0F1B;PNP0F1C;PNP0F1D;PNP0F1E");
+// All the ids are from https://uefi.org/PNP_ACPI_Registry, its just all the PNP ids for PS/2 keyboards and mice.
+MODULE_INFO("PS2 Driver", "Kai Norberg", "A PS/2 keyboard and mouse driver", OS_VERSION, "MIT",
+    "PNP0300;PNP0301;PNP0302;PNP0303;PNP0304;PNP0305;PNP0306;PNP0307;PNP0308;PNP0309;PNP030A;PNP030B;PNP0320;PNP0321;"
+    "PNP0322;PNP0323;PNP0324;PNP0325;PNP0326;PNP0327;PNP0340;PNP0341;PNP0342;PNP0343;PNP0343;PNP0344;PNP0F00;PNP0F01;"
+    "PNP0F02;PNP0F03;PNP0F04;PNP0F05;PNP0F06;PNP0F07;PNP0F08;PNP0F09;PNP0F0A;PNP0F0B;PNP0F0C;PNP0F0D;PNP0F0E;PNP0F0F;"
+    "PNP0F10;PNP0F11;PNP0F12;PNP0F13;PNP0F14;PNP0F15;PNP0F16;PNP0F17;PNP0F18;PNP0F19;PNP0F1A;PNP0F1B;PNP0F1C;PNP0F1D;"
+    "PNP0F1E");

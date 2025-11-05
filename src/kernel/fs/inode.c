@@ -1,6 +1,7 @@
 #include <kernel/fs/inode.h>
 
 #include <kernel/fs/vfs.h>
+#include <kernel/sched/sys_time.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 
@@ -71,7 +72,7 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
     inode->linkCount = 1;
     inode->size = 0;
     inode->blocks = 0;
-    inode->accessTime = timer_unix_epoch();
+    inode->accessTime = sys_time_unix_epoch();
     inode->modifyTime = inode->accessTime;
     inode->changeTime = inode->accessTime;
     inode->createTime = inode->accessTime;
@@ -99,7 +100,7 @@ void inode_notify_access(inode_t* inode)
 
     MUTEX_SCOPE(&inode->mutex);
 
-    inode->accessTime = timer_unix_epoch();
+    inode->accessTime = sys_time_unix_epoch();
     // TODO: Sync to disk.
 }
 
@@ -111,7 +112,7 @@ void inode_notify_modify(inode_t* inode)
     }
 
     MUTEX_SCOPE(&inode->mutex);
-    inode->modifyTime = timer_unix_epoch();
+    inode->modifyTime = sys_time_unix_epoch();
     inode->changeTime = inode->modifyTime;
     // TODO: Sync to disk.
 }
@@ -124,7 +125,7 @@ void inode_notify_change(inode_t* inode)
     }
 
     MUTEX_SCOPE(&inode->mutex);
-    inode->changeTime = timer_unix_epoch();
+    inode->changeTime = sys_time_unix_epoch();
     // TODO: Sync to disk.
 }
 

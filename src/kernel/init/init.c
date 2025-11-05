@@ -180,7 +180,7 @@ void kmain(const boot_info_t* bootInfo)
     LOG_DEBUG("kmain entered\n");
 
     init_finalize(bootInfo);
-    
+
     asm volatile("sti");
 
     if (module_load(MODULE_LOAD_ON_BOOT_ID, MODULE_LOAD_ALL) == ERR)

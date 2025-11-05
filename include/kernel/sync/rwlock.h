@@ -16,9 +16,10 @@ typedef struct thread thread_t;
  */
 
 /**
- * @brief Maximum time before we consider a deadlock to have occurred.
+ * @brief Number of iterations before we consider a deadlock to have occurred in a rwlock operation.
+ * This is only used in debug builds.
  */
-#define RWLOCK_DEADLOCK_TIMEOUT (CLOCKS_PER_SEC * 10)
+#define RWLOCK_DEADLOCK_ITERATIONS 10000000
 
 /**
  * @brief Acquires a rwlock for reading for the reminder of the current scope.

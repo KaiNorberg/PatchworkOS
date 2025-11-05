@@ -65,7 +65,7 @@ typedef struct cpu cpu_t;
     ({ \
         assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE); \
         uint64_t result = 0; \
-        clock_t uptime = timer_uptime(); \
+        clock_t uptime = sys_time_uptime(); \
         clock_t deadline = (timeout) == CLOCKS_NEVER ? CLOCKS_NEVER : (timeout) + uptime; \
         while (!(condition) && result == 0) \
         { \
@@ -83,7 +83,7 @@ typedef struct cpu cpu_t;
                 break; \
             } \
             result = wait_block_commit(); \
-            uptime = timer_uptime(); \
+            uptime = sys_time_uptime(); \
         } \
         result; \
     })
@@ -132,7 +132,7 @@ typedef struct cpu cpu_t;
 #define WAIT_BLOCK_LOCK_TIMEOUT(waitQueue, lock, condition, timeout) \
     ({ \
         uint64_t result = 0; \
-        clock_t uptime = timer_uptime(); \
+        clock_t uptime = sys_time_uptime(); \
         clock_t deadline = (timeout) == CLOCKS_NEVER ? CLOCKS_NEVER : (timeout) + uptime; \
         while (!(condition) && result == ERR) \
         { \
@@ -153,7 +153,7 @@ typedef struct cpu cpu_t;
             result = wait_block_commit(); \
             assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE); \
             lock_acquire(lock); \
-            uptime = timer_uptime(); \
+            uptime = sys_time_uptime(); \
         } \
         result; \
     })

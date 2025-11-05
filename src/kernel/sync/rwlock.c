@@ -20,7 +20,7 @@ void rwlock_read_acquire(rwlock_t* lock)
     interrupt_disable();
 
 #ifndef NDEBUG
-    clock_t start = timer_uptime();
+    uint64_t iterations = 0;
 #endif
 
     uint_fast16_t ticket = atomic_fetch_add_explicit(&lock->readTicket, 1, memory_order_relaxed);
@@ -29,8 +29,7 @@ void rwlock_read_acquire(rwlock_t* lock)
     {
         asm volatile("pause");
 #ifndef NDEBUG
-        clock_t now = timer_uptime();
-        if (start != 0 && now - start > RWLOCK_DEADLOCK_TIMEOUT)
+        if (++iterations >= RWLOCK_DEADLOCK_ITERATIONS)
         {
             panic(NULL, "Deadlock in rwlock_read_acquire detected");
         }
@@ -41,8 +40,7 @@ void rwlock_read_acquire(rwlock_t* lock)
         atomic_load_explicit(&lock->writeTicket, memory_order_relaxed))
     {
 #ifndef NDEBUG
-        clock_t now = timer_uptime();
-        if (start != 0 && now - start > RWLOCK_DEADLOCK_TIMEOUT)
+        if (++iterations >= RWLOCK_DEADLOCK_ITERATIONS)
         {
             panic(NULL, "Deadlock in rwlock_read_acquire detected");
         }
@@ -66,7 +64,7 @@ void rwlock_write_acquire(rwlock_t* lock)
     interrupt_disable();
 
 #ifndef NDEBUG
-    clock_t start = timer_uptime();
+    uint64_t iterations = 0;
 #endif
 
     uint_fast16_t ticket = atomic_fetch_add_explicit(&lock->writeTicket, 1, memory_order_relaxed);
@@ -74,8 +72,7 @@ void rwlock_write_acquire(rwlock_t* lock)
     while (atomic_load_explicit(&lock->writeServe, memory_order_acquire) != ticket)
     {
 #ifndef NDEBUG
-        clock_t now = timer_uptime();
-        if (start != 0 && now - start > RWLOCK_DEADLOCK_TIMEOUT)
+        if (++iterations >= RWLOCK_DEADLOCK_ITERATIONS)
         {
             panic(NULL, "Deadlock in rwlock_write_acquire detected");
         }
@@ -86,8 +83,7 @@ void rwlock_write_acquire(rwlock_t* lock)
     while (atomic_load_explicit(&lock->activeReaders, memory_order_acquire) > 0)
     {
 #ifndef NDEBUG
-        clock_t now = timer_uptime();
-        if (start != 0 && now - start > RWLOCK_DEADLOCK_TIMEOUT)
+        if (++iterations >= RWLOCK_DEADLOCK_ITERATIONS)
         {
             panic(NULL, "Deadlock in rwlock_write_acquire detected");
         }
@@ -100,8 +96,7 @@ void rwlock_write_acquire(rwlock_t* lock)
         memory_order_relaxed))
     {
 #ifndef NDEBUG
-        clock_t now = timer_uptime();
-        if (start != 0 && now - start > RWLOCK_DEADLOCK_TIMEOUT)
+        if (++iterations >= RWLOCK_DEADLOCK_ITERATIONS)
         {
             panic(NULL, "Deadlock in rwlock_write_acquire detected");
         }

@@ -17,6 +17,7 @@
 #include <kernel/acpi/aml/to_string.h>
 #include <kernel/acpi/aml/token.h>
 #include <kernel/log/log.h>
+#include <kernel/sched/sys_time.h>
 #include <kernel/sched/timer.h>
 
 #include <sys/proc.h>
@@ -1844,7 +1845,7 @@ aml_object_t* aml_def_timer_read(aml_term_list_ctx_t* ctx)
     }
 
     // The period of the timer is supposed to be 100ns.
-    uint64_t time100ns = timer_uptime() / 100;
+    uint64_t time100ns = sys_time_uptime() / 100;
 
     aml_object_t* result = aml_object_new();
     if (result == NULL)

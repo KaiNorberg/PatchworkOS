@@ -2,6 +2,7 @@
 
 #include <kernel/config.h>
 #include <kernel/sched/sched.h>
+#include <kernel/sched/sys_time.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
@@ -76,10 +77,10 @@ bool mutex_acquire_timeout(mutex_t* mtx, clock_t timeout)
     }
 
     lock_acquire(&mtx->lock);
-    clock_t end = timer_uptime() + timeout;
+    clock_t end = sys_time_uptime() + timeout;
     while (true)
     {
-        clock_t now = timer_uptime();
+        clock_t now = sys_time_uptime();
         if (now >= end)
         {
             lock_release(&mtx->lock);

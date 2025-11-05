@@ -4,6 +4,7 @@
 #include <kernel/cpu/smp.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/sched.h>
+#include <kernel/sched/sys_time.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
@@ -47,7 +48,7 @@ static void wait_timer_handler(interrupt_frame_t* frame, cpu_t* self)
             return;
         }
 
-        clock_t uptime = timer_uptime();
+        clock_t uptime = sys_time_uptime();
         if (thread->wait.deadline > uptime)
         {
             timer_one_shot(self, uptime, thread->wait.deadline - uptime);
@@ -97,7 +98,7 @@ void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* self)
     list_init(&wait->blockedThreads);
     wait->cpu = self;
     lock_init(&wait->lock);
-    timer_subscribe(&self->timer, wait_timer_handler);
+    timer_register_callback(&self->timer, wait_timer_handler);
 }
 
 bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread, clock_t uptime)
@@ -276,7 +277,7 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
     }
 
     thread->wait.err = EOK;
-    thread->wait.deadline = timeout == CLOCKS_NEVER ? CLOCKS_NEVER : timer_uptime() + timeout;
+    thread->wait.deadline = timeout == CLOCKS_NEVER ? CLOCKS_NEVER : sys_time_uptime() + timeout;
     thread->wait.cpu = NULL;
 
     for (uint64_t i = 0; i < amount; i++)
