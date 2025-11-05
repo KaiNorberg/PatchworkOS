@@ -10,6 +10,7 @@
 #include <kernel/log/panic.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
+#include <kernel/sched/sys_time.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
@@ -115,7 +116,7 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* self)
     lock_init(&ctx->lock);
     ctx->owner = self;
 
-    timer_subscribe(&self->timer, sched_timer_handler);
+    timer_register_callback(&self->timer, sched_timer_handler);
 }
 
 void sched_done_with_boot_thread(void)
@@ -240,7 +241,7 @@ static void sched_compute_time_slice(thread_t* thread, thread_t* parent)
 {
     if (parent != NULL)
     {
-        clock_t uptime = timer_uptime();
+        clock_t uptime = sys_time_uptime();
         clock_t remaining = uptime <= parent->sched.deadline ? parent->sched.deadline - uptime : 0;
 
         parent->sched.deadline = uptime + remaining / 2;
@@ -322,7 +323,7 @@ void sched_push(thread_t* thread, cpu_t* target)
     }
     else if (state == THREAD_UNBLOCKING)
     {
-        sched_update_recent_idle_time(thread, true, timer_uptime());
+        sched_update_recent_idle_time(thread, true, sys_time_uptime());
         sched_queues_push(target->sched.active, thread);
     }
     else
@@ -402,7 +403,7 @@ void sched_push_new_thread(thread_t* thread, thread_t* parent)
     }
     else if (state == THREAD_UNBLOCKING)
     {
-        sched_update_recent_idle_time(thread, true, timer_uptime());
+        sched_update_recent_idle_time(thread, true, sys_time_uptime());
         sched_queues_push(target->sched.active, thread);
     }
     else
@@ -495,7 +496,7 @@ void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags)
         panic(NULL, "runThread is NULL");
     }
 
-    clock_t uptime = timer_uptime();
+    clock_t uptime = sys_time_uptime();
     sched_update_recent_idle_time(runThread, false, uptime);
 
     thread_t* volatile threadToFree = NULL;

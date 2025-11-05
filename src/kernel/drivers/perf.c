@@ -8,6 +8,7 @@
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/sched/sched.h>
+#include <kernel/sched/sys_time.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
 
@@ -39,7 +40,7 @@ static uint64_t perf_cpu_read(file_t* file, void* buffer, uint64_t count, uint64
         cpu_t* cpu = smp_cpu(i);
 
         lock_acquire(&cpu->perf.lock);
-        clock_t uptime = timer_uptime();
+        clock_t uptime = sys_time_uptime();
         clock_t delta = uptime - cpu->perf.interruptEnd;
         if (sched_is_idle(cpu))
         {
@@ -118,7 +119,7 @@ void perf_process_ctx_init(perf_process_ctx_t* ctx)
 {
     atomic_init(&ctx->userClocks, 0);
     atomic_init(&ctx->kernelClocks, 0);
-    ctx->startTime = timer_uptime();
+    ctx->startTime = sys_time_uptime();
 }
 
 void perf_thread_ctx_init(perf_thread_ctx_t* ctx)
@@ -158,7 +159,7 @@ void perf_interrupt_begin(cpu_t* self)
             perf->interruptBegin, perf->interruptEnd);
     }
 
-    perf->interruptBegin = timer_uptime();
+    perf->interruptBegin = sys_time_uptime();
     clock_t delta = perf->interruptBegin - perf->interruptEnd;
     if (sched_is_idle(self))
     {
@@ -187,7 +188,7 @@ void perf_interrupt_end(cpu_t* self)
 {
     LOCK_SCOPE(&self->perf.lock);
 
-    self->perf.interruptEnd = timer_uptime();
+    self->perf.interruptEnd = sys_time_uptime();
     self->perf.interruptClocks += self->perf.interruptEnd - self->perf.interruptBegin;
 
     thread_t* thread = sched_thread_unsafe();
@@ -206,7 +207,7 @@ void perf_syscall_begin(void)
     thread_t* thread = sched_thread_unsafe();
     perf_thread_ctx_t* perf = &thread->perf;
 
-    clock_t uptime = timer_uptime();
+    clock_t uptime = sys_time_uptime();
     if (perf->syscallEnd < perf->syscallBegin)
     {
         panic(NULL, "perf_syscall_begin called while already in syscall syscallBegin=%llu syscallEnd=%llu",
@@ -227,7 +228,7 @@ void perf_syscall_end(void)
     perf_thread_ctx_t* perf = &thread->perf;
     process_t* process = thread->process;
 
-    perf->syscallEnd = timer_uptime();
+    perf->syscallEnd = sys_time_uptime();
     clock_t delta = perf->syscallEnd - perf->syscallBegin;
 
     atomic_fetch_add(&process->perf.kernelClocks, delta);

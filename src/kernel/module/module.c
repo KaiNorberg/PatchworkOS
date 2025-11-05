@@ -52,9 +52,8 @@ static bool cacheValid = false;
 static mutex_t lock = MUTEX_CREATE(lock);
 
 #define MODULE_SYMBOL_ALLOWED(type, binding, name) \
-    ((type == STT_OBJECT || type == STT_FUNC) && \
-     (binding == STB_GLOBAL) && \
-     (strncmp(name, MODULE_RESERVED_PREFIX, MODULE_RESERVED_PREFIX_LENGTH) != 0))
+    ((type == STT_OBJECT || type == STT_FUNC) && (binding == STB_GLOBAL) && \
+        (strncmp(name, MODULE_RESERVED_PREFIX, MODULE_RESERVED_PREFIX_LENGTH) != 0))
 
 static inline uint64_t module_parse_string(const char* str, char* out, size_t outSize)
 {
@@ -90,7 +89,7 @@ static module_t* module_new(module_info_t* info)
     map_init(&module->deviceHandlers);
     map_init(&module->dependencies);
     module->info = info;
-    
+
     map_key_t dependKey = map_key_uint64(module->symbolGroupId);
     if (map_insert(&dependencyMap, &dependKey, &module->dependencyMapEntry) == ERR)
     {
@@ -440,8 +439,8 @@ static inline module_info_t* module_info_parse(const char* moduleInfo)
 
     if (strcmp(info->osVersion, OS_VERSION) != 0)
     {
-        LOG_ERR("module '%s' requires OS version '%s' but running version is '%s'\n", info->name,
-            info->osVersion, OS_VERSION);
+        LOG_ERR("module '%s' requires OS version '%s' but running version is '%s'\n", info->name, info->osVersion,
+            OS_VERSION);
         goto error;
     }
 
@@ -450,7 +449,7 @@ static inline module_info_t* module_info_parse(const char* moduleInfo)
     strncpy_s(info->deviceIds, deviceIdsLength + 1, &moduleInfo[offset], deviceIdsLength + 1);
 
     return info;
-    
+
 error:
     free(info);
     errno = EILSEQ;
@@ -495,7 +494,8 @@ typedef struct
 
 static void* module_resolve_callback(const char* name, void* private);
 
-static uint64_t module_read_metadata(Elf64_File* outFile, module_info_t** outInfo, const path_t* dirPath, process_t* process, const char* filename)
+static uint64_t module_read_metadata(Elf64_File* outFile, module_info_t** outInfo, const path_t* dirPath,
+    process_t* process, const char* filename)
 {
     file_t* file = vfs_openat(dirPath, PATHNAME(filename), process);
     if (file == NULL)
@@ -621,7 +621,7 @@ static uint64_t module_load_dependency_for_symbol(module_load_ctx_t* ctx, const 
         LOG_DEBUG("no cached module found for symbol '%s'\n", symbolName);
         return ERR;
     }
-    
+
     Elf64_File elf;
     module_info_t* info;
     if (module_read_metadata(&elf, &info, &ctx->dir->path, ctx->process, cacheEntry->modulePath) == ERR)
@@ -824,8 +824,7 @@ error:
 static module_device_t* module_device_get_or_create(const char* deviceId)
 {
     map_key_t deviceKey = map_key_string(deviceId);
-    module_device_t* moduleDevice =
-        CONTAINER_OF_SAFE(map_get(&deviceMap, &deviceKey), module_device_t, mapEntry);
+    module_device_t* moduleDevice = CONTAINER_OF_SAFE(map_get(&deviceMap, &deviceKey), module_device_t, mapEntry);
     if (moduleDevice == NULL)
     {
         moduleDevice = malloc(sizeof(module_device_t));
@@ -914,7 +913,7 @@ static uint64_t module_cache_symbols_add(Elf64_File* elf, const char* path)
             free(symbolEntry);
             return ERR;
         }
-    
+
         map_key_t symbolKey = map_key_string(symName);
         if (map_insert(&symbolCache, &symbolKey, &symbolEntry->mapEntry) == ERR)
         {
@@ -944,7 +943,8 @@ static uint64_t module_cache_device_ids_add(module_info_t* info, const char* pat
         deviceIdPtr += parsed + 1;
 
         map_key_t deviceKey = map_key_string(currentDeviceId);
-        module_cached_device_t* deviceEntry = CONTAINER_OF_SAFE(map_get(&deviceIdCache, &deviceKey), module_cached_device_t, mapEntry);
+        module_cached_device_t* deviceEntry =
+            CONTAINER_OF_SAFE(map_get(&deviceIdCache, &deviceKey), module_cached_device_t, mapEntry);
         if (deviceEntry == NULL)
         {
             deviceEntry = malloc(sizeof(module_cached_device_t));
@@ -980,7 +980,7 @@ static uint64_t module_cache_device_ids_add(module_info_t* info, const char* pat
         deviceEntry->paths = newPaths;
         deviceEntry->pathCount++;
         deviceEntry->pathsSize += additionalLen + 1;
-        
+
         memcpy(&newPaths[currentLen + 1], path, additionalLen + 1);
     }
 
@@ -1101,7 +1101,8 @@ uint64_t module_load(const char* deviceId, module_load_flags_t flags)
 
     list_t modulesLoaded = LIST_CREATE(modulesLoaded);
     map_key_t deviceKey = map_key_string(deviceId);
-    module_cached_device_t* deviceEntry = CONTAINER_OF_SAFE(map_get(&deviceIdCache, &deviceKey), module_cached_device_t, mapEntry);
+    module_cached_device_t* deviceEntry =
+        CONTAINER_OF_SAFE(map_get(&deviceIdCache, &deviceKey), module_cached_device_t, mapEntry);
     if (deviceEntry == NULL)
     {
         return 0;
@@ -1171,8 +1172,7 @@ uint64_t module_unload(const char* deviceId)
     MUTEX_SCOPE(&lock);
 
     map_key_t deviceKey = map_key_string(deviceId);
-    module_device_t* device =
-        CONTAINER_OF_SAFE(map_get(&deviceMap, &deviceKey), module_device_t, mapEntry);
+    module_device_t* device = CONTAINER_OF_SAFE(map_get(&deviceMap, &deviceKey), module_device_t, mapEntry);
     if (device == NULL)
     {
         return 0;

@@ -11,10 +11,14 @@
  * Handles enumeration and configuration of ACPI devices, along with dynamic loading of device drivers based on ACPI
  * IDs.
  *
+ * For the sake of ensuring consistency across different systems, all modules will be initialized based on their ACPI
+ * IDs in alphanumerical order. This means that a device with the ACPI ID "ACPI0001" will be initialized before a device
+ * with the ACPI ID "ACPI0002" and that one before the device with the ACPI ID "PNP0000".
+ *
  * TODO: Implement hotplugging support.
  *
  * @see [PNP ACPI Registry](https://uefi.org/PNP_ACPI_Registry) for a list of known ACPI IDs.
- * 
+ *
  * @{
  */
 

@@ -45,7 +45,9 @@ that the module should be aware of this procedure will be called to notify the m
  *
  * ## Loading Modules
  *
- * Modules can not be explicitly loaded, instead each module declares what device IDs it supports in its `.module_info` section, when the module loader is then told that a device with a specified ID is present it will search for a module supporting that device ID and load it. Check the `MODULE_INFO` macro for more details.
+ * Modules can not be explicitly loaded, instead each module declares what device IDs it supports in its `.module_info`
+section, when the module loader is then told that a device with a specified ID is present it will search for a module
+supporting that device ID and load it. Check the `MODULE_INFO` macro for more details.
  *
  * ## Dependencies
  *
@@ -55,11 +57,14 @@ that the module should be aware of this procedure will be called to notify the m
  *
  * There are many, many ways of handling dependencies. In PatchworkOS it works like this.
  *
- * First, we load some module file, lets say "/kernel/modules/<OS_VERSION>/module2". This module wants to call `module_1_func()`
- * which is defined in "/kernel/modules/<OS_VERSION>/module1". When resolving the symbols for module2 we will fail to resolve
+ * First, we load some module file, lets say "/kernel/modules/<OS_VERSION>/module2". This module wants to call
+`module_1_func()`
+ * which is defined in "/kernel/modules/<OS_VERSION>/module1". When resolving the symbols for module2 we will fail to
+resolve
  * `module_1_func()`.
  *
- * The failure to resolve a symbol will cause the kernel to search for a module that provides the symbol, it checks all the symbols in each module eventually finding that module1
+ * The failure to resolve a symbol will cause the kernel to search for a module that provides the symbol, it checks all
+the symbols in each module eventually finding that module1
  * defines `module_1_func()`. The kernel will then load module1 and retry the symbol resolution for module2, this time
  * succeeding. This repeats until all symbols are resolved or no more modules are found to load.
  *
@@ -71,7 +76,9 @@ that the module should be aware of this procedure will be called to notify the m
  * but later a module depending on it is loaded then it will also wait to be unloaded until all modules depending on it
  * are unloaded.
  *
- * TODO: Currently module symbols and device ids are cached in memory after the first load, for now this is fine. But in the future this cache could become very large so we might need a Linux-style cache file on disk or atleast a way to invalidate the cache.
+ * TODO: Currently module symbols and device ids are cached in memory after the first load, for now this is fine. But in
+the future this cache could become very large so we might need a Linux-style cache file on disk or atleast a way to
+invalidate the cache.
  *
  * ## Circular Dependencies
  *
@@ -86,10 +93,12 @@ that the module should be aware of this procedure will be called to notify the m
  *
  * ## Unloading Modules
  *
- * Modules will be unloaded by the kernel when all the devices they handle are detached and no other loaded module depends on them.
+ * Modules will be unloaded by the kernel when all the devices they handle are detached and no other loaded module
+depends on them.
  *
  * To solve both the issue of dependency tracking and circular dependency resolution, we implement a garbage collector
- * which, using the dependency map, traverses all reachable modules starting from the modules that are currently handling devices. Any
+ * which, using the dependency map, traverses all reachable modules starting from the modules that are currently
+handling devices. Any
  * module that is not reachable is considered unused and will be unloaded.
  *
  * @{
@@ -171,7 +180,8 @@ completely custom strings defined by the module itself.
  * @param _deviceIds A semicolon-separated list of device ID strings that the module supports.
  */
 #define MODULE_INFO(_name, _author, _description, _version, _licence, _deviceIds) \
-    const char _moduleInfo[] __attribute__((section(MODULE_INFO_SECTION), used)) = _name ";" _author ";" _description ";" _version ";" _licence ";" OS_VERSION ";" _deviceIds "\0"
+    const char _moduleInfo[] __attribute__((section(MODULE_INFO_SECTION), used)) = \
+        _name ";" _author ";" _description ";" _version ";" _licence ";" OS_VERSION ";" _deviceIds "\0"
 
 /**
  * @brief Special device ID to indicate the module should be loaded on boot.
@@ -279,7 +289,7 @@ typedef struct module_dependency
 typedef struct module_device
 {
     map_entry_t mapEntry;
-    list_t handlers;    ///< List of `module_device_handler_t` handling this device ID.
+    list_t handlers;               ///< List of `module_device_handler_t` handling this device ID.
     char id[MODULE_MAX_DEVICE_ID]; ///< The devices ID string.
 } module_device_t;
 
@@ -326,9 +336,10 @@ typedef struct
 typedef enum module_flags
 {
     MODULE_FLAG_NONE = 0,
-    MODULE_FLAG_LOADED = 1 << 0,          ///< If set, the module has received the `MODULE_EVENT_LOAD` event.
-    MODULE_FLAG_GC_REACHABLE = 1 << 1,    ///< Used by the GC to mark reachable modules.
-    MODULE_FLAG_GC_PINNED = 1 << 2,          ///< If set, the module will never be collected by the GC, used for the fake kernel module.
+    MODULE_FLAG_LOADED = 1 << 0,       ///< If set, the module has received the `MODULE_EVENT_LOAD` event.
+    MODULE_FLAG_GC_REACHABLE = 1 << 1, ///< Used by the GC to mark reachable modules.
+    MODULE_FLAG_GC_PINNED =
+        1 << 2, ///< If set, the module will never be collected by the GC, used for the fake kernel module.
 } module_flags_t;
 
 /**
@@ -337,16 +348,16 @@ typedef enum module_flags
  */
 typedef struct module
 {
-    map_entry_t dependencyMapEntry; ///< Entry in the global dependency map.
-    map_entry_t moduleMapEntry;     ///< Entry in the global module map.
-    list_entry_t entry; ///< Used to store the modules in temporary lists.
+    map_entry_t dependencyMapEntry;  ///< Entry in the global dependency map.
+    map_entry_t moduleMapEntry;      ///< Entry in the global module map.
+    list_entry_t entry;              ///< Used to store the modules in temporary lists.
     module_flags_t flags;            ///< Module flags, see `module_flags_t`.
     void* baseAddr;                  ///< The address where the modules image is loaded in memory.
     uint64_t size;                   ///< The size of the modules loaded image in memory.
     module_procedure_t procedure;    ///< The module's procedure function and entry point.
     symbol_group_id_t symbolGroupId; ///< See `symbol_group_id_t`.
-    map_t deviceHandlers;           ///< Map of device handlers, key is `device ID string`, value is `module_device_handler_t`.
-    map_t dependencies; ///< Map of dependencies, key is `symbol_group_id_t`, value is `module_dependency_t`.
+    map_t deviceHandlers; ///< Map of device handlers, key is `device ID string`, value is `module_device_handler_t`.
+    map_t dependencies;   ///< Map of dependencies, key is `symbol_group_id_t`, value is `module_dependency_t`.
     module_info_t* info;
 } module_t;
 
@@ -360,7 +371,8 @@ typedef struct module
 typedef enum
 {
     MODULE_LOAD_NONE = 0,
-    MODULE_LOAD_ALL = 1 << 0, ///< If set, will load all modules matching the device ID. Otherwise, only the first found module will be loaded.
+    MODULE_LOAD_ALL = 1 << 0, ///< If set, will load all modules matching the device ID. Otherwise, only the first found
+                              ///< module will be loaded.
 } module_load_flags_t;
 
 /**
@@ -386,7 +398,8 @@ uint64_t module_load(const char* deviceId, module_load_flags_t flags);
 /**
  * @brief Perform an unload for the given device ID.
  *
- * If a module to unload is not currently considered a dependency but other modules depend on it, it will be demoted to a dependency and not actually unloaded until no modules depend on it anymore.
+ * If a module to unload is not currently considered a dependency but other modules depend on it, it will be demoted to
+ * a dependency and not actually unloaded until no modules depend on it anymore.
  *
  * @param deviceId The device ID string of the modules to unload.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.

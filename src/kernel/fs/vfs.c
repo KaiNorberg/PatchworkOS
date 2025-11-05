@@ -14,6 +14,7 @@
 #include <kernel/mem/vmm.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
+#include <kernel/sched/sys_time.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/mutex.h>
@@ -1056,7 +1057,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         return ERR;
     }
 
-    clock_t uptime = timer_uptime();
+    clock_t uptime = sys_time_uptime();
 
     clock_t deadline;
     if (timeout == CLOCKS_NEVER)
@@ -1075,7 +1076,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
     uint64_t readyCount = 0;
     while (true)
     {
-        uptime = timer_uptime();
+        uptime = sys_time_uptime();
         clock_t remaining = (deadline == CLOCKS_NEVER) ? CLOCKS_NEVER : deadline - uptime;
 
         if (wait_block_setup(ctx.queues, ctx.queueAmount, remaining) == ERR)

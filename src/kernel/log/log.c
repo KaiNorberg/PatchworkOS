@@ -5,6 +5,7 @@
 #include <kernel/drivers/com.h>
 #include <kernel/log/log_file.h>
 #include <kernel/log/log_screen.h>
+#include <kernel/sched/sys_time.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
 
@@ -128,7 +129,7 @@ static void log_print_header(log_level_t level)
         return;
     }
 
-    clock_t uptime = timer_uptime();
+    clock_t uptime = sys_time_uptime();
     uint64_t seconds = uptime / CLOCKS_PER_SEC;
     uint64_t milliseconds = (uptime % CLOCKS_PER_SEC) / (CLOCKS_PER_SEC / 1000);
 

@@ -2,6 +2,7 @@
 #include <kernel/log/log.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
+#include <kernel/sched/sys_time.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
@@ -76,7 +77,7 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
     {
     case FUTEX_WAIT:
     {
-        clock_t uptime = timer_uptime();
+        clock_t uptime = sys_time_uptime();
 
         clock_t deadline;
         if (timeout == CLOCKS_NEVER)
@@ -95,7 +96,7 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
         bool firstCheck = true;
         while (true)
         {
-            uptime = timer_uptime();
+            uptime = sys_time_uptime();
             clock_t remaining = (deadline == CLOCKS_NEVER) ? CLOCKS_NEVER : deadline - uptime;
             wait_queue_t* queue = &futex->queue;
             if (wait_block_setup(&queue, 1, remaining) == ERR)

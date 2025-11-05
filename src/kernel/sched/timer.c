@@ -3,56 +3,28 @@
 #include <kernel/cpu/smp.h>
 #include <kernel/cpu/syscalls.h>
 #include <kernel/drivers/apic.h>
-#include <kernel/drivers/hpet.h>
 #include <kernel/drivers/rtc.h>
 #include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/module/symbol.h>
+#include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 
-#include <kernel/log/panic.h>
-#include <kernel/sched/thread.h>
-
-#include <stdatomic.h>
+#include <kernel/sync/rwlock.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/math.h>
 
-static time_t bootEpoch;
-static bool bootEpochInitialized = false;
-
-static void timer_boot_epoch_init(void)
+void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx)
 {
-    struct tm time;
-    rtc_read(&time);
-    bootEpoch = mktime(&time);
-    bootEpochInitialized = true;
-}
-
-void timer_ctx_init(timer_ctx_t* ctx)
-{
-    cpu_t* self = smp_self_unsafe();
-    ctx->apicTicksPerNs = apic_timer_ticks_per_ns();
+    ctx->apicTicksPerNs = 0;
     ctx->nextDeadline = CLOCKS_NEVER;
-    lock_init(&ctx->lock);
     for (uint32_t i = 0; i < TIMER_MAX_CALLBACK; i++)
     {
         ctx->callbacks[i] = NULL;
     }
-    LOG_INFO("cpu%d apic timer ticksPerNs=%lu\n", self->id, self->timer.apicTicksPerNs);
-}
-
-clock_t timer_uptime(void)
-{
-    return hpet_read_ns_counter();
-}
-
-time_t timer_unix_epoch(void)
-{
-    if (!bootEpochInitialized)
-    {
-        timer_boot_epoch_init();
-    }
-
-    return bootEpoch + timer_uptime() / CLOCKS_PER_SEC;
+    lock_init(&ctx->lock);
+    LOG_INFO("cpu%d apic timer ticksPerNs=%lu\n", smp_self_id_unsafe(), ctx->apicTicksPerNs);
 }
 
 void timer_interrupt_handler(interrupt_frame_t* frame, cpu_t* self)
@@ -68,7 +40,7 @@ void timer_interrupt_handler(interrupt_frame_t* frame, cpu_t* self)
     }
 }
 
-void timer_subscribe(timer_ctx_t* ctx, timer_callback_t callback)
+void timer_register_callback(timer_cpu_ctx_t* ctx, timer_callback_t callback)
 {
     if (ctx == NULL || callback == NULL)
     {
@@ -80,16 +52,16 @@ void timer_subscribe(timer_ctx_t* ctx, timer_callback_t callback)
     {
         if (ctx->callbacks[i] == NULL)
         {
-            LOG_DEBUG("timer callback subscribed %p in slot %d\n", callback, i);
+            LOG_DEBUG("timer callback %p registered in slot %d\n", callback, i);
             ctx->callbacks[i] = callback;
             return;
         }
     }
 
-    panic(NULL, "Failed to subscribe timer callback, no free slots available");
+    panic(NULL, "Failed to register timer callback, no free slots available");
 }
 
-void timer_unsubscribe(timer_ctx_t* ctx, timer_callback_t callback)
+void timer_unregister_callback(timer_cpu_ctx_t* ctx, timer_callback_t callback)
 {
     if (ctx == NULL || callback == NULL)
     {
@@ -101,13 +73,13 @@ void timer_unsubscribe(timer_ctx_t* ctx, timer_callback_t callback)
     {
         if (ctx->callbacks[i] == callback)
         {
-            LOG_DEBUG("timer callback unsubscribed %p from slot %d\n", callback, i);
+            LOG_DEBUG("timer callback %p unregistered from slot %d\n", callback, i);
             ctx->callbacks[i] = NULL;
             return;
         }
     }
 
-    panic(NULL, "Failed to unsubscribe timer callback, not found");
+    panic(NULL, "Failed to unregister timer callback, not found");
 }
 
 void timer_one_shot(cpu_t* self, clock_t uptime, clock_t timeout)
@@ -115,6 +87,11 @@ void timer_one_shot(cpu_t* self, clock_t uptime, clock_t timeout)
     if (self == NULL || timeout == CLOCKS_NEVER)
     {
         return;
+    }
+
+    if (self->timer.apicTicksPerNs == 0)
+    {
+        self->timer.apicTicksPerNs = apic_timer_ticks_per_ns();
     }
 
     clock_t deadline = uptime + timeout;
@@ -133,25 +110,6 @@ void timer_one_shot(cpu_t* self, clock_t uptime, clock_t timeout)
         self->timer.nextDeadline = deadline;
         apic_timer_one_shot(INTERRUPT_TIMER, (uint32_t)ticks);
     }
-}
-
-SYSCALL_DEFINE(SYS_UPTIME, clock_t)
-{
-    return timer_uptime();
-}
-
-SYSCALL_DEFINE(SYS_UNIX_EPOCH, time_t, time_t* timePtr)
-{
-    time_t epoch = timer_unix_epoch();
-    if (timePtr != NULL)
-    {
-        if (thread_copy_to_user(sched_thread(), timePtr, &epoch, sizeof(epoch)) == ERR)
-        {
-            return ERR;
-        }
-    }
-
-    return epoch;
 }
 
 void timer_notify(cpu_t* cpu)

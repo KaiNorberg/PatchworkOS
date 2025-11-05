@@ -46,7 +46,7 @@ typedef struct cpu
     vmm_cpu_ctx_t vmm;
     interrupt_ctx_t interrupt;
     perf_cpu_ctx_t perf;
-    timer_ctx_t timer;
+    timer_cpu_ctx_t timer;
     wait_cpu_ctx_t wait;
     sched_cpu_ctx_t sched;
     rand_cpu_ctx_t rand;

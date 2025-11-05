@@ -3,13 +3,14 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/drivers/apic.h>
-#include <kernel/drivers/hpet.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/sched/sched.h>
+#include <kernel/sched/sys_time.h>
 #include <kernel/sched/thread.h>
+#include <kernel/sched/timer.h>
 #include <kernel/utils/utils.h>
 
 #include <kernel/mem/paging_types.h>
@@ -68,7 +69,7 @@ void trampoline_send_startup_ipi(cpu_t* cpu, cpuid_t id, lapic_id_t lapicId)
     atomic_store(&cpuReadyFlag, false);
 
     lapic_send_init(lapicId);
-    hpet_wait(CLOCKS_PER_SEC / 100);
+    sys_time_wait(CLOCKS_PER_SEC / 100);
     lapic_send_sipi(lapicId, (void*)TRAMPOLINE_BASE_ADDR);
 }
 
@@ -83,7 +84,7 @@ uint64_t trampoline_wait_ready(clock_t timeout)
             return 0;
         }
 
-        hpet_wait(CLOCKS_PER_SEC / 10000);
+        sys_time_wait(CLOCKS_PER_SEC / 10000);
         elapsed += CLOCKS_PER_SEC / 10000;
     }
 

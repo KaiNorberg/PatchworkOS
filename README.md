@@ -27,7 +27,7 @@
 
 ![desktop screenshot](meta/screenshots/desktop.png)
 
-**Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended be an educational, experimental and "modern" operating system.
+**Patchwork** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended be an educational, experimental and "modern" operating system.
 
 In the end this is a project made for fun, but the goal is still to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system, a floppy disk driver is not enough and neither is a round-robin array scheduler.
 
@@ -64,6 +64,7 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 - File based device APIs, including [framebuffers](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/fb.h), [keyboards](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/kbd.h), [mice](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/mouse.h) and more
 - [Synchronization primitives](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sync) including mutexes, read-write locks, sequential locks, futexes and others
 - SIMD support
+- [Modular design](#modules) with fully automatic module dependency resolution and generic device ID based module loading
 
 ### ACPI
 
@@ -104,12 +105,12 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 
 ## Notable Future Plans
 
+- Separate the kernel into more and more modules <- Currently being worked on
 - File flags performance improvements and refactor
 - Read, write, execute, create permissions
 - Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions
 - Add configurability to `spawn()` for namespace inheritance
 - Asynchronous I/O
-- Modular kernel <- Currently being worked on
 - Shared libraries
 - USB support (The holy grail)
 
@@ -183,6 +184,16 @@ All in all, this algorithm would not be a viable replacement for existing algori
 [VMM Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/df0/group__kernel__mem__vmm.html)
 
 [Paging Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/df/d5f/group__common__paging.html)
+
+## Modules
+
+PatchworkOS uses a "modular" kernel design, meaning that instead of having one big kernel binary, the kernel is split into several smaller "modules" that can be loaded and unloaded at runtime. In effect, the kernel can rewrite itself by adding and removing functionality as needed.
+
+This is highly convenient for development but it also has practical uses, for example, there is no need to load a driver for a device that is not attached to the system, saving memory.
+
+### Make your own Module
+
+The process of making a module is intended to be as straightforward as possible. For the sake of demonstration, we will create a simple "Hello, World!" module.
 
 ## Everything is a File
 

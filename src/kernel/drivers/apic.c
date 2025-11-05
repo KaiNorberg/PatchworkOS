@@ -3,11 +3,11 @@
 #include <kernel/acpi/tables.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/smp.h>
-#include <kernel/drivers/hpet.h>
 #include <kernel/drivers/pic.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
+#include <kernel/sched/sys_time.h>
 #include <kernel/sched/timer.h>
 #include <kernel/utils/utils.h>
 
@@ -129,7 +129,7 @@ uint64_t apic_timer_ticks_per_ns(void)
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, UINT32_MAX);
 
-    hpet_wait(CLOCKS_PER_SEC / 1000);
+    sys_time_wait(CLOCKS_PER_SEC / 1000);
 
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
 

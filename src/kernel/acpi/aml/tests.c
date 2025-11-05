@@ -127,22 +127,24 @@ static uint64_t aml_tests_acpica_run_all(void)
     return 0;
 }
 
-uint64_t aml_tests_post_init(void)
+uint64_t aml_tests_run_all(void)
 {
-    LOG_INFO("running post init tests\n");
-    clock_t start = timer_uptime();
+    if (aml_tests_check_object_leak() == ERR)
+    {
+        return ERR;
+    }
 
     uint64_t startingObjects = aml_object_get_total_count();
 
     if (aml_tests_acpica_run_all() == ERR)
     {
-        // For now this is definetly going to fail as we havent implemented everything yet.
+        // For now this is definitely going to fail as we havent implemented everything yet.
         // So just log it and continue.
         LOG_WARN("ACPICA tests failed, this is expected until more AML features are implemented\n");
         // return ERR;
     }
 
-    clock_t end = timer_uptime();
+    clock_t end = sys_time_uptime();
 
     aml_tests_perf_report();
 
@@ -150,17 +152,6 @@ uint64_t aml_tests_post_init(void)
     {
         LOG_ERR("memory leak detected, total objects before test %llu, after test %llu\n", startingObjects,
             aml_object_get_total_count());
-        return ERR;
-    }
-
-    LOG_INFO("post init tests passed in %llums\n", (end - start) * 1000 / CLOCKS_PER_SEC);
-    return 0;
-}
-
-uint64_t aml_tests_post_parse_all(void)
-{
-    if (aml_tests_check_object_leak() == ERR)
-    {
         return ERR;
     }
 
@@ -196,7 +187,7 @@ void aml_tests_perf_start(aml_token_t* token)
 
     list_entry_init(&entry->entry);
     entry->token = token->num;
-    entry->startTime = timer_uptime();
+    entry->startTime = sys_time_uptime();
     entry->childTime = 0;
 
     list_push_back(&perfStack, &entry->entry);
@@ -214,7 +205,7 @@ void aml_tests_perf_end(void)
 
     aml_perf_stack_entry_t* entry = CONTAINER_OF_SAFE(list_pop_first(&perfStack), aml_perf_stack_entry_t, entry);
 
-    clock_t totalTime = timer_uptime() - entry->startTime;
+    clock_t totalTime = sys_time_uptime() - entry->startTime;
     clock_t exclusiveTime = (entry->childTime >= totalTime) ? 0 : (totalTime - entry->childTime);
     if (entry->token < AML_MAX_TOKEN)
     {

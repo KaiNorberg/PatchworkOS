@@ -19,7 +19,7 @@
  */
 
 /**
- * @brief Number of iterations before we consider a deadlock has occurred in lock_acquire.
+ * @brief Number of iterations before we consider a deadlock to have occurred in lock_acquire.
  * This is only used in debug builds.
  */
 #define LOCK_DEADLOCK_ITERATIONS 10000000

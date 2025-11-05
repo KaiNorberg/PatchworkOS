@@ -9,11 +9,21 @@
 typedef struct cpu cpu_t;
 
 /**
- * @brief System time and timers.
- * @defgroup kernel_timer Time subsystem
+ * @brief Per-CPU timers.
+ * @defgroup kernel_timer Timer subsystem
  * @ingroup kernel_sched
  *
- * The timer subsystem provides kernel time management.
+ * The timer subsystem is responsible for managing per-CPU timers which are responsible for generating timer interrupts.
+ *
+ * Each CPU has its own timer context, to which timer callbacks can be registered, which will be called on every timer
+interrupt. These interrupts are whats called "one-shot" interrupts, meaning that the interrupt will only occur once and
+then a new interrupt must be programmed.
+ *
+ * The way we handle timer interrupts is that each system calls the `timer_one_shot()` function with their desired
+timeout and then when the timer interrupt occurs they check if their desired time has been reached, if it has they do
+what they need to do, else they call the function once more respecifying their desired timeout, and we repeat the
+process. This does technically result in some uneeded checks but its a very simply way of effectively eliminating timer
+related race conditions.
  *
  * @{
  */
@@ -34,21 +44,21 @@ typedef void (*timer_callback_t)(interrupt_frame_t* frame, cpu_t* self);
 typedef struct
 {
     /**
-     * @brief The amount of ticks in the owner cpus apic timer that occur every nanosecond, stored using fixed point
-     * arithmetic, see `apic_timer_ticks_per_ns()` for more info.
+     * The amount of ticks in the owner cpus apic timer that occur every nanosecond, stored using fixed point
+     * arithmetic, see `apic_timer_ticks_per_ns()` for more info. Initialized lazily.
      */
     uint64_t apicTicksPerNs;
     /**
-     * @brief The next time the owner cpus apic timer will fire, specified in nanoseconds since boot, used in
+     * The next time the owner cpus apic timer will fire, specified in nanoseconds since boot, used in
      * `timer_one_shot()`.
      */
     clock_t nextDeadline;
     /**
-     * @brief The registered timer callbacks for the owner cpu.
+     * The registered timer callbacks for the owner cpu.
      */
     timer_callback_t callbacks[TIMER_MAX_CALLBACK];
     lock_t lock;
-} timer_ctx_t;
+} timer_cpu_ctx_t;
 
 /**
  * @brief Initialize per-CPU timer context.
@@ -57,21 +67,7 @@ typedef struct
  *
  * @param ctx The timer context to initialize.
  */
-void timer_ctx_init(timer_ctx_t* ctx);
-
-/**
- * @brief Time since boot.
- *
- * @return clock_t The time in nanoseconds since boot.
- */
-clock_t timer_uptime(void);
-
-/**
- * @brief The unix epoch.
- *
- * @return time_t The amount of seconds since the unix epoch.
- */
-time_t timer_unix_epoch(void);
+void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx);
 
 /**
  * @brief Handle timer interrupt.
@@ -82,24 +78,24 @@ time_t timer_unix_epoch(void);
 void timer_interrupt_handler(interrupt_frame_t* frame, cpu_t* self);
 
 /**
- * @brief Subscribe to timer interrupts.
+ * @brief Register a callback for timer interrupts.
  *
- * Note that subscribing to a callback only applies to the cpu that the timer context belongs to.
+ * Note that registering a callback only applies to the cpu that the timer context belongs to.
  *
- * @param ctx The timer context that the subscription is for.
+ * @param ctx The timer context that the registration is for.
  * @param callback The callback function to be called on timer interrupts.
  */
-void timer_subscribe(timer_ctx_t* ctx, timer_callback_t callback);
+void timer_register_callback(timer_cpu_ctx_t* ctx, timer_callback_t callback);
 
 /**
- * @brief Unsubscribe from timer interrupts.
+ * @brief Unregister a callback from timer interrupts.
  *
- * Note that unsubscribing from a callback only applies to the cpu that the timer context belongs to.
+ * Note that unregistering from a callback only applies to the cpu that the timer context belongs to.
  *
- * @param ctx The timer context that the unsubscription is for.
- * @param callback The callback function to be removed from timer interrupts.
+ * @param ctx The timer context that the unregistration is for.
+ * @param callback The callback function to unregister.
  */
-void timer_unsubscribe(timer_ctx_t* ctx, timer_callback_t callback);
+void timer_unregister_callback(timer_cpu_ctx_t* ctx, timer_callback_t callback);
 
 /**
  * @brief Schedule a one-shot timer interrupt.
@@ -107,12 +103,6 @@ void timer_unsubscribe(timer_ctx_t* ctx, timer_callback_t callback);
  * Sets the per-cpu timer to generate a interrupt after the specified timeout.
  * Multiple calls with different timeouts will result in the timer being set for the shortest requested timeout, this
  * will be reset after a timer interrupt.
- *
- * The idea is that every system that wants timer interrupts calls the `timer_one_shot()` function with their desired
- * timeout and then when the timer interrupt occurs they check if their desired time has been reached, if it has they do
- * what they need to do, else they call the function once more respecifying their desired timeout, and we repeat the
- * process. This does technically result in some uneeded checks but its a very simply way of effectively eliminating the
- * need to care about timer related race conditions.
  *
  * @param self The currently running cpu.
  * @param uptime The time since boot, we need to specify this as an argument to avoid inconsistency in the
