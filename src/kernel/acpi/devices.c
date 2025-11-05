@@ -11,6 +11,7 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/module/module.h>
+#include <kernel/acpi/tables.h>
 
 #include <errno.h>
 #include <kernel/utils/ref.h>
@@ -88,6 +89,32 @@ static uint64_t acpi_hid_push(acpi_devices_init_ctx_t* ctx, aml_object_t* device
         errno = EILSEQ;
         return ERR;
     }
+
+    return 0;
+}
+
+static uint64_t acpi_hid_push_str(acpi_devices_init_ctx_t* ctx, const char* hid)
+{
+    for (size_t i = 0; i < ctx->hidCount; i++)
+    {
+        if (strcmp(ctx->hids[i], hid) == 0)
+        {
+            return 0;
+        }
+    }
+
+    ctx->hids = realloc(ctx->hids, sizeof(char*) * (ctx->hidCount + 1));
+    if (ctx->hids == NULL)
+    {
+        return ERR;
+    }
+
+    ctx->hids[ctx->hidCount] = strdup(hid);
+    if (ctx->hids[ctx->hidCount] == NULL)
+    {
+        return ERR;
+    }
+    ctx->hidCount++;
 
     return 0;
 }
@@ -264,12 +291,23 @@ void acpi_devices_init(void)
         panic(NULL, "could not initialize ACPI devices\n");
     }
 
+    // Because of... reasons, some hardware will not report the HPET device via AML.
+    // Even if they actually do have one. In this case we manually add its HID.
+    if (acpi_tables_lookup("HPET", 0) != NULL)
+    {
+        if (acpi_hid_push_str(&ctx, "PNP0103") == ERR)
+        {
+            aml_state_deinit(&state);
+            panic(NULL, "could not initialize ACPI devices\n");
+        }
+    }
+
     qsort(ctx.hids, ctx.hidCount, sizeof(char*), acpi_hid_alphanum_cmp);
     for (size_t i = 0; i < ctx.hidCount; i++)
     {
         if (module_load(ctx.hids[i], MODULE_LOAD_NONE) == ERR)
         {
-            LOG_ERR("could not load module for ACPI device with HID '%s'\n", ctx.hids[i]);
+            panic(NULL, "Could not load module for ACPI device with HID '%s'\n", ctx.hids[i]);
         }
         free(ctx.hids[i]);
     }
