@@ -8,7 +8,6 @@
 #include <kernel/cpu/idt.h>
 #include <kernel/cpu/smp.h>
 #include <kernel/cpu/syscalls.h>
-#include <kernel/drivers/const.h>
 #include <kernel/drivers/gop.h>
 #include <kernel/fs/ramfs.h>
 #include <kernel/fs/sysfs.h>
@@ -130,7 +129,6 @@ static void init_finalize(const boot_info_t* bootInfo)
     log_file_expose();
     process_procfs_init();
 
-    const_init();
     net_init();
     pipe_init();
     shmem_init();

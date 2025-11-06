@@ -1,5 +1,3 @@
-#include <kernel/drivers/const.h>
-
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
@@ -7,10 +5,26 @@
 #include <kernel/mem/vmm.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
+#include <kernel/module/module.h>
 
-#include <assert.h>
-#include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
+
+/**
+ * @brief Constant devices
+ * @defgroup modules_const Constant Devices
+ * @ingroup modules
+ *
+ * This module provides the constant devices which provide user space
+with its primary means of allocating memory and obtaining constant data.
+ *
+ * The constant devices are exposed under the `/dev` directory:
+ * - `/dev/one`: A readable and mappable file that returns bytes with all bits set to 1.
+ * - `/dev/zero`: A readable and mappable file that returns bytes with all bits set to 0.
+ * - `/dev/null`: A readable and writable file that discards all written data and returns EOF on read.
+ *
+ * @{
+ */
 
 static dentry_t* oneFile;
 static dentry_t* zeroFile;
@@ -97,19 +111,21 @@ static file_ops_t nullOps = {
     .write = const_null_write,
 };
 
-void const_init(void)
+static uint64_t const_init(void)
 {
     oneFile = sysfs_file_new(NULL, "one", NULL, &oneOps, NULL);
     if (oneFile == NULL)
     {
-        panic(NULL, "Failed to init one file");
+        LOG_ERR("failed to init one file\n");
+        return ERR;
     }
 
     zeroFile = sysfs_file_new(NULL, "zero", NULL, &zeroOps, NULL);
     if (zeroFile == NULL)
     {
         DEREF(oneFile);
-        panic(NULL, "Failed to init zero file");
+        LOG_ERR("failed to init zero file\n");
+        return ERR;
     }
 
     nullFile = sysfs_file_new(NULL, "null", NULL, &nullOps, NULL);
@@ -117,6 +133,37 @@ void const_init(void)
     {
         DEREF(oneFile);
         DEREF(zeroFile);
-        panic(NULL, "Failed to init null file");
+        LOG_ERR("failed to init null file\n");
+        return ERR;
     }
+
+    return 0;
 }
+
+static void const_deinit(void)
+{
+    DEREF(oneFile);
+    DEREF(zeroFile);
+    DEREF(nullFile);
+}
+
+/** @} */
+
+uint64_t _module_procedure(const module_event_t* event)
+{
+    switch (event->type)
+    {
+    case MODULE_EVENT_LOAD:
+        const_init();
+        break;
+    case MODULE_EVENT_UNLOAD:
+        const_deinit();
+        break;
+    default:
+        break;
+    }
+
+    return 0;
+}
+
+MODULE_INFO("Const Driver", "Kai Norberg", "A constant device driver", OS_VERSION, "MIT", "LOAD_ON_BOOT");

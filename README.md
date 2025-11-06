@@ -179,7 +179,7 @@ Thats all, if this did not work, make sure you followed all the steps correctly,
 
 ### What can I do now?
 
-Whatever you want. You can include any kernel header, or even headers from other modules, create your own modules and include their headers or anything else. There is no need to worry about linking or dependencies, the kernels module loader will handle all of it for you. Go nuts.
+Whatever you want. You can include any kernel header, or even headers from other modules, create your own modules and include their headers or anything else. There is no need to worry about linking, dependencies or exporting/importing symbols, the kernels module loader will handle all of it for you. Go nuts.
 
 ### Code Explanation
 
@@ -537,7 +537,7 @@ Note that the `QEMU_EXIT_ON_PANIC` flag will cause any failed test, assert or pa
 - Lenovo ThinkPad E495
 - Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengeance
 
-Currently untested on Intel hardware. Let me know if you have different hardware, and it runs (or doesn't) for you!
+Currently untested on Intel hardware (broke student, no access to hardware). Let me know if you have different hardware, and it runs (or doesn't) for you!
 
 ## Contributing
 

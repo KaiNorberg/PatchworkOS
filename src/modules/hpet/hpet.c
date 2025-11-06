@@ -264,7 +264,6 @@ uint64_t _module_procedure(const module_event_t* event)
         }
         break;
     case MODULE_EVENT_UNLOAD:
-        LOG_INFO("unloading HPET module\n");
         hpet_deinit();
         break;
     default:
