@@ -1,5 +1,3 @@
-#include <kernel/ipc/pipe.h>
-
 #include <kernel/fs/file.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
@@ -7,12 +5,47 @@
 #include <kernel/mem/pmm.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
+#include <kernel/module/module.h>
 #include <kernel/utils/ring.h>
 
 #include <assert.h>
 #include <stdlib.h>
 #include <sys/io.h>
 #include <sys/math.h>
+
+/**
+ * @brief Pipes.
+ * @defgroup modules_ipc_pipe Pipes
+ * @ingroup modules_ipc
+ *
+ * Pipes are exposed in the `/dev/pipe` directory. Pipes are unidirectional communication channels that can be used for
+ * inter-process communication (IPC).
+ *
+ * ## Creating Pipes
+ *
+ * Pipes are created using the `/dev/pipe/new` file. Opening this file using `open()` will return one file descriptor
+ * that can be used for both reading and writing. To create a pipe with separate file descriptors for reading and
+ * writing, use `open2()` with the `/dev/pipe/new` file.
+ *
+ * ## Using Pipes
+ *
+ * Pipes can be read from and written to using the expected `read()` and `write()` system calls. Pipes are blocking and
+ * pollable, following expected POSIX semantics.
+ *
+ * @{
+ */
+typedef struct
+{
+    void* buffer;
+    ring_t ring;
+    bool isReadClosed;
+    bool isWriteClosed;
+    wait_queue_t waitQueue;
+    lock_t lock;
+    // Note: These pointers are just for checking which end the current file is, they should not be referenced.
+    void* readEnd;
+    void* writeEnd;
+} pipe_private_t;
 
 static dentry_t* pipeDir = NULL;
 static dentry_t* newFile = NULL;
@@ -203,17 +236,53 @@ static file_ops_t fileOps = {
     .poll = pipe_poll,
 };
 
-void pipe_init(void)
+uint64_t pipe_init(void)
 {
     pipeDir = sysfs_dir_new(NULL, "pipe", NULL, NULL);
     if (pipeDir == NULL)
     {
-        panic(NULL, "Failed to initialize pipe directory");
+        LOG_ERR("failed to initialize pipe directory");
+        return ERR;
     }
 
     newFile = sysfs_file_new(pipeDir, "new", NULL, &fileOps, NULL);
     if (newFile == NULL)
     {
-        panic(NULL, "Failed to initialize pipe new file");
+        LOG_ERR("failed to initialize pipe new file");
+        return ERR;
     }
+
+    return 0;
 }
+
+void pipe_deinit(void)
+{
+    DEREF(newFile);
+    newFile = NULL;
+    DEREF(pipeDir);
+    pipeDir = NULL;
+}
+
+/** @} */
+
+uint64_t _module_procedure(const module_event_t* event)
+{
+    switch (event->type)
+    {
+    case MODULE_EVENT_LOAD:
+        if (pipe_init() == ERR)
+        {
+            return ERR;
+        }
+        break;
+    case MODULE_EVENT_UNLOAD:
+        pipe_deinit();
+        break;
+    default:
+        break;
+    }
+
+    return 0;
+}
+
+MODULE_INFO("Pipes", "Kai Norberg", "Implements pipes for inter-process communication", OS_VERSION, "MIT", "LOAD_ON_BOOT");

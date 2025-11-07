@@ -7,19 +7,8 @@
 
 /**
  * @brief IBM Personal Computer/2 ports.
- * @defgroup modules_ps2 PS/2
- * @ingroup kernel_drivers
- *
- * Patchwork attempts to implement a comprehensive PS/2 driver, even if certain details would be completely irrelevant
- * on modern hardware. For example, most implementations assume that the first PS2 device is always a keyboard and the
- * second a mouse, however this is, as far as I'm aware, just a very commonly agreed convention and not actually
- * specified anywhere, even if all modern hardware appears to follow this convention, they *technically* don't have to.
- *
- * The reason for this is because PS/2 appears to be frequently neglected in hobby projects, so I
- * wish to create a publically available and easy to understand "proper" implementation. Even if its overkill and of
- * course becouse its fun.
- *
- * Note that in the future once proper device detection is implemented, this will need to be redone.
+ * @defgroup modules_drivers_ps2 PS/2
+ * @ingroup modules_drivers
  *
  * @see https://wiki.osdev.org/I8042_PS/2_Controller
  * @see https://www-ug.eecg.toronto.edu/msl/nios_devices/datasheets/PS2%20Keyboard%20Protocol.htm

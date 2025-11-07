@@ -17,8 +17,8 @@
 #include <sys/list.h>
 /**
  * @brief Shared Memory
- * @ingroup kernel_ipc
- * @defgroup kernel_ipc_shmem Shared Memory
+ * @defgroup modules_ipc_shmem Shared Memory
+ * @ingroup modules_ipc
  *
  * Shared memory is exposed in the `/dev/shmem` directory. Shared memory allows multiple processes to share a section of
  * memory for inter-process communication (IPC).
@@ -249,7 +249,9 @@ static uint64_t shmem_init(void)
 static void shmem_deinit(void)
 {
     DEREF(newFile);
+    newFile = NULL;
     DEREF(shmemDir);
+    shmemDir = NULL;
 }
 
 /** @} */
@@ -274,4 +276,4 @@ uint64_t _module_procedure(const module_event_t* event)
     return 0;
 }
 
-MODULE_INFO("Shared Memory Driver", "Kai Norberg", "A shared memory device driver", OS_VERSION, "MIT", "LOAD_ON_BOOT");
+MODULE_INFO("Shared Memory", "Kai Norberg", "Implements shared memory for inter-process communication", OS_VERSION, "MIT", "LOAD_ON_BOOT");

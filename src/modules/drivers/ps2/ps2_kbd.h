@@ -4,8 +4,8 @@
 
 /**
  * @brief PS/2 Keyboard Driver.
- * @defgroup kernel_drivers_ps2_kbd PS/2 Keyboard Driver
- * @ingroup modules_ps2
+ * @defgroup module_drivers_ps2_kbd PS/2 Keyboard Driver
+ * @ingroup modules_drivers_ps2
  *
  * @{
  */

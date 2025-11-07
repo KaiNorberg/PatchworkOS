@@ -14,7 +14,7 @@ BIN_PROGRAMS = init wall cursor taskbar dwm shell rm ls link mv touch cat echo
 # Programs to copy to /usr/bin
 USR_BIN_PROGRAMS = $(filter-out $(BIN_PROGRAMS),$(basename $(notdir $(PROGRAMS))))
 
-.PHONY: $(PROGRAMS) $(MODULES) all setup deploy run clean generate_version compile_commands format doxygen clean clean_programs nuke grub_loopback clone_acpica_and_compile_tests
+.PHONY: $(SECTIONS) $(PROGRAMS) $(MODULES) all setup deploy run clean generate_version compile_commands format doxygen clean clean_programs nuke grub_loopback clone_acpica_and_compile_tests
 
 all: setup $(SECTIONS) $(MODULES) $(PROGRAMS) deploy
 

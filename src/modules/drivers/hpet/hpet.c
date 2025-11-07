@@ -11,8 +11,8 @@
 
 /**
  * @brief High Precision Event Timer
- * @defgroup modules_hpet HPET
- * @ingroup modules
+ * @defgroup modules_drivers_hpet HPET
+ * @ingroup modules_drivers
  *
  * Note that since the HPET might be 32bit it could overflow rather quickly, so we implement a system for checking
  * roughly when it will overflow and accumulate the counter into a 64 bit nanosecond counter.

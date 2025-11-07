@@ -4,8 +4,8 @@
 
 /**
  * @brief PS/2 Mouse Driver.
- * @defgroup kernel_drivers_ps2_mouse PS/2 Mouse Driver
- * @ingroup modules_ps2
+ * @defgroup module_drivers_ps2_mouse PS/2 Mouse Driver
+ * @ingroup modules_drivers_ps2
  *
  * TODO: Implement scrolling and buttons 4 and 5.
  *

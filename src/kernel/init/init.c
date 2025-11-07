@@ -12,7 +12,6 @@
 #include <kernel/fs/ramfs.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
-#include <kernel/ipc/pipe.h>
 #include <kernel/log/log.h>
 #include <kernel/log/log_file.h>
 #include <kernel/log/panic.h>
@@ -127,7 +126,6 @@ static void init_finalize(const boot_info_t* bootInfo)
     log_file_expose();
     process_procfs_init();
 
-    pipe_init();
     gop_init(&bootInfo->gop);
     perf_init();
 
