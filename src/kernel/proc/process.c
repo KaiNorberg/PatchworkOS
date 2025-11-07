@@ -298,7 +298,7 @@ static uint64_t process_stat_read(file_t* file, void* buffer, uint64_t count, ui
         return ERR;
     }
 
-    return BUFFER_READ(buffer, count, offset, statStr, length);
+    return BUFFER_READ(buffer, count, offset, statStr, (uint64_t)length);
 }
 
 static file_ops_t statOps = {

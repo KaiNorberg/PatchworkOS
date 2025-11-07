@@ -13,7 +13,6 @@ CFLAGS += \
 	-fno-stack-check \
 	-fshort-wchar \
 	-mno-red-zone \
-	-maccumulate-outgoing-args \
 	-D_BOOT_ \
 	-Iinclude/boot \
 	-Ilib/gnu-efi/inc \

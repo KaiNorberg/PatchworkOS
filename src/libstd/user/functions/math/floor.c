@@ -13,7 +13,7 @@ double floor(double x)
         return NAN;
     }
 
-    if (fabs(x) >= INT64_MAX)
+    if (fabs(x) >= (double)INT64_MAX)
     {
         return x;
     }
