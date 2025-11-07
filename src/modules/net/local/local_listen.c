@@ -1,10 +1,11 @@
-#include <kernel/net/local/local_listen.h>
+#include "local_listen.h"
+#include "local.h"
+#include "local_conn.h"
+#include "socket_family.h"
 
 #include <kernel/fs/sysfs.h>
+#include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <kernel/net/local/local.h>
-#include <kernel/net/local/local_conn.h>
-#include <kernel/net/socket_family.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rwlock.h>
@@ -16,24 +17,33 @@
 static dentry_t* listenDir = NULL;
 
 static map_t listeners;
-static rwlock_t listenersLock;
+static rwlock_t listenersLock = RWLOCK_CREATE;
 
-void local_listen_dir_init(void)
+uint64_t local_listen_dir_init(void)
 {
     socket_family_t* family = socket_family_get("local");
     if (family == NULL)
     {
-        panic(NULL, "Failed to get local socket family");
+        LOG_ERR("failed to get local socket family");
+        return ERR;
     }
 
     listenDir = sysfs_dir_new(family->dir, "listen", NULL, NULL);
     if (listenDir == NULL)
     {
-        panic(NULL, "Failed to create local listen dir");
+        LOG_ERR("failed to create local listen dir");
+        return ERR;
     }
 
     map_init(&listeners);
-    rwlock_init(&listenersLock);
+    return 0;
+}
+
+void local_listen_dir_deinit(void)
+{
+    map_deinit(&listeners);
+
+    DEREF(listenDir);
 }
 
 local_listen_t* local_listen_new(const char* address)

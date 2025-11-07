@@ -13,7 +13,6 @@
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/ipc/pipe.h>
-#include <kernel/ipc/shmem.h>
 #include <kernel/log/log.h>
 #include <kernel/log/log_file.h>
 #include <kernel/log/panic.h>
@@ -21,7 +20,6 @@
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
 #include <kernel/module/symbol.h>
-#include <kernel/net/net.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/loader.h>
 #include <kernel/sched/sched.h>
@@ -129,9 +127,7 @@ static void init_finalize(const boot_info_t* bootInfo)
     log_file_expose();
     process_procfs_init();
 
-    net_init();
     pipe_init();
-    shmem_init();
     gop_init(&bootInfo->gop);
     perf_init();
 

@@ -91,6 +91,11 @@ uint64_t socket_family_register(const socket_family_ops_t* ops, const char* name
 void socket_family_unregister(const char* name);
 
 /**
+ * @brief Unregister all socket families.
+ */
+void socket_family_unregister_all(void);
+
+/**
  * @brief Get a socket family by name.
  *
  * @param name Name of the socket family to get.

@@ -1,10 +1,10 @@
-#include <kernel/net/local/local_conn.h>
+#include "local/local_conn.h"
 
+#include "local/local.h"
+#include "local/local_listen.h"
+#include "socket.h"
+#include "socket_family.h"
 #include <kernel/fs/sysfs.h>
-#include <kernel/net/local/local.h>
-#include <kernel/net/local/local_listen.h>
-#include <kernel/net/socket.h>
-#include <kernel/net/socket_family.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 

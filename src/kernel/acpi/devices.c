@@ -8,10 +8,10 @@
 #include <kernel/acpi/aml/runtime/method.h>
 #include <kernel/acpi/aml/state.h>
 #include <kernel/acpi/aml/to_string.h>
+#include <kernel/acpi/tables.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/module/module.h>
-#include <kernel/acpi/tables.h>
 
 #include <errno.h>
 #include <kernel/utils/ref.h>

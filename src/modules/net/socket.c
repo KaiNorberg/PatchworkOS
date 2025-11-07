@@ -1,10 +1,10 @@
-#include <kernel/net/socket.h>
+#include "socket.h"
 
+#include "socket_family.h"
 #include <kernel/fs/ctl.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
-#include <kernel/net/socket_family.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/wait.h>

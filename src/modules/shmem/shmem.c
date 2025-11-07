@@ -1,19 +1,52 @@
-#include <kernel/ipc/shmem.h>
-
 #include <kernel/fs/ctl.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
+#include <kernel/log/log.h>
 #include <kernel/proc/process.h>
+#include <kernel/module/module.h>
+#include <kernel/sched/sched.h>
+#include <kernel/sync/lock.h>
+#include <kernel/utils/ref.h>
 
 #include <errno.h>
-#include <stdatomic.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+
 #include <sys/list.h>
+/**
+ * @brief Shared Memory
+ * @ingroup kernel_ipc
+ * @defgroup kernel_ipc_shmem Shared Memory
+ *
+ * Shared memory is exposed in the `/dev/shmem` directory. Shared memory allows multiple processes to share a section of
+ * memory for inter-process communication (IPC).
+ *
+ * ## Creating Shared Memory
+ *
+ * Shared memory objects are created using the `/dev/shmem/new` file. Opening this file using `open()` will create a new
+ * anonymous shared memory object and return a file descriptor to it.
+ *
+ * ## Using Shared Memory
+ *
+ * Shared memory objects can be mapped to the current process's address space using the `mmap()` system call. The first
+ * call to `mmap()` will decide the size of the shared memory object. Subsequent calls to `mmap()` will map the existing
+ * shared memory object.
+ *
+ * @{
+ */
+
+/**
+ * @brief Represents a shared memory object.
+ */
+typedef struct
+{
+    ref_t ref;
+    uint64_t pageAmount;
+    void** pages;
+    lock_t lock;
+} shmem_object_t;
 
 static dentry_t* shmemDir = NULL;
 static dentry_t* newFile = NULL;
@@ -193,18 +226,52 @@ static file_ops_t fileOps = {
     .mmap = shmem_mmap,
 };
 
-void shmem_init(void)
+static uint64_t shmem_init(void)
 {
     shmemDir = sysfs_dir_new(NULL, "shmem", NULL, NULL);
     if (shmemDir == NULL)
     {
-        panic(NULL, "Failed to create /dev/shmem directory");
+        LOG_ERR("failed to create /dev/shmem directory");
+        return ERR;
     }
 
     newFile = sysfs_file_new(shmemDir, "new", NULL, &fileOps, NULL);
     if (newFile == NULL)
     {
         DEREF(shmemDir);
-        panic(NULL, "Failed to create /dev/shmem/new file");
+        LOG_ERR("failed to create /dev/shmem/new file");
+        return ERR; 
     }
+
+    return 0;
 }
+
+static void shmem_deinit(void)
+{
+    DEREF(newFile);
+    DEREF(shmemDir);
+}
+
+/** @} */
+
+uint64_t _module_procedure(const module_event_t* event)
+{
+    switch (event->type)
+    {
+    case MODULE_EVENT_LOAD:
+        if (shmem_init() == ERR)
+        {
+            return ERR;
+        }
+        break;
+    case MODULE_EVENT_UNLOAD:
+        shmem_deinit();
+        break;
+    default:
+        break;
+    }
+
+    return 0;
+}
+
+MODULE_INFO("Shared Memory Driver", "Kai Norberg", "A shared memory device driver", OS_VERSION, "MIT", "LOAD_ON_BOOT");

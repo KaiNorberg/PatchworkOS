@@ -1,4 +1,4 @@
-#include <kernel/net/socket_type.h>
+#include "socket_type.h"
 
 const char* socket_type_to_string(socket_type_t type)
 {

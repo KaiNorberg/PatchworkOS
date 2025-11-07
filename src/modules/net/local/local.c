@@ -1,13 +1,13 @@
-#include <kernel/net/local/local.h>
+#include "local.h"
 
+#include "local_conn.h"
+#include "local_listen.h"
+#include "socket.h"
+#include "socket_family.h"
+#include "socket_type.h"
 #include <kernel/fs/path.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <kernel/net/local/local_conn.h>
-#include <kernel/net/local/local_listen.h>
-#include <kernel/net/socket.h>
-#include <kernel/net/socket_family.h>
-#include <kernel/net/socket_type.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/ref.h>
@@ -514,12 +514,26 @@ static socket_family_ops_t ops = {
     .poll = local_socket_poll,
 };
 
-void net_local_init(void)
+uint64_t net_local_init(void)
 {
     if (socket_family_register(&ops, "local", SOCKET_SEQPACKET) == ERR)
     {
-        panic(NULL, "Failed to register local socket family");
+        LOG_ERR("failed to register local socket family\n");
+        return ERR;
     }
 
-    local_listen_dir_init();
+    if (local_listen_dir_init() == ERR)
+    {
+        socket_family_unregister("local");
+        return ERR;
+    }
+
+    return 0;
+}
+
+void net_local_deinit(void)
+{
+    local_listen_dir_deinit();
+
+    socket_family_unregister("local");
 }

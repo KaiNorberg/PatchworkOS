@@ -5,7 +5,7 @@
 /**
  * @brief Networking and Sockets.
  * @defgroup module_net Networking
- * @ingroup kernel
+ * @ingroup modules
  *
  * The networking subsystem is exposed as `/net` and is responsible for providing networking and IPC through sockets.
  *
@@ -13,11 +13,6 @@
  *
  * @{
  */
-
-/**
- * @brief Initialize the networking subsystem.
- */
-void net_init(void);
 
 /**
  * @brief Retrieve the mount for the networking subsystem.

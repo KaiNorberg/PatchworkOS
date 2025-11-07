@@ -1,10 +1,10 @@
-#include <kernel/net/socket_family.h>
+#include "socket_family.h"
 
+#include "net.h"
+#include "socket.h"
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
-#include <kernel/net/net.h>
-#include <kernel/net/socket.h>
 
 #include <errno.h>
 #include <stdlib.h>
@@ -190,6 +190,16 @@ void socket_family_unregister(const char* name)
     free(family);
     LOG_INFO("unregistered family %s\n", family->name);
     return;
+}
+
+void socket_family_unregister_all(void)
+{
+    socket_family_t* temp;
+    socket_family_t* family;
+    LIST_FOR_EACH_SAFE(family, temp, &families, entry)
+    {
+        socket_family_unregister(family->name);
+    }
 }
 
 uint64_t socket_family_get_dir(socket_family_t* family, path_t* outPath)
