@@ -404,10 +404,14 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
             stat_t info;
             if (stat(path, &info) != ERR && info.type != INODE_DIR)
             {
-                const char* temp = argv[0];
-                argv[0] = path;
-                result = spawn(argv, fds, NULL, SPAWN_NONE);
-                argv[0] = temp;
+                const char* newArgv[argc + 1];
+                newArgv[0] = path;
+                for (uint64_t k = 1; k < argc; k++)
+                {
+                    newArgv[k] = argv[k];
+                }
+                newArgv[argc] = NULL;
+                result = spawn(newArgv, fds, NULL, SPAWN_NONE);
                 isFound = true;
                 break;
             }
@@ -465,6 +469,8 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
     uint64_t result = 0;
     pipeline->status = 0;
 
+    pid_t lastPid = 0;
+
     for (uint64_t i = 0; i < pipeline->amount; i++)
     {
         pid_t pid = pipeline_execute_cmd(&pipeline->cmds[i]);
@@ -474,12 +480,15 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
             result = ERR;
             goto cleanup;
         }
+
         if (pid == 0)
         {
             pipeline->status = 0;
+            lastPid = 0;
             continue;
         }
 
+        lastPid = pid;
         pids[fdCount - 1] = pid;
 
         fds[fdCount].fd = openf("/proc/%d/wait", pid);
@@ -495,7 +504,7 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
 
     if (fdCount == 1)
     {
-        // All commands were builtins
+        // All commands were builtins.
         goto cleanup;
     }
 
@@ -561,8 +570,7 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
             }
         }
 
-        bool allExited = true;
-        for (uint64_t i = 1; i < fdCount; i++)
+        for (uint64_t i = fdCount - 1; i > 0; i--)
         {
             if (fds[i].revents & POLLIN)
             {
@@ -576,20 +584,19 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
                 }
                 buffer[readCount] = '\0';
 
-                pipeline->status = atoi(buffer);
+                if (pids[i - 1] == lastPid)
+                {
+                    pipeline->status = atoi(buffer);
+                }
 
                 close(fds[i].fd);
                 memmove(&fds[i], &fds[i + 1], sizeof(pollfd_t) * (fdCount - i - 1));
                 memmove(&pids[i - 1], &pids[i], sizeof(pid_t) * (fdCount - i - 1));
                 fdCount--;
             }
-            else
-            {
-                allExited = false;
-            }
         }
 
-        if (allExited)
+        if (fdCount == 1)
         {
             break;
         }
