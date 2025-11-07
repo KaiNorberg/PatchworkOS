@@ -618,7 +618,7 @@ static uint64_t module_load_dependency_for_symbol(module_load_ctx_t* ctx, const 
         CONTAINER_OF_SAFE(map_get(&symbolCache, &cacheKey), module_cached_symbol_t, mapEntry);
     if (cacheEntry == NULL)
     {
-        LOG_DEBUG("no cached module found for symbol '%s'\n", symbolName);
+        LOG_ERR("no cached module found for symbol '%s'\n", symbolName);
         return ERR;
     }
 

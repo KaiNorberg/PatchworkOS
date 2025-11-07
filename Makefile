@@ -1,50 +1,22 @@
+IMAGE = bin/PatchworkOS.img
+
+VERSION_HEADER = include/kernel/version.h
 VERSION_STRING := $(shell git describe --tags --always --dirty --long 2>/dev/null || echo "unknown")
 
 SECTIONS = boot kernel libstd libpatchwork
-PROGRAMS = $(basename $(notdir $(wildcard make/programs/*.mk)))
-MODULES = $(basename $(notdir $(wildcard make/modules/*.mk)))
-TARGET_IMAGE = bin/PatchworkOS.img
-VERSION_HEADER = include/kernel/version.h
+PROGRAMS = $(shell find src/programs/ -name "*.mk")
+MODULES = $(shell find src/modules/ -name "*.mk")
+
 ROOT_DIRS = acpi bin cfg dev efi efi/boot home kernel kernel/modules kernel/modules/$(VERSION_STRING) lib net proc sys tmp usr usr/bin usr/share usr/license var
 
 # Programs to copy to /bin instead of /usr/bin
 BIN_PROGRAMS = init wall cursor taskbar dwm shell rm ls link mv touch cat echo
 # Programs to copy to /usr/bin
-USR_BIN_PROGRAMS = $(filter-out $(BIN_PROGRAMS),$(PROGRAMS))
+USR_BIN_PROGRAMS = $(filter-out $(BIN_PROGRAMS),$(basename $(notdir $(PROGRAMS))))
 
-QEMU_MEMORY ?= 256M
-QEMU_CPUS ?= $(shell nproc 2>/dev/null || echo 8)
-QEMU_MACHINE ?= q35
-QEMU_ARGS ?=
+.PHONY: $(SECTIONS) $(PROGRAMS) $(MODULES) all setup deploy run clean generate_version compile_commands format doxygen clean clean_programs nuke grub_loopback clone_acpica_and_compile_tests
 
-QEMU_FLAGS = \
-	-M $(QEMU_MACHINE) \
-	-display sdl \
-	-serial stdio \
-	-drive format=raw,file=$(TARGET_IMAGE) \
-	-m $(QEMU_MEMORY) \
-	-smp $(QEMU_CPUS) \
-	-cpu qemu64 \
-	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
-	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd
-
-ifeq ($(DEBUG),1)
-
-else
-	QEMU_FLAGS += -no-shutdown -no-reboot
-endif
-
-ifeq ($(QEMU_EXIT_ON_PANIC),1)
-	QEMU_FLAGS += -device isa-debug-exit
-endif
-
-ifeq ($(GDB),1)
-	QEMU_FLAGS += -s -S
-endif
-
-.PHONY: all setup deploy run clean generate_version compile_commands format doxygen clean clean_programs nuke grub_loopback clone_acpica_and_compile_tests
-
-all: setup $(SECTIONS) $(PROGRAMS) deploy
+all: setup $(SECTIONS) $(MODULES) $(PROGRAMS) deploy
 
 generate_version:
 	echo "#pragma once" > $(VERSION_HEADER); \
@@ -67,33 +39,30 @@ setup: generate_version
 endif
 
 $(SECTIONS): setup
-	$(MAKE) -f make/$@.mk SRCDIR=src/$@ BUILDDIR=build/$@ BINDIR=bin/$@
+	$(MAKE) -f src/$@/$@.mk SRCDIR=src/$@ BUILDDIR=build/$@ BINDIR=bin/$@
 
 $(MODULES): $(SECTIONS)
-	$(MAKE) -f make/modules/$@.mk SRCDIR=src/modules/$@ BUILDDIR=build/modules/$@ BINDIR=bin/modules MODULE=$@
+	$(MAKE) -f $@ SRCDIR=$(basename $(dir $@)) BUILDDIR=$(patsubst src/%,build/%,$(basename $(dir $@))) BINDIR=bin/modules MODULE=$(basename $(notdir $@))
 
 $(PROGRAMS): $(MODULES)
-	$(MAKE) -f make/programs/$@.mk SRCDIR=src/programs/$@ BUILDDIR=build/programs/$@ BINDIR=bin/programs PROGRAM=$@
+	$(MAKE) -f $@ SRCDIR=$(basename $(dir $@)) BUILDDIR=$(patsubst src/%,build/%,$(basename $(dir $@))) BINDIR=bin/programs PROGRAM=$(basename $(notdir $@))
 
 deploy: $(PROGRAMS)
-	dd if=/dev/zero of=$(TARGET_IMAGE) bs=2M count=64
-	mformat -F -C -t 256 -h 16 -s 63 -v "PATCHWORKOS" -i $(TARGET_IMAGE) ::
-	mlabel -i $(TARGET_IMAGE) ::PatchworkOS
-	$(foreach dir,$(ROOT_DIRS),mmd -i $(TARGET_IMAGE) ::/$(dir);)
-	mcopy -i $(TARGET_IMAGE) -s root/* ::
-	mcopy -i $(TARGET_IMAGE) -s bin/boot/bootx64.efi ::/efi/boot
-	mcopy -i $(TARGET_IMAGE) -s bin/kernel/kernel ::/kernel
-	mcopy -i $(TARGET_IMAGE) -s LICENSE ::/usr/license
-	$(foreach mod,$(MODULES),mcopy -i $(TARGET_IMAGE) -s bin/modules/$(mod) ::/kernel/modules/$(VERSION_STRING);)
-	$(foreach prog,$(BIN_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/bin;)
-	$(foreach prog,$(USR_BIN_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/usr/bin;)
-
-run:
-	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_ARGS)
+	dd if=/dev/zero of=$(IMAGE) bs=2M count=64
+	mformat -F -C -t 256 -h 16 -s 63 -v "PATCHWORKOS" -i $(IMAGE) ::
+	mlabel -i $(IMAGE) ::PatchworkOS
+	$(foreach dir,$(ROOT_DIRS),mmd -i $(IMAGE) ::/$(dir);)
+	mcopy -i $(IMAGE) -s root/* ::
+	mcopy -i $(IMAGE) -s LICENSE ::/usr/license
+	mcopy -i $(IMAGE) -s bin/boot/bootx64.efi ::/efi/boot
+	mcopy -i $(IMAGE) -s bin/kernel/kernel ::/kernel
+	mcopy -i $(IMAGE) -s bin/modules/* ::/kernel/modules/$(VERSION_STRING)
+	$(foreach prog,$(BIN_PROGRAMS),mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/bin;)
+	$(foreach prog,$(USR_BIN_PROGRAMS),mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/usr/bin;)
 
 # This will only work if you have setup a grub loopback entry as described in the README.md file.
 grub_loopback:
-	cp $(TARGET_IMAGE) /data/PatchworkOS.img
+	cp $(IMAGE) /data/PatchworkOS.img
 
 compile_commands: clean
 	bear -- $(MAKE) all
@@ -130,6 +99,39 @@ doxygen:
 	doxygen meta/doxy/Doxyfile
 	mkdir -p meta/docs/html/meta/screenshots
 	cp meta/screenshots/* meta/docs/html/meta/screenshots/
+
+QEMU_MEMORY ?= 256M
+QEMU_CPUS ?= $(shell nproc 2>/dev/null || echo 8)
+QEMU_MACHINE ?= q35
+QEMU_ARGS ?=
+
+QEMU_FLAGS = \
+	-M $(QEMU_MACHINE) \
+	-display sdl \
+	-serial stdio \
+	-drive format=raw,file=$(IMAGE) \
+	-m $(QEMU_MEMORY) \
+	-smp $(QEMU_CPUS) \
+	-cpu qemu64 \
+	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
+	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd
+
+ifeq ($(DEBUG),1)
+
+else
+	QEMU_FLAGS += -no-shutdown -no-reboot
+endif
+
+ifeq ($(QEMU_EXIT_ON_PANIC),1)
+	QEMU_FLAGS += -device isa-debug-exit
+endif
+
+ifeq ($(GDB),1)
+	QEMU_FLAGS += -s -S
+endif
+
+run:
+	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_ARGS)
 
 # We use ACPICA's runtime test suite to validate our ACPI implementation.
 #

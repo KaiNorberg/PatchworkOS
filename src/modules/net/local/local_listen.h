@@ -44,8 +44,15 @@ typedef struct local_listen
 
 /**
  * @brief Initialize the `/net/local/listen/` directory.
+ *
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-void local_listen_dir_init(void);
+uint64_t local_listen_dir_init(void);
+
+/**
+ * @brief Deinitialize the `/net/local/listen/` directory.
+ */
+void local_listen_dir_deinit(void);
 
 /**
  * @brief Allocate and initialize a new local listener.

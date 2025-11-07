@@ -74,7 +74,14 @@ typedef struct
 
 /**
  * @brief Initialize the local networking subsystem.
+ *
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-void net_local_init(void);
+uint64_t net_local_init(void);
+
+/**
+ * @brief Deinitialize the local networking subsystem.
+ */
+void net_local_deinit(void);
 
 /** @} */
