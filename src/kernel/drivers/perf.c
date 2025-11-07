@@ -96,7 +96,7 @@ static uint64_t perf_mem_read(file_t* file, void* buffer, uint64_t count, uint64
         return ERR;
     }
 
-    uint64_t readCount = BUFFER_READ(buffer, count, offset, string, length);
+    uint64_t readCount = BUFFER_READ(buffer, count, offset, string, (uint64_t)length);
     free(string);
     return readCount;
 }

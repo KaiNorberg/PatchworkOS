@@ -248,6 +248,7 @@ uint64_t pipe_init(void)
     newFile = sysfs_file_new(pipeDir, "new", NULL, &fileOps, NULL);
     if (newFile == NULL)
     {
+        DEREF(pipeDir);
         LOG_ERR("failed to initialize pipe new file");
         return ERR;
     }
