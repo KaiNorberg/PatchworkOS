@@ -159,7 +159,7 @@ MODULE_INFO("Hello", "<author>", "A simple hello world module", "1.0", "MIT", "L
 
 An explanation of the code will be provided later.
 
-Now we need to add the module to the build system. To do this, just copy a existing module's `.mk` file without making any modifications. For example, we can copy `make/modules/ps2.mk` to `make/modules/hello.mk`. The build system will handle the rest, including copying the module to the final image.
+Now we need to add the module to the build system. To do this, just copy a existing module's `.mk` file without making any modifications. For example, we can copy `src/modules/drivers/ps2/ps2.mk` to `src/modules/hello/hello.mk`. The build system will handle the rest, including copying the module to the final image.
 
 Now, we can build and run PatchworkOS using `make all run`, or we could use `make all` and then flash the generated `bin/PatchworkOS.img` file to a USB drive.
 
