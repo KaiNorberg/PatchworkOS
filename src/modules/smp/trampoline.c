@@ -1,4 +1,4 @@
-#include <kernel/cpu/trampoline.h>
+#include "trampoline.h"
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
@@ -19,7 +19,7 @@
 static void* backupBuffer;
 static void* trampolineStack;
 
-static atomic_bool cpuReadyFlag;
+static atomic_bool cpuReadyFlag = ATOMIC_VAR_INIT(false);
 
 void trampoline_init(void)
 {
@@ -37,12 +37,19 @@ void trampoline_init(void)
 
     assert(TRAMPOLINE_SIZE < PAGE_SIZE);
 
-    memcpy(backupBuffer, (void*)TRAMPOLINE_BASE_ADDR, TRAMPOLINE_SIZE);
-    memcpy((void*)TRAMPOLINE_BASE_ADDR, trampoline_start, TRAMPOLINE_SIZE);
-    memset(TRAMPOLINE_ADDR(TRAMPOLINE_DATA_OFFSET), 0, PAGE_SIZE - TRAMPOLINE_DATA_OFFSET);
+    if (vmm_map(NULL, (void*)TRAMPOLINE_BASE_ADDR, (void*)TRAMPOLINE_BASE_ADDR, PAGE_SIZE,
+            PML_WRITE | PML_PRESENT, NULL, NULL) == NULL)
+    {
+        panic(NULL, "Failed to map trampoline");
+    }
 
-    WRITE_64(TRAMPOLINE_ADDR(TRAMPOLINE_PML4_OFFSET), PML_ENSURE_LOWER_HALF(vmm_get_kernel_space()->pageTable.pml4));
-    WRITE_64(TRAMPOLINE_ADDR(TRAMPOLINE_ENTRY_OFFSET), (uintptr_t)trampoline_c_entry);
+    uint8_t* virtBase = (uint8_t*)PML_LOWER_TO_HIGHER(TRAMPOLINE_BASE_ADDR);
+    memcpy(backupBuffer, virtBase, TRAMPOLINE_SIZE);
+    memcpy(virtBase, trampoline_start, TRAMPOLINE_SIZE);
+    memset(&virtBase[TRAMPOLINE_DATA_OFFSET], 0, PAGE_SIZE - TRAMPOLINE_DATA_OFFSET);
+
+    WRITE_64(&virtBase[TRAMPOLINE_PML4_OFFSET], PML_ENSURE_LOWER_HALF(vmm_get_kernel_space()->pageTable.pml4));
+    WRITE_64(&virtBase[TRAMPOLINE_ENTRY_OFFSET], (uintptr_t)trampoline_c_entry);
 
     atomic_init(&cpuReadyFlag, false);
 
@@ -51,7 +58,10 @@ void trampoline_init(void)
 
 void trampoline_deinit(void)
 {
-    memcpy((void*)TRAMPOLINE_BASE_ADDR, backupBuffer, PAGE_SIZE);
+    uint8_t* virtBase = (uint8_t*)PML_LOWER_TO_HIGHER(TRAMPOLINE_BASE_ADDR);
+    memcpy(virtBase, backupBuffer, PAGE_SIZE);
+
+    vmm_unmap(NULL, (void*)TRAMPOLINE_BASE_ADDR, PAGE_SIZE);
 
     pmm_free(backupBuffer);
     backupBuffer = NULL;
@@ -61,11 +71,12 @@ void trampoline_deinit(void)
     LOG_DEBUG("trampoline deinitialized\n");
 }
 
-void trampoline_send_startup_ipi(cpu_t* cpu, cpuid_t id, lapic_id_t lapicId)
+void trampoline_send_startup_ipi(cpu_t* cpu, lapic_id_t lapicId)
 {
-    WRITE_64(TRAMPOLINE_ADDR(TRAMPOLINE_CPU_ID_OFFSET), id);
-    WRITE_64(TRAMPOLINE_ADDR(TRAMPOLINE_CPU_OFFSET), (uintptr_t)cpu);
-    WRITE_64(TRAMPOLINE_ADDR(TRAMPOLINE_STACK_OFFSET), (uintptr_t)trampolineStack + PAGE_SIZE);
+    uint8_t* virtBase = (uint8_t*)PML_LOWER_TO_HIGHER(TRAMPOLINE_BASE_ADDR);
+    WRITE_64(&virtBase[TRAMPOLINE_CPU_OFFSET], (uintptr_t)cpu);
+    WRITE_64(&virtBase[TRAMPOLINE_STACK_OFFSET], (uintptr_t)trampolineStack + PAGE_SIZE);
+    
     atomic_store(&cpuReadyFlag, false);
 
     lapic_send_init(lapicId);
@@ -97,11 +108,13 @@ static void trampoline_after_jump(void)
     sched_idle_loop();
 }
 
-void trampoline_c_entry(cpu_t* cpu, cpuid_t cpuId)
+void trampoline_c_entry(cpu_t* cpu)
 {
-    if (cpu_init(cpu, cpuId) == ERR)
+    cpu_identify(cpu);
+
+    if (cpu_init(cpu) == ERR)
     {
-        panic(NULL, "Failed to initialize CPU %u", cpuId);
+        panic(NULL, "Failed to initialize CPU%u", cpu->id);
     }
 
     thread_t* thread = sched_thread_unsafe();

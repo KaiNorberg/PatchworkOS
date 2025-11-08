@@ -1,14 +1,15 @@
 [bits 64]
 
-%include "cpu/interrupt.inc"
+%include "kernel/cpu/interrupt.inc"
 
 extern kmain
 extern thread_load
 
+global thread_jump:function
+
 section .text
 
 ; rdi = thread_t*
-global thread_jump
 thread_jump:
     cli
 

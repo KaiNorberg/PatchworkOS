@@ -3,8 +3,9 @@ extern exit
 extern _init
 extern _std_init
 
-section .text
 global _start:function (_start.end - _start)
+
+section .text
 _start:	
     mov rbp, 0
 	push rbp

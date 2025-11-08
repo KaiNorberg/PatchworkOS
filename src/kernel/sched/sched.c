@@ -3,7 +3,6 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/interrupt.h>
-#include <kernel/cpu/smp.h>
 #include <kernel/cpu/syscalls.h>
 #include <kernel/drivers/apic.h>
 #include <kernel/log/log.h>
@@ -121,7 +120,7 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* self)
 
 void sched_done_with_boot_thread(void)
 {
-    cpu_t* self = smp_self_unsafe();
+    cpu_t* self = cpu_get_unsafe();
     sched_cpu_ctx_t* ctx = &self->sched;
 
     assert(self->id == CPU_ID_BOOTSTRAP && ctx->runThread->process == process_get_kernel() && ctx->runThread->id == 0);
@@ -157,8 +156,8 @@ bool sched_is_idle(cpu_t* cpu)
 
 thread_t* sched_thread(void)
 {
-    thread_t* thread = smp_self()->sched.runThread;
-    smp_put();
+    thread_t* thread = cpu_get()->sched.runThread;
+    cpu_put();
     return thread;
 }
 
@@ -175,7 +174,7 @@ process_t* sched_process(void)
 
 thread_t* sched_thread_unsafe(void)
 {
-    return smp_self_unsafe()->sched.runThread;
+    return cpu_get_unsafe()->sched.runThread;
 }
 
 process_t* sched_process_unsafe(void)
@@ -277,9 +276,9 @@ static void sched_compute_actual_priority(thread_t* thread)
 
 void sched_yield(void)
 {
-    thread_t* thread = smp_self()->sched.runThread;
+    thread_t* thread = cpu_get()->sched.runThread;
     thread->sched.deadline = 0;
-    smp_put();
+    cpu_put();
 }
 
 SYSCALL_DEFINE(SYS_YIELD, uint64_t)
@@ -307,9 +306,9 @@ void sched_push(thread_t* thread, cpu_t* target)
 {
     if (target == NULL)
     {
-        target = smp_self();
+        target = cpu_get();
         lock_acquire(&target->sched.lock);
-        smp_put();
+        cpu_put();
     }
     else
     {
@@ -353,17 +352,17 @@ static uint64_t sched_get_load(sched_cpu_ctx_t* ctx)
 
 static cpu_t* sched_find_least_loaded_cpu(cpu_t* exclude)
 {
-    if (smp_cpu_amount() == 1)
+    if (cpu_amount() == 1)
     {
-        return smp_cpu(0);
+        return cpu_get_unsafe();
     }
 
     cpu_t* bestCpu = NULL;
     uint64_t bestLoad = UINT64_MAX;
 
-    for (uint64_t i = 0; i < smp_cpu_amount(); i++)
+    cpu_t* cpu;
+    CPU_FOR_EACH(cpu)
     {
-        cpu_t* cpu = smp_cpu(i);
         if (cpu == exclude)
         {
             continue;
@@ -389,7 +388,7 @@ static cpu_t* sched_find_least_loaded_cpu(cpu_t* exclude)
 
 void sched_push_new_thread(thread_t* thread, thread_t* parent)
 {
-    smp_self();
+    cpu_get();
 
     cpu_t* target = sched_find_least_loaded_cpu(NULL);
     assert(target != NULL);
@@ -419,18 +418,13 @@ void sched_push_new_thread(thread_t* thread, thread_t* parent)
         timer_notify(target);
     }
 
-    smp_put();
+    cpu_put();
 }
 
 static cpu_t* sched_get_neighbor(cpu_t* self)
 {
-    if (smp_cpu_amount() == 1)
-    {
-        return NULL;
-    }
-
-    // Get the higher neighbor, the last cpu wraps around and gets the first.
-    return self->id != smp_cpu_amount() - 1 ? smp_cpu(self->id + 1) : smp_cpu(0);
+    cpu_t* next = cpu_get_next(self);
+    return next != self ? next : NULL;
 }
 
 static void sched_load_balance(cpu_t* self)
@@ -438,7 +432,7 @@ static void sched_load_balance(cpu_t* self)
     // Technically there are race conditions here, but the worst case scenario is imperfect load balancing
     // and we need to avoid holding the locks of two sched_cpu_ctx_t at the same time to prevent deadlocks.
 
-    if (smp_cpu_amount() == 1)
+    if (cpu_amount() == 1)
     {
         return;
     }

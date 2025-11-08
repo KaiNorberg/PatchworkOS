@@ -1,11 +1,12 @@
 [bits 64]
 
-%include "cpu/gdt.inc"
+%include "kernel/cpu/gdt.inc"
+
+global gdt_load_descriptor:function
 
 section .text
 
 ;rdi = gdt descriptor
-global gdt_load_descriptor
 gdt_load_descriptor:
     lgdt  [rdi]
     push GDT_KERNEL_CODE

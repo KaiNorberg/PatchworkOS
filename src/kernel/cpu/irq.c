@@ -1,7 +1,7 @@
 #include <kernel/cpu/irq.h>
 
+#include <kernel/cpu/cpu.h>
 #include <kernel/cpu/interrupt.h>
-#include <kernel/cpu/smp.h>
 #include <kernel/drivers/apic.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -54,7 +54,7 @@ void irq_install(irq_t irq, irq_callback_func_t func, void* data)
     if (!handler->redirected)
     {
         ioapic_set_redirect(EXTERNAL_INTERRUPT_BASE + irq, irq, IOAPIC_DELIVERY_NORMAL, IOAPIC_POLARITY_HIGH,
-            IOAPIC_TRIGGER_EDGE, smp_self_unsafe(), true);
+            IOAPIC_TRIGGER_EDGE, cpu_get_unsafe(), true);
     }
 
     LOG_INFO("installed handler for irq=%d slot=%u\n", irq, slot);

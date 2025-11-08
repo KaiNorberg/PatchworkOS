@@ -23,7 +23,7 @@ ifeq ($(QEMU_EXIT_ON_PANIC),1)
     CFLAGS += -DQEMU_EXIT_ON_PANIC
 endif
 
-ASFLAGS += -D__KERNEL__ -Isrc/libstd
+ASFLAGS += -D_KERNEL_ -Isrc/libstd
 
 LDFLAGS += -T$(SRCDIR)/linker.lds -z max-page-size=0x1000 -z norelro
 

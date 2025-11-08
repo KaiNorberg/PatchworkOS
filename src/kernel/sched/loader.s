@@ -1,8 +1,8 @@
 [bits 64]
 
-%include "cpu/gdt.inc"
-%include "cpu/regs.inc"
-%include "cpu/interrupt.inc"
+%include "kernel/cpu/gdt.inc"
+%include "kernel/cpu/regs.inc"
+%include "kernel/cpu/interrupt.inc"
 
 extern thread_get_interrupt_frame
 

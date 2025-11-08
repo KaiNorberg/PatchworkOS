@@ -1,7 +1,7 @@
 #include <kernel/cpu/syscalls.h>
 
+#include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
-#include <kernel/cpu/smp.h>
 #include <kernel/drivers/apic.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>
@@ -92,7 +92,7 @@ uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx,
     perf_syscall_end();
     if (note_queue_length(&sched_thread_unsafe()->notes) > 0)
     {
-        lapic_send_ipi(lapic_self_id(), INTERRUPT_NOTE);
+        lapic_send_ipi(lapic_get_id(), INTERRUPT_NOTE);
     }
     return result;
 }

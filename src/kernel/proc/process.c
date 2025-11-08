@@ -1,7 +1,6 @@
 #include <kernel/proc/process.h>
 
 #include <kernel/cpu/cpu.h>
-#include <kernel/cpu/smp.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
@@ -621,7 +620,7 @@ void process_procfs_init(void)
         panic(NULL, "Failed to create /proc/[pid] directory for kernel process");
     }
 
-    timer_register_callback(&smp_self_unsafe()->timer, process_reaper_timer);
+    timer_register_callback(&cpu_get_unsafe()->timer, process_reaper_timer);
 }
 
 process_t* process_get_kernel(void)

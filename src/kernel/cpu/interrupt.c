@@ -3,7 +3,6 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/irq.h>
-#include <kernel/cpu/smp.h>
 #include <kernel/drivers/apic.h>
 #include <kernel/drivers/perf.h>
 #include <kernel/log/log.h>
@@ -25,7 +24,7 @@ void interrupt_disable(void)
 {
     uint64_t rflags = rflags_read();
     asm volatile("cli" ::: "memory");
-    interrupt_ctx_t* ctx = &smp_self_unsafe()->interrupt;
+    interrupt_ctx_t* ctx = &cpu_get_unsafe()->interrupt;
     if (ctx->disableDepth == 0)
     {
         ctx->oldRflags = rflags;
@@ -37,7 +36,7 @@ void interrupt_enable(void)
 {
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
-    interrupt_ctx_t* ctx = &smp_self_unsafe()->interrupt;
+    interrupt_ctx_t* ctx = &cpu_get_unsafe()->interrupt;
     assert(ctx->disableDepth != 0);
     ctx->disableDepth--;
 
@@ -63,7 +62,7 @@ static void exception_handler(interrupt_frame_t* frame)
 
     if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
     {
-        cpu_t* self = smp_self_unsafe();
+        cpu_t* self = cpu_get_unsafe();
         thread_t* thread = sched_thread_unsafe();
         process_t* process = thread->process;
 
@@ -94,7 +93,7 @@ void interrupt_handler(interrupt_frame_t* frame)
         return;
     }
 
-    cpu_t* self = smp_self_unsafe();
+    cpu_t* self = cpu_get_unsafe();
 
     perf_interrupt_begin(self);
     switch (frame->vector)
@@ -129,10 +128,7 @@ void interrupt_handler(interrupt_frame_t* frame)
     break;
     case INTERRUPT_HALT:
     {
-        while (1)
-        {
-            asm volatile("hlt");
-        }
+        cpu_halt();
     }
     break;
     default:

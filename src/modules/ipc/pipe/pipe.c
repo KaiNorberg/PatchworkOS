@@ -3,9 +3,9 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
+#include <kernel/module/module.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
-#include <kernel/module/module.h>
 #include <kernel/utils/ring.h>
 
 #include <assert.h>
@@ -286,4 +286,5 @@ uint64_t _module_procedure(const module_event_t* event)
     return 0;
 }
 
-MODULE_INFO("Pipes", "Kai Norberg", "Implements pipes for inter-process communication", OS_VERSION, "MIT", "LOAD_ON_BOOT");
+MODULE_INFO("Pipes", "Kai Norberg", "Implements pipes for inter-process communication", OS_VERSION, "MIT",
+    "LOAD_ON_BOOT");

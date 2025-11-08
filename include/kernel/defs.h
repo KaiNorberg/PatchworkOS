@@ -58,11 +58,11 @@
 /**
  * @brief GCC
  *
- * The `PURE_FUNC` attribute tells gcc that the function with said attribute only depends on the arguments passed to it
+ * The `PURE` attribute tells gcc that the function with said attribute only depends on the arguments passed to it
  * and potentially global variables.
  *
  */
-#define PURE_FUNC __attribute__((pure))
+#define PURE __attribute__((pure))
 
 /**
  * @brief Concatenates two tokens.

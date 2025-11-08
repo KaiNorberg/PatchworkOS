@@ -1,6 +1,5 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/interrupt.h>
-#include <kernel/cpu/smp.h>
 #include <kernel/cpu/syscalls.h>
 #include <kernel/drivers/apic.h>
 #include <kernel/drivers/rtc.h>
@@ -24,7 +23,6 @@ void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx)
         ctx->callbacks[i] = NULL;
     }
     lock_init(&ctx->lock);
-    LOG_INFO("cpu%d apic timer ticksPerNs=%lu\n", smp_self_id_unsafe(), ctx->apicTicksPerNs);
 }
 
 void timer_interrupt_handler(interrupt_frame_t* frame, cpu_t* self)

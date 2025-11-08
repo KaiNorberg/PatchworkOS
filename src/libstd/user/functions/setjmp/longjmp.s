@@ -1,10 +1,11 @@
 [bits 64]
 
+global longjmp:function
+
 section .text
 
 ; rdi = address of jmp_buf
 ; rsi = return value
-global longjmp
 longjmp:
     test rsi, rsi
     jnz .valid_val

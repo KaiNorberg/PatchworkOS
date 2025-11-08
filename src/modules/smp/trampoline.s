@@ -1,4 +1,4 @@
-%include "cpu/interrupt.inc"
+%include "kernel/cpu/interrupt.inc"
 
 extern trampoline_c_entry
 
@@ -10,9 +10,8 @@ TRAMPOLINE_BASE_ADDR equ 0x8000
 TRAMPOLINE_DATA_OFFSET equ 0x0F00
 TRAMPOLINE_PML4_OFFSET equ (TRAMPOLINE_DATA_OFFSET + 0x00)
 TRAMPOLINE_ENTRY_OFFSET equ (TRAMPOLINE_DATA_OFFSET + 0x08)
-TRAMPOLINE_CPU_ID_OFFSET equ (TRAMPOLINE_DATA_OFFSET + 0x10)
-TRAMPOLINE_CPU_OFFSET equ (TRAMPOLINE_DATA_OFFSET + 0x18)
-TRAMPOLINE_STACK_OFFSET equ (TRAMPOLINE_DATA_OFFSET + 0x20)
+TRAMPOLINE_CPU_OFFSET equ (TRAMPOLINE_DATA_OFFSET + 0x10)
+TRAMPOLINE_STACK_OFFSET equ (TRAMPOLINE_DATA_OFFSET + 0x18)
 
 CR0_PE equ (1 << 0)
 CR0_PG equ (1 << 31)
@@ -26,14 +25,14 @@ GDT_DATA64_SEL equ 0x10
 
 MSR_EFER equ 0xC0000080
 
-section .trampoline
-align 16
+global trampoline_start:function
+global trampoline_end:function
 
-global trampoline_start
-global trampoline_end
+section .text
 
 [bits 16]
-trampoline_start:
+align 16
+trampoline_start:    
     cli
     cld
 
@@ -76,7 +75,6 @@ trampoline_protected_mode_entry:
     mov cr0, eax
 
     lgdt [TRAMPOLINE_PHYS(long_mode_gdtr)]
-
     jmp GDT_CODE64_SEL:(TRAMPOLINE_PHYS(trampoline_long_mode_entry))
 
 [bits 64]
@@ -97,7 +95,6 @@ trampoline_long_mode_entry:
     popfq
 
     mov rdi, [TRAMPOLINE_ADDR(TRAMPOLINE_CPU_OFFSET)]
-    mov rsi, [TRAMPOLINE_ADDR(TRAMPOLINE_CPU_ID_OFFSET)]
     jmp [TRAMPOLINE_ADDR(TRAMPOLINE_ENTRY_OFFSET)]
 
 align 16

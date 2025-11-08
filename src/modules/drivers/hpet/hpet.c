@@ -1,5 +1,5 @@
 #include <kernel/acpi/tables.h>
-#include <kernel/cpu/smp.h>
+#include <kernel/cpu/cpu.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
@@ -238,7 +238,7 @@ static uint64_t hpet_init(void)
         return ERR;
     }
 
-    hpet_timer_handler(NULL, smp_self_unsafe());
+    hpet_timer_handler(NULL, cpu_get_unsafe());
     return 0;
 }
 

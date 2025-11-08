@@ -1,7 +1,6 @@
 #include <kernel/mem/space.h>
 
 #include <kernel/cpu/cpu.h>
-#include <kernel/cpu/smp.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/paging.h>
 #include <kernel/mem/pmm.h>
@@ -165,7 +164,7 @@ void space_load(space_t* space)
 
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
-    cpu_t* self = smp_self_unsafe();
+    cpu_t* self = cpu_get_unsafe();
     assert(self != NULL);
 
     assert(self->vmm.currentSpace != NULL);
@@ -640,12 +639,11 @@ void space_tlb_shootdown(space_t* space, void* virtAddr, uint64_t pageAmount)
         return;
     }
 
-    uint64_t cpuAmount = smp_cpu_amount();
-    if (cpuAmount <= 1)
+    if (cpu_amount() <= 1)
     {
         return;
     }
-    cpu_t* self = smp_self_unsafe();
+    cpu_t* self = cpu_get_unsafe();
 
     uint16_t expectedAcks = 0;
     atomic_store(&space->shootdownAcks, 0);

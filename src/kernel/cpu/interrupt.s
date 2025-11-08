@@ -1,6 +1,8 @@
 [bits 64]
 
-%include "cpu/interrupt.inc"
+%include "kernel/cpu/interrupt.inc"
+
+global vectorTable:object
 
 %macro INTERRUPT_NAME 1
     dq vector_%1
@@ -72,7 +74,6 @@ INTERRUPT_NO_ERR 31
 
 section .data
 
-global vectorTable
 vectorTable:
 %assign i 0
 %rep 256

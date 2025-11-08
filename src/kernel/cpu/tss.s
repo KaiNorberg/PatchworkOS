@@ -1,6 +1,6 @@
 [bits 64]
 
-%include "cpu/gdt.inc"
+%include "kernel/cpu/gdt.inc"
 
 global tss_load
 
