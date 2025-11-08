@@ -8,8 +8,8 @@
 
 /**
  * @brief Trampoline for CPU initialization
- * @defgroup module_smp_trampoline Trampoline
- * @ingroup module_smp
+ * @defgroup modules_smp_trampoline Trampoline
+ * @ingroup modules_smp
  *
  * The trampoline is a small piece of code used during the initialization of other CPUs in a multiprocessor system.
  *
