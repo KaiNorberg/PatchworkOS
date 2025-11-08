@@ -1,11 +1,12 @@
 [bits 64]
 
+global rdrand_do:function
+
 section .text
 
 ; rdi: uint32_t* value
 ; rsi: uint8_t* retries
 ; return: On success, 0. On failure, `ERR`.
-global rdrand_do
 rdrand_do:
 .retry:
     rdrand eax

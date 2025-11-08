@@ -1,6 +1,5 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/simd.h>
-#include <kernel/cpu/cpu.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/pmm.h>
 
@@ -67,7 +66,12 @@ void simd_cpu_init(void)
         asm volatile("fxsave (%0)" : : "r"(initCtx));
     }
 
-    LOG_INFO("cpu%d simd ", cpu_get_unsafe()->id);
+    if (cpu_get_unsafe()->id != CPU_ID_BOOTSTRAP) // Only log for bootstrap CPU
+    {
+        return;
+    }
+
+    LOG_INFO("simd ");
     if (info.featuresEcx & CPUID_ECX_OSXSAVE)
     {
         LOG_INFO("xsave ");

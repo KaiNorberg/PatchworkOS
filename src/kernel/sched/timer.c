@@ -23,7 +23,6 @@ void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx)
         ctx->callbacks[i] = NULL;
     }
     lock_init(&ctx->lock);
-    LOG_INFO("cpu%d apic timer ticksPerNs=%lu\n", cpu_get_unsafe()->id, ctx->apicTicksPerNs);
 }
 
 void timer_interrupt_handler(interrupt_frame_t* frame, cpu_t* self)

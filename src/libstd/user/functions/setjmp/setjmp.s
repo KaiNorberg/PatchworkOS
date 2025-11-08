@@ -1,14 +1,10 @@
 [bits 64]
 
-section .text
-
-; rdi = address of jmp_buf
-[bits 64]
+global setjmp:function
 
 section .text
 
 ; rdi = address of jmp_buf
-global setjmp
 setjmp:
     mov [rdi + 0], rbx    
     mov [rdi + 8], rbp      

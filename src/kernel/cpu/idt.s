@@ -1,6 +1,6 @@
 [bits 64]
 
-global idt_load_descriptor
+global idt_load_descriptor:function
 
 section .text
 

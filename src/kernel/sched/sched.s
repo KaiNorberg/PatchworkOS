@@ -1,13 +1,15 @@
 [bits 64]
 
-%include "cpu/interrupt.inc"
 
-section .text
+%include "kernel/cpu/interrupt.inc"
 
 extern sched_invoke
 extern cpu_get_unsafe
 
-global sched_idle_loop
+global sched_idle_loop:function
+
+section .text
+
 sched_idle_loop:
     sti
     hlt

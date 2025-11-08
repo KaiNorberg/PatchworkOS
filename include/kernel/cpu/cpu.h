@@ -88,7 +88,7 @@ extern cpu_t* _cpus[CPU_MAX];
 
 /**
  * @brief The number of CPUs currently identified.
- * 
+ *
  * Use `cpu_amount()` over this variable.
  */
 extern uint16_t _cpuAmount;
@@ -146,7 +146,7 @@ void cpu_halt_others(void);
  * @brief Gets the number of identified CPUs.
  *
  * Use this over `_cpuAmount`.
- * 
+ *
  * @return The number of identified CPUs.
  */
 static inline uint64_t cpu_amount(void)

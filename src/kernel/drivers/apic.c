@@ -163,11 +163,9 @@ void lapic_cpu_init(void)
     lapic_write(LAPIC_REG_LVT_LINT1, LAPIC_LVT_MASKED);
 
     lapic_write(LAPIC_REG_TASK_PRIORITY, 0);
-
-    LOG_INFO("cpu%d local apic id=%d msr=0x%016lx\n", cpu_get_unsafe()->id, lapic_self_id(), lapicMsr);
 }
 
-lapic_id_t lapic_self_id(void)
+lapic_id_t lapic_get_id(void)
 {
     if (!initialized)
     {

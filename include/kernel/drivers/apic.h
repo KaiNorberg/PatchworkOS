@@ -298,7 +298,7 @@ void lapic_cpu_init(void);
  *
  * @return The lapic id of the current cpu.
  */
-lapic_id_t lapic_self_id(void);
+lapic_id_t lapic_get_id(void);
 
 /**
  * @brief Write to a local apic register.

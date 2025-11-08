@@ -1,8 +1,10 @@
 [bits 64]
 
-%include "cpu/interrupt.inc"
+%include "kernel/cpu/interrupt.inc"
 
 extern syscall_handler
+
+global syscall_entry:function
 
 section .text
 
@@ -17,7 +19,6 @@ section .text
 ; r11 = user rflags
 ; Return value in rax
 ALIGN 4096
-global syscall_entry
 syscall_entry:
     swapgs
     mov [gs:0x8], rsp

@@ -8,8 +8,8 @@
 
 /**
  * @brief Trampoline for CPU initialization
- * @defgroup kernel_cpu_trampoline Trampoline
- * @ingroup kernel_cpu
+ * @defgroup module_smp_trampoline Trampoline
+ * @ingroup module_smp
  *
  * The trampoline is a small piece of code used during the initialization of other CPUs in a multiprocessor system.
  *
@@ -43,24 +43,14 @@
 #define TRAMPOLINE_ENTRY_OFFSET (TRAMPOLINE_DATA_OFFSET + 0x08)
 
 /**
- * @brief Offset within the trampoline page where the CPU id is stored.
- */
-#define TRAMPOLINE_CPU_ID_OFFSET (TRAMPOLINE_DATA_OFFSET + 0x10)
-
-/**
  * @brief Offset within the trampoline page where the CPU structure pointer is stored.
  */
-#define TRAMPOLINE_CPU_OFFSET (TRAMPOLINE_DATA_OFFSET + 0x18)
+#define TRAMPOLINE_CPU_OFFSET (TRAMPOLINE_DATA_OFFSET + 0x10)
 
 /**
  * @brief Offset within the trampoline page where the stack pointer for the trampoline is stored.
  */
-#define TRAMPOLINE_STACK_OFFSET (TRAMPOLINE_DATA_OFFSET + 0x20)
-
-/**
- * @brief Macro to get a pointer to an address within the trampoline page.
- */
-#define TRAMPOLINE_ADDR(offset) ((void*)(TRAMPOLINE_BASE_ADDR + (offset)))
+#define TRAMPOLINE_STACK_OFFSET (TRAMPOLINE_DATA_OFFSET + 0x18)
 
 /**
  * @brief The start of the trampoline code, defined in `trampoline.s`.
@@ -94,10 +84,9 @@ void trampoline_deinit(void);
  * @brief Sends the startup IPI to a CPU to start it up.
  *
  * @param cpu The CPU structure to be initalized as the new CPU.
- * @param cpuId The ID to be assigned to the CPU to start.
  * @param lapicId The LAPIC ID of the CPU to start.
  */
-void trampoline_send_startup_ipi(cpu_t* cpu, cpuid_t cpuId, lapic_id_t lapicId);
+void trampoline_send_startup_ipi(cpu_t* cpu, lapic_id_t lapicId);
 
 /**
  * @brief Waits for the currently starting CPU to signal that it is ready.
@@ -111,12 +100,11 @@ uint64_t trampoline_wait_ready(clock_t timeout);
  * @brief After the trampoline is done with basic initialization, it calls this C entry point to continue CPU
  * initialization.
  *
- * When this function is called the trampolines stack is still being used, after cpu initalization is done we perform a
- * jump to the idle thread of the CPU.
+ * When this function is called the trampoline's stack is still being used, after cpu initialization is done we perform
+ * a jump to the idle thread of the CPU.
  *
  * @param self Pointer to the CPU structure of the current CPU, will still be uninitialized.
- * @param cpuId The ID of the current CPU.
  */
-_NORETURN void trampoline_c_entry(cpu_t* self, cpuid_t cpuId);
+_NORETURN void trampoline_c_entry(cpu_t* self);
 
 /** @} */

@@ -4,11 +4,12 @@ section .text
 
 %ifndef _KERNEL_
 
+global memcpy_sse2:function
+
 ; rdi = dest
 ; rsi = src
 ; rdx = n
 ; return rdi
-global memcpy_sse2
 memcpy_sse2:
     mov rax, rdi
     test rdx, rdx

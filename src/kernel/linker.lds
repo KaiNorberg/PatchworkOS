@@ -29,11 +29,6 @@ SECTIONS
         *(.bss)
     }
 
-    .trampoline : ALIGN(4K)
-    {
-        *(.trampoline)
-    }
-
     .syscall_table :
     {
         _syscallTableStart = .;

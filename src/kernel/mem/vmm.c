@@ -30,7 +30,7 @@ static void vmm_cpu_ctx_init_common(vmm_cpu_ctx_t* ctx)
     ctx->shootdownCount = 0;
     lock_init(&ctx->lock);
 
-    assert(cr3_read() == PML_ENSURE_LOWER_HALF(kernelSpace.pageTable.pml4));
+    cr3_write(PML_ENSURE_LOWER_HALF(kernelSpace.pageTable.pml4));
     ctx->currentSpace = &kernelSpace;
     lock_acquire(&kernelSpace.lock);
     list_push_back(&kernelSpace.cpus, &ctx->entry);
@@ -101,7 +101,6 @@ void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_ker
     }
 
     LOG_INFO("loading kernel space... ");
-    cr3_write(PML_ENSURE_LOWER_HALF(kernelSpace.pageTable.pml4));
 
     cpu_t* cpu = cpu_get_unsafe();
     assert(cpu != NULL);
@@ -137,6 +136,7 @@ void vmm_unmap_bootloader_lower_half(thread_t* bootThread)
         bootThread->process->space.pageTable.pml4->entries[i].raw = 0;
         kernelSpace.pageTable.pml4->entries[i].raw = 0;
     }
+    cr3_write(cr3_read());
 }
 
 space_t* vmm_get_kernel_space(void)

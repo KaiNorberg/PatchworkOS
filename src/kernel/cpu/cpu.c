@@ -31,8 +31,12 @@ void cpu_identify(cpu_t* cpu)
 }
 
 uint64_t cpu_init(cpu_t* cpu)
-{
-    cpu->lapicId = lapic_self_id();
+{    
+    lapic_cpu_init();
+    simd_cpu_init();
+    syscalls_cpu_init();
+
+    cpu->lapicId = lapic_get_id();
     tss_init(&cpu->tss);
     vmm_cpu_ctx_init(&cpu->vmm);
     gdt_cpu_tss_load(&cpu->tss);
@@ -70,10 +74,6 @@ uint64_t cpu_init(cpu_t* cpu)
     tss_ist_load(&cpu->tss, TSS_IST_INTERRUPT, &cpu->interruptStack);
     *(uint64_t*)cpu->interruptStack.bottom = CPU_STACK_CANARY;
 
-    lapic_cpu_init();
-    simd_cpu_init();
-    syscalls_cpu_init();
-
     return 0;
 }
 
@@ -95,8 +95,7 @@ void cpu_stacks_overflow_check(cpu_t* cpu)
 
 _NORETURN void cpu_halt(void)
 {
-    asm volatile("cli\n"
-                 "hlt\n");
+    asm volatile("cli; hlt");
 
     __builtin_unreachable();
 }
