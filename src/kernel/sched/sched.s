@@ -5,7 +5,7 @@
 section .text
 
 extern sched_invoke
-extern smp_self_unsafe
+extern cpu_get_unsafe
 
 global sched_idle_loop
 sched_idle_loop:

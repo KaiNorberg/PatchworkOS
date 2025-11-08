@@ -232,6 +232,75 @@ static inline void cpuid_extended_feature_info(cpuid_extended_feature_info_t* in
     info->featuresEbx = (cpuid_ebx_features_t)out.ebx;
 }
 
+/**
+ * @brief Supported CPU instruction sets.
+ * @enum cpuid_instruction_sets_t
+ */
+typedef enum
+{
+    CPUID_INSTRUCTION_SET_NONE = 0,
+    CPUID_INSTRUCTION_SET_SSE = 1 << 0,
+    CPUID_INSTRUCTION_SET_SSE2 = 1 << 1,
+    CPUID_INSTRUCTION_SET_SSE3 = 1 << 2,
+    CPUID_INSTRUCTION_SET_SSSE3 = 1 << 3,
+    CPUID_INSTRUCTION_SET_SSE4_1 = 1 << 4,
+    CPUID_INSTRUCTION_SET_SSE4_2 = 1 << 5,
+    CPUID_INSTRUCTION_SET_AVX = 1 << 6,
+    CPUID_INSTRUCTION_SET_AVX2 = 1 << 7,
+    CPUID_INSTRUCTION_SET_AVX512 = 1 << 8,
+} cpuid_instruction_sets_t;
+
+/**
+ * @brief Helper to detect supported instruction sets.
+ *
+ * @return A bitmask of supported instruction sets.
+ */
+static inline cpuid_instruction_sets_t cpuid_detect_instruction_sets(void)
+{
+    cpuid_instruction_sets_t sets = CPUID_INSTRUCTION_SET_NONE;
+    cpuid_feature_info_t featureInfo;
+    cpuid_feature_info(&featureInfo);
+    if (featureInfo.featuresEdx & CPUID_EDX_SSE)
+    {
+        sets |= CPUID_INSTRUCTION_SET_SSE;
+    }
+    if (featureInfo.featuresEdx & CPUID_EDX_SSE2)
+    {
+        sets |= CPUID_INSTRUCTION_SET_SSE2;
+    }
+    if (featureInfo.featuresEcx & CPUID_ECX_SSE3)
+    {
+        sets |= CPUID_INSTRUCTION_SET_SSE3;
+    }
+    if (featureInfo.featuresEcx & CPUID_ECX_SSSE3)
+    {
+        sets |= CPUID_INSTRUCTION_SET_SSSE3;
+    }
+    if (featureInfo.featuresEcx & CPUID_ECX_SSE4_1)
+    {
+        sets |= CPUID_INSTRUCTION_SET_SSE4_1;
+    }
+    if (featureInfo.featuresEcx & CPUID_ECX_SSE4_2)
+    {
+        sets |= CPUID_INSTRUCTION_SET_SSE4_2;
+    }
+    if (featureInfo.featuresEcx & CPUID_ECX_AVX)
+    {
+        sets |= CPUID_INSTRUCTION_SET_AVX;
+    }
+    cpuid_extended_feature_info_t extFeatureInfo;
+    cpuid_extended_feature_info(&extFeatureInfo);
+    if (extFeatureInfo.featuresEbx & CPUID_EBX_AVX2)
+    {
+        sets |= CPUID_INSTRUCTION_SET_AVX2;
+    }
+    if (extFeatureInfo.featuresEbx & CPUID_EBX_AVX512F)
+    {
+        sets |= CPUID_INSTRUCTION_SET_AVX512;
+    }
+    return sets;
+}
+
 /** @} */
 
 #endif // _SYS_CPUID_H

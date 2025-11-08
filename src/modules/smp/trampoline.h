@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/cpu/smp.h>
+#include <kernel/cpu/cpu.h>
 #include <kernel/drivers/apic.h>
 
 #include <stdint.h>

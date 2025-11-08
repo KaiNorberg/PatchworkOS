@@ -1,12 +1,12 @@
 #include <kernel/fs/ctl.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
-#include <kernel/log/log.h>
-#include <kernel/proc/process.h>
 #include <kernel/module/module.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/ref.h>
@@ -240,7 +240,7 @@ static uint64_t shmem_init(void)
     {
         DEREF(shmemDir);
         LOG_ERR("failed to create /dev/shmem/new file");
-        return ERR; 
+        return ERR;
     }
 
     return 0;
@@ -276,4 +276,5 @@ uint64_t _module_procedure(const module_event_t* event)
     return 0;
 }
 
-MODULE_INFO("Shared Memory", "Kai Norberg", "Implements shared memory for inter-process communication", OS_VERSION, "MIT", "LOAD_ON_BOOT");
+MODULE_INFO("Shared Memory", "Kai Norberg", "Implements shared memory for inter-process communication", OS_VERSION,
+    "MIT", "LOAD_ON_BOOT");

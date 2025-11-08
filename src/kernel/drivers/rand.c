@@ -1,7 +1,6 @@
 #include <kernel/drivers/rand.h>
 
 #include <kernel/cpu/cpu.h>
-#include <kernel/cpu/smp.h>
 #include <kernel/log/log.h>
 #include <kernel/sched/sys_time.h>
 
@@ -44,14 +43,14 @@ void rand_cpu_init(rand_cpu_ctx_t* ctx)
     {
         if (rdrand_do(&test, 100) == ERR)
         {
-            LOG_WARN("cpu%d rdrand instruction failed, disabling\n", smp_self_unsafe()->id);
+            LOG_WARN("cpu%d rdrand instruction failed, disabling\n", cpu_get_unsafe()->id);
             ctx->rdrandAvail = false;
             return;
         }
 
         if (prev != UINT64_MAX && prev == test)
         {
-            LOG_WARN("cpu%d rdrand producing same value repeatedly, disabling\n", smp_self_unsafe()->id);
+            LOG_WARN("cpu%d rdrand producing same value repeatedly, disabling\n", cpu_get_unsafe()->id);
             ctx->rdrandAvail = false;
             return;
         }
@@ -61,11 +60,11 @@ void rand_cpu_init(rand_cpu_ctx_t* ctx)
 
 uint64_t rand_gen(void* buffer, uint64_t size)
 {
-    cpu_t* self = smp_self();
+    cpu_t* self = cpu_get();
 
     if (!self->rand.rdrandAvail)
     {
-        smp_put();
+        cpu_put();
         return rand_gen_fallback(buffer, size);
     }
 
@@ -76,7 +75,7 @@ uint64_t rand_gen(void* buffer, uint64_t size)
         uint32_t value;
         if (rdrand_do(&value, 100) == ERR)
         {
-            smp_put();
+            cpu_put();
             return ERR;
         }
         memcpy(ptr, &value, sizeof(uint32_t));
@@ -89,12 +88,12 @@ uint64_t rand_gen(void* buffer, uint64_t size)
         uint32_t value;
         if (rdrand_do(&value, 100) == ERR)
         {
-            smp_put();
+            cpu_put();
             return ERR;
         }
         memcpy(ptr, &value, remaining);
     }
 
-    smp_put();
+    cpu_put();
     return 0;
 }

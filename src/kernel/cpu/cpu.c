@@ -12,15 +12,26 @@
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/sched/sched.h>
+#include <stdint.h>
+#include <sys/list.h>
 
-uint64_t cpu_init(cpu_t* cpu, cpuid_t id)
+cpu_t* _cpus[CPU_MAX] = {0};
+uint16_t _cpuAmount = 0;
+
+void cpu_identify(cpu_t* cpu)
 {
     gdt_cpu_load();
     idt_cpu_load();
 
-    msr_write(MSR_CPU_ID, id);
+    cpuid_t id = _cpuAmount++;
+    msr_write(MSR_CPU_ID, (uint64_t)id);
 
     cpu->id = id;
+    _cpus[id] = cpu;
+}
+
+uint64_t cpu_init(cpu_t* cpu)
+{
     cpu->lapicId = lapic_self_id();
     tss_init(&cpu->tss);
     vmm_cpu_ctx_init(&cpu->vmm);
@@ -79,5 +90,29 @@ void cpu_stacks_overflow_check(cpu_t* cpu)
     if (*(uint64_t*)cpu->interruptStack.bottom != CPU_STACK_CANARY)
     {
         panic(NULL, "CPU%u interrupt stack overflow detected", cpu->id);
+    }
+}
+
+_NORETURN void cpu_halt(void)
+{
+    asm volatile("cli\n"
+                 "hlt\n");
+
+    __builtin_unreachable();
+}
+
+void cpu_halt_others(void)
+{
+    cpu_t* self = cpu_get_unsafe();
+
+    cpu_t* cpu;
+    CPU_FOR_EACH(cpu)
+    {
+        if (cpu == self)
+        {
+            continue;
+        }
+
+        lapic_send_ipi(cpu->lapicId, INTERRUPT_HALT);
     }
 }

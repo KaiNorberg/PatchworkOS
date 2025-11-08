@@ -5,7 +5,7 @@
 
 #define TEST_ITERATIONS 10000
 
-#ifdef __PATCHWORK_OS__
+#ifdef _PATCHWORK_OS_
 #include <sys/io.h>
 #include <sys/proc.h>
 

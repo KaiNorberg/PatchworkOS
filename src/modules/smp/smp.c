@@ -1,4 +1,4 @@
-#include <kernel/cpu/smp.h>
+#include <kernel/cpu/cpu.h>
 
 #include <kernel/acpi/tables.h>
 #include <kernel/cpu/cpu.h>

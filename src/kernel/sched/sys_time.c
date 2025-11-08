@@ -2,7 +2,6 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/interrupt.h>
-#include <kernel/cpu/smp.h>
 #include <kernel/cpu/syscalls.h>
 #include <kernel/drivers/apic.h>
 #include <kernel/drivers/rtc.h>

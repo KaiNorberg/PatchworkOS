@@ -41,20 +41,20 @@ uint64_t aml_integer_handling_init(void);
  *
  * @return The byte size of an AML integer (4 or 8).
  */
-uint8_t aml_integer_byte_size(void) PURE_FUNC;
+uint8_t aml_integer_byte_size(void) PURE;
 
 /**
  * @brief Get the bit size of an AML integer.
  *
  * @return The bit size of an AML integer (32 or 64).
  */
-uint8_t aml_integer_bit_size(void) PURE_FUNC;
+uint8_t aml_integer_bit_size(void) PURE;
 
 /**
  * @brief Get a mask with all bits set for the current AML integer size.
  *
  * @return A mask with all bits set for the current AML integer size.
  */
-aml_integer_t aml_integer_ones(void) PURE_FUNC;
+aml_integer_t aml_integer_ones(void) PURE;
 
 /** @} */

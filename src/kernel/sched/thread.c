@@ -1,7 +1,7 @@
 #include <kernel/sched/thread.h>
 
+#include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
-#include <kernel/cpu/smp.h>
 #include <kernel/init/init.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>

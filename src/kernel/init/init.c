@@ -4,9 +4,9 @@
 #include <kernel/acpi/aml/aml.h>
 #include <kernel/acpi/devices.h>
 #include <kernel/acpi/tables.h>
+#include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/idt.h>
-#include <kernel/cpu/smp.h>
 #include <kernel/cpu/syscalls.h>
 #include <kernel/drivers/gop.h>
 #include <kernel/fs/ramfs.h>
@@ -33,25 +33,33 @@
 #include <string.h>
 #include <strings.h>
 
+static cpu_t bootstrapCpu ALIGNED(PAGE_SIZE) = {0};
+
 void init_early(const boot_info_t* bootInfo)
 {
     gdt_init();
     idt_init();
 
-    smp_bootstrap_init_early();
+    cpu_identify(&bootstrapCpu);
+    assert(bootstrapCpu.id == CPU_ID_BOOTSTRAP);
 
     log_init(&bootInfo->gop);
 
     pmm_init(&bootInfo->memory.map);
     vmm_init(&bootInfo->memory, &bootInfo->gop, &bootInfo->kernel);
 
+    LOG_DEBUG("libstd early init\n");
     _std_init();
+    LOG_DEBUG("libstd early init done\n");
 
     module_init_fake_kernel_module(&bootInfo->kernel);
 
     acpi_tables_init(bootInfo->rsdp);
 
-    smp_bootstrap_init();
+    if (cpu_init(&bootstrapCpu) == ERR)
+    {
+        panic(NULL, "Failed to initialize bootstrap CPU");
+    }
 
     LOG_DEBUG("early init done, jumping to boot thread\n");
     thread_t* bootThread = thread_get_boot();
@@ -65,7 +73,7 @@ void init_early(const boot_info_t* bootInfo)
     bootThread->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
     atomic_store(&bootThread->state, THREAD_RUNNING);
     bootThread->sched.deadline = CLOCKS_NEVER;
-    smp_self_unsafe()->sched.runThread = bootThread;
+    cpu_get_unsafe()->sched.runThread = bootThread;
 
     // This will trigger a page fault. But that's intended as we use page faults to dynamically grow the
     // threads kernel stack and the stack starts out unmapped.
@@ -128,8 +136,6 @@ static void init_finalize(const boot_info_t* bootInfo)
 
     gop_init(&bootInfo->gop);
     perf_init();
-
-    smp_others_init();
 
     syscall_table_init();
 

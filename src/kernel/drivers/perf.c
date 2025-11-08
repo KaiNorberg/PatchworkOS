@@ -1,7 +1,6 @@
 #include <kernel/drivers/perf.h>
 
 #include <kernel/cpu/cpu.h>
-#include <kernel/cpu/smp.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
@@ -16,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/io.h>
+#include <sys/list.h>
 #include <sys/math.h>
 
 static dentry_t* perfDir = NULL;
@@ -26,18 +26,18 @@ static uint64_t perf_cpu_read(file_t* file, void* buffer, uint64_t count, uint64
 {
     (void)file; // Unused
 
-    char* string = malloc(256 * (smp_cpu_amount() + 1));
+    char* string = malloc(256 * (cpu_amount() + 1));
     if (string == NULL)
     {
         return ERR;
     }
 
     strcpy(string, "cpu idle_clocks active_clocks interrupt_clocks");
-    for (uint64_t i = 0; i < smp_cpu_amount(); i++)
+
+    cpu_t* cpu;
+    CPU_FOR_EACH(cpu)
     {
         sprintf(string + strlen(string), "\n");
-
-        cpu_t* cpu = smp_cpu(i);
 
         lock_acquire(&cpu->perf.lock);
         clock_t uptime = sys_time_uptime();

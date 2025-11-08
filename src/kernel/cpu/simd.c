@@ -1,6 +1,6 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/simd.h>
-#include <kernel/cpu/smp.h>
+#include <kernel/cpu/cpu.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/pmm.h>
 
@@ -67,19 +67,50 @@ void simd_cpu_init(void)
         asm volatile("fxsave (%0)" : : "r"(initCtx));
     }
 
-    LOG_INFO("cpu%d simd ", smp_self_unsafe()->id);
+    LOG_INFO("cpu%d simd ", cpu_get_unsafe()->id);
     if (info.featuresEcx & CPUID_ECX_OSXSAVE)
     {
         LOG_INFO("xsave ");
     }
-    if (info.featuresEcx & CPUID_ECX_AVX)
+
+    cpuid_instruction_sets_t sets = cpuid_detect_instruction_sets();
+    if (sets & CPUID_INSTRUCTION_SET_SSE)
+    {
+        LOG_INFO("sse ");
+    }
+    if (sets & CPUID_INSTRUCTION_SET_SSE2)
+    {
+        LOG_INFO("sse2 ");
+    }
+    if (sets & CPUID_INSTRUCTION_SET_SSE3)
+    {
+        LOG_INFO("sse3 ");
+    }
+    if (sets & CPUID_INSTRUCTION_SET_SSSE3)
+    {
+        LOG_INFO("ssse3 ");
+    }
+    if (sets & CPUID_INSTRUCTION_SET_SSE4_1)
+    {
+        LOG_INFO("sse4.1 ");
+    }
+    if (sets & CPUID_INSTRUCTION_SET_SSE4_2)
+    {
+        LOG_INFO("sse4.2 ");
+    }
+    if (sets & CPUID_INSTRUCTION_SET_AVX)
     {
         LOG_INFO("avx ");
     }
-    if (extInfo.featuresEbx & CPUID_EBX_AVX512F)
+    if (sets & CPUID_INSTRUCTION_SET_AVX2)
+    {
+        LOG_INFO("avx2 ");
+    }
+    if (sets & CPUID_INSTRUCTION_SET_AVX512)
     {
         LOG_INFO("avx512 ");
     }
+
     LOG_INFO("enabled\n");
 }
 

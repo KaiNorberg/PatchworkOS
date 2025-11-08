@@ -2,7 +2,6 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/regs.h>
-#include <kernel/cpu/smp.h>
 #include <kernel/cpu/syscalls.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -104,7 +103,7 @@ void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_ker
     LOG_INFO("loading kernel space... ");
     cr3_write(PML_ENSURE_LOWER_HALF(kernelSpace.pageTable.pml4));
 
-    cpu_t* cpu = smp_self_unsafe();
+    cpu_t* cpu = cpu_get_unsafe();
     assert(cpu != NULL);
     assert(cpu->id == CPU_ID_BOOTSTRAP);
     vmm_cpu_ctx_init_common(&cpu->vmm);
@@ -114,7 +113,7 @@ void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_ker
 
 void vmm_cpu_ctx_init(vmm_cpu_ctx_t* ctx)
 {
-    cpu_t* cpu = smp_self_unsafe();
+    cpu_t* cpu = cpu_get_unsafe();
     if (cpu->id == CPU_ID_BOOTSTRAP) // Initalized early in vmm_init.
     {
         return;

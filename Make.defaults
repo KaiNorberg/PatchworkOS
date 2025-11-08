@@ -31,7 +31,7 @@ CFLAGS := \
 	-Iinclude \
 	-Ilib \
 	-I$(SRCDIR) \
-	-D__PATCHWORK_OS__
+	-D_PATCHWORK_OS_
 
 CFLAGS_DISABLE_SIMD := \
 	-mno-mmx -mno-3dnow \

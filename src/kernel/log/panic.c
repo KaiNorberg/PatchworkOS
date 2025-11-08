@@ -4,7 +4,6 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/port.h>
 #include <kernel/cpu/regs.h>
-#include <kernel/cpu/smp.h>
 #include <kernel/init/init.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/pmm.h>
@@ -267,11 +266,11 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
 {
     asm volatile("cli");
 
-    cpuid_t selfId = smp_self_id_unsafe();
+    cpu_t* self = cpu_get_unsafe();
     uint32_t expectedCpuId = PANIC_NO_CPU_ID;
-    if (!atomic_compare_exchange_strong(&panicCpuId, &expectedCpuId, selfId))
+    if (!atomic_compare_exchange_strong(&panicCpuId, &expectedCpuId, self->id))
     {
-        if (expectedCpuId == selfId)
+        if (expectedCpuId == self->id)
         {
             // Print basic message for double panic on same CPU but avoid using the full panic stuff again.
             const char* message = "!!! KERNEL DOUBLE PANIC ON SAME CPU !!!\n";
@@ -288,14 +287,13 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
     vsnprintf(panicBuffer, sizeof(panicBuffer), format, args);
     va_end(args);
 
-    smp_halt_others();
+    cpu_halt_others();
 
     log_screen_enable();
 
     LOG_PANIC("!!! KERNEL PANIC (%s version %s) !!!\n", OS_NAME, OS_VERSION);
-    LOG_PANIC("cause: %s\n", panicBuffer); // Filled in by panic()
+    LOG_PANIC("cause: %s\n", panicBuffer);
 
-    cpu_t* self = smp_self_unsafe();
     thread_t* currentThread = self->sched.runThread;
     if (currentThread == NULL)
     {

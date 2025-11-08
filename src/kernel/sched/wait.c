@@ -1,7 +1,6 @@
 #include <kernel/sched/wait.h>
 
 #include <kernel/cpu/cpu.h>
-#include <kernel/cpu/smp.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/sys_time.h>
@@ -234,7 +233,7 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
     }
 
     // Disable interrupts and retrive thread.
-    thread_t* thread = smp_self()->sched.runThread;
+    thread_t* thread = cpu_get()->sched.runThread;
 
     assert(thread != NULL);
 
@@ -264,7 +263,7 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
                 lock_release(&waitQueues[j]->lock);
             }
 
-            smp_put(); // Interrupts enable.
+            cpu_put(); // Interrupts enable.
             return ERR;
         }
         list_entry_init(&entry->queueEntry);
@@ -303,7 +302,7 @@ void wait_block_cancel(void)
 {
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
-    thread_t* thread = smp_self_unsafe()->sched.runThread;
+    thread_t* thread = cpu_get_unsafe()->sched.runThread;
     assert(thread != NULL);
 
     thread_state_t state = atomic_exchange(&thread->state, THREAD_UNBLOCKING);
@@ -316,13 +315,13 @@ void wait_block_cancel(void)
     thread_state_t newState = atomic_exchange(&thread->state, THREAD_RUNNING);
     assert(newState == THREAD_UNBLOCKING); // Make sure state did not change.
 
-    smp_put(); // Release cpu from wait_block_setup().
+    cpu_put(); // Release cpu from wait_block_setup().
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 }
 
 uint64_t wait_block_commit(void)
 {
-    thread_t* thread = smp_self_unsafe()->sched.runThread;
+    thread_t* thread = cpu_get_unsafe()->sched.runThread;
 
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
@@ -332,10 +331,10 @@ uint64_t wait_block_commit(void)
     case THREAD_UNBLOCKING:
         wait_remove_wait_entries(thread, EOK);
         atomic_store(&thread->state, THREAD_RUNNING);
-        smp_put(); // Release cpu from wait_block_setup().
+        cpu_put(); // Release cpu from wait_block_setup().
         break;
     case THREAD_PRE_BLOCK:
-        smp_put(); // Release cpu from wait_block_setup().
+        cpu_put(); // Release cpu from wait_block_setup().
         timer_notify_self();
         break;
     default:

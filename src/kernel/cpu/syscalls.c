@@ -1,7 +1,7 @@
 #include <kernel/cpu/syscalls.h>
 
+#include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
-#include <kernel/cpu/smp.h>
 #include <kernel/drivers/apic.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>

@@ -1,6 +1,6 @@
 #include <kernel/ipc/note.h>
 
-#include <kernel/cpu/smp.h>
+#include <kernel/cpu/cpu.h>
 #include <kernel/log/log.h>
 #include <kernel/sched/thread.h>
 
