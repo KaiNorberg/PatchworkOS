@@ -1,6 +1,5 @@
 #pragma once
 
-#include <kernel/cpu/interrupt.h>
 #include <kernel/defs.h>
 
 #include <stdint.h>
@@ -14,6 +13,11 @@
  *
  * @{
  */
+
+/**
+ * @brief Number of IDT gates.
+ */
+#define IDT_GATE_AMOUNT (UINT8_MAX + 1)
 
 /**
  * @brief IDT gate attributes.
@@ -69,7 +73,7 @@ typedef struct PACKED
  */
 typedef struct PACKED
 {
-    idt_gate_t entries[INTERRUPT_AMOUNT];
+    idt_gate_t entries[IDT_GATE_AMOUNT];
 } idt_t;
 
 /**

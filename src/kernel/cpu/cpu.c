@@ -6,7 +6,6 @@
 #include <kernel/cpu/simd.h>
 #include <kernel/cpu/syscalls.h>
 #include <kernel/cpu/tss.h>
-#include <kernel/drivers/apic.h>
 #include <kernel/drivers/perf.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -32,11 +31,9 @@ void cpu_identify(cpu_t* cpu)
 
 uint64_t cpu_init(cpu_t* cpu)
 {    
-    lapic_cpu_init();
     simd_cpu_init();
     syscalls_cpu_init();
 
-    cpu->lapicId = lapic_get_id();
     tss_init(&cpu->tss);
     vmm_cpu_ctx_init(&cpu->vmm);
     gdt_cpu_tss_load(&cpu->tss);

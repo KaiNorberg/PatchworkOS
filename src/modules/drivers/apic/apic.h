@@ -26,7 +26,7 @@ typedef uint8_t lapic_id_t;
 /**
  * @brief IO APIC Global System Interrupt type.
  *
- * This identifies a interrupt "globally" across all IO APICs in the system and can be thought of as the "inpur"
+ * This identifies a interrupt "globally" across all IO APICs in the system and can be thought of as the "input"
  * interrupt that is then routed to a specific CPU's local APIC.
  */
 typedef uint32_t ioapic_gsi_t;
@@ -269,7 +269,7 @@ typedef union {
 /**
  * @brief Configure the apic timer in one-shot mode.
  *
- * Cnfigures the apic timer on the caller cpu to fire a single interrupt after
+ * Configures the apic timer on the caller cpu to fire a single interrupt after
  * the specified amount of ticks.
  *
  * @param vector The interrupt vector to fire when the timer expires.
@@ -394,7 +394,7 @@ ioapic_t* ioapic_from_gsi(ioapic_gsi_t gsi);
  * When an interrupt is triggered on the given GSI, the IOAPIC will use the redirection entry to determine how and where
  * to send the interrupt.
  *
- * Say we recieve a GSI 1 interrupt (this would usually be a interrupt from the first ps/2 port), and we have a
+ * Say we receive a GSI 1 interrupt (this would usually be a interrupt from the first ps/2 port), and we have a
  * redirection entry which sends it to vector 0x21 (we usually want to avoid using vectors 0x00-0x20 as those are
  * reserved for exceptions) to the CPU with id 0, the IOAPIC will then send an interrupt to CPU 0 with vector 0x21.
  *

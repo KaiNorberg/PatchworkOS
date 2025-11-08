@@ -3,7 +3,6 @@
 #include <kernel/acpi/tables.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/interrupt.h>
-#include <kernel/drivers/apic.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>

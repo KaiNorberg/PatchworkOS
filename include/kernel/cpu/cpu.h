@@ -4,7 +4,6 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/tss.h>
 #include <kernel/defs.h>
-#include <kernel/drivers/apic.h>
 #include <kernel/drivers/perf.h>
 #include <kernel/drivers/rand.h>
 #include <kernel/mem/vmm.h>
@@ -62,7 +61,6 @@ typedef uint16_t cpuid_t;
 typedef struct cpu
 {
     cpuid_t id;
-    lapic_id_t lapicId;
     tss_t tss;
     vmm_cpu_ctx_t vmm;
     interrupt_ctx_t interrupt;

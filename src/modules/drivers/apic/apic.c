@@ -1,5 +1,3 @@
-#include <kernel/drivers/apic.h>
-
 #include <kernel/acpi/tables.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/drivers/pic.h>
