@@ -13,6 +13,9 @@ static uint64_t terminalColumns;
 static uint64_t terminalRows;
 static uint64_t processScrollOffset = 0;
 
+static clock_t lastSampleTime = 0;
+static uint64_t cpuAmount = 0;
+
 typedef enum
 {
     SORT_PID,
@@ -88,7 +91,6 @@ typedef struct
 
 typedef struct
 {
-    uint64_t cpuAmount;
     cpu_perfs_t* prevCpuPerfs;
     cpu_perfs_t* cpuPerfs;
     uint64_t prevProcAmount;
@@ -117,7 +119,7 @@ static uint64_t cpu_perf_count_cpus(void)
     return cpuCount - 1;
 }
 
-static uint64_t cpu_perf_read(cpu_perfs_t* cpuPerfs, uint64_t cpuAmount)
+static uint64_t cpu_perf_read(cpu_perfs_t* cpuPerfs)
 {
     FILE* file = fopen("/dev/perf/cpu", "r");
     if (file == NULL)
@@ -342,24 +344,10 @@ static void sort_processes(perfs_t* perfs)
 
 static void perfs_update(perfs_t* perfs)
 {
-    if (cpu_perf_read(perfs->prevCpuPerfs, perfs->cpuAmount) == ERR)
+    clock_t currentTime = clock();
+    while (currentTime - lastSampleTime < SAMPLE_INTERVAL)
     {
-        printf("Failed to read prev CPU performance data\n");
-        abort();
-    }
-
-    free(perfs->prevProcPerfs);
-    perfs->prevProcPerfs = proc_perfs_read(&perfs->prevProcAmount);
-    if (perfs->prevProcPerfs == NULL)
-    {
-        printf("Failed to read prev process performance data\n");
-        abort();
-    }
-
-    clock_t startTime = clock();
-    while ((clock() - startTime) < SAMPLE_INTERVAL)
-    {
-        clock_t remaining = SAMPLE_INTERVAL - (clock() - startTime);
+        clock_t remaining = SAMPLE_INTERVAL - (currentTime - lastSampleTime);
         if (!(poll1(STDIN_FILENO, POLLIN, remaining) & POLLIN))
         {
             break;
@@ -414,11 +402,27 @@ static void perfs_update(perfs_t* perfs)
 
         if (keyPressed && (previousSortMode != currentSortMode || previousScrollOffset != processScrollOffset))
         {
+            sort_processes(perfs);
             break;
         }
+
+        currentTime = clock();
     }
 
-    if (cpu_perf_read(perfs->cpuPerfs, perfs->cpuAmount) == ERR)
+    if (currentTime - lastSampleTime < SAMPLE_INTERVAL)
+    {
+        return;
+    }
+
+    if (perfs->cpuPerfs != NULL)
+    {
+        memcpy(perfs->prevCpuPerfs, perfs->cpuPerfs, sizeof(cpu_perfs_t) * cpuAmount);
+    }
+    free(perfs->prevProcPerfs);
+    perfs->prevProcPerfs = perfs->procPerfs;
+    perfs->prevProcAmount = perfs->procAmount;
+
+    if (cpu_perf_read(perfs->cpuPerfs) == ERR)
     {
         printf("Failed to read CPU performance data\n");
         abort();
@@ -430,7 +434,6 @@ static void perfs_update(perfs_t* perfs)
         abort();
     }
 
-    free(perfs->procPerfs);
     perfs->procPerfs = proc_perfs_read(&perfs->procAmount);
     if (perfs->procPerfs == NULL)
     {
@@ -440,6 +443,8 @@ static void perfs_update(perfs_t* perfs)
 
     calculate_cpu_percentages(perfs);
     sort_processes(perfs);
+
+    lastSampleTime = currentTime;
 }
 
 static void perf_percentage(clock_t part, clock_t total, uint64_t* whole, uint64_t* thousandths)
@@ -470,7 +475,7 @@ static void perfs_print(perfs_t* perfs)
 
     printf("\033[1;33m  CPU Usage:\033[0m\033[K\n");
 
-    uint64_t cpusPerColumn = (perfs->cpuAmount + 1) / 2;
+    uint64_t cpusPerColumn = (cpuAmount + 1) / 2;
     for (uint64_t row = 0; row < cpusPerColumn; row++)
     {
         uint64_t i = row;
@@ -517,7 +522,7 @@ static void perfs_print(perfs_t* perfs)
         printf("]");
 
         uint64_t rightIdx = row + cpusPerColumn;
-        if (rightIdx < perfs->cpuAmount)
+        if (rightIdx < cpuAmount)
         {
             prevTotal = perfs->prevCpuPerfs[rightIdx].idleClocks + perfs->prevCpuPerfs[rightIdx].activeClocks +
                 perfs->prevCpuPerfs[rightIdx].interruptClocks;
@@ -708,20 +713,21 @@ static void perfs_print(perfs_t* perfs)
 
 int main(void)
 {
-    perfs_t perfs = {0};
-    perfs.cpuAmount = cpu_perf_count_cpus();
-    if (perfs.cpuAmount == ERR)
+    cpuAmount = cpu_perf_count_cpus();
+    if (cpuAmount == ERR)
     {
-        printf("Failed to read CPU performance data\n");
-        return EXIT_FAILURE;
+        printf("Failed to read CPU amount\n");
+        abort();
     }
-    perfs.prevCpuPerfs = calloc(perfs.cpuAmount, sizeof(cpu_perfs_t));
+
+    perfs_t perfs = {0};
+    perfs.prevCpuPerfs = calloc(cpuAmount, sizeof(cpu_perfs_t));
     if (perfs.prevCpuPerfs == NULL)
     {
         printf("Failed to allocate memory for previous CPU performance data\n");
         return EXIT_FAILURE;
     }
-    perfs.cpuPerfs = calloc(perfs.cpuAmount, sizeof(cpu_perfs_t));
+    perfs.cpuPerfs = calloc(cpuAmount, sizeof(cpu_perfs_t));
     if (perfs.cpuPerfs == NULL)
     {
         printf("Failed to allocate memory for CPU performance data\n");
@@ -732,16 +738,22 @@ int main(void)
     perfs.procPerfs = NULL;
     perfs.memPerfs = (mem_perfs_t){0};
 
-    printf("Please wait...\n");
     terminal_size_get();
-    perfs_update(&perfs);
 
-    printf("\033[H\033[J\033[?25l");
+    bool pleaseWaitShown = true;
+    const char* waitMessage = "[Please Wait]";
+    uint64_t waitMessageLength = strlen(waitMessage);
+    printf("\033[H\033[J\033[?25l\033[%lluC%s\n", (terminalColumns - waitMessageLength) / 2, waitMessage);
 
     while (1)
     {
         perfs_print(&perfs);
         perfs_update(&perfs);
+        if (pleaseWaitShown)
+        {
+            printf("\033[s\033[H\033[K\033[u");
+            pleaseWaitShown = false;
+        }
     }
 
     printf("\033[?25h");
