@@ -31,7 +31,7 @@ void cpu_identify(cpu_t* cpu)
 }
 
 uint64_t cpu_init(cpu_t* cpu)
-{    
+{
     lapic_cpu_init();
     simd_cpu_init();
     syscalls_cpu_init();

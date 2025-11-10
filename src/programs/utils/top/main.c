@@ -409,8 +409,7 @@ static void perfs_update(perfs_t* perfs)
             break;
         }
 
-        if (keyPressed && (previousSortMode != currentSortMode ||
-                previousScrollOffset != processScrollOffset))
+        if (keyPressed && (previousSortMode != currentSortMode || previousScrollOffset != processScrollOffset))
         {
             break;
         }

@@ -37,8 +37,8 @@ void trampoline_init(void)
 
     assert(TRAMPOLINE_SIZE < PAGE_SIZE);
 
-    if (vmm_map(NULL, (void*)TRAMPOLINE_BASE_ADDR, (void*)TRAMPOLINE_BASE_ADDR, PAGE_SIZE,
-            PML_WRITE | PML_PRESENT, NULL, NULL) == NULL)
+    if (vmm_map(NULL, (void*)TRAMPOLINE_BASE_ADDR, (void*)TRAMPOLINE_BASE_ADDR, PAGE_SIZE, PML_WRITE | PML_PRESENT,
+            NULL, NULL) == NULL)
     {
         panic(NULL, "Failed to map trampoline");
     }
@@ -76,7 +76,7 @@ void trampoline_send_startup_ipi(cpu_t* cpu, lapic_id_t lapicId)
     uint8_t* virtBase = (uint8_t*)PML_LOWER_TO_HIGHER(TRAMPOLINE_BASE_ADDR);
     WRITE_64(&virtBase[TRAMPOLINE_CPU_OFFSET], (uintptr_t)cpu);
     WRITE_64(&virtBase[TRAMPOLINE_STACK_OFFSET], (uintptr_t)trampolineStack + PAGE_SIZE);
-    
+
     atomic_store(&cpuReadyFlag, false);
 
     lapic_send_init(lapicId);
