@@ -390,7 +390,10 @@ static void perfs_update(perfs_t* perfs)
             break;
         case 'j':
         case 'J':
-            processScrollOffset++;
+            if (processScrollOffset + 1 < perfs->procAmount)
+            {
+                processScrollOffset++;
+            }
             break;
         case 'k':
         case 'K':

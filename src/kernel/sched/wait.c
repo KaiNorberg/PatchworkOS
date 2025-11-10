@@ -172,7 +172,7 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount, errno_t err)
     const uint64_t threadsPerBatch = 64;
     while (1)
     {
-        // For concistent lock ordering we first remove from the wait queue, release the wait queues lock and then
+        // For consistent lock ordering we first remove from the wait queue, release the wait queues lock and then
         // acquire the threads cpu lock. Such that every time we acquire the locks its, cpu lock -> wait queue lock.
 
         thread_t* threads[threadsPerBatch];
@@ -232,7 +232,7 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
         return ERR;
     }
 
-    // Disable interrupts and retrive thread.
+    // Disable interrupts and retrieve thread.
     thread_t* thread = cpu_get()->sched.runThread;
 
     assert(thread != NULL);
