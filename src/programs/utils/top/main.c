@@ -356,8 +356,19 @@ static void perfs_update(perfs_t* perfs)
         abort();
     }
 
-    if (poll1(STDIN_FILENO, POLLIN, SAMPLE_INTERVAL) > 0)
+    clock_t startTime = clock();
+    while ((clock() - startTime) < SAMPLE_INTERVAL)
     {
+        clock_t remaining = SAMPLE_INTERVAL - (clock() - startTime);
+        if (!(poll1(STDIN_FILENO, POLLIN, remaining) & POLLIN))
+        {
+            break;
+        }
+
+        bool keyPressed = true;
+        sort_mode_t previousSortMode = currentSortMode;
+        uint64_t previousScrollOffset = processScrollOffset;
+
         char c;
         read(STDIN_FILENO, &c, 1);
         switch (c)
@@ -392,6 +403,15 @@ static void perfs_update(perfs_t* perfs)
         case 'Q':
             printf("\033[?25h\033[H\033[J");
             exit(0);
+            break;
+        default:
+            keyPressed = false;
+            break;
+        }
+
+        if (keyPressed && (previousSortMode != currentSortMode ||
+                previousScrollOffset != processScrollOffset))
+        {
             break;
         }
     }
