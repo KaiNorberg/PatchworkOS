@@ -39,7 +39,7 @@ typedef enum
 {
     APIC_TIMER_MASKED = 0x10000, ///< Timer is masked (disabled)
     APIC_TIMER_PERIODIC = 0x20000,
-    APIC_TIMER_ONE_SHOT = 0x00000
+    APIC_timer_set = 0x00000
 } apic_timer_mode_t;
 
 /**
@@ -275,7 +275,7 @@ typedef union {
  * @param vector The interrupt vector to fire when the timer expires.
  * @param ticks The amount of ticks to wait before firing the interrupt.
  */
-void apic_timer_one_shot(interrupt_t vector, uint32_t ticks);
+void apic_timer_set(interrupt_t vector, uint32_t ticks);
 
 /**
  * @brief Apic timer ticks per nanosecond.

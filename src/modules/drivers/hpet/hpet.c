@@ -176,7 +176,7 @@ static void hpet_timer_handler(interrupt_frame_t* frame, cpu_t* self)
     uint64_t maxCounterValue = UINT32_MAX;
     uint64_t pessimisticOverflowInterval = (maxCounterValue * hpet_ns_per_tick()) / 2;
 
-    timer_one_shot(self, pessimisticOverflowInterval, sys_time_uptime());
+    timer_set(self, pessimisticOverflowInterval, sys_time_uptime());
 }
 
 /**
@@ -257,13 +257,13 @@ uint64_t _module_procedure(const module_event_t* event)
 {
     switch (event->type)
     {
-    case MODULE_EVENT_LOAD:
+    case MODULE_EVENT_DEVICE_ATTACH:
         if (hpet_init() == ERR)
         {
             panic(NULL, "Failed to initialize HPET module");
         }
         break;
-    case MODULE_EVENT_UNLOAD:
+    case MODULE_EVENT_DEVICE_DETACH:
         hpet_deinit();
         break;
     default:

@@ -291,11 +291,21 @@ void acpi_devices_init(void)
         panic(NULL, "could not initialize ACPI devices\n");
     }
 
-    // Because of... reasons, some hardware will not report the HPET device via AML.
-    // Even if they actually do have one. In this case we manually add its HID.
-    if (acpi_tables_lookup("HPET", 0) != NULL)
+    // Because of... reasons some hardware wont report certain devices via ACPI
+    // even if they actually do have it. In these cases we manually add their HIDs.
+
+    if (acpi_tables_lookup("HPET", 0) != NULL) // HPET
     {
         if (acpi_hid_push_str(&ctx, "PNP0103") == ERR)
+        {
+            aml_state_deinit(&state);
+            panic(NULL, "could not initialize ACPI devices\n");
+        }
+    }
+
+    if (acpi_tables_lookup("APIC", 0) != NULL) // APIC
+    {
+        if (acpi_hid_push_str(&ctx, "PNP0003") == ERR)
         {
             aml_state_deinit(&state);
             panic(NULL, "could not initialize ACPI devices\n");
@@ -305,7 +315,7 @@ void acpi_devices_init(void)
     qsort(ctx.hids, ctx.hidCount, sizeof(char*), acpi_hid_alphanum_cmp);
     for (size_t i = 0; i < ctx.hidCount; i++)
     {
-        if (module_load(ctx.hids[i], MODULE_LOAD_NONE) == ERR)
+        if (module_load(ctx.hids[i], MODULE_LOAD_ONE) == ERR)
         {
             panic(NULL, "Could not load module for ACPI device with HID '%s'\n", ctx.hids[i]);
         }

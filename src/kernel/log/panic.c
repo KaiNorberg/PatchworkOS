@@ -1,3 +1,4 @@
+#include <kernel/cpu/irq.h>
 #include <kernel/log/panic.h>
 
 #include <kernel/cpu/cpu.h>
@@ -377,7 +378,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
         LOG_PANIC("exception: %s (vector: %lld, error code: 0x%llx)\n", panic_get_exception_name(frame->vector),
             frame->vector, frame->errorCode);
 
-        if (frame->vector == EXCEPTION_PAGE_FAULT)
+        if (frame->vector == IRQ_VIRT_PAGE_FAULT)
         {
             LOG_PANIC("page fault details: A %s operation to a %s page caused a %s.\n",
                 (frame->errorCode & 2) ? "write" : "read", (frame->errorCode & 4) ? "user-mode" : "kernel-mode",

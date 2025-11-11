@@ -458,30 +458,3 @@ SYSCALL_DEFINE(SYS_MPROTECT, uint64_t, void* address, uint64_t length, prot_t pr
 
     return vmm_protect(space, address, length, vmm_prot_to_flags(prot) | PML_USER);
 }
-
-void vmm_shootdown_handler(interrupt_frame_t* frame, cpu_t* self)
-{
-    (void)frame;
-
-    vmm_cpu_ctx_t* ctx = &self->vmm;
-    while (true)
-    {
-        lock_acquire(&ctx->lock);
-        if (ctx->shootdownCount == 0)
-        {
-            lock_release(&ctx->lock);
-            break;
-        }
-
-        vmm_shootdown_t shootdown = ctx->shootdowns[ctx->shootdownCount - 1];
-        ctx->shootdownCount--;
-        lock_release(&ctx->lock);
-
-        assert(shootdown.space != NULL);
-        assert(shootdown.pageAmount != 0);
-        assert(shootdown.virtAddr != NULL);
-
-        tlb_invalidate(shootdown.virtAddr, shootdown.pageAmount);
-        atomic_fetch_add(&shootdown.space->shootdownAcks, 1);
-    }
-}

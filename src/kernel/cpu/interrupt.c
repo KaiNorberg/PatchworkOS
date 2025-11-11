@@ -3,7 +3,6 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/irq.h>
-#include <kernel/drivers/apic.h>
 #include <kernel/drivers/perf.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -46,7 +45,7 @@ void interrupt_enable(void)
     }
 }
 
-static void exception_handler(interrupt_frame_t* frame)
+/*static void exception_handler(interrupt_frame_t* frame)
 {
     switch (frame->vector)
     {
@@ -83,19 +82,18 @@ static void exception_handler(interrupt_frame_t* frame)
     {
         panic(frame, "unhandled kernel exception");
     }
-}
+}*/
 
 void interrupt_handler(interrupt_frame_t* frame)
 {
-    if (frame->vector < EXCEPTION_AMOUNT)
+    irq_dispatch(frame);
+
+    if (frame->vector < IRQ_VIRT_EXCEPTION_END) // Avoid extra stuff for exceptions
     {
-        exception_handler(frame);
         return;
     }
 
-    cpu_t* self = cpu_get_unsafe();
-
-    perf_interrupt_begin(self);
+    /*perf_interrupt_begin(self);
     switch (frame->vector)
     {
     case INTERRUPT_TLB_SHOOTDOWN:
@@ -144,9 +142,9 @@ void interrupt_handler(interrupt_frame_t* frame)
     }
     break;
     }
-    perf_interrupt_end(self);
+    perf_interrupt_end(self);*/
 
-    cpu_stacks_overflow_check(self);
+    cpu_stacks_overflow_check(cpu_get_unsafe());
 
     // This is a sanity check to make sure blocking and scheduling is functioning correctly. For instance, a trap should
     // never return with a lock acquired nor should one be invoked with a lock acquired.

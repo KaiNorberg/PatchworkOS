@@ -113,11 +113,11 @@ uint64_t note_queue_length(note_queue_t* queue);
 uint64_t note_queue_write(note_queue_t* queue, const void* buffer, uint64_t count);
 
 /**
- * @brief Note interrupt handler.
+ * @brief Send an IPI to handle notes to the specified CPU.
  *
- * @param frame The current interrupt frame.
- * @param self The currently running cpu.
+ * @param cpu The target CPU.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-void note_interrupt_handler(interrupt_frame_t* frame, cpu_t* self);
+uint64_t note_send_ipi(cpu_t* cpu);
 
 /** @} */

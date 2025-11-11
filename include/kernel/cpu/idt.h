@@ -80,6 +80,8 @@ typedef struct PACKED
  * @brief Initialize the IDT structure in memory.
  *
  * This will setup the IDT structure in memory, but will not load it. Loading is done in `idt_cpu_load()`.
+ *
+ * The IDT is setup according to the values in `irq_virt_t`.
  */
 void idt_init(void);
 

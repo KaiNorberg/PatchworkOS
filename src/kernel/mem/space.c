@@ -632,6 +632,31 @@ void space_free_callback(space_t* space, pml_callback_id_t callbackId)
     bitmap_clear(&space->callbackBitmap, callbackId);
 }
 
+static void space_tlb_shootdown_ipi_handler(irq_func_data_t* data)
+{
+    vmm_cpu_ctx_t* ctx = &data->self->vmm;
+    while (true)
+    {
+        lock_acquire(&ctx->lock);
+        if (ctx->shootdownCount == 0)
+        {
+            lock_release(&ctx->lock);
+            break;
+        }
+
+        vmm_shootdown_t shootdown = ctx->shootdowns[ctx->shootdownCount - 1];
+        ctx->shootdownCount--;
+        lock_release(&ctx->lock);
+
+        assert(shootdown.space != NULL);
+        assert(shootdown.pageAmount != 0);
+        assert(shootdown.virtAddr != NULL);
+
+        tlb_invalidate(shootdown.virtAddr, shootdown.pageAmount);
+        atomic_fetch_add(&shootdown.space->shootdownAcks, 1);
+    }
+}
+
 void space_tlb_shootdown(space_t* space, void* virtAddr, uint64_t pageAmount)
 {
     if (space == NULL)
@@ -669,7 +694,10 @@ void space_tlb_shootdown(space_t* space, void* virtAddr, uint64_t pageAmount)
         shootdown->pageAmount = pageAmount;
         lock_release(&cpu->vmm.lock);
 
-        lapic_send_ipi(cpu->lapicId, INTERRUPT_TLB_SHOOTDOWN);
+        if (ipi_send(cpu, IPI_SINGLE, space_tlb_shootdown_ipi_handler, NULL) == ERR)
+        {
+            panic(NULL, "Failed to send TLB shootdown IPI to CPU %d", cpu->id);
+        }
         expectedAcks++;
     }
 

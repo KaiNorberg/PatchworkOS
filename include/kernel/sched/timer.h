@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/irq.h>
 #include <kernel/sync/lock.h>
 
 #include <sys/proc.h>
@@ -14,29 +15,27 @@ typedef struct cpu cpu_t;
  * @ingroup kernel_sched
  *
  * The timer subsystem is responsible for managing per-CPU timers which are responsible for generating timer interrupts.
+These interrupts are whats called "one-shot" interrupts, meaning that the interrupt will only occur once and then a new
+interrupt must be programmed.
  *
- * Each CPU has its own timer context, to which timer callbacks can be registered, which will be called on every timer
-interrupt. These interrupts are whats called "one-shot" interrupts, meaning that the interrupt will only occur once and
-then a new interrupt must be programmed.
+ * ## Timer Interrupts
  *
- * The way we handle timer interrupts is that each system calls the `timer_one_shot()` function with their desired
-timeout and then when the timer interrupt occurs they check if their desired time has been reached, if it has they do
-what they need to do, else they call the function once more respecifying their desired timeout, and we repeat the
-process. This does technically result in some uneeded checks but its a very simply way of effectively eliminating timer
+ * The way we handle timer interrupts is that each system calls the `timer_set()` function with their desired
+timeout and then, when the timer interrupt occurs, which they can register to using `irq_irq_handler_register()`, they
+check if their desired time has been reached, if it has they do what they need to do, else they call the function once
+more respecifying their desired timeout, and we repeat the process.
+
+ * This does technically result in some uneeded checks but its a very simply way of effectively eliminating timer
 related race conditions.
+ *
+ * ## Timer Sources
+ *
+ * The actual timer interrupts are provided by "timer sources", which are registered by modules. Each source registers
+itself with a estimate of its precision, the timer subsystem then chooses the source with the highest precision as the
+active timer source.
  *
  * @{
  */
-
-/**
- * @brief Maximum amount of timer callbacks.
- */
-#define TIMER_MAX_CALLBACK 16
-
-/**
- * @brief Timer callback function type.
- */
-typedef void (*timer_callback_t)(interrupt_frame_t* frame, cpu_t* self);
 
 /**
  * @brief Per-CPU system time context.
@@ -44,21 +43,36 @@ typedef void (*timer_callback_t)(interrupt_frame_t* frame, cpu_t* self);
 typedef struct
 {
     /**
-     * The amount of ticks in the owner cpus apic timer that occur every nanosecond, stored using fixed point
-     * arithmetic, see `apic_timer_ticks_per_ns()` for more info. Initialized lazily.
-     */
-    uint64_t apicTicksPerNs;
-    /**
      * The next time the owner cpus apic timer will fire, specified in nanoseconds since boot, used in
-     * `timer_one_shot()`.
+     * `timer_set()`.
      */
-    clock_t nextDeadline;
-    /**
-     * The registered timer callbacks for the owner cpu.
-     */
-    timer_callback_t callbacks[TIMER_MAX_CALLBACK];
-    lock_t lock;
+    _Atomic(clock_t) deadline;
 } timer_cpu_ctx_t;
+
+/**
+ * @brief Maximum amount of timer sources.
+ */
+#define TIMER_MAX_SOURCES 8
+
+/**
+ * @brief Timer source structure.
+ * @struct timer_source_t
+ */
+typedef struct
+{
+    const char* name;
+    clock_t precision;
+    /**
+     * @brief Should set the one-shot timer to fire after the specified timeout.
+     *
+     * Should panic on failure, as failing to set a timer will almost certainly result in the system hanging.
+     *
+     * @param virt The virtual IRQ to use for the timer interrupt, usually `IRQ_VIRT_TIMER`.
+     * @param uptime The current uptime in nanoseconds.
+     * @param timeout The desired timeout in nanoseconds, if `CLOCKS_NEVER`, the timer should be disabled.
+     */
+    void (*set)(irq_virt_t virt, clock_t uptime, clock_t timeout);
+} timer_source_t;
 
 /**
  * @brief Initialize per-CPU timer context.
@@ -70,32 +84,21 @@ typedef struct
 void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx);
 
 /**
- * @brief Handle timer interrupt.
+ * @brief Register a timer source.
  *
- * @param frame The current interrupt frame.
- * @param self The current cpu.
+ * @param source The timer source to register.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `ENOSPC`: No more timer sources can be registered.
  */
-void timer_interrupt_handler(interrupt_frame_t* frame, cpu_t* self);
+uint64_t timer_source_register(const timer_source_t* source);
 
 /**
- * @brief Register a callback for timer interrupts.
+ * @brief Unregister a timer source.
  *
- * Note that registering a callback only applies to the cpu that the timer context belongs to.
- *
- * @param ctx The timer context that the registration is for.
- * @param callback The callback function to be called on timer interrupts.
+ * @param source The timer source to unregister, or `NULL` for no-op.
  */
-void timer_register_callback(timer_cpu_ctx_t* ctx, timer_callback_t callback);
-
-/**
- * @brief Unregister a callback from timer interrupts.
- *
- * Note that unregistering from a callback only applies to the cpu that the timer context belongs to.
- *
- * @param ctx The timer context that the unregistration is for.
- * @param callback The callback function to unregister.
- */
-void timer_unregister_callback(timer_cpu_ctx_t* ctx, timer_callback_t callback);
+void timer_source_unregister(const timer_source_t* source);
 
 /**
  * @brief Schedule a one-shot timer interrupt.
@@ -104,27 +107,11 @@ void timer_unregister_callback(timer_cpu_ctx_t* ctx, timer_callback_t callback);
  * Multiple calls with different timeouts will result in the timer being set for the shortest requested timeout, this
  * will be reset after a timer interrupt.
  *
- * @param self The currently running cpu.
+ * @param cpu The CPU to set the timer for.
  * @param uptime The time since boot, we need to specify this as an argument to avoid inconsistency in the
  * timeout/deadline calculations.
  * @param timeout The desired timeout.
  */
-void timer_one_shot(cpu_t* self, clock_t uptime, clock_t timeout);
-
-/**
- * @brief Trigger timer interrupt on cpu.
- *
- * Triggers the timer interrupt on the specified cpu.
- *
- * @param cpu The destination cpu.
- */
-void timer_notify(cpu_t* cpu);
-
-/**
- * @brief Trigger timer interrupt on self.
- *
- * Triggers the timer interrupt on the current cpu.
- */
-void timer_notify_self(void);
+void timer_set(cpu_t* cpu, clock_t uptime, clock_t timeout);
 
 /** @} */

@@ -1,3 +1,4 @@
+#include <kernel/cpu/irq.h>
 #include <kernel/drivers/pic.h>
 
 #include <kernel/cpu/interrupt.h>
@@ -19,9 +20,9 @@ void pic_disable(void)
     port_outb(PIC2_COMMAND, ICW1_INIT | ICW1_ICW4);
     port_wait();
 
-    port_outb(PIC1_DATA, EXTERNAL_INTERRUPT_BASE);
+    port_outb(PIC1_DATA, IRQ_VIRT_EXTERNAL_START);
     port_wait();
-    port_outb(PIC2_DATA, EXTERNAL_INTERRUPT_BASE + 0x8);
+    port_outb(PIC2_DATA, IRQ_VIRT_EXTERNAL_START + 0x8);
     port_wait();
 
     port_outb(PIC1_DATA, 4);

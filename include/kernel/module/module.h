@@ -370,9 +370,8 @@ typedef struct module
 
 typedef enum
 {
-    MODULE_LOAD_NONE = 0,
-    MODULE_LOAD_ALL = 1 << 0, ///< If set, will load all modules matching the device ID. Otherwise, only the first found
-                              ///< module will be loaded.
+    MODULE_LOAD_ONE = 0 << 0, ///< If set, will load only the first module matching the device ID.
+    MODULE_LOAD_ALL = 1 << 0, ///< If set, will load all modules matching the device ID.
 } module_load_flags_t;
 
 /**

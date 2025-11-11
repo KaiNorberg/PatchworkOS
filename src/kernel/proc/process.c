@@ -1,6 +1,7 @@
 #include <kernel/proc/process.h>
 
 #include <kernel/cpu/cpu.h>
+#include <kernel/cpu/gdt.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
@@ -34,41 +35,8 @@ static mount_t* procMount = NULL;
 static dentry_t* selfDir = NULL;
 
 static list_t zombies = LIST_CREATE(zombies);
-static clock_t lastReaperTime = 0;
+static clock_t nextReaperTime = CLOCKS_NEVER;
 static lock_t zombiesLock = LOCK_CREATE;
-
-// TODO: Implement a proper reaper.
-static void process_reaper_timer(interrupt_frame_t* frame, cpu_t* cpu)
-{
-    (void)frame; // Unused
-    (void)cpu;   // Unused
-
-    LOCK_SCOPE(&zombiesLock);
-
-    clock_t uptime = sys_time_uptime();
-    if (uptime - lastReaperTime < CONFIG_PROCESS_REAPER_INTERVAL)
-    {
-        return;
-    }
-    lastReaperTime = uptime;
-
-    list_t* current = &zombies;
-    while (!list_is_empty(current))
-    {
-        process_t* process = CONTAINER_OF(list_pop_first(current), process_t, zombieEntry);
-
-        DEREF(process->dir);
-        DEREF(process->prioFile);
-        DEREF(process->cwdFile);
-        DEREF(process->cmdlineFile);
-        DEREF(process->noteFile);
-        DEREF(process->waitFile);
-        DEREF(process->perfFile);
-        DEREF(process->self);
-
-        DEREF(process);
-    }
-}
 
 static process_t* process_file_get_process(file_t* file)
 {
@@ -555,7 +523,7 @@ void process_kill(process_t* process, uint64_t status)
 
     LOCK_SCOPE(&zombiesLock);
     list_push_back(&zombies, &REF(process)->zombieEntry);
-    lastReaperTime = sys_time_uptime(); // Delay reaper run
+    nextReaperTime = sys_time_uptime() + CONFIG_PROCESS_REAPER_INTERVAL; // Delay reaper run
 }
 
 bool process_is_child(process_t* process, pid_t parentId)
@@ -596,6 +564,20 @@ bool process_is_child(process_t* process, pid_t parentId)
     return found;
 }
 
+process_t* process_get_kernel(void)
+{
+    if (!kernelProcessInitalized)
+    {
+        if (process_init(&kernelProcess, NULL, NULL, NULL, PRIORITY_MAX - 1) == ERR)
+        {
+            panic(NULL, "Failed to init kernel process");
+        }
+        LOG_INFO("kernel process initialized with pid=%d\n", kernelProcess.id);
+        kernelProcessInitalized = true;
+    }
+    return &kernelProcess;
+}
+
 void process_procfs_init(void)
 {
     procMount = sysfs_mount_new(NULL, "proc", NULL, NULL);
@@ -619,22 +601,58 @@ void process_procfs_init(void)
     {
         panic(NULL, "Failed to create /proc/[pid] directory for kernel process");
     }
-
-    timer_register_callback(&cpu_get_unsafe()->timer, process_reaper_timer);
 }
 
-process_t* process_get_kernel(void)
+static void process_reaper(void)
 {
-    if (!kernelProcessInitalized)
+    while (1)
     {
-        if (process_init(&kernelProcess, NULL, NULL, NULL, PRIORITY_MAX - 1) == ERR)
+        LOCK_SCOPE(&zombiesLock);
+
+        clock_t uptime = sys_time_uptime();
+        if (uptime < nextReaperTime)
         {
-            panic(NULL, "Failed to init kernel process");
+            return;
         }
-        LOG_INFO("kernel process initialized with pid=%d\n", kernelProcess.id);
-        kernelProcessInitalized = true;
+        nextReaperTime = CLOCKS_NEVER;
+
+        list_t* current = &zombies;
+        while (!list_is_empty(current))
+        {
+            process_t* process = CONTAINER_OF(list_pop_first(current), process_t, zombieEntry);
+
+            DEREF(process->dir);
+            DEREF(process->prioFile);
+            DEREF(process->cwdFile);
+            DEREF(process->cmdlineFile);
+            DEREF(process->noteFile);
+            DEREF(process->waitFile);
+            DEREF(process->perfFile);
+            DEREF(process->self);
+
+            DEREF(process);
+        }
+
+        sched_nanosleep(CONFIG_PROCESS_REAPER_INTERVAL);
     }
-    return &kernelProcess;
+}
+
+void process_reaper_init(void)
+{
+    thread_t* reaper = thread_new(process_get_kernel());
+    if (reaper == NULL)
+    {
+        panic(NULL, "Failed to create process reaper thread");
+    }
+
+    reaper->frame.rip = (uintptr_t)process_reaper;
+    reaper->frame.rbp = reaper->kernelStack.top;
+    reaper->frame.rsp = reaper->kernelStack.top;
+    reaper->frame.cs = GDT_CS_RING0;
+    reaper->frame.ss = GDT_SS_RING0;
+    reaper->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
+
+    sched_push_new_thread(reaper, sched_thread());
 }
 
 SYSCALL_DEFINE(SYS_GETPID, pid_t)

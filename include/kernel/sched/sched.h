@@ -148,6 +148,13 @@ void sched_thread_ctx_init(sched_thread_ctx_t* ctx);
 void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* self);
 
 /**
+ * @brief Initialize the global state of the scheduler.
+ *
+ * Most scheduler initialization is per-CPU and done in `sched_cpu_ctx_init()`.
+ */
+void sched_init(void);
+
+/**
  * @brief The idle loop for a CPU.
  *
  * The `sched_idle_loop()` function is the main loop where idle threads execute. The boot thread will eventually end up

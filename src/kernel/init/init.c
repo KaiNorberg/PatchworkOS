@@ -7,6 +7,7 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/idt.h>
+#include <kernel/cpu/irq.h>
 #include <kernel/cpu/syscalls.h>
 #include <kernel/drivers/gop.h>
 #include <kernel/fs/ramfs.h>
@@ -39,6 +40,7 @@ void init_early(const boot_info_t* bootInfo)
 {
     gdt_init();
     idt_init();
+    irq_init();
 
     cpu_identify(&bootstrapCpu);
     assert(bootstrapCpu.id == CPU_ID_BOOTSTRAP);
@@ -51,6 +53,8 @@ void init_early(const boot_info_t* bootInfo)
     LOG_DEBUG("libstd early init\n");
     _std_init();
     LOG_DEBUG("libstd early init done\n");
+
+    sched_init();
 
     module_init_fake_kernel_module(&bootInfo->kernel);
 
@@ -73,6 +77,7 @@ void init_early(const boot_info_t* bootInfo)
     bootThread->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
     atomic_store(&bootThread->state, THREAD_RUNNING);
     bootThread->sched.deadline = CLOCKS_NEVER;
+
     cpu_get_unsafe()->sched.runThread = bootThread;
 
     // This will trigger a page fault. But that's intended as we use page faults to dynamically grow the
@@ -134,6 +139,8 @@ static void init_finalize(const boot_info_t* bootInfo)
     log_file_expose();
     process_procfs_init();
 
+    process_reaper_init();
+
     gop_init(&bootInfo->gop);
     perf_init();
 
@@ -180,7 +187,7 @@ void kmain(const boot_info_t* bootInfo)
     init_finalize(bootInfo);
 
     asm volatile("sti");
-    
+
     if (module_load(MODULE_LOAD_ON_BOOT_ID, MODULE_LOAD_ALL) == ERR)
     {
         panic(NULL, "Failed to load modules with LOAD_ON_BOOT");

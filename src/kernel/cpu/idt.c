@@ -2,6 +2,7 @@
 
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/irq.h>
 #include <kernel/cpu/tss.h>
 
 #include <sys/proc.h>
@@ -27,9 +28,9 @@ void idt_init(void)
 {
     idt_attributes_t attr = IDT_ATTR_PRESENT | IDT_ATTR_RING0 | IDT_ATTR_INTERRUPT;
 
-    for (interrupt_t vector = 0; vector < EXCEPTION_AMOUNT; vector++)
+    for (irq_virt_t vector = 0; vector < IRQ_VIRT_EXCEPTION_END; vector++)
     {
-        if (vector == EXCEPTION_DOUBLE_FAULT)
+        if (vector == IRQ_VIRT_DOUBLE_FAULT)
         {
             idt.entries[vector] = idt_gate(vectorTable[vector], attr, TSS_IST_DOUBLE_FAULT);
             continue;
@@ -38,7 +39,7 @@ void idt_init(void)
         idt.entries[vector] = idt_gate(vectorTable[vector], attr, TSS_IST_EXCEPTION);
     }
 
-    for (interrupt_t vector = EXCEPTION_AMOUNT; vector < INTERRUPT_AMOUNT; vector++)
+    for (irq_virt_t vector = IRQ_VIRT_EXCEPTION_END; vector < IRQ_VIRT_TOTAL_AMOUNT; vector++)
     {
         idt.entries[vector] = idt_gate(vectorTable[vector], attr, TSS_IST_INTERRUPT);
     }

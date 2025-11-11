@@ -2,6 +2,7 @@
 
 #include <kernel/config.h>
 #include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/ipi.h>
 #include <kernel/cpu/tss.h>
 #include <kernel/defs.h>
 #include <kernel/drivers/perf.h>
@@ -69,6 +70,7 @@ typedef struct cpu
     wait_cpu_ctx_t wait;
     sched_cpu_ctx_t sched;
     rand_cpu_ctx_t rand;
+    ipi_cpu_ctx_t ipi;
     stack_pointer_t exceptionStack;
     stack_pointer_t doubleFaultStack;
     stack_pointer_t interruptStack;
@@ -97,9 +99,9 @@ extern uint16_t _cpuAmount;
  * This function will generate a new CPU ID and make the pointer to the `cpu_t` structure available through the CPU ID
  * MSR.
  *
- * @warning Its important to be careful when identifying CPUs, as the `_cpus` array is not protected by any locks. This
- * is because its accessed so frequently. Thus, only identify CPUs when its known that no other CPUs are active, such as
- * during early boot.
+ * @warning Its important to be careful when identifying CPUs, as the `_cpus` array is not protected by any locks as a
+ * optimization due to how frequently its accessed. Thus, only identify CPUs when its known that no other CPUs are
+ * active, such as during early boot.
  *
  * @param cpu The CPU structure to initialize.
  */

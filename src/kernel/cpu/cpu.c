@@ -30,7 +30,7 @@ void cpu_identify(cpu_t* cpu)
 }
 
 uint64_t cpu_init(cpu_t* cpu)
-{    
+{
     simd_cpu_init();
     syscalls_cpu_init();
 
@@ -42,6 +42,7 @@ uint64_t cpu_init(cpu_t* cpu)
     timer_cpu_ctx_init(&cpu->timer);
     wait_cpu_ctx_init(&cpu->wait, cpu);
     sched_cpu_ctx_init(&cpu->sched, cpu);
+    ipi_cpu_ctx_init(&cpu->ipi);
 
     if (stack_pointer_init_buffer(&cpu->exceptionStack, cpu->exceptionStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) == ERR)
     {
@@ -90,25 +91,22 @@ void cpu_stacks_overflow_check(cpu_t* cpu)
     }
 }
 
-_NORETURN void cpu_halt(void)
+static void cpu_halt_ipi_handler(irq_func_data_t* data)
 {
-    asm volatile("cli; hlt");
+    (void)data;
+
+    while (true)
+    {
+        asm volatile("cli; hlt");
+    }
 
     __builtin_unreachable();
 }
 
 void cpu_halt_others(void)
 {
-    cpu_t* self = cpu_get_unsafe();
-
-    cpu_t* cpu;
-    CPU_FOR_EACH(cpu)
+    if (ipi_send(cpu_get_unsafe(), IPI_OTHERS, cpu_halt_ipi_handler, NULL) == ERR)
     {
-        if (cpu == self)
-        {
-            continue;
-        }
-
-        lapic_send_ipi(cpu->lapicId, INTERRUPT_HALT);
+        panic(NULL, "failed to send halt IPI to other CPUs");
     }
 }

@@ -1,7 +1,7 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/irq.h>
 #include <kernel/cpu/syscalls.h>
-#include <kernel/drivers/apic.h>
 #include <kernel/drivers/rtc.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -14,108 +14,116 @@
 #include <stdint.h>
 #include <sys/math.h>
 
+static const timer_source_t* sources[TIMER_MAX_SOURCES] = {0};
+static uint32_t sourceCount = 0;
+static const timer_source_t* bestSource = NULL;
+static rwlock_t sourcesLock = RWLOCK_CREATE;
+
 void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx)
 {
-    ctx->apicTicksPerNs = 0;
-    ctx->nextDeadline = CLOCKS_NEVER;
-    for (uint32_t i = 0; i < TIMER_MAX_CALLBACK; i++)
-    {
-        ctx->callbacks[i] = NULL;
-    }
-    lock_init(&ctx->lock);
+    atomic_init(&ctx->deadline, CLOCKS_NEVER);
 }
 
-void timer_interrupt_handler(interrupt_frame_t* frame, cpu_t* self)
+uint64_t timer_source_register(const timer_source_t* source)
 {
-    LOCK_SCOPE(&self->timer.lock);
-    self->timer.nextDeadline = CLOCKS_NEVER;
-    for (uint32_t i = 0; i < TIMER_MAX_CALLBACK; i++)
+    if (source == NULL || source->set == NULL || source->precision == 0)
     {
-        if (self->timer.callbacks[i] != NULL)
+        errno = EINVAL;
+        return ERR;
+    }
+
+    rwlock_write_acquire(&sourcesLock);
+    if (sourceCount >= TIMER_MAX_SOURCES)
+    {
+        rwlock_write_release(&sourcesLock);
+        errno = ENOSPC;
+        return ERR;
+    }
+
+    for (uint32_t i = 0; i < sourceCount; i++)
+    {
+        if (sources[i] == source)
         {
-            self->timer.callbacks[i](frame, self);
+            rwlock_write_release(&sourcesLock);
+            return 0;
         }
     }
+
+    sources[sourceCount++] = source;
+
+    bool bestSourceUpdated = false;
+    if (bestSource == NULL || source->precision < bestSource->precision)
+    {
+        bestSource = source;
+        bestSourceUpdated = true;
+    }
+    rwlock_write_release(&sourcesLock);
+
+    LOG_INFO("registered timer source '%s'%s\n", source->name, bestSourceUpdated ? " (best source)" : "");
+    return 0;
 }
 
-void timer_register_callback(timer_cpu_ctx_t* ctx, timer_callback_t callback)
+void timer_source_unregister(const timer_source_t* source)
 {
-    if (ctx == NULL || callback == NULL)
+    if (source == NULL)
     {
         return;
     }
 
-    LOCK_SCOPE(&ctx->lock);
-    for (uint32_t i = 0; i < TIMER_MAX_CALLBACK; i++)
+    rwlock_write_acquire(&sourcesLock);
+    for (uint32_t i = 0; i < sourceCount; i++)
     {
-        if (ctx->callbacks[i] == NULL)
+        if (sources[i] != source)
         {
-            LOG_DEBUG("timer callback %p registered in slot %d\n", callback, i);
-            ctx->callbacks[i] = callback;
-            return;
+            continue;
         }
-    }
 
-    panic(NULL, "Failed to register timer callback, no free slots available");
-}
+        memmove(&sources[i], &sources[i + 1], (sourceCount - i - 1) * sizeof(timer_source_t*));
+        sourceCount--;
 
-void timer_unregister_callback(timer_cpu_ctx_t* ctx, timer_callback_t callback)
-{
-    if (ctx == NULL || callback == NULL)
-    {
+        if (bestSource == source)
+        {
+            bestSource = NULL;
+            for (uint32_t j = 0; j < sourceCount; j++)
+            {
+                if (bestSource == NULL || sources[j]->precision < bestSource->precision)
+                {
+                    bestSource = sources[j];
+                }
+            }
+        }
+
+        rwlock_write_release(&sourcesLock);
+        LOG_INFO("unregistered timer source '%s'%s\n", source->name);
         return;
     }
 
-    LOCK_SCOPE(&ctx->lock);
-    for (uint32_t i = 0; i < TIMER_MAX_CALLBACK; i++)
-    {
-        if (ctx->callbacks[i] == callback)
-        {
-            LOG_DEBUG("timer callback %p unregistered from slot %d\n", callback, i);
-            ctx->callbacks[i] = NULL;
-            return;
-        }
-    }
-
-    panic(NULL, "Failed to unregister timer callback, not found");
+    rwlock_write_release(&sourcesLock);
 }
 
-void timer_one_shot(cpu_t* self, clock_t uptime, clock_t timeout)
+void timer_set(cpu_t* cpu, clock_t uptime, clock_t timeout)
 {
-    if (self == NULL || timeout == CLOCKS_NEVER)
+    if (cpu == NULL || timeout == CLOCKS_NEVER)
     {
         return;
     }
+    assert(uptime <= sys_time_uptime());
 
-    if (self->timer.apicTicksPerNs == 0)
-    {
-        self->timer.apicTicksPerNs = apic_timer_ticks_per_ns();
-    }
+    RWLOCK_READ_SCOPE(&sourcesLock);
 
     clock_t deadline = uptime + timeout;
-    if (deadline < self->timer.nextDeadline)
+    clock_t currentDeadline;
+    do
     {
-        uint64_t ticks = (timeout * self->timer.apicTicksPerNs) >> APIC_TIMER_TICKS_FIXED_POINT_OFFSET;
-        if (ticks > UINT32_MAX)
+        currentDeadline = atomic_load(&cpu->timer.deadline);
+        if (deadline >= currentDeadline)
         {
-            ticks = UINT32_MAX;
+            return;
         }
-        else if (ticks == 0)
-        {
-            ticks = 1;
-        }
+    } while (!atomic_compare_exchange_weak(&cpu->timer.deadline, &currentDeadline, deadline));
 
-        self->timer.nextDeadline = deadline;
-        apic_timer_one_shot(INTERRUPT_TIMER, (uint32_t)ticks);
+    if (bestSource != NULL)
+    {
+        bestSource->set(IRQ_VIRT_TIMER, uptime, timeout);
     }
-}
-
-void timer_notify(cpu_t* cpu)
-{
-    lapic_send_ipi(cpu->lapicId, INTERRUPT_TIMER);
-}
-
-void timer_notify_self(void)
-{
-    asm volatile("int %0" : : "i"(INTERRUPT_TIMER));
 }

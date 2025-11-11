@@ -27,13 +27,13 @@
 
 ![desktop screenshot](meta/screenshots/desktop.png)
 
-**Patchwork** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended be an educational and experimental operating system.
+**Patchwork** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended to be an educational and experimental operating system.
 
-In the end this is a project made for fun, but the goal is still to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system, a floppy disk driver is not enough and neither is a round-robin array scheduler.
+In the end this is a project made for fun, but the goal is to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system without jumping ahead to user space features, a ACPI unaware floppy disk driver loaded into a pure monolithic kernel is not enough and neither is a round-robin array scheduler.
 
-This is not a UNIX clone, its intended to be a (hopefully) interesting experiment in operating system design by attempting to use unique algorithms and designs over tried and tested ones. Sometimes this leads to bad results, and sometimes, with a bit of luck, good ones.
+Also, this is not a UNIX clone, its intended to be a (hopefully) interesting experiment in operating system design by attempting to use unique algorithms and designs over tried and tested ones. Sometimes this leads to bad results, and sometimes, with a bit of luck, good ones.
 
-Despite its experimental nature and scale, the project aims to remain approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
+Finally, despite its experimental nature and scale, the project aims to remain approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
 
 Will this project ever reach its goals? Who knows, but the journey is the point regardless.
 
@@ -56,8 +56,8 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 
 ### Kernel
 
-- Multithreading with a fully preemptive and tickless [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sched/sched.h), loosely based on Linux's O(1) scheduler
-- Symmetric Multi Processing with fine-grained locking, no big locks allowed
+- Fully preemptive and tickless [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sched/sched.h), loosely based on Linux's O(1) scheduler
+- Multithreading and Symmetric Multi Processing with fine-grained locking, no big locks allowed
 - Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info
 - Dynamic kernel and user stack allocation
 - File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/note.h)
@@ -72,7 +72,7 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 - Tested on real hardware, see [Tested Configurations](#tested-configurations)
 - ACPI implementation was made to be easy to understand and useful for educational purposes
 - Tested against [ACPICA's](https://github.com/acpica/acpica) runtime test suite
-- ACPI support is still work in progress, check [acpi.h](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/acpi/acpi.h) for a checklist
+- ACPI support is still work in progress, see [acpi.h](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/acpi/acpi.h) for a checklist
 
 ### File System
 
@@ -106,6 +106,7 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 ## Notable Future Plans
 
 - Separate the kernel into more and more modules <- Currently being worked on
+- "Completely Fair Scheduler" inspired scheduler?
 - File flags performance improvements and refactor
 - Read, write, execute, create permissions
 - Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions

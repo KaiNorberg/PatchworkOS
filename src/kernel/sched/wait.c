@@ -50,7 +50,7 @@ static void wait_timer_handler(interrupt_frame_t* frame, cpu_t* self)
         clock_t uptime = sys_time_uptime();
         if (thread->wait.deadline > uptime)
         {
-            timer_one_shot(self, uptime, thread->wait.deadline - uptime);
+            timer_set(self, uptime, thread->wait.deadline - uptime);
             return;
         }
 
@@ -97,7 +97,10 @@ void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* self)
     list_init(&wait->blockedThreads);
     wait->cpu = self;
     lock_init(&wait->lock);
-    timer_register_callback(&self->timer, wait_timer_handler);
+    if (timer_callback_register(&self->timer, wait_timer_handler) == ERR)
+    {
+        panic(NULL, "Failed to register wait queue timer callback");
+    }
 }
 
 bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread, clock_t uptime)
@@ -149,7 +152,7 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
         }
     }
 
-    timer_one_shot(self, uptime, thread->wait.deadline > uptime ? thread->wait.deadline - uptime : 0);
+    timer_set(self, uptime, thread->wait.deadline > uptime ? thread->wait.deadline - uptime : 0);
     return true;
 }
 

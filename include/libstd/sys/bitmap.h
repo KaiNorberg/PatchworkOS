@@ -65,6 +65,15 @@ typedef struct
                 }))
 
 /**
+ * @brief Create a bitmap initializer.
+ *
+ * @param buffer Pointer to the buffer, must be a multiple of 8 bytes.
+ * @param length Length of the bitmap in bits.
+ * @return Bitmap initializer.
+ */
+#define BITMAP_CREATE(buffer, length) {0, length, buffer}
+
+/**
  * @brief Initialize a bitmap.
  *
  * @param map The bitmap.

@@ -1,10 +1,10 @@
+#include <kernel/cpu/irq.h>
 #include <kernel/sched/sched.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/syscalls.h>
-#include <kernel/drivers/apic.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/proc/process.h>
@@ -21,6 +21,9 @@
 #include <sys/proc.h>
 
 static wait_queue_t sleepQueue = WAIT_QUEUE_CREATE(sleepQueue);
+
+static irq_handler_t* dieHandler = NULL;
+static irq_handler_t* schedHandler = NULL;
 
 static inline void sched_queues_init(sched_queues_t* queues)
 {
@@ -114,8 +117,31 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* self)
 
     lock_init(&ctx->lock);
     ctx->owner = self;
+}
 
-    timer_register_callback(&self->timer, sched_timer_handler);
+static void sched_die_irq_handler(irq_func_data_t* data)
+{
+    sched_invoke(data->frame, data->self, SCHED_DIE);
+}
+
+static void sched_sched_irq_handler(irq_func_data_t* data)
+{
+    sched_invoke(data->frame, data->self, SCHED_NORMAL);
+}
+
+void sched_init(void)
+{
+    dieHandler = irq_handler_register(IRQ_VIRT_DIE, sched_die_irq_handler, NULL);
+    if (dieHandler == NULL)
+    {
+        panic(NULL, "failed to register die IRQ handler");
+    }
+
+    schedHandler = irq_handler_register(IRQ_VIRT_SCHEDULE, sched_sched_irq_handler, NULL);
+    if (schedHandler == NULL)
+    {
+        panic(NULL, "failed to register sched IRQ handler");
+    }
 }
 
 void sched_done_with_boot_thread(void)
@@ -129,9 +155,8 @@ void sched_done_with_boot_thread(void)
     ctx->runThread->sched.deadline = 0;
     ctx->idleThread = ctx->runThread;
 
+    timer_set(self, sys_time_uptime(), 0); // Set timer to trigger in the idle loop.
     asm volatile("sti");
-
-    timer_notify_self();
     // When we return here the boot thread will be an idle thread so we just enter the idle loop.
     sched_idle_loop();
 }
@@ -192,7 +217,7 @@ void sched_process_exit(uint64_t status)
 {
     thread_t* thread = sched_thread();
     process_kill(thread->process, status);
-    asm volatile("int %0" : : "i"(INTERRUPT_DIE));
+    IRQ_INVOKE(IRQ_VIRT_DIE);
     panic(NULL, "Return to sched_process_exit");
 }
 
@@ -204,7 +229,7 @@ SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, uint64_t status)
 
 void sched_thread_exit(void)
 {
-    asm volatile("int %0" : : "i"(INTERRUPT_DIE));
+    IRQ_INVOKE(IRQ_VIRT_DIE);
     panic(NULL, "Return to sched_thread_exit");
 }
 
@@ -284,7 +309,7 @@ void sched_yield(void)
 SYSCALL_DEFINE(SYS_YIELD, uint64_t)
 {
     sched_yield();
-    timer_notify_self();
+    IRQ_INVOKE(IRQ_VIRT_SCHEDULE);
     return 0;
 }
 
@@ -598,7 +623,7 @@ void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags)
 
     if (runThread != ctx->idleThread && runThread->sched.deadline > uptime)
     {
-        timer_one_shot(self, uptime, runThread->sched.deadline - uptime);
+        timer_set(self, uptime, runThread->sched.deadline - uptime);
     }
 
     if (threadToFree != NULL)

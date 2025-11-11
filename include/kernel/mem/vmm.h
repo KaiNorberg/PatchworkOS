@@ -275,12 +275,4 @@ uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length);
  */
 uint64_t vmm_protect(space_t* space, void* virtAddr, uint64_t length, pml_flags_t flags);
 
-/**
- * @brief TLB shootdown interrupt handler.
- *
- * @param frame The interrupt frame.
- * @param self The current CPU.
- */
-void vmm_shootdown_handler(interrupt_frame_t* frame, cpu_t* self);
-
 /** @} */
