@@ -1,4 +1,5 @@
 #include <_internal/MAX_NAME.h>
+#include <kernel/acpi/acpi.h>
 #include <kernel/acpi/devices.h>
 
 #include <kernel/acpi/aml/aml.h>
@@ -294,7 +295,7 @@ void acpi_devices_init(void)
     // Because of... reasons some hardware wont report certain devices via ACPI
     // even if they actually do have it. In these cases we manually add their HIDs.
 
-    if (acpi_tables_lookup("HPET", 0) != NULL) // HPET
+    if (acpi_tables_lookup("HPET", sizeof(sdt_header_t), 0) != NULL) // HPET
     {
         if (acpi_hid_push_str(&ctx, "PNP0103") == ERR)
         {
@@ -303,7 +304,7 @@ void acpi_devices_init(void)
         }
     }
 
-    if (acpi_tables_lookup("APIC", 0) != NULL) // APIC
+    if (acpi_tables_lookup("APIC", sizeof(sdt_header_t), 0) != NULL) // APIC
     {
         if (acpi_hid_push_str(&ctx, "PNP0003") == ERR)
         {

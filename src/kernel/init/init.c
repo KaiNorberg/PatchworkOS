@@ -42,7 +42,7 @@ void init_early(const boot_info_t* bootInfo)
     idt_init();
     irq_init();
 
-    cpu_identify(&bootstrapCpu);
+    cpu_init_early(&bootstrapCpu);
     assert(bootstrapCpu.id == CPU_ID_BOOTSTRAP);
 
     log_init(&bootInfo->gop);
@@ -50,22 +50,18 @@ void init_early(const boot_info_t* bootInfo)
     pmm_init(&bootInfo->memory.map);
     vmm_init(&bootInfo->memory, &bootInfo->gop, &bootInfo->kernel);
 
-    LOG_DEBUG("libstd early init\n");
     _std_init();
-    LOG_DEBUG("libstd early init done\n");
 
     sched_init();
+    wait_init();
 
     module_init_fake_kernel_module(&bootInfo->kernel);
 
     acpi_tables_init(bootInfo->rsdp);
 
-    if (cpu_init(&bootstrapCpu) == ERR)
-    {
-        panic(NULL, "Failed to initialize bootstrap CPU");
-    }
+    cpu_init(&bootstrapCpu);
 
-    LOG_DEBUG("early init done, jumping to boot thread\n");
+    LOG_INFO("early init done, jumping to boot thread\n");
     thread_t* bootThread = thread_get_boot();
     assert(bootThread != NULL);
     bootThread->frame.rdi = (uintptr_t)bootInfo;

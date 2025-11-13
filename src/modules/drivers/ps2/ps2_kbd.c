@@ -8,12 +8,11 @@
 #include <stdlib.h>
 
 static kbd_t* kbd;
+static irq_handler_t* kbdHandler;
 
-static void ps2_kbd_irq(irq_t irq, void* data)
+static void ps2_kbd_irq(irq_func_data_t* data)
 {
-    (void)irq; // Unused
-
-    ps2_kbd_irq_context_t* context = data;
+    ps2_kbd_irq_context_t* context = data->private;
 
     ps2_device_response_t response;
     if (PS2_READ(&response) == ERR)
@@ -74,6 +73,14 @@ uint64_t ps2_kbd_init(ps2_device_info_t* info)
     context->isExtended = false;
     context->isRelease = false;
 
-    irq_install(info->device == PS2_DEV_FIRST ? IRQ_PS2_FIRST_DEVICE : IRQ_PS2_SECOND_DEVICE, ps2_kbd_irq, context);
+    // TODO: ACPI aware IRQ assignment
+    kbdHandler = irq_handler_register(info->device == PS2_DEV_FIRST ? 1 : 12, ps2_kbd_irq, context);
+    if (kbdHandler == NULL)
+    {
+        free(context);
+        kbd_free(kbd);
+        LOG_ERR("failed to register PS/2 keyboard IRQ handler\n");
+        return ERR;
+    }
     return 0;
 }

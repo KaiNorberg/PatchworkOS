@@ -1,6 +1,7 @@
 #include <kernel/cpu/irq.h>
 
 #include <kernel/cpu/cpu.h>
+#include <kernel/cpu/gdt.h>
 #include <kernel/cpu/interrupt.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -74,7 +75,24 @@ void irq_dispatch(interrupt_frame_t* frame)
 
     if (list_is_empty(&desc->handlers))
     {
-        LOG_WARN("unhandled irq 0x%x received", virt);
+        if (frame->vector < IRQ_VIRT_EXCEPTION_END)
+        {
+            if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
+            {
+                LOG_WARN("unhandled user irq 0x%x received, killing process\n", virt);
+                process_t* process = sched_thread_unsafe()->process;
+                process_kill(process, EXIT_FAILURE);
+                sched_invoke(frame, self, SCHED_DIE);
+            }
+            else
+            {
+                panic(frame, "unhandled kernel irq 0x%x received", virt);
+            }
+        }
+        else
+        {
+            LOG_WARN("unhandled irq 0x%x received\n", virt);
+        }
     }
 
     if (desc->irq == NULL || desc->irq->domain == NULL || desc->irq->domain->chip == NULL)
@@ -138,7 +156,7 @@ irq_t* irq_alloc(irq_phys_t phys, irq_flags_t flags, cpu_t* cpu)
 
     RWLOCK_READ_SCOPE(&domainsLock);
 
-    irq_domain_t* domain = irq_domain_lookup(phys); // Might be NULL
+    irq_domain_t* domain = irq_domain_lookup(phys); // Might be NULL, which is fine
 
     irq_virt_t virt;
     irq_desc_t* desc = irq_desc_find_unused(&virt);

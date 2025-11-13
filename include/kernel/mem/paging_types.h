@@ -92,13 +92,6 @@ typedef struct
 static_assert(sizeof(pml_entry_t) == 8, "pml_entry_t must be 8 bytes");
 
 /**
- * @brief Maximum pin depth for a page.
- *
- * See `pml_entry_t::pinDepth` for more information.
- */
-#define PML_PIN_DEPTH_MAX 3
-
-/**
  * @brief Number of bits used for the offset within a page.
  *
  * Each page is 4KB (2^12 bytes).

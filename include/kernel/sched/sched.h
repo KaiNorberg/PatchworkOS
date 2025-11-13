@@ -244,8 +244,8 @@ _NORETURN void sched_thread_exit(void);
 /**
  * @brief Yields the CPU to another thread.
  *
- * The `sched_yield()` function voluntarily relinquishes the currently running threads time slice. Note that this does
- * not actually schedule.
+ * The `sched_yield()` function voluntarily relinquishes the currently running threads time slice, and invokes the
+ * scheduler.
  *
  */
 void sched_yield(void);

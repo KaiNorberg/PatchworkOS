@@ -110,12 +110,9 @@ static void trampoline_after_jump(void)
 
 void trampoline_c_entry(cpu_t* cpu)
 {
-    cpu_identify(cpu);
+    cpu_init_early(cpu);
 
-    if (cpu_init(cpu) == ERR)
-    {
-        panic(NULL, "Failed to initialize CPU%u", cpu->id);
-    }
+    cpu_init(cpu);
 
     thread_t* thread = sched_thread_unsafe();
     assert(thread != NULL);

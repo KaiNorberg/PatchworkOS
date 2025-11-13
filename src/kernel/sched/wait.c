@@ -1,3 +1,4 @@
+#include <kernel/cpu/irq.h>
 #include <kernel/sched/wait.h>
 
 #include <kernel/cpu/cpu.h>
@@ -13,6 +14,8 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <sys/list.h>
+
+static irq_handler_t* timerHandler = NULL;
 
 static void wait_remove_wait_entries(thread_t* thread, errno_t err)
 {
@@ -33,10 +36,9 @@ static void wait_remove_wait_entries(thread_t* thread, errno_t err)
     }
 }
 
-static void wait_timer_handler(interrupt_frame_t* frame, cpu_t* self)
+static void wait_timer_handler(irq_func_data_t* data)
 {
-    (void)frame; // Unused
-
+    cpu_t* self = data->self;
     LOCK_SCOPE(&self->wait.lock);
 
     while (1)
@@ -97,9 +99,14 @@ void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* self)
     list_init(&wait->blockedThreads);
     wait->cpu = self;
     lock_init(&wait->lock);
-    if (timer_callback_register(&self->timer, wait_timer_handler) == ERR)
+}
+
+void wait_init(void)
+{
+    timerHandler = irq_handler_register(IRQ_VIRT_TIMER, wait_timer_handler, NULL);
+    if (timerHandler == NULL)
     {
-        panic(NULL, "Failed to register wait queue timer callback");
+        panic(NULL, "Failed to register wait timer IRQ handler");
     }
 }
 
@@ -175,7 +182,7 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount, errno_t err)
     const uint64_t threadsPerBatch = 64;
     while (1)
     {
-        // For concistent lock ordering we first remove from the wait queue, release the wait queues lock and then
+        // For consistent lock ordering we first remove from the wait queue, release the wait queues lock and then
         // acquire the threads cpu lock. Such that every time we acquire the locks its, cpu lock -> wait queue lock.
 
         thread_t* threads[threadsPerBatch];
@@ -235,7 +242,7 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
         return ERR;
     }
 
-    // Disable interrupts and retrive thread.
+    // Disable interrupts and retrieve thread.
     thread_t* thread = cpu_get()->sched.runThread;
 
     assert(thread != NULL);
@@ -338,7 +345,7 @@ uint64_t wait_block_commit(void)
         break;
     case THREAD_PRE_BLOCK:
         cpu_put(); // Release cpu from wait_block_setup().
-        timer_notify_self();
+        sched_yield();
         break;
     default:
         panic(NULL, "Invalid thread state %d in wait_block_commit()", state);

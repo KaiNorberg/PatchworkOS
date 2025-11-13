@@ -323,12 +323,6 @@ static uint64_t ps2_device_init(ps2_device_t device)
 
 static void ps2_init(void)
 {
-    fadt_t* fadt = (fadt_t*)acpi_tables_lookup(FADT_SIGNATURE, 0);
-    if (fadt == NULL)
-    {
-        panic(NULL, "ps2 not supported by hardware (ACPI FADT table not found)");
-    }
-
     if (ps2_send_cmd(PS2_CMD_FIRST_DISABLE) == ERR)
     {
         panic(NULL, "ps2 first device disable failed");

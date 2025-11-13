@@ -146,7 +146,8 @@ void process_procfs_init(void);
 /**
  * @brief Initializes the process reaper.
  *
- * The process reaper allows us to delay the freeing of processes, this is useful if, for example, another process wanted that process's exit status.
+ * The process reaper allows us to delay the freeing of processes, this is useful if, for example, another process
+ * wanted that process's exit status.
  */
 void process_reaper_init(void);
 

@@ -251,6 +251,11 @@ void wait_thread_ctx_init(wait_thread_ctx_t* wait);
 void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* self);
 
 /**
+ * @brief Initialize the wait subsystem.
+ */
+void wait_init(void);
+
+/**
  * @brief Finalize blocking of a thread.
  *
  * When `wait_block_commit()` is called the thread will schedule, the scheduler will then call this function to finalize

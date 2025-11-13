@@ -12,13 +12,30 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 
+#include <kernel/utils/map.h>
+#include <stdatomic.h>
 #include <stdint.h>
+#include <sys/bitmap.h>
 #include <sys/list.h>
 
 /**
  * @brief CPU
  * @defgroup kernel_cpu CPU
  * @ingroup kernel
+ *
+ * CPU structures and functions.
+ *
+ * ## Events
+ *
+ * Each CPU can generate events as certain actions happen. These events can be handled by registering event handlers
+ * using `cpu_event_handler_register()`.
+ *
+ * As an example, the `CPU_EVENT_INIT` event is useful as it allows other subsystems to perform per-CPU initialization
+ * on each CPU smoothly before or after IPIs have been initialized.
+ *
+ * ## Per-CPU Data
+ *
+ * TODO: Implement per-CPU data. Use separate linker section?
  *
  * @{
  */
@@ -52,6 +69,41 @@ typedef uint16_t cpuid_t;
 #define CPU_STACK_CANARY 0x1234567890ABCDEFULL
 
 /**
+ * @brief CPU event types.
+ * @enum cpu_event_type_t
+ */
+typedef enum
+{
+    CPU_EVENT_INIT,
+} cpu_event_type_t;
+
+/**
+ * @brief CPU event structure.
+ */
+typedef struct
+{
+    cpu_event_type_t type;
+} cpu_event_t;
+
+/**
+ * @brief Maximum number of CPU event handlers that can be registered.
+ * 
+ * We need to statically allocate the event handler array such that handlers can be registered before memory allocation has been initialized.
+ */
+#define CPU_MAX_EVENT_HANDLERS 32
+
+/**
+ * @brief CPU event function type.
+ */
+typedef void (*cpu_event_func_t)(cpu_t* cpu, const cpu_event_t* event);
+
+typedef struct
+{
+    cpu_event_func_t func;
+    BITMAP_DEFINE(initializedCpus, CPU_MAX);
+} cpu_event_handler_t;
+
+/**
  * @brief CPU structure.
  * @struct cpu_t
  *
@@ -62,6 +114,10 @@ typedef uint16_t cpuid_t;
 typedef struct cpu
 {
     cpuid_t id;
+    /**
+     * If set, then since the last check or initialization, new handlers have been registered that need a `CPU_EVENT_INIT` event sent to them.
+     */
+    atomic_bool newHandlersPending;
     tss_t tss;
     vmm_cpu_ctx_t vmm;
     interrupt_ctx_t interrupt;
@@ -94,32 +150,50 @@ extern cpu_t* _cpus[CPU_MAX];
 extern uint16_t _cpuAmount;
 
 /**
- * @brief Allows the kernel to identify the current CPU.
- *
- * This function will generate a new CPU ID and make the pointer to the `cpu_t` structure available through the CPU ID
- * MSR.
- *
- * @warning Its important to be careful when identifying CPUs, as the `_cpus` array is not protected by any locks as a
- * optimization due to how frequently its accessed. Thus, only identify CPUs when its known that no other CPUs are
- * active, such as during early boot.
- *
+ * @brief Only initialize the parts of the CPU structure needed for early boot.
+ * 
+ * The only reason we need this is to split the initialization of the bootstrap CPU to avoid circular dependencies during early boot and since we cant use memory allocation yet.
+ * 
  * @param cpu The CPU structure to initialize.
  */
-void cpu_identify(cpu_t* cpu);
+void cpu_init_early(cpu_t* cpu);
 
 /**
- * @brief Initializes a CPU structure as part of the boot process.
+ * @brief Initializes the CPU represented by the `cpu_t` structure.
  *
  * Must be called on the CPU that will be represented by the `cpu` structure, after setting the CPU ID MSR using
- * `cpu_identify()`.
- *
- * @warning See `cpu_identify()` for warnings about concurrency.
+ * `cpu_init_early()`.
  *
  * @param cpu The CPU structure to initialize.
- * @param id The ID of the CPU.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t cpu_init(cpu_t* cpu);
+void cpu_init(cpu_t* cpu);
+
+/**
+ * @brief Registers a CPU event handler for all CPUs.
+ *
+ * @param func The event function to register a handler for.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EBUSY`: Too many event handlers registered.
+ * - `EEXIST`: A handler with the same function is already registered.
+ */
+uint64_t cpu_event_handler_register(cpu_event_func_t func);
+
+/**
+ * @brief Unregisters a previously registered CPU event handler.
+ *
+ * Will be a no-op if the handler was not registered.
+ *
+ * @param func The event function of the handler to unregister, or `NULL` for no-op.
+ */
+void cpu_event_handler_unregister(cpu_event_func_t func);
+
+/**
+ * @brief Checks for new event handlers and invokes `CPU_EVENT_INIT` on them.
+ *
+ * @param cpu The CPU to check, must be the current CPU.
+ */
+void cpu_new_handlers_check(cpu_t* cpu);
 
 /**
  * @brief Checks for CPU stack overflows.
@@ -131,16 +205,11 @@ uint64_t cpu_init(cpu_t* cpu);
 void cpu_stacks_overflow_check(cpu_t* cpu);
 
 /**
- * @brief Halts the current CPU.
- *
- * The CPU will be indefinitely halted and be unrecoverable.
- */
-_NORETURN void cpu_halt(void);
-
-/**
  * @brief Halts all other CPUs.
+ *
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-void cpu_halt_others(void);
+uint64_t cpu_halt_others(void);
 
 /**
  * @brief Gets the number of identified CPUs.

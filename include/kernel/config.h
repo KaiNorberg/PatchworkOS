@@ -37,6 +37,16 @@
 #define CONFIG_MAX_USER_STACK_PAGES 100
 
 /**
+ * @brief CPU data configuration.
+ * @ingroup kernel
+ * @def CONFIG_CPU_DATA_PAGES
+ *
+ * The `CONFIG_CPU_DATA_PAGES` constant defines the amount of pages allocated for per-CPU data.
+ *
+ */
+#define CONFIG_CPU_DATA_PAGES 16
+
+/**
  * @brief Maximum file descriptor configuration.
  * @ingroup kernel
  * @def CONFIG_MAX_FD

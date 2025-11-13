@@ -23,7 +23,7 @@
 static wait_queue_t sleepQueue = WAIT_QUEUE_CREATE(sleepQueue);
 
 static irq_handler_t* dieHandler = NULL;
-static irq_handler_t* schedHandler = NULL;
+static irq_handler_t* scheduleHandler = NULL;
 
 static inline void sched_queues_init(sched_queues_t* queues)
 {
@@ -124,7 +124,7 @@ static void sched_die_irq_handler(irq_func_data_t* data)
     sched_invoke(data->frame, data->self, SCHED_DIE);
 }
 
-static void sched_sched_irq_handler(irq_func_data_t* data)
+static void sched_schedule_irq_handler(irq_func_data_t* data)
 {
     sched_invoke(data->frame, data->self, SCHED_NORMAL);
 }
@@ -137,8 +137,8 @@ void sched_init(void)
         panic(NULL, "failed to register die IRQ handler");
     }
 
-    schedHandler = irq_handler_register(IRQ_VIRT_SCHEDULE, sched_sched_irq_handler, NULL);
-    if (schedHandler == NULL)
+    scheduleHandler = irq_handler_register(IRQ_VIRT_SCHEDULE, sched_schedule_irq_handler, NULL);
+    if (scheduleHandler == NULL)
     {
         panic(NULL, "failed to register sched IRQ handler");
     }
@@ -304,12 +304,12 @@ void sched_yield(void)
     thread_t* thread = cpu_get()->sched.runThread;
     thread->sched.deadline = 0;
     cpu_put();
+    IRQ_INVOKE(IRQ_VIRT_SCHEDULE);
 }
 
 SYSCALL_DEFINE(SYS_YIELD, uint64_t)
 {
     sched_yield();
-    IRQ_INVOKE(IRQ_VIRT_SCHEDULE);
     return 0;
 }
 
@@ -365,7 +365,7 @@ void sched_push(thread_t* thread, cpu_t* target)
 
     if (shouldNotify)
     {
-        timer_notify(target);
+        ipi_invoke(target, IRQ_VIRT_SCHEDULE);
     }
 }
 
@@ -440,7 +440,7 @@ void sched_push_new_thread(thread_t* thread, thread_t* parent)
 
     if (sched_should_notify(target, thread->sched.actualPriority))
     {
-        timer_notify(target);
+        ipi_invoke(target, IRQ_VIRT_SCHEDULE);
     }
 
     cpu_put();
@@ -497,7 +497,7 @@ static void sched_load_balance(cpu_t* self)
 
     if (shouldNotifyNeighbor)
     {
-        timer_notify(neighbor);
+        ipi_invoke(neighbor, IRQ_VIRT_SCHEDULE);
     }
 }
 

@@ -39,7 +39,7 @@ void smp_others_init(void)
     assert(bootstrapCpu->id == CPU_ID_BOOTSTRAP);
     LOG_INFO("bootstrap cpu already started\n");
 
-    madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, 0);
+    madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, sizeof(madt_t), 0);
     if (madt == NULL)
     {
         panic(NULL, "MADT table not found");

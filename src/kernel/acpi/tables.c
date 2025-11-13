@@ -165,7 +165,7 @@ static uint64_t acpi_tables_load_from_xsdt(xsdt_t* xsdt)
 
 static uint64_t acpi_tables_load_from_fadt(void)
 {
-    fadt_t* fadt = (fadt_t*)acpi_tables_lookup(FADT_SIGNATURE, 0);
+    fadt_t* fadt = (fadt_t*)acpi_tables_lookup(FADT_SIGNATURE, sizeof(fadt_t), 0);
     if (fadt == NULL)
     {
         LOG_ERR("failed to find FACP table\n");
@@ -278,24 +278,39 @@ void acpi_tables_expose(void)
     }
 }
 
-sdt_header_t* acpi_tables_lookup(const char* signature, uint64_t n)
+sdt_header_t* acpi_tables_lookup(const char* signature, uint64_t minSize, uint64_t n)
 {
-    if (strlen(signature) != SDT_SIGNATURE_LENGTH)
+    if (signature == NULL || strlen(signature) != SDT_SIGNATURE_LENGTH)
     {
-        LOG_ERR("invalid signature length\n");
+        errno = EINVAL;
         return NULL;
     }
 
+    uint64_t depth = 0;
     for (uint64_t i = 0; i < tableAmount; i++)
     {
         if (memcmp(cachedTables[i].table->signature, signature, SDT_SIGNATURE_LENGTH) == 0)
         {
-            if (n-- == 0)
+            if (depth++ == n)
             {
+                if (cachedTables[i].table->length < minSize)
+                {
+                    errno = EILSEQ;
+                    return NULL;
+                }
+
                 return cachedTables[i].table;
             }
         }
     }
 
+    if (depth != 0)
+    {
+        errno = ERANGE;
+    }
+    else
+    {
+        errno = ENOENT;
+    }
     return NULL;
 }

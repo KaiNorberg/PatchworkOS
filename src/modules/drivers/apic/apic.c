@@ -267,31 +267,43 @@ typedef union {
     } raw;
 } ioapic_redirect_entry_t;
 
-static madt_t* madt;
 static uintptr_t lapicBase;
 
 static uint64_t lapic_init(void)
 {
-    void* lapicPhysAddr = (void*)(uint64_t)madt->localInterruptControllerAddress;
-    if (lapicPhysAddr == NULL)
+    madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, sizeof(madt_t), 0);
+    if (madt == NULL)
+    {
+        LOG_ERR("no MADT table found\n");
+        return ERR;
+    }
+
+    if (madt->header.length < sizeof(madt_t))
+    {
+        LOG_ERR("madt table too small\n");
+        return ERR;
+    }
+
+    if (madt->localInterruptControllerAddress == (uintptr_t)NULL)
     {
         LOG_ERR("madt has invalid lapic address\n");
         return ERR;
     }
 
-    lapicBase = (uintptr_t)PML_LOWER_TO_HIGHER(lapicPhysAddr);
-    if (vmm_map(NULL, (void*)lapicBase, lapicPhysAddr, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) ==
-        NULL)
+    lapicBase = PML_LOWER_TO_HIGHER(madt->localInterruptControllerAddress);
+    if (vmm_map(NULL, (void*)lapicBase, (void*)(uintptr_t)madt->localInterruptControllerAddress, PAGE_SIZE,
+            PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) == NULL)
     {
         LOG_ERR("failed to map local apic\n");
         return ERR;
     }
 
-    LOG_INFO("local apic mapped base=0x%016lx phys=0x%016lx\n", lapicBase, lapicPhysAddr);
+    LOG_INFO("local apic mapped base=0x%016lx phys=0x%016lx\n", lapicBase,
+        (uintptr_t)madt->localInterruptControllerAddress);
     return 0;
 }
 
-static uint64_t ioapic_all_init(void)
+/*static uint64_t ioapic_all_init(void)
 {
     pic_disable();
 
@@ -580,7 +592,7 @@ void ioapic_set_redirect(interrupt_t vector, ioapic_gsi_t gsi, ioapic_delivery_m
     ioapic_write(ioapic, IOAPIC_REG_REDIRECTION(pin, 1), redirect.raw.high);
 
     LOG_INFO("ioapic redirect set gsi=%u vector=0x%02x cpu=%u enable=%d\n", gsi, vector, cpu->id, enable);
-}
+}*/
 
 /** @} */
 
@@ -589,11 +601,16 @@ uint64_t _module_procedure(const module_event_t* event)
     switch (event->type)
     {
     case MODULE_EVENT_DEVICE_ATTACH:
+        if (lapic_init() == ERR)
+        {
+            LOG_ERR("failed to initialize apic\n");
+            return ERR;
+        }
         return 0;
     case MODULE_EVENT_DEVICE_DETACH:
         return 0;
     default:
-        return ERR_NOT_SUPPORTED;
+        return ERR;
     }
 }
 

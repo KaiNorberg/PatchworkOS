@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 static mouse_t* mouse;
+static irq_handler_t* mouseHandler;
 
 static void ps2_mouse_handle_packet(const ps2_mouse_packet_t* packet)
 {
@@ -17,11 +18,9 @@ static void ps2_mouse_handle_packet(const ps2_mouse_packet_t* packet)
     mouse_push(mouse, buttons, packet->deltaX, -packet->deltaY);
 }
 
-static void ps2_mouse_irq(irq_t irq, void* data)
+static void ps2_mouse_irq(irq_func_data_t* data)
 {
-    (void)irq; // Unused
-
-    ps2_mouse_irq_context_t* context = data;
+    ps2_mouse_irq_context_t* context = data->private;
 
     uint8_t byte;
     if (PS2_READ(&byte) == ERR)
@@ -109,6 +108,14 @@ uint64_t ps2_mouse_init(ps2_device_info_t* info)
         return ERR;
     }
 
-    irq_install(info->device == PS2_DEV_FIRST ? IRQ_PS2_FIRST_DEVICE : IRQ_PS2_SECOND_DEVICE, ps2_mouse_irq, context);
+    // TODO: ACPI aware IRQ assignment
+    mouseHandler = irq_handler_register(info->device == PS2_DEV_FIRST ? 1 : 12, ps2_mouse_irq, context);
+    if (mouseHandler == NULL)
+    {
+        free(context);
+        mouse_free(mouse);
+        LOG_ERR("failed to register PS/2 mouse IRQ handler\n");
+        return ERR;
+    }
     return 0;
 }

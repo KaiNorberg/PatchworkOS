@@ -37,9 +37,9 @@ typedef struct ipi_chip
     const char* name;
     /**
      * @brief Should invoke the given virtual IRQ on the target CPU.
-     * 
+     *
      * Should panic on failure.
-     * 
+     *
      * @param cpu The target CPU.
      * @param virt The virtual IRQ to invoke.
      */
@@ -154,7 +154,7 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* private)
 
 /**
  * @brief Trigger the specified virtual IRQ on the given CPU.
- * 
+ *
  * @param cpu The target CPU.
  * @param virt The virtual IRQ to invoke.
  */

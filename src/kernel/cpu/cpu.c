@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <kernel/cpu/cpu.h>
 
 #include <kernel/cpu/gdt.h>
@@ -11,32 +12,65 @@
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/sched/sched.h>
+#include <kernel/sync/lock.h>
+#include <kernel/sync/rwlock.h>
+#include <kernel/utils/map.h>
+#include <stdatomic.h>
 #include <stdint.h>
 #include <sys/list.h>
 
 cpu_t* _cpus[CPU_MAX] = {0};
 uint16_t _cpuAmount = 0;
 
-void cpu_identify(cpu_t* cpu)
-{
-    gdt_cpu_load();
-    idt_cpu_load();
+static cpu_event_handler_t eventHandlers[CPU_MAX_EVENT_HANDLERS] = {0};
+static uint64_t eventHandlerCount = 0;
+static lock_t eventHandlerLock = LOCK_CREATE;
 
+void cpu_init_early(cpu_t* cpu)
+{
     cpuid_t id = _cpuAmount++;
     msr_write(MSR_CPU_ID, (uint64_t)id);
 
     cpu->id = id;
     _cpus[id] = cpu;
+
+    gdt_cpu_load();
+    idt_cpu_load();
+    tss_init(&cpu->tss);
+    gdt_cpu_tss_load(&cpu->tss);
+
+    if (stack_pointer_init_buffer(&cpu->exceptionStack, cpu->exceptionStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) == ERR)
+    {
+        panic(NULL, "Failed to init exception stack for cpu %u\n", cpu->id);
+    }
+    *(uint64_t*)cpu->exceptionStack.bottom = CPU_STACK_CANARY;
+    tss_ist_load(&cpu->tss, TSS_IST_EXCEPTION, &cpu->exceptionStack);
+
+    if (stack_pointer_init_buffer(&cpu->doubleFaultStack, cpu->doubleFaultStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) ==
+        ERR)
+    {
+        stack_pointer_deinit_buffer(&cpu->exceptionStack);
+        panic(NULL, "Failed to init double fault stack for cpu %u\n", cpu->id);
+    }
+    *(uint64_t*)cpu->doubleFaultStack.bottom = CPU_STACK_CANARY;
+    tss_ist_load(&cpu->tss, TSS_IST_DOUBLE_FAULT, &cpu->doubleFaultStack);
+
+    if (stack_pointer_init_buffer(&cpu->interruptStack, cpu->interruptStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) == ERR)
+    {
+        stack_pointer_deinit_buffer(&cpu->exceptionStack);
+        stack_pointer_deinit_buffer(&cpu->doubleFaultStack);
+        panic(NULL, "Failed to init interrupt stack for cpu %u\n", cpu->id);
+    }
+    *(uint64_t*)cpu->interruptStack.bottom = CPU_STACK_CANARY;
+    tss_ist_load(&cpu->tss, TSS_IST_INTERRUPT, &cpu->interruptStack);   
 }
 
-uint64_t cpu_init(cpu_t* cpu)
+void cpu_init(cpu_t* cpu)
 {
     simd_cpu_init();
     syscalls_cpu_init();
 
-    tss_init(&cpu->tss);
     vmm_cpu_ctx_init(&cpu->vmm);
-    gdt_cpu_tss_load(&cpu->tss);
     interrupt_ctx_init(&cpu->interrupt);
     perf_cpu_ctx_init(&cpu->perf);
     timer_cpu_ctx_init(&cpu->timer);
@@ -44,36 +78,108 @@ uint64_t cpu_init(cpu_t* cpu)
     sched_cpu_ctx_init(&cpu->sched, cpu);
     ipi_cpu_ctx_init(&cpu->ipi);
 
-    if (stack_pointer_init_buffer(&cpu->exceptionStack, cpu->exceptionStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) == ERR)
+    LOCK_SCOPE(&eventHandlerLock);
+    for (uint64_t i = 0; i < eventHandlerCount; i++)
     {
-        LOG_ERR("failed to init exception stack for cpu %u\n", cpu->id);
-        return ERR;
+        cpu_event_t event = { .type = CPU_EVENT_INIT };
+        eventHandlers[i].func(cpu, &event);
+        bitmap_set(&eventHandlers[i].initializedCpus, cpu->id);
     }
-    tss_ist_load(&cpu->tss, TSS_IST_EXCEPTION, &cpu->exceptionStack);
-    *(uint64_t*)cpu->exceptionStack.bottom = CPU_STACK_CANARY;
+}
 
-    if (stack_pointer_init_buffer(&cpu->doubleFaultStack, cpu->doubleFaultStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) ==
-        ERR)
+uint64_t cpu_event_handler_register(cpu_event_func_t func)
+{
+    if (func == NULL)
     {
-        LOG_ERR("failed to init double fault stack for cpu %u\n", cpu->id);
-        stack_pointer_deinit_buffer(&cpu->exceptionStack);
+        errno = EINVAL;
         return ERR;
     }
-    tss_ist_load(&cpu->tss, TSS_IST_DOUBLE_FAULT, &cpu->doubleFaultStack);
-    *(uint64_t*)cpu->doubleFaultStack.bottom = CPU_STACK_CANARY;
 
-    if (stack_pointer_init_buffer(&cpu->interruptStack, cpu->interruptStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) == ERR)
+    LOCK_SCOPE(&eventHandlerLock);
+    if (eventHandlerCount >= CPU_MAX_EVENT_HANDLERS)
     {
-        LOG_ERR("failed to init interrupt stack for cpu %u\n", cpu->id);
-        stack_pointer_deinit_buffer(&cpu->exceptionStack);
-        stack_pointer_deinit_buffer(&cpu->doubleFaultStack);
+        errno = EBUSY;
         return ERR;
     }
-    tss_ist_load(&cpu->tss, TSS_IST_INTERRUPT, &cpu->interruptStack);
-    *(uint64_t*)cpu->interruptStack.bottom = CPU_STACK_CANARY;
+
+    for (uint64_t i = 0; i < eventHandlerCount; i++)
+    {
+        if (eventHandlers[i].func == func)
+        {
+            errno = EEXIST;
+            return ERR;
+        }
+    }
+
+    cpu_event_handler_t* eventHandler = &eventHandlers[eventHandlerCount++];
+    eventHandler->func = func;
+    BITMAP_DEFINE_INIT(eventHandler->initializedCpus, CPU_MAX);
+    bitmap_clear_range(&eventHandler->initializedCpus, 0, CPU_MAX);
+
+    cpu_t* self = cpu_get_unsafe();
+    if (self != NULL)
+    {
+        cpu_event_t event = { .type = CPU_EVENT_INIT };
+        eventHandler->func(self, &event);
+        bitmap_set(&eventHandler->initializedCpus, self->id);
+    }
+
+    cpu_t* cpu;
+    CPU_FOR_EACH(cpu)
+    {
+        if (cpu == self)
+        {
+            continue;
+        }
+        atomic_store(&cpu->newHandlersPending, true);
+    }
 
     return 0;
 }
+
+void cpu_event_handler_unregister(cpu_event_func_t func)
+{
+    if (func == NULL)
+    {
+        return;
+    }
+
+    LOCK_SCOPE(&eventHandlerLock);
+
+    for (uint64_t i = 0; i < eventHandlerCount; i++)
+    {
+        cpu_event_handler_t* eventHandler = &eventHandlers[i];
+        if (eventHandler->func == func)
+        {
+            eventHandler->func = NULL;
+            eventHandlerCount--;
+            memmove(&eventHandlers[i], &eventHandlers[i + 1],
+                (CPU_MAX_EVENT_HANDLERS - i - 1) * sizeof(cpu_event_func_t));
+            break;
+        }
+    }
+}
+
+void cpu_new_handlers_check(cpu_t* cpu)
+{
+    bool expected = true;
+    if (!atomic_compare_exchange_strong(&cpu->newHandlersPending, &expected, false))
+    {
+        return;
+    }
+
+    LOCK_SCOPE(&eventHandlerLock);
+    for (uint64_t i = 0; i < eventHandlerCount; i++)
+    {
+        cpu_event_handler_t* eventHandler = &eventHandlers[i];
+        if (!bitmap_is_set(&eventHandler->initializedCpus, cpu->id))
+        {
+            cpu_event_t event = { .type = CPU_EVENT_INIT };
+            eventHandler->func(cpu, &event);
+            bitmap_set(&eventHandler->initializedCpus, cpu->id);
+        }
+    }
+} 
 
 void cpu_stacks_overflow_check(cpu_t* cpu)
 {
@@ -103,10 +209,11 @@ static void cpu_halt_ipi_handler(irq_func_data_t* data)
     __builtin_unreachable();
 }
 
-void cpu_halt_others(void)
+uint64_t cpu_halt_others(void)
 {
     if (ipi_send(cpu_get_unsafe(), IPI_OTHERS, cpu_halt_ipi_handler, NULL) == ERR)
     {
-        panic(NULL, "failed to send halt IPI to other CPUs");
+        return ERR;
     }
+    return 0;
 }

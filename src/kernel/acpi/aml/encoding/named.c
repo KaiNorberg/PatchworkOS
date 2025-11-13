@@ -1236,7 +1236,7 @@ uint64_t aml_def_data_region_read(aml_term_list_ctx_t* ctx)
     sdt_header_t* table = NULL;
     while (1)
     {
-        table = acpi_tables_lookup(signature->content, index++);
+        table = acpi_tables_lookup(signature->content, sizeof(sdt_header_t), index++);
         if (table == NULL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to find ACPI table with signature '%s', oemId '%s' and oemTableId '%s'",

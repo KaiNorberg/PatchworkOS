@@ -195,7 +195,7 @@ static sys_time_source_t source = {
  */
 static uint64_t hpet_init(void)
 {
-    hpet = (hpet_t*)acpi_tables_lookup("HPET", 0);
+    hpet = (hpet_t*)acpi_tables_lookup("HPET", sizeof(hpet_t), 0);
     if (hpet == NULL)
     {
         LOG_ERR("failed to locate HPET table\n");

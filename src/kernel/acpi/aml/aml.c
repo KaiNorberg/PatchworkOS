@@ -61,7 +61,7 @@ static inline uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
 
 static inline uint64_t aml_init_parse_all(void)
 {
-    dsdt_t* dsdt = (dsdt_t*)acpi_tables_lookup(DSDT_SIGNATURE, 0);
+    dsdt_t* dsdt = (dsdt_t*)acpi_tables_lookup(DSDT_SIGNATURE, sizeof(dsdt_t), 0);
     if (dsdt == NULL)
     {
         LOG_ERR("failed to retrieve DSDT\n");
@@ -81,7 +81,7 @@ static inline uint64_t aml_init_parse_all(void)
     ssdt_t* ssdt = NULL;
     while (true)
     {
-        ssdt = (ssdt_t*)acpi_tables_lookup(SSDT_SIGNATURE, index);
+        ssdt = (ssdt_t*)acpi_tables_lookup(SSDT_SIGNATURE, sizeof(ssdt_t), index);
         if (ssdt == NULL)
         {
             break;

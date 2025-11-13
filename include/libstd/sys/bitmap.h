@@ -74,6 +74,25 @@ typedef struct
 #define BITMAP_CREATE(buffer, length) {0, length, buffer}
 
 /**
+ * @brief Define a bitmap and its buffer.
+ *
+ * @param name Name of the bitmap.
+ * @param bits Length of the bitmap in bits.
+ */
+#define BITMAP_DEFINE(name, bits) \
+    uint8_t name##Buffer[BITMAP_BITS_TO_QWORDS(bits)]; \
+    bitmap_t name
+
+/**
+ * @brief Initialize a bitmap defined with `BITMAP_DEFINE`.
+ *
+ * @param name Name of the bitmap.
+ * @param bits Length of the bitmap in bits.
+ */
+#define BITMAP_DEFINE_INIT(name, bits) \
+    bitmap_init(&name, name##Buffer, bits);
+
+/**
  * @brief Initialize a bitmap.
  *
  * @param map The bitmap.

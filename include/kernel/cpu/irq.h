@@ -25,8 +25,7 @@ typedef struct irq irq_t;
  *
  * The IRQ chips are implemented in a driver and they are responsible for the actual physical to virtual mapping.
  *
- * Note that physical to virtual mapping might not be 1:1, they can differ per CPU, and that there could be multiple
- * `irq_chip_t`s in the system.
+ * Note that physical to virtual mapping might not be 1:1 and that there could be multiple `irq_chip_t`s in the system.
  *
  * So, for example, say we receive a physical IRQ 1, which is usually the ps2 keyboard interrupt. Lets also say we have
  * a single IRQ chip, the IOAPIC, which is configured to map physical IRQ 1 to virtual IRQ 0x21 on CPU 0. We would then
@@ -80,10 +79,10 @@ typedef enum
     IRQ_VIRT_CONTROL_PROTECTION_EXCEPTION = 0x15,
     IRQ_VIRT_EXCEPTION_END = 0x20,
 
-    IRQ_VIRT_IPI = 0x20,   ///< See @ref kernel_cpu_ipi for more information.
-    IRQ_VIRT_DIE = 0x21,   ///< Used by the scheduler to kill the current thread.
+    IRQ_VIRT_IPI = 0x20,      ///< See @ref kernel_cpu_ipi for more information.
+    IRQ_VIRT_DIE = 0x21,      ///< Used by the scheduler to kill the current thread.
     IRQ_VIRT_SCHEDULE = 0x22, ///< Used by the scheduler to schedule a new thread.
-    IRQ_VIRT_TIMER = 0x23, ///< Per-CPU timer interrupt.
+    IRQ_VIRT_TIMER = 0x23,    ///< Per-CPU timer interrupt.
 
     IRQ_VIRT_EXTERNAL_START = 0x30, ///< Start of external interrupts (mapped by IRQ chips).
     IRQ_VIRT_EXTERNAL_END = 0xFF,
@@ -196,12 +195,12 @@ typedef struct irq_chip
 /**
  * @brief Invoke the given virtual IRQ.
  *
- * @warning Even tho its technically possible to use the `int` instruction with interrupts disabled, doing so will cause a panic in the interrupt handler as a sanity check. Therefore only use this macro with interrupts enabled.
- * 
+ * @warning Even tho its technically possible to use the `int` instruction with interrupts disabled, doing so will cause
+ * a panic in the interrupt handler as a sanity check. Therefore only use this macro with interrupts enabled.
+ *
  * @param virt The virtual IRQ to invoke.
  */
-#define IRQ_INVOKE(virt) \
-    asm volatile("int %0" : : "i"(virt));
+#define IRQ_INVOKE(virt) asm volatile("int %0" : : "i"(virt));
 
 /**
  * @brief Initialize the IRQ subsystem.
@@ -213,6 +212,10 @@ void irq_init(void);
  *
  * This function is called from `interrupt_handler()` when an IRQ is received. It will call all registered handlers
  * for the IRQ and handle acknowledging and EOI as needed.
+ *
+ * If the IRQ is a exception, the `self` cpu pointer in the `irq_func_data_t` will be `NULL` and if the exception IRQ
+ * does not have any registered handlers and the exception is from user mode, the process will be killed, if the
+ * exception is from kernel mode, the kernel will panic.
  *
  * Will panic on failure.
  *

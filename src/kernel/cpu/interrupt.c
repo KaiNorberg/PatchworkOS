@@ -93,6 +93,7 @@ void interrupt_handler(interrupt_frame_t* frame)
         return;
     }
 
+    // TODO: Redo all of this stuff
     /*perf_interrupt_begin(self);
     switch (frame->vector)
     {

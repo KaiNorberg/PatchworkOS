@@ -6,6 +6,7 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/module/symbol.h>
+#include <kernel/sched/sys_time.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 
