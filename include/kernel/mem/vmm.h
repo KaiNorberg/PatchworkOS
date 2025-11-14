@@ -32,9 +32,7 @@
  * very easily copy mappings between address spaces by just copying the relevant PML4 entries.
  *
  * First, at the very top, we have the kernel binary itself and all its data, code, bss, rodata, etc. This region uses
- * the the last index in the page table. This region will never be fully filled and the kernel itself is not guaranteed
- * to be loaded at the very start of this region, the exact address is decided by the `linker.lds` script. This section
- * is mapped identically for all processes.
+ * the last index in the page table. This region will never be fully filled and the kernel itself is not guaranteed to be loaded at the very start of this region, the exact address is decided by the `linker.lds` script. This section is mapped identically for all processes.
  *
  * Secondly, we have the per-thread kernel stacks, one stack per thread. Each stack is allocated on demand and can grow
  * dynamically up to `CONFIG_MAX_KERNEL_STACK_PAGES` pages not including its guard page. This section takes up 2 indices
@@ -120,8 +118,8 @@ typedef struct
  */
 typedef enum
 {
-    VMM_ALLOC_NONE = 0x0,
-    VMM_ALLOC_FAIL_IF_MAPPED = 0x1 ///< If set and any page is already mapped, fail and set `errno` to `EEXIST`.
+    VMM_ALLOC_OVERWRITE = 0 << 0, ///< If any page is already mapped, overwrite the mapping.
+    VMM_ALLOC_FAIL_IF_MAPPED = 1 << 0 ///< If set and any page is already mapped, fail and set `errno` to `EEXIST`.
 } vmm_alloc_flags_t;
 
 /**
@@ -187,9 +185,7 @@ pml_flags_t vmm_prot_to_flags(prot_t prot);
  * @brief Allocates and maps virtual memory in a given address space.
  *
  * The allocated memory will be backed by newly allocated physical memory pages and is not guaranteed to be zeroed.
- *
- * Will overwrite any existing mappings in the specified range if `VMM_ALLOC_FAIL_IF_MAPPED` is not set.
- *
+ * 
  * @see `vmm_map()` for details on TLB shootdowns.
  *
  * @param space The target address space, if `NULL`, the kernel space is used.

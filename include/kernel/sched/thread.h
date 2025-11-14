@@ -170,18 +170,6 @@ uint64_t thread_send_note(thread_t* thread, const void* buffer, uint64_t count);
 thread_t* thread_get_boot(void);
 
 /**
- * @brief Handles a page fault that occurred in the currently running thread.
- *
- * Called by the interrupt handler when a page fault occurs and allows the currently running thread to attempt to grow
- * its stacks if the faulting address is within one of its stack regions.
- *
- * @param frame The interrupt frame containing the CPU state at the time of the page fault.
- * @return If the page fault was handled and the thread can continue executing, returns 0. If the thread must be killed,
- * `ERR` and `errno` is set.
- */
-uint64_t thread_handle_page_fault(const interrupt_frame_t* frame);
-
-/**
  * @brief Safely copy data from user space.
  *
  * Will pin the user pages in memory while performing the copy and expand the user stack if necessary.

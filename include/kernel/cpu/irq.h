@@ -33,9 +33,11 @@ typedef struct irq irq_t;
  *
  * ## External and Internal IRQs
  *
- * There are some exceptions to the physical to virtual mappings, by coincidence these exceptions are... exceptions and
- * IPIs used internally by the kernel. As in, page faults, general protection faults, timer interrupts, etc. These IRQs
- * dont have mappings and are instead fixed. See `irq_virt_t` for the full list.
+ * There are some exceptions to the physical to virtual mappings, we call these "Internal IRQs". These are mainly exceptions and IPIs used internally by the kernel. As in, page faults, general protection faults, timer interrupts, etc. These "IRQs" dont have mappings and are instead fixed. See `irq_virt_t` for the full list. 
+ * 
+ * Note that while we give `irq_virt_t` numbers for exceptions they are not handled by the IRQ system as they are really not IRQs and, since exceptions usually means something when wrong, we want to avoid using as many parts of the kernel as reasonable while handling them. 
+ * 
+ * In the CPU exceptions are hardwired to occur when certain conditions are meet, unlike IPIs or external IRQs which are triggered by specialized hardware (`irq_chip_t` or `ipi_chip_t`). Exceptions are handled directly in `interrupt_handler()`. 
  *
  * TODO: Currently, this system is still simplistic. For example, it cant handle trees of IRQ chips, or multiple chips
  * handling the same physical IRQs. This should be fixed in the future as needed.
@@ -50,8 +52,10 @@ typedef struct irq irq_t;
 typedef uint64_t irq_phys_t;
 
 /**
- * @brief Virtual IRQ numbers.
+ * @brief Central listing of all virtual IRQ numbers.
  * @enum irq_virt_t
+ * 
+ * Lists all IRQs, even ones not handled by the IRQ system.
  */
 typedef enum
 {
@@ -213,15 +217,14 @@ void irq_init(void);
  * This function is called from `interrupt_handler()` when an IRQ is received. It will call all registered handlers
  * for the IRQ and handle acknowledging and EOI as needed.
  *
- * If the IRQ is a exception, the `self` cpu pointer in the `irq_func_data_t` will be `NULL` and if the exception IRQ
- * does not have any registered handlers and the exception is from user mode, the process will be killed, if the
- * exception is from kernel mode, the kernel will panic.
- *
+ * Should not be called for exceptions.
+ * 
  * Will panic on failure.
  *
  * @param frame The interrupt frame of the IRQ.
+ * @param self The CPU on which the IRQ was received.
  */
-void irq_dispatch(interrupt_frame_t* frame);
+void irq_dispatch(interrupt_frame_t* frame, cpu_t* self);
 
 /**
  * @brief Allocate and install an IRQ.

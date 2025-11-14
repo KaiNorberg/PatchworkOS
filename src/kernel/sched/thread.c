@@ -184,63 +184,6 @@ thread_t* thread_get_boot(void)
     return &bootThread;
 }
 
-uint64_t thread_handle_page_fault(const interrupt_frame_t* frame)
-{
-    thread_t* thread = sched_thread_unsafe();
-    if (thread == NULL)
-    {
-        return ERR;
-    }
-    uintptr_t faultAddr = (uintptr_t)cr2_read();
-
-    if (frame->errorCode & PAGE_FAULT_PRESENT)
-    {
-        errno = EFAULT;
-        return ERR;
-    }
-
-    uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
-    if (stack_pointer_is_in_stack(&thread->userStack, alignedFaultAddr, 1))
-    {
-        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PML_WRITE | PML_PRESENT | PML_USER,
-                VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
-        {
-            if (errno == EEXIST) // Race condition, another CPU mapped the page.
-            {
-                return 0;
-            }
-
-            return ERR;
-        }
-        memset((void*)alignedFaultAddr, 0, PAGE_SIZE);
-        return 0;
-    }
-
-    if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
-
-    if (stack_pointer_is_in_stack(&thread->kernelStack, alignedFaultAddr, 1))
-    {
-        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PML_WRITE | PML_PRESENT,
-                VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
-        {
-            if (errno == EEXIST) // Race condition, another CPU mapped the page.
-            {
-                return 0;
-            }
-            return ERR;
-        }
-        memset((void*)alignedFaultAddr, 0, PAGE_SIZE);
-        return 0;
-    }
-
-    errno = EFAULT;
-    return ERR;
-}
-
 uint64_t thread_copy_from_user(thread_t* thread, void* dest, const void* userSrc, uint64_t length)
 {
     if (thread == NULL || dest == NULL || userSrc == NULL || length == 0)

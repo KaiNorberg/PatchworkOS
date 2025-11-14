@@ -23,6 +23,7 @@
 #include <kernel/proc/process.h>
 #include <kernel/sched/loader.h>
 #include <kernel/sched/sched.h>
+#include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 

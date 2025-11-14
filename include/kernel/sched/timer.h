@@ -101,12 +101,22 @@ uint64_t timer_source_register(const timer_source_t* source);
 void timer_source_unregister(const timer_source_t* source);
 
 /**
+ * @brief Get the amount of registered timer sources.
+ *
+ * @return The amount of registered timer sources.
+ */
+uint64_t timer_source_amount(void);
+
+/**
  * @brief Schedule a one-shot timer interrupt.
  *
  * Sets the per-cpu timer to generate a interrupt after the specified timeout.
+ * 
  * Multiple calls with different timeouts will result in the timer being set for the shortest requested timeout, this
  * will be reset after a timer interrupt.
  *
+ * The reason we need to specify the current uptime, is not just as a slight optimization, but also to ensure the caller knows exactly what time they are scheduling the timer for, as the uptime could change between the caller reading the time and this function setting the timer, resulting in very subtle bugs or race conditions.
+ * 
  * @param cpu The CPU to set the timer for.
  * @param uptime The time since boot, we need to specify this as an argument to avoid inconsistency in the
  * timeout/deadline calculations.

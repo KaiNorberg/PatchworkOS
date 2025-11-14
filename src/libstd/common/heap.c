@@ -17,7 +17,7 @@ static lock_t mutex;
 
 void* _heap_map_memory(uint64_t size)
 {
-    void* addr = vmm_alloc(NULL, NULL, size, PML_PRESENT | PML_WRITE | PML_GLOBAL, VMM_ALLOC_NONE);
+    void* addr = vmm_alloc(NULL, NULL, size, PML_PRESENT | PML_WRITE | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
     if (addr == NULL)
     {
         return NULL;

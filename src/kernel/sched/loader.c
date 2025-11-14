@@ -59,7 +59,7 @@ static void* loader_load_program(thread_t* thread)
     elf64_get_loadable_bounds(&elf, &minAddr, &maxAddr);
     uint64_t loadSize = maxAddr - minAddr;
 
-    if (vmm_alloc(&process->space, (void*)minAddr, loadSize, PML_USER | PML_WRITE | PML_PRESENT, VMM_ALLOC_NONE) ==
+    if (vmm_alloc(&process->space, (void*)minAddr, loadSize, PML_USER | PML_WRITE | PML_PRESENT, VMM_ALLOC_OVERWRITE) ==
         NULL)
     {
         free(fileData);

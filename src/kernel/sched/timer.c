@@ -102,13 +102,20 @@ void timer_source_unregister(const timer_source_t* source)
     rwlock_write_release(&sourcesLock);
 }
 
+uint64_t timer_source_amount(void)
+{
+    rwlock_read_acquire(&sourcesLock);
+    uint64_t amount = sourceCount;
+    rwlock_read_release(&sourcesLock);
+    return amount;
+}
+
 void timer_set(cpu_t* cpu, clock_t uptime, clock_t timeout)
 {
     if (cpu == NULL || timeout == CLOCKS_NEVER)
     {
         return;
     }
-    assert(uptime <= sys_time_uptime());
 
     RWLOCK_READ_SCOPE(&sourcesLock);
 

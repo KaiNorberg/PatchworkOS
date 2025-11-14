@@ -171,6 +171,8 @@ void cpu_init(cpu_t* cpu);
 /**
  * @brief Registers a CPU event handler for all CPUs.
  *
+ * The registered handler will be immediately invoked with a `CPU_EVENT_INIT` event on the current CPU, and then invoked on all others when they call `cpu_new_handlers_check()` and any new cpus as well when they are initialized.
+ * 
  * @param func The event function to register a handler for.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.

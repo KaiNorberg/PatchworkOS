@@ -229,6 +229,9 @@ typedef struct
  *
  * If `flags & PML_USER` then the addresses must be in the user space range.
  *
+ * @note Handling page faults to grow stacks requires mapping memory, this means that if we were to run out of memory while 
+ * executing this function, it could lead to a deadlock. To avoid this, this function will call `stack_pointer_poke()` to ensure that sufficient stack space is available.
+ *
  * @param space The target address space.
  * @param mapping Will be filled with parsed information about the mapping.
  * @param virtAddr The virtual address the mapping will apply to. Can be `NULL` to let the kernel choose an address.

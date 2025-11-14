@@ -551,6 +551,8 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
         }
     }
 
+    stack_pointer_poke(1000); // 1000 bytes should be enough.
+
     lock_acquire(&space->lock);
 
     uint64_t pageAmount;

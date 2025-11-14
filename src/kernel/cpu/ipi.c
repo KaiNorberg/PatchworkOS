@@ -93,12 +93,25 @@ void ipi_chip_unregister(ipi_chip_t* chip)
 
 static uint64_t ipi_push(cpu_t* cpu, ipi_func_t func, void* private)
 {
+    if (registeredChip == NULL)
+    {
+        errno = ENODEV;
+        return ERR;
+    }
+
+    if (registeredChip->invoke == NULL)
+    {
+        errno = ENOSYS;
+        return ERR;
+    }
+
     ipi_cpu_ctx_t* ctx = &cpu->ipi;
     LOCK_SCOPE(&ctx->lock);
 
     uint64_t nextWriteIndex = (ctx->writeIndex + 1) % IPI_QUEUE_SIZE;
     if (nextWriteIndex == ctx->readIndex)
     {
+        errno = EBUSY;
         return ERR;
     }
 
@@ -118,18 +131,6 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* private)
 
     RWLOCK_READ_SCOPE(&chipLock);
 
-    if (registeredChip == NULL)
-    {
-        errno = ENODEV;
-        return ERR;
-    }
-
-    if (registeredChip->invoke == NULL)
-    {
-        errno = ENOSYS;
-        return ERR;
-    }
-
     switch (flags & IPI_OTHERS)
     {
     case IPI_SINGLE:
@@ -142,7 +143,6 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* private)
 
         if (ipi_push(cpu, func, private) == ERR)
         {
-            errno = EBUSY;
             return ERR;
         }
 
@@ -156,7 +156,6 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* private)
         {
             if (ipi_push(cpu, func, private) == ERR)
             {
-                errno = EBUSY;
                 return ERR;
             }
 
@@ -183,7 +182,6 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* private)
 
             if (ipi_push(cpu, func, private) == ERR)
             {
-                errno = EBUSY;
                 return ERR;
             }
 

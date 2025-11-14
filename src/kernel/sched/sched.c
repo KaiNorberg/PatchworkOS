@@ -155,6 +155,11 @@ void sched_done_with_boot_thread(void)
     ctx->runThread->sched.deadline = 0;
     ctx->idleThread = ctx->runThread;
 
+    if (timer_source_amount() == 0)
+    {
+        panic(NULL, "No timer source registered, cannot continue");
+    }
+
     timer_set(self, sys_time_uptime(), 0); // Set timer to trigger in the idle loop.
     asm volatile("sti");
     // When we return here the boot thread will be an idle thread so we just enter the idle loop.

@@ -46,7 +46,7 @@ void irq_init(void)
     }
 }
 
-void irq_dispatch(interrupt_frame_t* frame)
+void irq_dispatch(interrupt_frame_t* frame, cpu_t* self)
 {
     irq_virt_t virt = (irq_virt_t)frame->vector;
 
@@ -55,7 +55,10 @@ void irq_dispatch(interrupt_frame_t* frame)
         panic(NULL, "invalid irq vector 0x%x", frame->vector);
     }
 
-    cpu_t* self = virt < IRQ_VIRT_EXCEPTION_END ? cpu_get_unsafe() : NULL;
+    if (virt < IRQ_VIRT_EXCEPTION_START)
+    {
+        panic(NULL, "exception irq 0x%x dispatched through irq system", virt);
+    }
 
     irq_desc_t* desc = &descriptors[virt];
     RWLOCK_READ_SCOPE(&desc->lock);

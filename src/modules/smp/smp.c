@@ -58,7 +58,7 @@ void smp_others_init(void)
             continue;
         }
 
-        cpu_t* cpu = vmm_alloc(NULL, NULL, sizeof(cpu_t), PML_WRITE | PML_PRESENT | PML_GLOBAL, VMM_ALLOC_NONE);
+        cpu_t* cpu = vmm_alloc(NULL, NULL, sizeof(cpu_t), PML_WRITE | PML_PRESENT | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
         if (cpu == NULL)
         {
             panic(NULL, "Failed to allocate memory for cpu with lapicid %d", (uint64_t)lapic->apicId);

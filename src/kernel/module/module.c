@@ -560,7 +560,7 @@ static uint64_t module_load_and_relocate_elf(module_t* module, Elf64_File* elf, 
     uint64_t moduleMemSize = maxVaddr - minVaddr;
 
     // Will be unmapped in module_free
-    module->baseAddr = vmm_alloc(NULL, NULL, moduleMemSize, PML_PRESENT | PML_WRITE | PML_GLOBAL, VMM_ALLOC_NONE);
+    module->baseAddr = vmm_alloc(NULL, NULL, moduleMemSize, PML_PRESENT | PML_WRITE | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
     if (module->baseAddr == NULL)
     {
         return ERR;

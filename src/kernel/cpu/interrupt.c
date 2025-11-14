@@ -45,12 +45,70 @@ void interrupt_enable(void)
     }
 }
 
-/*static void exception_handler(interrupt_frame_t* frame)
+
+uint64_t page_fault_handler(const interrupt_frame_t* frame)
+{
+    thread_t* thread = sched_thread_unsafe();
+    if (thread == NULL)
+    {
+        return ERR;
+    }
+    uintptr_t faultAddr = (uintptr_t)cr2_read();
+
+    if (frame->errorCode & PAGE_FAULT_PRESENT)
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
+    if (stack_pointer_is_in_stack(&thread->userStack, alignedFaultAddr, 1))
+    {
+        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PML_WRITE | PML_PRESENT | PML_USER,
+                VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
+        {
+            if (errno == EEXIST) // Race condition, another CPU mapped the page.
+            {
+                return 0;
+            }
+
+            return ERR;
+        }
+        memset((void*)alignedFaultAddr, 0, PAGE_SIZE);
+        return 0;
+    }
+
+    if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    if (stack_pointer_is_in_stack(&thread->kernelStack, alignedFaultAddr, 1))
+    {
+        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PML_WRITE | PML_PRESENT,
+                VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
+        {
+            if (errno == EEXIST) // Race condition, another CPU mapped the page.
+            {
+                return 0;
+            }
+            return ERR;
+        }
+        memset((void*)alignedFaultAddr, 0, PAGE_SIZE);
+        return 0;
+    }
+
+    errno = EFAULT;
+    return ERR;
+}
+
+static void exception_handler(interrupt_frame_t* frame)
 {
     switch (frame->vector)
     {
-    case EXCEPTION_PAGE_FAULT:
-        if (thread_handle_page_fault(frame) != ERR)
+    case IRQ_VIRT_PAGE_FAULT:
+        if (page_fault_handler(frame) != ERR)
         {
             return;
         }
@@ -82,70 +140,23 @@ void interrupt_enable(void)
     {
         panic(frame, "unhandled kernel exception");
     }
-}*/
+}
 
 void interrupt_handler(interrupt_frame_t* frame)
-{
-    irq_dispatch(frame);
-
+{    
     if (frame->vector < IRQ_VIRT_EXCEPTION_END) // Avoid extra stuff for exceptions
     {
+        exception_handler(frame);
         return;
     }
+    
+    cpu_t* self = cpu_get_unsafe();
+    perf_interrupt_begin(self);
 
-    // TODO: Redo all of this stuff
-    /*perf_interrupt_begin(self);
-    switch (frame->vector)
-    {
-    case INTERRUPT_TLB_SHOOTDOWN:
-    {
-        vmm_shootdown_handler(frame, self);
-        lapic_eoi();
-    }
-    break;
-    case INTERRUPT_DIE:
-    {
-        sched_invoke(frame, self, SCHED_DIE);
-    }
-    break;
-    case INTERRUPT_NOTE:
-    {
-        // Notes should only be handled when in user space otherwise we get so many edge cases to deal with.
-        // There is a check when a system call occurs to make sure that the note will eventually be handled.
-        if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
-        {
-            note_interrupt_handler(frame, self);
-        }
-        lapic_eoi();
-    }
-    break;
-    case INTERRUPT_TIMER:
-    {
-        timer_interrupt_handler(frame, self);
-        lapic_eoi();
-    }
-    break;
-    case INTERRUPT_HALT:
-    {
-        cpu_halt();
-    }
-    break;
-    default:
-    {
-        if (frame->vector < EXTERNAL_INTERRUPT_BASE + IRQ_AMOUNT)
-        {
-            irq_dispatch(frame);
-        }
-        else
-        {
-            panic(frame, "Unknown vector");
-        }
-    }
-    break;
-    }
-    perf_interrupt_end(self);*/
+    irq_dispatch(frame, self);
+    cpu_stacks_overflow_check((cpu_t*)self);
 
-    cpu_stacks_overflow_check(cpu_get_unsafe());
+    perf_interrupt_end(self);
 
     // This is a sanity check to make sure blocking and scheduling is functioning correctly. For instance, a trap should
     // never return with a lock acquired nor should one be invoked with a lock acquired.
