@@ -412,6 +412,12 @@ uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset
 
             switch (type)
             {
+            case R_X86_64_64:
+                *patchAddr = base + value + rela[j].r_addend;
+                break;
+            case R_X86_64_PC32:
+                *patchAddr = base + value + rela[j].r_addend - (Elf64_Addr)patchAddr;
+                break;
             case R_X86_64_GLOB_DAT:
             case R_X86_64_JUMP_SLOT:
                 *patchAddr = (uint64_t)resolve_symbol(symName, private);

@@ -607,20 +607,30 @@ static void process_reaper(void)
 {
     while (1)
     {
-        LOCK_SCOPE(&zombiesLock);
+        sched_nanosleep(CONFIG_PROCESS_REAPER_INTERVAL);
 
+        lock_acquire(&zombiesLock);
         clock_t uptime = sys_time_uptime();
         if (uptime < nextReaperTime)
         {
-            return;
+            lock_release(&zombiesLock);
+            continue;
         }
         nextReaperTime = CLOCKS_NEVER;
 
-        list_t* current = &zombies;
-        while (!list_is_empty(current))
-        {
-            process_t* process = CONTAINER_OF(list_pop_first(current), process_t, zombieEntry);
+        list_t localZombies = LIST_CREATE(localZombies);
 
+        while (!list_is_empty(&zombies))
+        {
+            process_t* process = CONTAINER_OF(list_pop_first(&zombies), process_t, zombieEntry);
+            list_push_back(&localZombies, &process->zombieEntry);
+        }
+
+        lock_release(&zombiesLock);
+
+        while (!list_is_empty(&localZombies))
+        {
+            process_t* process = CONTAINER_OF(list_pop_first(&localZombies), process_t, zombieEntry);
             DEREF(process->dir);
             DEREF(process->prioFile);
             DEREF(process->cwdFile);

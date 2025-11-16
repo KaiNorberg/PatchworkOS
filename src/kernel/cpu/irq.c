@@ -259,7 +259,7 @@ uint64_t irq_set_affinity(irq_t* irq, cpu_t* cpu)
     return 0;
 }
 
-uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end)
+uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, void* private)
 {
     if (chip == NULL || chip->enable == NULL || chip->disable == NULL || start >= end)
     {
@@ -287,6 +287,7 @@ uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end)
     }
     list_entry_init(&domain->entry);
     domain->chip = chip;
+    domain->private = private;
     domain->start = start;
     domain->end = end;
 
@@ -334,9 +335,9 @@ uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end)
     return 0;
 }
 
-void irq_chip_unregister(irq_chip_t* chip)
+void irq_chip_unregister(irq_chip_t* chip, irq_phys_t start, irq_phys_t end)
 {
-    if (chip == NULL)
+    if (chip == NULL || start >= end)
     {
         return;
     }
@@ -348,6 +349,11 @@ void irq_chip_unregister(irq_chip_t* chip)
     LIST_FOR_EACH_SAFE(domain, temp, &domains, entry)
     {
         if (domain->chip != chip)
+        {
+            continue;
+        }
+
+        if (MAX(start, domain->start) >= MIN(end, domain->end))
         {
             continue;
         }
@@ -373,6 +379,12 @@ void irq_chip_unregister(irq_chip_t* chip)
     }
 }
 
+uint64_t irq_chip_amount(void)
+{
+    RWLOCK_READ_SCOPE(&domainsLock);
+    return list_length(&domains);
+}
+
 irq_handler_t* irq_handler_register(irq_virt_t virt, irq_func_t func, void* private)
 {
     if (virt >= IRQ_VIRT_TOTAL_AMOUNT || func == NULL)
@@ -383,6 +395,12 @@ irq_handler_t* irq_handler_register(irq_virt_t virt, irq_func_t func, void* priv
 
     irq_desc_t* desc = &descriptors[virt];
     RWLOCK_WRITE_SCOPE(&desc->lock);
+
+    if (desc->irq == NULL)
+    {
+        errno = ENOENT;
+        return NULL;
+    }
 
     irq_handler_t* handler = malloc(sizeof(irq_handler_t));
     if (handler == NULL)

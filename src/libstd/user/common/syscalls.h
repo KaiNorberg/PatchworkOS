@@ -195,14 +195,14 @@ static inline void* _syscall_mmap(fd_t fd, void* address, uint64_t length, prot_
     return _SYSCALL4(void*, SYS_MMAP, fd_t, fd, void*, address, uint64_t, length, prot_t, prot);
 }
 
-static inline uint64_t _syscall_munmap(void* address, uint64_t length)
+static inline void* _syscall_munmap(void* address, uint64_t length)
 {
-    return _SYSCALL2(uint64_t, SYS_MUNMAP, void*, address, uint64_t, length);
+    return _SYSCALL2(void*, SYS_MUNMAP, void*, address, uint64_t, length);
 }
 
-static inline uint64_t _syscall_mprotect(void* address, uint64_t length, prot_t prot)
+static inline void* _syscall_mprotect(void* address, uint64_t length, prot_t prot)
 {
-    return _SYSCALL3(uint64_t, SYS_MPROTECT, void*, address, uint64_t, length, prot_t, prot);
+    return _SYSCALL3(void*, SYS_MPROTECT, void*, address, uint64_t, length, prot_t, prot);
 }
 
 static inline uint64_t _syscall_getdents(fd_t fd, dirent_t* buffer, uint64_t count)

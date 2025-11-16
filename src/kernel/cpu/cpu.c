@@ -22,7 +22,7 @@
 cpu_t* _cpus[CPU_MAX] = {0};
 uint16_t _cpuAmount = 0;
 
-static cpu_event_handler_t eventHandlers[CPU_MAX_EVENT_HANDLERS] = {0};
+static cpu_handler_t eventHandlers[CPU_MAX_EVENT_HANDLERS] = {0};
 static uint64_t eventHandlerCount = 0;
 static lock_t eventHandlerLock = LOCK_CREATE;
 
@@ -81,13 +81,13 @@ void cpu_init(cpu_t* cpu)
     LOCK_SCOPE(&eventHandlerLock);
     for (uint64_t i = 0; i < eventHandlerCount; i++)
     {
-        cpu_event_t event = { .type = CPU_EVENT_INIT };
+        cpu_event_t event = { .type = CPU_ONLINE };
         eventHandlers[i].func(cpu, &event);
         bitmap_set(&eventHandlers[i].initializedCpus, cpu->id);
     }
 }
 
-uint64_t cpu_event_handler_register(cpu_event_func_t func)
+uint64_t cpu_handler_register(cpu_func_t func)
 {
     if (func == NULL)
     {
@@ -111,7 +111,7 @@ uint64_t cpu_event_handler_register(cpu_event_func_t func)
         }
     }
 
-    cpu_event_handler_t* eventHandler = &eventHandlers[eventHandlerCount++];
+    cpu_handler_t* eventHandler = &eventHandlers[eventHandlerCount++];
     eventHandler->func = func;
     BITMAP_DEFINE_INIT(eventHandler->initializedCpus, CPU_MAX);
     bitmap_clear_range(&eventHandler->initializedCpus, 0, CPU_MAX);
@@ -119,7 +119,7 @@ uint64_t cpu_event_handler_register(cpu_event_func_t func)
     cpu_t* self = cpu_get_unsafe();
     if (self != NULL)
     {
-        cpu_event_t event = { .type = CPU_EVENT_INIT };
+        cpu_event_t event = { .type = CPU_ONLINE };
         eventHandler->func(self, &event);
         bitmap_set(&eventHandler->initializedCpus, self->id);
     }
@@ -131,13 +131,13 @@ uint64_t cpu_event_handler_register(cpu_event_func_t func)
         {
             continue;
         }
-        atomic_store(&cpu->newHandlersPending, true);
+        atomic_store(&cpu->needHandlersCheck, true);
     }
 
     return 0;
 }
 
-void cpu_event_handler_unregister(cpu_event_func_t func)
+void cpu_handler_unregister(cpu_func_t func)
 {
     if (func == NULL)
     {
@@ -148,22 +148,22 @@ void cpu_event_handler_unregister(cpu_event_func_t func)
 
     for (uint64_t i = 0; i < eventHandlerCount; i++)
     {
-        cpu_event_handler_t* eventHandler = &eventHandlers[i];
+        cpu_handler_t* eventHandler = &eventHandlers[i];
         if (eventHandler->func == func)
         {
             eventHandler->func = NULL;
             eventHandlerCount--;
             memmove(&eventHandlers[i], &eventHandlers[i + 1],
-                (CPU_MAX_EVENT_HANDLERS - i - 1) * sizeof(cpu_event_func_t));
+                (CPU_MAX_EVENT_HANDLERS - i - 1) * sizeof(cpu_func_t));
             break;
         }
     }
 }
 
-void cpu_new_handlers_check(cpu_t* cpu)
+void cpu_handlers_check(cpu_t* cpu)
 {
     bool expected = true;
-    if (!atomic_compare_exchange_strong(&cpu->newHandlersPending, &expected, false))
+    if (!atomic_compare_exchange_strong(&cpu->needHandlersCheck, &expected, false))
     {
         return;
     }
@@ -171,10 +171,10 @@ void cpu_new_handlers_check(cpu_t* cpu)
     LOCK_SCOPE(&eventHandlerLock);
     for (uint64_t i = 0; i < eventHandlerCount; i++)
     {
-        cpu_event_handler_t* eventHandler = &eventHandlers[i];
+        cpu_handler_t* eventHandler = &eventHandlers[i];
         if (!bitmap_is_set(&eventHandler->initializedCpus, cpu->id))
         {
-            cpu_event_t event = { .type = CPU_EVENT_INIT };
+            cpu_event_t event = { .type = CPU_ONLINE };
             eventHandler->func(cpu, &event);
             bitmap_set(&eventHandler->initializedCpus, cpu->id);
         }

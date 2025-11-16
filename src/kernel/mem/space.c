@@ -225,7 +225,6 @@ static uint64_t space_populate_user_region(space_t* space, const void* buffer, u
         void* page = pmm_alloc();
         if (page == NULL)
         {
-            errno = ENOMEM;
             return ERR;
         }
 
@@ -233,7 +232,6 @@ static uint64_t space_populate_user_region(space_t* space, const void* buffer, u
                 PML_CALLBACK_NONE) == ERR)
         {
             pmm_free(page);
-            errno = EFAULT;
             return ERR;
         }
     }
@@ -363,13 +361,14 @@ uint64_t space_pin(space_t* space, const void* buffer, uint64_t length, stack_po
 
         if (space_populate_user_region(space, buffer, pageAmount) == ERR)
         {
+            errno = ENOMEM;
             return ERR;
         }
     }
 
     if (space_pin_depth_inc(space, buffer, pageAmount) == ERR)
     {
-        errno = EFAULT;
+        errno = ENOMEM;
         return ERR;
     }
 
@@ -385,11 +384,17 @@ uint64_t space_pin_terminated(space_t* space, const void* address, const void* t
         return ERR;
     }
 
-    LOCK_SCOPE(&space->lock);
-
     uint64_t terminatorMatchedBytes = 0;
     uintptr_t current = (uintptr_t)address;
     uintptr_t end = (uintptr_t)address + (maxCount * objectSize);
+    if (end < (uintptr_t)address)
+    {
+        errno = EOVERFLOW;
+        return ERR;
+    }
+
+    LOCK_SCOPE(&space->lock);
+
     uint64_t pinnedPages = 0;
     while (current < end)
     {
@@ -403,13 +408,14 @@ uint64_t space_pin_terminated(space_t* space, const void* address, const void* t
 
             if (space_populate_user_region(space, (void*)current, 1) == ERR)
             {
+                errno = ENOMEM;
                 goto error;
             }
         }
 
         if (space_pin_depth_inc(space, (void*)current, 1) == ERR)
         {
-            errno = EFAULT;
+            errno = ENOMEM;
             goto error;
         }
         pinnedPages++;

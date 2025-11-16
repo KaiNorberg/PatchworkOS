@@ -84,7 +84,6 @@ uint64_t namespace_traverse_mount(namespace_t* ns, const path_t* mountpoint, pat
  * @param deviceName The device name, or `VFS_DEVICE_NAME_NONE` for no device.
  * @param mountpoint The mountpoint path.
  * @param fsName The filesystem name.
- * @param flags Superblock flags.
  * @param private Private data for the filesystem's mount function.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set.
  */

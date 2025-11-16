@@ -95,9 +95,9 @@ typedef struct
 extern void* vectorTable[IDT_GATE_AMOUNT];
 
 /**
- * @brief Initializes the CLI context.
+ * @brief Initializes the interrupt context.
  *
- * @param cli The CLI context to initialize.
+ * @param ctx The interrupt context to initialize.
  */
 void interrupt_ctx_init(interrupt_ctx_t* ctx);
 

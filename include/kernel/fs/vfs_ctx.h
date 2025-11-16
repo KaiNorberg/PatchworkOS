@@ -64,7 +64,7 @@ void vfs_ctx_deinit(vfs_ctx_t* ctx);
 file_t* vfs_ctx_get_file(vfs_ctx_t* ctx, fd_t fd);
 
 /**
- * @Get the current working directory of a VFS context.
+ * @brief Get the current working directory of a VFS context.
  *
  * If the current directory is `NULL`, then returns a reference to the root of the kernel process's namespace.
  *

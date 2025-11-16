@@ -883,8 +883,6 @@ aml_object_t* aml_def_mid_read(aml_term_list_ctx_t* ctx);
  * - `DefLoadTable`
  * - `DefWait`
  *
- * The result may have the `AML_OBJECT_EXCEPTION_ON_USE` flag set.
- *
  * @param ctx The TermList context.
  * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */

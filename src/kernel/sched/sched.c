@@ -157,11 +157,19 @@ void sched_done_with_boot_thread(void)
 
     if (timer_source_amount() == 0)
     {
-        panic(NULL, "No timer source registered, cannot continue");
+        panic(NULL, "No timer source registered, most likely no timer sources with a provided driver was found");
+    }
+    if (irq_chip_amount() == 0)
+    {
+        panic(NULL, "No IRQ chip registered, most likely no IRQ chips with a provided driver was found");
+    }
+    if (ipi_chip_amount() == 0)
+    {
+        panic(NULL, "No IPI chip registered, most likely no IPI chips with a provided driver was found");
     }
 
-    timer_set(self, sys_time_uptime(), 0); // Set timer to trigger in the idle loop.
     asm volatile("sti");
+    sched_yield();
     // When we return here the boot thread will be an idle thread so we just enter the idle loop.
     sched_idle_loop();
 }

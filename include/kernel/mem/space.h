@@ -112,7 +112,9 @@ typedef struct space
  * @param startAddress The starting address for allocations in this address space.
  * @param endAddress The ending address for allocations in this address space.
  * @param flags Flags to control the initialization behavior.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `ENOMEM`: Not enough memory to initialize the address space.
  */
 uint64_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress, space_flags_t flags);
 
@@ -161,7 +163,11 @@ void space_load(space_t* space);
  * @param address The address to pin, can be `NULL` if length is 0.
  * @param length The length of the region pointed to by `address`, in bytes.
  * @param userStack Pointer to the user stack of the calling thread, can be `NULL, see above.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EOVERFLOW`: Address overflow.
+ * - `EFAULT`: The region is not fully mapped or within the provided user stack.
+ * - `ENOMEM`: Not enough memory.
  */
 uint64_t space_pin(space_t* space, const void* address, uint64_t length, stack_pointer_t* userStack);
 
@@ -179,7 +185,11 @@ uint64_t space_pin(space_t* space, const void* address, uint64_t length, stack_p
  * @param objectSize The size of each object to compare against the terminator, in bytes.
  * @param maxCount The maximum number of objects to scan before failing.
  * @param userStack Pointer to the user stack of the calling thread, can be `NULL`, see `space_pin()`.
- * @return On success, the number of bytes pinned, not including the terminator. On failure, `ERR` and `errno` is set.
+ * @return On success, the number of bytes pinned, not including the terminator. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EOVERFLOW`: Address overflow.
+ * - `EFAULT`: The region is not fully mapped or within the provided user stack.
+ * - `ENOMEM`: Not enough memory.
  */
 uint64_t space_pin_terminated(space_t* space, const void* address, const void* terminator, uint8_t objectSize,
     uint64_t maxCount, stack_pointer_t* userStack);
@@ -205,7 +215,10 @@ void space_unpin(space_t* space, const void* address, uint64_t length);
  * @param space The target address space.
  * @param addr The starting address of the memory region, can be `NULL` if length is 0.
  * @param length The length of the memory region, in bytes.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EOVERFLOW`: Address overflow.
+ * - `EFAULT`: The region is outside the allowed address range.
  */
 uint64_t space_check_access(space_t* space, const void* addr, uint64_t length);
 
@@ -238,7 +251,11 @@ typedef struct
  * @param physAddr The physical address to map from. Can be `NULL`.
  * @param length The length of the virtual memory region to modify, in bytes.
  * @param flags The page table flags for the mapping.
- * @return On success, `0`. On failure, `ERR`.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EOVERFLOW`: Address overflow.
+ * - `EFAULT`: The addresses are outside the allowed range.
+ * - `ENOMEM`: Not enough memory.
  */
 uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, uint64_t length,
     pml_flags_t flags);
@@ -297,7 +314,8 @@ void space_tlb_shootdown(space_t* space, void* virtAddr, uint64_t pageAmount);
  * @param space The target address space.
  * @param mapping The parsed information about the mapping.
  * @param err The error code, if 0 then no error.
- * @return On success, returns the virtual address. On failure, returns `NULL` and `errno` is set.
+ * @return If `err` is `EOK`, returns the virtual address of the mapping. If `err` is not `EOK`, returns `NULL` and
+ * `errno` is set to `err`.
  */
 void* space_mapping_end(space_t* space, space_mapping_t* mapping, errno_t err);
 

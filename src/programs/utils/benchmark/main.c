@@ -33,7 +33,7 @@ static void* mmap_generic(size_t length)
 
 static uint64_t munmap_generic(void* addr, size_t length)
 {
-    return munmap(addr, length);
+    return munmap(addr, length) == NULL ? ERR : 0;
 }
 
 #else

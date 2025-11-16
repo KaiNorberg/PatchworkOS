@@ -60,7 +60,7 @@ typedef struct
 
 /**
  * @brief Create a lock initializer.
- * @macro LOCK_CREATE
+ * @def LOCK_CREATE
  *
  * @return A `lock_t` initializer.
  */

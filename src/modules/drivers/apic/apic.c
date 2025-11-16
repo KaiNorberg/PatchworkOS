@@ -1,5 +1,7 @@
 #include <kernel/acpi/tables.h>
 #include <kernel/cpu/cpu.h>
+#include <kernel/cpu/ipi.h>
+#include <kernel/cpu/irq.h>
 #include <kernel/drivers/pic.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -14,10 +16,35 @@
 
 /**
  * @brief Advanced Programmable Interrupt Controller.
- * @ingroup kernel_drivers
- * @defgroup kernel_drivers_apic APIC
+ * @ingroup modules_drivers
+ * @defgroup modules_drivers_apic APIC
  *
+ * This module implements the Advanced Programmable Interrupt Controller (APIC) driver, which includes both the per-CPU local APICs, the IO APICs and the APIC timer.
+ * 
+ * ## Local APICs
+ * 
+ * Each CPU has its own local APIC in a 1:1 mapping, which, when used with the IO APICs, allows for more advanced interrupt handling such as routing interrupts to specific CPUs, interrupt prioritization, and more. Most of its features are not used in PatchworkOS yet.
+ * 
+ * Additionally, the local APICs provide Inter-Processor Interrupts (IPIs) which allow a CPU to interrupt another CPU by using its local APIC.
+ * 
+ * ## IO APICs
+ * 
+ * The IO APICs are used to route external interrupts to a CPUs local APIC. Each IO APIC handles a range of Global System Interrupts (GSIs) or in PatchworkOS terms, physical IRQs, which it receives from external devices such as a keyboard. The IO APIC then routes these physical IRQs to a local APIC using that local APICs ID, that local APIC then triggers the interrupt on its CPU.
+ * 
+ * So, for example, say we have two IO APICs, 0 and 1, where IO APIC 0 handles physical IRQs 0-23 and IO APIC 1 handles physical IRQs 24-47. Then lets say we want to route physical IRQ 1 to CPU 4. In this case, we would use IO APIC 0 to route physical IRQ 1 to the local APIC ID of CPU 4, lets say this ID is 5. The IO APIC would then send the interrupt to the local APIC with ID 5, which would then trigger the interrupt on CPU 4.
+ * 
+ * The range that each IO APIC handles is defined as the range `[globalSystemInterruptBase, globalSystemInterruptBase + maxRedirs)`, where `globalSystemInterruptBase` is defined in the ACPI MADT table and `maxRedirs` is read from the IO APICs version register.
+ * 
+ * @note The only reason there can be multiple IO APICs is for hardware implementation reasons, things we dont care about. As far as I know, the OS itself does not benefit from having multiple IO APICs.
+ * 
+ * ## APIC Timer
+ * 
+ * Each local APIC also contains a timer which can be used to generate interrupts at specific intervals, or as we use it, to generate a single interrupt after a specified time. 
+ * 
+ * @note Its a common mistake to assume that the local APIC IDs are contiguous, or that they are the same as the CPU IDs, but this is not the case. The local APIC IDs are assigned by the firmware and can be any value.
+ * 
  * @see [ACPI Specification Version 6.6](https://uefi.org/sites/default/files/resources/ACPI_Spec_6.6.pdf)
+ * @see [82093AA I/O ADVANCED PROGRAMMABLE INTERRUPT CONTROLLER (IOAPIC)](https://web.archive.org/web/20161130153145/http://download.intel.com/design/chipsets/datashts/29056601.pdf)
  *
  * @{
  */
@@ -28,11 +55,6 @@
 typedef uint8_t lapic_id_t;
 
 /**
- * @brief IO APIC Global System Interrupt type.
- */
-typedef uint32_t ioapic_gsi_t;
-
-/**
  * @brief APIC Timer Modes.
  * @enum apic_timer_mode_t
  */
@@ -40,7 +62,7 @@ typedef enum
 {
     APIC_TIMER_MASKED = 0x10000, ///< Timer is masked (disabled)
     APIC_TIMER_PERIODIC = 0x20000,
-    APIC_timer_set = 0x00000
+    APIC_TIMER_ONE_SHOT = 0x00000
 } apic_timer_mode_t;
 
 /**
@@ -103,7 +125,7 @@ typedef enum
 /**
  * @brief The offset at which the lapic id is stored in the LAPIC_REG_ID register.
  */
-#define LAPIC_REG_ICR1_ID_OFFSET 24
+#define LAPIC_REG_ID_OFFSET 24
 
 /**
  * @brief Local APIC Flags.
@@ -139,6 +161,18 @@ typedef enum
 } lapic_icr_flags_t;
 
 /**
+ * @brief APIC Timer Ticks Fixed Point Offset.
+ *
+ * Used for fixed point arithmetic when returning the apic timer ticks per nanosecond.
+ */
+#define APIC_TIMER_TICKS_FIXED_POINT_OFFSET 32
+
+/**
+ * @brief IO APIC Global System Interrupt type.
+ */
+typedef uint32_t ioapic_gsi_t;
+
+/**
  * @brief IO APIC Memory Mapped Registers.
  * @enum ioapic_mmio_register_t
  */
@@ -154,47 +188,11 @@ typedef enum
  */
 typedef enum
 {
-    IOAPIC_REG_VERSION = 0x01
+    IOAPIC_REG_IDENTIFICATION = 0x00,
+    IOAPIC_REG_VERSION = 0x01,
+    IOAPIC_REG_ARBITRATION = 0x02,
+    IOAPIC_REG_REDIRECTION_BASE = 0x10
 } ioapic_register_t;
-
-/**
- * @brief Macro to get the redirection entry register for a specific pin.
- *
- * This is used since a redirect entry is 64 bits (a qword/two dwords) and each register is 32 bits (a dword), so each
- * pin uses two registers.
- *
- * @param pin The pin number as in the gsi - the ioapics base gsi.
- * @param high 0 for the low dword, 1 for the high dword.
- * @return The register number.
- */
-#define IOAPIC_REG_REDIRECTION(pin, high) (0x10 + (pin) * 2 + (high))
-
-/**
- * @brief APIC Timer Ticks Fixed Point Offset.
- *
- * Used for fixed point arithmetic when returning the apic timer ticks per nanosecond.
- */
-#define APIC_TIMER_TICKS_FIXED_POINT_OFFSET 32
-
-/**
- * @brief IO APIC Version Structure.
- * @struct ioapic_version_t
- *
- * Stored in the `IOAPIC_REG_VERSION` register.
- */
-typedef struct PACKED
-{
-    union {
-        uint32_t raw;
-        struct PACKED
-        {
-            uint8_t version;
-            uint8_t reserved;
-            uint8_t maxRedirs;
-            uint8_t reserved2;
-        };
-    };
-} ioapic_version_t;
 
 /**
  * @brief IO APIC Delivery Modes.
@@ -241,6 +239,26 @@ typedef enum
 } ioapic_polarity_t;
 
 /**
+ * @brief IO APIC Version Structure.
+ * @struct ioapic_version_t
+ *
+ * Stored in the `IOAPIC_REG_VERSION` register.
+ */
+typedef struct PACKED
+{
+    union {
+        uint32_t raw;
+        struct PACKED
+        {
+            uint8_t version;
+            uint8_t reserved;
+            uint8_t maxRedirs;
+            uint8_t reserved2;
+        };
+    };
+} ioapic_version_t;
+
+/**
  * @brief IO APIC Redirection Entry Structure.
  * @struct ioapic_redirect_entry_t
  *
@@ -250,13 +268,13 @@ typedef union {
     struct PACKED
     {
         uint8_t vector;
-        uint8_t deliveryMode : 3;
-        uint8_t destinationMode : 1;
-        uint8_t deliveryStatus : 1;
-        uint8_t polarity : 1;
-        uint8_t remoteIRR : 1;
-        uint8_t triggerMode : 1;
-        uint8_t mask : 1;
+        uint8_t deliveryMode : 3; ///< ioapic_delivery_mode_t
+        uint8_t destinationMode : 1; ///< ioapic_destination_mode_t
+        uint8_t deliveryStatus : 1; 
+        uint8_t polarity : 1; ///< ioapic_polarity_t
+        uint8_t remoteIRR : 1; 
+        uint8_t triggerMode : 1; ///< ioapic_trigger_mode_t
+        uint8_t mask : 1; ///< If set, the interrupt is masked (disabled)
         uint64_t reserved : 39;
         uint8_t destination : 8;
     };
@@ -267,9 +285,345 @@ typedef union {
     } raw;
 } ioapic_redirect_entry_t;
 
-static uintptr_t lapicBase;
+/**
+ * @brief Local APIC Structure.
+ * @struct lapic_t
+ * 
+ * Represents each CPU's local APIC and local data.
+ */
+typedef struct
+{
+    uint64_t ticksPerNs; ///< Initialized to 0, set on first use of the APIC timer on the CPU.
+    lapic_id_t lapicId;
+} lapic_t;
 
-static uint64_t lapic_init(void)
+/**
+ * @brief Cached local apic base address, in the higher half.
+ * 
+ * This address is the same for all CPUs, but each CPU will end up accessing different underlying hardware since each CPU has
+ * its own local apic.
+ */
+static uintptr_t lapicBase = 0;
+
+/**
+ * @brief All cpu local data, indexed by cpu id.
+ */
+static lapic_t lapics[CPU_MAX] = {0};
+
+/**
+ * @brief Read from a local apic register.
+ * 
+ * @param reg The register to read from.
+ * @return The value read from the register.
+ */
+static uint32_t lapic_read(uint32_t reg)
+{
+    return READ_32(lapicBase + reg);
+}
+
+/**
+ * @brief Write to a local apic register.
+ * 
+ * @param reg The register to write to.
+ * @param value The value to write.
+ */
+static void lapic_write(uint32_t reg, uint32_t value)
+{
+    WRITE_32(lapicBase + reg, value);
+}
+
+/**
+ * @brief Initialize the local APIC for a CPU.
+ * 
+ * @param cpu The current CPU.
+ */
+static void lapic_init(cpu_t* cpu)
+{
+    // Enable the local apic, enable spurious interrupts and mask everything for now.
+
+    uint64_t lapicMsr = msr_read(MSR_LAPIC);
+    msr_write(MSR_LAPIC, (lapicMsr | LAPIC_MSR_ENABLE) & ~LAPIC_MSR_BSP);
+
+    lapic_write(LAPIC_REG_SPURIOUS, lapic_read(LAPIC_REG_SPURIOUS) | LAPIC_SPURIOUS_ENABLE);
+
+    lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
+    lapic_write(LAPIC_REG_LVT_ERROR, LAPIC_LVT_MASKED);
+    lapic_write(LAPIC_REG_LVT_PERFCTR, LAPIC_LVT_MASKED);
+    lapic_write(LAPIC_REG_LVT_THERMAL, LAPIC_LVT_MASKED);
+    lapic_write(LAPIC_REG_LVT_LINT0, LAPIC_LVT_MASKED);
+    lapic_write(LAPIC_REG_LVT_LINT1, LAPIC_LVT_MASKED);
+
+    lapic_write(LAPIC_REG_TASK_PRIORITY, 0);
+
+    lapics[cpu->id].lapicId = (lapic_id_t)(lapic_read(LAPIC_REG_ID) >> LAPIC_REG_ID_OFFSET);
+}
+
+/**
+ * @brief Get the ticks per nanosecond for the APIC timer of the current CPU.
+ * 
+ * @return The ticks per nanosecond.
+ */
+static uint64_t apic_timer_ticks_per_ns(void)
+{
+    interrupt_disable();
+
+    lapic_write(LAPIC_REG_TIMER_DIVIDER, APIC_TIMER_DIV_DEFAULT);
+    lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
+    lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, UINT32_MAX);
+
+    sys_time_wait(CLOCKS_PER_SEC / 1000);
+
+    lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
+
+    uint64_t ticks = UINT32_MAX - lapic_read(LAPIC_REG_TIMER_CURRENT_COUNT);
+    lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
+    lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, 0);
+
+    uint64_t ticksPerNs = (ticks << APIC_TIMER_TICKS_FIXED_POINT_OFFSET) / 10000000ULL;
+
+    LOG_DEBUG("apic timer calibration ticks=%llu ticks_per_ns=%llu\n", ticks, ticksPerNs);
+    interrupt_enable();
+    return ticksPerNs;
+}
+
+/**
+ * @brief Method for the APIC timer source to set the timer.
+ */
+static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
+{
+    (void)uptime;
+
+    if (timeout == CLOCKS_NEVER)
+    {
+        lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
+        return;
+    }
+
+    lapic_t* lapic = &lapics[cpu_get_id_unsafe()];
+    if (lapic->ticksPerNs == 0)
+    {
+        lapic->ticksPerNs = apic_timer_ticks_per_ns();
+    }
+
+    lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
+
+    uint32_t ticks = (uint32_t)(timeout * lapic->ticksPerNs >> APIC_TIMER_TICKS_FIXED_POINT_OFFSET);
+    lapic_write(LAPIC_REG_TIMER_DIVIDER, APIC_TIMER_DIV_DEFAULT);
+    lapic_write(LAPIC_REG_LVT_TIMER, ((uint32_t)virt) | APIC_TIMER_ONE_SHOT);
+    lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, ticks);
+}
+
+/**
+ * @brief APIC timer source.
+ * 
+ * According to https://telematics.tm.kit.edu/publications/Files/61/walter_ibm_linux_challenge.pdf, the APIC timer has a precision of 1 microsecond.
+ */
+static timer_source_t apicTimer = {
+    .name = "APIC Timer",
+    .precision = 1000, // 1 microsecond
+    .set = apic_timer_set
+};
+
+/**
+ * @brief Read a value from an IO APIC register.
+ * 
+ * @param ioapic Pointer to the IO APIC structure.
+ * @param reg The register to read from.
+ * @return The value read from the register.
+ */
+static uint32_t ioapic_read(ioapic_t* ioapic, ioapic_register_t reg)
+{
+    uintptr_t base = PML_LOWER_TO_HIGHER(ioapic->ioApicAddress);
+    WRITE_32(base + IOAPIC_MMIO_REG_SELECT, reg);
+    return READ_32(base + IOAPIC_MMIO_REG_DATA);
+}
+
+/**
+ * @brief Write a value to an IO APIC register.
+ * 
+ * @param ioapic Pointer to the IO APIC structure.
+ * @param reg The register to write to.
+ * @param value The value to write.
+ */
+static void ioapic_write(ioapic_t* ioapic, ioapic_register_t reg, uint32_t value)
+{
+    uintptr_t base = PML_LOWER_TO_HIGHER(ioapic->ioApicAddress);
+    WRITE_32(base + IOAPIC_MMIO_REG_SELECT, reg);
+    WRITE_32(base + IOAPIC_MMIO_REG_DATA, value);
+}
+
+/**
+ * @brief Read the value in the `IOAPIC_REG_VERSION` register.
+ *
+ * This value is more complex than just a integer, so we use the `ioapic_version_t` structure to represent it.
+ * 
+ * @param ioapic Pointer to the IO APIC structure.
+ * @return The IO APIC version structure.
+ */
+static ioapic_version_t ioapic_version_read(ioapic_t* ioapic)
+{
+    ioapic_version_t version;
+    version.raw = ioapic_read(ioapic, IOAPIC_REG_VERSION);
+    return version;
+}
+
+/**
+ * @brief Write a redirection entry to the IO APIC.
+ * 
+ * @note The redirection entry is a total of 64 bits, but since the IO APIC registers are 32 bits wide, it ends up split between two registers.
+ * 
+ * @param ioapic Pointer to the IO APIC structure.
+ * @param gsi The global system interrupt (physical IRQ) to write the redirection entry for.
+ * @param entry The redirection entry to write.
+ */
+static void ioapic_redirect_write(ioapic_t* ioapic, ioapic_gsi_t gsi, ioapic_redirect_entry_t entry)
+{
+    assert(ioapic != NULL);
+    assert(gsi >= ioapic->globalSystemInterruptBase);
+    assert(gsi < ioapic->globalSystemInterruptBase + ioapic_version_read(ioapic).maxRedirs);
+
+    uint32_t pin = gsi - ioapic->globalSystemInterruptBase;
+    ioapic_write(ioapic, IOAPIC_REG_REDIRECTION_BASE + (pin * 2), entry.raw.low);
+    ioapic_write(ioapic, IOAPIC_REG_REDIRECTION_BASE + (pin * 2) + 1, entry.raw.high);
+}
+
+/**
+ * @brief Method to enable an IRQ in the IO APIC.
+ */
+static uint64_t ioapic_enable(irq_t* irq)
+{
+    ioapic_t* ioapic = irq->domain->private;
+    lapic_t* lapic = &lapics[cpu_get_id_unsafe()];
+
+    ioapic_redirect_entry_t redirect = {
+        .vector = irq->virt,
+        .deliveryMode = IOAPIC_DELIVERY_NORMAL,
+        .destinationMode = IOAPIC_DESTINATION_PHYSICAL,
+        .deliveryStatus = 0,
+        .polarity = (irq->flags & IRQ_FLAGS_POLARITY_LOW) ? IOAPIC_POLARITY_LOW : IOAPIC_POLARITY_HIGH,
+        .remoteIRR = 0,
+        .triggerMode = irq->flags & IRQ_FLAGS_TRIGGER_EDGE ? IOAPIC_TRIGGER_EDGE : IOAPIC_TRIGGER_LEVEL,
+        .mask = 0,
+        .destination = lapic->lapicId,
+    };
+    
+    ioapic_redirect_write(ioapic, irq->phys, redirect);
+    LOG_INFO("ioapic enable gsi=%u vector=0x%02x lapic=%u\n", irq->phys, irq->virt, lapic->lapicId);
+    return 0;
+}
+
+/**
+ * @brief Method to disable an IRQ in the IO APIC.
+ */
+static void ioapic_disable(irq_t* irq)
+{
+    ioapic_t* ioapic = irq->domain->private;
+
+    ioapic_redirect_entry_t redirect = {
+        .mask = 1
+    };
+
+    ioapic_redirect_write(ioapic, irq->phys, redirect);
+    LOG_INFO("ioapic disable gsi=%u vector=0x%02x\n", irq->phys, irq->virt);
+}
+
+/**
+ * @brief Method to send an EOI in the IO APIC.
+ */
+static void ioapic_eoi(irq_t* irq)
+{
+    (void)irq;
+
+    lapic_write(LAPIC_REG_EOI, 0);
+}
+
+/**
+ * @brief IO APIC IRQ Chip.
+ */
+static irq_chip_t ioApicChip = {
+    .name = "IO APIC",
+    .enable = ioapic_enable,
+    .disable = ioapic_disable,
+    .ack = NULL,
+    .eoi = ioapic_eoi
+};
+
+/**
+ * @brief Initialize all IO APICs found in the MADT.
+ * 
+ * @return On success, `0`. On failure, `ERR`.
+ */
+static uint64_t ioapic_all_init(void)
+{
+    madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, sizeof(madt_t), 0);
+    if (madt == NULL)
+    {
+        LOG_ERR("no MADT table found\n");
+        return ERR;
+    }
+
+    ioapic_t* ioapic;
+    MADT_FOR_EACH(madt, ioapic)
+    {
+        if (ioapic->header.type != INTERRUPT_CONTROLLER_IO_APIC)
+        {
+            continue;
+        }
+
+        void* physAddr = (void*)(uint64_t)ioapic->ioApicAddress;
+        void* virtAddr = (void*)PML_LOWER_TO_HIGHER(physAddr);
+        if (vmm_map(NULL, virtAddr, physAddr, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) == NULL)
+        {
+            LOG_ERR("failed to map io apic\n");
+            return ERR;
+        }
+
+        uint32_t maxRedirs = ioapic_version_read(ioapic).maxRedirs;
+        // Mask all interrupts.
+        for (uint32_t i = 0; i < maxRedirs; i++)
+        {
+            ioapic_redirect_entry_t maskedEntry = {.mask = 1};
+            ioapic_redirect_write(ioapic, i, maskedEntry);
+        }
+
+        if (irq_chip_register(&ioApicChip, ioapic->globalSystemInterruptBase, ioapic->globalSystemInterruptBase + maxRedirs, ioapic) == ERR)
+        {
+            LOG_ERR("failed to register io apic irq chip\n");
+            return ERR;
+        }
+
+        LOG_INFO("io apic initialized base=0x%016lx globalSystemInterruptBase=%u maxRedirs=%u\n", virtAddr,
+            ioapic->globalSystemInterruptBase, maxRedirs);
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Method to invoke an IPI using the local APIC.
+ */
+static void lapic_invoke(cpu_t* cpu, irq_virt_t virt)
+{
+    lapic_id_t id = lapics[cpu->id].lapicId;
+
+    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ID_OFFSET);
+    lapic_write(LAPIC_REG_ICR0, (uint32_t)virt | LAPIC_ICR_FIXED);
+}
+
+/**
+ * @brief Local APIC IPI Chip.
+ */
+static ipi_chip_t lapicIpiChip = {
+    .name = "Local APIC IPI",
+    .invoke = lapic_invoke
+};
+
+/**
+ * @brief Initialize the APIC global variables and state.
+ * 
+ * @return On success, `0`. On failure, `ERR`.
+ */
+static uint64_t apic_init(void)
 {
     madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, sizeof(madt_t), 0);
     if (madt == NULL)
@@ -300,165 +654,26 @@ static uint64_t lapic_init(void)
 
     LOG_INFO("local apic mapped base=0x%016lx phys=0x%016lx\n", lapicBase,
         (uintptr_t)madt->localInterruptControllerAddress);
-    return 0;
-}
 
-/*static uint64_t ioapic_all_init(void)
-{
-    pic_disable();
-
-    ioapic_t* ioapic;
-    MADT_FOR_EACH(madt, ioapic)
+    if (timer_source_register(&apicTimer) == ERR)
     {
-        if (ioapic->header.type != INTERRUPT_CONTROLLER_IO_APIC)
-        {
-            continue;
-        }
-
-        void* physAddr = (void*)(uint64_t)ioapic->ioApicAddress;
-        void* virtAddr = (void*)PML_LOWER_TO_HIGHER(physAddr);
-        if (vmm_map(NULL, virtAddr, physAddr, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) == NULL)
-        {
-            LOG_ERR("failed to map io apic\n");
-            return ERR;
-        }
-
-        uint32_t maxRedirs = ioapic_get_version(ioapic).maxRedirs;
-        // Mask all interrupts.
-        for (uint32_t i = 0; i < maxRedirs; i++)
-        {
-            ioapic_redirect_entry_t maskedEntry = {.mask = 1};
-            ioapic_write(ioapic, IOAPIC_REG_REDIRECTION(i, 0), maskedEntry.raw.low);
-            ioapic_write(ioapic, IOAPIC_REG_REDIRECTION(i, 1), maskedEntry.raw.high);
-        }
-
-        LOG_INFO("io apic initialized base=0x%016lx gsiBase=%u maxRedirs=%u\n", virtAddr,
-            ioapic->globalSystemInterruptBase, maxRedirs);
-    }
-
-    return 0;
-}
-
-static uint64_t apic_init(sdt_header_t* table)
-{
-    madt = (madt_t*)table;
-    if (initialized)
-    {
-        LOG_ERR("multiple MADT tables found\n");
-        return ERR;
-    }
-    initialized = true;
-
-    if (lapic_init() == ERR)
-    {
-        LOG_ERR("failed to initialize local apic\n");
+        vmm_unmap(NULL, (void*)lapicBase, PAGE_SIZE);
+        LOG_ERR("failed to register apic timer source\n");
         return ERR;
     }
 
-    if (ioapic_all_init() == ERR)
+    if (ipi_chip_register(&lapicIpiChip) == ERR)
     {
-        LOG_ERR("failed to initialize ioapics\n");
+        vmm_unmap(NULL, (void*)lapicBase, PAGE_SIZE);
+        timer_source_unregister(&apicTimer);
+        LOG_ERR("failed to register lapic ipi chip\n");
         return ERR;
     }
 
     return 0;
 }
 
-ACPI_SDT_HANDLER_REGISTER(MADT_SIGNATURE, apic_init);
-
-void apic_timer_set(interrupt_t vector, uint32_t ticks)
-{
-    if (!initialized)
-    {
-        panic(NULL, "apic timer used before apic initialized");
-    }
-
-    lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
-
-    lapic_write(LAPIC_REG_TIMER_DIVIDER, APIC_TIMER_DIV_DEFAULT);
-    lapic_write(LAPIC_REG_LVT_TIMER, ((uint32_t)vector) | APIC_timer_set);
-    lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, ticks);
-}
-
-uint64_t apic_timer_ticks_per_ns(void)
-{
-    if (!initialized)
-    {
-        panic(NULL, "apic timer calibration used before apic initialized");
-    }
-
-    interrupt_disable();
-
-    lapic_write(LAPIC_REG_TIMER_DIVIDER, APIC_TIMER_DIV_DEFAULT);
-    lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
-    lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, UINT32_MAX);
-
-    sys_time_wait(CLOCKS_PER_SEC / 1000);
-
-    lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
-
-    uint64_t ticks = UINT32_MAX - lapic_read(LAPIC_REG_TIMER_CURRENT_COUNT);
-    lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
-    lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, 0);
-
-    uint64_t ticksPerNs = (ticks << APIC_TIMER_TICKS_FIXED_POINT_OFFSET) / 10000000ULL;
-
-    LOG_DEBUG("timer calibration ticks=%llu ticks_per_ns=%llu\n", ticks, ticksPerNs);
-    interrupt_enable();
-    return ticksPerNs;
-}
-
-void lapic_cpu_init(void)
-{
-    if (!initialized)
-    {
-        panic(NULL, "local apic used before apic initialized");
-    }
-
-    uint64_t lapicMsr = msr_read(MSR_LAPIC);
-    msr_write(MSR_LAPIC, (lapicMsr | LAPIC_MSR_ENABLE) & ~LAPIC_MSR_BSP);
-
-    lapic_write(LAPIC_REG_SPURIOUS, lapic_read(LAPIC_REG_SPURIOUS) | LAPIC_SPURIOUS_ENABLE);
-
-    lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
-    lapic_write(LAPIC_REG_LVT_ERROR, LAPIC_LVT_MASKED);
-    lapic_write(LAPIC_REG_LVT_PERFCTR, LAPIC_LVT_MASKED);
-    lapic_write(LAPIC_REG_LVT_THERMAL, LAPIC_LVT_MASKED);
-    lapic_write(LAPIC_REG_LVT_LINT0, LAPIC_LVT_MASKED);
-    lapic_write(LAPIC_REG_LVT_LINT1, LAPIC_LVT_MASKED);
-
-    lapic_write(LAPIC_REG_TASK_PRIORITY, 0);
-}
-
-lapic_id_t lapic_get_id(void)
-{
-    if (!initialized)
-    {
-        panic(NULL, "local apic used before apic initialized");
-    }
-
-    return (uint8_t)(lapic_read(LAPIC_REG_ID) >> LAPIC_REG_ICR1_ID_OFFSET);
-}
-
-void lapic_write(lapic_register_t reg, uint32_t value)
-{
-    if (!initialized)
-    {
-        panic(NULL, "local apic used before apic initialized");
-    }
-
-    WRITE_32(lapicBase + reg, value);
-}
-
-uint32_t lapic_read(lapic_register_t reg)
-{
-    if (!initialized)
-    {
-        panic(NULL, "local apic used before apic initialized");
-    }
-
-    return READ_32(lapicBase + reg);
-}
+/*
 
 void lapic_send_init(lapic_id_t id)
 {
@@ -467,7 +682,7 @@ void lapic_send_init(lapic_id_t id)
         panic(NULL, "local apic used before apic initialized");
     }
 
-    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ICR1_ID_OFFSET);
+    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ID_OFFSET);
     lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_INIT);
 }
 
@@ -480,138 +695,58 @@ void lapic_send_sipi(lapic_id_t id, void* entryPoint)
 
     assert((uintptr_t)entryPoint % PAGE_SIZE == 0);
 
-    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ICR1_ID_OFFSET);
+    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ID_OFFSET);
     lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_STARTUP | ((uintptr_t)entryPoint / PAGE_SIZE));
 }
 
-void lapic_send_ipi(lapic_id_t id, interrupt_t vector)
-{
-    if (!initialized)
-    {
-        panic(NULL, "local apic used before apic initialized");
-    }
-
-    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ICR1_ID_OFFSET);
-    lapic_write(LAPIC_REG_ICR0, (uint32_t)vector | LAPIC_ICR_CLEAR_INIT_LEVEL);
-}
-
-void lapic_eoi(void)
-{
-    if (!initialized)
-    {
-        panic(NULL, "local apic used before apic initialized");
-    }
-
-    lapic_write(LAPIC_REG_EOI, 0);
-}
-
-uint32_t ioapic_read(ioapic_t* ioapic, ioapic_register_t reg)
-{
-    if (!initialized)
-    {
-        panic(NULL, "ioapic used before apic initialized");
-    }
-
-    uintptr_t base = PML_LOWER_TO_HIGHER(ioapic->ioApicAddress);
-    WRITE_32(base + IOAPIC_MMIO_REG_SELECT, reg);
-    return READ_32(base + IOAPIC_MMIO_REG_DATA);
-}
-
-void ioapic_write(ioapic_t* ioapic, ioapic_register_t reg, uint32_t value)
-{
-    if (!initialized)
-    {
-        panic(NULL, "ioapic used before apic initialized");
-    }
-
-    uintptr_t base = PML_LOWER_TO_HIGHER(ioapic->ioApicAddress);
-    WRITE_32(base + IOAPIC_MMIO_REG_SELECT, reg);
-    WRITE_32(base + IOAPIC_MMIO_REG_DATA, value);
-}
-
-ioapic_version_t ioapic_get_version(ioapic_t* ioapic)
-{
-    if (!initialized)
-    {
-        panic(NULL, "ioapic used before apic initialized");
-    }
-
-    ioapic_version_t version;
-    version.raw = ioapic_read(ioapic, IOAPIC_REG_VERSION);
-    return version;
-}
-
-ioapic_t* ioapic_from_gsi(ioapic_gsi_t gsi)
-{
-    if (!initialized)
-    {
-        panic(NULL, "ioapic used before apic initialized");
-    }
-
-    ioapic_t* ioapic;
-    MADT_FOR_EACH(madt, ioapic)
-    {
-        if (ioapic->header.type != INTERRUPT_CONTROLLER_IO_APIC)
-        {
-            continue;
-        }
-
-        ioapic_version_t version = ioapic_get_version(ioapic);
-        if (ioapic->globalSystemInterruptBase <= gsi && ioapic->globalSystemInterruptBase + version.maxRedirs > gsi)
-        {
-            return ioapic;
-        }
-    }
-
-    panic(NULL, "Failed to locate vector for gsi %d", gsi);
-}
-
-void ioapic_set_redirect(interrupt_t vector, ioapic_gsi_t gsi, ioapic_delivery_mode_t deliveryMode,
-    ioapic_polarity_t polarity, ioapic_trigger_mode_t triggerMode, cpu_t* cpu, bool enable)
-{
-    if (!initialized)
-    {
-        panic(NULL, "ioapic used before apic initialized");
-    }
-
-    ioapic_redirect_entry_t redirect = {
-        .vector = vector,
-        .deliveryMode = deliveryMode,
-        .deliveryStatus = 0,
-        .polarity = polarity,
-        .remoteIRR = 0,
-        .triggerMode = triggerMode,
-        .mask = enable ? 0 : 1,
-        .destination = cpu->lapicId,
-    };
-
-    ioapic_t* ioapic = ioapic_from_gsi(gsi);
-    uint32_t pin = gsi - ioapic->globalSystemInterruptBase;
-
-    ioapic_write(ioapic, IOAPIC_REG_REDIRECTION(pin, 0), redirect.raw.low);
-    ioapic_write(ioapic, IOAPIC_REG_REDIRECTION(pin, 1), redirect.raw.high);
-
-    LOG_INFO("ioapic redirect set gsi=%u vector=0x%02x cpu=%u enable=%d\n", gsi, vector, cpu->id, enable);
-}*/
+*/
 
 /** @} */
+
+static void apic_cpu_handler(cpu_t* cpu, const cpu_event_t* event)
+{
+    (void)cpu;
+
+    switch (event->type)
+    {
+    case CPU_ONLINE:
+    {
+        lapic_init(cpu);
+    }
+    break;
+    default:
+        break;
+    }
+}
 
 uint64_t _module_procedure(const module_event_t* event)
 {
     switch (event->type)
     {
     case MODULE_EVENT_DEVICE_ATTACH:
-        if (lapic_init() == ERR)
+        if (apic_init() == ERR)
         {
             LOG_ERR("failed to initialize apic\n");
             return ERR;
         }
-        return 0;
+        if (ioapic_all_init() == ERR)
+        {
+            LOG_ERR("failed to initialize ioapics\n");
+            return ERR;
+        }
+        if (cpu_handler_register(apic_cpu_handler) == ERR)
+        {
+            LOG_ERR("failed to register apic cpu event handler\n");
+            return ERR;
+        }
+        break;
     case MODULE_EVENT_DEVICE_DETACH:
-        return 0;
+        break;
     default:
-        return ERR;
+        break;
     }
+
+    return 0;
 }
 
 MODULE_INFO("APIC Driver", "Kai Norberg", "A driver for the APIC, local APIC and IOAPIC", OS_VERSION, "MIT", "PNP0003");

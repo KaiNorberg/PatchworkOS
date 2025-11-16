@@ -27,11 +27,14 @@
  *
  * ## Events
  *
- * Each CPU can generate events as certain actions happen. These events can be handled by registering event handlers
- * using `cpu_event_handler_register()`.
+ * Each CPU can generate events which can be handled by registering event handlers
+ * using `cpu_handler_register()`.
  *
- * As an example, the `CPU_EVENT_INIT` event is useful as it allows other subsystems to perform per-CPU initialization
- * on each CPU smoothly before or after IPIs have been initialized.
+ * As an example, the `CPU_ONLINE` event allows other subsystems to perform per-CPU initialization on each CPU no matter when they are initialized or even if IPIs are available yet.
+ * 
+ * This is what makes it possible for SMP to be in a module, at the cost of the system being perhaps slightly unintuitive and edge case heavy.
+ * 
+ * For more details see `cpu_handler_register()`, `cpu_handler_unregister()`, and `cpu_handlers_check()`.
  *
  * ## Per-CPU Data
  *
@@ -74,7 +77,8 @@ typedef uint16_t cpuid_t;
  */
 typedef enum
 {
-    CPU_EVENT_INIT,
+    CPU_ONLINE,
+    CPU_OFFLINE,
 } cpu_event_type_t;
 
 /**
@@ -95,13 +99,13 @@ typedef struct
 /**
  * @brief CPU event function type.
  */
-typedef void (*cpu_event_func_t)(cpu_t* cpu, const cpu_event_t* event);
+typedef void (*cpu_func_t)(cpu_t* cpu, const cpu_event_t* event);
 
 typedef struct
 {
-    cpu_event_func_t func;
+    cpu_func_t func;
     BITMAP_DEFINE(initializedCpus, CPU_MAX);
-} cpu_event_handler_t;
+} cpu_handler_t;
 
 /**
  * @brief CPU structure.
@@ -115,9 +119,9 @@ typedef struct cpu
 {
     cpuid_t id;
     /**
-     * If set, then since the last check or initialization, new handlers have been registered that need a `CPU_EVENT_INIT` event sent to them.
+     * If set, then since the last check, handlers have been registered or unregistered.
      */
-    atomic_bool newHandlersPending;
+    atomic_bool needHandlersCheck;
     tss_t tss;
     vmm_cpu_ctx_t vmm;
     interrupt_ctx_t interrupt;
@@ -171,7 +175,7 @@ void cpu_init(cpu_t* cpu);
 /**
  * @brief Registers a CPU event handler for all CPUs.
  *
- * The registered handler will be immediately invoked with a `CPU_EVENT_INIT` event on the current CPU, and then invoked on all others when they call `cpu_new_handlers_check()` and any new cpus as well when they are initialized.
+ * The registered handler will be immediately invoked with a `CPU_ONLINE` event on the current CPU, then invoked on all others when they call `cpu_handlers_check()` and on any new cpus when they are initialized.
  * 
  * @param func The event function to register a handler for.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
@@ -179,23 +183,23 @@ void cpu_init(cpu_t* cpu);
  * - `EBUSY`: Too many event handlers registered.
  * - `EEXIST`: A handler with the same function is already registered.
  */
-uint64_t cpu_event_handler_register(cpu_event_func_t func);
+uint64_t cpu_handler_register(cpu_func_t func);
 
 /**
  * @brief Unregisters a previously registered CPU event handler.
- *
+ * 
  * Will be a no-op if the handler was not registered.
  *
  * @param func The event function of the handler to unregister, or `NULL` for no-op.
  */
-void cpu_event_handler_unregister(cpu_event_func_t func);
+void cpu_handler_unregister(cpu_func_t func);
 
 /**
- * @brief Checks for new event handlers and invokes `CPU_EVENT_INIT` on them.
+ * @brief Checks if any handlers have been registered since the last check, and invokes them if so.
  *
  * @param cpu The CPU to check, must be the current CPU.
  */
-void cpu_new_handlers_check(cpu_t* cpu);
+void cpu_handlers_check(cpu_t* cpu);
 
 /**
  * @brief Checks for CPU stack overflows.
@@ -266,6 +270,18 @@ static inline cpu_t* cpu_get_unsafe(void)
     cpu_t* cpu = _cpus[id];
     assert(cpu != NULL && cpu->id == id);
     return cpu;
+}
+
+/**
+ * @brief Gets the current CPU ID.
+ *
+ * @warning This function does not disable interrupts, it should thus only be used when interrupts are already disabled.
+ * 
+ * @return The current CPU ID.
+ */
+static inline cpuid_t cpu_get_id_unsafe(void)
+{
+    return (cpuid_t)msr_read(MSR_CPU_ID);
 }
 
 /**

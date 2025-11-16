@@ -135,6 +135,15 @@ uint64_t ipi_chip_register(ipi_chip_t* chip);
 void ipi_chip_unregister(ipi_chip_t* chip);
 
 /**
+ * @brief Get the number of registered IPI chips.
+ *
+ * Will always be `0` or `1`.
+ * 
+ * @return The number of registered IPI chips.
+ */
+uint64_t ipi_chip_amount(void);
+
+/**
  * @brief Add an IPI to the CPU's IPI queue and notify the CPU.
  *
  * The CPU is notified of the IPI by receiving a `IRQ_VIRT_IPI` interrupt.

@@ -91,6 +91,12 @@ void ipi_chip_unregister(ipi_chip_t* chip)
     registeredChip = NULL;
 }
 
+uint64_t ipi_chip_amount(void)
+{
+    RWLOCK_READ_SCOPE(&chipLock);
+    return registeredChip != NULL ? 1 : 0;
+}   
+
 static uint64_t ipi_push(cpu_t* cpu, ipi_func_t func, void* private)
 {
     if (registeredChip == NULL)

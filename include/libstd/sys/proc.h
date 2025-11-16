@@ -198,9 +198,9 @@ void* mmap(fd_t fd, void* address, uint64_t length, prot_t prot);
  *
  * @param address The starting virtual address of the memory area to be unmapped.
  * @param length The length of the memory area to be unmapped.
- * @return On success, `0`, on failure returns `ERR` and errno is set.
+ * @return On success, returns the address of the unmapped memory, on failure returns `NULL` and errno is set.
  */
-uint64_t munmap(void* address, uint64_t length);
+void* munmap(void* address, uint64_t length);
 
 /**
  * @brief System call to change the protection flags of memory.
@@ -212,9 +212,9 @@ uint64_t munmap(void* address, uint64_t length);
  * @param length The length of the memory area to be modifed.
  * @param prot The new protection flags of the memory area, if equal to `PROT_NONE` the memory area will be
  * unmapped.
- * @return On success, `0`, on failure returns `ERR` and errno is set.
+ * @return On success, returns the address of the modified memory area, on failure returns `NULL` and errno is set.
  */
-uint64_t mprotect(void* address, uint64_t length, prot_t prot);
+void* mprotect(void* address, uint64_t length, prot_t prot);
 
 /**
  * @brief Futex operation enum.

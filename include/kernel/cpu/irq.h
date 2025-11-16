@@ -49,7 +49,7 @@ typedef struct irq irq_t;
  * @brief Physical IRQ numbers.
  * @typedef irq_phys_t
  */
-typedef uint64_t irq_phys_t;
+typedef uint32_t irq_phys_t;
 
 /**
  * @brief Central listing of all virtual IRQ numbers.
@@ -177,6 +177,7 @@ typedef struct irq_domain
 {
     list_entry_t entry;
     irq_chip_t* chip;
+    void* private;
     irq_phys_t start; ///< Inclusive
     irq_phys_t end;   ///< Exclusive
 } irq_domain_t;
@@ -273,22 +274,32 @@ uint64_t irq_set_affinity(irq_t* irq, cpu_t* cpu);
  * @param chip The IRQ chip to register.
  * @param start The start of the physical IRQ range.
  * @param end The end of the physical IRQ range.
+ * @param private Private data for the IRQ chip, will be found in `irq_t->domain->private`.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `EEXIST`: A chip with a domain overlapping the given range is already registered.
  * - `ENOMEM`: Memory allocation failed.
  */
-uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end);
+uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, void* private);
 
 /**
- * @brief Unregister an IRQ chip.
+ * @brief Unregister all instances of the given IRQ chip within the specified range.
  *
- * Will NOT free any IRQs or handlers associated with the chip, but it will disable them. If another chip is registered
+ * Will NOT free any IRQs or handlers associated with the chip(s), but it will disable them. If another chip is registered
  * in the same range, the IRQs will be remapped to that chip.
  *
  * @param chip The IRQ chip to unregister, or `NULL` for no-op.
+ * @param start The start of the physical IRQ range.
+ * @param end The end of the physical IRQ range.
  */
-void irq_chip_unregister(irq_chip_t* chip);
+void irq_chip_unregister(irq_chip_t* chip, irq_phys_t start, irq_phys_t end);
+
+/**
+ * @brief Get the number of registered IRQ chips.
+ *
+ * @return The number of registered IRQ chips.
+ */
+uint64_t irq_chip_amount(void);
 
 /**
  * @brief Register an IRQ handler for a virtual IRQ.
@@ -299,6 +310,7 @@ void irq_chip_unregister(irq_chip_t* chip);
  * @return On success, a pointer to the IRQ handler. On failure, `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENOMEM`: Memory allocation failed.
+ * - `ENOENT`: The given virtual IRQ is not allocated.
  */
 irq_handler_t* irq_handler_register(irq_virt_t virt, irq_func_t func, void* private);
 
