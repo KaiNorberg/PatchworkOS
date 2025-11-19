@@ -1,12 +1,12 @@
 #include "terminal.h"
 #include "ansi.h"
 
-#include <errno.h>
+#include <libpatchwork/display.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/io.h>
 #include <sys/proc.h>
+#include <time.h>
 
 static terminal_char_t terminal_char_create(char chr, pixel_t foreground, pixel_t background, uint16_t row,
     uint16_t col)
@@ -224,7 +224,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
     }
 }
 
-static void ternminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t* draw, ansi_sending_t* ansi)
+static void terminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t* draw, ansi_sending_t* ansi)
 {
     if (ansi->ascii)
     {
@@ -528,7 +528,7 @@ static void terminal_handle_output(terminal_t* term, element_t* elem, drawable_t
     {
         if (ansi_sending_parse(&term->ansi, buffer[i]))
         {
-            ternminal_execute_ansi(term, elem, draw, &term->ansi);
+            terminal_execute_ansi(term, elem, draw, &term->ansi);
         }
     }
 
@@ -671,17 +671,6 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         element_draw_end(elem, &draw);
     }
     break;
-    case EVENT_USER_TERMINAL_DATA:
-    {
-        terminal_t* term = element_get_private(elem);
-        event_user_terminal_data_t* EVENT_USERData = (event_user_terminal_data_t*)event->raw;
-
-        drawable_t draw;
-        element_draw_begin(elem, &draw);
-        terminal_handle_output(term, elem, &draw, EVENT_USERData->buffer, EVENT_USERData->length);
-        element_draw_end(elem, &draw);
-    }
-    break;
     default:
         break;
     }
@@ -734,29 +723,71 @@ void terminal_loop(window_t* win)
     terminal_t* terminal = element_get_private(window_get_client_element(win));
     display_t* disp = window_get_display(win);
 
-    event_t event = {0};
-    pollfd_t fds[1] = {
+    char buffer[TERMINAL_MAX_DATA] = {0};
+    uint64_t length = 0;
+
+    clock_t currentTime = clock();
+    clock_t nextFrameTime = currentTime + (CLOCKS_PER_SEC / TERMINAL_MAX_FPS);
+    while (true)
+    {
+        clock_t timeout;
+        if (length == 0)
         {
+            timeout = CLOCKS_NEVER;
+        }
+        else if (length == TERMINAL_MAX_DATA)
+        {
+            timeout = 0;
+        }
+        else
+        {
+            timeout = nextFrameTime - currentTime;
+        }
+
+        pollfd_t fds[1] = {{
             .fd = terminal->stdout[PIPE_READ],
             .events = POLLIN,
-        },
-    };
-    while (display_poll(disp, fds, 1, CLOCKS_NEVER) != ERR)
-    {
-        if (fds[0].revents & POLLIN)
+        }};
+        if (display_poll(disp, fds, 1, timeout) == ERR)
         {
-            event_user_terminal_data_t userData;
-            uint64_t readCount = read(terminal->stdout[PIPE_READ], userData.buffer, TERMINAL_MAX_INPUT);
-            userData.length = MIN(readCount, TERMINAL_MAX_INPUT);
-
-            display_push(disp, window_get_id(win), EVENT_USER_TERMINAL_DATA, &userData,
-                sizeof(event_user_terminal_data_t));
+            break;
         }
 
         event_t event = {0};
-        if (display_next(disp, &event, 0) != ERR)
+        while (display_next(disp, &event, 0) != ERR)
         {
             display_dispatch(disp, &event);
+        }
+
+        if ((!(fds[0].revents & POLLIN) && length > 0) || length == TERMINAL_MAX_DATA)
+        {
+            element_t* elem = window_get_client_element(terminal->win);
+            terminal_t* term = element_get_private(elem);
+
+            drawable_t draw;
+            element_draw_begin(elem, &draw);
+            terminal_handle_output(term, elem, &draw, buffer, length);
+            element_draw_end(elem, &draw);
+
+            length = 0;
+            window_invalidate_flush(terminal->win);
+            display_cmds_flush(disp);
+        }
+        
+        if (fds[0].revents & POLLIN)
+        {
+            uint64_t readCount = read(terminal->stdout[PIPE_READ], &buffer[length], TERMINAL_MAX_DATA - length);
+            if (readCount == ERR || readCount == 0)
+            {
+                break;
+            }
+            length += readCount;
+        }
+
+        currentTime = clock();
+        if (currentTime >= nextFrameTime)
+        {
+            nextFrameTime = MAX(nextFrameTime + (CLOCKS_PER_SEC / TERMINAL_MAX_FPS), currentTime + 1);
         }
     }
 }

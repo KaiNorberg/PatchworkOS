@@ -249,7 +249,7 @@ close(ctl);
 
 which would create a new socket and connect it to the server named `myserver`.
 
-[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d0/d22/group__kernel__net.html)
+[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/df/d65/group__module__net.html)
 
 ### Namespaces
 
@@ -379,7 +379,7 @@ All in all, this algorithm would not be a viable replacement for existing algori
 
 [VMM Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/df0/group__kernel__mem__vmm.html)
 
-[Paging Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/df/d5f/group__common__paging.html)
+[Paging Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dc/d2c/group__kernel__mem__paging.html)
 
 ## Shell Utilities
 

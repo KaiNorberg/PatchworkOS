@@ -106,7 +106,7 @@
  * The `CONFIG_MIN_TIME_SLICE` constant defines the minimum time slice a thread can have based on its priority.
  *
  */
-#define CONFIG_MIN_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 1)
+#define CONFIG_MIN_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 10)
 
 /**
  * @brief Maximum recent block time configuration.

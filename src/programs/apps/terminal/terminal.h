@@ -40,26 +40,16 @@
 #define TERMINAL_ROWS 30
 
 /**
- * @brief Event sent from the terminals io thread to the main thread when there is data available.
+ * @brief Maximum size of the buffer used to batch data.
  */
-#define EVENT_USER_TERMINAL_DATA (EVENT_USER_START + 0)
+#define TERMINAL_MAX_DATA (TERMINAL_COLUMNS * TERMINAL_ROWS)
 
 /**
- * @brief Maximum terminal input length.
- */
-#define TERMINAL_MAX_INPUT 64
-
-/**
- * @brief Terminal data event structure.
- * struct event_user_terminal_data_t
+ * @brief Maximum terminal frames per second.
  *
- * The data sent from the io thread to the main thread when there is data.
+ * The terminal will batch any data received within a "frame" and only actually flush the data at the end of the frame.
  */
-typedef struct
-{
-    char buffer[TERMINAL_MAX_INPUT];
-    uint64_t length;
-} event_user_terminal_data_t;
+#define TERMINAL_MAX_FPS 30
 
 /**
  * @brief Terminal flags.
