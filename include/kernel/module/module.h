@@ -53,7 +53,7 @@ supporting that device type and load it. Check the `MODULE_INFO` macro for more 
  * 
  * From the perspective of the module system, devices are identified via a type string and a name string. The type string, as the name suggests, specifies the type of the device, and there can be multiple devices of the same type. While the name string must be entirely unique to each instance of a device.
  * 
- * As an example, for ACPI, the type string would be the ACPI Hardware ID (HID) of the device, for example "PNP0303" for a IBM Enhanced PS/2 Keyboard, while the name string would be the full ACPI path to the device in the AML namespace, for example "\_SB.PCI0.SF8.KBD". But its important to note that the module system does not care or know anything about the semantics of these strings, it just treats them as opaque strings to identify devices.
+ * As an example, for ACPI, the type string would be the ACPI Hardware ID (HID) of the device, for example "PNP0303" for a IBM Enhanced PS/2 Keyboard, while the name string would be the full ACPI path to the device in the AML namespace, for example "\_SB_.PCI0.SF8_.KBD_". But its important to note that the module system does not care or know anything about the semantics of these strings, it just treats them as opaque strings to identify devices.
  * 
  * Since both the type and the name strings are provided to the module during a `MODULE_EVENT_DEVICE_ATTACH` event, the module is intended to use the name to retrieve more information about the device from the relevant subsystem (for example ACPI) if needed.
  * 
@@ -84,7 +84,7 @@ the symbols in each module eventually finding that module1
  * but later a module depending on it is loaded then it will also wait to be unloaded until all modules depending on it
  * are unloaded.
  *
- * TODO: Currently module symbols and device ids are cached in memory after the first load, for now this is fine. But in
+ * TODO: Currently module symbols and device types are cached in memory after the first load, for now this is fine. But in
 the future this cache could become very large so we might need a Linux-style cache file on disk or atleast a way to
 invalidate the cache.
  *
@@ -142,6 +142,7 @@ typedef struct module_info
     char* license;
     char* osVersion;
     char* deviceTypes; ///< Null-terminated semicolon-separated list of device type strings.
+    uint64_t dataSize; ///< Size of the `data` field.
     char data[]; ///< All strings are stored here contiguously.
 } module_info_t;
 
@@ -345,7 +346,7 @@ typedef struct module
     symbol_group_id_t symbolGroupId; ///< The symbol group ID for the module's symbols.
     list_t dependencies;        ///< List of `module_dependency_t` representing modules this module depends on.
     list_t deviceHandlers;    ///< List of `module_device_handler_t` representing devices this module handles.
-    module_info_t* info;
+    module_info_t info;
 } module_t;
 
 /**
@@ -384,8 +385,8 @@ typedef struct
  */
 typedef enum
 {
-    MODULE_LOAD_ONE = 0 << 0, ///< If set, will load only the first module matching the device ID.
-    MODULE_LOAD_ALL = 1 << 0, ///< If set, will load all modules matching the device ID.
+    MODULE_LOAD_ONE = 0 << 0, ///< If set, will load only the first module matching the device type.
+    MODULE_LOAD_ALL = 1 << 0, ///< If set, will load all modules matching the device type.
 } module_load_flags_t;
 
 /**

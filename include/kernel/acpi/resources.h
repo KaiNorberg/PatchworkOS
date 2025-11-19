@@ -126,4 +126,17 @@ typedef struct PACKED
     uint8_t length; ///< The amount of contiguous IO ports required by the device.
 } acpi_io_port_descriptor_t;
 
+/**
+ * @brief Get the current ACPI resource settings for a device by its path.
+ * 
+ * @param path The device path in the AML namespace, for example "\_SB_.PCI0.SF8_.KBD_".
+ * @return On success, a allocated resources structure. On failure, `NULL` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `ENODEV`: The device was not found or has no `_CRS` method.
+ * - `EILSEQ`: Unexpected data from the `_CRS` method.
+ * - `ENOMEM`: Out of memory.
+ * - Other values from `aml_evaluate()`.
+ */
+acpi_resources_t* acpi_resources_current(const char* path);
+
 /** @} */

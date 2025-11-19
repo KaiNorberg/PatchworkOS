@@ -31,7 +31,6 @@ typedef struct
 
 typedef struct
 {
-    aml_state_t* state;
     acpi_device_id_t* ids;
     uint64_t idCount;
 } acpi_devices_init_ctx_t;
@@ -61,9 +60,9 @@ static uint64_t acpi_id_object_to_string(aml_object_t* idObject, char* out, size
     return 0;
 }
 
-static uint64_t acpi_sta_get_flags(acpi_devices_init_ctx_t* ctx, aml_object_t* device, acpi_sta_flags_t* out)
+static uint64_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t* out)
 {
-    aml_object_t* sta = aml_namespace_find_child(&ctx->state->overlay, device, AML_NAME('_', 'S', 'T', 'A'));
+    aml_object_t* sta = aml_namespace_find_child(NULL, device, AML_NAME('_', 'S', 'T', 'A'));
     if (sta == NULL)
     {
         *out = ACPI_STA_FLAGS_DEFAULT;
@@ -71,7 +70,7 @@ static uint64_t acpi_sta_get_flags(acpi_devices_init_ctx_t* ctx, aml_object_t* d
     }
     DEREF_DEFER(sta);
 
-    aml_object_t* staResult = aml_evaluate(ctx->state, sta, AML_INTEGER);
+    aml_object_t* staResult = aml_evaluate(NULL, sta, AML_INTEGER);
     if (staResult == NULL)
     {
         LOG_ERR("could not evaluate %s._STA\n", AML_NAME_TO_STRING(device->name));
@@ -146,7 +145,7 @@ static uint64_t acpi_device_add(acpi_devices_init_ctx_t* ctx, aml_object_t* devi
     }
     DEREF_DEFER(hid);   
 
-    aml_object_t* hidResult = aml_evaluate(ctx->state, hid, AML_STRING | AML_INTEGER);
+    aml_object_t* hidResult = aml_evaluate(NULL, hid, AML_STRING | AML_INTEGER);
     if (hidResult == NULL)
     {
         return ERR;
@@ -163,7 +162,7 @@ static uint64_t acpi_device_add(acpi_devices_init_ctx_t* ctx, aml_object_t* devi
     {
         DEREF_DEFER(cid);
 
-        aml_object_t* cidResult = aml_evaluate(ctx->state, cid, AML_STRING | AML_INTEGER);
+        aml_object_t* cidResult = aml_evaluate(NULL, cid, AML_STRING | AML_INTEGER);
         if (cidResult == NULL)
         {
             return ERR;
@@ -184,7 +183,7 @@ static uint64_t acpi_device_add(acpi_devices_init_ctx_t* ctx, aml_object_t* devi
     return 0;
 }
 
-static aml_object_t* acpi_device_init_sb(acpi_devices_init_ctx_t* ctx)
+static aml_object_t* acpi_device_init_sb(void)
 {
     aml_object_t* sb = aml_namespace_find(NULL, NULL, 1, AML_NAME('_', 'S', 'B', '_'));
     if (sb == NULL) // Should never happen
@@ -195,7 +194,7 @@ static aml_object_t* acpi_device_init_sb(acpi_devices_init_ctx_t* ctx)
     DEREF_DEFER(sb);
 
     acpi_sta_flags_t sta;
-    if (acpi_sta_get_flags(ctx, sb, &sta) == ERR)
+    if (acpi_sta_get_flags(sb, &sta) == ERR)
     {
         return NULL;
     }
@@ -211,7 +210,7 @@ static aml_object_t* acpi_device_init_sb(acpi_devices_init_ctx_t* ctx)
     {
         DEREF_DEFER(ini);
         LOG_INFO("found \\_SB_._INI\n");
-        aml_object_t* iniResult = aml_evaluate(ctx->state, ini, AML_ALL_TYPES);
+        aml_object_t* iniResult = aml_evaluate(NULL, ini, AML_ALL_TYPES);
         if (iniResult == NULL)
         {
             LOG_ERR("could not evaluate \\_SB_._INI\n");
@@ -242,7 +241,7 @@ static uint64_t acpi_device_init_children(acpi_devices_init_ctx_t* ctx, aml_obje
         }
 
         acpi_sta_flags_t sta;
-        if (acpi_sta_get_flags(ctx, child, &sta) == ERR)
+        if (acpi_sta_get_flags(child, &sta) == ERR)
         {
             return ERR;
         }
@@ -254,7 +253,7 @@ static uint64_t acpi_device_init_children(acpi_devices_init_ctx_t* ctx, aml_obje
             if (ini != NULL)
             {
                 DEREF_DEFER(ini);
-                aml_object_t* iniResult = aml_evaluate(ctx->state, ini, AML_ALL_TYPES);
+                aml_object_t* iniResult = aml_evaluate(NULL, ini, AML_ALL_TYPES);
                 if (iniResult == NULL)
                 {
                     LOG_ERR("could not evaluate %s._INI\n", childPath);
@@ -310,22 +309,14 @@ void acpi_devices_init(void)
 {
     MUTEX_SCOPE(aml_big_mutex_get());
 
-    aml_state_t state;
-    if (aml_state_init(&state, NULL) == ERR)
-    {
-        panic(NULL, "Could not initialize AML state for ACPI device initialization\n");
-    }
-
     acpi_devices_init_ctx_t ctx = {
-        .state = &state,
         .ids = NULL,
         .idCount = 0,
     };
 
-    aml_object_t* sb = acpi_device_init_sb(&ctx);
+    aml_object_t* sb = acpi_device_init_sb();
     if (sb == NULL)
     {
-        aml_state_deinit(&state);
         panic(NULL, "Could not initialize ACPI devices\n");
     }
     DEREF_DEFER(sb);
@@ -333,7 +324,6 @@ void acpi_devices_init(void)
     LOG_DEBUG("initializing ACPI devices under \\_SB_\n");
     if (acpi_device_init_children(&ctx, sb, "\\_SB_", true) == ERR)
     {
-        aml_state_deinit(&state);
         panic(NULL, "Could not initialize ACPI devices\n");
     }
 
@@ -344,7 +334,6 @@ void acpi_devices_init(void)
     {
         if (acpi_device_push_if_not_exists(&ctx, "PNP0103", "HPET") == ERR)
         {
-            aml_state_deinit(&state);
             panic(NULL, "Could not initialize ACPI devices\n");
         }
     }
@@ -353,7 +342,6 @@ void acpi_devices_init(void)
     {
         if (acpi_device_push_if_not_exists(&ctx, "PNP0003", "APIC") == ERR)
         {
-            aml_state_deinit(&state);
             panic(NULL, "Could not initialize ACPI devices\n");
         }
     }
@@ -385,5 +373,4 @@ void acpi_devices_init(void)
     }
 
     free(ctx.ids);
-    aml_state_deinit(&state);
 }

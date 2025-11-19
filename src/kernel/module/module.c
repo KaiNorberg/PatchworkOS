@@ -51,7 +51,7 @@ static void* module_resolve_symbol_callback(const char* name, void* private);
 
 static module_t* module_new(module_info_t* info)
 {
-    module_t* module = malloc(sizeof(module_t));
+    module_t* module = malloc(sizeof(module_t) + info->dataSize);
     if (module == NULL)
     {
         return NULL;
@@ -67,7 +67,7 @@ static module_t* module_new(module_info_t* info)
     module->symbolGroupId = symbol_generate_group_id();
     list_init(&module->dependencies);
     list_init(&module->deviceHandlers);
-    module->info = info;
+    memcpy(&module->info, info, sizeof(module_info_t) + info->dataSize);
 
     list_push_back(&modulesList, &module->listEntry);
 
@@ -93,7 +93,7 @@ static module_t* module_new(module_info_t* info)
 
 static void module_free(module_t* module)
 {
-    LOG_DEBUG("freeing resources for module '%s'\n", module->info->name);
+    LOG_DEBUG("freeing resources for module '%s'\n", module->info.name);
 
     assert(!(module->flags & MODULE_FLAG_LOADED));
 
@@ -108,19 +108,18 @@ static void module_free(module_t* module)
         vmm_unmap(NULL, module->baseAddr, module->size);
     }
     
-    free(module->info);
     free(module);
 }
 
 static uint64_t module_call_load_event(module_t* module)
 {
-    LOG_DEBUG("calling load event for module '%s'\n", module->info->name);
+    LOG_DEBUG("calling load event for module '%s'\n", module->info.name);
     module_event_t loadEvent = {
         .type = MODULE_EVENT_LOAD,
     };
     if (module->procedure(&loadEvent) == ERR)
     {
-        LOG_ERR("call to load event for module '%s' failed\n", module->info->name);
+        LOG_ERR("call to load event for module '%s' failed\n", module->info.name);
         return ERR;
     }
     module->flags |= MODULE_FLAG_LOADED;
@@ -131,7 +130,7 @@ static void module_call_unload_event(module_t* module)
 {
     if (module->flags & MODULE_FLAG_LOADED)
     {
-        LOG_DEBUG("calling unload event for module '%s'\n", module->info->name);
+        LOG_DEBUG("calling unload event for module '%s'\n", module->info.name);
         module_event_t unloadEvent = {
             .type = MODULE_EVENT_UNLOAD,
         };
@@ -208,7 +207,7 @@ static inline module_device_handler_t* module_handler_add(module_t* module, modu
     };
     if (module->procedure(&attachEvent) == ERR)
     {
-        LOG_ERR("call to attach event for module '%s' failed\n", module->info->name);
+        LOG_ERR("call to attach event for module '%s' failed\n", module->info.name);
         free(handler);
         return NULL;
     }
@@ -339,6 +338,7 @@ static inline module_info_t* module_info_parse(const char* moduleInfo)
     info->deviceTypes = &info->data[offset];
     strncpy_s(info->deviceTypes, deviceTypesLength + 1, &moduleInfo[offset], deviceTypesLength + 1);
 
+    info->dataSize = totalSize + 1;
     return info;
 
 error:
@@ -816,7 +816,7 @@ static uint64_t module_load_and_relocate_elf(module_t* module, Elf64_File* elf, 
         void* symAddr = (void*)((uintptr_t)module->baseAddr + (sym->st_value - minVaddr));
         if (symbol_add(symName, symAddr, module->symbolGroupId, binding, type) == ERR)
         {
-            LOG_ERR("failed to add symbol '%s' to module '%s'\n", symName, module->info->name);
+            LOG_ERR("failed to add symbol '%s' to module '%s'\n", symName, module->info.name);
             return ERR;
         }
     }
@@ -862,9 +862,9 @@ static uint64_t module_load_dependency(module_load_ctx_t* ctx, const char* symbo
         return ERR;
     }
 
-    LOG_INFO("loading dependency '%s' version %s by %s\n", dependency->info->name, dependency->info->version,
-        dependency->info->author);
-    LOG_DEBUG("  description: %s\n  licence:     %s\n", dependency->info->description, dependency->info->license);
+    LOG_INFO("loading dependency '%s' version %s by %s\n", dependency->info.name, dependency->info.version,
+        dependency->info.author);
+    LOG_DEBUG("  description: %s\n  licence:     %s\n", dependency->info.description, dependency->info.license);
 
     if (module_load_and_relocate_elf(dependency, &file.elf, ctx) == ERR)
     {
@@ -977,8 +977,8 @@ static module_t* module_get_or_load(const char* filename, file_t* dir, const cha
 
     list_t loadedDependencies = LIST_CREATE(loadedDependencies);
 
-    LOG_INFO("loading '%s' version %s by %s\n", module->info->name, module->info->version, module->info->author);
-    LOG_DEBUG("  description: %s\n  licence:     %s\n", module->info->description, module->info->license);
+    LOG_INFO("loading '%s' version %s by %s\n", module->info.name, module->info.version, module->info.author);
+    LOG_DEBUG("  description: %s\n  licence:     %s\n", module->info.description, module->info.license);
 
     uint64_t loadResult = module_load_and_relocate_elf(module, &file.elf, &ctx);
     module_file_deinit(&file);
@@ -1008,7 +1008,7 @@ static module_t* module_get_or_load(const char* filename, file_t* dir, const cha
     while (!list_is_empty(&loadedDependencies))
     {
         module_t* dependency = CONTAINER_OF(list_pop_first(&loadedDependencies), module_t, loadEntry);
-        LOG_DEBUG("finished loading dependency module '%s'\n", dependency->info->name);
+        LOG_DEBUG("finished loading dependency module '%s'\n", dependency->info.name);
     }
 
     if (module_call_load_event(module) == ERR)
@@ -1016,7 +1016,7 @@ static module_t* module_get_or_load(const char* filename, file_t* dir, const cha
         goto error;
     }
 
-    LOG_DEBUG("finished loading module '%s'\n", module->info->name);
+    LOG_DEBUG("finished loading module '%s'\n", module->info.name);
 
     return module;
 
@@ -1117,7 +1117,7 @@ uint64_t module_device_attach(const char* type, const char* name, module_load_fl
     while (!list_is_empty(&handlers))
     {
         module_device_handler_t* handler = CONTAINER_OF(list_pop_first(&handlers), module_device_handler_t, loadEntry);
-        LOG_DEBUG("successfully loaded module '%s' for device '%s'\n", handler->module->info->name, name);
+        LOG_DEBUG("added handler with module '%s' and device '%s'\n", handler->module->info.name, name);
     }
 
     return loadedCount;

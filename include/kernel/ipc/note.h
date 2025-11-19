@@ -14,14 +14,11 @@ typedef struct cpu cpu_t;
  * @defgroup kernel_ipc_note Notes
  * @ingroup kernel_ipc
  *
- * Notes are exposed in the `/proc/[pid]/note` file. Notes are used for inter-process communication (IPC) in a way
- * similar to signals in Unix-like operating systems. However, they allow for a buffer of data to be sent instead of
- * just an integer. In theory anything could be sent as a note.
+ * Notes are exposed in the `/proc/[pid]/note` file and are used for inter-process communication (IPC) similarly to signals in Unix-like operating systems. However, instead of being limited to a predefined set of integer values, notes can send arbitrary data buffers of up to `NOTE_MAX_BUFFER` bytes, usually strings.
  *
  * ## Using Notes
  *
- * Notes are sent by writing to the `/proc/[pid]/note` file of the target process. The data written to the file is sent
- * as a note to one of the threads in the target process.
+ * Notes are sent by writing to the `/proc/[pid]/note` file of the target process, the data will be received by one of the threads in the target process.
  *
  * ## Receiving Notes
  *
@@ -29,13 +26,11 @@ typedef struct cpu cpu_t;
  *
  * ## Special Notes
  *
- * Certain notes will cause the kernel to take special actions and, for the sake of concistency, we define some notes
+ * Certain notes will cause the kernel to take special actions and, for the sake of consistency, we define some notes
  * that all user processes should handle in a standard way. The values for these notes are intended to mirror UNIX
  * signals where applicable. Below is a list of all of these special notes:
  * - "kill": When the kernel receives this note, it will immediately terminate the target thread's process. User space
- * will never see this signal. (UNIX SIGKILL)
- *
- *
+ * will never see this note. Also used by processes to kill all of its own threads. (UNIX SIGKILL)
  *
  * @{
  */
