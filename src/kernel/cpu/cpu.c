@@ -62,7 +62,7 @@ void cpu_init_early(cpu_t* cpu)
         panic(NULL, "Failed to init interrupt stack for cpu %u\n", cpu->id);
     }
     *(uint64_t*)cpu->interruptStack.bottom = CPU_STACK_CANARY;
-    tss_ist_load(&cpu->tss, TSS_IST_INTERRUPT, &cpu->interruptStack);   
+    tss_ist_load(&cpu->tss, TSS_IST_INTERRUPT, &cpu->interruptStack);
 }
 
 void cpu_init(cpu_t* cpu)
@@ -81,7 +81,7 @@ void cpu_init(cpu_t* cpu)
     LOCK_SCOPE(&eventHandlerLock);
     for (uint64_t i = 0; i < eventHandlerCount; i++)
     {
-        cpu_event_t event = { .type = CPU_ONLINE };
+        cpu_event_t event = {.type = CPU_ONLINE};
         eventHandlers[i].func(cpu, &event);
         bitmap_set(&eventHandlers[i].initializedCpus, cpu->id);
     }
@@ -119,7 +119,7 @@ uint64_t cpu_handler_register(cpu_func_t func)
     cpu_t* self = cpu_get_unsafe();
     if (self != NULL)
     {
-        cpu_event_t event = { .type = CPU_ONLINE };
+        cpu_event_t event = {.type = CPU_ONLINE};
         eventHandler->func(self, &event);
         bitmap_set(&eventHandler->initializedCpus, self->id);
     }
@@ -153,8 +153,7 @@ void cpu_handler_unregister(cpu_func_t func)
         {
             eventHandler->func = NULL;
             eventHandlerCount--;
-            memmove(&eventHandlers[i], &eventHandlers[i + 1],
-                (CPU_MAX_EVENT_HANDLERS - i - 1) * sizeof(cpu_func_t));
+            memmove(&eventHandlers[i], &eventHandlers[i + 1], (CPU_MAX_EVENT_HANDLERS - i - 1) * sizeof(cpu_func_t));
             break;
         }
     }
@@ -174,12 +173,12 @@ void cpu_handlers_check(cpu_t* cpu)
         cpu_handler_t* eventHandler = &eventHandlers[i];
         if (!bitmap_is_set(&eventHandler->initializedCpus, cpu->id))
         {
-            cpu_event_t event = { .type = CPU_ONLINE };
+            cpu_event_t event = {.type = CPU_ONLINE};
             eventHandler->func(cpu, &event);
             bitmap_set(&eventHandler->initializedCpus, cpu->id);
         }
     }
-} 
+}
 
 void cpu_stacks_overflow_check(cpu_t* cpu)
 {

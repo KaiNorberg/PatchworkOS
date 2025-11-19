@@ -33,7 +33,8 @@ static module_info_t fakeKernelModuleInfo = {
 
 static list_t modulesList = LIST_CREATE(modulesList);
 static map_t modulesMap = MAP_CREATE; ///< Key = module name, value = module_t*
-static map_t providerMap = MAP_CREATE; ///< Key = symbol_group_id_t, value = module_t*. Used to find which module provides which symbols.
+static map_t providerMap =
+    MAP_CREATE; ///< Key = symbol_group_id_t, value = module_t*. Used to find which module provides which symbols.
 
 static map_t deviceMap = MAP_CREATE; ///< Key = device name, value = module_device_t*
 
@@ -67,7 +68,7 @@ static module_t* module_new(module_info_t* info)
     module->symbolGroupId = symbol_generate_group_id();
     list_init(&module->dependencies);
     list_init(&module->deviceHandlers);
-    memcpy(&module->info, info, sizeof(module_info_t) + info->dataSize);
+    memcpy_s(&module->info, sizeof(module_info_t) + info->dataSize, info, sizeof(module_info_t) + info->dataSize);
 
     list_push_back(&modulesList, &module->listEntry);
 
@@ -107,7 +108,7 @@ static void module_free(module_t* module)
     {
         vmm_unmap(NULL, module->baseAddr, module->size);
     }
-    
+
     free(module);
 }
 
@@ -353,8 +354,8 @@ typedef struct
     module_info_t* info;
 } module_file_t;
 
-static uint64_t module_file_read(module_file_t* outFile, const path_t* dirPath,
-    process_t* process, const char* filename)
+static uint64_t module_file_read(module_file_t* outFile, const path_t* dirPath, process_t* process,
+    const char* filename)
 {
     file_t* file = vfs_openat(dirPath, PATHNAME(filename), process);
     if (file == NULL)
@@ -820,7 +821,7 @@ static uint64_t module_load_and_relocate_elf(module_t* module, Elf64_File* elf, 
             return ERR;
         }
     }
-    
+
     module_t* previous = ctx->current;
     ctx->current = module;
     if (elf64_relocate(elf, (Elf64_Addr)module->baseAddr, minVaddr, module_resolve_symbol_callback, ctx) == ERR)
@@ -898,8 +899,7 @@ static void* module_resolve_symbol_callback(const char* symbolName, void* privat
     }
 
     map_key_t providerKey = map_key_uint64(symbolInfo.groupId);
-    module_t* existingModule =
-        CONTAINER_OF_SAFE(map_get(&providerMap, &providerKey), module_t, providerEntry);
+    module_t* existingModule = CONTAINER_OF_SAFE(map_get(&providerMap, &providerKey), module_t, providerEntry);
     if (existingModule != NULL)
     {
         return symbolInfo.addr;
@@ -1066,7 +1066,7 @@ uint64_t module_device_attach(const char* type, const char* name, module_load_fl
 
     module_device_t* device = module_device_get(name);
     if (device != NULL)
-    {    
+    {
         if (strncmp(device->type, type, MODULE_MAX_DEVICE_STRING) != 0)
         {
             LOG_ERR("device '%s' type mismatch (expected '%s', got '%s')\n", name, device->type, type);
@@ -1132,7 +1132,7 @@ error:
         module_device_free(device);
     }
     module_gc_collect();
-    return ERR; 
+    return ERR;
 }
 
 void module_device_detach(const char* name)

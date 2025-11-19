@@ -773,7 +773,7 @@ void terminal_loop(window_t* win)
             window_invalidate_flush(terminal->win);
             display_cmds_flush(disp);
         }
-        
+
         if (fds[0].revents & POLLIN)
         {
             uint64_t readCount = read(terminal->stdout[PIPE_READ], &buffer[length], TERMINAL_MAX_DATA - length);

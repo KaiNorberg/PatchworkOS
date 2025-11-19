@@ -63,7 +63,7 @@ acpi_resources_t* acpi_resources_current(const char* path)
         return NULL;
     }
 
-    acpi_resources_t* resources = (acpi_resources_t*)malloc(sizeof(acpi_resources_t) + crsResult->buffer.length);
+    acpi_resources_t* resources = malloc(sizeof(acpi_resources_t) + crsResult->buffer.length);
     if (resources == NULL)
     {
         errno = ENOMEM;
@@ -73,5 +73,57 @@ acpi_resources_t* acpi_resources_current(const char* path)
     resources->length = crsResult->buffer.length;
     memcpy_s(resources->data, crsResult->buffer.length, crsResult->buffer.content, crsResult->buffer.length);
 
+    bool endTagFound = false;
+    acpi_resource_t* resource;
+    ACPI_RESOURCES_FOR_EACH(resource, resources)
+    {
+        if (endTagFound)
+        {
+            LOG_ERR("device '%s' _CRS has data after end tag\n", path);
+            goto error;
+        }
+
+        acpi_item_name_t itemName = ACPI_RESOURCE_ITEM_NAME(resource);
+        uint64_t size = ACPI_RESOURCE_SIZE(resource);
+
+        switch (itemName)
+        {
+        case ACPI_ITEM_NAME_IRQ:
+        {
+            if (size != sizeof(acpi_irq_descriptor_t) &&
+                size != sizeof(acpi_irq_descriptor_t) - 1) // The last byte is optional
+            {
+                LOG_ERR("device '%s' _CRS has invalid IRQ descriptor size %llu\n", path, size);
+                goto error;
+            }
+        }
+        break;
+        case ACPI_ITEM_NAME_IO_PORT:
+        {
+            if (size != sizeof(acpi_io_port_descriptor_t))
+            {
+                LOG_ERR("device '%s' _CRS has invalid IO port descriptor size %llu\n", path, size);
+                goto error;
+            }
+        }
+        break;
+        case ACPI_ITEM_NAME_END_TAG:
+            endTagFound = true;
+            break;
+        default:
+            break;
+        }
+    }
+
+    if (!endTagFound)
+    {
+        LOG_ERR("device '%s' _CRS missing end tag\n", path);
+        goto error;
+    }
+
     return resources;
+error:
+    free(resources);
+    errno = EILSEQ;
+    return NULL;
 }

@@ -45,18 +45,25 @@ that the module should be aware of this procedure will be called to notify the m
  *
  * ## Loading Modules
  *
- * Modules can not be explicitly loaded, instead each module declares what device types it supports in its `.module_info`
-section, when the module loader is then told that a device with a specified type is present it will search for a module
-supporting that device type and load it. Check the `MODULE_INFO` macro for more details.
+ * Modules can not be explicitly loaded, instead each module declares what device types it supports in its
+`.module_info` section, when the module loader is then told that a device with a specified type is present it will
+search for a module supporting that device type and load it. Check the `MODULE_INFO` macro for more details.
  *
  * ## Device Types and Names
- * 
- * From the perspective of the module system, devices are identified via a type string and a name string. The type string, as the name suggests, specifies the type of the device, and there can be multiple devices of the same type. While the name string must be entirely unique to each instance of a device.
- * 
- * As an example, for ACPI, the type string would be the ACPI Hardware ID (HID) of the device, for example "PNP0303" for a IBM Enhanced PS/2 Keyboard, while the name string would be the full ACPI path to the device in the AML namespace, for example "\_SB_.PCI0.SF8_.KBD_". But its important to note that the module system does not care or know anything about the semantics of these strings, it just treats them as opaque strings to identify devices.
- * 
- * Since both the type and the name strings are provided to the module during a `MODULE_EVENT_DEVICE_ATTACH` event, the module is intended to use the name to retrieve more information about the device from the relevant subsystem (for example ACPI) if needed.
- * 
+ *
+ * From the perspective of the module system, devices are identified via a type string and a name string. The type
+string, as the name suggests, specifies the type of the device, and there can be multiple devices of the same type.
+While the name string must be entirely unique to each instance of a device.
+ *
+ * As an example, for ACPI, the type string would be the ACPI Hardware ID (HID) of the device, for example "PNP0303" for
+a IBM Enhanced PS/2 Keyboard, while the name string would be the full ACPI path to the device in the AML namespace, for
+example "\_SB_.PCI0.SF8_.KBD_". But its important to note that the module system does not care or know anything about
+the semantics of these strings, it just treats them as opaque strings to identify devices.
+ *
+ * Since both the type and the name strings are provided to the module during a `MODULE_EVENT_DEVICE_ATTACH` event, the
+module is intended to use the name to retrieve more information about the device from the relevant subsystem (for
+example ACPI) if needed.
+ *
  * ## Dependencies
  *
  * Modules can depend on other modules. For example, module1 could define the function `module_1_func()` and then
@@ -84,8 +91,8 @@ the symbols in each module eventually finding that module1
  * but later a module depending on it is loaded then it will also wait to be unloaded until all modules depending on it
  * are unloaded.
  *
- * TODO: Currently module symbols and device types are cached in memory after the first load, for now this is fine. But in
-the future this cache could become very large so we might need a Linux-style cache file on disk or atleast a way to
+ * TODO: Currently module symbols and device types are cached in memory after the first load, for now this is fine. But
+in the future this cache could become very large so we might need a Linux-style cache file on disk or atleast a way to
 invalidate the cache.
  *
  * ## Circular Dependencies
@@ -94,7 +101,8 @@ invalidate the cache.
  * which in turn depends on module A.
  *
  * This is allowed, which means that, for the sake of safety, all modules should be written in such a way that all their
- * global functions can be safely called even if the module is not fully initialized yet. This should rarely make any difference whatsoever.
+ * global functions can be safely called even if the module is not fully initialized yet. This should rarely make any
+difference whatsoever.
  *
  * See "Unloading Modules" below for more details on how circular dependencies are handled during unloading.
  *
@@ -143,7 +151,7 @@ typedef struct module_info
     char* osVersion;
     char* deviceTypes; ///< Null-terminated semicolon-separated list of device type strings.
     uint64_t dataSize; ///< Size of the `data` field.
-    char data[]; ///< All strings are stored here contiguously.
+    char data[];       ///< All strings are stored here contiguously.
 } module_info_t;
 
 /**
@@ -279,7 +287,7 @@ typedef uint64_t (*module_procedure_t)(const module_event_t* event);
 /**
  * @brief Module device structure.
  * @typedef module_device_t
- * 
+ *
  * Represents a device known to the module system to be currently attached.
  */
 typedef struct module_device
@@ -319,10 +327,10 @@ typedef enum module_flags
 /**
  * @brief Module dependency structure.
  * @typedef module_dependency_t
- * 
+ *
  * We avoid using a map for there as the number of direct dependencies on average should be quite low.
  */
-typedef struct 
+typedef struct
 {
     list_entry_t listEntry;
     module_t* module;
@@ -334,18 +342,18 @@ typedef struct
  */
 typedef struct module
 {
-    list_entry_t listEntry;           ///< Entry for the global module list.
-    map_entry_t mapEntry;             ///< Entry for the global module map.
-    map_entry_t providerEntry;       ///< Entry for the module provider map.
-    list_entry_t gcEntry;               ///< Entry used for garbage collection.
-    list_entry_t loadEntry;              ///< Entry used while loading modules.
+    list_entry_t listEntry;    ///< Entry for the global module list.
+    map_entry_t mapEntry;      ///< Entry for the global module map.
+    map_entry_t providerEntry; ///< Entry for the module provider map.
+    list_entry_t gcEntry;      ///< Entry used for garbage collection.
+    list_entry_t loadEntry;    ///< Entry used while loading modules.
     module_flags_t flags;
     void* baseAddr;                  ///< The address where the modules image is loaded in memory.
     uint64_t size;                   ///< The size of the modules loaded image in memory.
     module_procedure_t procedure;    ///< The module's procedure function and entry point.
     symbol_group_id_t symbolGroupId; ///< The symbol group ID for the module's symbols.
-    list_t dependencies;        ///< List of `module_dependency_t` representing modules this module depends on.
-    list_t deviceHandlers;    ///< List of `module_device_handler_t` representing devices this module handles.
+    list_t dependencies;             ///< List of `module_dependency_t` representing modules this module depends on.
+    list_t deviceHandlers;           ///< List of `module_device_handler_t` representing devices this module handles.
     module_info_t info;
 } module_t;
 
@@ -403,8 +411,9 @@ void module_init_fake_kernel_module(const boot_kernel_t* kernel);
  *
  * Will automatically load any dependencies required by the module.
  *
- * If a module fails to load, we do not consider it a fatal error, instead we log the error and continue loading other modules.
- * 
+ * If a module fails to load, we do not consider it a fatal error, instead we log the error and continue loading other
+ * modules.
+ *
  * @param type The device type string.
  * @param name The unique device name string.
  * @param flags Load flags, see `module_load_flags_t`.

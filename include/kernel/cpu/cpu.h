@@ -30,10 +30,12 @@
  * Each CPU can generate events which can be handled by registering event handlers
  * using `cpu_handler_register()`.
  *
- * As an example, the `CPU_ONLINE` event allows other subsystems to perform per-CPU initialization on each CPU no matter when they are initialized or even if IPIs are available yet.
- * 
- * This is what makes it possible for SMP to be in a module, at the cost of the system being perhaps slightly unintuitive and edge case heavy.
- * 
+ * As an example, the `CPU_ONLINE` event allows other subsystems to perform per-CPU initialization on each CPU no matter
+ * when they are initialized or even if IPIs are available yet.
+ *
+ * This is what makes it possible for SMP to be in a module, at the cost of the system being perhaps slightly
+ * unintuitive and edge case heavy.
+ *
  * For more details see `cpu_handler_register()`, `cpu_handler_unregister()`, and `cpu_handlers_check()`.
  *
  * ## Per-CPU Data
@@ -91,8 +93,9 @@ typedef struct
 
 /**
  * @brief Maximum number of CPU event handlers that can be registered.
- * 
- * We need to statically allocate the event handler array such that handlers can be registered before memory allocation has been initialized.
+ *
+ * We need to statically allocate the event handler array such that handlers can be registered before memory allocation
+ * has been initialized.
  */
 #define CPU_MAX_EVENT_HANDLERS 32
 
@@ -155,9 +158,10 @@ extern uint16_t _cpuAmount;
 
 /**
  * @brief Only initialize the parts of the CPU structure needed for early boot.
- * 
- * The only reason we need this is to split the initialization of the bootstrap CPU to avoid circular dependencies during early boot and since we cant use memory allocation yet.
- * 
+ *
+ * The only reason we need this is to split the initialization of the bootstrap CPU to avoid circular dependencies
+ * during early boot and since we cant use memory allocation yet.
+ *
  * @param cpu The CPU structure to initialize.
  */
 void cpu_init_early(cpu_t* cpu);
@@ -175,8 +179,9 @@ void cpu_init(cpu_t* cpu);
 /**
  * @brief Registers a CPU event handler for all CPUs.
  *
- * The registered handler will be immediately invoked with a `CPU_ONLINE` event on the current CPU, then invoked on all others when they call `cpu_handlers_check()` and on any new cpus when they are initialized.
- * 
+ * The registered handler will be immediately invoked with a `CPU_ONLINE` event on the current CPU, then invoked on all
+ * others when they call `cpu_handlers_check()` and on any new cpus when they are initialized.
+ *
  * @param func The event function to register a handler for.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
@@ -187,7 +192,7 @@ uint64_t cpu_handler_register(cpu_func_t func);
 
 /**
  * @brief Unregisters a previously registered CPU event handler.
- * 
+ *
  * Will be a no-op if the handler was not registered.
  *
  * @param func The event function of the handler to unregister, or `NULL` for no-op.
@@ -276,7 +281,7 @@ static inline cpu_t* cpu_get_unsafe(void)
  * @brief Gets the current CPU ID.
  *
  * @warning This function does not disable interrupts, it should thus only be used when interrupts are already disabled.
- * 
+ *
  * @return The current CPU ID.
  */
 static inline cpuid_t cpu_get_id_unsafe(void)

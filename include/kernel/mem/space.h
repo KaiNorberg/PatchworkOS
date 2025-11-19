@@ -185,7 +185,8 @@ uint64_t space_pin(space_t* space, const void* address, uint64_t length, stack_p
  * @param objectSize The size of each object to compare against the terminator, in bytes.
  * @param maxCount The maximum number of objects to scan before failing.
  * @param userStack Pointer to the user stack of the calling thread, can be `NULL`, see `space_pin()`.
- * @return On success, the number of bytes pinned, not including the terminator. On failure, `ERR` and `errno` is set to:
+ * @return On success, the number of bytes pinned, not including the terminator. On failure, `ERR` and `errno` is set
+ * to:
  * - `EINVAL`: Invalid parameters.
  * - `EOVERFLOW`: Address overflow.
  * - `EFAULT`: The region is not fully mapped or within the provided user stack.
@@ -242,8 +243,9 @@ typedef struct
  *
  * If `flags & PML_USER` then the addresses must be in the user space range.
  *
- * @note Handling page faults to grow stacks requires mapping memory, this means that if we were to run out of memory while 
- * executing this function, it could lead to a deadlock. To avoid this, this function will call `stack_pointer_poke()` to ensure that sufficient stack space is available.
+ * @note Handling page faults to grow stacks requires mapping memory, this means that if we were to run out of memory
+ * while executing this function, it could lead to a deadlock. To avoid this, this function will call
+ * `stack_pointer_poke()` to ensure that sufficient stack space is available.
  *
  * @param space The target address space.
  * @param mapping Will be filled with parsed information about the mapping.

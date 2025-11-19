@@ -9,27 +9,34 @@
  * @defgroup kernel_acpi_devices Devices
  * @ingroup kernel_acpi
  *
- * Handles enumeration and configuration of ACPI devices, along with dynamic loading of device drivers. 
- * 
- * Each device found under the `\_SB` namespace with a `_HID` method will have its HID collected and the module system will be notified that a device with that HID exists, if there is no module supporting that HID then the devices `_CID` method will be evaluated (if it exists) and the module system will be notified of the CID returned by that method.
- * 
+ * Handles enumeration and configuration of ACPI devices, along with dynamic loading of device drivers.
+ *
+ * Each device found under the `\_SB` namespace with a `_HID` method will have its HID collected and the module system
+ * will be notified that a device with that HID exists, if there is no module supporting that HID then the devices
+ * `_CID` method will be evaluated (if it exists) and the module system will be notified of the CID returned by that
+ * method.
+ *
  * ## Hardware IDs (HIDs) and Compatible IDs (CIDs)
- * 
- * The difference between HIDs and CIDs is that HIDs are unique identifiers for the specific device type, while CIDs are more generic identifiers. Its the difference between a specific model of network card and just a generic network card. 
- * 
- * Trying HIDs first and CIDs after means we try to load a module for the exact device, or if that fails a generic module that can handle the device, tho perhaps not optimally.
+ *
+ * The difference between HIDs and CIDs is that HIDs are unique identifiers for the specific device type, while CIDs are
+ * more generic identifiers. Its the difference between a specific model of network card and just a generic network
+ * card.
+ *
+ * Trying HIDs first and CIDs after means we try to load a module for the exact device, or if that fails a generic
+ * module that can handle the device, tho perhaps not optimally.
  *
  * ## Module Loading Order
- * 
+ *
  * For the sake of ensuring consistency across different systems, all modules will be loaded based on their ACPI
  * HIDs in alphanumerical order. This means that a device with the ACPI HID "ACPI0001" will be loaded before a device
- * with the ACPI HID "ACPI0002" and that one before the device with the ACPI HID "PNP0000". This only applies to the module loading not to the device enumeration.
+ * with the ACPI HID "ACPI0002" and that one before the device with the ACPI HID "PNP0000". This only applies to the
+ * module loading not to the device enumeration.
  *
  * TODO: Implement hotplugging support.
  *
  * @see [PNP ACPI Registry](https://uefi.org/PNP_ACPI_Registry) for a list of known ACPI HIDs.
- * @see Section 6.1.2 and 6.1.5 of the ACPI specification for more details on HIDs and CIDs. 
- * 
+ * @see Section 6.1.2 and 6.1.5 of the ACPI specification for more details on HIDs and CIDs.
+ *
  * @{
  */
 

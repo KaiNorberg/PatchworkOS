@@ -11,7 +11,71 @@
 
 #include <errno.h>
 
-static bool isDualChannel = false;
+static const char* ps2_self_test_response_to_string(ps2_self_test_response_t response)
+{
+    switch (response)
+    {
+    case PS2_SELF_TEST_PASS:
+        return "pass";
+    case PS2_SELF_TEST_FAIL:
+        return "fail";
+    default:
+        return "invalid response";
+    }
+}
+
+static const char* ps2_device_test_response_to_string(ps2_device_test_response_t response)
+{
+    switch (response)
+    {
+    case PS2_DEV_TEST_PASS:
+        return "pass";
+    case PS2_DEV_TEST_CLOCK_STUCK_LOW:
+        return "clock stuck low";
+    case PS2_DEV_TEST_CLOCK_STUCK_HIGH:
+        return "clock stuck high";
+    case PS2_DEV_TEST_DATA_STUCK_LOW:
+        return "data stuck low";
+    case PS2_DEV_TEST_DATA_STUCK_HIGH:
+        return "data stuck high";
+    default:
+        return "invalid response";
+    }
+}
+
+static const char* ps2_device_to_string(ps2_device_t device)
+{
+    switch (device)
+    {
+    case PS2_DEV_FIRST:
+        return "first";
+    case PS2_DEV_SECOND:
+        return "second";
+    default:
+        return "invalid device";
+    }
+}
+
+static const char* ps2_device_type_to_string(ps2_device_type_t type)
+{
+    switch (type)
+    {
+    case PS2_DEV_TYPE_UNKNOWN:
+        return "unknown";
+    case PS2_DEV_TYPE_KEYBOARD:
+        return "keyboard";
+    case PS2_DEV_TYPE_MOUSE_STANDARD:
+        return "mouse standard";
+    case PS2_DEV_TYPE_MOUSE_SCROLL:
+        return "mouse scroll";
+    case PS2_DEV_TYPE_MOUSE_5BUTTON:
+        return "mouse 5button";
+    default:
+        return "invalid device type";
+    }
+}
+
+/*static bool isDualChannel = false;
 static ps2_device_info_t devices[PS2_DEV_COUNT] = {0};
 
 // TODO: Add more known devices
@@ -41,19 +105,6 @@ static const char* ps2_device_test_response_to_string(ps2_device_test_response_t
         return "data stuck low";
     case PS2_DEV_TEST_DATA_STUCK_HIGH:
         return "data stuck high";
-    default:
-        return "invalid response";
-    }
-}
-
-static const char* ps2_self_test_response_to_string(ps2_self_test_response_t response)
-{
-    switch (response)
-    {
-    case PS2_SELF_TEST_PASS:
-        return "pass";
-    case PS2_SELF_TEST_FAIL:
-        return "fail";
     default:
         return "invalid response";
     }
@@ -420,7 +471,7 @@ static void ps2_deinit(void)
             LOG_WARN("ps2 second device disable failed during deinit\n");
         }
     }
-}
+}*/
 
 void ps2_drain(void)
 {
@@ -516,21 +567,100 @@ uint64_t ps2_send_device_cmd(ps2_device_t device, ps2_device_cmd_t command)
 
 static bool initialized = false;
 
+static uint64_t ps2_controller_init(void)
+{
+    if (initialized)
+    {
+        return 0;
+    }
+    initialized = true;
+
+    if (ps2_send_cmd(PS2_CMD_FIRST_DISABLE) == ERR)
+    {   
+        LOG_ERR("ps2 first device disable failed during controller init\n");
+        return ERR;
+    }
+    if (ps2_send_cmd(PS2_CMD_SECOND_DISABLE) == ERR)
+    {
+        LOG_ERR("ps2 second device disable failed during controller init\n");
+        return ERR;
+    }
+    ps2_drain();
+
+    ps2_config_bits_t cfg = 0;
+    if (PS2_CMD_AND_READ(PS2_CMD_CFG_READ, &cfg) == ERR)
+    {
+        LOG_ERR("ps2 failed to read initial config\n");
+        return ERR;
+    }
+
+    LOG_DEBUG("ps2 initial config byte: 0x%02x\n", cfg);
+    cfg &= ~(PS2_CFG_FIRST_IRQ | PS2_CFG_FIRST_CLOCK_DISABLE | PS2_CFG_FIRST_TRANSLATION | PS2_CFG_SECOND_IRQ);
+    LOG_DEBUG("ps2 setting config byte to: 0x%02x\n", cfg);
+
+    if (PS2_CMD_AND_WRITE(PS2_CMD_CFG_WRITE, cfg) == ERR)
+    {
+        LOG_ERR("ps2 failed to write initial config\n");
+        return ERR;
+    }
+
+    ps2_self_test_response_t response;
+    if (PS2_CMD_AND_READ(PS2_CMD_SELF_TEST, &response) == ERR)
+    {
+        LOG_ERR("ps2 failed to send self test command\n");
+        return ERR;
+    }
+
+    if (response != PS2_SELF_TEST_PASS)
+    {
+        LOG_ERR("ps2 self test failed %s", ps2_self_test_response_to_string(response));
+        return ERR;
+    }
+
+    if (PS2_CMD_AND_WRITE(PS2_CMD_CFG_WRITE, cfg) == ERR)
+    {
+        LOG_ERR("ps2 failed rewrite config byte\n");
+        return ERR;
+    }
+
+    return 0;
+}
+
+static void ps2_controller_deinit(void)
+{
+    if (!initialized)
+    {
+        return;
+    }
+    initialized = false;
+
+    if (PS2_CMD(PS2_CMD_FIRST_DISABLE) == ERR)
+    {
+        LOG_WARN("ps2 first device disable failed during deinit\n");
+    }
+
+    if (PS2_CMD(PS2_CMD_SECOND_DISABLE) == ERR)
+    {
+        LOG_WARN("ps2 second device disable failed during deinit\n");
+    }
+}
+
+static 
+
 uint64_t _module_procedure(const module_event_t* event)
 {
     switch (event->type)
     {
-    case MODULE_EVENT_DEVICE_ATTACH:
-        return 0; // TODO: Reimplement the PS/2 driver to be ACPI aware.
-        if (initialized)
+    case MODULE_EVENT_LOAD:
+        if (ps2_controller_init() == ERR)
         {
-            break;
+            return ERR;
         }
-        initialized = true;
-        ps2_init();
         break;
+    case MODULE_EVENT_DEVICE_ATTACH:
+
     case MODULE_EVENT_UNLOAD:
-        ps2_deinit();
+        ps2_controller_deinit();
         break;
     default:
         break;
@@ -540,9 +670,4 @@ uint64_t _module_procedure(const module_event_t* event)
 }
 
 // All the ids are from https://uefi.org/PNP_ACPI_Registry, its just all the PNP ids for PS/2 keyboards and mice.
-MODULE_INFO("PS2 Driver", "Kai Norberg", "A PS/2 keyboard and mouse driver", OS_VERSION, "MIT",
-    "PNP0300;PNP0301;PNP0302;PNP0303;PNP0304;PNP0305;PNP0306;PNP0307;PNP0308;PNP0309;PNP030A;PNP030B;PNP0320;PNP0321;"
-    "PNP0322;PNP0323;PNP0324;PNP0325;PNP0326;PNP0327;PNP0340;PNP0341;PNP0342;PNP0343;PNP0343;PNP0344;PNP0F00;PNP0F01;"
-    "PNP0F02;PNP0F03;PNP0F04;PNP0F05;PNP0F06;PNP0F07;PNP0F08;PNP0F09;PNP0F0A;PNP0F0B;PNP0F0C;PNP0F0D;PNP0F0E;PNP0F0F;"
-    "PNP0F10;PNP0F11;PNP0F12;PNP0F13;PNP0F14;PNP0F15;PNP0F16;PNP0F17;PNP0F18;PNP0F19;PNP0F1A;PNP0F1B;PNP0F1C;PNP0F1D;"
-    "PNP0F1E");
+MODULE_INFO("PS2 Driver", "Kai Norberg", "A PS/2 keyboard and mouse driver", OS_VERSION, "MIT", PS2_KEYBOARD_PNP_IDS ";" PS2_MOUSE_PNP_IDS);

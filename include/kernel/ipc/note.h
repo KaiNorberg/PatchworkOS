@@ -14,11 +14,14 @@ typedef struct cpu cpu_t;
  * @defgroup kernel_ipc_note Notes
  * @ingroup kernel_ipc
  *
- * Notes are exposed in the `/proc/[pid]/note` file and are used for inter-process communication (IPC) similarly to signals in Unix-like operating systems. However, instead of being limited to a predefined set of integer values, notes can send arbitrary data buffers of up to `NOTE_MAX_BUFFER` bytes, usually strings.
+ * Notes are exposed in the `/proc/[pid]/note` file and are used for inter-process communication (IPC) similarly to
+ * signals in Unix-like operating systems. However, instead of being limited to a predefined set of integer values,
+ * notes can send arbitrary data buffers of up to `NOTE_MAX_BUFFER` bytes, usually strings.
  *
  * ## Using Notes
  *
- * Notes are sent by writing to the `/proc/[pid]/note` file of the target process, the data will be received by one of the threads in the target process.
+ * Notes are sent by writing to the `/proc/[pid]/note` file of the target process, the data will be received by one of
+ * the threads in the target process.
  *
  * ## Receiving Notes
  *

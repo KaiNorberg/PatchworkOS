@@ -10,6 +10,7 @@
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/syscalls.h>
 #include <kernel/drivers/gop.h>
+#include <kernel/drivers/pic.h>
 #include <kernel/fs/ramfs.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
@@ -22,7 +23,6 @@
 #include <kernel/module/symbol.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/loader.h>
-#include <kernel/drivers/pic.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
@@ -123,7 +123,7 @@ static void init_finalize(const boot_info_t* bootInfo)
 
     vmm_map_bootloader_lower_half(bootThread);
 
-    pic_disable();  
+    pic_disable();
 
     vfs_init();
     ramfs_init(&bootInfo->disk);

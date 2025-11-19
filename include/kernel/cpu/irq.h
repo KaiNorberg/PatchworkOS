@@ -33,11 +33,17 @@ typedef struct irq irq_t;
  *
  * ## External and Internal IRQs
  *
- * There are some exceptions to the physical to virtual mappings, we call these "Internal IRQs". These are mainly exceptions and IPIs used internally by the kernel. As in, page faults, general protection faults, timer interrupts, etc. These "IRQs" dont have mappings and are instead fixed. See `irq_virt_t` for the full list. 
- * 
- * Note that while we give `irq_virt_t` numbers for exceptions they are not handled by the IRQ system as they are really not IRQs and, since exceptions usually means something when wrong, we want to avoid using as many parts of the kernel as reasonable while handling them. 
- * 
- * In the CPU exceptions are hardwired to occur when certain conditions are meet, unlike IPIs or external IRQs which are triggered by specialized hardware (`irq_chip_t` or `ipi_chip_t`). Exceptions are handled directly in `interrupt_handler()`. 
+ * There are some exceptions to the physical to virtual mappings, we call these "Internal IRQs". These are mainly
+ * exceptions and IPIs used internally by the kernel. As in, page faults, general protection faults, timer interrupts,
+ * etc. These "IRQs" dont have mappings and are instead fixed. See `irq_virt_t` for the full list.
+ *
+ * Note that while we give `irq_virt_t` numbers for exceptions they are not handled by the IRQ system as they are really
+ * not IRQs and, since exceptions usually means something when wrong, we want to avoid using as many parts of the kernel
+ * as reasonable while handling them.
+ *
+ * In the CPU exceptions are hardwired to occur when certain conditions are meet, unlike IPIs or external IRQs which are
+ * triggered by specialized hardware (`irq_chip_t` or `ipi_chip_t`). Exceptions are handled directly in
+ * `interrupt_handler()`.
  *
  * TODO: Currently, this system is still simplistic. For example, it cant handle trees of IRQ chips, or multiple chips
  * handling the same physical IRQs. This should be fixed in the future as needed.
@@ -54,7 +60,7 @@ typedef uint32_t irq_phys_t;
 /**
  * @brief Central listing of all virtual IRQ numbers.
  * @enum irq_virt_t
- * 
+ *
  * Lists all IRQs, even ones not handled by the IRQ system.
  */
 typedef enum
@@ -219,7 +225,7 @@ void irq_init(void);
  * for the IRQ and handle acknowledging and EOI as needed.
  *
  * Should not be called for exceptions.
- * 
+ *
  * Will panic on failure.
  *
  * @param frame The interrupt frame of the IRQ.
@@ -285,8 +291,8 @@ uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, v
 /**
  * @brief Unregister all instances of the given IRQ chip within the specified range.
  *
- * Will NOT free any IRQs or handlers associated with the chip(s), but it will disable them. If another chip is registered
- * in the same range, the IRQs will be remapped to that chip.
+ * Will NOT free any IRQs or handlers associated with the chip(s), but it will disable them. If another chip is
+ * registered in the same range, the IRQs will be remapped to that chip.
  *
  * @param chip The IRQ chip to unregister, or `NULL` for no-op.
  * @param start The start of the physical IRQ range.

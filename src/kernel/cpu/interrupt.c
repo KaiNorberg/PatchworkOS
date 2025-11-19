@@ -45,7 +45,6 @@ void interrupt_enable(void)
     }
 }
 
-
 uint64_t page_fault_handler(const interrupt_frame_t* frame)
 {
     thread_t* thread = sched_thread_unsafe();
@@ -143,13 +142,13 @@ static void exception_handler(interrupt_frame_t* frame)
 }
 
 void interrupt_handler(interrupt_frame_t* frame)
-{    
+{
     if (frame->vector < IRQ_VIRT_EXCEPTION_END) // Avoid extra stuff for exceptions
     {
         exception_handler(frame);
         return;
     }
-    
+
     cpu_t* self = cpu_get_unsafe();
     perf_interrupt_begin(self);
 

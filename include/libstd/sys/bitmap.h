@@ -89,8 +89,7 @@ typedef struct
  * @param name Name of the bitmap.
  * @param bits Length of the bitmap in bits.
  */
-#define BITMAP_DEFINE_INIT(name, bits) \
-    bitmap_init(&name, name##Buffer, bits);
+#define BITMAP_DEFINE_INIT(name, bits) bitmap_init(&name, name##Buffer, bits);
 
 /**
  * @brief Initialize a bitmap.

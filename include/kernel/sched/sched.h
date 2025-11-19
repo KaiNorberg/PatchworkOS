@@ -169,8 +169,9 @@ NORETURN extern void sched_idle_loop(void);
  * The `sched_done_with_boot_thread()` function is called when the kernel has finished booting and the boot thread is no
  * longer needed, instead of just discarding it, the boot thread becomes the idle thread of the bootstrap cpu.
  *
- * Additionally, this function will validate that at least one timer source, IRQ chip, and IPI chip is registered, as those are required for the scheduler to function properly.
- * 
+ * Additionally, this function will validate that at least one timer source, IRQ chip, and IPI chip is registered, as
+ * those are required for the scheduler to function properly.
+ *
  */
 NORETURN void sched_done_with_boot_thread(void);
 

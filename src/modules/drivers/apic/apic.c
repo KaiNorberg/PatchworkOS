@@ -19,32 +19,48 @@
  * @ingroup modules_drivers
  * @defgroup modules_drivers_apic APIC
  *
- * This module implements the Advanced Programmable Interrupt Controller (APIC) driver, which includes both the per-CPU local APICs, the IO APICs and the APIC timer.
- * 
+ * This module implements the Advanced Programmable Interrupt Controller (APIC) driver, which includes both the per-CPU
+ * local APICs, the IO APICs and the APIC timer.
+ *
  * ## Local APICs
- * 
- * Each CPU has its own local APIC in a 1:1 mapping, which, when used with the IO APICs, allows for more advanced interrupt handling such as routing interrupts to specific CPUs, interrupt prioritization, and more. Most of its features are not used in PatchworkOS yet.
- * 
- * Additionally, the local APICs provide Inter-Processor Interrupts (IPIs) which allow a CPU to interrupt another CPU by using its local APIC.
- * 
+ *
+ * Each CPU has its own local APIC in a 1:1 mapping, which, when used with the IO APICs, allows for more advanced
+ * interrupt handling such as routing interrupts to specific CPUs, interrupt prioritization, and more. Most of its
+ * features are not used in PatchworkOS yet.
+ *
+ * Additionally, the local APICs provide Inter-Processor Interrupts (IPIs) which allow a CPU to interrupt another CPU by
+ * using its local APIC.
+ *
  * ## IO APICs
- * 
- * The IO APICs are used to route external interrupts to a CPUs local APIC. Each IO APIC handles a range of Global System Interrupts (GSIs) or in PatchworkOS terms, physical IRQs, which it receives from external devices such as a keyboard. The IO APIC then routes these physical IRQs to a local APIC using that local APICs ID, that local APIC then triggers the interrupt on its CPU.
- * 
- * So, for example, say we have two IO APICs, 0 and 1, where IO APIC 0 handles physical IRQs 0-23 and IO APIC 1 handles physical IRQs 24-47. Then lets say we want to route physical IRQ 1 to CPU 4. In this case, we would use IO APIC 0 to route physical IRQ 1 to the local APIC ID of CPU 4, lets say this ID is 5. The IO APIC would then send the interrupt to the local APIC with ID 5, which would then trigger the interrupt on CPU 4.
- * 
- * The range that each IO APIC handles is defined as the range `[globalSystemInterruptBase, globalSystemInterruptBase + maxRedirs)`, where `globalSystemInterruptBase` is defined in the ACPI MADT table and `maxRedirs` is read from the IO APICs version register.
- * 
- * @note The only reason there can be multiple IO APICs is for hardware implementation reasons, things we dont care about. As far as I know, the OS itself does not benefit from having multiple IO APICs.
- * 
+ *
+ * The IO APICs are used to route external interrupts to a CPUs local APIC. Each IO APIC handles a range of Global
+ * System Interrupts (GSIs) or in PatchworkOS terms, physical IRQs, which it receives from external devices such as a
+ * keyboard. The IO APIC then routes these physical IRQs to a local APIC using that local APICs ID, that local APIC then
+ * triggers the interrupt on its CPU.
+ *
+ * So, for example, say we have two IO APICs, 0 and 1, where IO APIC 0 handles physical IRQs 0-23 and IO APIC 1 handles
+ * physical IRQs 24-47. Then lets say we want to route physical IRQ 1 to CPU 4. In this case, we would use IO APIC 0 to
+ * route physical IRQ 1 to the local APIC ID of CPU 4, lets say this ID is 5. The IO APIC would then send the interrupt
+ * to the local APIC with ID 5, which would then trigger the interrupt on CPU 4.
+ *
+ * The range that each IO APIC handles is defined as the range `[globalSystemInterruptBase, globalSystemInterruptBase +
+ * maxRedirs)`, where `globalSystemInterruptBase` is defined in the ACPI MADT table and `maxRedirs` is read from the IO
+ * APICs version register.
+ *
+ * @note The only reason there can be multiple IO APICs is for hardware implementation reasons, things we dont care
+ * about. As far as I know, the OS itself does not benefit from having multiple IO APICs.
+ *
  * ## APIC Timer
- * 
- * Each local APIC also contains a timer which can be used to generate interrupts at specific intervals, or as we use it, to generate a single interrupt after a specified time. 
- * 
- * @note Its a common mistake to assume that the local APIC IDs are contiguous, or that they are the same as the CPU IDs, but this is not the case. The local APIC IDs are assigned by the firmware and can be any value.
- * 
+ *
+ * Each local APIC also contains a timer which can be used to generate interrupts at specific intervals, or as we use
+ * it, to generate a single interrupt after a specified time.
+ *
+ * @note Its a common mistake to assume that the local APIC IDs are contiguous, or that they are the same as the CPU
+ * IDs, but this is not the case. The local APIC IDs are assigned by the firmware and can be any value.
+ *
  * @see [ACPI Specification Version 6.6](https://uefi.org/sites/default/files/resources/ACPI_Spec_6.6.pdf)
- * @see [82093AA I/O ADVANCED PROGRAMMABLE INTERRUPT CONTROLLER (IOAPIC)](https://web.archive.org/web/20161130153145/http://download.intel.com/design/chipsets/datashts/29056601.pdf)
+ * @see [82093AA I/O ADVANCED PROGRAMMABLE INTERRUPT CONTROLLER
+ * (IOAPIC)](https://web.archive.org/web/20161130153145/http://download.intel.com/design/chipsets/datashts/29056601.pdf)
  *
  * @{
  */
@@ -268,13 +284,13 @@ typedef union {
     struct PACKED
     {
         uint8_t vector;
-        uint8_t deliveryMode : 3; ///< ioapic_delivery_mode_t
+        uint8_t deliveryMode : 3;    ///< ioapic_delivery_mode_t
         uint8_t destinationMode : 1; ///< ioapic_destination_mode_t
-        uint8_t deliveryStatus : 1; 
+        uint8_t deliveryStatus : 1;
         uint8_t polarity : 1; ///< ioapic_polarity_t
-        uint8_t remoteIRR : 1; 
+        uint8_t remoteIRR : 1;
         uint8_t triggerMode : 1; ///< ioapic_trigger_mode_t
-        uint8_t mask : 1; ///< If set, the interrupt is masked (disabled)
+        uint8_t mask : 1;        ///< If set, the interrupt is masked (disabled)
         uint64_t reserved : 39;
         uint8_t destination : 8;
     };
@@ -288,7 +304,7 @@ typedef union {
 /**
  * @brief Local APIC Structure.
  * @struct lapic_t
- * 
+ *
  * Represents each CPU's local APIC and local data.
  */
 typedef struct
@@ -299,9 +315,9 @@ typedef struct
 
 /**
  * @brief Cached local apic base address, in the higher half.
- * 
- * This address is the same for all CPUs, but each CPU will end up accessing different underlying hardware since each CPU has
- * its own local apic.
+ *
+ * This address is the same for all CPUs, but each CPU will end up accessing different underlying hardware since each
+ * CPU has its own local apic.
  */
 static uintptr_t lapicBase = 0;
 
@@ -312,7 +328,7 @@ static lapic_t lapics[CPU_MAX] = {0};
 
 /**
  * @brief Read from a local apic register.
- * 
+ *
  * @param reg The register to read from.
  * @return The value read from the register.
  */
@@ -323,7 +339,7 @@ static uint32_t lapic_read(uint32_t reg)
 
 /**
  * @brief Write to a local apic register.
- * 
+ *
  * @param reg The register to write to.
  * @param value The value to write.
  */
@@ -334,7 +350,7 @@ static void lapic_write(uint32_t reg, uint32_t value)
 
 /**
  * @brief Initialize the local APIC for a CPU.
- * 
+ *
  * @param cpu The current CPU.
  */
 static void lapic_init(cpu_t* cpu)
@@ -360,7 +376,7 @@ static void lapic_init(cpu_t* cpu)
 
 /**
  * @brief Get the ticks per nanosecond for the APIC timer of the current CPU.
- * 
+ *
  * @return The ticks per nanosecond.
  */
 static uint64_t apic_timer_ticks_per_ns(void)
@@ -415,18 +431,17 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
 
 /**
  * @brief APIC timer source.
- * 
- * According to https://telematics.tm.kit.edu/publications/Files/61/walter_ibm_linux_challenge.pdf, the APIC timer has a precision of 1 microsecond.
+ *
+ * According to https://telematics.tm.kit.edu/publications/Files/61/walter_ibm_linux_challenge.pdf, the APIC timer has a
+ * precision of 1 microsecond.
  */
-static timer_source_t apicTimer = {
-    .name = "APIC Timer",
+static timer_source_t apicTimer = {.name = "APIC Timer",
     .precision = 1000, // 1 microsecond
-    .set = apic_timer_set
-};
+    .set = apic_timer_set};
 
 /**
  * @brief Read a value from an IO APIC register.
- * 
+ *
  * @param ioapic Pointer to the IO APIC structure.
  * @param reg The register to read from.
  * @return The value read from the register.
@@ -440,7 +455,7 @@ static uint32_t ioapic_read(ioapic_t* ioapic, ioapic_register_t reg)
 
 /**
  * @brief Write a value to an IO APIC register.
- * 
+ *
  * @param ioapic Pointer to the IO APIC structure.
  * @param reg The register to write to.
  * @param value The value to write.
@@ -456,7 +471,7 @@ static void ioapic_write(ioapic_t* ioapic, ioapic_register_t reg, uint32_t value
  * @brief Read the value in the `IOAPIC_REG_VERSION` register.
  *
  * This value is more complex than just a integer, so we use the `ioapic_version_t` structure to represent it.
- * 
+ *
  * @param ioapic Pointer to the IO APIC structure.
  * @return The IO APIC version structure.
  */
@@ -469,9 +484,10 @@ static ioapic_version_t ioapic_version_read(ioapic_t* ioapic)
 
 /**
  * @brief Write a redirection entry to the IO APIC.
- * 
- * @note The redirection entry is a total of 64 bits, but since the IO APIC registers are 32 bits wide, it ends up split between two registers.
- * 
+ *
+ * @note The redirection entry is a total of 64 bits, but since the IO APIC registers are 32 bits wide, it ends up split
+ * between two registers.
+ *
  * @param ioapic Pointer to the IO APIC structure.
  * @param gsi The global system interrupt (physical IRQ) to write the redirection entry for.
  * @param entry The redirection entry to write.
@@ -506,7 +522,7 @@ static uint64_t ioapic_enable(irq_t* irq)
         .mask = 0,
         .destination = lapic->lapicId,
     };
-    
+
     ioapic_redirect_write(ioapic, irq->phys, redirect);
     LOG_INFO("ioapic enable gsi=%u vector=0x%02x lapic=%u\n", irq->phys, irq->virt, lapic->lapicId);
     return 0;
@@ -519,9 +535,7 @@ static void ioapic_disable(irq_t* irq)
 {
     ioapic_t* ioapic = irq->domain->private;
 
-    ioapic_redirect_entry_t redirect = {
-        .mask = 1
-    };
+    ioapic_redirect_entry_t redirect = {.mask = 1};
 
     ioapic_redirect_write(ioapic, irq->phys, redirect);
     LOG_INFO("ioapic disable gsi=%u vector=0x%02x\n", irq->phys, irq->virt);
@@ -540,17 +554,15 @@ static void ioapic_eoi(irq_t* irq)
 /**
  * @brief IO APIC IRQ Chip.
  */
-static irq_chip_t ioApicChip = {
-    .name = "IO APIC",
+static irq_chip_t ioApicChip = {.name = "IO APIC",
     .enable = ioapic_enable,
     .disable = ioapic_disable,
     .ack = NULL,
-    .eoi = ioapic_eoi
-};
+    .eoi = ioapic_eoi};
 
 /**
  * @brief Initialize all IO APICs found in the MADT.
- * 
+ *
  * @return On success, `0`. On failure, `ERR`.
  */
 static uint64_t ioapic_all_init(void)
@@ -586,7 +598,8 @@ static uint64_t ioapic_all_init(void)
             ioapic_redirect_write(ioapic, i, maskedEntry);
         }
 
-        if (irq_chip_register(&ioApicChip, ioapic->globalSystemInterruptBase, ioapic->globalSystemInterruptBase + maxRedirs, ioapic) == ERR)
+        if (irq_chip_register(&ioApicChip, ioapic->globalSystemInterruptBase,
+                ioapic->globalSystemInterruptBase + maxRedirs, ioapic) == ERR)
         {
             LOG_ERR("failed to register io apic irq chip\n");
             return ERR;
@@ -613,14 +626,11 @@ static void lapic_invoke(cpu_t* cpu, irq_virt_t virt)
 /**
  * @brief Local APIC IPI Chip.
  */
-static ipi_chip_t lapicIpiChip = {
-    .name = "Local APIC IPI",
-    .invoke = lapic_invoke
-};
+static ipi_chip_t lapicIpiChip = {.name = "Local APIC IPI", .invoke = lapic_invoke};
 
 /**
  * @brief Initialize the APIC global variables and state.
- * 
+ *
  * @return On success, `0`. On failure, `ERR`.
  */
 static uint64_t apic_init(void)
@@ -739,8 +749,6 @@ uint64_t _module_procedure(const module_event_t* event)
             LOG_ERR("failed to register apic cpu event handler\n");
             return ERR;
         }
-        break;
-    case MODULE_EVENT_DEVICE_DETACH:
         break;
     default:
         break;
