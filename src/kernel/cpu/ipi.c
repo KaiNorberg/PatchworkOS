@@ -69,7 +69,7 @@ uint64_t ipi_chip_register(ipi_chip_t* chip)
     }
 
     registeredChip = chip;
-    LOG_INFO("registered IPI chip '%s'", chip->name);
+    LOG_INFO("registered IPI chip '%s'\n", chip->name);
     return 0;
 }
 
@@ -87,7 +87,7 @@ void ipi_chip_unregister(ipi_chip_t* chip)
         return;
     }
 
-    LOG_INFO("unregistered IPI chip '%s'", chip->name);
+    LOG_INFO("unregistered IPI chip '%s'\n", chip->name);
     registeredChip = NULL;
 }
 

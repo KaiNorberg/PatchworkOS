@@ -521,6 +521,7 @@ uint64_t _module_procedure(const module_event_t* event)
     switch (event->type)
     {
     case MODULE_EVENT_DEVICE_ATTACH:
+        return 0; // TODO: Reimplement the PS/2 driver to be ACPI aware.
         if (initialized)
         {
             break;

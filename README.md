@@ -35,7 +35,7 @@ Also, this is not a UNIX clone, its intended to be a (hopefully) interesting exp
 
 Finally, despite its experimental nature and scale, the project aims to remain approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
 
-Will this project ever reach its goals? Who knows, but the journey is the point regardless.
+Will this project ever reach its goals? Probably not, but thats not the point.
 
 <table>
 <tr>
@@ -66,7 +66,7 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 - SIMD support
 - [Modular design](#modules) with automatic module dependency resolution and generic device ID based module loading
 
-### ACPI
+### ACPI (WIP)
 
 - From scratch and heavily documented [AML parser](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/acpi/aml/aml.h)
 - Tested on real hardware, see [Tested Configurations](#tested-configurations)
@@ -111,7 +111,7 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 - Read, write, execute, create permissions
 - Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions
 - Add configurability to `spawn()` for namespace inheritance
-- Asynchronous I/O
+- Fully Asynchronous I/O and syscalls (io_uring style?)
 - Shared libraries
 - USB support (The holy grail)
 
@@ -188,13 +188,13 @@ This code in the `hello.c` file does a few things. First, it includes the releva
 
 Second, it defines a `_module_procedure()` function. This function serves as the entry point for the module and will be called by the kernel to notify the module of events, for example the module being loaded or a device attached. On the load event, it will print using the kernels logging system `"Hello, World!"`, resulting in the message being readable from `/dev/klog`.
 
-Finally, it defines the modules information. This information is, in order, the name of the module, the author of the module (thats you), a short description of the module, the module version, the licence of the module, and finally a list of "device IDs", we could make this multiple IDs by seperating them with semicolons.
+Finally, it defines the modules information. This information is, in order, the name of the module, the author of the module (thats you), a short description of the module, the module version, the licence of the module, and finally a list of "device types", in this case just `LOAD_ON_BOOT`, but more could be added by separating them with a semicolon (`;`).
 
-The list of device IDs is what causes the kernel to actually load the module. Il avoid going into to much detail (you can check the documentation for that), but il explain it briefly.
+The list of device types is what causes the kernel to actually load the module. I will avoid going into to much detail (you can check the documentation for that), but I will explain it briefly.
 
-The module loader itself has no idea what these IDs actually are, but subsytems within the kernel can specify that "a device represented by this string is now availble", the module loader can then load either one or all modules that have specified in their list of device IDs that it can handle the specified device. This means that any new subsystem, ACPI, USB, PCI, etc, can implement dynamic module loading using whatever IDs they want.
+The module loader itself has no idea what these type strings actually are, but subsytems within the kernel can specify that "a device of the type represented by this string is now available", the module loader can then load either one or all modules that have specified in their list of device types that it can handle the specified type. This means that any new subsystem, ACPI, USB, PCI, etc, can implement dynamic module loading using whatever types they want.
 
-So, why did we specify `LOAD_ON_BOOT`? That does not seem like a device ID, and thats becouse it isent, its a special ID that the kernel will pretend to "attach" during boot, thus loading any module with that ID specified. In this case, it causes our hello module to be loaded during boot.
+So what is `LOAD_ON_BOOT`? It is the type of a special device that the kernel will pretend to "attach" during boot. In this case, it simply causes our hello module to be loaded during boot.
 
 For more information, check the [Module Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/d41/group__kernel__module.html).
 
@@ -312,9 +312,9 @@ Multiple flags are allowed, just separate them with the `:` character, this mean
 
 Im sure you have heard many an argument for and against the "everything is a file" philosophy. So I wont go over everything, but the primary reason for using it in PatchworkOS is "emergent behavior" or "composability" which ever term you prefer.
 
-Take the namespace sharing example, notice how there isent any actually dedicated "namespace sharing" system? There are instead a series of small, simple building blocks that when added together form a more complex whole. That is emergent behavior, by keeping things simple and most importantly interoperable, we can create very complex behaviour without needing to explicitly design it.
+Take the namespace sharing example, notice how there isent any actually dedicated "namespace sharing" system? There are instead a series of small, simple building blocks that when added together form a more complex whole. That is emergent behavior, by keeping things simple and most importantly composable, we can create very complex behaviour without needing to explicitly design it.
 
-Lets take another example, say you wanted to wait on multiple processes with a `waitpid()` syscall. Well, thats not possible. So now we suddenly need a new system call. Meanwhile, in a "everything is a file system" we just have a pollable `/proc/[pid]/wait` file that acts that returns the exit status, now any behaviour that can be implemented with `poll()` can be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination you can think of.
+Lets take another example, say you wanted to wait on multiple processes with a `waitpid()` syscall. Well, thats not possible. So now we suddenly need a new system call. Meanwhile, in a "everything is a file system" we just have a pollable `/proc/[pid]/wait` file that blocks untill the process dies and returns the exit status, now any behaviour that can be implemented with `poll()` can be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination you can think of.
 
 Plus its fun.
 

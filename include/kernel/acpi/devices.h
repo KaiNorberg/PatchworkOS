@@ -1,6 +1,7 @@
 #pragma once
 
-#include <stdint.h>
+#include <kernel/acpi/aml/object.h>
+
 #include <sys/io.h>
 
 /**
@@ -8,17 +9,27 @@
  * @defgroup kernel_acpi_devices Devices
  * @ingroup kernel_acpi
  *
- * Handles enumeration and configuration of ACPI devices, along with dynamic loading of device drivers based on ACPI
- * IDs.
+ * Handles enumeration and configuration of ACPI devices, along with dynamic loading of device drivers. 
+ * 
+ * Each device found under the `\_SB` namespace with a `_HID` method will have its HID collected and the module system will be notified that a device with that HID exists, if there is no module supporting that HID then the devices `_CID` method will be evaluated (if it exists) and the module system will be notified of the CID returned by that method.
+ * 
+ * ## Hardware IDs (HIDs) and Compatible IDs (CIDs)
+ * 
+ * The difference between HIDs and CIDs is that HIDs are unique identifiers for the specific device type, while CIDs are more generic identifiers. Its the difference between a specific model of network card and just a generic network card. 
+ * 
+ * Trying HIDs first and CIDs after means we try to load a module for the exact device, or if that fails a generic module that can handle the device, tho perhaps not optimally.
  *
- * For the sake of ensuring consistency across different systems, all modules will be initialized based on their ACPI
- * IDs in alphanumerical order. This means that a device with the ACPI ID "ACPI0001" will be initialized before a device
- * with the ACPI ID "ACPI0002" and that one before the device with the ACPI ID "PNP0000".
+ * ## Module Loading Order
+ * 
+ * For the sake of ensuring consistency across different systems, all modules will be loaded based on their ACPI
+ * HIDs in alphanumerical order. This means that a device with the ACPI HID "ACPI0001" will be loaded before a device
+ * with the ACPI HID "ACPI0002" and that one before the device with the ACPI HID "PNP0000". This only applies to the module loading not to the device enumeration.
  *
  * TODO: Implement hotplugging support.
  *
- * @see [PNP ACPI Registry](https://uefi.org/PNP_ACPI_Registry) for a list of known ACPI IDs.
- *
+ * @see [PNP ACPI Registry](https://uefi.org/PNP_ACPI_Registry) for a list of known ACPI HIDs.
+ * @see Section 6.1.2 and 6.1.5 of the ACPI specification for more details on HIDs and CIDs. 
+ * 
  * @{
  */
 
@@ -48,11 +59,11 @@ typedef enum
 #define ACPI_STA_FLAGS_DEFAULT (ACPI_STA_PRESENT | ACPI_STA_ENABLED | ACPI_STA_SHOW_IN_UI | ACPI_STA_FUNCTIONAL)
 
 /**
- * @brief Enumerate and configure ACPI devices.
+ * @brief Enumerate, configure and load modules for ACPI devices.
  *
- * This function always evaluates the \_SB._INI node if it exists, enumerates ACPI devices (found under \_SB), evaulates
+ * This function always evaluates the \_SB._INI node if it exists, enumerates ACPI devices (found under \_SB), evaluates
  * their _STA object retrieving its present and functional status (if it exists) and then evaluates their _INI object
- * acording to these rules:
+ * according to these rules:
  * - If the _INI object does not exist it is ignored.
  * - If the _STA object does not exist the device is assumed to be present and functional
  * - If the _STA object does exist its status is read.
@@ -61,9 +72,6 @@ typedef enum
  *  - If the device is not present and functional, the device's _INI is ignored but its children are enumerated.
  *  - If the device is present and not functional, the device's _INI is evaluated and its children are enumerated.
  *  - If the device is present and functional, the device's _INI is evaluated and its children are enumerated.
- *
- * After all devices have been enumerated, their Hardware IDs (HIDs) are collected and the module system is notified of
- * each HID.
  *
  * @see Section 6.5.1 of the ACPI specification for more details.
  */

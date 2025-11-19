@@ -58,7 +58,7 @@ uint64_t sys_time_register_source(const sys_time_source_t* source)
     rwlock_write_release(&sourcesLock);
 
     LOG_INFO("registered system timer source '%s' with precision %lu ns%s\n", source->name, source->precision,
-        bestSourceUpdated ? " (selected as best source)" : "");
+        bestSourceUpdated ? " (best source)" : "");
 
     return 0;
 }
