@@ -129,20 +129,6 @@ typedef struct
 } irq_handler_t;
 
 /**
- * @brief IRQ descriptor structure.
- * @struct irq_desc_t
- *
- * Represents a single IRQ, mapped from a physical IRQ to a virtual IRQ where the virtual IRQ is decided by the index in
- * the global descriptor array.
- */
-typedef struct
-{
-    irq_t* irq;
-    list_t handlers;
-    rwlock_t lock;
-} irq_desc_t;
-
-/**
  * @brief IRQ flags.
  * @enum irq_flags_t
  *
@@ -150,27 +136,30 @@ typedef struct
  */
 typedef enum
 {
-    IRQ_FLAGS_POLARITY_HIGH = 0 << 0, ///< If set, the IRQ is active high.
-    IRQ_FLAGS_POLARITY_LOW = 1 << 0,  ///< If set, the IRQ is active low. Otherwise, active high.
-    IRQ_FLAGS_TRIGGER_LEVEL = 0 << 1, ///< If set, the IRQ is level triggered.
-    IRQ_FLAGS_TRIGGER_EDGE = 1 << 1,  ///< If set, the IRQ is edge triggered. Otherwise, level triggered.
+    IRQ_POLARITY_HIGH = 0 << 0, ///< If set, the IRQ is active high.
+    IRQ_POLARITY_LOW = 1 << 0,  ///< If set, the IRQ is active low. Otherwise, active high.
+    IRQ_TRIGGER_LEVEL = 0 << 1, ///< If set, the IRQ is level triggered.
+    IRQ_TRIGGER_EDGE = 1 << 1,  ///< If set, the IRQ is edge triggered. Otherwise, level triggered.
+    IRQ_EXCLUSIVE = 0 << 2,    ///< If set, the IRQ is exclusive (not shared).
+    IRQ_SHARED = 1 << 2,       ///< If set, the IRQ is shared.
 } irq_flags_t;
 
 /**
  * @brief IRQ structure.
  * @struct irq_t
  *
- * Represents a single IRQ, mapped from a physical IRQ to a virtual IRQ on a specific CPU using a specified IRQ chip
- * with given flags.
+ * Represents a single virtual IRQ mapped to a physical IRQ. 
  */
 typedef struct irq
 {
-    list_entry_t entry;
     irq_phys_t phys;
     irq_virt_t virt;
     irq_flags_t flags;
     cpu_t* cpu;
     irq_domain_t* domain;
+    uint64_t refCount;
+    list_t handlers;
+    rwlock_t lock;
 } irq_t;
 
 /**
@@ -234,43 +223,46 @@ void irq_init(void);
 void irq_dispatch(interrupt_frame_t* frame, cpu_t* self);
 
 /**
- * @brief Allocate and install an IRQ.
+ * @brief Allocate a virtual IRQ mapped to the given physical IRQ.
  *
- * Will allocate a new virtual IRQ, map it to the given physical IRQ using the appropriate IRQ chip and enable the IRQ
- * with an affinity to the given CPU.
+ * Will return an existing virtual IRQ if the physical IRQ is already allocated with the same flags and is shared. In this case its reference count will be incremented.
  *
  * Will succeed even if no IRQ chip is registered for the given physical IRQ, in such a case, the IRQ will be enabled
  * only when a appropriate IRQ chip is registered.
  *
+ * TODO: CPU load balancing?
+ * 
+ * @param out Pointer to store the allocated virtual IRQ.
  * @param phys The physical IRQ number.
  * @param flags The IRQ flags.
  * @param cpu The target CPU for the IRQ, or `NULL` for the current CPU.
- * @return On success, the allocated IRQ. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: The physical IRQ already exists with different flags.
+ * - `EBUSY`: The physical IRQ is exclusive and already allocated.
  * - `ENOSPC`: All virtual IRQs are in use.
- * - `ENOMEM`: Memory allocation failed.
- * - Other  errors as returned by the IRQ chip's `enable` function.
+ * - Other errors as returned by the IRQ chip's `enable` function.
  */
-irq_t* irq_alloc(irq_phys_t phys, irq_flags_t flags, cpu_t* cpu);
+uint64_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu_t* cpu);
 
 /**
- * @brief Free an allocated IRQ.
+ * @brief Free a previously allocated virtual IRQ.
  *
- * Will remove and free all handlers and disable the IRQ.
- *
- * @param irq The IRQ to free.
+ * The IRQ will be disabled and its handlers freed only when no more references to it exists.
+ * 
+ * @param virt The virtual IRQ to free.
  */
-void irq_free(irq_t* irq);
+void irq_virt_free(irq_virt_t virt);
 
 /**
  * @brief Change the CPU responsible for an IRQ.
  *
- * @param irq The IRQ to set the affinity for.
+ * @param virt The virtual IRQ to set the affinity for.
  * @param cpu The target CPU for the IRQ.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - Other  errors as returned by the IRQ chip's `enable` functions.
  */
-uint64_t irq_set_affinity(irq_t* irq, cpu_t* cpu);
+uint64_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu);
 
 /**
  * @brief Register an IRQ chip for a range of physical IRQs.
@@ -313,18 +305,19 @@ uint64_t irq_chip_amount(void);
  * @param virt The virtual IRQ to register the handler for.
  * @param func The handler function to register.
  * @param private The private data to pass to the handler function.
- * @return On success, a pointer to the IRQ handler. On failure, `NULL` and `errno` is set to:
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENOMEM`: Memory allocation failed.
  * - `ENOENT`: The given virtual IRQ is not allocated.
  */
-irq_handler_t* irq_handler_register(irq_virt_t virt, irq_func_t func, void* private);
+uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* private);
 
 /**
  * @brief Unregister an IRQ handler.
  *
  * @param handler The IRQ handler to unregister, or `NULL` for no-op.
+ * @param virt The virtual IRQ to unregister the handler from.
  */
-void irq_handler_unregister(irq_handler_t* handler);
+void irq_handler_unregister(irq_handler_t* handler, irq_virt_t virt);
 
 /** @} */

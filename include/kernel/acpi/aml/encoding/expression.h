@@ -58,7 +58,7 @@ aml_object_t* aml_operand_read(aml_term_list_ctx_t* ctx, aml_type_t allowedTypes
  * @param out Output pointer where the buffer size will be stored.
  * @return On success, the buffer size. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_buffer_size_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+uint64_t aml_buffer_size_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a DefBuffer structure from the AML byte stream.
@@ -139,7 +139,7 @@ aml_object_t* aml_def_store_read(aml_term_list_ctx_t* ctx);
  * @param out Output pointer where the integer value of the dividend will be stored.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_dividend_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+uint64_t aml_dividend_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a Divisor structure from the AML byte stream.
@@ -150,7 +150,7 @@ uint64_t aml_dividend_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
  * @param out Output pointer where the integer value of the divisor will be stored.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_divisor_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+uint64_t aml_divisor_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a Remainder structure from the AML byte stream.
@@ -319,7 +319,7 @@ aml_object_t* aml_def_not_read(aml_term_list_ctx_t* ctx);
  * @param out Output pointer where the integer result will be stored.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_shift_count_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+uint64_t aml_shift_count_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a DefShiftLeft structure from the AML byte stream.
@@ -416,7 +416,7 @@ aml_object_t* aml_buff_pkg_str_obj_read(aml_term_list_ctx_t* ctx);
  * @param out Output pointer where the integer result will be stored.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_index_value_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+uint64_t aml_index_value_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a DefIndex structure from the AML byte stream.
@@ -644,7 +644,7 @@ aml_object_t* aml_def_to_integer_read(aml_term_list_ctx_t* ctx);
  * @param out Output pointer where the integer result will be stored.
  * @return On success, the integer value. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_length_arg_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+uint64_t aml_length_arg_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a DefToString structure from the AML byte stream.
@@ -786,7 +786,7 @@ aml_object_t* aml_def_find_set_right_bit_read(aml_term_list_ctx_t* ctx);
  * @param ctx The TermList context.
  * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
  */
-aml_package_obj_t* aml_search_pkg_read(aml_term_list_ctx_t* ctx);
+aml_package_t* aml_search_pkg_read(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Match opcodes for DefMatch.
@@ -828,7 +828,7 @@ uint64_t aml_match_opcode_read(aml_term_list_ctx_t* ctx, aml_match_opcode_t* out
  * @param out Output pointer where the integer result will be stored.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_start_index_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+uint64_t aml_start_index_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a DefMatch structure from the AML byte stream.

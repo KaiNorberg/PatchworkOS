@@ -384,7 +384,7 @@ uint64_t aml_package_element_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
     return 0;
 }
 
-uint64_t aml_package_element_list_read(aml_term_list_ctx_t* ctx, aml_package_obj_t* package, const uint8_t* end)
+uint64_t aml_package_element_list_read(aml_term_list_ctx_t* ctx, aml_package_t* package, const uint8_t* end)
 {
     uint64_t i = 0;
     while (ctx->current < end && i < package->length)
@@ -446,7 +446,7 @@ uint64_t aml_def_package_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
     return 0;
 }
 
-uint64_t aml_def_var_num_elements_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+uint64_t aml_def_var_num_elements_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
     if (aml_term_arg_read_integer(ctx, out) == ERR)
     {

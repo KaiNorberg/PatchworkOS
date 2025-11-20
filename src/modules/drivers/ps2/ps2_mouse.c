@@ -109,13 +109,13 @@ uint64_t ps2_mouse_init(ps2_device_info_t* info)
     }
 
     // TODO: ACPI aware IRQ assignment
-    mouseHandler = irq_handler_register(info->device == PS2_DEV_FIRST ? 1 : 12, ps2_mouse_irq, context);
+    /*mouseHandler = irq_handler_register(info->device == PS2_DEV_FIRST ? 1 : 12, ps2_mouse_irq, context);
     if (mouseHandler == NULL)
     {
         free(context);
         mouse_free(mouse);
         LOG_ERR("failed to register PS/2 mouse IRQ handler\n");
         return ERR;
-    }
+    }*/
     return 0;
 }

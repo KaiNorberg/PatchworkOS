@@ -12,7 +12,7 @@
 #include <kernel/acpi/tables.h>
 #include <kernel/log/log.h>
 
-uint64_t aml_bank_value_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+uint64_t aml_bank_value_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
     if (aml_term_arg_read_integer(ctx, out) == ERR)
     {
@@ -43,7 +43,7 @@ uint64_t aml_region_space_read(aml_term_list_ctx_t* ctx, aml_region_space_t* out
     return 0;
 }
 
-uint64_t aml_region_offset_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+uint64_t aml_region_offset_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
     if (aml_term_arg_read_integer(ctx, out) == ERR)
     {
@@ -54,7 +54,7 @@ uint64_t aml_region_offset_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
     return 0;
 }
 
-uint64_t aml_region_len_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+uint64_t aml_region_len_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
     if (aml_term_arg_read_integer(ctx, out) == ERR)
     {
@@ -812,7 +812,7 @@ aml_object_t* aml_source_buff_read(aml_term_list_ctx_t* ctx)
     return sourceBuff; // Transfer ownership
 }
 
-uint64_t aml_bit_index_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+uint64_t aml_bit_index_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
     if (aml_term_arg_read_integer(ctx, out) == ERR)
     {
@@ -823,7 +823,7 @@ uint64_t aml_bit_index_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
     return 0;
 }
 
-uint64_t aml_byte_index_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+uint64_t aml_byte_index_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
     if (aml_term_arg_read_integer(ctx, out) == ERR)
     {
@@ -1119,7 +1119,7 @@ uint64_t aml_def_power_res_read(aml_term_list_ctx_t* ctx)
     return 0;
 }
 
-uint64_t aml_num_bits_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+uint64_t aml_num_bits_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
     if (aml_term_arg_read_integer(ctx, out) == ERR)
     {
@@ -1201,7 +1201,7 @@ uint64_t aml_def_data_region_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_string_obj_t* signature = aml_term_arg_read_string(ctx);
+    aml_string_t* signature = aml_term_arg_read_string(ctx);
     if (signature == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Signature");
@@ -1209,7 +1209,7 @@ uint64_t aml_def_data_region_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(signature);
 
-    aml_string_obj_t* oemId = aml_term_arg_read_string(ctx);
+    aml_string_t* oemId = aml_term_arg_read_string(ctx);
     if (oemId == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read OemId");
@@ -1217,7 +1217,7 @@ uint64_t aml_def_data_region_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(oemId);
 
-    aml_string_obj_t* oemTableId = aml_term_arg_read_string(ctx);
+    aml_string_t* oemTableId = aml_term_arg_read_string(ctx);
     if (oemTableId == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read OemTableId");

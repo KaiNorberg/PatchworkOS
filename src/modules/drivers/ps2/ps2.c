@@ -2,6 +2,7 @@
 #include "ps2_kbd.h"
 #include "ps2_mouse.h"
 
+#include <kernel/acpi/resources.h>
 #include <kernel/acpi/tables.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -576,7 +577,7 @@ static uint64_t ps2_controller_init(void)
     initialized = true;
 
     if (ps2_send_cmd(PS2_CMD_FIRST_DISABLE) == ERR)
-    {   
+    {
         LOG_ERR("ps2 first device disable failed during controller init\n");
         return ERR;
     }
@@ -645,7 +646,50 @@ static void ps2_controller_deinit(void)
     }
 }
 
-static 
+static uint64_t ps2_attach_device(const char* type, const char* name)
+{
+    (void)type;
+    (void)name;
+
+    /*acpi_resources_t* resources = acpi_resources_current(name);
+    if (resources == NULL)
+    {
+        LOG_ERR("ps2 failed to get resources for device '%s'\n", name);
+        return ERR;
+    }
+
+    LOG_INFO("ps2 device '%s' of type '%s' resources:\n", name, type);
+
+    acpi_resource_t* resource;
+    ACPI_RESOURCES_FOR_EACH(resource, resources)
+    {
+        acpi_item_name_t itemName = ACPI_RESOURCE_ITEM_NAME(resource);
+        switch (itemName)
+        {
+        case ACPI_ITEM_NAME_IO_PORT:
+        {
+            acpi_io_port_descriptor_t* ioPortDesc = (acpi_io_port_descriptor_t*)resource;
+            LOG_INFO("ps2 device '%s' IO port resource decode16=%d, minBase=%d, maxBase=%d, alignment=%d, length=%d\n",
+                name, ioPortDesc->decode16, ioPortDesc->minBase, ioPortDesc->maxBase, ioPortDesc->alignment,
+                ioPortDesc->length);
+        }
+        break;
+        case ACPI_ITEM_NAME_IRQ:
+        {
+            acpi_irq_descriptor_t* irqDesc = (acpi_irq_descriptor_t*)resource;
+            acpi_irq_descriptor_info_t irqInfo = ACPI_IRQ_DESCRIPTOR_INFO(irqDesc);
+            LOG_INFO("ps2 device '%s' IRQ resource mask=%#010x info=%d\n", name, irqDesc->mask, irqInfo);
+        }
+        break;
+        default:
+            break;
+        }
+    }
+
+    acpi_resources_free(resources);*/
+
+    return 0;
+}
 
 uint64_t _module_procedure(const module_event_t* event)
 {
@@ -658,7 +702,11 @@ uint64_t _module_procedure(const module_event_t* event)
         }
         break;
     case MODULE_EVENT_DEVICE_ATTACH:
-
+        if (ps2_attach_device(event->deviceAttach.type, event->deviceAttach.name) == ERR)
+        {
+            return ERR;
+        }
+        break;
     case MODULE_EVENT_UNLOAD:
         ps2_controller_deinit();
         break;
@@ -670,4 +718,5 @@ uint64_t _module_procedure(const module_event_t* event)
 }
 
 // All the ids are from https://uefi.org/PNP_ACPI_Registry, its just all the PNP ids for PS/2 keyboards and mice.
-MODULE_INFO("PS2 Driver", "Kai Norberg", "A PS/2 keyboard and mouse driver", OS_VERSION, "MIT", PS2_KEYBOARD_PNP_IDS ";" PS2_MOUSE_PNP_IDS);
+MODULE_INFO("PS2 Driver", "Kai Norberg", "A PS/2 keyboard and mouse driver", OS_VERSION, "MIT",
+    PS2_KEYBOARD_PNP_IDS ";" PS2_MOUSE_PNP_IDS);

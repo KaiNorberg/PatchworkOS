@@ -85,7 +85,7 @@ static uint64_t aml_buffer_to_buffer_field(aml_state_t* state, aml_object_t* buf
 static uint64_t aml_buffer_to_integer(aml_state_t* state, aml_object_t* buffer, aml_object_t* dest)
 {
     (void)state;
-    aml_buffer_obj_t* bufferData = &buffer->buffer;
+    aml_buffer_t* bufferData = &buffer->buffer;
 
     uint64_t value = 0;
     uint64_t maxBytes = MIN(bufferData->length, aml_integer_byte_size());
@@ -105,7 +105,7 @@ static uint64_t aml_buffer_to_integer(aml_state_t* state, aml_object_t* buffer, 
 static uint64_t aml_buffer_to_string(aml_state_t* state, aml_object_t* buffer, aml_object_t* dest)
 {
     (void)state;
-    aml_buffer_obj_t* bufferData = &buffer->buffer;
+    aml_buffer_t* bufferData = &buffer->buffer;
 
     // Each byte becomes two hex chars with a space in between, except the last byte.
     uint64_t length = bufferData->length > 0 ? bufferData->length * 3 - 1 : 0;
@@ -162,7 +162,7 @@ static aml_convert_entry_t bufferConverters[AML_TYPE_AMOUNT] = {
 static uint64_t aml_integer_to_buffer(aml_state_t* state, aml_object_t* integer, aml_object_t* dest)
 {
     (void)state;
-    aml_integer_obj_t* integerData = &integer->integer;
+    aml_integer_t* integerData = &integer->integer;
 
     if (dest->type == AML_BUFFER)
     {
@@ -212,7 +212,7 @@ static uint64_t aml_integer_to_string(aml_state_t* state, aml_object_t* integer,
         return ERR;
     }
 
-    aml_integer_obj_t* integerData = &integer->integer;
+    aml_integer_t* integerData = &integer->integer;
 
     char* content = dest->string.content;
     for (uint64_t i = 0; i < aml_integer_byte_size(); i++)
@@ -264,7 +264,7 @@ static aml_convert_entry_t packageConverters[AML_TYPE_AMOUNT] = {
 static uint64_t aml_string_to_integer(aml_state_t* state, aml_object_t* string, aml_object_t* dest)
 {
     (void)state;
-    aml_string_obj_t* stringData = &string->string;
+    aml_string_t* stringData = &string->string;
 
     uint64_t value = 0;
     uint64_t maxChars = MIN(stringData->length, aml_integer_byte_size() * 2); // Two hex chars per byte
@@ -290,7 +290,7 @@ static uint64_t aml_string_to_integer(aml_state_t* state, aml_object_t* string, 
 static uint64_t aml_string_to_buffer(aml_state_t* state, aml_object_t* string, aml_object_t* dest)
 {
     (void)state;
-    aml_string_obj_t* stringData = &string->string;
+    aml_string_t* stringData = &string->string;
 
     // Regarding zero-length strings the spec says "... the string is treated as a buffer, with each
     // ASCII string character copied to one buffer byte, including the null
@@ -702,7 +702,7 @@ uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, am
     }
     else if (src->type == AML_BUFFER)
     {
-        aml_buffer_obj_t* bufferData = &src->buffer;
+        aml_buffer_t* bufferData = &src->buffer;
 
         if (bufferData->length == 0)
         {
@@ -809,7 +809,7 @@ uint64_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_ob
     }
     else if (src->type == AML_BUFFER)
     {
-        aml_buffer_obj_t* bufferData = &src->buffer;
+        aml_buffer_t* bufferData = &src->buffer;
 
         if (bufferData->length == 0)
         {
@@ -881,7 +881,7 @@ uint64_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_objec
 
     if (src->type == AML_STRING)
     {
-        aml_string_obj_t* stringData = &src->string;
+        aml_string_t* stringData = &src->string;
         if (stringData->length == 0 || stringData->content == NULL)
         {
             errno = EILSEQ;
@@ -899,7 +899,7 @@ uint64_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_objec
         }
 
         // "If the value exceeds the maximum, the result is unpredictable" - ACPI Spec
-        aml_integer_t value = 0;
+        aml_uint_t value = 0;
         for (; i < stringData->length; i++)
         {
             char chr = stringData->content[i];
@@ -948,7 +948,7 @@ uint64_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_objec
     return ERR;
 }
 
-uint64_t aml_convert_integer_to_bcd(aml_integer_t value, aml_integer_t* out)
+uint64_t aml_convert_integer_to_bcd(aml_uint_t value, aml_uint_t* out)
 {
     if (out == NULL)
     {
@@ -956,11 +956,11 @@ uint64_t aml_convert_integer_to_bcd(aml_integer_t value, aml_integer_t* out)
         return ERR;
     }
 
-    aml_integer_t bcd = 0;
+    aml_uint_t bcd = 0;
     for (uint64_t i = 0; i < aml_integer_byte_size() * 2; i++) // 2 nibbles per byte
     {
         uint8_t digit = value % 10;
-        bcd |= ((aml_integer_t)digit) << (i * 4);
+        bcd |= ((aml_uint_t)digit) << (i * 4);
         value /= 10;
         if (value == 0)
             break;

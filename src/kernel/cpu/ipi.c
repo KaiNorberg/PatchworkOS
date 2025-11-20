@@ -9,8 +9,6 @@
 #include <errno.h>
 #include <string.h>
 
-static irq_handler_t* ipiHandler = NULL;
-
 static ipi_chip_t* registeredChip = NULL;
 static rwlock_t chipLock = RWLOCK_CREATE;
 
@@ -45,8 +43,8 @@ static void ipi_handler_func(irq_func_data_t* data)
 
 void ipi_init(void)
 {
-    ipiHandler = irq_handler_register(IRQ_VIRT_IPI, ipi_handler_func, NULL);
-    if (ipiHandler == NULL)
+    
+    if (irq_handler_register(IRQ_VIRT_IPI, ipi_handler_func, NULL) == ERR)
     {
         panic(NULL, "failed to register IPI IRQ handler");
     }

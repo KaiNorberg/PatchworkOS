@@ -9,7 +9,9 @@
 #include <kernel/acpi/aml/runtime/method.h>
 #include <kernel/acpi/aml/state.h>
 #include <kernel/acpi/aml/to_string.h>
+#include <kernel/acpi/resources.h>
 #include <kernel/acpi/tables.h>
+#include <kernel/cpu/irq.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/module/module.h>
@@ -17,6 +19,7 @@
 #include <kernel/utils/ref.h>
 
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -63,7 +66,7 @@ static uint64_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t* out)
         LOG_ERR("could not evaluate %s._STA\n", AML_NAME_TO_STRING(device->name));
         return ERR;
     }
-    aml_integer_t value = staResult->integer.value;
+    aml_uint_t value = staResult->integer.value;
     DEREF(staResult);
 
     if (value &
@@ -182,7 +185,7 @@ static uint64_t acpi_ids_push_device(acpi_ids_t* ids, aml_object_t* device, cons
     return 0;
 }
 
-static aml_object_t* acpi_device_init_sb(void)
+static aml_object_t* acpi_sb_init(void)
 {
     aml_object_t* sb = aml_namespace_find(NULL, NULL, 1, AML_NAME('_', 'S', 'B', '_'));
     if (sb == NULL) // Should never happen
@@ -301,6 +304,110 @@ static int acpi_id_compare(const void* left, const void* right)
     return numA - numB;
 }
 
+static uint64_t acpi_device_configure(const char* name)
+{
+    if (name[0] == '.')
+    {
+        LOG_DEBUG("skipping configuration for fake ACPI device '%s'\n", name);
+        return 0;
+    }
+
+    aml_object_t* device = aml_namespace_find_by_path(NULL, NULL, name);
+    if (device == NULL)
+    {
+        LOG_ERR("could not find ACPI device '%s' in namespace for configuration\n", name);
+        return ERR;
+    }
+    DEREF_DEFER(device);
+
+    if (device->type != AML_DEVICE)
+    {
+        LOG_ERR("ACPI object '%s' is not a device, cannot configure\n", name);
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (device->device.cfg != NULL)
+    {
+        LOG_DEBUG("ACPI device '%s' is already configured, skipping\n", name);
+        return 0;
+    }
+
+    acpi_device_cfg_t* cfg = calloc(1, sizeof(acpi_device_cfg_t));
+    if (cfg == NULL)
+    {
+        return ERR;
+    }
+
+    acpi_resources_t* resources = acpi_resources_current(device);
+    if (resources == NULL)
+    {
+        free(cfg);
+        return ERR;
+    }
+
+    acpi_resource_t* resource;
+    ACPI_RESOURCES_FOR_EACH(resource, resources)
+    {
+        acpi_item_name_t itemName = ACPI_RESOURCE_ITEM_NAME(resource);
+        switch (itemName)
+        {
+        case ACPI_ITEM_NAME_IRQ:
+        {
+            acpi_irq_descriptor_t* irqDesc = (acpi_irq_descriptor_t*)resource;
+            if (irqDesc->mask == 0 || irqDesc->mask & (irqDesc->mask - 1))
+            {
+                LOG_ERR("device '%s' has invalid IRQ descriptor mask 0x%llx\n", name, irqDesc->mask);
+                goto error;
+            }
+
+            acpi_irq_descriptor_info_t info = ACPI_IRQ_DESCRIPTOR_INFO(irqDesc);
+
+            irq_flags_t flags = ((info & ACPI_IRQ_EDGE_TRIGGERED) ? IRQ_TRIGGER_EDGE : IRQ_TRIGGER_LEVEL) | ((info & ACPI_IRQ_ACTIVE_LOW) ? IRQ_POLARITY_HIGH : IRQ_POLARITY_LOW) | ((info & ACPI_IRQ_EXCLUSIVE) ? IRQ_EXCLUSIVE : IRQ_SHARED);
+
+            irq_phys_t phys = ACPI_IRQ_DESCRIPTOR_PHYS(irqDesc);
+            irq_virt_t virt;
+            if (irq_virt_alloc(&virt, phys, flags, NULL) == ERR)
+            {
+                LOG_ERR("could not allocate virtual IRQ for device '%s'\n", name);
+                goto error;
+            }
+
+            acpi_device_irq_t* newIrqs = realloc(cfg->irqs, sizeof(acpi_device_irq_t) * (cfg->irqCount + 1));
+            if (newIrqs == NULL)
+            {
+                irq_virt_free(virt);
+                goto error;
+            }
+            cfg->irqs = newIrqs;
+            cfg->irqs[cfg->irqCount].phys = phys;
+            cfg->irqs[cfg->irqCount].virt = virt;
+            cfg->irqs[cfg->irqCount].flags = flags;
+            cfg->irqCount++;
+        }
+        break;
+        case ACPI_ITEM_NAME_IO_PORT:
+        {
+
+        }
+        break;
+        default:
+            break;
+        }
+    }
+
+    free(resources);
+    device->device.cfg = cfg;
+    return 0;
+
+error:
+    free(resources);
+    free(cfg->irqs);
+    free(cfg->ios);
+    free(cfg);
+    return ERR;
+}
+
 void acpi_devices_init(void)
 {
     MUTEX_SCOPE(aml_big_mutex_get());
@@ -310,7 +417,7 @@ void acpi_devices_init(void)
         .length = 0,
     };
 
-    aml_object_t* sb = acpi_device_init_sb();
+    aml_object_t* sb = acpi_sb_init();
     if (sb == NULL)
     {
         panic(NULL, "Could not initialize ACPI devices\n");
@@ -328,7 +435,7 @@ void acpi_devices_init(void)
 
     if (acpi_tables_lookup("HPET", sizeof(sdt_header_t), 0) != NULL) // HPET
     {
-        if (acpi_ids_push_if_absent(&ids, "PNP0103", "HPET") == ERR)
+        if (acpi_ids_push_if_absent(&ids, "PNP0103", ".HPET") == ERR)
         {
             panic(NULL, "Could not initialize ACPI devices\n");
         }
@@ -336,7 +443,7 @@ void acpi_devices_init(void)
 
     if (acpi_tables_lookup("APIC", sizeof(sdt_header_t), 0) != NULL) // APIC
     {
-        if (acpi_ids_push_if_absent(&ids, "PNP0003", "APIC") == ERR)
+        if (acpi_ids_push_if_absent(&ids, "PNP0003", ".APIC") == ERR)
         {
             panic(NULL, "Could not initialize ACPI devices\n");
         }
@@ -345,6 +452,19 @@ void acpi_devices_init(void)
     if (ids.array != NULL && ids.length > 0)
     {
         qsort(ids.array, ids.length, sizeof(acpi_id_t), acpi_id_compare);
+    }
+
+    for (size_t i = 0; i < ids.length; i++)
+    {
+        if (acpi_device_configure(ids.array[i].path) == ERR)
+        {
+            // Dont load module for unconfigurable device
+            LOG_ERR("could not configure ACPI device '%s'\n", ids.array[i].path);
+            memmove(&ids.array[i], &ids.array[i + 1], sizeof(acpi_id_t) * (ids.length - i - 1));
+            ids.length--;
+            i--;
+            continue;
+        }
     }
 
     for (size_t i = 0; i < ids.length; i++)
@@ -370,3 +490,4 @@ void acpi_devices_init(void)
 
     free(ids.array);
 }
+

@@ -57,7 +57,7 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 ### Kernel
 
 - Fully preemptive and tickless [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sched/sched.h), loosely based on Linux's O(1) scheduler
-- Multithreading and Symmetric Multi Processing with fine-grained locking, no big locks allowed
+- Multithreading and Symmetric Multi Processing with fine-grained locking
 - Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info
 - Dynamic kernel and user stack allocation
 - File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/note.h)
@@ -69,15 +69,15 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 ### ACPI (WIP)
 
 - From scratch and heavily documented [AML parser](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/acpi/aml/aml.h)
-- Tested on real hardware, see [Tested Configurations](#tested-configurations)
+- Tested on real hardware, see [Tested Configurations](#tested-configurations) and against [ACPICA's](https://github.com/acpica/acpica) runtime test suite
 - ACPI implementation was made to be easy to understand and useful for educational purposes
-- Tested against [ACPICA's](https://github.com/acpica/acpica) runtime test suite
-- ACPI support is still work in progress, see [acpi.h](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/acpi/acpi.h) for a checklist
+- ACPI aware drivers
+
+*ACPI support is still work in progress, see [acpi.h](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/acpi/acpi.h) for a checklist*
 
 ### File System
 
 - Unix-style VFS with mountpoints, hardlinks, per-process namespaces, etc.
-- Strict adherence to "everything is a file" philosophy
 - Custom [Framebuffer BitMaP](https://github.com/KaiNorberg/fbmp) (.fbmp) image format, allows for faster loading by removing the need for parsing
 - Custom [Grayscale Raster Font](https://github.com/KaiNorberg/grf) (.grf) font format, allows for antialiasing and kerning without complex vector graphics
 

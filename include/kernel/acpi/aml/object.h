@@ -10,11 +10,13 @@
 
 #include <stdint.h>
 
+typedef struct acpi_device_cfg acpi_device_cfg_t;
+
 typedef struct aml_state aml_state_t;
 typedef struct aml_object aml_object_t;
-typedef struct aml_opregion_obj aml_opregion_obj_t;
-typedef struct aml_string_obj aml_string_obj_t;
-typedef struct aml_method_obj aml_method_obj_t;
+typedef struct aml_opregion aml_opregion_t;
+typedef struct aml_string aml_string_t;
+typedef struct aml_method aml_method_t;
 
 /**
  * @brief Object
@@ -152,7 +154,7 @@ typedef uint64_t aml_object_id_t;
 
 /**
  * @brief Field Unit types.
- * @enum aml_field_unit_obj_type_t
+ * @enum aml_field_unit_type_t
  *
  * Since the ACPI spec does not differentiate between "objects" of type Field, IndexField and BankField, instead just
  * calling them all FieldUnits, we use this enum to differentiate between different FieldUnit types, even if it might
@@ -164,13 +166,13 @@ typedef enum
     AML_FIELD_UNIT_FIELD,
     AML_FIELD_UNIT_INDEX_FIELD,
     AML_FIELD_UNIT_BANK_FIELD,
-} aml_field_unit_obj_type_t;
+} aml_field_unit_type_t;
 
 /**
  * @brief Method Implementation function type.
  * @typedef aml_method_implementation_t
  */
-typedef aml_object_t* (*aml_method_implementation_t)(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount);
+typedef aml_object_t* (*aml_method_implementation_t)(aml_method_t* method, aml_object_t** args, uint64_t argCount);
 
 /**
  * @brief Common header for all AML objects.
@@ -205,82 +207,101 @@ typedef aml_object_t* (*aml_method_implementation_t)(aml_method_obj_t* method, a
 
 /**
  * @brief Data for a buffer object.
- * @struct aml_buffer_obj_t
+ * @struct aml_buffer_t
  */
-typedef struct aml_buffer_obj
+typedef struct aml_buffer
 {
     AML_OBJECT_COMMON_HEADER;
     uint8_t* content;
     uint64_t length;
     uint8_t smallBuffer[AML_SMALL_BUFFER_SIZE]; ///< Used for small object optimization.
-} aml_buffer_obj_t;
+} aml_buffer_t;
 
 /**
  * @brief Data for a buffer field object.
- * @struct aml_buffer_field_obj_t
+ * @struct aml_buffer_field_t
  */
-typedef struct aml_buffer_field_obj
+typedef struct aml_buffer_field
 {
     AML_OBJECT_COMMON_HEADER;
     aml_object_t* target;
     aml_bit_size_t bitOffset;
     aml_bit_size_t bitSize;
-} aml_buffer_field_obj_t;
+} aml_buffer_field_t;
+
+/**
+ * @brief Data for a device object.
+ * @struct aml_device_t
+ */
+typedef struct aml_device
+{
+    AML_OBJECT_COMMON_HEADER;
+    /**
+     * Stores various device configuration data.
+     * 
+     * A device is considered properly configured when this pointer is not `NULL`, attempting to free a configured device will cause a panic. 
+     * 
+     * This pointer is managed by the devices system found in `devices.h` or @ref kernel_acpi_devices.
+     * 
+     * @see acpi_device_cfg_t for more details.
+     */
+    acpi_device_cfg_t* cfg;
+} aml_device_t;
 
 /**
  * @brief Data placeholder for an event object.
- * @struct aml_event_obj_t
+ * @struct aml_event_t
  *
  * TODO: Implement event object functionality.
  */
-typedef struct aml_event_obj
+typedef struct aml_event
 {
     AML_OBJECT_COMMON_HEADER;
-} aml_event_obj_t;
+} aml_event_t;
 
 /**
  * @brief Data for a field unit object.
- * @struct aml_field_unit_obj_t
+ * @struct aml_field_unit_t
  */
-typedef struct aml_field_unit_obj
+typedef struct aml_field_unit
 {
     AML_OBJECT_COMMON_HEADER;
-    aml_field_unit_obj_type_t fieldType; ///< The type of field unit.
-    aml_field_unit_obj_t* index;         ///< Used for IndexField.
-    aml_field_unit_obj_t* data;          ///< Used for IndexField.
+    aml_field_unit_type_t fieldType; ///< The type of field unit.
+    aml_field_unit_t* index;         ///< Used for IndexField.
+    aml_field_unit_t* data;          ///< Used for IndexField.
     aml_object_t* bankValue;             ///< Used for BankField.
-    aml_field_unit_obj_t* bank;          ///< Used for BankField.
-    aml_opregion_obj_t* opregion;        ///< Used for Field and BankField.
+    aml_field_unit_t* bank;          ///< Used for BankField.
+    aml_opregion_t* opregion;        ///< Used for Field and BankField.
     aml_field_flags_t fieldFlags;        ///< Used for Field, IndexField and BankField.
     aml_bit_size_t bitOffset;            ///< Used for Field, IndexField and BankField.
     aml_bit_size_t bitSize;              ///< Used for Field, IndexField and BankField.
-} aml_field_unit_obj_t;
+} aml_field_unit_t;
 
 /**
  * @brief Data for an integer object.
- * @struct aml_integer_obj_t
+ * @struct aml_integer_t
  */
-typedef struct aml_integer_obj
+typedef struct aml_integer
 {
     AML_OBJECT_COMMON_HEADER;
-    aml_integer_t value;
-} aml_integer_obj_t;
+    aml_uint_t value;
+} aml_integer_t;
 
 /**
  * @brief Data for an integer constant object.
- * @struct aml_integer_constant_obj_t
+ * @struct aml_integer_constant_t
  */
-typedef struct aml_integer_constant_obj
+typedef struct aml_integer_constant
 {
     AML_OBJECT_COMMON_HEADER;
-    aml_integer_t value;
-} aml_integer_constant_obj_t;
+    aml_uint_t value;
+} aml_integer_constant_t;
 
 /**
  * @brief Data for a method object.
- * @struct aml_method_obj_t
+ * @struct aml_method_t
  */
-typedef struct aml_method_obj
+typedef struct aml_method
 {
     AML_OBJECT_COMMON_HEADER;
     /**
@@ -292,130 +313,130 @@ typedef struct aml_method_obj
     const uint8_t* start;
     const uint8_t* end;
     aml_mutex_id_t mutex;
-} aml_method_obj_t;
+} aml_method_t;
 
 /**
  * @brief Data for a mutex object.
- * @struct aml_mutex_obj_t
+ * @struct aml_mutex_t
  */
-typedef struct aml_mutex_obj
+typedef struct aml_mutex
 {
     AML_OBJECT_COMMON_HEADER;
     aml_sync_level_t syncLevel;
     aml_mutex_id_t mutex;
-} aml_mutex_obj_t;
+} aml_mutex_t;
 
 /**
  * @brief Data for an object reference object.
- * @struct aml_object_reference_obj_t
+ * @struct aml_object_reference_t
  */
-typedef struct aml_object_referencev
+typedef struct aml_object_reference
 {
     AML_OBJECT_COMMON_HEADER;
     aml_object_t* target;
-} aml_object_reference_obj_t;
+} aml_object_reference_t;
 
 /**
  * @brief Data for an operation region object.
- * @struct aml_opregion_obj_t
+ * @struct aml_opregion_t
  */
-typedef struct aml_opregion_obj
+typedef struct aml_opregion
 {
     AML_OBJECT_COMMON_HEADER;
     aml_region_space_t space;
     uintptr_t offset;
     uint32_t length;
-} aml_opregion_obj_t;
+} aml_opregion_t;
 
 /**
  * @brief Data for a package object.
- * @struct aml_package_obj_t
+ * @struct aml_package_t
  *
  * Packages use an array to store the elements not a linked list since indexing is very common with packages.
  */
-typedef struct aml_package_obj
+typedef struct aml_package
 {
     AML_OBJECT_COMMON_HEADER;
     aml_object_t** elements;
     uint64_t length;
     aml_object_t* smallElements[AML_SMALL_PACKAGE_SIZE]; ///< Used for small object optimization.
-} aml_package_obj_t;
+} aml_package_t;
 
-typedef struct aml_power_resource_obj
+typedef struct aml_power_resource
 {
     AML_OBJECT_COMMON_HEADER;
     aml_system_level_t systemLevel;
     aml_resource_order_t resourceOrder;
-} aml_power_resource_obj_t;
+} aml_power_resource_t;
 
 /**
  * @brief Data for a processor object.
- * @struct aml_processor_obj_t
+ * @struct aml_processor_t
  */
-typedef struct aml_processor_obj
+typedef struct aml_processor
 {
     AML_OBJECT_COMMON_HEADER;
     aml_proc_id_t procId;
     aml_pblk_addr_t pblkAddr;
     aml_pblk_len_t pblkLen;
-} aml_processor_obj_t;
+} aml_processor_t;
 
 /**
  * @brief Data for a string object.
- * @struct aml_string_obj_t
+ * @struct aml_string_t
  */
-typedef struct aml_string_obj
+typedef struct aml_string
 {
     AML_OBJECT_COMMON_HEADER;
     char* content;
     uint64_t length;
     char smallString[AML_SMALL_STRING_SIZE + 1]; ///< Used for small object optimization.
-} aml_string_obj_t;
+} aml_string_t;
 
 /**
  * @brief Data for an alias object.
- * @struct aml_alias_obj_t
+ * @struct aml_alias_t
  */
-typedef struct aml_alias_obj
+typedef struct aml_alias
 {
     AML_OBJECT_COMMON_HEADER;
     aml_object_t* target;
-} aml_alias_obj_t;
+} aml_alias_t;
 
 /**
  * @brief Data for an unresolved object.
- * @struct aml_unresolved_obj_t
+ * @struct aml_unresolved_t
  */
-typedef struct aml_unresolved_obj
+typedef struct aml_unresolved
 {
     AML_OBJECT_COMMON_HEADER;
     aml_name_string_t nameString;             ///< The NameString representing the path to the target object.
     aml_object_t* from;                       ///< The object to start the search from when resolving the reference.
     aml_patch_up_resolve_callback_t callback; ///< The callback to call when a matching object is found.
-} aml_unresolved_obj_t;
+} aml_unresolved_t;
 
 /**
  * @brief Data for an argument object.
- * @struct aml_arg_obj_t
+ * @struct aml_arg_t
  *
  * Arguments are disgusting but the way passing arguments work is described in section 5.5.2.3 of the ACPI
  * specification.
  */
-typedef struct aml_arg_obj
+typedef struct aml_arg
 {
     AML_OBJECT_COMMON_HEADER;
     aml_object_t* value; ///< The object that was passed as the argument.
-} aml_arg_obj_t;
+} aml_arg_t;
 
 /**
  * @brief Data for a local variable object.
- * @struct aml_local_obj_t
+ * @struct aml_local_t
  */
-typedef struct aml_local_obj
+typedef struct aml_local
 {
     AML_OBJECT_COMMON_HEADER;
     aml_object_t* value; ///< The value of the local variable.
-} aml_local_obj_t;
+} aml_local_t;
 
 /**
  * @brief ACPI object.
@@ -428,25 +449,26 @@ typedef struct aml_object
         {
             AML_OBJECT_COMMON_HEADER;
         };
-        aml_buffer_obj_t buffer;
-        aml_buffer_field_obj_t bufferField;
-        aml_event_obj_t event;
-        aml_field_unit_obj_t fieldUnit;
-        aml_integer_obj_t integer;
-        aml_integer_constant_obj_t integerConstant;
-        aml_method_obj_t method;
-        aml_mutex_obj_t mutex;
-        aml_object_reference_obj_t objectReference;
-        aml_opregion_obj_t opregion;
-        aml_package_obj_t package;
-        aml_power_resource_obj_t powerResource;
-        aml_processor_obj_t processor;
-        aml_string_obj_t string;
+        aml_buffer_t buffer;
+        aml_buffer_field_t bufferField;
+        aml_device_t device;
+        aml_event_t event;
+        aml_field_unit_t fieldUnit;
+        aml_integer_t integer;
+        aml_integer_constant_t integerConstant;
+        aml_method_t method;
+        aml_mutex_t mutex;
+        aml_object_reference_t objectReference;
+        aml_opregion_t opregion;
+        aml_package_t package;
+        aml_power_resource_t powerResource;
+        aml_processor_t processor;
+        aml_string_t string;
 
-        aml_alias_obj_t alias;
-        aml_unresolved_obj_t unresolved;
-        aml_arg_obj_t arg;
-        aml_local_obj_t local;
+        aml_alias_t alias;
+        aml_unresolved_t unresolved;
+        aml_arg_t arg;
+        aml_local_t local;
     };
 } aml_object_t;
 
@@ -529,7 +551,7 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
  * @param newLength The new length of the buffer.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_buffer_resize(aml_buffer_obj_t* buffer, uint64_t newLength);
+uint64_t aml_buffer_resize(aml_buffer_t* buffer, uint64_t newLength);
 
 /**
  * @brief Set a object as an empty buffer with the given length.
@@ -597,7 +619,7 @@ uint64_t aml_event_set(aml_object_t* object);
  * @param bitSize Size of the field in bits.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_field_unit_field_set(aml_object_t* object, aml_opregion_obj_t* opregion, aml_field_flags_t flags,
+uint64_t aml_field_unit_field_set(aml_object_t* object, aml_opregion_t* opregion, aml_field_flags_t flags,
     aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
 
 /**
@@ -611,7 +633,7 @@ uint64_t aml_field_unit_field_set(aml_object_t* object, aml_opregion_obj_t* opre
  * @param bitSize Size of the field in bits.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_field_unit_index_field_set(aml_object_t* object, aml_field_unit_obj_t* index, aml_field_unit_obj_t* data,
+uint64_t aml_field_unit_index_field_set(aml_object_t* object, aml_field_unit_t* index, aml_field_unit_t* data,
     aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
 
 /**
@@ -626,7 +648,7 @@ uint64_t aml_field_unit_index_field_set(aml_object_t* object, aml_field_unit_obj
  * @param bitSize Size of the field in bits.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_obj_t* opregion, aml_field_unit_obj_t* bank,
+uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_t* opregion, aml_field_unit_t* bank,
     uint64_t bankValue, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
 
 /**
@@ -636,7 +658,7 @@ uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_obj_t*
  * @param value The integer value to set.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_integer_set(aml_object_t* object, aml_integer_t value);
+uint64_t aml_integer_set(aml_object_t* object, aml_uint_t value);
 
 /**
  * @brief Set a object as a method with the given flags and address range.
@@ -658,7 +680,7 @@ uint64_t aml_method_set(aml_object_t* object, aml_method_flags_t flags, const ui
  * @param addr The address to search for.
  * @return On success, a reference to the found method object. On failure, `NULL` and `errno` is set.
  */
-aml_method_obj_t* aml_method_find(const uint8_t* addr);
+aml_method_t* aml_method_find(const uint8_t* addr);
 
 /**
  * @brief Set a object as a mutex with the given synchronization level.
@@ -750,7 +772,7 @@ uint64_t aml_string_set(aml_object_t* object, const char* str);
  * @param newLength The new length of the string, not including the null terminator.
  * @return On success, the new length of the string. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_string_resize(aml_string_obj_t* string, uint64_t newLength);
+uint64_t aml_string_resize(aml_string_t* string, uint64_t newLength);
 
 /**
  * @brief Set a object as a thermal zone.
@@ -779,7 +801,7 @@ uint64_t aml_alias_set(aml_object_t* object, aml_object_t* target);
  * @param alias Pointer to the alias object to traverse.
  * @return On success, a reference to the target object. On failure, `NULL` and `errno` is set.
  */
-aml_object_t* aml_alias_obj_traverse(aml_alias_obj_t* alias);
+aml_object_t* aml_alias_traverse(aml_alias_t* alias);
 
 /**
  * @brief Set a object as an unresolved reference with the given namestring and starting point.

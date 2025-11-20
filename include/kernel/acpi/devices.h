@@ -2,6 +2,8 @@
 
 #include <kernel/acpi/aml/object.h>
 
+#include <kernel/acpi/resources.h>
+#include <kernel/cpu/irq.h>
 #include <sys/io.h>
 
 /**
@@ -25,13 +27,17 @@
  * Trying HIDs first and CIDs after means we try to load a module for the exact device, or if that fails a generic
  * module that can handle the device, tho perhaps not optimally.
  *
- * ## Module Loading Order
+ * ## Device Configuration
+ * 
+ * Each ACPI device specifies the resources it needs via its AML, for example via the `_CRS` method. This can include IRQs, IO ports, etc. During device initialization, this data is parsed and the necessary resources are allocated and configured for the device.
+ * 
+ * ## Module Loading and Device Configuration Order
  *
  * For the sake of ensuring consistency across different systems, all modules will be loaded based on their ACPI
- * HIDs in alphanumerical order. This means that a device with the ACPI HID "ACPI0001" will be loaded before a device
+ * HIDs in alphanumerical order, this also applies to device configuration. This means that a device with the ACPI HID "ACPI0001" will be loaded before a device
  * with the ACPI HID "ACPI0002" and that one before the device with the ACPI HID "PNP0000". This only applies to the
- * module loading not to the device enumeration.
- *
+ * module loading and device configuration but not to device enumeration.
+ * 
  * TODO: Implement hotplugging support.
  *
  * @see [PNP ACPI Registry](https://uefi.org/PNP_ACPI_Registry) for a list of known ACPI HIDs.
@@ -66,6 +72,45 @@ typedef enum
 #define ACPI_STA_FLAGS_DEFAULT (ACPI_STA_PRESENT | ACPI_STA_ENABLED | ACPI_STA_SHOW_IN_UI | ACPI_STA_FUNCTIONAL)
 
 /**
+ * @brief Represents a IRQ assigned to an ACPI device.
+ * @struct acpi_device_irq_t
+ */
+typedef struct acpi_device_irq
+{
+    irq_phys_t phys;
+    irq_virt_t virt;
+    irq_flags_t flags;
+} acpi_device_irq_t;
+
+/**
+ * @brief Represents an IO port range assigned to an ACPI device.
+ * @struct acpi_device_io_t
+ */
+typedef struct acpi_device_io
+{
+    uint64_t base;
+    uint64_t length;
+} acpi_device_io_t;
+
+/**
+ * @brief ACPI device configuration structure.
+ * @struct acpi_device_cfg_t
+ *
+ * Stores the resources assigned to an ACPI device, like IRQs and IO ports.
+ * 
+ * TODO: Add more config stuff like memory ranges, DMA etc.
+ */
+typedef struct acpi_device_cfg
+{
+    char hid[MAX_NAME];
+    char cid[MAX_NAME];
+    acpi_device_irq_t* irqs;
+    uint64_t irqCount;
+    acpi_device_io_t* ios;
+    uint64_t ioCount;
+} acpi_device_cfg_t;
+
+/**
  * @brief Enumerate, configure and load modules for ACPI devices.
  *
  * This function always evaluates the \_SB._INI node if it exists, enumerates ACPI devices (found under \_SB), evaluates
@@ -83,5 +128,13 @@ typedef enum
  * @see Section 6.5.1 of the ACPI specification for more details.
  */
 void acpi_devices_init(void);
+
+/**
+ * @brief Retrieves the ACPI device configuration for a device by its name.
+ *
+ * @param name The name of the device to retrieve the configuration for.
+ * @return On success, a pointer to the device configuration. On failure, `NULL` and `errno` is set.
+ */
+acpi_device_cfg_t* acpi_device_cfg_get(const char* name);
 
 /** @} */

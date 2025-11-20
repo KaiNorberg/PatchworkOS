@@ -179,7 +179,7 @@ aml_object_t* aml_namespace_find_child(aml_overlay_t* overlay, aml_object_t* par
 
     if (child->type == AML_ALIAS)
     {
-        return aml_alias_obj_traverse(&child->alias);
+        return aml_alias_traverse(&child->alias);
     }
 
     return REF(child);

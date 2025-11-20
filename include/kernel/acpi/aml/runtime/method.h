@@ -40,6 +40,6 @@
  * @param args Array of pointers to the argument objects, can be `NULL`, must be null-terminated.
  * @return On success, the return value of the method. On failure, `ERR` and `errno` is set.
  */
-aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_obj_t* method, aml_object_t** args);
+aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_t* method, aml_object_t** args);
 
 /** @} */

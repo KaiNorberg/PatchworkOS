@@ -29,7 +29,7 @@ uint8_t aml_integer_bit_size(void)
     return integerByteSize * 8;
 }
 
-aml_integer_t aml_integer_ones(void)
+aml_uint_t aml_integer_ones(void)
 {
     return integerByteSize == 4 ? UINT32_MAX : UINT64_MAX;
 }

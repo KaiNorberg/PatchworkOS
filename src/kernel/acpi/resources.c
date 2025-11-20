@@ -22,27 +22,18 @@
 #include <stdlib.h>
 #include <string.h>
 
-acpi_resources_t* acpi_resources_current(const char* path)
+acpi_resources_t* acpi_resources_current(aml_object_t* device)
 {
-    if (path == NULL)
+    if (device == NULL)
     {
         errno = EINVAL;
         return NULL;
     }
 
-    aml_object_t* device = aml_namespace_find_by_path(NULL, NULL, path);
-    if (device == NULL)
-    {
-        LOG_ERR("device '%s' not found\n", path);
-        errno = ENODEV;
-        return NULL;
-    }
-    DEREF_DEFER(device);
-
     aml_object_t* crs = aml_namespace_find_child(NULL, device, AML_NAME('_', 'C', 'R', 'S'));
     if (crs == NULL)
     {
-        LOG_ERR("device '%s' has no _CRS method\n", path);
+        LOG_ERR("device '%s' has no _CRS method\n", AML_NAME_TO_STRING(device->name));
         errno = ENODEV;
         return NULL;
     }
@@ -51,14 +42,14 @@ acpi_resources_t* acpi_resources_current(const char* path)
     aml_object_t* crsResult = aml_evaluate(NULL, crs, AML_BUFFER);
     if (crsResult == NULL)
     {
-        LOG_ERR("could not evaluate %s._CRS\n", path);
+        LOG_ERR("could not evaluate %s._CRS\n", AML_NAME_TO_STRING(device->name));
         return NULL;
     }
     DEREF_DEFER(crsResult);
 
     if (crsResult->type != AML_BUFFER)
     {
-        LOG_ERR("device '%s' _CRS did not return a buffer\n", path);
+        LOG_ERR("device '%s' _CRS did not return a buffer\n", AML_NAME_TO_STRING(device->name));
         errno = EILSEQ;
         return NULL;
     }
@@ -79,7 +70,7 @@ acpi_resources_t* acpi_resources_current(const char* path)
     {
         if (endTagFound)
         {
-            LOG_ERR("device '%s' _CRS has data after end tag\n", path);
+            LOG_ERR("device '%s' _CRS has data after end tag\n", AML_NAME_TO_STRING(device->name));
             goto error;
         }
 
@@ -93,7 +84,7 @@ acpi_resources_t* acpi_resources_current(const char* path)
             if (size != sizeof(acpi_irq_descriptor_t) &&
                 size != sizeof(acpi_irq_descriptor_t) - 1) // The last byte is optional
             {
-                LOG_ERR("device '%s' _CRS has invalid IRQ descriptor size %llu\n", path, size);
+                LOG_ERR("device '%s' _CRS has invalid IRQ descriptor size %llu\n", AML_NAME_TO_STRING(device->name), size);
                 goto error;
             }
         }
@@ -102,7 +93,7 @@ acpi_resources_t* acpi_resources_current(const char* path)
         {
             if (size != sizeof(acpi_io_port_descriptor_t))
             {
-                LOG_ERR("device '%s' _CRS has invalid IO port descriptor size %llu\n", path, size);
+                LOG_ERR("device '%s' _CRS has invalid IO port descriptor size %llu\n", AML_NAME_TO_STRING(device->name), size);
                 goto error;
             }
         }
@@ -117,7 +108,7 @@ acpi_resources_t* acpi_resources_current(const char* path)
 
     if (!endTagFound)
     {
-        LOG_ERR("device '%s' _CRS missing end tag\n", path);
+        LOG_ERR("device '%s' _CRS missing end tag\n", AML_NAME_TO_STRING(device->name));
         goto error;
     }
 
@@ -126,4 +117,9 @@ error:
     free(resources);
     errno = EILSEQ;
     return NULL;
+}
+
+void acpi_resources_free(acpi_resources_t* resources)
+{
+    free(resources);
 }

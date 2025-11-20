@@ -15,8 +15,6 @@
 #include <stdlib.h>
 #include <sys/list.h>
 
-static irq_handler_t* timerHandler = NULL;
-
 static void wait_remove_wait_entries(thread_t* thread, errno_t err)
 {
     assert(atomic_load(&thread->state) == THREAD_UNBLOCKING);
@@ -103,8 +101,7 @@ void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* self)
 
 void wait_init(void)
 {
-    timerHandler = irq_handler_register(IRQ_VIRT_TIMER, wait_timer_handler, NULL);
-    if (timerHandler == NULL)
+    if (irq_handler_register(IRQ_VIRT_TIMER, wait_timer_handler, NULL) == ERR)
     {
         panic(NULL, "Failed to register wait timer IRQ handler");
     }

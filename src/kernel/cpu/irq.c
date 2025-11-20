@@ -14,9 +14,7 @@
 #include <sys/list.h>
 #include <sys/math.h>
 
-static irq_t internIrqs[IRQ_VIRT_EXTERNAL_START] = {0};
-
-static irq_desc_t descriptors[IRQ_VIRT_TOTAL_AMOUNT] = {0};
+static irq_t irqs[IRQ_VIRT_TOTAL_AMOUNT] = {0};
 
 // TODO: Optimize domain lookup?
 static list_t domains = LIST_CREATE(domains);
@@ -26,23 +24,21 @@ void irq_init(void)
 {
     for (irq_virt_t i = 0; i < IRQ_VIRT_TOTAL_AMOUNT; i++)
     {
-        irq_desc_t* desc = &descriptors[i];
-        desc->irq = NULL;
-        list_init(&desc->handlers);
-        rwlock_init(&desc->lock);
-    }
-
-    for (irq_virt_t i = 0; i < IRQ_VIRT_EXTERNAL_START; i++)
-    {
-        irq_t* irq = &internIrqs[i];
-        irq->phys = 0;
+        irq_t* irq = &irqs[i];
+        irq->phys = UINT32_MAX;
         irq->virt = i;
         irq->flags = 0;
         irq->cpu = NULL;
         irq->domain = NULL;
+        irq->refCount = 0;
+        list_init(&irq->handlers);
+        rwlock_init(&irq->lock);
+    }
 
-        irq_desc_t* desc = &descriptors[i];
-        desc->irq = irq;
+    for (irq_phys_t i = 0; i < IRQ_VIRT_EXTERNAL_START; i++)
+    {
+        irq_t* irq = &irqs[i];
+        irq->refCount = UINT64_MAX; // Mark as used
     }
 }
 
@@ -60,11 +56,11 @@ void irq_dispatch(interrupt_frame_t* frame, cpu_t* self)
         panic(NULL, "exception irq 0x%x dispatched through irq system", virt);
     }
 
-    irq_desc_t* desc = &descriptors[virt];
-    RWLOCK_READ_SCOPE(&desc->lock);
+    irq_t* irq = &irqs[virt];
+    RWLOCK_READ_SCOPE(&irq->lock);
 
     irq_handler_t* handler;
-    LIST_FOR_EACH(handler, &desc->handlers, entry)
+    LIST_FOR_EACH(handler, &irq->handlers, entry)
     {
         irq_func_data_t data = {
             .frame = frame,
@@ -76,7 +72,7 @@ void irq_dispatch(interrupt_frame_t* frame, cpu_t* self)
         handler->func(&data);
     }
 
-    if (list_is_empty(&desc->handlers))
+    if (list_is_empty(&irq->handlers))
     {
         if (frame->vector < IRQ_VIRT_EXCEPTION_END)
         {
@@ -98,20 +94,20 @@ void irq_dispatch(interrupt_frame_t* frame, cpu_t* self)
         }
     }
 
-    if (desc->irq == NULL || desc->irq->domain == NULL || desc->irq->domain->chip == NULL)
+    if (irq->domain == NULL || irq->domain->chip == NULL)
     {
         return;
     }
 
-    irq_chip_t* chip = desc->irq->domain->chip;
+    irq_chip_t* chip = irq->domain->chip;
     if (chip->ack != NULL)
     {
-        chip->ack(desc->irq);
+        chip->ack(irq);
     }
 
     if (chip->eoi != NULL)
     {
-        chip->eoi(desc->irq);
+        chip->eoi(irq);
     }
 }
 
@@ -130,27 +126,47 @@ static irq_domain_t* irq_domain_lookup(irq_phys_t phys)
     return NULL;
 }
 
-// Will return desc locked for write if successful
-static irq_desc_t* irq_desc_find_unused(irq_virt_t* outVirt)
+// Will return irq locked for write if successful
+static irq_t* irq_find(irq_virt_t* outVirt, irq_phys_t phys)
 {
     for (irq_virt_t virt = IRQ_VIRT_EXTERNAL_START; virt < IRQ_VIRT_TOTAL_AMOUNT; virt++)
     {
-        irq_desc_t* desc = &descriptors[virt];
-        rwlock_write_acquire(&desc->lock);
+        irq_t* irq = &irqs[virt];
+        rwlock_write_acquire(&irq->lock);
 
-        if (desc->irq == NULL)
+        if (irq->refCount != 0 && irq->phys == phys)
         {
             *outVirt = virt;
-            return desc;
+            return irq;
         }
 
-        rwlock_write_release(&desc->lock);
+        rwlock_write_release(&irq->lock);
     }
 
     return NULL;
 }
 
-irq_t* irq_alloc(irq_phys_t phys, irq_flags_t flags, cpu_t* cpu)
+// Will return irq locked for write if successful
+static irq_t* irq_find_unused(irq_virt_t* outVirt)
+{
+    for (irq_virt_t virt = IRQ_VIRT_EXTERNAL_START; virt < IRQ_VIRT_TOTAL_AMOUNT; virt++)
+    {
+        irq_t* irq = &irqs[virt];
+        rwlock_write_acquire(&irq->lock);
+
+        if (irq->refCount == 0)
+        {
+            *outVirt = virt;
+            return irq;
+        }
+
+        rwlock_write_release(&irq->lock);
+    }
+
+    return NULL;
+}
+
+uint64_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu_t* cpu)
 {
     if (cpu == NULL)
     {
@@ -159,95 +175,100 @@ irq_t* irq_alloc(irq_phys_t phys, irq_flags_t flags, cpu_t* cpu)
 
     RWLOCK_READ_SCOPE(&domainsLock);
 
-    irq_domain_t* domain = irq_domain_lookup(phys); // Might be NULL, which is fine
-
     irq_virt_t virt;
-    irq_desc_t* desc = irq_desc_find_unused(&virt);
-    if (desc == NULL)
+    irq_t* irq = irq_find(&virt, phys);
+    if (irq != NULL)
     {
-        errno = ENOSPC;
-        return NULL;
+        if (irq->flags != flags)
+        {
+            rwlock_write_release(&irq->lock);
+            errno = EINVAL;
+            return ERR;
+        }
+
+        if (irq->flags & IRQ_EXCLUSIVE)
+        {
+            rwlock_write_release(&irq->lock);
+            errno = EBUSY;
+            return ERR;
+        }
+    }
+    else
+    {
+        irq = irq_find_unused(&virt);
+        if (irq == NULL)
+        {
+            errno = ENOSPC;
+            return ERR;
+        }
     }
 
-    irq_t* irq = malloc(sizeof(irq_t));
-    if (irq == NULL)
-    {
-        rwlock_write_release(&desc->lock);
-        errno = ENOMEM;
-        return NULL;
-    }
     irq->phys = phys;
     irq->virt = virt;
     irq->flags = flags;
     irq->cpu = cpu;
-    irq->domain = domain;
+    irq->domain = irq_domain_lookup(phys); // Might be NULL, which is fine
 
-    if (domain != NULL && domain->chip != NULL && domain->chip->enable != NULL)
+    if (irq->domain != NULL && irq->domain->chip != NULL && irq->domain->chip->enable != NULL)
     {
-        if (domain->chip->enable(irq) == ERR)
+        if (irq->domain->chip->enable(irq) == ERR)
         {
-            rwlock_write_release(&desc->lock);
-            free(irq);
-            return NULL;
+            rwlock_write_release(&irq->lock);
+            return ERR;
         }
 
-        LOG_INFO("mapped phys irq 0x%x to virt irq 0x%x for irq chip %s", phys, virt, domain->chip->name);
+        LOG_INFO("mapped phys irq %d to virt irq 0x%x using '%s'\n", phys, virt, irq->domain->chip->name);
     }
 
-    desc->irq = irq;
-    rwlock_write_release(&desc->lock);
-    return irq;
+    irq->refCount++;
+    rwlock_write_release(&irq->lock);
+    *out = virt;
+    return 0;
 }
 
-void irq_free(irq_t* irq)
+void irq_virt_free(irq_virt_t virt)
 {
-    if (irq == NULL)
+    if (virt < IRQ_VIRT_EXTERNAL_START || virt >= IRQ_VIRT_TOTAL_AMOUNT)
     {
         return;
     }
 
-    if (irq->virt < IRQ_VIRT_EXTERNAL_START || irq->virt >= IRQ_VIRT_TOTAL_AMOUNT)
+    irq_t* irq = &irqs[virt];
+    RWLOCK_WRITE_SCOPE(&irq->lock);
+
+    if (irq->refCount == 0)
     {
         return;
     }
 
-    irq_desc_t* desc = &descriptors[irq->virt];
-    assert(desc->irq == irq);
-
-    RWLOCK_WRITE_SCOPE(&desc->lock);
+    if (--irq->refCount > 0)
+    {
+        return;
+    }
 
     if (irq->domain != NULL && irq->domain->chip != NULL && irq->domain->chip->disable != NULL)
     {
         irq->domain->chip->disable(irq);
     }
 
-    while (!list_is_empty(&desc->handlers))
+    while (!list_is_empty(&irq->handlers))
     {
-        irq_handler_t* handler = CONTAINER_OF(list_first(&desc->handlers), irq_handler_t, entry);
-        list_remove(&desc->handlers, &handler->entry);
+        irq_handler_t* handler = CONTAINER_OF(list_first(&irq->handlers), irq_handler_t, entry);
+        list_remove(&irq->handlers, &handler->entry);
         free(handler);
     }
-
-    desc->irq = NULL;
-    free(irq);
 }
 
-uint64_t irq_set_affinity(irq_t* irq, cpu_t* cpu)
+uint64_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu)
 {
-    if (irq == NULL || irq->domain == NULL || cpu == NULL)
+    if (virt < 0 || virt >= IRQ_VIRT_TOTAL_AMOUNT || cpu == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    if (irq->virt < IRQ_VIRT_EXTERNAL_START || irq->virt >= IRQ_VIRT_TOTAL_AMOUNT)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    irq_desc_t* desc = &descriptors[irq->virt];
-    RWLOCK_WRITE_SCOPE(&desc->lock);
+    irq_t* irq = &irqs[virt];
+    RWLOCK_WRITE_SCOPE(&irq->lock);
 
     irq->domain->chip->disable(irq);
     irq->cpu = cpu;
@@ -295,41 +316,41 @@ uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, v
 
     for (irq_virt_t virt = IRQ_VIRT_EXTERNAL_START; virt < IRQ_VIRT_TOTAL_AMOUNT; virt++)
     {
-        irq_desc_t* desc = &descriptors[virt];
-        rwlock_write_acquire(&desc->lock);
+        irq_t* irq = &irqs[virt];
+        rwlock_write_acquire(&irq->lock);
 
-        if (desc->irq == NULL || desc->irq->phys < start || desc->irq->phys >= end)
+        if (irq == NULL || irq->phys < start || irq->phys >= end)
         {
-            rwlock_write_release(&desc->lock);
+            rwlock_write_release(&irq->lock);
             continue;
         }
 
-        desc->irq->domain = domain;
-        if (domain->chip->enable(desc->irq) == ERR)
+        irq->domain = domain;
+        if (domain->chip->enable(irq) == ERR)
         {
-            desc->irq->domain = NULL;
-            rwlock_write_release(&desc->lock);
+            irq->domain = NULL;
+            rwlock_write_release(&irq->lock);
 
             for (irq_virt_t revVirt = IRQ_VIRT_EXTERNAL_START; revVirt < virt; revVirt++)
             {
-                irq_desc_t* revDesc = &descriptors[revVirt];
-                RWLOCK_WRITE_SCOPE(&revDesc->lock);
+                irq_t* revIrq = &irqs[revVirt];
+                RWLOCK_WRITE_SCOPE(&revIrq->lock);
 
-                if (revDesc->irq == NULL || revDesc->irq->domain != domain)
+                if (revIrq == NULL || revIrq->domain != domain)
                 {
                     continue;
                 }
 
-                domain->chip->disable(revDesc->irq);
-                revDesc->irq->domain = NULL;
+                domain->chip->disable(revIrq);
+                revIrq->domain = NULL;
             }
             list_remove(&domains, &domain->entry);
             free(domain);
             return ERR;
         }
 
-        LOG_INFO("mapped phys irq 0x%x to virt irq 0x%x while adding irq chip %s", desc->irq->phys, virt, chip->name);
-        rwlock_write_release(&desc->lock);
+        LOG_INFO("mapped phys irq %d to virt irq 0x%x while adding '%s'\n", irq->phys, virt, irq->domain->chip->name);
+        rwlock_write_release(&irq->lock);
     }
 
     return 0;
@@ -360,18 +381,18 @@ void irq_chip_unregister(irq_chip_t* chip, irq_phys_t start, irq_phys_t end)
 
         for (irq_virt_t virt = IRQ_VIRT_EXTERNAL_START; virt < IRQ_VIRT_TOTAL_AMOUNT; virt++)
         {
-            irq_desc_t* desc = &descriptors[virt];
-            rwlock_write_acquire(&desc->lock);
+            irq_t* irq = &irqs[virt];
+            rwlock_write_acquire(&irq->lock);
 
-            if (desc->irq != NULL && desc->irq->domain == domain)
+            if (irq != NULL && irq->domain == domain)
             {
-                domain->chip->disable(desc->irq);
-                LOG_INFO("disabled IRQ %u (phys 0x%lx) while removing chip %s", desc->irq->virt, desc->irq->phys,
+                domain->chip->disable(irq);
+                LOG_INFO("disabled IRQ %u (phys 0x%lx) while removing chip %s", irq->virt, irq->phys,
                     chip->name);
-                desc->irq->domain = NULL;
+                irq->domain = NULL;
             }
 
-            rwlock_write_release(&desc->lock);
+            rwlock_write_release(&irq->lock);
         }
 
         list_remove(&domains, &domain->entry);
@@ -385,61 +406,55 @@ uint64_t irq_chip_amount(void)
     return list_length(&domains);
 }
 
-irq_handler_t* irq_handler_register(irq_virt_t virt, irq_func_t func, void* private)
+uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* private)
 {
     if (virt >= IRQ_VIRT_TOTAL_AMOUNT || func == NULL)
     {
         errno = EINVAL;
-        return NULL;
+        return ERR;
     }
 
-    irq_desc_t* desc = &descriptors[virt];
-    RWLOCK_WRITE_SCOPE(&desc->lock);
+    irq_t* irq = &irqs[virt];
+    RWLOCK_WRITE_SCOPE(&irq->lock);
 
-    if (desc->irq == NULL)
+    if (irq == NULL)
     {
         errno = ENOENT;
-        return NULL;
+        return ERR;
     }
 
     irq_handler_t* handler = malloc(sizeof(irq_handler_t));
     if (handler == NULL)
     {
         errno = ENOMEM;
-        return NULL;
+        return ERR;
     }
     list_entry_init(&handler->entry);
     handler->func = func;
     handler->private = private;
     handler->virt = virt;
 
-    list_push_back(&desc->handlers, &handler->entry);
-    return handler;
+    list_push_back(&irq->handlers, &handler->entry);
+    return 0;
 }
 
-void irq_handler_unregister(irq_handler_t* handler)
+void irq_handler_unregister(irq_handler_t* handler, irq_virt_t virt)
 {
-    if (handler == NULL)
+    if (handler == NULL || virt >= IRQ_VIRT_TOTAL_AMOUNT)
     {
         return;
     }
 
-    irq_virt_t virt = handler->virt;
-    if (virt >= IRQ_VIRT_TOTAL_AMOUNT)
-    {
-        return;
-    }
-
-    irq_desc_t* desc = &descriptors[virt];
-    RWLOCK_WRITE_SCOPE(&desc->lock);
+    irq_t* irq = &irqs[virt];
+    RWLOCK_WRITE_SCOPE(&irq->lock);
 
     // Safety check
     irq_handler_t* iter;
-    LIST_FOR_EACH(iter, &desc->handlers, entry)
+    LIST_FOR_EACH(iter, &irq->handlers, entry)
     {
         if (iter == handler)
         {
-            list_remove(&desc->handlers, &handler->entry);
+            list_remove(&irq->handlers, &handler->entry);
             free(handler);
             return;
         }

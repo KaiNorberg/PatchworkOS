@@ -6,7 +6,7 @@
 
 #define AML_BUFFER_FIELD_TEMP_SIZE 256
 
-uint64_t aml_buffer_field_load(aml_buffer_field_obj_t* bufferField, aml_object_t* out)
+uint64_t aml_buffer_field_load(aml_buffer_field_t* bufferField, aml_object_t* out)
 {
     if (bufferField == NULL || out == NULL)
     {
@@ -59,7 +59,7 @@ uint64_t aml_buffer_field_load(aml_buffer_field_obj_t* bufferField, aml_object_t
     return 0;
 }
 
-uint64_t aml_buffer_field_store(aml_buffer_field_obj_t* bufferField, aml_object_t* in)
+uint64_t aml_buffer_field_store(aml_buffer_field_t* bufferField, aml_object_t* in)
 {
     if (bufferField == NULL || in == NULL)
     {

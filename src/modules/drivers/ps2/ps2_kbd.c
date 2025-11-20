@@ -74,13 +74,13 @@ uint64_t ps2_kbd_init(ps2_device_info_t* info)
     context->isRelease = false;
 
     // TODO: ACPI aware IRQ assignment
-    kbdHandler = irq_handler_register(info->device == PS2_DEV_FIRST ? 1 : 12, ps2_kbd_irq, context);
+    /*kbdHandler = irq_handler_register(info->device == PS2_DEV_FIRST ? 1 : 12, ps2_kbd_irq, context);
     if (kbdHandler == NULL)
     {
         free(context);
         kbd_free(kbd);
         LOG_ERR("failed to register PS/2 keyboard IRQ handler\n");
         return ERR;
-    }
+    }*/
     return 0;
 }

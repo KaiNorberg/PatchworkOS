@@ -22,9 +22,6 @@
 
 static wait_queue_t sleepQueue = WAIT_QUEUE_CREATE(sleepQueue);
 
-static irq_handler_t* dieHandler = NULL;
-static irq_handler_t* scheduleHandler = NULL;
-
 static inline void sched_queues_init(sched_queues_t* queues)
 {
     queues->length = 0;
@@ -131,14 +128,12 @@ static void sched_schedule_irq_handler(irq_func_data_t* data)
 
 void sched_init(void)
 {
-    dieHandler = irq_handler_register(IRQ_VIRT_DIE, sched_die_irq_handler, NULL);
-    if (dieHandler == NULL)
+    if (irq_handler_register(IRQ_VIRT_DIE, sched_die_irq_handler, NULL) == ERR)
     {
         panic(NULL, "failed to register die IRQ handler");
     }
-
-    scheduleHandler = irq_handler_register(IRQ_VIRT_SCHEDULE, sched_schedule_irq_handler, NULL);
-    if (scheduleHandler == NULL)
+    
+    if (irq_handler_register(IRQ_VIRT_SCHEDULE, sched_schedule_irq_handler, NULL) == ERR)
     {
         panic(NULL, "failed to register sched IRQ handler");
     }

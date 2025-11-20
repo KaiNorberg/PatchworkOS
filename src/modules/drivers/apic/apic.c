@@ -516,9 +516,9 @@ static uint64_t ioapic_enable(irq_t* irq)
         .deliveryMode = IOAPIC_DELIVERY_NORMAL,
         .destinationMode = IOAPIC_DESTINATION_PHYSICAL,
         .deliveryStatus = 0,
-        .polarity = (irq->flags & IRQ_FLAGS_POLARITY_LOW) ? IOAPIC_POLARITY_LOW : IOAPIC_POLARITY_HIGH,
+        .polarity = (irq->flags & IRQ_POLARITY_LOW) ? IOAPIC_POLARITY_LOW : IOAPIC_POLARITY_HIGH,
         .remoteIRR = 0,
-        .triggerMode = irq->flags & IRQ_FLAGS_TRIGGER_EDGE ? IOAPIC_TRIGGER_EDGE : IOAPIC_TRIGGER_LEVEL,
+        .triggerMode = irq->flags & IRQ_TRIGGER_EDGE ? IOAPIC_TRIGGER_EDGE : IOAPIC_TRIGGER_LEVEL,
         .mask = 0,
         .destination = lapic->lapicId,
     };

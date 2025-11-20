@@ -3,7 +3,7 @@
 #include <kernel/acpi/aml/to_string.h>
 #include <kernel/log/log.h>
 
-static inline aml_integer_t aml_compare_integers(aml_integer_t a, aml_integer_t b, aml_compare_operation_t operation)
+static inline aml_uint_t aml_compare_integers(aml_uint_t a, aml_uint_t b, aml_compare_operation_t operation)
 {
     switch (operation)
     {
@@ -22,12 +22,12 @@ static inline aml_integer_t aml_compare_integers(aml_integer_t a, aml_integer_t 
     }
 }
 
-aml_integer_t aml_compare_not(aml_integer_t value)
+aml_uint_t aml_compare_not(aml_uint_t value)
 {
     return value == AML_FALSE ? AML_TRUE : AML_FALSE;
 }
 
-aml_integer_t aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operation_t operation)
+aml_uint_t aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operation_t operation)
 {
     if (a == NULL || b == NULL)
     {

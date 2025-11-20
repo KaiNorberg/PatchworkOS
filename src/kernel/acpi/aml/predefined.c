@@ -9,9 +9,9 @@
 
 #include <errno.h>
 
-static aml_mutex_obj_t* globalMutex = NULL;
+static aml_mutex_t* globalMutex = NULL;
 
-aml_object_t* aml_osi_implementation(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount)
+aml_object_t* aml_osi_implementation(aml_method_t* method, aml_object_t** args, uint64_t argCount)
 {
     (void)method; // Unused
 
@@ -39,7 +39,7 @@ aml_object_t* aml_osi_implementation(aml_method_obj_t* method, aml_object_t** ar
     return result;
 }
 
-aml_object_t* aml_rev_implementation(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount)
+aml_object_t* aml_rev_implementation(aml_method_t* method, aml_object_t** args, uint64_t argCount)
 {
     (void)method; // Unused
     (void)args;   // Unused
@@ -65,7 +65,7 @@ aml_object_t* aml_rev_implementation(aml_method_obj_t* method, aml_object_t** ar
     return result;
 }
 
-aml_object_t* aml_os_implementation(aml_method_obj_t* method, aml_object_t** args, uint64_t argCount)
+aml_object_t* aml_os_implementation(aml_method_t* method, aml_object_t** args, uint64_t argCount)
 {
     (void)method; // Unused
     (void)args;   // Unused
@@ -108,7 +108,7 @@ static inline uint64_t aml_create_predefined_scope(aml_name_t name)
     return 0;
 }
 
-aml_mutex_obj_t* aml_gl_get(void)
+aml_mutex_t* aml_gl_get(void)
 {
     return globalMutex;
 }

@@ -5,7 +5,7 @@
 
 #include <errno.h>
 
-static uint64_t aml_concat_resolve_to_integer(aml_state_t* state, aml_object_t* source, aml_integer_t* out)
+static uint64_t aml_concat_resolve_to_integer(aml_state_t* state, aml_object_t* source, aml_uint_t* out)
 {
     if (source->type == AML_INTEGER)
     {
@@ -180,8 +180,8 @@ static uint64_t aml_concat_integer(aml_state_t* state, aml_object_t* source1, am
     aml_object_t* result)
 {
     assert(source1->type == AML_INTEGER);
-    aml_integer_t value1 = source1->integer.value;
-    aml_integer_t value2;
+    aml_uint_t value1 = source1->integer.value;
+    aml_uint_t value2;
     if (aml_concat_resolve_to_integer(state, source2, &value2) == ERR)
     {
         return ERR;

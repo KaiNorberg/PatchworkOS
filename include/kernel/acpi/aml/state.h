@@ -23,8 +23,8 @@
  */
 typedef struct aml_state
 {
-    aml_local_obj_t* locals[AML_MAX_LOCALS]; ///< Local variables for the method, if any, initialized lazily.
-    aml_arg_obj_t* args[AML_MAX_ARGS];       ///< Argument variables for the method, if any.
+    aml_local_t* locals[AML_MAX_LOCALS]; ///< Local variables for the method, if any, initialized lazily.
+    aml_arg_t* args[AML_MAX_ARGS];       ///< Argument variables for the method, if any.
     aml_object_t* result;                    ///< The return value, see `aml_method_invoke()` for details.
     uint64_t errorDepth;                     ///< The length of the error traceback, if 0 then no error has occurred.
     aml_overlay_t overlay;                   ///< Holds any named objects created during parsing.

@@ -8,7 +8,7 @@
 
 #include <errno.h>
 
-aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_obj_t* method, aml_object_t** args)
+aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_t* method, aml_object_t** args)
 {
     if (method == NULL || parentState == NULL)
     {

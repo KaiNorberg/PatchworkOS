@@ -1,5 +1,6 @@
 #pragma once
 
+#include <kernel/acpi/aml/encoding/arg.h>
 #include <kernel/defs.h>
 #include <stdint.h>
 
@@ -11,6 +12,8 @@
  * In the AML namespace heirarchy each device uses a buffer object, usually returned by their `_CRS` method, to describe
  * the resources they require, for example IO ports, IRQs, DMA channels, etc.
  *
+ * For the vast majority of use cases, its recommended to use the device abstraction layer provided by the `devices.h` file or @ref kernel_acpi_devices instead of directly parsing these overcomplicated structures.
+ * 
  * ## Example
  *
  * So, lets take a PS2 keyboard as an example. The PS2 keyboard device will have `_CRS` method that when evaluated will
@@ -77,6 +80,20 @@ typedef struct PACKED
     uint16_t mask; ///< Mask of IRQs used by the device, bit 0 = IRQ 0, bit 1 = IRQ 1, etc. Only one bit will be set.
 } acpi_irq_descriptor_t;
 
+#define ACPI_IRQ_DESCRIPTOR_PHYS(descriptor) ( \
+    ({ \
+        irq_phys_t phys = 0; \
+        for (irq_phys_t i = 0; i < 16; i++) \
+        { \
+            if (((descriptor)->mask >> i) & 0x1) \
+            { \
+                phys = i; \
+                break; \
+            } \
+        } \
+        phys; \
+    }))
+
 /**
  * @brief ACPI IRQ descriptor info flags.
  * @enum acpi_irq_descriptor_info_t
@@ -91,8 +108,8 @@ typedef enum
         1 << 0,                    ///< Interrupt is triggered in response to a change in signal state from low to high.
     ACPI_IRQ_ACTIVE_HIGH = 0 << 3, ///< This interrupt is sampled with the signal is high, or true.
     ACPI_IRQ_ACTIVE_LOW = 1 << 3,  ///< This interrupt is sampled with the signal is low, or false.
-    ACPI_IRQ_EXCLUSIVE = 1 << 4,   ///< This interrupt is not shared with other devices.
     ACPI_IRQ_SHARED = 0 << 4,      ///< This interrupt is shared with other devices.
+    ACPI_IRQ_EXCLUSIVE = 1 << 4,   ///< This interrupt is not shared with other devices.
     ACPI_IRQ_NOT_WAKE_CAPABLE = 0 << 5, ///< This interrupt is not capable of waking the system.
     ACPI_IRQ_WAKE_CAPABLE =
         1 << 5, ///< This interrupt is capable of waking the system from a low-power idle state or a system sleep state.
@@ -110,7 +127,8 @@ typedef enum
  */
 #define ACPI_IRQ_DESCRIPTOR_INFO(descriptor) \
     ((acpi_irq_descriptor_info_t)((descriptor)->header.length >= 3 \
-            ? *((((uint8_t*)(descriptor)) + sizeof(acpi_irq_descriptor_t))) : 0))
+            ? *((((uint8_t*)(descriptor)) + sizeof(acpi_irq_descriptor_t))) \
+            : 0))
 
 /**
  * @brief ACPI IO port resource descriptor.
@@ -262,22 +280,30 @@ typedef enum
  */
 #define ACPI_RESOURCES_FOR_EACH(resource, resources) \
     for (uint8_t* __ptr = (resources)->data; \
-        __ptr < (resources)->data + (resources)->length && ((resource) = (acpi_resource_t*)__ptr, true); \
+        (__ptr < (resources)->data + (resources)->length) && ((resource) = (acpi_resource_t*)__ptr) && \
+        (__ptr + ACPI_RESOURCE_SIZE(resource) <= (resources)->data + (resources)->length); \
         __ptr += ACPI_RESOURCE_SIZE(resource))
 
 /**
- * @brief Get the current ACPI resource settings for a device by its path.
+ * @brief Get the current ACPI resource settings for a device.
  *
  * Will ensure the data return by the device's `_CRS` method is valid, no need for the caller to do so.
  *
- * @param path The device path in the AML namespace, for example "\_SB_.PCI0.SF8_.KBD_".
+ * @param device The device object in the AML namespace.
  * @return On success, a allocated resources structure. On failure, `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
- * - `ENODEV`: The device was not found or has no `_CRS` method.
+ * - `ENODEV`: The device has no `_CRS` method.
  * - `EILSEQ`: Unexpected data from the `_CRS` method.
  * - `ENOMEM`: Out of memory.
  * - Other values from `aml_evaluate()`.
  */
-acpi_resources_t* acpi_resources_current(const char* path);
+acpi_resources_t* acpi_resources_current(aml_object_t* device);
+
+/**
+ * @brief Free an ACPI resources structure.
+ *
+ * @param resources Pointer to the resources structure to free.
+ */
+void acpi_resources_free(acpi_resources_t* resources);
 
 /** @} */

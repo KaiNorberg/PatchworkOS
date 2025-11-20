@@ -18,7 +18,7 @@ uint64_t aml_patch_up_init(void)
     return 0;
 }
 
-uint64_t aml_patch_up_add_unresolved(aml_unresolved_obj_t* unresolved)
+uint64_t aml_patch_up_add_unresolved(aml_unresolved_t* unresolved)
 {
     if (unresolved == NULL)
     {
@@ -38,7 +38,7 @@ uint64_t aml_patch_up_add_unresolved(aml_unresolved_obj_t* unresolved)
     return 0;
 }
 
-void aml_patch_up_remove_unresolved(aml_unresolved_obj_t* unresolved)
+void aml_patch_up_remove_unresolved(aml_unresolved_t* unresolved)
 {
     if (unresolved == NULL)
     {
@@ -79,7 +79,7 @@ uint64_t aml_patch_up_resolve_all(void)
             continue;
         }
 
-        aml_unresolved_obj_t* unresolved = entry->unresolved;
+        aml_unresolved_t* unresolved = entry->unresolved;
         aml_object_t* obj = CONTAINER_OF(unresolved, aml_object_t, unresolved);
         if (unresolved->callback(&state, match, obj) == ERR)
         {

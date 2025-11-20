@@ -27,7 +27,7 @@ typedef struct aml_term_list_ctx aml_term_list_ctx_t;
  * @param out The destination buffer to store the integer value of the Predicate.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_predicate_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+uint64_t aml_predicate_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a DefElse structure from the AML byte stream.

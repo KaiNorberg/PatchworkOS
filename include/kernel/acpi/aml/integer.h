@@ -17,7 +17,7 @@
 /**
  * @brief AML Integer type.
  */
-typedef uint64_t aml_integer_t;
+typedef uint64_t aml_uint_t;
 
 /**
  * @brief AML Boolean true value.
@@ -55,6 +55,6 @@ uint8_t aml_integer_bit_size(void) PURE;
  *
  * @return A mask with all bits set for the current AML integer size.
  */
-aml_integer_t aml_integer_ones(void) PURE;
+aml_uint_t aml_integer_ones(void) PURE;
 
 /** @} */

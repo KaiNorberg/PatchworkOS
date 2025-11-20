@@ -81,7 +81,7 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
     return out; // Transfer ownership
 }
 
-uint64_t aml_term_arg_read_integer(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+uint64_t aml_term_arg_read_integer(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
     aml_object_t* temp = aml_term_arg_read(ctx, AML_INTEGER);
     if (temp == NULL)
@@ -97,7 +97,7 @@ uint64_t aml_term_arg_read_integer(aml_term_list_ctx_t* ctx, aml_integer_t* out)
     return 0;
 }
 
-aml_string_obj_t* aml_term_arg_read_string(aml_term_list_ctx_t* ctx)
+aml_string_t* aml_term_arg_read_string(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* temp = aml_term_arg_read(ctx, AML_STRING);
     if (temp == NULL)
@@ -111,7 +111,7 @@ aml_string_obj_t* aml_term_arg_read_string(aml_term_list_ctx_t* ctx)
     return &temp->string; // Transfer ownership
 }
 
-aml_buffer_obj_t* aml_term_arg_read_buffer(aml_term_list_ctx_t* ctx)
+aml_buffer_t* aml_term_arg_read_buffer(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* temp = aml_term_arg_read(ctx, AML_BUFFER);
     if (temp == NULL)
@@ -125,7 +125,7 @@ aml_buffer_obj_t* aml_term_arg_read_buffer(aml_term_list_ctx_t* ctx)
     return &temp->buffer; // Transfer ownership
 }
 
-aml_package_obj_t* aml_term_arg_read_package(aml_term_list_ctx_t* ctx)
+aml_package_t* aml_term_arg_read_package(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* temp = aml_term_arg_read(ctx, AML_PACKAGE);
     if (temp == NULL)

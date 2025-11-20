@@ -9,7 +9,7 @@
 
 #include <errno.h>
 
-uint64_t aml_predicate_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+uint64_t aml_predicate_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
     if (aml_term_arg_read_integer(ctx, out) == ERR)
     {
@@ -74,7 +74,7 @@ uint64_t aml_def_if_else_read(aml_term_list_ctx_t* ctx)
     // the ACPI spec.
     const uint8_t* end = start + pkgLength;
 
-    aml_integer_t predicate;
+    aml_uint_t predicate;
     if (aml_predicate_read(ctx, &predicate) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Predicate");
@@ -234,7 +234,7 @@ uint64_t aml_def_while_read(aml_term_list_ctx_t* ctx)
     {
         ctx->current = loopStart;
 
-        aml_integer_t predicate;
+        aml_uint_t predicate;
         if (aml_predicate_read(ctx, &predicate) == ERR)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read Predicate");

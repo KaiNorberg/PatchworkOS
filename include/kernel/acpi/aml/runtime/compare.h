@@ -34,7 +34,7 @@ typedef enum
  * @param value The integer value to negate.
  * @return `AML_TRUE` if the input value is `AML_FALSE`, otherwise `AML_FALSE`.
  */
-aml_integer_t aml_compare_not(aml_integer_t value);
+aml_uint_t aml_compare_not(aml_uint_t value);
 
 /**
  * @brief Compare two ACPI objects.
@@ -47,6 +47,6 @@ aml_integer_t aml_compare_not(aml_integer_t value);
  * @param operation The comparison operation to perform.
  * @return `AML_TRUE` if the comparison is true, `AML_FALSE` if the comparison is false.
  */
-aml_integer_t aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operation_t operation);
+aml_uint_t aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operation_t operation);
 
 /** @} */
