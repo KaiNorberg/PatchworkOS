@@ -477,9 +477,9 @@ static void ps2_deinit(void)
 void ps2_drain(void)
 {
     sys_time_wait(PS2_SMALL_DELAY);
-    while (port_inb(PS2_PORT_STATUS) & PS2_STATUS_OUT_FULL)
+    while ((io_in8(PS2_PORT_STATUS)) & PS2_STATUS_OUT_FULL)
     {
-        port_inb(PS2_PORT_DATA);
+        io_in8(PS2_PORT_DATA);
         sys_time_wait(PS2_SMALL_DELAY);
     }
 }
@@ -487,7 +487,7 @@ void ps2_drain(void)
 uint64_t ps2_wait_until_set(ps2_status_bits_t status)
 {
     uint64_t startTime = sys_time_uptime();
-    while ((port_inb(PS2_PORT_STATUS) & status) == 0)
+    while ((io_in8(PS2_PORT_STATUS) & status) == 0)
     {
         if ((sys_time_uptime() - startTime) > PS2_WAIT_TIMEOUT)
         {
@@ -502,7 +502,7 @@ uint64_t ps2_wait_until_set(ps2_status_bits_t status)
 uint64_t ps2_wait_until_clear(ps2_status_bits_t status)
 {
     uint64_t startTime = sys_time_uptime();
-    while ((port_inb(PS2_PORT_STATUS) & status) != 0)
+    while ((io_in8(PS2_PORT_STATUS) & status) != 0)
     {
         if ((sys_time_uptime() - startTime) > PS2_WAIT_TIMEOUT)
         {
@@ -520,7 +520,7 @@ uint64_t ps2_send_cmd(ps2_cmd_t command)
     {
         return ERR;
     }
-    port_outb(PS2_PORT_CMD, command);
+    io_out8(PS2_PORT_CMD, command);
     return 0;
 }
 

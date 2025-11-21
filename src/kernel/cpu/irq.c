@@ -217,7 +217,7 @@ uint64_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu
             return ERR;
         }
 
-        LOG_INFO("mapped phys irq %d to virt irq 0x%x using '%s'\n", phys, virt, irq->domain->chip->name);
+        LOG_INFO("mapped IRQ 0x%02x to 0x%02x using '%s'\n", phys, virt, irq->domain->chip->name);
     }
 
     irq->refCount++;
@@ -349,7 +349,7 @@ uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, v
             return ERR;
         }
 
-        LOG_INFO("mapped phys irq %d to virt irq 0x%x while adding '%s'\n", irq->phys, virt, irq->domain->chip->name);
+        LOG_INFO("mapped IRQ 0x%02x to 0x%02x while adding '%s'\n", irq->phys, virt, irq->domain->chip->name);
         rwlock_write_release(&irq->lock);
     }
 
@@ -387,8 +387,7 @@ void irq_chip_unregister(irq_chip_t* chip, irq_phys_t start, irq_phys_t end)
             if (irq != NULL && irq->domain == domain)
             {
                 domain->chip->disable(irq);
-                LOG_INFO("disabled IRQ %u (phys 0x%lx) while removing chip %s", irq->virt, irq->phys,
-                    chip->name);
+                LOG_INFO("disabled IRQ %u (phys 0x%lx) while removing chip %s", irq->virt, irq->phys, chip->name);
                 irq->domain = NULL;
             }
 

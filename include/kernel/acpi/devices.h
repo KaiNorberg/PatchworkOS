@@ -1,9 +1,10 @@
 #pragma once
 
 #include <kernel/acpi/aml/object.h>
-
 #include <kernel/acpi/resources.h>
 #include <kernel/cpu/irq.h>
+#include <kernel/cpu/io.h>
+
 #include <sys/io.h>
 
 /**
@@ -18,6 +19,8 @@
  * `_CID` method will be evaluated (if it exists) and the module system will be notified of the CID returned by that
  * method.
  *
+ * Processor Container Devices (HID "ACPI0010") are ignored as their use is deprecated so even if the hardware provides them, we dont want to use them. Its also possible that certain devices such as the HPET are not reported even if they exist, in these cases we manually check for them and add their HIDs.
+ * 
  * ## Hardware IDs (HIDs) and Compatible IDs (CIDs)
  *
  * The difference between HIDs and CIDs is that HIDs are unique identifiers for the specific device type, while CIDs are
@@ -28,16 +31,18 @@
  * module that can handle the device, tho perhaps not optimally.
  *
  * ## Device Configuration
- * 
- * Each ACPI device specifies the resources it needs via its AML, for example via the `_CRS` method. This can include IRQs, IO ports, etc. During device initialization, this data is parsed and the necessary resources are allocated and configured for the device.
- * 
+ *
+ * Each ACPI device specifies the resources it needs via its AML, for example via the `_CRS` method. This can include
+ * IRQs, IO ports, etc. During device initialization, this data is parsed and the necessary resources are allocated and
+ * configured for the device.
+ *
  * ## Module Loading and Device Configuration Order
  *
  * For the sake of ensuring consistency across different systems, all modules will be loaded based on their ACPI
- * HIDs in alphanumerical order, this also applies to device configuration. This means that a device with the ACPI HID "ACPI0001" will be loaded before a device
- * with the ACPI HID "ACPI0002" and that one before the device with the ACPI HID "PNP0000". This only applies to the
- * module loading and device configuration but not to device enumeration.
- * 
+ * HIDs in alphanumerical order, this also applies to device configuration. This means that a device with the ACPI HID
+ * "ACPI0001" will be loaded before a device with the ACPI HID "ACPI0002" and that one before the device with the ACPI
+ * HID "PNP0000". This only applies to the module loading and device configuration but not to device enumeration.
+ *
  * TODO: Implement hotplugging support.
  *
  * @see [PNP ACPI Registry](https://uefi.org/PNP_ACPI_Registry) for a list of known ACPI HIDs.
@@ -88,7 +93,7 @@ typedef struct acpi_device_irq
  */
 typedef struct acpi_device_io
 {
-    uint64_t base;
+    port_t base;
     uint64_t length;
 } acpi_device_io_t;
 
@@ -97,7 +102,7 @@ typedef struct acpi_device_io
  * @struct acpi_device_cfg_t
  *
  * Stores the resources assigned to an ACPI device, like IRQs and IO ports.
- * 
+ *
  * TODO: Add more config stuff like memory ranges, DMA etc.
  */
 typedef struct acpi_device_cfg

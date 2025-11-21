@@ -43,7 +43,7 @@ static void ipi_handler_func(irq_func_data_t* data)
 
 void ipi_init(void)
 {
-    
+
     if (irq_handler_register(IRQ_VIRT_IPI, ipi_handler_func, NULL) == ERR)
     {
         panic(NULL, "failed to register IPI IRQ handler");

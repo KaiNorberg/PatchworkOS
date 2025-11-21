@@ -12,8 +12,9 @@
  * In the AML namespace heirarchy each device uses a buffer object, usually returned by their `_CRS` method, to describe
  * the resources they require, for example IO ports, IRQs, DMA channels, etc.
  *
- * For the vast majority of use cases, its recommended to use the device abstraction layer provided by the `devices.h` file or @ref kernel_acpi_devices instead of directly parsing these overcomplicated structures.
- * 
+ * For the vast majority of use cases, its recommended to use the device abstraction layer provided by the `devices.h`
+ * file or @ref kernel_acpi_devices instead of directly parsing these overcomplicated structures.
+ *
  * ## Example
  *
  * So, lets take a PS2 keyboard as an example. The PS2 keyboard device will have `_CRS` method that when evaluated will
@@ -80,8 +81,8 @@ typedef struct PACKED
     uint16_t mask; ///< Mask of IRQs used by the device, bit 0 = IRQ 0, bit 1 = IRQ 1, etc. Only one bit will be set.
 } acpi_irq_descriptor_t;
 
-#define ACPI_IRQ_DESCRIPTOR_PHYS(descriptor) ( \
-    ({ \
+#define ACPI_IRQ_DESCRIPTOR_PHYS(descriptor) \
+    (({ \
         irq_phys_t phys = 0; \
         for (irq_phys_t i = 0; i < 16; i++) \
         { \

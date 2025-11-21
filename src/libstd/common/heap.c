@@ -281,7 +281,7 @@ _heap_header_t* _heap_alloc(uint64_t size)
     uint64_t index = _heap_get_bin_index(size);
     _heap_header_t* suitableBlock = NULL;
 
-    uint64_t freeBinIndex = bitmap_find_first_set(&freeBitmap, index);
+    uint64_t freeBinIndex = bitmap_find_first_set(&freeBitmap, index, _HEAP_NUM_BINS);
     if (freeBinIndex != freeBitmap.length)
     {
         suitableBlock = CONTAINER_OF(list_pop_first(&freeLists[freeBinIndex]), _heap_header_t, freeEntry);

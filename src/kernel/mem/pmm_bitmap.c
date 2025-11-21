@@ -19,7 +19,7 @@ void* pmm_bitmap_alloc(pmm_bitmap_t* bitmap, uint64_t count, uintptr_t maxAddr, 
     maxAddr = MIN(maxAddr, bitmap->maxAddr);
 
     uint64_t index =
-        bitmap_find_clear_region_and_set(&bitmap->bitmap, count, maxAddr / PAGE_SIZE, alignment / PAGE_SIZE);
+        bitmap_find_clear_region_and_set(&bitmap->bitmap, 0, maxAddr / PAGE_SIZE, count, alignment / PAGE_SIZE);
     if (index == bitmap->bitmap.length)
     {
         return NULL;

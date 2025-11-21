@@ -156,7 +156,7 @@ fd_t vfs_ctx_alloc_fd(vfs_ctx_t* ctx, file_t* file)
         return ERR;
     }
 
-    uint64_t index = bitmap_find_first_clear(&ctx->allocBitmap);
+    uint64_t index = bitmap_find_first_clear(&ctx->allocBitmap, 0, CONFIG_MAX_FD);
     if (index < CONFIG_MAX_FD)
     {
         ctx->files[index] = REF(file);
@@ -238,7 +238,7 @@ fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd)
         return ERR;
     }
 
-    uint64_t index = bitmap_find_first_clear(&ctx->allocBitmap);
+    uint64_t index = bitmap_find_first_clear(&ctx->allocBitmap, 0, CONFIG_MAX_FD);
     if (index < CONFIG_MAX_FD)
     {
         ctx->files[index] = REF(ctx->files[oldFd]);

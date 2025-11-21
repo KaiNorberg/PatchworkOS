@@ -84,7 +84,8 @@ acpi_resources_t* acpi_resources_current(aml_object_t* device)
             if (size != sizeof(acpi_irq_descriptor_t) &&
                 size != sizeof(acpi_irq_descriptor_t) - 1) // The last byte is optional
             {
-                LOG_ERR("device '%s' _CRS has invalid IRQ descriptor size %llu\n", AML_NAME_TO_STRING(device->name), size);
+                LOG_ERR("device '%s' _CRS has invalid IRQ descriptor size %llu\n", AML_NAME_TO_STRING(device->name),
+                    size);
                 goto error;
             }
         }
@@ -93,7 +94,8 @@ acpi_resources_t* acpi_resources_current(aml_object_t* device)
         {
             if (size != sizeof(acpi_io_port_descriptor_t))
             {
-                LOG_ERR("device '%s' _CRS has invalid IO port descriptor size %llu\n", AML_NAME_TO_STRING(device->name), size);
+                LOG_ERR("device '%s' _CRS has invalid IO port descriptor size %llu\n", AML_NAME_TO_STRING(device->name),
+                    size);
                 goto error;
             }
         }

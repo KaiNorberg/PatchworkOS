@@ -1,10 +1,10 @@
-#include <kernel/cpu/port.h>
+#include <kernel/cpu/io.h>
 #include <kernel/drivers/rtc.h>
 
 static uint8_t cmos_read(uint8_t reg)
 {
-    port_outb(CMOS_ADDRESS, reg);
-    return port_inb(CMOS_DATA);
+    io_out8(CMOS_ADDRESS, reg);
+    return io_in8(CMOS_DATA);
 }
 
 static uint8_t bcd_to_bin(uint8_t bcd)

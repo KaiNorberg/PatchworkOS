@@ -38,7 +38,7 @@ static pmm_stack_t stack;
 static pmm_bitmap_t bitmap;
 
 // Stores the bitmap data
-static uint64_t mapBuffer[BITMAP_BITS_TO_QWORDS(PMM_BITMAP_SIZE)];
+static uint64_t bitmapBuffer[BITMAP_BITS_TO_QWORDS(PMM_BITMAP_SIZE)];
 
 static uint64_t pageAmount = 0;
 
@@ -159,7 +159,7 @@ void pmm_init(const boot_memory_map_t* map)
     pmm_detect_memory(map);
 
     pmm_stack_init(&stack);
-    pmm_bitmap_init(&bitmap, mapBuffer, PMM_BITMAP_SIZE, CONFIG_PMM_BITMAP_MAX_ADDR);
+    pmm_bitmap_init(&bitmap, bitmapBuffer, PMM_BITMAP_SIZE, CONFIG_PMM_BITMAP_MAX_ADDR);
 
     pmm_load_memory(map);
 }

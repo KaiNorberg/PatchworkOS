@@ -601,7 +601,7 @@ pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, spac
         return PML_MAX_CALLBACK;
     }
 
-    pml_callback_id_t callbackId = bitmap_find_first_clear(&space->callbackBitmap);
+    pml_callback_id_t callbackId = bitmap_find_first_clear(&space->callbackBitmap, 0, PML_MAX_CALLBACK);
     if (callbackId == PML_MAX_CALLBACK)
     {
         return PML_MAX_CALLBACK;

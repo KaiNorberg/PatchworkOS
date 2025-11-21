@@ -132,7 +132,7 @@ void sched_init(void)
     {
         panic(NULL, "failed to register die IRQ handler");
     }
-    
+
     if (irq_handler_register(IRQ_VIRT_SCHEDULE, sched_schedule_irq_handler, NULL) == ERR)
     {
         panic(NULL, "failed to register sched IRQ handler");

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/cpu/port.h>
+#include <kernel/cpu/io.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -208,7 +208,7 @@ typedef enum
         uint64_t result = ps2_wait_until_set(PS2_STATUS_OUT_FULL); \
         if (result != ERR) \
         { \
-            *(data) = port_inb(PS2_PORT_DATA); \
+            *(data) = io_in8(PS2_PORT_DATA); \
         } \
         result; \
     })
@@ -226,7 +226,7 @@ typedef enum
         uint64_t result = ps2_wait_until_clear(PS2_STATUS_IN_FULL); \
         if (result != ERR) \
         { \
-            port_outb(PS2_PORT_DATA, data); \
+            io_out8(PS2_PORT_DATA, data); \
         } \
         result; \
     })

@@ -114,73 +114,6 @@ As one of the main goals of PatchworkOS is to be educational, I have tried to do
 
 If you are interested in knowing more, then you can check out the Doxygen generated [documentation](https://kainorberg.github.io/PatchworkOS/html/index.html). For an overview check the `topics` section in the sidebar.
 
-## ACPI (WIP)
-
-PatchworkOS features a from-scratch ACPI implementation and AML parser, with the goal of being, atleast by ACPI standards, easy to understand and educational. It is tested on the [Tested Configurations](#tested-configurations) below and against [ACPICA's](https://github.com/acpica/acpica) runtime test suite, but remains a work in progress (and probably always will be).
-
-See [ACPI Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d0/d30/group__kernel__acpi.html) for a progress checklist.
-
-See [ACPI specification Version 6.6](https://uefi.org/specs/ACPI/6.6/index.html) as the main reference.
-
-### What is ACPI?
-
-ACPI or Advanced Configuration and Power Interface is used for *alot* of things in modern systems but mainly power management and device enumeration/configuration. Its not possible to go over everything here, instead a brief overview of the parts most likely to cause confusion while reading the code will be provided.
-
-It consists of two main parts, the ACPI tables and AML bytecode. If you have completed a basic operating systems tutorial, you have probably seen the ACPI tables before, for example the RSDP, FADT, MADT, etc. These tables are static in memory data structures storing information about the system, they are very easy to parse but are limited in what they can express.
-
-AML or ACPI Machine Language is a turning complete "mini language", and the source of mutch frustration, that is used to express more complex data, primarily device configuration. This is needed as its impossible for any specification to account for every possible hardware configuration that exists currently, much less that may exist in the future. So instead of trying to design that, what if we could just had a small program generate whatever data we wanted dynamically? Well thats more or less what AML is.
-
-### Device Configuration
-
-To demonstrate how ACPI is used for device configuration, we will use the [PS/2 driver](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/modules/drivers/ps2) as an example.
-
-If you have followed a basic operating systems tutorial, you have probably implemented a PS/2 keyboard driver at some point, and most likely you hardcoded the I/O ports `0x60` and `0x64` for data and commands respectively, and IRQ `1` for keyboard interrupts.
-
-Using this hardcoded approach will work for the vast majority of systems, but, perhaps surprisingly, there is no standard that guarantees that these ports and IRQs will actually be used for PS/2 devices. Its just a silent agreement that pretty much all systems adhere to for legacy reasons.
-
-But this is where the device configuration from AML comes in, it lets us query the system for the actual resources used by the PS/2 keyboard, so we dont have to rely on hardcoded values.
-
-If you where to decompile the AML bytecode into its original ASL (ACPI Source Language), you might find something like this:
-
-```asl
-Device (KBD)
-{
-    Name (_HID, EisaId ("PNP0303") /* IBM Enhanced Keyboard (101/102-key, PS/2 Mouse) */)  // _HID: Hardware ID
-    Name (_STA, 0x0F)  // _STA: Status
-    Name (_CRS, ResourceTemplate ()  // _CRS: Current Resource Settings
-    {
-        IO (Decode16,
-            0x0060,             // Range Minimum
-            0x0060,             // Range Maximum
-            0x01,               // Alignment
-            0x01,               // Length
-            )
-        IO (Decode16,
-            0x0064,             // Range Minimum
-            0x0064,             // Range Maximum
-            0x01,               // Alignment
-            0x01,               // Length
-            )
-        IRQNoFlags ()
-            {1}
-    })
-}
-```
-
-Note that just like C compiles to assembly, ASL compiles to AML bytecode, which is what the OS actually parses.
-
-Here we se a `Device` object representing a PS/2 keyboard. It has a hardware ID (`_HID`), which we can cross reference with a [online database](https://uefi.org/PNP_ACPI_Registry) to confirm that it is indeed a PS/2 keyboard, a status (`_STA`), which is just a bitfield indicating if the device is present, enabled, etc, and finally the current resource settings (`_CRS`), which is the thing we are really after.
-
-In the `_CRS` we se a bunch of stuff we dont care about, focus on the `IO` and `IRQNoFlags` entries. Notice how they are specifying the I/O ports and IRQ used by the keyboard? Which in this case are indeed `0x60`, `0x64` and `1` respectively. So in this case the standard held true.
-
-Durring boot, the `_CRS` information is parsed by the ACPI subsystem, it then queries the kernel for the needed resources, assigned them to each device and makes the final configuration available to drivers.
-
-So when the PS/2 driver is loaded, it gets told "you are handling a device with the name `\_SB_.PCI0.SF8_.KBD_`" (which is just the full path to the device object in the ACPI namespace), it can then query the ACPI subsystem for the resources assigned to that device, and use them instead of hardcoded values.
-
-Having access to this information for all devices also allows us to avoid resource conflicts, making sure two devices are not trying to use the same IRQ(s) or I/O port(s).
-
-Of course, it gets way, way worse than this, but hopefully this clarifies why the PS/2 driver and other drivers, might look a bit different than what you are used to.
-
 ## Modules
 
 PatchworkOS uses a "modular" kernel design, meaning that instead of having one big kernel binary, the kernel is split into several smaller "modules" that can be loaded and unloaded at runtime. In effect, the kernel can rewrite itself by adding and removing functionality as needed.
@@ -255,6 +188,73 @@ The module loader itself has no idea what these type strings actually are, but s
 So what is `LOAD_ON_BOOT`? It is the type of a special device that the kernel will pretend to "attach" during boot. In this case, it simply causes our hello module to be loaded during boot.
 
 For more information, check the [Module Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/d41/group__kernel__module.html).
+
+## ACPI (WIP)
+
+PatchworkOS features a from-scratch ACPI implementation and AML parser, with the goal of being, atleast by ACPI standards, easy to understand and educational. It is tested on the [Tested Configurations](#tested-configurations) below and against [ACPICA's](https://github.com/acpica/acpica) runtime test suite, but remains a work in progress (and probably always will be).
+
+See [ACPI Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d0/d30/group__kernel__acpi.html) for a progress checklist.
+
+See [ACPI specification Version 6.6](https://uefi.org/specs/ACPI/6.6/index.html) as the main reference.
+
+### What is ACPI?
+
+ACPI or Advanced Configuration and Power Interface is used for *alot* of things in modern systems but mainly power management and device enumeration/configuration. Its not possible to go over everything here, instead a brief overview of the parts most likely to cause confusion while reading the code will be provided.
+
+It consists of two main parts, the ACPI tables and AML bytecode. If you have completed a basic operating systems tutorial, you have probably seen the ACPI tables before, for example the RSDP, FADT, MADT, etc. These tables are static in memory data structures storing information about the system, they are very easy to parse but are limited in what they can express.
+
+AML or ACPI Machine Language is a turning complete "mini language", and the source of mutch frustration, that is used to express more complex data, primarily device configuration. This is needed as its impossible for any specification to account for every possible hardware configuration that exists currently, much less that may exist in the future. So instead of trying to design that, what if we could just had a small program generate whatever data we wanted dynamically? Well thats more or less what AML is.
+
+### Device Configuration
+
+To demonstrate how ACPI is used for device configuration, we will use the [PS/2 driver](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/modules/drivers/ps2) as an example.
+
+If you have followed a basic operating systems tutorial, you have probably implemented a PS/2 keyboard driver at some point, and most likely you hardcoded the I/O ports `0x60` and `0x64` for data and commands respectively, and IRQ `1` for keyboard interrupts.
+
+Using this hardcoded approach will work for the vast majority of systems, but, perhaps surprisingly, there is no standard that guarantees that these ports and IRQs will actually be used for PS/2 devices. Its just a silent agreement that pretty much all systems adhere to for legacy reasons.
+
+But this is where the device configuration from AML comes in, it lets us query the system for the actual resources used by the PS/2 keyboard, so we dont have to rely on hardcoded values.
+
+If you where to decompile the AML bytecode into its original ASL (ACPI Source Language), you might find something like this:
+
+```asl
+Device (KBD)
+{
+    Name (_HID, EisaId ("PNP0303") /* IBM Enhanced Keyboard (101/102-key, PS/2 Mouse) */)  // _HID: Hardware ID
+    Name (_STA, 0x0F)  // _STA: Status
+    Name (_CRS, ResourceTemplate ()  // _CRS: Current Resource Settings
+    {
+        IO (Decode16,
+            0x0060,             // Range Minimum
+            0x0060,             // Range Maximum
+            0x01,               // Alignment
+            0x01,               // Length
+            )
+        IO (Decode16,
+            0x0064,             // Range Minimum
+            0x0064,             // Range Maximum
+            0x01,               // Alignment
+            0x01,               // Length
+            )
+        IRQNoFlags ()
+            {1}
+    })
+}
+```
+
+*Note that just like C compiles to assembly, ASL compiles to AML bytecode, which is what the OS actually parses.*
+
+In the example ASL, we se a `Device` object representing a PS/2 keyboard. It has a hardware ID (`_HID`), which we can cross reference with a [online database](https://uefi.org/PNP_ACPI_Registry) to confirm that it is indeed a PS/2 keyboard, a status (`_STA`), which is just a bitfield indicating if the device is present, enabled, etc, and finally the current resource settings (`_CRS`), which is the thing we are really after.
+
+The `_CRS` might look a bit complicated but focus on the `IO` and `IRQNoFlags` entries. Notice how they are specifying the I/O ports and IRQ used by the keyboard? Which in this case are indeed `0x60`, `0x64` and `1` respectively. So in this case the standard held true.
+
+So how is this information used? Durring boot, the `_CRS` information of each device is parsed by the ACPI subsystem, it then queries the kernel for the needed resources, assigned them to each device and makes the final configuration available to drivers.
+
+Then when the PS/2 driver is loaded, it gets told "you are handling a device with the name `\_SB_.PCI0.SF8_.KBD_` (which is just the full path to the device object in the ACPI namespace) and type `PNP0303`", it can then query the ACPI subsystem for the resources assigned to that device, and use them instead of hardcoded values.
+
+Having access to this information for all devices also allows us to avoid resource conflicts, making sure two devices are not trying to use the same IRQ(s) or I/O port(s).
+
+Of course, it gets way, way worse than this, but hopefully this clarifies why the PS/2 driver and other drivers, might look a bit different than what you might be used to.
 
 ## Everything is a File
 
@@ -429,7 +429,7 @@ y =
 
 <br>
 
-From this we see that for $x \le 850$ the linear regression has a slightly better fit while for $x > 850$ the quadratic regression has a slightly better fit, this is most likely due to the CPU or TLB caches starting to get saturated. All in all this did not tell us much more than we already knew, but it was fun to do regardless.
+From this we see that for $x \le 850$ the linear regression has a slightly better fit while for $x > 850$ the quadratic regression has a slightly better fit, this is most likely due to the CPU or TLB caches starting to get saturated. All in all this did not tell us much more than we already knew, so it was kinda pointless, but perhaps it is interesting to someone.
 
 Of course, there are limitations to this approach, for example, it is in no way portable (which isn't a concern in our case), each address space can only contain $2^8 - 1$ unique shared memory regions, and copy-on-write would not be easy to implement (however, the need for this is reduced due to PatchworkOS using a `spawn()` instead of a `fork()`).
 

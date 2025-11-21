@@ -14,6 +14,7 @@
 #include <kernel/version.h>
 
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -69,6 +70,16 @@ static module_t* module_new(module_info_t* info)
     list_init(&module->dependencies);
     list_init(&module->deviceHandlers);
     memcpy_s(&module->info, sizeof(module_info_t) + info->dataSize, info, sizeof(module_info_t) + info->dataSize);
+    
+    // Since the info strings are stored as pointers into the info data, we need to adjust them to point into our own copy.
+    intptr_t offset = (intptr_t)module->info.data - (intptr_t)info->data;
+    module->info.name = (char*)((uintptr_t)module->info.name + offset);
+    module->info.author = (char*)((uintptr_t)module->info.author + offset);
+    module->info.description = (char*)((uintptr_t)module->info.description + offset);
+    module->info.version = (char*)((uintptr_t)module->info.version + offset);
+    module->info.license = (char*)((uintptr_t)module->info.license + offset);
+    module->info.osVersion = (char*)((uintptr_t)module->info.osVersion + offset);
+    module->info.deviceTypes = (char*)((uintptr_t)module->info.deviceTypes + offset);
 
     list_push_back(&modulesList, &module->listEntry);
 

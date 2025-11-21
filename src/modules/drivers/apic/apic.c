@@ -524,7 +524,6 @@ static uint64_t ioapic_enable(irq_t* irq)
     };
 
     ioapic_redirect_write(ioapic, irq->phys, redirect);
-    LOG_INFO("ioapic enable gsi=%u vector=0x%02x lapic=%u\n", irq->phys, irq->virt, lapic->lapicId);
     return 0;
 }
 
@@ -538,7 +537,6 @@ static void ioapic_disable(irq_t* irq)
     ioapic_redirect_entry_t redirect = {.mask = 1};
 
     ioapic_redirect_write(ioapic, irq->phys, redirect);
-    LOG_INFO("ioapic disable gsi=%u vector=0x%02x\n", irq->phys, irq->virt);
 }
 
 /**

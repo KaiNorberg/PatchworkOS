@@ -159,6 +159,11 @@ static uint64_t acpi_ids_push_device(acpi_ids_t* ids, aml_object_t* device, cons
         return ERR;
     }
 
+    if (strcmp(deviceId.hid, "ACPI0010") == 0) // Ignore Processor Container Device 
+    {
+        return 0;
+    }
+
     aml_object_t* cid = aml_namespace_find_child(NULL, device, AML_NAME('_', 'C', 'I', 'D'));
     if (cid != NULL)
     {
@@ -363,13 +368,14 @@ static uint64_t acpi_device_configure(const char* name)
 
             acpi_irq_descriptor_info_t info = ACPI_IRQ_DESCRIPTOR_INFO(irqDesc);
 
-            irq_flags_t flags = ((info & ACPI_IRQ_EDGE_TRIGGERED) ? IRQ_TRIGGER_EDGE : IRQ_TRIGGER_LEVEL) | ((info & ACPI_IRQ_ACTIVE_LOW) ? IRQ_POLARITY_HIGH : IRQ_POLARITY_LOW) | ((info & ACPI_IRQ_EXCLUSIVE) ? IRQ_EXCLUSIVE : IRQ_SHARED);
+            irq_flags_t flags = ((info & ACPI_IRQ_EDGE_TRIGGERED) ? IRQ_TRIGGER_EDGE : IRQ_TRIGGER_LEVEL) |
+                ((info & ACPI_IRQ_ACTIVE_LOW) ? IRQ_POLARITY_HIGH : IRQ_POLARITY_LOW) |
+                ((info & ACPI_IRQ_EXCLUSIVE) ? IRQ_EXCLUSIVE : IRQ_SHARED);
 
             irq_phys_t phys = ACPI_IRQ_DESCRIPTOR_PHYS(irqDesc);
             irq_virt_t virt;
             if (irq_virt_alloc(&virt, phys, flags, NULL) == ERR)
             {
-                LOG_ERR("could not allocate virtual IRQ for device '%s'\n", name);
                 goto error;
             }
 
@@ -388,7 +394,24 @@ static uint64_t acpi_device_configure(const char* name)
         break;
         case ACPI_ITEM_NAME_IO_PORT:
         {
+            acpi_io_port_descriptor_t* ioDesc = (acpi_io_port_descriptor_t*)resource;
 
+            acpi_device_io_t* newIos = realloc(cfg->ios, sizeof(acpi_device_io_t) * (cfg->ioCount + 1));
+            if (newIos == NULL)
+            {
+                goto error;
+            }
+            cfg->ios = newIos;
+
+            port_t base;
+            if (io_reserve(&base, ioDesc->minBase, ioDesc->maxBase, ioDesc->alignment, ioDesc->length, name) == ERR)
+            {
+                goto error;
+            }
+
+            cfg->ios[cfg->ioCount].base = base;
+            cfg->ios[cfg->ioCount].length = ioDesc->length;
+            cfg->ioCount++;
         }
         break;
         default:
@@ -420,14 +443,14 @@ void acpi_devices_init(void)
     aml_object_t* sb = acpi_sb_init();
     if (sb == NULL)
     {
-        panic(NULL, "Could not initialize ACPI devices\n");
+        panic(NULL, "Failed to initialize ACPI devices\n");
     }
     DEREF_DEFER(sb);
 
     LOG_DEBUG("initializing ACPI devices under \\_SB_\n");
     if (acpi_device_init_children(&ids, sb, "\\_SB_") == ERR)
     {
-        panic(NULL, "Could not initialize ACPI devices\n");
+        panic(NULL, "Failed to initialize ACPI devices\n");
     }
 
     // Because of... reasons some hardware wont report certain devices via ACPI
@@ -437,7 +460,7 @@ void acpi_devices_init(void)
     {
         if (acpi_ids_push_if_absent(&ids, "PNP0103", ".HPET") == ERR)
         {
-            panic(NULL, "Could not initialize ACPI devices\n");
+            panic(NULL, "Failed to initialize ACPI devices\n");
         }
     }
 
@@ -445,7 +468,7 @@ void acpi_devices_init(void)
     {
         if (acpi_ids_push_if_absent(&ids, "PNP0003", ".APIC") == ERR)
         {
-            panic(NULL, "Could not initialize ACPI devices\n");
+            panic(NULL, "Failed to initialize ACPI devices\n");
         }
     }
 
@@ -459,7 +482,7 @@ void acpi_devices_init(void)
         if (acpi_device_configure(ids.array[i].path) == ERR)
         {
             // Dont load module for unconfigurable device
-            LOG_ERR("could not configure ACPI device '%s'\n", ids.array[i].path);
+            LOG_ERR("failed to configure '%s' due to '%s'\n", ids.array[i].path, strerror(errno));
             memmove(&ids.array[i], &ids.array[i + 1], sizeof(acpi_id_t) * (ids.length - i - 1));
             ids.length--;
             i--;
@@ -472,7 +495,7 @@ void acpi_devices_init(void)
         uint64_t loadedModules = module_device_attach(ids.array[i].hid, ids.array[i].path, MODULE_LOAD_ONE);
         if (loadedModules == ERR)
         {
-            LOG_ERR("could not load module for ACPI device with HID '%s'\n", ids.array[i].hid);
+            LOG_ERR("failed to load module for HID '%s' due to '%s'\n", ids.array[i].hid, strerror(errno));
             continue;
         }
 
@@ -484,10 +507,9 @@ void acpi_devices_init(void)
         loadedModules = module_device_attach(ids.array[i].cid, ids.array[i].path, MODULE_LOAD_ONE);
         if (loadedModules == ERR)
         {
-            LOG_ERR("could not load module for ACPI device with CID '%s'\n", ids.array[i].cid);
+            LOG_ERR("failed to load module for CID '%s' due to '%s'\n", ids.array[i].cid, strerror(errno));
         }
     }
 
     free(ids.array);
 }
-

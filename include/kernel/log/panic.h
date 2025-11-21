@@ -28,6 +28,11 @@ typedef struct cpu cpu_t;
 #define PANIC_MAX_STACK_FRAMES 16
 
 /**
+ * @brief QEMU exit port for panic.
+ */
+#define QEMU_EXIT_ON_PANIC_PORT 0x501
+
+/**
  * @brief Print a stack trace from a interrupt frame.
  *
  * Will NOT panic the kernel, just print the stack trace.

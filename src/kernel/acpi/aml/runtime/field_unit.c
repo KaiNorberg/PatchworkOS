@@ -6,7 +6,7 @@
 #include <kernel/acpi/aml/runtime/method.h>
 #include <kernel/acpi/aml/state.h>
 #include <kernel/acpi/aml/to_string.h>
-#include <kernel/cpu/port.h>
+#include <kernel/cpu/io.h>
 #include <kernel/drivers/pci/pci_config.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>
@@ -135,13 +135,13 @@ static uint64_t aml_system_io_read(aml_state_t* state, aml_opregion_t* opregion,
     switch (accessSize)
     {
     case 8:
-        *out = port_inb(address);
+        *out = io_in8(address);
         break;
     case 16:
-        *out = port_inw(address);
+        *out = io_in16(address);
         break;
     case 32:
-        *out = port_inl(address);
+        *out = io_in32(address);
         break;
     default:
         LOG_ERR("unable to read opregion with access size %u\n", accessSize);
@@ -160,13 +160,13 @@ static uint64_t aml_system_io_write(aml_state_t* state, aml_opregion_t* opregion
     switch (accessSize)
     {
     case 8:
-        port_outb(address, (uint8_t)value);
+        io_out8(address, (uint8_t)value);
         break;
     case 16:
-        port_outw(address, (uint16_t)value);
+        io_out16(address, (uint16_t)value);
         break;
     case 32:
-        port_outl(address, (uint32_t)value);
+        io_out32(address, (uint32_t)value);
         break;
     default:
         LOG_ERR("unable to write opregion with access size %u\n", accessSize);
@@ -364,8 +364,8 @@ typedef enum aml_access_direction
     AML_ACCESS_WRITE
 } aml_access_direction_t;
 
-static uint64_t aml_generic_field_read_at(aml_state_t* state, aml_field_unit_t* fieldUnit,
-    aml_bit_size_t accessSize, uint64_t byteOffset, uint64_t* out)
+static uint64_t aml_generic_field_read_at(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_bit_size_t accessSize,
+    uint64_t byteOffset, uint64_t* out)
 {
     switch (fieldUnit->fieldType)
     {
@@ -414,8 +414,8 @@ static uint64_t aml_generic_field_read_at(aml_state_t* state, aml_field_unit_t* 
     }
 }
 
-static uint64_t aml_generic_field_write_at(aml_state_t* state, aml_field_unit_t* fieldUnit,
-    aml_bit_size_t accessSize, uint64_t byteOffset, uint64_t value)
+static uint64_t aml_generic_field_write_at(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_bit_size_t accessSize,
+    uint64_t byteOffset, uint64_t value)
 {
     switch (fieldUnit->fieldType)
     {

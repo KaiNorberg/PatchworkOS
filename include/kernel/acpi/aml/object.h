@@ -238,11 +238,12 @@ typedef struct aml_device
     AML_OBJECT_COMMON_HEADER;
     /**
      * Stores various device configuration data.
-     * 
-     * A device is considered properly configured when this pointer is not `NULL`, attempting to free a configured device will cause a panic. 
-     * 
+     *
+     * A device is considered properly configured when this pointer is not `NULL`, attempting to free a configured
+     * device will cause a panic.
+     *
      * This pointer is managed by the devices system found in `devices.h` or @ref kernel_acpi_devices.
-     * 
+     *
      * @see acpi_device_cfg_t for more details.
      */
     acpi_device_cfg_t* cfg;
@@ -269,12 +270,12 @@ typedef struct aml_field_unit
     aml_field_unit_type_t fieldType; ///< The type of field unit.
     aml_field_unit_t* index;         ///< Used for IndexField.
     aml_field_unit_t* data;          ///< Used for IndexField.
-    aml_object_t* bankValue;             ///< Used for BankField.
+    aml_object_t* bankValue;         ///< Used for BankField.
     aml_field_unit_t* bank;          ///< Used for BankField.
     aml_opregion_t* opregion;        ///< Used for Field and BankField.
-    aml_field_flags_t fieldFlags;        ///< Used for Field, IndexField and BankField.
-    aml_bit_size_t bitOffset;            ///< Used for Field, IndexField and BankField.
-    aml_bit_size_t bitSize;              ///< Used for Field, IndexField and BankField.
+    aml_field_flags_t fieldFlags;    ///< Used for Field, IndexField and BankField.
+    aml_bit_size_t bitOffset;        ///< Used for Field, IndexField and BankField.
+    aml_bit_size_t bitSize;          ///< Used for Field, IndexField and BankField.
 } aml_field_unit_t;
 
 /**
