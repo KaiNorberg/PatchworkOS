@@ -22,24 +22,21 @@
  * pointer and code/data segments, this data is stored in the higher addresses of the `interrupt_frame_t` (since the
  * stack grows downwards).
  *
- * After that, it might push an error code, depending on the type of interrupt. Each stub will also push the interrupt
- * vector number onto the stack.
+ * After that, depending on the type of interrupt, the CPU might push an error code, if not the stub will push a `0` as a dummy, all stubs will also push the interrupt vector number onto the stack.
  *
  * Finally, the `vector_common` assembly function pushes all general-purpose registers onto the stack, completing the
  * `interrupt_frame_t`.
  *
- * This structure will then be after the interrupt handler is done executing, be popped off the stack allowing the CPU
- * to restore its previous state or if the interrupt handler modified the registers, it may now return to a different
- * state. This is how context switching is implemented.
+ * After the interrupt handler is done executing, the interrupt frame is popped off the stack allowing the CPU to restore its previous state or, if the interrupt handler modified the registers, it may return to a different state, for example, a different thread. This is how context switching is implemented.
  *
  * ## Interrupt Numbers
  *
  * Interrupts are identified by their vector number, which is an 8-bit value ranging from `0x00` to `0xFF`. Usually,
  * each vector number would be associated with a specific handler function, but this is quite inconvenient for the OS as
- * a whole, its more practical to have one single `interrupt_handler()` function which can then more easily group and
- * dispatch the interrupts as needed.
+ * a whole, it's more practical to have one single `interrupt_handler()` function which can then more easily group and
+ * dispatch the interrupts as needed, it also lets us write interrupt handling code in C instead of assembly.
  *
- * This is done by, as mentioned above, having each vectors handler push its vector number onto the stack before jumping
+ * This is done by, as mentioned above, having each vector's handler push its vector number onto the stack before jumping
  * to the common `interrupt_handler()`, which can then read the vector number from the `interrupt_frame_t`.
  *
  * @{
