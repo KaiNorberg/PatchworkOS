@@ -23,7 +23,7 @@ static uint32_t sourceCount = 0;
 static const sys_time_source_t* bestSource = NULL;
 static rwlock_t sourcesLock = RWLOCK_CREATE;
 
-static void timer_boot_epoch_init(void)
+static void sys_time_boot_epoch_init(void)
 {
     struct tm time;
     rtc_read(&time);
@@ -117,7 +117,7 @@ time_t sys_time_unix_epoch(void)
 {
     if (!bootEpochInitialized)
     {
-        timer_boot_epoch_init();
+        sys_time_boot_epoch_init();
     }
 
     return bootEpoch + sys_time_uptime() / CLOCKS_PER_SEC;

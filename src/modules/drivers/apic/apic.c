@@ -606,8 +606,12 @@ static uint64_t ioapic_all_init(void)
         }
 
         uint32_t maxRedirs = ioapic_version_read(ioapic).maxRedirs;
+
+        LOG_INFO("found I/O APIC globalSystemInterruptBase=0x%02x maxRedirs=0x%02x\n",
+            ioapic->globalSystemInterruptBase, maxRedirs);
+
         // Mask all interrupts.
-        for (uint32_t i = 0; i < maxRedirs; i++)
+        for (uint32_t i = ioapic->globalSystemInterruptBase; i < ioapic->globalSystemInterruptBase + maxRedirs; i++)
         {
             ioapic_redirect_entry_t maskedEntry = {.mask = 1};
             ioapic_redirect_write(ioapic, i, maskedEntry);
@@ -619,9 +623,6 @@ static uint64_t ioapic_all_init(void)
             LOG_ERR("failed to register io apic irq chip\n");
             return ERR;
         }
-
-        LOG_INFO("io apic initialized base=0x%016lx globalSystemInterruptBase=%u maxRedirs=%u\n", virtAddr,
-            ioapic->globalSystemInterruptBase, maxRedirs);
     }
 
     return 0;

@@ -21,10 +21,6 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
     aml_token_t op;
     aml_token_peek(ctx, &op);
 
-#ifdef TESTING
-    aml_tests_perf_start(&op);
-#endif
-
     aml_object_t* value = NULL;
     switch (op.props->type)
     {
@@ -55,9 +51,6 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
 
     if (value == NULL)
     {
-#ifdef TESTING
-        aml_tests_perf_end();
-#endif
         AML_DEBUG_ERROR(ctx, "Failed to read %s", op.props->name);
         return NULL;
     }
@@ -66,15 +59,8 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
     aml_object_t* out = NULL;
     if (aml_convert_source(ctx->state, value, &out, allowedTypes) == ERR)
     {
-#ifdef TESTING
-        aml_tests_perf_end();
-#endif
         return NULL;
     }
-
-#ifdef TESTING
-    aml_tests_perf_end();
-#endif
 
     assert(out->type & allowedTypes);
 
@@ -162,10 +148,6 @@ uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx)
     aml_token_t token;
     aml_token_peek(ctx, &token);
 
-#ifdef TESTING
-    aml_tests_perf_start(&token);
-#endif
-
     uint64_t result = 0;
     switch (token.props->type)
     {
@@ -194,11 +176,7 @@ uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx)
         result = aml_object_read(ctx);
         break;
     }
-
-#ifdef TESTING
-    aml_tests_perf_end();
-#endif
-
+    
     if (result == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermObj '%s' (0x%x)", token.props->name, token.num);

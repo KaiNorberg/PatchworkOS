@@ -78,22 +78,8 @@ typedef struct PACKED
 typedef struct PACKED
 {
     acpi_resource_small_t header;
-    uint16_t mask; ///< Mask of IRQs used by the device, bit 0 = IRQ 0, bit 1 = IRQ 1, etc. Only one bit will be set.
+    uint16_t mask; ///< Mask of IRQs used by the device, bit 0 = IRQ 0, bit 1 = IRQ 1, etc..
 } acpi_irq_descriptor_t;
-
-#define ACPI_IRQ_DESCRIPTOR_PHYS(descriptor) \
-    (({ \
-        irq_phys_t phys = 0; \
-        for (irq_phys_t i = 0; i < 16; i++) \
-        { \
-            if (((descriptor)->mask >> i) & 0x1) \
-            { \
-                phys = i; \
-                break; \
-            } \
-        } \
-        phys; \
-    }))
 
 /**
  * @brief ACPI IRQ descriptor info flags.
@@ -293,7 +279,7 @@ typedef enum
  * @param device The device object in the AML namespace.
  * @return On success, a allocated resources structure. On failure, `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
- * - `ENODEV`: The device has no `_CRS` method.
+ * - `ENOENT`: The device has no `_CRS` method.
  * - `EILSEQ`: Unexpected data from the `_CRS` method.
  * - `ENOMEM`: Out of memory.
  * - Other values from `aml_evaluate()`.

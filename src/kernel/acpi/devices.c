@@ -63,7 +63,7 @@ static uint64_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t* out)
     aml_object_t* staResult = aml_evaluate(NULL, sta, AML_INTEGER);
     if (staResult == NULL)
     {
-        LOG_ERR("could not evaluate %s._STA\n", AML_NAME_TO_STRING(device->name));
+        LOG_ERR("failed to evaluate %s._STA\n", AML_NAME_TO_STRING(device->name));
         return ERR;
     }
     aml_uint_t value = staResult->integer.value;
@@ -195,7 +195,7 @@ static aml_object_t* acpi_sb_init(void)
     aml_object_t* sb = aml_namespace_find(NULL, NULL, 1, AML_NAME('_', 'S', 'B', '_'));
     if (sb == NULL) // Should never happen
     {
-        LOG_ERR("could not find \\_SB_ in namespace\n");
+        LOG_ERR("failed to find \\_SB_ in namespace\n");
         return NULL;
     }
     DEREF_DEFER(sb);
@@ -220,7 +220,7 @@ static aml_object_t* acpi_sb_init(void)
         aml_object_t* iniResult = aml_evaluate(NULL, ini, AML_ALL_TYPES);
         if (iniResult == NULL)
         {
-            LOG_ERR("could not evaluate \\_SB_._INI\n");
+            LOG_ERR("failed to evaluate \\_SB_._INI\n");
             return NULL;
         }
         DEREF(iniResult);
@@ -262,7 +262,7 @@ static uint64_t acpi_device_init_children(acpi_ids_t* ids, aml_object_t* device,
                 aml_object_t* iniResult = aml_evaluate(NULL, ini, AML_ALL_TYPES);
                 if (iniResult == NULL)
                 {
-                    LOG_ERR("could not evaluate %s._INI\n", childPath);
+                    LOG_ERR("failed to evaluate %s._INI\n", childPath);
                     return ERR;
                 }
                 DEREF(iniResult);
@@ -287,9 +287,22 @@ static uint64_t acpi_device_init_children(acpi_ids_t* ids, aml_object_t* device,
 
 static int acpi_id_compare(const void* left, const void* right)
 {
+    const acpi_id_t* aPtr = (const acpi_id_t*)left;
+    const acpi_id_t* bPtr = (const acpi_id_t*)right;
+
+    const char* a = aPtr->hid;
+    if (a[0] == '\0')
+    {
+        a = aPtr->cid;
+    }
+
+    const char* b = bPtr->hid;
+    if (b[0] == '\0')
+    {
+        b = bPtr->cid;
+    }
+
     // If alphabetic non-hex prefix differs, compare lexicographically
-    const char* a = (*(const acpi_id_t*)left).hid;
-    const char* b = (*(const acpi_id_t*)right).hid;
     while (*a && *b && ((*a < '0' || *a > '9') && (*a < 'A' || *a > 'F')) &&
         ((*b < '0' || *b > '9') && (*b < 'A' || *b > 'F')))
     {
@@ -309,6 +322,28 @@ static int acpi_id_compare(const void* left, const void* right)
     return numA - numB;
 }
 
+static void acpi_device_cfg_free(acpi_device_cfg_t* cfg)
+{
+    if (cfg == NULL)
+    {
+        return;
+    }
+
+    for (uint64_t i = 0; i < cfg->irqCount; i++)
+    {
+        irq_virt_free(cfg->irqs[i].virt);
+    }
+
+    for (uint64_t i = 0; i < cfg->ioCount; i++)
+    {
+        io_release(cfg->ios[i].base, cfg->ios[i].length);
+    }
+
+    free(cfg->irqs);
+    free(cfg->ios);
+    free(cfg);
+}
+
 static uint64_t acpi_device_configure(const char* name)
 {
     if (name[0] == '.')
@@ -320,7 +355,7 @@ static uint64_t acpi_device_configure(const char* name)
     aml_object_t* device = aml_namespace_find_by_path(NULL, NULL, name);
     if (device == NULL)
     {
-        LOG_ERR("could not find ACPI device '%s' in namespace for configuration\n", name);
+        LOG_ERR("failed to find ACPI device '%s' in namespace for configuration\n", name);
         return ERR;
     }
     DEREF_DEFER(device);
@@ -347,6 +382,12 @@ static uint64_t acpi_device_configure(const char* name)
     acpi_resources_t* resources = acpi_resources_current(device);
     if (resources == NULL)
     {
+        if (errno == ENOENT) // No resources exist, assign empty config
+        {
+            device->device.cfg = cfg;
+            return 0;
+        }
+        LOG_ERR("failed to get current resources for ACPI device '%s' due to '%s'\n", name, strerror(errno));
         free(cfg);
         return ERR;
     }
@@ -359,58 +400,63 @@ static uint64_t acpi_device_configure(const char* name)
         {
         case ACPI_ITEM_NAME_IRQ:
         {
-            acpi_irq_descriptor_t* irqDesc = (acpi_irq_descriptor_t*)resource;
-            if (irqDesc->mask == 0 || irqDesc->mask & (irqDesc->mask - 1))
-            {
-                LOG_ERR("device '%s' has invalid IRQ descriptor mask 0x%llx\n", name, irqDesc->mask);
-                goto error;
-            }
-
-            acpi_irq_descriptor_info_t info = ACPI_IRQ_DESCRIPTOR_INFO(irqDesc);
+            acpi_irq_descriptor_t* desc = (acpi_irq_descriptor_t*)resource;
+            acpi_irq_descriptor_info_t info = ACPI_IRQ_DESCRIPTOR_INFO(desc);
 
             irq_flags_t flags = ((info & ACPI_IRQ_EDGE_TRIGGERED) ? IRQ_TRIGGER_EDGE : IRQ_TRIGGER_LEVEL) |
                 ((info & ACPI_IRQ_ACTIVE_LOW) ? IRQ_POLARITY_HIGH : IRQ_POLARITY_LOW) |
                 ((info & ACPI_IRQ_EXCLUSIVE) ? IRQ_EXCLUSIVE : IRQ_SHARED);
 
-            irq_phys_t phys = ACPI_IRQ_DESCRIPTOR_PHYS(irqDesc);
-            irq_virt_t virt;
-            if (irq_virt_alloc(&virt, phys, flags, NULL) == ERR)
+            for (irq_phys_t phys = 0; phys < 16; phys++)
             {
-                goto error;
-            }
+                if (!((desc->mask >> phys) & 1))
+                {
+                    continue;
+                }
 
-            acpi_device_irq_t* newIrqs = realloc(cfg->irqs, sizeof(acpi_device_irq_t) * (cfg->irqCount + 1));
-            if (newIrqs == NULL)
-            {
-                irq_virt_free(virt);
-                goto error;
+                irq_virt_t virt;
+                if (irq_virt_alloc(&virt, phys, flags, NULL) == ERR)
+                {
+                    LOG_ERR("failed to allocate virtual IRQ for ACPI device '%s' due to '%s'\n", name, strerror(errno));
+                    goto error;
+                }
+
+                acpi_device_irq_t* newIrqs = realloc(cfg->irqs, sizeof(acpi_device_irq_t) * (cfg->irqCount + 1));
+                if (newIrqs == NULL)
+                {
+                    LOG_ERR("failed to allocate memory for IRQs for ACPI device '%s' due to '%s'\n", name, strerror(errno));
+                    irq_virt_free(virt);
+                    goto error;
+                }
+                cfg->irqs = newIrqs;
+                cfg->irqs[cfg->irqCount].phys = phys;
+                cfg->irqs[cfg->irqCount].virt = virt;
+                cfg->irqs[cfg->irqCount].flags = flags;
+                cfg->irqCount++;
             }
-            cfg->irqs = newIrqs;
-            cfg->irqs[cfg->irqCount].phys = phys;
-            cfg->irqs[cfg->irqCount].virt = virt;
-            cfg->irqs[cfg->irqCount].flags = flags;
-            cfg->irqCount++;
         }
         break;
         case ACPI_ITEM_NAME_IO_PORT:
         {
-            acpi_io_port_descriptor_t* ioDesc = (acpi_io_port_descriptor_t*)resource;
+            acpi_io_port_descriptor_t* desc = (acpi_io_port_descriptor_t*)resource;
 
             acpi_device_io_t* newIos = realloc(cfg->ios, sizeof(acpi_device_io_t) * (cfg->ioCount + 1));
             if (newIos == NULL)
             {
+                LOG_ERR("failed to allocate memory for IO ports for ACPI device '%s' due to '%s'\n", name, strerror(errno));
                 goto error;
             }
             cfg->ios = newIos;
 
             port_t base;
-            if (io_reserve(&base, ioDesc->minBase, ioDesc->maxBase, ioDesc->alignment, ioDesc->length, name) == ERR)
+            if (io_reserve(&base, desc->minBase, desc->maxBase, desc->alignment, desc->length, name) == ERR)
             {
+                LOG_ERR("failed to reserve IO ports for ACPI device '%s' due to '%s'\n", name, strerror(errno));
                 goto error;
             }
 
             cfg->ios[cfg->ioCount].base = base;
-            cfg->ios[cfg->ioCount].length = ioDesc->length;
+            cfg->ios[cfg->ioCount].length = desc->length;
             cfg->ioCount++;
         }
         break;
@@ -425,9 +471,7 @@ static uint64_t acpi_device_configure(const char* name)
 
 error:
     free(resources);
-    free(cfg->irqs);
-    free(cfg->ios);
-    free(cfg);
+    acpi_device_cfg_free(cfg);
     return ERR;
 }
 
@@ -482,7 +526,6 @@ void acpi_devices_init(void)
         if (acpi_device_configure(ids.array[i].path) == ERR)
         {
             // Dont load module for unconfigurable device
-            LOG_ERR("failed to configure '%s' due to '%s'\n", ids.array[i].path, strerror(errno));
             memmove(&ids.array[i], &ids.array[i + 1], sizeof(acpi_id_t) * (ids.length - i - 1));
             ids.length--;
             i--;
@@ -527,7 +570,7 @@ acpi_device_cfg_t* acpi_device_cfg_get(const char* name)
     aml_object_t* device = aml_namespace_find_by_path(NULL, NULL, name);
     if (device == NULL)
     {
-        LOG_ERR("could not find ACPI device '%s' in namespace for configuration retrieval\n", name);
+        LOG_ERR("failed to find ACPI device '%s' in namespace for configuration retrieval\n", name);
         errno = ENOENT;
         return NULL;
     }

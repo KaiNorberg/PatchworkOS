@@ -41,7 +41,7 @@
  * ## Module Loading and Device Configuration Order
  *
  * For the sake of ensuring consistency across different systems, all modules will be loaded based on their ACPI
- * HIDs in alphanumerical order, this also applies to device configuration. This means that a device with the ACPI HID
+ * HIDs or CIDs in alphanumerical order, this also applies to device configuration. This means that a device with the ACPI HID
  * "ACPI0001" will be loaded before a device with the ACPI HID "ACPI0002" and that one before the device with the ACPI
  * HID "PNP0000". This only applies to the module loading and device configuration but not to device enumeration.
  *

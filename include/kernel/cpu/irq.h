@@ -45,6 +45,11 @@ typedef struct irq irq_t;
 typedef uint32_t irq_phys_t;
 
 /**
+ * @brief Constant representing no physical IRQ.
+ */
+#define IRQ_PHYS_NONE UINT32_MAX
+
+/**
  * @brief Virtual IRQ numbers.
  * @typedef irq_virt_t
  */

@@ -27,7 +27,7 @@
 
 ![desktop screenshot](meta/screenshots/desktop.png)
 
-**Patchwork** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended to be an educational and experimental operating system.
+**PatchworkOS** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended to be an educational and experimental operating system.
 
 In the end this is a project made for fun, but the goal is to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system without jumping ahead to user space features, a ACPI unaware floppy disk driver loaded into a pure monolithic kernel is not enough and neither is a round-robin array scheduler.
 
@@ -600,7 +600,7 @@ Currently untested on Intel hardware (broke student, no access to hardware). Let
 
 ## Contributing
 
-Contributions are welcome! Anything from bug reports/fixes, performance improvements, new features, or even just fixing typos or adding documentation!
+Contributions are welcome! Anything from bug reports/fixes, performance improvements, new features, or even just fixing typos or adding documentation.
 
 If you are unsure where to start, try searching for any "TODO" comments in the codebase.
 

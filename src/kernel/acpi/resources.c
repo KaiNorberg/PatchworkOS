@@ -33,8 +33,7 @@ acpi_resources_t* acpi_resources_current(aml_object_t* device)
     aml_object_t* crs = aml_namespace_find_child(NULL, device, AML_NAME('_', 'C', 'R', 'S'));
     if (crs == NULL)
     {
-        LOG_ERR("device '%s' has no _CRS method\n", AML_NAME_TO_STRING(device->name));
-        errno = ENODEV;
+        errno = ENOENT;
         return NULL;
     }
     DEREF_DEFER(crs);
@@ -42,14 +41,12 @@ acpi_resources_t* acpi_resources_current(aml_object_t* device)
     aml_object_t* crsResult = aml_evaluate(NULL, crs, AML_BUFFER);
     if (crsResult == NULL)
     {
-        LOG_ERR("could not evaluate %s._CRS\n", AML_NAME_TO_STRING(device->name));
         return NULL;
     }
     DEREF_DEFER(crsResult);
 
     if (crsResult->type != AML_BUFFER)
     {
-        LOG_ERR("device '%s' _CRS did not return a buffer\n", AML_NAME_TO_STRING(device->name));
         errno = EILSEQ;
         return NULL;
     }
@@ -70,7 +67,6 @@ acpi_resources_t* acpi_resources_current(aml_object_t* device)
     {
         if (endTagFound)
         {
-            LOG_ERR("device '%s' _CRS has data after end tag\n", AML_NAME_TO_STRING(device->name));
             goto error;
         }
 
@@ -82,10 +78,8 @@ acpi_resources_t* acpi_resources_current(aml_object_t* device)
         case ACPI_ITEM_NAME_IRQ:
         {
             if (size != sizeof(acpi_irq_descriptor_t) &&
-                size != sizeof(acpi_irq_descriptor_t) - 1) // The last byte is optional
+                size != sizeof(acpi_irq_descriptor_t) + 1) // The last byte is optional
             {
-                LOG_ERR("device '%s' _CRS has invalid IRQ descriptor size %llu\n", AML_NAME_TO_STRING(device->name),
-                    size);
                 goto error;
             }
         }
@@ -94,8 +88,6 @@ acpi_resources_t* acpi_resources_current(aml_object_t* device)
         {
             if (size != sizeof(acpi_io_port_descriptor_t))
             {
-                LOG_ERR("device '%s' _CRS has invalid IO port descriptor size %llu\n", AML_NAME_TO_STRING(device->name),
-                    size);
                 goto error;
             }
         }

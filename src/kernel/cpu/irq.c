@@ -35,7 +35,7 @@ void irq_init(void)
     for (uint64_t i = 0; i < VECTOR_EXTERNAL_AMOUNT; i++)
     {
         irq_t* irq = &irqs[i];
-        irq->phys = UINT32_MAX;
+        irq->phys = IRQ_PHYS_NONE;
         irq->virt = VECTOR_EXTERNAL_START + i;
         irq->flags = 0;
         irq->cpu = NULL;
@@ -86,11 +86,6 @@ void irq_dispatch(interrupt_frame_t* frame, cpu_t* self)
     if (chip->eoi != NULL)
     {
         chip->eoi(irq);
-    }
-
-    if (list_is_empty(&irq->handlers))
-    {
-        LOG_WARN("unhandled IRQ 0x%x received\n", frame->vector);
     }
 }
 
@@ -233,7 +228,7 @@ void irq_virt_free(irq_virt_t virt)
     {
         irq->domain->chip->disable(irq);
     }
-    irq->phys = UINT32_MAX;
+    irq->phys = IRQ_PHYS_NONE;
     irq->flags = 0;
     irq->cpu = NULL;
     irq->domain = NULL;

@@ -145,10 +145,6 @@ uint64_t aml_tests_run_all(void)
         // return ERR;
     }
 
-    clock_t end = sys_time_uptime();
-
-    aml_tests_perf_report();
-
     if (startingObjects != aml_object_get_total_count())
     {
         LOG_ERR("memory leak detected, total objects before test %llu, after test %llu\n", startingObjects,
@@ -158,127 +154,6 @@ uint64_t aml_tests_run_all(void)
 
     LOG_INFO("post parse all tests passed\n");
     return 0;
-}
-
-typedef struct
-{
-    list_entry_t entry;
-    aml_token_num_t token;
-    clock_t startTime;
-    clock_t childTime;
-} aml_perf_stack_entry_t;
-
-static clock_t timeTakenPerToken[AML_MAX_TOKEN] = {0};
-static uint64_t tokenOccurrences[AML_MAX_TOKEN] = {0};
-static list_t perfStack = LIST_CREATE(perfStack);
-
-void aml_tests_perf_start(aml_token_t* token)
-{
-    if (token->num >= AML_MAX_TOKEN)
-    {
-        return;
-    }
-
-    aml_perf_stack_entry_t* entry = malloc(sizeof(aml_perf_stack_entry_t));
-    if (entry == NULL)
-    {
-        LOG_ERR("Performance profiler stack allocation failed\n");
-        return;
-    }
-
-    list_entry_init(&entry->entry);
-    entry->token = token->num;
-    entry->startTime = sys_time_uptime();
-    entry->childTime = 0;
-
-    list_push_back(&perfStack, &entry->entry);
-
-    tokenOccurrences[token->num]++;
-}
-
-void aml_tests_perf_end(void)
-{
-    if (list_is_empty(&perfStack))
-    {
-        LOG_ERR("Performance profiler stack underflow\n");
-        return;
-    }
-
-    aml_perf_stack_entry_t* entry = CONTAINER_OF_SAFE(list_pop_first(&perfStack), aml_perf_stack_entry_t, entry);
-
-    clock_t totalTime = sys_time_uptime() - entry->startTime;
-    clock_t exclusiveTime = (entry->childTime >= totalTime) ? 0 : (totalTime - entry->childTime);
-    if (entry->token < AML_MAX_TOKEN)
-    {
-        timeTakenPerToken[entry->token] += exclusiveTime;
-    }
-
-    if (!list_is_empty(&perfStack))
-    {
-        aml_perf_stack_entry_t* perfStackTop = CONTAINER_OF(list_last(&perfStack), aml_perf_stack_entry_t, entry);
-        perfStackTop->childTime += totalTime;
-    }
-
-    free(entry);
-}
-
-void aml_tests_perf_report(void)
-{
-    if (!list_is_empty(&perfStack))
-    {
-        LOG_WARN("Performance report called with %d unclosed measurements\n", list_length(&perfStack));
-        while (!list_is_empty(&perfStack))
-        {
-            aml_perf_stack_entry_t* entry =
-                CONTAINER_OF_SAFE(list_pop_first(&perfStack), aml_perf_stack_entry_t, entry);
-            free(entry);
-        }
-    }
-
-    typedef struct
-    {
-        aml_token_num_t tokenNum;
-        clock_t time;
-    } token_time_pair_t;
-
-    token_time_pair_t sorted[AML_MAX_TOKEN];
-    uint32_t count = 0;
-
-    for (uint32_t i = 0; i < AML_MAX_TOKEN; i++)
-    {
-        if (timeTakenPerToken[i] > 0)
-        {
-            sorted[count].tokenNum = i;
-            sorted[count].time = timeTakenPerToken[i];
-            count++;
-        }
-    }
-
-    for (uint32_t i = 1; i < count; i++)
-    {
-        token_time_pair_t key = sorted[i];
-        int32_t j = i - 1;
-
-        while (j >= 0 && sorted[j].time < key.time)
-        {
-            sorted[j + 1] = sorted[j];
-            j--;
-        }
-        sorted[j + 1] = key;
-    }
-
-    LOG_INFO("performance report:\n");
-    for (uint32_t i = 0; i < count; i++)
-    {
-        LOG_INFO("  %s: total=%llums, occurrences=%llu, avg=%lluns\n", aml_token_lookup(sorted[i].tokenNum)->name,
-            sorted[i].time / (CLOCKS_PER_SEC / 1000), tokenOccurrences[sorted[i].tokenNum],
-            sorted[i].time / tokenOccurrences[sorted[i].tokenNum]);
-    }
-
-    for (uint32_t i = 0; i < AML_MAX_TOKEN; i++)
-    {
-        timeTakenPerToken[i] = 0;
-    }
 }
 
 #endif
