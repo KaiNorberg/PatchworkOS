@@ -25,60 +25,27 @@ void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx)
     atomic_init(&ctx->deadline, CLOCKS_NEVER);
 }
 
-static void timer_acknowledge(irq_t* irq)
+void timer_ack_eoi(interrupt_frame_t* frame, cpu_t* self)
 {
-    (void)irq;
+    (void)frame; // Unused
 
-    cpu_t* cpu = cpu_get_unsafe();
-    atomic_store(&cpu->timer.deadline, CLOCKS_NEVER);
-
-    rwlock_read_acquire(&sourcesLock);
-    if (bestSource != NULL && bestSource->ack != NULL)
-    {
-        bestSource->ack(cpu);
-    }
-    rwlock_read_release(&sourcesLock);
-
-    LOG_DEBUG("timer ack on cpu id=%u\n", cpu->id);
-}
-
-static void timer_eoi(irq_t* irq)
-{
-    (void)irq;
-
-    cpu_t* cpu = cpu_get_unsafe();
-
-    rwlock_read_acquire(&sourcesLock);
-    if (bestSource != NULL && bestSource->eoi != NULL)
-    {
-        bestSource->eoi(cpu);
-    }
-    rwlock_read_release(&sourcesLock);
-
-    LOG_DEBUG("timer eoi on cpu id=%u\n", cpu->id);
-}
-
-static irq_chip_t timerIrqChip = {
-    .name = "Timer IRQ Chip",
-    .enable = NULL,
-    .disable = NULL,
-    .ack = timer_acknowledge,
-    .eoi = timer_eoi,
-};
-
-void timer_init(void)
-{
-    if (irq_chip_register(&timerIrqChip, VECTOR_TIMER, VECTOR_TIMER + 1, NULL) == ERR)
-    {
-        panic(NULL, "Failed to register timer IRQ chip");
-    }
-}
-
-static void timer_irq_handler(irq_func_data_t* data)
-{
-    cpu_t* self = data->self;
     atomic_store(&self->timer.deadline, CLOCKS_NEVER);
-    LOG_DEBUG("timer IRQ fired on cpu id=%u\n", self->id);
+
+    rwlock_read_acquire(&sourcesLock);
+    if (bestSource != NULL)
+    {
+        if (bestSource->ack != NULL)
+        {
+            bestSource->ack(self);
+        }
+        if (bestSource->eoi != NULL)
+        {
+            bestSource->eoi(self);
+        }
+    }
+    rwlock_read_release(&sourcesLock);
+
+    LOG_DEBUG("timer ack on cpu id=%u\n", self->id);
 }
 
 uint64_t timer_source_register(const timer_source_t* source)
@@ -173,8 +140,6 @@ void timer_set(cpu_t* cpu, clock_t uptime, clock_t deadline)
         return;
     }
 
-    RWLOCK_READ_SCOPE(&sourcesLock);
-
     clock_t currentDeadline;
     do
     {
@@ -184,6 +149,8 @@ void timer_set(cpu_t* cpu, clock_t uptime, clock_t deadline)
             return;
         }
     } while (!atomic_compare_exchange_weak(&cpu->timer.deadline, &currentDeadline, deadline));
+
+    RWLOCK_READ_SCOPE(&sourcesLock);
 
     if (bestSource != NULL)
     {

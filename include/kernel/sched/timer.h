@@ -20,17 +20,15 @@ interrupt must be programmed.
  *
  * ## Timer Interrupts
  *
- * The way we handle timer interrupts is that each system calls the `timer_set()` function with their desired
-timeout and then, when the timer interrupt occurs, which they can register to using `irq_irq_handler_register()`, they
-check if their desired time has been reached, if it has they do what they need to do, else they call the function once
-more respecifying their desired timeout, and we repeat the process.
-
- * This does technically result in some uneeded checks but its a very simply way of effectively eliminating timer
-related race conditions.
+ * The way we handle timer interrupts is that each subsystem that relies on the timer calls the `timer_set()` function with their desired deadline and then, when the timer interrupt occurs, the timer interrupt is acknowledged and the usual interrupt handling process continues. For example, the scheduler and wait system will check if they need to do anything. 
+ * 
+ * Both the scheduler and the wait system can now call `timer_set()` again if they need to schedule another timer interrupt or if the time they requested has not yet occurred.
+ *
+ * This does technically result in some uneeded checks but its a very simply way of effectively eliminating timer related race conditions.
  *
  * ## Timer Sources
  *
- * The actual timer interrupts are provided by "timer sources", which are registered by modules. Each source registers
+ * The actual timer interrupts are provided by "timer sources" (`timer_source_t`), which are registered by modules. Each source registers
 itself with a estimate of its precision, the timer subsystem then chooses the source with the highest precision as the
 active timer source.
  *
@@ -86,9 +84,12 @@ typedef struct
 void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx);
 
 /**
- * @brief Initialize the timer subsystem.
+ * @brief Acknowledge and send EOI for a timer interrupt.
+ *
+ * @param frame The interrupt frame of the timer interrupt.
+ * @param self The CPU on which the timer interrupt was received.
  */
-void timer_init(void);
+void timer_ack_eoi(interrupt_frame_t* frame, cpu_t* self);
 
 /**
  * @brief Register a timer source.

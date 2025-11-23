@@ -20,17 +20,16 @@ void ipi_cpu_ctx_init(ipi_cpu_ctx_t* ctx)
     lock_init(&ctx->lock);
 }
 
-static void ipi_acknowledge(irq_t* irq)
+void ipi_handle_pending(interrupt_frame_t* frame, cpu_t* self)
 {
-    (void)irq;
+    (void)frame;
 
-    cpu_t* cpu = cpu_get_unsafe();
-    ipi_cpu_ctx_t* ctx = &cpu->ipi;
+    ipi_cpu_ctx_t* ctx = &self->ipi;
 
     rwlock_read_acquire(&chipLock);
     if (registeredChip != NULL && registeredChip->ack != NULL)
     {
-        registeredChip->ack(irq->cpu);
+        registeredChip->ack(self);
     }
     rwlock_read_release(&chipLock);
 
@@ -47,40 +46,18 @@ static void ipi_acknowledge(irq_t* irq)
         ctx->readIndex = (ctx->readIndex + 1) % IPI_QUEUE_SIZE;
 
         ipi_func_data_t ipiData = {
-            .self = cpu,
+            .self = self,
             .private = ipi.private,
         };
         ipi.func(&ipiData);
     }
-}
 
-static void ipi_eoi(irq_t* irq)
-{
-    (void)irq;
-
-    cpu_t* cpu = cpu_get_unsafe();
     rwlock_read_acquire(&chipLock);
     if (registeredChip != NULL && registeredChip->eoi != NULL)
     {
-        registeredChip->eoi(cpu);
+        registeredChip->eoi(self);
     }
     rwlock_read_release(&chipLock);
-}
-
-static irq_chip_t ipiIrqChip = {
-    .name = "IPI IRQ Chip",
-    .enable = NULL,
-    .disable = NULL,
-    .ack = ipi_acknowledge,
-    .eoi = ipi_eoi,
-};
-
-void ipi_init(void)
-{
-    if (irq_chip_register(&ipiIrqChip, VECTOR_IPI, VECTOR_IPI + 1, NULL) == ERR)
-    {
-        panic(NULL, "Failed to register IPI IRQ chip");
-    }
 }
 
 uint64_t ipi_chip_register(ipi_chip_t* chip)

@@ -87,7 +87,7 @@ typedef enum
  */
 typedef enum
 {
-    VECTOR_EXCEPTION_START = 0x0, ///< Inclusive start of exception IRQs.
+    VECTOR_EXCEPTION_START = 0x0, ///< Inclusive start of exceptions.
     VECTOR_DIVIDE_ERROR = 0x0,
     VECTOR_DEBUG = 0x1,
     VECTOR_NMI = 0x2,
@@ -113,7 +113,7 @@ typedef enum
     VECTOR_HYPERVISOR_INJECTION_EXCEPTION = 0x1C,
     VECTOR_VMM_COMMUNICATION_EXCEPTION = 0x1D,
     VECTOR_SECURITY_EXCEPTION = 0x1E,
-    VECTOR_EXCEPTION_END = 0x20, ///< Exclusive end of exception IRQs.
+    VECTOR_EXCEPTION_END = 0x20, ///< Exclusive end of exceptions.
 
     VECTOR_EXTERNAL_START = 0x20, ///< Inclusive start of external interrupts (handled by the IRQ system).
     VECTOR_EXTERNAL_END = 0xF0,   ///< Exclusive end of external interrupts.
@@ -121,8 +121,8 @@ typedef enum
     VECTOR_EXTERNAL_AMOUNT = VECTOR_EXTERNAL_END - VECTOR_EXTERNAL_START,
 
     VECTOR_INTERNAL_START = 0xF0, ///< Inclusive start of internal interrupts.
-    VECTOR_IPI = 0xFD,            ///< Mapped 1:1. See @ref kernel_cpu_ipi for more information.
-    VECTOR_TIMER = 0xFE,          ///< Mapped 1:1. See @ref kernel_timer for more information.
+    VECTOR_IPI = 0xFD,            ///< See @ref kernel_cpu_ipi for more information.
+    VECTOR_TIMER = 0xFE,          ///< See @ref kernel_timer for more information.
     VECTOR_SPURIOUS = 0xFF,       ///< Made available for any component to use as a sink for spurious interrupts.
     VECTOR_INTERNAL_END = 0x100,  ///< Exclusive end of internal interrupts.
 

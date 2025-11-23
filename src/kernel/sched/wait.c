@@ -35,40 +35,6 @@ static void wait_remove_wait_entries(thread_t* thread, errno_t err)
     }
 }
 
-static void wait_timer_handler(irq_func_data_t* data)
-{
-    cpu_t* self = data->self;
-    LOCK_SCOPE(&self->wait.lock);
-
-    while (1)
-    {
-        thread_t* thread = CONTAINER_OF_SAFE(list_first(&self->wait.blockedThreads), thread_t, entry);
-        if (thread == NULL)
-        {
-            return;
-        }
-
-        clock_t uptime = sys_time_uptime();
-        if (thread->wait.deadline > uptime)
-        {
-            timer_set(self, uptime, thread->wait.deadline);
-            return;
-        }
-
-        list_remove(&self->wait.blockedThreads, &thread->entry);
-
-        // Already unblocking.
-        thread_state_t expected = THREAD_BLOCKED;
-        if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
-        {
-            continue;
-        }
-
-        wait_remove_wait_entries(thread, ETIMEDOUT);
-        sched_push(thread, thread->wait.cpu->cpu);
-    }
-}
-
 void wait_queue_init(wait_queue_t* waitQueue)
 {
     lock_init(&waitQueue->lock);
@@ -100,11 +66,38 @@ void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* self)
     lock_init(&wait->lock);
 }
 
-void wait_init(void)
+void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self)
 {
-    if (irq_handler_register(VECTOR_TIMER, wait_timer_handler, NULL) == ERR)
+    (void)frame; // Unused
+
+    LOCK_SCOPE(&self->wait.lock);
+
+    while (1)
     {
-        panic(NULL, "Failed to register wait timer IRQ handler");
+        thread_t* thread = CONTAINER_OF_SAFE(list_first(&self->wait.blockedThreads), thread_t, entry);
+        if (thread == NULL)
+        {
+            return;
+        }
+
+        clock_t uptime = sys_time_uptime();
+        if (thread->wait.deadline > uptime)
+        {
+            LOG_DEBUG("next wait timeout at %llu on cpu id=%u and pid=%u\n", thread->wait.deadline, self->id, thread->process->id);
+            timer_set(self, uptime, thread->wait.deadline);
+            return;
+        }
+
+        list_remove(&self->wait.blockedThreads, &thread->entry);
+
+        thread_state_t expected = THREAD_BLOCKED;
+        if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING)) // Already unblocking.
+        {
+            continue;
+        }
+
+        wait_remove_wait_entries(thread, ETIMEDOUT);
+        sched_push(thread, thread->wait.cpu->cpu);
     }
 }
 

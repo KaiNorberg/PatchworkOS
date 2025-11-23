@@ -251,9 +251,12 @@ void wait_thread_ctx_init(wait_thread_ctx_t* wait);
 void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* self);
 
 /**
- * @brief Initialize the wait subsystem.
+ * @brief Check for timeouts and unblock threads as needed.
+ *
+ * @param frame The interrupt frame.
+ * @param self The current CPU.
  */
-void wait_init(void);
+void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self);
 
 /**
  * @brief Finalize blocking of a thread.

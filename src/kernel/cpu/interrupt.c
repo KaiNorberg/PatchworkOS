@@ -129,7 +129,7 @@ static void exception_handler(interrupt_frame_t* frame)
 
         uint64_t cr2 = cr2_read();
 
-        LOG_WARN("unhandled user space exception in process pid=%d tid=%d vector=%lld error=0x%llx rip=0x%llx "
+        LOG_DEBUG("unhandled user space exception in process pid=%d tid=%d vector=%lld error=0x%llx rip=0x%llx "
                  "cr2=0x%llx errno='%s'\n",
             process->id, thread->id, frame->vector, frame->errorCode, frame->rip, cr2, strerror(thread->error));
 
@@ -163,32 +163,31 @@ void interrupt_handler(interrupt_frame_t* frame)
     {
         irq_dispatch(frame, self);
     }
+    else if (frame->vector == VECTOR_TIMER)
+    {
+        timer_ack_eoi(frame, self);
+    }
+    else if (frame->vector == VECTOR_IPI)
+    {
+        ipi_handle_pending(frame, self);
+    }
+    else if (frame->vector == VECTOR_SPURIOUS)
+    {
+        LOG_DEBUG("spurious interrupt on cpu id=%u\n", self->id);
+    }
     else
     {
-        switch (frame->vector)
-        {
-        case VECTOR_TIMER:
-            timer_dispatch(frame, self);
-            break;
-        case VECTOR_IPI:
-            ipi_dispatch(frame, self);
-            break;
-        case VECTOR_SPURIOUS:
-            LOG_DEBUG("spurious interrupt on cpu id=%u\n", self->id);
-            break;
-        default:
-            panic(NULL, "invalid internal interrupt vector 0x%x", frame->vector);
-        }
+        panic(NULL, "Invalid internal interrupt vector 0x%x", frame->vector);
     }
 
     note_handle_pending(frame, self);
+    wait_check_timeouts(frame, self);
     sched_do(frame, self);
 
     cpu_stacks_overflow_check(self);
 
     perf_interrupt_end(self);
 
-    // This is a sanity check to make sure blocking and scheduling is functioning correctly. For instance, a trap should
-    // never return with a lock acquired nor should one be invoked with a lock acquired.
+    // This is a sanity check to make sure blocking and scheduling is functioning correctly.
     assert(frame->rflags & RFLAGS_INTERRUPT_ENABLE);
 }

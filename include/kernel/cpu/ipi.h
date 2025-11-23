@@ -115,9 +115,12 @@ typedef enum
 void ipi_cpu_ctx_init(ipi_cpu_ctx_t* ctx);
 
 /**
- * @brief Initialize the IPI subsystem.
+ * @brief Handle pending IPIs on the current CPU.
+ *
+ * @param frame The interrupt frame.
+ * @param self The current CPU.
  */
-void ipi_init(void);
+void ipi_handle_pending(interrupt_frame_t* frame, cpu_t* self);
 
 /**
  * @brief Register an IPI chip.

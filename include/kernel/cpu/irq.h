@@ -18,8 +18,7 @@ typedef struct irq irq_t;
  * @defgroup kernel_cpu_irq IRQ
  * @ingroup kernel_cpu
  *
- * The IRQ system is responsible for managing external interrupts in the system (as in vectors `VECTOR_EXTERNAL_START`
- * to `VECTOR_EXTERNAL_END`), where the hardware trigger a physical IRQ (`irq_phys_t`) which is then mapped to a virtual
+ * The IRQ system is responsible for managing external interrupts in the system (as in vectors [`VECTOR_EXTERNAL_START`, `VECTOR_EXTERNAL_END`)), where the hardware trigger a physical IRQ (`irq_phys_t`) which is then mapped to a virtual
  * IRQ (`irq_virt_t`) using a `irq_chip_t`.
  *
  * ## Physical vs Virtual IRQs
@@ -58,7 +57,7 @@ typedef uint8_t irq_virt_t;
 typedef struct
 {
     interrupt_frame_t* frame;
-    cpu_t* self; ///< Will be `NULL` for exceptions.
+    cpu_t* self;
     irq_virt_t virt;
     void* private;
 } irq_func_data_t;
@@ -212,7 +211,8 @@ void irq_virt_free(irq_virt_t virt);
  * @param cpu The target CPU for the IRQ.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
- * - `ENOSYS`: The registered IRQ chip does not have `enable`/`disable` functions.
+ * - `ENOENT`: The given virtual IRQ is not a external vector.
+ * - `ENODEV`: The IRQ has no associated IRQ chip.
  * - Other  errors as returned by the IRQ chip's `enable` functions.
  */
 uint64_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu);
@@ -260,15 +260,17 @@ uint64_t irq_chip_amount(void);
  * @param private The private data to pass to the handler function.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
+ * - `ENOENT`: The given virtual IRQ is not a external vector.
  * - `EEXIST`: The given handler is already registered for the given virtual IRQ.
  * - `ENOMEM`: Memory allocation failed.
- * - `ENOENT`: The given virtual IRQ is not allocated.
  */
 uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* private);
 
 /**
  * @brief Unregister an IRQ handler.
  *
+ * If there are no more handlers registered for the IRQ, it will be disabled.
+ * 
  * @param func The handler function to unregister, or `NULL` for no-op.
  * @param virt The virtual IRQ to unregister the handler from.
  */
