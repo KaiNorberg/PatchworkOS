@@ -19,7 +19,7 @@
 /**
  * @brief Wait timeout for PS/2 controller
  */
-#define PS2_WAIT_TIMEOUT (CLOCKS_PER_SEC / 2)
+#define PS2_WAIT_TIMEOUT (CLOCKS_PER_SEC / 5)
 
 /**
  * @brief Small delay for various operations
@@ -54,16 +54,6 @@
     "PNP0F00;PNP0F01;PNP0F02;PNP0F03;PNP0F04;PNP0F05;PNP0F06;PNP0F07;PNP0F08;PNP0F09;PNP0F0A;PNP0F0B;PNP0F0C;PNP0F0D;" \
     "PNP0F0E;PNP0F0F;PNP0F10;PNP0F11;PNP0F12;PNP0F13;PNP0F14;PNP0F15;PNP0F16;PNP0F17;PNP0F18;PNP0F19;PNP0F1A;PNP0F1B;" \
     "PNP0F1C;PNP0F1D;PNP0F1E;PNP0F1F;PNP0F20;PNP0F21;PNP0F22;PNP0F23;PNP0FFC;PNP0FFF"
-
-/**
- * @brief PS/2 controller I/O ports
- */
-/*typedef enum
-{
-    PS2_PORT_DATA = 0x60,
-    PS2_PORT_STATUS = 0x64,
-    PS2_PORT_CMD = 0x64
-} ps2_port_t;*/
 
 /**
  * @brief PS/2 controller commands.
@@ -194,17 +184,26 @@ typedef enum
 } ps2_device_response_t;
 
 /**
+ * @brief Known PS/2 device structure.
+ * @struct ps2_known_device_t
+ */
+typedef struct
+{
+    const char* pnpId;
+    const char* name;
+} ps2_known_device_t;
+
+/**
  * @brief PS/2 device information structure.
  * @struct ps2_device_info_t
  */
 typedef struct
 {
     ps2_device_t device;    ///< Device port
-    uint8_t firstIdByte;    ///< First identification byte returned by the device
     const char* name;       ///< Human-readable name of the device
-    ps2_device_type_t type; ///< Type of device, if `PS2_DEV_TYPE_NONE` the device is not initialized.
     irq_virt_t irq;         ///< IRQ assigned to the device by ACPI
     bool active;            ///< The device exists, may or may not be initialized.
+    bool initialized;       ///< The device has been initialized.
     void* private;          ///< Driver-specific private data
 } ps2_device_info_t;
 

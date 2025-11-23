@@ -22,20 +22,80 @@ static port_t commandPort = 0;
 static bool isDualChannel = false;
 static bool initialized = false;
 
+static ps2_known_device_t knownKeyboards[] = {
+    {"PNP0300", "IBM PC/XT keyboard controller (83-key)"},
+    {"PNP0301", "IBM PC/AT keyboard controller (86-key)"},
+    {"PNP0302", "IBM PC/XT keyboard controller (84-key)"},
+    {"PNP0303", "IBM Enhanced (101/102-key, PS/2 mouse support)"},
+    {"PNP0304", "Olivetti Keyboard (83-key)"},
+    {"PNP0305", "Olivetti Keyboard (102-key)"},
+    {"PNP0306", "Olivetti Keyboard (86-key)"},
+    {"PNP0307", "Microsoft Windows(R) Keyboard"},
+    {"PNP0308", "General Input Device Emulation Interface (GIDEI) legacy"},
+    {"PNP0309", "Olivetti Keyboard (A101/102 key)"},
+    {"PNP030A", "AT&T 302 keyboard"},
+    {"PNP030B", "Reserved by Microsoft"},
+    {"PNP0320", "Japanese 101-key keyboard"},
+    {"PNP0321", "Japanese AX keyboard"},
+    {"PNP0322", "Japanese 106-key keyboard A01"},
+    {"PNP0323", "Japanese 106-key keyboard 002/003"},
+    {"PNP0324", "Japanese 106-key keyboard 001"},
+    {"PNP0325", "Japanese Toshiba Desktop keyboard"},
+    {"PNP0326", "Japanese Toshiba Laptop keyboard"},
+    {"PNP0327", "Japanese Toshiba Notebook keyboard"},
+    {"PNP0340", "Korean 84-key keyboard"},
+    {"PNP0341", "Korean 86-key keyboard"},
+    {"PNP0342", "Korean Enhanced keyboard"},
+    {"PNP0343", "Korean Enhanced keyboard 101b"},
+    {"PNP0343", "Korean Enhanced keyboard 101c"},
+    {"PNP0344", "Korean Enhanced keyboard 103"},
+};
+#define PS2_KNOWN_KEYBOARD_COUNT (sizeof(knownKeyboards) / sizeof(ps2_known_device_t))
+
+static ps2_known_device_t knownMice[] = {
+    {"PNP0F00", "Microsoft Bus Mouse"},
+    {"PNP0F01", "Microsoft Serial Mouse"},
+    {"PNP0F02", "Microsoft InPort Mouse"},
+    {"PNP0F03", "Microsoft PS/2-style Mouse"},
+    {"PNP0F04", "Mouse Systems Mouse"},
+    {"PNP0F05", "Mouse Systems 3-Button Mouse (COM2)"},
+    {"PNP0F06", "Genius Mouse (COM1)"},
+    {"PNP0F07", "Genius Mouse (COM2)"},
+    {"PNP0F08", "Logitech Serial Mouse"},
+    {"PNP0F09", "Microsoft BallPoint Serial Mouse"},
+    {"PNP0F0A", "Microsoft Plug and Play Mouse"},
+    {"PNP0F0B", "Microsoft Plug and Play BallPoint Mouse"},
+    {"PNP0F0C", "Microsoft-compatible Serial Mouse"},
+    {"PNP0F0D", "Microsoft-compatible InPort-compatible Mouse"},
+    {"PNP0F0E", "Microsoft-compatible PS/2-style Mouse"},
+    {"PNP0F0F", "Microsoft-compatible Serial BallPoint-compatible Mouse"},
+    {"PNP0F10", "Texas Instruments QuickPort Mouse"},
+    {"PNP0F11", "Microsoft-compatible Bus Mouse"},
+    {"PNP0F12", "Logitech PS/2-style Mouse"},
+    {"PNP0F13", "PS/2 Port for PS/2-style Mice"},
+    {"PNP0F14", "Microsoft Kids Mouse"},
+    {"PNP0F15", "Logitech bus mouse"},
+    {"PNP0F16", "Logitech SWIFT device"},
+    {"PNP0F17", "Logitech-compatible serial mouse"},
+    {"PNP0F18", "Logitech-compatible bus mouse"},
+    {"PNP0F19", "Logitech-compatible PS/2-style Mouse"},
+    {"PNP0F1A", "Logitech-compatible SWIFT Device"},
+    {"PNP0F1B", "HP Omnibook Mouse"},
+    {"PNP0F1C", "Compaq LTE Trackball PS/2-style Mouse"},
+    {"PNP0F1D", "Compaq LTE Trackball Serial Mouse"},
+    {"PNP0F1E", "Microsoft Kids Trackball Mouse"},
+    {"PNP0F1F", "Reserved by Microsoft Input Device Group"},
+    {"PNP0F20", "Reserved by Microsoft Input Device Group"},
+    {"PNP0F21", "Reserved by Microsoft Input Device Group"},
+    {"PNP0F22", "Reserved by Microsoft Input Device Group"},
+    {"PNP0F23", "Reserved by Microsoft Input Device Group"},
+    {"PNP0FFC", "Reserved (temporarily) by Microsoft Kernel team"},
+    {"PNP0FFF", "Reserved by Microsoft Systems (SDA Standard Compliant SD Host Controller Vendor)"},
+};
+#define PS2_KNOWN_MOUSE_COUNT (sizeof(knownMice) / sizeof(ps2_known_device_t))
+
 static ps2_device_info_t devices[PS2_DEV_COUNT] = {0};
 static lock_t attachLock = LOCK_CREATE;
-
-// TODO: Add more known devices
-static const ps2_device_info_t knownDevices[] = {
-    {.type = PS2_DEV_TYPE_MOUSE_STANDARD, .name = "Standard PS/2 mouse", .firstIdByte = 0x00},
-    {.type = PS2_DEV_TYPE_MOUSE_SCROLL, .name = "Mouse with scroll wheel", .firstIdByte = 0x03},
-    {.type = PS2_DEV_TYPE_MOUSE_5BUTTON, .name = "5-button mouse", .firstIdByte = 0x04},
-    {.type = PS2_DEV_TYPE_KEYBOARD, .name = "Standard PS/2 keyboard", .firstIdByte = 0xAB},
-    {.type = PS2_DEV_TYPE_KEYBOARD, .name = "NCD Sun keyboard", .firstIdByte = 0xAC},
-    {.type = PS2_DEV_TYPE_KEYBOARD, .name = "Trust keyboard", .firstIdByte = 0x5D},
-    {.type = PS2_DEV_TYPE_KEYBOARD, .name = "NMB SGI keyboard", .firstIdByte = 0x47},
-};
-#define PS2_KNOWN_DEVICE_AMOUNT (sizeof(knownDevices) / sizeof(knownDevices[0]))
 
 #define PS2_ANCIENT_KEYBOARD_ID 0xFF
 
@@ -275,7 +335,7 @@ static uint64_t ps2_device_ports_test(void)
     return 0;
 }
 
-static uint64_t ps2_device_init(ps2_device_t device, irq_virt_t irq)
+static uint64_t ps2_device_init(ps2_device_t device, irq_virt_t irq, const char* pnpId)
 {
     ps2_device_info_t* info = &devices[device];
     info->device = device;
@@ -300,8 +360,7 @@ static uint64_t ps2_device_init(ps2_device_t device, irq_virt_t irq)
         return ERR;
     }
 
-    // The device might send its id bytes here, but we use the identify command to get the id for consistency so we just
-    // drain the data instead.
+    // The device might send its id bytes here, but we don't care about them for now.
     ps2_drain();
 
     if (ps2_device_cmd(device, PS2_DEV_CMD_DISABLE_SCANNING) == ERR)
@@ -310,60 +369,36 @@ static uint64_t ps2_device_init(ps2_device_t device, irq_virt_t irq)
         return ERR;
     }
 
-    errno = EOK;
-    response = ps2_device_cmd_and_read(device, PS2_DEV_CMD_IDENTIFY);
-    if (response == ERR)
+    const char* name = "Unknown PS/2 Device";
+    if (device == PS2_DEV_FIRST)
     {
-        if (errno != ETIMEDOUT)
+        for (size_t i = 0; i < PS2_KNOWN_KEYBOARD_COUNT; i++)
         {
-            LOG_ERR("ps2 %s device identify failed\n", ps2_device_to_string(device));
-            return ERR;
+            if (strcmp(pnpId, knownKeyboards[i].pnpId) == 0)
+            {
+                name = knownKeyboards[i].name;
+                break;
+            }
         }
-
-        info->firstIdByte = PS2_ANCIENT_KEYBOARD_ID;
-        info->type = PS2_DEV_TYPE_KEYBOARD;
-        info->name = "Ancient AT keyboard";
-        LOG_INFO("ps2 %s device identify timed out, probably 'Ancient AT keyboard'\n", ps2_device_to_string(device));
     }
     else
     {
-        info->firstIdByte = response;
-    }
-
-    // We ignore the rest of the id, as only the first byte is needed to know the device type.
-    ps2_drain();
-
-    info->type = PS2_DEV_TYPE_NONE;
-    info->name = "Unknown";
-    info->irq = irq;
-    for (size_t i = 0; i < PS2_KNOWN_DEVICE_AMOUNT; i++)
-    {
-        if (info->firstIdByte == knownDevices[i].firstIdByte)
+        for (size_t i = 0; i < PS2_KNOWN_MOUSE_COUNT; i++)
         {
-            info->type = knownDevices[i].type;
-            info->name = knownDevices[i].name;
-            break;
+            if (strcmp(pnpId, knownMice[i].pnpId) == 0)
+            {
+                name = knownMice[i].name;
+                break;
+            }
         }
     }
 
-    if ((device == PS2_DEV_FIRST && info->type != PS2_DEV_TYPE_KEYBOARD) ||
-        (device != PS2_DEV_FIRST && info->type == PS2_DEV_TYPE_KEYBOARD))
-    {
-        LOG_WARN("ps2 %s device type mismatch expected %s but detected %s\n", ps2_device_to_string(device),
-            device == PS2_DEV_FIRST ? "keyboard" : "mouse", ps2_device_type_to_string(info->type));
-    }
+    info->name = name;
+    info->irq = irq;
 
-    LOG_INFO("ps2 %s device identified as '%s' with first ID byte 0x%02x\n", ps2_device_to_string(device), info->name,
-        info->firstIdByte);
-
-    if (info->type == PS2_DEV_TYPE_NONE)
+    if (device == PS2_DEV_FIRST)
     {
-        LOG_ERR("ps2 %s device type unknown\n", ps2_device_to_string(device));
-        return ERR;
-    }
-
-    if (info->type == PS2_DEV_TYPE_KEYBOARD)
-    {
+        LOG_INFO("found PS/2 keyboard '%s' on IRQ %u\n", name, irq);
         if (ps2_kbd_init(info) == ERR)
         {
             LOG_ERR("ps2 %s device keyboard initialization failed\n", ps2_device_to_string(device));
@@ -372,6 +407,7 @@ static uint64_t ps2_device_init(ps2_device_t device, irq_virt_t irq)
     }
     else
     {
+        LOG_INFO("found PS/2 mouse '%s' on IRQ %u\n", name, irq);
         if (ps2_mouse_init(info) == ERR)
         {
             LOG_ERR("ps2 %s device mouse initialization failed\n", ps2_device_to_string(device));
@@ -385,6 +421,7 @@ static uint64_t ps2_device_init(ps2_device_t device, irq_virt_t irq)
         return ERR;
     }
 
+    info->initialized = true;
     return 0;
 }
 
@@ -519,12 +556,12 @@ static void ps2_controller_deinit(void)
     {
         if (devices[i].active && devices[i].private != NULL)
         {
-            if (devices[i].type == PS2_DEV_TYPE_NONE)
+            if (!devices[i].initialized)
             {
                 continue;
             }
 
-            if (devices[i].type == PS2_DEV_TYPE_KEYBOARD)
+            if (devices[i].device == PS2_DEV_FIRST)
             {
                 ps2_kbd_deinit(&devices[i]);
             }
@@ -615,7 +652,7 @@ static uint64_t ps2_attach_device(const char* type, const char* name)
         return ERR;
     }
 
-    if (devices[targetDevice].type != PS2_DEV_TYPE_NONE)
+    if (devices[targetDevice].initialized)
     {
         LOG_ERR("ps2 device '%s' cannot be attached to %s port (port already in use by %s)\n", name,
             ps2_device_to_string(targetDevice), devices[targetDevice].name);
@@ -639,7 +676,7 @@ static uint64_t ps2_attach_device(const char* type, const char* name)
         }
     }
 
-    if (ps2_device_init(targetDevice, irq) == ERR)
+    if (ps2_device_init(targetDevice, irq, type) == ERR)
     {
         LOG_ERR("ps2 failed to initialize device '%s' on %s port\n", name, ps2_device_to_string(targetDevice));
         return ERR;
