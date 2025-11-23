@@ -22,16 +22,17 @@ static rwlock_t sourcesLock = RWLOCK_CREATE;
 
 void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx)
 {
-    atomic_init(&ctx->deadline, CLOCKS_NEVER);
+    ctx->deadline = CLOCKS_NEVER;
+    lock_init(&ctx->lock);
 }
 
 void timer_ack_eoi(interrupt_frame_t* frame, cpu_t* self)
 {
     (void)frame; // Unused
 
-    atomic_store(&self->timer.deadline, CLOCKS_NEVER);
+    LOCK_SCOPE(&self->timer.lock);
+    RWLOCK_READ_SCOPE(&sourcesLock);
 
-    rwlock_read_acquire(&sourcesLock);
     if (bestSource != NULL)
     {
         if (bestSource->ack != NULL)
@@ -43,14 +44,13 @@ void timer_ack_eoi(interrupt_frame_t* frame, cpu_t* self)
             bestSource->eoi(self);
         }
     }
-    rwlock_read_release(&sourcesLock);
 
-    LOG_DEBUG("timer ack on cpu id=%u\n", self->id);
+    self->timer.deadline = CLOCKS_NEVER;
 }
 
 uint64_t timer_source_register(const timer_source_t* source)
 {
-    if (source == NULL || source->set == NULL || source->precision == 0)
+    if (source == NULL || source->set == NULL || source->precision == 0 || source->name == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -118,7 +118,7 @@ void timer_source_unregister(const timer_source_t* source)
         }
 
         rwlock_write_release(&sourcesLock);
-        LOG_INFO("unregistered timer source '%s'%s\n", source->name);
+        LOG_INFO("unregistered timer source '%s'\n", source->name);
         return;
     }
 
@@ -140,20 +140,23 @@ void timer_set(cpu_t* cpu, clock_t uptime, clock_t deadline)
         return;
     }
 
-    clock_t currentDeadline;
-    do
-    {
-        currentDeadline = atomic_load(&cpu->timer.deadline);
-        if (deadline >= currentDeadline)
-        {
-            return;
-        }
-    } while (!atomic_compare_exchange_weak(&cpu->timer.deadline, &currentDeadline, deadline));
-
+    LOCK_SCOPE(&cpu->timer.lock);
     RWLOCK_READ_SCOPE(&sourcesLock);
+
+    if (cpu->timer.deadline < deadline)
+    {
+        return;
+    }
+    cpu->timer.deadline = deadline;
 
     if (bestSource != NULL)
     {
-        bestSource->set(VECTOR_TIMER, uptime, deadline > uptime ? deadline - uptime : 0);
+        if (deadline <= uptime)
+        {
+            bestSource->set(VECTOR_TIMER, uptime, 0);
+            return;
+        }
+
+        bestSource->set(VECTOR_TIMER, uptime, deadline - uptime);
     }
 }

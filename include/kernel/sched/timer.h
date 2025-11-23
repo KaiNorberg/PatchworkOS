@@ -44,7 +44,8 @@ typedef struct
      * The next time the owner cpus apic timer will fire, specified in nanoseconds since boot, used in
      * `timer_set()`.
      */
-    _Atomic(clock_t) deadline;
+    clock_t deadline;
+    lock_t lock;
 } timer_cpu_ctx_t;
 
 /**

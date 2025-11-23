@@ -83,7 +83,6 @@ void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self)
         clock_t uptime = sys_time_uptime();
         if (thread->wait.deadline > uptime)
         {
-            LOG_DEBUG("next wait timeout at %llu on cpu id=%u and pid=%u\n", thread->wait.deadline, self->id, thread->process->id);
             timer_set(self, uptime, thread->wait.deadline);
             return;
         }

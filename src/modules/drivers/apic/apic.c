@@ -397,7 +397,6 @@ static uint64_t apic_timer_ticks_per_ns(void)
 
     uint64_t ticksPerNs = (ticks << APIC_TIMER_TICKS_FIXED_POINT_OFFSET) / 10000000ULL;
 
-    LOG_DEBUG("apic timer calibration ticks=%llu ticks_per_ns=%llu\n", ticks, ticksPerNs);
     interrupt_enable();
     return ticksPerNs;
 }
@@ -409,12 +408,6 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
 {
     (void)uptime;
 
-    if (timeout == CLOCKS_NEVER)
-    {
-        lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
-        return;
-    }
-
     lapic_t* lapic = &lapics[cpu_get_id_unsafe()];
     if (lapic->ticksPerNs == 0)
     {
@@ -422,13 +415,22 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
     }
 
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
+    lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, 0);
+    
+    if (timeout == CLOCKS_NEVER)
+    {
+        return;
+    }
 
     uint32_t ticks = (timeout * lapic->ticksPerNs) >> APIC_TIMER_TICKS_FIXED_POINT_OFFSET;
+    if (ticks == 0)
+    {
+        ticks = 1;
+    }
+
     lapic_write(LAPIC_REG_TIMER_DIVIDER, APIC_TIMER_DIV_DEFAULT);
     lapic_write(LAPIC_REG_LVT_TIMER, ((uint32_t)virt) | APIC_TIMER_ONE_SHOT);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, ticks);
-
-    LOG_DEBUG("apic timer set timeout=%llu ticks=%u\n", timeout, ticks);
 }
 
 static void apic_timer_eoi(cpu_t* cpu)
@@ -436,8 +438,6 @@ static void apic_timer_eoi(cpu_t* cpu)
     (void)cpu;
 
     lapic_write(LAPIC_REG_EOI, 0);
-
-    LOG_DEBUG("apic timer eoi\n");
 }
 
 /**
