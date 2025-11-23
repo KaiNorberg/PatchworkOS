@@ -148,13 +148,6 @@ void sched_thread_ctx_init(sched_thread_ctx_t* ctx);
 void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* self);
 
 /**
- * @brief Initialize the global state of the scheduler.
- *
- * Most scheduler initialization is per-CPU and done in `sched_cpu_ctx_init()`.
- */
-void sched_init(void);
-
-/**
  * @brief The idle loop for a CPU.
  *
  * The `sched_idle_loop()` function is the main loop where idle threads execute. The boot thread will eventually end up
@@ -276,26 +269,13 @@ void sched_push(thread_t* thread, cpu_t* target);
 void sched_push_new_thread(thread_t* thread, thread_t* parent);
 
 /**
- * @brief Scheduling flags.
- * @enum schedule_flags_t
- *
- * Flags that modify the behavior of the `sched_invoke()` function.
- */
-typedef enum
-{
-    SCHED_NORMAL = 0,   ///< No special flags.
-    SCHED_DIE = 1 << 0, ///< Kill and free the currently running thread.
-} schedule_flags_t;
-
-/**
  * @brief The main scheduling function.
  *
  * Must be called in an interrupt context.
  *
  * @param frame The current interrupt frame.
  * @param self The currently running cpu.
- * @param flags Scheduling flags.
  */
-void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags);
+void sched_do(interrupt_frame_t* frame, cpu_t* self);
 
 /** @} */

@@ -54,8 +54,9 @@ void init_early(const boot_info_t* bootInfo)
 
     _std_init();
 
-    sched_init();
+    ipi_init();
     wait_init();
+    timer_init();
 
     module_init_fake_kernel_module(&bootInfo->kernel);
 
@@ -75,7 +76,6 @@ void init_early(const boot_info_t* bootInfo)
     bootThread->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
     atomic_store(&bootThread->state, THREAD_RUNNING);
     bootThread->sched.deadline = CLOCKS_NEVER;
-
     cpu_get_unsafe()->sched.runThread = bootThread;
 
     // This will trigger a page fault. But that's intended as we use page faults to dynamically grow the

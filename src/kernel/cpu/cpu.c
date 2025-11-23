@@ -4,6 +4,7 @@
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/idt.h>
 #include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/ipi.h>
 #include <kernel/cpu/simd.h>
 #include <kernel/cpu/syscalls.h>
 #include <kernel/cpu/tss.h>
@@ -54,6 +55,15 @@ void cpu_init_early(cpu_t* cpu)
     }
     *(uint64_t*)cpu->doubleFaultStack.bottom = CPU_STACK_CANARY;
     tss_ist_load(&cpu->tss, TSS_IST_DOUBLE_FAULT, &cpu->doubleFaultStack);
+
+    if (stack_pointer_init_buffer(&cpu->nmiStack, cpu->nmiStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) == ERR)
+    {
+        stack_pointer_deinit_buffer(&cpu->exceptionStack);
+        stack_pointer_deinit_buffer(&cpu->doubleFaultStack);
+        panic(NULL, "Failed to init NMI stack for cpu %u\n", cpu->id);
+    }
+    *(uint64_t*)cpu->nmiStack.bottom = CPU_STACK_CANARY;
+    tss_ist_load(&cpu->tss, TSS_IST_NMI, &cpu->nmiStack);
 
     if (stack_pointer_init_buffer(&cpu->interruptStack, cpu->interruptStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) == ERR)
     {
@@ -190,13 +200,17 @@ void cpu_stacks_overflow_check(cpu_t* cpu)
     {
         panic(NULL, "CPU%u double fault stack overflow detected", cpu->id);
     }
+    if (*(uint64_t*)cpu->nmiStack.bottom != CPU_STACK_CANARY)
+    {
+        panic(NULL, "CPU%u NMI stack overflow detected", cpu->id);
+    }
     if (*(uint64_t*)cpu->interruptStack.bottom != CPU_STACK_CANARY)
     {
         panic(NULL, "CPU%u interrupt stack overflow detected", cpu->id);
     }
 }
 
-static void cpu_halt_ipi_handler(irq_func_data_t* data)
+static void cpu_halt_ipi_handler(ipi_func_data_t* data)
 {
     (void)data;
 

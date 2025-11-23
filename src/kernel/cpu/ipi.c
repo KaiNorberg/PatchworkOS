@@ -20,9 +20,20 @@ void ipi_cpu_ctx_init(ipi_cpu_ctx_t* ctx)
     lock_init(&ctx->lock);
 }
 
-static void ipi_handler_func(irq_func_data_t* data)
+static void ipi_acknowledge(irq_t* irq)
 {
-    ipi_cpu_ctx_t* ctx = &data->self->ipi;
+    (void)irq;
+
+    cpu_t* cpu = cpu_get_unsafe();
+    ipi_cpu_ctx_t* ctx = &cpu->ipi;
+
+    rwlock_read_acquire(&chipLock);
+    if (registeredChip != NULL && registeredChip->ack != NULL)
+    {
+        registeredChip->ack(irq->cpu);
+    }
+    rwlock_read_release(&chipLock);
+
     while (true)
     {
         LOCK_SCOPE(&ctx->lock);
@@ -35,18 +46,40 @@ static void ipi_handler_func(irq_func_data_t* data)
         ipi_t ipi = ctx->queue[ctx->readIndex];
         ctx->readIndex = (ctx->readIndex + 1) % IPI_QUEUE_SIZE;
 
-        ipi_func_data_t ipiData = *data;
-        ipiData.private = ipi.private;
+        ipi_func_data_t ipiData = {
+            .self = cpu,
+            .private = ipi.private,
+        };
         ipi.func(&ipiData);
     }
 }
 
+static void ipi_eoi(irq_t* irq)
+{
+    (void)irq;
+
+    cpu_t* cpu = cpu_get_unsafe();
+    rwlock_read_acquire(&chipLock);
+    if (registeredChip != NULL && registeredChip->eoi != NULL)
+    {
+        registeredChip->eoi(cpu);
+    }
+    rwlock_read_release(&chipLock);
+}
+
+static irq_chip_t ipiIrqChip = {
+    .name = "IPI IRQ Chip",
+    .enable = NULL,
+    .disable = NULL,
+    .ack = ipi_acknowledge,
+    .eoi = ipi_eoi,
+};
+
 void ipi_init(void)
 {
-
-    if (irq_handler_register(IRQ_VIRT_IPI, ipi_handler_func, NULL) == ERR)
+    if (irq_chip_register(&ipiIrqChip, VECTOR_IPI, VECTOR_IPI + 1, NULL) == ERR)
     {
-        panic(NULL, "failed to register IPI IRQ handler");
+        panic(NULL, "Failed to register IPI IRQ chip");
     }
 }
 
@@ -103,7 +136,7 @@ static uint64_t ipi_push(cpu_t* cpu, ipi_func_t func, void* private)
         return ERR;
     }
 
-    if (registeredChip->invoke == NULL)
+    if (registeredChip->interrupt == NULL)
     {
         errno = ENOSYS;
         return ERR;
@@ -150,7 +183,7 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* private)
             return ERR;
         }
 
-        registeredChip->invoke(cpu, IRQ_VIRT_IPI);
+        registeredChip->interrupt(cpu, VECTOR_IPI);
     }
     break;
     case IPI_BROADCAST:
@@ -163,7 +196,7 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* private)
                 return ERR;
             }
 
-            registeredChip->invoke(cpu, IRQ_VIRT_IPI);
+            registeredChip->interrupt(cpu, VECTOR_IPI);
         }
     }
     break;
@@ -175,21 +208,20 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* private)
             return ERR;
         }
 
-        cpu_t* sender = cpu_get_unsafe();
-        cpu_t* cpu;
-        CPU_FOR_EACH(cpu)
+        cpu_t* iter;
+        CPU_FOR_EACH(iter)
         {
-            if (cpu == sender)
+            if (iter == cpu)
             {
                 continue;
             }
 
-            if (ipi_push(cpu, func, private) == ERR)
+            if (ipi_push(iter, func, private) == ERR)
             {
                 return ERR;
             }
 
-            registeredChip->invoke(cpu, IRQ_VIRT_IPI);
+            registeredChip->interrupt(iter, VECTOR_IPI);
         }
     }
     break;
@@ -201,19 +233,61 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* private)
     return 0;
 }
 
-void ipi_invoke(cpu_t* cpu, irq_virt_t virt)
+void ipi_wake_up(cpu_t* cpu, ipi_flags_t flags)
 {
-    if (cpu == NULL)
-    {
-        return;
-    }
-
     RWLOCK_READ_SCOPE(&chipLock);
 
-    if (registeredChip == NULL || registeredChip->invoke == NULL)
+    if (registeredChip == NULL || registeredChip->interrupt == NULL)
     {
         return;
     }
 
-    registeredChip->invoke(cpu, virt);
+    switch (flags & IPI_OTHERS)
+    {
+    case IPI_SINGLE:
+    {
+        if (cpu == NULL)
+        {
+            return;
+        }
+
+        registeredChip->interrupt(cpu, VECTOR_IPI);
+    }
+    break;
+    case IPI_BROADCAST:
+    {
+        cpu_t* cpu;
+        CPU_FOR_EACH(cpu)
+        {
+            registeredChip->interrupt(cpu, VECTOR_IPI);
+        }
+    }
+    break;
+    case IPI_OTHERS:
+    {
+        if (cpu == NULL)
+        {
+            return;
+        }
+
+        cpu_t* iter;
+        CPU_FOR_EACH(iter)
+        {
+            if (iter == cpu)
+            {
+                continue;
+            }
+
+            registeredChip->interrupt(iter, VECTOR_IPI);
+        }
+    }
+    break;
+    default:
+        return;
+    }
+}
+
+void ipi_invoke(void)
+{
+    IRQ_INVOKE(VECTOR_IPI);
 }

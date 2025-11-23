@@ -10,7 +10,7 @@
  * The RTC driver provides functions to read the current time from the CMOS RTC.
  *
  * TODO: Move to module.
- * 
+ *
  * @see [OSDev CMOS](https://wiki.osdev.org/CMOS)
  *
  * @{

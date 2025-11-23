@@ -45,9 +45,14 @@ typedef enum
 #define TSS_IST_DOUBLE_FAULT TSS_IST2
 
 /**
+ * @brief The IST index to use for non-maskable interrupts.
+ */
+#define TSS_IST_NMI TSS_IST3
+
+/**
  * @brief The IST index to use for other interrupts.
  */
-#define TSS_IST_INTERRUPT TSS_IST3
+#define TSS_IST_INTERRUPT TSS_IST4
 
 /**
  * @brief Task State Segment structure.
@@ -55,7 +60,7 @@ typedef enum
  *
  * The `rsp*` members store the stack to use when switching to a higher privilege level, we dont use these.
  *
- *  Instead we have a total of 4 stacks used while in kernel space, 3 per-cpu stacks and 1 per-thread stack. Of course
+ *  Instead we have a total of 4 stacks used while in kernel space, 34 per-cpu stacks and 1 per-thread stack. Of course
  * there is also the user stack used while in user space. But that is not relevant to the TSS and instead handled by the
  * system call code.
  *
@@ -64,11 +69,12 @@ typedef enum
  * The per-cpu stacks are:
  * - Exception stack, used while handling exceptions, specified in ist[0].
  * - Double fault stack, used while handling double faults, specified in ist[1].
- * - Interrupt stack, used while handling all other interrupts, specified in ist[2].
+ * - Non-maskable interrupt stack, used while handling NMIs, specified in ist[2].
+ * - Interrupt stack, used while handling all other interrupts, specified in ist[3].
  *
- * We need three stacks as its possible for an exception to occur during an interrupt, and its possible for a double
- * fault to occur during an exception, therefore we must ensure that in the worst case where each of these occur
- * recursively we have a separate stack for each level.
+ * We need four stacks as its possible for an exception to occur during an interrupt, for a double
+ * fault to occur during an exception, and of course Non-maskable interrupts can occur at any time, therefore we must
+ * ensure that in the worst case where each of these occur recursively we have a separate stack for each level.
  *
  * ## The per-thread stack
  *

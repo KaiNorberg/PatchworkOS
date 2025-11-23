@@ -33,6 +33,8 @@ syscall_entry:
     push r10
     push r11
 
+    sti
+
     mov rcx, r10 ; Fourth argument
     push rax ; Seventh argument (syscall number)
     call syscall_handler

@@ -2,6 +2,7 @@
 #include <kernel/fs/file.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
 #include <kernel/sched/sys_time.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>

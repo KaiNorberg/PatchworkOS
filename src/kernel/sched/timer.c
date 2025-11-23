@@ -25,6 +25,62 @@ void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx)
     atomic_init(&ctx->deadline, CLOCKS_NEVER);
 }
 
+static void timer_acknowledge(irq_t* irq)
+{
+    (void)irq;
+
+    cpu_t* cpu = cpu_get_unsafe();
+    atomic_store(&cpu->timer.deadline, CLOCKS_NEVER);
+
+    rwlock_read_acquire(&sourcesLock);
+    if (bestSource != NULL && bestSource->ack != NULL)
+    {
+        bestSource->ack(cpu);
+    }
+    rwlock_read_release(&sourcesLock);
+
+    LOG_DEBUG("timer ack on cpu id=%u\n", cpu->id);
+}
+
+static void timer_eoi(irq_t* irq)
+{
+    (void)irq;
+
+    cpu_t* cpu = cpu_get_unsafe();
+
+    rwlock_read_acquire(&sourcesLock);
+    if (bestSource != NULL && bestSource->eoi != NULL)
+    {
+        bestSource->eoi(cpu);
+    }
+    rwlock_read_release(&sourcesLock);
+
+    LOG_DEBUG("timer eoi on cpu id=%u\n", cpu->id);
+}
+
+static irq_chip_t timerIrqChip = {
+    .name = "Timer IRQ Chip",
+    .enable = NULL,
+    .disable = NULL,
+    .ack = timer_acknowledge,
+    .eoi = timer_eoi,
+};
+
+void timer_init(void)
+{
+    if (irq_chip_register(&timerIrqChip, VECTOR_TIMER, VECTOR_TIMER + 1, NULL) == ERR)
+    {
+        panic(NULL, "Failed to register timer IRQ chip");
+    }
+}
+
+static void timer_irq_handler(irq_func_data_t* data)
+{
+    cpu_t* self = data->self;
+    atomic_store(&self->timer.deadline, CLOCKS_NEVER);
+    LOG_DEBUG("timer IRQ fired on cpu id=%u\n", self->id);
+}
+
 uint64_t timer_source_register(const timer_source_t* source)
 {
     if (source == NULL || source->set == NULL || source->precision == 0)
@@ -110,16 +166,15 @@ uint64_t timer_source_amount(void)
     return amount;
 }
 
-void timer_set(cpu_t* cpu, clock_t uptime, clock_t timeout)
+void timer_set(cpu_t* cpu, clock_t uptime, clock_t deadline)
 {
-    if (cpu == NULL || timeout == CLOCKS_NEVER)
+    if (cpu == NULL || deadline == CLOCKS_NEVER)
     {
         return;
     }
 
     RWLOCK_READ_SCOPE(&sourcesLock);
 
-    clock_t deadline = uptime + timeout;
     clock_t currentDeadline;
     do
     {
@@ -132,6 +187,6 @@ void timer_set(cpu_t* cpu, clock_t uptime, clock_t timeout)
 
     if (bestSource != NULL)
     {
-        bestSource->set(IRQ_VIRT_TIMER, uptime, timeout);
+        bestSource->set(VECTOR_TIMER, uptime, deadline > uptime ? deadline - uptime : 0);
     }
 }

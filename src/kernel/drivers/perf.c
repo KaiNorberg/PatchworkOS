@@ -1,3 +1,4 @@
+#include <kernel/cpu/interrupt.h>
 #include <kernel/drivers/perf.h>
 
 #include <kernel/cpu/cpu.h>
@@ -204,6 +205,8 @@ void perf_interrupt_end(cpu_t* self)
 
 void perf_syscall_begin(void)
 {
+    interrupt_disable();
+
     thread_t* thread = sched_thread_unsafe();
     perf_thread_ctx_t* perf = &thread->perf;
 
@@ -220,10 +223,14 @@ void perf_syscall_begin(void)
     }
 
     perf->syscallBegin = uptime;
+
+    interrupt_enable();
 }
 
 void perf_syscall_end(void)
 {
+    interrupt_disable();
+
     thread_t* thread = sched_thread_unsafe();
     perf_thread_ctx_t* perf = &thread->perf;
     process_t* process = thread->process;
@@ -232,4 +239,6 @@ void perf_syscall_end(void)
     clock_t delta = perf->syscallEnd - perf->syscallBegin;
 
     atomic_fetch_add(&process->perf.kernelClocks, delta);
+
+    interrupt_enable();
 }

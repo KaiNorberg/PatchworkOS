@@ -18,32 +18,20 @@ typedef struct irq irq_t;
  * @defgroup kernel_cpu_irq IRQ
  * @ingroup kernel_cpu
  *
- * For interrupt handling we use a system of IRQs, where the hardware trigger a physical IRQ (`irq_phys_t`) which is
- * then mapped to a virtual IRQ (`irq_virt_t`) using a `irq_chip_t`.
+ * The IRQ system is responsible for managing external interrupts in the system (as in vectors `VECTOR_EXTERNAL_START`
+ * to `VECTOR_EXTERNAL_END`), where the hardware trigger a physical IRQ (`irq_phys_t`) which is then mapped to a virtual
+ * IRQ (`irq_virt_t`) using a `irq_chip_t`.
  *
  * ## Physical vs Virtual IRQs
  *
- * The IRQ chips are implemented in a driver and they are responsible for the actual physical to virtual mapping.
+ * The IRQ chips are usually implemented in a driver and they are responsible for the actual physical to virtual
+ * mapping.
  *
  * Note that physical to virtual mapping might not be 1:1 and that there could be multiple `irq_chip_t`s in the system.
  *
  * So, for example, say we receive a physical IRQ 1, which is usually the ps2 keyboard interrupt. Lets also say we have
  * a single IRQ chip, the IOAPIC, which is configured to map physical IRQ 1 to virtual IRQ 0x21 on CPU 0. We would then
  * see all handlers registered for virtual IRQ 0x21 being called on CPU 0.
- *
- * ## External and Internal IRQs
- *
- * There are some exceptions to the physical to virtual mappings, we call these "Internal IRQs". These are mainly
- * exceptions and IPIs used internally by the kernel. As in, page faults, general protection faults, timer interrupts,
- * etc. These "IRQs" dont have mappings and are instead fixed. See `irq_virt_t` for the full list.
- *
- * Note that while we give `irq_virt_t` numbers for exceptions they are not handled by the IRQ system as they are really
- * not IRQs and, since exceptions usually means something when wrong, we want to avoid using as many parts of the kernel
- * as reasonable while handling them.
- *
- * In the CPU exceptions are hardwired to occur when certain conditions are meet, unlike IPIs or external IRQs which are
- * triggered by specialized hardware (`irq_chip_t` or `ipi_chip_t`). Exceptions are handled directly in
- * `interrupt_handler()`.
  *
  * TODO: Currently, this system is still simplistic. For example, it cant handle trees of IRQ chips, or multiple chips
  * handling the same physical IRQs. This should be fixed in the future as needed.
@@ -58,47 +46,10 @@ typedef struct irq irq_t;
 typedef uint32_t irq_phys_t;
 
 /**
- * @brief Central listing of all virtual IRQ numbers.
- * @enum irq_virt_t
- *
- * Lists all IRQs, even ones not handled by the IRQ system.
+ * @brief Virtual IRQ numbers.
+ * @typedef irq_virt_t
  */
-typedef enum
-{
-    IRQ_VIRT_EXCEPTION_START = 0x0,
-    IRQ_VIRT_DIVIDE_ERROR = 0x0,
-    IRQ_VIRT_DEBUG = 0x1,
-    IRQ_VIRT_BREAKPOINT = 0x3,
-    IRQ_VIRT_OVERFLOW = 0x4,
-    IRQ_VIRT_BOUND_RANGE_EXCEEDED = 0x5,
-    IRQ_VIRT_INVALID_OPCODE = 0x6,
-    IRQ_VIRT_DEVICE_NOT_AVAILABLE = 0x7,
-    IRQ_VIRT_DOUBLE_FAULT = 0x8,
-    IRQ_VIRT_COPROCESSOR_SEGMENT_OVERRUN = 0x9,
-    IRQ_VIRT_INVALID_TSS = 0xA,
-    IRQ_VIRT_SEGMENT_NOT_PRESENT = 0xB,
-    IRQ_VIRT_STACK_SEGMENT_FAULT = 0xC,
-    IRQ_VIRT_GENERAL_PROTECTION_FAULT = 0xD,
-    IRQ_VIRT_PAGE_FAULT = 0xE,
-    IRQ_VIRT_RESERVED = 0xF,
-    IRQ_VIRT_X87_FLOATING_POINT_EXCEPTION = 0x10,
-    IRQ_VIRT_ALIGNMENT_CHECK = 0x11,
-    IRQ_VIRT_MACHINE_CHECK = 0x12,
-    IRQ_VIRT_SIMD_FLOATING_POINT_EXCEPTION = 0x13,
-    IRQ_VIRT_VIRTUALIZATION_EXCEPTION = 0x14,
-    IRQ_VIRT_CONTROL_PROTECTION_EXCEPTION = 0x15,
-    IRQ_VIRT_EXCEPTION_END = 0x20,
-
-    IRQ_VIRT_IPI = 0x20,      ///< See @ref kernel_cpu_ipi for more information.
-    IRQ_VIRT_DIE = 0x21,      ///< Used by the scheduler to kill the current thread.
-    IRQ_VIRT_SCHEDULE = 0x22, ///< Used by the scheduler to schedule a new thread.
-    IRQ_VIRT_TIMER = 0x23,    ///< Per-CPU timer interrupt.
-
-    IRQ_VIRT_EXTERNAL_START = 0x30, ///< Start of external interrupts (mapped by IRQ chips).
-    IRQ_VIRT_EXTERNAL_END = 0xFF,
-
-    IRQ_VIRT_TOTAL_AMOUNT = 0x100,
-} irq_virt_t;
+typedef uint8_t irq_virt_t;
 
 /**
  * @brief Data passed to IRQ functions.
@@ -155,7 +106,7 @@ typedef struct irq
     irq_phys_t phys;
     irq_virt_t virt;
     irq_flags_t flags;
-    cpu_t* cpu;
+    cpu_t* cpu; ///< The CPU with affinity for this IRQ, may be `NULL`.
     irq_domain_t* domain;
     uint64_t refCount;
     list_t handlers;
@@ -261,6 +212,7 @@ void irq_virt_free(irq_virt_t virt);
  * @param cpu The target CPU for the IRQ.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
+ * - `ENOSYS`: The registered IRQ chip does not have `enable`/`disable` functions.
  * - Other  errors as returned by the IRQ chip's `enable` functions.
  */
 uint64_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu);
@@ -308,6 +260,7 @@ uint64_t irq_chip_amount(void);
  * @param private The private data to pass to the handler function.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
+ * - `EEXIST`: The given handler is already registered for the given virtual IRQ.
  * - `ENOMEM`: Memory allocation failed.
  * - `ENOENT`: The given virtual IRQ is not allocated.
  */
@@ -316,9 +269,9 @@ uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* private);
 /**
  * @brief Unregister an IRQ handler.
  *
- * @param handler The IRQ handler to unregister, or `NULL` for no-op.
+ * @param func The handler function to unregister, or `NULL` for no-op.
  * @param virt The virtual IRQ to unregister the handler from.
  */
-void irq_handler_unregister(irq_handler_t* handler, irq_virt_t virt);
+void irq_handler_unregister(irq_func_t func, irq_virt_t virt);
 
 /** @} */

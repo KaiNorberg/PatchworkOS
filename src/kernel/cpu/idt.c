@@ -28,18 +28,23 @@ void idt_init(void)
 {
     idt_attributes_t attr = IDT_ATTR_PRESENT | IDT_ATTR_RING0 | IDT_ATTR_INTERRUPT;
 
-    for (irq_virt_t vector = 0; vector < IRQ_VIRT_EXCEPTION_END; vector++)
+    for (irq_virt_t vector = 0; vector < VECTOR_EXCEPTION_END; vector++)
     {
-        if (vector == IRQ_VIRT_DOUBLE_FAULT)
+        if (vector == VECTOR_DOUBLE_FAULT)
         {
             idt.entries[vector] = idt_gate(vectorTable[vector], attr, TSS_IST_DOUBLE_FAULT);
+            continue;
+        }
+        if (vector == VECTOR_NMI)
+        {
+            idt.entries[vector] = idt_gate(vectorTable[vector], attr, TSS_IST_NMI);
             continue;
         }
 
         idt.entries[vector] = idt_gate(vectorTable[vector], attr, TSS_IST_EXCEPTION);
     }
 
-    for (irq_virt_t vector = IRQ_VIRT_EXCEPTION_END; vector < IRQ_VIRT_TOTAL_AMOUNT; vector++)
+    for (irq_virt_t vector = VECTOR_EXCEPTION_END; vector < VECTOR_TOTAL_AMOUNT; vector++)
     {
         idt.entries[vector] = idt_gate(vectorTable[vector], attr, TSS_IST_INTERRUPT);
     }

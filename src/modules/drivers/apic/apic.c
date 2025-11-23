@@ -324,7 +324,7 @@ static uintptr_t lapicBase = 0;
 /**
  * @brief All cpu local data, indexed by cpu id.
  */
-static lapic_t lapics[CPU_MAX] = {0};
+static lapic_t lapics[CPU_MAX] = {[0 ... CPU_MAX - 1] = {.lapicId = -1, .ticksPerNs = 0}};
 
 /**
  * @brief Read from a local apic register.
@@ -360,7 +360,7 @@ static void lapic_init(cpu_t* cpu)
     uint64_t lapicMsr = msr_read(MSR_LAPIC);
     msr_write(MSR_LAPIC, (lapicMsr | LAPIC_MSR_ENABLE) & ~LAPIC_MSR_BSP);
 
-    lapic_write(LAPIC_REG_SPURIOUS, lapic_read(LAPIC_REG_SPURIOUS) | LAPIC_SPURIOUS_ENABLE);
+    lapic_write(LAPIC_REG_SPURIOUS, VECTOR_SPURIOUS | LAPIC_SPURIOUS_ENABLE);
 
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
     lapic_write(LAPIC_REG_LVT_ERROR, LAPIC_LVT_MASKED);
@@ -423,10 +423,21 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
 
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
 
-    uint32_t ticks = (uint32_t)(timeout * lapic->ticksPerNs >> APIC_TIMER_TICKS_FIXED_POINT_OFFSET);
+    uint32_t ticks = (timeout * lapic->ticksPerNs) >> APIC_TIMER_TICKS_FIXED_POINT_OFFSET;
     lapic_write(LAPIC_REG_TIMER_DIVIDER, APIC_TIMER_DIV_DEFAULT);
     lapic_write(LAPIC_REG_LVT_TIMER, ((uint32_t)virt) | APIC_TIMER_ONE_SHOT);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, ticks);
+
+    LOG_DEBUG("apic timer set timeout=%llu ticks=%u\n", timeout, ticks);
+}
+
+static void apic_timer_eoi(cpu_t* cpu)
+{
+    (void)cpu;
+
+    lapic_write(LAPIC_REG_EOI, 0);
+
+    LOG_DEBUG("apic timer eoi\n");
 }
 
 /**
@@ -435,9 +446,13 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
  * According to https://telematics.tm.kit.edu/publications/Files/61/walter_ibm_linux_challenge.pdf, the APIC timer has a
  * precision of 1 microsecond.
  */
-static timer_source_t apicTimer = {.name = "APIC Timer",
+static timer_source_t apicTimer = {
+    .name = "APIC Timer",
     .precision = 1000, // 1 microsecond
-    .set = apic_timer_set};
+    .set = apic_timer_set,
+    .ack = NULL,
+    .eoi = apic_timer_eoi,
+};
 
 /**
  * @brief Read a value from an IO APIC register.
@@ -552,11 +567,13 @@ static void ioapic_eoi(irq_t* irq)
 /**
  * @brief IO APIC IRQ Chip.
  */
-static irq_chip_t ioApicChip = {.name = "IO APIC",
+static irq_chip_t ioApicChip = {
+    .name = "IO APIC",
     .enable = ioapic_enable,
     .disable = ioapic_disable,
     .ack = NULL,
-    .eoi = ioapic_eoi};
+    .eoi = ioapic_eoi,
+};
 
 /**
  * @brief Initialize all IO APICs found in the MADT.
@@ -613,7 +630,7 @@ static uint64_t ioapic_all_init(void)
 /**
  * @brief Method to invoke an IPI using the local APIC.
  */
-static void lapic_invoke(cpu_t* cpu, irq_virt_t virt)
+static void lapic_interrupt(cpu_t* cpu, irq_virt_t virt)
 {
     lapic_id_t id = lapics[cpu->id].lapicId;
 
@@ -622,9 +639,23 @@ static void lapic_invoke(cpu_t* cpu, irq_virt_t virt)
 }
 
 /**
+ * @brief Method to EOI an IPI.
+ */
+static void lapic_eoi(cpu_t* cpu)
+{
+    (void)cpu;
+
+    lapic_write(LAPIC_REG_EOI, 0);
+}
+
+/**
  * @brief Local APIC IPI Chip.
  */
-static ipi_chip_t lapicIpiChip = {.name = "Local APIC IPI", .invoke = lapic_invoke};
+static ipi_chip_t lapicIpiChip = {
+    .name = "Local APIC IPI",
+    .interrupt = lapic_interrupt,
+    .eoi = lapic_eoi,
+};
 
 /**
  * @brief Initialize the APIC global variables and state.

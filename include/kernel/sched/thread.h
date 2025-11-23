@@ -33,6 +33,14 @@ typedef enum
     THREAD_PRE_BLOCK,  ///< Has started the process of blocking but has not yet been given to a owner cpu.
     THREAD_BLOCKED,    ///< Is blocking and waiting in one or multiple wait queues.
     THREAD_UNBLOCKING, ///< Has started unblocking, used to prevent the same thread being unblocked multiple times.
+    /**
+     * The thread is currently dying, it will be freed by the scheduler once its invoked.
+     *
+     * @warning This state is more fragile than the others. Since a thread could technically be killed at any time and
+     * we have several systems relying on the thread state as a form of synchronization, this state should only be set
+     * when the thread is running in an interrupt context.
+     */
+    THREAD_DYING,
 } thread_state_t;
 
 /**

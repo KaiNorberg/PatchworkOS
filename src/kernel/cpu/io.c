@@ -3,11 +3,11 @@
 
 #include <kernel/log/log.h>
 
-#include <sys/list.h>
-#include <sys/bitmap.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <errno.h>
+#include <sys/bitmap.h>
+#include <sys/list.h>
 
 static BITMAP_CREATE(ports, IO_PORT_MAX + 1);
 static lock_t lock = LOCK_CREATE;
@@ -33,9 +33,10 @@ uint64_t io_reserve(port_t* out, port_t minBase, port_t maxBase, uint64_t alignm
         errno = ENOSPC;
         return ERR;
     }
-    
+
     *out = (port_t)base;
-    LOG_INFO("reserve [0x%04lx - 0x%04lx] ports for '%s'\n", base, base + length - 1, owner == NULL ? "unknown" : owner);
+    LOG_INFO("reserve [0x%04lx - 0x%04lx] ports for '%s'\n", base, base + length - 1,
+        owner == NULL ? "unknown" : owner);
     return 0;
 }
 

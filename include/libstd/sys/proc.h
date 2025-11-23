@@ -35,7 +35,7 @@ extern "C"
  * The `priority_t` type is used to store the scheduling priority of a process, we also define three constants
  * `PRIORITY_MIN`, which represents the lowest priority a process can have, `PRIORITY_MAX` which defines the maximum
  * value of a process priority (not inclusive) and `PRIORITY_MAX_USER` which defines the maximum value that user space
- * is allowed to specify for a process (not inclusive). See the kernel `sched_invoke()` function for more info.
+ * is allowed to specify for a process (not inclusive). See the kernel `sched_do()` function for more info.
  *
  */
 typedef uint8_t priority_t;

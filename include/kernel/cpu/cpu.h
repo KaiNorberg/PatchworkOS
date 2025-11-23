@@ -136,9 +136,11 @@ typedef struct cpu
     ipi_cpu_ctx_t ipi;
     stack_pointer_t exceptionStack;
     stack_pointer_t doubleFaultStack;
+    stack_pointer_t nmiStack;
     stack_pointer_t interruptStack;
     uint8_t exceptionStackBuffer[CONFIG_INTERRUPT_STACK_PAGES * PAGE_SIZE] ALIGNED(PAGE_SIZE);
     uint8_t doubleFaultStackBuffer[CONFIG_INTERRUPT_STACK_PAGES * PAGE_SIZE] ALIGNED(PAGE_SIZE);
+    uint8_t nmiStackBuffer[CONFIG_INTERRUPT_STACK_PAGES * PAGE_SIZE] ALIGNED(PAGE_SIZE);
     uint8_t interruptStackBuffer[CONFIG_INTERRUPT_STACK_PAGES * PAGE_SIZE] ALIGNED(PAGE_SIZE);
 } cpu_t;
 
@@ -271,6 +273,8 @@ static inline void cpu_put(void)
  */
 static inline cpu_t* cpu_get_unsafe(void)
 {
+    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
+
     cpuid_t id = (cpuid_t)msr_read(MSR_CPU_ID);
     cpu_t* cpu = _cpus[id];
     assert(cpu != NULL && cpu->id == id);
@@ -286,6 +290,8 @@ static inline cpu_t* cpu_get_unsafe(void)
  */
 static inline cpuid_t cpu_get_id_unsafe(void)
 {
+    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
+
     return (cpuid_t)msr_read(MSR_CPU_ID);
 }
 

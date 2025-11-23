@@ -66,21 +66,21 @@ typedef struct
 
 /**
  * @brief Define and create a bitmap and its buffer.
- * 
+ *
  * @param name Name of the bitmap.
  * @param bits Length of the bitmap in bits.
  */
 #define BITMAP_CREATE(name, bits) \
     uint64_t name##Buffer[BITMAP_BITS_TO_QWORDS(bits)]; \
-    bitmap_t name = { .firstZeroIdx = 0, .length = (bits), .buffer = name##Buffer }
+    bitmap_t name = {.firstZeroIdx = 0, .length = (bits), .buffer = name##Buffer}
 
 /**
  * @brief Define a bitmap and its buffer.
  *
  * Will not initialize the bitmap, use `BITMAP_DEFINE_INIT` to initialize it.
- * 
+ *
  * Intended to be used for struct members.
- * 
+ *
  * @param name Name of the bitmap.
  * @param bits Length of the bitmap in bits.
  */

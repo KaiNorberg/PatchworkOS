@@ -159,7 +159,7 @@ static uint64_t acpi_ids_push_device(acpi_ids_t* ids, aml_object_t* device, cons
         return ERR;
     }
 
-    if (strcmp(deviceId.hid, "ACPI0010") == 0) // Ignore Processor Container Device 
+    if (strcmp(deviceId.hid, "ACPI0010") == 0) // Ignore Processor Container Device
     {
         return 0;
     }
@@ -512,4 +512,40 @@ void acpi_devices_init(void)
     }
 
     free(ids.array);
+}
+
+acpi_device_cfg_t* acpi_device_cfg_get(const char* name)
+{
+    if (name == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    MUTEX_SCOPE(aml_big_mutex_get());
+
+    aml_object_t* device = aml_namespace_find_by_path(NULL, NULL, name);
+    if (device == NULL)
+    {
+        LOG_ERR("could not find ACPI device '%s' in namespace for configuration retrieval\n", name);
+        errno = ENOENT;
+        return NULL;
+    }
+    DEREF_DEFER(device);
+
+    if (device->type != AML_DEVICE)
+    {
+        LOG_ERR("ACPI object '%s' is not a device, cannot retrieve configuration\n", name);
+        errno = ENOTTY;
+        return NULL;
+    }
+
+    if (device->device.cfg == NULL)
+    {
+        LOG_ERR("ACPI device '%s' is not configured\n", name);
+        errno = ENODEV;
+        return NULL;
+    }
+
+    return device->device.cfg;
 }

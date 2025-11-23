@@ -5,6 +5,7 @@
 /**
  * @brief I/O port operations and reservations
  * @defgroup kernel_cpu_io Port I/O
+ * @ingroup kernel_cpu
  *
  * The CPU can communicate with certain hardware through I/O ports, these ports are accessed using special opcodes.
  *

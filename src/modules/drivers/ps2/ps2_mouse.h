@@ -2,6 +2,8 @@
 
 #include "ps2.h"
 
+#include <kernel/drivers/abstractions/mouse.h>
+
 /**
  * @brief PS/2 Mouse Driver.
  * @defgroup module_drivers_ps2_mouse PS/2 Mouse Driver
@@ -13,7 +15,7 @@
  */
 
 /**
- * @brief PS/2 mouse packet flags
+ * @brief PS/2 mouse packet flags.
  */
 typedef enum
 {
@@ -28,7 +30,7 @@ typedef enum
 } ps2_mouse_packet_flags_t;
 
 /**
- * @brief PS/2 mouse packet structure
+ * @brief PS/2 mouse packet structure.
  *
  * The packet is received one member at a time from top to bottom.
  */
@@ -40,9 +42,9 @@ typedef struct ps2_mouse_packet
 } ps2_mouse_packet_t;
 
 /**
- * @brief PS/2 mouse packet index
+ * @brief PS/2 mouse packet index.
  *
- * Specifies which member is the next byte to be received.
+ * Since the packet is received one byte at a time, this enum specifies which member is the next byte to be received.
  */
 typedef enum
 {
@@ -52,22 +54,30 @@ typedef enum
 } ps2_mouse_packet_index_t;
 
 /**
- * @brief PS/2 mouse IRQ context
+ * @brief PS/2 mouse private data.
+ * @struct ps2_mouse_data_t
  *
- * Holds state for mouse interrupt handling.
  */
-typedef struct ps2_mouse_irq_context
+typedef struct
 {
     ps2_mouse_packet_index_t index; ///< Current packet byte index.
     ps2_mouse_packet_t packet;      ///< Current packet being assembled
-} ps2_mouse_irq_context_t;
+    mouse_t* mouse;
+} ps2_mouse_data_t;
 
 /**
- * @brief Initialize a PS/2 mouse device
+ * @brief Initialize a PS/2 mouse device.
  *
  * @param info Device information structure
- * @return 0 on success, ERR on failure
+ * @return On success, `0`. On failure, `ERR`.
  */
 uint64_t ps2_mouse_init(ps2_device_info_t* info);
+
+/**
+ * @brief Deinitialize a PS/2 mouse device.
+ *
+ * @param info Device information structure.
+ */
+void ps2_mouse_deinit(ps2_device_info_t* info);
 
 /** @} */

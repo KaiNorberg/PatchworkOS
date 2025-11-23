@@ -25,9 +25,9 @@ void pic_disable(void)
     io_out8(PIC2_COMMAND, ICW1_INIT | ICW1_ICW4);
     pic_wait();
 
-    io_out8(PIC1_DATA, IRQ_VIRT_EXTERNAL_START);
+    io_out8(PIC1_DATA, VECTOR_EXTERNAL_START);
     pic_wait();
-    io_out8(PIC2_DATA, IRQ_VIRT_EXTERNAL_START + 0x8);
+    io_out8(PIC2_DATA, VECTOR_EXTERNAL_START + 0x8);
     pic_wait();
 
     io_out8(PIC1_DATA, 4);

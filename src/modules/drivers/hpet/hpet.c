@@ -176,7 +176,8 @@ static void hpet_timer_handler(interrupt_frame_t* frame, cpu_t* self)
     uint64_t maxCounterValue = UINT32_MAX;
     uint64_t pessimisticOverflowInterval = (maxCounterValue * hpet_ns_per_tick()) / 2;
 
-    timer_set(self, pessimisticOverflowInterval, sys_time_uptime());
+    clock_t uptime = sys_time_uptime();
+    timer_set(self, uptime, uptime + pessimisticOverflowInterval);
 }
 
 /**
@@ -238,7 +239,9 @@ static uint64_t hpet_init(void)
         return ERR;
     }
 
-    hpet_timer_handler(NULL, cpu_get_unsafe());
+    cpu_t* cpu = cpu_get();
+    hpet_timer_handler(NULL, cpu);
+    cpu_put();
     return 0;
 }
 

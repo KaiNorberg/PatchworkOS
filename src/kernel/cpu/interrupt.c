@@ -106,7 +106,12 @@ static void exception_handler(interrupt_frame_t* frame)
 {
     switch (frame->vector)
     {
-    case IRQ_VIRT_PAGE_FAULT:
+    case VECTOR_DOUBLE_FAULT:
+        panic(frame, "kernel double fault");
+        break;
+    case VECTOR_NMI:
+        return; // TODO: Handle NMIs properly.
+    case VECTOR_PAGE_FAULT:
         if (page_fault_handler(frame) != ERR)
         {
             return;
@@ -133,7 +138,7 @@ static void exception_handler(interrupt_frame_t* frame)
 #endif
 
         process_kill(process, EFAULT);
-        sched_invoke(frame, self, SCHED_DIE);
+        sched_do(frame, self);
     }
     else
     {
@@ -143,17 +148,43 @@ static void exception_handler(interrupt_frame_t* frame)
 
 void interrupt_handler(interrupt_frame_t* frame)
 {
-    if (frame->vector < IRQ_VIRT_EXCEPTION_END) // Avoid extra stuff for exceptions
+    if (frame->vector < VECTOR_EXCEPTION_END) // Avoid extra stuff for exceptions
     {
         exception_handler(frame);
         return;
     }
 
     cpu_t* self = cpu_get_unsafe();
+    assert(self != NULL);
+
     perf_interrupt_begin(self);
 
-    irq_dispatch(frame, self);
-    cpu_stacks_overflow_check((cpu_t*)self);
+    if (frame->vector >= VECTOR_EXTERNAL_START && frame->vector < VECTOR_EXTERNAL_END)
+    {
+        irq_dispatch(frame, self);
+    }
+    else
+    {
+        switch (frame->vector)
+        {
+        case VECTOR_TIMER:
+            timer_dispatch(frame, self);
+            break;
+        case VECTOR_IPI:
+            ipi_dispatch(frame, self);
+            break;
+        case VECTOR_SPURIOUS:
+            LOG_DEBUG("spurious interrupt on cpu id=%u\n", self->id);
+            break;
+        default:
+            panic(NULL, "invalid internal interrupt vector 0x%x", frame->vector);
+        }
+    }
+
+    note_handle_pending(frame, self);
+    sched_do(frame, self);
+
+    cpu_stacks_overflow_check(self);
 
     perf_interrupt_end(self);
 

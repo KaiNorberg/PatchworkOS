@@ -431,4 +431,15 @@ uint64_t module_device_attach(const char* type, const char* name, module_load_fl
  */
 void module_device_detach(const char* name);
 
+/**
+ * @brief Check if a list of device types contains a specific device type.
+ *
+ * Useful as a helper when handling `MODULE_EVENT_DEVICE_ATTACH` events.
+ *
+ * @param deviceTypes The semicolon-separated list of device types.
+ * @param type The device type string.
+ * @return `true` if the device type is contained in the list, `false` otherwise.
+ */
+bool module_device_types_contains(const char* deviceTypes, const char* type);
+
 /** @} */

@@ -17,7 +17,7 @@ typedef struct cpu cpu_t;
  * @ingroup kernel_cpu
  *
  * Inter-Processor Interrupts are a way to remotely interrupt another CPU, this could be done with any interrupt vector,
- * but for the sake of simplicity we reserve a single interrupt vector `IRQ_VIRT_IPI` for IPIs which, when received,
+ * but for the sake of simplicity we reserve a single interrupt vector `VECTOR_IPI` for IPIs which, when received,
  * will cause the CPU to check its IPI queue for any pending IPIs to execute.
  *
  * The actual remote interrupt invocation of the IPI is handled by a "IPI chip", usually the local APIC, which is
@@ -36,14 +36,16 @@ typedef struct ipi_chip
 {
     const char* name;
     /**
-     * @brief Should invoke the given virtual IRQ on the target CPU.
+     * @brief Should interrupt the given CPU with the given virtual IRQ.
      *
      * Should panic on failure.
      *
      * @param cpu The target CPU.
-     * @param virt The virtual IRQ to invoke.
+     * @param virt The virtual IRQ to interrupt the CPU with.
      */
-    void (*invoke)(cpu_t* cpu, irq_virt_t virt);
+    void (*interrupt)(cpu_t* cpu, irq_virt_t virt);
+    void (*ack)(cpu_t* cpu);
+    void (*eoi)(cpu_t* cpu);
 } ipi_chip_t;
 
 /**
@@ -52,7 +54,11 @@ typedef struct ipi_chip
  *
  * Data passed to an IPI function when invoked.
  */
-typedef irq_func_data_t ipi_func_data_t;
+typedef struct
+{
+    cpu_t* self;
+    void* private;
+} ipi_func_data_t;
 
 /**
  * @brief IPI function type.
@@ -144,9 +150,9 @@ void ipi_chip_unregister(ipi_chip_t* chip);
 uint64_t ipi_chip_amount(void);
 
 /**
- * @brief Add an IPI to the CPU's IPI queue and notify the CPU.
+ * @brief Send an IPI to one or more CPUs.
  *
- * The CPU is notified of the IPI by receiving a `IRQ_VIRT_IPI` interrupt.
+ * The CPU(s) is notified of the IPI by receiving a `VECTOR_IPI` interrupt.
  *
  * @param cpu The specified CPU, check `ipi_flags_t`.
  * @param flags The flags for how to send the IPI.
@@ -162,11 +168,22 @@ uint64_t ipi_chip_amount(void);
 uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* private);
 
 /**
- * @brief Trigger the specified virtual IRQ on the given CPU.
+ * @brief Wake up one or more CPUs.
  *
- * @param cpu The target CPU.
- * @param virt The virtual IRQ to invoke.
+ * A wake-up IPI is an IPI with no function to execute, used to wake up a CPU that may be idle or sleeping and to prompt
+ * it to check for pending IPIs, notes, etc.
+ *
+ * @param cpu The specified CPU, check `ipi_flags_t`.
+ * @param flags The flags for how to send the IPI.
  */
-void ipi_invoke(cpu_t* cpu, irq_virt_t virt);
+void ipi_wake_up(cpu_t* cpu, ipi_flags_t flags);
+
+/**
+ * @brief Invoke a IPI interrupt on the current CPU.
+ *
+ * Will use `IRQ_INVOKE(VECTOR_IPI)` to trigger the IPI interrupt, causing the CPU to enter an interrupt context and
+ * handle any pending IPIs, notes and potentially scheduling.
+ */
+void ipi_invoke(void);
 
 /** @} */

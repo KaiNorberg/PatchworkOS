@@ -74,8 +74,11 @@ uint64_t note_queue_write(note_queue_t* queue, const void* buffer, uint64_t coun
     return 0;
 }
 
-static void note_ipi_handler(ipi_func_data_t* data)
+void note_handle_pending(interrupt_frame_t* frame, cpu_t* self)
 {
+    (void)frame;
+    (void)self;
+
     thread_t* thread = sched_thread_unsafe();
     process_t* process = thread->process;
     note_queue_t* queue = &thread->notes;
@@ -86,7 +89,7 @@ static void note_ipi_handler(ipi_func_data_t* data)
     {
         lock_release(&queue->lock);
         process_kill(process, EXIT_FAILURE);
-        sched_invoke(data->frame, data->self, SCHED_DIE);
+        atomic_store(&thread->state, THREAD_DYING);
         return;
     }
 
@@ -105,15 +108,4 @@ static void note_ipi_handler(ipi_func_data_t* data)
         LOG_WARN("unknown note '%.*s' received in thread tid=%d\n", note->length, note->buffer, thread->id);
         // TODO: Software interrupts.
     }
-}
-
-uint64_t note_send_ipi(cpu_t* cpu)
-{
-    if (cpu == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    return ipi_send(cpu, IPI_SINGLE, note_ipi_handler, NULL);
 }

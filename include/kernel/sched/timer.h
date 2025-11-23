@@ -67,11 +67,13 @@ typedef struct
      *
      * Should panic on failure, as failing to set a timer will almost certainly result in the system hanging.
      *
-     * @param virt The virtual IRQ to use for the timer interrupt, usually `IRQ_VIRT_TIMER`.
+     * @param virt The virtual IRQ to use for the timer interrupt, usually `VECTOR_TIMER`.
      * @param uptime The current uptime in nanoseconds.
      * @param timeout The desired timeout in nanoseconds, if `CLOCKS_NEVER`, the timer should be disabled.
      */
     void (*set)(irq_virt_t virt, clock_t uptime, clock_t timeout);
+    void (*ack)(cpu_t* cpu);
+    void (*eoi)(cpu_t* cpu);
 } timer_source_t;
 
 /**
@@ -84,12 +86,18 @@ typedef struct
 void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx);
 
 /**
+ * @brief Initialize the timer subsystem.
+ */
+void timer_init(void);
+
+/**
  * @brief Register a timer source.
  *
  * @param source The timer source to register.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENOSPC`: No more timer sources can be registered.
+ * - Other errors as returned by `irq_handler_register()`.
  */
 uint64_t timer_source_register(const timer_source_t* source);
 
@@ -122,8 +130,8 @@ uint64_t timer_source_amount(void);
  * @param cpu The CPU to set the timer for.
  * @param uptime The time since boot, we need to specify this as an argument to avoid inconsistency in the
  * timeout/deadline calculations.
- * @param timeout The desired timeout.
+ * @param deadline The desired deadline.
  */
-void timer_set(cpu_t* cpu, clock_t uptime, clock_t timeout);
+void timer_set(cpu_t* cpu, clock_t uptime, clock_t deadline);
 
 /** @} */

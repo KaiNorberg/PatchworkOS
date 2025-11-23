@@ -1,3 +1,4 @@
+#include <kernel/cpu/ipi.h>
 #include <kernel/mem/space.h>
 
 #include <kernel/cpu/cpu.h>
@@ -640,7 +641,7 @@ void space_free_callback(space_t* space, pml_callback_id_t callbackId)
     bitmap_clear(&space->callbackBitmap, callbackId);
 }
 
-static void space_tlb_shootdown_ipi_handler(irq_func_data_t* data)
+static void space_tlb_shootdown_ipi_handler(ipi_func_data_t* data)
 {
     vmm_cpu_ctx_t* ctx = &data->self->vmm;
     while (true)

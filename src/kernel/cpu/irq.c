@@ -14,7 +14,7 @@
 #include <sys/list.h>
 #include <sys/math.h>
 
-static irq_t irqs[IRQ_VIRT_TOTAL_AMOUNT] = {0};
+static irq_t irqs[VECTOR_TOTAL_AMOUNT] = {0};
 
 // TODO: Optimize domain lookup?
 static list_t domains = LIST_CREATE(domains);
@@ -22,7 +22,7 @@ static rwlock_t domainsLock = RWLOCK_CREATE;
 
 void irq_init(void)
 {
-    for (irq_virt_t i = 0; i < IRQ_VIRT_TOTAL_AMOUNT; i++)
+    for (irq_virt_t i = 0; i < VECTOR_TOTAL_AMOUNT; i++)
     {
         irq_t* irq = &irqs[i];
         irq->phys = UINT32_MAX;
@@ -35,29 +35,54 @@ void irq_init(void)
         rwlock_init(&irq->lock);
     }
 
-    for (irq_phys_t i = 0; i < IRQ_VIRT_EXTERNAL_START; i++)
+    for (irq_virt_t i = 0; i < VECTOR_EXCEPTION_END; i++)
     {
-        irq_t* irq = &irqs[i];
-        irq->refCount = UINT64_MAX; // Mark as used
+        irqs[i].refCount = UINT32_MAX; // Exception IRQs cannot be freed
     }
+
+    irqs[VECTOR_IPI].phys = VECTOR_IPI;
+    irqs[VECTOR_IPI].refCount = UINT32_MAX; // IPI IRQ cannot be freed
+
+    irqs[VECTOR_TIMER].phys = VECTOR_TIMER;
+    irqs[VECTOR_TIMER].refCount = UINT32_MAX; // Timer IRQ cannot be freed
 }
 
 void irq_dispatch(interrupt_frame_t* frame, cpu_t* self)
 {
+    assert(frame != NULL);
+    assert(self != NULL);
+
     irq_virt_t virt = (irq_virt_t)frame->vector;
 
-    if (virt >= IRQ_VIRT_TOTAL_AMOUNT)
+    if (virt >= VECTOR_TOTAL_AMOUNT)
     {
         panic(NULL, "invalid irq vector 0x%x", frame->vector);
     }
 
-    if (virt < IRQ_VIRT_EXCEPTION_START)
+    if (virt < VECTOR_EXCEPTION_END)
     {
         panic(NULL, "exception irq 0x%x dispatched through irq system", virt);
     }
 
+    if (virt == VECTOR_TIMER)
+    {
+        LOG_DEBUG("Timer IRQ fired on cpu id=%u\n", self->id);
+    }
+
     irq_t* irq = &irqs[virt];
     RWLOCK_READ_SCOPE(&irq->lock);
+
+    if (irq->domain == NULL || irq->domain->chip == NULL)
+    {
+        LOG_WARN("unhandled irq 0x%x received with no domain\n", virt);
+        return;
+    }
+    irq_chip_t* chip = irq->domain->chip;
+
+    if (chip->ack != NULL)
+    {
+        chip->ack(irq);
+    }
 
     irq_handler_t* handler;
     LIST_FOR_EACH(handler, &irq->handlers, entry)
@@ -72,37 +97,9 @@ void irq_dispatch(interrupt_frame_t* frame, cpu_t* self)
         handler->func(&data);
     }
 
-    if (list_is_empty(&irq->handlers))
+    if (list_is_empty(&irq->handlers) && irq->virt >= VECTOR_EXTERNAL_START && irq->virt < VECTOR_EXTERNAL_END)
     {
-        if (frame->vector < IRQ_VIRT_EXCEPTION_END)
-        {
-            if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
-            {
-                LOG_WARN("unhandled user irq 0x%x received, killing process\n", virt);
-                process_t* process = sched_thread_unsafe()->process;
-                process_kill(process, EXIT_FAILURE);
-                sched_invoke(frame, self, SCHED_DIE);
-            }
-            else
-            {
-                panic(frame, "unhandled kernel irq 0x%x received", virt);
-            }
-        }
-        else
-        {
-            LOG_WARN("unhandled irq 0x%x received\n", virt);
-        }
-    }
-
-    if (irq->domain == NULL || irq->domain->chip == NULL)
-    {
-        return;
-    }
-
-    irq_chip_t* chip = irq->domain->chip;
-    if (chip->ack != NULL)
-    {
-        chip->ack(irq);
+        LOG_WARN("unhandled external irq 0x%x received\n", virt);
     }
 
     if (chip->eoi != NULL)
@@ -129,7 +126,7 @@ static irq_domain_t* irq_domain_lookup(irq_phys_t phys)
 // Will return irq locked for write if successful
 static irq_t* irq_find(irq_virt_t* outVirt, irq_phys_t phys)
 {
-    for (irq_virt_t virt = IRQ_VIRT_EXTERNAL_START; virt < IRQ_VIRT_TOTAL_AMOUNT; virt++)
+    for (irq_virt_t virt = 0; virt < VECTOR_TOTAL_AMOUNT; virt++)
     {
         irq_t* irq = &irqs[virt];
         rwlock_write_acquire(&irq->lock);
@@ -149,7 +146,7 @@ static irq_t* irq_find(irq_virt_t* outVirt, irq_phys_t phys)
 // Will return irq locked for write if successful
 static irq_t* irq_find_unused(irq_virt_t* outVirt)
 {
-    for (irq_virt_t virt = IRQ_VIRT_EXTERNAL_START; virt < IRQ_VIRT_TOTAL_AMOUNT; virt++)
+    for (irq_virt_t virt = 0; virt < VECTOR_TOTAL_AMOUNT; virt++)
     {
         irq_t* irq = &irqs[virt];
         rwlock_write_acquire(&irq->lock);
@@ -168,12 +165,12 @@ static irq_t* irq_find_unused(irq_virt_t* outVirt)
 
 uint64_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu_t* cpu)
 {
+    RWLOCK_READ_SCOPE(&domainsLock);
+
     if (cpu == NULL)
     {
         cpu = cpu_get_unsafe();
     }
-
-    RWLOCK_READ_SCOPE(&domainsLock);
 
     irq_virt_t virt;
     irq_t* irq = irq_find(&virt, phys);
@@ -228,7 +225,7 @@ uint64_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu
 
 void irq_virt_free(irq_virt_t virt)
 {
-    if (virt < IRQ_VIRT_EXTERNAL_START || virt >= IRQ_VIRT_TOTAL_AMOUNT)
+    if (virt < VECTOR_EXTERNAL_START || virt >= VECTOR_TOTAL_AMOUNT)
     {
         return;
     }
@@ -261,7 +258,7 @@ void irq_virt_free(irq_virt_t virt)
 
 uint64_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu)
 {
-    if (virt < 0 || virt >= IRQ_VIRT_TOTAL_AMOUNT || cpu == NULL)
+    if (virt < 0 || virt >= VECTOR_TOTAL_AMOUNT || cpu == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -269,6 +266,13 @@ uint64_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu)
 
     irq_t* irq = &irqs[virt];
     RWLOCK_WRITE_SCOPE(&irq->lock);
+
+    if (irq->domain == NULL || irq->domain->chip == NULL || irq->domain->chip->disable == NULL ||
+        irq->domain->chip->enable == NULL)
+    {
+        errno = ENOSYS;
+        return ERR;
+    }
 
     irq->domain->chip->disable(irq);
     irq->cpu = cpu;
@@ -282,7 +286,7 @@ uint64_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu)
 
 uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, void* private)
 {
-    if (chip == NULL || chip->enable == NULL || chip->disable == NULL || start >= end)
+    if (chip == NULL || start >= end)
     {
         errno = EINVAL;
         return ERR;
@@ -314,7 +318,7 @@ uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, v
 
     list_push_back(&domains, &domain->entry);
 
-    for (irq_virt_t virt = IRQ_VIRT_EXTERNAL_START; virt < IRQ_VIRT_TOTAL_AMOUNT; virt++)
+    for (irq_virt_t virt = 0; virt < VECTOR_TOTAL_AMOUNT; virt++)
     {
         irq_t* irq = &irqs[virt];
         rwlock_write_acquire(&irq->lock);
@@ -326,12 +330,12 @@ uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, v
         }
 
         irq->domain = domain;
-        if (domain->chip->enable(irq) == ERR)
+        if (domain->chip->enable != NULL && domain->chip->enable(irq) == ERR)
         {
             irq->domain = NULL;
             rwlock_write_release(&irq->lock);
 
-            for (irq_virt_t revVirt = IRQ_VIRT_EXTERNAL_START; revVirt < virt; revVirt++)
+            for (irq_virt_t revVirt = 0; revVirt < virt; revVirt++)
             {
                 irq_t* revIrq = &irqs[revVirt];
                 RWLOCK_WRITE_SCOPE(&revIrq->lock);
@@ -341,7 +345,10 @@ uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, v
                     continue;
                 }
 
-                domain->chip->disable(revIrq);
+                if (domain->chip->disable != NULL)
+                {
+                    domain->chip->disable(revIrq);
+                }
                 revIrq->domain = NULL;
             }
             list_remove(&domains, &domain->entry);
@@ -379,14 +386,17 @@ void irq_chip_unregister(irq_chip_t* chip, irq_phys_t start, irq_phys_t end)
             continue;
         }
 
-        for (irq_virt_t virt = IRQ_VIRT_EXTERNAL_START; virt < IRQ_VIRT_TOTAL_AMOUNT; virt++)
+        for (irq_virt_t virt = 0; virt < VECTOR_TOTAL_AMOUNT; virt++)
         {
             irq_t* irq = &irqs[virt];
             rwlock_write_acquire(&irq->lock);
 
             if (irq != NULL && irq->domain == domain)
             {
-                domain->chip->disable(irq);
+                if (domain->chip->disable != NULL)
+                {
+                    domain->chip->disable(irq);
+                }
                 LOG_INFO("disabled IRQ %u (phys 0x%lx) while removing chip %s", irq->virt, irq->phys, chip->name);
                 irq->domain = NULL;
             }
@@ -407,7 +417,7 @@ uint64_t irq_chip_amount(void)
 
 uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* private)
 {
-    if (virt >= IRQ_VIRT_TOTAL_AMOUNT || func == NULL)
+    if (virt >= VECTOR_TOTAL_AMOUNT || func == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -420,6 +430,16 @@ uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* private)
     {
         errno = ENOENT;
         return ERR;
+    }
+
+    irq_handler_t* iter;
+    LIST_FOR_EACH(iter, &irq->handlers, entry)
+    {
+        if (iter->func == func)
+        {
+            errno = EEXIST;
+            return ERR;
+        }
     }
 
     irq_handler_t* handler = malloc(sizeof(irq_handler_t));
@@ -437,9 +457,9 @@ uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* private)
     return 0;
 }
 
-void irq_handler_unregister(irq_handler_t* handler, irq_virt_t virt)
+void irq_handler_unregister(irq_func_t func, irq_virt_t virt)
 {
-    if (handler == NULL || virt >= IRQ_VIRT_TOTAL_AMOUNT)
+    if (func == NULL || virt >= VECTOR_TOTAL_AMOUNT)
     {
         return;
     }
@@ -447,17 +467,16 @@ void irq_handler_unregister(irq_handler_t* handler, irq_virt_t virt)
     irq_t* irq = &irqs[virt];
     RWLOCK_WRITE_SCOPE(&irq->lock);
 
-    // Safety check
     irq_handler_t* iter;
     LIST_FOR_EACH(iter, &irq->handlers, entry)
     {
-        if (iter == handler)
+        if (iter->func == func)
         {
-            list_remove(&irq->handlers, &handler->entry);
-            free(handler);
+            list_remove(&irq->handlers, &iter->entry);
+            free(iter);
             return;
         }
     }
 
-    LOG_WARN("attempted to unregister non-registered irq handler %p for irq 0x%x", handler, virt);
+    LOG_WARN("attempted to unregister non-registered irq handler %p for irq 0x%x", func, virt);
 }

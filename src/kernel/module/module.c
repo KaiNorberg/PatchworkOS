@@ -70,8 +70,9 @@ static module_t* module_new(module_info_t* info)
     list_init(&module->dependencies);
     list_init(&module->deviceHandlers);
     memcpy_s(&module->info, sizeof(module_info_t) + info->dataSize, info, sizeof(module_info_t) + info->dataSize);
-    
-    // Since the info strings are stored as pointers into the info data, we need to adjust them to point into our own copy.
+
+    // Since the info strings are stored as pointers into the info data, we need to adjust them to point into our own
+    // copy.
     intptr_t offset = (intptr_t)module->info.data - (intptr_t)info->data;
     module->info.name = (char*)((uintptr_t)module->info.name + offset);
     module->info.author = (char*)((uintptr_t)module->info.author + offset);
@@ -1173,4 +1174,30 @@ void module_device_detach(const char* name)
     {
         module_device_free(device);
     }
+}
+
+bool module_device_types_contains(const char* deviceTypes, const char* type)
+{
+    if (deviceTypes == NULL || type == NULL)
+    {
+        return false;
+    }
+
+    size_t idLen = strlen(type);
+    const char* pos = deviceTypes;
+
+    while ((pos = strstr(pos, type)) != NULL)
+    {
+        bool isStart = (pos == deviceTypes) || (*(pos - 1) == ';');
+        bool isEnd = (pos[idLen] == ';') || (pos[idLen] == '\0');
+
+        if (isStart && isEnd)
+        {
+            return true;
+        }
+
+        pos++;
+    }
+
+    return false;
 }

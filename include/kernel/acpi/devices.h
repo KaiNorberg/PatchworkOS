@@ -2,8 +2,8 @@
 
 #include <kernel/acpi/aml/object.h>
 #include <kernel/acpi/resources.h>
-#include <kernel/cpu/irq.h>
 #include <kernel/cpu/io.h>
+#include <kernel/cpu/irq.h>
 
 #include <sys/io.h>
 
@@ -19,8 +19,10 @@
  * `_CID` method will be evaluated (if it exists) and the module system will be notified of the CID returned by that
  * method.
  *
- * Processor Container Devices (HID "ACPI0010") are ignored as their use is deprecated so even if the hardware provides them, we dont want to use them. Its also possible that certain devices such as the HPET are not reported even if they exist, in these cases we manually check for them and add their HIDs.
- * 
+ * Processor Container Devices (HID "ACPI0010") are ignored as their use is deprecated so even if the hardware provides
+ * them, we dont want to use them. Its also possible that certain devices such as the HPET are not reported even if they
+ * exist, in these cases we manually check for them and add their HIDs.
+ *
  * ## Hardware IDs (HIDs) and Compatible IDs (CIDs)
  *
  * The difference between HIDs and CIDs is that HIDs are unique identifiers for the specific device type, while CIDs are
@@ -138,7 +140,11 @@ void acpi_devices_init(void);
  * @brief Retrieves the ACPI device configuration for a device by its name.
  *
  * @param name The name of the device to retrieve the configuration for.
- * @return On success, a pointer to the device configuration. On failure, `NULL` and `errno` is set.
+ * @return On success, a pointer to the device configuration. On failure, `NULL` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `ENOENT`: The specified name does not exist in the ACPI namespace.
+ * - `ENOTTY`: The specified name is not a device.
+ * - `ENODEV`: The specified device has no configuration.
  */
 acpi_device_cfg_t* acpi_device_cfg_get(const char* name);
 

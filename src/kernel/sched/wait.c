@@ -2,6 +2,7 @@
 #include <kernel/sched/wait.h>
 
 #include <kernel/cpu/cpu.h>
+#include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/sys_time.h>
@@ -50,7 +51,7 @@ static void wait_timer_handler(irq_func_data_t* data)
         clock_t uptime = sys_time_uptime();
         if (thread->wait.deadline > uptime)
         {
-            timer_set(self, uptime, thread->wait.deadline - uptime);
+            timer_set(self, uptime, thread->wait.deadline);
             return;
         }
 
@@ -101,7 +102,7 @@ void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* self)
 
 void wait_init(void)
 {
-    if (irq_handler_register(IRQ_VIRT_TIMER, wait_timer_handler, NULL) == ERR)
+    if (irq_handler_register(VECTOR_TIMER, wait_timer_handler, NULL) == ERR)
     {
         panic(NULL, "Failed to register wait timer IRQ handler");
     }
@@ -156,7 +157,7 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
         }
     }
 
-    timer_set(self, uptime, thread->wait.deadline > uptime ? thread->wait.deadline - uptime : 0);
+    timer_set(self, uptime, thread->wait.deadline);
     return true;
 }
 
