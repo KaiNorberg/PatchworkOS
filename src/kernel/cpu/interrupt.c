@@ -154,8 +154,6 @@ void interrupt_handler(interrupt_frame_t* frame)
         return;
     }
 
-    LOG_DEBUG("interrupt vector=0x%x cpu id=%u\n", frame->vector, cpu_get_unsafe()->id);
-
     cpu_t* self = cpu_get_unsafe();
     assert(self != NULL);
 

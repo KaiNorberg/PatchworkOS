@@ -148,16 +148,6 @@ typedef struct irq_chip
 } irq_chip_t;
 
 /**
- * @brief Invoke the given virtual IRQ.
- *
- * @warning Even tho its technically possible to use the `int` instruction with interrupts disabled, doing so will cause
- * a panic in the interrupt handler as a sanity check. Therefore only use this macro with interrupts enabled.
- *
- * @param virt The virtual IRQ to invoke.
- */
-#define IRQ_INVOKE(virt) asm volatile("int %0" : : "i"(virt));
-
-/**
  * @brief Initialize the IRQ subsystem.
  */
 void irq_init(void);
@@ -186,6 +176,8 @@ void irq_dispatch(interrupt_frame_t* frame, cpu_t* self);
  * Will succeed even if no IRQ chip is registered for the given physical IRQ, in such a case, the IRQ will be enabled
  * only when a appropriate IRQ chip is registered.
  *
+ * @note The IRQ will only be enabled if there are registered handlers for it, otherwise it will remain disabled until a handler is registered.
+ * 
  * TODO: CPU load balancing?
  *
  * @param out Pointer to store the allocated virtual IRQ.
@@ -193,9 +185,9 @@ void irq_dispatch(interrupt_frame_t* frame, cpu_t* self);
  * @param flags The IRQ flags.
  * @param cpu The target CPU for the IRQ, or `NULL` for the current CPU.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `EINVAL`: The physical IRQ already exists with different flags.
- * - `EBUSY`: The physical IRQ is exclusive and already allocated.
- * - `ENOSPC`: All virtual IRQs are in use.
+ * - `EINVAL`: Invalid parameters.
+ * - `EBUSY`: The IRQ is already allocated with incompatible flags, or is exclusive.
+ * - `ENOSPC`: No more virtual IRQs can be allocated.
  * - Other errors as returned by the IRQ chip's `enable` function.
  */
 uint64_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu_t* cpu);
@@ -235,6 +227,7 @@ uint64_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu);
  * - `EINVAL`: Invalid parameters.
  * - `EEXIST`: A chip with a domain overlapping the given range is already registered.
  * - `ENOMEM`: Memory allocation failed.
+ * - Other errors as returned by the IRQ chip's `enable` function.
  */
 uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, void* private);
 
@@ -260,6 +253,8 @@ uint64_t irq_chip_amount(void);
 /**
  * @brief Register an IRQ handler for a virtual IRQ.
  *
+ * If this is the first handler for the IRQ, the IRQ will be enabled.
+ * 
  * @param virt The virtual IRQ to register the handler for.
  * @param func The handler function to register.
  * @param private The private data to pass to the handler function.
@@ -268,6 +263,7 @@ uint64_t irq_chip_amount(void);
  * - `ENOENT`: The given virtual IRQ is not a external vector.
  * - `EEXIST`: The given handler is already registered for the given virtual IRQ.
  * - `ENOMEM`: Memory allocation failed.
+ * - Other errors as returned by the IRQ chip's `enable` function.
  */
 uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* private);
 
@@ -280,5 +276,15 @@ uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* private);
  * @param virt The virtual IRQ to unregister the handler from.
  */
 void irq_handler_unregister(irq_func_t func, irq_virt_t virt);
+
+/**
+ * @brief Invoke the given virtual IRQ.
+ *
+ * @warning Even tho its technically possible to use the `int` instruction with interrupts disabled, doing so will cause
+ * a panic in the interrupt handler as a sanity check. Therefore only use this macro with interrupts enabled.
+ *
+ * @param virt The virtual IRQ to invoke.
+ */
+#define IRQ_INVOKE(virt) asm volatile("int %0" : : "i"(virt));
 
 /** @} */
