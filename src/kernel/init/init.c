@@ -182,8 +182,6 @@ void kmain(const boot_info_t* bootInfo)
 
     init_finalize(bootInfo);
 
-    asm volatile("sti");
-
     if (module_device_attach("LOAD_ON_BOOT", "LOAD_ON_BOOT", MODULE_LOAD_ALL) == ERR)
     {
         panic(NULL, "Failed to load modules with LOAD_ON_BOOT");

@@ -177,13 +177,6 @@ typedef enum
 } lapic_icr_flags_t;
 
 /**
- * @brief APIC Timer Ticks Fixed Point Offset.
- *
- * Used for fixed point arithmetic when returning the apic timer ticks per nanosecond.
- */
-#define APIC_TIMER_TICKS_FIXED_POINT_OFFSET 32
-
-/**
  * @brief IO APIC Global System Interrupt type.
  */
 typedef uint32_t ioapic_gsi_t;
@@ -309,7 +302,7 @@ typedef union {
  */
 typedef struct
 {
-    uint64_t ticksPerNs; ///< Initialized to 0, set on first use of the APIC timer on the CPU.
+    uint64_t ticksPerMs; ///< Initialized to 0, set on first use of the APIC timer on the CPU.
     lapic_id_t lapicId;
 } lapic_t;
 
@@ -324,7 +317,7 @@ static uintptr_t lapicBase = 0;
 /**
  * @brief All cpu local data, indexed by cpu id.
  */
-static lapic_t lapics[CPU_MAX] = {[0 ... CPU_MAX - 1] = {.lapicId = -1, .ticksPerNs = 0}};
+static lapic_t lapics[CPU_MAX] = {[0 ... CPU_MAX - 1] = {.lapicId = -1, .ticksPerMs = 0}};
 
 /**
  * @brief Read from a local apic register.
@@ -375,11 +368,11 @@ static void lapic_init(cpu_t* cpu)
 }
 
 /**
- * @brief Get the ticks per nanosecond for the APIC timer of the current CPU.
+ * @brief Get the ticks per millisecond for the APIC timer of the current CPU.
  *
- * @return The ticks per nanosecond.
+ * @return The ticks per millisecond.
  */
-static uint64_t apic_timer_ticks_per_ns(void)
+static uint64_t apic_timer_ticks_per_ms(void)
 {
     interrupt_disable();
 
@@ -395,10 +388,8 @@ static uint64_t apic_timer_ticks_per_ns(void)
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, 0);
 
-    uint64_t ticksPerNs = (ticks << APIC_TIMER_TICKS_FIXED_POINT_OFFSET) / 10000000ULL;
-
     interrupt_enable();
-    return ticksPerNs;
+    return ticks;
 }
 
 /**
@@ -409,9 +400,9 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
     (void)uptime;
 
     lapic_t* lapic = &lapics[cpu_get_id_unsafe()];
-    if (lapic->ticksPerNs == 0)
+    if (lapic->ticksPerMs == 0)
     {
-        lapic->ticksPerNs = apic_timer_ticks_per_ns();
+        lapic->ticksPerMs = apic_timer_ticks_per_ms();
     }
 
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
@@ -422,7 +413,7 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
         return;
     }
 
-    uint32_t ticks = (timeout * lapic->ticksPerNs) >> APIC_TIMER_TICKS_FIXED_POINT_OFFSET;
+    uint32_t ticks = (timeout * lapic->ticksPerMs) / (CLOCKS_PER_SEC / 1000);
     if (ticks == 0)
     {
         ticks = 1;
