@@ -110,7 +110,7 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
     {
         process_t* kernelProcess = process_get_kernel();
         assert(kernelProcess != NULL);
-        ns = &kernelProcess->namespace;
+        ns = &kernelProcess->ns;
     }
 
     filesystem_t* fs = vfs_get_fs(fsName);
@@ -204,7 +204,7 @@ mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* mountpoint)
     {
         process_t* kernelProcess = process_get_kernel();
         assert(kernelProcess != NULL);
-        ns = &kernelProcess->namespace;
+        ns = &kernelProcess->ns;
     }
 
     mount_t* mount = mount_new(source->superblock, source, mountpoint->dentry, mountpoint->mount);
@@ -243,27 +243,23 @@ SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpointString)
         return ERR;
     }
 
-    path_t cwd = PATH_EMPTY;
-    if (vfs_ctx_get_cwd(&process->vfsCtx, &cwd) == ERR)
-    {
-        return ERR;
-    }
+    path_t cwd = cwd_get(&process->cwd);
     PATH_DEFER(&cwd);
 
     path_t mountpoint;
-    if (path_walk(&mountpoint, &pathname, &cwd, WALK_NONE, &process->namespace) == ERR)
+    if (path_walk(&mountpoint, &pathname, &cwd, WALK_NONE, &process->ns) == ERR)
     {
         return ERR;
     }
 
-    file_t* sourceFile = vfs_ctx_get_file(&process->vfsCtx, source);
+    file_t* sourceFile = file_table_get(&process->fileTable, source);
     if (sourceFile == NULL)
     {
         return ERR;
     }
     DEREF_DEFER(sourceFile);
 
-    mount_t* bind = namespace_bind(&process->namespace, sourceFile->path.dentry, &mountpoint);
+    mount_t* bind = namespace_bind(&process->ns, sourceFile->path.dentry, &mountpoint);
     if (bind == NULL)
     {
         return ERR;
@@ -284,7 +280,7 @@ uint64_t namespace_get_root_path(namespace_t* ns, path_t* outPath)
     {
         process_t* kernelProcess = process_get_kernel();
         assert(kernelProcess != NULL);
-        ns = &kernelProcess->namespace;
+        ns = &kernelProcess->ns;
     }
 
     rwlock_read_acquire(&ns->lock);

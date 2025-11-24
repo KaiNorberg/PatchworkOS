@@ -121,11 +121,7 @@ static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count, uin
         return ERR;
     }
 
-    path_t cwd = PATH_EMPTY;
-    if (vfs_ctx_get_cwd(&process->vfsCtx, &cwd) == ERR)
-    {
-        return ERR;
-    }
+    path_t cwd = cwd_get(&process->cwd);
     PATH_DEFER(&cwd);
 
     pathname_t cwdName;
@@ -327,7 +323,7 @@ static uint64_t process_dir_init(process_t* process, const char* name)
     }
 
     path_t selfPath = PATH_CREATE(procMount, selfDir);
-    process->self = namespace_bind(&process->namespace, process->dir, &selfPath);
+    process->self = namespace_bind(&process->ns, process->dir, &selfPath);
     path_put(&selfPath);
     if (process->self == NULL)
     {
@@ -379,36 +375,29 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     if (space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
             SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY) == ERR)
     {
-        namespace_deinit(&process->namespace);
+        namespace_deinit(&process->ns);
         argv_deinit(&process->argv);
         return ERR;
     }
 
     if (cwd != NULL)
     {
-        vfs_ctx_init(&process->vfsCtx, cwd);
+        cwd_init(&process->cwd, cwd);
     }
     else if (parent != NULL)
     {
-        path_t parentCwd = PATH_EMPTY;
-        if (vfs_ctx_get_cwd(&parent->vfsCtx, &parentCwd) == ERR)
-        {
-            argv_deinit(&process->argv);
-            namespace_deinit(&process->namespace);
-            space_deinit(&process->space);
-            return ERR;
-        }
+        path_t parentCwd = cwd_get(&parent->cwd);
+        PATH_DEFER(&parentCwd);
 
-        vfs_ctx_init(&process->vfsCtx, &parentCwd);
-
-        path_put(&parentCwd);
+        cwd_init(&process->cwd, &parentCwd);
     }
     else
     {
-        vfs_ctx_init(&process->vfsCtx, NULL);
+        cwd_init(&process->cwd, NULL);
     }
 
-    namespace_init(&process->namespace, parent != NULL ? &parent->namespace : NULL, process);
+    file_table_init(&process->fileTable);
+    namespace_init(&process->ns, parent != NULL ? &parent->ns : NULL, process);
     futex_ctx_init(&process->futexCtx);
     perf_process_ctx_init(&process->perf);
     wait_queue_init(&process->dyingWaitQueue);
@@ -428,8 +417,6 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     process->waitFile = NULL;
     process->perfFile = NULL;
     process->self = NULL;
-
-    assert(process == &kernelProcess || process_is_child(process, kernelProcess.id));
 
     LOG_DEBUG("new pid=%d parent=%d priority=%d\n", process->id, parent ? parent->id : 0, priority);
     return 0;
@@ -486,8 +473,9 @@ void process_kill(process_t* process, uint64_t status)
     }
 
     // Anything that another process could be waiting on must be cleaned up here.
-    namespace_deinit(&process->namespace);
-    vfs_ctx_deinit(&process->vfsCtx);
+    cwd_deinit(&process->cwd);
+    file_table_deinit(&process->fileTable);
+    namespace_deinit(&process->ns);
     // The dir entries have refs to the process, but a parent process might want to read files in /proc/[pid] after the
     // process has exited especially its wait file, so for now we defer dereferencing them until the reaper runs. This
     // is really not ideal so TODO: implement a proper reaper.

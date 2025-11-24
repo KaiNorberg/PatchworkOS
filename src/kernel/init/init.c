@@ -164,7 +164,7 @@ static inline void init_process_spawn(void)
     {
         panic(NULL, "Failed to open klog");
     }
-    if (vfs_ctx_set_fd(&initThread->process->vfsCtx, STDOUT_FILENO, klog) == ERR)
+    if (file_table_set(&initThread->process->fileTable, STDOUT_FILENO, klog) == ERR)
     {
         panic(NULL, "Failed to set klog as stdout for init process");
     }

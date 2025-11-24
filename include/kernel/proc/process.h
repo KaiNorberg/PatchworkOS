@@ -3,7 +3,8 @@
 #include <kernel/drivers/perf.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/sysfs.h>
-#include <kernel/fs/vfs_ctx.h>
+#include <kernel/fs/file_table.h>
+#include <kernel/fs/cwd.h>
 #include <kernel/mem/space.h>
 #include <kernel/proc/argv.h>
 #include <kernel/sched/sched.h>
@@ -67,8 +68,9 @@ typedef struct process
     _Atomic(uint64_t) status;
     argv_t argv;
     space_t space;
-    vfs_ctx_t vfsCtx;
-    namespace_t namespace;
+    cwd_t cwd;
+    file_table_t fileTable;
+    namespace_t ns;
     futex_ctx_t futexCtx;
     perf_process_ctx_t perf;
     wait_queue_t dyingWaitQueue;

@@ -109,7 +109,7 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
     {
         process_t* kernelProcess = process_get_kernel();
         assert(kernelProcess != NULL);
-        ns = &kernelProcess->namespace;
+        ns = &kernelProcess->ns;
     }
 
     if (parent == NULL)

@@ -1,3 +1,4 @@
+#include <kernel/fs/file_table.h>
 #include <kernel/sched/loader.h>
 
 #include <kernel/cpu/gdt.h>
@@ -258,14 +259,10 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
             goto cleanup_argv;
         }
 
-        path_t currentCwd = PATH_EMPTY;
-        if (vfs_ctx_get_cwd(&process->vfsCtx, &currentCwd) == ERR)
-        {
-            goto cleanup_argv;
-        }
-        PATH_DEFER(&currentCwd);
+        path_t cwd = cwd_get(&process->cwd);
+        PATH_DEFER(&cwd);
 
-        if (path_walk(&cwdPath, &cwdPathname, &currentCwd, WALK_NONE, &process->namespace) == ERR)
+        if (path_walk(&cwdPath, &cwdPathname, &cwd, WALK_NONE, &process->ns) == ERR)
         {
             goto cleanup_argv;
         }
@@ -277,7 +274,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     {
         free(argvCopy[i]);
     }
-    free(argvCopy);
+    free((void*)argvCopy);
 
     if (cwdString != NULL)
     {
@@ -302,12 +299,9 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
             return ERR;
         }
 
-        vfs_ctx_t* parentVfsCtx = &process->vfsCtx;
-        vfs_ctx_t* childVfsCtx = &child->process->vfsCtx;
-
         for (uint64_t i = 0; i < fdAmount; i++)
         {
-            file_t* file = vfs_ctx_get_file(parentVfsCtx, fdsCopy[i].parent);
+            file_t* file = file_table_get(&process->fileTable, fdsCopy[i].parent);
             if (file == NULL)
             {
                 free(fdsCopy);
@@ -316,7 +310,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
                 return ERR;
             }
 
-            if (vfs_ctx_set_fd(childVfsCtx, fdsCopy[i].child, file) == ERR)
+            if (file_table_set(&child->process->fileTable, fdsCopy[i].child, file) == ERR)
             {
                 DEREF(file);
                 free(fdsCopy);
@@ -338,7 +332,7 @@ cleanup_argv:
     {
         free(argvCopy[i]);
     }
-    free(argvCopy);
+    free((void*)argvCopy);
     return ERR;
 }
 
