@@ -74,11 +74,7 @@ typedef struct process
     wait_queue_t dyingWaitQueue;
     atomic_bool isDying;
     process_threads_t threads;
-    rwlock_t childrenLock;
-    list_entry_t siblingEntry;
-    list_t children;
     list_entry_t zombieEntry;
-    struct process* parent;
     dentry_t* dir;         ///< The `/proc/[pid]` directory for this process.
     dentry_t* prioFile;    ///< The `/proc/[pid]/prio` file.
     dentry_t* cwdFile;     ///< The `/proc/[pid]/cwd` file.
@@ -114,15 +110,6 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
  * @param status The exit status of the process.
  */
 void process_kill(process_t* process, uint64_t status);
-
-/**
- * @brief Checks if a process is a child of another process.
- *
- * @param process The process to check.
- * @param parentId The parent process id.
- * @return `true` if the process is a child of the parent with id `parentId`, `false` otherwise.
- */
-bool process_is_child(process_t* process, pid_t parentId);
 
 /**
  * @brief Gets the kernel process.

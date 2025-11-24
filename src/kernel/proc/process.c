@@ -356,21 +356,6 @@ static void process_free(process_t* process)
         process_kill(process, EXIT_SUCCESS);
     }
 
-    if (process->parent != NULL)
-    {
-        RWLOCK_WRITE_SCOPE(&process->parent->childrenLock);
-        list_remove(&process->parent->children, &process->siblingEntry);
-        DEREF(process->parent);
-        process->parent = NULL;
-    }
-
-    rwlock_write_acquire(&process->childrenLock);
-    if (!list_is_empty(&process->children))
-    {
-        panic(NULL, "Freeing process pid=%d with children", process->id);
-    }
-    rwlock_write_release(&process->childrenLock);
-
     space_deinit(&process->space);
     argv_deinit(&process->argv);
     wait_queue_deinit(&process->dyingWaitQueue);
@@ -433,20 +418,7 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     list_init(&process->threads.list);
     lock_init(&process->threads.lock);
 
-    rwlock_init(&process->childrenLock);
-    list_entry_init(&process->siblingEntry);
-    list_init(&process->children);
     list_entry_init(&process->zombieEntry);
-    if (parent != NULL)
-    {
-        RWLOCK_WRITE_SCOPE(&parent->childrenLock);
-        list_push_back(&parent->children, &process->siblingEntry);
-        process->parent = REF(parent);
-    }
-    else
-    {
-        process->parent = NULL;
-    }
 
     process->dir = NULL;
     process->prioFile = NULL;
@@ -524,44 +496,6 @@ void process_kill(process_t* process, uint64_t status)
     LOCK_SCOPE(&zombiesLock);
     list_push_back(&zombies, &REF(process)->zombieEntry);
     nextReaperTime = sys_time_uptime() + CONFIG_PROCESS_REAPER_INTERVAL; // Delay reaper run
-}
-
-bool process_is_child(process_t* process, pid_t parentId)
-{
-    process_t* current = REF(process);
-    bool found = false;
-    while (current != NULL)
-    {
-        process_t* parent = NULL;
-
-        if (current->parent == NULL)
-        {
-            break;
-        }
-
-        RWLOCK_READ_SCOPE(&current->parent->childrenLock);
-        if (current->parent == NULL)
-        {
-            break;
-        }
-
-        if (current->parent->id == parentId)
-        {
-            found = true;
-            break;
-        }
-
-        parent = REF(current->parent);
-        DEREF(current);
-        current = parent;
-    }
-
-    if (current != NULL)
-    {
-        DEREF(current);
-    }
-
-    return found;
 }
 
 process_t* process_get_kernel(void)
