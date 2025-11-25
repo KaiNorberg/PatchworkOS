@@ -4,6 +4,7 @@
 #include <kernel/fs/superblock.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
+#include <sys/list.h>
 
 typedef struct namespace namespace_t;
 typedef struct mount mount_t;
@@ -36,10 +37,11 @@ typedef struct process process_t;
  */
 typedef struct namespace
 {
+    list_entry_t entry;  ///< The entry for the parent's children list.
+    list_t children;    ///< List of child namespaces.
+    namespace_t* parent; ///< The parent namespace, can be `NULL`.
     map_t mountPoints;
     rwlock_t lock;
-    namespace_t* parent;
-    process_t* owner;   ///< The process that owns this namespace, will not take a reference.
     mount_t* rootMount; ///< The root mount of the namespace, will be inherited from the parent namespace.
     // clang-format off
 } namespace_t;

@@ -101,7 +101,6 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 - File flags performance improvements and refactor
 - Read, write, execute, create permissions
 - Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions
-- Add configurability to `spawn()` for namespace inheritance
 - Fully Asynchronous I/O and syscalls (io_uring style?)
 - Shared libraries
 - USB support (The holy grail)
@@ -311,17 +310,19 @@ which would create a new socket and connect it to the server named `myserver`.
 
 ### Namespaces
 
-Namespaces are a set of mountpoints that is unique per process with each process able to access the mountpoints in its parent's namespace, which allows each process a unique view of the file system and is utilized for access control.
+Namespaces are a set of mountpoints that is unique per process, which allows each process a unique view of the file system and is utilized for access control.
 
-Think of it like this, in the common case, for instance on Linux, you can mount a drive to `/mnt/mydrive` and all processes can then open the `/mnt/mydrive` path and see the contents of that drive. In PatchworkOS, this is also possible, but for security reasons we might not want every process to be able to see that drive, instead processes should see the original contents of `/mnt/mydrive` which might just be an empty directory. The exception is for the process that created the mountpoint and its children as they would have that mountpoint in their namespace.
+Think of it like this, in the common case, you can mount a drive to `/mnt/mydrive` and all processes can then open the `/mnt/mydrive` path and see the contents of that drive. However, for security reasons we might not want every process to be able to see that drive, this is what namespaces enable, allowing mounted file systems or directories to only be visible to a subset of processes.
 
-For example, the "id" directories mentioned in the socket example are a separate "sysfs" instance mounted in the namespace of the creating process, meaning that only that process and its children can see their contents.
+As an example, the "id" directories mentioned in the socket example are a separate "sysfs" instance mounted in the namespace of the creating process, meaning that only that process and its children can see their contents.
+
+To control which processes can see a newly mounted or bound file system or directory, we use a propegation system, where a the newly created mountpoint can be made visible to either just the creating process, the creating process and its children, or the creating process, its children and its parents. Additionally, its possible to specify the behaviour of mountpoint inheritance when a new process is spawned.
 
 [Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
 
 ### Namespace Sharing
 
-It's possible for two processes to voluntarily share a mountpoint in their namespaces using `bind()` in combination with two new system calls `share()` and `claim()`.
+In cases where the propagation system is not sufficient, it's possible for two processes to voluntarily share a mountpoint in their namespaces using `bind()` in combination with two new system calls `share()` and `claim()`.
 
 For example, if process A wants to share its `/net/local/5` directory from the socket example with process B, they can do
 
