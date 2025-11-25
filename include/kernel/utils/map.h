@@ -186,6 +186,18 @@ void map_deinit(map_t* map);
 uint64_t map_insert(map_t* map, const map_key_t* key, map_entry_t* value);
 
 /**
+ * @brief Replace a key-value pair in the map.
+ *
+ * If the key does not exist, it is inserted.
+ *
+ * @param map The map to replace in.
+ * @param key The key to replace.
+ * @param value The value to replace.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t map_replace(map_t* map, const map_key_t* key, map_entry_t* entry);
+
+/**
  * @brief Get a value from the map by key.
  *
  * @param map The map to get from.
@@ -212,6 +224,16 @@ map_entry_t* map_get_and_remove(map_t* map, const map_key_t* key);
  * @param entry The entry to remove.
  */
 void map_remove(map_t* map, map_entry_t* entry);
+
+/**
+ * @brief Remove a key-value pair from the map by key.
+ *
+ * If the key does not exist, nothing happens.
+ *
+ * @param map The map to remove from.
+ * @param key The key to remove.
+ */
+void map_remove_key(map_t* map, const map_key_t* key);
 
 /**
  * @brief Get the number of entries in the map.

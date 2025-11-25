@@ -167,7 +167,7 @@ static inline void init_process_spawn(void)
 {
     LOG_INFO("spawning init process\n");
     const char* argv[] = {"/bin/init", NULL};
-    thread_t* initThread = loader_spawn(argv, PRIORITY_MAX_USER - 2, NULL);
+    thread_t* initThread = loader_spawn(argv, NULL, PRIORITY_MAX_USER - 2, SPAWN_DEFAULT);
     if (initThread == NULL)
     {
         panic(NULL, "Failed to spawn init process");

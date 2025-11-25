@@ -68,9 +68,9 @@ typedef struct process
     _Atomic(uint64_t) status;
     argv_t argv;
     space_t space;
+    namespace_t ns;
     cwd_t cwd;
     file_table_t fileTable;
-    namespace_t ns;
     futex_ctx_t futexCtx;
     perf_process_ctx_t perf;
     wait_queue_t dyingWaitQueue;
@@ -92,13 +92,13 @@ typedef struct process
  *
  * There is no `process_free()`, instead use `DEREF()`, `DEREF_DEFER()` or `process_kill()` to free a process.
  *
- * @param parent The parent process, can be `NULL`.
  * @param argv The argument vector, must be `NULL` terminated.
- * @param cwd The current working directory, can be `NULL` to inherit from the parent.
+ * @param cwd The current working directory, can be `NULL` to use the root directory.
+ * @param parentNs The parent namespace, can be `NULL` for no parent.
  * @param priority The priority of the new process.
  * @return On success, the newly created process. On failure, `NULL` and `errno` is set.
  */
-process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority);
+process_t* process_new(const char** argv, const path_t* cwd, namespace_t* parentNs, priority_t priority);
 
 /**
  * @brief Kills a process.

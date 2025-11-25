@@ -2,6 +2,7 @@
 
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/inode.h>
+#include <sys/io.h>
 
 typedef struct file file_t;
 typedef struct file_ops file_ops_t;
@@ -48,11 +49,12 @@ dentry_t* sysfs_get_dev(void);
  *
  * @param parent The parent directory to mount the SysFS in. If `NULL`, the root of the namespace is used.
  * @param name The name of the directory to mount the SysFS in.
- * @param ns The namespace to mount the SysFS in. If `NULL`, the kernel process's namespace is used.
+ * @param ns The namespace to mount the SysFS in, or `NULL` to use the current process's namespace.
+ * @param flags Mount flags.
  * @param superblockOps The superblock operations for the new SysFS instance, can be `NULL`.
  * @return On success, the mounted SysFS instance. On failure, `NULL` and `errno` is set.
  */
-mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns,
+mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns, mount_flags_t flags,
     const superblock_ops_t* superblockOps);
 
 /**

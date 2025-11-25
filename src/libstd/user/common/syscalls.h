@@ -104,10 +104,9 @@ _NORETURN static inline void _syscall_thread_exit(void)
         ;
 }
 
-static inline pid_t _syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_attr_t* attr)
+static inline pid_t _syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, priority_t priority, spawn_flags_t flags)
 {
-    return _SYSCALL4(pid_t, SYS_SPAWN, const char**, argv, const spawn_fd_t*, fds, const char*, cwd, spawn_attr_t*,
-        attr);
+    return _SYSCALL5(pid_t, SYS_SPAWN, const char**, argv, const spawn_fd_t*, fds, const char*, cwd, priority_t, priority, spawn_flags_t, flags);
 }
 
 static inline uint64_t _syscall_nanosleep(clock_t nanoseconds)
@@ -255,7 +254,7 @@ static inline fd_t _syscall_claim(key_t* key)
     return _SYSCALL1(fd_t, SYS_CLAIM, key_t*, key);
 }
 
-static inline uint64_t _syscall_bind(fd_t source, const char* mountpoint)
+static inline uint64_t _syscall_bind(fd_t source, const char* mountpoint, mount_flags_t flags)
 {
-    return _SYSCALL2(uint64_t, SYS_BIND, fd_t, source, const char*, mountpoint);
+    return _SYSCALL3(uint64_t, SYS_BIND, fd_t, source, const char*, mountpoint, mount_flags_t, flags);
 }

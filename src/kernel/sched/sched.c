@@ -582,12 +582,15 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         assert(oldState == THREAD_READY);
         thread_load(next, frame);
         runThread = next;
-        
-        LOG_DEBUG("switched to thread pid=%d tid=%d rip=%p\n", runThread->process->id, runThread->id, (void*)frame->rip);
     }
 
     if (runThread != ctx->idleThread)
     {
+        if (runThread->sched.deadline <= uptime)
+        {
+            runThread->sched.deadline = uptime + runThread->sched.timeSlice;
+        }
+
         timer_set(self, uptime, runThread->sched.deadline);
     }
 

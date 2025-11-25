@@ -27,8 +27,7 @@ static void spawn_program(const char* path, priority_t priority)
         {.parent = klog, .child = STDERR_FILENO},
         SPAWN_FD_END,
     };
-    spawn_attr_t attr = {.priority = priority};
-    if (spawn(argv, fds, "/usr", &attr) == ERR)
+    if (spawn(argv, fds, "/usr", priority, SPAWN_DEFAULT) == ERR)
     {
         printf("init: failed to spawn program '%s' (%s)\n", path, strerror(errno));
     }

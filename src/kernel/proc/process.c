@@ -170,14 +170,14 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
         return ERR;
     }
 
-    LOCK_SCOPE(&process->threads.lock);
-
     // Special case, kill should kill all threads in the process
     if (count == 4 && memcmp(buffer, "kill", 4) == 0)
     {
         process_kill(process, 0);
         return count;
     }
+
+    LOCK_SCOPE(&process->threads.lock);
 
     thread_t* thread = CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
     if (thread == NULL)
@@ -330,7 +330,7 @@ static uint64_t process_dir_init(process_t* process, const char* name)
     }
 
     path_t selfPath = PATH_CREATE(procMount, selfDir);
-    process->self = namespace_bind(&process->ns, process->dir, &selfPath);
+    process->self = namespace_bind(&process->ns, process->dir, &selfPath, MOUNT_OVERWRITE);
     path_put(&selfPath);
     if (process->self == NULL)
     {
@@ -366,7 +366,7 @@ static void process_free(process_t* process)
     free(process);
 }
 
-static uint64_t process_init(process_t* process, process_t* parent, const char** argv, const path_t* cwd,
+static uint64_t process_init(process_t* process, const char** argv, const path_t* cwd, namespace_t* parentNs,
     priority_t priority)
 {
     ref_init(&process->ref, process_free);
@@ -382,29 +382,19 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     if (space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
             SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY) == ERR)
     {
-        namespace_deinit(&process->ns);
         argv_deinit(&process->argv);
         return ERR;
     }
 
-    if (cwd != NULL)
+    if (namespace_init(&process->ns, parentNs) == ERR)
     {
-        cwd_init(&process->cwd, cwd);
-    }
-    else if (parent != NULL)
-    {
-        path_t parentCwd = cwd_get(&parent->cwd);
-        PATH_DEFER(&parentCwd);
-
-        cwd_init(&process->cwd, &parentCwd);
-    }
-    else
-    {
-        cwd_init(&process->cwd, NULL);
+        space_deinit(&process->space);
+        argv_deinit(&process->argv);
+        return ERR;
     }
 
+    cwd_init(&process->cwd, cwd);
     file_table_init(&process->fileTable);
-    namespace_init(&process->ns, parent != NULL ? &parent->ns : NULL, process);
     futex_ctx_init(&process->futexCtx);
     perf_process_ctx_init(&process->perf);
     wait_queue_init(&process->dyingWaitQueue);
@@ -425,11 +415,11 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     process->perfFile = NULL;
     process->self = NULL;
 
-    LOG_DEBUG("new pid=%d parent=%d priority=%d\n", process->id, parent ? parent->id : 0, priority);
+    LOG_DEBUG("new pid=%d priority=%d\n", process->id, priority);
     return 0;
 }
 
-process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority)
+process_t* process_new(const char** argv, const path_t* cwd, namespace_t* parentNs, priority_t priority)
 {
     process_t* process = malloc(sizeof(process_t));
     if (process == NULL)
@@ -437,7 +427,7 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
         return NULL;
     }
 
-    if (process_init(process, parent, argv, cwd, priority) == ERR)
+    if (process_init(process, argv, cwd, parentNs, priority) == ERR)
     {
         free(process);
         return NULL;
@@ -509,7 +499,7 @@ process_t* process_get_kernel(void)
 
 void process_procfs_init(void)
 {
-    procMount = sysfs_mount_new(NULL, "proc", NULL, NULL);
+    procMount = sysfs_mount_new(NULL, "proc", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, NULL);
     if (procMount == NULL)
     {
         panic(NULL, "Failed to mount /proc filesystem");

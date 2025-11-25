@@ -5,11 +5,13 @@
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/sched/sched.h>
 #include <kernel/sync/lock.h>
 
 #include <assert.h>
 #include <errno.h>
 #include <stdatomic.h>
+#include <sys/io.h>
 #include <sys/list.h>
 
 static _Atomic(inode_number_t) newNum = ATOMIC_VAR_INIT(0);
@@ -84,7 +86,7 @@ void sysfs_init(void)
         panic(NULL, "Failed to register sysfs");
     }
 
-    devMount = sysfs_mount_new(NULL, "dev", NULL, NULL);
+    devMount = sysfs_mount_new(NULL, "dev", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, NULL);
     if (devMount == NULL)
     {
         panic(NULL, "Failed to create /dev filesystem");
@@ -97,7 +99,7 @@ dentry_t* sysfs_get_dev(void)
     return REF(devMount->root);
 }
 
-mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns, const superblock_ops_t* superblockOps)
+mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns, mount_flags_t flags, const superblock_ops_t* superblockOps)
 {
     if (name == NULL)
     {
@@ -107,15 +109,17 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
 
     if (ns == NULL)
     {
-        process_t* kernelProcess = process_get_kernel();
-        assert(kernelProcess != NULL);
-        ns = &kernelProcess->ns;
+        process_t* process = sched_process();
+        ns = &process->ns;
     }
 
     if (parent == NULL)
     {
         path_t rootPath = PATH_EMPTY;
-        path_set(&rootPath, ns->rootMount, ns->rootMount->root);
+        if (namespace_get_root_path(ns, &rootPath) == ERR)
+        {
+            return NULL;
+        }
         PATH_DEFER(&rootPath);
 
         dentry_t* dentry = vfs_get_or_lookup_dentry(&rootPath, name);
@@ -125,15 +129,14 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
         }
         DEREF_DEFER(dentry);
 
-        path_t mountpoint = PATH_EMPTY;
-        path_set(&mountpoint, ns->rootMount, dentry);
+        path_t mountpoint = PATH_CREATE(rootPath.mount, dentry);
         PATH_DEFER(&mountpoint);
 
         sysfs_mount_ctx_t ctx = {
             .superblockOps = superblockOps,
         };
 
-        return namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, &ctx);
+        return namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, flags, &ctx);
     }
 
     if (parent->dentry->superblock->fs != &sysfs)
@@ -166,7 +169,7 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
     };
 
     path_t mountpoint = PATH_CREATE(parent->mount, dentry);
-    mount_t* mount = namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, &ctx);
+    mount_t* mount = namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, flags, &ctx);
     path_put(&mountpoint);
     return mount;
 }

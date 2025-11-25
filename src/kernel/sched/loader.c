@@ -13,6 +13,7 @@
 #include <string.h>
 #include <sys/elf.h>
 #include <sys/math.h>
+#include <sys/proc.h>
 
 static void* loader_load_program(thread_t* thread)
 {
@@ -125,7 +126,7 @@ static void loader_process_entry(void)
     thread_jump(thread);
 }
 
-thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd)
+thread_t* loader_spawn(const char** argv, const path_t* cwd, priority_t priority, spawn_flags_t flags)
 {
     process_t* process = sched_process();
     assert(process != NULL);
@@ -154,7 +155,15 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
         return NULL;
     }
 
-    process_t* child = process_new(process, argv, cwd, priority);
+    if (priority == PRIORITY_PARENT)
+    {
+        priority = atomic_load(&process->priority);
+    }
+
+    path_t parentCwd = cwd_get(&process->cwd);
+    PATH_DEFER(&parentCwd);
+
+    process_t* child = process_new(argv, cwd != NULL ? cwd : &parentCwd, flags & SPAWN_EMPTY_NAMESPACE ? NULL : &process->ns, priority);
     if (child == NULL)
     {
         return NULL;
@@ -177,22 +186,12 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
     return childThread;
 }
 
-SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const char* cwdString, spawn_attr_t* attr)
+SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const char* cwd, priority_t priority, spawn_flags_t flags)
 {
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
 
-    priority_t priority;
-    if (attr == NULL || attr->flags & SPAWN_INHERIT_PRIORITY)
-    {
-        priority = atomic_load(&process->priority);
-    }
-    else
-    {
-        priority = attr->priority;
-    }
-
-    if (priority >= PRIORITY_MAX_USER)
+    if (priority >= PRIORITY_MAX_USER && priority != PRIORITY_PARENT)
     {
         errno = EACCES;
         return ERR;
@@ -201,7 +200,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     char** argvCopy;
     uint64_t argc;
     char* argvTerminator = NULL;
-    if (thread_copy_from_user_terminated(thread, argv, &argvTerminator, sizeof(char*), CONFIG_MAX_ARGC,
+    if (thread_copy_from_user_terminated(thread, (void*)argv, (void*)&argvTerminator, sizeof(char*), CONFIG_MAX_ARGC,
             (void**)&argvCopy, &argc) == ERR)
     {
         return ERR;
@@ -221,7 +220,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
             {
                 free(argvCopy[j]);
             }
-            free(argvCopy);
+            free((void*)argvCopy);
             return ERR;
         }
 
@@ -229,10 +228,10 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     }
 
     path_t cwdPath = PATH_EMPTY;
-    if (cwdString != NULL)
+    if (cwd != NULL)
     {
         pathname_t cwdPathname;
-        if (thread_copy_from_user_pathname(thread, &cwdPathname, cwdString) == ERR)
+        if (thread_copy_from_user_pathname(thread, &cwdPathname, cwd) == ERR)
         {
             goto cleanup_argv;
         }
@@ -246,7 +245,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         }
     }
 
-    thread_t* child = loader_spawn((const char**)argvCopy, priority, cwdString == NULL ? NULL : &cwdPath);
+    thread_t* child = loader_spawn((const char**)argvCopy, cwd == NULL ? NULL : &cwdPath, priority, flags);
 
     for (uint64_t i = 0; i < argc; i++)
     {
@@ -254,7 +253,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     }
     free((void*)argvCopy);
 
-    if (cwdString != NULL)
+    if (cwd != NULL)
     {
         path_put(&cwdPath);
     }

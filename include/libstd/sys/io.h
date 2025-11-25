@@ -539,12 +539,15 @@ fd_t claim(key_t* key);
 /**
  * @brief Mount flags type.
  * @enum mount_flags_t
+ * 
+ * The propagation flags apply recursively, such that specifying both `MOUNT_PROPAGATE_PARENT` and `MOUNT_PROPAGATE_CHILDREN` will propagate the mount to every namespace in the hierarchy.
  */
 typedef enum
 {
-    MOUNT_SHARED = 0 << 0, ///< The mountpoint propagates to parent and child namespaces.
-    MOUNT_PRIVATE = 1 << 0, ///< The mountpoint does not propagate to parent or child namespaces.
-    MOUNT_SLAVE = 2 << 0,   ///< The mountpoint propagates to child namespaces but not parent namespaces.
+    MOUNT_NONE = 0,            ///< No special mount flags.
+    MOUNT_PROPAGATE_PARENT = 1 << 0, ///< Propagate the mount to parent namespaces.
+    MOUNT_PROPAGATE_CHILDREN = 1 << 1, ///< Propagate the mount to child namespaces.
+    MOUNT_OVERWRITE = 1 << 2, ///< Overwrite any existing mount at the mountpoint.
 } mount_flags_t;
 
 /**

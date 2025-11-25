@@ -380,7 +380,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
         stat_t info;
         if (stat(argv[0], &info) != ERR && info.type != INODE_DIR)
         {
-            result = spawn(argv, fds, NULL, NULL);
+            result = spawn(argv, fds, NULL, PRIORITY_PARENT, SPAWN_DEFAULT);
         }
         else
         {
@@ -411,7 +411,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
                     newArgv[k] = argv[k];
                 }
                 newArgv[argc] = NULL;
-                result = spawn(newArgv, fds, NULL, SPAWN_NONE);
+                result = spawn(newArgv, fds, NULL, PRIORITY_PARENT, SPAWN_DEFAULT);
                 isFound = true;
                 break;
             }
