@@ -38,8 +38,7 @@ uint64_t sys_time_register_source(const sys_time_source_t* source)
         errno = EINVAL;
         return ERR;
     }
-
-    LOG_DEBUG("registering system time source '%s' with precision %lu ns\n", source->name, source->precision);
+    
     rwlock_write_acquire(&sourcesLock);
     if (sourceCount >= SYS_TIME_MAX_SOURCES)
     {

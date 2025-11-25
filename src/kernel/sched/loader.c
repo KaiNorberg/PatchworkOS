@@ -69,28 +69,6 @@ static void* loader_load_program(thread_t* thread)
 
     elf64_load_segments(&elf, 0, 0);
 
-    /*for (uint64_t i = 0; i < elf.header->e_phnum; i++)
-    {
-        Elf64_Phdr* phdr = ELF64_GET_PHDR(&elf, i);
-        if (phdr->p_type != PT_LOAD)
-        {
-            continue;
-        }
-
-        void* segmentData = ELF64_AT_OFFSET(&elf, phdr->p_offset);
-        void* destAddr = (void*)phdr->p_vaddr;
-        memcpy(destAddr, segmentData, phdr->p_filesz);
-        if (phdr->p_memsz > phdr->p_filesz)
-        {
-            memset((void*)((uint64_t)destAddr + phdr->p_filesz), 0, phdr->p_memsz - phdr->p_filesz);
-        }
-
-        if (!(phdr->p_flags & PF_W))
-        {
-            vmm_protect(space, destAddr, phdr->p_memsz, PML_USER | PML_PRESENT);
-        }
-    }*/
-
     void* entryPoint = (void*)elf.header->e_entry;
     free(fileData);
     return entryPoint;
@@ -130,7 +108,7 @@ static void loader_process_entry(void)
         sched_process_exit(ESPAWNFAIL);
     }
 
-    // Disable interrupts, they will be enabled by the IRETQ instruction.
+    // Disable interrupts, they will be enabled when we jump to user space.
     asm volatile("cli");
 
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
@@ -144,7 +122,7 @@ static void loader_process_entry(void)
 
     LOG_DEBUG("jump to user space path=%s pid=%d rsp=%p rip=%p\n", thread->process->argv.buffer[0], thread->process->id,
         (void*)thread->frame.rsp, (void*)thread->frame.rip);
-    loader_jump_to_user_space(thread);
+    thread_jump(thread);
 }
 
 thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd)

@@ -1,3 +1,4 @@
+#include <kernel/cpu/ipi.h>
 #include <kernel/init/init.h>
 
 #include <kernel/acpi/acpi.h>
@@ -61,8 +62,12 @@ void init_early(const boot_info_t* bootInfo)
     cpu_init(&bootstrapCpu);
 
     LOG_INFO("early init done, jumping to boot thread\n");
-    thread_t* bootThread = thread_get_boot();
-    assert(bootThread != NULL);
+    thread_t* bootThread = thread_new(process_get_kernel());
+    if (bootThread == NULL)
+    {
+        panic(NULL, "Failed to create boot thread");
+    }
+
     bootThread->frame.rdi = (uintptr_t)bootInfo;
     bootThread->frame.rip = (uintptr_t)kmain;
     bootThread->frame.rbp = bootThread->kernelStack.top;
@@ -70,13 +75,8 @@ void init_early(const boot_info_t* bootInfo)
     bootThread->frame.cs = GDT_CS_RING0;
     bootThread->frame.ss = GDT_SS_RING0;
     bootThread->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
-    atomic_store(&bootThread->state, THREAD_RUNNING);
-    bootThread->sched.deadline = CLOCKS_NEVER;
-    cpu_get_unsafe()->sched.runThread = bootThread;
 
-    // This will trigger a page fault. But that's intended as we use page faults to dynamically grow the
-    // threads kernel stack and the stack starts out unmapped.
-    thread_jump(bootThread);
+    sched_start(bootThread);
 }
 
 // We delay freeing bootloader data as we are still using it during initialization.
@@ -114,10 +114,7 @@ static void init_free_loader_data(const boot_memory_map_t* map)
 
 static void init_finalize(const boot_info_t* bootInfo)
 {
-    thread_t* bootThread = thread_get_boot();
-    assert(bootThread != NULL);
-
-    vmm_map_bootloader_lower_half(bootThread);
+    vmm_map_bootloader_lower_half();
 
     pic_disable();
 
@@ -143,7 +140,25 @@ static void init_finalize(const boot_info_t* bootInfo)
     syscall_table_init();
 
     init_free_loader_data(&bootInfo->memory.map);
-    vmm_unmap_bootloader_lower_half(bootThread);
+    vmm_unmap_bootloader_lower_half();
+
+    if (module_device_attach("LOAD_ON_BOOT", "LOAD_ON_BOOT", MODULE_LOAD_ALL) == ERR)
+    {
+        panic(NULL, "Failed to load modules with LOAD_ON_BOOT");
+    }
+
+    if (timer_source_amount() == 0)
+    {
+        panic(NULL, "No timer source registered, most likely no timer sources with a provided driver was found");
+    }
+    if (irq_chip_amount() == 0)
+    {
+        panic(NULL, "No IRQ chip registered, most likely no IRQ chips with a provided driver was found");
+    }
+    if (ipi_chip_amount() == 0)
+    {
+        panic(NULL, "No IPI chip registered, most likely no IPI chips with a provided driver was found");
+    }
 
     LOG_INFO("kernel initalized using %llu kb of memory\n", pmm_used_amount() * PAGE_SIZE / 1024);
 }
@@ -175,20 +190,12 @@ static inline void init_process_spawn(void)
 
 void kmain(const boot_info_t* bootInfo)
 {
-    // The stack pointer is expected to be somewhere near the top.
-    assert(rsp_read() > VMM_KERNEL_STACKS_MAX - 2 * PAGE_SIZE);
-
     LOG_DEBUG("kmain entered\n");
 
     init_finalize(bootInfo);
 
-    if (module_device_attach("LOAD_ON_BOOT", "LOAD_ON_BOOT", MODULE_LOAD_ALL) == ERR)
-    {
-        panic(NULL, "Failed to load modules with LOAD_ON_BOOT");
-    }
-
     init_process_spawn();
 
     LOG_INFO("done with boot thread\n");
-    sched_done_with_boot_thread();
+    sched_thread_exit();
 }

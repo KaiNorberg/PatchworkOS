@@ -106,6 +106,15 @@ thread_t* thread_new(process_t* process);
 void thread_free(thread_t* thread);
 
 /**
+ * @brief Kill a thread.
+ * 
+ * Will send a "kill" note to the thread, but not immediately free it.
+ * 
+ * @param thread The thread to be killed.
+ */
+void thread_kill(thread_t* thread);
+
+/**
  * @brief Save state to a thread.
  *
  * @param thread The destination thread where the state will be saved.
@@ -122,27 +131,6 @@ void thread_save(thread_t* thread, const interrupt_frame_t* frame);
  * @param frame The destination interrupt frame.
  */
 void thread_load(thread_t* thread, interrupt_frame_t* frame);
-
-/**
- * @brief Jump to a thread by calling `thread_load()` and then loading its interrupt frame.
- *
- * Must be done in assembly as it requires directly modifying registers.
- *
- * Will never return instead it ends up at `thread->frame.rip`.
- *
- * @param thread The thread to jump to.
- */
-_NORETURN extern void thread_jump(thread_t* thread);
-
-/**
- * @brief Retrieve the interrupt frame from a thread.
- *
- * Will only retrieve the interrupt frame.
- *
- * @param thread The source thread.
- * @param frame The destination interrupt frame.
- */
-void thread_get_interrupt_frame(thread_t* thread, interrupt_frame_t* frame);
 
 /**
  * @brief Check if a thread has a note pending.
@@ -164,18 +152,6 @@ bool thread_is_note_pending(thread_t* thread);
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t thread_send_note(thread_t* thread, const void* buffer, uint64_t count);
-
-/**
- * @brief Retrieves the boot thread.
- *
- * The boot thread is the first thread created by the kernel. After boot it becomes the idle thread of the
- * bootstrap CPU. Is initialized lazily on the first call to this function, which should happen during early boot.
- *
- * Will never return `NULL`.
- *
- * @return The boot thread.
- */
-thread_t* thread_get_boot(void);
 
 /**
  * @brief Safely copy data from user space.
@@ -239,5 +215,16 @@ uint64_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, 
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t thread_load_atomic_from_user(thread_t* thread, atomic_uint64_t* userObj, uint64_t* outValue);
+
+/**
+ * @brief Jump to a thread by calling `thread_load()` and then loading its interrupt frame.
+ *
+ * Must be done in assembly as it requires directly modifying registers.
+ *
+ * Will never return instead it ends up at `thread->frame.rip`.
+ *
+ * @param thread The thread to jump to.
+ */
+_NORETURN extern void thread_jump(thread_t* thread);
 
 /** @} */

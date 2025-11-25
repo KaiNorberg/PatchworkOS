@@ -15,13 +15,6 @@
  */
 
 /**
- * @brief Performs the initial jump to userspace.
- *
- * @param thread The curently running thread that will jump to userspace.
- */
-extern NORETURN void loader_jump_to_user_space(thread_t* thread);
-
-/**
  * @brief Spawns a child process from an executable file.
  *
  * @param argv A null-terminated array of strings storing the arguments to be passed to usespace and the executable to

@@ -121,19 +121,23 @@ void vmm_cpu_ctx_init(vmm_cpu_ctx_t* ctx)
     vmm_cpu_ctx_init_common(ctx);
 }
 
-void vmm_map_bootloader_lower_half(thread_t* bootThread)
+void vmm_map_bootloader_lower_half(void)
 {
+    thread_t* thread = sched_thread();
+
     for (pml_index_t i = PML_INDEX_LOWER_HALF_MIN; i < PML_INDEX_LOWER_HALF_MAX; i++)
     {
-        bootThread->process->space.pageTable.pml4->entries[i] = kernelSpace.pageTable.pml4->entries[i];
+        thread->process->space.pageTable.pml4->entries[i] = kernelSpace.pageTable.pml4->entries[i];
     }
 }
 
-void vmm_unmap_bootloader_lower_half(thread_t* bootThread)
+void vmm_unmap_bootloader_lower_half(void)
 {
+    thread_t* thread = sched_thread();
+
     for (pml_index_t i = PML_INDEX_LOWER_HALF_MIN; i < PML_INDEX_LOWER_HALF_MAX; i++)
     {
-        bootThread->process->space.pageTable.pml4->entries[i].raw = 0;
+        thread->process->space.pageTable.pml4->entries[i].raw = 0;
         kernelSpace.pageTable.pml4->entries[i].raw = 0;
     }
     cr3_write(cr3_read());

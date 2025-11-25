@@ -80,7 +80,6 @@ void note_handle_pending(interrupt_frame_t* frame, cpu_t* self)
     (void)self;
 
     thread_t* thread = sched_thread_unsafe();
-    process_t* process = thread->process;
     note_queue_t* queue = &thread->notes;
 
     lock_acquire(&queue->lock);
@@ -88,7 +87,6 @@ void note_handle_pending(interrupt_frame_t* frame, cpu_t* self)
     if (queue->flags & NOTE_QUEUE_RECIEVED_KILL)
     {
         lock_release(&queue->lock);
-        process_kill(process, EXIT_FAILURE);
         atomic_store(&thread->state, THREAD_DYING);
         return;
     }

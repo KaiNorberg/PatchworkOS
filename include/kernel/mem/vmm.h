@@ -151,10 +151,8 @@ void vmm_cpu_ctx_init(vmm_cpu_ctx_t* ctx);
  *
  * The bootloaders lower half mappings will be transferred to the kernel space mappings during boot so we just copy them
  * from there.
- *
- * @param bootThread The boot thread, which will have its address space modified.
  */
-void vmm_map_bootloader_lower_half(thread_t* bootThread);
+void vmm_map_bootloader_lower_half(void);
 
 /**
  * @brief Unmaps the lower half of the address space after kernel initialization.
@@ -163,10 +161,8 @@ void vmm_map_bootloader_lower_half(thread_t* bootThread);
  *
  * After this is called the bootloaders lower half mappings will be destroyed and the kernel will only have its own
  * mappings.
- *
- * @param bootThread The boot thread, which will have its address space modified.
  */
-void vmm_unmap_bootloader_lower_half(thread_t* bootThread);
+void vmm_unmap_bootloader_lower_half(void);
 
 /**
  * @brief Retrieves the kernel's address space.

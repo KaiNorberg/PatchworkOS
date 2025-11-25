@@ -172,6 +172,13 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
 
     LOCK_SCOPE(&process->threads.lock);
 
+    // Special case, kill should kill all threads in the process
+    if (count == 4 && memcmp(buffer, "kill", 4) == 0)
+    {
+        process_kill(process, 0);
+        return count;
+    }
+
     thread_t* thread = CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
     if (thread == NULL)
     {

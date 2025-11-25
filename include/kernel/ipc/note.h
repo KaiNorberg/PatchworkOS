@@ -33,7 +33,7 @@ typedef struct cpu cpu_t;
  * that all user processes should handle in a standard way. The values for these notes are intended to mirror UNIX
  * signals where applicable. Below is a list of all of these special notes:
  * - "kill": When the kernel receives this note, it will immediately terminate the target thread's process. User space
- * will never see this note. Also used by processes to kill all of its own threads. (UNIX SIGKILL)
+ * will never see this note. Also used by processes to kill its own threads. (UNIX SIGKILL)
  *
  * @{
  */

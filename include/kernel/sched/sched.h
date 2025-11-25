@@ -124,7 +124,7 @@ typedef struct
      */
     thread_t* idleThread;
     /**
-     * @brief The lock that protects this context, except the `zombieThreads` list.
+     * @brief The lock that protects this context.
      */
     lock_t lock;
     cpu_t* owner; ///< The cpu that owns this scheduling context.
@@ -140,8 +140,6 @@ void sched_thread_ctx_init(sched_thread_ctx_t* ctx);
 /**
  * @brief Initializes a CPU's scheduling context.
  *
- * Will also register the schedulers timer handler for the CPU.
- *
  * @param ctx The `sched_cpu_ctx_t` structure to initialize.
  * @param self The `cpu_t` structure associated with this scheduling context.
  */
@@ -150,23 +148,19 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* self);
 /**
  * @brief The idle loop for a CPU.
  *
- * The `sched_idle_loop()` function is the main loop where idle threads execute. The boot thread will eventually end up
- * here to.
+ * The `sched_idle_loop()` function is the main loop where idle threads execute.
  *
  */
 NORETURN extern void sched_idle_loop(void);
 
 /**
- * @brief Specify that the boot thread is no longer needed.
+ * @brief Starts the scheduler by switching to the boot thread.
  *
- * The `sched_done_with_boot_thread()` function is called when the kernel has finished booting and the boot thread is no
- * longer needed, instead of just discarding it, the boot thread becomes the idle thread of the bootstrap cpu.
+ * Will never return.
  *
- * Additionally, this function will validate that at least one timer source, IRQ chip, and IPI chip is registered, as
- * those are required for the scheduler to function properly.
- *
+ * @param bootThread The initial thread to switch to.
  */
-NORETURN void sched_done_with_boot_thread(void);
+_NORETURN void sched_start(thread_t* bootThread);
 
 /**
  * @brief Puts the current thread to sleep.

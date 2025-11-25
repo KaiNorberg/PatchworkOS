@@ -1,3 +1,4 @@
+#include <_internal/config.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/sched/sched.h>
 
@@ -82,66 +83,40 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* self)
     ctx->active = &ctx->queues[0];
     ctx->expired = &ctx->queues[1];
 
-    // Bootstrap cpu is initalized early so we cant yet create the idle thread, the boot thread on the bootstrap cpu
-    // will become the idle thread.
-    if (self->id == CPU_ID_BOOTSTRAP)
+    ctx->idleThread = thread_new(process_get_kernel());
+    if (ctx->idleThread == NULL)
     {
-        ctx->idleThread = NULL;
-        ctx->runThread = NULL;
+        panic(NULL, "Failed to create idle thread");
     }
-    else
-    {
-        ctx->idleThread = thread_new(process_get_kernel());
-        if (ctx->idleThread == NULL)
-        {
-            panic(NULL, "Failed to create idle thread");
-        }
 
-        ctx->idleThread->frame.rip = (uintptr_t)sched_idle_loop;
-        ctx->idleThread->frame.rsp = ctx->idleThread->kernelStack.top;
-        ctx->idleThread->frame.cs = GDT_CS_RING0;
-        ctx->idleThread->frame.ss = GDT_SS_RING0;
-        ctx->idleThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+    ctx->idleThread->frame.rip = (uintptr_t)sched_idle_loop;
+    ctx->idleThread->frame.rsp = ctx->idleThread->kernelStack.top;
+    ctx->idleThread->frame.cs = GDT_CS_RING0;
+    ctx->idleThread->frame.ss = GDT_SS_RING0;
+    ctx->idleThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
 
-        ctx->runThread = ctx->idleThread;
-        atomic_store(&ctx->runThread->state, THREAD_RUNNING);
-    }
+    ctx->runThread = ctx->idleThread;
+    atomic_store(&ctx->runThread->state, THREAD_RUNNING);
 
     lock_init(&ctx->lock);
     ctx->owner = self;
 }
 
-void sched_done_with_boot_thread(void)
+void sched_start(thread_t* bootThread)
 {
-    cpu_t* self = cpu_get();
-    sched_cpu_ctx_t* ctx = &self->sched;
+    asm volatile ("cli");
 
-    assert(self->id == CPU_ID_BOOTSTRAP && ctx->runThread->process == process_get_kernel() && ctx->runThread->id == 0);
+    cpu_t* self = cpu_get_unsafe();
 
-    // The boot thread becomes the bootstrap cpus idle thread.
-    ctx->runThread->sched.deadline = 0;
-    ctx->idleThread = ctx->runThread;
+    assert(self->sched.runThread == self->sched.idleThread);
+    self->sched.idleThread->sched.deadline = 0;
+    atomic_store(&self->sched.idleThread->state, THREAD_READY);
 
-    if (timer_source_amount() == 0)
-    {
-        panic(NULL, "No timer source registered, most likely no timer sources with a provided driver was found");
-    }
-    if (irq_chip_amount() == 0)
-    {
-        panic(NULL, "No IRQ chip registered, most likely no IRQ chips with a provided driver was found");
-    }
-    if (ipi_chip_amount() == 0)
-    {
-        panic(NULL, "No IPI chip registered, most likely no IPI chips with a provided driver was found");
-    }
+    self->sched.runThread = bootThread;
+    self->sched.runThread->sched.deadline = CLOCKS_NEVER;
+    atomic_store(&bootThread->state, THREAD_RUNNING);
 
-    cpu_put();
-
-    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-
-    sched_yield();
-    // When we return here the boot thread will be an idle thread so we just enter the idle loop.
-    sched_idle_loop();
+    thread_jump(bootThread);
 }
 
 uint64_t sched_nanosleep(clock_t timeout)
@@ -215,10 +190,7 @@ SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, uint64_t status)
 void sched_thread_exit(void)
 {
     thread_t* thread = sched_thread();
-    if (thread_send_note(thread, "kill", 4) == ERR)
-    {
-        panic(NULL, "Failed to send thread exit note");
-    }
+    thread_kill(thread);
     ipi_invoke();
 
     panic(NULL, "Return to sched_thread_exit");
@@ -610,6 +582,8 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         assert(oldState == THREAD_READY);
         thread_load(next, frame);
         runThread = next;
+        
+        LOG_DEBUG("switched to thread pid=%d tid=%d rip=%p\n", runThread->process->id, runThread->id, (void*)frame->rip);
     }
 
     if (runThread != ctx->idleThread)
