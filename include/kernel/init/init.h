@@ -18,7 +18,7 @@
  * This will do the absolute minimum to get the scheduler running.
  *
  * Having the scheduler running lets us load the boot thread which will jump to `kmain()` where we can do the rest
- * of the kernel initialization. 
+ * of the kernel initialization.
  *
  * Will be called in the `_start()` function found in `start.s` with interrupts disabled.
  *

@@ -107,9 +107,9 @@ void thread_free(thread_t* thread);
 
 /**
  * @brief Kill a thread.
- * 
+ *
  * Will send a "kill" note to the thread, but not immediately free it.
- * 
+ *
  * @param thread The thread to be killed.
  */
 void thread_kill(thread_t* thread);

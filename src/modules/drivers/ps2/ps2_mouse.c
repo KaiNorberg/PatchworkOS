@@ -17,7 +17,7 @@ static void ps2_mouse_handle_packet(mouse_t* mouse, const ps2_mouse_packet_t* pa
 static void ps2_mouse_irq(irq_func_data_t* data)
 {
     ps2_mouse_data_t* private = data->private;
-    uint64_t byte = ps2_read();
+    uint64_t byte = ps2_read_no_wait();
     if (byte == ERR)
     {
         LOG_WARN("failed to scan PS/2 mouse\n");
@@ -87,21 +87,32 @@ uint64_t ps2_mouse_init(ps2_device_info_t* info)
 
     if (ps2_device_cmd(info->device, PS2_DEV_CMD_SET_DEFAULTS) == ERR)
     {
-        LOG_ERR("failed to set default PS/2 mouse settings\n");
         mouse_free(private->mouse);
         free(private);
+        LOG_ERR("failed to set default PS/2 mouse settings\n");
+        return ERR;
+    }
+
+    info->private = private;
+    return 0;
+}
+
+uint64_t ps2_mouse_irq_register(ps2_device_info_t* info)
+{
+    ps2_mouse_data_t* private = info->private;
+    if (private == NULL)
+    {
+        LOG_ERR("PS/2 mouse data is NULL during IRQ registration\n");
+        errno = EINVAL;
         return ERR;
     }
 
     if (irq_handler_register(info->irq, ps2_mouse_irq, private) == ERR)
     {
-        mouse_free(private->mouse);
-        free(private);
         LOG_ERR("failed to register PS/2 mouse IRQ handler\n");
         return ERR;
     }
 
-    info->private = private;
     return 0;
 }
 

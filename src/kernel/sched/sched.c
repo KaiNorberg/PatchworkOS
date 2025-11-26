@@ -104,7 +104,7 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* self)
 
 void sched_start(thread_t* bootThread)
 {
-    asm volatile ("cli");
+    asm volatile("cli");
 
     cpu_t* self = cpu_get_unsafe();
 

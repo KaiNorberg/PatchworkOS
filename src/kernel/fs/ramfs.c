@@ -392,9 +392,10 @@ void ramfs_init(const boot_disk_t* disk)
         panic(NULL, "Failed to register ramfs");
     }
     LOG_INFO("mounting ramfs\n");
- 
+
     process_t* process = sched_process();
-    mount = namespace_mount(&process->ns, NULL, VFS_DEVICE_NAME_NONE, RAMFS_NAME, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, (void*)disk);
+    mount = namespace_mount(&process->ns, NULL, VFS_DEVICE_NAME_NONE, RAMFS_NAME,
+        MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, (void*)disk);
     if (mount == NULL)
     {
         panic(NULL, "Failed to mount ramfs");

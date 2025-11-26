@@ -66,7 +66,7 @@ void log_screen_disable(void);
 
 /**
  * @brief Write directly to the log outputs without any formatting or headers.
- * 
+ *
  * @param string The string to write.
  * @param length The length of the string.
  */
@@ -74,9 +74,10 @@ void log_write(const char* string, uint64_t length);
 
 /**
  * @brief Print a formatted log message.
- * 
- * @warning If the log level is `LOG_LEVEL_PANIC`, this function will not acquire the log lock to avoid recursive panics. Its up to the panic system to ensure all other CPUs are halted before calling this.
- * 
+ *
+ * @warning If the log level is `LOG_LEVEL_PANIC`, this function will not acquire the log lock to avoid recursive
+ * panics. Its up to the panic system to ensure all other CPUs are halted before calling this.
+ *
  * @param level The log level.
  * @param format The format string.
  * @param ... The format arguments.
@@ -85,9 +86,10 @@ void log_print(log_level_t level, const char* format, ...);
 
 /**
  * @brief Print a formatted log message with a va_list.
- * 
- * @warning If the log level is `LOG_LEVEL_PANIC`, this function will not acquire the log lock to avoid recursive panics. Its up to the panic system to ensure all other CPUs are halted before calling this.
- * 
+ *
+ * @warning If the log level is `LOG_LEVEL_PANIC`, this function will not acquire the log lock to avoid recursive
+ * panics. Its up to the panic system to ensure all other CPUs are halted before calling this.
+ *
  * @param level The log level.
  * @param format The format string.
  * @param args The va_list of arguments.

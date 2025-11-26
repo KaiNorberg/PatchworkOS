@@ -163,7 +163,8 @@ thread_t* loader_spawn(const char** argv, const path_t* cwd, priority_t priority
     path_t parentCwd = cwd_get(&process->cwd);
     PATH_DEFER(&parentCwd);
 
-    process_t* child = process_new(argv, cwd != NULL ? cwd : &parentCwd, flags & SPAWN_EMPTY_NAMESPACE ? NULL : &process->ns, priority);
+    process_t* child = process_new(argv, cwd != NULL ? cwd : &parentCwd,
+        flags & SPAWN_EMPTY_NAMESPACE ? NULL : &process->ns, priority);
     if (child == NULL)
     {
         return NULL;
@@ -186,7 +187,8 @@ thread_t* loader_spawn(const char** argv, const path_t* cwd, priority_t priority
     return childThread;
 }
 
-SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const char* cwd, priority_t priority, spawn_flags_t flags)
+SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const char* cwd, priority_t priority,
+    spawn_flags_t flags)
 {
     thread_t* thread = sched_thread();
     process_t* process = thread->process;

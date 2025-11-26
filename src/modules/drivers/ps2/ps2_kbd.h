@@ -32,6 +32,14 @@ typedef struct
 uint64_t ps2_kbd_init(ps2_device_info_t* info);
 
 /**
+ * @brief Register the IRQ handler for a PS/2 keyboard device.
+ *
+ * @param info Device information structure.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t ps2_kbd_irq_register(ps2_device_info_t* info);
+
+/**
  * @brief Deinitialize a PS/2 keyboard device.
  *
  * @param info Device information structure.

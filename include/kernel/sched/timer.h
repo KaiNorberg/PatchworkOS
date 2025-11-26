@@ -20,17 +20,21 @@ interrupt must be programmed.
  *
  * ## Timer Interrupts
  *
- * The way we handle timer interrupts is that each subsystem that relies on the timer calls the `timer_set()` function with their desired deadline and then, when the timer interrupt occurs, the timer interrupt is acknowledged and the usual interrupt handling process continues. For example, the scheduler and wait system will check if they need to do anything. 
- * 
- * Both the scheduler and the wait system can now call `timer_set()` again if they need to schedule another timer interrupt or if the time they requested has not yet occurred.
+ * The way we handle timer interrupts is that each subsystem that relies on the timer calls the `timer_set()` function
+with their desired deadline and then, when the timer interrupt occurs, the timer interrupt is acknowledged and the usual
+interrupt handling process continues. For example, the scheduler and wait system will check if they need to do anything.
  *
- * This does technically result in some uneeded checks but its a very simply way of effectively eliminating timer related race conditions.
+ * Both the scheduler and the wait system can now call `timer_set()` again if they need to schedule another timer
+interrupt or if the time they requested has not yet occurred.
+ *
+ * This does technically result in some uneeded checks but its a very simply way of effectively eliminating timer
+related race conditions.
  *
  * ## Timer Sources
  *
- * The actual timer interrupts are provided by "timer sources" (`timer_source_t`), which are registered by modules. Each source registers
-itself with a estimate of its precision, the timer subsystem then chooses the source with the highest precision as the
-active timer source.
+ * The actual timer interrupts are provided by "timer sources" (`timer_source_t`), which are registered by modules. Each
+source registers itself with a estimate of its precision, the timer subsystem then chooses the source with the highest
+precision as the active timer source.
  *
  * @{
  */

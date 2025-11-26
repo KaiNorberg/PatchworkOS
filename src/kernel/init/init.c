@@ -54,7 +54,7 @@ void init_early(const boot_info_t* bootInfo)
     vmm_init(&bootInfo->memory, &bootInfo->gop, &bootInfo->kernel);
 
     _std_init();
-    
+
     module_init_fake_kernel_module(&bootInfo->kernel);
 
     acpi_tables_init(bootInfo->rsdp);

@@ -8,8 +8,8 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
-#include <kernel/sched/sched.h>
 #include <kernel/proc/process.h>
+#include <kernel/sched/sched.h>
 
 #include <boot/boot_info.h>
 #include <string.h>

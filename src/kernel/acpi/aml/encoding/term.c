@@ -176,7 +176,7 @@ uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx)
         result = aml_object_read(ctx);
         break;
     }
-    
+
     if (result == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermObj '%s' (0x%x)", token.props->name, token.num);

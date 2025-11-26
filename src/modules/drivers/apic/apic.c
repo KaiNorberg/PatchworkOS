@@ -407,7 +407,7 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
 
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, 0);
-    
+
     if (timeout == CLOCKS_NEVER)
     {
         return;

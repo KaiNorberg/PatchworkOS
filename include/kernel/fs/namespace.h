@@ -16,26 +16,29 @@ typedef struct process process_t;
  * @defgroup kernel_fs_namespace Namespaces
  * @ingroup kernel_fs
  *
- * The per-process namespace system allows each process to have its own view of the filesystem hierarchy, by having each process store its own set of mountpoints instead of having a global set of mountpoints. 
+ * The per-process namespace system allows each process to have its own view of the filesystem hierarchy, by having each
+ * process store its own set of mountpoints instead of having a global set of mountpoints.
  *
  * ## Propagation
  *
- * When a new mount or bind is created in a namespace, it is only added to that specific namespace. However, its possible to propagate mounts to children and/or parent namespaces using mount flags (`mount_flags_t`), this allows those namespaces to also see the new mount or bind.
- * 
+ * When a new mount or bind is created in a namespace, it is only added to that specific namespace. However, its
+ * possible to propagate mounts to children and/or parent namespaces using mount flags (`mount_flags_t`), this allows
+ * those namespaces to also see the new mount or bind.
+ *
  * @{
  */
 
 /**
  * @brief A mount in a namespace.
  * @struct namespace_mount
- * 
+ *
  * Used to allow a single mount to exist in multiple namespaces.
  */
 typedef struct namespace_mount
 {
     list_entry_t entry;
     map_entry_t mapEntry;
-    mount_t* mount; 
+    mount_t* mount;
 } namespace_mount_t;
 
 /**
@@ -47,11 +50,11 @@ typedef struct namespace_mount
 typedef struct namespace
 {
     list_entry_t entry;  ///< The entry for the parent's children list.
-    list_t children;    ///< List of child namespaces.
+    list_t children;     ///< List of child namespaces.
     namespace_t* parent; ///< The parent namespace, can be `NULL`.
-    list_t mounts; ///< List of mounts in this namespace.
-    map_t mountMap;  ///< Stores the same mounts as `mounts` but in a map for fast lookup.
-    mount_t* root; ///< The root mount of the namespace.
+    list_t mounts;       ///< List of mounts in this namespace.
+    map_t mountMap;      ///< Stores the same mounts as `mounts` but in a map for fast lookup.
+    mount_t* root;       ///< The root mount of the namespace.
     rwlock_t lock;
     // clang-format off
 } namespace_t;
@@ -71,7 +74,7 @@ uint64_t namespace_init(namespace_t* ns, namespace_t* parent);
  * @brief Deinitializes a namespace.
  *
  * @note The parent of the namespace will inherit all child namespaces of the deinitialized namespace.
- * 
+ *
  * @param ns The namespace to deinitialize.
  */
 void namespace_deinit(namespace_t* ns);
@@ -81,7 +84,8 @@ void namespace_deinit(namespace_t* ns);
  *
  * @param ns The namespace to use.
  * @param mountpoint The mountpoint path to traverse.
- * @param out The output path, if the mountpoint exists, the root of the mounted filesystem, otherwise will be set to `mountpoint`.
+ * @param out The output path, if the mountpoint exists, the root of the mounted filesystem, otherwise will be set to
+ * `mountpoint`.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  */
@@ -105,8 +109,8 @@ uint64_t namespace_traverse_mount(namespace_t* ns, const path_t* mountpoint, pat
  * - `ENOENT`: The root does not exist or the mountpoint is negative.
  * - Other errors as returned by the filesystem's `mount()` function.
  */
-mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* deviceName, const char* fsName, mount_flags_t flags,
-    void* private);
+mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* deviceName, const char* fsName,
+    mount_flags_t flags, void* private);
 
 /**
  * @brief Bind a directory to a mountpoint in a namespace.

@@ -38,7 +38,7 @@ uint64_t sys_time_register_source(const sys_time_source_t* source)
         errno = EINVAL;
         return ERR;
     }
-    
+
     rwlock_write_acquire(&sourcesLock);
     if (sourceCount >= SYS_TIME_MAX_SOURCES)
     {

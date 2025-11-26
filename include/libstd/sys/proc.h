@@ -37,10 +37,10 @@ extern "C"
  */
 typedef uint8_t priority_t;
 
-#define PRIORITY_PARENT 255 ///< Use the priority of the parent process.
-#define PRIORITY_MAX 64 ///< The maximum priority value.
+#define PRIORITY_PARENT 255  ///< Use the priority of the parent process.
+#define PRIORITY_MAX 64      ///< The maximum priority value.
 #define PRIORITY_MAX_USER 32 ///< The maximum priority user space is allowed to specify.
-#define PRIORITY_MIN 0 ///< The minimum priority value.
+#define PRIORITY_MIN 0       ///< The minimum priority value.
 
 /**
  * @brief Stucture used to duplicate fds in `spawn()`.
@@ -62,7 +62,7 @@ typedef struct
  */
 typedef enum
 {
-    SPAWN_DEFAULT = 0,        ///< Default spawn behaviour.
+    SPAWN_DEFAULT = 0,               ///< Default spawn behaviour.
     SPAWN_EMPTY_NAMESPACE = (1 << 0) ///< Dont inherit the mountpoints of the parent's namespace.
 } spawn_flags_t;
 
@@ -77,7 +77,7 @@ typedef enum
 
 /**
  * @brief System call for spawning new processes.
- * 
+ *
  * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable. This array
  * will be pushed to the child stack and the child can find a pointer to this array in its rsi register, along with its
  * length in the rdi register.
@@ -112,7 +112,7 @@ tid_t gettid(void);
 
 /**
  * @brief Convert a size in bytes to pages.
- * 
+ *
  * @param amount The amount of bytes.
  * @return The amount of pages.
  */

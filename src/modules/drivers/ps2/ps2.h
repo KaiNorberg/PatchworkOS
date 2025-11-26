@@ -19,7 +19,7 @@
 /**
  * @brief Wait timeout for PS/2 controller
  */
-#define PS2_WAIT_TIMEOUT (CLOCKS_PER_SEC / 5)
+#define PS2_WAIT_TIMEOUT (CLOCKS_PER_SEC / 2)
 
 /**
  * @brief Small delay for various operations
@@ -84,6 +84,7 @@ typedef enum
     PS2_STATUS_IN_FULL = (1 << 1),  ///< Input buffer status (0 = empty, 1 = full)
     PS2_STATUS_SYSTEM_FLAG = (1 << 2),
     PS2_STATUS_CMD_DATA = (1 << 3), ///< Command(1) or Data(0)
+    
     PS2_STATUS_TIMEOUT_ERROR = (1 << 6),
     PS2_STATUS_PARITY_ERROR = (1 << 7)
 } ps2_status_bits_t;
@@ -199,12 +200,13 @@ typedef struct
  */
 typedef struct
 {
-    ps2_device_t device;    ///< Device port
-    const char* name;       ///< Human-readable name of the device
-    irq_virt_t irq;         ///< IRQ assigned to the device by ACPI
-    bool active;            ///< The device exists, may or may not be initialized.
-    bool initialized;       ///< The device has been initialized.
-    void* private;          ///< Driver-specific private data
+    ps2_device_t device; ///< Device port.
+    const char* pnpId;   ///< PNP ID of the device.
+    const char* name;    ///< Human-readable name of the device.
+    irq_virt_t irq;      ///< IRQ assigned to the device by ACPI.
+    bool attached;       ///< The device has been attached from ACPI.
+    bool initialized;    ///< The device has been initialized.
+    void* private;       ///< Driver-specific private data.
 } ps2_device_info_t;
 
 /**
@@ -239,6 +241,14 @@ uint64_t ps2_wait_until_clear(ps2_status_bits_t status);
  * - `ETIMEOUT`: Timeout occurred while waiting for data.
  */
 uint64_t ps2_read(void);
+
+/**
+ * @brief Read from the PS/2 controllers data port without waiting.
+ *
+ * @return On success, the response byte. On failure, `ERR` and `errno` is set to:
+ * - `EAGAIN`: No data available to read.
+ */
+uint64_t ps2_read_no_wait(void);
 
 /**
  * @brief Write to the PS/2 controllers data port.

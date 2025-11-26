@@ -18,7 +18,8 @@ typedef struct irq irq_t;
  * @defgroup kernel_cpu_irq IRQ
  * @ingroup kernel_cpu
  *
- * The IRQ system is responsible for managing external interrupts in the system (as in vectors [`VECTOR_EXTERNAL_START`, `VECTOR_EXTERNAL_END`)), where the hardware trigger a physical IRQ (`irq_phys_t`) which is then mapped to a virtual
+ * The IRQ system is responsible for managing external interrupts in the system (as in vectors [`VECTOR_EXTERNAL_START`,
+ * `VECTOR_EXTERNAL_END`)), where the hardware trigger a physical IRQ (`irq_phys_t`) which is then mapped to a virtual
  * IRQ (`irq_virt_t`) using a `irq_chip_t`.
  *
  * ## Physical vs Virtual IRQs
@@ -176,8 +177,9 @@ void irq_dispatch(interrupt_frame_t* frame, cpu_t* self);
  * Will succeed even if no IRQ chip is registered for the given physical IRQ, in such a case, the IRQ will be enabled
  * only when a appropriate IRQ chip is registered.
  *
- * @note The IRQ will only be enabled if there are registered handlers for it, otherwise it will remain disabled until a handler is registered.
- * 
+ * @note The IRQ will only be enabled if there are registered handlers for it, otherwise it will remain disabled until a
+ * handler is registered.
+ *
  * TODO: CPU load balancing?
  *
  * @param out Pointer to store the allocated virtual IRQ.
@@ -254,7 +256,7 @@ uint64_t irq_chip_amount(void);
  * @brief Register an IRQ handler for a virtual IRQ.
  *
  * If this is the first handler for the IRQ, the IRQ will be enabled.
- * 
+ *
  * @param virt The virtual IRQ to register the handler for.
  * @param func The handler function to register.
  * @param private The private data to pass to the handler function.
@@ -271,7 +273,7 @@ uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* private);
  * @brief Unregister an IRQ handler.
  *
  * If there are no more handlers registered for the IRQ, it will be disabled.
- * 
+ *
  * @param func The handler function to unregister, or `NULL` for no-op.
  * @param virt The virtual IRQ to unregister the handler from.
  */

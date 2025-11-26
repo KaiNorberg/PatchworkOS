@@ -36,7 +36,7 @@ static uint64_t irq_update(irq_t* irq)
     {
         return 0; // Nothing to do
     }
-    
+
     if (!list_is_empty(&irq->handlers))
     {
         return irq->domain->chip->enable(irq);
@@ -171,7 +171,7 @@ void irq_dispatch(interrupt_frame_t* frame, cpu_t* self)
 uint64_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu_t* cpu)
 {
     if (out == NULL)
-    { 
+    {
         errno = EINVAL;
         return ERR;
     }
@@ -198,7 +198,7 @@ uint64_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu
                 errno = EBUSY;
                 return ERR;
             }
-            
+
             targetVirt = virt;
             break; // Lock still held
         }

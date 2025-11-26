@@ -31,7 +31,7 @@ static uint64_t net_init(void)
         DEREF(mount);
         return ERR;
     }
- 
+
     return 0;
 }
 

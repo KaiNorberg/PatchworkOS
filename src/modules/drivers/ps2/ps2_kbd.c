@@ -10,7 +10,7 @@ static void ps2_kbd_irq(irq_func_data_t* data)
 {
     ps2_kbd_data_t* private = data->private;
 
-    uint64_t response = ps2_read();
+    uint64_t response = ps2_read_no_wait();
     if (response == ERR)
     {
         LOG_WARN("failed to scan PS/2 keyboard\n");
@@ -72,15 +72,26 @@ uint64_t ps2_kbd_init(ps2_device_info_t* info)
     private->isExtended = false;
     private->isRelease = false;
 
+    info->private = private;
+    return 0;
+}
+
+uint64_t ps2_kbd_irq_register(ps2_device_info_t* info)
+{
+    ps2_kbd_data_t* private = info->private;
+    if (private == NULL)
+    {
+        LOG_ERR("PS/2 keyboard data is NULL during IRQ registration\n");
+        errno = EINVAL;
+        return ERR;
+    }
+
     if (irq_handler_register(info->irq, ps2_kbd_irq, private) == ERR)
     {
-        kbd_free(private->kbd);
-        free(private);
         LOG_ERR("failed to register PS/2 keyboard IRQ handler\n");
         return ERR;
     }
 
-    info->private = private;
     return 0;
 }
 

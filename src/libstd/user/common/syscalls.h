@@ -104,9 +104,11 @@ _NORETURN static inline void _syscall_thread_exit(void)
         ;
 }
 
-static inline pid_t _syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, priority_t priority, spawn_flags_t flags)
+static inline pid_t _syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, priority_t priority,
+    spawn_flags_t flags)
 {
-    return _SYSCALL5(pid_t, SYS_SPAWN, const char**, argv, const spawn_fd_t*, fds, const char*, cwd, priority_t, priority, spawn_flags_t, flags);
+    return _SYSCALL5(pid_t, SYS_SPAWN, const char**, argv, const spawn_fd_t*, fds, const char*, cwd, priority_t,
+        priority, spawn_flags_t, flags);
 }
 
 static inline uint64_t _syscall_nanosleep(clock_t nanoseconds)

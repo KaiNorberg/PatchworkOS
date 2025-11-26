@@ -2,14 +2,14 @@
 
 #include "sys/list.h"
 #include <kernel/cpu/syscalls.h>
+#include <kernel/fs/cwd.h>
 #include <kernel/fs/dentry.h>
+#include <kernel/fs/file_table.h>
 #include <kernel/fs/inode.h>
 #include <kernel/fs/key.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
-#include <kernel/fs/file_table.h>
-#include <kernel/fs/cwd.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
@@ -1302,8 +1302,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
 
     path_t newParent = PATH_EMPTY;
     path_t target = PATH_EMPTY;
-    if (path_walk_parent_and_child(&newParent, &target, newPathname, &cwd, WALK_NEGATIVE_IS_OK, &process->ns) ==
-        ERR)
+    if (path_walk_parent_and_child(&newParent, &target, newPathname, &cwd, WALK_NEGATIVE_IS_OK, &process->ns) == ERR)
     {
         return ERR;
     }

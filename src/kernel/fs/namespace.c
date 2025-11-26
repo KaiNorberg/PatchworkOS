@@ -40,7 +40,7 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, mount_flags_t fla
     nsMount->mount = NULL;
 
     rwlock_write_acquire(&ns->lock);
-    
+
     if (flags & MOUNT_OVERWRITE)
     {
         namespace_mount_t* existing = CONTAINER_OF_SAFE(map_get(&ns->mountMap, key), namespace_mount_t, mapEntry);
@@ -66,9 +66,9 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, mount_flags_t fla
             return ERR;
         }
     }
-    
+
     list_push_back(&ns->mounts, &nsMount->entry);
-    
+
     nsMount->mount = REF(mount);
 
     if (flags & MOUNT_PROPAGATE_CHILDREN)
@@ -124,7 +124,6 @@ uint64_t namespace_init(namespace_t* ns, namespace_t* parent)
                 }
             }
         }
-
     }
 
     return 0;
@@ -190,7 +189,8 @@ uint64_t namespace_traverse_mount(namespace_t* ns, const path_t* mountpoint, pat
     return 0;
 }
 
-mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* deviceName, const char* fsName, mount_flags_t flags, void* private)
+mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* deviceName, const char* fsName,
+    mount_flags_t flags, void* private)
 {
     if (ns == NULL || deviceName == NULL || fsName == NULL)
     {

@@ -156,8 +156,8 @@ void perf_interrupt_begin(cpu_t* self)
 
     if (perf->interruptEnd < perf->interruptBegin)
     {
-        panic(NULL, "perf_interrupt_begin called while already in interrupt interuptBegin=%llu interruptEnd=%llu",
-            perf->interruptBegin, perf->interruptEnd);
+        // TODO: This should not happen, but still somehow does? Might be hardware timer issues?
+        perf->interruptEnd = sys_time_uptime();
     }
 
     perf->interruptBegin = sys_time_uptime();

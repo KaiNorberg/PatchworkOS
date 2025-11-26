@@ -404,7 +404,7 @@ static uint64_t acpi_device_configure(const char* name)
             acpi_irq_descriptor_info_t info = ACPI_IRQ_DESCRIPTOR_INFO(desc);
 
             irq_flags_t flags = ((info & ACPI_IRQ_EDGE_TRIGGERED) ? IRQ_TRIGGER_EDGE : IRQ_TRIGGER_LEVEL) |
-                ((info & ACPI_IRQ_ACTIVE_LOW) ? IRQ_POLARITY_HIGH : IRQ_POLARITY_LOW) |
+                ((info & ACPI_IRQ_ACTIVE_LOW) ? IRQ_POLARITY_LOW : IRQ_POLARITY_HIGH) |
                 ((info & ACPI_IRQ_EXCLUSIVE) ? IRQ_EXCLUSIVE : IRQ_SHARED);
 
             for (irq_phys_t phys = 0; phys < 16; phys++)
@@ -424,7 +424,8 @@ static uint64_t acpi_device_configure(const char* name)
                 acpi_device_irq_t* newIrqs = realloc(cfg->irqs, sizeof(acpi_device_irq_t) * (cfg->irqCount + 1));
                 if (newIrqs == NULL)
                 {
-                    LOG_ERR("failed to allocate memory for IRQs for ACPI device '%s' due to '%s'\n", name, strerror(errno));
+                    LOG_ERR("failed to allocate memory for IRQs for ACPI device '%s' due to '%s'\n", name,
+                        strerror(errno));
                     irq_virt_free(virt);
                     goto error;
                 }
@@ -443,7 +444,8 @@ static uint64_t acpi_device_configure(const char* name)
             acpi_device_io_t* newIos = realloc(cfg->ios, sizeof(acpi_device_io_t) * (cfg->ioCount + 1));
             if (newIos == NULL)
             {
-                LOG_ERR("failed to allocate memory for IO ports for ACPI device '%s' due to '%s'\n", name, strerror(errno));
+                LOG_ERR("failed to allocate memory for IO ports for ACPI device '%s' due to '%s'\n", name,
+                    strerror(errno));
                 goto error;
             }
             cfg->ios = newIos;
