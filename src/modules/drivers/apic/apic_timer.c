@@ -49,10 +49,15 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
         return;
     }
 
-    uint32_t ticks = (timeout * lapic->ticksPerMs) / (CLOCKS_PER_SEC / 1000);
+    uint64_t ticks = (timeout * lapic->ticksPerMs) / (CLOCKS_PER_SEC / 1000);
     if (ticks == 0)
     {
         ticks = 1;
+    }
+    if (ticks > UINT32_MAX)
+    {
+        LOG_WARN("APIC timer timeout too large, capping to max value\n");
+        ticks = UINT32_MAX;
     }
 
     lapic_write(LAPIC_REG_TIMER_DIVIDER, APIC_TIMER_DIV_DEFAULT);

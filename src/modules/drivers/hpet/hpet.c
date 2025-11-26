@@ -166,6 +166,7 @@ static inline void hpet_reset_counter(void)
 static void hpet_timer_handler(interrupt_frame_t* frame, cpu_t* self)
 {
     (void)frame;
+    (void)self;
 
     LOG_INFO("HPET counter accumulation timer fired\n");
     seqlock_write_acquire(&counterLock);
@@ -177,7 +178,7 @@ static void hpet_timer_handler(interrupt_frame_t* frame, cpu_t* self)
     uint64_t pessimisticOverflowInterval = (maxCounterValue * hpet_ns_per_tick()) / 2;
 
     clock_t uptime = sys_time_uptime();
-    timer_set(self, uptime, uptime + pessimisticOverflowInterval);
+    timer_set(uptime, uptime + pessimisticOverflowInterval);
 }
 
 /**

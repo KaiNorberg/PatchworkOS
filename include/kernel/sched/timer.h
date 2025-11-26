@@ -49,13 +49,12 @@ typedef struct
      * `timer_set()`.
      */
     clock_t deadline;
-    lock_t lock;
 } timer_cpu_ctx_t;
 
 /**
  * @brief Maximum amount of timer sources.
  */
-#define TIMER_MAX_SOURCES 8
+#define TIMER_MAX_SOURCES 4
 
 /**
  * @brief Timer source structure.
@@ -89,7 +88,7 @@ typedef struct
 void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx);
 
 /**
- * @brief Acknowledge and send EOI for a timer interrupt.
+ * @brief Acknowledge a timer interrupt and send EOI.
  *
  * @param frame The interrupt frame of the timer interrupt.
  * @param self The CPU on which the timer interrupt was received.
@@ -122,7 +121,7 @@ void timer_source_unregister(const timer_source_t* source);
 uint64_t timer_source_amount(void);
 
 /**
- * @brief Schedule a one-shot timer interrupt.
+ * @brief Schedule a one-shot timer interrupt on the current CPU.
  *
  * Sets the per-cpu timer to generate a interrupt after the specified timeout.
  *
@@ -133,11 +132,12 @@ uint64_t timer_source_amount(void);
  * knows exactly what time they are scheduling the timer for, as the uptime could change between the caller reading the
  * time and this function setting the timer, resulting in very subtle bugs or race conditions.
  *
- * @param cpu The CPU to set the timer for.
+ * @note Will never set the timeout to be less than `CONFIG_MIN_TIMER_TIMEOUT` to avoid spamming the CPU with timer interrupts.
+ * 
  * @param uptime The time since boot, we need to specify this as an argument to avoid inconsistency in the
  * timeout/deadline calculations.
  * @param deadline The desired deadline.
  */
-void timer_set(cpu_t* cpu, clock_t uptime, clock_t deadline);
+void timer_set(clock_t uptime, clock_t deadline);
 
 /** @} */

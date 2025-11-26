@@ -278,8 +278,13 @@ SYSCALL_DEFINE(SYS_YIELD, uint64_t)
     return 0;
 }
 
-static bool sched_should_wake(cpu_t* target, priority_t priority)
+static bool sched_should_wake(cpu_t* self, cpu_t* target, priority_t priority)
 {
+    if (self == target && self->interrupt.inInterrupt)
+    {
+        return false;
+    }
+
     if (target->sched.runThread == target->sched.idleThread)
     {
         return true;
@@ -322,7 +327,7 @@ void sched_push(thread_t* thread, cpu_t* target)
     sched_compute_time_slice(thread, NULL);
     sched_compute_actual_priority(thread);
 
-    bool shouldNotify = sched_should_wake(target, thread->sched.actualPriority);
+    bool shouldNotify = sched_should_wake(self, target, thread->sched.actualPriority);
 
     lock_release(&target->sched.lock);
     cpu_put();
@@ -377,7 +382,7 @@ static cpu_t* sched_find_least_loaded_cpu(cpu_t* exclude)
 
 void sched_push_new_thread(thread_t* thread, thread_t* parent)
 {
-    cpu_get();
+    cpu_t* self = cpu_get();
 
     cpu_t* target = sched_find_least_loaded_cpu(NULL);
     assert(target != NULL);
@@ -402,7 +407,7 @@ void sched_push_new_thread(thread_t* thread, thread_t* parent)
     sched_compute_time_slice(thread, parent);
     sched_compute_actual_priority(thread);
 
-    if (sched_should_wake(target, thread->sched.actualPriority))
+    if (sched_should_wake(self, target, thread->sched.actualPriority))
     {
         ipi_wake_up(target, IPI_SINGLE);
     }
@@ -447,7 +452,7 @@ static void sched_load_balance(cpu_t* self)
             break;
         }
 
-        if (sched_should_wake(neighbor, thread->sched.actualPriority))
+        if (sched_should_wake(self, neighbor, thread->sched.actualPriority))
         {
             shouldWakeNeighbor = true;
         }
@@ -588,10 +593,11 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     {
         if (runThread->sched.deadline <= uptime)
         {
+            sched_compute_time_slice(runThread, NULL);
             runThread->sched.deadline = uptime + runThread->sched.timeSlice;
         }
 
-        timer_set(self, uptime, runThread->sched.deadline);
+        timer_set(uptime, runThread->sched.deadline);
     }
 
     if (threadToFree != NULL)

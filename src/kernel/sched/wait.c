@@ -83,7 +83,7 @@ void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self)
         clock_t uptime = sys_time_uptime();
         if (thread->wait.deadline > uptime)
         {
-            timer_set(self, uptime, thread->wait.deadline);
+            timer_set(uptime, thread->wait.deadline);
             return;
         }
 
@@ -149,7 +149,7 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
         }
     }
 
-    timer_set(self, uptime, thread->wait.deadline);
+    timer_set(uptime, thread->wait.deadline);
     return true;
 }
 

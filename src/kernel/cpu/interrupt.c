@@ -15,6 +15,7 @@
 
 void interrupt_ctx_init(interrupt_ctx_t* ctx)
 {
+    ctx->inInterrupt = false;
     ctx->oldRflags = 0;
     ctx->disableDepth = 0;
 }
@@ -156,6 +157,7 @@ void interrupt_handler(interrupt_frame_t* frame)
 
     cpu_t* self = cpu_get_unsafe();
     assert(self != NULL);
+    self->interrupt.inInterrupt = true;
 
     perf_interrupt_begin(self);
 
@@ -187,6 +189,8 @@ void interrupt_handler(interrupt_frame_t* frame)
     cpu_stacks_overflow_check(self);
 
     perf_interrupt_end(self);
+
+    self->interrupt.inInterrupt = false;
 
     // This is a sanity check to make sure blocking and scheduling is functioning correctly.
     assert(frame->rflags & RFLAGS_INTERRUPT_ENABLE);

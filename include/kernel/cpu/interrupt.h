@@ -184,6 +184,7 @@ typedef struct interrupt_frame
  */
 typedef struct
 {
+    bool inInterrupt;
     uint64_t oldRflags;
     uint32_t disableDepth;
 } interrupt_ctx_t;

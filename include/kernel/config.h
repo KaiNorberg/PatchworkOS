@@ -89,6 +89,16 @@
 #define CONFIG_MAX_ARGC 512
 
 /**
+ * @brief Minimum timer timeout configuration.
+ * @ingroup kernel
+ * @def CONFIG_MIN_TIMER_TIMEOUT
+ *
+ * The `CONFIG_MIN_TIMER_TIMEOUT` constant defines the minimum timeout that can be set for timers.
+ *
+ */
+#define CONFIG_MIN_TIMER_TIMEOUT ((CLOCKS_PER_SEC) / 10000)
+
+/**
  * @brief Maximum time slice configuration.
  * @ingroup kernel
  * @def CONFIG_MAX_TIME_SLICE

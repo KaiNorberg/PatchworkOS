@@ -14,6 +14,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/math.h>
+#include <time.h>
 
 static const timer_source_t* sources[TIMER_MAX_SOURCES] = {0};
 static uint32_t sourceCount = 0;
@@ -23,15 +24,15 @@ static rwlock_t sourcesLock = RWLOCK_CREATE;
 void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx)
 {
     ctx->deadline = CLOCKS_NEVER;
-    lock_init(&ctx->lock);
 }
 
 void timer_ack_eoi(interrupt_frame_t* frame, cpu_t* self)
 {
     (void)frame; // Unused
 
-    LOCK_SCOPE(&self->timer.lock);
     RWLOCK_READ_SCOPE(&sourcesLock);
+
+    self->timer.deadline = CLOCKS_NEVER;
 
     if (bestSource != NULL)
     {
@@ -44,8 +45,6 @@ void timer_ack_eoi(interrupt_frame_t* frame, cpu_t* self)
             bestSource->eoi(self);
         }
     }
-
-    self->timer.deadline = CLOCKS_NEVER;
 }
 
 uint64_t timer_source_register(const timer_source_t* source)
@@ -133,16 +132,16 @@ uint64_t timer_source_amount(void)
     return amount;
 }
 
-void timer_set(cpu_t* cpu, clock_t uptime, clock_t deadline)
+void timer_set(clock_t uptime, clock_t deadline)
 {
-    if (cpu == NULL || deadline == CLOCKS_NEVER)
+    if (deadline == CLOCKS_NEVER)
     {
         return;
     }
 
-    LOCK_SCOPE(&cpu->timer.lock);
     RWLOCK_READ_SCOPE(&sourcesLock);
 
+    cpu_t* cpu = cpu_get_unsafe();
     if (cpu->timer.deadline < deadline)
     {
         return;
@@ -151,12 +150,16 @@ void timer_set(cpu_t* cpu, clock_t uptime, clock_t deadline)
 
     if (bestSource != NULL)
     {
+        clock_t timeout;
         if (deadline <= uptime)
         {
-            bestSource->set(VECTOR_TIMER, uptime, 0);
-            return;
+            timeout = CONFIG_MIN_TIMER_TIMEOUT;
+        }
+        else
+        {
+            timeout = deadline - uptime;
         }
 
-        bestSource->set(VECTOR_TIMER, uptime, deadline - uptime);
+        bestSource->set(VECTOR_TIMER, uptime, timeout);
     }
 }
