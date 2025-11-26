@@ -120,9 +120,7 @@ static void loader_process_entry(void)
     thread->frame.cs = GDT_CS_RING3;
     thread->frame.ss = GDT_SS_RING3;
     thread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
-
-    LOG_DEBUG("jump to user space path=%s pid=%d rsp=%p rip=%p\n", thread->process->argv.buffer[0], thread->process->id,
-        (void*)thread->frame.rsp, (void*)thread->frame.rip);
+    
     thread_jump(thread);
 }
 

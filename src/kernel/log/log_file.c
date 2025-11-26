@@ -1,3 +1,4 @@
+#include "gnu-efi/inc/x86_64/efibind.h"
 #include <kernel/log/log_file.h>
 
 #include <kernel/fs/file.h>
@@ -5,11 +6,15 @@
 #include <kernel/log/log.h>
 #include <kernel/log/log_screen.h>
 #include <kernel/log/panic.h>
+#include <kernel/sched/wait.h>
 #include <kernel/utils/ring.h>
 
 #include <stdlib.h>
+#include <sys/io.h>
 
 static lock_t lock = LOCK_CREATE;
+
+static wait_queue_t waitQueue = WAIT_QUEUE_CREATE(waitQueue);
 
 static char workingBuffer[LOG_FILE_MAX_BUFFER] = {0};
 static char buffer[LOG_FILE_MAX_BUFFER] = {0};
@@ -26,33 +31,22 @@ static uint64_t log_file_op_read(file_t* file, void* buffer, uint64_t count, uin
     return result;
 }
 
-static uint64_t log_file_op_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+static wait_queue_t* log_file_op_poll(file_t* file, poll_events_t* revents)
 {
-    (void)file; // Unused
+    (void)file;
 
-    if (count == 0 || buffer == NULL || offset == NULL)
+    LOCK_SCOPE(&lock);
+    if (ring.writeIndex != file->pos)
     {
-        return 0;
+        *revents |= POLLIN;
     }
 
-    if (count > MAX_PATH)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    char string[MAX_PATH];
-    memcpy(string, buffer, count);
-    string[count] = '\0';
-
-    LOG_USER("%s", string);
-    *offset += count;
-    return count;
+    return &waitQueue;
 }
 
 static file_ops_t logFileOps = {
     .read = log_file_op_read,
-    .write = log_file_op_write,
+    .poll = log_file_op_poll,
 };
 
 void log_file_expose(void)
@@ -131,4 +125,6 @@ void log_file_write(const char* string, uint64_t length)
 
     LOCK_SCOPE(&lock);
     ring_write(&ring, string, length);
+
+    wait_unblock(&waitQueue, WAIT_ALL, EOK);
 }
