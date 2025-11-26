@@ -14,29 +14,40 @@
 #include <stdint.h>
 
 /**
- * @brief Symmetric Multiprocessing Others Initialization
- * @defgroup modules_smp Symmetric Multiprocessing
+ * @brief Symmetric Multiprocessing support via APIC.
+ * @defgroup modules_smp SMP
  * @ingroup modules
  *
- * Initializes all other CPUs in the system.
- *
- * This module will panic if it, at any point, fails. This is because error recovery during CPU initialization is way
- * outside the scope of my patience.
- *
+ * Symmetric Multiprocessing (SMP) support is implemented using the Advanced Programmable Interrupt Controller (APIC)
+ * system.
+ * 
+ * SMP initialization will panic if it, at any point, fails. This is because error recovery during CPU initialization is way outside the scope of my patience.
+ * 
  * @{
  */
 
 /**
- * @brief Initialize all other CPUs in the system.
+ * @brief Starts the other CPUs in the system.
  */
-void smp_others_init(void)
+static void smp_start_others(void)
 {
     interrupt_disable();
+
+    if (cpu_amount() > 1)
+    {
+        LOG_INFO("other cpus already started\n");
+        interrupt_enable();
+        return;
+    }
 
     trampoline_init();
 
     cpu_t* bootstrapCpu = cpu_get_unsafe();
     assert(bootstrapCpu->id == CPU_ID_BOOTSTRAP);
+
+    lapic_t* bootstrapLapic = lapic_get(bootstrapCpu->id);
+    assert(bootstrapLapic != NULL);
+
     LOG_INFO("bootstrap cpu already started\n");
 
     madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, sizeof(madt_t), 0);
@@ -48,7 +59,7 @@ void smp_others_init(void)
     processor_local_apic_t* lapic;
     MADT_FOR_EACH(madt, lapic)
     {
-        if (lapic->header.type != INTERRUPT_CONTROLLER_PROCESSOR_LOCAL_APIC)
+        if (lapic->header.type != INTERRUPT_CONTROLLER_PROCESSOR_LOCAL_APIC || bootstrapLapic->lapicId == lapic->apicId)
         {
             continue;
         }
@@ -88,10 +99,7 @@ uint64_t _module_procedure(const module_event_t* event)
     switch (event->type)
     {
     case MODULE_EVENT_LOAD:
-        smp_others_init();
-        break;
-    case MODULE_EVENT_UNLOAD:
-        // Not supported.
+        smp_start_others();
         break;
     default:
         break;
@@ -100,4 +108,4 @@ uint64_t _module_procedure(const module_event_t* event)
     return 0;
 }
 
-MODULE_INFO("SMP", "Kai Norberg", "Symmetric Multiprocessing support", OS_VERSION, "MIT", "LOAD_ON_BOOT");
+MODULE_INFO("SMP Bootstrap", "Kai Norberg", "Symmetric Multiprocessing support via APIC", OS_VERSION, "MIT", "LOAD_ON_BOOT");

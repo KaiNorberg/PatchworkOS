@@ -64,7 +64,7 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 - File based device APIs, including [framebuffers](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/fb.h), [keyboards](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/kbd.h), [mice](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/mouse.h) and more.
 - [Synchronization primitives](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sync) including mutexes, read-write locks, sequential locks, futexes and others.
 - SIMD support.
-- Highly [Modular design](#modules), even SMP bootstrapping is done in the APIC module, reducing the need for stub drivers.
+- Highly [Modular design](#modules), even [SMP Bootstrapping](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/modules/smp/smp.c) is done in a module.
 
 ### File System
 

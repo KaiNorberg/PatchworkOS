@@ -1,5 +1,5 @@
-#include "ioapic.h"
-#include "lapic.h"
+#include <modules/drivers/apic/ioapic.h>
+#include <modules/drivers/apic/lapic.h>
 
 #include <kernel/acpi/tables.h>
 #include <kernel/cpu/cpu.h>

@@ -1,4 +1,4 @@
-#include "lapic.h"
+#include <modules/drivers/apic/lapic.h>
 
 #include <kernel/acpi/tables.h>
 #include <kernel/cpu/cpu.h>
@@ -115,30 +115,16 @@ uint64_t lapic_global_init(void)
     return 0;
 }
 
-/*
-
 void lapic_send_init(lapic_id_t id)
 {
-    if (!initialized)
-    {
-        panic(NULL, "local apic used before apic initialized");
-    }
-
     lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ID_OFFSET);
     lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_INIT);
 }
 
 void lapic_send_sipi(lapic_id_t id, void* entryPoint)
 {
-    if (!initialized)
-    {
-        panic(NULL, "local apic used before apic initialized");
-    }
-
     assert((uintptr_t)entryPoint % PAGE_SIZE == 0);
 
     lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ID_OFFSET);
     lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_STARTUP | ((uintptr_t)entryPoint / PAGE_SIZE));
 }
-
-*/

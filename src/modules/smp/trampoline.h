@@ -1,7 +1,8 @@
 #pragma once
 
 #include <kernel/cpu/cpu.h>
-#include <kernel/drivers/apic.h>
+
+#include <modules/drivers/apic/lapic.h>
 
 #include <stdint.h>
 #include <sys/proc.h>

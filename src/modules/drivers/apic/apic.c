@@ -1,7 +1,6 @@
-#include "apic_timer.h"
-#include "ioapic.h"
-#include "lapic.h"
-#include "smp.h"
+#include <modules/drivers/apic/lapic.h>
+#include <modules/drivers/apic/apic_timer.h>
+#include <modules/drivers/apic/ioapic.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/log/log.h>
@@ -61,11 +60,6 @@ uint64_t _module_procedure(const module_event_t* event)
         if (cpu_handler_register(apic_cpu_handler) == ERR)
         {
             LOG_ERR("failed to register apic cpu event handler\n");
-            return ERR;
-        }
-        if (smp_start_others() == ERR)
-        {
-            LOG_ERR("failed to start other cpus\n");
             return ERR;
         }
         break;
