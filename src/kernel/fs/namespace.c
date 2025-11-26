@@ -1,6 +1,6 @@
 #include <kernel/fs/namespace.h>
 
-#include <kernel/cpu/syscalls.h>
+#include <kernel/cpu/syscall.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>

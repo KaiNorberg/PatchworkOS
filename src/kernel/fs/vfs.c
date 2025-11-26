@@ -1,7 +1,7 @@
 #include <kernel/fs/vfs.h>
 
 #include "sys/list.h"
-#include <kernel/cpu/syscalls.h>
+#include <kernel/cpu/syscall.h>
 #include <kernel/fs/cwd.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file_table.h>

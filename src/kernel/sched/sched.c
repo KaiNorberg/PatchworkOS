@@ -5,7 +5,7 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/interrupt.h>
-#include <kernel/cpu/syscalls.h>
+#include <kernel/cpu/syscall.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/proc/process.h>

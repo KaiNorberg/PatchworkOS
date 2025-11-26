@@ -1,4 +1,5 @@
-#include "trampoline.h"
+#include "smp.h"
+#include "lapic.h"
 
 #include <kernel/acpi/tables.h>
 #include <kernel/cpu/cpu.h>
@@ -13,30 +14,26 @@
 
 #include <stdint.h>
 
-/**
- * @brief Symmetric Multiprocessing Others Initialization
- * @defgroup modules_smp Symmetric Multiprocessing
- * @ingroup modules
- *
- * Initializes all other CPUs in the system.
- *
- * This module will panic if it, at any point, fails. This is because error recovery during CPU initialization is way
- * outside the scope of my patience.
- *
- * @{
- */
-
-/**
- * @brief Initialize all other CPUs in the system.
- */
-void smp_others_init(void)
+uint64_t smp_start_others(void)
 {
-    interrupt_disable();
+    return 0;
+    /*interrupt_disable();
+
+    if (cpu_amount() > 1)
+    {
+        LOG_INFO("other cpus already started\n");
+        interrupt_enable();
+        return;
+    }
 
     trampoline_init();
 
     cpu_t* bootstrapCpu = cpu_get_unsafe();
     assert(bootstrapCpu->id == CPU_ID_BOOTSTRAP);
+
+    lapic_t* bootstrapLapic = lapic_get(bootstrapCpu->id);
+    assert(bootstrapLapic != NULL);
+
     LOG_INFO("bootstrap cpu already started\n");
 
     madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, sizeof(madt_t), 0);
@@ -48,7 +45,7 @@ void smp_others_init(void)
     processor_local_apic_t* lapic;
     MADT_FOR_EACH(madt, lapic)
     {
-        if (lapic->header.type != INTERRUPT_CONTROLLER_PROCESSOR_LOCAL_APIC)
+        if (lapic->header.type != INTERRUPT_CONTROLLER_PROCESSOR_LOCAL_APIC || bootstrapLapic->lapicId == lapic->apicId)
         {
             continue;
         }
@@ -78,26 +75,5 @@ void smp_others_init(void)
 
     trampoline_deinit();
 
-    interrupt_enable();
+    interrupt_enable();*/
 }
-
-/** @} */
-
-uint64_t _module_procedure(const module_event_t* event)
-{
-    switch (event->type)
-    {
-    case MODULE_EVENT_LOAD:
-        smp_others_init();
-        break;
-    case MODULE_EVENT_UNLOAD:
-        // Not supported.
-        break;
-    default:
-        break;
-    }
-
-    return 0;
-}
-
-MODULE_INFO("SMP", "Kai Norberg", "Symmetric Multiprocessing support", OS_VERSION, "MIT", "LOAD_ON_BOOT");

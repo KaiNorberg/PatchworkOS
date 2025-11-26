@@ -1,6 +1,6 @@
 #include <kernel/fs/key.h>
 
-#include <kernel/cpu/syscalls.h>
+#include <kernel/cpu/syscall.h>
 #include <kernel/drivers/rand.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/sys_time.h>

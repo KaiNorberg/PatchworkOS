@@ -3,7 +3,7 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/simd.h>
 #include <kernel/cpu/stack_pointer.h>
-#include <kernel/cpu/syscalls.h>
+#include <kernel/cpu/syscall.h>
 #include <kernel/ipc/note.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>

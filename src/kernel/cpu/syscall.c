@@ -1,4 +1,4 @@
-#include <kernel/cpu/syscalls.h>
+#include <kernel/cpu/syscall.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
@@ -13,7 +13,17 @@
 #include <errno.h>
 #include <stdlib.h>
 
-int syscall_descriptor_cmp(const void* a, const void* b)
+void syscall_ctx_init(syscall_ctx_t* ctx, const stack_pointer_t* syscallStack)
+{
+    ctx->syscallRsp = syscallStack->top;
+}
+
+void syscall_ctx_load(syscall_ctx_t* ctx)
+{
+    msr_write(MSR_KERNEL_GS_BASE, (uint64_t)ctx);
+}
+
+static int syscall_descriptor_cmp(const void* a, const void* b)
 {
     const syscall_descriptor_t* sysA = (const syscall_descriptor_t*)a;
     const syscall_descriptor_t* sysB = (const syscall_descriptor_t*)b;
@@ -45,18 +55,6 @@ void syscalls_cpu_init(void)
 
     msr_write(MSR_SYSCALL_FLAG_MASK,
         RFLAGS_TRAP | RFLAGS_DIRECTION | RFLAGS_INTERRUPT_ENABLE | RFLAGS_IOPL | RFLAGS_AUX_CARRY | RFLAGS_NESTED_TASK);
-}
-
-void syscall_ctx_init(syscall_ctx_t* ctx, stack_pointer_t* kernelStack)
-{
-    ctx->kernelRsp = kernelStack->top;
-    ctx->userRsp = 0;
-}
-
-void syscall_ctx_load(syscall_ctx_t* ctx)
-{
-    msr_write(MSR_GS_BASE, (uint64_t)ctx);
-    msr_write(MSR_KERNEL_GS_BASE, (uint64_t)ctx);
 }
 
 const syscall_descriptor_t* syscall_get_descriptor(uint64_t number)

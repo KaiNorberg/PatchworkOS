@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/cpu/syscalls.h>
+#include <kernel/cpu/syscall.h>
 
 #include <errno.h>
 #include <stdarg.h>

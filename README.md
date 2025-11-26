@@ -56,54 +56,52 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 
 ### Kernel
 
-- Fully preemptive and tickless [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sched/sched.h), loosely based on Linux's O(1) scheduler
-- Multithreading and Symmetric Multi Processing with fine-grained locking
-- Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info
-- Dynamic kernel and user stack allocation
-- File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/note.h)
-- File based device APIs, including [framebuffers](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/fb.h), [keyboards](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/kbd.h), [mice](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/mouse.h) and more
-- [Synchronization primitives](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sync) including mutexes, read-write locks, sequential locks, futexes and others
-- SIMD support
-- [Modular design](#modules) with automatic module dependency resolution and generic device ID based module loading
+- Fully preemptive and tickless [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sched/sched.h), loosely based on Linux's O(1) scheduler.
+- Multithreading and Symmetric Multi Processing with fine-grained locking.
+- Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info.
+- Dynamic kernel and user stack allocation.
+- File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/note.h).
+- File based device APIs, including [framebuffers](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/fb.h), [keyboards](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/kbd.h), [mice](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/mouse.h) and more.
+- [Synchronization primitives](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sync) including mutexes, read-write locks, sequential locks, futexes and others.
+- SIMD support.
+- Highly [Modular design](#modules), even SMP bootstrapping is done in the APIC module, reducing the need for stub drivers.
 
 ### File System
 
 - Unix-style VFS with mountpoints, hardlinks, per-process namespaces, etc.
-- Custom [Framebuffer BitMaP](https://github.com/KaiNorberg/fbmp) (.fbmp) image format, allows for faster loading by removing the need for parsing
-- Custom [Grayscale Raster Font](https://github.com/KaiNorberg/grf) (.grf) font format, allows for antialiasing and kerning without complex vector graphics
+- Custom [Framebuffer BitMaP](https://github.com/KaiNorberg/fbmp) (.fbmp) image format, allows for faster loading by removing the need for parsing.
+- Custom [Grayscale Raster Font](https://github.com/KaiNorberg/grf) (.grf) font format, allows for antialiasing and kerning without complex vector graphics.
 
 ### User Space
 
-- Custom C standard library and system libraries
-- Highly modular shared memory based desktop environment
-- Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg)
-- Note that currently a heavy focus has been placed on the kernel and low-level stuff, so user space is quite small... for now
+- Custom C standard library and system libraries.
+- Highly modular shared memory based desktop environment.
+- Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
+- Note that currently a heavy focus has been placed on the kernel and low-level stuff, so user space is quite small... for now.
 
 *And much more...*
 
 ## Notable Differences with POSIX
 
-- Replaced `fork(), exec()` with `spawn()`
-- No "user" concept
-- Non-POSIX standard library
-- Even heavier focus on "everything is a file"
-- File flags instead of file modes/permissions
+- Replaced `fork(), exec()` with `spawn()`.
+- No "user" concept.
+- Non-POSIX standard library.
+- Even heavier focus on "everything is a file".
+- File flags instead of file modes/permissions.
 
 ## Limitations
 
-- Currently limited to RAM disks only (Waiting for USB support)
-- Only support for x86_64
+- Currently limited to RAM disks only (Waiting for USB support).
+- Only support for x86_64.
 
 ## Notable Future Plans
 
-- Separate the kernel into more and more modules <- Currently being worked on
-- "Completely Fair Scheduler" inspired scheduler?
-- File flags performance improvements and refactor
-- Read, write, execute, create permissions
-- Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions
-- Fully Asynchronous I/O and syscalls (io_uring style?)
-- Shared libraries
-- USB support (The holy grail)
+- Separate the kernel into more and more modules. <- Currently being worked on
+- "Earliest Eligible Virtual Deadline First" style scheduler?
+- Read, write, execute, create permissions.
+- Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions.
+- Fully Asynchronous I/O and syscalls (io_uring?).
+- USB support (The holy grail).
 
 ---
 

@@ -6,6 +6,7 @@
 /**
  * @brief Current Working Directory
  * @defgroup kernel_fs_cwd Current Working Directory
+ * @ingroup kernel_fs
  *
  * The current working directory (CWD) is a per-process structure to track the current location in the filesystem for
  * the process.

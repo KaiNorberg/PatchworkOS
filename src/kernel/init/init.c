@@ -9,7 +9,7 @@
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/idt.h>
 #include <kernel/cpu/irq.h>
-#include <kernel/cpu/syscalls.h>
+#include <kernel/cpu/syscall.h>
 #include <kernel/drivers/gop.h>
 #include <kernel/drivers/pic.h>
 #include <kernel/fs/ramfs.h>

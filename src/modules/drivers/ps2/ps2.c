@@ -456,15 +456,6 @@ static uint64_t ps2_device_init(ps2_device_t device)
         return ERR;
     }
 
-    uint64_t dummy = ps2_device_cmd_and_read(device, PS2_DEV_CMD_IDENTIFY);
-    if (dummy == ERR)
-    {
-        LOG_ERR("ps2 %s device identify command failed\n", ps2_device_to_string(device));
-        return ERR;
-    }
-    
-    ps2_drain();
-
     if (device == PS2_DEV_FIRST)
     {
         LOG_INFO("found PS/2 keyboard '%s' on IRQ %u\n", info->name, info->irq);
@@ -721,6 +712,7 @@ static uint64_t ps2_attach_device(const char* type, const char* name)
         }
 
         currentConfig |= PS2_CFG_FIRST_IRQ;
+        
     }
     else
     {

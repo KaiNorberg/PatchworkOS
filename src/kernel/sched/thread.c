@@ -132,6 +132,7 @@ void thread_kill(thread_t* thread)
 void thread_save(thread_t* thread, const interrupt_frame_t* frame)
 {
     simd_ctx_save(&thread->simd);
+
     thread->frame = *frame;
 }
 

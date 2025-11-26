@@ -105,5 +105,6 @@ void note_handle_pending(interrupt_frame_t* frame, cpu_t* self)
 
         LOG_WARN("unknown note '%.*s' received in thread tid=%d\n", note->length, note->buffer, thread->id);
         // TODO: Software interrupts.
+        
     }
 }

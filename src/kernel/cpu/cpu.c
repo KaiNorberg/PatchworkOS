@@ -6,7 +6,7 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/ipi.h>
 #include <kernel/cpu/simd.h>
-#include <kernel/cpu/syscalls.h>
+#include <kernel/cpu/syscall.h>
 #include <kernel/cpu/tss.h>
 #include <kernel/drivers/perf.h>
 #include <kernel/log/log.h>
