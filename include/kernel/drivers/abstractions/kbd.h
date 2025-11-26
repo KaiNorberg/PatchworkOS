@@ -29,7 +29,7 @@
  */
 typedef struct
 {
-    char name[MAX_NAME];
+    char* name;
     kbd_event_t events[KBD_MAX_EVENT];
     uint64_t writeIndex;
     kbd_mods_t mods;

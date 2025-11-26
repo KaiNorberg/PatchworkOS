@@ -110,4 +110,16 @@ bool stack_pointer_is_in_stack(stack_pointer_t* stack, uintptr_t addr, uint64_t 
  */
 bool stack_pointer_overlaps_guard(stack_pointer_t* stack, uintptr_t addr, uint64_t length);
 
+/**
+ * @brief Poke the stack to ensure that a page fault will occur at the given offset.
+ *
+ * Used to avoid recursive page faults when handling stack overflows. For example, to grow the stack we need the virtual
+ * memory manager, but what if we run out of stack while in the VMM? We use this function to make sure the VMM will
+ * never run out of stack, to avoid this situation.
+ *
+ * @param offset The max offset from the current stack pointer to poke, in bytes. Will poke every PAGE_SIZE bytes up to
+ * the offset.
+ */
+void stack_pointer_poke(uint64_t offset);
+
 /** @} */

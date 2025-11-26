@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/cpu/syscalls.h>
+#include <kernel/cpu/syscall.h>
 
 #include <errno.h>
 #include <stdarg.h>
@@ -104,10 +104,11 @@ _NORETURN static inline void _syscall_thread_exit(void)
         ;
 }
 
-static inline pid_t _syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_attr_t* attr)
+static inline pid_t _syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, priority_t priority,
+    spawn_flags_t flags)
 {
-    return _SYSCALL4(pid_t, SYS_SPAWN, const char**, argv, const spawn_fd_t*, fds, const char*, cwd, spawn_attr_t*,
-        attr);
+    return _SYSCALL5(pid_t, SYS_SPAWN, const char**, argv, const spawn_fd_t*, fds, const char*, cwd, priority_t,
+        priority, spawn_flags_t, flags);
 }
 
 static inline uint64_t _syscall_nanosleep(clock_t nanoseconds)
@@ -195,14 +196,14 @@ static inline void* _syscall_mmap(fd_t fd, void* address, uint64_t length, prot_
     return _SYSCALL4(void*, SYS_MMAP, fd_t, fd, void*, address, uint64_t, length, prot_t, prot);
 }
 
-static inline uint64_t _syscall_munmap(void* address, uint64_t length)
+static inline void* _syscall_munmap(void* address, uint64_t length)
 {
-    return _SYSCALL2(uint64_t, SYS_MUNMAP, void*, address, uint64_t, length);
+    return _SYSCALL2(void*, SYS_MUNMAP, void*, address, uint64_t, length);
 }
 
-static inline uint64_t _syscall_mprotect(void* address, uint64_t length, prot_t prot)
+static inline void* _syscall_mprotect(void* address, uint64_t length, prot_t prot)
 {
-    return _SYSCALL3(uint64_t, SYS_MPROTECT, void*, address, uint64_t, length, prot_t, prot);
+    return _SYSCALL3(void*, SYS_MPROTECT, void*, address, uint64_t, length, prot_t, prot);
 }
 
 static inline uint64_t _syscall_getdents(fd_t fd, dirent_t* buffer, uint64_t count)
@@ -255,7 +256,7 @@ static inline fd_t _syscall_claim(key_t* key)
     return _SYSCALL1(fd_t, SYS_CLAIM, key_t*, key);
 }
 
-static inline uint64_t _syscall_bind(fd_t source, const char* mountpoint)
+static inline uint64_t _syscall_bind(fd_t source, const char* mountpoint, mount_flags_t flags)
 {
-    return _SYSCALL2(uint64_t, SYS_BIND, fd_t, source, const char*, mountpoint);
+    return _SYSCALL3(uint64_t, SYS_BIND, fd_t, source, const char*, mountpoint, mount_flags_t, flags);
 }

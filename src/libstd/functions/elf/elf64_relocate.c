@@ -1,0 +1,59 @@
+#include "common/elf.h"
+
+uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset,
+    void* (*resolve_symbol)(const char* name, void* private), void* private)
+{
+    for (uint64_t i = 0; i < elf->header->e_shnum; i++)
+    {
+        Elf64_Shdr* shdr = ELF64_GET_SHDR(elf, i);
+        if (shdr->sh_type != SHT_RELA)
+        {
+            continue;
+        }
+
+        Elf64_Shdr* targetShdr = ELF64_GET_SHDR(elf, shdr->sh_info);
+
+        Elf64_Rela* rela = ELF64_AT_OFFSET(elf, shdr->sh_offset);
+        uint64_t relaCount = shdr->sh_size / sizeof(Elf64_Rela);
+
+        for (uint64_t j = 0; j < relaCount; j++)
+        {
+            Elf64_Addr* patchAddr = (Elf64_Addr*)(base + (targetShdr->sh_addr + rela[j].r_offset - offset));
+            Elf64_Xword type = ELF64_R_TYPE(rela[j].r_info);
+            Elf64_Xword symIndex = ELF64_R_SYM(rela[j].r_info);
+
+            Elf64_Sym* sym = elf64_get_dynamic_symbol_by_index(elf, symIndex);
+            const char* symName = elf64_get_dynamic_symbol_name(elf, sym);
+
+            Elf64_Addr value = sym->st_shndx != SHN_UNDEF ? sym->st_value : 0;
+
+            switch (type)
+            {
+            case R_X86_64_64:
+                *patchAddr = base + value + rela[j].r_addend;
+                break;
+            case R_X86_64_PC32:
+                *patchAddr = base + value + rela[j].r_addend - (Elf64_Addr)patchAddr;
+                break;
+            case R_X86_64_GLOB_DAT:
+            case R_X86_64_JUMP_SLOT:
+                *patchAddr = (uint64_t)resolve_symbol(symName, private);
+                if (*patchAddr == 0)
+                {
+                    return ERR;
+                }
+                break;
+            case R_X86_64_RELATIVE:
+                *patchAddr = base + rela[j].r_addend;
+                break;
+            default:
+#ifdef _KERNEL_
+                LOG_ERR("unsupported relocation type %llu for symbol '%s'\n", type, symName);
+#endif
+                return ERR;
+            }
+        }
+    }
+
+    return 0;
+}

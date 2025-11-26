@@ -1,4 +1,4 @@
-#include <kernel/cpu/syscalls.h>
+#include <kernel/cpu/syscall.h>
 #include <kernel/log/log.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>

@@ -16,9 +16,6 @@
 #include <sys/list.h>
 #include <sys/math.h>
 
-static thread_t bootThread;
-static bool bootThreadInitalized = false;
-
 static uintptr_t thread_id_to_offset(tid_t tid, uint64_t maxPages)
 {
     return tid * ((maxPages + STACK_POINTER_GUARD_PAGES) * PAGE_SIZE);
@@ -117,9 +114,25 @@ void thread_free(thread_t* thread)
     free(thread);
 }
 
+void thread_kill(thread_t* thread)
+{
+    if (thread == NULL)
+    {
+        return;
+    }
+
+    LOG_DEBUG("killing tid=%d pid=%d\n", thread->id, thread->process->id);
+
+    if (thread_send_note(thread, "kill", 4) == ERR)
+    {
+        panic(NULL, "Failed to send thread exit note");
+    }
+}
+
 void thread_save(thread_t* thread, const interrupt_frame_t* frame)
 {
     simd_ctx_save(&thread->simd);
+
     thread->frame = *frame;
 }
 
@@ -130,11 +143,6 @@ void thread_load(thread_t* thread, interrupt_frame_t* frame)
     space_load(&thread->process->space);
     simd_ctx_load(&thread->simd);
     syscall_ctx_load(&thread->syscall);
-}
-
-void thread_get_interrupt_frame(thread_t* thread, interrupt_frame_t* frame)
-{
-    *frame = thread->frame;
 }
 
 bool thread_is_note_pending(thread_t* thread)
@@ -167,78 +175,6 @@ SYSCALL_DEFINE(SYS_ERRNO, errno_t)
 SYSCALL_DEFINE(SYS_GETTID, tid_t)
 {
     return sched_thread()->id;
-}
-
-thread_t* thread_get_boot(void)
-{
-    if (!bootThreadInitalized)
-    {
-        if (thread_init(&bootThread, process_get_kernel()) == ERR)
-        {
-            panic(NULL, "Failed to initialize boot thread");
-        }
-        LOG_INFO("boot thread initialized with pid=%d tid=%d\n", bootThread.process->id, bootThread.id);
-        bootThreadInitalized = true;
-    }
-    assert(bootThread.process != NULL);
-    return &bootThread;
-}
-
-uint64_t thread_handle_page_fault(const interrupt_frame_t* frame)
-{
-    thread_t* thread = sched_thread_unsafe();
-    if (thread == NULL)
-    {
-        return ERR;
-    }
-    uintptr_t faultAddr = (uintptr_t)cr2_read();
-
-    if (frame->errorCode & PAGE_FAULT_PRESENT)
-    {
-        errno = EFAULT;
-        return ERR;
-    }
-
-    uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
-    if (stack_pointer_is_in_stack(&thread->userStack, alignedFaultAddr, 1))
-    {
-        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PML_WRITE | PML_PRESENT | PML_USER,
-                VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
-        {
-            if (errno == EEXIST) // Race condition, another CPU mapped the page.
-            {
-                return 0;
-            }
-
-            return ERR;
-        }
-        memset((void*)alignedFaultAddr, 0, PAGE_SIZE);
-        return 0;
-    }
-
-    if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
-
-    if (stack_pointer_is_in_stack(&thread->kernelStack, alignedFaultAddr, 1))
-    {
-        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PML_WRITE | PML_PRESENT,
-                VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
-        {
-            if (errno == EEXIST) // Race condition, another CPU mapped the page.
-            {
-                return 0;
-            }
-            return ERR;
-        }
-        memset((void*)alignedFaultAddr, 0, PAGE_SIZE);
-        return 0;
-    }
-
-    errno = EFAULT;
-    return ERR;
 }
 
 uint64_t thread_copy_from_user(thread_t* thread, void* dest, const void* userSrc, uint64_t length)

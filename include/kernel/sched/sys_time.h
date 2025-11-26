@@ -16,8 +16,7 @@ typedef struct cpu cpu_t;
  * The sys time subsystem is responsible for providing a consistent system wide time keeping.
  *
  * System wide time is provided via "system time sources", which are provided in modules. Each source registers itself
- * with a estimate of its precision, the timer subsystem then chooses the source with the highest precision as the
- * system time source.
+ * with a estimate of its precision, the system time subsystem then chooses the source with the highest precision.
  *
  * @{
  */
@@ -28,28 +27,30 @@ typedef struct cpu cpu_t;
 #define SYS_TIME_MAX_SOURCES 8
 
 /**
- * @brief Timer system source.
+ * @brief System time source.
  * @struct sys_time_source_t
  */
 typedef struct
 {
     const char* name;
-    clock_t (*read)(void);
     clock_t precision;
+    clock_t (*read)(void);
 } sys_time_source_t;
 
 /**
  * @brief Register a system timer source.
  *
  * @param source The timer source to register.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `ENOSPC`: No more timer sources can be registered.
  */
 uint64_t sys_time_register_source(const sys_time_source_t* source);
 
 /**
  * @brief Unregister a system timer source.
  *
- * @param source The timer source to unregister.
+ * @param source The timer source to unregister, or `NULL` for no-op.
  */
 void sys_time_unregister_source(const sys_time_source_t* source);
 
@@ -73,7 +74,7 @@ time_t sys_time_unix_epoch(void);
  * This function uses a busy-wait loop, making it highly CPU inefficient, but its useful during early
  * initialization or when you are unable to block the current thread.
  *
- * @param nanoseconds The number of nanoseconds to wait
+ * @param nanoseconds The number of nanoseconds to wait.
  */
 void sys_time_wait(clock_t nanoseconds);
 

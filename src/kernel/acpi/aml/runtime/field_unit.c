@@ -6,7 +6,7 @@
 #include <kernel/acpi/aml/runtime/method.h>
 #include <kernel/acpi/aml/state.h>
 #include <kernel/acpi/aml/to_string.h>
-#include <kernel/cpu/port.h>
+#include <kernel/cpu/io.h>
 #include <kernel/drivers/pci/pci_config.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>
@@ -15,9 +15,9 @@
 
 typedef struct aml_region_handler
 {
-    uint64_t (*read)(aml_state_t* state, aml_opregion_obj_t* opregion, uint64_t address, aml_bit_size_t accessSize,
+    uint64_t (*read)(aml_state_t* state, aml_opregion_t* opregion, uint64_t address, aml_bit_size_t accessSize,
         uint64_t* out);
-    uint64_t (*write)(aml_state_t* state, aml_opregion_obj_t* opregion, uint64_t address, aml_bit_size_t accessSize,
+    uint64_t (*write)(aml_state_t* state, aml_opregion_t* opregion, uint64_t address, aml_bit_size_t accessSize,
         uint64_t value);
 } aml_region_handler_t;
 
@@ -42,7 +42,7 @@ static void* aml_ensure_mem_is_mapped(uint64_t address, aml_bit_size_t accessSiz
     return (void*)PML_LOWER_TO_HIGHER(address);
 }
 
-static uint64_t aml_system_mem_read(aml_state_t* state, aml_opregion_obj_t* opregion, uintptr_t address,
+static uint64_t aml_system_mem_read(aml_state_t* state, aml_opregion_t* opregion, uintptr_t address,
     aml_bit_size_t accessSize, uint64_t* out)
 {
     (void)state;
@@ -84,7 +84,7 @@ static uint64_t aml_system_mem_read(aml_state_t* state, aml_opregion_obj_t* opre
     return 0;
 }
 
-static uint64_t aml_system_mem_write(aml_state_t* state, aml_opregion_obj_t* opregion, uint64_t address,
+static uint64_t aml_system_mem_write(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t value)
 {
     (void)state;
@@ -126,7 +126,7 @@ static uint64_t aml_system_mem_write(aml_state_t* state, aml_opregion_obj_t* opr
     return 0;
 }
 
-static uint64_t aml_system_io_read(aml_state_t* state, aml_opregion_obj_t* opregion, uint64_t address,
+static uint64_t aml_system_io_read(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t* out)
 {
     (void)state;
@@ -135,13 +135,13 @@ static uint64_t aml_system_io_read(aml_state_t* state, aml_opregion_obj_t* opreg
     switch (accessSize)
     {
     case 8:
-        *out = port_inb(address);
+        *out = io_in8(address);
         break;
     case 16:
-        *out = port_inw(address);
+        *out = io_in16(address);
         break;
     case 32:
-        *out = port_inl(address);
+        *out = io_in32(address);
         break;
     default:
         LOG_ERR("unable to read opregion with access size %u\n", accessSize);
@@ -151,7 +151,7 @@ static uint64_t aml_system_io_read(aml_state_t* state, aml_opregion_obj_t* opreg
     return 0;
 }
 
-static uint64_t aml_system_io_write(aml_state_t* state, aml_opregion_obj_t* opregion, uint64_t address,
+static uint64_t aml_system_io_write(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t value)
 {
     (void)state;
@@ -160,13 +160,13 @@ static uint64_t aml_system_io_write(aml_state_t* state, aml_opregion_obj_t* opre
     switch (accessSize)
     {
     case 8:
-        port_outb(address, (uint8_t)value);
+        io_out8(address, (uint8_t)value);
         break;
     case 16:
-        port_outw(address, (uint16_t)value);
+        io_out16(address, (uint16_t)value);
         break;
     case 32:
-        port_outl(address, (uint32_t)value);
+        io_out32(address, (uint32_t)value);
         break;
     default:
         LOG_ERR("unable to write opregion with access size %u\n", accessSize);
@@ -176,7 +176,7 @@ static uint64_t aml_system_io_write(aml_state_t* state, aml_opregion_obj_t* opre
     return 0;
 }
 
-static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_obj_t* opregion, pci_segment_group_t* segmentGroup,
+static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_t* opregion, pci_segment_group_t* segmentGroup,
     pci_bus_t* bus, pci_slot_t* slot, pci_function_t* function)
 {
     (void)state;
@@ -202,7 +202,7 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_obj_t* opreg
             LOG_ERR("failed to evaluate _ADR for opregion '%s'\n", AML_NAME_TO_STRING(location->name));
             return ERR;
         }
-        aml_integer_t adrValue = adrResult->integer.value;
+        aml_uint_t adrValue = adrResult->integer.value;
         DEREF(adrResult);
 
         *slot = adrValue & 0x0000FFFF;             // Low word is slot
@@ -221,7 +221,7 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_obj_t* opreg
             LOG_ERR("failed to evaluate _BBN for opregion '%s'\n", AML_NAME_TO_STRING(location->name));
             return ERR;
         }
-        aml_integer_t bbnValue = bbnResult->integer.value;
+        aml_uint_t bbnValue = bbnResult->integer.value;
         DEREF(bbnResult);
 
         // Lower 8 bits is the bus number.
@@ -240,7 +240,7 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_obj_t* opreg
             LOG_ERR("failed to evaluate _SEG for opregion '%s'\n", AML_NAME_TO_STRING(location->name));
             return ERR;
         }
-        aml_integer_t segValue = segResult->integer.value;
+        aml_uint_t segValue = segResult->integer.value;
         DEREF(segResult);
 
         // Lower 16 bits is the segment group number.
@@ -250,7 +250,7 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_obj_t* opreg
     return 0;
 }
 
-static uint64_t aml_pci_config_read(aml_state_t* state, aml_opregion_obj_t* opregion, uint64_t address,
+static uint64_t aml_pci_config_read(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t* out)
 {
     (void)state;
@@ -283,7 +283,7 @@ static uint64_t aml_pci_config_read(aml_state_t* state, aml_opregion_obj_t* opre
     return 0;
 }
 
-static uint64_t aml_pci_config_write(aml_state_t* state, aml_opregion_obj_t* opregion, uint64_t address,
+static uint64_t aml_pci_config_write(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t value)
 {
     pci_segment_group_t segmentGroup;
@@ -322,7 +322,7 @@ static aml_region_handler_t regionHandlers[] = {
 
 #define AML_REGION_MAX (sizeof(regionHandlers) / sizeof(regionHandlers[0]))
 
-static inline uint64_t aml_opregion_read(aml_state_t* state, aml_opregion_obj_t* opregion, uint64_t address,
+static inline uint64_t aml_opregion_read(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t* out)
 {
     if (out == NULL)
@@ -340,7 +340,7 @@ static inline uint64_t aml_opregion_read(aml_state_t* state, aml_opregion_obj_t*
     return regionHandlers[opregion->space].read(state, opregion, address, accessSize, out);
 }
 
-static inline uint64_t aml_opregion_write(aml_state_t* state, aml_opregion_obj_t* opregion, uint64_t address,
+static inline uint64_t aml_opregion_write(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t value)
 {
     if (opregion->space >= AML_REGION_MAX || regionHandlers[opregion->space].write == NULL)
@@ -364,15 +364,15 @@ typedef enum aml_access_direction
     AML_ACCESS_WRITE
 } aml_access_direction_t;
 
-static uint64_t aml_generic_field_read_at(aml_state_t* state, aml_field_unit_obj_t* fieldUnit,
-    aml_bit_size_t accessSize, uint64_t byteOffset, uint64_t* out)
+static uint64_t aml_generic_field_read_at(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_bit_size_t accessSize,
+    uint64_t byteOffset, uint64_t* out)
 {
     switch (fieldUnit->fieldType)
     {
     case AML_FIELD_UNIT_FIELD:
     case AML_FIELD_UNIT_BANK_FIELD:
     {
-        aml_opregion_obj_t* opregion = fieldUnit->opregion;
+        aml_opregion_t* opregion = fieldUnit->opregion;
         uintptr_t address = opregion->offset + byteOffset;
         return aml_opregion_read(state, opregion, address, accessSize, out);
     }
@@ -414,15 +414,15 @@ static uint64_t aml_generic_field_read_at(aml_state_t* state, aml_field_unit_obj
     }
 }
 
-static uint64_t aml_generic_field_write_at(aml_state_t* state, aml_field_unit_obj_t* fieldUnit,
-    aml_bit_size_t accessSize, uint64_t byteOffset, uint64_t value)
+static uint64_t aml_generic_field_write_at(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_bit_size_t accessSize,
+    uint64_t byteOffset, uint64_t value)
 {
     switch (fieldUnit->fieldType)
     {
     case AML_FIELD_UNIT_FIELD:
     case AML_FIELD_UNIT_BANK_FIELD:
     {
-        aml_opregion_obj_t* opregion = fieldUnit->opregion;
+        aml_opregion_t* opregion = fieldUnit->opregion;
         uintptr_t address = opregion->offset + byteOffset;
         return aml_opregion_write(state, opregion, address, accessSize, value);
     }
@@ -465,14 +465,14 @@ static uint64_t aml_generic_field_write_at(aml_state_t* state, aml_field_unit_ob
     }
 }
 
-static uint64_t aml_field_unit_access(aml_state_t* state, aml_field_unit_obj_t* fieldUnit, aml_object_t* data,
+static uint64_t aml_field_unit_access(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_object_t* data,
     aml_access_direction_t direction)
 {
     // The integer revision handling is enterily done by the aml_get_access_size function, so we dont need to
     // do anything special here.
 
     uint64_t result = 0;
-    aml_mutex_obj_t* globalMutex = NULL;
+    aml_mutex_t* globalMutex = NULL;
     if (fieldUnit->fieldFlags.lockRule == AML_LOCK_RULE_LOCK)
     {
         globalMutex = aml_gl_get();
@@ -608,7 +608,7 @@ cleanup:
     return result;
 }
 
-uint64_t aml_field_unit_load(aml_state_t* state, aml_field_unit_obj_t* fieldUnit, aml_object_t* out)
+uint64_t aml_field_unit_load(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_object_t* out)
 {
     if (fieldUnit == NULL || out == NULL)
     {
@@ -635,7 +635,7 @@ uint64_t aml_field_unit_load(aml_state_t* state, aml_field_unit_obj_t* fieldUnit
     return aml_field_unit_access(state, fieldUnit, out, AML_ACCESS_READ);
 }
 
-uint64_t aml_field_unit_store(aml_state_t* state, aml_field_unit_obj_t* fieldUnit, aml_object_t* in)
+uint64_t aml_field_unit_store(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_object_t* in)
 {
     if (fieldUnit == NULL || in == NULL)
     {

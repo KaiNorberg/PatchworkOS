@@ -8,6 +8,7 @@
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/sched/sched.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/utils/ref.h>
@@ -18,6 +19,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/io.h>
 #include <sys/list.h>
 #include <sys/math.h>
 
@@ -390,7 +392,10 @@ void ramfs_init(const boot_disk_t* disk)
         panic(NULL, "Failed to register ramfs");
     }
     LOG_INFO("mounting ramfs\n");
-    mount = namespace_mount(NULL, NULL, VFS_DEVICE_NAME_NONE, RAMFS_NAME, (void*)disk);
+
+    process_t* process = sched_process();
+    mount = namespace_mount(&process->ns, NULL, VFS_DEVICE_NAME_NONE, RAMFS_NAME,
+        MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, (void*)disk);
     if (mount == NULL)
     {
         panic(NULL, "Failed to mount ramfs");

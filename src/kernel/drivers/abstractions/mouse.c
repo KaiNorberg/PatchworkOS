@@ -2,6 +2,7 @@
 #include <kernel/fs/file.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
 #include <kernel/sched/sys_time.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
@@ -55,7 +56,7 @@ static file_ops_t eventsOps = {
 static uint64_t mouse_name_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     mouse_t* mouse = file->inode->private;
-    uint64_t nameLen = strnlen_s(mouse->name, MAX_NAME);
+    uint64_t nameLen = strlen(mouse->name);
     if (*offset >= nameLen)
     {
         return 0;
@@ -72,6 +73,7 @@ static void mouse_dir_cleanup(inode_t* inode)
 {
     mouse_t* mouse = inode->private;
     wait_queue_deinit(&mouse->waitQueue);
+    free(mouse->name);
     free(mouse);
 }
 
@@ -101,8 +103,12 @@ mouse_t* mouse_new(const char* name)
     {
         return NULL;
     }
-    strncpy(mouse->name, name, MAX_NAME - 1);
-    mouse->name[MAX_NAME - 1] = '\0';
+    mouse->name = strdup(name);
+    if (mouse->name == NULL)
+    {
+        free(mouse);
+        return NULL;
+    }
     mouse->writeIndex = 0;
     wait_queue_init(&mouse->waitQueue);
     lock_init(&mouse->lock);
@@ -111,6 +117,7 @@ mouse_t* mouse_new(const char* name)
     if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
     {
         wait_queue_deinit(&mouse->waitQueue);
+        free(mouse->name);
         free(mouse);
         return NULL;
     }
@@ -119,6 +126,7 @@ mouse_t* mouse_new(const char* name)
     if (mouse->dir == NULL)
     {
         wait_queue_deinit(&mouse->waitQueue);
+        free(mouse->name);
         free(mouse);
         return NULL;
     }
@@ -142,6 +150,8 @@ mouse_t* mouse_new(const char* name)
 void mouse_free(mouse_t* mouse)
 {
     DEREF(mouse->dir);
+    DEREF(mouse->eventsFile);
+    DEREF(mouse->nameFile);
     // mouse will be freed in mouse_dir_cleanup
 }
 

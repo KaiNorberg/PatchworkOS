@@ -1,3 +1,4 @@
+#include <kernel/cpu/ipi.h>
 #include <kernel/mem/space.h>
 
 #include <kernel/cpu/cpu.h>
@@ -225,7 +226,6 @@ static uint64_t space_populate_user_region(space_t* space, const void* buffer, u
         void* page = pmm_alloc();
         if (page == NULL)
         {
-            errno = ENOMEM;
             return ERR;
         }
 
@@ -233,7 +233,6 @@ static uint64_t space_populate_user_region(space_t* space, const void* buffer, u
                 PML_CALLBACK_NONE) == ERR)
         {
             pmm_free(page);
-            errno = EFAULT;
             return ERR;
         }
     }
@@ -363,13 +362,14 @@ uint64_t space_pin(space_t* space, const void* buffer, uint64_t length, stack_po
 
         if (space_populate_user_region(space, buffer, pageAmount) == ERR)
         {
+            errno = ENOMEM;
             return ERR;
         }
     }
 
     if (space_pin_depth_inc(space, buffer, pageAmount) == ERR)
     {
-        errno = EFAULT;
+        errno = ENOMEM;
         return ERR;
     }
 
@@ -385,11 +385,17 @@ uint64_t space_pin_terminated(space_t* space, const void* address, const void* t
         return ERR;
     }
 
-    LOCK_SCOPE(&space->lock);
-
     uint64_t terminatorMatchedBytes = 0;
     uintptr_t current = (uintptr_t)address;
     uintptr_t end = (uintptr_t)address + (maxCount * objectSize);
+    if (end < (uintptr_t)address)
+    {
+        errno = EOVERFLOW;
+        return ERR;
+    }
+
+    LOCK_SCOPE(&space->lock);
+
     uint64_t pinnedPages = 0;
     while (current < end)
     {
@@ -403,13 +409,14 @@ uint64_t space_pin_terminated(space_t* space, const void* address, const void* t
 
             if (space_populate_user_region(space, (void*)current, 1) == ERR)
             {
+                errno = ENOMEM;
                 goto error;
             }
         }
 
         if (space_pin_depth_inc(space, (void*)current, 1) == ERR)
         {
-            errno = EFAULT;
+            errno = ENOMEM;
             goto error;
         }
         pinnedPages++;
@@ -551,6 +558,8 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
         }
     }
 
+    stack_pointer_poke(1000); // 1000 bytes should be enough.
+
     lock_acquire(&space->lock);
 
     uint64_t pageAmount;
@@ -593,7 +602,7 @@ pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, spac
         return PML_MAX_CALLBACK;
     }
 
-    pml_callback_id_t callbackId = bitmap_find_first_clear(&space->callbackBitmap);
+    pml_callback_id_t callbackId = bitmap_find_first_clear(&space->callbackBitmap, 0, PML_MAX_CALLBACK);
     if (callbackId == PML_MAX_CALLBACK)
     {
         return PML_MAX_CALLBACK;
@@ -630,6 +639,31 @@ pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, spac
 void space_free_callback(space_t* space, pml_callback_id_t callbackId)
 {
     bitmap_clear(&space->callbackBitmap, callbackId);
+}
+
+static void space_tlb_shootdown_ipi_handler(ipi_func_data_t* data)
+{
+    vmm_cpu_ctx_t* ctx = &data->self->vmm;
+    while (true)
+    {
+        lock_acquire(&ctx->lock);
+        if (ctx->shootdownCount == 0)
+        {
+            lock_release(&ctx->lock);
+            break;
+        }
+
+        vmm_shootdown_t shootdown = ctx->shootdowns[ctx->shootdownCount - 1];
+        ctx->shootdownCount--;
+        lock_release(&ctx->lock);
+
+        assert(shootdown.space != NULL);
+        assert(shootdown.pageAmount != 0);
+        assert(shootdown.virtAddr != NULL);
+
+        tlb_invalidate(shootdown.virtAddr, shootdown.pageAmount);
+        atomic_fetch_add(&shootdown.space->shootdownAcks, 1);
+    }
 }
 
 void space_tlb_shootdown(space_t* space, void* virtAddr, uint64_t pageAmount)
@@ -669,7 +703,10 @@ void space_tlb_shootdown(space_t* space, void* virtAddr, uint64_t pageAmount)
         shootdown->pageAmount = pageAmount;
         lock_release(&cpu->vmm.lock);
 
-        lapic_send_ipi(cpu->lapicId, INTERRUPT_TLB_SHOOTDOWN);
+        if (ipi_send(cpu, IPI_SINGLE, space_tlb_shootdown_ipi_handler, NULL) == ERR)
+        {
+            panic(NULL, "Failed to send TLB shootdown IPI to CPU %d", cpu->id);
+        }
         expectedAcks++;
     }
 

@@ -68,7 +68,6 @@ typedef struct
 /**
  * @brief Initialize the screen logging.
  *
- * @param screen The screen state to initialize.
  * @param bootGop Pointer to the bootloader-provided GOP information for screen logging.
  */
 void log_screen_init(const boot_gop_t* bootGop);

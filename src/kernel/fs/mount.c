@@ -40,7 +40,6 @@ mount_t* mount_new(superblock_t* superblock, dentry_t* root, dentry_t* mountpoin
 {
     if (superblock == NULL)
     {
-        errno = EINVAL;
         return NULL;
     }
 
@@ -51,7 +50,6 @@ mount_t* mount_new(superblock_t* superblock, dentry_t* root, dentry_t* mountpoin
     }
 
     ref_init(&mount->ref, mount_free);
-    map_entry_init(&mount->mapEntry);
     mount->id = vfs_get_new_id();
     mount->superblock = REF(superblock);
     superblock_inc_mount_count(superblock);

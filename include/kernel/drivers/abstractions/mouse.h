@@ -29,7 +29,7 @@
  */
 typedef struct
 {
-    char name[MAX_NAME];
+    char* name;
     mouse_event_t events[MOUSE_MAX_EVENT];
     uint64_t writeIndex;
     wait_queue_t waitQueue;

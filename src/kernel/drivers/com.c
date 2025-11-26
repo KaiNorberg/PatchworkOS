@@ -1,4 +1,4 @@
-#include <kernel/cpu/port.h>
+#include <kernel/cpu/io.h>
 #include <kernel/drivers/com.h>
 
 void com_init(com_port_t port)
@@ -31,10 +31,10 @@ void com_write(com_port_t port, uint8_t value)
 
 uint8_t com_reg_read(com_port_t port, com_reg_t reg)
 {
-    return port_inb(port + reg);
+    return io_in8(port + reg);
 }
 
 void com_reg_write(com_port_t port, com_reg_t reg, uint8_t value)
 {
-    port_outb(port + reg, value);
+    io_out8(port + reg, value);
 }

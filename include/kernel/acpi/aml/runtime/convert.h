@@ -150,6 +150,6 @@ uint64_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_objec
  * @param out Pointer to the output buffer where the BCD representation will be stored.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_convert_integer_to_bcd(aml_integer_t value, aml_integer_t* out);
+uint64_t aml_convert_integer_to_bcd(aml_uint_t value, aml_uint_t* out);
 
 /** @} */

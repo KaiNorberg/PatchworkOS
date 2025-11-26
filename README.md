@@ -27,15 +27,15 @@
 
 ![desktop screenshot](meta/screenshots/desktop.png)
 
-**Patchwork** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended be an educational and experimental operating system.
+**PatchworkOS** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended to be an educational and experimental operating system.
 
-In the end this is a project made for fun, but the goal is still to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system, a floppy disk driver is not enough and neither is a round-robin array scheduler.
+In the end this is a project made for fun, but the goal is to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system without jumping ahead to user space features, a ACPI unaware floppy disk driver loaded into a pure monolithic kernel is not enough and neither is a round-robin array scheduler.
 
-This is not a UNIX clone, its intended to be a (hopefully) interesting experiment in operating system design by attempting to use unique algorithms and designs over tried and tested ones. Sometimes this leads to bad results, and sometimes, with a bit of luck, good ones.
+Also, this is not a UNIX clone, its intended to be a (hopefully) interesting experiment in operating system design by attempting to use unique algorithms and designs over tried and tested ones. Sometimes this leads to bad results, and sometimes, with a bit of luck, good ones.
 
-Despite its experimental nature and scale, the project aims to remain approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
+Finally, despite its experimental nature and scale, the project aims to remain approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
 
-Will this project ever reach its goals? Who knows, but the journey is the point regardless.
+Will this project ever reach its goals? Probably not, but thats not the point.
 
 <table>
 <tr>
@@ -56,63 +56,52 @@ Will this project ever reach its goals? Who knows, but the journey is the point 
 
 ### Kernel
 
-- Multithreading with a fully preemptive and tickless [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sched/sched.h), loosely based on Linux's O(1) scheduler
-- Symmetric Multi Processing with fine-grained locking, no big locks allowed
-- Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info
-- Dynamic kernel and user stack allocation
-- File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/note.h)
-- File based device APIs, including [framebuffers](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/fb.h), [keyboards](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/kbd.h), [mice](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/mouse.h) and more
-- [Synchronization primitives](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sync) including mutexes, read-write locks, sequential locks, futexes and others
-- SIMD support
-- [Modular design](#modules) with automatic module dependency resolution and generic device ID based module loading
-
-### ACPI
-
-- From scratch and heavily documented [AML parser](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/acpi/aml/aml.h)
-- Tested on real hardware, see [Tested Configurations](#tested-configurations)
-- ACPI implementation was made to be easy to understand and useful for educational purposes
-- Tested against [ACPICA's](https://github.com/acpica/acpica) runtime test suite
-- ACPI support is still work in progress, check [acpi.h](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/acpi/acpi.h) for a checklist
+- Fully preemptive and tickless [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sched/sched.h), loosely based on Linux's O(1) scheduler.
+- Multithreading and Symmetric Multi Processing with fine-grained locking.
+- Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info.
+- Dynamic kernel and user stack allocation.
+- File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/note.h).
+- File based device APIs, including [framebuffers](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/fb.h), [keyboards](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/kbd.h), [mice](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/mouse.h) and more.
+- [Synchronization primitives](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sync) including mutexes, read-write locks, sequential locks, futexes and others.
+- SIMD support.
+- Highly [Modular design](#modules), even [SMP Bootstrapping](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/modules/smp/smp.c) is done in a module.
 
 ### File System
 
 - Unix-style VFS with mountpoints, hardlinks, per-process namespaces, etc.
-- Strict adherence to "everything is a file" philosophy
-- Custom [Framebuffer BitMaP](https://github.com/KaiNorberg/fbmp) (.fbmp) image format, allows for faster loading by removing the need for parsing
-- Custom [Grayscale Raster Font](https://github.com/KaiNorberg/grf) (.grf) font format, allows for antialiasing and kerning without complex vector graphics
+- Custom [Framebuffer BitMaP](https://github.com/KaiNorberg/fbmp) (.fbmp) image format, allows for faster loading by removing the need for parsing.
+- Custom [Grayscale Raster Font](https://github.com/KaiNorberg/grf) (.grf) font format, allows for antialiasing and kerning without complex vector graphics.
 
 ### User Space
 
-- Custom C standard library and system libraries
-- Highly modular shared memory based desktop environment
-- Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg)
-- Note that currently a heavy focus has been placed on the kernel and low-level stuff, so user space is quite small... for now
+- Custom C standard library and system libraries.
+- Highly modular shared memory based desktop environment.
+- Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
+- Note that currently a heavy focus has been placed on the kernel and low-level stuff, so user space is quite small... for now.
 
 *And much more...*
 
 ## Notable Differences with POSIX
 
-- Replaced `fork(), exec()` with `spawn()`
-- No "user" concept
-- Non-POSIX standard library
-- Even heavier focus on "everything is a file"
-- File flags instead of file modes/permissions
+- Replaced `fork(), exec()` with `spawn()`.
+- No "user" concept.
+- Non-POSIX standard library.
+- Even heavier focus on "everything is a file".
+- File flags instead of file modes/permissions.
 
 ## Limitations
 
-- Currently limited to RAM disks only (Waiting for USB support)
-- Only support for x86_64
+- Currently limited to RAM disks only (Waiting for USB support).
+- Only support for x86_64.
 
 ## Notable Future Plans
 
-- Separate the kernel into more and more modules <- Currently being worked on
-- File flags performance improvements and refactor
-- Read, write, execute, create permissions
-- Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions
-- Add configurability to `spawn()` for namespace inheritance
-- Asynchronous I/O
-- Shared libraries
-- USB support (The holy grail)
+- Separate the kernel into more and more modules. <- Currently being worked on
+- "Earliest Eligible Virtual Deadline First" style scheduler?
+- Read, write, execute, create permissions.
+- Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions.
+- Fully Asynchronous I/O and syscalls (io_uring?).
+- USB support (The holy grail).
 
 ---
 
@@ -187,15 +176,82 @@ This code in the `hello.c` file does a few things. First, it includes the releva
 
 Second, it defines a `_module_procedure()` function. This function serves as the entry point for the module and will be called by the kernel to notify the module of events, for example the module being loaded or a device attached. On the load event, it will print using the kernels logging system `"Hello, World!"`, resulting in the message being readable from `/dev/klog`.
 
-Finally, it defines the modules information. This information is, in order, the name of the module, the author of the module (thats you), a short description of the module, the module version, the licence of the module, and finally a list of "device IDs", we could make this multiple IDs by seperating them with semicolons.
+Finally, it defines the modules information. This information is, in order, the name of the module, the author of the module (thats you), a short description of the module, the module version, the licence of the module, and finally a list of "device types", in this case just `LOAD_ON_BOOT`, but more could be added by separating them with a semicolon (`;`).
 
-The list of device IDs is what causes the kernel to actually load the module. Il avoid going into to much detail (you can check the documentation for that), but il explain it briefly.
+The list of device types is what causes the kernel to actually load the module. I will avoid going into to much detail (you can check the documentation for that), but I will explain it briefly.
 
-The module loader itself has no idea what these IDs actually are, but subsytems within the kernel can specify that "a device represented by this string is now availble", the module loader can then load either one or all modules that have specified in their list of device IDs that it can handle the specified device. This means that any new subsystem, ACPI, USB, PCI, etc, can implement dynamic module loading using whatever IDs they want.
+The module loader itself has no idea what these type strings actually are, but subsytems within the kernel can specify that "a device of the type represented by this string is now available", the module loader can then load either one or all modules that have specified in their list of device types that it can handle the specified type. This means that any new subsystem, ACPI, USB, PCI, etc, can implement dynamic module loading using whatever types they want.
 
-So, why did we specify `LOAD_ON_BOOT`? That does not seem like a device ID, and thats becouse it isent, its a special ID that the kernel will pretend to "attach" during boot, thus loading any module with that ID specified. In this case, it causes our hello module to be loaded during boot.
+So what is `LOAD_ON_BOOT`? It is the type of a special device that the kernel will pretend to "attach" during boot. In this case, it simply causes our hello module to be loaded during boot.
 
 For more information, check the [Module Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/d41/group__kernel__module.html).
+
+## ACPI (WIP)
+
+PatchworkOS features a from-scratch ACPI implementation and AML parser, with the goal of being, atleast by ACPI standards, easy to understand and educational. It is tested on the [Tested Configurations](#tested-configurations) below and against [ACPICA's](https://github.com/acpica/acpica) runtime test suite, but remains a work in progress (and probably always will be).
+
+See [ACPI Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d0/d30/group__kernel__acpi.html) for a progress checklist.
+
+See [ACPI specification Version 6.6](https://uefi.org/specs/ACPI/6.6/index.html) as the main reference.
+
+### What is ACPI?
+
+ACPI or Advanced Configuration and Power Interface is used for *alot* of things in modern systems but mainly power management and device enumeration/configuration. Its not possible to go over everything here, instead a brief overview of the parts most likely to cause confusion while reading the code will be provided.
+
+It consists of two main parts, the ACPI tables and AML bytecode. If you have completed a basic operating systems tutorial, you have probably seen the ACPI tables before, for example the RSDP, FADT, MADT, etc. These tables are static in memory data structures storing information about the system, they are very easy to parse but are limited in what they can express.
+
+AML or ACPI Machine Language is a turning complete "mini language", and the source of mutch frustration, that is used to express more complex data, primarily device configuration. This is needed as its impossible for any specification to account for every possible hardware configuration that exists currently, much less that may exist in the future. So instead of trying to design that, what if we could just had a small program generate whatever data we wanted dynamically? Well thats more or less what AML is.
+
+### Device Configuration
+
+To demonstrate how ACPI is used for device configuration, we will use the [PS/2 driver](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/modules/drivers/ps2) as an example.
+
+If you have followed a basic operating systems tutorial, you have probably implemented a PS/2 keyboard driver at some point, and most likely you hardcoded the I/O ports `0x60` and `0x64` for data and commands respectively, and IRQ `1` for keyboard interrupts.
+
+Using this hardcoded approach will work for the vast majority of systems, but, perhaps surprisingly, there is no standard that guarantees that these ports and IRQs will actually be used for PS/2 devices. Its just a silent agreement that pretty much all systems adhere to for legacy reasons.
+
+But this is where the device configuration from AML comes in, it lets us query the system for the actual resources used by the PS/2 keyboard, so we dont have to rely on hardcoded values.
+
+If you where to decompile the AML bytecode into its original ASL (ACPI Source Language), you might find something like this:
+
+```asl
+Device (KBD)
+{
+    Name (_HID, EisaId ("PNP0303") /* IBM Enhanced Keyboard (101/102-key, PS/2 Mouse) */)  // _HID: Hardware ID
+    Name (_STA, 0x0F)  // _STA: Status
+    Name (_CRS, ResourceTemplate ()  // _CRS: Current Resource Settings
+    {
+        IO (Decode16,
+            0x0060,             // Range Minimum
+            0x0060,             // Range Maximum
+            0x01,               // Alignment
+            0x01,               // Length
+            )
+        IO (Decode16,
+            0x0064,             // Range Minimum
+            0x0064,             // Range Maximum
+            0x01,               // Alignment
+            0x01,               // Length
+            )
+        IRQNoFlags ()
+            {1}
+    })
+}
+```
+
+*Note that just like C compiles to assembly, ASL compiles to AML bytecode, which is what the OS actually parses.*
+
+In the example ASL, we se a `Device` object representing a PS/2 keyboard. It has a hardware ID (`_HID`), which we can cross reference with a [online database](https://uefi.org/PNP_ACPI_Registry) to confirm that it is indeed a PS/2 keyboard, a status (`_STA`), which is just a bitfield indicating if the device is present, enabled, etc, and finally the current resource settings (`_CRS`), which is the thing we are really after.
+
+The `_CRS` might look a bit complicated but focus on the `IO` and `IRQNoFlags` entries. Notice how they are specifying the I/O ports and IRQ used by the keyboard? Which in this case are indeed `0x60`, `0x64` and `1` respectively. So in this case the standard held true.
+
+So how is this information used? Durring boot, the `_CRS` information of each device is parsed by the ACPI subsystem, it then queries the kernel for the needed resources, assigned them to each device and makes the final configuration available to drivers.
+
+Then when the PS/2 driver is loaded, it gets told "you are handling a device with the name `\_SB_.PCI0.SF8_.KBD_` (which is just the full path to the device object in the ACPI namespace) and the type `PNP0303`", it can then query the ACPI subsystem for the resources assigned to that device, and use them instead of hardcoded values.
+
+Having access to this information for all devices also allows us to avoid resource conflicts, making sure two devices are not trying to use the same IRQ(s) or I/O port(s).
+
+Of course, it gets way, way worse than this, but hopefully this clarifies why the PS/2 driver and other drivers, might look a bit different than what you might be used to.
 
 ## Everything is a File
 
@@ -252,17 +308,19 @@ which would create a new socket and connect it to the server named `myserver`.
 
 ### Namespaces
 
-Namespaces are a set of mountpoints that is unique per process with each process able to access the mountpoints in its parent's namespace, which allows each process a unique view of the file system and is utilized for access control.
+Namespaces are a set of mountpoints that is unique per process, which allows each process a unique view of the file system and is utilized for access control.
 
-Think of it like this, in the common case, for instance on Linux, you can mount a drive to `/mnt/mydrive` and all processes can then open the `/mnt/mydrive` path and see the contents of that drive. In PatchworkOS, this is also possible, but for security reasons we might not want every process to be able to see that drive, instead processes should see the original contents of `/mnt/mydrive` which might just be an empty directory. The exception is for the process that created the mountpoint and its children as they would have that mountpoint in their namespace.
+Think of it like this, in the common case, you can mount a drive to `/mnt/mydrive` and all processes can then open the `/mnt/mydrive` path and see the contents of that drive. However, for security reasons we might not want every process to be able to see that drive, this is what namespaces enable, allowing mounted file systems or directories to only be visible to a subset of processes.
 
-For example, the "id" directories mentioned in the socket example are a separate "sysfs" instance mounted in the namespace of the creating process, meaning that only that process and its children can see their contents.
+As an example, the "id" directories mentioned in the socket example are a separate "sysfs" instance mounted in the namespace of the creating process, meaning that only that process and its children can see their contents.
+
+To control which processes can see a newly mounted or bound file system or directory, we use a propegation system, where a the newly created mountpoint can be made visible to either just the creating process, the creating process and its children, or the creating process, its children and its parents. Additionally, its possible to specify the behaviour of mountpoint inheritance when a new process is spawned.
 
 [Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
 
 ### Namespace Sharing
 
-It's possible for two processes to voluntarily share a mountpoint in their namespaces using `bind()` in combination with two new system calls `share()` and `claim()`.
+In cases where the propagation system is not sufficient, it's possible for two processes to voluntarily share a mountpoint in their namespaces using `bind()` in combination with two new system calls `share()` and `claim()`.
 
 For example, if process A wants to share its `/net/local/5` directory from the socket example with process B, they can do
 
@@ -311,9 +369,9 @@ Multiple flags are allowed, just separate them with the `:` character, this mean
 
 Im sure you have heard many an argument for and against the "everything is a file" philosophy. So I wont go over everything, but the primary reason for using it in PatchworkOS is "emergent behavior" or "composability" which ever term you prefer.
 
-Take the namespace sharing example, notice how there isent any actually dedicated "namespace sharing" system? There are instead a series of small, simple building blocks that when added together form a more complex whole. That is emergent behavior, by keeping things simple and most importantly interoperable, we can create very complex behaviour without needing to explicitly design it.
+Take the namespace sharing example, notice how there isent any actually dedicated "namespace sharing" system? There are instead a series of small, simple building blocks that when added together form a more complex whole. That is emergent behavior, by keeping things simple and most importantly composable, we can create very complex behaviour without needing to explicitly design it.
 
-Lets take another example, say you wanted to wait on multiple processes with a `waitpid()` syscall. Well, thats not possible. So now we suddenly need a new system call. Meanwhile, in a "everything is a file system" we just have a pollable `/proc/[pid]/wait` file that acts that returns the exit status, now any behaviour that can be implemented with `poll()` can be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination you can think of.
+Lets take another example, say you wanted to wait on multiple processes with a `waitpid()` syscall. Well, thats not possible. So now we suddenly need a new system call. Meanwhile, in a "everything is a file system" we just have a pollable `/proc/[pid]/wait` file that blocks untill the process dies and returns the exit status, now any behaviour that can be implemented with `poll()` can be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination you can think of.
 
 Plus its fun.
 
@@ -370,7 +428,7 @@ y =
 
 <br>
 
-From this we see that for $x \le 850$ the linear regression has a slightly better fit while for $x > 850$ the quadratic regression has a slightly better fit, this is most likely due to the CPU or TLB caches starting to get saturated. All in all this did not tell us much more than we already knew, but it was fun to do regardless.
+From this we see that for $x \le 850$ the linear regression has a slightly better fit while for $x > 850$ the quadratic regression has a slightly better fit, this is most likely due to the CPU or TLB caches starting to get saturated. All in all this did not tell us much more than we already knew, so it was kinda pointless, but perhaps it is interesting to someone.
 
 Of course, there are limitations to this approach, for example, it is in no way portable (which isn't a concern in our case), each address space can only contain $2^8 - 1$ unique shared memory regions, and copy-on-write would not be easy to implement (however, the need for this is reduced due to PatchworkOS using a `spawn()` instead of a `fork()`).
 
@@ -541,7 +599,7 @@ Currently untested on Intel hardware (broke student, no access to hardware). Let
 
 ## Contributing
 
-Contributions are welcome! Anything from bug reports/fixes, performance improvements, new features, or even just fixing typos or adding documentation!
+Contributions are welcome! Anything from bug reports/fixes, performance improvements, new features, or even just fixing typos or adding documentation.
 
 If you are unsure where to start, try searching for any "TODO" comments in the codebase.
 

@@ -201,7 +201,6 @@ static inline void page_table_load(page_table_t* table)
  * @param currentPml The current page table level.
  * @param index The index within the current page table level.
  * @param flags The flags to assign to a newly allocated page table level, if applicable.
- * @param callbackId The callback ID to assign to a newly allocated page table level, if applicable.
  * @param outPml Will be filled with the retrieved or newly allocated page table level.
  * @return On success, `0`. On failure, `ERR`.
  */

@@ -1,3 +1,4 @@
+#include <kernel/cpu/regs.h>
 #include <kernel/cpu/stack_pointer.h>
 
 #include <kernel/log/log.h>
@@ -116,4 +117,14 @@ bool stack_pointer_overlaps_guard(stack_pointer_t* stack, uintptr_t addr, uint64
     }
 
     return !(endAddr <= stack->guardBottom || addr >= stack->guardTop);
+}
+
+void stack_pointer_poke(uint64_t offset)
+{
+    uint64_t rsp = rsp_read();
+    for (uint64_t i = 0; i < offset; i += MIN(PAGE_SIZE, offset - i))
+    {
+        volatile uint8_t dummy;
+        dummy = *((uint8_t*)(rsp - i));
+    }
 }

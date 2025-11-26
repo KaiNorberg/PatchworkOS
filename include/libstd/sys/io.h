@@ -537,18 +537,34 @@ uint64_t share(key_t* key, fd_t fd, clock_t timeout);
 fd_t claim(key_t* key);
 
 /**
+ * @brief Mount flags type.
+ * @enum mount_flags_t
+ *
+ * The propagation flags apply recursively, such that specifying both `MOUNT_PROPAGATE_PARENT` and
+ * `MOUNT_PROPAGATE_CHILDREN` will propagate the mount to every namespace in the hierarchy.
+ */
+typedef enum
+{
+    MOUNT_NONE = 0,                    ///< No special mount flags.
+    MOUNT_PROPAGATE_PARENT = 1 << 0,   ///< Propagate the mount to parent namespaces.
+    MOUNT_PROPAGATE_CHILDREN = 1 << 1, ///< Propagate the mount to child namespaces.
+    MOUNT_OVERWRITE = 1 << 2,          ///< Overwrite any existing mount at the mountpoint.
+} mount_flags_t;
+
+/**
  * @brief System call for binding a file descriptor to a mountpoint.
  *
  * @param source The file descriptor to bind, must represent a directory.
  * @param mountpoint The mountpoint path.
+ * @param flags The mount flags.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t bind(fd_t source, const char* mountpoint);
+uint64_t bind(fd_t source, const char* mountpoint, mount_flags_t flags);
+
+/** @} */
 
 #if defined(__cplusplus)
 }
 #endif
 
 #endif
-
-/** @} */

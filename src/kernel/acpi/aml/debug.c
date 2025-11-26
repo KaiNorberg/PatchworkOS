@@ -104,7 +104,7 @@ void aml_debug_error(aml_term_list_ctx_t* ctx, const char* function, const char*
         const uint8_t* start = NULL;
         const uint8_t* end = NULL;
 
-        aml_method_obj_t* method = aml_method_find(ctx->current);
+        aml_method_t* method = aml_method_find(ctx->current);
         if (method != NULL)
         {
             LOG_ERR(" at method '%s' and offset 0x%lx\n", AML_NAME_TO_STRING(method->name),

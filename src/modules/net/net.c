@@ -9,6 +9,7 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/module/module.h>
+#include <sys/io.h>
 
 static mount_t* mount;
 
@@ -19,7 +20,7 @@ mount_t* net_get_mount(void)
 
 static uint64_t net_init(void)
 {
-    mount = sysfs_mount_new(NULL, "net", NULL, NULL);
+    mount = sysfs_mount_new(NULL, "net", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, NULL);
     if (mount == NULL)
     {
         return ERR;

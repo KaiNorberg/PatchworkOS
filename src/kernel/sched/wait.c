@@ -1,6 +1,8 @@
+#include <kernel/cpu/irq.h>
 #include <kernel/sched/wait.h>
 
 #include <kernel/cpu/cpu.h>
+#include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/sys_time.h>
@@ -33,41 +35,6 @@ static void wait_remove_wait_entries(thread_t* thread, errno_t err)
     }
 }
 
-static void wait_timer_handler(interrupt_frame_t* frame, cpu_t* self)
-{
-    (void)frame; // Unused
-
-    LOCK_SCOPE(&self->wait.lock);
-
-    while (1)
-    {
-        thread_t* thread = CONTAINER_OF_SAFE(list_first(&self->wait.blockedThreads), thread_t, entry);
-        if (thread == NULL)
-        {
-            return;
-        }
-
-        clock_t uptime = sys_time_uptime();
-        if (thread->wait.deadline > uptime)
-        {
-            timer_one_shot(self, uptime, thread->wait.deadline - uptime);
-            return;
-        }
-
-        list_remove(&self->wait.blockedThreads, &thread->entry);
-
-        // Already unblocking.
-        thread_state_t expected = THREAD_BLOCKED;
-        if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
-        {
-            continue;
-        }
-
-        wait_remove_wait_entries(thread, ETIMEDOUT);
-        sched_push(thread, thread->wait.cpu->cpu);
-    }
-}
-
 void wait_queue_init(wait_queue_t* waitQueue)
 {
     lock_init(&waitQueue->lock);
@@ -97,7 +64,40 @@ void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* self)
     list_init(&wait->blockedThreads);
     wait->cpu = self;
     lock_init(&wait->lock);
-    timer_register_callback(&self->timer, wait_timer_handler);
+}
+
+void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self)
+{
+    (void)frame; // Unused
+
+    LOCK_SCOPE(&self->wait.lock);
+
+    while (1)
+    {
+        thread_t* thread = CONTAINER_OF_SAFE(list_first(&self->wait.blockedThreads), thread_t, entry);
+        if (thread == NULL)
+        {
+            return;
+        }
+
+        clock_t uptime = sys_time_uptime();
+        if (thread->wait.deadline > uptime)
+        {
+            timer_set(uptime, thread->wait.deadline);
+            return;
+        }
+
+        list_remove(&self->wait.blockedThreads, &thread->entry);
+
+        thread_state_t expected = THREAD_BLOCKED;
+        if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING)) // Already unblocking.
+        {
+            continue;
+        }
+
+        wait_remove_wait_entries(thread, ETIMEDOUT);
+        sched_push(thread, thread->wait.cpu->cpu);
+    }
 }
 
 bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread, clock_t uptime)
@@ -149,7 +149,7 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
         }
     }
 
-    timer_one_shot(self, uptime, thread->wait.deadline > uptime ? thread->wait.deadline - uptime : 0);
+    timer_set(uptime, thread->wait.deadline);
     return true;
 }
 
@@ -335,7 +335,7 @@ uint64_t wait_block_commit(void)
         break;
     case THREAD_PRE_BLOCK:
         cpu_put(); // Release cpu from wait_block_setup().
-        timer_notify_self();
+        sched_yield();
         break;
     default:
         panic(NULL, "Invalid thread state %d in wait_block_commit()", state);

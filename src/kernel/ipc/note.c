@@ -74,10 +74,12 @@ uint64_t note_queue_write(note_queue_t* queue, const void* buffer, uint64_t coun
     return 0;
 }
 
-void note_interrupt_handler(interrupt_frame_t* frame, cpu_t* self)
+void note_handle_pending(interrupt_frame_t* frame, cpu_t* self)
 {
+    (void)frame;
+    (void)self;
+
     thread_t* thread = sched_thread_unsafe();
-    process_t* process = thread->process;
     note_queue_t* queue = &thread->notes;
 
     lock_acquire(&queue->lock);
@@ -85,8 +87,7 @@ void note_interrupt_handler(interrupt_frame_t* frame, cpu_t* self)
     if (queue->flags & NOTE_QUEUE_RECIEVED_KILL)
     {
         lock_release(&queue->lock);
-        process_kill(process, EXIT_FAILURE);
-        sched_invoke(frame, self, SCHED_DIE);
+        atomic_store(&thread->state, THREAD_DYING);
         return;
     }
 

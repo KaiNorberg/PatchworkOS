@@ -22,7 +22,7 @@ extern "C"
  * @ingroup libstd
  * @defgroup libstd_sys_proc Process management
  *
- * The `sys/proc.h` header handles process management, including process creation, managing a processes address space,
+ * The `sys/proc.h` header handles process management, including process spawning, managing a processes address space,
  * scheduling, and similar.
  *
  * @{
@@ -32,16 +32,15 @@ extern "C"
  * @brief Priority type.
  * @typedef priority_t
  *
- * The `priority_t` type is used to store the scheduling priority of a process, we also define three constants
- * `PRIORITY_MIN`, which represents the lowest priority a process can have, `PRIORITY_MAX` which defines the maximum
- * value of a process priority (not inclusive) and `PRIORITY_MAX_USER` which defines the maximum value that user space
- * is allowed to specify for a process (not inclusive). See the kernel `sched_invoke()` function for more info.
+ * The `priority_t` type is used to store the scheduling priority of a process.
  *
  */
 typedef uint8_t priority_t;
-#define PRIORITY_MAX 64
-#define PRIORITY_MAX_USER 32
-#define PRIORITY_MIN 0
+
+#define PRIORITY_PARENT 255  ///< Use the priority of the parent process.
+#define PRIORITY_MAX 64      ///< The maximum priority value.
+#define PRIORITY_MAX_USER 32 ///< The maximum priority user space is allowed to specify.
+#define PRIORITY_MIN 0       ///< The minimum priority value.
 
 /**
  * @brief Stucture used to duplicate fds in `spawn()`.
@@ -59,25 +58,16 @@ typedef struct
 
 /**
  * @brief Spawn behaviour flags.
- *
- * The `spawn_flags_t` type is used to modify the behaviour when spawning a new process or provide additional
- * information. We use a 64 bit integer to allow more flags to be implemented. For more information check the `spawn()`
- * function.
- *
- * Available flags:
- *
- * - `SPAWN_NONE` - None
- * - `SPAWN_INHERIT_PRIORITY` - Causes the new process to inherit the priority of the parent, the spawn_attr_t::priority
- * field is ignored.
- *
+ * @enum spawn_flags_t
  */
-typedef uint64_t spawn_flags_t;
-#define SPAWN_NONE 0
-#define SPAWN_INHERIT_PRIORITY (1 << 0)
+typedef enum
+{
+    SPAWN_DEFAULT = 0,               ///< Default spawn behaviour.
+    SPAWN_EMPTY_NAMESPACE = (1 << 0) ///< Dont inherit the mountpoints of the parent's namespace.
+} spawn_flags_t;
 
 /**
  * @brief Spawn fds termination constant.
- *
  */
 #define SPAWN_FD_END \
     (spawn_fd_t) \
@@ -85,19 +75,8 @@ typedef uint64_t spawn_flags_t;
         .child = FD_NONE, .parent = FD_NONE \
     }
 
-typedef struct
-{
-    spawn_flags_t flags;
-    priority_t priority;
-    uint8_t _padding[128 - sizeof(priority_t) - sizeof(spawn_flags_t)];
-} spawn_attr_t;
-
-#ifdef static_assert
-static_assert(sizeof(spawn_attr_t) == 128);
-#endif
-
 /**
- * @brief System call for creating child processes.
+ * @brief System call for spawning new processes.
  *
  * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable. This array
  * will be pushed to the child stack and the child can find a pointer to this array in its rsi register, along with its
@@ -105,18 +84,15 @@ static_assert(sizeof(spawn_attr_t) == 128);
  * @param fds A array of file descriptors to be duplicated to the child process. Each `spawn_fd_t` in the array
  * specifies a source file descriptor in the parent (`.parent`) and its destination in the child (`.child`).
  * The array must be terminated by `SPAWN_FD_END`.
- * @param cwd The working directory for the child process. If `NULL`, the child inherits the parent's current
- * working directory.
- * @param attr The spawn attributes, allows for specifying additional information for the new process, if equal to NULL
- * then use defaults.
- * @return On success, returns the childs pid, on failure returns `ERR` and errno is set.
+ * @param cwd The working directory for the child process, or `NULL` to inherit the parents working directory.
+ * @param priority The scheduling priority for the child process, or `PRIORITY_PARENT` to inherit the parent's priority.
+ * @param flags Spawn behaviour flags.
+ * @return On success, the childs pid. On failure, `ERR` and `errno` is set.
  */
-pid_t spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_attr_t* attr);
+pid_t spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, priority_t priority, spawn_flags_t flags);
 
 /**
  * @brief System call to retrieve the current pid.
- *
- * The `getpid()` function retrieves the pid of the currently running process.
  *
  * @return The running processes pid.
  */
@@ -125,25 +101,17 @@ pid_t getpid(void);
 /**
  * @brief System call to retrieve the current tid.
  *
- * The `gettid()` function retrieves the tid of the currently running thread.
- *
  * @return The running threads tid.
  */
 tid_t gettid(void);
 
 /**
- * @brief Memory page size
- *
- * The `PAGE_SIZE` constant stores the size in bytes of one page in memory.
- *
+ * @brief The size of a memory page in bytes.
  */
 #define PAGE_SIZE 0x1000
 
 /**
- * @brief Convert bytes to pages.
- *
- * The `BYTES_TO_PAGES()` macro takes in a amount of bytes and returns the amount of pages in memory required to store
- * that amount of bytes.
+ * @brief Convert a size in bytes to pages.
  *
  * @param amount The amount of bytes.
  * @return The amount of pages.
@@ -153,8 +121,6 @@ tid_t gettid(void);
 /**
  * @brief Size of an object in pages.
  *
- * The `PAGE_SIZE_OF()` macro returns the amount of pages in memory required to store a given object.
- *
  * @param object The object to calculate the page size of.
  * @return The amount of pages.
  */
@@ -162,15 +128,13 @@ tid_t gettid(void);
 
 /**
  * @brief Memory protection flags.
- *
- * The `prot_t` enum is used to store the memory protection flags of a region in memory.
- *
+ * @typedef prot_t
  */
 typedef enum
 {
-    PROT_NONE = 0,        ///< None
-    PROT_READ = (1 << 0), ///< Memory can be read from
-    PROT_WRITE = (1 << 1) ///< Memory can be written to
+    PROT_NONE = 0,        ///< Invalid memory, cannot be accessed.
+    PROT_READ = (1 << 0), ///< Readable memory.
+    PROT_WRITE = (1 << 1) ///< Writable memory.
 } prot_t;
 
 /**
@@ -198,9 +162,9 @@ void* mmap(fd_t fd, void* address, uint64_t length, prot_t prot);
  *
  * @param address The starting virtual address of the memory area to be unmapped.
  * @param length The length of the memory area to be unmapped.
- * @return On success, `0`, on failure returns `ERR` and errno is set.
+ * @return On success, returns the address of the unmapped memory, on failure returns `NULL` and errno is set.
  */
-uint64_t munmap(void* address, uint64_t length);
+void* munmap(void* address, uint64_t length);
 
 /**
  * @brief System call to change the protection flags of memory.
@@ -212,9 +176,9 @@ uint64_t munmap(void* address, uint64_t length);
  * @param length The length of the memory area to be modifed.
  * @param prot The new protection flags of the memory area, if equal to `PROT_NONE` the memory area will be
  * unmapped.
- * @return On success, `0`, on failure returns `ERR` and errno is set.
+ * @return On success, returns the address of the modified memory area, on failure returns `NULL` and errno is set.
  */
-uint64_t mprotect(void* address, uint64_t length, prot_t prot);
+void* mprotect(void* address, uint64_t length, prot_t prot);
 
 /**
  * @brief Futex operation enum.

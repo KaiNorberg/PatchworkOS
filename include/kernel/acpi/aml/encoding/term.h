@@ -61,7 +61,7 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
  * @param out The output buffer to store the integer value of the TermArg.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_term_arg_read_integer(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+uint64_t aml_term_arg_read_integer(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Wrapper around `aml_term_arg_read()` that converts the result to a string.
@@ -69,7 +69,7 @@ uint64_t aml_term_arg_read_integer(aml_term_list_ctx_t* ctx, aml_integer_t* out)
  * @param ctx The context of the TermList that this structure is part of.
  * @return On success, the string. On failure, `NULL` and `errno` is set.
  */
-aml_string_obj_t* aml_term_arg_read_string(aml_term_list_ctx_t* ctx);
+aml_string_t* aml_term_arg_read_string(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Wrapper around `aml_term_arg_read()` that converts the result to a buffer.
@@ -77,7 +77,7 @@ aml_string_obj_t* aml_term_arg_read_string(aml_term_list_ctx_t* ctx);
  * @param ctx The context of the TermList that this structure is part of.
  * @return On success, the buffer. On failure, `NULL` and `errno` is set.
  */
-aml_buffer_obj_t* aml_term_arg_read_buffer(aml_term_list_ctx_t* ctx);
+aml_buffer_t* aml_term_arg_read_buffer(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Wrapper around `aml_term_arg_read()` that converts the result to a package.
@@ -85,7 +85,7 @@ aml_buffer_obj_t* aml_term_arg_read_buffer(aml_term_list_ctx_t* ctx);
  * @param ctx The context of the TermList that this structure is part of.
  * @return On success, the package. On failure, `NULL` and `errno` is set.
  */
-aml_package_obj_t* aml_term_arg_read_package(aml_term_list_ctx_t* ctx);
+aml_package_t* aml_term_arg_read_package(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Reads an Object structure from the AML byte stream.

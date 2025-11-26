@@ -1,8 +1,9 @@
+#include <kernel/cpu/irq.h>
 #include <kernel/log/panic.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/interrupt.h>
-#include <kernel/cpu/port.h>
+#include <kernel/cpu/io.h>
 #include <kernel/cpu/regs.h>
 #include <kernel/init/init.h>
 #include <kernel/log/log.h>
@@ -282,19 +283,24 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
         }
     }
 
+    thread_t* currentThread = self->sched.runThread;
+    errno_t err = currentThread != NULL ? currentThread->error : 0;
+
     va_list args;
     va_start(args, format);
     vsnprintf(panicBuffer, sizeof(panicBuffer), format, args);
     va_end(args);
 
-    cpu_halt_others();
+    if (cpu_halt_others() == ERR)
+    {
+        LOG_PANIC("failed to halt other CPUs due to '%s'\n", strerror(errno));
+    }
 
     log_screen_enable();
 
     LOG_PANIC("!!! KERNEL PANIC (%s version %s) !!!\n", OS_NAME, OS_VERSION);
     LOG_PANIC("cause: %s\n", panicBuffer);
 
-    thread_t* currentThread = self->sched.runThread;
     if (currentThread == NULL)
     {
         LOG_PANIC("thread: cpu=%d null\n", self->id);
@@ -308,8 +314,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
         LOG_PANIC("thread: cpu=%d pid=%d tid=%d\n", self->id, currentThread->process->id, currentThread->id);
     }
 
-    errno_t lastError = currentThread->error;
-    LOG_PANIC("last errno: %d (%s)\n", lastError, strerror(lastError));
+    LOG_PANIC("last errno: %d (%s)\n", err, strerror(err));
 
     uint64_t freePages = pmm_free_amount();
     uint64_t reservedPages = pmm_used_amount();
@@ -377,7 +382,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
         LOG_PANIC("exception: %s (vector: %lld, error code: 0x%llx)\n", panic_get_exception_name(frame->vector),
             frame->vector, frame->errorCode);
 
-        if (frame->vector == EXCEPTION_PAGE_FAULT)
+        if (frame->vector == VECTOR_PAGE_FAULT)
         {
             LOG_PANIC("page fault details: A %s operation to a %s page caused a %s.\n",
                 (frame->errorCode & 2) ? "write" : "read", (frame->errorCode & 4) ? "user-mode" : "kernel-mode",
@@ -424,7 +429,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
     LOG_PANIC("!!! Please restart your machine !!!\n");
 
 #ifdef QEMU_EXIT_ON_PANIC
-    port_outb(QEMU_EXIT_ON_PANIC_PORT, EXIT_FAILURE);
+    io_out8(QEMU_EXIT_ON_PANIC_PORT, EXIT_FAILURE);
 #endif
 
     while (true)

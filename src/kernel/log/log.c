@@ -161,30 +161,28 @@ static void log_handle_char(log_level_t level, char chr)
     log_write(&chr, 1);
 }
 
-uint64_t log_print(log_level_t level, const char* format, ...)
+void log_print(log_level_t level, const char* format, ...)
 {
     va_list args;
     va_start(args, format);
-    uint64_t result = log_vprint(level, format, args);
+    log_vprint(level, format, args);
     va_end(args);
-    return result;
 }
 
-uint64_t log_vprint(log_level_t level, const char* format, va_list args)
+void log_vprint(log_level_t level, const char* format, va_list args)
 {
-    LOCK_SCOPE(&lock);
-
     if (level < minLevel)
     {
-        return 0;
+        return;
+    }
+
+    if (level != LOG_LEVEL_PANIC)
+    {
+        lock_acquire(&lock);
     }
 
     int length = vsnprintf(lineBuffer, LOG_MAX_BUFFER, format, args);
-    if (length < 0)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
+    assert(length >= 0);
 
     if (length >= LOG_MAX_BUFFER)
     {
@@ -197,5 +195,8 @@ uint64_t log_vprint(log_level_t level, const char* format, va_list args)
         log_handle_char(level, lineBuffer[i]);
     }
 
-    return 0;
+    if (level != LOG_LEVEL_PANIC)
+    {
+        lock_release(&lock);
+    }
 }

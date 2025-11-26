@@ -166,6 +166,7 @@ static inline void hpet_reset_counter(void)
 static void hpet_timer_handler(interrupt_frame_t* frame, cpu_t* self)
 {
     (void)frame;
+    (void)self;
 
     LOG_INFO("HPET counter accumulation timer fired\n");
     seqlock_write_acquire(&counterLock);
@@ -176,7 +177,8 @@ static void hpet_timer_handler(interrupt_frame_t* frame, cpu_t* self)
     uint64_t maxCounterValue = UINT32_MAX;
     uint64_t pessimisticOverflowInterval = (maxCounterValue * hpet_ns_per_tick()) / 2;
 
-    timer_one_shot(self, pessimisticOverflowInterval, sys_time_uptime());
+    clock_t uptime = sys_time_uptime();
+    timer_set(uptime, uptime + pessimisticOverflowInterval);
 }
 
 /**
@@ -195,7 +197,7 @@ static sys_time_source_t source = {
  */
 static uint64_t hpet_init(void)
 {
-    hpet = (hpet_t*)acpi_tables_lookup("HPET", 0);
+    hpet = (hpet_t*)acpi_tables_lookup("HPET", sizeof(hpet_t), 0);
     if (hpet == NULL)
     {
         LOG_ERR("failed to locate HPET table\n");
@@ -238,7 +240,9 @@ static uint64_t hpet_init(void)
         return ERR;
     }
 
-    hpet_timer_handler(NULL, cpu_get_unsafe());
+    cpu_t* cpu = cpu_get();
+    hpet_timer_handler(NULL, cpu);
+    cpu_put();
     return 0;
 }
 
@@ -257,13 +261,13 @@ uint64_t _module_procedure(const module_event_t* event)
 {
     switch (event->type)
     {
-    case MODULE_EVENT_LOAD:
+    case MODULE_EVENT_DEVICE_ATTACH:
         if (hpet_init() == ERR)
         {
             panic(NULL, "Failed to initialize HPET module");
         }
         break;
-    case MODULE_EVENT_UNLOAD:
+    case MODULE_EVENT_DEVICE_DETACH:
         hpet_deinit();
         break;
     default:

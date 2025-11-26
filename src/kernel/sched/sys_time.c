@@ -2,8 +2,7 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/interrupt.h>
-#include <kernel/cpu/syscalls.h>
-#include <kernel/drivers/apic.h>
+#include <kernel/cpu/syscall.h>
 #include <kernel/drivers/rtc.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -19,12 +18,12 @@
 static time_t bootEpoch = 0;
 static bool bootEpochInitialized = false;
 
-static sys_time_source_t* sources[SYS_TIME_MAX_SOURCES];
+static const sys_time_source_t* sources[SYS_TIME_MAX_SOURCES] = {0};
 static uint32_t sourceCount = 0;
-static sys_time_source_t* bestSource = NULL;
+static const sys_time_source_t* bestSource = NULL;
 static rwlock_t sourcesLock = RWLOCK_CREATE;
 
-static void timer_boot_epoch_init(void)
+static void sys_time_boot_epoch_init(void)
 {
     struct tm time;
     rtc_read(&time);
@@ -48,18 +47,18 @@ uint64_t sys_time_register_source(const sys_time_source_t* source)
         return ERR;
     }
 
-    sources[sourceCount++] = (sys_time_source_t*)source;
+    sources[sourceCount++] = source;
 
     bool bestSourceUpdated = false;
     if (bestSource == NULL || source->precision < bestSource->precision)
     {
-        bestSource = (sys_time_source_t*)source;
+        bestSource = source;
         bestSourceUpdated = true;
     }
     rwlock_write_release(&sourcesLock);
 
     LOG_INFO("registered system timer source '%s' with precision %lu ns%s\n", source->name, source->precision,
-        bestSourceUpdated ? " (selected as best source)" : "");
+        bestSourceUpdated ? " (best source)" : "");
 
     return 0;
 }
@@ -118,7 +117,7 @@ time_t sys_time_unix_epoch(void)
 {
     if (!bootEpochInitialized)
     {
-        timer_boot_epoch_init();
+        sys_time_boot_epoch_init();
     }
 
     return bootEpoch + sys_time_uptime() / CLOCKS_PER_SEC;

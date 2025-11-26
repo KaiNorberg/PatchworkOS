@@ -1,9 +1,10 @@
 #pragma once
 
 #include <kernel/drivers/perf.h>
+#include <kernel/fs/cwd.h>
+#include <kernel/fs/file_table.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/sysfs.h>
-#include <kernel/fs/vfs_ctx.h>
 #include <kernel/mem/space.h>
 #include <kernel/proc/argv.h>
 #include <kernel/sched/sched.h>
@@ -67,18 +68,15 @@ typedef struct process
     _Atomic(uint64_t) status;
     argv_t argv;
     space_t space;
-    vfs_ctx_t vfsCtx;
-    namespace_t namespace;
+    namespace_t ns;
+    cwd_t cwd;
+    file_table_t fileTable;
     futex_ctx_t futexCtx;
     perf_process_ctx_t perf;
     wait_queue_t dyingWaitQueue;
     atomic_bool isDying;
     process_threads_t threads;
-    rwlock_t childrenLock;
-    list_entry_t siblingEntry;
-    list_t children;
     list_entry_t zombieEntry;
-    struct process* parent;
     dentry_t* dir;         ///< The `/proc/[pid]` directory for this process.
     dentry_t* prioFile;    ///< The `/proc/[pid]/prio` file.
     dentry_t* cwdFile;     ///< The `/proc/[pid]/cwd` file.
@@ -94,13 +92,13 @@ typedef struct process
  *
  * There is no `process_free()`, instead use `DEREF()`, `DEREF_DEFER()` or `process_kill()` to free a process.
  *
- * @param parent The parent process, can be `NULL`.
  * @param argv The argument vector, must be `NULL` terminated.
- * @param cwd The current working directory, can be `NULL` to inherit from the parent.
+ * @param cwd The current working directory, can be `NULL` to use the root directory.
+ * @param parentNs The parent namespace, can be `NULL` for no parent.
  * @param priority The priority of the new process.
  * @return On success, the newly created process. On failure, `NULL` and `errno` is set.
  */
-process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority);
+process_t* process_new(const char** argv, const path_t* cwd, namespace_t* parentNs, priority_t priority);
 
 /**
  * @brief Kills a process.
@@ -114,15 +112,6 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
  * @param status The exit status of the process.
  */
 void process_kill(process_t* process, uint64_t status);
-
-/**
- * @brief Checks if a process is a child of another process.
- *
- * @param process The process to check.
- * @param parentId The parent process id.
- * @return `true` if the process is a child of the parent with id `parentId`, `false` otherwise.
- */
-bool process_is_child(process_t* process, pid_t parentId);
 
 /**
  * @brief Gets the kernel process.
@@ -142,5 +131,13 @@ process_t* process_get_kernel(void);
  * @brief Initializes the `/proc` directory.
  */
 void process_procfs_init(void);
+
+/**
+ * @brief Initializes the process reaper.
+ *
+ * The process reaper allows us to delay the freeing of processes, this is useful if, for example, another process
+ * wanted that process's exit status.
+ */
+void process_reaper_init(void);
 
 /** @} */

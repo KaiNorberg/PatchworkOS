@@ -3,10 +3,10 @@
 
 #include "user/common/syscalls.h"
 
-uint64_t munmap(void* address, uint64_t length)
+void* munmap(void* address, uint64_t length)
 {
-    uint64_t result = _syscall_munmap(address, length);
-    if (result == ERR)
+    void* result = _syscall_munmap(address, length);
+    if (result == NULL)
     {
         errno = _syscall_errno();
     }

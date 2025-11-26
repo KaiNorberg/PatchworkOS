@@ -12,7 +12,7 @@ int system(const char* command)
         SPAWN_FD_END,
     };
     const char* argv[] = {"/bin/shell", command, NULL};
-    pid_t shell = spawn(argv, fds, NULL, NULL);
+    pid_t shell = spawn(argv, fds, NULL, PRIORITY_PARENT, SPAWN_DEFAULT);
     if (shell == ERR)
     {
         return -1;

@@ -6,8 +6,8 @@
 #include <stdbool.h>
 
 typedef struct aml_object aml_object_t;
-typedef struct aml_opregion_obj aml_opregion_obj_t;
-typedef struct aml_field_unit_obj aml_field_unit_obj_t;
+typedef struct aml_opregion aml_opregion_t;
+typedef struct aml_field_unit aml_field_unit_t;
 typedef struct aml_term_list_ctx aml_term_list_ctx_t;
 
 /**
@@ -112,18 +112,18 @@ typedef struct
     union {
         struct
         {
-            aml_opregion_obj_t* opregion;
+            aml_opregion_t* opregion;
         } field;
         struct
         {
-            aml_field_unit_obj_t* index;
-            aml_field_unit_obj_t* data;
+            aml_field_unit_t* index;
+            aml_field_unit_t* data;
         } index;
         struct
         {
-            aml_opregion_obj_t* opregion;
-            aml_field_unit_obj_t* bank;
-            aml_integer_t bankValue;
+            aml_opregion_t* opregion;
+            aml_field_unit_t* bank;
+            aml_uint_t bankValue;
         } bank;
     };
 } aml_field_list_ctx_t;
@@ -179,7 +179,7 @@ typedef uint16_t aml_resource_order_t;
  * @param out The output buffer to store the bank value.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_bank_value_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+uint64_t aml_bank_value_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a RegionSpace structure from the AML byte stream.
@@ -201,7 +201,7 @@ uint64_t aml_region_space_read(aml_term_list_ctx_t* ctx, aml_region_space_t* out
  * @param out The output buffer to store the RegionOffset.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_region_offset_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+uint64_t aml_region_offset_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a RegionLen structure from the AML byte stream.
@@ -212,7 +212,7 @@ uint64_t aml_region_offset_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
  * @param out The output buffer to store the region length.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_region_len_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+uint64_t aml_region_len_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a DefOpRegion structure from the AML byte stream.
@@ -496,7 +496,7 @@ aml_object_t* aml_source_buff_read(aml_term_list_ctx_t* ctx);
  * @param out The destination buffer to store the BitIndex.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_bit_index_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+uint64_t aml_bit_index_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a ByteIndex structure from the AML byte stream.
@@ -507,7 +507,7 @@ uint64_t aml_bit_index_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
  * @param out The destination buffer to store the ByteIndex.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_byte_index_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+uint64_t aml_byte_index_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a DefCreateBitField structure from the AML byte stream.
@@ -662,7 +662,7 @@ uint64_t aml_def_power_res_read(aml_term_list_ctx_t* ctx);
  * @param out The output buffer to store the number of bits.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_num_bits_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+uint64_t aml_num_bits_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a DefCreateField structure from the AML byte stream.

@@ -124,7 +124,7 @@ typedef struct
      */
     thread_t* idleThread;
     /**
-     * @brief The lock that protects this context, except the `zombieThreads` list.
+     * @brief The lock that protects this context.
      */
     lock_t lock;
     cpu_t* owner; ///< The cpu that owns this scheduling context.
@@ -140,8 +140,6 @@ void sched_thread_ctx_init(sched_thread_ctx_t* ctx);
 /**
  * @brief Initializes a CPU's scheduling context.
  *
- * Will also register the schedulers timer handler for the CPU.
- *
  * @param ctx The `sched_cpu_ctx_t` structure to initialize.
  * @param self The `cpu_t` structure associated with this scheduling context.
  */
@@ -150,20 +148,19 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* self);
 /**
  * @brief The idle loop for a CPU.
  *
- * The `sched_idle_loop()` function is the main loop where idle threads execute. The boot thread will eventually end up
- * here to.
+ * The `sched_idle_loop()` function is the main loop where idle threads execute.
  *
  */
 NORETURN extern void sched_idle_loop(void);
 
 /**
- * @brief Specify that the boot thread is no longer needed.
+ * @brief Starts the scheduler by switching to the boot thread.
  *
- * The `sched_done_with_boot_thread()` function is called when the kernel has finished booting and the boot thread is no
- * longer needed, instead of just discarding it, the boot thread becomes the idle thread of the bootstrap cpu.
+ * Will never return.
  *
+ * @param bootThread The initial thread to switch to.
  */
-NORETURN void sched_done_with_boot_thread(void);
+_NORETURN void sched_start(thread_t* bootThread);
 
 /**
  * @brief Puts the current thread to sleep.
@@ -237,8 +234,8 @@ _NORETURN void sched_thread_exit(void);
 /**
  * @brief Yields the CPU to another thread.
  *
- * The `sched_yield()` function voluntarily relinquishes the currently running threads time slice. Note that this does
- * not actually schedule.
+ * The `sched_yield()` function voluntarily relinquishes the currently running threads time slice, and invokes the
+ * scheduler.
  *
  */
 void sched_yield(void);
@@ -266,26 +263,13 @@ void sched_push(thread_t* thread, cpu_t* target);
 void sched_push_new_thread(thread_t* thread, thread_t* parent);
 
 /**
- * @brief Scheduling flags.
- * @enum schedule_flags_t
- *
- * Flags that modify the behavior of the `sched_invoke()` function.
- */
-typedef enum
-{
-    SCHED_NORMAL = 0,   ///< No special flags.
-    SCHED_DIE = 1 << 0, ///< Kill and free the currently running thread.
-} schedule_flags_t;
-
-/**
  * @brief The main scheduling function.
  *
  * Must be called in an interrupt context.
  *
  * @param frame The current interrupt frame.
  * @param self The currently running cpu.
- * @param flags Scheduling flags.
  */
-void sched_invoke(interrupt_frame_t* frame, cpu_t* self, schedule_flags_t flags);
+void sched_do(interrupt_frame_t* frame, cpu_t* self);
 
 /** @} */

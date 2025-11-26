@@ -594,7 +594,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
             {.child = STDERR_FILENO, .parent = term->stdout[PIPE_WRITE]},
             SPAWN_FD_END,
         };
-        term->shell = spawn(argv, fds, NULL, NULL);
+        term->shell = spawn(argv, fds, NULL, PRIORITY_PARENT, SPAWN_DEFAULT);
         if (term->shell == ERR)
         {
             close(term->stdin[0]);
@@ -773,7 +773,7 @@ void terminal_loop(window_t* win)
             window_invalidate_flush(terminal->win);
             display_cmds_flush(disp);
         }
-        
+
         if (fds[0].revents & POLLIN)
         {
             uint64_t readCount = read(terminal->stdout[PIPE_READ], &buffer[length], TERMINAL_MAX_DATA - length);

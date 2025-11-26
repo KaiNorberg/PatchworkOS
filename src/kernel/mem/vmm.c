@@ -2,7 +2,7 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/regs.h>
-#include <kernel/cpu/syscalls.h>
+#include <kernel/cpu/syscall.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/paging.h>
@@ -121,19 +121,23 @@ void vmm_cpu_ctx_init(vmm_cpu_ctx_t* ctx)
     vmm_cpu_ctx_init_common(ctx);
 }
 
-void vmm_map_bootloader_lower_half(thread_t* bootThread)
+void vmm_map_bootloader_lower_half(void)
 {
+    thread_t* thread = sched_thread();
+
     for (pml_index_t i = PML_INDEX_LOWER_HALF_MIN; i < PML_INDEX_LOWER_HALF_MAX; i++)
     {
-        bootThread->process->space.pageTable.pml4->entries[i] = kernelSpace.pageTable.pml4->entries[i];
+        thread->process->space.pageTable.pml4->entries[i] = kernelSpace.pageTable.pml4->entries[i];
     }
 }
 
-void vmm_unmap_bootloader_lower_half(thread_t* bootThread)
+void vmm_unmap_bootloader_lower_half(void)
 {
+    thread_t* thread = sched_thread();
+
     for (pml_index_t i = PML_INDEX_LOWER_HALF_MIN; i < PML_INDEX_LOWER_HALF_MAX; i++)
     {
-        bootThread->process->space.pageTable.pml4->entries[i].raw = 0;
+        thread->process->space.pageTable.pml4->entries[i].raw = 0;
         kernelSpace.pageTable.pml4->entries[i].raw = 0;
     }
     cr3_write(cr3_read());
@@ -340,12 +344,12 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
     return space_mapping_end(space, &mapping, EOK);
 }
 
-uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length)
+void* vmm_unmap(space_t* space, void* virtAddr, uint64_t length)
 {
     if (virtAddr == NULL || length == 0)
     {
         errno = EINVAL;
-        return ERR;
+        return NULL;
     }
 
     if (space == NULL)
@@ -356,12 +360,12 @@ uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length)
     space_mapping_t mapping;
     if (space_mapping_start(space, &mapping, virtAddr, NULL, length, PML_NONE) == ERR)
     {
-        return ERR;
+        return NULL;
     }
 
     if (page_table_is_pinned(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
     {
-        return space_mapping_end(space, &mapping, EBUSY) == NULL ? ERR : 0;
+        return space_mapping_end(space, &mapping, EBUSY);
     }
 
     // Stores the amount of pages that have each callback id within the region.
@@ -385,10 +389,10 @@ uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length)
         }
     }
 
-    return space_mapping_end(space, &mapping, EOK) == NULL ? ERR : 0;
+    return space_mapping_end(space, &mapping, EOK);
 }
 
-SYSCALL_DEFINE(SYS_MUNMAP, uint64_t, void* address, uint64_t length)
+SYSCALL_DEFINE(SYS_MUNMAP, void*, void* address, uint64_t length)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
@@ -396,18 +400,18 @@ SYSCALL_DEFINE(SYS_MUNMAP, uint64_t, void* address, uint64_t length)
     if (space_check_access(space, address, length) == ERR)
     {
         errno = EFAULT;
-        return ERR;
+        return NULL;
     }
 
     return vmm_unmap(space, address, length);
 }
 
-uint64_t vmm_protect(space_t* space, void* virtAddr, uint64_t length, pml_flags_t flags)
+void* vmm_protect(space_t* space, void* virtAddr, uint64_t length, pml_flags_t flags)
 {
     if (space == NULL || virtAddr == NULL || length == 0)
     {
         errno = EINVAL;
-        return ERR;
+        return NULL;
     }
 
     if (!(flags & PML_PRESENT))
@@ -423,65 +427,38 @@ uint64_t vmm_protect(space_t* space, void* virtAddr, uint64_t length, pml_flags_
     space_mapping_t mapping;
     if (space_mapping_start(space, &mapping, virtAddr, NULL, length, flags) == ERR)
     {
-        return ERR;
+        return NULL;
     }
 
     if (page_table_is_pinned(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
     {
-        return space_mapping_end(space, &mapping, EBUSY) == NULL ? ERR : 0;
+        return space_mapping_end(space, &mapping, EBUSY);
     }
 
     if (page_table_is_unmapped(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
     {
-        return space_mapping_end(space, &mapping, ENOENT) == NULL ? ERR : 0;
+        return space_mapping_end(space, &mapping, ENOENT);
     }
 
     if (page_table_set_flags(&space->pageTable, mapping.virtAddr, mapping.pageAmount, mapping.flags) == ERR)
     {
-        return space_mapping_end(space, &mapping, EINVAL) == NULL ? ERR : 0;
+        return space_mapping_end(space, &mapping, EINVAL);
     }
 
     space_tlb_shootdown(space, mapping.virtAddr, mapping.pageAmount);
 
-    return space_mapping_end(space, &mapping, EOK) == NULL ? ERR : 0;
+    return space_mapping_end(space, &mapping, EOK);
 }
 
-SYSCALL_DEFINE(SYS_MPROTECT, uint64_t, void* address, uint64_t length, prot_t prot)
+SYSCALL_DEFINE(SYS_MPROTECT, void*, void* address, uint64_t length, prot_t prot)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
 
     if (space_check_access(space, address, length) == ERR)
     {
-        return ERR;
+        return NULL;
     }
 
     return vmm_protect(space, address, length, vmm_prot_to_flags(prot) | PML_USER);
-}
-
-void vmm_shootdown_handler(interrupt_frame_t* frame, cpu_t* self)
-{
-    (void)frame;
-
-    vmm_cpu_ctx_t* ctx = &self->vmm;
-    while (true)
-    {
-        lock_acquire(&ctx->lock);
-        if (ctx->shootdownCount == 0)
-        {
-            lock_release(&ctx->lock);
-            break;
-        }
-
-        vmm_shootdown_t shootdown = ctx->shootdowns[ctx->shootdownCount - 1];
-        ctx->shootdownCount--;
-        lock_release(&ctx->lock);
-
-        assert(shootdown.space != NULL);
-        assert(shootdown.pageAmount != 0);
-        assert(shootdown.virtAddr != NULL);
-
-        tlb_invalidate(shootdown.virtAddr, shootdown.pageAmount);
-        atomic_fetch_add(&shootdown.space->shootdownAcks, 1);
-    }
 }

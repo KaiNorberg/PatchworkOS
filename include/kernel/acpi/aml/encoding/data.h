@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 typedef struct aml_object aml_object_t;
-typedef struct aml_package_obj aml_package_obj_t;
+typedef struct aml_package aml_package_t;
 typedef struct aml_term_list_ctx aml_term_list_ctx_t;
 
 /**
@@ -193,7 +193,7 @@ uint64_t aml_package_element_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
  * @param end Pointer to the end of the PackageElementList.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_package_element_list_read(aml_term_list_ctx_t* ctx, aml_package_obj_t* package, const uint8_t* end);
+uint64_t aml_package_element_list_read(aml_term_list_ctx_t* ctx, aml_package_t* package, const uint8_t* end);
 
 /**
  * @brief Reads a DefPackage structure from the AML byte stream.
@@ -217,7 +217,7 @@ uint64_t aml_def_package_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
  * @param out Output pointer to the integer to be filled with the number of elements.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_var_num_elements_read(aml_term_list_ctx_t* ctx, aml_integer_t* out);
+uint64_t aml_def_var_num_elements_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a DefVarPackage structure from the AML byte stream.

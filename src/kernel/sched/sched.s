@@ -3,7 +3,7 @@
 
 %include "kernel/cpu/interrupt.inc"
 
-extern sched_invoke
+extern sched_do
 extern cpu_get_unsafe
 
 global sched_idle_loop:function

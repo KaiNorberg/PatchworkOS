@@ -24,7 +24,7 @@
  * @param out Pointer to the buffer where the result will be stored, will be an integer or a buffer.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_buffer_field_load(aml_buffer_field_obj_t* bufferField, aml_object_t* out);
+uint64_t aml_buffer_field_load(aml_buffer_field_t* bufferField, aml_object_t* out);
 
 /**
  * @brief Write a value to a BufferField.
@@ -38,6 +38,6 @@ uint64_t aml_buffer_field_load(aml_buffer_field_obj_t* bufferField, aml_object_t
  * @param in Pointer to the object containing the value to write, must be an integer or a buffer.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_buffer_field_store(aml_buffer_field_obj_t* bufferField, aml_object_t* in);
+uint64_t aml_buffer_field_store(aml_buffer_field_t* bufferField, aml_object_t* in);
 
 /** @} */

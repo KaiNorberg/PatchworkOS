@@ -144,7 +144,7 @@ static inline uint64_t aml_op_operand_target_read(aml_term_list_ctx_t* ctx, aml_
 }
 
 static inline uint64_t aml_op_operand_shiftcount_target_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
-    aml_type_t allowedTypes, aml_object_t** operand, aml_integer_t* shiftCount, aml_object_t** target)
+    aml_type_t allowedTypes, aml_object_t** operand, aml_uint_t* shiftCount, aml_object_t** target)
 {
     if (aml_token_expect(ctx, expectedOp) == ERR)
     {
@@ -284,7 +284,7 @@ static inline uint64_t aml_op_termarg_supername_read(aml_term_list_ctx_t* ctx, a
     return 0;
 }
 
-uint64_t aml_buffer_size_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+uint64_t aml_buffer_size_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
     if (aml_term_arg_read_integer(ctx, out) == ERR)
     {
@@ -313,7 +313,7 @@ uint64_t aml_def_buffer_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_integer_t bufferSize;
+    aml_uint_t bufferSize;
     if (aml_buffer_size_read(ctx, &bufferSize) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read BufferSize");
@@ -496,7 +496,7 @@ aml_object_t* aml_def_store_read(aml_term_list_ctx_t* ctx)
     return REF(source);
 }
 
-uint64_t aml_dividend_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+uint64_t aml_dividend_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
     if (aml_term_arg_read_integer(ctx, out) == ERR)
     {
@@ -507,7 +507,7 @@ uint64_t aml_dividend_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
     return 0;
 }
 
-uint64_t aml_divisor_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+uint64_t aml_divisor_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
     if (aml_term_arg_read_integer(ctx, out) == ERR)
     {
@@ -640,14 +640,14 @@ aml_object_t* aml_def_divide_read(aml_term_list_ctx_t* ctx)
         return NULL;
     }
 
-    aml_integer_t dividend;
+    aml_uint_t dividend;
     if (aml_dividend_read(ctx, &dividend) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Dividend");
         return NULL;
     }
 
-    aml_integer_t divisor;
+    aml_uint_t divisor;
     if (aml_divisor_read(ctx, &divisor) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Divisor");
@@ -708,14 +708,14 @@ aml_object_t* aml_def_mod_read(aml_term_list_ctx_t* ctx)
         return NULL;
     }
 
-    aml_integer_t dividend;
+    aml_uint_t dividend;
     if (aml_dividend_read(ctx, &dividend) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Dividend");
         return NULL;
     }
 
-    aml_integer_t divisor;
+    aml_uint_t divisor;
     if (aml_divisor_read(ctx, &divisor) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Divisor");
@@ -927,7 +927,7 @@ aml_object_t* aml_def_not_read(aml_term_list_ctx_t* ctx)
     return REF(result);
 }
 
-uint64_t aml_shift_count_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+uint64_t aml_shift_count_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
     if (aml_term_arg_read_integer(ctx, out) == ERR)
     {
@@ -942,7 +942,7 @@ aml_object_t* aml_def_shift_left_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand = NULL;
     aml_object_t* target = NULL;
-    aml_integer_t shiftCount;
+    aml_uint_t shiftCount;
     if (aml_op_operand_shiftcount_target_read(ctx, AML_SHIFT_LEFT_OP, AML_INTEGER, &operand, &shiftCount, &target) ==
         ERR)
     {
@@ -969,7 +969,7 @@ aml_object_t* aml_def_shift_left_read(aml_term_list_ctx_t* ctx)
     }
     else
     {
-        aml_integer_t operandValue = operand->integer.value;
+        aml_uint_t operandValue = operand->integer.value;
         if (aml_integer_set(result, operandValue << shiftCount) == ERR)
         {
             return NULL;
@@ -988,7 +988,7 @@ aml_object_t* aml_def_shift_right_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand = NULL;
     aml_object_t* target = NULL;
-    aml_integer_t shiftCount;
+    aml_uint_t shiftCount;
     if (aml_op_operand_shiftcount_target_read(ctx, AML_SHIFT_RIGHT_OP, AML_INTEGER, &operand, &shiftCount, &target) ==
         ERR)
     {
@@ -1015,7 +1015,7 @@ aml_object_t* aml_def_shift_right_read(aml_term_list_ctx_t* ctx)
     }
     else
     {
-        aml_integer_t operandValue = operand->integer.value;
+        aml_uint_t operandValue = operand->integer.value;
         if (aml_integer_set(result, operandValue >> shiftCount) == ERR)
         {
             return NULL;
@@ -1158,7 +1158,7 @@ aml_object_t* aml_buff_pkg_str_obj_read(aml_term_list_ctx_t* ctx)
     return result; // Transfer ownership
 }
 
-uint64_t aml_index_value_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+uint64_t aml_index_value_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
     if (aml_term_arg_read_integer(ctx, out) == ERR)
     {
@@ -1185,7 +1185,7 @@ aml_object_t* aml_def_index_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(buffPkgStrObj);
 
-    aml_integer_t index;
+    aml_uint_t index;
     if (aml_index_value_read(ctx, &index) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read IndexValue");
@@ -1211,7 +1211,7 @@ aml_object_t* aml_def_index_read(aml_term_list_ctx_t* ctx)
     {
     case AML_PACKAGE: // Section 19.6.63.1
     {
-        aml_package_obj_t* package = &buffPkgStrObj->package;
+        aml_package_t* package = &buffPkgStrObj->package;
 
         if (index >= package->length)
         {
@@ -1642,7 +1642,7 @@ aml_object_t* aml_def_to_bcd_read(aml_term_list_ctx_t* ctx)
         return NULL;
     }
 
-    aml_integer_t bcd;
+    aml_uint_t bcd;
     if (aml_convert_integer_to_bcd(operand->integer.value, &bcd) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to convert integer to BCD");
@@ -1768,7 +1768,7 @@ aml_object_t* aml_def_to_integer_read(aml_term_list_ctx_t* ctx)
     return result; // Transfer ownership
 }
 
-uint64_t aml_length_arg_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+uint64_t aml_length_arg_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
     if (aml_term_arg_read_integer(ctx, out) == ERR)
     {
@@ -1787,7 +1787,7 @@ aml_object_t* aml_def_to_string_read(aml_term_list_ctx_t* ctx)
         return NULL;
     }
 
-    aml_buffer_obj_t* source = aml_term_arg_read_buffer(ctx);
+    aml_buffer_t* source = aml_term_arg_read_buffer(ctx);
     if (source == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
@@ -1795,7 +1795,7 @@ aml_object_t* aml_def_to_string_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(source);
 
-    aml_integer_t length;
+    aml_uint_t length;
     if (aml_length_arg_read(ctx, &length) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read LengthArg");
@@ -2264,9 +2264,9 @@ aml_object_t* aml_def_find_set_right_bit_read(aml_term_list_ctx_t* ctx)
     return REF(result);
 }
 
-aml_package_obj_t* aml_search_pkg_read(aml_term_list_ctx_t* ctx)
+aml_package_t* aml_search_pkg_read(aml_term_list_ctx_t* ctx)
 {
-    aml_package_obj_t* pkg = aml_term_arg_read_package(ctx);
+    aml_package_t* pkg = aml_term_arg_read_package(ctx);
     if (pkg == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
@@ -2296,7 +2296,7 @@ uint64_t aml_match_opcode_read(aml_term_list_ctx_t* ctx, aml_match_opcode_t* out
     return 0;
 }
 
-uint64_t aml_start_index_read(aml_term_list_ctx_t* ctx, aml_integer_t* out)
+uint64_t aml_start_index_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
     if (aml_term_arg_read_integer(ctx, out) == ERR)
     {
@@ -2337,7 +2337,7 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
         return NULL;
     }
 
-    aml_package_obj_t* searchPkg = aml_search_pkg_read(ctx);
+    aml_package_t* searchPkg = aml_search_pkg_read(ctx);
     if (searchPkg == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read SearchPkg");
@@ -2375,7 +2375,7 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(object2);
 
-    aml_integer_t startIndex;
+    aml_uint_t startIndex;
     if (aml_start_index_read(ctx, &startIndex) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read StartIndex");
@@ -2463,14 +2463,14 @@ aml_object_t* aml_def_mid_read(aml_term_list_ctx_t* ctx)
     }
     DEREF_DEFER(midObj);
 
-    aml_integer_t index;
+    aml_uint_t index;
     if (aml_term_arg_read_integer(ctx, &index) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Index");
         return NULL;
     }
 
-    aml_integer_t length;
+    aml_uint_t length;
     if (aml_term_arg_read_integer(ctx, &length) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Length");

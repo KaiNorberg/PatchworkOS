@@ -2,6 +2,9 @@
 
 %include "kernel/cpu/interrupt.inc"
 
+%define GS_SYSCALL_RSP    0x0
+%define GS_USER_RSP     0x8
+
 extern syscall_handler
 
 global syscall_entry:function
@@ -21,9 +24,15 @@ section .text
 ALIGN 4096
 syscall_entry:
     swapgs
-    mov [gs:0x8], rsp
-    mov rsp, [gs:0x0]
+    
+    mov [gs:GS_USER_RSP], rsp
+    mov rsp, [gs:GS_SYSCALL_RSP]
 
+    push qword [gs:GS_USER_RSP]
+
+    swapgs
+
+    ; We only need to save volatile registers
     push rdi
     push rsi
     push rdx
@@ -33,10 +42,14 @@ syscall_entry:
     push r10
     push r11
 
+    sti
+
     mov rcx, r10 ; Fourth argument
     push rax ; Seventh argument (syscall number)
     call syscall_handler
     add rsp, 8 ; Pop seventh argument
+
+    cli
 
     pop r11
     pop r10
@@ -47,6 +60,5 @@ syscall_entry:
     pop rsi
     pop rdi
 
-    mov rsp, [gs:0x8]
-    swapgs
+    pop rsp
     o64 sysret

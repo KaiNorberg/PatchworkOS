@@ -59,7 +59,7 @@ static file_ops_t eventsOps = {
 static uint64_t kbd_name_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     kbd_t* kbd = file->inode->private;
-    uint64_t nameLen = strnlen_s(kbd->name, MAX_NAME);
+    uint64_t nameLen = strlen(kbd->name);
     if (*offset >= nameLen)
     {
         return 0;
@@ -76,6 +76,7 @@ static void kbd_dir_cleanup(inode_t* inode)
 {
     kbd_t* kbd = inode->private;
     wait_queue_deinit(&kbd->waitQueue);
+    free(kbd->name);
     free(kbd);
 }
 
@@ -105,9 +106,12 @@ kbd_t* kbd_new(const char* name)
     {
         return NULL;
     }
-
-    strncpy(kbd->name, name, MAX_NAME - 1);
-    kbd->name[MAX_NAME - 1] = '\0';
+    kbd->name = strdup(name);
+    if (kbd->name == NULL)
+    {
+        free(kbd);
+        return NULL;
+    }
     kbd->writeIndex = 0;
     kbd->mods = KBD_MOD_NONE;
     wait_queue_init(&kbd->waitQueue);
@@ -117,6 +121,7 @@ kbd_t* kbd_new(const char* name)
     if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
     {
         wait_queue_deinit(&kbd->waitQueue);
+        free(kbd->name);
         free(kbd);
         return NULL;
     }
@@ -125,6 +130,7 @@ kbd_t* kbd_new(const char* name)
     if (kbd->dir == NULL)
     {
         wait_queue_deinit(&kbd->waitQueue);
+        free(kbd->name);
         free(kbd);
         return NULL;
     }

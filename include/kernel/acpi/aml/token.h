@@ -346,7 +346,7 @@ static inline void aml_token_read(aml_term_list_ctx_t* ctx, aml_token_t* out)
 /**
  * @brief Reads a token from the AML stream and verifies it matches the expected token.
  *
- * @param state Pointer to the current AML state.
+ * @param ctx The AML term list context to parse from.
  * @param expected The expected token number.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */

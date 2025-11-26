@@ -397,7 +397,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
         return NULL;
     }
 
-    mount_t* mount = sysfs_mount_new(&familyDir, sock->id, &sched_process()->namespace, &superblockOps);
+    mount_t* mount = sysfs_mount_new(&familyDir, sock->id, NULL, MOUNT_PROPAGATE_CHILDREN, &superblockOps);
     path_put(&familyDir);
     if (mount == NULL)
     {

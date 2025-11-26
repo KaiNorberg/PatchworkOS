@@ -16,7 +16,7 @@
  * Will attempt to evaluate the given object to the desired target type, by invoking it if its a method and converting
  * the result or just directly converting it.
  *
- * @param state The AML state to use for evaluation.
+ * @param state The AML state to use for evaluation, can be `NULL` to use a temporary state.
  * @param object The AML object to evaluate.
  * @param targetTypes A bitmask of desired target types.
  * @return On success, the evaluated AML object. On failure, `NULL` and `errno` is set.

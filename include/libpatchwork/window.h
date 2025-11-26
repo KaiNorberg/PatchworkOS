@@ -164,7 +164,8 @@ void window_invalidate(window_t* win, const rect_t* rect);
  *
  * This will push a command to the display to notify the DWM of all previously invalidated rectangles.
  *
- * In order for the DWM to actually redraw the invalidated region, the commands must be flushed to the DWM using `display_cmds_flush()`.
+ * In order for the DWM to actually redraw the invalidated region, the commands must be flushed to the DWM using
+ * `display_cmds_flush()`.
  *
  * @param win The window.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.

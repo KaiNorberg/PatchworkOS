@@ -1,6 +1,6 @@
 #include <kernel/fs/key.h>
 
-#include <kernel/cpu/syscalls.h>
+#include <kernel/cpu/syscall.h>
 #include <kernel/drivers/rand.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/sys_time.h>
@@ -125,10 +125,9 @@ SYSCALL_DEFINE(SYS_SHARE, uint64_t, key_t* key, fd_t fd, clock_t timeout)
         return ERR;
     }
 
-    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
+    file_t* file = file_table_get(&process->fileTable, fd);
     if (file == NULL)
     {
-        errno = EBADF;
         return ERR;
     }
     DEREF_DEFER(file);
@@ -190,5 +189,5 @@ SYSCALL_DEFINE(SYS_CLAIM, fd_t, key_t* key)
     }
     DEREF_DEFER(file);
 
-    return vfs_ctx_alloc_fd(&process->vfsCtx, file);
+    return file_table_alloc(&process->fileTable, file);
 }

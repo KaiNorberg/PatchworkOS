@@ -1,6 +1,7 @@
 #include <kernel/proc/process.h>
 
 #include <kernel/cpu/cpu.h>
+#include <kernel/cpu/gdt.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
@@ -34,41 +35,8 @@ static mount_t* procMount = NULL;
 static dentry_t* selfDir = NULL;
 
 static list_t zombies = LIST_CREATE(zombies);
-static clock_t lastReaperTime = 0;
+static clock_t nextReaperTime = CLOCKS_NEVER;
 static lock_t zombiesLock = LOCK_CREATE;
-
-// TODO: Implement a proper reaper.
-static void process_reaper_timer(interrupt_frame_t* frame, cpu_t* cpu)
-{
-    (void)frame; // Unused
-    (void)cpu;   // Unused
-
-    LOCK_SCOPE(&zombiesLock);
-
-    clock_t uptime = sys_time_uptime();
-    if (uptime - lastReaperTime < CONFIG_PROCESS_REAPER_INTERVAL)
-    {
-        return;
-    }
-    lastReaperTime = uptime;
-
-    list_t* current = &zombies;
-    while (!list_is_empty(current))
-    {
-        process_t* process = CONTAINER_OF(list_pop_first(current), process_t, zombieEntry);
-
-        DEREF(process->dir);
-        DEREF(process->prioFile);
-        DEREF(process->cwdFile);
-        DEREF(process->cmdlineFile);
-        DEREF(process->noteFile);
-        DEREF(process->waitFile);
-        DEREF(process->perfFile);
-        DEREF(process->self);
-
-        DEREF(process);
-    }
-}
 
 static process_t* process_file_get_process(file_t* file)
 {
@@ -153,11 +121,7 @@ static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count, uin
         return ERR;
     }
 
-    path_t cwd = PATH_EMPTY;
-    if (vfs_ctx_get_cwd(&process->vfsCtx, &cwd) == ERR)
-    {
-        return ERR;
-    }
+    path_t cwd = cwd_get(&process->cwd);
     PATH_DEFER(&cwd);
 
     pathname_t cwdName;
@@ -204,6 +168,13 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
     if (process == NULL)
     {
         return ERR;
+    }
+
+    // Special case, kill should kill all threads in the process
+    if (count == 4 && memcmp(buffer, "kill", 4) == 0)
+    {
+        process_kill(process, 0);
+        return count;
     }
 
     LOCK_SCOPE(&process->threads.lock);
@@ -359,7 +330,7 @@ static uint64_t process_dir_init(process_t* process, const char* name)
     }
 
     path_t selfPath = PATH_CREATE(procMount, selfDir);
-    process->self = namespace_bind(&process->namespace, process->dir, &selfPath);
+    process->self = namespace_bind(&process->ns, process->dir, &selfPath, MOUNT_OVERWRITE);
     path_put(&selfPath);
     if (process->self == NULL)
     {
@@ -388,21 +359,6 @@ static void process_free(process_t* process)
         process_kill(process, EXIT_SUCCESS);
     }
 
-    if (process->parent != NULL)
-    {
-        RWLOCK_WRITE_SCOPE(&process->parent->childrenLock);
-        list_remove(&process->parent->children, &process->siblingEntry);
-        DEREF(process->parent);
-        process->parent = NULL;
-    }
-
-    rwlock_write_acquire(&process->childrenLock);
-    if (!list_is_empty(&process->children))
-    {
-        panic(NULL, "Freeing process pid=%d with children", process->id);
-    }
-    rwlock_write_release(&process->childrenLock);
-
     space_deinit(&process->space);
     argv_deinit(&process->argv);
     wait_queue_deinit(&process->dyingWaitQueue);
@@ -410,7 +366,7 @@ static void process_free(process_t* process)
     free(process);
 }
 
-static uint64_t process_init(process_t* process, process_t* parent, const char** argv, const path_t* cwd,
+static uint64_t process_init(process_t* process, const char** argv, const path_t* cwd, namespace_t* parentNs,
     priority_t priority)
 {
     ref_init(&process->ref, process_free);
@@ -426,36 +382,19 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     if (space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
             SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY) == ERR)
     {
-        namespace_deinit(&process->namespace);
         argv_deinit(&process->argv);
         return ERR;
     }
 
-    if (cwd != NULL)
+    if (namespace_init(&process->ns, parentNs) == ERR)
     {
-        vfs_ctx_init(&process->vfsCtx, cwd);
-    }
-    else if (parent != NULL)
-    {
-        path_t parentCwd = PATH_EMPTY;
-        if (vfs_ctx_get_cwd(&parent->vfsCtx, &parentCwd) == ERR)
-        {
-            argv_deinit(&process->argv);
-            namespace_deinit(&process->namespace);
-            space_deinit(&process->space);
-            return ERR;
-        }
-
-        vfs_ctx_init(&process->vfsCtx, &parentCwd);
-
-        path_put(&parentCwd);
-    }
-    else
-    {
-        vfs_ctx_init(&process->vfsCtx, NULL);
+        space_deinit(&process->space);
+        argv_deinit(&process->argv);
+        return ERR;
     }
 
-    namespace_init(&process->namespace, parent != NULL ? &parent->namespace : NULL, process);
+    cwd_init(&process->cwd, cwd);
+    file_table_init(&process->fileTable);
     futex_ctx_init(&process->futexCtx);
     perf_process_ctx_init(&process->perf);
     wait_queue_init(&process->dyingWaitQueue);
@@ -465,20 +404,7 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     list_init(&process->threads.list);
     lock_init(&process->threads.lock);
 
-    rwlock_init(&process->childrenLock);
-    list_entry_init(&process->siblingEntry);
-    list_init(&process->children);
     list_entry_init(&process->zombieEntry);
-    if (parent != NULL)
-    {
-        RWLOCK_WRITE_SCOPE(&parent->childrenLock);
-        list_push_back(&parent->children, &process->siblingEntry);
-        process->parent = REF(parent);
-    }
-    else
-    {
-        process->parent = NULL;
-    }
 
     process->dir = NULL;
     process->prioFile = NULL;
@@ -489,13 +415,11 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     process->perfFile = NULL;
     process->self = NULL;
 
-    assert(process == &kernelProcess || process_is_child(process, kernelProcess.id));
-
-    LOG_DEBUG("new pid=%d parent=%d priority=%d\n", process->id, parent ? parent->id : 0, priority);
+    LOG_DEBUG("new pid=%d priority=%d\n", process->id, priority);
     return 0;
 }
 
-process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority)
+process_t* process_new(const char** argv, const path_t* cwd, namespace_t* parentNs, priority_t priority)
 {
     process_t* process = malloc(sizeof(process_t));
     if (process == NULL)
@@ -503,7 +427,7 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
         return NULL;
     }
 
-    if (process_init(process, parent, argv, cwd, priority) == ERR)
+    if (process_init(process, argv, cwd, parentNs, priority) == ERR)
     {
         free(process);
         return NULL;
@@ -546,8 +470,9 @@ void process_kill(process_t* process, uint64_t status)
     }
 
     // Anything that another process could be waiting on must be cleaned up here.
-    namespace_deinit(&process->namespace);
-    vfs_ctx_deinit(&process->vfsCtx);
+    cwd_deinit(&process->cwd);
+    file_table_deinit(&process->fileTable);
+    namespace_deinit(&process->ns);
     // The dir entries have refs to the process, but a parent process might want to read files in /proc/[pid] after the
     // process has exited especially its wait file, so for now we defer dereferencing them until the reaper runs. This
     // is really not ideal so TODO: implement a proper reaper.
@@ -555,50 +480,26 @@ void process_kill(process_t* process, uint64_t status)
 
     LOCK_SCOPE(&zombiesLock);
     list_push_back(&zombies, &REF(process)->zombieEntry);
-    lastReaperTime = sys_time_uptime(); // Delay reaper run
+    nextReaperTime = sys_time_uptime() + CONFIG_PROCESS_REAPER_INTERVAL; // Delay reaper run
 }
 
-bool process_is_child(process_t* process, pid_t parentId)
+process_t* process_get_kernel(void)
 {
-    process_t* current = REF(process);
-    bool found = false;
-    while (current != NULL)
+    if (!kernelProcessInitalized)
     {
-        process_t* parent = NULL;
-
-        if (current->parent == NULL)
+        if (process_init(&kernelProcess, NULL, NULL, NULL, PRIORITY_MAX - 1) == ERR)
         {
-            break;
+            panic(NULL, "Failed to init kernel process");
         }
-
-        RWLOCK_READ_SCOPE(&current->parent->childrenLock);
-        if (current->parent == NULL)
-        {
-            break;
-        }
-
-        if (current->parent->id == parentId)
-        {
-            found = true;
-            break;
-        }
-
-        parent = REF(current->parent);
-        DEREF(current);
-        current = parent;
+        LOG_INFO("kernel process initialized with pid=%d\n", kernelProcess.id);
+        kernelProcessInitalized = true;
     }
-
-    if (current != NULL)
-    {
-        DEREF(current);
-    }
-
-    return found;
+    return &kernelProcess;
 }
 
 void process_procfs_init(void)
 {
-    procMount = sysfs_mount_new(NULL, "proc", NULL, NULL);
+    procMount = sysfs_mount_new(NULL, "proc", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, NULL);
     if (procMount == NULL)
     {
         panic(NULL, "Failed to mount /proc filesystem");
@@ -619,22 +520,68 @@ void process_procfs_init(void)
     {
         panic(NULL, "Failed to create /proc/[pid] directory for kernel process");
     }
-
-    timer_register_callback(&cpu_get_unsafe()->timer, process_reaper_timer);
 }
 
-process_t* process_get_kernel(void)
+static void process_reaper(void)
 {
-    if (!kernelProcessInitalized)
+    while (1)
     {
-        if (process_init(&kernelProcess, NULL, NULL, NULL, PRIORITY_MAX - 1) == ERR)
+        sched_nanosleep(CONFIG_PROCESS_REAPER_INTERVAL);
+
+        lock_acquire(&zombiesLock);
+        clock_t uptime = sys_time_uptime();
+        if (uptime < nextReaperTime)
         {
-            panic(NULL, "Failed to init kernel process");
+            lock_release(&zombiesLock);
+            continue;
         }
-        LOG_INFO("kernel process initialized with pid=%d\n", kernelProcess.id);
-        kernelProcessInitalized = true;
+        nextReaperTime = CLOCKS_NEVER;
+
+        list_t localZombies = LIST_CREATE(localZombies);
+
+        while (!list_is_empty(&zombies))
+        {
+            process_t* process = CONTAINER_OF(list_pop_first(&zombies), process_t, zombieEntry);
+            list_push_back(&localZombies, &process->zombieEntry);
+        }
+
+        lock_release(&zombiesLock);
+
+        while (!list_is_empty(&localZombies))
+        {
+            process_t* process = CONTAINER_OF(list_pop_first(&localZombies), process_t, zombieEntry);
+            DEREF(process->dir);
+            DEREF(process->prioFile);
+            DEREF(process->cwdFile);
+            DEREF(process->cmdlineFile);
+            DEREF(process->noteFile);
+            DEREF(process->waitFile);
+            DEREF(process->perfFile);
+            DEREF(process->self);
+
+            DEREF(process);
+        }
+
+        sched_nanosleep(CONFIG_PROCESS_REAPER_INTERVAL);
     }
-    return &kernelProcess;
+}
+
+void process_reaper_init(void)
+{
+    thread_t* reaper = thread_new(process_get_kernel());
+    if (reaper == NULL)
+    {
+        panic(NULL, "Failed to create process reaper thread");
+    }
+
+    reaper->frame.rip = (uintptr_t)process_reaper;
+    reaper->frame.rbp = reaper->kernelStack.top;
+    reaper->frame.rsp = reaper->kernelStack.top;
+    reaper->frame.cs = GDT_CS_RING0;
+    reaper->frame.ss = GDT_SS_RING0;
+    reaper->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
+
+    sched_push_new_thread(reaper, sched_thread());
 }
 
 SYSCALL_DEFINE(SYS_GETPID, pid_t)

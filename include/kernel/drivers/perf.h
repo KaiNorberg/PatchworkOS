@@ -126,15 +126,11 @@ void perf_interrupt_end(cpu_t* self);
 
 /**
  * @brief Called at the beginning of a syscall to update process performance data.
- *
- * Must be called with interrupts disabled.
  */
 void perf_syscall_begin(void);
 
 /**
  * @brief Called at the end of a syscall to update process performance data.
- *
- * Must be called with interrupts disabled.
  */
 void perf_syscall_end(void);
 

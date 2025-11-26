@@ -7,7 +7,7 @@ static uint8_t integerByteSize = 0;
 
 uint64_t aml_integer_handling_init(void)
 {
-    dsdt_t* dsdt = (dsdt_t*)acpi_tables_lookup(DSDT_SIGNATURE, 0);
+    dsdt_t* dsdt = (dsdt_t*)acpi_tables_lookup(DSDT_SIGNATURE, sizeof(dsdt_t), 0);
     if (dsdt == NULL)
     {
         LOG_ERR("failed to retrieve DSDT\n");
@@ -29,7 +29,7 @@ uint8_t aml_integer_bit_size(void)
     return integerByteSize * 8;
 }
 
-aml_integer_t aml_integer_ones(void)
+aml_uint_t aml_integer_ones(void)
 {
     return integerByteSize == 4 ? UINT32_MAX : UINT64_MAX;
 }

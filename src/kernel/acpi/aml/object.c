@@ -137,6 +137,10 @@ void aml_object_clear(aml_object_t* object)
     case AML_DEBUG_OBJECT:
         break;
     case AML_DEVICE:
+        if (object->device.cfg != NULL)
+        {
+            panic(NULL, "Attempted to free configured device object '%s'", AML_NAME_TO_STRING(object->name));
+        }
         break;
     case AML_EVENT:
         break;
@@ -483,7 +487,7 @@ static inline uint64_t aml_object_check_clear(aml_object_t* object)
     return 0;
 }
 
-uint64_t aml_buffer_resize(aml_buffer_obj_t* buffer, uint64_t newLength)
+uint64_t aml_buffer_resize(aml_buffer_t* buffer, uint64_t newLength)
 {
     if (buffer == NULL)
     {
@@ -652,6 +656,7 @@ uint64_t aml_device_set(aml_object_t* object)
     }
 
     object->type = AML_DEVICE;
+    object->device.cfg = NULL;
     return 0;
 }
 
@@ -672,7 +677,7 @@ uint64_t aml_event_set(aml_object_t* object)
     return 0;
 }
 
-uint64_t aml_field_unit_field_set(aml_object_t* object, aml_opregion_obj_t* opregion, aml_field_flags_t flags,
+uint64_t aml_field_unit_field_set(aml_object_t* object, aml_opregion_t* opregion, aml_field_flags_t flags,
     aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
 {
     if (object == NULL || opregion == NULL || bitSize == 0)
@@ -699,7 +704,7 @@ uint64_t aml_field_unit_field_set(aml_object_t* object, aml_opregion_obj_t* opre
     return 0;
 }
 
-uint64_t aml_field_unit_index_field_set(aml_object_t* object, aml_field_unit_obj_t* index, aml_field_unit_obj_t* data,
+uint64_t aml_field_unit_index_field_set(aml_object_t* object, aml_field_unit_t* index, aml_field_unit_t* data,
     aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
 {
     if (object == NULL || index == NULL || data == NULL || bitSize == 0)
@@ -726,7 +731,7 @@ uint64_t aml_field_unit_index_field_set(aml_object_t* object, aml_field_unit_obj
     return 0;
 }
 
-uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_obj_t* opregion, aml_field_unit_obj_t* bank,
+uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_t* opregion, aml_field_unit_t* bank,
     uint64_t bankValue, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
 {
     if (object == NULL || opregion == NULL || bank == NULL || bitSize == 0)
@@ -764,7 +769,7 @@ uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_obj_t*
     return 0;
 }
 
-uint64_t aml_integer_set(aml_object_t* object, aml_integer_t value)
+uint64_t aml_integer_set(aml_object_t* object, aml_uint_t value)
 {
     if (object == NULL)
     {
@@ -811,7 +816,7 @@ uint64_t aml_method_set(aml_object_t* object, aml_method_flags_t flags, const ui
     return 0;
 }
 
-static inline aml_method_obj_t* aml_method_find_recursive(aml_object_t* current, const uint8_t* addr)
+static inline aml_method_t* aml_method_find_recursive(aml_object_t* current, const uint8_t* addr)
 {
     if (current == NULL || addr == NULL)
     {
@@ -831,11 +836,11 @@ static inline aml_method_obj_t* aml_method_find_recursive(aml_object_t* current,
         aml_object_t* child = NULL;
         LIST_FOR_EACH(child, &current->children, siblingsEntry)
         {
-            aml_method_obj_t* result = aml_method_find_recursive(child, addr);
+            aml_method_t* result = aml_method_find_recursive(child, addr);
             if (result != NULL)
             {
                 // Check for methods in methods
-                aml_method_obj_t* methodInMethod =
+                aml_method_t* methodInMethod =
                     aml_method_find_recursive(CONTAINER_OF_SAFE(result, aml_object_t, method), addr);
                 if (methodInMethod != NULL)
                 {
@@ -850,7 +855,7 @@ static inline aml_method_obj_t* aml_method_find_recursive(aml_object_t* current,
     return NULL;
 }
 
-aml_method_obj_t* aml_method_find(const uint8_t* addr)
+aml_method_t* aml_method_find(const uint8_t* addr)
 {
     if (addr == NULL)
     {
@@ -1077,7 +1082,7 @@ uint64_t aml_string_set(aml_object_t* object, const char* str)
     return 0;
 }
 
-uint64_t aml_string_resize(aml_string_obj_t* string, uint64_t newLength)
+uint64_t aml_string_resize(aml_string_t* string, uint64_t newLength)
 {
     if (string == NULL)
     {
@@ -1163,7 +1168,7 @@ uint64_t aml_alias_set(aml_object_t* object, aml_object_t* target)
     return 0;
 }
 
-aml_object_t* aml_alias_obj_traverse(aml_alias_obj_t* alias)
+aml_object_t* aml_alias_traverse(aml_alias_t* alias)
 {
     if (alias == NULL)
     {

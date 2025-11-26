@@ -3,10 +3,10 @@
 
 #include "user/common/syscalls.h"
 
-uint64_t mprotect(void* address, uint64_t length, prot_t prot)
+void* mprotect(void* address, uint64_t length, prot_t prot)
 {
-    uint64_t result = _syscall_mprotect(address, length, prot);
-    if (result == ERR)
+    void* result = _syscall_mprotect(address, length, prot);
+    if (result == NULL)
     {
         errno = _syscall_errno();
     }

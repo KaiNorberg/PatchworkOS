@@ -292,9 +292,14 @@ void acpi_tables_expose(void);
  * @brief Lookup the n'th table matching the signature.
  *
  * @param signature The signature of the table to look up.
+ * @param minSize The minimum size of the table to look up, should usually be `sizeof()` of the table struct.
  * @param n The index of the table to look up (0 indexed).
- * @return The table if found, NULL otherwise.
+ * @return On success, a pointer to the table. On error, `NULL` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `ENOENT`: No table matching the signature was found.
+ * - `ERANGE`: A table was found, but not enough matching tables to satisfy `n`.
+ * - `EILSEQ`: The table found was smaller than `minSize`.
  */
-sdt_header_t* acpi_tables_lookup(const char* signature, uint64_t n);
+sdt_header_t* acpi_tables_lookup(const char* signature, uint64_t minSize, uint64_t n);
 
 /** @} */

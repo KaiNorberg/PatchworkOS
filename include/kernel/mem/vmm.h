@@ -32,9 +32,9 @@
  * very easily copy mappings between address spaces by just copying the relevant PML4 entries.
  *
  * First, at the very top, we have the kernel binary itself and all its data, code, bss, rodata, etc. This region uses
- * the the last index in the page table. This region will never be fully filled and the kernel itself is not guaranteed
- * to be loaded at the very start of this region, the exact address is decided by the `linker.lds` script. This section
- * is mapped identically for all processes.
+ * the last index in the page table. This region will never be fully filled and the kernel itself is not guaranteed to
+ * be loaded at the very start of this region, the exact address is decided by the `linker.lds` script. This section is
+ * mapped identically for all processes.
  *
  * Secondly, we have the per-thread kernel stacks, one stack per thread. Each stack is allocated on demand and can grow
  * dynamically up to `CONFIG_MAX_KERNEL_STACK_PAGES` pages not including its guard page. This section takes up 2 indices
@@ -120,8 +120,8 @@ typedef struct
  */
 typedef enum
 {
-    VMM_ALLOC_NONE = 0x0,
-    VMM_ALLOC_FAIL_IF_MAPPED = 0x1 ///< If set and any page is already mapped, fail and set `errno` to `EEXIST`.
+    VMM_ALLOC_OVERWRITE = 0 << 0,     ///< If any page is already mapped, overwrite the mapping.
+    VMM_ALLOC_FAIL_IF_MAPPED = 1 << 0 ///< If set and any page is already mapped, fail and set `errno` to `EEXIST`.
 } vmm_alloc_flags_t;
 
 /**
@@ -149,12 +149,10 @@ void vmm_cpu_ctx_init(vmm_cpu_ctx_t* ctx);
  * half mapped until the kernel is fully initialized. After that we can unmap the lower half both from kernel space and
  * the boot thread's address space.
  *
- * The bootloades lower half mappings will be transfered to the kernel space mappings during boot so we just copy them
+ * The bootloaders lower half mappings will be transferred to the kernel space mappings during boot so we just copy them
  * from there.
- *
- * @param bootThread The boot thread, which will have its address space modified.
  */
-void vmm_map_bootloader_lower_half(thread_t* bootThread);
+void vmm_map_bootloader_lower_half(void);
 
 /**
  * @brief Unmaps the lower half of the address space after kernel initialization.
@@ -163,10 +161,8 @@ void vmm_map_bootloader_lower_half(thread_t* bootThread);
  *
  * After this is called the bootloaders lower half mappings will be destroyed and the kernel will only have its own
  * mappings.
- *
- * @param bootThread The boot thread, which will have its address space modified.
  */
-void vmm_unmap_bootloader_lower_half(thread_t* bootThread);
+void vmm_unmap_bootloader_lower_half(void);
 
 /**
  * @brief Retrieves the kernel's address space.
@@ -188,15 +184,19 @@ pml_flags_t vmm_prot_to_flags(prot_t prot);
  *
  * The allocated memory will be backed by newly allocated physical memory pages and is not guaranteed to be zeroed.
  *
- * Will overwrite any existing mappings in the specified range if `VMM_ALLOC_FAIL_IF_MAPPED` is not set.
- *
  * @see `vmm_map()` for details on TLB shootdowns.
  *
  * @param space The target address space, if `NULL`, the kernel space is used.
  * @param virtAddr The desired virtual address. If `NULL`, the kernel chooses an available address.
  * @param length The length of the virtual memory region to allocate, in bytes.
- * @param flags The page table flags for the mapping, will always include `PML_OWNED`, must have `PML_PRESENT` set.
- * @return On success, the virtual address. On failure, returns `NULL` and `errno` is set.
+ * @param pmlFlags The page table flags for the mapping, will always include `PML_OWNED`, must have `PML_PRESENT` set.
+ * @param allocFlags The allocation flags.
+ * @return On success, the virtual address. On failure, returns `NULL` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EBUSY`: The region contains pinned pages.
+ * - `EEXIST`: The region is already mapped and `VMM_ALLOC_FAIL_IF_MAPPED` is set.
+ * - `ENOMEM`: Not enough memory.
+ * - Other values from `space_mapping_start()`.
  */
 void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t pmlFlags, vmm_alloc_flags_t allocFlags);
 
@@ -216,7 +216,12 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t pml
  * @param func The callback function to call when the mapped memory is unmapped or the address space is freed. If
  * `NULL`, then no callback will be called.
  * @param private Private data to pass to the callback function.
- * @return On success, the virtual address. On failure, returns `NULL` and `errno` is set.
+ * @return On success, the virtual address. On failure, returns `NULL` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EBUSY`: The region contains pinned pages.
+ * - `ENOSPC`: No available callback slots.
+ * - `ENOMEM`: Not enough memory.
+ * - Other values from `space_mapping_start()`.
  */
 void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, pml_flags_t flags,
     space_callback_func_t func, void* private);
@@ -236,7 +241,12 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, p
  * @param func The callback function to call when the mapped memory is unmapped or the address space is freed. If
  * `NULL`, then no callback will be called.
  * @param private Private data to pass to the callback function.
- * @return On success, the virtual address. On failure, returns `NULL` and `errno` is set.
+ * @return On success, the virtual address. On failure, returns `NULL` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EBUSY`: The region contains pinned pages.
+ * - `ENOSPC`: No available callback slots.
+ * - `ENOMEM`: Not enough memory.
+ * - Other values from `space_mapping_start()`.
  */
 void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageAmount, pml_flags_t flags,
     space_callback_func_t func, void* private);
@@ -253,9 +263,12 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
  * @param space The target address space, if `NULL`, the kernel space is used.
  * @param virtAddr The virtual address of the memory region.
  * @param length The length of the memory region, in bytes.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `virtAddr`. On failure, `NULL` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EBUSY`: The region contains pinned pages.
+ * - Other values from `space_mapping_start()`.
  */
-uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length);
+void* vmm_unmap(space_t* space, void* virtAddr, uint64_t length);
 
 /**
  * @brief Changes memory protection flags for a virtual memory region in a given address space.
@@ -271,16 +284,12 @@ uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length);
  * @param length The length of the memory region, in bytes.
  * @param flags The new page table flags for the memory region, if `PML_PRESENT` is not set, the memory will be
  * unmapped.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `virtAddr`. On failure, `NULL` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EBUSY`: The region contains pinned pages.
+ * - `ENOENT`: The region is unmapped, or only partially mapped.
+ * - Other values from `space_mapping_start()`.
  */
-uint64_t vmm_protect(space_t* space, void* virtAddr, uint64_t length, pml_flags_t flags);
-
-/**
- * @brief TLB shootdown interrupt handler.
- *
- * @param frame The interrupt frame.
- * @param self The current CPU.
- */
-void vmm_shootdown_handler(interrupt_frame_t* frame, cpu_t* self);
+void* vmm_protect(space_t* space, void* virtAddr, uint64_t length, pml_flags_t flags);
 
 /** @} */

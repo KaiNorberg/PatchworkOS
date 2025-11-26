@@ -1,14 +1,15 @@
 #include <kernel/fs/vfs.h>
 
 #include "sys/list.h"
-#include <kernel/cpu/syscalls.h>
+#include <kernel/cpu/syscall.h>
+#include <kernel/fs/cwd.h>
 #include <kernel/fs/dentry.h>
+#include <kernel/fs/file_table.h>
 #include <kernel/fs/inode.h>
 #include <kernel/fs/key.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
-#include <kernel/fs/vfs_ctx.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
@@ -472,11 +473,7 @@ file_t* vfs_open(const pathname_t* pathname, process_t* process)
         return NULL;
     }
 
-    path_t cwd = PATH_EMPTY;
-    if (vfs_ctx_get_cwd(&process->vfsCtx, &cwd) == ERR)
-    {
-        return NULL;
-    }
+    path_t cwd = cwd_get(&process->cwd);
     PATH_DEFER(&cwd);
 
     return vfs_openat(&cwd, pathname, process);
@@ -500,7 +497,7 @@ SYSCALL_DEFINE(SYS_OPEN, fd_t, const char* pathString)
     }
     DEREF_DEFER(file);
 
-    return vfs_ctx_alloc_fd(&process->vfsCtx, file);
+    return file_table_alloc(&process->fileTable, file);
 }
 
 uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* process)
@@ -511,15 +508,11 @@ uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* proc
         return ERR;
     }
 
-    path_t cwd = PATH_EMPTY;
-    if (vfs_ctx_get_cwd(&process->vfsCtx, &cwd) == ERR)
-    {
-        return ERR;
-    }
+    path_t cwd = cwd_get(&process->cwd);
     PATH_DEFER(&cwd);
 
     path_t path = PATH_EMPTY;
-    if (vfs_open_lookup(&path, pathname, &cwd, &process->namespace) == ERR)
+    if (vfs_open_lookup(&path, pathname, &cwd, &process->ns) == ERR)
     {
         return ERR;
     }
@@ -589,22 +582,22 @@ SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
     DEREF_DEFER(files[1]);
 
     fd_t fdsLocal[2];
-    fdsLocal[0] = vfs_ctx_alloc_fd(&process->vfsCtx, files[0]);
+    fdsLocal[0] = file_table_alloc(&process->fileTable, files[0]);
     if (fdsLocal[0] == ERR)
     {
         return ERR;
     }
-    fdsLocal[1] = vfs_ctx_alloc_fd(&process->vfsCtx, files[1]);
+    fdsLocal[1] = file_table_alloc(&process->fileTable, files[1]);
     if (fdsLocal[1] == ERR)
     {
-        vfs_ctx_free_fd(&process->vfsCtx, fdsLocal[0]);
+        file_table_free(&process->fileTable, fdsLocal[0]);
         return ERR;
     }
 
     if (thread_copy_to_user(thread, fds, fdsLocal, sizeof(fd_t) * 2) == ERR)
     {
-        vfs_ctx_free_fd(&process->vfsCtx, fdsLocal[0]);
-        vfs_ctx_free_fd(&process->vfsCtx, fdsLocal[1]);
+        file_table_free(&process->fileTable, fdsLocal[0]);
+        file_table_free(&process->fileTable, fdsLocal[1]);
         return ERR;
     }
 
@@ -620,7 +613,7 @@ file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* pr
     }
 
     path_t path = PATH_EMPTY;
-    if (vfs_open_lookup(&path, pathname, from, &process->namespace) == ERR)
+    if (vfs_open_lookup(&path, pathname, from, &process->ns) == ERR)
     {
         return NULL;
     }
@@ -660,17 +653,13 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
     path_t fromPath = PATH_EMPTY;
     if (from == FD_NONE)
     {
-        path_t cwd = PATH_EMPTY;
-        if (vfs_ctx_get_cwd(&process->vfsCtx, &cwd) == ERR)
-        {
-            return ERR;
-        }
+        path_t cwd = cwd_get(&process->cwd);
         path_copy(&fromPath, &cwd);
         path_put(&cwd);
     }
     else
     {
-        file_t* fromFile = vfs_ctx_get_file(&process->vfsCtx, from);
+        file_t* fromFile = file_table_get(&process->fileTable, from);
         if (fromFile == NULL)
         {
             return ERR;
@@ -692,7 +681,7 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
     }
     DEREF_DEFER(file);
 
-    return vfs_ctx_alloc_fd(&process->vfsCtx, file);
+    return file_table_alloc(&process->fileTable, file);
 }
 
 uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
@@ -733,7 +722,7 @@ SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, uint64_t count)
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
 
-    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
+    file_t* file = file_table_get(&process->fileTable, fd);
     if (file == NULL)
     {
         return ERR;
@@ -792,7 +781,7 @@ SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, uint64_t count)
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
 
-    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
+    file_t* file = file_table_get(&process->fileTable, fd);
     if (file == NULL)
     {
         return ERR;
@@ -830,7 +819,7 @@ SYSCALL_DEFINE(SYS_SEEK, uint64_t, fd_t fd, int64_t offset, seek_origin_t origin
 {
     process_t* process = sched_process();
 
-    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
+    file_t* file = file_table_get(&process->fileTable, fd);
     if (file == NULL)
     {
         return ERR;
@@ -874,7 +863,7 @@ SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, uint6
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
 
-    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
+    file_t* file = file_table_get(&process->fileTable, fd);
     if (file == NULL)
     {
         return ERR;
@@ -936,7 +925,7 @@ SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, uint64_t length, prot_t 
         return NULL;
     }
 
-    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
+    file_t* file = file_table_get(&process->fileTable, fd);
     if (file == NULL)
     {
         return NULL;
@@ -1130,7 +1119,7 @@ SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeo
     poll_file_t files[CONFIG_MAX_FD];
     for (uint64_t i = 0; i < amount; i++)
     {
-        files[i].file = vfs_ctx_get_file(&process->vfsCtx, fds[i].fd);
+        files[i].file = file_table_get(&process->fileTable, fds[i].fd);
         if (files[i].file == NULL)
         {
             for (uint64_t j = 0; j < i; j++)
@@ -1207,7 +1196,7 @@ SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
 
-    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
+    file_t* file = file_table_get(&process->fileTable, fd);
     if (file == NULL)
     {
         return ERR;
@@ -1237,15 +1226,11 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
         return ERR;
     }
 
-    path_t cwd = PATH_EMPTY;
-    if (vfs_ctx_get_cwd(&process->vfsCtx, &cwd) == ERR)
-    {
-        return ERR;
-    }
+    path_t cwd = cwd_get(&process->cwd);
     PATH_DEFER(&cwd);
 
     path_t path = PATH_EMPTY;
-    if (path_walk(&path, pathname, &cwd, WALK_NONE, &process->namespace) == ERR)
+    if (path_walk(&path, pathname, &cwd, WALK_NONE, &process->ns) == ERR)
     {
         return ERR;
     }
@@ -1303,16 +1288,12 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
         return ERR;
     }
 
-    path_t cwd = PATH_EMPTY;
-    if (vfs_ctx_get_cwd(&process->vfsCtx, &cwd) == ERR)
-    {
-        return ERR;
-    }
+    path_t cwd = cwd_get(&process->cwd);
     PATH_DEFER(&cwd);
 
     path_t oldParent = PATH_EMPTY;
     path_t old = PATH_EMPTY;
-    if (path_walk_parent_and_child(&oldParent, &old, oldPathname, &cwd, WALK_NONE, &process->namespace) == ERR)
+    if (path_walk_parent_and_child(&oldParent, &old, oldPathname, &cwd, WALK_NONE, &process->ns) == ERR)
     {
         return ERR;
     }
@@ -1321,8 +1302,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
 
     path_t newParent = PATH_EMPTY;
     path_t target = PATH_EMPTY;
-    if (path_walk_parent_and_child(&newParent, &target, newPathname, &cwd, WALK_NEGATIVE_IS_OK, &process->namespace) ==
-        ERR)
+    if (path_walk_parent_and_child(&newParent, &target, newPathname, &cwd, WALK_NEGATIVE_IS_OK, &process->ns) == ERR)
     {
         return ERR;
     }
@@ -1401,16 +1381,12 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
         return ERR;
     }
 
-    path_t cwd = PATH_EMPTY;
-    if (vfs_ctx_get_cwd(&process->vfsCtx, &cwd) == ERR)
-    {
-        return ERR;
-    }
+    path_t cwd = cwd_get(&process->cwd);
     PATH_DEFER(&cwd);
 
     path_t parent = PATH_EMPTY;
     path_t target = PATH_EMPTY;
-    if (path_walk_parent_and_child(&parent, &target, pathname, &cwd, WALK_NONE, &process->namespace) == ERR)
+    if (path_walk_parent_and_child(&parent, &target, pathname, &cwd, WALK_NONE, &process->ns) == ERR)
     {
         return ERR;
     }

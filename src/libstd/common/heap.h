@@ -156,10 +156,8 @@ void _heap_remove_from_free_list(_heap_header_t* block);
  *
  * Must be called with the heap acquired.
  *
- * In the kernel underlying functions will cause this function to set `errno` on failure.
- *
  * @param size The size of memory to allocate, in bytes.
- * @return On success, pointer to the allocated heap block header. On failure, `NULL`.
+ * @return On success, pointer to the allocated heap block header. On failure, `NULL` and `errno` is set.
  */
 _heap_header_t* _heap_alloc(uint64_t size);
 

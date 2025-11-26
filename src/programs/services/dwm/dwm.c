@@ -83,6 +83,32 @@ static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* 
 
 void dwm_init(void)
 {
+    kbd = open("/dev/kbd/0/events");
+    if (kbd == ERR)
+    {
+        printf("dwm: failed to open keyboard (%s)\n", strerror(errno));
+        abort();
+    }
+
+    char name[MAX_PATH] = {0};
+    if (readfile("/dev/kbd/0/name", name, MAX_PATH - 1, 0) != ERR)
+    {
+        printf("dwm: using keyboard '%s'\n", name);
+    }
+
+    mouse = open("/dev/mouse/0/events");
+    if (mouse == ERR)
+    {
+        printf("dwm: failed to open mouse (%s)\n", strerror(errno));
+        abort();
+    }
+
+    memset(name, 0, MAX_PATH);
+    if (readfile("/dev/mouse/0/name", name, MAX_PATH - 1, 0) != ERR)
+    {
+        printf("dwm: using mouse '%s'\n", name);
+    }
+
     if (readfile("/net/local/seqpacket:nonblock", id, MAX_NAME - 1, 0) == ERR)
     {
         printf("dwm: failed to create socket (%s)\n", strerror(errno));
@@ -112,32 +138,6 @@ void dwm_init(void)
     {
         printf("dwm: failed to open data file (%s)\n", strerror(errno));
         abort();
-    }
-
-    kbd = open("/dev/kbd/0/events");
-    if (kbd == ERR)
-    {
-        printf("dwm: failed to open keyboard (%s)\n", strerror(errno));
-        abort();
-    }
-
-    char name[MAX_NAME] = {0};
-    if (readfile("/dev/kbd/0/name", name, MAX_NAME - 1, 0) != ERR)
-    {
-        printf("dwm: using keyboard '%s'\n", name);
-    }
-
-    mouse = open("/dev/mouse/0/events");
-    if (mouse == ERR)
-    {
-        printf("dwm: failed to open mouse (%s)\n", strerror(errno));
-        abort();
-    }
-
-    memset(name, 0, MAX_NAME);
-    if (readfile("/dev/mouse/0/name", name, MAX_NAME - 1, 0) != ERR)
-    {
-        printf("dwm: using mouse '%s'\n", name);
     }
 
     list_init(&clients);

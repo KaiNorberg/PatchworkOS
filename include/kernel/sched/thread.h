@@ -3,7 +3,7 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/simd.h>
 #include <kernel/cpu/stack_pointer.h>
-#include <kernel/cpu/syscalls.h>
+#include <kernel/cpu/syscall.h>
 #include <kernel/ipc/note.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
@@ -33,6 +33,14 @@ typedef enum
     THREAD_PRE_BLOCK,  ///< Has started the process of blocking but has not yet been given to a owner cpu.
     THREAD_BLOCKED,    ///< Is blocking and waiting in one or multiple wait queues.
     THREAD_UNBLOCKING, ///< Has started unblocking, used to prevent the same thread being unblocked multiple times.
+    /**
+     * The thread is currently dying, it will be freed by the scheduler once its invoked.
+     *
+     * @warning This state is more fragile than the others. Since a thread could technically be killed at any time and
+     * we have several systems relying on the thread state as a form of synchronization, this state should only be set
+     * when the thread is running in an interrupt context.
+     */
+    THREAD_DYING,
 } thread_state_t;
 
 /**
@@ -98,6 +106,15 @@ thread_t* thread_new(process_t* process);
 void thread_free(thread_t* thread);
 
 /**
+ * @brief Kill a thread.
+ *
+ * Will send a "kill" note to the thread, but not immediately free it.
+ *
+ * @param thread The thread to be killed.
+ */
+void thread_kill(thread_t* thread);
+
+/**
  * @brief Save state to a thread.
  *
  * @param thread The destination thread where the state will be saved.
@@ -114,27 +131,6 @@ void thread_save(thread_t* thread, const interrupt_frame_t* frame);
  * @param frame The destination interrupt frame.
  */
 void thread_load(thread_t* thread, interrupt_frame_t* frame);
-
-/**
- * @brief Jump to a thread by calling `thread_load()` and then loading its interrupt frame.
- *
- * Must be done in assembly as it requires directly modifying registers.
- *
- * Will never return instead it ends up at `thread->frame.rip`.
- *
- * @param thread The thread to jump to.
- */
-_NORETURN extern void thread_jump(thread_t* thread);
-
-/**
- * @brief Retrieve the interrupt frame from a thread.
- *
- * Will only retrieve the interrupt frame.
- *
- * @param thread The source thread.
- * @param frame The destination interrupt frame.
- */
-void thread_get_interrupt_frame(thread_t* thread, interrupt_frame_t* frame);
 
 /**
  * @brief Check if a thread has a note pending.
@@ -156,30 +152,6 @@ bool thread_is_note_pending(thread_t* thread);
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t thread_send_note(thread_t* thread, const void* buffer, uint64_t count);
-
-/**
- * @brief Retrieves the boot thread.
- *
- * The boot thread is the first thread created by the kernel. After boot it becomes the idle thread of the
- * bootstrap CPU. Is initialized lazily on the first call to this function, which should happen during early boot.
- *
- * Will never return `NULL`.
- *
- * @return The boot thread.
- */
-thread_t* thread_get_boot(void);
-
-/**
- * @brief Handles a page fault that occurred in the currently running thread.
- *
- * Called by the interrupt handler when a page fault occurs and allows the currently running thread to attempt to grow
- * its stacks if the faulting address is within one of its stack regions.
- *
- * @param frame The interrupt frame containing the CPU state at the time of the page fault.
- * @return If the page fault was handled and the thread can continue executing, returns 0. If the thread must be killed,
- * `ERR` and `errno` is set.
- */
-uint64_t thread_handle_page_fault(const interrupt_frame_t* frame);
 
 /**
  * @brief Safely copy data from user space.
@@ -243,5 +215,16 @@ uint64_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, 
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t thread_load_atomic_from_user(thread_t* thread, atomic_uint64_t* userObj, uint64_t* outValue);
+
+/**
+ * @brief Jump to a thread by calling `thread_load()` and then loading its interrupt frame.
+ *
+ * Must be done in assembly as it requires directly modifying registers.
+ *
+ * Will never return instead it ends up at `thread->frame.rip`.
+ *
+ * @param thread The thread to jump to.
+ */
+_NORETURN extern void thread_jump(thread_t* thread);
 
 /** @} */

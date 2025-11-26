@@ -15,23 +15,17 @@
  */
 
 /**
- * @brief Performs the initial jump to userspace.
- *
- * @param thread The curently running thread that will jump to userspace.
- */
-extern NORETURN void loader_jump_to_user_space(thread_t* thread);
-
-/**
  * @brief Spawns a child process from an executable file.
  *
- * @param argv A null-terminated array of strings storing the arguments to be passed to usespace and the executable to
- * be loaded in `argv[0]`.
- * @param priority The priority of the first thread within the child process.
- * @param cwd The current working directory for the child process, if `cwd` is null then the child inherits the
- * working directory of the parent.
- * @return On success, returns the main thread of the child process. On failure, returns `NULL` and errno is set.
+ * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable. This array
+ * will be pushed to the child stack and the child can find a pointer to this array in its rsi register, along with its
+ * length in the rdi register.
+ * @param cwd The working directory for the child process, or `NULL` to inherit the parents working directory.
+ * @param priority The scheduling priority for the child process, or `PRIORITY_PARENT` to inherit the parent's priority.
+ * @param flags Spawn behaviour flags.
+ * @return On success, the childs first thread. On failure, `NULL` and `errno` is set.
  */
-thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd);
+thread_t* loader_spawn(const char** argv, const path_t* cwd, priority_t priority, spawn_flags_t flags);
 
 /**
  * @brief Creates a new thread within an existing process.
