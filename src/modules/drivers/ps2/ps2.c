@@ -176,7 +176,8 @@ static uint64_t ps2_controller_init(void)
     }
 
     LOG_DEBUG("ps2 initial config byte: 0x%02x\n", currentConfig);
-    currentConfig &= ~(PS2_CFG_FIRST_IRQ | PS2_CFG_FIRST_CLOCK_DISABLE | PS2_CFG_FIRST_TRANSLATION | PS2_CFG_SECOND_IRQ);
+    currentConfig &=
+        ~(PS2_CFG_FIRST_IRQ | PS2_CFG_FIRST_CLOCK_DISABLE | PS2_CFG_FIRST_TRANSLATION | PS2_CFG_SECOND_IRQ);
     LOG_DEBUG("ps2 setting config byte to: 0x%02x\n", currentConfig);
 
     if (ps2_cmd_and_write(PS2_CMD_CFG_WRITE, currentConfig) == ERR)
@@ -712,7 +713,6 @@ static uint64_t ps2_attach_device(const char* type, const char* name)
         }
 
         currentConfig |= PS2_CFG_FIRST_IRQ;
-        
     }
     else
     {

@@ -6,9 +6,10 @@
  * @brief Symmetric Multiprocessing support via APIC.
  * @defgroup modules_drivers_apic_smp SMP
  * @ingroup modules_drivers_apic
- * 
- * Symmetric Multiprocessing (SMP) support is implemented using the Advanced Programmable Interrupt Controller (APIC) system.
- * 
+ *
+ * Symmetric Multiprocessing (SMP) support is implemented using the Advanced Programmable Interrupt Controller (APIC)
+ * system.
+ *
  * @{
  */
 

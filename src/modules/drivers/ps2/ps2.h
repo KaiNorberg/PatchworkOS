@@ -84,7 +84,7 @@ typedef enum
     PS2_STATUS_IN_FULL = (1 << 1),  ///< Input buffer status (0 = empty, 1 = full)
     PS2_STATUS_SYSTEM_FLAG = (1 << 2),
     PS2_STATUS_CMD_DATA = (1 << 3), ///< Command(1) or Data(0)
-    
+
     PS2_STATUS_TIMEOUT_ERROR = (1 << 6),
     PS2_STATUS_PARITY_ERROR = (1 << 7)
 } ps2_status_bits_t;

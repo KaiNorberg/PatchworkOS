@@ -7,8 +7,8 @@
  * @defgroup modules_drivers_apic_timer APIC Timer
  * @ingroup modules_drivers_apic
  *
- * Each local APIC is associated with a timer which can be used to generate interrupts at specific intervals, or as we use
- * it, to generate a single interrupt after a specified time.
+ * Each local APIC is associated with a timer which can be used to generate interrupts at specific intervals, or as we
+ * use it, to generate a single interrupt after a specified time.
  *
  * @see [ACPI Specification Version 6.6](https://uefi.org/sites/default/files/resources/ACPI_Spec_6.6.pdf)
  *

@@ -4,7 +4,6 @@
 #include <kernel/cpu/irq.h>
 #include <stdint.h>
 
-
 /**
  * @brief Local Advanced Programmable Interrupt Controller.
  * @defgroup modules_drivers_apic_lapic Local APIC
@@ -13,7 +12,8 @@
  * ## Local APICs
  *
  * Each CPU has its own local APIC, which, when used with the IO APICs, allows for more advanced
- * interrupt handling in comparison to the traditional PIC, such as routing interrupts to specific CPUs, interrupt prioritization, and more. Most of its features are not used in PatchworkOS yet.
+ * interrupt handling in comparison to the traditional PIC, such as routing interrupts to specific CPUs, interrupt
+ * prioritization, and more. Most of its features are not used in PatchworkOS yet.
  *
  * Additionally, the local APICs provide Inter-Processor Interrupts (IPIs) which allow a CPU to interrupt another CPU by
  * using its local APIC.
