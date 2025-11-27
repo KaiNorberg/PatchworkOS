@@ -166,4 +166,4 @@ uint64_t _module_procedure(const module_event_t* event)
     return 0;
 }
 
-MODULE_INFO("Const Driver", "Kai Norberg", "A constant device driver", OS_VERSION, "MIT", "LOAD_ON_BOOT");
+MODULE_INFO("Const Driver", "Kai Norberg", "A constant device driver", OS_VERSION, "MIT", "BOOT_ALWAYS");

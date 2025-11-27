@@ -1,16 +1,11 @@
-#include <kernel/cpu/ipi.h>
 #include <kernel/init/init.h>
 
-#include <kernel/acpi/acpi.h>
-#include <kernel/acpi/aml/aml.h>
-#include <kernel/acpi/devices.h>
-#include <kernel/acpi/tables.h>
+#include <kernel/cpu/ipi.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/idt.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/syscall.h>
-#include <kernel/drivers/gop.h>
 #include <kernel/drivers/pic.h>
 #include <kernel/fs/ramfs.h>
 #include <kernel/fs/sysfs.h>
@@ -39,7 +34,15 @@
 
 static cpu_t bootstrapCpu ALIGNED(PAGE_SIZE) = {0};
 
-void init_early(const boot_info_t* bootInfo)
+// Set in _start()
+boot_info_t* bootInfo = NULL;
+
+boot_info_t* init_boot_info_get(void)
+{
+    return bootInfo;
+}
+
+void init_early(void)
 {
     gdt_init();
     idt_init();
@@ -56,8 +59,6 @@ void init_early(const boot_info_t* bootInfo)
     _std_init();
 
     module_init_fake_kernel_module(&bootInfo->kernel);
-
-    acpi_tables_init(bootInfo->rsdp);
 
     cpu_init(&bootstrapCpu);
 
@@ -80,17 +81,17 @@ void init_early(const boot_info_t* bootInfo)
 }
 
 // We delay freeing bootloader data as we are still using it during initialization.
-static void init_free_loader_data(const boot_memory_map_t* map)
+static void init_free_loader_data(void)
 {
     // The memory map will be stored in the data we are freeing so we copy it first.
-    boot_memory_map_t volatile mapCopy = *map;
-    uint64_t descriptorsSize = map->descSize * map->length;
+    boot_memory_map_t volatile mapCopy = bootInfo->memory.map;
+    uint64_t descriptorsSize = bootInfo->memory.map.descSize * bootInfo->memory.map.length;
     EFI_MEMORY_DESCRIPTOR* volatile descriptorsCopy = malloc(descriptorsSize);
     if (descriptorsCopy == NULL)
     {
         panic(NULL, "Failed to allocate memory for boot memory map copy");
     }
-    memcpy_s(descriptorsCopy, descriptorsSize, map->descriptors, descriptorsSize);
+    memcpy_s(descriptorsCopy, descriptorsSize, bootInfo->memory.map.descriptors, descriptorsSize);
     mapCopy.descriptors = (EFI_MEMORY_DESCRIPTOR* const)descriptorsCopy;
 
     for (uint64_t i = 0; i < mapCopy.length; i++)
@@ -110,9 +111,11 @@ static void init_free_loader_data(const boot_memory_map_t* map)
     }
 
     free(descriptorsCopy);
+
+    bootInfo = NULL;
 }
 
-static void init_finalize(const boot_info_t* bootInfo)
+static void init_finalize(void)
 {
     vmm_map_bootloader_lower_half();
 
@@ -122,30 +125,46 @@ static void init_finalize(const boot_info_t* bootInfo)
     ramfs_init(&bootInfo->disk);
     sysfs_init();
 
-    aml_init();
-    acpi_devices_init();
-    acpi_reclaim_memory(&bootInfo->memory.map);
-
-    acpi_tables_expose();
-    aml_namespace_expose();
-
     log_file_expose();
     process_procfs_init();
 
     process_reaper_init();
 
-    gop_init(&bootInfo->gop);
     perf_init();
 
     syscall_table_init();
 
-    init_free_loader_data(&bootInfo->memory.map);
-    vmm_unmap_bootloader_lower_half();
-
-    if (module_device_attach("LOAD_ON_BOOT", "LOAD_ON_BOOT", MODULE_LOAD_ALL) == ERR)
+    if (bootInfo->gop.virtAddr != NULL)
     {
-        panic(NULL, "Failed to load modules with LOAD_ON_BOOT");
+        if (module_device_attach("BOOT_GOP", "BOOT_GOP", MODULE_LOAD_ALL) == ERR)
+        {
+            panic(NULL, "Failed to load modules with BOOT_GOP");
+        }
     }
+    else 
+    {
+        LOG_WARN("no GOP provided by bootloader\n");
+    }
+
+    if (bootInfo->rsdp != NULL)
+    {
+        if (module_device_attach("BOOT_RSDP", "BOOT_RSDP", MODULE_LOAD_ALL) == ERR)
+        {
+            panic(NULL, "Failed to load modules with BOOT_RSDP");
+        }
+    }
+    else 
+    {
+        LOG_WARN("no RSDP provided by bootloader\n");
+    }
+
+    if (module_device_attach("BOOT_ALWAYS", "BOOT_ALWAYS", MODULE_LOAD_ALL) == ERR)
+    {
+        panic(NULL, "Failed to load modules with BOOT_ALWAYS");
+    }
+
+    init_free_loader_data();
+    vmm_unmap_bootloader_lower_half();
 
     if (timer_source_amount() == 0)
     {
@@ -173,26 +192,14 @@ static inline void init_process_spawn(void)
         panic(NULL, "Failed to spawn init process");
     }
 
-    // Set klog as stdout for init process
-    file_t* klog = vfs_open(PATHNAME("/dev/klog"), initThread->process);
-    if (klog == NULL)
-    {
-        panic(NULL, "Failed to open klog");
-    }
-    if (file_table_set(&initThread->process->fileTable, STDOUT_FILENO, klog) == ERR)
-    {
-        panic(NULL, "Failed to set klog as stdout for init process");
-    }
-    ref_dec(klog);
-
     sched_push(initThread, NULL);
 }
 
-void kmain(const boot_info_t* bootInfo)
+void kmain(void)
 {
     LOG_DEBUG("kmain entered\n");
 
-    init_finalize(bootInfo);
+    init_finalize();
 
     init_process_spawn();
 

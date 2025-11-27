@@ -1,6 +1,6 @@
 #include <modules/drivers/apic/lapic.h>
 
-#include <kernel/acpi/tables.h>
+#include <modules/acpi/tables.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/ipi.h>
 #include <kernel/cpu/irq.h>

@@ -2,7 +2,7 @@
 
 #include "ps2.h"
 
-#include <kernel/drivers/abstractions/kbd.h>
+#include <kernel/drivers/abstract/kbd.h>
 
 /**
  * @brief PS/2 Keyboard Driver.

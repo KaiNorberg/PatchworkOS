@@ -287,4 +287,4 @@ uint64_t _module_procedure(const module_event_t* event)
 }
 
 MODULE_INFO("Pipes", "Kai Norberg", "Implements pipes for inter-process communication", OS_VERSION, "MIT",
-    "LOAD_ON_BOOT");
+    "BOOT_ALWAYS");

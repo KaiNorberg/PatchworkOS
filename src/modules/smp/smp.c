@@ -1,6 +1,6 @@
 #include "trampoline.h"
 
-#include <kernel/acpi/tables.h>
+#include <modules/acpi/tables.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/interrupt.h>
 #include <kernel/log/log.h>
@@ -108,4 +108,4 @@ uint64_t _module_procedure(const module_event_t* event)
     return 0;
 }
 
-MODULE_INFO("SMP Bootstrap", "Kai Norberg", "Symmetric Multiprocessing support via APIC", OS_VERSION, "MIT", "LOAD_ON_BOOT");
+MODULE_INFO("SMP Bootstrap", "Kai Norberg", "Symmetric Multiprocessing support via APIC", OS_VERSION, "MIT", "BOOT_ALWAYS");

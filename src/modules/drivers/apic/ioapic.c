@@ -1,7 +1,7 @@
 #include <modules/drivers/apic/ioapic.h>
 #include <modules/drivers/apic/lapic.h>
 
-#include <kernel/acpi/tables.h>
+#include <modules/acpi/tables.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/log/log.h>

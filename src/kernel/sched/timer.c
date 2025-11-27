@@ -2,7 +2,6 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/syscall.h>
-#include <kernel/drivers/rtc.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/module/symbol.h>

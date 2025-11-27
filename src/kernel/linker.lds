@@ -36,12 +36,5 @@ SECTIONS
         _syscallTableEnd = .;
     }
 
-    .acpi_sdt_handlers :
-    {
-        _acpiSdtHandlersStart = .;
-        KEEP(*(.acpi_sdt_handlers*))
-        _acpiSdtHandlersEnd = .;
-    }
-
     _kernelEnd = .;
 }

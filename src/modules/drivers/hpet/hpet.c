@@ -1,4 +1,4 @@
-#include <kernel/acpi/tables.h>
+#include <modules/acpi/tables.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -14,8 +14,7 @@
  * @defgroup modules_drivers_hpet HPET
  * @ingroup modules_drivers
  *
- * Note that since the HPET might be 32bit it could overflow rather quickly, so we implement a system for checking
- * roughly when it will overflow and accumulate the counter into a 64 bit nanosecond counter.
+ * @note Since the HPET might be 32bit it could overflow rather quickly, so we implement a system for checking roughly when it will overflow and accumulate the counter into a 64 bit nanosecond counter.
  *
  * @see [OSDev HPET](https://wiki.osdev.org/HPET)
  *
@@ -187,7 +186,8 @@ static void hpet_timer_handler(interrupt_frame_t* frame, cpu_t* self)
 static sys_time_source_t source = {
     .name = "HPET",
     .precision = 0, // Filled in during init
-    .read = hpet_read_ns_counter,
+    .read_ns = hpet_read_ns_counter,
+    .read_epoch = NULL,
 };
 
 /**

@@ -8,6 +8,8 @@ extern init
 extern thread_get_boot
 extern thread_load
 
+extern bootInfo
+
 global _start:function
 
 section .text
@@ -21,8 +23,10 @@ _start:
     ; rsp = early_init_stack_top
     mov rsp, early_init_stack_top
 
-    ; r15 = bootInfo
-    mov r15, rdi
+    ; bootInfo = rdi
+    mov [bootInfo], rdi
+
+    ; init_early()
     call init_early
     ud2 ; Should never be reached
 

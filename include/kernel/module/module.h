@@ -1,7 +1,7 @@
 #pragma once
 
 #include <_internal/MAX_PATH.h>
-#include <kernel/acpi/devices.h>
+#include <modules/acpi/devices.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/path.h>
 #include <kernel/module/symbol.h>
@@ -175,17 +175,19 @@ device type and check for the special types listed below. For example, these typ
 completely custom strings defined by the module itself.
  *
  * Special Device Types:
- * - `LOAD_ON_BOOT`: The module will be loaded after the kernel has initialized itself.
+ * - `BOOT_ALWAYS`: The module will be loaded after the kernel has initialized itself.
+ * - `BOOT_RSDP`: The module will be loaded if the RSDP is provided by the bootloader.
+ * - `BOOT_GOP`: The module will be loaded if GOP is provided by the bootloader.
  *
  * ## Data Format
  *
  * As an example of the data format in the `.module_info` section,
  * ```c
- * MODULE_INFO("My Module", "John Doe", "A sample module", "1.0.0", "MIT", "LOAD_ON_BOOT;ACPI0001");
+ * MODULE_INFO("My Module", "John Doe", "A sample module", "1.0.0", "MIT", "BOOT_ALWAYS;ACPI0001");
  * ```
  * becomes
  * ```c
- * "My Module;John Doe;A sample module;1.0.0;MIT;ac516767;LOAD_ON_BOOT;ACPI0001\0"
+ * "My Module;John Doe;A sample module;1.0.0;MIT;ac516767;BOOT_ALWAYS;ACPI0001\0"
  * ```
  *
  * @param _name The name of the module.

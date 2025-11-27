@@ -277,4 +277,4 @@ uint64_t _module_procedure(const module_event_t* event)
 }
 
 MODULE_INFO("Shared Memory", "Kai Norberg", "Implements shared memory for inter-process communication", OS_VERSION,
-    "MIT", "LOAD_ON_BOOT");
+    "MIT", "BOOT_ALWAYS");
