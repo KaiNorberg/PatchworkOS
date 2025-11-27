@@ -1,6 +1,6 @@
-#include <kernel/abstract/kbd.h>
+#include <kernel/drivers/abstract/kbd.h>
 
-#include <kernel/abstract/kbd.h>
+#include <kernel/drivers/abstract/kbd.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>

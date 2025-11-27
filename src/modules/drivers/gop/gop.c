@@ -1,4 +1,4 @@
-#include <kernel/abstract/fb.h>
+#include <kernel/drivers/abstract/fb.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>

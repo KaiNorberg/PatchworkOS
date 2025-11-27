@@ -2,7 +2,7 @@
 
 #include "ps2.h"
 
-#include <kernel/abstract/mouse.h>
+#include <kernel/drivers/abstract/mouse.h>
 
 /**
  * @brief PS/2 Mouse Driver.

@@ -11,8 +11,8 @@ typedef struct fb fb_t;
 
 /**
  * @brief Framebuffer driver abstraction.
- * @defgroup kernel_abstract_fb Framebuffer Abstraction
- * @ingroup kernel_abstract
+ * @defgroup kernel_drivers_abstract_fb Framebuffer Abstraction
+ * @ingroup kernel_drivers_abstract
  *
  * Framebuffer devices are exposed as a `/dev/fb/[id]/` directory, containing the following files:
  * - `buffer`: A file that can be `mmap`ed to access the framebuffer memory.
