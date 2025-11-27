@@ -62,6 +62,7 @@ static module_t* module_new(module_info_t* info)
     map_entry_init(&module->mapEntry);
     map_entry_init(&module->providerEntry);
     list_entry_init(&module->gcEntry);
+    list_entry_init(&module->loadEntry);
     module->flags = MODULE_FLAG_NONE;
     module->baseAddr = NULL;
     module->size = 0;

@@ -13,6 +13,13 @@
  */
 
 /**
+ * @brief Get the boot info structure provided by the bootloader.
+ *
+ * @return Pointer to the `boot_info_t` structure, or `NULL` if after initialization.
+ */
+boot_info_t* init_boot_info_get(void);
+
+/**
  * @brief Early kernel initialization.
  *
  * This will do the absolute minimum to get the scheduler running.
@@ -21,10 +28,8 @@
  * of the kernel initialization.
  *
  * Will be called in the `_start()` function found in `start.s` with interrupts disabled.
- *
- * @param bootInfo Information provided by the bootloader.
  */
-_NORETURN void init_early(const boot_info_t* bootInfo);
+_NORETURN void init_early(void);
 
 /**
  * @brief Kernel main function.
@@ -33,9 +38,7 @@ _NORETURN void init_early(const boot_info_t* bootInfo);
  * then perform the rest of the kernel initialization here and start the init process.
  *
  * Will never return, the boot thread will exit itself when done.
- *
- * @param bootInfo Information provided by the bootloader.
  */
-_NORETURN void kmain(const boot_info_t* bootInfo);
+_NORETURN void kmain(void);
 
 /** @} */

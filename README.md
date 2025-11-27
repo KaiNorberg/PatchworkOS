@@ -143,7 +143,7 @@ uint64_t _module_procedure(const module_event_t* event)
     return 0;
 }
 
-MODULE_INFO("Hello", "<author>", "A simple hello world module", "1.0", "MIT", "LOAD_ON_BOOT");
+MODULE_INFO("Hello", "<author>", "A simple hello world module", "1.0", "MIT", "BOOT_ALWAYS");
 ```
 
 An explanation of the code will be provided later.
@@ -176,13 +176,13 @@ This code in the `hello.c` file does a few things. First, it includes the releva
 
 Second, it defines a `_module_procedure()` function. This function serves as the entry point for the module and will be called by the kernel to notify the module of events, for example the module being loaded or a device attached. On the load event, it will print using the kernels logging system `"Hello, World!"`, resulting in the message being readable from `/dev/klog`.
 
-Finally, it defines the modules information. This information is, in order, the name of the module, the author of the module (thats you), a short description of the module, the module version, the licence of the module, and finally a list of "device types", in this case just `LOAD_ON_BOOT`, but more could be added by separating them with a semicolon (`;`).
+Finally, it defines the modules information. This information is, in order, the name of the module, the author of the module (thats you), a short description of the module, the module version, the licence of the module, and finally a list of "device types", in this case just `BOOT_ALWAYS`, but more could be added by separating them with a semicolon (`;`).
 
 The list of device types is what causes the kernel to actually load the module. I will avoid going into to much detail (you can check the documentation for that), but I will explain it briefly.
 
 The module loader itself has no idea what these type strings actually are, but subsytems within the kernel can specify that "a device of the type represented by this string is now available", the module loader can then load either one or all modules that have specified in their list of device types that it can handle the specified type. This means that any new subsystem, ACPI, USB, PCI, etc, can implement dynamic module loading using whatever types they want.
 
-So what is `LOAD_ON_BOOT`? It is the type of a special device that the kernel will pretend to "attach" during boot. In this case, it simply causes our hello module to be loaded during boot.
+So what is `BOOT_ALWAYS`? It is the type of a special device that the kernel will pretend to "attach" during boot. In this case, it simply causes our hello module to be loaded during boot.
 
 For more information, check the [Module Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/d41/group__kernel__module.html).
 

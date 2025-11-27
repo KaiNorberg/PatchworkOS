@@ -62,4 +62,4 @@ uint64_t _module_procedure(const module_event_t* event)
 }
 
 MODULE_INFO("Networking", "Kai Norberg", "Provides networking and socket IPC functionality", OS_VERSION, "MIT",
-    "LOAD_ON_BOOT");
+    "BOOT_ALWAYS");

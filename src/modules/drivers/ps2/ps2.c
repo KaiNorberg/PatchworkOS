@@ -2,9 +2,9 @@
 #include "ps2_kbd.h"
 #include "ps2_mouse.h"
 
-#include <kernel/acpi/aml/object.h>
-#include <kernel/acpi/resources.h>
-#include <kernel/acpi/tables.h>
+#include <modules/acpi/aml/object.h>
+#include <modules/acpi/resources.h>
+#include <modules/acpi/tables.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
