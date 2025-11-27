@@ -557,6 +557,23 @@ make doxygen
 make compile_commands
 ```
 
+### Repo Structure
+
+Source code can be found in the `src/` directory, with public API headers in the `include/` directory, private API headers are located alongside their respective source files.
+
+```plain
+.
+├── meta              // Meta files including screenshots, doxygen, etc.
+├── lib               // Third party files, for example doomgeneric.
+├── root              // Files to copy to the root of the generated image.
+└── <src|include>     // Source code and public API headers.
+    ├── kernel        // The kernel and its core subsystems.
+    ├── modules       // Kernel modules, drivers, filesystems, etc.
+    ├── programs      // User space programs.
+    ├── libstd        // The C standard library.
+    └── libpatchwork  // The PatchworkOS system library, gui, etc.
+```
+
 ### Grub Loopback
 
 For frequent testing, it might be inconvenient to frequently flash to a USB. You can instead set up the `.img` file as a loopback device in GRUB.
