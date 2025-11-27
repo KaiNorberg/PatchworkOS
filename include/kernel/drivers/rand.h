@@ -21,7 +21,7 @@
  */
 typedef struct
 {
-    bool rdrandAvail; ///< If set, the `RDRAND` instruction is avilable and working.
+    bool rdrandAvail; ///< If set, the `RDRAND` instruction is available and working.
 } rand_cpu_ctx_t;
 
 /**

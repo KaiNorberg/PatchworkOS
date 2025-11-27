@@ -564,7 +564,7 @@ uint64_t acpi_devices_init(void)
     return 0;
 }
 
-acpi_device_cfg_t* acpi_device_cfg_get(const char* name)
+acpi_device_cfg_t* acpi_device_cfg_lookup(const char* name)
 {
     if (name == NULL)
     {
@@ -598,4 +598,26 @@ acpi_device_cfg_t* acpi_device_cfg_get(const char* name)
     }
 
     return device->device.cfg;
+}
+
+uint64_t acpi_device_cfg_get_port(acpi_device_cfg_t* cfg, uint64_t index, port_t* out)
+{
+    if (cfg == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    for (uint64_t i = 0; i < cfg->ioCount; i++)
+    {
+        if (cfg->ios[i].length > index)
+        {
+            *out = cfg->ios[i].base + index;
+            return 0;
+        }
+        index -= cfg->ios[i].length;
+    }
+
+    errno = ENOSPC;
+    return ERR;
 }

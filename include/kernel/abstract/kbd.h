@@ -8,8 +8,8 @@
 
 /**
  * @brief Keyboard abstraction.
- * @defgroup kernel_drivers_abstractions_kbd Keyboard Abstraction
- * @ingroup kernel_drivers_abstractions
+ * @defgroup kernel_abstract_kbd Keyboard Abstraction
+ * @ingroup kernel_abstract
  *
  * Keyboard devices are exposed as `/dev/kbd/[id]` directories, containing the following files:
  * - `events`: A read-only pollable file that can be read to receive keyboard events as `kbd_event_t` structs.

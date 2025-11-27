@@ -148,6 +148,20 @@ uint64_t acpi_devices_init(void);
  * - `ENOTTY`: The specified name is not a device.
  * - `ENODEV`: The specified device has no configuration.
  */
-acpi_device_cfg_t* acpi_device_cfg_get(const char* name);
+acpi_device_cfg_t* acpi_device_cfg_lookup(const char* name);
+
+/**
+ * @brief Retrieves an the nth IO port assigned to an ACPI device.
+ * 
+ * Usefull as the each io entry contains a base and length, making it more complex to, for example, just get port "5".
+ * 
+ * @param cfg The device configuration to retrieve the port from.
+ * @param index The index of the IO port to retrieve.
+ * @param out Output pointer to store the retrieved port.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `ENOSPC`: The specified index is out of bounds.
+ */
+uint64_t acpi_device_cfg_get_port(acpi_device_cfg_t* cfg, uint64_t index, port_t* out);
 
 /** @} */

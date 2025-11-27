@@ -8,8 +8,8 @@
 
 /**
  * @brief Mouse driver abstraction.
- * @defgroup kernel_drivers_abstractions_mouse Mouse Abstraction
- * @ingroup kernel_drivers_abstractions
+ * @defgroup kernel_abstract_mouse Mouse Abstraction
+ * @ingroup kernel_abstract
  *
  * Mouse devices are exposed as `/dev/mouse/[id]` directories, containing the following files:
  * - `events`: A read-only pollable file that can be read to receive mouse events as `mouse_event_t` structs.

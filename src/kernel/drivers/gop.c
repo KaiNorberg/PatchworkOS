@@ -1,6 +1,6 @@
 #include <kernel/drivers/gop.h>
 
-#include <kernel/drivers/abstractions/fb.h>
+#include <kernel/abstract/fb.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>

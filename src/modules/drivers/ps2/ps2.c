@@ -550,7 +550,7 @@ static uint64_t ps2_attach_device(const char* type, const char* name)
 {
     LOCK_SCOPE(&attachLock);
 
-    acpi_device_cfg_t* acpiCfg = acpi_device_cfg_get(name);
+    acpi_device_cfg_t* acpiCfg = acpi_device_cfg_lookup(name);
     if (acpiCfg == NULL)
     {
         LOG_ERR("ps2 failed to get ACPI device config for '%s'\n", name);
@@ -568,20 +568,11 @@ static uint64_t ps2_attach_device(const char* type, const char* name)
         }
         controllerInitialized = true;
 
-        if (acpiCfg->ioCount != 2)
+        if (acpi_device_cfg_get_port(acpiCfg, 0, &dataPort) == ERR || acpi_device_cfg_get_port(acpiCfg, 1, &statusPort) == ERR)
         {
-            LOG_ERR("ps2 device '%s' has invalid IO resource count %d\n", name, acpiCfg->ioCount);
+            LOG_ERR("ps2 device '%s' has invalid status port resource\n", name);
             return ERR;
         }
-
-        if (acpiCfg->ios[0].length != 1 || acpiCfg->ios[1].length != 1)
-        {
-            LOG_ERR("ps2 device '%s' has invalid IO resource lengths\n", name);
-            return ERR;
-        }
-
-        dataPort = acpiCfg->ios[0].base;
-        statusPort = acpiCfg->ios[1].base;
         commandPort = statusPort; // Command port is the same as status port
 
         if (ps2_controller_init() == ERR)

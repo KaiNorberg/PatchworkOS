@@ -1,4 +1,4 @@
-#include <kernel/drivers/abstractions/fb.h>
+#include <kernel/abstract/fb.h>
 
 #include <kernel/fs/file.h>
 #include <kernel/fs/sysfs.h>

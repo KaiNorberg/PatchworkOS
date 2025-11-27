@@ -1,4 +1,4 @@
-#include <kernel/drivers/abstractions/mouse.h>
+#include <kernel/abstract/mouse.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>

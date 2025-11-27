@@ -187,7 +187,8 @@ static void hpet_timer_handler(interrupt_frame_t* frame, cpu_t* self)
 static sys_time_source_t source = {
     .name = "HPET",
     .precision = 0, // Filled in during init
-    .read = hpet_read_ns_counter,
+    .read_ns = hpet_read_ns_counter,
+    .read_epoch = NULL,
 };
 
 /**

@@ -16,7 +16,7 @@ typedef struct cpu cpu_t;
  * The sys time subsystem is responsible for providing a consistent system wide time keeping.
  *
  * System wide time is provided via "system time sources", which are provided in modules. Each source registers itself
- * with a estimate of its precision, the system time subsystem then chooses the source with the highest precision.
+ * with a estimate of its precision, the system time subsystem then chooses the two sources, one for uptime and one for unix epoch, with the best precision.
  *
  * @{
  */
@@ -34,7 +34,8 @@ typedef struct
 {
     const char* name;
     clock_t precision;
-    clock_t (*read)(void);
+    clock_t (*read_ns)(void);
+    time_t (*read_epoch)(void);
 } sys_time_source_t;
 
 /**
