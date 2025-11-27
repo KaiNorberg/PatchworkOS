@@ -6,7 +6,6 @@
 #include <kernel/cpu/idt.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/syscall.h>
-#include <kernel/drivers/gop.h>
 #include <kernel/drivers/pic.h>
 #include <kernel/fs/ramfs.h>
 #include <kernel/fs/sysfs.h>
@@ -131,10 +130,21 @@ static void init_finalize(void)
 
     process_reaper_init();
 
-    gop_init(&bootInfo->gop);
     perf_init();
 
     syscall_table_init();
+
+    if (bootInfo->gop.virtAddr != NULL)
+    {
+        if (module_device_attach("BOOT_GOP", "BOOT_GOP", MODULE_LOAD_ALL) == ERR)
+        {
+            panic(NULL, "Failed to load modules with BOOT_GOP");
+        }
+    }
+    else 
+    {
+        LOG_WARN("no GOP provided by bootloader\n");
+    }
 
     if (bootInfo->rsdp != NULL)
     {

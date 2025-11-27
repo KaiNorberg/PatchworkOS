@@ -176,7 +176,8 @@ completely custom strings defined by the module itself.
  *
  * Special Device Types:
  * - `BOOT_ALWAYS`: The module will be loaded after the kernel has initialized itself.
- * - `BOOT_RSDP`: The module will be loaded if the RSDP pointer is provided by the bootloader.
+ * - `BOOT_RSDP`: The module will be loaded if the RSDP is provided by the bootloader.
+ * - `BOOT_GOP`: The module will be loaded if GOP is provided by the bootloader.
  *
  * ## Data Format
  *
