@@ -96,7 +96,6 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 
 ## Notable Future Plans
 
-- Separate the kernel into more and more modules. <- Currently being worked on
 - "Earliest Eligible Virtual Deadline First" style scheduler?
 - Read, write, execute, create permissions.
 - Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions.
