@@ -314,7 +314,7 @@ uint64_t aml_num_elements_read(aml_term_list_ctx_t* ctx, uint8_t* out)
 
 /**
  * Used to handle package elements that are names but mainly its used as a callback for
- * the @ref kernel_acpi_aml_patch_up system.
+ * the @ref modules_acpi_aml_patch_up system.
  */
 static inline uint64_t aml_package_element_handle_name(aml_state_t* state, aml_object_t* in, aml_object_t* out)
 {

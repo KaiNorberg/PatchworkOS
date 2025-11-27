@@ -17,8 +17,6 @@
  * local APICs, the IO APICs and the APIC timer.
  *
  * @see [ACPI Specification Version 6.6](https://uefi.org/sites/default/files/resources/ACPI_Spec_6.6.pdf)
- *
- * @{
  */
 
 static void apic_cpu_handler(cpu_t* cpu, const cpu_event_t* event)
@@ -71,5 +69,3 @@ uint64_t _module_procedure(const module_event_t* event)
 }
 
 MODULE_INFO("APIC Driver", "Kai Norberg", "A driver for the APIC, local APIC and IOAPIC", OS_VERSION, "MIT", "PNP0003");
-
-/** @} */

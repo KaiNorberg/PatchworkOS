@@ -10,8 +10,8 @@ typedef struct aml_state aml_state_t;
 
 /**
  * @brief Patch-up system for forward references.
- * @defgroup kernel_acpi_aml_patch_up Patch-up
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_patch_up Patch-up
+ * @ingroup modules_acpi_aml
  *
  * @{
  */

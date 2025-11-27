@@ -6,8 +6,8 @@
 
 /**
  * @brief Buffer Field
- * @defgroup kernel_acpi_aml_buffer_field Buffer Field
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_buffer_field Buffer Field
+ * @ingroup modules_acpi_aml
  *
  * @{
  */
@@ -18,7 +18,7 @@
  * A BufferField is a view into a buffer, it has a bit offset and a bit size, and can be used to read or write parts of
  * the buffer.
  *
- * @see @ref kernel_acpi_aml_evaluate
+ * @see @ref modules_acpi_aml_evaluate
  *
  * @param bufferField The buffer field to read from.
  * @param out Pointer to the buffer where the result will be stored, will be an integer or a buffer.
@@ -32,7 +32,7 @@ uint64_t aml_buffer_field_load(aml_buffer_field_t* bufferField, aml_object_t* ou
  * A BufferField is a view into a buffer, it has a bit offset and a bit size, and can be used to read or write parts of
  * the buffer.
  *
- * @see @ref kernel_acpi_aml_evaluate
+ * @see @ref modules_acpi_aml_evaluate
  *
  * @param bufferField The buffer field to write to.
  * @param in Pointer to the object containing the value to write, must be an integer or a buffer.

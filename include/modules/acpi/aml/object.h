@@ -20,8 +20,8 @@ typedef struct aml_method aml_method_t;
 
 /**
  * @brief Object
- * @defgroup kernel_acpi_aml_object Object
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_object Object
+ * @ingroup modules_acpi_aml
  *
  * @{
  */
@@ -242,7 +242,7 @@ typedef struct aml_device
      * A device is considered properly configured when this pointer is not `NULL`, attempting to free a configured
      * device will cause a panic.
      *
-     * This pointer is managed by the devices system found in `devices.h` or @ref kernel_acpi_devices.
+     * This pointer is managed by the devices system found in `devices.h` or @ref modules_acpi_devices.
      *
      * @see acpi_device_cfg_t for more details.
      */

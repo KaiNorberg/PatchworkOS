@@ -7,8 +7,8 @@ typedef struct aml_thread aml_thread_t;
 
 /**
  * @brief Mutex
- * @defgroup kernel_acpi_aml_mutex Mutex
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_mutex Mutex
+ * @ingroup modules_acpi_aml
  *
  * This module provides functionality for acquiring and releasing AML mutexes.
  *

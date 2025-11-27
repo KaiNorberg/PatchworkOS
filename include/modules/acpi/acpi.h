@@ -9,8 +9,8 @@
 
 /**
  * @brief Advanced Configuration and Power Interface
- * @defgroup kernel_acpi ACPI
- * @ingroup kernel
+ * @defgroup modules_acpi ACPI
+ * @ingroup modules
  *
  * We use version 6.6 of the ACPI specification, but it contains minor mistakes or deprecated features that we use other
  * versions to straighten out. If the "ACPI specification" is ever sourced, without mentioning its version, assume

@@ -10,8 +10,8 @@
 
 /**
  * @brief Tokens
- * @defgroup kernel_acpi_aml_token Tokens
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_token Tokens
+ * @ingroup modules_acpi_aml
  *
  * This module handles descriptions of all tokens that can be found in an AML byte stream, storing them and their
  * properties.

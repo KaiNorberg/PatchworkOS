@@ -6,8 +6,8 @@
 
 /**
  * @brief Method Evaluation
- * @defgroup kernel_acpi_aml_method Methods
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_method Methods
+ * @ingroup modules_acpi_aml
  *
  * @{
  */

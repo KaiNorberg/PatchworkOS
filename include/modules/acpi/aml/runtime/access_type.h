@@ -7,8 +7,8 @@
 
 /**
  * @brief Access Type Handling
- * @defgroup kernel_acpi_aml_access_type Access Type
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_access_type Access Type
+ * @ingroup modules_acpi_aml
  *
  * This module provides functionality for handling access types, alignment with access types, etc.
  *

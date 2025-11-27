@@ -8,8 +8,8 @@
 
 /**
  * @brief Tests for the AML parser.
- * @defgroup kernel_acpi_aml_tests Tests
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_tests Tests
+ * @ingroup modules_acpi_aml
  *
  * @{
  */

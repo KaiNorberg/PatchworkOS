@@ -6,8 +6,8 @@
 
 /**
  * @brief Copy
- * @defgroup kernel_acpi_aml_copy Copy
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_copy Copy
+ * @ingroup modules_acpi_aml
  *
  * @{
  */

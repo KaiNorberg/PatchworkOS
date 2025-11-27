@@ -9,8 +9,8 @@ typedef struct aml_term_list_ctx aml_term_list_ctx_t;
 
 /**
  * @brief Expression Opcodes Encoding
- * @defgroup kernel_acpi_aml_encoding_expression Expression Opcodes
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_encoding_expression Expression Opcodes
+ * @ingroup modules_acpi_aml
  *
  * @see Section 20.2.5.4 of the ACPI specification for more details.
  *

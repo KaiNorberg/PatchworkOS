@@ -9,8 +9,8 @@
 
 /**
  * @brief Namespace and Namespace Overlays
- * @defgroup kernel_acpi_aml_namespace Namespace
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_namespace Namespace
+ * @ingroup modules_acpi_aml
  *
  * We need this slightly complex system as when a method runs it can create named objects that should not be visible
  * outside of the method, and when the method finishes these objects need to be removed. Additionally, if the method

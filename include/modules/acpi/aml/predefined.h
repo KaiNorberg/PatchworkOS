@@ -6,8 +6,8 @@
 
 /**
  * @brief Predefined AML names and objects
- * @defgroup kernel_acpi_aml_predefined Predefined
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_predefined Predefined
+ * @ingroup modules_acpi_aml
  *
  * @{
  */

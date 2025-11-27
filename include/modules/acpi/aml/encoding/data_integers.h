@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 /**
- * @addtogroup kernel_acpi_aml_encoding_data
+ * @addtogroup modules_acpi_aml_encoding_data
  *
  * @{
  */

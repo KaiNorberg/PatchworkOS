@@ -10,8 +10,8 @@ typedef struct aml_term_list_ctx aml_term_list_ctx_t;
 
 /**
  * @brief Statement Opcodes Encoding
- * @defgroup kernel_acpi_aml_encoding_statement Statement Opcodes
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_encoding_statement Statement Opcodes
+ * @ingroup modules_acpi_aml
  *
  * @see Section 20.2.5.3 of the ACPI specification for more details.
  *

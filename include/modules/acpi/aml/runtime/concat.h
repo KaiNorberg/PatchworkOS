@@ -4,8 +4,8 @@
 
 /**
  * @brief Object Concatenation
- * @defgroup kernel_acpi_aml_runtime_concat Concat
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_runtime_concat Concat
+ * @ingroup modules_acpi_aml
  */
 
 /**

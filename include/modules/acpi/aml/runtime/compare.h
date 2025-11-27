@@ -4,8 +4,8 @@
 
 /**
  * @brief Object Comparison
- * @defgroup kernel_acpi_aml_compare Compare
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_compare Compare
+ * @ingroup modules_acpi_aml
  *
  * @{
  */

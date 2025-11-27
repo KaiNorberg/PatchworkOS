@@ -6,8 +6,8 @@
 
 /**
  * @brief Opregion and Field Access
- * @defgroup kernel_acpi_aml_field Field Access
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_field Field Access
+ * @ingroup modules_acpi_aml
  *
  * This module provides functionality for accessing Opregions and Fields.
  *
@@ -28,7 +28,7 @@
  *
  * Will acquire the global mutex if the FieldUnits LockRule is set to `AML_LOCK_RULE_LOCK`.
  *
- * @see @ref kernel_acpi_aml_evaluate
+ * @see @ref modules_acpi_aml_evaluate
  * @see Section 19.6.48, 19.6.64 and 19.6.7 of the ACPI specification for more details.
  *
  * @param state Pointer to the current AML state.
@@ -43,7 +43,7 @@ uint64_t aml_field_unit_load(aml_state_t* state, aml_field_unit_t* fieldUnit, am
  *
  * Will acquire the global mutex if the FieldUnits LockRule is set to `AML_LOCK_RULE_LOCK`.
  *
- * @see @ref kernel_acpi_aml_evaluate
+ * @see @ref modules_acpi_aml_evaluate
  * @see Section 19.6.48, 19.6.64 and 19.6.7 of the ACPI specification for more details.
  *
  * @param state Pointer to the current AML state.

@@ -4,8 +4,8 @@
 
 /**
  * @brief Object Runtime Evaluation
- * @defgroup kernel_acpi_aml_evaluate Runtime Evaluation
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_evaluate Runtime Evaluation
+ * @ingroup modules_acpi_aml
  *
  * @{
  */

@@ -6,8 +6,8 @@
 
 /**
  * @brief Data Type Conversion
- * @defgroup kernel_acpi_aml_convert Convert
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_convert Convert
+ * @ingroup modules_acpi_aml
  *
  * @see Section 19.3.5 of the ACPI specification for more details.
  * @see Section 19.3.5.7 table 19.6 for the conversion priority order.

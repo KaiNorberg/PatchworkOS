@@ -3,6 +3,7 @@
 #include "ps2_mouse.h"
 
 #include <modules/acpi/aml/object.h>
+#include <modules/acpi/devices.h>
 #include <modules/acpi/resources.h>
 #include <modules/acpi/tables.h>
 #include <kernel/cpu/irq.h>

@@ -4,8 +4,8 @@
 
 /**
  * @brief System Description Tables
- * @defgroup kernel_acpi_tables Tables
- * @ingroup kernel_acpi
+ * @defgroup modules_acpi_tables Tables
+ * @ingroup modules_acpi
  *
  * This module defines the ACPI tables found in the ACPI specification, tables defined outside of the specification, for
  * example, MCFG is defined in their own files.

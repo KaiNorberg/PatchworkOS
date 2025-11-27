@@ -9,8 +9,8 @@
 
 /**
  * @brief Device and Power Management
- * @defgroup kernel_acpi_devices Devices
- * @ingroup kernel_acpi
+ * @defgroup modules_acpi_devices Devices
+ * @ingroup modules_acpi
  *
  * Handles enumeration and configuration of ACPI devices, along with dynamic loading of device drivers.
  *
@@ -153,7 +153,7 @@ acpi_device_cfg_t* acpi_device_cfg_lookup(const char* name);
 /**
  * @brief Retrieves an the nth IO port assigned to an ACPI device.
  * 
- * Usefull as the each io entry contains a base and length, making it more complex to, for example, just get port "5".
+ * Useful as each IO entry contains a base and length, making it rather complex to just, for example, get the 5th port.
  * 
  * @param cfg The device configuration to retrieve the port from.
  * @param index The index of the IO port to retrieve.

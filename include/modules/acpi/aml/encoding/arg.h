@@ -5,8 +5,8 @@ typedef struct aml_term_list_ctx aml_term_list_ctx_t;
 
 /**
  * @brief Arg Objecs Encoding
- * @defgroup kernel_acpi_aml_encoding_args Args
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_encoding_args Args
+ * @ingroup modules_acpi_aml
  *
  * @see Section 20.2.6.1 of the ACPI specification.
  *

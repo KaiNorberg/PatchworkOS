@@ -5,8 +5,8 @@
 
 /**
  * @brief Debugging
- * @defgroup kernel_acpi_aml_debug Debugging
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_debug Debugging
+ * @ingroup modules_acpi_aml
  *
  * @{
  */

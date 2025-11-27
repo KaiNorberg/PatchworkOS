@@ -5,8 +5,8 @@
 
 /**
  * @brief String Conversion
- * @defgroup kernel_acpi_aml_string_conversion String Conversion
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_string_conversion String Conversion
+ * @ingroup modules_acpi_aml
  *
  * @{
  */

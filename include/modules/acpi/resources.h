@@ -6,14 +6,14 @@
 
 /**
  * @brief ACPI resource settings.
- * @defgroup kernel_acpi_resources Resources
- * @ingroup kernel_acpi
+ * @defgroup modules_acpi_resources Resources
+ * @ingroup modules_acpi
  *
  * In the AML namespace heirarchy each device uses a buffer object, usually returned by their `_CRS` method, to describe
  * the resources they require, for example IO ports, IRQs, DMA channels, etc.
  *
  * For the vast majority of use cases, its recommended to use the device abstraction layer provided by the `devices.h`
- * file or @ref kernel_acpi_devices instead of directly parsing these overcomplicated structures.
+ * file or @ref modules_acpi_devices instead of directly parsing these overcomplicated structures.
  *
  * ## Example
  *

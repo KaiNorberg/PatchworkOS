@@ -5,8 +5,8 @@
 
 /**
  * @brief Integer revision handling
- * @defgroup kernel_acpi_aml_integer Integer
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_integer Integer
+ * @ingroup modules_acpi_aml
  *
  * This module handles the varying size of integers in AML, which can be either 32 or 64 bits depending on the ACPI
  * revision.

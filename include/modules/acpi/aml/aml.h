@@ -10,8 +10,8 @@
 
 /**
  * @brief ACPI AML
- * @defgroup kernel_acpi_aml AML
- * @ingroup kernel_acpi
+ * @defgroup modules_acpi_aml AML
+ * @ingroup modules_acpi
  *
  * ACPI AML is a procedural turing complete bytecode language used to describe the hardware configuration of a computer
  * system. A hardware manufacturer creates the bytecode to describe their hardware, and we, as the kernel, parse it. The

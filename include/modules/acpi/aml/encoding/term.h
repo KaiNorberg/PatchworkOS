@@ -8,8 +8,8 @@ typedef struct aml_state aml_state_t;
 
 /**
  * @brief Term Objects Encoding
- * @defgroup kernel_acpi_aml_encoding_term Term Objects
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_encoding_term Term Objects
+ * @ingroup modules_acpi_aml
  *
  * @see Section 20.2.5 of the ACPI specification for more details.
  *

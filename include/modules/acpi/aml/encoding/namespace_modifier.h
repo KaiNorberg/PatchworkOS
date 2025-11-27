@@ -9,8 +9,8 @@ typedef struct aml_term_list_ctx aml_term_list_ctx_t;
 
 /**
  * @brief Namespace Modifier Objects Encoding
- * @defgroup kernel_acpi_aml_encoding_namespace_modifier Namespace Modifier Objects
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_encoding_namespace_modifier Namespace Modifier Objects
+ * @ingroup modules_acpi_aml
  *
  * @see Section 20.2.5.1 of the ACPI specification for more details.
  *

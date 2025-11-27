@@ -12,8 +12,8 @@ typedef struct aml_term_list_ctx aml_term_list_ctx_t;
 
 /**
  * @brief Named Objects Encoding
- * @defgroup kernel_acpi_aml_encoding_name Named Objects
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_encoding_name Named Objects
+ * @ingroup modules_acpi_aml
  *
  * Not to be confused with "ACPI AML Name Objects Encoding".
  *

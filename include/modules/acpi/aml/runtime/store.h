@@ -6,8 +6,8 @@
 
 /**
  * @brief Store
- * @defgroup kernel_acpi_aml_store Store
- * @ingroup kernel_acpi_aml
+ * @defgroup modules_acpi_aml_store Store
+ * @ingroup modules_acpi_aml
  *
  * @{
  */
