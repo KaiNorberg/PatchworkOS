@@ -37,16 +37,6 @@
 #define CONFIG_MAX_USER_STACK_PAGES 100
 
 /**
- * @brief CPU data configuration.
- * @ingroup kernel
- * @def CONFIG_CPU_DATA_PAGES
- *
- * The `CONFIG_CPU_DATA_PAGES` constant defines the amount of pages allocated for per-CPU data.
- *
- */
-#define CONFIG_CPU_DATA_PAGES 16
-
-/**
  * @brief Maximum file descriptor configuration.
  * @ingroup kernel
  * @def CONFIG_MAX_FD
@@ -107,7 +97,18 @@
  * time slice given depends on the thread's weight.
  *
  */
-#define CONFIG_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 50)
+#define CONFIG_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 10)
+
+/**
+ * @brief Weight base configuration.
+ * @ingroup kernel
+ * @def CONFIG_WEIGHT_BASE
+ *
+ * The `CONFIG_WEIGHT_BASE` constant defines the base to add to the priority of a process when calculating a thread's
+ * weight. Increasing this value with reduce the significance of priority differences between processes.
+ *
+ */
+#define CONFIG_WEIGHT_BASE 1
 
 /**
  * @brief Load balance bias configuration.

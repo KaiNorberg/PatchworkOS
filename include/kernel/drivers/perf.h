@@ -10,7 +10,7 @@ typedef struct thread thread_t;
 
 /**
  * @brief Performance driver.
- * @defgroup kernel_drivers_performance performance
+ * @defgroup kernel_drivers_performance Performance Driver
  * @ingroup kernel_drivers
  *
  * The Performance driver is exposed in the `/dev/perf` directory. Below is an overview of the files in this

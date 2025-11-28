@@ -32,7 +32,7 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
     thread->process = REF(process);
     list_entry_init(&thread->processEntry);
     thread->id = thread->process->threads.newTid++;
-    sched_thread_ctx_init(&thread->sched);
+    sched_ctx_init(&thread->sched);
     atomic_init(&thread->state, THREAD_PARKED);
     thread->error = 0;
     if (stack_pointer_init(&thread->kernelStack,

@@ -22,6 +22,7 @@ rbnode_t* rbtree_rotate(rbtree_t* tree, rbnode_t* node, rbnode_direction_t direc
 
     rbnode_t* parent = node->parent;
     rbnode_t* newRoot = node->children[opposite];
+    assert(newRoot != NULL);
     rbnode_t* newChild = newRoot->children[direction];
 
     node->children[opposite] = newChild;
@@ -55,6 +56,9 @@ rbnode_t* rbtree_rotate(rbtree_t* tree, rbnode_t* node, rbnode_direction_t direc
 
 static void rbtree_insert_at(rbtree_t* tree, rbnode_t* parent, rbnode_t* node, rbnode_direction_t direction)
 {
+    assert(node != NULL);
+    assert(direction == RBNODE_LEFT || direction == RBNODE_RIGHT);
+    
     node->color = RBNODE_RED;
     node->parent = parent;
 
@@ -64,6 +68,7 @@ static void rbtree_insert_at(rbtree_t* tree, rbnode_t* parent, rbnode_t* node, r
         return;
     }
 
+    assert(parent->children[direction] == NULL);
     parent->children[direction] = node;
 
     while (true)
@@ -80,6 +85,7 @@ static void rbtree_insert_at(rbtree_t* tree, rbnode_t* parent, rbnode_t* node, r
             return;
         }
 
+        assert(grandparent->children[RBNODE_LEFT] == parent || grandparent->children[RBNODE_RIGHT] == parent);
         rbnode_direction_t fromParent = RBNODE_FROM_PARENT(parent);
         rbnode_t* uncle = grandparent->children[RBNODE_OPPOSITE(fromParent)];
         if (uncle == NULL || uncle->color == RBNODE_BLACK)
@@ -106,6 +112,7 @@ static void rbtree_insert_at(rbtree_t* tree, rbnode_t* parent, rbnode_t* node, r
         {
             break;
         }
+        assert(parent->children[RBNODE_LEFT] == node || parent->children[RBNODE_RIGHT] == node);
     }
 }
 
@@ -138,11 +145,19 @@ void rbtree_insert(rbtree_t* tree, rbnode_t* node)
 
     rbtree_insert_at(tree, parent, node, direction);
     tree->size++;
+    
+    if (tree->root != NULL)
+    {
+        tree->root->color = RBNODE_BLACK;
+    }
 }
 
 rbnode_t* rbtree_find_min(rbnode_t* node)
 {
-    assert(node != NULL);
+    if (node == NULL)
+    {
+        return NULL;
+    }
 
     rbnode_t* current = node;
     while (current->children[RBNODE_LEFT] != NULL)
@@ -154,7 +169,10 @@ rbnode_t* rbtree_find_min(rbnode_t* node)
 
 rbnode_t* rbtree_find_max(rbnode_t* node)
 {
-    assert(node != NULL);
+    if (node == NULL)
+    {
+        return NULL;
+    }
 
     rbnode_t* current = node;
     while (current->children[RBNODE_RIGHT] != NULL)
@@ -174,6 +192,9 @@ void rbtree_swap(rbtree_t* tree, rbnode_t* a, rbnode_t* b)
     {
         return;
     }
+
+    assert(a->parent == NULL || a->parent->children[RBNODE_LEFT] == a || a->parent->children[RBNODE_RIGHT] == a);
+    assert(b->parent == NULL || b->parent->children[RBNODE_LEFT] == b || b->parent->children[RBNODE_RIGHT] == b);
 
     rbnode_color_t tempColor = a->color;
     a->color = b->color;
@@ -301,8 +322,8 @@ void rbtree_swap(rbtree_t* tree, rbnode_t* a, rbnode_t* b)
 
 static void rbtree_remove_sanitize(rbtree_t* tree, rbnode_t* node)
 {
-    assert(node->parent == NULL || (node->parent->children[RBNODE_LEFT] != node &&
-                                   node->parent->children[RBNODE_RIGHT] != node));
+    assert(node->parent == NULL ||
+        (node->parent->children[RBNODE_LEFT] != node && node->parent->children[RBNODE_RIGHT] != node));
     assert(node->children[RBNODE_LEFT] == NULL || (node->children[RBNODE_LEFT]->parent != node));
     assert(node->children[RBNODE_RIGHT] == NULL || (node->children[RBNODE_RIGHT]->parent != node));
 
@@ -324,19 +345,24 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node)
         return;
     }
 
+    assert(node == tree->root || node->parent->children[RBNODE_LEFT] == node || node->parent->children[RBNODE_RIGHT] == node);
+
     if (node->children[RBNODE_LEFT] != NULL && node->children[RBNODE_RIGHT] != NULL)
     {
         rbnode_t* successor = rbtree_find_min(node->children[RBNODE_RIGHT]);
+        assert(successor != NULL);
+        assert(successor->children[RBNODE_LEFT] == NULL);
         rbtree_swap(tree, node, successor);
-        rbtree_remove(tree, successor); 
-        return; 
+        rbtree_remove(tree, successor);
+        return;
     }
 
     rbnode_t* child = node->children[RBNODE_LEFT] != NULL ? node->children[RBNODE_LEFT] : node->children[RBNODE_RIGHT];
+    assert(!(node->children[RBNODE_LEFT] != NULL && node->children[RBNODE_RIGHT] != NULL));
 
     if (node->color == RBNODE_RED)
     {
-        assert(child == NULL); // Red node cannot have one child
+        assert(child == NULL);
 
         if (node->parent == NULL)
         {
@@ -345,6 +371,7 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node)
         else
         {
             rbnode_direction_t fromParent = RBNODE_FROM_PARENT(node);
+            assert(node->parent->children[fromParent] == node);
             node->parent->children[fromParent] = NULL;
         }
 
@@ -354,7 +381,8 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node)
 
     if (child != NULL)
     {
-        assert(child->color == RBNODE_RED); 
+        assert(child->color == RBNODE_RED);
+        assert(child->parent == node);
 
         if (node->parent == NULL)
         {
@@ -364,10 +392,10 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node)
         {
             node->parent->children[RBNODE_FROM_PARENT(node)] = child;
         }
-        
+
         child->parent = node->parent;
         child->color = RBNODE_BLACK;
-        
+
         rbtree_remove_sanitize(tree, node);
         return;
     }
@@ -382,6 +410,7 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node)
     }
 
     rbnode_direction_t fromParent = RBNODE_FROM_PARENT(node);
+    assert(parent->children[fromParent] == node);
     parent->children[fromParent] = NULL;
 
     rbtree_remove_sanitize(tree, node);
@@ -395,10 +424,13 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node)
 
         if (sibling->color == RBNODE_RED)
         {
+            assert(parent->color == RBNODE_BLACK);
             rbtree_rotate(tree, parent, fromParent);
             parent->color = RBNODE_RED;
             sibling->color = RBNODE_BLACK;
             sibling = parent->children[RBNODE_OPPOSITE(fromParent)];
+            assert(sibling != NULL);
+            assert(sibling->color == RBNODE_BLACK);
         }
 
         rbnode_t* distantNephew = sibling->children[RBNODE_OPPOSITE(fromParent)];
@@ -416,6 +448,8 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node)
                 break;
             }
 
+            assert(parent->children[RBNODE_LEFT] == curr || parent->children[RBNODE_RIGHT] == curr);
+
             if (curr->color == RBNODE_RED)
             {
                 curr->color = RBNODE_BLACK;
@@ -428,6 +462,8 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node)
 
         if (distantNephew == NULL || distantNephew->color == RBNODE_BLACK)
         {
+            assert(closeNephew != NULL);
+            assert(closeNephew->color == RBNODE_RED);
             rbtree_rotate(tree, sibling, RBNODE_OPPOSITE(fromParent));
             sibling->color = RBNODE_RED;
             closeNephew->color = RBNODE_BLACK;
@@ -436,6 +472,8 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node)
             sibling = closeNephew;
         }
 
+        assert(sibling->children[RBNODE_OPPOSITE(fromParent)] != NULL);
+        assert(sibling->children[RBNODE_OPPOSITE(fromParent)]->color == RBNODE_RED);
         rbtree_rotate(tree, parent, fromParent);
         sibling->color = parent->color;
         parent->color = RBNODE_BLACK;
@@ -445,10 +483,16 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node)
         }
         break;
     }
+
+    if (tree->root != NULL)
+    {
+        tree->root->color = RBNODE_BLACK;
+    }
 }
 
 bool rbtree_is_empty(const rbtree_t* tree)
 {
     assert(tree != NULL);
+    assert((tree->size == 0) == (tree->root == NULL));
     return tree->size == 0;
 }

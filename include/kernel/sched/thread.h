@@ -28,8 +28,7 @@
 typedef enum
 {
     THREAD_PARKED = 0, ///< Is doing nothing, not in a queue, not blocking, think of it as "other".
-    THREAD_READY,      ///< Is ready to run and waiting to be scheduled.
-    THREAD_RUNNING,    ///< Is currently running on a cpu.
+    THREAD_ACTIVE,     ///< Is either running or ready to run.
     THREAD_PRE_BLOCK,  ///< Has started the process of blocking but has not yet been given to a owner cpu.
     THREAD_BLOCKED,    ///< Is blocking and waiting in one or multiple wait queues.
     THREAD_UNBLOCKING, ///< Has started unblocking, used to prevent the same thread being unblocked multiple times.
@@ -75,7 +74,7 @@ typedef struct thread
     errno_t error;
     stack_pointer_t kernelStack; ///< The kernel stack of the thread.
     stack_pointer_t userStack;   ///< The user stack of the thread.
-    sched_thread_ctx_t sched;
+    sched_ctx_t sched;
     wait_thread_ctx_t wait;
     simd_ctx_t simd;
     note_queue_t notes;

@@ -131,7 +131,7 @@ typedef struct cpu
     perf_cpu_ctx_t perf;
     timer_cpu_ctx_t timer;
     wait_cpu_ctx_t wait;
-    sched_cpu_ctx_t sched;
+    sched_t sched;
     rand_cpu_ctx_t rand;
     ipi_cpu_ctx_t ipi;
     stack_pointer_t exceptionStack;

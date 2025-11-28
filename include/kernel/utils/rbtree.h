@@ -15,15 +15,18 @@ typedef struct rbnode rbnode_t;
  * lookup operations with a worst case time complexity of `O(log n)`.
  *
  * ## Used As A Sorted Linked List
- * 
- * The name "Red-Black Tree" can be a bit confusing. To the user of the tree, it simply acts as a highly optimized sorted linked list. 
- * 
- * The tree structure allows for more efficient operations compared to a standard linked list (`O(log n)` vs `O(n)`), and the red-black properties ensure that the tree remains balanced, preventing it from degenerating into a linear structure, 
- * 
+ *
+ * The name "Red-Black Tree" can be a bit confusing. To the user of the tree, it simply acts as a highly optimized
+ * sorted linked list.
+ *
+ * The tree structure allows for more efficient operations compared to a standard linked list (`O(log n)` vs `O(n)`),
+ * and the red-black properties ensure that the tree remains balanced, preventing it from degenerating into a linear
+ * structure,
+ *
  * However, the user of the tree does not need to be concerned with these implementation details.
  *
  * TODO: Cache minimum and maximum nodes for `O(1)` access.
- * 
+ *
  * @see [Wikipedia Red-Black Tree](https://en.wikipedia.org/wiki/Red%E2%80%93black_tree) for more information on
  * Red-Black Trees.
  * @{
