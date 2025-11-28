@@ -1,10 +1,10 @@
 #pragma once
 
+#include <kernel/sync/mutex.h>
 #include <modules/acpi/aml/encoding/data.h>
 #include <modules/acpi/aml/encoding/expression.h>
 #include <modules/acpi/aml/encoding/name.h>
 #include <modules/acpi/aml/encoding/named.h>
-#include <kernel/sync/mutex.h>
 
 #include <stdint.h>
 
@@ -47,7 +47,7 @@
 
 /**
  * @brief Initialize the AML subsystem.
- * 
+ *
  * @return On success, `0`. On failure, `ERR`.
  */
 uint64_t aml_init(void);

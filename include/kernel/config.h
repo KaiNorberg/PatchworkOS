@@ -99,57 +99,15 @@
 #define CONFIG_MIN_TIMER_TIMEOUT ((CLOCKS_PER_SEC) / 10000)
 
 /**
- * @brief Maximum time slice configuration.
+ * @brief Time slice configuration.
  * @ingroup kernel
- * @def CONFIG_MAX_TIME_SLICE
+ * @def CONFIG_TIME_SLICE
  *
- * The `CONFIG_MAX_TIME_SLICE` constant defines the maximum time slice a thread can have based on its priority.
+ * The `CONFIG_TIME_SLICE` constant defines the default time slice given to threads when they are scheduled. The actual
+ * time slice given depends on the thread's weight.
  *
  */
-#define CONFIG_MAX_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 50)
-
-/**
- * @brief Minimum time slice configuration.
- * @ingroup kernel
- * @def CONFIG_MIN_TIME_SLICE
- *
- * The `CONFIG_MIN_TIME_SLICE` constant defines the minimum time slice a thread can have based on its priority.
- *
- */
-#define CONFIG_MIN_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 10)
-
-/**
- * @brief Maximum recent block time configuration.
- * @ingroup kernel
- * @def CONFIG_MAX_RECENT_BLOCK_TIME
- *
- * The `CONFIG_MAX_RECENT_BLOCK_TIME` constant defines the length of time considered when deciding if a thread is I/O or
- * CPU bound.
- *
- */
-#define CONFIG_MAX_RECENT_BLOCK_TIME ((CLOCKS_PER_SEC / 1000) * 10)
-
-/**
- * @brief Maximum priority boost configuration.
- * @ingroup kernel
- * @def CONFIG_MAX_PRIORITY_BOOST
- *
- * The `CONFIG_MAX_PRIORITY_BOOST` constant defines the maximum priority boost a thread can receive from being I/O
- * bound.
- *
- */
-#define CONFIG_MAX_PRIORITY_BOOST 8
-
-/**
- * @brief Maximum priority penalty configuration.
- * @ingroup kernel
- * @def CONFIG_MAX_PRIORITY_PENALTY
- *
- * The `CONFIG_MAX_PRIORITY_PENALTY` constant defines the maximum priority penalty a thread can receive from being CPU
- * bound.
- *
- */
-#define CONFIG_MAX_PRIORITY_PENALTY 8
+#define CONFIG_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 50)
 
 /**
  * @brief Load balance bias configuration.

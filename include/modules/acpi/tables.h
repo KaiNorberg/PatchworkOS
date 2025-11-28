@@ -251,7 +251,7 @@ typedef struct
 
 /**
  * @brief Initialize ACPI tables and call their init handlers.
- * 
+ *
  * @param rsdp Pointer to the RSDP structure.
  * @return On success, `0`. On failure, `ERR`.
  */
@@ -259,7 +259,7 @@ uint64_t acpi_tables_init(rsdp_t* rsdp);
 
 /**
  * @brief Expose ACPI tables to sysfs.
- * 
+ *
  * @return On success, `0`. On failure, `ERR`.
  */
 uint64_t acpi_tables_expose(void);

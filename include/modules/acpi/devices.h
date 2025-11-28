@@ -1,9 +1,9 @@
 #pragma once
 
-#include <modules/acpi/aml/object.h>
-#include <modules/acpi/resources.h>
 #include <kernel/cpu/io.h>
 #include <kernel/cpu/irq.h>
+#include <modules/acpi/aml/object.h>
+#include <modules/acpi/resources.h>
 
 #include <sys/io.h>
 
@@ -152,9 +152,9 @@ acpi_device_cfg_t* acpi_device_cfg_lookup(const char* name);
 
 /**
  * @brief Retrieves an the nth IO port assigned to an ACPI device.
- * 
+ *
  * Useful as each IO entry contains a base and length, making it rather complex to just, for example, get the 5th port.
- * 
+ *
  * @param cfg The device configuration to retrieve the port from.
  * @param index The index of the IO port to retrieve.
  * @param out Output pointer to store the retrieved port.

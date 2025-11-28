@@ -8,5 +8,4 @@ uint64_t _module_procedure(const module_event_t* event)
     return 0;
 }
 
-MODULE_INFO("APCI PCI Driver", "Kai Norberg", "An ACPI PCI host bridge driver", OS_VERSION, "MIT",
-    "");
+MODULE_INFO("APCI PCI Driver", "Kai Norberg", "An ACPI PCI host bridge driver", OS_VERSION, "MIT", "");

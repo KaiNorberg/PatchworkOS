@@ -85,7 +85,7 @@ void cpu_init(cpu_t* cpu)
     perf_cpu_ctx_init(&cpu->perf);
     timer_cpu_ctx_init(&cpu->timer);
     wait_cpu_ctx_init(&cpu->wait, cpu);
-    sched_cpu_ctx_init(&cpu->sched, cpu);
+    sched_cpu_ctx_init(&cpu->sched);
     ipi_cpu_ctx_init(&cpu->ipi);
 
     LOCK_SCOPE(&eventHandlerLock);

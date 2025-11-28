@@ -1,7 +1,7 @@
 #pragma once
 
-#include <modules/acpi/aml/encoding/name.h>
 #include <kernel/utils/map.h>
+#include <modules/acpi/aml/encoding/name.h>
 
 #include <kernel/defs.h>
 #include <stdint.h>

@@ -1,5 +1,6 @@
 #include <modules/acpi/aml/encoding/data.h>
 
+#include <kernel/log/log.h>
 #include <modules/acpi/aml/aml.h>
 #include <modules/acpi/aml/debug.h>
 #include <modules/acpi/aml/encoding/expression.h>
@@ -8,7 +9,6 @@
 #include <modules/acpi/aml/patch_up.h>
 #include <modules/acpi/aml/runtime/convert.h>
 #include <modules/acpi/aml/token.h>
-#include <kernel/log/log.h>
 
 #include <errno.h>
 #include <stdint.h>

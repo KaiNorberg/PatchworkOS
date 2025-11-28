@@ -132,8 +132,9 @@ uint64_t timer_source_amount(void);
  * knows exactly what time they are scheduling the timer for, as the uptime could change between the caller reading the
  * time and this function setting the timer, resulting in very subtle bugs or race conditions.
  *
- * @note Will never set the timeout to be less than `CONFIG_MIN_TIMER_TIMEOUT` to avoid spamming the CPU with timer interrupts.
- * 
+ * @note Will never set the timeout to be less than `CONFIG_MIN_TIMER_TIMEOUT` to avoid spamming the CPU with timer
+ * interrupts.
+ *
  * @param uptime The time since boot, we need to specify this as an argument to avoid inconsistency in the
  * timeout/deadline calculations.
  * @param deadline The desired deadline.

@@ -1,11 +1,11 @@
 #include <modules/acpi/aml/encoding/statement.h>
 
+#include <kernel/log/log.h>
 #include <modules/acpi/aml/debug.h>
 #include <modules/acpi/aml/encoding/expression.h>
 #include <modules/acpi/aml/encoding/package_length.h>
 #include <modules/acpi/aml/encoding/term.h>
 #include <modules/acpi/aml/token.h>
-#include <kernel/log/log.h>
 
 #include <errno.h>
 

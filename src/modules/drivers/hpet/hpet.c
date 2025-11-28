@@ -1,4 +1,3 @@
-#include <modules/acpi/tables.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -8,13 +7,15 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sync/seqlock.h>
 #include <kernel/utils/utils.h>
+#include <modules/acpi/tables.h>
 
 /**
  * @brief High Precision Event Timer
  * @defgroup modules_drivers_hpet HPET
  * @ingroup modules_drivers
  *
- * @note Since the HPET might be 32bit it could overflow rather quickly, so we implement a system for checking roughly when it will overflow and accumulate the counter into a 64 bit nanosecond counter.
+ * @note Since the HPET might be 32bit it could overflow rather quickly, so we implement a system for checking roughly
+ * when it will overflow and accumulate the counter into a 64 bit nanosecond counter.
  *
  * @see [OSDev HPET](https://wiki.osdev.org/HPET)
  *

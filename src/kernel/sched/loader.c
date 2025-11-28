@@ -120,7 +120,7 @@ static void loader_process_entry(void)
     thread->frame.cs = GDT_CS_RING3;
     thread->frame.ss = GDT_SS_RING3;
     thread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
-    
+
     thread_jump(thread);
 }
 
@@ -301,7 +301,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     }
 
     pid_t childPid = child->process->id; // Important to not deref after pushing the thread
-    sched_push_new_thread(child, thread);
+    sched_push(child, NULL);
     return childPid;
 
 cleanup_argv:
@@ -349,6 +349,6 @@ SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)
         return ERR;
     }
 
-    sched_push_new_thread(newThread, thread);
+    sched_push(newThread, NULL);
     return newThread->id;
 }

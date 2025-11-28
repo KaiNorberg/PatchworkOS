@@ -10,10 +10,22 @@ typedef struct rbnode rbnode_t;
  * @brief Red-Black Tree.
  * @defgroup kernel_utils_rbtree Red-Black Tree
  * @ingroup kernel_utils
+ *
+ * A Red-Black Tree (RBT) is a tree structure that maintains sorted data to allow for efficient insertion, deletion, and
+ * lookup operations with a worst case time complexity of `O(log n)`.
+ *
+ * ## Used As A Sorted Linked List
  * 
- * A Red-Black Tree (RBT) is a tree structure that maintains sorted data to allow for efficient insertion, deletion, and lookup operations with a worse case time complexity of `O(log n)`.
+ * The name "Red-Black Tree" can be a bit confusing. To the user of the tree, it simply acts as a highly optimized sorted linked list. 
  * 
- * @see [Wikipedia Red-Black Tree](https://en.wikipedia.org/wiki/Red%E2%80%93black_tree) for more information on Red-Black Trees.
+ * The tree structure allows for more efficient operations compared to a standard linked list (`O(log n)` vs `O(n)`), and the red-black properties ensure that the tree remains balanced, preventing it from degenerating into a linear structure, 
+ * 
+ * However, the user of the tree does not need to be concerned with these implementation details.
+ *
+ * TODO: Cache minimum and maximum nodes for `O(1)` access.
+ * 
+ * @see [Wikipedia Red-Black Tree](https://en.wikipedia.org/wiki/Red%E2%80%93black_tree) for more information on
+ * Red-Black Trees.
  * @{
  */
 
@@ -30,7 +42,7 @@ typedef enum
 /**
  * @brief Red-Black Tree Node Directions.
  * @enum rbnode_direction_t
- * 
+ *
  * Used to index into the children array of a `rbnode_t`.
  */
 typedef enum
@@ -42,7 +54,7 @@ typedef enum
 
 /**
  * @brief Get the opposite direction (left <-> right).
- * 
+ *
  * @param direction The direction to get the opposite of.
  * @return The opposite direction.
  */
@@ -50,7 +62,7 @@ typedef enum
 
 /**
  * @brief Get the direction of a node from its parent.
- * 
+ *
  * @param node The node to get the direction of.
  * @return The direction of the node from its parent.
  */
@@ -60,8 +72,9 @@ typedef enum
 /**
  * @brief Red-Black Tree Node.
  * @struct rbnode_t
- * 
- * Should be embedded in the structure to be stored in the tree, such that the parent structure can be retrieved via `CONTAINER_OF()`.
+ *
+ * Should be embedded in the structure to be stored in the tree, such that the parent structure can be retrieved via
+ * `CONTAINER_OF()`.
  */
 typedef struct rbnode
 {
@@ -72,19 +85,23 @@ typedef struct rbnode
 
 /**
  * @brief Create a Red-Black Tree Node initializer.
- * 
+ *
  * @return A Red-Black Tree Node initializer.
  */
-#define RBNODE_CREATE (rbnode_t){.parent = NULL, .children = {NULL, NULL}, .color = RBNODE_RED}
+#define RBNODE_CREATE \
+    (rbnode_t) \
+    { \
+        .parent = NULL, .children = {NULL, NULL}, .color = RBNODE_RED \
+    }
 
 /**
  * @brief Comparison function for Red-Black Tree nodes.
- * 
+ *
  * Should return:
  * - A negative value if `a` is less than `b`.
  * - Zero if `a` is equal to `b`.
  * - A positive value if `a` is greater than `b`.
- * 
+ *
  * @param a The first node to compare.
  * @param b The second node to compare.
  * @return The comparison result.
@@ -104,9 +121,9 @@ typedef struct rbtree
 
 /**
  * @brief Initialize a Red-Black Tree.
- * 
+ *
  * Will not allocate any memory.
- * 
+ *
  * @param tree The tree to initialize.
  * @param compare The comparison function to use.
  */
@@ -114,9 +131,10 @@ void rbtree_init(rbtree_t* tree, rbnode_compare_t compare);
 
 /**
  * @brief Rotate a node in the Red-Black Tree.
- * 
- * @see https://upload.wikimedia.org/wikipedia/commons/f/f2/Binary_Tree_Rotation_%28animated%29.gif for a animation of tree rotations.
- * 
+ *
+ * @see https://upload.wikimedia.org/wikipedia/commons/f/f2/Binary_Tree_Rotation_%28animated%29.gif for a animation of
+ * tree rotations.
+ *
  * @param tree The tree containing the node to rotate.
  * @param node The node to rotate.
  * @param direction The direction to rotate.
@@ -126,9 +144,9 @@ rbnode_t* rbtree_rotate(rbtree_t* tree, rbnode_t* node, rbnode_direction_t direc
 
 /**
  * @brief Find the minimum node in a subtree.
- * 
+ *
  * This is the same as just going as far left as possible.
- * 
+ *
  * @param node The root of the subtree.
  * @return The minimum node in the subtree.
  */
@@ -136,9 +154,9 @@ rbnode_t* rbtree_find_min(rbnode_t* node);
 
 /**
  * @brief Find the maximum node in a subtree.
- * 
+ *
  * This is the same as just going as far right as possible.
- * 
+ *
  * @param node The root of the subtree.
  * @return The maximum node in the subtree.
  */
@@ -146,15 +164,18 @@ rbnode_t* rbtree_find_max(rbnode_t* node);
 
 /**
  * @brief Swap two nodes in the Red-Black Tree.
- * 
+ *
+ * Needed as the structure is intrusive, so we can't just swap the data.
+ *
+ * @param tree The tree containing the nodes to swap.
  * @param a The first node to swap.
  * @param b The second node to swap.
  */
-void rbtree_swap(rbnode_t* a, rbnode_t* b);
+void rbtree_swap(rbtree_t* tree, rbnode_t* a, rbnode_t* b);
 
 /**
  * @brief Insert a node into the Red-Black Tree.
- * 
+ *
  * @param tree The tree to insert into.
  * @param node The node to insert.
  */
@@ -162,10 +183,18 @@ void rbtree_insert(rbtree_t* tree, rbnode_t* node);
 
 /**
  * @brief Remove a node from the Red-Black Tree.
- * 
+ *
  * @param tree The tree to remove from.
  * @param node The node to remove.
  */
 void rbtree_remove(rbtree_t* tree, rbnode_t* node);
+
+/**
+ * @brief Check if the Red-Black Tree is empty.
+ *
+ * @param tree The tree to check.
+ * @return `true` if the tree is empty, `false` otherwise.
+ */
+bool rbtree_is_empty(const rbtree_t* tree);
 
 /** @} */

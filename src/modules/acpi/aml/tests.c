@@ -4,6 +4,9 @@
 
 #include "acpica_tests/all_tests.h"
 
+#include <kernel/log/log.h>
+#include <kernel/sched/sys_time.h>
+#include <kernel/sched/timer.h>
 #include <modules/acpi/aml/aml.h>
 #include <modules/acpi/aml/encoding/term.h>
 #include <modules/acpi/aml/object.h>
@@ -11,9 +14,6 @@
 #include <modules/acpi/aml/state.h>
 #include <modules/acpi/aml/to_string.h>
 #include <modules/acpi/tables.h>
-#include <kernel/log/log.h>
-#include <kernel/sched/sys_time.h>
-#include <kernel/sched/timer.h>
 
 #include <stdlib.h>
 #include <string.h>

@@ -581,7 +581,7 @@ void process_reaper_init(void)
     reaper->frame.ss = GDT_SS_RING0;
     reaper->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
 
-    sched_push_new_thread(reaper, sched_thread());
+    sched_push(reaper, NULL);
 }
 
 SYSCALL_DEFINE(SYS_GETPID, pid_t)

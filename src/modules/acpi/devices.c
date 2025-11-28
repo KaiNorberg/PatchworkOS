@@ -2,6 +2,12 @@
 #include <modules/acpi/aml/namespace.h>
 #include <modules/acpi/devices.h>
 
+#include <kernel/cpu/irq.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/module/module.h>
+#include <kernel/utils/map.h>
+#include <kernel/utils/ref.h>
 #include <modules/acpi/aml/aml.h>
 #include <modules/acpi/aml/object.h>
 #include <modules/acpi/aml/runtime/eisa_id.h>
@@ -11,12 +17,6 @@
 #include <modules/acpi/aml/to_string.h>
 #include <modules/acpi/resources.h>
 #include <modules/acpi/tables.h>
-#include <kernel/cpu/irq.h>
-#include <kernel/log/log.h>
-#include <kernel/log/panic.h>
-#include <kernel/module/module.h>
-#include <kernel/utils/map.h>
-#include <kernel/utils/ref.h>
 
 #include <errno.h>
 #include <stdint.h>

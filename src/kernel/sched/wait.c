@@ -335,7 +335,7 @@ uint64_t wait_block_commit(void)
         break;
     case THREAD_PRE_BLOCK:
         cpu_put(); // Release cpu from wait_block_setup().
-        sched_yield();
+        ipi_invoke();
         break;
     default:
         panic(NULL, "Invalid thread state %d in wait_block_commit()", state);

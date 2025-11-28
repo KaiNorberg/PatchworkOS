@@ -2,10 +2,6 @@
 #include "ps2_kbd.h"
 #include "ps2_mouse.h"
 
-#include <modules/acpi/aml/object.h>
-#include <modules/acpi/devices.h>
-#include <modules/acpi/resources.h>
-#include <modules/acpi/tables.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -13,6 +9,10 @@
 #include <kernel/sched/sys_time.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
+#include <modules/acpi/aml/object.h>
+#include <modules/acpi/devices.h>
+#include <modules/acpi/resources.h>
+#include <modules/acpi/tables.h>
 
 #include <errno.h>
 #include <string.h>
@@ -569,7 +569,8 @@ static uint64_t ps2_attach_device(const char* type, const char* name)
         }
         controllerInitialized = true;
 
-        if (acpi_device_cfg_get_port(acpiCfg, 0, &dataPort) == ERR || acpi_device_cfg_get_port(acpiCfg, 1, &statusPort) == ERR)
+        if (acpi_device_cfg_get_port(acpiCfg, 0, &dataPort) == ERR ||
+            acpi_device_cfg_get_port(acpiCfg, 1, &statusPort) == ERR)
         {
             LOG_ERR("ps2 device '%s' has invalid status port resource\n", name);
             return ERR;
