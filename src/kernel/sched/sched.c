@@ -73,12 +73,12 @@ static void sched_update_vdeadline(sched_t* sched, sched_ctx_t* ctx)
     assert(sched != NULL);
     assert(ctx != NULL);
 
-    vclock_t maxNegativeLag = sched_clock_to_vclock(CONFIG_MAX_NEGATIVE_LAG, ctx->weight);
+    vclock_t maxLag = sched_clock_to_vclock(CONFIG_MAX_LAG, ctx->weight);
 
     vclock_t floor = 0;
-    if (sched->minVruntime > maxNegativeLag)
+    if (sched->minVruntime > maxLag)
     {
-        floor = sched->minVruntime - maxNegativeLag;
+        floor = sched->minVruntime - maxLag;
     }
 
     if (ctx->vruntime < floor)

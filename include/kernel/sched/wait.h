@@ -28,7 +28,7 @@ typedef struct cpu cpu_t;
 /**
  * @brief Basic block.
  *
- * Blocks untill condition is true, condition will be tested after every time the thread wakes up.
+ * Blocks until condition is true, condition will be tested after every time the thread wakes up.
  *
  * Check `wait_block_commit()` for errno values.
  *
@@ -66,7 +66,7 @@ typedef struct cpu cpu_t;
         assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE); \
         uint64_t result = 0; \
         clock_t uptime = sys_time_uptime(); \
-        clock_t deadline = (timeout) == CLOCKS_NEVER ? CLOCKS_NEVER : (timeout) + uptime; \
+        clock_t deadline = CLOCKS_DEADLINE(timeout, uptime); \
         while (!(condition) && result == 0) \
         { \
             if (deadline <= uptime) \
@@ -75,7 +75,7 @@ typedef struct cpu cpu_t;
                 result = ERR; \
                 break; \
             } \
-            clock_t remaining = deadline == CLOCKS_NEVER ? CLOCKS_NEVER : (deadline > uptime ? deadline - uptime : 0); \
+            clock_t remaining = CLOCKS_REMAINING(deadline, uptime); \
             wait_queue_t* temp = waitQueue; \
             if (wait_block_setup(&temp, 1, remaining) == ERR) \
             { \
@@ -133,7 +133,7 @@ typedef struct cpu cpu_t;
     ({ \
         uint64_t result = 0; \
         clock_t uptime = sys_time_uptime(); \
-        clock_t deadline = (timeout) == CLOCKS_NEVER ? CLOCKS_NEVER : (timeout) + uptime; \
+        clock_t deadline = CLOCKS_DEADLINE(timeout, uptime); \
         while (!(condition) && result == ERR) \
         { \
             if (deadline <= uptime) \
@@ -142,7 +142,7 @@ typedef struct cpu cpu_t;
                 result = ERR; \
                 break; \
             } \
-            clock_t remaining = deadline == CLOCKS_NEVER ? CLOCKS_NEVER : (deadline > uptime ? deadline - uptime : 0); \
+            clock_t remaining = CLOCKS_REMAINING(deadline, uptime); \
             wait_queue_t* temp = waitQueue; \
             if (wait_block_setup(&temp, 1, remaining) == ERR) \
             { \

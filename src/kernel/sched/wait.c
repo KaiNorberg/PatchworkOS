@@ -276,7 +276,7 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
     }
 
     thread->wait.err = EOK;
-    thread->wait.deadline = timeout == CLOCKS_NEVER ? CLOCKS_NEVER : sys_time_uptime() + timeout;
+    thread->wait.deadline = CLOCKS_DEADLINE(timeout, sys_time_uptime());
     thread->wait.cpu = NULL;
 
     for (uint64_t i = 0; i < amount; i++)

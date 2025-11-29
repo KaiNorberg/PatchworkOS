@@ -99,15 +99,15 @@
 #define CONFIG_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 10)
 
 /**
- * @brief Maximum negative lag configuration.
+ * @brief Maximum lag configuration.
  * @ingroup kernel
- * @def CONFIG_MAX_NEGATIVE_LAG
+ * @def CONFIG_MAX_LAG
  *
- * The `CONFIG_MAX_NEGATIVE_LAG` constant defines the maximum amount of negative lag a thread can accumulate. This
- * prevents a thread from accumulating an unbounded amount of negative lag.
+ * The `CONFIG_MAX_LAG` constant defines the maximum amount of lag a thread can accumulate. This
+ * prevents a thread from accumulating an unbounded amount of lag.
  *
  */
-#define CONFIG_MAX_NEGATIVE_LAG (CONFIG_TIME_SLICE * 10)
+#define CONFIG_MAX_LAG (CONFIG_TIME_SLICE * 10)
 
 /**
  * @brief Weight base configuration.

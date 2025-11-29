@@ -6,6 +6,7 @@
 #include <kernel/sched/sys_time.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
+#include <kernel/sched/wait.h>
 #include <kernel/sync/rwlock.h>
 
 #include <errno.h>
@@ -82,7 +83,7 @@ uint64_t key_share(key_t* key, file_t* file, clock_t timeout)
     map_entry_init(&entry->mapEntry);
     entry->key = key_generate();
     entry->file = REF(file);
-    entry->expiry = timeout == CLOCKS_NEVER ? CLOCKS_NEVER : sys_time_uptime() + timeout;
+    entry->expiry = CLOCKS_DEADLINE(timeout, sys_time_uptime());
 
     RWLOCK_WRITE_SCOPE(&keyLock);
     map_key_t mapKey = map_key_buffer(&entry->key, sizeof(entry->key));

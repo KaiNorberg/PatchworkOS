@@ -21,12 +21,12 @@ typedef struct thread thread_t;
  * give each thread a fair share of the CPU based on its weight by introducing the concepts of virtual time and virtual
  * deadlines. This is in contrast to more common algorithms that use fixed time slices or might rely on priority queues.
  *
- * Perhaps surprisingly, its actually not that complex to implement, once you understand the new concepts it introduces.
+ * Perhaps surprisingly, it's actually not that complex to implement, once you understand the new concepts it introduces.
  *
  * ## Weight and Priority
  *
  * To explain how EEVDF works, we will start with how priorities are implemented. Each thread is assigned a "weight"
- * based on the priority of its parent process. This weight is calculated as
+ * based on the priority of it's parent process. This weight is calculated as
  *
  * ```
  * weight = process->priority + CONFIG_WEIGHT_BASE.
@@ -65,7 +65,7 @@ typedef struct thread thread_t;
  * ## Lag
  *
  * The key metric used to determine what thread to schedule next is called "lag". Lag is defined as the difference
- * between the amount of CPU time a thread should have received, and the amount of CPU time it has actually received.
+ * between the amount of CPU time a thread should have received and the amount of CPU time it has actually received.
  *
  * @note Since lag is calculated using virtual time, the amount of CPU time each thread should have received will appear
  * to always be equal.
@@ -97,7 +97,7 @@ typedef struct thread thread_t;
  * any CPU time, such that they have received 10ms less than they should have. Note that the sum of all lag values is
  * always zero.
  *
- * The lag is then used to determine what thread to schedule next, with the thread with the lowest lag being scheduled
+ * The lag is then used to determine what thread to schedule next, with the thread with the highest lag being scheduled
  * first and only threads with lag greater than or equal to zero being eligible to run.
  *
  * @note Fairness is achieved such that over some long period of time, the proportion of CPU time each thread receives
@@ -108,7 +108,7 @@ typedef struct thread thread_t;
  *
  * To determine which thread to schedule next, we could use lag directly, as described above. However, as will be shown,
  * there is a far simpler approach. Instead of lag, EEVDF introduces the concept of "virtual deadlines". A virtual
- * deadline is defined as the point in virtual time at which a thread is expected to finish its next time slice. The
+ * deadline is defined as the point in virtual time at which a thread is expected to finish it's next time slice. The
  * virtual deadline is calculated as:
  *
  * ```
@@ -122,14 +122,14 @@ typedef struct thread thread_t;
  * vruntime = expectedVruntime - lag.
  * ```
  *
- * Where `expectedVruntime` is how much virtual time the thread should have ran for. Therefore, substituting this into
+ * Where `expectedVruntime` is how much virtual time the thread should have run for. Therefore, substituting this into
  * our equation for virtual deadlines we get
  *
  * ```
  * vdeadline = (expectedVruntime - lag) + vtimeSlice.
  * ```
  *
- * We can now see that finding a thread with a low virtual deadline is equivalent to finding a thread with a low lag,
+ * We can now see that finding a thread with a low virtual deadline is generally equivalent to finding a thread with a high lag,
  * since each thread will expect to run for the same amount of virtual time, as described above. Therefore, there is no
  * need to actually determine the lag, instead we can just use the virtual deadline as a proxy for lag, which is far
  * simpler.
@@ -137,34 +137,34 @@ typedef struct thread thread_t;
  * But, there is one more detail to consider. Since a thread needs to have a lag greater than or equal to zero to be
  * eligible to run, we still need to check the lag, right? Thankfully, we can bypass this too. Consider that since the
  * sum of all lag values is always zero, either all threads have zero lag, or there must always be at least one thread
- * with negative lag, since if one has positive lag, there must be another with negative lag to balance it out.
- * Therefore, the thread with the lowest virtual deadline, and thus the lowest lag, will always have a lag less than or
+ * with positive lag, since if one has negative lag, there must be another with positive lag to balance it out.
+ * Therefore, the thread with the lowest virtual deadline, and thus the highest lag, will always have a lag greater than or
  * equal to zero and thus be eligible to run.
  *
- * ## Preventing infinite negative lag
+ * ## Preventing infinite lag
  *
  * One issue that can arise is that if a thread were to block for a very long time, it would be owed a massive amount of
- * CPU time when its unblocked. Theoretically, a thread could block for a day and then be scheduled for several hours
- * straight to "catch up" on its owed CPU time. In a sense, its lag could decrease without bound to negative infinity.
+ * CPU time when it's unblocked. Theoretically, a thread could block for a day and then be scheduled for several hours
+ * straight to "catch up" on its owed CPU time. In a sense, it's lag could grow infinitely large while it's blocked.
  *
  * To prevent this, the `minVruntime` variable is introduced. This variable tracks the minimum virtual runtime of all
  * runnable threads. When a thread is submitted to a scheduler, the `minVruntime` is used to set a floor on the threads
- * `vruntime`, such that its lag can never be less than `-CONFIG_MAX_NEGATIVE_LAG`. Which solves the issue of threads
+ * `vruntime`, such that it's lag can never be greater than `CONFIG_MAX_LAG`. Which solves the issue of threads
  * accumulating an unbounded amount of negative lag, while still making sure blocked threads are prioritized when they
  * unblock.
  *
  * ## Scheduling
  *
- * The scheduler maintains a runqueue of all runnable threads, sorted by their virtual deadlines. When a threads time
+ * The scheduler maintains a runqueue of all runnable threads, sorted by their virtual deadlines. When a thread's time
  * slice expires, or a thread blocks or exits, the scheduler selects the thread with the earliest virtual deadline from
  * the runqueue to run next. This ensures that the thread with the lowest lag is always selected to run next, resulting
  * in time slices being distributed in such a way to converge towards the ideal fair distribution of CPU time.
  *
  * ## Load Balancing
  *
- * Each CPU has its own scheduler and associated runqueue, as such we need to balance the load between each CPU. To do
- * this, each scheduler will check if its neighbor CPU has a `CONFIG_LOAD_BALANCE_BIAS` number of threads less than
- * itself before a scheduling decision. If it does, it will push its thread with the highest virtual deadline to the
+ * Each CPU has it's own scheduler and associated runqueue, as such we need to balance the load between each CPU. To do
+ * this, each scheduler will check if its neighbor CPU has a `CONFIG_LOAD_BALANCE_BIAS` number of threads fewer than
+ * itself before a scheduling decision. If it does, it will push it's thread with the highest virtual deadline to the
  * neighbor CPU.
  *
  * @note The reason we want to avoid a global runqueue is to avoid lock contention, but also to reduce cache misses by
@@ -196,7 +196,7 @@ typedef uint64_t vclock_t;
 typedef struct sched_ctx
 {
     rbnode_t node;
-    uint64_t weight;    ///< The weight of the thread, derived from its process priority.
+    uint64_t weight;    ///< The weight of the thread, derived from it's process priority.
     vclock_t vruntime;  ///< Virtual runtime (how much time the thread has run in virtual time).
     vclock_t vdeadline; ///< Virtual deadline (when the thread is expected to finish in virtual time).
     clock_t lastUpdate; ///< Uptime when the thread last started running.
@@ -267,7 +267,7 @@ thread_t* sched_thread(void);
  * @brief Retrieves the process of the currently running thread.
  *
  * @note Will not increment the reference count of the returned process, as we consider the currently running thread to
- * always be referencing its process.
+ * always be referencing it's process.
  *
  * @return The process of the currently running thread.
  */
@@ -284,14 +284,14 @@ thread_t* sched_thread_unsafe(void);
  * @brief Retrieves the process of the currently running thread without disabling interrupts.
  *
  * @note Will not increment the reference count of the returned process, as we consider the currently running thread to
- * always be referencing its process.
+ * always be referencing it's process.
  *
  * @return The process of the currently running thread.
  */
 process_t* sched_process_unsafe(void);
 
 /**
- * @brief Terminates the currently executing process and all its threads.
+ * @brief Terminates the currently executing process and all it's threads.
  *
  * @note Will never return, instead it triggers an interrupt that kills the current thread.
  *
