@@ -56,12 +56,16 @@ static void sched_update_min_vruntime(sched_t* sched)
     assert(sched != NULL);
 
     sched_ctx_t* min = CONTAINER_OF_SAFE(rbtree_find_min(sched->runqueue.root), sched_ctx_t, node);
-    if (min == NULL)
+    if (min != NULL)
     {
-        return;
+        sched->minVruntime = MAX(sched->minVruntime, min->vruntime);
     }
 
-    sched->minVruntime = MAX(sched->minVruntime, min->vruntime);
+    if (sched->runThread != sched->idleThread)
+    {
+        sched_ctx_t* ctx = &sched->runThread->sched;
+        sched->minVruntime = MAX(sched->minVruntime, ctx->vruntime);
+    }
 }
 
 static void sched_update_vdeadline(sched_t* sched, sched_ctx_t* ctx)
@@ -69,9 +73,17 @@ static void sched_update_vdeadline(sched_t* sched, sched_ctx_t* ctx)
     assert(sched != NULL);
     assert(ctx != NULL);
 
-    if (ctx->vruntime < sched->minVruntime)
+    vclock_t maxNegativeLag = sched_clock_to_vclock(CONFIG_MAX_NEGATIVE_LAG, ctx->weight);
+
+    vclock_t floor = 0;
+    if (sched->minVruntime > maxNegativeLag)
     {
-        ctx->vruntime = sched->minVruntime;
+        floor = sched->minVruntime - maxNegativeLag;
+    }
+
+    if (ctx->vruntime < floor)
+    {
+        ctx->vruntime = floor;
     }
 
     ctx->timeSlice = CONFIG_TIME_SLICE;
@@ -252,7 +264,7 @@ static void sched_load_balance(cpu_t* self)
     assert(self != NULL);
 
     // Technically there are race conditions here, but the worst case scenario is imperfect load balancing
-    // and so its an acceptable trade off since we need to avoid holding the locks of two sched_t at the 
+    // and so its an acceptable trade off since we need to avoid holding the locks of two sched_t at the
     // same time to prevent deadlocks.
 
     cpu_t* neighbor = cpu_get_next(self);

@@ -93,11 +93,21 @@
  * @ingroup kernel
  * @def CONFIG_TIME_SLICE
  *
- * The `CONFIG_TIME_SLICE` constant defines the default time slice given to threads when they are scheduled. The actual
- * time slice given depends on the thread's weight.
+ * The `CONFIG_TIME_SLICE` constant defines the default time slice given to threads when they are scheduled.
  *
  */
 #define CONFIG_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 10)
+
+/**
+ * @brief Maximum negative lag configuration.
+ * @ingroup kernel
+ * @def CONFIG_MAX_NEGATIVE_LAG
+ *
+ * The `CONFIG_MAX_NEGATIVE_LAG` constant defines the maximum amount of negative lag a thread can accumulate. This
+ * prevents a thread from accumulating an unbounded amount of negative lag.
+ *
+ */
+#define CONFIG_MAX_NEGATIVE_LAG (CONFIG_TIME_SLICE * 10)
 
 /**
  * @brief Weight base configuration.

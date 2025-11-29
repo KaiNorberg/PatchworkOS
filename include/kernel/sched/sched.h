@@ -18,12 +18,13 @@ typedef struct thread thread_t;
  * @ingroup kernel
  *
  * The scheduler is implemented using the Earliest Eligible Virtual Deadline First (EEVDF) algorithm. EEVDF attempts to
- * give each thread a fair share of the CPU based on its weight by using virtual time and virtual deadlines. Perhaps
- * surprisingly, its actually not that complex to implement, once you understand the new concepts it introduces.
+ * give each thread a fair share of the CPU based on its weight by introducing the concepts of virtual time and virtual deadlines. This is in contrast to more common algorithms that use fixed time slices or might rely on priority queues.
+ * 
+ * Perhaps surprisingly, its actually not that complex to implement, once you understand the new concepts it introduces.
  *
  * ## Weight and Priority
  *
- * Each thread is assigned a "weight" based on the priority of its parent process. This weight is calculated as
+ * To explain how EEVDF works, we will start with how priorities are implemented. Each thread is assigned a "weight" based on the priority of its parent process. This weight is calculated as
  *
  * ```
  * weight = process->priority + CONFIG_WEIGHT_BASE.
@@ -90,9 +91,8 @@ typedef struct thread thread_t;
  *
  * What just happened is that each thread should have received one third of the CPU time (since they are all of equal
  * weight such that each of their weights is 1/3 of the total weight) which is 10ms. Therefore, since thread A actually
- * received 30ms of CPU time, it has run for 20ms more than it should have, while threads B and C have not received any
- * CPU time, such that they are both 10ms behind where they should be. Additionally, note the property that the sum of
- * all lag values is always zero.
+ * received 30ms of CPU time, it has run for 20ms more than it should have. Meanwhile, threads B and C have not received any
+ * CPU time, such that they have received 10ms less than they should have.
  *
  * @note Fairness is achieved such that over some long period of time, the proportion of CPU time each thread receives
  * will converge to the share it ought to receive, not that each individual time slice is exactly correct, which is why
@@ -128,8 +128,18 @@ typedef struct thread thread_t;
  * need to actually determine the lag, instead we can just use the virtual deadline as a proxy for lag, which is far
  * simpler.
  *
- * ## Preventing infinite lag
- * 
+ * ## Preventing infinite negative lag
+ *
+ * One issue that can arise is that if a thread were to block for a very long time, it would be owed a massive amount of
+ * CPU time when its unblocked. Theoretically, a thread could block for a day and then be scheduled for several hours
+ * straight to "catch up" on its owed CPU time. In a sense, its lag could decrease without bound to negative infinity.
+ *
+ * To prevent this, the `minVruntime` variable is introduced. This variable tracks the minimum virtual runtime of all
+ * runnable threads. When a thread is submitted to a scheduler, the `minVruntime` is used to set a floor on the threads
+ * `vruntime`, such that its lag can never be less than `-CONFIG_MAX_NEGATIVE_LAG`. Which solves the issue of threads
+ * accumulating an unbounded amount of negative lag, while still making sure blocked threads are prioritized when they
+ * unblock.
+ *
  * ## Scheduling
  *
  * The scheduler maintains a runqueue of all runnable threads, sorted by their virtual deadlines. When a threads time
@@ -138,12 +148,16 @@ typedef struct thread thread_t;
  * in time slices being distributed in such a way to converge towards the ideal fair distribution of CPU time.
  *
  * ## Load Balancing
- * 
- * Each CPU has its own scheduler and associated runqueue, as such we need to balance the load between each CPU. To do this, each scheduler will check if its neighbor CPU has a `CONFIG_LOAD_BALANCE_BIAS` number of threads more than itself before a scheduling decision. If it does, it will push its thread with the highest virtual deadline to the neighbor CPU. 
- * 
- * @note The reason we want to avoid a global runqueue is to avoid lock contention, but also to reduce cache misses by keeping threads on the same CPU when reasonably possible.
- * 
- * TOD: The load balancing algorithm is rather naive at the moment and could be improved in the future.
+ *
+ * Each CPU has its own scheduler and associated runqueue, as such we need to balance the load between each CPU. To do
+ * this, each scheduler will check if its neighbor CPU has a `CONFIG_LOAD_BALANCE_BIAS` number of threads less than
+ * itself before a scheduling decision. If it does, it will push its thread with the highest virtual deadline to the
+ * neighbor CPU.
+ *
+ * @note The reason we want to avoid a global runqueue is to avoid lock contention, but also to reduce cache misses by
+ * keeping threads on the same CPU when reasonably possible.
+ *
+ * TODO: The load balancing algorithm is rather naive at the moment and could be improved in the future.
  *
  * @see [Earliest Eligible Virtual Deadline
  * First](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564) for
@@ -183,7 +197,7 @@ typedef struct sched_ctx
 typedef struct sched
 {
     rbtree_t runqueue;    ///< Contains all runnable threads, sorted by virtual deadline.
-    vclock_t minVruntime; ///< The minimum virtual runtime of all threads ever scheduled.
+    vclock_t minVruntime; ///< The minimum virtual runtime of all runnable threads.
     uint64_t totalWeight; ///< The total weight of all threads in the runqueue.
     lock_t lock;
     thread_t* idleThread;
@@ -212,7 +226,6 @@ void sched_init(sched_t* sched);
  * @param bootThread The initial thread to switch to.
  */
 _NORETURN void sched_start(thread_t* bootThread);
-
 
 /**
  * @brief Sleeps the current thread for a specified duration in nanoseconds.
