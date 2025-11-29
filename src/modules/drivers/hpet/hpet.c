@@ -3,11 +3,14 @@
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
+#include <kernel/sched/sched.h>
 #include <kernel/sched/sys_time.h>
-#include <kernel/sched/timer.h>
+#include <kernel/sched/thread.h>
+#include <kernel/sched/wait.h>
 #include <kernel/sync/seqlock.h>
 #include <kernel/utils/utils.h>
 #include <modules/acpi/tables.h>
+#include <kernel/sched/wait.h>
 
 /**
  * @brief High Precision Event Timer
@@ -96,6 +99,10 @@ static uint64_t period;   ///< Main counter tick period in femtoseconds (10^-15 
 static atomic_uint64_t counter = ATOMIC_VAR_INIT(0); ///< Accumulated nanosecond counter, used to avoid overflows.
 static seqlock_t counterLock = SEQLOCK_CREATE;       ///< Seqlock for the accumulated counter.
 
+static tid_t overflowThreadTid = 0;                        ///< Thread ID of the overflow thread.
+static wait_queue_t overflowQueue = WAIT_QUEUE_CREATE(overflowQueue); ///< Wait queue for the overflow thread.
+static atomic_bool overflowShouldStop = ATOMIC_VAR_INIT(false);  ///< Flag to signal the overflow thread to stop.
+
 /**
  * @brief Write to an HPET register.
  *
@@ -156,29 +163,27 @@ static inline void hpet_reset_counter(void)
 }
 
 /**
- * @brief Timer interrupt handler to avoid HPET counter overflows on 32-bit HPETs.
+ * @brief Thread function that periodically accumulates the HPET counter to prevent overflow.
  *
- * Is also used for 64-bit HPETs but it will in practice never fire.
- *
- * @param frame The interrupt frame.
- * @param self The current CPU.
+ * @param arg Unused.
  */
-static void hpet_timer_handler(interrupt_frame_t* frame, cpu_t* self)
+static void hpet_overflow_thread(void* arg)
 {
-    (void)frame;
-    (void)self;
+    (void)arg;
 
-    LOG_INFO("HPET counter accumulation timer fired\n");
-    seqlock_write_acquire(&counterLock);
-    atomic_fetch_add(&counter, hpet_read(HPET_REG_MAIN_COUNTER_VALUE) * hpet_ns_per_tick());
-    hpet_reset_counter();
-    seqlock_write_release(&counterLock);
+    // Assume the worst case where the HPET is 32bit, since `clock_t` isent large enough to hold the time otherwise and i feel paranoid.
+    clock_t sleepInterval = (UINT32_MAX * hpet_ns_per_tick()) / 2;
+    LOG_INFO("HPET overflow thread started, sleep interval %lluns\n", sleepInterval);
 
-    uint64_t maxCounterValue = UINT32_MAX;
-    uint64_t pessimisticOverflowInterval = (maxCounterValue * hpet_ns_per_tick()) / 2;
+    while (!atomic_load(&overflowShouldStop))
+    {
+        WAIT_BLOCK_TIMEOUT(&overflowQueue, false, sleepInterval);
 
-    clock_t uptime = sys_time_uptime();
-    timer_set(uptime, uptime + pessimisticOverflowInterval);
+        seqlock_write_acquire(&counterLock);
+        atomic_fetch_add(&counter, hpet_read(HPET_REG_MAIN_COUNTER_VALUE) * hpet_ns_per_tick());
+        hpet_reset_counter();
+        seqlock_write_release(&counterLock);
+    }
 }
 
 /**
@@ -241,9 +246,14 @@ static uint64_t hpet_init(void)
         return ERR;
     }
 
-    cpu_t* cpu = cpu_get();
-    hpet_timer_handler(NULL, cpu);
-    cpu_put();
+    overflowThreadTid = thread_kernel_create(hpet_overflow_thread, NULL);
+    if (overflowThreadTid == ERR)
+    {
+        LOG_ERR("failed to create HPET overflow thread\n");
+        sys_time_unregister_source(&source);
+        return ERR;
+    }
+
     return 0;
 }
 
@@ -252,6 +262,14 @@ static uint64_t hpet_init(void)
  */
 static void hpet_deinit(void)
 {
+    atomic_store(&overflowShouldStop, true);
+    wait_unblock(&overflowQueue, WAIT_ALL, EOK);
+
+    while (process_has_thread(process_get_kernel(), overflowThreadTid))
+    {
+        sched_yield();
+    }
+
     sys_time_unregister_source(&source);
     hpet_write(HPET_REG_GENERAL_CONFIG, 0);
 }

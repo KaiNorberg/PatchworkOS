@@ -114,6 +114,15 @@ process_t* process_new(const char** argv, const path_t* cwd, namespace_t* parent
 void process_kill(process_t* process, uint64_t status);
 
 /**
+ * @brief Checks if a process has a thread with the specified thread ID.
+ *
+ * @param process The process to check.
+ * @param tid The thread ID to look for.
+ * @return `true` if the process has a thread with the specified ID, `false` otherwise.
+ */
+bool process_has_thread(process_t* process, tid_t tid);
+
+/**
  * @brief Gets the kernel process.
  *
  * The kernel process will be initalized lazily on the first call to this function, which should happen during early

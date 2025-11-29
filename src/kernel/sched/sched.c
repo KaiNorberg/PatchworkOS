@@ -224,6 +224,20 @@ void sched_thread_exit(void)
     panic(NULL, "Return to sched_thread_exit");
 }
 
+void sched_yield(void)
+{
+    cpu_t* self = cpu_get();
+    thread_t* thread = self->sched.runThread;
+
+    if (thread != self->sched.idleThread)
+    {
+        thread->sched.timeSlice = 0;
+    }
+
+    cpu_put();
+    ipi_invoke();
+}
+
 void sched_submit(thread_t* thread, cpu_t* target)
 {
     assert(thread != NULL);
@@ -450,15 +464,6 @@ SYSCALL_DEFINE(SYS_THREAD_EXIT, void)
 
 SYSCALL_DEFINE(SYS_YIELD, uint64_t)
 {
-    cpu_t* self = cpu_get();
-    thread_t* thread = self->sched.runThread;
-
-    if (thread != self->sched.idleThread)
-    {
-        thread->sched.timeSlice = 0;
-    }
-
-    cpu_put();
-    ipi_invoke();
+    sched_yield();
     return 0;
 }

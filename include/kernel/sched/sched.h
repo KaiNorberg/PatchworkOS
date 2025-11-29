@@ -308,6 +308,11 @@ _NORETURN void sched_process_exit(uint64_t status);
 _NORETURN void sched_thread_exit(void);
 
 /**
+ * @brief Yield the current thread's time slice to allow other threads to run.
+ */
+void sched_yield(void);
+
+/**
  * @brief Submits a thread to be scheduled on the current CPU.
  *
  * @param thread The thread to submit.

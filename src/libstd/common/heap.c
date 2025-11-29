@@ -1,13 +1,10 @@
 #include "heap.h"
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/bitmap.h>
 #include <sys/io.h>
 #include <sys/math.h>
 #include <sys/proc.h>
-#include <threads.h>
 
 #ifdef _KERNEL_
 #include <kernel/log/panic.h>
@@ -32,6 +29,9 @@ void _heap_unmap_memory(void* addr, uint64_t size)
     vmm_unmap(NULL, addr, size);
 }
 #else  // ndef _KERNEL_
+#include <stdlib.h>
+#include <threads.h>
+
 static mtx_t mutex;
 
 static fd_t zeroDev = ERR;

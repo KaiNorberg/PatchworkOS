@@ -1,5 +1,6 @@
 #pragma once
 
+#include <kernel/cpu/gdt.h>
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/simd.h>
 #include <kernel/cpu/stack_pointer.h>
@@ -96,6 +97,20 @@ typedef struct thread
  * @return On success, returns the newly created thread. On failure, returns `NULL` and `errno` is set.
  */
 thread_t* thread_new(process_t* process);
+
+/**
+ * @brief Kernel thread entry point function type.
+ */
+typedef void (*thread_kernel_entry_t)(void* arg);
+
+/**
+ * @brief Creates a new thread that runs in kernel mode and submits it to the scheduler.
+ * 
+ * @param entry The entry point function for the thread.
+ * @param arg An argument to pass to the entry point function.
+ * @return On success, returns the newly created thread ID. On failure, returns `ERR` and `errno` is set.
+ */
+tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg);
 
 /**
  * @brief Frees a thread structure.
