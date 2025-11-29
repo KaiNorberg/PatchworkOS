@@ -5,6 +5,7 @@
 #include <kernel/fs/file.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/sched/sched.h>
@@ -12,7 +13,6 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/utils.h>
-#include <kernel/log/log.h>
 
 #include <stdint.h>
 #include <stdio.h>

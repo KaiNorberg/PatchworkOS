@@ -18,7 +18,7 @@ typedef __UINT64_TYPE__ clock_t;
 /**
  * @brief Safely calculate remaining time until deadline.
  * @ingroup libstd
- * 
+ *
  * Handles `CLOCKS_NEVER` and avoids unsigned integer underflow when deadline has passed.
  *
  * @param deadline The deadline timestamp.
@@ -35,7 +35,7 @@ typedef __UINT64_TYPE__ clock_t;
 /**
  * @brief Safely calculate deadline from timeout.
  * @ingroup libstd
- * 
+ *
  * Handles `CLOCKS_NEVER` and avoids unsigned integer overflow.
  *
  * @param timeout The timeout duration.
@@ -46,7 +46,9 @@ typedef __UINT64_TYPE__ clock_t;
     ({ \
         clock_t _timeout = (timeout); \
         clock_t _uptime = (uptime); \
-        ((_timeout) == CLOCKS_NEVER ? CLOCKS_NEVER : ((_timeout) > CLOCKS_NEVER - (_uptime) ? CLOCKS_NEVER : (_uptime) + (_timeout))); \
+        ((_timeout) == CLOCKS_NEVER \
+                ? CLOCKS_NEVER \
+                : ((_timeout) > CLOCKS_NEVER - (_uptime) ? CLOCKS_NEVER : (_uptime) + (_timeout))); \
     })
 
 #endif
