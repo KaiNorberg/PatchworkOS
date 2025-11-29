@@ -374,6 +374,17 @@ uint64_t ps2_read(void)
     return io_in8(dataPort);
 }
 
+uint64_t ps2_read_no_wait(void)
+{
+    if (!(io_in8(statusPort) & PS2_STATUS_OUT_FULL))
+    {
+        errno = EAGAIN;
+        return ERR;
+    }
+
+    return io_in8(dataPort);
+}
+
 uint64_t ps2_write(uint8_t data)
 {
     if (ps2_wait_until_clear(PS2_STATUS_IN_FULL) == ERR)

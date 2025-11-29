@@ -243,6 +243,14 @@ uint64_t ps2_wait_until_clear(ps2_status_bits_t status);
 uint64_t ps2_read(void);
 
 /**
+ * @brief Read from the PS/2 controllers data port without waiting.
+ *
+ * @return On success, the response byte. On failure, `ERR` and `errno` is set to:
+ * - `EAGAIN`: No data available to read.
+ */
+uint64_t ps2_read_no_wait(void);
+
+/**
  * @brief Write to the PS/2 controllers data port.
  *
  * Waits for the input buffer to be empty, then writes a byte to the data port.

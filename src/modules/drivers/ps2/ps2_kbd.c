@@ -10,10 +10,9 @@ static void ps2_kbd_irq(irq_func_data_t* data)
 {
     ps2_kbd_data_t* private = data->private;
 
-    uint64_t response = ps2_read();
+    uint64_t response = ps2_read_no_wait();
     if (response == ERR)
     {
-        LOG_WARN("failed to scan PS/2 keyboard\n");
         return;
     }
 
