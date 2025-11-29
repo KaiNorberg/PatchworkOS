@@ -18,13 +18,15 @@ typedef struct thread thread_t;
  * @ingroup kernel
  *
  * The scheduler is implemented using the Earliest Eligible Virtual Deadline First (EEVDF) algorithm. EEVDF attempts to
- * give each thread a fair share of the CPU based on its weight by introducing the concepts of virtual time and virtual deadlines. This is in contrast to more common algorithms that use fixed time slices or might rely on priority queues.
- * 
+ * give each thread a fair share of the CPU based on its weight by introducing the concepts of virtual time and virtual
+ * deadlines. This is in contrast to more common algorithms that use fixed time slices or might rely on priority queues.
+ *
  * Perhaps surprisingly, its actually not that complex to implement, once you understand the new concepts it introduces.
  *
  * ## Weight and Priority
  *
- * To explain how EEVDF works, we will start with how priorities are implemented. Each thread is assigned a "weight" based on the priority of its parent process. This weight is calculated as
+ * To explain how EEVDF works, we will start with how priorities are implemented. Each thread is assigned a "weight"
+ * based on the priority of its parent process. This weight is calculated as
  *
  * ```
  * weight = process->priority + CONFIG_WEIGHT_BASE.
@@ -91,8 +93,12 @@ typedef struct thread thread_t;
  *
  * What just happened is that each thread should have received one third of the CPU time (since they are all of equal
  * weight such that each of their weights is 1/3 of the total weight) which is 10ms. Therefore, since thread A actually
- * received 30ms of CPU time, it has run for 20ms more than it should have. Meanwhile, threads B and C have not received any
- * CPU time, such that they have received 10ms less than they should have.
+ * received 30ms of CPU time, it has run for 20ms more than it should have. Meanwhile, threads B and C have not received
+ * any CPU time, such that they have received 10ms less than they should have. Note that the sum of all lag values is
+ * always zero.
+ *
+ * The lag is then used to determine what thread to schedule next, with the thread with the lowest lag being scheduled
+ * first and only threads with lag greater than or equal to zero being eligible to run.
  *
  * @note Fairness is achieved such that over some long period of time, the proportion of CPU time each thread receives
  * will converge to the share it ought to receive, not that each individual time slice is exactly correct, which is why
@@ -100,10 +106,10 @@ typedef struct thread thread_t;
  *
  * ## Virtual Deadlines
  *
- * To determine which thread to schedule next, we could use lag directly. However, as will be shown, there is a far
- * simpler approach. Instead of lag, EEVDF introduces the concept of "virtual deadlines". A virtual deadline is defined
- * as the point in virtual time at which a thread is expected to finish its next time slice. The virtual deadline is
- * calculated as:
+ * To determine which thread to schedule next, we could use lag directly, as described above. However, as will be shown,
+ * there is a far simpler approach. Instead of lag, EEVDF introduces the concept of "virtual deadlines". A virtual
+ * deadline is defined as the point in virtual time at which a thread is expected to finish its next time slice. The
+ * virtual deadline is calculated as:
  *
  * ```
  * vdeadline = vruntime + vtimeSlice
@@ -127,6 +133,13 @@ typedef struct thread thread_t;
  * since each thread will expect to run for the same amount of virtual time, as described above. Therefore, there is no
  * need to actually determine the lag, instead we can just use the virtual deadline as a proxy for lag, which is far
  * simpler.
+ *
+ * But, there is one more detail to consider. Since a thread needs to have a lag greater than or equal to zero to be
+ * eligible to run, we still need to check the lag, right? Thankfully, we can bypass this too. Consider that since the
+ * sum of all lag values is always zero, either all threads have zero lag, or there must always be at least one thread
+ * with negative lag, since if one has positive lag, there must be another with negative lag to balance it out.
+ * Therefore, the thread with the lowest virtual deadline, and thus the lowest lag, will always have a lag less than or
+ * equal to zero and thus be eligible to run.
  *
  * ## Preventing infinite negative lag
  *
