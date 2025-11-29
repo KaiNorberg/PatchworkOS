@@ -29,23 +29,17 @@ static int64_t sched_ctx_compare(const rbnode_t* aNode, const rbnode_t* bNode)
     const sched_ctx_t* a = CONTAINER_OF(aNode, sched_ctx_t, node);
     const sched_ctx_t* b = CONTAINER_OF(bNode, sched_ctx_t, node);
 
-    if (a->vdeadline < b->vdeadline)
+    int64_t diff = (int64_t)a->vdeadline - (int64_t)b->vdeadline;
+    if (diff != 0)
     {
-        return -1;
-    }
-    if (a->vdeadline > b->vdeadline)
-    {
-        return 1;
+        return diff;
     }
 
     // If they are tied, then the one that has run less in virtual time is favored
-    if (a->vruntime < b->vruntime)
+    diff = (int64_t)a->vruntime - (int64_t)b->vruntime;
+    if (diff != 0)
     {
-        return -1;
-    }
-    if (a->vruntime > b->vruntime)
-    {
-        return 1;
+        return diff;
     }
 
     return 0;
@@ -247,14 +241,65 @@ void sched_submit(thread_t* thread, cpu_t* target)
     }
 }
 
+static uint64_t sched_get_load(sched_t* sched)
+{
+    LOCK_SCOPE(&sched->lock);
+    return sched->runqueue.size + (sched->runThread != sched->idleThread ? 1 : 0);
+}
+
+static void sched_load_balance(cpu_t* self)
+{
+    assert(self != NULL);
+
+    // Technically there are race conditions here, but the worst case scenario is imperfect load balancing
+    // and so its an acceptable trade off since we need to avoid holding the locks of two sched_t at the 
+    // same time to prevent deadlocks.
+
+    cpu_t* neighbor = cpu_get_next(self);
+    if (neighbor == self)
+    {
+        return;
+    }
+
+    uint64_t selfLoad = sched_get_load(&self->sched);
+    uint64_t neighborLoad = sched_get_load(&neighbor->sched);
+    if (neighborLoad + CONFIG_LOAD_BALANCE_BIAS >= selfLoad)
+    {
+        return;
+    }
+
+    lock_acquire(&self->sched.lock);
+
+    sched_ctx_t* ctx = CONTAINER_OF_SAFE(rbtree_find_max(self->sched.runqueue.root), sched_ctx_t, node);
+    if (ctx != NULL)
+    {
+        rbtree_remove(&self->sched.runqueue, &ctx->node);
+        self->sched.totalWeight -= ctx->weight;
+
+        lock_release(&self->sched.lock);
+
+        thread_t* thread = CONTAINER_OF(ctx, thread_t, sched);
+        sched_submit(thread, neighbor);
+
+        ipi_wake_up(neighbor, IPI_SINGLE);
+    }
+    else
+    {
+        lock_release(&self->sched.lock);
+    }
+}
+
 void sched_do(interrupt_frame_t* frame, cpu_t* self)
 {
     assert(frame != NULL);
     assert(self != NULL);
 
+    sched_load_balance(self);
+
     sched_t* sched = &self->sched;
     lock_acquire(&sched->lock);
 
+    assert(sched->runThread->frame.rflags & RFLAGS_INTERRUPT_ENABLE);
     // Prevent the compiler from being annoying.
     thread_t* volatile runThread = sched->runThread;
     assert(runThread != NULL);
@@ -366,6 +411,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     }
 
     sched->runThread = runThread;
+    assert(sched->runThread->frame.rflags & RFLAGS_INTERRUPT_ENABLE);
     lock_release(&sched->lock);
 }
 

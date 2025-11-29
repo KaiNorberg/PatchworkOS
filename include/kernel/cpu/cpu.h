@@ -237,6 +237,21 @@ static inline uint64_t cpu_amount(void)
 }
 
 /**
+ * @brief Gets a CPU structure by its ID.
+ *
+ * @param id The ID of the CPU to get.
+ * @return A pointer to the CPU structure, or `NULL` if no CPU with the given ID exists.
+ */
+static inline cpu_t* cpu_get_by_id(cpuid_t id)
+{
+    if (id >= _cpuAmount)
+    {
+        return NULL;
+    }
+    return _cpus[id];
+}
+
+/**
  * @brief Gets the current CPU structure.
  *
  * Disables interrupts to prevent migration to another CPU.

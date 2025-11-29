@@ -58,7 +58,7 @@ static void rbtree_insert_at(rbtree_t* tree, rbnode_t* parent, rbnode_t* node, r
 {
     assert(node != NULL);
     assert(direction == RBNODE_LEFT || direction == RBNODE_RIGHT);
-    
+
     node->color = RBNODE_RED;
     node->parent = parent;
 
@@ -145,7 +145,7 @@ void rbtree_insert(rbtree_t* tree, rbnode_t* node)
 
     rbtree_insert_at(tree, parent, node, direction);
     tree->size++;
-    
+
     if (tree->root != NULL)
     {
         tree->root->color = RBNODE_BLACK;
@@ -345,7 +345,8 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node)
         return;
     }
 
-    assert(node == tree->root || node->parent->children[RBNODE_LEFT] == node || node->parent->children[RBNODE_RIGHT] == node);
+    assert(node == tree->root || node->parent->children[RBNODE_LEFT] == node ||
+        node->parent->children[RBNODE_RIGHT] == node);
 
     if (node->children[RBNODE_LEFT] != NULL && node->children[RBNODE_RIGHT] != NULL)
     {

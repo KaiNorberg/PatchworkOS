@@ -105,7 +105,7 @@
  * @def CONFIG_WEIGHT_BASE
  *
  * The `CONFIG_WEIGHT_BASE` constant defines the base to add to the priority of a process when calculating a thread's
- * weight. Increasing this value with reduce the significance of priority differences between processes.
+ * weight. Increasing this value will reduce the significance of priority differences between processes.
  *
  */
 #define CONFIG_WEIGHT_BASE 1
@@ -115,8 +115,7 @@
  * @ingroup kernel
  * @def CONFIG_LOAD_BALANCE_BIAS
  *
- * The `CONFIG_LOAD_BALANCE_BIAS` constant defines the bias used the minimum inbalance required for load balancing to
- * occur.
+ * The `CONFIG_LOAD_BALANCE_BIAS` constant defines the minimum inbalance required for load balancing to occur.
  *
  */
 #define CONFIG_LOAD_BALANCE_BIAS 2
