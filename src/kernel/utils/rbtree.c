@@ -497,3 +497,47 @@ bool rbtree_is_empty(const rbtree_t* tree)
     assert((tree->size == 0) == (tree->root == NULL));
     return tree->size == 0;
 }
+
+rbnode_t* rbtree_next(const rbnode_t* node)
+{
+    if (node == NULL)
+    {
+        return NULL;
+    }
+
+    if (node->children[RBNODE_RIGHT] != NULL)
+    {
+        return rbtree_find_min(node->children[RBNODE_RIGHT]);
+    }
+
+    rbnode_t* parent = node->parent;
+    while (parent != NULL && node == parent->children[RBNODE_RIGHT])
+    {
+        node = parent;
+        parent = parent->parent;
+    }
+
+    return parent;
+}
+
+rbnode_t* rbtree_prev(const rbnode_t* node)
+{
+    if (node == NULL)
+    {
+        return NULL;
+    }
+
+    if (node->children[RBNODE_LEFT] != NULL)
+    {
+        return rbtree_find_max(node->children[RBNODE_LEFT]);
+    }
+
+    rbnode_t* parent = node->parent;
+    while (parent != NULL && node == parent->children[RBNODE_LEFT])
+    {
+        node = parent;
+        parent = parent->parent;
+    }
+
+    return parent;
+}

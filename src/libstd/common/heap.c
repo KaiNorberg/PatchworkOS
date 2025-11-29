@@ -28,7 +28,7 @@ void _heap_unmap_memory(void* addr, uint64_t size)
 {
     vmm_unmap(NULL, addr, size);
 }
-#else  // ndef _KERNEL_
+#else // ndef _KERNEL_
 #include <stdlib.h>
 #include <threads.h>
 

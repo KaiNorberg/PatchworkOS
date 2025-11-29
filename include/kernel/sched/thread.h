@@ -105,7 +105,7 @@ typedef void (*thread_kernel_entry_t)(void* arg);
 
 /**
  * @brief Creates a new thread that runs in kernel mode and submits it to the scheduler.
- * 
+ *
  * @param entry The entry point function for the thread.
  * @param arg An argument to pass to the entry point function.
  * @return On success, returns the newly created thread ID. On failure, returns `ERR` and `errno` is set.

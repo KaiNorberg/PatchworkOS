@@ -10,7 +10,6 @@
 #include <kernel/sync/seqlock.h>
 #include <kernel/utils/utils.h>
 #include <modules/acpi/tables.h>
-#include <kernel/sched/wait.h>
 
 /**
  * @brief High Precision Event Timer
@@ -99,9 +98,9 @@ static uint64_t period;   ///< Main counter tick period in femtoseconds (10^-15 
 static atomic_uint64_t counter = ATOMIC_VAR_INIT(0); ///< Accumulated nanosecond counter, used to avoid overflows.
 static seqlock_t counterLock = SEQLOCK_CREATE;       ///< Seqlock for the accumulated counter.
 
-static tid_t overflowThreadTid = 0;                        ///< Thread ID of the overflow thread.
+static tid_t overflowThreadTid = 0;                                   ///< Thread ID of the overflow thread.
 static wait_queue_t overflowQueue = WAIT_QUEUE_CREATE(overflowQueue); ///< Wait queue for the overflow thread.
-static atomic_bool overflowShouldStop = ATOMIC_VAR_INIT(false);  ///< Flag to signal the overflow thread to stop.
+static atomic_bool overflowShouldStop = ATOMIC_VAR_INIT(false);       ///< Flag to signal the overflow thread to stop.
 
 /**
  * @brief Write to an HPET register.
@@ -171,7 +170,8 @@ static void hpet_overflow_thread(void* arg)
 {
     (void)arg;
 
-    // Assume the worst case where the HPET is 32bit, since `clock_t` isent large enough to hold the time otherwise and i feel paranoid.
+    // Assume the worst case where the HPET is 32bit, since `clock_t` isent large enough to hold the time otherwise and
+    // i feel paranoid.
     clock_t sleepInterval = (UINT32_MAX * hpet_ns_per_tick()) / 2;
     LOG_INFO("HPET overflow thread started, sleep interval %lluns\n", sleepInterval);
 

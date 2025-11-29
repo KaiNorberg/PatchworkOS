@@ -315,6 +315,26 @@ static void sched_load_balance(cpu_t* self)
     }
 }
 
+static sched_ctx_t* sched_first_eligible(sched_t* sched)
+{
+    assert(sched != NULL);
+
+    uint64_t iter = 0;
+    sched_ctx_t* ctx;
+    RBTREE_FOR_EACH(ctx, &sched->runqueue, node)
+    {
+        // Eligible if lag is greater or equal to zero
+        if (ctx->vruntime <= sched->minVruntime)
+        {
+            return ctx;
+        }
+
+        iter++;
+    }
+
+    return NULL;
+}
+
 void sched_do(interrupt_frame_t* frame, cpu_t* self)
 {
     assert(frame != NULL);
@@ -407,7 +427,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     {
         sched_update_min_vruntime(sched);
 
-        sched_ctx_t* nextCtx = CONTAINER_OF_SAFE(rbtree_find_min(sched->runqueue.root), sched_ctx_t, node);
+        sched_ctx_t* nextCtx = sched_first_eligible(sched);
         if (nextCtx != NULL)
         {
             rbtree_remove(&sched->runqueue, &nextCtx->node);

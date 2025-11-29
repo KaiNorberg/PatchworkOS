@@ -2,6 +2,7 @@
 
 #include <kernel/defs.h>
 
+#include <libstd/_internal/CONTAINER_OF.h>
 #include <stdint.h>
 
 typedef struct rbnode rbnode_t;
@@ -199,5 +200,35 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node);
  * @return `true` if the tree is empty, `false` otherwise.
  */
 bool rbtree_is_empty(const rbtree_t* tree);
+
+/**
+ * @brief Get the next node in the tree, in predecessor order.
+ *
+ * @param node The current node.
+ * @return The next node in the tree, or `NULL` if `node` is the last node.
+ */
+rbnode_t* rbtree_next(const rbnode_t* node);
+
+/**
+ * @brief Get the previous node in the tree, in predecessor order.
+ *
+ * @param node The current node.
+ * @return The previous node in the tree, or `NULL` if `node` is the first node.
+ */
+rbnode_t* rbtree_prev(const rbnode_t* node);
+
+/**
+ * @brief Iterates over a Red-Black Tree in ascending order.
+ *
+ * @param elem The loop variable, a pointer to the structure containing the tree node.
+ * @param tree A pointer to the `rbtree_t` structure to iterate over.
+ * @param member The name of the `rbnode_t` member within the structure `elem`.
+ */
+#define RBTREE_FOR_EACH(elem, tree, member) \
+    for ((elem) = \
+             ((tree)->root != NULL ? CONTAINER_OF(rbtree_find_min((tree)->root), typeof(*(elem)), member) : NULL); \
+        (elem) != NULL; (elem) = (rbtree_next(&(elem)->member) != NULL \
+                                ? CONTAINER_OF(rbtree_next(&(elem)->member), typeof(*(elem)), member) \
+                                : NULL))
 
 /** @} */
