@@ -311,7 +311,6 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     sched_t* sched = &self->sched;
     lock_acquire(&sched->lock);
 
-    assert(sched->runThread->frame.rflags & RFLAGS_INTERRUPT_ENABLE);
     // Prevent the compiler from being annoying.
     thread_t* volatile runThread = sched->runThread;
     assert(runThread != NULL);
@@ -402,7 +401,6 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
 
             runThread = CONTAINER_OF(nextCtx, thread_t, sched);
             runThread->sched.lastUpdate = uptime;
-            timer_set(uptime, uptime + runThread->sched.timeSlice);
         }
         else
         {
@@ -422,8 +420,12 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         thread_free(threadToFree);
     }
 
+    if (runThread != sched->idleThread)
+    {
+        timer_set(uptime, uptime + runThread->sched.timeSlice);
+    }
+
     sched->runThread = runThread;
-    assert(sched->runThread->frame.rflags & RFLAGS_INTERRUPT_ENABLE);
     lock_release(&sched->lock);
 }
 
