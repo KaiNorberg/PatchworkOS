@@ -22,12 +22,12 @@ typedef struct thread thread_t;
  * deadlines. This is in contrast to more common algorithms that use fixed time slices or might rely on priority queues.
  *
  * Perhaps surprisingly, it's actually not that complex to implement, once you understand the new concepts it
- * introduces.
+ * introduces. So, included below is a brief explanation of each core concept used by the EEVDF algorithm and some
+ * descriptions on how the scheduler works.
  *
  * ## Weight and Priority
  *
- * To explain how EEVDF works, we will start with how priorities are implemented. Each thread is assigned a "weight"
- * based on the priority of its parent process. This weight is calculated as
+ * Each thread is assigned a "weight" based on the priority of its parent process. This weight is calculated as
  *
  * ```
  * weight = process->priority + CONFIG_WEIGHT_BASE.
