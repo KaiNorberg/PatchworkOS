@@ -1,6 +1,6 @@
-#include <modules/drivers/apic/lapic.h>
 #include <modules/drivers/apic/apic_timer.h>
 #include <modules/drivers/apic/ioapic.h>
+#include <modules/drivers/apic/lapic.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/log/log.h>

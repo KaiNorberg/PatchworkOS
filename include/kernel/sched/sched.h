@@ -1,8 +1,10 @@
 #pragma once
 
+#include <_internal/config.h>
 #include <kernel/defs.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
+#include <kernel/utils/rbtree.h>
 
 #include <sys/list.h>
 #include <sys/proc.h>
@@ -11,150 +13,226 @@ typedef struct process process_t;
 typedef struct thread thread_t;
 
 /**
- * @brief The Scheduler.
- * @defgroup kernel_sched The Scheduler
+ * @brief The Earliest Eligible Virtual Deadline First (EEVDF) scheduler.
+ * @defgroup kernel_sched The EEVDF Scheduler
  * @ingroup kernel
  *
- * The scheduler used in Patchwork is loosely based of the Linux O(1) scheduler, so knowing how that scheduler works
- * could be useful, here is an article about it https://litux.nl/mirror/kerneldevelopment/0672327201/ch04lev1sec2.html.
+ * The scheduler is implemented using the Earliest Eligible Virtual Deadline First (EEVDF) algorithm. EEVDF attempts to
+ * give each thread a fair share of the CPU based on its weight by introducing the concepts of virtual time and virtual
+ * deadlines. This is in contrast to more common algorithms that use fixed time slices or might rely on priority queues.
+ *
+ * Perhaps surprisingly, it's actually not that complex to implement, once you understand the new concepts it introduces.
+ *
+ * ## Weight and Priority
+ *
+ * To explain how EEVDF works, we will start with how priorities are implemented. Each thread is assigned a "weight"
+ * based on the priority of it's parent process. This weight is calculated as
+ *
+ * ```
+ * weight = process->priority + CONFIG_WEIGHT_BASE.
+ * ```
+ *
+ * @note A higher value can be set for `CONFIG_WEIGHT_BASE` to reduce the significance of priority differences between
+ * processes.
+ *
+ * Threads with a higher weight will receive a larger share of the available CPU time, specifically, the fraction of CPU
+ * time a thread receives is proportional to its weight relative to the total weight of all runnable threads.
+ *
+ * ## Virtual Time
+ *
+ * The EEVDF algorithm introduces the concept of "virtual time". Each thread has a virtual clock that runs at a rate
+ * proportional to its weight, such that higher weight threads have their virtual clocks run slower.
+ *
+ * This is how each thread's share of the CPU is determined. From the perspective of virtual time, all threads should
+ * receive an equal amount of virtual CPU time. However, since each virtual clock runs at a different rate, this
+ * translates to different amounts of real CPU time for each thread.
+ *
+ * The total amount of virtual time a thread has ran for is tracked using the `vruntime` variable. This variable will be
+ * important later on.
+ *
+ * To convert a duration in real time to virtual time, we use the formula
+ *
+ * ```
+ * vclock = (clock * CONFIG_WEIGHT_BASE) / weight.
+ * ```
+ *
+ * Where `vclock` is the duration in virtual time, `clock` is the duration in real time, and `weight` is the weight of
+ * the thread.
+ *
+ * @note All variables storing virtual time values will be prefixed with 'v' and use the `vclock_t` type. Variables
+ * storing real time values will use the `clock_t` type as normal.
+ *
+ * ## Lag
+ *
+ * The key metric used to determine what thread to schedule next is called "lag". Lag is defined as the difference
+ * between the amount of CPU time a thread should have received and the amount of CPU time it has actually received.
+ *
+ * @note Since lag is calculated using virtual time, the amount of CPU time each thread should have received will appear
+ * to always be equal.
+ *
+ * As an example, lets say we have three threads A, B and C with equal weights. To start with each thread is supposed to
+ * have run for 0ms, and has actually run for 0ms:
+ *
+ * ```
+ * Thread | Lag (ms)
+ * -------|-------
+ *    A   |   0
+ *    B   |   0
+ *    C   |   0
+ * ```
+ *
+ * Now, lets say we give a 30ms (in real time) time slice to thread A. The lag values will now be:
+ *
+ * ```
+ * Thread | Lag (ms)
+ * -------|-------
+ *    A   |  -20
+ *    B   |   10
+ *    C   |   10
+ * ```
+ *
+ * What just happened is that each thread should have received one third of the CPU time (since they are all of equal
+ * weight such that each of their weights is 1/3 of the total weight) which is 10ms. Therefore, since thread A actually
+ * received 30ms of CPU time, it has run for 20ms more than it should have. Meanwhile, threads B and C have not received
+ * any CPU time, such that they have received 10ms less than they should have. Note that the sum of all lag values is
+ * always zero.
+ *
+ * The lag is then used to determine what thread to schedule next, with the thread with the highest lag being scheduled
+ * first and only threads with lag greater than or equal to zero being eligible to run.
+ *
+ * @note Fairness is achieved such that over some long period of time, the proportion of CPU time each thread receives
+ * will converge to the share it ought to receive, not that each individual time slice is exactly correct, which is why
+ * thread A was allowed to run for 30ms.
+ *
+ * ## Virtual Deadlines
+ *
+ * To determine which thread to schedule next, we could use lag directly, as described above. However, as will be shown,
+ * there is a far simpler approach. Instead of lag, EEVDF introduces the concept of "virtual deadlines". A virtual
+ * deadline is defined as the point in virtual time at which a thread is expected to finish it's next time slice. The
+ * virtual deadline is calculated as:
+ *
+ * ```
+ * vdeadline = vruntime + vtimeSlice
+ * ```
+ *
+ * Where `vtimeSlice` is the length of the time slice in virtual time. So how does this relate to lag? Consider that, by
+ * definition, lag can be expressed as
+ *
+ * ```
+ * vruntime = expectedVruntime - lag.
+ * ```
+ *
+ * Where `expectedVruntime` is how much virtual time the thread should have run for. Therefore, substituting this into
+ * our equation for virtual deadlines we get
+ *
+ * ```
+ * vdeadline = (expectedVruntime - lag) + vtimeSlice.
+ * ```
+ *
+ * We can now see that finding a thread with a low virtual deadline is generally equivalent to finding a thread with a high lag,
+ * since each thread will expect to run for the same amount of virtual time, as described above. Therefore, there is no
+ * need to actually determine the lag, instead we can just use the virtual deadline as a proxy for lag, which is far
+ * simpler.
+ *
+ * But, there is one more detail to consider. Since a thread needs to have a lag greater than or equal to zero to be
+ * eligible to run, we still need to check the lag, right? Thankfully, we can bypass this too. Consider that since the
+ * sum of all lag values is always zero, either all threads have zero lag, or there must always be at least one thread
+ * with positive lag, since if one has negative lag, there must be another with positive lag to balance it out.
+ * Therefore, the thread with the lowest virtual deadline, and thus the highest lag, will always have a lag greater than or
+ * equal to zero and thus be eligible to run.
+ *
+ * ## Preventing infinite lag
+ *
+ * One issue that can arise is that if a thread were to block for a very long time, it would be owed a massive amount of
+ * CPU time when it's unblocked. Theoretically, a thread could block for a day and then be scheduled for several hours
+ * straight to "catch up" on its owed CPU time. In a sense, it's lag could grow infinitely large while it's blocked.
+ *
+ * To prevent this, the `minVruntime` variable is introduced. This variable tracks the minimum virtual runtime of all
+ * runnable threads. When a thread is submitted to a scheduler, the `minVruntime` is used to set a floor on the threads
+ * `vruntime`, such that it's lag can never be greater than `CONFIG_MAX_LAG`. Which solves the issue of threads
+ * accumulating an unbounded amount of negative lag, while still making sure blocked threads are prioritized when they
+ * unblock.
+ *
+ * ## Scheduling
+ *
+ * The scheduler maintains a runqueue of all runnable threads, sorted by their virtual deadlines. When a thread's time
+ * slice expires, or a thread blocks or exits, the scheduler selects the thread with the earliest virtual deadline from
+ * the runqueue to run next. This ensures that the thread with the lowest lag is always selected to run next, resulting
+ * in time slices being distributed in such a way to converge towards the ideal fair distribution of CPU time.
+ *
+ * ## Load Balancing
+ *
+ * Each CPU has it's own scheduler and associated runqueue, as such we need to balance the load between each CPU. To do
+ * this, each scheduler will check if its neighbor CPU has a `CONFIG_LOAD_BALANCE_BIAS` number of threads fewer than
+ * itself before a scheduling decision. If it does, it will push it's thread with the highest virtual deadline to the
+ * neighbor CPU.
+ *
+ * @note The reason we want to avoid a global runqueue is to avoid lock contention, but also to reduce cache misses by
+ * keeping threads on the same CPU when reasonably possible.
+ *
+ * TODO: The load balancing algorithm is rather naive at the moment and could be improved in the future.
+ *
+ * @see [Earliest Eligible Virtual Deadline
+ * First](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564) for
+ * the original paper describing EEVDF.
+ * @see [An EEVDF CPU scheduler for Linux](https://lwn.net/Articles/925371/) for the LWN article introducing EEVDF in
+ * Linux.
+ * @see [Completing the EEVDF Scheduler](https://lwn.net/Articles/969062/) for a LWN article containing additional
+ * information on EEVDF.
  *
  * @{
  */
 
 /**
- * @brief Scheduling queues structure.
- * @struct sched_queues_t
- *
- * The `sched_queues_t` structure represents a set of scheduling queues, with one queue for each priority level and a
- * bitmap for faster lookups.
- *
+ * @brief Virtual clock type.
+ * @typedef vclock_t
  */
-typedef struct
-{
-    /**
-     * @brief The total number of threads in all lists.
-     */
-    uint64_t length;
-    /**
-     * @brief A bitmap indicating which of the lists have threads in them.
-     */
-    uint64_t bitmap;
-    /**
-     * @brief An array of lists that store threads, one for each priority, used in a round robin fashion.
-     */
-    list_t lists[PRIORITY_MAX];
-} sched_queues_t;
+typedef uint64_t vclock_t;
 
 /**
- * @brief Per-thread scheduling context.
- * @struct sched_thread_ctx_t
- *
- * The `sched_thread_ctx_t` structure stores scheduling context for each thread.
- *
+ * @brief Per-thread scheduler context.
+ * @struct sched_ctx_t
  */
-typedef struct
+typedef struct sched_ctx
 {
-    /**
-     * @brief The length of the threads time slice, used to determine its deadline when its scheduled.
-     */
-    clock_t timeSlice;
-    /**
-     * @brief The time when the time slice will actually expire, only valid while the thread is running.
-     */
-    clock_t deadline;
-    /**
-     * @brief The actual priority of the thread.
-     *
-     * Based of the processes priority, but with some dynamic changes determined by if the thread is IO bound or CPU
-     * bound.
-     *
-     */
-    priority_t actualPriority;
-    /**
-     * @brief The amount of time within the last `CONFIG_MAX_RECENT_BLOCK_TIME` nanoseconds that the thread was
-     * blocking.
-     *
-     * Used to determine its actual priority.
-     *
-     */
-    clock_t recentBlockTime;
-    /**
-     * @brief The previous time when the `recentBlockTime` member was updated.
-     */
-    clock_t prevBlockCheck;
-} sched_thread_ctx_t;
+    rbnode_t node;
+    uint64_t weight;    ///< The weight of the thread, derived from it's process priority.
+    vclock_t vruntime;  ///< Virtual runtime (how much time the thread has run in virtual time).
+    vclock_t vdeadline; ///< Virtual deadline (when the thread is expected to finish in virtual time).
+    clock_t lastUpdate; ///< Uptime when the thread last started running.
+    clock_t timeSlice;  ///< The max duration of the current time slice.
+} sched_ctx_t;
 
 /**
- * @brief Per-CPU scheduling context.
- * @struct sched_cpu_ctx_t
- *
- * The `sched_cpu_ctx_t` structure holds the scheduling context for a each CPU.
- *
+ * @brief Per-CPU scheduler.
+ * @struct sched_t
  */
-typedef struct
+typedef struct sched
 {
-    /**
-     * @brief Array storing both queues.
-     *
-     * Should never be accessed always use the pointer `active` and `expired` as those always point to these queues.
-     *
-     */
-    sched_queues_t queues[2];
-    /**
-     * @brief Pointer to the currently active queue.
-     */
-    sched_queues_t* active;
-    /**
-     * @brief Pointer to the currently expired queue.
-     */
-    sched_queues_t* expired;
-
-    /**
-     * @brief The currently running thread.
-     *
-     * Accessing the run thread can be a bit weird; if the run thread is accessed by the currently running thread,
-     * then there is no need for a lock as it will always see the same value, itself. However, if it is accessed
-     * from another CPU, then the lock is needed.
-     */
-    thread_t* runThread;
-    /**
-     * @brief The thread that runs when the owner CPU is idling.
-     *
-     * This thread never changes after boot, so no need for a lock.
-     */
-    thread_t* idleThread;
-    /**
-     * @brief The lock that protects this context.
-     */
+    rbtree_t runqueue;    ///< Contains all runnable threads, sorted by virtual deadline.
+    vclock_t minVruntime; ///< The minimum virtual runtime of all runnable threads.
+    uint64_t totalWeight; ///< The total weight of all threads in the runqueue.
     lock_t lock;
-    cpu_t* owner; ///< The cpu that owns this scheduling context.
-} sched_cpu_ctx_t;
+    thread_t* idleThread;
+    thread_t* runThread;
+} sched_t;
 
 /**
- * @brief Initializes a thread's scheduling context.
+ * @brief Initialize the scheduler context for a thread.
  *
- * @param ctx The `sched_thread_ctx_t` structure to initialize.
+ * @param ctx The scheduler context to initialize.
  */
-void sched_thread_ctx_init(sched_thread_ctx_t* ctx);
+void sched_ctx_init(sched_ctx_t* ctx);
 
 /**
- * @brief Initializes a CPU's scheduling context.
+ * @brief Initialize the scheduler for a CPU.
  *
- * @param ctx The `sched_cpu_ctx_t` structure to initialize.
- * @param self The `cpu_t` structure associated with this scheduling context.
+ * @param sched The scheduler to initialize.
  */
-void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* self);
+void sched_init(sched_t* sched);
 
 /**
- * @brief The idle loop for a CPU.
- *
- * The `sched_idle_loop()` function is the main loop where idle threads execute.
- *
- */
-NORETURN extern void sched_idle_loop(void);
-
-/**
- * @brief Starts the scheduler by switching to the boot thread.
+ * @brief Starts the scheduler by jumping to the boot thread.
  *
  * Will never return.
  *
@@ -163,15 +241,15 @@ NORETURN extern void sched_idle_loop(void);
 _NORETURN void sched_start(thread_t* bootThread);
 
 /**
- * @brief Puts the current thread to sleep.
+ * @brief Sleeps the current thread for a specified duration in nanoseconds.
  *
- * @param timeout The maximum time to sleep. If `CLOCKS_NEVER`, it sleeps forever.
- * @return On success, `0`. On error, `ERR` and `errno` is set.
+ * @param timeout The duration to sleep in nanoseconds.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t sched_nanosleep(clock_t timeout);
 
 /**
- * @brief Checks if the CPU is idle.
+ * @brief Checks if the CPU is currently idle.
  *
  * @param cpu The CPU to check.
  * @return `true` if the CPU is idle, `false` otherwise.
@@ -188,8 +266,8 @@ thread_t* sched_thread(void);
 /**
  * @brief Retrieves the process of the currently running thread.
  *
- * Will not increment the reference count of the returned process, as we consider the currently running thread to always
- * be referencing its process.
+ * @note Will not increment the reference count of the returned process, as we consider the currently running thread to
+ * always be referencing it's process.
  *
  * @return The process of the currently running thread.
  */
@@ -205,71 +283,58 @@ thread_t* sched_thread_unsafe(void);
 /**
  * @brief Retrieves the process of the currently running thread without disabling interrupts.
  *
- * Will not increment the reference count of the returned process, as we consider the currently running thread to always
- * be referencing its process.
+ * @note Will not increment the reference count of the returned process, as we consider the currently running thread to
+ * always be referencing it's process.
  *
  * @return The process of the currently running thread.
  */
 process_t* sched_process_unsafe(void);
 
 /**
- * @brief Exits the current process.
+ * @brief Terminates the currently executing process and all it's threads.
  *
- * The `sched_process_exit()` function terminates the currently executing process and all its threads. Note that this
- * function will never return, instead it triggers an interrupt that kills the current thread.
+ * @note Will never return, instead it triggers an interrupt that kills the current thread.
  *
  * @param status The exit status of the process.
  */
 _NORETURN void sched_process_exit(uint64_t status);
 
 /**
- * @brief Exits the current thread.
+ * @brief Terminates the currently executing thread.
  *
- * The `sched_thread_exit()` function terminates the currently executing thread. Note that this function will never
- * return, instead it triggers an interrupt that kills the thread.
+ * @note Will never return, instead it triggers an interrupt that kills the thread.
  *
  */
 _NORETURN void sched_thread_exit(void);
 
 /**
- * @brief Yields the CPU to another thread.
- *
- * The `sched_yield()` function voluntarily relinquishes the currently running threads time slice, and invokes the
- * scheduler.
- *
+ * @brief Yield the current thread's time slice to allow other threads to run.
  */
 void sched_yield(void);
 
 /**
- * @brief Pushes a thread onto a scheduling queue.
+ * @brief Submits a thread to be scheduled on the current CPU.
  *
- * This will take ownership of the thread, so the caller should not deref it after calling this function as if a
- * preemption occurs it could be freed by the time the function returns.
- *
- * @param thread The thread to be pushed.
- * @param target The target cpu that the thread should run on, can be `NULL` to specify the currently running cpu-
+ * @param thread The thread to submit.
+ * @param target The target CPU to schedule the thread on, or `NULL` for the current CPU.
  */
-void sched_push(thread_t* thread, cpu_t* target);
+void sched_submit(thread_t* thread, cpu_t* target);
 
 /**
- * @brief Pushes a newly created thread onto the scheduling queue.
+ * @brief Perform a scheduling operation.
  *
- * This will take ownership of the thread, so the caller should not deref it after calling this function as if a
- * preemption occurs it could be freed by the time the function returns.
+ * This function is called on every interrupt to provide a scheduling opportunity.
  *
- * @param thread The thread to be pushed.
- * @param parent The parent thread.
- */
-void sched_push_new_thread(thread_t* thread, thread_t* parent);
-
-/**
- * @brief The main scheduling function.
- *
- * Must be called in an interrupt context.
- *
- * @param frame The current interrupt frame.
- * @param self The currently running cpu.
+ * @param frame The interrupt frame.
+ * @param self The cpu performing the scheduling operation.
  */
 void sched_do(interrupt_frame_t* frame, cpu_t* self);
+
+/**
+ * @brief The idle loop for the scheduler.
+ *
+ * This is where idle threads will run when there is nothing else to do.
+ */
+_NORETURN extern void sched_idle_loop(void);
 
 /** @} */

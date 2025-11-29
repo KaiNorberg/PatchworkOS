@@ -1,5 +1,6 @@
 #pragma once
 
+#include <kernel/cpu/gdt.h>
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/simd.h>
 #include <kernel/cpu/stack_pointer.h>
@@ -28,8 +29,7 @@
 typedef enum
 {
     THREAD_PARKED = 0, ///< Is doing nothing, not in a queue, not blocking, think of it as "other".
-    THREAD_READY,      ///< Is ready to run and waiting to be scheduled.
-    THREAD_RUNNING,    ///< Is currently running on a cpu.
+    THREAD_ACTIVE,     ///< Is either running or ready to run.
     THREAD_PRE_BLOCK,  ///< Has started the process of blocking but has not yet been given to a owner cpu.
     THREAD_BLOCKED,    ///< Is blocking and waiting in one or multiple wait queues.
     THREAD_UNBLOCKING, ///< Has started unblocking, used to prevent the same thread being unblocked multiple times.
@@ -75,7 +75,7 @@ typedef struct thread
     errno_t error;
     stack_pointer_t kernelStack; ///< The kernel stack of the thread.
     stack_pointer_t userStack;   ///< The user stack of the thread.
-    sched_thread_ctx_t sched;
+    sched_ctx_t sched;
     wait_thread_ctx_t wait;
     simd_ctx_t simd;
     note_queue_t notes;
@@ -97,6 +97,20 @@ typedef struct thread
  * @return On success, returns the newly created thread. On failure, returns `NULL` and `errno` is set.
  */
 thread_t* thread_new(process_t* process);
+
+/**
+ * @brief Kernel thread entry point function type.
+ */
+typedef void (*thread_kernel_entry_t)(void* arg);
+
+/**
+ * @brief Creates a new thread that runs in kernel mode and submits it to the scheduler.
+ * 
+ * @param entry The entry point function for the thread.
+ * @param arg An argument to pass to the entry point function.
+ * @return On success, returns the newly created thread ID. On failure, returns `ERR` and `errno` is set.
+ */
+tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg);
 
 /**
  * @brief Frees a thread structure.

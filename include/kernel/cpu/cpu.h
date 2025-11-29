@@ -131,7 +131,7 @@ typedef struct cpu
     perf_cpu_ctx_t perf;
     timer_cpu_ctx_t timer;
     wait_cpu_ctx_t wait;
-    sched_cpu_ctx_t sched;
+    sched_t sched;
     rand_cpu_ctx_t rand;
     ipi_cpu_ctx_t ipi;
     stack_pointer_t exceptionStack;
@@ -234,6 +234,21 @@ uint64_t cpu_halt_others(void);
 static inline uint64_t cpu_amount(void)
 {
     return _cpuAmount;
+}
+
+/**
+ * @brief Gets a CPU structure by its ID.
+ *
+ * @param id The ID of the CPU to get.
+ * @return A pointer to the CPU structure, or `NULL` if no CPU with the given ID exists.
+ */
+static inline cpu_t* cpu_get_by_id(cpuid_t id)
+{
+    if (id >= _cpuAmount)
+    {
+        return NULL;
+    }
+    return _cpus[id];
 }
 
 /**

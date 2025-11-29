@@ -1,9 +1,9 @@
 #include <_internal/clock_t.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
-#include <stdbool.h>
 #include <sys/io.h>
 
 int main(int argc, char* argv[])

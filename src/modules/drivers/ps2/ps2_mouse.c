@@ -20,7 +20,6 @@ static void ps2_mouse_irq(irq_func_data_t* data)
     uint64_t byte = ps2_read_no_wait();
     if (byte == ERR)
     {
-        LOG_WARN("failed to scan PS/2 mouse\n");
         return;
     }
 

@@ -1,10 +1,10 @@
 #include <modules/acpi/tables.h>
 
-#include <modules/acpi/acpi.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <modules/acpi/acpi.h>
 
 #include <boot/boot_info.h>
 

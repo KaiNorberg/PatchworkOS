@@ -8,7 +8,7 @@
  * @ingroup kernel_log
  *
  * The kernel logs are exposed to userspace via the readable and pollable `/dev/klog` file.
- * 
+ *
  * @{
  */
 

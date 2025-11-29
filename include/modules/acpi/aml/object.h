@@ -1,12 +1,12 @@
 #pragma once
 
+#include <kernel/fs/sysfs.h>
+#include <kernel/utils/ref.h>
 #include <modules/acpi/aml/encoding/name.h>
 #include <modules/acpi/aml/integer.h>
 #include <modules/acpi/aml/namespace.h>
 #include <modules/acpi/aml/patch_up.h>
 #include <modules/acpi/aml/runtime/mutex.h>
-#include <kernel/fs/sysfs.h>
-#include <kernel/utils/ref.h>
 
 #include <stdint.h>
 

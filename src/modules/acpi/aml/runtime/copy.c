@@ -1,10 +1,10 @@
 #include <modules/acpi/aml/runtime/copy.h>
 
+#include <kernel/log/log.h>
 #include <modules/acpi/aml/runtime/buffer_field.h>
 #include <modules/acpi/aml/runtime/convert.h>
 #include <modules/acpi/aml/runtime/field_unit.h>
 #include <modules/acpi/aml/to_string.h>
-#include <kernel/log/log.h>
 
 #include <errno.h>
 

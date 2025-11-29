@@ -1,11 +1,11 @@
 #include <kernel/drivers/abstract/fb.h>
+#include <kernel/init/init.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
-#include <kernel/proc/process.h>
 #include <kernel/module/module.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
-#include <kernel/init/init.h>
 
 #include <errno.h>
 #include <string.h>
@@ -16,9 +16,9 @@
  * @brief GOP (Graphics Output Protocol) driver.
  * @defgroup modules_drivers_gop GOP Driver
  * @ingroup modules_drivers
- * 
+ *
  * This module provides a framebuffer device for the GOP framebuffer provided by the bootloader.
- * 
+ *
  * @{
  */
 

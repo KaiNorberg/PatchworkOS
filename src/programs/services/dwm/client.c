@@ -227,7 +227,7 @@ static uint64_t client_action_surface_timer_set(client_t* client, const cmd_head
 
     surface->timer.flags = cmd->flags;
     surface->timer.timeout = cmd->timeout;
-    surface->timer.deadline = cmd->timeout == CLOCKS_NEVER ? CLOCKS_NEVER : uptime() + cmd->timeout;
+    surface->timer.deadline = CLOCKS_DEADLINE(cmd->timeout, uptime());
     return 0;
 }
 

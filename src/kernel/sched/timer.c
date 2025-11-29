@@ -140,8 +140,10 @@ void timer_set(clock_t uptime, clock_t deadline)
 
     RWLOCK_READ_SCOPE(&sourcesLock);
 
+    deadline = MAX(deadline, uptime + CONFIG_MIN_TIMER_TIMEOUT);
+
     cpu_t* cpu = cpu_get_unsafe();
-    if (cpu->timer.deadline < deadline)
+    if (cpu->timer.deadline <= deadline)
     {
         return;
     }
@@ -149,16 +151,6 @@ void timer_set(clock_t uptime, clock_t deadline)
 
     if (bestSource != NULL)
     {
-        clock_t timeout;
-        if (deadline <= uptime)
-        {
-            timeout = CONFIG_MIN_TIMER_TIMEOUT;
-        }
-        else
-        {
-            timeout = deadline - uptime;
-        }
-
-        bestSource->set(VECTOR_TIMER, uptime, timeout);
+        bestSource->set(VECTOR_TIMER, uptime, deadline - uptime);
     }
 }

@@ -120,6 +120,6 @@ void trampoline_c_entry(cpu_t* cpu)
     thread->frame.rsp = thread->kernelStack.top;
     thread->frame.cs = GDT_CS_RING0;
     thread->frame.ss = GDT_SS_RING0;
-    thread->frame.rflags = RFLAGS_ALWAYS_SET;
+    thread->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
     thread_jump(thread);
 }

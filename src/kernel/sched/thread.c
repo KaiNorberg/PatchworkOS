@@ -32,7 +32,7 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
     thread->process = REF(process);
     list_entry_init(&thread->processEntry);
     thread->id = thread->process->threads.newTid++;
-    sched_thread_ctx_init(&thread->sched);
+    sched_ctx_init(&thread->sched);
     atomic_init(&thread->state, THREAD_PARKED);
     thread->error = 0;
     if (stack_pointer_init(&thread->kernelStack,
@@ -94,6 +94,33 @@ thread_t* thread_new(process_t* process)
         return NULL;
     }
     return thread;
+}
+
+tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg)
+{
+    if (entry == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    thread_t* thread = thread_new(process_get_kernel());
+    if (thread == NULL)
+    {
+        return ERR;
+    }
+
+    thread->frame.rip = (uintptr_t)entry;
+    thread->frame.rdi = (uintptr_t)arg;
+    thread->frame.rbp = thread->kernelStack.top;
+    thread->frame.rsp = thread->kernelStack.top;
+    thread->frame.cs = GDT_CS_RING0;
+    thread->frame.ss = GDT_SS_RING0;
+    thread->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
+
+    tid_t volatile tid = thread->id;
+    sched_submit(thread, NULL);
+    return tid;
 }
 
 void thread_free(thread_t* thread)

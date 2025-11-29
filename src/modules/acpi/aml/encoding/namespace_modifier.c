@@ -1,5 +1,6 @@
 #include <modules/acpi/aml/encoding/namespace_modifier.h>
 
+#include <kernel/log/log.h>
 #include <modules/acpi/aml/debug.h>
 #include <modules/acpi/aml/encoding/data.h>
 #include <modules/acpi/aml/encoding/name.h>
@@ -8,7 +9,6 @@
 #include <modules/acpi/aml/state.h>
 #include <modules/acpi/aml/to_string.h>
 #include <modules/acpi/aml/token.h>
-#include <kernel/log/log.h>
 
 #include <sys/list.h>
 

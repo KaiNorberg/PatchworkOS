@@ -34,7 +34,7 @@ static uint8_t rtc_read(uint8_t reg)
 
 static int rtc_update_in_progress(void)
 {
-    return (rtc_read(0x0A) & 0x80); 
+    return (rtc_read(0x0A) & 0x80);
 }
 
 static uint8_t rtc_bcd_to_bin(uint8_t bcd)
@@ -51,12 +51,12 @@ static time_t rtc_read_epoch(void)
         asm volatile("pause");
     }
 
-    uint8_t seconds  = rtc_bcd_to_bin(rtc_read(0x00));
-    uint8_t minutes  = rtc_bcd_to_bin(rtc_read(0x02));
-    uint8_t hours  = rtc_bcd_to_bin(rtc_read(0x04));
-    uint8_t day  = rtc_bcd_to_bin(rtc_read(0x07));
+    uint8_t seconds = rtc_bcd_to_bin(rtc_read(0x00));
+    uint8_t minutes = rtc_bcd_to_bin(rtc_read(0x02));
+    uint8_t hours = rtc_bcd_to_bin(rtc_read(0x04));
+    uint8_t day = rtc_bcd_to_bin(rtc_read(0x07));
     uint8_t month = rtc_bcd_to_bin(rtc_read(0x08));
-    uint8_t year  = rtc_bcd_to_bin(rtc_read(0x09));
+    uint8_t year = rtc_bcd_to_bin(rtc_read(0x09));
 
     uint16_t fullYear;
     if (centuryRegister != 0)
@@ -75,15 +75,15 @@ static time_t rtc_read_epoch(void)
         .tm_hour = hours,
         .tm_mday = day,
         .tm_mon = month - 1,
-        .tm_year = fullYear - 1900, 
+        .tm_year = fullYear - 1900,
     };
-    
+
     return mktime(&stime);
 }
 
 static sys_time_source_t source = {
     .name = "CMOS RTC",
-    .precision = CLOCKS_PER_SEC, 
+    .precision = CLOCKS_PER_SEC,
     .read_ns = NULL,
     .read_epoch = rtc_read_epoch,
 };
@@ -99,7 +99,8 @@ static uint64_t rtc_init(const char* deviceName)
         return ERR;
     }
 
-    if (acpi_device_cfg_get_port(acpiCfg, 0, &addressPort) == ERR || acpi_device_cfg_get_port(acpiCfg, 1, &dataPort) == ERR)
+    if (acpi_device_cfg_get_port(acpiCfg, 0, &addressPort) == ERR ||
+        acpi_device_cfg_get_port(acpiCfg, 1, &dataPort) == ERR)
     {
         LOG_ERR("rtc device '%s' has invalid port resources\n", deviceName);
         return ERR;

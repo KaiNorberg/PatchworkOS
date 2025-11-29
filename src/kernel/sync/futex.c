@@ -78,26 +78,13 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
     case FUTEX_WAIT:
     {
         clock_t uptime = sys_time_uptime();
-
-        clock_t deadline;
-        if (timeout == CLOCKS_NEVER)
-        {
-            deadline = CLOCKS_NEVER;
-        }
-        else if (timeout > CLOCKS_NEVER - uptime)
-        {
-            deadline = CLOCKS_NEVER;
-        }
-        else
-        {
-            deadline = uptime + timeout;
-        }
+        clock_t deadline = CLOCKS_DEADLINE(timeout, uptime);
 
         bool firstCheck = true;
         while (true)
         {
             uptime = sys_time_uptime();
-            clock_t remaining = (deadline == CLOCKS_NEVER) ? CLOCKS_NEVER : deadline - uptime;
+            clock_t remaining = CLOCKS_REMAINING(deadline, uptime);
             wait_queue_t* queue = &futex->queue;
             if (wait_block_setup(&queue, 1, remaining) == ERR)
             {

@@ -483,6 +483,22 @@ void process_kill(process_t* process, uint64_t status)
     nextReaperTime = sys_time_uptime() + CONFIG_PROCESS_REAPER_INTERVAL; // Delay reaper run
 }
 
+bool process_has_thread(process_t* process, tid_t tid)
+{
+    LOCK_SCOPE(&process->threads.lock);
+
+    thread_t* thread;
+    LIST_FOR_EACH(thread, &process->threads.list, processEntry)
+    {
+        if (thread->id == tid)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 process_t* process_get_kernel(void)
 {
     if (!kernelProcessInitalized)
@@ -522,8 +538,10 @@ void process_procfs_init(void)
     }
 }
 
-static void process_reaper(void)
+static void process_reaper(void* arg)
 {
+    (void)arg;
+
     while (1)
     {
         sched_nanosleep(CONFIG_PROCESS_REAPER_INTERVAL);
@@ -568,20 +586,10 @@ static void process_reaper(void)
 
 void process_reaper_init(void)
 {
-    thread_t* reaper = thread_new(process_get_kernel());
-    if (reaper == NULL)
+    if (thread_kernel_create(process_reaper, NULL) == ERR)
     {
         panic(NULL, "Failed to create process reaper thread");
     }
-
-    reaper->frame.rip = (uintptr_t)process_reaper;
-    reaper->frame.rbp = reaper->kernelStack.top;
-    reaper->frame.rsp = reaper->kernelStack.top;
-    reaper->frame.cs = GDT_CS_RING0;
-    reaper->frame.ss = GDT_SS_RING0;
-    reaper->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
-
-    sched_push_new_thread(reaper, sched_thread());
 }
 
 SYSCALL_DEFINE(SYS_GETPID, pid_t)

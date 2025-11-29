@@ -37,16 +37,6 @@
 #define CONFIG_MAX_USER_STACK_PAGES 100
 
 /**
- * @brief CPU data configuration.
- * @ingroup kernel
- * @def CONFIG_CPU_DATA_PAGES
- *
- * The `CONFIG_CPU_DATA_PAGES` constant defines the amount of pages allocated for per-CPU data.
- *
- */
-#define CONFIG_CPU_DATA_PAGES 16
-
-/**
  * @brief Maximum file descriptor configuration.
  * @ingroup kernel
  * @def CONFIG_MAX_FD
@@ -99,65 +89,43 @@
 #define CONFIG_MIN_TIMER_TIMEOUT ((CLOCKS_PER_SEC) / 10000)
 
 /**
- * @brief Maximum time slice configuration.
+ * @brief Time slice configuration.
  * @ingroup kernel
- * @def CONFIG_MAX_TIME_SLICE
+ * @def CONFIG_TIME_SLICE
  *
- * The `CONFIG_MAX_TIME_SLICE` constant defines the maximum time slice a thread can have based on its priority.
+ * The `CONFIG_TIME_SLICE` constant defines the default time slice given to threads when they are scheduled.
  *
  */
-#define CONFIG_MAX_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 50)
+#define CONFIG_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 10)
 
 /**
- * @brief Minimum time slice configuration.
+ * @brief Maximum lag configuration.
  * @ingroup kernel
- * @def CONFIG_MIN_TIME_SLICE
+ * @def CONFIG_MAX_LAG
  *
- * The `CONFIG_MIN_TIME_SLICE` constant defines the minimum time slice a thread can have based on its priority.
+ * The `CONFIG_MAX_LAG` constant defines the maximum amount of lag a thread can accumulate. This
+ * prevents a thread from accumulating an unbounded amount of lag.
  *
  */
-#define CONFIG_MIN_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 10)
+#define CONFIG_MAX_LAG (CONFIG_TIME_SLICE * 10)
 
 /**
- * @brief Maximum recent block time configuration.
+ * @brief Weight base configuration.
  * @ingroup kernel
- * @def CONFIG_MAX_RECENT_BLOCK_TIME
+ * @def CONFIG_WEIGHT_BASE
  *
- * The `CONFIG_MAX_RECENT_BLOCK_TIME` constant defines the length of time considered when deciding if a thread is I/O or
- * CPU bound.
+ * The `CONFIG_WEIGHT_BASE` constant defines the base to add to the priority of a process when calculating a thread's
+ * weight. Increasing this value will reduce the significance of priority differences between processes.
  *
  */
-#define CONFIG_MAX_RECENT_BLOCK_TIME ((CLOCKS_PER_SEC / 1000) * 10)
-
-/**
- * @brief Maximum priority boost configuration.
- * @ingroup kernel
- * @def CONFIG_MAX_PRIORITY_BOOST
- *
- * The `CONFIG_MAX_PRIORITY_BOOST` constant defines the maximum priority boost a thread can receive from being I/O
- * bound.
- *
- */
-#define CONFIG_MAX_PRIORITY_BOOST 8
-
-/**
- * @brief Maximum priority penalty configuration.
- * @ingroup kernel
- * @def CONFIG_MAX_PRIORITY_PENALTY
- *
- * The `CONFIG_MAX_PRIORITY_PENALTY` constant defines the maximum priority penalty a thread can receive from being CPU
- * bound.
- *
- */
-#define CONFIG_MAX_PRIORITY_PENALTY 8
+#define CONFIG_WEIGHT_BASE 1
 
 /**
  * @brief Load balance bias configuration.
  * @ingroup kernel
  * @def CONFIG_LOAD_BALANCE_BIAS
  *
- * The `CONFIG_LOAD_BALANCE_BIAS` constant defines the bias used the minimum inbalance required for load balancing to
- * occur.
+ * The `CONFIG_LOAD_BALANCE_BIAS` constant defines the minimum inbalance required for load balancing to occur.
  *
  */
 #define CONFIG_LOAD_BALANCE_BIAS 2

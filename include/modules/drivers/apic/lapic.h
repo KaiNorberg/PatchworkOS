@@ -165,18 +165,18 @@ lapic_t* lapic_get(uint32_t cpuId);
 
 /**
  * @brief Send an INIT IPI to the specified local APIC.
- * 
+ *
  * Sending an INIT IPI will cause the target CPU to enter the INIT state, preparing it for startup.
- * 
+ *
  * @param id The ID of the local APIC to send the INIT IPI to.
  */
 void lapic_send_init(lapic_id_t id);
 
 /**
  * @brief Send a Startup IPI (SIPI) to the specified local APIC.
- * 
+ *
  * Sending a SIPI will cause the target CPU to start executing code at the specified entry point address.
- * 
+ *
  * @param id The ID of the local APIC to send the SIPI to.
  * @param entryPoint The entry point address for the SIPI, must be page-aligned.
  */

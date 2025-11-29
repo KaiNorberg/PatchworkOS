@@ -1,5 +1,8 @@
 #include <modules/acpi/aml/encoding/expression.h>
 
+#include <kernel/log/log.h>
+#include <kernel/sched/sys_time.h>
+#include <kernel/sched/timer.h>
 #include <modules/acpi/aml/debug.h>
 #include <modules/acpi/aml/encoding/arg.h>
 #include <modules/acpi/aml/encoding/debug.h>
@@ -16,9 +19,6 @@
 #include <modules/acpi/aml/state.h>
 #include <modules/acpi/aml/to_string.h>
 #include <modules/acpi/aml/token.h>
-#include <kernel/log/log.h>
-#include <kernel/sched/sys_time.h>
-#include <kernel/sched/timer.h>
 
 #include <sys/proc.h>
 

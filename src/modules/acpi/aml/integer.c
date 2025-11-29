@@ -1,7 +1,7 @@
 #include <modules/acpi/aml/integer.h>
 
-#include <modules/acpi/tables.h>
 #include <kernel/log/log.h>
+#include <modules/acpi/tables.h>
 
 static uint8_t integerByteSize = 0;
 

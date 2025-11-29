@@ -11,6 +11,8 @@
 #include <kernel/sched/sys_time.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
+#include <kernel/utils/utils.h>
+#include <kernel/log/log.h>
 
 #include <stdint.h>
 #include <stdio.h>
@@ -30,6 +32,7 @@ static uint64_t perf_cpu_read(file_t* file, void* buffer, uint64_t count, uint64
     char* string = malloc(256 * (cpu_amount() + 1));
     if (string == NULL)
     {
+        errno = ENOMEM;
         return ERR;
     }
 
@@ -85,6 +88,7 @@ static uint64_t perf_mem_read(file_t* file, void* buffer, uint64_t count, uint64
     char* string = malloc(256);
     if (string == NULL)
     {
+        errno = ENOMEM;
         return ERR;
     }
 
@@ -156,8 +160,8 @@ void perf_interrupt_begin(cpu_t* self)
 
     if (perf->interruptEnd < perf->interruptBegin)
     {
-        // TODO: This should not happen, but still somehow does? Might be hardware timer issues?
-        perf->interruptEnd = sys_time_uptime();
+        LOG_WARN("unexpected call to perf_interrupt_begin()\n");
+        return;
     }
 
     perf->interruptBegin = sys_time_uptime();
@@ -213,8 +217,8 @@ void perf_syscall_begin(void)
     clock_t uptime = sys_time_uptime();
     if (perf->syscallEnd < perf->syscallBegin)
     {
-        panic(NULL, "perf_syscall_begin called while already in syscall syscallBegin=%llu syscallEnd=%llu",
-            perf->syscallBegin, perf->syscallEnd);
+        LOG_WARN("unexpected call to perf_syscall_begin()\n");
+        return;
     }
 
     if (perf->syscallEnd != 0)

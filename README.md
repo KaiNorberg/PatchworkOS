@@ -56,14 +56,12 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 
 ### Kernel
 
-- Fully preemptive and tickless [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sched/sched.h), loosely based on Linux's O(1) scheduler.
+- Fully preemptive and tickless [EEVDF scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sched/sched.h), using a [Red-Black tree](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/utils/rbtree.h) to achieve `O(log n)` worst case complexity. This is the same algorithm used in the modern Linux kernel, even if ours is obviously a lot less mature.
 - Multithreading and Symmetric Multi Processing with fine-grained locking.
 - Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info.
-- Dynamic kernel and user stack allocation.
 - File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/ipc/note.h).
 - File based device APIs, including [framebuffers](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/fb.h), [keyboards](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/kbd.h), [mice](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/helpers/mouse.h) and more.
 - [Synchronization primitives](https://github.com/KaiNorberg/PatchworkOS/blob/main/include/kernel/sync) including mutexes, read-write locks, sequential locks, futexes and others.
-- SIMD support.
 - Highly [Modular design](#modules), even [SMP Bootstrapping](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/modules/smp/smp.c) is done in a module.
 
 ### File System
@@ -96,8 +94,6 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 
 ## Notable Future Plans
 
-- Separate the kernel into more and more modules. <- Currently being worked on
-- "Earliest Eligible Virtual Deadline First" style scheduler?
 - Read, write, execute, create permissions.
 - Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions.
 - Fully Asynchronous I/O and syscalls (io_uring?).

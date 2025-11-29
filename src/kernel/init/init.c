@@ -1,9 +1,9 @@
 #include <kernel/init/init.h>
 
-#include <kernel/cpu/ipi.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/idt.h>
+#include <kernel/cpu/ipi.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/syscall.h>
 #include <kernel/drivers/pic.h>
@@ -141,7 +141,7 @@ static void init_finalize(void)
             panic(NULL, "Failed to load modules with BOOT_GOP");
         }
     }
-    else 
+    else
     {
         LOG_WARN("no GOP provided by bootloader\n");
     }
@@ -153,7 +153,7 @@ static void init_finalize(void)
             panic(NULL, "Failed to load modules with BOOT_RSDP");
         }
     }
-    else 
+    else
     {
         LOG_WARN("no RSDP provided by bootloader\n");
     }
@@ -192,7 +192,7 @@ static inline void init_process_spawn(void)
         panic(NULL, "Failed to spawn init process");
     }
 
-    sched_push(initThread, NULL);
+    sched_submit(initThread, NULL);
 }
 
 void kmain(void)

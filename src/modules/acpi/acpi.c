@@ -4,13 +4,13 @@
 #include <modules/acpi/devices.h>
 #include <modules/acpi/tables.h>
 
-#include <kernel/init/init.h>
-#include <kernel/module/module.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/namespace.h>
+#include <kernel/init/init.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
+#include <kernel/module/module.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 
@@ -115,4 +115,5 @@ uint64_t _module_procedure(const module_event_t* event)
     return 0;
 }
 
-MODULE_INFO("ACPI Module", "Kai Norberg", "ACPI subsystem providing ACPI table handling, AML parsing and device management", OS_VERSION, "MIT", "BOOT_RSDP");
+MODULE_INFO("ACPI Module", "Kai Norberg",
+    "ACPI subsystem providing ACPI table handling, AML parsing and device management", OS_VERSION, "MIT", "BOOT_RSDP");

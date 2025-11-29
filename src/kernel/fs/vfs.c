@@ -1047,26 +1047,13 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
     }
 
     clock_t uptime = sys_time_uptime();
-
-    clock_t deadline;
-    if (timeout == CLOCKS_NEVER)
-    {
-        deadline = CLOCKS_NEVER;
-    }
-    else if (timeout > CLOCKS_NEVER - uptime)
-    {
-        deadline = CLOCKS_NEVER;
-    }
-    else
-    {
-        deadline = uptime + timeout;
-    }
+    clock_t deadline = CLOCKS_DEADLINE(timeout, uptime);
 
     uint64_t readyCount = 0;
     while (true)
     {
         uptime = sys_time_uptime();
-        clock_t remaining = (deadline == CLOCKS_NEVER) ? CLOCKS_NEVER : deadline - uptime;
+        clock_t remaining = CLOCKS_REMAINING(deadline, uptime);
 
         if (wait_block_setup(ctx.queues, ctx.queueAmount, remaining) == ERR)
         {

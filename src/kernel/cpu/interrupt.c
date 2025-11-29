@@ -155,6 +155,11 @@ void interrupt_handler(interrupt_frame_t* frame)
         return;
     }
 
+    if (frame->vector == VECTOR_SPURIOUS)
+    {
+        return;
+    }
+
     cpu_t* self = cpu_get_unsafe();
     assert(self != NULL);
     self->interrupt.inInterrupt = true;
@@ -173,13 +178,9 @@ void interrupt_handler(interrupt_frame_t* frame)
     {
         ipi_handle_pending(frame, self);
     }
-    else if (frame->vector == VECTOR_SPURIOUS)
-    {
-        LOG_DEBUG("spurious interrupt on cpu id=%u\n", self->id);
-    }
     else
     {
-        panic(NULL, "Invalid internal interrupt vector 0x%x", frame->vector);
+        panic(NULL, "Invalid interrupt vector 0x%x", frame->vector);
     }
 
     note_handle_pending(frame, self);

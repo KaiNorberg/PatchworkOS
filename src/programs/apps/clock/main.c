@@ -56,7 +56,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     {
     case EVENT_LIB_INIT:
     {
-        window_set_timer(win, TIMER_REPEAT, CLOCKS_PER_SEC);
+        window_set_timer(win, TIMER_REPEAT, CLOCKS_PER_SEC / 2);
     }
     break;
     case EVENT_LIB_DEINIT:

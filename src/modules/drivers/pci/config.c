@@ -1,8 +1,8 @@
 #include <modules/drivers/pci/config.h>
 
-#include <modules/acpi/tables.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>
+#include <modules/acpi/tables.h>
 
 static uint64_t entryCount;
 static mcfg_t* mcfg;
@@ -181,7 +181,7 @@ void pci_config_write32(pci_segment_group_t segmentGroup, pci_bus_t bus, pci_slo
     {
         return;
     }
-    
+
     volatile uint32_t* addr = (volatile uint32_t*)pci_config_get_address(segmentGroup, bus, slot, function, offset);
     if (addr != NULL)
     {

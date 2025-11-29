@@ -56,7 +56,6 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
     }
     if (ticks > UINT32_MAX)
     {
-        LOG_WARN("APIC timer timeout too large, capping to max value\n");
         ticks = UINT32_MAX;
     }
 
