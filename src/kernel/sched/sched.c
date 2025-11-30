@@ -1,3 +1,4 @@
+#include <_internal/clock_t.h>
 #include <kernel/config.h>
 #include <kernel/cpu/ipi.h>
 #include <kernel/cpu/irq.h>
@@ -64,41 +65,13 @@ static void sched_vtime_update(sched_t* sched, clock_t uptime)
         sched->vtimeRemainder = 0;
         return;
     }
-    sched->runThread->sched.runtime += delta;
+    sched->runThread->sched.lag -= (lag_t)delta;
 
     delta += sched->vtimeRemainder;
     vclock_t vdelta = (vclock_t)delta / sched->totalWeight;
-    
+
     sched->vtimeRemainder = (vclock_t)delta % sched->totalWeight;
     sched->vtime += vdelta;
-}
-
-static lag_t sched_lag_get(sched_t* sched, sched_client_t* client)
-{
-    assert(sched != NULL);
-    assert(client != NULL);
-
-    vclock_t idealService = (sched->vtime - client->vstart) * client->weight;
-    lag_t lag = (lag_t)idealService - (lag_t)client->runtime;
-    return lag;
-}
-
-static void sched_runqueue_insert(sched_t* sched, sched_client_t* client)
-{
-    assert(sched != NULL);
-    assert(client != NULL);
-    assert(&sched->idleThread->sched != client);
-
-    rbtree_insert(&sched->runqueue, &client->node);
-}
-
-static void sched_runqueue_remove(sched_t* sched, sched_client_t* client)
-{
-    assert(sched != NULL);
-    assert(client != NULL);
-    assert(&sched->idleThread->sched != client);
-
-    rbtree_remove(&sched->runqueue, &client->node);
 }
 
 static sched_client_t* sched_runqueue_first(sched_t* sched)
@@ -129,7 +102,7 @@ static sched_client_t* sched_runqueue_first(sched_t* sched)
             return client;
         }
     }
-    
+
     return CONTAINER_OF_SAFE(rbtree_find_min(sched->runqueue.root), sched_client_t, node);
 }
 
@@ -137,23 +110,20 @@ void sched_client_init(sched_client_t* client)
 {
     assert(client != NULL);
 
-    list_entry_init(&client->activeEntry);
     client->node = RBNODE_CREATE;
     client->weight = CONFIG_WEIGHT_BASE;
     client->vdeadline = CLOCKS_NEVER;
-    client->vstart = 0;
-    client->runtime = 0;
     client->veligibleTime = 0;
+    client->leaveTime = CLOCKS_NEVER;
     client->timeSliceStart = 0;
     client->timeSliceEnd = 0;
-    client->cachedLag = 0;
+    client->lag = 0;
 }
 
 void sched_init(sched_t* sched)
 {
     assert(sched != NULL);
 
-    list_init(&sched->activeThreads);
     sched->totalWeight = 0;
     rbtree_init(&sched->runqueue, sched_client_compare);
     sched->vtimeRemainder = 0;
@@ -190,12 +160,10 @@ void sched_start(thread_t* bootThread)
 
     bootThread->sched.timeSliceStart = sys_time_uptime();
     bootThread->sched.timeSliceEnd = bootThread->sched.timeSliceStart + CONFIG_TIME_SLICE;
-    bootThread->sched.vstart = sched->vtime;
-    bootThread->sched.veligibleTime = bootThread->sched.vstart;
+    bootThread->sched.veligibleTime = sched->vtime;
     bootThread->sched.vdeadline =
         bootThread->sched.veligibleTime + (vclock_t)CONFIG_TIME_SLICE / bootThread->sched.weight;
 
-    list_push_back(&sched->activeThreads, &bootThread->sched.activeEntry);
     sched->totalWeight += bootThread->sched.weight;
 
     sched->runThread = bootThread;
@@ -290,48 +258,49 @@ void sched_submit(thread_t* thread, cpu_t* target)
 
     clock_t uptime = sys_time_uptime();
     sched_vtime_update(sched, uptime);
-    
+
     sched_client_t* client = &thread->sched;
     client->weight = atomic_load(&thread->process->priority) + CONFIG_WEIGHT_BASE;
-
     sched->totalWeight += client->weight;
-    sched->vtime -= client->cachedLag / sched->totalWeight;
 
-    client->vstart = sched->vtime - client->cachedLag / client->weight;
-    client->runtime = 0;
-    client->cachedLag = 0;
+    if (client->leaveTime != CLOCKS_NEVER)
+    {
+        clock_t delta = uptime - client->leaveTime;
+        client->lag += (vclock_t)delta * client->weight;
+        client->leaveTime = CLOCKS_NEVER;
+    }
 
-    client->veligibleTime = client->vstart;
+    if (client->lag >= (lag_t)CONFIG_MAX_LAG)
+    {
+        client->lag = CONFIG_MAX_LAG;
+    }
+
+    sched->vtime -= client->lag / sched->totalWeight;
+
+    client->veligibleTime = sched->vtime;
     client->vdeadline = client->veligibleTime + (vclock_t)CONFIG_TIME_SLICE / client->weight;
-    
-    list_push_back(&sched->activeThreads, &client->activeEntry);
     rbtree_insert(&sched->runqueue, &client->node);
 
-    // bool shouldWake = self != target || !self->interrupt.inInterrupt;
+    bool shouldWake = self != target || !self->interrupt.inInterrupt;
     lock_release(&sched->lock);
     cpu_put();
 
-    /*if (shouldWake)
+    if (shouldWake)
     {
         ipi_wake_up(target, IPI_SINGLE);
-    }*/
+    }
 }
 
-static void sched_leave(sched_t* sched, thread_t* thread)
+static void sched_leave(sched_t* sched, thread_t* thread, clock_t uptime)
 {
     assert(sched != NULL);
     assert(thread != NULL);
     assert(thread != sched->idleThread);
 
     sched_client_t* client = &thread->sched;
-    
-    clock_t uptime = sys_time_uptime();
-    sched_vtime_update(sched, uptime);
-    
-    client->cachedLag = sched_lag_get(sched, client);
 
     sched->totalWeight -= client->weight;
-    list_remove(&sched->activeThreads, &client->activeEntry);
+    client->leaveTime = uptime;
 
     if (sched->totalWeight == 0)
     {
@@ -340,7 +309,53 @@ static void sched_leave(sched_t* sched, thread_t* thread)
         return;
     }
 
-    sched->vtime += client->cachedLag / sched->totalWeight;
+    sched->vtime += client->lag / sched->totalWeight;
+}
+
+static uint64_t sched_get_load(sched_t* sched)
+{
+    LOCK_SCOPE(&sched->lock);
+    return sched->runqueue.size + (sched->runThread != sched->idleThread ? 1 : 0);
+}
+
+static void sched_load_balance(cpu_t* self)
+{
+    assert(self != NULL);
+
+    // Technically there are race conditions here, but the worst case scenario is imperfect load balancing
+    // and so its an acceptable trade off since we need to avoid holding the locks of two sched_t at the
+    // same time to prevent deadlocks.
+
+    cpu_t* neighbor = cpu_get_next(self);
+    if (neighbor == self)
+    {
+        return;
+    }
+
+    uint64_t selfLoad = sched_get_load(&self->sched);
+    uint64_t neighborLoad = sched_get_load(&neighbor->sched);
+    if (neighborLoad + CONFIG_LOAD_BALANCE_BIAS >= selfLoad)
+    {
+        return;
+    }
+
+    lock_acquire(&self->sched.lock);
+
+    sched_client_t* client = CONTAINER_OF_SAFE(rbtree_find_max(self->sched.runqueue.root), sched_client_t, node);
+    if (client != NULL)
+    {
+        rbtree_remove(&self->sched.runqueue, &client->node);
+        thread_t* thread = CONTAINER_OF(client, thread_t, sched);
+        sched_leave(&self->sched, thread, sys_time_uptime());
+        lock_release(&self->sched.lock);
+
+        sched_submit(thread, neighbor);
+        ipi_wake_up(neighbor, IPI_SINGLE);
+    }
+    else
+    {
+        lock_release(&self->sched.lock);
+    }
 }
 
 void sched_do(interrupt_frame_t* frame, cpu_t* self)
@@ -348,10 +363,10 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     assert(frame != NULL);
     assert(self != NULL);
 
+    sched_load_balance(self);
+
     sched_t* sched = &self->sched;
     lock_acquire(&sched->lock);
-
-    LOG_DEBUG("scheduling on cpu %d\n", self->id);
 
     // Prevent the compiler from being annoying.
     thread_t* volatile runThread = sched->runThread;
@@ -374,7 +389,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         if (wait_block_finalize(frame, self, runThread, uptime))
         {
             thread_save(runThread, frame);
-            sched_leave(sched, runThread);
+            sched_leave(sched, runThread, uptime);
             runThread = NULL;
             break;
         }
@@ -397,11 +412,11 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         {
             thread_save(runThread, frame);
 
-            clock_t elapsed = uptime - runThread->sched.timeSliceStart;
-            runThread->sched.veligibleTime += (vclock_t)elapsed / runThread->sched.weight;
-            runThread->sched.vdeadline = runThread->sched.veligibleTime + 
-                                         (vclock_t)CONFIG_TIME_SLICE / runThread->sched.weight;
-            sched_runqueue_insert(sched, &runThread->sched);
+            clock_t used = uptime - runThread->sched.timeSliceStart;
+            runThread->sched.veligibleTime += (vclock_t)used / runThread->sched.weight;
+            runThread->sched.vdeadline =
+                runThread->sched.veligibleTime + (vclock_t)CONFIG_TIME_SLICE / runThread->sched.weight;
+            rbtree_insert(&sched->runqueue, &runThread->sched.node);
             runThread = NULL;
         }
     }
@@ -410,7 +425,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     {
         assert(runThread != sched->idleThread);
 
-        sched_leave(sched, runThread);
+        sched_leave(sched, runThread, uptime);
         threadToFree = runThread;
         runThread = NULL;
     }
@@ -426,7 +441,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         sched_client_t* next = sched_runqueue_first(sched);
         if (next != NULL)
         {
-            sched_runqueue_remove(sched, next);
+            rbtree_remove(&sched->runqueue, &next->node);
             runThread = CONTAINER_OF(next, thread_t, sched);
 
             runThread->sched.timeSliceStart = uptime;
@@ -438,7 +453,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         }
 
         atomic_store(&runThread->state, THREAD_ACTIVE);
-        thread_load(runThread, frame);        
+        thread_load(runThread, frame);
     }
 
     if (threadToFree != NULL)
@@ -448,42 +463,14 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
 
     if (runThread != sched->idleThread)
     {
+        if (runThread->sched.timeSliceEnd <= uptime) // Give another slice
+        {
+            runThread->sched.timeSliceEnd = uptime + CONFIG_TIME_SLICE;
+        }
+
         timer_set(uptime, runThread->sched.timeSliceEnd);
     }
 
-#ifdef DEBUG
-    int64_t actualTotalWeight = 0;
-    sched_client_t* iter;
-    LIST_FOR_EACH(iter, &sched->activeThreads, activeEntry)
-    {
-        actualTotalWeight += iter->weight;
-    }
-    if (actualTotalWeight != sched->totalWeight)
-    {
-        panic(NULL, "total weight mismatch, expected %llu but found %llu)", sched->totalWeight, actualTotalWeight);
-    }
-
-    lag_t lagSum = 0;
-    LIST_FOR_EACH(iter, &sched->activeThreads, activeEntry)
-    {
-        lagSum += sched_lag_get(sched, iter);
-    }
-    if (lagSum != 0)
-    {
-        LOG_DEBUG("lag debug info (total weight %llu, lag sum %lld, vtime %llu):\n", sched->totalWeight, lagSum, sched->vtime);
-        LIST_FOR_EACH(iter, &sched->activeThreads, activeEntry)
-        {
-            thread_t* thread = CONTAINER_OF(iter, thread_t, sched);
-            LOG_DEBUG("  pid=%d tid=%d: vdeadline=%lld veligibleTime=%lld weight=%lld lag=%lld\n", thread->process->id,
-                thread->id, iter->vdeadline - sched->vtime, iter->veligibleTime - sched->vtime, iter->weight,
-                sched_lag_get(sched, iter));
-        }
-
-        LOG_DEBUG("\n");
-    }
-#endif
-
-    LOG_DEBUG("scheduling pid=%d tid=%d\n", runThread->process->id, runThread->id);
     sched->runThread = runThread;
     lock_release(&sched->lock);
 }
