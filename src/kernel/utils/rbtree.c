@@ -354,7 +354,7 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node)
         assert(successor != NULL);
         assert(successor->children[RBNODE_LEFT] == NULL);
         rbtree_swap(tree, node, successor);
-        rbtree_remove(tree, successor);
+        rbtree_remove(tree, node);
         return;
     }
 

@@ -75,7 +75,7 @@ typedef struct thread
     errno_t error;
     stack_pointer_t kernelStack; ///< The kernel stack of the thread.
     stack_pointer_t userStack;   ///< The user stack of the thread.
-    sched_ctx_t sched;
+    sched_client_t sched;
     wait_thread_ctx_t wait;
     simd_ctx_t simd;
     note_queue_t notes;
