@@ -21,13 +21,14 @@ typedef struct thread thread_t;
  * give each thread a fair share of the CPU based on its weight by introducing the concepts of virtual time and virtual
  * deadlines. This is in contrast to more common algorithms that use fixed time slices or might rely on priority queues.
  *
- * Perhaps surprisingly, it's actually not that complex to implement, once you understand the new concepts it
- * introduces. So, included below is a brief explanation of each core concept used by the EEVDF algorithm and some
- * descriptions on how the scheduler works.
+ * Perhaps surprisingly, it's actually not that complex to implement. Everything is relative of course, but once you
+ * understand the new concepts it introduces, its very elegant. So, included below is a brief explanation of each core
+ * concept used by the EEVDF algorithm and some descriptions on how the scheduler works.
  *
  * ## Weight and Priority
  *
- * Each thread is assigned a "weight" based on the priority of its parent process. This weight is calculated as
+ * First, we need to assign each thread a "weight" based on the priority of its parent process. This weight is
+ * calculated as
  *
  * ```
  * weight = process->priority + CONFIG_WEIGHT_BASE.
@@ -37,39 +38,38 @@ typedef struct thread thread_t;
  * processes.
  *
  * Threads with a higher weight will receive a larger share of the available CPU time, specifically, the fraction of CPU
- * time a thread receives is proportional to its weight relative to the total weight of all runnable threads.
+ * time a thread receives is proportional to its weight relative to the total weight of all active threads. This is
+ * implemented using "virtual time", as described below.
+ *
+ * @see [EEVDF Paper](https://www.cs.utexas.edu/~pingali/CS380C/eevdf.pdf) page 2 for more information.
  *
  * ## Virtual Time
  *
- * The EEVDF algorithm introduces the concept of "virtual time". Each thread has a virtual clock that runs at a rate
- * proportional to its weight, such that higher weight threads have their virtual clocks run slower.
+ * The EEVDF algorithm introduces the concept of "virtual time", this is the mechanism that tracks how much CPU time
+ * each thread ought to receive. Each scheduler maintains a "virtual clock" that runs at a rate inversely proportional
+ * to the `totalWeight` of all active threads (all threads in the runqueue plus the currently running thread). So, if
+ * the total weight is `10`, then each unit of virtual time corresponds to `10` units of real time.
  *
- * This is how each thread's share of the CPU is determined. From the perspective of virtual time, all threads should
- * receive an equal amount of virtual CPU time. However, since each virtual clock runs at a different rate, this
- * translates to different amounts of real CPU time for each thread.
- *
- * The total amount of virtual time a thread has run for is tracked using the `vruntime` variable. This variable will be
- * important later on.
- *
- * To convert a duration in real time to virtual time, we use the formula
- *
- * ```
- * vclock = (clock * CONFIG_WEIGHT_BASE) / weight.
- * ```
- *
- * Where `vclock` is the duration in virtual time, `clock` is the duration in real time, and `weight` is the weight of
- * the thread.
+ * Each thread should receive an amount of real CPU time equal to its weight for each virtual time unit that passes. For
+ * example, if we have two threads A and B with weights `2` and `3` respectively, then for every `1` unit of virtual
+ * time that passes, thread A should receive `2` units of real CPU time and thread B should receive `3` units of real
+ * CPU time.
  *
  * @note All variables storing virtual time values will be prefixed with 'v' and use the `vclock_t` type. Variables
- * storing real time values will use the `clock_t` type as normal.
+ * storing real time values will use the `clock_t` type as normal. The `vclock_t` is signed, as lag values can be
+ * negative and due to that fact, virtual time can also be negative, as such virtual time can not be assumed to be
+ * monotonically increasing.
+ *
+ * @see [EEVDF Paper](https://www.cs.utexas.edu/~pingali/CS380C/eevdf.pdf) pages 8-9 for more information.
  *
  * ## Lag
  *
- * The key metric used to determine what thread to schedule next is called "lag". Lag is defined as the difference
- * between the amount of CPU time a thread should have received and the amount of CPU time it has actually received.
+ * Now we can move on to the metrics used to select threads. As the name "Earliest Eligible Virtual Deadline First"
+ * suggests, there are two main concepts relevant to this process. Its "eligibility" and its "virtual deadline". We will
+ * start with "eligibility", which is determined by the concept of "lag".
  *
- * @note Since lag is calculated using virtual time, the amount of CPU time each thread should have received will appear
- * to always be equal.
+ * Lag is defined as the difference between the amount of real CPU time a thread should have received and the amount of
+ * real CPU time it has actually received.
  *
  * As an example, lets say we have three threads A, B and C with equal weights. To start with each thread is supposed to
  * have run for 0ms, and has actually run for 0ms:
@@ -98,78 +98,84 @@ typedef struct thread thread_t;
  * any CPU time, such that they have received 10ms less than they should have. Note that the sum of all lag values is
  * always zero.
  *
- * The lag is then used to determine what thread to schedule next, with the thread with the highest lag being scheduled
- * first and only threads with lag greater than or equal to zero being eligible to run.
+ * A thread is considered eligible if, and only if, its lag is greater than or equal to zero. In the above example
+ * threads B and C are eligible to run, while thread A is not.
  *
- * @note Fairness is achieved such that over some long period of time, the proportion of CPU time each thread receives
- * will converge to the share it ought to receive, not that each individual time slice is exactly correct, which is why
- * thread A was allowed to run for 30ms.
+ * A property of lag is that the sum of all lag values across all active threads is always zero.
+ *
+ * @note Fairness is achieved over some long period of time, over which the proportion of CPU time each thread has
+ * received will converge to the share it ought to receive, not that each individual time slice is exactly correct,
+ * which is why thread A was allowed to run for 30ms.
+ *
+ * @note The EEVDF paper defines the algorithm as in a "ideal fluid-flow based system", to simplify, this means the
+ * algorithm assumes that all data is are continuous real numbers which are updated instantaneously. In reality, this is
+ * impossible. In the example above, the actual `lag` values of thread B and C would not actually be updated. Consider
+ * that our only concern is that the value of `lag` is correct relative to other threads, and only when its used for
+ * calculations.
+ *
+ * @see [EEVDF Paper](https://www.cs.utexas.edu/~pingali/CS380C/eevdf.pdf) pages 3-5 for more information.
+ * @see [Completing the EEVDF Scheduler](https://lwn.net/Articles/969062/) for more information.
+ *
+ * ## Eligible Time
+ *
+ * In most cases, its preferred to use the concept of lag to define a `veligibleTime` for each thread, which is the
+ * virtual time at which the thread becomes eligible (its lag becomes non-negative), instead of directly using the lag values due to the note above.
+ *
+ * When a thread first enters the scheduler, its `veligibleTime` is set to the current virtual time (equivalent to a lag
+ * of 0). Then, when a thread is preempted, we increment its `veligibleTime` by the amount of virtual time corresponding
+ * to the amount of real time it actually used.
+ *
+ * The actual `lag` member of the `sched_client_t` is then only used for calculations when a thread enters or leaves the
+ * scheduler (i.e. unblocks, blocks, dies, etc), such that threads are penalized or compensated for time spent inactive.
+ *
+ * When penalizing or compensating a thread the virtual clock must remain consistent. To achieve this, we adjust the
+ * scheduler's virtual clock when a thread enters the scheduler by subtracting the thread's lag converted to virtual
+ * time. Conversely, when a thread leaves the scheduler, we adjust the scheduler's virtual clock by adding the thread's
+ * lag converted to virtual time. The proof for this is outside the scope of this documentation, but it can be found in
+ * the EEVDF paper.
+ *
+ * @note This implementation follows "Strategy 1" as described in the EEVDF paper, but we also apply a maximum cap to the lag value to prevent a thread from becoming "entitled" to a theoretically infinite amount of CPU time by just sleeping for a long time.
+ *
+ * @see [EEVDF Paper](https://www.cs.utexas.edu/~pingali/CS380C/eevdf.pdf) pages 10-12 for more information.
  *
  * ## Virtual Deadlines
  *
- * To determine which thread to schedule next, we could use lag directly, as described above. However, as will be shown,
- * there is a far simpler approach. Instead of relying purely on lag, EEVDF introduces the concept of "virtual
- * deadlines". A virtual deadline is defined as the point in virtual time at which a thread is expected to finish its
- * next time slice. The virtual deadline is calculated as:
+ * We can now move on to the other part of the name, "virtual deadline". The goal of the scheduler is to always run the
+ * eligible thread with the earliest virtual deadline, we now know what makes a thread eligible. So, what is a virtual
+ * deadline?
  *
- * ```
- * vdeadline = vruntime + vtimeSlice
- * ```
+ * A virtual deadline is defined as the earliest time at which a thread should have received its due share of CPU time.
+ * Which is determined as the sum of the virtual time at which the thread becomes eligible (`veligibleTime`) and the
+ * amount of virtual time corresponding to the thread's next time slice.
  *
- * Where `vtimeSlice` is the length of the time slice in virtual time. So how does this relate to lag? Consider that, by
- * definition, lag can be expressed as
- *
- * ```
- * vruntime = expectedVruntime - lag.
- * ```
- *
- * Where `expectedVruntime` is how much virtual time the thread should have run for. Therefore, substituting this into
- * our equation for virtual deadlines we get
- *
- * ```
- * vdeadline = (expectedVruntime - lag) + vtimeSlice.
- * ```
- *
- * We can now see that finding a thread with a low virtual deadline is generally equivalent to finding a thread with a
- * high lag and a low time slice. Since each thread will expect to run for the same amount of virtual time, as described
- * above. In most cases, we only care about the high lag part.
- *
- * TODO: High frequency vs low frequency threads.
- *
- * ## Preventing infinite lag
- *
- * One issue that can arise is that if a thread were to block for a very long time, it would be owed a massive amount of
- * CPU time when it is unblocked. Theoretically, a thread could block for a day and then be scheduled for several hours
- * straight to "catch up" on its owed CPU time. In a sense, its lag could grow infinitely large while its blocked.
- *
- * To prevent this, the `minVruntime` variable is introduced. This variable tracks the minimum virtual runtime of all
- * runnable threads. When a thread is submitted to a scheduler, the `minVruntime` is used to set a floor on the threads
- * `vruntime`, such that its lag can never be greater than `CONFIG_MAX_LAG`. Which solves the issue of threads
- * accumulating an unbounded amount of lag, while still making sure blocked threads are prioritized when they
- * unblock.
+ * @see [EEVDF Paper](https://www.cs.utexas.edu/~pingali/CS380C/eevdf.pdf) page 3 for more information. 
  *
  * ## Scheduling
  *
- * The scheduler maintains a runqueue of all runnable threads, sorted by their virtual deadlines. When a thread's time
- * slice expires, or a thread blocks or exits, the scheduler selects the thread with the earliest virtual deadline from
- * the runqueue, checks if its lag is greater than or equal to zero (i.e `vruntime` <= `minVruntime`), and if so,
- * schedules it to run next. If not, the scheduler continues to the next thread in the runqueue until it finds an
- * eligible thread. In the vast majority of cases, the first thread in the runqueue will be eligible to run.
+ * With the central concepts introduced, we can now describe how the scheduler works. As mentioned, the goal is to
+ * always run the eligible thread with the earliest virtual deadline. To achieve this, each scheduler maintains a
+ * runqueue in the form of a Red-Black tree sorted by each thread's virtual deadline.
  *
- * This ensures that the thread with the lowest lag is always selected to run next, resulting in time slices being
- * distributed in such a way to converge towards the ideal fair distribution of CPU time.
+ * To select the next thread to run, we find the first eligible thread in the runqueue and switch to it. If no eligible
+ * thread is found, we switch to the idle thread. 
+ * 
+ * The idle thread is a special thread that is not considered active and simply runs an infinite loop that halts the CPU while waiting for an interrupt signaling work to do.
  *
  * ## Load Balancing
  *
- * Each CPU has its own scheduler and associated runqueue, as such we need to balance the load between each CPU. To do
- * this, each scheduler will check if its neighbor CPU has a `CONFIG_LOAD_BALANCE_BIAS` number of threads fewer than
- * itself before a scheduling decision. If it does, it will push its thread with the highest virtual deadline to the
- * neighbor CPU.
+ * Each CPU has its own scheduler and associated runqueue, as such we need to balance the load between each CPU. To
+ * accomplish this, we run a check before any scheduling opportunity such that if a scheduler's neighbor CPU has a
+ * `CONFIG_LOAD_BALANCE_BIAS` number of threads fewer than itself, it will push its thread with the highest virtual
+ * deadline to the neighbor CPU.
  *
  * @note The reason we want to avoid a global runqueue is to avoid lock contention, but also to reduce cache misses by
  * keeping threads on the same CPU when reasonably possible.
  *
  * TODO: The load balancing algorithm is rather naive at the moment and could be improved in the future.
+ *
+ * ## References
+ *
+ * References were accessed on 2025-11-30.
  *
  * @see [Earliest Eligible Virtual Deadline
  * First](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564) for
@@ -186,21 +192,35 @@ typedef struct thread thread_t;
  * @brief Virtual clock type.
  * @typedef vclock_t
  */
-typedef uint64_t vclock_t;
+typedef int64_t vclock_t;
+
+/**
+ * @brief Lag type.
+ * @struct lag_t
+ */
+typedef int64_t lag_t;
+
+/**
+ * @brief Virtual Lag type.
+ * @struct vlag_t
+ */
+typedef int64_t vlag_t;
 
 /**
  * @brief Per-thread scheduler context.
- * @struct sched_ctx_t
+ * @struct sched_client_t
  */
-typedef struct sched_ctx
+typedef struct sched_client
 {
-    rbnode_t node;
-    uint64_t weight;    ///< The weight of the thread, derived from it's process priority.
-    vclock_t vruntime;  ///< Virtual runtime (how much time the thread has run in virtual time).
-    vclock_t vdeadline; ///< Virtual deadline (when the thread is expected to finish in virtual time).
-    clock_t lastUpdate; ///< Uptime when the thread last started running.
-    clock_t timeSlice;  ///< The max duration of the current time slice.
-} sched_ctx_t;
+    rbnode_t node;            ///< Node in the scheduler's runqueue.
+    int64_t weight;
+    vclock_t vdeadline;
+    vclock_t veligibleTime;
+    clock_t leaveTime;
+    clock_t timeSliceStart;
+    clock_t timeSliceEnd;
+    lag_t lag;
+} sched_client_t;
 
 /**
  * @brief Per-CPU scheduler.
@@ -208,9 +228,11 @@ typedef struct sched_ctx
  */
 typedef struct sched
 {
+    int64_t totalWeight;  ///< The total weight of all active threads.
     rbtree_t runqueue;    ///< Contains all runnable threads, sorted by virtual deadline.
-    vclock_t minVruntime; ///< The minimum virtual runtime of all runnable threads.
-    uint64_t totalWeight; ///< The total weight of all threads in the runqueue.
+    vclock_t vtimeRemainder;
+    vclock_t vtime;     ///< The current virtual time of the CPU.
+    clock_t lastUpdate; ///< Uptime when the last vtime update occurred.
     lock_t lock;
     thread_t* idleThread;
     thread_t* runThread;
@@ -219,9 +241,9 @@ typedef struct sched
 /**
  * @brief Initialize the scheduler context for a thread.
  *
- * @param ctx The scheduler context to initialize.
+ * @param client The scheduler context to initialize.
  */
-void sched_ctx_init(sched_ctx_t* ctx);
+void sched_client_init(sched_client_t* client);
 
 /**
  * @brief Initialize the scheduler for a CPU.
