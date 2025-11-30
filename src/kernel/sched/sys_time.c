@@ -21,7 +21,9 @@ static const sys_time_source_t* bestNsSource = NULL;
 static const sys_time_source_t* bestEpochSource = NULL;
 static rwlock_t sourcesLock = RWLOCK_CREATE;
 
+#ifdef DEBUG
 static _Atomic(clock_t) lastNsTime = ATOMIC_VAR_INIT(0);
+#endif
 
 static void sys_time_update_best_sources(void)
 {
@@ -103,12 +105,14 @@ clock_t sys_time_uptime(void)
     }
 
     clock_t time = bestNsSource->read_ns();
+#ifdef DEBUG
     clock_t lastTime = atomic_exchange(&lastNsTime, time);
     if (time < lastTime)
     {
         panic(NULL, "system time source '%s' returned non-monotonic time value %lu ns (last %lu ns)",
               bestNsSource->name, time, lastTime);
     }
+#endif
     return time;
 }
 
