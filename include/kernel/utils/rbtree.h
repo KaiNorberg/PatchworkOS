@@ -262,5 +262,18 @@ rbnode_t* rbtree_prev(const rbnode_t* node);
         (elem) != NULL; (elem) = (rbtree_next(&(elem)->member) != NULL \
                                 ? CONTAINER_OF(rbtree_next(&(elem)->member), typeof(*(elem)), member) \
                                 : NULL))
+/**
+ * @brief Iterates over a Red-Black Tree in descending order.
+ * 
+ * @param elem The loop variable, a pointer to the structure containing the tree node.
+ * @param tree A pointer to the `rbtree_t` structure to iterate over.
+ * @param member The name of the `rbnode_t` member within the structure `elem`.
+ */
+#define RBTREE_FOR_EACH_REVERSE(elem, tree, member) \
+    for ((elem) = \
+             ((tree)->root != NULL ? CONTAINER_OF(rbtree_find_max((tree)->root), typeof(*(elem)), member) : NULL); \
+        (elem) != NULL; (elem) = (rbtree_prev(&(elem)->member) != NULL \
+                                ? CONTAINER_OF(rbtree_prev(&(elem)->member), typeof(*(elem)), member) \
+                                : NULL))
 
 /** @} */
