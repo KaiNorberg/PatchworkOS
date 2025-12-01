@@ -5,7 +5,7 @@
 #include <threads.h>
 #include <time.h>
 
-#define PRIME_MAX (30000000)
+#define PRIME_MAX (10000000)
 
 static atomic_long count;
 static atomic_long next;

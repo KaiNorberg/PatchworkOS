@@ -10,9 +10,9 @@
 #include <kernel/sched/timer.h>
 
 #include <kernel/sync/rwlock.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdatomic.h>
 #include <sys/math.h>
 
 static const sys_time_source_t* sources[SYS_TIME_MAX_SOURCES] = {0};
@@ -110,7 +110,7 @@ clock_t sys_time_uptime(void)
     if (time < lastTime)
     {
         panic(NULL, "system time source '%s' returned non-monotonic time value %lu ns (last %lu ns)",
-              bestNsSource->name, time, lastTime);
+            bestNsSource->name, time, lastTime);
     }
 #endif
     return time;

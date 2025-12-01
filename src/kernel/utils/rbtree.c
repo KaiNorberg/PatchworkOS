@@ -2,7 +2,32 @@
 
 #include <assert.h>
 
-void rbtree_init(rbtree_t* tree, rbnode_compare_t compare)
+static inline void rbtree_update(rbtree_t* tree, rbnode_t* node)
+{
+    if (tree == NULL || node == NULL || tree->update == NULL)
+    {
+        return;
+    }
+
+    tree->update(node);
+}
+
+// TODO: This could be optimized to avoid updating nodes multiple times for overlapping paths.
+static inline void rbtree_update_to_root(rbtree_t* tree, rbnode_t* node)
+{
+    if (tree == NULL || node == NULL || tree->update == NULL)
+    {
+        return;
+    }
+
+    while (node != NULL)
+    {
+        rbtree_update(tree, node);
+        node = node->parent;
+    }
+}
+
+void rbtree_init(rbtree_t* tree, rbnode_compare_t compare, rbnode_update_t update)
 {
     assert(tree != NULL);
     assert(compare != NULL);
@@ -10,6 +35,7 @@ void rbtree_init(rbtree_t* tree, rbnode_compare_t compare)
     tree->root = NULL;
     tree->size = 0;
     tree->compare = compare;
+    tree->update = update;
 }
 
 rbnode_t* rbtree_rotate(rbtree_t* tree, rbnode_t* node, rbnode_direction_t direction)
@@ -51,6 +77,9 @@ rbnode_t* rbtree_rotate(rbtree_t* tree, rbnode_t* node, rbnode_direction_t direc
         tree->root = newRoot;
     }
 
+    rbtree_update_to_root(tree, node);
+    rbtree_update_to_root(tree, newRoot);
+
     return newRoot;
 }
 
@@ -70,6 +99,8 @@ static void rbtree_insert_at(rbtree_t* tree, rbnode_t* parent, rbnode_t* node, r
 
     assert(parent->children[direction] == NULL);
     parent->children[direction] = node;
+
+    rbtree_update_to_root(tree, node);
 
     while (true)
     {
@@ -318,6 +349,9 @@ void rbtree_swap(rbtree_t* tree, rbnode_t* a, rbnode_t* b)
             aRight->parent = b;
         }
     }
+
+    rbtree_update_to_root(tree, a);
+    rbtree_update_to_root(tree, b);
 }
 
 static void rbtree_remove_sanitize(rbtree_t* tree, rbnode_t* node)
@@ -326,6 +360,8 @@ static void rbtree_remove_sanitize(rbtree_t* tree, rbnode_t* node)
         (node->parent->children[RBNODE_LEFT] != node && node->parent->children[RBNODE_RIGHT] != node));
     assert(node->children[RBNODE_LEFT] == NULL || (node->children[RBNODE_LEFT]->parent != node));
     assert(node->children[RBNODE_RIGHT] == NULL || (node->children[RBNODE_RIGHT]->parent != node));
+
+    rbtree_update_to_root(tree, node->parent);
 
     node->parent = NULL;
     node->children[RBNODE_LEFT] = NULL;
@@ -489,6 +525,15 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node)
     {
         tree->root->color = RBNODE_BLACK;
     }
+}
+
+void rbtree_fix(rbtree_t* tree, rbnode_t* node)
+{
+    assert(tree != NULL);
+    assert(node != NULL);
+
+    rbtree_remove(tree, node);
+    rbtree_insert(tree, node);
 }
 
 bool rbtree_is_empty(const rbtree_t* tree)

@@ -579,8 +579,6 @@ static void process_reaper(void* arg)
 
             DEREF(process);
         }
-
-        sched_nanosleep(CONFIG_PROCESS_REAPER_INTERVAL);
     }
 }
 

@@ -119,7 +119,7 @@ tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg)
     thread->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
 
     tid_t volatile tid = thread->id;
-    sched_submit(thread, NULL);
+    sched_enter(thread, NULL);
     return tid;
 }
 

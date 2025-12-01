@@ -96,7 +96,7 @@ void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self)
         }
 
         wait_remove_wait_entries(thread, ETIMEDOUT);
-        sched_submit(thread, thread->wait.cpu->cpu);
+        sched_enter(thread, thread->wait.cpu->cpu);
     }
 }
 
@@ -162,7 +162,7 @@ void wait_unblock_thread(thread_t* thread, errno_t err)
     wait_remove_wait_entries(thread, err);
     lock_release(&thread->wait.cpu->lock);
 
-    sched_submit(thread, thread->wait.cpu->cpu);
+    sched_enter(thread, thread->wait.cpu->cpu);
 }
 
 uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount, errno_t err)
@@ -216,7 +216,7 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount, errno_t err)
             wait_remove_wait_entries(threads[i], err);
             lock_release(&threads[i]->wait.cpu->lock);
 
-            sched_submit(threads[i], threads[i]->wait.cpu->cpu);
+            sched_enter(threads[i], threads[i]->wait.cpu->cpu);
             amountUnblocked++;
         }
     }
