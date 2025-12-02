@@ -98,7 +98,7 @@ static uint64_t process_prio_write(file_t* file, const void* buffer, uint64_t co
         errno = EINVAL;
         return ERR;
     }
-    if (prio >= PRIORITY_MAX_USER)
+    if (prio > PRIORITY_MAX_USER)
     {
         errno = EACCES;
         return ERR;

@@ -191,7 +191,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
 
-    if (priority >= PRIORITY_MAX_USER && priority != PRIORITY_PARENT)
+    if (priority > PRIORITY_MAX_USER && priority != PRIORITY_PARENT)
     {
         errno = EACCES;
         return ERR;

@@ -264,7 +264,7 @@ rbnode_t* rbtree_prev(const rbnode_t* node);
                                 : NULL))
 /**
  * @brief Iterates over a Red-Black Tree in descending order.
- * 
+ *
  * @param elem The loop variable, a pointer to the structure containing the tree node.
  * @param tree A pointer to the `rbtree_t` structure to iterate over.
  * @param member The name of the `rbnode_t` member within the structure `elem`.
