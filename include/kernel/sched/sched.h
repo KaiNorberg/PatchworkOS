@@ -206,19 +206,27 @@ typedef struct thread thread_t;
  * @brief Virtual clock type.
  * @typedef vclock_t
  */
-typedef int64_t vclock_t;
+typedef struct
+{
+    __int128_t num; ///< The numerator.
+    __int128_t den; ///< The denominator.
+} vclock_t;
 
 /**
- * @brief Constant representing "never" for virtual clocks.
- * @def VCLOCKS_NEVER
+ * @brief Virtual clock representing zero time.
  */
-#define VCLOCKS_NEVER ((vclock_t)INT64_MAX)
+#define VCLOCK_ZERO ((vclock_t){ .num = 0, .den = 1 })
+
+/**
+ * @brief Virtual clock representing the default time slice.
+ */
+#define VCLOCK_TIME_SLICE ((vclock_t){ .num = CONFIG_TIME_SLICE, .den = 1 })
 
 /**
  * @brief Lag type.
  * @struct lag_t
  */
-typedef int64_t lag_t;
+typedef vclock_t lag_t;
 
 /**
  * @brief Per-thread scheduler context.
@@ -236,8 +244,8 @@ typedef struct sched_client
     vclock_t vdeadline;
     vclock_t veligible;        ///< The virtual time at which the thread becomes eligible to run (lag >= 0).
     vclock_t vminEligible; ///< The minimum virtual eligible time of the subtree in the runqueue.
-    clock_t start;             ///< The real time when the thread started executing its current time slice.
     vclock_t vleave;           ///< The virtual time when the thread left the scheduler (blocked), or `VCLOCKS_NEVER`.
+    clock_t start;             ///< The real time when the thread started executing its current time slice.
     uint64_t resetCounter;      ///< The scheduler reset counter when the thread last left the scheduler.
 } sched_client_t;
 
