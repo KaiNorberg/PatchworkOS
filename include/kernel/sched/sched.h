@@ -202,8 +202,6 @@ typedef struct thread thread_t;
  * @{
  */
 
-#define SCHED_FIXED_POINT 16
-
 /**
  * @brief Virtual clock type.
  * @typedef vclock_t
@@ -240,6 +238,7 @@ typedef struct sched_client
     vclock_t vminEligible; ///< The minimum virtual eligible time of the subtree in the runqueue.
     clock_t start;             ///< The real time when the thread started executing its current time slice.
     vclock_t vleave;           ///< The virtual time when the thread left the scheduler (blocked), or `VCLOCKS_NEVER`.
+    uint64_t resetCounter;      ///< The scheduler reset counter when the thread last left the scheduler.
 } sched_client_t;
 
 /**
@@ -254,6 +253,7 @@ typedef struct sched
     rbtree_t runqueue;    ///< Contains all runnable threads, including the currently running thread, sorted by vdeadline.
     vclock_t vtime;       ///< The current virtual time of the CPU.
     clock_t lastUpdate;   ///< The real time when the last vtime update occurred.
+    uint64_t resetCounter;  ///< Counter incremented each time the vtime is reset.
     lock_t lock;          ///< The lock protecting the scheduler.
     thread_t* idleThread; ///< The idle thread for this CPU.
     thread_t* runThread;  ///< The currently running thread on this CPU.

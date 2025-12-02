@@ -78,6 +78,7 @@ static void sched_vtime_reset(sched_t* sched, clock_t uptime)
 
     sched->lastUpdate = uptime;
     sched->vtime = 0;
+    sched->resetCounter++;
 }
 
 static void sched_vtime_update(sched_t* sched, clock_t uptime)
@@ -108,6 +109,7 @@ void sched_client_init(sched_client_t* client)
     client->vminEligible = VCLOCKS_NEVER;
     client->start = 0;
     client->vleave = VCLOCKS_NEVER;
+    client->resetCounter = 0;
 }
 
 void sched_init(sched_t* sched)
@@ -118,6 +120,7 @@ void sched_init(sched_t* sched)
     rbtree_init(&sched->runqueue, sched_client_compare, sched_client_update);
     sched->vtime = 0;
     sched->lastUpdate = 0;
+    sched->resetCounter = 0;
     lock_init(&sched->lock);
 
     sched->idleThread = thread_new(process_get_kernel());
@@ -257,7 +260,7 @@ void sched_enter(thread_t* thread, cpu_t* target)
     client->weight = atomic_load(&thread->process->priority) + CONFIG_WEIGHT_BASE;
     sched->totalWeight += client->weight;
 
-    if (client->vleave != VCLOCKS_NEVER && sched->totalWeight != client->weight)
+    if (client->vleave != VCLOCKS_NEVER && sched->resetCounter == client->resetCounter)
     {
         lag_t lag = client->weight * (client->vleave - client->veligible);
         lag = CLAMP(lag, -((lag_t)CONFIG_MAX_LAG), (lag_t)CONFIG_MAX_LAG);
@@ -291,6 +294,7 @@ static void sched_leave(sched_t* sched, thread_t* thread, clock_t uptime)
 
     lag_t lag = client->weight * (sched->vtime - client->veligible);
     client->vleave = sched->vtime;
+    client->resetCounter = sched->resetCounter;
     sched->totalWeight -= client->weight;
 
     rbtree_remove(&sched->runqueue, &client->node);
@@ -338,7 +342,7 @@ static thread_t* sched_first_eligible(sched_t* sched)
         // Jump forward to the next eligible time, we need this as rounding errors will inevitably
         // cause us to miss eligibles otherwise.
         sched_client_t* root = CONTAINER_OF(sched->runqueue.root, sched_client_t, node);
-        ///LOG_DEBUG("no eligible threads, diff=%lld\n", sched->vtime - root->vminEligible);
+        LOG_DEBUG("no eligible threads, diff=%lld\n", sched->vtime - root->vminEligible);
         sched->vtime = root->vminEligible;
         return sched_first_eligible(sched);
     }
@@ -492,7 +496,7 @@ static void sched_verify(sched_t* sched)
         sched_verify_min_eligible(sched, &root->node);
     }
 
-    LOG_DEBUG("debug info:\n");
+    /*LOG_DEBUG("debug info:\n");
     sched_client_t* iter;
     lag_t sumLag = 0;
     RBTREE_FOR_EACH(iter, &sched->runqueue, node)
@@ -504,7 +508,7 @@ static void sched_verify(sched_t* sched)
         sumLag += lag;
     }
     LOG_DEBUG("  sum lag=%lld\n", sumLag);
-    LOG_DEBUG("\n");
+    LOG_DEBUG("\n");*/
 }
 #endif
 
@@ -513,7 +517,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     assert(frame != NULL);
     assert(self != NULL);
 
-    //sched_load_balance(self);
+    sched_load_balance(self);
 
     sched_t* sched = &self->sched;
     lock_acquire(&sched->lock);
