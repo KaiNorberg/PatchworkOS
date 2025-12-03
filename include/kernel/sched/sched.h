@@ -25,7 +25,9 @@ typedef struct thread thread_t;
  * proportional share scheduling algorithm that aims to fairly distribute CPU time among threads based on their weights.
  * This is in contrast to more traditional scheduling algorithms like round-robin or priority queues.
  *
- * The algorithm is relatively simple conceptually, but it is also very fragile, even small mistakes can easily result in highly unfair scheduling. Therefore, if you find issues or bugs with the scheduler, please open an issue in the GitHub repository.
+ * The algorithm is relatively simple conceptually, but it is also very fragile, even small mistakes can easily result
+ * in highly unfair scheduling. Therefore, if you find issues or bugs with the scheduler, please open an issue in the
+ * GitHub repository.
  *
  * Included below is a overview of how the scheduler works and the relevant concepts. If you are unfamiliar with
  * mathematical notation, don't worry, we will explain everything in plain English as well.
@@ -168,8 +170,8 @@ typedef struct thread thread_t;
  * ## Virtual Deadlines
  *
  * We can now move on to the other part of the name, "virtual deadline", which is defined as the earliest time at which
- * a thread should have received its due share of CPU time. The scheduler always selects the eligible thread with the
- * earliest virtual deadline to run next.
+ * a thread should have received its due share of CPU time, rounded to some quantum. The scheduler always selects the
+ * eligible thread with the earliest virtual deadline to run next.
  *
  * We can calculate the virtual deadline \f$v_{di}\f$ of a thread as
  *
@@ -182,6 +184,25 @@ typedef struct thread thread_t;
  *
  * @see [EEVDF](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564)
  * page 3.
+ *
+ * ## Rounding Errors
+ *
+ * Before describing the implementation, it is important to note that due to the nature of integer division, rounding
+ * errors are inevitable when calculating virtual time and lag.
+ *
+ * For example, when computing \f$10/3 = 3.333...\f$ we instead get \f$3\f$, losing the fractional part. Over time,
+ * these small errors can accumulate and lead to unfair scheduling.
+ *
+ * There are many potential ways to mitigate this, such as using fixed-point arithmetic. It might be tempting to use
+ * floating point, however using floating point in a kernel is generally considered very bad practice, only user space
+ * should, ideally, be using floating point.
+ *
+ * Instead, we use a simple technique of storing the remainder of any division operations with the `vclock_t` type, such
+ * that we can carry over the remainder to future calculations. This dramatically reduces the impact of rounding errors
+ * to the point of being negligible in practice.
+ *
+ * For comparisons between `vclock_t` values, we consider two values equal if their difference is less than or equal to
+ * `VCLOCK_EPSILON`, in order to compensate for any short-term rounding errors.
  *
  * ## Scheduling
  *
@@ -198,7 +219,7 @@ typedef struct thread thread_t;
  *
  * If, at any point in time, a thread with an earlier virtual deadline becomes available to run (for example, when a
  * thread is unblocked), the scheduler will preempt the currently running thread and switch to the newly available
- * thread. In practice, this improves responsiveness for interactive tasks like desktop applications.
+ * thread.
  *
  * ## Idle Thread
  *
@@ -217,6 +238,12 @@ typedef struct thread thread_t;
  * keeping threads on the same CPU when reasonably possible.
  *
  * TODO: The load balancing algorithm is rather naive at the moment and could be improved in the future.
+ *
+ * ## Testing
+ *
+ * The scheduler is tested using a combination of asserts and tests that are enabled in debug builds (`NDEBUG` not
+ * defined). These tests verify that the runqueue is sorted, that the lag does sum to zero (within a margin from
+ * rounding errors), and other invariants of the scheduler.
  *
  * ## References
  *
@@ -242,9 +269,15 @@ typedef struct
     int64_t remainder;
 } vclock_t;
 
+/**
+ * @brief Used for remainder calculations in virtual clocks.
+ */
 #define VCLOCK_BASE ((int64_t)CLOCKS_PER_SEC)
 
-#define VCLOCK_EPSILON ((int64_t)2)
+/**
+ * @brief The minimum difference between two virtual clock values to consider them different.
+ */
+#define VCLOCK_EPSILON ((int64_t)1)
 
 /**
  * @brief Virtual clock representing zero time.
