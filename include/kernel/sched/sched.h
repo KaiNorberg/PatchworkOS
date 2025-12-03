@@ -62,30 +62,34 @@ typedef struct thread thread_t;
  * time. Which is equivalent to saying that for every \f$5\f$ units of real time, thread A should receive \f$2\f$ units
  * of real time and thread B should receive \f$3\f$ units of real time.
  *
- * Using this definition of virtual time, we can see that to convert some change in real time \f$\Delta t\f$ to a change
- * in virtual time \f$\Delta v\f$, we say
+ * Using this definition of virtual time, we can determine the amount of virtual time \f$v\f$ that has passed between
+ * two points in real time \f$t_1\f$ and \f$t_2\f$ as
  *
  * \begin{equation*}
- * \Delta v = \frac{\Delta t}{\sum_{i \in A(t)} w_i}
+ * v = \frac{t_2 - t_1}{\sum_{i \in A(t_2)} w_i}
  * \end{equation*}
  *
- * Note how the denominator containing the \f$\sum\f$ symbol simply means the sum of all weights \f$w_i\f$ for each
- * active thread \f$i\f$ at real time \f$t\f$, i.e. the total weight of the scheduler cached in `sched->totalWeight`. In
- * pseudocode, this would be:
+ * under the assumption that \f$A(t_1) = A(t_2)\f$, i.e. the set of active threads has not changed between \f$t_1\f$ and
+ * \f$t_2\f$.
+ *
+ * Note how the denominator containing the \f$\sum\f$ symbol evaluates to the sum of all weights \f$w_i\f$ for each
+ * active thread \f$i\f$ in \f$A\f$ at \f$t_2\f$, i.e the total weight of the scheduler cached in `sched->totalWeight`.
+ * In pseudocode, this can be expressed as
  *
  * ```
- * vclock_t vtime = sys_time_uptime() / sched->totalWeight;
+ * vclock_t vtime = (sys_time_uptime() - oldTime) / sched->totalWeight;
  * ```
  *
- * Additionally, the amount of real time a thread should receive \f$r_i\f$ in a given duration of virtual time \f$\Delta
- * v\f$ can be calculated as
+ * Additionally, the amount of real time a thread should receive \f$r_i\f$ in a given duration of virtual time \f$v\f$
+ * can be calculated as
  *
  * \begin{equation*}
- * r_i = \Delta v \cdot w_i.
+ * r_i = v \cdot w_i.
  * \end{equation*}
  *
  * In practice, all we are doing is taking a duration of real time equal to the total weight of all active threads, and
- * saying that each thread ought to receive a portion of that time equal to its weight.
+ * saying that each thread ought to receive a portion of that time equal to its weight. Virtual time is just a trick to
+ * simplify the math.
  *
  * @note All variables storing virtual time values will be prefixed with 'v' and use the `vclock_t` type. Variables
  * storing real time values will use the `clock_t` type as normal.
@@ -179,8 +183,7 @@ typedef struct thread thread_t;
  * v_{di} = v_{ei} + \frac{Q}{w_i}
  * \end{equation*}
  *
- * where \f$Q\f$ is a constant time slice defined by the scheduler, in our case `CONFIG_TIME_SLICE`, however
- * `VCLOCK_TIME_SLICE` is provided for convenience as it is already converted to the `vclock_t` type.
+ * where \f$Q\f$ is a constant time slice defined by the scheduler, in our case `CONFIG_TIME_SLICE`.
  *
  * @see [EEVDF](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564)
  * page 3.
@@ -193,16 +196,30 @@ typedef struct thread thread_t;
  * For example, when computing \f$10/3 = 3.333...\f$ we instead get \f$3\f$, losing the fractional part. Over time,
  * these small errors can accumulate and lead to unfair scheduling.
  *
- * There are many potential ways to mitigate this, such as using fixed-point arithmetic. It might be tempting to use
- * floating point, however using floating point in a kernel is generally considered very bad practice, only user space
- * should, ideally, be using floating point.
+ * It might be tempting to use floating point to mitigate these errors, however using floating point in a kernel is
+ * generally considered very bad practice, only user space should, ideally, be using floating point.
  *
- * Instead, we use a simple technique of storing the remainder of any division operations with the `vclock_t` type, such
- * that we can carry over the remainder to future calculations. This dramatically reduces the impact of rounding errors
- * to the point of being negligible in practice.
+ * Instead, we use a simple technique to mitigate the impact of rounding errors. We represent virtual time and lag using
+ * 128-bit fixed-point arithmetic, where the lower 63 bits represent the fractional part.
  *
- * For comparisons between `vclock_t` values, we consider two values equal if their difference is less than or equal to
- * `VCLOCK_EPSILON`, in order to compensate for any short-term rounding errors.
+ * There were two reasons for the decision to use 128 bits over 64 bits despite the performance cost. First, it means
+ * that even the maximum possible value of uptime, stored using 64 bits, can still be represented in the fixed-point
+ * format without overflowing the integer part, meaning we dont need to worry about overflow at all.
+ *
+ * Second, testing shows that lag appears to accumulate an error of about \f$10^3\f$ to \f$10^4\f$ in the fractional
+ * part every second under heavy load, meaning that using 64 bits and a fixed point offset of 20 bits, would result in
+ * an error of approximately 1 nanosecond per minute, considering that the testing was not particularly rigorous, it
+ * might be significantly worse in practice. Note that at most every division can create an error equal to the divider
+ * minus one in the fractional part.
+ *
+ * If we instead use 128 bits with a fixed point offset of 63 bits, the same error of \f$10^4\f$ in the fractional part
+ * results in an error of approximately \f$1.7 \cdot 10^{-9}\f$ nanoseconds per year, which is obviously negligible
+ * even if the actual error is in reality several orders of magnitude worse.
+ *
+ * For comparisons between `vclock_t` values, we consider two values equal if the difference between their whole parts
+ * is less than or equal to `VCLOCK_EPSILON`.
+ *
+ * @see [Fixed Point Arithmetic](https://en.wikipedia.org/wiki/Fixed-point_arithmetic)
  *
  * ## Scheduling
  *
@@ -263,37 +280,40 @@ typedef struct thread thread_t;
  * @brief Virtual clock type.
  * @typedef vclock_t
  */
-typedef struct
-{
-    int64_t value;
-    int64_t remainder;
-} vclock_t;
-
-/**
- * @brief Used for remainder calculations in virtual clocks.
- */
-#define VCLOCK_BASE ((int64_t)CLOCKS_PER_SEC)
-
-/**
- * @brief The minimum difference between two virtual clock values to consider them different.
- */
-#define VCLOCK_EPSILON ((int64_t)1)
-
-/**
- * @brief Virtual clock representing zero time.
- */
-#define VCLOCK_ZERO ((vclock_t){.value = 0, .remainder = 0})
-
-/**
- * @brief Virtual clock representing the default time slice.
- */
-#define VCLOCK_TIME_SLICE ((vclock_t){.value = CONFIG_TIME_SLICE, .remainder = 0})
+typedef int128_t vclock_t;
 
 /**
  * @brief Lag type.
  * @struct lag_t
  */
-typedef vclock_t lag_t;
+typedef int128_t lag_t;
+
+/**
+ * @brief The bits used for the fractional part of a virtual clock or lag value.
+ *
+ * One sign bit, 64 integer bits, 63 fractional bits.
+ */
+#define SCHED_FIXED_POINT (63LL)
+
+/**
+ * @brief Fixed-point zero.
+ */
+#define SCHED_FIXED_ZERO ((int128_t)0)
+
+/**
+ * @brief The minimum difference between two virtual clock or lag values to consider then unequal.
+ */
+#define SCHED_EPSILON (10LL)
+
+/**
+ * @brief Convert a regular integer to fixed-point representation.
+ */
+#define SCHED_FIXED_TO(x) (((int128_t)(x)) << SCHED_FIXED_POINT)
+
+/**
+ * @brief Convert a fixed-point value to a regular integer.
+ */
+#define SCHED_FIXED_FROM(x) ((int64_t)(((int128_t)(x)) >> SCHED_FIXED_POINT))
 
 /**
  * @brief Base weight added to all threads.

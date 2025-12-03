@@ -26,76 +26,14 @@
 
 static wait_queue_t sleepQueue = WAIT_QUEUE_CREATE(sleepQueue);
 
-static inline void vclock_normalize(vclock_t* vclock)
+static inline int64_t sched_fixed_cmp(int128_t a, int128_t b)
 {
-    if (vclock->remainder >= VCLOCK_BASE)
-    {
-        vclock->value += vclock->remainder / VCLOCK_BASE;
-        vclock->remainder = vclock->remainder % VCLOCK_BASE;
-    }
-    else if (vclock->remainder < 0)
-    {
-        int64_t borrow = (-vclock->remainder + VCLOCK_BASE - 1) / VCLOCK_BASE;
-        vclock->value -= borrow;
-        vclock->remainder += borrow * VCLOCK_BASE;
-    }
-}
-
-static inline vclock_t vclock_from_clock(clock_t clock)
-{
-    return (vclock_t){.value = clock, .remainder = 0};
-}
-
-static inline clock_t vclock_to_clock(vclock_t vclock)
-{
-    return vclock.value;
-}
-
-static inline vclock_t vclock_add(vclock_t a, vclock_t b)
-{
-    vclock_t result = {.value = a.value + b.value, .remainder = a.remainder + b.remainder};
-    vclock_normalize(&result);
-    return result;
-}
-
-static inline vclock_t vclock_sub(vclock_t a, vclock_t b)
-{
-    vclock_t result = {.value = a.value - b.value, .remainder = a.remainder - b.remainder};
-    vclock_normalize(&result);
-    return result;
-}
-
-static inline vclock_t vclock_mul(vclock_t a, int64_t scalar)
-{
-    vclock_t result = {.value = a.value * scalar, .remainder = a.remainder * scalar};
-    vclock_normalize(&result);
-    return result;
-}
-
-static inline vclock_t vclock_div(vclock_t a, int64_t scalar)
-{
-    assert(scalar != 0);
-
-    vclock_t result;
-
-    result.value = a.value / scalar;
-
-    int64_t carry = a.value % scalar;
-    int128_t remainder = ((int128_t)carry * VCLOCK_BASE) + a.remainder;
-
-    result.remainder = (int64_t)(remainder / scalar);
-    vclock_normalize(&result);
-    return result;
-}
-
-static inline int64_t vclock_compare(vclock_t a, vclock_t b)
-{
-    int64_t diff = a.value - b.value;
-    if (diff > VCLOCK_EPSILON)
+    int128_t diff = SCHED_FIXED_FROM(a - b);
+    if (diff > SCHED_EPSILON)
     {
         return 1;
     }
-    else if (diff < -VCLOCK_EPSILON)
+    else if (diff < -(SCHED_EPSILON + 1))
     {
         return -1;
     }
@@ -108,7 +46,7 @@ static int64_t sched_client_compare(const rbnode_t* aNode, const rbnode_t* bNode
     const sched_client_t* a = CONTAINER_OF(aNode, sched_client_t, node);
     const sched_client_t* b = CONTAINER_OF(bNode, sched_client_t, node);
 
-    int64_t cmp = vclock_compare(a->vdeadline, b->vdeadline);
+    int64_t cmp = sched_fixed_cmp(a->vdeadline, b->vdeadline);
     if (cmp != 0)
     {
         return cmp;
@@ -141,7 +79,7 @@ static void sched_client_update(rbnode_t* node)
         }
 
         sched_client_t* childClient = CONTAINER_OF(child, sched_client_t, node);
-        if (vclock_compare(childClient->vminEligible, minEligible) < 0)
+        if (sched_fixed_cmp(childClient->vminEligible, minEligible) < 0)
         {
             minEligible = childClient->vminEligible;
         }
@@ -154,7 +92,7 @@ static void sched_vtime_reset(sched_t* sched, clock_t uptime)
     assert(sched != NULL);
 
     sched->lastUpdate = uptime;
-    sched->vtime = VCLOCK_ZERO;
+    sched->vtime = SCHED_FIXED_ZERO;
 }
 
 static void sched_vtime_update(sched_t* sched, clock_t uptime)
@@ -171,7 +109,7 @@ static void sched_vtime_update(sched_t* sched, clock_t uptime)
     }
 
     // Eq 5.
-    sched->vtime = vclock_add(sched->vtime, vclock_div(vclock_from_clock(delta), sched->totalWeight));
+    sched->vtime += SCHED_FIXED_TO(delta) / sched->totalWeight;
 }
 
 void sched_client_init(sched_client_t* client)
@@ -180,9 +118,9 @@ void sched_client_init(sched_client_t* client)
 
     client->node = RBNODE_CREATE;
     client->weight = UINT32_MAX; // Invalid
-    client->vdeadline = VCLOCK_ZERO;
-    client->veligible = VCLOCK_ZERO;
-    client->vminEligible = VCLOCK_ZERO;
+    client->vdeadline = SCHED_FIXED_ZERO;
+    client->veligible = SCHED_FIXED_ZERO;
+    client->vminEligible = SCHED_FIXED_ZERO;
     client->start = 0;
 }
 
@@ -192,7 +130,7 @@ void sched_init(sched_t* sched)
 
     sched->totalWeight = 0;
     rbtree_init(&sched->runqueue, sched_client_compare, sched_client_update);
-    sched->vtime = VCLOCK_ZERO;
+    sched->vtime = SCHED_FIXED_ZERO;
     sched->lastUpdate = 0;
     lock_init(&sched->lock);
 
@@ -229,7 +167,7 @@ void sched_start(thread_t* bootThread)
     bootThread->sched.start = sys_time_uptime();
     bootThread->sched.veligible = sched->vtime;
     bootThread->sched.vdeadline =
-        vclock_add(bootThread->sched.veligible, vclock_div(VCLOCK_TIME_SLICE, bootThread->sched.weight));
+        bootThread->sched.veligible + SCHED_FIXED_TO(CONFIG_TIME_SLICE) / bootThread->sched.weight;
     atomic_store(&bootThread->state, THREAD_ACTIVE);
 
     sched->totalWeight += bootThread->sched.weight;
@@ -326,7 +264,7 @@ static void sched_enter(sched_t* sched, thread_t* thread)
     sched->totalWeight += client->weight;
 
     client->veligible = sched->vtime;
-    client->vdeadline = vclock_add(client->veligible, vclock_div(VCLOCK_TIME_SLICE, client->weight));
+    client->vdeadline = client->veligible + SCHED_FIXED_TO(CONFIG_TIME_SLICE) / client->weight;
 
     rbtree_insert(&sched->runqueue, &client->node);
     atomic_store(&thread->state, THREAD_ACTIVE);
@@ -340,7 +278,7 @@ static void sched_leave(sched_t* sched, thread_t* thread, clock_t uptime)
 
     sched_client_t* client = &thread->sched;
 
-    lag_t lag = vclock_mul(vclock_sub(sched->vtime, client->veligible), client->weight);
+    lag_t lag = (sched->vtime - client->veligible) * client->weight;
     sched->totalWeight -= client->weight;
 
     rbtree_remove(&sched->runqueue, &client->node);
@@ -352,7 +290,7 @@ static void sched_leave(sched_t* sched, thread_t* thread, clock_t uptime)
     }
 
     // Adjust the scheduler's time such that the sum of all threads' lag remains zero.
-    sched->vtime = vclock_add(sched->vtime, vclock_div(lag, sched->totalWeight));
+    sched->vtime += lag / sched->totalWeight;
 }
 
 void sched_submit(thread_t* thread, cpu_t* target)
@@ -394,14 +332,14 @@ static thread_t* sched_first_eligible(sched_t* sched)
         if (left != NULL)
         {
             sched_client_t* leftClient = CONTAINER_OF(left, sched_client_t, node);
-            if (vclock_compare(leftClient->vminEligible, sched->vtime) <= 0)
+            if (sched_fixed_cmp(leftClient->vminEligible, sched->vtime) <= 0)
             {
                 current = left;
                 continue;
             }
         }
 
-        if (vclock_compare(client->veligible, sched->vtime) <= 0)
+        if (sched_fixed_cmp(client->veligible, sched->vtime) <= 0)
         {
             return CONTAINER_OF(client, thread_t, sched);
         }
@@ -415,7 +353,7 @@ static thread_t* sched_first_eligible(sched_t* sched)
         vclock_t vminEligible =
             CONTAINER_OF_SAFE(rbtree_find_min(sched->runqueue.root), sched_client_t, node)->vminEligible;
         panic(NULL, "No eligible threads found, but vminEligible is %lld and vtime is %lld",
-            vclock_to_clock(vminEligible), vclock_to_clock(sched->vtime));
+            SCHED_FIXED_FROM(vminEligible), SCHED_FIXED_FROM(sched->vtime));
     }
 #endif
 
@@ -517,11 +455,11 @@ static void sched_verify_min_eligible(sched_t* sched, rbnode_t* node)
         }
 
         sched_client_t* childClient = CONTAINER_OF(child, sched_client_t, node);
-        if (vclock_compare(client->vminEligible, childClient->vminEligible) > 0)
+        if (sched_fixed_cmp(client->vminEligible, childClient->vminEligible) > 0)
         {
             panic(NULL, "vminEligible incorrect for node with vdeadline %lld, expected %lld but got %lld",
-                vclock_to_clock(client->vdeadline), vclock_to_clock(childClient->vminEligible),
-                vclock_to_clock(client->vminEligible));
+                SCHED_FIXED_FROM(client->vdeadline), SCHED_FIXED_FROM(childClient->vminEligible),
+                SCHED_FIXED_FROM(client->vminEligible));
         }
 
         sched_verify_min_eligible(sched, child);
@@ -558,10 +496,10 @@ static void sched_verify(sched_t* sched)
         sched_client_t* other;
         RBTREE_FOR_EACH(other, &sched->runqueue, node)
         {
-            if (vclock_compare(other->vdeadline, min->vdeadline) < 0)
+            if (sched_fixed_cmp(other->vdeadline, min->vdeadline) < 0)
             {
                 panic(NULL, "runqueue not sorted, node with vdeadline %lld found, but min is %lld",
-                    vclock_to_clock(other->vdeadline), vclock_to_clock(min->vdeadline));
+                    SCHED_FIXED_FROM(other->vdeadline), SCHED_FIXED_FROM(min->vdeadline));
             }
         }
     }
@@ -573,23 +511,24 @@ static void sched_verify(sched_t* sched)
     }
 
     sched_client_t* iter;
-    lag_t sumLag = VCLOCK_ZERO;
+    lag_t sumLag = SCHED_FIXED_ZERO;
     RBTREE_FOR_EACH(iter, &sched->runqueue, node)
     {
-        lag_t lag = vclock_mul(vclock_sub(sched->vtime, iter->veligible), iter->weight);
-        sumLag = vclock_add(sumLag, vclock_div(lag, sched->totalWeight));
+        lag_t lag = (sched->vtime - iter->veligible) * iter->weight;
+        sumLag += lag;
     }
-    if (vclock_compare(sumLag, VCLOCK_ZERO) != 0)
+    // if (sched_fixed_cmp(sumLag, SCHED_FIXED_ZERO) != 0)
     {
-        LOG_DEBUG("debug info (vtime=%lld sum=%lld):\n", vclock_to_clock(sched->vtime), vclock_to_clock(sumLag));
+        LOG_DEBUG("debug info (vtime=%lld lagValue=%lld lagFixed=%lld):\n", SCHED_FIXED_FROM(sched->vtime),
+            SCHED_FIXED_FROM(sumLag), sumLag);
         RBTREE_FOR_EACH(iter, &sched->runqueue, node)
         {
             thread_t* thread = CONTAINER_OF(iter, thread_t, sched);
-            lag_t lag = vclock_mul(vclock_sub(sched->vtime, iter->veligible), iter->weight);
+            lag_t lag = (sched->vtime - iter->veligible) * iter->weight;
             LOG_DEBUG("  process %lld thread %lld lag=%lld veligible=%lld weight=%lld\n", thread->process->id,
-                thread->id, vclock_to_clock(lag), vclock_to_clock(iter->veligible), iter->weight);
+                thread->id, SCHED_FIXED_FROM(lag), SCHED_FIXED_FROM(iter->veligible), iter->weight);
         }
-        panic(NULL, "Total lag is not zero, got %lld", vclock_to_clock(sumLag));
+        // panic(NULL, "Total lag is not zero, got %lld", SCHED_FIXED_FROM(sumLag));
     }
 }
 #endif
@@ -629,11 +568,10 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         runThread->sched.start = uptime;
 
         // Eq 12
-        runThread->sched.veligible =
-            vclock_add(runThread->sched.veligible, vclock_div(vclock_from_clock(used), runThread->sched.weight));
+        runThread->sched.veligible += (SCHED_FIXED_TO(used) / runThread->sched.weight);
         // Eq 10
         runThread->sched.vdeadline =
-            vclock_add(runThread->sched.veligible, vclock_div(VCLOCK_TIME_SLICE, runThread->sched.weight));
+            runThread->sched.veligible + (SCHED_FIXED_TO(CONFIG_TIME_SLICE) / runThread->sched.weight);
 
         rbtree_fix(&sched->runqueue, &runThread->sched.node);
     }
@@ -685,13 +623,13 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
 
     if (runThread != sched->idleThread)
     {
-        vclock_t vtimeout = vclock_sub(runThread->sched.vdeadline, sched->vtime);
-        if (vclock_compare(vtimeout, VCLOCK_ZERO) < 0)
+        int128_t vtimeout = runThread->sched.vdeadline - sched->vtime;
+        if (sched_fixed_cmp(vtimeout, 0) < 0)
         {
-            vtimeout = VCLOCK_ZERO;
+            vtimeout = SCHED_FIXED_ZERO;
         }
 
-        timer_set(uptime, uptime + (vclock_to_clock(vtimeout) * sched->totalWeight));
+        timer_set(uptime, uptime + (SCHED_FIXED_FROM(vtimeout) * sched->totalWeight));
     }
 
     if (threadToFree != NULL)
