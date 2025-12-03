@@ -72,9 +72,9 @@ typedef struct thread thread_t;
  * under the assumption that \f$A(t_1) = A(t_2)\f$, i.e. the set of active threads has not changed between \f$t_1\f$ and
  * \f$t_2\f$.
  *
- * Note how the denominator containing the \f$\sum\f$ symbol simply means the sum of all weights \f$w_i\f$ for each
- * active thread \f$i\f$ at real time \f$t_2\f$, i.e. the total weight of the scheduler cached in `sched->totalWeight`.
- * In pseudocode, this would be:
+ * Note how the denominator containing the \f$\sum\f$ symbol evaluates to the sum of all weights \f$w_i\f$ for each
+ * active thread \f$i\f$ in \f$A\f$ at \f$t_2\f$, i.e the total weight of the scheduler cached in `sched->totalWeight`.
+ * In pseudocode, this can be expressed as
  *
  * ```
  * vclock_t vtime = (sys_time_uptime() - oldTime) / sched->totalWeight;
@@ -88,8 +88,8 @@ typedef struct thread thread_t;
  * \end{equation*}
  *
  * In practice, all we are doing is taking a duration of real time equal to the total weight of all active threads, and
- * saying that each thread ought to receive a portion of that time equal to its weight. Its just a trick to simplify the
- * math.
+ * saying that each thread ought to receive a portion of that time equal to its weight. Virtual time is just a trick to
+ * simplify the math.
  *
  * @note All variables storing virtual time values will be prefixed with 'v' and use the `vclock_t` type. Variables
  * storing real time values will use the `clock_t` type as normal.
@@ -183,8 +183,7 @@ typedef struct thread thread_t;
  * v_{di} = v_{ei} + \frac{Q}{w_i}
  * \end{equation*}
  *
- * where \f$Q\f$ is a constant time slice defined by the scheduler, in our case `CONFIG_TIME_SLICE`, however
- * `VCLOCK_TIME_SLICE` is provided for convenience as it is already converted to the `vclock_t` type.
+ * where \f$Q\f$ is a constant time slice defined by the scheduler, in our case `CONFIG_TIME_SLICE`.
  *
  * @see [EEVDF](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564)
  * page 3.
@@ -210,7 +209,8 @@ typedef struct thread thread_t;
  * Second, testing shows that lag appears to accumulate an error of about \f$10^3\f$ to \f$10^4\f$ in the fractional
  * part every second under heavy load, meaning that using 64 bits and a fixed point offset of 20 bits, would result in
  * an error of approximately 1 nanosecond per minute, considering that the testing was not particularly rigorous, it
- * might be significantly worse in practice.
+ * might be significantly worse in practice. Note that at most every division can create an error equal to the divider
+ * minus one in the fractional part.
  *
  * If we instead use 128 bits with a fixed point offset of 63 bits, the same error of \f$10^4\f$ in the fractional part
  * results in an error of approximately \f$1.7 \times 10^{-9}\f$ nanoseconds per year, which is obviously negligible
