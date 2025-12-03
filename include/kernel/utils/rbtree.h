@@ -2,13 +2,13 @@
 
 #include <kernel/defs.h>
 
-#include <libstd/_internal/CONTAINER_OF.h>
 #include <stdint.h>
+#include <sys/list.h>
 
 typedef struct rbnode rbnode_t;
 
 /**
- * @brief Red-Black Tree.
+ * @brief Augmented Red-Black Tree.
  * @defgroup kernel_utils_rbtree Red-Black Tree
  * @ingroup kernel_utils
  *
@@ -22,14 +22,23 @@ typedef struct rbnode rbnode_t;
  *
  * The tree structure allows for more efficient operations compared to a standard linked list (`O(log n)` vs `O(n)`),
  * and the red-black properties ensure that the tree remains balanced, preventing it from degenerating into a linear
- * structure,
- *
- * However, the user of the tree does not need to be concerned with these implementation details.
+ * structure. However, the user of the tree does not need to be concerned with these implementation details.
  *
  * TODO: Cache minimum and maximum nodes for `O(1)` access.
  *
+ * ## Update Callbacks
+ *
+ * The tree supports an optional update callback that is called whenever a node is inserted, removed or swapped. This
+ * allows for the tree to be "augmented" with additional data. For example, if you wanted to track the global minimum of
+ * some value in each node, you could do so by updating the minimum value in the update callback, such that you no
+ * longer need to traverse the tree to find the minimum. Very useful for the scheduler.
+ *
  * @see [Wikipedia Red-Black Tree](https://en.wikipedia.org/wiki/Red%E2%80%93black_tree) for more information on
  * Red-Black Trees.
+ * @see [Earliest Eligible Virtual Deadline
+ * First](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564) for
+ * the original paper describing EEVDF, contains some usefull information on balanced trees.
+ *
  * @{
  */
 
@@ -113,6 +122,15 @@ typedef struct rbnode
 typedef int64_t (*rbnode_compare_t)(const rbnode_t* a, const rbnode_t* b);
 
 /**
+ * @brief Update function for Red-Black Tree nodes.
+ *
+ * Called whenever a node is inserted, removed or swapped.
+ *
+ * @param node The node to update.
+ */
+typedef void (*rbnode_update_t)(rbnode_t* node);
+
+/**
  * @brief Red-Black Tree.
  * @struct rbtree_t
  */
@@ -121,6 +139,7 @@ typedef struct rbtree
     rbnode_t* root;
     uint64_t size;
     rbnode_compare_t compare;
+    rbnode_update_t update;
 } rbtree_t;
 
 /**
@@ -130,8 +149,9 @@ typedef struct rbtree
  *
  * @param tree The tree to initialize.
  * @param compare The comparison function to use.
+ * @param update The update function to use, or `NULL`.
  */
-void rbtree_init(rbtree_t* tree, rbnode_compare_t compare);
+void rbtree_init(rbtree_t* tree, rbnode_compare_t compare, rbnode_update_t update);
 
 /**
  * @brief Rotate a node in the Red-Black Tree.
@@ -194,6 +214,18 @@ void rbtree_insert(rbtree_t* tree, rbnode_t* node);
 void rbtree_remove(rbtree_t* tree, rbnode_t* node);
 
 /**
+ * @brief Move the node to its correct position in the Red-Black Tree.
+ *
+ * Should be called whenever the metric used for comparison changes.
+ *
+ * TODO: Currently just calls `rbtree_remove()` followed by `rbtree_insert()`, could be optimized?
+ *
+ * @param tree The tree containing the node to update.
+ * @param node The node to update.
+ */
+void rbtree_fix(rbtree_t* tree, rbnode_t* node);
+
+/**
  * @brief Check if the Red-Black Tree is empty.
  *
  * @param tree The tree to check.
@@ -229,6 +261,19 @@ rbnode_t* rbtree_prev(const rbnode_t* node);
              ((tree)->root != NULL ? CONTAINER_OF(rbtree_find_min((tree)->root), typeof(*(elem)), member) : NULL); \
         (elem) != NULL; (elem) = (rbtree_next(&(elem)->member) != NULL \
                                 ? CONTAINER_OF(rbtree_next(&(elem)->member), typeof(*(elem)), member) \
+                                : NULL))
+/**
+ * @brief Iterates over a Red-Black Tree in descending order.
+ *
+ * @param elem The loop variable, a pointer to the structure containing the tree node.
+ * @param tree A pointer to the `rbtree_t` structure to iterate over.
+ * @param member The name of the `rbnode_t` member within the structure `elem`.
+ */
+#define RBTREE_FOR_EACH_REVERSE(elem, tree, member) \
+    for ((elem) = \
+             ((tree)->root != NULL ? CONTAINER_OF(rbtree_find_max((tree)->root), typeof(*(elem)), member) : NULL); \
+        (elem) != NULL; (elem) = (rbtree_prev(&(elem)->member) != NULL \
+                                ? CONTAINER_OF(rbtree_prev(&(elem)->member), typeof(*(elem)), member) \
                                 : NULL))
 
 /** @} */

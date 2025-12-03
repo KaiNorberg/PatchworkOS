@@ -38,8 +38,8 @@ extern "C"
 typedef uint8_t priority_t;
 
 #define PRIORITY_PARENT 255  ///< Use the priority of the parent process.
-#define PRIORITY_MAX 64      ///< The maximum priority value.
-#define PRIORITY_MAX_USER 32 ///< The maximum priority user space is allowed to specify.
+#define PRIORITY_MAX 64      ///< The maximum priority value, inclusive.
+#define PRIORITY_MAX_USER 32 ///< The maximum priority user space is allowed to specify, inclusive.
 #define PRIORITY_MIN 0       ///< The minimum priority value.
 
 /**

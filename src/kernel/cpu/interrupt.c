@@ -162,8 +162,8 @@ void interrupt_handler(interrupt_frame_t* frame)
 
     cpu_t* self = cpu_get_unsafe();
     assert(self != NULL);
-    self->interrupt.inInterrupt = true;
 
+    self->interrupt.inInterrupt = true;
     perf_interrupt_begin(self);
 
     if (frame->vector >= VECTOR_EXTERNAL_START && frame->vector < VECTOR_EXTERNAL_END)
@@ -190,7 +190,6 @@ void interrupt_handler(interrupt_frame_t* frame)
     cpu_stacks_overflow_check(self);
 
     perf_interrupt_end(self);
-
     self->interrupt.inInterrupt = false;
 
     // This is a sanity check to make sure blocking and scheduling is functioning correctly.
