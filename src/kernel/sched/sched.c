@@ -327,7 +327,7 @@ static void sched_enter(sched_t* sched, thread_t* thread)
 
     client->veligible = sched->vtime;
     client->vdeadline = vclock_add(client->veligible, vclock_div(VCLOCK_TIME_SLICE, client->weight));
-    
+
     rbtree_insert(&sched->runqueue, &client->node);
     atomic_store(&thread->state, THREAD_ACTIVE);
 }
