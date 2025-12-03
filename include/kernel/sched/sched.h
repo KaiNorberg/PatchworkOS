@@ -213,7 +213,7 @@ typedef struct thread thread_t;
  * minus one in the fractional part.
  *
  * If we instead use 128 bits with a fixed point offset of 63 bits, the same error of \f$10^4\f$ in the fractional part
- * results in an error of approximately \f$1.7 \times 10^{-9}\f$ nanoseconds per year, which is obviously negligible
+ * results in an error of approximately \f$1.7 \cdot 10^{-9}\f$ nanoseconds per year, which is obviously negligible
  * even if the actual error is in reality several orders of magnitude worse.
  *
  * For comparisons between `vclock_t` values, we consider two values equal if the difference between their whole parts
