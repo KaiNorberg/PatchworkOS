@@ -192,7 +192,7 @@ static inline void init_process_spawn(void)
         panic(NULL, "Failed to spawn init process");
     }
 
-    sched_enter(initThread, NULL);
+    sched_submit(initThread, NULL);
 }
 
 void kmain(void)

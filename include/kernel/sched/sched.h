@@ -23,13 +23,9 @@ typedef struct thread thread_t;
  *
  * PatchworkOS uses the Earliest Eligible Virtual Deadline First (EEVDF) algorithm for its scheduler, which is a
  * proportional share scheduling algorithm that aims to fairly distribute CPU time among threads based on their weights.
- * This is in contrast to more traditional scheduling algorithms like round-robin or priority queues. Our implementation
- * is unique in that it aims to offer mathematically exact fairness through the use of rational numbers for virtual time
- * calculations.
+ * This is in contrast to more traditional scheduling algorithms like round-robin or priority queues.
  *
- * The algorithm is relatively simple conceptually, but it is very "finicky" to implement correctly, even small mistakes
- * can easily result in highly unfair scheduling. Therefore, if you find issues or bugs with the scheduler, please open
- * an issue in the GitHub repository.
+ * The algorithm is relatively simple conceptually, but it is also very fragile, even small mistakes can easily result in highly unfair scheduling. Therefore, if you find issues or bugs with the scheduler, please open an issue in the GitHub repository.
  *
  * Included below is a overview of how the scheduler works and the relevant concepts. If you are unfamiliar with
  * mathematical notation, don't worry, we will explain everything in plain English as well.
@@ -222,10 +218,6 @@ typedef struct thread thread_t;
  *
  * TODO: The load balancing algorithm is rather naive at the moment and could be improved in the future.
  *
- * ## Testing
- *
- * Testing is done via asserts and additional debug checks in debug builds.
- *
  * ## References
  *
  * References were accessed on 2025-12-02.
@@ -413,7 +405,7 @@ void sched_yield(void);
  * @param thread The thread to submit.
  * @param target The target CPU to schedule the thread on, or `NULL` for the current CPU.
  */
-void sched_enter(thread_t* thread, cpu_t* target);
+void sched_submit(thread_t* thread, cpu_t* target);
 
 /**
  * @brief Perform a scheduling operation.

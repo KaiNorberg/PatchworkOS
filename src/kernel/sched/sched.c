@@ -81,7 +81,7 @@ static inline vclock_t vclock_div(vclock_t a, int64_t scalar)
     result.value = a.value / scalar;
 
     int64_t carry = a.value % scalar;
-    __int128_t remainder = ((int128_t)carry * VCLOCK_BASE) + a.remainder;
+    int128_t remainder = ((int128_t)carry * VCLOCK_BASE) + a.remainder;
 
     result.remainder = (int64_t)(remainder / scalar);
     vclock_normalize(&result);
@@ -312,20 +312,11 @@ void sched_yield(void)
     ipi_invoke();
 }
 
-void sched_enter(thread_t* thread, cpu_t* target)
+static void sched_enter(sched_t* sched, thread_t* thread)
 {
+    assert(sched != NULL);
     assert(thread != NULL);
-
-    cpu_t* self = cpu_get();
-    if (target == NULL)
-    {
-        target = self;
-    }
-
-    assert(thread != target->sched.idleThread);
-
-    sched_t* sched = &target->sched;
-    lock_acquire(&sched->lock);
+    assert(thread != sched->idleThread);
 
     clock_t uptime = sys_time_uptime();
     sched_vtime_update(sched, uptime);
@@ -336,18 +327,9 @@ void sched_enter(thread_t* thread, cpu_t* target)
 
     client->veligible = sched->vtime;
     client->vdeadline = vclock_add(client->veligible, vclock_div(VCLOCK_TIME_SLICE, client->weight));
-
+    
     rbtree_insert(&sched->runqueue, &client->node);
     atomic_store(&thread->state, THREAD_ACTIVE);
-
-    bool shouldWake = self != target || !self->interrupt.inInterrupt;
-    lock_release(&sched->lock);
-    cpu_put();
-
-    if (shouldWake)
-    {
-        ipi_wake_up(target, IPI_SINGLE);
-    }
 }
 
 static void sched_leave(sched_t* sched, thread_t* thread, clock_t uptime)
@@ -371,6 +353,31 @@ static void sched_leave(sched_t* sched, thread_t* thread, clock_t uptime)
 
     // Adjust the scheduler's time such that the sum of all threads' lag remains zero.
     sched->vtime = vclock_add(sched->vtime, vclock_div(lag, sched->totalWeight));
+}
+
+void sched_submit(thread_t* thread, cpu_t* target)
+{
+    assert(thread != NULL);
+
+    cpu_t* self = cpu_get();
+    if (target == NULL)
+    {
+        target = self;
+    }
+
+    sched_t* sched = &target->sched;
+    lock_acquire(&sched->lock);
+
+    sched_enter(sched, thread);
+    bool shouldWake = self != target || !self->interrupt.inInterrupt;
+
+    lock_release(&sched->lock);
+    cpu_put();
+
+    if (shouldWake)
+    {
+        ipi_wake_up(target, IPI_SINGLE);
+    }
 }
 
 // Should be called with sched lock held.
@@ -458,18 +465,17 @@ static void sched_load_balance(cpu_t* self)
 
     sched_acquire_two(&self->sched, &neighbor->sched);
 
-    uint64_t selfLoad = self->sched.runqueue.size;
-    uint64_t neighborLoad = neighbor->sched.runqueue.size;
-    if (neighborLoad + CONFIG_LOAD_BALANCE_BIAS >= selfLoad)
+    bool movedThreads = false;
+    while (neighbor->sched.runqueue.size + CONFIG_LOAD_BALANCE_BIAS < self->sched.runqueue.size)
     {
-        sched_release_two(&self->sched, &neighbor->sched);
-        return;
-    }
+        sched_client_t* client = CONTAINER_OF_SAFE(rbtree_find_max(self->sched.runqueue.root), sched_client_t, node);
+        if (client == NULL)
+        {
+            break;
+        }
 
-    sched_client_t* client = CONTAINER_OF_SAFE(rbtree_find_max(self->sched.runqueue.root), sched_client_t, node);
-    if (client != NULL)
-    {
-        if (client == &self->sched.runThread->sched)
+        bool isRunningThread = client == &self->sched.runThread->sched;
+        if (isRunningThread) // Never move the running thread
         {
             client = CONTAINER_OF_SAFE(rbtree_prev(&client->node), sched_client_t, node);
             if (client == NULL)
@@ -480,15 +486,18 @@ static void sched_load_balance(cpu_t* self)
         }
         thread_t* thread = CONTAINER_OF(client, thread_t, sched);
 
-        self->sched.totalWeight -= client->weight;
-        rbtree_remove(&self->sched.runqueue, &client->node);
+        sched_leave(&self->sched, thread, sys_time_uptime());
+        sched_enter(&neighbor->sched, thread);
 
-        client->veligible = neighbor->sched.vtime;
-        client->vdeadline = vclock_add(client->veligible, vclock_div(VCLOCK_TIME_SLICE, client->weight));
+        movedThreads = true;
+        if (isRunningThread)
+        {
+            break;
+        }
+    }
 
-        neighbor->sched.totalWeight += client->weight;
-        rbtree_insert(&neighbor->sched.runqueue, &client->node);
-
+    if (movedThreads)
+    {
         ipi_wake_up(neighbor, IPI_SINGLE);
     }
 
@@ -590,7 +599,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     assert(frame != NULL);
     assert(self != NULL);
 
-    // sched_load_balance(self);
+    sched_load_balance(self);
 
     sched_t* sched = &self->sched;
     lock_acquire(&sched->lock);
@@ -619,10 +628,10 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         clock_t used = uptime - runThread->sched.start;
         runThread->sched.start = uptime;
 
-        // Eq 12, advance virtual eligible time by the amount of virtual time the thread has used.
+        // Eq 12
         runThread->sched.veligible =
             vclock_add(runThread->sched.veligible, vclock_div(vclock_from_clock(used), runThread->sched.weight));
-        // Eq 10, set new virtual deadline.
+        // Eq 10
         runThread->sched.vdeadline =
             vclock_add(runThread->sched.veligible, vclock_div(VCLOCK_TIME_SLICE, runThread->sched.weight));
 

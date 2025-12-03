@@ -160,6 +160,15 @@ typedef __UINTMAX_TYPE__ uintmax_t;
 
 #endif
 
+// Extension for 128-bit integers
+
+#define INT128_MIN (-INT128_MAX - 1)
+#define INT128_MAX ((int128_t)((uint128_t)~0 >> 1))
+#define UINT128_MAX ((uint128_t)~0)
+
+typedef __int128_t int128_t;
+typedef __uint128_t uint128_t;
+
 #if _USE_ANNEX_K == 1
 #define RSIZE_MAX (__SIZE_MAX__ >> 1)
 #endif
