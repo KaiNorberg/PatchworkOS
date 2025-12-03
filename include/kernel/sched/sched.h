@@ -100,45 +100,45 @@ typedef struct thread thread_t;
  * Lag is defined as the difference between the amount of real time a thread should have received and the amount of real
  * time it has actually received.
  *
- * As an example, lets say we have three threads X, Y and Z with equal weights. To start with each thread is supposed to
+ * As an example, lets say we have three threads A, B and C with equal weights. To start with each thread is supposed to
  * have run for 0ms, and has actually run for 0ms, so their lag values are:
  *
  * <div align="center">
  * Thread | Lag (ms)
  * -------|-------
- *    X   |   0
- *    Y   |   0
- *    Z   |   0
+ *    A   |   0
+ *    B   |   0
+ *    C   |   0
  * </div>
  *
- * Now, lets say we give a 30ms (in real time) time slice to thread X, while threads Y and Z do not run at all. After
+ * Now, lets say we give a 30ms (in real time) time slice to thread A, while threads B and C do not run at all. After
  * this, the lag values would be:
  *
  * <div align="center">
  * Thread | Lag (ms)
  * -------|-------
- *    X   |  -20
- *    Y   |   10
- *    Z   |   10
+ *    A   |  -20
+ *    B   |   10
+ *    C   |   10
  * </div>
  *
  * What just happened is that each thread should have received one third of the real time (since they are all of equal
- * weight such that each of their weights is 1/3 of the total weight) which is 10ms. Therefore, since thread X actually
- * received 30ms of real time, it has run for 20ms more than it should have. Meanwhile, threads Y and Z have not
+ * weight such that each of their weights is 1/3 of the total weight) which is 10ms. Therefore, since thread A actually
+ * received 30ms of real time, it has run for 20ms more than it should have. Meanwhile, threads B and C have not
  * received any real time at all, so they are "owed" 10ms each.
  *
  * One important property of lag is that the sum of all lag values across all active threads is always zero. In the
  * above examples, we can see that \f$0 + 0 + 0 = 0\f$ and \f$-20 + 10 + 10 = 0\f$.
  *
  * Finally, this lets us determine the eligibility of a thread. A thread is considered eligible if, and only if, its lag
- * is greater than or equal to zero. In the above example threads Y and Z are eligible to run, while thread X is not.
+ * is greater than or equal to zero. In the above example threads B and C are eligible to run, while thread A is not.
  * Notice that due to the sum of all lag values being zero, this means that there will always be at least one eligible
  * thread as long as there is at least one active thread, since if there is a thread with negative lag then there must
  * be at least one thread with positive lag to balance it out.
  *
  * @note Fairness is achieved over some long period of time over which the proportion of real time each thread has
  * received will converge to the share it ought to receive. It does not guarantee that each individual time slice is
- * exactly correct, hence its acceptable for thread X to receive 30ms of real time in the above example.
+ * exactly correct, hence its acceptable for thread A to receive 30ms of real time in the above example.
  *
  * @see [EEVDF](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564)
  * pages 3-5.
