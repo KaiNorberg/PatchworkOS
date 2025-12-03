@@ -26,144 +26,78 @@
 
 static wait_queue_t sleepQueue = WAIT_QUEUE_CREATE(sleepQueue);
 
-// TODO: This is in desperate need of optimization.
-static __int128_t vclock_gcd(__int128_t a, __int128_t b)
+static inline void vclock_normalize(vclock_t* vclock)
 {
-    if (a < 0)
+    if (vclock->remainder >= VCLOCK_BASE)
     {
-        a = -a;
+        vclock->value += vclock->remainder / VCLOCK_BASE;
+        vclock->remainder = vclock->remainder % VCLOCK_BASE;
     }
-    if (b < 0)
+    else if (vclock->remainder < 0)
     {
-        b = -b;
+        int64_t borrow = (-vclock->remainder + VCLOCK_BASE - 1) / VCLOCK_BASE;
+        vclock->value -= borrow;
+        vclock->remainder += borrow * VCLOCK_BASE;
     }
-
-    while (b != 0)
-    {
-        __int128_t temp = b;
-        b = a % b;
-        a = temp;
-    }
-    return a;
 }
 
-static vclock_t vclock_from_clock(clock_t time)
+static inline vclock_t vclock_from_clock(clock_t clock)
 {
-    return (vclock_t){.num = time, .den = 1};
+    return (vclock_t){.value = clock, .remainder = 0};
 }
 
-static clock_t vclock_to_clock(vclock_t vclock)
+static inline clock_t vclock_to_clock(vclock_t vclock)
 {
-    assert(vclock.den != 0);
-    return (clock_t)(vclock.num / vclock.den);
+    return vclock.value;
 }
 
-static vclock_t vclock_add(vclock_t a, vclock_t b)
+static inline vclock_t vclock_add(vclock_t a, vclock_t b)
 {
-    assert(a.den > 0 && b.den > 0);
-
-    __int128_t num = (a.num * b.den) + (b.num * a.den);
-
-    if (num == 0)
-    {
-        return VCLOCK_ZERO;
-    }
-
-    __int128_t den = a.den * b.den;
-    __int128_t gcd = vclock_gcd(num, den);
-
-    num /= gcd;
-    den /= gcd;
-
-    return (vclock_t){num, den};
+    vclock_t result = {.value = a.value + b.value, .remainder = a.remainder + b.remainder};
+    vclock_normalize(&result);
+    return result;
 }
 
-static vclock_t vclock_sub(vclock_t a, vclock_t b)
+static inline vclock_t vclock_sub(vclock_t a, vclock_t b)
 {
-    assert(a.den > 0 && b.den > 0);
-
-    __int128_t num = (a.num * b.den) - (b.num * a.den);
-
-    if (num == 0)
-    {
-        return VCLOCK_ZERO;
-    }
-
-    __int128_t den = a.den * b.den;
-    __int128_t gcd = vclock_gcd(num, den);
-
-    num /= gcd;
-    den /= gcd;
-
-    return (vclock_t){num, den};
+    vclock_t result = {.value = a.value - b.value, .remainder = a.remainder - b.remainder};
+    vclock_normalize(&result);
+    return result;
 }
 
-static vclock_t vclock_mul(vclock_t a, int64_t scalar)
+static inline vclock_t vclock_mul(vclock_t a, int64_t scalar)
 {
-    assert(a.den > 0);
-
-    if (scalar == 0 || a.num == 0)
-    {
-        return VCLOCK_ZERO;
-    }
-
-    __int128_t num = a.num * scalar;
-    __int128_t den = a.den;
-    __int128_t gcd = vclock_gcd(num, den);
-
-    num /= gcd;
-    den /= gcd;
-
-    if (den < 0)
-    {
-        num = -num;
-        den = -den;
-    }
-
-    return (vclock_t){num, den};
+    vclock_t result = {.value = a.value * scalar, .remainder = a.remainder * scalar};
+    vclock_normalize(&result);
+    return result;
 }
 
-static vclock_t vclock_div(vclock_t a, int64_t scalar)
+static inline vclock_t vclock_div(vclock_t a, int64_t scalar)
 {
-    assert(a.den > 0);
     assert(scalar != 0);
 
-    if (a.num == 0)
-    {
-        return VCLOCK_ZERO;
-    }
+    vclock_t result;
 
-    __int128_t num = a.num;
-    __int128_t den = a.den * scalar;
-    __int128_t gcd = vclock_gcd(num, den);
+    result.value = a.value / scalar;
 
-    num /= gcd;
-    den /= gcd;
+    int64_t carry = a.value % scalar;
+    __int128_t remainder = ((int128_t)carry * VCLOCK_BASE) + a.remainder;
 
-    if (den < 0)
-    {
-        num = -num;
-        den = -den;
-    }
-
-    return (vclock_t){num, den};
+    result.remainder = (int64_t)(remainder / scalar);
+    vclock_normalize(&result);
+    return result;
 }
 
-static int64_t vclock_compare(vclock_t a, vclock_t b)
+static inline int64_t vclock_compare(vclock_t a, vclock_t b)
 {
-    assert(a.den > 0 && b.den > 0);
-
-    __int128_t left = a.num * b.den;
-    __int128_t right = b.num * a.den;
-
-    if (left < right)
-    {
-        return -1;
-    }
-
-    if (left > right)
+    int64_t diff = a.value - b.value;
+    if (diff > VCLOCK_EPSILON)
     {
         return 1;
+    }
+    else if (diff < -VCLOCK_EPSILON)
+    {
+        return -1;
     }
 
     return 0;
@@ -638,7 +572,7 @@ static void sched_verify(sched_t* sched)
     }
     if (vclock_compare(sumLag, VCLOCK_ZERO) != 0)
     {
-        LOG_DEBUG("debug info (vtime=%lld):\n", vclock_to_clock(sched->vtime));
+        LOG_DEBUG("debug info (vtime=%lld sum=%lld):\n", vclock_to_clock(sched->vtime), vclock_to_clock(sumLag));
         RBTREE_FOR_EACH(iter, &sched->runqueue, node)
         {
             thread_t* thread = CONTAINER_OF(iter, thread_t, sched);
@@ -722,12 +656,12 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         panic(NULL, "Thread in invalid state in sched_do() state=%d", state);
     }
 
-    thread_t* next = sched_first_eligible(sched);
-    assert(next != NULL);
-
 #ifndef NDEBUG
     sched_verify(sched);
 #endif
+
+    thread_t* next = sched_first_eligible(sched);
+    assert(next != NULL);
 
     if (next != runThread)
     {
