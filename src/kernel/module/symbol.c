@@ -19,7 +19,7 @@ static map_t nameMap = MAP_CREATE;
 
 static map_t groupMap = MAP_CREATE;
 
-static rwlock_t lock = RWLOCK_CREATE;
+static rwlock_t lock = RWLOCK_CREATE();
 
 symbol_group_id_t symbol_generate_group_id(void)
 {

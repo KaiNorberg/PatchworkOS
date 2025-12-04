@@ -11,7 +11,7 @@ static boot_gop_t gop = {0};
 static log_screen_pos_t cursor = {0, 0};
 static log_screen_t screen = {0};
 
-static lock_t lock = LOCK_CREATE;
+static lock_t lock = LOCK_CREATE();
 
 static log_screen_line_t* log_screen_get_line(uint64_t y)
 {

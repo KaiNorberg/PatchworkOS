@@ -17,7 +17,7 @@
 static dentry_t* listenDir = NULL;
 
 static map_t listeners;
-static rwlock_t listenersLock = RWLOCK_CREATE;
+static rwlock_t listenersLock = RWLOCK_CREATE();
 
 uint64_t local_listen_dir_init(void)
 {

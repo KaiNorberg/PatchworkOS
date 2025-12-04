@@ -10,7 +10,7 @@
 #include <sys/list.h>
 
 static BITMAP_CREATE(ports, IO_PORT_MAX + 1);
-static lock_t lock = LOCK_CREATE;
+static lock_t lock = LOCK_CREATE();
 
 uint64_t io_reserve(port_t* out, port_t minBase, port_t maxBase, uint64_t alignment, uint64_t length, const char* owner)
 {

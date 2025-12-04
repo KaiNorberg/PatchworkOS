@@ -19,7 +19,7 @@ static const sys_time_source_t* sources[SYS_TIME_MAX_SOURCES] = {0};
 static uint32_t sourceCount = 0;
 static const sys_time_source_t* bestNsSource = NULL;
 static const sys_time_source_t* bestEpochSource = NULL;
-static rwlock_t sourcesLock = RWLOCK_CREATE;
+static rwlock_t sourcesLock = RWLOCK_CREATE();
 
 #ifdef DEBUG
 static _Atomic(clock_t) lastNsTime = ATOMIC_VAR_INIT(0);

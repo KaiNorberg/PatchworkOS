@@ -49,7 +49,7 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
         DEREF(process);
         return ERR;
     }
-    wait_thread_ctx_init(&thread->wait);
+    wait_client_init(&thread->wait);
     if (simd_ctx_init(&thread->simd) == ERR)
     {
         DEREF(process);

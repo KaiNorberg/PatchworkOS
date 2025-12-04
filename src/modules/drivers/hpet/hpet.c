@@ -96,7 +96,7 @@ static uintptr_t address; ///< Mapped virtual address of the HPET registers.
 static uint64_t period;   ///< Main counter tick period in femtoseconds (10^-15 s).
 
 static atomic_uint64_t counter = ATOMIC_VAR_INIT(0); ///< Accumulated nanosecond counter, used to avoid overflows.
-static seqlock_t counterLock = SEQLOCK_CREATE;       ///< Seqlock for the accumulated counter.
+static seqlock_t counterLock = SEQLOCK_CREATE();     ///< Seqlock for the accumulated counter.
 
 static tid_t overflowThreadTid = 0;                                   ///< Thread ID of the overflow thread.
 static wait_queue_t overflowQueue = WAIT_QUEUE_CREATE(overflowQueue); ///< Wait queue for the overflow thread.

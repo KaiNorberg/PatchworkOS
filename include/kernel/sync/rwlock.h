@@ -44,7 +44,7 @@ typedef struct thread thread_t;
  *
  * @return A rwlock_t initializer.
  */
-#define RWLOCK_CREATE \
+#define RWLOCK_CREATE() \
     (rwlock_t) \
     { \
         .readTicket = ATOMIC_VAR_INIT(0), .readServe = ATOMIC_VAR_INIT(0), .writeTicket = ATOMIC_VAR_INIT(0), \

@@ -1055,7 +1055,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         uptime = sys_time_uptime();
         clock_t remaining = CLOCKS_REMAINING(deadline, uptime);
 
-        if (wait_block_setup(ctx.queues, ctx.queueAmount, remaining) == ERR)
+        if (wait_block_prepare(ctx.queues, ctx.queueAmount, remaining) == ERR)
         {
             return ERR;
         }

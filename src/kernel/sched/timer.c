@@ -18,7 +18,7 @@
 static const timer_source_t* sources[TIMER_MAX_SOURCES] = {0};
 static uint32_t sourceCount = 0;
 static const timer_source_t* bestSource = NULL;
-static rwlock_t sourcesLock = RWLOCK_CREATE;
+static rwlock_t sourcesLock = RWLOCK_CREATE();
 
 void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx)
 {

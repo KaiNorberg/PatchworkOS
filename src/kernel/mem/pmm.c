@@ -42,7 +42,7 @@ static uint64_t bitmapBuffer[BITMAP_BITS_TO_QWORDS(PMM_BITMAP_SIZE)];
 
 static uint64_t pageAmount = 0;
 
-static lock_t lock = LOCK_CREATE;
+static lock_t lock = LOCK_CREATE();
 
 static bool pmm_is_efi_mem_available(EFI_MEMORY_TYPE type)
 {

@@ -8,7 +8,7 @@ static uint64_t entryCount;
 static mcfg_t* mcfg;
 
 static bool initialized = false;
-static lock_t initLock = LOCK_CREATE;
+static lock_t initLock = LOCK_CREATE();
 
 static uint64_t pci_config_init(void)
 {

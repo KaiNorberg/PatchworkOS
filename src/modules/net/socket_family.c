@@ -11,7 +11,7 @@
 #include <sys/list.h>
 
 static list_t families = LIST_CREATE(families);
-static lock_t lock = LOCK_CREATE;
+static lock_t lock = LOCK_CREATE();
 
 static uint64_t socket_factory_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {

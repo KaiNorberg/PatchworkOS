@@ -26,40 +26,40 @@ static void wait_remove_wait_entries(thread_t* thread, errno_t err)
     wait_entry_t* entry;
     LIST_FOR_EACH_SAFE(entry, temp, &thread->wait.entries, threadEntry)
     {
-        lock_acquire(&entry->waitQueue->lock);
-        list_remove(&entry->waitQueue->entries, &entry->queueEntry);
-        lock_release(&entry->waitQueue->lock);
+        lock_acquire(&entry->queue->lock);
+        list_remove(&entry->queue->entries, &entry->queueEntry);
+        lock_release(&entry->queue->lock);
 
         list_remove(&entry->thread->wait.entries, &entry->threadEntry); // Belongs to thread, no lock needed.
         free(entry);
     }
 }
 
-void wait_queue_init(wait_queue_t* waitQueue)
+void wait_queue_init(wait_queue_t* queue)
 {
-    lock_init(&waitQueue->lock);
-    list_init(&waitQueue->entries);
+    lock_init(&queue->lock);
+    list_init(&queue->entries);
 }
 
-void wait_queue_deinit(wait_queue_t* waitQueue)
+void wait_queue_deinit(wait_queue_t* queue)
 {
-    LOCK_SCOPE(&waitQueue->lock);
+    LOCK_SCOPE(&queue->lock);
 
-    if (!list_is_empty(&waitQueue->entries))
+    if (!list_is_empty(&queue->entries))
     {
         panic(NULL, "Wait queue with pending threads freed");
     }
 }
 
-void wait_thread_ctx_init(wait_thread_ctx_t* wait)
+void wait_client_init(wait_client_t* client)
 {
-    list_init(&wait->entries);
-    wait->err = EOK;
-    wait->deadline = 0;
-    wait->cpu = NULL;
+    list_init(&client->entries);
+    client->err = EOK;
+    client->deadline = 0;
+    client->cpu = NULL;
 }
 
-void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* self)
+void wait_init(wait_t* wait, cpu_t* self)
 {
     list_init(&wait->blockedThreads);
     wait->cpu = self;
@@ -98,6 +98,134 @@ void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self)
         wait_remove_wait_entries(thread, ETIMEDOUT);
         sched_submit(thread, thread->wait.cpu->cpu);
     }
+}
+
+uint64_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t timeout)
+{
+    if (waitQueues == NULL || amount == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    // Disable interrupts and retrieve thread.
+    thread_t* thread = cpu_get()->sched.runThread;
+
+    assert(thread != NULL);
+
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        lock_acquire(&waitQueues[i]->lock);
+    }
+
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        wait_entry_t* entry = malloc(sizeof(wait_entry_t));
+        if (entry == NULL)
+        {
+            while (1)
+            {
+                wait_entry_t* other =
+                    CONTAINER_OF_SAFE(list_pop_first(&thread->wait.entries), wait_entry_t, threadEntry);
+                if (other == NULL)
+                {
+                    break;
+                }
+                free(other);
+            }
+
+            for (uint64_t j = 0; j < amount; j++)
+            {
+                lock_release(&waitQueues[j]->lock);
+            }
+
+            cpu_put(); // Interrupts enable.
+            errno = ENOMEM;
+            return ERR;
+        }
+        list_entry_init(&entry->queueEntry);
+        list_entry_init(&entry->threadEntry);
+        entry->queue = waitQueues[i];
+        entry->thread = thread;
+
+        list_push_back(&thread->wait.entries, &entry->threadEntry);
+        list_push_back(&entry->queue->entries, &entry->queueEntry);
+    }
+
+    thread->wait.err = EOK;
+    thread->wait.deadline = CLOCKS_DEADLINE(timeout, sys_time_uptime());
+    thread->wait.cpu = NULL;
+
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        lock_release(&waitQueues[i]->lock);
+    }
+
+    thread_state_t expected = THREAD_ACTIVE;
+    if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_PRE_BLOCK))
+    {
+        if (expected != THREAD_UNBLOCKING)
+        {
+            panic(NULL, "Thread in invalid state in wait_block_prepare() state=%d", expected);
+        }
+        // We wait until the wait_block_commit() or wait_block_cancel() to actually do the early unblock.
+    }
+
+    // Return without enabling interrupts, they will be enabled in wait_block_commit() or wait_block_cancel().
+    return 0;
+}
+
+void wait_block_cancel(void)
+{
+    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
+
+    thread_t* thread = cpu_get_unsafe()->sched.runThread;
+    assert(thread != NULL);
+
+    thread_state_t state = atomic_exchange(&thread->state, THREAD_UNBLOCKING);
+
+    // State might already be unblocking if the thread unblocked prematurely.
+    assert(state == THREAD_PRE_BLOCK || state == THREAD_UNBLOCKING);
+
+    wait_remove_wait_entries(thread, EOK);
+
+    thread_state_t newState = atomic_exchange(&thread->state, THREAD_ACTIVE);
+    assert(newState == THREAD_UNBLOCKING); // Make sure state did not change.
+
+    cpu_put(); // Release cpu from wait_block_prepare().
+    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
+}
+
+uint64_t wait_block_commit(void)
+{
+    thread_t* thread = cpu_get_unsafe()->sched.runThread;
+
+    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
+
+    thread_state_t state = atomic_load(&thread->state);
+    switch (state)
+    {
+    case THREAD_UNBLOCKING:
+        wait_remove_wait_entries(thread, EOK);
+        atomic_store(&thread->state, THREAD_ACTIVE);
+        cpu_put(); // Release cpu from wait_block_prepare().
+        break;
+    case THREAD_PRE_BLOCK:
+        cpu_put(); // Release cpu from wait_block_prepare().
+        ipi_invoke();
+        break;
+    default:
+        panic(NULL, "Invalid thread state %d in wait_block_commit()", state);
+    }
+
+    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
+
+    if (thread->wait.err != EOK)
+    {
+        errno = thread->wait.err;
+        return ERR;
+    }
+    return 0;
 }
 
 bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread, clock_t uptime)
@@ -165,7 +293,7 @@ void wait_unblock_thread(thread_t* thread, errno_t err)
     sched_submit(thread, thread->wait.cpu->cpu);
 }
 
-uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount, errno_t err)
+uint64_t wait_unblock(wait_queue_t* queue, uint64_t amount, errno_t err)
 {
     uint64_t amountUnblocked = 0;
 
@@ -178,12 +306,12 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount, errno_t err)
         thread_t* threads[threadsPerBatch];
         uint64_t toUnblock = amount < threadsPerBatch ? amount : threadsPerBatch;
 
-        lock_acquire(&waitQueue->lock);
+        lock_acquire(&queue->lock);
 
         wait_entry_t* temp;
         wait_entry_t* waitEntry;
         uint64_t collected = 0;
-        LIST_FOR_EACH_SAFE(waitEntry, temp, &waitQueue->entries, queueEntry)
+        LIST_FOR_EACH_SAFE(waitEntry, temp, &queue->entries, queueEntry)
         {
             if (collected == toUnblock)
             {
@@ -194,7 +322,7 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount, errno_t err)
 
             if (atomic_exchange(&thread->state, THREAD_UNBLOCKING) == THREAD_BLOCKED)
             {
-                list_remove(&waitQueue->entries, &waitEntry->queueEntry);
+                list_remove(&queue->entries, &waitEntry->queueEntry);
                 list_remove(&thread->wait.entries, &waitEntry->threadEntry);
                 free(waitEntry);
                 threads[collected] = thread;
@@ -202,7 +330,7 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount, errno_t err)
             }
         }
 
-        lock_release(&waitQueue->lock);
+        lock_release(&queue->lock);
 
         if (collected == 0)
         {
@@ -222,131 +350,4 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount, errno_t err)
     }
 
     return amountUnblocked;
-}
-
-uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t timeout)
-{
-    if (waitQueues == NULL || amount == 0)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    // Disable interrupts and retrieve thread.
-    thread_t* thread = cpu_get()->sched.runThread;
-
-    assert(thread != NULL);
-
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        lock_acquire(&waitQueues[i]->lock);
-    }
-
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        wait_entry_t* entry = malloc(sizeof(wait_entry_t));
-        if (entry == NULL)
-        {
-            while (1)
-            {
-                wait_entry_t* other =
-                    CONTAINER_OF_SAFE(list_pop_first(&thread->wait.entries), wait_entry_t, threadEntry);
-                if (other == NULL)
-                {
-                    break;
-                }
-                free(other);
-            }
-
-            for (uint64_t j = 0; j < amount; j++)
-            {
-                lock_release(&waitQueues[j]->lock);
-            }
-
-            cpu_put(); // Interrupts enable.
-            return ERR;
-        }
-        list_entry_init(&entry->queueEntry);
-        list_entry_init(&entry->threadEntry);
-        entry->waitQueue = waitQueues[i];
-        entry->thread = thread;
-
-        list_push_back(&thread->wait.entries, &entry->threadEntry);
-        list_push_back(&entry->waitQueue->entries, &entry->queueEntry);
-    }
-
-    thread->wait.err = EOK;
-    thread->wait.deadline = CLOCKS_DEADLINE(timeout, sys_time_uptime());
-    thread->wait.cpu = NULL;
-
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        lock_release(&waitQueues[i]->lock);
-    }
-
-    thread_state_t expected = THREAD_ACTIVE;
-    if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_PRE_BLOCK))
-    {
-        if (expected != THREAD_UNBLOCKING)
-        {
-            panic(NULL, "Thread in invalid state in wait_block_setup() state=%d", expected);
-        }
-        // We wait until the wait_block_commit() or wait_block_cancel() to actually do the early unblock.
-    }
-
-    // Return without enabling interrupts, they will be enabled in wait_block_commit() or wait_block_cancel().
-    return 0;
-}
-
-void wait_block_cancel(void)
-{
-    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
-
-    thread_t* thread = cpu_get_unsafe()->sched.runThread;
-    assert(thread != NULL);
-
-    thread_state_t state = atomic_exchange(&thread->state, THREAD_UNBLOCKING);
-
-    // State might already be unblocking if the thread unblocked prematurely.
-    assert(state == THREAD_PRE_BLOCK || state == THREAD_UNBLOCKING);
-
-    wait_remove_wait_entries(thread, EOK);
-
-    thread_state_t newState = atomic_exchange(&thread->state, THREAD_ACTIVE);
-    assert(newState == THREAD_UNBLOCKING); // Make sure state did not change.
-
-    cpu_put(); // Release cpu from wait_block_setup().
-    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-}
-
-uint64_t wait_block_commit(void)
-{
-    thread_t* thread = cpu_get_unsafe()->sched.runThread;
-
-    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
-
-    thread_state_t state = atomic_load(&thread->state);
-    switch (state)
-    {
-    case THREAD_UNBLOCKING:
-        wait_remove_wait_entries(thread, EOK);
-        atomic_store(&thread->state, THREAD_ACTIVE);
-        cpu_put(); // Release cpu from wait_block_setup().
-        break;
-    case THREAD_PRE_BLOCK:
-        cpu_put(); // Release cpu from wait_block_setup().
-        ipi_invoke();
-        break;
-    default:
-        panic(NULL, "Invalid thread state %d in wait_block_commit()", state);
-    }
-
-    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-
-    if (thread->wait.err != EOK)
-    {
-        errno = thread->wait.err;
-        return ERR;
-    }
-    return 0;
 }

@@ -36,7 +36,7 @@ static dentry_t* selfDir = NULL;
 
 static list_t zombies = LIST_CREATE(zombies);
 static clock_t nextReaperTime = CLOCKS_NEVER;
-static lock_t zombiesLock = LOCK_CREATE;
+static lock_t zombiesLock = LOCK_CREATE();
 
 static process_t* process_file_get_process(file_t* file)
 {
