@@ -206,7 +206,6 @@ typedef struct wait_client
 typedef struct wait
 {
     list_t blockedThreads; ///< List of blocked threads, sorted by deadline.
-    cpu_t* cpu;            ///< The CPU this context belongs to.
     lock_t lock;
 } wait_t;
 
@@ -243,9 +242,8 @@ void wait_client_init(wait_client_t* client);
  * @brief Initialize an instance of the waiting subsystem.
  *
  * @param wait The instance to initialize.
- * @param self The CPU the instance belongs to.
  */
-void wait_init(wait_t* wait, cpu_t* self);
+void wait_init(wait_t* wait);
 
 /**
  * @brief Check for timeouts and unblock threads as needed.

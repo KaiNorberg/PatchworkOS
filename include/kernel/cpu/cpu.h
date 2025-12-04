@@ -231,7 +231,7 @@ uint64_t cpu_halt_others(void);
  *
  * @return The number of identified CPUs.
  */
-static inline uint64_t cpu_amount(void)
+static inline uint16_t cpu_amount(void)
 {
     return _cpuAmount;
 }

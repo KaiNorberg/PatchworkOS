@@ -11,6 +11,8 @@
 typedef struct process process_t;
 typedef struct thread thread_t;
 
+typedef struct sched sched_t;
+
 /**
  * @brief The Earliest Eligible Virtual Deadline First (EEVDF) scheduler.
  * @defgroup kernel_sched The EEVDF Scheduler
@@ -246,15 +248,15 @@ typedef struct thread thread_t;
  *
  * ## Load Balancing
  *
- * Each CPU has its own scheduler and associated runqueue, as such we need to balance the load between each CPU. To
- * accomplish this, we run a check before any scheduling opportunity such that if a scheduler's neighbor CPU has a
- * `CONFIG_LOAD_BALANCE_BIAS` number of threads fewer than itself, it will push its thread with the highest virtual
- * deadline to the neighbor CPU.
+ * Each CPU has its own scheduler and associated runqueue, as such we need to balance the load between each CPU, ideally without causing too many cache misses. Meaning we want to keep threads which have recently run on a CPU on the same CPU when possible. As such, we define a thread to be "cache-cold" on a CPU if the time since it last ran on that CPU is greater than `CONFIG_CACHE_HOT_THRESHOLD`, otherwise its considered "cache-hot".
+ * 
+ * We use two mechanisms to balance the load between CPUs, one push mechanism and one pull mechanism.
+ * 
+ * The push mechanism, also called work stealing, is used when a thread is submitted to the scheduler, as in it was created or unblocked. In this case, if the thread is cache-cold then the thread will be added to the runqueue of the CPU with the lowest weight. Otherwise, it will be added to the runqueue of the CPU it last ran on.
+ * 
+ * The pull mechanism is used when a CPU is about to become idle. The CPU will find the CPU with the highest weight and steal the first cache-cold thread from its runqueue. If no cache-cold threads are found, it will simply run the idle thread.
  *
- * @note The reason we want to avoid a global runqueue is to avoid lock contention, but also to reduce cache misses by
- * keeping threads on the same CPU when reasonably possible.
- *
- * TODO: The load balancing algorithm is rather naive at the moment and could be improved in the future.
+ * @note The reason we want to avoid a global runqueue is to avoid lock contention. Even a small amount of lock contention in the scheduler will quickly degrade performance, as such it is only allowed to lock a single CPU's scheduler at a time. This does cause race conditions while pulling or pushing threads but the worst case scenario is imperfect load balancing, which is acceptable.
  *
  * ## Testing
  *
@@ -316,6 +318,11 @@ typedef int128_t lag_t;
 #define SCHED_FIXED_FROM(x) ((int64_t)(((int128_t)(x)) >> SCHED_FIXED_POINT))
 
 /**
+ * @brief The maximum weight a thread can have.
+ */
+#define SCHED_WEIGHT_MAX (PRIORITY_MAX + SCHED_WEIGHT_BASE)
+
+/**
  * @brief Base weight added to all threads.
  *
  * Used to prevent division by zero.
@@ -339,6 +346,8 @@ typedef struct sched_client
     vclock_t veligible;    ///< The virtual time at which the thread becomes eligible to run (lag >= 0).
     vclock_t vminEligible; ///< The minimum virtual eligible time of the subtree in the runqueue.
     clock_t start;         ///< The real time when the thread started executing its current time slice.
+    clock_t stop;          ///< The real time when the thread previously stopped executing.
+    cpu_t* lastCpu;        ///< The last CPU the thread was scheduled on, it stoped running at `stop` time.
 } sched_client_t;
 
 /**
@@ -349,7 +358,7 @@ typedef struct sched_client
  */
 typedef struct sched
 {
-    int64_t totalWeight; ///< The total weight of all threads in the runqueue.
+    _Atomic(int64_t) totalWeight; ///< The total weight of all threads in the runqueue, not protected by the lock.
     rbtree_t runqueue;  ///< Contains all runnable threads, including the currently running thread, sorted by vdeadline.
     vclock_t vtime;     ///< The current virtual time of the CPU.
     clock_t lastUpdate; ///< The real time when the last vtime update occurred.
@@ -453,12 +462,14 @@ _NORETURN void sched_thread_exit(void);
 void sched_yield(void);
 
 /**
- * @brief Submits a thread to be scheduled on the current CPU.
+ * @brief Submits a thread to the scheduler.
+ *
+ * If the thread has previously ran within `CONFIG_CACHE_HOT_THRESHOLD` nanoseconds, it will be submitted to the same
+ * CPU it last ran on, otherwise it will be submitted to the least loaded CPU.
  *
  * @param thread The thread to submit.
- * @param target The target CPU to schedule the thread on, or `NULL` for the current CPU.
  */
-void sched_submit(thread_t* thread, cpu_t* target);
+void sched_submit(thread_t* thread);
 
 /**
  * @brief Perform a scheduling operation.

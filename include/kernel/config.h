@@ -99,14 +99,15 @@
 #define CONFIG_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 10)
 
 /**
- * @brief Load balance bias configuration.
+ * @brief Cache hot threshold configuration.
  * @ingroup kernel
- * @def CONFIG_LOAD_BALANCE_BIAS
+ * @def CONFIG_CACHE_HOT_THRESHOLD
  *
- * The `CONFIG_LOAD_BALANCE_BIAS` constant defines the minimum inbalance required for load balancing to occur.
+ * The `CONFIG_CACHE_HOT_THRESHOLD` constant defines the threshold below which a time duration is considered "cache
+ * hot", meaning that the data is likely still in the CPU cache.
  *
  */
-#define CONFIG_LOAD_BALANCE_BIAS 2
+#define CONFIG_CACHE_HOT_THRESHOLD ((CLOCKS_PER_SEC / 1000) * 5)
 
 /**
  * @brief Maximum mutex slow spin configuration.
