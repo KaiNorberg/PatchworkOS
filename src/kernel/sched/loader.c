@@ -301,7 +301,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     }
 
     pid_t childPid = child->process->id; // Important to not deref after pushing the thread
-    sched_submit(child, NULL);
+    sched_submit(child);
     return childPid;
 
 cleanup_argv:
@@ -349,6 +349,6 @@ SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)
         return ERR;
     }
 
-    sched_submit(newThread, NULL);
+    sched_submit(newThread);
     return newThread->id;
 }

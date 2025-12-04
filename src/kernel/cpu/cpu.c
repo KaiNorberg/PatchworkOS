@@ -84,7 +84,7 @@ void cpu_init(cpu_t* cpu)
     interrupt_ctx_init(&cpu->interrupt);
     perf_cpu_ctx_init(&cpu->perf);
     timer_cpu_ctx_init(&cpu->timer);
-    wait_init(&cpu->wait, cpu);
+    wait_init(&cpu->wait);
     sched_init(&cpu->sched);
     ipi_cpu_ctx_init(&cpu->ipi);
 
