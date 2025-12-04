@@ -110,7 +110,7 @@ static void sched_vtime_update(sched_t* sched, clock_t uptime)
     }
 
     // Eq 5.
-    sched->vtime += SCHED_DIV_NEAREST(SCHED_FIXED_TO(delta), sched->totalWeight);
+    sched->vtime += SCHED_FIXED_TO(delta) / sched->totalWeight;
 }
 
 void sched_client_init(sched_client_t* client)
@@ -168,7 +168,7 @@ void sched_start(thread_t* bootThread)
     bootThread->sched.start = sys_time_uptime();
     bootThread->sched.veligible = sched->vtime;
     bootThread->sched.vdeadline =
-        bootThread->sched.veligible + SCHED_DIV_NEAREST(SCHED_FIXED_TO(CONFIG_TIME_SLICE), bootThread->sched.weight);
+        bootThread->sched.veligible + SCHED_FIXED_TO(CONFIG_TIME_SLICE) / bootThread->sched.weight;
     atomic_store(&bootThread->state, THREAD_ACTIVE);
 
     sched->totalWeight += bootThread->sched.weight;
@@ -265,7 +265,7 @@ static void sched_enter(sched_t* sched, thread_t* thread)
     sched->totalWeight += client->weight;
 
     client->veligible = sched->vtime;
-    client->vdeadline = client->veligible + SCHED_DIV_NEAREST(SCHED_FIXED_TO(CONFIG_TIME_SLICE), client->weight);
+    client->vdeadline = client->veligible + SCHED_FIXED_TO(CONFIG_TIME_SLICE) / client->weight;
 
     rbtree_insert(&sched->runqueue, &client->node);
     atomic_store(&thread->state, THREAD_ACTIVE);
@@ -291,7 +291,7 @@ static void sched_leave(sched_t* sched, thread_t* thread, clock_t uptime)
     }
 
     // Adjust the scheduler's time such that the sum of all threads' lag remains zero.
-    sched->vtime += SCHED_DIV_NEAREST(lag, sched->totalWeight);
+    sched->vtime += lag / sched->totalWeight;
 }
 
 void sched_submit(thread_t* thread, cpu_t* target)
@@ -569,10 +569,10 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         runThread->sched.start = uptime;
 
         // Eq 12
-        runThread->sched.veligible += SCHED_DIV_NEAREST(SCHED_FIXED_TO(used), runThread->sched.weight);
+        runThread->sched.veligible += SCHED_FIXED_TO(used) / runThread->sched.weight;
         // Eq 10
         runThread->sched.vdeadline =
-            runThread->sched.veligible + SCHED_DIV_NEAREST(SCHED_FIXED_TO(CONFIG_TIME_SLICE), runThread->sched.weight);
+            runThread->sched.veligible + SCHED_FIXED_TO(CONFIG_TIME_SLICE) / runThread->sched.weight;
 
         rbtree_fix(&sched->runqueue, &runThread->sched.node);
     }

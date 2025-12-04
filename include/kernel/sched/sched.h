@@ -316,14 +316,6 @@ typedef int128_t lag_t;
 #define SCHED_FIXED_FROM(x) ((int64_t)(((int128_t)(x)) >> SCHED_FIXED_POINT))
 
 /**
- * @brief Divide two integers, rounding to the nearest integer.
- *
- * Helps to reduce rounding errors as normal integer division always rounds down, rounding to the nearest integer helps
- * to "balance out" the errors.
- */
-#define SCHED_DIV_NEAREST(a, b) ((((a) < 0) == ((b) < 0)) ? (((a) + (b) / 2) / (b)) : (((a) - (b) / 2) / (b)))
-
-/**
  * @brief Base weight added to all threads.
  *
  * Used to prevent division by zero.
