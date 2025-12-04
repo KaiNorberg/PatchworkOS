@@ -25,7 +25,7 @@ uint16_t _cpuAmount = 0;
 
 static cpu_handler_t eventHandlers[CPU_MAX_EVENT_HANDLERS] = {0};
 static uint64_t eventHandlerCount = 0;
-static lock_t eventHandlerLock = LOCK_CREATE;
+static lock_t eventHandlerLock = LOCK_CREATE();
 
 void cpu_init_early(cpu_t* cpu)
 {
@@ -84,7 +84,7 @@ void cpu_init(cpu_t* cpu)
     interrupt_ctx_init(&cpu->interrupt);
     perf_cpu_ctx_init(&cpu->perf);
     timer_cpu_ctx_init(&cpu->timer);
-    wait_cpu_ctx_init(&cpu->wait, cpu);
+    wait_init(&cpu->wait, cpu);
     sched_init(&cpu->sched);
     ipi_cpu_ctx_init(&cpu->ipi);
 

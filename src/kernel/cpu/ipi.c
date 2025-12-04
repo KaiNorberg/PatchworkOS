@@ -10,7 +10,7 @@
 #include <string.h>
 
 static ipi_chip_t* registeredChip = NULL;
-static rwlock_t chipLock = RWLOCK_CREATE;
+static rwlock_t chipLock = RWLOCK_CREATE();
 
 void ipi_cpu_ctx_init(ipi_cpu_ctx_t* ctx)
 {

@@ -17,7 +17,7 @@
 #include <sys/io.h>
 #include <sys/proc.h>
 
-static lock_t lock = LOCK_CREATE;
+static lock_t lock = LOCK_CREATE();
 
 static char lineBuffer[LOG_MAX_BUFFER] = {0};
 static char workingBuffer[LOG_MAX_BUFFER] = {0};

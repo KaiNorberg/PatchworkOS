@@ -75,6 +75,16 @@ typedef struct
     bitmap_t name = {.firstZeroIdx = 0, .length = (bits), .buffer = name##Buffer}
 
 /**
+ * @brief Define and create a zero-initialized bitmap and its buffer.
+ *
+ * @param name Name of the bitmap.
+ * @param bits Length of the bitmap in bits.
+ */
+#define BITMAP_CREATE_ZERO(name, bits) \
+    uint64_t name##Buffer[BITMAP_BITS_TO_QWORDS(bits)] = {0}; \
+    bitmap_t name = {.firstZeroIdx = 0, .length = (bits), .buffer = name##Buffer}
+
+/**
  * @brief Define a bitmap and its buffer.
  *
  * Will not initialize the bitmap, use `BITMAP_DEFINE_INIT` to initialize it.

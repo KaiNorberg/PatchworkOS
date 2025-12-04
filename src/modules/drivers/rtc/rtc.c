@@ -24,7 +24,7 @@ static uint8_t centuryRegister = 0;
 
 static port_t addressPort = 0;
 static port_t dataPort = 0;
-static lock_t lock = LOCK_CREATE;
+static lock_t lock = LOCK_CREATE();
 
 static uint8_t rtc_read(uint8_t reg)
 {

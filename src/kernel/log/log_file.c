@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <sys/io.h>
 
-static lock_t lock = LOCK_CREATE;
+static lock_t lock = LOCK_CREATE();
 
 static wait_queue_t waitQueue = WAIT_QUEUE_CREATE(waitQueue);
 

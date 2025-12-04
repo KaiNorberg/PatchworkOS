@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <kernel/utils/rbtree.h>
 #include <stdint.h>
+#include <sys/bitmap.h>
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>
@@ -109,7 +110,7 @@ static void sched_vtime_update(sched_t* sched, clock_t uptime)
     }
 
     // Eq 5.
-    sched->vtime += SCHED_FIXED_TO(delta) / sched->totalWeight;
+    sched->vtime += SCHED_DIV_NEAREST(SCHED_FIXED_TO(delta), sched->totalWeight);
 }
 
 void sched_client_init(sched_client_t* client)
@@ -167,7 +168,7 @@ void sched_start(thread_t* bootThread)
     bootThread->sched.start = sys_time_uptime();
     bootThread->sched.veligible = sched->vtime;
     bootThread->sched.vdeadline =
-        bootThread->sched.veligible + SCHED_FIXED_TO(CONFIG_TIME_SLICE) / bootThread->sched.weight;
+        bootThread->sched.veligible + SCHED_DIV_NEAREST(SCHED_FIXED_TO(CONFIG_TIME_SLICE), bootThread->sched.weight);
     atomic_store(&bootThread->state, THREAD_ACTIVE);
 
     sched->totalWeight += bootThread->sched.weight;
@@ -264,7 +265,7 @@ static void sched_enter(sched_t* sched, thread_t* thread)
     sched->totalWeight += client->weight;
 
     client->veligible = sched->vtime;
-    client->vdeadline = client->veligible + SCHED_FIXED_TO(CONFIG_TIME_SLICE) / client->weight;
+    client->vdeadline = client->veligible + SCHED_DIV_NEAREST(SCHED_FIXED_TO(CONFIG_TIME_SLICE), client->weight);
 
     rbtree_insert(&sched->runqueue, &client->node);
     atomic_store(&thread->state, THREAD_ACTIVE);
@@ -290,7 +291,7 @@ static void sched_leave(sched_t* sched, thread_t* thread, clock_t uptime)
     }
 
     // Adjust the scheduler's time such that the sum of all threads' lag remains zero.
-    sched->vtime += lag / sched->totalWeight;
+    sched->vtime += SCHED_DIV_NEAREST(lag, sched->totalWeight);
 }
 
 void sched_submit(thread_t* thread, cpu_t* target)
@@ -517,7 +518,7 @@ static void sched_verify(sched_t* sched)
         lag_t lag = (sched->vtime - iter->veligible) * iter->weight;
         sumLag += lag;
     }
-    // if (sched_fixed_cmp(sumLag, SCHED_FIXED_ZERO) != 0)
+    if (sched_fixed_cmp(sumLag, SCHED_FIXED_ZERO) != 0)
     {
         LOG_DEBUG("debug info (vtime=%lld lagValue=%lld lagFixed=%lld):\n", SCHED_FIXED_FROM(sched->vtime),
             SCHED_FIXED_FROM(sumLag), sumLag);
@@ -528,7 +529,7 @@ static void sched_verify(sched_t* sched)
             LOG_DEBUG("  process %lld thread %lld lag=%lld veligible=%lld weight=%lld\n", thread->process->id,
                 thread->id, SCHED_FIXED_FROM(lag), SCHED_FIXED_FROM(iter->veligible), iter->weight);
         }
-        // panic(NULL, "Total lag is not zero, got %lld", SCHED_FIXED_FROM(sumLag));
+        panic(NULL, "Total lag is not zero, got %lld", SCHED_FIXED_FROM(sumLag));
     }
 }
 #endif
@@ -568,10 +569,10 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         runThread->sched.start = uptime;
 
         // Eq 12
-        runThread->sched.veligible += (SCHED_FIXED_TO(used) / runThread->sched.weight);
+        runThread->sched.veligible += SCHED_DIV_NEAREST(SCHED_FIXED_TO(used), runThread->sched.weight);
         // Eq 10
         runThread->sched.vdeadline =
-            runThread->sched.veligible + (SCHED_FIXED_TO(CONFIG_TIME_SLICE) / runThread->sched.weight);
+            runThread->sched.veligible + SCHED_DIV_NEAREST(SCHED_FIXED_TO(CONFIG_TIME_SLICE), runThread->sched.weight);
 
         rbtree_fix(&sched->runqueue, &runThread->sched.node);
     }
@@ -623,7 +624,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
 
     if (runThread != sched->idleThread)
     {
-        int128_t vtimeout = runThread->sched.vdeadline - sched->vtime;
+        vclock_t vtimeout = runThread->sched.vdeadline - sched->vtime;
         if (sched_fixed_cmp(vtimeout, 0) < 0)
         {
             vtimeout = SCHED_FIXED_ZERO;

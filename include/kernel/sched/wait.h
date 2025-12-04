@@ -10,38 +10,49 @@
 typedef struct thread thread_t;
 typedef struct cpu cpu_t;
 
+typedef struct wait_entry wait_entry_t;
+typedef struct wait_queue wait_queue_t;
+typedef struct wait_client wait_client_t;
+typedef struct wait wait_t;
+
 /**
  * @brief Wait queue implementation.
  * @defgroup kernel_sched_wait Waiting subsystem
  * @ingroup kernel_sched
  *
+ * The waiting subsystem provides threads with the ability to suspend their execution until a certain condition is met
+ * and/or a timeout occurs.
+ *
+ * The common usage pattern is to call `WAIT_BLOCK()` to check for a specified condition, when that condition is
+ * modified the subsystem utilizing the wait queue is expected to call `wait_unblock()` to wake up a specified number of
+ * waiting threads, causing them to re-evaluate the condition. If the condition is still not met the thread will go back
+ * to sleep, otherwise it will continue executing.
+ *
+ * @note Generally its preferred to use the `WAIT_BLOCK*` macros instead of directly calling the functions provided by
+ * this subsystem.
+ *
  * @{
  */
 
 /**
- * @brief Wait for all.
- *
- * Used to indicate that the wait should unblock when all wait queues have unblocked the thread.
+ * @brief Used to indicate that the wait should unblock all waiting threads.
  */
 #define WAIT_ALL UINT64_MAX
 
 /**
- * @brief Basic block.
+ * @brief Blocks until the condition is true, will test the condition on every wakeup.
  *
- * Blocks until condition is true, condition will be tested after every time the thread wakes up.
- *
- * Check `wait_block_commit()` for errno values.
- *
- * @return On success, `0`. On error, `ERR` and `errno` is set.
+ * @return On success, `0`. On error, `ERR` and `errno` is set to:
+ * - Check `wait_block_commit()`.
  */
-#define WAIT_BLOCK(waitQueue, condition) \
+#define WAIT_BLOCK(queue, condition) \
     ({ \
         assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE); \
         uint64_t result = 0; \
         while (!(condition) && result == 0) \
         { \
-            wait_queue_t* temp = waitQueue; \
-            if (wait_block_setup(&temp, 1, CLOCKS_NEVER) == ERR) \
+            wait_queue_t* temp = queue; \
+            if (wait_block_prepare(&temp, 1, CLOCKS_NEVER) == ERR) \
             { \
                 result = ERR; \
                 break; \
@@ -52,16 +63,13 @@ typedef struct cpu cpu_t;
     })
 
 /**
- * @brief Block with timeout.
+ * @brief Blocks until the condition is true, condition will be tested on every wakeup. Reaching the timeout will always
+ * unblock.
  *
- * Blocks untill condition is true, condition will be tested after every time the thread wakes up.
- * Will also return after timeout is reached, the thread will automatically wake up whence the timeout is reached.
- *
- * Check `wait_block_commit()` for errno values.
- *
- * @return On success, `0`. On error, `ERR` and `errno` is set.
+ * @return On success, `0`. On error, `ERR` and `errno` is set to:
+ * - Check `wait_block_commit()`.
  */
-#define WAIT_BLOCK_TIMEOUT(waitQueue, condition, timeout) \
+#define WAIT_BLOCK_TIMEOUT(queue, condition, timeout) \
     ({ \
         assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE); \
         uint64_t result = 0; \
@@ -76,8 +84,8 @@ typedef struct cpu cpu_t;
                 break; \
             } \
             clock_t remaining = CLOCKS_REMAINING(deadline, uptime); \
-            wait_queue_t* temp = waitQueue; \
-            if (wait_block_setup(&temp, 1, remaining) == ERR) \
+            wait_queue_t* temp = queue; \
+            if (wait_block_prepare(&temp, 1, remaining) == ERR) \
             { \
                 result = ERR; \
                 break; \
@@ -89,23 +97,20 @@ typedef struct cpu cpu_t;
     })
 
 /**
- * @brief Block with a spinlock.
+ * @brief Blocks until the condition is true, condition will be tested on every wakeup. Will release the lock before
+ * blocking and acquire it again after waking up.
  *
- * Blocks untill condition is true, condition will be tested after every time the thread wakes up.
- * Should be called with the lock acquired, will release the lock before blocking and return with the lock acquired.
- *
- * Check `wait_block_commit()` for errno values.
- *
- * @return On success, `0`. On error, `ERR` and `errno` is set.
+ * @return On success, `0`. On error, `ERR` and `errno` is set to:
+ * - Check `wait_block_commit()`.
  */
-#define WAIT_BLOCK_LOCK(waitQueue, lock, condition) \
+#define WAIT_BLOCK_LOCK(queue, lock, condition) \
     ({ \
         assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE)); \
         uint64_t result = 0; \
         while (!(condition) && result == 0) \
         { \
-            wait_queue_t* temp = waitQueue; \
-            if (wait_block_setup(&temp, 1, CLOCKS_NEVER) == ERR) \
+            wait_queue_t* temp = queue; \
+            if (wait_block_prepare(&temp, 1, CLOCKS_NEVER) == ERR) \
             { \
                 result = ERR; \
                 break; \
@@ -119,17 +124,13 @@ typedef struct cpu cpu_t;
     })
 
 /**
- * @brief Block with a spinlock and timeout.
+ * @brief Blocks until the condition is true, condition will be tested on every wakeup. Will release the lock before
+ * blocking and acquire it again after waking up. Reaching the timeout will always unblock.
  *
- * Blocks untill condition is true, condition will be tested after every call to wait_unblock.
- * Should be called with lock acquired, will release lock before blocking and return with lock acquired.
- * Will also return after timeout is reached, timeout will be reached even if wait_unblock is never called.
- *
- * Check `wait_block_commit()` for errno values.
- *
- * @return On success, `0`. On error, `ERR` and `errno` is set.
+ * @return On success, `0`. On error, `ERR` and `errno` is set to:
+ * - Check `wait_block_commit()`.
  */
-#define WAIT_BLOCK_LOCK_TIMEOUT(waitQueue, lock, condition, timeout) \
+#define WAIT_BLOCK_LOCK_TIMEOUT(queue, lock, condition, timeout) \
     ({ \
         uint64_t result = 0; \
         clock_t uptime = sys_time_uptime(); \
@@ -143,8 +144,8 @@ typedef struct cpu cpu_t;
                 break; \
             } \
             clock_t remaining = CLOCKS_REMAINING(deadline, uptime); \
-            wait_queue_t* temp = waitQueue; \
-            if (wait_block_setup(&temp, 1, remaining) == ERR) \
+            wait_queue_t* temp = queue; \
+            if (wait_block_prepare(&temp, 1, remaining) == ERR) \
             { \
                 result = ERR; \
                 break; \
@@ -159,7 +160,22 @@ typedef struct cpu cpu_t;
     })
 
 /**
- * @brief Wait queue structure.
+ * @brief Represents a thread waiting on a wait queue.
+ * @struct wait_entry_t
+ *
+ * Since each thread can wait on multiple wait queues simultaneously, each wait queue the thread is waiting on
+ * will have its own wait entry.
+ */
+typedef struct wait_entry
+{
+    list_entry_t queueEntry;  ///< Used in wait_queue_t->entries.
+    list_entry_t threadEntry; ///< Used in wait_client_t->entries.
+    thread_t* thread;         ///< The thread that is waiting.
+    wait_queue_t* queue;      ///< The wait queue the thread is waiting on.
+} wait_entry_t;
+
+/**
+ * @brief The primitive that threads block on.
  * @struct wait_queue_t
  */
 typedef struct wait_queue
@@ -169,47 +185,30 @@ typedef struct wait_queue
 } wait_queue_t;
 
 /**
- * @brief Per-thread wait entry.
- * @struct wait_entry_t
- *
- * Each thread waiting on a wait queue will have one of these entries in the wait queue's list of entries as well as in
- * the thread's list of wait entries.
- */
-typedef struct wait_entry
-{
-    list_entry_t queueEntry;  ///< Used in wait_queue_t->entries.
-    list_entry_t threadEntry; ///< Used in wait_thread_ctx_t->entries.
-    thread_t* thread;         ///< The thread that is waiting.
-    wait_queue_t* waitQueue;  ///< The wait queue the thread is waiting on.
-} wait_entry_t;
-
-/**
- * @brief Per-CPU wait context.
- * @struct wait_cpu_ctx_t
- *
- * Each cpu stores all threads that were blocked on it, sorted by deadline, to handle timeouts.
- */
-typedef struct
-{
-    list_t blockedThreads; ///< List of blocked threads, sorted by deadline.
-    cpu_t* cpu;            ///< The CPU this context belongs to.
-    lock_t lock;
-} wait_cpu_ctx_t;
-
-/**
- * @brief Per-thread wait context.
- * @struct wait_thread_ctx_t
+ * @brief Represents a thread in the waiting subsystem.
+ * @struct wait_client_t
  *
  * Each thread stores all wait queues it is currently waiting on in here to allow blocking on multiple wait queues,
  * since if one queue unblocks the thread must be removed from all other queues as well.
  */
-typedef struct
+typedef struct wait_client
 {
-    list_t entries;      ///< List of wait entries, one for each wait queue the thread is waiting on.
-    errno_t err;         ///< Error number set when unblocking the thread, `EOK` for no error.
-    clock_t deadline;    ///< Deadline for timeout, `CLOCKS_NEVER` for no timeout.
-    wait_cpu_ctx_t* cpu; ///< The wait cpu context of the cpu the thread is blocked on.
-} wait_thread_ctx_t;
+    list_t entries;   ///< List of wait entries, one for each wait queue the thread is waiting on.
+    errno_t err;      ///< Error number set when unblocking the thread, `EOK` for no error.
+    clock_t deadline; ///< Deadline for timeout, `CLOCKS_NEVER` for no timeout.
+    wait_t* cpu;      ///< The wait cpu context of the cpu the thread is blocked on.
+} wait_client_t;
+
+/**
+ * @brief Represents one instance of the waiting subsystem for a CPU.
+ * @struct wait_t
+ */
+typedef struct wait
+{
+    list_t blockedThreads; ///< List of blocked threads, sorted by deadline.
+    cpu_t* cpu;            ///< The CPU this context belongs to.
+    lock_t lock;
+} wait_t;
 
 /**
  * @brief Create a wait queue initializer.
@@ -217,41 +216,41 @@ typedef struct
  * @param name The name of the wait queue variable.
  * @return The wait queue initializer.
  */
-#define WAIT_QUEUE_CREATE(name) {.lock = LOCK_CREATE, .entries = LIST_CREATE(name.entries)}
+#define WAIT_QUEUE_CREATE(name) {.lock = LOCK_CREATE(), .entries = LIST_CREATE(name.entries)}
 
 /**
  * @brief Initialize wait queue.
  *
- * @param waitQueue The wait queue to initialize.
+ * @param queue The wait queue to initialize.
  */
-void wait_queue_init(wait_queue_t* waitQueue);
+void wait_queue_init(wait_queue_t* queue);
 
 /**
  * @brief Deinitialize wait queue.
  *
- * @param waitQueue The wait queue to deinitialize.
+ * @param queue The wait queue to deinitialize.
  */
-void wait_queue_deinit(wait_queue_t* waitQueue);
+void wait_queue_deinit(wait_queue_t* queue);
 
 /**
- * @brief Initialize per-thread wait context.
+ * @brief Initialize a threads wait client.
  *
- * @param wait The thread wait context to initialize.
+ * @param client The wait client to initialize.
  */
-void wait_thread_ctx_init(wait_thread_ctx_t* wait);
+void wait_client_init(wait_client_t* client);
 
 /**
- * @brief Initialize per-CPU wait context.
+ * @brief Initialize an instance of the waiting subsystem.
  *
- * Must be called on the CPU the context belongs to.
- *
- * @param wait The CPU wait context to initialize.
- * @param self The CPU the context belongs to.
+ * @param wait The instance to initialize.
+ * @param self The CPU the instance belongs to.
  */
-void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* self);
+void wait_init(wait_t* wait, cpu_t* self);
 
 /**
  * @brief Check for timeouts and unblock threads as needed.
+ *
+ * Will be called by the `interrupt_handler()`.
  *
  * @param frame The interrupt frame.
  * @param self The current CPU.
@@ -259,21 +258,66 @@ void wait_cpu_ctx_init(wait_cpu_ctx_t* wait, cpu_t* self);
 void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self);
 
 /**
+ * @brief Prepare to block the currently running thread.
+ *
+ * Needed to handle race conditions when a thread is unblocked prematurely. The following sequence is used:
+ * - Call `wait_block_prepare()` to add the currently running thread to the provided wait queues and disable interrupts.
+ * - Check if the condition to block is still valid.
+ * - (The condition might change here, thus causing a race condition, leading to premature unblocking.)
+ * - If the condition was evaluated as not valid, call `wait_block_cancel()`.
+ * - If the condition was evaluated as valid, call `wait_block_commit()` to block the thread. If the thread was
+ * unblocked prematurely this function will return immediately.
+ *
+ * Will reenable interrupts on failure.
+ *
+ * @param waitQueues Array of wait queues to add the thread to.
+ * @param amount Number of wait queues to add the thread to.
+ * @param timeout Timeout.
+ * @return On success, `0`. On failure, returns `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid arguments.
+ * - `ENOMEM`: Out of memory.
+ */
+uint64_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t timeout);
+
+/**
+ * @brief Cancels blocking of the currently running thread.
+ *
+ * Should be called after `wait_block_prepare()` has been called if the condition to block is no longer valid.
+ *
+ * Will reenable interrupts.
+ */
+void wait_block_cancel(void);
+
+/**
+ * @brief Block the currently running thread.
+ *
+ * Should be called after `wait_block_prepare()`. If the thread was unblocked prematurely this function will return
+ * immediately.
+ *
+ * Will reenable interrupts.
+ *
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `ETIMEDOUT`: The thread timed out.
+ * - `EINTR`: The thread was interrupted by a note.
+ * - Other error codes as set by the subsystem utilizing the wait queue.
+ */
+uint64_t wait_block_commit(void);
+
+/**
  * @brief Finalize blocking of a thread.
  *
- * When `wait_block_commit()` is called the thread will schedule, the scheduler will then call this function to finalize
- * the blocking of the thread.
+ * When `wait_block_commit()` is called the scheduler will be invoked, the scheduler will then call this function to
+ * finalize the blocking of the thread.
  *
  * Its possible that during the gap between `wait_block_commit()` and this function being called the thread was
- * unblocked already, in that case this function will return false and the thread will not be blocked.
- *
- * This function will add the thread to the cpu's `blockedThreads` list to handle timeouts.
+ * prematurely unblocked, in that case this function will return false and the scheduler will resume the thread
+ * immediately.
  *
  * @param frame The interrupt frame.
  * @param self The CPU the thread is being blocked on.
  * @param thread The thread to block.
  * @param uptime The current uptime.
- * @return `true` if the thread was blocked, `false` if the thread was already unblocked.
+ * @return `true` if the thread was blocked, `false` if the thread was prematurely unblocked.
  */
 bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread, clock_t uptime);
 
@@ -292,49 +336,11 @@ void wait_unblock_thread(thread_t* thread, errno_t err);
 /**
  * @brief Unblock threads waiting on a wait queue.
  *
- * @param waitQueue The wait queue to unblock threads from.
+ * @param queue The wait queue to unblock threads from.
  * @param amount The number of threads to unblock or `WAIT_ALL` to unblock all threads.
  * @param err The errno value to set for the unblocked threads or `EOK` for no error.
  * @return The number of threads that were unblocked.
  */
-uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount, errno_t err);
-
-/**
- * @brief Setup blocking but dont block yet.
- *
- * Adds the currently running thread to the provided wait queues, sets the threads state and disables interrupts. But it
- * does not yet actually block, and it does not add the thread to its cpus `blockedThreads` list, the thread will
- * continue executing code and will return from the function.
- *
- * @param waitQueues Array of wait queues to add the thread to.
- * @param amount Number of wait queues to add the thread to.
- * @param timeout Timeout.
- * @return On success, `0`. On failure, interrupts are reenabled, returns `ERR` and `errno` is set.
- */
-uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t timeout);
-
-/**
- * @brief Cancel blocking.
- *
- * Cancels the blocking of the currently running thread. Should only be called after`wait_block_setup()` has been
- * called. It removes the thread from the wait queues and sets the threads state to`THREAD_RUNNING`. It also always
- * enables interrupts.
- */
-void wait_block_cancel(void);
-
-/**
- * @brief Block the currently running thread.
- *
- * Blocks the currently running thread. Should only be called after `wait_block_setup()` has been called. It invokes the
- * scheduler which will end up calling `wait_block_finalize()` to finalize the blocking of the thread. Will enable
- * interrupts again when the thread is unblocked.
- *
- * Noteworthy errno values:
- * - `ETIMEDOUT`: The wait timed out.
- * - `EINTR`: The wait was interrupted (probably by a note.)
- *
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t wait_block_commit(void);
+uint64_t wait_unblock(wait_queue_t* queue, uint64_t amount, errno_t err);
 
 /** @} */

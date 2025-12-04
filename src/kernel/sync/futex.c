@@ -86,7 +86,7 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
             uptime = sys_time_uptime();
             clock_t remaining = CLOCKS_REMAINING(deadline, uptime);
             wait_queue_t* queue = &futex->queue;
-            if (wait_block_setup(&queue, 1, remaining) == ERR)
+            if (wait_block_prepare(&queue, 1, remaining) == ERR)
             {
                 return ERR;
             }

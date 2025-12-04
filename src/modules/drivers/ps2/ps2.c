@@ -102,7 +102,7 @@ static ps2_device_info_t devices[PS2_DEV_COUNT] = {
     [0] = {.device = PS2_DEV_FIRST},
     [1] = {.device = PS2_DEV_SECOND},
 };
-static lock_t attachLock = LOCK_CREATE;
+static lock_t attachLock = LOCK_CREATE();
 
 static const char* ps2_self_test_response_to_string(ps2_self_test_response_t response)
 {
