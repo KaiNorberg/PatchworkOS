@@ -22,26 +22,73 @@ typedef struct namespace namespace_t;
  * filesystem that the path is in and the dentry is the actual location in that filesystem.
  *
  * Note how just a dentry is not enough to uniquely identify a location in the filesystem, this is because of
- * mountpoints. A dentry can exist in multiple places if its part of a filesystem that has been mounted in multiple
- * places.
+ * mountpoints. A dentry can exist in a filesystem that is mounted at multiple locations in the filesystem hierarchy,
+ * thus both a mountpoint and a dentry is needed to uniquely identify a location.
  *
- * ## Flags
+ * ## Flags/Mode
  *
- * Paths can have flags appended to them which is how we handle general file flags. Each flag starts with `:` and the
- * same path can contain multiples of different or the same flag, for example `/path/to/file:create:create:nonblock`.
+ * Paths can have flags appended at the end, these flags are parsed to determine the mode with which the path is opened. 
+ * 
+ * Each flag starts with `:` and multiple instances of the same flag are allowed, for example `/path/to/file:append:append:nonblock`.
  *
  * Included is a list of all available flags:
- * - `nonblock`: Open the file in non-blocking mode.
- * - `append`: Any data written to the file will be appended to the end.
- * - `create`: Create the file if it does not exist.
- * - `excl`: Will cause the open to fail if the file already exists. Must be used with `create`.
- * - `trunc`: Truncate the file to zero length if it already exists.
- * - `dir`: Allow opening directories.
- * - `recur`: Behaviour differs, but allows for recursive operations, for example when used with `remove` it will remove
- * directories and their children recursively.
- *
+ * 
+ * | Flag | Short | Description |
+ * |------|-------|-------------|
+ * | `read` | `r` | Open with read permissions. |
+ * | `write` | `w` | Open with write permissions. |
+ * | `execute` | `x` | Open with execute permissions. |
+ * | `nonblock` | `n` | The file will not block on operations that would normally block. |
+ * | `append` | `a` | Any data written to the file will be appended to the end. |
+ * | `create` | `c` | Create the file if it does not exist. |
+ * | `exclusive` | `e` | Will cause the open to fail if the file already exists. |
+ * | `truncate` | `t` | Truncate the file to zero length if it already exists. |
+ * | `directory` | `d` | Allow opening directories. |
+ * | `recursive` | `R` | Behaviour differs, but allows for recursive operations, for example when used with `remove` it will remove directories and their children recursively. |
+ * 
+ * For convenience, a single letter short form is also available as shown above, these single letter forms do not need to be separated by colons, for example `/path/to/file:rwcte` is equivalent to `/path/to/file:read:write:create:truncate:exclusive`.
+ * 
+ * The parsed mode is the primary way to handle both the behaviour of opened paths and permissions through out the kernel. For example, a file opened from within a directory which was bound with only read permissions will also have read only permissions, even if the file itself would allow write permissions.
+ * 
+ * If no permissions, i.e. read, write or execute, are specified, the default is to open with the maximum currently allowed permissions.
+ * 
+ * @see kernel_fs_namespace for information on mode inheritance when binding paths.
+ * 
  * @{
  */
+
+/**
+ * @brief Path flags and permissions.
+ * @enum mode_t
+ * 
+ * We store both flags and permissions in the same enum but permissions are sometimes treated differently to flags.
+ */
+typedef enum mode
+{
+    MODE_NONE = 0,
+    MODE_READ = 1 << 0,
+    MODE_WRITE = 1 << 1,
+    MODE_EXECUTE = 1 << 2,
+    MODE_NONBLOCK = 1 << 3,
+    MODE_APPEND = 1 << 4,
+    MODE_CREATE = 1 << 5,
+    MODE_EXCLUSIVE = 1 << 6,
+    MODE_TRUNCATE = 1 << 7,
+    MODE_DIRECTORY = 1 << 8,
+    MODE_RECURSIVE = 1 << 9,
+    MODE_AMOUNT = 10,
+    MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
+} mode_t;
+
+/**
+ * @brief Flags for walking a path.
+ * @enum walk_flags_t
+ */
+typedef enum
+{
+    WALK_NONE = 0,                ///< No flags.
+    WALK_NEGATIVE_IS_OK = 1 << 0, ///< If a negative dentry is ok, if not specified then it is considered an error.
+} walk_flags_t;
 
 /**
  * @brief Defer path put.
@@ -74,35 +121,6 @@ typedef struct namespace namespace_t;
 #define PATH_HANDLE_DOTDOT_MAX_ITER 1000
 
 /**
- * @brief Path flags.
- * @enum path_flags_t
- *
- * Used to store parsed flags.
- */
-typedef enum
-{
-    PATH_NONE = 0,
-    PATH_NONBLOCK = 1 << 0,
-    PATH_APPEND = 1 << 1,
-    PATH_CREATE = 1 << 2,
-    PATH_EXCLUSIVE = 1 << 3,
-    PATH_TRUNCATE = 1 << 4,
-    PATH_DIRECTORY = 1 << 5,
-    PATH_RECURSIVE = 1 << 6,
-    PATH_FLAGS_AMOUNT = 7
-} path_flags_t;
-
-/**
- * @brief Flags for walking a path.
- * @enum walk_flags_t
- */
-typedef enum
-{
-    WALK_NONE = 0,                ///< No flags.
-    WALK_NEGATIVE_IS_OK = 1 << 0, ///< If a negative dentry is ok, if not specified then it is considered an error.
-} walk_flags_t;
-
-/**
  * @brief Path structure.
  * @struct path_t
  */
@@ -121,14 +139,9 @@ typedef struct path
 typedef struct pathname
 {
     char string[MAX_PATH];
-    path_flags_t flags;
+    mode_t mode;
     bool isValid;
 } pathname_t;
-
-/**
- * @brief Initialize path flags resolution.
- */
-void path_flags_init(void);
 
 /**
  * @brief Check if a pathname is valid.
@@ -167,7 +180,10 @@ void path_flags_init(void);
  *
  * @param pathname The pathname to initialize.
  * @param string The string to initialize the pathname with.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters or invalid characters in the string.
+ * - `ENAMETOOLONG`: The string is too long or a component name is too long.
+ * - `EBADFLAG`: An invalid flag was specified.
  */
 uint64_t pathname_init(pathname_t* pathname, const char* string);
 

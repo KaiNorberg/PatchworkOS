@@ -141,7 +141,7 @@ typedef struct
     dirent_t* buffer;
     uint64_t count;
     uint64_t* offset;
-    uint32_t flags;
+    mode_t mode;
     char basePath[MAX_PATH];
 } getdents_ctx_t;
 
@@ -171,7 +171,7 @@ static void getdents_recursive_traversal(getdents_ctx_t* ctx, dentry_t* dentry)
     dentry_t* child;
     LIST_FOR_EACH(child, &dentry->children, siblingEntry)
     {
-        if (ctx->flags & PATH_RECURSIVE && child->inode->type == INODE_DIR)
+        if (ctx->mode & MODE_RECURSIVE && child->inode->type == INODE_DIR)
         {
             char originalBasePath[MAX_PATH];
             strncpy(originalBasePath, ctx->basePath, MAX_PATH - 1);
@@ -193,14 +193,14 @@ static void getdents_recursive_traversal(getdents_ctx_t* ctx, dentry_t* dentry)
 }
 
 uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset,
-    path_flags_t flags)
+    mode_t mode)
 {
     getdents_ctx_t ctx = {
         .index = 0,
         .buffer = buffer,
         .count = count,
         .offset = offset,
-        .flags = flags,
+        .mode = mode,
         .basePath = "",
     };
 
@@ -209,7 +209,7 @@ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t co
     getdents_write(&ctx, dentry->inode->number, dentry->inode->type, ".");
     getdents_write(&ctx, dentry->parent->inode->number, dentry->parent->inode->type, "..");
 
-    if (flags & PATH_RECURSIVE)
+    if (mode & MODE_RECURSIVE)
     {
         dentry_t* child;
         LIST_FOR_EACH(child, &dentry->children, siblingEntry)

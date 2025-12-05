@@ -25,7 +25,7 @@ static uint64_t socket_factory_open(file_t* file)
 {
     socket_factory_t* factory = file->inode->private;
 
-    socket_t* sock = socket_new(factory->family, factory->type, file->flags);
+    socket_t* sock = socket_new(factory->family, factory->type);
     if (sock == NULL)
     {
         return ERR;

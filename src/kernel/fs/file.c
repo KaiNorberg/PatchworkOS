@@ -3,6 +3,7 @@
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/inode.h>
 #include <kernel/fs/path.h>
+#include <kernel/fs/mount.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/utils/ref.h>
 
@@ -28,17 +29,35 @@ static void file_free(file_t* file)
     free(file);
 }
 
-file_t* file_new(inode_t* inode, const path_t* path, path_flags_t flags)
+file_t* file_new(inode_t* inode, const path_t* path, mode_t mode)
 {
+    if (inode == NULL || path == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    if (((mode & MODE_ALL_PERMS) & ~path->mount->mode) != 0)
+    {
+        errno = EACCES;
+        return NULL;
+    }
+
     file_t* file = malloc(sizeof(file_t));
     if (file == NULL)
     {
+        errno = ENOMEM;
         return NULL;
+    }
+
+    if ((mode & MODE_ALL_PERMS) == MODE_NONE)
+    {
+        mode |= path->mount->mode;
     }
 
     ref_init(&file->ref, file_free);
     file->pos = 0;
-    file->flags = flags;
+    file->mode = mode;
     file->inode = REF(inode);
     file->path = PATH_EMPTY;
     path_copy(&file->path, path);

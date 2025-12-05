@@ -1,6 +1,7 @@
 #pragma once
 
 #include "socket_type.h"
+#include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
 
 #include <stdint.h>
@@ -51,11 +52,10 @@ typedef struct socket_family_ops
     uint64_t (*bind)(socket_t* sock, const char* address);
     uint64_t (*listen)(socket_t* sock, uint32_t backlog);
     uint64_t (*connect)(socket_t* sock, const char* address);
-    uint64_t (*accept)(socket_t* sock, socket_t* newSock);
-    uint64_t (*send)(socket_t* sock, const void* buffer, uint64_t count, uint64_t* offset);
-    uint64_t (*recv)(socket_t* sock, void* buffer, uint64_t count, uint64_t* offset);
+    uint64_t (*accept)(socket_t* sock, socket_t* newSock, mode_t mode);
+    uint64_t (*send)(socket_t* sock, const void* buffer, uint64_t count, uint64_t* offset, mode_t mode);
+    uint64_t (*recv)(socket_t* sock, void* buffer, uint64_t count, uint64_t* offset, mode_t mode);
     wait_queue_t* (*poll)(socket_t* sock, poll_events_t* revents);
-    uint64_t (*shutdown)(socket_t* socket, uint32_t how); // TODO: This is not used nor implemented, implement it.
 } socket_family_ops_t;
 
 /**

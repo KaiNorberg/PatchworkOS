@@ -87,13 +87,13 @@ typedef struct inode_ops
     /**
      * @brief Handles both directories and files, works the same as lookup.
      */
-    uint64_t (*create)(inode_t* dir, dentry_t* target, path_flags_t flags);
+    uint64_t (*create)(inode_t* dir, dentry_t* target, mode_t mode);
     void (*truncate)(inode_t* target);
     uint64_t (*link)(dentry_t* old, inode_t* dir, dentry_t* target);
     /**
      * @brief Handles both directories and files.
      */
-    uint64_t (*remove)(inode_t* parent, dentry_t* target, path_flags_t flags);
+    uint64_t (*remove)(inode_t* parent, dentry_t* target, mode_t mode);
     void (*cleanup)(inode_t* inode);
 } inode_ops_t;
 

@@ -31,11 +31,6 @@ typedef struct
 } key_entry_t;
 
 /**
- * @brief Initializes the key subsystem.
- */
-void key_init(void);
-
-/**
  * @brief Generates a key that can be used to retrieve the file within the specified timeout.
  *
  * @param key Output pointer to store the generated key.

@@ -2,6 +2,7 @@
 
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
+#include <kernel/fs/path.h>
 #include <sys/list.h>
 
 #include <stdatomic.h>
@@ -41,6 +42,7 @@ typedef struct mount
     dentry_t* mountpoint;     ///< The dentry that this filesystem is mounted on, can be `NULL` for the root filesystem.
     dentry_t* root;           ///< The root dentry of the mounted filesystem.
     mount_t* parent;          ///< The parent mount, can be `NULL` for the root filesystem.
+    mode_t mode;    ///< The maximum permissions for this mount.
 } mount_t;
 
 /**
@@ -58,8 +60,9 @@ typedef struct mount
  * @param root The root dentry of the mounted filesystem.
  * @param mountpoint The dentry that this filesystem will be mounted on, can be `NULL` for the root filesystem.
  * @param parent The parent mount, can be `NULL` for the root filesystem.
+ * @param mode The maximum allowed permissions for files/directories opened under this mount.
  * @return On success, the new mount. On failure, returns `NULL`.
  */
-mount_t* mount_new(superblock_t* superblock, dentry_t* root, dentry_t* mountpoint, mount_t* parent);
+mount_t* mount_new(superblock_t* superblock, dentry_t* root, dentry_t* mountpoint, mount_t* parent, mode_t mode);
 
 /** @} */

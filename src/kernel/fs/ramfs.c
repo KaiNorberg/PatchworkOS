@@ -113,9 +113,9 @@ static uint64_t ramfs_lookup(inode_t* dir, dentry_t* target)
     return 0;
 }
 
-static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
+static uint64_t ramfs_create(inode_t* dir, dentry_t* target, mode_t mode)
 {
-    inode_t* newInode = ramfs_inode_new(dir->superblock, flags & PATH_DIRECTORY ? INODE_DIR : INODE_FILE, NULL, 0);
+    inode_t* newInode = ramfs_inode_new(dir->superblock, mode & MODE_DIRECTORY ? INODE_DIR : INODE_FILE, NULL, 0);
     if (newInode == NULL)
     {
         return ERR;
@@ -177,7 +177,7 @@ static uint64_t ramfs_remove_directory(inode_t* parent, dentry_t* target)
     return 0;
 }
 
-static uint64_t ramfs_remove(inode_t* parent, dentry_t* target, path_flags_t flags)
+static uint64_t ramfs_remove(inode_t* parent, dentry_t* target, mode_t mode)
 {
     if (target->inode->type == INODE_FILE)
     {
@@ -185,7 +185,7 @@ static uint64_t ramfs_remove(inode_t* parent, dentry_t* target, path_flags_t fla
     }
     else if (target->inode->type == INODE_DIR)
     {
-        if (flags & PATH_RECURSIVE)
+        if (mode & MODE_RECURSIVE)
         {
             MUTEX_SCOPE(&target->inode->mutex);
 
@@ -194,7 +194,7 @@ static uint64_t ramfs_remove(inode_t* parent, dentry_t* target, path_flags_t fla
             LIST_FOR_EACH_SAFE(child, temp, &target->children, siblingEntry)
             {
                 REF(child);
-                ramfs_remove(target->inode, child, flags);
+                ramfs_remove(target->inode, child, mode);
                 DEREF(child);
             }
         }
@@ -395,7 +395,7 @@ void ramfs_init(const boot_disk_t* disk)
 
     process_t* process = sched_process();
     mount = namespace_mount(&process->ns, NULL, VFS_DEVICE_NAME_NONE, RAMFS_NAME,
-        MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, (void*)disk);
+        MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS, (void*)disk);
     if (mount == NULL)
     {
         panic(NULL, "Failed to mount ramfs");

@@ -99,6 +99,7 @@ uint64_t namespace_traverse_mount(namespace_t* ns, const path_t* mountpoint, pat
  * @param mountpoint The mountpoint path.
  * @param fsName The filesystem name.
  * @param flags Mount flags.
+ * @param mode The maximum allowed permissions for files/directories opened under this mount.
  * @param private Private data for the filesystem's mount function.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
@@ -110,7 +111,7 @@ uint64_t namespace_traverse_mount(namespace_t* ns, const path_t* mountpoint, pat
  * - Other errors as returned by the filesystem's `mount()` function.
  */
 mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* deviceName, const char* fsName,
-    mount_flags_t flags, void* private);
+    mount_flags_t flags, mode_t mode, void* private);
 
 /**
  * @brief Bind a directory to a mountpoint in a namespace.
@@ -119,12 +120,13 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
  * @param source The source directory to bind.
  * @param mountpoint The mountpoint path.
  * @param flags Mount flags.
+ * @param mode The maximum allowed permissions for files/directories opened under this mount.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENOENT`: The source is negative.
  * - `ENOMEM`: Out of memory.
  */
-mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* mountpoint, mount_flags_t flags);
+mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* mountpoint, mount_flags_t flags, mode_t mode);
 
 /**
  * @brief Get the root path of a namespace.

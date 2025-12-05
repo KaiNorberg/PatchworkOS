@@ -330,7 +330,7 @@ static uint64_t process_dir_init(process_t* process, const char* name)
     }
 
     path_t selfPath = PATH_CREATE(procMount, selfDir);
-    process->self = namespace_bind(&process->ns, process->dir, &selfPath, MOUNT_OVERWRITE);
+    process->self = namespace_bind(&process->ns, process->dir, &selfPath, MOUNT_OVERWRITE, MODE_ALL_PERMS);
     path_put(&selfPath);
     if (process->self == NULL)
     {
@@ -515,7 +515,7 @@ process_t* process_get_kernel(void)
 
 void process_procfs_init(void)
 {
-    procMount = sysfs_mount_new(NULL, "proc", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, NULL);
+    procMount = sysfs_mount_new(NULL, "proc", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS, NULL);
     if (procMount == NULL)
     {
         panic(NULL, "Failed to mount /proc filesystem");

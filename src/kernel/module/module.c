@@ -33,14 +33,14 @@ static module_info_t fakeKernelModuleInfo = {
 };
 
 static list_t modulesList = LIST_CREATE(modulesList);
-static map_t modulesMap = MAP_CREATE; ///< Key = module name, value = module_t*
+static map_t modulesMap = MAP_CREATE(); ///< Key = module name, value = module_t*
 static map_t providerMap =
-    MAP_CREATE; ///< Key = symbol_group_id_t, value = module_t*. Used to find which module provides which symbols.
+    MAP_CREATE(); ///< Key = symbol_group_id_t, value = module_t*. Used to find which module provides which symbols.
 
-static map_t deviceMap = MAP_CREATE; ///< Key = device name, value = module_device_t*
+static map_t deviceMap = MAP_CREATE(); ///< Key = device name, value = module_device_t*
 
-static map_t symbolCache = MAP_CREATE; ///< Key = symbol name, value = module_cached_symbol_t*
-static map_t deviceCache = MAP_CREATE; ///< Key = device type, value = module_cached_device_t*
+static map_t symbolCache = MAP_CREATE(); ///< Key = symbol name, value = module_cached_symbol_t*
+static map_t deviceCache = MAP_CREATE(); ///< Key = device type, value = module_cached_device_t*
 static bool cacheValid = false;
 
 static mutex_t lock = MUTEX_CREATE(lock);

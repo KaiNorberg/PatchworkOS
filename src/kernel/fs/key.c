@@ -13,9 +13,9 @@
 #include <kernel/utils/map.h>
 #include <stdlib.h>
 
-static map_t keyMap;
-static list_t keyList;
-static rwlock_t keyLock;
+static map_t keyMap = MAP_CREATE();
+static list_t keyList = LIST_CREATE(keyList);
+static rwlock_t keyLock = RWLOCK_CREATE();
 
 static key_t key_generate(void)
 {
@@ -57,13 +57,6 @@ static void key_timer_handler(interrupt_frame_t* frame, cpu_t* self)
         DEREF(entry->file);
         free(entry);
     }
-}
-
-void key_init(void)
-{
-    map_init(&keyMap);
-    list_init(&keyList);
-    rwlock_init(&keyLock);
 }
 
 uint64_t key_share(key_t* key, file_t* file, clock_t timeout)
