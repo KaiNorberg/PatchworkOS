@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/io.h>
+#include <sys/list.h>
 
 static _Atomic(uint64_t) newVfsId = ATOMIC_VAR_INIT(0);
 
@@ -107,19 +108,13 @@ uint64_t vfs_unregister_fs(filesystem_t* fs)
     }
 
     RWLOCK_WRITE_SCOPE(&filesystems.lock);
-    RWLOCK_READ_SCOPE(&superblocks.lock);
-
-    superblock_t* superblock;
-    LIST_FOR_EACH(superblock, &superblocks.list, entry)
+    map_remove(&filesystems.map, &fs->mapEntry);
+    
+    while (!list_is_empty(&fs->superblocks))
     {
-        if (strcmp(superblock->fs->name, fs->name) == 0)
-        {
-            errno = EBUSY;
-            return ERR;
-        }
+        list_pop_first(&fs->superblocks);
     }
 
-    list_remove(&filesystems.list, &fs->entry);
     return 0;
 }
 
@@ -127,16 +122,8 @@ filesystem_t* vfs_get_fs(const char* name)
 {
     RWLOCK_READ_SCOPE(&filesystems.lock);
 
-    filesystem_t* fs;
-    LIST_FOR_EACH(fs, &filesystems.list, entry)
-    {
-        if (strcmp(fs->name, name) == 0)
-        {
-            return fs;
-        }
-    }
-
-    return NULL;
+    map_key_t key = filesystem_key(name);   
+    return CONTAINER_OF_SAFE(map_get(&filesystems.map, &key), filesystem_t, mapEntry);
 }
 
 inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number)
@@ -279,8 +266,8 @@ void vfs_remove_superblock(superblock_t* superblock)
         return;
     }
 
-    RWLOCK_WRITE_SCOPE(&superblocks.lock);
-    list_remove(&superblocks.list, &superblock->entry);
+    RWLOCK_WRITE_SCOPE(&superblock->fs->lock);
+    list_remove(&superblock->fs->superblocks, &superblock->entry);
 }
 
 void vfs_remove_inode(inode_t* inode)

@@ -51,7 +51,7 @@ typedef struct superblock
     dentry_t* root;
     const superblock_ops_t* ops;
     const dentry_ops_t* dentryOps;
-    const filesystem_t* fs;
+    filesystem_t* fs;
     char deviceName[MAX_NAME];
     /**
      * The number of mounts of this superblock.
@@ -105,7 +105,7 @@ typedef struct superblock_ops
  * @param dentryOps The dentry operations for dentries in this superblock, can be NULL.
  * @return On success, the new superblock. On failure, returns `NULL` and `errno` is set.
  */
-superblock_t* superblock_new(const filesystem_t* fs, const char* deviceName, const superblock_ops_t* ops,
+superblock_t* superblock_new(filesystem_t* fs, const char* deviceName, const superblock_ops_t* ops,
     const dentry_ops_t* dentryOps);
 
 /**
