@@ -108,8 +108,8 @@ typedef struct sched sched_t;
  * Lag is defined as the difference between the amount of real time a thread should have received and the amount of real
  * time it has actually received.
  *
- * As an example, let's say we have three threads A, B and C with equal weights. To start with each thread is supposed to
- * have run for 0ms, and has actually run for 0ms, so their lag values are:
+ * As an example, let's say we have three threads A, B and C with equal weights. To start with each thread is supposed
+ * to have run for 0ms, and has actually run for 0ms, so their lag values are:
  *
  * <div align="center">
  * Thread | Lag (ms)
@@ -154,8 +154,8 @@ typedef struct sched sched_t;
  *
  * ## Eligible Time
  *
- * In most cases, it's undesirable to track lag directly as it would require updating the lag of all threads whenever the
- * scheduler's virtual time is updated, which would violate the desired \f$O(\log n)\f$ complexity of the scheduler.
+ * In most cases, it's undesirable to track lag directly as it would require updating the lag of all threads whenever
+ * the scheduler's virtual time is updated, which would violate the desired \f$O(\log n)\f$ complexity of the scheduler.
  *
  * Instead, EEVDF defines the concept of "eligible time" as the virtual time at which a thread's lag
  * becomes zero, which is equivalent to the virtual time at which the thread becomes eligible to run.
@@ -221,6 +221,12 @@ typedef struct sched sched_t;
  * For comparisons between `vclock_t` values, we consider two values equal if the difference between their whole parts
  * is less than or equal to `VCLOCK_EPSILON`.
  *
+ * Some might feel concerned about the performance impact of using 128-bit arithmetic. However, consider that by using
+ * 128-bit arithmetic, we no longer need any other means of reducing rounding errors. We dont need to worry about
+ * remainders from divisions, dividing to the nearest integer instead of rounding down, etc. This not only simplifies
+ * the code drastically, making it more approachable, but it also means that, in practice, the performance impact is
+ * negligible. Its a very simple brute force solution, but simple does not mean bad.
+ *
  * @see [Fixed Point Arithmetic](https://en.wikipedia.org/wiki/Fixed-point_arithmetic)
  *
  * ## Scheduling
@@ -248,15 +254,25 @@ typedef struct sched sched_t;
  *
  * ## Load Balancing
  *
- * Each CPU has its own scheduler and associated runqueue, as such we need to balance the load between each CPU, ideally without causing too many cache misses. Meaning we want to keep threads which have recently run on a CPU on the same CPU when possible. As such, we define a thread to be "cache-cold" on a CPU if the time since it last ran on that CPU is greater than `CONFIG_CACHE_HOT_THRESHOLD`, otherwise its considered "cache-hot".
- * 
- * We use two mechanisms to balance the load between CPUs, one push mechanism and one pull mechanism.
- * 
- * The push mechanism, also called work stealing, is used when a thread is submitted to the scheduler, as in it was created or unblocked. In this case, if the thread is cache-cold then the thread will be added to the runqueue of the CPU with the lowest weight. Otherwise, it will be added to the runqueue of the CPU it last ran on.
- * 
- * The pull mechanism is used when a CPU is about to become idle. The CPU will find the CPU with the highest weight and steal the first cache-cold thread from its runqueue. If no cache-cold threads are found, it will simply run the idle thread.
+ * Each CPU has its own scheduler and associated runqueue, as such we need to balance the load between each CPU, ideally
+ * without causing too many cache misses. Meaning we want to keep threads which have recently run on a CPU on the same
+ * CPU when possible. As such, we define a thread to be "cache-cold" on a CPU if the time since it last ran on that CPU
+ * is greater than `CONFIG_CACHE_HOT_THRESHOLD`, otherwise its considered "cache-hot".
  *
- * @note The reason we want to avoid a global runqueue is to avoid lock contention. Even a small amount of lock contention in the scheduler will quickly degrade performance, as such it is only allowed to lock a single CPU's scheduler at a time. This does cause race conditions while pulling or pushing threads, but the worst case scenario is imperfect load balancing, which is acceptable.
+ * We use two mechanisms to balance the load between CPUs, one push mechanism and one pull mechanism.
+ *
+ * The push mechanism, also called work stealing, is used when a thread is submitted to the scheduler, as in it was
+ * created or unblocked. In this case, if the thread is cache-cold then the thread will be added to the runqueue of the
+ * CPU with the lowest weight. Otherwise, it will be added to the runqueue of the CPU it last ran on.
+ *
+ * The pull mechanism is used when a CPU is about to become idle. The CPU will find the CPU with the highest weight and
+ * steal the first cache-cold thread from its runqueue. If no cache-cold threads are found, it will simply run the idle
+ * thread.
+ *
+ * @note The reason we want to avoid a global runqueue is to avoid lock contention. Even a small amount of lock
+ * contention in the scheduler will quickly degrade performance, as such it is only allowed to lock a single CPU's
+ * scheduler at a time. This does cause race conditions while pulling or pushing threads, but the worst case scenario is
+ * imperfect load balancing, which is acceptable.
  *
  * ## Testing
  *
