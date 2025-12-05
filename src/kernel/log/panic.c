@@ -429,7 +429,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
     LOG_PANIC("!!! Please restart your machine !!!\n");
 
 #ifdef QEMU_EXIT_ON_PANIC
-    io_out8(QEMU_EXIT_ON_PANIC_PORT, EXIT_FAILURE);
+    io_out8(QEMU_EXIT_ON_PANIC_PORT, -1);
 #endif
 
     while (true)
