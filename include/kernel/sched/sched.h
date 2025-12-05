@@ -31,7 +31,7 @@ typedef struct sched sched_t;
  * in highly unfair scheduling. Therefore, if you find issues or bugs with the scheduler, please open an issue in the
  * GitHub repository.
  *
- * Included below is a overview of how the scheduler works and the relevant concepts. If you are unfamiliar with
+ * Included below is an overview of how the scheduler works and the relevant concepts. If you are unfamiliar with
  * mathematical notation, don't worry, we will explain everything in plain English as well.
  *
  * ## Weight and Priority
@@ -75,7 +75,7 @@ typedef struct sched sched_t;
  * \f$t_2\f$.
  *
  * Note how the denominator containing the \f$\sum\f$ symbol evaluates to the sum of all weights \f$w_i\f$ for each
- * active thread \f$i\f$ in \f$A\f$ at \f$t_2\f$, i.e the total weight of the scheduler cached in `sched->totalWeight`.
+ * active thread \f$i\f$ in \f$A\f$ at \f$t_2\f$, i.e. the total weight of the scheduler cached in `sched->totalWeight`.
  * In pseudocode, this can be expressed as
  *
  * ```
@@ -108,7 +108,7 @@ typedef struct sched sched_t;
  * Lag is defined as the difference between the amount of real time a thread should have received and the amount of real
  * time it has actually received.
  *
- * As an example, lets say we have three threads A, B and C with equal weights. To start with each thread is supposed to
+ * As an example, let's say we have three threads A, B and C with equal weights. To start with each thread is supposed to
  * have run for 0ms, and has actually run for 0ms, so their lag values are:
  *
  * <div align="center">
@@ -119,7 +119,7 @@ typedef struct sched sched_t;
  *    C   |   0
  * </div>
  *
- * Now, lets say we give a 30ms (in real time) time slice to thread A, while threads B and C do not run at all. After
+ * Now, let's say we give a 30ms (in real time) time slice to thread A, while threads B and C do not run at all. After
  * this, the lag values would be:
  *
  * <div align="center">
@@ -146,7 +146,7 @@ typedef struct sched sched_t;
  *
  * @note Fairness is achieved over some long period of time over which the proportion of real time each thread has
  * received will converge to the share it ought to receive. It does not guarantee that each individual time slice is
- * exactly correct, hence its acceptable for thread A to receive 30ms of real time in the above example.
+ * exactly correct, hence it's acceptable for thread A to receive 30ms of real time in the above example.
  *
  * @see [EEVDF](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564)
  * pages 3-5.
@@ -154,7 +154,7 @@ typedef struct sched sched_t;
  *
  * ## Eligible Time
  *
- * In most cases, its undesirable to track lag directly as it would require updating the lag of all threads whenever the
+ * In most cases, it's undesirable to track lag directly as it would require updating the lag of all threads whenever the
  * scheduler's virtual time is updated, which would violate the desired \f$O(\log n)\f$ complexity of the scheduler.
  *
  * Instead, EEVDF defines the concept of "eligible time" as the virtual time at which a thread's lag
@@ -206,7 +206,7 @@ typedef struct sched sched_t;
  *
  * There were two reasons for the decision to use 128 bits over 64 bits despite the performance cost. First, it means
  * that even the maximum possible value of uptime, stored using 64 bits, can still be represented in the fixed-point
- * format without overflowing the integer part, meaning we dont need to worry about overflow at all.
+ * format without overflowing the integer part, meaning we don't need to worry about overflow at all.
  *
  * Second, testing shows that lag appears to accumulate an error of about \f$10^3\f$ to \f$10^4\f$ in the fractional
  * part every second under heavy load, meaning that using 64 bits and a fixed point offset of 20 bits, would result in
@@ -256,7 +256,7 @@ typedef struct sched sched_t;
  * 
  * The pull mechanism is used when a CPU is about to become idle. The CPU will find the CPU with the highest weight and steal the first cache-cold thread from its runqueue. If no cache-cold threads are found, it will simply run the idle thread.
  *
- * @note The reason we want to avoid a global runqueue is to avoid lock contention. Even a small amount of lock contention in the scheduler will quickly degrade performance, as such it is only allowed to lock a single CPU's scheduler at a time. This does cause race conditions while pulling or pushing threads but the worst case scenario is imperfect load balancing, which is acceptable.
+ * @note The reason we want to avoid a global runqueue is to avoid lock contention. Even a small amount of lock contention in the scheduler will quickly degrade performance, as such it is only allowed to lock a single CPU's scheduler at a time. This does cause race conditions while pulling or pushing threads, but the worst case scenario is imperfect load balancing, which is acceptable.
  *
  * ## Testing
  *
