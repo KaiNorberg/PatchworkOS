@@ -181,7 +181,7 @@ static uint64_t mem_perf_read(mem_perfs_t* memPerfs)
 
 static proc_perfs_t* proc_perfs_read(uint64_t* procAmount)
 {
-    fd_t procDir = open("/proc:dir");
+    fd_t procDir = open("/proc:directory");
     if (procDir == ERR)
     {
         return NULL;

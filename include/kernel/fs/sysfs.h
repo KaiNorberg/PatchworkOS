@@ -51,10 +51,11 @@ dentry_t* sysfs_get_dev(void);
  * @param name The name of the directory to mount the SysFS in.
  * @param ns The namespace to mount the SysFS in, or `NULL` to use the current process's namespace.
  * @param flags Mount flags.
+ * @param mode The maximum allowed permissions for files/directories opened under this mount.
  * @param superblockOps The superblock operations for the new SysFS instance, can be `NULL`.
  * @return On success, the mounted SysFS instance. On failure, `NULL` and `errno` is set.
  */
-mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns, mount_flags_t flags,
+mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns, mount_flags_t flags, mode_t mode,
     const superblock_ops_t* superblockOps);
 
 /**

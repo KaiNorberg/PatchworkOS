@@ -84,7 +84,6 @@ typedef struct socket
     char address[MAX_NAME];
     socket_family_t* family;
     socket_type_t type;
-    path_flags_t flags;
     void* private;
     socket_state_t currentState;
     socket_state_t nextState;
@@ -101,10 +100,9 @@ typedef struct socket
  *
  * @param family Pointer to the socket family.
  * @param type Socket type.
- * @param flags Path flags.
  * @return On success, pointer to the new socket. On failure, `NULL` and `errno` is set.
  */
-socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t flags);
+socket_t* socket_new(socket_family_t* family, socket_type_t type);
 
 /**
  * @brief Starts a socket state transition.

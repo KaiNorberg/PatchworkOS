@@ -68,10 +68,7 @@ typedef enum
  */
 typedef struct dentry_ops
 {
-    /**
-     * @brief Used to now what is in a directory.
-     */
-    uint64_t (*getdents)(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset, path_flags_t flags);
+    uint64_t (*getdents)(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset, mode_t mode);
     void (*cleanup)(dentry_t* entry); ///< Called when the dentry is being freed.
 } dentry_ops_t;
 
@@ -168,6 +165,6 @@ void dentry_dec_mount_count(dentry_t* dentry);
  * Used by setting the dentry ops getdents to this function.
  */
 uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset,
-    path_flags_t flags);
+    mode_t mode);
 
 /** @} */

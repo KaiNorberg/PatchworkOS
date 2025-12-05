@@ -190,7 +190,7 @@ uint64_t namespace_traverse_mount(namespace_t* ns, const path_t* mountpoint, pat
 }
 
 mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* deviceName, const char* fsName,
-    mount_flags_t flags, void* private)
+    mount_flags_t flags, mode_t mode, void* private)
 {
     if (ns == NULL || deviceName == NULL || fsName == NULL)
     {
@@ -227,7 +227,7 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
             return NULL;
         }
 
-        ns->root = mount_new(root->superblock, root, NULL, NULL);
+        ns->root = mount_new(root->superblock, root, NULL, NULL, mode);
         if (ns->root == NULL)
         {
             errno = ENOMEM;
@@ -250,7 +250,7 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
         return NULL;
     }
 
-    mount_t* mount = mount_new(root->superblock, root, mountpoint->dentry, mountpoint->mount);
+    mount_t* mount = mount_new(root->superblock, root, mountpoint->dentry, mountpoint->mount, mode);
     if (mount == NULL)
     {
         errno = ENOMEM;
@@ -271,7 +271,7 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
     return mount;
 }
 
-mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* mountpoint, mount_flags_t flags)
+mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* mountpoint, mount_flags_t flags, mode_t mode)
 {
     if (ns == NULL || source == NULL || mountpoint == NULL || mountpoint->dentry == NULL || mountpoint->mount == NULL)
     {
@@ -285,7 +285,7 @@ mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* mountpoint, m
         return NULL;
     }
 
-    mount_t* mount = mount_new(source->superblock, source, mountpoint->dentry, mountpoint->mount);
+    mount_t* mount = mount_new(source->superblock, source, mountpoint->dentry, mountpoint->mount, mode);
     if (mount == NULL)
     {
         errno = ENOMEM;
@@ -336,7 +336,7 @@ SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpoint, mount_fl
     }
     DEREF_DEFER(sourceFile);
 
-    mount_t* bind = namespace_bind(&process->ns, sourceFile->path.dentry, &mountPath, flags);
+    mount_t* bind = namespace_bind(&process->ns, sourceFile->path.dentry, &mountPath, flags, sourceFile->mode);
     if (bind == NULL)
     {
         return ERR;

@@ -157,7 +157,7 @@ void map_entry_init(map_entry_t* entry);
  *
  * @return A map initializer.
  */
-#define MAP_CREATE {.entries = NULL, .capacity = 0, .length = 0, .tombstones = 0}
+#define MAP_CREATE() {.entries = NULL, .capacity = 0, .length = 0, .tombstones = 0}
 
 /**
  * @brief Initialize a map.

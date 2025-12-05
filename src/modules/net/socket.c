@@ -64,7 +64,7 @@ static uint64_t socket_data_read(file_t* file, void* buf, size_t count, uint64_t
         return ERR;
     }
 
-    return sock->family->ops->recv(sock, buf, count, offset);
+    return sock->family->ops->recv(sock, buf, count, offset, file->mode);
 }
 
 static uint64_t socket_data_write(file_t* file, const void* buf, size_t count, uint64_t* offset)
@@ -90,7 +90,7 @@ static uint64_t socket_data_write(file_t* file, const void* buf, size_t count, u
         return ERR;
     }
 
-    return sock->family->ops->send(sock, buf, count, offset);
+    return sock->family->ops->send(sock, buf, count, offset, file->mode);
 }
 
 static wait_queue_t* socket_data_poll(file_t* file, poll_events_t* revents)
@@ -208,7 +208,7 @@ static uint64_t socket_ctl_connect(file_t* file, uint64_t argc, const char** arg
 
     // TODO: Needs more verification.
 
-    bool notFinished = (sock->flags & PATH_NONBLOCK) && (result == ERR && errno == EINPROGRESS);
+    bool notFinished = (file->mode & MODE_NONBLOCK) && (result == ERR && errno == EINPROGRESS);
     if (notFinished) // Non blocking and not yet connected.
     {
         socket_end_transition(sock, 0);
@@ -255,7 +255,7 @@ static uint64_t socket_accept_open(file_t* file)
         return ERR;
     }
 
-    socket_t* newSock = socket_new(sock->family, sock->type, file->flags);
+    socket_t* newSock = socket_new(sock->family, sock->type);
     if (newSock == NULL)
     {
         return ERR;
@@ -266,7 +266,7 @@ static uint64_t socket_accept_open(file_t* file)
         return ERR;
     }
 
-    if (sock->family->ops->accept(sock, newSock) == ERR)
+    if (sock->family->ops->accept(sock, newSock, file->mode) == ERR)
     {
         socket_end_transition(newSock, ERR);
         DEREF(newSock);
@@ -356,7 +356,7 @@ static superblock_ops_t superblockOps = {
     .unmount = socket_unmount,
 };
 
-socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t flags)
+socket_t* socket_new(socket_family_t* family, socket_type_t type)
 {
     if (family == NULL)
     {
@@ -375,7 +375,6 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
     snprintf(sock->id, sizeof(sock->id), "%llu", atomic_fetch_add(&family->newId, 1));
     sock->family = family;
     sock->type = type;
-    sock->flags = flags;
     sock->private = NULL;
     rwmutex_init(&sock->mutex);
     sock->currentState = SOCKET_NEW;
@@ -397,7 +396,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
         return NULL;
     }
 
-    mount_t* mount = sysfs_mount_new(&familyDir, sock->id, NULL, MOUNT_PROPAGATE_CHILDREN, &superblockOps);
+    mount_t* mount = sysfs_mount_new(&familyDir, sock->id, NULL, MOUNT_PROPAGATE_CHILDREN, MODE_ALL_PERMS, &superblockOps);
     path_put(&familyDir);
     if (mount == NULL)
     {

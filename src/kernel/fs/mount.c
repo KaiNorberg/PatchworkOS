@@ -36,7 +36,7 @@ static void mount_free(mount_t* mount)
     free(mount);
 }
 
-mount_t* mount_new(superblock_t* superblock, dentry_t* root, dentry_t* mountpoint, mount_t* parent)
+mount_t* mount_new(superblock_t* superblock, dentry_t* root, dentry_t* mountpoint, mount_t* parent, mode_t mode)
 {
     if (superblock == NULL)
     {
@@ -64,6 +64,7 @@ mount_t* mount_new(superblock_t* superblock, dentry_t* root, dentry_t* mountpoin
     }
     mount->root = root != NULL ? REF(root) : NULL;
     mount->parent = parent != NULL ? REF(parent) : NULL;
+    mount->mode = mode;
 
     return mount;
 }

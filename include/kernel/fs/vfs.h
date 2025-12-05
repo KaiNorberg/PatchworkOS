@@ -23,8 +23,6 @@ typedef struct filesystem filesystem_t;
  * @defgroup kernel_fs Virtual File System
  * @ingroup kernel_fs
  *
- * TODO: Implement improved caching, LRU.
- *
  * @{
  */
 
@@ -43,19 +41,12 @@ typedef struct filesystem filesystem_t;
  */
 typedef struct filesystem
 {
-    list_entry_t entry;
-    const char* name;
+    map_entry_t mapEntry; ///< Used internally.
+    list_t superblocks; ///< Used internally.
+    rwlock_t lock; ///< Used internally.
+    const char* name; 
     dentry_t* (*mount)(filesystem_t* fs, const char* devName, void* private);
 } filesystem_t;
-
-/**
- * @brief Helper structure for lists with a lock.
- */
-typedef struct
-{
-    list_t list;
-    rwlock_t lock;
-} vfs_list_t;
 
 /**
  * @brief Helper structure for maps with a lock.
@@ -67,12 +58,8 @@ typedef struct
 } vfs_map_t;
 
 /**
- * @brief Initializes the VFS.
- */
-void vfs_init(void);
-
-/**
- * @brief Generates a new unique ID.
+ * @brief Generates a new unique ID, to be used for any VFS object.
+ * 
  * @return A new unique ID.
  */
 uint64_t vfs_get_new_id(void);

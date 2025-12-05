@@ -8,93 +8,82 @@
 #include <kernel/sync/mutex.h>
 
 #include <errno.h>
+#include <kernel/utils/map.h>
+#include <stdint.h>
 #include <string.h>
 
 static map_t flagMap;
 static map_t flagShortMap;
 
-typedef struct path_flag_entry
+typedef struct path_flag_short
 {
-    map_entry_t entry;
-    map_entry_t shortEntry;
-    path_flags_t flag;
-    const char* name;
-} path_flag_entry_t;
+    mode_t mode;
+} path_flag_short_t;
 
-static path_flag_entry_t flagEntries[] = {
-    {.flag = PATH_NONBLOCK, .name = "nonblock"},
-    {.flag = PATH_APPEND, .name = "append"},
-    {.flag = PATH_CREATE, .name = "create"},
-    {.flag = PATH_EXCLUSIVE, .name = "excl"},
-    {.flag = PATH_TRUNCATE, .name = "trunc"},
-    {.flag = PATH_DIRECTORY, .name = "dir"},
-    {.flag = PATH_RECURSIVE, .name = "recur"},
+static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
+    ['r'] = {.mode = MODE_READ},
+    ['w'] = {.mode = MODE_WRITE},
+    ['x'] = {.mode = MODE_EXECUTE},
+    ['n'] = {.mode = MODE_NONBLOCK},
+    ['a'] = {.mode = MODE_APPEND},
+    ['c'] = {.mode = MODE_CREATE},
+    ['e'] = {.mode = MODE_EXCLUSIVE},
+    ['t'] = {.mode = MODE_TRUNCATE},
+    ['d'] = {.mode = MODE_DIRECTORY},
+    ['R'] = {.mode = MODE_RECURSIVE},
 };
 
-static path_flag_entry_t* path_flags_get(const char* flag, uint64_t length)
+typedef struct path_flag
+{
+    mode_t mode;
+    const char* name;
+} path_flag_t;
+
+static const path_flag_t flags[] = {
+    {.mode = MODE_READ, .name = "read"},
+    {.mode = MODE_WRITE, .name = "write"},
+    {.mode = MODE_EXECUTE, .name = "execute"},
+    {.mode = MODE_NONBLOCK, .name = "nonblock"},
+    {.mode = MODE_APPEND, .name = "append"},
+    {.mode = MODE_CREATE, .name = "create"},
+    {.mode = MODE_EXCLUSIVE, .name = "exclusive"},
+    {.mode = MODE_TRUNCATE, .name = "truncate"},
+    {.mode = MODE_DIRECTORY, .name = "directory"},
+    {.mode = MODE_RECURSIVE, .name = "recursive"},
+};
+
+static mode_t path_flag_to_mode(const char* flag, uint64_t length)
 {
     if (flag == NULL || length == 0)
     {
-        return NULL;
+        return MODE_NONE;
     }
 
-    assert(sizeof(flagEntries) / sizeof(flagEntries[0]) == PATH_FLAGS_AMOUNT);
-
-    map_key_t key = map_key_buffer(flag, length);
-    if (length == 1)
+    for (uint64_t i = 0; i < MODE_AMOUNT; i++)
     {
-        path_flag_entry_t* entry = CONTAINER_OF_SAFE(map_get(&flagShortMap, &key), path_flag_entry_t, shortEntry);
-        if (entry == NULL)
+        size_t len = strnlen_s(flags[i].name, MAX_NAME);
+        if (len == length && strncmp(flag, flags[i].name, length) == 0)
         {
-            errno = EBADFLAG;
-            return NULL;
+            return flags[i].mode;
         }
-
-        return entry;
     }
 
-    path_flag_entry_t* entry = CONTAINER_OF_SAFE(map_get(&flagMap, &key), path_flag_entry_t, entry);
-    if (entry == NULL)
+    mode_t combinedMode = MODE_NONE;
+    for (uint64_t i = 0; i < length; i++)
     {
-        errno = EBADFLAG;
-        return NULL;
+        if (flag[i] < 0 || (uint8_t)flag[i] >= INT8_MAX)
+        {
+            return MODE_NONE;
+        }
+        mode_t mode = shortFlags[(uint8_t)flag[i]].mode;
+        if (mode == MODE_NONE)
+        {
+            return MODE_NONE;
+        }
+        combinedMode |= mode;
     }
 
-    return entry;
-}
-
-void path_flags_init(void)
-{
-    map_init(&flagMap);
-    map_init(&flagShortMap);
-
-    for (uint64_t i = 0; i < PATH_FLAGS_AMOUNT; i++)
-    {
-        map_entry_init(&flagEntries[i].entry);
-        map_entry_init(&flagEntries[i].shortEntry);
-
-#ifndef NDEBUG
-        for (uint64_t j = 0; j < PATH_FLAGS_AMOUNT; j++)
-        {
-            if (i != j && flagEntries[i].name[0] == flagEntries[j].name[0])
-            {
-                panic(NULL, "Flag name collision");
-            }
-        }
-#endif
-
-        map_key_t key = map_key_string(flagEntries[i].name);
-        if (map_insert(&flagMap, &key, &flagEntries[i].entry) == ERR)
-        {
-            panic(NULL, "Failed to init flag map");
-        }
-
-        map_key_t shortKey = map_key_buffer(flagEntries[i].name, 1);
-        if (map_insert(&flagShortMap, &shortKey, &flagEntries[i].shortEntry) == ERR)
-        {
-            panic(NULL, "Failed to init short flag map");
-        }
-    }
+    return combinedMode;
 }
 
 uint64_t pathname_init(pathname_t* pathname, const char* string)
@@ -106,7 +95,7 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
     }
 
     memset(pathname->string, 0, MAX_PATH);
-    pathname->flags = PATH_NONE;
+    pathname->mode = MODE_NONE;
     pathname->isValid = false;
 
     if (string == NULL)
@@ -190,14 +179,14 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
             return ERR;
         }
 
-        path_flag_entry_t* flag = path_flags_get(token, tokenLength);
-        if (flag == NULL)
+        mode_t mode = path_flag_to_mode(token, tokenLength);
+        if (mode == MODE_NONE)
         {
             errno = EBADFLAG;
             return ERR;
         }
 
-        pathname->flags |= flag->flag;
+        pathname->mode |= mode;
     }
 
     pathname->isValid = true;
@@ -612,7 +601,7 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
     }
 
     memset(pathname->string, 0, MAX_PATH);
-    pathname->flags = PATH_NONE;
+    pathname->mode = MODE_NONE;
     pathname->isValid = false;
 
     path_t current = PATH_EMPTY;

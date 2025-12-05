@@ -15,9 +15,9 @@ static symbol_addr_t** addrArray = NULL;
 static uint64_t addrAmount = 0;
 static uint64_t addrCapacity = 0;
 
-static map_t nameMap = MAP_CREATE;
+static map_t nameMap = MAP_CREATE();
 
-static map_t groupMap = MAP_CREATE;
+static map_t groupMap = MAP_CREATE();
 
 static rwlock_t lock = RWLOCK_CREATE();
 

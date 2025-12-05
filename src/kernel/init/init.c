@@ -121,7 +121,6 @@ static void init_finalize(void)
 
     pic_disable();
 
-    vfs_init();
     ramfs_init(&bootInfo->disk);
     sysfs_init();
 

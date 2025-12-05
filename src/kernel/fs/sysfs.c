@@ -86,7 +86,7 @@ void sysfs_init(void)
         panic(NULL, "Failed to register sysfs");
     }
 
-    devMount = sysfs_mount_new(NULL, "dev", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, NULL);
+    devMount = sysfs_mount_new(NULL, "dev", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS, NULL);
     if (devMount == NULL)
     {
         panic(NULL, "Failed to create /dev filesystem");
@@ -99,7 +99,7 @@ dentry_t* sysfs_get_dev(void)
     return REF(devMount->root);
 }
 
-mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns, mount_flags_t flags,
+mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns, mount_flags_t flags, mode_t mode,
     const superblock_ops_t* superblockOps)
 {
     if (name == NULL)
@@ -137,7 +137,7 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
             .superblockOps = superblockOps,
         };
 
-        return namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, flags, &ctx);
+        return namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, flags, mode, &ctx);
     }
 
     if (parent->dentry->superblock->fs != &sysfs)
@@ -170,7 +170,7 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
     };
 
     path_t mountpoint = PATH_CREATE(parent->mount, dentry);
-    mount_t* mount = namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, flags, &ctx);
+    mount_t* mount = namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, flags, mode, &ctx);
     path_put(&mountpoint);
     return mount;
 }

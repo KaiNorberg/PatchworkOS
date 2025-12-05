@@ -4,5 +4,5 @@
 
 uint64_t rmdir(const char* path)
 {
-    return removef("%s:dir", path);
+    return removef("%s:directory", path);
 }

@@ -222,7 +222,7 @@ typedef enum
  *
  * Note how the OS version is part of the path.
  */
-#define MODULE_DIR "/kernel/modules/" OS_VERSION "/:dir"
+#define MODULE_DIR "/kernel/modules/" OS_VERSION "/:directory"
 
 /**
  * @brief Module event types.

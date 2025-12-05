@@ -216,7 +216,7 @@ static uint64_t local_socket_connect(socket_t* sock, const char* address)
     return 0;
 }
 
-static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
+static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mode)
 {
     local_socket_data_t* data = sock->private;
     if (data == NULL)
@@ -253,7 +253,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
             break;
         }
 
-        if (sock->flags & PATH_NONBLOCK)
+        if (mode & MODE_NONBLOCK)
         {
             errno = EWOULDBLOCK;
             return ERR;
@@ -283,7 +283,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
     return 0;
 }
 
-static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t count, uint64_t* offset, mode_t mode)
 {
     (void)offset; // Unused
 
@@ -322,7 +322,7 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
     uint64_t totalSize = sizeof(local_packet_header_t) + count;
     if (ring_free_length(ring) < totalSize)
     {
-        if (sock->flags & PATH_NONBLOCK)
+        if (mode & MODE_NONBLOCK)
         {
             errno = EAGAIN;
             return ERR;
@@ -352,7 +352,7 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
     return count;
 }
 
-static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, uint64_t* offset, mode_t mode)
 {
     (void)offset; // Unused
 
@@ -381,7 +381,7 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
 
     if (ring_data_length(ring) < sizeof(local_packet_header_t))
     {
-        if (sock->flags & PATH_NONBLOCK)
+        if (mode & MODE_NONBLOCK)
         {
             errno = EWOULDBLOCK;
             return ERR;

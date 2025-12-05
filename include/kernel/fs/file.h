@@ -37,7 +37,7 @@ typedef struct file
 {
     ref_t ref;
     uint64_t pos;
-    path_flags_t flags;
+    mode_t mode;
     inode_t* inode;
     path_t path;
     const file_ops_t* ops;
@@ -86,10 +86,13 @@ typedef struct poll_file
  *
  * @param inode The inode the file represents.
  * @param path The path of the file.
- * @param flags The flags for the file.
- * @return On success, the new file. On failure, returns `NULL` and `errno` is set.
+ * @param mode The mode with which the file was opened, if no permissions are specified the maximum allowed permissions from the mount are used.
+ * @return On success, the new file. On failure, returns `NULL` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EACCES`: The requested mode exceeds the maximum allowed permissions.
+ * - `ENOMEM`: Out of memory.
  */
-file_t* file_new(inode_t* inode, const path_t* path, path_flags_t flags);
+file_t* file_new(inode_t* inode, const path_t* path, mode_t mode);
 
 /**
  * @brief Helper function for basic seeking.

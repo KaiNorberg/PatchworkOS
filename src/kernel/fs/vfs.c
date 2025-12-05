@@ -1,6 +1,5 @@
 #include <kernel/fs/vfs.h>
 
-#include "sys/list.h"
 #include <kernel/cpu/syscall.h>
 #include <kernel/fs/cwd.h>
 #include <kernel/fs/dentry.h>
@@ -29,16 +28,20 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/io.h>
+#include <sys/list.h>
 
 static _Atomic(uint64_t) newVfsId = ATOMIC_VAR_INIT(0);
 
-static vfs_list_t superblocks;
-static vfs_list_t filesystems;
-
-static vfs_map_t dentryCache;
-static vfs_map_t inodeCache;
+static vfs_map_t filesystems = {.map = MAP_CREATE(), .lock = RWLOCK_CREATE() };
+static vfs_map_t dentryCache = {.map = MAP_CREATE(), .lock = RWLOCK_CREATE() };
+static vfs_map_t inodeCache = {.map = MAP_CREATE(), .lock = RWLOCK_CREATE() };
 
 static dentry_t* root = NULL;
+
+static map_key_t filesystem_key(const char* name)
+{
+    return map_key_string(name);
+}
 
 static map_key_t inode_cache_key(superblock_id_t superblockId, inode_number_t number)
 {
@@ -67,32 +70,6 @@ static map_key_t dentry_cache_key(dentry_id_t parentId, const char* name)
     return map_key_buffer(&buffer, sizeof(buffer));
 }
 
-static void vfs_list_init(vfs_list_t* list)
-{
-    list_init(&list->list);
-    rwlock_init(&list->lock);
-}
-
-static void vfs_map_init(vfs_map_t* map)
-{
-    map_init(&map->map);
-    rwlock_init(&map->lock);
-}
-
-void vfs_init(void)
-{
-    vfs_list_init(&superblocks);
-    vfs_list_init(&filesystems);
-
-    vfs_map_init(&dentryCache);
-    vfs_map_init(&inodeCache);
-
-    path_flags_init();
-    key_init();
-
-    LOG_INFO("virtual file system initialized\n");
-}
-
 uint64_t vfs_get_new_id(void)
 {
     return atomic_fetch_add(&newVfsId, 1);
@@ -106,20 +83,19 @@ uint64_t vfs_register_fs(filesystem_t* fs)
         return ERR;
     }
 
+    map_entry_init(&fs->mapEntry);
+    list_init(&fs->superblocks);
+    rwlock_init(&fs->lock);
+
+    map_key_t key = filesystem_key(fs->name);
+
     RWLOCK_WRITE_SCOPE(&filesystems.lock);
 
-    filesystem_t* existing;
-    LIST_FOR_EACH(existing, &filesystems.list, entry)
+    if (map_insert(&filesystems.map, &key, &fs->mapEntry) == ERR)
     {
-        if (strcmp(existing->name, fs->name) == 0)
-        {
-            errno = EEXIST;
-            return ERR;
-        }
+        return ERR;
     }
 
-    list_entry_init(&fs->entry);
-    list_push_back(&filesystems.list, &fs->entry);
     return 0;
 }
 
@@ -132,19 +108,13 @@ uint64_t vfs_unregister_fs(filesystem_t* fs)
     }
 
     RWLOCK_WRITE_SCOPE(&filesystems.lock);
-    RWLOCK_READ_SCOPE(&superblocks.lock);
-
-    superblock_t* superblock;
-    LIST_FOR_EACH(superblock, &superblocks.list, entry)
+    map_remove(&filesystems.map, &fs->mapEntry);
+    
+    while (!list_is_empty(&fs->superblocks))
     {
-        if (strcmp(superblock->fs->name, fs->name) == 0)
-        {
-            errno = EBUSY;
-            return ERR;
-        }
+        list_pop_first(&fs->superblocks);
     }
 
-    list_remove(&filesystems.list, &fs->entry);
     return 0;
 }
 
@@ -152,16 +122,8 @@ filesystem_t* vfs_get_fs(const char* name)
 {
     RWLOCK_READ_SCOPE(&filesystems.lock);
 
-    filesystem_t* fs;
-    LIST_FOR_EACH(fs, &filesystems.list, entry)
-    {
-        if (strcmp(fs->name, name) == 0)
-        {
-            return fs;
-        }
-    }
-
-    return NULL;
+    map_key_t key = filesystem_key(name);   
+    return CONTAINER_OF_SAFE(map_get(&filesystems.map, &key), filesystem_t, mapEntry);
 }
 
 inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number)
@@ -304,8 +266,8 @@ void vfs_remove_superblock(superblock_t* superblock)
         return;
     }
 
-    RWLOCK_WRITE_SCOPE(&superblocks.lock);
-    list_remove(&superblocks.list, &superblock->entry);
+    RWLOCK_WRITE_SCOPE(&superblock->fs->lock);
+    list_remove(&superblock->fs->superblocks, &superblock->entry);
 }
 
 void vfs_remove_inode(inode_t* inode)
@@ -383,19 +345,19 @@ static uint64_t vfs_create(path_t* outPath, const pathname_t* pathname, const pa
 
     if (!(atomic_load(&target.dentry->flags) & DENTRY_NEGATIVE))
     {
-        if (pathname->flags & PATH_EXCLUSIVE)
+        if (pathname->mode & MODE_EXCLUSIVE)
         {
             errno = EEXIST;
             return ERR;
         }
 
-        if ((pathname->flags & PATH_DIRECTORY) && target.dentry->inode->type != INODE_DIR)
+        if ((pathname->mode & MODE_DIRECTORY) && target.dentry->inode->type != INODE_DIR)
         {
             errno = ENOTDIR;
             return ERR;
         }
 
-        if (!(pathname->flags & PATH_DIRECTORY) && target.dentry->inode->type != INODE_FILE)
+        if (!(pathname->mode & MODE_DIRECTORY) && target.dentry->inode->type != INODE_FILE)
         {
             errno = EISDIR;
             return ERR;
@@ -409,7 +371,7 @@ static uint64_t vfs_create(path_t* outPath, const pathname_t* pathname, const pa
     MUTEX_SCOPE(&dir->mutex);
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    if (dir->ops->create(dir, target.dentry, pathname->flags) == ERR)
+    if (dir->ops->create(dir, target.dentry, pathname->mode) == ERR)
     {
         return ERR;
     }
@@ -427,7 +389,7 @@ static uint64_t vfs_create(path_t* outPath, const pathname_t* pathname, const pa
 static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname, const path_t* from, namespace_t* namespace)
 {
     path_t target = PATH_EMPTY;
-    if (pathname->flags & PATH_CREATE)
+    if (pathname->mode & MODE_CREATE)
     {
         if (vfs_create(&target, pathname, from, namespace) == ERR)
         {
@@ -449,13 +411,13 @@ static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname, con
         return ERR;
     }
 
-    if ((pathname->flags & PATH_DIRECTORY) && target.dentry->inode->type != INODE_DIR)
+    if ((pathname->mode & MODE_DIRECTORY) && target.dentry->inode->type != INODE_DIR)
     {
         errno = ENOTDIR;
         return ERR;
     }
 
-    if (!(pathname->flags & PATH_DIRECTORY) && target.dentry->inode->type != INODE_FILE)
+    if (!(pathname->mode & MODE_DIRECTORY) && target.dentry->inode->type != INODE_FILE)
     {
         errno = EISDIR;
         return ERR;
@@ -518,21 +480,21 @@ uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* proc
     }
     PATH_DEFER(&path);
 
-    files[0] = file_new(path.dentry->inode, &path, pathname->flags);
+    files[0] = file_new(path.dentry->inode, &path, pathname->mode);
     if (files[0] == NULL)
     {
         return ERR;
     }
     DEREF_DEFER(files[0]);
 
-    files[1] = file_new(path.dentry->inode, &path, pathname->flags);
+    files[1] = file_new(path.dentry->inode, &path, pathname->mode);
     if (files[1] == NULL)
     {
         return ERR;
     }
     DEREF_DEFER(files[1]);
 
-    if (pathname->flags & PATH_TRUNCATE && path.dentry->inode->type == INODE_FILE)
+    if (pathname->mode & MODE_TRUNCATE && path.dentry->inode->type == INODE_FILE)
     {
         inode_truncate(path.dentry->inode);
     }
@@ -619,14 +581,14 @@ file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* pr
     }
     PATH_DEFER(&path);
 
-    file_t* file = file_new(path.dentry->inode, &path, pathname->flags);
+    file_t* file = file_new(path.dentry->inode, &path, pathname->mode);
     if (file == NULL)
     {
         return NULL;
     }
     DEREF_DEFER(file);
 
-    if (pathname->flags & PATH_TRUNCATE && path.dentry->inode->type == INODE_FILE)
+    if (pathname->mode & MODE_TRUNCATE && path.dentry->inode->type == INODE_FILE)
     {
         inode_truncate(path.dentry->inode);
     }
@@ -704,6 +666,12 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
         return ERR;
     }
 
+    if ((file->mode & MODE_APPEND) || !(file->mode & MODE_READ))
+    {
+        errno = EBADF;
+        return ERR;
+    }
+
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     uint64_t offset = file->pos;
     uint64_t result = file->ops->read(file, buffer, count, &offset);
@@ -758,8 +726,14 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
         return ERR;
     }
 
-    if (file->flags & PATH_APPEND && file->ops->seek != NULL && file->ops->seek(file, 0, SEEK_END) == ERR)
+    if (file->mode & MODE_APPEND && file->ops->seek != NULL && file->ops->seek(file, 0, SEEK_END) == ERR)
     {
+        return ERR;
+    }
+
+    if (!(file->mode & MODE_WRITE))
+    {
+        errno = EBADF;
         return ERR;
     }
 
@@ -931,6 +905,13 @@ SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, uint64_t length, prot_t 
         return NULL;
     }
     DEREF_DEFER(file);
+
+    if ((!(file->mode & MODE_READ) && (prot & PROT_READ)) || (!(file->mode & MODE_WRITE) && (prot & PROT_WRITE)) ||
+        (!(file->mode & MODE_EXECUTE) && (prot & PROT_EXECUTE)))
+    {
+        errno = EACCES;
+        return NULL;
+    }
 
     return vfs_mmap(file, address, length, flags | PML_USER);
 }
@@ -1169,8 +1150,14 @@ uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count)
         return ERR;
     }
 
+    if (!(file->mode & MODE_READ))
+    {
+        errno = EBADF;
+        return ERR;
+    }
+
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    uint64_t result = file->path.dentry->ops->getdents(file->path.dentry, buffer, count, &file->pos, file->flags);
+    uint64_t result = file->path.dentry->ops->getdents(file->path.dentry, buffer, count, &file->pos, file->mode);
     if (result != ERR)
     {
         inode_notify_access(file->inode);
@@ -1207,7 +1194,7 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
         return ERR;
     }
 
-    if (pathname->flags != PATH_NONE)
+    if (pathname->mode != MODE_NONE)
     {
         errno = EBADFLAG;
         return ERR;
@@ -1222,6 +1209,12 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
         return ERR;
     }
     PATH_DEFER(&path);
+
+    if (!(path.mount->mode & MODE_READ))
+    {
+        errno = EACCES;
+        return ERR;
+    }
 
     memset(buffer, 0, sizeof(stat_t));
 
@@ -1269,7 +1262,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
         return ERR;
     }
 
-    if (oldPathname->flags != PATH_NONE || newPathname->flags != PATH_NONE)
+    if (oldPathname->mode != MODE_NONE || newPathname->mode != MODE_NONE)
     {
         errno = EBADFLAG;
         return ERR;
@@ -1307,6 +1300,18 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
     {
 
         errno = ENOSYS;
+        return ERR;
+    }
+
+    if (!(old.mount->mode & MODE_READ))
+    {
+        errno = EACCES;
+        return ERR;
+    }
+
+    if (!(newParent.mount->mode & MODE_WRITE))
+    {
+        errno = EACCES;
         return ERR;
     }
 
@@ -1380,15 +1385,21 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
     PATH_DEFER(&parent);
     PATH_DEFER(&target);
 
-    if ((pathname->flags & PATH_DIRECTORY) && target.dentry->inode->type != INODE_DIR)
+    if ((pathname->mode & MODE_DIRECTORY) && target.dentry->inode->type != INODE_DIR)
     {
         errno = ENOTDIR;
         return ERR;
     }
 
-    if (!(pathname->flags & PATH_DIRECTORY) && target.dentry->inode->type != INODE_FILE)
+    if (!(pathname->mode & MODE_DIRECTORY) && target.dentry->inode->type != INODE_FILE)
     {
         errno = EISDIR;
+        return ERR;
+    }
+
+    if (!(target.mount->mode & MODE_WRITE))
+    {
+        errno = EACCES;
         return ERR;
     }
 
@@ -1401,7 +1412,7 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
 
     mutex_acquire(&dir->mutex);
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    uint64_t result = dir->ops->remove(dir, target.dentry, pathname->flags);
+    uint64_t result = dir->ops->remove(dir, target.dentry, pathname->mode);
     if (result != ERR)
     {
         vfs_remove_dentry(target.dentry);

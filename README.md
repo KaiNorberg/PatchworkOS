@@ -94,8 +94,6 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 
 ## Notable Future Plans
 
-- Read, write, execute, create permissions.
-- Capability style per-process permissions, as a replacement for per-user permissions, via namespace mountpoints with read/write/execute permissions.
 - Fully Asynchronous I/O and syscalls (io_uring?).
 - USB support (The holy grail).
 
@@ -322,7 +320,7 @@ For example, if process A wants to share its `/net/local/5` directory from the s
 
 ```c
 // In process A
-fd_t dir = open("/net/local/5:dir");
+fd_t dir = open("/net/local/5:directory");
 
 // Create a "key" for the file descriptor, this is a unique one time use randomly generated token that can be used to retrieve the file descriptor in another process.
 key_t key;
@@ -357,9 +355,27 @@ You may have noticed that in the above section sections, the `open()` function d
 fd_t handle = open("/net/local/seqpacket:nonblock");
 ```
 
-Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `openf()` function. It is also possible to just specify the first letter of a flag, so instead of `:nonblock` you can use `:n`.
+Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `openf()` function. It is also possible to just specify the first letter of a flag which do not need to be separated by colons, so instead of `:nonblock` you can use `:n`.
 
-[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html#ga82917c2c8f27ffa562957d5cfa4fdb2e)
+For a full list of available flags, check the [Doxygen documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html).
+
+### Permissions?
+
+Permissions are also specified using file paths there are three possible permissions, read, write and execute. For example to open a file as read and write, you can do
+
+```c
+fd_t file = open("/some/path:read:write");
+```
+
+or
+
+```c
+fd_t file = open("/some/path:rw");
+```
+
+Permissions are inherited, you cant use a file with lower permissions to get a file with higher permissions. Consider the namespace section, if a directory was opened using only read permissions and that same directory was bound, then it would be impossible to open any files within that directory with any permissions other than read.
+
+For a full list of available permissions, check the [Doxygen documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html).
 
 ### But why?
 
@@ -436,7 +452,7 @@ All in all, this algorithm would not be a viable replacement for existing algori
 
 ## Shell Utilities
 
-PatchworkOS includes its own shell utilities designed around its [file flags](#file-flags) system. Included is a brief overview with some usage examples. For convenience the shell utilities are named after their POSIX counterparts, however they are not drop-in replacements.
+PatchworkOS includes its own shell utilities designed around its [file flags](#file-flags) system, when file flags are used we also demonstrate the short form. Included is a brief overview with some usage examples. For convenience the shell utilities are named after their POSIX counterparts, however they are not drop-in replacements.
 
 ### `touch`
 
@@ -444,10 +460,12 @@ Opens a file path and then immediately closes it.
 
 ```bash
 # Create the file.txt file only if it does not exist.
-touch file.txt:create:excl
+touch file.txt:create:exclusive
+touch file.txt:ce
 
 # Create the mydir directory.
-touch mydir:create:dir
+touch mydir:create:directory
+touch mydir:cd
 ```
 
 ### `cat`
@@ -463,6 +481,7 @@ cat /proc/1234/wait
 
 # Copy contents of file.txt to dest.txt and create it.
 cat < file.txt > dest.txt:create
+cat < file.txt > dest.txt:c
 ```
 
 ### `echo`
@@ -475,6 +494,7 @@ echo "..." > file.txt
 
 # Append to file.txt, makes ">>" unneeded.
 echo "..." > file.txt:append
+echo "..." > file.txt:a
 ```
 
 ### `ls`
@@ -486,7 +506,8 @@ Reads the contents of a directory to stdout.
 ls mydir
 
 # Recursively print the contents of mydir.
-ls mydir:recur
+ls mydir:recursive
+ls mydir:R
 ```
 
 ### `rm`
@@ -498,7 +519,8 @@ Removes a file or directory.
 rm file.txt
 
 # Recursively remove mydir and its contents.
-rm mydir:dir:recur
+rm mydir:directory:recursive
+rm mydir:dR
 ```
 
 There are other utils available that work as expected, for example `stat` and `link`.
