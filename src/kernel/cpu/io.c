@@ -14,7 +14,7 @@ static lock_t lock = LOCK_CREATE();
 
 uint64_t io_reserve(port_t* out, port_t minBase, port_t maxBase, uint64_t alignment, uint64_t length, const char* owner)
 {
-    (void)owner; // TODO: Use owner for debug stuff, sysfs?
+    (void)owner;
 
     if (out == NULL || length == 0 || minBase > maxBase)
     {

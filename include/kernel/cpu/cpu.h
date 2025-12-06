@@ -40,7 +40,7 @@
  *
  * ## Per-CPU Data
  *
- * TODO: Implement per-CPU data. Use separate linker section?
+ * @todo Implement per-CPU data. Use separate linker section?
  *
  * @{
  */

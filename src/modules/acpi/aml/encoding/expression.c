@@ -2143,12 +2143,12 @@ aml_object_t* aml_reference_type_opcode_read(aml_term_list_ctx_t* ctx)
         return NULL;
     }
 
-    // I am unsure about this. But it seems that ReferenceTypeOpcodes should dereference the result if its an
-    // ObjectReference. Mainly this is based of the examples found in section 19.6.63.2 and 19.6.63.3 of the Index
-    // Operator where we can see the Store Operator storing directly to the result of an Index Operator. And this seems
-    // to line up with testing. I could not find any explicit mention of this in the spec though.
-    //
-    // TODO: Stare at the spec some more.
+    /// I am unsure about this. But it seems that ReferenceTypeOpcodes should dereference the result if its an
+    /// ObjectReference. Mainly this is based of the examples found in section 19.6.63.2 and 19.6.63.3 of the Index
+    /// Operator where we can see the Store Operator storing directly to the result of an Index Operator. And this seems
+    /// to line up with testing. I could not find any explicit mention of this in the spec though.
+    ///
+    /// @todo Stare at the spec some more.
 
     DEREF_DEFER(result);
     if (result->type == AML_OBJECT_REFERENCE)

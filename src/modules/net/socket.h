@@ -15,18 +15,18 @@ typedef struct socket_family socket_family_t;
  * @defgroup module_net_socket Sockets
  * @ingroup module_net
  *
- * Sockets are exposed in the `/net` directory. Sockets provide communication endpoints for networking.
+ * Sockets provide communication endpoints for networking and local client-server communication. They are exposed in the
+ * `/net` directory.
  *
  * ## Creating Sockets
  *
- * Sockets are created by opening a factory located in each socket families directory. For example, to create a local
- * seqpacket socket, open the `/net/local/seqpacket/` file which gives you a handle that when read returns the socket's
- * ID, which corresponds to the path `/net/<family_name>/<socket_id>/`, for example `/net/local/1234/`, which stores the
- * files used to interact with the socket.
+ * Sockets are created by opening a factory file, named after the socket type it will create, located in each socket
+ * family's directory. For example, to create a local seqpacket socket, open the `/net/local/seqpacket` file. This
+ * returns a handle that when read returns the socket's ID, which corresponds to the path
+ * `/net/<family_name>/<socket_id>/`, for example `/net/local/1234/`, which stores the files used to interact with the
+ * socket.
  *
- * ## Using Sockets
- *
- * Sockets are interacted with using the following files located in their directory.
+ * The files used to interact with sockets are listed below.
  *
  * ### accept
  *
@@ -39,8 +39,8 @@ typedef struct socket_family socket_family_t;
  *
  * ### ctl
  *
- * The `/net/<family_name>/<socket_id>/ctl` file is used to send "commands" to the socket. Here is a list of supported
- * commands:
+ * The `/net/<family_name>/<socket_id>/ctl` file is used to send "commands" to the socket by writing to it. Here is a
+ * list of supported commands:
  * - `bind <address>`: Binds the socket to the specified address. (POSIX `bind()` function)
  * - `listen <backlog>`: Puts the socket into listening mode with the specified backlog length. (POSIX `listen()`
  * function)
@@ -48,11 +48,12 @@ typedef struct socket_family socket_family_t;
  *
  * ### data
  *
- * The `/net/<family_name>/<socket_id>/data` file is used to send and retrieve data using the socket. Writing to this
+ * The `/net/<family_name>/<socket_id>/data` file is used to send and receive data using the socket. Writing to this
  * file sends data, reading from it receives data. (POSIX `send()` and `recv()` functions)
  *
  * If opened with `:nonblock`, read and write operations will fail with `EAGAIN` if no data is available or there is no
- * buffer space available, respectively, otherwise they will block, waiting for data or buffer space.
+ * buffer space available, respectively. If not opened with `:nonblock` they will block, waiting for data or buffer
+ * space.
  *
  * @{
  */

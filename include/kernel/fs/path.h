@@ -27,12 +27,13 @@ typedef struct namespace namespace_t;
  *
  * ## Flags/Mode
  *
- * Paths can have flags appended at the end, these flags are parsed to determine the mode with which the path is opened. 
- * 
- * Each flag starts with `:` and multiple instances of the same flag are allowed, for example `/path/to/file:append:append:nonblock`.
+ * Paths can have flags appended at the end, these flags are parsed to determine the mode with which the path is opened.
+ *
+ * Each flag starts with `:` and multiple instances of the same flag are allowed, for example
+ * `/path/to/file:append:append:nonblock`.
  *
  * Included is a list of all available flags:
- * 
+ *
  * | Flag | Short | Description |
  * |------|-------|-------------|
  * | `read` | `r` | Open with read permissions. |
@@ -44,23 +45,29 @@ typedef struct namespace namespace_t;
  * | `exclusive` | `e` | Will cause the open to fail if the file already exists. |
  * | `truncate` | `t` | Truncate the file to zero length if it already exists. |
  * | `directory` | `d` | Allow opening directories. |
- * | `recursive` | `R` | Behaviour differs, but allows for recursive operations, for example when used with `remove` it will remove directories and their children recursively. |
- * 
- * For convenience, a single letter short form is also available as shown above, these single letter forms do not need to be separated by colons, for example `/path/to/file:rwcte` is equivalent to `/path/to/file:read:write:create:truncate:exclusive`.
- * 
- * The parsed mode is the primary way to handle both the behaviour of opened paths and permissions through out the kernel. For example, a file opened from within a directory which was bound with only read permissions will also have read only permissions, even if the file itself would allow write permissions.
- * 
- * If no permissions, i.e. read, write or execute, are specified, the default is to open with the maximum currently allowed permissions.
- * 
+ * | `recursive` | `R` | Behaviour differs, but allows for recursive operations, for example when used with `remove` it
+ * will remove directories and their children recursively. |
+ *
+ * For convenience, a single letter short form is also available as shown above, these single letter forms do not need
+ * to be separated by colons, for example `/path/to/file:rwcte` is equivalent to
+ * `/path/to/file:read:write:create:truncate:exclusive`.
+ *
+ * The parsed mode is the primary way to handle both the behaviour of opened paths and permissions through out the
+ * kernel. For example, a file opened from within a directory which was bound with only read permissions will also have
+ * read only permissions, even if the file itself would allow write permissions.
+ *
+ * If no permissions, i.e. read, write or execute, are specified, the default is to open with the maximum currently
+ * allowed permissions.
+ *
  * @see kernel_fs_namespace for information on mode inheritance when binding paths.
- * 
+ *
  * @{
  */
 
 /**
  * @brief Path flags and permissions.
  * @enum mode_t
- * 
+ *
  * We store both flags and permissions in the same enum but permissions are sometimes treated differently to flags.
  */
 typedef enum mode
@@ -105,7 +112,7 @@ typedef enum
  * A valid char is one of the following `abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.
  * ()[]{}~!@#$%^&?',;=+`.
  *
- * TODO: Replace with array lookup.
+ * @todo Replace with array lookup.
  *
  * @param ch The char to check.
  * @return true if the char is valid, false otherwise.

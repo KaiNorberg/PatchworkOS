@@ -33,7 +33,7 @@ typedef struct irq irq_t;
  * a single IRQ chip, the IOAPIC, which is configured to map physical IRQ 1 to virtual IRQ 0x21 on CPU 0. We would then
  * see all handlers registered for virtual IRQ 0x21 being called on CPU 0.
  *
- * TODO: Currently, this system is still simplistic. For example, it cant handle trees of IRQ chips, or multiple chips
+ * @todo Currently, this system is still simplistic. For example, it cant handle trees of IRQ chips, or multiple chips
  * handling the same physical IRQs. This should be fixed in the future as needed.
  *
  * @{
@@ -180,7 +180,7 @@ void irq_dispatch(interrupt_frame_t* frame, cpu_t* self);
  * @note The IRQ will only be enabled if there are registered handlers for it, otherwise it will remain disabled until a
  * handler is registered.
  *
- * TODO: CPU load balancing?
+ * @todo CPU load balancing?
  *
  * @param out Pointer to store the allocated virtual IRQ.
  * @param phys The physical IRQ number.

@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @brief Filesystems and Virtual File System.
+ * @brief Virtual File System and Filesystem implementations.
  * @defgroup kernel_fs Filesystems
  * @ingroup kernel
  */

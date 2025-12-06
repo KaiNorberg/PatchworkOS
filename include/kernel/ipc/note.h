@@ -25,7 +25,7 @@ typedef struct cpu cpu_t;
  *
  * ## Receiving Notes
  *
- * TODO: Receiving notes, software interrupts, etc.
+ * @todo Receiving notes, software interrupts, etc.
  *
  * ## Special Notes
  *

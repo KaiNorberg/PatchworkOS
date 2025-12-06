@@ -18,7 +18,7 @@
 
 /**
  * @brief Virtual File System.
- * @defgroup kernel_fs Virtual File System
+ * @defgroup kernel_vfs Virtual File System
  * @ingroup kernel_fs
  *
  * @{
@@ -174,7 +174,7 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process);
 
 /**
  * @brief Generates a new unique ID, to be used for any VFS object.
- * 
+ *
  * @return A new unique ID.
  */
 uint64_t vfs_get_new_id(void);

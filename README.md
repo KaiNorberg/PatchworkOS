@@ -646,7 +646,7 @@ Currently untested on Intel hardware (broke student, no access to hardware). Let
 
 Contributions are welcome! Anything from bug reports/fixes, performance improvements, new features, or even just fixing typos or adding documentation.
 
-If you are unsure where to start, try searching for any "TODO" comments in the codebase.
+If you are unsure where to start, check the [Todo List](https://kainorberg.github.io/PatchworkOS/meta/docs/html/dd/da0/todo.html).
 
 Check out the [contribution guidelines](CONTRIBUTING.md) to get started.
 

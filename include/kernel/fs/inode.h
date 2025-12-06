@@ -11,9 +11,6 @@
 #include <sys/proc.h>
 #include <time.h>
 
-// TODO: Implement actually writing/syncing dirty inodes, for now inodes should use the notify functions but they will
-// never actually be "cleaned."
-
 typedef struct inode inode_t;
 typedef struct inode_ops inode_ops_t;
 typedef struct superblock superblock_t;
@@ -32,6 +29,8 @@ typedef struct dentry dentry_t;
  * So despite the name they are in no way "nodes" in some kind of tree structure, this confused me for a
  * long time when first learning about filesystems.
  *
+ * @todo Implement actually writing/syncing dirty inodes, for now inodes should use the notify functions but they will never actually be "cleaned."
+ * 
  * @{
  */
 

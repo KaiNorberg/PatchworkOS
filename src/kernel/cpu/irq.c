@@ -16,7 +16,7 @@
 
 static irq_t irqs[VECTOR_EXTERNAL_AMOUNT] = {0};
 
-// TODO: Optimize domain lookup?
+/// @todo Optimize domain lookup?
 static list_t domains = LIST_CREATE(domains);
 static rwlock_t domainsLock = RWLOCK_CREATE();
 

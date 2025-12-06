@@ -66,7 +66,7 @@ typedef enum
  * - Internal Library events (512-1023): Used internally by libpatchwork, should not be used by programs.
  * - User events (1024-65535): Defined by individual programs, cant be subscribed to or unsubscribed from.
  *
- * TODO: Global events are a security mess, when per-process namespaces stabilize we should consider if this could be
+ * @todo Global events are a security mess, when per-process namespaces stabilize we should consider if this could be
  * done better.
  */
 typedef uint16_t event_type_t;

@@ -248,6 +248,8 @@ uint64_t aml_data_object_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
  *
  * A DataRefObject structure is defined as `DataRefObject := DataObject | ObjectReference`.
  *
+ * @todo Implement ObjectReference handling... somehow. I honestly have no clue what the spec wants you to do here. But everything seems to work fine by only reading DataObjects for now.
+ * 
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer to the object to store the result.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.

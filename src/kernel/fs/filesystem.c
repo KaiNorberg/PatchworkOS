@@ -70,7 +70,7 @@ void filesystem_unregister(filesystem_t* fs)
 
     RWLOCK_WRITE_SCOPE(&filesystemsLock);
     map_remove(&filesystems, &fs->mapEntry);
-    
+
     while (!list_is_empty(&fs->superblocks))
     {
         list_pop_first(&fs->superblocks);
@@ -81,6 +81,6 @@ filesystem_t* filesystem_get(const char* name)
 {
     RWLOCK_READ_SCOPE(&filesystemsLock);
 
-    map_key_t key = filesystem_key(name);   
+    map_key_t key = filesystem_key(name);
     return CONTAINER_OF_SAFE(map_get(&filesystems, &key), filesystem_t, mapEntry);
 }

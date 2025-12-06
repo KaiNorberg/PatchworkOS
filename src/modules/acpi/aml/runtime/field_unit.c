@@ -483,8 +483,8 @@ static uint64_t aml_field_unit_access(aml_state_t* state, aml_field_unit_t* fiel
         }
     }
 
-    // TODO: "An Operation Region object implicitly supports Mutex synchronization. Updates to the object, or a Field
-    // data object for the region, will automatically synchronize on the Operation Region object;" - Section 19.6.100
+    /// @todo "An Operation Region object implicitly supports Mutex synchronization. Updates to the object, or a Field
+    /// data object for the region, will automatically synchronize on the Operation Region object;" - Section 19.6.100
 
     if (fieldUnit->fieldType == AML_FIELD_UNIT_BANK_FIELD)
     {

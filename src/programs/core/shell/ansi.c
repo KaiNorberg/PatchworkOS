@@ -129,7 +129,7 @@ uint64_t ansi_parse(ansi_t* ansi, char input, ansi_result_t* result)
             ansi->length = 0;
             return 0;
         }
-        // TODO: Function keys.
+        // @todo Function keys?
     }
 
     ansi->length = 0;

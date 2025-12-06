@@ -91,7 +91,7 @@ the symbols in each module eventually finding that module1
  * but later a module depending on it is loaded then it will also wait to be unloaded until all modules depending on it
  * are unloaded.
  *
- * TODO: Currently module symbols and device types are cached in memory after the first load, for now this is fine. But
+ * @todo Currently module symbols and device types are cached in memory after the first load, for now this is fine. But
 in the future this cache could become very large so we might need a Linux-style cache file on disk or atleast a way to
 invalidate the cache.
  *

@@ -1,13 +1,13 @@
 #include <kernel/fs/sysfs.h>
 
 #include <kernel/fs/dentry.h>
+#include <kernel/fs/file.h>
+#include <kernel/fs/filesystem.h>
+#include <kernel/fs/inode.h>
+#include <kernel/fs/mount.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
-#include <kernel/fs/inode.h>
-#include <kernel/fs/file.h>
-#include <kernel/fs/mount.h>
-#include <kernel/fs/filesystem.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -89,7 +89,8 @@ void sysfs_init(void)
         panic(NULL, "Failed to register sysfs");
     }
 
-    devMount = sysfs_mount_new(NULL, "dev", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS, NULL);
+    devMount =
+        sysfs_mount_new(NULL, "dev", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS, NULL);
     if (devMount == NULL)
     {
         panic(NULL, "Failed to create /dev filesystem");

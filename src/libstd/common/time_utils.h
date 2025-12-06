@@ -4,7 +4,8 @@
 #include <stdint.h>
 #include <time.h>
 
-// TODO: Time zone handling is NOT compliant with the c standard (for now). Daylight savings time.
+/// @todo Time zone handling is not compliant with the c standard (for now). Daylight savings time.
+
 typedef struct
 {
     int64_t secondsOffset;

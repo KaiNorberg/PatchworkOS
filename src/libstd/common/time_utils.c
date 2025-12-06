@@ -4,7 +4,7 @@ _time_zone_t timeZone;
 
 void _time_zone_init(void)
 {
-    // TODO: Load this from a file or something
+    /// @todo Load time zone from a configuration file.
     timeZone = (_time_zone_t){
         .secondsOffset = 3600 // Swedish time zone for now
     };
@@ -14,8 +14,6 @@ _time_zone_t* _time_zone(void)
 {
     return &timeZone;
 }
-
-// Il be honest i have no clue if this is correct *shrug*
 
 static const int32_t daysInMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 static const int32_t cumulativeDays[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};

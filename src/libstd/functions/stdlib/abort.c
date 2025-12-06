@@ -9,7 +9,6 @@ void abort(void)
 #ifdef _KERNEL_
     panic(NULL, "abort() called");
 #else
-    // TODO: Implement signals
     exit(EXIT_FAILURE);
 #endif
 }

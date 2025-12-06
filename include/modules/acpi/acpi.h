@@ -43,7 +43,7 @@
  * - [ ] Support all system states S1-S5.
  *
  * Included below is a list of deviations from the ACPI specification that we have made. Each deviation is marked with
- the source of the diversion:
+ the source of the deviation in parentheses:
  * - Copying an object to itself is a no-op. (Windows)
  * - Converting a zero-length String to a Buffer still copies the null-terminator. (ACPICA)
  *

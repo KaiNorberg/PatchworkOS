@@ -557,7 +557,6 @@ static void draw_grf_char(drawable_t* draw, const font_t* font, const point_t* p
     uint32_t offset = font->grf.glyphOffsets[chr];
     if (offset == GRF_NONE)
     {
-        // TODO: Implement some sort of error char, empty box?
         return;
     }
     grf_glyph_t* glyph = (grf_glyph_t*)(&font->grf.buffer[offset]);
@@ -611,7 +610,6 @@ void draw_string(drawable_t* draw, const font_t* font, const point_t* point, pix
         uint32_t offset = font->grf.glyphOffsets[(uint8_t)string[i]];
         if (offset == GRF_NONE)
         {
-            // TODO: Implement some sort of error char, empty box?
             continue;
         }
         grf_glyph_t* glyph = (grf_glyph_t*)(&font->grf.buffer[offset]);

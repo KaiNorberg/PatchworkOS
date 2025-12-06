@@ -92,7 +92,6 @@ void inode_notify_access(inode_t* inode)
     MUTEX_SCOPE(&inode->mutex);
 
     inode->accessTime = sys_time_unix_epoch();
-    // TODO: Sync to disk.
 }
 
 void inode_notify_modify(inode_t* inode)
@@ -105,7 +104,6 @@ void inode_notify_modify(inode_t* inode)
     MUTEX_SCOPE(&inode->mutex);
     inode->modifyTime = sys_time_unix_epoch();
     inode->changeTime = inode->modifyTime;
-    // TODO: Sync to disk.
 }
 
 void inode_notify_change(inode_t* inode)
@@ -117,7 +115,6 @@ void inode_notify_change(inode_t* inode)
 
     MUTEX_SCOPE(&inode->mutex);
     inode->changeTime = sys_time_unix_epoch();
-    // TODO: Sync to disk.
 }
 
 void inode_truncate(inode_t* inode)

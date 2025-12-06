@@ -3,8 +3,6 @@
 
 #include "_internal/config.h"
 
-// TODO: Implement signals
-
 /* Abnormal termination / abort() */
 #define SIGABRT 6
 /* Arithmetic exception / division by zero / overflow */

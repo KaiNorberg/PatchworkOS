@@ -7,7 +7,7 @@
 #include <sys/math.h>
 
 /**
- * @brief Bitmap.
+ * @brief A bitmap optimized using 64-bit words.
  * @defgroup libstd_sys_bitmap Bitmap
  * @ingroup libstd
  *

@@ -253,7 +253,7 @@ typedef struct aml_device
  * @brief Data placeholder for an event object.
  * @struct aml_event_t
  *
- * TODO: Implement event object functionality.
+ * @todo Implement event object functionality.
  */
 typedef struct aml_event
 {

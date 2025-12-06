@@ -405,7 +405,7 @@ static surface_t* dwm_surface_under_point(const point_t* point)
     return NULL;
 }
 
-// TODO: Cache this or something
+/// @todo Optimize this function to avoid iterating over all surfaces every time.
 static surface_t* dwm_next_timer(void)
 {
     clock_t deadline = CLOCKS_NEVER;

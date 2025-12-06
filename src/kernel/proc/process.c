@@ -474,8 +474,7 @@ void process_kill(process_t* process, uint64_t status)
     file_table_deinit(&process->fileTable);
     namespace_deinit(&process->ns);
     // The dir entries have refs to the process, but a parent process might want to read files in /proc/[pid] after the
-    // process has exited especially its wait file, so for now we defer dereferencing them until the reaper runs. This
-    // is really not ideal so TODO: implement a proper reaper.
+    // process has exited especially its wait file, so we defer dereferencing them until the reaper runs. 
     wait_unblock(&process->dyingWaitQueue, WAIT_ALL, EOK);
 
     LOCK_SCOPE(&zombiesLock);
@@ -515,7 +514,8 @@ process_t* process_get_kernel(void)
 
 void process_procfs_init(void)
 {
-    procMount = sysfs_mount_new(NULL, "proc", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS, NULL);
+    procMount =
+        sysfs_mount_new(NULL, "proc", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS, NULL);
     if (procMount == NULL)
     {
         panic(NULL, "Failed to mount /proc filesystem");

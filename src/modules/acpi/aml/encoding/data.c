@@ -528,8 +528,6 @@ uint64_t aml_data_object_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
 
 uint64_t aml_data_ref_object_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
 {
-    // TODO: Implement ObjectReference handling... somehow. I honestly have no clue what the spec wants you to do here.
-
     if (aml_data_object_read(ctx, out) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DataObject");

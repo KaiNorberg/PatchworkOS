@@ -19,7 +19,7 @@
 /**
  * @brief Filesystem interface.
  * @defgroup kernel_fs_filesystem Filesystem
- * 
+ *
  */
 
 /**
@@ -28,9 +28,9 @@
 typedef struct filesystem
 {
     map_entry_t mapEntry; ///< Used internally.
-    list_t superblocks; ///< Used internally.
-    rwlock_t lock; ///< Used internally.
-    const char* name; 
+    list_t superblocks;   ///< Used internally.
+    rwlock_t lock;        ///< Used internally.
+    const char* name;
     dentry_t* (*mount)(filesystem_t* fs, const char* devName, void* private);
 } filesystem_t;
 
