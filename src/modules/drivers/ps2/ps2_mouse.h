@@ -9,7 +9,7 @@
  * @defgroup module_drivers_ps2_mouse PS/2 Mouse Driver
  * @ingroup modules_drivers_ps2
  *
- * TODO: Implement scrolling and buttons 4 and 5.
+ * @todo Implement scrolling and buttons 4 and 5.
  *
  * @{
  */

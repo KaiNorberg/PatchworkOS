@@ -27,7 +27,8 @@ extern "C"
 
 #define TSS_DTOR_ITERATIONS 4
 
-// TODO: Implement this
+/// @todo Implement user space `cnd_t` and `tss_t`.
+
 typedef struct
 {
     char todo;
@@ -38,7 +39,6 @@ typedef struct
     tid_t id;
 } thrd_t;
 
-// TODO: Implement this
 typedef struct
 {
     char todo;

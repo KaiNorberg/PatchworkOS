@@ -1,8 +1,8 @@
 #pragma once
 
+#include <kernel/fs/path.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
-#include <kernel/fs/path.h>
 #include <sys/list.h>
 
 #include <stdatomic.h>
@@ -42,7 +42,7 @@ typedef struct mount
     dentry_t* mountpoint;     ///< The dentry that this filesystem is mounted on, can be `NULL` for the root filesystem.
     dentry_t* root;           ///< The root dentry of the mounted filesystem.
     mount_t* parent;          ///< The parent mount, can be `NULL` for the root filesystem.
-    mode_t mode;    ///< The maximum permissions for this mount.
+    mode_t mode;              ///< The maximum permissions for this mount.
 } mount_t;
 
 /**

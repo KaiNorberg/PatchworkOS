@@ -410,7 +410,7 @@ static void terminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t*
     {
         if (ansi->paramCount != 1)
         {
-            // TODO: Implement support for more advanced color stuff
+            /// @todo Implement support for more advanced color stuff
             return;
         }
 

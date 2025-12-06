@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-// TODO: Finish this implementation, missing NAN, INF 0x/0X handling.
+/// @todo Finish this implementation, missing NAN, INF 0x/0X handling.
 
 double atof(const char* nptr)
 {

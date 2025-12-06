@@ -8,7 +8,15 @@ extern "C"
 
 #include "_internal/config.h"
 
-// TODO: Add signal handling and 100 other things
+/**
+ * @brief Setjmp/Longjmp functions.
+ * @defgroup libstd_setjmp Setjmp/Longjmp
+ * @ingroup libstd
+ * 
+ * @todo Add signal handling and 100 other things later.
+ * 
+ * @{
+ */
 
 typedef long jmp_buf[10];
 
@@ -17,6 +25,8 @@ _PUBLIC void longjmp(jmp_buf env, int value);
 
 #define _setjmp(env) setjmp(env)
 #define _longjmp(env, value) longjmp(env, value)
+
+/** @} */
 
 #if defined(__cplusplus)
 }

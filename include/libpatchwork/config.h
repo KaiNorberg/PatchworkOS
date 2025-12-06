@@ -18,7 +18,7 @@ extern "C"
  * Patchwork uses a `/cfg` folder for all system configuration files. These files are simple INI style text files that
  * store key-value pairs in sections.
  *
- * TODO: The current system is rather simplistic and in the future it might, if i can be bothered, be worth implementing
+ * @todo The current system is rather simplistic and in the future it might, if i can be bothered, be worth implementing
  * a database like configuration system.
  *
  * @{

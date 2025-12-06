@@ -35,7 +35,8 @@ dentry_t* acpi_get_sysfs_root(void)
 {
     if (!mountInitialzed)
     {
-        mount = sysfs_mount_new(NULL, "acpi", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS, NULL);
+        mount = sysfs_mount_new(NULL, "acpi", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS,
+            NULL);
         if (mount == NULL)
         {
             panic(NULL, "failed to initialize ACPI sysfs group");

@@ -86,7 +86,8 @@ typedef struct poll_file
  *
  * @param inode The inode the file represents.
  * @param path The path of the file.
- * @param mode The mode with which the file was opened, if no permissions are specified the maximum allowed permissions from the mount are used.
+ * @param mode The mode with which the file was opened, if no permissions are specified the maximum allowed permissions
+ * from the mount are used.
  * @return On success, the new file. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `EACCES`: The requested mode exceeds the maximum allowed permissions.

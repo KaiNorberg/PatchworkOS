@@ -132,10 +132,10 @@ tid_t gettid(void);
  */
 typedef enum
 {
-    PROT_NONE = 0,        ///< Invalid memory, cannot be accessed.
-    PROT_READ = (1 << 0), ///< Readable memory.
-    PROT_WRITE = (1 << 1), ///< Writable memory.
-    PROT_EXECUTE = (1 << 2)  ///< Executable memory.
+    PROT_NONE = 0,          ///< Invalid memory, cannot be accessed.
+    PROT_READ = (1 << 0),   ///< Readable memory.
+    PROT_WRITE = (1 << 1),  ///< Writable memory.
+    PROT_EXECUTE = (1 << 2) ///< Executable memory.
 } prot_t;
 
 /**

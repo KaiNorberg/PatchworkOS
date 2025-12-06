@@ -15,7 +15,7 @@ typedef struct map map_t;
  * @defgroup kernel_utils_map Hash Map
  * @ingroup kernel_utils
  *
- * TODO: Dynamically sized keys without heap allocation?
+ * @todo Dynamically sized keys without heap allocation?
  *
  * @{
  */

@@ -106,21 +106,23 @@ typedef struct sched sched_t;
  * start with "eligibility", which is determined by the concept of "lag".
  *
  * The lag \f$l_i\f$ of a thread \f$i\f$ is defined as
- * 
+ *
  * \begin{equation*}
  * l_i = r_{i}^{should} - r_{i}^{actual}
  * \end{equation*}
- * 
- * where \f$r_{i}^{should}\f$ is the amount of real time thread \f$i\f$ should have received and \f$r_{i}^{actual}\f$ is the amount of real time thread \f$i\f$ has actually received.
- * 
- * If we assume that all real time is used by the threads in \f$A(t)\f$, which is always true, and that all real time is allocated among these threads, we can see that
- * 
+ *
+ * where \f$r_{i}^{should}\f$ is the amount of real time thread \f$i\f$ should have received and \f$r_{i}^{actual}\f$ is
+ * the amount of real time thread \f$i\f$ has actually received.
+ *
+ * If we assume that all real time is used by the threads in \f$A(t)\f$, which is always true, and that all real time is
+ * allocated among these threads, we can see that
+ *
  * \begin{equation*}
  * \sum_{i \in A(t)} \left(r_{i}^{should} - r_{i}^{actual}\right) = 0
  * \end{equation*}
- * 
+ *
  * or in other words, the sum of all lag values across all active threads is always zero.
- * 
+ *
  * As an example, let's say we have three threads A, B and C with equal weights. To start with each thread is supposed
  * to have run for 0ms, and has actually run for 0ms, so their lag values are:
  *
@@ -148,7 +150,8 @@ typedef struct sched sched_t;
  * received 30ms of real time, it has run for 20ms more than it should have. Meanwhile, threads B and C have not
  * received any real time at all, so they are "owed" 10ms each.
  *
- * Additionally notice that \f$0 + 0 + 0 = 0\f$ and \f$-20 + 10 + 10 = 0\f$, i.e. the sum of all lag values is still zero.
+ * Additionally notice that \f$0 + 0 + 0 = 0\f$ and \f$-20 + 10 + 10 = 0\f$, i.e. the sum of all lag values is still
+ * zero.
  *
  * Finally, this lets us determine the eligibility of a thread. A thread is considered eligible if, and only if, its lag
  * is greater than or equal to zero. In the above example threads B and C are eligible to run, while thread A is not.

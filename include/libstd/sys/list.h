@@ -13,13 +13,9 @@
  * @ingroup libstd
  * @defgroup libstd_sys_list Doubly linked list
  *
- * The `sys/list.h` header implements a doubly linked list inspired by the linked list implementation used in the Linux
- * kernel, where the linked list entry structure is stored within each entry instead of each entry having a pointer to
- * each stucture, the structure itself can then be accessed by using `CONTAINER_OF`.
- *
- * It might seem a bit unusual to include something as significant as a doubly linked list in the C standard library,
- * but it is something used to often that having to implemented it for every single program in the OS is massively
- * redundant.
+ * The `sys/list.h` header implements a intrusive doubly linked list where the linked list entry structure is stored within each entry instead of each entry having a pointer to each stucture.
+ * 
+ * Given a entry within a structure, the `CONTAINER_OF()` macro can be used to get a pointer to the structure from the list entry pointer.
  *
  * @{
  */

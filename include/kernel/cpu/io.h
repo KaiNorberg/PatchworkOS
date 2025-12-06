@@ -38,7 +38,7 @@ typedef uint16_t port_t;
  * values for the starting port of the range to reserve. For example, the minimum range would be `[minBase, minBase +
  * length)` and the maximum range would be `[maxBase, maxBase + length)`.
  *
- * TODO: Find a way to store the owner of each reservation that does not use way to much memory, and isent super slow.
+ * @todo Find a way to store the owner of each reservation that does not use way to much memory, and isent super slow.
  *
  * @param out Output pointer for the first reserved port.
  * @param minBase The minimum base I/O port address.

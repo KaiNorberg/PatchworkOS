@@ -21,7 +21,7 @@ size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTR
     {
         for (uint64_t i = 0; i < size; i++)
         {
-            // TODO: For better performance, write block-wise, not byte-wise.
+            /// @todo For better performance, write block-wise, not byte-wise.
             uint8_t byte = ((uint8_t*)ptr)[n * size + i];
             stream->buf[stream->bufIndex++] = byte;
 

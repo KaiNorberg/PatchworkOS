@@ -1,6 +1,6 @@
 #include "kbd.h"
 
-// TODO: Create a system for keymap files
+/// @todo Use the configuration system for keymaps
 
 typedef struct
 {

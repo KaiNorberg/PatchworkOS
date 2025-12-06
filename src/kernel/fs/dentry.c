@@ -329,8 +329,7 @@ static void getdents_recursive_traversal(getdents_ctx_t* ctx, dentry_t* dentry)
     }
 }
 
-uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset,
-    mode_t mode)
+uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset, mode_t mode)
 {
     getdents_ctx_t ctx = {
         .index = 0,

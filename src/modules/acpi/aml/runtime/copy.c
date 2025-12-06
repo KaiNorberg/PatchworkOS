@@ -104,8 +104,6 @@ uint64_t aml_copy_object(aml_state_t* state, aml_object_t* src, aml_object_t* de
         return ERR;
     }
 
-    // TODO: Windows seems to allow this so we do the same but I need to do more reading on the whole Windows acpi
-    // weirdness thing.
     if (src == dest)
     {
         return 0;

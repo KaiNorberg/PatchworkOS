@@ -159,7 +159,7 @@ uint64_t _file_flush_buffer(FILE* stream)
 {
     if (!(stream->flags & _FILE_BIN))
     {
-        // TODO: Text stream conversion here
+        /// @todo Text stream conversion here
     }
 
     uint64_t count = write(stream->fd, stream->buf, stream->bufIndex);

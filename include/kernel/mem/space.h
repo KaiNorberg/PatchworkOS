@@ -300,7 +300,7 @@ void space_free_callback(space_t* space, pml_callback_id_t callbackId);
  * Will not affect the current CPU's TLB, that is handled by the `page_table_t` directly when modifying page table
  * entries.
  *
- * TODO: Currently this does a busy wait for acknowledgements. Use a wait queue?
+ * @todo Currently this does a busy wait for acknowledgements. Use a wait queue?
  *
  * @param space The target address space.
  * @param virtAddr The starting virtual address of the region.

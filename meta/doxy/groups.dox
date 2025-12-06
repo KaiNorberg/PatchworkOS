@@ -20,12 +20,6 @@
  */
 
 /**
- * @brief Filesystems and Virtual File System.
- * @defgroup kernel_fs Filesystems
- * @ingroup kernel
- */
-
-/**
  * @brief Inter-process communication.
  * @defgroup kernel_ipc IPC
  * @ingroup kernel
@@ -49,13 +43,6 @@
  * @brief Kernel utilities.
  * @defgroup kernel_utils Utilities
  * @ingroup kernel
- */
-
-/**
- * @brief Standard C library extension.
- * @defgroup libstd Stdlib
- *
- * C standard library using non-POSIX extensions.
  */
 
 /**

@@ -134,8 +134,9 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
 /**
  * @brief Get a dentry for the given name. Will NOT traverse mountpoints.
  *
- * Will only check the dentry cache and return a dentry if it exists there, will not call the filesystem's lookup function.
- * 
+ * Will only check the dentry cache and return a dentry if it exists there, will not call the filesystem's lookup
+ * function.
+ *
  * @param parent The parent path.
  * @param name The name of the dentry.
  * @return On success, the dentry, might be negative. On failure, returns `NULL` and `errno` is set.
@@ -146,7 +147,7 @@ dentry_t* dentry_get(const dentry_t* parent, const char* name);
  * @brief Lookup a dentry for the given name. Will NOT traverse mountpoints.
  *
  * If the dentry is not found in the dentry cache, the filesystem's lookup function will be called to try to find it.
- * 
+ *
  * @param parent The parent path.
  * @param name The name of the dentry.
  * @return On success, the dentry, might be negative. On failure, returns `NULL` and `errno` is set.
@@ -195,7 +196,6 @@ void dentry_dec_mount_count(dentry_t* dentry);
  *
  * Used by setting the dentry ops getdents to this function.
  */
-uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset,
-    mode_t mode);
+uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset, mode_t mode);
 
 /** @} */

@@ -2,10 +2,10 @@
 
 #include <kernel/cpu/syscall.h>
 #include <kernel/fs/dentry.h>
+#include <kernel/fs/filesystem.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
-#include <kernel/fs/filesystem.h>
 #include <kernel/log/log.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/thread.h>
@@ -265,7 +265,7 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
         return NULL;
     }
 
-    // superblock_expose(superblock); // TODO: Expose the sysfsDir for the superblock
+    // superblock_expose(superblock); /// @todo Expose superblocks in sysfs?
 
     LOG_DEBUG("mounted %s with %s\n", deviceName, fsName);
     return mount;

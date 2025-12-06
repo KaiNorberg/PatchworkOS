@@ -29,7 +29,8 @@ aml_object_t* aml_osi_implementation(aml_method_t* method, aml_object_t** args, 
         return NULL;
     }
 
-    // TODO: Implement this properly.
+    /// @todo Implement _OSI strings properly. For now, we just return true for everything.
+
     if (aml_integer_set(result, UINT64_MAX) == ERR)
     {
         DEREF(result);
@@ -177,7 +178,7 @@ uint64_t aml_predefined_init(void)
         return ERR;
     }
 
-    // TODO: Implement _GL properly.
+    /// @todo Implement _GL properly.
     aml_object_t* gl = aml_object_new();
     if (gl == NULL)
     {

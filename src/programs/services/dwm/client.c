@@ -195,7 +195,7 @@ static uint64_t client_action_surface_move(client_t* client, const cmd_header_t*
     rect_t oldScreenRect = SURFACE_SCREEN_RECT(surface);
     if (surface->width != width || surface->height != height)
     {
-        // TODO: Reimplement resizing
+        // @todo Implement resizing surfaces
         errno = ENOSYS;
         return ERR;
     }

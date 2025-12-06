@@ -111,7 +111,7 @@ static void exception_handler(interrupt_frame_t* frame)
         panic(frame, "kernel double fault");
         break;
     case VECTOR_NMI:
-        return; // TODO: Handle NMIs properly.
+        return; /// @todo Handle NMIs properly.
     case VECTOR_PAGE_FAULT:
         if (page_fault_handler(frame) != ERR)
         {

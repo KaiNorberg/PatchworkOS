@@ -44,7 +44,7 @@ typedef enum window_flags
 {
     WINDOW_NONE = 0,
     WINDOW_DECO = 1 << 0,       ///< Enable decorations (titlebar, close/minimize buttons, etc).
-    WINDOW_RESIZABLE = 1 << 1,  ///< Allows `window_move()` to resize the window. TODO: Implement resize handles.
+    WINDOW_RESIZABLE = 1 << 1,  ///< Allows `window_move()` to resize the window. @todo Implement resize handles.
     WINDOW_NO_CONTROLS = 1 << 2 ///< Disable controls (close/minimize buttons), only applies if `WINDOW_DECO` is set.
 } window_flags_t;
 

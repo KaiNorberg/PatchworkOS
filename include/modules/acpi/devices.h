@@ -46,7 +46,7 @@
  * the ACPI HID "PNP0000". This only applies to the module loading and device configuration but not to device
  * enumeration.
  *
- * TODO: Implement hotplugging support.
+ * @todo Implement hotplugging support.
  *
  * @see [PNP ACPI Registry](https://uefi.org/PNP_ACPI_Registry) for a list of known ACPI HIDs.
  * @see Section 6.1.2 and 6.1.5 of the ACPI specification for more details on HIDs and CIDs.
@@ -106,7 +106,7 @@ typedef struct acpi_device_io
  *
  * Stores the resources assigned to an ACPI device, like IRQs and IO ports.
  *
- * TODO: Add more config stuff like memory ranges, DMA etc.
+ * @todo Add more config stuff like memory ranges, DMA etc.
  */
 typedef struct acpi_device_cfg
 {

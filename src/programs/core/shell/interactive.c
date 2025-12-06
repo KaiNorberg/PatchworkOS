@@ -103,7 +103,7 @@ static uint64_t interactive_handle_ansi(interactive_state_t* state, ansi_result_
         interactive_prompt();
         break;
     case ANSI_TAB:
-        // TODO: Ignore tabs for now
+        /// @todo Implement tab completion
         break;
     case ANSI_ARROW_UP:
     {

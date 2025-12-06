@@ -24,7 +24,7 @@ typedef struct rbnode rbnode_t;
  * and the red-black properties ensure that the tree remains balanced, preventing it from degenerating into a linear
  * structure. However, the user of the tree does not need to be concerned with these implementation details.
  *
- * TODO: Cache minimum and maximum nodes for `O(1)` access.
+ * @todo Cache minimum and maximum nodes for `O(1)` access.
  *
  * ## Update Callbacks
  *
@@ -218,7 +218,7 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node);
  *
  * Should be called whenever the metric used for comparison changes.
  *
- * TODO: Currently just calls `rbtree_remove()` followed by `rbtree_insert()`, could be optimized?
+ * @todo Currently just calls `rbtree_remove()` followed by `rbtree_insert()`, could be optimized?
  *
  * @param tree The tree containing the node to update.
  * @param node The node to update.

@@ -12,7 +12,7 @@ static inline void rbtree_update(rbtree_t* tree, rbnode_t* node)
     tree->update(node);
 }
 
-// TODO: This could be optimized to avoid updating nodes multiple times for overlapping paths.
+/// @todo This could be optimized to avoid updating nodes multiple times for overlapping paths.
 static inline void rbtree_update_to_root(rbtree_t* tree, rbnode_t* node)
 {
     if (tree == NULL || node == NULL || tree->update == NULL)

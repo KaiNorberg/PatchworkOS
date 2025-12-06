@@ -62,7 +62,7 @@ void aml_patch_up_remove_unresolved(aml_unresolved_t* unresolved);
 /**
  * @brief Attempts to resolve all unresolved references.
  *
- * TODO: I am still not sure when would be the best time to call this function, for now its called after the DSDT and
+ * @todo I am still not sure when would be the best time to call this function, for now its called after the DSDT and
  * all SSDTs have been loaded, i am quite sure that we will end up getting issues with unresolved references due to
  * this, but instead of trying to solve that now, we will just fix it as issues arise.
  *

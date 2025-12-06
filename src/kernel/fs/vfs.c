@@ -774,7 +774,7 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
     uint64_t result = dir->ops->remove(dir, target.dentry, pathname->mode);
     if (result != ERR)
     {
-        inode_notify_change(target.dentry->inode);  
+        inode_notify_change(target.dentry->inode);
         dentry_make_negative(target.dentry);
     }
     mutex_release(&dir->mutex);
