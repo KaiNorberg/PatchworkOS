@@ -252,8 +252,6 @@ void sched_yield(void)
     cpu_t* self = cpu_get();
     thread_t* thread = self->sched.runThread;
 
-    // TODO:
-
     cpu_put();
     ipi_invoke();
 }

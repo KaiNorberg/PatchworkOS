@@ -489,6 +489,8 @@ _NORETURN void sched_thread_exit(void);
 
 /**
  * @brief Yield the current thread's time slice to allow other threads to run.
+ * 
+ * @todo Currently not implemented as we cant really yield as that would break fairness. Maybe we could pretend to leave and re-enter?
  */
 void sched_yield(void);
 
