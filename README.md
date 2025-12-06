@@ -25,7 +25,7 @@
 </div>
 <br>
 
-![desktop screenshot](meta/screenshots/desktop.png)
+<img src="meta/screenshots/desktop.png" alt="Desktop Screenshot" />
 
 **PatchworkOS** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended to be an educational and experimental operating system.
 
