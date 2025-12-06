@@ -10,6 +10,62 @@
 
 #include <stdlib.h>
 
+static map_t dentryCache = MAP_CREATE();
+static rwlock_t dentryCacheLock = RWLOCK_CREATE();
+
+static map_key_t dentry_cache_key(dentry_id_t parentId, const char* name)
+{
+    struct
+    {
+        dentry_id_t parentId;
+        char name[MAX_NAME];
+    } buffer;
+    buffer.parentId = parentId;
+    memset(buffer.name, 0, sizeof(buffer.name));
+    strncpy_s(buffer.name, sizeof(buffer.name), name, MAX_NAME - 1);
+
+    return map_key_buffer(&buffer, sizeof(buffer));
+}
+
+static uint64_t dentry_cache_add(dentry_t* dentry)
+{
+    map_key_t key = dentry_cache_key(dentry->parent->id, dentry->name);
+
+    RWLOCK_WRITE_SCOPE(&dentryCacheLock);
+    if (map_insert(&dentryCache, &key, &dentry->mapEntry) == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
+static void dentry_cache_remove(dentry_t* dentry)
+{
+    RWLOCK_WRITE_SCOPE(&dentryCacheLock);
+    map_remove(&dentryCache, &dentry->mapEntry);
+}
+
+static dentry_t* dentry_cache_get(map_key_t* key)
+{
+    RWLOCK_READ_SCOPE(&dentryCacheLock);
+
+    dentry_t* dentry = CONTAINER_OF_SAFE(map_get(&dentryCache, key), dentry_t, mapEntry);
+    if (dentry == NULL)
+    {
+        errno = ENOENT;
+        return NULL;
+    }
+
+    if (atomic_load(&dentry->ref.count) == 0) // Is currently being removed
+    {
+        errno = ENOENT;
+        return NULL;
+    }
+
+    return REF(dentry);
+}
+
 static void dentry_free(dentry_t* dentry)
 {
     if (dentry == NULL)
@@ -19,7 +75,7 @@ static void dentry_free(dentry_t* dentry)
 
     assert(dentry->parent != NULL);
 
-    vfs_remove_dentry(dentry);
+    dentry_cache_remove(dentry);
 
     if (dentry->ops != NULL && dentry->ops->cleanup != NULL)
     {
@@ -89,7 +145,7 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     atomic_init(&dentry->flags, DENTRY_NEGATIVE);
     atomic_init(&dentry->mountCount, 0);
 
-    if (vfs_add_dentry(dentry) == ERR)
+    if (dentry_cache_add(dentry) == ERR)
     {
         DEREF(dentry);
         return NULL;
@@ -98,17 +154,76 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     return dentry;
 }
 
-uint64_t dentry_make_positive(dentry_t* dentry, inode_t* inode)
+dentry_t* dentry_get(const dentry_t* parent, const char* name)
+{
+    if (parent == NULL || name == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    map_key_t key = dentry_cache_key(parent->id, name);
+    return dentry_cache_get(&key);
+}
+
+dentry_t* dentry_lookup(const path_t* parent, const char* name)
+{
+    if (parent == NULL || parent->dentry == NULL || parent->mount == NULL || name == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    map_key_t key = dentry_cache_key(parent->dentry->id, name);
+    dentry_t* dentry = dentry_cache_get(&key);
+    if (dentry != NULL)
+    {
+        return dentry;
+    }
+
+    if (parent->dentry->inode == NULL || parent->dentry->inode->ops == NULL ||
+        parent->dentry->inode->ops->lookup == NULL)
+    {
+        errno = ENOENT;
+        return NULL;
+    }
+
+    dentry = dentry_new(parent->dentry->superblock, parent->dentry, name);
+    if (dentry == NULL)
+    {
+        // This logic is a bit complex, but im pretty confident its correct.
+        if (errno == EEXIST) // Dentry was created after we called dentry_cache_get but before dentry_new
+        {
+            // If this fails then the dentry was deleted in between dentry_new and here, which should be fine?
+            return dentry_cache_get(&key);
+        }
+        return NULL;
+    }
+    DEREF_DEFER(dentry);
+
+    inode_t* dir = parent->dentry->inode;
+    MUTEX_SCOPE(&dir->mutex);
+
+    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
+
+    if (dir->ops->lookup(dir, dentry) == ERR)
+    {
+        dentry_cache_remove(dentry);
+        return NULL;
+    }
+
+    return REF(dentry);
+}
+
+void dentry_make_positive(dentry_t* dentry, inode_t* inode)
 {
     if (dentry == NULL || inode == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return;
     }
 
     MUTEX_SCOPE(&dentry->childrenMutex);
 
-    // Sanity checks.
     assert(atomic_load(&dentry->flags) & DENTRY_NEGATIVE);
     assert(dentry->inode == NULL);
 
@@ -121,8 +236,30 @@ uint64_t dentry_make_positive(dentry_t* dentry, inode_t* inode)
     }
 
     atomic_fetch_and(&dentry->flags, ~DENTRY_NEGATIVE);
+}
 
-    return 0;
+void dentry_make_negative(dentry_t* dentry)
+{
+    if (dentry == NULL)
+    {
+        return;
+    }
+
+    MUTEX_SCOPE(&dentry->childrenMutex);
+
+    assert(!(atomic_load(&dentry->flags) & DENTRY_NEGATIVE));
+    assert(dentry->inode != NULL);
+
+    atomic_fetch_or(&dentry->flags, DENTRY_NEGATIVE);
+
+    DEREF(dentry->inode);
+    dentry->inode = NULL;
+
+    if (!DENTRY_IS_ROOT(dentry))
+    {
+        MUTEX_SCOPE(&dentry->parent->childrenMutex);
+        list_remove(&dentry->parent->children, &dentry->siblingEntry);
+    }
 }
 
 void dentry_inc_mount_count(dentry_t* dentry)

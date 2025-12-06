@@ -132,14 +132,45 @@ typedef struct dentry
 dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name);
 
 /**
+ * @brief Get a dentry for the given name. Will NOT traverse mountpoints.
+ *
+ * Will only check the dentry cache and return a dentry if it exists there, will not call the filesystem's lookup function.
+ * 
+ * @param parent The parent path.
+ * @param name The name of the dentry.
+ * @return On success, the dentry, might be negative. On failure, returns `NULL` and `errno` is set.
+ */
+dentry_t* dentry_get(const dentry_t* parent, const char* name);
+
+/**
+ * @brief Lookup a dentry for the given name. Will NOT traverse mountpoints.
+ *
+ * If the dentry is not found in the dentry cache, the filesystem's lookup function will be called to try to find it.
+ * 
+ * @param parent The parent path.
+ * @param name The name of the dentry.
+ * @return On success, the dentry, might be negative. On failure, returns `NULL` and `errno` is set.
+ */
+dentry_t* dentry_lookup(const path_t* parent, const char* name);
+
+/**
  * @brief Make a dentry positive by associating it with an inode.
  *
  * This will also add the dentry to its parent's list of children, set the dentrys inode and its flags to positive.
  *
- * @param dentry The dentry to make positive.
- * @param inode The inode to associate with the dentry.
+ * @param dentry The dentry to make positive, or `NULL` for no-op.
+ * @param inode The inode to associate with the dentry, or `NULL` for no-op.
  */
-uint64_t dentry_make_positive(dentry_t* dentry, inode_t* inode);
+void dentry_make_positive(dentry_t* dentry, inode_t* inode);
+
+/**
+ * @brief Make a dentry negative by disassociating it from its inode.
+ *
+ * This will also remove the dentry from its parent's list of children.
+ *
+ * @param dentry The dentry to make negative, or `NULL` for no-op.
+ */
+void dentry_make_negative(dentry_t* dentry);
 
 /**
  * @brief Increments the mount count of a dentry.

@@ -1,5 +1,6 @@
 #include <kernel/fs/superblock.h>
 
+#include <kernel/fs/filesystem.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/mem/pmm.h>
 
@@ -14,7 +15,9 @@ static void superblock_free(superblock_t* superblock)
 
     assert(atomic_load(&superblock->mountCount) == 0);
 
-    vfs_remove_superblock(superblock);
+    rwlock_write_acquire(&superblock->fs->lock);
+    list_remove(&superblock->fs->superblocks, &superblock->entry);
+    rwlock_write_release(&superblock->fs->lock);
 
     if (superblock->ops != NULL && superblock->ops->cleanup != NULL)
     {

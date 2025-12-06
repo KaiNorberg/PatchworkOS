@@ -86,8 +86,8 @@ typedef enum mode
  */
 typedef enum
 {
-    WALK_NONE = 0,                ///< No flags.
-    WALK_NEGATIVE_IS_OK = 1 << 0, ///< If a negative dentry is ok, if not specified then it is considered an error.
+    WALK_NEGATIVE_IS_ERR = 0,     ///< A negative dentry is considered an error.
+    WALK_NEGATIVE_IS_OK = 1 << 0, ///< A negative dentry is ok.
 } walk_flags_t;
 
 /**

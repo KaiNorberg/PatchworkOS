@@ -16,8 +16,6 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-typedef struct filesystem filesystem_t;
-
 /**
  * @brief Virtual File System.
  * @defgroup kernel_fs Virtual File System
@@ -37,145 +35,6 @@ typedef struct filesystem filesystem_t;
 #define VFS_DEVICE_NAME_NONE "__no_device__"
 
 /**
- * @brief Filesystem structure, represents a filesystem type, e.g. fat32, ramfs, sysfs, etc.
- */
-typedef struct filesystem
-{
-    map_entry_t mapEntry; ///< Used internally.
-    list_t superblocks; ///< Used internally.
-    rwlock_t lock; ///< Used internally.
-    const char* name; 
-    dentry_t* (*mount)(filesystem_t* fs, const char* devName, void* private);
-} filesystem_t;
-
-/**
- * @brief Helper structure for maps with a lock.
- */
-typedef struct
-{
-    map_t map;
-    rwlock_t lock;
-} vfs_map_t;
-
-/**
- * @brief Generates a new unique ID, to be used for any VFS object.
- * 
- * @return A new unique ID.
- */
-uint64_t vfs_get_new_id(void);
-
-/**
- * @brief Registers a filesystem.
- *
- * @param fs The filesystem to register.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t vfs_register_fs(filesystem_t* fs);
-
-/**
- * @brief Unregisters a filesystem.
- *
- * @param fs The filesystem to unregister.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t vfs_unregister_fs(filesystem_t* fs);
-
-/**
- * @brief Gets a filesystem by name.
- *
- * @param name The name of the filesystem.
- * @return On success, the filesystem. On failure, returns `NULL`, does not set `errno`.
- */
-filesystem_t* vfs_get_fs(const char* name);
-
-/**
- * @brief Get an inode for the given superblock and inode number.
- *
- * Note that there is a period of time where a inodes reference count has dropped to zero but its free function has not
- * had the time to remove it from the cache yet. In this case, this function will return `NULL` and set `errno` to
- * `ESTALE`.
- *
- * @param superblock The superblock.
- * @param number The inode number.
- * @return On success, the inode. On failure, returns `NULL` and `errno` is set.
- */
-inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number);
-
-/**
- * @brief Get a dentry for the given name. Will NOT traverse mountpoints.
- *
- * Note that there is a period of time where a dentrys reference count has dropped to zero but its free function has not
- * had the time to remove it from the cache yet. In this case, this function will return `NULL` and set `errno` to
- * `ESTALE`.
- *
- * @param parent The parent path.
- * @param name The name of the dentry.
- * @return On success, the dentry, might be negative. On failure, returns `NULL` and `errno` is set.
- */
-dentry_t* vfs_get_dentry(const dentry_t* parent, const char* name);
-
-/**
- * @brief Get or lookup a dentry for the given name. Will NOT traverse mountpoints.
- *
- * @param parent The parent path.
- * @param name The name of the dentry.
- * @return On success, the dentry, might be negative. On failure, returns `NULL` and `errno` is set.
- */
-dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name);
-
-/**
- * @brief Add a inode to the inode cache.
- *
- * Should not be used manually, as it will be called in `inode_new()`.
- *
- * @param inode The inode to add.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t vfs_add_inode(inode_t* inode);
-
-/**
- * @brief Add a dentry to the dentry cache.
- *
- * Should not be used manually, instead use `dentry_make_positive()`.
- *
- * @param dentry The dentry to add.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t vfs_add_dentry(dentry_t* dentry);
-
-/**
- * @brief Remove a superblock from the superblock list.
- *
- * @param superblock The superblock to remove.
- */
-void vfs_remove_superblock(superblock_t* superblock);
-
-/**
- * @brief Remove an inode from the inode cache.
- *
- * @param inode The inode to remove.
- */
-void vfs_remove_inode(inode_t* inode);
-
-/**
- * @brief Remove a dentry from the dentry cache.
- *
- * @param dentry The dentry to remove.
- */
-void vfs_remove_dentry(dentry_t* dentry);
-
-/**
- * @brief Check if a name is valid.
- *
- * A valid name is not "." or "..", only contains chars considered valid by `PATH_VALID_CHAR`, and is not longer than
- * `MAX_NAME - 1`.
- *
- * @param name The name to check.
- * @return `true` if the name is valid, `false` otherwise.
- */
-bool vfs_is_name_valid(const char* name);
-
-/**
  * @brief Open a file.
  *
  * @param pathname The pathname of the file to open.
@@ -187,7 +46,7 @@ file_t* vfs_open(const pathname_t* pathname, process_t* process);
 /**
  * @brief Open one file, returning two file handles.
  *
- * Used to for example implement pipes.
+ * Used primarily to implement pipes.
  *
  * @param pathname The pathname of the file to open.
  * @param files The output array of two file pointers.
@@ -312,6 +171,13 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t vfs_remove(const pathname_t* pathname, process_t* process);
+
+/**
+ * @brief Generates a new unique ID, to be used for any VFS object.
+ * 
+ * @return A new unique ID.
+ */
+uint64_t vfs_get_new_id(void);
 
 /**
  * @brief Helper macros for implementing file operations dealing with simple buffers.
