@@ -59,7 +59,7 @@ typedef struct window
 
 typedef struct display
 {
-    char id[MAX_NAME];
+    char* id;
     fd_t ctl;
     fd_t data;
     fd_t eventsPipe;

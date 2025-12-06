@@ -31,7 +31,7 @@ int thrd_create(thrd_t* thr, thrd_start_t func, void* arg)
 {
     if (klog == ERR)
     {
-        klog = openf("/dev/klog");
+        klog = open("/dev/klog");
         if (klog == ERR)
         {
             return thrd_error;

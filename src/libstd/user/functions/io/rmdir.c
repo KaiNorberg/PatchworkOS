@@ -1,8 +1,9 @@
 #include <sys/io.h>
-
-#include "user/common/syscalls.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 uint64_t rmdir(const char* path)
 {
-    return removef("%s:directory", path);
+    return remove(F("%s:directory", path));
 }

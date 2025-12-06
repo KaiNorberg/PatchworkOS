@@ -17,7 +17,7 @@
 #include <sys/proc.h>
 #include <threads.h>
 
-static char id[MAX_NAME];
+static char* id;
 static fd_t data;
 
 static fd_t kbd;
@@ -39,7 +39,7 @@ static poll_ctx_t* pollCtx;
 
 static client_t* dwm_client_accept(void)
 {
-    fd_t fd = openf("/net/local/%s/accept:nonblock", id);
+    fd_t fd = open(F("/net/local/%s/accept:nonblock", id));
     if (fd == ERR)
     {
         printf("dwm: failed to open accept file (%s)\n", strerror(errno));
@@ -90,10 +90,11 @@ void dwm_init(void)
         abort();
     }
 
-    char name[MAX_PATH] = {0};
-    if (readfile("/dev/kbd/0/name", name, MAX_PATH - 1, 0) != ERR)
+    char* name = sreadfile("/dev/kbd/0/name");
+    if (name != NULL)
     {
         printf("dwm: using keyboard '%s'\n", name);
+        free(name);
     }
 
     mouse = open("/dev/mouse/0/events");
@@ -103,37 +104,27 @@ void dwm_init(void)
         abort();
     }
 
-    memset(name, 0, MAX_PATH);
-    if (readfile("/dev/mouse/0/name", name, MAX_PATH - 1, 0) != ERR)
+    name = sreadfile("/dev/mouse/0/name");
+    if (name != NULL)
     {
         printf("dwm: using mouse '%s'\n", name);
+        free(name);
     }
 
-    if (readfile("/net/local/seqpacket:nonblock", id, MAX_NAME - 1, 0) == ERR)
+    id = sreadfile("/net/local/seqpacket:nonblock");
+    if (id == NULL)
     {
-        printf("dwm: failed to create socket (%s)\n", strerror(errno));
+        printf("dwm: failed to read seqpacket id (%s)\n", strerror(errno));
         abort();
     }
 
-    fd_t ctl = openf("/net/local/%s/ctl", id);
-    if (ctl == ERR)
-    {
-        printf("dwm: failed to open control file (%s)\n", strerror(errno));
-        abort();
-    }
-    if (writef(ctl, "bind dwm") == ERR)
+    if (swritefile(F("/net/local/%s/ctl", id), "bind dwm && listen") == ERR)
     {
         printf("dwm: failed to bind socket (%s)\n", strerror(errno));
         abort();
     }
-    if (writef(ctl, "listen") == ERR)
-    {
-        printf("dwm: failed to listen (%s)\n", strerror(errno));
-        abort();
-    }
-    close(ctl);
 
-    data = openf("/net/local/%s/data", id);
+    data = open(F("/net/local/%s/data", id));
     if (data == ERR)
     {
         printf("dwm: failed to open data file (%s)\n", strerror(errno));

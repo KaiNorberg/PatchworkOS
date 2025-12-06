@@ -6,6 +6,39 @@
 #include <errno.h>
 #include <sys/argsplit.h>
 
+uint64_t ctl_dispatch_one(ctl_array_t ctls, file_t* file, uint64_t argc, const char** argv)
+{
+    if (ctls == NULL || file == NULL || argv == NULL || argc == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    ctl_t* ctl = &ctls[0];
+    while (ctl->name != NULL)
+    {
+        if (strcmp(ctl->name, argv[0]) == 0)
+        {
+            if (argc < ctl->argcMin || argc > ctl->argcMax)
+            {
+                errno = EUNKNOWNCTL;
+                return ERR;
+            }
+
+            if (ctl->func(file, argc, argv) == ERR)
+            {
+                return ERR;
+            }
+            return 0;
+        }
+
+        ctl++;
+    }
+
+    errno = ENOENT;
+    return ERR;
+}
+
 uint64_t ctl_dispatch(ctl_array_t ctls, file_t* file, const void* buffer, uint64_t count)
 {
     if (ctls == NULL || file == NULL || buffer == NULL || count == 0)
@@ -34,27 +67,25 @@ uint64_t ctl_dispatch(ctl_array_t ctls, file_t* file, const void* buffer, uint64
         return ERR;
     }
 
-    ctl_t* ctl = &ctls[0];
-    while (ctl->name != NULL)
+    for (uint64_t i = 0; i < argc; i++)
     {
-        if (strcmp(ctl->name, argv[0]) == 0)
+        if (strcmp(argv[i], "&&") == 0)
         {
-            if (argc < ctl->argcMin || argc > ctl->argcMax)
+            uint64_t res = ctl_dispatch_one(ctls, file, i, argv);
+            if (res == ERR)
             {
-                errno = EUNKNOWNCTL;
                 return ERR;
             }
 
-            if (ctl->func(file, argc, argv) == ERR)
-            {
-                return ERR;
-            }
-            return count;
+            argc -= (i + 1);
+            argv += (i + 1);
+            i = -1;
         }
-
-        ctl++;
     }
 
-    errno = ENOENT;
-    return ERR;
+    if (ctl_dispatch_one(ctls, file, argc, argv) == ERR)
+    {
+        return ERR;
+    }
+    return count;
 }

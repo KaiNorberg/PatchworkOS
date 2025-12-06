@@ -18,7 +18,7 @@ int system(const char* command)
         return -1;
     }
 
-    fd_t wait = openf("/proc/%d/wait", shell);
+    fd_t wait = open(F("/proc/%d/wait", shell));
     if (wait == ERR)
     {
         return -1;

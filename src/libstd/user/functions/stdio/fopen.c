@@ -39,7 +39,7 @@ FILE* fopen(const char* _RESTRICT filename, const char* _RESTRICT mode)
         return NULL;
     }
 
-    fd_t fd = openf("%s%s", filename, _flags_to_string(flags));
+    fd_t fd = open(F("%s%s", filename, _flags_to_string(flags)));
     if (fd == ERR)
     {
         return NULL;

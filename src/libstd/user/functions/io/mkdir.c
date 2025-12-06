@@ -9,7 +9,7 @@
 
 uint64_t mkdir(const char* path)
 {
-    fd_t fd = openf("%s:create:directory", path);
+    fd_t fd = open(F("%s:create:directory", path));
     if (fd == ERR)
     {
         return ERR;

@@ -42,30 +42,33 @@ display_t* display_new(void)
         return NULL;
     }
 
-    memset(disp->id, 0, MAX_NAME);
-    if (readfile("/net/local/seqpacket", disp->id, MAX_NAME, 0) == ERR)
+    disp->id = sreadfile("/net/local/seqpacket");
+    if (disp->id == NULL)
     {
         free(disp);
         return NULL;
     }
 
-    disp->ctl = openf("/net/local/%s/ctl", disp->id);
+    disp->ctl = open(F("/net/local/%s/ctl", disp->id));
     if (disp->ctl == ERR)
     {
+        free(disp->id);
         free(disp);
         return NULL;
     }
-    if (writef(disp->ctl, "connect dwm") == ERR)
+    if (swrite(disp->ctl, "connect dwm") == ERR)
     {
         close(disp->ctl);
+        free(disp->id);
         free(disp);
         return NULL;
     }
 
-    disp->data = openf("/net/local/%s/data", disp->id);
+    disp->data = open(F("/net/local/%s/data", disp->id));
     if (disp->data == ERR)
     {
         close(disp->ctl);
+        free(disp->id);
         free(disp);
         return NULL;
     }
@@ -75,6 +78,7 @@ display_t* display_new(void)
     {
         close(disp->data);
         close(disp->ctl);
+        free(disp->id);
         free(disp);
         return NULL;
     }
@@ -93,6 +97,7 @@ display_t* display_new(void)
         close(disp->eventsPipe);
         close(disp->data);
         close(disp->ctl);
+        free(disp->id);
         free(disp);
         return NULL;
     }
@@ -103,6 +108,7 @@ display_t* display_new(void)
         close(disp->eventsPipe);
         close(disp->data);
         close(disp->ctl);
+        free(disp->id);
         free(disp);
         return NULL;
     }
@@ -142,6 +148,7 @@ void display_free(display_t* disp)
     close(disp->ctl);
     close(disp->data);
     mtx_destroy(&disp->mutex);
+    free(disp->id);
     free(disp);
 }
 
