@@ -52,7 +52,7 @@ file_t* file_new(inode_t* inode, const path_t* path, mode_t mode)
 
     if ((mode & MODE_ALL_PERMS) == MODE_NONE)
     {
-        mode |= path->mount->mode;
+        mode |= path->mount->mode & MODE_ALL_PERMS;
     }
 
     ref_init(&file->ref, file_free);

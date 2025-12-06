@@ -355,7 +355,17 @@ You may have noticed that in the above section sections, the `open()` function d
 fd_t handle = open("/net/local/seqpacket:nonblock");
 ```
 
-Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `openf()` function. It is also possible to just specify the first letter of a flag which do not need to be separated by colons, so instead of `:nonblock` you can use `:n`.
+Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `openf()` function. Each flag also has a short hand version for which the `:` character is ommited, for example to open a file as create and exclusive, you can do
+
+```c
+fd_t file = open("/some/path:create:exclusive");
+```
+
+or
+
+```c
+fd_t file = open("/some/path:ce");
+```
 
 For a full list of available flags, check the [Doxygen documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html).
 

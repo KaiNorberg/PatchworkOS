@@ -5,7 +5,7 @@
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
-#include <kernel/fs/vfs.h>
+#include <kernel/fs/filesystem.h>
 #include <kernel/log/log.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/thread.h>
@@ -198,7 +198,7 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
         return NULL;
     }
 
-    filesystem_t* fs = vfs_get_fs(fsName);
+    filesystem_t* fs = filesystem_get(fsName);
     if (fs == NULL)
     {
         errno = ENODEV;
@@ -324,7 +324,7 @@ SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpoint, mount_fl
     PATH_DEFER(&cwd);
 
     path_t mountPath = PATH_EMPTY;
-    if (path_walk(&mountPath, &pathname, &cwd, WALK_NONE, &process->ns) == ERR)
+    if (path_walk(&mountPath, &pathname, &cwd, WALK_NEGATIVE_IS_ERR, &process->ns) == ERR)
     {
         return ERR;
     }

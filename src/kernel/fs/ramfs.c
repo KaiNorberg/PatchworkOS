@@ -6,6 +6,9 @@
 #include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/fs/inode.h>
+#include <kernel/fs/file.h>
+#include <kernel/fs/filesystem.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/sched.h>
@@ -127,10 +130,7 @@ static uint64_t ramfs_create(inode_t* dir, dentry_t* target, mode_t mode)
         return ERR;
     }
 
-    if (dentry_make_positive(target, newInode) == ERR)
-    {
-        return ERR;
-    }
+    dentry_make_positive(target, newInode);
 
     return 0;
 }
@@ -264,10 +264,7 @@ static dentry_t* ramfs_load_file(superblock_t* superblock, dentry_t* parent, con
     }
     DEREF_DEFER(inode);
 
-    if (dentry_make_positive(dentry, inode) == ERR)
-    {
-        panic(NULL, "Failed to make ramfs file dentry positive");
-    }
+    dentry_make_positive(dentry, inode);
 
     return REF(dentry);
 }
@@ -295,10 +292,7 @@ static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     }
     DEREF_DEFER(inode);
 
-    if (dentry_make_positive(dentry, inode) == ERR)
-    {
-        panic(NULL, "Failed to make ramfs dentry positive");
-    }
+    dentry_make_positive(dentry, inode);
 
     boot_file_t* file;
     LIST_FOR_EACH(file, &in->files, entry)
@@ -387,7 +381,7 @@ static filesystem_t ramfs = {
 void ramfs_init(const boot_disk_t* disk)
 {
     LOG_INFO("registering ramfs\n");
-    if (vfs_register_fs(&ramfs) == ERR)
+    if (filesystem_register(&ramfs) == ERR)
     {
         panic(NULL, "Failed to register ramfs");
     }

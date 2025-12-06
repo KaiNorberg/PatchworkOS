@@ -68,7 +68,6 @@ typedef struct inode
     const inode_ops_t* ops;    ///< Constant after creation.
     const file_ops_t* fileOps; ///< Constant after creation.
     mutex_t mutex;
-    map_entry_t mapEntry; ///< Protected by the inodeCache lock.
 } inode_t;
 
 /**

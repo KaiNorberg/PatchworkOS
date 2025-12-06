@@ -239,7 +239,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         path_t cwd = cwd_get(&process->cwd);
         PATH_DEFER(&cwd);
 
-        if (path_walk(&cwdPath, &cwdPathname, &cwd, WALK_NONE, &process->ns) == ERR)
+        if (path_walk(&cwdPath, &cwdPathname, &cwd, WALK_NEGATIVE_IS_ERR, &process->ns) == ERR)
         {
             goto cleanup_argv;
         }

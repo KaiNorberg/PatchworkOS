@@ -68,7 +68,7 @@ SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
     PATH_DEFER(&cwd);
 
     path_t path = PATH_EMPTY;
-    if (path_walk(&path, &pathname, &cwd, WALK_NONE, &process->ns) == ERR)
+    if (path_walk(&path, &pathname, &cwd, WALK_NEGATIVE_IS_ERR, &process->ns) == ERR)
     {
         return ERR;
     }

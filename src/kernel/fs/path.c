@@ -258,6 +258,28 @@ void path_put(path_t* path)
     }
 }
 
+static bool path_is_name_valid(const char* name)
+{
+    if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+    {
+        return false;
+    }
+
+    for (uint64_t i = 0; i < MAX_NAME - 1; i++)
+    {
+        if (name[i] == '\0')
+        {
+            return true;
+        }
+        if (!PATH_VALID_CHAR(name[i]))
+        {
+            return false;
+        }
+    }
+
+    return false;
+}
+
 static uint64_t path_handle_dotdot(path_t* current)
 {
     if (current->dentry == current->mount->root)
@@ -318,7 +340,7 @@ static uint64_t path_handle_dotdot(path_t* current)
 uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* component, walk_flags_t flags,
     namespace_t* ns)
 {
-    if (!vfs_is_name_valid(component))
+    if (!path_is_name_valid(component))
     {
         errno = EINVAL;
         return ERR;
@@ -340,7 +362,7 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
         path_copy(&current, &nextRoot);
     }
 
-    dentry_t* next = vfs_get_or_lookup_dentry(&current, component);
+    dentry_t* next = dentry_lookup(&current, component);
     if (next == NULL)
     {
         return ERR;

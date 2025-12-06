@@ -14,8 +14,6 @@ static void inode_free(inode_t* inode)
         return;
     }
 
-    vfs_remove_inode(inode);
-
     if (inode->ops != NULL && inode->ops->cleanup != NULL)
     {
         inode->ops->cleanup(inode);
@@ -65,7 +63,6 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
     }
 
     ref_init(&inode->ref, inode_free);
-    map_entry_init(&inode->mapEntry);
     inode->number = number;
     inode->type = type;
     inode->flags = INODE_NONE;
@@ -81,12 +78,6 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
     inode->ops = ops;
     inode->fileOps = fileOps;
     mutex_init(&inode->mutex);
-
-    if (vfs_add_inode(inode) == ERR)
-    {
-        DEREF(inode);
-        return NULL;
-    }
 
     return inode;
 }

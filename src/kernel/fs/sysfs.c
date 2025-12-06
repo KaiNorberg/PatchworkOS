@@ -2,6 +2,12 @@
 
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/namespace.h>
+#include <kernel/fs/path.h>
+#include <kernel/fs/superblock.h>
+#include <kernel/fs/inode.h>
+#include <kernel/fs/file.h>
+#include <kernel/fs/mount.h>
+#include <kernel/fs/filesystem.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -64,10 +70,7 @@ static dentry_t* sysfs_mount(filesystem_t* fs, const char* devName, void* privat
     }
     DEREF_DEFER(dentry);
 
-    if (dentry_make_positive(dentry, inode) == ERR)
-    {
-        return NULL;
-    }
+    dentry_make_positive(dentry, inode);
 
     superblock->root = REF(dentry);
     return REF(superblock->root);
@@ -81,7 +84,7 @@ static filesystem_t sysfs = {
 void sysfs_init(void)
 {
     LOG_INFO("registering sysfs\n");
-    if (vfs_register_fs(&sysfs) == ERR)
+    if (filesystem_register(&sysfs) == ERR)
     {
         panic(NULL, "Failed to register sysfs");
     }
@@ -123,7 +126,7 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
         }
         PATH_DEFER(&rootPath);
 
-        dentry_t* dentry = vfs_get_or_lookup_dentry(&rootPath, name);
+        dentry_t* dentry = dentry_lookup(&rootPath, name);
         if (dentry == NULL)
         {
             return NULL;
@@ -160,10 +163,7 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
     }
     DEREF_DEFER(dentry);
 
-    if (dentry_make_positive(dentry, inode) == ERR)
-    {
-        return NULL;
-    }
+    dentry_make_positive(dentry, inode);
 
     sysfs_mount_ctx_t ctx = {
         .superblockOps = superblockOps,
@@ -209,10 +209,7 @@ dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* i
     DEREF_DEFER(inode);
     inode->private = private;
 
-    if (dentry_make_positive(dir, inode) == ERR)
-    {
-        return NULL;
-    }
+    dentry_make_positive(dir, inode);
 
     return REF(dir);
 }
@@ -252,10 +249,7 @@ dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* 
     DEREF_DEFER(inode);
     inode->private = private;
 
-    if (dentry_make_positive(file, inode) == ERR)
-    {
-        return NULL;
-    }
+    dentry_make_positive(file, inode);
 
     return REF(file);
 }
