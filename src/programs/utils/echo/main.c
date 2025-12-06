@@ -10,7 +10,7 @@ int main(int argc, char** argv)
 {
     for (int i = 1; i < argc; i++)
     {
-        if (writef(STDOUT_FILENO, argv[i]) == ERR)
+        if (swrite(STDOUT_FILENO, argv[i]) == ERR)
         {
             fprintf(stderr, "echo: %s\n", strerror(errno));
             return EXIT_FAILURE;
@@ -18,7 +18,7 @@ int main(int argc, char** argv)
 
         if (i != argc - 1)
         {
-            if (writef(STDOUT_FILENO, " ") == ERR)
+            if (swrite(STDOUT_FILENO, " ") == ERR)
             {
                 fprintf(stderr, "echo: %s\n", strerror(errno));
                 return EXIT_FAILURE;

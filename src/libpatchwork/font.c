@@ -22,7 +22,7 @@ font_t* font_new(display_t* disp, const char* family, const char* weight, uint64
         family = theme->defaultFont;
     }
 
-    fd_t file = openf("%s/%s-%s%d.grf", theme->fontsDir, family, weight, size);
+    fd_t file = open(F("%s/%s-%s%d.grf", theme->fontsDir, family, weight, size));
     if (file == ERR)
     {
         return NULL;

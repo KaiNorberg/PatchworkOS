@@ -491,7 +491,7 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
         lastPid = pid;
         pids[fdCount - 1] = pid;
 
-        fds[fdCount].fd = openf("/proc/%d/wait", pid);
+        fds[fdCount].fd = open(F("/proc/%d/wait", pid));
         if (fds[fdCount].fd == ERR)
         {
             printf("shell: unable to open /proc/%d/wait (%s)\n", pid, strerror(errno));
@@ -549,14 +549,7 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
                 printf("^C\n");
                 for (uint64_t j = 1; j < fdCount; j++)
                 {
-                    fd_t note = openf("/proc/%d/note", pids[j - 1]);
-                    if (note == ERR)
-                    {
-                        continue;
-                    }
-
-                    writef(note, "kill");
-                    close(note);
+                    swritefile(F("/proc/%d/note", pids[j - 1]), "kill");
                 }
 
                 break;

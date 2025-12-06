@@ -3,6 +3,8 @@
 
 #include <stdarg.h>
 #include <stdint.h>
+#include <alloca.h>
+#include <assert.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -63,6 +65,28 @@ extern "C"
 #define PIPE_WRITE 1
 
 /**
+ * @brief Maximum buffer size for the `F()` macro.
+ */
+#define F_MAX_SIZE 512
+
+/**
+ * @brief Format string macro.
+ * 
+ * This macro is a helper to create formatted strings on the stack. Very useful for functions like `open()`.
+ * 
+ * @note This could be reimplemented using thread local storage to avoid using `alloca()`, but we then end up needing to set a maximum limit for how many `F()` strings can be used simultaneously. Using `alloca()` means we can use as many as we want, as long as we have enough stack space, even if it is more dangerous.
+ * 
+ * @warning Will truncate the string if it exceeds `F_MAX_SIZE`.
+ */
+#define F(format, ...) \
+    ({ \
+        char* _buffer = alloca(F_MAX_SIZE); \
+        int _len = snprintf(_buffer, F_MAX_SIZE, format, __VA_ARGS__); \
+        assert(_len >= 0 && "F() formatting error"); \
+        _buffer; \
+    })
+
+/**
  * @brief System call for opening files.
  *
  * The `open()` function opens a file located at a given path.
@@ -71,27 +95,6 @@ extern "C"
  * @return On success, the file descriptor, on failure returns `ERR` and `errno` is set.
  */
 fd_t open(const char* path);
-
-/**
- * @brief Wrapper for opening files with a formatted path.
- *
- * The `openf()` function opens a file located at a path specified by a format string and variable arguments. This is
- * very usefull considering the amount of file path processing required for many of Patchworks APIs.
- *
- * @param format The format string specifying the path to the desired file.
- * @param ... Variable arguments to be formatted into the path string.
- * @return On success, the file descriptor, on failure returns `ERR` and `errno` is set.
- */
-fd_t openf(const char* _RESTRICT format, ...);
-
-/**
- * @brief Wrapper for opening files with a formatted path, using a `va_list`.
- *
- * @param format The format string specifying the path to the desired file.
- * @param args A `va_list` containing the arguments to be formatted into the path string.
- * @return On success, the file descriptor, on failure returns `ERR` and `errno` is set.
- */
-fd_t vopenf(const char* _RESTRICT format, va_list args);
 
 /**
  * @brief System call for opening 2 file descriptors from one file.
@@ -140,26 +143,15 @@ uint64_t close(fd_t fd);
 uint64_t read(fd_t fd, void* buffer, uint64_t count);
 
 /**
- * @brief Wrapper for reading a formatted string from a file.
+ * @brief Wrapper for reading a file directly into a null-terminated string.
+ *
+ * The `sread()` function reads the entire contents of a file into a newly allocated null-terminated string.
+ * The caller is responsible for freeing the returned string.
  *
  * @param fd The file descriptor to read from.
- * @param format The format string.
- * @param ... Variable arguments to be formatted.
- * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and `errno`
- * is set.
+ * @return On success, a pointer to the null-terminated string. On failure, `NULL` and `errno` is set.
  */
-uint64_t readf(fd_t fd, const char* _RESTRICT format, ...);
-
-/**
- * @brief Wrapper for reading a formatted string from a file with a `va_list`.
- *
- * @param fd The file descriptor to read from.
- * @param format The format string.
- * @param args A `va_list` containing the arguments to be formatted.
- * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and `errno`
- * is set.
- */
-uint64_t vreadf(fd_t fd, const char* _RESTRICT format, va_list args);
+char* sread(fd_t fd);
 
 /**
  * @brief System call for writing to files.
@@ -172,24 +164,13 @@ uint64_t vreadf(fd_t fd, const char* _RESTRICT format, va_list args);
 uint64_t write(fd_t fd, const void* buffer, uint64_t count);
 
 /**
- * @brief Wrapper for writing a formatted string to a file.
- *
+ * @brief Wrapper for writing a null-terminated string to a file.
+ * 
  * @param fd The file descriptor to write to.
- * @param format The format string.
- * @param ... Variable arguments to be formatted.
+ * @param string The null-terminated string to write.
  * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
  */
-uint64_t writef(fd_t fd, const char* _RESTRICT format, ...);
-
-/**
- * @brief Wrapper for writing a formatted string to a file with a `va_list`.
- *
- * @param fd The file descriptor to write to.
- * @param format The format string.
- * @param args A `va_list` containing the arguments to be formatted.
- * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
- */
-uint64_t vwritef(fd_t fd, const char* _RESTRICT format, va_list args);
+uint64_t swrite(fd_t fd, const char* string);
 
 /**
  * @brief Wrapper for reading a file directly using a path.
@@ -205,31 +186,20 @@ uint64_t vwritef(fd_t fd, const char* _RESTRICT format, va_list args);
 uint64_t readfile(const char* path, void* buffer, uint64_t count, uint64_t offset);
 
 /**
- * @brief Wrapper for reading a formatted string from a file directly using a path.
+ * @brief Wrapper for reading an entire file directly into a null-terminated string.
  *
- * Equivalent to calling `open()`, `readf()`, and `close()` in sequence.
- *
- * @param path The path to the file.
- * @param format The format string.
- * @param ... Variable arguments to be formatted.
- * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t readfilef(const char* path, const char* _RESTRICT format, ...);
-
-/**
- * @brief Wrapper for reading a formatted string from a file directly using a path with a `va_list`.
- *
- * Equivalent to calling `open()`, `vreadf()`, and `close()` in sequence.
+ * The `sreadfile()` function reads the entire contents of a file into a newly allocated null-terminated string.
+ * The caller is responsible for freeing the returned string.
+ * 
+ * Equivalent to calling `open()`, `sread()`, and `close()` in sequence.
  *
  * @param path The path to the file.
- * @param format The format string.
- * @param args A `va_list` containing the arguments to be formatted.
- * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, a pointer to the null-terminated string. On failure, `NULL` and `errno` is set.
  */
-uint64_t vreadfilef(const char* path, const char* _RESTRICT format, va_list args);
+char* sreadfile(const char* path);
 
 /**
- * @brief Wrapper for writing a file directly using a path.
+ * @brief Wrapper for writing to a file directly using a path.
  *
  * Equivalent to calling `open()`, `seek()`, `write()`, and `close()` in sequence.
  *
@@ -242,28 +212,15 @@ uint64_t vreadfilef(const char* path, const char* _RESTRICT format, va_list args
 uint64_t writefile(const char* path, const void* buffer, uint64_t count, uint64_t offset);
 
 /**
- * @brief Wrapper for writing a formatted string to a file directly using a path.
- *
- * Equivalent to calling `open()`, `writef()`, and `close()` in sequence.
- *
+ * @brief Wrapper for writing a null-terminated string directly to a file using a path.
+ * 
+ * Equivalent to calling `open()`, `swrite()`, and `close()` in sequence.
+ * 
  * @param path The path to the file.
- * @param format The format string.
- * @param ... Variable arguments to be formatted.
+ * @param string The null-terminated string to write.
  * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
  */
-uint64_t writefilef(const char* path, const char* _RESTRICT format, ...);
-
-/**
- * @brief Wrapper for writing a formatted string to a file directly using a path with a `va_list`.
- *
- * Equivalent to calling `open()`, `vwritef()`, and `close()` in sequence.
- *
- * @param path The path to the file.
- * @param format The format string.
- * @param args A `va_list` containing the arguments to be formatted.
- * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
- */
-uint64_t vwritefilef(const char* path, const char* _RESTRICT format, va_list args);
+uint64_t swritefile(const char* path, const char* string);
 
 /**
  * @brief Type for the `seek()` origin argument.
@@ -480,24 +437,6 @@ uint64_t link(const char* oldPath, const char* newPath);
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t unlink(const char* path);
-
-/**
- * @brief Wrapper for removing a file with a formatted path.
- *
- * @param format The format string specifying the path of the file to remove.
- * @param ... Variable arguments to be formatted into the path string.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t removef(const char* format, ...);
-
-/**
- * @brief Wrapper for removing a file with a formatted path, using a `va_list`.
- *
- * @param format The format string specifying the path of the file to remove.
- * @param args A `va_list` containing the arguments to be formatted into the path string.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t vremovef(const char* format, va_list args);
 
 /**
  * @brief Size of keys in bytes.

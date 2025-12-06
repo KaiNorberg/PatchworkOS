@@ -253,50 +253,137 @@ PatchworkOS strictly follows the "everything is a file" philosophy in a way simi
 
 ### Sockets
 
-In order to create a local seqpacket socket, you open the `/net/local/seqpacket` file. The opened file will act as the handle for your socket. Reading from the handle will return the ID of your created socket so, for example, you can do
+In order to create a local seqpacket socket, you open the `/net/local/seqpacket` file. The opened file can be read to return the ID of your created socket. We provide several helper functions to make this easier, first, without any helpers, you would do
 
 ```c
+fd_t fd = open("/net/local/seqpacket");
+if (fd == ERR) 
+{
+    /// ... handle error ...
+}
 char id[32] = {0};
-readfile("/net/local/seqpacket", id, 31, 0); // Helper function that opens, reads and closes a file.
+if (read(fd, id, 31) == ERR) 
+{
+    /// ... handle error ...
+}
+close(fd);
 ```
 
-Note that even when the handle is closed the socket will persist until the process that created it and all its children have exited. The ID that the handle returns is the name of a directory that has been created in the `/net/local` directory, in which are three files, these include:
+Using the `sread()` helper that reads the entire contents of a file descriptor to simplify this to
 
-- `data` - used to send and retrieve data
-- `ctl` - used to send commands
-- `accept` - used to accept incoming connections
+```c
+fd_t fd = open("/net/local/seqpacket");
+if (fd == ERR) 
+{
+    /// ... handle error ...
+}
+char* id = sread(fd); 
+if (id == NULL) 
+{
+    /// ... handle error ...
+}
+close(fd);
+// ... do stuff ...
+free(id);
+```
+
+Finally, you can use the `sreadfile()` helper that reads the entire contents of a file from its path to simplify this even further to
+
+```c
+char* id = sreadfile("/net/local/seqpacket"); 
+if (id == NULL) 
+{
+    /// ... handle error ...
+}
+// ... do stuff ...
+free(id);
+```
+
+Note that the socket will persist until the process that created it and all its children have exited. Additionally, for error handling, all functions will return either `NULL` or `ERR` on failure, depending on if they return a pointer or an integer type respectively. The per-thread `errno` variable is used to indicate the specific error that occurred, both in user space and kernel space.
+
+The ID that we have retrieved is the name of a directory in the `/net/local` directory, in which are three files that we use to interact with the socket. These files are:
+
+- `data`: used to send and retrieve data
+- `ctl`: Used to send commands
+- `accept`: Used to accept incoming connections
 
 So, for example, the sockets data file is located at `/net/local/[id]/data`.
 
-Say we want to make our socket into a server, we would then use the bind and listen commands with the `ctl` file, we can then write
+Say we want to make our socket into a server, we would then use the bind and listen commands with the `ctl` file, Once again, we provide several helper functions to make this easier. First, without any helpers, you would do
 
 ```c
-fd_t ctl = openf("/net/local/%s/ctl", id);
-writef(ctl, "bind myserver");
-writef(ctl, "listen");
+char ctlPath[MAX_PATH] = {0};
+if (snprintf(ctlPath, MAX_PATH, "/net/local/%s/ctl", id) < 0) 
+{
+    /// ... handle error ...
+}
+fd_t ctl = open(ctlPath);
+if (ctl == ERR) 
+{
+    /// ... handle error ...
+}
+if (write(ctl, "bind myserver && listen") == ERR) // We use && to chain commands.
+{
+    /// ... handle error ...
+}
 close(ctl);
 ```
 
-Note the use of `openf()` which allows us to open files via a formatted path and that we name our server `myserver`. If we wanted to accept a connection using our newly created server, we just open its accept file by writing
+Using the `F()` macro which allocates formatted strings on the stack and the `swrite()` helper that writes a null-terminated string to a file descriptor, we can simplify this to
 
 ```c
-fd_t fd = openf("/net/local/%s/accept", id);
+fd_t ctl = open(F("/net/local/%s/ctl", id));
+if (ctl == ERR) 
+{
+    /// ... handle error ...
+}
+if (swrite(ctl, "bind myserver && listen") == ERR)
+{
+    /// ... handle error ...
+}
+close(ctl);
 ```
 
-The returned file descriptor can be used to send and receive data, just like when calling `accept()` in for example Linux or other POSIX operating systems. Note that the entire socket API does attempt to mimic the POSIX socket API, apart from using these weird files everything (should) work as expected.
+Finally, using the `swritefile()` helper that writes a null-terminated string to a file from its path, we can simplify this even further to
+
+```c
+if (swritefile(F("/net/local/%s/ctl", id), "bind myserver && listen") == ERR)
+{
+    /// ... handle error ...
+}
+```
+
+Note that we name our server `myserver`.
+
+If we wanted to accept a connection using our newly created server, we just open its accept file by writing
+
+```c
+fd_t fd = open(F("/net/local/%s/accept", id));
+if (fd == ERR) 
+{
+    /// ... handle error ...
+}
+/// ... do stuff ...
+close(fd);
+```
+
+The file descriptor returned when the accept file is opened can be used to send and receive data, just like when calling `accept()` in for example Linux or other POSIX operating systems. The entire socket API attempts to mimic the POSIX socket API, apart from using these weird files everything (should) work as expected.
 
 For the sake of completeness, if we wanted to connect to this server, we can do
 
 ```c
-char id[32] = {0};
-readfile("/net/local/seqpacket", id, 31, 0);
-
-fd_t ctl = openf("/net/local/%s/ctl", id);
-writef(ctl, "connect myserver");
-close(ctl);
+char* id = sreadfile("/net/local/seqpacket"); // Create new socket and get its ID.
+if (id == NULL) 
+{
+    /// ... handle error ...
+}
+if (swritefile(F("/net/local/%s/ctl", id), "connect myserver") == ERR) // Connect to the server named "myserver".
+{
+    /// ... handle error ...
+}
+/// ... do stuff ...
+free(id);
 ```
-
-which would create a new socket and connect it to the server named `myserver`.
 
 [Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/df/d65/group__module__net.html)
 
@@ -341,6 +428,8 @@ bind(dir, "/any/path/it/wants");
 fd_t somePath = openat(dir, "data");
 ```
 
+Note that error checking is ommited for brevity.
+
 This system guarantees consent between processes, and can be used to implement more complex access control systems.
 
 An interesting detail is that when process A opens the `net/local/5` directory, the dentry underlying the file descriptor is the root of the mounted file system, if process B were to try to open this directory, it would still succeed as the directory itself is visible, however process B would instead retrieve the dentry of the directory in the parent superblock, and would instead see the content of that directory in the parent superblock. If this means nothing to you, don't worry about it.
@@ -352,19 +441,19 @@ An interesting detail is that when process A opens the `net/local/5` directory, 
 You may have noticed that in the above section sections, the `open()` function does not take in a flags argument. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you can write
 
 ```c
-fd_t handle = open("/net/local/seqpacket:nonblock");
+open("/net/local/seqpacket:nonblock");
 ```
 
-Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `openf()` function. Each flag also has a short hand version for which the `:` character is ommited, for example to open a file as create and exclusive, you can do
+Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `F()` macro. Each flag also has a short hand version for which the `:` character is ommited, for example to open a file as create and exclusive, you can do
 
 ```c
-fd_t file = open("/some/path:create:exclusive");
+open("/some/path:create:exclusive");
 ```
 
 or
 
 ```c
-fd_t file = open("/some/path:ce");
+open("/some/path:ce");
 ```
 
 For a full list of available flags, check the [Doxygen documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html).
@@ -374,13 +463,13 @@ For a full list of available flags, check the [Doxygen documentation](https://ka
 Permissions are also specified using file paths there are three possible permissions, read, write and execute. For example to open a file as read and write, you can do
 
 ```c
-fd_t file = open("/some/path:read:write");
+open("/some/path:read:write");
 ```
 
 or
 
 ```c
-fd_t file = open("/some/path:rw");
+open("/some/path:rw");
 ```
 
 Permissions are inherited, you cant use a file with lower permissions to get a file with higher permissions. Consider the namespace section, if a directory was opened using only read permissions and that same directory was bound, then it would be impossible to open any files within that directory with any permissions other than read.

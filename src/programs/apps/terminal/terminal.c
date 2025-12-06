@@ -623,9 +623,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         close(term->stdout[0]);
         close(term->stdout[1]);
 
-        fd_t shellNote = openf("/proc/%d/note", term->shell);
-        writef(shellNote, "kill");
-        close(shellNote);
+        swritefile(F("/proc/%d/note", term->shell), "kill");
     }
     break;
     case EVENT_LIB_QUIT:
