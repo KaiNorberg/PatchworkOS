@@ -19,7 +19,9 @@
 /**
  * @brief Filesystem interface.
  * @defgroup kernel_fs_filesystem Filesystem
+ * @ingroup kernel_fs
  *
+ * @{
  */
 
 /**
