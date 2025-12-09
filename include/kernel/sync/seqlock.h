@@ -85,6 +85,8 @@ static inline void seqlock_write_release(seqlock_t* seqlock)
  *   // read data here
  * } while (seqlock_read_retry(&seqlock, seq));
  * ```
+ * 
+ * Or use the `SEQLOCK_READ_SCOPE()` macro.
  *
  * @param seqlock Pointer to the sequence lock.
  * @return The current sequence number.
@@ -106,5 +108,22 @@ static inline bool seqlock_read_retry(seqlock_t* seqlock, uint64_t seq)
     atomic_thread_fence(memory_order_acquire);
     return (atomic_load_explicit(&seqlock->sequence, memory_order_relaxed) != seq) || (seq & 1);
 }
+
+/**
+ * @brief Read scope for a sequence lock.
+ *
+ * Usage:
+ * ```c
+ * SEQLOCK_READ_SCOPE(&seqlock)
+ * {
+ *     // read data here
+ * }
+ * ```
+ *
+ * @param seqlock Pointer to the sequence lock.
+ */
+#define SEQLOCK_READ_SCOPE(seqlock) \
+    for (uint64_t __seq = seqlock_read_begin(seqlock); \
+         seqlock_read_retry(seqlock, __seq) ? (__seq = seqlock_read_begin(seqlock), true) : false; )
 
 /** @} */

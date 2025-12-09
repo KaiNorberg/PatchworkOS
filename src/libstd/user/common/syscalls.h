@@ -88,9 +88,9 @@
         ret; \
     })
 
-_NORETURN static inline void _syscall_process_exit(uint64_t status)
+_NORETURN static inline void _syscall_process_exit(int32_t status)
 {
-    _SYSCALL1(uint64_t, SYS_PROCESS_EXIT, uint64_t, status);
+    _SYSCALL1(uint64_t, SYS_PROCESS_EXIT, int32_t, status);
     asm volatile("ud2");
     while (1)
         ;

@@ -61,6 +61,18 @@ config_t* config_open(const char* prefix, const char* name);
 void config_close(config_t* config);
 
 /**
+ * @brief Get a value as a string by index from a configuration file.
+ *
+ * @param config The configuration file.
+ * @param section The section to get the value from, case insensitive.
+ * @param index The index of the value to get.
+ * @param fallback A default value to return if the index is out of bounds.
+ * @param outValue The output value, will be set to `fallback` if the index is out of bounds.
+ * @param outKey The output key, will be set to `fallback` if the index is out of bounds.
+ */
+void config_get(config_t* config, const char* section, uint64_t index, const char* fallback, const char** outValue, const char** outKey);
+
+/**
  * @brief Get a string value from a configuration file.
  *
  * The value returned is owned by the configuration system and should not be freed or modified.

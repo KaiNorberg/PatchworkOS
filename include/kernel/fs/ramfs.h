@@ -35,15 +35,6 @@ typedef struct
 } ramfs_superblock_data_t;
 
 /**
- * @brief Dentry private data for ramfs.
- */
-typedef struct
-{
-    list_entry_t entry;
-    dentry_t* dentry;
-} ramfs_dentry_data_t;
-
-/**
  * @brief Registers the ramfs filesystem and mounts it as the root filesystem.
  *
  * @param disk The boot disk from the bootloader.

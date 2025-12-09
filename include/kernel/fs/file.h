@@ -31,6 +31,8 @@ typedef struct poll_file poll_file_t;
 /**
  * @brief File structure.
  * @struct file_t
+ * 
+ * A file structure is protected by the mutex of its inode.
  *
  */
 typedef struct file
@@ -47,11 +49,6 @@ typedef struct file
 /**
  * @brief File operations structure.
  * @struct file_ops_t
- *
- * Note that unlike inode or dentry ops, the files inode mutex will NOT be acquired by the vfs and that the filesystem
- * is responsible for synchronization. To understand why consider a pipe, a pipe needs to be able to block when there is
- * no data available and then wake up when there is data available, this is only possible if multiple threads can
- * access the pipe without blocking each other.
  */
 typedef struct file_ops
 {
@@ -84,16 +81,16 @@ typedef struct poll_file
  *
  * There is no `file_free()` instead use `DEREF()`.
  *
- * @param inode The inode the file represents.
  * @param path The path of the file.
  * @param mode The mode with which the file was opened, if no permissions are specified the maximum allowed permissions
  * from the mount are used.
  * @return On success, the new file. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `EACCES`: The requested mode exceeds the maximum allowed permissions.
+ * - `ENOENT`: The path is negative.
  * - `ENOMEM`: Out of memory.
  */
-file_t* file_new(inode_t* inode, const path_t* path, mode_t mode);
+file_t* file_new(const path_t* path, mode_t mode);
 
 /**
  * @brief Helper function for basic seeking.

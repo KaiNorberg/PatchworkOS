@@ -9,32 +9,50 @@
  * @defgroup kernel_sched_loader Program Loader
  * @ingroup kernel_sched
  *
- * The loader is responsible for loading programs into memory and the jump to userspace.
+ * The loader is responsible for loading programs into memory, setting up the initial user stack, and performing the jump to userspace.
+ * 
+ * ## Initial User Stack and Registers
+ * 
+ * When a new program is loaded, we pass the command line arguments (argv) to the program via the user stack and registers.
+ * 
+ * The stack is set up as follows:
+ * 
+ * ```
+ * +---------------------+
+ * |  *argv[argc - 1]    |
+ * |  ...                |
+ * |  *argv[0]           |
+ * +---------------------+
+ * |  NULL               |
+ * +---------------------+
+ * |  argv[argc - 1]     |
+ * |  ...                |
+ * |  argv[0]            |
+ * +---------------------+
+ * |  padding            |
+ * +---------------------+
+ * ```
+ * 
+ * The `argv` pointer is placed in the `rsi` register, and the `argc` value is placed in the `rdi` register.
+ * 
+ * Note that rsp points to argc when the program starts executing.
  *
  * @{
  */
 
 /**
- * @brief Spawns a child process from an executable file.
- *
- * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable. This array
- * will be pushed to the child stack and the child can find a pointer to this array in its rsi register, along with its
- * length in the rdi register.
- * @param cwd The working directory for the child process, or `NULL` to inherit the parents working directory.
- * @param priority The scheduling priority for the child process, or `PRIORITY_PARENT` to inherit the parent's priority.
- * @param flags Spawn behaviour flags.
- * @return On success, the childs first thread. On failure, `NULL` and `errno` is set.
+ * @brief Causes the currently running thread to load and execute a new program.
+ * 
+ * Intended to be used as the entry point for a newly created process, causing it to run the specified executable with the given arguments and environment variables.
+ * 
+ * @note This function does not return, instead it transfers execution to the new program in user space, if it fails it will exit the process.
+ * 
+ * @warning The arguments `executable` and `argv` along with their contents will be freed by this function, they must be heap allocated and not used after calling this function.
+ * 
+ * @param executable The path to the executable file, will be freed by the loader.
+ * @param argv The argument vector for the new program, will be freed by the loader along with its contents, can be `NULL` if `argc` is `0`.
+ * @param argc The number of arguments in `argv`.
  */
-thread_t* loader_spawn(const char** argv, const path_t* cwd, priority_t priority, spawn_flags_t flags);
-
-/**
- * @brief Creates a new thread within an existing process.
- *
- * @param parent The parent process for the new thread.
- * @param entry The entry point address for the new thread.
- * @param arg An argument to pass to the entry point.
- * @return On success, returns the newly created thread. On failure, returns `NULL` and errno is set.
- */
-thread_t* loader_thread_create(process_t* parent, void* entry, void* arg);
+_NORETURN void loader_exec(const char* executable, char** argv, uint64_t argc);
 
 /** @} */

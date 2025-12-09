@@ -56,7 +56,7 @@ void wait_client_init(wait_client_t* client)
     list_init(&client->entries);
     client->err = EOK;
     client->deadline = 0;
-    client->cpu = NULL;
+    client->owner = NULL;
 }
 
 void wait_init(wait_t* wait)
@@ -153,7 +153,7 @@ uint64_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t 
 
     thread->wait.err = EOK;
     thread->wait.deadline = CLOCKS_DEADLINE(timeout, sys_time_uptime());
-    thread->wait.cpu = NULL;
+    thread->wait.owner = NULL;
 
     for (uint64_t i = 0; i < amount; i++)
     {
@@ -231,7 +231,7 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
 {
     (void)frame; // Unused
 
-    thread->wait.cpu = &self->wait;
+    thread->wait.owner = &self->wait;
     LOCK_SCOPE(&self->wait.lock);
 
     thread_t* lastThread = (CONTAINER_OF(list_last(&self->wait.blockedThreads), thread_t, entry));
@@ -284,10 +284,10 @@ void wait_unblock_thread(thread_t* thread, errno_t err)
 {
     assert(atomic_load(&thread->state) == THREAD_UNBLOCKING);
 
-    lock_acquire(&thread->wait.cpu->lock);
-    list_remove(&thread->wait.cpu->blockedThreads, &thread->entry);
+    lock_acquire(&thread->wait.owner->lock);
+    list_remove(&thread->wait.owner->blockedThreads, &thread->entry);
     wait_remove_wait_entries(thread, err);
-    lock_release(&thread->wait.cpu->lock);
+    lock_release(&thread->wait.owner->lock);
 
     sched_submit(thread);
 }
@@ -338,10 +338,10 @@ uint64_t wait_unblock(wait_queue_t* queue, uint64_t amount, errno_t err)
 
         for (uint64_t i = 0; i < collected; i++)
         {
-            lock_acquire(&threads[i]->wait.cpu->lock);
-            list_remove(&threads[i]->wait.cpu->blockedThreads, &threads[i]->entry);
+            lock_acquire(&threads[i]->wait.owner->lock);
+            list_remove(&threads[i]->wait.owner->blockedThreads, &threads[i]->entry);
             wait_remove_wait_entries(threads[i], err);
-            lock_release(&threads[i]->wait.cpu->lock);
+            lock_release(&threads[i]->wait.owner->lock);
 
             sched_submit(threads[i]);
             amountUnblocked++;

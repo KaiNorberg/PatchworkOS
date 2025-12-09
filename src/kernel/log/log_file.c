@@ -31,6 +31,17 @@ static uint64_t log_file_op_read(file_t* file, void* buffer, uint64_t count, uin
     return result;
 }
 
+static uint64_t log_file_op_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+{
+    (void)file;   // Unused
+    (void)offset; // Unused
+    (void)count;  // Unused
+    (void)buffer; // Unused
+
+    //log_nprint(LOG_LEVEL_USER, buffer, count);
+    return count;
+}
+
 static wait_queue_t* log_file_op_poll(file_t* file, poll_events_t* revents)
 {
     (void)file;
@@ -46,6 +57,7 @@ static wait_queue_t* log_file_op_poll(file_t* file, poll_events_t* revents)
 
 static file_ops_t logFileOps = {
     .read = log_file_op_read,
+    .write = log_file_op_write,
     .poll = log_file_op_poll,
 };
 

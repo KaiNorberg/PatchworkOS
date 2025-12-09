@@ -7,7 +7,7 @@
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
 #include <kernel/fs/sysfs.h>
-#include <kernel/proc/process.h>
+#include <kernel/sched/process.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
 

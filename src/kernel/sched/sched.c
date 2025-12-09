@@ -9,7 +9,7 @@
 #include <kernel/cpu/syscall.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <kernel/proc/process.h>
+#include <kernel/sched/process.h>
 #include <kernel/sched/sys_time.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
@@ -229,7 +229,7 @@ process_t* sched_process_unsafe(void)
     return thread->process;
 }
 
-void sched_process_exit(uint64_t status)
+void sched_process_exit(int32_t status)
 {
     thread_t* thread = sched_thread();
     process_kill(thread->process, status);
@@ -549,8 +549,8 @@ static void sched_verify(sched_t* sched)
         {
             thread_t* thread = CONTAINER_OF(iter, thread_t, sched);
             lag_t lag = (sched->vtime - iter->veligible) * iter->weight;
-            LOG_DEBUG("  process %lld thread %lld lag=%lld veligible=%lld weight=%lld\n", thread->process->id,
-                thread->id, SCHED_FIXED_FROM(lag), SCHED_FIXED_FROM(iter->veligible), iter->weight);
+            LOG_DEBUG("  process %lld thread %lld lag=%lld veligible=%lld vdeadline=%lld weight=%lld\n", thread->process->id,
+                thread->id, SCHED_FIXED_FROM(lag), SCHED_FIXED_FROM(iter->veligible), SCHED_FIXED_FROM(iter->vdeadline), iter->weight);
         }
         panic(NULL, "Total lag is not zero, got %lld", SCHED_FIXED_FROM(sumLag));
     }
@@ -591,6 +591,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
 
         // Eq 12
         runThread->sched.veligible += SCHED_FIXED_TO(used) / runThread->sched.weight;
+
         // Eq 10
         runThread->sched.vdeadline =
             runThread->sched.veligible + SCHED_FIXED_TO(CONFIG_TIME_SLICE) / runThread->sched.weight;
@@ -646,15 +647,9 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         runThread = next;
     }
 
-    if (runThread != sched->idleThread)
+    if (runThread != sched->idleThread && sched->runqueue.size > 1)
     {
-        vclock_t vtimeout = runThread->sched.vdeadline - sched->vtime;
-        if (sched_fixed_cmp(vtimeout, 0) < 0)
-        {
-            vtimeout = SCHED_FIXED_ZERO;
-        }
-
-        timer_set(uptime, uptime + (SCHED_FIXED_FROM(vtimeout) * atomic_load(&sched->totalWeight)));
+        timer_set(uptime, uptime + CONFIG_TIME_SLICE);
     }
 
     if (threadToFree != NULL)
@@ -672,7 +667,7 @@ SYSCALL_DEFINE(SYS_NANOSLEEP, uint64_t, clock_t nanoseconds)
     return sched_nanosleep(nanoseconds);
 }
 
-SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, uint64_t status)
+SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, int32_t status)
 {
     sched_process_exit(status);
 

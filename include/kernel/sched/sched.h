@@ -478,7 +478,7 @@ process_t* sched_process_unsafe(void);
  *
  * @param status The exit status of the process.
  */
-_NORETURN void sched_process_exit(uint64_t status);
+_NORETURN void sched_process_exit(int32_t status);
 
 /**
  * @brief Terminates the currently executing thread.

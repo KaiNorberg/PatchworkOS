@@ -337,7 +337,7 @@ static uint64_t path_handle_dotdot(path_t* current)
     }
 }
 
-uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* component, walk_flags_t flags,
+uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* component,
     namespace_t* ns)
 {
     if (!path_is_name_valid(component))
@@ -346,45 +346,38 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
         return ERR;
     }
 
-    path_t current = PATH_EMPTY;
-    path_copy(&current, parent);
-    PATH_DEFER(&current);
-
-    if (atomic_load(&current.dentry->mountCount) > 0)
+    if (atomic_load(&parent->dentry->mountCount) > 0)
     {
         path_t nextRoot = PATH_EMPTY;
-        if (namespace_traverse_mount(ns, &current, &nextRoot) == ERR)
+        if (namespace_traverse_mount(ns, parent, &nextRoot) == ERR)
         {
             return ERR;
         }
         PATH_DEFER(&nextRoot);
 
-        path_copy(&current, &nextRoot);
+        dentry_t* next = dentry_lookup(&nextRoot, component);
+        if (next == NULL)
+        {
+            return ERR;
+        }
+        DEREF_DEFER(next);
+
+        path_set(outPath, nextRoot.mount, next);
+        return 0;
     }
 
-    dentry_t* next = dentry_lookup(&current, component);
+    dentry_t* next = dentry_lookup(parent, component);
     if (next == NULL)
     {
         return ERR;
     }
     DEREF_DEFER(next);
 
-    if (atomic_load(&next->flags) & DENTRY_NEGATIVE)
-    {
-        if (flags & WALK_NEGATIVE_IS_OK)
-        {
-            path_set(outPath, current.mount, next);
-            return 0;
-        }
-        errno = ENOENT;
-        return ERR;
-    }
-
-    path_set(outPath, current.mount, next);
+    path_set(outPath, parent->mount, next);
     return 0;
 }
 
-uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* from, walk_flags_t flags, namespace_t* ns)
+uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* from, namespace_t* ns)
 {
     if (!PATHNAME_IS_VALID(pathname))
     {
@@ -482,24 +475,13 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* fr
         }
 
         path_t next = PATH_EMPTY;
-        if (path_walk_single_step(&next, &current, component, flags, ns) == ERR)
+        if (path_walk_single_step(&next, &current, component, ns) == ERR)
         {
             return ERR;
         }
 
         path_copy(&current, &next);
         path_put(&next);
-
-        if (atomic_load(&current.dentry->flags) & DENTRY_NEGATIVE)
-        {
-            if (flags & WALK_NEGATIVE_IS_OK)
-            {
-                break;
-            }
-
-            errno = ENOENT;
-            return ERR;
-        }
     }
 
     if (atomic_load(&current.dentry->mountCount) > 0)
@@ -518,8 +500,7 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* fr
     return 0;
 }
 
-uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* from, char* outLastName,
-    walk_flags_t flags, namespace_t* ns)
+uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* from, char* outLastName, namespace_t* ns)
 {
     if (!PATHNAME_IS_VALID(pathname) || outPath == NULL || outLastName == NULL)
     {
@@ -587,11 +568,11 @@ uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const pat
         return ERR;
     }
 
-    return path_walk(outPath, &parentPathname, from, flags, ns);
+    return path_walk(outPath, &parentPathname, from, ns);
 }
 
 uint64_t path_walk_parent_and_child(path_t* outParent, path_t* outChild, const pathname_t* pathname, const path_t* from,
-    walk_flags_t flags, namespace_t* ns)
+    namespace_t* ns)
 {
     if (outParent == NULL || outChild == NULL || !PATHNAME_IS_VALID(pathname) || from == NULL || ns == NULL)
     {
@@ -600,12 +581,12 @@ uint64_t path_walk_parent_and_child(path_t* outParent, path_t* outChild, const p
     }
 
     char lastName[MAX_NAME];
-    if (path_walk_parent(outParent, pathname, from, lastName, flags, ns) == ERR)
+    if (path_walk_parent(outParent, pathname, from, lastName, ns) == ERR)
     {
         return ERR;
     }
 
-    if (path_walk_single_step(outChild, outParent, lastName, flags, ns) == ERR)
+    if (path_walk_single_step(outChild, outParent, lastName, ns) == ERR)
     {
         path_put(outParent);
         return ERR;

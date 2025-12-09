@@ -28,44 +28,26 @@
 
 static mount_t* mount = NULL;
 
-static _Atomic(inode_number_t) newNumber = ATOMIC_VAR_INIT(1);
-
 static inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, void* buffer, uint64_t size);
 
-static uint64_t ramfs_dentry_init(dentry_t* dentry)
+static void ramfs_dentry_add(dentry_t* dentry)
 {
-    ramfs_superblock_data_t* superData = dentry->superblock->private;
+    ramfs_superblock_data_t* super = dentry->superblock->private;
 
-    ramfs_dentry_data_t* dentryData = malloc(sizeof(ramfs_dentry_data_t));
-    if (dentryData == NULL)
-    {
-        return ERR;
-    }
-    list_entry_init(&dentryData->entry);
-    dentryData->dentry = REF(dentry);
-    dentry->private = dentryData;
-
-    lock_acquire(&superData->lock);
-    list_push_back(&superData->dentrys, &dentryData->entry);
-    lock_release(&superData->lock);
-    return 0;
+    lock_acquire(&super->lock);
+    list_push_back(&super->dentrys, &dentry->otherEntry);
+    REF(dentry);
+    lock_release(&super->lock);
 }
 
-static void ramfs_dentry_deinit(dentry_t* dentry)
+static void ramfs_dentry_remove(dentry_t* dentry)
 {
-    ramfs_superblock_data_t* superData = dentry->superblock->private;
+    ramfs_superblock_data_t* super = dentry->superblock->private;
 
-    ramfs_dentry_data_t* dentryData = dentry->private;
-    assert(dentryData != NULL);
-
-    DEREF(dentryData->dentry);
-    dentryData->dentry = NULL;
-
-    lock_acquire(&superData->lock);
-    list_remove(&superData->dentrys, &dentryData->entry);
-    lock_release(&superData->lock);
-
-    free(dentryData);
+    lock_acquire(&super->lock);
+    list_remove(&super->dentrys, &dentry->otherEntry);
+    DEREF(dentry);
+    lock_release(&super->lock);
 }
 
 static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
@@ -84,21 +66,20 @@ static uint64_t ramfs_write(file_t* file, const void* buffer, uint64_t count, ui
 {
     MUTEX_SCOPE(&file->inode->mutex);
 
-    if (*offset + count > file->inode->size)
+    uint64_t requiredSize = *offset + count + 1;
+    if (requiredSize > file->inode->size)
     {
-        void* newData = realloc(file->inode->private, *offset + count);
+        void* newData = realloc(file->inode->private, requiredSize);
         if (newData == NULL)
         {
             return ERR;
         }
-        memset(newData + file->inode->size, 0, *offset + count - file->inode->size);
+        memset(newData + file->inode->size, 0, requiredSize - file->inode->size);
         file->inode->private = newData;
-        file->inode->size = *offset + count;
+        file->inode->size = requiredSize;
     }
 
-    memcpy(file->inode->private + *offset, buffer, count);
-    *offset += count;
-    return count;
+    return BUFFER_WRITE(file->inode->private, count, offset, buffer, file->inode->size);
 }
 
 static file_ops_t fileOps = {
@@ -107,36 +88,27 @@ static file_ops_t fileOps = {
     .seek = file_generic_seek,
 };
 
-static uint64_t ramfs_lookup(inode_t* dir, dentry_t* target)
-{
-    (void)dir;    // Unused
-    (void)target; // Unused
-
-    // All ramfs dentrys should always be in the cache, if lookup is called then the file/dir does not exist.
-    return 0;
-}
-
 static uint64_t ramfs_create(inode_t* dir, dentry_t* target, mode_t mode)
 {
-    inode_t* newInode = ramfs_inode_new(dir->superblock, mode & MODE_DIRECTORY ? INODE_DIR : INODE_FILE, NULL, 0);
-    if (newInode == NULL)
+    MUTEX_SCOPE(&dir->mutex);
+
+    inode_t* inode = ramfs_inode_new(dir->superblock, mode & MODE_DIRECTORY ? INODE_DIR : INODE_FILE, NULL, 0);
+    if (inode == NULL)
     {
         return ERR;
     }
-    DEREF_DEFER(newInode);
+    DEREF_DEFER(inode);
 
-    if (ramfs_dentry_init(target) == ERR)
-    {
-        return ERR;
-    }
-
-    dentry_make_positive(target, newInode);
+    dentry_make_positive(target, inode);
+    ramfs_dentry_add(target);
 
     return 0;
 }
 
 static void ramfs_truncate(inode_t* inode)
 {
+    MUTEX_SCOPE(&inode->mutex);
+
     if (inode->private != NULL)
     {
         free(inode->private);
@@ -145,56 +117,50 @@ static void ramfs_truncate(inode_t* inode)
     inode->size = 0;
 }
 
-static uint64_t ramfs_link(dentry_t* old, inode_t* dir, dentry_t* target)
+static uint64_t ramfs_link(inode_t* dir, dentry_t* old, dentry_t* target)
 {
-    (void)dir; // Unused
+    MUTEX_SCOPE(&dir->mutex);
 
-    if (ramfs_dentry_init(target) == ERR)
+    inode_t* inode = dentry_inode_get(old);
+    if (inode == NULL)
     {
         return ERR;
     }
+    DEREF_DEFER(inode);
 
-    old->inode->linkCount++;
-    dentry_make_positive(target, old->inode);
+    dentry_make_positive(target, inode);
+    ramfs_dentry_add(target);
 
-    return 0;
-}
-
-static uint64_t ramfs_remove_file(inode_t* parent, dentry_t* target)
-{
-    (void)parent; // Unused
-
-    target->inode->linkCount--;
-    ramfs_dentry_deinit(target);
-    return 0;
-}
-
-static uint64_t ramfs_remove_directory(inode_t* parent, dentry_t* target)
-{
-    (void)parent; // Unused
-
-    ramfs_dentry_deinit(target);
     return 0;
 }
 
 static uint64_t ramfs_remove(inode_t* parent, dentry_t* target, mode_t mode)
 {
-    if (target->inode->type == INODE_FILE)
+    MUTEX_SCOPE(&parent->mutex);
+
+    inode_t* inode = dentry_inode_get(target);
+    if (inode == NULL)
     {
-        ramfs_remove_file(parent, target);
+        return ERR;
     }
-    else if (target->inode->type == INODE_DIR)
+    DEREF_DEFER(inode);
+
+    MUTEX_SCOPE(&inode->mutex);
+
+    if (inode->type == INODE_FILE)
+    {
+        ramfs_dentry_remove(target);
+    }
+    else if (inode->type == INODE_DIR)
     {
         if (mode & MODE_RECURSIVE)
         {
-            MUTEX_SCOPE(&target->inode->mutex);
-
             dentry_t* temp = NULL;
             dentry_t* child = NULL;
             LIST_FOR_EACH_SAFE(child, temp, &target->children, siblingEntry)
             {
                 REF(child);
-                ramfs_remove(target->inode, child, mode);
+                ramfs_remove(inode, child, mode);
                 DEREF(child);
             }
         }
@@ -206,7 +172,7 @@ static uint64_t ramfs_remove(inode_t* parent, dentry_t* target, mode_t mode)
                 return ERR;
             }
         }
-        ramfs_remove_directory(parent, target);
+        ramfs_dentry_remove(target);
     }
     return 0;
 }
@@ -220,7 +186,6 @@ static void ramfs_inode_cleanup(inode_t* inode)
 }
 
 static inode_ops_t inodeOps = {
-    .lookup = ramfs_lookup,
     .create = ramfs_create,
     .truncate = ramfs_truncate,
     .link = ramfs_link,
@@ -252,10 +217,7 @@ static dentry_t* ramfs_load_file(superblock_t* superblock, dentry_t* parent, con
     }
     DEREF_DEFER(dentry);
 
-    if (ramfs_dentry_init(dentry) == ERR)
-    {
-        panic(NULL, "Failed to initialize ramfs dentry");
-    }
+    ramfs_dentry_add(dentry);
 
     inode_t* inode = ramfs_inode_new(superblock, INODE_FILE, in->data, in->size);
     if (inode == NULL)
@@ -280,10 +242,7 @@ static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     }
     DEREF_DEFER(dentry);
 
-    if (ramfs_dentry_init(dentry) == ERR)
-    {
-        panic(NULL, "Failed to initialize ramfs dentry");
-    }
+    ramfs_dentry_add(dentry);
 
     inode_t* inode = ramfs_inode_new(superblock, INODE_DIR, NULL, 0);
     if (inode == NULL)
@@ -345,7 +304,7 @@ static dentry_t* ramfs_mount(filesystem_t* fs, const char* devName, void* privat
 
 static inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, void* buffer, uint64_t size)
 {
-    inode_t* inode = inode_new(superblock, atomic_fetch_add(&newNumber, 1), type, &inodeOps, &fileOps);
+    inode_t* inode = inode_new(superblock, vfs_get_new_id(), type, &inodeOps, &fileOps);
     if (inode == NULL)
     {
         return NULL;

@@ -24,9 +24,14 @@ int thrd_join(thrd_t thr, int* res)
         }
     }
 
-    uint64_t state;
-    while ((state = atomic_load(&thread->state)) != _THREAD_EXITED)
+    while (true)
     {
+        uint64_t state = atomic_load(&thread->state);
+        if (state == _THREAD_EXITED)
+        {
+            break;
+        }
+
         futex(&thread->state, state, FUTEX_WAIT, CLOCKS_NEVER);
     }
 

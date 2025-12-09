@@ -17,7 +17,7 @@
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
 #include <kernel/module/symbol.h>
-#include <kernel/proc/process.h>
+#include <kernel/sched/process.h>
 #include <kernel/sched/loader.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
@@ -184,12 +184,38 @@ static void init_finalize(void)
 static inline void init_process_spawn(void)
 {
     LOG_INFO("spawning init process\n");
-    const char* argv[] = {"/bin/init", NULL};
-    thread_t* initThread = loader_spawn(argv, NULL, PRIORITY_MAX_USER - 2, SPAWN_DEFAULT);
+
+    process_t* initProcess = process_new(PRIORITY_MAX_USER);
+    if (initProcess == NULL)
+    {
+        panic(NULL, "Failed to create init process");
+    }
+    DEREF_DEFER(initProcess);
+
+    namespace_set_parent(&initProcess->ns, &process_get_kernel()->ns);
+
+    thread_t* initThread = thread_new(initProcess);
     if (initThread == NULL)
     {
-        panic(NULL, "Failed to spawn init process");
+        panic(NULL, "Failed to create init thread");
     }
+
+    // Calls loader_exec("/bin/init", NULL, 0, NULL, 0);
+    initThread->frame.rip = (uintptr_t)loader_exec;
+    initThread->frame.rdi = (uintptr_t)strdup("/bin/init");
+    if (initThread->frame.rdi == (uintptr_t)NULL)
+    {
+        panic(NULL, "Failed to allocate memory for init executable path");
+    }
+    initThread->frame.rsi = (uintptr_t)NULL;
+    initThread->frame.rdx = 0;
+    initThread->frame.rcx = (uintptr_t)NULL;
+    initThread->frame.r8 = 0;
+
+    initThread->frame.cs = GDT_CS_RING0;
+    initThread->frame.ss = GDT_SS_RING0;
+    initThread->frame.rsp = initThread->kernelStack.top;
+    initThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
 
     sched_submit(initThread);
 }

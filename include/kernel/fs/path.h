@@ -88,16 +88,6 @@ typedef enum mode
 } mode_t;
 
 /**
- * @brief Flags for walking a path.
- * @enum walk_flags_t
- */
-typedef enum
-{
-    WALK_NEGATIVE_IS_ERR = 0,     ///< A negative dentry is considered an error.
-    WALK_NEGATIVE_IS_OK = 1 << 0, ///< A negative dentry is ok.
-} walk_flags_t;
-
-/**
  * @brief Defer path put.
  *
  * This macro will call `path_put()` on the given path when it goes out of scope.
@@ -254,56 +244,51 @@ void path_put(path_t* path);
 /**
  * @brief Traverse a single component from a parent path.
  *
- * @param outPath The output path.
+ * @param outPath The output path, may be negative.
  * @param parent The parent path.
  * @param name The name of the child dentry.
- * @param flags Flags for the path walk.
  * @param ns The namespace to access mountpoints.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* name, walk_flags_t flags,
+uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* name,
     namespace_t* ns);
 
 /**
  * @brief Traverse a pathname from a specified starting path.
  *
- * @param outPath The output path.
- * @param pathname The patname to traverse to.
+ * @param outPath The output path, may be negative.
+ * @param pathname The pathname to traverse to.
  * @param from The path to start at if the pathname is relative.
- * @param flags Flags for the path walk.
  * @param ns The namespace to access mountpoints.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* from, walk_flags_t flags,
-    namespace_t* ns);
+uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* from, namespace_t* ns);
 
 /**
  * @brief Traverse a pathname to its parent and get the last component name.
  *
- * @param outPath The output parent path.
+ * @param outPath The output parent path, may be negative.
  * @param pathname The pathname to traverse.
  * @param from The path to start at if the pathname is relative.
  * @param outLastName The output last component name.
- * @param flags Flags for the path walk.
  * @param ns The namespace to access mountpoints.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* from, char* outLastName,
-    walk_flags_t flags, namespace_t* ns);
+    namespace_t* ns);
 
 /**
  * @brief Traverse a pathname to its parent and child paths.
  *
  * @param outParent The output parent path.
- * @param outChild The output child path.
+ * @param outChild The output child path, may be negative.
  * @param pathname The pathname to traverse.
  * @param from The path to start at if the pathname is relative.
- * @param flags Flags for the path walk.
  * @param ns The namespace to access mountpoints.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t path_walk_parent_and_child(path_t* outParent, path_t* outChild, const pathname_t* pathname, const path_t* from,
-    walk_flags_t flags, namespace_t* ns);
+    namespace_t* ns);
 
 /**
  * @brief Convert a path to a pathname.

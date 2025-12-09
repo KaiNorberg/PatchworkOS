@@ -1,6 +1,6 @@
 #include <kernel/cpu/syscall.h>
 #include <kernel/log/log.h>
-#include <kernel/proc/process.h>
+#include <kernel/sched/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/sys_time.h>
 #include <kernel/sched/thread.h>
@@ -41,7 +41,7 @@ static futex_t* futex_ctx_get(futex_ctx_t* ctx, void* addr)
     LOCK_SCOPE(&ctx->lock);
 
     map_key_t key = map_key_uint64((uint64_t)addr);
-    futex_t* futex = CONTAINER_OF(map_get(&ctx->futexes, &key), futex_t, entry);
+    futex_t* futex = CONTAINER_OF_SAFE(map_get(&ctx->futexes, &key), futex_t, entry);
     if (futex != NULL)
     {
         return futex;
@@ -52,7 +52,6 @@ static futex_t* futex_ctx_get(futex_ctx_t* ctx, void* addr)
     {
         return NULL;
     }
-
     map_entry_init(&futex->entry);
     wait_queue_init(&futex->queue);
 
@@ -64,7 +63,6 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
 {
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
-    space_t* space = &process->space;
     futex_ctx_t* ctx = &process->futexCtx;
 
     futex_t* futex = futex_ctx_get(ctx, addr);
@@ -77,61 +75,47 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
     {
     case FUTEX_WAIT:
     {
-        clock_t uptime = sys_time_uptime();
-        clock_t deadline = CLOCKS_DEADLINE(timeout, uptime);
-
-        bool firstCheck = true;
-        while (true)
-        {
-            uptime = sys_time_uptime();
-            clock_t remaining = CLOCKS_REMAINING(deadline, uptime);
-            wait_queue_t* queue = &futex->queue;
-            if (wait_block_prepare(&queue, 1, remaining) == ERR)
-            {
-                return ERR;
-            }
-
-            uint64_t loadedVal;
-            if (thread_load_atomic_from_user(thread, addr, &loadedVal) == ERR)
-            {
-                wait_block_cancel();
-                return ERR;
-            }
-
-            if (loadedVal != val)
-            {
-                if (firstCheck)
-                {
-                    errno = EAGAIN;
-                }
-                wait_block_cancel();
-                return 0;
-            }
-            firstCheck = false;
-
-            // If a FUTEX_WAKE was called in between the check and the wait_block_commit() then we will unblock
-            // immediately.
-            if (wait_block_commit() == ERR)
-            {
-                LOG_DEBUG("futex wait interrupted tid=%d\n", thread->id);
-                return ERR;
-            }
-        }
-    }
-    break;
-    case FUTEX_WAKE:
-    {
-        if (wait_unblock(&futex->queue, val, EOK) == ERR)
+        wait_queue_t* queue = &futex->queue;
+        if (wait_block_prepare(&queue, 1, timeout) == ERR)
         {
             return ERR;
         }
+
+        uint64_t loadedVal;
+        if (thread_load_atomic_from_user(thread, addr, &loadedVal) == ERR)
+        {
+            wait_block_cancel();
+            return ERR;
+        }
+
+        if (loadedVal != val)
+        {
+            wait_block_cancel();
+            errno = EAGAIN;
+            return ERR;
+        }
+
+        if (wait_block_commit() == ERR)
+        {
+            return ERR;
+        }
+
+        return 0;
     }
-    break;
+    case FUTEX_WAKE:
+    {
+        uint64_t amount = wait_unblock(&futex->queue, val, EOK);
+        if (amount == ERR)
+        {
+            return ERR;
+        }
+
+        return amount;
+    }
     default:
     {
         errno = EINVAL;
         return ERR;
     }
     }
-    return 0;
 }

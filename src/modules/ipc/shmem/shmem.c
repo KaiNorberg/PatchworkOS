@@ -6,7 +6,7 @@
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
-#include <kernel/proc/process.h>
+#include <kernel/sched/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/ref.h>

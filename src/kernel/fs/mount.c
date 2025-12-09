@@ -19,7 +19,7 @@ static void mount_free(mount_t* mount)
 
     if (mount->mountpoint != NULL)
     {
-        dentry_dec_mount_count(mount->mountpoint);
+        atomic_fetch_sub_explicit(&mount->mountpoint->mountCount, 1, memory_order_relaxed);
         DEREF(mount->mountpoint);
     }
 
@@ -56,7 +56,7 @@ mount_t* mount_new(superblock_t* superblock, dentry_t* root, dentry_t* mountpoin
     if (mountpoint != NULL)
     {
         mount->mountpoint = REF(mountpoint);
-        dentry_inc_mount_count(mountpoint);
+        atomic_fetch_add_explicit(&mountpoint->mountCount, 1, memory_order_relaxed);
     }
     else
     {

@@ -6,6 +6,20 @@
 
 int main(void)
 {
+    fd_t klog = open("/dev/klog");
+    if (klog == ERR)
+    {
+        printf("taskbar: failed to open klog\n");
+        return EXIT_FAILURE;
+    }
+    if (dup2(klog, STDOUT_FILENO) == ERR || dup2(klog, STDERR_FILENO) == ERR)
+    {
+        printf("taskbar: failed to redirect stdout/stderr to klog\n");
+        close(klog);
+        return EXIT_FAILURE;
+    }
+    close(klog);
+
     display_t* disp = display_new();
     if (disp == NULL)
     {

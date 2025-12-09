@@ -310,6 +310,45 @@ uint64_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, 
     return 0;
 }
 
+uint64_t thread_copy_from_user_string_array(thread_t* thread, const char** user, char*** out, uint64_t* outAmount)
+{
+    char** copy;
+    uint64_t amount;
+    char* terminator = NULL;
+    if (thread_copy_from_user_terminated(thread, (void*)user, (void*)&terminator, sizeof(char*), CONFIG_MAX_ARGC,
+            (void**)&copy, &amount) == ERR)
+    {
+        return ERR;
+    }
+
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        char* strCopy;
+        uint64_t strLen;
+        char strTerminator = '\0';
+        if (thread_copy_from_user_terminated(thread, copy[i], &strTerminator, sizeof(char), MAX_PATH,
+                (void**)&strCopy, &strLen) == ERR)
+        {
+            for (uint64_t j = 0; j < i; j++)
+            {
+                free(copy[j]);
+            }
+            free((void*)copy);
+            return ERR;
+        }
+
+        copy[i] = strCopy;
+    }
+
+    *out = copy;
+    if (outAmount != NULL)
+    {
+        *outAmount = amount;
+    }
+    
+    return 0;
+}
+
 uint64_t thread_load_atomic_from_user(thread_t* thread, atomic_uint64_t* userObj, uint64_t* outValue)
 {
     if (thread == NULL || userObj == NULL || outValue == NULL)

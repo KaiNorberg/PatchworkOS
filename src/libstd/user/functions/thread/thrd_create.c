@@ -24,20 +24,12 @@ _THREAD_ENTRY_ATTRIBUTES static void _thread_entry(_thread_t* thread)
 
     free(ctx);
 
-    thrd_exit(func(arg));
+    int result = func(arg);
+    thrd_exit(result);
 }
 
 int thrd_create(thrd_t* thr, thrd_start_t func, void* arg)
 {
-    if (klog == ERR)
-    {
-        klog = open("/dev/klog");
-        if (klog == ERR)
-        {
-            return thrd_error;
-        }
-    }
-
     _entry_ctx_t* ctx = malloc(sizeof(_entry_ctx_t));
     if (ctx == NULL)
     {

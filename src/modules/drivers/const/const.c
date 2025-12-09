@@ -4,7 +4,7 @@
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
-#include <kernel/proc/process.h>
+#include <kernel/sched/process.h>
 #include <kernel/sched/sched.h>
 
 #include <stdint.h>

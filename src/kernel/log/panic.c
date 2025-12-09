@@ -275,7 +275,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
         {
             // Print basic message for double panic on same CPU but avoid using the full panic stuff again.
             const char* message = "!!! KERNEL DOUBLE PANIC ON SAME CPU !!!\n";
-            log_write(message, strlen(message));
+            log_nprint(LOG_LEVEL_PANIC, message, strlen(message));
         }
         while (true)
         {

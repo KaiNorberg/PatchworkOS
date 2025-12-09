@@ -7,6 +7,7 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
+#include <kernel/log/log.h>
 
 #include <assert.h>
 

@@ -20,7 +20,7 @@
  */
 
 /**
- * @brief Maximum buffer size for a single log line.
+ * @brief Maximum buffer size for various logging buffers.
  */
 #define LOG_MAX_BUFFER 0x1000
 
@@ -65,18 +65,20 @@ void log_screen_enable(void);
 void log_screen_disable(void);
 
 /**
- * @brief Write directly to the log outputs without any formatting or headers.
+ * @brief Print a unformatted log message.
  *
- * @param string The string to write.
- * @param length The length of the string.
+ * @warning See `log_vprint()` regarding the log lock and `LOG_LEVEL_PANIC`.
+ * 
+ * @param level The log level.
+ * @param string The message string.
+ * @param length The length of the message.
  */
-void log_write(const char* string, uint64_t length);
+void log_nprint(log_level_t level, const char* string, uint64_t length);
 
 /**
  * @brief Print a formatted log message.
  *
- * @warning If the log level is `LOG_LEVEL_PANIC`, this function will not acquire the log lock to avoid recursive
- * panics. Its up to the panic system to ensure all other CPUs are halted before calling this.
+ * @warning See `log_vprint()` regarding the log lock and `LOG_LEVEL_PANIC`.
  *
  * @param level The log level.
  * @param format The format string.

@@ -8,7 +8,7 @@
 #include <kernel/mem/paging.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/space.h>
-#include <kernel/proc/process.h>
+#include <kernel/sched/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>

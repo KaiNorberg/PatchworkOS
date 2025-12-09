@@ -41,7 +41,7 @@
  * The syscall calling convention mostly follows the standard System V ABI for x86_64 architecture, with the exception
  * of the argument registers, and the use of the `RAX` register for the syscall number.
  *
- * Arguments are passed to syscalls using the `RDI`, `RSI`, `RDX`, `RCX`, `R8`, and `R9` registers, in that order. The
+ * Arguments are passed to syscalls using the `RDI`, `RSI`, `RDX`, `R10`, `R8`, and `R9` registers, in that order. The
  * syscall number is passed in the `RAX` register.
  *
  * After the registers are setup the `syscall` instruction should be called, with the return value is being placed in
@@ -185,16 +185,16 @@ void syscalls_cpu_init(void);
  *
  * This is called from the assembly `syscall_entry()` function.
  *
- * @param rdi First argument.
- * @param rsi Second argument.
- * @param rdx Third argument.
- * @param rcx Fourth argument.
- * @param r8 Fifth argument.
- * @param r9 Sixth argument.
+ * @param arg1 First argument.
+ * @param arg2 Second argument.
+ * @param arg3 Third argument.
+ * @param arg4 Fourth argument.
+ * @param arg5 Fifth argument.
+ * @param arg6 Sixth argument.
  * @param number The syscall number (`syscall_number_t`).
  * @return The return value of the syscall.
  */
-uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx, uint64_t r8, uint64_t r9,
+uint64_t syscall_handler(uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5, uint64_t arg6,
     uint64_t number);
 
 /**

@@ -2,6 +2,7 @@
 
 #include <kernel/fs/path.h>
 #include <kernel/sync/mutex.h>
+#include <kernel/sync/seqlock.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 
@@ -43,28 +44,8 @@ typedef uint64_t dentry_id_t;
 #define DENTRY_IS_ROOT(dentry) (dentry->parent == dentry)
 
 /**
- * @brief Flags for a dentry.
- * @enum dentry_flags_t
- */
-typedef enum
-{
-    DENTRY_NONE = 0, ///< No flags.
-    /**
-     * This dentry is negative, meaning it does not have an associated inode.
-     *
-     * A negative dentry is created when a lookup for a name in a directory fails, it is used to cache the fact that
-     * the name does not exist in that directory and also allows us to avoid race conditions where two processes try to
-     * create the same file at the same time.
-     */
-    DENTRY_NEGATIVE = 1 << 1,
-} dentry_flags_t;
-
-/**
  * @brief Dentry operations structure.
  * @struct dentry_ops_t
- *
- * Note that the dentrys mutex will be acquired by the vfs and any implemented operations do not need to acquire it
- * again.
  */
 typedef struct dentry_ops
 {
@@ -75,22 +56,23 @@ typedef struct dentry_ops
 /**
  * @brief Directory entry structure.
  * @struct dentry_t
+ * 
+ * A dentry structure is protected by the mutex of its inode.
  */
 typedef struct dentry
 {
     ref_t ref;
     dentry_id_t id;
-    char name[MAX_NAME];
-    inode_t* inode;
+    char name[MAX_NAME]; ///< Constant after creation.
+    lock_t inodeLock;    ///< Protects access to the inode pointer. @todo Replace with seqlock?
+    inode_t* inode; ///< Will be `NULL` if the dentry is negative, never access this directly use `dentry_inode_get()`.
     dentry_t* parent;
     list_entry_t siblingEntry;
     list_t children;
-    mutex_t childrenMutex;
     superblock_t* superblock;
     const dentry_ops_t* ops;
     void* private;
     map_entry_t mapEntry;
-    _Atomic(dentry_flags_t) flags;
     /**
      * The number of mounts on this dentry.
      *
@@ -108,7 +90,8 @@ typedef struct dentry
      * process, a process can only traverse a mountpoint if it is visible in its namespace, if its not visible the
      * dentry acts exactly like a normal dentry.
      */
-    atomic_uint64_t mountCount;
+    _Atomic(uint64_t) mountCount;
+    list_entry_t otherEntry; ///< Made available for use by any other subsystems for convenience.
 } dentry_t;
 
 /**
@@ -118,9 +101,6 @@ typedef struct dentry
  * until `dentry_make_positive()` is called making it positive. This is needed to solve some race conditions when
  * creating new files. While the dentry is negative it is not possible to create another dentry of the same name in the
  * same parent, and any lookup to the dentry will fail until it is made positive.
- *
- * Note that this function will set `errno == EEXIST` if a dentry with the same name and parent already exists in the
- * dentry cache, this is very useful for solving race conditions when looking up dentries.
  *
  * There is no `dentry_free()` instead use `DEREF()`.
  *
@@ -157,7 +137,7 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name);
 /**
  * @brief Make a dentry positive by associating it with an inode.
  *
- * This will also add the dentry to its parent's list of children, set the dentrys inode and its flags to positive.
+ * This will also add the dentry to its parent's list of children.
  *
  * @param dentry The dentry to make positive, or `NULL` for no-op.
  * @param inode The inode to associate with the dentry, or `NULL` for no-op.
@@ -174,18 +154,38 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode);
 void dentry_make_negative(dentry_t* dentry);
 
 /**
- * @brief Increments the mount count of a dentry.
+ * @brief Get the inode associated with a dentry.
  *
- * @param dentry The dentry to increment the mount count of.
+ * Uses the dentry's seqlock to safely get the inode.
+ * 
+ * @param dentry The dentry to get the inode from.
+ * @return A reference to the inode associated with the dentry, or `NULL` if the dentry is negative.
  */
-void dentry_inc_mount_count(dentry_t* dentry);
+inode_t* dentry_inode_get(dentry_t* dentry);
 
 /**
- * @brief Decrements the mount count of a dentry.
- *
- * @param dentry The dentry to decrement the mount count of.
+ * @brief Check if a dentry is positive.
+ * 
+ * @param dentry The dentry to check.
+ * @return true if the dentry is positive, false if it is negative.
  */
-void dentry_dec_mount_count(dentry_t* dentry);
+bool dentry_is_positive(dentry_t* dentry);
+
+/**
+ * @brief Check if the inode associated with a dentry is a file.
+ * 
+ * @param dentry The dentry to check.
+ * @return true if the dentry is a file, false otherwise or if the dentry is negative.
+ */
+bool dentry_is_file(dentry_t* dentry);
+
+/**
+ * @brief Check if the inode associated with a dentry is a directory.
+ * 
+ * @param dentry The dentry to check.
+ * @return true if the dentry is a directory, false otherwise or if the dentry is negative.
+ */
+bool dentry_is_dir(dentry_t* dentry);
 
 /**
  * @brief Helper function for a basic getdents.

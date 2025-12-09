@@ -12,7 +12,7 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
-#include <kernel/proc/process.h>
+#include <kernel/sched/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/sys_time.h>
 #include <kernel/sched/timer.h>
@@ -34,37 +34,43 @@ static uint64_t vfs_create(path_t* outPath, const pathname_t* pathname, const pa
 {
     path_t parent = PATH_EMPTY;
     path_t target = PATH_EMPTY;
-    if (path_walk_parent_and_child(&parent, &target, pathname, from, WALK_NEGATIVE_IS_OK, ns) == ERR)
+    if (path_walk_parent_and_child(&parent, &target, pathname, from, ns) == ERR)
     {
         return ERR;
     }
     PATH_DEFER(&parent);
     PATH_DEFER(&target);
 
-    inode_t* dir = parent.dentry->inode;
+    inode_t* dir = dentry_inode_get(parent.dentry);
+    if (dir == NULL)
+    {
+        return ERR;
+    }
+    DEREF_DEFER(dir);
+
     if (dir->ops == NULL || dir->ops->create == NULL)
     {
         errno = ENOSYS;
         return ERR;
     }
 
-    MUTEX_SCOPE(&dir->mutex);
-
-    if (!(atomic_load(&target.dentry->flags) & DENTRY_NEGATIVE))
+    inode_t* existing = dentry_inode_get(target.dentry);
+    if (existing != NULL)
     {
+        DEREF_DEFER(existing);
+
         if (pathname->mode & MODE_EXCLUSIVE)
         {
             errno = EEXIST;
             return ERR;
         }
 
-        if ((pathname->mode & MODE_DIRECTORY) && target.dentry->inode->type != INODE_DIR)
+        if (pathname->mode & MODE_DIRECTORY && existing->type != INODE_DIR)
         {
             errno = ENOTDIR;
             return ERR;
         }
-
-        if (!(pathname->mode & MODE_DIRECTORY) && target.dentry->inode->type != INODE_FILE)
+        if (!(pathname->mode & MODE_DIRECTORY) && existing->type != INODE_FILE)
         {
             errno = EISDIR;
             return ERR;
@@ -80,45 +86,39 @@ static uint64_t vfs_create(path_t* outPath, const pathname_t* pathname, const pa
         return ERR;
     }
 
-    if (atomic_load(&target.dentry->flags) & DENTRY_NEGATIVE)
-    {
-        errno = EIO;
-        return ERR;
-    }
-
     path_copy(outPath, &target);
     return 0;
 }
 
 static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname, const path_t* from, namespace_t* namespace)
 {
-    path_t target = PATH_EMPTY;
     if (pathname->mode & MODE_CREATE)
     {
-        if (vfs_create(&target, pathname, from, namespace) == ERR)
-        {
-            return ERR;
-        }
+        return vfs_create(outPath, pathname, from, namespace);
     }
-    else // Dont create dentry
+
+    path_t target = PATH_EMPTY;
+    if (path_walk(&target, pathname, from, namespace) == ERR)
     {
-        if (path_walk(&target, pathname, from, WALK_NEGATIVE_IS_ERR, namespace) == ERR)
-        {
-            return ERR;
-        }
+        return ERR;
     }
     PATH_DEFER(&target);
 
-    if ((pathname->mode & MODE_DIRECTORY) && target.dentry->inode->type != INODE_DIR)
+    if (pathname->mode & MODE_DIRECTORY)
     {
-        errno = ENOTDIR;
-        return ERR;
+        if (dentry_is_file(target.dentry))
+        {
+            errno = ENOTDIR;
+            return ERR;
+        }
     }
-
-    if (!(pathname->mode & MODE_DIRECTORY) && target.dentry->inode->type != INODE_FILE)
+    else
     {
-        errno = EISDIR;
-        return ERR;
+        if (dentry_is_dir(target.dentry))
+        {
+            errno = EISDIR;
+            return ERR;
+        }
     }
 
     path_copy(outPath, &target);
@@ -157,23 +157,23 @@ uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* proc
     }
     PATH_DEFER(&path);
 
-    files[0] = file_new(path.dentry->inode, &path, pathname->mode);
+    files[0] = file_new(&path, pathname->mode);
     if (files[0] == NULL)
     {
         return ERR;
     }
     DEREF_DEFER(files[0]);
 
-    files[1] = file_new(path.dentry->inode, &path, pathname->mode);
+    files[1] = file_new(&path, pathname->mode);
     if (files[1] == NULL)
     {
         return ERR;
     }
     DEREF_DEFER(files[1]);
 
-    if (pathname->mode & MODE_TRUNCATE && path.dentry->inode->type == INODE_FILE)
+    if (pathname->mode & MODE_TRUNCATE && files[0]->inode->type == INODE_FILE)
     {
-        inode_truncate(path.dentry->inode);
+        inode_truncate(files[0]->inode);
     }
 
     if (files[0]->ops != NULL && files[0]->ops->open2 != NULL)
@@ -207,16 +207,16 @@ file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* pr
     }
     PATH_DEFER(&path);
 
-    file_t* file = file_new(path.dentry->inode, &path, pathname->mode);
+    file_t* file = file_new(&path, pathname->mode);
     if (file == NULL)
     {
         return NULL;
     }
     DEREF_DEFER(file);
 
-    if (pathname->mode & MODE_TRUNCATE && path.dentry->inode->type == INODE_FILE)
+    if (pathname->mode & MODE_TRUNCATE && file->inode->type == INODE_FILE)
     {
-        inode_truncate(path.dentry->inode);
+        inode_truncate(file->inode);
     }
 
     if (file->ops != NULL && file->ops->open != NULL)
@@ -292,9 +292,12 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
         return ERR;
     }
 
-    if (file->mode & MODE_APPEND && file->ops->seek != NULL && file->ops->seek(file, 0, SEEK_END) == ERR)
+    if (file->mode & MODE_APPEND)
     {
-        return ERR;
+        if (file->ops->seek != NULL && file->ops->seek(file, 0, SEEK_END) == ERR)
+        {
+            return ERR;
+        }
     }
 
     if (!(file->mode & MODE_WRITE))
@@ -604,7 +607,7 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
     PATH_DEFER(&cwd);
 
     path_t path = PATH_EMPTY;
-    if (path_walk(&path, pathname, &cwd, WALK_NEGATIVE_IS_ERR, &process->ns) == ERR)
+    if (path_walk(&path, pathname, &cwd, &process->ns) == ERR)
     {
         return ERR;
     }
@@ -618,16 +621,24 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
 
     memset(buffer, 0, sizeof(stat_t));
 
-    MUTEX_SCOPE(&path.dentry->inode->mutex);
-    buffer->number = path.dentry->inode->number;
-    buffer->type = path.dentry->inode->type;
-    buffer->size = path.dentry->inode->size;
-    buffer->blocks = path.dentry->inode->blocks;
-    buffer->linkAmount = path.dentry->inode->linkCount;
-    buffer->accessTime = path.dentry->inode->accessTime;
-    buffer->modifyTime = path.dentry->inode->modifyTime;
-    buffer->changeTime = path.dentry->inode->changeTime;
-    buffer->createTime = path.dentry->inode->createTime;
+    inode_t* inode = dentry_inode_get(path.dentry);
+    if (inode == NULL)
+    {
+        return ERR;
+    }
+    DEREF_DEFER(inode);
+
+    MUTEX_SCOPE(&inode->mutex);
+
+    buffer->number = inode->number;
+    buffer->type = inode->type;
+    buffer->size = inode->size;
+    buffer->blocks = inode->blocks;
+    buffer->linkAmount = atomic_load(&inode->dentryCount);
+    buffer->accessTime = inode->accessTime;
+    buffer->modifyTime = inode->modifyTime;
+    buffer->changeTime = inode->changeTime;
+    buffer->createTime = inode->createTime;
     strncpy(buffer->name, path.dentry->name, MAX_NAME - 1);
     buffer->name[MAX_NAME - 1] = '\0';
 
@@ -653,7 +664,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
 
     path_t oldParent = PATH_EMPTY;
     path_t old = PATH_EMPTY;
-    if (path_walk_parent_and_child(&oldParent, &old, oldPathname, &cwd, WALK_NEGATIVE_IS_ERR, &process->ns) == ERR)
+    if (path_walk_parent_and_child(&oldParent, &old, oldPathname, &cwd, &process->ns) == ERR)
     {
         return ERR;
     }
@@ -661,13 +672,13 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
     PATH_DEFER(&old);
 
     path_t newParent = PATH_EMPTY;
-    path_t target = PATH_EMPTY;
-    if (path_walk_parent_and_child(&newParent, &target, newPathname, &cwd, WALK_NEGATIVE_IS_OK, &process->ns) == ERR)
+    path_t new = PATH_EMPTY;
+    if (path_walk_parent_and_child(&newParent, &new, newPathname, &cwd, &process->ns) == ERR)
     {
         return ERR;
     }
     PATH_DEFER(&newParent);
-    PATH_DEFER(&target);
+    PATH_DEFER(&new);
 
     if (oldParent.dentry->superblock->id != newParent.dentry->superblock->id)
     {
@@ -675,8 +686,29 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
         return ERR;
     }
 
-    if (newParent.dentry->inode == NULL || newParent.dentry->inode->ops == NULL ||
-        newParent.dentry->inode->ops->link == NULL)
+    inode_t* oldInode = dentry_inode_get(old.dentry);
+    if (oldInode == NULL)
+    {
+        errno = ENOENT;
+        return ERR;
+    }
+    DEREF_DEFER(oldInode);
+
+    if (oldInode->type == INODE_DIR)
+    {
+        errno = EISDIR;
+        return ERR;
+    }
+
+    inode_t* newParentInode = dentry_inode_get(newParent.dentry);
+    if (newParentInode == NULL)
+    {
+        errno = ENOENT;
+        return ERR;
+    }
+    DEREF_DEFER(newParentInode);
+
+    if (newParentInode->ops == NULL || newParentInode->ops->link == NULL)
     {
         errno = ENOSYS;
         return ERR;
@@ -694,32 +726,17 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
         return ERR;
     }
 
-    mutex_acquire(&old.dentry->inode->mutex);
-    mutex_acquire(&newParent.dentry->inode->mutex);
+    MUTEX_SCOPE(&oldInode->mutex);
+    MUTEX_SCOPE(&newParentInode->mutex);
 
-    uint64_t result = 0;
-    if (!(atomic_load(&target.dentry->flags) & DENTRY_NEGATIVE))
-    {
-        errno = EEXIST;
-        result = ERR;
-    }
-
-    if (result != ERR)
-    {
-        assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-        result = newParent.dentry->inode->ops->link(old.dentry, newParent.dentry->inode, target.dentry);
-    }
-
-    mutex_release(&newParent.dentry->inode->mutex);
-    mutex_release(&old.dentry->inode->mutex);
-
-    if (result == ERR)
+    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
+    if (newParentInode->ops->link(newParentInode, old.dentry, new.dentry) == ERR)
     {
         return ERR;
     }
 
-    inode_notify_modify(newParent.dentry->inode);
-    inode_notify_change(old.dentry->inode);
+    inode_notify_modify(newParentInode);
+    inode_notify_change(oldInode);
 
     return 0;
 }
@@ -737,23 +754,36 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
 
     path_t parent = PATH_EMPTY;
     path_t target = PATH_EMPTY;
-    if (path_walk_parent_and_child(&parent, &target, pathname, &cwd, WALK_NEGATIVE_IS_ERR, &process->ns) == ERR)
+    if (path_walk_parent_and_child(&parent, &target, pathname, &cwd, &process->ns) == ERR)
     {
         return ERR;
     }
     PATH_DEFER(&parent);
     PATH_DEFER(&target);
 
-    if ((pathname->mode & MODE_DIRECTORY) && target.dentry->inode->type != INODE_DIR)
+    inode_t* dir = dentry_inode_get(parent.dentry);
+    if (dir == NULL)
     {
-        errno = ENOTDIR;
+        errno = ENOENT;
         return ERR;
     }
+    DEREF_DEFER(dir);
 
-    if (!(pathname->mode & MODE_DIRECTORY) && target.dentry->inode->type != INODE_FILE)
+    if (pathname->mode & MODE_DIRECTORY)
     {
-        errno = EISDIR;
-        return ERR;
+        if (dentry_is_file(target.dentry))
+        {
+            errno = ENOTDIR;
+            return ERR;
+        }
+    }
+    else
+    {
+        if (dentry_is_dir(target.dentry))
+        {
+            errno = EISDIR;
+            return ERR;
+        }
     }
 
     if (!(target.mount->mode & MODE_WRITE))
@@ -762,24 +792,21 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
         return ERR;
     }
 
-    inode_t* dir = parent.dentry->inode;
     if (dir->ops == NULL || dir->ops->remove == NULL)
     {
-        errno = EPERM;
+        errno = ENOSYS;
         return ERR;
     }
 
-    mutex_acquire(&dir->mutex);
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    uint64_t result = dir->ops->remove(dir, target.dentry, pathname->mode);
-    if (result != ERR)
-    {
-        inode_notify_change(target.dentry->inode);
-        dentry_make_negative(target.dentry);
-    }
-    mutex_release(&dir->mutex);
 
-    return result;
+    if (dir->ops->remove(dir, target.dentry, pathname->mode) == ERR)
+    {
+        return ERR;
+    }
+
+    inode_notify_modify(dir);
+    return 0;
 }
 
 uint64_t vfs_get_new_id(void)

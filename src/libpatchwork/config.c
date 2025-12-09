@@ -225,6 +225,40 @@ void config_close(config_t* config)
     free(config);
 }
 
+void config_get(config_t* config, const char* section, uint64_t index, const char* fallback, const char** outValue, const char** outKey)
+{
+    if (config == NULL || section == NULL)
+    {
+        *outValue = fallback;
+        *outKey = fallback;
+        return;
+    }
+
+    config_section_t* sec = config_find_section(config, section);
+    if (sec == NULL)
+    {
+        *outValue = fallback;
+        *outKey = fallback;
+        return;
+    }
+
+    uint64_t currentIndex = 0;
+    config_pair_t* pair;
+    LIST_FOR_EACH(pair, &sec->pairs, entry)
+    {
+        if (currentIndex == index)
+        {
+            *outValue = pair->value;
+            *outKey = pair->key;
+            return;
+        }
+        currentIndex++;
+    }
+
+    *outValue = fallback;
+    *outKey = fallback;
+}
+
 const char* config_get_string(config_t* config, const char* section, const char* key, const char* fallback)
 {
     if (config == NULL || section == NULL || key == NULL)

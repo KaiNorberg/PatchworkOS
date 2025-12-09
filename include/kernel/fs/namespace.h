@@ -65,10 +65,8 @@ typedef struct namespace
  *
  * @param ns The namespace to initialize.
  * @param parent The parent namespace to inherit all mounts from, can be `NULL` to create an empty namespace.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `ENOMEM`: Out of memory.
  */
-uint64_t namespace_init(namespace_t* ns, namespace_t* parent);
+void namespace_init(namespace_t* ns);
 
 /**
  * @brief Deinitializes a namespace.
@@ -78,6 +76,19 @@ uint64_t namespace_init(namespace_t* ns, namespace_t* parent);
  * @param ns The namespace to deinitialize.
  */
 void namespace_deinit(namespace_t* ns);
+
+/**
+ * @brief Sets the parent of a namespace.
+ *
+ * @param ns The namespace to set the parent of.
+ * @param parent The new parent namespace.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EBUSY`: The namespace already has a parent.
+ * - `ELOOP`: Setting the parent would create a cycle.
+ * - `ENOMEM`: Out of memory.
+ */
+uint64_t namespace_set_parent(namespace_t* ns, namespace_t* parent);
 
 /**
  * @brief Traverse a mountpoint path to the root of the mounted filesystem.
@@ -114,19 +125,19 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
     mount_flags_t flags, mode_t mode, void* private);
 
 /**
- * @brief Bind a directory to a mountpoint in a namespace.
- *
+ * @brief Bind a target dentry to a mountpoint in a namespace.
+ * 
  * @param ns The namespace to mount in.
- * @param source The source directory to bind.
- * @param mountpoint The mountpoint path.
+ * @param target The target dentry to bind, could be either a file or directory and from any filesystem.
+ * @param mountpoint The path to bind to.
  * @param flags Mount flags.
  * @param mode The maximum allowed permissions for files/directories opened under this mount.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
- * - `ENOENT`: The source is negative.
+ * - `ENOENT`: The target is negative.
  * - `ENOMEM`: Out of memory.
  */
-mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* mountpoint, mount_flags_t flags, mode_t mode);
+mount_t* namespace_bind(namespace_t* ns, dentry_t* target, path_t* mountpoint, mount_flags_t flags, mode_t mode);
 
 /**
  * @brief Get the root path of a namespace.

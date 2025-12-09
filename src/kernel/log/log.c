@@ -89,7 +89,7 @@ void log_screen_disable(void)
     outputs &= ~LOG_OUTPUT_SCREEN;
 }
 
-void log_write(const char* string, uint64_t length)
+static void log_write(const char* string, uint64_t length)
 {
     if (outputs & LOG_OUTPUT_FILE)
     {
@@ -159,6 +159,29 @@ static void log_handle_char(log_level_t level, char chr)
     }
 
     log_write(&chr, 1);
+}
+
+void log_nprint(log_level_t level, const char* string, uint64_t length)
+{
+    if (level < minLevel)
+    {
+        return;
+    }
+
+    if (level != LOG_LEVEL_PANIC)
+    {
+        lock_acquire(&lock);
+    }
+
+    for (uint64_t i = 0; i < length; i++)
+    {
+        log_handle_char(level, string[i]);
+    }
+
+    if (level != LOG_LEVEL_PANIC)
+    {
+        lock_release(&lock);
+    }
 }
 
 void log_print(log_level_t level, const char* format, ...)

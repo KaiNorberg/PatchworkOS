@@ -7,7 +7,7 @@
 #include <string.h>
 #include <sys/io.h>
 
-uint32_t main(uint32_t argc, char** argv)
+int main(int argc, char** argv)
 {
     if (argc != 3)
     {

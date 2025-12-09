@@ -1,3 +1,4 @@
+#include <kernel/fs/dentry.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/sched/loader.h>
 
@@ -15,45 +16,63 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-static void* loader_load_program(thread_t* thread)
+static void loader_strv_free(char** array, uint64_t amount)
 {
-    process_t* process = thread->process;
-    space_t* space = &process->space;
-
-    const char* executable = process->argv.buffer[0];
-    if (executable == NULL)
+    if (array == NULL)
     {
-        return NULL;
+        return;
     }
 
-    file_t* file = vfs_open(PATHNAME(executable), process);
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        if (array[i] == NULL)
+        {
+            continue;
+        }
+        free(array[i]);
+    }
+    free((void*)array);
+}
+
+void loader_exec(const char* executable, char** argv, uint64_t argc)
+{   
+    assert(executable != NULL);
+    assert((argv != NULL && argc > 0) || ((argv == NULL || argv[0] == NULL) && argc == 0));
+
+    // Generic error if a lower function fails without setting errno
+    errno = ESPAWNFAIL;
+
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
+
+    file_t* file = NULL;
+    void* fileData = NULL;
+
+    file = vfs_open(PATHNAME(executable), process);
     if (file == NULL)
     {
-        return NULL;
+        goto cleanup;
     }
-    DEREF_DEFER(file);
 
     uint64_t fileSize = vfs_seek(file, 0, SEEK_END);
     vfs_seek(file, 0, SEEK_SET);
 
-    void* fileData = malloc(fileSize);
+    fileData = malloc(fileSize);
     if (fileData == NULL)
     {
-        return NULL;
+        goto cleanup;
     }
 
     uint64_t readSize = vfs_read(file, fileData, fileSize);
     if (readSize != fileSize)
     {
-        free(fileData);
-        return NULL;
+        goto cleanup;
     }
 
     Elf64_File elf;
     if (elf64_validate(&elf, fileData, fileSize) != 0)
     {
-        free(fileData);
-        return NULL;
+        goto cleanup;
     }
 
     Elf64_Addr minAddr = UINT64_MAX;
@@ -64,203 +83,89 @@ static void* loader_load_program(thread_t* thread)
     if (vmm_alloc(&process->space, (void*)minAddr, loadSize, PML_USER | PML_WRITE | PML_PRESENT, VMM_ALLOC_OVERWRITE) ==
         NULL)
     {
-        free(fileData);
-        return NULL;
+        goto cleanup;
     }
 
     elf64_load_segments(&elf, 0, 0);
 
-    void* entryPoint = (void*)elf.header->e_entry;
-    free(fileData);
-    return entryPoint;
-}
-
-static char** loader_setup_argv(thread_t* thread)
-{
-    if (thread->process->argv.size >= PAGE_SIZE)
+    char* rsp = (char*)thread->userStack.top;
+    for (int64_t i = argc - 1; i >= 0; i--)
     {
-        return NULL;
+        size_t len = strlen(argv[i]) + 1;
+        rsp -= len;
+        memcpy(rsp, argv[i], len);
+
+        free(argv[i]);
+        argv[i] = rsp;
     }
-
-    char** argv = memcpy((void*)(thread->userStack.top - sizeof(uint64_t) - thread->process->argv.size),
-        thread->process->argv.buffer, thread->process->argv.size);
-
-    for (uint64_t i = 0; i < thread->process->argv.amount; i++)
+    rsp -= sizeof(char*);
+    *((char**)rsp) = NULL;
+    for (int64_t i = argc - 1; i >= 0; i--)
     {
-        argv[i] = (void*)((uint64_t)argv[i] - (uint64_t)thread->process->argv.buffer + (uint64_t)argv);
-    }
-
-    return argv;
-}
-
-static void loader_process_entry(void)
-{
-    thread_t* thread = sched_thread();
-
-    void* rip = loader_load_program(thread);
-    if (rip == NULL)
-    {
-        sched_process_exit(ESPAWNFAIL);
-    }
-
-    char** argv = loader_setup_argv(thread);
-    if (argv == NULL)
-    {
-        sched_process_exit(ESPAWNFAIL);
+        rsp -= sizeof(char*);
+        *((char**)rsp) = argv[i];
+        argv[i] = NULL;
     }
 
     // Disable interrupts, they will be enabled when we jump to user space.
     asm volatile("cli");
 
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
-    thread->frame.rdi = thread->process->argv.amount;
-    thread->frame.rsi = (uintptr_t)argv;
-    thread->frame.rsp = (uintptr_t)ROUND_DOWN((uint64_t)argv - 1, 16);
-    thread->frame.rip = (uintptr_t)rip;
+    thread->frame.rsp = ROUND_DOWN((uintptr_t)rsp - sizeof(uint64_t), 16);
+    thread->frame.rip = elf.header->e_entry;
+    thread->frame.rdi = argc;
+    thread->frame.rsi = (uintptr_t)rsp;
     thread->frame.cs = GDT_CS_RING3;
     thread->frame.ss = GDT_SS_RING3;
     thread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
 
-    thread_jump(thread);
+    errno = EOK;
+cleanup:
+    if (file != NULL)
+    {
+        DEREF(file);
+    }
+    if (fileData != NULL)
+    {
+        free(fileData);
+    }
+    free((void*)executable);
+    loader_strv_free(argv, argc);
+    if (errno == EOK)
+    {
+        thread_jump(thread);
+    }
+    sched_process_exit(errno);
 }
 
-thread_t* loader_spawn(const char** argv, const path_t* cwd, priority_t priority, spawn_flags_t flags)
+SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const char* cwd, priority_t priority,
+    spawn_flags_t flags)
 {
-    process_t* process = sched_process();
-    assert(process != NULL);
+    process_t* child = NULL;
+    thread_t* childThread = NULL;
 
-    if (argv == NULL || argv[0] == NULL)
+    uint64_t argc = 0;
+    char** argvCopy = NULL;
+    char* executable = NULL;
+
+    if (argv == NULL || (priority > PRIORITY_MAX_USER && priority != PRIORITY_PARENT))
     {
         errno = EINVAL;
-        return NULL;
+        goto error;
     }
 
-    pathname_t executable;
-    if (pathname_init(&executable, argv[0]) == ERR)
-    {
-        return NULL;
-    }
-
-    stat_t info;
-    if (vfs_stat(&executable, &info, process) == ERR)
-    {
-        return NULL;
-    }
-
-    if (info.type != INODE_FILE)
-    {
-        errno = EISDIR;
-        return NULL;
-    }
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
 
     if (priority == PRIORITY_PARENT)
     {
         priority = atomic_load(&process->priority);
     }
 
-    path_t parentCwd = cwd_get(&process->cwd);
-    PATH_DEFER(&parentCwd);
-
-    process_t* child = process_new(argv, cwd != NULL ? cwd : &parentCwd,
-        flags & SPAWN_EMPTY_NAMESPACE ? NULL : &process->ns, priority);
+    child = process_new(priority);
     if (child == NULL)
     {
-        return NULL;
-    }
-    DEREF_DEFER(child);
-
-    thread_t* childThread = thread_new(child);
-    if (childThread == NULL)
-    {
-        return NULL;
-    }
-
-    childThread->frame.rip = (uintptr_t)loader_process_entry;
-    childThread->frame.rsp = childThread->kernelStack.top;
-    childThread->frame.cs = GDT_CS_RING0;
-    childThread->frame.ss = GDT_SS_RING0;
-    childThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
-
-    LOG_INFO("spawn path=%s pid=%d\n", argv[0], child->id);
-    return childThread;
-}
-
-SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const char* cwd, priority_t priority,
-    spawn_flags_t flags)
-{
-    thread_t* thread = sched_thread();
-    process_t* process = thread->process;
-
-    if (priority > PRIORITY_MAX_USER && priority != PRIORITY_PARENT)
-    {
-        errno = EACCES;
-        return ERR;
-    }
-
-    char** argvCopy;
-    uint64_t argc;
-    char* argvTerminator = NULL;
-    if (thread_copy_from_user_terminated(thread, (void*)argv, (void*)&argvTerminator, sizeof(char*), CONFIG_MAX_ARGC,
-            (void**)&argvCopy, &argc) == ERR)
-    {
-        return ERR;
-    }
-
-    for (uint64_t i = 0; i < argc; i++)
-    {
-        char* userSpacePtr = argvCopy[i];
-        char* kernelStringCopy;
-        uint64_t stringLen;
-        char terminator = '\0';
-
-        if (thread_copy_from_user_terminated(thread, userSpacePtr, &terminator, sizeof(char), MAX_PATH,
-                (void**)&kernelStringCopy, &stringLen) == ERR)
-        {
-            for (uint64_t j = 0; j < i; j++)
-            {
-                free(argvCopy[j]);
-            }
-            free((void*)argvCopy);
-            return ERR;
-        }
-
-        argvCopy[i] = kernelStringCopy;
-    }
-
-    path_t cwdPath = PATH_EMPTY;
-    if (cwd != NULL)
-    {
-        pathname_t cwdPathname;
-        if (thread_copy_from_user_pathname(thread, &cwdPathname, cwd) == ERR)
-        {
-            goto cleanup_argv;
-        }
-
-        path_t cwd = cwd_get(&process->cwd);
-        PATH_DEFER(&cwd);
-
-        if (path_walk(&cwdPath, &cwdPathname, &cwd, WALK_NEGATIVE_IS_ERR, &process->ns) == ERR)
-        {
-            goto cleanup_argv;
-        }
-    }
-
-    thread_t* child = loader_spawn((const char**)argvCopy, cwd == NULL ? NULL : &cwdPath, priority, flags);
-
-    for (uint64_t i = 0; i < argc; i++)
-    {
-        free(argvCopy[i]);
-    }
-    free((void*)argvCopy);
-
-    if (cwd != NULL)
-    {
-        path_put(&cwdPath);
-    }
-
-    if (child == NULL)
-    {
-        return ERR;
+        goto error;
     }
 
     if (fds != NULL)
@@ -268,12 +173,10 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         spawn_fd_t* fdsCopy;
         uint64_t fdAmount;
         spawn_fd_t fdsTerminator = SPAWN_FD_END;
-
         if (thread_copy_from_user_terminated(thread, fds, &fdsTerminator, sizeof(spawn_fd_t), CONFIG_MAX_FD,
                 (void**)&fdsCopy, &fdAmount) == ERR)
         {
-            thread_free(child);
-            return ERR;
+            goto error;
         }
 
         for (uint64_t i = 0; i < fdAmount; i++)
@@ -282,52 +185,120 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
             if (file == NULL)
             {
                 free(fdsCopy);
-                thread_free(child);
-                errno = EBADF;
-                return ERR;
+                goto error;
             }
 
-            if (file_table_set(&child->process->fileTable, fdsCopy[i].child, file) == ERR)
+            if (file_table_set(&child->fileTable, fdsCopy[i].child, file) == ERR)
             {
-                DEREF(file);
                 free(fdsCopy);
-                thread_free(child);
-                errno = EBADF;
-                return ERR;
+                DEREF(file);
+                goto error;
             }
             DEREF(file);
         }
         free(fdsCopy);
     }
 
-    pid_t childPid = child->process->id; // Important to not deref after pushing the thread
-    sched_submit(child);
-    return childPid;
-
-cleanup_argv:
-    for (uint64_t i = 0; i < argc; i++)
+    if (cwd != NULL)
     {
-        free(argvCopy[i]);
+        pathname_t cwdPathname;
+        if (thread_copy_from_user_pathname(thread, &cwdPathname, cwd) == ERR)
+        {
+            goto error;
+        }
+
+        path_t cwdParent = cwd_get(&process->cwd);
+        PATH_DEFER(&cwdParent);
+
+        path_t cwdPath = PATH_EMPTY;
+        if (path_walk(&cwdPath, &cwdPathname, &cwdParent, &process->ns) == ERR)
+        {
+            goto error;
+        }
+
+        if (!dentry_is_positive(cwdPath.dentry))
+        {
+            path_put(&cwdPath);
+            goto error;
+        }
+
+        cwd_set(&child->cwd, &cwdPath);
+        path_put(&cwdPath);
     }
-    free((void*)argvCopy);
+    else
+    {
+        path_t cwdParent = cwd_get(&process->cwd);
+        cwd_set(&child->cwd, &cwdParent);
+        path_put(&cwdParent);
+    }
+
+    childThread = thread_new(child);
+    if (childThread == NULL)
+    {
+        goto error;
+    }
+    
+    if (thread_copy_from_user_string_array(thread, argv, &argvCopy, &argc) == ERR)
+    {   
+        goto error;
+    }
+
+    if (argc == 0 || argvCopy[0] == NULL)
+    {
+        goto error;
+    }
+
+    executable = strdup(argvCopy[0]);
+    if (executable == NULL)
+    {
+        goto error;
+    }
+
+    if (!(flags & SPAWN_EMPTY_NAMESPACE))
+    {
+        if (namespace_set_parent(&child->ns, &process->ns) == ERR)
+        {
+            goto error;
+        }
+    }
+
+    if (!(flags & SPAWN_EMPTY_ENVIRONMENT))
+    {
+        if (process_copy_env(child, process) == ERR)
+        {
+            goto error;
+        }
+    }
+
+    // Call loader_exec(executable, argvCopy, argc)
+    memset(&thread->frame, 0, sizeof(interrupt_frame_t));
+    childThread->frame.rip = (uintptr_t)loader_exec;
+    childThread->frame.rdi = (uintptr_t)executable;
+    childThread->frame.rsi = (uintptr_t)argvCopy;
+    childThread->frame.rdx = argc;
+
+    childThread->frame.cs = GDT_CS_RING0;
+    childThread->frame.ss = GDT_SS_RING0;
+    childThread->frame.rsp = childThread->kernelStack.top;
+    childThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+
+    pid_t volatile result = child->id; // Important to not deref after pushing the thread
+    sched_submit(childThread);
+    return result;
+
+error:
+    if (childThread != NULL)
+    {
+        thread_free(childThread);
+    }
+    if (child != NULL)
+    {
+        process_kill(child, errno);
+    }
+
+    free((void*)executable);
+    loader_strv_free(argvCopy, argc);
     return ERR;
-}
-
-thread_t* loader_thread_create(process_t* parent, void* entry, void* arg)
-{
-    thread_t* child = thread_new(parent);
-    if (child == NULL)
-    {
-        return NULL;
-    }
-
-    child->frame.rip = (uint64_t)entry;
-    child->frame.rsp = child->userStack.top;
-    child->frame.rdi = (uint64_t)arg;
-    child->frame.cs = GDT_CS_RING3;
-    child->frame.ss = GDT_SS_RING3;
-    child->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
-    return child;
 }
 
 SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)
@@ -343,12 +314,23 @@ SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)
 
     // Dont check arg user space can use it however it wants
 
-    thread_t* newThread = loader_thread_create(process, entry, arg);
+    thread_t* newThread = thread_new(process);
     if (newThread == NULL)
     {
         return ERR;
     }
 
+    memset(&thread->frame, 0, sizeof(interrupt_frame_t));
+    newThread->frame.rip = (uint64_t)entry;
+    newThread->frame.rsp = newThread->userStack.top;
+    newThread->frame.rbp = newThread->userStack.top;
+    newThread->frame.rdi = (uint64_t)arg;
+    newThread->frame.cs = GDT_CS_RING3;
+    newThread->frame.ss = GDT_SS_RING3;
+    newThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+
+    tid_t volatile result = newThread->id; // Important to not deref after pushing the thread
     sched_submit(newThread);
-    return newThread->id;
+    LOG_DEBUG("created thread %d in process %d\n", newThread->id, process->id);
+    return result;
 }

@@ -2,14 +2,9 @@
 
 #include <kernel/sched/thread.h>
 
-void cwd_init(cwd_t* cwd, const path_t* initialPath)
+void cwd_init(cwd_t* cwd)
 {
     cwd->path = PATH_EMPTY;
-    if (initialPath != NULL)
-    {
-        path_copy(&cwd->path, initialPath);
-    }
-
     lock_init(&cwd->lock);
 }
 
@@ -68,18 +63,26 @@ SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
     PATH_DEFER(&cwd);
 
     path_t path = PATH_EMPTY;
-    if (path_walk(&path, &pathname, &cwd, WALK_NEGATIVE_IS_ERR, &process->ns) == ERR)
+    if (path_walk(&path, &pathname, &cwd, &process->ns) == ERR)
     {
         return ERR;
     }
     PATH_DEFER(&path);
 
-    if (path.dentry->inode->type != INODE_DIR)
+    inode_t* inode = dentry_inode_get(path.dentry);
+    if (inode == NULL)
     {
-        path_put(&path);
+        errno = ENOENT;
+        return ERR;
+    }
+    DEREF_DEFER(inode);
+
+    if (inode->type != INODE_DIR)
+    {
         errno = ENOTDIR;
         return ERR;
     }
+
     cwd_set(&process->cwd, &path);
     return 0;
 }

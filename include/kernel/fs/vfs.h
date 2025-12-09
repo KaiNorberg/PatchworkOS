@@ -7,7 +7,7 @@
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
 #include <kernel/fs/sysfs.h>
-#include <kernel/proc/process.h>
+#include <kernel/sched/process.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
 
@@ -197,4 +197,22 @@ uint64_t vfs_get_new_id(void);
         readCount; \
     })
 
+/**
+ * @brief Helper macro for implementing file operations dealing with simple buffer writes.
+ * 
+ * @param buffer The destination buffer.
+ * @param count The number of bytes to write.
+ * @param offset A pointer to the current offset, will be updated.
+ * @param src The source buffer.
+ * @param size The size of the source buffer.
+ * @return The number of bytes written.
+ */
+#define BUFFER_WRITE(buffer, count, offset, src, size) \
+    ({ \
+        uint64_t writeCount = (*(offset) <= (size)) ? MIN((count), (size) - *(offset)) : 0; \
+        memcpy((buffer) + *(offset), (src), writeCount); \
+        *(offset) += writeCount; \
+        writeCount; \
+    })
+    
 /** @} */
