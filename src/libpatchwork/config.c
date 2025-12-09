@@ -225,7 +225,8 @@ void config_close(config_t* config)
     free(config);
 }
 
-void config_get(config_t* config, const char* section, uint64_t index, const char* fallback, const char** outValue, const char** outKey)
+void config_get(config_t* config, const char* section, uint64_t index, const char* fallback, const char** outValue,
+    const char** outKey)
 {
     if (config == NULL || section == NULL)
     {

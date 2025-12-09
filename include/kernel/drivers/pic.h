@@ -4,9 +4,11 @@
  * @brief Programmable Interrupt Controller (PIC) definitions and functions.
  * @defgroup kernel_drivers_pic PIC
  * @ingroup kernel_drivers
- * 
- * The PIC is a legacy interrupt controller used in x86 systems to manage hardware interrupts. It has largely been superseded by the APIC (Advanced Programmable Interrupt Controller) in modern systems, as such we simply disable the PIC during system initialization.
- * 
+ *
+ * The PIC is a legacy interrupt controller used in x86 systems to manage hardware interrupts. It has largely been
+ * superseded by the APIC (Advanced Programmable Interrupt Controller) in modern systems, as such we simply disable the
+ * PIC during system initialization.
+ *
  * @{
  */
 

@@ -6,6 +6,7 @@
 #include <kernel/module/module.h>
 #include <kernel/sched/process.h>
 #include <kernel/sched/sched.h>
+#include <kernel/init/boot_info.h>
 
 #include <errno.h>
 #include <string.h>
@@ -51,7 +52,7 @@ static fb_info_t info;
 
 static uint64_t gop_init(void)
 {
-    boot_info_t* bootInfo = init_boot_info_get();
+    boot_info_t* bootInfo = boot_info_get();
     if (bootInfo == NULL || bootInfo->gop.virtAddr == NULL)
     {
         LOG_ERR("no GOP provided by bootloader");

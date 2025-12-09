@@ -92,6 +92,7 @@ static void sched_client_update(rbnode_t* node)
     client->vminEligible = minEligible;
 }
 
+// Must be called with the scheduler lock held.
 static void sched_vtime_reset(sched_t* sched, clock_t uptime)
 {
     assert(sched != NULL);
@@ -100,6 +101,7 @@ static void sched_vtime_reset(sched_t* sched, clock_t uptime)
     sched->vtime = SCHED_FIXED_ZERO;
 }
 
+// Must be called with the scheduler lock held.
 static void sched_vtime_update(sched_t* sched, clock_t uptime)
 {
     assert(sched != NULL);
@@ -116,6 +118,14 @@ static void sched_vtime_update(sched_t* sched, clock_t uptime)
 
     // Eq 5.
     sched->vtime += SCHED_FIXED_TO(delta) / totalWeight;
+
+    // Eq 12
+    sched->runThread->sched.veligible += SCHED_FIXED_TO(delta) / sched->runThread->sched.weight;
+
+    // Eq 10
+    sched->runThread->sched.vdeadline =
+        sched->runThread->sched.veligible + SCHED_FIXED_TO(CONFIG_TIME_SLICE) / sched->runThread->sched.weight;
+    rbtree_fix(&sched->runqueue, &sched->runThread->sched.node);
 }
 
 void sched_client_init(sched_client_t* client)
@@ -127,7 +137,6 @@ void sched_client_init(sched_client_t* client)
     client->vdeadline = SCHED_FIXED_ZERO;
     client->veligible = SCHED_FIXED_ZERO;
     client->vminEligible = SCHED_FIXED_ZERO;
-    client->start = 0;
     client->stop = 0;
     client->lastCpu = NULL;
 }
@@ -172,7 +181,6 @@ void sched_start(thread_t* bootThread)
     assert(atomic_load(&sched->totalWeight) == 0);
 
     bootThread->sched.weight = atomic_load(&bootThread->process->priority) + SCHED_WEIGHT_BASE;
-    bootThread->sched.start = sys_time_uptime();
     bootThread->sched.veligible = sched->vtime;
     bootThread->sched.vdeadline =
         bootThread->sched.veligible + SCHED_FIXED_TO(CONFIG_TIME_SLICE) / bootThread->sched.weight;
@@ -381,7 +389,7 @@ static thread_t* sched_steal(void)
     return NULL;
 }
 
-// Should be called with sched lock held.
+// Should be called with scheduler lock held.
 static thread_t* sched_first_eligible(sched_t* sched)
 {
     assert(sched != NULL);
@@ -436,10 +444,8 @@ void sched_submit(thread_t* thread)
 
     cpu_t* self = cpu_get();
 
-    clock_t uptime = sys_time_uptime();
-
     cpu_t* target;
-    if (thread->sched.lastCpu != NULL && sched_is_cache_hot(thread, uptime))
+    if (thread->sched.lastCpu != NULL && sched_is_cache_hot(thread, sys_time_uptime()))
     {
         target = thread->sched.lastCpu;
     }
@@ -453,7 +459,7 @@ void sched_submit(thread_t* thread)
     }
 
     lock_acquire(&target->sched.lock);
-    sched_enter(&target->sched, thread, uptime);
+    sched_enter(&target->sched, thread, sys_time_uptime());
     lock_release(&target->sched.lock);
 
     bool shouldWake = self != target || !self->interrupt.inInterrupt;
@@ -549,8 +555,9 @@ static void sched_verify(sched_t* sched)
         {
             thread_t* thread = CONTAINER_OF(iter, thread_t, sched);
             lag_t lag = (sched->vtime - iter->veligible) * iter->weight;
-            LOG_DEBUG("  process %lld thread %lld lag=%lld veligible=%lld vdeadline=%lld weight=%lld\n", thread->process->id,
-                thread->id, SCHED_FIXED_FROM(lag), SCHED_FIXED_FROM(iter->veligible), SCHED_FIXED_FROM(iter->vdeadline), iter->weight);
+            LOG_DEBUG("  process %lld thread %lld lag=%lld veligible=%lld vdeadline=%lld weight=%lld\n",
+                thread->process->id, thread->id, SCHED_FIXED_FROM(lag), SCHED_FIXED_FROM(iter->veligible),
+                SCHED_FIXED_FROM(iter->vdeadline), iter->weight);
         }
         panic(NULL, "Total lag is not zero, got %lld", SCHED_FIXED_FROM(sumLag));
     }
@@ -571,6 +578,9 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         return;
     }
 
+    clock_t uptime = sys_time_uptime();
+    sched_vtime_update(sched, uptime);
+
     // Prevents the compiler from being annoying.
     thread_t* volatile runThread = sched->runThread;
     assert(runThread != NULL);
@@ -580,24 +590,6 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     // switched threads. Since we have a per-CPU interrupt stack, we dont need to worry about a use-after-free of the
     // stack.
     thread_t* volatile threadToFree = NULL;
-
-    clock_t uptime = sys_time_uptime();
-    sched_vtime_update(sched, uptime);
-
-    if (runThread != sched->idleThread)
-    {
-        clock_t used = uptime - runThread->sched.start;
-        runThread->sched.start = uptime;
-
-        // Eq 12
-        runThread->sched.veligible += SCHED_FIXED_TO(used) / runThread->sched.weight;
-
-        // Eq 10
-        runThread->sched.vdeadline =
-            runThread->sched.veligible + SCHED_FIXED_TO(CONFIG_TIME_SLICE) / runThread->sched.weight;
-
-        rbtree_fix(&sched->runqueue, &runThread->sched.node);
-    }
 
     thread_state_t state = atomic_load(&runThread->state);
     switch (state)
@@ -639,8 +631,6 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         runThread->sched.stop = uptime;
 
         thread_save(runThread, frame);
-
-        next->sched.start = uptime;
 
         assert(atomic_load(&next->state) == THREAD_ACTIVE);
         thread_load(next, frame);

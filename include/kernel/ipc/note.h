@@ -29,10 +29,12 @@ typedef struct cpu cpu_t;
  *
  * ## Special Notes
  *
- * Certain notes will cause the kernel to take special actions. Additionally, for the sake of consistency, we define some notes that all user processes are expected to handle in a standardized way.
- * 
+ * Certain notes will cause the kernel to take special actions. Additionally, for the sake of consistency, we define
+ * some notes that all user processes are expected to handle in a standardized way.
+ *
  * Below is a list of all of special notes with the unix equivalent signal in parentheses:
- * - "kill": Immediately terminate the target thread's process. User space will never see this note. Also used by processes to kill its own threads. (SIGKILL)
+ * - "kill": Immediately terminate the target thread's process. User space will never see this note. Also used by
+ * processes to kill its own threads. (SIGKILL)
  * - "continue": Resume the execution of a suspended process. (SIGCONT)
  * - "stop": Suspend the receiving process execution until a "continue" note is received. (SIGSTOP)
  * @{
@@ -46,9 +48,9 @@ typedef struct cpu cpu_t;
 /**
  * @brief Note queue flags.
  * @enum note_queue_flag_t
- * 
- * Its vital that a certain special notes get handled, even if we run out of memory. Since these notes have a predefined value
- * and we dont care if they get sent multiple times, we can simplify the system such that when the note queue
+ *
+ * Its vital that a certain special notes get handled, even if we run out of memory. Since these notes have a predefined
+ * value and we dont care if they get sent multiple times, we can simplify the system such that when the note queue
  * receives a special note instead of pushing it to the queue we just set the corresponding flag.
  */
 typedef enum

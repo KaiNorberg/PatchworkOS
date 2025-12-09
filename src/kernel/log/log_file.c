@@ -38,7 +38,7 @@ static uint64_t log_file_op_write(file_t* file, const void* buffer, uint64_t cou
     (void)count;  // Unused
     (void)buffer; // Unused
 
-    //log_nprint(LOG_LEVEL_USER, buffer, count);
+    // log_nprint(LOG_LEVEL_USER, buffer, count);
     return count;
 }
 

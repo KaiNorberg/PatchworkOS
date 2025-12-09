@@ -70,17 +70,19 @@ typedef struct
  */
 typedef enum
 {
-    SPAWN_DEFAULT = 0,               ///< Default spawn behaviour.
-    SPAWN_EMPTY_NAMESPACE = 1 << 0, ///< Dont inherit the mountpoints of the parent's namespace.
+    SPAWN_DEFAULT = 0,                ///< Default spawn behaviour.
+    SPAWN_EMPTY_NAMESPACE = 1 << 0,   ///< Dont inherit the mountpoints of the parent's namespace.
     SPAWN_EMPTY_ENVIRONMENT = 1 << 1, ///< Don't inherit the parent's environment.
     /**
-     * Starts the spawned process in a suspended state. The process will not begin executing until a "continue" note is received.
-     * 
-     * The purpose of this flag is to allow the parent process to modify the child process before it starts executing, for example modifying its environment variables.
-     * 
+     * Starts the spawned process in a suspended state. The process will not begin executing until a "continue" note is
+     * received.
+     *
+     * The purpose of this flag is to allow the parent process to modify the child process before it starts executing,
+     * for example modifying its environment variables.
+     *
      * @todo Starting a process suspended is not yet implemented.
      */
-    SPAWN_START_SUSPENDED = 1 << 2 
+    SPAWN_START_SUSPENDED = 1 << 2
 } spawn_flags_t;
 
 /**
@@ -206,15 +208,16 @@ typedef enum
 {
     /**
      * @brief Wait until the timeout expires or the futex value changes.
-     * 
+     *
      * If the value at the futex address is not equal to `val`, the call returns immediately with `EAGAIN`.
      * Otherwise, the calling thread is put to sleep until another thread wakes it up or the specified timeout expires.
      */
     FUTEX_WAIT,
     /**
      * @brief Wake up one or more threads waiting on the futex.
-     * 
-     * Wakes up a maximum of `val` number of threads that are currently waiting on the futex at the specified address. If `val` is `FUTEX_ALL`, all waiting threads are woken up.
+     *
+     * Wakes up a maximum of `val` number of threads that are currently waiting on the futex at the specified address.
+     * If `val` is `FUTEX_ALL`, all waiting threads are woken up.
      */
     FUTEX_WAKE,
 } futex_op_t;

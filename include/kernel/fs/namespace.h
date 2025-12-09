@@ -126,7 +126,7 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
 
 /**
  * @brief Bind a target dentry to a mountpoint in a namespace.
- * 
+ *
  * @param ns The namespace to mount in.
  * @param target The target dentry to bind, could be either a file or directory and from any filesystem.
  * @param mountpoint The path to bind to.

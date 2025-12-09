@@ -12,9 +12,9 @@ extern "C"
  * @brief Setjmp/Longjmp functions.
  * @defgroup libstd_setjmp Setjmp/Longjmp
  * @ingroup libstd
- * 
+ *
  * @todo Add signal handling and 100 other things later.
- * 
+ *
  * @{
  */
 

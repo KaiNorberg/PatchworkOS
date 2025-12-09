@@ -1,7 +1,7 @@
-#include <sys/io.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/io.h>
 
 uint64_t rmdir(const char* path)
 {

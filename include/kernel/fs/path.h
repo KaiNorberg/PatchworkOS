@@ -250,8 +250,7 @@ void path_put(path_t* path);
  * @param ns The namespace to access mountpoints.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* name,
-    namespace_t* ns);
+uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* name, namespace_t* ns);
 
 /**
  * @brief Traverse a pathname from a specified starting path.

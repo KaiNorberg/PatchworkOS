@@ -1,13 +1,13 @@
 #include <kernel/sync/mutex.h>
 
 #include <kernel/config.h>
+#include <kernel/log/log.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/sys_time.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
-#include <kernel/log/log.h>
 
 #include <assert.h>
 

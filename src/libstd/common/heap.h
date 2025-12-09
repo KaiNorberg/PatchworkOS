@@ -10,11 +10,16 @@
  * @defgroup libstd_heap Heap
  * @ingroup libstd
  *
- * We use a "segregated free list" allocator with a set of bins where each bin stores free blocks of size \f$n \cdot 64\f$ bytes where \f$n\f$ is the index of the bin, up to `_HEAP_LARGE_ALLOC_THRESHOLD`. Above this size, blocks are mapped directly.
+ * We use a "segregated free list" allocator with a set of bins where each bin stores free blocks of size \f$n \cdot
+ * 64\f$ bytes where \f$n\f$ is the index of the bin, up to `_HEAP_LARGE_ALLOC_THRESHOLD`. Above this size, blocks are
+ * mapped directly.
  *
- * To allow for coalescing of free blocks, all blocks (allocated and free) are additionally stored in a linked list sorted by address. When a block is freed, we check the previous and next blocks in memory to see if they are free, and if so we merge them into a single larger block.
- * 
- * Included is the internal heap allocation, the functions that the kernel and user space should use are the expected `malloc()`, `free()`, `realloc()`, etc functions.
+ * To allow for coalescing of free blocks, all blocks (allocated and free) are additionally stored in a linked list
+ * sorted by address. When a block is freed, we check the previous and next blocks in memory to see if they are free,
+ * and if so we merge them into a single larger block.
+ *
+ * Included is the internal heap allocation, the functions that the kernel and user space should use are the expected
+ * `malloc()`, `free()`, `realloc()`, etc functions.
  *
  * @todo Implement a slab allocator.
  *

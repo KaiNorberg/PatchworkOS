@@ -326,8 +326,8 @@ uint64_t thread_copy_from_user_string_array(thread_t* thread, const char** user,
         char* strCopy;
         uint64_t strLen;
         char strTerminator = '\0';
-        if (thread_copy_from_user_terminated(thread, copy[i], &strTerminator, sizeof(char), MAX_PATH,
-                (void**)&strCopy, &strLen) == ERR)
+        if (thread_copy_from_user_terminated(thread, copy[i], &strTerminator, sizeof(char), MAX_PATH, (void**)&strCopy,
+                &strLen) == ERR)
         {
             for (uint64_t j = 0; j < i; j++)
             {
@@ -345,7 +345,7 @@ uint64_t thread_copy_from_user_string_array(thread_t* thread, const char** user,
     {
         *outAmount = amount;
     }
-    
+
     return 0;
 }
 

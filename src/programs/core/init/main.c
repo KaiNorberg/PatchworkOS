@@ -11,7 +11,7 @@
 /// @todo Replace the init process with a Lua script when Lua has been ported to PatchworkOS
 
 static void environment_setup(config_t* config)
-{    
+{
     uint64_t index = 0;
     while (true)
     {

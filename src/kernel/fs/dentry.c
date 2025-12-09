@@ -3,13 +3,13 @@
 #include <kernel/sync/seqlock.h>
 #include <stdio.h>
 
+#include <kernel/fs/inode.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
+#include <kernel/log/panic.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/mutex.h>
-#include <kernel/fs/inode.h>    
-#include <kernel/log/panic.h>
 
 #include <stdlib.h>
 
@@ -213,7 +213,7 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name)
     DEREF_DEFER(dentry);
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    
+
     if (dir->ops == NULL || dir->ops->lookup == NULL)
     {
         return REF(dentry); // Leave it negative
@@ -241,25 +241,6 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode)
     atomic_fetch_add_explicit(&inode->dentryCount, 1, memory_order_relaxed);
     dentry->inode = REF(inode);
     list_push_back(&dentry->parent->children, &dentry->siblingEntry);
-
-    lock_release(&dentry->inodeLock);
-}
-
-void dentry_make_negative(dentry_t* dentry)
-{
-    if (dentry == NULL)
-    {
-        return;
-    }
-
-    lock_acquire(&dentry->inodeLock);
-
-    assert(dentry->inode != NULL);
-
-    atomic_fetch_sub_explicit(&dentry->inode->dentryCount, 1, memory_order_relaxed);
-    DEREF(dentry->inode);
-    dentry->inode = NULL;
-    list_remove(&dentry->parent->children, &dentry->siblingEntry);
 
     lock_release(&dentry->inodeLock);
 }

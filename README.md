@@ -550,6 +550,10 @@ All in all, this algorithm would not be a viable replacement for existing algori
 
 [Paging Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dc/d2c/group__kernel__mem__paging.html)
 
+### Scheduler
+
+The scheduler has not yet been properly benchmarked. However, testing using the "threadtest" program shows that the DOOM port remains more or less playable even with 1000+ threads running at 100% CPU load, so until proper benchmarking is done, we can condlude that performance is adequate.
+
 ## Shell Utilities
 
 PatchworkOS includes its own shell utilities designed around its [file flags](#file-flags) system, when file flags are used we also demonstrate the short form. Included is a brief overview with some usage examples. For convenience the shell utilities are named after their POSIX counterparts, however they are not drop-in replacements.

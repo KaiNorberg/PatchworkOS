@@ -56,7 +56,7 @@ typedef struct dentry_ops
 /**
  * @brief Directory entry structure.
  * @struct dentry_t
- * 
+ *
  * A dentry structure is protected by the mutex of its inode.
  */
 typedef struct dentry
@@ -145,19 +145,10 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name);
 void dentry_make_positive(dentry_t* dentry, inode_t* inode);
 
 /**
- * @brief Make a dentry negative by disassociating it from its inode.
- *
- * This will also remove the dentry from its parent's list of children.
- *
- * @param dentry The dentry to make negative, or `NULL` for no-op.
- */
-void dentry_make_negative(dentry_t* dentry);
-
-/**
  * @brief Get the inode associated with a dentry.
  *
  * Uses the dentry's seqlock to safely get the inode.
- * 
+ *
  * @param dentry The dentry to get the inode from.
  * @return A reference to the inode associated with the dentry, or `NULL` if the dentry is negative.
  */
@@ -165,7 +156,7 @@ inode_t* dentry_inode_get(dentry_t* dentry);
 
 /**
  * @brief Check if a dentry is positive.
- * 
+ *
  * @param dentry The dentry to check.
  * @return true if the dentry is positive, false if it is negative.
  */
@@ -173,7 +164,7 @@ bool dentry_is_positive(dentry_t* dentry);
 
 /**
  * @brief Check if the inode associated with a dentry is a file.
- * 
+ *
  * @param dentry The dentry to check.
  * @return true if the dentry is a file, false otherwise or if the dentry is negative.
  */
@@ -181,7 +172,7 @@ bool dentry_is_file(dentry_t* dentry);
 
 /**
  * @brief Check if the inode associated with a dentry is a directory.
- * 
+ *
  * @param dentry The dentry to check.
  * @return true if the dentry is a directory, false otherwise or if the dentry is negative.
  */

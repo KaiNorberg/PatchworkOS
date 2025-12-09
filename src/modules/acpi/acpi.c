@@ -13,6 +13,7 @@
 #include <kernel/module/module.h>
 #include <kernel/sched/process.h>
 #include <kernel/sched/sched.h>
+#include <kernel/init/boot_info.h>
 
 #include <boot/boot_info.h>
 #include <string.h>
@@ -69,7 +70,7 @@ uint64_t _module_procedure(const module_event_t* event)
     {
     case MODULE_EVENT_DEVICE_ATTACH:
     {
-        boot_info_t* bootInfo = init_boot_info_get();
+        boot_info_t* bootInfo = boot_info_get();
         if (bootInfo == NULL || bootInfo->rsdp == NULL)
         {
             LOG_ERR("no RSDP provided by bootloader\n");

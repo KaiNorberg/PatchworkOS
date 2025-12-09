@@ -12,6 +12,7 @@
 #include <kernel/sync/lock.h>
 #include <kernel/utils/map.h>
 #include <kernel/version.h>
+#include <kernel/init/boot_info.h>
 
 #include <stddef.h>
 #include <stdint.h>
@@ -719,8 +720,12 @@ static void module_gc_collect(void)
     }
 }
 
-void module_init_fake_kernel_module(const boot_kernel_t* kernel)
+void module_init_fake_kernel_module(void)
 {
+    boot_info_t* bootInfo = boot_info_get();
+    const boot_kernel_t* kernel = &bootInfo->kernel;
+    const Elf64_File* elf = &kernel->elf;
+
     module_t* kernelModule = module_new(&fakeKernelModuleInfo);
     if (kernelModule == NULL)
     {
@@ -728,7 +733,6 @@ void module_init_fake_kernel_module(const boot_kernel_t* kernel)
     }
     kernelModule->flags |= MODULE_FLAG_LOADED | MODULE_FLAG_GC_PINNED;
 
-    const Elf64_File* elf = &kernel->elf;
     uint64_t index = 0;
     while (true)
     {

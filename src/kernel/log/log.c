@@ -7,6 +7,7 @@
 #include <kernel/sched/sys_time.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
+#include <kernel/init/boot_info.h>
 
 #include <boot/boot_info.h>
 #include <kernel/version.h>
@@ -47,8 +48,11 @@ static void log_splash(void)
         (outputs & LOG_OUTPUT_SCREEN) ? "screen " : "", (outputs & LOG_OUTPUT_FILE) ? "file " : "");
 }
 
-void log_init(const boot_gop_t* gop)
+void log_init(void)
 {
+    const boot_info_t* bootInfo = boot_info_get();
+    const boot_gop_t* gop = &bootInfo->gop;
+
     log_screen_init(gop);
 
     outputs = 0;

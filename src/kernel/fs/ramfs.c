@@ -15,8 +15,7 @@
 #include <kernel/sync/lock.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/utils/ref.h>
-
-#include <boot/boot_info.h>
+#include <kernel/init/boot_info.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -271,6 +270,7 @@ static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
 static dentry_t* ramfs_mount(filesystem_t* fs, const char* devName, void* private)
 {
     (void)devName; // Unused
+    (void)private;  // Unused
 
     superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, &superOps, &dentryOps);
     if (superblock == NULL)
@@ -291,7 +291,8 @@ static dentry_t* ramfs_mount(filesystem_t* fs, const char* devName, void* privat
     lock_init(&data->lock);
     superblock->private = data;
 
-    boot_disk_t* disk = private;
+    boot_info_t* bootInfo = boot_info_get();
+    const boot_disk_t* disk = &bootInfo->disk;
 
     superblock->root = ramfs_load_dir(superblock, NULL, VFS_ROOT_ENTRY_NAME, disk->root);
     if (superblock->root == NULL)
@@ -337,7 +338,7 @@ static filesystem_t ramfs = {
     .mount = ramfs_mount,
 };
 
-void ramfs_init(const boot_disk_t* disk)
+void ramfs_init(void)
 {
     LOG_INFO("registering ramfs\n");
     if (filesystem_register(&ramfs) == ERR)
@@ -348,7 +349,7 @@ void ramfs_init(const boot_disk_t* disk)
 
     process_t* process = sched_process();
     mount = namespace_mount(&process->ns, NULL, VFS_DEVICE_NAME_NONE, RAMFS_NAME,
-        MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS, (void*)disk);
+        MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS, NULL);
     if (mount == NULL)
     {
         panic(NULL, "Failed to mount ramfs");

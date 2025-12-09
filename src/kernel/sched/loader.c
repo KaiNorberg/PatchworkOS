@@ -35,7 +35,7 @@ static void loader_strv_free(char** array, uint64_t amount)
 }
 
 void loader_exec(const char* executable, char** argv, uint64_t argc)
-{   
+{
     assert(executable != NULL);
     assert((argv != NULL && argc > 0) || ((argv == NULL || argv[0] == NULL) && argc == 0));
 
@@ -237,9 +237,9 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     {
         goto error;
     }
-    
+
     if (thread_copy_from_user_string_array(thread, argv, &argvCopy, &argc) == ERR)
-    {   
+    {
         goto error;
     }
 
@@ -331,6 +331,5 @@ SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)
 
     tid_t volatile result = newThread->id; // Important to not deref after pushing the thread
     sched_submit(newThread);
-    LOG_DEBUG("created thread %d in process %d\n", newThread->id, process->id);
     return result;
 }

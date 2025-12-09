@@ -49,10 +49,8 @@ typedef enum
 
 /**
  * @brief Initialize the logging system.
- *
- * @param gop Pointer to the bootloader-provided GOP information for screen logging.
  */
-void log_init(const boot_gop_t* gop);
+void log_init(void);
 
 /**
  * @brief Enable logging to the screen.
@@ -68,7 +66,7 @@ void log_screen_disable(void);
  * @brief Print a unformatted log message.
  *
  * @warning See `log_vprint()` regarding the log lock and `LOG_LEVEL_PANIC`.
- * 
+ *
  * @param level The log level.
  * @param string The message string.
  * @param length The length of the message.

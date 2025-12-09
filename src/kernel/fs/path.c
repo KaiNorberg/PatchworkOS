@@ -337,8 +337,7 @@ static uint64_t path_handle_dotdot(path_t* current)
     }
 }
 
-uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* component,
-    namespace_t* ns)
+uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* component, namespace_t* ns)
 {
     if (!path_is_name_valid(component))
     {
@@ -500,7 +499,8 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* fr
     return 0;
 }
 
-uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* from, char* outLastName, namespace_t* ns)
+uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* from, char* outLastName,
+    namespace_t* ns)
 {
     if (!PATHNAME_IS_VALID(pathname) || outPath == NULL || outLastName == NULL)
     {

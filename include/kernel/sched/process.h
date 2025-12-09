@@ -25,71 +25,75 @@
  * Each process has a directory located at `/proc/[pid]`, which contains various files that can be used to interact with
  * the process. Additionally, there is a `/proc/self` bound mount point that points to the `/proc/[pid]` directory of
  * the current process.
- * 
+ *
  * Included below is a list of all entries found in the `/proc/[pid]` directory along with their formats.
- * 
+ *
  * ## prio
- * 
- * A readable and writable file that contains the scheduling priority of the process. 
- * 
+ *
+ * A readable and writable file that contains the scheduling priority of the process.
+ *
  * Format:
- * 
+ *
  * ```
  * %llu
  * ```
- * 
+ *
  * ## cwd
- * 
- * A readable file that contains the current working directory of the process. 
- * 
+ *
+ * A readable file that contains the current working directory of the process.
+ *
  * Format:
- * 
+ *
  * ```
  * %s
  * ```
- * 
+ *
  * ## cmdline
- * 
+ *
  * A readable file that contains the command line arguments of the process (argv).
- * 
+ *
  * Format:
- * 
+ *
  * ```
  * %s\0%s\0...%s\0
  * ```
- * 
+ *
  * @todo Reimplement cmdline.
- * 
+ *
  * ## note
- * 
- * A writable file that can be used to send notes to the process. Writing data to this file will enqueue that data as a note in the note queue of one of the process's threads.
- * 
+ *
+ * A writable file that can be used to send notes to the process. Writing data to this file will enqueue that data as a
+ * note in the note queue of one of the process's threads.
+ *
  * ## wait
- * 
- * A readable and pollable file that can be used to wait for the process to exit and retrieve its exit status. Reading from this file will block until the process has exited.
- * 
+ *
+ * A readable and pollable file that can be used to wait for the process to exit and retrieve its exit status. Reading
+ * from this file will block until the process has exited.
+ *
  * Format:
- * 
+ *
  * ```
  * %lld
  * ```
- * 
+ *
  * ## perf
  *
  * A readable file that contains performance statistics for the process.
  *
  * Format:
- * 
+ *
  * ```
  * user_clocks kernel_clocks start_clocks user_pages thread_count
  * %llu %llu %llu %llu %llu
  * ```
- * 
+ *
  * ## env
- * 
- * A directory that contains the environment variables of the process. Each environment variable is represented as a readable and writable file whose name is the name of the variable and whose content is the value of the variable.
- * 
- * To add or modify an environment variable, create or write to a file with the name of the variable. To remove an environment variable, delete the corresponding file.
+ *
+ * A directory that contains the environment variables of the process. Each environment variable is represented as a
+ * readable and writable file whose name is the name of the variable and whose content is the value of the variable.
+ *
+ * To add or modify an environment variable, create or write to a file with the name of the variable. To remove an
+ * environment variable, delete the corresponding file.
  *
  * @{
  */
@@ -126,12 +130,12 @@ typedef struct process
     atomic_bool isDying;
     process_threads_t threads;
     list_entry_t zombieEntry;
-    dentry_t* proc; ///< The `/proc/[pid]` directory, also stored in `dentries` for convenience.
-    dentry_t* env; ///< The `/proc/[pid]/env` directory, also stored in `dentries` for convenience.
+    dentry_t* proc;  ///< The `/proc/[pid]` directory, also stored in `dentries` for convenience.
+    dentry_t* env;   ///< The `/proc/[pid]/env` directory, also stored in `dentries` for convenience.
     list_t dentries; ///< List of dentries in the `/proc/[pid]/` directory.
     list_t envVars;  ///< List of dentries in the `/proc/[pid]/env/` directory.
     lock_t dentriesLock;
-    mount_t* self;         ///< The `/proc/[pid]/self` mount point.
+    mount_t* self; ///< The `/proc/[pid]/self` mount point.
 } process_t;
 
 /**

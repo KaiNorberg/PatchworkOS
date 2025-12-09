@@ -36,9 +36,7 @@ typedef struct
 
 /**
  * @brief Registers the ramfs filesystem and mounts it as the root filesystem.
- *
- * @param disk The boot disk from the bootloader.
  */
-void ramfs_init(const boot_disk_t* disk);
+void ramfs_init(void);
 
 /** @} */

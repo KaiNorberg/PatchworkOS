@@ -61,8 +61,6 @@ typedef struct
     UINTN key;
 } boot_memory_map_t;
 
-typedef struct boot_dir boot_dir_t;
-
 typedef struct boot_file
 {
     list_entry_t entry;

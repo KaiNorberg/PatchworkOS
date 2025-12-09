@@ -152,9 +152,9 @@ static uint64_t process_cmdline_read(file_t* file, void* buffer, uint64_t count,
 
     return 0;
 
-    //uint64_t length;
-    //const char* strings = strv_get_strings(&process->argv, &length);
-    //return BUFFER_READ(buffer, count, offset, strings, length);
+    // uint64_t length;
+    // const char* strings = strv_get_strings(&process->argv, &length);
+    // return BUFFER_READ(buffer, count, offset, strings, length);
 }
 
 static file_ops_t cmdlineOps = {
@@ -336,7 +336,7 @@ static uint64_t process_env_create(inode_t* dir, dentry_t* target, mode_t mode)
         errno = EINVAL;
         return ERR;
     }
-    
+
     process_t* process = dir->private;
     assert(process != NULL);
 
@@ -376,10 +376,11 @@ static uint64_t process_env_remove(inode_t* dir, dentry_t* target, mode_t mode)
     }
     DEREF_DEFER(inode);
 
+    MUTEX_SCOPE(&inode->mutex);
+
     free(inode->private);
     inode->private = NULL;
-
-    dentry_make_negative(target);
+    inode->size = 0;
 
     process_t* process = dir->private;
     assert(process != NULL);
@@ -452,11 +453,11 @@ static uint64_t process_dir_init(process_t* process)
     {
         return ERR;
     }
-    
+
     process->proc = sysfs_dir_new(procMount->root, name, &procInodeOps, REF(process));
     if (process->proc == NULL)
     {
-        return ERR; 
+        return ERR;
     }
     list_push_back(&process->dentries, &process->proc->otherEntry);
 
@@ -510,7 +511,8 @@ static uint64_t process_dir_init(process_t* process)
     list_push_back(&process->dentries, &perf->otherEntry);
 
     path_t selfPath = PATH_CREATE(procMount, selfDir);
-    process->self = namespace_bind(&process->ns, process->proc, &selfPath, MOUNT_OVERWRITE | MOUNT_PROPAGATE_CHILDREN, MODE_ALL_PERMS);
+    process->self = namespace_bind(&process->ns, process->proc, &selfPath, MOUNT_OVERWRITE | MOUNT_PROPAGATE_CHILDREN,
+        MODE_ALL_PERMS);
     path_put(&selfPath);
     if (process->self == NULL)
     {
@@ -563,7 +565,7 @@ process_t* process_new(priority_t priority)
 
     list_entry_init(&process->zombieEntry);
 
-    list_init(&process->dentries); 
+    list_init(&process->dentries);
     list_init(&process->envVars);
     lock_init(&process->dentriesLock);
     process->self = NULL;
@@ -610,7 +612,7 @@ void process_kill(process_t* process, int32_t status)
     file_table_deinit(&process->fileTable);
     namespace_deinit(&process->ns);
     // The dir entries have refs to the process, but a parent process might want to read files in /proc/[pid] after the
-    // process has exited especially its wait file, so we defer dereferencing them until the reaper runs. 
+    // process has exited especially its wait file, so we defer dereferencing them until the reaper runs.
     wait_unblock(&process->dyingWaitQueue, WAIT_ALL, EOK);
 
     LOCK_SCOPE(&zombiesLock);

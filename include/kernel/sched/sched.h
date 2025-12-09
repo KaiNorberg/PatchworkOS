@@ -376,7 +376,6 @@ typedef struct sched_client
     vclock_t vdeadline;
     vclock_t veligible;    ///< The virtual time at which the thread becomes eligible to run (lag >= 0).
     vclock_t vminEligible; ///< The minimum virtual eligible time of the subtree in the runqueue.
-    clock_t start;         ///< The real time when the thread started executing its current time slice.
     clock_t stop;          ///< The real time when the thread previously stopped executing.
     cpu_t* lastCpu;        ///< The last CPU the thread was scheduled on, it stoped running at `stop` time.
 } sched_client_t;
@@ -489,8 +488,9 @@ _NORETURN void sched_thread_exit(void);
 
 /**
  * @brief Yield the current thread's time slice to allow other threads to run.
- * 
- * @todo Currently not implemented as we cant really yield as that would break fairness. Maybe we could pretend to leave and re-enter?
+ *
+ * @todo Currently not implemented as we cant really yield as that would break fairness. Maybe we could pretend to leave
+ * and re-enter?
  */
 void sched_yield(void);
 

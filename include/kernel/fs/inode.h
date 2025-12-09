@@ -29,8 +29,9 @@ typedef struct dentry dentry_t;
  * So despite the name they are in no way "nodes" in some kind of tree structure, this confused me for a
  * long time when first learning about filesystems.
  *
- * @todo Implement actually writing/syncing dirty inodes, for now inodes should use the notify functions but they will never actually be "cleaned."
- * 
+ * @todo Implement actually writing/syncing dirty inodes, for now inodes should use the notify functions but they will
+ * never actually be "cleaned."
+ *
  * @{
  */
 
@@ -72,17 +73,17 @@ typedef struct inode
 /**
  * @brief Inode operations structure.
  * @struct inode_ops_t
- * 
+ *
  * Note that the inodes mutex will be acquired by the vfs.
  */
 typedef struct inode_ops
 {
     /**
      * @brief Look up a dentry in a directory inode.
-     * 
+     *
      * Should set the target dentry to be positive (give it an inode), if the entry does not exist the operation
      * should still return success but leave the dentry negative.
-     * 
+     *
      * @param dir The directory inode to look in.
      * @param target The dentry to look up.
      * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
@@ -90,9 +91,9 @@ typedef struct inode_ops
     uint64_t (*lookup)(inode_t* dir, dentry_t* target);
     /**
      * @brief Handles both directories and files depending on mode.
-     * 
+     *
      * Takes in a negative dentry and creates the corresponding inode to make the dentry positive.
-     * 
+     *
      * @param dir The directory inode to create the entry in.
      * @param target The negative dentry to create.
      * @param mode The mode to create the entry with.
@@ -101,13 +102,13 @@ typedef struct inode_ops
     uint64_t (*create)(inode_t* dir, dentry_t* target, mode_t mode);
     /**
      * @brief Set the inode size to zero.
-     * 
+     *
      * @param target The inode to truncate.
      */
     void (*truncate)(inode_t* target);
     /**
      * @brief Make the same file inode appear twice in the filesystem.
-     * 
+     *
      * @param dir The directory inode to create the link in.
      * @param old The existing dentry containing the inode to link to.
      * @param new The negative dentry to store the same inode as old.
@@ -116,7 +117,7 @@ typedef struct inode_ops
     uint64_t (*link)(inode_t* dir, dentry_t* old, dentry_t* new);
     /**
      * @brief Remove a file or directory.
-     * 
+     *
      * @param dir The directory inode containing the target.
      * @param target The dentry to remove.
      * @param mode The mode for removal.
@@ -125,7 +126,7 @@ typedef struct inode_ops
     uint64_t (*remove)(inode_t* dir, dentry_t* target, mode_t mode);
     /**
      * @brief Cleanup function called when the inode is being freed.
-     * 
+     *
      * @param inode The inode being freed.
      */
     void (*cleanup)(inode_t* inode);

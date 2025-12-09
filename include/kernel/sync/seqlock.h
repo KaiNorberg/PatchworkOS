@@ -85,7 +85,7 @@ static inline void seqlock_write_release(seqlock_t* seqlock)
  *   // read data here
  * } while (seqlock_read_retry(&seqlock, seq));
  * ```
- * 
+ *
  * Or use the `SEQLOCK_READ_SCOPE()` macro.
  *
  * @param seqlock Pointer to the sequence lock.
@@ -124,6 +124,6 @@ static inline bool seqlock_read_retry(seqlock_t* seqlock, uint64_t seq)
  */
 #define SEQLOCK_READ_SCOPE(seqlock) \
     for (uint64_t __seq = seqlock_read_begin(seqlock); \
-         seqlock_read_retry(seqlock, __seq) ? (__seq = seqlock_read_begin(seqlock), true) : false; )
+        seqlock_read_retry(seqlock, __seq) ? (__seq = seqlock_read_begin(seqlock), true) : false;)
 
 /** @} */

@@ -31,7 +31,7 @@ typedef struct poll_file poll_file_t;
 /**
  * @brief File structure.
  * @struct file_t
- * 
+ *
  * A file structure is protected by the mutex of its inode.
  *
  */

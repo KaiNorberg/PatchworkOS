@@ -199,7 +199,7 @@ uint64_t vfs_get_new_id(void);
 
 /**
  * @brief Helper macro for implementing file operations dealing with simple buffer writes.
- * 
+ *
  * @param buffer The destination buffer.
  * @param count The number of bytes to write.
  * @param offset A pointer to the current offset, will be updated.
@@ -214,5 +214,5 @@ uint64_t vfs_get_new_id(void);
         *(offset) += writeCount; \
         writeCount; \
     })
-    
+
 /** @} */
