@@ -87,6 +87,7 @@ static void dentry_free(dentry_t* dentry)
 
     if (dentry->inode != NULL)
     {
+        atomic_fetch_sub_explicit(&dentry->inode->dentryCount, 1, memory_order_relaxed);
         DEREF(dentry->inode);
         dentry->inode = NULL;
     }

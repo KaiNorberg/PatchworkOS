@@ -378,10 +378,6 @@ static uint64_t process_env_remove(inode_t* dir, dentry_t* target, mode_t mode)
 
     MUTEX_SCOPE(&inode->mutex);
 
-    free(inode->private);
-    inode->private = NULL;
-    inode->size = 0;
-
     process_t* process = dir->private;
     assert(process != NULL);
 
@@ -399,6 +395,7 @@ static void process_env_cleanup(inode_t* inode)
     {
         free(inode->private);
         inode->private = NULL;
+        inode->size = 0;
     }
 }
 

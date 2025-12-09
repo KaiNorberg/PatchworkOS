@@ -140,6 +140,7 @@ static uint64_t ramfs_remove(inode_t* parent, dentry_t* target, mode_t mode)
     inode_t* inode = dentry_inode_get(target);
     if (inode == NULL)
     {
+        errno = ENOENT;
         return ERR;
     }
     DEREF_DEFER(inode);
@@ -181,6 +182,8 @@ static void ramfs_inode_cleanup(inode_t* inode)
     if (inode->private != NULL)
     {
         free(inode->private);
+        inode->private = NULL;
+        inode->size = 0;
     }
 }
 
