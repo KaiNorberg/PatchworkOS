@@ -137,7 +137,6 @@ typedef void (*rbnode_update_t)(rbnode_t* node);
 typedef struct rbtree
 {
     rbnode_t* root;
-    uint64_t size;
     rbnode_compare_t compare;
     rbnode_update_t update;
 } rbtree_t;

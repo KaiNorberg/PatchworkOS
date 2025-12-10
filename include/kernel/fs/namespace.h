@@ -101,6 +101,11 @@ uint64_t namespace_set_parent(namespace_t* ns, namespace_t* parent);
 uint64_t namespace_traverse(namespace_t* ns, path_t* path);
 
 /**
+ * @brief Move 
+ * 
+ */
+
+/**
  * @brief Mount a filesystem in a namespace.
  *
  * @param ns The namespace to mount in.

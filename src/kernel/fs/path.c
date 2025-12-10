@@ -549,8 +549,7 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
     pathname->mode = MODE_NONE;
     pathname->isValid = false;
 
-    path_t current = PATH_EMPTY;
-    path_copy(&current, path);
+    path_t current = PATH_CREATE(path->mount, path->dentry);
     PATH_DEFER(&current);
 
     uint64_t index = MAX_PATH - 1;

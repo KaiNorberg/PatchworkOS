@@ -204,6 +204,11 @@ uint64_t namespace_traverse(namespace_t* ns, path_t* path)
         return ERR;
     }
 
+    if (atomic_load(&path->dentry->mountCount) == 0)
+    {
+        return 0;
+    }
+
     RWLOCK_READ_SCOPE(&ns->lock);
 
     map_key_t key = mount_key(path->mount->id, path->dentry->id);

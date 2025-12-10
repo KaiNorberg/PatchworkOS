@@ -65,7 +65,6 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
     list_push_back(&process->threads.list, &thread->processEntry);
     lock_release(&process->threads.lock);
 
-    LOG_DEBUG("created tid=%d pid=%d\n", thread->id, process->id);
     return 0;
 }
 
@@ -125,8 +124,6 @@ tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg)
 
 void thread_free(thread_t* thread)
 {
-    LOG_DEBUG("freeing tid=%d pid=%d\n", thread->id, thread->process->id);
-
     process_t* process = thread->process;
     assert(process != NULL);
 
@@ -147,8 +144,6 @@ void thread_kill(thread_t* thread)
     {
         return;
     }
-
-    LOG_DEBUG("killing tid=%d pid=%d\n", thread->id, thread->process->id);
 
     if (thread_send_note(thread, "kill", 4) == ERR)
     {

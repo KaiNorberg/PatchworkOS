@@ -497,7 +497,6 @@ static void sched_verify_min_eligible(sched_t* sched, rbnode_t* node)
 
 static void sched_verify(sched_t* sched)
 {
-    uint64_t size = 0;
     int64_t totalWeight = 0;
     sched_client_t* client;
     RBTREE_FOR_EACH(client, &sched->runqueue, node)
@@ -506,12 +505,6 @@ static void sched_verify(sched_t* sched)
         totalWeight += client->weight;
         assert(client->weight > 0);
         assert(thread != sched->idleThread);
-        size++;
-    }
-
-    if (size != sched->runqueue.size)
-    {
-        panic(NULL, "sched runqueue size incorrect, expected %llu but got %llu", size, sched->runqueue.size);
     }
 
     if (totalWeight != atomic_load(&sched->totalWeight))
@@ -637,7 +630,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         runThread = next;
     }
 
-    if (runThread != sched->idleThread && sched->runqueue.size > 1)
+    if (runThread != sched->idleThread)
     {
         timer_set(uptime, uptime + CONFIG_TIME_SLICE);
     }

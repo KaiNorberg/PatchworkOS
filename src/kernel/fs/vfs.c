@@ -157,14 +157,13 @@ uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* proc
     {
         return ERR;
     }
-    UNREF_DEFER(files[0]);
 
     files[1] = file_new(&path, pathname->mode);
     if (files[1] == NULL)
     {
+        UNREF(files[0]);
         return ERR;
     }
-    UNREF_DEFER(files[1]);
 
     if (pathname->mode & MODE_TRUNCATE && files[0]->inode->type == INODE_FILE)
     {
@@ -177,13 +176,13 @@ uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* proc
         uint64_t result = files[0]->ops->open2(files);
         if (result == ERR)
         {
+            UNREF(files[0]);
+            UNREF(files[1]);
             return ERR;
         }
     }
 
     inode_notify_access(files[0]->inode);
-    REF(files[0]);
-    REF(files[1]);
     return 0;
 }
 
@@ -208,7 +207,6 @@ file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* pr
     {
         return NULL;
     }
-    UNREF_DEFER(file);
 
     if (pathname->mode & MODE_TRUNCATE && file->inode->type == INODE_FILE)
     {
@@ -221,12 +219,13 @@ file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* pr
         uint64_t result = file->ops->open(file);
         if (result == ERR)
         {
+            UNREF(file);
             return NULL;
         }
     }
 
     inode_notify_access(file->inode);
-    return REF(file);
+    return file;
 }
 
 uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
@@ -620,10 +619,8 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
     {
         return ERR;
     }
-    UNREF_DEFER(inode);
 
-    MUTEX_SCOPE(&inode->mutex);
-
+    mutex_acquire(&inode->mutex);
     buffer->number = inode->number;
     buffer->type = inode->type;
     buffer->size = inode->size;
@@ -635,7 +632,9 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
     buffer->createTime = inode->createTime;
     strncpy(buffer->name, path.dentry->name, MAX_NAME - 1);
     buffer->name[MAX_NAME - 1] = '\0';
+    mutex_release(&inode->mutex);
 
+    UNREF(inode);
     return 0;
 }
 
@@ -719,10 +718,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
         errno = EACCES;
         return ERR;
     }
-
-    MUTEX_SCOPE(&oldInode->mutex);
-    MUTEX_SCOPE(&newParentInode->mutex);
-
+    
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     if (newParentInode->ops->link(newParentInode, old.dentry, new.dentry) == ERR)
     {

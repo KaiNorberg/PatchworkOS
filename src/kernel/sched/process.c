@@ -576,6 +576,7 @@ process_t* process_new(priority_t priority)
         }
     }
 
+    LOG_DEBUG("created process pid=%d\n", process->id);
     return process;
 }
 
