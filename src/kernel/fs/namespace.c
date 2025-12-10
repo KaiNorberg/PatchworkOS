@@ -115,38 +115,9 @@ void namespace_deinit(namespace_t* ns)
         return;
     }
 
-    rwlock_write_acquire(&ns->lock);
+    namespace_clear(ns);
 
-    if (ns->root != NULL)
-    {
-        UNREF(ns->root);
-        ns->root = NULL;
-    }
-
-    while (!list_is_empty(&ns->mounts))
-    {
-        namespace_mount_t* nsMount = CONTAINER_OF(list_pop_first(&ns->mounts), namespace_mount_t, entry);
-
-        map_remove(&ns->mountMap, &nsMount->mapEntry);
-        UNREF(nsMount->mount);
-        free(nsMount);
-    }
-
-    if (ns->parent != NULL)
-    {
-        rwlock_write_acquire(&ns->parent->lock);
-        while (!list_is_empty(&ns->children))
-        {
-            namespace_t* child = CONTAINER_OF(list_pop_first(&ns->children), namespace_t, entry);
-            RWLOCK_WRITE_SCOPE(&child->lock);
-            list_push_back(&ns->parent->children, &child->entry);
-            child->parent = ns->parent;
-        }
-        list_remove(&ns->parent->children, &ns->entry);
-        rwlock_write_release(&ns->parent->lock);
-    }
-
-    rwlock_write_release(&ns->lock);
+    map_deinit(&ns->mountMap);
 }
 
 uint64_t namespace_set_parent(namespace_t* ns, namespace_t* parent)
@@ -334,12 +305,13 @@ uint64_t namespace_get_root_path(namespace_t* ns, path_t* out)
 
 void namespace_clear(namespace_t* ns)
 {
-    if (ns == NULL)
-    {
-        return;
-    }
+    rwlock_write_acquire(&ns->lock);
 
-    RWLOCK_WRITE_SCOPE(&ns->lock);
+    if (ns->root != NULL)
+    {
+        UNREF(ns->root);
+        ns->root = NULL;
+    }
 
     while (!list_is_empty(&ns->mounts))
     {
@@ -349,6 +321,23 @@ void namespace_clear(namespace_t* ns)
         UNREF(nsMount->mount);
         free(nsMount);
     }
+
+    if (ns->parent != NULL)
+    {
+        rwlock_write_acquire(&ns->parent->lock);
+        while (!list_is_empty(&ns->children))
+        {
+            namespace_t* child = CONTAINER_OF(list_pop_first(&ns->children), namespace_t, entry);
+            RWLOCK_WRITE_SCOPE(&child->lock);
+            list_push_back(&ns->parent->children, &child->entry);
+            child->parent = ns->parent;
+        }
+        list_remove(&ns->parent->children, &ns->entry);
+        rwlock_write_release(&ns->parent->lock);
+        ns->parent = NULL;
+    }
+
+    rwlock_write_release(&ns->lock);
 }
 
 SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpoint, mount_flags_t flags)

@@ -24,8 +24,7 @@ _THREAD_ENTRY_ATTRIBUTES static void _thread_entry(_thread_t* thread)
 
     free(ctx);
 
-    int result = func(arg);
-    thrd_exit(result);
+    thrd_exit(func(arg));
 }
 
 int thrd_create(thrd_t* thr, thrd_start_t func, void* arg)

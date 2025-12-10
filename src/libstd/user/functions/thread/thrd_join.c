@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <sys/proc.h>
 #include <threads.h>
+#include <time.h>
 
 #include "user/common/syscalls.h"
 #include "user/common/thread.h"
@@ -32,6 +33,7 @@ int thrd_join(thrd_t thr, int* res)
             break;
         }
 
+        nanosleep(CLOCKS_PER_SEC / 1000);
         futex(&thread->state, state, FUTEX_WAIT, CLOCKS_NEVER);
     }
 

@@ -69,9 +69,7 @@ typedef struct namespace
 void namespace_init(namespace_t* ns);
 
 /**
- * @brief Deinitializes a namespace.
- *
- * @note The parent of the namespace will inherit all child namespaces of the deinitialized namespace.
+ * @brief Clear and deinitialize a namespace.
  *
  * @param ns The namespace to deinitialize.
  */
@@ -150,6 +148,8 @@ uint64_t namespace_get_root_path(namespace_t* ns, path_t* out);
 /**
  * @brief Clears all mounts from a namespace.
  *
+ * @note The parent of the namespace will inherit all child namespaces of the deinitialized namespace.
+ * 
  * @param ns The namespace to clear.
  */
 void namespace_clear(namespace_t* ns);
