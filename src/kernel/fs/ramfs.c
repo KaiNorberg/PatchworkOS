@@ -291,7 +291,7 @@ static dentry_t* ramfs_mount(filesystem_t* fs, const char* devName, void* privat
 
 static inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, void* buffer, uint64_t size)
 {
-    inode_t* inode = inode_new(superblock, vfs_get_new_id(), type, &inodeOps, &fileOps);
+    inode_t* inode = inode_new(superblock, vfs_id_get(), type, &inodeOps, &fileOps);
     if (inode == NULL)
     {
         return NULL;
@@ -335,7 +335,7 @@ void ramfs_init(void)
 
     process_t* process = sched_process();
     mount = namespace_mount(&process->ns, NULL, VFS_DEVICE_NAME_NONE, RAMFS_NAME,
-        MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS, NULL);
+        MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_DIRECTORY | MODE_ALL_PERMS, NULL);
     if (mount == NULL)
     {
         panic(NULL, "Failed to mount ramfs");

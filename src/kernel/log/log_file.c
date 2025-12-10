@@ -33,12 +33,10 @@ static uint64_t log_file_op_read(file_t* file, void* buffer, uint64_t count, uin
 
 static uint64_t log_file_op_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)file;   // Unused
+    (void)file;  // Unused
     (void)offset; // Unused
-    (void)count;  // Unused
-    (void)buffer; // Unused
 
-    // log_nprint(LOG_LEVEL_USER, buffer, count);
+    log_nprint(LOG_LEVEL_USER, buffer, count);
     return count;
 }
 

@@ -53,7 +53,7 @@ typedef struct namespace
     list_t children;     ///< List of child namespaces.
     namespace_t* parent; ///< The parent namespace, can be `NULL`.
     list_t mounts;       ///< List of mounts in this namespace.
-    map_t mountMap;      ///< Stores the same mounts as `mounts` but in a map for fast lookup.
+    map_t mountMap;     ///< Map used to go from source dentries to namespace mounts.
     mount_t* root;       ///< The root mount of the namespace.
     rwlock_t lock;
     // clang-format off
@@ -101,16 +101,11 @@ uint64_t namespace_set_parent(namespace_t* ns, namespace_t* parent);
 uint64_t namespace_traverse(namespace_t* ns, path_t* path);
 
 /**
- * @brief Move
- *
- */
-
-/**
  * @brief Mount a filesystem in a namespace.
  *
  * @param ns The namespace to mount in.
  * @param deviceName The device name, or `VFS_DEVICE_NAME_NONE` for no device.
- * @param mountpoint The mountpoint path.
+ * @param target The target path to mount to.
  * @param fsName The filesystem name.
  * @param flags Mount flags.
  * @param mode The maximum allowed permissions for files/directories opened under this mount.
@@ -121,26 +116,28 @@ uint64_t namespace_traverse(namespace_t* ns, path_t* path);
  * - `EIO`: The root is negative, should never happen if the filesystem is implemented correctly.
  * - `EBUSY`: Attempt to mount to already existing root.
  * - `ENOMEM`: Out of memory.
- * - `ENOENT`: The root does not exist or the mountpoint is negative.
+ * - `ENOENT`: The root does not exist or the target is negative.
  * - Other errors as returned by the filesystem's `mount()` function.
  */
-mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* deviceName, const char* fsName,
+mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* deviceName, const char* fsName,
     mount_flags_t flags, mode_t mode, void* private);
 
 /**
- * @brief Bind a target dentry to a mountpoint in a namespace.
+ * @brief Bind a source dentry to a target path in a namespace.
  *
  * @param ns The namespace to mount in.
- * @param target The target dentry to bind, could be either a file or directory and from any filesystem.
- * @param mountpoint The path to bind to.
+ * @param source The source dentry to bind from, could be either a file or directory and from any filesystem.
+ * @param target The target path to bind to.
  * @param flags Mount flags.
  * @param mode The maximum allowed permissions for files/directories opened under this mount.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
- * - `ENOENT`: The target is negative.
+ * - `ENOENT`: The source or target is negative.
+ * - `EISDIR`: The dentry of the source is a directory but mode does not specify `MODE_DIRECTORY`.
+ * - `ENOTDIR`: The dentry of the source is a file but mode specifies `MODE_DIRECTORY`.
  * - `ENOMEM`: Out of memory.
  */
-mount_t* namespace_bind(namespace_t* ns, dentry_t* target, path_t* mountpoint, mount_flags_t flags, mode_t mode);
+mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* target, mount_flags_t flags, mode_t mode);
 
 /**
  * @brief Get the root path of a namespace.

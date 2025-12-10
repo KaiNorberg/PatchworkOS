@@ -136,7 +136,7 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
 
     ref_init(&dentry->ref, dentry_free);
     map_entry_init(&dentry->mapEntry);
-    dentry->id = vfs_get_new_id();
+    dentry->id = vfs_id_get();
     strncpy(dentry->name, name, MAX_NAME - 1);
     dentry->name[MAX_NAME - 1] = '\0';
     dentry->inode = NULL;

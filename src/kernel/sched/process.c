@@ -337,10 +337,12 @@ static uint64_t process_env_create(inode_t* dir, dentry_t* target, mode_t mode)
         return ERR;
     }
 
+    MUTEX_SCOPE(&dir->mutex);
+
     process_t* process = dir->private;
     assert(process != NULL);
 
-    inode_t* inode = inode_new(dir->superblock, vfs_get_new_id(), INODE_FILE, NULL, &envFileOps);
+    inode_t* inode = inode_new(dir->superblock, vfs_id_get(), INODE_FILE, NULL, &envFileOps);
     if (inode == NULL)
     {
         return ERR;
@@ -368,13 +370,7 @@ static uint64_t process_env_remove(inode_t* dir, dentry_t* target, mode_t mode)
         return ERR;
     }
 
-    if (!dentry_is_positive(target))
-    {
-        errno = ENOENT;
-        return ERR;
-    }
-
-    MUTEX_SCOPE(&target->inode->mutex);
+    MUTEX_SCOPE(&dir->mutex);
 
     process_t* process = dir->private;
     assert(process != NULL);
@@ -397,14 +393,14 @@ static void process_env_cleanup(inode_t* inode)
     }
 }
 
-static void process_proc_cleanup(inode_t* inode)
+static void process_cleanup(inode_t* inode)
 {
     process_t* process = inode->private;
     UNREF(process);
 }
 
-static inode_ops_t procInodeOps = {
-    .cleanup = process_proc_cleanup,
+static inode_ops_t inodeOps = {
+    .cleanup = process_cleanup,
 };
 
 static void process_free(process_t* process)
@@ -449,7 +445,7 @@ static uint64_t process_dir_init(process_t* process)
         return ERR;
     }
 
-    process->proc = sysfs_dir_new(procMount->root, name, &procInodeOps, REF(process));
+    process->proc = sysfs_dir_new(procMount->source, name, &inodeOps, REF(process));
     if (process->proc == NULL)
     {
         return ERR;
@@ -463,42 +459,42 @@ static uint64_t process_dir_init(process_t* process)
     }
     list_push_back(&process->dentries, &process->env->otherEntry);
 
-    dentry_t* prio = sysfs_file_new(process->proc, "prio", NULL, &prioOps, REF(process));
+    dentry_t* prio = sysfs_file_new(process->proc, "prio", &inodeOps, &prioOps, REF(process));
     if (prio == NULL)
     {
         goto error;
     }
     list_push_back(&process->dentries, &prio->otherEntry);
 
-    dentry_t* cwd = sysfs_file_new(process->proc, "cwd", NULL, &cwdOps, REF(process));
+    dentry_t* cwd = sysfs_file_new(process->proc, "cwd", &inodeOps, &cwdOps, REF(process));
     if (cwd == NULL)
     {
         goto error;
     }
     list_push_back(&process->dentries, &cwd->otherEntry);
 
-    dentry_t* cmdline = sysfs_file_new(process->proc, "cmdline", NULL, &cmdlineOps, REF(process));
+    dentry_t* cmdline = sysfs_file_new(process->proc, "cmdline", &inodeOps, &cmdlineOps, REF(process));
     if (cmdline == NULL)
     {
         goto error;
     }
     list_push_back(&process->dentries, &cmdline->otherEntry);
 
-    dentry_t* note = sysfs_file_new(process->proc, "note", NULL, &noteOps, REF(process));
+    dentry_t* note = sysfs_file_new(process->proc, "note", &inodeOps, &noteOps, REF(process));
     if (note == NULL)
     {
         goto error;
     }
     list_push_back(&process->dentries, &note->otherEntry);
 
-    dentry_t* wait = sysfs_file_new(process->proc, "wait", NULL, &waitOps, REF(process));
+    dentry_t* wait = sysfs_file_new(process->proc, "wait", &inodeOps, &waitOps, REF(process));
     if (wait == NULL)
     {
         goto error;
     }
     list_push_back(&process->dentries, &wait->otherEntry);
 
-    dentry_t* perf = sysfs_file_new(process->proc, "perf", NULL, &statOps, REF(process));
+    dentry_t* perf = sysfs_file_new(process->proc, "perf", &inodeOps, &statOps, REF(process));
     if (perf == NULL)
     {
         goto error;
@@ -506,8 +502,7 @@ static uint64_t process_dir_init(process_t* process)
     list_push_back(&process->dentries, &perf->otherEntry);
 
     path_t selfPath = PATH_CREATE(procMount, selfDir);
-    process->self = namespace_bind(&process->ns, process->proc, &selfPath, MOUNT_OVERWRITE | MOUNT_PROPAGATE_CHILDREN,
-        MODE_ALL_PERMS);
+    process->self = namespace_bind(&process->ns, process->proc, &selfPath, MOUNT_OVERWRITE, MODE_DIRECTORY | MODE_ALL_PERMS);
     path_put(&selfPath);
     if (process->self == NULL)
     {
@@ -560,10 +555,12 @@ process_t* process_new(priority_t priority)
 
     list_entry_init(&process->zombieEntry);
 
+    process->self = NULL;
+    process->proc = NULL;
+    process->env = NULL;
     list_init(&process->dentries);
     list_init(&process->envVars);
     lock_init(&process->dentriesLock);
-    process->self = NULL;
 
     if (process->id != 0) // Delay kernel process /proc dir init
     {
@@ -638,7 +635,7 @@ uint64_t process_copy_env(process_t* dest, process_t* src)
     dentry_t* srcDentry;
     LIST_FOR_EACH(srcDentry, &src->envVars, otherEntry)
     {
-        inode_t* inode = inode_new(srcDentry->inode->superblock, vfs_get_new_id(), INODE_FILE, NULL, &envFileOps);
+        inode_t* inode = inode_new(srcDentry->inode->superblock, vfs_id_get(), INODE_FILE, NULL, &envFileOps);
         if (inode == NULL)
         {
             return ERR;
@@ -704,13 +701,13 @@ process_t* process_get_kernel(void)
 void process_procfs_init(void)
 {
     procMount =
-        sysfs_mount_new(NULL, "proc", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS, NULL);
+        sysfs_mount_new(NULL, "proc", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_DIRECTORY | MODE_ALL_PERMS, NULL);
     if (procMount == NULL)
     {
         panic(NULL, "Failed to mount /proc filesystem");
     }
 
-    selfDir = sysfs_dir_new(procMount->root, "self", NULL, NULL);
+    selfDir = sysfs_dir_new(procMount->source, "self", NULL, NULL);
     if (selfDir == NULL)
     {
         panic(NULL, "Failed to create /proc/self directory");

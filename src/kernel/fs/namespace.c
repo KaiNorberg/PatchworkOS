@@ -182,7 +182,7 @@ uint64_t namespace_set_parent(namespace_t* ns, namespace_t* parent)
     namespace_mount_t* nsMount;
     LIST_FOR_EACH(nsMount, &parent->mounts, entry)
     {
-        map_key_t key = mount_key(nsMount->mount->parent->id, nsMount->mount->mountpoint->id);
+        map_key_t key = mount_key(nsMount->mount->parent->id, nsMount->mount->target->id);
         if (namespace_add(ns, nsMount->mount, MOUNT_PROPAGATE_CHILDREN, &key) == ERR)
         {
             if (errno == ENOMEM)
@@ -203,7 +203,8 @@ uint64_t namespace_traverse(namespace_t* ns, path_t* path)
         errno = EINVAL;
         return ERR;
     }
-
+    
+    // The mount count has race conditions, but the worst that can happen is a redundant lookup.
     if (atomic_load(&path->dentry->mountCount) == 0)
     {
         return 0;
@@ -219,11 +220,11 @@ uint64_t namespace_traverse(namespace_t* ns, path_t* path)
     }
 
     namespace_mount_t* nsMount = CONTAINER_OF(entry, namespace_mount_t, mapEntry);
-    path_set(path, nsMount->mount, nsMount->mount->root);
+    path_set(path, nsMount->mount, nsMount->mount->source);
     return 0;
 }
 
-mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* deviceName, const char* fsName,
+mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* deviceName, const char* fsName,
     mount_flags_t flags, mode_t mode, void* private)
 {
     if (ns == NULL || deviceName == NULL || fsName == NULL)
@@ -246,7 +247,7 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
     }
     UNREF_DEFER(root);
 
-    if (mountpoint == NULL)
+    if (target == NULL)
     {
         RWLOCK_WRITE_SCOPE(&ns->lock);
         if (ns->root != NULL)
@@ -258,7 +259,6 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
         ns->root = mount_new(root->superblock, root, NULL, NULL, mode);
         if (ns->root == NULL)
         {
-            errno = ENOMEM;
             return NULL;
         }
 
@@ -272,16 +272,15 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
         return NULL;
     }
 
-    mount_t* mount = mount_new(root->superblock, root, mountpoint->dentry, mountpoint->mount, mode);
+    mount_t* mount = mount_new(root->superblock, root, target->dentry, target->mount, mode);
     if (mount == NULL)
     {
-        errno = ENOMEM;
         return NULL;
     }
 
     RWLOCK_WRITE_SCOPE(&ns->lock);
 
-    map_key_t key = mount_key(mountpoint->mount->id, mountpoint->dentry->id);
+    map_key_t key = mount_key(target->mount->id, target->dentry->id);
     if (namespace_add(ns, mount, flags, &key) == ERR)
     {
         UNREF(mount);
@@ -293,24 +292,23 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
     return mount;
 }
 
-mount_t* namespace_bind(namespace_t* ns, dentry_t* target, path_t* mountpoint, mount_flags_t flags, mode_t mode)
+mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* target, mount_flags_t flags, mode_t mode)
 {
-    if (ns == NULL || target == NULL || mountpoint == NULL || mountpoint->dentry == NULL || mountpoint->mount == NULL)
+    if (ns == NULL || source == NULL || target == NULL || target->dentry == NULL || target->mount == NULL)
     {
         errno = EINVAL;
         return NULL;
     }
 
-    mount_t* mount = mount_new(target->superblock, target, mountpoint->dentry, mountpoint->mount, mode);
+    mount_t* mount = mount_new(source->superblock, source, target->dentry, target->mount, mode);
     if (mount == NULL)
     {
-        errno = ENOMEM;
         return NULL;
     }
 
     RWLOCK_WRITE_SCOPE(&ns->lock);
 
-    map_key_t key = mount_key(mountpoint->mount->id, mountpoint->dentry->id);
+    map_key_t key = mount_key(target->mount->id, target->dentry->id);
     if (namespace_add(ns, mount, flags, &key) == ERR)
     {
         UNREF(mount);
@@ -330,13 +328,13 @@ uint64_t namespace_get_root_path(namespace_t* ns, path_t* out)
     }
 
     rwlock_read_acquire(&ns->lock);
-    if (ns->root == NULL || ns->root->superblock == NULL || ns->root->root == NULL)
+    if (ns->root == NULL || ns->root->superblock == NULL || ns->root->source == NULL)
     {
         rwlock_read_release(&ns->lock);
         errno = ENOENT;
         return ERR;
     }
-    path_set(out, ns->root, ns->root->root);
+    path_set(out, ns->root, ns->root->source);
     rwlock_read_release(&ns->lock);
     return 0;
 }
@@ -378,11 +376,12 @@ SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpoint, mount_fl
     }
 
     path_t mountPath = cwd_get(&process->cwd);
+    PATH_DEFER(&mountPath);
+
     if (path_walk(&mountPath, &pathname, &process->ns) == ERR)
     {
         return ERR;
     }
-    PATH_DEFER(&mountPath);
 
     file_t* sourceFile = file_table_get(&process->fileTable, source);
     if (sourceFile == NULL)

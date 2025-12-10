@@ -5,6 +5,7 @@
 
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/mount.h>
+#include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -20,7 +21,7 @@ mount_t* net_get_mount(void)
 
 static uint64_t net_init(void)
 {
-    mount = sysfs_mount_new(NULL, "net", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS, NULL);
+    mount = sysfs_mount_new(NULL, "net", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_DIRECTORY | MODE_ALL_PERMS, NULL);
     if (mount == NULL)
     {
         return ERR;

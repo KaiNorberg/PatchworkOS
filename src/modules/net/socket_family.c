@@ -84,7 +84,7 @@ uint64_t socket_family_register(const socket_family_ops_t* ops, const char* name
         return ERR;
     }
 
-    family->dir = sysfs_dir_new(mount->root, family->name, NULL, family);
+    family->dir = sysfs_dir_new(mount->source, family->name, NULL, family);
     UNREF(mount);
     if (family->dir == NULL)
     {

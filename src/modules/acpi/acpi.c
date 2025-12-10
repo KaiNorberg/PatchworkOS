@@ -36,7 +36,7 @@ dentry_t* acpi_get_sysfs_root(void)
 {
     if (!mountInitialzed)
     {
-        mount = sysfs_mount_new(NULL, "acpi", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS,
+        mount = sysfs_mount_new(NULL, "acpi", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_DIRECTORY | MODE_ALL_PERMS,
             NULL);
         if (mount == NULL)
         {
@@ -46,7 +46,7 @@ dentry_t* acpi_get_sysfs_root(void)
         mountInitialzed = true;
     }
 
-    return REF(mount->root);
+    return REF(mount->source);
 }
 
 void acpi_reclaim_memory(const boot_memory_map_t* map)

@@ -282,25 +282,17 @@ static bool path_is_name_valid(const char* name)
 
 static uint64_t path_handle_dotdot(path_t* path)
 {
-    if (path->dentry == path->mount->root)
+    if (path->dentry == path->mount->source)
     {
         uint64_t iter = 0;
-
-        while (path->dentry == path->mount->root && iter < PATH_HANDLE_DOTDOT_MAX_ITER)
+        while (path->dentry == path->mount->source && iter < PATH_HANDLE_DOTDOT_MAX_ITER)
         {
-            if (path->mount->parent == NULL || path->mount->mountpoint == NULL)
+            if (path->mount->parent == NULL || path->mount->target == NULL)
             {
                 return 0;
             }
 
-            mount_t* newMount = REF(path->mount->parent);
-            dentry_t* newDentry = REF(path->mount->mountpoint);
-
-            UNREF(path->mount);
-            path->mount = newMount;
-            UNREF(path->dentry);
-            path->dentry = newDentry;
-
+            path_set(path, path->mount->parent, path->mount->target);
             iter++;
         }
 
@@ -310,31 +302,22 @@ static uint64_t path_handle_dotdot(path_t* path)
             return ERR;
         }
 
-        if (path->dentry != path->mount->root)
+        if (path->dentry != path->mount->source)
         {
-            dentry_t* parent = path->dentry->parent;
-            if (parent == NULL || parent == path->dentry)
+            if (DENTRY_IS_ROOT(path->dentry))
             {
                 errno = ENOENT;
                 return ERR;
             }
 
-            dentry_t* new_parent = REF(parent);
-            UNREF(path->dentry);
-            path->dentry = new_parent;
+            path_set(path, path->mount, path->dentry->parent);
         }
 
         return 0;
     }
-    else
-    {
-        assert(path->dentry->parent != NULL); // This can only happen if the filesystem is corrupt.
-        dentry_t* parent = REF(path->dentry->parent);
-        UNREF(path->dentry);
-        path->dentry = parent;
 
-        return 0;
-    }
+    path_set(path, path->mount, path->dentry->parent);
+    return 0;
 }
 
 uint64_t path_step(path_t* path, const char* component, namespace_t* ns)
@@ -563,7 +546,7 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
                 pathname->string[index] = '/';
                 break;
             }
-            path_set(&current, current.mount->parent, current.mount->mountpoint);
+            path_set(&current, current.mount->parent, current.mount->target);
             continue;
         }
 

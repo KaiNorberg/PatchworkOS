@@ -17,15 +17,15 @@ static void mount_free(mount_t* mount)
         UNREF(mount->superblock);
     }
 
-    if (mount->mountpoint != NULL)
+    if (mount->target != NULL)
     {
-        atomic_fetch_sub_explicit(&mount->mountpoint->mountCount, 1, memory_order_relaxed);
-        UNREF(mount->mountpoint);
+        atomic_fetch_sub_explicit(&mount->target->mountCount, 1, memory_order_relaxed);
+        UNREF(mount->target);
     }
 
-    if (mount->root != NULL)
+    if (mount->source != NULL)
     {
-        UNREF(mount->root);
+        UNREF(mount->source);
     }
 
     if (mount->parent != NULL)
@@ -36,33 +36,53 @@ static void mount_free(mount_t* mount)
     free(mount);
 }
 
-mount_t* mount_new(superblock_t* superblock, dentry_t* root, dentry_t* mountpoint, mount_t* parent, mode_t mode)
+mount_t* mount_new(superblock_t* superblock, dentry_t* source, dentry_t* target, mount_t* parent, mode_t mode)
 {
-    if (superblock == NULL)
+    if (superblock == NULL || source == NULL || (target != NULL && parent == NULL))
     {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    if (!dentry_is_positive(source) || (target != NULL && !dentry_is_positive(target)))
+    {
+        errno = ENOENT;
+        return NULL;
+    }
+
+    if (mode & MODE_DIRECTORY && dentry_is_file(source))
+    {
+        errno = ENOTDIR;
+        return NULL;
+    }
+
+    if (!(mode & MODE_DIRECTORY) && dentry_is_dir(source))
+    {
+        errno = EISDIR;
         return NULL;
     }
 
     mount_t* mount = malloc(sizeof(mount_t));
     if (mount == NULL)
     {
+        errno = ENOMEM;
         return NULL;
     }
 
     ref_init(&mount->ref, mount_free);
-    mount->id = vfs_get_new_id();
-    mount->superblock = REF(superblock);
-    superblock_inc_mount_count(superblock);
-    if (mountpoint != NULL)
+    mount->id = vfs_id_get();
+    mount->source = REF(source);
+    if (target != NULL)
     {
-        mount->mountpoint = REF(mountpoint);
-        atomic_fetch_add_explicit(&mountpoint->mountCount, 1, memory_order_relaxed);
+        mount->target = REF(target);
+        atomic_fetch_add_explicit(&target->mountCount, 1, memory_order_relaxed);
     }
     else
     {
-        mount->mountpoint = NULL;
+        mount->target = NULL;
     }
-    mount->root = root != NULL ? REF(root) : NULL;
+    superblock_inc_mount_count(superblock);
+    mount->superblock = REF(superblock);
     mount->parent = parent != NULL ? REF(parent) : NULL;
     mount->mode = mode;
 

@@ -94,7 +94,7 @@ typedef struct dentry
     const dentry_ops_t* ops;
     void* private;
     map_entry_t mapEntry;
-    _Atomic(uint64_t) mountCount; ///< Number of mounts on this dentry.
+    _Atomic(uint64_t) mountCount; ///< Number of mounts targeting this dentry.
     list_entry_t otherEntry; ///< Made available for use by any other subsystems for convenience.
 } dentry_t;
 

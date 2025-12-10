@@ -762,7 +762,7 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
     return 0;
 }
 
-uint64_t vfs_get_new_id(void)
+uint64_t vfs_id_get(void)
 {
     static _Atomic(uint64_t) newVfsId = ATOMIC_VAR_INIT(0);
 

@@ -141,7 +141,7 @@ typedef struct inode_ops
  * There is no `inode_free()` instead use `UNREF()`.
  *
  * @param superblock The superblock the inode belongs to.
- * @param number The inode number.
+ * @param number The inode number, for a generic filesystem `vfs_id_get()` can be used.
  * @param type The inode type.
  * @param ops The inode operations.
  * @param fileOps The file operations for files opened on this inode.

@@ -177,7 +177,7 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process);
  *
  * @return A new unique ID.
  */
-uint64_t vfs_get_new_id(void);
+uint64_t vfs_id_get(void);
 
 /**
  * @brief Helper macros for implementing file operations dealing with simple buffers.

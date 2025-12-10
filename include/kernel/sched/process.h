@@ -130,12 +130,12 @@ typedef struct process
     atomic_bool isDying;
     process_threads_t threads;
     list_entry_t zombieEntry;
+    mount_t* self; ///< The `/proc/self` bind mount.
     dentry_t* proc;  ///< The `/proc/[pid]` directory, also stored in `dentries` for convenience.
     dentry_t* env;   ///< The `/proc/[pid]/env` directory, also stored in `dentries` for convenience.
     list_t dentries; ///< List of dentries in the `/proc/[pid]/` directory.
     list_t envVars;  ///< List of dentries in the `/proc/[pid]/env/` directory.
     lock_t dentriesLock;
-    mount_t* self; ///< The `/proc/[pid]/self` mount point.
 } process_t;
 
 /**

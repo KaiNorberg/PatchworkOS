@@ -29,7 +29,7 @@
 
 **PatchworkOS** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended to be an educational and experimental operating system.
 
-In the end this is a project made for fun, but the goal is to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system without jumping ahead to user space features, a floppy disk driver and a round-robin scheduler is not enough.
+In the end this is a project made for fun, but the goal is to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system without jumping ahead to user space features or drivers, a floppy disk driver and a round-robin scheduler is not enough.
 
 Also, this is not a UNIX clone, its intended to be a (hopefully) interesting experiment in operating system design by attempting to use unique algorithms and designs over tried and tested ones. Sometimes this leads to bad results, and sometimes, with a bit of luck, good ones.
 

@@ -395,7 +395,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type)
     }
 
     mount_t* mount =
-        sysfs_mount_new(&familyDir, sock->id, NULL, MOUNT_PROPAGATE_CHILDREN, MODE_ALL_PERMS, &superblockOps);
+        sysfs_mount_new(&familyDir, sock->id, NULL, MOUNT_PROPAGATE_CHILDREN, MODE_DIRECTORY | MODE_ALL_PERMS, &superblockOps);
     path_put(&familyDir);
     if (mount == NULL)
     {
@@ -407,7 +407,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type)
     mount->superblock->private = REF(sock);
     UNREF(mount);
 
-    sock->ctlFile = sysfs_file_new(mount->root, "ctl", &inodeOps, &ctlOps, REF(sock));
+    sock->ctlFile = sysfs_file_new(mount->source, "ctl", &inodeOps, &ctlOps, REF(sock));
     if (sock->ctlFile == NULL)
     {
         family->ops->deinit(sock);
@@ -417,7 +417,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type)
         return NULL;
     }
 
-    sock->dataFile = sysfs_file_new(mount->root, "data", &inodeOps, &dataOps, REF(sock));
+    sock->dataFile = sysfs_file_new(mount->source, "data", &inodeOps, &dataOps, REF(sock));
     if (sock->dataFile == NULL)
     {
         family->ops->deinit(sock);
@@ -428,7 +428,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type)
         return NULL;
     }
 
-    sock->acceptFile = sysfs_file_new(mount->root, "accept", &inodeOps, &acceptOps, REF(sock));
+    sock->acceptFile = sysfs_file_new(mount->source, "accept", &inodeOps, &acceptOps, REF(sock));
     if (sock->acceptFile == NULL)
     {
         family->ops->deinit(sock);
