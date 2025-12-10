@@ -419,6 +419,9 @@ static void process_free(process_t* process)
         panic(NULL, "Attempt to free process pid=%llu with present threads\n", process->id);
     }
 
+    cwd_deinit(&process->cwd);
+    file_table_deinit(&process->fileTable);
+    namespace_deinit(&process->ns);
     space_deinit(&process->space);
     wait_queue_deinit(&process->dyingWaitQueue);
     futex_ctx_deinit(&process->futexCtx);
@@ -599,12 +602,11 @@ void process_kill(process_t* process, int32_t status)
         LOG_DEBUG("sent kill note to %llu threads in process pid=%d\n", killCount, process->id);
     }
 
-    // Anything that another process could be waiting on must be cleaned up here.
-    cwd_deinit(&process->cwd);
-    file_table_deinit(&process->fileTable);
-    namespace_deinit(&process->ns);
-    // The dir entries have refs to the process, but a parent process might want to read files in /proc/[pid] after the
-    // process has exited especially its wait file, so we defer dereferencing them until the reaper runs.
+    // Anything that another process could be waiting on or that could hold a reference to the process must be cleaned up here.
+    cwd_clear(&process->cwd);
+    file_table_close_all(&process->fileTable);
+    namespace_clear(&process->ns);
+
     wait_unblock(&process->dyingWaitQueue, WAIT_ALL, EOK);
 
     LOCK_SCOPE(&zombiesLock);
@@ -743,7 +745,6 @@ static void process_reaper(void* arg)
             process_t* process = CONTAINER_OF(list_pop_first(&zombies), process_t, zombieEntry);
             list_push_back(&localZombies, &process->zombieEntry);
         }
-
         lock_release(&zombiesLock);
 
         while (!list_is_empty(&localZombies))

@@ -115,7 +115,7 @@ void namespace_deinit(namespace_t* ns)
         return;
     }
 
-    RWLOCK_WRITE_SCOPE(&ns->lock);
+    rwlock_write_acquire(&ns->lock);
 
     if (ns->root != NULL)
     {
@@ -134,7 +134,7 @@ void namespace_deinit(namespace_t* ns)
 
     if (ns->parent != NULL)
     {
-        RWLOCK_WRITE_SCOPE(&ns->parent->lock);
+        rwlock_write_acquire(&ns->parent->lock);
         while (!list_is_empty(&ns->children))
         {
             namespace_t* child = CONTAINER_OF(list_pop_first(&ns->children), namespace_t, entry);
@@ -143,7 +143,10 @@ void namespace_deinit(namespace_t* ns)
             child->parent = ns->parent;
         }
         list_remove(&ns->parent->children, &ns->entry);
+        rwlock_write_release(&ns->parent->lock);
     }
+
+    rwlock_write_release(&ns->lock);
 }
 
 uint64_t namespace_set_parent(namespace_t* ns, namespace_t* parent)
@@ -162,28 +165,13 @@ uint64_t namespace_set_parent(namespace_t* ns, namespace_t* parent)
         return ERR;
     }
 
-    namespace_t* current = parent;
-    while (current != NULL)
-    {
-        if (current == ns)
-        {
-            errno = ELOOP;
-            return ERR;
-        }
-        current = current->parent;
-    }
-
-    ns->parent = parent;
-    ns->root = REF(parent->root);
-
     RWLOCK_WRITE_SCOPE(&parent->lock);
-    list_push_back(&parent->children, &ns->entry);
 
     namespace_mount_t* nsMount;
     LIST_FOR_EACH(nsMount, &parent->mounts, entry)
     {
         map_key_t key = mount_key(nsMount->mount->parent->id, nsMount->mount->target->id);
-        if (namespace_add(ns, nsMount->mount, MOUNT_PROPAGATE_CHILDREN, &key) == ERR)
+        if (namespace_add(ns, nsMount->mount, MOUNT_NONE, &key) == ERR)
         {
             if (errno == ENOMEM)
             {
@@ -192,6 +180,11 @@ uint64_t namespace_set_parent(namespace_t* ns, namespace_t* parent)
             }
         }
     }
+
+    list_push_back(&parent->children, &ns->entry);
+
+    ns->parent = parent;
+    ns->root = REF(parent->root);
 
     return 0;
 }

@@ -78,14 +78,13 @@ void namespace_init(namespace_t* ns);
 void namespace_deinit(namespace_t* ns);
 
 /**
- * @brief Sets the parent of a namespace.
+ * @brief Sets the parent of a namespace and inherits all mounts from the parent.
  *
  * @param ns The namespace to set the parent of.
  * @param parent The new parent namespace.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `EBUSY`: The namespace already has a parent.
- * - `ELOOP`: Setting the parent would create a cycle.
  * - `ENOMEM`: Out of memory.
  */
 uint64_t namespace_set_parent(namespace_t* ns, namespace_t* parent);
@@ -112,12 +111,12 @@ uint64_t namespace_traverse(namespace_t* ns, path_t* path);
  * @param private Private data for the filesystem's mount function.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
+ * - `EXDEV`: The target path is not visible in the namespace.
  * - `ENODEV`: The specified filesystem does not exist.
- * - `EIO`: The root is negative, should never happen if the filesystem is implemented correctly.
  * - `EBUSY`: Attempt to mount to already existing root.
  * - `ENOMEM`: Out of memory.
  * - `ENOENT`: The root does not exist or the target is negative.
- * - Other errors as returned by the filesystem's `mount()` function.
+ * - Other errors as returned by the filesystem's `mount()` function or `mount_new()`.
  */
 mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* deviceName, const char* fsName,
     mount_flags_t flags, mode_t mode, void* private);
@@ -132,10 +131,8 @@ mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* deviceName
  * @param mode The maximum allowed permissions for files/directories opened under this mount.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
- * - `ENOENT`: The source or target is negative.
- * - `EISDIR`: The dentry of the source is a directory but mode does not specify `MODE_DIRECTORY`.
- * - `ENOTDIR`: The dentry of the source is a file but mode specifies `MODE_DIRECTORY`.
  * - `ENOMEM`: Out of memory.
+ * - Other errors as returned by `mount_new()`.
  */
 mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* target, mount_flags_t flags, mode_t mode);
 

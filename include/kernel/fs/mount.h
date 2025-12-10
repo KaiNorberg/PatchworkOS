@@ -28,6 +28,12 @@ typedef struct path path_t;
  * @brief Mount ID type.
  */
 typedef uint64_t mount_id_t;
+
+/**
+ * @brief Macro to check if a mount is the root filesystem.
+ */
+#define MOUNT_IS_ROOT(mount) ((mount)->parent == (mount))
+
 /**
  * @brief Mount structure.
  * @struct mount_t

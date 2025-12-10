@@ -178,6 +178,26 @@ fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd)
     return newFd;
 }
 
+void file_table_close_all(file_table_t* table)
+{
+    if (table == NULL)
+    {
+        return;
+    }
+
+    LOCK_SCOPE(&table->lock);
+
+    for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
+    {
+        if (table->files[i] != NULL)
+        {
+            UNREF(table->files[i]);
+            table->files[i] = NULL;
+            bitmap_clear(&table->bitmap, i);
+        }
+    }
+}
+
 SYSCALL_DEFINE(SYS_CLOSE, uint64_t, fd_t fd)
 {
     return file_table_free(&sched_process()->fileTable, fd);

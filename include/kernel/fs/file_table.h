@@ -121,4 +121,11 @@ fd_t file_table_dup(file_table_t* table, fd_t oldFd);
  */
 fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd);
 
+/**
+ * @brief Close all files in the file table.
+ *
+ * @param table The file table.
+ */
+void file_table_close_all(file_table_t* table);
+
 /** @} */

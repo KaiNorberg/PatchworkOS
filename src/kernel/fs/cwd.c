@@ -48,6 +48,13 @@ void cwd_set(cwd_t* cwd, const path_t* newPath)
     lock_release(&cwd->lock);
 }
 
+void cwd_clear(cwd_t* cwd)
+{
+    lock_acquire(&cwd->lock);
+    path_put(&cwd->path);
+    lock_release(&cwd->lock);
+}
+
 SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
 {
     thread_t* thread = sched_thread();
