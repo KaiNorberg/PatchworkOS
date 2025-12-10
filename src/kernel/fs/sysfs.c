@@ -54,21 +54,21 @@ static dentry_t* sysfs_mount(filesystem_t* fs, const char* devName, void* privat
     {
         return NULL;
     }
-    DEREF_DEFER(superblock);
+    UNREF_DEFER(superblock);
 
     inode_t* inode = inode_new(superblock, atomic_fetch_add(&newNum, 1), INODE_DIR, NULL, &dirOps);
     if (inode == NULL)
     {
         return NULL;
     }
-    DEREF_DEFER(inode);
+    UNREF_DEFER(inode);
 
     dentry_t* dentry = dentry_new(superblock, NULL, VFS_ROOT_ENTRY_NAME);
     if (dentry == NULL)
     {
         return NULL;
     }
-    DEREF_DEFER(dentry);
+    UNREF_DEFER(dentry);
 
     dentry_make_positive(dentry, inode);
 
@@ -132,7 +132,7 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
         {
             return NULL;
         }
-        DEREF_DEFER(dentry);
+        UNREF_DEFER(dentry);
 
         path_t mountpoint = PATH_CREATE(rootPath.mount, dentry);
         PATH_DEFER(&mountpoint);
@@ -155,14 +155,14 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
     {
         return NULL;
     }
-    DEREF_DEFER(inode);
+    UNREF_DEFER(inode);
 
     dentry_t* dentry = dentry_new(parent->dentry->superblock, parent->dentry, name);
     if (dentry == NULL)
     {
         return NULL;
     }
-    DEREF_DEFER(dentry);
+    UNREF_DEFER(dentry);
 
     dentry_make_positive(dentry, inode);
 
@@ -200,14 +200,14 @@ dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* i
     {
         return NULL;
     }
-    DEREF_DEFER(dir);
+    UNREF_DEFER(dir);
 
     inode_t* inode = inode_new(parent->superblock, atomic_fetch_add(&newNum, 1), INODE_DIR, inodeOps, &dirOps);
     if (inode == NULL)
     {
         return NULL;
     }
-    DEREF_DEFER(inode);
+    UNREF_DEFER(inode);
     inode->private = private;
 
     dentry_make_positive(dir, inode);
@@ -240,14 +240,14 @@ dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* 
     {
         return NULL;
     }
-    DEREF_DEFER(file);
+    UNREF_DEFER(file);
 
     inode_t* inode = inode_new(parent->superblock, atomic_fetch_add(&newNum, 1), INODE_FILE, inodeOps, fileOps);
     if (inode == NULL)
     {
         return NULL;
     }
-    DEREF_DEFER(inode);
+    UNREF_DEFER(inode);
     inode->private = private;
 
     dentry_make_positive(file, inode);

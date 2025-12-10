@@ -94,7 +94,7 @@ static void shmem_vmm_callback(void* private)
         return;
     }
 
-    DEREF(shmem);
+    UNREF(shmem);
 }
 
 static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmount, space_t* space, void* address,
@@ -162,7 +162,7 @@ static void shmem_close(file_t* file)
         return;
     }
 
-    DEREF(shmem);
+    UNREF(shmem);
 }
 
 static void* shmem_mmap(file_t* file, void* address, uint64_t length, uint64_t* offset, pml_flags_t flags)
@@ -238,7 +238,7 @@ static uint64_t shmem_init(void)
     newFile = sysfs_file_new(shmemDir, "new", NULL, &fileOps, NULL);
     if (newFile == NULL)
     {
-        DEREF(shmemDir);
+        UNREF(shmemDir);
         LOG_ERR("failed to create /dev/shmem/new file");
         return ERR;
     }
@@ -248,9 +248,9 @@ static uint64_t shmem_init(void)
 
 static void shmem_deinit(void)
 {
-    DEREF(newFile);
+    UNREF(newFile);
     newFile = NULL;
-    DEREF(shmemDir);
+    UNREF(shmemDir);
     shmemDir = NULL;
 }
 

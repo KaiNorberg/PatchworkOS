@@ -91,16 +91,14 @@ void namespace_deinit(namespace_t* ns);
 uint64_t namespace_set_parent(namespace_t* ns, namespace_t* parent);
 
 /**
- * @brief Traverse a mountpoint path to the root of the mounted filesystem.
- *
- * @param ns The namespace to use.
- * @param mountpoint The mountpoint path to traverse.
- * @param out The output path, if the mountpoint exists, the root of the mounted filesystem, otherwise will be set to
- * `mountpoint`.
+ * @brief If the given path is a mountpoint in the namespace, traverse to the mounted filesystem, else no-op.
+ * 
+ * @param ns The namespace to traverse in.
+ * @param path The mountpoint path to traverse, will be updated to the new path if traversed.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  */
-uint64_t namespace_traverse_mount(namespace_t* ns, const path_t* mountpoint, path_t* out);
+uint64_t namespace_traverse(namespace_t* ns, path_t* path);
 
 /**
  * @brief Mount a filesystem in a namespace.
@@ -149,5 +147,12 @@ mount_t* namespace_bind(namespace_t* ns, dentry_t* target, path_t* mountpoint, m
  * - `ENOENT`: The namespace has no root mount.
  */
 uint64_t namespace_get_root_path(namespace_t* ns, path_t* out);
+
+/**
+ * @brief Clears all mounts from a namespace.
+ *
+ * @param ns The namespace to clear.
+ */
+void namespace_clear(namespace_t* ns);
 
 /** @} */

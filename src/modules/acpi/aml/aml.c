@@ -46,7 +46,7 @@ static inline uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
     }
 
     aml_object_t* root = aml_namespace_get_root();
-    DEREF_DEFER(root);
+    UNREF_DEFER(root);
 
     uint64_t result = aml_term_list_read(&state, root, start, end, NULL);
 
@@ -117,7 +117,7 @@ uint64_t aml_init(void)
         LOG_ERR("failed to create root AML object\n");
         return ERR;
     }
-    DEREF_DEFER(root);
+    UNREF_DEFER(root);
 
     // We dont need to add the root to the namespace map as it has no name.
     if (aml_predefined_scope_set(root) == ERR)

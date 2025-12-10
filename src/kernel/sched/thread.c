@@ -39,20 +39,20 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
             VMM_KERNEL_STACKS_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_KERNEL_STACK_PAGES),
             CONFIG_MAX_KERNEL_STACK_PAGES) == ERR)
     {
-        DEREF(process);
+        UNREF(process);
         return ERR;
     }
     if (stack_pointer_init(&thread->userStack,
             VMM_USER_SPACE_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_USER_STACK_PAGES),
             CONFIG_MAX_USER_STACK_PAGES) == ERR)
     {
-        DEREF(process);
+        UNREF(process);
         return ERR;
     }
     wait_client_init(&thread->wait);
     if (simd_ctx_init(&thread->simd) == ERR)
     {
-        DEREF(process);
+        UNREF(process);
         return ERR;
     }
     note_queue_init(&thread->notes);
@@ -134,7 +134,7 @@ void thread_free(thread_t* thread)
     list_remove(&process->threads.list, &thread->processEntry);
     lock_release(&process->threads.lock);
 
-    DEREF(process);
+    UNREF(process);
     thread->process = NULL;
 
     simd_ctx_deinit(&thread->simd);

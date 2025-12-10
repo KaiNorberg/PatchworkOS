@@ -22,7 +22,7 @@
 static uint64_t aml_tests_check_object_leak(void)
 {
     aml_object_t* root = aml_namespace_get_root();
-    DEREF_DEFER(root);
+    UNREF_DEFER(root);
 
     uint64_t totalObjects = aml_object_get_total_count();
     uint64_t rootChildren = aml_object_count_children(root);
@@ -49,7 +49,7 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
     }
 
     aml_object_t* root = aml_namespace_get_root();
-    DEREF_DEFER(root);
+    UNREF_DEFER(root);
 
     if (aml_term_list_read(&state, root, testAml->definitionBlock, end, NULL) == ERR)
     {
@@ -67,7 +67,7 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
         aml_state_deinit(&state);
         return ERR;
     }
-    DEREF_DEFER(setn);
+    UNREF_DEFER(setn);
 
     if (aml_integer_set(setn, 6) == ERR)
     {
@@ -86,7 +86,7 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
         aml_state_deinit(&state);
         return ERR;
     }
-    DEREF_DEFER(mainObj);
+    UNREF_DEFER(mainObj);
 
     aml_object_t* result = aml_method_invoke(&state, &mainObj->method, NULL);
     if (result == NULL)
@@ -95,7 +95,7 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
         aml_state_deinit(&state);
         return ERR;
     }
-    DEREF_DEFER(result);
+    UNREF_DEFER(result);
 
     aml_state_deinit(&state);
 

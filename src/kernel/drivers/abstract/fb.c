@@ -94,14 +94,14 @@ fb_t* fb_new(const fb_info_t* info, fb_mmap_t mmap)
     fb->bufferFile = sysfs_file_new(fb->dir, "buffer", NULL, &bufferOps, fb);
     if (fb->bufferFile == NULL)
     {
-        DEREF(fb->dir); // fb will be freed in fb_dir_cleanup
+        UNREF(fb->dir); // fb will be freed in fb_dir_cleanup
         return NULL;
     }
     fb->infoFile = sysfs_file_new(fb->dir, "info", NULL, &infoOps, fb);
     if (fb->infoFile == NULL)
     {
-        DEREF(fb->dir);
-        DEREF(fb->bufferFile);
+        UNREF(fb->dir);
+        UNREF(fb->bufferFile);
         return NULL;
     }
 
@@ -115,8 +115,8 @@ void fb_free(fb_t* fb)
         return;
     }
 
-    DEREF(fb->dir);
-    DEREF(fb->bufferFile);
-    DEREF(fb->infoFile);
+    UNREF(fb->dir);
+    UNREF(fb->bufferFile);
+    UNREF(fb->infoFile);
     // fb is freed in fb_dir_cleanup
 }

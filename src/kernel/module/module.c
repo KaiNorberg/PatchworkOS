@@ -376,7 +376,7 @@ static uint64_t module_file_read(module_file_t* outFile, const path_t* dirPath, 
     {
         return ERR;
     }
-    DEREF_DEFER(file);
+    UNREF_DEFER(file);
 
     uint64_t fileSize = vfs_seek(file, 0, SEEK_END);
     vfs_seek(file, 0, SEEK_SET);
@@ -594,7 +594,7 @@ static uint64_t module_cache_build(void)
     {
         return ERR;
     }
-    DEREF_DEFER(dir);
+    UNREF_DEFER(dir);
 
     dirent_t buffer[PAGE_SIZE / sizeof(dirent_t)];
     while (true)
@@ -1079,7 +1079,7 @@ uint64_t module_device_attach(const char* type, const char* name, module_load_fl
     {
         return ERR;
     }
-    DEREF_DEFER(dir);
+    UNREF_DEFER(dir);
 
     module_device_t* device = module_device_get(name);
     if (device != NULL)

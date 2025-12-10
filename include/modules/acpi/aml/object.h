@@ -483,9 +483,9 @@ uint64_t aml_object_get_total_count(void);
 /**
  * @brief Allocate a new ACPI object.
  *
- * There is no `aml_object_free()` instead always use `DEREF()` to free an object, since objects are reference counted.
+ * There is no `aml_object_free()` instead always use `UNREF()` to free an object, since objects are reference counted.
  *
- * You could also use `DEREF_DEFER()` to dereference the object when the current scope ends.
+ * You could also use `UNREF_DEFER()` to dereference the object when the current scope ends.
  *
  * @return On success, a pointer to the new object. On failure, `NULL` and `errno` is set.
  */

@@ -107,7 +107,7 @@ uint64_t aml_def_opregion_read(aml_term_list_ctx_t* ctx)
         AML_DEBUG_ERROR(ctx, "Failed to create object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
     }
-    DEREF_DEFER(newObject);
+    UNREF_DEFER(newObject);
 
     if (aml_operation_region_set(newObject, regionSpace, regionOffset, regionLen) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
@@ -173,7 +173,7 @@ uint64_t aml_name_field_read(aml_term_list_ctx_t* ctx, aml_field_list_ctx_t* fie
     {
         return ERR;
     }
-    DEREF_DEFER(newObject);
+    UNREF_DEFER(newObject);
 
     switch (fieldCtx->type)
     {
@@ -343,7 +343,7 @@ uint64_t aml_def_field_read(aml_term_list_ctx_t* ctx)
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve NameString");
         return ERR;
     }
-    DEREF_DEFER(opregion);
+    UNREF_DEFER(opregion);
 
     if (opregion->type != AML_OPERATION_REGION)
     {
@@ -400,7 +400,7 @@ uint64_t aml_def_index_field_read(aml_term_list_ctx_t* ctx)
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve index NameString");
         return ERR;
     }
-    DEREF_DEFER(index);
+    UNREF_DEFER(index);
 
     aml_object_t* data = aml_name_string_read_and_resolve(ctx);
     if (data == NULL)
@@ -408,7 +408,7 @@ uint64_t aml_def_index_field_read(aml_term_list_ctx_t* ctx)
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve data NameString");
         return ERR;
     }
-    DEREF_DEFER(data);
+    UNREF_DEFER(data);
 
     aml_field_flags_t fieldFlags;
     if (aml_field_flags_read(ctx, &fieldFlags) == ERR)
@@ -473,7 +473,7 @@ uint64_t aml_def_bank_field_read(aml_term_list_ctx_t* ctx)
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve opregion NameString");
         return ERR;
     }
-    DEREF_DEFER(opregion);
+    UNREF_DEFER(opregion);
 
     aml_object_t* bank = aml_name_string_read_and_resolve(ctx);
     if (bank == NULL)
@@ -481,7 +481,7 @@ uint64_t aml_def_bank_field_read(aml_term_list_ctx_t* ctx)
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve bank NameString");
         return ERR;
     }
-    DEREF_DEFER(bank);
+    UNREF_DEFER(bank);
 
     uint64_t bankValue;
     if (aml_bank_value_read(ctx, &bankValue) == ERR)
@@ -575,7 +575,7 @@ uint64_t aml_def_method_read(aml_term_list_ctx_t* ctx)
     {
         return ERR;
     }
-    DEREF_DEFER(newObject);
+    UNREF_DEFER(newObject);
 
     if (aml_method_set(newObject, methodFlags, ctx->current, end, NULL) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
@@ -621,7 +621,7 @@ uint64_t aml_def_device_read(aml_term_list_ctx_t* ctx)
     {
         return ERR;
     }
-    DEREF_DEFER(device);
+    UNREF_DEFER(device);
 
     if (aml_device_set(device) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, device) == ERR)
@@ -687,7 +687,7 @@ uint64_t aml_def_mutex_read(aml_term_list_ctx_t* ctx)
     {
         return ERR;
     }
-    DEREF_DEFER(newObject);
+    UNREF_DEFER(newObject);
 
     if (aml_mutex_set(newObject, syncFlags) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
@@ -781,7 +781,7 @@ uint64_t aml_def_processor_read(aml_term_list_ctx_t* ctx)
     {
         return ERR;
     }
-    DEREF_DEFER(processor);
+    UNREF_DEFER(processor);
 
     if (aml_processor_set(processor, procId, pblkAddr, pblkLen) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, processor) == ERR)
@@ -848,7 +848,7 @@ uint64_t aml_def_create_bit_field_read(aml_term_list_ctx_t* ctx)
         AML_DEBUG_ERROR(ctx, "Failed to read SourceBuff");
         return ERR;
     }
-    DEREF_DEFER(sourceBuff);
+    UNREF_DEFER(sourceBuff);
 
     assert(sourceBuff->type == AML_BUFFER);
 
@@ -871,7 +871,7 @@ uint64_t aml_def_create_bit_field_read(aml_term_list_ctx_t* ctx)
     {
         return ERR;
     }
-    DEREF_DEFER(newObject);
+    UNREF_DEFER(newObject);
 
     if (aml_buffer_field_set(newObject, sourceBuff, bitIndex, 1) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
@@ -898,7 +898,7 @@ static inline uint64_t aml_def_create_field_read_helper(aml_term_list_ctx_t* ctx
         AML_DEBUG_ERROR(ctx, "Failed to read SourceBuff");
         return ERR;
     }
-    DEREF_DEFER(sourceBuff);
+    UNREF_DEFER(sourceBuff);
 
     assert(sourceBuff->type == AML_BUFFER);
 
@@ -921,7 +921,7 @@ static inline uint64_t aml_def_create_field_read_helper(aml_term_list_ctx_t* ctx
     {
         return ERR;
     }
-    DEREF_DEFER(newObject);
+    UNREF_DEFER(newObject);
 
     if (aml_buffer_field_set(newObject, sourceBuff, byteIndex * 8, fieldWidth) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
@@ -973,7 +973,7 @@ uint64_t aml_def_event_read(aml_term_list_ctx_t* ctx)
     {
         return ERR;
     }
-    DEREF_DEFER(newObject);
+    UNREF_DEFER(newObject);
 
     if (aml_event_set(newObject) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
@@ -1016,7 +1016,7 @@ uint64_t aml_def_thermal_zone_read(aml_term_list_ctx_t* ctx)
     {
         return ERR;
     }
-    DEREF_DEFER(thermalZone);
+    UNREF_DEFER(thermalZone);
 
     if (aml_thermal_zone_set(thermalZone) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, thermalZone) == ERR)
@@ -1100,7 +1100,7 @@ uint64_t aml_def_power_res_read(aml_term_list_ctx_t* ctx)
     {
         return ERR;
     }
-    DEREF_DEFER(powerResource);
+    UNREF_DEFER(powerResource);
 
     if (aml_power_resource_set(powerResource, systemLevel, resourceOrder) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, powerResource) == ERR)
@@ -1144,7 +1144,7 @@ uint64_t aml_def_create_field_read(aml_term_list_ctx_t* ctx)
         AML_DEBUG_ERROR(ctx, "Failed to read SourceBuff");
         return ERR;
     }
-    DEREF_DEFER(sourceBuff);
+    UNREF_DEFER(sourceBuff);
 
     assert(sourceBuff->type == AML_BUFFER);
 
@@ -1174,7 +1174,7 @@ uint64_t aml_def_create_field_read(aml_term_list_ctx_t* ctx)
     {
         return ERR;
     }
-    DEREF_DEFER(newObject);
+    UNREF_DEFER(newObject);
 
     if (aml_buffer_field_set(newObject, sourceBuff, bitIndex, numBits) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
@@ -1207,7 +1207,7 @@ uint64_t aml_def_data_region_read(aml_term_list_ctx_t* ctx)
         AML_DEBUG_ERROR(ctx, "Failed to read Signature");
         return ERR;
     }
-    DEREF_DEFER(signature);
+    UNREF_DEFER(signature);
 
     aml_string_t* oemId = aml_term_arg_read_string(ctx);
     if (oemId == NULL)
@@ -1215,7 +1215,7 @@ uint64_t aml_def_data_region_read(aml_term_list_ctx_t* ctx)
         AML_DEBUG_ERROR(ctx, "Failed to read OemId");
         return ERR;
     }
-    DEREF_DEFER(oemId);
+    UNREF_DEFER(oemId);
 
     aml_string_t* oemTableId = aml_term_arg_read_string(ctx);
     if (oemTableId == NULL)
@@ -1223,7 +1223,7 @@ uint64_t aml_def_data_region_read(aml_term_list_ctx_t* ctx)
         AML_DEBUG_ERROR(ctx, "Failed to read OemTableId");
         return ERR;
     }
-    DEREF_DEFER(oemTableId);
+    UNREF_DEFER(oemTableId);
 
     if (signature->length != SDT_SIGNATURE_LENGTH)
     {
@@ -1280,7 +1280,7 @@ uint64_t aml_def_data_region_read(aml_term_list_ctx_t* ctx)
         {
             return ERR;
         }
-        DEREF_DEFER(newObject);
+        UNREF_DEFER(newObject);
 
         if (aml_operation_region_set(newObject, AML_REGION_SYSTEM_MEMORY, (uint64_t)table, table->length) == ERR ||
             aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &regionName, newObject) == ERR)

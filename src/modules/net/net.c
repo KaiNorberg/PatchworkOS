@@ -28,7 +28,7 @@ static uint64_t net_init(void)
 
     if (net_local_init() == ERR)
     {
-        DEREF(mount);
+        UNREF(mount);
         return ERR;
     }
 
@@ -41,7 +41,7 @@ static void net_deinit(void)
 
     socket_family_unregister_all();
 
-    DEREF(mount);
+    UNREF(mount);
 }
 
 uint64_t _module_procedure(const module_event_t* event)

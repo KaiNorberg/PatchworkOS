@@ -345,7 +345,7 @@ static uint64_t process_env_create(inode_t* dir, dentry_t* target, mode_t mode)
     {
         return ERR;
     }
-    DEREF_DEFER(inode);
+    UNREF_DEFER(inode);
 
     inode->private = NULL;
     inode->size = 0;
@@ -374,7 +374,7 @@ static uint64_t process_env_remove(inode_t* dir, dentry_t* target, mode_t mode)
         errno = ENOENT;
         return ERR;
     }
-    DEREF_DEFER(inode);
+    UNREF_DEFER(inode);
 
     MUTEX_SCOPE(&inode->mutex);
 
@@ -383,7 +383,7 @@ static uint64_t process_env_remove(inode_t* dir, dentry_t* target, mode_t mode)
 
     lock_acquire(&process->dentriesLock);
     list_remove(&process->envVars, &target->otherEntry);
-    DEREF(target);
+    UNREF(target);
     lock_release(&process->dentriesLock);
 
     return 0;
@@ -402,7 +402,7 @@ static void process_env_cleanup(inode_t* inode)
 static void process_proc_cleanup(inode_t* inode)
 {
     process_t* process = inode->private;
-    DEREF(process);
+    UNREF(process);
 }
 
 static inode_ops_t procInodeOps = {
@@ -417,7 +417,7 @@ static void process_free(process_t* process)
     while (!list_is_empty(&process->dentries))
     {
         dentry_t* dentry = CONTAINER_OF_SAFE(list_pop_first(&process->dentries), dentry_t, otherEntry);
-        DEREF(dentry);
+        UNREF(dentry);
     }
 
     if (list_length(&process->threads.list) != 0)
@@ -522,7 +522,7 @@ error:
     while (!list_is_empty(&process->dentries))
     {
         dentry_t* dentry = CONTAINER_OF_SAFE(list_pop_first(&process->dentries), dentry_t, otherEntry);
-        DEREF(dentry);
+        UNREF(dentry);
     }
     return ERR;
 }
@@ -644,7 +644,7 @@ uint64_t process_copy_env(process_t* dest, process_t* src)
         {
             return ERR;
         }
-        DEREF_DEFER(inode);
+        UNREF_DEFER(inode);
 
         MUTEX_SCOPE(&srcDentry->inode->mutex);
         if (srcDentry->inode->private != NULL)
@@ -760,19 +760,19 @@ static void process_reaper(void* arg)
             while (!list_is_empty(&process->dentries))
             {
                 dentry_t* dentry = CONTAINER_OF_SAFE(list_pop_first(&process->dentries), dentry_t, otherEntry);
-                DEREF(dentry);
+                UNREF(dentry);
             }
 
             while (!list_is_empty(&process->envVars))
             {
                 dentry_t* dentry = CONTAINER_OF_SAFE(list_pop_first(&process->envVars), dentry_t, otherEntry);
-                DEREF(dentry);
+                UNREF(dentry);
             }
 
-            DEREF(process->self);
+            UNREF(process->self);
             process->self = NULL;
 
-            DEREF(process);
+            UNREF(process);
         }
     }
 }

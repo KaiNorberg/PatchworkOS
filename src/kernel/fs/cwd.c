@@ -59,25 +59,15 @@ SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
         return ERR;
     }
 
-    path_t cwd = cwd_get(&process->cwd);
-    PATH_DEFER(&cwd);
-
-    path_t path = PATH_EMPTY;
-    if (path_walk(&path, &pathname, &cwd, &process->ns) == ERR)
-    {
-        return ERR;
-    }
+    path_t path = cwd_get(&process->cwd);
     PATH_DEFER(&path);
 
-    inode_t* inode = dentry_inode_get(path.dentry);
-    if (inode == NULL)
+    if (path_walk(&path, &pathname, &process->ns) == ERR)
     {
-        errno = ENOENT;
         return ERR;
     }
-    DEREF_DEFER(inode);
 
-    if (inode->type != INODE_DIR)
+    if (!dentry_is_dir(path.dentry))
     {
         errno = ENOTDIR;
         return ERR;

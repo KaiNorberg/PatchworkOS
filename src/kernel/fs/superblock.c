@@ -26,7 +26,7 @@ static void superblock_free(superblock_t* superblock)
 
     if (superblock->root != NULL)
     {
-        DEREF(superblock->root);
+        UNREF(superblock->root);
     }
 
     free(superblock);

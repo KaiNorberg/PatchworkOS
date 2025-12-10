@@ -19,7 +19,7 @@ aml_object_t* aml_debug_obj_read(aml_term_list_ctx_t* ctx)
 
     if (aml_debug_object_set(obj) == ERR)
     {
-        DEREF(obj);
+        UNREF(obj);
         return NULL;
     }
 

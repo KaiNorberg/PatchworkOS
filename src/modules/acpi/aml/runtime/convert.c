@@ -390,7 +390,7 @@ uint64_t aml_convert(aml_state_t* state, aml_object_t* src, aml_object_t* dest, 
         {
             return ERR;
         }
-        DEREF_DEFER(temp);
+        UNREF_DEFER(temp);
 
         if (src->type == AML_FIELD_UNIT)
         {
@@ -591,7 +591,7 @@ uint64_t aml_convert_source(aml_state_t* state, aml_object_t* src, aml_object_t*
 
     if (aml_convert(state, src, *dest, allowedTypes) == ERR)
     {
-        DEREF(*dest);
+        UNREF(*dest);
         *dest = NULL;
         return ERR;
     }
@@ -626,7 +626,7 @@ uint64_t aml_convert_to_buffer(aml_state_t* state, aml_object_t* src, aml_object
     {
         return ERR;
     }
-    DEREF_DEFER(temp);
+    UNREF_DEFER(temp);
 
     if (src->type == AML_INTEGER)
     {
@@ -681,7 +681,7 @@ uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, am
     {
         return ERR;
     }
-    DEREF_DEFER(temp);
+    UNREF_DEFER(temp);
 
     if (src->type == AML_INTEGER)
     {
@@ -787,7 +787,7 @@ uint64_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_ob
     {
         return ERR;
     }
-    DEREF_DEFER(temp);
+    UNREF_DEFER(temp);
 
     if (src->type == AML_INTEGER)
     {
@@ -800,7 +800,7 @@ uint64_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_ob
 
         if (aml_string_set_empty(temp, len) == ERR)
         {
-            DEREF(temp);
+            UNREF(temp);
             return ERR;
         }
         memcpy(temp->string.content, buffer, len + 1);
@@ -815,7 +815,7 @@ uint64_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_ob
         {
             if (aml_string_set_empty(temp, 0) == ERR)
             {
-                DEREF(temp);
+                UNREF(temp);
                 return ERR;
             }
             *dest = REF(temp);
@@ -825,7 +825,7 @@ uint64_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_ob
         uint64_t len = bufferData->length * 3 - 1; // "XX," per byte except last
         if (aml_string_set_empty(temp, len) == ERR)
         {
-            DEREF(temp);
+            UNREF(temp);
             return ERR;
         }
 
@@ -877,7 +877,7 @@ uint64_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_objec
     {
         return ERR;
     }
-    DEREF_DEFER(temp);
+    UNREF_DEFER(temp);
 
     if (src->type == AML_STRING)
     {

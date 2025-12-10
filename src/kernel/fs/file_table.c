@@ -22,7 +22,7 @@ void file_table_deinit(file_table_t* table)
     {
         if (table->files[i] != NULL)
         {
-            DEREF(table->files[i]);
+            UNREF(table->files[i]);
             table->files[i] = NULL;
         }
     }
@@ -85,7 +85,7 @@ uint64_t file_table_free(file_table_t* table, fd_t fd)
         return ERR;
     }
 
-    DEREF(table->files[fd]);
+    UNREF(table->files[fd]);
     table->files[fd] = NULL;
     bitmap_clear(&table->bitmap, fd);
     return 0;
@@ -109,7 +109,7 @@ fd_t file_table_set(file_table_t* table, fd_t fd, file_t* file)
 
     if (table->files[fd] != NULL)
     {
-        DEREF(table->files[fd]);
+        UNREF(table->files[fd]);
         table->files[fd] = NULL;
     }
 
@@ -169,7 +169,7 @@ fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd)
 
     if (table->files[newFd] != NULL)
     {
-        DEREF(table->files[newFd]);
+        UNREF(table->files[newFd]);
         table->files[newFd] = NULL;
     }
 

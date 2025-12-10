@@ -109,7 +109,7 @@ void aml_debug_error(aml_term_list_ctx_t* ctx, const char* function, const char*
         {
             LOG_ERR(" at method '%s' and offset 0x%lx\n", AML_NAME_TO_STRING(method->name),
                 ctx->current - method->start);
-            DEREF(method);
+            UNREF(method);
             start = method->start;
             end = method->end;
         }

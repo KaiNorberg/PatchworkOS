@@ -123,7 +123,7 @@ void loader_exec(const char* executable, char** argv, uint64_t argc)
 cleanup:
     if (file != NULL)
     {
-        DEREF(file);
+        UNREF(file);
     }
     if (fileData != NULL)
     {
@@ -191,10 +191,10 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
             if (file_table_set(&child->fileTable, fdsCopy[i].child, file) == ERR)
             {
                 free(fdsCopy);
-                DEREF(file);
+                UNREF(file);
                 goto error;
             }
-            DEREF(file);
+            UNREF(file);
         }
         free(fdsCopy);
     }
@@ -207,12 +207,10 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
             goto error;
         }
 
-        path_t cwdParent = cwd_get(&process->cwd);
-        PATH_DEFER(&cwdParent);
-
-        path_t cwdPath = PATH_EMPTY;
-        if (path_walk(&cwdPath, &cwdPathname, &cwdParent, &process->ns) == ERR)
+        path_t cwdPath = cwd_get(&process->cwd);
+        if (path_walk(&cwdPath, &cwdPathname, &process->ns) == ERR)
         {
+            path_put(&cwdPath);
             goto error;
         }
 

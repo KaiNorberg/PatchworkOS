@@ -141,7 +141,7 @@ typedef struct process
 /**
  * @brief Allocates and initializes a new process.
  *
- * There is no `process_free()`, instead use `DEREF()`, `DEREF_DEFER()` or `process_kill()` to free a process.
+ * There is no `process_free()`, instead use `UNREF()`, `UNREF_DEFER()` or `process_kill()` to free a process.
  *
  * @param priority The priority of the new process.
  * @return On success, the newly created process. On failure, `NULL` and `errno` is set.

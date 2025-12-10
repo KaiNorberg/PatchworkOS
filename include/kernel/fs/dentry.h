@@ -102,7 +102,7 @@ typedef struct dentry
  * creating new files. While the dentry is negative it is not possible to create another dentry of the same name in the
  * same parent, and any lookup to the dentry will fail until it is made positive.
  *
- * There is no `dentry_free()` instead use `DEREF()`.
+ * There is no `dentry_free()` instead use `UNREF()`.
  *
  * @param superblock The superblock the dentry belongs to.
  * @param parent The parent dentry, can be NULL if this is a root dentry.

@@ -61,7 +61,7 @@ void local_conn_free(local_conn_t* conn)
 
     if (conn->listen != NULL)
     {
-        DEREF(conn->listen);
+        UNREF(conn->listen);
     }
 
     free(conn->clientToServerBuffer);

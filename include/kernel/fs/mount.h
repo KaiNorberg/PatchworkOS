@@ -50,7 +50,7 @@ typedef struct mount
  *
  * This does not add the mount to the mount cache, that must be done separately with `vfs_add_mount()`.
  *
- * There is no `mount_free()` instead use `DEREF()`.
+ * There is no `mount_free()` instead use `UNREF()`.
  *
  * Note that the `root` dentry is not necessarily the same as `superblock->root`, instead its the directory that will
  * "appear" to be the root of the newly mounted filesystem, the dentry that gets jumped to during the lookup. This is

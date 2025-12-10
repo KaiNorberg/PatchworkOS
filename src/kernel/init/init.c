@@ -150,7 +150,7 @@ static inline void init_process_spawn(void)
     {
         panic(NULL, "Failed to create init process");
     }
-    DEREF_DEFER(initProcess);
+    UNREF_DEFER(initProcess);
 
     namespace_set_parent(&initProcess->ns, &process_get_kernel()->ns);
 

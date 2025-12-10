@@ -197,13 +197,13 @@ void path_set(path_t* path, mount_t* mount, dentry_t* dentry)
 {
     if (path->dentry != NULL)
     {
-        DEREF(path->dentry);
+        UNREF(path->dentry);
         path->dentry = NULL;
     }
 
     if (path->mount != NULL)
     {
-        DEREF(path->mount);
+        UNREF(path->mount);
         path->mount = NULL;
     }
 
@@ -222,13 +222,13 @@ void path_copy(path_t* dest, const path_t* src)
 {
     if (dest->dentry != NULL)
     {
-        DEREF(dest->dentry);
+        UNREF(dest->dentry);
         dest->dentry = NULL;
     }
 
     if (dest->mount != NULL)
     {
-        DEREF(dest->mount);
+        UNREF(dest->mount);
         dest->mount = NULL;
     }
 
@@ -247,13 +247,13 @@ void path_put(path_t* path)
 {
     if (path->dentry != NULL)
     {
-        DEREF(path->dentry);
+        UNREF(path->dentry);
         path->dentry = NULL;
     }
 
     if (path->mount != NULL)
     {
-        DEREF(path->mount);
+        UNREF(path->mount);
         path->mount = NULL;
     }
 }
@@ -280,26 +280,26 @@ static bool path_is_name_valid(const char* name)
     return false;
 }
 
-static uint64_t path_handle_dotdot(path_t* current)
+static uint64_t path_handle_dotdot(path_t* path)
 {
-    if (current->dentry == current->mount->root)
+    if (path->dentry == path->mount->root)
     {
         uint64_t iter = 0;
 
-        while (current->dentry == current->mount->root && iter < PATH_HANDLE_DOTDOT_MAX_ITER)
+        while (path->dentry == path->mount->root && iter < PATH_HANDLE_DOTDOT_MAX_ITER)
         {
-            if (current->mount->parent == NULL || current->mount->mountpoint == NULL)
+            if (path->mount->parent == NULL || path->mount->mountpoint == NULL)
             {
                 return 0;
             }
 
-            mount_t* newMount = REF(current->mount->parent);
-            dentry_t* newDentry = REF(current->mount->mountpoint);
+            mount_t* newMount = REF(path->mount->parent);
+            dentry_t* newDentry = REF(path->mount->mountpoint);
 
-            DEREF(current->mount);
-            current->mount = newMount;
-            DEREF(current->dentry);
-            current->dentry = newDentry;
+            UNREF(path->mount);
+            path->mount = newMount;
+            UNREF(path->dentry);
+            path->dentry = newDentry;
 
             iter++;
         }
@@ -310,34 +310,34 @@ static uint64_t path_handle_dotdot(path_t* current)
             return ERR;
         }
 
-        if (current->dentry != current->mount->root)
+        if (path->dentry != path->mount->root)
         {
-            dentry_t* parent = current->dentry->parent;
-            if (parent == NULL || parent == current->dentry)
+            dentry_t* parent = path->dentry->parent;
+            if (parent == NULL || parent == path->dentry)
             {
                 errno = ENOENT;
                 return ERR;
             }
 
             dentry_t* new_parent = REF(parent);
-            DEREF(current->dentry);
-            current->dentry = new_parent;
+            UNREF(path->dentry);
+            path->dentry = new_parent;
         }
 
         return 0;
     }
     else
     {
-        assert(current->dentry->parent != NULL); // This can only happen if the filesystem is corrupt.
-        dentry_t* parent = REF(current->dentry->parent);
-        DEREF(current->dentry);
-        current->dentry = parent;
+        assert(path->dentry->parent != NULL); // This can only happen if the filesystem is corrupt.
+        dentry_t* parent = REF(path->dentry->parent);
+        UNREF(path->dentry);
+        path->dentry = parent;
 
         return 0;
     }
 }
 
-uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* component, namespace_t* ns)
+uint64_t path_step(path_t* path, const char* component, namespace_t* ns)
 {
     if (!path_is_name_valid(component))
     {
@@ -345,77 +345,44 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
         return ERR;
     }
 
-    if (atomic_load(&parent->dentry->mountCount) > 0)
+    if (namespace_traverse(ns, path) == ERR)
     {
-        path_t nextRoot = PATH_EMPTY;
-        if (namespace_traverse_mount(ns, parent, &nextRoot) == ERR)
-        {
-            return ERR;
-        }
-        PATH_DEFER(&nextRoot);
-
-        dentry_t* next = dentry_lookup(&nextRoot, component);
-        if (next == NULL)
-        {
-            return ERR;
-        }
-        DEREF_DEFER(next);
-
-        path_set(outPath, nextRoot.mount, next);
-        return 0;
+        return ERR;
     }
 
-    dentry_t* next = dentry_lookup(parent, component);
+    dentry_t* next = dentry_lookup(path, component);
     if (next == NULL)
     {
         return ERR;
     }
-    DEREF_DEFER(next);
+    UNREF_DEFER(next);
 
-    path_set(outPath, parent->mount, next);
+    path_set(path, path->mount, next);
     return 0;
 }
 
-uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* from, namespace_t* ns)
+uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
 {
-    if (!PATHNAME_IS_VALID(pathname))
+    if (path == NULL || !PATHNAME_IS_VALID(pathname) || ns == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    if (pathname->string[0] == '\0')
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    path_t current = PATH_EMPTY;
     const char* p = pathname->string;
     if (pathname->string[0] == '/')
     {
-        if (namespace_get_root_path(ns, &current) == ERR)
+        if (namespace_get_root_path(ns, path) == ERR)
         {
             return ERR;
         }
         p++;
     }
-    else
-    {
-        if (from == NULL || from->dentry == NULL || from->mount == NULL)
-        {
-            errno = EINVAL;
-            return ERR;
-        }
-        path_copy(&current, from);
-    }
-    PATH_DEFER(&current);
 
-    assert(current.dentry != NULL && current.mount != NULL);
+    assert(path->dentry != NULL && path->mount != NULL);
 
     if (*p == '\0')
     {
-        path_copy(outPath, &current);
         return 0;
     }
 
@@ -466,49 +433,31 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* fr
 
         if (strcmp(component, "..") == 0)
         {
-            if (path_handle_dotdot(&current) == ERR)
+            if (path_handle_dotdot(path) == ERR)
             {
                 return ERR;
             }
             continue;
         }
 
-        path_t next = PATH_EMPTY;
-        if (path_walk_single_step(&next, &current, component, ns) == ERR)
+        if (path_step(path, component, ns) == ERR)
         {
             return ERR;
         }
-
-        path_copy(&current, &next);
-        path_put(&next);
     }
 
-    if (atomic_load(&current.dentry->mountCount) > 0)
+    if (namespace_traverse(ns, path) == ERR)
     {
-        path_t root = PATH_EMPTY;
-        if (namespace_traverse_mount(ns, &current, &root) == ERR)
-        {
-            return ERR;
-        }
-
-        path_copy(&current, &root);
-        path_put(&root);
+        return ERR;
     }
-
-    path_copy(outPath, &current);
+    
     return 0;
 }
 
-uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* from, char* outLastName,
+uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName,
     namespace_t* ns)
 {
-    if (!PATHNAME_IS_VALID(pathname) || outPath == NULL || outLastName == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (pathname->string[0] == '\0')
+    if (path == NULL || !PATHNAME_IS_VALID(pathname) || outLastName == NULL || ns == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -536,16 +485,8 @@ uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const pat
     char* lastSlash = strrchr(string, '/');
     if (lastSlash == NULL)
     {
-        if (from == NULL)
-        {
-            errno = EINVAL;
-            return ERR;
-        }
-
         strncpy(outLastName, string, MAX_NAME - 1);
         outLastName[MAX_NAME - 1] = '\0';
-
-        path_copy(outPath, from);
         return 0;
     }
 
@@ -568,27 +509,28 @@ uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const pat
         return ERR;
     }
 
-    return path_walk(outPath, &parentPathname, from, ns);
+    return path_walk(path, &parentPathname, ns);
 }
 
-uint64_t path_walk_parent_and_child(path_t* outParent, path_t* outChild, const pathname_t* pathname, const path_t* from,
+uint64_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_t* outChild, const pathname_t* pathname,
     namespace_t* ns)
 {
-    if (outParent == NULL || outChild == NULL || !PATHNAME_IS_VALID(pathname) || from == NULL || ns == NULL)
+    if (from == NULL || outParent == NULL || outChild == NULL || !PATHNAME_IS_VALID(pathname) || ns == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
     char lastName[MAX_NAME];
-    if (path_walk_parent(outParent, pathname, from, lastName, ns) == ERR)
+    path_copy(outParent, from);
+    if (path_walk_parent(outParent, pathname, lastName, ns) == ERR)
     {
         return ERR;
     }
 
-    if (path_walk_single_step(outChild, outParent, lastName, ns) == ERR)
+    path_copy(outChild, outParent);
+    if (path_step(outChild, lastName, ns) == ERR)
     {
-        path_put(outParent);
         return ERR;
     }
 

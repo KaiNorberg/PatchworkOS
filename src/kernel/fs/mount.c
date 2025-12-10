@@ -14,23 +14,23 @@ static void mount_free(mount_t* mount)
     if (mount->superblock != NULL)
     {
         superblock_dec_mount_count(mount->superblock);
-        DEREF(mount->superblock);
+        UNREF(mount->superblock);
     }
 
     if (mount->mountpoint != NULL)
     {
         atomic_fetch_sub_explicit(&mount->mountpoint->mountCount, 1, memory_order_relaxed);
-        DEREF(mount->mountpoint);
+        UNREF(mount->mountpoint);
     }
 
     if (mount->root != NULL)
     {
-        DEREF(mount->root);
+        UNREF(mount->root);
     }
 
     if (mount->parent != NULL)
     {
-        DEREF(mount->parent);
+        UNREF(mount->parent);
     }
 
     free(mount);

@@ -138,7 +138,7 @@ typedef struct inode_ops
  * This DOES add the inode to the inode cache. It also does not associate the inode with a dentry, that is done when a
  * dentry is made positive with `dentry_make_positive()`.
  *
- * There is no `inode_free()` instead use `DEREF()`.
+ * There is no `inode_free()` instead use `UNREF()`.
  *
  * @param superblock The superblock the inode belongs to.
  * @param number The inode number.

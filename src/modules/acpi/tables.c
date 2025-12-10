@@ -222,7 +222,7 @@ uint64_t acpi_tables_expose(void)
 {
     dentry_t* acpiRoot = acpi_get_sysfs_root();
     assert(acpiRoot != NULL);
-    DEREF_DEFER(acpiRoot);
+    UNREF_DEFER(acpiRoot);
 
     tablesDir = sysfs_dir_new(acpiRoot, "tables", NULL, NULL);
     if (tablesDir == NULL)

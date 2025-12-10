@@ -151,7 +151,7 @@ uint64_t aml_def_return_read(aml_term_list_ctx_t* ctx)
         AML_DEBUG_ERROR(ctx, "Failed to read ArgObject");
         return ERR;
     }
-    DEREF_DEFER(argObject);
+    UNREF_DEFER(argObject);
 
     ctx->stopReason = AML_STOP_REASON_RETURN;
     aml_state_result_set(ctx->state, argObject);
@@ -173,7 +173,7 @@ uint64_t aml_def_release_read(aml_term_list_ctx_t* ctx)
         AML_DEBUG_ERROR(ctx, "Failed to read MutexObject");
         return ERR;
     }
-    DEREF_DEFER(mutexObject);
+    UNREF_DEFER(mutexObject);
 
     assert(mutexObject->type == AML_MUTEX);
 

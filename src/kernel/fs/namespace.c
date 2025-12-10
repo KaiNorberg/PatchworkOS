@@ -53,7 +53,7 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, mount_flags_t fla
         if (existing != NULL)
         {
             list_remove(&ns->mounts, &existing->entry);
-            DEREF(existing->mount);
+            UNREF(existing->mount);
             free(existing);
         }
     }
@@ -119,7 +119,7 @@ void namespace_deinit(namespace_t* ns)
 
     if (ns->root != NULL)
     {
-        DEREF(ns->root);
+        UNREF(ns->root);
         ns->root = NULL;
     }
 
@@ -128,7 +128,7 @@ void namespace_deinit(namespace_t* ns)
         namespace_mount_t* nsMount = CONTAINER_OF(list_pop_first(&ns->mounts), namespace_mount_t, entry);
 
         map_remove(&ns->mountMap, &nsMount->mapEntry);
-        DEREF(nsMount->mount);
+        UNREF(nsMount->mount);
         free(nsMount);
     }
 
@@ -196,9 +196,9 @@ uint64_t namespace_set_parent(namespace_t* ns, namespace_t* parent)
     return 0;
 }
 
-uint64_t namespace_traverse_mount(namespace_t* ns, const path_t* mountpoint, path_t* out)
+uint64_t namespace_traverse(namespace_t* ns, path_t* path)
 {
-    if (mountpoint == NULL || mountpoint->mount == NULL || mountpoint->dentry == NULL || out == NULL)
+    if (ns == NULL || path == NULL || path->mount == NULL || path->dentry == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -206,16 +206,15 @@ uint64_t namespace_traverse_mount(namespace_t* ns, const path_t* mountpoint, pat
 
     RWLOCK_READ_SCOPE(&ns->lock);
 
-    map_key_t key = mount_key(mountpoint->mount->id, mountpoint->dentry->id);
+    map_key_t key = mount_key(path->mount->id, path->dentry->id);
     map_entry_t* entry = map_get(&ns->mountMap, &key);
     if (entry == NULL)
     {
-        path_copy(out, mountpoint);
         return 0;
     }
 
     namespace_mount_t* nsMount = CONTAINER_OF(entry, namespace_mount_t, mapEntry);
-    path_set(out, nsMount->mount, nsMount->mount->root);
+    path_set(path, nsMount->mount, nsMount->mount->root);
     return 0;
 }
 
@@ -240,7 +239,7 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
     {
         return NULL;
     }
-    DEREF_DEFER(root);
+    UNREF_DEFER(root);
 
     if (mountpoint == NULL)
     {
@@ -280,7 +279,7 @@ mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* device
     map_key_t key = mount_key(mountpoint->mount->id, mountpoint->dentry->id);
     if (namespace_add(ns, mount, flags, &key) == ERR)
     {
-        DEREF(mount);
+        UNREF(mount);
         errno = ENOMEM;
         return NULL;
     }
@@ -309,55 +308,12 @@ mount_t* namespace_bind(namespace_t* ns, dentry_t* target, path_t* mountpoint, m
     map_key_t key = mount_key(mountpoint->mount->id, mountpoint->dentry->id);
     if (namespace_add(ns, mount, flags, &key) == ERR)
     {
-        DEREF(mount);
+        UNREF(mount);
         errno = ENOMEM;
         return NULL;
     }
 
     return mount;
-}
-
-SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpoint, mount_flags_t flags)
-{
-    if (mountpoint == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    thread_t* thread = sched_thread();
-    process_t* process = thread->process;
-
-    pathname_t pathname;
-    if (thread_copy_from_user_pathname(thread, &pathname, mountpoint) == ERR)
-    {
-        return ERR;
-    }
-
-    path_t cwd = cwd_get(&process->cwd);
-    PATH_DEFER(&cwd);
-
-    path_t mountPath = PATH_EMPTY;
-    PATH_DEFER(&mountPath);
-    if (path_walk(&mountPath, &pathname, &cwd, &process->ns) == ERR)
-    {
-        return ERR;
-    }
-
-    file_t* sourceFile = file_table_get(&process->fileTable, source);
-    if (sourceFile == NULL)
-    {
-        return ERR;
-    }
-    DEREF_DEFER(sourceFile);
-
-    mount_t* bind = namespace_bind(&process->ns, sourceFile->path.dentry, &mountPath, flags, sourceFile->mode);
-    if (bind == NULL)
-    {
-        return ERR;
-    }
-    DEREF(bind);
-    return 0;
 }
 
 uint64_t namespace_get_root_path(namespace_t* ns, path_t* out)
@@ -377,5 +333,64 @@ uint64_t namespace_get_root_path(namespace_t* ns, path_t* out)
     }
     path_set(out, ns->root, ns->root->root);
     rwlock_read_release(&ns->lock);
+    return 0;
+}
+
+void namespace_clear(namespace_t* ns)
+{
+    if (ns == NULL)
+    {
+        return;
+    }
+
+    RWLOCK_WRITE_SCOPE(&ns->lock);
+
+    while (!list_is_empty(&ns->mounts))
+    {
+        namespace_mount_t* nsMount = CONTAINER_OF(list_pop_first(&ns->mounts), namespace_mount_t, entry);
+
+        map_remove(&ns->mountMap, &nsMount->mapEntry);
+        UNREF(nsMount->mount);
+        free(nsMount);
+    }
+}
+
+SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpoint, mount_flags_t flags)
+{
+    if (mountpoint == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
+
+    pathname_t pathname;
+    if (thread_copy_from_user_pathname(thread, &pathname, mountpoint) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t mountPath = cwd_get(&process->cwd);
+    if (path_walk(&mountPath, &pathname, &process->ns) == ERR)
+    {
+        return ERR;
+    }
+    PATH_DEFER(&mountPath);
+
+    file_t* sourceFile = file_table_get(&process->fileTable, source);
+    if (sourceFile == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(sourceFile);
+
+    mount_t* bind = namespace_bind(&process->ns, sourceFile->path.dentry, &mountPath, flags, sourceFile->mode);
+    if (bind == NULL)
+    {
+        return ERR;
+    }
+    UNREF(bind);
     return 0;
 }

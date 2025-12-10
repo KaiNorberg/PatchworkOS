@@ -36,14 +36,14 @@ acpi_resources_t* acpi_resources_current(aml_object_t* device)
         errno = ENOENT;
         return NULL;
     }
-    DEREF_DEFER(crs);
+    UNREF_DEFER(crs);
 
     aml_object_t* crsResult = aml_evaluate(NULL, crs, AML_BUFFER);
     if (crsResult == NULL)
     {
         return NULL;
     }
-    DEREF_DEFER(crsResult);
+    UNREF_DEFER(crsResult);
 
     if (crsResult->type != AML_BUFFER)
     {

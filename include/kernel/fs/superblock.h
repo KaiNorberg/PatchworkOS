@@ -95,7 +95,7 @@ typedef struct superblock_ops
  * This does not add the superblock to the superblock cache, the `vfs_mount()` function will do that using
  * `vfs_add_superblock()`.
  *
- * There is no `superblock_free()` instead use `DEREF()`.
+ * There is no `superblock_free()` instead use `UNREF()`.
  *
  * Note that the superblock's `root` dentry must be created and assigned after calling this function.
  *

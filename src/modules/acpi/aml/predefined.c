@@ -33,7 +33,7 @@ aml_object_t* aml_osi_implementation(aml_method_t* method, aml_object_t** args, 
 
     if (aml_integer_set(result, UINT64_MAX) == ERR)
     {
-        DEREF(result);
+        UNREF(result);
         return NULL;
     }
 
@@ -59,7 +59,7 @@ aml_object_t* aml_rev_implementation(aml_method_t* method, aml_object_t** args, 
 
     if (aml_integer_set(result, RSDP_CURRENT_REVISION) == ERR)
     {
-        DEREF(result);
+        UNREF(result);
         return NULL;
     }
 
@@ -85,7 +85,7 @@ aml_object_t* aml_os_implementation(aml_method_t* method, aml_object_t** args, u
 
     if (aml_string_set(result, OS_NAME) == ERR)
     {
-        DEREF(result);
+        UNREF(result);
         return NULL;
     }
 
@@ -99,7 +99,7 @@ static inline uint64_t aml_create_predefined_scope(aml_name_t name)
     {
         return ERR;
     }
-    DEREF_DEFER(object);
+    UNREF_DEFER(object);
 
     if (aml_predefined_scope_set(object) == ERR || aml_namespace_add_child(NULL, NULL, name, object) == ERR)
     {
@@ -132,7 +132,7 @@ uint64_t aml_predefined_init(void)
     {
         return ERR;
     }
-    DEREF_DEFER(osi);
+    UNREF_DEFER(osi);
     aml_method_flags_t osiFlags = {
         .argCount = 1,
         .isSerialized = true,
@@ -149,7 +149,7 @@ uint64_t aml_predefined_init(void)
     {
         return ERR;
     }
-    DEREF_DEFER(rev);
+    UNREF_DEFER(rev);
     aml_method_flags_t revFlags = {
         .argCount = 0,
         .isSerialized = true,
@@ -166,7 +166,7 @@ uint64_t aml_predefined_init(void)
     {
         return ERR;
     }
-    DEREF_DEFER(os);
+    UNREF_DEFER(os);
     aml_method_flags_t osFlags = {
         .argCount = 0,
         .isSerialized = true,
@@ -184,7 +184,7 @@ uint64_t aml_predefined_init(void)
     {
         return ERR;
     }
-    DEREF_DEFER(gl);
+    UNREF_DEFER(gl);
     if (aml_mutex_set(gl, 0) == ERR || aml_namespace_add_child(NULL, NULL, AML_NAME('_', 'G', 'L', '_'), gl) == ERR)
     {
         return ERR;

@@ -24,7 +24,7 @@ aml_object_t* aml_local_obj_read(aml_term_list_ctx_t* ctx)
         {
             if (local != NULL)
             {
-                DEREF(local);
+                UNREF(local);
             }
             return NULL;
         }

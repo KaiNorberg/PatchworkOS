@@ -54,7 +54,7 @@ static void key_timer_handler(interrupt_frame_t* frame, cpu_t* self)
 
         map_remove(&keyMap, &entry->mapEntry);
         list_remove(&keyList, &entry->entry);
-        DEREF(entry->file);
+        UNREF(entry->file);
         free(entry);
     }
 }
@@ -82,7 +82,7 @@ uint64_t key_share(key_t* key, file_t* file, clock_t timeout)
     map_key_t mapKey = map_key_buffer(&entry->key, sizeof(entry->key));
     if (map_insert(&keyMap, &mapKey, &entry->mapEntry) == ERR)
     {
-        DEREF(entry->file);
+        UNREF(entry->file);
         free(entry);
         return ERR;
     }
@@ -124,7 +124,7 @@ SYSCALL_DEFINE(SYS_SHARE, uint64_t, key_t* key, fd_t fd, clock_t timeout)
     {
         return ERR;
     }
-    DEREF_DEFER(file);
+    UNREF_DEFER(file);
 
     key_t keyCopy;
     if (key_share(&keyCopy, file, timeout) == ERR)
@@ -181,7 +181,7 @@ SYSCALL_DEFINE(SYS_CLAIM, fd_t, key_t* key)
     {
         return ERR;
     }
-    DEREF_DEFER(file);
+    UNREF_DEFER(file);
 
     return file_table_alloc(&process->fileTable, file);
 }

@@ -29,7 +29,7 @@ uint64_t aml_def_alias_read(aml_term_list_ctx_t* ctx)
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve source NameString");
         return ERR;
     }
-    DEREF_DEFER(source);
+    UNREF_DEFER(source);
 
     aml_name_string_t nameString;
     if (aml_name_string_read(ctx, &nameString) == ERR)
@@ -43,7 +43,7 @@ uint64_t aml_def_alias_read(aml_term_list_ctx_t* ctx)
     {
         return ERR;
     }
-    DEREF_DEFER(newObject);
+    UNREF_DEFER(newObject);
 
     if (aml_alias_set(newObject, source) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
@@ -75,7 +75,7 @@ uint64_t aml_def_name_read(aml_term_list_ctx_t* ctx)
     {
         return ERR;
     }
-    DEREF_DEFER(newObject);
+    UNREF_DEFER(newObject);
 
     if (aml_data_ref_object_read(ctx, newObject) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
@@ -110,7 +110,7 @@ uint64_t aml_def_scope_read(aml_term_list_ctx_t* ctx)
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve NameString");
         return ERR;
     }
-    DEREF_DEFER(scope);
+    UNREF_DEFER(scope);
 
     const uint8_t* end = start + pkgLength;
 

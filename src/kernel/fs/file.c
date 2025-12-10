@@ -22,7 +22,7 @@ static void file_free(file_t* file)
         file->ops->close(file);
     }
 
-    DEREF(file->inode);
+    UNREF(file->inode);
     file->inode = NULL;
     path_put(&file->path);
 
@@ -49,7 +49,7 @@ file_t* file_new(const path_t* path, mode_t mode)
         errno = ENOENT;
         return NULL;
     }
-    DEREF_DEFER(inode);
+    UNREF_DEFER(inode);
 
     file_t* file = malloc(sizeof(file_t));
     if (file == NULL)

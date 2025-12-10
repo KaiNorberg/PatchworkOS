@@ -79,7 +79,7 @@ typedef struct poll_file
  *
  * This does not open the file, instead its used internally by the VFS when opening files.
  *
- * There is no `file_free()` instead use `DEREF()`.
+ * There is no `file_free()` instead use `UNREF()`.
  *
  * @param path The path of the file.
  * @param mode The mode with which the file was opened, if no permissions are specified the maximum allowed permissions

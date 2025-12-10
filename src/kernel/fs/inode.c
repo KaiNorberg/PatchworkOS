@@ -25,7 +25,7 @@ static void inode_free(inode_t* inode)
         {
             inode->superblock->ops->freeInode(inode->superblock, inode);
         }
-        DEREF(inode->superblock);
+        UNREF(inode->superblock);
 
         if (inode->superblock->ops == NULL || inode->superblock->ops->freeInode == NULL)
         {

@@ -97,7 +97,7 @@ typedef struct socket
 /**
  * @brief Create a new socket.
  *
- * There is no `socket_free()` function, instead use `DEREF()` to free the socket.
+ * There is no `socket_free()` function, instead use `UNREF()` to free the socket.
  *
  * @param family Pointer to the socket family.
  * @param type Socket type.
