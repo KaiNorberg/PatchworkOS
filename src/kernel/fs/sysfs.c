@@ -20,8 +20,6 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
-static _Atomic(inode_number_t) newNum = ATOMIC_VAR_INIT(0);
-
 static mount_t* devMount = NULL;
 
 static file_ops_t dirOps = {
@@ -56,7 +54,7 @@ static dentry_t* sysfs_mount(filesystem_t* fs, const char* devName, void* privat
     }
     UNREF_DEFER(superblock);
 
-    inode_t* inode = inode_new(superblock, atomic_fetch_add(&newNum, 1), INODE_DIR, NULL, &dirOps);
+    inode_t* inode = inode_new(superblock, vfs_id_get(), INODE_DIR, NULL, &dirOps);
     if (inode == NULL)
     {
         return NULL;
@@ -150,7 +148,7 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
         return NULL;
     }
 
-    inode_t* inode = inode_new(parent->dentry->superblock, atomic_fetch_add(&newNum, 1), INODE_DIR, NULL, &dirOps);
+    inode_t* inode = inode_new(parent->dentry->superblock, vfs_id_get(), INODE_DIR, NULL, &dirOps);
     if (inode == NULL)
     {
         return NULL;
@@ -202,7 +200,7 @@ dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* i
     }
     UNREF_DEFER(dir);
 
-    inode_t* inode = inode_new(parent->superblock, atomic_fetch_add(&newNum, 1), INODE_DIR, inodeOps, &dirOps);
+    inode_t* inode = inode_new(parent->superblock, vfs_id_get(), INODE_DIR, inodeOps, &dirOps);
     if (inode == NULL)
     {
         return NULL;
@@ -242,7 +240,7 @@ dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* 
     }
     UNREF_DEFER(dentry);
 
-    inode_t* inode = inode_new(parent->superblock, atomic_fetch_add(&newNum, 1), INODE_FILE, inodeOps, fileOps);
+    inode_t* inode = inode_new(parent->superblock, vfs_id_get(), INODE_FILE, inodeOps, fileOps);
     if (inode == NULL)
     {
         return NULL;

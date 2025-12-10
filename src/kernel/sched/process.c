@@ -577,7 +577,6 @@ process_t* process_new(priority_t priority)
 
 void process_kill(process_t* process, int32_t status)
 {
-    LOG_DEBUG("killing process pid=%d with status=%lld refCount=%d\n", process->id, status, process->ref.count);
     LOCK_SCOPE(&process->threads.lock);
 
     if (atomic_exchange(&process->isDying, true))
@@ -620,8 +619,6 @@ uint64_t process_copy_env(process_t* dest, process_t* src)
         errno = EINVAL;
         return ERR;
     }
-
-    return 0;
 
     LOCK_SCOPE(&src->dentriesLock);
     LOCK_SCOPE(&dest->dentriesLock);
