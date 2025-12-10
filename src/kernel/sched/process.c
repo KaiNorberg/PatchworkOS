@@ -368,15 +368,13 @@ static uint64_t process_env_remove(inode_t* dir, dentry_t* target, mode_t mode)
         return ERR;
     }
 
-    inode_t* inode = dentry_inode_get(target);
-    if (inode == NULL)
+    if (!dentry_is_positive(target))
     {
         errno = ENOENT;
         return ERR;
     }
-    UNREF_DEFER(inode);
 
-    MUTEX_SCOPE(&inode->mutex);
+    MUTEX_SCOPE(&target->inode->mutex);
 
     process_t* process = dir->private;
     assert(process != NULL);

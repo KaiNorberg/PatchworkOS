@@ -9,13 +9,13 @@
 #include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/init/boot_info.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/utils/ref.h>
-#include <kernel/init/boot_info.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -120,38 +120,21 @@ static uint64_t ramfs_link(inode_t* dir, dentry_t* old, dentry_t* target)
 {
     MUTEX_SCOPE(&dir->mutex);
 
-    inode_t* inode = dentry_inode_get(old);
-    if (inode == NULL)
-    {
-        return ERR;
-    }
-    UNREF_DEFER(inode);
-
-    dentry_make_positive(target, inode);
+    dentry_make_positive(target, old->inode);
     ramfs_dentry_add(target);
 
     return 0;
 }
 
-static uint64_t ramfs_remove(inode_t* parent, dentry_t* target, mode_t mode)
+static uint64_t ramfs_remove(inode_t* dir, dentry_t* target, mode_t mode)
 {
-    MUTEX_SCOPE(&parent->mutex);
+    MUTEX_SCOPE(&dir->mutex);
 
-    inode_t* inode = dentry_inode_get(target);
-    if (inode == NULL)
-    {
-        errno = ENOENT;
-        return ERR;
-    }
-    UNREF_DEFER(inode);
-
-    MUTEX_SCOPE(&inode->mutex);
-
-    if (inode->type == INODE_FILE)
+    if (target->inode->type == INODE_FILE)
     {
         ramfs_dentry_remove(target);
     }
-    else if (inode->type == INODE_DIR)
+    else if (target->inode->type == INODE_DIR)
     {
         if (mode & MODE_RECURSIVE)
         {
@@ -160,7 +143,7 @@ static uint64_t ramfs_remove(inode_t* parent, dentry_t* target, mode_t mode)
             LIST_FOR_EACH_SAFE(child, temp, &target->children, siblingEntry)
             {
                 REF(child);
-                ramfs_remove(inode, child, mode);
+                ramfs_remove(target->inode, child, mode);
                 UNREF(child);
             }
         }
@@ -273,7 +256,7 @@ static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
 static dentry_t* ramfs_mount(filesystem_t* fs, const char* devName, void* private)
 {
     (void)devName; // Unused
-    (void)private;  // Unused
+    (void)private; // Unused
 
     superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, &superOps, &dentryOps);
     if (superblock == NULL)

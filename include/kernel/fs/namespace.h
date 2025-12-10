@@ -92,7 +92,7 @@ uint64_t namespace_set_parent(namespace_t* ns, namespace_t* parent);
 
 /**
  * @brief If the given path is a mountpoint in the namespace, traverse to the mounted filesystem, else no-op.
- * 
+ *
  * @param ns The namespace to traverse in.
  * @param path The mountpoint path to traverse, will be updated to the new path if traversed.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
@@ -101,8 +101,8 @@ uint64_t namespace_set_parent(namespace_t* ns, namespace_t* parent);
 uint64_t namespace_traverse(namespace_t* ns, path_t* path);
 
 /**
- * @brief Move 
- * 
+ * @brief Move
+ *
  */
 
 /**

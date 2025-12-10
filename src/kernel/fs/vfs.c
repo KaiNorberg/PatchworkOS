@@ -41,38 +41,24 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_t
     PATH_DEFER(&parent);
     PATH_DEFER(&target);
 
-    inode_t* dir = dentry_inode_get(parent.dentry);
-    if (dir == NULL)
+    if (!dentry_is_positive(parent.dentry))
     {
+        errno = ENOENT;
         return ERR;
     }
-    UNREF_DEFER(dir);
 
+    inode_t* dir = parent.dentry->inode;
     if (dir->ops == NULL || dir->ops->create == NULL)
     {
         errno = ENOSYS;
         return ERR;
     }
 
-    inode_t* existing = dentry_inode_get(target.dentry);
-    if (existing != NULL)
+    if (dentry_is_positive(target.dentry))
     {
-        UNREF_DEFER(existing);
-
         if (pathname->mode & MODE_EXCLUSIVE)
         {
             errno = EEXIST;
-            return ERR;
-        }
-
-        if (pathname->mode & MODE_DIRECTORY && existing->type != INODE_DIR)
-        {
-            errno = ENOTDIR;
-            return ERR;
-        }
-        if (!(pathname->mode & MODE_DIRECTORY) && existing->type != INODE_FILE)
-        {
-            errno = EISDIR;
             return ERR;
         }
 
@@ -100,23 +86,6 @@ static uint64_t vfs_open_lookup(path_t* path, const pathname_t* pathname, namesp
     if (path_walk(path, pathname, namespace) == ERR)
     {
         return ERR;
-    }
-
-    if (pathname->mode & MODE_DIRECTORY)
-    {
-        if (dentry_is_file(path->dentry))
-        {
-            errno = ENOTDIR;
-            return ERR;
-        }
-    }
-    else
-    {
-        if (dentry_is_dir(path->dentry))
-        {
-            errno = EISDIR;
-            return ERR;
-        }
     }
 
     return 0;
@@ -614,12 +583,13 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
 
     memset(buffer, 0, sizeof(stat_t));
 
-    inode_t* inode = dentry_inode_get(path.dentry);
-    if (inode == NULL)
+    if (!dentry_is_positive(path.dentry))
     {
+        errno = ENOENT;
         return ERR;
     }
 
+    inode_t* inode = path.dentry->inode;
     mutex_acquire(&inode->mutex);
     buffer->number = inode->number;
     buffer->type = inode->type;
@@ -633,8 +603,6 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
     strncpy(buffer->name, path.dentry->name, MAX_NAME - 1);
     buffer->name[MAX_NAME - 1] = '\0';
     mutex_release(&inode->mutex);
-
-    UNREF(inode);
     return 0;
 }
 
@@ -679,29 +647,25 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
         return ERR;
     }
 
-    inode_t* oldInode = dentry_inode_get(old.dentry);
-    if (oldInode == NULL)
+    if (!dentry_is_positive(old.dentry))
     {
         errno = ENOENT;
         return ERR;
     }
-    UNREF_DEFER(oldInode);
 
-    if (oldInode->type == INODE_DIR)
+    if (dentry_is_dir(old.dentry))
     {
         errno = EISDIR;
         return ERR;
     }
 
-    inode_t* newParentInode = dentry_inode_get(newParent.dentry);
-    if (newParentInode == NULL)
+    if (!dentry_is_positive(newParent.dentry))
     {
         errno = ENOENT;
         return ERR;
     }
-    UNREF_DEFER(newParentInode);
 
-    if (newParentInode->ops == NULL || newParentInode->ops->link == NULL)
+    if (newParent.dentry->inode->ops == NULL || newParent.dentry->inode->ops->link == NULL)
     {
         errno = ENOSYS;
         return ERR;
@@ -718,15 +682,15 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
         errno = EACCES;
         return ERR;
     }
-    
+
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    if (newParentInode->ops->link(newParentInode, old.dentry, new.dentry) == ERR)
+    if (newParent.dentry->inode->ops->link(newParent.dentry->inode, old.dentry, new.dentry) == ERR)
     {
         return ERR;
     }
 
-    inode_notify_modify(newParentInode);
-    inode_notify_change(oldInode);
+    inode_notify_modify(newParent.dentry->inode);
+    inode_notify_change(old.dentry->inode);
 
     return 0;
 }
@@ -751,13 +715,11 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
     PATH_DEFER(&parent);
     PATH_DEFER(&target);
 
-    inode_t* dir = dentry_inode_get(parent.dentry);
-    if (dir == NULL)
+    if (!dentry_is_positive(target.dentry))
     {
         errno = ENOENT;
         return ERR;
     }
-    UNREF_DEFER(dir);
 
     if (pathname->mode & MODE_DIRECTORY)
     {
@@ -782,6 +744,7 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
         return ERR;
     }
 
+    inode_t* dir = parent.dentry->inode;
     if (dir->ops == NULL || dir->ops->remove == NULL)
     {
         errno = ENOSYS;

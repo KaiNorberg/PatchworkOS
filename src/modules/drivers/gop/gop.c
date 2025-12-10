@@ -1,4 +1,5 @@
 #include <kernel/drivers/abstract/fb.h>
+#include <kernel/init/boot_info.h>
 #include <kernel/init/init.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -6,7 +7,6 @@
 #include <kernel/module/module.h>
 #include <kernel/sched/process.h>
 #include <kernel/sched/sched.h>
-#include <kernel/init/boot_info.h>
 
 #include <errno.h>
 #include <string.h>

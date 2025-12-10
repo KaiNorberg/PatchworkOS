@@ -80,6 +80,19 @@ static void dentry_free(dentry_t* dentry)
 
     dentry_cache_remove(dentry);
 
+    if (!DENTRY_IS_ROOT(dentry))
+    {
+        assert(dentry->parent != NULL);
+        assert(dentry->parent->inode != NULL);
+
+        mutex_acquire(&dentry->parent->inode->mutex);
+        list_remove(&dentry->parent->children, &dentry->siblingEntry);
+        mutex_release(&dentry->parent->inode->mutex);
+
+        UNREF(dentry->parent);
+        dentry->parent = NULL;
+    }
+
     if (dentry->ops != NULL && dentry->ops->cleanup != NULL)
     {
         dentry->ops->cleanup(dentry);
@@ -90,23 +103,6 @@ static void dentry_free(dentry_t* dentry)
         atomic_fetch_sub_explicit(&dentry->inode->dentryCount, 1, memory_order_relaxed);
         UNREF(dentry->inode);
         dentry->inode = NULL;
-    }
-
-    if (!DENTRY_IS_ROOT(dentry))
-    {
-        inode_t* parentInode = dentry_inode_get(dentry->parent);
-        if (parentInode == NULL)
-        {
-            panic(NULL, "dentry parent inode is NULL during dentry free\n");
-        }
-
-        mutex_acquire(&parentInode->mutex);
-        list_remove(&dentry->parent->children, &dentry->siblingEntry);
-        mutex_release(&parentInode->mutex);
-        UNREF(parentInode);
-
-        UNREF(dentry->parent);
-        dentry->parent = NULL;
     }
 
     UNREF(dentry->superblock);
@@ -143,8 +139,8 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     dentry->id = vfs_get_new_id();
     strncpy(dentry->name, name, MAX_NAME - 1);
     dentry->name[MAX_NAME - 1] = '\0';
-    lock_init(&dentry->inodeLock);
     dentry->inode = NULL;
+    atomic_init(&dentry->flags, DENTRY_NEGATIVE);
     dentry->parent = parent != NULL
         ? REF(parent)
         : dentry; // We set its parent now but its only added to its list when it is made positive.
@@ -192,13 +188,11 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name)
         return dentry;
     }
 
-    inode_t* dir = dentry_inode_get(parent->dentry);
-    if (dir == NULL)
+    if (!dentry_is_dir(parent->dentry))
     {
         errno = ENOENT;
         return NULL;
     }
-    UNREF_DEFER(dir);
 
     dentry = dentry_new(parent->dentry->superblock, parent->dentry, name);
     if (dentry == NULL)
@@ -211,21 +205,22 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name)
         }
         return NULL;
     }
-    UNREF_DEFER(dentry);
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
+    inode_t* dir = parent->dentry->inode;
     if (dir->ops == NULL || dir->ops->lookup == NULL)
     {
-        return REF(dentry); // Leave it negative
+        return dentry; // Leave it negative
     }
 
     if (dir->ops->lookup(dir, dentry) == ERR)
     {
+        UNREF(dentry);
         return NULL;
     }
 
-    return REF(dentry);
+    return dentry;
 }
 
 void dentry_make_positive(dentry_t* dentry, inode_t* inode)
@@ -235,10 +230,6 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode)
         return;
     }
 
-    lock_acquire(&dentry->inodeLock);
-
-    assert(dentry->inode == NULL);
-
     atomic_fetch_add_explicit(&inode->dentryCount, 1, memory_order_relaxed);
     dentry->inode = REF(inode);
     if (!DENTRY_IS_ROOT(dentry))
@@ -246,7 +237,7 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode)
         list_push_back(&dentry->parent->children, &dentry->siblingEntry);
     }
 
-    lock_release(&dentry->inodeLock);
+    atomic_fetch_and(&dentry->flags, ~DENTRY_NEGATIVE);
 }
 
 bool dentry_is_positive(dentry_t* dentry)
@@ -256,11 +247,7 @@ bool dentry_is_positive(dentry_t* dentry)
         return false;
     }
 
-    lock_acquire(&dentry->inodeLock);
-    bool isPositive = dentry->inode != NULL;
-    lock_release(&dentry->inodeLock);
-
-    return isPositive;
+    return !(atomic_load(&dentry->flags) & DENTRY_NEGATIVE);
 }
 
 bool dentry_is_file(dentry_t* dentry)
@@ -270,10 +257,12 @@ bool dentry_is_file(dentry_t* dentry)
         return false;
     }
 
-    lock_acquire(&dentry->inodeLock);
-    bool isFile = dentry->inode != NULL && dentry->inode->type == INODE_FILE;
-    lock_release(&dentry->inodeLock);
-    return isFile;
+    if (!dentry_is_positive(dentry))
+    {
+        return false;
+    }
+
+    return dentry->inode->type == INODE_FILE;
 }
 
 bool dentry_is_dir(dentry_t* dentry)
@@ -283,23 +272,12 @@ bool dentry_is_dir(dentry_t* dentry)
         return false;
     }
 
-    lock_acquire(&dentry->inodeLock);
-    bool isDir = dentry->inode != NULL && dentry->inode->type == INODE_DIR;
-    lock_release(&dentry->inodeLock);
-    return isDir;
-}
-
-inode_t* dentry_inode_get(dentry_t* dentry)
-{
-    if (dentry == NULL)
+    if (!dentry_is_positive(dentry))
     {
-        return NULL;
+        return false;
     }
 
-    lock_acquire(&dentry->inodeLock);
-    inode_t* inode = dentry->inode != NULL ? REF(dentry->inode) : NULL;
-    lock_release(&dentry->inodeLock);
-    return inode;
+    return dentry->inode->type == INODE_DIR;
 }
 
 typedef struct
@@ -331,27 +309,19 @@ static void getdents_write(getdents_ctx_t* ctx, inode_number_t number, inode_typ
 
 static void getdents_recursive_traversal(getdents_ctx_t* ctx, dentry_t* dentry)
 {
-    inode_t* inode = dentry_inode_get(dentry);
-    if (inode == NULL)
+    if (!dentry_is_positive(dentry))
     {
-        errno = ENOENT;
         return;
     }
-    UNREF_DEFER(inode);
 
-    getdents_write(ctx, inode->number, inode->type, ctx->basePath);
+    getdents_write(ctx, dentry->inode->number, dentry->inode->type, ctx->basePath);
 
     dentry_t* child;
     LIST_FOR_EACH(child, &dentry->children, siblingEntry)
     {
-        inode_t* childInode = dentry_inode_get(child);
-        if (childInode == NULL)
-        {
-            continue;
-        }
-        UNREF_DEFER(childInode);
+        assert(dentry_is_positive(child));
 
-        if (ctx->mode & MODE_RECURSIVE && childInode->type == INODE_DIR)
+        if (ctx->mode & MODE_RECURSIVE && child->inode->type == INODE_DIR)
         {
             char originalBasePath[MAX_PATH];
             strncpy(originalBasePath, ctx->basePath, MAX_PATH - 1);
@@ -367,7 +337,7 @@ static void getdents_recursive_traversal(getdents_ctx_t* ctx, dentry_t* dentry)
         {
             char fullPath[MAX_PATH];
             snprintf(fullPath, MAX_PATH, "%s/%s", ctx->basePath, child->name);
-            getdents_write(ctx, childInode->number, childInode->type, fullPath);
+            getdents_write(ctx, child->inode->number, child->inode->type, fullPath);
         }
     }
 }
@@ -383,35 +353,23 @@ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t co
         .basePath = "",
     };
 
-    inode_t* inode = dentry_inode_get(dentry);
-    if (inode == NULL)
+    if (!dentry_is_positive(dentry))
     {
         errno = ENOENT;
         return ERR;
     }
 
-    inode_t* parentInode = dentry_inode_get(dentry->parent);
-    if (parentInode == NULL)
-    {
-        errno = ENOENT;
-        return ERR;
-    }
-
-    getdents_write(&ctx, inode->number, inode->type, ".");
-    getdents_write(&ctx, parentInode->number, parentInode->type, "..");
+    getdents_write(&ctx, dentry->inode->number, dentry->inode->type, ".");
+    getdents_write(&ctx, dentry->parent->inode->number, dentry->parent->inode->type, "..");
 
     if (mode & MODE_RECURSIVE)
     {
         dentry_t* child;
         LIST_FOR_EACH(child, &dentry->children, siblingEntry)
         {
-            inode_t* childInode = dentry_inode_get(child);
-            if (childInode == NULL)
-            {
-                continue;
-            }
+            assert(dentry_is_positive(child));
 
-            if (childInode->type == INODE_DIR)
+            if (child->inode->type == INODE_DIR)
             {
                 snprintf(ctx.basePath, MAX_PATH, "%s", child->name);
                 getdents_recursive_traversal(&ctx, child);
@@ -419,10 +377,8 @@ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t co
             }
             else
             {
-                getdents_write(&ctx, childInode->number, childInode->type, child->name);
+                getdents_write(&ctx, child->inode->number, child->inode->type, child->name);
             }
-
-            UNREF(childInode);
         }
     }
     else
@@ -430,20 +386,11 @@ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t co
         dentry_t* child;
         LIST_FOR_EACH(child, &dentry->children, siblingEntry)
         {
-            inode_t* childInode = dentry_inode_get(child);
-            if (childInode == NULL)
-            {
-                continue;
-            }
+            assert(dentry_is_positive(child));
 
-            getdents_write(&ctx, childInode->number, childInode->type, child->name);
-
-            UNREF(childInode);
+            getdents_write(&ctx, child->inode->number, child->inode->type, child->name);
         }
     }
-
-    UNREF(inode);
-    UNREF(parentInode);
 
     uint64_t start = *offset / sizeof(dirent_t);
     if (start >= ctx.index)

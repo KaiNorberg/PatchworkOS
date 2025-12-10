@@ -2,12 +2,12 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/drivers/com.h>
+#include <kernel/init/boot_info.h>
 #include <kernel/log/log_file.h>
 #include <kernel/log/log_screen.h>
 #include <kernel/sched/sys_time.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
-#include <kernel/init/boot_info.h>
 
 #include <boot/boot_info.h>
 #include <kernel/version.h>

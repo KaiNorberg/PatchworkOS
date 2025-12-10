@@ -87,7 +87,9 @@ typedef struct poll_file
  * @return On success, the new file. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `EACCES`: The requested mode exceeds the maximum allowed permissions.
- * - `ENOENT`: The path is negative.
+ * - `ENOENT`: The dentry of the path is negative.
+ * - `EISDIR`: The dentry of the path is a directory but mode does not specify `MODE_DIRECTORY`.
+ * - `ENOTDIR`: The dentry of the path is a file but mode specifies `MODE_DIRECTORY`.
  * - `ENOMEM`: Out of memory.
  */
 file_t* file_new(const path_t* path, mode_t mode);

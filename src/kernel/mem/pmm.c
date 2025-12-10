@@ -1,12 +1,12 @@
 #include <kernel/mem/pmm.h>
 
 #include <kernel/config.h>
+#include <kernel/init/boot_info.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm_bitmap.h>
 #include <kernel/mem/pmm_stack.h>
 #include <kernel/sync/lock.h>
-#include <kernel/init/boot_info.h>
 
 #include <boot/boot_info.h>
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <kernel/defs.h>
 #include <boot/boot_info.h>
+#include <kernel/defs.h>
 
 /**
  * @brief Kernel-side boot information handling.
@@ -13,7 +13,7 @@
 
 /**
  * @brief Gets the boot info structure.
- * 
+ *
  * @return The boot info structure.
  */
 boot_info_t* boot_info_get(void);

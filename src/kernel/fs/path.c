@@ -450,12 +450,11 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
     {
         return ERR;
     }
-    
+
     return 0;
 }
 
-uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName,
-    namespace_t* ns)
+uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_t* ns)
 {
     if (path == NULL || !PATHNAME_IS_VALID(pathname) || outLastName == NULL || ns == NULL)
     {

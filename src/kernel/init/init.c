@@ -10,6 +10,7 @@
 #include <kernel/fs/ramfs.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/init/boot_info.h>
 #include <kernel/log/log.h>
 #include <kernel/log/log_file.h>
 #include <kernel/log/panic.h>
@@ -23,7 +24,6 @@
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
-#include <kernel/init/boot_info.h>
 
 #include <boot/boot_info.h>
 

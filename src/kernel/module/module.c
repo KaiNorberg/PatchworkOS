@@ -3,6 +3,7 @@
 #include <kernel/module/module.h>
 
 #include <kernel/fs/vfs.h>
+#include <kernel/init/boot_info.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
@@ -12,7 +13,6 @@
 #include <kernel/sync/lock.h>
 #include <kernel/utils/map.h>
 #include <kernel/version.h>
-#include <kernel/init/boot_info.h>
 
 #include <stddef.h>
 #include <stdint.h>

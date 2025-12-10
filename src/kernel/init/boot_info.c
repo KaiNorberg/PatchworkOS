@@ -116,5 +116,4 @@ void boot_info_free(void)
     free(descriptorsCopy);
 
     bootInfo = NULL;
-
 }

@@ -43,13 +43,28 @@ file_t* file_new(const path_t* path, mode_t mode)
         return NULL;
     }
 
-    inode_t* inode = dentry_inode_get(path->dentry);
-    if (inode == NULL)
+    if (!dentry_is_positive(path->dentry))
     {
         errno = ENOENT;
         return NULL;
     }
-    UNREF_DEFER(inode);
+
+    if (mode & MODE_DIRECTORY)
+    {
+        if (dentry_is_file(path->dentry))
+        {
+            errno = ENOTDIR;
+            return NULL;
+        }
+    }
+    else
+    {
+        if (dentry_is_dir(path->dentry))
+        {
+            errno = EISDIR;
+            return NULL;
+        }
+    }
 
     file_t* file = malloc(sizeof(file_t));
     if (file == NULL)
@@ -66,10 +81,9 @@ file_t* file_new(const path_t* path, mode_t mode)
     ref_init(&file->ref, file_free);
     file->pos = 0;
     file->mode = mode;
-    file->inode = REF(inode);
-    file->path = PATH_EMPTY;
-    path_copy(&file->path, path);
-    file->ops = inode->fileOps;
+    file->inode = REF(path->dentry->inode);
+    file->path = PATH_CREATE(path->mount, path->dentry);
+    file->ops = path->dentry->inode->fileOps;
     file->private = NULL;
 
     return file;

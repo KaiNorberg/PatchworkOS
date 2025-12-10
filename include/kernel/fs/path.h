@@ -253,7 +253,7 @@ uint64_t path_step(path_t* path, const char* name, namespace_t* ns);
 
 /**
  * @brief Walk a pathname to a path.
- * 
+ *
  * @param path The path to start from, will be updated to the new path, may be negative.
  * @param pathname The pathname to walk to.
  * @param ns The namespace to access mountpoints.
@@ -263,7 +263,7 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns);
 
 /**
  * @brief Walk a pathname to its parent and get the name of the last component.
- * 
+ *
  * Will not modify `outParent` and `outChild` on failure.
 
  * @param path The path to start from, will be updated to the parent path.
@@ -272,14 +272,13 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns);
  * @param ns The namespace to access mountpoints.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName,
-    namespace_t* ns);
+uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_t* ns);
 
 /**
  * @brief Traverse a pathname to its parent and child paths.
  *
  * Will not modify `outParent` and `outChild` on failure.
- * 
+ *
  * @param from The path to start from.
  * @param outParent The output parent path.
  * @param outChild The output child path, may be negative.
