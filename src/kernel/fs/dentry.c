@@ -99,11 +99,11 @@ static void dentry_free(dentry_t* dentry)
         {
             panic(NULL, "dentry parent inode is NULL during dentry free\n");
         }
-        UNREF_DEFER(parentInode);
 
         mutex_acquire(&parentInode->mutex);
         list_remove(&dentry->parent->children, &dentry->siblingEntry);
         mutex_release(&parentInode->mutex);
+        UNREF(parentInode);
 
         UNREF(dentry->parent);
         dentry->parent = NULL;
@@ -241,7 +241,10 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode)
 
     atomic_fetch_add_explicit(&inode->dentryCount, 1, memory_order_relaxed);
     dentry->inode = REF(inode);
-    list_push_back(&dentry->parent->children, &dentry->siblingEntry);
+    if (!DENTRY_IS_ROOT(dentry))
+    {
+        list_push_back(&dentry->parent->children, &dentry->siblingEntry);
+    }
 
     lock_release(&dentry->inodeLock);
 }
@@ -386,7 +389,6 @@ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t co
         errno = ENOENT;
         return ERR;
     }
-    UNREF_DEFER(inode);
 
     inode_t* parentInode = dentry_inode_get(dentry->parent);
     if (parentInode == NULL)
@@ -394,7 +396,6 @@ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t co
         errno = ENOENT;
         return ERR;
     }
-    UNREF_DEFER(parentInode);
 
     getdents_write(&ctx, inode->number, inode->type, ".");
     getdents_write(&ctx, parentInode->number, parentInode->type, "..");
@@ -409,7 +410,6 @@ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t co
             {
                 continue;
             }
-            UNREF_DEFER(childInode);
 
             if (childInode->type == INODE_DIR)
             {
@@ -421,6 +421,8 @@ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t co
             {
                 getdents_write(&ctx, childInode->number, childInode->type, child->name);
             }
+
+            UNREF(childInode);
         }
     }
     else
@@ -433,11 +435,15 @@ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t co
             {
                 continue;
             }
-            UNREF_DEFER(childInode);
 
             getdents_write(&ctx, childInode->number, childInode->type, child->name);
+
+            UNREF(childInode);
         }
     }
+
+    UNREF(inode);
+    UNREF(parentInode);
 
     uint64_t start = *offset / sizeof(dirent_t);
     if (start >= ctx.index)
