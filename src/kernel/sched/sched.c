@@ -594,7 +594,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
 
     if (threadToFree != NULL)
     {
-        assert(threadToFree != runThread);
+        assert(threadToFree != sched->runThread);
         thread_free(threadToFree);
     }
 
