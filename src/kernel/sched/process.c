@@ -140,21 +140,18 @@ static file_ops_t cwdOps = {
 
 static uint64_t process_cmdline_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)buffer; // Unused
-    (void)count;  // Unused
-    (void)offset; // Unused
-
     process_t* process = process_file_get_process(file);
     if (process == NULL)
     {
         return ERR;
     }
 
-    return 0;
+    if (process->cmdline == NULL || process->cmdlineSize == 0)
+    {
+        return 0;
+    }
 
-    // uint64_t length;
-    // const char* strings = strv_get_strings(&process->argv, &length);
-    // return BUFFER_READ(buffer, count, offset, strings, length);
+    return BUFFER_READ(buffer, count, offset, process->cmdline, process->cmdlineSize);
 }
 
 static file_ops_t cmdlineOps = {
@@ -419,6 +416,13 @@ static void process_free(process_t* process)
         panic(NULL, "Attempt to free process pid=%llu with present threads\n", process->id);
     }
 
+    if (process->cmdline != NULL)
+    {
+        free(process->cmdline);
+        process->cmdline = NULL;
+        process->cmdlineSize = 0;
+    }
+
     cwd_deinit(&process->cwd);
     file_table_deinit(&process->fileTable);
     namespace_deinit(&process->ns);
@@ -565,6 +569,8 @@ process_t* process_new(priority_t priority)
     list_init(&process->dentries);
     list_init(&process->envVars);
     lock_init(&process->dentriesLock);
+    process->cmdline = NULL;
+    process->cmdlineSize = 0;
 
     if (process->id != 0) // Delay kernel process /proc dir init
     {
@@ -668,6 +674,64 @@ uint64_t process_copy_env(process_t* dest, process_t* src)
         dentry_make_positive(dentry, inode);
         list_push_back(&dest->envVars, &dentry->otherEntry);
     }
+
+    return 0;
+}
+
+uint64_t process_set_cmdline(process_t* process, char** argv, uint64_t argc)
+{
+    if (process == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (argv == NULL || argc == 0)
+    {
+        return 0;
+    }
+
+    uint64_t totalSize = 0;
+    for (uint64_t i = 0; i < argc; i++)
+    {
+        if (argv[i] == NULL)
+        {
+            break;
+        }
+        totalSize += strlen(argv[i]) + 1;
+    }
+
+    if (totalSize == 0)
+    {
+        return 0;
+    }
+
+    char* cmdline = malloc(totalSize);
+    if (cmdline == NULL)
+    {
+        errno = ENOMEM;
+        return ERR;
+    }
+
+    char* dest = cmdline;
+    for (uint64_t i = 0; i < argc; i++)
+    {
+        if (argv[i] == NULL)
+        {
+            break;
+        }
+        uint64_t len = strlen(argv[i]) + 1;
+        memcpy(dest, argv[i], len);
+        dest += len;
+    }
+
+    if (process->cmdline != NULL)
+    {
+        free(process->cmdline);
+    }
+
+    process->cmdline = cmdline;
+    process->cmdlineSize = totalSize;
 
     return 0;
 }

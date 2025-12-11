@@ -112,7 +112,7 @@ static inline bool seqlock_read_retry(seqlock_t* seqlock, uint64_t seq)
 /**
  * @brief Read scope for a sequence lock.
  *
- * Usage:
+ * Example usage:
  * ```c
  * SEQLOCK_READ_SCOPE(&seqlock)
  * {

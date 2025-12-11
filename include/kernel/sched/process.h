@@ -58,8 +58,6 @@
  * %s\0%s\0...%s\0
  * ```
  *
- * @todo Reimplement cmdline.
- *
  * ## note
  *
  * A writable file that can be used to send notes to the process. Writing data to this file will enqueue that data as a
@@ -136,6 +134,8 @@ typedef struct process
     list_t dentries; ///< List of dentries in the `/proc/[pid]/` directory.
     list_t envVars;  ///< List of dentries in the `/proc/[pid]/env/` directory.
     lock_t dentriesLock;
+    char* cmdline;
+    uint64_t cmdlineSize;
 } process_t;
 
 /**
@@ -171,6 +171,20 @@ void process_kill(process_t* process, int32_t status);
  * - `EBUSY`: The destination process already has environment variables.
  */
 uint64_t process_copy_env(process_t* dest, process_t* src);
+
+/**
+ * @brief Sets the command line arguments for a process.
+ *
+ * This value is only used for the `/proc/[pid]/cmdline` file.
+ * 
+ * @param process The process to set the cmdline for.
+ * @param argv The array of argument strings.
+ * @param argc The number of arguments.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `ENOMEM`: Out of memory.
+ */
+uint64_t process_set_cmdline(process_t* process, char** argv, uint64_t argc);
 
 /**
  * @brief Checks if a process has a thread with the specified thread ID.

@@ -6,6 +6,7 @@
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>
+#include <kernel/sched/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 
@@ -87,6 +88,11 @@ void loader_exec(const char* executable, char** argv, uint64_t argc)
     }
 
     elf64_load_segments(&elf, 0, 0);
+
+    if (process_set_cmdline(process, argv, argc) == ERR)
+    {
+        goto cleanup;
+    }
 
     char* rsp = (char*)thread->userStack.top;
     for (int64_t i = argc - 1; i >= 0; i--)
