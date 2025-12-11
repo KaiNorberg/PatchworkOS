@@ -85,7 +85,7 @@ typedef struct dentry
     ref_t ref;
     dentry_id_t id;
     char name[MAX_NAME]; ///< Constant after creation.
-    inode_t* inode; ///< Will be `NULL` if the dentry is negative, once positive it will never be `NULL`.
+    inode_t* inode;      ///< Will be `NULL` if the dentry is negative, once positive it will never be `NULL`.
     _Atomic(dentry_flags_t) flags;
     dentry_t* parent;
     list_entry_t siblingEntry;
@@ -95,7 +95,7 @@ typedef struct dentry
     void* private;
     map_entry_t mapEntry;
     _Atomic(uint64_t) mountCount; ///< Number of mounts targeting this dentry.
-    list_entry_t otherEntry; ///< Made available for use by any other subsystems for convenience.
+    list_entry_t otherEntry;      ///< Made available for use by any other subsystems for convenience.
 } dentry_t;
 
 /**

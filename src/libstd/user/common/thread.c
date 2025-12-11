@@ -5,32 +5,84 @@
 
 static _thread_t thread0;
 
-static list_t threads;
-static mtx_t mutex;
+static _Atomic(_thread_t*) threads[_THREADS_MAX];
+
+static mtx_t entryMutex;
+
+static uint64_t _thread_hash(tid_t id)
+{
+    return id % _THREADS_MAX;
+}
+
+static uint64_t _thread_insert(_thread_t* thread)
+{
+    uint64_t index = _thread_hash(thread->id);
+    for (uint64_t i = 0; i < _THREADS_MAX; i++)
+    {
+        uint64_t probe = (index + i) % _THREADS_MAX;
+        _thread_t* expected = NULL;
+        if (atomic_compare_exchange_strong_explicit(&threads[probe], &expected, thread, memory_order_release,
+                memory_order_relaxed))
+        {
+            return 0;
+        }
+    }
+    return ERR;
+}
+
+static void _thread_remove(_thread_t* thread)
+{
+    uint64_t index = _thread_hash(thread->id);
+    for (uint64_t i = 0; i < _THREADS_MAX; i++)
+    {
+        uint64_t probe = (index + i) % _THREADS_MAX;
+        _thread_t* current = (_thread_t*)atomic_load_explicit(&threads[probe], memory_order_acquire);
+        if (current == thread)
+        {
+            atomic_store_explicit(&threads[probe], NULL, memory_order_release);
+            return;
+        }
+        if (current == NULL)
+        {
+            return;
+        }
+    }
+}
 
 static void _thread_init(_thread_t* thread)
 {
-    list_entry_init(&thread->entry);
     atomic_init(&thread->state, _THREAD_ATTACHED);
     thread->id = 0;
     thread->result = 0;
     thread->err = EOK;
-    thread->private = NULL;
+    thread->func = NULL;
+    thread->arg = NULL;
 }
 
 void _threading_init(void)
 {
-    list_init(&threads);
-    mtx_init(&mutex, mtx_recursive);
+    for (uint64_t i = 0; i < _THREADS_MAX; i++)
+    {
+        atomic_init(&threads[i], NULL);
+    }
+    mtx_init(&entryMutex, mtx_recursive);
 
-    // We cant yet use the heap yet
     _thread_init(&thread0);
     thread0.id = _syscall_gettid();
 
-    list_push_back(&threads, &thread0.entry);
+    _thread_insert(&thread0);
 }
 
-_thread_t* _thread_new(_thread_entry_t entry, void* private)
+_THREAD_ENTRY_ATTRIBUTES static void _thread_entry(_thread_t* thread)
+{
+    // Synchronize with creator
+    mtx_lock(&entryMutex);
+    mtx_unlock(&entryMutex);
+
+    thrd_exit(thread->func(thread->arg));
+}
+
+_thread_t* _thread_new(thrd_start_t func, void* arg)
 {
     _thread_t* thread = malloc(sizeof(_thread_t));
     if (thread == NULL)
@@ -39,30 +91,35 @@ _thread_t* _thread_new(_thread_entry_t entry, void* private)
     }
 
     _thread_init(thread);
-    thread->private = private;
+    thread->func = func;
+    thread->arg = arg;
 
-    mtx_lock(&mutex);
+    mtx_lock(&entryMutex);
 
-    thread->id = _syscall_thread_create(entry, thread);
+    thread->id = _syscall_thread_create(_thread_entry, thread);
     if (thread->id == ERR)
     {
         errno = _syscall_errno();
-        mtx_unlock(&mutex);
+        mtx_unlock(&entryMutex);
         free(thread);
         return NULL;
     }
 
-    list_push_back(&threads, &thread->entry);
-    mtx_unlock(&mutex);
+    if (_thread_insert(thread) == ERR)
+    {
+        errno = ENOSPC;
+        mtx_unlock(&entryMutex);
+        free(thread);
+        return NULL;
+    }
+    mtx_unlock(&entryMutex);
 
     return thread;
 }
 
 void _thread_free(_thread_t* thread)
 {
-    mtx_lock(&mutex);
-    list_remove(&threads, &thread->entry);
-    mtx_unlock(&mutex);
+    _thread_remove(thread);
     if (thread != &thread0)
     {
         free(thread);
@@ -71,17 +128,19 @@ void _thread_free(_thread_t* thread)
 
 _thread_t* _thread_get(tid_t id)
 {
-    mtx_lock(&mutex);
-    _thread_t* thread;
-    LIST_FOR_EACH(thread, &threads, entry)
+    uint64_t index = _thread_hash(id);
+    for (uint64_t i = 0; i < _THREADS_MAX; i++)
     {
+        uint64_t probe = (index + i) % _THREADS_MAX;
+        _thread_t* thread = (_thread_t*)atomic_load_explicit(&threads[probe], memory_order_acquire);
+        if (thread == NULL)
+        {
+            return NULL;
+        }
         if (thread->id == id)
         {
-            mtx_unlock(&mutex);
             return thread;
         }
     }
-
-    mtx_unlock(&mutex);
     return NULL;
 }

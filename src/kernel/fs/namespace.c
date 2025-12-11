@@ -167,7 +167,7 @@ uint64_t namespace_traverse(namespace_t* ns, path_t* path)
         errno = EINVAL;
         return ERR;
     }
-    
+
     // The mount count has race conditions, but the worst that can happen is a redundant lookup.
     if (atomic_load(&path->dentry->mountCount) == 0)
     {

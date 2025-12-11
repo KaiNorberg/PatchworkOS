@@ -493,8 +493,8 @@ uint64_t sched_nanosleep(clock_t timeout);
 /**
  * @brief Yield the current thread's time slice to allow other threads to run.
  *
- * @note Currently just sleeps for 1ms as we cant really yield without weird lag math. 
- * 
+ * @note Currently just sleeps for 1ms as we cant really yield without weird lag math.
+ *
  */
 void sched_yield(void);
 

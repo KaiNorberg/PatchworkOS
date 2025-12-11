@@ -87,8 +87,8 @@ void sysfs_init(void)
         panic(NULL, "Failed to register sysfs");
     }
 
-    devMount =
-        sysfs_mount_new(NULL, "dev", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_DIRECTORY | MODE_ALL_PERMS, NULL);
+    devMount = sysfs_mount_new(NULL, "dev", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT,
+        MODE_DIRECTORY | MODE_ALL_PERMS, NULL);
     if (devMount == NULL)
     {
         panic(NULL, "Failed to create /dev filesystem");

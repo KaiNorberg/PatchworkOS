@@ -505,7 +505,8 @@ static uint64_t process_dir_init(process_t* process)
     list_push_back(&process->dentries, &perf->otherEntry);
 
     path_t selfPath = PATH_CREATE(procMount, selfDir);
-    process->self = namespace_bind(&process->ns, process->proc, &selfPath, MOUNT_OVERWRITE, MODE_DIRECTORY | MODE_ALL_PERMS);
+    process->self =
+        namespace_bind(&process->ns, process->proc, &selfPath, MOUNT_OVERWRITE, MODE_DIRECTORY | MODE_ALL_PERMS);
     path_put(&selfPath);
     if (process->self == NULL)
     {
@@ -580,10 +581,11 @@ process_t* process_new(priority_t priority)
 
 void process_kill(process_t* process, int32_t status)
 {
-    LOCK_SCOPE(&process->threads.lock);
+    lock_acquire(&process->threads.lock);
 
     if (atomic_exchange(&process->isDying, true))
     {
+        lock_release(&process->threads.lock);
         return;
     }
 
@@ -602,16 +604,20 @@ void process_kill(process_t* process, int32_t status)
         LOG_DEBUG("sent kill note to %llu threads in process pid=%d\n", killCount, process->id);
     }
 
-    // Anything that another process could be waiting on or that could hold a reference to the process must be cleaned up here.
+    lock_release(&process->threads.lock);
+
+    // Anything that another process could be waiting on or that could hold a reference to the process must be cleaned
+    // up here.
     cwd_clear(&process->cwd);
     file_table_close_all(&process->fileTable);
     namespace_clear(&process->ns);
 
     wait_unblock(&process->dyingWaitQueue, WAIT_ALL, EOK);
 
-    LOCK_SCOPE(&zombiesLock);
+    lock_acquire(&zombiesLock);
     list_push_back(&zombies, &REF(process)->zombieEntry);
     nextReaperTime = sys_time_uptime() + CONFIG_PROCESS_REAPER_INTERVAL; // Delay reaper run
+    lock_release(&zombiesLock);
 }
 
 uint64_t process_copy_env(process_t* dest, process_t* src)
@@ -699,8 +705,8 @@ process_t* process_get_kernel(void)
 
 void process_procfs_init(void)
 {
-    procMount =
-        sysfs_mount_new(NULL, "proc", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_DIRECTORY | MODE_ALL_PERMS, NULL);
+    procMount = sysfs_mount_new(NULL, "proc", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT,
+        MODE_DIRECTORY | MODE_ALL_PERMS, NULL);
     if (procMount == NULL)
     {
         panic(NULL, "Failed to mount /proc filesystem");

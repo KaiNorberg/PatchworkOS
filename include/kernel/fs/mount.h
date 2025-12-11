@@ -44,8 +44,9 @@ typedef struct mount
 {
     ref_t ref;
     mount_id_t id;
-    dentry_t* source;           ///< The dentry to appear at target once mounted, usually the root dentry of the mounted filesystem.
-    dentry_t* target;           ///< The dentry which the source is mounted to, can be `NULL` for the root filesystem.
+    dentry_t*
+        source; ///< The dentry to appear at target once mounted, usually the root dentry of the mounted filesystem.
+    dentry_t* target;         ///< The dentry which the source is mounted to, can be `NULL` for the root filesystem.
     superblock_t* superblock; ///< The superblock of the mounted filesystem.
     mount_t* parent;          ///< The parent mount, can be `NULL` for the root filesystem.
     mode_t mode;              ///< Specifies the maximum permissions for this mount and if it is a directory or a file.

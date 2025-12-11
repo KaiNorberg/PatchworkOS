@@ -5,10 +5,5 @@
 
 pid_t getpid(void)
 {
-    pid_t result = _syscall_getpid();
-    if (result == ERR)
-    {
-        errno = _syscall_errno();
-    }
-    return result;
+    return _syscall_getpid();
 }

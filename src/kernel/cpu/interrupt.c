@@ -62,6 +62,14 @@ uint64_t page_fault_handler(const interrupt_frame_t* frame)
     }
 
     uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
+    if (stack_pointer_overlaps_guard(&thread->userStack, alignedFaultAddr, 1) ||
+        stack_pointer_overlaps_guard(&thread->kernelStack, alignedFaultAddr, 1))
+    {
+        LOG_DEBUG("stack overflow detected at address 0x%llx\n", faultAddr);
+        errno = EFAULT;
+        return ERR;
+    }
+
     if (stack_pointer_is_in_stack(&thread->userStack, alignedFaultAddr, 1))
     {
         if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PML_WRITE | PML_PRESENT | PML_USER,
@@ -139,6 +147,8 @@ static void exception_handler(interrupt_frame_t* frame)
 #endif
 
         process_kill(process, EFAULT);
+        atomic_store(&thread->state, THREAD_DYING);
+
         sched_do(frame, self);
     }
     else

@@ -58,7 +58,8 @@ void cwd_set(cwd_t* cwd, const path_t* newPath);
 /**
  * @brief Clear the current working directory.
  *
- * Needed as a process might have its working directory inside its own `/proc/[pid]` directory which, since that directory holds references to the process itself, would result in a memory leak.
+ * Needed as a process might have its working directory inside its own `/proc/[pid]` directory which, since that
+ * directory holds references to the process itself, would result in a memory leak.
  *
  * @param cwd The CWD structure.
  */

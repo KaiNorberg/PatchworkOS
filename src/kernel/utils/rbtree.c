@@ -546,7 +546,7 @@ void rbtree_fix(rbtree_t* tree, rbnode_t* node)
 
         break;
     }
-    
+
     rbtree_update_to_root(tree, node);
 }
 

@@ -51,13 +51,15 @@ static int64_t sched_node_compare(const rbnode_t* aNode, const rbnode_t* bNode)
     const sched_client_t* a = CONTAINER_OF(aNode, sched_client_t, node);
     const sched_client_t* b = CONTAINER_OF(bNode, sched_client_t, node);
 
-    int64_t cmp = sched_fixed_cmp(a->vdeadline, b->vdeadline);
-    if (cmp != 0)
+    if (a->vdeadline < b->vdeadline)
     {
-        return cmp;
+        return -1;
+    }
+    else if (a->vdeadline > b->vdeadline)
+    {
+        return 1;
     }
 
-    // Use the address as a tie breaker just to ensure a consistent ordering.
     if (a < b)
     {
         return -1;
@@ -146,7 +148,8 @@ static void sched_vtime_update(sched_t* sched, clock_t uptime)
     // Eq 5.
     sched->vtime += SCHED_FIXED_TO(delta) / totalWeight;
 
-    sched_client_update_veligible(&sched->runThread->sched, sched->runThread->sched.veligible + SCHED_FIXED_TO(delta) / sched->runThread->sched.weight);
+    sched_client_update_veligible(&sched->runThread->sched,
+        sched->runThread->sched.veligible + SCHED_FIXED_TO(delta) / sched->runThread->sched.weight);
     rbtree_fix(&sched->runqueue, &sched->runThread->sched.node);
 }
 
@@ -303,8 +306,8 @@ static thread_t* sched_first_eligible(sched_t* sched)
     {
         vclock_t vminEligible =
             CONTAINER_OF_SAFE(rbtree_find_min(sched->runqueue.root), sched_client_t, node)->vminEligible;
-        panic(NULL, "No eligible threads found, vminEligible=%lld vtime=%lld",
-            SCHED_FIXED_FROM(vminEligible), SCHED_FIXED_FROM(sched->vtime));
+        panic(NULL, "No eligible threads found, vminEligible=%lld vtime=%lld", SCHED_FIXED_FROM(vminEligible),
+            SCHED_FIXED_FROM(sched->vtime));
     }
 #endif
 
@@ -406,7 +409,7 @@ void sched_submit(thread_t* thread)
 static void sched_verify_min_eligible(sched_t* sched, rbnode_t* node)
 {
     sched_client_t* client = CONTAINER_OF(node, sched_client_t, node);
-    
+
     bool hasChildren = false;
     for (rbnode_direction_t dir = RBNODE_LEFT; dir <= RBNODE_RIGHT; dir++)
     {
@@ -415,11 +418,11 @@ static void sched_verify_min_eligible(sched_t* sched, rbnode_t* node)
         {
             continue;
         }
-        
+
         hasChildren = true;
 
         sched_client_t* childClient = CONTAINER_OF(child, sched_client_t, node);
-        
+
         if (sched_fixed_cmp(client->vminEligible, childClient->vminEligible) > 0)
         {
             panic(NULL, "vminEligible incorrect for node with vdeadline %lld, expected %lld but got %lld",
@@ -429,7 +432,7 @@ static void sched_verify_min_eligible(sched_t* sched, rbnode_t* node)
 
         sched_verify_min_eligible(sched, child);
     }
-    
+
     if (!hasChildren && sched_fixed_cmp(client->vminEligible, client->veligible) != 0)
     {
         panic(NULL, "Leaf node vminEligible != veligible, vminEligible=%lld veligible=%lld",
@@ -448,12 +451,12 @@ static void sched_verify(sched_t* sched)
         totalWeight += client->weight;
         assert(client->weight > 0);
         assert(thread != sched->idleThread);
-        
+
         if (atomic_load(&thread->state) != THREAD_ACTIVE && thread != sched->runThread)
         {
             panic(NULL, "Thread in runqueue has invalid state %d", atomic_load(&thread->state));
         }
-        
+
         if (thread == sched->runThread)
         {
             runThreadFound = true;

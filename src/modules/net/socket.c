@@ -394,8 +394,8 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type)
         return NULL;
     }
 
-    mount_t* mount =
-        sysfs_mount_new(&familyDir, sock->id, NULL, MOUNT_PROPAGATE_CHILDREN, MODE_DIRECTORY | MODE_ALL_PERMS, &superblockOps);
+    mount_t* mount = sysfs_mount_new(&familyDir, sock->id, NULL, MOUNT_PROPAGATE_CHILDREN,
+        MODE_DIRECTORY | MODE_ALL_PERMS, &superblockOps);
     path_put(&familyDir);
     if (mount == NULL)
     {

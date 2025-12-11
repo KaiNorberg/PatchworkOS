@@ -53,7 +53,7 @@ typedef struct namespace
     list_t children;     ///< List of child namespaces.
     namespace_t* parent; ///< The parent namespace, can be `NULL`.
     list_t mounts;       ///< List of mounts in this namespace.
-    map_t mountMap;     ///< Map used to go from source dentries to namespace mounts.
+    map_t mountMap;      ///< Map used to go from source dentries to namespace mounts.
     mount_t* root;       ///< The root mount of the namespace.
     rwlock_t lock;
     // clang-format off
@@ -149,7 +149,7 @@ uint64_t namespace_get_root_path(namespace_t* ns, path_t* out);
  * @brief Clears all mounts from a namespace.
  *
  * @note The parent of the namespace will inherit all child namespaces of the deinitialized namespace.
- * 
+ *
  * @param ns The namespace to clear.
  */
 void namespace_clear(namespace_t* ns);
