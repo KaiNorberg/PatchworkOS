@@ -385,6 +385,9 @@ typedef struct sched_client
  * @struct sched_t
  *
  * Stored in a CPU's `sched` member.
+ * 
+ * @note The `runThread` and `idleThread` members are declared `volatile` as they can be accessed in interrupt
+ * context as well as non-interrupt context.
  */
 typedef struct sched
 {
@@ -393,8 +396,8 @@ typedef struct sched
     vclock_t vtime;     ///< The current virtual time of the CPU.
     clock_t lastUpdate; ///< The real time when the last vtime update occurred.
     lock_t lock;        ///< The lock protecting the scheduler.
-    thread_t* idleThread; ///< The idle thread for this CPU.
-    thread_t* runThread;  ///< The currently running thread on this CPU.
+    thread_t* volatile idleThread; ///< The idle thread for this CPU.
+    thread_t* volatile runThread;  ///< The currently running thread on this CPU.
 } sched_t;
 
 /**

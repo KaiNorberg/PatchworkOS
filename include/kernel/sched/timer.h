@@ -47,8 +47,11 @@ typedef struct
     /**
      * The next time the owner cpus apic timer will fire, specified in nanoseconds since boot, used in
      * `timer_set()`.
+     * 
+     * Will be accessed in interrupt and non-interrupt context, so must be declared `volatile` to avoid compiler
+     * optimizations that could lead to stale reads.
      */
-    clock_t deadline;
+    clock_t volatile deadline;
 } timer_cpu_ctx_t;
 
 /**
