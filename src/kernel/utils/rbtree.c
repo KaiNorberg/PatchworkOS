@@ -528,8 +528,26 @@ void rbtree_fix(rbtree_t* tree, rbnode_t* node)
     assert(tree != NULL);
     assert(node != NULL);
 
-    rbtree_remove(tree, node);
-    rbtree_insert(tree, node);
+    while (true)
+    {
+        rbnode_t* next = rbtree_next(node);
+        if (next != NULL && tree->compare(node, next) > 0)
+        {
+            rbtree_swap(tree, node, next);
+            continue;
+        }
+
+        rbnode_t* prev = rbtree_prev(node);
+        if (prev != NULL && tree->compare(node, prev) < 0)
+        {
+            rbtree_swap(tree, node, prev);
+            continue;
+        }
+
+        break;
+    }
+    
+    rbtree_update_to_root(tree, node);
 }
 
 bool rbtree_is_empty(const rbtree_t* tree)

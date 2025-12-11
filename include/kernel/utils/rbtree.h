@@ -217,7 +217,7 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node);
  *
  * Should be called whenever the metric used for comparison changes.
  *
- * @todo Currently just calls `rbtree_remove()` followed by `rbtree_insert()`, could be optimized?
+ * @note This function is optimized assuming the common case where the node is already close to its correct position.
  *
  * @param tree The tree containing the node to update.
  * @param node The node to update.
