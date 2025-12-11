@@ -535,9 +535,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     clock_t uptime = sys_time_uptime();
     sched_vtime_update(sched, uptime);
 
-    // Prevents the compiler from being annoying.
-    thread_t* volatile runThread = sched->runThread;
-    assert(runThread != NULL);
+    assert(sched->runThread != NULL);
     assert(sched->idleThread != NULL);
 
     // Cant free any potential threads while still using its address space, so we defer the free to after we have
@@ -549,26 +547,26 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     sched_verify(sched);
 #endif
 
-    thread_state_t state = atomic_load(&runThread->state);
+    thread_state_t state = atomic_load(&sched->runThread->state);
     switch (state)
     {
     case THREAD_DYING:
-        assert(runThread != sched->idleThread);
+        assert(sched->runThread != sched->idleThread);
 
-        threadToFree = runThread;
-        sched_leave(sched, runThread, uptime);
+        threadToFree = sched->runThread;
+        sched_leave(sched, sched->runThread, uptime);
         break;
     case THREAD_PRE_BLOCK:
     case THREAD_UNBLOCKING:
-        assert(runThread != sched->idleThread);
-        if (wait_block_finalize(frame, self, runThread, uptime))
+        assert(sched->runThread != sched->idleThread);
+        if (wait_block_finalize(frame, self, sched->runThread, uptime))
         {
-            sched_leave(sched, runThread, uptime);
+            sched_leave(sched, sched->runThread, uptime);
             break;
         }
 
         // Early unblock
-        atomic_store(&runThread->state, THREAD_ACTIVE);
+        atomic_store(&sched->runThread->state, THREAD_ACTIVE);
         break;
     case THREAD_ACTIVE:
         break;
@@ -579,29 +577,27 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     thread_t* next = sched_first_eligible(sched);
     assert(next != NULL);
 
-    if (next != runThread)
+    if (next != sched->runThread)
     {
-        runThread->sched.lastCpu = self;
-        runThread->sched.stop = uptime;
-        thread_save(runThread, frame);
-
+        sched->runThread->sched.lastCpu = self;
+        sched->runThread->sched.stop = uptime;
+        thread_save(sched->runThread, frame);
         assert(atomic_load(&next->state) == THREAD_ACTIVE);
         thread_load(next, frame);
-        runThread = next;
+        sched->runThread = next;
     }
 
-    if (runThread != sched->idleThread)
+    if (sched->runThread != sched->idleThread)
     {
         timer_set(uptime, uptime + CONFIG_TIME_SLICE);
     }
 
     if (threadToFree != NULL)
     {
-        assert(threadToFree != runThread);
+        assert(threadToFree != sched->runThread);
         thread_free(threadToFree);
     }
 
-    sched->runThread = runThread;
     lock_release(&sched->lock);
 }
 
@@ -661,7 +657,10 @@ void sched_process_exit(int32_t status)
 void sched_thread_exit(void)
 {
     thread_t* thread = sched_thread();
-    thread_kill(thread);
+    if (thread_send_note(thread, "kill", 4) == ERR)
+    {
+        panic(NULL, "Failed to send kill note to self in sched_thread_exit()");
+    }
     ipi_invoke();
 
     panic(NULL, "Return to sched_thread_exit");

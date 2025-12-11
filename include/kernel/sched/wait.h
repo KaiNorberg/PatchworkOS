@@ -193,6 +193,7 @@ typedef struct wait_queue
  */
 typedef struct wait_client
 {
+    list_entry_t entry;
     list_t entries;   ///< List of wait entries, one for each wait queue the thread is waiting on.
     errno_t err;      ///< Error number set when unblocking the thread, `EOK` for no error.
     clock_t deadline; ///< Deadline for timeout, `CLOCKS_NEVER` for no timeout.
@@ -267,7 +268,7 @@ void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self);
  * unblocked prematurely this function will return immediately.
  *
  * Will reenable interrupts on failure.
- *
+ * 
  * @param waitQueues Array of wait queues to add the thread to.
  * @param amount Number of wait queues to add the thread to.
  * @param timeout Timeout.

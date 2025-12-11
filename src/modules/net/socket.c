@@ -223,7 +223,7 @@ static uint64_t socket_ctl_connect(file_t* file, uint64_t argc, const char** arg
 }
 
 CTL_STANDARD_OPS_DEFINE(ctlOps,
-    (ctl_array_t){
+    {
         {"bind", socket_ctl_bind, 2, 2},
         {"listen", socket_ctl_listen, 1, 2},
         {"connect", socket_ctl_connect, 2, 2},

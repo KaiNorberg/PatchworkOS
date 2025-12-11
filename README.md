@@ -181,6 +181,256 @@ So what is `BOOT_ALWAYS`? It is the type of a special device that the kernel wil
 
 For more information, check the [Module Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/d41/group__kernel__module.html).
 
+## Everything is a File
+
+PatchworkOS strictly follows the "everything is a file" philosophy in a way similar to Plan9, this can often result in unorthodox APIs or seem over complicated at first, but the goal is to provide a simple and consistent interface for all kernel subsystems.
+
+Included below are some examples to familiarize yourself with the concept.
+
+### Sockets
+
+The first example is sockets, specifically how to create and use local seqpacket sockets.
+
+To create a local seqpacket socket, you open the `/net/local/seqpacket` file. This is eqvalent to calling `socket(AF_LOCAL, SOCK_SEQPACKET, 0)` in POSIX systems. The opened file can be read to return the "ID" of the newly created socket, which is a string that uniquely identifies the socket, more on this later.
+
+PatchworkOS provides several helper functions to make file operations easier, but first we will show how to do it without any helpers:
+
+```c
+fd_t fd = open("/net/local/seqpacket");
+char id[32] = {0};
+read(fd, id, 31); 
+// ... do stuff ...
+close(fd);
+```
+
+Using the `sread()` helper which reads a null-terminated string from a file descriptor, we can simplify this to:
+
+```c
+fd_t fd = open("/net/local/seqpacket");
+char* id = sread(fd); 
+close(fd);
+// ... do stuff ...
+free(id);
+```
+
+Finally, using use the `sreadfile()` helper which reads a null-terminated string from a file from its path, we can simplify this even further to:
+
+```c
+char* id = sreadfile("/net/local/seqpacket"); 
+// ... do stuff ...
+free(id);
+```
+
+> Note that the socket will persist until the process that created it and all its children have exited. Additionally, for error handling, all functions will return either `NULL` or `ERR` on failure, depending on if they return a pointer or an integer type respectively. The per-thread `errno` variable is used to indicate the specific error that occurred, both in user space and kernel space (however the actual variable is implemented differently in kernel space).
+
+Now that we have the ID, we can discuss what it actually is. The ID is the name of a directory in the `/net/local` directory, in which the following files exist:
+
+- `data`: Used to send and retrieve data
+- `ctl`: Used to send commands
+- `accept`: Used to accept incoming connections
+
+So, for example, the sockets data file is located at `/net/local/[id]/data`.
+
+Say we want to make our socket into a server, we would then use use the `ctl` file to send the `bind` and `listen` commands, this is similar to calling `bind()` and `listen()` in POSIX systems. In this case, we want to bind the server to the name `myserver`.
+
+Once again, we provide several helper functions to make this easier. First, without any helpers:
+
+```c
+char ctlPath[MAX_PATH] = {0};
+snprintf(ctlPath, MAX_PATH, "/net/local/%s/ctl", id)
+fd_t ctl = open(ctlPath);
+const char* str = "bind myserver && listen";
+write(ctl, str, strlen(str)); // Note the use of && to send multiple commands.
+close(ctl);
+```
+
+Using the `F()` macro which allocates formatted strings on the stack and the `swrite()` helper that writes a null-terminated string to a file descriptor:
+
+```c
+fd_t ctl = open(F("/net/local/%s/ctl", id));
+swrite(ctl, "bind myserver && listen")
+close(ctl);
+```
+
+Finally, using the `swritefile()` helper which writes a null-terminated string to a file from its path:
+
+```c
+swritefile(F("/net/local/%s/ctl", id), "bind myserver && listen");
+```
+
+If we wanted to accept a connection using our newly created server, we just open its accept file:
+
+```c
+fd_t fd = open(F("/net/local/%s/accept", id));
+/// ... do stuff ...
+close(fd);
+```
+
+The file descriptor returned when the accept file is opened can be used to send and receive data, just like when calling `accept()` in POSIX systems.
+
+For the sake of completeness, to connect the the server we just create a new socket and use the `connect` command:
+
+```c
+char* id = sreadfile("/net/local/seqpacket");
+swritefile(F("/net/local/%s/ctl", id), "connect myserver");
+free(id);
+```
+
+[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/df/d65/group__module__net.html)
+
+### File Flags?
+
+You may have noticed that in the above section sections, the `open()` function does not take in a flags argument. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you can write
+
+```c
+open("/net/local/seqpacket:nonblock");
+```
+
+Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `F()` macro. Each flag also has a short hand version for which the `:` character is ommited, for example to open a file as create and exclusive, you can do
+
+```c
+open("/some/path:create:exclusive");
+```
+
+or
+
+```c
+open("/some/path:ce");
+```
+
+For a full list of available flags, check the [Doxygen documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html).
+
+### Permissions?
+
+Permissions are also specified using file paths there are three possible permissions, read, write and execute. For example to open a file as read and write, you can do
+
+```c
+open("/some/path:read:write");
+```
+
+or
+
+```c
+open("/some/path:rw");
+```
+
+Permissions are inherited, you cant use a file with lower permissions to get a file with higher permissions. Consider the namespace section, if a directory was opened using only read permissions and that same directory was bound, then it would be impossible to open any files within that directory with any permissions other than read.
+
+For a full list of available permissions, check the [Doxygen documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html).
+
+### Spawning Processes
+
+Another example of the "everything is a file" philosophy is the `spawn()` syscall used to create new processes. We will skip the usual debate on `fork()` vs `spawn()` and just focus on how `spawn()` works in PatchworkOS as there are enough discussions about that online.
+
+The `spawn()` syscall takes in two arguments:
+
+- `const char** argv`: The argument vector, similar to POSIX systems except that the first argument is always the path to the executable.
+- `spawn_flags_t flags`: Flags controlling the creation of the new process, primarily what to inherit from the parent process.
+
+The system call may seem very small in comparison to, for example, `posix_spawn()` or `CreateProcess()`. This is intentional, trying to squeeze every possible combination of things one might want to do when creating a new process into a single syscall would be highly impractical, as those familiar with `CreateProcess()` may know.
+
+PatchworkOS instead allows the creation of processes in a suspended state, allowing the parent process to modify the child process before it starts executing.
+
+As an example, lets say we wish to create a child such that its stdio is redirected to some file descriptors in the parent and create a environment variable `MY_VAR=my_value`.
+
+First, we pretend we have some set of file descriptors and spawn the new process in a suspended state using the `SPAWN_SUSPENDED` flag
+
+```c
+fd_t stdin = ...;
+fd_t stdout = ...;
+fd_t stderr = ...;
+
+const char* argv[] = {"/bin/shell", NULL};
+pid_t child = spawn(argv, SPAWN_SUSPENDED);
+```
+
+At this point, the process exists but is stuck blocking before it is allowed to load its executable. Additionally, the child process has inherited all file descriptors and environment variables from the parent process.
+
+Now we can redirect the stdio file descriptors in the child process using the `/proc/[pid]/ctl` file, which just like the socket ctl file, allows us to send commands to control the process. In this case, we want to use two commands, `dup2` to redirect the stdio file descriptors and `close` to close the unneeded file descriptors.
+
+```c
+swritefile(F("/proc/%d/ctl", child), F("dup2 %d 0 && dup2 %d 1 && dup2 %d 2 && close 3 -1", stdin, stdout, stderr));
+```
+
+> Note that `close` can either take one or two arguments. When two arguments are provided, it closes all file descriptors in the specified range. In our case `-1` causes a underflow to the maximum file descriptor value, closing all file descriptors higher than or equal to the first argument.
+
+Next, we create the environment variable by creating a file in the childs `/proc/[pid]/env/` directory:
+
+```c
+swritefile(F("/proc/%d/env/MY_VAR:create", child), "my_value");
+```
+
+Finally, we can start the child process using the `start` command:
+
+```c
+swritefile(F("/proc/%d/ctl", child), "start");
+```
+
+At this point the child process will begin executing with its stdio redirected to the specified file descriptors and the environment variable set as expected.
+
+The advantages of this approach are numerous, we avoid COW issues with `fork()`, weirdness with `vfork()`, system call bloat with `posix_spawn()`, and we get a very flexible and powerful process creation system that can use any of the other file based APIs to modify the child process before it starts executing. In exchange, the only real price we pay is overhead from additional context switches, string parsing and path traversals, how much this matters in practice is debatable.
+
+For more on `spawn()`, check the [Userspace Process API](https://kainorberg.github.io/PatchworkOS/html/d1/d10/group__libstd__sys__proc.html#gae41c1cb67e3bc823c6d0018e043022eb) documentation and for more information on the `/proc` filesystem, check the [Process](https://kainorberg.github.io/PatchworkOS/html/d1/d20/group__kernel__sched__processes.html) documentation.
+
+### Namespaces
+
+Namespaces are a set of mountpoints that is unique per process, which allows each process a unique view of the file system and is utilized for access control.
+
+Think of it like this, in the common case, you can mount a drive to `/mnt/mydrive` and all processes can then open the `/mnt/mydrive` path and see the contents of that drive. However, for security reasons we might not want every process to be able to see that drive, this is what namespaces enable, allowing mounted file systems or directories to only be visible to a subset of processes.
+
+As an example, the "id" directories mentioned in the socket example are a separate "sysfs" instance mounted in the namespace of the creating process, meaning that only that process and its children can see their contents.
+
+To control which processes can see a newly mounted or bound file system or directory, we use a propegation system, where a the newly created mountpoint can be made visible to either just the creating process, the creating process and its children, or the creating process, its children and its parents. Additionally, its possible to specify the behaviour of mountpoint inheritance when a new process is spawned.
+
+[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
+
+### Namespace Sharing
+
+In cases where the propagation system is not sufficient, it's possible for two processes to voluntarily share a mountpoint in their namespaces using `bind()` in combination with two new system calls `share()` and `claim()`.
+
+For example, if process A wants to share its `/net/local/5` directory from the socket example with process B, they can do
+
+```c
+// In process A
+fd_t dir = open("/net/local/5:directory");
+
+// Create a "key" for the file descriptor, this is a unique one time use randomly generated token that can be used to retrieve the file descriptor in another process.
+key_t key;
+share(&key, dir, CLOCKS_PER_SEC * 60); // Key valid for 60 seconds (CLOCKS_NEVER is also allowed)
+
+// In process B
+// The key is somehow communicated to B via IPC, for example a pipe, socket, argv, etc.
+key_t key = ...;
+
+// Use the key to open a file descriptor to the directory, this will invalidate the key.
+fd_t dir = claim(key);
+// Will error here if the original file descriptor in process A has been closed, process A exited, or the key expired.
+
+// Make "dir" ("/net/local/5" in A) available in B's namespace at "/any/path/it/wants". In practice it might be best to bind it to the same path as in A to avoid confusion.
+bind(dir, "/any/path/it/wants");
+
+// Its also possible to just open paths in the shared directory without polluting the namespace using openat().
+fd_t somePath = openat(dir, "data");
+```
+
+Note that error checking is ommited for brevity.
+
+This system guarantees consent between processes, and can be used to implement more complex access control systems.
+
+An interesting detail is that when process A opens the `net/local/5` directory, the dentry underlying the file descriptor is the root of the mounted file system, if process B were to try to open this directory, it would still succeed as the directory itself is visible, however process B would instead retrieve the dentry of the directory in the parent superblock, and would instead see the content of that directory in the parent superblock. If this means nothing to you, don't worry about it.
+
+[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
+
+### But why?
+
+Im sure you have heard many an argument for and against the "everything is a file" philosophy. So I wont go over everything, but the primary reason for using it in PatchworkOS is "emergent behavior" or "composability" which ever term you prefer.
+
+Take the namespace sharing example, notice how there isent any actually dedicated "namespace sharing" system? There are instead a series of small, simple building blocks that when added together form a more complex whole. That is emergent behavior, by keeping things simple and most importantly composable, we can create very complex behaviour without needing to explicitly design it.
+
+Lets take another example, say you wanted to wait on multiple processes with a `waitpid()` syscall. Well, thats not possible. So now we suddenly need a new system call. Meanwhile, in a "everything is a file system" we just have a pollable `/proc/[pid]/wait` file that blocks untill the process dies and returns the exit status, now any behaviour that can be implemented with `poll()` can be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination you can think of.
+
+Plus its fun.
+
 ## ACPI (WIP)
 
 PatchworkOS features a from-scratch ACPI implementation and AML parser, with the goal of being, atleast by ACPI standards, easy to understand and educational. It is tested on the [Tested Configurations](#tested-configurations) below and against [ACPICA's](https://github.com/acpica/acpica) runtime test suite, but remains a work in progress (and probably always will be).
@@ -248,245 +498,6 @@ Having access to this information for all devices also allows us to avoid resour
 
 Of course, it gets way, way worse than this, but hopefully this clarifies why the PS/2 driver and other drivers, might look a bit different than what you might be used to.
 
-## Everything is a File
-
-PatchworkOS strictly follows the "everything is a file" philosophy in a way similar to Plan9, this can often result in unorthodox APIs or could just straight up seem overly complicated, but it has its advantages. We will use sockets to demonstrate the kinds of APIs this produces.
-
-### Sockets
-
-In order to create a local seqpacket socket, you open the `/net/local/seqpacket` file. The opened file can be read to return the ID of your created socket. We provide several helper functions to make this easier, first, without any helpers, you would do
-
-```c
-fd_t fd = open("/net/local/seqpacket");
-if (fd == ERR) 
-{
-    /// ... handle error ...
-}
-char id[32] = {0};
-if (read(fd, id, 31) == ERR) 
-{
-    /// ... handle error ...
-}
-close(fd);
-```
-
-Using the `sread()` helper that reads the entire contents of a file descriptor to simplify this to
-
-```c
-fd_t fd = open("/net/local/seqpacket");
-if (fd == ERR) 
-{
-    /// ... handle error ...
-}
-char* id = sread(fd); 
-if (id == NULL) 
-{
-    /// ... handle error ...
-}
-close(fd);
-// ... do stuff ...
-free(id);
-```
-
-Finally, you can use the `sreadfile()` helper that reads the entire contents of a file from its path to simplify this even further to
-
-```c
-char* id = sreadfile("/net/local/seqpacket"); 
-if (id == NULL) 
-{
-    /// ... handle error ...
-}
-// ... do stuff ...
-free(id);
-```
-
-Note that the socket will persist until the process that created it and all its children have exited. Additionally, for error handling, all functions will return either `NULL` or `ERR` on failure, depending on if they return a pointer or an integer type respectively. The per-thread `errno` variable is used to indicate the specific error that occurred, both in user space and kernel space.
-
-The ID that we have retrieved is the name of a directory in the `/net/local` directory, in which are three files that we use to interact with the socket. These files are:
-
-- `data`: used to send and retrieve data
-- `ctl`: Used to send commands
-- `accept`: Used to accept incoming connections
-
-So, for example, the sockets data file is located at `/net/local/[id]/data`.
-
-Say we want to make our socket into a server, we would then use the bind and listen commands with the `ctl` file, Once again, we provide several helper functions to make this easier. First, without any helpers, you would do
-
-```c
-char ctlPath[MAX_PATH] = {0};
-if (snprintf(ctlPath, MAX_PATH, "/net/local/%s/ctl", id) < 0) 
-{
-    /// ... handle error ...
-}
-fd_t ctl = open(ctlPath);
-if (ctl == ERR) 
-{
-    /// ... handle error ...
-}
-if (write(ctl, "bind myserver && listen") == ERR) // We use && to chain commands.
-{
-    /// ... handle error ...
-}
-close(ctl);
-```
-
-Using the `F()` macro which allocates formatted strings on the stack and the `swrite()` helper that writes a null-terminated string to a file descriptor, we can simplify this to
-
-```c
-fd_t ctl = open(F("/net/local/%s/ctl", id));
-if (ctl == ERR) 
-{
-    /// ... handle error ...
-}
-if (swrite(ctl, "bind myserver && listen") == ERR)
-{
-    /// ... handle error ...
-}
-close(ctl);
-```
-
-Finally, using the `swritefile()` helper that writes a null-terminated string to a file from its path, we can simplify this even further to
-
-```c
-if (swritefile(F("/net/local/%s/ctl", id), "bind myserver && listen") == ERR)
-{
-    /// ... handle error ...
-}
-```
-
-Note that we name our server `myserver`.
-
-If we wanted to accept a connection using our newly created server, we just open its accept file by writing
-
-```c
-fd_t fd = open(F("/net/local/%s/accept", id));
-if (fd == ERR) 
-{
-    /// ... handle error ...
-}
-/// ... do stuff ...
-close(fd);
-```
-
-The file descriptor returned when the accept file is opened can be used to send and receive data, just like when calling `accept()` in for example Linux or other POSIX operating systems. The entire socket API attempts to mimic the POSIX socket API, apart from using these weird files everything (should) work as expected.
-
-For the sake of completeness, if we wanted to connect to this server, we can do
-
-```c
-char* id = sreadfile("/net/local/seqpacket"); // Create new socket and get its ID.
-if (id == NULL) 
-{
-    /// ... handle error ...
-}
-if (swritefile(F("/net/local/%s/ctl", id), "connect myserver") == ERR) // Connect to the server named "myserver".
-{
-    /// ... handle error ...
-}
-/// ... do stuff ...
-free(id);
-```
-
-[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/df/d65/group__module__net.html)
-
-### Namespaces
-
-Namespaces are a set of mountpoints that is unique per process, which allows each process a unique view of the file system and is utilized for access control.
-
-Think of it like this, in the common case, you can mount a drive to `/mnt/mydrive` and all processes can then open the `/mnt/mydrive` path and see the contents of that drive. However, for security reasons we might not want every process to be able to see that drive, this is what namespaces enable, allowing mounted file systems or directories to only be visible to a subset of processes.
-
-As an example, the "id" directories mentioned in the socket example are a separate "sysfs" instance mounted in the namespace of the creating process, meaning that only that process and its children can see their contents.
-
-To control which processes can see a newly mounted or bound file system or directory, we use a propegation system, where a the newly created mountpoint can be made visible to either just the creating process, the creating process and its children, or the creating process, its children and its parents. Additionally, its possible to specify the behaviour of mountpoint inheritance when a new process is spawned.
-
-[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
-
-### Namespace Sharing
-
-In cases where the propagation system is not sufficient, it's possible for two processes to voluntarily share a mountpoint in their namespaces using `bind()` in combination with two new system calls `share()` and `claim()`.
-
-For example, if process A wants to share its `/net/local/5` directory from the socket example with process B, they can do
-
-```c
-// In process A
-fd_t dir = open("/net/local/5:directory");
-
-// Create a "key" for the file descriptor, this is a unique one time use randomly generated token that can be used to retrieve the file descriptor in another process.
-key_t key;
-share(&key, dir, CLOCKS_PER_SEC * 60); // Key valid for 60 seconds (CLOCKS_NEVER is also allowed)
-
-// In process B
-// The key is somehow communicated to B via IPC, for example a pipe, socket, argv, etc.
-key_t key = ...;
-
-// Use the key to open a file descriptor to the directory, this will invalidate the key.
-fd_t dir = claim(key);
-// Will error here if the original file descriptor in process A has been closed, process A exited, or the key expired.
-
-// Make "dir" ("/net/local/5" in A) available in B's namespace at "/any/path/it/wants". In practice it might be best to bind it to the same path as in A to avoid confusion.
-bind(dir, "/any/path/it/wants");
-
-// Its also possible to just open paths in the shared directory without polluting the namespace using openat().
-fd_t somePath = openat(dir, "data");
-```
-
-Note that error checking is ommited for brevity.
-
-This system guarantees consent between processes, and can be used to implement more complex access control systems.
-
-An interesting detail is that when process A opens the `net/local/5` directory, the dentry underlying the file descriptor is the root of the mounted file system, if process B were to try to open this directory, it would still succeed as the directory itself is visible, however process B would instead retrieve the dentry of the directory in the parent superblock, and would instead see the content of that directory in the parent superblock. If this means nothing to you, don't worry about it.
-
-[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
-
-### File Flags?
-
-You may have noticed that in the above section sections, the `open()` function does not take in a flags argument. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you can write
-
-```c
-open("/net/local/seqpacket:nonblock");
-```
-
-Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `F()` macro. Each flag also has a short hand version for which the `:` character is ommited, for example to open a file as create and exclusive, you can do
-
-```c
-open("/some/path:create:exclusive");
-```
-
-or
-
-```c
-open("/some/path:ce");
-```
-
-For a full list of available flags, check the [Doxygen documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html).
-
-### Permissions?
-
-Permissions are also specified using file paths there are three possible permissions, read, write and execute. For example to open a file as read and write, you can do
-
-```c
-open("/some/path:read:write");
-```
-
-or
-
-```c
-open("/some/path:rw");
-```
-
-Permissions are inherited, you cant use a file with lower permissions to get a file with higher permissions. Consider the namespace section, if a directory was opened using only read permissions and that same directory was bound, then it would be impossible to open any files within that directory with any permissions other than read.
-
-For a full list of available permissions, check the [Doxygen documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html).
-
-### But why?
-
-Im sure you have heard many an argument for and against the "everything is a file" philosophy. So I wont go over everything, but the primary reason for using it in PatchworkOS is "emergent behavior" or "composability" which ever term you prefer.
-
-Take the namespace sharing example, notice how there isent any actually dedicated "namespace sharing" system? There are instead a series of small, simple building blocks that when added together form a more complex whole. That is emergent behavior, by keeping things simple and most importantly composable, we can create very complex behaviour without needing to explicitly design it.
-
-Lets take another example, say you wanted to wait on multiple processes with a `waitpid()` syscall. Well, thats not possible. So now we suddenly need a new system call. Meanwhile, in a "everything is a file system" we just have a pollable `/proc/[pid]/wait` file that blocks untill the process dies and returns the exit status, now any behaviour that can be implemented with `poll()` can be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination you can think of.
-
-Plus its fun.
-
 ## Benchmarks
 
 All benchmarks were run on real hardware using a Lenovo ThinkPad E495. For comparison, I've decided to use the Linux kernel, specifically Fedora since It's what I normally use.
@@ -512,35 +523,7 @@ We see that PatchworkOS performs better across the board, and the performance di
 
 There are a few potential reasons for this, one is that PatchworkOS does not use a separate structure to manage virtual memory, instead it embeds metadata directly into the page tables, and since accessing a page table is just walking some pointers, its highly efficient, additionally it provides better caching since the page tables are likely already in the CPU cache.
 
-In the end we end up with a $O(1)$ complexity per page operation, or technically, since the algorithm for finding unmapped memory sections is $O(r)$ in the worst case where $r$ is the size of the address region to check in pages, having more memory allocated would potentially actually improve performance but only by a very small amount. We do of course get $O(n)$ complexity per allocation/mapping operation where $n$ is the number of pages.
-
-Note that as the number of pages increases we start to see less and less linear performance, this is most likely due to CPU cache saturation.
-
-For fun, we can throw the results into desmos to se that around $800$ to $900$ pages there is a "knee" in the curve. Saying that $x$ is the number of pages per iteration and $y$ is the time in milliseconds let us split the data into two sets. We can now perform linear regression which gives us
-
-```math
-y =
-\begin{cases}
-2.25874x+53.95918 & \text{if } x \leq 850, \quad R^2=0.9987,\\
-8.68659x-5762.6044 & \text{if } x > 850, \quad R^2=0.9904.
-\end{cases}
-```
-
-<br>
-
-Performing quadratic regression on the same data gives us
-
-```math
-y =
-\begin{cases}
-0.000237618x^{2}+2.06855x+77.77119 & \text{if } x \leq 850, \quad R^2=0.9979,\\
-0.00626813x^{2}-6.04352x+2636.69231 & \text{if } x > 850, \quad R^2=0.9973.
-\end{cases}
-```
-
-<br>
-
-From this we see that for $x \le 850$ the linear regression has a slightly better fit while for $x > 850$ the quadratic regression has a slightly better fit, this is most likely due to the CPU or TLB caches starting to get saturated. All in all this did not tell us much more than we already knew, so it was kinda pointless, but perhaps it is interesting to someone.
+In the end we end up with a $O(1)$ complexity per page operation, we do of course get $O(n)$ complexity per allocation/mapping operation where $n$ is the number of pages.
 
 Of course, there are limitations to this approach, for example, it is in no way portable (which isn't a concern in our case), each address space can only contain $2^8 - 1$ unique shared memory regions, and copy-on-write would not be easy to implement (however, the need for this is reduced due to PatchworkOS using a `spawn()` instead of a `fork()`).
 

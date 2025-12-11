@@ -91,6 +91,29 @@ uint64_t file_table_free(file_table_t* table, fd_t fd)
     return 0;
 }
 
+uint64_t file_table_free_range(file_table_t* table, fd_t min, fd_t max)
+{
+    if (table == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    LOCK_SCOPE(&table->lock);
+
+    for (fd_t fd = min; fd < max && fd < CONFIG_MAX_FD; fd++)
+    {
+        if (table->files[fd] != NULL)
+        {
+            UNREF(table->files[fd]);
+            table->files[fd] = NULL;
+            bitmap_clear(&table->bitmap, fd);
+        }
+    }
+
+    return 0;
+}
+
 fd_t file_table_set(file_table_t* table, fd_t fd, file_t* file)
 {
     if (table == NULL || file == NULL)
@@ -176,6 +199,37 @@ fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd)
     table->files[newFd] = REF(table->files[oldFd]);
     bitmap_set(&table->bitmap, newFd);
     return newFd;
+}
+
+uint64_t file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t max)
+{
+    if (dest == NULL || src == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    LOCK_SCOPE(&src->lock);
+    LOCK_SCOPE(&dest->lock);
+
+    for (fd_t i = min; i < max && i < CONFIG_MAX_FD; i++)
+    {
+        if (src->files[i] == NULL)
+        {
+            continue;
+        }
+
+        if (dest->files[i] != NULL)
+        {
+            UNREF(dest->files[i]);
+            dest->files[i] = NULL;
+        }
+
+        dest->files[i] = REF(src->files[i]);
+        bitmap_set(&dest->bitmap, i);
+    }
+
+    return 0;
 }
 
 void file_table_close_all(file_table_t* table)

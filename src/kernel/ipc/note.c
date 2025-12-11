@@ -34,14 +34,6 @@ uint64_t note_queue_length(note_queue_t* queue)
     uint64_t length = queue->length;
     if (queue->flags & NOTE_QUEUE_RECEIVED_KILL)
     {
-        length++; // Special case, count the kill note
-    }
-    if (queue->flags & NOTE_QUEUE_RECEIVED_CONTINUE)
-    {
-        length++;
-    }
-    if (queue->flags & NOTE_QUEUE_RECEIVED_STOP)
-    {
         length++;
     }
     return length;
@@ -64,17 +56,7 @@ uint64_t note_queue_write(note_queue_t* queue, const void* buffer, uint64_t coun
         queue->flags |= NOTE_QUEUE_RECEIVED_KILL;
         return 0;
     }
-    if (note_queue_compare_buffers(buffer, count, "continue", 8))
-    {
-        queue->flags |= NOTE_QUEUE_RECEIVED_CONTINUE;
-        return 0;
-    }
-    if (note_queue_compare_buffers(buffer, count, "stop", 4))
-    {
-        queue->flags |= NOTE_QUEUE_RECEIVED_STOP;
-        return 0;
-    }
-
+    
     note_t* note = NULL;
     if (queue->length == CONFIG_MAX_NOTES)
     {
@@ -111,6 +93,7 @@ void note_handle_pending(interrupt_frame_t* frame, cpu_t* self)
     {
         lock_release(&queue->lock);
         atomic_store(&thread->state, THREAD_DYING);
+        queue->flags &= ~NOTE_QUEUE_RECEIVED_KILL;
         return;
     }
 

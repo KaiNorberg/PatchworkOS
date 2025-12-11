@@ -45,24 +45,9 @@ extern char** environ;
  */
 typedef uint8_t priority_t;
 
-#define PRIORITY_PARENT 255  ///< Use the priority of the parent process.
 #define PRIORITY_MAX 63      ///< The maximum priority value, inclusive.
 #define PRIORITY_MAX_USER 31 ///< The maximum priority user space is allowed to specify, inclusive.
 #define PRIORITY_MIN 0       ///< The minimum priority value.
-
-/**
- * @brief Stucture used to duplicate fds in `spawn()`.
- *
- * The `spawn_fd_t` structure is used to inform the kernel of which file descriptors to duplicate when spawning a new
- * process, for more information check the `spawn()` function. The special value `SPAWN_FD_END` is used to terminate
- * arrays of `spawn_fd_t` structures.
- *
- */
-typedef struct
-{
-    fd_t child;  ///< The destination file descriptor in the child
-    fd_t parent; ///< The source file descriptor in the parent
-} spawn_fd_t;
 
 /**
  * @brief Spawn behaviour flags.
@@ -71,42 +56,31 @@ typedef struct
 typedef enum
 {
     SPAWN_DEFAULT = 0,                ///< Default spawn behaviour.
-    SPAWN_EMPTY_NAMESPACE = 1 << 0,   ///< Dont inherit the mountpoints of the parent's namespace.
-    SPAWN_EMPTY_ENVIRONMENT = 1 << 1, ///< Don't inherit the parent's environment.
     /**
-     * Starts the spawned process in a suspended state. The process will not begin executing until a "continue" note is
+     * Starts the spawned process in a suspended state. The process will not begin executing until a "start" note is
      * received.
      *
      * The purpose of this flag is to allow the parent process to modify the child process before it starts executing,
      * for example modifying its environment variables.
-     *
-     * @todo Starting a process suspended is not yet implemented.
      */
-    SPAWN_START_SUSPENDED = 1 << 2
+    SPAWN_SUSPEND = 1 << 0,
+    SPAWN_EMPTY_FDS = 1 << 1, ///< Dont inherit the file descriptors of the parent process.
+    SPAWN_STDIO_FDS = 1 << 2,  ///< Only inherit stdin, stdout and stderr from the parent process.
+    SPAWN_EMPTY_NS = 1 << 3,   ///< Dont inherit the mountpoints of the parent's namespace.
+    SPAWN_EMPTY_ENV = 1 << 4, ///< Don't inherit the parent's environment variables.
+    SPAWN_EMPTY_CWD = 1 << 5,         ///< Don't inherit the parent's current working directory, starts at root (/).
 } spawn_flags_t;
-
-/**
- * @brief Spawn fds termination constant.
- */
-#define SPAWN_FD_END \
-    (spawn_fd_t) \
-    { \
-        .child = FD_NONE, .parent = FD_NONE \
-    }
 
 /**
  * @brief System call for spawning new processes.
  *
+ * By default, the spawned process will inherit the file table, namespace, environment variables, priority and current working directory of the parent process.
+ * 
  * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable.
- * @param fds A array of file descriptors to be duplicated to the child process. Each `spawn_fd_t` in the array
- * specifies a source file descriptor in the parent (`.parent`) and its destination in the child (`.child`).
- * The array must be terminated by `SPAWN_FD_END`.
- * @param cwd The working directory for the child process, or `NULL` to inherit the parents working directory.
- * @param priority The scheduling priority for the child process, or `PRIORITY_PARENT` to inherit the parent's priority.
  * @param flags Spawn behaviour flags.
  * @return On success, the childs pid. On failure, `ERR` and `errno` is set.
  */
-pid_t spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, priority_t priority, spawn_flags_t flags);
+pid_t spawn(const char** argv, spawn_flags_t flags);
 
 /**
  * @brief System call to retrieve the current pid.

@@ -306,9 +306,9 @@ void pipeline_deinit(pipeline_t* pipeline)
     }
 }
 
-static uint64_t pipeline_execute_builtin(cmd_t* cmd)
+static pid_t pipeline_execute_cmd(cmd_t* cmd)
 {
-    // The price of not having fork()
+    pid_t result = ERR;
 
     fd_t originalStdin = dup(STDIN_FILENO);
     if (originalStdin == ERR)
@@ -338,35 +338,11 @@ static uint64_t pipeline_execute_builtin(cmd_t* cmd)
         return ERR;
     }
 
-    uint64_t result = builtin_execute(cmd->argc, cmd->argv);
-    if (dup2(originalStdin, STDIN_FILENO) == ERR || dup2(originalStdout, STDOUT_FILENO) == ERR ||
-        dup2(originalStderr, STDERR_FILENO) == ERR)
-    {
-        result = ERR;
-    }
-
-    close(originalStdin);
-    close(originalStdout);
-    close(originalStderr);
-    return result;
-}
-
-static pid_t pipeline_execute_cmd(cmd_t* cmd)
-{
-    pid_t result = ERR;
-
-    spawn_fd_t fds[] = {
-        {.child = STDIN_FILENO, .parent = cmd->stdin},
-        {.child = STDOUT_FILENO, .parent = cmd->stdout},
-        {.child = STDERR_FILENO, .parent = cmd->stderr},
-        SPAWN_FD_END,
-    };
-
     const char** argv = cmd->argv;
     uint64_t argc = cmd->argc;
     if (builtin_exists(argv[0]))
     {
-        if (pipeline_execute_builtin(cmd) == ERR)
+        if (builtin_execute(cmd->argc, cmd->argv) == ERR)
         {
             result = ERR;
         }
@@ -380,7 +356,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
         stat_t info;
         if (stat(argv[0], &info) != ERR && info.type != INODE_DIR)
         {
-            result = spawn(argv, fds, NULL, PRIORITY_PARENT, SPAWN_DEFAULT);
+            result = spawn(argv, SPAWN_STDIO_FDS);
         }
         else
         {
@@ -411,7 +387,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
                     newArgv[k] = argv[k];
                 }
                 newArgv[argc] = NULL;
-                result = spawn(newArgv, fds, NULL, PRIORITY_PARENT, SPAWN_DEFAULT);
+                result = spawn(newArgv, SPAWN_STDIO_FDS);
                 isFound = true;
                 break;
             }
@@ -423,6 +399,16 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
             result = ERR;
         }
     }
+
+    if (dup2(originalStdin, STDIN_FILENO) == ERR || dup2(originalStdout, STDOUT_FILENO) == ERR ||
+        dup2(originalStderr, STDERR_FILENO) == ERR)
+    {
+        result = ERR;
+    }
+
+    close(originalStdin);
+    close(originalStdout);
+    close(originalStderr);
 
     if (cmd->shouldCloseStdin)
     {
@@ -549,7 +535,7 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
                 printf("^C\n");
                 for (uint64_t j = 1; j < fdCount; j++)
                 {
-                    swritefile(F("/proc/%d/note", pids[j - 1]), "kill");
+                    swritefile(F("/proc/%d/ctl", pids[j - 1]), "kill");
                 }
 
                 break;

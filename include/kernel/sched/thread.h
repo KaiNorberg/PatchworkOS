@@ -61,7 +61,6 @@ typedef enum
  */
 typedef struct thread
 {
-    list_entry_t entry;        ///< The entry for the scheduler and wait system.
     process_t* process;        ///< The parent process that the thread executes within.
     list_entry_t processEntry; ///< The entry for the parent process.
     tid_t id;                  ///< The thread id, unique within a `process_t`.
@@ -120,15 +119,6 @@ tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg);
 void thread_free(thread_t* thread);
 
 /**
- * @brief Kill a thread.
- *
- * Will send a "kill" note to the thread, but not immediately free it.
- *
- * @param thread The thread to be killed.
- */
-void thread_kill(thread_t* thread);
-
-/**
  * @brief Save state to a thread.
  *
  * @param thread The destination thread where the state will be saved.
@@ -157,8 +147,7 @@ bool thread_is_note_pending(thread_t* thread);
 /**
  * @brief Send a note to a thread.
  *
- * This function should always be used over the `note_queue_push()` function, as it performs additional checks, like
- * deciding how critical the sent note is and unblocking the thread to notify it of the received note.
+ * This function should always be used over the `note_queue_push()` function, as it performs additional checks, like unblocking the thread to notify it of the received note.
  *
  * @param thread The destination thread.
  * @param buffer The buffer to write.

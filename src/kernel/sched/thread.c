@@ -28,7 +28,6 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
         return ERR;
     }
 
-    list_entry_init(&thread->entry);
     thread->process = REF(process);
     list_entry_init(&thread->processEntry);
     thread->id = thread->process->threads.newTid++;
@@ -76,7 +75,7 @@ thread_t* thread_new(process_t* process)
         return NULL;
     }
 
-    if (atomic_load(&process->isDying))
+    if (atomic_load(&process->flags) & PROCESS_DYING)
     {
         errno = EINVAL;
         return NULL;
@@ -136,19 +135,6 @@ void thread_free(thread_t* thread)
 
     simd_ctx_deinit(&thread->simd);
     free(thread);
-}
-
-void thread_kill(thread_t* thread)
-{
-    if (thread == NULL)
-    {
-        return;
-    }
-
-    if (thread_send_note(thread, "kill", 4) == ERR)
-    {
-        panic(NULL, "Failed to send thread exit note");
-    }
 }
 
 void thread_save(thread_t* thread, const interrupt_frame_t* frame)
