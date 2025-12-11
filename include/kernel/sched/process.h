@@ -40,7 +40,7 @@
  *
  * ## cwd
  *
- * A readable file that contains the current working directory of the process.
+ * A readable and writable file that contains the current working directory of the process.
  *
  * Format:
  *
@@ -85,6 +85,38 @@
  * %llu %llu %llu %llu %llu
  * ```
  *
+ * ## ctl
+ * 
+ * A writable file that can be used to control certain aspects of the process, such as closing file descriptors.
+ * 
+ * Included is a list of all supported commands.
+ * 
+ * ### close <fd>
+ * 
+ * Closes the specified file descriptor in the process.
+ * 
+ * ### close <minfd> <maxfd>
+ * 
+ * Closes the range `[minfd, maxfd)` of file descriptors in the process.
+ * 
+ * Note that specifying `-1` as `maxfd` will close all file descriptors from `minfd` to the maximum allowed file descriptor.
+ * 
+ * ### dup2 <oldfd> <newfd>
+ * 
+ * Duplicates the specified old file descriptor to the new file descriptor in the process.
+ * 
+ * ### start
+ * 
+ * Starts the process if it was previously suspended.
+ * 
+ * ### kill
+ * 
+ * Sends a kill note to all threads in the process, effectively terminating it.
+ * 
+ * ## fd
+ * 
+ * @todo Implement the `/proc/[pid]/fd` directory.
+ * 
  * ## env
  *
  * A directory that contains the environment variables of the process. Each environment variable is represented as a
@@ -92,14 +124,13 @@
  *
  * To add or modify an environment variable, create or write to a file with the name of the variable. To remove an
  * environment variable, delete the corresponding file.
- *
+ * 
  * @{
  */
 
 /**
- * @brief Process threads structure.
- *
- * Keeps track of all the threads in a process.
+ * @brief Represents the threads in a process.
+ * @struct process_threads_t
  */
 typedef struct
 {
@@ -107,6 +138,17 @@ typedef struct
     list_t list;
     lock_t lock;
 } process_threads_t;
+
+/**
+ * @brief Process flags enum.
+ * @enum process_flags_t
+ */
+typedef enum
+{
+    PROCESS_NONE = 0,
+    PROCESS_DYING = 1 << 0,
+    PROCESS_SUSPENDED = 1 << 1,
+} process_flags_t;
 
 /**
  * @brief Process structure.
@@ -124,8 +166,9 @@ typedef struct process
     file_table_t fileTable;
     futex_ctx_t futexCtx;
     perf_process_ctx_t perf;
-    wait_queue_t dyingWaitQueue;
-    atomic_bool isDying;
+    wait_queue_t suspendQueue;
+    wait_queue_t dyingQueue;
+    _Atomic(process_flags_t) flags;
     process_threads_t threads;
     list_entry_t zombieEntry;
     mount_t* self;   ///< The `/proc/self` bind mount.

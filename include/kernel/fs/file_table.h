@@ -79,6 +79,19 @@ fd_t file_table_alloc(file_table_t* table, file_t* file);
 uint64_t file_table_free(file_table_t* table, fd_t fd);
 
 /**
+ * @brief Free a range of file descriptors.
+ *
+ * If the files have no other references, they will be closed.
+ *
+ * @param table The file table.
+ * @param min The minimum file descriptor to free, inclusive.
+ * @param max The maximum file descriptor to free, exclusive.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ */
+uint64_t file_table_free_range(file_table_t* table, fd_t min, fd_t max);
+
+/**
  * @brief Set a specific file descriptor to a file.
  *
  * If the file descriptor is already in use, the old file will be closed.
@@ -120,6 +133,18 @@ fd_t file_table_dup(file_table_t* table, fd_t oldFd);
  * - `EMFILE`: Too many open files.
  */
 fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd);
+
+/**
+ * @brief Copy a file table, closing any overlapping file descriptors.
+ *
+ * @param dest The destination file table.
+ * @param src The source file table.
+ * @param min The minimum file descriptor to copy, inclusive.
+ * @param max The maximum file descriptor to copy, exclusive.
+ * @return On success, the number of copied file descriptors. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ */
+uint64_t file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t max);
 
 /**
  * @brief Close all files in the file table.

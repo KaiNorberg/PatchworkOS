@@ -661,7 +661,10 @@ void sched_process_exit(int32_t status)
 void sched_thread_exit(void)
 {
     thread_t* thread = sched_thread();
-    thread_kill(thread);
+    if (thread_send_note(thread, "kill", 4) == ERR)
+    {
+        panic(NULL, "Failed to send kill note to self in sched_thread_exit()");
+    }
     ipi_invoke();
 
     panic(NULL, "Return to sched_thread_exit");

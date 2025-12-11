@@ -588,15 +588,23 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         term->prevCursor = &term->screen[0][0];
 
         const char* argv[] = {"/bin/shell", NULL};
-        spawn_fd_t fds[] = {
-            {.child = STDIN_FILENO, .parent = term->stdin[PIPE_READ]},
-            {.child = STDOUT_FILENO, .parent = term->stdout[PIPE_WRITE]},
-            {.child = STDERR_FILENO, .parent = term->stdout[PIPE_WRITE]},
-            SPAWN_FD_END,
-        };
-        term->shell = spawn(argv, fds, NULL, PRIORITY_PARENT, SPAWN_DEFAULT);
+        term->shell = spawn(argv, SPAWN_SUSPEND);
         if (term->shell == ERR)
         {
+            close(term->stdin[0]);
+            close(term->stdin[1]);
+            close(term->stdout[0]);
+            close(term->stdout[1]);
+            font_free(term->font);
+            free(term);
+            return ERR;
+        }
+
+        if (swritefile(F("/proc/%d/ctl", term->shell), F("dup2 %d 0 && dup2 %d 1 && dup2 %d 2 && close 3 -1 && start",
+                term->stdin[0], term->stdout[1], term->stdout[1]))==
+            ERR)
+        {
+            swritefile(F("/proc/%d/ctl", term->shell), "kill");
             close(term->stdin[0]);
             close(term->stdin[1]);
             close(term->stdout[0]);
@@ -623,7 +631,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         close(term->stdout[0]);
         close(term->stdout[1]);
 
-        swritefile(F("/proc/%d/note", term->shell), "kill");
+        swritefile(F("/proc/%d/ctl", term->shell), "kill");
     }
     break;
     case EVENT_LIB_QUIT:

@@ -16,6 +16,7 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rwlock.h>
+#include <kernel/fs/ctl.h>
 
 #include <assert.h>
 #include <stdatomic.h>
@@ -134,8 +135,53 @@ static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count, uin
     return BUFFER_READ(buffer, count, offset, cwdName.string, length);
 }
 
+static uint64_t process_cwd_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+{
+    (void)offset; // Unused
+
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    char cwdStr[MAX_PATH];
+    if (count >= MAX_PATH)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    memcpy(cwdStr, buffer, count);
+    cwdStr[count] = '\0';
+
+    pathname_t cwdPathname;
+    if (pathname_init(&cwdPathname, cwdStr) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t path = cwd_get(&process->cwd);
+    PATH_DEFER(&path);
+
+    if (path_walk(&path, &cwdPathname, &process->ns) == ERR)
+    {
+        return ERR;
+    }
+
+    if (!dentry_is_positive(path.dentry))
+    {
+        errno = ENOENT;
+        return ERR;
+    }
+
+    cwd_set(&process->cwd, &path);
+    return count;
+}
+
 static file_ops_t cwdOps = {
     .read = process_cwd_read,
+    .write = process_cwd_write,
 };
 
 static uint64_t process_cmdline_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
@@ -173,13 +219,6 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
         return ERR;
     }
 
-    // Special case, kill should kill all threads in the process
-    if (count == 4 && memcmp(buffer, "kill", 4) == 0)
-    {
-        process_kill(process, 0);
-        return count;
-    }
-
     LOCK_SCOPE(&process->threads.lock);
 
     thread_t* thread = CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
@@ -209,7 +248,7 @@ static uint64_t process_wait_read(file_t* file, void* buffer, uint64_t count, ui
         return ERR;
     }
 
-    WAIT_BLOCK(&process->dyingWaitQueue, atomic_load(&process->isDying));
+    WAIT_BLOCK(&process->dyingQueue, atomic_load(&process->flags) & PROCESS_DYING);
 
     char status[MAX_PATH];
     int length = snprintf(status, sizeof(status), "%lld", atomic_load(&process->status));
@@ -229,13 +268,13 @@ static wait_queue_t* process_wait_poll(file_t* file, poll_events_t* revents)
         return NULL;
     }
 
-    if (atomic_load(&process->isDying))
+    if (atomic_load(&process->flags) & PROCESS_DYING)
     {
         *revents |= POLLIN;
-        return &process->dyingWaitQueue;
+        return &process->dyingQueue;
     }
 
-    return &process->dyingWaitQueue;
+    return &process->dyingQueue;
 }
 
 static file_ops_t waitOps = {
@@ -277,6 +316,146 @@ static uint64_t process_stat_read(file_t* file, void* buffer, uint64_t count, ui
 static file_ops_t statOps = {
     .read = process_stat_read,
 };
+
+static uint64_t process_ctl_close(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 2 && argc != 3)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    if (argc == 2)
+    {
+        fd_t fd;
+        if (sscanf(argv[1], "%lld", &fd) != 1)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        if (file_table_free(&process->fileTable, fd) == ERR)
+        {
+            return ERR;
+        }
+    }
+    else
+    {
+        fd_t minFd;
+        if (sscanf(argv[1], "%lld", &minFd) != 1)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        fd_t maxFd;
+        if (sscanf(argv[2], "%lld", &maxFd) != 1)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        if (file_table_free_range(&process->fileTable, minFd, maxFd) == ERR)
+        {
+            return ERR;
+        }
+    }
+
+    return 0;
+}
+
+static uint64_t process_ctl_dup2(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 3)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    fd_t oldFd;
+    if (sscanf(argv[1], "%lld", &oldFd) != 1)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    fd_t newFd;
+    if (sscanf(argv[2], "%lld", &newFd) != 1)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (file_table_dup2(&process->fileTable, oldFd, newFd) == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
+static uint64_t process_ctl_start(file_t* file, uint64_t argc, const char** argv)
+{
+    (void)argv; // Unused
+
+    if (argc != 1)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    atomic_fetch_and(&process->flags, ~PROCESS_SUSPENDED);
+    wait_unblock(&process->suspendQueue, WAIT_ALL, EOK);
+
+    return 0;
+}
+
+static uint64_t process_ctl_kill(file_t* file, uint64_t argc, const char** argv)
+{
+    (void)argv; // Unused
+
+    if (argc != 1)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    process_kill(process, 0);
+
+    return 0;
+}
+
+CTL_STANDARD_OPS_DEFINE(ctlOps, {
+    {"close", process_ctl_close, 2, 3},
+    {"dup2", process_ctl_dup2, 3, 3},
+    {"start", process_ctl_start, 1, 1},
+    {"kill", process_ctl_kill, 1, 1},
+    {0}
+})
 
 static uint64_t process_env_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -427,7 +606,8 @@ static void process_free(process_t* process)
     file_table_deinit(&process->fileTable);
     namespace_deinit(&process->ns);
     space_deinit(&process->space);
-    wait_queue_deinit(&process->dyingWaitQueue);
+    wait_queue_deinit(&process->dyingQueue);
+    wait_queue_deinit(&process->suspendQueue);
     futex_ctx_deinit(&process->futexCtx);
     free(process);
 }
@@ -508,6 +688,13 @@ static uint64_t process_dir_init(process_t* process)
     }
     list_push_back(&process->dentries, &perf->otherEntry);
 
+    dentry_t* ctl = sysfs_file_new(process->proc, "ctl", &inodeOps, &ctlOps, REF(process));
+    if (ctl == NULL)
+    {
+        goto error;
+    }
+    list_push_back(&process->dentries, &ctl->otherEntry);
+
     path_t selfPath = PATH_CREATE(procMount, selfDir);
     process->self =
         namespace_bind(&process->ns, process->proc, &selfPath, MOUNT_OVERWRITE, MODE_DIRECTORY | MODE_ALL_PERMS);
@@ -554,8 +741,9 @@ process_t* process_new(priority_t priority)
     file_table_init(&process->fileTable);
     futex_ctx_init(&process->futexCtx);
     perf_process_ctx_init(&process->perf);
-    wait_queue_init(&process->dyingWaitQueue);
-    atomic_init(&process->isDying, false);
+    wait_queue_init(&process->suspendQueue);
+    wait_queue_init(&process->dyingQueue);
+    atomic_init(&process->flags, PROCESS_NONE);
 
     process->threads.newTid = 0;
     list_init(&process->threads.list);
@@ -589,7 +777,7 @@ void process_kill(process_t* process, int32_t status)
 {
     lock_acquire(&process->threads.lock);
 
-    if (atomic_exchange(&process->isDying, true))
+    if (atomic_fetch_or(&process->flags, PROCESS_DYING) & PROCESS_DYING)
     {
         lock_release(&process->threads.lock);
         return;
@@ -618,7 +806,7 @@ void process_kill(process_t* process, int32_t status)
     file_table_close_all(&process->fileTable);
     namespace_clear(&process->ns);
 
-    wait_unblock(&process->dyingWaitQueue, WAIT_ALL, EOK);
+    wait_unblock(&process->dyingQueue, WAIT_ALL, EOK);
 
     lock_acquire(&zombiesLock);
     list_push_back(&zombies, &REF(process)->zombieEntry);

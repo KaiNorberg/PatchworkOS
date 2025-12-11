@@ -50,15 +50,14 @@ static void spawn_program(const char* path, priority_t priority)
     }
 
     const char* argv[] = {path, NULL};
-    spawn_fd_t fds[] = {
-        {.parent = STDOUT_FILENO, .child = STDOUT_FILENO},
-        {.parent = STDERR_FILENO, .child = STDERR_FILENO},
-        SPAWN_FD_END,
-    };
-    if (spawn(argv, fds, "/usr", priority, SPAWN_DEFAULT) == ERR)
+    pid_t pid = spawn(argv, SPAWN_STDIO_FDS | SPAWN_SUSPEND);
+    if (pid == ERR)
     {
         printf("init: failed to spawn program '%s' (%s)\n", path, strerror(errno));
     }
+
+    swritefile(F("/proc/%d/prio", pid), F("%llu", priority));
+    swritefile(F("/proc/%d/ctl", pid), "start");
 }
 
 static void start_services(config_t* config)

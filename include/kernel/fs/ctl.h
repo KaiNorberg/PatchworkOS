@@ -70,19 +70,14 @@ typedef struct
 } ctl_t;
 
 /**
- * @brief Type definition for an array of ctl commands.
- */
-typedef ctl_t ctl_array_t[];
-
-/**
  * @brief Dispatch a ctl command.
  *
- * @param ctls The array of ctl commands to dispatch to.
+ * @param ctls The array of ctl commands to dispatch to, terminated by an entry with a `NULL` name.
  * @param file The file the ctl command was sent to.
  * @param buffer The buffer containing the command and its arguments.
  * @param count The number of bytes in the buffer.
  * @return On success, the number of bytes processed (count). On failure, `ERR` and `errno` is set.
  */
-uint64_t ctl_dispatch(ctl_array_t ctls, file_t* file, const void* buffer, uint64_t count);
+uint64_t ctl_dispatch(ctl_t ctls[], file_t* file, const void* buffer, uint64_t count);
 
 /** @} */

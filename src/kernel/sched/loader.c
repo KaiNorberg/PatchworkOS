@@ -1,7 +1,7 @@
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file_table.h>
+#include <kernel/fs/path.h>
 #include <kernel/sched/loader.h>
-
 #include <kernel/cpu/gdt.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
@@ -11,6 +11,7 @@
 #include <kernel/sched/thread.h>
 
 #include <errno.h>
+#include <kernel/sched/wait.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/elf.h>
@@ -144,8 +145,16 @@ cleanup:
     sched_process_exit(errno);
 }
 
-SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const char* cwd, priority_t priority,
-    spawn_flags_t flags)
+static void loader_entry(const char* executable, char** argv, uint64_t argc)
+{
+    thread_t* thread = sched_thread();
+
+    WAIT_BLOCK(&thread->process->suspendQueue, !(atomic_load(&thread->process->flags) & PROCESS_SUSPENDED));
+
+    loader_exec(executable, argv, argc);
+}
+
+SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
 {
     process_t* child = NULL;
     thread_t* childThread = NULL;
@@ -154,7 +163,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     char** argvCopy = NULL;
     char* executable = NULL;
 
-    if (argv == NULL || (priority > PRIORITY_MAX_USER && priority != PRIORITY_PARENT))
+    if (argv == NULL)
     {
         errno = EINVAL;
         goto error;
@@ -163,77 +172,10 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
 
-    if (priority == PRIORITY_PARENT)
-    {
-        priority = atomic_load(&process->priority);
-    }
-
-    child = process_new(priority);
+    child = process_new(atomic_load(&process->priority));
     if (child == NULL)
     {
         goto error;
-    }
-
-    if (fds != NULL)
-    {
-        spawn_fd_t* fdsCopy;
-        uint64_t fdAmount;
-        spawn_fd_t fdsTerminator = SPAWN_FD_END;
-        if (thread_copy_from_user_terminated(thread, fds, &fdsTerminator, sizeof(spawn_fd_t), CONFIG_MAX_FD,
-                (void**)&fdsCopy, &fdAmount) == ERR)
-        {
-            goto error;
-        }
-
-        for (uint64_t i = 0; i < fdAmount; i++)
-        {
-            file_t* file = file_table_get(&process->fileTable, fdsCopy[i].parent);
-            if (file == NULL)
-            {
-                free(fdsCopy);
-                goto error;
-            }
-
-            if (file_table_set(&child->fileTable, fdsCopy[i].child, file) == ERR)
-            {
-                free(fdsCopy);
-                UNREF(file);
-                goto error;
-            }
-            UNREF(file);
-        }
-        free(fdsCopy);
-    }
-
-    if (cwd != NULL)
-    {
-        pathname_t cwdPathname;
-        if (thread_copy_from_user_pathname(thread, &cwdPathname, cwd) == ERR)
-        {
-            goto error;
-        }
-
-        path_t cwdPath = cwd_get(&process->cwd);
-        if (path_walk(&cwdPath, &cwdPathname, &process->ns) == ERR)
-        {
-            path_put(&cwdPath);
-            goto error;
-        }
-
-        if (!dentry_is_positive(cwdPath.dentry))
-        {
-            path_put(&cwdPath);
-            goto error;
-        }
-
-        cwd_set(&child->cwd, &cwdPath);
-        path_put(&cwdPath);
-    }
-    else
-    {
-        path_t cwdParent = cwd_get(&process->cwd);
-        cwd_set(&child->cwd, &cwdParent);
-        path_put(&cwdParent);
     }
 
     childThread = thread_new(child);
@@ -258,7 +200,30 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         goto error;
     }
 
-    if (!(flags & SPAWN_EMPTY_NAMESPACE))
+    if (flags & SPAWN_SUSPEND)
+    {
+        atomic_fetch_or(&child->flags, PROCESS_SUSPENDED);
+    }
+
+    if (!(flags & SPAWN_EMPTY_FDS))
+    {
+        if (flags & SPAWN_STDIO_FDS)
+        {
+            if (file_table_copy(&child->fileTable, &process->fileTable, 0, 3) == ERR)
+            {
+                goto error;
+            }
+        }
+        else
+        {
+            if (file_table_copy(&child->fileTable, &process->fileTable, 0, CONFIG_MAX_FD) == ERR)
+            {
+                goto error;
+            }
+        }
+    }
+
+    if (!(flags & SPAWN_EMPTY_NS))
     {
         if (namespace_set_parent(&child->ns, &process->ns) == ERR)
         {
@@ -266,7 +231,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         }
     }
 
-    if (!(flags & SPAWN_EMPTY_ENVIRONMENT))
+    if (!(flags & SPAWN_EMPTY_ENV))
     {
         if (process_copy_env(child, process) == ERR)
         {
@@ -274,9 +239,16 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         }
     }
 
+    if (!(flags & SPAWN_EMPTY_CWD))
+    {
+        path_t cwd = cwd_get(&process->cwd);
+        cwd_set(&child->cwd, &cwd);
+        path_put(&cwd);
+    }
+
     // Call loader_exec(executable, argvCopy, argc)
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
-    childThread->frame.rip = (uintptr_t)loader_exec;
+    childThread->frame.rip = (uintptr_t)loader_entry;
     childThread->frame.rdi = (uintptr_t)executable;
     childThread->frame.rsi = (uintptr_t)argvCopy;
     childThread->frame.rdx = argc;

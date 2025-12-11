@@ -26,17 +26,18 @@ typedef struct cpu cpu_t;
  * ## Receiving Notes
  *
  * @todo Receiving notes, software interrupts, etc.
- *
+ * 
  * ## Special Notes
  *
  * Certain notes will cause the kernel to take special actions. Additionally, for the sake of consistency, we define
  * some notes that all user processes are expected to handle in a standardized way.
  *
- * Below is a list of all of special notes with the unix equivalent signal in parentheses:
- * - "kill": Immediately terminate the target thread's process. User space will never see this note. Also used by
- * processes to kill its own threads. (SIGKILL)
- * - "continue": Resume the execution of a suspended process. (SIGCONT)
- * - "stop": Suspend the receiving process execution until a "continue" note is received. (SIGSTOP)
+ * Below is a list of all of special notes.
+ * 
+ * ## "kill"
+ * 
+ * When a thread receives this note, it will immediately transition to the `THREAD_DYING` state, causing the scheduler to kill and free the thread.
+ *
  * @{
  */
 
@@ -57,8 +58,6 @@ typedef enum
 {
     NOTE_QUEUE_NONE = 0,
     NOTE_QUEUE_RECEIVED_KILL = 1 << 0,
-    NOTE_QUEUE_RECEIVED_CONTINUE = 1 << 1,
-    NOTE_QUEUE_RECEIVED_STOP = 1 << 2,
 } note_queue_flag_t;
 
 /**

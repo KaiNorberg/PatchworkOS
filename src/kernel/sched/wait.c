@@ -53,6 +53,7 @@ void wait_queue_deinit(wait_queue_t* queue)
 
 void wait_client_init(wait_client_t* client)
 {
+    list_entry_init(&client->entry);
     list_init(&client->entries);
     client->err = EOK;
     client->deadline = 0;
@@ -73,7 +74,7 @@ void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self)
 
     while (1)
     {
-        thread_t* thread = CONTAINER_OF_SAFE(list_first(&self->wait.blockedThreads), thread_t, entry);
+        thread_t* thread = CONTAINER_OF_SAFE(list_first(&self->wait.blockedThreads), thread_t, wait.entry);
         if (thread == NULL)
         {
             return;
@@ -86,7 +87,7 @@ void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self)
             return;
         }
 
-        list_remove(&self->wait.blockedThreads, &thread->entry);
+        list_remove(&self->wait.blockedThreads, &thread->wait.entry);
 
         thread_state_t expected = THREAD_BLOCKED;
         if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING)) // Already unblocking.
@@ -234,22 +235,22 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
     thread->wait.owner = &self->wait;
     LOCK_SCOPE(&self->wait.lock);
 
-    thread_t* lastThread = (CONTAINER_OF(list_last(&self->wait.blockedThreads), thread_t, entry));
+    thread_t* lastThread = (CONTAINER_OF(list_last(&self->wait.blockedThreads), thread_t, wait.entry));
 
     // Sort blocked threads by deadline
     if (thread->wait.deadline == CLOCKS_NEVER || list_is_empty(&self->wait.blockedThreads) ||
         lastThread->wait.deadline <= thread->wait.deadline)
     {
-        list_push_back(&self->wait.blockedThreads, &thread->entry);
+        list_push_back(&self->wait.blockedThreads, &thread->wait.entry);
     }
     else
     {
         thread_t* other;
-        LIST_FOR_EACH(other, &self->wait.blockedThreads, entry)
+        LIST_FOR_EACH(other, &self->wait.blockedThreads, wait.entry)
         {
             if (other->wait.deadline > thread->wait.deadline)
             {
-                list_prepend(&self->wait.blockedThreads, &other->entry, &thread->entry);
+                list_prepend(&self->wait.blockedThreads, &other->wait.entry, &thread->wait.entry);
                 break;
             }
         }
@@ -258,7 +259,7 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
     thread_state_t expected = THREAD_PRE_BLOCK;
     if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_BLOCKED)) // Prematurely unblocked
     {
-        list_remove(&self->wait.blockedThreads, &thread->entry);
+        list_remove(&self->wait.blockedThreads, &thread->wait.entry);
         wait_remove_wait_entries(thread, EOK);
         atomic_store(&thread->state, THREAD_ACTIVE);
         return false;
@@ -269,7 +270,7 @@ bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread
         thread_state_t expected = THREAD_BLOCKED;
         if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
         {
-            list_remove(&self->wait.blockedThreads, &thread->entry);
+            list_remove(&self->wait.blockedThreads, &thread->wait.entry);
             wait_remove_wait_entries(thread, EINTR);
             atomic_store(&thread->state, THREAD_ACTIVE);
             return false;
@@ -285,7 +286,7 @@ void wait_unblock_thread(thread_t* thread, errno_t err)
     assert(atomic_load(&thread->state) == THREAD_UNBLOCKING);
 
     lock_acquire(&thread->wait.owner->lock);
-    list_remove(&thread->wait.owner->blockedThreads, &thread->entry);
+    list_remove(&thread->wait.owner->blockedThreads, &thread->wait.entry);
     wait_remove_wait_entries(thread, err);
     lock_release(&thread->wait.owner->lock);
 
@@ -339,7 +340,7 @@ uint64_t wait_unblock(wait_queue_t* queue, uint64_t amount, errno_t err)
         for (uint64_t i = 0; i < collected; i++)
         {
             lock_acquire(&threads[i]->wait.owner->lock);
-            list_remove(&threads[i]->wait.owner->blockedThreads, &threads[i]->entry);
+            list_remove(&threads[i]->wait.owner->blockedThreads, &threads[i]->wait.entry);
             wait_remove_wait_entries(threads[i], err);
             lock_release(&threads[i]->wait.owner->lock);
 
