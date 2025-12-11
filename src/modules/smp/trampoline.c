@@ -47,7 +47,7 @@ void trampoline_init(void)
     memcpy(virtBase, trampoline_start, TRAMPOLINE_SIZE);
     memset(&virtBase[TRAMPOLINE_DATA_OFFSET], 0, PAGE_SIZE - TRAMPOLINE_DATA_OFFSET);
 
-    WRITE_64(&virtBase[TRAMPOLINE_PML4_OFFSET], PML_ENSURE_LOWER_HALF(vmm_get_kernel_space()->pageTable.pml4));
+    WRITE_64(&virtBase[TRAMPOLINE_PML4_OFFSET], PML_ENSURE_LOWER_HALF(vmm_kernel_space_get()->pageTable.pml4));
     WRITE_64(&virtBase[TRAMPOLINE_ENTRY_OFFSET], (uintptr_t)trampoline_c_entry);
 
     atomic_init(&cpuReadyFlag, false);

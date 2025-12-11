@@ -3,12 +3,13 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/regs.h>
 #include <kernel/cpu/syscall.h>
+#include <kernel/init/boot_info.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/paging.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/space.h>
-#include <kernel/proc/process.h>
+#include <kernel/sched/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
@@ -37,8 +38,13 @@ static void vmm_cpu_ctx_init_common(vmm_cpu_ctx_t* ctx)
     lock_release(&kernelSpace.lock);
 }
 
-void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_kernel_t* kernel)
+void vmm_init(void)
 {
+    boot_info_t* bootInfo = boot_info_get();
+    const boot_memory_t* memory = &bootInfo->memory;
+    const boot_gop_t* gop = &bootInfo->gop;
+    const boot_kernel_t* kernel = &bootInfo->kernel;
+
     if (space_init(&kernelSpace, VMM_KERNEL_HEAP_MIN, VMM_KERNEL_HEAP_MAX, SPACE_USE_PMM_BITMAP) == ERR)
     {
         panic(NULL, "Failed to initialize kernel address space");
@@ -99,7 +105,10 @@ void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_ker
     {
         panic(NULL, "Failed to map GOP memory");
     }
+}
 
+void vmm_kernel_space_load(void)
+{
     LOG_INFO("loading kernel space... ");
 
     cpu_t* cpu = cpu_get_unsafe();
@@ -121,29 +130,7 @@ void vmm_cpu_ctx_init(vmm_cpu_ctx_t* ctx)
     vmm_cpu_ctx_init_common(ctx);
 }
 
-void vmm_map_bootloader_lower_half(void)
-{
-    thread_t* thread = sched_thread();
-
-    for (pml_index_t i = PML_INDEX_LOWER_HALF_MIN; i < PML_INDEX_LOWER_HALF_MAX; i++)
-    {
-        thread->process->space.pageTable.pml4->entries[i] = kernelSpace.pageTable.pml4->entries[i];
-    }
-}
-
-void vmm_unmap_bootloader_lower_half(void)
-{
-    thread_t* thread = sched_thread();
-
-    for (pml_index_t i = PML_INDEX_LOWER_HALF_MIN; i < PML_INDEX_LOWER_HALF_MAX; i++)
-    {
-        thread->process->space.pageTable.pml4->entries[i].raw = 0;
-        kernelSpace.pageTable.pml4->entries[i].raw = 0;
-    }
-    cr3_write(cr3_read());
-}
-
-space_t* vmm_get_kernel_space(void)
+space_t* vmm_kernel_space_get(void)
 {
     return &kernelSpace;
 }
@@ -183,7 +170,7 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t pml
 
     if (space == NULL)
     {
-        space = vmm_get_kernel_space();
+        space = vmm_kernel_space_get();
     }
 
     space_mapping_t mapping;
@@ -247,7 +234,7 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, p
 
     if (space == NULL)
     {
-        space = vmm_get_kernel_space();
+        space = vmm_kernel_space_get();
     }
 
     space_mapping_t mapping;
@@ -301,7 +288,7 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
 
     if (space == NULL)
     {
-        space = vmm_get_kernel_space();
+        space = vmm_kernel_space_get();
     }
 
     space_mapping_t mapping;
@@ -354,7 +341,7 @@ void* vmm_unmap(space_t* space, void* virtAddr, uint64_t length)
 
     if (space == NULL)
     {
-        space = vmm_get_kernel_space();
+        space = vmm_kernel_space_get();
     }
 
     space_mapping_t mapping;
@@ -421,7 +408,7 @@ void* vmm_protect(space_t* space, void* virtAddr, uint64_t length, pml_flags_t f
 
     if (space == NULL)
     {
-        space = vmm_get_kernel_space();
+        space = vmm_kernel_space_get();
     }
 
     space_mapping_t mapping;

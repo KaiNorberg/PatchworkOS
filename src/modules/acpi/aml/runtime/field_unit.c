@@ -195,7 +195,7 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_t* opregion,
     aml_object_t* adrObject = aml_namespace_find(&state->overlay, location, AML_NAME('_', 'A', 'D', 'R'));
     if (adrObject != NULL)
     {
-        DEREF_DEFER(adrObject);
+        UNREF_DEFER(adrObject);
 
         aml_object_t* adrResult = aml_evaluate(state, adrObject, AML_INTEGER);
         if (adrResult == NULL)
@@ -204,7 +204,7 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_t* opregion,
             return ERR;
         }
         aml_uint_t adrValue = adrResult->integer.value;
-        DEREF(adrResult);
+        UNREF(adrResult);
 
         *slot = adrValue & 0x0000FFFF;             // Low word is slot
         *function = (adrValue >> 16) & 0x0000FFFF; // High word is function
@@ -214,7 +214,7 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_t* opregion,
     aml_object_t* bbnObject = aml_namespace_find(&state->overlay, location, AML_NAME('_', 'B', 'B', 'N'));
     if (bbnObject != NULL)
     {
-        DEREF_DEFER(bbnObject);
+        UNREF_DEFER(bbnObject);
 
         aml_object_t* bbnResult = aml_evaluate(state, bbnObject, AML_INTEGER);
         if (bbnResult == NULL)
@@ -223,7 +223,7 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_t* opregion,
             return ERR;
         }
         aml_uint_t bbnValue = bbnResult->integer.value;
-        DEREF(bbnResult);
+        UNREF(bbnResult);
 
         // Lower 8 bits is the bus number.
         *bus = bbnValue & 0xFF;
@@ -233,7 +233,7 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_t* opregion,
     aml_object_t* segObject = aml_namespace_find(&state->overlay, location, AML_NAME('_', 'S', 'E', 'G'));
     if (segObject != NULL)
     {
-        DEREF_DEFER(segObject);
+        UNREF_DEFER(segObject);
 
         aml_object_t* segResult = aml_evaluate(state, segObject, AML_INTEGER);
         if (segResult == NULL)
@@ -242,7 +242,7 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_t* opregion,
             return ERR;
         }
         aml_uint_t segValue = segResult->integer.value;
-        DEREF(segResult);
+        UNREF(segResult);
 
         // Lower 16 bits is the segment group number.
         *segmentGroup = segValue & 0xFFFF;
@@ -384,7 +384,7 @@ static uint64_t aml_generic_field_read_at(aml_state_t* state, aml_field_unit_t* 
         {
             return ERR;
         }
-        DEREF_DEFER(temp);
+        UNREF_DEFER(temp);
 
         if (aml_integer_set(temp, byteOffset) == ERR)
         {
@@ -434,7 +434,7 @@ static uint64_t aml_generic_field_write_at(aml_state_t* state, aml_field_unit_t*
         {
             return ERR;
         }
-        DEREF_DEFER(temp);
+        UNREF_DEFER(temp);
 
         if (aml_integer_set(temp, byteOffset) == ERR)
         {

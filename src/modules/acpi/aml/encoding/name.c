@@ -244,7 +244,7 @@ aml_object_t* aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx)
 
         if (aml_integer_set(out, 0) == ERR)
         {
-            DEREF(out);
+            UNREF(out);
             return NULL;
         }
 
@@ -254,7 +254,7 @@ aml_object_t* aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx)
     if (out->type == AML_UNINITIALIZED)
     {
         errno = ENOENT;
-        DEREF(out);
+        UNREF(out);
         return NULL;
     }
 

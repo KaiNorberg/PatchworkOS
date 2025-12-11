@@ -29,12 +29,14 @@ typedef struct cpu cpu_t;
  *
  * ## Special Notes
  *
- * Certain notes will cause the kernel to take special actions and, for the sake of consistency, we define some notes
- * that all user processes should handle in a standard way. The values for these notes are intended to mirror UNIX
- * signals where applicable. Below is a list of all of these special notes:
- * - "kill": When the kernel receives this note, it will immediately terminate the target thread's process. User space
- * will never see this note. Also used by processes to kill its own threads. (UNIX SIGKILL)
+ * Certain notes will cause the kernel to take special actions. Additionally, for the sake of consistency, we define
+ * some notes that all user processes are expected to handle in a standardized way.
  *
+ * Below is a list of all of special notes with the unix equivalent signal in parentheses:
+ * - "kill": Immediately terminate the target thread's process. User space will never see this note. Also used by
+ * processes to kill its own threads. (SIGKILL)
+ * - "continue": Resume the execution of a suspended process. (SIGCONT)
+ * - "stop": Suspend the receiving process execution until a "continue" note is received. (SIGSTOP)
  * @{
  */
 
@@ -46,18 +48,17 @@ typedef struct cpu cpu_t;
 /**
  * @brief Note queue flags.
  * @enum note_queue_flag_t
+ *
+ * Its vital that a certain special notes get handled, even if we run out of memory. Since these notes have a predefined
+ * value and we dont care if they get sent multiple times, we can simplify the system such that when the note queue
+ * receives a special note instead of pushing it to the queue we just set the corresponding flag.
  */
 typedef enum
 {
     NOTE_QUEUE_NONE = 0,
-    /**
-     * Its vital that a kill note gets handled, even if we run out of memory. Since these notes have a predefined value
-     * and we dont care if they get sent multiple times, we can simplify the system such that when the note queue
-     * recieves a kill note instead of pushing it to the queue we just set the corresponding flag.
-     *
-     * The thread will never know the difference.
-     */
-    NOTE_QUEUE_RECIEVED_KILL = 1 << 0,
+    NOTE_QUEUE_RECEIVED_KILL = 1 << 0,
+    NOTE_QUEUE_RECEIVED_CONTINUE = 1 << 1,
+    NOTE_QUEUE_RECEIVED_STOP = 1 << 2,
 } note_queue_flag_t;
 
 /**

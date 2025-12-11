@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
 {
     if (argc != 2)
     {
-        fprintf(stderr, "Usage: %s <psf_font_file>\n", argv[0]);
+        fprintf(stderr, "%s <psf_font_file>\n", argv[0]);
         return 1;
     }
 

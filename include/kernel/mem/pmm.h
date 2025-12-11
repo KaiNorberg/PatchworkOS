@@ -21,10 +21,8 @@
 
 /**
  * @brief Initializes the Physical Memory Manager.
- *
- * @param map The EFI memory map provided by the bootloader.
  */
-void pmm_init(const boot_memory_map_t* map);
+void pmm_init(void);
 
 /**
  * @brief Allocates a single physical page.

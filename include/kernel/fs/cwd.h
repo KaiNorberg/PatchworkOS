@@ -23,10 +23,11 @@ typedef struct cwd
 /**
  * @brief Initialize a CWD structure.
  *
+ * Will by default lazily resolve to the root path of the kernel process's namespace until set to another path.
+ *
  * @param cwd The CWD structure to initialize.
- * @param initialPath The initial path to set as the current working directory, can be `NULL` for root.
  */
-void cwd_init(cwd_t* cwd, const path_t* initialPath);
+void cwd_init(cwd_t* cwd);
 
 /**
  * @brief Deinitialize a CWD structure.
@@ -38,9 +39,8 @@ void cwd_deinit(cwd_t* cwd);
 /**
  * @brief Get the current working directory.
  *
- * @note If the `cwd_init()` was called with `initialPath` as `NULL` and the CWD has not been set, this will return the
- * root path of the kernel process's namespace. This is to solve a circular dependency where the kernel process needs to
- * be initialized before the vfs.
+ * @note If the cwd has not been set, this will return the root path of the kernel process's namespace. This is to solve
+ * a circular dependency where the kernel process needs to be initialized before the vfs.
  *
  * @param cwd The CWD structure.
  * @return The current working directory path.
@@ -54,5 +54,15 @@ path_t cwd_get(cwd_t* cwd);
  * @param newPath The new current working directory.
  */
 void cwd_set(cwd_t* cwd, const path_t* newPath);
+
+/**
+ * @brief Clear the current working directory.
+ *
+ * Needed as a process might have its working directory inside its own `/proc/[pid]` directory which, since that
+ * directory holds references to the process itself, would result in a memory leak.
+ *
+ * @param cwd The CWD structure.
+ */
+void cwd_clear(cwd_t* cwd);
 
 /** @} */

@@ -137,14 +137,14 @@ kbd_t* kbd_new(const char* name)
     kbd->eventsFile = sysfs_file_new(kbd->dir, "events", NULL, &eventsOps, kbd);
     if (kbd->eventsFile == NULL)
     {
-        DEREF(kbd->dir); // kbd will be freed in kbd_dir_cleanup
+        UNREF(kbd->dir); // kbd will be freed in kbd_dir_cleanup
         return NULL;
     }
     kbd->nameFile = sysfs_file_new(kbd->dir, "name", NULL, &nameOps, kbd);
     if (kbd->nameFile == NULL)
     {
-        DEREF(kbd->eventsFile);
-        DEREF(kbd->dir);
+        UNREF(kbd->eventsFile);
+        UNREF(kbd->dir);
         return NULL;
     }
 
@@ -158,9 +158,9 @@ void kbd_free(kbd_t* kbd)
         return;
     }
 
-    DEREF(kbd->dir);
-    DEREF(kbd->eventsFile);
-    DEREF(kbd->nameFile);
+    UNREF(kbd->dir);
+    UNREF(kbd->eventsFile);
+    UNREF(kbd->nameFile);
     // kbd will be freed in kbd_dir_cleanup
 }
 

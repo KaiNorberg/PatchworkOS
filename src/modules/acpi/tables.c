@@ -148,7 +148,7 @@ static uint64_t acpi_tables_load_from_xsdt(xsdt_t* xsdt)
     uint64_t amountOfTablesInXsdt = (xsdt->header.length - sizeof(sdt_header_t)) / sizeof(sdt_header_t*);
     for (uint64_t i = 0; i < amountOfTablesInXsdt; i++)
     {
-        sdt_header_t* table = xsdt->tables[i];
+        sdt_header_t* table = (sdt_header_t*)PML_ENSURE_HIGHER_HALF(xsdt->tables[i]);
         if (acpi_tables_push(table) == ERR)
         {
             LOG_ERR("failed to cache table %.4s\n", table->signature);
@@ -176,14 +176,14 @@ static uint64_t acpi_tables_load_from_fadt(void)
 
     if (fadt->dsdt == 0)
     {
-        if (acpi_tables_push((void*)fadt->xDsdt) == ERR)
+        if (acpi_tables_push((void*)PML_ENSURE_HIGHER_HALF(fadt->xDsdt)) == ERR)
         {
             LOG_ERR("failed to cache DSDT table from fadt_t::xDsdt\n");
             return ERR;
         }
     }
 
-    if (acpi_tables_push((void*)((uint64_t)fadt->dsdt)) == ERR)
+    if (acpi_tables_push((void*)PML_ENSURE_HIGHER_HALF(fadt->dsdt)) == ERR)
     {
         LOG_ERR("failed to cache DSDT table from fadt_t::dsdt\n");
         return ERR;
@@ -200,7 +200,7 @@ uint64_t acpi_tables_init(rsdp_t* rsdp)
         return ERR;
     }
 
-    xsdt_t* xsdt = (xsdt_t*)PML_LOWER_TO_HIGHER(rsdp->xsdtAddress);
+    xsdt_t* xsdt = (xsdt_t*)PML_ENSURE_HIGHER_HALF(rsdp->xsdtAddress);
     LOG_INFO("located XSDT at 0x%016lx\n", rsdp->xsdtAddress);
 
     if (acpi_tables_load_from_xsdt(xsdt) == ERR)
@@ -222,7 +222,7 @@ uint64_t acpi_tables_expose(void)
 {
     dentry_t* acpiRoot = acpi_get_sysfs_root();
     assert(acpiRoot != NULL);
-    DEREF_DEFER(acpiRoot);
+    UNREF_DEFER(acpiRoot);
 
     tablesDir = sysfs_dir_new(acpiRoot, "tables", NULL, NULL);
     if (tablesDir == NULL)

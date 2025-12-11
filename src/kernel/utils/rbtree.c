@@ -33,7 +33,6 @@ void rbtree_init(rbtree_t* tree, rbnode_compare_t compare, rbnode_update_t updat
     assert(compare != NULL);
 
     tree->root = NULL;
-    tree->size = 0;
     tree->compare = compare;
     tree->update = update;
 }
@@ -175,7 +174,6 @@ void rbtree_insert(rbtree_t* tree, rbnode_t* node)
     }
 
     rbtree_insert_at(tree, parent, node, direction);
-    tree->size++;
 
     if (tree->root != NULL)
     {
@@ -367,8 +365,6 @@ static void rbtree_remove_sanitize(rbtree_t* tree, rbnode_t* node)
     node->children[RBNODE_LEFT] = NULL;
     node->children[RBNODE_RIGHT] = NULL;
     node->color = RBNODE_RED;
-
-    tree->size--;
 }
 
 void rbtree_remove(rbtree_t* tree, rbnode_t* node)
@@ -376,7 +372,7 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node)
     assert(tree != NULL);
     assert(node != NULL);
 
-    if (tree->size == 0 || (node != tree->root && node->parent == NULL))
+    if (node != tree->root && node->parent == NULL)
     {
         return;
     }
@@ -532,15 +528,32 @@ void rbtree_fix(rbtree_t* tree, rbnode_t* node)
     assert(tree != NULL);
     assert(node != NULL);
 
-    rbtree_remove(tree, node);
-    rbtree_insert(tree, node);
+    while (true)
+    {
+        rbnode_t* next = rbtree_next(node);
+        if (next != NULL && tree->compare(node, next) > 0)
+        {
+            rbtree_swap(tree, node, next);
+            continue;
+        }
+
+        rbnode_t* prev = rbtree_prev(node);
+        if (prev != NULL && tree->compare(node, prev) < 0)
+        {
+            rbtree_swap(tree, node, prev);
+            continue;
+        }
+
+        break;
+    }
+
+    rbtree_update_to_root(tree, node);
 }
 
 bool rbtree_is_empty(const rbtree_t* tree)
 {
     assert(tree != NULL);
-    assert((tree->size == 0) == (tree->root == NULL));
-    return tree->size == 0;
+    return tree->root == NULL;
 }
 
 rbnode_t* rbtree_next(const rbnode_t* node)

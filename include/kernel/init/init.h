@@ -2,8 +2,6 @@
 
 #include <kernel/cpu/cpu.h>
 
-#include <boot/boot_info.h>
-
 /**
  * @brief Initialization and `kmain()`.
  * @defgroup init Initialization
@@ -11,13 +9,6 @@
  *
  * @{
  */
-
-/**
- * @brief Get the boot info structure provided by the bootloader.
- *
- * @return Pointer to the `boot_info_t` structure, or `NULL` if after initialization.
- */
-boot_info_t* init_boot_info_get(void);
 
 /**
  * @brief Early kernel initialization.

@@ -133,14 +133,14 @@ mouse_t* mouse_new(const char* name)
     mouse->eventsFile = sysfs_file_new(mouse->dir, "events", NULL, &eventsOps, mouse);
     if (mouse->eventsFile == NULL)
     {
-        DEREF(mouse->dir); // mouse will be freed in mouse_dir_cleanup
+        UNREF(mouse->dir); // mouse will be freed in mouse_dir_cleanup
         return NULL;
     }
     mouse->nameFile = sysfs_file_new(mouse->dir, "name", NULL, &nameOps, mouse);
     if (mouse->nameFile == NULL)
     {
-        DEREF(mouse->dir);
-        DEREF(mouse->eventsFile);
+        UNREF(mouse->dir);
+        UNREF(mouse->eventsFile);
         return NULL;
     }
 
@@ -149,9 +149,9 @@ mouse_t* mouse_new(const char* name)
 
 void mouse_free(mouse_t* mouse)
 {
-    DEREF(mouse->dir);
-    DEREF(mouse->eventsFile);
-    DEREF(mouse->nameFile);
+    UNREF(mouse->dir);
+    UNREF(mouse->eventsFile);
+    UNREF(mouse->nameFile);
     // mouse will be freed in mouse_dir_cleanup
 }
 

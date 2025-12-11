@@ -29,6 +29,14 @@ extern "C"
  */
 
 /**
+ * @brief The environment variables of the current process.
+ *
+ * The `environ` variable is a NULL-terminated array of strings representing the environment variables of the current
+ * process in the format "KEY=VALUE".
+ */
+extern char** environ;
+
+/**
  * @brief Priority type.
  * @typedef priority_t
  *
@@ -38,8 +46,8 @@ extern "C"
 typedef uint8_t priority_t;
 
 #define PRIORITY_PARENT 255  ///< Use the priority of the parent process.
-#define PRIORITY_MAX 64      ///< The maximum priority value, inclusive.
-#define PRIORITY_MAX_USER 32 ///< The maximum priority user space is allowed to specify, inclusive.
+#define PRIORITY_MAX 63      ///< The maximum priority value, inclusive.
+#define PRIORITY_MAX_USER 31 ///< The maximum priority user space is allowed to specify, inclusive.
 #define PRIORITY_MIN 0       ///< The minimum priority value.
 
 /**
@@ -62,8 +70,19 @@ typedef struct
  */
 typedef enum
 {
-    SPAWN_DEFAULT = 0,               ///< Default spawn behaviour.
-    SPAWN_EMPTY_NAMESPACE = (1 << 0) ///< Dont inherit the mountpoints of the parent's namespace.
+    SPAWN_DEFAULT = 0,                ///< Default spawn behaviour.
+    SPAWN_EMPTY_NAMESPACE = 1 << 0,   ///< Dont inherit the mountpoints of the parent's namespace.
+    SPAWN_EMPTY_ENVIRONMENT = 1 << 1, ///< Don't inherit the parent's environment.
+    /**
+     * Starts the spawned process in a suspended state. The process will not begin executing until a "continue" note is
+     * received.
+     *
+     * The purpose of this flag is to allow the parent process to modify the child process before it starts executing,
+     * for example modifying its environment variables.
+     *
+     * @todo Starting a process suspended is not yet implemented.
+     */
+    SPAWN_START_SUSPENDED = 1 << 2
 } spawn_flags_t;
 
 /**
@@ -78,9 +97,7 @@ typedef enum
 /**
  * @brief System call for spawning new processes.
  *
- * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable. This array
- * will be pushed to the child stack and the child can find a pointer to this array in its rsi register, along with its
- * length in the rdi register.
+ * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable.
  * @param fds A array of file descriptors to be duplicated to the child process. Each `spawn_fd_t` in the array
  * specifies a source file descriptor in the parent (`.parent`) and its destination in the child (`.child`).
  * The array must be terminated by `SPAWN_FD_END`.
@@ -189,8 +206,20 @@ void* mprotect(void* address, uint64_t length, prot_t prot);
  */
 typedef enum
 {
-    FUTEX_WAIT, ///< The futex operating for waiting until the value pointed to by `addr` is not equal to `val`.
-    FUTEX_WAKE, ///< The futex operation for waking up a amount of threads specified by the `val` argument.
+    /**
+     * @brief Wait until the timeout expires or the futex value changes.
+     *
+     * If the value at the futex address is not equal to `val`, the call returns immediately with `EAGAIN`.
+     * Otherwise, the calling thread is put to sleep until another thread wakes it up or the specified timeout expires.
+     */
+    FUTEX_WAIT,
+    /**
+     * @brief Wake up one or more threads waiting on the futex.
+     *
+     * Wakes up a maximum of `val` number of threads that are currently waiting on the futex at the specified address.
+     * If `val` is `FUTEX_ALL`, all waiting threads are woken up.
+     */
+    FUTEX_WAKE,
 } futex_op_t;
 
 /**
@@ -209,11 +238,10 @@ typedef enum
  * mutexes, conditional variables, etc.
  *
  * @param addr A pointer to an atomic 64-bit unsigned integer.
- * @param val The value to compare against for `FUTEX_WAIT` or the number of threads to wake for `FUTEX_WAKE`.
+ * @param val The value used by the futex operation, its meaning depends on the operation.
  * @param op The futex operation to perform (e.g., `FUTEX_WAIT` or `FUTEX_WAKE`).
  * @param timeout An optional timeout for `FUTEX_WAIT`. If `CLOCKS_NEVER`, it waits forever.
- * @return On success, `0`, except if using the `FUTEX_WAKE` operation then it returns the number of woken
- * threads. On failure, `ERR` and errno is set.
+ * @return On success, depends on the operation. On failure, `ERR` and errno is set.
  */
 uint64_t futex(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout);
 

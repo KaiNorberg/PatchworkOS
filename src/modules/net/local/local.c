@@ -75,7 +75,7 @@ static void local_socket_deinit(socket_t* sock)
             wait_unblock(&data->listen.listen->waitQueue, WAIT_ALL, EOK);
             lock_release(&data->listen.listen->lock);
 
-            DEREF(data->listen.listen);
+            UNREF(data->listen.listen);
             data->listen.listen = NULL;
         }
         break;
@@ -87,7 +87,7 @@ static void local_socket_deinit(socket_t* sock)
             wait_unblock(&data->conn.conn->waitQueue, WAIT_ALL, EOK);
             lock_release(&data->conn.conn->lock);
 
-            DEREF(data->conn.conn);
+            UNREF(data->conn.conn);
             data->conn.conn = NULL;
         }
         break;
@@ -122,7 +122,7 @@ static uint64_t local_socket_bind(socket_t* sock, const char* address)
     {
         return ERR;
     }
-    DEREF_DEFER(listen);
+    UNREF_DEFER(listen);
 
     data->listen.listen = REF(listen);
     return 0;
@@ -183,14 +183,14 @@ static uint64_t local_socket_connect(socket_t* sock, const char* address)
         errno = ECONNREFUSED;
         return ERR;
     }
-    DEREF_DEFER(listen);
+    UNREF_DEFER(listen);
 
     local_conn_t* conn = local_conn_new(listen);
     if (conn == NULL)
     {
         return ERR;
     }
-    DEREF_DEFER(conn);
+    UNREF_DEFER(conn);
 
     LOCK_SCOPE(&listen->lock);
 
@@ -231,7 +231,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
         errno = EINVAL;
         return ERR;
     }
-    DEREF_DEFER(listen);
+    UNREF_DEFER(listen);
 
     local_conn_t* conn = NULL;
     while (true)
@@ -265,7 +265,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
             return ERR;
         }
     }
-    DEREF_DEFER(conn);
+    UNREF_DEFER(conn);
 
     assert(conn != NULL);
 
@@ -300,7 +300,7 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
         errno = ECONNRESET;
         return ERR;
     }
-    DEREF_DEFER(conn);
+    UNREF_DEFER(conn);
     LOCK_SCOPE(&conn->lock);
 
     if (conn->isClosed)
@@ -369,7 +369,7 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
         errno = ECONNRESET;
         return ERR;
     }
-    DEREF_DEFER(conn);
+    UNREF_DEFER(conn);
     LOCK_SCOPE(&conn->lock);
 
     ring_t* ring = data->conn.isServer ? &conn->clientToServer : &conn->serverToClient;

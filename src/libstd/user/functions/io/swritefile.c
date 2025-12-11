@@ -1,5 +1,5 @@
-#include <sys/io.h>
 #include <string.h>
+#include <sys/io.h>
 
 uint64_t swritefile(const char* path, const char* string)
 {

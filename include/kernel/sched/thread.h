@@ -6,7 +6,7 @@
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/cpu/syscall.h>
 #include <kernel/ipc/note.h>
-#include <kernel/proc/process.h>
+#include <kernel/sched/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/wait.h>
 #include <kernel/utils/ref.h>
@@ -217,6 +217,17 @@ uint64_t thread_copy_from_user_terminated(thread_t* thread, const void* userArra
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, const char* userPath);
+
+/**
+ * @brief Safely copy a null-terminated array of strings and their contents from user space into a string vector.
+ *
+ * @param thread The thread performing the operation.
+ * @param user The source array of strings in user space.
+ * @param out Output pointer to store the allocated array of strings in kernel space, must be freed by the caller.
+ * @param outAmount Output pointer to store the number of strings copied, can be `NULL`.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t thread_copy_from_user_string_array(thread_t* thread, const char** user, char*** out, uint64_t* outAmount);
 
 /**
  * @brief Atomically load a 64-bit value from a user-space atomic variable.

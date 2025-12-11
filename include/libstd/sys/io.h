@@ -1,10 +1,10 @@
 #ifndef _SYS_IO_H
 #define _SYS_IO_H 1
 
-#include <stdarg.h>
-#include <stdint.h>
 #include <alloca.h>
 #include <assert.h>
+#include <stdarg.h>
+#include <stdint.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -71,11 +71,13 @@ extern "C"
 
 /**
  * @brief Format string macro.
- * 
+ *
  * This macro is a helper to create formatted strings on the stack. Very useful for functions like `open()`.
- * 
- * @note This could be reimplemented using thread local storage to avoid using `alloca()`, but we then end up needing to set a maximum limit for how many `F()` strings can be used simultaneously. Using `alloca()` means we can use as many as we want, as long as we have enough stack space, even if it is more dangerous.
- * 
+ *
+ * @note This could be reimplemented using thread local storage to avoid using `alloca()`, but we then end up needing to
+ * set a maximum limit for how many `F()` strings can be used simultaneously. Using `alloca()` means we can use as many
+ * as we want, as long as we have enough stack space, even if it is more dangerous.
+ *
  * @warning Will truncate the string if it exceeds `F_MAX_SIZE`.
  */
 #define F(format, ...) \
@@ -165,7 +167,7 @@ uint64_t write(fd_t fd, const void* buffer, uint64_t count);
 
 /**
  * @brief Wrapper for writing a null-terminated string to a file.
- * 
+ *
  * @param fd The file descriptor to write to.
  * @param string The null-terminated string to write.
  * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
@@ -190,7 +192,7 @@ uint64_t readfile(const char* path, void* buffer, uint64_t count, uint64_t offse
  *
  * The `sreadfile()` function reads the entire contents of a file into a newly allocated null-terminated string.
  * The caller is responsible for freeing the returned string.
- * 
+ *
  * Equivalent to calling `open()`, `sread()`, and `close()` in sequence.
  *
  * @param path The path to the file.
@@ -213,9 +215,9 @@ uint64_t writefile(const char* path, const void* buffer, uint64_t count, uint64_
 
 /**
  * @brief Wrapper for writing a null-terminated string directly to a file using a path.
- * 
+ *
  * Equivalent to calling `open()`, `swrite()`, and `close()` in sequence.
- * 
+ *
  * @param path The path to the file.
  * @param string The null-terminated string to write.
  * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.

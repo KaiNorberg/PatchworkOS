@@ -37,7 +37,7 @@ static uint64_t space_pmm_bitmap_alloc_pages(void** pages, uint64_t pageAmount)
 
 static inline void space_map_kernel_space_region(space_t* space, uintptr_t start, uintptr_t end)
 {
-    space_t* kernelSpace = vmm_get_kernel_space();
+    space_t* kernelSpace = vmm_kernel_space_get();
     assert(kernelSpace != NULL);
 
     pml_index_t startIndex = PML_ADDR_TO_INDEX(start, PML4);

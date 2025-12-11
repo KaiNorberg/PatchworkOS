@@ -137,7 +137,6 @@ typedef void (*rbnode_update_t)(rbnode_t* node);
 typedef struct rbtree
 {
     rbnode_t* root;
-    uint64_t size;
     rbnode_compare_t compare;
     rbnode_update_t update;
 } rbtree_t;
@@ -218,7 +217,7 @@ void rbtree_remove(rbtree_t* tree, rbnode_t* node);
  *
  * Should be called whenever the metric used for comparison changes.
  *
- * @todo Currently just calls `rbtree_remove()` followed by `rbtree_insert()`, could be optimized?
+ * @note This function is optimized assuming the common case where the node is already close to its correct position.
  *
  * @param tree The tree containing the node to update.
  * @param node The node to update.

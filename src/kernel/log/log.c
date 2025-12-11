@@ -2,6 +2,7 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/drivers/com.h>
+#include <kernel/init/boot_info.h>
 #include <kernel/log/log_file.h>
 #include <kernel/log/log_screen.h>
 #include <kernel/sched/sys_time.h>
@@ -47,8 +48,11 @@ static void log_splash(void)
         (outputs & LOG_OUTPUT_SCREEN) ? "screen " : "", (outputs & LOG_OUTPUT_FILE) ? "file " : "");
 }
 
-void log_init(const boot_gop_t* gop)
+void log_init(void)
 {
+    const boot_info_t* bootInfo = boot_info_get();
+    const boot_gop_t* gop = &bootInfo->gop;
+
     log_screen_init(gop);
 
     outputs = 0;
@@ -89,7 +93,7 @@ void log_screen_disable(void)
     outputs &= ~LOG_OUTPUT_SCREEN;
 }
 
-void log_write(const char* string, uint64_t length)
+static void log_write(const char* string, uint64_t length)
 {
     if (outputs & LOG_OUTPUT_FILE)
     {
@@ -159,6 +163,29 @@ static void log_handle_char(log_level_t level, char chr)
     }
 
     log_write(&chr, 1);
+}
+
+void log_nprint(log_level_t level, const char* string, uint64_t length)
+{
+    if (level < minLevel)
+    {
+        return;
+    }
+
+    if (level != LOG_LEVEL_PANIC)
+    {
+        lock_acquire(&lock);
+    }
+
+    for (uint64_t i = 0; i < length; i++)
+    {
+        log_handle_char(level, string[i]);
+    }
+
+    if (level != LOG_LEVEL_PANIC)
+    {
+        lock_release(&lock);
+    }
 }
 
 void log_print(log_level_t level, const char* format, ...)

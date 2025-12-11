@@ -3,11 +3,12 @@
 #include <kernel/module/module.h>
 
 #include <kernel/fs/vfs.h>
+#include <kernel/init/boot_info.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/symbol.h>
-#include <kernel/proc/process.h>
+#include <kernel/sched/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/map.h>
@@ -375,7 +376,7 @@ static uint64_t module_file_read(module_file_t* outFile, const path_t* dirPath, 
     {
         return ERR;
     }
-    DEREF_DEFER(file);
+    UNREF_DEFER(file);
 
     uint64_t fileSize = vfs_seek(file, 0, SEEK_END);
     vfs_seek(file, 0, SEEK_SET);
@@ -593,7 +594,7 @@ static uint64_t module_cache_build(void)
     {
         return ERR;
     }
-    DEREF_DEFER(dir);
+    UNREF_DEFER(dir);
 
     dirent_t buffer[PAGE_SIZE / sizeof(dirent_t)];
     while (true)
@@ -719,8 +720,12 @@ static void module_gc_collect(void)
     }
 }
 
-void module_init_fake_kernel_module(const boot_kernel_t* kernel)
+void module_init_fake_kernel_module(void)
 {
+    boot_info_t* bootInfo = boot_info_get();
+    const boot_kernel_t* kernel = &bootInfo->kernel;
+    const Elf64_File* elf = &kernel->elf;
+
     module_t* kernelModule = module_new(&fakeKernelModuleInfo);
     if (kernelModule == NULL)
     {
@@ -728,7 +733,6 @@ void module_init_fake_kernel_module(const boot_kernel_t* kernel)
     }
     kernelModule->flags |= MODULE_FLAG_LOADED | MODULE_FLAG_GC_PINNED;
 
-    const Elf64_File* elf = &kernel->elf;
     uint64_t index = 0;
     while (true)
     {
@@ -1075,7 +1079,7 @@ uint64_t module_device_attach(const char* type, const char* name, module_load_fl
     {
         return ERR;
     }
-    DEREF_DEFER(dir);
+    UNREF_DEFER(dir);
 
     module_device_t* device = module_device_get(name);
     if (device != NULL)

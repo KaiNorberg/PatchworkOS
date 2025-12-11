@@ -22,16 +22,16 @@ static void file_free(file_t* file)
         file->ops->close(file);
     }
 
-    DEREF(file->inode);
+    UNREF(file->inode);
     file->inode = NULL;
     path_put(&file->path);
 
     free(file);
 }
 
-file_t* file_new(inode_t* inode, const path_t* path, mode_t mode)
+file_t* file_new(const path_t* path, mode_t mode)
 {
-    if (inode == NULL || path == NULL)
+    if (path == NULL)
     {
         errno = EINVAL;
         return NULL;
@@ -41,6 +41,29 @@ file_t* file_new(inode_t* inode, const path_t* path, mode_t mode)
     {
         errno = EACCES;
         return NULL;
+    }
+
+    if (!dentry_is_positive(path->dentry))
+    {
+        errno = ENOENT;
+        return NULL;
+    }
+
+    if (mode & MODE_DIRECTORY)
+    {
+        if (dentry_is_file(path->dentry))
+        {
+            errno = ENOTDIR;
+            return NULL;
+        }
+    }
+    else
+    {
+        if (dentry_is_dir(path->dentry))
+        {
+            errno = EISDIR;
+            return NULL;
+        }
     }
 
     file_t* file = malloc(sizeof(file_t));
@@ -58,10 +81,9 @@ file_t* file_new(inode_t* inode, const path_t* path, mode_t mode)
     ref_init(&file->ref, file_free);
     file->pos = 0;
     file->mode = mode;
-    file->inode = REF(inode);
-    file->path = PATH_EMPTY;
-    path_copy(&file->path, path);
-    file->ops = inode->fileOps;
+    file->inode = REF(path->dentry->inode);
+    file->path = PATH_CREATE(path->mount, path->dentry);
+    file->ops = path->dentry->inode->fileOps;
     file->private = NULL;
 
     return file;

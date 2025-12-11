@@ -13,7 +13,7 @@ aml_object_t* aml_mid(aml_state_t* state, aml_object_t* bufferString, aml_uint_t
     {
         return NULL;
     }
-    DEREF_DEFER(result);
+    UNREF_DEFER(result);
 
     if (bufferString->type == AML_BUFFER)
     {

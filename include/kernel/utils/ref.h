@@ -51,7 +51,7 @@ typedef struct ref
  *
  * @param ptr Pointer to the struct containing `ref_t` as its first member, can be `NULL`.
  */
-#define DEREF_DEFER(ptr) __attribute__((cleanup(ref_defer_cleanup))) void* CONCAT(p, __COUNTER__) = (ptr)
+#define UNREF_DEFER(ptr) __attribute__((cleanup(ref_defer_cleanup))) void* CONCAT(p, __COUNTER__) = (ptr)
 
 /**
  * @brief Increment reference count
@@ -77,7 +77,7 @@ typedef struct ref
  *
  * @param ptr Pointer to the struct containing `ref_t` as its first member, can be `NULL`.
  */
-#define DEREF(ptr) \
+#define UNREF(ptr) \
     ({ \
         ref_t* ref = (ref_t*)ptr; \
         ref_dec(ref); \

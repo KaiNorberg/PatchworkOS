@@ -1,6 +1,6 @@
-#include <sys/io.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <sys/io.h>
 
 char* sread(fd_t fd)
 {

@@ -2,15 +2,15 @@ extern main
 extern exit
 extern _init
 extern _std_init
+extern environ
 
 global _start:function (_start.end - _start)
 
 section .text
 _start:	
-    mov rbp, 0
-	push rbp
-	push rbp
-	mov rbp, rsp
+    mov rbp, rsp    
+
+    ; Check kernel_sched_loader for the stack layout and register setup
 
 	push rsi
 	push rdi

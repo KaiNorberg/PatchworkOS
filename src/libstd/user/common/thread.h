@@ -3,11 +3,12 @@
 #include <errno.h>
 #include <stdatomic.h>
 #include <stdbool.h>
-#include <sys/list.h>
 #include <sys/proc.h>
 #include <threads.h>
 
 #define _MTX_SPIN_COUNT 100
+
+#define _THREADS_MAX 2048
 
 #define _THREAD_ENTRY_ATTRIBUTES __attribute__((noreturn)) __attribute__((force_align_arg_pointer))
 
@@ -22,17 +23,17 @@ typedef void (*_thread_entry_t)(_thread_t*);
 
 typedef struct _thread
 {
-    list_entry_t entry;
     atomic_uint64_t state;
     tid_t id;
     int result;
     errno_t err;
-    void* private;
+    thrd_start_t func;
+    void* arg;
 } _thread_t;
 
 void _threading_init(void);
 
-_thread_t* _thread_new(_thread_entry_t entry, void* private);
+_thread_t* _thread_new(thrd_start_t func, void* arg);
 
 void _thread_free(_thread_t* thread);
 

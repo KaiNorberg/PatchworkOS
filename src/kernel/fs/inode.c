@@ -25,7 +25,7 @@ static void inode_free(inode_t* inode)
         {
             inode->superblock->ops->freeInode(inode->superblock, inode);
         }
-        DEREF(inode->superblock);
+        UNREF(inode->superblock);
 
         if (inode->superblock->ops == NULL || inode->superblock->ops->freeInode == NULL)
         {
@@ -66,7 +66,7 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
     inode->number = number;
     inode->type = type;
     inode->flags = INODE_NONE;
-    inode->linkCount = 1;
+    atomic_init(&inode->dentryCount, 0);
     inode->size = 0;
     inode->blocks = 0;
     inode->accessTime = sys_time_unix_epoch();

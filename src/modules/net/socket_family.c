@@ -40,7 +40,7 @@ static void socket_factory_close(file_t* file)
     socket_t* sock = file->private;
     if (sock != NULL)
     {
-        DEREF(sock);
+        UNREF(sock);
     }
 }
 
@@ -84,8 +84,8 @@ uint64_t socket_family_register(const socket_family_ops_t* ops, const char* name
         return ERR;
     }
 
-    family->dir = sysfs_dir_new(mount->root, family->name, NULL, family);
-    DEREF(mount);
+    family->dir = sysfs_dir_new(mount->source, family->name, NULL, family);
+    UNREF(mount);
     if (family->dir == NULL)
     {
         return ERR;
@@ -132,11 +132,11 @@ error:;
     socket_factory_t* factory;
     LIST_FOR_EACH_SAFE(factory, temp, &family->factories, entry)
     {
-        DEREF(factory->file);
+        UNREF(factory->file);
         free(factory);
     }
 
-    DEREF(family->dir);
+    UNREF(family->dir);
     return ERR;
 }
 
@@ -182,11 +182,11 @@ void socket_family_unregister(const char* name)
     socket_factory_t* factory;
     LIST_FOR_EACH_SAFE(factory, temp, &family->factories, entry)
     {
-        DEREF(factory->file);
+        UNREF(factory->file);
         free(factory);
     }
 
-    DEREF(family->dir);
+    UNREF(family->dir);
     free(family);
     LOG_INFO("unregistered family %s\n", family->name);
     return;
@@ -217,7 +217,7 @@ uint64_t socket_family_get_dir(socket_family_t* family, path_t* outPath)
     }
 
     path_set(outPath, mount, family->dir);
-    DEREF(mount);
+    UNREF(mount);
 
     return 0;
 }

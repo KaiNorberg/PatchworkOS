@@ -67,7 +67,7 @@ const syscall_descriptor_t* syscall_get_descriptor(uint64_t number)
     return &_syscallTableStart[number];
 }
 
-uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx, uint64_t r8, uint64_t r9,
+uint64_t syscall_handler(uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5, uint64_t arg6,
     uint64_t number)
 {
     const syscall_descriptor_t* desc = syscall_get_descriptor(number);
@@ -80,7 +80,7 @@ uint64_t syscall_handler(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t rcx,
     perf_syscall_begin();
 
     // This is safe for any input type and any number of arguments up to 6 as they will simply be ignored.
-    uint64_t result = desc->handler(rdi, rsi, rdx, rcx, r8, r9);
+    uint64_t result = desc->handler(arg1, arg2, arg3, arg4, arg5, arg6);
 
     perf_syscall_end();
     if (thread_is_note_pending(sched_thread()))

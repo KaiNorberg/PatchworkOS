@@ -4,7 +4,7 @@
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
-#include <kernel/proc/process.h>
+#include <kernel/sched/process.h>
 #include <kernel/sched/sched.h>
 
 #include <stdint.h>
@@ -123,7 +123,7 @@ static uint64_t const_init(void)
     zeroFile = sysfs_file_new(NULL, "zero", NULL, &zeroOps, NULL);
     if (zeroFile == NULL)
     {
-        DEREF(oneFile);
+        UNREF(oneFile);
         LOG_ERR("failed to init zero file\n");
         return ERR;
     }
@@ -131,8 +131,8 @@ static uint64_t const_init(void)
     nullFile = sysfs_file_new(NULL, "null", NULL, &nullOps, NULL);
     if (nullFile == NULL)
     {
-        DEREF(oneFile);
-        DEREF(zeroFile);
+        UNREF(oneFile);
+        UNREF(zeroFile);
         LOG_ERR("failed to init null file\n");
         return ERR;
     }
@@ -142,9 +142,9 @@ static uint64_t const_init(void)
 
 static void const_deinit(void)
 {
-    DEREF(oneFile);
-    DEREF(zeroFile);
-    DEREF(nullFile);
+    UNREF(oneFile);
+    UNREF(zeroFile);
+    UNREF(nullFile);
 }
 
 /** @} */

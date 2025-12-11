@@ -6,12 +6,13 @@
 
 #include <kernel/fs/mount.h>
 #include <kernel/fs/namespace.h>
+#include <kernel/init/boot_info.h>
 #include <kernel/init/init.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/module/module.h>
-#include <kernel/proc/process.h>
+#include <kernel/sched/process.h>
 #include <kernel/sched/sched.h>
 
 #include <boot/boot_info.h>
@@ -35,8 +36,8 @@ dentry_t* acpi_get_sysfs_root(void)
 {
     if (!mountInitialzed)
     {
-        mount = sysfs_mount_new(NULL, "acpi", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS,
-            NULL);
+        mount = sysfs_mount_new(NULL, "acpi", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT,
+            MODE_DIRECTORY | MODE_ALL_PERMS, NULL);
         if (mount == NULL)
         {
             panic(NULL, "failed to initialize ACPI sysfs group");
@@ -45,7 +46,7 @@ dentry_t* acpi_get_sysfs_root(void)
         mountInitialzed = true;
     }
 
-    return REF(mount->root);
+    return REF(mount->source);
 }
 
 void acpi_reclaim_memory(const boot_memory_map_t* map)
@@ -69,7 +70,7 @@ uint64_t _module_procedure(const module_event_t* event)
     {
     case MODULE_EVENT_DEVICE_ATTACH:
     {
-        boot_info_t* bootInfo = init_boot_info_get();
+        boot_info_t* bootInfo = boot_info_get();
         if (bootInfo == NULL || bootInfo->rsdp == NULL)
         {
             LOG_ERR("no RSDP provided by bootloader\n");

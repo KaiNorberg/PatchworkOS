@@ -28,6 +28,12 @@ typedef struct path path_t;
  * @brief Mount ID type.
  */
 typedef uint64_t mount_id_t;
+
+/**
+ * @brief Macro to check if a mount is the root filesystem.
+ */
+#define MOUNT_IS_ROOT(mount) ((mount)->parent == (mount))
+
 /**
  * @brief Mount structure.
  * @struct mount_t
@@ -38,11 +44,12 @@ typedef struct mount
 {
     ref_t ref;
     mount_id_t id;
+    dentry_t*
+        source; ///< The dentry to appear at target once mounted, usually the root dentry of the mounted filesystem.
+    dentry_t* target;         ///< The dentry which the source is mounted to, can be `NULL` for the root filesystem.
     superblock_t* superblock; ///< The superblock of the mounted filesystem.
-    dentry_t* mountpoint;     ///< The dentry that this filesystem is mounted on, can be `NULL` for the root filesystem.
-    dentry_t* root;           ///< The root dentry of the mounted filesystem.
     mount_t* parent;          ///< The parent mount, can be `NULL` for the root filesystem.
-    mode_t mode;              ///< The maximum permissions for this mount.
+    mode_t mode;              ///< Specifies the maximum permissions for this mount and if it is a directory or a file.
 } mount_t;
 
 /**
@@ -50,19 +57,20 @@ typedef struct mount
  *
  * This does not add the mount to the mount cache, that must be done separately with `vfs_add_mount()`.
  *
- * There is no `mount_free()` instead use `DEREF()`.
- *
- * Note that the `root` dentry is not necessarily the same as `superblock->root`, instead its the directory that will
- * "appear" to be the root of the newly mounted filesystem, the dentry that gets jumped to during the lookup. This is
- * important for implementing bind mounts.
+ * There is no `mount_free()` instead use `UNREF()`.
  *
  * @param superblock The superblock of the mounted filesystem.
- * @param root The root dentry of the mounted filesystem.
- * @param mountpoint The dentry that this filesystem will be mounted on, can be `NULL` for the root filesystem.
+ * @param source The dentry to appear at target once mounted, usually the root dentry of the mounted filesystem.
+ * @param target The dentry which the source is mounted to, can be `NULL` for the root filesystem.
  * @param parent The parent mount, can be `NULL` for the root filesystem.
- * @param mode The maximum allowed permissions for files/directories opened under this mount.
- * @return On success, the new mount. On failure, returns `NULL`.
+ * @param mode Specifies the maximum permissions for this mount and if it is a directory or a file.
+ * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `ENOENT`: Source or target dentry is negative.
+ * - `ENOTDIR`: Source is a file but mode specifies a directory.
+ * - `EISDIR`: Source is a directory but mode specifies a file.
+ * - `ENOMEM`: Out of memory.
  */
-mount_t* mount_new(superblock_t* superblock, dentry_t* root, dentry_t* mountpoint, mount_t* parent, mode_t mode);
+mount_t* mount_new(superblock_t* superblock, dentry_t* source, dentry_t* target, mount_t* parent, mode_t mode);
 
 /** @} */

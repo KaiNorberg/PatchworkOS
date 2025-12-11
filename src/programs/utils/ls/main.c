@@ -139,7 +139,7 @@ static uint64_t print_dir(const char* path)
     return 0;
 }
 
-uint32_t main(uint32_t argc, char** argv)
+int main(int argc, char** argv)
 {
     if (argc <= 1)
     {
@@ -150,7 +150,7 @@ uint32_t main(uint32_t argc, char** argv)
     }
     else
     {
-        for (uint32_t i = 1; i < argc; i++)
+        for (int i = 1; i < argc; i++)
         {
             if (print_dir(argv[i]) == ERR)
             {

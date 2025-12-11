@@ -1,10 +1,11 @@
 #include <kernel/drivers/abstract/fb.h>
+#include <kernel/init/boot_info.h>
 #include <kernel/init/init.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
-#include <kernel/proc/process.h>
+#include <kernel/sched/process.h>
 #include <kernel/sched/sched.h>
 
 #include <errno.h>
@@ -51,7 +52,7 @@ static fb_info_t info;
 
 static uint64_t gop_init(void)
 {
-    boot_info_t* bootInfo = init_boot_info_get();
+    boot_info_t* bootInfo = boot_info_get();
     if (bootInfo == NULL || bootInfo->gop.virtAddr == NULL)
     {
         LOG_ERR("no GOP provided by bootloader");

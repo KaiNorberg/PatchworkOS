@@ -43,7 +43,7 @@ static void aml_object_free(aml_object_t* object)
 
     if (object->dir != NULL)
     {
-        DEREF(object->dir);
+        UNREF(object->dir);
         object->dir = NULL;
     }
 
@@ -128,7 +128,7 @@ void aml_object_clear(aml_object_t* object)
     case AML_BUFFER_FIELD:
         if (object->bufferField.target != NULL)
         {
-            DEREF(object->bufferField.target);
+            UNREF(object->bufferField.target);
         }
         object->bufferField.target = NULL;
         object->bufferField.bitOffset = 0;
@@ -148,21 +148,21 @@ void aml_object_clear(aml_object_t* object)
         switch (object->fieldUnit.fieldType)
         {
         case AML_FIELD_UNIT_INDEX_FIELD:
-            DEREF(object->fieldUnit.index);
+            UNREF(object->fieldUnit.index);
             object->fieldUnit.index = NULL;
-            DEREF(object->fieldUnit.data);
+            UNREF(object->fieldUnit.data);
             object->fieldUnit.data = NULL;
             break;
         case AML_FIELD_UNIT_BANK_FIELD:
-            DEREF(object->fieldUnit.bank);
+            UNREF(object->fieldUnit.bank);
             object->fieldUnit.bank = NULL;
-            DEREF(object->fieldUnit.bankValue);
+            UNREF(object->fieldUnit.bankValue);
             object->fieldUnit.bankValue = NULL;
-            DEREF(object->fieldUnit.opregion);
+            UNREF(object->fieldUnit.opregion);
             object->fieldUnit.opregion = NULL;
             break;
         case AML_FIELD_UNIT_FIELD:
-            DEREF(object->fieldUnit.opregion);
+            UNREF(object->fieldUnit.opregion);
             object->fieldUnit.opregion = NULL;
             break;
         default:
@@ -189,7 +189,7 @@ void aml_object_clear(aml_object_t* object)
     case AML_OBJECT_REFERENCE:
         if (object->objectReference.target != NULL)
         {
-            DEREF(object->objectReference.target);
+            UNREF(object->objectReference.target);
         }
         object->objectReference.target = NULL;
         break;
@@ -203,7 +203,7 @@ void aml_object_clear(aml_object_t* object)
         {
             for (uint64_t i = 0; i < object->package.length; i++)
             {
-                DEREF(object->package.elements[i]);
+                UNREF(object->package.elements[i]);
                 object->package.elements[i] = NULL;
             }
             if (object->package.length > AML_SMALL_PACKAGE_SIZE)
@@ -236,7 +236,7 @@ void aml_object_clear(aml_object_t* object)
     case AML_ALIAS:
         if (object->alias.target != NULL)
         {
-            DEREF(object->alias.target);
+            UNREF(object->alias.target);
         }
         object->alias.target = NULL;
         break;
@@ -244,7 +244,7 @@ void aml_object_clear(aml_object_t* object)
         aml_patch_up_remove_unresolved(&object->unresolved);
         if (object->unresolved.from != NULL)
         {
-            DEREF(object->unresolved.from);
+            UNREF(object->unresolved.from);
         }
         object->unresolved.from = NULL;
         object->unresolved.nameString = (aml_name_string_t){0};
@@ -255,14 +255,14 @@ void aml_object_clear(aml_object_t* object)
     case AML_LOCAL:
         if (object->local.value != NULL)
         {
-            DEREF(object->local.value);
+            UNREF(object->local.value);
         }
         object->local.value = NULL;
         break;
     case AML_ARG:
         if (object->arg.value != NULL)
         {
-            DEREF(object->arg.value);
+            UNREF(object->arg.value);
         }
         object->arg.value = NULL;
         break;
@@ -615,7 +615,7 @@ uint64_t aml_buffer_field_set(aml_object_t* object, aml_object_t* target, aml_bi
     }
     else
     {
-        DEREF(object->bufferField.target);
+        UNREF(object->bufferField.target);
     }
 
     object->bufferField.target = REF(target);
@@ -745,7 +745,7 @@ uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_t* opr
     {
         return ERR;
     }
-    DEREF_DEFER(bankValueObj);
+    UNREF_DEFER(bankValueObj);
     if (aml_integer_set(bankValueObj, bankValue) == ERR)
     {
         return ERR;
@@ -844,7 +844,7 @@ static inline aml_method_t* aml_method_find_recursive(aml_object_t* current, con
                     aml_method_find_recursive(CONTAINER_OF_SAFE(result, aml_object_t, method), addr);
                 if (methodInMethod != NULL)
                 {
-                    DEREF(result);
+                    UNREF(result);
                     return methodInMethod; // Transfer ownership
                 }
                 return result; // Transfer ownership
@@ -868,7 +868,7 @@ aml_method_t* aml_method_find(const uint8_t* addr)
     {
         return NULL;
     }
-    DEREF_DEFER(root);
+    UNREF_DEFER(root);
 
     return aml_method_find_recursive(root, addr); // Transfer ownership
 }
@@ -902,7 +902,7 @@ uint64_t aml_object_reference_set(aml_object_t* object, aml_object_t* target)
 
     if (object->type == AML_OBJECT_REFERENCE)
     {
-        DEREF(object->objectReference.target);
+        UNREF(object->objectReference.target);
         object->objectReference.target = REF(target);
         return 0;
     }
@@ -971,7 +971,7 @@ uint64_t aml_package_set(aml_object_t* object, uint64_t length)
         {
             for (uint64_t j = 0; j < i; j++)
             {
-                DEREF(object->package.elements[j]);
+                UNREF(object->package.elements[j]);
             }
             free(object->package.elements);
             object->package.elements = NULL;
@@ -1183,7 +1183,7 @@ aml_object_t* aml_alias_traverse(aml_alias_t* alias)
         {
             return NULL;
         }
-        DEREF(current);
+        UNREF(current);
         current = next;
     }
     return current;

@@ -346,7 +346,7 @@ typedef int128_t lag_t;
 /**
  * @brief Convert a fixed-point value to a regular integer.
  */
-#define SCHED_FIXED_FROM(x) ((int64_t)(((int128_t)(x)) >> SCHED_FIXED_POINT))
+#define SCHED_FIXED_FROM(x) ((int64_t)((int128_t)(x) >> SCHED_FIXED_POINT))
 
 /**
  * @brief The maximum weight a thread can have.
@@ -376,7 +376,6 @@ typedef struct sched_client
     vclock_t vdeadline;
     vclock_t veligible;    ///< The virtual time at which the thread becomes eligible to run (lag >= 0).
     vclock_t vminEligible; ///< The minimum virtual eligible time of the subtree in the runqueue.
-    clock_t start;         ///< The real time when the thread started executing its current time slice.
     clock_t stop;          ///< The real time when the thread previously stopped executing.
     cpu_t* lastCpu;        ///< The last CPU the thread was scheduled on, it stoped running at `stop` time.
 } sched_client_t;
@@ -422,12 +421,24 @@ void sched_init(sched_t* sched);
 _NORETURN void sched_start(thread_t* bootThread);
 
 /**
- * @brief Sleeps the current thread for a specified duration in nanoseconds.
+ * @brief Submits a thread to the scheduler.
  *
- * @param timeout The duration to sleep in nanoseconds.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * If the thread has previously ran within `CONFIG_CACHE_HOT_THRESHOLD` nanoseconds, it will be submitted to the same
+ * CPU it last ran on, otherwise it will be submitted to the least loaded CPU.
+ *
+ * @param thread The thread to submit.
  */
-uint64_t sched_nanosleep(clock_t timeout);
+void sched_submit(thread_t* thread);
+
+/**
+ * @brief Perform a scheduling operation.
+ *
+ * This function is called on every interrupt to provide a scheduling opportunity.
+ *
+ * @param frame The interrupt frame.
+ * @param self The cpu performing the scheduling operation.
+ */
+void sched_do(interrupt_frame_t* frame, cpu_t* self);
 
 /**
  * @brief Checks if the CPU is currently idle.
@@ -472,13 +483,29 @@ thread_t* sched_thread_unsafe(void);
 process_t* sched_process_unsafe(void);
 
 /**
+ * @brief Sleeps the current thread for a specified duration in nanoseconds.
+ *
+ * @param timeout The duration to sleep in nanoseconds.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t sched_nanosleep(clock_t timeout);
+
+/**
+ * @brief Yield the current thread's time slice to allow other threads to run.
+ *
+ * @note Currently just sleeps for 1ms as we cant really yield without weird lag math.
+ *
+ */
+void sched_yield(void);
+
+/**
  * @brief Terminates the currently executing process and all it's threads.
  *
  * @note Will never return, instead it triggers an interrupt that kills the current thread.
  *
  * @param status The exit status of the process.
  */
-_NORETURN void sched_process_exit(uint64_t status);
+_NORETURN void sched_process_exit(int32_t status);
 
 /**
  * @brief Terminates the currently executing thread.
@@ -486,33 +513,6 @@ _NORETURN void sched_process_exit(uint64_t status);
  * @note Will never return, instead it triggers an interrupt that kills the thread.
  */
 _NORETURN void sched_thread_exit(void);
-
-/**
- * @brief Yield the current thread's time slice to allow other threads to run.
- * 
- * @todo Currently not implemented as we cant really yield as that would break fairness. Maybe we could pretend to leave and re-enter?
- */
-void sched_yield(void);
-
-/**
- * @brief Submits a thread to the scheduler.
- *
- * If the thread has previously ran within `CONFIG_CACHE_HOT_THRESHOLD` nanoseconds, it will be submitted to the same
- * CPU it last ran on, otherwise it will be submitted to the least loaded CPU.
- *
- * @param thread The thread to submit.
- */
-void sched_submit(thread_t* thread);
-
-/**
- * @brief Perform a scheduling operation.
- *
- * This function is called on every interrupt to provide a scheduling opportunity.
- *
- * @param frame The interrupt frame.
- * @param self The cpu performing the scheduling operation.
- */
-void sched_do(interrupt_frame_t* frame, cpu_t* self);
 
 /**
  * @brief The idle loop for the scheduler.

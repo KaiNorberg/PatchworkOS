@@ -2,6 +2,7 @@
 
 #include <kernel/fs/path.h>
 #include <kernel/sync/mutex.h>
+#include <kernel/sync/seqlock.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 
@@ -21,11 +22,32 @@ typedef struct superblock superblock_t;
  * @ingroup kernel_fs
  *
  * A dentry represents the actual name in the filesystem hierarchy. It can be either positive, meaning it has an
- * associated inode, or negative, meaning it does not have an associated inode. When traversing a filesystem this is the
- * thing you actually walk through.
+ * associated inode, or negative, meaning it does not have an associated inode.
+ *
+ * ## Mountpoints and Root Dentries
+ *
+ * The difference between a mountpoint dentry and a root dentry can be a bit confusing, so here is a quick
+ * explanation. When a filesystem is mounted the dentry that it gets mounted to becomes a mountpoint, any data that
+ * was there before becomes hidden and when we traverse to that dentry we "jump" to the root dentry of the
+ * mounted filesystem. The root dentry of the mounted filesystem is simply the root directory of that filesystem.
+ *
+ * This means that the mountpoint does not "become" the root of the mounted filesystem, it simply points to it.
+ *
+ * Finally, note that just becouse a dentry is a mountpoint does not mean that it can be traversed by the current
+ * process, a process can only traverse a mountpoint if it is visible in its namespace, if its not visible the
+ * dentry acts exactly like a normal dentry.
  *
  * @{
  */
+
+/**
+ * @brief Dentry flags.
+ * @enum dentry_flags_t
+ */
+typedef enum
+{
+    DENTRY_NEGATIVE = 1 << 0, ///< Dentry is negative (no associated inode).
+} dentry_flags_t;
 
 /**
  * @brief Dentry ID type.
@@ -40,31 +62,11 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is the root, false otherwise.
  */
-#define DENTRY_IS_ROOT(dentry) (dentry->parent == dentry)
-
-/**
- * @brief Flags for a dentry.
- * @enum dentry_flags_t
- */
-typedef enum
-{
-    DENTRY_NONE = 0, ///< No flags.
-    /**
-     * This dentry is negative, meaning it does not have an associated inode.
-     *
-     * A negative dentry is created when a lookup for a name in a directory fails, it is used to cache the fact that
-     * the name does not exist in that directory and also allows us to avoid race conditions where two processes try to
-     * create the same file at the same time.
-     */
-    DENTRY_NEGATIVE = 1 << 1,
-} dentry_flags_t;
+#define DENTRY_IS_ROOT(dentry) ((dentry)->parent == (dentry))
 
 /**
  * @brief Dentry operations structure.
  * @struct dentry_ops_t
- *
- * Note that the dentrys mutex will be acquired by the vfs and any implemented operations do not need to acquire it
- * again.
  */
 typedef struct dentry_ops
 {
@@ -75,40 +77,25 @@ typedef struct dentry_ops
 /**
  * @brief Directory entry structure.
  * @struct dentry_t
+ *
+ * A dentry structure is protected by the mutex of its inode.
  */
 typedef struct dentry
 {
     ref_t ref;
     dentry_id_t id;
-    char name[MAX_NAME];
-    inode_t* inode;
+    char name[MAX_NAME]; ///< Constant after creation.
+    inode_t* inode;      ///< Will be `NULL` if the dentry is negative, once positive it will never be `NULL`.
+    _Atomic(dentry_flags_t) flags;
     dentry_t* parent;
     list_entry_t siblingEntry;
     list_t children;
-    mutex_t childrenMutex;
     superblock_t* superblock;
     const dentry_ops_t* ops;
     void* private;
     map_entry_t mapEntry;
-    _Atomic(dentry_flags_t) flags;
-    /**
-     * The number of mounts on this dentry.
-     *
-     * If greater then 0 and a mountpoint mounted here is in a accessible namespace, we can traverse from this dentry to
-     * the root dentry of the mounted filesystem.
-     *
-     * The difference between a mountpoint dentry and a root dentry can be a bit confusing, so here is a quick
-     * explanation. When a filesystem is mounted the dentry that it gets mounted to becomes a mountpoint, any data that
-     * was there before becomes hidden and when we traverse to that dentry we "jump" over to the root dentry of the
-     * mounted filesystem. The root dentry of the mounted filesystem is simply the root directory of that filesystem.
-     *
-     * This means that the mountpoint does not "become" the root of the mounted filesystem, it simply points to it.
-     *
-     * Finally, note that just becouse a dentry is a mountpoint does not mean that it can be traversed by the current
-     * process, a process can only traverse a mountpoint if it is visible in its namespace, if its not visible the
-     * dentry acts exactly like a normal dentry.
-     */
-    atomic_uint64_t mountCount;
+    _Atomic(uint64_t) mountCount; ///< Number of mounts targeting this dentry.
+    list_entry_t otherEntry;      ///< Made available for use by any other subsystems for convenience.
 } dentry_t;
 
 /**
@@ -119,10 +106,7 @@ typedef struct dentry
  * creating new files. While the dentry is negative it is not possible to create another dentry of the same name in the
  * same parent, and any lookup to the dentry will fail until it is made positive.
  *
- * Note that this function will set `errno == EEXIST` if a dentry with the same name and parent already exists in the
- * dentry cache, this is very useful for solving race conditions when looking up dentries.
- *
- * There is no `dentry_free()` instead use `DEREF()`.
+ * There is no `dentry_free()` instead use `UNREF()`.
  *
  * @param superblock The superblock the dentry belongs to.
  * @param parent The parent dentry, can be NULL if this is a root dentry.
@@ -157,7 +141,7 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name);
 /**
  * @brief Make a dentry positive by associating it with an inode.
  *
- * This will also add the dentry to its parent's list of children, set the dentrys inode and its flags to positive.
+ * This function is expected to be protected by the parent inode's mutex.
  *
  * @param dentry The dentry to make positive, or `NULL` for no-op.
  * @param inode The inode to associate with the dentry, or `NULL` for no-op.
@@ -165,27 +149,28 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name);
 void dentry_make_positive(dentry_t* dentry, inode_t* inode);
 
 /**
- * @brief Make a dentry negative by disassociating it from its inode.
+ * @brief Check if a dentry is positive.
  *
- * This will also remove the dentry from its parent's list of children.
- *
- * @param dentry The dentry to make negative, or `NULL` for no-op.
+ * @param dentry The dentry to check.
+ * @return true if the dentry is positive, false if it is negative.
  */
-void dentry_make_negative(dentry_t* dentry);
+bool dentry_is_positive(dentry_t* dentry);
 
 /**
- * @brief Increments the mount count of a dentry.
+ * @brief Check if the inode associated with a dentry is a file.
  *
- * @param dentry The dentry to increment the mount count of.
+ * @param dentry The dentry to check.
+ * @return true if the dentry is a file, false otherwise or if the dentry is negative.
  */
-void dentry_inc_mount_count(dentry_t* dentry);
+bool dentry_is_file(dentry_t* dentry);
 
 /**
- * @brief Decrements the mount count of a dentry.
+ * @brief Check if the inode associated with a dentry is a directory.
  *
- * @param dentry The dentry to decrement the mount count of.
+ * @param dentry The dentry to check.
+ * @return true if the dentry is a directory, false otherwise or if the dentry is negative.
  */
-void dentry_dec_mount_count(dentry_t* dentry);
+bool dentry_is_dir(dentry_t* dentry);
 
 /**
  * @brief Helper function for a basic getdents.

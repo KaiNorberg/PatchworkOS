@@ -53,7 +53,7 @@ typedef struct namespace
     list_t children;     ///< List of child namespaces.
     namespace_t* parent; ///< The parent namespace, can be `NULL`.
     list_t mounts;       ///< List of mounts in this namespace.
-    map_t mountMap;      ///< Stores the same mounts as `mounts` but in a map for fast lookup.
+    map_t mountMap;      ///< Map used to go from source dentries to namespace mounts.
     mount_t* root;       ///< The root mount of the namespace.
     rwlock_t lock;
     // clang-format off
@@ -65,68 +65,74 @@ typedef struct namespace
  *
  * @param ns The namespace to initialize.
  * @param parent The parent namespace to inherit all mounts from, can be `NULL` to create an empty namespace.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `ENOMEM`: Out of memory.
  */
-uint64_t namespace_init(namespace_t* ns, namespace_t* parent);
+void namespace_init(namespace_t* ns);
 
 /**
- * @brief Deinitializes a namespace.
- *
- * @note The parent of the namespace will inherit all child namespaces of the deinitialized namespace.
+ * @brief Clear and deinitialize a namespace.
  *
  * @param ns The namespace to deinitialize.
  */
 void namespace_deinit(namespace_t* ns);
 
 /**
- * @brief Traverse a mountpoint path to the root of the mounted filesystem.
+ * @brief Sets the parent of a namespace and inherits all mounts from the parent.
  *
- * @param ns The namespace to use.
- * @param mountpoint The mountpoint path to traverse.
- * @param out The output path, if the mountpoint exists, the root of the mounted filesystem, otherwise will be set to
- * `mountpoint`.
+ * @param ns The namespace to set the parent of.
+ * @param parent The new parent namespace.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EBUSY`: The namespace already has a parent.
+ * - `ENOMEM`: Out of memory.
+ */
+uint64_t namespace_set_parent(namespace_t* ns, namespace_t* parent);
+
+/**
+ * @brief If the given path is a mountpoint in the namespace, traverse to the mounted filesystem, else no-op.
+ *
+ * @param ns The namespace to traverse in.
+ * @param path The mountpoint path to traverse, will be updated to the new path if traversed.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  */
-uint64_t namespace_traverse_mount(namespace_t* ns, const path_t* mountpoint, path_t* out);
+uint64_t namespace_traverse(namespace_t* ns, path_t* path);
 
 /**
  * @brief Mount a filesystem in a namespace.
  *
  * @param ns The namespace to mount in.
  * @param deviceName The device name, or `VFS_DEVICE_NAME_NONE` for no device.
- * @param mountpoint The mountpoint path.
+ * @param target The target path to mount to.
  * @param fsName The filesystem name.
  * @param flags Mount flags.
  * @param mode The maximum allowed permissions for files/directories opened under this mount.
  * @param private Private data for the filesystem's mount function.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
+ * - `EXDEV`: The target path is not visible in the namespace.
  * - `ENODEV`: The specified filesystem does not exist.
- * - `EIO`: The root is negative, should never happen if the filesystem is implemented correctly.
  * - `EBUSY`: Attempt to mount to already existing root.
  * - `ENOMEM`: Out of memory.
- * - `ENOENT`: The root does not exist or the mountpoint is negative.
- * - Other errors as returned by the filesystem's `mount()` function.
+ * - `ENOENT`: The root does not exist or the target is negative.
+ * - Other errors as returned by the filesystem's `mount()` function or `mount_new()`.
  */
-mount_t* namespace_mount(namespace_t* ns, path_t* mountpoint, const char* deviceName, const char* fsName,
+mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* deviceName, const char* fsName,
     mount_flags_t flags, mode_t mode, void* private);
 
 /**
- * @brief Bind a directory to a mountpoint in a namespace.
+ * @brief Bind a source dentry to a target path in a namespace.
  *
  * @param ns The namespace to mount in.
- * @param source The source directory to bind.
- * @param mountpoint The mountpoint path.
+ * @param source The source dentry to bind from, could be either a file or directory and from any filesystem.
+ * @param target The target path to bind to.
  * @param flags Mount flags.
  * @param mode The maximum allowed permissions for files/directories opened under this mount.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
- * - `ENOENT`: The source is negative.
  * - `ENOMEM`: Out of memory.
+ * - Other errors as returned by `mount_new()`.
  */
-mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* mountpoint, mount_flags_t flags, mode_t mode);
+mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* target, mount_flags_t flags, mode_t mode);
 
 /**
  * @brief Get the root path of a namespace.
@@ -138,5 +144,14 @@ mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* mountpoint, m
  * - `ENOENT`: The namespace has no root mount.
  */
 uint64_t namespace_get_root_path(namespace_t* ns, path_t* out);
+
+/**
+ * @brief Clears all mounts from a namespace.
+ *
+ * @note The parent of the namespace will inherit all child namespaces of the deinitialized namespace.
+ *
+ * @param ns The namespace to clear.
+ */
+void namespace_clear(namespace_t* ns);
 
 /** @} */

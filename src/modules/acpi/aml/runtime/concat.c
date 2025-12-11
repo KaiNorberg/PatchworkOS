@@ -21,7 +21,7 @@ static uint64_t aml_concat_resolve_to_integer(aml_state_t* state, aml_object_t* 
         }
 
         *out = temp->integer.value;
-        DEREF(temp);
+        UNREF(temp);
         return 0;
     }
     else
@@ -208,7 +208,7 @@ static uint64_t aml_concat_string(aml_state_t* state, aml_object_t* source1, aml
     {
         return ERR;
     }
-    DEREF_DEFER(temp2);
+    UNREF_DEFER(temp2);
 
     size_t len1 = strlen(str1);
     size_t len2 = strlen(str2);
@@ -236,7 +236,7 @@ static uint64_t aml_concat_buffer(aml_state_t* state, aml_object_t* source1, aml
     {
         return ERR;
     }
-    DEREF_DEFER(temp2);
+    UNREF_DEFER(temp2);
 
     if (aml_buffer_set_empty(result, len1 + len2) == ERR)
     {
@@ -257,7 +257,7 @@ static uint64_t aml_concat_other_types(aml_state_t* state, aml_object_t* source1
     {
         return ERR;
     }
-    DEREF_DEFER(temp1);
+    UNREF_DEFER(temp1);
 
     const char* str2;
     aml_object_t* temp2 = NULL;
@@ -265,7 +265,7 @@ static uint64_t aml_concat_other_types(aml_state_t* state, aml_object_t* source1
     {
         return ERR;
     }
-    DEREF_DEFER(temp2);
+    UNREF_DEFER(temp2);
 
     size_t len1 = strlen(str1);
     size_t len2 = strlen(str2);

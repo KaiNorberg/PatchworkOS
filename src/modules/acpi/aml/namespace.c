@@ -36,11 +36,11 @@ static inline aml_object_t* aml_namespace_traverse_parents(aml_object_t* current
     {
         if (current == NULL || current->parent == NULL)
         {
-            DEREF(current);
+            UNREF(current);
             return NULL;
         }
         aml_object_t* parent = REF(current->parent);
-        DEREF(current);
+        UNREF(current);
         current = parent;
     }
     return current;
@@ -56,7 +56,7 @@ static inline aml_object_t* aml_namespace_search_single_name(aml_overlay_t* over
         while (current->parent != NULL)
         {
             aml_object_t* parent = REF(current->parent);
-            DEREF(current);
+            UNREF(current);
             current = parent;
 
             next = aml_namespace_find_child(overlay, current, name);
@@ -67,7 +67,7 @@ static inline aml_object_t* aml_namespace_search_single_name(aml_overlay_t* over
         }
     }
 
-    DEREF(current);
+    UNREF(current);
     return next;
 }
 
@@ -124,7 +124,7 @@ uint64_t aml_namespace_expose(void)
     assert(acpiDir != NULL);
 
     namespaceDir = sysfs_dir_new(acpiDir, "namespace", NULL, NULL);
-    DEREF(acpiDir);
+    UNREF(acpiDir);
     if (namespaceDir == NULL)
     {
         LOG_ERR("Failed to create ACPI namespace sysfs directory");
@@ -136,7 +136,7 @@ uint64_t aml_namespace_expose(void)
     {
         if (aml_namespace_expose_object(child, namespaceDir) == ERR)
         {
-            DEREF(namespaceDir);
+            UNREF(namespaceDir);
             namespaceDir = NULL;
             LOG_ERR("Failed to expose ACPI namespace in sysfs");
             return ERR;
@@ -199,7 +199,7 @@ aml_object_t* aml_namespace_find(aml_overlay_t* overlay, aml_object_t* start, ui
     aml_object_t* current = start != NULL ? REF(start) : REF(namespaceRoot);
     if (current == NULL || !(current->flags & AML_OBJECT_NAMED))
     {
-        DEREF(current);
+        UNREF(current);
         return NULL;
     }
 
@@ -222,12 +222,12 @@ aml_object_t* aml_namespace_find(aml_overlay_t* overlay, aml_object_t* start, ui
 
         if (next == NULL)
         {
-            DEREF(current);
+            UNREF(current);
             va_end(args);
             return NULL;
         }
 
-        DEREF(current);
+        UNREF(current);
         current = next;
     }
     va_end(args);
@@ -245,7 +245,7 @@ aml_object_t* aml_namespace_find_by_name_string(aml_overlay_t* overlay, aml_obje
     aml_object_t* current = (start == NULL || nameString->rootChar.present) ? REF(namespaceRoot) : REF(start);
     if (!(current->flags & AML_OBJECT_NAMED))
     {
-        DEREF(current);
+        UNREF(current);
         return NULL;
     }
 
@@ -265,7 +265,7 @@ aml_object_t* aml_namespace_find_by_name_string(aml_overlay_t* overlay, aml_obje
     {
         if (!(current->flags & AML_OBJECT_NAMED))
         {
-            DEREF(current);
+            UNREF(current);
             return NULL;
         }
 
@@ -274,11 +274,11 @@ aml_object_t* aml_namespace_find_by_name_string(aml_overlay_t* overlay, aml_obje
 
         if (next == NULL)
         {
-            DEREF(current);
+            UNREF(current);
             return NULL;
         }
 
-        DEREF(current);
+        UNREF(current);
         current = next;
     }
 
@@ -324,7 +324,7 @@ aml_object_t* aml_namespace_find_by_path(aml_overlay_t* overlay, aml_object_t* s
 
     if (current == NULL || !(current->flags & AML_OBJECT_NAMED))
     {
-        DEREF(current);
+        UNREF(current);
         return NULL;
     }
 
@@ -345,7 +345,7 @@ aml_object_t* aml_namespace_find_by_path(aml_overlay_t* overlay, aml_object_t* s
         uint64_t segmentLength = p - segmentStart;
         if (segmentLength > sizeof(aml_name_t))
         {
-            DEREF(current);
+            UNREF(current);
             return NULL;
         }
 
@@ -368,7 +368,7 @@ aml_object_t* aml_namespace_find_by_path(aml_overlay_t* overlay, aml_object_t* s
             while (current->parent != NULL)
             {
                 aml_object_t* parent = REF(current->parent);
-                DEREF(current);
+                UNREF(current);
                 current = parent;
 
                 next = aml_namespace_find_child(overlay, current, segment);
@@ -381,11 +381,11 @@ aml_object_t* aml_namespace_find_by_path(aml_overlay_t* overlay, aml_object_t* s
 
         if (next == NULL)
         {
-            DEREF(current);
+            UNREF(current);
             return NULL;
         }
 
-        DEREF(current);
+        UNREF(current);
         current = next;
     }
 
@@ -465,7 +465,7 @@ uint64_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* 
         {
             return ERR;
         }
-        DEREF_DEFER(parent);
+        UNREF_DEFER(parent);
 
         return aml_namespace_add_child(overlay, parent, targetName, object);
     }
@@ -479,7 +479,7 @@ uint64_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* 
         errno = ENOENT;
         return ERR;
     }
-    DEREF_DEFER(parent);
+    UNREF_DEFER(parent);
 
     return aml_namespace_add_child(overlay, parent, targetName, object);
 }
@@ -500,7 +500,7 @@ void aml_namespace_remove(aml_object_t* object)
     object->flags &= ~AML_OBJECT_NAMED;
     object->name = AML_NAME_UNDEFINED;
 
-    DEREF(object);
+    UNREF(object);
 }
 
 uint64_t aml_namespace_commit(aml_overlay_t* overlay)

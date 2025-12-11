@@ -1,6 +1,7 @@
 #include <kernel/mem/pmm.h>
 
 #include <kernel/config.h>
+#include <kernel/init/boot_info.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm_bitmap.h>
@@ -154,8 +155,11 @@ static void pmm_load_memory(const boot_memory_map_t* map)
         (pmm_free_amount() * PAGE_SIZE) / 1000000, ((pageAmount - pmm_free_amount()) * PAGE_SIZE) / 1000000);
 }
 
-void pmm_init(const boot_memory_map_t* map)
+void pmm_init(void)
 {
+    const boot_info_t* bootInfo = boot_info_get();
+    const boot_memory_map_t* map = &bootInfo->memory.map;
+
     pmm_detect_memory(map);
 
     pmm_stack_init(&stack);

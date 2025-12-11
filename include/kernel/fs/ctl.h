@@ -12,13 +12,13 @@
  * A ctl file is a special file that takes in commands as text input and performs actions based on those commands.
  *
  * ## Command Format
- * 
+ *
  * Commands should be formatted as follows:
- * 
+ *
  * ```
  * command1 arg1 arg2 arg3 ... && command2 arg1 arg2 ... && ...
  * ```
- * 
+ *
  * @{
  */
 

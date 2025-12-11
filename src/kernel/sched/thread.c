@@ -39,20 +39,20 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
             VMM_KERNEL_STACKS_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_KERNEL_STACK_PAGES),
             CONFIG_MAX_KERNEL_STACK_PAGES) == ERR)
     {
-        DEREF(process);
+        UNREF(process);
         return ERR;
     }
     if (stack_pointer_init(&thread->userStack,
             VMM_USER_SPACE_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_USER_STACK_PAGES),
             CONFIG_MAX_USER_STACK_PAGES) == ERR)
     {
-        DEREF(process);
+        UNREF(process);
         return ERR;
     }
     wait_client_init(&thread->wait);
     if (simd_ctx_init(&thread->simd) == ERR)
     {
-        DEREF(process);
+        UNREF(process);
         return ERR;
     }
     note_queue_init(&thread->notes);
@@ -65,7 +65,6 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
     list_push_back(&process->threads.list, &thread->processEntry);
     lock_release(&process->threads.lock);
 
-    LOG_DEBUG("created tid=%d pid=%d\n", thread->id, process->id);
     return 0;
 }
 
@@ -125,8 +124,6 @@ tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg)
 
 void thread_free(thread_t* thread)
 {
-    LOG_DEBUG("freeing tid=%d pid=%d\n", thread->id, thread->process->id);
-
     process_t* process = thread->process;
     assert(process != NULL);
 
@@ -134,7 +131,7 @@ void thread_free(thread_t* thread)
     list_remove(&process->threads.list, &thread->processEntry);
     lock_release(&process->threads.lock);
 
-    DEREF(process);
+    UNREF(process);
     thread->process = NULL;
 
     simd_ctx_deinit(&thread->simd);
@@ -147,8 +144,6 @@ void thread_kill(thread_t* thread)
     {
         return;
     }
-
-    LOG_DEBUG("killing tid=%d pid=%d\n", thread->id, thread->process->id);
 
     if (thread_send_note(thread, "kill", 4) == ERR)
     {
@@ -305,6 +300,45 @@ uint64_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, 
     if (pathname_init(pathname, copy) == ERR)
     {
         return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t thread_copy_from_user_string_array(thread_t* thread, const char** user, char*** out, uint64_t* outAmount)
+{
+    char** copy;
+    uint64_t amount;
+    char* terminator = NULL;
+    if (thread_copy_from_user_terminated(thread, (void*)user, (void*)&terminator, sizeof(char*), CONFIG_MAX_ARGC,
+            (void**)&copy, &amount) == ERR)
+    {
+        return ERR;
+    }
+
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        char* strCopy;
+        uint64_t strLen;
+        char strTerminator = '\0';
+        if (thread_copy_from_user_terminated(thread, copy[i], &strTerminator, sizeof(char), MAX_PATH, (void**)&strCopy,
+                &strLen) == ERR)
+        {
+            for (uint64_t j = 0; j < i; j++)
+            {
+                free(copy[j]);
+            }
+            free((void*)copy);
+            return ERR;
+        }
+
+        copy[i] = strCopy;
+    }
+
+    *out = copy;
+    if (outAmount != NULL)
+    {
+        *outAmount = amount;
     }
 
     return 0;

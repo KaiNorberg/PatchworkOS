@@ -406,7 +406,7 @@ typedef enum
  *
  * Used for symbol grouping.
  */
-void module_init_fake_kernel_module(const boot_kernel_t* kernel);
+void module_init_fake_kernel_module();
 
 /**
  * @brief Notify the module system of a device being attached.

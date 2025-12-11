@@ -196,7 +196,7 @@ typedef struct wait_client
     list_t entries;   ///< List of wait entries, one for each wait queue the thread is waiting on.
     errno_t err;      ///< Error number set when unblocking the thread, `EOK` for no error.
     clock_t deadline; ///< Deadline for timeout, `CLOCKS_NEVER` for no timeout.
-    wait_t* cpu;      ///< The wait cpu context of the cpu the thread is blocked on.
+    wait_t* owner;    ///< The wait cpu context of the cpu the thread is blocked on.
 } wait_client_t;
 
 /**

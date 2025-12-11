@@ -43,7 +43,7 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
 
         if (aml_data_object_read(ctx, value) == ERR)
         {
-            DEREF(value);
+            UNREF(value);
             value = NULL;
             break;
         }
@@ -54,7 +54,7 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
         AML_DEBUG_ERROR(ctx, "Failed to read %s", op.props->name);
         return NULL;
     }
-    DEREF_DEFER(value);
+    UNREF_DEFER(value);
 
     aml_object_t* out = NULL;
     if (aml_convert_source(ctx->state, value, &out, allowedTypes) == ERR)
@@ -79,7 +79,7 @@ uint64_t aml_term_arg_read_integer(aml_term_list_ctx_t* ctx, aml_uint_t* out)
     assert(temp->type == AML_INTEGER);
 
     *out = temp->integer.value;
-    DEREF(temp);
+    UNREF(temp);
     return 0;
 }
 
@@ -168,7 +168,7 @@ uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx)
         // We cant just do this in `aml_expression_opcode_read()` because predicates are not supposed to be considered
         // for implicit return.
         // aml_state_result_set(ctx->state, result);
-        DEREF(expression);
+        UNREF(expression);
         result = 0;
         break;
     }

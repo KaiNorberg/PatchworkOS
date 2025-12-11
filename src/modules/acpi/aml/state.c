@@ -21,11 +21,11 @@ uint64_t aml_state_init(aml_state_t* state, aml_object_t** args)
             {
                 for (uint8_t j = 0; j < AML_MAX_LOCALS; j++)
                 {
-                    DEREF(state->locals[j]);
+                    UNREF(state->locals[j]);
                 }
                 for (uint8_t k = 0; k < argIndex; k++)
                 {
-                    DEREF(state->args[k]);
+                    UNREF(state->args[k]);
                 }
                 errno = E2BIG;
                 return ERR;
@@ -36,15 +36,15 @@ uint64_t aml_state_init(aml_state_t* state, aml_object_t** args)
             {
                 if (arg != NULL)
                 {
-                    DEREF(arg);
+                    UNREF(arg);
                 }
                 for (uint8_t j = 0; j < AML_MAX_LOCALS; j++)
                 {
-                    DEREF(state->locals[j]);
+                    UNREF(state->locals[j]);
                 }
                 for (uint8_t k = 0; k < argIndex; k++)
                 {
-                    DEREF(state->args[k]);
+                    UNREF(state->args[k]);
                 }
                 return ERR;
             }
@@ -69,15 +69,15 @@ void aml_state_deinit(aml_state_t* state)
 {
     for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)
     {
-        DEREF(state->locals[i]);
+        UNREF(state->locals[i]);
     }
     for (uint8_t i = 0; i < AML_MAX_ARGS; i++)
     {
-        DEREF(state->args[i]);
+        UNREF(state->args[i]);
     }
     if (state->result != NULL)
     {
-        DEREF(state->result);
+        UNREF(state->result);
     }
     state->result = NULL;
 
@@ -102,7 +102,7 @@ aml_object_t* aml_state_result_get(aml_state_t* state)
         // The method never had any expressions evaluated or explicitly returned a value.
         if (aml_integer_set(result, 0) == ERR)
         {
-            DEREF(result);
+            UNREF(result);
             return NULL;
         }
         result->flags |= AML_OBJECT_EXCEPTION_ON_USE;
@@ -111,7 +111,7 @@ aml_object_t* aml_state_result_get(aml_state_t* state)
 
     if (aml_copy_object(state, state->result, result) == ERR)
     {
-        DEREF(result);
+        UNREF(result);
         return NULL;
     }
     return result; // Transfer ownership
@@ -126,7 +126,7 @@ void aml_state_result_set(aml_state_t* state, aml_object_t* result)
 
     if (state->result != NULL)
     {
-        DEREF(state->result);
+        UNREF(state->result);
         state->result = NULL;
     }
 

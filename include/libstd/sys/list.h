@@ -13,9 +13,11 @@
  * @ingroup libstd
  * @defgroup libstd_sys_list Doubly linked list
  *
- * The `sys/list.h` header implements a intrusive doubly linked list where the linked list entry structure is stored within each entry instead of each entry having a pointer to each stucture.
- * 
- * Given a entry within a structure, the `CONTAINER_OF()` macro can be used to get a pointer to the structure from the list entry pointer.
+ * The `sys/list.h` header implements a intrusive doubly linked list where the linked list entry structure is stored
+ * within each entry instead of each entry having a pointer to each stucture.
+ *
+ * Given a entry within a structure, the `CONTAINER_OF()` macro can be used to get a pointer to the structure from the
+ * list entry pointer.
  *
  * @{
  */

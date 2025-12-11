@@ -53,9 +53,9 @@ static uint64_t interactive_execute_command(interactive_state_t* state)
         return 0; // This is also fine
     }
 
-    if (pipeline.status != 0)
+    if (pipeline.status != 0 && pipeline.status != -1)
     {
-        printf("shell: command exited with status %d (%s)\n", pipeline.status, strerror(pipeline.status));
+        printf("shell: %d (%s)\n", pipeline.status, strerror(pipeline.status));
     }
     state->status = pipeline.status;
     pipeline_deinit(&pipeline);

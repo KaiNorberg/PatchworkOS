@@ -12,8 +12,9 @@
  * @defgroup modules_smp_trampoline Trampoline
  * @ingroup modules_smp
  *
- * The trampoline is a small piece of code used during the initialization of other CPUs in a multiprocessor system. The code itself must be position-independent and fit within a single memory page, this is why we do all the
- * weird offset stuff.
+ * The trampoline is a small piece of code used during the initialization of other CPUs in a multiprocessor system. The
+ * code itself must be position-independent and fit within a single memory page, this is why we do all the weird offset
+ * stuff.
  *
  * @{
  */

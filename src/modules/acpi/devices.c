@@ -58,7 +58,7 @@ static uint64_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t* out)
         *out = ACPI_STA_FLAGS_DEFAULT;
         return 0;
     }
-    DEREF_DEFER(sta);
+    UNREF_DEFER(sta);
 
     aml_object_t* staResult = aml_evaluate(NULL, sta, AML_INTEGER);
     if (staResult == NULL)
@@ -67,7 +67,7 @@ static uint64_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t* out)
         return ERR;
     }
     aml_uint_t value = staResult->integer.value;
-    DEREF(staResult);
+    UNREF(staResult);
 
     if (value &
         ~(ACPI_STA_PRESENT | ACPI_STA_ENABLED | ACPI_STA_SHOW_IN_UI | ACPI_STA_FUNCTIONAL | ACPI_STA_BATTERY_PRESENT))
@@ -145,14 +145,14 @@ static uint64_t acpi_ids_push_device(acpi_ids_t* ids, aml_object_t* device, cons
     {
         return 0; // Nothing to do
     }
-    DEREF_DEFER(hid);
+    UNREF_DEFER(hid);
 
     aml_object_t* hidResult = aml_evaluate(NULL, hid, AML_STRING | AML_INTEGER);
     if (hidResult == NULL)
     {
         return ERR;
     }
-    DEREF_DEFER(hidResult);
+    UNREF_DEFER(hidResult);
 
     if (acpi_id_object_to_string(hidResult, deviceId.hid, MAX_NAME) == ERR)
     {
@@ -167,14 +167,14 @@ static uint64_t acpi_ids_push_device(acpi_ids_t* ids, aml_object_t* device, cons
     aml_object_t* cid = aml_namespace_find_child(NULL, device, AML_NAME('_', 'C', 'I', 'D'));
     if (cid != NULL)
     {
-        DEREF_DEFER(cid);
+        UNREF_DEFER(cid);
 
         aml_object_t* cidResult = aml_evaluate(NULL, cid, AML_STRING | AML_INTEGER);
         if (cidResult == NULL)
         {
             return ERR;
         }
-        DEREF_DEFER(cidResult);
+        UNREF_DEFER(cidResult);
 
         if (acpi_id_object_to_string(cidResult, deviceId.cid, MAX_NAME) == ERR)
         {
@@ -198,7 +198,7 @@ static aml_object_t* acpi_sb_init(void)
         LOG_ERR("failed to find \\_SB_ in namespace\n");
         return NULL;
     }
-    DEREF_DEFER(sb);
+    UNREF_DEFER(sb);
 
     acpi_sta_flags_t sta;
     if (acpi_sta_get_flags(sb, &sta) == ERR)
@@ -215,7 +215,7 @@ static aml_object_t* acpi_sb_init(void)
     aml_object_t* ini = aml_namespace_find_child(NULL, sb, AML_NAME('_', 'I', 'N', 'I'));
     if (ini != NULL)
     {
-        DEREF_DEFER(ini);
+        UNREF_DEFER(ini);
         LOG_INFO("found \\_SB_._INI\n");
         aml_object_t* iniResult = aml_evaluate(NULL, ini, AML_ALL_TYPES);
         if (iniResult == NULL)
@@ -223,7 +223,7 @@ static aml_object_t* acpi_sb_init(void)
             LOG_ERR("failed to evaluate \\_SB_._INI\n");
             return NULL;
         }
-        DEREF(iniResult);
+        UNREF(iniResult);
     }
 
     return REF(sb);
@@ -258,14 +258,14 @@ static uint64_t acpi_device_init_children(acpi_ids_t* ids, aml_object_t* device,
             aml_object_t* ini = aml_namespace_find_child(NULL, child, AML_NAME('_', 'I', 'N', 'I'));
             if (ini != NULL)
             {
-                DEREF_DEFER(ini);
+                UNREF_DEFER(ini);
                 aml_object_t* iniResult = aml_evaluate(NULL, ini, AML_ALL_TYPES);
                 if (iniResult == NULL)
                 {
                     LOG_ERR("failed to evaluate %s._INI\n", childPath);
                     return ERR;
                 }
-                DEREF(iniResult);
+                UNREF(iniResult);
             }
 
             if (acpi_ids_push_device(ids, child, childPath) == ERR)
@@ -358,7 +358,7 @@ static uint64_t acpi_device_configure(const char* name)
         LOG_ERR("failed to find ACPI device '%s' in namespace for configuration\n", name);
         return ERR;
     }
-    DEREF_DEFER(device);
+    UNREF_DEFER(device);
 
     if (device->type != AML_DEVICE)
     {
@@ -492,7 +492,7 @@ uint64_t acpi_devices_init(void)
         LOG_ERR("failed to initialize ACPI devices\n");
         return ERR;
     }
-    DEREF_DEFER(sb);
+    UNREF_DEFER(sb);
 
     LOG_DEBUG("initializing ACPI devices under \\_SB_\n");
     if (acpi_device_init_children(&ids, sb, "\\_SB_") == ERR)
@@ -581,7 +581,7 @@ acpi_device_cfg_t* acpi_device_cfg_lookup(const char* name)
         errno = ENOENT;
         return NULL;
     }
-    DEREF_DEFER(device);
+    UNREF_DEFER(device);
 
     if (device->type != AML_DEVICE)
     {

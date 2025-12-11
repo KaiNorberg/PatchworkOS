@@ -5,6 +5,7 @@
 
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/mount.h>
+#include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -20,7 +21,8 @@ mount_t* net_get_mount(void)
 
 static uint64_t net_init(void)
 {
-    mount = sysfs_mount_new(NULL, "net", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_ALL_PERMS, NULL);
+    mount = sysfs_mount_new(NULL, "net", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT,
+        MODE_DIRECTORY | MODE_ALL_PERMS, NULL);
     if (mount == NULL)
     {
         return ERR;
@@ -28,7 +30,7 @@ static uint64_t net_init(void)
 
     if (net_local_init() == ERR)
     {
-        DEREF(mount);
+        UNREF(mount);
         return ERR;
     }
 
@@ -41,7 +43,7 @@ static void net_deinit(void)
 
     socket_family_unregister_all();
 
-    DEREF(mount);
+    UNREF(mount);
 }
 
 uint64_t _module_procedure(const module_event_t* event)

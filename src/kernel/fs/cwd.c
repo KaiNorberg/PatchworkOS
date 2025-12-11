@@ -2,14 +2,9 @@
 
 #include <kernel/sched/thread.h>
 
-void cwd_init(cwd_t* cwd, const path_t* initialPath)
+void cwd_init(cwd_t* cwd)
 {
     cwd->path = PATH_EMPTY;
-    if (initialPath != NULL)
-    {
-        path_copy(&cwd->path, initialPath);
-    }
-
     lock_init(&cwd->lock);
 }
 
@@ -53,6 +48,13 @@ void cwd_set(cwd_t* cwd, const path_t* newPath)
     lock_release(&cwd->lock);
 }
 
+void cwd_clear(cwd_t* cwd)
+{
+    lock_acquire(&cwd->lock);
+    path_put(&cwd->path);
+    lock_release(&cwd->lock);
+}
+
 SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
 {
     thread_t* thread = sched_thread();
@@ -64,22 +66,20 @@ SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
         return ERR;
     }
 
-    path_t cwd = cwd_get(&process->cwd);
-    PATH_DEFER(&cwd);
+    path_t path = cwd_get(&process->cwd);
+    PATH_DEFER(&path);
 
-    path_t path = PATH_EMPTY;
-    if (path_walk(&path, &pathname, &cwd, WALK_NEGATIVE_IS_ERR, &process->ns) == ERR)
+    if (path_walk(&path, &pathname, &process->ns) == ERR)
     {
         return ERR;
     }
-    PATH_DEFER(&path);
 
-    if (path.dentry->inode->type != INODE_DIR)
+    if (!dentry_is_dir(path.dentry))
     {
-        path_put(&path);
         errno = ENOTDIR;
         return ERR;
     }
+
     cwd_set(&process->cwd, &path);
     return 0;
 }

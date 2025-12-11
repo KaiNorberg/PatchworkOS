@@ -5,7 +5,7 @@
 #include <kernel/fs/file.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
-#include <kernel/proc/process.h>
+#include <kernel/sched/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
@@ -38,7 +38,7 @@ static void socket_data_close(file_t* file)
         return;
     }
 
-    DEREF(sock);
+    UNREF(sock);
 }
 
 static uint64_t socket_data_read(file_t* file, void* buf, size_t count, uint64_t* offset)
@@ -267,7 +267,7 @@ static uint64_t socket_accept_open(file_t* file)
     if (sock->family->ops->accept(sock, newSock, file->mode) == ERR)
     {
         socket_end_transition(newSock, ERR);
-        DEREF(newSock);
+        UNREF(newSock);
         return ERR;
     }
 
@@ -286,7 +286,7 @@ static void socket_accept_close(file_t* file)
         return;
     }
 
-    DEREF(sock);
+    UNREF(sock);
 }
 
 static file_ops_t acceptOps = {
@@ -305,7 +305,7 @@ static void socket_inode_cleanup(inode_t* inode)
         return;
     }
 
-    DEREF(sock);
+    UNREF(sock);
 }
 
 static inode_ops_t inodeOps = {
@@ -343,10 +343,10 @@ static void socket_unmount(superblock_t* superblock)
     {
         return;
     }
-    DEREF(sock->ctlFile);
-    DEREF(sock->dataFile);
-    DEREF(sock->acceptFile);
-    DEREF(sock);
+    UNREF(sock->ctlFile);
+    UNREF(sock->dataFile);
+    UNREF(sock->acceptFile);
+    UNREF(sock);
     superblock->private = NULL;
 }
 
@@ -394,8 +394,8 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type)
         return NULL;
     }
 
-    mount_t* mount =
-        sysfs_mount_new(&familyDir, sock->id, NULL, MOUNT_PROPAGATE_CHILDREN, MODE_ALL_PERMS, &superblockOps);
+    mount_t* mount = sysfs_mount_new(&familyDir, sock->id, NULL, MOUNT_PROPAGATE_CHILDREN,
+        MODE_DIRECTORY | MODE_ALL_PERMS, &superblockOps);
     path_put(&familyDir);
     if (mount == NULL)
     {
@@ -405,36 +405,36 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type)
         return NULL;
     }
     mount->superblock->private = REF(sock);
-    DEREF(mount);
+    UNREF(mount);
 
-    sock->ctlFile = sysfs_file_new(mount->root, "ctl", &inodeOps, &ctlOps, REF(sock));
+    sock->ctlFile = sysfs_file_new(mount->source, "ctl", &inodeOps, &ctlOps, REF(sock));
     if (sock->ctlFile == NULL)
     {
         family->ops->deinit(sock);
-        DEREF(mount->superblock);
+        UNREF(mount->superblock);
         rwmutex_deinit(&sock->mutex);
         free(sock);
         return NULL;
     }
 
-    sock->dataFile = sysfs_file_new(mount->root, "data", &inodeOps, &dataOps, REF(sock));
+    sock->dataFile = sysfs_file_new(mount->source, "data", &inodeOps, &dataOps, REF(sock));
     if (sock->dataFile == NULL)
     {
         family->ops->deinit(sock);
-        DEREF(mount->superblock);
-        DEREF(sock->ctlFile);
+        UNREF(mount->superblock);
+        UNREF(sock->ctlFile);
         rwmutex_deinit(&sock->mutex);
         free(sock);
         return NULL;
     }
 
-    sock->acceptFile = sysfs_file_new(mount->root, "accept", &inodeOps, &acceptOps, REF(sock));
+    sock->acceptFile = sysfs_file_new(mount->source, "accept", &inodeOps, &acceptOps, REF(sock));
     if (sock->acceptFile == NULL)
     {
         family->ops->deinit(sock);
-        DEREF(mount->superblock);
-        DEREF(sock->ctlFile);
-        DEREF(sock->dataFile);
+        UNREF(mount->superblock);
+        UNREF(sock->ctlFile);
+        UNREF(sock->dataFile);
         rwmutex_deinit(&sock->mutex);
         free(sock);
         return NULL;

@@ -26,7 +26,7 @@ static void superblock_free(superblock_t* superblock)
 
     if (superblock->root != NULL)
     {
-        DEREF(superblock->root);
+        UNREF(superblock->root);
     }
 
     free(superblock);
@@ -43,7 +43,7 @@ superblock_t* superblock_new(filesystem_t* fs, const char* deviceName, const sup
 
     ref_init(&superblock->ref, superblock_free);
     list_entry_init(&superblock->entry);
-    superblock->id = vfs_get_new_id();
+    superblock->id = vfs_id_get();
     superblock->blockSize = PAGE_SIZE;
     superblock->maxFileSize = UINT64_MAX;
     superblock->private = NULL;

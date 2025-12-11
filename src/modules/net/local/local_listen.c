@@ -43,7 +43,7 @@ void local_listen_dir_deinit(void)
 {
     map_deinit(&listeners);
 
-    DEREF(listenDir);
+    UNREF(listenDir);
 }
 
 local_listen_t* local_listen_new(const char* address)
@@ -83,7 +83,7 @@ local_listen_t* local_listen_new(const char* address)
     map_key_t key = map_key_string(listen->address);
     if (map_get(&listeners, &key) != NULL)
     {
-        DEREF(listen->file);
+        UNREF(listen->file);
         wait_queue_deinit(&listen->waitQueue);
         free(listen);
 
@@ -93,7 +93,7 @@ local_listen_t* local_listen_new(const char* address)
 
     if (map_insert(&listeners, &key, &listen->entry) == ERR)
     {
-        DEREF(listen->file);
+        UNREF(listen->file);
         wait_queue_deinit(&listen->waitQueue);
         free(listen);
         return NULL;
@@ -109,7 +109,7 @@ void local_listen_free(local_listen_t* listen)
         return;
     }
 
-    DEREF(listen->file);
+    UNREF(listen->file);
 
     rwlock_write_acquire(&listenersLock);
     map_remove(&listeners, &listen->entry);

@@ -126,12 +126,13 @@ typedef enum
 
 /**
  * @brief Initializes the Virtual Memory Manager.
- *
- * @param memory The memory information provided by the bootloader.
- * @param gop The graphics output protocol provided by the bootloader.
- * @param kernel The structure provided by the bootloader specifying for example the addresses of the kernel.
  */
-void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_kernel_t* kernel);
+void vmm_init(void);
+
+/**
+ * @brief Loads the kernel's address space into the current CPU.
+ */
+void vmm_kernel_space_load(void);
 
 /**
  * @brief Initializes a per-CPU VMM context and performs per-CPU VMM initialization.
@@ -143,33 +144,11 @@ void vmm_init(const boot_memory_t* memory, const boot_gop_t* gop, const boot_ker
 void vmm_cpu_ctx_init(vmm_cpu_ctx_t* ctx);
 
 /**
- * @brief Maps the lower half of the address space to the boot thread during kernel initialization.
- *
- * We still need to access bootloader data like the memory map while the kernel is initializing, so we keep the lower
- * half mapped until the kernel is fully initialized. After that we can unmap the lower half both from kernel space and
- * the boot thread's address space.
- *
- * The bootloaders lower half mappings will be transferred to the kernel space mappings during boot so we just copy them
- * from there.
- */
-void vmm_map_bootloader_lower_half(void);
-
-/**
- * @brief Unmaps the lower half of the address space after kernel initialization.
- *
- * Will unmap the lower half from both the kernel space and the boot thread's address space.
- *
- * After this is called the bootloaders lower half mappings will be destroyed and the kernel will only have its own
- * mappings.
- */
-void vmm_unmap_bootloader_lower_half(void);
-
-/**
  * @brief Retrieves the kernel's address space.
  *
  * @return Pointer to the kernel's address space.
  */
-space_t* vmm_get_kernel_space(void);
+space_t* vmm_kernel_space_get(void);
 
 /**
  * @brief Converts the user space memory protection flags to page table entry flags.
