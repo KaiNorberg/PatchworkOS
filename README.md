@@ -1,3 +1,4 @@
+
 # PatchworkOS
 
 <br>
@@ -108,13 +109,13 @@ If you are interested in knowing more, then you can check out the Doxygen genera
 
 ## Modules
 
-PatchworkOS uses a "modular" kernel design, meaning that instead of having one big kernel binary, the kernel is split into several smaller "modules" that can be loaded and unloaded at runtime. In effect, the kernel can rewrite itself by adding and removing functionality as needed.
+PatchworkOS uses a "modular" kernel design, meaning that instead of having one big kernel binary, the kernel is split into several smaller "modules" that can be loaded and unloaded at runtime.
 
-This is highly convenient for development but it also has practical advantages, for example, there is no need to load a driver for a device that is not attached to the system, saving memory.
+This is highly convenient for development, but it also has practical advantages, for example, there is no need to load a driver for a device that is not attached to the system, saving memory.
 
 ### Make your own Module
 
-The process of making a module is intended to be as straightforward as possible. For the sake of demonstration, we will create a simple "Hello, World!" module.
+Making a module is intended to be as straightforward as possible. For the sake of demonstration, we will create a simple "Hello, World!" module.
 
 First, we create a new directory in `src/kernel/modules/` named `hello`, and inside that directory we create a `hello.c` file to which we write the following code:
 
@@ -143,7 +144,7 @@ MODULE_INFO("Hello", "<author>", "A simple hello world module", "1.0", "MIT", "B
 
 An explanation of the code will be provided later.
 
-Now we need to add the module to the build system. To do this, just copy a existing module's `.mk` file without making any modifications. For example, we can copy `src/modules/drivers/ps2/ps2.mk` to `src/modules/hello/hello.mk`. The build system will handle the rest, including copying the module to the final image.
+Now we need to add the module to the build system. To do this, just copy an existing module's `.mk` file without making any modifications. For example, we can copy `src/modules/drivers/ps2/ps2.mk` to `src/modules/hello/hello.mk`. The build system will handle the rest, including copying the module to the final image.
 
 Now, we can build and run PatchworkOS using `make all run`, or we could use `make all` and then flash the generated `bin/PatchworkOS.img` file to a USB drive.
 
@@ -159,7 +160,7 @@ This should output something like:
 [   0.747-00-I] Hello, World!
 ```
 
-Thats all, if this did not work, make sure you followed all the steps correctly, if there is still issues, feel free to open an issue.
+That's all, if this did not work, make sure you followed all the steps correctly. If there is still issues, feel free to open an issue.
 
 ### What can I do now?
 
@@ -171,19 +172,19 @@ This code in the `hello.c` file does a few things. First, it includes the releva
 
 Second, it defines a `_module_procedure()` function. This function serves as the entry point for the module and will be called by the kernel to notify the module of events, for example the module being loaded or a device attached. On the load event, it will print using the kernels logging system `"Hello, World!"`, resulting in the message being readable from `/dev/klog`.
 
-Finally, it defines the modules information. This information is, in order, the name of the module, the author of the module (thats you), a short description of the module, the module version, the licence of the module, and finally a list of "device types", in this case just `BOOT_ALWAYS`, but more could be added by separating them with a semicolon (`;`).
+Finally, it defines the modules information. This information is, from left to right, the name of the module, the author of the module (that's you), a short description of the module, the module version, the license of the module, and finally a list of "device types", in this case just `BOOT_ALWAYS`, but more could be added by separating them with a semicolon (`;`).
 
-The list of device types is what causes the kernel to actually load the module. I will avoid going into to much detail (you can check the documentation for that), but I will explain it briefly.
+The list of device types is what causes the kernel to actually load the module. I will avoid going into too much detail (you can check the documentation for that), but I will explain it briefly.
 
-The module loader itself has no idea what these type strings actually are, but subsytems within the kernel can specify that "a device of the type represented by this string is now available", the module loader can then load either one or all modules that have specified in their list of device types that it can handle the specified type. This means that any new subsystem, ACPI, USB, PCI, etc, can implement dynamic module loading using whatever types they want.
+The module loader itself has no idea what these type strings actually are, but subsystems can specify that "a device of the type represented by this string is now available", the module loader can then load either one or all modules that have specified in their list of device types that it can handle the specified type. This means that any new subsystem, ACPI, USB, PCI, etc, can implement dynamic module loading using whatever types they want.
 
-So what is `BOOT_ALWAYS`? It is the type of a special device that the kernel will pretend to "attach" during boot. In this case, it simply causes our hello module to be loaded during boot.
+So what is `BOOT_ALWAYS`? It is the type of special device that the kernel will pretend to "attach" during boot. In this case, it simply causes our hello module to be loaded during boot.
 
 For more information, check the [Module Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/d41/group__kernel__module.html).
 
 ## Everything is a File
 
-PatchworkOS strictly follows the "everything is a file" philosophy in a way similar to Plan9, this can often result in unorthodox APIs or seem over complicated at first, but the goal is to provide a simple and consistent interface for all kernel subsystems.
+PatchworkOS strictly follows the "everything is a file" philosophy in a way inspired by Plan9, this can often result in unorthodox APIs that seem overcomplicated at first, but the goal is to provide a simple, consistent and most importantly composable interface for all kernel subsystems, more on this later.
 
 Included below are some examples to familiarize yourself with the concept.
 
@@ -191,7 +192,7 @@ Included below are some examples to familiarize yourself with the concept.
 
 The first example is sockets, specifically how to create and use local seqpacket sockets.
 
-To create a local seqpacket socket, you open the `/net/local/seqpacket` file. This is eqvalent to calling `socket(AF_LOCAL, SOCK_SEQPACKET, 0)` in POSIX systems. The opened file can be read to return the "ID" of the newly created socket, which is a string that uniquely identifies the socket, more on this later.
+To create a local seqpacket socket, you open the `/net/local/seqpacket` file. This is equivalent to calling `socket(AF_LOCAL, SOCK_SEQPACKET, 0)` in POSIX systems. The opened file can be read to return the "ID" of the newly created socket which is a string that uniquely identifies the socket, more on this later.
 
 PatchworkOS provides several helper functions to make file operations easier, but first we will show how to do it without any helpers:
 
@@ -231,7 +232,7 @@ Now that we have the ID, we can discuss what it actually is. The ID is the name 
 
 So, for example, the sockets data file is located at `/net/local/[id]/data`.
 
-Say we want to make our socket into a server, we would then use use the `ctl` file to send the `bind` and `listen` commands, this is similar to calling `bind()` and `listen()` in POSIX systems. In this case, we want to bind the server to the name `myserver`.
+Say we want to make our socket into a server, we would then use the `ctl` file to send the `bind` and `listen` commands, this is similar to calling `bind()` and `listen()` in POSIX systems. In this case, we want to bind the server to the name `myserver`.
 
 Once again, we provide several helper functions to make this easier. First, without any helpers:
 
@@ -239,8 +240,8 @@ Once again, we provide several helper functions to make this easier. First, with
 char ctlPath[MAX_PATH] = {0};
 snprintf(ctlPath, MAX_PATH, "/net/local/%s/ctl", id)
 fd_t ctl = open(ctlPath);
-const char* str = "bind myserver && listen";
-write(ctl, str, strlen(str)); // Note the use of && to send multiple commands.
+const char* str = "bind myserver && listen"; // Note the use of && to send multiple commands.
+write(ctl, str, strlen(str));
 close(ctl);
 ```
 
@@ -268,7 +269,7 @@ close(fd);
 
 The file descriptor returned when the accept file is opened can be used to send and receive data, just like when calling `accept()` in POSIX systems.
 
-For the sake of completeness, to connect the the server we just create a new socket and use the `connect` command:
+For the sake of completeness, to connect the server we just create a new socket and use the `connect` command:
 
 ```c
 char* id = sreadfile("/net/local/seqpacket");
@@ -280,13 +281,13 @@ free(id);
 
 ### File Flags?
 
-You may have noticed that in the above section sections, the `open()` function does not take in a flags argument. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you can write
+You may have noticed that in the above section sections the `open()` function does not take in a flags argument. This is because flags are directly part of the file path so to create a non-blocking socket:
 
 ```c
 open("/net/local/seqpacket:nonblock");
 ```
 
-Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `F()` macro. Each flag also has a short hand version for which the `:` character is ommited, for example to open a file as create and exclusive, you can do
+Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `F()` macro. Each flag also has a shorthand version for which the `:` character is omitted, for example to open a file as create and exclusive, you can do
 
 ```c
 open("/some/path:create:exclusive");
@@ -314,7 +315,7 @@ or
 open("/some/path:rw");
 ```
 
-Permissions are inherited, you cant use a file with lower permissions to get a file with higher permissions. Consider the namespace section, if a directory was opened using only read permissions and that same directory was bound, then it would be impossible to open any files within that directory with any permissions other than read.
+Permissions are inherited, you can't use a file with lower permissions to get a file with higher permissions. Consider the namespace section, if a directory was opened using only read permissions and that same directory was bound, then it would be impossible to open any files within that directory with any permissions other than read.
 
 For a full list of available permissions, check the [Doxygen documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html).
 
@@ -331,9 +332,9 @@ The system call may seem very small in comparison to, for example, `posix_spawn(
 
 PatchworkOS instead allows the creation of processes in a suspended state, allowing the parent process to modify the child process before it starts executing.
 
-As an example, lets say we wish to create a child such that its stdio is redirected to some file descriptors in the parent and create a environment variable `MY_VAR=my_value`.
+As an example, let's say we wish to create a child such that its stdio is redirected to some file descriptors in the parent and create an environment variable `MY_VAR=my_value`.
 
-First, we pretend we have some set of file descriptors and spawn the new process in a suspended state using the `SPAWN_SUSPENDED` flag
+First, let's pretend we have some set of file descriptors and spawn the new process in a suspended state using the `SPAWN_SUSPENDED` flag
 
 ```c
 fd_t stdin = ...;
@@ -344,7 +345,7 @@ const char* argv[] = {"/bin/shell", NULL};
 pid_t child = spawn(argv, SPAWN_SUSPENDED);
 ```
 
-At this point, the process exists but is stuck blocking before it is allowed to load its executable. Additionally, the child process has inherited all file descriptors and environment variables from the parent process.
+At this point, the process exists but its stuck blocking before it is can load its executable. Additionally, the child process has inherited all file descriptors and environment variables from the parent process.
 
 Now we can redirect the stdio file descriptors in the child process using the `/proc/[pid]/ctl` file, which just like the socket ctl file, allows us to send commands to control the process. In this case, we want to use two commands, `dup2` to redirect the stdio file descriptors and `close` to close the unneeded file descriptors.
 
@@ -354,7 +355,7 @@ swritefile(F("/proc/%d/ctl", child), F("dup2 %d 0 && dup2 %d 1 && dup2 %d 2 && c
 
 > Note that `close` can either take one or two arguments. When two arguments are provided, it closes all file descriptors in the specified range. In our case `-1` causes a underflow to the maximum file descriptor value, closing all file descriptors higher than or equal to the first argument.
 
-Next, we create the environment variable by creating a file in the childs `/proc/[pid]/env/` directory:
+Next, we create the environment variable by creating a file in the child's `/proc/[pid]/env/` directory:
 
 ```c
 swritefile(F("/proc/%d/env/MY_VAR:create", child), "my_value");
@@ -368,25 +369,23 @@ swritefile(F("/proc/%d/ctl", child), "start");
 
 At this point the child process will begin executing with its stdio redirected to the specified file descriptors and the environment variable set as expected.
 
-The advantages of this approach are numerous, we avoid COW issues with `fork()`, weirdness with `vfork()`, system call bloat with `posix_spawn()`, and we get a very flexible and powerful process creation system that can use any of the other file based APIs to modify the child process before it starts executing. In exchange, the only real price we pay is overhead from additional context switches, string parsing and path traversals, how much this matters in practice is debatable.
+The advantages of this approach are numerous, we avoid COW issues with `fork()`, weirdness with `vfork()`, system call bloat with `CreateProcess()`, and we get a very flexible and powerful process creation system that can use any of the other file based APIs to modify the child process. In exchange, the only real price we pay is overhead from additional context switches, string parsing and path traversals, how much this matters in practice is debatable.
 
 For more on `spawn()`, check the [Userspace Process API](https://kainorberg.github.io/PatchworkOS/html/d1/d10/group__libstd__sys__proc.html#gae41c1cb67e3bc823c6d0018e043022eb) documentation and for more information on the `/proc` filesystem, check the [Process](https://kainorberg.github.io/PatchworkOS/html/d1/d20/group__kernel__sched__processes.html) documentation.
 
 ### Namespaces
 
-Namespaces are a set of mountpoints that is unique per process, which allows each process a unique view of the file system and is utilized for access control.
+Namespaces are a set of mountpoints that are unique per process, allowing each process a unique view of the file system.
 
 Think of it like this, in the common case, you can mount a drive to `/mnt/mydrive` and all processes can then open the `/mnt/mydrive` path and see the contents of that drive. However, for security reasons we might not want every process to be able to see that drive, this is what namespaces enable, allowing mounted file systems or directories to only be visible to a subset of processes.
 
 As an example, the "id" directories mentioned in the socket example are a separate "sysfs" instance mounted in the namespace of the creating process, meaning that only that process and its children can see their contents.
 
-To control which processes can see a newly mounted or bound file system or directory, we use a propegation system, where a the newly created mountpoint can be made visible to either just the creating process, the creating process and its children, or the creating process, its children and its parents. Additionally, its possible to specify the behaviour of mountpoint inheritance when a new process is spawned.
-
-[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
+For more information on how mounts are propagated or mounts inherited check the [Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html).
 
 ### Namespace Sharing
 
-In cases where the propagation system is not sufficient, it's possible for two processes to voluntarily share a mountpoint in their namespaces using `bind()` in combination with two new system calls `share()` and `claim()`.
+In cases where unrelated processes want to share a file or directory that is invisible to the other, they can voluntarily share a mountpoint in their namespaces using `bind()` in combination with two new system calls `share()` and `claim()`.
 
 For example, if process A wants to share its `/net/local/5` directory from the socket example with process B, they can do
 
@@ -413,27 +412,25 @@ bind(dir, "/any/path/it/wants");
 fd_t somePath = openat(dir, "data");
 ```
 
-Note that error checking is ommited for brevity.
-
-This system guarantees consent between processes, and can be used to implement more complex access control systems.
-
 An interesting detail is that when process A opens the `net/local/5` directory, the dentry underlying the file descriptor is the root of the mounted file system, if process B were to try to open this directory, it would still succeed as the directory itself is visible, however process B would instead retrieve the dentry of the directory in the parent superblock, and would instead see the content of that directory in the parent superblock. If this means nothing to you, don't worry about it.
 
 [Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
 
 ### But why?
 
-Im sure you have heard many an argument for and against the "everything is a file" philosophy. So I wont go over everything, but the primary reason for using it in PatchworkOS is "emergent behavior" or "composability" which ever term you prefer.
+I'm sure you have heard many an argument for and against the "everything is a file" philosophy. So I won't go over everything, but the primary reason for using it in PatchworkOS is "emergent behavior" or "composability" whichever term you prefer.
 
-Take the namespace sharing example, notice how there isent any actually dedicated "namespace sharing" system? There are instead a series of small, simple building blocks that when added together form a more complex whole. That is emergent behavior, by keeping things simple and most importantly composable, we can create very complex behaviour without needing to explicitly design it.
+Take the namespace sharing example, notice how there isent any actually dedicated "namespace sharing" system? Or the `spawn()` example, notice how there is no specialized system for setting environment variables in a child?
 
-Lets take another example, say you wanted to wait on multiple processes with a `waitpid()` syscall. Well, thats not possible. So now we suddenly need a new system call. Meanwhile, in a "everything is a file system" we just have a pollable `/proc/[pid]/wait` file that blocks untill the process dies and returns the exit status, now any behaviour that can be implemented with `poll()` can be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination you can think of.
+Instead, we have a set of small, simple building blocks that when added together form a more complex whole. That is emergent behavior, by keeping things simple and most importantly composable, we can create very complex behavior without needing to explicitly design it.
+
+Let's take another example, say you wanted to wait on multiple processes with a `waitpid()` syscall. Well, that's not possible. So now we suddenly need a new system call. Meanwhile, in an "everything is a file system" we just have a pollable `/proc/[pid]/wait` file that blocks until the process dies and returns the exit status, now any behavior that can be implemented with `poll()` can be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination you can think of.
 
 Plus its fun.
 
 ## ACPI (WIP)
 
-PatchworkOS features a from-scratch ACPI implementation and AML parser, with the goal of being, atleast by ACPI standards, easy to understand and educational. It is tested on the [Tested Configurations](#tested-configurations) below and against [ACPICA's](https://github.com/acpica/acpica) runtime test suite, but remains a work in progress (and probably always will be).
+PatchworkOS features a from-scratch ACPI implementation and AML parser, with the goal of being, at least by ACPI standards, easy to understand and educational. It is tested on the [Tested Configurations](#tested-configurations) below and against [ACPICA's](https://github.com/acpica/acpica) runtime test suite, but remains a work in progress (and probably always will be).
 
 See [ACPI Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d0/d30/group__kernel__acpi.html) for a progress checklist.
 
@@ -441,11 +438,11 @@ See [ACPI specification Version 6.6](https://uefi.org/specs/ACPI/6.6/index.html)
 
 ### What is ACPI?
 
-ACPI or Advanced Configuration and Power Interface is used for *alot* of things in modern systems but mainly power management and device enumeration/configuration. Its not possible to go over everything here, instead a brief overview of the parts most likely to cause confusion while reading the code will be provided.
+ACPI or Advanced Configuration and Power Interface is used for *a lot* of things in modern systems but mainly power management and device enumeration/configuration. It's not possible to go over everything here, instead a brief overview of the parts most likely to cause confusion while reading the code will be provided.
 
 It consists of two main parts, the ACPI tables and AML bytecode. If you have completed a basic operating systems tutorial, you have probably seen the ACPI tables before, for example the RSDP, FADT, MADT, etc. These tables are static in memory data structures storing information about the system, they are very easy to parse but are limited in what they can express.
 
-AML or ACPI Machine Language is a turning complete "mini language", and the source of mutch frustration, that is used to express more complex data, primarily device configuration. This is needed as its impossible for any specification to account for every possible hardware configuration that exists currently, much less that may exist in the future. So instead of trying to design that, what if we could just had a small program generate whatever data we wanted dynamically? Well thats more or less what AML is.
+AML or ACPI Machine Language is a Turing complete "mini language", and the source of much frustration, that is used to express more complex data, primarily device configuration. This is needed as its impossible for any specification to account for every possible hardware configuration that exists currently, much less that may exist in the future. So instead of trying to design that, what if we could just have a small program generate whatever data we wanted dynamically? Well that's more or less what AML is.
 
 ### Device Configuration
 
@@ -453,11 +450,11 @@ To demonstrate how ACPI is used for device configuration, we will use the [PS/2 
 
 If you have followed a basic operating systems tutorial, you have probably implemented a PS/2 keyboard driver at some point, and most likely you hardcoded the I/O ports `0x60` and `0x64` for data and commands respectively, and IRQ `1` for keyboard interrupts.
 
-Using this hardcoded approach will work for the vast majority of systems, but, perhaps surprisingly, there is no standard that guarantees that these ports and IRQs will actually be used for PS/2 devices. Its just a silent agreement that pretty much all systems adhere to for legacy reasons.
+Using this hardcoded approach will work for the vast majority of systems, but, perhaps surprisingly, there is no standard that guarantees that these ports and IRQs will actually be used for PS/2 devices. It's just a silent agreement that pretty much all systems adhere to for legacy reasons.
 
-But this is where the device configuration from AML comes in, it lets us query the system for the actual resources used by the PS/2 keyboard, so we dont have to rely on hardcoded values.
+But this is where the device configuration from AML comes in, it lets us query the system for the actual resources used by the PS/2 keyboard, so we don't have to rely on hardcoded values.
 
-If you where to decompile the AML bytecode into its original ASL (ACPI Source Language), you might find something like this:
+If you were to decompile the AML bytecode into its original ASL (ACPI Source Language), you might find something like this:
 
 ```asl
 Device (KBD)
@@ -486,11 +483,11 @@ Device (KBD)
 
 *Note that just like C compiles to assembly, ASL compiles to AML bytecode, which is what the OS actually parses.*
 
-In the example ASL, we se a `Device` object representing a PS/2 keyboard. It has a hardware ID (`_HID`), which we can cross reference with a [online database](https://uefi.org/PNP_ACPI_Registry) to confirm that it is indeed a PS/2 keyboard, a status (`_STA`), which is just a bitfield indicating if the device is present, enabled, etc, and finally the current resource settings (`_CRS`), which is the thing we are really after.
+In the example ASL, we see a `Device` object representing a PS/2 keyboard. It has a hardware ID (`_HID`), which we can cross-reference with an [online database](https://uefi.org/PNP_ACPI_Registry) to confirm that it is indeed a PS/2 keyboard, a status (`_STA`), which is just a bit field indicating if the device is present, enabled, etc., and finally the current resource settings (`_CRS`), which is the thing we are really after.
 
 The `_CRS` might look a bit complicated but focus on the `IO` and `IRQNoFlags` entries. Notice how they are specifying the I/O ports and IRQ used by the keyboard? Which in this case are indeed `0x60`, `0x64` and `1` respectively. So in this case the standard held true.
 
-So how is this information used? Durring boot, the `_CRS` information of each device is parsed by the ACPI subsystem, it then queries the kernel for the needed resources, assigned them to each device and makes the final configuration available to drivers.
+So how is this information used? During boot, the `_CRS` information of each device is parsed by the ACPI subsystem, it then queries the kernel for the needed resources, assigned them to each device and makes the final configuration available to drivers.
 
 Then when the PS/2 driver is loaded, it gets told "you are handling a device with the name `\_SB_.PCI0.SF8_.KBD_` (which is just the full path to the device object in the ACPI namespace) and the type `PNP0303`", it can then query the ACPI subsystem for the resources assigned to that device, and use them instead of hardcoded values.
 
@@ -535,7 +532,7 @@ All in all, this algorithm would not be a viable replacement for existing algori
 
 ### Scheduler
 
-The scheduler has not yet been properly benchmarked. However, testing using the "threadtest" program shows that the DOOM port remains more or less playable even with 1000+ threads running at 100% CPU load, so until proper benchmarking is done, we can condlude that performance is adequate.
+The scheduler has not yet been properly benchmarked. However, testing using the "threadtest" program shows that the DOOM port remains more or less playable even with 1000+ threads running at 100% CPU load, so until proper benchmarking is done, we can conclude that performance is adequate.
 
 ## Shell Utilities
 
