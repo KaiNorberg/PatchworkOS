@@ -18,6 +18,8 @@ void syscall_ctx_init(syscall_ctx_t* ctx, const stack_pointer_t* syscallStack)
 {
     ctx->syscallRsp = syscallStack->top;
     ctx->userRsp = 0;
+    ctx->frame = NULL;
+    ctx->flags = SYSCALL_NORMAL;
 }
 
 void syscall_ctx_load(syscall_ctx_t* ctx)
@@ -79,20 +81,24 @@ void syscall_handler(interrupt_frame_t* frame)
         frame->rax = ERR;
         return;
     }
-    
+
     thread_t* thread = sched_thread();
     perf_syscall_begin();
+
+    thread->syscall.frame = frame;
+    thread->syscall.flags = SYSCALL_NORMAL;
 
     // This is safe for any input type and any number of arguments up to 6 as they will simply be ignored.
     frame->rax = desc->handler(frame->rdi, frame->rsi, frame->rdx, frame->r10, frame->r8, frame->r9);
 
     perf_syscall_end();
 
+    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     asm volatile("cli" ::: "memory");
-    if (thread_is_note_pending(thread))
+    if (thread_is_note_pending(thread) || (thread->syscall.flags & SYSCALL_FORCE_FAKE_INTERRUPT))
     {
         cpu_t* self = cpu_get_unsafe();
         frame->vector = VECTOR_FAKE;
-        interrupt_fake(frame, self); 
+        interrupt_fake(frame, self);
     }
 }

@@ -48,13 +48,13 @@ void interrupt_enable(void)
     }
 }
 
-static void exception_handle_user(interrupt_frame_t* frame, const char* note, bool shouldKill)
+static void exception_handle_user(interrupt_frame_t* frame, const char* note)
 {
     thread_t* thread = sched_thread_unsafe();
-    if (thread_send_note(thread, note) == ERR || shouldKill)
+    if (thread_send_note(thread, note) == ERR)
     {
         atomic_store(&thread->state, THREAD_DYING);
-        process_kill(thread->process, shouldKill ? note : F("note delivery failed (%s)", strerror(errno)));
+        process_kill(thread->process, note);
 
         cpu_t* self = cpu_get_unsafe();
         sched_do(frame, self);
@@ -66,7 +66,8 @@ static uint64_t exception_grow_stack(thread_t* thread, uintptr_t faultAddr, stac
     uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
     if (stack_pointer_is_in_stack(stack, alignedFaultAddr, 1))
     {
-        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, flags, VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
+        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, flags, VMM_ALLOC_FAIL_IF_MAPPED) ==
+            NULL)
         {
             if (errno == EEXIST) // Race condition, another CPU mapped the page.
             {
@@ -99,8 +100,7 @@ static void exception_kernel_page_fault_handler(interrupt_frame_t* frame)
         panic(frame, "kernel stack overflow at address 0x%llx", faultAddr);
     }
 
-    uint64_t result = exception_grow_stack(thread, faultAddr, &thread->kernelStack,
-            PML_WRITE | PML_PRESENT);
+    uint64_t result = exception_grow_stack(thread, faultAddr, &thread->kernelStack, PML_WRITE | PML_PRESENT);
     if (result == ERR)
     {
         panic(frame, "failed to grow kernel stack for page fault at address 0x%llx", faultAddr);
@@ -111,8 +111,7 @@ static void exception_kernel_page_fault_handler(interrupt_frame_t* frame)
         return;
     }
 
-    result = exception_grow_stack(thread, faultAddr, &thread->userStack,
-            PML_USER | PML_WRITE | PML_PRESENT);
+    result = exception_grow_stack(thread, faultAddr, &thread->userStack, PML_USER | PML_WRITE | PML_PRESENT);
     if (result == ERR)
     {
         panic(frame, "failed to grow user stack for page fault at address 0x%llx", faultAddr);
@@ -134,23 +133,23 @@ static void exception_user_page_fault_handler(interrupt_frame_t* frame)
 
     if (frame->errorCode & PAGE_FAULT_PRESENT)
     {
-        exception_handle_user(frame, F("pagefault at 0x%llx when %s present page at 0x%llx",
-            frame->rip, (frame->errorCode & PAGE_FAULT_WRITE) ? "writing to" : "reading from", faultAddr), false);
+        exception_handle_user(frame,
+            F("pagefault at 0x%llx when %s present page at 0x%llx", frame->rip,
+                (frame->errorCode & PAGE_FAULT_WRITE) ? "writing to" : "reading from", faultAddr));
         return;
     }
 
     uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
     if (stack_pointer_overlaps_guard(&thread->userStack, alignedFaultAddr, 1))
     {
-        exception_handle_user(frame, F("pagefault at 0x%llx due to stack overflow at 0x%llx", frame->rip, faultAddr), true);
+        exception_handle_user(frame, F("pagefault at 0x%llx due to stack overflow at 0x%llx", frame->rip, faultAddr));
         return;
     }
 
-    uint64_t result = exception_grow_stack(thread, faultAddr, &thread->userStack,
-            PML_USER | PML_WRITE | PML_PRESENT);
+    uint64_t result = exception_grow_stack(thread, faultAddr, &thread->userStack, PML_USER | PML_WRITE | PML_PRESENT);
     if (result == ERR)
     {
-        exception_handle_user(frame, F("pagefault at 0x%llx failed to grow stack at 0x%llx", frame->rip, faultAddr), true);
+        exception_handle_user(frame, F("pagefault at 0x%llx failed to grow stack at 0x%llx", frame->rip, faultAddr));
         return;
     }
 
@@ -159,8 +158,9 @@ static void exception_user_page_fault_handler(interrupt_frame_t* frame)
         return;
     }
 
-    exception_handle_user(frame, F("pagefault at 0x%llx when %s 0x%llx",
-        frame->rip, (frame->errorCode & PAGE_FAULT_WRITE) ? "writing" : "reading", faultAddr), false);
+    exception_handle_user(frame,
+        F("pagefault at 0x%llx when %s 0x%llx", frame->rip,
+            (frame->errorCode & PAGE_FAULT_WRITE) ? "writing" : "reading", faultAddr));
 }
 
 static void exception_handler(interrupt_frame_t* frame)
@@ -172,14 +172,14 @@ static void exception_handler(interrupt_frame_t* frame)
         {
             panic(frame, "divide by zero");
         }
-        exception_handle_user(frame, F("divbyzero at 0x%llx", frame->rip), false);
+        exception_handle_user(frame, F("divbyzero at 0x%llx", frame->rip));
         return;
     case VECTOR_INVALID_OPCODE:
         if (!INTERRUPT_FRAME_IN_USER_SPACE(frame))
         {
             panic(frame, "invalid opcode");
         }
-        exception_handle_user(frame, F("illegal instruction at 0x%llx", frame->rip), false);
+        exception_handle_user(frame, F("illegal instruction at 0x%llx", frame->rip));
         return;
     case VECTOR_DOUBLE_FAULT:
         panic(frame, "double fault");

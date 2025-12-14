@@ -61,7 +61,7 @@
  * @ingroup kernel
  * @def CONFIG_MAX_NOTES
  *
- * The `CONFIG_MAX_NOTES` constant defines the maximum length of a threads note queue. 
+ * The `CONFIG_MAX_NOTES` constant defines the maximum length of a threads note queue.
  *
  */
 #define CONFIG_MAX_NOTES 8

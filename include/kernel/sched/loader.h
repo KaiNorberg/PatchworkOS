@@ -31,7 +31,7 @@
  * | argv[0]             |
  * | padding             |
  * </div>
- * 
+ *
  * The `argv` pointer is placed in the `rsi` register, and the `argc` value is placed in the `rdi` register.
  *
  * Note that rsp points to argc when the program starts executing.

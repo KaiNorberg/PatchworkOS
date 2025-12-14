@@ -178,7 +178,7 @@ For more information, check the [Module Documentation](https://kainorberg.github
 
 PatchworkOS strictly follows the "everything is a file" philosophy in a way inspired by Plan9, this can often result in unorthodox APIs that seem overcomplicated at first, but the goal is to provide a simple, consistent and most importantly composable interface for all kernel subsystems, more on this later.
 
-Included below are some examples to familiarize yourself with the concept.
+Included below are some examples to familiarize yourself with the concept. We, of course, cannot cover everything so the concepts presented here are the ones believed to provide the greatest insight into the philosophy.
 
 ### Sockets
 

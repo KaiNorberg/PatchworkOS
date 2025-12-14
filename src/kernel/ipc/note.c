@@ -3,11 +3,11 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/log/log.h>
+#include <kernel/log/panic.h>
 #include <kernel/mem/space.h>
+#include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
-#include <kernel/sched/sched.h>
-#include <kernel/log/panic.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -66,7 +66,7 @@ uint64_t note_send(note_queue_t* queue, const char* string)
         queue->flags |= NOTE_QUEUE_RECEIVED_KILL;
         return 0;
     }
-    
+
     if (queue->length >= CONFIG_MAX_NOTES)
     {
         errno = EAGAIN;
@@ -136,7 +136,10 @@ bool note_handle_pending(interrupt_frame_t* frame, cpu_t* self)
     }
     frame->rip = (uint64_t)handler->func;
     frame->rdi = frame->rsp;
-    LOG_DEBUG("delivering note '%s' to pid=%d rsp=%p rip=%p\n", note->buffer, process->id, (void*)frame->rsp, (void*)frame->rip);
+    assert(frame->rflags & RFLAGS_INTERRUPT_ENABLE);
+
+    LOG_DEBUG("delivering note '%s' to pid=%d rsp=%p rip=%p\n", note->buffer, process->id, (void*)frame->rsp,
+        (void*)frame->rip);
 
     return true;
 }
@@ -171,12 +174,11 @@ SYSCALL_DEFINE(SYS_NOTED, void)
         sched_thread_exit();
     }
 
-    interrupt_frame_t volatile frame = queue->noteFrame;
     queue->flags &= ~NOTE_QUEUE_HANDLING;
-    lock_release(&queue->lock);
 
-    asm volatile ("cli");
-    thread->frame = frame;
-    thread_jump(thread);
-    panic(NULL, "thread_jump() returned in SYS_NOTED");
+    // Causes the system call to return to the saved interrupt frame.
+    memcpy_s(thread->syscall.frame, sizeof(interrupt_frame_t), &queue->noteFrame, sizeof(interrupt_frame_t));
+    thread->syscall.flags |= SYSCALL_FORCE_FAKE_INTERRUPT;
+
+    lock_release(&queue->lock);
 }

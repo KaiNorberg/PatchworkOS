@@ -22,60 +22,69 @@ typedef struct cpu cpu_t;
  * ## Using Notes
  *
  * To send or receive notes, each process exposes a set of files in its `/proc/[pid]` directory.
- * 
+ *
  * @see kernel_proc_process
  *
  * ## Receiving Notes
  *
- * In the kernel, notes are received and handled in the `note_handle_pending()` function, which is called from an interrupt context.
- * 
- * From the perspective of user space, a thread will be interrupted the next time a kernel to user boundary is crossed, asuming there is a note pending.
- * 
- * The interruption works by having the kernel save the current interrupt frame of the thread and replacing it with a new frame that calls the registered note handler function. During the handling of the note, no further notes will be delivered to the thread.
- * 
- * Later, when the note handler function calls `noted()`, the kernel will restore the saved interrupt frame and continue execution from where it left off as if nothing happened. Alternatively, the note handler can choose to exit the thread. If no handler is registered, the thread is killed.
- * 
+ * In the kernel, notes are received and handled in the `note_handle_pending()` function, which is called from an
+ * interrupt context.
+ *
+ * From the perspective of user space, a thread will be interrupted the next time a kernel to user boundary is crossed,
+ * asuming there is a note pending.
+ *
+ * The interruption works by having the kernel save the current interrupt frame of the thread and replacing it with a
+ * new frame that calls the note handler function registered using `notify()`. During the handling of the note, no
+ * further notes will be delivered to the thread.
+ *
+ * Later, when the note handler function calls `noted()`, the kernel will restore the saved interrupt frame and continue
+ * execution from where it left off as if nothing happened. Alternatively, the note handler can choose to exit the
+ * thread. If no handler is registered, the thread is killed.
+ *
  * ## System Notes
  *
  * Certain notes will cause the kernel to take special actions and for the sake of consistency, we define
  * some notes that all user processes are expected to handle in a standardized way.
  *
- * Any such notes are written as a word optionally followed by additional data. For example, a "terminate" note could be send as is or with a reason string like "terminate due to low memory".
- * 
+ * Any such notes are written as a word optionally followed by additional data. For example, a "terminate" note could be
+ * send as is or with a reason string like "terminate due to low memory".
+ *
  * ### "kill" (SIGKILL)
- * 
- * When a thread receives this note, it will immediately transition to the `THREAD_DYING` state, causing the scheduler to kill and free the thread. User space will never see this note.
- * 
+ *
+ * When a thread receives this note, it will immediately transition to the `THREAD_DYING` state, causing the scheduler
+ * to kill and free the thread. User space will never see this note.
+ *
  * ### "divbyzero" (SIGFPE)
- * 
+ *
  * The thread attempted to divide by zero.
- * 
+ *
  * ### "illegal" (SIGILL)
  *
  * The thread attempted to execute an illegal instruction.
- * 
+ *
  * ### "interrupt" (SIGINT)
- * 
+ *
  * Indicates an interrupt from the user, typically initiated by pressing `Ctrl+C` in a terminal.
- * 
+ *
  * ### "pagefault" (SIGSEGV)
- * 
+ *
  * Indicates that the thread made an invalid memory access, such as dereferencing a null or invalid pointer.
- * 
+ *
  * ### "terminate" (SIGTERM)
- * 
+ *
  * Indicates that the process should perform any necessary cleanup and exit gracefully.
- * 
+ *
  * ## User-defined Notes
- * 
- * All system notes will always start with a single word consisting of only lowercase letters. 
- * 
- * If a program wishes to define its own notes, it is best practice to avoid using such words to prevent conflicts with future system notes. For example, here are some safe to use user-defined notes:
+ *
+ * All system notes will always start with a single word consisting of only lowercase letters.
+ *
+ * If a program wishes to define its own notes, it is best practice to avoid using such words to prevent conflicts with
+ * future system notes. For example, here are some safe to use user-defined notes:
  * - "user_note ..."
  * - "UserNote ..."
  * - "USER-NOTE ..."
  * - "1usernote ..."
- * 
+ *
  * @{
  */
 
@@ -169,7 +178,7 @@ uint64_t note_send(note_queue_t* queue, const char* string);
  * @brief Handle pending notes for the current thread.
  *
  * Should only be called from an interrupt context.
- * 
+ *
  * If the frame is not from user space, this function will return immediately.
  *
  * @param frame The interrupt frame.

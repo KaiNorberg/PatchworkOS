@@ -33,7 +33,7 @@ typedef enum
     THREAD_PRE_BLOCK,  ///< Has started the process of blocking but has not yet been given to a owner cpu.
     THREAD_BLOCKED,    ///< Is blocking and waiting in one or multiple wait queues.
     THREAD_UNBLOCKING, ///< Has started unblocking, used to prevent the same thread being unblocked multiple times.
-    THREAD_DYING, ///< The thread is currently dying, it will be freed by the scheduler once its invoked.
+    THREAD_DYING,      ///< The thread is currently dying, it will be freed by the scheduler once its invoked.
 } thread_state_t;
 
 /**
@@ -140,11 +140,13 @@ bool thread_is_note_pending(thread_t* thread);
 /**
  * @brief Send a note to a thread.
  *
- * This function should always be used over the `note_queue_push()` function, as it performs additional checks, like unblocking the thread to notify it of the received note.
+ * This function should always be used over the `note_queue_push()` function, as it performs additional checks, like
+ * unblocking the thread to notify it of the received note.
  *
  * @param thread The destination thread.
  * @param string The note string to send, should be a null-terminated string.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - See `note_send()` for possible error codes.
  */
 uint64_t thread_send_note(thread_t* thread, const char* string);
 

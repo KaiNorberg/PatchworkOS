@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stdint.h>
 #include <signal.h>
+#include <stdint.h>
 #include <sys/proc.h>
 
 #define _NOTE_MAX_HANDLERS 32

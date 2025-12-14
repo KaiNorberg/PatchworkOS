@@ -268,7 +268,7 @@ void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self);
  * unblocked prematurely this function will return immediately.
  *
  * Will reenable interrupts on failure.
- * 
+ *
  * @param waitQueues Array of wait queues to add the thread to.
  * @param amount Number of wait queues to add the thread to.
  * @param timeout Timeout.

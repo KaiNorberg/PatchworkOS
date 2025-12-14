@@ -1,12 +1,12 @@
+#include <kernel/cpu/gdt.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/path.h>
-#include <kernel/sched/loader.h>
-#include <kernel/cpu/gdt.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/proc/process.h>
+#include <kernel/sched/loader.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 
@@ -172,7 +172,8 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
 
-    child = process_new(atomic_load(&process->priority), flags & SPAWN_EMPTY_GROUP ? GID_NONE : process->group->id);
+    child = process_new(atomic_load(&process->priority),
+        flags & SPAWN_EMPTY_GROUP ? GID_NONE : group_get_id(&process->groupEntry));
     if (child == NULL)
     {
         goto error;

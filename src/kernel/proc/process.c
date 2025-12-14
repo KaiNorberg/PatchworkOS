@@ -1,8 +1,10 @@
 #include <errno.h>
+#include <kernel/proc/group.h>
 #include <kernel/proc/process.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
+#include <kernel/fs/ctl.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
@@ -16,7 +18,6 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rwlock.h>
-#include <kernel/fs/ctl.h>
 
 #include <assert.h>
 #include <stdatomic.h>
@@ -38,9 +39,6 @@ static dentry_t* selfDir = NULL;
 static list_t zombies = LIST_CREATE(zombies);
 static clock_t nextReaperTime = CLOCKS_NEVER;
 static lock_t reaperLock = LOCK_CREATE();
-
-static map_t groups = MAP_CREATE();
-static lock_t groupsLock = LOCK_CREATE();
 
 static process_t* process_file_get_process(file_t* file)
 {
@@ -260,33 +258,12 @@ static uint64_t process_notegroup_write(file_t* file, const void* buffer, uint64
         return ERR;
     }
 
-    group_t* group = process->group;
-    if (group == NULL) // Should never happen
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     char string[NOTE_MAX] = {0};
     memcpy_s(string, NOTE_MAX, buffer, MIN(count, NOTE_MAX - 1));
 
-    LOCK_SCOPE(&group->lock);
-
-    process_t* other;
-    LIST_FOR_EACH(other, &group->processes, groupEntry)
+    if (group_send_note(&process->groupEntry, string) == ERR)
     {
-        LOCK_SCOPE(&other->threads.lock);
-
-        thread_t* thread = CONTAINER_OF_SAFE(list_first(&other->threads.list), thread_t, processEntry);
-        if (thread == NULL)
-        {
-            continue;
-        }
-
-        if (thread_send_note(thread, string) == ERR)
-        {
-            return ERR;
-        }
+        return ERR;
     }
 
     return count;
@@ -304,15 +281,8 @@ static uint64_t process_gid_read(file_t* file, void* buffer, uint64_t count, uin
         return ERR;
     }
 
-    group_t* group = process->group;
-    if (group == NULL) // Should never happen
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     char gidStr[MAX_NAME];
-    uint32_t length = snprintf(gidStr, MAX_NAME, "%llu", group->id);
+    uint32_t length = snprintf(gidStr, MAX_NAME, "%llu", group_get_id(&process->groupEntry));
     return BUFFER_READ(buffer, count, offset, gidStr, length);
 }
 
@@ -331,7 +301,8 @@ static uint64_t process_wait_read(file_t* file, void* buffer, uint64_t count, ui
     WAIT_BLOCK(&process->dyingQueue, atomic_load(&process->flags) & PROCESS_DYING);
 
     lock_acquire(&process->exitStatus.lock);
-    uint64_t result = BUFFER_READ(buffer, count, offset, process->exitStatus.buffer, strlen(process->exitStatus.buffer));
+    uint64_t result =
+        BUFFER_READ(buffer, count, offset, process->exitStatus.buffer, strlen(process->exitStatus.buffer));
     lock_release(&process->exitStatus.lock);
     return result;
 }
@@ -525,13 +496,9 @@ static uint64_t process_ctl_kill(file_t* file, uint64_t argc, const char** argv)
     return 0;
 }
 
-CTL_STANDARD_OPS_DEFINE(ctlOps, {
-    {"close", process_ctl_close, 2, 3},
-    {"dup2", process_ctl_dup2, 3, 3},
-    {"start", process_ctl_start, 1, 1},
-    {"kill", process_ctl_kill, 1, 1},
-    {0}
-})
+CTL_STANDARD_OPS_DEFINE(ctlOps,
+    {{"close", process_ctl_close, 2, 3}, {"dup2", process_ctl_dup2, 3, 3}, {"start", process_ctl_start, 1, 1},
+        {"kill", process_ctl_kill, 1, 1}, {0}})
 
 static uint64_t process_env_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -658,13 +625,8 @@ static inode_ops_t inodeOps = {
 static void process_free(process_t* process)
 {
     LOG_DEBUG("freeing process pid=%d\n", process->id);
-    assert(list_is_empty(&process->threads.list));
 
-    if (process->group != NULL)
-    {
-        group_remove(process->group, process);
-        process->group = NULL;
-    }
+    group_remove(&process->groupEntry);
 
     while (!list_is_empty(&process->dentries))
     {
@@ -672,7 +634,7 @@ static void process_free(process_t* process)
         UNREF(dentry);
     }
 
-    if (list_length(&process->threads.list) != 0)
+    if (!list_is_empty(&process->threads.list))
     {
         panic(NULL, "Attempt to free process pid=%llu with present threads\n", process->id);
     }
@@ -822,7 +784,7 @@ process_t* process_new(priority_t priority, gid_t gid)
 
     ref_init(&process->ref, process_free);
     process->id = atomic_fetch_add(&newPid, 1);
-    list_entry_init(&process->groupEntry);
+    group_entry_init(&process->groupEntry);
     atomic_init(&process->priority, priority);
     memset_s(process->exitStatus.buffer, NOTE_MAX, 0, NOTE_MAX);
     lock_init(&process->exitStatus.lock);
@@ -858,8 +820,7 @@ process_t* process_new(priority_t priority, gid_t gid)
     lock_init(&process->dentriesLock);
     process->cmdline = NULL;
     process->cmdlineSize = 0;
-    process->group = group_add(gid, process);
-    if (process->group == NULL)
+    if (group_add(gid, &process->groupEntry) == ERR)
     {
         process_free(process);
         return NULL;
@@ -913,6 +874,7 @@ void process_kill(process_t* process, const char* status)
     cwd_clear(&process->cwd);
     file_table_close_all(&process->fileTable);
     namespace_clear(&process->ns);
+    group_remove(&process->groupEntry);
 
     wait_unblock(&process->dyingQueue, WAIT_ALL, EOK);
 

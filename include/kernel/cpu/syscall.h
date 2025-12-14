@@ -102,13 +102,30 @@ typedef enum
 } syscall_number_t;
 
 /**
+ * @brief Syscall flags.
+ * @enum syscall_flags_t
+ */
+typedef enum
+{
+    SYSCALL_NORMAL = 0 << 0,
+    /**
+     * Forces a fake interrupt to be generated after the syscall completes. This is useful if a syscall does not wish to return to where it was called from. 
+     * 
+     * Intended to be used by modifying the interrupt frame stored in the syscall context and setting this flag. As an example, consider the `SYS_NOTED` syscall.
+     */
+    SYSCALL_FORCE_FAKE_INTERRUPT = 1 << 0,
+} syscall_flags_t;
+
+/**
  * @brief Per thread syscall context.
  * @struct syscall_ctx_t
  */
 typedef struct
 {
-    uintptr_t syscallRsp; ///< The stack pointer to use when handling syscalls.
-    uintptr_t userRsp;    ///< Used to avoid clobbering registers when switching stacks.
+    uintptr_t syscallRsp;     ///< The stack pointer to use when handling syscalls.
+    uintptr_t userRsp;        ///< Used to avoid clobbering registers when switching stacks.
+    interrupt_frame_t* frame; ///< If a fake interrupt is generated, this is the interrupt frame to return to.
+    syscall_flags_t flags;    ///< Flags for the current syscall.
 } syscall_ctx_t;
 
 /**
@@ -187,8 +204,9 @@ void syscalls_cpu_init(void);
  *
  * This is called from the assembly `syscall_entry()` function.
  *
- * Since notes can only be handled when in user space, this function will, if there are notes pending, provide a fake interrupt context to handle the note as if a interrupt had occurred at the exact same time as the system call began.
- * 
+ * Since notes can only be handled when in user space, this function will, if there are notes pending, provide a fake
+ * interrupt context to handle the note as if a interrupt had occurred at the exact same time as the system call began.
+ *
  * @param frame The interrupt frame containing the CPU state at the time of the syscall.
  */
 void syscall_handler(interrupt_frame_t* frame);

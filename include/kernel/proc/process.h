@@ -5,13 +5,13 @@
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/sysfs.h>
+#include <kernel/ipc/note.h>
 #include <kernel/mem/space.h>
+#include <kernel/proc/group.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/futex.h>
 #include <kernel/utils/ref.h>
-#include <kernel/ipc/note.h>
-#include <kernel/proc/group.h>
 
 #include <stdatomic.h>
 
@@ -64,30 +64,31 @@
  *
  * A writable file that sends notes to the process. Writing to this file will enqueue that data as a
  * note in the note queue of one of the process's threads.
- * 
+ *
  * @see kernel_ipc_note
  *
  * ## notegroup
- * 
+ *
  * A writeable file that sends notes to every process in the group of the target process.
- * 
+ *
  * @see kernel_ipc_note
- * 
+ *
  * ## gid
- * 
+ *
  * A readable file that contains the group ID of the process.
- * 
+ *
  * Format:
  * ```
  * %llu
  * ```
- * 
+ *
  * ## wait
  *
  * A readable and pollable file that can be used to wait for the process to exit. Reading
  * from this file will block until the process has exited.
- * 
- * The read value is the exit status of the process, usually either a integer exit code or a string describing the reason for termination often the note that caused it.
+ *
+ * The read value is the exit status of the process, usually either a integer exit code or a string describing the
+ * reason for termination often the note that caused it.
  *
  * Format:
  *
@@ -107,37 +108,38 @@
  * ```
  *
  * ## ctl
- * 
+ *
  * A writable file that can be used to control certain aspects of the process, such as closing file descriptors.
- * 
+ *
  * Included is a list of all supported commands.
- * 
+ *
  * ### close <fd>
- * 
+ *
  * Closes the specified file descriptor in the process.
- * 
+ *
  * ### close <minfd> <maxfd>
- * 
+ *
  * Closes the range `[minfd, maxfd)` of file descriptors in the process.
- * 
- * Note that specifying `-1` as `maxfd` will close all file descriptors from `minfd` to the maximum allowed file descriptor.
- * 
+ *
+ * Note that specifying `-1` as `maxfd` will close all file descriptors from `minfd` to the maximum allowed file
+ * descriptor.
+ *
  * ### dup2 <oldfd> <newfd>
- * 
+ *
  * Duplicates the specified old file descriptor to the new file descriptor in the process.
- * 
+ *
  * ### start
- * 
+ *
  * Starts the process if it was previously suspended.
- * 
+ *
  * ### kill
- * 
+ *
  * Sends a kill note to all threads in the process, effectively terminating it.
- * 
+ *
  * ## fd
- * 
+ *
  * @todo Implement the `/proc/[pid]/fd` directory.
- * 
+ *
  * ## env
  *
  * A directory that contains the environment variables of the process. Each environment variable is represented as a
@@ -145,7 +147,7 @@
  *
  * To add or modify an environment variable, create or write to a file with the name of the variable. To remove an
  * environment variable, delete the corresponding file.
- * 
+ *
  * @{
  */
 
@@ -189,7 +191,7 @@ typedef struct process
 {
     ref_t ref;
     pid_t id;
-    list_entry_t groupEntry;
+    group_entry_t groupEntry;
     _Atomic(priority_t) priority;
     process_exit_status_t exitStatus;
     space_t space;
@@ -212,7 +214,6 @@ typedef struct process
     lock_t dentriesLock;
     char* cmdline;
     uint64_t cmdlineSize;
-    group_t* group;
 } process_t;
 
 /**
@@ -254,7 +255,7 @@ uint64_t process_copy_env(process_t* dest, process_t* src);
  * @brief Sets the command line arguments for a process.
  *
  * This value is only used for the `/proc/[pid]/cmdline` file.
- * 
+ *
  * @param process The process to set the cmdline for.
  * @param argv The array of argument strings.
  * @param argc The number of arguments.

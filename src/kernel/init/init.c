@@ -18,8 +18,8 @@
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
 #include <kernel/module/symbol.h>
-#include <kernel/sched/loader.h>
 #include <kernel/proc/process.h>
+#include <kernel/sched/loader.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>

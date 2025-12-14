@@ -226,15 +226,16 @@ void interrupt_enable(void);
 void interrupt_handler(interrupt_frame_t* frame);
 
 /**
- * @brief Enter a fake interrupt context as if an interrupt had occurred with the given frame.
- * 
+ * @brief Enter a fake interrupt context as if an interrupt had occurred at the given frame.
+ *
  * Provides a way to schedule and handle notes outside of a real interrupt context.
- * 
+ *
  * @warning Must only be called when interrupts are disabled.
- * 
+ *
  * @param frame The interrupt frame representing the state at the time of the fake interrupt.
  * @param self The current CPU.
- * @return Will not return, instead will load and jump to the given interrupt frame, unless the thread gets scheduled or the frame is modified.
+ * @return Will not return, instead will load and jump to the given interrupt frame, unless the thread gets scheduled or
+ * the frame is modified.
  */
 _NORETURN extern void interrupt_fake(interrupt_frame_t* frame, cpu_t* self);
 

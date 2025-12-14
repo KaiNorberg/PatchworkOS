@@ -228,7 +228,7 @@ uint64_t cpu_halt_others(void);
  * @brief Gets the top of the interrupt stack for a CPU.
  *
  * Usefull as we might need to retrieve the interrupt stack in assembly, so this avoid code duplication.
- * 
+ *
  * @param cpu The CPU to get the interrupt stack top for.
  * @return The top of the interrupt stack.
  */

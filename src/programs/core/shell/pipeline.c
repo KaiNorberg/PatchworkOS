@@ -2,13 +2,13 @@
 #include "builtin.h"
 
 #include <errno.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/argsplit.h>
 #include <sys/io.h>
 #include <sys/proc.h>
-#include <signal.h>
 
 static const char* lookupDirs[] = {
     "/bin",
@@ -551,7 +551,7 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
                 printf("^C\n");
                 for (uint64_t j = 1; j < fdCount; j++)
                 {
-                    swritefile(F("/proc/%d/notegroup", pids[j - 1]), "interrupt");
+                    swritefile(F("/proc/%d/notegroup", pids[j - 1]), "interrupt due to ctrl-c");
                 }
 
                 break;

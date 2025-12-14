@@ -385,7 +385,7 @@ typedef struct sched_client
  * @struct sched_t
  *
  * Stored in a CPU's `sched` member.
- * 
+ *
  * @note The `runThread` and `idleThread` members are declared `volatile` as they can be accessed in interrupt
  * context as well as non-interrupt context.
  */

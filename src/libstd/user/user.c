@@ -4,8 +4,8 @@
 #include "common/exit_stack.h"
 #include "common/std_streams.h"
 #include "common/thread.h"
-#include "user/common/note.h"
 #include "user/common/file.h"
+#include "user/common/note.h"
 
 #include <sys/io.h>
 #include <sys/proc.h>

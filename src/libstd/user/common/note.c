@@ -2,13 +2,13 @@
 #include <user/common/note.h>
 #include <user/common/syscalls.h>
 
-#include <stdlib.h>
 #include <signal.h>
 #include <stdatomic.h>
+#include <stdlib.h>
 #include <string.h>
 
-static _Atomic(atnotify_func_t) noteHandlers[_NOTE_MAX_HANDLERS] = { ATOMIC_VAR_INIT(NULL) };
-static _Atomic(sighandler_t) signalHandlers[SIGMAX] = { ATOMIC_VAR_INIT(SIG_DFL) };
+static _Atomic(atnotify_func_t) noteHandlers[_NOTE_MAX_HANDLERS] = {ATOMIC_VAR_INIT(NULL)};
+static _Atomic(sighandler_t) signalHandlers[SIGMAX] = {ATOMIC_VAR_INIT(SIG_DFL)};
 
 static void _signal_invoke(int sig, const char* note)
 {
@@ -17,7 +17,7 @@ static void _signal_invoke(int sig, const char* note)
     {
         return;
     }
-    
+
     if (handler == SIG_DFL)
     {
         _exit(note);
