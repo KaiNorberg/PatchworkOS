@@ -3,6 +3,7 @@
 
 #include <stdatomic.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -15,6 +16,7 @@ extern "C"
 #include "_internal/config.h"
 #include "_internal/fd_t.h"
 #include "_internal/pid_t.h"
+#include "_internal/gid_t.h"
 #include "_internal/tid_t.h"
 
 /**
@@ -68,7 +70,8 @@ typedef enum
     SPAWN_STDIO_FDS = 1 << 2,  ///< Only inherit stdin, stdout and stderr from the parent process.
     SPAWN_EMPTY_NS = 1 << 3,   ///< Dont inherit the mountpoints of the parent's namespace.
     SPAWN_EMPTY_ENV = 1 << 4, ///< Don't inherit the parent's environment variables.
-    SPAWN_EMPTY_CWD = 1 << 5,         ///< Don't inherit the parent's current working directory, starts at root (/).
+    SPAWN_EMPTY_CWD = 1 << 5,  ///< Don't inherit the parent's current working directory, starts at root (/).
+    SPAWN_EMPTY_GROUP = 1 << 6 ///< Don't inherit the parent's process group, instead create a new group.
 } spawn_flags_t;
 
 /**
@@ -251,6 +254,89 @@ typedef struct
 {
     atomic_uint64_t value; ///< The value of the sync object.
 } sync_t;
+
+/**
+ * @brief Note handler function type.
+ */
+typedef void (*note_func_t)(char* note);
+
+/**
+ * @brief System call that sets the handler to be called when a note is received.
+ * 
+ * A note handler must either exit the thread or call `noted()`.
+ * 
+ * If no handler is registered, the thread is killed when a note is received.
+ * 
+ * @warning It is preferred to use `atnotify()` instead of this function as using this will prevent the standard library from handling notes.
+ * 
+ * @see kernel_ipc_note
+ * 
+ * @param handler The handler function to be called on notes, can be `NULL` to unregister the current handler.
+ * @return On success, `0`. On failure, `ERR` and errno is set.
+ */
+uint64_t notify(note_func_t handler);
+
+/**
+ * @brief System call that notifies the kernel that the current note has been handled.
+ * 
+ * Should only be called from within a handler registered with `notify()` but NOT with `atnotify()`.
+ * 
+ * If a note is not currently being handled, the thread is killed.
+ * 
+ * @see kernel_ipc_note
+ * 
+ * @return Never returns, instead resumes execution of the thread where it left off before the note was delivered.
+ */
+_NORETURN void noted(void);
+
+/**
+ * @brief Helper for comparing note strings.
+ * 
+ * Will compare only the first word of the note string as the rest may contain additional details.
+ * 
+ * @param note The note string.
+ * @param word The word to compare against.
+ * @return On match, returns `0`. On mismatch, returns a non-zero value.
+ */
+int64_t notecmp(const char* note, const char* word);
+
+/**
+ * @brief Action type for atnotify().
+ * @enum atnotify_t
+ */
+typedef enum
+{
+    ATNOTIFY_ADD = 0,
+    ATNOTIFY_REMOVE = 1
+} atnotify_t;
+
+/**
+ * @brief User space `atnotify()` handler function type.
+ */
+typedef uint64_t (*atnotify_func_t)(char* note);
+
+/**
+ * @brief Adds or removes a handler to be called in user space when a note is received.
+ * 
+ * If the return value of a handler is `ERR`, the process will exit. 
+ * 
+ * @param handler The handler function to be modified.
+ * @param action The action to perform.
+ * @return On success, `0`. On failure, `ERR` and errno is set.
+ */
+uint64_t atnotify(atnotify_func_t handler, atnotify_t action);
+
+/**
+ * @brief System call that handles pending notes for the current thread.
+ * 
+ * Should only be called from an interrupt context.
+ * 
+ * If the frame is not from user space, this function will return immediately.
+ * 
+ * @param frame The interrupt frame of the current interrupt.
+ * @return On success, `true` if a note was handled, `false` otherwise.
+ */
+_NORETURN void _exit(const char* status);
 
 #if defined(__cplusplus)
 }

@@ -1,4 +1,5 @@
 #include "std_streams.h"
+#include "file.h"
 
 #include <errno.h>
 #include <stdlib.h>

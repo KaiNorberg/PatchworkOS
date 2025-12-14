@@ -1,6 +1,6 @@
 #include <kernel/cpu/syscall.h>
 #include <kernel/log/log.h>
-#include <kernel/sched/process.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/sys_time.h>
 #include <kernel/sched/thread.h>

@@ -1,5 +1,5 @@
 #include <errno.h>
-#include <kernel/sched/process.h>
+#include <kernel/proc/process.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
@@ -37,7 +37,10 @@ static dentry_t* selfDir = NULL;
 
 static list_t zombies = LIST_CREATE(zombies);
 static clock_t nextReaperTime = CLOCKS_NEVER;
-static lock_t zombiesLock = LOCK_CREATE();
+static lock_t reaperLock = LOCK_CREATE();
+
+static map_t groups = MAP_CREATE();
+static lock_t groupsLock = LOCK_CREATE();
 
 static process_t* process_file_get_process(file_t* file)
 {
@@ -228,7 +231,9 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
         return ERR;
     }
 
-    if (thread_send_note(thread, buffer, count) == ERR)
+    char string[NOTE_MAX] = {0};
+    memcpy_s(string, NOTE_MAX, buffer, MIN(count, NOTE_MAX - 1));
+    if (thread_send_note(thread, string) == ERR)
     {
         return ERR;
     }
@@ -238,6 +243,81 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
 
 static file_ops_t noteOps = {
     .write = process_note_write,
+};
+
+static uint64_t process_notegroup_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+{
+    (void)offset; // Unused
+
+    if (count == 0)
+    {
+        return 0;
+    }
+
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    group_t* group = process->group;
+    if (group == NULL) // Should never happen
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    char string[NOTE_MAX] = {0};
+    memcpy_s(string, NOTE_MAX, buffer, MIN(count, NOTE_MAX - 1));
+
+    LOCK_SCOPE(&group->lock);
+
+    process_t* other;
+    LIST_FOR_EACH(other, &group->processes, groupEntry)
+    {
+        LOCK_SCOPE(&other->threads.lock);
+
+        thread_t* thread = CONTAINER_OF_SAFE(list_first(&other->threads.list), thread_t, processEntry);
+        if (thread == NULL)
+        {
+            continue;
+        }
+
+        if (thread_send_note(thread, string) == ERR)
+        {
+            return ERR;
+        }
+    }
+
+    return count;
+}
+
+static file_ops_t notegroupOps = {
+    .write = process_notegroup_write,
+};
+
+static uint64_t process_gid_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    group_t* group = process->group;
+    if (group == NULL) // Should never happen
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    char gidStr[MAX_NAME];
+    uint32_t length = snprintf(gidStr, MAX_NAME, "%llu", group->id);
+    return BUFFER_READ(buffer, count, offset, gidStr, length);
+}
+
+static file_ops_t gidOps = {
+    .read = process_gid_read,
 };
 
 static uint64_t process_wait_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
@@ -250,14 +330,10 @@ static uint64_t process_wait_read(file_t* file, void* buffer, uint64_t count, ui
 
     WAIT_BLOCK(&process->dyingQueue, atomic_load(&process->flags) & PROCESS_DYING);
 
-    char status[MAX_PATH];
-    int length = snprintf(status, sizeof(status), "%lld", atomic_load(&process->status));
-    if (length < 0)
-    {
-        return ERR;
-    }
-
-    return BUFFER_READ(buffer, count, offset, status, (uint64_t)length);
+    lock_acquire(&process->exitStatus.lock);
+    uint64_t result = BUFFER_READ(buffer, count, offset, process->exitStatus.buffer, strlen(process->exitStatus.buffer));
+    lock_release(&process->exitStatus.lock);
+    return result;
 }
 
 static wait_queue_t* process_wait_poll(file_t* file, poll_events_t* revents)
@@ -584,6 +660,12 @@ static void process_free(process_t* process)
     LOG_DEBUG("freeing process pid=%d\n", process->id);
     assert(list_is_empty(&process->threads.list));
 
+    if (process->group != NULL)
+    {
+        group_remove(process->group, process);
+        process->group = NULL;
+    }
+
     while (!list_is_empty(&process->dentries))
     {
         dentry_t* dentry = CONTAINER_OF_SAFE(list_pop_first(&process->dentries), dentry_t, otherEntry);
@@ -674,6 +756,20 @@ static uint64_t process_dir_init(process_t* process)
     }
     list_push_back(&process->dentries, &note->otherEntry);
 
+    dentry_t* notegroup = sysfs_file_new(process->proc, "notegroup", &inodeOps, &notegroupOps, REF(process));
+    if (notegroup == NULL)
+    {
+        goto error;
+    }
+    list_push_back(&process->dentries, &notegroup->otherEntry);
+
+    dentry_t* gid = sysfs_file_new(process->proc, "gid", &inodeOps, &gidOps, REF(process));
+    if (gid == NULL)
+    {
+        goto error;
+    }
+    list_push_back(&process->dentries, &gid->otherEntry);
+
     dentry_t* wait = sysfs_file_new(process->proc, "wait", &inodeOps, &waitOps, REF(process));
     if (wait == NULL)
     {
@@ -715,7 +811,7 @@ error:
     return ERR;
 }
 
-process_t* process_new(priority_t priority)
+process_t* process_new(priority_t priority, gid_t gid)
 {
     process_t* process = malloc(sizeof(process_t));
     if (process == NULL)
@@ -726,8 +822,10 @@ process_t* process_new(priority_t priority)
 
     ref_init(&process->ref, process_free);
     process->id = atomic_fetch_add(&newPid, 1);
+    list_entry_init(&process->groupEntry);
     atomic_init(&process->priority, priority);
-    atomic_init(&process->status, EXIT_SUCCESS);
+    memset_s(process->exitStatus.buffer, NOTE_MAX, 0, NOTE_MAX);
+    lock_init(&process->exitStatus.lock);
 
     if (space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
             SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY) == ERR)
@@ -741,6 +839,7 @@ process_t* process_new(priority_t priority)
     file_table_init(&process->fileTable);
     futex_ctx_init(&process->futexCtx);
     perf_process_ctx_init(&process->perf);
+    note_handler_init(&process->noteHandler);
     wait_queue_init(&process->suspendQueue);
     wait_queue_init(&process->dyingQueue);
     atomic_init(&process->flags, PROCESS_NONE);
@@ -759,6 +858,12 @@ process_t* process_new(priority_t priority)
     lock_init(&process->dentriesLock);
     process->cmdline = NULL;
     process->cmdlineSize = 0;
+    process->group = group_add(gid, process);
+    if (process->group == NULL)
+    {
+        process_free(process);
+        return NULL;
+    }
 
     if (process->id != 0) // Delay kernel process /proc dir init
     {
@@ -773,7 +878,7 @@ process_t* process_new(priority_t priority)
     return process;
 }
 
-void process_kill(process_t* process, int32_t status)
+void process_kill(process_t* process, const char* status)
 {
     lock_acquire(&process->threads.lock);
 
@@ -783,13 +888,16 @@ void process_kill(process_t* process, int32_t status)
         return;
     }
 
-    atomic_store(&process->status, status);
+    lock_acquire(&process->exitStatus.lock);
+    strncpy_s(process->exitStatus.buffer, NOTE_MAX, status, NOTE_MAX - 1);
+    process->exitStatus.buffer[NOTE_MAX - 1] = '\0';
+    lock_release(&process->exitStatus.lock);
 
     uint64_t killCount = 0;
     thread_t* thread;
     LIST_FOR_EACH(thread, &process->threads.list, processEntry)
     {
-        thread_send_note(thread, "kill", 4);
+        thread_send_note(thread, "kill");
         killCount++;
     }
 
@@ -808,10 +916,10 @@ void process_kill(process_t* process, int32_t status)
 
     wait_unblock(&process->dyingQueue, WAIT_ALL, EOK);
 
-    lock_acquire(&zombiesLock);
+    lock_acquire(&reaperLock);
     list_push_back(&zombies, &REF(process)->zombieEntry);
     nextReaperTime = sys_time_uptime() + CONFIG_PROCESS_REAPER_INTERVAL; // Delay reaper run
-    lock_release(&zombiesLock);
+    lock_release(&reaperLock);
 }
 
 uint64_t process_copy_env(process_t* dest, process_t* src)
@@ -944,7 +1052,7 @@ process_t* process_get_kernel(void)
 {
     if (kernelProcess == NULL)
     {
-        kernelProcess = process_new(PRIORITY_MAX);
+        kernelProcess = process_new(PRIORITY_MAX, GID_NONE);
         if (kernelProcess == NULL)
         {
             panic(NULL, "Failed to create kernel process");
@@ -987,11 +1095,11 @@ static void process_reaper(void* arg)
     {
         sched_nanosleep(CONFIG_PROCESS_REAPER_INTERVAL);
 
-        lock_acquire(&zombiesLock);
+        lock_acquire(&reaperLock);
         clock_t uptime = sys_time_uptime();
         if (uptime < nextReaperTime)
         {
-            lock_release(&zombiesLock);
+            lock_release(&reaperLock);
             continue;
         }
         nextReaperTime = CLOCKS_NEVER;
@@ -1003,7 +1111,7 @@ static void process_reaper(void* arg)
             process_t* process = CONTAINER_OF(list_pop_first(&zombies), process_t, zombieEntry);
             list_push_back(&localZombies, &process->zombieEntry);
         }
-        lock_release(&zombiesLock);
+        lock_release(&reaperLock);
 
         while (!list_is_empty(&localZombies))
         {

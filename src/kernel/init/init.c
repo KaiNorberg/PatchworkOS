@@ -19,7 +19,7 @@
 #include <kernel/module/module.h>
 #include <kernel/module/symbol.h>
 #include <kernel/sched/loader.h>
-#include <kernel/sched/process.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
@@ -145,7 +145,7 @@ static inline void init_process_spawn(void)
 {
     LOG_INFO("spawning init process\n");
 
-    process_t* initProcess = process_new(PRIORITY_MAX_USER);
+    process_t* initProcess = process_new(PRIORITY_MAX_USER, GID_NONE);
     if (initProcess == NULL)
     {
         panic(NULL, "Failed to create init process");

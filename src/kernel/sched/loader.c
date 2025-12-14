@@ -6,7 +6,7 @@
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>
-#include <kernel/sched/process.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 
@@ -142,7 +142,7 @@ cleanup:
     {
         thread_jump(thread);
     }
-    sched_process_exit(errno);
+    sched_process_exit("exec failed");
 }
 
 static void loader_entry(const char* executable, char** argv, uint64_t argc)
@@ -172,7 +172,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
 
-    child = process_new(atomic_load(&process->priority));
+    child = process_new(atomic_load(&process->priority), flags & SPAWN_EMPTY_GROUP ? GID_NONE : process->group->id);
     if (child == NULL)
     {
         goto error;
@@ -269,7 +269,7 @@ error:
     }
     if (child != NULL)
     {
-        process_kill(child, errno);
+        process_kill(child, "spawn failed");
     }
 
     free((void*)executable);

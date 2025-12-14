@@ -70,8 +70,8 @@ int main(int argc, char* argv[])
         join_args(cmdline, MAX_PATH, argc, argv);
         return execute_command(cmdline);
     }
-    else
-    {
-        return interactive_shell();
-    }
+
+    interactive_shell();
+
+    return EXIT_FAILURE; // Should never reach here
 }

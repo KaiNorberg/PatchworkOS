@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+typedef struct cpu cpu_t;
+
 /**
  * @brief Interrupt Handling
  * @defgroup kernel_cpu_interrupt Interrupts
@@ -124,6 +126,7 @@ typedef enum
     VECTOR_EXTERNAL_AMOUNT = VECTOR_EXTERNAL_END - VECTOR_EXTERNAL_START,
 
     VECTOR_INTERNAL_START = 0xF0, ///< Inclusive start of internal interrupts.
+    VECTOR_FAKE = 0xFC,           ///< Used to implement `interrupt_fake()`.
     VECTOR_IPI = 0xFD,            ///< See @ref kernel_cpu_ipi for more information.
     VECTOR_TIMER = 0xFE,          ///< See @ref kernel_timer for more information.
     VECTOR_SPURIOUS = 0xFF,       ///< Made available for any component to use as a sink for spurious interrupts.
@@ -221,5 +224,18 @@ void interrupt_enable(void);
  * @param frame The interrupt frame containing the CPU state at the time of the exception.
  */
 void interrupt_handler(interrupt_frame_t* frame);
+
+/**
+ * @brief Enter a fake interrupt context as if an interrupt had occurred with the given frame.
+ * 
+ * Provides a way to schedule and handle notes outside of a real interrupt context.
+ * 
+ * @warning Must only be called when interrupts are disabled.
+ * 
+ * @param frame The interrupt frame representing the state at the time of the fake interrupt.
+ * @param self The current CPU.
+ * @return Will not return, instead will load and jump to the given interrupt frame, unless the thread gets scheduled or the frame is modified.
+ */
+_NORETURN extern void interrupt_fake(interrupt_frame_t* frame, cpu_t* self);
 
 /** @} */

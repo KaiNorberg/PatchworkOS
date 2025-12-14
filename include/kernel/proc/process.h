@@ -10,13 +10,15 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/futex.h>
 #include <kernel/utils/ref.h>
+#include <kernel/ipc/note.h>
+#include <kernel/proc/group.h>
 
 #include <stdatomic.h>
 
 /**
  * @brief Processes.
- * @defgroup kernel_sched_processes Processes
- * @ingroup kernel_sched
+ * @defgroup kernel_proc_process Processes
+ * @ingroup kernel_proc
  *
  * Processes store the shared resources for threads of execution, for example the address space and open files.
  *
@@ -60,13 +62,32 @@
  *
  * ## note
  *
- * A writable file that can be used to send notes to the process. Writing data to this file will enqueue that data as a
+ * A writable file that sends notes to the process. Writing to this file will enqueue that data as a
  * note in the note queue of one of the process's threads.
+ * 
+ * @see kernel_ipc_note
  *
+ * ## notegroup
+ * 
+ * A writeable file that sends notes to every process in the group of the target process.
+ * 
+ * @see kernel_ipc_note
+ * 
+ * ## gid
+ * 
+ * A readable file that contains the group ID of the process.
+ * 
+ * Format:
+ * ```
+ * %llu
+ * ```
+ * 
  * ## wait
  *
- * A readable and pollable file that can be used to wait for the process to exit and retrieve its exit status. Reading
+ * A readable and pollable file that can be used to wait for the process to exit. Reading
  * from this file will block until the process has exited.
+ * 
+ * The read value is the exit status of the process, usually either a integer exit code or a string describing the reason for termination often the note that caused it.
  *
  * Format:
  *
@@ -151,6 +172,16 @@ typedef enum
 } process_flags_t;
 
 /**
+ * @brief Process exit status structure.
+ * @struct process_exit_status_t
+ */
+typedef struct
+{
+    char buffer[NOTE_MAX];
+    lock_t lock;
+} process_exit_status_t;
+
+/**
  * @brief Process structure.
  * @struct process_t
  */
@@ -158,14 +189,16 @@ typedef struct process
 {
     ref_t ref;
     pid_t id;
+    list_entry_t groupEntry;
     _Atomic(priority_t) priority;
-    _Atomic(int64_t) status;
+    process_exit_status_t exitStatus;
     space_t space;
     namespace_t ns;
     cwd_t cwd;
     file_table_t fileTable;
     futex_ctx_t futexCtx;
     perf_process_ctx_t perf;
+    note_handler_t noteHandler;
     wait_queue_t suspendQueue;
     wait_queue_t dyingQueue;
     _Atomic(process_flags_t) flags;
@@ -179,6 +212,7 @@ typedef struct process
     lock_t dentriesLock;
     char* cmdline;
     uint64_t cmdlineSize;
+    group_t* group;
 } process_t;
 
 /**
@@ -187,9 +221,10 @@ typedef struct process
  * There is no `process_free()`, instead use `UNREF()`, `UNREF_DEFER()` or `process_kill()` to free a process.
  *
  * @param priority The priority of the new process.
+ * @param gid The group ID of the new process, or `GID_NONE` to create a new group.
  * @return On success, the newly created process. On failure, `NULL` and `errno` is set.
  */
-process_t* process_new(priority_t priority);
+process_t* process_new(priority_t priority, gid_t gid);
 
 /**
  * @brief Kills a process.
@@ -202,7 +237,7 @@ process_t* process_new(priority_t priority);
  * @param process The process to kill.
  * @param status The exit status of the process.
  */
-void process_kill(process_t* process, int32_t status);
+void process_kill(process_t* process, const char* status);
 
 /**
  * @brief Copies the environment variables from one process to another.

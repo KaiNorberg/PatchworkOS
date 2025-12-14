@@ -12,7 +12,7 @@
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/module/module.h>
-#include <kernel/sched/process.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 
 #include <boot/boot_info.h>

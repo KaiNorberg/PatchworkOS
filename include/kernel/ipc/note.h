@@ -4,6 +4,7 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/sync/lock.h>
 
+#include <kernel/utils/map.h>
 #include <sys/io.h>
 #include <sys/proc.h>
 
@@ -16,35 +17,72 @@ typedef struct cpu cpu_t;
  *
  * Notes are exposed in the `/proc/[pid]/note` file and are used for inter-process communication (IPC) similarly to
  * signals in Unix-like operating systems. However, instead of being limited to a predefined set of integer values,
- * notes can send arbitrary data buffers of up to `NOTE_MAX_BUFFER` bytes, usually strings.
+ * notes can send arbitrary strings.
  *
  * ## Using Notes
  *
- * Notes are sent by writing to the `/proc/[pid]/note` file of the target process, the data will be received by one of
- * the threads in the target process.
+ * To send or receive notes, each process exposes a set of files in its `/proc/[pid]` directory.
+ * 
+ * @see kernel_proc_process
  *
  * ## Receiving Notes
  *
- * @todo Receiving notes, software interrupts, etc.
+ * In the kernel, notes are received and handled in the `note_handle_pending()` function, which is called from an interrupt context.
  * 
- * ## Special Notes
+ * From the perspective of user space, a thread will be interrupted the next time a kernel to user boundary is crossed, asuming there is a note pending.
+ * 
+ * The interruption works by having the kernel save the current interrupt frame of the thread and replacing it with a new frame that calls the registered note handler function. During the handling of the note, no further notes will be delivered to the thread.
+ * 
+ * Later, when the note handler function calls `noted()`, the kernel will restore the saved interrupt frame and continue execution from where it left off as if nothing happened. Alternatively, the note handler can choose to exit the thread. If no handler is registered, the thread is killed.
+ * 
+ * ## System Notes
  *
- * Certain notes will cause the kernel to take special actions. Additionally, for the sake of consistency, we define
+ * Certain notes will cause the kernel to take special actions and for the sake of consistency, we define
  * some notes that all user processes are expected to handle in a standardized way.
  *
- * Below is a list of all of special notes.
+ * Any such notes are written as a word optionally followed by additional data. For example, a "terminate" note could be send as is or with a reason string like "terminate due to low memory".
  * 
- * ## "kill"
+ * ### "kill" (SIGKILL)
  * 
- * When a thread receives this note, it will immediately transition to the `THREAD_DYING` state, causing the scheduler to kill and free the thread.
+ * When a thread receives this note, it will immediately transition to the `THREAD_DYING` state, causing the scheduler to kill and free the thread. User space will never see this note.
+ * 
+ * ### "divbyzero" (SIGFPE)
+ * 
+ * The thread attempted to divide by zero.
+ * 
+ * ### "illegal" (SIGILL)
  *
+ * The thread attempted to execute an illegal instruction.
+ * 
+ * ### "interrupt" (SIGINT)
+ * 
+ * Indicates an interrupt from the user, typically initiated by pressing `Ctrl+C` in a terminal.
+ * 
+ * ### "pagefault" (SIGSEGV)
+ * 
+ * Indicates that the thread made an invalid memory access, such as dereferencing a null or invalid pointer.
+ * 
+ * ### "terminate" (SIGTERM)
+ * 
+ * Indicates that the process should perform any necessary cleanup and exit gracefully.
+ * 
+ * ## User-defined Notes
+ * 
+ * All system notes will always start with a single word consisting of only lowercase letters. 
+ * 
+ * If a program wishes to define its own notes, it is best practice to avoid using such words to prevent conflicts with future system notes. For example, here are some safe to use user-defined notes:
+ * - "user_note ..."
+ * - "UserNote ..."
+ * - "USER-NOTE ..."
+ * - "1usernote ..."
+ * 
  * @{
  */
 
 /**
  * @brief Maximum size of a notes buffer.
  */
-#define NOTE_MAX_BUFFER 64
+#define NOTE_MAX 256
 
 /**
  * @brief Note queue flags.
@@ -58,6 +96,7 @@ typedef enum
 {
     NOTE_QUEUE_NONE = 0,
     NOTE_QUEUE_RECEIVED_KILL = 1 << 0,
+    NOTE_QUEUE_HANDLING = 1 << 1, ///< User space is currently handling a note.
 } note_queue_flag_t;
 
 /**
@@ -66,10 +105,19 @@ typedef enum
  */
 typedef struct note
 {
-    uint8_t buffer[NOTE_MAX_BUFFER];
-    uint16_t length;
+    char buffer[NOTE_MAX];
     pid_t sender;
 } note_t;
+
+/**
+ * @brief Per-process note handler.
+ * @struct note_handler_t
+ */
+typedef struct
+{
+    note_func_t func;
+    lock_t lock;
+} note_handler_t;
 
 /**
  * @brief Per-thread note queue.
@@ -82,8 +130,16 @@ typedef struct
     uint64_t writeIndex;
     uint64_t length;
     note_queue_flag_t flags;
+    interrupt_frame_t noteFrame; ///< The interrupt frame to return to after handling a note.
     lock_t lock;
 } note_queue_t;
+
+/**
+ * @brief Initialize a note handler.
+ *
+ * @param handler The handler to initialize.
+ */
+void note_handler_init(note_handler_t* handler);
 
 /**
  * @brief Initialize a note queue.
@@ -93,31 +149,33 @@ typedef struct
 void note_queue_init(note_queue_t* queue);
 
 /**
- * @brief Get the length of a note queue.
+ * @brief The amount of pending notes in a note queue, including special notes.
  *
  * @param queue The queue to query.
- * @return The length of the queue.
+ * @return The amount of pending notes.
  */
-uint64_t note_queue_length(note_queue_t* queue);
+uint64_t note_amount(note_queue_t* queue);
 
 /**
  * @brief Write a note to a note queue.
  *
  * @param queue The destination queue.
- * @param buffer The buffer to write.
- * @param count The number of bytes to write.
+ * @param string The string to write, should be a null-terminated string.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t note_queue_write(note_queue_t* queue, const void* buffer, uint64_t count);
+uint64_t note_send(note_queue_t* queue, const char* string);
 
 /**
  * @brief Handle pending notes for the current thread.
  *
  * Should only be called from an interrupt context.
+ * 
+ * If the frame is not from user space, this function will return immediately.
  *
  * @param frame The interrupt frame.
  * @param self The current CPU.
+ * @return `true` if a note was handled, `false` otherwise.
  */
-void note_handle_pending(interrupt_frame_t* frame, cpu_t* self);
+bool note_handle_pending(interrupt_frame_t* frame, cpu_t* self);
 
 /** @} */

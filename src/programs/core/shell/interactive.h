@@ -1,3 +1,3 @@
 #pragma once
 
-int interactive_shell(void);
+void interactive_shell(void);

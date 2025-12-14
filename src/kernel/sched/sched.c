@@ -9,7 +9,7 @@
 #include <kernel/cpu/syscall.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <kernel/sched/process.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/sys_time.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
@@ -587,6 +587,8 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         sched->runThread = next;
     }
 
+    lock_release(&sched->lock);
+
     if (sched->runThread != sched->idleThread)
     {
         timer_set(uptime, uptime + CONFIG_TIME_SLICE);
@@ -595,10 +597,8 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     if (threadToFree != NULL)
     {
         assert(threadToFree != sched->runThread);
-        thread_free(threadToFree);
+        thread_free(threadToFree); // Cant hold any locks here
     }
-
-    lock_release(&sched->lock);
 }
 
 bool sched_is_idle(cpu_t* cpu)
@@ -645,24 +645,21 @@ void sched_yield(void)
     sched_nanosleep(CLOCKS_PER_SEC / 1000);
 }
 
-void sched_process_exit(int32_t status)
+void sched_process_exit(const char* status)
 {
     thread_t* thread = sched_thread();
     process_kill(thread->process, status);
-    ipi_invoke();
 
-    panic(NULL, "sched_process_exit() returned unexpectedly");
+    atomic_store(&thread->state, THREAD_DYING);
+    ipi_invoke();
+    panic(NULL, "Return to sched_process_exit");
 }
 
 void sched_thread_exit(void)
 {
     thread_t* thread = sched_thread();
-    if (thread_send_note(thread, "kill", 4) == ERR)
-    {
-        panic(NULL, "Failed to send kill note to self in sched_thread_exit()");
-    }
+    atomic_store(&thread->state, THREAD_DYING);
     ipi_invoke();
-
     panic(NULL, "Return to sched_thread_exit");
 }
 
@@ -671,7 +668,7 @@ SYSCALL_DEFINE(SYS_NANOSLEEP, uint64_t, clock_t nanoseconds)
     return sched_nanosleep(nanoseconds);
 }
 
-SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, int32_t status)
+SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, const char* status)
 {
     sched_process_exit(status);
 

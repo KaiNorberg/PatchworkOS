@@ -10,8 +10,6 @@
 
 #define _THREADS_MAX 2048
 
-#define _THREAD_ENTRY_ATTRIBUTES __attribute__((noreturn)) __attribute__((force_align_arg_pointer))
-
 typedef struct _thread _thread_t;
 
 typedef void (*_thread_entry_t)(_thread_t*);

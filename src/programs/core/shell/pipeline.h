@@ -14,6 +14,7 @@ typedef struct
     bool shouldCloseStdin;
     bool shouldCloseStdout;
     bool shouldCloseStderr;
+    pid_t pid;
 } cmd_t;
 
 typedef struct
@@ -21,7 +22,7 @@ typedef struct
     cmd_t* cmds;
     uint64_t capacity;
     uint64_t amount;
-    int status;
+    char status[MAX_PATH];
     fd_t globalStdin[2];
 } pipeline_t;
 

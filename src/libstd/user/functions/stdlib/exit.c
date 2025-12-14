@@ -6,7 +6,5 @@
 
 void exit(int status)
 {
-    _exit_stack_dispatch();
-    _files_close();
-    _syscall_process_exit(status);
+    _exit(F("%d", status));
 }

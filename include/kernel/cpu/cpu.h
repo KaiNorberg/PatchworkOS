@@ -225,6 +225,16 @@ void cpu_stacks_overflow_check(cpu_t* cpu);
 uint64_t cpu_halt_others(void);
 
 /**
+ * @brief Gets the top of the interrupt stack for a CPU.
+ *
+ * Usefull as we might need to retrieve the interrupt stack in assembly, so this avoid code duplication.
+ * 
+ * @param cpu The CPU to get the interrupt stack top for.
+ * @return The top of the interrupt stack.
+ */
+uintptr_t cpu_interrupt_stack_top(cpu_t* cpu);
+
+/**
  * @brief Gets the number of identified CPUs.
  *
  * Use this over `_cpuAmount`.

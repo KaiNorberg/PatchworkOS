@@ -8,6 +8,7 @@
 #include <sys/argsplit.h>
 #include <sys/io.h>
 #include <sys/proc.h>
+#include <signal.h>
 
 static const char* lookupDirs[] = {
     "/bin",
@@ -41,7 +42,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
 
     pipeline->capacity = tokenAmount;
     pipeline->amount = 0;
-    pipeline->status = 0;
+    pipeline->status[0] = '\0';
     if (open2("/dev/pipe/new", pipeline->globalStdin) == ERR)
     {
         free(pipeline->cmds);
@@ -60,6 +61,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
         cmd->shouldCloseStdin = false;
         cmd->shouldCloseStdout = false;
         cmd->shouldCloseStderr = false;
+        cmd->pid = ERR;
     }
 
     uint64_t currentCmd = 0;
@@ -429,6 +431,13 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
     return result;
 }
 
+static void pipeline_sigint_handler(int sig)
+{
+    (void)sig;
+
+    // Do nothing, only child processes should be interrupted.
+}
+
 uint64_t pipeline_execute(pipeline_t* pipeline)
 {
     if (pipeline->amount == 0)
@@ -453,27 +462,34 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
     }
 
     uint64_t result = 0;
-    pipeline->status = 0;
+    pipeline->status[0] = '\0';
 
     pid_t lastPid = 0;
+    if (signal(SIGINT, pipeline_sigint_handler) == SIG_ERR)
+    {
+        free(fds);
+        free(pids);
+        return ERR;
+    }
 
     for (uint64_t i = 0; i < pipeline->amount; i++)
     {
         pid_t pid = pipeline_execute_cmd(&pipeline->cmds[i]);
         if (pid == ERR)
         {
-            pipeline->status = EXIT_FAILURE;
+            strcpy(pipeline->status, strerror(errno));
             result = ERR;
             goto cleanup;
         }
 
         if (pid == 0)
         {
-            pipeline->status = 0;
+            pipeline->status[0] = '\0';
             lastPid = 0;
             continue;
         }
 
+        pipeline->cmds[i].pid = pid;
         lastPid = pid;
         pids[fdCount - 1] = pid;
 
@@ -535,7 +551,7 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
                 printf("^C\n");
                 for (uint64_t j = 1; j < fdCount; j++)
                 {
-                    swritefile(F("/proc/%d/ctl", pids[j - 1]), "kill");
+                    swritefile(F("/proc/%d/notegroup", pids[j - 1]), "interrupt");
                 }
 
                 break;
@@ -565,7 +581,7 @@ uint64_t pipeline_execute(pipeline_t* pipeline)
 
                 if (pids[i - 1] == lastPid)
                 {
-                    pipeline->status = atoi(buffer);
+                    strcpy(pipeline->status, buffer);
                 }
 
                 close(fds[i].fd);

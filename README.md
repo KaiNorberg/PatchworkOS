@@ -73,20 +73,12 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 
 ### User Space
 
-- Custom C standard library and system libraries.
+- Custom superset of the ANSI C standard library including threading, file I/O, math, PatchworkOS extensions, etc.
 - Highly modular shared memory based desktop environment.
 - Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
 - Note that currently a heavy focus has been placed on the kernel and low-level stuff, so user space is quite small... for now.
 
 *And much more...*
-
-## Notable Differences with POSIX
-
-- Replaced `fork(), exec()` with `spawn()`.
-- No "user" concept.
-- Non-POSIX standard library.
-- Even heavier focus on "everything is a file".
-- File flags instead of file modes/permissions.
 
 ## Limitations
 
@@ -180,7 +172,7 @@ The module loader itself has no idea what these type strings actually are, but s
 
 So what is `BOOT_ALWAYS`? It is the type of special device that the kernel will pretend to "attach" during boot. In this case, it simply causes our hello module to be loaded during boot.
 
-For more information, check the [Module Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/d41/group__kernel__module.html).
+For more information, check the [Module Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/d41/group__kernel__module.html).
 
 ## Everything is a File
 
@@ -277,7 +269,7 @@ swritefile(F("/net/local/%s/ctl", id), "connect myserver");
 free(id);
 ```
 
-[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/df/d65/group__module__net.html)
+[Documentation](https://kainorberg.github.io/PatchworkOS/html/df/d65/group__module__net.html)
 
 ### File Flags?
 
@@ -299,7 +291,7 @@ or
 open("/some/path:ce");
 ```
 
-For a full list of available flags, check the [Doxygen documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html).
+For a full list of available flags, check the [Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html).
 
 ### Permissions?
 
@@ -317,7 +309,7 @@ open("/some/path:rw");
 
 Permissions are inherited, you can't use a file with lower permissions to get a file with higher permissions. Consider the namespace section, if a directory was opened using only read permissions and that same directory was bound, then it would be impossible to open any files within that directory with any permissions other than read.
 
-For a full list of available permissions, check the [Doxygen documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html).
+For a full list of available permissions, check the [Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/de3/group__kernel__fs__path.html).
 
 ### Spawning Processes
 
@@ -373,6 +365,26 @@ The advantages of this approach are numerous, we avoid COW issues with `fork()`,
 
 For more on `spawn()`, check the [Userspace Process API](https://kainorberg.github.io/PatchworkOS/html/d1/d10/group__libstd__sys__proc.html#gae41c1cb67e3bc823c6d0018e043022eb) documentation and for more information on the `/proc` filesystem, check the [Process](https://kainorberg.github.io/PatchworkOS/html/d1/d20/group__kernel__sched__processes.html) documentation.
 
+## Notes (Signals)
+
+The next feature to discuss is the "notes" system. Notes are PatchworkOS's equivalent to POSIX signals which asynchronously send strings to processes.
+
+We will skip how to send and receive notes along with details like process groups (check the docs for that), instead focusing on the biggest advantage of the notes system, additional information.
+
+Let's take an example. Say we are debugging a segmentation fault in a program, which is a rather common scenario. In a usual POSIX environment, we might be told "Segmentation fault (core dumped)" or even worse "SIGSEGV", which is not very helpful. The core limitation is that signals are just integers, so we can't provide any additional information.
+
+In PatchworkOS, a note is a string where the first word of the string is the note type and the rest is arbitrary data. So in our segmentation fault example, the shell might produce output like:
+
+```bash
+shell: pagefault at 0x40013b due to stack overflow at 0x7ffffff9af18
+```
+
+> Note that the output provided is from the "stackoverflow" program which intentionally causes a stack overflow through recursion.
+
+All that happened is that the shell printed the exit status of the process, which is also a string and in this case is set to the note that killed the process. This is much more useful, we know the exact address and the reason for the fault.
+
+For more details, see the [Notes Documentation](https://kainorberg.github.io/PatchworkOS/html/d8/db1/group__kernel__ipc__note.html), [stdlib Process Documentation](https://kainorberg.github.io/PatchworkOS/html/d1/d10/group__libstd__sys__proc.html) and the [Kernel Process Documentation](https://kainorberg.github.io/PatchworkOS/html/d1/d20/group__kernel__sched__processes.html).
+
 ### Namespaces
 
 Namespaces are a set of mountpoints that are unique per process, allowing each process a unique view of the file system.
@@ -381,7 +393,7 @@ Think of it like this, in the common case, you can mount a drive to `/mnt/mydriv
 
 As an example, the "id" directories mentioned in the socket example are a separate "sysfs" instance mounted in the namespace of the creating process, meaning that only that process and its children can see their contents.
 
-For more information on how mounts are propagated or mounts inherited check the [Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html).
+For more information on how mounts are propagated or mounts inherited check the [Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html).
 
 ### Namespace Sharing
 
@@ -414,7 +426,7 @@ fd_t somePath = openat(dir, "data");
 
 An interesting detail is that when process A opens the `net/local/5` directory, the dentry underlying the file descriptor is the root of the mounted file system, if process B were to try to open this directory, it would still succeed as the directory itself is visible, however process B would instead retrieve the dentry of the directory in the parent superblock, and would instead see the content of that directory in the parent superblock. If this means nothing to you, don't worry about it.
 
-[Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
+[Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
 
 ### But why?
 
@@ -432,7 +444,7 @@ Plus its fun.
 
 PatchworkOS features a from-scratch ACPI implementation and AML parser, with the goal of being, at least by ACPI standards, easy to understand and educational. It is tested on the [Tested Configurations](#tested-configurations) below and against [ACPICA's](https://github.com/acpica/acpica) runtime test suite, but remains a work in progress (and probably always will be).
 
-See [ACPI Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/d0/d30/group__kernel__acpi.html) for a progress checklist.
+See [ACPI Documentation](https://kainorberg.github.io/PatchworkOS/html/d0/d30/group__kernel__acpi.html) for a progress checklist.
 
 See [ACPI specification Version 6.6](https://uefi.org/specs/ACPI/6.6/index.html) as the main reference.
 
@@ -526,9 +538,9 @@ Of course, there are limitations to this approach, for example, it is in no way 
 
 All in all, this algorithm would not be a viable replacement for existing algorithms, but for PatchworkOS, it serves its purpose very efficiently.
 
-[VMM Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/df0/group__kernel__mem__vmm.html)
+[VMM Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/df0/group__kernel__mem__vmm.html)
 
-[Paging Doxygen Documentation](https://kainorberg.github.io/PatchworkOS/html/dc/d2c/group__kernel__mem__paging.html)
+[Paging Documentation](https://kainorberg.github.io/PatchworkOS/html/dc/d2c/group__kernel__mem__paging.html)
 
 ### Scheduler
 

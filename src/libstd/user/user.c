@@ -4,6 +4,8 @@
 #include "common/exit_stack.h"
 #include "common/std_streams.h"
 #include "common/thread.h"
+#include "user/common/note.h"
+#include "user/common/file.h"
 
 #include <sys/io.h>
 #include <sys/proc.h>
@@ -32,4 +34,5 @@ void _user_init(void)
     _exit_stack_init();
     _files_init();
     _std_streams_init();
+    _note_init();
 }

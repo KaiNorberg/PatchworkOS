@@ -3,9 +3,11 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/irq.h>
+#include <kernel/cpu/stack_pointer.h>
 #include <kernel/drivers/perf.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/mem/paging_types.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/wait.h>
 
@@ -46,114 +48,154 @@ void interrupt_enable(void)
     }
 }
 
-uint64_t page_fault_handler(const interrupt_frame_t* frame)
+static void exception_handle_user(interrupt_frame_t* frame, const char* note, bool shouldKill)
 {
     thread_t* thread = sched_thread_unsafe();
-    if (thread == NULL)
+    if (thread_send_note(thread, note) == ERR || shouldKill)
     {
-        return ERR;
+        atomic_store(&thread->state, THREAD_DYING);
+        process_kill(thread->process, shouldKill ? note : F("note delivery failed (%s)", strerror(errno)));
+
+        cpu_t* self = cpu_get_unsafe();
+        sched_do(frame, self);
     }
+}
+
+static uint64_t exception_grow_stack(thread_t* thread, uintptr_t faultAddr, stack_pointer_t* stack, pml_flags_t flags)
+{
+    uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
+    if (stack_pointer_is_in_stack(stack, alignedFaultAddr, 1))
+    {
+        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, flags, VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
+        {
+            if (errno == EEXIST) // Race condition, another CPU mapped the page.
+            {
+                return 0;
+            }
+            return ERR;
+        }
+        memset_s((void*)alignedFaultAddr, PAGE_SIZE, 0, PAGE_SIZE);
+
+        return 1;
+    }
+
+    return 0;
+}
+
+static void exception_kernel_page_fault_handler(interrupt_frame_t* frame)
+{
+    thread_t* thread = sched_thread_unsafe();
+    process_t* process = thread->process;
     uintptr_t faultAddr = (uintptr_t)cr2_read();
 
     if (frame->errorCode & PAGE_FAULT_PRESENT)
     {
-        errno = EFAULT;
-        return ERR;
+        panic(frame, "page fault on present page at address 0x%llx", faultAddr);
     }
 
     uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
-    if (stack_pointer_overlaps_guard(&thread->userStack, alignedFaultAddr, 1) ||
-        stack_pointer_overlaps_guard(&thread->kernelStack, alignedFaultAddr, 1))
+    if (stack_pointer_overlaps_guard(&thread->kernelStack, alignedFaultAddr, 1))
     {
-        LOG_DEBUG("stack overflow detected at address 0x%llx\n", faultAddr);
-        errno = EFAULT;
-        return ERR;
+        panic(frame, "kernel stack overflow at address 0x%llx", faultAddr);
     }
 
-    if (stack_pointer_is_in_stack(&thread->userStack, alignedFaultAddr, 1))
+    uint64_t result = exception_grow_stack(thread, faultAddr, &thread->kernelStack,
+            PML_WRITE | PML_PRESENT);
+    if (result == ERR)
     {
-        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PML_WRITE | PML_PRESENT | PML_USER,
-                VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
-        {
-            if (errno == EEXIST) // Race condition, another CPU mapped the page.
-            {
-                return 0;
-            }
-
-            return ERR;
-        }
-        memset((void*)alignedFaultAddr, 0, PAGE_SIZE);
-        return 0;
+        panic(frame, "failed to grow kernel stack for page fault at address 0x%llx", faultAddr);
     }
 
-    if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
+    if (result == 1)
     {
-        errno = EFAULT;
-        return ERR;
+        return;
     }
 
-    if (stack_pointer_is_in_stack(&thread->kernelStack, alignedFaultAddr, 1))
+    result = exception_grow_stack(thread, faultAddr, &thread->userStack,
+            PML_USER | PML_WRITE | PML_PRESENT);
+    if (result == ERR)
     {
-        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PML_WRITE | PML_PRESENT,
-                VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
-        {
-            if (errno == EEXIST) // Race condition, another CPU mapped the page.
-            {
-                return 0;
-            }
-            return ERR;
-        }
-        memset((void*)alignedFaultAddr, 0, PAGE_SIZE);
-        return 0;
+        panic(frame, "failed to grow user stack for page fault at address 0x%llx", faultAddr);
     }
 
-    errno = EFAULT;
-    return ERR;
+    if (result == 1)
+    {
+        return;
+    }
+
+    panic(frame, "invalid page fault at address 0x%llx", faultAddr);
+}
+
+static void exception_user_page_fault_handler(interrupt_frame_t* frame)
+{
+    thread_t* thread = sched_thread_unsafe();
+    process_t* process = thread->process;
+    uintptr_t faultAddr = (uintptr_t)cr2_read();
+
+    if (frame->errorCode & PAGE_FAULT_PRESENT)
+    {
+        exception_handle_user(frame, F("pagefault at 0x%llx when %s present page at 0x%llx",
+            frame->rip, (frame->errorCode & PAGE_FAULT_WRITE) ? "writing to" : "reading from", faultAddr), false);
+        return;
+    }
+
+    uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
+    if (stack_pointer_overlaps_guard(&thread->userStack, alignedFaultAddr, 1))
+    {
+        exception_handle_user(frame, F("pagefault at 0x%llx due to stack overflow at 0x%llx", frame->rip, faultAddr), true);
+        return;
+    }
+
+    uint64_t result = exception_grow_stack(thread, faultAddr, &thread->userStack,
+            PML_USER | PML_WRITE | PML_PRESENT);
+    if (result == ERR)
+    {
+        exception_handle_user(frame, F("pagefault at 0x%llx failed to grow stack at 0x%llx", frame->rip, faultAddr), true);
+        return;
+    }
+
+    if (result == 1)
+    {
+        return;
+    }
+
+    exception_handle_user(frame, F("pagefault at 0x%llx when %s 0x%llx",
+        frame->rip, (frame->errorCode & PAGE_FAULT_WRITE) ? "writing" : "reading", faultAddr), false);
 }
 
 static void exception_handler(interrupt_frame_t* frame)
 {
     switch (frame->vector)
     {
+    case VECTOR_DIVIDE_ERROR:
+        if (!INTERRUPT_FRAME_IN_USER_SPACE(frame))
+        {
+            panic(frame, "divide by zero");
+        }
+        exception_handle_user(frame, F("divbyzero at 0x%llx", frame->rip), false);
+        return;
+    case VECTOR_INVALID_OPCODE:
+        if (!INTERRUPT_FRAME_IN_USER_SPACE(frame))
+        {
+            panic(frame, "invalid opcode");
+        }
+        exception_handle_user(frame, F("illegal instruction at 0x%llx", frame->rip), false);
+        return;
     case VECTOR_DOUBLE_FAULT:
-        panic(frame, "kernel double fault");
-        break;
+        panic(frame, "double fault");
+        return;
     case VECTOR_NMI:
         return; /// @todo Handle NMIs properly.
     case VECTOR_PAGE_FAULT:
-        if (page_fault_handler(frame) != ERR)
+        if (!INTERRUPT_FRAME_IN_USER_SPACE(frame))
         {
+            exception_kernel_page_fault_handler(frame);
             return;
         }
-        break;
+        exception_user_page_fault_handler(frame);
+        return;
     default:
-        break;
-    }
-
-    if (INTERRUPT_FRAME_IN_USER_SPACE(frame))
-    {
-        cpu_t* self = cpu_get_unsafe();
-        thread_t* thread = sched_thread_unsafe();
-        process_t* process = thread->process;
-
-        uint64_t cr2 = cr2_read();
-
-        LOG_DEBUG("unhandled user space exception in process pid=%d tid=%d vector=%lld error=0x%llx rip=0x%llx "
-                  "cr2=0x%llx errno='%s'\n",
-            process->id, thread->id, frame->vector, frame->errorCode, frame->rip, cr2, strerror(thread->error));
-
-#ifndef NDEBUG
-        panic_stack_trace(frame);
-#endif
-
-        process_kill(process, EFAULT);
-        atomic_store(&thread->state, THREAD_DYING);
-
-        sched_do(frame, self);
-    }
-    else
-    {
-        panic(frame, "unhandled kernel exception");
+        panic(frame, "unhandled exception vector 0x%x", frame->vector);
     }
 }
 
@@ -179,6 +221,10 @@ void interrupt_handler(interrupt_frame_t* frame)
     if (frame->vector >= VECTOR_EXTERNAL_START && frame->vector < VECTOR_EXTERNAL_END)
     {
         irq_dispatch(frame, self);
+    }
+    else if (frame->vector == VECTOR_FAKE)
+    {
+        // Do nothing.
     }
     else if (frame->vector == VECTOR_TIMER)
     {

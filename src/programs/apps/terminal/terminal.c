@@ -588,7 +588,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         term->prevCursor = &term->screen[0][0];
 
         const char* argv[] = {"/bin/shell", NULL};
-        term->shell = spawn(argv, SPAWN_SUSPEND);
+        term->shell = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_GROUP);
         if (term->shell == ERR)
         {
             close(term->stdin[0]);
@@ -631,7 +631,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         close(term->stdout[0]);
         close(term->stdout[1]);
 
-        swritefile(F("/proc/%d/ctl", term->shell), "kill");
+        swritefile(F("/proc/%d/notegroup", term->shell), "terminate");
     }
     break;
     case EVENT_LIB_QUIT:

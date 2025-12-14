@@ -27,7 +27,7 @@ typedef struct
 {
     ansi_t ansi;
     history_t history;
-    int status;
+    char status[MAX_PATH];
     char buffer[MAX_PATH];
     uint64_t pos;
 } interactive_state_t;
@@ -53,11 +53,11 @@ static uint64_t interactive_execute_command(interactive_state_t* state)
         return 0; // This is also fine
     }
 
-    if (pipeline.status != 0 && pipeline.status != -1)
+    if (strlen(pipeline.status) > 0 && strcmp(pipeline.status, "0") != 0)
     {
-        printf("shell: %d (%s)\n", pipeline.status, strerror(pipeline.status));
+        printf("shell: %s\n", pipeline.status);
     }
-    state->status = pipeline.status;
+    strcpy(state->status, pipeline.status);
     pipeline_deinit(&pipeline);
     return 0;
 }
@@ -217,7 +217,7 @@ static uint64_t interactive_handle_input(interactive_state_t* state, const char*
     return 0;
 }
 
-int interactive_shell(void)
+void interactive_shell(void)
 {
     printf("Welcome to the PatchworkOS Shell!\n");
     printf("Type \033[92mhelp\033[m for information on how to use the shell.\n");
@@ -227,7 +227,7 @@ int interactive_shell(void)
     interactive_state_t state;
     ansi_init(&state.ansi);
     history_init(&state.history);
-    state.status = 0;
+    state.status[0] = '\0';
     memset(state.buffer, 0, MAX_PATH);
     state.pos = 0;
 
@@ -237,14 +237,14 @@ int interactive_shell(void)
         uint64_t readCount = read(STDIN_FILENO, buffer, MAX_PATH);
         if (readCount == ERR)
         {
-            printf("shell: failed to read input (%s)\n", strerror(errno));
-            return EXIT_FAILURE;
+            history_deinit(&state.history);
+            _exit(F("failed to read input (%s)\n", strerror(errno)));
         }
 
         if (interactive_handle_input(&state, buffer, readCount) == ERR)
         {
             history_deinit(&state.history);
-            return state.status;
+            _exit(state.status);
         }
     }
 }

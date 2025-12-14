@@ -1,3 +1,4 @@
+#include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/syscall.h>
 
 #include <kernel/cpu/cpu.h>
@@ -16,6 +17,7 @@
 void syscall_ctx_init(syscall_ctx_t* ctx, const stack_pointer_t* syscallStack)
 {
     ctx->syscallRsp = syscallStack->top;
+    ctx->userRsp = 0;
 }
 
 void syscall_ctx_load(syscall_ctx_t* ctx)
@@ -67,25 +69,30 @@ const syscall_descriptor_t* syscall_get_descriptor(uint64_t number)
     return &_syscallTableStart[number];
 }
 
-uint64_t syscall_handler(uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5, uint64_t arg6,
-    uint64_t number)
+void syscall_handler(interrupt_frame_t* frame)
 {
-    const syscall_descriptor_t* desc = syscall_get_descriptor(number);
+    const syscall_descriptor_t* desc = syscall_get_descriptor(frame->rax);
     if (desc == NULL)
     {
-        LOG_DEBUG("Unknown syscall %u\n", number);
+        LOG_DEBUG("Unknown syscall %u\n", frame->rax);
         errno = ENOSYS;
-        return ERR;
+        frame->rax = ERR;
+        return;
     }
+    
+    thread_t* thread = sched_thread();
     perf_syscall_begin();
 
     // This is safe for any input type and any number of arguments up to 6 as they will simply be ignored.
-    uint64_t result = desc->handler(arg1, arg2, arg3, arg4, arg5, arg6);
+    frame->rax = desc->handler(frame->rdi, frame->rsi, frame->rdx, frame->r10, frame->r8, frame->r9);
 
     perf_syscall_end();
-    if (thread_is_note_pending(sched_thread()))
+
+    asm volatile("cli" ::: "memory");
+    if (thread_is_note_pending(thread))
     {
-        ipi_invoke();
+        cpu_t* self = cpu_get_unsafe();
+        frame->vector = VECTOR_FAKE;
+        interrupt_fake(frame, self); 
     }
-    return result;
 }

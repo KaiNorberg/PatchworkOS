@@ -2,8 +2,6 @@
 
 #include <kernel/cpu/syscall.h>
 
-#include <errno.h>
-#include <stdarg.h>
 #include <stdint.h>
 #include <sys/io.h>
 #include <sys/proc.h>
@@ -88,20 +86,18 @@
         ret; \
     })
 
-_NORETURN static inline void _syscall_process_exit(int32_t status)
+_NORETURN static inline void _syscall_process_exit(const char* status)
 {
-    _SYSCALL1(uint64_t, SYS_PROCESS_EXIT, int32_t, status);
+    _SYSCALL1(uint64_t, SYS_PROCESS_EXIT, const char*, status);
     asm volatile("ud2");
-    while (1)
-        ;
+    __builtin_unreachable();
 }
 
 _NORETURN static inline void _syscall_thread_exit(void)
 {
     _SYSCALL0(uint64_t, SYS_THREAD_EXIT);
     asm volatile("ud2");
-    while (1)
-        ;
+    __builtin_unreachable();
 }
 
 static inline pid_t _syscall_spawn(const char** argv, spawn_flags_t flags)
@@ -258,4 +254,16 @@ static inline fd_t _syscall_claim(key_t* key)
 static inline uint64_t _syscall_bind(fd_t source, const char* mountpoint, mount_flags_t flags)
 {
     return _SYSCALL3(uint64_t, SYS_BIND, fd_t, source, const char*, mountpoint, mount_flags_t, flags);
+}
+
+static inline uint64_t _syscall_notify(note_func_t func)
+{
+    return _SYSCALL1(uint64_t, SYS_NOTIFY, note_func_t, func);
+}
+
+_NORETURN static inline uint64_t _syscall_noted(void)
+{
+    _SYSCALL0(uint64_t, SYS_NOTED);
+    asm volatile("ud2");
+    __builtin_unreachable();
 }

@@ -2,8 +2,6 @@
 
 %include "kernel/cpu/interrupt.inc"
 
-global vectorTable:object
-
 %macro INTERRUPT_NAME 1
     dq vector_%1
 %endmacro
@@ -22,6 +20,8 @@ vector_%1:
 %endmacro
 
 extern interrupt_handler
+extern cpu_interrupt_stack_top
+extern memcpy
 
 section .text
 
@@ -32,7 +32,10 @@ vector_common:
     mov rdi, rsp
     call interrupt_handler
 
-    INTERRUPT_FRAME_POP_AND_JUMP
+    INTERRUPT_FRAME_REGS_POP
+
+    add rsp, 16 ; Pop error code and vector number
+    iretq
 
 INTERRUPT_NO_ERR 0
 INTERRUPT_NO_ERR 1
@@ -72,8 +75,37 @@ INTERRUPT_NO_ERR 31
 %assign i i+1
 %endrep
 
+; rdi = interrupt_frame_t* frame
+; rsi = cpu_t* self
+global interrupt_fake:function
+interrupt_fake:
+    push qword 0 ; align stack
+
+    mov r15, rdi ; frame
+    
+    ; memcpy((r14 = cpu_interrupt_stack_top(self) - INTERRUPT_FRAME_SIZE), frame, INTERRUPT_FRAME_SIZE)
+    mov rdi, rsi
+    call cpu_interrupt_stack_top
+    mov rdi, rax
+    sub rdi, INTERRUPT_FRAME_SIZE
+    mov r14, rdi
+    mov rsi, r15
+    mov rdx, INTERRUPT_FRAME_SIZE
+    call memcpy
+
+    ; interrupt_handler((rbp = rsp = r14))
+    mov rsp, r14
+    mov rbp, rsp
+    mov rdi, rsp
+    call interrupt_handler
+
+    INTERRUPT_FRAME_REGS_POP
+    add rsp, 16
+    iretq
+
 section .data
 
+global vectorTable:object
 vectorTable:
 %assign i 0
 %rep 256
