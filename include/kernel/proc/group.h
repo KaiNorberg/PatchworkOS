@@ -53,11 +53,14 @@ typedef struct group
  *
  * @param entry The group entry to initialize.
  */
-static inline void group_entry_init(group_entry_t* entry)
-{
-    list_entry_init(&entry->entry);
-    entry->group = NULL;
-}
+void group_entry_init(group_entry_t* entry);
+
+/**
+ * @brief Deinitializes a group entry.
+ *
+ * @param entry The group entry to deinitialize.
+ */
+void group_entry_deinit(group_entry_t* entry);
 
 /**
  * @brief Adds a process to a group.

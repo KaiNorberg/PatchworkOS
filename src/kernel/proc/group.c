@@ -11,6 +11,17 @@ static map_t groups = MAP_CREATE();
 static uint64_t nextGid = 1;
 static lock_t groupsLock = LOCK_CREATE();
 
+void group_entry_init(group_entry_t* entry)
+{
+    list_entry_init(&entry->entry);
+    entry->group = NULL;
+}
+
+void group_entry_deinit(group_entry_t* entry)
+{
+    group_remove(entry);
+}
+
 uint64_t group_add(gid_t gid, group_entry_t* entry)
 {
     if (entry == NULL)

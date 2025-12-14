@@ -18,8 +18,9 @@
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
 #include <kernel/module/symbol.h>
-#include <kernel/proc/process.h>
 #include <kernel/sched/loader.h>
+#include <kernel/proc/reaper.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
@@ -86,7 +87,7 @@ static void init_finalize(void)
     log_file_expose();
     process_procfs_init();
 
-    process_reaper_init();
+    reaper_init();
 
     perf_init();
 
@@ -150,7 +151,6 @@ static inline void init_process_spawn(void)
     {
         panic(NULL, "Failed to create init process");
     }
-    UNREF_DEFER(initProcess);
 
     namespace_set_parent(&initProcess->ns, &process_get_kernel()->ns);
 

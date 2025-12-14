@@ -93,7 +93,7 @@
  * Format:
  *
  * ```
- * %lld
+ * %s
  * ```
  *
  * ## perf
@@ -184,12 +184,25 @@ typedef struct
 } process_exit_status_t;
 
 /**
+ * @brief Process `/proc/[pid]` directory structure.
+ * @struct process_dir_t
+ */
+typedef struct
+{
+    mount_t* self;   ///< The `/proc/self` bind mount.
+    dentry_t* dir; ///< The `/proc` directory.
+    list_t files; ///< List of file dentries for the `/proc/[pid]/` directory.
+    dentry_t* env; ///< The `/proc/[pid]/env` directory.
+    list_t envEntries; ///< List of environment variable dentries.
+    lock_t lock;
+} process_dir_t;
+
+/**
  * @brief Process structure.
  * @struct process_t
  */
 typedef struct process
 {
-    ref_t ref;
     pid_t id;
     group_entry_t groupEntry;
     _Atomic(priority_t) priority;
@@ -206,12 +219,7 @@ typedef struct process
     _Atomic(process_flags_t) flags;
     process_threads_t threads;
     list_entry_t zombieEntry;
-    mount_t* self;   ///< The `/proc/self` bind mount.
-    dentry_t* proc;  ///< The `/proc/[pid]` directory, also stored in `dentries` for convenience.
-    dentry_t* env;   ///< The `/proc/[pid]/env` directory, also stored in `dentries` for convenience.
-    list_t dentries; ///< List of dentries in the `/proc/[pid]/` directory.
-    list_t envVars;  ///< List of dentries in the `/proc/[pid]/env/` directory.
-    lock_t dentriesLock;
+    process_dir_t dir;
     char* cmdline;
     uint64_t cmdlineSize;
 } process_t;
@@ -228,17 +236,21 @@ typedef struct process
 process_t* process_new(priority_t priority, gid_t gid);
 
 /**
- * @brief Kills a process.
- *
- * Sends a kill note to all threads in the process and sets its exit status.
- * Will also close all files opened by the process and deinitialize its `/proc` directory.
- *
- * When all threads have exited and all entires in its `/proc` directory have been closed, the process will be freed.
+ * @brief Kills a process, pushing it to the reaper.
  *
  * @param process The process to kill.
  * @param status The exit status of the process.
  */
 void process_kill(process_t* process, const char* status);
+
+/**
+ * @brief Deinitializes the `/proc/[pid]` directory of a process.
+ *
+ * When there are no more references to any of the entries in the `/proc/[pid]` directory, the process will be freed.
+ * 
+ * @param process The process whose `/proc/[pid]` directory will be deinitialized.
+ */
+void process_dir_deinit(process_t* process);
 
 /**
  * @brief Copies the environment variables from one process to another.
@@ -292,13 +304,5 @@ process_t* process_get_kernel(void);
  * @brief Initializes the `/proc` directory.
  */
 void process_procfs_init(void);
-
-/**
- * @brief Initializes the process reaper.
- *
- * The process reaper allows us to delay the freeing of processes, this is useful if, for example, another process
- * wanted that process's exit status.
- */
-void process_reaper_init(void);
 
 /** @} */
