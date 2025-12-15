@@ -17,8 +17,8 @@
 
 /**
  * @brief Processes.
- * @defgroup kernel_proc_process Processes
- * @ingroup kernel_proc
+ * @defgroup kernel_proc Processes
+ * @ingroup kernel
  *
  * Processes store the shared resources for threads of execution, for example the address space and open files.
  *
