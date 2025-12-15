@@ -6,7 +6,7 @@ Included here are instructions on how to contribute, try to follow them as best 
 
 ## Before You Start
 
-For major changes like feature additions or architectural modifications, please open an issue first to discuss the change.
+For major changes like feature additions or architectural modifications, please open a discussion first to discuss the change.
 
 For bug fixes, documentation improvements, and minor enhancements, feel free to jump straight into a pull request.
 
@@ -19,6 +19,7 @@ type(scope): description
 ```
 
 For example:
+
 - `fix(readme): fix typo in setup instructions`
 - `feat(kernel:sched): add constant-time scheduler`
 - `refactor(libstd): reorganize memory functions`

@@ -734,6 +734,10 @@ If you are unsure where to start, check the [Todo List](https://kainorberg.githu
 
 Check out the [contribution guidelines](CONTRIBUTING.md) to get started.
 
+## Staying Updated
+
+PatchworkOS is under active development, when new features are added, major changes made or other noteworthy events occur, a GitHub discussion post is made in the [PatchworkOS Discussions](https://github.com/KaiNorberg/PatchworkOS/discussions), as such subscribing to the discussions or watching the repository is the best way to stay updated.
+
 ## Nostalgia
 
 [The first Reddit post and image of PatchworkOS](https://www.reddit.com/r/osdev/comments/18gbsng/a_little_over_2_years_ago_i_posted_a_screenshot/) from back when getting to user space was a massive milestone and the kernel was supposed to be a UNIX-like microkernel.
