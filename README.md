@@ -365,7 +365,7 @@ The advantages of this approach are numerous, we avoid COW issues with `fork()`,
 
 For more on `spawn()`, check the [Userspace Process API Documentation](https://kainorberg.github.io/PatchworkOS/html/d1/d10/group__libstd__sys__proc.html#gae41c1cb67e3bc823c6d0018e043022eb) and for more information on the `/proc` filesystem, check the [Kernel Process Documentation](https://kainorberg.github.io/PatchworkOS/html/da/d0f/group__kernel__proc.html).
 
-## Notes (Signals)
+### Notes (Signals)
 
 The next feature to discuss is the "notes" system. Notes are PatchworkOS's equivalent to POSIX signals which asynchronously send strings to processes.
 
@@ -432,9 +432,7 @@ An interesting detail is that when process A opens the `net/local/5` directory, 
 
 I'm sure you have heard many an argument for and against the "everything is a file" philosophy. So I won't go over everything, but the primary reason for using it in PatchworkOS is "emergent behavior" or "composability" whichever term you prefer.
 
-Take the namespace sharing example, notice how there isn't any actually dedicated "namespace sharing" system? Or the `spawn()` example, notice how there is no specialized system for setting environment variables in a child?
-
-Instead, we have a set of small, simple building blocks that when added together form a more complex whole. That is emergent behavior, by keeping things simple and most importantly composable, we can create very complex behavior without needing to explicitly design it.
+Take the `spawn()` example, notice how there is no specialized system for setting up a child after it's been created? Instead, we have a set of small, simple building blocks that when added together form a more complex whole. That is emergent behavior, by keeping things simple and most importantly composable, we can create very complex behavior without needing to explicitly design it.
 
 Let's take another example, say you wanted to wait on multiple processes with a `waitpid()` syscall. Well, that's not possible. So now we suddenly need a new system call. Meanwhile, in an "everything is a file system" we just have a pollable `/proc/[pid]/wait` file that blocks until the process dies and returns the exit status, now any behavior that can be implemented with `poll()` can be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination you can think of.
 
