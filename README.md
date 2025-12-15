@@ -93,6 +93,10 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 
 ---
 
+## Staying Updated
+
+PatchworkOS is under active development, when new features are added, major changes made or other noteworthy events occur, a GitHub discussion post is made in the [PatchworkOS Discussions](https://github.com/KaiNorberg/PatchworkOS/discussions), as such subscribing to the discussions or watching the repository is the best way to stay updated.
+
 ## Doxygen Documentation
 
 As one of the main goals of PatchworkOS is to be educational, I have tried to document the codebase as much as possible along with providing citations to any sources used. Currently, this is still a work in progress, but as old code is refactored and new code is added, I try to add documentation.
@@ -733,10 +737,6 @@ Contributions are welcome! Anything from bug reports/fixes, performance improvem
 If you are unsure where to start, check the [Todo List](https://kainorberg.github.io/PatchworkOS/html/dd/da0/todo.html).
 
 Check out the [contribution guidelines](CONTRIBUTING.md) to get started.
-
-## Staying Updated
-
-PatchworkOS is under active development, when new features are added, major changes made or other noteworthy events occur, a GitHub discussion post is made in the [PatchworkOS Discussions](https://github.com/KaiNorberg/PatchworkOS/discussions), as such subscribing to the discussions or watching the repository is the best way to stay updated.
 
 ## Nostalgia
 
