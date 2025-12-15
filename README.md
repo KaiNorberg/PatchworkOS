@@ -12,6 +12,12 @@
     <a href="https://github.com/KaiNorberg/PatchworkOS/stargazers">
       <img src="https://img.shields.io/github/stars/KaiNorberg/PatchworkOS">
     </a>
+    <a href="https://github.com/sponsors/KaiNorberg">
+      <img src="https://img.shields.io/github/sponsors/KaiNorberg">
+    </a>
+    <a href="https://github.com/KaiNorberg/PatchworkOS/discussions">
+      <img src="https://img.shields.io/github/discussions/KaiNorberg/PatchworkOS">
+    </a>
     <a href="https://kainorberg.github.io/PatchworkOS/html/index.html">
       <img src="https://img.shields.io/badge/docs-Doxygen-blue">
     </a>
@@ -92,10 +98,6 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 - USB support.
 
 ---
-
-## Staying Updated
-
-PatchworkOS is under active development, when new features are added, major changes made or other noteworthy events occur, a GitHub discussion post is made in the [PatchworkOS Discussions](https://github.com/KaiNorberg/PatchworkOS/discussions), as such subscribing to the discussions or watching the repository is the best way to stay updated.
 
 ## Doxygen Documentation
 
@@ -730,7 +732,13 @@ Note that the `QEMU_EXIT_ON_PANIC` flag will cause any failed test, assert or pa
 
 Currently untested on Intel hardware (broke student, no access to hardware). Let me know if you have different hardware, and it runs (or doesn't) for you!
 
-## Contributing
+## Community
+
+We use the [PatchworkOS Discussions](https://github.com/KaiNorberg/PatchworkOS/discussions) for announcements, progress updates and general discussions. As such, subscribing to the discussions or watching the repository is the best way to stay updated.
+
+If you like PatchworkOS, consider starring the repository or donating via [GitHub Sponsors](https://github.com/sponsors/KaiNorberg) to support development.
+
+### Contributing
 
 Contributions are welcome! Anything from bug reports/fixes, performance improvements, new features, or even just fixing typos or adding documentation.
 
