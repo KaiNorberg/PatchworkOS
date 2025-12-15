@@ -7,7 +7,7 @@
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/sched/sched.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/utils/utils.h>
@@ -79,7 +79,7 @@ void trampoline_send_startup_ipi(cpu_t* cpu, lapic_id_t lapicId)
     atomic_store(&cpuReadyFlag, false);
 
     lapic_send_init(lapicId);
-    sys_time_wait(CLOCKS_PER_SEC / 100);
+    clock_wait(CLOCKS_PER_SEC / 100);
     lapic_send_sipi(lapicId, (void*)TRAMPOLINE_BASE_ADDR);
 }
 
@@ -94,7 +94,7 @@ uint64_t trampoline_wait_ready(clock_t timeout)
             return 0;
         }
 
-        sys_time_wait(CLOCKS_PER_SEC / 10000);
+        clock_wait(CLOCKS_PER_SEC / 10000);
         elapsed += CLOCKS_PER_SEC / 10000;
     }
 

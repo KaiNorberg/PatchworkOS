@@ -28,7 +28,7 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
         return ERR;
     }
 
-    thread->process = REF(process);
+    thread->process = process;
     list_entry_init(&thread->processEntry);
     thread->id = thread->process->threads.newTid++;
     sched_client_init(&thread->sched);
@@ -38,20 +38,17 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
             VMM_KERNEL_STACKS_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_KERNEL_STACK_PAGES),
             CONFIG_MAX_KERNEL_STACK_PAGES) == ERR)
     {
-        UNREF(process);
         return ERR;
     }
     if (stack_pointer_init(&thread->userStack,
             VMM_USER_SPACE_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_USER_STACK_PAGES),
             CONFIG_MAX_USER_STACK_PAGES) == ERR)
     {
-        UNREF(process);
         return ERR;
     }
     wait_client_init(&thread->wait);
     if (simd_ctx_init(&thread->simd) == ERR)
     {
-        UNREF(process);
         return ERR;
     }
     note_queue_init(&thread->notes);
@@ -128,10 +125,8 @@ void thread_free(thread_t* thread)
 
     lock_acquire(&process->threads.lock);
     list_remove(&process->threads.list, &thread->processEntry);
-    lock_release(&process->threads.lock);
-
-    UNREF(process);
     thread->process = NULL;
+    lock_release(&process->threads.lock);
 
     simd_ctx_deinit(&thread->simd);
     free(thread);
@@ -155,12 +150,12 @@ void thread_load(thread_t* thread, interrupt_frame_t* frame)
 
 bool thread_is_note_pending(thread_t* thread)
 {
-    return note_queue_length(&thread->notes) != 0;
+    return note_amount(&thread->notes) != 0;
 }
 
-uint64_t thread_send_note(thread_t* thread, const void* buffer, uint64_t count)
+uint64_t thread_send_note(thread_t* thread, const char* string)
 {
-    if (note_queue_write(&thread->notes, buffer, count) == ERR)
+    if (note_send(&thread->notes, string) == ERR)
     {
         return ERR;
     }
@@ -168,7 +163,6 @@ uint64_t thread_send_note(thread_t* thread, const void* buffer, uint64_t count)
     thread_state_t expected = THREAD_BLOCKED;
     if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
     {
-        LOG_DEBUG("notifying thread tid=%d pid=%d of pending note\n", thread->id, thread->process->id);
         wait_unblock_thread(thread, EINTR);
     }
 

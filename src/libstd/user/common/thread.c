@@ -73,7 +73,7 @@ void _threading_init(void)
     _thread_insert(&thread0);
 }
 
-_THREAD_ENTRY_ATTRIBUTES static void _thread_entry(_thread_t* thread)
+_NORETURN static void _thread_entry(_thread_t* thread)
 {
     // Synchronize with creator
     mtx_lock(&entryMutex);

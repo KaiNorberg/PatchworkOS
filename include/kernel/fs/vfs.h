@@ -7,7 +7,7 @@
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
 #include <kernel/fs/sysfs.h>
-#include <kernel/sched/process.h>
+#include <kernel/proc/process.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
 
@@ -21,6 +21,8 @@
  * @defgroup kernel_vfs Virtual File System
  * @ingroup kernel_fs
  *
+ * The Virtual File System (VFS) provides a single unified interface for any and all filesystems, including virtual filesystems used to expose kernel resources to user space.
+ * 
  * @{
  */
 

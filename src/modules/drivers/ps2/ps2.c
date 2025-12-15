@@ -6,7 +6,7 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/module/module.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
 #include <modules/acpi/aml/object.h>
@@ -326,20 +326,20 @@ static uint64_t ps2_devices_test(void)
 
 void ps2_drain(void)
 {
-    sys_time_wait(PS2_SMALL_DELAY);
+    clock_wait(PS2_SMALL_DELAY);
     while ((io_in8(statusPort)) & PS2_STATUS_OUT_FULL)
     {
         io_in8(dataPort);
-        sys_time_wait(PS2_SMALL_DELAY);
+        clock_wait(PS2_SMALL_DELAY);
     }
 }
 
 uint64_t ps2_wait_until_set(ps2_status_bits_t status)
 {
-    uint64_t startTime = sys_time_uptime();
+    uint64_t startTime = clock_uptime();
     while ((io_in8(statusPort) & status) == 0)
     {
-        if ((sys_time_uptime() - startTime) > PS2_WAIT_TIMEOUT)
+        if ((clock_uptime() - startTime) > PS2_WAIT_TIMEOUT)
         {
             errno = ETIMEDOUT;
             return ERR;
@@ -351,10 +351,10 @@ uint64_t ps2_wait_until_set(ps2_status_bits_t status)
 
 uint64_t ps2_wait_until_clear(ps2_status_bits_t status)
 {
-    uint64_t startTime = sys_time_uptime();
+    uint64_t startTime = clock_uptime();
     while ((io_in8(statusPort) & status) != 0)
     {
-        if ((sys_time_uptime() - startTime) > PS2_WAIT_TIMEOUT)
+        if ((clock_uptime() - startTime) > PS2_WAIT_TIMEOUT)
         {
             errno = ETIMEDOUT;
             return ERR;
@@ -434,7 +434,7 @@ static uint64_t ps2_device_init(ps2_device_t device)
         LOG_ERR("%s port reset failed\n", ps2_device_to_string(device));
         return ERR;
     }
-    sys_time_wait(PS2_LARGE_DELAY);
+    clock_wait(PS2_LARGE_DELAY);
 
     uint64_t response = ps2_read();
     if (response == ERR)

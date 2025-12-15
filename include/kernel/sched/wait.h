@@ -73,7 +73,7 @@ typedef struct wait wait_t;
     ({ \
         assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE); \
         uint64_t result = 0; \
-        clock_t uptime = sys_time_uptime(); \
+        clock_t uptime = clock_uptime(); \
         clock_t deadline = CLOCKS_DEADLINE(timeout, uptime); \
         while (!(condition) && result == 0) \
         { \
@@ -91,7 +91,7 @@ typedef struct wait wait_t;
                 break; \
             } \
             result = wait_block_commit(); \
-            uptime = sys_time_uptime(); \
+            uptime = clock_uptime(); \
         } \
         result; \
     })
@@ -133,7 +133,7 @@ typedef struct wait wait_t;
 #define WAIT_BLOCK_LOCK_TIMEOUT(queue, lock, condition, timeout) \
     ({ \
         uint64_t result = 0; \
-        clock_t uptime = sys_time_uptime(); \
+        clock_t uptime = clock_uptime(); \
         clock_t deadline = CLOCKS_DEADLINE(timeout, uptime); \
         while (!(condition) && result == ERR) \
         { \
@@ -154,7 +154,7 @@ typedef struct wait wait_t;
             result = wait_block_commit(); \
             assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE); \
             lock_acquire(lock); \
-            uptime = sys_time_uptime(); \
+            uptime = clock_uptime(); \
         } \
         result; \
     })
@@ -268,7 +268,7 @@ void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self);
  * unblocked prematurely this function will return immediately.
  *
  * Will reenable interrupts on failure.
- * 
+ *
  * @param waitQueues Array of wait queues to add the thread to.
  * @param amount Number of wait queues to add the thread to.
  * @param timeout Timeout.

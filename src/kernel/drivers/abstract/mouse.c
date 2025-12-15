@@ -3,7 +3,7 @@
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
 
@@ -159,7 +159,7 @@ void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, int64_t deltaX, int64_t
 {
     LOCK_SCOPE(&mouse->lock);
     mouse->events[mouse->writeIndex] = (mouse_event_t){
-        .time = sys_time_uptime(),
+        .time = clock_uptime(),
         .buttons = buttons,
         .deltaX = deltaX,
         .deltaY = deltaY,

@@ -1,7 +1,7 @@
 #include <kernel/cpu/io.h>
 #include <kernel/log/log.h>
 #include <kernel/module/module.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 #include <modules/acpi/devices.h>
 #include <modules/acpi/tables.h>
 
@@ -81,7 +81,7 @@ static time_t rtc_read_epoch(void)
     return mktime(&stime);
 }
 
-static sys_time_source_t source = {
+static clock_source_t source = {
     .name = "CMOS RTC",
     .precision = CLOCKS_PER_SEC,
     .read_ns = NULL,
@@ -112,7 +112,7 @@ static uint64_t rtc_init(const char* deviceName)
         centuryRegister = fadt->century;
     }
 
-    if (sys_time_register_source(&source) == ERR)
+    if (clock_source_register(&source) == ERR)
     {
         LOG_ERR("failed to register RTC\n");
         return ERR;

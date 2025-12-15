@@ -80,4 +80,13 @@
  */
 #define CONCAT_INNER(a, b) a##b
 
+/**
+ * @brief The size of the red zone in bytes.
+ *
+ * The red zone is a region of memory below the stack pointer that is reserved and should not be modified by
+ * interrupt handlers or signal handlers. The compiler uses this area for temporary storage for the purpose of
+ * optimization.
+ */
+#define RED_ZONE_SIZE 128
+
 /** @} */

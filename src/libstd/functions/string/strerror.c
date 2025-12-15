@@ -11,6 +11,6 @@ char* strerror(int errnum)
     }
     else
     {
-        return _error_strings[errnum];
+        return _errorStrings[errnum];
     }
 }

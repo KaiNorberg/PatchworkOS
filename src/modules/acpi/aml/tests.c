@@ -5,7 +5,7 @@
 #include "acpica_tests/all_tests.h"
 
 #include <kernel/log/log.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
 #include <modules/acpi/aml/aml.h>
 #include <modules/acpi/aml/encoding/term.h>

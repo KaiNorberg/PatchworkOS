@@ -230,3 +230,8 @@ uint64_t cpu_halt_others(void)
     }
     return 0;
 }
+
+uintptr_t cpu_interrupt_stack_top(cpu_t* cpu)
+{
+    return cpu->interruptStack.top;
+}

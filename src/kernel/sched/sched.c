@@ -9,8 +9,8 @@
 #include <kernel/cpu/syscall.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <kernel/sched/process.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/proc/process.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
@@ -253,7 +253,7 @@ static thread_t* sched_steal(void)
 
     lock_acquire(&mostLoaded->sched.lock);
 
-    clock_t uptime = sys_time_uptime();
+    clock_t uptime = clock_uptime();
 
     thread_t* thread;
     RBTREE_FOR_EACH(thread, &mostLoaded->sched.runqueue, sched.node)
@@ -314,7 +314,7 @@ static thread_t* sched_first_eligible(sched_t* sched)
     thread_t* victim = sched_steal();
     if (victim != NULL)
     {
-        sched_enter(sched, victim, sys_time_uptime());
+        sched_enter(sched, victim, clock_uptime());
         return victim;
     }
 
@@ -379,7 +379,7 @@ void sched_submit(thread_t* thread)
     cpu_t* self = cpu_get();
 
     cpu_t* target;
-    if (thread->sched.lastCpu != NULL && sched_is_cache_hot(thread, sys_time_uptime()))
+    if (thread->sched.lastCpu != NULL && sched_is_cache_hot(thread, clock_uptime()))
     {
         target = thread->sched.lastCpu;
     }
@@ -393,7 +393,7 @@ void sched_submit(thread_t* thread)
     }
 
     lock_acquire(&target->sched.lock);
-    sched_enter(&target->sched, thread, sys_time_uptime());
+    sched_enter(&target->sched, thread, clock_uptime());
     lock_release(&target->sched.lock);
 
     bool shouldWake = self != target || !self->interrupt.inInterrupt;
@@ -532,7 +532,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         return;
     }
 
-    clock_t uptime = sys_time_uptime();
+    clock_t uptime = clock_uptime();
     sched_vtime_update(sched, uptime);
 
     assert(sched->runThread != NULL);
@@ -587,6 +587,8 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         sched->runThread = next;
     }
 
+    lock_release(&sched->lock);
+
     if (sched->runThread != sched->idleThread)
     {
         timer_set(uptime, uptime + CONFIG_TIME_SLICE);
@@ -595,10 +597,8 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     if (threadToFree != NULL)
     {
         assert(threadToFree != sched->runThread);
-        thread_free(threadToFree);
+        thread_free(threadToFree); // Cant hold any locks here
     }
-
-    lock_release(&sched->lock);
 }
 
 bool sched_is_idle(cpu_t* cpu)
@@ -645,24 +645,21 @@ void sched_yield(void)
     sched_nanosleep(CLOCKS_PER_SEC / 1000);
 }
 
-void sched_process_exit(int32_t status)
+void sched_process_exit(const char* status)
 {
     thread_t* thread = sched_thread();
     process_kill(thread->process, status);
-    ipi_invoke();
 
-    panic(NULL, "sched_process_exit() returned unexpectedly");
+    atomic_store(&thread->state, THREAD_DYING);
+    ipi_invoke();
+    panic(NULL, "Return to sched_process_exit");
 }
 
 void sched_thread_exit(void)
 {
     thread_t* thread = sched_thread();
-    if (thread_send_note(thread, "kill", 4) == ERR)
-    {
-        panic(NULL, "Failed to send kill note to self in sched_thread_exit()");
-    }
+    atomic_store(&thread->state, THREAD_DYING);
     ipi_invoke();
-
     panic(NULL, "Return to sched_thread_exit");
 }
 
@@ -671,7 +668,7 @@ SYSCALL_DEFINE(SYS_NANOSLEEP, uint64_t, clock_t nanoseconds)
     return sched_nanosleep(nanoseconds);
 }
 
-SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, int32_t status)
+SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, const char* status)
 {
     sched_process_exit(status);
 

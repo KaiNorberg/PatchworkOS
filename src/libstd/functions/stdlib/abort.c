@@ -1,4 +1,6 @@
+#include <signal.h>
 #include <stdlib.h>
+#include <sys/proc.h>
 
 #ifdef _KERNEL_
 #include <kernel/log/panic.h>
@@ -9,6 +11,7 @@ void abort(void)
 #ifdef _KERNEL_
     panic(NULL, "abort() called");
 #else
-    exit(EXIT_FAILURE);
+    raise(SIGABRT);
+    _exit("aborted");
 #endif
 }

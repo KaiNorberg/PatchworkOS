@@ -1,8 +1,8 @@
-#include <errno.h>
-#include <kernel/sched/process.h>
-
+#include <kernel/proc/group.h>
+#include <kernel/proc/process.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
+#include <kernel/fs/ctl.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
@@ -10,19 +10,20 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
+#include <kernel/proc/reaper.h>
 #include <kernel/sync/rwlock.h>
-#include <kernel/fs/ctl.h>
 
 #include <assert.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <sys/io.h>
 #include <sys/list.h>
 #include <sys/math.h>
@@ -34,10 +35,6 @@ static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 
 static mount_t* procMount = NULL;
 static dentry_t* selfDir = NULL;
-
-static list_t zombies = LIST_CREATE(zombies);
-static clock_t nextReaperTime = CLOCKS_NEVER;
-static lock_t zombiesLock = LOCK_CREATE();
 
 static process_t* process_file_get_process(file_t* file)
 {
@@ -228,7 +225,9 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
         return ERR;
     }
 
-    if (thread_send_note(thread, buffer, count) == ERR)
+    char string[NOTE_MAX] = {0};
+    memcpy_s(string, NOTE_MAX, buffer, MIN(count, NOTE_MAX - 1));
+    if (thread_send_note(thread, string) == ERR)
     {
         return ERR;
     }
@@ -238,6 +237,53 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
 
 static file_ops_t noteOps = {
     .write = process_note_write,
+};
+
+static uint64_t process_notegroup_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+{
+    (void)offset; // Unused
+
+    if (count == 0)
+    {
+        return 0;
+    }
+
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    char string[NOTE_MAX] = {0};
+    memcpy_s(string, NOTE_MAX, buffer, MIN(count, NOTE_MAX - 1));
+
+    if (group_send_note(&process->groupEntry, string) == ERR)
+    {
+        return ERR;
+    }
+
+    return count;
+}
+
+static file_ops_t notegroupOps = {
+    .write = process_notegroup_write,
+};
+
+static uint64_t process_gid_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    char gidStr[MAX_NAME];
+    uint32_t length = snprintf(gidStr, MAX_NAME, "%llu", group_get_id(&process->groupEntry));
+    return BUFFER_READ(buffer, count, offset, gidStr, length);
+}
+
+static file_ops_t gidOps = {
+    .read = process_gid_read,
 };
 
 static uint64_t process_wait_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
@@ -250,14 +296,11 @@ static uint64_t process_wait_read(file_t* file, void* buffer, uint64_t count, ui
 
     WAIT_BLOCK(&process->dyingQueue, atomic_load(&process->flags) & PROCESS_DYING);
 
-    char status[MAX_PATH];
-    int length = snprintf(status, sizeof(status), "%lld", atomic_load(&process->status));
-    if (length < 0)
-    {
-        return ERR;
-    }
-
-    return BUFFER_READ(buffer, count, offset, status, (uint64_t)length);
+    lock_acquire(&process->exitStatus.lock);
+    uint64_t result =
+        BUFFER_READ(buffer, count, offset, process->exitStatus.buffer, strlen(process->exitStatus.buffer));
+    lock_release(&process->exitStatus.lock);
+    return result;
 }
 
 static wait_queue_t* process_wait_poll(file_t* file, poll_events_t* revents)
@@ -302,7 +345,7 @@ static uint64_t process_stat_read(file_t* file, void* buffer, uint64_t count, ui
 
     char statStr[MAX_PATH];
     int length = snprintf(statStr, sizeof(statStr),
-        "user_clocks %llu\nkernel_clocks %llu\nstart_clocks %llu\nuser_pages %llu\nthread_count %llu", userClocks,
+        "user_clocks %llu\nkernel_sched_clocks %llu\nstart_clocks %llu\nuser_pages %llu\nthread_count %llu", userClocks,
         kernelClocks, startTime, userPages, threadCount);
     if (length < 0)
     {
@@ -449,13 +492,9 @@ static uint64_t process_ctl_kill(file_t* file, uint64_t argc, const char** argv)
     return 0;
 }
 
-CTL_STANDARD_OPS_DEFINE(ctlOps, {
-    {"close", process_ctl_close, 2, 3},
-    {"dup2", process_ctl_dup2, 3, 3},
-    {"start", process_ctl_start, 1, 1},
-    {"kill", process_ctl_kill, 1, 1},
-    {0}
-})
+CTL_STANDARD_OPS_DEFINE(ctlOps,
+    {{"close", process_ctl_close, 2, 3}, {"dup2", process_ctl_dup2, 3, 3}, {"start", process_ctl_start, 1, 1},
+        {"kill", process_ctl_kill, 1, 1}, {0}})
 
 static uint64_t process_env_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -499,10 +538,13 @@ static uint64_t process_env_create(inode_t* dir, dentry_t* target, mode_t mode);
 static uint64_t process_env_remove(inode_t* parent, dentry_t* target, mode_t mode);
 static void process_env_cleanup(inode_t* inode);
 
+static inode_ops_t envFileInodeOps = {
+    .cleanup = process_env_cleanup,
+};
+
 static inode_ops_t envInodeOps = {
     .create = process_env_create,
     .remove = process_env_remove,
-    .cleanup = process_env_cleanup,
 };
 
 static uint64_t process_env_create(inode_t* dir, dentry_t* target, mode_t mode)
@@ -518,7 +560,7 @@ static uint64_t process_env_create(inode_t* dir, dentry_t* target, mode_t mode)
     process_t* process = dir->private;
     assert(process != NULL);
 
-    inode_t* inode = inode_new(dir->superblock, vfs_id_get(), INODE_FILE, NULL, &envFileOps);
+    inode_t* inode = inode_new(dir->superblock, vfs_id_get(), INODE_FILE, &envFileInodeOps, &envFileOps);
     if (inode == NULL)
     {
         return ERR;
@@ -530,10 +572,9 @@ static uint64_t process_env_create(inode_t* dir, dentry_t* target, mode_t mode)
 
     dentry_make_positive(target, inode);
 
-    lock_acquire(&process->dentriesLock);
-    list_push_back(&process->envVars, &target->otherEntry);
-    REF(target);
-    lock_release(&process->dentriesLock);
+    lock_acquire(&process->dir.lock);
+    list_push_back(&process->dir.envEntries, &REF(target)->otherEntry);
+    lock_release(&process->dir.lock);
 
     return 0;
 }
@@ -551,10 +592,10 @@ static uint64_t process_env_remove(inode_t* dir, dentry_t* target, mode_t mode)
     process_t* process = dir->private;
     assert(process != NULL);
 
-    lock_acquire(&process->dentriesLock);
-    list_remove(&process->envVars, &target->otherEntry);
+    lock_acquire(&process->dir.lock);
+    list_remove(&process->dir.envEntries, &target->otherEntry);
     UNREF(target);
-    lock_release(&process->dentriesLock);
+    lock_release(&process->dir.lock);
 
     return 0;
 }
@@ -569,31 +610,22 @@ static void process_env_cleanup(inode_t* inode)
     }
 }
 
-static void process_cleanup(inode_t* inode)
+static void process_proc_cleanup(inode_t* inode)
 {
     process_t* process = inode->private;
-    UNREF(process);
-}
+    if (process == NULL)
+    {
+        return;
+    }
 
-static inode_ops_t inodeOps = {
-    .cleanup = process_cleanup,
-};
-
-static void process_free(process_t* process)
-{
     LOG_DEBUG("freeing process pid=%d\n", process->id);
+
     assert(list_is_empty(&process->threads.list));
-
-    while (!list_is_empty(&process->dentries))
-    {
-        dentry_t* dentry = CONTAINER_OF_SAFE(list_pop_first(&process->dentries), dentry_t, otherEntry);
-        UNREF(dentry);
-    }
-
-    if (list_length(&process->threads.list) != 0)
-    {
-        panic(NULL, "Attempt to free process pid=%llu with present threads\n", process->id);
-    }
+    assert(process->dir.self == NULL);
+    assert(process->dir.dir == NULL);
+    assert(process->dir.env == NULL);
+    assert(list_is_empty(&process->dir.files));
+    assert(list_is_empty(&process->dir.envEntries));
 
     if (process->cmdline != NULL)
     {
@@ -602,6 +634,7 @@ static void process_free(process_t* process)
         process->cmdlineSize = 0;
     }
 
+    group_entry_deinit(&process->groupEntry);
     cwd_deinit(&process->cwd);
     file_table_deinit(&process->fileTable);
     namespace_deinit(&process->ns);
@@ -612,6 +645,10 @@ static void process_free(process_t* process)
     free(process);
 }
 
+static inode_ops_t procInodeOps = {
+    .cleanup = process_proc_cleanup,
+};
+
 static uint64_t process_dir_init(process_t* process)
 {
     if (process == NULL)
@@ -620,86 +657,93 @@ static uint64_t process_dir_init(process_t* process)
         return ERR;
     }
 
-    if (!list_is_empty(&process->dentries))
-    {
-        return 0;
-    }
-
     char name[MAX_NAME];
-    int ret = snprintf(name, MAX_NAME, "%d", process->id);
+    int ret = snprintf(name, MAX_NAME, "%llu", process->id);
     if (ret < 0 || ret >= MAX_NAME)
     {
         return ERR;
     }
 
-    process->proc = sysfs_dir_new(procMount->source, name, &inodeOps, REF(process));
-    if (process->proc == NULL)
+    process->dir.dir = sysfs_dir_new(procMount->source, name, &procInodeOps, process);
+    if (process->dir.dir == NULL)
     {
         return ERR;
     }
-    list_push_back(&process->dentries, &process->proc->otherEntry);
 
-    process->env = sysfs_dir_new(process->proc, "env", &envInodeOps, REF(process));
-    if (process->env == NULL)
+    process->dir.env = sysfs_dir_new(process->dir.dir, "env", &envInodeOps, process);
+    if (process->dir.env == NULL)
     {
         goto error;
     }
-    list_push_back(&process->dentries, &process->env->otherEntry);
 
-    dentry_t* prio = sysfs_file_new(process->proc, "prio", &inodeOps, &prioOps, REF(process));
+    dentry_t* prio = sysfs_file_new(process->dir.dir, "prio", NULL, &prioOps, process);
     if (prio == NULL)
     {
         goto error;
     }
-    list_push_back(&process->dentries, &prio->otherEntry);
+    list_push_back(&process->dir.files, &prio->otherEntry);
 
-    dentry_t* cwd = sysfs_file_new(process->proc, "cwd", &inodeOps, &cwdOps, REF(process));
+    dentry_t* cwd = sysfs_file_new(process->dir.dir, "cwd", NULL, &cwdOps, process);
     if (cwd == NULL)
     {
         goto error;
     }
-    list_push_back(&process->dentries, &cwd->otherEntry);
+    list_push_back(&process->dir.files, &cwd->otherEntry);
 
-    dentry_t* cmdline = sysfs_file_new(process->proc, "cmdline", &inodeOps, &cmdlineOps, REF(process));
+    dentry_t* cmdline = sysfs_file_new(process->dir.dir, "cmdline", NULL, &cmdlineOps, process);
     if (cmdline == NULL)
     {
         goto error;
     }
-    list_push_back(&process->dentries, &cmdline->otherEntry);
+    list_push_back(&process->dir.files, &cmdline->otherEntry);
 
-    dentry_t* note = sysfs_file_new(process->proc, "note", &inodeOps, &noteOps, REF(process));
+    dentry_t* note = sysfs_file_new(process->dir.dir, "note", NULL, &noteOps, process);
     if (note == NULL)
     {
         goto error;
     }
-    list_push_back(&process->dentries, &note->otherEntry);
+    list_push_back(&process->dir.files, &note->otherEntry);
 
-    dentry_t* wait = sysfs_file_new(process->proc, "wait", &inodeOps, &waitOps, REF(process));
+    dentry_t* notegroup = sysfs_file_new(process->dir.dir, "notegroup", NULL, &notegroupOps, process);
+    if (notegroup == NULL)
+    {
+        goto error;
+    }
+    list_push_back(&process->dir.files, &notegroup->otherEntry);
+
+    dentry_t* gid = sysfs_file_new(process->dir.dir, "gid", NULL, &gidOps, process);
+    if (gid == NULL)
+    {
+        goto error;
+    }
+    list_push_back(&process->dir.files, &gid->otherEntry);
+
+    dentry_t* wait = sysfs_file_new(process->dir.dir, "wait", NULL, &waitOps, process);
     if (wait == NULL)
     {
         goto error;
     }
-    list_push_back(&process->dentries, &wait->otherEntry);
+    list_push_back(&process->dir.files, &wait->otherEntry);
 
-    dentry_t* perf = sysfs_file_new(process->proc, "perf", &inodeOps, &statOps, REF(process));
+    dentry_t* perf = sysfs_file_new(process->dir.dir, "perf", NULL, &statOps, process);
     if (perf == NULL)
     {
         goto error;
     }
-    list_push_back(&process->dentries, &perf->otherEntry);
+    list_push_back(&process->dir.files, &perf->otherEntry);
 
-    dentry_t* ctl = sysfs_file_new(process->proc, "ctl", &inodeOps, &ctlOps, REF(process));
+    dentry_t* ctl = sysfs_file_new(process->dir.dir, "ctl", NULL, &ctlOps, process);
     if (ctl == NULL)
     {
         goto error;
     }
-    list_push_back(&process->dentries, &ctl->otherEntry);
+    list_push_back(&process->dir.files, &ctl->otherEntry);
 
     path_t selfPath = PATH_CREATE(procMount, selfDir);
-    process->self =
-        namespace_bind(&process->ns, process->proc, &selfPath, MOUNT_OVERWRITE, MODE_DIRECTORY | MODE_ALL_PERMS);
+    process->dir.self =
+        namespace_bind(&process->ns, process->dir.dir, &selfPath, MOUNT_OVERWRITE, MODE_DIRECTORY | MODE_ALL_PERMS);
     path_put(&selfPath);
-    if (process->self == NULL)
+    if (process->dir.self == NULL)
     {
         goto error;
     }
@@ -707,15 +751,11 @@ static uint64_t process_dir_init(process_t* process)
     return 0;
 
 error:
-    while (!list_is_empty(&process->dentries))
-    {
-        dentry_t* dentry = CONTAINER_OF_SAFE(list_pop_first(&process->dentries), dentry_t, otherEntry);
-        UNREF(dentry);
-    }
+    process_dir_deinit(process);
     return ERR;
 }
 
-process_t* process_new(priority_t priority)
+process_t* process_new(priority_t priority, gid_t gid)
 {
     process_t* process = malloc(sizeof(process_t));
     if (process == NULL)
@@ -724,10 +764,11 @@ process_t* process_new(priority_t priority)
         return NULL;
     }
 
-    ref_init(&process->ref, process_free);
     process->id = atomic_fetch_add(&newPid, 1);
+    group_entry_init(&process->groupEntry);
     atomic_init(&process->priority, priority);
-    atomic_init(&process->status, EXIT_SUCCESS);
+    memset_s(process->exitStatus.buffer, NOTE_MAX, 0, NOTE_MAX);
+    lock_init(&process->exitStatus.lock);
 
     if (space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
             SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY) == ERR)
@@ -741,6 +782,7 @@ process_t* process_new(priority_t priority)
     file_table_init(&process->fileTable);
     futex_ctx_init(&process->futexCtx);
     perf_process_ctx_init(&process->perf);
+    note_handler_init(&process->noteHandler);
     wait_queue_init(&process->suspendQueue);
     wait_queue_init(&process->dyingQueue);
     atomic_init(&process->flags, PROCESS_NONE);
@@ -751,20 +793,28 @@ process_t* process_new(priority_t priority)
 
     list_entry_init(&process->zombieEntry);
 
-    process->self = NULL;
-    process->proc = NULL;
-    process->env = NULL;
-    list_init(&process->dentries);
-    list_init(&process->envVars);
-    lock_init(&process->dentriesLock);
+
+    process->dir.self = NULL;
+    process->dir.dir = NULL;
+    list_init(&process->dir.files);
+    process->dir.env = NULL;
+    list_init(&process->dir.envEntries);
+    lock_init(&process->dir.lock);
+
     process->cmdline = NULL;
     process->cmdlineSize = 0;
+
+    if (group_add(gid, &process->groupEntry) == ERR)
+    {
+        process_kill(process, "init failed");
+        return NULL;
+    }
 
     if (process->id != 0) // Delay kernel process /proc dir init
     {
         if (process_dir_init(process) == ERR)
         {
-            process_free(process);
+            process_kill(process, "init failed");
             return NULL;
         }
     }
@@ -773,7 +823,7 @@ process_t* process_new(priority_t priority)
     return process;
 }
 
-void process_kill(process_t* process, int32_t status)
+void process_kill(process_t* process, const char* status)
 {
     lock_acquire(&process->threads.lock);
 
@@ -783,13 +833,16 @@ void process_kill(process_t* process, int32_t status)
         return;
     }
 
-    atomic_store(&process->status, status);
+    lock_acquire(&process->exitStatus.lock);
+    strncpy_s(process->exitStatus.buffer, NOTE_MAX, status, NOTE_MAX - 1);
+    process->exitStatus.buffer[NOTE_MAX - 1] = '\0';
+    lock_release(&process->exitStatus.lock);
 
     uint64_t killCount = 0;
     thread_t* thread;
     LIST_FOR_EACH(thread, &process->threads.list, processEntry)
     {
-        thread_send_note(thread, "kill", 4);
+        thread_send_note(thread, "kill");
         killCount++;
     }
 
@@ -800,18 +853,53 @@ void process_kill(process_t* process, int32_t status)
 
     lock_release(&process->threads.lock);
 
-    // Anything that another process could be waiting on or that could hold a reference to the process must be cleaned
-    // up here.
+    // Anything that another process could be waiting on must be cleaned up here.
     cwd_clear(&process->cwd);
     file_table_close_all(&process->fileTable);
     namespace_clear(&process->ns);
+    group_remove(&process->groupEntry);
 
     wait_unblock(&process->dyingQueue, WAIT_ALL, EOK);
 
-    lock_acquire(&zombiesLock);
-    list_push_back(&zombies, &REF(process)->zombieEntry);
-    nextReaperTime = sys_time_uptime() + CONFIG_PROCESS_REAPER_INTERVAL; // Delay reaper run
-    lock_release(&zombiesLock);
+    reaper_push(process);
+}
+
+void process_dir_deinit(process_t* process)
+{
+    if (process == NULL)
+    {
+        return;
+    }
+
+    LOCK_SCOPE(&process->dir.lock);
+
+    if (process->dir.self != NULL)
+    {
+        UNREF(process->dir.self);
+        process->dir.self = NULL;
+    }
+
+    if (process->dir.dir != NULL)
+    {
+        UNREF(process->dir.dir);
+        process->dir.dir = NULL;
+    }
+
+    while (!list_is_empty(&process->dir.files))
+    {
+        UNREF(CONTAINER_OF_SAFE(list_pop_first(&process->dir.files), dentry_t, otherEntry));
+    }
+
+    if (process->dir.env != NULL)
+    {
+        UNREF(process->dir.env);
+        process->dir.env = NULL;
+    }
+
+    while (!list_is_empty(&process->dir.envEntries))
+    {
+        UNREF(CONTAINER_OF_SAFE(list_pop_first(&process->dir.envEntries), dentry_t, otherEntry));
+    }
 }
 
 uint64_t process_copy_env(process_t* dest, process_t* src)
@@ -822,19 +910,19 @@ uint64_t process_copy_env(process_t* dest, process_t* src)
         return ERR;
     }
 
-    LOCK_SCOPE(&src->dentriesLock);
-    LOCK_SCOPE(&dest->dentriesLock);
+    LOCK_SCOPE(&src->dir.lock);
+    LOCK_SCOPE(&dest->dir.lock);
 
-    if (!list_is_empty(&dest->envVars))
+    if (!list_is_empty(&dest->dir.envEntries))
     {
         errno = EBUSY;
         return ERR;
     }
 
     dentry_t* srcDentry;
-    LIST_FOR_EACH(srcDentry, &src->envVars, otherEntry)
+    LIST_FOR_EACH(srcDentry, &src->dir.envEntries, otherEntry)
     {
-        inode_t* inode = inode_new(srcDentry->inode->superblock, vfs_id_get(), INODE_FILE, NULL, &envFileOps);
+        inode_t* inode = inode_new(srcDentry->inode->superblock, vfs_id_get(), INODE_FILE, &envFileInodeOps, &envFileOps);
         if (inode == NULL)
         {
             return ERR;
@@ -853,14 +941,14 @@ uint64_t process_copy_env(process_t* dest, process_t* src)
             inode->size = srcDentry->inode->size;
         }
 
-        dentry_t* dentry = dentry_new(srcDentry->inode->superblock, dest->env, srcDentry->name);
+        dentry_t* dentry = dentry_new(srcDentry->inode->superblock, dest->dir.env, srcDentry->name);
         if (dentry == NULL)
         {
             return ERR;
         }
 
         dentry_make_positive(dentry, inode);
-        list_push_back(&dest->envVars, &dentry->otherEntry);
+        list_push_back(&dest->dir.envEntries, &dentry->otherEntry);
     }
 
     return 0;
@@ -944,7 +1032,7 @@ process_t* process_get_kernel(void)
 {
     if (kernelProcess == NULL)
     {
-        kernelProcess = process_new(PRIORITY_MAX);
+        kernelProcess = process_new(PRIORITY_MAX, GID_NONE);
         if (kernelProcess == NULL)
         {
             panic(NULL, "Failed to create kernel process");
@@ -961,7 +1049,7 @@ void process_procfs_init(void)
         MODE_DIRECTORY | MODE_ALL_PERMS, NULL);
     if (procMount == NULL)
     {
-        panic(NULL, "Failed to mount /proc filesystem");
+        panic(NULL, "Failed to mount /proc dentriesystem");
     }
 
     selfDir = sysfs_dir_new(procMount->source, "self", NULL, NULL);
@@ -976,64 +1064,6 @@ void process_procfs_init(void)
     if (process_dir_init(kernelProcess) == ERR)
     {
         panic(NULL, "Failed to create /proc/[pid] directory for kernel process");
-    }
-}
-
-static void process_reaper(void* arg)
-{
-    (void)arg;
-
-    while (1)
-    {
-        sched_nanosleep(CONFIG_PROCESS_REAPER_INTERVAL);
-
-        lock_acquire(&zombiesLock);
-        clock_t uptime = sys_time_uptime();
-        if (uptime < nextReaperTime)
-        {
-            lock_release(&zombiesLock);
-            continue;
-        }
-        nextReaperTime = CLOCKS_NEVER;
-
-        list_t localZombies = LIST_CREATE(localZombies);
-
-        while (!list_is_empty(&zombies))
-        {
-            process_t* process = CONTAINER_OF(list_pop_first(&zombies), process_t, zombieEntry);
-            list_push_back(&localZombies, &process->zombieEntry);
-        }
-        lock_release(&zombiesLock);
-
-        while (!list_is_empty(&localZombies))
-        {
-            process_t* process = CONTAINER_OF(list_pop_first(&localZombies), process_t, zombieEntry);
-
-            while (!list_is_empty(&process->dentries))
-            {
-                dentry_t* dentry = CONTAINER_OF_SAFE(list_pop_first(&process->dentries), dentry_t, otherEntry);
-                UNREF(dentry);
-            }
-
-            while (!list_is_empty(&process->envVars))
-            {
-                dentry_t* dentry = CONTAINER_OF_SAFE(list_pop_first(&process->envVars), dentry_t, otherEntry);
-                UNREF(dentry);
-            }
-
-            UNREF(process->self);
-            process->self = NULL;
-
-            UNREF(process);
-        }
-    }
-}
-
-void process_reaper_init(void)
-{
-    if (thread_kernel_create(process_reaper, NULL) == ERR)
-    {
-        panic(NULL, "Failed to create process reaper thread");
     }
 }
 

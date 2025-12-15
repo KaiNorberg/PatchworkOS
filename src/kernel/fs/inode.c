@@ -1,7 +1,7 @@
 #include <kernel/fs/inode.h>
 
 #include <kernel/fs/vfs.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 
@@ -69,7 +69,7 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
     atomic_init(&inode->dentryCount, 0);
     inode->size = 0;
     inode->blocks = 0;
-    inode->accessTime = sys_time_unix_epoch();
+    inode->accessTime = clock_epoch();
     inode->modifyTime = inode->accessTime;
     inode->changeTime = inode->accessTime;
     inode->createTime = inode->accessTime;
@@ -91,7 +91,7 @@ void inode_notify_access(inode_t* inode)
 
     MUTEX_SCOPE(&inode->mutex);
 
-    inode->accessTime = sys_time_unix_epoch();
+    inode->accessTime = clock_epoch();
 }
 
 void inode_notify_modify(inode_t* inode)
@@ -102,7 +102,7 @@ void inode_notify_modify(inode_t* inode)
     }
 
     MUTEX_SCOPE(&inode->mutex);
-    inode->modifyTime = sys_time_unix_epoch();
+    inode->modifyTime = clock_epoch();
     inode->changeTime = inode->modifyTime;
 }
 
@@ -114,7 +114,7 @@ void inode_notify_change(inode_t* inode)
     }
 
     MUTEX_SCOPE(&inode->mutex);
-    inode->changeTime = sys_time_unix_epoch();
+    inode->changeTime = clock_epoch();
 }
 
 void inode_truncate(inode_t* inode)

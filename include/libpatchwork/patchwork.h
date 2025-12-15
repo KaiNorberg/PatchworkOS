@@ -1,6 +1,11 @@
 #ifndef PATCHWORK_PATCHWORK_H
 #define PATCHWORK_PATCHWORK_H 1
 
+/**
+ * @brief User space system library.
+ * @defgroup libpatchwork Libpatchwork
+ */
+
 #include "cmd.h"
 #include "config.h"
 #include "display.h"

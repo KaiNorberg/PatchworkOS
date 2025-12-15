@@ -7,7 +7,7 @@
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/space.h>
 #include <kernel/mem/vmm.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 #include <kernel/utils/map.h>
 
 #include <assert.h>
@@ -710,10 +710,10 @@ void space_tlb_shootdown(space_t* space, void* virtAddr, uint64_t pageAmount)
         expectedAcks++;
     }
 
-    clock_t startTime = sys_time_uptime();
+    clock_t startTime = clock_uptime();
     while (atomic_load(&space->shootdownAcks) < expectedAcks)
     {
-        if (sys_time_uptime() - startTime > SPACE_TLB_SHOOTDOWN_TIMEOUT)
+        if (clock_uptime() - startTime > SPACE_TLB_SHOOTDOWN_TIMEOUT)
         {
             panic(NULL, "TLB shootdown timeout in space %p for region %p - %p", space, virtAddr,
                 (void*)((uintptr_t)virtAddr + pageAmount * PAGE_SIZE));

@@ -23,12 +23,14 @@ typedef struct dentry dentry_t;
  * @ingroup kernel_fs
  *
  * A inode represents the actual data and metadata of a file. It is referenced by dentries, which represent the name or
- * "location" of the file but note that a inode can appear in multiple dentries due to hardlinks or becouse of
- * mountpoints.
- *
- * So despite the name they are in no way "nodes" in some kind of tree structure, this confused me for a
- * long time when first learning about filesystems.
- *
+ * "location" of the file but a inode can appear in multiple dentries due to hardlinks or mounts.
+ * 
+ * @note Despite the name inodes are in no way "nodes" in any kind of tree structure, that would be the dentries.
+ * 
+ * ## Synchronization
+ * 
+ * Inodes have an additional purpose within the Virtual File System (VFS) as they act as the primary means of synchronization. All dentries synchronize upon their inodes mutex, open files synchronize upon the mutex of the underlying inode and operations like create, remove, etc synchronize upon the inode mutex of the parent directory.
+ * 
  * @todo Implement actually writing/syncing dirty inodes, for now inodes should use the notify functions but they will
  * never actually be "cleaned."
  *

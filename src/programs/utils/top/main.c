@@ -228,7 +228,7 @@ static proc_perfs_t* proc_perfs_read(uint64_t* procAmount)
             uint64_t userPages;
             proc_perfs_t procPerf;
             if (fscanf(perfFile,
-                    "user_clocks %lu\nkernel_clocks %lu\nstart_clocks %lu\nuser_pages %lu\nthread_count %lu",
+                    "user_clocks %lu\nkernel_sched_clocks %lu\nstart_clocks %lu\nuser_pages %lu\nthread_count %lu",
                     &procPerf.userClocks, &procPerf.kernelClocks, &procPerf.startClocks, &userPages,
                     &procPerf.threadCount) != 5)
             {

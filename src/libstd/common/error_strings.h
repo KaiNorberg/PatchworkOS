@@ -1,3 +1,3 @@
 #pragma once
 
-extern char* _error_strings[];
+extern char* _errorStrings[];

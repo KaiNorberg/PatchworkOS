@@ -7,6 +7,6 @@
 
 extern constraint_handler_t _constraintHandler;
 
-#define _CONSTRAINT_VIOLATION(e) _error_strings[e], NULL, e
+#define _CONSTRAINT_VIOLATION(e) _errorStrings[e], NULL, e
 
 void _constraint_handler_init(void);

@@ -6,7 +6,7 @@
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/cpu/syscall.h>
 #include <kernel/ipc/note.h>
-#include <kernel/sched/process.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/wait.h>
 #include <kernel/utils/ref.h>
@@ -33,14 +33,7 @@ typedef enum
     THREAD_PRE_BLOCK,  ///< Has started the process of blocking but has not yet been given to a owner cpu.
     THREAD_BLOCKED,    ///< Is blocking and waiting in one or multiple wait queues.
     THREAD_UNBLOCKING, ///< Has started unblocking, used to prevent the same thread being unblocked multiple times.
-    /**
-     * The thread is currently dying, it will be freed by the scheduler once its invoked.
-     *
-     * @warning This state is more fragile than the others. Since a thread could technically be killed at any time and
-     * we have several systems relying on the thread state as a form of synchronization, this state should only be set
-     * when the thread is running in an interrupt context.
-     */
-    THREAD_DYING,
+    THREAD_DYING,      ///< The thread is currently dying, it will be freed by the scheduler once its invoked.
 } thread_state_t;
 
 /**
@@ -147,14 +140,15 @@ bool thread_is_note_pending(thread_t* thread);
 /**
  * @brief Send a note to a thread.
  *
- * This function should always be used over the `note_queue_push()` function, as it performs additional checks, like unblocking the thread to notify it of the received note.
+ * This function should always be used over the `note_queue_push()` function, as it performs additional checks, like
+ * unblocking the thread to notify it of the received note.
  *
  * @param thread The destination thread.
- * @param buffer The buffer to write.
- * @param count The number of bytes to write.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @param string The note string to send, should be a null-terminated string.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - See `note_send()` for possible error codes.
  */
-uint64_t thread_send_note(thread_t* thread, const void* buffer, uint64_t count);
+uint64_t thread_send_note(thread_t* thread, const char* string);
 
 /**
  * @brief Safely copy data from user space.

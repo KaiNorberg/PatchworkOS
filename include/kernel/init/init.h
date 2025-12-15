@@ -4,7 +4,7 @@
 
 /**
  * @brief Initialization and `kmain()`.
- * @defgroup init Initialization
+ * @defgroup kernel_init Initialization
  * @ingroup kernel
  *
  * @{

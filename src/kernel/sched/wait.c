@@ -5,7 +5,7 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/sched.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
@@ -80,7 +80,7 @@ void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self)
             return;
         }
 
-        clock_t uptime = sys_time_uptime();
+        clock_t uptime = clock_uptime();
         if (thread->wait.deadline > uptime)
         {
             timer_set(uptime, thread->wait.deadline);
@@ -153,7 +153,7 @@ uint64_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t 
     }
 
     thread->wait.err = EOK;
-    thread->wait.deadline = CLOCKS_DEADLINE(timeout, sys_time_uptime());
+    thread->wait.deadline = CLOCKS_DEADLINE(timeout, clock_uptime());
     thread->wait.owner = NULL;
 
     for (uint64_t i = 0; i < amount; i++)

@@ -79,7 +79,7 @@ typedef struct sched sched_t;
  * In pseudocode, this can be expressed as
  *
  * ```
- * vclock_t vtime = (sys_time_uptime() - oldTime) / sched->totalWeight;
+ * vclock_t vtime = (clock_uptime() - oldTime) / sched->totalWeight;
  * ```
  *
  * Additionally, the amount of real time a thread should receive \f$r_i\f$ in a given duration of virtual time \f$v\f$
@@ -385,7 +385,7 @@ typedef struct sched_client
  * @struct sched_t
  *
  * Stored in a CPU's `sched` member.
- * 
+ *
  * @note The `runThread` and `idleThread` members are declared `volatile` as they can be accessed in interrupt
  * context as well as non-interrupt context.
  */
@@ -508,7 +508,7 @@ void sched_yield(void);
  *
  * @param status The exit status of the process.
  */
-_NORETURN void sched_process_exit(int32_t status);
+_NORETURN void sched_process_exit(const char* status);
 
 /**
  * @brief Terminates the currently executing thread.

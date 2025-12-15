@@ -4,7 +4,7 @@
 #include <kernel/fs/file.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
 
@@ -206,7 +206,7 @@ void kbd_push(kbd_t* kbd, kbd_event_type_t type, keycode_t code)
     }
 
     kbd->events[kbd->writeIndex] = (kbd_event_t){
-        .time = sys_time_uptime(),
+        .time = clock_uptime(),
         .code = code,
         .mods = kbd->mods,
         .type = type,

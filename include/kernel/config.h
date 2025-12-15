@@ -61,8 +61,7 @@
  * @ingroup kernel
  * @def CONFIG_MAX_NOTES
  *
- * The `CONFIG_MAX_NOTES` constant defines the maximum length of a threads note queue. If a thread is unable to receive
- * the notes in time before the queue fills up, then notes will be discarded, unless they are flagged as NOTE_CRITICAL.
+ * The `CONFIG_MAX_NOTES` constant defines the maximum length of a threads note queue.
  *
  */
 #define CONFIG_MAX_NOTES 8

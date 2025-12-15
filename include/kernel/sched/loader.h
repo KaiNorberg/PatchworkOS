@@ -19,21 +19,18 @@
  *
  * The stack is set up as follows:
  *
- * ```
- * +---------------------+
- * |  *argv[argc - 1]    |
- * |  ...                |
- * |  *argv[0]           |
- * +---------------------+
- * |  NULL               |
- * +---------------------+
- * |  argv[argc - 1]     |
- * |  ...                |
- * |  argv[0]            |
- * +---------------------+
- * |  padding            |
- * +---------------------+
- * ```
+ * <div align="center">
+ * | Stack Contents      |
+ * |---------------------|
+ * | *argv[argc - 1]     |
+ * | ...                 |
+ * | *argv[0]            |
+ * | NULL                |
+ * | argv[argc - 1]      |
+ * | ...                 |
+ * | argv[0]             |
+ * | padding             |
+ * </div>
  *
  * The `argv` pointer is placed in the `rsi` register, and the `argc` value is placed in the `rdi` register.
  *

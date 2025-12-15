@@ -1,0 +1,12 @@
+#include <sys/proc.h>
+
+#include "user/common/exit_stack.h"
+#include "user/common/file.h"
+#include "user/common/syscalls.h"
+
+void _exit(const char* status)
+{
+    _exit_stack_dispatch();
+    _files_close();
+    _syscall_process_exit(status);
+}

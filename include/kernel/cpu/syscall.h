@@ -96,8 +96,25 @@ typedef enum
     SYS_CLAIM = 31,
     SYS_BIND = 32,
     SYS_OPENAT = 33,
-    SYS_TOTAL_AMOUNT = 34
+    SYS_NOTIFY = 34,
+    SYS_NOTED = 35,
+    SYS_TOTAL_AMOUNT = 36
 } syscall_number_t;
+
+/**
+ * @brief Syscall flags.
+ * @enum syscall_flags_t
+ */
+typedef enum
+{
+    SYSCALL_NORMAL = 0 << 0,
+    /**
+     * Forces a fake interrupt to be generated after the syscall completes. This is useful if a syscall does not wish to return to where it was called from. 
+     * 
+     * Intended to be used by modifying the interrupt frame stored in the syscall context and setting this flag. As an example, consider the `SYS_NOTED` syscall.
+     */
+    SYSCALL_FORCE_FAKE_INTERRUPT = 1 << 0,
+} syscall_flags_t;
 
 /**
  * @brief Per thread syscall context.
@@ -105,8 +122,10 @@ typedef enum
  */
 typedef struct
 {
-    uintptr_t syscallRsp; ///< The stack pointer to use when handling syscalls.
-    uintptr_t userRsp;    ///< Used to avoid clobbering registers when switching stacks.
+    uintptr_t syscallRsp;     ///< The stack pointer to use when handling syscalls.
+    uintptr_t userRsp;        ///< Used to avoid clobbering registers when switching stacks.
+    interrupt_frame_t* frame; ///< If a fake interrupt is generated, this is the interrupt frame to return to.
+    syscall_flags_t flags;    ///< Flags for the current syscall.
 } syscall_ctx_t;
 
 /**
@@ -185,23 +204,17 @@ void syscalls_cpu_init(void);
  *
  * This is called from the assembly `syscall_entry()` function.
  *
- * @param arg1 First argument.
- * @param arg2 Second argument.
- * @param arg3 Third argument.
- * @param arg4 Fourth argument.
- * @param arg5 Fifth argument.
- * @param arg6 Sixth argument.
- * @param number The syscall number (`syscall_number_t`).
- * @return The return value of the syscall.
+ * Since notes can only be handled when in user space, this function will, if there are notes pending, provide a fake
+ * interrupt context to handle the note as if a interrupt had occurred at the exact same time as the system call began.
+ *
+ * @param frame The interrupt frame containing the CPU state at the time of the syscall.
  */
-uint64_t syscall_handler(uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5, uint64_t arg6,
-    uint64_t number);
+void syscall_handler(interrupt_frame_t* frame);
 
 /**
  * @brief Assembly entry point for syscalls.
  *
  * The logic for saving/restoring registers and switching stacks is done here before calling `syscall_handler()`.
- *
  */
 extern void syscall_entry(void);
 

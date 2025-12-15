@@ -20,5 +20,7 @@ thread_jump:
     mov rsi, rsp
     call thread_load
 
-    INTERRUPT_FRAME_POP_AND_JUMP
-    ud2 ; Should never be reached
+    INTERRUPT_FRAME_REGS_POP
+
+    add rsp, 16
+    iretq

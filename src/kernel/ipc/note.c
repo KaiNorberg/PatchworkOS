@@ -1,22 +1,24 @@
+#include <kernel/cpu/interrupt.h>
 #include <kernel/ipc/note.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/space.h>
+#include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
+#include <kernel/sync/lock.h>
 
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/math.h>
 
-static bool note_queue_compare_buffers(const void* a, uint64_t aLength, const void* b, uint64_t bLength)
+void note_handler_init(note_handler_t* handler)
 {
-    if (aLength != bLength)
-    {
-        return false;
-    }
-
-    return memcmp(a, b, aLength) == 0;
+    handler->func = NULL;
+    lock_init(&handler->lock);
 }
 
 void note_queue_init(note_queue_t* queue)
@@ -25,10 +27,11 @@ void note_queue_init(note_queue_t* queue)
     queue->writeIndex = 0;
     queue->length = 0;
     queue->flags = NOTE_QUEUE_NONE;
+    memset_s(&queue->noteFrame, sizeof(interrupt_frame_t), 0, sizeof(interrupt_frame_t));
     lock_init(&queue->lock);
 }
 
-uint64_t note_queue_length(note_queue_t* queue)
+uint64_t note_amount(note_queue_t* queue)
 {
     LOCK_SCOPE(&queue->lock);
     uint64_t length = queue->length;
@@ -39,9 +42,16 @@ uint64_t note_queue_length(note_queue_t* queue)
     return length;
 }
 
-uint64_t note_queue_write(note_queue_t* queue, const void* buffer, uint64_t count)
+uint64_t note_send(note_queue_t* queue, const char* string)
 {
-    if (queue == NULL || buffer == NULL || count == 0 || count >= NOTE_MAX_BUFFER)
+    if (queue == NULL || string == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    size_t count = strnlen_s(string, NOTE_MAX);
+    if (count == 0 || count >= NOTE_MAX)
     {
         errno = EINVAL;
         return ERR;
@@ -51,65 +61,124 @@ uint64_t note_queue_write(note_queue_t* queue, const void* buffer, uint64_t coun
 
     LOCK_SCOPE(&queue->lock);
 
-    if (note_queue_compare_buffers(buffer, count, "kill", 4))
+    if (strcmp(string, "kill") == 0)
     {
         queue->flags |= NOTE_QUEUE_RECEIVED_KILL;
         return 0;
     }
-    
-    note_t* note = NULL;
-    if (queue->length == CONFIG_MAX_NOTES)
+
+    if (queue->length >= CONFIG_MAX_NOTES)
     {
-        note = &queue->notes[queue->readIndex];
-        queue->readIndex = (queue->readIndex + 1) % CONFIG_MAX_NOTES;
-    }
-    else
-    {
-        note = &queue->notes[queue->writeIndex];
-        queue->writeIndex = (queue->writeIndex + 1) % CONFIG_MAX_NOTES;
-        queue->length++;
+        errno = EAGAIN;
+        return ERR;
     }
 
-    assert(note != NULL);
+    note_t* note = &queue->notes[queue->writeIndex];
+    queue->writeIndex = (queue->writeIndex + 1) % CONFIG_MAX_NOTES;
+    queue->length++;
 
-    memcpy(note->buffer, buffer, count);
+    memcpy_s(note->buffer, NOTE_MAX, string, count);
     note->buffer[count] = '\0';
-    note->length = count;
     note->sender = sender->id;
     return 0;
 }
 
-void note_handle_pending(interrupt_frame_t* frame, cpu_t* self)
+bool note_handle_pending(interrupt_frame_t* frame, cpu_t* self)
 {
     (void)frame;
     (void)self;
 
+    if (!INTERRUPT_FRAME_IN_USER_SPACE(frame))
+    {
+        return false;
+    }
+
     thread_t* thread = sched_thread_unsafe();
+    process_t* process = thread->process;
+    note_queue_t* queue = &thread->notes;
+    note_handler_t* handler = &process->noteHandler;
+
+    LOCK_SCOPE(&queue->lock);
+
+    if (queue->flags & NOTE_QUEUE_RECEIVED_KILL)
+    {
+        atomic_store(&thread->state, THREAD_DYING);
+        queue->flags &= ~NOTE_QUEUE_RECEIVED_KILL;
+        return true;
+    }
+
+    if (queue->length == 0 || (queue->flags & NOTE_QUEUE_HANDLING))
+    {
+        return false;
+    }
+
+    LOCK_SCOPE(&handler->lock);
+
+    if (handler->func == NULL)
+    {
+        atomic_store(&thread->state, THREAD_DYING);
+        return false;
+    }
+
+    note_t* note = &queue->notes[queue->readIndex];
+    queue->readIndex = (queue->readIndex + 1) % CONFIG_MAX_NOTES;
+    queue->length--;
+
+    queue->noteFrame = *frame;
+    queue->flags |= NOTE_QUEUE_HANDLING;
+
+    // func(note->buffer)
+    frame->rsp = ROUND_DOWN(frame->rsp - (RED_ZONE_SIZE + NOTE_MAX), 16);
+    if (thread_copy_to_user(thread, (void*)frame->rsp, note->buffer, NOTE_MAX) == ERR)
+    {
+        atomic_store(&thread->state, THREAD_DYING);
+        return true;
+    }
+    frame->rip = (uint64_t)handler->func;
+    frame->rdi = frame->rsp;
+    assert(frame->rflags & RFLAGS_INTERRUPT_ENABLE);
+
+    LOG_DEBUG("delivering note '%s' to pid=%d rsp=%p rip=%p\n", note->buffer, process->id, (void*)frame->rsp,
+        (void*)frame->rip);
+
+    return true;
+}
+
+SYSCALL_DEFINE(SYS_NOTIFY, uint64_t, note_func_t handler)
+{
+    process_t* process = sched_process();
+    note_handler_t* noteHandler = &process->noteHandler;
+
+    if (handler != NULL && space_check_access(&process->space, (void*)handler, 1) == ERR)
+    {
+        return ERR;
+    }
+
+    lock_acquire(&noteHandler->lock);
+    noteHandler->func = handler;
+    lock_release(&noteHandler->lock);
+
+    return 0;
+}
+
+SYSCALL_DEFINE(SYS_NOTED, void)
+{
+    thread_t* thread = sched_thread();
     note_queue_t* queue = &thread->notes;
 
     lock_acquire(&queue->lock);
 
-    if (queue->flags & NOTE_QUEUE_RECEIVED_KILL)
+    if (!(queue->flags & NOTE_QUEUE_HANDLING))
     {
         lock_release(&queue->lock);
-        atomic_store(&thread->state, THREAD_DYING);
-        queue->flags &= ~NOTE_QUEUE_RECEIVED_KILL;
-        return;
+        sched_thread_exit();
     }
 
-    while (true)
-    {
-        if (queue->length == 0)
-        {
-            lock_release(&queue->lock);
-            return;
-        }
+    queue->flags &= ~NOTE_QUEUE_HANDLING;
 
-        note_t* note = &queue->notes[queue->readIndex];
-        queue->readIndex = (queue->readIndex + 1) % CONFIG_MAX_NOTES;
-        queue->length--;
+    // Causes the system call to return to the saved interrupt frame.
+    memcpy_s(thread->syscall.frame, sizeof(interrupt_frame_t), &queue->noteFrame, sizeof(interrupt_frame_t));
+    thread->syscall.flags |= SYSCALL_FORCE_FAKE_INTERRUPT;
 
-        LOG_WARN("unknown note '%.*s' received in thread tid=%d\n", note->length, note->buffer, thread->id);
-        /// @todo Software interrupts.
-    }
+    lock_release(&queue->lock);
 }

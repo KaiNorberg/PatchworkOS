@@ -1,12 +1,12 @@
+#include <kernel/cpu/gdt.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/path.h>
-#include <kernel/sched/loader.h>
-#include <kernel/cpu/gdt.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>
-#include <kernel/sched/process.h>
+#include <kernel/proc/process.h>
+#include <kernel/sched/loader.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 
@@ -40,9 +40,6 @@ void loader_exec(const char* executable, char** argv, uint64_t argc)
 {
     assert(executable != NULL);
     assert((argv != NULL && argc > 0) || ((argv == NULL || argv[0] == NULL) && argc == 0));
-
-    // Generic error if a lower function fails without setting errno
-    errno = ESPAWNFAIL;
 
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
@@ -142,7 +139,7 @@ cleanup:
     {
         thread_jump(thread);
     }
-    sched_process_exit(errno);
+    sched_process_exit("exec failed");
 }
 
 static void loader_entry(const char* executable, char** argv, uint64_t argc)
@@ -172,7 +169,8 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
 
-    child = process_new(atomic_load(&process->priority));
+    child = process_new(atomic_load(&process->priority),
+        flags & SPAWN_EMPTY_GROUP ? GID_NONE : group_get_id(&process->groupEntry));
     if (child == NULL)
     {
         goto error;
@@ -269,7 +267,7 @@ error:
     }
     if (child != NULL)
     {
-        process_kill(child, errno);
+        process_kill(child, "spawn failed");
     }
 
     free((void*)executable);
