@@ -5,6 +5,7 @@ typedef struct process process_t;
 /**
  * @brief Process reaper for delayed process freeing.
  * @defgroup kernel_proc_reaper Process reaper
+ * @ingroup kernel_proc
  * 
  * The process reaper ensures that a process is not freed immediately after it is killed. This is important because other processes may still wish to access information about the process, such as its exit status.
  * 
