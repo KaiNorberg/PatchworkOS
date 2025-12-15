@@ -6,17 +6,8 @@
     <a href="https://github.com/KaiNorberg/PatchworkOS/issues">
       <img src="https://img.shields.io/github/issues/KaiNorberg/PatchworkOS">
     </a>
-    <a href="https://github.com/KaiNorberg/PatchworkOS/network">
-      <img src="https://img.shields.io/github/forks/KaiNorberg/PatchworkOS">
-    </a>
     <a href="https://github.com/KaiNorberg/PatchworkOS/stargazers">
       <img src="https://img.shields.io/github/stars/KaiNorberg/PatchworkOS">
-    </a>
-    <a href="https://github.com/sponsors/KaiNorberg">
-      <img src="https://img.shields.io/github/sponsors/KaiNorberg">
-    </a>
-    <a href="https://github.com/KaiNorberg/PatchworkOS/discussions">
-      <img src="https://img.shields.io/github/discussions/KaiNorberg/PatchworkOS">
     </a>
     <a href="https://kainorberg.github.io/PatchworkOS/html/index.html">
       <img src="https://img.shields.io/badge/docs-Doxygen-blue">
