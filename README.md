@@ -363,7 +363,7 @@ At this point the child process will begin executing with its stdio redirected t
 
 The advantages of this approach are numerous, we avoid COW issues with `fork()`, weirdness with `vfork()`, system call bloat with `CreateProcess()`, and we get a very flexible and powerful process creation system that can use any of the other file based APIs to modify the child process. In exchange, the only real price we pay is overhead from additional context switches, string parsing and path traversals, how much this matters in practice is debatable.
 
-For more on `spawn()`, check the [Userspace Process API](https://kainorberg.github.io/PatchworkOS/html/d1/d10/group__libstd__sys__proc.html#gae41c1cb67e3bc823c6d0018e043022eb) documentation and for more information on the `/proc` filesystem, check the [Process](https://kainorberg.github.io/PatchworkOS/html/d1/d20/group__kernel__sched__processes.html) documentation.
+For more on `spawn()`, check the [Userspace Process API Documentation](https://kainorberg.github.io/PatchworkOS/html/d1/d10/group__libstd__sys__proc.html#gae41c1cb67e3bc823c6d0018e043022eb) and for more information on the `/proc` filesystem, check the [Kernel Process Documentation](https://kainorberg.github.io/PatchworkOS/html/da/d0f/group__kernel__proc.html).
 
 ## Notes (Signals)
 
@@ -383,7 +383,7 @@ shell: pagefault at 0x40013b due to stack overflow at 0x7ffffff9af18
 
 All that happened is that the shell printed the exit status of the process, which is also a string and in this case is set to the note that killed the process. This is much more useful, we know the exact address and the reason for the fault.
 
-For more details, see the [Notes Documentation](https://kainorberg.github.io/PatchworkOS/html/d8/db1/group__kernel__ipc__note.html), [stdlib Process Documentation](https://kainorberg.github.io/PatchworkOS/html/d1/d10/group__libstd__sys__proc.html) and the [Kernel Process Documentation](https://kainorberg.github.io/PatchworkOS/html/d1/d20/group__kernel__sched__processes.html).
+For more details, see the [Notes Documentation](https://kainorberg.github.io/PatchworkOS/html/d8/db1/group__kernel__ipc__note.html), [Standard Library Process Documentation](https://kainorberg.github.io/PatchworkOS/html/d1/d10/group__libstd__sys__proc.html) and the [Kernel Process Documentation](https://kainorberg.github.io/PatchworkOS/html/da/d0f/group__kernel__proc.html).
 
 ### Namespaces
 
@@ -444,7 +444,7 @@ Plus its fun.
 
 PatchworkOS features a from-scratch ACPI implementation and AML parser, with the goal of being, at least by ACPI standards, easy to understand and educational. It is tested on the [Tested Configurations](#tested-configurations) below and against [ACPICA's](https://github.com/acpica/acpica) runtime test suite, but remains a work in progress (and probably always will be).
 
-See [ACPI Documentation](https://kainorberg.github.io/PatchworkOS/html/d0/d30/group__kernel__acpi.html) for a progress checklist.
+See [ACPI Documentation](https://kainorberg.github.io/PatchworkOS/html/d1/d39/group__modules__acpi.html) for a progress checklist.
 
 See [ACPI specification Version 6.6](https://uefi.org/specs/ACPI/6.6/index.html) as the main reference.
 
