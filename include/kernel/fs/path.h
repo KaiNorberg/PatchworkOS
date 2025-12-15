@@ -178,9 +178,8 @@ typedef struct pathname
  * @param pathname The pathname to initialize.
  * @param string The string to initialize the pathname with.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `EINVAL`: Invalid parameters or invalid characters in the string.
+ * - `EINVAL`: Invalid parameters.
  * - `ENAMETOOLONG`: The string is too long or a component name is too long.
- * - `EBADFLAG`: An invalid flag was specified.
  */
 uint64_t pathname_init(pathname_t* pathname, const char* string);
 

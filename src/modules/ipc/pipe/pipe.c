@@ -139,7 +139,7 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* 
     pipe_private_t* private = file->private;
     if (private->readEnd != file)
     {
-        errno = ENOTSUP;
+        errno = ENOSYS;
         return ERR;
     }
 
@@ -174,7 +174,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uin
     pipe_private_t* private = file->private;
     if (private->writeEnd != file)
     {
-        errno = ENOTSUP;
+        errno = ENOSYS;
         return ERR;
     }
 

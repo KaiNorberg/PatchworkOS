@@ -563,7 +563,7 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
 
     if (pathname->mode != MODE_NONE)
     {
-        errno = EBADFLAG;
+        errno = EINVAL;
         return ERR;
     }
 
@@ -616,7 +616,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
 
     if (oldPathname->mode != MODE_NONE || newPathname->mode != MODE_NONE)
     {
-        errno = EBADFLAG;
+        errno = EINVAL;
         return ERR;
     }
 

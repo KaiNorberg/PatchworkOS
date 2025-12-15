@@ -687,49 +687,9 @@ int* _errno_get(void);
 #define ERFKILL 132
 
 /**
- * @brief Maximum value for posix error codes (not inclusive)
- */
-#define ERR_POSIX_MAX 133
-
-/**
- * @brief Invalid or unknown control request
- */
-#define EUNKNOWNCTL 133
-
-/**
- * @brief Invalid path format
- */
-#define EBADPATH 134
-
-/**
- * @brief Invalid path flag
- */
-#define EBADFLAG 135
-
-/**
- * @brief Operation not supported
- */
-#define ENOTSUP 136
-
-/**
- * @brief Resource disconnected or freed
- */
-#define EDISCONNECTED 137
-
-/**
- * @brief Process spawn failed
- */
-#define ESPAWNFAIL 138
-
-/**
- * @brief No such label
- */
-#define ENOLABEL 139
-
-/**
  * @brief Maximum value for all error codes (not inclusive)
  */
-#define ERR_MAX 140
+#define ERR_MAX 133
 
 /** @} */
 

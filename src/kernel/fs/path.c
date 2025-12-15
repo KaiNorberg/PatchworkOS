@@ -166,7 +166,7 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
         {
             if (!isalnum(string[index]))
             {
-                errno = EBADFLAG;
+                errno = EINVAL;
                 return ERR;
             }
             index++;
@@ -182,7 +182,7 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
         mode_t mode = path_flag_to_mode(token, tokenLength);
         if (mode == MODE_NONE)
         {
-            errno = EBADFLAG;
+            errno = EINVAL;
             return ERR;
         }
 
@@ -384,7 +384,7 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
 
         if (*p == ':')
         {
-            errno = EBADFLAG;
+            errno = EINVAL;
             return ERR;
         }
 

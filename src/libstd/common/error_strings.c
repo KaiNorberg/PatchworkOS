@@ -2,8 +2,7 @@
 
 #include <errno.h>
 
-char* _error_strings[] = {
-    // POSIX standard error codes
+char* _errorStrings[] = {
     [0] = "success",
     [EPERM] = "operation not permitted",
     [ENOENT] = "no such file or directory",
@@ -135,12 +134,4 @@ char* _error_strings[] = {
     [EOWNERDEAD] = "owner died",
     [ENOTRECOVERABLE] = "state not recoverable",
     [ERFKILL] = "operation not possible due to rf-kill",
-
-    // PatchworkOS specific error codes
-    [EUNKNOWNCTL] = "invalid or unknown control request",
-    [EBADPATH] = "invalid path format",
-    [EBADFLAG] = "invalid path flag",
-    [ENOTSUP] = "operation not supported",
-    [EDISCONNECTED] = "resource disconnected or freed",
-    [ESPAWNFAIL] = "process spawn failed",
-    [ENOLABEL] = "no such label"};
+};

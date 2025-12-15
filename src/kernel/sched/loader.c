@@ -41,9 +41,6 @@ void loader_exec(const char* executable, char** argv, uint64_t argc)
     assert(executable != NULL);
     assert((argv != NULL && argc > 0) || ((argv == NULL || argv[0] == NULL) && argc == 0));
 
-    // Generic error if a lower function fails without setting errno
-    errno = ESPAWNFAIL;
-
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
 

@@ -21,7 +21,7 @@ uint64_t ctl_dispatch_one(ctl_t* ctls, file_t* file, uint64_t argc, const char**
         {
             if (argc < ctl->argcMin || argc > ctl->argcMax)
             {
-                errno = EUNKNOWNCTL;
+                errno = EINVAL;
                 return ERR;
             }
 
@@ -63,7 +63,7 @@ uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, uint64_t co
     }
     if (argc == 0)
     {
-        errno = EUNKNOWNCTL;
+        errno = ENOENT;
         return ERR;
     }
 
