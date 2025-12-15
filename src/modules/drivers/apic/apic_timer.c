@@ -4,7 +4,7 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/log/log.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
 #include <kernel/utils/utils.h>
 
@@ -19,7 +19,7 @@ static uint64_t apic_timer_ticks_per_ms(void)
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, UINT32_MAX);
 
-    sys_time_wait(CLOCKS_PER_SEC / 1000);
+    clock_wait(CLOCKS_PER_SEC / 1000);
 
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
 

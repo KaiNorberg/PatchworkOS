@@ -10,7 +10,7 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
@@ -345,7 +345,7 @@ static uint64_t process_stat_read(file_t* file, void* buffer, uint64_t count, ui
 
     char statStr[MAX_PATH];
     int length = snprintf(statStr, sizeof(statStr),
-        "user_clocks %llu\nkernel_clocks %llu\nstart_clocks %llu\nuser_pages %llu\nthread_count %llu", userClocks,
+        "user_clocks %llu\nkernel_sched_clocks %llu\nstart_clocks %llu\nuser_pages %llu\nthread_count %llu", userClocks,
         kernelClocks, startTime, userPages, threadCount);
     if (length < 0)
     {

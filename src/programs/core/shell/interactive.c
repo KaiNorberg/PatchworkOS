@@ -53,7 +53,8 @@ static uint64_t interactive_execute_command(interactive_state_t* state)
         return 0; // This is also fine
     }
 
-    if (strlen(pipeline.status) > 0 && strcmp(pipeline.status, "0") != 0)
+    // Ignore generic errors
+    if (strlen(pipeline.status) > 0 && strcmp(pipeline.status, "0") != 0 && strcmp(pipeline.status, "-1") != 0)
     {
         printf("shell: %s\n", pipeline.status);
     }

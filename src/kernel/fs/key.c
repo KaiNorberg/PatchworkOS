@@ -3,7 +3,7 @@
 #include <kernel/cpu/syscall.h>
 #include <kernel/drivers/rand.h>
 #include <kernel/log/panic.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
@@ -40,7 +40,7 @@ static void key_timer_handler(interrupt_frame_t* frame, cpu_t* self)
     (void)frame;
     (void)self;
 
-    clock_t now = sys_time_uptime();
+    clock_t now = clock_uptime();
     RWLOCK_WRITE_SCOPE(&keyLock);
 
     key_entry_t* entry;
@@ -76,7 +76,7 @@ uint64_t key_share(key_t* key, file_t* file, clock_t timeout)
     map_entry_init(&entry->mapEntry);
     entry->key = key_generate();
     entry->file = REF(file);
-    entry->expiry = CLOCKS_DEADLINE(timeout, sys_time_uptime());
+    entry->expiry = CLOCKS_DEADLINE(timeout, clock_uptime());
 
     RWLOCK_WRITE_SCOPE(&keyLock);
     map_key_t mapKey = map_key_buffer(&entry->key, sizeof(entry->key));

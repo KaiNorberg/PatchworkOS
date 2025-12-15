@@ -2,7 +2,7 @@
 #include <kernel/log/log.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>

@@ -10,7 +10,7 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/proc/process.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
@@ -253,7 +253,7 @@ static thread_t* sched_steal(void)
 
     lock_acquire(&mostLoaded->sched.lock);
 
-    clock_t uptime = sys_time_uptime();
+    clock_t uptime = clock_uptime();
 
     thread_t* thread;
     RBTREE_FOR_EACH(thread, &mostLoaded->sched.runqueue, sched.node)
@@ -314,7 +314,7 @@ static thread_t* sched_first_eligible(sched_t* sched)
     thread_t* victim = sched_steal();
     if (victim != NULL)
     {
-        sched_enter(sched, victim, sys_time_uptime());
+        sched_enter(sched, victim, clock_uptime());
         return victim;
     }
 
@@ -379,7 +379,7 @@ void sched_submit(thread_t* thread)
     cpu_t* self = cpu_get();
 
     cpu_t* target;
-    if (thread->sched.lastCpu != NULL && sched_is_cache_hot(thread, sys_time_uptime()))
+    if (thread->sched.lastCpu != NULL && sched_is_cache_hot(thread, clock_uptime()))
     {
         target = thread->sched.lastCpu;
     }
@@ -393,7 +393,7 @@ void sched_submit(thread_t* thread)
     }
 
     lock_acquire(&target->sched.lock);
-    sched_enter(&target->sched, thread, sys_time_uptime());
+    sched_enter(&target->sched, thread, clock_uptime());
     lock_release(&target->sched.lock);
 
     bool shouldWake = self != target || !self->interrupt.inInterrupt;
@@ -532,7 +532,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         return;
     }
 
-    clock_t uptime = sys_time_uptime();
+    clock_t uptime = clock_uptime();
     sched_vtime_update(sched, uptime);
 
     assert(sched->runThread != NULL);

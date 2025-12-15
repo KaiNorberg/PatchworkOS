@@ -2,7 +2,7 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/log/log.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -14,7 +14,7 @@ static uint64_t rand_gen_fallback(void* buffer, uint64_t size)
 {
     for (uint64_t i = 0; i < size; i++)
     {
-        uint64_t currentSeed = atomic_load(&seed) + sys_time_uptime();
+        uint64_t currentSeed = atomic_load(&seed) + clock_uptime();
         currentSeed ^= currentSeed << 13;
         currentSeed ^= currentSeed >> 7;
         currentSeed ^= currentSeed << 17;

@@ -1,4 +1,4 @@
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/interrupt.h>
@@ -15,24 +15,24 @@
 #include <stdint.h>
 #include <sys/math.h>
 
-static const sys_time_source_t* sources[SYS_TIME_MAX_SOURCES] = {0};
+static const clock_source_t* sources[CLOCK_MAX_SOURCES] = {0};
 static uint32_t sourceCount = 0;
-static const sys_time_source_t* bestNsSource = NULL;
-static const sys_time_source_t* bestEpochSource = NULL;
+static const clock_source_t* bestNsSource = NULL;
+static const clock_source_t* bestEpochSource = NULL;
 static rwlock_t sourcesLock = RWLOCK_CREATE();
 
 #ifdef DEBUG
 static _Atomic(clock_t) lastNsTime = ATOMIC_VAR_INIT(0);
 #endif
 
-static void sys_time_update_best_sources(void)
+static void clock_update_best_sources(void)
 {
     bestNsSource = NULL;
     bestEpochSource = NULL;
 
     for (uint32_t i = 0; i < sourceCount; i++)
     {
-        const sys_time_source_t* source = sources[i];
+        const clock_source_t* source = sources[i];
         if (source->read_ns != NULL && (bestNsSource == NULL || source->precision < bestNsSource->precision))
         {
             bestNsSource = source;
@@ -44,7 +44,7 @@ static void sys_time_update_best_sources(void)
     }
 }
 
-uint64_t sys_time_register_source(const sys_time_source_t* source)
+uint64_t clock_source_register(const clock_source_t* source)
 {
     if (source == NULL || (source->read_ns == NULL && source->read_epoch == NULL) || source->precision == 0)
     {
@@ -53,7 +53,7 @@ uint64_t sys_time_register_source(const sys_time_source_t* source)
     }
 
     rwlock_write_acquire(&sourcesLock);
-    if (sourceCount >= SYS_TIME_MAX_SOURCES)
+    if (sourceCount >= CLOCK_MAX_SOURCES)
     {
         rwlock_write_release(&sourcesLock);
         errno = ENOSPC;
@@ -61,7 +61,7 @@ uint64_t sys_time_register_source(const sys_time_source_t* source)
     }
 
     sources[sourceCount++] = source;
-    sys_time_update_best_sources();
+    clock_update_best_sources();
 
     rwlock_write_release(&sourcesLock);
 
@@ -69,7 +69,7 @@ uint64_t sys_time_register_source(const sys_time_source_t* source)
     return 0;
 }
 
-void sys_time_unregister_source(const sys_time_source_t* source)
+void clock_source_unregister(const clock_source_t* source)
 {
     if (source == NULL)
     {
@@ -84,10 +84,10 @@ void sys_time_unregister_source(const sys_time_source_t* source)
             continue;
         }
 
-        memmove(&sources[i], &sources[i + 1], (sourceCount - i - 1) * sizeof(sys_time_source_t*));
+        memmove(&sources[i], &sources[i + 1], (sourceCount - i - 1) * sizeof(clock_source_t*));
         sourceCount--;
 
-        sys_time_update_best_sources();
+        clock_update_best_sources();
         rwlock_write_release(&sourcesLock);
         return;
     }
@@ -96,7 +96,7 @@ void sys_time_unregister_source(const sys_time_source_t* source)
     panic(NULL, "Failed to unregister system timer source '%s', not found", source->name);
 }
 
-clock_t sys_time_uptime(void)
+clock_t clock_uptime(void)
 {
     RWLOCK_READ_SCOPE(&sourcesLock);
     if (bestNsSource == NULL)
@@ -116,7 +116,7 @@ clock_t sys_time_uptime(void)
     return time;
 }
 
-time_t sys_time_unix_epoch(void)
+time_t clock_epoch(void)
 {
     RWLOCK_READ_SCOPE(&sourcesLock);
     if (bestEpochSource == NULL)
@@ -127,20 +127,20 @@ time_t sys_time_unix_epoch(void)
     return bestEpochSource->read_epoch();
 }
 
-void sys_time_wait(clock_t nanoseconds)
+void clock_wait(clock_t nanoseconds)
 {
     if (nanoseconds == 0)
     {
         return;
     }
 
-    clock_t start = sys_time_uptime();
+    clock_t start = clock_uptime();
     if (start == 0)
     {
-        panic(NULL, "sys_time_wait called before timer system initialized");
+        panic(NULL, "clock_wait called before timer system initialized");
     }
 
-    while (sys_time_uptime() - start < nanoseconds)
+    while (clock_uptime() - start < nanoseconds)
     {
         asm volatile("pause");
     }
@@ -148,12 +148,12 @@ void sys_time_wait(clock_t nanoseconds)
 
 SYSCALL_DEFINE(SYS_UPTIME, clock_t)
 {
-    return sys_time_uptime();
+    return clock_uptime();
 }
 
 SYSCALL_DEFINE(SYS_UNIX_EPOCH, time_t, time_t* timePtr)
 {
-    time_t epoch = sys_time_unix_epoch();
+    time_t epoch = clock_epoch();
     if (timePtr != NULL)
     {
         if (thread_copy_to_user(sched_thread(), timePtr, &epoch, sizeof(epoch)) == ERR)

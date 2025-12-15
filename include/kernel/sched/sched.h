@@ -79,7 +79,7 @@ typedef struct sched sched_t;
  * In pseudocode, this can be expressed as
  *
  * ```
- * vclock_t vtime = (sys_time_uptime() - oldTime) / sched->totalWeight;
+ * vclock_t vtime = (clock_uptime() - oldTime) / sched->totalWeight;
  * ```
  *
  * Additionally, the amount of real time a thread should receive \f$r_i\f$ in a given duration of virtual time \f$v\f$

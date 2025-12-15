@@ -5,7 +5,7 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 
 static list_t zombies = LIST_CREATE(zombies);
 static clock_t nextReaperTime = CLOCKS_NEVER;
@@ -20,7 +20,7 @@ static void reaper_thread(void* arg)
         sched_nanosleep(CONFIG_PROCESS_REAPER_INTERVAL);
 
         lock_acquire(&reaperLock);
-        clock_t uptime = sys_time_uptime();
+        clock_t uptime = clock_uptime();
         if (uptime < nextReaperTime)
         {
             lock_release(&reaperLock);
@@ -67,6 +67,6 @@ void reaper_push(process_t* process)
 {
     lock_acquire(&reaperLock);
     list_push_back(&zombies, &process->zombieEntry);
-    nextReaperTime = sys_time_uptime() + CONFIG_PROCESS_REAPER_INTERVAL; // Delay reaper run
+    nextReaperTime = clock_uptime() + CONFIG_PROCESS_REAPER_INTERVAL; // Delay reaper run
     lock_release(&reaperLock);
 }

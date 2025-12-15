@@ -103,7 +103,7 @@
  * Format:
  *
  * ```
- * user_clocks kernel_clocks start_clocks user_pages thread_count
+ * user_clocks kernel_sched_clocks start_clocks user_pages thread_count
  * %llu %llu %llu %llu %llu
  * ```
  *

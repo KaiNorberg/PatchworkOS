@@ -4,7 +4,7 @@
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
 #include <kernel/sched/sched.h>
-#include <kernel/sched/sys_time.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/seqlock.h>
@@ -189,7 +189,7 @@ static void hpet_overflow_thread(void* arg)
 /**
  * @brief Structure to describe the HPET to the sys time subsystem.
  */
-static sys_time_source_t source = {
+static clock_source_t source = {
     .name = "HPET",
     .precision = 0, // Filled in during init
     .read_ns = hpet_read_ns_counter,
@@ -240,7 +240,7 @@ static uint64_t hpet_init(void)
     hpet_reset_counter();
 
     source.precision = hpet_ns_per_tick();
-    if (sys_time_register_source(&source) == ERR)
+    if (clock_source_register(&source) == ERR)
     {
         LOG_ERR("failed to register HPET as system time source\n");
         return ERR;
@@ -250,7 +250,7 @@ static uint64_t hpet_init(void)
     if (overflowThreadTid == ERR)
     {
         LOG_ERR("failed to create HPET overflow thread\n");
-        sys_time_unregister_source(&source);
+        clock_source_unregister(&source);
         return ERR;
     }
 
@@ -270,7 +270,7 @@ static void hpet_deinit(void)
         sched_yield();
     }
 
-    sys_time_unregister_source(&source);
+    clock_source_unregister(&source);
     hpet_write(HPET_REG_GENERAL_CONFIG, 0);
 }
 
