@@ -1,7 +1,7 @@
 #include <kernel/fs/mount.h>
 
 #include <kernel/fs/vfs.h>
-
+#include <kernel/log/log.h>
 #include <stdlib.h>
 
 static void mount_free(mount_t* mount)

@@ -52,7 +52,7 @@ typedef struct
 
 /**
  * @brief Local socket data structure.
- * struct local_socket_data_t
+ * struct local_socket_t
  *
  * Stored in the `private` field of a `socket_t` for local sockets.
  */
@@ -69,8 +69,7 @@ typedef struct
             bool isServer;
         } conn;
     };
-    lock_t lock;
-} local_socket_data_t;
+} local_socket_t;
 
 /**
  * @brief Initialize the local networking subsystem.

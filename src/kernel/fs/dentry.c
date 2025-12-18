@@ -143,7 +143,7 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     atomic_init(&dentry->flags, DENTRY_NEGATIVE);
     dentry->parent = parent != NULL
         ? REF(parent)
-        : dentry; // We set its parent now but its only added to its list when it is made positive.
+        : dentry; 
     list_entry_init(&dentry->siblingEntry);
     list_init(&dentry->children);
     dentry->superblock = REF(superblock);
@@ -159,6 +159,28 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     }
 
     return dentry;
+}
+
+void dentry_remove(dentry_t* dentry)
+{
+    if (dentry == NULL)
+    {
+        return;
+    }
+
+    if (!DENTRY_IS_ROOT(dentry))
+    {
+        assert(dentry->parent != NULL);
+
+        mutex_acquire(&dentry->parent->inode->mutex);
+        list_remove(&dentry->parent->children, &dentry->siblingEntry);
+        mutex_release(&dentry->parent->inode->mutex);
+
+        UNREF(dentry->parent);
+        dentry->parent = NULL;
+    }
+
+    dentry_cache_remove(dentry);
 }
 
 dentry_t* dentry_get(const dentry_t* parent, const char* name)
@@ -197,10 +219,8 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name)
     dentry = dentry_new(parent->dentry->superblock, parent->dentry, name);
     if (dentry == NULL)
     {
-        // This logic is a bit complex, but im pretty confident its correct.
-        if (errno == EEXIST) // Dentry was created after we called dentry_cache_get but before dentry_new
+        if (errno == EEXIST)
         {
-            // If this fails then the dentry was deleted in between dentry_new and here, which should be fine?
             return dentry_cache_get(&key);
         }
         return NULL;

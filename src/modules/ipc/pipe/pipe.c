@@ -57,20 +57,25 @@ static uint64_t pipe_open(file_t* file)
     {
         return ERR;
     }
-    private->buffer = pmm_alloc();
+  private
+    ->buffer = pmm_alloc();
     if (private->buffer == NULL)
     {
         free(private);
         return ERR;
     }
     ring_init(&private->ring, private->buffer, PAGE_SIZE);
-    private->isReadClosed = false;
-    private->isWriteClosed = false;
+  private
+    ->isReadClosed = false;
+  private
+    ->isWriteClosed = false;
     wait_queue_init(&private->waitQueue);
     lock_init(&private->lock);
 
-    private->readEnd = file;
-    private->writeEnd = file;
+  private
+    ->readEnd = file;
+  private
+    ->writeEnd = file;
 
     file->private = private;
     return 0;
@@ -83,20 +88,25 @@ static uint64_t pipe_open2(file_t* files[2])
     {
         return ERR;
     }
-    private->buffer = pmm_alloc();
+  private
+    ->buffer = pmm_alloc();
     if (private->buffer == NULL)
     {
         free(private);
         return ERR;
     }
     ring_init(&private->ring, private->buffer, PAGE_SIZE);
-    private->isReadClosed = false;
-    private->isWriteClosed = false;
+  private
+    ->isReadClosed = false;
+  private
+    ->isWriteClosed = false;
     wait_queue_init(&private->waitQueue);
     lock_init(&private->lock);
 
-    private->readEnd = files[PIPE_READ];
-    private->writeEnd = files[PIPE_WRITE];
+  private
+    ->readEnd = files[PIPE_READ];
+  private
+    ->writeEnd = files[PIPE_WRITE];
 
     files[0]->private = private;
     files[1]->private = private;
@@ -109,11 +119,13 @@ static void pipe_close(file_t* file)
     lock_acquire(&private->lock);
     if (private->readEnd == file)
     {
-        private->isReadClosed = true;
+      private
+        ->isReadClosed = true;
     }
     if (private->writeEnd == file)
     {
-        private->isWriteClosed = true;
+      private
+        ->isWriteClosed = true;
     }
 
     wait_unblock(&private->waitQueue, WAIT_ALL, EOK);

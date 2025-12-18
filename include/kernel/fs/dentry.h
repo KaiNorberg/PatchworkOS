@@ -116,6 +116,15 @@ typedef struct dentry
 dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name);
 
 /**
+ * @brief Remove a dentry from the filesystem hierarchy.
+ * 
+ * @note Will not free the dentry, use `UNREF()` for that.
+ * 
+ * @param dentry The dentry to remove.
+ */
+void dentry_remove(dentry_t* dentry);
+
+/**
  * @brief Get a dentry for the given name. Will NOT traverse mountpoints.
  *
  * Will only check the dentry cache and return a dentry if it exists there, will not call the filesystem's lookup

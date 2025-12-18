@@ -109,9 +109,11 @@ typedef enum
 {
     SYSCALL_NORMAL = 0 << 0,
     /**
-     * Forces a fake interrupt to be generated after the syscall completes. This is useful if a syscall does not wish to return to where it was called from. 
-     * 
-     * Intended to be used by modifying the interrupt frame stored in the syscall context and setting this flag. As an example, consider the `SYS_NOTED` syscall.
+     * Forces a fake interrupt to be generated after the syscall completes. This is useful if a syscall does not wish to
+     * return to where it was called from.
+     *
+     * Intended to be used by modifying the interrupt frame stored in the syscall context and setting this flag. As an
+     * example, consider the `SYS_NOTED` syscall.
      */
     SYSCALL_FORCE_FAKE_INTERRUPT = 1 << 0,
 } syscall_flags_t;

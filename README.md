@@ -211,7 +211,7 @@ char* id = sreadfile("/net/local/seqpacket");
 free(id);
 ```
 
-> Note that the socket will persist until the process that created it and all its children have exited. Additionally, for error handling, all functions will return either `NULL` or `ERR` on failure, depending on if they return a pointer or an integer type respectively. The per-thread `errno` variable is used to indicate the specific error that occurred, both in user space and kernel space (however the actual variable is implemented differently in kernel space).
+> Note that the socket will persist until the process that created it and all its children have exited or the sockets directory is unmounted. Additionally, for error handling, all functions will return either `NULL` or `ERR` on failure, depending on if they return a pointer or an integer type respectively. The per-thread `errno` variable is used to indicate the specific error that occurred, both in user space and kernel space (however the actual variable is implemented differently in kernel space).
 
 Now that we have the ID, we can discuss what it actually is. The ID is the name of a directory in the `/net/local` directory, in which the following files exist:
 
@@ -382,48 +382,19 @@ All that happened is that the shell printed the exit status of the process, whic
 
 For more details, see the [Notes Documentation](https://kainorberg.github.io/PatchworkOS/html/d8/db1/group__kernel__ipc__note.html), [Standard Library Process Documentation](https://kainorberg.github.io/PatchworkOS/html/d1/d10/group__libstd__sys__proc.html) and the [Kernel Process Documentation](https://kainorberg.github.io/PatchworkOS/html/da/d0f/group__kernel__proc.html).
 
-### Namespaces
+### Security via Namespaces
 
-Namespaces are a set of mountpoints that are unique per process, allowing each process a unique view of the file system.
+Finally, we will go over how security is implemented. In PatchworkOS, there are no users or similar concepts often found in other operating systems, instead, each process has its own namespace which stores a set of mountpoints specific to that process. This means that each process has its own view of the filesystem.
 
-Think of it like this, in the common case, you can mount a drive to `/mnt/mydrive` and all processes can then open the `/mnt/mydrive` path and see the contents of that drive. However, for security reasons we might not want every process to be able to see that drive, this is what namespaces enable, allowing mounted file systems or directories to only be visible to a subset of processes.
+For example, process A might have mounted a sensitive directory at `/secret` while process B has no such mountpoint. From process B's perspective, the `/secret` directory is empty or contains its original contents while process A can access it normally.
 
-As an example, the "id" directories mentioned in the socket example are a separate "sysfs" instance mounted in the namespace of the creating process, meaning that only that process and its children can see their contents.
+> An interesting detail is that when process A opens the `/secret` directory, the dentry underlying the file descriptor is the dentry that was mounted to `/secret`. When process B opens this directory it would retrieve the dentry of the directory in the parent superblock, and thus see the content of that directory in the parent superblock. Namespaces prevent mountpoint traversal not directory visibility. If this means nothing to you, don't worry about it.
 
-For more information on how mounts are propagated or mounts inherited check the [Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html).
+This allows for a very flexible security model, where processes can be given access to any combination of files and directories without needing hidden permission bits or similar mechanisms. Additionally, since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc.
 
-### Namespace Sharing
+It would even be possible to implement a user-like system entierly in user space using namespaces, by having the init process bind different directories depending on the user logging in.
 
-In cases where unrelated processes want to share a file or directory that is invisible to the other, they can voluntarily share a mountpoint in their namespaces using `bind()` in combination with two new system calls `share()` and `claim()`.
-
-For example, if process A wants to share its `/net/local/5` directory from the socket example with process B, they can do
-
-```c
-// In process A
-fd_t dir = open("/net/local/5:directory");
-
-// Create a "key" for the file descriptor, this is a unique one time use randomly generated token that can be used to retrieve the file descriptor in another process.
-key_t key;
-share(&key, dir, CLOCKS_PER_SEC * 60); // Key valid for 60 seconds (CLOCKS_NEVER is also allowed)
-
-// In process B
-// The key is somehow communicated to B via IPC, for example a pipe, socket, argv, etc.
-key_t key = ...;
-
-// Use the key to open a file descriptor to the directory, this will invalidate the key.
-fd_t dir = claim(key);
-// Will error here if the original file descriptor in process A has been closed, process A exited, or the key expired.
-
-// Make "dir" ("/net/local/5" in A) available in B's namespace at "/any/path/it/wants". In practice it might be best to bind it to the same path as in A to avoid confusion.
-bind(dir, "/any/path/it/wants");
-
-// Its also possible to just open paths in the shared directory without polluting the namespace using openat().
-fd_t somePath = openat(dir, "data");
-```
-
-An interesting detail is that when process A opens the `net/local/5` directory, the dentry underlying the file descriptor is the root of the mounted file system, if process B were to try to open this directory, it would still succeed as the directory itself is visible, however process B would instead retrieve the dentry of the directory in the parent superblock, and would instead see the content of that directory in the parent superblock. If this means nothing to you, don't worry about it.
-
-[Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
+For more information on for example mount propagation, see the [Namespace Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html) or the [Userspace IO API Documentation](https://kainorberg.github.io/PatchworkOS/html/d4/deb/group__libstd__sys__io.html).
 
 ### But why?
 

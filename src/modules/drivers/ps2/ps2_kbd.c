@@ -24,11 +24,11 @@ static void ps2_kbd_irq(irq_func_data_t* data)
         LOG_ERR("unexpected PS/2 keyboard response: %d\n", response);
         return;
     case PS2_DEV_RESPONSE_KBD_EXTENDED:
-        private
+      private
         ->isExtended = true;
         return;
     case PS2_DEV_RESPONSE_KBD_RELEASE:
-        private
+      private
         ->isRelease = true;
         return;
     default:
@@ -41,8 +41,10 @@ static void ps2_kbd_irq(irq_func_data_t* data)
     keycode_t code = ps2_scancode_to_keycode(scancode, private->isExtended);
     kbd_push(private->kbd, type, code);
 
-    private->isExtended = false;
-    private->isRelease = false;
+  private
+    ->isExtended = false;
+  private
+    ->isRelease = false;
 }
 
 uint64_t ps2_kbd_init(ps2_device_info_t* info)
@@ -60,7 +62,8 @@ uint64_t ps2_kbd_init(ps2_device_info_t* info)
         return ERR;
     }
 
-    private->kbd = kbd_new(info->name);
+  private
+    ->kbd = kbd_new(info->name);
     if (private->kbd == NULL)
     {
         free(private);
@@ -68,8 +71,10 @@ uint64_t ps2_kbd_init(ps2_device_info_t* info)
         return ERR;
     }
 
-    private->isExtended = false;
-    private->isRelease = false;
+  private
+    ->isExtended = false;
+  private
+    ->isRelease = false;
 
     info->private = private;
     return 0;

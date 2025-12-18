@@ -6,8 +6,8 @@
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
-#include <kernel/sched/sched.h>
 #include <kernel/sched/clock.h>
+#include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/utils/utils.h>

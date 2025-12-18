@@ -15,32 +15,38 @@ static lock_t lock = LOCK_CREATE();
 
 static uint64_t socket_factory_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    socket_t* sock = file->private;
+    const char* sockId = file->private;
 
-    uint64_t length = strlen(sock->id);
-    return BUFFER_READ(buffer, count, offset, sock->id, length);
+    uint64_t length = strlen(sockId);
+    return BUFFER_READ(buffer, count, offset, sockId, length);
 }
 
 static uint64_t socket_factory_open(file_t* file)
 {
     socket_factory_t* factory = file->inode->private;
 
-    socket_t* sock = socket_new(factory->family, factory->type);
-    if (sock == NULL)
+    file->private = malloc(MAX_NAME);
+    if (file->private == NULL)
     {
         return ERR;
     }
 
-    file->private = sock;
+    if (socket_create(factory->family, factory->type, file->private, MAX_NAME) == ERR)
+    {
+        free(file->private);
+        file->private = NULL;
+        return ERR;
+    }
+
     return 0;
 }
 
 static void socket_factory_close(file_t* file)
 {
-    socket_t* sock = file->private;
-    if (sock != NULL)
+    if (file->private != NULL)
     {
-        UNREF(sock);
+        free(file->private);
+        file->private = NULL;
     }
 }
 
@@ -189,7 +195,6 @@ void socket_family_unregister(const char* name)
     UNREF(family->dir);
     free(family);
     LOG_INFO("unregistered family %s\n", family->name);
-    return;
 }
 
 void socket_family_unregister_all(void)
@@ -202,22 +207,15 @@ void socket_family_unregister_all(void)
     }
 }
 
-uint64_t socket_family_get_dir(socket_family_t* family, path_t* outPath)
+path_t socket_family_get_dir(socket_family_t* family)
 {
-    if (family == NULL || outPath == NULL)
+    if (family == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return PATH_EMPTY;
     }
 
     mount_t* mount = net_get_mount();
-    if (mount == NULL)
-    {
-        return ERR;
-    }
+    UNREF_DEFER(mount);
 
-    path_set(outPath, mount, family->dir);
-    UNREF(mount);
-
-    return 0;
+    return PATH_CREATE(mount, family->dir);
 }

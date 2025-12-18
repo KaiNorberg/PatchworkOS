@@ -1,3 +1,5 @@
+#include "root.h"
+
 #include <errno.h>
 #include <libpatchwork/patchwork.h>
 #include <stdio.h>
@@ -8,7 +10,20 @@
 #include <threads.h>
 #include <time.h>
 
-/// @todo Replace the init process with a Lua script when Lua has been ported to PatchworkOS
+/**
+ * @brief Init process.
+ * @defgroup programs_init Init
+ * @ingroup programs
+ *
+ * The init process is the first user-space program started by the kernel, due to this it can be thought of as the
+ * "root" of all processes in the system.
+ *
+ * After performing its initial setup, the init process assumes the role of the root service for the system.
+ *
+ * @todo Replace the init process with a Lua script when Lua has been ported to PatchworkOS
+ *
+ * @{
+ */
 
 static void environment_setup(config_t* config)
 {
@@ -78,7 +93,7 @@ static void start_services(config_t* config)
         while (stat(serviceFiles->items[i], &info) == ERR)
         {
             nanosleep(CLOCKS_PER_SEC / 100);
-            if (uptime() - start > CLOCKS_PER_SEC)
+            if (uptime() - start > CLOCKS_PER_SEC * 30)
             {
                 printf("init: timeout waiting for service file '%s'\n", serviceFiles->items[i]);
                 abort();
@@ -110,25 +125,13 @@ static void execute_commands(config_t* config)
     }
 }
 
-int main(void)
+static void init_config_load(void)
 {
-    fd_t klog = open("/dev/klog:rw");
-    if (klog == ERR)
-    {
-        return EXIT_FAILURE;
-    }
-    if (dup2(klog, STDOUT_FILENO) == ERR || dup2(klog, STDERR_FILENO) == ERR)
-    {
-        close(klog);
-        return EXIT_FAILURE;
-    }
-    close(klog);
-
     config_t* config = config_open("init", "main");
     if (config == NULL)
     {
         printf("init: failed to open config file! (%s)\n", strerror(errno));
-        return EXIT_FAILURE;
+        abort();
     }
 
     printf("init: setting up environment...\n");
@@ -144,5 +147,23 @@ int main(void)
 
     printf("init: all startup tasks completed!\n");
     config_close(config);
-    return 0;
+}
+
+int main(void)
+{
+    fd_t klog = open("/dev/klog:rw");
+    if (klog == ERR)
+    {
+        return EXIT_FAILURE;
+    }
+    if (dup2(klog, STDOUT_FILENO) == ERR || dup2(klog, STDERR_FILENO) == ERR)
+    {
+        close(klog);
+        return EXIT_FAILURE;
+    }
+    close(klog);
+
+    init_config_load();
+
+    root_service_start();
 }

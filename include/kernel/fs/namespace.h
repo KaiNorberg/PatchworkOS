@@ -21,10 +21,10 @@ typedef struct process process_t;
  *
  * ## Propagation
  *
- * When a new mount or bind is created in a namespace, it is only added to that specific namespace. However, its
- * possible to propagate mounts to children and/or parent namespaces using mount flags (`mount_flags_t`), this allows
- * those namespaces to also see the new mount or bind.
- *
+ * When a new mount or bind is created in a namespace or, it is only added to that specific namespace. Same concept applies when unmounting.
+ * 
+ * However, its possible to propagate mounts and unmounts to children and/or parent namespaces using mount flags (`mount_flags_t`), this allows those namespaces to also see the new mount or bind or have the mount or bind removed.
+ * 
  * @{
  */
 
@@ -39,6 +39,7 @@ typedef struct namespace_mount
     list_entry_t entry;
     map_entry_t mapEntry;
     mount_t* mount;
+    mount_flags_t flags;
 } namespace_mount_t;
 
 /**
@@ -64,9 +65,12 @@ typedef struct namespace
  * @brief Initializes a namespace.
  *
  * @param ns The namespace to initialize.
- * @param parent The parent namespace to inherit all mounts from, can be `NULL` to create an empty namespace.
+ * @param parent The parent namespace to inherit mounts from, can be `NULL` to create an empty namespace.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `ENOMEM`: Out of memory.
  */
-void namespace_init(namespace_t* ns);
+uint64_t namespace_init(namespace_t* ns, namespace_t* parent);
 
 /**
  * @brief Clear and deinitialize a namespace.
@@ -74,18 +78,6 @@ void namespace_init(namespace_t* ns);
  * @param ns The namespace to deinitialize.
  */
 void namespace_deinit(namespace_t* ns);
-
-/**
- * @brief Sets the parent of a namespace and inherits all mounts from the parent.
- *
- * @param ns The namespace to set the parent of.
- * @param parent The new parent namespace.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EBUSY`: The namespace already has a parent.
- * - `ENOMEM`: Out of memory.
- */
-uint64_t namespace_set_parent(namespace_t* ns, namespace_t* parent);
 
 /**
  * @brief If the given path is a mountpoint in the namespace, traverse to the mounted filesystem, else no-op.
@@ -109,6 +101,7 @@ uint64_t namespace_traverse(namespace_t* ns, path_t* path);
  * @param private Private data for the filesystem's mount function.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
+ * - `EIO`: The filesystem returned a invalid root dentry.
  * - `EXDEV`: The target path is not visible in the namespace.
  * - `ENODEV`: The specified filesystem does not exist.
  * - `EBUSY`: Attempt to mount to already existing root.
@@ -133,6 +126,15 @@ mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* deviceName
  * - Other errors as returned by `mount_new()`.
  */
 mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* target, mount_flags_t flags, mode_t mode);
+
+/**
+ * @brief Remove a mount in a namespace.
+ *
+ * @param ns The namespace to remove the mount from.
+ * @param mount The mount to remove.
+ * @param flags Mount flags.
+ */
+void namespace_unmount(namespace_t* ns, mount_t* mount, mount_flags_t flags);
 
 /**
  * @brief Get the root path of a namespace.

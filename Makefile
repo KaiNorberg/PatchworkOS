@@ -7,7 +7,7 @@ SECTIONS = boot kernel libstd libpatchwork
 PROGRAMS = $(shell find src/programs/ -name "*.mk")
 MODULES = $(shell find src/modules/ -name "*.mk")
 
-ROOT_DIRS = acpi bin cfg dev efi efi/boot home kernel kernel/modules kernel/modules/$(VERSION_STRING) lib net proc sys tmp usr usr/bin usr/share usr/license var
+ROOT_DIRS = acpi bin cfg dev efi efi/boot home kernel kernel/modules kernel/modules/$(VERSION_STRING) lib net proc sys tmp usr usr/bin usr/share usr/license var run
 
 # Programs to copy to /bin instead of /usr/bin
 BIN_PROGRAMS = init wall cursor taskbar dwm shell rm ls link mv touch cat echo

@@ -21,8 +21,9 @@
  * @defgroup kernel_vfs Virtual File System
  * @ingroup kernel_fs
  *
- * The Virtual File System (VFS) provides a single unified interface for any and all filesystems, including virtual filesystems used to expose kernel resources to user space.
- * 
+ * The Virtual File System (VFS) provides a single unified interface for any and all filesystems, including virtual
+ * filesystems used to expose kernel resources to user space.
+ *
  * @{
  */
 

@@ -169,7 +169,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
 
-    child = process_new(atomic_load(&process->priority),
+    child = process_new(atomic_load(&process->priority), &process->ns,
         flags & SPAWN_EMPTY_GROUP ? GID_NONE : group_get_id(&process->groupEntry));
     if (child == NULL)
     {
@@ -218,14 +218,6 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
             {
                 goto error;
             }
-        }
-    }
-
-    if (!(flags & SPAWN_EMPTY_NS))
-    {
-        if (namespace_set_parent(&child->ns, &process->ns) == ERR)
-        {
-            goto error;
         }
     }
 

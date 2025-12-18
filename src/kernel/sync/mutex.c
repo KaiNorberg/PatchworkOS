@@ -2,8 +2,8 @@
 
 #include <kernel/config.h>
 #include <kernel/log/log.h>
-#include <kernel/sched/sched.h>
 #include <kernel/sched/clock.h>
+#include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>

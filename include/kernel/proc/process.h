@@ -189,10 +189,10 @@ typedef struct
  */
 typedef struct
 {
-    mount_t* self;   ///< The `/proc/self` bind mount.
-    dentry_t* dir; ///< The `/proc` directory.
-    list_t files; ///< List of file dentries for the `/proc/[pid]/` directory.
-    dentry_t* env; ///< The `/proc/[pid]/env` directory.
+    mount_t* self;     ///< The `/proc/self/` bind mount.
+    mount_t* dir;     ///< The `/proc/[pid]/` directory.
+    list_t files;      ///< List of file dentries for the `/proc/[pid]/` directory.
+    dentry_t* env;     ///< The `/proc/[pid]/env/` directory.
     list_t envEntries; ///< List of environment variable dentries.
     lock_t lock;
 } process_dir_t;
@@ -230,10 +230,11 @@ typedef struct process
  * There is no `process_free()`, instead use `UNREF()`, `UNREF_DEFER()` or `process_kill()` to free a process.
  *
  * @param priority The priority of the new process.
+ * @param ns The namespace of the new process.
  * @param gid The group ID of the new process, or `GID_NONE` to create a new group.
  * @return On success, the newly created process. On failure, `NULL` and `errno` is set.
  */
-process_t* process_new(priority_t priority, gid_t gid);
+process_t* process_new(priority_t priority, namespace_t* ns, gid_t gid);
 
 /**
  * @brief Kills a process, pushing it to the reaper.
@@ -247,7 +248,7 @@ void process_kill(process_t* process, const char* status);
  * @brief Deinitializes the `/proc/[pid]` directory of a process.
  *
  * When there are no more references to any of the entries in the `/proc/[pid]` directory, the process will be freed.
- * 
+ *
  * @param process The process whose `/proc/[pid]` directory will be deinitialized.
  */
 void process_dir_deinit(process_t* process);

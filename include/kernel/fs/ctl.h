@@ -5,11 +5,11 @@
 #include <stdint.h>
 
 /**
- * @brief Helpers to implement ctl (control) file operations.
- * @defgroup kernel_fs_ctl Ctl
+ * @brief Helpers to implement control file operations.
+ * @defgroup kernel_fs_ctl Control Files
  * @ingroup kernel_fs
  *
- * A ctl file is a special file that takes in commands as text input and performs actions based on those commands.
+ * A control file is a special file that takes in commands as text input and performs actions based on those commands.
  *
  * ## Command Format
  *

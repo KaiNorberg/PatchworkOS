@@ -68,10 +68,9 @@ typedef enum
     SPAWN_SUSPEND = 1 << 0,
     SPAWN_EMPTY_FDS = 1 << 1,  ///< Dont inherit the file descriptors of the parent process.
     SPAWN_STDIO_FDS = 1 << 2,  ///< Only inherit stdin, stdout and stderr from the parent process.
-    SPAWN_EMPTY_NS = 1 << 3,   ///< Dont inherit the mountpoints of the parent's namespace.
-    SPAWN_EMPTY_ENV = 1 << 4,  ///< Don't inherit the parent's environment variables.
-    SPAWN_EMPTY_CWD = 1 << 5,  ///< Don't inherit the parent's current working directory, starts at root (/).
-    SPAWN_EMPTY_GROUP = 1 << 6 ///< Don't inherit the parent's process group, instead create a new group.
+    SPAWN_EMPTY_ENV = 1 << 3,  ///< Don't inherit the parent's environment variables.
+    SPAWN_EMPTY_CWD = 1 << 4,  ///< Don't inherit the parent's current working directory, starts at root (/).
+    SPAWN_EMPTY_GROUP = 1 << 5 ///< Don't inherit the parent's process group, instead create a new group.
 } spawn_flags_t;
 
 /**

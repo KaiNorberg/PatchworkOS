@@ -80,18 +80,14 @@ typedef enum
  */
 typedef struct socket
 {
-    ref_t ref;
     char id[MAX_NAME];
     char address[MAX_NAME];
     socket_family_t* family;
     socket_type_t type;
     void* private;
-    socket_state_t currentState;
-    socket_state_t nextState;
-    rwmutex_t mutex;
-    dentry_t* ctlFile;
-    dentry_t* dataFile;
-    dentry_t* acceptFile;
+    socket_state_t state;
+    mutex_t mutex;
+    list_t files;
 } socket_t;
 
 /**
@@ -101,33 +97,10 @@ typedef struct socket
  *
  * @param family Pointer to the socket family.
  * @param type Socket type.
- * @return On success, pointer to the new socket. On failure, `NULL` and `errno` is set.
- */
-socket_t* socket_new(socket_family_t* family, socket_type_t type);
-
-/**
- * @brief Starts a socket state transition.
- *
- * @param sock Pointer to the socket.
- * @param state Target state.
+ * @param out Output pointer to store the socket ID.
+ * @param outSize Size of the output buffer.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t socket_start_transition(socket_t* sock, socket_state_t state);
-
-/**
- * @brief Without releasing the socket mutex, start a transition to a new target state.
- *
- * @param sock Pointer to the socket.
- * @param state Target state.
- */
-void socket_continue_transition(socket_t* sock, socket_state_t state);
-
-/**
- * @brief Ends a socket state transition.
- *
- * @param sock Pointer to the socket.
- * @param result Result of the transition, if `ERR` the transition failed.
- */
-void socket_end_transition(socket_t* sock, uint64_t result);
+uint64_t socket_create(socket_family_t* family, socket_type_t type, char* out, uint64_t outSize);
 
 /** @} */

@@ -1,8 +1,7 @@
-#include <kernel/proc/group.h>
-#include <kernel/proc/process.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/fs/ctl.h>
+#include <kernel/fs/dentry.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
@@ -10,20 +9,22 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
+#include <kernel/proc/group.h>
+#include <kernel/proc/process.h>
+#include <kernel/proc/reaper.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
-#include <kernel/proc/reaper.h>
 #include <kernel/sync/rwlock.h>
 
 #include <assert.h>
+#include <errno.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <sys/io.h>
 #include <sys/list.h>
 #include <sys/math.h>
@@ -649,6 +650,19 @@ static inode_ops_t procInodeOps = {
     .cleanup = process_proc_cleanup,
 };
 
+static sysfs_file_desc_t files[] = {
+    {.name = "prio", .inodeOps = NULL, .fileOps = &prioOps},
+    {.name = "cwd", .inodeOps = NULL, .fileOps = &cwdOps},
+    {.name = "cmdline", .inodeOps = NULL, .fileOps = &cmdlineOps},
+    {.name = "note", .inodeOps = NULL, .fileOps = &noteOps},
+    {.name = "notegroup", .inodeOps = NULL, .fileOps = &notegroupOps},
+    {.name = "gid", .inodeOps = NULL, .fileOps = &gidOps},
+    {.name = "wait", .inodeOps = NULL, .fileOps = &waitOps},
+    {.name = "perf", .inodeOps = NULL, .fileOps = &statOps},
+    {.name = "ctl", .inodeOps = NULL, .fileOps = &ctlOps},
+    {0},
+};
+
 static uint64_t process_dir_init(process_t* process)
 {
     if (process == NULL)
@@ -664,84 +678,29 @@ static uint64_t process_dir_init(process_t* process)
         return ERR;
     }
 
-    process->dir.dir = sysfs_dir_new(procMount->source, name, &procInodeOps, process);
+    path_t procPath = PATH_CREATE(procMount, procMount->source);
+    PATH_DEFER(&procPath);
+
+    process->dir.dir = sysfs_submount_new(&procPath, name, &process->ns, MOUNT_PROPAGATE_PARENT | MOUNT_DONT_INHERIT, MODE_DIRECTORY | MODE_ALL_PERMS, &procInodeOps, NULL, process);
     if (process->dir.dir == NULL)
     {
         return ERR;
     }
 
-    process->dir.env = sysfs_dir_new(process->dir.dir, "env", &envInodeOps, process);
+    process->dir.env = sysfs_dir_new(process->dir.dir->source, "env", &envInodeOps, process);
     if (process->dir.env == NULL)
     {
         goto error;
     }
 
-    dentry_t* prio = sysfs_file_new(process->dir.dir, "prio", NULL, &prioOps, process);
-    if (prio == NULL)
+    if (sysfs_files_create(process->dir.dir->source, files, process, &process->dir.files) == ERR)
     {
         goto error;
     }
-    list_push_back(&process->dir.files, &prio->otherEntry);
-
-    dentry_t* cwd = sysfs_file_new(process->dir.dir, "cwd", NULL, &cwdOps, process);
-    if (cwd == NULL)
-    {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &cwd->otherEntry);
-
-    dentry_t* cmdline = sysfs_file_new(process->dir.dir, "cmdline", NULL, &cmdlineOps, process);
-    if (cmdline == NULL)
-    {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &cmdline->otherEntry);
-
-    dentry_t* note = sysfs_file_new(process->dir.dir, "note", NULL, &noteOps, process);
-    if (note == NULL)
-    {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &note->otherEntry);
-
-    dentry_t* notegroup = sysfs_file_new(process->dir.dir, "notegroup", NULL, &notegroupOps, process);
-    if (notegroup == NULL)
-    {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &notegroup->otherEntry);
-
-    dentry_t* gid = sysfs_file_new(process->dir.dir, "gid", NULL, &gidOps, process);
-    if (gid == NULL)
-    {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &gid->otherEntry);
-
-    dentry_t* wait = sysfs_file_new(process->dir.dir, "wait", NULL, &waitOps, process);
-    if (wait == NULL)
-    {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &wait->otherEntry);
-
-    dentry_t* perf = sysfs_file_new(process->dir.dir, "perf", NULL, &statOps, process);
-    if (perf == NULL)
-    {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &perf->otherEntry);
-
-    dentry_t* ctl = sysfs_file_new(process->dir.dir, "ctl", NULL, &ctlOps, process);
-    if (ctl == NULL)
-    {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &ctl->otherEntry);
 
     path_t selfPath = PATH_CREATE(procMount, selfDir);
     process->dir.self =
-        namespace_bind(&process->ns, process->dir.dir, &selfPath, MOUNT_OVERWRITE, MODE_DIRECTORY | MODE_ALL_PERMS);
+        namespace_bind(&process->ns, process->dir.dir->source, &selfPath, MOUNT_DONT_INHERIT, MODE_DIRECTORY | MODE_ALL_PERMS);
     path_put(&selfPath);
     if (process->dir.self == NULL)
     {
@@ -755,7 +714,7 @@ error:
     return ERR;
 }
 
-process_t* process_new(priority_t priority, gid_t gid)
+process_t* process_new(priority_t priority, namespace_t* ns, gid_t gid)
 {
     process_t* process = malloc(sizeof(process_t));
     if (process == NULL)
@@ -777,7 +736,13 @@ process_t* process_new(priority_t priority, gid_t gid)
         return NULL;
     }
 
-    namespace_init(&process->ns);
+    if (namespace_init(&process->ns, ns) == ERR)
+    {
+        space_deinit(&process->space);
+        free(process);
+        return NULL;
+    }
+
     cwd_init(&process->cwd);
     file_table_init(&process->fileTable);
     futex_ctx_init(&process->futexCtx);
@@ -792,7 +757,6 @@ process_t* process_new(priority_t priority, gid_t gid)
     lock_init(&process->threads.lock);
 
     list_entry_init(&process->zombieEntry);
-
 
     process->dir.self = NULL;
     process->dir.dir = NULL;
@@ -854,6 +818,10 @@ void process_kill(process_t* process, const char* status)
     lock_release(&process->threads.lock);
 
     // Anything that another process could be waiting on must be cleaned up here.
+
+    namespace_unmount(&process->ns, process->dir.self, MOUNT_NONE);
+    namespace_unmount(&process->ns, process->dir.dir, MOUNT_PROPAGATE_PARENT);
+
     cwd_clear(&process->cwd);
     file_table_close_all(&process->fileTable);
     namespace_clear(&process->ns);
@@ -919,10 +887,13 @@ uint64_t process_copy_env(process_t* dest, process_t* src)
         return ERR;
     }
 
+    superblock_t* superblock = dest->dir.env->inode->superblock;
+
     dentry_t* srcDentry;
     LIST_FOR_EACH(srcDentry, &src->dir.envEntries, otherEntry)
     {
-        inode_t* inode = inode_new(srcDentry->inode->superblock, vfs_id_get(), INODE_FILE, &envFileInodeOps, &envFileOps);
+        inode_t* inode =
+            inode_new(superblock, vfs_id_get(), INODE_FILE, &envFileInodeOps, &envFileOps);
         if (inode == NULL)
         {
             return ERR;
@@ -941,7 +912,7 @@ uint64_t process_copy_env(process_t* dest, process_t* src)
             inode->size = srcDentry->inode->size;
         }
 
-        dentry_t* dentry = dentry_new(srcDentry->inode->superblock, dest->dir.env, srcDentry->name);
+        dentry_t* dentry = dentry_new(superblock, dest->dir.env, srcDentry->name);
         if (dentry == NULL)
         {
             return ERR;
@@ -1032,7 +1003,7 @@ process_t* process_get_kernel(void)
 {
     if (kernelProcess == NULL)
     {
-        kernelProcess = process_new(PRIORITY_MAX, GID_NONE);
+        kernelProcess = process_new(PRIORITY_MAX, NULL, GID_NONE);
         if (kernelProcess == NULL)
         {
             panic(NULL, "Failed to create kernel process");
@@ -1045,8 +1016,8 @@ process_t* process_get_kernel(void)
 
 void process_procfs_init(void)
 {
-    procMount = sysfs_mount_new(NULL, "proc", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT,
-        MODE_DIRECTORY | MODE_ALL_PERMS, NULL);
+    procMount = sysfs_mount_new("proc", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT,
+        MODE_DIRECTORY | MODE_ALL_PERMS, NULL, NULL, NULL);
     if (procMount == NULL)
     {
         panic(NULL, "Failed to mount /proc dentriesystem");

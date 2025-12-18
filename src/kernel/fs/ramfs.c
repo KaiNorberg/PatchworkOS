@@ -47,6 +47,8 @@ static void ramfs_dentry_remove(dentry_t* dentry)
     list_remove(&super->dentrys, &dentry->otherEntry);
     UNREF(dentry);
     lock_release(&super->lock);
+
+    dentry_remove(dentry);
 }
 
 static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
@@ -280,12 +282,13 @@ static dentry_t* ramfs_mount(filesystem_t* fs, const char* devName, void* privat
     boot_info_t* bootInfo = boot_info_get();
     const boot_disk_t* disk = &bootInfo->disk;
 
-    superblock->root = ramfs_load_dir(superblock, NULL, VFS_ROOT_ENTRY_NAME, disk->root);
-    if (superblock->root == NULL)
+    dentry_t* root = ramfs_load_dir(superblock, NULL, VFS_ROOT_ENTRY_NAME, disk->root);
+    if (root == NULL)
     {
         return NULL;
     }
 
+    superblock->root = root;
     return REF(superblock->root);
 }
 

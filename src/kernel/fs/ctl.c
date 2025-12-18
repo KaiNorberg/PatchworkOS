@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <sys/argsplit.h>
 
-uint64_t ctl_dispatch_one(ctl_t* ctls, file_t* file, uint64_t argc, const char** argv)
+static uint64_t ctl_dispatch_one(ctl_t* ctls, file_t* file, uint64_t argc, const char** argv)
 {
     if (ctls == NULL || file == NULL || argv == NULL || argc == 0)
     {

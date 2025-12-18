@@ -132,12 +132,12 @@ _PUBLIC void perror(const char* s);
 #include "_internal/errno_t.h"
 #include "_internal/rsize_t.h"
 
-_PUBLIC errno_t tmpfile_s(FILE* _RESTRICT* _RESTRICT streamptr);
+_PUBLIC errno_t tmpfile_s(FILE * _RESTRICT * _RESTRICT streamptr);
 
-_PUBLIC errno_t fopen_s(FILE* _RESTRICT* _RESTRICT streamptr, const char* _RESTRICT filename,
+_PUBLIC errno_t fopen_s(FILE * _RESTRICT * _RESTRICT streamptr, const char* _RESTRICT filename,
     const char* _RESTRICT mode);
 
-_PUBLIC errno_t freopen_s(FILE* _RESTRICT* _RESTRICT newstreamptr, const char* _RESTRICT filename,
+_PUBLIC errno_t freopen_s(FILE * _RESTRICT * _RESTRICT newstreamptr, const char* _RESTRICT filename,
     const char* _RESTRICT mode, FILE* _RESTRICT stream);
 
 _PUBLIC errno_t tmpnam_s(char* s, rsize_t maxsize);
