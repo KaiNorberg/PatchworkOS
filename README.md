@@ -570,6 +570,10 @@ ls mydir
 # Recursively print the contents of mydir.
 ls mydir:recursive
 ls mydir:R
+
+# Recursively print the contents of the current directory.
+ls :recursive
+ls :R
 ```
 
 ### `rm`

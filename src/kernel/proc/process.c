@@ -536,7 +536,7 @@ static file_ops_t envFileOps = {
 };
 
 static uint64_t process_env_create(inode_t* dir, dentry_t* target, mode_t mode);
-static uint64_t process_env_remove(inode_t* parent, dentry_t* target, mode_t mode);
+static uint64_t process_env_remove(inode_t* parent, dentry_t* target);
 static void process_env_cleanup(inode_t* inode);
 
 static inode_ops_t envFileInodeOps = {
@@ -580,14 +580,8 @@ static uint64_t process_env_create(inode_t* dir, dentry_t* target, mode_t mode)
     return 0;
 }
 
-static uint64_t process_env_remove(inode_t* dir, dentry_t* target, mode_t mode)
+static uint64_t process_env_remove(inode_t* dir, dentry_t* target)
 {
-    if (mode & MODE_DIRECTORY)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     MUTEX_SCOPE(&dir->mutex);
 
     process_t* process = dir->private;

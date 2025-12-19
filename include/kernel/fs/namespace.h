@@ -84,10 +84,8 @@ void namespace_deinit(namespace_t* ns);
  *
  * @param ns The namespace to traverse in.
  * @param path The mountpoint path to traverse, will be updated to the new path if traversed.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
  */
-uint64_t namespace_traverse(namespace_t* ns, path_t* path);
+void namespace_traverse(namespace_t* ns, path_t* path);
 
 /**
  * @brief Mount a filesystem in a namespace.

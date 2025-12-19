@@ -24,6 +24,8 @@
 #include <kernel/cpu/regs.h>
 
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
@@ -512,6 +514,193 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
     return readyCount;
 }
 
+typedef struct
+{
+    dirent_t* buffer;
+    uint64_t count;
+    uint64_t pos;
+    uint64_t skip;
+    uint64_t currentOffset;
+} getdents_recursive_ctx_t;
+
+static void vfs_getdents_recursive_step(path_t* path, getdents_recursive_ctx_t* ctx, const char* prefix,
+    namespace_t* ns)
+{
+    uint64_t offset = 0;
+    uint64_t bufSize = 1024;
+    dirent_t* buf = malloc(bufSize);
+    if (buf == NULL)
+    {
+        return;
+    }
+
+    while (true)
+    {
+        uint64_t count = path->dentry->ops->getdents(path->dentry, buf, bufSize, &offset);
+        if (count == ERR || count == 0)
+        {
+            break;
+        }
+
+        uint64_t pos = 0;
+        while (pos < count)
+        {
+            dirent_t* d = (dirent_t*)((uint8_t*)buf + pos);
+            pos += sizeof(dirent_t);
+
+            if (ctx->currentOffset >= ctx->skip)
+            {
+                if (ctx->pos + sizeof(dirent_t) > ctx->count)
+                {
+                    free(buf);
+                    return;
+                }
+
+                dirent_t* out = (dirent_t*)((uint8_t*)ctx->buffer + ctx->pos);
+                *out = *d;
+
+                if (prefix[0] != '\0')
+                {
+                    if (strcmp(d->path, ".") != 0 && strcmp(d->path, "..") != 0)
+                    {
+                        char tmp[MAX_PATH];
+                        strncpy(tmp, d->path, MAX_PATH);
+                        snprintf(out->path, MAX_PATH, "%s/%s", prefix, tmp);
+                    }
+                    else
+                    {
+                        snprintf(out->path, MAX_PATH, "%s/%s", prefix, d->path);
+                    }
+                }
+
+                ctx->pos += sizeof(dirent_t);
+            }
+            ctx->currentOffset += sizeof(dirent_t);
+
+            if (d->type == INODE_DIR && strcmp(d->path, ".") != 0 && strcmp(d->path, "..") != 0)
+            {
+                dentry_t* child = dentry_lookup(path, d->path);
+                if (child == NULL)
+                {
+                    continue;
+                }
+                UNREF_DEFER(child);
+
+                if (!dentry_is_positive(child))
+                {
+                    continue;
+                }
+
+                path_t childPath = PATH_CREATE(path->mount, child);
+                namespace_traverse(ns, &childPath);
+
+                char newPrefix[MAX_PATH];
+                if (prefix[0] == '\0')
+                {
+                    snprintf(newPrefix, MAX_PATH, "%s", d->path);
+                }
+                else
+                {
+                    snprintf(newPrefix, MAX_PATH, "%s/%s", prefix, d->path);
+                }
+
+                vfs_getdents_recursive_step(&childPath, ctx, newPrefix, ns);
+                path_put(&childPath);
+            }
+        }
+    }
+
+    free(buf);
+}
+
+static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
+{
+    if (DENTRY_IS_ROOT(path->dentry))
+    {
+        errno = EBUSY;
+        return ERR;
+    }
+
+    if (!dentry_is_dir(path->dentry))
+    {
+        inode_t* dir = path->dentry->parent->inode;
+        if (dir->ops->remove(dir, path->dentry) == ERR)
+        {
+            return ERR;
+        }
+        inode_notify_modify(dir);
+        return 0;
+    }
+
+    getdents_recursive_ctx_t ctx = {
+        .buffer = NULL, .count = 0, .pos = 0, .skip = 0, .currentOffset = 0};
+
+    uint64_t offset = 0;
+    uint64_t bufSize = 1024;
+    dirent_t* buf = malloc(bufSize);
+    if (buf == NULL)
+    {
+        errno = ENOMEM;
+        return ERR;
+    }
+
+    while (true)
+    {
+        uint64_t count = path->dentry->ops->getdents(path->dentry, buf, bufSize, &offset);
+        if (count == ERR)
+        {
+            free(buf);
+            return ERR;
+        }
+        if (count == 0)
+        {
+            break;
+        }
+
+        uint64_t pos = 0;
+        while (pos < count)
+        {
+            dirent_t* d = (dirent_t*)((uint8_t*)buf + pos);
+            pos += sizeof(dirent_t);
+
+            if (strcmp(d->path, ".") == 0 || strcmp(d->path, "..") == 0)
+            {
+                continue;
+            }
+
+            dentry_t* child = dentry_lookup(path, d->path);
+            if (child == NULL)
+            {
+                continue;
+            }
+            UNREF_DEFER(child);
+
+            if (!dentry_is_positive(child))
+            {
+                continue;
+            }
+
+            path_t childPath = PATH_CREATE(path->mount, child);
+            if (vfs_remove_recursive(&childPath, process) == ERR)
+            {
+                path_put(&childPath);
+                free(buf);
+                return ERR;
+            }
+            path_put(&childPath);
+        }
+    }
+    free(buf);
+
+    inode_t* dir = path->dentry->parent->inode;
+    if (dir->ops->remove(dir, path->dentry) == ERR)
+    {
+        return ERR;
+    }
+    inode_notify_modify(dir);
+    return 0;
+}
+
 uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count)
 {
     if (file == NULL || (buffer == NULL && count > 0))
@@ -544,8 +733,24 @@ uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count)
         return ERR;
     }
 
+    MUTEX_SCOPE(&file->inode->mutex);
+
+    if (file->mode & MODE_RECURSIVE)
+    {
+        getdents_recursive_ctx_t ctx = {
+            .buffer = buffer,
+            .count = count,
+            .pos = 0,
+            .skip = file->pos,
+            .currentOffset = 0,
+        };
+        vfs_getdents_recursive_step(&file->path, &ctx, "", &sched_process()->ns);
+        file->pos = ctx.skip + ctx.pos;
+        return ctx.pos;
+    }
+
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    uint64_t result = file->path.dentry->ops->getdents(file->path.dentry, buffer, count, &file->pos, file->mode);
+    uint64_t result = file->path.dentry->ops->getdents(file->path.dentry, buffer, count, &file->pos);
     if (result != ERR)
     {
         inode_notify_access(file->inode);
@@ -721,20 +926,23 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
         return ERR;
     }
 
-    if (pathname->mode & MODE_DIRECTORY)
+    if (!(pathname->mode & MODE_RECURSIVE))
     {
-        if (dentry_is_file(target.dentry))
+        if (pathname->mode & MODE_DIRECTORY)
         {
-            errno = ENOTDIR;
-            return ERR;
+            if (dentry_is_file(target.dentry))
+            {
+                errno = ENOTDIR;
+                return ERR;
+            }
         }
-    }
-    else
-    {
-        if (dentry_is_dir(target.dentry))
+        else
         {
-            errno = EISDIR;
-            return ERR;
+            if (dentry_is_dir(target.dentry))
+            {
+                errno = EISDIR;
+                return ERR;
+            }
         }
     }
 
@@ -742,6 +950,11 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
     {
         errno = EACCES;
         return ERR;
+    }
+
+    if (pathname->mode & MODE_RECURSIVE)
+    {
+        return vfs_remove_recursive(&target, process);
     }
 
     inode_t* dir = parent.dentry->inode;
@@ -753,7 +966,7 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
-    if (dir->ops->remove(dir, target.dentry, pathname->mode) == ERR)
+    if (dir->ops->remove(dir, target.dentry) == ERR)
     {
         return ERR;
     }

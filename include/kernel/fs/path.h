@@ -82,7 +82,7 @@ typedef enum mode
     MODE_EXCLUSIVE = 1 << 6,
     MODE_TRUNCATE = 1 << 7,
     MODE_DIRECTORY = 1 << 8,
-    MODE_RECURSIVE = 1 << 9,
+    MODE_RECURSIVE = 1 << 9, ///< Implemented in the VFS, the filesystem should ignore this flag.
     MODE_AMOUNT = 10,
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
 } mode_t;

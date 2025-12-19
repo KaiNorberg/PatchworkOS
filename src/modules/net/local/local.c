@@ -306,23 +306,21 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
     local_packet_header_t header = {.magic = LOCAL_PACKET_MAGIC, .size = count};
 
     uint64_t totalSize = sizeof(local_packet_header_t) + count;
-    if (ring_free_length(ring) < totalSize)
-    {
-        if (mode & MODE_NONBLOCK)
-        {
-            errno = EAGAIN;
-            return ERR;
-        }
 
-        if (conn->isClosed)
-        {
+    while (ring_free_length(ring) < totalSize) {
+        if (conn->isClosed) {
             errno = ECONNRESET;
             return ERR;
         }
-
-        if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock, conn->isClosed || ring_free_length(ring) >= totalSize) ==
-            ERR)
-        {
+        if (mode & MODE_NONBLOCK) {
+            errno = EAGAIN;
+            return ERR;
+        }
+        if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock, conn->isClosed || ring_free_length(ring) >= totalSize) == ERR) {
+            return ERR;
+        }
+        if (conn->isClosed) {
+            errno = ECONNRESET;
             return ERR;
         }
     }
@@ -365,19 +363,21 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
         return 0; // EOF
     }
 
-    if (ring_data_length(ring) < sizeof(local_packet_header_t))
-    {
-        if (mode & MODE_NONBLOCK)
-        {
+
+    while (ring_data_length(ring) < sizeof(local_packet_header_t)) {
+        if (conn->isClosed) {
+            return 0; // EOF
+        }
+        if (mode & MODE_NONBLOCK) {
             errno = EWOULDBLOCK;
             return ERR;
         }
-
         if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-                conn->isClosed || ring_data_length(ring) >= sizeof(local_packet_header_t)) == ERR)
-        {
-            errno = EINTR;
+                conn->isClosed || ring_data_length(ring) >= sizeof(local_packet_header_t)) == ERR) {
             return ERR;
+        }
+        if (conn->isClosed) {
+            return 0; // EOF
         }
     }
 
@@ -407,6 +407,7 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
     uint64_t readCount = header.size < count ? header.size : count;
     if (ring_read_at(ring, 0, buffer, readCount) != readCount)
     {
+        LOG_DEBUG("failed to read local socket packet data\n");
         errno = EIO;
         return ERR;
     }

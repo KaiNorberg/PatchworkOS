@@ -124,10 +124,9 @@ typedef struct inode_ops
      *
      * @param dir The directory inode containing the target.
      * @param target The dentry to remove.
-     * @param mode The mode for removal.
      * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
      */
-    uint64_t (*remove)(inode_t* dir, dentry_t* target, mode_t mode);
+    uint64_t (*remove)(inode_t* dir, dentry_t* target);
     /**
      * @brief Cleanup function called when the inode is being freed.
      *

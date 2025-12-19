@@ -155,18 +155,17 @@ void namespace_deinit(namespace_t* ns)
     map_deinit(&ns->mountMap);
 }
 
-uint64_t namespace_traverse(namespace_t* ns, path_t* path)
+void namespace_traverse(namespace_t* ns, path_t* path)
 {
     if (ns == NULL || path == NULL || path->mount == NULL || path->dentry == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return;
     }
 
     // The mount count has race conditions, but the worst that can happen is a redundant lookup.
     if (atomic_load(&path->dentry->mountCount) == 0)
     {
-        return 0;
+        return;
     }
 
     RWLOCK_READ_SCOPE(&ns->lock);
@@ -175,12 +174,11 @@ uint64_t namespace_traverse(namespace_t* ns, path_t* path)
     map_entry_t* entry = map_get(&ns->mountMap, &key);
     if (entry == NULL)
     {
-        return 0;
+        return;
     }
 
     namespace_mount_t* nsMount = CONTAINER_OF(entry, namespace_mount_t, mapEntry);
     path_set(path, nsMount->mount, nsMount->mount->source);
-    return 0;
 }
 
 mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* deviceName, const char* fsName,

@@ -70,7 +70,7 @@ typedef uint64_t dentry_id_t;
  */
 typedef struct dentry_ops
 {
-    uint64_t (*getdents)(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset, mode_t mode);
+    uint64_t (*getdents)(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset);
     void (*cleanup)(dentry_t* entry); ///< Called when the dentry is being freed.
 } dentry_ops_t;
 
@@ -190,6 +190,6 @@ bool dentry_is_dir(dentry_t* dentry);
  *
  * Used by setting the dentry ops getdents to this function.
  */
-uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset, mode_t mode);
+uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset);
 
 /** @} */

@@ -166,4 +166,6 @@ int main(void)
     init_config_load();
 
     root_service_start();
+
+    return EXIT_SUCCESS;
 }

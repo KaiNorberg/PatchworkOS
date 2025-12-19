@@ -328,10 +328,7 @@ uint64_t path_step(path_t* path, const char* component, namespace_t* ns)
         return ERR;
     }
 
-    if (namespace_traverse(ns, path) == ERR)
-    {
-        return ERR;
-    }
+    namespace_traverse(ns, path);
 
     dentry_t* next = dentry_lookup(path, component);
     if (next == NULL)
@@ -429,10 +426,7 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
         }
     }
 
-    if (namespace_traverse(ns, path) == ERR)
-    {
-        return ERR;
-    }
+    namespace_traverse(ns, path);
 
     return 0;
 }

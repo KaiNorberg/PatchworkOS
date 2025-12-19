@@ -128,7 +128,7 @@ static uint64_t ramfs_link(inode_t* dir, dentry_t* old, dentry_t* target)
     return 0;
 }
 
-static uint64_t ramfs_remove(inode_t* dir, dentry_t* target, mode_t mode)
+static uint64_t ramfs_remove(inode_t* dir, dentry_t* target)
 {
     MUTEX_SCOPE(&dir->mutex);
 
@@ -138,27 +138,15 @@ static uint64_t ramfs_remove(inode_t* dir, dentry_t* target, mode_t mode)
     }
     else if (target->inode->type == INODE_DIR)
     {
-        if (mode & MODE_RECURSIVE)
+        if (!list_is_empty(&target->children))
         {
-            dentry_t* temp = NULL;
-            dentry_t* child = NULL;
-            LIST_FOR_EACH_SAFE(child, temp, &target->children, siblingEntry)
-            {
-                REF(child);
-                ramfs_remove(target->inode, child, mode);
-                UNREF(child);
-            }
+            errno = ENOTEMPTY;
+            return ERR;
         }
-        else
-        {
-            if (!list_is_empty(&target->children))
-            {
-                errno = ENOTEMPTY;
-                return ERR;
-            }
-        }
+
         ramfs_dentry_remove(target);
     }
+
     return 0;
 }
 

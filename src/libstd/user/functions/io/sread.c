@@ -4,7 +4,7 @@
 
 char* sread(fd_t fd)
 {
-    uint64_t size = 128;
+    uint64_t size = 256;
     char* buffer = malloc(size);
     if (buffer == NULL)
     {
