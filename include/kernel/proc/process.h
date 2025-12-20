@@ -235,7 +235,7 @@ typedef struct process
 /**
  * @brief Allocates and initializes a new process.
  *
- * There is no `process_free()`, instead use `UNREF()`, `UNREF_DEFER()` or `process_kill()` to free a process.
+ * There is no `process_free()`, instead use `process_kill()` to push a process to the reaper.
  *
  * @param priority The priority of the new process.
  * @param ns The namespace of the new process.
