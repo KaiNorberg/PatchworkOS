@@ -90,6 +90,20 @@ static mode_t path_flag_to_mode(const char* flag, uint64_t length)
     return combinedMode;
 }
 
+static inline bool path_is_char_valid(char ch)
+{
+    static const bool valid[UINT8_MAX + 1] = {
+        ['a' ... 'z'] = true, ['A' ... 'Z'] = true, ['0' ... '9'] = true,
+        ['_'] = true, ['-'] = true, ['.'] = true, [' '] = true,
+        ['('] = true, [')'] = true, ['['] = true, [']'] = true,
+        ['{'] = true, ['}'] = true, ['~'] = true, ['!'] = true,
+        ['@'] = true, ['#'] = true, ['$'] = true, ['%'] = true,
+        ['^'] = true, ['&'] = true, ['?'] = true, ['\''] = true,
+        [','] = true, [';'] = true, ['='] = true, ['+'] = true
+    };
+    return valid[(uint8_t)ch];
+}
+
 uint64_t pathname_init(pathname_t* pathname, const char* string)
 {
     if (pathname == NULL)
@@ -125,7 +139,7 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
         }
         else
         {
-            if (!PATH_VALID_CHAR(string[index]))
+            if (!path_is_char_valid(string[index]))
             {
                 errno = EINVAL;
                 return ERR;
@@ -256,7 +270,7 @@ static bool path_is_name_valid(const char* name)
         {
             return true;
         }
-        if (!PATH_VALID_CHAR(name[i]))
+        if (!path_is_char_valid(name[i]))
         {
             return false;
         }
@@ -331,12 +345,6 @@ static uint64_t path_follow_symlink(dentry_t* dentry, path_t* path, namespace_t*
 
 static uint64_t path_step_depth(path_t* path, mode_t mode, const char* name, namespace_t* ns, uint64_t symlinks)
 {
-    if (!path_is_name_valid(name))
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     namespace_traverse(ns, path);
 
     dentry_t* next = dentry_lookup(path, name);
@@ -365,6 +373,12 @@ static uint64_t path_step_depth(path_t* path, mode_t mode, const char* name, nam
 
 uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_t* ns)
 {
+    if (path == NULL || name == NULL || !path_is_name_valid(name) || ns == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     return path_step_depth(path, mode, name, ns, 0);
 }
 
@@ -388,11 +402,6 @@ static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namesp
 
     assert(path->dentry != NULL && path->mount != NULL);
 
-    if (*p == '\0')
-    {
-        return 0;
-    }
-
     char component[MAX_NAME];
     while (*p != '\0')
     {
@@ -406,39 +415,28 @@ static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namesp
             break;
         }
 
-        if (*p == ':')
-        {
-            errno = EINVAL;
-            return ERR;
-        }
-
-        const char* componentStart = p;
+        const char* start = p;
         while (*p != '\0' && *p != '/')
         {
-            if (!PATH_VALID_CHAR(*p))
-            {
-                errno = EINVAL;
-                return ERR;
-            }
             p++;
         }
 
-        uint64_t len = p - componentStart;
+        uint64_t len = p - start;
         if (len >= MAX_NAME)
         {
             errno = ENAMETOOLONG;
             return ERR;
         }
 
-        memcpy(component, componentStart, len);
+        memcpy(component, start, len);
         component[len] = '\0';
 
-        if (strcmp(component, ".") == 0)
+        if (len == 1 && component[0] == '.')
         {
             continue;
         }
 
-        if (strcmp(component, "..") == 0)
+        if (len == 2 && component[0] == '.' && component[1] == '.')
         {
             if (path_handle_dotdot(path) == ERR)
             {

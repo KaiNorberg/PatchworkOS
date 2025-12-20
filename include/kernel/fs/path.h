@@ -99,20 +99,6 @@ typedef enum mode
 #define PATH_DEFER(path) __attribute__((cleanup(path_defer_cleanup))) path_t* CONCAT(i, __COUNTER__) = (path)
 
 /**
- * @brief Check if a char is valid.
- *
- * A valid char is one of the following `abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.
- * ()[]{}~!@#$%^&?',;=+`.
- *
- * @todo Replace with array lookup.
- *
- * @param ch The char to check.
- * @return true if the char is valid, false otherwise.
- */
-#define PATH_VALID_CHAR(ch) \
-    (strchr("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-. ()[]{}~!@#$%^&?',;=+", (ch)))
-
-/**
  * @brief Maximum iterations to handle `..` in a path.
  *
  * This is to prevent infinite loops.
