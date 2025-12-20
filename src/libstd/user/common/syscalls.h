@@ -266,3 +266,13 @@ _NORETURN static inline uint64_t _syscall_noted(void)
     asm volatile("ud2");
     __builtin_unreachable();
 }
+
+static inline uint64_t _syscall_readlink(const char* path, char* buffer, uint64_t size)
+{
+    return _SYSCALL3(uint64_t, SYS_READLINK, const char*, path, char*, buffer, uint64_t, size);
+}
+
+static inline uint64_t _syscall_symlink(const char* target, const char* linkpath)
+{
+    return _SYSCALL2(uint64_t, SYS_SYMLINK, const char*, target, const char*, linkpath);
+}

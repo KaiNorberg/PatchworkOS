@@ -43,7 +43,7 @@ file_t* file_new(const path_t* path, mode_t mode)
         return NULL;
     }
 
-    if (!dentry_is_positive(path->dentry))
+    if (!DENTRY_IS_POSITIVE(path->dentry))
     {
         errno = ENOENT;
         return NULL;
@@ -51,7 +51,7 @@ file_t* file_new(const path_t* path, mode_t mode)
 
     if (mode & MODE_DIRECTORY)
     {
-        if (dentry_is_file(path->dentry))
+        if (DENTRY_IS_FILE(path->dentry))
         {
             errno = ENOTDIR;
             return NULL;
@@ -59,7 +59,7 @@ file_t* file_new(const path_t* path, mode_t mode)
     }
     else
     {
-        if (dentry_is_dir(path->dentry))
+        if (DENTRY_IS_DIR(path->dentry))
         {
             errno = EISDIR;
             return NULL;

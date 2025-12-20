@@ -74,7 +74,7 @@ SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
         return ERR;
     }
 
-    if (!dentry_is_dir(path.dentry))
+    if (!DENTRY_IS_DIR(path.dentry))
     {
         errno = ENOTDIR;
         return ERR;

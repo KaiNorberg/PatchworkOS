@@ -128,11 +128,43 @@ static uint64_t ramfs_link(inode_t* dir, dentry_t* old, dentry_t* target)
     return 0;
 }
 
+static uint64_t ramfs_readlink(inode_t* inode, char* buffer, uint64_t count)
+{
+    MUTEX_SCOPE(&inode->mutex);
+
+    if (inode->private == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    uint64_t copySize = MIN(count, inode->size);
+    memcpy(buffer, inode->private, copySize);
+    return copySize;
+}
+
+static uint64_t ramfs_symlink(inode_t* dir, dentry_t* target, const char* dest)
+{
+    MUTEX_SCOPE(&dir->mutex);
+
+    inode_t* inode = ramfs_inode_new(dir->superblock, INODE_SYMLINK, (void*)dest, strlen(dest));
+    if (inode == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(inode);
+
+    dentry_make_positive(target, inode);
+    ramfs_dentry_add(target);
+
+    return 0;
+}
+
 static uint64_t ramfs_remove(inode_t* dir, dentry_t* target)
 {
     MUTEX_SCOPE(&dir->mutex);
 
-    if (target->inode->type == INODE_FILE)
+    if (target->inode->type == INODE_FILE || target->inode->type == INODE_SYMLINK)
     {
         ramfs_dentry_remove(target);
     }
@@ -164,6 +196,8 @@ static inode_ops_t inodeOps = {
     .create = ramfs_create,
     .truncate = ramfs_truncate,
     .link = ramfs_link,
+    .readlink = ramfs_readlink,
+    .symlink = ramfs_symlink,
     .remove = ramfs_remove,
     .cleanup = ramfs_inode_cleanup,
 };

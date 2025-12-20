@@ -102,6 +102,17 @@ dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* 
     void* private);
 
 /**
+ * @brief Create a new symbolic link inside a mounted SysFS instance.
+ *
+ * @param parent The parent directory.
+ * @param name The name of the new symbolic link.
+ * @param inodeOps The inode operations for the new symbolic link.
+ * @param private Private data to store in the inode of the new symbolic link, can be `NULL`.
+ * @return On success, the new SysFS symbolic link. On failure, `NULL` and `errno` is set.
+ */
+dentry_t* sysfs_symlink_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* private);
+
+/**
  * @brief Descriptor for batch file creation.
  * @struct sysfs_file_desc_t
  */

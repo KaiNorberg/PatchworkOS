@@ -44,19 +44,19 @@ mount_t* mount_new(superblock_t* superblock, dentry_t* source, dentry_t* target,
         return NULL;
     }
 
-    if (!dentry_is_positive(source) || (target != NULL && !dentry_is_positive(target)))
+    if (!DENTRY_IS_POSITIVE(source) || (target != NULL && !DENTRY_IS_POSITIVE(target)))
     {
         errno = ENOENT;
         return NULL;
     }
 
-    if (mode & MODE_DIRECTORY && dentry_is_file(source))
+    if (mode & MODE_DIRECTORY && DENTRY_IS_FILE(source))
     {
         errno = ENOTDIR;
         return NULL;
     }
 
-    if (!(mode & MODE_DIRECTORY) && dentry_is_dir(source))
+    if (!(mode & MODE_DIRECTORY) && DENTRY_IS_DIR(source))
     {
         errno = EISDIR;
         return NULL;

@@ -98,7 +98,9 @@ typedef enum
     SYS_OPENAT = 33,
     SYS_NOTIFY = 34,
     SYS_NOTED = 35,
-    SYS_TOTAL_AMOUNT = 36
+    SYS_READLINK = 36,
+    SYS_SYMLINK = 37,
+    SYS_TOTAL_AMOUNT = 38
 } syscall_number_t;
 
 /**

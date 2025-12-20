@@ -47,6 +47,7 @@ typedef struct namespace namespace_t;
  * | `directory` | `d` | Allow opening directories. |
  * | `recursive` | `R` | Behaviour differs, but allows for recursive operations, for example when used with `remove` it
  * will remove directories and their children recursively. |
+ * | `nofollow`  | `N` | Do not follow symbolic links. |
  *
  * For convenience, a single letter short form is also available as shown above, these single letter forms do not need
  * to be separated by colons, for example `/path/to/file:rwcte` is equivalent to
@@ -83,7 +84,8 @@ typedef enum mode
     MODE_TRUNCATE = 1 << 7,
     MODE_DIRECTORY = 1 << 8,
     MODE_RECURSIVE = 1 << 9, ///< Implemented in the VFS, the filesystem should ignore this flag.
-    MODE_AMOUNT = 10,
+    MODE_NOFOLLOW = 1 << 10,
+    MODE_AMOUNT = 11,
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
 } mode_t;
 
@@ -112,10 +114,17 @@ typedef enum mode
 
 /**
  * @brief Maximum iterations to handle `..` in a path.
- *
- * This is to prevent infinite loops in case of a corrupted filesystem.
+ * 
+ * This is to prevent infinite loops.
  */
-#define PATH_HANDLE_DOTDOT_MAX_ITER 1000
+#define PATH_MAX_DOTDOT 1000
+
+/**
+ * @brief Maximum iterations to handle symlinks in a path.
+ *
+ * This is to prevent infinite loops.
+ */
+#define PATH_MAX_SYMLINK 40
 
 /**
  * @brief Path structure.
@@ -241,14 +250,15 @@ void path_copy(path_t* dest, const path_t* src);
 void path_put(path_t* path);
 
 /**
- * @brief Walk a single step in a path.
+ * @brief Walk a single path component.
  *
- * @param path The path to traverse, will be updated to the new path, may be negative.
- * @param name The name of the child dentry.
+ * @param path The path to step from, will be updated to the new path, may be negative.
+ * @param mode The mode to open the new path with.
+ * @param name The name of the new path component.
  * @param ns The namespace to access mountpoints.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t path_step(path_t* path, const char* name, namespace_t* ns);
+uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_t* ns);
 
 /**
  * @brief Walk a pathname to a path.

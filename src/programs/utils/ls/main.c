@@ -91,7 +91,7 @@ static uint64_t print_dir(const char* path)
     uint64_t maxLength = 0;
     for (uint64_t i = 0; i < entryCount; i++)
     {
-        uint64_t nameLength = strlen(entries[i].path) + (entries[i].type == INODE_DIR ? 1 : 0);
+        uint64_t nameLength = strlen(entries[i].path) + (entries[i].type != INODE_FILE ? 1 : 0);
         if (nameLength > maxLength)
         {
             maxLength = nameLength;
@@ -120,12 +120,14 @@ static uint64_t print_dir(const char* path)
             if (index < entryCount)
             {
                 const char* name = entries[index].path;
-                bool isDir = entries[index].type == INODE_DIR;
-
-                if (isDir)
+                if (entries[index].type == INODE_DIR)
                 {
                     printf("\033[34m%s\033[0m/%-*s", name, columnWidth - (int)strlen(name) - 1, "");
                 }
+                else if (entries[index].type == INODE_SYMLINK)
+                {
+                    printf("\033[36m%s\033[0m@%-*s", name, columnWidth - (int)strlen(name) - 1, "");
+                }                 
                 else
                 {
                     printf("%-*s", columnWidth, name);

@@ -25,7 +25,7 @@
  * ## Process Filesystem
  *
  * Each process has a directory located at `/proc/[pid]`, which contains various files that can be used to interact with
- * the process. Additionally, there is a `/proc/self` bound mount point that points to the `/proc/[pid]` directory of
+ * the process. Additionally, there is a `/proc/self` dynamic symlink that points to the `/proc/[pid]` directory of
  * the current process.
  *
  * Included below is a list of all entries found in the `/proc/[pid]` directory along with their formats.
@@ -189,7 +189,6 @@ typedef struct
  */
 typedef struct
 {
-    mount_t* self;     ///< The `/proc/self/` bind mount.
     mount_t* dir;     ///< The `/proc/[pid]/` directory.
     list_t files;      ///< List of file dentries for the `/proc/[pid]/` directory.
     dentry_t* env;     ///< The `/proc/[pid]/env/` directory.

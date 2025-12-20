@@ -313,6 +313,7 @@ typedef enum
 {
     INODE_FILE, ///< Is a file.
     INODE_DIR,  ///< Is a directory.
+    INODE_SYMLINK, ///< Is a symbolic link.
 } inode_type_t;
 
 /**
@@ -503,6 +504,25 @@ typedef enum
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t bind(fd_t source, const char* mountpoint, mount_flags_t flags);
+
+/**
+ * @brief System call for reading the target of a symbolic link.
+ *
+ * @param path The path to the symbolic link.
+ * @param buffer A buffer to store the target path.
+ * @param count The size of the buffer.
+ * @return On success, the number of bytes read. On failure, `ERR` and `errno` is set.
+ */
+uint64_t readlink(const char* path, char* buffer, uint64_t count);
+
+/**
+ * @brief System call for creating a symbolic link.
+ *
+ * @param target The target path of the symbolic link.
+ * @param linkpath The path where the symbolic link will be created.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t symlink(const char* target, const char* linkpath);
 
 /** @} */
 

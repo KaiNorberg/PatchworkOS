@@ -1,3 +1,4 @@
+#include <_internal/MAX_PATH.h>
 #include <kernel/fs/path.h>
 
 #include <kernel/fs/dentry.h>
@@ -11,6 +12,7 @@
 #include <kernel/utils/map.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 
 static map_t flagMap;
 static map_t flagShortMap;
@@ -31,6 +33,7 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['t'] = {.mode = MODE_TRUNCATE},
     ['d'] = {.mode = MODE_DIRECTORY},
     ['R'] = {.mode = MODE_RECURSIVE},
+    ['N'] = {.mode = MODE_NOFOLLOW}, 
 };
 
 typedef struct path_flag
@@ -50,6 +53,7 @@ static const path_flag_t flags[] = {
     {.mode = MODE_TRUNCATE, .name = "truncate"},
     {.mode = MODE_DIRECTORY, .name = "directory"},
     {.mode = MODE_RECURSIVE, .name = "recursive"},
+    {.mode = MODE_NOFOLLOW, .name = "nofollow"},
 };
 
 static mode_t path_flag_to_mode(const char* flag, uint64_t length)
@@ -195,52 +199,33 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
 
 void path_set(path_t* path, mount_t* mount, dentry_t* dentry)
 {
+    if (dentry != NULL)
+    {
+        REF(dentry);
+    }
+
+    if (mount != NULL)
+    {
+        REF(mount);
+    }
+
     if (path->dentry != NULL)
     {
         UNREF(path->dentry);
-        path->dentry = NULL;
     }
 
     if (path->mount != NULL)
     {
         UNREF(path->mount);
-        path->mount = NULL;
     }
 
-    if (dentry != NULL)
-    {
-        path->dentry = REF(dentry);
-    }
-
-    if (mount != NULL)
-    {
-        path->mount = REF(mount);
-    }
+    path->dentry = dentry;
+    path->mount = mount;
 }
 
 void path_copy(path_t* dest, const path_t* src)
 {
-    if (dest->dentry != NULL)
-    {
-        UNREF(dest->dentry);
-        dest->dentry = NULL;
-    }
-
-    if (dest->mount != NULL)
-    {
-        UNREF(dest->mount);
-        dest->mount = NULL;
-    }
-
-    if (src->dentry != NULL)
-    {
-        dest->dentry = REF(src->dentry);
-    }
-
-    if (src->mount != NULL)
-    {
-        dest->mount = REF(src->mount);
-    }
+    path_set(dest, src->mount, src->dentry);
 }
 
 void path_put(path_t* path)
@@ -285,7 +270,7 @@ static uint64_t path_handle_dotdot(path_t* path)
     if (path->dentry == path->mount->source)
     {
         uint64_t iter = 0;
-        while (path->dentry == path->mount->source && iter < PATH_HANDLE_DOTDOT_MAX_ITER)
+        while (path->dentry == path->mount->source && iter < PATH_MAX_DOTDOT)
         {
             if (path->mount->parent == NULL || path->mount->target == NULL)
             {
@@ -296,7 +281,7 @@ static uint64_t path_handle_dotdot(path_t* path)
             iter++;
         }
 
-        if (iter >= PATH_HANDLE_DOTDOT_MAX_ITER)
+        if (iter >= PATH_MAX_DOTDOT)
         {
             errno = ELOOP;
             return ERR;
@@ -304,12 +289,6 @@ static uint64_t path_handle_dotdot(path_t* path)
 
         if (path->dentry != path->mount->source)
         {
-            if (DENTRY_IS_ROOT(path->dentry))
-            {
-                errno = ENOENT;
-                return ERR;
-            }
-
             path_set(path, path->mount, path->dentry->parent);
         }
 
@@ -320,9 +299,39 @@ static uint64_t path_handle_dotdot(path_t* path)
     return 0;
 }
 
-uint64_t path_step(path_t* path, const char* component, namespace_t* ns)
+static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namespace_t* ns, uint64_t symlinks);
+
+static uint64_t path_follow_symlink(dentry_t* dentry, path_t* path, namespace_t* ns, uint64_t symlinks)
 {
-    if (!path_is_name_valid(component))
+    if (symlinks >= PATH_MAX_SYMLINK)
+    {
+        errno = ELOOP;
+        return ERR;
+    }
+
+    char symlinkPath[MAX_PATH];
+    if (vfs_readlink(dentry->inode, symlinkPath, MAX_PATH) == ERR)
+    {
+        return ERR;
+    }
+
+    pathname_t pathname;
+    if (pathname_init(&pathname, symlinkPath) == ERR)
+    {
+        return ERR;
+    }
+
+    if (path_walk_depth(path, &pathname, ns, symlinks + 1) == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
+static uint64_t path_step_depth(path_t* path, mode_t mode, const char* name, namespace_t* ns, uint64_t symlinks)
+{
+    if (!path_is_name_valid(name))
     {
         errno = EINVAL;
         return ERR;
@@ -330,18 +339,36 @@ uint64_t path_step(path_t* path, const char* component, namespace_t* ns)
 
     namespace_traverse(ns, path);
 
-    dentry_t* next = dentry_lookup(path, component);
+    dentry_t* next = dentry_lookup(path, name);
     if (next == NULL)
     {
         return ERR;
     }
     UNREF_DEFER(next);
 
-    path_set(path, path->mount, next);
+    if (DENTRY_IS_SYMLINK(next) && !(mode & MODE_NOFOLLOW))
+    {
+        if (path_follow_symlink(next, path, ns, symlinks) == ERR)
+        {
+            return ERR;
+        }
+    }
+    else
+    {
+        path_set(path, path->mount, next);
+    }
+
+    namespace_traverse(ns, path);
+
     return 0;
 }
 
-uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
+uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_t* ns)
+{
+    return path_step_depth(path, mode, name, ns, 0);
+}
+
+static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namespace_t* ns, uint64_t symlinks)
 {
     if (path == NULL || !PATHNAME_IS_VALID(pathname) || ns == NULL)
     {
@@ -420,15 +447,18 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
             continue;
         }
 
-        if (path_step(path, component, ns) == ERR)
+        if (path_step_depth(path, pathname->mode, component, ns, symlinks) == ERR)
         {
             return ERR;
         }
     }
 
-    namespace_traverse(ns, path);
-
     return 0;
+}
+
+uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
+{
+    return path_walk_depth(path, pathname, ns, 0);
 }
 
 uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_t* ns)
@@ -505,7 +535,7 @@ uint64_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_
     }
 
     path_copy(outChild, outParent);
-    if (path_step(outChild, lastName, ns) == ERR)
+    if (path_step(outChild, pathname->mode, lastName, ns) == ERR)
     {
         return ERR;
     }

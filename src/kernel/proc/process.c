@@ -34,8 +34,8 @@ static process_t* kernelProcess = NULL;
 
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 
-static mount_t* procMount = NULL;
-static dentry_t* selfDir = NULL;
+static mount_t* proc = NULL;
+static dentry_t* self = NULL;
 
 static process_t* process_file_get_process(file_t* file)
 {
@@ -55,6 +55,26 @@ static process_t* process_file_get_process(file_t* file)
 
     return process;
 }
+
+static uint64_t process_self_readlink(inode_t* inode, char* buffer, uint64_t count)
+{
+    (void)inode; // Unused
+
+    process_t* process = sched_process();
+
+    int ret = snprintf(buffer, count, "%llu", process->id);
+    if (ret < 0 || ret >= (int)count)
+    {
+        return ERR;
+    }
+
+    return ret;
+}
+
+static inode_ops_t selfOps =
+{
+    .readlink = process_self_readlink,
+};
 
 static uint64_t process_prio_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -167,7 +187,7 @@ static uint64_t process_cwd_write(file_t* file, const void* buffer, uint64_t cou
         return ERR;
     }
 
-    if (!dentry_is_positive(path.dentry))
+    if (!DENTRY_IS_POSITIVE(path.dentry))
     {
         errno = ENOENT;
         return ERR;
@@ -495,7 +515,7 @@ static uint64_t process_ctl_kill(file_t* file, uint64_t argc, const char** argv)
 
 CTL_STANDARD_OPS_DEFINE(ctlOps,
     {{"close", process_ctl_close, 2, 3}, {"dup2", process_ctl_dup2, 3, 3}, {"start", process_ctl_start, 1, 1},
-        {"kill", process_ctl_kill, 1, 1}, {0}})
+        {"kill", process_ctl_kill, 1, 1}, {0},})
 
 static uint64_t process_env_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -616,8 +636,6 @@ static void process_proc_cleanup(inode_t* inode)
     LOG_DEBUG("freeing process pid=%d\n", process->id);
 
     assert(list_is_empty(&process->threads.list));
-    assert(process->dir.self == NULL);
-    assert(process->dir.dir == NULL);
     assert(process->dir.env == NULL);
     assert(list_is_empty(&process->dir.files));
     assert(list_is_empty(&process->dir.envEntries));
@@ -672,7 +690,7 @@ static uint64_t process_dir_init(process_t* process)
         return ERR;
     }
 
-    path_t procPath = PATH_CREATE(procMount, procMount->source);
+    path_t procPath = PATH_CREATE(proc, proc->source);
     PATH_DEFER(&procPath);
 
     process->dir.dir = sysfs_submount_new(&procPath, name, &process->ns, MOUNT_PROPAGATE_PARENT | MOUNT_DONT_INHERIT, MODE_DIRECTORY | MODE_ALL_PERMS, &procInodeOps, NULL, process);
@@ -684,28 +702,17 @@ static uint64_t process_dir_init(process_t* process)
     process->dir.env = sysfs_dir_new(process->dir.dir->source, "env", &envInodeOps, process);
     if (process->dir.env == NULL)
     {
-        goto error;
+        process_dir_deinit(process);
+        return ERR;
     }
 
     if (sysfs_files_create(process->dir.dir->source, files, process, &process->dir.files) == ERR)
     {
-        goto error;
-    }
-
-    path_t selfPath = PATH_CREATE(procMount, selfDir);
-    process->dir.self =
-        namespace_bind(&process->ns, process->dir.dir->source, &selfPath, MOUNT_DONT_INHERIT, MODE_DIRECTORY | MODE_ALL_PERMS);
-    path_put(&selfPath);
-    if (process->dir.self == NULL)
-    {
-        goto error;
+        process_dir_deinit(process);
+        return ERR;
     }
 
     return 0;
-
-error:
-    process_dir_deinit(process);
-    return ERR;
 }
 
 process_t* process_new(priority_t priority, namespace_t* ns, gid_t gid)
@@ -752,7 +759,6 @@ process_t* process_new(priority_t priority, namespace_t* ns, gid_t gid)
 
     list_entry_init(&process->zombieEntry);
 
-    process->dir.self = NULL;
     process->dir.dir = NULL;
     list_init(&process->dir.files);
     process->dir.env = NULL;
@@ -813,7 +819,6 @@ void process_kill(process_t* process, const char* status)
 
     // Anything that another process could be waiting on must be cleaned up here.
 
-    namespace_unmount(&process->ns, process->dir.self, MOUNT_NONE);
     namespace_unmount(&process->ns, process->dir.dir, MOUNT_PROPAGATE_PARENT);
 
     cwd_clear(&process->cwd);
@@ -835,16 +840,9 @@ void process_dir_deinit(process_t* process)
 
     LOCK_SCOPE(&process->dir.lock);
 
-    if (process->dir.self != NULL)
+    while (!list_is_empty(&process->dir.envEntries))
     {
-        UNREF(process->dir.self);
-        process->dir.self = NULL;
-    }
-
-    if (process->dir.dir != NULL)
-    {
-        UNREF(process->dir.dir);
-        process->dir.dir = NULL;
+        UNREF(CONTAINER_OF_SAFE(list_pop_first(&process->dir.envEntries), dentry_t, otherEntry));
     }
 
     while (!list_is_empty(&process->dir.files))
@@ -858,9 +856,10 @@ void process_dir_deinit(process_t* process)
         process->dir.env = NULL;
     }
 
-    while (!list_is_empty(&process->dir.envEntries))
+    if (process->dir.dir != NULL)
     {
-        UNREF(CONTAINER_OF_SAFE(list_pop_first(&process->dir.envEntries), dentry_t, otherEntry));
+        UNREF(process->dir.dir);
+        process->dir.dir = NULL;
     }
 }
 
@@ -1010,17 +1009,17 @@ process_t* process_get_kernel(void)
 
 void process_procfs_init(void)
 {
-    procMount = sysfs_mount_new("proc", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT,
+    proc = sysfs_mount_new("proc", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT,
         MODE_DIRECTORY | MODE_ALL_PERMS, NULL, NULL, NULL);
-    if (procMount == NULL)
+    if (proc == NULL)
     {
-        panic(NULL, "Failed to mount /proc dentriesystem");
+        panic(NULL, "Failed to mount /proc");
     }
 
-    selfDir = sysfs_dir_new(procMount->source, "self", NULL, NULL);
-    if (selfDir == NULL)
+    self = sysfs_symlink_new(proc->source, "self", &selfOps, NULL);
+    if (self == NULL)
     {
-        panic(NULL, "Failed to create /proc/self directory");
+        panic(NULL, "Failed to create /proc/self symlink");
     }
 
     assert(kernelProcess != NULL);

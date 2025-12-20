@@ -64,7 +64,7 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 
 ### File System
 
-- Unix-style VFS with mountpoints, hardlinks, per-process namespaces, etc.
+- Unix-style VFS with mountpoints, hardlinks, symlinks, per-process namespaces, etc.
 - Custom [Framebuffer BitMaP](https://github.com/KaiNorberg/fbmp) (.fbmp) image format, allows for faster loading by removing the need for parsing.
 - Custom [Grayscale Raster Font](https://github.com/KaiNorberg/grf) (.grf) font format, allows for antialiasing and kerning without complex vector graphics.
 
@@ -589,7 +589,20 @@ rm mydir:directory:recursive
 rm mydir:dR
 ```
 
-There are other utils available that work as expected, for example `stat` and `link`.
+### `stat`
+
+Retrieve information about a file or directory.
+
+```bash
+# Retrieve information on a symlinks target
+stat mysymlink
+
+# Retrieve information on a symlink itself
+stat mysymlink:nofollow
+stat mysymlink:N
+```
+
+There are other utils available that work as expected, for example `symlink` and `link`.
 
 ---
 

@@ -271,6 +271,40 @@ dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* 
     return REF(dentry);
 }
 
+dentry_t* sysfs_symlink_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* private)
+{
+    if (parent == NULL || name == NULL || inodeOps == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    if (parent->superblock->fs != &sysfs)
+    {
+        errno = EXDEV;
+        return NULL;
+    }
+
+    dentry_t* dentry = dentry_new(parent->superblock, parent, name);
+    if (dentry == NULL)
+    {
+        return NULL;
+    }
+    UNREF_DEFER(dentry);
+
+    inode_t* inode = inode_new(parent->superblock, vfs_id_get(), INODE_SYMLINK, inodeOps, NULL);
+    if (inode == NULL)
+    {
+        return NULL;
+    }
+    UNREF_DEFER(inode);
+    inode->private = private;
+
+    dentry_make_positive(dentry, inode);
+
+    return REF(dentry);
+}
+
 uint64_t sysfs_files_create(dentry_t* parent, const sysfs_file_desc_t* descs, void* private, list_t* out)
 {
     if (descs == NULL)

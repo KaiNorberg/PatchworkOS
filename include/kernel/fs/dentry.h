@@ -3,6 +3,7 @@
 #include <kernel/fs/path.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/sync/seqlock.h>
+#include <kernel/fs/inode.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 
@@ -41,15 +42,6 @@ typedef struct superblock superblock_t;
  */
 
 /**
- * @brief Dentry flags.
- * @enum dentry_flags_t
- */
-typedef enum
-{
-    DENTRY_NEGATIVE = 1 << 0, ///< Dentry is negative (no associated inode).
-} dentry_flags_t;
-
-/**
  * @brief Dentry ID type.
  */
 typedef uint64_t dentry_id_t;
@@ -65,13 +57,59 @@ typedef uint64_t dentry_id_t;
 #define DENTRY_IS_ROOT(dentry) ((dentry)->parent == (dentry))
 
 /**
+ * @brief Check if a dentry is positive.
+ *
+ * @param dentry The dentry to check.
+ * @return true if the dentry is positive, false if it is negative.
+ */
+#define DENTRY_IS_POSITIVE(dentry) ((dentry)->inode != NULL)
+
+/**
+ * @brief Check if the inode associated with a dentry is a file.
+ *
+ * @param dentry The dentry to check.
+ * @return true if the dentry is a file, false otherwise or if the dentry is negative.
+ */
+#define DENTRY_IS_FILE(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->inode->type == INODE_FILE)
+
+/**
+ * @brief Check if the inode associated with a dentry is a directory.
+ *
+ * @param dentry The dentry to check.
+ * @return true if the dentry is a directory, false otherwise or if the dentry is negative.
+ */
+#define DENTRY_IS_DIR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->inode->type == INODE_DIR)
+
+/**
+ * @brief Check if the inode associated with a dentry is a symbolic link.
+ *
+ * @param dentry The dentry to check.
+ * @return true if the dentry is a symbolic link, false otherwise or if the dentry is negative.
+ */
+#define DENTRY_IS_SYMLINK(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->inode->type == INODE_SYMLINK)
+
+/**
  * @brief Dentry operations structure.
  * @struct dentry_ops_t
  */
 typedef struct dentry_ops
 {
+    /**
+     * @brief Retrieve the contents of a directory.
+     *
+     * @param dentry The dentry to retrieve entries from.
+     * @param buffer The buffer to store the directory entries in.
+     * @param count The maximum number of bytes to read.
+     * @param offset The offset to start reading from.
+     * @return On success, the number of bytes read. On failure, returns `0` and `errno` is set.
+     */
     uint64_t (*getdents)(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset);
-    void (*cleanup)(dentry_t* entry); ///< Called when the dentry is being freed.
+    /**
+     * @brief Called when the dentry is being freed.
+     * 
+     * @param dentry The dentry being cleaned up.
+     */
+    void (*cleanup)(dentry_t* dentry);
 } dentry_ops_t;
 
 /**
@@ -85,8 +123,7 @@ typedef struct dentry
     ref_t ref;
     dentry_id_t id;
     char name[MAX_NAME]; ///< Constant after creation.
-    inode_t* inode;      ///< Will be `NULL` if the dentry is negative, once positive it will never be `NULL`.
-    _Atomic(dentry_flags_t) flags;
+    inode_t* inode;      ///< Will be `NULL` if the dentry is negative, once positive it will never be modified.
     dentry_t* parent;
     list_entry_t siblingEntry;
     list_t children;
@@ -156,30 +193,6 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name);
  * @param inode The inode to associate with the dentry, or `NULL` for no-op.
  */
 void dentry_make_positive(dentry_t* dentry, inode_t* inode);
-
-/**
- * @brief Check if a dentry is positive.
- *
- * @param dentry The dentry to check.
- * @return true if the dentry is positive, false if it is negative.
- */
-bool dentry_is_positive(dentry_t* dentry);
-
-/**
- * @brief Check if the inode associated with a dentry is a file.
- *
- * @param dentry The dentry to check.
- * @return true if the dentry is a file, false otherwise or if the dentry is negative.
- */
-bool dentry_is_file(dentry_t* dentry);
-
-/**
- * @brief Check if the inode associated with a dentry is a directory.
- *
- * @param dentry The dentry to check.
- * @return true if the dentry is a directory, false otherwise or if the dentry is negative.
- */
-bool dentry_is_dir(dentry_t* dentry);
 
 /**
  * @brief Helper function for a basic getdents.

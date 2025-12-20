@@ -43,7 +43,7 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_t
     PATH_DEFER(&parent);
     PATH_DEFER(&target);
 
-    if (!dentry_is_positive(parent.dentry))
+    if (!DENTRY_IS_POSITIVE(parent.dentry))
     {
         errno = ENOENT;
         return ERR;
@@ -56,7 +56,7 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_t
         return ERR;
     }
 
-    if (dentry_is_positive(target.dentry))
+    if (DENTRY_IS_POSITIVE(target.dentry))
     {
         if (pathname->mode & MODE_EXCLUSIVE)
         {
@@ -523,7 +523,7 @@ typedef struct
     uint64_t currentOffset;
 } getdents_recursive_ctx_t;
 
-static void vfs_getdents_recursive_step(path_t* path, getdents_recursive_ctx_t* ctx, const char* prefix,
+static uint64_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_recursive_ctx_t* ctx, const char* prefix,
     namespace_t* ns)
 {
     uint64_t offset = 0;
@@ -531,7 +531,8 @@ static void vfs_getdents_recursive_step(path_t* path, getdents_recursive_ctx_t* 
     dirent_t* buf = malloc(bufSize);
     if (buf == NULL)
     {
-        return;
+        errno = ENOMEM;
+        return ERR;
     }
 
     while (true)
@@ -552,8 +553,7 @@ static void vfs_getdents_recursive_step(path_t* path, getdents_recursive_ctx_t* 
             {
                 if (ctx->pos + sizeof(dirent_t) > ctx->count)
                 {
-                    free(buf);
-                    return;
+                    return 0;
                 }
 
                 dirent_t* out = (dirent_t*)((uint8_t*)ctx->buffer + ctx->pos);
@@ -577,22 +577,21 @@ static void vfs_getdents_recursive_step(path_t* path, getdents_recursive_ctx_t* 
             }
             ctx->currentOffset += sizeof(dirent_t);
 
-            if (d->type == INODE_DIR && strcmp(d->path, ".") != 0 && strcmp(d->path, "..") != 0)
+            if ((d->type == INODE_DIR || d->type == INODE_SYMLINK) && strcmp(d->path, ".") != 0 && strcmp(d->path, "..") != 0)
             {
-                dentry_t* child = dentry_lookup(path, d->path);
-                if (child == NULL)
+                path_t childPath = PATH_CREATE(path->mount, path->dentry);
+                PATH_DEFER(&childPath);
+
+                if (path_step(&childPath, mode, d->path, ns) == ERR)
+                {
+                    free(buf);
+                    return ERR;
+                }
+
+                if (!DENTRY_IS_DIR(childPath.dentry))
                 {
                     continue;
                 }
-                UNREF_DEFER(child);
-
-                if (!dentry_is_positive(child))
-                {
-                    continue;
-                }
-
-                path_t childPath = PATH_CREATE(path->mount, child);
-                namespace_traverse(ns, &childPath);
 
                 char newPrefix[MAX_PATH];
                 if (prefix[0] == '\0')
@@ -604,13 +603,18 @@ static void vfs_getdents_recursive_step(path_t* path, getdents_recursive_ctx_t* 
                     snprintf(newPrefix, MAX_PATH, "%s/%s", prefix, d->path);
                 }
 
-                vfs_getdents_recursive_step(&childPath, ctx, newPrefix, ns);
+                if (vfs_getdents_recursive_step(&childPath, mode, ctx, newPrefix, ns) == ERR)
+                {
+                    free(buf);
+                    return ERR;
+                }
                 path_put(&childPath);
             }
         }
     }
 
     free(buf);
+    return 0;
 }
 
 static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
@@ -621,7 +625,7 @@ static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
         return ERR;
     }
 
-    if (!dentry_is_dir(path->dentry))
+    if (!DENTRY_IS_DIR(path->dentry))
     {
         inode_t* dir = path->dentry->parent->inode;
         if (dir->ops->remove(dir, path->dentry) == ERR)
@@ -647,17 +651,13 @@ static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
     while (true)
     {
         uint64_t count = path->dentry->ops->getdents(path->dentry, buf, bufSize, &offset);
-        if (count == ERR)
-        {
-            free(buf);
-            return ERR;
-        }
-        if (count == 0)
+        if (count == ERR || count == 0)
         {
             break;
         }
 
         uint64_t pos = 0;
+        bool removed = false;
         while (pos < count)
         {
             dirent_t* d = (dirent_t*)((uint8_t*)buf + pos);
@@ -668,35 +668,48 @@ static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
                 continue;
             }
 
-            dentry_t* child = dentry_lookup(path, d->path);
-            if (child == NULL)
-            {
-                continue;
-            }
-            UNREF_DEFER(child);
+            path_t childPath = PATH_CREATE(path->mount, path->dentry);
+            PATH_DEFER(&childPath);
 
-            if (!dentry_is_positive(child))
+            if (path_step(&childPath, MODE_NONE, d->path, &process->ns) == ERR)
             {
-                continue;
-            }
-
-            path_t childPath = PATH_CREATE(path->mount, child);
-            if (vfs_remove_recursive(&childPath, process) == ERR)
-            {
-                path_put(&childPath);
                 free(buf);
                 return ERR;
             }
-            path_put(&childPath);
+
+            if (vfs_remove_recursive(&childPath, process) == ERR)
+            {
+                free(buf);
+                return ERR;
+            }
+
+            removed = true;
+            break;
+        }
+
+        if (removed)
+        {
+            offset = 0;
+            continue;
         }
     }
+
     free(buf);
 
     inode_t* dir = path->dentry->parent->inode;
+    if (dir->ops == NULL || dir->ops->remove == NULL)
+    {
+        errno = ENOSYS;
+        return ERR;
+    }
+
+    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
+
     if (dir->ops->remove(dir, path->dentry) == ERR)
     {
         return ERR;
     }
+
     inode_notify_modify(dir);
     return 0;
 }
@@ -744,7 +757,10 @@ uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count)
             .skip = file->pos,
             .currentOffset = 0,
         };
-        vfs_getdents_recursive_step(&file->path, &ctx, "", &sched_process()->ns);
+        if (vfs_getdents_recursive_step(&file->path, file->mode, &ctx, "", &sched_process()->ns) == ERR)
+        {
+            return ERR;
+        }
         file->pos = ctx.skip + ctx.pos;
         return ctx.pos;
     }
@@ -766,12 +782,6 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
         return ERR;
     }
 
-    if (pathname->mode != MODE_NONE)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     path_t path = cwd_get(&process->cwd);
     PATH_DEFER(&path);
 
@@ -788,7 +798,7 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
 
     memset(buffer, 0, sizeof(stat_t));
 
-    if (!dentry_is_positive(path.dentry))
+    if (!DENTRY_IS_POSITIVE(path.dentry))
     {
         errno = ENOENT;
         return ERR;
@@ -830,21 +840,23 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
 
     path_t oldParent = PATH_EMPTY;
     path_t old = PATH_EMPTY;
+    PATH_DEFER(&oldParent);
+    PATH_DEFER(&old);
+
     if (path_walk_parent_and_child(&cwd, &oldParent, &old, oldPathname, &process->ns) == ERR)
     {
         return ERR;
     }
-    PATH_DEFER(&oldParent);
-    PATH_DEFER(&old);
 
     path_t newParent = PATH_EMPTY;
     path_t new = PATH_EMPTY;
+    PATH_DEFER(&newParent);
+    PATH_DEFER(&new);
+
     if (path_walk_parent_and_child(&cwd, &newParent, &new, newPathname, &process->ns) == ERR)
     {
         return ERR;
     }
-    PATH_DEFER(&newParent);
-    PATH_DEFER(&new);
 
     if (oldParent.dentry->superblock->id != newParent.dentry->superblock->id)
     {
@@ -852,19 +864,19 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
         return ERR;
     }
 
-    if (!dentry_is_positive(old.dentry))
+    if (!DENTRY_IS_POSITIVE(old.dentry))
     {
         errno = ENOENT;
         return ERR;
     }
 
-    if (dentry_is_dir(old.dentry))
+    if (DENTRY_IS_DIR(old.dentry))
     {
         errno = EISDIR;
         return ERR;
     }
 
-    if (!dentry_is_positive(newParent.dentry))
+    if (!DENTRY_IS_POSITIVE(newParent.dentry))
     {
         errno = ENOENT;
         return ERR;
@@ -900,6 +912,96 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
     return 0;
 }
 
+uint64_t vfs_readlink(inode_t* symlink, char* buffer, uint64_t count)
+{
+    if (symlink == NULL || buffer == NULL || count == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (symlink->type != INODE_SYMLINK)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (symlink->ops == NULL || symlink->ops->readlink == NULL)
+    {
+        errno = ENOSYS;
+        return ERR;
+    }
+
+    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
+    uint64_t result = symlink->ops->readlink(symlink, buffer, count);
+    if (result != ERR)
+    {
+        inode_notify_access(symlink);
+    }
+    return result;
+}
+
+uint64_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathname, process_t* process)
+{
+    if (!PATHNAME_IS_VALID(oldPathname) || !PATHNAME_IS_VALID(newPathname) || process == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (oldPathname->mode != MODE_NONE || newPathname->mode != MODE_NONE)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    path_t cwd = cwd_get(&process->cwd);
+    PATH_DEFER(&cwd);
+
+    path_t newParent = PATH_EMPTY;
+    path_t new = PATH_EMPTY;
+    PATH_DEFER(&newParent);
+    PATH_DEFER(&new);
+
+    if (path_walk_parent_and_child(&cwd, &newParent, &new, newPathname, &process->ns) == ERR)
+    {
+        return ERR;
+    }
+
+    if (!DENTRY_IS_POSITIVE(newParent.dentry))
+    {
+        errno = ENOENT;
+        return ERR;
+    }
+
+    if (DENTRY_IS_POSITIVE(new.dentry))
+    {
+        errno = EEXIST;
+        return ERR;
+    }
+
+    if (newParent.dentry->inode->ops == NULL || newParent.dentry->inode->ops->symlink == NULL)
+    {
+        errno = ENOSYS;
+        return ERR;
+    }
+
+    if (!(newParent.mount->mode & MODE_WRITE))
+    {
+        errno = EACCES;
+        return ERR;
+    }
+
+    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
+    if (newParent.dentry->inode->ops->symlink(newParent.dentry->inode, new.dentry, oldPathname->string) == ERR)
+    {
+        return ERR;
+    }
+
+    inode_notify_modify(newParent.dentry->inode);
+    return 0;
+}
+
 uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
 {
     if (!PATHNAME_IS_VALID(pathname) || process == NULL)
@@ -920,7 +1022,7 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
     PATH_DEFER(&parent);
     PATH_DEFER(&target);
 
-    if (!dentry_is_positive(target.dentry))
+    if (!DENTRY_IS_POSITIVE(target.dentry))
     {
         errno = ENOENT;
         return ERR;
@@ -930,7 +1032,7 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
     {
         if (pathname->mode & MODE_DIRECTORY)
         {
-            if (dentry_is_file(target.dentry))
+            if (DENTRY_IS_FILE(target.dentry))
             {
                 errno = ENOTDIR;
                 return ERR;
@@ -938,7 +1040,7 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
         }
         else
         {
-            if (dentry_is_dir(target.dentry))
+            if (DENTRY_IS_DIR(target.dentry))
             {
                 errno = EISDIR;
                 return ERR;
@@ -1318,6 +1420,60 @@ SYSCALL_DEFINE(SYS_LINK, uint64_t, const char* oldPathString, const char* newPat
     }
 
     return vfs_link(&oldPathname, &newPathname, process);
+}
+
+SYSCALL_DEFINE(SYS_READLINK, uint64_t, const char* pathString, char* buffer, uint64_t count)
+{
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
+
+    pathname_t pathname;
+    if (thread_copy_from_user_pathname(thread, &pathname, pathString) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t path = cwd_get(&process->cwd);
+    PATH_DEFER(&path);
+
+    if (path_walk(&path, &pathname, &process->ns) == ERR)
+    {
+        return ERR;
+    }
+
+    if (!DENTRY_IS_POSITIVE(path.dentry))
+    {
+        errno = ENOENT;
+        return ERR;
+    }
+
+    if (space_pin(&process->space, buffer, count, &thread->userStack) == ERR)
+    {
+        return ERR;
+    }
+    uint64_t result = vfs_readlink(path.dentry->inode, buffer, count);
+    space_unpin(&process->space, buffer, count);
+    return result;
+}
+
+SYSCALL_DEFINE(SYS_SYMLINK, uint64_t, const char* targetString, const char* linkpathString)
+{
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
+
+    pathname_t target;
+    if (thread_copy_from_user_pathname(thread, &target, targetString) == ERR)
+    {
+        return ERR;
+    }
+
+    pathname_t linkpath;
+    if (thread_copy_from_user_pathname(thread, &linkpath, linkpathString) == ERR)
+    {
+        return ERR;
+    }
+
+    return vfs_symlink(&target, &linkpath, process);
 }
 
 SYSCALL_DEFINE(SYS_REMOVE, uint64_t, const char* pathString)

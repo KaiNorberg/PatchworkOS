@@ -120,6 +120,24 @@ typedef struct inode_ops
      */
     uint64_t (*link)(inode_t* dir, dentry_t* old, dentry_t* new);
     /**
+     * @brief Retrieve the path of the symbolic link.
+     * 
+     * @param inode The symbolic link inode.
+     * @param buffer The buffer to store the path in.
+     * @param size The size of the buffer.
+     * @return On success, the number of bytes read. On failure, returns `ERR` and `errno` is set.
+     */
+    uint64_t (*readlink)(inode_t* inode, char* buffer, uint64_t size);
+    /**
+     * @brief Create a symbolic link.
+     *
+     * @param dir The directory inode to create the symbolic link in.
+     * @param target The negative dentry to create.
+     * @param dest The path to which the symbolic link will point.
+     * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+     */
+    uint64_t (*symlink)(inode_t* dir, dentry_t* target, const char* dest);
+    /**
      * @brief Remove a file or directory.
      *
      * @param dir The directory inode containing the target.
