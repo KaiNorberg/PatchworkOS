@@ -59,7 +59,7 @@ mount_t* sysfs_mount_new(const char* name, namespace_t* ns, mount_flags_t flags,
  *
  * Used to mount a SysFS instance inside an existing SysFS directory. The parent must point to a sysfs directory,
  * and a new directory of the name `name` will be created inside it and the SysFS instance will be mounted there.
- * 
+ *
  * @param parent The parent sysfs directory to mount the SysFS in.
  * @param name The name of the directory to mount the SysFS in.
  * @param ns The namespace to mount the SysFS in, or `NULL` to use the current process's namespace.

@@ -121,7 +121,7 @@ typedef struct inode_ops
     uint64_t (*link)(inode_t* dir, dentry_t* old, dentry_t* new);
     /**
      * @brief Retrieve the path of the symbolic link.
-     * 
+     *
      * @param inode The symbolic link inode.
      * @param buffer The buffer to store the path in.
      * @param size The size of the buffer.

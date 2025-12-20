@@ -170,11 +170,6 @@ static inline uint64_t _syscall_ioctl(fd_t fd, uint64_t request, void* argp, uin
     return _SYSCALL4(uint64_t, SYS_IOCTL, fd_t, fd, uint64_t, request, void*, argp, uint64_t, size);
 }
 
-static inline uint64_t _syscall_chdir(const char* path)
-{
-    return _SYSCALL1(uint64_t, SYS_CHDIR, const char*, path);
-}
-
 static inline uint64_t _syscall_poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
 {
     return _SYSCALL3(uint64_t, SYS_POLL, pollfd_t*, fds, uint64_t, amount, clock_t, timeout);

@@ -71,8 +71,7 @@ static uint64_t process_self_readlink(inode_t* inode, char* buffer, uint64_t cou
     return ret;
 }
 
-static inode_ops_t selfOps =
-{
+static inode_ops_t selfOps = {
     .readlink = process_self_readlink,
 };
 
@@ -307,6 +306,23 @@ static file_ops_t gidOps = {
     .read = process_gid_read,
 };
 
+static uint64_t process_pid_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    char pidStr[MAX_NAME];
+    uint32_t length = snprintf(pidStr, MAX_NAME, "%llu", process->id);
+    return BUFFER_READ(buffer, count, offset, pidStr, length);
+}
+
+static file_ops_t pidOps = {
+    .read = process_pid_read,
+};
+
 static uint64_t process_wait_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     process_t* process = process_file_get_process(file);
@@ -404,7 +420,7 @@ static uint64_t process_ctl_close(file_t* file, uint64_t argc, const char** argv
             return ERR;
         }
 
-        if (file_table_free(&process->fileTable, fd) == ERR)
+        if (file_table_close(&process->fileTable, fd) == ERR)
         {
             return ERR;
         }
@@ -425,7 +441,7 @@ static uint64_t process_ctl_close(file_t* file, uint64_t argc, const char** argv
             return ERR;
         }
 
-        if (file_table_free_range(&process->fileTable, minFd, maxFd) == ERR)
+        if (file_table_close_range(&process->fileTable, minFd, maxFd) == ERR)
         {
             return ERR;
         }
@@ -514,8 +530,13 @@ static uint64_t process_ctl_kill(file_t* file, uint64_t argc, const char** argv)
 }
 
 CTL_STANDARD_OPS_DEFINE(ctlOps,
-    {{"close", process_ctl_close, 2, 3}, {"dup2", process_ctl_dup2, 3, 3}, {"start", process_ctl_start, 1, 1},
-        {"kill", process_ctl_kill, 1, 1}, {0},})
+    {
+        {"close", process_ctl_close, 2, 3},
+        {"dup2", process_ctl_dup2, 3, 3},
+        {"start", process_ctl_start, 1, 1},
+        {"kill", process_ctl_kill, 1, 1},
+        {0},
+    })
 
 static uint64_t process_env_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -669,6 +690,7 @@ static sysfs_file_desc_t files[] = {
     {.name = "note", .inodeOps = NULL, .fileOps = &noteOps},
     {.name = "notegroup", .inodeOps = NULL, .fileOps = &notegroupOps},
     {.name = "gid", .inodeOps = NULL, .fileOps = &gidOps},
+    {.name = "pid", .inodeOps = NULL, .fileOps = &pidOps},
     {.name = "wait", .inodeOps = NULL, .fileOps = &waitOps},
     {.name = "perf", .inodeOps = NULL, .fileOps = &statOps},
     {.name = "ctl", .inodeOps = NULL, .fileOps = &ctlOps},
@@ -693,7 +715,8 @@ static uint64_t process_dir_init(process_t* process)
     path_t procPath = PATH_CREATE(proc, proc->source);
     PATH_DEFER(&procPath);
 
-    process->dir.dir = sysfs_submount_new(&procPath, name, &process->ns, MOUNT_PROPAGATE_PARENT | MOUNT_DONT_INHERIT, MODE_DIRECTORY | MODE_ALL_PERMS, &procInodeOps, NULL, process);
+    process->dir.dir = sysfs_submount_new(&procPath, name, &process->ns, MOUNT_PROPAGATE_PARENT | MOUNT_DONT_INHERIT,
+        MODE_DIRECTORY | MODE_ALL_PERMS, &procInodeOps, NULL, process);
     if (process->dir.dir == NULL)
     {
         return ERR;
@@ -885,8 +908,7 @@ uint64_t process_copy_env(process_t* dest, process_t* src)
     dentry_t* srcDentry;
     LIST_FOR_EACH(srcDentry, &src->dir.envEntries, otherEntry)
     {
-        inode_t* inode =
-            inode_new(superblock, vfs_id_get(), INODE_FILE, &envFileInodeOps, &envFileOps);
+        inode_t* inode = inode_new(superblock, vfs_id_get(), INODE_FILE, &envFileInodeOps, &envFileOps);
         if (inode == NULL)
         {
             return ERR;

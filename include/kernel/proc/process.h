@@ -82,6 +82,15 @@
  * %llu
  * ```
  *
+ * ## pid 
+ * 
+ * A readable file that contains the process ID.
+ *
+ * Format:
+ * ```
+ * %llu
+ * ```
+ * 
  * ## wait
  *
  * A readable and pollable file that can be used to wait for the process to exit. Reading
@@ -189,7 +198,7 @@ typedef struct
  */
 typedef struct
 {
-    mount_t* dir;     ///< The `/proc/[pid]/` directory.
+    mount_t* dir;      ///< The `/proc/[pid]/` directory.
     list_t files;      ///< List of file dentries for the `/proc/[pid]/` directory.
     dentry_t* env;     ///< The `/proc/[pid]/env/` directory.
     list_t envEntries; ///< List of environment variable dentries.

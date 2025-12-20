@@ -141,9 +141,7 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     strncpy(dentry->name, name, MAX_NAME - 1);
     dentry->name[MAX_NAME - 1] = '\0';
     dentry->inode = NULL;
-    dentry->parent = parent != NULL
-        ? REF(parent)
-        : dentry; 
+    dentry->parent = parent != NULL ? REF(parent) : dentry;
     list_entry_init(&dentry->siblingEntry);
     list_init(&dentry->children);
     dentry->superblock = REF(superblock);

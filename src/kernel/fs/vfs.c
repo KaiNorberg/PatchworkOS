@@ -24,10 +24,10 @@
 #include <kernel/cpu/regs.h>
 
 #include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <errno.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/io.h>
 #include <sys/list.h>
@@ -523,8 +523,8 @@ typedef struct
     uint64_t currentOffset;
 } getdents_recursive_ctx_t;
 
-static uint64_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_recursive_ctx_t* ctx, const char* prefix,
-    namespace_t* ns)
+static uint64_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_recursive_ctx_t* ctx,
+    const char* prefix, namespace_t* ns)
 {
     uint64_t offset = 0;
     uint64_t bufSize = 1024;
@@ -577,7 +577,8 @@ static uint64_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_
             }
             ctx->currentOffset += sizeof(dirent_t);
 
-            if ((d->type == INODE_DIR || d->type == INODE_SYMLINK) && strcmp(d->path, ".") != 0 && strcmp(d->path, "..") != 0)
+            if ((d->type == INODE_DIR || d->type == INODE_SYMLINK) && strcmp(d->path, ".") != 0 &&
+                strcmp(d->path, "..") != 0)
             {
                 path_t childPath = PATH_CREATE(path->mount, path->dentry);
                 PATH_DEFER(&childPath);
@@ -636,8 +637,7 @@ static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
         return 0;
     }
 
-    getdents_recursive_ctx_t ctx = {
-        .buffer = NULL, .count = 0, .pos = 0, .skip = 0, .currentOffset = 0};
+    getdents_recursive_ctx_t ctx = {.buffer = NULL, .count = 0, .pos = 0, .skip = 0, .currentOffset = 0};
 
     uint64_t offset = 0;
     uint64_t bufSize = 1024;
@@ -1102,7 +1102,7 @@ SYSCALL_DEFINE(SYS_OPEN, fd_t, const char* pathString)
     }
     UNREF_DEFER(file);
 
-    return file_table_alloc(&process->fileTable, file);
+    return file_table_open(&process->fileTable, file);
 }
 
 SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
@@ -1131,22 +1131,22 @@ SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
     UNREF_DEFER(files[1]);
 
     fd_t fdsLocal[2];
-    fdsLocal[0] = file_table_alloc(&process->fileTable, files[0]);
+    fdsLocal[0] = file_table_open(&process->fileTable, files[0]);
     if (fdsLocal[0] == ERR)
     {
         return ERR;
     }
-    fdsLocal[1] = file_table_alloc(&process->fileTable, files[1]);
+    fdsLocal[1] = file_table_open(&process->fileTable, files[1]);
     if (fdsLocal[1] == ERR)
     {
-        file_table_free(&process->fileTable, fdsLocal[0]);
+        file_table_close(&process->fileTable, fdsLocal[0]);
         return ERR;
     }
 
     if (thread_copy_to_user(thread, fds, fdsLocal, sizeof(fd_t) * 2) == ERR)
     {
-        file_table_free(&process->fileTable, fdsLocal[0]);
-        file_table_free(&process->fileTable, fdsLocal[1]);
+        file_table_close(&process->fileTable, fdsLocal[0]);
+        file_table_close(&process->fileTable, fdsLocal[1]);
         return ERR;
     }
 
@@ -1190,7 +1190,7 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
     }
     UNREF_DEFER(file);
 
-    return file_table_alloc(&process->fileTable, file);
+    return file_table_open(&process->fileTable, file);
 }
 
 SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, uint64_t count)

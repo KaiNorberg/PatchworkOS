@@ -1,9 +1,9 @@
 #pragma once
 
+#include <kernel/fs/inode.h>
 #include <kernel/fs/path.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/sync/seqlock.h>
-#include <kernel/fs/inode.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 
@@ -106,7 +106,7 @@ typedef struct dentry_ops
     uint64_t (*getdents)(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset);
     /**
      * @brief Called when the dentry is being freed.
-     * 
+     *
      * @param dentry The dentry being cleaned up.
      */
     void (*cleanup)(dentry_t* dentry);
@@ -154,9 +154,9 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
 
 /**
  * @brief Remove a dentry from the filesystem hierarchy.
- * 
+ *
  * @note Will not free the dentry, use `UNREF()` for that.
- * 
+ *
  * @param dentry The dentry to remove.
  */
 void dentry_remove(dentry_t* dentry);

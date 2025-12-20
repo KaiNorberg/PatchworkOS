@@ -47,7 +47,7 @@ file_t* file_table_get(file_table_t* table, fd_t fd)
     return REF(table->files[fd]);
 }
 
-fd_t file_table_alloc(file_table_t* table, file_t* file)
+fd_t file_table_open(file_table_t* table, file_t* file)
 {
     if (table == NULL || file == NULL)
     {
@@ -69,7 +69,7 @@ fd_t file_table_alloc(file_table_t* table, file_t* file)
     return (fd_t)index;
 }
 
-uint64_t file_table_free(file_table_t* table, fd_t fd)
+uint64_t file_table_close(file_table_t* table, fd_t fd)
 {
     if (table == NULL)
     {
@@ -91,7 +91,7 @@ uint64_t file_table_free(file_table_t* table, fd_t fd)
     return 0;
 }
 
-uint64_t file_table_free_range(file_table_t* table, fd_t min, fd_t max)
+uint64_t file_table_close_range(file_table_t* table, fd_t min, fd_t max)
 {
     if (table == NULL)
     {
@@ -254,7 +254,7 @@ void file_table_close_all(file_table_t* table)
 
 SYSCALL_DEFINE(SYS_CLOSE, uint64_t, fd_t fd)
 {
-    return file_table_free(&sched_process()->fileTable, fd);
+    return file_table_close(&sched_process()->fileTable, fd);
 }
 
 SYSCALL_DEFINE(SYS_DUP, uint64_t, fd_t oldFd)

@@ -21,10 +21,12 @@ typedef struct process process_t;
  *
  * ## Propagation
  *
- * When a new mount or bind is created in a namespace or, it is only added to that specific namespace. Same concept applies when unmounting.
- * 
- * However, its possible to propagate mounts and unmounts to children and/or parent namespaces using mount flags (`mount_flags_t`), this allows those namespaces to also see the new mount or bind or have the mount or bind removed.
- * 
+ * When a new mount or bind is created in a namespace or, it is only added to that specific namespace. Same concept
+ * applies when unmounting.
+ *
+ * However, its possible to propagate mounts and unmounts to children and/or parent namespaces using mount flags
+ * (`mount_flags_t`), this allows those namespaces to also see the new mount or bind or have the mount or bind removed.
+ *
  * @{
  */
 

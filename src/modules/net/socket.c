@@ -168,7 +168,7 @@ static uint64_t socket_ctl_bind(file_t* file, uint64_t argc, const char** argv)
     {
         return ERR;
     }
-  
+
     sock->state = SOCKET_BOUND;
     return 0;
 }

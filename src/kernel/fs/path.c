@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <kernel/utils/map.h>
 #include <stdint.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 static map_t flagMap;
 static map_t flagShortMap;
@@ -33,7 +33,7 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['t'] = {.mode = MODE_TRUNCATE},
     ['d'] = {.mode = MODE_DIRECTORY},
     ['R'] = {.mode = MODE_RECURSIVE},
-    ['N'] = {.mode = MODE_NOFOLLOW}, 
+    ['N'] = {.mode = MODE_NOFOLLOW},
 };
 
 typedef struct path_flag

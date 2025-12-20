@@ -307,19 +307,25 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
 
     uint64_t totalSize = sizeof(local_packet_header_t) + count;
 
-    while (ring_free_length(ring) < totalSize) {
-        if (conn->isClosed) {
+    while (ring_free_length(ring) < totalSize)
+    {
+        if (conn->isClosed)
+        {
             errno = ECONNRESET;
             return ERR;
         }
-        if (mode & MODE_NONBLOCK) {
+        if (mode & MODE_NONBLOCK)
+        {
             errno = EAGAIN;
             return ERR;
         }
-        if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock, conn->isClosed || ring_free_length(ring) >= totalSize) == ERR) {
+        if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock, conn->isClosed || ring_free_length(ring) >= totalSize) ==
+            ERR)
+        {
             return ERR;
         }
-        if (conn->isClosed) {
+        if (conn->isClosed)
+        {
             errno = ECONNRESET;
             return ERR;
         }
@@ -363,20 +369,24 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
         return 0; // EOF
     }
 
-
-    while (ring_data_length(ring) < sizeof(local_packet_header_t)) {
-        if (conn->isClosed) {
+    while (ring_data_length(ring) < sizeof(local_packet_header_t))
+    {
+        if (conn->isClosed)
+        {
             return 0; // EOF
         }
-        if (mode & MODE_NONBLOCK) {
+        if (mode & MODE_NONBLOCK)
+        {
             errno = EWOULDBLOCK;
             return ERR;
         }
         if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-                conn->isClosed || ring_data_length(ring) >= sizeof(local_packet_header_t)) == ERR) {
+                conn->isClosed || ring_data_length(ring) >= sizeof(local_packet_header_t)) == ERR)
+        {
             return ERR;
         }
-        if (conn->isClosed) {
+        if (conn->isClosed)
+        {
             return 0; // EOF
         }
     }

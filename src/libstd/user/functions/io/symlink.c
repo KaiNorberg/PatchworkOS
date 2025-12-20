@@ -14,5 +14,4 @@ uint64_t symlink(const char* target, const char* linkpath)
         errno = _syscall_errno();
     }
     return result;
-    
 }

@@ -54,32 +54,3 @@ void cwd_clear(cwd_t* cwd)
     path_put(&cwd->path);
     lock_release(&cwd->lock);
 }
-
-SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
-{
-    thread_t* thread = sched_thread();
-    process_t* process = thread->process;
-
-    pathname_t pathname;
-    if (thread_copy_from_user_pathname(thread, &pathname, pathString) == ERR)
-    {
-        return ERR;
-    }
-
-    path_t path = cwd_get(&process->cwd);
-    PATH_DEFER(&path);
-
-    if (path_walk(&path, &pathname, &process->ns) == ERR)
-    {
-        return ERR;
-    }
-
-    if (!DENTRY_IS_DIR(path.dentry))
-    {
-        errno = ENOTDIR;
-        return ERR;
-    }
-
-    cwd_set(&process->cwd, &path);
-    return 0;
-}

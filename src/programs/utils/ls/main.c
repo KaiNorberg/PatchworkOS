@@ -127,7 +127,7 @@ static uint64_t print_dir(const char* path)
                 else if (entries[index].type == INODE_SYMLINK)
                 {
                     printf("\033[36m%s\033[0m@%-*s", name, columnWidth - (int)strlen(name) - 1, "");
-                }                 
+                }
                 else
                 {
                     printf("%-*s", columnWidth, name);

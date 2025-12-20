@@ -114,7 +114,7 @@ typedef enum mode
 
 /**
  * @brief Maximum iterations to handle `..` in a path.
- * 
+ *
  * This is to prevent infinite loops.
  */
 #define PATH_MAX_DOTDOT 1000

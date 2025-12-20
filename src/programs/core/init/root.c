@@ -6,7 +6,6 @@
 #include <string.h>
 #include <sys/io.h>
 
-
 void root_service_start(void)
 {
     char* id = sreadfile("/net/local/seqpacket");
