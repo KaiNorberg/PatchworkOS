@@ -364,11 +364,6 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
 
     ring_t* ring = data->conn.isServer ? &conn->clientToServer : &conn->serverToClient;
 
-    if (conn->isClosed)
-    {
-        return 0; // EOF
-    }
-
     while (ring_data_length(ring) < sizeof(local_packet_header_t))
     {
         if (conn->isClosed)
@@ -384,10 +379,6 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
                 conn->isClosed || ring_data_length(ring) >= sizeof(local_packet_header_t)) == ERR)
         {
             return ERR;
-        }
-        if (conn->isClosed)
-        {
-            return 0; // EOF
         }
     }
 

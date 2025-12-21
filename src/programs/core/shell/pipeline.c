@@ -10,11 +10,6 @@
 #include <sys/io.h>
 #include <sys/proc.h>
 
-static const char* lookupDirs[] = {
-    "/bin",
-    "/usr/bin",
-};
-
 uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
 {
     uint64_t tokenAmount;
@@ -353,7 +348,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
             result = 0;
         }
     }
-    else if (argv[0][0] == '.' && argv[0][1] == '/')
+    else if (strchr(argv[0], '/') != NULL)
     {
         stat_t info;
         if (stat(argv[0], &info) != ERR && info.type != INODE_DIR)
@@ -369,30 +364,38 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
     else
     {
         bool isFound = false;
-        for (uint64_t j = 0; j < sizeof(lookupDirs) / sizeof(lookupDirs[0]); j++)
+        char* pathEnv = sreadfile("/proc/self/env/PATH");
+        if (pathEnv == NULL)
         {
-            if (strlen(lookupDirs[j]) + strlen(argv[0]) + 1 >= MAX_PATH)
-            {
-                continue;
-            }
+            pathEnv = strdup("/bin:/usr/bin");
+        }
 
-            char path[MAX_PATH];
-            sprintf(path, "%s/%s", lookupDirs[j], argv[0]);
-
-            stat_t info;
-            if (stat(path, &info) != ERR && info.type != INODE_DIR)
+        if (pathEnv != NULL)
+        {
+            char* token = strtok(pathEnv, ":");
+            while (token != NULL)
             {
-                const char* newArgv[argc + 1];
-                newArgv[0] = path;
-                for (uint64_t k = 1; k < argc; k++)
+                char path[MAX_PATH];
+                if (snprintf(path, MAX_PATH, "%s/%s", token, argv[0]) < MAX_PATH)
                 {
-                    newArgv[k] = argv[k];
+                    stat_t info;
+                    if (stat(path, &info) != ERR && info.type != INODE_DIR)
+                    {
+                        const char* newArgv[argc + 1];
+                        newArgv[0] = path;
+                        for (uint64_t k = 1; k < argc; k++)
+                        {
+                            newArgv[k] = argv[k];
+                        }
+                        newArgv[argc] = NULL;
+                        result = spawn(newArgv, SPAWN_STDIO_FDS);
+                        isFound = true;
+                        break;
+                    }
                 }
-                newArgv[argc] = NULL;
-                result = spawn(newArgv, SPAWN_STDIO_FDS);
-                isFound = true;
-                break;
+                token = strtok(NULL, ":");
             }
+            free(pathEnv);
         }
 
         if (!isFound)

@@ -10,9 +10,11 @@
  *
  * @todo Write the docs for the root service
  *
+ * @todo Implement password authentication.
+ * 
  * @{
  */
 
-void root_service_start(void);
+void root_start(void);
 
 /** @} */
