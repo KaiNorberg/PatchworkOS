@@ -65,7 +65,7 @@ static void spawn_program(const char* path, priority_t priority)
     }
 
     const char* argv[] = {path, NULL};
-    pid_t pid = spawn(argv, SPAWN_STDIO_FDS | SPAWN_SUSPEND);
+    pid_t pid = spawn(argv, SPAWN_STDIO_FDS | SPAWN_SUSPEND | SPAWN_COPY_NS);
     if (pid == ERR)
     {
         printf("init: failed to spawn program '%s' (%s)\n", path, strerror(errno));

@@ -1,6 +1,7 @@
 #include <kernel/cpu/gdt.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file_table.h>
+#include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
@@ -169,8 +170,10 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
 
-    child = process_new(atomic_load(&process->priority), &process->ns,
-        flags & SPAWN_EMPTY_GROUP ? GID_NONE : group_get_id(&process->groupEntry));
+    gid_t gid =  flags & SPAWN_EMPTY_GROUP ? GID_NONE : group_get_id(&process->group);
+    namespace_member_flags_t nsFlags = flags & SPAWN_COPY_NS ? NAMESPACE_MEMBER_COPY : NAMESPACE_MEMBER_SHARE;
+    
+    child = process_new(atomic_load(&process->priority), gid, &process->ns, nsFlags);
     if (child == NULL)
     {
         goto error;

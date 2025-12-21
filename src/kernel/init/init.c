@@ -1,3 +1,4 @@
+#include <kernel/fs/namespace.h>
 #include <kernel/init/init.h>
 
 #include <kernel/cpu/cpu.h>
@@ -146,7 +147,7 @@ static inline void init_process_spawn(void)
 {
     LOG_INFO("spawning init process\n");
 
-    process_t* initProcess = process_new(PRIORITY_MAX_USER, &process_get_kernel()->ns, GID_NONE);
+    process_t* initProcess = process_new(PRIORITY_MAX_USER, GID_NONE, &process_get_kernel()->ns, NAMESPACE_MEMBER_COPY);
     if (initProcess == NULL)
     {
         panic(NULL, "Failed to create init process");

@@ -44,14 +44,14 @@ dentry_t* sysfs_get_dev(void);
  * specific namespace.
  *
  * @param name The name of the directory to mount the SysFS in.
- * @param ns The namespace to mount the SysFS in, or `NULL` to use the current process's namespace.
+ * @param ns The namespace member whose namespace to mount the SysFS in, or `NULL` to use the current process's namespace.
  * @param flags Mount flags.
  * @param mode The maximum allowed permissions for files/directories opened under this mount.
  * @param inodeOps The inode operations for the root directory of the new SysFS instance, can be `NULL`.
  * @param superblockOps The superblock operations for the new SysFS instance, can be `NULL`.
  * @return On success, the mounted SysFS instance. On failure, `NULL` and `errno` is set.
  */
-mount_t* sysfs_mount_new(const char* name, namespace_t* ns, mount_flags_t flags, mode_t mode,
+mount_t* sysfs_mount_new(const char* name, namespace_member_t* ns, mount_flags_t flags, mode_t mode,
     const inode_ops_t* inodeOps, const superblock_ops_t* superblockOps, void* private);
 
 /**
@@ -62,7 +62,7 @@ mount_t* sysfs_mount_new(const char* name, namespace_t* ns, mount_flags_t flags,
  *
  * @param parent The parent sysfs directory to mount the SysFS in.
  * @param name The name of the directory to mount the SysFS in.
- * @param ns The namespace to mount the SysFS in, or `NULL` to use the current process's namespace.
+ * @param ns The namespace member whose namespace to mount the SysFS in, or `NULL` to use the current process's namespace.
  * @param flags Mount flags.
  * @param mode The maximum allowed permissions for files/directories opened under this mount.
  * @param inodeOps The inode operations for the root directory of the new SysFS instance, can be `NULL`.
@@ -70,7 +70,7 @@ mount_t* sysfs_mount_new(const char* name, namespace_t* ns, mount_flags_t flags,
  * @param private Private data to be stored in the inode of the root directory, can be `NULL`.
  * @return On success, the mounted SysFS instance. On failure, `NULL` and `errno` is set.
  */
-mount_t* sysfs_submount_new(const path_t* parent, const char* name, namespace_t* ns, mount_flags_t flags, mode_t mode,
+mount_t* sysfs_submount_new(const path_t* parent, const char* name, namespace_member_t* ns, mount_flags_t flags, mode_t mode,
     const inode_ops_t* inodeOps, const superblock_ops_t* superblockOps, void* private);
 
 /**

@@ -102,7 +102,7 @@ dentry_t* sysfs_get_dev(void)
     return REF(devMount->source);
 }
 
-mount_t* sysfs_mount_new(const char* name, namespace_t* ns, mount_flags_t flags, mode_t mode,
+mount_t* sysfs_mount_new(const char* name, namespace_member_t* ns, mount_flags_t flags, mode_t mode,
     const inode_ops_t* inodeOps, const superblock_ops_t* superblockOps, void* private)
 {
     if (name == NULL)
@@ -143,7 +143,7 @@ mount_t* sysfs_mount_new(const char* name, namespace_t* ns, mount_flags_t flags,
     return namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, flags, mode, &ctx);
 }
 
-mount_t* sysfs_submount_new(const path_t* parent, const char* name, namespace_t* ns, mount_flags_t flags, mode_t mode,
+mount_t* sysfs_submount_new(const path_t* parent, const char* name, namespace_member_t* ns, mount_flags_t flags, mode_t mode,
     const inode_ops_t* inodeOps, const superblock_ops_t* superblockOps, void* private)
 {
     if (parent == NULL || name == NULL)

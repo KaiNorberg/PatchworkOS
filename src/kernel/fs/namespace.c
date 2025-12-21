@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <sys/io.h>
+#include <sys/list.h>
 
 static map_key_t mount_key(mount_id_t parentId, dentry_id_t mountpointId)
 {
@@ -29,7 +30,7 @@ static map_key_t mount_key(mount_id_t parentId, dentry_id_t mountpointId)
     return map_key_buffer(&buffer, sizeof(buffer));
 }
 
-static uint64_t namespace_add(namespace_t* ns, mount_t* mount, mount_flags_t flags, map_key_t* key)
+static uint64_t namespace_add_local(namespace_t* ns, mount_t* mount, mount_flags_t flags, map_key_t* key)
 {
     namespace_mount_t* nsMount = malloc(sizeof(namespace_mount_t));
     if (nsMount == NULL)
@@ -70,6 +71,15 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, mount_flags_t fla
     list_push_back(&ns->mounts, &nsMount->entry);
 
     nsMount->mount = REF(mount);
+    return 0;
+}
+
+static uint64_t namespace_add(namespace_t* ns, mount_t* mount, mount_flags_t flags, map_key_t* key)
+{
+    if (namespace_add_local(ns, mount, flags, key) == ERR)
+    {
+        return ERR;
+    }
 
     if (flags & MOUNT_PROPAGATE_CHILDREN)
     {
@@ -98,66 +108,225 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, mount_flags_t fla
     return 0;
 }
 
-uint64_t namespace_init(namespace_t* ns, namespace_t* parent)
+static void namespace_remove(namespace_t* ns, mount_t* mount, mount_flags_t flags)
 {
+    if (mount == ns->root)
+    {
+        return;
+    }
+
+    map_key_t key = mount_key(mount->parent->id, mount->target->id);
+    namespace_mount_t* nsMount = CONTAINER_OF_SAFE(map_get(&ns->mountMap, &key), namespace_mount_t, mapEntry);
+    if (nsMount != NULL)
+    {
+        map_remove(&ns->mountMap, &nsMount->mapEntry);
+        list_remove(&ns->mounts, &nsMount->entry);
+        UNREF(nsMount->mount);
+        free(nsMount);
+    }
+
+    if (flags & MOUNT_PROPAGATE_CHILDREN)
+    {
+        namespace_t* child;
+        LIST_FOR_EACH(child, &ns->children, entry)
+        {
+            namespace_remove(child, mount, flags);
+        }
+    }
+
+    if (flags & MOUNT_PROPAGATE_PARENT && ns->parent != NULL)
+    {
+        namespace_remove(ns->parent, mount, flags);
+    }
+}
+
+static namespace_t* namespace_new(void)
+{
+    namespace_t* ns = malloc(sizeof(namespace_t));
+    if (ns == NULL)
+    {
+        errno = ENOMEM;
+        return NULL;
+    }
     list_entry_init(&ns->entry);
     list_init(&ns->children);
     ns->parent = NULL;
     list_init(&ns->mounts);
     map_init(&ns->mountMap);
     ns->root = NULL;
+    list_init(&ns->members);
     rwlock_init(&ns->lock);
 
-    if (parent == NULL)
+    return ns;
+}
+
+static void namespace_free(namespace_t* ns)
+{
+    if (ns->root != NULL)
     {
+        UNREF(ns->root);
+        ns->root = NULL;
+    }
+
+    while (!list_is_empty(&ns->mounts))
+    {
+        namespace_mount_t* nsMount = CONTAINER_OF(list_pop_first(&ns->mounts), namespace_mount_t, entry);
+
+        map_remove(&ns->mountMap, &nsMount->mapEntry);
+        UNREF(nsMount->mount);
+        free(nsMount);
+    }
+
+    if (ns->parent != NULL)
+    {
+        RWLOCK_WRITE_SCOPE(&ns->parent->lock);
+        while (!list_is_empty(&ns->children))
+        {
+            namespace_t* child = CONTAINER_OF(list_pop_first(&ns->children), namespace_t, entry);
+            RWLOCK_WRITE_SCOPE(&child->lock);
+            list_push_back(&ns->parent->children, &child->entry);
+            child->parent = ns->parent;
+        }
+        list_remove(&ns->parent->children, &ns->entry);
+        ns->parent = NULL;
+    }
+    else
+    {
+        while (!list_is_empty(&ns->children))
+        {
+            namespace_t* child = CONTAINER_OF(list_pop_first(&ns->children), namespace_t, entry);
+            RWLOCK_WRITE_SCOPE(&child->lock);
+            child->parent = NULL;
+        }
+    }
+
+    free(ns);
+}
+
+uint64_t namespace_member_init(namespace_member_t* member, namespace_member_t* source, namespace_member_flags_t flags)
+{
+    if (member == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    list_entry_init(&member->entry);
+    member->ns = NULL;
+    rwlock_init(&member->lock);
+
+    if (source == NULL)
+    {
+        namespace_t* ns = namespace_new();
+        if (ns == NULL)
+        {
+            return ERR;
+        }
+
+        member->ns = ns;
+        list_push_back(&ns->members, &member->entry);
         return 0;
     }
 
-    RWLOCK_WRITE_SCOPE(&ns->lock);
-    RWLOCK_WRITE_SCOPE(&parent->lock);
-
-    namespace_mount_t* nsMount;
-    LIST_FOR_EACH(nsMount, &parent->mounts, entry)
+    if (flags & NAMESPACE_MEMBER_COPY)
     {
-        if (nsMount->flags & MOUNT_DONT_INHERIT)
+        RWLOCK_READ_SCOPE(&source->lock);
+        namespace_t* srcNs = source->ns;
+        if (srcNs == NULL)
         {
-            continue;
+            errno = EINVAL;
+            return ERR;
         }
 
-        map_key_t key = mount_key(nsMount->mount->parent->id, nsMount->mount->target->id);
-        if (namespace_add(ns, nsMount->mount, MOUNT_NONE, &key) == ERR)
+        RWLOCK_WRITE_SCOPE(&srcNs->lock);
+
+        namespace_t* ns = namespace_new();
+        if (ns == NULL)
         {
-            if (errno == ENOMEM)
+            return ERR;
+        }
+
+        if (srcNs->root != NULL)
+        {
+            ns->root = REF(srcNs->root);
+        }
+        else
+        {
+            ns->root = NULL;
+        }
+
+        namespace_mount_t* srcMount;
+        LIST_FOR_EACH(srcMount, &srcNs->mounts, entry)
+        {
+            if (srcMount->flags & MOUNT_DONT_INHERIT)
             {
-                namespace_deinit(ns);
+                continue;
+            }
+
+            map_key_t key = mount_key(srcMount->mount->parent->id, srcMount->mount->target->id);
+            if (namespace_add_local(ns, srcMount->mount, srcMount->flags, &key) == ERR)
+            {
+                namespace_free(ns);
                 return ERR;
             }
         }
+
+        ns->parent = srcNs;
+        list_push_back(&srcNs->children, &ns->entry);
+
+        member->ns = ns;
+        list_push_back(&ns->members, &member->entry);
+        return 0;
     }
 
-    list_push_back(&parent->children, &ns->entry);
+    RWLOCK_READ_SCOPE(&source->lock);
+    if (source->ns == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
 
-    ns->parent = parent;
-    ns->root = REF(parent->root);
-
+    RWLOCK_WRITE_SCOPE(&source->ns->lock);
+    member->ns = source->ns;
+    list_push_back(&source->ns->members, &member->entry);
     return 0;
 }
 
-void namespace_deinit(namespace_t* ns)
+void namespace_member_deinit(namespace_member_t* member)
 {
-    if (ns == NULL)
+    namespace_member_clear(member);
+}
+
+void namespace_member_clear(namespace_member_t* member)
+{
+    if (member == NULL)
     {
         return;
     }
 
-    namespace_clear(ns);
+    RWLOCK_WRITE_SCOPE(&member->lock);
 
-    map_deinit(&ns->mountMap);
+    if (member->ns == NULL)
+    {
+        return;
+    }
+
+    namespace_t* ns = member->ns;
+    RWLOCK_WRITE_SCOPE(&ns->lock);
+
+    list_remove(&ns->members, &member->entry);
+
+    if (list_is_empty(&ns->members))
+    {
+        namespace_free(ns);
+    }
+
+    member->ns = NULL;
 }
 
-void namespace_traverse(namespace_t* ns, path_t* path)
+void namespace_traverse(namespace_member_t* member, path_t* path)
 {
-    if (ns == NULL || path == NULL || path->mount == NULL || path->dentry == NULL)
+    if (member == NULL || path == NULL || path->mount == NULL || path->dentry == NULL)
     {
         return;
     }
@@ -168,6 +337,12 @@ void namespace_traverse(namespace_t* ns, path_t* path)
         return;
     }
 
+    RWLOCK_READ_SCOPE(&member->lock);
+    namespace_t* ns = member->ns;
+    if (ns == NULL)
+    {
+        return;
+    }
     RWLOCK_READ_SCOPE(&ns->lock);
 
     map_key_t key = mount_key(path->mount->id, path->dentry->id);
@@ -181,10 +356,10 @@ void namespace_traverse(namespace_t* ns, path_t* path)
     path_set(path, nsMount->mount, nsMount->mount->source);
 }
 
-mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* deviceName, const char* fsName,
+mount_t* namespace_mount(namespace_member_t* member, path_t* target, const char* deviceName, const char* fsName,
     mount_flags_t flags, mode_t mode, void* private)
 {
-    if (ns == NULL || deviceName == NULL || fsName == NULL)
+    if (member == NULL || deviceName == NULL || fsName == NULL)
     {
         errno = EINVAL;
         return NULL;
@@ -210,9 +385,17 @@ mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* deviceName
         return NULL;
     }
 
+    RWLOCK_READ_SCOPE(&member->lock);
+    namespace_t* ns = member->ns;
+    if (ns == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+    RWLOCK_WRITE_SCOPE(&ns->lock);
+
     if (target == NULL)
     {
-        RWLOCK_WRITE_SCOPE(&ns->lock);
         if (ns->root != NULL)
         {
             errno = EBUSY;
@@ -241,8 +424,6 @@ mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* deviceName
         return NULL;
     }
 
-    RWLOCK_WRITE_SCOPE(&ns->lock);
-
     map_key_t key = mount_key(target->mount->id, target->dentry->id);
     if (namespace_add(ns, mount, flags, &key) == ERR)
     {
@@ -255,9 +436,9 @@ mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* deviceName
     return mount;
 }
 
-mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* target, mount_flags_t flags, mode_t mode)
+mount_t* namespace_bind(namespace_member_t* member, dentry_t* source, path_t* target, mount_flags_t flags, mode_t mode)
 {
-    if (ns == NULL || source == NULL || target == NULL || target->dentry == NULL || target->mount == NULL)
+    if (member == NULL || source == NULL || target == NULL || target->dentry == NULL || target->mount == NULL)
     {
         errno = EINVAL;
         return NULL;
@@ -269,6 +450,13 @@ mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* target, mount
         return NULL;
     }
 
+    RWLOCK_READ_SCOPE(&member->lock);
+    namespace_t* ns = member->ns;
+    if (ns == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
     RWLOCK_WRITE_SCOPE(&ns->lock);
 
     map_key_t key = mount_key(target->mount->id, target->dentry->id);
@@ -282,46 +470,25 @@ mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* target, mount
     return mount;
 }
 
-void namespace_unmount(namespace_t* ns, mount_t* mount, mount_flags_t flags)
+void namespace_unmount(namespace_member_t* member, mount_t* mount, mount_flags_t flags)
 {
-    if (ns == NULL || mount == NULL || mount->source == NULL || mount->target == NULL)
+    if (member == NULL || mount == NULL || mount->source == NULL || mount->target == NULL)
     {
         return;
     }
 
+    RWLOCK_READ_SCOPE(&member->lock);
+    namespace_t* ns = member->ns;
+    if (ns == NULL)
+    {
+        return;
+    }
     RWLOCK_WRITE_SCOPE(&ns->lock);
 
-    if (mount == ns->root)
-    {
-        return;
-    }
-
-    map_key_t key = mount_key(mount->parent->id, mount->target->id);
-    namespace_mount_t* nsMount = CONTAINER_OF_SAFE(map_get(&ns->mountMap, &key), namespace_mount_t, mapEntry);
-    if (nsMount != NULL)
-    {
-        map_remove(&ns->mountMap, &nsMount->mapEntry);
-        list_remove(&ns->mounts, &nsMount->entry);
-        UNREF(nsMount->mount);
-        free(nsMount);
-    }
-
-    if (flags & MOUNT_PROPAGATE_CHILDREN)
-    {
-        namespace_t* child;
-        LIST_FOR_EACH(child, &ns->children, entry)
-        {
-            namespace_unmount(child, mount, flags);
-        }
-    }
-
-    if (flags & MOUNT_PROPAGATE_PARENT && ns->parent != NULL)
-    {
-        namespace_unmount(ns->parent, mount, flags);
-    }
+    namespace_remove(ns, mount, flags);
 }
 
-uint64_t namespace_get_root_path(namespace_t* ns, path_t* out)
+uint64_t namespace_get_root_path(namespace_member_t* member, path_t* out)
 {
     if (out == NULL)
     {
@@ -329,53 +496,23 @@ uint64_t namespace_get_root_path(namespace_t* ns, path_t* out)
         return ERR;
     }
 
-    rwlock_read_acquire(&ns->lock);
+    RWLOCK_READ_SCOPE(&member->lock);
+    namespace_t* ns = member->ns;
+    if (ns == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+    RWLOCK_READ_SCOPE(&ns->lock);
+
     if (ns->root == NULL || ns->root->superblock == NULL || ns->root->source == NULL)
     {
-        rwlock_read_release(&ns->lock);
         errno = ENOENT;
         return ERR;
     }
+
     path_set(out, ns->root, ns->root->source);
-    rwlock_read_release(&ns->lock);
     return 0;
-}
-
-void namespace_clear(namespace_t* ns)
-{
-    rwlock_write_acquire(&ns->lock);
-
-    if (ns->root != NULL)
-    {
-        UNREF(ns->root);
-        ns->root = NULL;
-    }
-
-    while (!list_is_empty(&ns->mounts))
-    {
-        namespace_mount_t* nsMount = CONTAINER_OF(list_pop_first(&ns->mounts), namespace_mount_t, entry);
-
-        map_remove(&ns->mountMap, &nsMount->mapEntry);
-        UNREF(nsMount->mount);
-        free(nsMount);
-    }
-
-    if (ns->parent != NULL)
-    {
-        rwlock_write_acquire(&ns->parent->lock);
-        while (!list_is_empty(&ns->children))
-        {
-            namespace_t* child = CONTAINER_OF(list_pop_first(&ns->children), namespace_t, entry);
-            RWLOCK_WRITE_SCOPE(&child->lock);
-            list_push_back(&ns->parent->children, &child->entry);
-            child->parent = ns->parent;
-        }
-        list_remove(&ns->parent->children, &ns->entry);
-        rwlock_write_release(&ns->parent->lock);
-        ns->parent = NULL;
-    }
-
-    rwlock_write_release(&ns->lock);
 }
 
 SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpoint, mount_flags_t flags)

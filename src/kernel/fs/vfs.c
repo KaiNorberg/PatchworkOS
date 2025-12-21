@@ -32,7 +32,7 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
-static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_t* ns)
+static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_member_t* ns)
 {
     path_t parent = PATH_EMPTY;
     path_t target = PATH_EMPTY;
@@ -78,7 +78,7 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_t
     return 0;
 }
 
-static uint64_t vfs_open_lookup(path_t* path, const pathname_t* pathname, namespace_t* namespace)
+static uint64_t vfs_open_lookup(path_t* path, const pathname_t* pathname, namespace_member_t* namespace)
 {
     if (pathname->mode & MODE_CREATE)
     {
@@ -524,7 +524,7 @@ typedef struct
 } getdents_recursive_ctx_t;
 
 static uint64_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_recursive_ctx_t* ctx,
-    const char* prefix, namespace_t* ns)
+    const char* prefix, namespace_member_t* ns)
 {
     uint64_t offset = 0;
     uint64_t bufSize = 1024;

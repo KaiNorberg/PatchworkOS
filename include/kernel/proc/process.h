@@ -16,8 +16,8 @@
 #include <stdatomic.h>
 
 /**
- * @brief Processes.
- * @defgroup kernel_proc Processes
+ * @brief Process management.
+ * @defgroup kernel_proc Process
  * @ingroup kernel
  *
  * Processes store the shared resources for threads of execution, for example the address space and open files.
@@ -116,11 +116,23 @@
  * %llu %llu %llu %llu %llu
  * ```
  *
+ * ## ns
+ *
+ * A file that represents the namespace of the process. Opening this file returns a file descriptor referring to the
+ * namespace.
+ *
+ * This file descriptor can be used with the `join` command in the `ctl` file to switch namespaces.
+ *
+ * @see share()
+ * @see claim()
+ *
  * ## ctl
  *
  * A writable file that can be used to control certain aspects of the process, such as closing file descriptors.
  *
  * Included is a list of all supported commands.
+ * 
+ * @note Anytime a command refers to a file descriptor the file descriptor is the file descriptor of the target process, not the current process.
  *
  * ### close <fd>
  *
@@ -137,6 +149,12 @@
  *
  * Duplicates the specified old file descriptor to the new file descriptor in the process.
  *
+ * ### join <fd>
+ *
+ * Switches the process's namespace to the one referred to by the specified file descriptor.
+ *
+ * The file descriptor must have been obtained by opening a `/proc/[pid]/ns` file.
+ * 
  * ### start
  *
  * Starts the process if it was previously suspended.
@@ -212,11 +230,11 @@ typedef struct
 typedef struct process
 {
     pid_t id;
-    group_entry_t groupEntry;
+    group_member_t group;
     _Atomic(priority_t) priority;
     process_exit_status_t exitStatus;
     space_t space;
-    namespace_t ns;
+    namespace_member_t ns;
     cwd_t cwd;
     file_table_t fileTable;
     futex_ctx_t futexCtx;
@@ -238,11 +256,12 @@ typedef struct process
  * There is no `process_free()`, instead use `process_kill()` to push a process to the reaper.
  *
  * @param priority The priority of the new process.
- * @param ns The namespace of the new process.
  * @param gid The group ID of the new process, or `GID_NONE` to create a new group.
+ * @param source The source namespace entry to copy from or share a namespace with, or `NULL` to create a new empty namespace.
+ * @param flags Flags for the new namespace entry.
  * @return On success, the newly created process. On failure, `NULL` and `errno` is set.
  */
-process_t* process_new(priority_t priority, namespace_t* ns, gid_t gid);
+process_t* process_new(priority_t priority, gid_t gid, namespace_member_t* source, namespace_member_flags_t flags);
 
 /**
  * @brief Kills a process, pushing it to the reaper.

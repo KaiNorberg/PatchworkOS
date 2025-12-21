@@ -89,7 +89,7 @@ static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_
             start_menu_close(win);
 
             const char* argv[] = {entries[event->libAction.source].path, NULL};
-            if (spawn(argv, SPAWN_STDIO_FDS) == ERR)
+            if (spawn(argv, SPAWN_STDIO_FDS | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS) == ERR)
             {
                 char buffer[MAX_PATH];
                 sprintf(buffer, "Failed to spawn (%s)!", entries[event->libAction.source].path);

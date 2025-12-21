@@ -588,7 +588,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         term->prevCursor = &term->screen[0][0];
 
         const char* argv[] = {"/bin/shell", NULL};
-        term->shell = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_GROUP);
+        term->shell = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS);
         if (term->shell == ERR)
         {
             close(term->stdin[0]);

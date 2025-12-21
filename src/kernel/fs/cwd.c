@@ -24,9 +24,7 @@ path_t cwd_get(cwd_t* cwd)
     if (cwd->path.dentry == NULL || cwd->path.mount == NULL)
     {
         assert(cwd->path.dentry == NULL && cwd->path.mount == NULL);
-        namespace_t* kernelNs = &process_get_kernel()->ns;
-
-        if (namespace_get_root_path(kernelNs, &result) == ERR)
+        if (namespace_get_root_path(&process_get_kernel()->ns, &result) == ERR)
         {
             lock_release(&cwd->lock);
             return PATH_EMPTY;

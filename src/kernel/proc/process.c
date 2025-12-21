@@ -3,6 +3,7 @@
 #include <kernel/fs/ctl.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file.h>
+#include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
@@ -277,7 +278,7 @@ static uint64_t process_notegroup_write(file_t* file, const void* buffer, uint64
     char string[NOTE_MAX] = {0};
     memcpy_s(string, NOTE_MAX, buffer, MIN(count, NOTE_MAX - 1));
 
-    if (group_send_note(&process->groupEntry, string) == ERR)
+    if (group_send_note(&process->group, string) == ERR)
     {
         return ERR;
     }
@@ -298,7 +299,7 @@ static uint64_t process_gid_read(file_t* file, void* buffer, uint64_t count, uin
     }
 
     char gidStr[MAX_NAME];
-    uint32_t length = snprintf(gidStr, MAX_NAME, "%llu", group_get_id(&process->groupEntry));
+    uint32_t length = snprintf(gidStr, MAX_NAME, "%llu", group_get_id(&process->group));
     return BUFFER_READ(buffer, count, offset, gidStr, length);
 }
 
@@ -362,7 +363,7 @@ static file_ops_t waitOps = {
     .poll = process_wait_poll,
 };
 
-static uint64_t process_stat_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t process_perf_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     process_t* process = process_file_get_process(file);
     if (process == NULL)
@@ -393,8 +394,51 @@ static uint64_t process_stat_read(file_t* file, void* buffer, uint64_t count, ui
     return BUFFER_READ(buffer, count, offset, statStr, (uint64_t)length);
 }
 
-static file_ops_t statOps = {
-    .read = process_stat_read,
+static file_ops_t perfOps = {
+    .read = process_perf_read,
+};
+
+static uint64_t process_ns_open(file_t* file)
+{
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    namespace_member_t* member = malloc(sizeof(namespace_member_t));
+    if (member == NULL)
+    {
+        errno = ENOMEM;
+        return ERR;
+    }
+
+    if (namespace_member_init(member, &process->ns, NAMESPACE_MEMBER_SHARE) == ERR)
+    {
+        free(member);
+        return ERR;
+    }
+
+    file->private = member;
+    return 0;
+}
+
+static void process_ns_close(file_t* file)
+{
+    if (file->private == NULL)
+    {
+        return;
+    }
+
+    namespace_member_t* member = file->private;
+    namespace_member_deinit(member);
+    free(member);
+    file->private = NULL;
+}
+
+static file_ops_t nsOps = {
+    .open = process_ns_open,
+    .close = process_ns_close,
 };
 
 static uint64_t process_ctl_close(file_t* file, uint64_t argc, const char** argv)
@@ -486,6 +530,57 @@ static uint64_t process_ctl_dup2(file_t* file, uint64_t argc, const char** argv)
     return 0;
 }
 
+static uint64_t process_ctl_join(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 2)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    fd_t fd;
+    if (sscanf(argv[1], "%llu", &fd) != 1)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    file_t* nsFile = file_table_get(&process->fileTable, fd);
+    if (nsFile == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(nsFile);
+
+    if (nsFile->ops != &nsOps)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    namespace_member_t* target = nsFile->private;
+    if (target == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    namespace_member_deinit(&process->ns);
+
+    if (namespace_member_init(&process->ns, target, NAMESPACE_MEMBER_SHARE) == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
 static uint64_t process_ctl_start(file_t* file, uint64_t argc, const char** argv)
 {
     (void)argv; // Unused
@@ -533,6 +628,7 @@ CTL_STANDARD_OPS_DEFINE(ctlOps,
     {
         {"close", process_ctl_close, 2, 3},
         {"dup2", process_ctl_dup2, 3, 3},
+        {"join", process_ctl_join, 2, 2},
         {"start", process_ctl_start, 1, 1},
         {"kill", process_ctl_kill, 1, 1},
         {0},
@@ -668,10 +764,10 @@ static void process_proc_cleanup(inode_t* inode)
         process->cmdlineSize = 0;
     }
 
-    group_entry_deinit(&process->groupEntry);
+    group_member_deinit(&process->group);
     cwd_deinit(&process->cwd);
     file_table_deinit(&process->fileTable);
-    namespace_deinit(&process->ns);
+    namespace_member_deinit(&process->ns);
     space_deinit(&process->space);
     wait_queue_deinit(&process->dyingQueue);
     wait_queue_deinit(&process->suspendQueue);
@@ -692,7 +788,8 @@ static sysfs_file_desc_t files[] = {
     {.name = "gid", .inodeOps = NULL, .fileOps = &gidOps},
     {.name = "pid", .inodeOps = NULL, .fileOps = &pidOps},
     {.name = "wait", .inodeOps = NULL, .fileOps = &waitOps},
-    {.name = "perf", .inodeOps = NULL, .fileOps = &statOps},
+    {.name = "perf", .inodeOps = NULL, .fileOps = &perfOps},
+    {.name = "ns", .inodeOps = NULL, .fileOps = &nsOps},
     {.name = "ctl", .inodeOps = NULL, .fileOps = &ctlOps},
     {0},
 };
@@ -738,7 +835,7 @@ static uint64_t process_dir_init(process_t* process)
     return 0;
 }
 
-process_t* process_new(priority_t priority, namespace_t* ns, gid_t gid)
+process_t* process_new(priority_t priority, gid_t gid, namespace_member_t* source, namespace_member_flags_t flags)
 {
     process_t* process = malloc(sizeof(process_t));
     if (process == NULL)
@@ -748,7 +845,7 @@ process_t* process_new(priority_t priority, namespace_t* ns, gid_t gid)
     }
 
     process->id = atomic_fetch_add(&newPid, 1);
-    group_entry_init(&process->groupEntry);
+    group_member_init(&process->group);
     atomic_init(&process->priority, priority);
     memset_s(process->exitStatus.buffer, NOTE_MAX, 0, NOTE_MAX);
     lock_init(&process->exitStatus.lock);
@@ -760,7 +857,7 @@ process_t* process_new(priority_t priority, namespace_t* ns, gid_t gid)
         return NULL;
     }
 
-    if (namespace_init(&process->ns, ns) == ERR)
+    if (namespace_member_init(&process->ns, source, flags) == ERR)
     {
         space_deinit(&process->space);
         free(process);
@@ -791,7 +888,7 @@ process_t* process_new(priority_t priority, namespace_t* ns, gid_t gid)
     process->cmdline = NULL;
     process->cmdlineSize = 0;
 
-    if (group_add(gid, &process->groupEntry) == ERR)
+    if (group_add(gid, &process->group) == ERR)
     {
         process_kill(process, "init failed");
         return NULL;
@@ -846,8 +943,8 @@ void process_kill(process_t* process, const char* status)
 
     cwd_clear(&process->cwd);
     file_table_close_all(&process->fileTable);
-    namespace_clear(&process->ns);
-    group_remove(&process->groupEntry);
+    namespace_member_clear(&process->ns);
+    group_remove(&process->group);
 
     wait_unblock(&process->dyingQueue, WAIT_ALL, EOK);
 
@@ -1018,7 +1115,7 @@ process_t* process_get_kernel(void)
 {
     if (kernelProcess == NULL)
     {
-        kernelProcess = process_new(PRIORITY_MAX, NULL, GID_NONE);
+        kernelProcess = process_new(PRIORITY_MAX, GID_NONE, NULL, NAMESPACE_MEMBER_SHARE);
         if (kernelProcess == NULL)
         {
             panic(NULL, "Failed to create kernel process");
