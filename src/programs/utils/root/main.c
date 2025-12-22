@@ -104,7 +104,7 @@ int main(int argc, char* argv[])
         result = EXIT_FAILURE;
         goto cleanup;
     }
-    
+
     ns = claim(&key);
     if (ns == ERR)
     {

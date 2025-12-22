@@ -38,31 +38,11 @@ static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 static mount_t* proc = NULL;
 static dentry_t* self = NULL;
 
-static process_t* process_file_get_process(file_t* file)
-{
-    process_t* process = file->inode->private;
-    if (process == NULL)
-    {
-        LOG_DEBUG("process_file_get_process: inode private is NULL\n");
-        errno = EINVAL;
-        return NULL;
-    }
-
-    if (process == kernelProcess)
-    {
-        errno = EACCES;
-        return NULL;
-    }
-
-    return process;
-}
-
 static uint64_t process_self_readlink(inode_t* inode, char* buffer, uint64_t count)
 {
     (void)inode; // Unused
 
     process_t* process = sched_process();
-
     int ret = snprintf(buffer, count, "%llu", process->id);
     if (ret < 0 || ret >= (int)count)
     {
@@ -78,11 +58,7 @@ static inode_ops_t selfOps = {
 
 static uint64_t process_prio_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     priority_t priority = atomic_load(&process->priority);
 
@@ -95,11 +71,7 @@ static uint64_t process_prio_write(file_t* file, const void* buffer, uint64_t co
 {
     (void)offset; // Unused
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     char prioStr[MAX_NAME];
     if (count >= MAX_NAME)
@@ -134,11 +106,7 @@ static file_ops_t prioOps = {
 
 static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     path_t cwd = cwd_get(&process->cwd);
     PATH_DEFER(&cwd);
@@ -157,11 +125,7 @@ static uint64_t process_cwd_write(file_t* file, const void* buffer, uint64_t cou
 {
     (void)offset; // Unused
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     char cwdStr[MAX_PATH];
     if (count >= MAX_PATH)
@@ -204,11 +168,7 @@ static file_ops_t cwdOps = {
 
 static uint64_t process_cmdline_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     if (process->cmdline == NULL || process->cmdlineSize == 0)
     {
@@ -231,11 +191,7 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
         return 0;
     }
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     LOCK_SCOPE(&process->threads.lock);
 
@@ -269,11 +225,7 @@ static uint64_t process_notegroup_write(file_t* file, const void* buffer, uint64
         return 0;
     }
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     char string[NOTE_MAX] = {0};
     memcpy_s(string, NOTE_MAX, buffer, MIN(count, NOTE_MAX - 1));
@@ -292,11 +244,7 @@ static file_ops_t notegroupOps = {
 
 static uint64_t process_gid_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     char gidStr[MAX_NAME];
     uint32_t length = snprintf(gidStr, MAX_NAME, "%llu", group_get_id(&process->group));
@@ -309,11 +257,7 @@ static file_ops_t gidOps = {
 
 static uint64_t process_pid_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     char pidStr[MAX_NAME];
     uint32_t length = snprintf(pidStr, MAX_NAME, "%llu", process->id);
@@ -326,11 +270,7 @@ static file_ops_t pidOps = {
 
 static uint64_t process_wait_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     WAIT_BLOCK(&process->dyingQueue, atomic_load(&process->flags) & PROCESS_DYING);
 
@@ -343,12 +283,7 @@ static uint64_t process_wait_read(file_t* file, void* buffer, uint64_t count, ui
 
 static wait_queue_t* process_wait_poll(file_t* file, poll_events_t* revents)
 {
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return NULL;
-    }
-
+    process_t* process = file->inode->private;
     if (atomic_load(&process->flags) & PROCESS_DYING)
     {
         *revents |= POLLIN;
@@ -365,12 +300,7 @@ static file_ops_t waitOps = {
 
 static uint64_t process_perf_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
-
+    process_t* process = file->inode->private;
     uint64_t userPages = space_user_page_count(&process->space);
 
     lock_acquire(&process->threads.lock);
@@ -400,11 +330,7 @@ static file_ops_t perfOps = {
 
 static uint64_t process_ns_open(file_t* file)
 {
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     namespace_member_t* member = malloc(sizeof(namespace_member_t));
     if (member == NULL)
@@ -449,11 +375,7 @@ static uint64_t process_ctl_close(file_t* file, uint64_t argc, const char** argv
         return ERR;
     }
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     if (argc == 2)
     {
@@ -502,11 +424,7 @@ static uint64_t process_ctl_dup2(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     fd_t oldFd;
     if (sscanf(argv[1], "%lld", &oldFd) != 1)
@@ -538,11 +456,7 @@ static uint64_t process_ctl_join(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     fd_t fd;
     if (sscanf(argv[1], "%llu", &fd) != 1)
@@ -591,11 +505,7 @@ static uint64_t process_ctl_start(file_t* file, uint64_t argc, const char** argv
         return ERR;
     }
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     atomic_fetch_and(&process->flags, ~PROCESS_SUSPENDED);
     wait_unblock(&process->suspendQueue, WAIT_ALL, EOK);
@@ -613,11 +523,7 @@ static uint64_t process_ctl_kill(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     process_kill(process, 0);
 

@@ -134,6 +134,5 @@ int main()
         benchmark_mmap(i);
     }
 
-
     return 0;
 }

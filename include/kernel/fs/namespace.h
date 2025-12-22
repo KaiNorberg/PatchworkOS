@@ -50,13 +50,14 @@ typedef struct namespace_mount
 typedef enum
 {
     NAMESPACE_MEMBER_SHARE = 0 << 0, ///< Share the same namespace as the source.
-    NAMESPACE_MEMBER_COPY = 1 << 1, ///< Copy the contents of the source into a new namespace with the source as the parent.
+    NAMESPACE_MEMBER_COPY =
+        1 << 1, ///< Copy the contents of the source into a new namespace with the source as the parent.
 } namespace_member_flags_t;
 
 /**
  * @brief Per-process namespace member.
  * @struct namespace_member_t
- * 
+ *
  * Stored in each process, used to allow multiple processes to share a namespace.
  */
 typedef struct namespace_member
@@ -78,7 +79,7 @@ typedef struct namespace
     list_t mounts;       ///< List of mounts in this namespace.
     map_t mountMap;      ///< Map used to go from source dentries to namespace mounts.
     mount_t* root;       ///< The root mount of the namespace.
-    list_t members; ///< List of `namespace_member_t`.
+    list_t members;      ///< List of `namespace_member_t`.
     rwlock_t lock;
     // clang-format off
 } namespace_t;
@@ -88,7 +89,8 @@ typedef struct namespace
  * @brief Initializes a namespace member.
  *
  * @param member The namespace member to initialize.
- * @param source The source namespace member to copy from or share a namespace with, or `NULL` to create a new empty namespace.
+ * @param source The source namespace member to copy from or share a namespace with, or `NULL` to create a new empty
+ * namespace.
  * @param flags Flags for the new namespace member.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.

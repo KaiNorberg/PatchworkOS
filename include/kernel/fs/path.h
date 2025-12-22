@@ -49,6 +49,8 @@ typedef struct namespace_member namespace_member_t;
  * will remove directories and their children recursively. |
  * | `nofollow`  | `N` | Do not follow symbolic links. |
  *
+ * @todo Add `FD_CLOEXEC` equivalent.
+ * 
  * For convenience, a single letter short form is also available as shown above, these single letter forms do not need
  * to be separated by colons, for example `/path/to/file:rwcte` is equivalent to
  * `/path/to/file:read:write:create:truncate:exclusive`.

@@ -82,15 +82,15 @@
  * %llu
  * ```
  *
- * ## pid 
- * 
+ * ## pid
+ *
  * A readable file that contains the process ID.
  *
  * Format:
  * ```
  * %llu
  * ```
- * 
+ *
  * ## wait
  *
  * A readable and pollable file that can be used to wait for the process to exit. Reading
@@ -131,8 +131,9 @@
  * A writable file that can be used to control certain aspects of the process, such as closing file descriptors.
  *
  * Included is a list of all supported commands.
- * 
- * @note Anytime a command refers to a file descriptor the file descriptor is the file descriptor of the target process, not the current process.
+ *
+ * @note Anytime a command refers to a file descriptor the file descriptor is the file descriptor of the target process,
+ * not the current process.
  *
  * ### close <fd>
  *
@@ -154,7 +155,7 @@
  * Switches the process's namespace to the one referred to by the specified file descriptor.
  *
  * The file descriptor must have been obtained by opening a `/proc/[pid]/ns` file.
- * 
+ *
  * ### start
  *
  * Starts the process if it was previously suspended.
@@ -257,7 +258,8 @@ typedef struct process
  *
  * @param priority The priority of the new process.
  * @param gid The group ID of the new process, or `GID_NONE` to create a new group.
- * @param source The source namespace entry to copy from or share a namespace with, or `NULL` to create a new empty namespace.
+ * @param source The source namespace entry to copy from or share a namespace with, or `NULL` to create a new empty
+ * namespace.
  * @param flags Flags for the new namespace entry.
  * @return On success, the newly created process. On failure, `NULL` and `errno` is set.
  */

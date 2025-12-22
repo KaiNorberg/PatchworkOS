@@ -92,15 +92,33 @@ static mode_t path_flag_to_mode(const char* flag, uint64_t length)
 
 static inline bool path_is_char_valid(char ch)
 {
-    static const bool valid[UINT8_MAX + 1] = {
-        ['a' ... 'z'] = true, ['A' ... 'Z'] = true, ['0' ... '9'] = true,
-        ['_'] = true, ['-'] = true, ['.'] = true, [' '] = true,
-        ['('] = true, [')'] = true, ['['] = true, [']'] = true,
-        ['{'] = true, ['}'] = true, ['~'] = true, ['!'] = true,
-        ['@'] = true, ['#'] = true, ['$'] = true, ['%'] = true,
-        ['^'] = true, ['&'] = true, ['?'] = true, ['\''] = true,
-        [','] = true, [';'] = true, ['='] = true, ['+'] = true
-    };
+    static const bool valid[UINT8_MAX + 1] = {['a' ... 'z'] = true,
+        ['A' ... 'Z'] = true,
+        ['0' ... '9'] = true,
+        ['_'] = true,
+        ['-'] = true,
+        ['.'] = true,
+        [' '] = true,
+        ['('] = true,
+        [')'] = true,
+        ['['] = true,
+        [']'] = true,
+        ['{'] = true,
+        ['}'] = true,
+        ['~'] = true,
+        ['!'] = true,
+        ['@'] = true,
+        ['#'] = true,
+        ['$'] = true,
+        ['%'] = true,
+        ['^'] = true,
+        ['&'] = true,
+        ['?'] = true,
+        ['\''] = true,
+        [','] = true,
+        [';'] = true,
+        ['='] = true,
+        ['+'] = true};
     return valid[(uint8_t)ch];
 }
 

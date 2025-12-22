@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -25,27 +26,13 @@ extern "C"
  * @brief System IO header.
  * @ingroup libstd
  * @defgroup libstd_sys_io System IO
- *
- * The `sys/io.h` header handles interaction with PatchworkOS's file system,
- * following the philosophy that everything is a file. This means interacting with physical devices,
- * inter-process communication (like shared memory), and much more is handled via files.
- *
- * ### Flags
- *
- * Functions like `open()` do not have a specific argument for flags, instead the filepath itself contains the flags.
- * This means that for example there is no need for a special "truncate" redirect in a shell (>>) instead you can just
- * add the "trunc" flag to the filepath and use a normal redirect (>).
- *
- * Here is an example filepath: `/this/is/a/path:with:some:flags`.
- *
- * Check the 'src/kernel/fs/path.h' file for a list of available flags.
- *
+ * 
  * @{
  */
 
-#define STDIN_FILENO 0
-#define STDOUT_FILENO 1
-#define STDERR_FILENO 2
+#define STDIN_FILENO 0 ///< Standard input file descriptor.
+#define STDOUT_FILENO 1 ///< Standard output file descriptor.
+#define STDERR_FILENO 2 ///< Standard error file descriptor.
 
 /**
  * @brief Pipe read end.
@@ -55,6 +42,7 @@ extern "C"
  *
  */
 #define PIPE_READ 0
+
 /**
  * @brief Pipe write end.
  *
@@ -70,21 +58,18 @@ extern "C"
 #define F_MAX_SIZE 512
 
 /**
- * @brief Format string macro.
+ * @brief Allocates a formatted string on the stack.
  *
- * This macro is a helper to create formatted strings on the stack. Very useful for functions like `open()`.
- *
- * @note This could be reimplemented using thread local storage to avoid using `alloca()`, but we then end up needing to
- * set a maximum limit for how many `F()` strings can be used simultaneously. Using `alloca()` means we can use as many
- * as we want, as long as we have enough stack space, even if it is more dangerous.
- *
- * @warning Will truncate the string if it exceeds `F_MAX_SIZE`.
+ * @warning Will terminate the program if the size of the formatted string is too large or if an encoding error occurs.
  */
 #define F(format, ...) \
     ({ \
         char* _buffer = alloca(F_MAX_SIZE); \
         int _len = snprintf(_buffer, F_MAX_SIZE, format, __VA_ARGS__); \
-        assert(_len >= 0 && "F() formatting error"); \
+        if (_len < 0 || _len >= F_MAX_SIZE) \
+        { \
+            abort(); \
+        } \
         _buffer; \
     })
 
@@ -103,7 +88,7 @@ fd_t open(const char* path);
 
  * This is intended as a more generic
  implementation
- * of system calls like pipe() in for example Linux. One example use case of this system call is pipes, if
+ * of system calls like pipe() in POSIX systems. One example use case of this system call is pipes, if
  * `open2` is called on `/dev/pipe` then `fd[0]` will store the read end of the pipe and `fd[1]` will store the
  write
  * end of the pipe. But if `open()` is called on `/dev/pipe` then the returned file descriptor would be both
