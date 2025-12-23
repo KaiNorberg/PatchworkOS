@@ -7,6 +7,8 @@
 #include <string.h>
 #include <sys/io.h>
 
+#define ROOT_PASSWORD "1234"
+
 uint64_t root_handle_client(fd_t client)
 {
     char buffer[MAX_PATH] = {0};
@@ -15,7 +17,12 @@ uint64_t root_handle_client(fd_t client)
         return ERR;
     }
 
-    printf("root: received message: %s\n", buffer);
+    printf("root: received password attempt: %s\n", buffer);
+    if (strcmp(buffer, ROOT_PASSWORD) != 0)
+    {
+        errno = EPERM;
+        return ERR;
+    }
 
     fd_t ns = open("/proc/self/ns");
     if (ns == ERR)

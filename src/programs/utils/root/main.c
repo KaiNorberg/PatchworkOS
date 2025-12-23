@@ -40,6 +40,7 @@ uint64_t adjust_path(const char* command, char* out)
     }
 
     free(pathEnv);
+    errno = ENOENT;
     return ERR;
 }
 
@@ -90,7 +91,13 @@ int main(int argc, char* argv[])
         goto cleanup;
     }
 
-    if (swrite(data, "Hello from client!") == ERR)
+    printf("root password: ");
+    fflush(stdout);
+
+    char password[1024] = {0};
+    scanf("%1023[^\n]", password);
+
+    if (swrite(data, password) == ERR)
     {
         printf("%s: failed to send message to root (%s)\n", argv[0], strerror(errno));
         result = EXIT_FAILURE;
@@ -100,7 +107,7 @@ int main(int argc, char* argv[])
     key_t key = {0};
     if (read(data, &key, sizeof(key)) != sizeof(key))
     {
-        printf("%s: failed to read key from root (%s)\n", argv[0], strerror(errno));
+        printf("%s: failed to read key from root\n", argv[0]);
         result = EXIT_FAILURE;
         goto cleanup;
     }
