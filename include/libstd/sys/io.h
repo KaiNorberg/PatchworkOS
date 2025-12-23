@@ -210,6 +210,26 @@ uint64_t writefile(const char* path, const void* buffer, uint64_t count, uint64_
 uint64_t swritefile(const char* path, const char* string);
 
 /**
+ * @brief Wrapper for reading from a file descriptor using scan formatting.
+ *
+ * @param fd The file descriptor to read from.
+ * @param format The format string.
+ * @return On success, the number of input items successfully matched and assigned. On failure, `ERR`.
+ */
+uint64_t scan(fd_t fd, const char* format, ...);
+
+/**
+ * @brief Wrapper for reading from a file path using scan formatting.
+ *
+ * Equivalent to calling `open()`, `fscan()`, and `close()` in sequence.
+ *
+ * @param path The path to the file.
+ * @param format The format string.
+ * @return On success, the number of input items successfully matched and assigned. On failure, `ERR`.
+ */
+uint64_t scanfile(const char* path, const char* format, ...);
+
+/**
  * @brief Type for the `seek()` origin argument.
  *
  */
