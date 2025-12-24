@@ -529,6 +529,36 @@ uint64_t readlink(const char* path, char* buffer, uint64_t count);
  */
 uint64_t symlink(const char* target, const char* linkpath);
 
+/**
+ * @brief Macro to automatically retry a function that returns an integer if it errors and `errno == EINTR`.
+ * 
+ * @param expr The expression to evaluate.
+ */
+#define RETRY_EINTR(expr) \
+    ({ \
+        uint64_t _result; \
+        do \
+        { \
+            _result = (expr); \
+        } while (_result == ERR && errno == EINTR); \
+        _result; \
+    })
+
+/**
+ * @brief Macro to automatically retry a function that returns a pointer if it errors and `errno == EINTR`.
+ *
+ * @param expr The expression to evaluate.
+ */
+#define RETRY_EINTR_PTR(expr) \
+    ({ \
+        void* _result; \
+        do \
+        { \
+            _result = (expr); \
+        } while (_result == NULL && errno == EINTR); \
+        _result; \
+    })
+
 /** @} */
 
 #if defined(__cplusplus)

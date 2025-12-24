@@ -47,31 +47,22 @@ static void interactive_execute(void)
 
     history_push(&history, buffer);
 
-    pipeline_t* pipeline = malloc(sizeof(pipeline_t));
-    if (pipeline == NULL)
+    pipeline_t pipeline;
+    if (pipeline_init(&pipeline, buffer, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO) == ERR)
     {
-        printf("shell: out of memory\n");
         interactive_prompt();
         return;
     }
 
-    if (pipeline_init(pipeline, buffer, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO) == ERR)
+    pipeline_execute(&pipeline);
+    pipeline_wait(&pipeline);
+
+    if (strlen(pipeline.status) > 0 && strcmp(pipeline.status, "0") != 0 && strcmp(pipeline.status, "-1") != 0)
     {
-        free(pipeline);
-        interactive_prompt();
-        return;
+        printf("shell: %s\n", pipeline.status);
     }
 
-    pipeline_execute(pipeline);
-    pipeline_wait(pipeline);
-
-    if (strlen(pipeline->status) > 0 && strcmp(pipeline->status, "0") != 0 && strcmp(pipeline->status, "-1") != 0)
-    {
-        printf("shell: %s\n", pipeline->status);
-    }
-
-    pipeline_deinit(pipeline);
-    free(pipeline);
+    pipeline_deinit(&pipeline);
 
     interactive_prompt();
 }
@@ -240,12 +231,14 @@ void interactive_shell(void)
     while (true)
     {
         char buffer[MAX_PATH];
-        uint64_t readCount = read(STDIN_FILENO, buffer, MAX_PATH);
+        uint64_t readCount = RETRY_EINTR(read(STDIN_FILENO, buffer, MAX_PATH));
         if (readCount == ERR)
         {
-            _exit(F("shell: failed to read input (%s)\n", strerror(errno)));
+            printf("shell: failed to read input (%s)\n", strerror(errno));
+            exit(EXIT_FAILURE);
         }
 
         interactive_handle_input(buffer, readCount);
     }
 }
+    

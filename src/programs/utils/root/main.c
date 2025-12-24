@@ -44,6 +44,40 @@ uint64_t adjust_path(const char* command, char* out)
     return ERR;
 }
 
+uint64_t password_read(char* out, uint64_t size)
+{
+    uint64_t i = 0;
+    while (1)
+    {
+        char c;
+        if (read(STDIN_FILENO, &c, 1) != 1)
+        {
+            return ERR;
+        }
+        if (c == '\n')
+        {
+            break;
+        }
+
+        if (i > 0)
+        {
+            printf("\b*%c", c);
+        }
+        else
+        {
+            printf("%c", c);
+        }
+        fflush(stdout);
+
+        if (i < size - 1)
+        {
+            out[i++] = c;
+        }
+    }
+
+    return 0;
+}
+
 int main(int argc, char* argv[])
 {
     if (argc < 2)
@@ -95,11 +129,16 @@ int main(int argc, char* argv[])
     fflush(stdout);
 
     char password[1024] = {0};
-    scanf("%1023[^\n]", password);
+    if (password_read(password, sizeof(password)) == ERR)
+    {
+        printf("%s: failed to read root password (%s)\n", argv[0], strerror(errno));
+        result = EXIT_FAILURE;
+        goto cleanup;
+    }
 
     if (swrite(data, password) == ERR)
     {
-        printf("%s: failed to send message to root (%s)\n", argv[0], strerror(errno));
+        printf("%s: failed to send root password (%s)\n", argv[0], strerror(errno));
         result = EXIT_FAILURE;
         goto cleanup;
     }

@@ -3,7 +3,6 @@
 
 #include <_internal/MAX_PATH.h>
 #include <errno.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -458,10 +457,12 @@ void pipeline_wait(pipeline_t* pipeline)
         }
 
         memset(pipeline->status, 0, sizeof(pipeline->status));
-        uint64_t readCount;
-        do {
-            readCount = read(wait, pipeline->status, sizeof(pipeline->status) - 1);
-        } while (readCount == ERR && errno == EINTR);
+        uint64_t readCount = RETRY_EINTR(read(wait, pipeline->status, sizeof(pipeline->status)));
         close(wait);
+        if (readCount == ERR)
+        {
+            strcpy(pipeline->status, "-1");
+            continue;
+        }
     }
 }

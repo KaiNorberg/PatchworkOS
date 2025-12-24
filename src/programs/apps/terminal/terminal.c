@@ -226,7 +226,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
 
     if (ansi.length == 1 && ansi.buffer[0] == '\003')
     {
-        swritefile(F("/proc/%d/notegroup", term->shell), "interrupt due to ctrl+c");
+        swritefile(F("/proc/%llu/notegroup", term->shell), "interrupt due to ctrl+c");
     }
 }
 
