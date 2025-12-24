@@ -37,18 +37,17 @@ static void loader_strv_free(char** array, uint64_t amount)
     free((void*)array);
 }
 
-void loader_exec(const char* executable, char** argv, uint64_t argc)
+void loader_exec(void)
 {
-    assert(executable != NULL);
-    assert((argv != NULL && argc > 0) || ((argv == NULL || argv[0] == NULL) && argc == 0));
-
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
 
     file_t* file = NULL;
     void* fileData = NULL;
 
-    file = vfs_open(PATHNAME(executable), process);
+    uintptr_t* addrs = NULL;
+
+    file = vfs_open(PATHNAME(process->argv[0]), process);
     if (file == NULL)
     {
         goto cleanup;
@@ -88,29 +87,31 @@ void loader_exec(const char* executable, char** argv, uint64_t argc)
 
     elf64_load_segments(&elf, 0, 0);
 
-    if (process_set_cmdline(process, argv, argc) == ERR)
+    char* rsp = (char*)thread->userStack.top;
+
+    addrs = malloc(sizeof(uintptr_t) * process->argc);
+    if (addrs == NULL)
     {
         goto cleanup;
     }
 
-    char* rsp = (char*)thread->userStack.top;
-    for (int64_t i = argc - 1; i >= 0; i--)
+    for (int64_t i = (int64_t)process->argc - 1; i >= 0; i--)
     {
-        size_t len = strlen(argv[i]) + 1;
+        size_t len = strlen(process->argv[i]) + 1;
         rsp -= len;
-        memcpy(rsp, argv[i], len);
+        memcpy(rsp, process->argv[i], len);
+        addrs[i] = (uintptr_t)rsp;
+    }
 
-        free(argv[i]);
-        argv[i] = rsp;
-    }
-    rsp -= sizeof(char*);
-    *((char**)rsp) = NULL;
-    for (int64_t i = argc - 1; i >= 0; i--)
+    rsp = (char*)ROUND_DOWN((uintptr_t)rsp, 8);
+
+    rsp -= (process->argc + 1) * sizeof(char*);
+    uintptr_t* argvStack = (uintptr_t*)rsp;
+    for (uint64_t i = 0; i < process->argc; i++)
     {
-        rsp -= sizeof(char*);
-        *((char**)rsp) = argv[i];
-        argv[i] = NULL;
+        argvStack[i] = addrs[i];
     }
+    argvStack[process->argc] = 0;
 
     // Disable interrupts, they will be enabled when we jump to user space.
     asm volatile("cli");
@@ -118,7 +119,7 @@ void loader_exec(const char* executable, char** argv, uint64_t argc)
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
     thread->frame.rsp = ROUND_DOWN((uintptr_t)rsp - sizeof(uint64_t), 16);
     thread->frame.rip = elf.header->e_entry;
-    thread->frame.rdi = argc;
+    thread->frame.rdi = process->argc;
     thread->frame.rsi = (uintptr_t)rsp;
     thread->frame.cs = GDT_CS_RING3;
     thread->frame.ss = GDT_SS_RING3;
@@ -134,8 +135,10 @@ cleanup:
     {
         free(fileData);
     }
-    free((void*)executable);
-    loader_strv_free(argv, argc);
+    if (addrs != NULL)
+    {
+        free(addrs);
+    }
     if (errno == EOK)
     {
         thread_jump(thread);
@@ -143,13 +146,13 @@ cleanup:
     sched_process_exit("exec failed");
 }
 
-static void loader_entry(const char* executable, char** argv, uint64_t argc)
+static void loader_entry(void)
 {
     thread_t* thread = sched_thread();
 
     WAIT_BLOCK(&thread->process->suspendQueue, !(atomic_load(&thread->process->flags) & PROCESS_SUSPENDED));
 
-    loader_exec(executable, argv, argc);
+    loader_exec();
 }
 
 SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
@@ -191,6 +194,11 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     }
 
     if (argc == 0 || argvCopy[0] == NULL)
+    {
+        goto error;
+    }
+
+    if (process_set_cmdline(child, argvCopy, argc) == ERR)
     {
         goto error;
     }
@@ -239,12 +247,9 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
         path_put(&cwd);
     }
 
-    // Call loader_exec(executable, argvCopy, argc)
+    // Call loader_exec()
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
     childThread->frame.rip = (uintptr_t)loader_entry;
-    childThread->frame.rdi = (uintptr_t)executable;
-    childThread->frame.rsi = (uintptr_t)argvCopy;
-    childThread->frame.rdx = argc;
 
     childThread->frame.cs = GDT_CS_RING0;
     childThread->frame.ss = GDT_SS_RING0;

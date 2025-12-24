@@ -252,8 +252,8 @@ typedef struct process
     process_threads_t threads;
     list_entry_t zombieEntry;
     process_dir_t dir;
-    char* cmdline;
-    uint64_t cmdlineSize;
+    char** argv;
+    uint64_t argc;
 } process_t;
 
 /**

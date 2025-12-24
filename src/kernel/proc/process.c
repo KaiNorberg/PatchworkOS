@@ -170,12 +170,40 @@ static uint64_t process_cmdline_read(file_t* file, void* buffer, uint64_t count,
 {
     process_t* process = file->inode->private;
 
-    if (process->cmdline == NULL || process->cmdlineSize == 0)
+    if (process->argv == NULL || process->argc == 0)
     {
         return 0;
     }
 
-    return BUFFER_READ(buffer, count, offset, process->cmdline, process->cmdlineSize);
+    uint64_t totalSize = 0;
+    for (uint64_t i = 0; i < process->argc; i++)
+    {
+        totalSize += strlen(process->argv[i]) + 1;
+    }
+
+    if (totalSize == 0)
+    {
+        return 0;
+    }
+
+    char* cmdline = malloc(totalSize);
+    if (cmdline == NULL)
+    {
+        errno = ENOMEM;
+        return ERR;
+    }
+
+    char* dest = cmdline;
+    for (uint64_t i = 0; i < process->argc; i++)
+    {
+        uint64_t len = strlen(process->argv[i]) + 1;
+        memcpy(dest, process->argv[i], len);
+        dest += len;
+    }
+
+    uint64_t result = BUFFER_READ(buffer, count, offset, cmdline, totalSize);
+    free(cmdline);
+    return result;
 }
 
 static file_ops_t cmdlineOps = {
@@ -675,11 +703,18 @@ static void process_proc_cleanup(inode_t* inode)
     assert(list_is_empty(&process->dir.files));
     assert(list_is_empty(&process->dir.envEntries));
 
-    if (process->cmdline != NULL)
+    if (process->argv != NULL)
     {
-        free(process->cmdline);
-        process->cmdline = NULL;
-        process->cmdlineSize = 0;
+        for (uint64_t i = 0; i < process->argc; i++)
+        {
+            if (process->argv[i] != NULL)
+            {
+                free(process->argv[i]);
+            }
+        }
+        free(process->argv);
+        process->argv = NULL;
+        process->argc = 0;
     }
 
     group_member_deinit(&process->group);
@@ -803,8 +838,8 @@ process_t* process_new(priority_t priority, gid_t gid, namespace_member_t* sourc
     list_init(&process->dir.envEntries);
     lock_init(&process->dir.lock);
 
-    process->cmdline = NULL;
-    process->cmdlineSize = 0;
+    process->argv = NULL;
+    process->argc = 0;
 
     if (group_add(gid, &process->group) == ERR)
     {
@@ -965,50 +1000,56 @@ uint64_t process_set_cmdline(process_t* process, char** argv, uint64_t argc)
 
     if (argv == NULL || argc == 0)
     {
+        process->argv = NULL;
+        process->argc = 0;
         return 0;
     }
 
-    uint64_t totalSize = 0;
-    for (uint64_t i = 0; i < argc; i++)
-    {
-        if (argv[i] == NULL)
-        {
-            break;
-        }
-        totalSize += strlen(argv[i]) + 1;
-    }
-
-    if (totalSize == 0)
-    {
-        return 0;
-    }
-
-    char* cmdline = malloc(totalSize);
-    if (cmdline == NULL)
+    char** newArgv = malloc(sizeof(char*) * (argc + 1));
+    if (newArgv == NULL)
     {
         errno = ENOMEM;
         return ERR;
     }
 
-    char* dest = cmdline;
-    for (uint64_t i = 0; i < argc; i++)
+    uint64_t i = 0;
+    for (; i < argc; i++)
     {
         if (argv[i] == NULL)
         {
             break;
         }
-        uint64_t len = strlen(argv[i]) + 1;
-        memcpy(dest, argv[i], len);
-        dest += len;
+        size_t len = strlen(argv[i]) + 1;
+        newArgv[i] = malloc(len);
+        if (newArgv[i] == NULL)
+        {
+            for (uint64_t j = 0; j < i; j++)
+            {
+                free(newArgv[j]);
+            }
+            free(newArgv);
+            errno = ENOMEM;
+            return ERR;
+        }
+        memcpy(newArgv[i], argv[i], len);
     }
+    newArgv[i] = NULL;
 
-    if (process->cmdline != NULL)
+    uint64_t newArgc = i;
+    if (process->argv != NULL)
     {
-        free(process->cmdline);
+        for (uint64_t j = 0; j < process->argc; j++)
+        {
+            if (process->argv[j] != NULL)
+            {
+                free(process->argv[j]);
+            }
+        }
+        free(process->argv);
     }
 
-    process->cmdline = cmdline;
-    process->cmdlineSize = totalSize;
+    process->argv = newArgv;
+    process->argc = newArgc;
 
     return 0;
 }

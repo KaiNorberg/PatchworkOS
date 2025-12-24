@@ -159,18 +159,14 @@ static inline void init_process_spawn(void)
         panic(NULL, "Failed to create init thread");
     }
 
-    // Calls loader_exec("/bin/init", NULL, 0, NULL, 0);
-    initThread->frame.rip = (uintptr_t)loader_exec;
-    initThread->frame.rdi = (uintptr_t)strdup("/bin/init");
-    if (initThread->frame.rdi == (uintptr_t)NULL)
+    char* argv[] = {"/bin/init", NULL};
+    if (process_set_cmdline(initProcess, argv, 1) == ERR)
     {
-        panic(NULL, "Failed to allocate memory for init executable path");
+        panic(NULL, "Failed to set init process cmdline");
     }
-    initThread->frame.rsi = (uintptr_t)NULL;
-    initThread->frame.rdx = 0;
-    initThread->frame.rcx = (uintptr_t)NULL;
-    initThread->frame.r8 = 0;
 
+    // Calls loader_exec();
+    initThread->frame.rip = (uintptr_t)loader_exec;
     initThread->frame.cs = GDT_CS_RING0;
     initThread->frame.ss = GDT_SS_RING0;
     initThread->frame.rsp = initThread->kernelStack.top;
