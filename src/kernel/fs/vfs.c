@@ -68,6 +68,12 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_m
         return 0;
     }
 
+    if (!(parent.mount->mode & MODE_CREATE))
+    {
+        errno = EACCES;
+        return ERR;
+    }
+
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     if (dir->ops->create(dir, target.dentry, pathname->mode) == ERR)
     {

@@ -26,8 +26,6 @@ typedef struct process process_t;
  * However, its possible to propagate mounts and unmounts to children and/or parent namespaces using mount flags
  * (`mount_flags_t`), this allows those namespaces to also see the new mount or bind or have the mount or bind removed.
  *
- * @todo Implement "sticky" mount which apply to the dentry instead of a specific VFS path.
- *
  * @{
  */
 

@@ -17,6 +17,8 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
+#define MOUNT_ID_STICKY UINT64_MAX
+
 static map_key_t mount_key(mount_id_t parentId, dentry_id_t mountpointId)
 {
     struct
@@ -117,7 +119,20 @@ static void namespace_remove(namespace_t* ns, mount_t* mount, mount_flags_t flag
 
     map_key_t key = mount_key(mount->parent->id, mount->target->id);
     namespace_mount_t* nsMount = CONTAINER_OF_SAFE(map_get(&ns->mountMap, &key), namespace_mount_t, mapEntry);
-    if (nsMount != NULL)
+
+    if (nsMount == NULL || nsMount->mount != mount)
+    {
+        map_key_t stickyKey = mount_key(MOUNT_ID_STICKY, mount->target->id);
+        namespace_mount_t* stickyMount =
+            CONTAINER_OF_SAFE(map_get(&ns->mountMap, &stickyKey), namespace_mount_t, mapEntry);
+
+        if (stickyMount != NULL && stickyMount->mount == mount)
+        {
+            nsMount = stickyMount;
+        }
+    }
+
+    if (nsMount != NULL && nsMount->mount == mount)
     {
         map_remove(&ns->mountMap, &nsMount->mapEntry);
         list_remove(&ns->mounts, &nsMount->entry);
@@ -258,12 +273,21 @@ uint64_t namespace_member_init(namespace_member_t* member, namespace_member_t* s
         namespace_mount_t* srcMount;
         LIST_FOR_EACH(srcMount, &srcNs->mounts, entry)
         {
-            if (srcMount->flags & MOUNT_DONT_INHERIT)
+            if (srcMount->flags & MOUNT_NO_INHERIT)
             {
                 continue;
             }
 
-            map_key_t key = mount_key(srcMount->mount->parent->id, srcMount->mount->target->id);
+            map_key_t key;
+            if (srcMount->flags & MOUNT_STICKY)
+            {
+                key = mount_key(MOUNT_ID_STICKY, srcMount->mount->target->id);
+            }
+            else
+            {
+                key = mount_key(srcMount->mount->parent->id, srcMount->mount->target->id);
+            }
+
             if (namespace_add_local(ns, srcMount->mount, srcMount->flags, &key) == ERR)
             {
                 namespace_free(ns);
@@ -349,7 +373,13 @@ void namespace_traverse(namespace_member_t* member, path_t* path)
     map_entry_t* entry = map_get(&ns->mountMap, &key);
     if (entry == NULL)
     {
-        return;
+        key = mount_key(MOUNT_ID_STICKY, path->dentry->id);
+        entry = map_get(&ns->mountMap, &key);
+
+        if (entry == NULL)
+        {
+            return;
+        }
     }
 
     namespace_mount_t* nsMount = CONTAINER_OF(entry, namespace_mount_t, mapEntry);
@@ -424,7 +454,16 @@ mount_t* namespace_mount(namespace_member_t* member, path_t* target, const char*
         return NULL;
     }
 
-    map_key_t key = mount_key(target->mount->id, target->dentry->id);
+    map_key_t key;
+    if (flags & MOUNT_STICKY)
+    {
+        key = mount_key(MOUNT_ID_STICKY, target->dentry->id);
+    }
+    else
+    {
+        key = mount_key(target->mount->id, target->dentry->id);
+    }
+
     if (namespace_add(ns, mount, flags, &key) == ERR)
     {
         UNREF(mount);
@@ -459,7 +498,16 @@ mount_t* namespace_bind(namespace_member_t* member, dentry_t* source, path_t* ta
     }
     RWLOCK_WRITE_SCOPE(&ns->lock);
 
-    map_key_t key = mount_key(target->mount->id, target->dentry->id);
+    map_key_t key;
+    if (flags & MOUNT_STICKY)
+    {
+        key = mount_key(MOUNT_ID_STICKY, target->dentry->id);
+    }
+    else
+    {
+        key = mount_key(target->mount->id, target->dentry->id);
+    }
+
     if (namespace_add(ns, mount, flags, &key) == ERR)
     {
         UNREF(mount);

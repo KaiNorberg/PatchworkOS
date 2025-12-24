@@ -496,8 +496,9 @@ typedef enum
     MOUNT_PROPAGATE_PARENT = 1 << 0,   ///< Propagate the mount to parent namespaces.
     MOUNT_PROPAGATE_CHILDREN = 1 << 1, ///< Propagate the mount to child namespaces.
     MOUNT_OVERWRITE = 1 << 2,          ///< Overwrite any existing mount at the mountpoint.
-    MOUNT_DONT_INHERIT = 1 << 3,       ///< Forbid copying this mount to child namespaces.
-    MOUNT_FORBID_UNMOUNT = 1 << 4,     ///< Forbid unmounting this mount, useful for hiding directories or files.
+    MOUNT_NO_INHERIT = 1 << 3,       ///< Forbid copying this mount to child namespaces.
+    MOUNT_NO_UNMOUNT = 1 << 4,     ///< Forbid unmounting this mount, useful for hiding directories or files.
+    MOUNT_STICKY = 1 << 5,         ///< The mount applies to the dentry, regardless of the path used to reach it.
 } mount_flags_t;
 
 /**
