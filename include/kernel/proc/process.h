@@ -25,8 +25,10 @@
  * ## Process Filesystem
  *
  * Each process has a directory located at `/proc/[pid]`, which contains various files that can be used to interact with
- * the process. Additionally, there is a `/proc/self` dynamic symlink that points to the `/proc/[pid]` directory of
- * the current process.
+ * the process, these directories are only mounted in the namespace of the owner process and the parent namespaces.
+ *
+ * Additionally, there is a `/proc/self` dynamic symlink that points to the `/proc/[pid]` directory of the current
+ * process.
  *
  * Included below is a list of all entries found in the `/proc/[pid]` directory along with their formats.
  *

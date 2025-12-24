@@ -382,20 +382,6 @@ All that happened is that the shell printed the exit status of the process, whic
 
 For more details, see the [Notes Documentation](https://kainorberg.github.io/PatchworkOS/html/d8/db1/group__kernel__ipc__note.html), [Standard Library Process Documentation](https://kainorberg.github.io/PatchworkOS/html/d1/d10/group__libstd__sys__proc.html) and the [Kernel Process Documentation](https://kainorberg.github.io/PatchworkOS/html/da/d0f/group__kernel__proc.html).
 
-### Security via Namespaces
-
-Finally, we will go over how security is implemented. In PatchworkOS, there are no users or similar concepts often found in other operating systems, instead, each process has its own namespace which stores a set of mountpoints specific to that process. This means that each process has its own view of the filesystem.
-
-For example, process A might have mounted a sensitive directory at `/secret` while process B has no such mountpoint. From process B's perspective, the `/secret` directory is empty or contains its original contents while process A can access it normally.
-
-> An interesting detail is that when process A opens the `/secret` directory, the dentry underlying the file descriptor is the dentry that was mounted to `/secret`. When process B opens this directory it would retrieve the dentry of the directory in the parent superblock, and thus see the content of that directory in the parent superblock. Namespaces prevent mountpoint traversal not directory visibility. If this means nothing to you, don't worry about it.
-
-This allows for a very flexible security model, where processes can be given access to any combination of files and directories without needing hidden permission bits or similar mechanisms. Additionally, since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc.
-
-It would even be possible to implement a user-like system entierly in user space using namespaces, by having the init process bind different directories depending on the user logging in.
-
-For more information on for example mount propagation, see the [Namespace Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html) or the [Userspace IO API Documentation](https://kainorberg.github.io/PatchworkOS/html/d4/deb/group__libstd__sys__io.html).
-
 ### But why?
 
 I'm sure you have heard many an argument for and against the "everything is a file" philosophy. So I won't go over everything, but the primary reason for using it in PatchworkOS is "emergent behavior" or "composability" whichever term you prefer.
@@ -405,6 +391,87 @@ Take the `spawn()` example, notice how there is no specialized system for settin
 Let's take another example, say you wanted to wait on multiple processes with a `waitpid()` syscall. Well, that's not possible. So now we suddenly need a new system call. Meanwhile, in an "everything is a file system" we just have a pollable `/proc/[pid]/wait` file that blocks until the process dies and returns the exit status, now any behavior that can be implemented with `poll()` can be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination you can think of.
 
 Plus its fun.
+
+## Security via Namespaces
+
+In PatchworkOS, there are no users or similar concepts often found in other operating systems. Instead, each process has a namespace which stores a set of mountpoints. This means that each process has its own view of the filesystem.
+
+For example, process A might have mounted a sensitive directory at `/secret` while process B has no such mountpoint. From process B's perspective, the `/secret` directory is empty or contains its original contents while process A can access it normally.
+
+> An interesting detail is that when process A opens the `/secret` directory, the dentry underlying the file descriptor is the dentry that was mounted to `/secret`. When process B opens this directory it would retrieve the dentry of the directory in the parent superblock, and thus see the content of that directory in the parent superblock. Namespaces prevent or enable mountpoint traversal not directory visibility. If this means nothing to you, don't worry about it.
+
+This allows for a very flexible security model, where processes can be given access to any combination of files and directories without needing hidden permission bits or similar mechanisms. Additionally, since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc.
+
+It would even be possible to implement a user-like system entirely in user space using namespaces by having the init process bind different directories depending on the user logging in. However, for simplicity this has not been implemented.
+
+For more information on for example mount propagation, see the [Namespace Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html) or the [Userspace IO API Documentation](https://kainorberg.github.io/PatchworkOS/html/d4/deb/group__libstd__sys__io.html).
+
+### Root Service
+
+There are some cases where we may wish to elevate our "permissions", in PatchworkOS this is done using the "root service".
+
+The root service is a service managed by the init process, which, since its namespace is the parent of all user space namespaces, has the highest "permissions" of all user space processes. Any process can access the root service and if they pass an authentication check be granted access to the init processes namespace.
+
+**The root service requires a password, the default password is `1234`.**
+
+There are three features required for a process to spawn a child in the init processes namespace, the `share()/claim()` system calls, the `/proc/[pid]/ns` file and the `join` command which can be sent to a processes `/proc/[pid]/ctl` file.
+
+### Share and Claim
+
+PatchworkOS introduces two new system calls `share()` and `claim()` which allow file descriptors to be securely sent from one process to another.
+
+The `share()` system call generates a one-time use key which remains valid for a limited time. Since the key generated by this system call is simply an 128-bit integer it can be sent to any other process using conventional IPC, including sockets, pipes, argv, etc.
+
+After a process receives a shared key it can use the `claim()` system call to retrieve a file descriptor to the same underlying file object as was originally shared.
+
+Included below is an example:
+
+```c
+// In process A.
+fd_t file = ...;
+
+// Create a key that lasts for 60 seconds.
+key_t key;
+share(&key, file, CLOCKS_PER_SECOND * 60);
+
+// In process B.
+
+// Through IPC process B receives the key.
+key_t key = ...;
+
+// Process B can now access the same file as in process A.
+fd_t file = claim(&key);
+```
+
+### Joining a Namespace
+
+A processes `/proc/[pid]/ns` file can be opened to retrieve a file representing the namespace of that process. This file descriptor can be used in combination with the `join <fd>` command to cause a process to leave its current namespace and join the namespace represented by the input file descriptor.
+
+Included below is an example:
+
+```c
+pid_t a = ...;
+
+// Retrieve file descriptor representing the namespace of process A.
+fd_t ns = open(F("/proc/%llu/ns", a))
+
+// Spawn process A in a suspended state.
+const char* argv[] = {"...", NULL};
+pid_t b = spawn(argv, SPAWN_SUSPENDED);
+
+// Move process B to the namespace of process A and start.
+swritefile(F("/proc/%llu/ctl", b), F("join %llu && start", b));
+```
+
+From the above example it should be clear how `share()` and `claim()` can be utilized by the root service to start a process in the namespace of the init process.
+
+### Using the Root Service
+
+Accessing the root service is done using the `root` command in a way similar to `sudo`. For example, `root ls /usr`.
+
+Let's take an example. The `/proc/[pid]` directories are only mounted in the namespace of the owner process and the parent namespaces. As such if we run the `top` command, we will only see the performance statistics of the shell and the top program we just started, as they both share the same namespace, but all other processes are invisible.
+
+If we instead run the `root top` command, we will be prompted to provide the root password as specified above and see the performance statistics of all processes except the kernel process. This works since the namespace of the init process is the ancestor of all user-space namespaces.
 
 ## ACPI (WIP)
 

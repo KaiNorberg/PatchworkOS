@@ -17,7 +17,6 @@ uint64_t root_handle_client(fd_t client)
         return ERR;
     }
 
-    printf("root: received password attempt: %s\n", buffer);
     if (strcmp(buffer, ROOT_PASSWORD) != 0)
     {
         errno = EPERM;
@@ -66,8 +65,6 @@ void root_start(void)
             printf("init: failed to accept connection (%s)\n", strerror(errno));
             goto error;
         }
-
-        printf("root: accepted connection\n");
 
         if (root_handle_client(client) == ERR)
         {

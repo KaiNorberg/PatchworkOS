@@ -42,7 +42,8 @@
 /**
  * @brief Causes the currently running thread to load and execute a new program.
  *
- * Intended to be used as the entry point for a newly created process, causing it to run the executable specified in its command line arguments.
+ * Intended to be used as the entry point for a newly created process, causing it to run the executable specified in its
+ * command line arguments.
  *
  * @note This function does not return, instead it transfers execution to the new program in user space, if it fails it
  * will exit the process.

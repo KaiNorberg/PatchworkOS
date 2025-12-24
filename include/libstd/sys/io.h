@@ -531,7 +531,7 @@ uint64_t symlink(const char* target, const char* linkpath);
 
 /**
  * @brief Macro to automatically retry a function that returns an integer if it errors and `errno == EINTR`.
- * 
+ *
  * @param expr The expression to evaluate.
  */
 #define RETRY_EINTR(expr) \

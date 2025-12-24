@@ -10,7 +10,7 @@
  *
  * @todo Write the docs for the root service
  *
- * @todo Implement password authentication.
+ * @todo Implement proper password authentication.
  *
  * @{
  */
