@@ -5,7 +5,7 @@
 #include <sys/io.h>
 #include <sys/proc.h>
 
-uint64_t adjust_path(const char* command, char* out)
+uint64_t path_adjust(const char* command, char* out)
 {
     if (strchr(command, '/') != NULL)
     {
@@ -59,15 +59,14 @@ uint64_t password_read(char* out, uint64_t size)
             break;
         }
 
-        if (i > 0)
+        if (c == '\b')
         {
-            printf("\b*%c", c);
+            if (i > 0)
+            {
+                i--;
+            }
+            continue;
         }
-        else
-        {
-            printf("%c", c);
-        }
-        fflush(stdout);
 
         if (i < size - 1)
         {
@@ -75,6 +74,7 @@ uint64_t password_read(char* out, uint64_t size)
         }
     }
 
+    out[i] = '\0';
     return 0;
 }
 
@@ -168,7 +168,7 @@ int main(int argc, char* argv[])
     }
 
     char path[MAX_PATH];
-    if (adjust_path(argv[1], path) == ERR)
+    if (path_adjust(argv[1], path) == ERR)
     {
         printf("%s: failed to adjust path for %s (%s)\n", argv[0], argv[1], strerror(errno));
         result = EXIT_FAILURE;
