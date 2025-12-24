@@ -1,9 +1,11 @@
 #include "interactive.h"
 #include "pipeline.h"
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/io.h>
 #include <sys/proc.h>
 
@@ -52,14 +54,18 @@ static void join_args(char* buffer, uint64_t size, int argc, char* argv[])
     buffer[pos] = '\0';
 }
 
-int execute_command(const char* cmdline)
+void execute_command(const char* cmdline)
 {
     pipeline_t pipeline;
-    if (pipeline_init(&pipeline, cmdline) == ERR)
+    if (pipeline_init(&pipeline, cmdline, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO) == ERR)
     {
-        return EXIT_FAILURE;
+        _exit(F("shell: failed to initialize pipeline (%s)\n", strerror(errno)));
     }
-    return pipeline_execute(&pipeline) == ERR ? EXIT_FAILURE : EXIT_SUCCESS;
+
+    pipeline_execute(&pipeline);
+    pipeline_wait(&pipeline);
+
+    _exit(pipeline.status);
 }
 
 int main(int argc, char* argv[])
@@ -68,7 +74,7 @@ int main(int argc, char* argv[])
     {
         char cmdline[MAX_PATH];
         join_args(cmdline, MAX_PATH, argc, argv);
-        return execute_command(cmdline);
+        execute_command(cmdline);
     }
 
     interactive_shell();

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/io.h>
+#include <sys/kbd.h>
 #include <sys/proc.h>
 #include <time.h>
 
@@ -221,6 +222,11 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
     if (ansi.length > 0)
     {
         write(term->stdin[PIPE_WRITE], ansi.buffer, ansi.length);
+    }
+
+    if (ansi.length == 1 && ansi.buffer[0] == '\003')
+    {
+        swritefile(F("/proc/%d/notegroup", term->shell), "interrupt due to ctrl+c");
     }
 }
 

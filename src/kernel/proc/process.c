@@ -191,6 +191,12 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
         return 0;
     }
 
+    if (count >= NOTE_MAX)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     process_t* process = file->inode->private;
 
     LOCK_SCOPE(&process->threads.lock);
@@ -203,7 +209,7 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
     }
 
     char string[NOTE_MAX] = {0};
-    memcpy_s(string, NOTE_MAX, buffer, MIN(count, NOTE_MAX - 1));
+    memcpy_s(string, NOTE_MAX, buffer, count);
     if (thread_send_note(thread, string) == ERR)
     {
         return ERR;
@@ -225,11 +231,15 @@ static uint64_t process_notegroup_write(file_t* file, const void* buffer, uint64
         return 0;
     }
 
+    if (count >= NOTE_MAX)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
     process_t* process = file->inode->private;
 
     char string[NOTE_MAX] = {0};
-    memcpy_s(string, NOTE_MAX, buffer, MIN(count, NOTE_MAX - 1));
-
+    memcpy_s(string, NOTE_MAX, buffer, count);
     if (group_send_note(&process->group, string) == ERR)
     {
         return ERR;
@@ -272,12 +282,14 @@ static uint64_t process_wait_read(file_t* file, void* buffer, uint64_t count, ui
 {
     process_t* process = file->inode->private;
 
-    WAIT_BLOCK(&process->dyingQueue, atomic_load(&process->flags) & PROCESS_DYING);
+    if (WAIT_BLOCK(&process->dyingQueue, atomic_load(&process->flags) & PROCESS_DYING) == ERR)
+    {
+        return ERR;
+    }
 
-    lock_acquire(&process->exitStatus.lock);
-    uint64_t result =
-        BUFFER_READ(buffer, count, offset, process->exitStatus.buffer, strlen(process->exitStatus.buffer));
-    lock_release(&process->exitStatus.lock);
+    lock_acquire(&process->status.lock);
+    uint64_t result = BUFFER_READ(buffer, count, offset, process->status.buffer, strlen(process->status.buffer));
+    lock_release(&process->status.lock);
     return result;
 }
 
@@ -753,8 +765,8 @@ process_t* process_new(priority_t priority, gid_t gid, namespace_member_t* sourc
     process->id = atomic_fetch_add(&newPid, 1);
     group_member_init(&process->group);
     atomic_init(&process->priority, priority);
-    memset_s(process->exitStatus.buffer, NOTE_MAX, 0, NOTE_MAX);
-    lock_init(&process->exitStatus.lock);
+    memset_s(process->status.buffer, PROCESS_STATUS_MAX, 0, PROCESS_STATUS_MAX);
+    lock_init(&process->status.lock);
 
     if (space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
             SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY) == ERR)
@@ -823,10 +835,10 @@ void process_kill(process_t* process, const char* status)
         return;
     }
 
-    lock_acquire(&process->exitStatus.lock);
-    strncpy_s(process->exitStatus.buffer, NOTE_MAX, status, NOTE_MAX - 1);
-    process->exitStatus.buffer[NOTE_MAX - 1] = '\0';
-    lock_release(&process->exitStatus.lock);
+    lock_acquire(&process->status.lock);
+    strncpy_s(process->status.buffer, PROCESS_STATUS_MAX, status, PROCESS_STATUS_MAX - 1);
+    process->status.buffer[PROCESS_STATUS_MAX - 1] = '\0';
+    lock_release(&process->status.lock);
 
     uint64_t killCount = 0;
     thread_t* thread;

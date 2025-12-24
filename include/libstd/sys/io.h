@@ -26,11 +26,11 @@ extern "C"
  * @brief System IO header.
  * @ingroup libstd
  * @defgroup libstd_sys_io System IO
- * 
+ *
  * @{
  */
 
-#define STDIN_FILENO 0 ///< Standard input file descriptor.
+#define STDIN_FILENO 0  ///< Standard input file descriptor.
 #define STDOUT_FILENO 1 ///< Standard output file descriptor.
 #define STDERR_FILENO 2 ///< Standard error file descriptor.
 

@@ -27,7 +27,7 @@ typedef struct process process_t;
  * (`mount_flags_t`), this allows those namespaces to also see the new mount or bind or have the mount or bind removed.
  *
  * @todo Implement "sticky" mount which apply to the dentry instead of a specific VFS path.
- * 
+ *
  * @{
  */
 

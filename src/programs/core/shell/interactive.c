@@ -4,13 +4,27 @@
 #include "pipeline.h"
 
 #include <errno.h>
+#include <signal.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/io.h>
 #include <sys/kbd.h>
 #include <sys/proc.h>
+#include <threads.h>
+
+static ansi_t ansi;
+static history_t history;
+static char buffer[MAX_PATH];
+static uint64_t pos;
+
+static void interactive_sigint_handler(int sig)
+{
+    (void)sig;
+
+    // Do nothing, only child processes should be interrupted.
+}
 
 static void interactive_prompt(void)
 {
@@ -23,184 +37,177 @@ static void interactive_prompt(void)
     fflush(stdout);
 }
 
-typedef struct
+static void interactive_execute(void)
 {
-    ansi_t ansi;
-    history_t history;
-    char status[MAX_PATH];
-    char buffer[MAX_PATH];
-    uint64_t pos;
-} interactive_state_t;
-
-static uint64_t interactive_execute_command(interactive_state_t* state)
-{
-    if (state->pos == 0)
+    if (pos == 0)
     {
-        return 0;
+        interactive_prompt();
+        return;
     }
 
-    history_push(&state->history, state->buffer);
+    history_push(&history, buffer);
 
-    pipeline_t pipeline;
-    if (pipeline_init(&pipeline, state->buffer) == ERR)
+    pipeline_t* pipeline = malloc(sizeof(pipeline_t));
+    if (pipeline == NULL)
     {
-        return 0; // This is fine
+        printf("shell: out of memory\n");
+        interactive_prompt();
+        return;
     }
 
-    if (pipeline_execute(&pipeline) == ERR)
+    if (pipeline_init(pipeline, buffer, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO) == ERR)
     {
-        pipeline_deinit(&pipeline);
-        return 0; // This is also fine
+        free(pipeline);
+        interactive_prompt();
+        return;
     }
 
-    // Ignore generic errors
-    if (strlen(pipeline.status) > 0 && strcmp(pipeline.status, "0") != 0 && strcmp(pipeline.status, "-1") != 0)
+    pipeline_execute(pipeline);
+    pipeline_wait(pipeline);
+
+    if (strlen(pipeline->status) > 0 && strcmp(pipeline->status, "0") != 0 && strcmp(pipeline->status, "-1") != 0)
     {
-        printf("shell: %s\n", pipeline.status);
+        printf("shell: %s\n", pipeline->status);
     }
-    strcpy(state->status, pipeline.status);
-    pipeline_deinit(&pipeline);
-    return 0;
+
+    pipeline_deinit(pipeline);
+    free(pipeline);
+
+    interactive_prompt();
 }
 
-static uint64_t interactive_handle_ansi(interactive_state_t* state, ansi_result_t* result)
+static void interactive_handle_ansi(ansi_result_t* result)
 {
     if (result->type == ANSI_PRINTABLE)
     {
-        if (state->pos >= MAX_PATH - 1)
+        if (pos >= MAX_PATH - 1)
         {
-            return 0;
+            return;
         }
-        memmove(&state->buffer[state->pos + 1], &state->buffer[state->pos], MAX_PATH - state->pos - 1);
-        state->buffer[state->pos++] = result->printable;
-        printf("%c\033[s%s\033[u", result->printable, &state->buffer[state->pos]);
+        memmove(&buffer[pos + 1], &buffer[pos], MAX_PATH - pos - 1);
+        buffer[pos++] = result->printable;
+        printf("%c\033[s%s\033[u", result->printable, &buffer[pos]);
         fflush(stdout);
-        return 0;
+        return;
     }
 
     switch (result->type)
     {
     case ANSI_BACKSPACE:
-        if (state->pos == 0)
+        if (pos == 0)
         {
             break;
         }
-        memmove(&state->buffer[state->pos - 1], &state->buffer[state->pos], MAX_PATH - state->pos + 1);
-        state->buffer[MAX_PATH - 1] = '\0';
-        state->pos--;
+        memmove(&buffer[pos - 1], &buffer[pos], MAX_PATH - pos + 1);
+        buffer[MAX_PATH - 1] = '\0';
+        pos--;
         // Move left, save cursor, print rest of line, clear to end, restore cursor
-        printf("\033[1D\033[s%s\033[K\033[u", &state->buffer[state->pos]);
+        printf("\033[1D\033[s%s\033[K\033[u", &buffer[pos]);
         fflush(stdout);
         break;
     case ANSI_NEWLINE:
         printf("\n");
-        if (interactive_execute_command(state) == ERR)
-        {
-            return ERR;
-        }
+        interactive_execute();
         printf("\033[0m\033[?25h"); // Reset colors and cursor
-        memset(state->buffer, 0, MAX_PATH);
-        state->pos = 0;
-        interactive_prompt();
+        fflush(stdout);
+        memset(buffer, 0, MAX_PATH);
+        pos = 0;
         break;
     case ANSI_TAB:
         /// @todo Implement tab completion
         break;
     case ANSI_ARROW_UP:
     {
-        const char* previous = history_previous(&state->history);
+        const char* previous = history_previous(&history);
         if (previous == NULL)
         {
             break;
         }
-        while (state->pos > 0) // Cant use \r because of prompt
+        while (pos > 0) // Cant use \r because of prompt
         {
-            state->pos--;
+            pos--;
             printf("\033[D");
         }
-        strncpy(state->buffer, previous, MAX_PATH - 1);
-        state->buffer[MAX_PATH - 1] = '\0';
-        state->pos = strlen(state->buffer);
-        printf("\033[K%s", state->buffer);
+        strncpy(buffer, previous, MAX_PATH - 1);
+        buffer[MAX_PATH - 1] = '\0';
+        pos = strlen(buffer);
+        printf("\033[K%s", buffer);
         fflush(stdout);
     }
     break;
     case ANSI_ARROW_DOWN:
     {
-        const char* next = history_next(&state->history);
-        while (state->pos > 0) // Cant use \r because of prompt
+        const char* next = history_next(&history);
+        while (pos > 0) // Cant use \r because of prompt
         {
-            state->pos--;
+            pos--;
             printf("\033[D");
         }
         printf("\033[K");
         if (next == NULL)
         {
-            memset(state->buffer, 0, MAX_PATH);
-            state->pos = 0;
+            memset(buffer, 0, MAX_PATH);
+            pos = 0;
             fflush(stdout);
             break;
         }
-        strncpy(state->buffer, next, MAX_PATH - 1);
-        state->buffer[MAX_PATH - 1] = '\0';
-        state->pos = strlen(state->buffer);
-        printf("%s", state->buffer);
+        strncpy(buffer, next, MAX_PATH - 1);
+        buffer[MAX_PATH - 1] = '\0';
+        pos = strlen(buffer);
+        printf("%s", buffer);
         fflush(stdout);
     }
     break;
     case ANSI_ARROW_RIGHT:
-        if (state->pos < strlen(state->buffer))
+        if (pos < strlen(buffer))
         {
-            state->pos++;
+            pos++;
             printf("\033[C");
             fflush(stdout);
         }
         break;
     case ANSI_ARROW_LEFT:
-        if (state->pos > 0)
+        if (pos > 0)
         {
-            state->pos--;
+            pos--;
             printf("\033[D");
             fflush(stdout);
         }
         break;
     case ANSI_HOME:
-        while (state->pos > 0)
+        while (pos > 0)
         {
-            state->pos--;
+            pos--;
             printf("\033[D");
         }
         fflush(stdout);
         break;
     case ANSI_END:
-        while (state->pos < strlen(state->buffer))
+        while (pos < strlen(buffer))
         {
-            state->pos++;
+            pos++;
             printf("\033[C");
         }
         fflush(stdout);
         break;
     case ANSI_CTRL_C:
         printf("^C\n");
-        memset(state->buffer, 0, MAX_PATH);
-        state->pos = 0;
+        memset(buffer, 0, MAX_PATH);
+        pos = 0;
         interactive_prompt();
         break;
     default:
         break;
     }
-
-    return 0;
 }
 
-static uint64_t interactive_handle_input(interactive_state_t* state, const char* input, uint64_t length)
+static void interactive_handle_input(const char* input, uint64_t length)
 {
     for (uint64_t i = 0; i < length; i++)
     {
         ansi_result_t result;
-        if (ansi_parse(&state->ansi, input[i], &result) == ERR)
+        if (ansi_parse(&ansi, input[i], &result) == ERR)
         {
-            printf("shell: failed to parse ansi sequence (%s)\n", strerror(errno));
             continue;
         }
 
@@ -209,28 +216,26 @@ static uint64_t interactive_handle_input(interactive_state_t* state, const char*
             continue;
         }
 
-        if (interactive_handle_ansi(state, &result) == ERR)
-        {
-            return ERR;
-        }
+        interactive_handle_ansi(&result);
     }
-
-    return 0;
 }
 
 void interactive_shell(void)
 {
+    if (signal(SIGINT, interactive_sigint_handler) == SIG_ERR)
+    {
+        _exit(F("shell: failed to set SIGINT handler (%s)\n", strerror(errno)));
+    }
+
     printf("Welcome to the PatchworkOS Shell!\n");
     printf("Type \033[92mhelp\033[m for information on how to use the shell.\n");
 
     interactive_prompt();
 
-    interactive_state_t state;
-    ansi_init(&state.ansi);
-    history_init(&state.history);
-    state.status[0] = '\0';
-    memset(state.buffer, 0, MAX_PATH);
-    state.pos = 0;
+    ansi_init(&ansi);
+    history_init(&history);
+    memset(buffer, 0, MAX_PATH);
+    pos = 0;
 
     while (true)
     {
@@ -238,14 +243,9 @@ void interactive_shell(void)
         uint64_t readCount = read(STDIN_FILENO, buffer, MAX_PATH);
         if (readCount == ERR)
         {
-            history_deinit(&state.history);
-            _exit(F("failed to read input (%s)\n", strerror(errno)));
+            _exit(F("shell: failed to read input (%s)\n", strerror(errno)));
         }
 
-        if (interactive_handle_input(&state, buffer, readCount) == ERR)
-        {
-            history_deinit(&state.history);
-            _exit(state.status);
-        }
+        interactive_handle_input(buffer, readCount);
     }
 }

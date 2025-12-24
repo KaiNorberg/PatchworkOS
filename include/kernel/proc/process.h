@@ -202,14 +202,19 @@ typedef enum
 } process_flags_t;
 
 /**
+ * @brief Maximum length of a process exit status.
+ */
+#define PROCESS_STATUS_MAX 256
+
+/**
  * @brief Process exit status structure.
- * @struct process_exit_status_t
+ * @struct process_status_t
  */
 typedef struct
 {
-    char buffer[NOTE_MAX];
+    char buffer[PROCESS_STATUS_MAX];
     lock_t lock;
-} process_exit_status_t;
+} process_status_t;
 
 /**
  * @brief Process `/proc/[pid]` directory structure.
@@ -233,7 +238,7 @@ typedef struct process
     pid_t id;
     group_member_t group;
     _Atomic(priority_t) priority;
-    process_exit_status_t exitStatus;
+    process_status_t status;
     space_t space;
     namespace_member_t ns;
     cwd_t cwd;
