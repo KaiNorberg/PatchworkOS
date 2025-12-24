@@ -47,9 +47,8 @@ typedef struct namespace_member namespace_member_t;
  * | `directory` | `d` | Allow opening directories. |
  * | `recursive` | `R` | Behaviour differs, but allows for recursive operations, for example when used with `remove` it
  * will remove directories and their children recursively. |
- * | `nofollow`  | `N` | Do not follow symbolic links. |
- *
- * @todo Add `FD_CLOEXEC` equivalent.
+ * | `nofollow`  | `f` | Do not follow symbolic links. |'
+ * | `noinherit` | `i` | Do not inherit the file descriptor to child processes. |
  *
  * For convenience, a single letter short form is also available as shown above, these single letter forms do not need
  * to be separated by colons, for example `/path/to/file:rwcte` is equivalent to
@@ -87,7 +86,8 @@ typedef enum mode
     MODE_DIRECTORY = 1 << 8,
     MODE_RECURSIVE = 1 << 9, ///< Implemented in the VFS, the filesystem should ignore this flag.
     MODE_NOFOLLOW = 1 << 10,
-    MODE_AMOUNT = 11,
+    MODE_NOINHERIT = 1 << 11,
+    MODE_AMOUNT = 12,
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
 } mode_t;
 

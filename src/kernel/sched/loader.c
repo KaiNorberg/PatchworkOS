@@ -162,7 +162,6 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
 
     uint64_t argc = 0;
     char** argvCopy = NULL;
-    char* executable = NULL;
 
     if (argv == NULL)
     {
@@ -199,12 +198,6 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     }
 
     if (process_set_cmdline(child, argvCopy, argc) == ERR)
-    {
-        goto error;
-    }
-
-    executable = strdup(argvCopy[0]);
-    if (executable == NULL)
     {
         goto error;
     }
@@ -269,8 +262,6 @@ error:
     {
         process_kill(child, "spawn failed");
     }
-
-    free((void*)executable);
     loader_strv_free(argvCopy, argc);
     return ERR;
 }

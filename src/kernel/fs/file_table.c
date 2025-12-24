@@ -1,5 +1,6 @@
 #include <kernel/fs/file_table.h>
 
+#include <kernel/fs/path.h>
 #include <kernel/sched/thread.h>
 
 #include <sys/bitmap.h>
@@ -215,6 +216,11 @@ uint64_t file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t m
     for (fd_t i = min; i < max && i < CONFIG_MAX_FD; i++)
     {
         if (src->files[i] == NULL)
+        {
+            continue;
+        }
+
+        if (src->files[i]->mode & MODE_NOINHERIT)
         {
             continue;
         }

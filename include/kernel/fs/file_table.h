@@ -137,6 +137,8 @@ fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd);
 /**
  * @brief Copy a file table, closing any overlapping file descriptors.
  *
+ * Any files with `MODE_NOINHERIT` will not be copied.
+ * 
  * @param dest The destination file table.
  * @param src The source file table.
  * @param min The minimum file descriptor to copy, inclusive.

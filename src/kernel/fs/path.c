@@ -33,7 +33,8 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['t'] = {.mode = MODE_TRUNCATE},
     ['d'] = {.mode = MODE_DIRECTORY},
     ['R'] = {.mode = MODE_RECURSIVE},
-    ['N'] = {.mode = MODE_NOFOLLOW},
+    ['f'] = {.mode = MODE_NOFOLLOW},
+    ['i'] = {.mode = MODE_NOINHERIT},
 };
 
 typedef struct path_flag
@@ -54,6 +55,7 @@ static const path_flag_t flags[] = {
     {.mode = MODE_DIRECTORY, .name = "directory"},
     {.mode = MODE_RECURSIVE, .name = "recursive"},
     {.mode = MODE_NOFOLLOW, .name = "nofollow"},
+    {.mode = MODE_NOINHERIT, .name = "noinherit"},
 };
 
 static mode_t path_flag_to_mode(const char* flag, uint64_t length)
@@ -92,34 +94,19 @@ static mode_t path_flag_to_mode(const char* flag, uint64_t length)
 
 static inline bool path_is_char_valid(char ch)
 {
-    static const bool valid[UINT8_MAX + 1] = {['a' ... 'z'] = true,
-        ['A' ... 'Z'] = true,
-        ['0' ... '9'] = true,
-        ['_'] = true,
-        ['-'] = true,
-        ['.'] = true,
-        [' '] = true,
-        ['('] = true,
-        [')'] = true,
-        ['['] = true,
-        [']'] = true,
-        ['{'] = true,
-        ['}'] = true,
-        ['~'] = true,
-        ['!'] = true,
-        ['@'] = true,
-        ['#'] = true,
-        ['$'] = true,
-        ['%'] = true,
-        ['^'] = true,
-        ['&'] = true,
+    static const bool forbidden[UINT8_MAX + 1] = {
+        [0 ... 31] = true,
+        ['<'] = true,
+        ['>'] = true,
+        [':'] = true,
+        ['\"'] = true,
+        ['/'] = true,
+        ['\\'] = true,
+        ['|'] = true,
         ['?'] = true,
-        ['\''] = true,
-        [','] = true,
-        [';'] = true,
-        ['='] = true,
-        ['+'] = true};
-    return valid[(uint8_t)ch];
+        ['*'] = true,
+    };
+    return !forbidden[(uint8_t)ch];
 }
 
 uint64_t pathname_init(pathname_t* pathname, const char* string)
