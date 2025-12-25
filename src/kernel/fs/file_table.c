@@ -92,6 +92,47 @@ uint64_t file_table_close(file_table_t* table, fd_t fd)
     return 0;
 }
 
+
+void file_table_close_all(file_table_t* table)
+{
+    if (table == NULL)
+    {
+        return;
+    }
+
+    LOCK_SCOPE(&table->lock);
+
+    for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
+    {
+        if (table->files[i] != NULL)
+        {
+            UNREF(table->files[i]);
+            table->files[i] = NULL;
+            bitmap_clear(&table->bitmap, i);
+        }
+    }
+}
+
+void file_table_close_mode(file_table_t* table, mode_t mode)
+{
+    if (table == NULL)
+    {
+        return;
+    }
+
+    LOCK_SCOPE(&table->lock);
+
+    for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
+    {
+        if (table->files[i] != NULL && (table->files[i]->mode & mode))
+        {
+            UNREF(table->files[i]);
+            table->files[i] = NULL;
+            bitmap_clear(&table->bitmap, i);
+        }
+    }
+}
+
 uint64_t file_table_close_range(file_table_t* table, fd_t min, fd_t max)
 {
     if (table == NULL)
@@ -220,11 +261,6 @@ uint64_t file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t m
             continue;
         }
 
-        if (src->files[i]->mode & MODE_NOINHERIT)
-        {
-            continue;
-        }
-
         if (dest->files[i] != NULL)
         {
             UNREF(dest->files[i]);
@@ -236,26 +272,6 @@ uint64_t file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t m
     }
 
     return 0;
-}
-
-void file_table_close_all(file_table_t* table)
-{
-    if (table == NULL)
-    {
-        return;
-    }
-
-    LOCK_SCOPE(&table->lock);
-
-    for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
-    {
-        if (table->files[i] != NULL)
-        {
-            UNREF(table->files[i]);
-            table->files[i] = NULL;
-            bitmap_clear(&table->bitmap, i);
-        }
-    }
 }
 
 SYSCALL_DEFINE(SYS_CLOSE, uint64_t, fd_t fd)

@@ -158,6 +158,8 @@ static void loader_entry(void)
 
     WAIT_BLOCK(&thread->process->suspendQueue, !(atomic_load(&thread->process->flags) & PROCESS_SUSPENDED));
 
+    file_table_close_mode(&thread->process->fileTable, MODE_PRIVATE);
+
     loader_exec();
 }
 

@@ -34,7 +34,7 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['d'] = {.mode = MODE_DIRECTORY},
     ['R'] = {.mode = MODE_RECURSIVE},
     ['f'] = {.mode = MODE_NOFOLLOW},
-    ['i'] = {.mode = MODE_NOINHERIT},
+    ['p'] = {.mode = MODE_PRIVATE},
 };
 
 typedef struct path_flag
@@ -55,7 +55,7 @@ static const path_flag_t flags[] = {
     {.mode = MODE_DIRECTORY, .name = "directory"},
     {.mode = MODE_RECURSIVE, .name = "recursive"},
     {.mode = MODE_NOFOLLOW, .name = "nofollow"},
-    {.mode = MODE_NOINHERIT, .name = "noinherit"},
+    {.mode = MODE_PRIVATE, .name = "private"},
 };
 
 static mode_t path_flag_to_mode(const char* flag, uint64_t length)

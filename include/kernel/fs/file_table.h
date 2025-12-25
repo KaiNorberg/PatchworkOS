@@ -79,6 +79,21 @@ fd_t file_table_open(file_table_t* table, file_t* file);
 uint64_t file_table_close(file_table_t* table, fd_t fd);
 
 /**
+ * @brief Close all files in the file table.
+ *
+ * @param table The file table.
+ */
+void file_table_close_all(file_table_t* table);
+
+/**
+ * @brief Close all files in the file table with the specified mode.
+ *
+ * @param table The file table.
+ * @param mode The mode to close files with.
+ */
+void file_table_close_mode(file_table_t* table, mode_t mode);
+
+/**
  * @brief Free a range of file descriptors.
  *
  * If the files have no other references, they will be closed.
@@ -136,8 +151,6 @@ fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd);
 
 /**
  * @brief Copy a file table, closing any overlapping file descriptors.
- *
- * Any files with `MODE_NOINHERIT` will not be copied.
  * 
  * @param dest The destination file table.
  * @param src The source file table.
@@ -147,12 +160,5 @@ fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd);
  * - `EINVAL`: Invalid parameters.
  */
 uint64_t file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t max);
-
-/**
- * @brief Close all files in the file table.
- *
- * @param table The file table.
- */
-void file_table_close_all(file_table_t* table);
 
 /** @} */
