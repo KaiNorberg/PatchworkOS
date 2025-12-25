@@ -3,6 +3,7 @@
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <stdlib.h>
+#include <sys/list.h>
 
 static void mount_free(mount_t* mount)
 {

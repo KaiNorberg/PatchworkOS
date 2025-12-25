@@ -940,7 +940,7 @@ void process_kill(process_t* process, const char* status)
     // Anything that another process could be waiting on must be cleaned up here.
 
     namespace_unmount(&process->ns, process->dir.dir, MODE_PARENTS);
-
+    
     cwd_clear(&process->cwd);
     file_table_close_all(&process->fileTable);
     namespace_handle_clear(&process->ns);

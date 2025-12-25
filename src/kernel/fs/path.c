@@ -557,53 +557,66 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
         return ERR;
     }
 
-    memset(pathname->string, 0, MAX_PATH);
-    pathname->mode = MODE_NONE;
-    pathname->isValid = false;
+    char* buffer = pathname->string;
+    char* ptr = buffer + MAX_PATH - 1;
+    *ptr = '\0';
 
-    path_t current = PATH_CREATE(path->mount, path->dentry);
-    PATH_DEFER(&current);
-
-    uint64_t index = MAX_PATH - 1;
-    pathname->string[index] = '\0';
+    dentry_t* dentry = path->dentry;
+    mount_t* mount = path->mount;
 
     while (true)
     {
-        if (DENTRY_IS_ROOT(current.dentry))
+        if (dentry == mount->source)
         {
-            if (current.mount->parent == NULL)
+            if (mount->parent == NULL)
             {
-                pathname->string[index] = '/';
                 break;
             }
-            path_set(&current, current.mount->parent, current.mount->target);
+
+            dentry = mount->target;
+            mount = mount->parent;
             continue;
         }
 
-        uint64_t nameLength = strnlen_s(current.dentry->name, MAX_NAME);
+        if (dentry->parent == NULL)
+        {
+            errno = ENOENT;
+            return ERR;
+        }
 
-        if (index < nameLength + 1)
+        size_t len = strnlen_s(dentry->name, MAX_NAME);
+        if ((uint64_t)(ptr - buffer) < len + 1)
         {
             errno = ENAMETOOLONG;
             return ERR;
         }
 
-        if (nameLength != 0)
-        {
-            index -= nameLength;
-            memcpy(pathname->string + index, current.dentry->name, nameLength);
+        ptr -= len;
+        memcpy(ptr, dentry->name, len);
 
-            index--;
-            pathname->string[index] = '/';
-        }
+        ptr--;
+        *ptr = '/';
 
-        path_set(&current, current.mount, current.dentry->parent);
+        dentry = dentry->parent;
     }
 
-    uint64_t length = MAX_PATH - index;
-    memmove(pathname->string, pathname->string + index, length);
-    pathname->string[length] = '\0';
+    if (*ptr == '\0')
+    {
+        if (ptr == buffer)
+        {
+            errno = ENAMETOOLONG;
+            return ERR;
+        }
+        ptr--;
+        *ptr = '/';
+    }
+
+    size_t totalLen = (buffer + MAX_PATH - 1) - ptr;
+    memmove(buffer, ptr, totalLen + 1);
+
+    pathname->mode = MODE_NONE;
     pathname->isValid = true;
+
     return 0;
 }
 

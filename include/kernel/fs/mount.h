@@ -67,8 +67,6 @@ typedef struct mount
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENOENT`: Source or target dentry is negative.
- * - `ENOTDIR`: Source is a file but mode specifies a directory.
- * - `EISDIR`: Source is a directory but mode specifies a file.
  * - `ENOMEM`: Out of memory.
  */
 mount_t* mount_new(superblock_t* superblock, dentry_t* source, dentry_t* target, mount_t* parent, mode_t mode);

@@ -22,18 +22,34 @@ typedef struct process process_t;
  */
 
 /**
- * @brief A mount in a namespace.
- * @struct namespace_mount_t
- *
- * Used to allow a single mount to exist in multiple namespaces.
+ * @brief Maximum number of iterative mount traversals when following mountpoints.
  */
-typedef struct ns_mount
+#define NAMESPACE_MAX_TRAVERSE 32
+
+/**
+ * @brief Mount stack entry.
+ * @struct mount_stack_entry_t
+ *
+ * Used to store mounts in a stack, allowing the same mount to be stored in multiple namespaces.
+ */
+typedef struct mount_stack_entry
+{
+    list_entry_t entry;
+    mount_t* mount;
+} mount_stack_entry_t;
+
+/**
+ * @brief Mount stack.
+ * @struct mount_stack_t
+ *
+ * Used to store a stack of mounts for a single path. The last mount added to the stack is given priority.
+ */
+typedef struct mount_stack
 {
     list_entry_t entry;
     map_entry_t mapEntry;
-    mount_t* mount;
-    mode_t mode;
-} namespace_mount_t;
+    list_t mounts; ///< List of `mount_stack_entry_t`.
+} mount_stack_t;
 
 /**
  * @brief Namespace handle flags.
@@ -68,10 +84,10 @@ typedef struct namespace
     list_entry_t entry;  ///< The entry for the parent's children list.
     list_t children;     ///< List of child namespaces.
     namespace_t* parent; ///< The parent namespace, can be `NULL`.
-    list_t mounts;       ///< List of mounts in this namespace.
-    map_t mountMap;      ///< Map used to go from source dentries to namespace mounts.
+    list_t stacks;       ///< List of stacks in this namespace.
+    map_t mountMap;      ///< Map used to go from source dentries to namespace mount stacks.
     mount_t* root;       ///< The root mount of the namespace.
-    list_t handles;      ///< List of `namespace_handle_t`.
+    list_t handles;      ///< List of `namespace_handle_t` containing this namespace.
     rwlock_t lock;
     // clang-format off
 } namespace_t;
