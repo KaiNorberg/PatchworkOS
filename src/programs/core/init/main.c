@@ -17,12 +17,17 @@
  *
  * The init process is the first user-space program started by the kernel, due to this it can be thought of as the
  * "root" of all processes in the system.
- *
- * After performing its initial setup, the init process assumes the role of the root service for the system.
- *
- * @todo Replace the init process with a Lua script when Lua has been ported to PatchworkOS
- *
- * @{
+ * 
+ * ## Filesystem Heirarchy 
+ * 
+ * As the init process starts all other processes it is responsible for setting up the initial namespaces for all processes, including deciding which directories should be visible and what permissions the visible directories ought to have.
+ * 
+ * Included below is a table indicating the permissions or visibility of directories as setup by the init process.
+ * 
+ * | Directory | Description | Permissions/Visibility |
+ * |-----------|-------------|------------------------|
+ * | /acpi     | ACPI Information | Read-Only |
+ * 
  */
 
 static void environment_setup(config_t* config)
@@ -57,32 +62,33 @@ static void environment_setup(config_t* config)
     }
 }
 
-static void spawn_program(const char* path, priority_t priority)
+static void child_spawn(const char* path, priority_t priority)
 {
     if (path == NULL)
     {
         return;
     }
 
+
     const char* argv[] = {path, NULL};
-    pid_t pid = spawn(argv, SPAWN_STDIO_FDS | SPAWN_SUSPEND | SPAWN_COPY_NS);
+    pid_t pid = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_FDS);
     if (pid == ERR)
     {
         printf("init: failed to spawn program '%s' (%s)\n", path, strerror(errno));
     }
 
-    swritefile(F("/proc/%d/prio", pid), F("%llu", priority));
-    swritefile(F("/proc/%d/ctl", pid), "start");
+    swritefile(F("/proc/%llu/prio", pid), F("%llu", priority));
+    swritefile(F("/proc/%llu/ctl", pid), "start");
 }
 
-static void start_services(config_t* config)
+static void services_start(config_t* config)
 {
     priority_t servicePriority = config_get_int(config, "startup", "service_priority", 31);
 
     config_array_t* services = config_get_array(config, "startup", "services");
     for (uint64_t i = 0; i < services->length; i++)
     {
-        spawn_program(services->items[i], servicePriority);
+        child_spawn(services->items[i], servicePriority);
     }
 
     config_array_t* serviceFiles = config_get_array(config, "startup", "service_files");
@@ -102,18 +108,18 @@ static void start_services(config_t* config)
     }
 }
 
-static void start_programs(config_t* config)
+static void programs_start(config_t* config)
 {
     priority_t programPriority = config_get_int(config, "startup", "program_priority", 31);
 
     config_array_t* programs = config_get_array(config, "startup", "programs");
     for (uint64_t i = 0; i < programs->length; i++)
     {
-        spawn_program(programs->items[i], programPriority);
+        child_spawn(programs->items[i], programPriority);
     }
 }
 
-static void execute_commands(config_t* config)
+static void commands_run(config_t* config)
 {
     config_array_t* commands = config_get_array(config, "startup", "commands");
     for (uint64_t i = 0; i < commands->length; i++)
@@ -138,12 +144,12 @@ static void init_config_load(void)
     environment_setup(config);
 
     printf("init: starting services...\n");
-    start_services(config);
+    services_start(config);
     printf("init: starting programs...\n");
-    start_programs(config);
+    programs_start(config);
 
     printf("init: executing commands...\n");
-    execute_commands(config);
+    commands_run(config);
 
     printf("init: all startup tasks completed!\n");
     config_close(config);

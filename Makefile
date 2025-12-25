@@ -7,12 +7,14 @@ SECTIONS = boot kernel libstd libpatchwork
 PROGRAMS = $(shell find src/programs/ -name "*.mk")
 MODULES = $(shell find src/modules/ -name "*.mk")
 
-ROOT_DIRS = acpi bin cfg dev efi efi/boot home kernel kernel/modules kernel/modules/$(VERSION_STRING) lib net proc sys tmp usr usr/bin usr/share usr/license var run
+ROOT_DIRS = acpi bin cfg dev efi efi/boot home kernel kernel/modules kernel/modules/$(VERSION_STRING) lib net proc sbin usr usr/bin usr/lib usr/license usr/local usr/share
 
 # Programs to copy to /bin instead of /usr/bin
-BIN_PROGRAMS = init wall cursor taskbar dwm shell rm ls link mv touch cat echo
+BIN_PROGRAMS = shell cat echo grep link ls mv readlink rm root stat symlink tail touch
+# Programs to copy to /sbin
+SBIN_PROGRAMS = init wall cursor taskbar dwm
 # Programs to copy to /usr/bin
-USR_BIN_PROGRAMS = $(filter-out $(BIN_PROGRAMS),$(basename $(notdir $(PROGRAMS))))
+USR_BIN_PROGRAMS = $(filter-out $(BIN_PROGRAMS) $(SBIN_PROGRAMS),$(basename $(notdir $(PROGRAMS))))
 
 .PHONY: $(SECTIONS) $(PROGRAMS) $(MODULES) all setup deploy run clean generate_version compile_commands format doxygen clean clean_programs nuke grub_loopback clone_acpica_and_compile_tests
 
@@ -58,6 +60,7 @@ deploy: $(PROGRAMS)
 	mcopy -i $(IMAGE) -s bin/kernel/kernel ::/kernel
 	mcopy -i $(IMAGE) -s bin/modules/* ::/kernel/modules/$(VERSION_STRING)
 	$(foreach prog,$(BIN_PROGRAMS),mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/bin;)
+	$(foreach prog,$(SBIN_PROGRAMS),mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/sbin;)
 	$(foreach prog,$(USR_BIN_PROGRAMS),mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/usr/bin;)
 
 # This will only work if you have setup a grub loopback entry as described in the README.md file.

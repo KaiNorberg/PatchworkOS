@@ -53,6 +53,12 @@ void loader_exec(void)
         goto cleanup;
     }
 
+    if (!(file->mode & MODE_EXECUTE))
+    {
+        errno = EACCES;
+        goto cleanup;
+    }
+
     uint64_t fileSize = vfs_seek(file, 0, SEEK_END);
     vfs_seek(file, 0, SEEK_SET);
 
@@ -173,7 +179,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     process_t* process = thread->process;
 
     gid_t gid = flags & SPAWN_EMPTY_GROUP ? GID_NONE : group_get_id(&process->group);
-    namespace_member_flags_t nsFlags = flags & SPAWN_COPY_NS ? NAMESPACE_MEMBER_COPY : NAMESPACE_MEMBER_SHARE;
+    namespace_handle_flags_t nsFlags = flags & SPAWN_COPY_NS ? NAMESPACE_HANDLE_COPY : NAMESPACE_HANDLE_SHARE;
 
     child = process_new(atomic_load(&process->priority), gid, &process->ns, nsFlags);
     if (child == NULL)

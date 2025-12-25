@@ -32,7 +32,7 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
-static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_member_t* ns)
+static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_handle_t* ns)
 {
     path_t parent = PATH_EMPTY;
     path_t target = PATH_EMPTY;
@@ -68,7 +68,7 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_m
         return 0;
     }
 
-    if (!(parent.mount->mode & MODE_CREATE))
+    if (!(parent.mount->mode & MODE_WRITE))
     {
         errno = EACCES;
         return ERR;
@@ -84,7 +84,7 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_m
     return 0;
 }
 
-static uint64_t vfs_open_lookup(path_t* path, const pathname_t* pathname, namespace_member_t* namespace)
+static uint64_t vfs_open_lookup(path_t* path, const pathname_t* pathname, namespace_handle_t* namespace)
 {
     if (pathname->mode & MODE_CREATE)
     {
@@ -225,7 +225,7 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
         return ERR;
     }
 
-    if ((file->mode & MODE_APPEND) || !(file->mode & MODE_READ))
+    if (!(file->mode & MODE_READ))
     {
         errno = EBADF;
         return ERR;
@@ -530,7 +530,7 @@ typedef struct
 } getdents_recursive_ctx_t;
 
 static uint64_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_recursive_ctx_t* ctx,
-    const char* prefix, namespace_member_t* ns)
+    const char* prefix, namespace_handle_t* ns)
 {
     uint64_t offset = 0;
     uint64_t bufSize = 1024;
@@ -835,12 +835,6 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
         return ERR;
     }
 
-    if (oldPathname->mode != MODE_NONE || newPathname->mode != MODE_NONE)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     path_t cwd = cwd_get(&process->cwd);
     PATH_DEFER(&cwd);
 
@@ -955,12 +949,6 @@ uint64_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathnam
         return ERR;
     }
 
-    if (oldPathname->mode != MODE_NONE || newPathname->mode != MODE_NONE)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     path_t cwd = cwd_get(&process->cwd);
     PATH_DEFER(&cwd);
 
@@ -1038,7 +1026,7 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
     {
         if (pathname->mode & MODE_DIRECTORY)
         {
-            if (DENTRY_IS_FILE(target.dentry))
+            if (!DENTRY_IS_DIR(target.dentry))
             {
                 errno = ENOTDIR;
                 return ERR;

@@ -37,7 +37,7 @@ static uint64_t terminal_columns_get(void)
 
 static uint64_t print_dir(const char* path)
 {
-    fd_t fd = open(F("%s:directory", path));
+    fd_t fd = open(F("%s", path));
     if (fd == ERR)
     {
         fprintf(stderr, "ls: can't open directory %s (%s)\n", path, strerror(errno));

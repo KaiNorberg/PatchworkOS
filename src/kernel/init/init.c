@@ -147,7 +147,7 @@ static inline void init_process_spawn(void)
 {
     LOG_INFO("spawning init process\n");
 
-    process_t* initProcess = process_new(PRIORITY_MAX_USER, GID_NONE, &process_get_kernel()->ns, NAMESPACE_MEMBER_COPY);
+    process_t* initProcess = process_new(PRIORITY_MAX_USER, GID_NONE, &process_get_kernel()->ns, NAMESPACE_HANDLE_COPY);
     if (initProcess == NULL)
     {
         panic(NULL, "Failed to create init process");
@@ -159,7 +159,7 @@ static inline void init_process_spawn(void)
         panic(NULL, "Failed to create init thread");
     }
 
-    char* argv[] = {"/bin/init", NULL};
+    char* argv[] = {"/sbin/init", NULL};
     if (process_set_cmdline(initProcess, argv, 1) == ERR)
     {
         panic(NULL, "Failed to set init process cmdline");

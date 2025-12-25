@@ -31,11 +31,11 @@ typedef struct process process_t;
 
 /**
  * @brief A mount in a namespace.
- * @struct namespace_mount
+ * @struct namespace_mount_t
  *
  * Used to allow a single mount to exist in multiple namespaces.
  */
-typedef struct namespace_mount
+typedef struct ns_mount
 {
     list_entry_t entry;
     map_entry_t mapEntry;
@@ -44,28 +44,28 @@ typedef struct namespace_mount
 } namespace_mount_t;
 
 /**
- * @brief Namespace member flags.
- * @enum namespace_member_flags_t
+ * @brief Namespace handle flags.
+ * @enum namespace_handle_flags_t
  */
 typedef enum
 {
-    NAMESPACE_MEMBER_SHARE = 0 << 0, ///< Share the same namespace as the source.
-    NAMESPACE_MEMBER_COPY =
+    NAMESPACE_HANDLE_SHARE = 0 << 0, ///< Share the same namespace as the source.
+    NAMESPACE_HANDLE_COPY =
         1 << 1, ///< Copy the contents of the source into a new namespace with the source as the parent.
-} namespace_member_flags_t;
+} namespace_handle_flags_t;
 
 /**
- * @brief Per-process namespace member.
- * @struct namespace_member_t
+ * @brief Per-process namespace handle.
+ * @struct namespace_handle_t
  *
  * Stored in each process, used to allow multiple processes to share a namespace.
  */
-typedef struct namespace_member
+typedef struct namespace_handle
 {
     list_entry_t entry;
     namespace_t* ns;
     rwlock_t lock;
-} namespace_member_t;
+} namespace_handle_t;
 
 /**
  * @brief Namespace structure.
@@ -73,57 +73,57 @@ typedef struct namespace_member
  */
 typedef struct namespace
 {
-    list_entry_t entry;  ///< The member for the parent's children list.
+    list_entry_t entry;  ///< The entry for the parent's children list.
     list_t children;     ///< List of child namespaces.
     namespace_t* parent; ///< The parent namespace, can be `NULL`.
     list_t mounts;       ///< List of mounts in this namespace.
     map_t mountMap;      ///< Map used to go from source dentries to namespace mounts.
     mount_t* root;       ///< The root mount of the namespace.
-    list_t members;      ///< List of `namespace_member_t`.
+    list_t handles;      ///< List of `namespace_handle_t`.
     rwlock_t lock;
     // clang-format off
 } namespace_t;
 // clang-format on
 
 /**
- * @brief Initializes a namespace member.
+ * @brief Initializes a namespace handle.
  *
- * @param member The namespace member to initialize.
- * @param source The source namespace member to copy from or share a namespace with, or `NULL` to create a new empty
+ * @param handle The namespace handle to initialize.
+ * @param source The source namespace handle to copy from or share a namespace with, or `NULL` to create a new empty
  * namespace.
- * @param flags Flags for the new namespace member.
+ * @param flags Flags for the new namespace handle.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENOMEM`: Out of memory.
  */
-uint64_t namespace_member_init(namespace_member_t* member, namespace_member_t* source, namespace_member_flags_t flags);
+uint64_t namespace_handle_init(namespace_handle_t* handle, namespace_handle_t* source, namespace_handle_flags_t flags);
 
 /**
  * @brief Clear and deinitialize a namespace.
  *
  * @param ns The namespace to deinitialize.
  */
-void namespace_member_deinit(namespace_member_t* member);
+void namespace_handle_deinit(namespace_handle_t* handle);
 
 /**
- * @brief Clears a namespace member.
+ * @brief Clears a namespace handle.
  *
- * @param member The namespace member to clear.
+ * @param handle The namespace handle to clear.
  */
-void namespace_member_clear(namespace_member_t* member);
+void namespace_handle_clear(namespace_handle_t* handle);
 
 /**
  * @brief If the given path is a mountpoint in the namespace, traverse to the mounted filesystem, else no-op.
  *
- * @param member The namespace member containing the namespace to traverse.
+ * @param handle The namespace handle containing the namespace to traverse.
  * @param path The mountpoint path to traverse, will be updated to the new path if traversed.
  */
-void namespace_traverse(namespace_member_t* member, path_t* path);
+void namespace_traverse(namespace_handle_t* handle, path_t* path);
 
 /**
  * @brief Mount a filesystem in a namespace.
  *
- * @param member The namespace member containing the namespace to mount to.
+ * @param handle The namespace handle containing the namespace to mount to.
  * @param deviceName The device name, or `VFS_DEVICE_NAME_NONE` for no device.
  * @param target The target path to mount to.
  * @param fsName The filesystem name.
@@ -140,13 +140,13 @@ void namespace_traverse(namespace_member_t* member, path_t* path);
  * - `ENOENT`: The root does not exist or the target is negative.
  * - Other errors as returned by the filesystem's `mount()` function or `mount_new()`.
  */
-mount_t* namespace_mount(namespace_member_t* member, path_t* target, const char* deviceName, const char* fsName,
+mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char* deviceName, const char* fsName,
     mount_flags_t flags, mode_t mode, void* private);
 
 /**
  * @brief Bind a source dentry to a target path in a namespace.
  *
- * @param member The namespace member containing the namespace to bind in.
+ * @param handle The namespace handle containing the namespace to bind in.
  * @param source The source dentry to bind from, could be either a file or directory and from any filesystem.
  * @param target The target path to bind to.
  * @param flags Mount flags.
@@ -156,26 +156,26 @@ mount_t* namespace_mount(namespace_member_t* member, path_t* target, const char*
  * - `ENOMEM`: Out of memory.
  * - Other errors as returned by `mount_new()`.
  */
-mount_t* namespace_bind(namespace_member_t* member, dentry_t* source, path_t* target, mount_flags_t flags, mode_t mode);
+mount_t* namespace_bind(namespace_handle_t* handle, dentry_t* source, path_t* target, mount_flags_t flags, mode_t mode);
 
 /**
  * @brief Remove a mount in a namespace.
  *
- * @param member The namespace member containing the namespace to unmount from.
+ * @param handle The namespace handle containing the namespace to unmount from.
  * @param mount The mount to remove.
  * @param flags Mount flags.
  */
-void namespace_unmount(namespace_member_t* member, mount_t* mount, mount_flags_t flags);
+void namespace_unmount(namespace_handle_t* handle, mount_t* mount, mount_flags_t flags);
 
 /**
  * @brief Get the root path of a namespace.
  *
- * @param member The namespace member containing the namespace to get the root of.
+ * @param handle The namespace handle containing the namespace to get the root of.
  * @param out The output root path.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENOENT`: The namespace has no root mount.
  */
-uint64_t namespace_get_root_path(namespace_member_t* member, path_t* out);
+uint64_t namespace_get_root_path(namespace_handle_t* handle, path_t* out);
 
 /** @} */

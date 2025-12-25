@@ -242,7 +242,7 @@ typedef struct process
     _Atomic(priority_t) priority;
     process_status_t status;
     space_t space;
-    namespace_member_t ns;
+    namespace_handle_t ns;
     cwd_t cwd;
     file_table_t fileTable;
     futex_ctx_t futexCtx;
@@ -270,7 +270,7 @@ typedef struct process
  * @param flags Flags for the new namespace entry.
  * @return On success, the newly created process. On failure, `NULL` and `errno` is set.
  */
-process_t* process_new(priority_t priority, gid_t gid, namespace_member_t* source, namespace_member_flags_t flags);
+process_t* process_new(priority_t priority, gid_t gid, namespace_handle_t* source, namespace_handle_flags_t flags);
 
 /**
  * @brief Kills a process, pushing it to the reaper.

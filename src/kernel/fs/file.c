@@ -48,24 +48,7 @@ file_t* file_new(const path_t* path, mode_t mode)
         errno = ENOENT;
         return NULL;
     }
-
-    if (mode & MODE_DIRECTORY)
-    {
-        if (DENTRY_IS_FILE(path->dentry))
-        {
-            errno = ENOTDIR;
-            return NULL;
-        }
-    }
-    else
-    {
-        if (DENTRY_IS_DIR(path->dentry))
-        {
-            errno = EISDIR;
-            return NULL;
-        }
-    }
-
+    
     file_t* file = malloc(sizeof(file_t));
     if (file == NULL)
     {

@@ -11,7 +11,7 @@
 typedef struct path path_t;
 typedef struct mount mount_t;
 typedef struct dentry dentry_t;
-typedef struct namespace_member namespace_member_t;
+typedef struct namespace_handle namespace_handle_t;
 
 /**
  * @brief Unique location in the filesystem.
@@ -44,7 +44,7 @@ typedef struct namespace_member namespace_member_t;
  * | `create` | `c` | Create the file if it does not exist. |
  * | `exclusive` | `e` | Will cause the open to fail if the file already exists. |
  * | `truncate` | `t` | Truncate the file to zero length if it already exists. |
- * | `directory` | `d` | Allow opening directories. |
+ * | `directory` | `d` | Create or remove directories. All other operations will ignore this flag. |
  * | `recursive` | `R` | Behaviour differs, but allows for recursive operations, for example when used with `remove` it
  * will remove directories and their children recursively. |
  * | `nofollow`  | `f` | Do not follow symbolic links. |'
@@ -246,7 +246,7 @@ void path_put(path_t* path);
  * @param ns The namespace entry to access mountpoints.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_member_t* ns);
+uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_handle_t* ns);
 
 /**
  * @brief Walk a pathname to a path.
@@ -256,7 +256,7 @@ uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_member
  * @param ns The namespace entry to access mountpoints.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_member_t* ns);
+uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_handle_t* ns);
 
 /**
  * @brief Walk a pathname to its parent and get the name of the last component.
@@ -269,7 +269,7 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_member_t*
  * @param ns The namespace entry to access mountpoints.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_member_t* ns);
+uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_handle_t* ns);
 
 /**
  * @brief Traverse a pathname to its parent and child paths.
@@ -284,7 +284,7 @@ uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLas
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_t* outChild, const pathname_t* pathname,
-    namespace_member_t* ns);
+    namespace_handle_t* ns);
 
 /**
  * @brief Convert a path to a pathname.

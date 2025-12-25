@@ -169,7 +169,7 @@ static namespace_t* namespace_new(void)
     list_init(&ns->mounts);
     map_init(&ns->mountMap);
     ns->root = NULL;
-    list_init(&ns->members);
+    list_init(&ns->handles);
     rwlock_init(&ns->lock);
 
     return ns;
@@ -218,17 +218,17 @@ static void namespace_free(namespace_t* ns)
     free(ns);
 }
 
-uint64_t namespace_member_init(namespace_member_t* member, namespace_member_t* source, namespace_member_flags_t flags)
+uint64_t namespace_handle_init(namespace_handle_t* handle, namespace_handle_t* source, namespace_handle_flags_t flags)
 {
-    if (member == NULL)
+    if (handle == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    list_entry_init(&member->entry);
-    member->ns = NULL;
-    rwlock_init(&member->lock);
+    list_entry_init(&handle->entry);
+    handle->ns = NULL;
+    rwlock_init(&handle->lock);
 
     if (source == NULL)
     {
@@ -238,12 +238,12 @@ uint64_t namespace_member_init(namespace_member_t* member, namespace_member_t* s
             return ERR;
         }
 
-        member->ns = ns;
-        list_push_back(&ns->members, &member->entry);
+        handle->ns = ns;
+        list_push_back(&ns->handles, &handle->entry);
         return 0;
     }
 
-    if (flags & NAMESPACE_MEMBER_COPY)
+    if (flags & NAMESPACE_HANDLE_COPY)
     {
         RWLOCK_READ_SCOPE(&source->lock);
         namespace_t* srcNs = source->ns;
@@ -298,8 +298,8 @@ uint64_t namespace_member_init(namespace_member_t* member, namespace_member_t* s
         ns->parent = srcNs;
         list_push_back(&srcNs->children, &ns->entry);
 
-        member->ns = ns;
-        list_push_back(&ns->members, &member->entry);
+        handle->ns = ns;
+        list_push_back(&ns->handles, &handle->entry);
         return 0;
     }
 
@@ -311,46 +311,46 @@ uint64_t namespace_member_init(namespace_member_t* member, namespace_member_t* s
     }
 
     RWLOCK_WRITE_SCOPE(&source->ns->lock);
-    member->ns = source->ns;
-    list_push_back(&source->ns->members, &member->entry);
+    handle->ns = source->ns;
+    list_push_back(&source->ns->handles, &handle->entry);
     return 0;
 }
 
-void namespace_member_deinit(namespace_member_t* member)
+void namespace_handle_deinit(namespace_handle_t* handle)
 {
-    namespace_member_clear(member);
+    namespace_handle_clear(handle);
 }
 
-void namespace_member_clear(namespace_member_t* member)
+void namespace_handle_clear(namespace_handle_t* handle)
 {
-    if (member == NULL)
+    if (handle == NULL)
     {
         return;
     }
 
-    RWLOCK_WRITE_SCOPE(&member->lock);
+    RWLOCK_WRITE_SCOPE(&handle->lock);
 
-    if (member->ns == NULL)
+    if (handle->ns == NULL)
     {
         return;
     }
 
-    namespace_t* ns = member->ns;
+    namespace_t* ns = handle->ns;
     RWLOCK_WRITE_SCOPE(&ns->lock);
 
-    list_remove(&ns->members, &member->entry);
+    list_remove(&ns->handles, &handle->entry);
 
-    if (list_is_empty(&ns->members))
+    if (list_is_empty(&ns->handles))
     {
         namespace_free(ns);
     }
 
-    member->ns = NULL;
+    handle->ns = NULL;
 }
 
-void namespace_traverse(namespace_member_t* member, path_t* path)
+void namespace_traverse(namespace_handle_t* handle, path_t* path)
 {
-    if (member == NULL || path == NULL || path->mount == NULL || path->dentry == NULL)
+    if (handle == NULL || path == NULL || path->mount == NULL || path->dentry == NULL)
     {
         return;
     }
@@ -361,8 +361,8 @@ void namespace_traverse(namespace_member_t* member, path_t* path)
         return;
     }
 
-    RWLOCK_READ_SCOPE(&member->lock);
-    namespace_t* ns = member->ns;
+    RWLOCK_READ_SCOPE(&handle->lock);
+    namespace_t* ns = handle->ns;
     if (ns == NULL)
     {
         return;
@@ -386,10 +386,10 @@ void namespace_traverse(namespace_member_t* member, path_t* path)
     path_set(path, nsMount->mount, nsMount->mount->source);
 }
 
-mount_t* namespace_mount(namespace_member_t* member, path_t* target, const char* deviceName, const char* fsName,
+mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char* deviceName, const char* fsName,
     mount_flags_t flags, mode_t mode, void* private)
 {
-    if (member == NULL || deviceName == NULL || fsName == NULL)
+    if (handle == NULL || deviceName == NULL || fsName == NULL)
     {
         errno = EINVAL;
         return NULL;
@@ -415,8 +415,8 @@ mount_t* namespace_mount(namespace_member_t* member, path_t* target, const char*
         return NULL;
     }
 
-    RWLOCK_READ_SCOPE(&member->lock);
-    namespace_t* ns = member->ns;
+    RWLOCK_READ_SCOPE(&handle->lock);
+    namespace_t* ns = handle->ns;
     if (ns == NULL)
     {
         errno = EINVAL;
@@ -475,9 +475,9 @@ mount_t* namespace_mount(namespace_member_t* member, path_t* target, const char*
     return mount;
 }
 
-mount_t* namespace_bind(namespace_member_t* member, dentry_t* source, path_t* target, mount_flags_t flags, mode_t mode)
+mount_t* namespace_bind(namespace_handle_t* handle, dentry_t* source, path_t* target, mount_flags_t flags, mode_t mode)
 {
-    if (member == NULL || source == NULL || target == NULL || target->dentry == NULL || target->mount == NULL)
+    if (handle == NULL || source == NULL || target == NULL || target->dentry == NULL || target->mount == NULL)
     {
         errno = EINVAL;
         return NULL;
@@ -489,8 +489,8 @@ mount_t* namespace_bind(namespace_member_t* member, dentry_t* source, path_t* ta
         return NULL;
     }
 
-    RWLOCK_READ_SCOPE(&member->lock);
-    namespace_t* ns = member->ns;
+    RWLOCK_READ_SCOPE(&handle->lock);
+    namespace_t* ns = handle->ns;
     if (ns == NULL)
     {
         errno = EINVAL;
@@ -518,15 +518,15 @@ mount_t* namespace_bind(namespace_member_t* member, dentry_t* source, path_t* ta
     return mount;
 }
 
-void namespace_unmount(namespace_member_t* member, mount_t* mount, mount_flags_t flags)
+void namespace_unmount(namespace_handle_t* handle, mount_t* mount, mount_flags_t flags)
 {
-    if (member == NULL || mount == NULL || mount->source == NULL || mount->target == NULL)
+    if (handle == NULL || mount == NULL || mount->source == NULL || mount->target == NULL)
     {
         return;
     }
 
-    RWLOCK_READ_SCOPE(&member->lock);
-    namespace_t* ns = member->ns;
+    RWLOCK_READ_SCOPE(&handle->lock);
+    namespace_t* ns = handle->ns;
     if (ns == NULL)
     {
         return;
@@ -536,7 +536,7 @@ void namespace_unmount(namespace_member_t* member, mount_t* mount, mount_flags_t
     namespace_remove(ns, mount, flags);
 }
 
-uint64_t namespace_get_root_path(namespace_member_t* member, path_t* out)
+uint64_t namespace_get_root_path(namespace_handle_t* handle, path_t* out)
 {
     if (out == NULL)
     {
@@ -544,8 +544,8 @@ uint64_t namespace_get_root_path(namespace_member_t* member, path_t* out)
         return ERR;
     }
 
-    RWLOCK_READ_SCOPE(&member->lock);
-    namespace_t* ns = member->ns;
+    RWLOCK_READ_SCOPE(&handle->lock);
+    namespace_t* ns = handle->ns;
     if (ns == NULL)
     {
         errno = EINVAL;

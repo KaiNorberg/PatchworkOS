@@ -372,20 +372,20 @@ static uint64_t process_ns_open(file_t* file)
 {
     process_t* process = file->inode->private;
 
-    namespace_member_t* member = malloc(sizeof(namespace_member_t));
-    if (member == NULL)
+    namespace_handle_t* handle = malloc(sizeof(namespace_handle_t));
+    if (handle == NULL)
     {
         errno = ENOMEM;
         return ERR;
     }
 
-    if (namespace_member_init(member, &process->ns, NAMESPACE_MEMBER_SHARE) == ERR)
+    if (namespace_handle_init(handle, &process->ns, NAMESPACE_HANDLE_SHARE) == ERR)
     {
-        free(member);
+        free(handle);
         return ERR;
     }
 
-    file->private = member;
+    file->private = handle;
     return 0;
 }
 
@@ -396,9 +396,9 @@ static void process_ns_close(file_t* file)
         return;
     }
 
-    namespace_member_t* member = file->private;
-    namespace_member_deinit(member);
-    free(member);
+    namespace_handle_t* handle = file->private;
+    namespace_handle_deinit(handle);
+    free(handle);
     file->private = NULL;
 }
 
@@ -518,16 +518,16 @@ static uint64_t process_ctl_join(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    namespace_member_t* target = nsFile->private;
+    namespace_handle_t* target = nsFile->private;
     if (target == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    namespace_member_deinit(&process->ns);
+    namespace_handle_deinit(&process->ns);
 
-    if (namespace_member_init(&process->ns, target, NAMESPACE_MEMBER_SHARE) == ERR)
+    if (namespace_handle_init(&process->ns, target, NAMESPACE_HANDLE_SHARE) == ERR)
     {
         return ERR;
     }
@@ -720,7 +720,7 @@ static void process_proc_cleanup(inode_t* inode)
     group_member_deinit(&process->group);
     cwd_deinit(&process->cwd);
     file_table_deinit(&process->fileTable);
-    namespace_member_deinit(&process->ns);
+    namespace_handle_deinit(&process->ns);
     space_deinit(&process->space);
     wait_queue_deinit(&process->dyingQueue);
     wait_queue_deinit(&process->suspendQueue);
@@ -788,7 +788,7 @@ static uint64_t process_dir_init(process_t* process)
     return 0;
 }
 
-process_t* process_new(priority_t priority, gid_t gid, namespace_member_t* source, namespace_member_flags_t flags)
+process_t* process_new(priority_t priority, gid_t gid, namespace_handle_t* source, namespace_handle_flags_t flags)
 {
     process_t* process = malloc(sizeof(process_t));
     if (process == NULL)
@@ -810,7 +810,7 @@ process_t* process_new(priority_t priority, gid_t gid, namespace_member_t* sourc
         return NULL;
     }
 
-    if (namespace_member_init(&process->ns, source, flags) == ERR)
+    if (namespace_handle_init(&process->ns, source, flags) == ERR)
     {
         space_deinit(&process->space);
         free(process);
@@ -896,7 +896,7 @@ void process_kill(process_t* process, const char* status)
 
     cwd_clear(&process->cwd);
     file_table_close_all(&process->fileTable);
-    namespace_member_clear(&process->ns);
+    namespace_handle_clear(&process->ns);
     group_remove(&process->group);
 
     wait_unblock(&process->dyingQueue, WAIT_ALL, EOK);
@@ -1074,7 +1074,7 @@ process_t* process_get_kernel(void)
 {
     if (kernelProcess == NULL)
     {
-        kernelProcess = process_new(PRIORITY_MAX, GID_NONE, NULL, NAMESPACE_MEMBER_SHARE);
+        kernelProcess = process_new(PRIORITY_MAX, GID_NONE, NULL, NAMESPACE_HANDLE_SHARE);
         if (kernelProcess == NULL)
         {
             panic(NULL, "Failed to create kernel process");
