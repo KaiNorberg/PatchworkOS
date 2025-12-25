@@ -18,14 +18,6 @@ typedef struct process process_t;
  *
  * The per-process namespace system allows each process to have its own view of the filesystem hierarchy.
  *
- * ## Propagation
- *
- * When a new mount or bind is created in a namespace or, it is only added to that specific namespace. Same concept
- * applies when unmounting.
- *
- * However, its possible to propagate mounts and unmounts to children and/or parent namespaces using mount flags
- * (`mount_flags_t`), this allows those namespaces to also see the new mount or bind or have the mount or bind removed.
- *
  * @{
  */
 
@@ -40,7 +32,7 @@ typedef struct ns_mount
     list_entry_t entry;
     map_entry_t mapEntry;
     mount_t* mount;
-    mount_flags_t flags;
+    mode_t mode;
 } namespace_mount_t;
 
 /**
@@ -128,7 +120,7 @@ void namespace_traverse(namespace_handle_t* handle, path_t* path);
  * @param target The target path to mount to.
  * @param fsName The filesystem name.
  * @param flags Mount flags.
- * @param mode The maximum allowed permissions for files/directories opened under this mount.
+ * @param mode The mode specifying permissions and mount behaviour.
  * @param private Private data for the filesystem's mount function.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
@@ -140,8 +132,7 @@ void namespace_traverse(namespace_handle_t* handle, path_t* path);
  * - `ENOENT`: The root does not exist or the target is negative.
  * - Other errors as returned by the filesystem's `mount()` function or `mount_new()`.
  */
-mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char* deviceName, const char* fsName,
-    mount_flags_t flags, mode_t mode, void* private);
+mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char* deviceName, const char* fsName, mode_t mode, void* private);
 
 /**
  * @brief Bind a source dentry to a target path in a namespace.
@@ -149,23 +140,22 @@ mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char*
  * @param handle The namespace handle containing the namespace to bind in.
  * @param source The source dentry to bind from, could be either a file or directory and from any filesystem.
  * @param target The target path to bind to.
- * @param flags Mount flags.
- * @param mode The maximum allowed permissions for files/directories opened under this mount.
+ * @param mode The mode specifying permissions and mount behaviour.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENOMEM`: Out of memory.
  * - Other errors as returned by `mount_new()`.
  */
-mount_t* namespace_bind(namespace_handle_t* handle, dentry_t* source, path_t* target, mount_flags_t flags, mode_t mode);
+mount_t* namespace_bind(namespace_handle_t* handle, dentry_t* source, path_t* target, mode_t mode);
 
 /**
  * @brief Remove a mount in a namespace.
  *
  * @param handle The namespace handle containing the namespace to unmount from.
  * @param mount The mount to remove.
- * @param flags Mount flags.
+ * @param mode The mode specifying unmount behaviour.
  */
-void namespace_unmount(namespace_handle_t* handle, mount_t* mount, mount_flags_t flags);
+void namespace_unmount(namespace_handle_t* handle, mount_t* mount, mode_t mode);
 
 /**
  * @brief Get the root path of a namespace.

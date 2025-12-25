@@ -14,9 +14,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-static map_t flagMap;
-static map_t flagShortMap;
-
 typedef struct path_flag_short
 {
     mode_t mode;
@@ -35,6 +32,9 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['R'] = {.mode = MODE_RECURSIVE},
     ['l'] = {.mode = MODE_NOFOLLOW},
     ['p'] = {.mode = MODE_PRIVATE},
+    ['s'] = {.mode = MODE_STICKY},
+    ['C'] = {.mode = MODE_CHILDREN},
+    ['L'] = {.mode = MODE_LOCKED},
 };
 
 typedef struct path_flag
@@ -56,6 +56,9 @@ static const path_flag_t flags[] = {
     {.mode = MODE_RECURSIVE, .name = "recursive"},
     {.mode = MODE_NOFOLLOW, .name = "nofollow"},
     {.mode = MODE_PRIVATE, .name = "private"},
+    {.mode = MODE_STICKY, .name = "sticky"},
+    {.mode = MODE_CHILDREN, .name = "children"},
+    {.mode = MODE_LOCKED, .name = "locked"},
 };
 
 static mode_t path_flag_to_mode(const char* flag, uint64_t length)
@@ -65,7 +68,7 @@ static mode_t path_flag_to_mode(const char* flag, uint64_t length)
         return MODE_NONE;
     }
 
-    for (uint64_t i = 0; i < MODE_AMOUNT; i++)
+    for (uint64_t i = 0; i < sizeof(flags) / sizeof(flags[0]); i++)
     {
         size_t len = strnlen_s(flags[i].name, MAX_NAME);
         if (len == length && strncmp(flag, flags[i].name, length) == 0)

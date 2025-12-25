@@ -360,7 +360,7 @@ void ramfs_init(void)
 
     process_t* process = sched_process();
     mount = namespace_mount(&process->ns, NULL, VFS_DEVICE_NAME_NONE, RAMFS_NAME,
-        MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_DIRECTORY | MODE_ALL_PERMS, NULL);
+       MODE_CHILDREN | MODE_ALL_PERMS, NULL);
     if (mount == NULL)
     {
         panic(NULL, "Failed to mount ramfs");

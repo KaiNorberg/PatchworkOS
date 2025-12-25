@@ -484,32 +484,15 @@ uint64_t share(key_t* key, fd_t fd, clock_t timeout);
 fd_t claim(key_t* key);
 
 /**
- * @brief Mount flags type.
- * @enum mount_flags_t
- *
- * The propagation flags apply recursively, such that specifying both `MOUNT_PROPAGATE_PARENT` and
- * `MOUNT_PROPAGATE_CHILDREN` will propagate the mount to every namespace in the hierarchy.
- */
-typedef enum
-{
-    MOUNT_NONE = 0,                    ///< No special mount flags.
-    MOUNT_PROPAGATE_PARENT = 1 << 0,   ///< Propagate the mount to parent namespaces.
-    MOUNT_PROPAGATE_CHILDREN = 1 << 1, ///< Propagate the mount to child namespaces.
-    MOUNT_OVERWRITE = 1 << 2,          ///< Overwrite any existing mount at the mountpoint.
-    MOUNT_NO_INHERIT = 1 << 3,       ///< Forbid copying this mount to child namespaces.
-    MOUNT_NO_UNMOUNT = 1 << 4,     ///< Forbid unmounting this mount, useful for hiding directories or files.
-    MOUNT_STICKY = 1 << 5,         ///< The mount applies to the dentry, regardless of the path used to reach it.
-} mount_flags_t;
-
-/**
  * @brief System call for binding a file descriptor to a mountpoint.
  *
+ * The created mount will inherit permissions from the source while the mount behaviour will follow the flags specified in `mountpoint`.
+ * 
  * @param source The file descriptor to bind, must represent a directory.
  * @param mountpoint The mountpoint path.
- * @param flags The mount flags.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t bind(fd_t source, const char* mountpoint, mount_flags_t flags);
+uint64_t bind(fd_t source, const char* mountpoint);
 
 /**
  * @brief System call for reading the target of a symbolic link.

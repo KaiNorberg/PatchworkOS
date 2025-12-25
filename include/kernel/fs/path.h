@@ -27,7 +27,7 @@ typedef struct namespace_handle namespace_handle_t;
  *
  * ## Flags/Mode
  *
- * Paths can have flags appended at the end, these flags are parsed to determine the mode with which the path is opened.
+ * Paths can have flags appended at the end, these flags are parsed to determine the mode of the related operation.
  *
  * Each flag starts with `:` and multiple instances of the same flag are allowed, for example
  * `/path/to/file:append:append:nonblock`.
@@ -45,23 +45,23 @@ typedef struct namespace_handle namespace_handle_t;
  * | `exclusive` | `e` | Will cause the open to fail if the file already exists. |
  * | `truncate` | `t` | Truncate the file to zero length if it already exists. |
  * | `directory` | `d` | Create or remove directories. All other operations will ignore this flag. |
- * | `recursive` | `R` | Behaviour differs, but allows for recursive operations, for example when used with `remove` it
- * will remove directories and their children recursively. |
+ * | `recursive` | `R` | If removing a directory, remove all its contents recursively. If using `getdents()`, list contents recursively. |
  * | `nofollow`  | `l` | Do not follow symbolic links. |'
- * | `private` | `p` | Any files with this flag will be closed before a process starts executing. |
- *
+ * | `private` | `p` | Any files with this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child namespace. |
+ * | `sticky` | `s` | Used for mounts, makes the mount apply to the dentry regardless of the path used to reach it. |
+ * | `children` | `C` | Propagate mounts and unmounts to child namespaces. |
+ * | `locked` | `L` | Forbid unmounting this mount, useful for hiding directories or files. |
+ * 
  * For convenience, a single letter short form is also available as shown above, these single letter forms do not need
  * to be separated by colons, for example `/path/to/file:rwcte` is equivalent to
  * `/path/to/file:read:write:create:truncate:exclusive`.
  *
- * The parsed mode is the primary way to handle both the behaviour of opened paths and permissions through out the
+ * The parsed mode is the primary way to handle both the behaviour of vfs operations and permissions in the
  * kernel. For example, a file opened from within a directory which was bound with only read permissions will also have
  * read only permissions, even if the file itself would allow write permissions.
  *
  * If no permissions, i.e. read, write or execute, are specified, the default is to open with the maximum currently
  * allowed permissions.
- *
- * @see kernel_fs_namespace for information on mode inheritance when binding paths.
  *
  * @{
  */
@@ -84,10 +84,13 @@ typedef enum mode
     MODE_EXCLUSIVE = 1 << 6,
     MODE_TRUNCATE = 1 << 7,
     MODE_DIRECTORY = 1 << 8,
-    MODE_RECURSIVE = 1 << 9, ///< Implemented in the VFS, the filesystem should ignore this flag.
+    MODE_RECURSIVE = 1 << 9,
     MODE_NOFOLLOW = 1 << 10,
     MODE_PRIVATE = 1 << 11,
-    MODE_AMOUNT = 12,
+    MODE_STICKY = 1 << 12,
+    MODE_PARENTS = 1 << 13, ///< Propagate mounts and unmounts to child namespaces, this mode cant be specified by user space.
+    MODE_CHILDREN = 1 << 14,
+    MODE_LOCKED = 1 << 15,
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
 } mode_t;
 

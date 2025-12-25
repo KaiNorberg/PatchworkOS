@@ -765,8 +765,7 @@ static uint64_t process_dir_init(process_t* process)
     path_t procPath = PATH_CREATE(proc, proc->source);
     PATH_DEFER(&procPath);
 
-    process->dir.dir = sysfs_submount_new(&procPath, name, &process->ns, MOUNT_PROPAGATE_PARENT | MOUNT_NO_INHERIT,
-        MODE_DIRECTORY | MODE_ALL_PERMS, &procInodeOps, NULL, process);
+    process->dir.dir = sysfs_submount_new(&procPath, name, &process->ns, MODE_PARENTS | MODE_PRIVATE | MODE_ALL_PERMS, &procInodeOps, NULL, process);
     if (process->dir.dir == NULL)
     {
         return ERR;
@@ -892,7 +891,7 @@ void process_kill(process_t* process, const char* status)
 
     // Anything that another process could be waiting on must be cleaned up here.
 
-    namespace_unmount(&process->ns, process->dir.dir, MOUNT_PROPAGATE_PARENT);
+    namespace_unmount(&process->ns, process->dir.dir, MODE_PARENTS);
 
     cwd_clear(&process->cwd);
     file_table_close_all(&process->fileTable);
@@ -1087,8 +1086,7 @@ process_t* process_get_kernel(void)
 
 void process_procfs_init(void)
 {
-    proc = sysfs_mount_new("proc", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT,
-        MODE_DIRECTORY | MODE_ALL_PERMS, NULL, NULL, NULL);
+    proc = sysfs_mount_new("proc", NULL, MODE_ALL_PERMS, NULL, NULL, NULL);
     if (proc == NULL)
     {
         panic(NULL, "Failed to mount /proc");

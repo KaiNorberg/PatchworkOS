@@ -50,18 +50,6 @@ mount_t* mount_new(superblock_t* superblock, dentry_t* source, dentry_t* target,
         return NULL;
     }
 
-    if (mode & MODE_DIRECTORY && DENTRY_IS_FILE(source))
-    {
-        errno = ENOTDIR;
-        return NULL;
-    }
-
-    if (!(mode & MODE_DIRECTORY) && DENTRY_IS_DIR(source))
-    {
-        errno = EISDIR;
-        return NULL;
-    }
-
     mount_t* mount = malloc(sizeof(mount_t));
     if (mount == NULL)
     {
