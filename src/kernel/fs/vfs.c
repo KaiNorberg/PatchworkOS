@@ -1,3 +1,4 @@
+#include <_internal/MAX_PATH.h>
 #include <kernel/fs/vfs.h>
 
 #include <kernel/cpu/syscall.h>
@@ -821,8 +822,19 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
     buffer->modifyTime = inode->modifyTime;
     buffer->changeTime = inode->changeTime;
     buffer->createTime = inode->createTime;
-    strncpy(buffer->name, path.dentry->name, MAX_NAME - 1);
-    buffer->name[MAX_NAME - 1] = '\0';
+
+    char mode[MAX_PATH];
+    if (mode_to_string(path.mount->mode, mode, MAX_PATH) == ERR)
+    {
+        return ERR;
+    }
+
+    if (snprintf(buffer->name, sizeof(buffer->name), "%s%s", path.dentry->name, mode) < 0)
+    {
+        errno = EIO;
+        return ERR;
+    }
+
     mutex_release(&inode->mutex);
     return 0;
 }

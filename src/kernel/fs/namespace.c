@@ -454,15 +454,21 @@ mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char*
     return mount;
 }
 
-mount_t* namespace_bind(namespace_handle_t* handle, dentry_t* source, path_t* target, mode_t mode)
+mount_t* namespace_bind(namespace_handle_t* handle, path_t* source, path_t* target, mode_t mode)
 {
-    if (handle == NULL || source == NULL || target == NULL || target->dentry == NULL || target->mount == NULL)
+    if (handle == NULL || source == NULL || source->dentry == NULL || source->mount == NULL || target == NULL || target->dentry == NULL || target->mount == NULL)
     {
         errno = EINVAL;
         return NULL;
     }
 
-    mount_t* mount = mount_new(source->superblock, source, target->dentry, target->mount, mode);
+    if (((mode & MODE_ALL_PERMS) & ~source->mount->mode) != 0)
+    {
+        errno = EACCES;
+        return NULL;
+    }
+
+    mount_t* mount = mount_new(source->dentry->superblock, source->dentry, target->dentry, target->mount, mode);
     if (mount == NULL)
     {
         return NULL;
@@ -568,8 +574,7 @@ SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpoint)
     }
     UNREF_DEFER(sourceFile);
 
-    mode_t mode = (mountname.mode & ~MODE_ALL_PERMS) | (sourceFile->mode & MODE_ALL_PERMS);
-    mount_t* bind = namespace_bind(&process->ns, sourceFile->path.dentry, &mountpath, mode);
+    mount_t* bind = namespace_bind(&process->ns, &sourceFile->path, &mountpath, mountname.mode);
     if (bind == NULL)
     {
         return ERR;

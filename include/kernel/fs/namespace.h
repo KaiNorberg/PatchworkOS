@@ -135,18 +135,19 @@ void namespace_traverse(namespace_handle_t* handle, path_t* path);
 mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char* deviceName, const char* fsName, mode_t mode, void* private);
 
 /**
- * @brief Bind a source dentry to a target path in a namespace.
+ * @brief Bind a source path to a target path in a namespace.
  *
  * @param handle The namespace handle containing the namespace to bind in.
- * @param source The source dentry to bind from, could be either a file or directory and from any filesystem.
+ * @param source The source path to bind from, could be either a file or directory and from any filesystem.
  * @param target The target path to bind to.
  * @param mode The mode specifying permissions and mount behaviour.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
+ * - `EACCES`: The source path does not have sufficient permissions for the requested bind mode.
  * - `ENOMEM`: Out of memory.
  * - Other errors as returned by `mount_new()`.
  */
-mount_t* namespace_bind(namespace_handle_t* handle, dentry_t* source, path_t* target, mode_t mode);
+mount_t* namespace_bind(namespace_handle_t* handle, path_t* source, path_t* target, mode_t mode);
 
 /**
  * @brief Remove a mount in a namespace.

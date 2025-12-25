@@ -27,6 +27,7 @@
  * | Directory | Description | Permissions/Visibility |
  * |-----------|-------------|------------------------|
  * | /acpi     | ACPI Information | Read-Only |
+ * | /bin      | System Binaries | Read and Execute |
  * 
  */
 
@@ -71,14 +72,16 @@ static void child_spawn(const char* path, priority_t priority)
 
 
     const char* argv[] = {path, NULL};
-    pid_t pid = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_FDS);
+    pid_t pid = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_FDS | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS);
     if (pid == ERR)
     {
         printf("init: failed to spawn program '%s' (%s)\n", path, strerror(errno));
     }
 
     swritefile(F("/proc/%llu/prio", pid), F("%llu", priority));
-    swritefile(F("/proc/%llu/ctl", pid), "start");
+
+    // Bind directories to themselves with new permissions and with the "L" (:locked) flag to ensure the child processes cant unmount the directories.
+    swritefile(F("/proc/%llu/ctl", pid), "bind /acpi /acpi:Lr && bind /bin /bin:Lrx && start");
 }
 
 static void services_start(config_t* config)

@@ -300,6 +300,20 @@ uint64_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_
  */
 uint64_t path_to_name(const path_t* path, pathname_t* pathname);
 
+/**
+ * @brief Convert a mode to a string representation.
+ *
+ * The resulting string will be null terminated.
+ *
+ * @param mode The mode to convert.
+ * @param out The output string buffer.
+ * @param length The length of the output string buffer.
+ * @return On success, the length of the resulting string, excluding the null terminator. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `ENAMETOOLONG`: The output buffer is too small.
+ */
+uint64_t mode_to_string(mode_t mode, char* out, uint64_t length);
+
 static inline void path_defer_cleanup(path_t** path)
 {
     if (*path != NULL)

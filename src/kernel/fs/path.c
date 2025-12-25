@@ -606,3 +606,35 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
     pathname->isValid = true;
     return 0;
 }
+
+uint64_t mode_to_string(mode_t mode, char* out, uint64_t length)
+{
+    if (out == NULL || length == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    uint64_t index = 0;
+    for (uint64_t i = 0; i < sizeof(flags) / sizeof(flags[0]); i++)
+    {
+        if (mode & flags[i].mode)
+        {
+            uint64_t nameLength = strnlen_s(flags[i].name, MAX_NAME);
+            if (index + nameLength + 1 >= length)
+            {
+                errno = ENAMETOOLONG;
+                return ERR;
+            }
+
+            out[index] = ':';
+            index++;
+
+            memcpy(&out[index], flags[i].name, nameLength);
+            index += nameLength;
+        }
+    }
+
+    out[index] = '\0';
+    return index;
+}

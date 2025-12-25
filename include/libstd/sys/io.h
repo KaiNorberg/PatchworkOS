@@ -342,12 +342,12 @@ typedef struct
     time_t modifyTime;     ///< Unix time stamp for last file content alteration.
     time_t changeTime;     ///< Unix time stamp for the last file metadata alteration.
     time_t createTime;     ///< Unix time stamp for the creation of the inode.
-    char name[MAX_NAME];   ///< The name of the entry, not the full filepath.
+    char name[MAX_PATH];   ///< The name of the entry, not the full filepath. Includes the flags of the paths mount.
     uint8_t padding[64];   ///< Padding to leave space for future expansion.
 } stat_t;
 
 #ifdef static_assert
-static_assert(sizeof(stat_t) == 168, "invalid stat_t size");
+static_assert(sizeof(stat_t) == 392, "invalid stat_t size");
 #endif
 
 /**

@@ -535,6 +535,53 @@ static uint64_t process_ctl_join(file_t* file, uint64_t argc, const char** argv)
     return 0;
 }
 
+static uint64_t process_ctl_bind(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 3)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+
+    pathname_t sourceName;
+    if (pathname_init(&sourceName, argv[1]) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t source = cwd_get(&process->cwd);
+    PATH_DEFER(&source);
+
+    if (path_walk(&source, &sourceName, &process->ns) == ERR)
+    {
+        return ERR;
+    }
+
+    pathname_t targetName;
+    if (pathname_init(&targetName, argv[2]) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t target = cwd_get(&process->cwd);
+    PATH_DEFER(&target);
+
+    if (path_walk(&target, &targetName, &process->ns) == ERR)
+    {
+        return ERR;
+    }
+
+    mount_t* mount = namespace_bind(&process->ns, &source, &target, targetName.mode);
+    if (mount == NULL)
+    {
+        return ERR;
+    }
+    UNREF(mount);
+    return 0;
+}
+
 static uint64_t process_ctl_start(file_t* file, uint64_t argc, const char** argv)
 {
     (void)argv; // Unused
@@ -575,6 +622,7 @@ CTL_STANDARD_OPS_DEFINE(ctlOps,
         {"close", process_ctl_close, 2, 3},
         {"dup2", process_ctl_dup2, 3, 3},
         {"join", process_ctl_join, 2, 2},
+        {"bind", process_ctl_bind, 3, 3},
         {"start", process_ctl_start, 1, 1},
         {"kill", process_ctl_kill, 1, 1},
         {0},
