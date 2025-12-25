@@ -47,7 +47,7 @@ typedef struct namespace_handle namespace_handle_t;
  * | `directory` | `d` | Create or remove directories. All other operations will ignore this flag. |
  * | `recursive` | `R` | Behaviour differs, but allows for recursive operations, for example when used with `remove` it
  * will remove directories and their children recursively. |
- * | `nofollow`  | `f` | Do not follow symbolic links. |'
+ * | `nofollow`  | `l` | Do not follow symbolic links. |'
  * | `private` | `p` | Any files with this flag will be closed before a process starts executing. |
  *
  * For convenience, a single letter short form is also available as shown above, these single letter forms do not need

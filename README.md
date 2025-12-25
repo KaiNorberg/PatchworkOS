@@ -666,7 +666,7 @@ stat mysymlink
 
 # Retrieve information on a symlink itself
 stat mysymlink:nofollow
-stat mysymlink:N
+stat mysymlink:l
 ```
 
 There are other utils available that work as expected, for example `symlink` and `link`.

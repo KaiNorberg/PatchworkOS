@@ -33,7 +33,7 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['t'] = {.mode = MODE_TRUNCATE},
     ['d'] = {.mode = MODE_DIRECTORY},
     ['R'] = {.mode = MODE_RECURSIVE},
-    ['f'] = {.mode = MODE_NOFOLLOW},
+    ['l'] = {.mode = MODE_NOFOLLOW},
     ['p'] = {.mode = MODE_PRIVATE},
 };
 
