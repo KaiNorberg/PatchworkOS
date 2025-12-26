@@ -278,6 +278,11 @@ uint64_t namespace_handle_init(namespace_handle_t* handle, namespace_handle_t* s
             mount_stack_entry_t* stackEntry;
             LIST_FOR_EACH(stackEntry, &stack->mounts, entry)
             {
+                if (stackEntry->mount->mode & MODE_PRIVATE)
+                {
+                    continue;
+                }
+
                 map_key_t key =
                     mount_key(stackEntry->mount->parent->id, stackEntry->mount->target->id, stackEntry->mount->mode);
                 if (namespace_add(ns, stackEntry->mount, &key) == ERR)
