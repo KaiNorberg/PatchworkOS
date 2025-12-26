@@ -21,7 +21,7 @@
  * ## Filesystem Heirarchy
  *
  * Included below is a table indicating the permissions or visibility of directories as setup by the init process.
- * 
+ *
  * <div align="center">
  * | Directory | Description | Permissions/Visibility |
  * |-----------|-------------|------------------------|
@@ -92,16 +92,16 @@ static void child_spawn(const char* path, priority_t priority)
     // Bind directories to themselves with new permissions and with the "L" (:locked) flag to ensure the child processes
     // cant unmount the directories and "S" (:sticky) to ensure children cant bypass the mount by mounting an ancestor.
     if (swritefile(F("/proc/%llu/ctl", pid),
-        "bind /acpi /acpi:LSr && "
-        "bind /bin /bin:LSrx && "
-        "bind /cfg /cfg:LSr && "
-        "bind /dev /dev:LSrw && "
-        "bind /dev/null /efi:LS && "
-        "bind /dev/null /kernel:LS && "
-        "bind /lib /lib:LSrx && "
-        "bind /sbin /sbin:LSrx && "
-        "bind /usr /usr:LSrx && "
-        "start") == ERR)
+            "bind /acpi /acpi:LSr && "
+            "bind /bin /bin:LSrx && "
+            "bind /cfg /cfg:LSr && "
+            "bind /dev /dev:LSrw && "
+            "bind /dev/null /efi:LS && "
+            "bind /dev/null /kernel:LS && "
+            "bind /lib /lib:LSrx && "
+            "bind /sbin /sbin:LSrx && "
+            "bind /usr /usr:LSrx && "
+            "start") == ERR)
     {
         printf("init: failed to setup process namespaces for '%s' (%s)\n", path, strerror(errno));
     }

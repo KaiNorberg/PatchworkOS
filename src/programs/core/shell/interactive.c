@@ -59,7 +59,26 @@ static void interactive_execute(void)
 
     if (strlen(pipeline.status) > 0 && strcmp(pipeline.status, "0") != 0 && strcmp(pipeline.status, "-1") != 0)
     {
-        printf("shell: %s\n", pipeline.status);
+        int status;
+        if (sscanf(pipeline.status, "%d", &status) == 1)
+        {
+            if (status > 0 && status < EMAX)
+            {
+                printf("shell: %s\n", strerror(status));
+            }
+            else if (status < 0 && -status > 0 && -status < EMAX)
+            {
+                printf("shell: %s\n", strerror(-status));
+            }
+            else
+            {
+                printf("shell: %llu\n", status);
+            }
+        }
+        else
+        {
+            printf("shell: %s\n", pipeline.status);
+        }
     }
 
     pipeline_deinit(&pipeline);

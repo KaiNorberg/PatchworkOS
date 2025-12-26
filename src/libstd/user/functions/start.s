@@ -1,8 +1,6 @@
 extern main
 extern exit
-extern _init
 extern _std_init
-extern environ
 
 global _start:function (_start.end - _start)
 
@@ -15,8 +13,6 @@ _start:
 	push rsi
 	push rdi
 
-    call _init
-
     call _std_init
 
     pop rdi
@@ -24,8 +20,6 @@ _start:
 
     call main
     push rax
-
-    ;call _StdDeinit
 
     pop rdi
     call exit

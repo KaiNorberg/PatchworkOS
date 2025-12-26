@@ -958,7 +958,7 @@ Date:   Tue Jun 25 08:47:03 2013 -0400
     check. This prevents clang from inserting a call to memset() when compiling
     the RtZeroMem() and RtSetMem() routines in lib/runtime/efirtlib.c and guards
     against the native compiler in some Linux distros from adding in stack
-    checking code which relies on libc help that isn't present in the EFI runtime
+    checking code which relies on libstd help that isn't present in the EFI runtime
     environment.
     
     This does the following:
@@ -1230,7 +1230,7 @@ Date:   Tue Jun 25 08:47:03 2013 -0400
 2001-03-29  David Mosberger  <davidm@hpl.hp.com>
 
 	* gnuefi/reloc_ia32.c: Add a couple of defines to work around
-	libc/efilib collision on uint64_t et al.
+	libstd/efilib collision on uint64_t et al.
 	(_relocate): Use ELF32_R_TYPE() instead of ELFW(R_TYPE)().
 
 	* gnuefi/crt0-efi-ia32.S (dummy): Add a dummy relocation entry.
@@ -1238,7 +1238,7 @@ Date:   Tue Jun 25 08:47:03 2013 -0400
 2001-03-29  David Mosberger  <davidm@hpl.hp.com>
 
         * gnuefi/reloc_ia32.c: Add a couple of defines to work around
-        libc/efilib collision on uint64_t et al.
+        libstd/efilib collision on uint64_t et al.
         (_relocate): Use ELF32_R_TYPE() instead of ELFW(R_TYPE)().
 
         * gnuefi/crt0-efi-ia32.S (dummy): Add a dummy relocation entry.

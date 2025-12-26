@@ -73,6 +73,7 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 - Custom superset of the ANSI C standard library including threading, file I/O, math, PatchworkOS extensions, etc.
 - Highly modular shared memory based desktop environment.
 - Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
+- Capability based security model using per-process namespaces and mountpoints, with password encryption using [Argon2id](https://github.com/P-H-C/phc-winner-argon2).
 - Note that currently a heavy focus has been placed on the kernel and low-level stuff, so user space is quite small... for now.
 
 *And much more...*

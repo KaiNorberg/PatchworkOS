@@ -409,9 +409,9 @@ typedef struct
 {
     inode_number_t number;
     inode_type_t type;
-    dirent_flags_t flags; 
-    char path[MAX_PATH];   ///< The relative path of the entry.
-    char mode[MAX_PATH];  ///< The flags of the paths mount.
+    dirent_flags_t flags;
+    char path[MAX_PATH]; ///< The relative path of the entry.
+    char mode[MAX_PATH]; ///< The flags of the paths mount.
 } dirent_t;
 
 /**

@@ -80,7 +80,7 @@ uint64_t key_share(key_t* key, file_t* file, clock_t timeout)
     LOCK_SCOPE(&keyLock);
 
     entry->key = key_generate();
-    
+
     map_key_t mapKey = map_key_buffer(&entry->key, sizeof(entry->key));
     if (map_insert(&keyMap, &mapKey, &entry->mapEntry) == ERR)
     {

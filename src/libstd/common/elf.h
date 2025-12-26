@@ -1,5 +1,4 @@
-#ifndef _LIBSTD_COMMON_ELF_H
-#define _LIBSTD_COMMON_ELF_H 1
+#pragma once
 
 #include <errno.h>
 #include <stddef.h>
@@ -41,5 +40,3 @@ static void* elf_memchr(const void* ptr, int value, size_t num)
 #ifdef _KERNEL_
 #include <kernel/log/log.h>
 #endif
-
-#endif // _LIBSTD_COMMON_ELF_H

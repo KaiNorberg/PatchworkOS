@@ -96,11 +96,11 @@ typedef struct dir_ctx
 {
     /**
      * @brief Emit function.
-     * 
+     *
      * Should be called on all entries inside a directory while iterating over it, until this function returns `false`.
-     * 
+     *
      * Will be implemented by the VFS not the filesystem.
-     * 
+     *
      * @param ctx The directory context.
      * @param name The name of the entry.
      * @param number The inode number of the entry.

@@ -1,6 +1,6 @@
 $(BUILDDIR)/%.c.o: src/%.c
 	$(MKCWD)
-	$(GC) $(CFLAGS) -MMD -MP -MF $(BUILDDIR)/$*.c.d -c -o $@ $<
+	$(CC) $(CFLAGS) -MMD -MP -MF $(BUILDDIR)/$*.c.d -c -o $@ $<
 
 $(BUILDDIR)/%.s.o: src/%.s
 	$(MKCWD)
@@ -8,11 +8,11 @@ $(BUILDDIR)/%.s.o: src/%.s
 
 $(BINDIR)/%.a: $(OBJ)
 	$(MKCWD)
-	$(LD) $(LDFLAGS) -r -o $@ $^ $(LDSTDLIB)
+	$(AR) rcs $@ $^
 
 $(BINDIR)/%: $(OBJ)
 	$(MKCWD)
-	$(LD) $(LDFLAGS) -o $@ $^ $(LDSTDLIB)
+	$(LD) -o $@ $^ $(LDFLAGS) $(LDSTDLIB)
 
 # Black magic, good luck. Used to link the bootloader.
 $(BINDIR)/%.efi: $(OBJ)

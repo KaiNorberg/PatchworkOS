@@ -1,8 +1,9 @@
 MKCWD = mkdir -p $(@D)
 
-GC = gcc
+CC = gcc
 AS = nasm
 LD = ld
+AR = ar
 OBJCOPY := objcopy
 
 CFLAGS := \
@@ -66,10 +67,7 @@ ifeq ($(NOSTDLIB),1)
 	LDSTDLIB :=
 else
 	LDSTDLIB := \
-		-lstd \
-		bin/libstd/crti.o \
-		bin/libstd/crt0.o \
-		bin/libstd/crtn.o
+		-lstd
 endif
 
 # Compiler flags for kernel modules

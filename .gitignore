@@ -67,4 +67,6 @@ meta/doxy/doxygen-awesome-css
 include/kernel/version.h
 lib/acpica
 lib/acpica_tests
+lib/argon2
+include/argon2
 temp.md
