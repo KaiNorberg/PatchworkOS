@@ -80,7 +80,7 @@ static void child_spawn(const char* path, priority_t priority)
     }
 
     const char* argv[] = {path, NULL};
-    pid_t pid = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_FDS | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS);
+    pid_t pid = spawn(argv, SPAWN_SUSPEND | SPAWN_STDIO_FDS | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS);
     if (pid == ERR)
     {
         printf("init: failed to spawn program '%s' (%s)\n", path, strerror(errno));
@@ -104,33 +104,6 @@ static void child_spawn(const char* path, priority_t priority)
         "start") == ERR)
     {
         printf("init: failed to setup process namespaces for '%s' (%s)\n", path, strerror(errno));
-    }
-}
-
-static void services_start(config_t* config)
-{
-    priority_t servicePriority = config_get_int(config, "startup", "service_priority", 31);
-
-    config_array_t* services = config_get_array(config, "startup", "services");
-    for (uint64_t i = 0; i < services->length; i++)
-    {
-        child_spawn(services->items[i], servicePriority);
-    }
-
-    config_array_t* serviceFiles = config_get_array(config, "startup", "service_files");
-    for (uint64_t i = 0; i < serviceFiles->length; i++)
-    {
-        clock_t start = uptime();
-        stat_t info;
-        while (stat(serviceFiles->items[i], &info) == ERR)
-        {
-            nanosleep(CLOCKS_PER_SEC / 100);
-            if (uptime() - start > CLOCKS_PER_SEC * 30)
-            {
-                printf("init: timeout waiting for service file '%s'\n", serviceFiles->items[i]);
-                abort();
-            }
-        }
     }
 }
 
@@ -169,8 +142,6 @@ static void init_config_load(void)
     printf("init: setting up environment...\n");
     environment_setup(config);
 
-    printf("init: starting services...\n");
-    services_start(config);
     printf("init: starting programs...\n");
     programs_start(config);
 

@@ -81,6 +81,30 @@ static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* 
     }
 }
 
+static void dwm_spawn_program(const char* path)
+{
+    if (path == NULL)
+    {
+        return;
+    }
+
+    const char* argv[] = {path, NULL};
+    pid_t pid = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_FDS | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS);
+    if (pid == ERR)
+    {
+        printf("dwm: failed to spawn program '%s' (%s)\n", path, strerror(errno));
+        return;
+    }
+
+    if (swritefile(F("/proc/%llu/ctl", pid),
+        "bind /dev/klog /dev/klog:LSr && "
+        "bind /dev/null /dev/fb:LS && "
+        "start") == ERR)
+    {
+        printf("dwm: failed to setup process namespaces for '%s' (%s)\n", path, strerror(errno));
+    }
+}
+
 void dwm_init(void)
 {
     kbd = open("/dev/kbd/0/events");
@@ -144,6 +168,10 @@ void dwm_init(void)
     focus = NULL;
 
     pollCtx = NULL;
+
+    dwm_spawn_program("/sbin/wall");
+    dwm_spawn_program("/sbin/cursor");
+    dwm_spawn_program("/sbin/taskbar");
 }
 
 void dwm_deinit(void)
@@ -163,11 +191,11 @@ void dwm_report_produce(surface_t* surface, client_t* client, report_flags_t fla
 
     client_send_event(client, surface->id, EVENT_REPORT, &event, sizeof(event));
 
-    event_global_report_t globaEVENT_LIB;
-    globaEVENT_LIB.flags = flags;
-    globaEVENT_LIB.info = event.info;
+    event_global_report_t globalEvent;
+    globalEvent.flags = flags;
+    globalEvent.info = event.info;
 
-    dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_REPORT, &globaEVENT_LIB, sizeof(globaEVENT_LIB));
+    dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_REPORT, &globalEvent, sizeof(globalEvent));
 }
 
 surface_t* dwm_surface_find(surface_id_t id)
@@ -467,8 +495,8 @@ static void dwm_kbd_read(void)
         event.ascii = kbd_ascii(event.code, event.mods);
         client_send_event(focus->client, focus->id, EVENT_KBD, &event, sizeof(event_kbd_t));
 
-        event_global_kbd_t globaEVENT_LIB = event;
-        dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_KBD, &globaEVENT_LIB, sizeof(globaEVENT_LIB));
+        event_global_kbd_t globalEvent = event;
+        dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_KBD, &globalEvent, sizeof(globalEvent));
     }
 }
 
@@ -554,9 +582,9 @@ static void dwm_handle_mouse_event(const mouse_event_t* mouseEvent)
         };
         client_send_event(destSurface->client, destSurface->id, EVENT_MOUSE, &event, sizeof(event_mouse_t));
 
-        event_global_mouse_t globaEVENT_LIB = event;
-        globaEVENT_LIB.pos = globaEVENT_LIB.screenPos;
-        dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_MOUSE, &globaEVENT_LIB, sizeof(globaEVENT_LIB));
+        event_global_mouse_t globalEvent = event;
+        globalEvent.pos = globalEvent.screenPos;
+        dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_MOUSE, &globalEvent, sizeof(globalEvent));
     }
 
     prevHeld = held;

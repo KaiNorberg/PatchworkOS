@@ -493,7 +493,7 @@ The solution to these problems are "locked" and "sticky" mounts and binds. A loc
 
 A sticky mount or bind applies to the dentry of the mountpoint no matter where it is mounted in the namespace tree. For example, if `/secret/data` is a sticky bind to `/dev/null`, then mounting `/secret` to `/other` will still cause `/other/data` to be bound to `/dev/null`.
 
-Combining these two features allows any file or directory to be permanently hidden or have its permissions limited in a namespace.
+Combining these two features allows any file or directory to be permanently hidden or have its permissions limited in a namespace. An example of this is how the Desktop Window Manager limits `/dev/klog` to read-only access for all user processes or how it hides `/dev/fb` entirely, preventing user processes from accessing framebuffers directly.
 
 Check the [Init Process Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbc/group__programs__init.html) for the setup of the initial namespace.
 
