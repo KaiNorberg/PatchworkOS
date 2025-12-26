@@ -493,6 +493,8 @@ A sticky mount or bind applies to the dentry of the mountpoint no matter where i
 
 Combining these two features allows any file or directory to be permanently hidden or have its permissions limited in a namespace.
 
+Check the [Init Process Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbc/group__programs__init.html) for the setup of the initial namespace.
+
 ## ACPI (WIP)
 
 PatchworkOS features a from-scratch ACPI implementation and AML parser, with the goal of being, at least by ACPI standards, easy to understand and educational. It is tested on the [Tested Configurations](#tested-configurations) below and against [ACPICA's](https://github.com/acpica/acpica) runtime test suite, but remains a work in progress (and probably always will be).
