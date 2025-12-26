@@ -36,7 +36,7 @@ static uint64_t builtin_cd(uint64_t argc, const char** argv)
 {
     if (argc < 2)
     {
-        chdir("/usr");
+        chdir("/home");
         return 0;
     }
 

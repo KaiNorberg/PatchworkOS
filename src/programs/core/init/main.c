@@ -20,12 +20,9 @@
  *
  * ## Filesystem Heirarchy
  *
- * As the init process is the root process, it is responsible for setting up the initial namespaces for all
- * processes, including deciding which directories should be visible and what permissions the visible directories ought
- * to have.
- *
  * Included below is a table indicating the permissions or visibility of directories as setup by the init process.
- *
+ * 
+ * <div align="center">
  * | Directory | Description | Permissions/Visibility |
  * |-----------|-------------|------------------------|
  * | /acpi     | ACPI Information | Read-Only |
@@ -40,6 +37,7 @@
  * | /proc     | Process Filesystem | Exposed |
  * | /sbin     | Essential System Binaries | Read and Execute |
  * | /usr      | User Binaries and Libraries | Read and Execute |
+ * </div>
  */
 
 static void environment_setup(config_t* config)
@@ -89,6 +87,7 @@ static void child_spawn(const char* path, priority_t priority)
     }
 
     swritefile(F("/proc/%llu/prio", pid), F("%llu", priority));
+    swritefile(F("/proc/%llu/cwd", pid), "/home");
 
     // Bind directories to themselves with new permissions and with the "L" (:locked) flag to ensure the child processes
     // cant unmount the directories and "S" (:sticky) to ensure children cant bypass the mount by mounting an ancestor.

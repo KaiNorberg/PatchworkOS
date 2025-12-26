@@ -161,6 +161,8 @@
  * ### bind <source> <target>
  *
  * Bind a source path to a target path in the processes namespace.
+ * 
+ * Path flags for controlling the bind behaviour ought to be specified in the target path.
  *
  * @see kernel_fs_path for information on path flags.
  *
