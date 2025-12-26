@@ -12,15 +12,14 @@
 #include <errno.h>
 #include <kernel/utils/map.h>
 #include <stdlib.h>
+#include <sys/list.h>
 
 static map_t keyMap = MAP_CREATE();
 static list_t keyList = LIST_CREATE(keyList);
-static rwlock_t keyLock = RWLOCK_CREATE();
+static lock_t keyLock = LOCK_CREATE();
 
 static key_t key_generate(void)
 {
-    RWLOCK_READ_SCOPE(&keyLock);
-
     key_t key;
     map_key_t mapKey;
     do
@@ -40,15 +39,16 @@ static void key_timer_handler(interrupt_frame_t* frame, cpu_t* self)
     (void)frame;
     (void)self;
 
-    clock_t now = clock_uptime();
-    RWLOCK_WRITE_SCOPE(&keyLock);
+    clock_t uptime = clock_uptime();
+    LOCK_SCOPE(&keyLock);
 
     key_entry_t* entry;
     key_entry_t* temp;
     LIST_FOR_EACH_SAFE(entry, temp, &keyList, entry)
     {
-        if (entry->expiry > now)
+        if (entry->expiry > uptime)
         {
+            timer_set(uptime, entry->expiry);
             break;
         }
 
@@ -74,11 +74,13 @@ uint64_t key_share(key_t* key, file_t* file, clock_t timeout)
     }
     list_entry_init(&entry->entry);
     map_entry_init(&entry->mapEntry);
-    entry->key = key_generate();
     entry->file = REF(file);
     entry->expiry = CLOCKS_DEADLINE(timeout, clock_uptime());
 
-    RWLOCK_WRITE_SCOPE(&keyLock);
+    LOCK_SCOPE(&keyLock);
+
+    entry->key = key_generate();
+    
     map_key_t mapKey = map_key_buffer(&entry->key, sizeof(entry->key));
     if (map_insert(&keyMap, &mapKey, &entry->mapEntry) == ERR)
     {
@@ -91,6 +93,7 @@ uint64_t key_share(key_t* key, file_t* file, clock_t timeout)
     if (list_length(&keyList) == 0)
     {
         list_push_back(&keyList, &entry->entry);
+        timer_set(clock_uptime(), entry->expiry);
         return 0;
     }
 
@@ -100,6 +103,7 @@ uint64_t key_share(key_t* key, file_t* file, clock_t timeout)
         if (entry->expiry < other->expiry)
         {
             list_prepend(&keyList, &other->entry, &entry->entry);
+            timer_set(clock_uptime(), entry->expiry);
             return 0;
         }
     }
@@ -134,6 +138,7 @@ SYSCALL_DEFINE(SYS_SHARE, uint64_t, key_t* key, fd_t fd, clock_t timeout)
 
     if (thread_copy_to_user(thread, key, &keyCopy, sizeof(keyCopy)) == ERR)
     {
+        UNREF(key_claim(&keyCopy));
         return ERR;
     }
     return 0;
@@ -147,7 +152,7 @@ file_t* key_claim(key_t* key)
         return NULL;
     }
 
-    RWLOCK_WRITE_SCOPE(&keyLock);
+    LOCK_SCOPE(&keyLock);
     map_key_t mapKey = map_key_buffer(key, sizeof(*key));
     map_entry_t* mapEntry = map_get_and_remove(&keyMap, &mapKey);
     if (mapEntry == NULL)

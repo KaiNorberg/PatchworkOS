@@ -117,7 +117,7 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
 
 static uint64_t aml_tests_acpica_run_all(void)
 {
-    for (uint32_t i = 0; i < ACPICA_TEST_COUNT; i++)
+    for (int32_t i = 0; i < ACPICA_TEST_COUNT; i++)
     {
         const acpica_test_t* test = &acpicaTests[i];
         if (aml_tests_acpica_do_test(test) == ERR)

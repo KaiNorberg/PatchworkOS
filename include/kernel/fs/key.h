@@ -13,7 +13,7 @@
  *
  * Keys are used with the `share()` and `claim()` system calls to send files between processes.
  *
- * Each key is a 64-bit one-time use randomly generated token that globally identifies a shared file.
+ * Each key is a one-time use randomly generated token that globally identifies a shared file.
  *
  * @{
  */
