@@ -84,7 +84,9 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 
 ## Notable Future Plans
 
-- Port LUA and use it for dynamic system configuration. <-- Currently being worked on.
+- Overhaul namespace security. <-- Currently being worked on.
+- File servers (FUSE, 9P?).
+- Port LUA and use it for dynamic system configuration.
 - Fully Asynchronous I/O and syscalls (io_uring?).
 - USB support.
 
