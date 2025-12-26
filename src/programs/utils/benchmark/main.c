@@ -3,7 +3,8 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define TEST_ITERATIONS 10000
+#define MMAP_ITER 10000
+#define GETPID_ITER 100000
 
 #ifdef _PATCHWORK_OS_
 #include <sys/io.h>
@@ -34,6 +35,31 @@ static void* mmap_generic(size_t length)
 static uint64_t munmap_generic(void* addr, size_t length)
 {
     return munmap(addr, length) == NULL ? ERR : 0;
+}
+
+static void benchmark_getpid(void)
+{
+    clock_t start = clock();
+
+    for (uint64_t i = 0; i < GETPID_ITER; i++)
+    {
+        getpid();
+    }
+
+    clock_t end = clock();
+    printf("getpid: %llums\n", (end - start) / (CLOCKS_PER_SEC / 1000));
+
+    clock_t procStart = clock();
+
+    for (uint64_t i = 0; i < GETPID_ITER; i++)
+    {
+        readfile("/proc/self/pid", NULL, 0, 0);
+    }
+
+    clock_t procEnd = clock();
+    printf("/proc/self/pid: %llums\n", (procEnd - procStart) / (CLOCKS_PER_SEC / 1000));
+
+    printf("overhead: %lluns\n", ((procEnd - procStart) - (end - start)) / GETPID_ITER);
 }
 
 #else
@@ -69,7 +95,7 @@ static void benchmark_mmap(uint64_t pages)
 {
     clock_t start = clock();
 
-    for (uint64_t i = 0; i < TEST_ITERATIONS; i++)
+    for (uint64_t i = 0; i < MMAP_ITER; i++)
     {
         void* ptr = mmap_generic(pages * 0x1000);
         if (ptr == NULL)
@@ -98,7 +124,10 @@ int main()
 {
     init_generic();
 
-    printf("Starting mmap benchmark with %llu iterations\n", TEST_ITERATIONS);
+#ifdef _PATCHWORK_OS_
+    benchmark_getpid();
+#endif
+
     benchmark_mmap(1);
     for (uint64_t i = 50; i <= 1500; i += 50)
     {

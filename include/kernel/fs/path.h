@@ -11,7 +11,7 @@
 typedef struct path path_t;
 typedef struct mount mount_t;
 typedef struct dentry dentry_t;
-typedef struct namespace namespace_t;
+typedef struct namespace_handle namespace_handle_t;
 
 /**
  * @brief Unique location in the filesystem.
@@ -27,7 +27,7 @@ typedef struct namespace namespace_t;
  *
  * ## Flags/Mode
  *
- * Paths can have flags appended at the end, these flags are parsed to determine the mode with which the path is opened.
+ * Paths can have flags appended at the end, these flags are parsed to determine the mode of the related operation.
  *
  * Each flag starts with `:` and multiple instances of the same flag are allowed, for example
  * `/path/to/file:append:append:nonblock`.
@@ -44,22 +44,24 @@ typedef struct namespace namespace_t;
  * | `create` | `c` | Create the file if it does not exist. |
  * | `exclusive` | `e` | Will cause the open to fail if the file already exists. |
  * | `truncate` | `t` | Truncate the file to zero length if it already exists. |
- * | `directory` | `d` | Allow opening directories. |
- * | `recursive` | `R` | Behaviour differs, but allows for recursive operations, for example when used with `remove` it
- * will remove directories and their children recursively. |
+ * | `directory` | `d` | Create or remove directories. All other operations will ignore this flag. |
+ * | `recursive` | `R` | If removing a directory, remove all its contents recursively. If using `getdents()`, list contents recursively. |
+ * | `nofollow`  | `l` | Do not follow symbolic links. |
+ * | `private`   | `p` | Any files with this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child namespace. |
+ * | `sticky`    | `S` | Makes the mount apply to the dentry regardless of the path used to reach it. |
+ * | `children`  | `C` | Propagate mounts and unmounts to child namespaces. |
+ * | `locked`    | `L` | Forbid unmounting this mount, useful for hiding directories or files. |
  *
  * For convenience, a single letter short form is also available as shown above, these single letter forms do not need
  * to be separated by colons, for example `/path/to/file:rwcte` is equivalent to
  * `/path/to/file:read:write:create:truncate:exclusive`.
  *
- * The parsed mode is the primary way to handle both the behaviour of opened paths and permissions through out the
+ * The parsed mode is the primary way to handle both the behaviour of vfs operations and permissions in the
  * kernel. For example, a file opened from within a directory which was bound with only read permissions will also have
  * read only permissions, even if the file itself would allow write permissions.
  *
  * If no permissions, i.e. read, write or execute, are specified, the default is to open with the maximum currently
  * allowed permissions.
- *
- * @see kernel_fs_namespace for information on mode inheritance when binding paths.
  *
  * @{
  */
@@ -83,7 +85,13 @@ typedef enum mode
     MODE_TRUNCATE = 1 << 7,
     MODE_DIRECTORY = 1 << 8,
     MODE_RECURSIVE = 1 << 9,
-    MODE_AMOUNT = 10,
+    MODE_NOFOLLOW = 1 << 10,
+    MODE_PRIVATE = 1 << 11,
+    MODE_STICKY = 1 << 12,
+    MODE_PARENTS =
+        1 << 13, ///< Propagate mounts and unmounts to child namespaces, this mode cant be specified by user space.
+    MODE_CHILDREN = 1 << 14,
+    MODE_LOCKED = 1 << 15,
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
 } mode_t;
 
@@ -97,25 +105,18 @@ typedef enum mode
 #define PATH_DEFER(path) __attribute__((cleanup(path_defer_cleanup))) path_t* CONCAT(i, __COUNTER__) = (path)
 
 /**
- * @brief Check if a char is valid.
- *
- * A valid char is one of the following `abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.
- * ()[]{}~!@#$%^&?',;=+`.
- *
- * @todo Replace with array lookup.
- *
- * @param ch The char to check.
- * @return true if the char is valid, false otherwise.
- */
-#define PATH_VALID_CHAR(ch) \
-    (strchr("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-. ()[]{}~!@#$%^&?',;=+", (ch)))
-
-/**
  * @brief Maximum iterations to handle `..` in a path.
  *
- * This is to prevent infinite loops in case of a corrupted filesystem.
+ * This is to prevent infinite loops.
  */
-#define PATH_HANDLE_DOTDOT_MAX_ITER 1000
+#define PATH_MAX_DOTDOT 1000
+
+/**
+ * @brief Maximum iterations to handle symlinks in a path.
+ *
+ * This is to prevent infinite loops.
+ */
+#define PATH_MAX_SYMLINK 40
 
 /**
  * @brief Path structure.
@@ -241,24 +242,25 @@ void path_copy(path_t* dest, const path_t* src);
 void path_put(path_t* path);
 
 /**
- * @brief Walk a single step in a path.
+ * @brief Walk a single path component.
  *
- * @param path The path to traverse, will be updated to the new path, may be negative.
- * @param name The name of the child dentry.
- * @param ns The namespace to access mountpoints.
+ * @param path The path to step from, will be updated to the new path, may be negative.
+ * @param mode The mode to open the new path with.
+ * @param name The name of the new path component.
+ * @param ns The namespace entry to access mountpoints.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t path_step(path_t* path, const char* name, namespace_t* ns);
+uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_handle_t* ns);
 
 /**
  * @brief Walk a pathname to a path.
  *
  * @param path The path to start from, will be updated to the new path, may be negative.
  * @param pathname The pathname to walk to.
- * @param ns The namespace to access mountpoints.
+ * @param ns The namespace entry to access mountpoints.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns);
+uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_handle_t* ns);
 
 /**
  * @brief Walk a pathname to its parent and get the name of the last component.
@@ -268,10 +270,10 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns);
  * @param path The path to start from, will be updated to the parent path.
  * @param pathname The pathname to traverse.
  * @param outLastName The output last component name, must be at least `MAX_NAME` bytes.
- * @param ns The namespace to access mountpoints.
+ * @param ns The namespace entry to access mountpoints.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_t* ns);
+uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_handle_t* ns);
 
 /**
  * @brief Traverse a pathname to its parent and child paths.
@@ -282,11 +284,11 @@ uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLas
  * @param outParent The output parent path.
  * @param outChild The output child path, may be negative.
  * @param pathname The pathname to traverse.
- * @param ns The namespace to access mountpoints.
+ * @param ns The namespace entry to access mountpoints.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_t* outChild, const pathname_t* pathname,
-    namespace_t* ns);
+    namespace_handle_t* ns);
 
 /**
  * @brief Convert a path to a pathname.
@@ -298,6 +300,34 @@ uint64_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t path_to_name(const path_t* path, pathname_t* pathname);
+
+/**
+ * @brief Convert a mode to a string representation.
+ *
+ * The resulting string will be null terminated.
+ *
+ * @param mode The mode to convert.
+ * @param out The output string buffer.
+ * @param length The length of the output string buffer.
+ * @return On success, the length of the resulting string, excluding the null terminator. On failure, `ERR` and `errno`
+ * is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `ENAMETOOLONG`: The output buffer is too small.
+ */
+uint64_t mode_to_string(mode_t mode, char* out, uint64_t length);
+
+/**
+ * @brief Check and adjust mode permissions.
+ *
+ * If no permissions are set in the mode, it will be adjusted to have the maximum allowed permissions.
+ *
+ * @param mode The mode to check and adjust.
+ * @param maxPerms The maximum allowed permissions.
+ * @return On success, the adjusted mode. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EACCES`: Requested permissions exceed maximum allowed permissions.
+ */
+uint64_t mode_check(mode_t* mode, mode_t maxPerms);
 
 static inline void path_defer_cleanup(path_t** path)
 {

@@ -1,5 +1,5 @@
-#ifndef _AUX_FD_T_H
-#define _AUX_FD_T_H 1
+#ifndef _INTERNAL_FD_T_H
+#define _INTERNAL_FD_T_H 1
 
 /**
  * @brief A file descriptor.

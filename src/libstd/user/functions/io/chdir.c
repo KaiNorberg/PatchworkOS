@@ -8,10 +8,10 @@
 
 uint64_t chdir(const char* path)
 {
-    uint64_t result = _syscall_chdir(path);
-    if (result == ERR)
+    if (swritefile("/proc/self/cwd", path) == ERR)
     {
-        errno = _syscall_errno();
+        return ERR;
     }
-    return result;
+
+    return 0;
 }

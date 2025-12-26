@@ -99,14 +99,16 @@ static void window_deco_handle_dragging(window_t* win, element_t* elem, const ev
         }
         else
         {
-            private->isDragging = false;
+          private
+            ->isDragging = false;
         }
     }
     else if (RECT_CONTAINS_POINT(&titlebarWithoutButtons, &event->pos) && (event->pressed & MOUSE_LEFT))
     {
-        private->dragOffset =
-            (point_t){.x = event->screenPos.x - win->rect.left, .y = event->screenPos.y - win->rect.top};
-        private->isDragging = true;
+      private
+        ->dragOffset = (point_t){.x = event->screenPos.x - win->rect.left, .y = event->screenPos.y - win->rect.top};
+      private
+        ->isDragging = true;
     }
 }
 
@@ -132,13 +134,15 @@ static uint64_t window_deco_init_controls(window_t* win, element_t* elem, deco_p
         goto error;
     }
 
-    private->closeIcon = image_new(window_get_display(win), theme->iconClose);
+  private
+    ->closeIcon = image_new(window_get_display(win), theme->iconClose);
     if (private->closeIcon == NULL)
     {
         goto error;
     }
 
-    private->minimizeIcon = image_new(window_get_display(win), theme->iconMinimize);
+  private
+    ->minimizeIcon = image_new(window_get_display(win), theme->iconMinimize);
     if (private->minimizeIcon == NULL)
     {
         goto error;
@@ -176,11 +180,16 @@ static uint64_t window_deco_init(window_t* win, element_t* elem)
     {
         return ERR;
     }
-    private->isFocused = false;
-    private->isVisible = true;
-    private->isDragging = false;
-    private->minimizeIcon = NULL;
-    private->closeIcon = NULL;
+  private
+    ->isFocused = false;
+  private
+    ->isVisible = true;
+  private
+    ->isDragging = false;
+  private
+    ->minimizeIcon = NULL;
+  private
+    ->closeIcon = NULL;
 
     if (!(win->flags & WINDOW_NO_CONTROLS))
     {
@@ -255,8 +264,10 @@ static void window_deco_report(window_t* win, element_t* elem, const event_repor
     }
 
     deco_private_t* private = element_get_private(elem);
-    private->isFocused = report->info.flags & SURFACE_FOCUSED;
-    private->isVisible = report->info.flags & SURFACE_VISIBLE;
+  private
+    ->isFocused = report->info.flags & SURFACE_FOCUSED;
+  private
+    ->isVisible = report->info.flags & SURFACE_VISIBLE;
 
     drawable_t draw;
     element_draw_begin(elem, &draw);

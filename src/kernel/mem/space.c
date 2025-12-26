@@ -407,7 +407,7 @@ uint64_t space_pin_terminated(space_t* space, const void* address, const void* t
                 goto error;
             }
 
-            if (space_populate_user_region(space, (void*)current, 1) == ERR)
+            if (space_populate_user_region(space, (void*)ROUND_DOWN(current, PAGE_SIZE), 1) == ERR)
             {
                 errno = ENOMEM;
                 goto error;
@@ -421,27 +421,42 @@ uint64_t space_pin_terminated(space_t* space, const void* address, const void* t
         }
         pinnedPages++;
 
-        // Scan ONLY the currently pinned page for the terminator.
         uintptr_t scanEnd = MIN(ROUND_UP(current + 1, PAGE_SIZE), end);
-        for (uintptr_t scanAddr = current; scanAddr < scanEnd; scanAddr++)
+
+        if (objectSize == 1)
         {
-            // Terminator matched bytes will wrap around to the next page
-            if (*((uint8_t*)scanAddr) == ((uint8_t*)terminator)[terminatorMatchedBytes])
+            uint8_t term = *(const uint8_t*)terminator;
+            for (uintptr_t scanAddr = current; scanAddr < scanEnd; scanAddr++)
             {
-                terminatorMatchedBytes++;
-                if (terminatorMatchedBytes == objectSize)
+                if (*(uint8_t*)scanAddr == term)
                 {
-                    return scanAddr - (uintptr_t)address + 1 - objectSize;
+                    return scanAddr - (uintptr_t)address + 1;
                 }
             }
-            else
-            {
-                scanAddr += objectSize - terminatorMatchedBytes - 1; // Skip the rest of the object
-                terminatorMatchedBytes = 0;
-            }
+            current = scanEnd;
         }
-
-        current = scanEnd;
+        else
+        {
+            uintptr_t scanAddr = current;
+            while (scanAddr < scanEnd)
+            {
+                if (*((uint8_t*)scanAddr) == ((uint8_t*)terminator)[terminatorMatchedBytes])
+                {
+                    terminatorMatchedBytes++;
+                    if (terminatorMatchedBytes == objectSize)
+                    {
+                        return scanAddr - (uintptr_t)address + 1;
+                    }
+                    scanAddr++;
+                }
+                else
+                {
+                    scanAddr = scanAddr - terminatorMatchedBytes + objectSize;
+                    terminatorMatchedBytes = 0;
+                }
+            }
+            current = scanAddr;
+        }
     }
 
 error:

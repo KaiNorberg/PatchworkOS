@@ -233,7 +233,7 @@ uint64_t thread_copy_from_user_terminated(thread_t* thread, const void* userArra
     }
 
     uint64_t elementCount = arraySize / objectSize;
-    uint64_t allocSize = (elementCount + 1) * objectSize; // +1 for terminator
+    uint64_t allocSize = arraySize;
 
     void* kernelArray = malloc(allocSize);
     if (kernelArray == NULL)
@@ -244,13 +244,12 @@ uint64_t thread_copy_from_user_terminated(thread_t* thread, const void* userArra
     }
 
     memcpy(kernelArray, userArray, arraySize);
-    memcpy((uint8_t*)kernelArray + arraySize, terminator, objectSize); // Add terminator
     space_unpin(&thread->process->space, userArray, arraySize);
 
     *outArray = kernelArray;
     if (outCount != NULL)
     {
-        *outCount = elementCount;
+        *outCount = elementCount - 1;
     }
 
     return 0;
@@ -274,7 +273,6 @@ uint64_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, 
 
     char copy[MAX_PATH];
     memcpy(copy, userPath, pathLength);
-    copy[pathLength] = '\0';
     space_unpin(&thread->process->space, userPath, pathLength);
 
     if (pathname_init(pathname, copy) == ERR)

@@ -7,6 +7,9 @@
 #include <string.h>
 #include <sys/io.h>
 
+static bool showAll = false;
+static bool showFlags = false;
+
 static uint64_t terminal_columns_get(void)
 {
     uint32_t terminalWidth = 80;
@@ -35,19 +38,25 @@ static uint64_t terminal_columns_get(void)
     return terminalWidth;
 }
 
+static int dirent_cmp(const void* a, const void* b)
+{
+    const dirent_t* da = (const dirent_t*)a;
+    const dirent_t* db = (const dirent_t*)b;
+    return strcmp(da->path, db->path);
+}
+
 static uint64_t print_dir(const char* path)
 {
-    fd_t fd = open(F("%s:directory", path));
+    fd_t fd = open(path);
     if (fd == ERR)
     {
         fprintf(stderr, "ls: can't open directory %s (%s)\n", path, strerror(errno));
         return ERR;
     }
 
-    dirent_t* entries = NULL;
-    uint64_t entryCount = 0;
-    uint64_t bufferSize = 64;
-    entries = (dirent_t*)malloc(sizeof(dirent_t) * bufferSize);
+    uint64_t capacity = 16;
+    uint64_t count = 0;
+    dirent_t* entries = malloc(sizeof(dirent_t) * capacity);
     if (entries == NULL)
     {
         close(fd);
@@ -55,80 +64,142 @@ static uint64_t print_dir(const char* path)
         return ERR;
     }
 
-    uint64_t bytesRead;
-    while ((bytesRead = getdents(fd, &entries[entryCount], sizeof(dirent_t) * (bufferSize - entryCount))) > 0)
+    while (true)
     {
-        if (bytesRead == ERR)
+        if (count == capacity)
         {
-            close(fd);
-            free(entries);
-            fprintf(stderr, "ls: can't read directory %s (%s)\n", path, strerror(errno));
-            return ERR;
-        }
-        entryCount += bytesRead / sizeof(dirent_t);
-        if (entryCount >= bufferSize)
-        {
-            bufferSize *= 2;
-            dirent_t* newEntries = (dirent_t*)realloc(entries, sizeof(dirent_t) * bufferSize);
+            capacity *= 2;
+            dirent_t* newEntries = realloc(entries, sizeof(dirent_t) * capacity);
             if (newEntries == NULL)
             {
-                close(fd);
                 free(entries);
-                fprintf(stderr, "ls: re-allocation failed\n");
+                close(fd);
+                fprintf(stderr, "ls: memory allocation failed\n");
                 return ERR;
             }
             entries = newEntries;
         }
+
+        uint64_t bytesRead = getdents(fd, &entries[count], sizeof(dirent_t) * (capacity - count));
+        if (bytesRead == ERR)
+        {
+            free(entries);
+            close(fd);
+            fprintf(stderr, "ls: can't read directory %s (%s)\n", path, strerror(errno));
+            return ERR;
+        }
+        if (bytesRead == 0)
+        {
+            break;
+        }
+
+        count += bytesRead / sizeof(dirent_t);
     }
     close(fd);
 
-    if (entryCount == 0)
+    if (count == 0)
     {
         free(entries);
         return 0;
     }
 
-    uint64_t maxLength = 0;
-    for (uint64_t i = 0; i < entryCount; i++)
+    if (!showAll)
     {
-        uint64_t nameLength = strlen(entries[i].path) + (entries[i].type == INODE_DIR ? 1 : 0);
-        if (nameLength > maxLength)
+        uint64_t newCount = 0;
+        for (uint64_t i = 0; i < count; i++)
         {
-            maxLength = nameLength;
+            if (entries[i].path[0] != '.' && strstr(entries[i].path, "/.") == NULL)
+            {
+                if (i != newCount)
+                {
+                    entries[newCount] = entries[i];
+                }
+                newCount++;
+            }
+        }
+        count = newCount;
+        if (count == 0)
+        {
+            free(entries);
+            return 0;
         }
     }
 
-    uint32_t terminalWidth = terminal_columns_get();
-    uint32_t columnWidth = maxLength + 2;
-    if (columnWidth > terminalWidth)
-    {
-        columnWidth = terminalWidth;
-    }
-    uint32_t numColumns = terminalWidth / columnWidth;
-    if (numColumns == 0)
-    {
-        numColumns = 1;
-    }
+    qsort(entries, count, sizeof(dirent_t), dirent_cmp);
 
-    uint32_t numRows = (entryCount + numColumns - 1) / numColumns;
-
-    for (uint32_t row = 0; row < numRows; row++)
+    uint64_t maxLen = 0;
+    for (uint64_t i = 0; i < count; i++)
     {
-        for (uint32_t col = 0; col < numColumns; col++)
+        uint64_t len = strlen(entries[i].path);
+        if (entries[i].type == INODE_DIR || entries[i].type == INODE_SYMLINK)
         {
-            uint64_t index = col * numRows + row;
-            if (index < entryCount)
-            {
-                const char* name = entries[index].path;
-                bool isDir = entries[index].type == INODE_DIR;
+            len++;
+        }
+        if (showFlags)
+        {
+            len += strlen(entries[i].mode);
+        }
+        if (len > maxLen)
+        {
+            maxLen = len;
+        }
+    }
 
-                if (isDir)
+    uint32_t termWidth = terminal_columns_get();
+    uint32_t colWidth = maxLen + 2;
+    if (colWidth > termWidth)
+    {
+        colWidth = termWidth;
+    }
+
+    uint32_t numCols = termWidth / colWidth;
+    if (numCols == 0)
+    {
+        numCols = 1;
+    }
+
+    uint32_t numRows = (count + numCols - 1) / numCols;
+
+    for (uint32_t r = 0; r < numRows; r++)
+    {
+        for (uint32_t c = 0; c < numCols; c++)
+        {
+            uint32_t index = c * numRows + r;
+            if (index >= count)
+            {
+                continue;
+            }
+
+            const dirent_t* ent = &entries[index];
+            const char* name = ent->path;
+            int len = strlen(name);
+            const char* modifier = (ent->flags & DIRENT_MOUNTED) ? "\033[4m" : "";
+
+            if (ent->type == INODE_DIR)
+            {
+                printf("%s\033[34m%s%s\033[0m/", modifier, name, showFlags ? ent->mode : "");
+                len++;
+            }
+            else if (ent->type == INODE_SYMLINK)
+            {
+                printf("%s\033[36m%s%s\033[0m@", modifier, name, showFlags ? ent->mode : "");
+                len++;
+            }
+            else
+            {
+                printf("%s%s%s\033[0m", modifier, name, showFlags ? ent->mode : "");
+            }
+
+            if (showFlags)
+            {
+                len += strlen(ent->mode);
+            }
+
+            if (c < numCols - 1)
+            {
+                for (uint64_t i = len; i < colWidth; i++)
                 {
-                    printf("\033[34m%s\033[0m/%-*s", name, columnWidth - (int)strlen(name) - 1, "");
-                }
-                else
-                {
-                    printf("%-*s", columnWidth, name);
+                    putchar(' ');
                 }
             }
         }
@@ -141,7 +212,33 @@ static uint64_t print_dir(const char* path)
 
 int main(int argc, char** argv)
 {
-    if (argc <= 1)
+    int i = 1;
+    for (; i < argc; i++)
+    {
+        if (argv[i][0] != '-')
+        {
+            break;
+        }
+
+        for (int j = 1; argv[i][j] != '\0'; j++)
+        {
+            if (argv[i][j] == 'a')
+            {
+                showAll = true;
+            }
+            else if (argv[i][j] == 'f')
+            {
+                showFlags = true;
+            }
+            else
+            {
+                fprintf(stderr, "ls: invalid option -- '%c'\n", argv[i][j]);
+                return EXIT_FAILURE;
+            }
+        }
+    }
+
+    if (i >= argc)
     {
         if (print_dir(".") == ERR)
         {
@@ -150,7 +247,7 @@ int main(int argc, char** argv)
     }
     else
     {
-        for (int i = 1; i < argc; i++)
+        for (; i < argc; i++)
         {
             if (print_dir(argv[i]) == ERR)
             {

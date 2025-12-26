@@ -1,3 +1,4 @@
+#include <kernel/fs/namespace.h>
 #include <kernel/init/init.h>
 
 #include <kernel/cpu/cpu.h>
@@ -18,9 +19,9 @@
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
 #include <kernel/module/symbol.h>
-#include <kernel/sched/loader.h>
-#include <kernel/proc/reaper.h>
 #include <kernel/proc/process.h>
+#include <kernel/proc/reaper.h>
+#include <kernel/sched/loader.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
@@ -146,13 +147,11 @@ static inline void init_process_spawn(void)
 {
     LOG_INFO("spawning init process\n");
 
-    process_t* initProcess = process_new(PRIORITY_MAX_USER, GID_NONE);
+    process_t* initProcess = process_new(PRIORITY_MAX_USER, GID_NONE, &process_get_kernel()->ns, NAMESPACE_HANDLE_COPY);
     if (initProcess == NULL)
     {
         panic(NULL, "Failed to create init process");
     }
-
-    namespace_set_parent(&initProcess->ns, &process_get_kernel()->ns);
 
     thread_t* initThread = thread_new(initProcess);
     if (initThread == NULL)
@@ -160,18 +159,14 @@ static inline void init_process_spawn(void)
         panic(NULL, "Failed to create init thread");
     }
 
-    // Calls loader_exec("/bin/init", NULL, 0, NULL, 0);
-    initThread->frame.rip = (uintptr_t)loader_exec;
-    initThread->frame.rdi = (uintptr_t)strdup("/bin/init");
-    if (initThread->frame.rdi == (uintptr_t)NULL)
+    char* argv[] = {"/sbin/init", NULL};
+    if (process_set_cmdline(initProcess, argv, 1) == ERR)
     {
-        panic(NULL, "Failed to allocate memory for init executable path");
+        panic(NULL, "Failed to set init process cmdline");
     }
-    initThread->frame.rsi = (uintptr_t)NULL;
-    initThread->frame.rdx = 0;
-    initThread->frame.rcx = (uintptr_t)NULL;
-    initThread->frame.r8 = 0;
 
+    // Calls loader_exec();
+    initThread->frame.rip = (uintptr_t)loader_exec;
     initThread->frame.cs = GDT_CS_RING0;
     initThread->frame.ss = GDT_SS_RING0;
     initThread->frame.rsp = initThread->kernelStack.top;

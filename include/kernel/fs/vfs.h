@@ -21,8 +21,9 @@
  * @defgroup kernel_vfs Virtual File System
  * @ingroup kernel_fs
  *
- * The Virtual File System (VFS) provides a single unified interface for any and all filesystems, including virtual filesystems used to expose kernel resources to user space.
- * 
+ * The Virtual File System (VFS) provides a single unified interface for any and all filesystems, including virtual
+ * filesystems used to expose kernel resources to user space.
+ *
  * @{
  */
 
@@ -164,6 +165,27 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, process_t* process);
+
+/**
+ * @brief Read the path in a symbolic link.
+ *
+ * @param symlink The symbolic link inode.
+ * @param buffer The buffer to store the path in.
+ * @param size The size of the buffer.
+ * @param process The process performing the readlink.
+ * @return On success, the number of bytes read. On failure, `ERR` and `errno` is set.
+ */
+uint64_t vfs_readlink(inode_t* symlink, char* buffer, uint64_t size);
+
+/**
+ * @brief Create a symbolic link.
+ *
+ * @param target The pathname to which the symbolic link will point.
+ * @param linkpath The pathname of the symbolic link to create.
+ * @param process The process performing the symlink creation.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t vfs_symlink(const pathname_t* target, const pathname_t* linkpath, process_t* process);
 
 /**
  * @brief Remove a file or directory.

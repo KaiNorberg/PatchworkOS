@@ -1,8 +1,8 @@
 #include "pipeline.h"
 #include "builtin.h"
 
+#include <_internal/MAX_PATH.h>
 #include <errno.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,12 +10,7 @@
 #include <sys/io.h>
 #include <sys/proc.h>
 
-static const char* lookupDirs[] = {
-    "/bin",
-    "/usr/bin",
-};
-
-uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
+uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd_t stdout, fd_t stderr)
 {
     uint64_t tokenAmount;
     const char** tokens = argsplit(cmdline, UINT64_MAX, &tokenAmount);
@@ -43,21 +38,15 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
     pipeline->capacity = tokenAmount;
     pipeline->amount = 0;
     pipeline->status[0] = '\0';
-    if (open2("/dev/pipe/new", pipeline->globalStdin) == ERR)
-    {
-        free(pipeline->cmds);
-        free(tokens);
-        return ERR;
-    }
 
     for (uint64_t i = 0; i < tokenAmount; i++)
     {
         cmd_t* cmd = &pipeline->cmds[i];
         cmd->argv = NULL;
         cmd->argc = 0;
-        cmd->stdin = pipeline->globalStdin[PIPE_READ];
-        cmd->stdout = STDOUT_FILENO;
-        cmd->stderr = STDERR_FILENO;
+        cmd->stdin = stdin;
+        cmd->stdout = stdout;
+        cmd->stderr = stderr;
         cmd->shouldCloseStdin = false;
         cmd->shouldCloseStdout = false;
         cmd->shouldCloseStderr = false;
@@ -243,7 +232,7 @@ token_parse_error:
     free(currentArgv);
 
 token_parse_error_no_current_argv:
-    for (uint64_t j = 0; j < currentCmd; j++)
+    for (uint64_t j = 0; j < tokenAmount; j++)
     {
         if (pipeline->cmds[j].shouldCloseStdin)
         {
@@ -267,8 +256,6 @@ token_parse_error_no_current_argv:
             free(pipeline->cmds[j].argv);
         }
     }
-    close(pipeline->globalStdin[PIPE_READ]);
-    close(pipeline->globalStdin[PIPE_WRITE]);
     free(pipeline->cmds);
     free(tokens);
     return ERR;
@@ -300,8 +287,6 @@ void pipeline_deinit(pipeline_t* pipeline)
             free(pipeline->cmds[j].argv);
         }
     }
-    close(pipeline->globalStdin[PIPE_READ]);
-    close(pipeline->globalStdin[PIPE_WRITE]);
     if (pipeline->cmds != NULL)
     {
         free(pipeline->cmds);
@@ -353,7 +338,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
             result = 0;
         }
     }
-    else if (argv[0][0] == '.' && argv[0][1] == '/')
+    else if (strchr(argv[0], '/') != NULL)
     {
         stat_t info;
         if (stat(argv[0], &info) != ERR && info.type != INODE_DIR)
@@ -369,30 +354,38 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
     else
     {
         bool isFound = false;
-        for (uint64_t j = 0; j < sizeof(lookupDirs) / sizeof(lookupDirs[0]); j++)
+        char* pathEnv = sreadfile("/proc/self/env/PATH");
+        if (pathEnv == NULL)
         {
-            if (strlen(lookupDirs[j]) + strlen(argv[0]) + 1 >= MAX_PATH)
-            {
-                continue;
-            }
+            pathEnv = strdup("/bin:/usr/bin");
+        }
 
-            char path[MAX_PATH];
-            sprintf(path, "%s/%s", lookupDirs[j], argv[0]);
-
-            stat_t info;
-            if (stat(path, &info) != ERR && info.type != INODE_DIR)
+        if (pathEnv != NULL)
+        {
+            char* token = strtok(pathEnv, ":");
+            while (token != NULL)
             {
-                const char* newArgv[argc + 1];
-                newArgv[0] = path;
-                for (uint64_t k = 1; k < argc; k++)
+                char path[MAX_PATH];
+                if (snprintf(path, MAX_PATH, "%s/%s", token, argv[0]) < MAX_PATH)
                 {
-                    newArgv[k] = argv[k];
+                    stat_t info;
+                    if (stat(path, &info) != ERR && info.type != INODE_DIR)
+                    {
+                        const char* newArgv[argc + 1];
+                        newArgv[0] = path;
+                        for (uint64_t k = 1; k < argc; k++)
+                        {
+                            newArgv[k] = argv[k];
+                        }
+                        newArgv[argc] = NULL;
+                        result = spawn(newArgv, SPAWN_STDIO_FDS);
+                        isFound = true;
+                        break;
+                    }
                 }
-                newArgv[argc] = NULL;
-                result = spawn(newArgv, SPAWN_STDIO_FDS);
-                isFound = true;
-                break;
+                token = strtok(NULL, ":");
             }
+            free(pathEnv);
         }
 
         if (!isFound)
@@ -431,178 +424,45 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
     return result;
 }
 
-static void pipeline_sigint_handler(int sig)
+void pipeline_execute(pipeline_t* pipeline)
 {
-    (void)sig;
-
-    // Do nothing, only child processes should be interrupted.
-}
-
-uint64_t pipeline_execute(pipeline_t* pipeline)
-{
-    if (pipeline->amount == 0)
-    {
-        return 0;
-    }
-
-    pollfd_t* fds = calloc(pipeline->amount + 1, sizeof(pollfd_t));
-    if (fds == NULL)
-    {
-        return ERR;
-    }
-    fds[0].fd = STDIN_FILENO;
-    fds[0].events = POLLIN;
-    uint64_t fdCount = 1;
-
-    pid_t* pids = malloc(sizeof(pid_t) * pipeline->amount);
-    if (pids == NULL)
-    {
-        free(fds);
-        return ERR;
-    }
-
-    uint64_t result = 0;
-    pipeline->status[0] = '\0';
-
-    pid_t lastPid = 0;
-    if (signal(SIGINT, pipeline_sigint_handler) == SIG_ERR)
-    {
-        free(fds);
-        free(pids);
-        return ERR;
-    }
-
     for (uint64_t i = 0; i < pipeline->amount; i++)
     {
-        pid_t pid = pipeline_execute_cmd(&pipeline->cmds[i]);
-        if (pid == ERR)
-        {
-            strcpy(pipeline->status, strerror(errno));
-            result = ERR;
-            goto cleanup;
-        }
+        pipeline->cmds[i].pid = pipeline_execute_cmd(&pipeline->cmds[i]);
+    }
+}
 
-        if (pid == 0)
+void pipeline_wait(pipeline_t* pipeline)
+{
+    for (uint64_t i = 0; i < pipeline->amount; i++)
+    {
+        cmd_t* cmd = &pipeline->cmds[i];
+
+        if (cmd->pid == ERR)
         {
-            pipeline->status[0] = '\0';
-            lastPid = 0;
+            strcpy(pipeline->status, "-1");
             continue;
         }
 
-        pipeline->cmds[i].pid = pid;
-        lastPid = pid;
-        pids[fdCount - 1] = pid;
-
-        fds[fdCount].fd = open(F("/proc/%d/wait", pid));
-        if (fds[fdCount].fd == ERR)
+        if (cmd->pid == 0)
         {
-            printf("shell: unable to open /proc/%d/wait (%s)\n", pid, strerror(errno));
-            result = ERR;
-            goto cleanup;
-        }
-        fds[fdCount].events = POLLIN;
-        fdCount++;
-    }
-
-    if (fdCount == 1)
-    {
-        // All commands were builtins.
-        goto cleanup;
-    }
-
-    while (true)
-    {
-        uint64_t ready = poll(fds, fdCount, CLOCKS_NEVER);
-        if (ready == ERR)
-        {
-            printf("shell: poll failed (%s)\n", strerror(errno));
-            result = ERR;
-            goto cleanup;
+            continue;
         }
 
-        for (uint64_t i = 0; i < fdCount; i++)
+        fd_t wait = open(F("/proc/%llu/wait", cmd->pid));
+        if (wait == ERR)
         {
-            if (fds[i].revents & POLLERR)
-            {
-                printf("shell: poll error on fd %d\n", fds[i].fd);
-                result = ERR;
-                goto cleanup;
-            }
+            strcpy(pipeline->status, "-1");
+            continue;
         }
 
-        if (fds[0].revents & POLLIN)
+        memset(pipeline->status, 0, sizeof(pipeline->status));
+        uint64_t readCount = RETRY_EINTR(read(wait, pipeline->status, sizeof(pipeline->status)));
+        close(wait);
+        if (readCount == ERR)
         {
-            char buffer[MAX_PATH];
-            uint64_t bytesRead = read(STDIN_FILENO, buffer, sizeof(buffer));
-            if (bytesRead == ERR)
-            {
-                printf("shell: failed to read stdin (%s)\n", strerror(errno));
-                result = ERR;
-                goto cleanup;
-            }
-
-            for (uint64_t i = 0; i < bytesRead; i++)
-            {
-                if (buffer[i] != '\003') // Ctrl-C
-                {
-                    continue;
-                }
-
-                printf("^C\n");
-                for (uint64_t j = 1; j < fdCount; j++)
-                {
-                    swritefile(F("/proc/%d/notegroup", pids[j - 1]), "interrupt due to ctrl-c");
-                }
-
-                break;
-            }
-
-            if (write(pipeline->globalStdin[PIPE_WRITE], buffer, bytesRead) == ERR)
-            {
-                printf("shell: failed to write to pipeline stdin (%s)\n", strerror(errno));
-                result = ERR;
-                goto cleanup;
-            }
-        }
-
-        for (uint64_t i = fdCount - 1; i > 0; i--)
-        {
-            if (fds[i].revents & POLLIN)
-            {
-                char buffer[64];
-                uint64_t readCount = read(fds[i].fd, buffer, sizeof(buffer) - 1);
-                if (readCount == ERR)
-                {
-                    printf("shell: failed to read process %d exit status (%s)\n", pids[i - 1], strerror(errno));
-                    result = ERR;
-                    goto cleanup;
-                }
-                buffer[readCount] = '\0';
-
-                if (pids[i - 1] == lastPid)
-                {
-                    strcpy(pipeline->status, buffer);
-                }
-
-                close(fds[i].fd);
-                memmove(&fds[i], &fds[i + 1], sizeof(pollfd_t) * (fdCount - i - 1));
-                memmove(&pids[i - 1], &pids[i], sizeof(pid_t) * (fdCount - i - 1));
-                fdCount--;
-            }
-        }
-
-        if (fdCount == 1)
-        {
-            break;
+            strcpy(pipeline->status, "-1");
+            continue;
         }
     }
-
-cleanup:
-    for (uint64_t i = 1; i < fdCount; i++)
-    {
-        close(fds[i].fd);
-    }
-    free(fds);
-    free(pids);
-    return result;
 }

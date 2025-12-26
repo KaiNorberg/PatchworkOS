@@ -2,6 +2,7 @@
 
 #include <kernel/fs/filesystem.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
 #include <kernel/mem/pmm.h>
 
 #include <stdlib.h>
@@ -24,10 +25,7 @@ static void superblock_free(superblock_t* superblock)
         superblock->ops->cleanup(superblock);
     }
 
-    if (superblock->root != NULL)
-    {
-        UNREF(superblock->root);
-    }
+    superblock->root = NULL;
 
     free(superblock);
 }

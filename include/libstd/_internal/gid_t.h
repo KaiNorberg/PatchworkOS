@@ -1,5 +1,5 @@
-#ifndef _AUX_GID_T_H
-#define _AUX_GID_T_H 1
+#ifndef _INTERNAL_GID_T_H
+#define _INTERNAL_GID_T_H 1
 
 /**
  * @brief Group Identifier.

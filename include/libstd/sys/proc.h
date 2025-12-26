@@ -66,19 +66,20 @@ typedef enum
      * for example modifying its environment variables.
      */
     SPAWN_SUSPEND = 1 << 0,
-    SPAWN_EMPTY_FDS = 1 << 1,  ///< Dont inherit the file descriptors of the parent process.
-    SPAWN_STDIO_FDS = 1 << 2,  ///< Only inherit stdin, stdout and stderr from the parent process.
-    SPAWN_EMPTY_NS = 1 << 3,   ///< Dont inherit the mountpoints of the parent's namespace.
-    SPAWN_EMPTY_ENV = 1 << 4,  ///< Don't inherit the parent's environment variables.
-    SPAWN_EMPTY_CWD = 1 << 5,  ///< Don't inherit the parent's current working directory, starts at root (/).
-    SPAWN_EMPTY_GROUP = 1 << 6 ///< Don't inherit the parent's process group, instead create a new group.
+    SPAWN_EMPTY_FDS = 1 << 1,   ///< Dont inherit the file descriptors of the parent process.
+    SPAWN_STDIO_FDS = 1 << 2,   ///< Only inherit stdin, stdout and stderr from the parent process.
+    SPAWN_EMPTY_ENV = 1 << 3,   ///< Don't inherit the parent's environment variables.
+    SPAWN_EMPTY_CWD = 1 << 4,   ///< Don't inherit the parent's current working directory, starts at root (/).
+    SPAWN_EMPTY_GROUP = 1 << 5, ///< Don't inherit the parent's process group, instead create a new group.
+    SPAWN_COPY_NS = 1 << 6      ///< Don't share the parent's namespace, instead create a new copy of it.
 } spawn_flags_t;
 
 /**
  * @brief System call for spawning new processes.
  *
- * By default, the spawned process will inherit the file table, namespace, environment variables, priority and current
- * working directory of the parent process.
+ * By default, the spawned process will inherit the file table, environment variables, priority and current
+ * working directory of the parent process by creating a copy. Additionally the child will exist within the same
+ * namespace as the parent.
  *
  * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable.
  * @param flags Spawn behaviour flags.

@@ -16,99 +16,132 @@ typedef struct process process_t;
  * @defgroup kernel_fs_namespace Namespaces
  * @ingroup kernel_fs
  *
- * The per-process namespace system allows each process to have its own view of the filesystem hierarchy, by having each
- * process store its own set of mountpoints instead of having a global set of mountpoints.
- *
- * ## Propagation
- *
- * When a new mount or bind is created in a namespace, it is only added to that specific namespace. However, its
- * possible to propagate mounts to children and/or parent namespaces using mount flags (`mount_flags_t`), this allows
- * those namespaces to also see the new mount or bind.
+ * The per-process namespace system allows each process to have its own view of the filesystem hierarchy.
  *
  * @{
  */
 
 /**
- * @brief A mount in a namespace.
- * @struct namespace_mount
- *
- * Used to allow a single mount to exist in multiple namespaces.
+ * @brief Maximum number of iterative mount traversals when following mountpoints.
  */
-typedef struct namespace_mount
+#define NAMESPACE_MAX_TRAVERSE 32
+
+/**
+ * @brief Mount stack entry.
+ * @struct mount_stack_entry_t
+ *
+ * Used to store mounts in a stack, allowing the same mount to be stored in multiple namespaces.
+ */
+typedef struct mount_stack_entry
+{
+    list_entry_t entry;
+    mount_t* mount;
+} mount_stack_entry_t;
+
+/**
+ * @brief Mount stack.
+ * @struct mount_stack_t
+ *
+ * Used to store a stack of mounts for a single path. The last mount added to the stack is given priority.
+ */
+typedef struct mount_stack
 {
     list_entry_t entry;
     map_entry_t mapEntry;
-    mount_t* mount;
-} namespace_mount_t;
+    list_t mounts; ///< List of `mount_stack_entry_t`.
+} mount_stack_t;
+
+/**
+ * @brief Namespace handle flags.
+ * @enum namespace_handle_flags_t
+ */
+typedef enum
+{
+    NAMESPACE_HANDLE_SHARE = 0 << 0, ///< Share the same namespace as the source.
+    NAMESPACE_HANDLE_COPY =
+        1 << 1, ///< Copy the contents of the source into a new namespace with the source as the parent.
+} namespace_handle_flags_t;
+
+/**
+ * @brief Per-process namespace handle.
+ * @struct namespace_handle_t
+ *
+ * Stored in each process, used to allow multiple processes to share a namespace.
+ */
+typedef struct namespace_handle
+{
+    list_entry_t entry;
+    namespace_t* ns;
+    rwlock_t lock;
+} namespace_handle_t;
 
 /**
  * @brief Namespace structure.
- * @struct namespace
- *
- * Stored in each process structure.
+ * @struct namespace_t
  */
 typedef struct namespace
 {
     list_entry_t entry;  ///< The entry for the parent's children list.
     list_t children;     ///< List of child namespaces.
     namespace_t* parent; ///< The parent namespace, can be `NULL`.
-    list_t mounts;       ///< List of mounts in this namespace.
-    map_t mountMap;      ///< Map used to go from source dentries to namespace mounts.
+    list_t stacks;       ///< List of stacks in this namespace.
+    map_t mountMap;      ///< Map used to go from source dentries to namespace mount stacks.
     mount_t* root;       ///< The root mount of the namespace.
+    list_t handles;      ///< List of `namespace_handle_t` containing this namespace.
     rwlock_t lock;
     // clang-format off
 } namespace_t;
 // clang-format on
 
 /**
- * @brief Initializes a namespace.
+ * @brief Initializes a namespace handle.
  *
- * @param ns The namespace to initialize.
- * @param parent The parent namespace to inherit all mounts from, can be `NULL` to create an empty namespace.
+ * @param handle The namespace handle to initialize.
+ * @param source The source namespace handle to copy from or share a namespace with, or `NULL` to create a new empty
+ * namespace.
+ * @param flags Flags for the new namespace handle.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `ENOMEM`: Out of memory.
  */
-void namespace_init(namespace_t* ns);
+uint64_t namespace_handle_init(namespace_handle_t* handle, namespace_handle_t* source, namespace_handle_flags_t flags);
 
 /**
  * @brief Clear and deinitialize a namespace.
  *
  * @param ns The namespace to deinitialize.
  */
-void namespace_deinit(namespace_t* ns);
+void namespace_handle_deinit(namespace_handle_t* handle);
 
 /**
- * @brief Sets the parent of a namespace and inherits all mounts from the parent.
+ * @brief Clears a namespace handle.
  *
- * @param ns The namespace to set the parent of.
- * @param parent The new parent namespace.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EBUSY`: The namespace already has a parent.
- * - `ENOMEM`: Out of memory.
+ * @param handle The namespace handle to clear.
  */
-uint64_t namespace_set_parent(namespace_t* ns, namespace_t* parent);
+void namespace_handle_clear(namespace_handle_t* handle);
 
 /**
  * @brief If the given path is a mountpoint in the namespace, traverse to the mounted filesystem, else no-op.
  *
- * @param ns The namespace to traverse in.
+ * @param handle The namespace handle containing the namespace to traverse.
  * @param path The mountpoint path to traverse, will be updated to the new path if traversed.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
+ * @return `true` if the path was modified, `false` otherwise.
  */
-uint64_t namespace_traverse(namespace_t* ns, path_t* path);
+bool namespace_traverse(namespace_handle_t* handle, path_t* path);
 
 /**
  * @brief Mount a filesystem in a namespace.
  *
- * @param ns The namespace to mount in.
+ * @param handle The namespace handle containing the namespace to mount to.
  * @param deviceName The device name, or `VFS_DEVICE_NAME_NONE` for no device.
  * @param target The target path to mount to.
  * @param fsName The filesystem name.
  * @param flags Mount flags.
- * @param mode The maximum allowed permissions for files/directories opened under this mount.
+ * @param mode The mode specifying permissions and mount behaviour.
  * @param private Private data for the filesystem's mount function.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
+ * - `EIO`: The filesystem returned a invalid root dentry.
  * - `EXDEV`: The target path is not visible in the namespace.
  * - `ENODEV`: The specified filesystem does not exist.
  * - `EBUSY`: Attempt to mount to already existing root.
@@ -116,42 +149,42 @@ uint64_t namespace_traverse(namespace_t* ns, path_t* path);
  * - `ENOENT`: The root does not exist or the target is negative.
  * - Other errors as returned by the filesystem's `mount()` function or `mount_new()`.
  */
-mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* deviceName, const char* fsName,
-    mount_flags_t flags, mode_t mode, void* private);
+mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char* deviceName, const char* fsName,
+    mode_t mode, void* private);
 
 /**
- * @brief Bind a source dentry to a target path in a namespace.
+ * @brief Bind a source path to a target path in a namespace.
  *
- * @param ns The namespace to mount in.
- * @param source The source dentry to bind from, could be either a file or directory and from any filesystem.
+ * @param handle The namespace handle containing the namespace to bind in.
+ * @param source The source path to bind from, could be either a file or directory and from any filesystem.
  * @param target The target path to bind to.
- * @param flags Mount flags.
- * @param mode The maximum allowed permissions for files/directories opened under this mount.
+ * @param mode The mode specifying permissions and mount behaviour.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
+ * - `EACCES`: The requested mode exceeds the maximum allowed permissions.
  * - `ENOMEM`: Out of memory.
  * - Other errors as returned by `mount_new()`.
  */
-mount_t* namespace_bind(namespace_t* ns, dentry_t* source, path_t* target, mount_flags_t flags, mode_t mode);
+mount_t* namespace_bind(namespace_handle_t* handle, path_t* source, path_t* target, mode_t mode);
+
+/**
+ * @brief Remove a mount in a namespace.
+ *
+ * @param handle The namespace handle containing the namespace to unmount from.
+ * @param mount The mount to remove.
+ * @param mode The mode specifying unmount behaviour.
+ */
+void namespace_unmount(namespace_handle_t* handle, mount_t* mount, mode_t mode);
 
 /**
  * @brief Get the root path of a namespace.
  *
- * @param ns The namespace, can be `NULL` to get the kernel process's namespace root.
+ * @param handle The namespace handle containing the namespace to get the root of.
  * @param out The output root path.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENOENT`: The namespace has no root mount.
  */
-uint64_t namespace_get_root_path(namespace_t* ns, path_t* out);
-
-/**
- * @brief Clears all mounts from a namespace.
- *
- * @note The parent of the namespace will inherit all child namespaces of the deinitialized namespace.
- *
- * @param ns The namespace to clear.
- */
-void namespace_clear(namespace_t* ns);
+uint64_t namespace_get_root_path(namespace_handle_t* handle, path_t* out);
 
 /** @} */

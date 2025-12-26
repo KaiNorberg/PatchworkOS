@@ -4,8 +4,8 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <kernel/sched/sched.h>
 #include <kernel/sched/clock.h>
+#include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>

@@ -47,6 +47,8 @@ static void ramfs_dentry_remove(dentry_t* dentry)
     list_remove(&super->dentrys, &dentry->otherEntry);
     UNREF(dentry);
     lock_release(&super->lock);
+
+    dentry_remove(dentry);
 }
 
 static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
@@ -126,37 +128,57 @@ static uint64_t ramfs_link(inode_t* dir, dentry_t* old, dentry_t* target)
     return 0;
 }
 
-static uint64_t ramfs_remove(inode_t* dir, dentry_t* target, mode_t mode)
+static uint64_t ramfs_readlink(inode_t* inode, char* buffer, uint64_t count)
+{
+    MUTEX_SCOPE(&inode->mutex);
+
+    if (inode->private == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    uint64_t copySize = MIN(count, inode->size);
+    memcpy(buffer, inode->private, copySize);
+    return copySize;
+}
+
+static uint64_t ramfs_symlink(inode_t* dir, dentry_t* target, const char* dest)
 {
     MUTEX_SCOPE(&dir->mutex);
 
-    if (target->inode->type == INODE_FILE)
+    inode_t* inode = ramfs_inode_new(dir->superblock, INODE_SYMLINK, (void*)dest, strlen(dest));
+    if (inode == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(inode);
+
+    dentry_make_positive(target, inode);
+    ramfs_dentry_add(target);
+
+    return 0;
+}
+
+static uint64_t ramfs_remove(inode_t* dir, dentry_t* target)
+{
+    MUTEX_SCOPE(&dir->mutex);
+
+    if (target->inode->type == INODE_FILE || target->inode->type == INODE_SYMLINK)
     {
         ramfs_dentry_remove(target);
     }
     else if (target->inode->type == INODE_DIR)
     {
-        if (mode & MODE_RECURSIVE)
+        if (!list_is_empty(&target->children))
         {
-            dentry_t* temp = NULL;
-            dentry_t* child = NULL;
-            LIST_FOR_EACH_SAFE(child, temp, &target->children, siblingEntry)
-            {
-                REF(child);
-                ramfs_remove(target->inode, child, mode);
-                UNREF(child);
-            }
+            errno = ENOTEMPTY;
+            return ERR;
         }
-        else
-        {
-            if (!list_is_empty(&target->children))
-            {
-                errno = ENOTEMPTY;
-                return ERR;
-            }
-        }
+
         ramfs_dentry_remove(target);
     }
+
     return 0;
 }
 
@@ -174,12 +196,14 @@ static inode_ops_t inodeOps = {
     .create = ramfs_create,
     .truncate = ramfs_truncate,
     .link = ramfs_link,
+    .readlink = ramfs_readlink,
+    .symlink = ramfs_symlink,
     .remove = ramfs_remove,
     .cleanup = ramfs_inode_cleanup,
 };
 
 static dentry_ops_t dentryOps = {
-    .getdents = dentry_generic_getdents,
+    .iterate = dentry_generic_iterate,
 };
 
 static void ramfs_superblock_cleanup(superblock_t* superblock)
@@ -280,12 +304,13 @@ static dentry_t* ramfs_mount(filesystem_t* fs, const char* devName, void* privat
     boot_info_t* bootInfo = boot_info_get();
     const boot_disk_t* disk = &bootInfo->disk;
 
-    superblock->root = ramfs_load_dir(superblock, NULL, VFS_ROOT_ENTRY_NAME, disk->root);
-    if (superblock->root == NULL)
+    dentry_t* root = ramfs_load_dir(superblock, NULL, VFS_ROOT_ENTRY_NAME, disk->root);
+    if (root == NULL)
     {
         return NULL;
     }
 
+    superblock->root = root;
     return REF(superblock->root);
 }
 
@@ -334,8 +359,7 @@ void ramfs_init(void)
     LOG_INFO("mounting ramfs\n");
 
     process_t* process = sched_process();
-    mount = namespace_mount(&process->ns, NULL, VFS_DEVICE_NAME_NONE, RAMFS_NAME,
-        MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT, MODE_DIRECTORY | MODE_ALL_PERMS, NULL);
+    mount = namespace_mount(&process->ns, NULL, VFS_DEVICE_NAME_NONE, RAMFS_NAME, MODE_CHILDREN | MODE_ALL_PERMS, NULL);
     if (mount == NULL)
     {
         panic(NULL, "Failed to mount ramfs");

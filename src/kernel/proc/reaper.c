@@ -2,10 +2,10 @@
 
 #include <kernel/log/panic.h>
 #include <kernel/proc/process.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
-#include <kernel/sched/clock.h>
 
 static list_t zombies = LIST_CREATE(zombies);
 static clock_t nextReaperTime = CLOCKS_NEVER;

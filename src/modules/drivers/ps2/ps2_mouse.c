@@ -27,12 +27,14 @@ static void ps2_mouse_irq(irq_func_data_t* data)
     {
     case PS2_PACKET_FLAGS:
     {
-        private->packet.flags = byte;
+      private
+        ->packet.flags = byte;
 
         if (!(private->packet.flags & PS2_PACKET_ALWAYS_ONE))
         {
             LOG_WARN("mouse packet out of sync flags=0x%02X\n", private->packet.flags);
-            private->index = PS2_PACKET_FLAGS;
+          private
+            ->index = PS2_PACKET_FLAGS;
             return;
         }
 
@@ -46,19 +48,24 @@ static void ps2_mouse_irq(irq_func_data_t* data)
             LOG_WARN("mouse packet y overflow flags=0x%02X\n", private->packet.flags);
         }
 
-        private->index = PS2_PACKET_DELTA_X;
+      private
+        ->index = PS2_PACKET_DELTA_X;
     }
     break;
     case PS2_PACKET_DELTA_X:
     {
-        private->packet.deltaX = (int8_t)byte;
-        private->index = PS2_PACKET_DELTA_Y;
+      private
+        ->packet.deltaX = (int8_t)byte;
+      private
+        ->index = PS2_PACKET_DELTA_Y;
     }
     break;
     case PS2_PACKET_DELTA_Y:
     {
-        private->packet.deltaY = (int8_t)byte;
-        private->index = PS2_PACKET_FLAGS;
+      private
+        ->packet.deltaY = (int8_t)byte;
+      private
+        ->index = PS2_PACKET_FLAGS;
         ps2_mouse_handle_packet(private->mouse, &private->packet);
     }
     break;
@@ -74,7 +81,8 @@ uint64_t ps2_mouse_init(ps2_device_info_t* info)
         return ERR;
     }
 
-    private->mouse = mouse_new(info->name);
+  private
+    ->mouse = mouse_new(info->name);
     if (private->mouse == NULL)
     {
         free(private);
@@ -82,7 +90,8 @@ uint64_t ps2_mouse_init(ps2_device_info_t* info)
         return ERR;
     }
 
-    private->index = 0;
+  private
+    ->index = 0;
 
     if (ps2_device_cmd(info->device, PS2_DEV_CMD_SET_DEFAULTS) == ERR)
     {

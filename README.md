@@ -64,7 +64,7 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 
 ### File System
 
-- Unix-style VFS with mountpoints, hardlinks, per-process namespaces, etc.
+- Unix-style VFS with mountpoints, hardlinks, symlinks, per-process namespaces, etc.
 - Custom [Framebuffer BitMaP](https://github.com/KaiNorberg/fbmp) (.fbmp) image format, allows for faster loading by removing the need for parsing.
 - Custom [Grayscale Raster Font](https://github.com/KaiNorberg/grf) (.grf) font format, allows for antialiasing and kerning without complex vector graphics.
 
@@ -212,7 +212,7 @@ char* id = sreadfile("/net/local/seqpacket");
 free(id);
 ```
 
-> Note that the socket will persist until the process that created it and all its children have exited. Additionally, for error handling, all functions will return either `NULL` or `ERR` on failure, depending on if they return a pointer or an integer type respectively. The per-thread `errno` variable is used to indicate the specific error that occurred, both in user space and kernel space (however the actual variable is implemented differently in kernel space).
+> Note that the socket will persist until the process that created it and all its children have exited or the sockets directory is unmounted. Additionally, for error handling, all functions will return either `NULL` or `ERR` on failure, depending on if they return a pointer or an integer type respectively. The per-thread `errno` variable is used to indicate the specific error that occurred, both in user space and kernel space (however the actual variable is implemented differently in kernel space).
 
 Now that we have the ID, we can discuss what it actually is. The ID is the name of a directory in the `/net/local` directory, in which the following files exist:
 
@@ -383,49 +383,6 @@ All that happened is that the shell printed the exit status of the process, whic
 
 For more details, see the [Notes Documentation](https://kainorberg.github.io/PatchworkOS/html/d8/db1/group__kernel__ipc__note.html), [Standard Library Process Documentation](https://kainorberg.github.io/PatchworkOS/html/d1/d10/group__libstd__sys__proc.html) and the [Kernel Process Documentation](https://kainorberg.github.io/PatchworkOS/html/da/d0f/group__kernel__proc.html).
 
-### Namespaces
-
-Namespaces are a set of mountpoints that are unique per process, allowing each process a unique view of the file system.
-
-Think of it like this, in the common case, you can mount a drive to `/mnt/mydrive` and all processes can then open the `/mnt/mydrive` path and see the contents of that drive. However, for security reasons we might not want every process to be able to see that drive, this is what namespaces enable, allowing mounted file systems or directories to only be visible to a subset of processes.
-
-As an example, the "id" directories mentioned in the socket example are a separate "sysfs" instance mounted in the namespace of the creating process, meaning that only that process and its children can see their contents.
-
-For more information on how mounts are propagated or mounts inherited check the [Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html).
-
-### Namespace Sharing
-
-In cases where unrelated processes want to share a file or directory that is invisible to the other, they can voluntarily share a mountpoint in their namespaces using `bind()` in combination with two new system calls `share()` and `claim()`.
-
-For example, if process A wants to share its `/net/local/5` directory from the socket example with process B, they can do
-
-```c
-// In process A
-fd_t dir = open("/net/local/5:directory");
-
-// Create a "key" for the file descriptor, this is a unique one time use randomly generated token that can be used to retrieve the file descriptor in another process.
-key_t key;
-share(&key, dir, CLOCKS_PER_SEC * 60); // Key valid for 60 seconds (CLOCKS_NEVER is also allowed)
-
-// In process B
-// The key is somehow communicated to B via IPC, for example a pipe, socket, argv, etc.
-key_t key = ...;
-
-// Use the key to open a file descriptor to the directory, this will invalidate the key.
-fd_t dir = claim(key);
-// Will error here if the original file descriptor in process A has been closed, process A exited, or the key expired.
-
-// Make "dir" ("/net/local/5" in A) available in B's namespace at "/any/path/it/wants". In practice it might be best to bind it to the same path as in A to avoid confusion.
-bind(dir, "/any/path/it/wants");
-
-// Its also possible to just open paths in the shared directory without polluting the namespace using openat().
-fd_t somePath = openat(dir, "data");
-```
-
-An interesting detail is that when process A opens the `net/local/5` directory, the dentry underlying the file descriptor is the root of the mounted file system, if process B were to try to open this directory, it would still succeed as the directory itself is visible, however process B would instead retrieve the dentry of the directory in the parent superblock, and would instead see the content of that directory in the parent superblock. If this means nothing to you, don't worry about it.
-
-[Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
-
 ### But why?
 
 I'm sure you have heard many an argument for and against the "everything is a file" philosophy. So I won't go over everything, but the primary reason for using it in PatchworkOS is "emergent behavior" or "composability" whichever term you prefer.
@@ -434,7 +391,108 @@ Take the `spawn()` example, notice how there is no specialized system for settin
 
 Let's take another example, say you wanted to wait on multiple processes with a `waitpid()` syscall. Well, that's not possible. So now we suddenly need a new system call. Meanwhile, in an "everything is a file system" we just have a pollable `/proc/[pid]/wait` file that blocks until the process dies and returns the exit status, now any behavior that can be implemented with `poll()` can be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination you can think of.
 
+The core argument is not that each individual API is better than its POSIX counterpart, but that they combine to form a system that is greater than the sum of its parts.
+
 Plus its fun.
+
+## Security Model
+
+In PatchworkOS, there are no users or similar concepts often found in other operating systems. Instead, each process has a namespace which stores a set of mountpoints. This means that each process has its own view of the filesystem.
+
+For example, process A might have mounted a sensitive directory at `/secret` while process B has no such mountpoint. From process B's perspective, the `/secret` directory is empty or contains its original contents while process A can access it normally.
+
+> An interesting detail is that when process A opens the `/secret` directory, the dentry underlying the file descriptor is the dentry that was mounted to `/secret`. When process B opens this directory it would retrieve the dentry of the directory in the parent superblock, and thus see the content of that directory in the parent superblock. Namespaces prevent or enable mountpoint traversal not directory visibility. If this means nothing to you, don't worry about it.
+
+This allows for a composable, transparent and capability-based security model, where processes can be given access to any combination of files and directories without needing hidden permission bits or similar mechanisms. Additionally, since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc. For example, if you wish to prevent a process from using sockets, you could simply bind `/dev/null` to `/net`.
+
+> Deciding if this model is truly a capability system is something that could be argued about. In the end, it does share the core properties of a capability system, namely that possession of a "capability" (a visibile file/directory) grants access to an object (the contents or functionality of the file/directory) and that "capabilities" can be transferred between processes (using mechanisms like `share()` and `claim()` described below).
+
+It would even be possible to implement a user-like system entirely in user space using namespaces by having the init process bind different directories depending on the user logging in.
+
+For more information on for example mount propagation, see the [Namespace Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html) or the [Userspace IO API Documentation](https://kainorberg.github.io/PatchworkOS/html/d4/deb/group__libstd__sys__io.html).
+
+### Root Service
+
+There are some cases where we may wish to elevate our "permissions", in PatchworkOS this is done using the "root service".
+
+The root service is a service managed by the init process, which, since its namespace is the parent of all user space namespaces, has the highest "permissions" of all user space processes. Any process can access the root service and if they pass an authentication check be granted access to the init processes namespace.
+
+**The root service requires a password, the default password is `1234`.**
+
+There are three features required for a process to spawn a child in the init processes namespace, the `share()/claim()` system calls, the `/proc/[pid]/ns` file and the `join` command which can be sent to a processes `/proc/[pid]/ctl` file.
+
+### Share and Claim
+
+PatchworkOS introduces two new system calls `share()` and `claim()` which allow file descriptors to be securely sent from one process to another.
+
+The `share()` system call generates a one-time use key which remains valid for a limited time. Since the key generated by this system call is simply an 128-bit integer it can be sent to any other process using conventional IPC, including sockets, pipes, argv, etc.
+
+After a process receives a shared key it can use the `claim()` system call to retrieve a file descriptor to the same underlying file object as was originally shared.
+
+Included below is an example:
+
+```c
+// In process A.
+fd_t file = ...;
+
+// Create a key that lasts for 60 seconds.
+key_t key;
+share(&key, file, CLOCKS_PER_SECOND * 60);
+
+// In process B.
+
+// Through IPC process B receives the key.
+key_t key = ...;
+
+// Process B can now access the same file as in process A.
+fd_t file = claim(&key);
+```
+
+### Joining a Namespace
+
+A processes `/proc/[pid]/ns` file can be opened to retrieve a file representing the namespace of that process. This file descriptor can be used in combination with the `join <fd>` command to cause a process to leave its current namespace and join the namespace represented by the input file descriptor.
+
+Included below is an example:
+
+```c
+pid_t a = ...;
+
+// Retrieve file descriptor representing the namespace of process A.
+fd_t ns = open(F("/proc/%llu/ns", a))
+
+// Spawn process A in a suspended state.
+const char* argv[] = {"...", NULL};
+pid_t b = spawn(argv, SPAWN_SUSPENDED);
+
+// Move process B to the namespace of process A and start.
+swritefile(F("/proc/%llu/ctl", b), F("join %llu && start", b));
+```
+
+From the above example it should be clear how `share()` and `claim()` can be utilized by the root service to start a process in the namespace of the init process.
+
+### Using the Root Service
+
+Accessing the root service is done using the `root` command in a way similar to `sudo`. For example, `root ls /usr`.
+
+Let's take an example. The `/proc/[pid]` directories are only mounted in the namespace of the owner process and the parent namespaces. As such if we run the `top` command, we will only see the performance statistics of the shell and the top program we just started, as they both share the same namespace, but all other processes are invisible.
+
+If we instead run the `root top` command, we will be prompted to provide the root password as specified above and see the performance statistics of all processes except the kernel process. This works since the namespace of the init process is the ancestor of all user-space namespaces.
+
+### No Superuser
+
+Even when using the root service we are still limited by the files and directories visible in the init processes namespace. For example, we wont be able to see sockets of other processes as socket directories are only mounted in the namespace of the owner process and its children.
+
+The root service is not a "superuser", it just happens to have access to a namespace that is the parent of all user-space namespaces, allowing for some operations that would otherwise be impossible. For example, if you wished to mount a directory in all namespaces, you would need to use the root service to do so as mounts made in user-space can only propagate to child namespaces.
+
+### Limiting Visibility or Permissions
+
+A common pattern in PatchworkOS is to bind a directory to itself with lower permissions or to bind `/dev/null` to a file/directory to hide it completely. However on its own this is not secure, as a process could simply unmount the bind mount to regain access to the original file/directory or bind an ancestor directory to circumvent the mount entierely.
+
+The solution to these problems are "locked" and "sticky" mounts and binds. A locked mount or bind cannot be unmounted, it will persist until the namespace containing it is destroyed.
+
+A sticky mount or bind applies to the dentry of the mountpoint no matter where it is mounted in the namespace tree. For example, if `/secret/data` is a sticky bind to `/dev/null`, then mounting `/secret` to `/other` will still cause `/other/data` to be bound to `/dev/null`.
+
+Combining these two features allows any file or directory to be permanently hidden or have its permissions limited in a namespace.
 
 ## ACPI (WIP)
 
@@ -591,7 +649,7 @@ echo "..." > file.txt:a
 
 ### `ls`
 
-Reads the contents of a directory to stdout.
+Reads the contents of a directory to stdout. A mounted path will be underlined.
 
 ```bash
 # Prints the contents of mydir.
@@ -600,6 +658,13 @@ ls mydir
 # Recursively print the contents of mydir.
 ls mydir:recursive
 ls mydir:R
+
+# Recursively print the contents of the current directory.
+ls :recursive
+ls :R
+
+# Print the contents of the current directory and the flags of the paths mount.
+ls -f 
 ```
 
 ### `rm`
@@ -615,7 +680,20 @@ rm mydir:directory:recursive
 rm mydir:dR
 ```
 
-There are other utils available that work as expected, for example `stat` and `link`.
+### `stat`
+
+Retrieve information about a file or directory.
+
+```bash
+# Retrieve information on a symlinks target
+stat mysymlink
+
+# Retrieve information on a symlink itself
+stat mysymlink:nofollow
+stat mysymlink:l
+```
+
+There are other utils available that work as expected, for example `symlink` and `link`.
 
 ---
 

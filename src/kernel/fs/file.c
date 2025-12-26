@@ -37,33 +37,15 @@ file_t* file_new(const path_t* path, mode_t mode)
         return NULL;
     }
 
-    if (((mode & MODE_ALL_PERMS) & ~path->mount->mode) != 0)
+    if (mode_check(&mode, path->mount->mode) == ERR)
     {
-        errno = EACCES;
         return NULL;
     }
 
-    if (!dentry_is_positive(path->dentry))
+    if (!DENTRY_IS_POSITIVE(path->dentry))
     {
         errno = ENOENT;
         return NULL;
-    }
-
-    if (mode & MODE_DIRECTORY)
-    {
-        if (dentry_is_file(path->dentry))
-        {
-            errno = ENOTDIR;
-            return NULL;
-        }
-    }
-    else
-    {
-        if (dentry_is_dir(path->dentry))
-        {
-            errno = EISDIR;
-            return NULL;
-        }
     }
 
     file_t* file = malloc(sizeof(file_t));
@@ -71,11 +53,6 @@ file_t* file_new(const path_t* path, mode_t mode)
     {
         errno = ENOMEM;
         return NULL;
-    }
-
-    if ((mode & MODE_ALL_PERMS) == MODE_NONE)
-    {
-        mode |= path->mount->mode & MODE_ALL_PERMS;
     }
 
     ref_init(&file->ref, file_free);

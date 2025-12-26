@@ -24,13 +24,15 @@ typedef struct dentry dentry_t;
  *
  * A inode represents the actual data and metadata of a file. It is referenced by dentries, which represent the name or
  * "location" of the file but a inode can appear in multiple dentries due to hardlinks or mounts.
- * 
+ *
  * @note Despite the name inodes are in no way "nodes" in any kind of tree structure, that would be the dentries.
- * 
+ *
  * ## Synchronization
- * 
- * Inodes have an additional purpose within the Virtual File System (VFS) as they act as the primary means of synchronization. All dentries synchronize upon their inodes mutex, open files synchronize upon the mutex of the underlying inode and operations like create, remove, etc synchronize upon the inode mutex of the parent directory.
- * 
+ *
+ * Inodes have an additional purpose within the Virtual File System (VFS) as they act as the primary means of
+ * synchronization. All dentries synchronize upon their inodes mutex, open files synchronize upon the mutex of the
+ * underlying inode and operations like create, remove, etc synchronize upon the inode mutex of the parent directory.
+ *
  * @todo Implement actually writing/syncing dirty inodes, for now inodes should use the notify functions but they will
  * never actually be "cleaned."
  *
@@ -118,14 +120,31 @@ typedef struct inode_ops
      */
     uint64_t (*link)(inode_t* dir, dentry_t* old, dentry_t* new);
     /**
+     * @brief Retrieve the path of the symbolic link.
+     *
+     * @param inode The symbolic link inode.
+     * @param buffer The buffer to store the path in.
+     * @param size The size of the buffer.
+     * @return On success, the number of bytes read. On failure, returns `ERR` and `errno` is set.
+     */
+    uint64_t (*readlink)(inode_t* inode, char* buffer, uint64_t size);
+    /**
+     * @brief Create a symbolic link.
+     *
+     * @param dir The directory inode to create the symbolic link in.
+     * @param target The negative dentry to create.
+     * @param dest The path to which the symbolic link will point.
+     * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+     */
+    uint64_t (*symlink)(inode_t* dir, dentry_t* target, const char* dest);
+    /**
      * @brief Remove a file or directory.
      *
      * @param dir The directory inode containing the target.
      * @param target The dentry to remove.
-     * @param mode The mode for removal.
      * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
      */
-    uint64_t (*remove)(inode_t* dir, dentry_t* target, mode_t mode);
+    uint64_t (*remove)(inode_t* dir, dentry_t* target);
     /**
      * @brief Cleanup function called when the inode is being freed.
      *

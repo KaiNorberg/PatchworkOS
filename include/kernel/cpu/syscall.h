@@ -62,43 +62,44 @@
  */
 typedef enum
 {
-    SYS_PROCESS_EXIT = 0,
-    SYS_THREAD_EXIT = 1,
-    SYS_SPAWN = 2,
-    SYS_NANOSLEEP = 3,
-    SYS_ERRNO = 4,
-    SYS_GETPID = 5,
-    SYS_GETTID = 6,
-    SYS_UPTIME = 7,
-    SYS_UNIX_EPOCH = 8,
-    SYS_OPEN = 9,
-    SYS_OPEN2 = 10,
-    SYS_CLOSE = 11,
-    SYS_READ = 12,
-    SYS_WRITE = 13,
-    SYS_SEEK = 14,
-    SYS_IOCTL = 15,
-    SYS_CHDIR = 16,
-    SYS_POLL = 17,
-    SYS_STAT = 18,
-    SYS_MMAP = 19,
-    SYS_MUNMAP = 20,
-    SYS_MPROTECT = 21,
-    SYS_GETDENTS = 22,
-    SYS_THREAD_CREATE = 23,
-    SYS_YIELD = 24,
-    SYS_DUP = 25,
-    SYS_DUP2 = 26,
-    SYS_FUTEX = 27,
-    SYS_REMOVE = 28,
-    SYS_LINK = 29,
-    SYS_SHARE = 30,
-    SYS_CLAIM = 31,
-    SYS_BIND = 32,
-    SYS_OPENAT = 33,
-    SYS_NOTIFY = 34,
-    SYS_NOTED = 35,
-    SYS_TOTAL_AMOUNT = 36
+    SYS_PROCESS_EXIT,
+    SYS_THREAD_EXIT,
+    SYS_SPAWN,
+    SYS_NANOSLEEP,
+    SYS_ERRNO,
+    SYS_GETPID,
+    SYS_GETTID,
+    SYS_UPTIME,
+    SYS_UNIX_EPOCH,
+    SYS_OPEN,
+    SYS_OPEN2,
+    SYS_CLOSE,
+    SYS_READ,
+    SYS_WRITE,
+    SYS_SEEK,
+    SYS_IOCTL,
+    SYS_POLL,
+    SYS_STAT,
+    SYS_MMAP,
+    SYS_MUNMAP,
+    SYS_MPROTECT,
+    SYS_GETDENTS,
+    SYS_THREAD_CREATE,
+    SYS_YIELD,
+    SYS_DUP,
+    SYS_DUP2,
+    SYS_FUTEX,
+    SYS_REMOVE,
+    SYS_LINK,
+    SYS_SHARE,
+    SYS_CLAIM,
+    SYS_BIND,
+    SYS_OPENAT,
+    SYS_NOTIFY,
+    SYS_NOTED,
+    SYS_READLINK,
+    SYS_SYMLINK,
+    SYS_TOTAL_AMOUNT
 } syscall_number_t;
 
 /**
@@ -109,9 +110,11 @@ typedef enum
 {
     SYSCALL_NORMAL = 0 << 0,
     /**
-     * Forces a fake interrupt to be generated after the syscall completes. This is useful if a syscall does not wish to return to where it was called from. 
-     * 
-     * Intended to be used by modifying the interrupt frame stored in the syscall context and setting this flag. As an example, consider the `SYS_NOTED` syscall.
+     * Forces a fake interrupt to be generated after the syscall completes. This is useful if a syscall does not wish to
+     * return to where it was called from.
+     *
+     * Intended to be used by modifying the interrupt frame stored in the syscall context and setting this flag. As an
+     * example, consider the `SYS_NOTED` syscall.
      */
     SYSCALL_FORCE_FAKE_INTERRUPT = 1 << 0,
 } syscall_flags_t;

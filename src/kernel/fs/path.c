@@ -1,3 +1,4 @@
+#include <_internal/MAX_PATH.h>
 #include <kernel/fs/path.h>
 
 #include <kernel/fs/dentry.h>
@@ -10,10 +11,8 @@
 #include <errno.h>
 #include <kernel/utils/map.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
-
-static map_t flagMap;
-static map_t flagShortMap;
 
 typedef struct path_flag_short
 {
@@ -31,6 +30,11 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['t'] = {.mode = MODE_TRUNCATE},
     ['d'] = {.mode = MODE_DIRECTORY},
     ['R'] = {.mode = MODE_RECURSIVE},
+    ['l'] = {.mode = MODE_NOFOLLOW},
+    ['p'] = {.mode = MODE_PRIVATE},
+    ['S'] = {.mode = MODE_STICKY},
+    ['C'] = {.mode = MODE_CHILDREN},
+    ['L'] = {.mode = MODE_LOCKED},
 };
 
 typedef struct path_flag
@@ -50,6 +54,11 @@ static const path_flag_t flags[] = {
     {.mode = MODE_TRUNCATE, .name = "truncate"},
     {.mode = MODE_DIRECTORY, .name = "directory"},
     {.mode = MODE_RECURSIVE, .name = "recursive"},
+    {.mode = MODE_NOFOLLOW, .name = "nofollow"},
+    {.mode = MODE_PRIVATE, .name = "private"},
+    {.mode = MODE_STICKY, .name = "sticky"},
+    {.mode = MODE_CHILDREN, .name = "children"},
+    {.mode = MODE_LOCKED, .name = "locked"},
 };
 
 static mode_t path_flag_to_mode(const char* flag, uint64_t length)
@@ -59,7 +68,7 @@ static mode_t path_flag_to_mode(const char* flag, uint64_t length)
         return MODE_NONE;
     }
 
-    for (uint64_t i = 0; i < MODE_AMOUNT; i++)
+    for (uint64_t i = 0; i < sizeof(flags) / sizeof(flags[0]); i++)
     {
         size_t len = strnlen_s(flags[i].name, MAX_NAME);
         if (len == length && strncmp(flag, flags[i].name, length) == 0)
@@ -84,6 +93,23 @@ static mode_t path_flag_to_mode(const char* flag, uint64_t length)
     }
 
     return combinedMode;
+}
+
+static inline bool path_is_char_valid(char ch)
+{
+    static const bool forbidden[UINT8_MAX + 1] = {
+        [0 ... 31] = true,
+        ['<'] = true,
+        ['>'] = true,
+        [':'] = true,
+        ['\"'] = true,
+        ['/'] = true,
+        ['\\'] = true,
+        ['|'] = true,
+        ['?'] = true,
+        ['*'] = true,
+    };
+    return !forbidden[(uint8_t)ch];
 }
 
 uint64_t pathname_init(pathname_t* pathname, const char* string)
@@ -121,7 +147,7 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
         }
         else
         {
-            if (!PATH_VALID_CHAR(string[index]))
+            if (!path_is_char_valid(string[index]))
             {
                 errno = EINVAL;
                 return ERR;
@@ -195,52 +221,33 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
 
 void path_set(path_t* path, mount_t* mount, dentry_t* dentry)
 {
+    if (dentry != NULL)
+    {
+        REF(dentry);
+    }
+
+    if (mount != NULL)
+    {
+        REF(mount);
+    }
+
     if (path->dentry != NULL)
     {
         UNREF(path->dentry);
-        path->dentry = NULL;
     }
 
     if (path->mount != NULL)
     {
         UNREF(path->mount);
-        path->mount = NULL;
     }
 
-    if (dentry != NULL)
-    {
-        path->dentry = REF(dentry);
-    }
-
-    if (mount != NULL)
-    {
-        path->mount = REF(mount);
-    }
+    path->dentry = dentry;
+    path->mount = mount;
 }
 
 void path_copy(path_t* dest, const path_t* src)
 {
-    if (dest->dentry != NULL)
-    {
-        UNREF(dest->dentry);
-        dest->dentry = NULL;
-    }
-
-    if (dest->mount != NULL)
-    {
-        UNREF(dest->mount);
-        dest->mount = NULL;
-    }
-
-    if (src->dentry != NULL)
-    {
-        dest->dentry = REF(src->dentry);
-    }
-
-    if (src->mount != NULL)
-    {
-        dest->mount = REF(src->mount);
-    }
+    path_set(dest, src->mount, src->dentry);
 }
 
 void path_put(path_t* path)
@@ -271,7 +278,7 @@ static bool path_is_name_valid(const char* name)
         {
             return true;
         }
-        if (!PATH_VALID_CHAR(name[i]))
+        if (!path_is_char_valid(name[i]))
         {
             return false;
         }
@@ -285,7 +292,7 @@ static uint64_t path_handle_dotdot(path_t* path)
     if (path->dentry == path->mount->source)
     {
         uint64_t iter = 0;
-        while (path->dentry == path->mount->source && iter < PATH_HANDLE_DOTDOT_MAX_ITER)
+        while (path->dentry == path->mount->source && iter < PATH_MAX_DOTDOT)
         {
             if (path->mount->parent == NULL || path->mount->target == NULL)
             {
@@ -296,7 +303,7 @@ static uint64_t path_handle_dotdot(path_t* path)
             iter++;
         }
 
-        if (iter >= PATH_HANDLE_DOTDOT_MAX_ITER)
+        if (iter >= PATH_MAX_DOTDOT)
         {
             errno = ELOOP;
             return ERR;
@@ -304,12 +311,6 @@ static uint64_t path_handle_dotdot(path_t* path)
 
         if (path->dentry != path->mount->source)
         {
-            if (DENTRY_IS_ROOT(path->dentry))
-            {
-                errno = ENOENT;
-                return ERR;
-            }
-
             path_set(path, path->mount, path->dentry->parent);
         }
 
@@ -320,31 +321,76 @@ static uint64_t path_handle_dotdot(path_t* path)
     return 0;
 }
 
-uint64_t path_step(path_t* path, const char* component, namespace_t* ns)
+static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namespace_handle_t* ns, uint64_t symlinks);
+
+static uint64_t path_follow_symlink(dentry_t* dentry, path_t* path, namespace_handle_t* ns, uint64_t symlinks)
 {
-    if (!path_is_name_valid(component))
+    if (symlinks >= PATH_MAX_SYMLINK)
     {
-        errno = EINVAL;
+        errno = ELOOP;
         return ERR;
     }
 
-    if (namespace_traverse(ns, path) == ERR)
+    char symlinkPath[MAX_PATH];
+    if (vfs_readlink(dentry->inode, symlinkPath, MAX_PATH) == ERR)
     {
         return ERR;
     }
 
-    dentry_t* next = dentry_lookup(path, component);
+    pathname_t pathname;
+    if (pathname_init(&pathname, symlinkPath) == ERR)
+    {
+        return ERR;
+    }
+
+    if (path_walk_depth(path, &pathname, ns, symlinks + 1) == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
+static uint64_t path_step_depth(path_t* path, mode_t mode, const char* name, namespace_handle_t* ns, uint64_t symlinks)
+{
+    namespace_traverse(ns, path);
+
+    dentry_t* next = dentry_lookup(path, name);
     if (next == NULL)
     {
         return ERR;
     }
     UNREF_DEFER(next);
 
-    path_set(path, path->mount, next);
+    if (DENTRY_IS_SYMLINK(next) && !(mode & MODE_NOFOLLOW))
+    {
+        if (path_follow_symlink(next, path, ns, symlinks) == ERR)
+        {
+            return ERR;
+        }
+    }
+    else
+    {
+        path_set(path, path->mount, next);
+    }
+
+    namespace_traverse(ns, path);
+
     return 0;
 }
 
-uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
+uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_handle_t* ns)
+{
+    if (path == NULL || name == NULL || !path_is_name_valid(name) || ns == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    return path_step_depth(path, mode, name, ns, 0);
+}
+
+static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namespace_handle_t* ns, uint64_t symlinks)
 {
     if (path == NULL || !PATHNAME_IS_VALID(pathname) || ns == NULL)
     {
@@ -364,11 +410,6 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
 
     assert(path->dentry != NULL && path->mount != NULL);
 
-    if (*p == '\0')
-    {
-        return 0;
-    }
-
     char component[MAX_NAME];
     while (*p != '\0')
     {
@@ -382,39 +423,28 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
             break;
         }
 
-        if (*p == ':')
-        {
-            errno = EINVAL;
-            return ERR;
-        }
-
-        const char* componentStart = p;
+        const char* start = p;
         while (*p != '\0' && *p != '/')
         {
-            if (!PATH_VALID_CHAR(*p))
-            {
-                errno = EINVAL;
-                return ERR;
-            }
             p++;
         }
 
-        uint64_t len = p - componentStart;
+        uint64_t len = p - start;
         if (len >= MAX_NAME)
         {
             errno = ENAMETOOLONG;
             return ERR;
         }
 
-        memcpy(component, componentStart, len);
+        memcpy(component, start, len);
         component[len] = '\0';
 
-        if (strcmp(component, ".") == 0)
+        if (len == 1 && component[0] == '.')
         {
             continue;
         }
 
-        if (strcmp(component, "..") == 0)
+        if (len == 2 && component[0] == '.' && component[1] == '.')
         {
             if (path_handle_dotdot(path) == ERR)
             {
@@ -423,21 +453,21 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
             continue;
         }
 
-        if (path_step(path, component, ns) == ERR)
+        if (path_step_depth(path, pathname->mode, component, ns, symlinks) == ERR)
         {
             return ERR;
         }
     }
 
-    if (namespace_traverse(ns, path) == ERR)
-    {
-        return ERR;
-    }
-
     return 0;
 }
 
-uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_t* ns)
+uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_handle_t* ns)
+{
+    return path_walk_depth(path, pathname, ns, 0);
+}
+
+uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_handle_t* ns)
 {
     if (path == NULL || !PATHNAME_IS_VALID(pathname) || outLastName == NULL || ns == NULL)
     {
@@ -495,7 +525,7 @@ uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLas
 }
 
 uint64_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_t* outChild, const pathname_t* pathname,
-    namespace_t* ns)
+    namespace_handle_t* ns)
 {
     if (from == NULL || outParent == NULL || outChild == NULL || !PATHNAME_IS_VALID(pathname) || ns == NULL)
     {
@@ -511,7 +541,7 @@ uint64_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_
     }
 
     path_copy(outChild, outParent);
-    if (path_step(outChild, lastName, ns) == ERR)
+    if (path_step(outChild, pathname->mode, lastName, ns) == ERR)
     {
         return ERR;
     }
@@ -527,52 +557,119 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
         return ERR;
     }
 
-    memset(pathname->string, 0, MAX_PATH);
-    pathname->mode = MODE_NONE;
-    pathname->isValid = false;
+    char* buffer = pathname->string;
+    char* ptr = buffer + MAX_PATH - 1;
+    *ptr = '\0';
 
-    path_t current = PATH_CREATE(path->mount, path->dentry);
-    PATH_DEFER(&current);
-
-    uint64_t index = MAX_PATH - 1;
-    pathname->string[index] = '\0';
+    dentry_t* dentry = path->dentry;
+    mount_t* mount = path->mount;
 
     while (true)
     {
-        if (DENTRY_IS_ROOT(current.dentry))
+        if (dentry == mount->source)
         {
-            if (current.mount->parent == NULL)
+            if (mount->parent == NULL)
             {
-                pathname->string[index] = '/';
                 break;
             }
-            path_set(&current, current.mount->parent, current.mount->target);
+
+            dentry = mount->target;
+            mount = mount->parent;
             continue;
         }
 
-        uint64_t nameLength = strnlen_s(current.dentry->name, MAX_NAME);
+        if (dentry->parent == NULL)
+        {
+            errno = ENOENT;
+            return ERR;
+        }
 
-        if (index < nameLength + 1)
+        size_t len = strnlen_s(dentry->name, MAX_NAME);
+        if ((uint64_t)(ptr - buffer) < len + 1)
         {
             errno = ENAMETOOLONG;
             return ERR;
         }
 
-        if (nameLength != 0)
-        {
-            index -= nameLength;
-            memcpy(pathname->string + index, current.dentry->name, nameLength);
+        ptr -= len;
+        memcpy(ptr, dentry->name, len);
 
-            index--;
-            pathname->string[index] = '/';
-        }
+        ptr--;
+        *ptr = '/';
 
-        path_set(&current, current.mount, current.dentry->parent);
+        dentry = dentry->parent;
     }
 
-    uint64_t length = MAX_PATH - index;
-    memmove(pathname->string, pathname->string + index, length);
-    pathname->string[length] = '\0';
+    if (*ptr == '\0')
+    {
+        if (ptr == buffer)
+        {
+            errno = ENAMETOOLONG;
+            return ERR;
+        }
+        ptr--;
+        *ptr = '/';
+    }
+
+    size_t totalLen = (buffer + MAX_PATH - 1) - ptr;
+    memmove(buffer, ptr, totalLen + 1);
+
+    pathname->mode = MODE_NONE;
     pathname->isValid = true;
+
+    return 0;
+}
+
+uint64_t mode_to_string(mode_t mode, char* out, uint64_t length)
+{
+    if (out == NULL || length == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    uint64_t index = 0;
+    for (uint64_t i = 0; i < sizeof(flags) / sizeof(flags[0]); i++)
+    {
+        if (mode & flags[i].mode)
+        {
+            uint64_t nameLength = strnlen_s(flags[i].name, MAX_NAME);
+            if (index + nameLength + 1 >= length)
+            {
+                errno = ENAMETOOLONG;
+                return ERR;
+            }
+
+            out[index] = ':';
+            index++;
+
+            memcpy(&out[index], flags[i].name, nameLength);
+            index += nameLength;
+        }
+    }
+
+    out[index] = '\0';
+    return index;
+}
+
+uint64_t mode_check(mode_t* mode, mode_t maxPerms)
+{
+    if (mode == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (((*mode & MODE_ALL_PERMS) & ~maxPerms) != MODE_NONE)
+    {
+        errno = EACCES;
+        return ERR;
+    }
+
+    if ((*mode & MODE_ALL_PERMS) == MODE_NONE)
+    {
+        *mode |= maxPerms & MODE_ALL_PERMS;
+    }
+
     return 0;
 }

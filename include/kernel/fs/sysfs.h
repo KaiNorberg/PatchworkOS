@@ -38,25 +38,40 @@ void sysfs_init(void);
 dentry_t* sysfs_get_dev(void);
 
 /**
- * @brief Mount a new instance of SysFS.
+ * @brief Mount a new instance of SysFS to an existing directory in the root of the namespace.
  *
  * Used to, for example, create `/dev`, `/proc` and directories whose contents should only be visible within a
  * specific namespace.
  *
- * If `parent` is `NULL`, then the sysfs instance will be mounted to a already existing directory in the root of the
- * namespace. If it is not `NULL`, then it must point to a sysfs directory, a new directory of the name `name` will
- * be created inside it and the SysFS instance will be mounted there.
- *
- * @param parent The parent directory to mount the SysFS in. If `NULL`, the root of the namespace is used.
  * @param name The name of the directory to mount the SysFS in.
- * @param ns The namespace to mount the SysFS in, or `NULL` to use the current process's namespace.
- * @param flags Mount flags.
- * @param mode The maximum allowed permissions for files/directories opened under this mount.
+ * @param ns The namespace member whose namespace to mount the SysFS in, or `NULL` to use the current process's
+ * namespace.
+ * @param mode The mode specifying permissions and mount behaviour.
+ * @param inodeOps The inode operations for the root directory of the new SysFS instance, can be `NULL`.
  * @param superblockOps The superblock operations for the new SysFS instance, can be `NULL`.
  * @return On success, the mounted SysFS instance. On failure, `NULL` and `errno` is set.
  */
-mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns, mount_flags_t flags, mode_t mode,
-    const superblock_ops_t* superblockOps);
+mount_t* sysfs_mount_new(const char* name, namespace_handle_t* ns, mode_t mode, const inode_ops_t* inodeOps,
+    const superblock_ops_t* superblockOps, void* private);
+
+/**
+ * @brief Mount a new instance of SysFS inside an existing SysFS directory.
+ *
+ * Used to mount a SysFS instance inside an existing SysFS directory. The parent must point to a sysfs directory,
+ * and a new directory of the name `name` will be created inside it and the SysFS instance will be mounted there.
+ *
+ * @param parent The parent sysfs directory to mount the SysFS in.
+ * @param name The name of the directory to mount the SysFS in.
+ * @param ns The namespace member whose namespace to mount the SysFS in, or `NULL` to use the current process's
+ * namespace.
+ * @param mode The mode specifying permissions and mount behaviour.
+ * @param inodeOps The inode operations for the root directory of the new SysFS instance, can be `NULL`.
+ * @param superblockOps The superblock operations for the new SysFS instance, can be `NULL`.
+ * @param private Private data to be stored in the inode of the root directory, can be `NULL`.
+ * @return On success, the mounted SysFS instance. On failure, `NULL` and `errno` is set.
+ */
+mount_t* sysfs_submount_new(const path_t* parent, const char* name, namespace_handle_t* ns, mode_t mode,
+    const inode_ops_t* inodeOps, const superblock_ops_t* superblockOps, void* private);
 
 /**
  * @brief Create a new directory inside a mounted SysFS instance.
@@ -66,7 +81,7 @@ mount_t* sysfs_mount_new(const path_t* parent, const char* name, namespace_t* ns
  * @param parent The parent directory, if `NULL` then `sysfs_get_dev()` is used.
  * @param name The name of the new directory.
  * @param inodeOps The inode operations for the new directory, can be `NULL`.
- * @param private Private data associated with the new directory, can be `NULL`, will be stored in the inode.
+ * @param private Private data to store in the inode of the new directory, can be `NULL`.
  * @return On success, the new SysFS directory. On failure, `NULL` and `errno` is set.
  */
 dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* private);
@@ -80,10 +95,43 @@ dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* i
  * @param name The name of the new file.
  * @param inodeOps The inode operations for the new file, can be `NULL`.
  * @param fileOps The file operations for the new file, can be `NULL`.
- * @param private Private data associated with the new file, can be `NULL`.
+ * @param private Private data to store in the inode of the new file, can be `NULL`.
  * @return On success, the new SysFS file. On failure, `NULL` and `errno` is set.
  */
 dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, const file_ops_t* fileOps,
     void* private);
+
+/**
+ * @brief Create a new symbolic link inside a mounted SysFS instance.
+ *
+ * @param parent The parent directory.
+ * @param name The name of the new symbolic link.
+ * @param inodeOps The inode operations for the new symbolic link.
+ * @param private Private data to store in the inode of the new symbolic link, can be `NULL`.
+ * @return On success, the new SysFS symbolic link. On failure, `NULL` and `errno` is set.
+ */
+dentry_t* sysfs_symlink_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* private);
+
+/**
+ * @brief Descriptor for batch file creation.
+ * @struct sysfs_file_desc_t
+ */
+typedef struct sysfs_file_desc
+{
+    const char* name;            ///< Name of the file, `NULL` marks end of array.
+    const inode_ops_t* inodeOps; ///< Inode operations, can be `NULL`.
+    const file_ops_t* fileOps;   ///< File operations, can be `NULL`.
+} sysfs_file_desc_t;
+
+/**
+ * @brief Create multiple files atomically in a sysfs directory.
+ *
+ * @param parent The parent directory, if `NULL` then `sysfs_get_dev()` is used.
+ * @param descs Array of file descriptors, terminated by an entry with `name == NULL`.
+ * @param private Private data to store in the inode of all created files, can be `NULL`.
+ * @param out Output list to store created dentries, can be `NULL`. The dentries use the `otherEntry` list entry.
+ * @return On success, the number of files created. On failure, `ERR` and `errno` is set.
+ */
+uint64_t sysfs_files_create(dentry_t* parent, const sysfs_file_desc_t* descs, void* private, list_t* out);
 
 /** @} */

@@ -1,29 +1,31 @@
-#include <kernel/proc/group.h>
-#include <kernel/proc/process.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/fs/ctl.h>
+#include <kernel/fs/dentry.h>
 #include <kernel/fs/file.h>
+#include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
+#include <kernel/proc/group.h>
+#include <kernel/proc/process.h>
+#include <kernel/proc/reaper.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
-#include <kernel/proc/reaper.h>
 #include <kernel/sync/rwlock.h>
 
 #include <assert.h>
+#include <errno.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <sys/io.h>
 #include <sys/list.h>
 #include <sys/math.h>
@@ -33,35 +35,30 @@ static process_t* kernelProcess = NULL;
 
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 
-static mount_t* procMount = NULL;
-static dentry_t* selfDir = NULL;
+static mount_t* proc = NULL;
+static dentry_t* self = NULL;
 
-static process_t* process_file_get_process(file_t* file)
+static uint64_t process_self_readlink(inode_t* inode, char* buffer, uint64_t count)
 {
-    process_t* process = file->inode->private;
-    if (process == NULL)
-    {
-        LOG_DEBUG("process_file_get_process: inode private is NULL\n");
-        errno = EINVAL;
-        return NULL;
-    }
+    (void)inode; // Unused
 
-    if (process == kernelProcess)
-    {
-        errno = EACCES;
-        return NULL;
-    }
-
-    return process;
-}
-
-static uint64_t process_prio_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
-{
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
+    process_t* process = sched_process();
+    int ret = snprintf(buffer, count, "%llu", process->id);
+    if (ret < 0 || ret >= (int)count)
     {
         return ERR;
     }
+
+    return ret;
+}
+
+static inode_ops_t selfOps = {
+    .readlink = process_self_readlink,
+};
+
+static uint64_t process_prio_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    process_t* process = file->inode->private;
 
     priority_t priority = atomic_load(&process->priority);
 
@@ -74,11 +71,7 @@ static uint64_t process_prio_write(file_t* file, const void* buffer, uint64_t co
 {
     (void)offset; // Unused
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     char prioStr[MAX_NAME];
     if (count >= MAX_NAME)
@@ -113,11 +106,7 @@ static file_ops_t prioOps = {
 
 static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     path_t cwd = cwd_get(&process->cwd);
     PATH_DEFER(&cwd);
@@ -136,11 +125,7 @@ static uint64_t process_cwd_write(file_t* file, const void* buffer, uint64_t cou
 {
     (void)offset; // Unused
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     char cwdStr[MAX_PATH];
     if (count >= MAX_PATH)
@@ -166,9 +151,15 @@ static uint64_t process_cwd_write(file_t* file, const void* buffer, uint64_t cou
         return ERR;
     }
 
-    if (!dentry_is_positive(path.dentry))
+    if (!DENTRY_IS_POSITIVE(path.dentry))
     {
         errno = ENOENT;
+        return ERR;
+    }
+
+    if (!DENTRY_IS_DIR(path.dentry))
+    {
+        errno = ENOTDIR;
         return ERR;
     }
 
@@ -183,18 +174,42 @@ static file_ops_t cwdOps = {
 
 static uint64_t process_cmdline_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
-    if (process->cmdline == NULL || process->cmdlineSize == 0)
+    if (process->argv == NULL || process->argc == 0)
     {
         return 0;
     }
 
-    return BUFFER_READ(buffer, count, offset, process->cmdline, process->cmdlineSize);
+    uint64_t totalSize = 0;
+    for (uint64_t i = 0; i < process->argc; i++)
+    {
+        totalSize += strlen(process->argv[i]) + 1;
+    }
+
+    if (totalSize == 0)
+    {
+        return 0;
+    }
+
+    char* cmdline = malloc(totalSize);
+    if (cmdline == NULL)
+    {
+        errno = ENOMEM;
+        return ERR;
+    }
+
+    char* dest = cmdline;
+    for (uint64_t i = 0; i < process->argc; i++)
+    {
+        uint64_t len = strlen(process->argv[i]) + 1;
+        memcpy(dest, process->argv[i], len);
+        dest += len;
+    }
+
+    uint64_t result = BUFFER_READ(buffer, count, offset, cmdline, totalSize);
+    free(cmdline);
+    return result;
 }
 
 static file_ops_t cmdlineOps = {
@@ -210,11 +225,13 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
         return 0;
     }
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
+    if (count >= NOTE_MAX)
     {
+        errno = EINVAL;
         return ERR;
     }
+
+    process_t* process = file->inode->private;
 
     LOCK_SCOPE(&process->threads.lock);
 
@@ -226,7 +243,7 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
     }
 
     char string[NOTE_MAX] = {0};
-    memcpy_s(string, NOTE_MAX, buffer, MIN(count, NOTE_MAX - 1));
+    memcpy_s(string, NOTE_MAX, buffer, count);
     if (thread_send_note(thread, string) == ERR)
     {
         return ERR;
@@ -248,16 +265,16 @@ static uint64_t process_notegroup_write(file_t* file, const void* buffer, uint64
         return 0;
     }
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
+    if (count >= NOTE_MAX)
     {
+        errno = EINVAL;
         return ERR;
     }
+    process_t* process = file->inode->private;
 
     char string[NOTE_MAX] = {0};
-    memcpy_s(string, NOTE_MAX, buffer, MIN(count, NOTE_MAX - 1));
-
-    if (group_send_note(&process->groupEntry, string) == ERR)
+    memcpy_s(string, NOTE_MAX, buffer, count);
+    if (group_send_note(&process->group, string) == ERR)
     {
         return ERR;
     }
@@ -271,14 +288,10 @@ static file_ops_t notegroupOps = {
 
 static uint64_t process_gid_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     char gidStr[MAX_NAME];
-    uint32_t length = snprintf(gidStr, MAX_NAME, "%llu", group_get_id(&process->groupEntry));
+    uint32_t length = snprintf(gidStr, MAX_NAME, "%llu", group_get_id(&process->group));
     return BUFFER_READ(buffer, count, offset, gidStr, length);
 }
 
@@ -286,31 +299,37 @@ static file_ops_t gidOps = {
     .read = process_gid_read,
 };
 
+static uint64_t process_pid_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    process_t* process = file->inode->private;
+
+    char pidStr[MAX_NAME];
+    uint32_t length = snprintf(pidStr, MAX_NAME, "%llu", process->id);
+    return BUFFER_READ(buffer, count, offset, pidStr, length);
+}
+
+static file_ops_t pidOps = {
+    .read = process_pid_read,
+};
+
 static uint64_t process_wait_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
+    process_t* process = file->inode->private;
+
+    if (WAIT_BLOCK(&process->dyingQueue, atomic_load(&process->flags) & PROCESS_DYING) == ERR)
     {
         return ERR;
     }
 
-    WAIT_BLOCK(&process->dyingQueue, atomic_load(&process->flags) & PROCESS_DYING);
-
-    lock_acquire(&process->exitStatus.lock);
-    uint64_t result =
-        BUFFER_READ(buffer, count, offset, process->exitStatus.buffer, strlen(process->exitStatus.buffer));
-    lock_release(&process->exitStatus.lock);
+    lock_acquire(&process->status.lock);
+    uint64_t result = BUFFER_READ(buffer, count, offset, process->status.buffer, strlen(process->status.buffer));
+    lock_release(&process->status.lock);
     return result;
 }
 
 static wait_queue_t* process_wait_poll(file_t* file, poll_events_t* revents)
 {
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return NULL;
-    }
-
+    process_t* process = file->inode->private;
     if (atomic_load(&process->flags) & PROCESS_DYING)
     {
         *revents |= POLLIN;
@@ -325,14 +344,9 @@ static file_ops_t waitOps = {
     .poll = process_wait_poll,
 };
 
-static uint64_t process_stat_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t process_perf_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
-
+    process_t* process = file->inode->private;
     uint64_t userPages = space_user_page_count(&process->space);
 
     lock_acquire(&process->threads.lock);
@@ -356,8 +370,47 @@ static uint64_t process_stat_read(file_t* file, void* buffer, uint64_t count, ui
     return BUFFER_READ(buffer, count, offset, statStr, (uint64_t)length);
 }
 
-static file_ops_t statOps = {
-    .read = process_stat_read,
+static file_ops_t perfOps = {
+    .read = process_perf_read,
+};
+
+static uint64_t process_ns_open(file_t* file)
+{
+    process_t* process = file->inode->private;
+
+    namespace_handle_t* handle = malloc(sizeof(namespace_handle_t));
+    if (handle == NULL)
+    {
+        errno = ENOMEM;
+        return ERR;
+    }
+
+    if (namespace_handle_init(handle, &process->ns, NAMESPACE_HANDLE_SHARE) == ERR)
+    {
+        free(handle);
+        return ERR;
+    }
+
+    file->private = handle;
+    return 0;
+}
+
+static void process_ns_close(file_t* file)
+{
+    if (file->private == NULL)
+    {
+        return;
+    }
+
+    namespace_handle_t* handle = file->private;
+    namespace_handle_deinit(handle);
+    free(handle);
+    file->private = NULL;
+}
+
+static file_ops_t nsOps = {
+    .open = process_ns_open,
+    .close = process_ns_close,
 };
 
 static uint64_t process_ctl_close(file_t* file, uint64_t argc, const char** argv)
@@ -368,11 +421,7 @@ static uint64_t process_ctl_close(file_t* file, uint64_t argc, const char** argv
         return ERR;
     }
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     if (argc == 2)
     {
@@ -383,7 +432,7 @@ static uint64_t process_ctl_close(file_t* file, uint64_t argc, const char** argv
             return ERR;
         }
 
-        if (file_table_free(&process->fileTable, fd) == ERR)
+        if (file_table_close(&process->fileTable, fd) == ERR)
         {
             return ERR;
         }
@@ -404,7 +453,7 @@ static uint64_t process_ctl_close(file_t* file, uint64_t argc, const char** argv
             return ERR;
         }
 
-        if (file_table_free_range(&process->fileTable, minFd, maxFd) == ERR)
+        if (file_table_close_range(&process->fileTable, minFd, maxFd) == ERR)
         {
             return ERR;
         }
@@ -421,11 +470,7 @@ static uint64_t process_ctl_dup2(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     fd_t oldFd;
     if (sscanf(argv[1], "%lld", &oldFd) != 1)
@@ -449,6 +494,100 @@ static uint64_t process_ctl_dup2(file_t* file, uint64_t argc, const char** argv)
     return 0;
 }
 
+static uint64_t process_ctl_join(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 2)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+
+    fd_t fd;
+    if (sscanf(argv[1], "%llu", &fd) != 1)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    file_t* nsFile = file_table_get(&process->fileTable, fd);
+    if (nsFile == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(nsFile);
+
+    if (nsFile->ops != &nsOps)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    namespace_handle_t* target = nsFile->private;
+    if (target == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    namespace_handle_deinit(&process->ns);
+
+    if (namespace_handle_init(&process->ns, target, NAMESPACE_HANDLE_SHARE) == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
+static uint64_t process_ctl_bind(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 3)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+
+    pathname_t sourceName;
+    if (pathname_init(&sourceName, argv[1]) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t source = cwd_get(&process->cwd);
+    PATH_DEFER(&source);
+
+    if (path_walk(&source, &sourceName, &process->ns) == ERR)
+    {
+        return ERR;
+    }
+
+    pathname_t targetName;
+    if (pathname_init(&targetName, argv[2]) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t target = cwd_get(&process->cwd);
+    PATH_DEFER(&target);
+
+    if (path_walk(&target, &targetName, &process->ns) == ERR)
+    {
+        return ERR;
+    }
+
+    mount_t* mount = namespace_bind(&process->ns, &source, &target, targetName.mode);
+    if (mount == NULL)
+    {
+        return ERR;
+    }
+    UNREF(mount);
+    return 0;
+}
+
 static uint64_t process_ctl_start(file_t* file, uint64_t argc, const char** argv)
 {
     (void)argv; // Unused
@@ -459,11 +598,7 @@ static uint64_t process_ctl_start(file_t* file, uint64_t argc, const char** argv
         return ERR;
     }
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     atomic_fetch_and(&process->flags, ~PROCESS_SUSPENDED);
     wait_unblock(&process->suspendQueue, WAIT_ALL, EOK);
@@ -481,11 +616,7 @@ static uint64_t process_ctl_kill(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
+    process_t* process = file->inode->private;
 
     process_kill(process, 0);
 
@@ -493,8 +624,15 @@ static uint64_t process_ctl_kill(file_t* file, uint64_t argc, const char** argv)
 }
 
 CTL_STANDARD_OPS_DEFINE(ctlOps,
-    {{"close", process_ctl_close, 2, 3}, {"dup2", process_ctl_dup2, 3, 3}, {"start", process_ctl_start, 1, 1},
-        {"kill", process_ctl_kill, 1, 1}, {0}})
+    {
+        {"close", process_ctl_close, 2, 3},
+        {"dup2", process_ctl_dup2, 3, 3},
+        {"join", process_ctl_join, 2, 2},
+        {"bind", process_ctl_bind, 3, 3},
+        {"start", process_ctl_start, 1, 1},
+        {"kill", process_ctl_kill, 1, 1},
+        {0},
+    })
 
 static uint64_t process_env_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -535,7 +673,7 @@ static file_ops_t envFileOps = {
 };
 
 static uint64_t process_env_create(inode_t* dir, dentry_t* target, mode_t mode);
-static uint64_t process_env_remove(inode_t* parent, dentry_t* target, mode_t mode);
+static uint64_t process_env_remove(inode_t* parent, dentry_t* target);
 static void process_env_cleanup(inode_t* inode);
 
 static inode_ops_t envFileInodeOps = {
@@ -579,14 +717,8 @@ static uint64_t process_env_create(inode_t* dir, dentry_t* target, mode_t mode)
     return 0;
 }
 
-static uint64_t process_env_remove(inode_t* dir, dentry_t* target, mode_t mode)
+static uint64_t process_env_remove(inode_t* dir, dentry_t* target)
 {
-    if (mode & MODE_DIRECTORY)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     MUTEX_SCOPE(&dir->mutex);
 
     process_t* process = dir->private;
@@ -621,23 +753,28 @@ static void process_proc_cleanup(inode_t* inode)
     LOG_DEBUG("freeing process pid=%d\n", process->id);
 
     assert(list_is_empty(&process->threads.list));
-    assert(process->dir.self == NULL);
-    assert(process->dir.dir == NULL);
     assert(process->dir.env == NULL);
     assert(list_is_empty(&process->dir.files));
     assert(list_is_empty(&process->dir.envEntries));
 
-    if (process->cmdline != NULL)
+    if (process->argv != NULL)
     {
-        free(process->cmdline);
-        process->cmdline = NULL;
-        process->cmdlineSize = 0;
+        for (uint64_t i = 0; i < process->argc; i++)
+        {
+            if (process->argv[i] != NULL)
+            {
+                free(process->argv[i]);
+            }
+        }
+        free(process->argv);
+        process->argv = NULL;
+        process->argc = 0;
     }
 
-    group_entry_deinit(&process->groupEntry);
+    group_member_deinit(&process->group);
     cwd_deinit(&process->cwd);
     file_table_deinit(&process->fileTable);
-    namespace_deinit(&process->ns);
+    namespace_handle_deinit(&process->ns);
     space_deinit(&process->space);
     wait_queue_deinit(&process->dyingQueue);
     wait_queue_deinit(&process->suspendQueue);
@@ -647,6 +784,21 @@ static void process_proc_cleanup(inode_t* inode)
 
 static inode_ops_t procInodeOps = {
     .cleanup = process_proc_cleanup,
+};
+
+static sysfs_file_desc_t files[] = {
+    {.name = "prio", .inodeOps = NULL, .fileOps = &prioOps},
+    {.name = "cwd", .inodeOps = NULL, .fileOps = &cwdOps},
+    {.name = "cmdline", .inodeOps = NULL, .fileOps = &cmdlineOps},
+    {.name = "note", .inodeOps = NULL, .fileOps = &noteOps},
+    {.name = "notegroup", .inodeOps = NULL, .fileOps = &notegroupOps},
+    {.name = "gid", .inodeOps = NULL, .fileOps = &gidOps},
+    {.name = "pid", .inodeOps = NULL, .fileOps = &pidOps},
+    {.name = "wait", .inodeOps = NULL, .fileOps = &waitOps},
+    {.name = "perf", .inodeOps = NULL, .fileOps = &perfOps},
+    {.name = "ns", .inodeOps = NULL, .fileOps = &nsOps},
+    {.name = "ctl", .inodeOps = NULL, .fileOps = &ctlOps},
+    {0},
 };
 
 static uint64_t process_dir_init(process_t* process)
@@ -664,98 +816,33 @@ static uint64_t process_dir_init(process_t* process)
         return ERR;
     }
 
-    process->dir.dir = sysfs_dir_new(procMount->source, name, &procInodeOps, process);
+    path_t procPath = PATH_CREATE(proc, proc->source);
+    PATH_DEFER(&procPath);
+
+    process->dir.dir = sysfs_submount_new(&procPath, name, &process->ns, MODE_PARENTS | MODE_PRIVATE | MODE_ALL_PERMS,
+        &procInodeOps, NULL, process);
     if (process->dir.dir == NULL)
     {
         return ERR;
     }
 
-    process->dir.env = sysfs_dir_new(process->dir.dir, "env", &envInodeOps, process);
+    process->dir.env = sysfs_dir_new(process->dir.dir->source, "env", &envInodeOps, process);
     if (process->dir.env == NULL)
     {
-        goto error;
+        process_dir_deinit(process);
+        return ERR;
     }
 
-    dentry_t* prio = sysfs_file_new(process->dir.dir, "prio", NULL, &prioOps, process);
-    if (prio == NULL)
+    if (sysfs_files_create(process->dir.dir->source, files, process, &process->dir.files) == ERR)
     {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &prio->otherEntry);
-
-    dentry_t* cwd = sysfs_file_new(process->dir.dir, "cwd", NULL, &cwdOps, process);
-    if (cwd == NULL)
-    {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &cwd->otherEntry);
-
-    dentry_t* cmdline = sysfs_file_new(process->dir.dir, "cmdline", NULL, &cmdlineOps, process);
-    if (cmdline == NULL)
-    {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &cmdline->otherEntry);
-
-    dentry_t* note = sysfs_file_new(process->dir.dir, "note", NULL, &noteOps, process);
-    if (note == NULL)
-    {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &note->otherEntry);
-
-    dentry_t* notegroup = sysfs_file_new(process->dir.dir, "notegroup", NULL, &notegroupOps, process);
-    if (notegroup == NULL)
-    {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &notegroup->otherEntry);
-
-    dentry_t* gid = sysfs_file_new(process->dir.dir, "gid", NULL, &gidOps, process);
-    if (gid == NULL)
-    {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &gid->otherEntry);
-
-    dentry_t* wait = sysfs_file_new(process->dir.dir, "wait", NULL, &waitOps, process);
-    if (wait == NULL)
-    {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &wait->otherEntry);
-
-    dentry_t* perf = sysfs_file_new(process->dir.dir, "perf", NULL, &statOps, process);
-    if (perf == NULL)
-    {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &perf->otherEntry);
-
-    dentry_t* ctl = sysfs_file_new(process->dir.dir, "ctl", NULL, &ctlOps, process);
-    if (ctl == NULL)
-    {
-        goto error;
-    }
-    list_push_back(&process->dir.files, &ctl->otherEntry);
-
-    path_t selfPath = PATH_CREATE(procMount, selfDir);
-    process->dir.self =
-        namespace_bind(&process->ns, process->dir.dir, &selfPath, MOUNT_OVERWRITE, MODE_DIRECTORY | MODE_ALL_PERMS);
-    path_put(&selfPath);
-    if (process->dir.self == NULL)
-    {
-        goto error;
+        process_dir_deinit(process);
+        return ERR;
     }
 
     return 0;
-
-error:
-    process_dir_deinit(process);
-    return ERR;
 }
 
-process_t* process_new(priority_t priority, gid_t gid)
+process_t* process_new(priority_t priority, gid_t gid, namespace_handle_t* source, namespace_handle_flags_t flags)
 {
     process_t* process = malloc(sizeof(process_t));
     if (process == NULL)
@@ -765,10 +852,10 @@ process_t* process_new(priority_t priority, gid_t gid)
     }
 
     process->id = atomic_fetch_add(&newPid, 1);
-    group_entry_init(&process->groupEntry);
+    group_member_init(&process->group);
     atomic_init(&process->priority, priority);
-    memset_s(process->exitStatus.buffer, NOTE_MAX, 0, NOTE_MAX);
-    lock_init(&process->exitStatus.lock);
+    memset_s(process->status.buffer, PROCESS_STATUS_MAX, 0, PROCESS_STATUS_MAX);
+    lock_init(&process->status.lock);
 
     if (space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
             SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY) == ERR)
@@ -777,7 +864,13 @@ process_t* process_new(priority_t priority, gid_t gid)
         return NULL;
     }
 
-    namespace_init(&process->ns);
+    if (namespace_handle_init(&process->ns, source, flags) == ERR)
+    {
+        space_deinit(&process->space);
+        free(process);
+        return NULL;
+    }
+
     cwd_init(&process->cwd);
     file_table_init(&process->fileTable);
     futex_ctx_init(&process->futexCtx);
@@ -793,18 +886,16 @@ process_t* process_new(priority_t priority, gid_t gid)
 
     list_entry_init(&process->zombieEntry);
 
-
-    process->dir.self = NULL;
     process->dir.dir = NULL;
     list_init(&process->dir.files);
     process->dir.env = NULL;
     list_init(&process->dir.envEntries);
     lock_init(&process->dir.lock);
 
-    process->cmdline = NULL;
-    process->cmdlineSize = 0;
+    process->argv = NULL;
+    process->argc = 0;
 
-    if (group_add(gid, &process->groupEntry) == ERR)
+    if (group_add(gid, &process->group) == ERR)
     {
         process_kill(process, "init failed");
         return NULL;
@@ -833,10 +924,10 @@ void process_kill(process_t* process, const char* status)
         return;
     }
 
-    lock_acquire(&process->exitStatus.lock);
-    strncpy_s(process->exitStatus.buffer, NOTE_MAX, status, NOTE_MAX - 1);
-    process->exitStatus.buffer[NOTE_MAX - 1] = '\0';
-    lock_release(&process->exitStatus.lock);
+    lock_acquire(&process->status.lock);
+    strncpy_s(process->status.buffer, PROCESS_STATUS_MAX, status, PROCESS_STATUS_MAX - 1);
+    process->status.buffer[PROCESS_STATUS_MAX - 1] = '\0';
+    lock_release(&process->status.lock);
 
     uint64_t killCount = 0;
     thread_t* thread;
@@ -854,10 +945,13 @@ void process_kill(process_t* process, const char* status)
     lock_release(&process->threads.lock);
 
     // Anything that another process could be waiting on must be cleaned up here.
+
+    namespace_unmount(&process->ns, process->dir.dir, MODE_PARENTS);
+
     cwd_clear(&process->cwd);
     file_table_close_all(&process->fileTable);
-    namespace_clear(&process->ns);
-    group_remove(&process->groupEntry);
+    namespace_handle_clear(&process->ns);
+    group_remove(&process->group);
 
     wait_unblock(&process->dyingQueue, WAIT_ALL, EOK);
 
@@ -873,16 +967,9 @@ void process_dir_deinit(process_t* process)
 
     LOCK_SCOPE(&process->dir.lock);
 
-    if (process->dir.self != NULL)
+    while (!list_is_empty(&process->dir.envEntries))
     {
-        UNREF(process->dir.self);
-        process->dir.self = NULL;
-    }
-
-    if (process->dir.dir != NULL)
-    {
-        UNREF(process->dir.dir);
-        process->dir.dir = NULL;
+        UNREF(CONTAINER_OF_SAFE(list_pop_first(&process->dir.envEntries), dentry_t, otherEntry));
     }
 
     while (!list_is_empty(&process->dir.files))
@@ -896,9 +983,10 @@ void process_dir_deinit(process_t* process)
         process->dir.env = NULL;
     }
 
-    while (!list_is_empty(&process->dir.envEntries))
+    if (process->dir.dir != NULL)
     {
-        UNREF(CONTAINER_OF_SAFE(list_pop_first(&process->dir.envEntries), dentry_t, otherEntry));
+        UNREF(process->dir.dir);
+        process->dir.dir = NULL;
     }
 }
 
@@ -919,10 +1007,12 @@ uint64_t process_copy_env(process_t* dest, process_t* src)
         return ERR;
     }
 
+    superblock_t* superblock = dest->dir.env->inode->superblock;
+
     dentry_t* srcDentry;
     LIST_FOR_EACH(srcDentry, &src->dir.envEntries, otherEntry)
     {
-        inode_t* inode = inode_new(srcDentry->inode->superblock, vfs_id_get(), INODE_FILE, &envFileInodeOps, &envFileOps);
+        inode_t* inode = inode_new(superblock, vfs_id_get(), INODE_FILE, &envFileInodeOps, &envFileOps);
         if (inode == NULL)
         {
             return ERR;
@@ -941,7 +1031,7 @@ uint64_t process_copy_env(process_t* dest, process_t* src)
             inode->size = srcDentry->inode->size;
         }
 
-        dentry_t* dentry = dentry_new(srcDentry->inode->superblock, dest->dir.env, srcDentry->name);
+        dentry_t* dentry = dentry_new(superblock, dest->dir.env, srcDentry->name);
         if (dentry == NULL)
         {
             return ERR;
@@ -964,50 +1054,56 @@ uint64_t process_set_cmdline(process_t* process, char** argv, uint64_t argc)
 
     if (argv == NULL || argc == 0)
     {
+        process->argv = NULL;
+        process->argc = 0;
         return 0;
     }
 
-    uint64_t totalSize = 0;
-    for (uint64_t i = 0; i < argc; i++)
-    {
-        if (argv[i] == NULL)
-        {
-            break;
-        }
-        totalSize += strlen(argv[i]) + 1;
-    }
-
-    if (totalSize == 0)
-    {
-        return 0;
-    }
-
-    char* cmdline = malloc(totalSize);
-    if (cmdline == NULL)
+    char** newArgv = malloc(sizeof(char*) * (argc + 1));
+    if (newArgv == NULL)
     {
         errno = ENOMEM;
         return ERR;
     }
 
-    char* dest = cmdline;
-    for (uint64_t i = 0; i < argc; i++)
+    uint64_t i = 0;
+    for (; i < argc; i++)
     {
         if (argv[i] == NULL)
         {
             break;
         }
-        uint64_t len = strlen(argv[i]) + 1;
-        memcpy(dest, argv[i], len);
-        dest += len;
+        size_t len = strlen(argv[i]) + 1;
+        newArgv[i] = malloc(len);
+        if (newArgv[i] == NULL)
+        {
+            for (uint64_t j = 0; j < i; j++)
+            {
+                free(newArgv[j]);
+            }
+            free(newArgv);
+            errno = ENOMEM;
+            return ERR;
+        }
+        memcpy(newArgv[i], argv[i], len);
     }
+    newArgv[i] = NULL;
 
-    if (process->cmdline != NULL)
+    uint64_t newArgc = i;
+    if (process->argv != NULL)
     {
-        free(process->cmdline);
+        for (uint64_t j = 0; j < process->argc; j++)
+        {
+            if (process->argv[j] != NULL)
+            {
+                free(process->argv[j]);
+            }
+        }
+        free(process->argv);
     }
 
-    process->cmdline = cmdline;
-    process->cmdlineSize = totalSize;
+    process->argv = newArgv;
+    process->argc = newArgc;
 
     return 0;
 }
@@ -1032,7 +1128,7 @@ process_t* process_get_kernel(void)
 {
     if (kernelProcess == NULL)
     {
-        kernelProcess = process_new(PRIORITY_MAX, GID_NONE);
+        kernelProcess = process_new(PRIORITY_MAX, GID_NONE, NULL, NAMESPACE_HANDLE_SHARE);
         if (kernelProcess == NULL)
         {
             panic(NULL, "Failed to create kernel process");
@@ -1045,17 +1141,16 @@ process_t* process_get_kernel(void)
 
 void process_procfs_init(void)
 {
-    procMount = sysfs_mount_new(NULL, "proc", NULL, MOUNT_PROPAGATE_CHILDREN | MOUNT_PROPAGATE_PARENT,
-        MODE_DIRECTORY | MODE_ALL_PERMS, NULL);
-    if (procMount == NULL)
+    proc = sysfs_mount_new("proc", NULL, MODE_ALL_PERMS, NULL, NULL, NULL);
+    if (proc == NULL)
     {
-        panic(NULL, "Failed to mount /proc dentriesystem");
+        panic(NULL, "Failed to mount /proc");
     }
 
-    selfDir = sysfs_dir_new(procMount->source, "self", NULL, NULL);
-    if (selfDir == NULL)
+    self = sysfs_symlink_new(proc->source, "self", &selfOps, NULL);
+    if (self == NULL)
     {
-        panic(NULL, "Failed to create /proc/self directory");
+        panic(NULL, "Failed to create /proc/self symlink");
     }
 
     assert(kernelProcess != NULL);

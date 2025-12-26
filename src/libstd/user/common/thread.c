@@ -20,7 +20,7 @@ static uint64_t _thread_insert(_thread_t* thread)
     for (uint64_t i = 0; i < _THREADS_MAX; i++)
     {
         uint64_t probe = (index + i) % _THREADS_MAX;
-        _thread_t* expected = NULL;
+        volatile _thread_t* expected = NULL;
         if (atomic_compare_exchange_strong_explicit(&threads[probe], &expected, thread, memory_order_release,
                 memory_order_relaxed))
         {

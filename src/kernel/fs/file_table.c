@@ -1,5 +1,6 @@
 #include <kernel/fs/file_table.h>
 
+#include <kernel/fs/path.h>
 #include <kernel/sched/thread.h>
 
 #include <sys/bitmap.h>
@@ -47,7 +48,7 @@ file_t* file_table_get(file_table_t* table, fd_t fd)
     return REF(table->files[fd]);
 }
 
-fd_t file_table_alloc(file_table_t* table, file_t* file)
+fd_t file_table_open(file_table_t* table, file_t* file)
 {
     if (table == NULL || file == NULL)
     {
@@ -69,7 +70,7 @@ fd_t file_table_alloc(file_table_t* table, file_t* file)
     return (fd_t)index;
 }
 
-uint64_t file_table_free(file_table_t* table, fd_t fd)
+uint64_t file_table_close(file_table_t* table, fd_t fd)
 {
     if (table == NULL)
     {
@@ -91,7 +92,47 @@ uint64_t file_table_free(file_table_t* table, fd_t fd)
     return 0;
 }
 
-uint64_t file_table_free_range(file_table_t* table, fd_t min, fd_t max)
+void file_table_close_all(file_table_t* table)
+{
+    if (table == NULL)
+    {
+        return;
+    }
+
+    LOCK_SCOPE(&table->lock);
+
+    for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
+    {
+        if (table->files[i] != NULL)
+        {
+            UNREF(table->files[i]);
+            table->files[i] = NULL;
+            bitmap_clear(&table->bitmap, i);
+        }
+    }
+}
+
+void file_table_close_mode(file_table_t* table, mode_t mode)
+{
+    if (table == NULL)
+    {
+        return;
+    }
+
+    LOCK_SCOPE(&table->lock);
+
+    for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
+    {
+        if (table->files[i] != NULL && (table->files[i]->mode & mode))
+        {
+            UNREF(table->files[i]);
+            table->files[i] = NULL;
+            bitmap_clear(&table->bitmap, i);
+        }
+    }
+}
+
+uint64_t file_table_close_range(file_table_t* table, fd_t min, fd_t max)
 {
     if (table == NULL)
     {
@@ -232,29 +273,9 @@ uint64_t file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t m
     return 0;
 }
 
-void file_table_close_all(file_table_t* table)
-{
-    if (table == NULL)
-    {
-        return;
-    }
-
-    LOCK_SCOPE(&table->lock);
-
-    for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
-    {
-        if (table->files[i] != NULL)
-        {
-            UNREF(table->files[i]);
-            table->files[i] = NULL;
-            bitmap_clear(&table->bitmap, i);
-        }
-    }
-}
-
 SYSCALL_DEFINE(SYS_CLOSE, uint64_t, fd_t fd)
 {
-    return file_table_free(&sched_process()->fileTable, fd);
+    return file_table_close(&sched_process()->fileTable, fd);
 }
 
 SYSCALL_DEFINE(SYS_DUP, uint64_t, fd_t oldFd)

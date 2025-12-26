@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/io.h>
+#include <sys/kbd.h>
 #include <sys/proc.h>
 #include <time.h>
 
@@ -60,7 +61,7 @@ static void terminal_char_draw(terminal_t* term, element_t* elem, drawable_t* dr
 
     if (termChar->flags & TERMINAL_UNDERLINE)
     {
-        rect_t underlineRect = RECT_INIT_DIM(charRect.left, charRect.bottom - 2, RECT_WIDTH(&charRect), 2);
+        rect_t underlineRect = RECT_INIT_DIM(charRect.left, charRect.bottom - 1, RECT_WIDTH(&charRect), 1);
         draw_rect(draw, &underlineRect,
             termChar->flags & TERMINAL_INVERSE ? termChar->background : termChar->foreground);
     }
@@ -221,6 +222,11 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
     if (ansi.length > 0)
     {
         write(term->stdin[PIPE_WRITE], ansi.buffer, ansi.length);
+    }
+
+    if (ansi.length == 1 && ansi.buffer[0] == '\003')
+    {
+        swritefile(F("/proc/%llu/notegroup", term->shell), "interrupt due to ctrl+c");
     }
 }
 
@@ -588,7 +594,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         term->prevCursor = &term->screen[0][0];
 
         const char* argv[] = {"/bin/shell", NULL};
-        term->shell = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_GROUP);
+        term->shell = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS);
         if (term->shell == ERR)
         {
             close(term->stdin[0]);

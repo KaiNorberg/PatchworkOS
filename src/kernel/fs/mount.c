@@ -1,8 +1,9 @@
 #include <kernel/fs/mount.h>
 
 #include <kernel/fs/vfs.h>
-
+#include <kernel/log/log.h>
 #include <stdlib.h>
+#include <sys/list.h>
 
 static void mount_free(mount_t* mount)
 {
@@ -44,21 +45,9 @@ mount_t* mount_new(superblock_t* superblock, dentry_t* source, dentry_t* target,
         return NULL;
     }
 
-    if (!dentry_is_positive(source) || (target != NULL && !dentry_is_positive(target)))
+    if (!DENTRY_IS_POSITIVE(source) || (target != NULL && !DENTRY_IS_POSITIVE(target)))
     {
         errno = ENOENT;
-        return NULL;
-    }
-
-    if (mode & MODE_DIRECTORY && dentry_is_file(source))
-    {
-        errno = ENOTDIR;
-        return NULL;
-    }
-
-    if (!(mode & MODE_DIRECTORY) && dentry_is_dir(source))
-    {
-        errno = EISDIR;
         return NULL;
     }
 

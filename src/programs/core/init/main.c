@@ -1,3 +1,5 @@
+#include "root.h"
+
 #include <errno.h>
 #include <libpatchwork/patchwork.h>
 #include <stdio.h>
@@ -8,7 +10,37 @@
 #include <threads.h>
 #include <time.h>
 
-/// @todo Replace the init process with a Lua script when Lua has been ported to PatchworkOS
+/**
+ * @brief Init process.
+ * @defgroup programs_init Init
+ * @ingroup programs
+ *
+ * The init process is the first user-space program started by the kernel, due to this it can be thought of as the
+ * "root" of all processes in the system.
+ *
+ * ## Filesystem Heirarchy
+ *
+ * As the init process is the root process, it is responsible for setting up the initial namespaces for all
+ * processes, including deciding which directories should be visible and what permissions the visible directories ought
+ * to have.
+ *
+ * Included below is a table indicating the permissions or visibility of directories as setup by the init process.
+ *
+ * | Directory | Description | Permissions/Visibility |
+ * |-----------|-------------|------------------------|
+ * | /acpi     | ACPI Information | Read-Only |
+ * | /bin      | System Binaries | Read and Execute |
+ * | /cfg      | System Configuration Files | Read-Only |
+ * | /dev      | Device Files | Read and Write |
+ * | /efi      | UEFI Bootloader Files | Hidden |
+ * | /home     | Available for any use | Exposed |
+ * | /kernel   | Kernel Binaries | Hidden |
+ * | /lib      | System Libraries | Read and Execute |
+ * | /net      | Network Filesystem | Exposed |
+ * | /proc     | Process Filesystem | Exposed |
+ * | /sbin     | Essential System Binaries | Read and Execute |
+ * | /usr      | User Binaries and Libraries | Read and Execute |
+ */
 
 static void environment_setup(config_t* config)
 {
@@ -42,7 +74,7 @@ static void environment_setup(config_t* config)
     }
 }
 
-static void spawn_program(const char* path, priority_t priority)
+static void child_spawn(const char* path, priority_t priority)
 {
     if (path == NULL)
     {
@@ -50,24 +82,40 @@ static void spawn_program(const char* path, priority_t priority)
     }
 
     const char* argv[] = {path, NULL};
-    pid_t pid = spawn(argv, SPAWN_STDIO_FDS | SPAWN_SUSPEND);
+    pid_t pid = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_FDS | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS);
     if (pid == ERR)
     {
         printf("init: failed to spawn program '%s' (%s)\n", path, strerror(errno));
     }
 
-    swritefile(F("/proc/%d/prio", pid), F("%llu", priority));
-    swritefile(F("/proc/%d/ctl", pid), "start");
+    swritefile(F("/proc/%llu/prio", pid), F("%llu", priority));
+
+    // Bind directories to themselves with new permissions and with the "L" (:locked) flag to ensure the child processes
+    // cant unmount the directories and "S" (:sticky) to ensure children cant bypass the mount by mounting an ancestor.
+    if (swritefile(F("/proc/%llu/ctl", pid),
+        "bind /acpi /acpi:LSr && "
+        "bind /bin /bin:LSrx && "
+        "bind /cfg /cfg:LSr && "
+        "bind /dev /dev:LSrw && "
+        "bind /dev/null /efi:LS && "
+        "bind /dev/null /kernel:LS && "
+        "bind /lib /lib:LSrx && "
+        "bind /sbin /sbin:LSrx && "
+        "bind /usr /usr:LSrx && "
+        "start") == ERR)
+    {
+        printf("init: failed to setup process namespaces for '%s' (%s)\n", path, strerror(errno));
+    }
 }
 
-static void start_services(config_t* config)
+static void services_start(config_t* config)
 {
     priority_t servicePriority = config_get_int(config, "startup", "service_priority", 31);
 
     config_array_t* services = config_get_array(config, "startup", "services");
     for (uint64_t i = 0; i < services->length; i++)
     {
-        spawn_program(services->items[i], servicePriority);
+        child_spawn(services->items[i], servicePriority);
     }
 
     config_array_t* serviceFiles = config_get_array(config, "startup", "service_files");
@@ -78,7 +126,7 @@ static void start_services(config_t* config)
         while (stat(serviceFiles->items[i], &info) == ERR)
         {
             nanosleep(CLOCKS_PER_SEC / 100);
-            if (uptime() - start > CLOCKS_PER_SEC)
+            if (uptime() - start > CLOCKS_PER_SEC * 30)
             {
                 printf("init: timeout waiting for service file '%s'\n", serviceFiles->items[i]);
                 abort();
@@ -87,18 +135,18 @@ static void start_services(config_t* config)
     }
 }
 
-static void start_programs(config_t* config)
+static void programs_start(config_t* config)
 {
     priority_t programPriority = config_get_int(config, "startup", "program_priority", 31);
 
     config_array_t* programs = config_get_array(config, "startup", "programs");
     for (uint64_t i = 0; i < programs->length; i++)
     {
-        spawn_program(programs->items[i], programPriority);
+        child_spawn(programs->items[i], programPriority);
     }
 }
 
-static void execute_commands(config_t* config)
+static void commands_run(config_t* config)
 {
     config_array_t* commands = config_get_array(config, "startup", "commands");
     for (uint64_t i = 0; i < commands->length; i++)
@@ -108,6 +156,30 @@ static void execute_commands(config_t* config)
             printf("init: failed to execute command '%s' (%s)\n", commands->items[i], strerror(errno));
         }
     }
+}
+
+static void init_config_load(void)
+{
+    config_t* config = config_open("init", "main");
+    if (config == NULL)
+    {
+        printf("init: failed to open config file! (%s)\n", strerror(errno));
+        abort();
+    }
+
+    printf("init: setting up environment...\n");
+    environment_setup(config);
+
+    printf("init: starting services...\n");
+    services_start(config);
+    printf("init: starting programs...\n");
+    programs_start(config);
+
+    printf("init: executing commands...\n");
+    commands_run(config);
+
+    printf("init: all startup tasks completed!\n");
+    config_close(config);
 }
 
 int main(void)
@@ -124,25 +196,9 @@ int main(void)
     }
     close(klog);
 
-    config_t* config = config_open("init", "main");
-    if (config == NULL)
-    {
-        printf("init: failed to open config file! (%s)\n", strerror(errno));
-        return EXIT_FAILURE;
-    }
+    init_config_load();
 
-    printf("init: setting up environment...\n");
-    environment_setup(config);
+    root_start();
 
-    printf("init: starting services...\n");
-    start_services(config);
-    printf("init: starting programs...\n");
-    start_programs(config);
-
-    printf("init: executing commands...\n");
-    execute_commands(config);
-
-    printf("init: all startup tasks completed!\n");
-    config_close(config);
-    return 0;
+    return EXIT_SUCCESS;
 }

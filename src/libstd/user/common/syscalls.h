@@ -170,11 +170,6 @@ static inline uint64_t _syscall_ioctl(fd_t fd, uint64_t request, void* argp, uin
     return _SYSCALL4(uint64_t, SYS_IOCTL, fd_t, fd, uint64_t, request, void*, argp, uint64_t, size);
 }
 
-static inline uint64_t _syscall_chdir(const char* path)
-{
-    return _SYSCALL1(uint64_t, SYS_CHDIR, const char*, path);
-}
-
 static inline uint64_t _syscall_poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
 {
     return _SYSCALL3(uint64_t, SYS_POLL, pollfd_t*, fds, uint64_t, amount, clock_t, timeout);
@@ -250,9 +245,9 @@ static inline fd_t _syscall_claim(key_t* key)
     return _SYSCALL1(fd_t, SYS_CLAIM, key_t*, key);
 }
 
-static inline uint64_t _syscall_bind(fd_t source, const char* mountpoint, mount_flags_t flags)
+static inline uint64_t _syscall_bind(fd_t source, const char* mountpoint)
 {
-    return _SYSCALL3(uint64_t, SYS_BIND, fd_t, source, const char*, mountpoint, mount_flags_t, flags);
+    return _SYSCALL2(uint64_t, SYS_BIND, fd_t, source, const char*, mountpoint);
 }
 
 static inline uint64_t _syscall_notify(note_func_t func)
@@ -265,4 +260,14 @@ _NORETURN static inline uint64_t _syscall_noted(void)
     _SYSCALL0(uint64_t, SYS_NOTED);
     asm volatile("ud2");
     __builtin_unreachable();
+}
+
+static inline uint64_t _syscall_readlink(const char* path, char* buffer, uint64_t size)
+{
+    return _SYSCALL3(uint64_t, SYS_READLINK, const char*, path, char*, buffer, uint64_t, size);
+}
+
+static inline uint64_t _syscall_symlink(const char* target, const char* linkpath)
+{
+    return _SYSCALL2(uint64_t, SYS_SYMLINK, const char*, target, const char*, linkpath);
 }

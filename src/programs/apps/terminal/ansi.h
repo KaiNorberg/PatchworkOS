@@ -113,13 +113,14 @@ static inline void ansi_kbd_to_receiving(ansi_receiving_t* ansi, const event_kbd
         ansi->buffer[3] = '~';
         ansi->length = 4;
         break;
-    default:
-        if (kbd->mods & KBD_MOD_CTRL && kbd->code == KBD_C)
+    case KBD_C:
+        if (kbd->mods & KBD_MOD_CTRL)
         {
             ansi->buffer[0] = '\003';
             ansi->length = 1;
-            return;
+            break;
         }
+    default: // Fallthrough
         if (kbd->ascii >= 32 && kbd->ascii < 126)
         {
             ansi->buffer[0] = kbd->ascii;

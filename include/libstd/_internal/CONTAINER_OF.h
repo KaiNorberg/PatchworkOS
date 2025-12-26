@@ -1,5 +1,5 @@
-#ifndef _AUX_CONTAINER_OF_H
-#define _AUX_CONTAINER_OF_H 1
+#ifndef _INTERNAL_CONTAINER_OF_H
+#define _INTERNAL_CONTAINER_OF_H 1
 
 #include <stddef.h>
 

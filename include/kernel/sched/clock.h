@@ -15,7 +15,9 @@ typedef struct cpu cpu_t;
  *
  * The clock subsystem is responsible for providing a consistent system wide time keeping.
  *
- * System wide time is provided via "clock sources", which are provided in modules. Each source registers itself with a estimate of its precision, the clock subsystem then chooses the two sources, one for uptime and one for unix epoch, with the best precision.
+ * System wide time is provided via "clock sources", which are provided in modules. Each source registers itself with a
+ * estimate of its precision, the clock subsystem then chooses the two sources, one for uptime and one for unix epoch,
+ * with the best precision.
  *
  * @{
  */

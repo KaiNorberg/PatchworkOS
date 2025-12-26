@@ -1,5 +1,5 @@
-#ifndef _AUX_CONFIG_H
-#define _AUX_CONFIG_H 1
+#ifndef _INTERNAL_CONFIG_H
+#define _INTERNAL_CONFIG_H 1
 
 #ifndef _IS_STATIC
 #define _IS_STATIC 1

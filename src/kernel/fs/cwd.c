@@ -24,9 +24,7 @@ path_t cwd_get(cwd_t* cwd)
     if (cwd->path.dentry == NULL || cwd->path.mount == NULL)
     {
         assert(cwd->path.dentry == NULL && cwd->path.mount == NULL);
-        namespace_t* kernelNs = &process_get_kernel()->ns;
-
-        if (namespace_get_root_path(kernelNs, &result) == ERR)
+        if (namespace_get_root_path(&process_get_kernel()->ns, &result) == ERR)
         {
             lock_release(&cwd->lock);
             return PATH_EMPTY;
@@ -53,33 +51,4 @@ void cwd_clear(cwd_t* cwd)
     lock_acquire(&cwd->lock);
     path_put(&cwd->path);
     lock_release(&cwd->lock);
-}
-
-SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
-{
-    thread_t* thread = sched_thread();
-    process_t* process = thread->process;
-
-    pathname_t pathname;
-    if (thread_copy_from_user_pathname(thread, &pathname, pathString) == ERR)
-    {
-        return ERR;
-    }
-
-    path_t path = cwd_get(&process->cwd);
-    PATH_DEFER(&path);
-
-    if (path_walk(&path, &pathname, &process->ns) == ERR)
-    {
-        return ERR;
-    }
-
-    if (!dentry_is_dir(path.dentry))
-    {
-        errno = ENOTDIR;
-        return ERR;
-    }
-
-    cwd_set(&process->cwd, &path);
-    return 0;
 }

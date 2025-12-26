@@ -19,10 +19,8 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
-static local_listen_t* local_socket_data_get_listen(local_socket_data_t* data)
+static local_listen_t* local_socket_data_get_listen(local_socket_t* data)
 {
-    LOCK_SCOPE(&data->lock);
-
     if (data->listen.listen == NULL)
     {
         return NULL;
@@ -31,10 +29,8 @@ static local_listen_t* local_socket_data_get_listen(local_socket_data_t* data)
     return REF(data->listen.listen);
 }
 
-static local_conn_t* local_socket_data_get_conn(local_socket_data_t* data)
+static local_conn_t* local_socket_data_get_conn(local_socket_t* data)
 {
-    LOCK_SCOPE(&data->lock);
-
     if (data->conn.conn == NULL)
     {
         return NULL;
@@ -45,27 +41,24 @@ static local_conn_t* local_socket_data_get_conn(local_socket_data_t* data)
 
 static uint64_t local_socket_init(socket_t* sock)
 {
-    local_socket_data_t* data = calloc(1, sizeof(local_socket_data_t));
+    local_socket_t* data = calloc(1, sizeof(local_socket_t));
     if (data == NULL)
     {
         return ERR;
     }
-    lock_init(&data->lock);
     sock->private = data;
     return 0;
 }
 
 static void local_socket_deinit(socket_t* sock)
 {
-    local_socket_data_t* data = sock->private;
+    local_socket_t* data = sock->private;
     if (data == NULL)
     {
         return;
     }
 
-    lock_acquire(&data->lock);
-
-    switch (sock->currentState)
+    switch (sock->state)
     {
     case SOCKET_LISTENING:
         if (data->listen.listen != NULL)
@@ -95,8 +88,6 @@ static void local_socket_deinit(socket_t* sock)
         break;
     }
 
-    lock_release(&data->lock);
-
     free(data);
     sock->private = NULL;
 }
@@ -109,13 +100,12 @@ static uint64_t local_socket_bind(socket_t* sock, const char* address)
         return ERR;
     }
 
-    local_socket_data_t* data = sock->private;
+    local_socket_t* data = sock->private;
     if (data == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
-    LOCK_SCOPE(&data->lock);
 
     local_listen_t* listen = local_listen_new(address);
     if (listen == NULL)
@@ -136,13 +126,12 @@ static uint64_t local_socket_listen(socket_t* sock, uint32_t backlog)
         return ERR;
     }
 
-    local_socket_data_t* data = sock->private;
+    local_socket_t* data = sock->private;
     if (data == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
-    LOCK_SCOPE(&data->lock);
 
     local_listen_t* listen = data->listen.listen;
     if (listen == NULL)
@@ -169,13 +158,12 @@ static uint64_t local_socket_connect(socket_t* sock, const char* address)
         return ERR;
     }
 
-    local_socket_data_t* data = sock->private;
+    local_socket_t* data = sock->private;
     if (data == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
-    LOCK_SCOPE(&data->lock);
 
     local_listen_t* listen = local_listen_find(address);
     if (listen == NULL)
@@ -218,7 +206,7 @@ static uint64_t local_socket_connect(socket_t* sock, const char* address)
 
 static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mode)
 {
-    local_socket_data_t* data = sock->private;
+    local_socket_t* data = sock->private;
     if (data == NULL)
     {
         errno = EINVAL;
@@ -269,16 +257,14 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
 
     assert(conn != NULL);
 
-    local_socket_data_t* newData = newSock->private;
+    local_socket_t* newData = newSock->private;
     if (newData == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
-    lock_acquire(&newData->lock);
     newData->conn.conn = REF(conn);
     newData->conn.isServer = true;
-    lock_release(&newData->lock);
 
     return 0;
 }
@@ -287,7 +273,7 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
 {
     (void)offset; // Unused
 
-    local_socket_data_t* data = sock->private;
+    local_socket_t* data = sock->private;
     if (data == NULL)
     {
         errno = EINVAL;
@@ -320,23 +306,27 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
     local_packet_header_t header = {.magic = LOCAL_PACKET_MAGIC, .size = count};
 
     uint64_t totalSize = sizeof(local_packet_header_t) + count;
-    if (ring_free_length(ring) < totalSize)
-    {
-        if (mode & MODE_NONBLOCK)
-        {
-            errno = EAGAIN;
-            return ERR;
-        }
 
+    while (ring_free_length(ring) < totalSize)
+    {
         if (conn->isClosed)
         {
             errno = ECONNRESET;
             return ERR;
         }
-
+        if (mode & MODE_NONBLOCK)
+        {
+            errno = EAGAIN;
+            return ERR;
+        }
         if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock, conn->isClosed || ring_free_length(ring) >= totalSize) ==
             ERR)
         {
+            return ERR;
+        }
+        if (conn->isClosed)
+        {
+            errno = ECONNRESET;
             return ERR;
         }
     }
@@ -356,7 +346,7 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
 {
     (void)offset; // Unused
 
-    local_socket_data_t* data = sock->private;
+    local_socket_t* data = sock->private;
     if (data == NULL)
     {
         errno = EINVAL;
@@ -374,23 +364,20 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
 
     ring_t* ring = data->conn.isServer ? &conn->clientToServer : &conn->serverToClient;
 
-    if (conn->isClosed)
+    while (ring_data_length(ring) < sizeof(local_packet_header_t))
     {
-        return 0; // EOF
-    }
-
-    if (ring_data_length(ring) < sizeof(local_packet_header_t))
-    {
+        if (conn->isClosed)
+        {
+            return 0; // EOF
+        }
         if (mode & MODE_NONBLOCK)
         {
             errno = EWOULDBLOCK;
             return ERR;
         }
-
         if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
                 conn->isClosed || ring_data_length(ring) >= sizeof(local_packet_header_t)) == ERR)
         {
-            errno = EINTR;
             return ERR;
         }
     }
@@ -421,6 +408,7 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
     uint64_t readCount = header.size < count ? header.size : count;
     if (ring_read_at(ring, 0, buffer, readCount) != readCount)
     {
+        LOG_DEBUG("failed to read local socket packet data\n");
         errno = EIO;
         return ERR;
     }
@@ -433,15 +421,14 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
 
 static wait_queue_t* local_socket_poll(socket_t* sock, poll_events_t* revents)
 {
-    local_socket_data_t* data = sock->private;
+    local_socket_t* data = sock->private;
     if (data == NULL)
     {
         errno = EINVAL;
         return NULL;
     }
-    LOCK_SCOPE(&data->lock);
 
-    switch (sock->currentState)
+    switch (sock->state)
     {
     case SOCKET_LISTENING:
     {

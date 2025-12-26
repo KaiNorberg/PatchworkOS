@@ -4,7 +4,7 @@
 
 char* sread(fd_t fd)
 {
-    uint64_t size = 128;
+    uint64_t size = 4096;
     char* buffer = malloc(size);
     if (buffer == NULL)
     {
@@ -32,11 +32,21 @@ char* sread(fd_t fd)
             free(buffer);
             return NULL;
         }
+
         if (bytesRead == 0)
         {
             break;
         }
         totalRead += bytesRead;
+    }
+
+    if (totalRead + 1 < size)
+    {
+        char* newBuffer = realloc(buffer, totalRead + 1);
+        if (newBuffer != NULL)
+        {
+            buffer = newBuffer;
+        }
     }
 
     buffer[totalRead] = '\0';

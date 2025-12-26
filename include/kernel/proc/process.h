@@ -16,8 +16,8 @@
 #include <stdatomic.h>
 
 /**
- * @brief Processes.
- * @defgroup kernel_proc Processes
+ * @brief Process management.
+ * @defgroup kernel_proc Process
  * @ingroup kernel
  *
  * Processes store the shared resources for threads of execution, for example the address space and open files.
@@ -25,8 +25,10 @@
  * ## Process Filesystem
  *
  * Each process has a directory located at `/proc/[pid]`, which contains various files that can be used to interact with
- * the process. Additionally, there is a `/proc/self` bound mount point that points to the `/proc/[pid]` directory of
- * the current process.
+ * the process, these directories are only mounted in the namespace of the owner process and the parent namespaces.
+ *
+ * Additionally, there is a `/proc/self` dynamic symlink that points to the `/proc/[pid]` directory of the current
+ * process.
  *
  * Included below is a list of all entries found in the `/proc/[pid]` directory along with their formats.
  *
@@ -82,6 +84,15 @@
  * %llu
  * ```
  *
+ * ## pid
+ *
+ * A readable file that contains the process ID.
+ *
+ * Format:
+ * ```
+ * %llu
+ * ```
+ *
  * ## wait
  *
  * A readable and pollable file that can be used to wait for the process to exit. Reading
@@ -107,11 +118,24 @@
  * %llu %llu %llu %llu %llu
  * ```
  *
+ * ## ns
+ *
+ * A file that represents the namespace of the process. Opening this file returns a file descriptor referring to the
+ * namespace.
+ *
+ * This file descriptor can be used with the `join` command in the `ctl` file to switch namespaces.
+ *
+ * @see share()
+ * @see claim()
+ *
  * ## ctl
  *
  * A writable file that can be used to control certain aspects of the process, such as closing file descriptors.
  *
  * Included is a list of all supported commands.
+ *
+ * @note Anytime a command refers to a file descriptor the file descriptor is the file descriptor of the target process,
+ * not the current process.
  *
  * ### close <fd>
  *
@@ -127,6 +151,18 @@
  * ### dup2 <oldfd> <newfd>
  *
  * Duplicates the specified old file descriptor to the new file descriptor in the process.
+ *
+ * ### join <fd>
+ *
+ * Switches the process's namespace to the one referred to by the specified file descriptor.
+ *
+ * The file descriptor must have been obtained by opening a `/proc/[pid]/ns` file.
+ *
+ * ### bind <source> <target>
+ *
+ * Bind a source path to a target path in the processes namespace.
+ *
+ * @see kernel_fs_path for information on path flags.
  *
  * ### start
  *
@@ -174,14 +210,19 @@ typedef enum
 } process_flags_t;
 
 /**
+ * @brief Maximum length of a process exit status.
+ */
+#define PROCESS_STATUS_MAX 256
+
+/**
  * @brief Process exit status structure.
- * @struct process_exit_status_t
+ * @struct process_status_t
  */
 typedef struct
 {
-    char buffer[NOTE_MAX];
+    char buffer[PROCESS_STATUS_MAX];
     lock_t lock;
-} process_exit_status_t;
+} process_status_t;
 
 /**
  * @brief Process `/proc/[pid]` directory structure.
@@ -189,10 +230,9 @@ typedef struct
  */
 typedef struct
 {
-    mount_t* self;   ///< The `/proc/self` bind mount.
-    dentry_t* dir; ///< The `/proc` directory.
-    list_t files; ///< List of file dentries for the `/proc/[pid]/` directory.
-    dentry_t* env; ///< The `/proc/[pid]/env` directory.
+    mount_t* dir;      ///< The `/proc/[pid]/` directory.
+    list_t files;      ///< List of file dentries for the `/proc/[pid]/` directory.
+    dentry_t* env;     ///< The `/proc/[pid]/env/` directory.
     list_t envEntries; ///< List of environment variable dentries.
     lock_t lock;
 } process_dir_t;
@@ -204,11 +244,11 @@ typedef struct
 typedef struct process
 {
     pid_t id;
-    group_entry_t groupEntry;
+    group_member_t group;
     _Atomic(priority_t) priority;
-    process_exit_status_t exitStatus;
+    process_status_t status;
     space_t space;
-    namespace_t ns;
+    namespace_handle_t ns;
     cwd_t cwd;
     file_table_t fileTable;
     futex_ctx_t futexCtx;
@@ -220,20 +260,23 @@ typedef struct process
     process_threads_t threads;
     list_entry_t zombieEntry;
     process_dir_t dir;
-    char* cmdline;
-    uint64_t cmdlineSize;
+    char** argv;
+    uint64_t argc;
 } process_t;
 
 /**
  * @brief Allocates and initializes a new process.
  *
- * There is no `process_free()`, instead use `UNREF()`, `UNREF_DEFER()` or `process_kill()` to free a process.
+ * There is no `process_free()`, instead use `process_kill()` to push a process to the reaper.
  *
  * @param priority The priority of the new process.
  * @param gid The group ID of the new process, or `GID_NONE` to create a new group.
+ * @param source The source namespace entry to copy from or share a namespace with, or `NULL` to create a new empty
+ * namespace.
+ * @param flags Flags for the new namespace entry.
  * @return On success, the newly created process. On failure, `NULL` and `errno` is set.
  */
-process_t* process_new(priority_t priority, gid_t gid);
+process_t* process_new(priority_t priority, gid_t gid, namespace_handle_t* source, namespace_handle_flags_t flags);
 
 /**
  * @brief Kills a process, pushing it to the reaper.
@@ -247,7 +290,7 @@ void process_kill(process_t* process, const char* status);
  * @brief Deinitializes the `/proc/[pid]` directory of a process.
  *
  * When there are no more references to any of the entries in the `/proc/[pid]` directory, the process will be freed.
- * 
+ *
  * @param process The process whose `/proc/[pid]` directory will be deinitialized.
  */
 void process_dir_deinit(process_t* process);

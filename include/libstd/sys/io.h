@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -26,26 +27,12 @@ extern "C"
  * @ingroup libstd
  * @defgroup libstd_sys_io System IO
  *
- * The `sys/io.h` header handles interaction with PatchworkOS's file system,
- * following the philosophy that everything is a file. This means interacting with physical devices,
- * inter-process communication (like shared memory), and much more is handled via files.
- *
- * ### Flags
- *
- * Functions like `open()` do not have a specific argument for flags, instead the filepath itself contains the flags.
- * This means that for example there is no need for a special "truncate" redirect in a shell (>>) instead you can just
- * add the "trunc" flag to the filepath and use a normal redirect (>).
- *
- * Here is an example filepath: `/this/is/a/path:with:some:flags`.
- *
- * Check the 'src/kernel/fs/path.h' file for a list of available flags.
- *
  * @{
  */
 
-#define STDIN_FILENO 0
-#define STDOUT_FILENO 1
-#define STDERR_FILENO 2
+#define STDIN_FILENO 0  ///< Standard input file descriptor.
+#define STDOUT_FILENO 1 ///< Standard output file descriptor.
+#define STDERR_FILENO 2 ///< Standard error file descriptor.
 
 /**
  * @brief Pipe read end.
@@ -55,6 +42,7 @@ extern "C"
  *
  */
 #define PIPE_READ 0
+
 /**
  * @brief Pipe write end.
  *
@@ -70,21 +58,18 @@ extern "C"
 #define F_MAX_SIZE 512
 
 /**
- * @brief Format string macro.
+ * @brief Allocates a formatted string on the stack.
  *
- * This macro is a helper to create formatted strings on the stack. Very useful for functions like `open()`.
- *
- * @note This could be reimplemented using thread local storage to avoid using `alloca()`, but we then end up needing to
- * set a maximum limit for how many `F()` strings can be used simultaneously. Using `alloca()` means we can use as many
- * as we want, as long as we have enough stack space, even if it is more dangerous.
- *
- * @warning Will truncate the string if it exceeds `F_MAX_SIZE`.
+ * @warning Will terminate the program if the size of the formatted string is too large or if an encoding error occurs.
  */
 #define F(format, ...) \
     ({ \
         char* _buffer = alloca(F_MAX_SIZE); \
         int _len = snprintf(_buffer, F_MAX_SIZE, format, __VA_ARGS__); \
-        assert(_len >= 0 && "F() formatting error"); \
+        if (_len < 0 || _len >= F_MAX_SIZE) \
+        { \
+            abort(); \
+        } \
         _buffer; \
     })
 
@@ -103,7 +88,7 @@ fd_t open(const char* path);
 
  * This is intended as a more generic
  implementation
- * of system calls like pipe() in for example Linux. One example use case of this system call is pipes, if
+ * of system calls like pipe() in POSIX systems. One example use case of this system call is pipes, if
  * `open2` is called on `/dev/pipe` then `fd[0]` will store the read end of the pipe and `fd[1]` will store the
  write
  * end of the pipe. But if `open()` is called on `/dev/pipe` then the returned file descriptor would be both
@@ -225,6 +210,26 @@ uint64_t writefile(const char* path, const void* buffer, uint64_t count, uint64_
 uint64_t swritefile(const char* path, const char* string);
 
 /**
+ * @brief Wrapper for reading from a file descriptor using scan formatting.
+ *
+ * @param fd The file descriptor to read from.
+ * @param format The format string.
+ * @return On success, the number of input items successfully matched and assigned. On failure, `ERR`.
+ */
+uint64_t scan(fd_t fd, const char* format, ...);
+
+/**
+ * @brief Wrapper for reading from a file path using scan formatting.
+ *
+ * Equivalent to calling `open()`, `fscan()`, and `close()` in sequence.
+ *
+ * @param path The path to the file.
+ * @param format The format string.
+ * @return On success, the number of input items successfully matched and assigned. On failure, `ERR`.
+ */
+uint64_t scanfile(const char* path, const char* format, ...);
+
+/**
  * @brief Type for the `seek()` origin argument.
  *
  */
@@ -311,8 +316,9 @@ poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);
  */
 typedef enum
 {
-    INODE_FILE, ///< Is a file.
-    INODE_DIR,  ///< Is a directory.
+    INODE_FILE,    ///< Is a file.
+    INODE_DIR,     ///< Is a directory.
+    INODE_SYMLINK, ///< Is a symbolic link.
 } inode_type_t;
 
 /**
@@ -336,12 +342,12 @@ typedef struct
     time_t modifyTime;     ///< Unix time stamp for last file content alteration.
     time_t changeTime;     ///< Unix time stamp for the last file metadata alteration.
     time_t createTime;     ///< Unix time stamp for the creation of the inode.
-    char name[MAX_NAME];   ///< The name of the entry, not the full filepath.
+    char name[MAX_PATH];   ///< The name of the entry, not the full filepath. Includes the flags of the paths mount.
     uint8_t padding[64];   ///< Padding to leave space for future expansion.
 } stat_t;
 
 #ifdef static_assert
-static_assert(sizeof(stat_t) == 168, "invalid stat_t size");
+static_assert(sizeof(stat_t) == 392, "invalid stat_t size");
 #endif
 
 /**
@@ -386,14 +392,26 @@ fd_t dup(fd_t oldFd);
 fd_t dup2(fd_t oldFd, fd_t newFd);
 
 /**
+ * @brief Directory entry flags.
+ * @enum dirent_flags_t
+ */
+typedef enum
+{
+    DIRENT_NONE = 0,
+    DIRENT_MOUNTED = 1 << 0, ///< The directory entry is a mountpoint.
+} dirent_flags_t;
+
+/**
  * @brief Directory entry struct.
  *
  */
 typedef struct
 {
-    inode_number_t number; ///< The number of the entries inode.
-    inode_type_t type;     ///< The type of the entries inode.
-    char path[MAX_PATH];   ///< The relative path of the directory.
+    inode_number_t number;
+    inode_type_t type;
+    dirent_flags_t flags; 
+    char path[MAX_PATH];   ///< The relative path of the entry.
+    char mode[MAX_PATH];  ///< The flags of the paths mount.
 } dirent_t;
 
 /**
@@ -478,29 +496,65 @@ uint64_t share(key_t* key, fd_t fd, clock_t timeout);
 fd_t claim(key_t* key);
 
 /**
- * @brief Mount flags type.
- * @enum mount_flags_t
- *
- * The propagation flags apply recursively, such that specifying both `MOUNT_PROPAGATE_PARENT` and
- * `MOUNT_PROPAGATE_CHILDREN` will propagate the mount to every namespace in the hierarchy.
- */
-typedef enum
-{
-    MOUNT_NONE = 0,                    ///< No special mount flags.
-    MOUNT_PROPAGATE_PARENT = 1 << 0,   ///< Propagate the mount to parent namespaces.
-    MOUNT_PROPAGATE_CHILDREN = 1 << 1, ///< Propagate the mount to child namespaces.
-    MOUNT_OVERWRITE = 1 << 2,          ///< Overwrite any existing mount at the mountpoint.
-} mount_flags_t;
-
-/**
  * @brief System call for binding a file descriptor to a mountpoint.
+ *
+ * The created mount will inherit permissions from the source while the mount behaviour will follow the flags specified
+ * in `mountpoint`.
  *
  * @param source The file descriptor to bind, must represent a directory.
  * @param mountpoint The mountpoint path.
- * @param flags The mount flags.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t bind(fd_t source, const char* mountpoint, mount_flags_t flags);
+uint64_t bind(fd_t source, const char* mountpoint);
+
+/**
+ * @brief System call for reading the target of a symbolic link.
+ *
+ * @param path The path to the symbolic link.
+ * @param buffer A buffer to store the target path.
+ * @param count The size of the buffer.
+ * @return On success, the number of bytes read. On failure, `ERR` and `errno` is set.
+ */
+uint64_t readlink(const char* path, char* buffer, uint64_t count);
+
+/**
+ * @brief System call for creating a symbolic link.
+ *
+ * @param target The target path of the symbolic link.
+ * @param linkpath The path where the symbolic link will be created.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t symlink(const char* target, const char* linkpath);
+
+/**
+ * @brief Macro to automatically retry a function that returns an integer if it errors and `errno == EINTR`.
+ *
+ * @param expr The expression to evaluate.
+ */
+#define RETRY_EINTR(expr) \
+    ({ \
+        uint64_t _result; \
+        do \
+        { \
+            _result = (expr); \
+        } while (_result == ERR && errno == EINTR); \
+        _result; \
+    })
+
+/**
+ * @brief Macro to automatically retry a function that returns a pointer if it errors and `errno == EINTR`.
+ *
+ * @param expr The expression to evaluate.
+ */
+#define RETRY_EINTR_PTR(expr) \
+    ({ \
+        void* _result; \
+        do \
+        { \
+            _result = (expr); \
+        } while (_result == NULL && errno == EINTR); \
+        _result; \
+    })
 
 /** @} */
 

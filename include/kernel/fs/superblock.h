@@ -48,7 +48,7 @@ typedef struct superblock
     uint64_t blockSize;
     uint64_t maxFileSize;
     void* private;
-    dentry_t* root;
+    dentry_t* root; ///< Root dentry of the filesystem, should not take a reference.
     const superblock_ops_t* ops;
     const dentry_ops_t* dentryOps;
     filesystem_t* fs;

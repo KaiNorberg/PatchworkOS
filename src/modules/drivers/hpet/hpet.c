@@ -3,8 +3,8 @@
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
-#include <kernel/sched/sched.h>
 #include <kernel/sched/clock.h>
+#include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/seqlock.h>

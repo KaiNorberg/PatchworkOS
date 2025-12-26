@@ -23,11 +23,12 @@ typedef struct
     uint64_t capacity;
     uint64_t amount;
     char status[MAX_PATH];
-    fd_t globalStdin[2];
 } pipeline_t;
 
-uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline);
+uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd_t stdout, fd_t stderr);
 
 void pipeline_deinit(pipeline_t* pipeline);
 
-uint64_t pipeline_execute(pipeline_t* pipeline);
+void pipeline_execute(pipeline_t* pipeline);
+
+void pipeline_wait(pipeline_t* pipeline);

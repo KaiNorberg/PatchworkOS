@@ -183,5 +183,5 @@ SYSCALL_DEFINE(SYS_CLAIM, fd_t, key_t* key)
     }
     UNREF_DEFER(file);
 
-    return file_table_alloc(&process->fileTable, file);
+    return file_table_open(&process->fileTable, file);
 }

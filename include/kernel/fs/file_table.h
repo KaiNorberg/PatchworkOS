@@ -63,7 +63,7 @@ file_t* file_table_get(file_table_t* table, fd_t fd);
  * - `EINVAL`: Invalid parameters.
  * - `EMFILE`: Too many open files.
  */
-fd_t file_table_alloc(file_table_t* table, file_t* file);
+fd_t file_table_open(file_table_t* table, file_t* file);
 
 /**
  * @brief Free a file descriptor.
@@ -76,7 +76,22 @@ fd_t file_table_alloc(file_table_t* table, file_t* file);
  * - `EINVAL`: Invalid parameters.
  * - `EBADF`: The file descriptor is invalid.
  */
-uint64_t file_table_free(file_table_t* table, fd_t fd);
+uint64_t file_table_close(file_table_t* table, fd_t fd);
+
+/**
+ * @brief Close all files in the file table.
+ *
+ * @param table The file table.
+ */
+void file_table_close_all(file_table_t* table);
+
+/**
+ * @brief Close all files in the file table with the specified mode.
+ *
+ * @param table The file table.
+ * @param mode The mode to close files with.
+ */
+void file_table_close_mode(file_table_t* table, mode_t mode);
 
 /**
  * @brief Free a range of file descriptors.
@@ -89,7 +104,7 @@ uint64_t file_table_free(file_table_t* table, fd_t fd);
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  */
-uint64_t file_table_free_range(file_table_t* table, fd_t min, fd_t max);
+uint64_t file_table_close_range(file_table_t* table, fd_t min, fd_t max);
 
 /**
  * @brief Set a specific file descriptor to a file.
@@ -145,12 +160,5 @@ fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd);
  * - `EINVAL`: Invalid parameters.
  */
 uint64_t file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t max);
-
-/**
- * @brief Close all files in the file table.
- *
- * @param table The file table.
- */
-void file_table_close_all(file_table_t* table);
 
 /** @} */
