@@ -390,9 +390,11 @@ Take the `spawn()` example, notice how there is no specialized system for settin
 
 Let's take another example, say you wanted to wait on multiple processes with a `waitpid()` syscall. Well, that's not possible. So now we suddenly need a new system call. Meanwhile, in an "everything is a file system" we just have a pollable `/proc/[pid]/wait` file that blocks until the process dies and returns the exit status, now any behavior that can be implemented with `poll()` can be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination you can think of.
 
+The core argument is not that each individual API is better than its POSIX counterpart, but that they combine to form a system that is greater than the sum of its parts.
+
 Plus its fun.
 
-## Security via Namespaces
+## Security Model
 
 In PatchworkOS, there are no users or similar concepts often found in other operating systems. Instead, each process has a namespace which stores a set of mountpoints. This means that each process has its own view of the filesystem.
 
@@ -400,9 +402,11 @@ For example, process A might have mounted a sensitive directory at `/secret` whi
 
 > An interesting detail is that when process A opens the `/secret` directory, the dentry underlying the file descriptor is the dentry that was mounted to `/secret`. When process B opens this directory it would retrieve the dentry of the directory in the parent superblock, and thus see the content of that directory in the parent superblock. Namespaces prevent or enable mountpoint traversal not directory visibility. If this means nothing to you, don't worry about it.
 
-This allows for a very flexible security model, where processes can be given access to any combination of files and directories without needing hidden permission bits or similar mechanisms. Additionally, since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc.
+This allows for a composable, transparent and capability-based security model, where processes can be given access to any combination of files and directories without needing hidden permission bits or similar mechanisms. Additionally, since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc. For example, if you wish to prevent a process from using sockets, you could simply bind `/dev/null` to `/net`.
 
-It would even be possible to implement a user-like system entirely in user space using namespaces by having the init process bind different directories depending on the user logging in. However, for simplicity this has not been implemented.
+> Deciding if this model is truly a capability system is something that could be argued about. In the end, it does share the core properties of a capability system, namely that possession of a "capability" (a visibile file/directory) grants access to an object (the contents or functionality of the file/directory) and that "capabilities" can be transferred between processes (using mechanisms like `share()` and `claim()` described below).
+
+It would even be possible to implement a user-like system entirely in user space using namespaces by having the init process bind different directories depending on the user logging in.
 
 For more information on for example mount propagation, see the [Namespace Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html) or the [Userspace IO API Documentation](https://kainorberg.github.io/PatchworkOS/html/d4/deb/group__libstd__sys__io.html).
 
@@ -472,6 +476,22 @@ Accessing the root service is done using the `root` command in a way similar to 
 Let's take an example. The `/proc/[pid]` directories are only mounted in the namespace of the owner process and the parent namespaces. As such if we run the `top` command, we will only see the performance statistics of the shell and the top program we just started, as they both share the same namespace, but all other processes are invisible.
 
 If we instead run the `root top` command, we will be prompted to provide the root password as specified above and see the performance statistics of all processes except the kernel process. This works since the namespace of the init process is the ancestor of all user-space namespaces.
+
+### No Superuser
+
+Even when using the root service we are still limited by the files and directories visible in the init processes namespace. For example, we wont be able to see sockets of other processes as socket directories are only mounted in the namespace of the owner process and its children.
+
+The root service is not a "superuser", it just happens to have access to a namespace that is the parent of all user-space namespaces, allowing for some operations that would otherwise be impossible. For example, if you wished to mount a directory in all namespaces, you would need to use the root service to do so as mounts made in user-space can only propagate to child namespaces.
+
+### Limiting Visibility or Permissions
+
+A common pattern in PatchworkOS is to bind a directory to itself with lower permissions or to bind `/dev/null` to a file/directory to hide it completely. However on its own this is not secure, as a process could simply unmount the bind mount to regain access to the original file/directory or bind an ancestor directory to circumvent the mount entierely.
+
+The solution to these problems are "locked" and "sticky" mounts and binds. A locked mount or bind cannot be unmounted, it will persist until the namespace containing it is destroyed.
+
+A sticky mount or bind applies to the dentry of the mountpoint no matter where it is mounted in the namespace tree. For example, if `/secret/data` is a sticky bind to `/dev/null`, then mounting `/secret` to `/other` will still cause `/other/data` to be bound to `/dev/null`.
+
+Combining these two features allows any file or directory to be permanently hidden or have its permissions limited in a namespace.
 
 ## ACPI (WIP)
 

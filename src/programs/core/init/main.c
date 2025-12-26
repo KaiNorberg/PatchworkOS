@@ -20,7 +20,7 @@
  *
  * ## Filesystem Heirarchy
  *
- * As the init process starts all other processes it is responsible for setting up the initial namespaces for all
+ * As the init process is the root process, it is responsible for setting up the initial namespaces for all
  * processes, including deciding which directories should be visible and what permissions the visible directories ought
  * to have.
  *
@@ -33,6 +33,13 @@
  * | /cfg      | System Configuration Files | Read-Only |
  * | /dev      | Device Files | Read and Write |
  * | /efi      | UEFI Bootloader Files | Hidden |
+ * | /home     | Available for any use | Exposed |
+ * | /kernel   | Kernel Binaries | Hidden |
+ * | /lib      | System Libraries | Read and Execute |
+ * | /net      | Network Filesystem | Exposed |
+ * | /proc     | Process Filesystem | Exposed |
+ * | /sbin     | Essential System Binaries | Read and Execute |
+ * | /usr      | User Binaries and Libraries | Read and Execute |
  */
 
 static void environment_setup(config_t* config)
@@ -91,6 +98,10 @@ static void child_spawn(const char* path, priority_t priority)
         "bind /cfg /cfg:LSr && "
         "bind /dev /dev:LSrw && "
         "bind /dev/null /efi:LS && "
+        "bind /dev/null /kernel:LS && "
+        "bind /lib /lib:LSrx && "
+        "bind /sbin /sbin:LSrx && "
+        "bind /usr /usr:LSrx && "
         "start") == ERR)
     {
         printf("init: failed to setup process namespaces for '%s' (%s)\n", path, strerror(errno));
