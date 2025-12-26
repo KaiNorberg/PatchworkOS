@@ -628,7 +628,7 @@ echo "..." > file.txt:a
 
 ### `ls`
 
-Reads the contents of a directory to stdout.
+Reads the contents of a directory to stdout. A mounted path will be underlined.
 
 ```bash
 # Prints the contents of mydir.
@@ -641,6 +641,9 @@ ls mydir:R
 # Recursively print the contents of the current directory.
 ls :recursive
 ls :R
+
+# Print the contents of the current directory and the flags of the paths mount.
+ls -f 
 ```
 
 ### `rm`

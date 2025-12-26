@@ -45,13 +45,13 @@ typedef struct namespace_handle namespace_handle_t;
  * | `exclusive` | `e` | Will cause the open to fail if the file already exists. |
  * | `truncate` | `t` | Truncate the file to zero length if it already exists. |
  * | `directory` | `d` | Create or remove directories. All other operations will ignore this flag. |
- * | `recursive` | `R` | If removing a directory, remove all its contents recursively. If using `getdents()`, list contents recursively. |
- * | `nofollow`  | `l` | Do not follow symbolic links. |'
- * | `private` | `p` | Any files with this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child namespace. |
- * | `sticky` | `s` | Used for mounts, makes the mount apply to the dentry regardless of the path used to reach it. |
- * | `children` | `C` | Propagate mounts and unmounts to child namespaces. |
- * | `locked` | `L` | Forbid unmounting this mount, useful for hiding directories or files. |
- * 
+ * | `recursive` | `R` | If removing a directory, remove all its contents recursively. If using `getdents()`, list
+ * contents recursively. | | `nofollow`  | `l` | Do not follow symbolic links. |' | `private` | `p` | Any files with
+ * this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child
+ * namespace. | | `sticky` | `S` | Used for mounts, makes the mount apply to the dentry regardless of the path used to
+ * reach it. | | `children` | `C` | Propagate mounts and unmounts to child namespaces. | | `locked` | `L` | Forbid
+ * unmounting this mount, useful for hiding directories or files. |
+ *
  * For convenience, a single letter short form is also available as shown above, these single letter forms do not need
  * to be separated by colons, for example `/path/to/file:rwcte` is equivalent to
  * `/path/to/file:read:write:create:truncate:exclusive`.
@@ -88,7 +88,8 @@ typedef enum mode
     MODE_NOFOLLOW = 1 << 10,
     MODE_PRIVATE = 1 << 11,
     MODE_STICKY = 1 << 12,
-    MODE_PARENTS = 1 << 13, ///< Propagate mounts and unmounts to child namespaces, this mode cant be specified by user space.
+    MODE_PARENTS =
+        1 << 13, ///< Propagate mounts and unmounts to child namespaces, this mode cant be specified by user space.
     MODE_CHILDREN = 1 << 14,
     MODE_LOCKED = 1 << 15,
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
@@ -308,11 +309,25 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname);
  * @param mode The mode to convert.
  * @param out The output string buffer.
  * @param length The length of the output string buffer.
- * @return On success, the length of the resulting string, excluding the null terminator. On failure, `ERR` and `errno` is set to:
+ * @return On success, the length of the resulting string, excluding the null terminator. On failure, `ERR` and `errno`
+ * is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENAMETOOLONG`: The output buffer is too small.
  */
 uint64_t mode_to_string(mode_t mode, char* out, uint64_t length);
+
+/**
+ * @brief Check and adjust mode permissions.
+ *
+ * If no permissions are set in the mode, it will be adjusted to have the maximum allowed permissions.
+ *
+ * @param mode The mode to check and adjust.
+ * @param maxPerms The maximum allowed permissions.
+ * @return On success, the adjusted mode. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EACCES`: Requested permissions exceed maximum allowed permissions.
+ */
+uint64_t mode_check(mode_t* mode, mode_t maxPerms);
 
 static inline void path_defer_cleanup(path_t** path)
 {

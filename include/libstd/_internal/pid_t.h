@@ -1,5 +1,5 @@
-#ifndef _AUX_PID_T_H
-#define _AUX_PID_T_H 1
+#ifndef _INTERNAL_PID_T_H
+#define _INTERNAL_PID_T_H 1
 
 /**
  * @brief Process Identifier.

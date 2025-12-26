@@ -47,18 +47,13 @@ uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, uint64_t co
         return ERR;
     }
 
-    if (count > MAX_PATH)
-    {
-        errno = E2BIG;
-        return ERR;
-    }
-
-    uint8_t argBuffer[MAX_PATH];
+    uint8_t argBuffer[CTL_MAX_BUFFER];
 
     uint64_t argc;
-    const char** argv = argsplit_buf(argBuffer, MAX_PATH, buffer, count, &argc);
+    const char** argv = argsplit_buf(argBuffer, CTL_MAX_BUFFER, buffer, count, &argc);
     if (argv == NULL)
     {
+        errno = E2BIG;
         return ERR;
     }
     if (argc == 0)

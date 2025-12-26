@@ -17,18 +17,22 @@
  *
  * The init process is the first user-space program started by the kernel, due to this it can be thought of as the
  * "root" of all processes in the system.
- * 
- * ## Filesystem Heirarchy 
- * 
- * As the init process starts all other processes it is responsible for setting up the initial namespaces for all processes, including deciding which directories should be visible and what permissions the visible directories ought to have.
- * 
+ *
+ * ## Filesystem Heirarchy
+ *
+ * As the init process starts all other processes it is responsible for setting up the initial namespaces for all
+ * processes, including deciding which directories should be visible and what permissions the visible directories ought
+ * to have.
+ *
  * Included below is a table indicating the permissions or visibility of directories as setup by the init process.
- * 
+ *
  * | Directory | Description | Permissions/Visibility |
  * |-----------|-------------|------------------------|
  * | /acpi     | ACPI Information | Read-Only |
  * | /bin      | System Binaries | Read and Execute |
- * 
+ * | /cfg      | System Configuration Files | Read-Only |
+ * | /dev      | Device Files | Read and Write |
+ * | /efi      | UEFI Bootloader Files | Hidden |
  */
 
 static void environment_setup(config_t* config)
@@ -70,7 +74,6 @@ static void child_spawn(const char* path, priority_t priority)
         return;
     }
 
-
     const char* argv[] = {path, NULL};
     pid_t pid = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_FDS | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS);
     if (pid == ERR)
@@ -80,8 +83,18 @@ static void child_spawn(const char* path, priority_t priority)
 
     swritefile(F("/proc/%llu/prio", pid), F("%llu", priority));
 
-    // Bind directories to themselves with new permissions and with the "L" (:locked) flag to ensure the child processes cant unmount the directories.
-    swritefile(F("/proc/%llu/ctl", pid), "bind /acpi /acpi:Lr && bind /bin /bin:Lrx && start");
+    // Bind directories to themselves with new permissions and with the "L" (:locked) flag to ensure the child processes
+    // cant unmount the directories and "S" (:sticky) to ensure children cant bypass the mount by mounting an ancestor.
+    if (swritefile(F("/proc/%llu/ctl", pid),
+        "bind /acpi /acpi:LSr && "
+        "bind /bin /bin:LSrx && "
+        "bind /cfg /cfg:LSr && "
+        "bind /dev /dev:LSrw && "
+        "bind /dev/null /efi:LS && "
+        "start") == ERR)
+    {
+        printf("init: failed to setup process namespaces for '%s' (%s)\n", path, strerror(errno));
+    }
 }
 
 static void services_start(config_t* config)

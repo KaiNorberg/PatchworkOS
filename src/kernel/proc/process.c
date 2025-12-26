@@ -157,6 +157,12 @@ static uint64_t process_cwd_write(file_t* file, const void* buffer, uint64_t cou
         return ERR;
     }
 
+    if (!DENTRY_IS_DIR(path.dentry))
+    {
+        errno = ENOTDIR;
+        return ERR;
+    }
+
     cwd_set(&process->cwd, &path);
     return count;
 }
@@ -813,7 +819,8 @@ static uint64_t process_dir_init(process_t* process)
     path_t procPath = PATH_CREATE(proc, proc->source);
     PATH_DEFER(&procPath);
 
-    process->dir.dir = sysfs_submount_new(&procPath, name, &process->ns, MODE_PARENTS | MODE_PRIVATE | MODE_ALL_PERMS, &procInodeOps, NULL, process);
+    process->dir.dir = sysfs_submount_new(&procPath, name, &process->ns, MODE_PARENTS | MODE_PRIVATE | MODE_ALL_PERMS,
+        &procInodeOps, NULL, process);
     if (process->dir.dir == NULL)
     {
         return ERR;
@@ -940,7 +947,7 @@ void process_kill(process_t* process, const char* status)
     // Anything that another process could be waiting on must be cleaned up here.
 
     namespace_unmount(&process->ns, process->dir.dir, MODE_PARENTS);
-    
+
     cwd_clear(&process->cwd);
     file_table_close_all(&process->fileTable);
     namespace_handle_clear(&process->ns);

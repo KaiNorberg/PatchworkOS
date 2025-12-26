@@ -16,6 +16,7 @@ typedef struct dentry dentry_t;
 typedef struct dentry_ops dentry_ops_t;
 typedef struct inode inode_t;
 typedef struct superblock superblock_t;
+typedef struct dir_ctx dir_ctx_t;
 
 /**
  * @brief Directory entry.
@@ -89,21 +90,41 @@ typedef uint64_t dentry_id_t;
 #define DENTRY_IS_SYMLINK(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->inode->type == INODE_SYMLINK)
 
 /**
+ * @brief Directory context used to iterate over directory entries.
+ */
+typedef struct dir_ctx
+{
+    /**
+     * @brief Emit function.
+     * 
+     * Should be called on all entries inside a directory while iterating over it, until this function returns `false`.
+     * 
+     * Will be implemented by the VFS not the filesystem.
+     * 
+     * @param ctx The directory context.
+     * @param name The name of the entry.
+     * @param number The inode number of the entry.
+     * @param type The inode type of the entry.
+     * @return `true` to continue iterating, `false` to stop.
+     */
+    bool (*emit)(dir_ctx_t* ctx, const char* name, inode_number_t number, inode_type_t type);
+    uint64_t pos; ///< The current position in the directory, can be used to skip entries.
+} dir_ctx_t;
+
+/**
  * @brief Dentry operations structure.
  * @struct dentry_ops_t
  */
 typedef struct dentry_ops
 {
     /**
-     * @brief Retrieve the contents of a directory.
+     * @brief Iterate over the entries in a directory dentry.
      *
-     * @param dentry The dentry to retrieve entries from.
-     * @param buffer The buffer to store the directory entries in.
-     * @param count The maximum number of bytes to read.
-     * @param offset The offset to start reading from.
-     * @return On success, the number of bytes read. On failure, returns `0` and `errno` is set.
+     * @param dentry The directory dentry to iterate over.
+     * @param ctx The directory context to use for iteration.
+     * @return On success, `0`. On failure, `ERR` and `errno` is set.
      */
-    uint64_t (*getdents)(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset);
+    uint64_t (*iterate)(dentry_t* dentry, dir_ctx_t* ctx);
     /**
      * @brief Called when the dentry is being freed.
      *
@@ -195,14 +216,8 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name);
 void dentry_make_positive(dentry_t* dentry, inode_t* inode);
 
 /**
- * @brief Helper function for a basic getdents.
- *
- * This function can be used by filesystems that do not have any special requirements for getdents.
- *
- * In practice this is only useful for in-memory filesystems.
- *
- * Used by setting the dentry ops getdents to this function.
+ * @brief Helper function for a basic iterate.
  */
-uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset);
+uint64_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx);
 
 /** @} */

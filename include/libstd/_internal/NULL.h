@@ -1,5 +1,5 @@
-#ifndef _AUX_NULL_H
-#define _AUX_NULL_H 1
+#ifndef _INTERNAL_NULL_H
+#define _INTERNAL_NULL_H 1
 
 #ifdef __cplusplus
 #if __cplusplus >= 201103L

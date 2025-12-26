@@ -1,5 +1,5 @@
-#ifndef _AUX_CLOCK_T_H
-#define _AUX_CLOCK_T_H 1
+#ifndef _INTERNAL_CLOCK_T_H
+#define _INTERNAL_CLOCK_T_H 1
 
 /**
  * @brief A nanosecond time.

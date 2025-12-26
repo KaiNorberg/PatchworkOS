@@ -92,7 +92,6 @@ uint64_t file_table_close(file_table_t* table, fd_t fd)
     return 0;
 }
 
-
 void file_table_close_all(file_table_t* table)
 {
     if (table == NULL)

@@ -530,6 +530,54 @@ typedef struct
     uint64_t currentOffset;
 } getdents_recursive_ctx_t;
 
+typedef struct
+{
+    dir_ctx_t ctx;
+    dirent_t* buffer;
+    uint64_t count;
+    uint64_t written;
+    path_t path;
+    namespace_handle_t* ns;
+} vfs_dir_ctx_t;
+
+static bool vfs_dir_emit(dir_ctx_t* ctx, const char* name, inode_number_t number, inode_type_t type)
+{
+    vfs_dir_ctx_t* vctx = (vfs_dir_ctx_t*)ctx;
+    if (vctx->written + sizeof(dirent_t) > vctx->count)
+    {
+        return false;
+    }
+
+    dirent_flags_t flags = DIRENT_NONE;
+    mode_t mode = vctx->path.mount->mode;
+    dentry_t* child = dentry_get(vctx->path.dentry, name);
+    if (child != NULL)
+    {
+        path_t checkPath = PATH_CREATE(vctx->path.mount, child);
+        if (namespace_traverse(vctx->ns, &checkPath))
+        {
+            number = checkPath.dentry->inode->number;
+            type = checkPath.dentry->inode->type;
+            mode = checkPath.mount->mode;
+            flags |= DIRENT_MOUNTED;
+        }
+        path_put(&checkPath);
+        UNREF(child);
+    }
+
+    dirent_t* d = (dirent_t*)((uint8_t*)vctx->buffer + vctx->written);
+    d->number = number;
+    d->type = type;
+    d->flags = flags;
+    strncpy(d->path, name, MAX_PATH - 1);
+    d->path[MAX_PATH - 1] = '\0';
+    mode_to_string(mode, d->mode, MAX_PATH);
+
+    vctx->written += sizeof(dirent_t);
+    vctx->ctx.pos++;
+    return true;
+}
+
 static uint64_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_recursive_ctx_t* ctx,
     const char* prefix, namespace_handle_t* ns)
 {
@@ -544,14 +592,25 @@ static uint64_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_
 
     while (true)
     {
-        uint64_t count = path->dentry->ops->getdents(path->dentry, buf, bufSize, &offset);
-        if (count == ERR || count == 0)
+        vfs_dir_ctx_t vctx = {
+            .ctx = {.emit = vfs_dir_emit, .pos = offset},
+            .buffer = buf,
+            .count = bufSize,
+            .written = 0,
+            .path = *path,
+            .ns = ns,
+        };
+
+        path->dentry->ops->iterate(path->dentry, &vctx.ctx);
+        offset = vctx.ctx.pos;
+
+        if (vctx.written == 0)
         {
             break;
         }
 
         uint64_t pos = 0;
-        while (pos < count)
+        while (pos < vctx.written)
         {
             dirent_t* d = (dirent_t*)((uint8_t*)buf + pos);
             pos += sizeof(dirent_t);
@@ -657,15 +716,26 @@ static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
 
     while (true)
     {
-        uint64_t count = path->dentry->ops->getdents(path->dentry, buf, bufSize, &offset);
-        if (count == ERR || count == 0)
+        vfs_dir_ctx_t vctx = {
+            .ctx = {.emit = vfs_dir_emit, .pos = offset},
+            .buffer = buf,
+            .count = bufSize,
+            .written = 0,
+            .path = *path,
+            .ns = &process->ns,
+        };
+
+        path->dentry->ops->iterate(path->dentry, &vctx.ctx);
+        offset = vctx.ctx.pos;
+
+        if (vctx.written == 0)
         {
             break;
         }
 
         uint64_t pos = 0;
         bool removed = false;
-        while (pos < count)
+        while (pos < vctx.written)
         {
             dirent_t* d = (dirent_t*)((uint8_t*)buf + pos);
             pos += sizeof(dirent_t);
@@ -741,7 +811,7 @@ uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count)
         return ERR;
     }
 
-    if (file->path.dentry->ops == NULL || file->path.dentry->ops->getdents == NULL)
+    if (file->path.dentry->ops == NULL || file->path.dentry->ops->iterate == NULL)
     {
         errno = ENOSYS;
         return ERR;
@@ -773,10 +843,23 @@ uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count)
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    uint64_t result = file->path.dentry->ops->getdents(file->path.dentry, buffer, count, &file->pos);
+
+    vfs_dir_ctx_t ctx = {
+        .ctx = {.emit = vfs_dir_emit, .pos = file->pos},
+        .buffer = buffer,
+        .count = count,
+        .written = 0,
+        .path = file->path,
+        .ns = &sched_process()->ns,
+    };
+
+    uint64_t result = file->path.dentry->ops->iterate(file->path.dentry, &ctx.ctx);
+    file->pos = ctx.ctx.pos;
+
     if (result != ERR)
     {
         inode_notify_access(file->inode);
+        return ctx.written;
     }
     return result;
 }

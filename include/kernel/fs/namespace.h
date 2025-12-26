@@ -125,8 +125,9 @@ void namespace_handle_clear(namespace_handle_t* handle);
  *
  * @param handle The namespace handle containing the namespace to traverse.
  * @param path The mountpoint path to traverse, will be updated to the new path if traversed.
+ * @return `true` if the path was modified, `false` otherwise.
  */
-void namespace_traverse(namespace_handle_t* handle, path_t* path);
+bool namespace_traverse(namespace_handle_t* handle, path_t* path);
 
 /**
  * @brief Mount a filesystem in a namespace.
@@ -148,7 +149,8 @@ void namespace_traverse(namespace_handle_t* handle, path_t* path);
  * - `ENOENT`: The root does not exist or the target is negative.
  * - Other errors as returned by the filesystem's `mount()` function or `mount_new()`.
  */
-mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char* deviceName, const char* fsName, mode_t mode, void* private);
+mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char* deviceName, const char* fsName,
+    mode_t mode, void* private);
 
 /**
  * @brief Bind a source path to a target path in a namespace.
@@ -159,7 +161,7 @@ mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char*
  * @param mode The mode specifying permissions and mount behaviour.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
- * - `EACCES`: The source path does not have sufficient permissions for the requested bind mode.
+ * - `EACCES`: The requested mode exceeds the maximum allowed permissions.
  * - `ENOMEM`: Out of memory.
  * - Other errors as returned by `mount_new()`.
  */

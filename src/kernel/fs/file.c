@@ -37,9 +37,8 @@ file_t* file_new(const path_t* path, mode_t mode)
         return NULL;
     }
 
-    if (((mode & MODE_ALL_PERMS) & ~path->mount->mode) != 0)
+    if (mode_check(&mode, path->mount->mode) == ERR)
     {
-        errno = EACCES;
         return NULL;
     }
 
@@ -48,17 +47,12 @@ file_t* file_new(const path_t* path, mode_t mode)
         errno = ENOENT;
         return NULL;
     }
-    
+
     file_t* file = malloc(sizeof(file_t));
     if (file == NULL)
     {
         errno = ENOMEM;
         return NULL;
-    }
-
-    if ((mode & MODE_ALL_PERMS) == MODE_NONE)
-    {
-        mode |= path->mount->mode & MODE_ALL_PERMS;
     }
 
     ref_init(&file->ref, file_free);

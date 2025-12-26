@@ -25,7 +25,7 @@ typedef struct socket_family socket_family_t;
  * returns a handle that when read returns the socket's ID, which corresponds to the path
  * `/net/<family_name>/<socket_id>/`, for example `/net/local/1234/`, which stores the files used to interact with the
  * socket.
- * 
+ *
  * The sockets file will only be visible within the namespace of the creating process.
  *
  * The files used to interact with sockets are listed below.

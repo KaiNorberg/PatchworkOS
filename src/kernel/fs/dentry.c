@@ -256,64 +256,41 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode)
     }
 }
 
-typedef struct
+uint64_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 {
-    uint64_t index;
-    dirent_t* buffer;
-    uint64_t count;
-    uint64_t* offset;
-} getdents_ctx_t;
+    uint64_t index = 0;
 
-static void getdents_write(getdents_ctx_t* ctx, inode_number_t number, inode_type_t type, const char* name)
-{
-    uint64_t start = *ctx->offset / sizeof(dirent_t);
-    uint64_t amount = ctx->count / sizeof(dirent_t);
-
-    if (ctx->index >= start && ctx->index < start + amount)
+    if (index >= ctx->pos)
     {
-        dirent_t* dirent = &ctx->buffer[ctx->index - start];
-        dirent->number = number;
-        dirent->type = type;
-        strncpy(dirent->path, name, MAX_PATH - 1);
-        dirent->path[MAX_PATH - 1] = '\0';
+        if (!ctx->emit(ctx, ".", dentry->inode->number, dentry->inode->type))
+        {
+            return 0;
+        }
     }
+    index++;
 
-    ctx->index++;
-}
-
-uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset)
-{
-    getdents_ctx_t ctx = {
-        .index = 0,
-        .buffer = buffer,
-        .count = count,
-        .offset = offset,
-    };
-
-    if (!DENTRY_IS_POSITIVE(dentry))
+    if (index >= ctx->pos)
     {
-        errno = ENOENT;
-        return ERR;
+        if (!ctx->emit(ctx, "..", dentry->parent->inode->number, dentry->parent->inode->type))
+        {
+            return 0;
+        }
     }
-
-    getdents_write(&ctx, dentry->inode->number, dentry->inode->type, ".");
-    getdents_write(&ctx, dentry->parent->inode->number, dentry->parent->inode->type, "..");
+    index++;
 
     dentry_t* child;
     LIST_FOR_EACH(child, &dentry->children, siblingEntry)
     {
-        assert(DENTRY_IS_POSITIVE(child));
-        getdents_write(&ctx, child->inode->number, child->inode->type, child->name);
+        if (index >= ctx->pos)
+        {
+            assert(DENTRY_IS_POSITIVE(child));
+            if (!ctx->emit(ctx, child->name, child->inode->number, child->inode->type))
+            {
+                return 0;
+            }
+        }
+        index++;
     }
 
-    uint64_t start = *offset / sizeof(dirent_t);
-    if (start >= ctx.index)
-    {
-        return 0;
-    }
-
-    uint64_t entriesWritten = MIN(ctx.index - start, count / sizeof(dirent_t));
-    uint64_t bytesWritten = entriesWritten * sizeof(dirent_t);
-    *offset += bytesWritten;
-    return bytesWritten;
+    return 0;
 }

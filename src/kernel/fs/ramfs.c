@@ -203,7 +203,7 @@ static inode_ops_t inodeOps = {
 };
 
 static dentry_ops_t dentryOps = {
-    .getdents = dentry_generic_getdents,
+    .iterate = dentry_generic_iterate,
 };
 
 static void ramfs_superblock_cleanup(superblock_t* superblock)
@@ -359,8 +359,7 @@ void ramfs_init(void)
     LOG_INFO("mounting ramfs\n");
 
     process_t* process = sched_process();
-    mount = namespace_mount(&process->ns, NULL, VFS_DEVICE_NAME_NONE, RAMFS_NAME,
-       MODE_CHILDREN | MODE_ALL_PERMS, NULL);
+    mount = namespace_mount(&process->ns, NULL, VFS_DEVICE_NAME_NONE, RAMFS_NAME, MODE_CHILDREN | MODE_ALL_PERMS, NULL);
     if (mount == NULL)
     {
         panic(NULL, "Failed to mount ramfs");

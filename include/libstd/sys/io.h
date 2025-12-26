@@ -392,14 +392,26 @@ fd_t dup(fd_t oldFd);
 fd_t dup2(fd_t oldFd, fd_t newFd);
 
 /**
+ * @brief Directory entry flags.
+ * @enum dirent_flags_t
+ */
+typedef enum
+{
+    DIRENT_NONE = 0,
+    DIRENT_MOUNTED = 1 << 0, ///< The directory entry is a mountpoint.
+} dirent_flags_t;
+
+/**
  * @brief Directory entry struct.
  *
  */
 typedef struct
 {
-    inode_number_t number; ///< The number of the entries inode.
-    inode_type_t type;     ///< The type of the entries inode.
-    char path[MAX_PATH];   ///< The relative path of the directory.
+    inode_number_t number;
+    inode_type_t type;
+    dirent_flags_t flags; 
+    char path[MAX_PATH];   ///< The relative path of the entry.
+    char mode[MAX_PATH];  ///< The flags of the paths mount.
 } dirent_t;
 
 /**
@@ -486,8 +498,9 @@ fd_t claim(key_t* key);
 /**
  * @brief System call for binding a file descriptor to a mountpoint.
  *
- * The created mount will inherit permissions from the source while the mount behaviour will follow the flags specified in `mountpoint`.
- * 
+ * The created mount will inherit permissions from the source while the mount behaviour will follow the flags specified
+ * in `mountpoint`.
+ *
  * @param source The file descriptor to bind, must represent a directory.
  * @param mountpoint The mountpoint path.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.

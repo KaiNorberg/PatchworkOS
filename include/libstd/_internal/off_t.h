@@ -1,5 +1,5 @@
-#ifndef _AUX_OFF_T_H
-#define _AUX_OFF_T_H 1
+#ifndef _INTERNAL_OFF_T_H
+#define _INTERNAL_OFF_T_H 1
 
 /**
  * @brief Offset type.

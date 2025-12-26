@@ -23,6 +23,11 @@
  */
 
 /**
+ * @brief Maximum size of the buffer used for argument parsing.
+ */
+#define CTL_MAX_BUFFER 0x1000
+
+/**
  * @brief Helper macro to define a standard ctl write function.
  *
  * This macro defines a write function that dispatches commands to a given array of ctl_t structures.

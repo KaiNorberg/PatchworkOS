@@ -105,7 +105,7 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, const map_key_t* 
 {
     mount_stack_t* stack = CONTAINER_OF_SAFE(map_get(&ns->mountMap, key), mount_stack_t, mapEntry);
     if (stack == NULL)
-    { 
+    {
         stack = malloc(sizeof(mount_stack_t));
         if (stack == NULL)
         {
@@ -142,7 +142,7 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, const map_key_t* 
     list_entry_init(&stackEntry->entry);
     stackEntry->mount = REF(mount);
 
-    list_push_back(&stack->mounts, &stackEntry->entry);    
+    list_push_back(&stack->mounts, &stackEntry->entry);
 
     if (mount->mode & MODE_CHILDREN)
     {
@@ -278,7 +278,8 @@ uint64_t namespace_handle_init(namespace_handle_t* handle, namespace_handle_t* s
             mount_stack_entry_t* stackEntry;
             LIST_FOR_EACH(stackEntry, &stack->mounts, entry)
             {
-                map_key_t key = mount_key(stackEntry->mount->parent->id, stackEntry->mount->target->id, stackEntry->mount->mode);
+                map_key_t key =
+                    mount_key(stackEntry->mount->parent->id, stackEntry->mount->target->id, stackEntry->mount->mode);
                 if (namespace_add(ns, stackEntry->mount, &key) == ERR)
                 {
                     namespace_free(ns);
@@ -340,32 +341,33 @@ void namespace_handle_clear(namespace_handle_t* handle)
     handle->ns = NULL;
 }
 
-void namespace_traverse(namespace_handle_t* handle, path_t* path)
+bool namespace_traverse(namespace_handle_t* handle, path_t* path)
 {
     if (handle == NULL || path == NULL || path->mount == NULL || path->dentry == NULL)
     {
-        return;
+        return false;
     }
 
     // The mount count has race conditions, but the worst that can happen is a redundant lookup.
     if (atomic_load(&path->dentry->mountCount) == 0)
     {
-        return;
+        return false;
     }
 
     RWLOCK_READ_SCOPE(&handle->lock);
     namespace_t* ns = handle->ns;
     if (ns == NULL)
     {
-        return;
+        return false;
     }
     RWLOCK_READ_SCOPE(&ns->lock);
 
+    bool traversed = false;
     for (uint64_t i = 0; i < NAMESPACE_MAX_TRAVERSE; i++)
     {
         if (atomic_load(&path->dentry->mountCount) == 0)
         {
-            return;
+            return traversed;
         }
 
         map_key_t key = mount_key(path->mount->id, path->dentry->id, MODE_NONE);
@@ -377,7 +379,7 @@ void namespace_traverse(namespace_handle_t* handle, path_t* path)
 
             if (entry == NULL)
             {
-                return;
+                return traversed;
             }
         }
 
@@ -386,10 +388,14 @@ void namespace_traverse(namespace_handle_t* handle, path_t* path)
         assert(stackEntry != NULL);
 
         path_set(path, stackEntry->mount, stackEntry->mount->source);
+        traversed = true;
     }
+
+    return traversed;
 }
 
-mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char* deviceName, const char* fsName, mode_t mode, void* private)
+mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char* deviceName, const char* fsName,
+    mode_t mode, void* private)
 {
     if (handle == NULL || deviceName == NULL || fsName == NULL)
     {
@@ -468,15 +474,15 @@ mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char*
 
 mount_t* namespace_bind(namespace_handle_t* handle, path_t* source, path_t* target, mode_t mode)
 {
-    if (handle == NULL || source == NULL || source->dentry == NULL || source->mount == NULL || target == NULL || target->dentry == NULL || target->mount == NULL)
+    if (handle == NULL || source == NULL || source->dentry == NULL || source->mount == NULL || target == NULL ||
+        target->dentry == NULL || target->mount == NULL)
     {
         errno = EINVAL;
         return NULL;
     }
 
-    if (((mode & MODE_ALL_PERMS) & ~source->mount->mode) != 0)
+    if (mode_check(&mode, source->mount->mode) == ERR)
     {
-        errno = EACCES;
         return NULL;
     }
 

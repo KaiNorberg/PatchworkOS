@@ -61,7 +61,7 @@ static void terminal_char_draw(terminal_t* term, element_t* elem, drawable_t* dr
 
     if (termChar->flags & TERMINAL_UNDERLINE)
     {
-        rect_t underlineRect = RECT_INIT_DIM(charRect.left, charRect.bottom - 2, RECT_WIDTH(&charRect), 2);
+        rect_t underlineRect = RECT_INIT_DIM(charRect.left, charRect.bottom - 1, RECT_WIDTH(&charRect), 1);
         draw_rect(draw, &underlineRect,
             termChar->flags & TERMINAL_INVERSE ? termChar->background : termChar->foreground);
     }

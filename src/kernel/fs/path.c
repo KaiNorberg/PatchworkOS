@@ -32,7 +32,7 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['R'] = {.mode = MODE_RECURSIVE},
     ['l'] = {.mode = MODE_NOFOLLOW},
     ['p'] = {.mode = MODE_PRIVATE},
-    ['s'] = {.mode = MODE_STICKY},
+    ['S'] = {.mode = MODE_STICKY},
     ['C'] = {.mode = MODE_CHILDREN},
     ['L'] = {.mode = MODE_LOCKED},
 };
@@ -650,4 +650,26 @@ uint64_t mode_to_string(mode_t mode, char* out, uint64_t length)
 
     out[index] = '\0';
     return index;
+}
+
+uint64_t mode_check(mode_t* mode, mode_t maxPerms)
+{
+    if (mode == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (((*mode & MODE_ALL_PERMS) & ~maxPerms) != MODE_NONE)
+    {
+        errno = EACCES;
+        return ERR;
+    }
+
+    if ((*mode & MODE_ALL_PERMS) == MODE_NONE)
+    {
+        *mode |= maxPerms & MODE_ALL_PERMS;
+    }
+
+    return 0;
 }

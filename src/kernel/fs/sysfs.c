@@ -29,7 +29,7 @@ static file_ops_t dirOps = {
 };
 
 static dentry_ops_t dentryOps = {
-    .getdents = dentry_generic_getdents,
+    .iterate = dentry_generic_iterate,
 };
 
 typedef struct
@@ -101,8 +101,8 @@ dentry_t* sysfs_get_dev(void)
     return REF(devMount->source);
 }
 
-mount_t* sysfs_mount_new(const char* name, namespace_handle_t* ns, mode_t mode,
-    const inode_ops_t* inodeOps, const superblock_ops_t* superblockOps, void* private)
+mount_t* sysfs_mount_new(const char* name, namespace_handle_t* ns, mode_t mode, const inode_ops_t* inodeOps,
+    const superblock_ops_t* superblockOps, void* private)
 {
     if (name == NULL)
     {
@@ -142,8 +142,8 @@ mount_t* sysfs_mount_new(const char* name, namespace_handle_t* ns, mode_t mode,
     return namespace_mount(ns, &mountpoint, VFS_DEVICE_NAME_NONE, SYSFS_NAME, mode, &ctx);
 }
 
-mount_t* sysfs_submount_new(const path_t* parent, const char* name, namespace_handle_t* ns,
-    mode_t mode, const inode_ops_t* inodeOps, const superblock_ops_t* superblockOps, void* private)
+mount_t* sysfs_submount_new(const path_t* parent, const char* name, namespace_handle_t* ns, mode_t mode,
+    const inode_ops_t* inodeOps, const superblock_ops_t* superblockOps, void* private)
 {
     if (parent == NULL || name == NULL)
     {

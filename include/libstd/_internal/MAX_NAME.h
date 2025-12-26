@@ -1,5 +1,5 @@
-#ifndef _AUX_MAX_NAME_H
-#define _AUX_MAX_NAME_H 1
+#ifndef _INTERNAL_MAX_NAME_H
+#define _INTERNAL_MAX_NAME_H 1
 
 /**
  * @brief Maximum length of names.

@@ -1,5 +1,5 @@
-#ifndef _AUX_ERR_H
-#define _AUX_ERR_H 1
+#ifndef _INTERNAL_ERR_H
+#define _INTERNAL_ERR_H 1
 
 /**
  * @brief Integer error value.

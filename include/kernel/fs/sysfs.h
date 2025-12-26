@@ -51,8 +51,8 @@ dentry_t* sysfs_get_dev(void);
  * @param superblockOps The superblock operations for the new SysFS instance, can be `NULL`.
  * @return On success, the mounted SysFS instance. On failure, `NULL` and `errno` is set.
  */
-mount_t* sysfs_mount_new(const char* name, namespace_handle_t* ns, mode_t mode,
-    const inode_ops_t* inodeOps, const superblock_ops_t* superblockOps, void* private);
+mount_t* sysfs_mount_new(const char* name, namespace_handle_t* ns, mode_t mode, const inode_ops_t* inodeOps,
+    const superblock_ops_t* superblockOps, void* private);
 
 /**
  * @brief Mount a new instance of SysFS inside an existing SysFS directory.
@@ -70,8 +70,8 @@ mount_t* sysfs_mount_new(const char* name, namespace_handle_t* ns, mode_t mode,
  * @param private Private data to be stored in the inode of the root directory, can be `NULL`.
  * @return On success, the mounted SysFS instance. On failure, `NULL` and `errno` is set.
  */
-mount_t* sysfs_submount_new(const path_t* parent, const char* name, namespace_handle_t* ns,
-    mode_t mode, const inode_ops_t* inodeOps, const superblock_ops_t* superblockOps, void* private);
+mount_t* sysfs_submount_new(const path_t* parent, const char* name, namespace_handle_t* ns, mode_t mode,
+    const inode_ops_t* inodeOps, const superblock_ops_t* superblockOps, void* private);
 
 /**
  * @brief Create a new directory inside a mounted SysFS instance.

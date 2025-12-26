@@ -159,9 +159,9 @@
  * The file descriptor must have been obtained by opening a `/proc/[pid]/ns` file.
  *
  * ### bind <source> <target>
- * 
+ *
  * Bind a source path to a target path in the processes namespace.
- * 
+ *
  * @see kernel_fs_path for information on path flags.
  *
  * ### start

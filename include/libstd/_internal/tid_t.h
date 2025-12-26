@@ -1,5 +1,5 @@
-#ifndef _AUX_TID_T_H
-#define _AUX_TID_T_H 1
+#ifndef _INTERNAL_TID_T_H
+#define _INTERNAL_TID_T_H 1
 
 /**
  * @brief Thread Identifier.
