@@ -428,7 +428,7 @@ bool namespace_traverse(namespace_handle_t* handle, path_t* path)
     return traversed;
 }
 
-mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char* deviceName, const char* fsName,
+mount_t* namespace_mount(namespace_handle_t* handle, const char* deviceName, const char* fsName, path_t* target,
     mode_t mode, void* private)
 {
     if (handle == NULL || deviceName == NULL || fsName == NULL)
@@ -569,6 +569,69 @@ void namespace_get_root(namespace_handle_t* handle, path_t* out)
     assert(entry != NULL);
 
     path_set(out, entry->mount, entry->mount->source);
+}
+
+SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* device, const char* fs, const char* mountpoint)
+{
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
+
+    pathname_t mountname;
+    if (thread_copy_from_user_pathname(thread, &mountname, mountpoint) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t mountpath = cwd_get(&process->cwd, &process->ns);
+    PATH_DEFER(&mountpath);
+
+    if (path_walk(&mountpath, &mountname, &process->ns) == ERR)
+    {
+        return ERR;
+    }
+
+    char deviceName[MAX_NAME];
+    if (thread_copy_from_user_string(thread, deviceName, device, MAX_NAME) == ERR)
+    {
+        return ERR;
+    }
+
+    char fsName[MAX_NAME];
+    if (thread_copy_from_user_string(thread, fsName, fs, MAX_NAME) == ERR)
+    {
+        return ERR;
+    }
+
+    mount_t* mount = namespace_mount(&process->ns, deviceName, fsName, &mountpath, mountname.mode, NULL);
+    if (mount == NULL)
+    {
+        return ERR;
+    }
+    UNREF(mount);
+    return 0;
+}
+
+SYSCALL_DEFINE(SYS_UNMOUNT, uint64_t, const char* mountpoint)
+{
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
+
+    pathname_t mountname;
+    if (thread_copy_from_user_pathname(thread, &mountname, mountpoint) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t mountpath = cwd_get(&process->cwd, &process->ns);
+    PATH_DEFER(&mountpath);
+
+    if (path_walk(&mountpath, &mountname, &process->ns) == ERR)
+    {
+        return ERR;
+    }
+
+    namespace_unmount(&process->ns, mountpath.mount, mountname.mode);
+    return 0;
 }
 
 SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpoint)

@@ -116,10 +116,10 @@ static uint64_t pkg_spawn(const char* buffer)
         char* key = namespace->entries[i].key;
         char* value = namespace->entries[i].value;
 
-        if (swritefile(F("/proc/%llu/ctl", pid), F("bind %s %s", key, value)) == ERR)
+        if (swritefile(F("/proc/%llu/ctl", pid), F("bind %s %s", value, key)) == ERR)
         {
             pkg_kill(pid);
-            printf("pkgd: failed to bind '%s' to '%s' (%s)\n", key, value, strerror(errno));
+            printf("pkgd: failed to bind '%s' to '%s' (%s)\n", value, key, strerror(errno));
             return ERR;
         }
     }

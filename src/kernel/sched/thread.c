@@ -255,6 +255,27 @@ uint64_t thread_copy_from_user_terminated(thread_t* thread, const void* userArra
     return 0;
 }
 
+uint64_t thread_copy_from_user_string(thread_t* thread, char* dest, const char* userSrc, uint64_t maxLength)
+{
+    if (thread == NULL || dest == NULL || userSrc == NULL || maxLength == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    char terminator = '\0';
+    uint64_t strLength =
+        space_pin_terminated(&thread->process->space, userSrc, &terminator, sizeof(char), maxLength, &thread->userStack);
+    if (strLength == ERR)
+    {
+        return ERR;
+    }
+
+    memcpy(dest, userSrc, strLength);
+    space_unpin(&thread->process->space, userSrc, strLength);
+    return 0;
+}
+
 uint64_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, const char* userPath)
 {
     if (thread == NULL || pathname == NULL || userPath == NULL)

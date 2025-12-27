@@ -25,8 +25,6 @@
 #include <sys/list.h>
 #include <sys/math.h>
 
-static mount_t* mount = NULL;
-
 static inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, void* buffer, uint64_t size);
 
 static void ramfs_dentry_add(dentry_t* dentry)
@@ -359,10 +357,11 @@ void ramfs_init(void)
     LOG_INFO("mounting ramfs\n");
 
     process_t* process = sched_process();
-    mount = namespace_mount(&process->ns, NULL, VFS_DEVICE_NAME_NONE, RAMFS_NAME, MODE_CHILDREN | MODE_ALL_PERMS, NULL);
-    if (mount == NULL)
+    mount_t* temp = namespace_mount(&process->ns, VFS_DEVICE_NAME_NONE, RAMFS_NAME, NULL, MODE_CHILDREN | MODE_ALL_PERMS, NULL);
+    if (temp == NULL)
     {
         panic(NULL, "Failed to mount ramfs");
     }
+    UNREF(temp);
     LOG_INFO("ramfs initialized\n");
 }

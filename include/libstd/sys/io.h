@@ -520,6 +520,24 @@ fd_t claim(key_t* key);
 uint64_t bind(fd_t source, const char* mountpoint);
 
 /**
+ * @brief System call for mounting a filesystem.
+ *
+ * @param device The device name, or `NULL` for no device.
+ * @param fs The filesystem name.
+ * @param mountpoint The target path to mount to.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t mount(const char* device, const char* fs, const char* mountpoint);
+
+/**
+ * @brief System call for unmounting a filesystem.
+ *
+ * @param mountpoint The target path to unmount.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t unmount(const char* mountpoint);
+
+/**
  * @brief System call for reading the target of a symbolic link.
  *
  * @param path The path to the symbolic link.

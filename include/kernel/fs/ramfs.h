@@ -14,8 +14,7 @@
  * @defgroup kernel_fs_ramfs RAMFS
  * @ingroup kernel_fs
  *
- * A simple in-memory filesystem thats loaded from the bootloader. All data is lost when the system is powered off or
- * rebooted.
+ * A simple in-memory filesystem. All data is lost when power is lost.
  *
  * @{
  */
@@ -35,7 +34,7 @@ typedef struct
 } ramfs_superblock_data_t;
 
 /**
- * @brief Registers the ramfs filesystem and mounts it as the root filesystem.
+ * @brief Registers the ramfs filesystem and mounts an instance of it containing the boot ram disk as root.
  */
 void ramfs_init(void);
 

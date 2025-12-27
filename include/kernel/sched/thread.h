@@ -192,6 +192,17 @@ uint64_t thread_copy_from_user_terminated(thread_t* thread, const void* userArra
     uint8_t objectSize, uint64_t maxCount, void** outArray, uint64_t* outCount);
 
 /**
+ * @brief Safely copy a string from user space.
+ *
+ * @param thread The thread performing the operation.
+ * @param dest The destination buffer in kernel space.
+ * @param userSrc The source buffer in user space.
+ * @param maxLength The maximum number of bytes to copy.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t thread_copy_from_user_string(thread_t* thread, char* dest, const char* userSrc, uint64_t maxLength);
+
+/**
  * @brief Safely copy a string from user space and use it to initialize a pathname.
  *
  * @param thread The thread performing the operation.

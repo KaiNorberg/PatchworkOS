@@ -99,6 +99,8 @@ typedef enum
     SYS_NOTED,
     SYS_READLINK,
     SYS_SYMLINK,
+    SYS_MOUNT,
+    SYS_UNMOUNT,
     SYS_TOTAL_AMOUNT
 } syscall_number_t;
 
