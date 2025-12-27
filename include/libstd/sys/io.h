@@ -24,8 +24,8 @@ extern "C"
 
 /**
  * @brief System IO header.
- * @ingroup libstd
- * @defgroup libstd_sys_io System IO
+ * @ingroup libc
+ * @defgroup libc_sys_io System IO
  *
  * @{
  */
@@ -424,6 +424,18 @@ typedef struct
  * returns `ERR` and `errno` is set.
  */
 uint64_t getdents(fd_t fd, dirent_t* buffer, uint64_t count);
+
+/**
+ * @brief Helper for reading all directory entries.
+ * 
+ * The caller is responsible for freeing the returned pointer.
+ * 
+ * @param fd The file descriptor of the directory to read.
+ * @param buffer Output pointer to store the allocated buffer containing the directory entries.
+ * @param count Output pointer to store the number of bytes written to the buffer.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t readdir(fd_t fd, dirent_t** buffer, uint64_t* count);
 
 /**
  * @brief Wrapper for creating a directory.

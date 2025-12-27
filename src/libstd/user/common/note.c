@@ -53,7 +53,7 @@ _NORETURN static void _note_kernel_handler(char* note)
     {
         _signal_invoke(SIGINT, note);
     }
-    else if (notecmp(note, "pagefault") == 0)
+    else if (notecmp(note, "pagefault") == 0 || notecmp(note, "segfault") == 0)
     {
         _signal_invoke(SIGSEGV, note);
     }

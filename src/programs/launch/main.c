@@ -1,0 +1,48 @@
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/io.h>
+
+int main(int argc, char** argv)
+{
+    if (argc != 1)
+    {
+        printf("usage: %s\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    char* id = sreadfile("/net/local/seqpacket");
+    if (id == NULL)
+    {
+        printf("launch: failed to open local seqpacket socket (%s)\n", strerror(errno));
+        return EXIT_FAILURE;
+    }
+
+    if (swritefile(F("/net/local/%s/ctl", id), "connect pkg") == ERR)
+    {
+        printf("launch: failed to bind to pkg (%s)\n", strerror(errno));
+        free(id);
+        return EXIT_FAILURE;
+    }
+
+    char pkg[MAX_PATH];
+    const char* lastSlash = strrchr(argv[0], '/');
+    if (lastSlash == NULL)
+    {
+        strcpy(pkg, argv[0]);
+    }
+    else
+    {
+        strcpy(pkg, lastSlash + 1);
+    }
+
+    if (swritefile(F("/net/local/%s/data", id), pkg) == ERR)
+    {
+        printf("launch: failed to send path (%s)\n", strerror(errno));
+        free(id);
+        return EXIT_FAILURE;
+    }
+
+    free(id);
+    return 0;
+}
