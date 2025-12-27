@@ -144,12 +144,16 @@
  *
  * ### bind <source> <target>
  *
- * Bind a source path to a target path in the processes namespace.
+ * Bind a source path from the writing process to a target path in the processes namespace.
  *
- * Path flags for controlling the bind behaviour ought to be specified in the target path.
+ * Path flags for controlling the bind behaviour should to be specified in the target path.
  *
  * @see kernel_fs_path for information on path flags.
  *
+ * ### touch <path>
+ * 
+ * Open and close the path in the process's namespace. 
+ * 
  * ### start
  *
  * Starts the process if it was previously suspended.

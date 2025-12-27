@@ -117,10 +117,7 @@ mount_t* sysfs_mount_new(const char* name, namespace_handle_t* ns, mode_t mode, 
     }
 
     path_t rootPath = PATH_EMPTY;
-    if (namespace_get_root_path(ns, &rootPath) == ERR)
-    {
-        return NULL;
-    }
+    namespace_get_root(ns, &rootPath);
     PATH_DEFER(&rootPath);
 
     dentry_t* dentry = dentry_lookup(&rootPath, name);

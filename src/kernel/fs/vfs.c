@@ -108,7 +108,7 @@ file_t* vfs_open(const pathname_t* pathname, process_t* process)
         return NULL;
     }
 
-    path_t cwd = cwd_get(&process->cwd);
+    path_t cwd = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&cwd);
 
     return vfs_openat(&cwd, pathname, process);
@@ -122,7 +122,7 @@ uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* proc
         return ERR;
     }
 
-    path_t path = cwd_get(&process->cwd);
+    path_t path = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&path);
 
     if (vfs_open_lookup(&path, pathname, &process->ns) == ERR)
@@ -872,7 +872,7 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
         return ERR;
     }
 
-    path_t path = cwd_get(&process->cwd);
+    path_t path = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&path);
 
     if (path_walk(&path, pathname, &process->ns) == ERR)
@@ -930,7 +930,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
         return ERR;
     }
 
-    path_t cwd = cwd_get(&process->cwd);
+    path_t cwd = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&cwd);
 
     path_t oldParent = PATH_EMPTY;
@@ -1044,7 +1044,7 @@ uint64_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathnam
         return ERR;
     }
 
-    path_t cwd = cwd_get(&process->cwd);
+    path_t cwd = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&cwd);
 
     path_t newParent = PATH_EMPTY;
@@ -1099,7 +1099,7 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
         return ERR;
     }
 
-    path_t cwd = cwd_get(&process->cwd);
+    path_t cwd = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&cwd);
 
     path_t parent = PATH_EMPTY;
@@ -1250,7 +1250,7 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
     path_t fromPath = PATH_EMPTY;
     if (from == FD_NONE)
     {
-        path_t cwd = cwd_get(&process->cwd);
+        path_t cwd = cwd_get(&process->cwd, &process->ns);
         path_copy(&fromPath, &cwd);
         path_put(&cwd);
     }
@@ -1522,7 +1522,7 @@ SYSCALL_DEFINE(SYS_READLINK, uint64_t, const char* pathString, char* buffer, uin
         return ERR;
     }
 
-    path_t path = cwd_get(&process->cwd);
+    path_t path = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&path);
 
     if (path_walk(&path, &pathname, &process->ns) == ERR)

@@ -212,6 +212,22 @@ uint64_t pathname_init(pathname_t* pathname, const char* string);
     }
 
 /**
+ * @brief Check if a path is empty.
+ * 
+ * @param path The path to check.
+ * @return true if the path is empty, false otherwise.
+ */
+#define PATH_IS_EMPTY(path) ((path).mount == NULL && (path).dentry == NULL
+
+/**
+ * @brief Check if a path is valid.
+ *
+ * @param path The path to check.
+ * @return true if the path is valid, false otherwise.
+ */
+#define PATH_IS_VALID(path) ((path) != NULL && (path)->mount != NULL && (path)->dentry != NULL)
+
+/**
  * @brief Set a path.
  *
  * Will deref the existing mount and dentry in the path if they are not `NULL`.

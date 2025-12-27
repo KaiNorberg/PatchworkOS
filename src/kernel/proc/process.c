@@ -14,6 +14,7 @@
 #include <kernel/proc/process.h>
 #include <kernel/proc/reaper.h>
 #include <kernel/sched/clock.h>
+#include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
@@ -108,7 +109,7 @@ static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count, uin
 {
     process_t* process = file->inode->private;
 
-    path_t cwd = cwd_get(&process->cwd);
+    path_t cwd = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&cwd);
 
     pathname_t cwdName;
@@ -143,7 +144,7 @@ static uint64_t process_cwd_write(file_t* file, const void* buffer, uint64_t cou
         return ERR;
     }
 
-    path_t path = cwd_get(&process->cwd);
+    path_t path = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&path);
 
     if (path_walk(&path, &cwdPathname, &process->ns) == ERR)
@@ -464,6 +465,7 @@ static uint64_t process_ctl_bind(file_t* file, uint64_t argc, const char** argv)
     }
 
     process_t* process = file->inode->private;
+    process_t* writing = sched_process();
 
     pathname_t sourceName;
     if (pathname_init(&sourceName, argv[1]) == ERR)
@@ -471,10 +473,10 @@ static uint64_t process_ctl_bind(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    path_t source = cwd_get(&process->cwd);
+    path_t source = cwd_get(&writing->cwd, &writing->ns);
     PATH_DEFER(&source);
 
-    if (path_walk(&source, &sourceName, &process->ns) == ERR)
+    if (path_walk(&source, &sourceName, &writing->ns) == ERR)
     {
         return ERR;
     }
@@ -485,7 +487,7 @@ static uint64_t process_ctl_bind(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    path_t target = cwd_get(&process->cwd);
+    path_t target = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&target);
 
     if (path_walk(&target, &targetName, &process->ns) == ERR)

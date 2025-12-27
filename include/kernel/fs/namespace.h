@@ -60,6 +60,8 @@ typedef enum
     NAMESPACE_HANDLE_SHARE = 0 << 0, ///< Share the same namespace as the source.
     NAMESPACE_HANDLE_COPY =
         1 << 1, ///< Copy the contents of the source into a new namespace with the source as the parent.
+    NAMESPACE_HANDLE_EMPTY =
+        1 << 2, ///< Create a new empty namespace with the source as the parent.
 } namespace_handle_flags_t;
 
 /**
@@ -86,7 +88,6 @@ typedef struct namespace
     namespace_t* parent; ///< The parent namespace, can be `NULL`.
     list_t stacks;       ///< List of stacks in this namespace.
     map_t mountMap;      ///< Map used to go from source dentries to namespace mount stacks.
-    mount_t* root;       ///< The root mount of the namespace.
     list_t handles;      ///< List of `namespace_handle_t` containing this namespace.
     rwlock_t lock;
     // clang-format off
@@ -134,7 +135,7 @@ bool namespace_traverse(namespace_handle_t* handle, path_t* path);
  *
  * @param handle The namespace handle containing the namespace to mount to.
  * @param deviceName The device name, or `VFS_DEVICE_NAME_NONE` for no device.
- * @param target The target path to mount to.
+ * @param target The target path to mount to, can be `NULL` to mount to root.
  * @param fsName The filesystem name.
  * @param flags Mount flags.
  * @param mode The mode specifying permissions and mount behaviour.
@@ -157,7 +158,7 @@ mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char*
  *
  * @param handle The namespace handle containing the namespace to bind in.
  * @param source The source path to bind from, could be either a file or directory and from any filesystem.
- * @param target The target path to bind to.
+ * @param target The target path to bind to, can be `NULL` to bind to root.
  * @param mode The mode specifying permissions and mount behaviour.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
@@ -180,11 +181,8 @@ void namespace_unmount(namespace_handle_t* handle, mount_t* mount, mode_t mode);
  * @brief Get the root path of a namespace.
  *
  * @param handle The namespace handle containing the namespace to get the root of.
- * @param out The output root path.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `ENOENT`: The namespace has no root mount.
+ * @param out The output root path, may be a invalid `NULL` path if the namespace is empty.
  */
-uint64_t namespace_get_root_path(namespace_handle_t* handle, path_t* out);
+void namespace_get_root(namespace_handle_t* handle, path_t* out);
 
 /** @} */

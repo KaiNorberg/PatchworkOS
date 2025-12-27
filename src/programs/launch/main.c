@@ -3,6 +3,8 @@
 #include <string.h>
 #include <sys/io.h>
 
+#define BUFFER_MAX 0x1000
+
 int main(int argc, char** argv)
 {
     if (argc != 1)
@@ -25,20 +27,32 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    char pkg[MAX_PATH];
+    char buffer[BUFFER_MAX];
     const char* lastSlash = strrchr(argv[0], '/');
     if (lastSlash == NULL)
     {
-        strcpy(pkg, argv[0]);
+        strcpy(buffer, argv[0]);
     }
     else
     {
-        strcpy(pkg, lastSlash + 1);
+        strcpy(buffer, lastSlash + 1);
     }
 
-    if (swritefile(F("/net/local/%s/data", id), pkg) == ERR)
+    for (int i = 1; i < argc; i++)
     {
-        printf("launch: failed to send path (%s)\n", strerror(errno));
+        if (strlen(buffer) + 1 + strlen(argv[i]) >= BUFFER_MAX)
+        {
+            printf("launch: arguments too long\n");
+            free(id);
+            return EXIT_FAILURE;
+        }
+        strcat(buffer, " ");
+        strcat(buffer, argv[i]);
+    }
+
+    if (swritefile(F("/net/local/%s/data", id), buffer) == ERR)
+    {
+        printf("launch: failed to send request (%s)\n", strerror(errno));
         free(id);
         return EXIT_FAILURE;
     }

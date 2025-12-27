@@ -181,7 +181,20 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     process_t* process = thread->process;
 
     gid_t gid = flags & SPAWN_EMPTY_GROUP ? GID_NONE : group_get_id(&process->group);
-    namespace_handle_flags_t nsFlags = flags & SPAWN_COPY_NS ? NAMESPACE_HANDLE_COPY : NAMESPACE_HANDLE_SHARE;
+
+    namespace_handle_flags_t nsFlags;
+    if (flags & SPAWN_EMPTY_NS)
+    {
+        nsFlags = NAMESPACE_HANDLE_EMPTY;
+    }
+    else if (flags & SPAWN_COPY_NS)
+    {
+        nsFlags = NAMESPACE_HANDLE_COPY;
+    }
+    else
+    {
+        nsFlags = NAMESPACE_HANDLE_SHARE;
+    }
 
     child = process_new(atomic_load(&process->priority), gid, &process->ns, nsFlags);
     if (child == NULL)
@@ -243,7 +256,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
 
     if (!(flags & SPAWN_EMPTY_CWD))
     {
-        path_t cwd = cwd_get(&process->cwd);
+        path_t cwd = cwd_get(&process->cwd, &process->ns);
         cwd_set(&child->cwd, &cwd);
         path_put(&cwd);
     }

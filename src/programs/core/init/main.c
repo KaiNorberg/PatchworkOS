@@ -1,5 +1,3 @@
-#include "root.h"
-
 #include <errno.h>
 #include <libpatchwork/patchwork.h>
 #include <stdio.h>
@@ -105,8 +103,6 @@ int main(void)
     init_config_load();
     
     printf("init: all startup tasks completed!\n");
-
-    //root_start();
 
     return EXIT_SUCCESS;
 }

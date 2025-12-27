@@ -23,7 +23,7 @@ typedef struct cwd
 /**
  * @brief Initialize a CWD structure.
  *
- * Will by default lazily resolve to the root path of the kernel process's namespace until set to another path.
+ * Will by default lazily resolve to the root path of the namespace until set to another path.
  *
  * @param cwd The CWD structure to initialize.
  */
@@ -39,13 +39,14 @@ void cwd_deinit(cwd_t* cwd);
 /**
  * @brief Get the current working directory.
  *
- * @note If the cwd has not been set, this will return the root path of the kernel process's namespace. This is to solve
+ * @note If the cwd has not been set, this will return the root path of the namespace. This is to solve
  * a circular dependency where the kernel process needs to be initialized before the vfs.
  *
  * @param cwd The CWD structure.
+ * @param ns The namespace handle to get the root path from if the cwd is not set.
  * @return The current working directory path.
  */
-path_t cwd_get(cwd_t* cwd);
+path_t cwd_get(cwd_t* cwd, namespace_handle_t* ns);
 
 /**
  * @brief Set the current working directory.

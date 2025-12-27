@@ -195,7 +195,7 @@ dentry_t* dentry_get(const dentry_t* parent, const char* name)
 
 dentry_t* dentry_lookup(const path_t* parent, const char* name)
 {
-    if (parent == NULL || parent->dentry == NULL || parent->mount == NULL || name == NULL)
+    if (!PATH_IS_VALID(parent) || name == NULL)
     {
         errno = EINVAL;
         return NULL;

@@ -67,7 +67,7 @@ static uint64_t ramfs_write(file_t* file, const void* buffer, uint64_t count, ui
 {
     MUTEX_SCOPE(&file->inode->mutex);
 
-    uint64_t requiredSize = *offset + count + 1;
+    uint64_t requiredSize = *offset + count;
     if (requiredSize > file->inode->size)
     {
         void* newData = realloc(file->inode->private, requiredSize);

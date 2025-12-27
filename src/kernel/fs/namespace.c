@@ -32,6 +32,27 @@ static map_key_t mount_key(mount_id_t parentId, dentry_id_t mountpointId, mode_t
     return map_key_buffer(&buffer, sizeof(buffer));
 }
 
+static map_key_t root_key(void)
+{
+    struct
+    {
+        mount_id_t parentId;
+        dentry_id_t mountpointId;
+    } buffer = {.parentId = UINT64_MAX, .mountpointId = UINT64_MAX};
+
+    return map_key_buffer(&buffer, sizeof(buffer));
+}
+
+static map_key_t mount_key_from_mount(mount_t* mount)
+{
+    if (mount->parent == NULL)
+    {
+        return root_key();
+    }
+
+    return mount_key(mount->parent->id, mount->target->id, mount->mode);
+}
+
 static namespace_t* namespace_new(void)
 {
     namespace_t* ns = malloc(sizeof(namespace_t));
@@ -45,7 +66,6 @@ static namespace_t* namespace_new(void)
     ns->parent = NULL;
     list_init(&ns->stacks);
     map_init(&ns->mountMap);
-    ns->root = NULL;
     list_init(&ns->handles);
     rwlock_init(&ns->lock);
 
@@ -54,12 +74,6 @@ static namespace_t* namespace_new(void)
 
 static void namespace_free(namespace_t* ns)
 {
-    if (ns->root != NULL)
-    {
-        UNREF(ns->root);
-        ns->root = NULL;
-    }
-
     while (!list_is_empty(&ns->stacks))
     {
         mount_stack_t* stack = CONTAINER_OF(list_pop_first(&ns->stacks), mount_stack_t, entry);
@@ -173,7 +187,7 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, const map_key_t* 
 
 static void namespace_remove(namespace_t* ns, mount_t* mount, map_key_t* key)
 {
-    if (mount == ns->root)
+    if (mount->parent == NULL)
     {
         return;
     }
@@ -245,6 +259,32 @@ uint64_t namespace_handle_init(namespace_handle_t* handle, namespace_handle_t* s
         return 0;
     }
 
+    if (flags & NAMESPACE_HANDLE_EMPTY)
+    {
+        RWLOCK_READ_SCOPE(&source->lock);
+        namespace_t* srcNs = source->ns;
+        if (srcNs == NULL)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        namespace_t* ns = namespace_new();
+        if (ns == NULL)
+        {
+            return ERR;
+        }
+
+        RWLOCK_WRITE_SCOPE(&srcNs->lock);
+
+        ns->parent = srcNs;
+        list_push_back(&srcNs->children, &ns->entry);
+
+        handle->ns = ns;
+        list_push_back(&ns->handles, &handle->entry);
+        return 0;
+    }
+    
     if (flags & NAMESPACE_HANDLE_COPY)
     {
         RWLOCK_READ_SCOPE(&source->lock);
@@ -255,22 +295,13 @@ uint64_t namespace_handle_init(namespace_handle_t* handle, namespace_handle_t* s
             return ERR;
         }
 
-        RWLOCK_WRITE_SCOPE(&srcNs->lock);
-
         namespace_t* ns = namespace_new();
         if (ns == NULL)
         {
             return ERR;
         }
 
-        if (srcNs->root != NULL)
-        {
-            ns->root = REF(srcNs->root);
-        }
-        else
-        {
-            ns->root = NULL;
-        }
+        RWLOCK_WRITE_SCOPE(&srcNs->lock);
 
         mount_stack_t* stack;
         LIST_FOR_EACH(stack, &srcNs->stacks, entry)
@@ -283,8 +314,7 @@ uint64_t namespace_handle_init(namespace_handle_t* handle, namespace_handle_t* s
                     continue;
                 }
 
-                map_key_t key =
-                    mount_key(stackEntry->mount->parent->id, stackEntry->mount->target->id, stackEntry->mount->mode);
+                map_key_t key = mount_key_from_mount(stackEntry->mount);
                 if (namespace_add(ns, stackEntry->mount, &key) == ERR)
                 {
                     namespace_free(ns);
@@ -348,7 +378,7 @@ void namespace_handle_clear(namespace_handle_t* handle)
 
 bool namespace_traverse(namespace_handle_t* handle, path_t* path)
 {
-    if (handle == NULL || path == NULL || path->mount == NULL || path->dentry == NULL)
+    if (handle == NULL || !PATH_IS_VALID(path))
     {
         return false;
     }
@@ -376,23 +406,22 @@ bool namespace_traverse(namespace_handle_t* handle, path_t* path)
         }
 
         map_key_t key = mount_key(path->mount->id, path->dentry->id, MODE_NONE);
-        map_entry_t* entry = map_get(&ns->mountMap, &key);
-        if (entry == NULL)
+        mount_stack_t* stack = CONTAINER_OF_SAFE(map_get(&ns->mountMap, &key), mount_stack_t, mapEntry);
+        if (stack == NULL)
         {
             key = mount_key(path->mount->id, path->dentry->id, MODE_STICKY);
-            entry = map_get(&ns->mountMap, &key);
+            stack = CONTAINER_OF_SAFE(map_get(&ns->mountMap, &key), mount_stack_t, mapEntry);
 
-            if (entry == NULL)
+            if (stack == NULL)
             {
                 return traversed;
             }
         }
 
-        mount_stack_t* stack = CONTAINER_OF(entry, mount_stack_t, mapEntry);
-        mount_stack_entry_t* stackEntry = CONTAINER_OF_SAFE(list_first(&stack->mounts), mount_stack_entry_t, entry);
-        assert(stackEntry != NULL);
+        mount_stack_entry_t* entry = CONTAINER_OF_SAFE(list_last(&stack->mounts), mount_stack_entry_t, entry);
+        assert(entry != NULL);
 
-        path_set(path, stackEntry->mount, stackEntry->mount->source);
+        path_set(path, entry->mount, entry->mount->source);
         traversed = true;
     }
 
@@ -437,37 +466,13 @@ mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char*
     }
     RWLOCK_WRITE_SCOPE(&ns->lock);
 
-    if (target == NULL)
-    {
-        if (ns->root != NULL)
-        {
-            errno = EBUSY;
-            return NULL;
-        }
-
-        ns->root = mount_new(root->superblock, root, NULL, NULL, mode);
-        if (ns->root == NULL)
-        {
-            return NULL;
-        }
-
-        LOG_INFO("mounted %s as root with %s\n", deviceName, fsName);
-        return REF(ns->root);
-    }
-
-    if (ns->root == NULL)
-    {
-        errno = ENOENT;
-        return NULL;
-    }
-
-    mount_t* mount = mount_new(root->superblock, root, target->dentry, target->mount, mode);
+    mount_t* mount = mount_new(root->superblock, root, target != NULL ? target->dentry : NULL, target != NULL ? target->mount : NULL, mode);
     if (mount == NULL)
     {
         return NULL;
     }
 
-    map_key_t key = mount_key(mount->parent->id, mount->target->id, mode);
+    map_key_t key = mount_key_from_mount(mount);
     if (namespace_add(ns, mount, &key) == ERR)
     {
         UNREF(mount);
@@ -479,8 +484,7 @@ mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char*
 
 mount_t* namespace_bind(namespace_handle_t* handle, path_t* source, path_t* target, mode_t mode)
 {
-    if (handle == NULL || source == NULL || source->dentry == NULL || source->mount == NULL || target == NULL ||
-        target->dentry == NULL || target->mount == NULL)
+    if (handle == NULL || !PATH_IS_VALID(source))
     {
         errno = EINVAL;
         return NULL;
@@ -500,13 +504,13 @@ mount_t* namespace_bind(namespace_handle_t* handle, path_t* source, path_t* targ
     }
     RWLOCK_WRITE_SCOPE(&ns->lock);
 
-    mount_t* mount = mount_new(source->dentry->superblock, source->dentry, target->dentry, target->mount, mode);
+    mount_t* mount = mount_new(source->dentry->superblock, source->dentry, target != NULL ? target->dentry : NULL, target != NULL ? target->mount : NULL, mode);
     if (mount == NULL)
     {
         return NULL;
     }
 
-    map_key_t key = mount_key(mount->parent->id, mount->target->id, mode);
+    map_key_t key = mount_key_from_mount(mount);
     if (namespace_add(ns, mount, &key) == ERR)
     {
         UNREF(mount);
@@ -536,31 +540,35 @@ void namespace_unmount(namespace_handle_t* handle, mount_t* mount, mode_t mode)
     namespace_remove(ns, mount, &key);
 }
 
-uint64_t namespace_get_root_path(namespace_handle_t* handle, path_t* out)
+void namespace_get_root(namespace_handle_t* handle, path_t* out)
 {
     if (out == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        path_set(out, NULL, NULL);
+        return;
     }
 
     RWLOCK_READ_SCOPE(&handle->lock);
     namespace_t* ns = handle->ns;
     if (ns == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        path_set(out, NULL, NULL);
+        return;
     }
     RWLOCK_READ_SCOPE(&ns->lock);
 
-    if (ns->root == NULL || ns->root->superblock == NULL || ns->root->source == NULL)
+    map_key_t key = root_key();
+    mount_stack_t* stack = CONTAINER_OF_SAFE(map_get(&ns->mountMap, &key), mount_stack_t, mapEntry);
+    if (stack == NULL || list_is_empty(&stack->mounts))
     {
-        errno = ENOENT;
-        return ERR;
+        path_set(out, NULL, NULL);
+        return;
     }
 
-    path_set(out, ns->root, ns->root->source);
-    return 0;
+    mount_stack_entry_t* entry = CONTAINER_OF(list_last(&stack->mounts), mount_stack_entry_t, entry);
+    assert(entry != NULL);
+
+    path_set(out, entry->mount, entry->mount->source);
 }
 
 SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpoint)
@@ -574,7 +582,7 @@ SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpoint)
         return ERR;
     }
 
-    path_t mountpath = cwd_get(&process->cwd);
+    path_t mountpath = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&mountpath);
 
     if (path_walk(&mountpath, &mountname, &process->ns) == ERR)

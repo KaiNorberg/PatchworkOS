@@ -289,6 +289,12 @@ static bool path_is_name_valid(const char* name)
 
 static uint64_t path_handle_dotdot(path_t* path)
 {
+    if (!PATH_IS_VALID(path))
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     if (path->dentry == path->mount->source)
     {
         uint64_t iter = 0;
@@ -325,6 +331,12 @@ static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namesp
 
 static uint64_t path_follow_symlink(dentry_t* dentry, path_t* path, namespace_handle_t* ns, uint64_t symlinks)
 {
+    if (dentry == NULL || !PATH_IS_VALID(path) || ns == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     if (symlinks >= PATH_MAX_SYMLINK)
     {
         errno = ELOOP;
@@ -392,23 +404,12 @@ uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_handle
 
 static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namespace_handle_t* ns, uint64_t symlinks)
 {
-    if (path == NULL || !PATHNAME_IS_VALID(pathname) || ns == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     const char* p = pathname->string;
     if (pathname->string[0] == '/')
     {
-        if (namespace_get_root_path(ns, path) == ERR)
-        {
-            return ERR;
-        }
+        namespace_get_root(ns, path);
         p++;
     }
-
-    assert(path->dentry != NULL && path->mount != NULL);
 
     char component[MAX_NAME];
     while (*p != '\0')
@@ -464,6 +465,12 @@ static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namesp
 
 uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_handle_t* ns)
 {
+    if (path == NULL || !PATHNAME_IS_VALID(pathname) || ns == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     return path_walk_depth(path, pathname, ns, 0);
 }
 

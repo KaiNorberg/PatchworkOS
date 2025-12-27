@@ -16,7 +16,7 @@ MOUSE = 0
 profile = isolated
 
 [namespace]
-/app = $PKG:rwx
+/proc = /proc:rw
 /dev/fb = /dev/fb:rw
 /dev/kbd = /dev/kbd:rw
 /dev/mouse = /dev/mouse:rw

@@ -1,5 +1,6 @@
 #include <kernel/fs/cwd.h>
 
+#include <kernel/fs/namespace.h>
 #include <kernel/sched/thread.h>
 
 void cwd_init(cwd_t* cwd)
@@ -15,7 +16,7 @@ void cwd_deinit(cwd_t* cwd)
     lock_release(&cwd->lock);
 }
 
-path_t cwd_get(cwd_t* cwd)
+path_t cwd_get(cwd_t* cwd, namespace_handle_t* ns)
 {
     path_t result = PATH_EMPTY;
 
@@ -24,11 +25,7 @@ path_t cwd_get(cwd_t* cwd)
     if (cwd->path.dentry == NULL || cwd->path.mount == NULL)
     {
         assert(cwd->path.dentry == NULL && cwd->path.mount == NULL);
-        if (namespace_get_root_path(&process_get_kernel()->ns, &result) == ERR)
-        {
-            lock_release(&cwd->lock);
-            return PATH_EMPTY;
-        }
+        namespace_get_root(ns, &result);
         lock_release(&cwd->lock);
         return result;
     }
