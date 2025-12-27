@@ -118,16 +118,6 @@
  * %llu %llu %llu %llu %llu
  * ```
  *
- * ## ns
- *
- * A file that represents the namespace of the process. Opening this file returns a file descriptor referring to the
- * namespace.
- *
- * This file descriptor can be used with the `join` command in the `ctl` file to switch namespaces.
- *
- * @see share()
- * @see claim()
- *
  * ## ctl
  *
  * A writable file that can be used to control certain aspects of the process, such as closing file descriptors.
@@ -151,12 +141,6 @@
  * ### dup2 <oldfd> <newfd>
  *
  * Duplicates the specified old file descriptor to the new file descriptor in the process.
- *
- * ### join <fd>
- *
- * Switches the process's namespace to the one referred to by the specified file descriptor.
- *
- * The file descriptor must have been obtained by opening a `/proc/[pid]/ns` file.
  *
  * ### bind <source> <target>
  *

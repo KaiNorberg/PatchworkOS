@@ -374,45 +374,6 @@ static file_ops_t perfOps = {
     .read = process_perf_read,
 };
 
-static uint64_t process_ns_open(file_t* file)
-{
-    process_t* process = file->inode->private;
-
-    namespace_handle_t* handle = malloc(sizeof(namespace_handle_t));
-    if (handle == NULL)
-    {
-        errno = ENOMEM;
-        return ERR;
-    }
-
-    if (namespace_handle_init(handle, &process->ns, NAMESPACE_HANDLE_SHARE) == ERR)
-    {
-        free(handle);
-        return ERR;
-    }
-
-    file->private = handle;
-    return 0;
-}
-
-static void process_ns_close(file_t* file)
-{
-    if (file->private == NULL)
-    {
-        return;
-    }
-
-    namespace_handle_t* handle = file->private;
-    namespace_handle_deinit(handle);
-    free(handle);
-    file->private = NULL;
-}
-
-static file_ops_t nsOps = {
-    .open = process_ns_open,
-    .close = process_ns_close,
-};
-
 static uint64_t process_ctl_close(file_t* file, uint64_t argc, const char** argv)
 {
     if (argc != 2 && argc != 3)
@@ -487,53 +448,6 @@ static uint64_t process_ctl_dup2(file_t* file, uint64_t argc, const char** argv)
     }
 
     if (file_table_dup2(&process->fileTable, oldFd, newFd) == ERR)
-    {
-        return ERR;
-    }
-
-    return 0;
-}
-
-static uint64_t process_ctl_join(file_t* file, uint64_t argc, const char** argv)
-{
-    if (argc != 2)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    process_t* process = file->inode->private;
-
-    fd_t fd;
-    if (sscanf(argv[1], "%llu", &fd) != 1)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    file_t* nsFile = file_table_get(&process->fileTable, fd);
-    if (nsFile == NULL)
-    {
-        return ERR;
-    }
-    UNREF_DEFER(nsFile);
-
-    if (nsFile->ops != &nsOps)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    namespace_handle_t* target = nsFile->private;
-    if (target == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    namespace_handle_deinit(&process->ns);
-
-    if (namespace_handle_init(&process->ns, target, NAMESPACE_HANDLE_SHARE) == ERR)
     {
         return ERR;
     }
@@ -627,7 +541,6 @@ CTL_STANDARD_OPS_DEFINE(ctlOps,
     {
         {"close", process_ctl_close, 2, 3},
         {"dup2", process_ctl_dup2, 3, 3},
-        {"join", process_ctl_join, 2, 2},
         {"bind", process_ctl_bind, 3, 3},
         {"start", process_ctl_start, 1, 1},
         {"kill", process_ctl_kill, 1, 1},
@@ -796,7 +709,6 @@ static sysfs_file_desc_t files[] = {
     {.name = "pid", .inodeOps = NULL, .fileOps = &pidOps},
     {.name = "wait", .inodeOps = NULL, .fileOps = &waitOps},
     {.name = "perf", .inodeOps = NULL, .fileOps = &perfOps},
-    {.name = "ns", .inodeOps = NULL, .fileOps = &nsOps},
     {.name = "ctl", .inodeOps = NULL, .fileOps = &ctlOps},
     {0},
 };
