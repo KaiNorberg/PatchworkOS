@@ -67,6 +67,6 @@ void reaper_push(process_t* process)
 {
     lock_acquire(&reaperLock);
     list_push_back(&zombies, &process->zombieEntry);
-    nextReaperTime = clock_uptime() + CONFIG_PROCESS_REAPER_INTERVAL; // Delay reaper run
+    nextReaperTime = clock_uptime() + CONFIG_PROCESS_REAPER_INTERVAL;
     lock_release(&reaperLock);
 }

@@ -41,6 +41,8 @@
  * 
  * @warning The copy and share profiles should only be used for trusted packages as they provide almost complete access to the system.
  * 
+ * @todo Implement sandbox profiles.
+ * 
  * @{
  */
 

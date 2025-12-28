@@ -185,7 +185,7 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, const map_key_t* 
     return 0;
 }
 
-static void namespace_remove(namespace_t* ns, mount_t* mount, map_key_t* key)
+static void namespace_remove(namespace_t* ns, mount_t* mount, map_key_t* key, mode_t mode)
 {
     if (mount->parent == NULL)
     {
@@ -220,22 +220,22 @@ static void namespace_remove(namespace_t* ns, mount_t* mount, map_key_t* key)
         }
     }
 
-    if (mount->mode & MODE_PROPAGATE_CHILDREN)
+    if (mode & MODE_PROPAGATE_CHILDREN)
     {
         namespace_t* child;
         LIST_FOR_EACH(child, &ns->children, entry)
         {
             RWLOCK_WRITE_SCOPE(&child->lock);
 
-            namespace_remove(child, mount, key);
+            namespace_remove(child, mount, key, mode);
         }
     }
 
-    if (mount->mode & MODE_PROPAGATE_PARENTS && ns->parent != NULL)
+    if (mode & MODE_PROPAGATE_PARENTS && ns->parent != NULL)
     {
         RWLOCK_WRITE_SCOPE(&ns->parent->lock);
 
-        namespace_remove(ns->parent, mount, key);
+        namespace_remove(ns->parent, mount, key, mode);
     }
 }
 
@@ -543,8 +543,8 @@ void namespace_unmount(namespace_handle_t* handle, mount_t* mount, mode_t mode)
     }
     RWLOCK_WRITE_SCOPE(&ns->lock);
 
-    map_key_t key = mount_key(mount->parent->id, mount->target->id, mode);
-    namespace_remove(ns, mount, &key);
+    map_key_t key = mount_key_from_mount(mount);
+    namespace_remove(ns, mount, &key, mode);
 }
 
 void namespace_get_root(namespace_handle_t* handle, path_t* out)
