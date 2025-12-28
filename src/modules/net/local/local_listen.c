@@ -57,6 +57,7 @@ local_listen_t* local_listen_new(const char* address)
     local_listen_t* listen = malloc(sizeof(local_listen_t));
     if (listen == NULL)
     {
+        errno = ENOMEM;
         return NULL;
     }
 

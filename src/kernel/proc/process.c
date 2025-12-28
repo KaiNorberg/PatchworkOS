@@ -795,7 +795,7 @@ static uint64_t process_dir_init(process_t* process)
     path_t procPath = PATH_CREATE(proc, proc->source);
     PATH_DEFER(&procPath);
 
-    process->dir.dir = sysfs_submount_new(&procPath, name, &process->ns, MODE_PROPAGATE_PARENTS | MODE_PRIVATE | MODE_ALL_PERMS,
+    process->dir.dir = sysfs_submount_new(&procPath, name, &process->ns, MODE_STICKY | MODE_LOCKED | MODE_PROPAGATE_PARENTS | MODE_PRIVATE | MODE_ALL_PERMS,
         &procInodeOps, NULL, process);
     if (process->dir.dir == NULL)
     {

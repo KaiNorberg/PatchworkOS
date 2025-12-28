@@ -192,6 +192,11 @@ static void namespace_remove(namespace_t* ns, mount_t* mount, map_key_t* key)
         return;
     }
 
+    if (mount->mode & MODE_LOCKED)
+    {
+        return;
+    }
+
     mount_stack_t* stack = CONTAINER_OF_SAFE(map_get(&ns->mountMap, key), mount_stack_t, mapEntry);
     if (stack != NULL)
     {

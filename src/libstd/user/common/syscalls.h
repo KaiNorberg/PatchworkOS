@@ -250,6 +250,11 @@ static inline uint64_t _syscall_bind(const char* mountpoint, fd_t source)
     return _SYSCALL2(uint64_t, SYS_BIND, const char*, mountpoint, fd_t, source);
 }
 
+static inline fd_t _syscall_openat(fd_t from, const char* path)
+{
+    return _SYSCALL2(fd_t, SYS_OPENAT, fd_t, from, const char*, path);
+}
+
 static inline uint64_t _syscall_notify(note_func_t func)
 {
     return _SYSCALL1(uint64_t, SYS_NOTIFY, note_func_t, func);

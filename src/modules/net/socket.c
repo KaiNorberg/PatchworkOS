@@ -415,7 +415,7 @@ uint64_t socket_create(socket_family_t* family, socket_type_t type, char* out, u
     path_t familyDir = socket_family_get_dir(family);
     PATH_DEFER(&familyDir);
 
-    mount_t* mount = sysfs_submount_new(&familyDir, sock->id, NULL, MODE_PRIVATE | MODE_ALL_PERMS, &dirInodeOps,
+    mount_t* mount = sysfs_submount_new(&familyDir, sock->id, NULL, MODE_STICKY | MODE_LOCKED | MODE_PRIVATE | MODE_ALL_PERMS, &dirInodeOps,
         &superblockOps, sock);
     if (mount == NULL)
     {

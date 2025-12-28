@@ -81,6 +81,49 @@ static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* 
     }
 }
 
+static void print_dir(fd_t dir, int indent)
+{
+    dirent_t buffer[8];
+    while (1)
+    {
+        uint64_t n = getdents(dir, buffer, sizeof(buffer));
+        if (n == ERR)
+        {
+            printf("dwm: failed to read directory (%s)\n", strerror(errno));
+            return;
+        }
+        if (n == 0)
+        {
+            break;
+        }
+
+        uint64_t count = n / sizeof(dirent_t);
+        for (uint64_t i = 0; i < count; i++)
+        {
+            if (strcmp(buffer[i].path, ".") == 0 || strcmp(buffer[i].path, "..") == 0)
+            {
+                continue;
+            }
+
+            for (int j = 0; j < indent; j++)
+            {
+                printf("  ");
+            }
+            printf("%s\n", buffer[i].path);
+
+            if (buffer[i].type == INODE_DIR)
+            {
+                fd_t subdir = openat(dir, buffer[i].path);
+                if (subdir != ERR)
+                {
+                    print_dir(subdir, indent + 1);
+                    close(subdir);
+                }
+            }
+        }
+    }
+}
+
 void dwm_init(void)
 {
     fd_t klog = open("/dev/klog");
@@ -130,6 +173,10 @@ void dwm_init(void)
         printf("dwm: failed to read seqpacket id (%s)\n", strerror(errno));
         abort();
     }
+
+    fd_t dir = open("/");
+    print_dir(dir, 0);
+    close(dir);
 
     if (swritefile(F("/net/local/%s/ctl", id), "bind dwm && listen") == ERR)
     {
