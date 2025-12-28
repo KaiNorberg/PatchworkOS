@@ -9,6 +9,33 @@
  *
  * All packages must include a manifest file located at `/pkg/<package>/manifest` using the below format.
  *
+ * ## Format
+ * 
+ * ```
+ * [meta]
+ * description = <short description of the package>
+ * version = <version string>
+ * author = <author name>
+ * license = <license name>
+ *
+ * [exec]
+ * bin = <path to the main executable, specified in the packages namespace>
+ * priority = <scheduler priority [`PRIORITY_MIN`, `PRIORITY_MAX_USER`]>
+ *
+ * [env]
+ * KEY = VALUE
+ * 
+ * [sandbox]
+ * profile = <see below>
+ *
+ * [namespace]
+ * <source, with flags> = <target>
+ * ```
+ * 
+ * ## Sandbox Profiles
+ * 
+ * 
+ * 
  * @{
  */
 

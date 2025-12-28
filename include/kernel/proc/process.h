@@ -157,9 +157,9 @@
  * @see kernel_fs_path for information on path flags.
  *
  * ### touch <path>
- * 
+ *
  * Open the specified path in the process and immediately close it.
- * 
+ *
  * ### start
  *
  * Starts the process if it was previously suspended.

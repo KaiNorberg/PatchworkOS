@@ -65,6 +65,36 @@ static void init_config_load(void)
         abort();
     }
 
+    config_array_t* services = config_get_array(config, "startup", "services");
+    for (uint64_t i = 0; i < services->length; i++)
+    {
+        const char* argv[] = {services->items[i], NULL};
+        if (spawn(argv, SPAWN_DEFAULT) == ERR)
+        {
+            printf("init: failed to spawn service '%s' (%s)\n", services->items[i], strerror(errno));
+        }
+        else
+        {
+            printf("init: spawned service '%s'\n", services->items[i]);
+        }
+    }
+
+    config_array_t* serviceFiles = config_get_array(config, "startup", "service_files");
+    for (uint64_t i = 0; i < serviceFiles->length; i++)
+    {
+        clock_t start = uptime();
+        stat_t info;
+        while (stat(serviceFiles->items[i], &info) == ERR)
+        {
+            nanosleep(CLOCKS_PER_SEC / 100);
+            if (uptime() - start > CLOCKS_PER_SEC * 30)
+            {
+                printf("init: timeout waiting for service file '%s'\n", serviceFiles->items[i]);
+                abort();
+            }
+        }
+    }
+
     config_array_t* programs = config_get_array(config, "startup", "programs");
     for (uint64_t i = 0; i < programs->length; i++)
     {

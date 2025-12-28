@@ -1,11 +1,11 @@
 [meta]
-description = Desktop Window Manager
+description = Taskbar
 version = 1.0
 author = PatchworkOS
 license = MIT
 
 [exec]
-bin = /app/bin/dwm
+bin = /app/bin/taskbar
 priority = 30
 
 [env]
@@ -15,10 +15,9 @@ profile = isolated
 
 [namespace]
 /app:rx = $PKG
+/cfg:r = /cfg
+/sys:rx = /sys
 /net:rw = /net
-/dev/fb:rw = /dev/fb
-/dev/kbd:rw = /dev/kbd
-/dev/mouse:rw = /dev/mouse
-/dev/klog:rw = /dev/klog
 /dev/zero:rw = /dev/zero
-/dev/shmem:rw = /dev/shmem
+/dev/klog:rw = /dev/klog
+/dev/pipe:rw = /dev/pipe

@@ -381,8 +381,8 @@ void tmpfs_init(void)
     LOG_INFO("mounting tmpfs\n");
 
     process_t* process = sched_process();
-    mount_t* temp =
-        namespace_mount(&process->ns, NULL, TMPFS_NAME, VFS_DEVICE_NAME_NONE, MODE_PROPAGATE_CHILDREN | MODE_ALL_PERMS, NULL);
+    mount_t* temp = namespace_mount(&process->ns, NULL, TMPFS_NAME, VFS_DEVICE_NAME_NONE,
+        MODE_PROPAGATE_CHILDREN | MODE_ALL_PERMS, NULL);
     if (temp == NULL)
     {
         panic(NULL, "Failed to mount tmpfs");

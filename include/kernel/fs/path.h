@@ -216,7 +216,7 @@ uint64_t pathname_init(pathname_t* pathname, const char* string);
 
 /**
  * @brief Check if a path is empty.
- * 
+ *
  * @param path The path to check.
  * @return true if the path is empty, false otherwise.
  */
