@@ -103,7 +103,7 @@ static uint64_t pkg_spawn(const char* buffer)
         }
     }
 
-    if (swritefile(F("/proc/%llu/ctl", pid), F("bind /:LSrx /pkg/%s", argv[0])) == ERR)
+    if (swritefile(F("/proc/%llu/ctl", pid), F("mount /:LSrx tmpfs", argv[0])) == ERR)
     {
         pkg_kill(pid);
         printf("pkgd: failed to set root of '%s' (%s)\n", argv[0], strerror(errno));

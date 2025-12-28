@@ -504,6 +504,41 @@ static uint64_t process_ctl_bind(file_t* file, uint64_t argc, const char** argv)
     return 0;
 }
 
+static uint64_t process_ctl_mount(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 3 && argc != 4)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+
+    pathname_t mountname;
+    if (pathname_init(&mountname, argv[1]) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t mountpath = cwd_get(&process->cwd, &process->ns);
+    PATH_DEFER(&mountpath);
+
+    if (path_walk(&mountpath, &mountname, &process->ns) == ERR)
+    {
+        return ERR;
+    }
+
+    const char* fsName = argv[2];
+    const char* deviceName = (argc == 4) ? argv[3] : VFS_DEVICE_NAME_NONE;
+    mount_t* mount = namespace_mount(&process->ns, &mountpath, fsName, deviceName, mountname.mode, NULL);
+    if (mount == NULL)
+    {
+        return ERR;
+    }
+    UNREF(mount);
+    return 0;
+}
+
 static uint64_t process_ctl_start(file_t* file, uint64_t argc, const char** argv)
 {
     (void)argv; // Unused
@@ -544,6 +579,7 @@ CTL_STANDARD_OPS_DEFINE(ctlOps,
         {"close", process_ctl_close, 2, 3},
         {"dup2", process_ctl_dup2, 3, 3},
         {"bind", process_ctl_bind, 3, 3},
+        {"mount", process_ctl_mount, 3, 4},
         {"start", process_ctl_start, 1, 1},
         {"kill", process_ctl_kill, 1, 1},
         {0},

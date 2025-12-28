@@ -150,6 +150,12 @@
  *
  * @see kernel_fs_path for information on path flags.
  * 
+ * ### mount <mountpoint> <fs> [device]
+ * 
+ * Mounts a filesystem at the specified mountpoint in the process's namespace, optionally with a device.
+ * 
+ * @see kernel_fs_path for information on path flags.
+ * 
  * ### start
  *
  * Starts the process if it was previously suspended.
