@@ -488,7 +488,7 @@ uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLas
 
     if (strcmp(pathname->string, "/") == 0)
     {
-        errno = ENOENT;
+        errno = EINVAL;
         return ERR;
     }
 

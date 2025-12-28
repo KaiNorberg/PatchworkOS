@@ -107,6 +107,21 @@ static void dwm_spawn_program(const char* path)
 
 void dwm_init(void)
 {
+    fd_t klog = open("/dev/klog");
+    if (klog == ERR)
+    {
+        abort();
+    }
+
+    if (dup2(klog, STDOUT_FILENO) == ERR)
+    {
+        close(klog);
+        abort();
+    }
+    close(klog);
+
+    printf("dwm: initializing\n");
+
     kbd = open("/dev/kbd/0/events");
     if (kbd == ERR)
     {

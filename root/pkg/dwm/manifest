@@ -5,7 +5,7 @@ author = PatchworkOS
 license = MIT
 
 [exec]
-bin = bin/dwm
+bin = /bin/dwm
 priority = 30
 
 [env]
@@ -16,8 +16,10 @@ MOUSE = 0
 profile = isolated
 
 [namespace]
+/:rw = $PKG
 /proc:rw = /proc
 /net:rw = /net
 /dev/fb:rw = /dev/fb
 /dev/kbd:rw = /dev/kbd
 /dev/mouse:rw = /dev/mouse
+/dev/klog:rw = /dev/klog

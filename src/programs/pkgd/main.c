@@ -40,8 +40,6 @@ static uint64_t pkg_spawn(const char* buffer)
         return ERR;
     }
 
-    printf("pkgd: spawning package '%s'\n", argv[0]);
-
     manifest_t manifest;
     if (manifest_parse(F("/pkg/%s/manifest", argv[0]), &manifest) == ERR)
     {
@@ -62,12 +60,6 @@ static uint64_t pkg_spawn(const char* buffer)
         return ERR;
     }
 
-    if (bin[0] == '/')
-    {
-        printf("pkgd: manifest of '%s' has invalid 'bin' entry (must be relative path)\n", argv[0]);
-        return ERR;
-    }
-
     uint64_t priority = manifest_get_integer(exec, "priority");
     if (priority == ERR)
     {
@@ -76,7 +68,7 @@ static uint64_t pkg_spawn(const char* buffer)
     }
 
     const char* temp = argv[0];
-    argv[0] = F("/pkg/%s/%s", argv[0], bin);
+    argv[0] = bin;
     pid_t pid = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_FDS | SPAWN_EMPTY_ENV | SPAWN_EMPTY_GROUP | SPAWN_EMPTY_NS);
     if (pid == ERR)
     {
@@ -103,8 +95,17 @@ static uint64_t pkg_spawn(const char* buffer)
         }
     }
 
-    if (swritefile(F("/proc/%llu/ctl", pid), F("mount /:LSrwx tmpfs", argv[0])) == ERR)
+    fd_t ctl = open(F("/proc/%llu/ctl", pid));
+    if (ctl == ERR)
     {
+        pkg_kill(pid);
+        printf("pkgd: failed to open ctl of '%s' (%s)\n", argv[0], strerror(errno));
+        return ERR;
+    }
+
+    if (swrite(ctl, F("mount /:LSrwx tmpfs", argv[0])) == ERR)
+    {
+        close(ctl);
         pkg_kill(pid);
         printf("pkgd: failed to set root of '%s' (%s)\n", argv[0], strerror(errno));
         return ERR;
@@ -116,14 +117,26 @@ static uint64_t pkg_spawn(const char* buffer)
         char* key = namespace->entries[i].key;
         char* value = namespace->entries[i].value;
 
-        if (swritefile(F("/proc/%llu/ctl", pid), F("touch %s:rwcp && bind %s %s", key, key, value)) == ERR)
+        if (swrite(ctl, F("touch %s:rwcp && bind %s %s", key, key, value)) == ERR)
         {
+            close(ctl);
             pkg_kill(pid);
             printf("pkgd: failed to bind '%s' to '%s' (%s)\n", key, value, strerror(errno));
             return ERR;
         }
     }
 
+    if (swrite(ctl, "start") == ERR)
+    {
+        close(ctl);
+        pkg_kill(pid);
+        printf("pkgd: failed to start '%s' (%s)\n", argv[0], strerror(errno));
+        return ERR;
+    }
+
+    close(ctl);
+
+    printf("pkgd: spawned package '%s' with pid %llu\n", argv[0], pid);
     return 0;
 }
 
