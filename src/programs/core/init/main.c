@@ -101,7 +101,7 @@ int main(void)
     init_create_launch_links();
 
     init_config_load();
-    
+
     printf("init: all startup tasks completed!\n");
 
     return EXIT_SUCCESS;

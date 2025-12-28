@@ -71,9 +71,10 @@ typedef struct cpu cpu_t;
  * Indicates that the thread made an invalid memory access, such as dereferencing a null or invalid pointer.
  *
  * ### "segfault" (SIGSEGV)
- * 
- * Indicates that the thread made an invalid memory access, that dident cause a page fault, such as executing a invalid instruction.
- * 
+ *
+ * Indicates that the thread made an invalid memory access, that dident cause a page fault, such as executing a invalid
+ * instruction.
+ *
  * ### "terminate" (SIGTERM)
  *
  * Indicates that the process should perform any necessary cleanup and exit gracefully.

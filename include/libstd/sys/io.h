@@ -427,9 +427,9 @@ uint64_t getdents(fd_t fd, dirent_t* buffer, uint64_t count);
 
 /**
  * @brief Helper for reading all directory entries.
- * 
+ *
  * The caller is responsible for freeing the returned pointer.
- * 
+ *
  * @param fd The file descriptor of the directory to read.
  * @param buffer Output pointer to store the allocated buffer containing the directory entries.
  * @param count Output pointer to store the number of bytes written to the buffer.

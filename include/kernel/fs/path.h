@@ -13,6 +13,7 @@ typedef struct mount mount_t;
 typedef struct dentry dentry_t;
 typedef struct namespace_handle namespace_handle_t;
 
+// clang-format off
 /**
  * @brief Unique location in the filesystem.
  * @defgroup kernel_fs_path Path
@@ -41,16 +42,17 @@ typedef struct namespace_handle namespace_handle_t;
  * | `execute` | `x` | Open with execute permissions. |
  * | `nonblock` | `n` | The file will not block on operations that would normally block. |
  * | `append` | `a` | Any data written to the file will be appended to the end. |
- * | `create` | `c` | Create the file if it does not exist. |
- * | `exclusive` | `e` | Will cause the open to fail if the file already exists. |
+ * | `create` | `c` | Create the file or directory if it does not exist. |
+ * | `exclusive` | `e` | Will cause the open to fail if the file or directory already exists and `:create` is specified. |
+ * | `parents`   | `p` | Create any parent directories if they do not exist when creating a file or directory. |
  * | `truncate` | `t` | Truncate the file to zero length if it already exists. |
  * | `directory` | `d` | Create or remove directories. All other operations will ignore this flag. |
- * | `recursive` | `R` | If removing a directory, remove all its contents recursively. If using `getdents()`, list
- * contents recursively. | | `nofollow`  | `l` | Do not follow symbolic links. | | `private`   | `p` | Any files with
- * this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child
- * namespace. | | `sticky`    | `S` | Makes the mount apply to the dentry regardless of the path used to reach it. | |
- * `children`  | `C` | Propagate mounts and unmounts to child namespaces. | | `locked`    | `L` | Forbid unmounting this
- * mount, useful for hiding directories or files. |
+ * | `recursive` | `R` | If removing a directory, remove all its contents recursively. If using `getdents()`, list contents recursively. | 
+ * | `nofollow`  | `l` | Do not follow symbolic links. | 
+ * | `private`   | `P` | Any files with this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child namespace. | 
+ * | `sticky`    | `S` | Makes the mount apply to the dentry regardless of the path used to reach it. | 
+ * | `children`  | `C` | Propagate mounts and unmounts to child namespaces. | 
+ * | `locked`    | `L` | Forbid unmounting this mount, useful for hiding directories or files. |
  *
  * For convenience, a single letter short form is also available as shown above, these single letter forms do not need
  * to be separated by colons, for example `/path/to/file:rwcte` is equivalent to
@@ -65,6 +67,7 @@ typedef struct namespace_handle namespace_handle_t;
  *
  * @{
  */
+// clang-format on
 
 /**
  * @brief Path flags and permissions.
@@ -82,16 +85,16 @@ typedef enum mode
     MODE_APPEND = 1 << 4,
     MODE_CREATE = 1 << 5,
     MODE_EXCLUSIVE = 1 << 6,
-    MODE_TRUNCATE = 1 << 7,
-    MODE_DIRECTORY = 1 << 8,
-    MODE_RECURSIVE = 1 << 9,
-    MODE_NOFOLLOW = 1 << 10,
-    MODE_PRIVATE = 1 << 11,
-    MODE_STICKY = 1 << 12,
-    MODE_PARENTS =
-        1 << 13, ///< Propagate mounts and unmounts to child namespaces, this mode cant be specified by user space.
-    MODE_CHILDREN = 1 << 14,
-    MODE_LOCKED = 1 << 15,
+    MODE_PARENTS = 1 << 7,
+    MODE_TRUNCATE = 1 << 8,
+    MODE_DIRECTORY = 1 << 9,
+    MODE_RECURSIVE = 1 << 10,
+    MODE_NOFOLLOW = 1 << 11,
+    MODE_PRIVATE = 1 << 12,
+    MODE_STICKY = 1 << 13,
+    MODE_PROPAGATE_PARENTS = 1 << 14, ///<  Cant be specified by user space.
+    MODE_PROPAGATE_CHILDREN = 1 << 15,
+    MODE_LOCKED = 1 << 16,
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
 } mode_t;
 

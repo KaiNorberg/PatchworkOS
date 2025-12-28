@@ -21,7 +21,7 @@ mount_t* net_get_mount(void)
 
 static uint64_t net_init(void)
 {
-    net = sysfs_mount_new("net", NULL, MODE_CHILDREN | MODE_PARENTS | MODE_ALL_PERMS, NULL, NULL, NULL);
+    net = sysfs_mount_new("net", NULL, MODE_PROPAGATE_CHILDREN | MODE_PROPAGATE_PARENTS | MODE_ALL_PERMS, NULL, NULL, NULL);
     if (net == NULL)
     {
         return ERR;

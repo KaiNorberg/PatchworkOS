@@ -39,8 +39,58 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_h
     path_t target = PATH_EMPTY;
     if (path_walk_parent_and_child(path, &parent, &target, pathname, ns) == ERR)
     {
-        return ERR;
+        if (errno != ENOENT || !(pathname->mode & MODE_PARENTS))
+        {
+            return ERR;
+        }
+
+        char parentString[MAX_PATH];
+        strncpy(parentString, pathname->string, MAX_PATH);
+        parentString[MAX_PATH - 1] = '\0';
+
+        size_t len = strlen(parentString);
+        while (len > 1 && parentString[len - 1] == '/')
+        {
+            parentString[--len] = '\0';
+        }
+
+        char* lastSlash = strrchr(parentString, '/');
+        if (lastSlash == NULL)
+        {
+            return ERR;
+        }
+
+        if (lastSlash == parentString)
+        {
+            parentString[1] = '\0';
+        }
+        else
+        {
+            *lastSlash = '\0';
+        }
+
+        pathname_t parentPathname;
+        if (pathname_init(&parentPathname, parentString) == ERR)
+        {
+            return ERR;
+        }
+
+        parentPathname.mode = MODE_DIRECTORY | MODE_CREATE | MODE_PARENTS;
+
+        path_t recursiveStart = PATH_CREATE(path->mount, path->dentry);
+        PATH_DEFER(&recursiveStart);
+
+        if (vfs_create(&recursiveStart, &parentPathname, ns) == ERR)
+        {
+            return ERR;
+        }
+
+        if (path_walk_parent_and_child(path, &parent, &target, pathname, ns) == ERR)
+        {
+            return ERR;
+        }
     }
+
     PATH_DEFER(&parent);
     PATH_DEFER(&target);
 
@@ -56,6 +106,8 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_h
         errno = ENOSYS;
         return ERR;
     }
+
+    MUTEX_SCOPE(&dir->mutex);
 
     if (DENTRY_IS_POSITIVE(target.dentry))
     {

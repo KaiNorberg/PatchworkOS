@@ -1,8 +1,8 @@
 #include "manifest.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
-#include <ctype.h>
 #include <sys/io.h>
 #include <sys/math.h>
 #include <sys/proc.h>
@@ -60,7 +60,7 @@ uint64_t manifest_parse(const char* path, manifest_t* manifest)
             {
                 continue;
             }
-        
+
             *end = '\0';
             char* name = p + 1;
             if (strcmp(name, "meta") == 0)
@@ -103,7 +103,7 @@ uint64_t manifest_parse(const char* path, manifest_t* manifest)
         }
 
         *equal = '\0';
-       
+
         char* key = trim_whitespace(p);
         char* value = trim_whitespace(equal + 1);
 

@@ -158,7 +158,7 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, const map_key_t* 
 
     list_push_back(&stack->mounts, &stackEntry->entry);
 
-    if (mount->mode & MODE_CHILDREN)
+    if (mount->mode & MODE_PROPAGATE_CHILDREN)
     {
         namespace_t* child;
         LIST_FOR_EACH(child, &ns->children, entry)
@@ -172,7 +172,7 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, const map_key_t* 
         }
     }
 
-    if (mount->mode & MODE_PARENTS && ns->parent != NULL)
+    if (mount->mode & MODE_PROPAGATE_PARENTS && ns->parent != NULL)
     {
         RWLOCK_WRITE_SCOPE(&ns->parent->lock);
 
@@ -215,7 +215,7 @@ static void namespace_remove(namespace_t* ns, mount_t* mount, map_key_t* key)
         }
     }
 
-    if (mount->mode & MODE_CHILDREN)
+    if (mount->mode & MODE_PROPAGATE_CHILDREN)
     {
         namespace_t* child;
         LIST_FOR_EACH(child, &ns->children, entry)
@@ -226,7 +226,7 @@ static void namespace_remove(namespace_t* ns, mount_t* mount, map_key_t* key)
         }
     }
 
-    if (mount->mode & MODE_PARENTS && ns->parent != NULL)
+    if (mount->mode & MODE_PROPAGATE_PARENTS && ns->parent != NULL)
     {
         RWLOCK_WRITE_SCOPE(&ns->parent->lock);
 
@@ -284,7 +284,7 @@ uint64_t namespace_handle_init(namespace_handle_t* handle, namespace_handle_t* s
         list_push_back(&ns->handles, &handle->entry);
         return 0;
     }
-    
+
     if (flags & NAMESPACE_HANDLE_COPY)
     {
         RWLOCK_READ_SCOPE(&source->lock);
@@ -466,7 +466,8 @@ mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char*
     }
     RWLOCK_WRITE_SCOPE(&ns->lock);
 
-    mount_t* mount = mount_new(root->superblock, root, target != NULL ? target->dentry : NULL, target != NULL ? target->mount : NULL, mode);
+    mount_t* mount = mount_new(root->superblock, root, target != NULL ? target->dentry : NULL,
+        target != NULL ? target->mount : NULL, mode);
     if (mount == NULL)
     {
         return NULL;
@@ -482,7 +483,7 @@ mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char*
     return mount;
 }
 
-mount_t* namespace_bind(namespace_handle_t* handle,  path_t* target, path_t* source, mode_t mode)
+mount_t* namespace_bind(namespace_handle_t* handle, path_t* target, path_t* source, mode_t mode)
 {
     if (handle == NULL || !PATH_IS_VALID(source))
     {
@@ -504,7 +505,8 @@ mount_t* namespace_bind(namespace_handle_t* handle,  path_t* target, path_t* sou
     }
     RWLOCK_WRITE_SCOPE(&ns->lock);
 
-    mount_t* mount = mount_new(source->dentry->superblock, source->dentry, target != NULL ? target->dentry : NULL, target != NULL ? target->mount : NULL, mode);
+    mount_t* mount = mount_new(source->dentry->superblock, source->dentry, target != NULL ? target->dentry : NULL,
+        target != NULL ? target->mount : NULL, mode);
     if (mount == NULL)
     {
         return NULL;

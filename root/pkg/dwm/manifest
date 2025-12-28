@@ -17,7 +17,7 @@ profile = isolated
 
 [namespace]
 /proc:rw = /proc
+/net:rw = /net
 /dev/fb:rw = /dev/fb
 /dev/kbd:rw = /dev/kbd
 /dev/mouse:rw = /dev/mouse
-/net:rw = /net

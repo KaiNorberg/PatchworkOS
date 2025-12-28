@@ -1,18 +1,18 @@
 #include "manifest.h"
 
+#include <errno.h>
 #include <stdio.h>
-#include <sys/io.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <sys/proc.h>
 #include <sys/argsplit.h>
+#include <sys/io.h>
+#include <sys/proc.h>
 
 /**
  * @brief Package Daemon.
  * @defgroup programs_pkgd Package Daemon
  * @ingroup programs
- * 
+ *
  */
 
 #define ARGV_MAX 512
@@ -103,7 +103,7 @@ static uint64_t pkg_spawn(const char* buffer)
         }
     }
 
-    if (swritefile(F("/proc/%llu/ctl", pid), F("mount /:LSrx tmpfs", argv[0])) == ERR)
+    if (swritefile(F("/proc/%llu/ctl", pid), F("mount /:LSrwx tmpfs", argv[0])) == ERR)
     {
         pkg_kill(pid);
         printf("pkgd: failed to set root of '%s' (%s)\n", argv[0], strerror(errno));
@@ -116,7 +116,7 @@ static uint64_t pkg_spawn(const char* buffer)
         char* key = namespace->entries[i].key;
         char* value = namespace->entries[i].value;
 
-        if (swritefile(F("/proc/%llu/ctl", pid), F("bind %s %s", key, value)) == ERR)
+        if (swritefile(F("/proc/%llu/ctl", pid), F("touch %s:rwcp && bind %s %s", key, key, value)) == ERR)
         {
             pkg_kill(pid);
             printf("pkgd: failed to bind '%s' to '%s' (%s)\n", key, value, strerror(errno));
@@ -152,7 +152,7 @@ int main(void)
             printf("pkgd: failed to accept connection (%s)\n", strerror(errno));
             goto error;
         }
-        
+
         char buffer[BUFFER_MAX] = {0};
         if (read(client, buffer, sizeof(buffer) - 1) == ERR)
         {

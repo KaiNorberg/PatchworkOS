@@ -72,8 +72,10 @@ typedef enum
     SPAWN_EMPTY_CWD = 1 << 4,   ///< Don't inherit the parent's current working directory, starts at root (/).
     SPAWN_EMPTY_GROUP = 1 << 5, ///< Don't inherit the parent's process group, instead create a new group.
     SPAWN_COPY_NS = 1 << 6,     ///< Don't share the parent's namespace, instead create a new copy of it.
-    SPAWN_EMPTY_NS = 1 << 7,    ///< Create a new empty namespace, the new namespace will not contain any mountpoints or even a root.
-    SPAWN_EMPTY_ALL = SPAWN_EMPTY_FDS | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP | SPAWN_EMPTY_NS ///< Empty all inheritable resources.
+    SPAWN_EMPTY_NS =
+        1 << 7, ///< Create a new empty namespace, the new namespace will not contain any mountpoints or even a root.
+    SPAWN_EMPTY_ALL = SPAWN_EMPTY_FDS | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP |
+        SPAWN_EMPTY_NS ///< Empty all inheritable resources.
 } spawn_flags_t;
 
 /**

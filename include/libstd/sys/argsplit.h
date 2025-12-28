@@ -27,8 +27,9 @@ extern "C"
  * The `argsplit()` function parses a input string and splits it into a NULL-terminated array of strings factoring in
  * escape chars spaces and quotation marks.
  *
- * The caller is responsible for freeing the returned array, there is no need to free the strings as they re stored in the same buffer.
- * 
+ * The caller is responsible for freeing the returned array, there is no need to free the strings as they re stored in
+ * the same buffer.
+ *
  * @param str The input string to be parsed.
  * @param maxLen The maximum length of the input string.
  * @param count A pointer to a `uint64_t` where the number of parsed arguments will be stored.

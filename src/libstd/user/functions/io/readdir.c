@@ -15,7 +15,7 @@ uint64_t readdir(fd_t fd, dirent_t** buffer, uint64_t* count)
         return ERR;
     }
 
-    uint64_t totalRead = 0;    
+    uint64_t totalRead = 0;
     while (1)
     {
         uint64_t bytesRead = getdents(fd, (dirent_t*)((uint64_t)dirents + totalRead), size - totalRead);

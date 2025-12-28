@@ -60,8 +60,7 @@ typedef enum
     NAMESPACE_HANDLE_SHARE = 0 << 0, ///< Share the same namespace as the source.
     NAMESPACE_HANDLE_COPY =
         1 << 1, ///< Copy the contents of the source into a new namespace with the source as the parent.
-    NAMESPACE_HANDLE_EMPTY =
-        1 << 2, ///< Create a new empty namespace with the source as the parent.
+    NAMESPACE_HANDLE_EMPTY = 1 << 2, ///< Create a new empty namespace with the source as the parent.
 } namespace_handle_flags_t;
 
 /**

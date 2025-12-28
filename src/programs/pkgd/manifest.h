@@ -6,9 +6,9 @@
  * @brief Package Manifest Files.
  * @defgroup programs_pkgd_manifest Manifests.
  * @ingroup programs_pkgd
- * 
+ *
  * All packages must include a manifest file located at `/pkg/<package>/manifest` using the below format.
- * 
+ *
  * @{
  */
 

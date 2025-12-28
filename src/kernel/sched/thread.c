@@ -264,8 +264,8 @@ uint64_t thread_copy_from_user_string(thread_t* thread, char* dest, const char* 
     }
 
     char terminator = '\0';
-    uint64_t strLength =
-        space_pin_terminated(&thread->process->space, userSrc, &terminator, sizeof(char), maxLength, &thread->userStack);
+    uint64_t strLength = space_pin_terminated(&thread->process->space, userSrc, &terminator, sizeof(char), maxLength,
+        &thread->userStack);
     if (strLength == ERR)
     {
         return ERR;

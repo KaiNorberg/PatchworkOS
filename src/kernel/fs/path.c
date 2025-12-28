@@ -27,13 +27,14 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['a'] = {.mode = MODE_APPEND},
     ['c'] = {.mode = MODE_CREATE},
     ['e'] = {.mode = MODE_EXCLUSIVE},
+    ['p'] = {.mode = MODE_PARENTS},
     ['t'] = {.mode = MODE_TRUNCATE},
     ['d'] = {.mode = MODE_DIRECTORY},
     ['R'] = {.mode = MODE_RECURSIVE},
     ['l'] = {.mode = MODE_NOFOLLOW},
-    ['p'] = {.mode = MODE_PRIVATE},
+    ['P'] = {.mode = MODE_PRIVATE},
     ['S'] = {.mode = MODE_STICKY},
-    ['C'] = {.mode = MODE_CHILDREN},
+    ['C'] = {.mode = MODE_PROPAGATE_CHILDREN},
     ['L'] = {.mode = MODE_LOCKED},
 };
 
@@ -51,13 +52,14 @@ static const path_flag_t flags[] = {
     {.mode = MODE_APPEND, .name = "append"},
     {.mode = MODE_CREATE, .name = "create"},
     {.mode = MODE_EXCLUSIVE, .name = "exclusive"},
+    {.mode = MODE_PARENTS, .name = "parents"},
     {.mode = MODE_TRUNCATE, .name = "truncate"},
     {.mode = MODE_DIRECTORY, .name = "directory"},
     {.mode = MODE_RECURSIVE, .name = "recursive"},
     {.mode = MODE_NOFOLLOW, .name = "nofollow"},
     {.mode = MODE_PRIVATE, .name = "private"},
     {.mode = MODE_STICKY, .name = "sticky"},
-    {.mode = MODE_CHILDREN, .name = "children"},
+    {.mode = MODE_PROPAGATE_CHILDREN, .name = "children"},
     {.mode = MODE_LOCKED, .name = "locked"},
 };
 
