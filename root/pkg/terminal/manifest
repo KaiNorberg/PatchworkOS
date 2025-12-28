@@ -1,24 +1,24 @@
 [meta]
-description = Desktop Window Manager
+description = Terminal
 version = 1.0
 author = PatchworkOS
 license = MIT
 
 [exec]
-bin = /app/bin/dwm
+bin = /app/bin/terminal
 priority = 30
 
 [env]
+PATH = /sys/bin
 
 [sandbox]
 profile = empty
 
 [namespace]
 /app:rx = $PKG
+/cfg:r = /cfg
+/sys:rx = /sys
 /net:rw = /net
-/dev/fb:rw = /dev/fb
-/dev/kbd:rw = /dev/kbd
-/dev/mouse:rw = /dev/mouse
-/dev/klog:rw = /dev/klog
+/proc:rw = /proc
 /dev/const:rw = /dev/const
-/dev/shmem:rw = /dev/shmem
+/dev/pipe:rw = /dev/pipe

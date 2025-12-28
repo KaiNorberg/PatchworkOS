@@ -11,7 +11,7 @@ priority = 30
 [env]
 
 [sandbox]
-profile = isolated
+profile = empty
 
 [namespace]
 /app:rx = $PKG

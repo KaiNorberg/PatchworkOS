@@ -16,7 +16,7 @@ ROOT_DIRS = acpi sys sys/bin sys/lib sys/include sys/data pkg cfg dev efi efi/bo
 # Programs to copy to /sbin
 SBIN_PROGRAMS = init pkgd
 # Programs to copy to /sys/bin
-SYS_BIN_PROGRAMS = launch
+SYS_BIN_PROGRAMS = launch shell cat echo grep link ls mv readlink rm root stat symlink tail touch
 
 # Programs to copy to /usr/bin
 #USR_BIN_PROGRAMS = $(filter-out $(BIN_PROGRAMS) $(SBIN_PROGRAMS),$(basename $(notdir $(shell find bin/programs/))))
@@ -130,7 +130,7 @@ doxygen:
 	mkdir -p meta/docs/html/meta/screenshots
 	cp meta/screenshots/* meta/docs/html/meta/screenshots/
 
-QEMU_MEMORY ?= 256M
+QEMU_MEMORY ?= 1G
 QEMU_CPUS ?= $(shell nproc 2>/dev/null || echo 8)
 QEMU_MACHINE ?= q35
 QEMU_ARGS ?=

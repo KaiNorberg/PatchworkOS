@@ -11,7 +11,7 @@ priority = 30
 [env]
 
 [sandbox]
-profile = isolated
+profile = empty
 
 [namespace]
 /app:rx = $PKG
@@ -19,4 +19,3 @@ profile = isolated
 /sys/data:r = /sys/data
 /net:rw = /net
 /dev/const:rw = /dev/const
-/dev/klog:rw = /dev/klog

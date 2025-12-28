@@ -16,7 +16,7 @@
  * description = <short description of the package>
  * version = <version string>
  * author = <author name>
- * license = <license name>
+ * license = <license>
  *
  * [exec]
  * bin = <path to the main executable, specified in the packages namespace>
@@ -26,7 +26,7 @@
  * KEY = VALUE
  * 
  * [sandbox]
- * profile = <see below>
+ * profile = <empty|copy|share>
  *
  * [namespace]
  * <source, with flags> = <target>
@@ -34,7 +34,12 @@
  * 
  * ## Sandbox Profiles
  * 
+ * There are three possible sandbox profiles:
+ * - `empty`: Start with an empty namespace, meaning the process will by default not have access to any files or devices.
+ * - `copy`: Copy the pkgd's namespace, meaning the process will have total access to the same files and devices as the pkgd but changes to the namespace will not affect the pkgd.
+ * - `share`: Share the pkgd's namespace, meaning any changes to the namespace will affect both the pkgd and the process.
  * 
+ * @warning The copy and share profiles should only be used for trusted packages as they provide almost complete access to the system.
  * 
  * @{
  */
