@@ -81,30 +81,6 @@ static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* 
     }
 }
 
-static void dwm_spawn_program(const char* path)
-{
-    if (path == NULL)
-    {
-        return;
-    }
-
-    const char* argv[] = {path, NULL};
-    pid_t pid = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_FDS | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS);
-    if (pid == ERR)
-    {
-        printf("dwm: failed to spawn program '%s' (%s)\n", path, strerror(errno));
-        return;
-    }
-
-    if (swritefile(F("/proc/%llu/ctl", pid),
-            "bind /dev/klog:LSr /dev/klog && "
-            "bind /dev/fb:LS /dev/null && "
-            "start") == ERR)
-    {
-        printf("dwm: failed to setup process namespaces for '%s' (%s)\n", path, strerror(errno));
-    }
-}
-
 void dwm_init(void)
 {
     fd_t klog = open("/dev/klog");
@@ -119,8 +95,6 @@ void dwm_init(void)
         abort();
     }
     close(klog);
-
-    printf("dwm: initializing\n");
 
     kbd = open("/dev/kbd/0/events");
     if (kbd == ERR)
@@ -163,7 +137,7 @@ void dwm_init(void)
         abort();
     }
 
-    data = open(F("/net/local/%s/data", id));
+    data = open(F("/net/local/%s/data:nonblock", id));
     if (data == ERR)
     {
         printf("dwm: failed to open data file (%s)\n", strerror(errno));
@@ -183,10 +157,6 @@ void dwm_init(void)
     focus = NULL;
 
     pollCtx = NULL;
-
-    dwm_spawn_program("/sbin/wall");
-    dwm_spawn_program("/sbin/cursor");
-    dwm_spawn_program("/sbin/taskbar");
 }
 
 void dwm_deinit(void)

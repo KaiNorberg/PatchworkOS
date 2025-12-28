@@ -38,6 +38,16 @@ static fd_t zeroDev = ERR;
 
 void* _heap_map_memory(uint64_t size)
 {
+    if (zeroDev == ERR)
+    {
+        zeroDev = open("/dev/zero:rw");
+        if (zeroDev == ERR)
+        {
+            errno = ENOMEM;
+            return NULL;
+        }
+    }
+
     void* addr = mmap(zeroDev, NULL, size, PROT_READ | PROT_WRITE);
     if (addr == NULL)
     {
@@ -67,11 +77,6 @@ void _heap_init(void)
     lock_init(&mutex);
 #else
     mtx_init(&mutex, mtx_plain);
-    zeroDev = open("/dev/zero");
-    if (zeroDev == ERR)
-    {
-        abort();
-    }
 #endif
     for (uint64_t i = 0; i < _HEAP_NUM_BINS; i++)
     {

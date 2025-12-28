@@ -69,7 +69,7 @@ static uint64_t pkg_spawn(const char* buffer)
 
     const char* temp = argv[0];
     argv[0] = bin;
-    pid_t pid = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_FDS | SPAWN_EMPTY_ENV | SPAWN_EMPTY_GROUP | SPAWN_EMPTY_NS);
+    pid_t pid = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_ALL);
     if (pid == ERR)
     {
         printf("pkgd: failed to spawn '%s' (%s)\n", bin, strerror(errno));

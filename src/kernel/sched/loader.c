@@ -149,6 +149,7 @@ cleanup:
     {
         thread_jump(thread);
     }
+    LOG_DEBUG("exec failed due to %s\n", strerror(errno));
     sched_process_exit("exec failed");
 }
 
