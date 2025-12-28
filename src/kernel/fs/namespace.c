@@ -428,10 +428,10 @@ bool namespace_traverse(namespace_handle_t* handle, path_t* path)
     return traversed;
 }
 
-mount_t* namespace_mount(namespace_handle_t* handle, const char* deviceName, const char* fsName, path_t* target,
+mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char* fsName, const char* deviceName,
     mode_t mode, void* private)
 {
-    if (handle == NULL || deviceName == NULL || fsName == NULL)
+    if (handle == NULL || fsName == NULL || deviceName == NULL)
     {
         errno = EINVAL;
         return NULL;
@@ -482,7 +482,7 @@ mount_t* namespace_mount(namespace_handle_t* handle, const char* deviceName, con
     return mount;
 }
 
-mount_t* namespace_bind(namespace_handle_t* handle, path_t* source, path_t* target, mode_t mode)
+mount_t* namespace_bind(namespace_handle_t* handle,  path_t* target, path_t* source, mode_t mode)
 {
     if (handle == NULL || !PATH_IS_VALID(source))
     {
@@ -571,7 +571,7 @@ void namespace_get_root(namespace_handle_t* handle, path_t* out)
     path_set(out, entry->mount, entry->mount->source);
 }
 
-SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* device, const char* fs, const char* mountpoint)
+SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* mountpoint, const char* fs, const char* device)
 {
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
@@ -602,7 +602,7 @@ SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* device, const char* fs, const ch
         return ERR;
     }
 
-    mount_t* mount = namespace_mount(&process->ns, deviceName, fsName, &mountpath, mountname.mode, NULL);
+    mount_t* mount = namespace_mount(&process->ns, &mountpath, fsName, deviceName, mountname.mode, NULL);
     if (mount == NULL)
     {
         return ERR;
@@ -634,7 +634,7 @@ SYSCALL_DEFINE(SYS_UNMOUNT, uint64_t, const char* mountpoint)
     return 0;
 }
 
-SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpoint)
+SYSCALL_DEFINE(SYS_BIND, uint64_t, const char* mountpoint, fd_t source)
 {
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
@@ -660,7 +660,7 @@ SYSCALL_DEFINE(SYS_BIND, uint64_t, fd_t source, const char* mountpoint)
     }
     UNREF_DEFER(sourceFile);
 
-    mount_t* bind = namespace_bind(&process->ns, &sourceFile->path, &mountpath, mountname.mode);
+    mount_t* bind = namespace_bind(&process->ns, &mountpath, &sourceFile->path, mountname.mode);
     if (bind == NULL)
     {
         return ERR;

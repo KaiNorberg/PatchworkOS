@@ -2,9 +2,9 @@
 
 #include "user/common/syscalls.h"
 
-uint64_t bind(fd_t source, const char* mountpoint)
+uint64_t bind(const char* mountpoint, fd_t source)
 {
-    if (_syscall_bind(source, mountpoint) == ERR)
+    if (_syscall_bind(mountpoint, source) == ERR)
     {
         errno = _syscall_errno();
         return ERR;

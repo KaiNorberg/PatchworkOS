@@ -97,8 +97,8 @@ static void dwm_spawn_program(const char* path)
     }
 
     if (swritefile(F("/proc/%llu/ctl", pid),
-            "bind /dev/klog /dev/klog:LSr && "
-            "bind /dev/null /dev/fb:LS && "
+            "bind /dev/klog:LSr /dev/klog && "
+            "bind /dev/fb:LS /dev/null && "
             "start") == ERR)
     {
         printf("dwm: failed to setup process namespaces for '%s' (%s)\n", path, strerror(errno));

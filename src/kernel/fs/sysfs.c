@@ -136,7 +136,7 @@ mount_t* sysfs_mount_new(const char* name, namespace_handle_t* ns, mode_t mode, 
         .private = private,
     };
 
-    return namespace_mount(ns, VFS_DEVICE_NAME_NONE, SYSFS_NAME, &mountpoint, mode, &ctx);
+    return namespace_mount(ns, &mountpoint, SYSFS_NAME, VFS_DEVICE_NAME_NONE, mode, &ctx);
 }
 
 mount_t* sysfs_submount_new(const path_t* parent, const char* name, namespace_handle_t* ns, mode_t mode,
@@ -185,7 +185,7 @@ mount_t* sysfs_submount_new(const path_t* parent, const char* name, namespace_ha
     path_t mountpoint = PATH_CREATE(parent->mount, dentry);
     PATH_DEFER(&mountpoint);
 
-    return namespace_mount(ns, VFS_DEVICE_NAME_NONE, SYSFS_NAME, &mountpoint, mode, &ctx);
+    return namespace_mount(ns, &mountpoint, SYSFS_NAME, VFS_DEVICE_NAME_NONE, mode, &ctx);
 }
 
 dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* private)

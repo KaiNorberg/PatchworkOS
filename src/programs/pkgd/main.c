@@ -103,7 +103,7 @@ static uint64_t pkg_spawn(const char* buffer)
         }
     }
 
-    if (swritefile(F("/proc/%llu/ctl", pid), F("bind /pkg/%s /:LSrx", argv[0])) == ERR)
+    if (swritefile(F("/proc/%llu/ctl", pid), F("bind /:LSrx /pkg/%s", argv[0])) == ERR)
     {
         pkg_kill(pid);
         printf("pkgd: failed to set root of '%s' (%s)\n", argv[0], strerror(errno));
@@ -116,10 +116,10 @@ static uint64_t pkg_spawn(const char* buffer)
         char* key = namespace->entries[i].key;
         char* value = namespace->entries[i].value;
 
-        if (swritefile(F("/proc/%llu/ctl", pid), F("bind %s %s", value, key)) == ERR)
+        if (swritefile(F("/proc/%llu/ctl", pid), F("bind %s %s", key, value)) == ERR)
         {
             pkg_kill(pid);
-            printf("pkgd: failed to bind '%s' to '%s' (%s)\n", value, key, strerror(errno));
+            printf("pkgd: failed to bind '%s' to '%s' (%s)\n", key, value, strerror(errno));
             return ERR;
         }
     }

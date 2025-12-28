@@ -245,9 +245,9 @@ static inline fd_t _syscall_claim(key_t* key)
     return _SYSCALL1(fd_t, SYS_CLAIM, key_t*, key);
 }
 
-static inline uint64_t _syscall_bind(fd_t source, const char* mountpoint)
+static inline uint64_t _syscall_bind(const char* mountpoint, fd_t source)
 {
-    return _SYSCALL2(uint64_t, SYS_BIND, fd_t, source, const char*, mountpoint);
+    return _SYSCALL2(uint64_t, SYS_BIND, const char*, mountpoint, fd_t, source);
 }
 
 static inline uint64_t _syscall_notify(note_func_t func)
@@ -272,9 +272,9 @@ static inline uint64_t _syscall_symlink(const char* target, const char* linkpath
     return _SYSCALL2(uint64_t, SYS_SYMLINK, const char*, target, const char*, linkpath);
 }
 
-static inline uint64_t _syscall_mount(const char* device, const char* fs, const char* mountpoint)
+static inline uint64_t _syscall_mount(const char* mountpoint, const char* fs, const char* device)
 {
-    return _SYSCALL3(uint64_t, SYS_MOUNT, const char*, device, const char*, fs, const char*, mountpoint);
+    return _SYSCALL3(uint64_t, SYS_MOUNT, const char*, mountpoint, const char*, fs, const char*, device);
 }
 
 static inline uint64_t _syscall_umount(const char* mountpoint)

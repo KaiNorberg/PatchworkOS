@@ -134,9 +134,9 @@ bool namespace_traverse(namespace_handle_t* handle, path_t* path);
  * @brief Mount a filesystem in a namespace.
  *
  * @param handle The namespace handle containing the namespace to mount to.
- * @param deviceName The device name, or `VFS_DEVICE_NAME_NONE` for no device.
- * @param fsName The filesystem name.
  * @param target The target path to mount to, can be `NULL` to mount to root.
+ * @param fsName The filesystem name.
+ * @param deviceName The device name, or `VFS_DEVICE_NAME_NONE` for no device.
  * @param flags Mount flags.
  * @param mode The mode specifying permissions and mount behaviour.
  * @param private Private data for the filesystem's mount function.
@@ -150,15 +150,15 @@ bool namespace_traverse(namespace_handle_t* handle, path_t* path);
  * - `ENOENT`: The root does not exist or the target is negative.
  * - Other errors as returned by the filesystem's `mount()` function or `mount_new()`.
  */
-mount_t* namespace_mount(namespace_handle_t* handle, const char* deviceName, const char* fsName, path_t* target,
+mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char* fsName, const char* deviceName,
     mode_t mode, void* private);
 
 /**
  * @brief Bind a source path to a target path in a namespace.
  *
  * @param handle The namespace handle containing the namespace to bind in.
- * @param source The source path to bind from, could be either a file or directory and from any filesystem.
  * @param target The target path to bind to, can be `NULL` to bind to root.
+ * @param source The source path to bind from, could be either a file or directory and from any filesystem.
  * @param mode The mode specifying permissions and mount behaviour.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
@@ -166,7 +166,7 @@ mount_t* namespace_mount(namespace_handle_t* handle, const char* deviceName, con
  * - `ENOMEM`: Out of memory.
  * - Other errors as returned by `mount_new()`.
  */
-mount_t* namespace_bind(namespace_handle_t* handle, path_t* source, path_t* target, mode_t mode);
+mount_t* namespace_bind(namespace_handle_t* handle, path_t* target, path_t* source, mode_t mode);
 
 /**
  * @brief Remove a mount in a namespace.

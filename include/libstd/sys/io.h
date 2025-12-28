@@ -513,21 +513,21 @@ fd_t claim(key_t* key);
  * The created mount will inherit permissions from the source while the mount behaviour will follow the flags specified
  * in `mountpoint`.
  *
- * @param source The file descriptor to bind, must represent a directory.
  * @param mountpoint The mountpoint path.
+ * @param source The file descriptor to bind, must represent a directory.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t bind(fd_t source, const char* mountpoint);
+uint64_t bind(const char* mountpoint, fd_t source);
 
 /**
  * @brief System call for mounting a filesystem.
  *
- * @param device The device name, or `NULL` for no device.
- * @param fs The filesystem name.
  * @param mountpoint The target path to mount to.
+ * @param fs The filesystem name.
+ * @param device The device name, or `NULL` for no device.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t mount(const char* device, const char* fs, const char* mountpoint);
+uint64_t mount(const char* mountpoint, const char* fs, const char* device);
 
 /**
  * @brief System call for unmounting a filesystem.

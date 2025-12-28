@@ -467,22 +467,8 @@ static uint64_t process_ctl_bind(file_t* file, uint64_t argc, const char** argv)
     process_t* process = file->inode->private;
     process_t* writing = sched_process();
 
-    pathname_t sourceName;
-    if (pathname_init(&sourceName, argv[1]) == ERR)
-    {
-        return ERR;
-    }
-
-    path_t source = cwd_get(&writing->cwd, &writing->ns);
-    PATH_DEFER(&source);
-
-    if (path_walk(&source, &sourceName, &writing->ns) == ERR)
-    {
-        return ERR;
-    }
-
     pathname_t targetName;
-    if (pathname_init(&targetName, argv[2]) == ERR)
+    if (pathname_init(&targetName, argv[1]) == ERR)
     {
         return ERR;
     }
@@ -495,7 +481,21 @@ static uint64_t process_ctl_bind(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    mount_t* mount = namespace_bind(&process->ns, &source, &target, targetName.mode);
+    pathname_t sourceName;
+    if (pathname_init(&sourceName, argv[2]) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t source = cwd_get(&writing->cwd, &writing->ns);
+    PATH_DEFER(&source);
+
+    if (path_walk(&source, &sourceName, &writing->ns) == ERR)
+    {
+        return ERR;
+    }
+
+    mount_t* mount = namespace_bind(&process->ns, &target, &source, targetName.mode);
     if (mount == NULL)
     {
         return ERR;

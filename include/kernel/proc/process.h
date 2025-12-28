@@ -142,17 +142,13 @@
  *
  * Duplicates the specified old file descriptor to the new file descriptor in the process.
  *
- * ### bind <source> <target>
+ * ### bind <target> <source>
  *
  * Bind a source path from the writing process to a target path in the processes namespace.
  *
  * Path flags for controlling the bind behaviour should to be specified in the target path.
  *
  * @see kernel_fs_path for information on path flags.
- *
- * ### touch <path>
- * 
- * Open and close the path in the process's namespace. 
  * 
  * ### start
  *
