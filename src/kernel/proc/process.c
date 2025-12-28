@@ -539,6 +539,31 @@ static uint64_t process_ctl_mount(file_t* file, uint64_t argc, const char** argv
     return 0;
 }
 
+static uint64_t process_ctl_touch(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 2)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+
+    pathname_t pathname;
+    if (pathname_init(&pathname, argv[1]) == ERR)
+    {
+        return ERR;
+    }
+
+    file_t* touch = vfs_open(&pathname, process);
+    if (touch == NULL)
+    {
+        return ERR;
+    }
+    UNREF(touch);
+    return 0;
+}
+
 static uint64_t process_ctl_start(file_t* file, uint64_t argc, const char** argv)
 {
     (void)argv; // Unused
@@ -580,6 +605,7 @@ CTL_STANDARD_OPS_DEFINE(ctlOps,
         {"dup2", process_ctl_dup2, 3, 3},
         {"bind", process_ctl_bind, 3, 3},
         {"mount", process_ctl_mount, 3, 4},
+        {"touch", process_ctl_touch, 2, 2},
         {"start", process_ctl_start, 1, 1},
         {"kill", process_ctl_kill, 1, 1},
         {0},

@@ -124,7 +124,6 @@ static uint64_t pkg_spawn(const char* buffer)
         }
     }
 
-    printf("pkgd: spawning '%s'\n", bin);
     return 0;
 }
 
