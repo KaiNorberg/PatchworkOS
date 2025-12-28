@@ -10,8 +10,8 @@
 #include <sys/list.h>
 
 /**
- * @brief RAM filesystem.
- * @defgroup kernel_fs_ramfs RAMFS
+ * @brief In-memory filesystem.
+ * @defgroup kernel_fs_tmpfs TmpFS
  * @ingroup kernel_fs
  *
  * A simple in-memory filesystem. All data is lost when power is lost.
@@ -20,22 +20,22 @@
  */
 
 /**
- * @brief The name of the ramfs filesystem.
+ * @brief The name of the tmpfs filesystem.
  */
-#define RAMFS_NAME "ramfs"
+#define TMPFS_NAME "tmpfs"
 
 /**
- * @brief Superblock private data for ramfs.
+ * @brief Superblock private data for tmpfs.
  */
 typedef struct
 {
     list_t dentrys; // We store all dentries in here to keep them in memory.
     lock_t lock;
-} ramfs_superblock_data_t;
+} tmpfs_superblock_data_t;
 
 /**
- * @brief Registers the ramfs filesystem and mounts an instance of it containing the boot ram disk as root.
+ * @brief Registers the tmpfs filesystem and mounts an instance of it containing the boot ram disk as root.
  */
-void ramfs_init(void);
+void tmpfs_init(void);
 
 /** @} */

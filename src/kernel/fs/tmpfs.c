@@ -1,4 +1,4 @@
-#include <kernel/fs/ramfs.h>
+#include <kernel/fs/tmpfs.h>
 
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file.h>
@@ -25,11 +25,13 @@
 #include <sys/list.h>
 #include <sys/math.h>
 
-static inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, void* buffer, uint64_t size);
+static bool initialized = false;
 
-static void ramfs_dentry_add(dentry_t* dentry)
+static inode_t* tmpfs_inode_new(superblock_t* superblock, inode_type_t type, void* buffer, uint64_t size);
+
+static void tmpfs_dentry_add(dentry_t* dentry)
 {
-    ramfs_superblock_data_t* super = dentry->superblock->private;
+    tmpfs_superblock_data_t* super = dentry->superblock->private;
 
     lock_acquire(&super->lock);
     list_push_back(&super->dentrys, &dentry->otherEntry);
@@ -37,9 +39,9 @@ static void ramfs_dentry_add(dentry_t* dentry)
     lock_release(&super->lock);
 }
 
-static void ramfs_dentry_remove(dentry_t* dentry)
+static void tmpfs_dentry_remove(dentry_t* dentry)
 {
-    ramfs_superblock_data_t* super = dentry->superblock->private;
+    tmpfs_superblock_data_t* super = dentry->superblock->private;
 
     lock_acquire(&super->lock);
     list_remove(&super->dentrys, &dentry->otherEntry);
@@ -49,7 +51,7 @@ static void ramfs_dentry_remove(dentry_t* dentry)
     dentry_remove(dentry);
 }
 
-static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t tmpfs_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     MUTEX_SCOPE(&file->inode->mutex);
 
@@ -61,7 +63,7 @@ static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count, uint64_t*
     return BUFFER_READ(buffer, count, offset, file->inode->private, file->inode->size);
 }
 
-static uint64_t ramfs_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t tmpfs_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
     MUTEX_SCOPE(&file->inode->mutex);
 
@@ -82,16 +84,16 @@ static uint64_t ramfs_write(file_t* file, const void* buffer, uint64_t count, ui
 }
 
 static file_ops_t fileOps = {
-    .read = ramfs_read,
-    .write = ramfs_write,
+    .read = tmpfs_read,
+    .write = tmpfs_write,
     .seek = file_generic_seek,
 };
 
-static uint64_t ramfs_create(inode_t* dir, dentry_t* target, mode_t mode)
+static uint64_t tmpfs_create(inode_t* dir, dentry_t* target, mode_t mode)
 {
     MUTEX_SCOPE(&dir->mutex);
 
-    inode_t* inode = ramfs_inode_new(dir->superblock, mode & MODE_DIRECTORY ? INODE_DIR : INODE_FILE, NULL, 0);
+    inode_t* inode = tmpfs_inode_new(dir->superblock, mode & MODE_DIRECTORY ? INODE_DIR : INODE_FILE, NULL, 0);
     if (inode == NULL)
     {
         return ERR;
@@ -99,12 +101,12 @@ static uint64_t ramfs_create(inode_t* dir, dentry_t* target, mode_t mode)
     UNREF_DEFER(inode);
 
     dentry_make_positive(target, inode);
-    ramfs_dentry_add(target);
+    tmpfs_dentry_add(target);
 
     return 0;
 }
 
-static void ramfs_truncate(inode_t* inode)
+static void tmpfs_truncate(inode_t* inode)
 {
     MUTEX_SCOPE(&inode->mutex);
 
@@ -116,17 +118,17 @@ static void ramfs_truncate(inode_t* inode)
     inode->size = 0;
 }
 
-static uint64_t ramfs_link(inode_t* dir, dentry_t* old, dentry_t* target)
+static uint64_t tmpfs_link(inode_t* dir, dentry_t* old, dentry_t* target)
 {
     MUTEX_SCOPE(&dir->mutex);
 
     dentry_make_positive(target, old->inode);
-    ramfs_dentry_add(target);
+    tmpfs_dentry_add(target);
 
     return 0;
 }
 
-static uint64_t ramfs_readlink(inode_t* inode, char* buffer, uint64_t count)
+static uint64_t tmpfs_readlink(inode_t* inode, char* buffer, uint64_t count)
 {
     MUTEX_SCOPE(&inode->mutex);
 
@@ -141,11 +143,11 @@ static uint64_t ramfs_readlink(inode_t* inode, char* buffer, uint64_t count)
     return copySize;
 }
 
-static uint64_t ramfs_symlink(inode_t* dir, dentry_t* target, const char* dest)
+static uint64_t tmpfs_symlink(inode_t* dir, dentry_t* target, const char* dest)
 {
     MUTEX_SCOPE(&dir->mutex);
 
-    inode_t* inode = ramfs_inode_new(dir->superblock, INODE_SYMLINK, (void*)dest, strlen(dest));
+    inode_t* inode = tmpfs_inode_new(dir->superblock, INODE_SYMLINK, (void*)dest, strlen(dest));
     if (inode == NULL)
     {
         return ERR;
@@ -153,18 +155,18 @@ static uint64_t ramfs_symlink(inode_t* dir, dentry_t* target, const char* dest)
     UNREF_DEFER(inode);
 
     dentry_make_positive(target, inode);
-    ramfs_dentry_add(target);
+    tmpfs_dentry_add(target);
 
     return 0;
 }
 
-static uint64_t ramfs_remove(inode_t* dir, dentry_t* target)
+static uint64_t tmpfs_remove(inode_t* dir, dentry_t* target)
 {
     MUTEX_SCOPE(&dir->mutex);
 
     if (target->inode->type == INODE_FILE || target->inode->type == INODE_SYMLINK)
     {
-        ramfs_dentry_remove(target);
+        tmpfs_dentry_remove(target);
     }
     else if (target->inode->type == INODE_DIR)
     {
@@ -174,13 +176,13 @@ static uint64_t ramfs_remove(inode_t* dir, dentry_t* target)
             return ERR;
         }
 
-        ramfs_dentry_remove(target);
+        tmpfs_dentry_remove(target);
     }
 
     return 0;
 }
 
-static void ramfs_inode_cleanup(inode_t* inode)
+static void tmpfs_inode_cleanup(inode_t* inode)
 {
     if (inode->private != NULL)
     {
@@ -191,45 +193,45 @@ static void ramfs_inode_cleanup(inode_t* inode)
 }
 
 static inode_ops_t inodeOps = {
-    .create = ramfs_create,
-    .truncate = ramfs_truncate,
-    .link = ramfs_link,
-    .readlink = ramfs_readlink,
-    .symlink = ramfs_symlink,
-    .remove = ramfs_remove,
-    .cleanup = ramfs_inode_cleanup,
+    .create = tmpfs_create,
+    .truncate = tmpfs_truncate,
+    .link = tmpfs_link,
+    .readlink = tmpfs_readlink,
+    .symlink = tmpfs_symlink,
+    .remove = tmpfs_remove,
+    .cleanup = tmpfs_inode_cleanup,
 };
 
 static dentry_ops_t dentryOps = {
     .iterate = dentry_generic_iterate,
 };
 
-static void ramfs_superblock_cleanup(superblock_t* superblock)
+static void tmpfs_superblock_cleanup(superblock_t* superblock)
 {
     (void)superblock; // Unused
 
-    panic(NULL, "ramfs unmounted\n");
+    panic(NULL, "tmpfs unmounted\n");
 }
 
 static superblock_ops_t superOps = {
-    .cleanup = ramfs_superblock_cleanup,
+    .cleanup = tmpfs_superblock_cleanup,
 };
 
-static dentry_t* ramfs_load_file(superblock_t* superblock, dentry_t* parent, const char* name, const boot_file_t* in)
+static dentry_t* tmpfs_load_file(superblock_t* superblock, dentry_t* parent, const char* name, const boot_file_t* in)
 {
     dentry_t* dentry = dentry_new(superblock, parent, name);
     if (dentry == NULL)
     {
-        panic(NULL, "Failed to create ramfs file dentry");
+        panic(NULL, "Failed to create tmpfs file dentry");
     }
     UNREF_DEFER(dentry);
 
-    ramfs_dentry_add(dentry);
+    tmpfs_dentry_add(dentry);
 
-    inode_t* inode = ramfs_inode_new(superblock, INODE_FILE, in->data, in->size);
+    inode_t* inode = tmpfs_inode_new(superblock, INODE_FILE, in->data, in->size);
     if (inode == NULL)
     {
-        panic(NULL, "Failed to create ramfs file inode");
+        panic(NULL, "Failed to create tmpfs file inode");
     }
     UNREF_DEFER(inode);
 
@@ -238,44 +240,43 @@ static dentry_t* ramfs_load_file(superblock_t* superblock, dentry_t* parent, con
     return REF(dentry);
 }
 
-static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, const char* name, const boot_dir_t* in)
+static dentry_t* tmpfs_load_dir(superblock_t* superblock, dentry_t* parent, const char* name, const boot_dir_t* in)
 {
-    ramfs_superblock_data_t* superData = superblock->private;
+    tmpfs_superblock_data_t* superData = superblock->private;
 
     dentry_t* dentry = dentry_new(superblock, parent, name);
     if (dentry == NULL)
     {
-        panic(NULL, "Failed to create ramfs dentry");
+        panic(NULL, "Failed to create tmpfs dentry");
     }
     UNREF_DEFER(dentry);
 
-    ramfs_dentry_add(dentry);
-
-    inode_t* inode = ramfs_inode_new(superblock, INODE_DIR, NULL, 0);
+    inode_t* inode = tmpfs_inode_new(superblock, INODE_DIR, NULL, 0);
     if (inode == NULL)
     {
-        panic(NULL, "Failed to create ramfs inode");
+        panic(NULL, "Failed to create tmpfs inode");
     }
     UNREF_DEFER(inode);
 
+    tmpfs_dentry_add(dentry);
     dentry_make_positive(dentry, inode);
 
     boot_file_t* file;
     LIST_FOR_EACH(file, &in->files, entry)
     {
-        UNREF(ramfs_load_file(superblock, dentry, file->name, file));
+        UNREF(tmpfs_load_file(superblock, dentry, file->name, file));
     }
 
     boot_dir_t* child;
     LIST_FOR_EACH(child, &in->children, entry)
     {
-        UNREF(ramfs_load_dir(superblock, dentry, child->name, child));
+        UNREF(tmpfs_load_dir(superblock, dentry, child->name, child));
     }
 
     return REF(dentry);
 }
 
-static dentry_t* ramfs_mount(filesystem_t* fs, const char* devName, void* private)
+static dentry_t* tmpfs_mount(filesystem_t* fs, const char* devName, void* private)
 {
     (void)devName; // Unused
     (void)private; // Unused
@@ -290,7 +291,7 @@ static dentry_t* ramfs_mount(filesystem_t* fs, const char* devName, void* privat
     superblock->blockSize = 0;
     superblock->maxFileSize = UINT64_MAX;
 
-    ramfs_superblock_data_t* data = malloc(sizeof(ramfs_superblock_data_t));
+    tmpfs_superblock_data_t* data = malloc(sizeof(tmpfs_superblock_data_t));
     if (data == NULL)
     {
         return NULL;
@@ -299,20 +300,43 @@ static dentry_t* ramfs_mount(filesystem_t* fs, const char* devName, void* privat
     lock_init(&data->lock);
     superblock->private = data;
 
-    boot_info_t* bootInfo = boot_info_get();
-    const boot_disk_t* disk = &bootInfo->disk;
+    if (!initialized)
+    {
+        boot_info_t* bootInfo = boot_info_get();
+        const boot_disk_t* disk = &bootInfo->disk;
 
-    dentry_t* root = ramfs_load_dir(superblock, NULL, VFS_ROOT_ENTRY_NAME, disk->root);
-    if (root == NULL)
+        dentry_t* root = tmpfs_load_dir(superblock, NULL, VFS_ROOT_ENTRY_NAME, disk->root);
+        if (root == NULL)
+        {
+            return NULL;
+        }
+
+        superblock->root = root;
+        return REF(superblock->root);
+    }
+
+    dentry_t* dentry = dentry_new(superblock, NULL, VFS_ROOT_ENTRY_NAME);
+    if (dentry == NULL)
     {
         return NULL;
     }
+    UNREF_DEFER(dentry);
 
-    superblock->root = root;
+    inode_t* inode = tmpfs_inode_new(superblock, INODE_DIR, NULL, 0);
+    if (inode == NULL)
+    {
+        return NULL;
+    }
+    UNREF_DEFER(inode);
+
+    tmpfs_dentry_add(dentry);
+    dentry_make_positive(dentry, inode);
+
+    superblock->root = dentry;
     return REF(superblock->root);
 }
 
-static inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, void* buffer, uint64_t size)
+static inode_t* tmpfs_inode_new(superblock_t* superblock, inode_type_t type, void* buffer, uint64_t size)
 {
     inode_t* inode = inode_new(superblock, vfs_id_get(), type, &inodeOps, &fileOps);
     if (inode == NULL)
@@ -342,26 +366,28 @@ static inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, voi
     return REF(inode);
 }
 
-static filesystem_t ramfs = {
-    .name = RAMFS_NAME,
-    .mount = ramfs_mount,
+static filesystem_t tmpfs = {
+    .name = TMPFS_NAME,
+    .mount = tmpfs_mount,
 };
 
-void ramfs_init(void)
+void tmpfs_init(void)
 {
-    LOG_INFO("registering ramfs\n");
-    if (filesystem_register(&ramfs) == ERR)
+    LOG_INFO("registering tmpfs\n");
+    if (filesystem_register(&tmpfs) == ERR)
     {
-        panic(NULL, "Failed to register ramfs");
+        panic(NULL, "Failed to register tmpfs");
     }
-    LOG_INFO("mounting ramfs\n");
+    LOG_INFO("mounting tmpfs\n");
 
     process_t* process = sched_process();
-    mount_t* temp = namespace_mount(&process->ns, VFS_DEVICE_NAME_NONE, RAMFS_NAME, NULL, MODE_CHILDREN | MODE_ALL_PERMS, NULL);
+    mount_t* temp = namespace_mount(&process->ns, VFS_DEVICE_NAME_NONE, TMPFS_NAME, NULL, MODE_CHILDREN | MODE_ALL_PERMS, NULL);
     if (temp == NULL)
     {
-        panic(NULL, "Failed to mount ramfs");
+        panic(NULL, "Failed to mount tmpfs");
     }
     UNREF(temp);
-    LOG_INFO("ramfs initialized\n");
+    LOG_INFO("tmpfs initialized\n");
+
+    initialized = true;
 }

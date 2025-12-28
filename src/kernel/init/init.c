@@ -8,7 +8,7 @@
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/syscall.h>
 #include <kernel/drivers/pic.h>
-#include <kernel/fs/ramfs.h>
+#include <kernel/fs/tmpfs.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/init/boot_info.h>
@@ -82,7 +82,7 @@ static void init_finalize(void)
 {
     pic_disable();
 
-    ramfs_init();
+    tmpfs_init();
     sysfs_init();
 
     log_file_expose();

@@ -25,7 +25,7 @@
  */
 
 /**
- * @brief Filesystem structure, represents a filesystem type, e.g. fat32, ramfs, sysfs, etc.
+ * @brief Filesystem structure, represents a filesystem type, e.g. fat32, tmpfs, sysfs, etc.
  */
 typedef struct filesystem
 {

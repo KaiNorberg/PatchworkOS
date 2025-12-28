@@ -20,10 +20,10 @@ typedef struct dentry dentry_t;
  * @ingroup kernel_fs
  *
  * A superblock represents a mounted filesystem, it can be thought of as "filesystem + device". The filesystem is
- * just the format of the data, e.g. fat32, ramfs, sysfs, etc. and the device provides the data. The superblock is the
+ * just the format of the data, e.g. fat32, tmpfs, sysfs, etc. and the device provides the data. The superblock is the
  * combination of both, e.g. a fat32 filesystem on /dev/sda1.
  *
- * In the case of certain special filesystems like ramfs or sysfs there is no underlying device, in this case
+ * In the case of certain special filesystems like tmpfs or sysfs there is no underlying device, in this case
  * the device name is simply set to `VFS_DEVICE_NAME_NONE`.
  *
  * @{
