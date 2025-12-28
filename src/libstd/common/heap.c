@@ -40,7 +40,7 @@ void* _heap_map_memory(uint64_t size)
 {
     if (zeroDev == ERR)
     {
-        zeroDev = open("/dev/zero:rw");
+        zeroDev = open("/dev/const/zero:rw");
         if (zeroDev == ERR)
         {
             errno = ENOMEM;

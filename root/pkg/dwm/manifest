@@ -20,5 +20,5 @@ profile = isolated
 /dev/kbd:rw = /dev/kbd
 /dev/mouse:rw = /dev/mouse
 /dev/klog:rw = /dev/klog
-/dev/zero:rw = /dev/zero
+/dev/const:rw = /dev/const
 /dev/shmem:rw = /dev/shmem

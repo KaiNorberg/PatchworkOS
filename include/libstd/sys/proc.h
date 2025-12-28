@@ -142,7 +142,7 @@ typedef enum
  * @brief System call to map memory from a file.
  *
  * The `mmap()` function maps memory to the currently running processes address space from a file, this is the only way
- * to allocate virtual memory from userspace. An example usage would be to map the `/dev/zero` file which would allocate
+ * to allocate virtual memory from userspace. An example usage would be to map the `/dev/const/zero` file which would allocate
  * zeroed memory.
  *
  * @param fd The open file descriptor of the file to be mapped.

@@ -21,14 +21,6 @@ extern "C"
  *
  * A display represents a connection to the Desktop Window Manager (DWM).
  *
- * The display system IS thread safe, but the rest of the Patchwork library may not be. The display connection can thus
- * be used to synchronize multiple threads when working with windows, etc.
- *
- * There are two things of note for performance when using a display. First, commands are batched and sent together when
- * `display_cmds_flush()` is called. Second, the display uses a internal pipe to store events that cant be processed
- * immediately and this means that if a thread calls `display_push()` another thread blocking on `display_next()` will
- * unblock since its blocking on both the displays DWM connection and the internal pipe.
- *
  * @{
  */
 

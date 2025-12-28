@@ -57,13 +57,19 @@ typedef struct window
 
 #define DISPLAY_MAX_EVENT 64
 
+typedef struct
+{
+    event_t buffer[DISPLAY_MAX_EVENT];
+    uint64_t readIndex;
+    uint64_t writeIndex;
+} event_queue_t;
+
 typedef struct display
 {
     char* id;
     fd_t ctl;
     fd_t data;
-    fd_t eventsPipe;
-    uint64_t eventsInPipe;
+    event_queue_t events;
     bool isConnected;
     cmd_buffer_t cmds;
     list_t windows;

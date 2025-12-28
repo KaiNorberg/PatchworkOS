@@ -178,7 +178,7 @@ void _heap_free(_heap_header_t* block);
 /**
  * @brief Directly maps memory of the given size.
  *
- * In the kernel this function uses the VMM to map new memory, in user space it uses `/dev/zero`.
+ * In the kernel this function uses the VMM to map new memory, in user space it uses `/dev/const/zero`.
  *
  * @param size The size of memory to map, in bytes.
  * @return On success, pointer to the mapped memory. On failure, `NULL`.

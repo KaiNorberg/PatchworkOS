@@ -18,6 +18,5 @@ profile = isolated
 /cfg:r = /cfg
 /sys/data:r = /sys/data
 /net:rw = /net
-/dev/zero:rw = /dev/zero
+/dev/const:rw = /dev/const
 /dev/klog:rw = /dev/klog
-/dev/pipe:rw = /dev/pipe
