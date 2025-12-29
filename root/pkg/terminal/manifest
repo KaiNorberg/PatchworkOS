@@ -8,17 +8,18 @@ license = MIT
 bin = /app/bin/terminal
 priority = 30
 
+[sandbox]
+profile = empty
+terminal = false
+
 [env]
 PATH = /sys/bin
 
-[sandbox]
-profile = empty
-
 [namespace]
 /app:rx = $PKG
-/cfg:r = /cfg
+/acpi:rw = /acpi
 /sys:rx = /sys
+/cfg:r = /cfg
+/dev:rw = /dev
 /net:rw = /net
 /proc:rw = /proc
-/dev/const:rw = /dev/const
-/dev/pipe:rw = /dev/pipe

@@ -13,17 +13,17 @@ static void init_spawn_pkgd(void)
     const char* argv[] = {"/sbin/pkgd", NULL};
     if (spawn(argv, SPAWN_DEFAULT) == ERR)
     {
-        printf("init: failed to spawn pkgd! (%s)\n", strerror(errno));
+        printf("init: failed to spawn pkgd (%s)\n", strerror(errno));
         abort();
     }
 }
 
-static void init_create_launch_links(void)
+static void init_create_pkg_run_links(void)
 {
     fd_t pkg = open("/pkg");
     if (pkg == ERR)
     {
-        printf("init: failed to open /pkg! (%s)\n", strerror(errno));
+        printf("init: failed to open /pkg (%s)\n", strerror(errno));
         abort();
     }
 
@@ -32,7 +32,7 @@ static void init_create_launch_links(void)
     if (readdir(pkg, &dirents, &amount) == ERR)
     {
         close(pkg);
-        printf("init: failed to read /pkg! (%s)\n", strerror(errno));
+        printf("init: failed to read /pkg (%s)\n", strerror(errno));
         abort();
     }
     close(pkg);
@@ -44,11 +44,11 @@ static void init_create_launch_links(void)
             continue;
         }
 
-        printf("init: creating launch symlink for package '%s'\n", dirents[i].path);
-        if (symlink("launch", F("/sys/bin/%s", dirents[i].path)) == ERR && errno != EEXIST)
+        printf("init: creating pkg-run symlink for package '%s'\n", dirents[i].path);
+        if (symlink("pkg-run", F("/sys/bin/%s", dirents[i].path)) == ERR && errno != EEXIST)
         {
             free(dirents);
-            printf("init: failed to create launch symlink for package '%s'! (%s)\n", dirents[i].path, strerror(errno));
+            printf("init: failed to create launch symlink for package '%s' (%s)\n", dirents[i].path, strerror(errno));
             abort();
         }
     }
@@ -61,7 +61,7 @@ static void init_config_load(void)
     config_t* config = config_open("init", "main");
     if (config == NULL)
     {
-        printf("init: failed to open config file! (%s)\n", strerror(errno));
+        printf("init: failed to open config file (%s)\n", strerror(errno));
         abort();
     }
 
@@ -128,7 +128,7 @@ int main(void)
 
     init_spawn_pkgd();
 
-    init_create_launch_links();
+    init_create_pkg_run_links();
 
     init_config_load();
 

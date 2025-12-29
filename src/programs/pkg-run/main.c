@@ -16,13 +16,13 @@ int main(int argc, char** argv)
     char* id = sreadfile("/net/local/seqpacket");
     if (id == NULL)
     {
-        printf("launch: failed to open local seqpacket socket (%s)\n", strerror(errno));
+        printf("pkg-run: failed to open local seqpacket socket (%s)\n", strerror(errno));
         return EXIT_FAILURE;
     }
 
     if (swritefile(F("/net/local/%s/ctl", id), "connect pkg") == ERR)
     {
-        printf("launch: failed to bind to pkg (%s)\n", strerror(errno));
+        printf("pkg-run: failed to bind to pkg (%s)\n", strerror(errno));
         free(id);
         return EXIT_FAILURE;
     }
@@ -42,7 +42,7 @@ int main(int argc, char** argv)
     {
         if (strlen(buffer) + 1 + strlen(argv[i]) >= BUFFER_MAX)
         {
-            printf("launch: arguments too long\n");
+            printf("pkg-run: arguments too long\n");
             free(id);
             return EXIT_FAILURE;
         }
@@ -52,7 +52,7 @@ int main(int argc, char** argv)
 
     if (swritefile(F("/net/local/%s/data", id), buffer) == ERR)
     {
-        printf("launch: failed to send request (%s)\n", strerror(errno));
+        printf("pkg-run: failed to send request (%s)\n", strerror(errno));
         free(id);
         return EXIT_FAILURE;
     }

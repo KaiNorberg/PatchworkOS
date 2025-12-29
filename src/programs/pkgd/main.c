@@ -67,9 +67,36 @@ static uint64_t pkg_spawn(const char* buffer)
         return ERR;
     }
 
+    spawn_flags_t flags = (SPAWN_SUSPEND | SPAWN_EMPTY_ALL) & ~SPAWN_EMPTY_NS;
+
+    section_t* sandbox = &manifest.sections[SECTION_SANDBOX];
+    char* profile = manifest_get_value(sandbox, "profile");
+    if (profile == NULL)
+    {
+        profile = "empty";
+    }
+
+    if (strcmp(profile, "empty") == 0)
+    {
+        flags |= SPAWN_EMPTY_NS;
+    }
+    else if (strcmp(profile, "copy") == 0)
+    {
+        flags |= SPAWN_COPY_NS;
+    }
+    else if (strcmp(profile, "share") == 0)
+    {
+        // Do nothing, default is to share namespace.
+    }
+    else
+    {
+        printf("pkgd: manifest of '%s' has unknown sandbox profile '%s'\n", argv[0], profile);
+        return ERR;
+    }
+
     const char* temp = argv[0];
     argv[0] = bin;
-    pid_t pid = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_ALL);
+    pid_t pid = spawn(argv, flags);
     if (pid == ERR)
     {
         printf("pkgd: failed to spawn '%s' (%s)\n", bin, strerror(errno));

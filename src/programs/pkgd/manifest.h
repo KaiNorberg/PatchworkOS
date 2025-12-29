@@ -22,26 +22,35 @@
  * bin = <path to the main executable, specified in the packages namespace>
  * priority = <scheduler priority [`PRIORITY_MIN`, `PRIORITY_MAX_USER`]>
  *
- * [env]
- * KEY = VALUE
- * 
  * [sandbox]
- * profile = <empty|copy|share>
- *
+ * profile = <empty|copy|share|inherit>
+ * terminal = <true|false>
+ * 
+ * [env]
+ * KEY = VALUE ; Environment variable key-value pairs.
+ * ...
+ * 
  * [namespace]
- * <source, with flags> = <target>
+ * <target> = <source> ; Flags should be specified with the target, the source is specified in the pkgd's namespace.
  * ```
  * 
  * ## Sandbox Profiles
  * 
- * There are three possible sandbox profiles:
+ * There are four possible sandbox profiles:
  * - `empty`: Start with an empty namespace, meaning the process will by default not have access to any files or devices.
  * - `copy`: Copy the pkgd's namespace, meaning the process will have total access to the same files and devices as the pkgd but changes to the namespace will not affect the pkgd.
  * - `share`: Share the pkgd's namespace, meaning any changes to the namespace will affect both the pkgd and the process.
+ * - `inherit`: Inherit the caller's namespace. This is useful for system utilities like `ls` or `grep` that need to operate on the user's current environment.
  * 
  * @warning The copy and share profiles should only be used for trusted packages as they provide almost complete access to the system.
  * 
  * @todo Implement sandbox profiles.
+ * 
+ * ## Terminal Mode
+ * 
+ * If `terminal` is set to `true`, then the package will receive stdio from the creator, be in the same process-group as the creator and start with the same cwd as the creator. Finally, the creator will receive a key to the packages `/proc/[pid]/wait` file to retrieve its exit status.
+ * 
+ * In short, in terminal mode the package will, as far as the creator is concerned, behave like a child process.
  * 
  * @{
  */
@@ -66,8 +75,8 @@ typedef enum
 {
     SECTION_META,
     SECTION_EXEC,
-    SECTION_ENV,
     SECTION_SANDBOX,
+    SECTION_ENV,
     SECTION_NAMESPACE,
     SECTION_TYPE_MAX,
 } section_type_t;

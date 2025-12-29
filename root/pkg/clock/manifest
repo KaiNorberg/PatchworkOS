@@ -8,10 +8,11 @@ license = MIT
 bin = /app/bin/clock
 priority = 30
 
-[env]
-
 [sandbox]
 profile = empty
+terminal = false
+
+[env]
 
 [namespace]
 /app:rx = $PKG

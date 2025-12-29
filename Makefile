@@ -8,7 +8,7 @@ PACKAGES = $(shell find src/pkg/ -name "*.mk")
 PROGRAMS = $(shell find src/programs/ -name "*.mk")
 MODULES = $(shell find src/modules/ -name "*.mk")
 
-ROOT_DIRS = acpi sys sys/bin sys/lib sys/include sys/data pkg cfg dev efi efi/boot kernel kernel/modules kernel/modules/$(VERSION_STRING) net proc sbin usr
+ROOT_DIRS = acpi sys sys/bin sys/lib sys/include sys/data pkg cfg dev efi efi/boot kernel kernel/modules kernel/modules/$(VERSION_STRING) net proc sbin
 
 # Programs to copy to /bin
 #BIN_PROGRAMS = shell cat echo grep link ls mv readlink rm root stat symlink tail touch wall cursor taskbar dwm
@@ -16,7 +16,7 @@ ROOT_DIRS = acpi sys sys/bin sys/lib sys/include sys/data pkg cfg dev efi efi/bo
 # Programs to copy to /sbin
 SBIN_PROGRAMS = init pkgd
 # Programs to copy to /sys/bin
-SYS_BIN_PROGRAMS = launch shell cat echo grep link ls mv readlink rm root stat symlink tail touch
+SYS_BIN_PROGRAMS = pkg-run shell cat echo grep link ls mv readlink rm root stat symlink tail touch
 
 # Programs to copy to /usr/bin
 #USR_BIN_PROGRAMS = $(filter-out $(BIN_PROGRAMS) $(SBIN_PROGRAMS),$(basename $(notdir $(shell find bin/programs/))))
