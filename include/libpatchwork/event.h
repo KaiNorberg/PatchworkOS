@@ -126,7 +126,7 @@ typedef struct
  */
 typedef struct
 {
-    key_t shmemKey; ///< Key that can be `claim()`ed to access the surface's shared memory.
+    char shmemKey[KEY_128BIT]; ///< Key that can be `claim()`ed to access the surface's shared memory.
 } event_surface_new_t;
 
 /**

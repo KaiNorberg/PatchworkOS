@@ -367,7 +367,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     }
     win->surface = event.target;
 
-    fd_t shmem = claim(&event.surfaceNew.shmemKey);
+    fd_t shmem = claim(event.surfaceNew.shmemKey);
     if (shmem == ERR)
     {
         window_free(win);

@@ -10,7 +10,7 @@
  * All packages must include a manifest file located at `/pkg/<package>/manifest` using the below format.
  *
  * ## Format
- * 
+ *
  * ```
  * [meta]
  * description = <short description of the package>
@@ -24,34 +24,43 @@
  *
  * [sandbox]
  * profile = <empty|copy|share|inherit>
- * terminal = <true|false>
- * 
+ * foreground = <true|false>
+ *
  * [env]
  * KEY = VALUE ; Environment variable key-value pairs.
  * ...
- * 
+ *
  * [namespace]
  * <target> = <source> ; Flags should be specified with the target, the source is specified in the pkgd's namespace.
  * ```
- * 
+ *
  * ## Sandbox Profiles
- * 
+ *
  * There are four possible sandbox profiles:
- * - `empty`: Start with an empty namespace, meaning the process will by default not have access to any files or devices.
- * - `copy`: Copy the pkgd's namespace, meaning the process will have total access to the same files and devices as the pkgd but changes to the namespace will not affect the pkgd.
- * - `share`: Share the pkgd's namespace, meaning any changes to the namespace will affect both the pkgd and the process.
- * - `inherit`: Inherit the caller's namespace. This is useful for system utilities like `ls` or `grep` that need to operate on the user's current environment.
- * 
- * @warning The copy and share profiles should only be used for trusted packages as they provide almost complete access to the system.
- * 
- * @todo Implement sandbox profiles.
- * 
- * ## Terminal Mode
- * 
- * If `terminal` is set to `true`, then the package will receive stdio from the creator, be in the same process-group as the creator and start with the same cwd as the creator. Finally, the creator will receive a key to the packages `/proc/[pid]/wait` file to retrieve its exit status.
- * 
- * In short, in terminal mode the package will, as far as the creator is concerned, behave like a child process.
- * 
+ * - `empty`: Start with an empty namespace, meaning the process will by default not have access to any files or
+ * devices.
+ * - `copy`: Copy the pkgd's namespace, meaning the process will have total access to the same files and devices as the
+ * pkgd but changes to the namespace will not affect the pkgd.
+ * - `share`: Share the pkgd's namespace, meaning any changes to the namespace will affect both the pkgd and the
+ * process.
+ * - `inherit`: Inherit the caller's namespace. This is useful for system utilities like `ls` or `grep` that need to
+ * operate on the user's current environment.
+ *
+ * @warning The copy and share profiles should only be used for trusted packages as they provide almost complete access
+ * to the system.
+ *
+ * @todo Implement the inherit sandbox profile.
+ *
+ * ## Foreground Mode
+ *
+ * If `foreground` is set to `true`, then the package will receive stdio from the creator, be in the same process-group
+ * as the creator and start with the same cwd as the creator. Finally, the creator will receive a key to the packages
+ * `/proc/[pid]/wait` file to retrieve its exit status.
+ *
+ * In short, in foreground mode the package will, as far as the creator is concerned, behave like a child process.
+ *
+ * @todo Implement foreground mode.
+ *
  * @{
  */
 

@@ -9,8 +9,8 @@ bin = /app/bin/dwm
 priority = 30
 
 [sandbox]
-profile = 
-terminal = false
+profile = empty
+foreground = false
 
 [env]
 

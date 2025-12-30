@@ -13,6 +13,26 @@
  * @defgroup programs_pkgd Package Daemon
  * @ingroup programs
  *
+ * The package daemon is responsible for spawning and managing packages.
+ *
+ * ## Spawning Packages
+ *
+ * To spawn a package a request should be sent to the "pkg-spawn" socket, included below is the format of the request.
+ *
+ * ```
+ * [key=value ...] -- <package_name> [arg1 arg2 ...]
+ * ```
+ *
+ * Where the following key values can be specified:
+ * - `stdin`: The key for the shared file descriptor to use as standard input.
+ * - `stdout`: The key for the shared file descriptor to use as standard output.
+ * - `stderr`: The key for the shared file descriptor to use as standard error.
+ *
+ * @note Certain key values will only be used if the package is a foreground package.
+ *
+ * @todo Once filesystem servers are implemented the package deamon should use them instead of sockets.
+ *
+ * @{
  */
 
 #define ARGV_MAX 512
@@ -25,6 +45,8 @@ static void pkg_kill(pid_t pid)
 
 static uint64_t pkg_spawn(const char* buffer)
 {
+    printf("pkgd: received spawn request: '%s'\n", buffer);
+
     char argBuffer[BUFFER_MAX];
     uint64_t argc;
     const char** argv = argsplit_buf(argBuffer, sizeof(argBuffer), buffer, BUFFER_MAX, &argc);
@@ -34,21 +56,45 @@ static uint64_t pkg_spawn(const char* buffer)
         return ERR;
     }
 
-    if (strchr(argv[0], '/') != NULL || strchr(argv[0], '.') != NULL)
+    const char* pkg = NULL;
+    for (uint64_t i = 0; i < argc; i++)
     {
-        printf("pkgd: invalid package name '%s'\n", argv[0]);
+        if (strcmp(argv[i], "--") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                printf("pkgd: missing package name\n");
+                return ERR;
+            }
+
+            pkg = argv[i + 1];
+            break;
+        }
+
+        /// @todo Implement handling of key value pairs.
+    }
+
+    if (pkg == NULL)
+    {
+        printf("pkgd: missing package name\n");
+        return ERR;
+    }
+
+    if (strchr(pkg, '/') != NULL || strchr(pkg, '.') != NULL)
+    {
+        printf("pkgd: invalid package name '%s'\n", pkg);
         return ERR;
     }
 
     manifest_t manifest;
-    if (manifest_parse(F("/pkg/%s/manifest", argv[0]), &manifest) == ERR)
+    if (manifest_parse(F("/pkg/%s/manifest", pkg), &manifest) == ERR)
     {
-        printf("pkgd: failed to parse manifest of '%s'\n", argv[0]);
+        printf("pkgd: failed to parse manifest of '%s'\n", pkg);
         return ERR;
     }
 
     substitution_t substitutions[] = {
-        {"PKG", F("/pkg/%s/", argv[0])},
+        {"PKG", F("/pkg/%s/", pkg)},
     };
     manifest_substitute(&manifest, substitutions, sizeof(substitutions) / sizeof(substitution_t));
 
@@ -56,14 +102,14 @@ static uint64_t pkg_spawn(const char* buffer)
     char* bin = manifest_get_value(exec, "bin");
     if (bin == NULL)
     {
-        printf("pkgd: manifest of '%s' missing 'bin' entry\n", argv[0]);
+        printf("pkgd: manifest of '%s' missing 'bin' entry\n", pkg);
         return ERR;
     }
 
     uint64_t priority = manifest_get_integer(exec, "priority");
     if (priority == ERR)
     {
-        printf("pkgd: manifest of '%s' invalid or missing 'priority' entry\n", argv[0]);
+        printf("pkgd: manifest of '%s' invalid or missing 'priority' entry\n", pkg);
         return ERR;
     }
 
@@ -126,15 +172,15 @@ static uint64_t pkg_spawn(const char* buffer)
     if (ctl == ERR)
     {
         pkg_kill(pid);
-        printf("pkgd: failed to open ctl of '%s' (%s)\n", argv[0], strerror(errno));
+        printf("pkgd: failed to open ctl of '%s' (%s)\n", pkg, strerror(errno));
         return ERR;
     }
 
-    if (swrite(ctl, F("mount /:LSrwx tmpfs", argv[0])) == ERR)
+    if (swrite(ctl, "mount /:LSrwx tmpfs") == ERR)
     {
         close(ctl);
         pkg_kill(pid);
-        printf("pkgd: failed to set root of '%s' (%s)\n", argv[0], strerror(errno));
+        printf("pkgd: failed to set root of '%s' (%s)\n", pkg, strerror(errno));
         return ERR;
     }
 
@@ -157,13 +203,13 @@ static uint64_t pkg_spawn(const char* buffer)
     {
         close(ctl);
         pkg_kill(pid);
-        printf("pkgd: failed to start '%s' (%s)\n", argv[0], strerror(errno));
+        printf("pkgd: failed to start '%s' (%s)\n", pkg, strerror(errno));
         return ERR;
     }
 
     close(ctl);
 
-    printf("pkgd: spawned package '%s' with pid %llu\n", argv[0], pid);
+    printf("pkgd: spawned package '%s' with pid %llu\n", pkg, pid);
     return 0;
 }
 
@@ -176,7 +222,7 @@ int main(void)
         abort();
     }
 
-    if (swritefile(F("/net/local/%s/ctl", id), "bind pkg && listen") == ERR)
+    if (swritefile(F("/net/local/%s/ctl", id), "bind pkg-spawn && listen") == ERR)
     {
         printf("pkgd: failed to bind to pkg (%s)\n", strerror(errno));
         goto error;

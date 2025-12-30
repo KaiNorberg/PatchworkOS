@@ -1,11 +1,11 @@
 [meta]
-description = Analog Clock App
+description = DOOM
 version = 1.0
-author = PatchworkOS
-license = MIT
+author = ID Software (PatchworkOS Port)
+license = GPL-2.0
 
 [exec]
-bin = /app/bin/clock
+bin = /app/bin/doom
 priority = 30
 
 [sandbox]
@@ -17,6 +17,5 @@ foreground = true
 [namespace]
 /app:rx = $PKG
 /cfg:r = /cfg
-/sys/data:r = /sys/data
 /net:rw = /net
 /dev/const:rw = /dev/const

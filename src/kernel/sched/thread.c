@@ -197,21 +197,21 @@ uint64_t thread_copy_from_user(thread_t* thread, void* dest, const void* userSrc
     return 0;
 }
 
-uint64_t thread_copy_to_user(thread_t* thread, void* dest, const void* userSrc, uint64_t length)
+uint64_t thread_copy_to_user(thread_t* thread, void* userDest, const void* src, uint64_t length)
 {
-    if (thread == NULL || dest == NULL || userSrc == NULL || length == 0)
+    if (thread == NULL || userDest == NULL || src == NULL || length == 0)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    if (space_pin(&thread->process->space, dest, length, &thread->userStack) == ERR)
+    if (space_pin(&thread->process->space, userDest, length, &thread->userStack) == ERR)
     {
         return ERR;
     }
 
-    memcpy(dest, userSrc, length);
-    space_unpin(&thread->process->space, dest, length);
+    memcpy(userDest, src, length);
+    space_unpin(&thread->process->space, userDest, length);
     return 0;
 }
 
@@ -255,21 +255,22 @@ uint64_t thread_copy_from_user_terminated(thread_t* thread, const void* userArra
     return 0;
 }
 
-uint64_t thread_copy_from_user_string(thread_t* thread, char* dest, const char* userSrc, uint64_t maxLength)
+uint64_t thread_copy_from_user_string(thread_t* thread, char* dest, const char* userSrc, uint64_t size)
 {
-    if (thread == NULL || dest == NULL || userSrc == NULL || maxLength == 0)
+    if (thread == NULL || dest == NULL || userSrc == NULL || size <= 1)
     {
         errno = EINVAL;
         return ERR;
     }
 
     char terminator = '\0';
-    uint64_t strLength = space_pin_terminated(&thread->process->space, userSrc, &terminator, sizeof(char), maxLength,
-        &thread->userStack);
+    uint64_t strLength =
+        space_pin_terminated(&thread->process->space, userSrc, &terminator, sizeof(char), size - 1, &thread->userStack);
     if (strLength == ERR)
     {
         return ERR;
     }
+    dest[size - 1] = '\0';
 
     memcpy(dest, userSrc, strLength);
     space_unpin(&thread->process->space, userSrc, strLength);
@@ -306,6 +307,12 @@ uint64_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, 
 
 uint64_t thread_copy_from_user_string_array(thread_t* thread, const char** user, char*** out, uint64_t* outAmount)
 {
+    if (thread == NULL || user == NULL || out == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     char** copy;
     uint64_t amount;
     char* terminator = NULL;

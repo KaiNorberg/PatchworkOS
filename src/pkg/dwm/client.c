@@ -130,7 +130,7 @@ static uint64_t client_action_surface_new(client_t* client, const cmd_header_t* 
     }
 
     event_surface_new_t event;
-    if (share(&event.shmemKey, surface->shmem, CLOCKS_NEVER) == ERR)
+    if (share(event.shmemKey, sizeof(event.shmemKey), surface->shmem, CLOCKS_NEVER) == ERR)
     {
         surface_free(surface);
         return ERR;

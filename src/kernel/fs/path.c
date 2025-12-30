@@ -346,10 +346,12 @@ static uint64_t path_follow_symlink(dentry_t* dentry, path_t* path, namespace_ha
     }
 
     char symlinkPath[MAX_PATH];
-    if (vfs_readlink(dentry->inode, symlinkPath, MAX_PATH) == ERR)
+    uint64_t readCount = vfs_readlink(dentry->inode, symlinkPath, MAX_PATH - 1);
+    if (readCount == ERR)
     {
         return ERR;
     }
+    symlinkPath[readCount] = '\0';
 
     pathname_t pathname;
     if (pathname_init(&pathname, symlinkPath) == ERR)

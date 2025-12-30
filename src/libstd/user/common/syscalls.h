@@ -235,14 +235,14 @@ static inline uint64_t _syscall_link(const char* oldPath, const char* newPath)
     return _SYSCALL2(uint64_t, SYS_LINK, const char*, oldPath, const char*, newPath);
 }
 
-static inline uint64_t _syscall_share(key_t* key, fd_t fd, clock_t timeout)
+static inline uint64_t _syscall_share(char* key, uint64_t size, fd_t fd, clock_t timeout)
 {
-    return _SYSCALL3(uint64_t, SYS_SHARE, key_t*, key, fd_t, fd, clock_t, timeout);
+    return _SYSCALL4(uint64_t, SYS_SHARE, char*, key, uint64_t, size, fd_t, fd, clock_t, timeout);
 }
 
-static inline fd_t _syscall_claim(key_t* key)
+static inline fd_t _syscall_claim(const char* key)
 {
-    return _SYSCALL1(fd_t, SYS_CLAIM, key_t*, key);
+    return _SYSCALL1(fd_t, SYS_CLAIM, const char*, key);
 }
 
 static inline uint64_t _syscall_bind(const char* mountpoint, fd_t source)

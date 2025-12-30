@@ -15,7 +15,8 @@
  * @defgroup modules_drivers_const Constant Devices
  * @ingroup modules_drivers
  *
- * This module provides the constant devices which provide user space with its primary means of allocating memory and obtaining constant data.
+ * This module provides the constant devices which provide user space with its primary means of allocating memory and
+ * obtaining constant data.
  *
  * The constant devices are exposed under the `/dev/const/` directory:
  * - `/dev/const/one`: A readable and mappable file that returns bytes with all bits set to 1.

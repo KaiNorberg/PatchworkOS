@@ -10,7 +10,7 @@ priority = 30
 
 [sandbox]
 profile = empty
-terminal = false
+foreground = false
 
 [env]
 

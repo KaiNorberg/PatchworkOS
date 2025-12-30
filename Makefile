@@ -16,7 +16,7 @@ ROOT_DIRS = acpi sys sys/bin sys/lib sys/include sys/data pkg cfg dev efi efi/bo
 # Programs to copy to /sbin
 SBIN_PROGRAMS = init pkgd
 # Programs to copy to /sys/bin
-SYS_BIN_PROGRAMS = pkg-run shell cat echo grep link ls mv readlink rm root stat symlink tail touch
+SYS_BIN_PROGRAMS = pkg-spawn shell cat echo grep link ls mv readlink rm root stat symlink tail touch
 
 # Programs to copy to /usr/bin
 #USR_BIN_PROGRAMS = $(filter-out $(BIN_PROGRAMS) $(SBIN_PROGRAMS),$(basename $(notdir $(shell find bin/programs/))))
@@ -179,9 +179,7 @@ run:
 #
 # Note that we probably dont want all collections. For now we only use the "functional" collection and we will add more later.
 #
-# Please check the ACPICA repo for more information.
-#
-# And yeah the make code is a mess.
+# Check the ACPICA repo for more information.
 
 ACPICA_COLLECTIONS = functional
 

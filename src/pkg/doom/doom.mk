@@ -1,6 +1,6 @@
 #include Make.defaults
 
-TARGET := $(BINDIR)/$(PROGRAM)
+TARGET := $(BINDIR)/$(PKG)
 
 $(TARGET):
 	@if [ ! -d "lib/doomgeneric" ]; then \
