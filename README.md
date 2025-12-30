@@ -73,7 +73,7 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 - Custom superset of the ANSI C standard library including threading, file I/O, math, PatchworkOS extensions, etc.
 - Highly modular shared memory based desktop environment.
 - Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
-- Capability based security model using per-process namespaces and mountpoints, with password encryption using [Argon2id](https://github.com/P-H-C/phc-winner-argon2).
+- Capability based containerization security model using per-process mountpoint namespaces. See [Security Model](#security-model) for more info.
 - Note that currently a heavy focus has been placed on the kernel and low-level stuff, so user space is quite small... for now.
 
 *And much more...*
@@ -87,6 +87,7 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 
 - Overhaul security to process containerization. <-- Currently being worked on.
 - File servers (FUSE, 9P?).
+- Overhaul Desktop Window Manager to use new security system and File Servers?
 - Port LUA and use it for dynamic system configuration.
 - Fully Asynchronous I/O and syscalls (io_uring?).
 - USB support.
@@ -399,37 +400,29 @@ Plus its fun.
 
 ## Security Model
 
-In PatchworkOS, there are no users or similar concepts often found in other operating systems. Instead, each process has a namespace which stores a set of mountpoints. This means that each process has its own view of the filesystem.
+In PatchworkOS, there are no Access Control Lists, user IDs or similar mechanisms. Instead, PatchworkOS uses a pseudo-capability based security model based on per-process mountpoint namespaces and containerization. As in, each process has its own view of the filesystem.
 
-For example, process A might have mounted a sensitive directory at `/secret` while process B has no such mountpoint. From process B's perspective, the `/secret` directory is empty or contains its original contents while process A can access it normally.
+For a basic example, say we have a process A which has mounted a sensitive directory at `/secret` while process B has no such mountpoint. From process B's perspective, the `/secret` directory may not exist, may contain its original contents or may contain completely different contents depending on how process B's namespace is configured.
 
-> An interesting detail is that when process A opens the `/secret` directory, the dentry underlying the file descriptor is the dentry that was mounted to `/secret`. When process B opens this directory it would retrieve the dentry of the directory in the parent superblock, and thus see the content of that directory in the parent superblock. Namespaces prevent or enable mountpoint traversal not directory visibility. If this means nothing to you, don't worry about it.
+> An interesting detail is that when process A opens the `/secret` directory, the dentry underlying the file descriptor is the dentry that was mounted or bound to `/secret`. Even if process B could see the `/secret` directory it would retrieve the dentry of the directory in the parent superblock, and thus see the content of that directory in the parent superblock. Namespaces prevent or enable mountpoint traversal not directory visibility. If this means nothing to you, don't worry about it.
 
-This allows for a composable, transparent and capability-based security model, where processes can be given access to any combination of files and directories without needing hidden permission bits or similar mechanisms. Additionally, since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc. For example, if you wish to prevent a process from using sockets, you could simply bind `/dev/null` to `/net`.
+The namespace system allows for a composable, transparent and capability-based security model, where processes can be given access to any combination of files and directories without needing hidden permission bits or similar mechanisms. Additionally, since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc. For example, if you wish to prevent a process from using sockets, you could simply bind `/dev/null` to `/net` or just not mount the `/net` directory at all.
 
-> Deciding if this model is truly a capability system is something that could be argued about. In the end, it does share the core properties of a capability system, namely that possession of a "capability" (a visibile file/directory) grants access to an object (the contents or functionality of the file/directory) and that "capabilities" can be transferred between processes (using mechanisms like `share()` and `claim()` described below).
+> Deciding if this model is truly a capability system is something that could be argued about. In the end, it does share the core properties of a capability system, namely that possession of a "capability" (a visible file/directory) grants access to an object (the contents or functionality of the file/directory) and that "capabilities" can be transferred between processes (using mechanisms like `share()` and `claim()` described below or through binding and mounting directories/files).
 
 It would even be possible to implement a user-like system entirely in user space using namespaces by having the init process bind different directories depending on the user logging in.
 
-For more information on for example mount propagation, see the [Namespace Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html) or the [Userspace IO API Documentation](https://kainorberg.github.io/PatchworkOS/html/d4/deb/group__libstd__sys__io.html).
+[Namespace Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
 
-### Root Service
-
-There are some cases where we may wish to elevate our "permissions", in PatchworkOS this is done using the "root service".
-
-The root service is a service managed by the init process, which, since its namespace is the parent of all user space namespaces, has the highest "permissions" of all user space processes. Any process can access the root service and if they pass an authentication check be granted access to the init processes namespace.
-
-**The root service requires a password, the default password is `1234`.**
-
-There are three features required for a process to spawn a child in the init processes namespace, the `share()/claim()` system calls, the `/proc/[pid]/ns` file and the `join` command which can be sent to a processes `/proc/[pid]/ctl` file.
+[Userspace IO API Documentation](https://kainorberg.github.io/PatchworkOS/html/d4/deb/group__libstd__sys__io.html)
 
 ### Share and Claim
 
-PatchworkOS introduces two new system calls `share()` and `claim()` which allow file descriptors to be securely sent from one process to another.
+To securely send file descriptors from one process to another, we introduce two new system calls `share()` and `claim()` also acting as a replacement for `SCM_RIGHTS` in UNIX domain sockets.
 
-The `share()` system call generates a one-time use key which remains valid for a limited time. Since the key generated by this system call is simply an 128-bit integer it can be sent to any other process using conventional IPC, including sockets, pipes, argv, etc.
+The `share()` system call generates a one-time use key which remains valid for a limited time. Since the key generated by this system call is a string it can be sent to any other process using conventional IPC.
 
-After a process receives a shared key it can use the `claim()` system call to retrieve a file descriptor to the same underlying file object as was originally shared.
+After a process receives a shared key it can use the `claim()` system call to retrieve a file descriptor to the same underlying file object that was originally shared.
 
 Included below is an example:
 
@@ -438,65 +431,70 @@ Included below is an example:
 fd_t file = ...;
 
 // Create a key that lasts for 60 seconds.
-key_t key;
-share(&key, file, CLOCKS_PER_SECOND * 60);
+char key[KEY_128BIT];
+share(&key, sizeof(key), file, CLOCKS_PER_SECOND * 60);
 
 // In process B.
 
 // Through IPC process B receives the key.
-key_t key = ...;
+char key[KEY_MAX] = ...;
 
 // Process B can now access the same file as in process A.
 fd_t file = claim(&key);
 ```
 
-### Joining a Namespace
+[Key Documentation](https://kainorberg.github.io/PatchworkOS/html/d4/d1e/group__kernel__fs__key.html)
 
-A processes `/proc/[pid]/ns` file can be opened to retrieve a file representing the namespace of that process. This file descriptor can be used in combination with the `join <fd>` command to cause a process to leave its current namespace and join the namespace represented by the input file descriptor.
+[Userspace IO API Documentation](https://kainorberg.github.io/PatchworkOS/html/d4/deb/group__libstd__sys__io.html)
 
-Included below is an example:
+### Containerization
 
-```c
-pid_t a = ...;
+In userspace, PatchworkOS provides a simple containerization mechanism to isolate any processes from the rest of the system and to ensure that each such process can only access files and directories that it has explicitly been granted access to. We call such an isolated process a "package".
 
-// Retrieve file descriptor representing the namespace of process A.
-fd_t ns = open(F("/proc/%llu/ns", a))
+As we are about to mention a lot of file paths, note that file paths will be specified from the perspective of the "pkgd" daemons namespace, which is likely to be different from the namespace of any particular user process, for example these are not the file paths you would see in the terminal. Additionally, PatchworkOS does not follow the traditional UNIX filesystem hierarchy, instead the layout is defined to make the containerization system less cumbersome.
 
-// Spawn process A in a suspended state.
-const char* argv[] = {"...", NULL};
-pid_t b = spawn(argv, SPAWN_SUSPENDED);
+Each package is stored in a `/pkg/[package_name]` directory which stores a `/pkg/[package_name]/manifest` ini-style configuration file containing all the metadata about the package, defining what files and directories the package is allowed to access and other configuration options. These configuration files are parsed by the "pkgd" daemon which is responsible for spawning and managing packages.
 
-// Move process B to the namespace of process A and start.
-swritefile(F("/proc/%llu/ctl", b), F("join %llu && start", b));
+Going over the entire package system is way beyond the scope of this discussion, as such we will limit the discussion to one example package and discuss how the package system is used by a user.
+
+### The DOOM Package
+
+As an example, PatchworkOS includes a package for running DOOM using the `doomgeneric` port stored at `/pkg/doom`. Its manifest file can be found [here](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/pkg/doom/manifest). Note that due to the containerization system, the `/pkg` directory is not mounted in all user processes and as such will appear to not exist.
+
+First, the manifest file defines the packages metadata such as its version, author, license, etc. and information about the executable such as its path (within the packages namespace) and its desired scheduling priority.
+
+After that it defines the packages "sandbox", which specifies how the package should be configured. In this case, it specifies the "empty" profile meaning that pkgd will create a completely empty namespace, to the root of which it will mount a tmpfs instance and that the package is a foreground package, more on that later.
+
+Finally, it specifies a list of default environment variables to set in the package and the most important section, the "namespace" section.
+
+The namespace section specifies a list of files and directories to bind into the packages namespace which is what ultimately controls what the package can access. In this case, doom is given extremely limited access, only binding four directories:
+
+- `/pkg/doom/bin` to `/app/bin`, allowing it to access its own executable stored in `/pkg/doom/bin/doom`.
+- `/pkg/doom/data` to `/app/data`, allowing it to access any WAD files or save files stored in `/pkg/doom/data`.
+- `/net/local` to itself to allow it to create sockets to communicate with the Desktop Window Manager.
+- `/dev/const` to itself to allow it to use the `/dev/const/zero` file to map/allocate memory.
+
+This means that the doom package cannot see or access user files, system configuration files, devices or anything else outside its bound directories, it can't even create pipes or shared memory as the `/dev/pipe/new` and `/dev/shmem/new` files do not exist in its namespace.
+
+### Using Packages
+
+A common concern with containers is usability. In PatchworkOS, packages are designed to be as simple as possible to the point where a user should not even need to know that they are using containers.
+
+First, It's important to know that in PatchworkOS there are only two directories for executables, `/sbin` for essential system binaries such as `init` and `/sys/bin` for everything else.
+
+One of the binaries in `/sys/bin` is `pkgspawn` which is used to spawn packages. This binary is intended to be used via symlinks, for example there is a symlink at `/sys/bin/doom` pointing to `pkgspawn`. When a user runs `/sys/bin/doom` (or just `doom` if `/sys/bin` is in the shell's PATH), the `pkgspawn` binary will be executed, but the first argument will be `/sys/bin/doom` due to how symlinks work. `pkgspawn` will then resolve that to the package name `doom` and send a request to the `pkgd` daemon to spawn the package.
+
+All this means that from a user's perspective, running a containerized package is as simple as running any other binary, for example:
+
+```bash
+doom
 ```
 
-From the above example it should be clear how `share()` and `claim()` can be utilized by the root service to start a process in the namespace of the init process.
+### Foreground and Background Packages
 
-### Using the Root Service
+Packages can be either foreground or background packages. When a foreground package is spawned, pkgd will perform additional setup such that the package will appear to be a child of the process that spawned it, setting up its stdio, process group, allowing the spawning process to retrieve its exit status, etc. This allows for, as mentioned before, a system where using containerized packages can be indistinguishable from using a regular binary from a user perspective.
 
-Accessing the root service is done using the `root` command in a way similar to `sudo`. For example, `root ls /usr`.
-
-Let's take an example. The `/proc/[pid]` directories are only mounted in the namespace of the owner process and the parent namespaces. As such if we run the `top` command, we will only see the performance statistics of the shell and the top program we just started, as they both share the same namespace, but all other processes are invisible.
-
-If we instead run the `root top` command, we will be prompted to provide the root password as specified above and see the performance statistics of all processes except the kernel process. This works since the namespace of the init process is the ancestor of all user-space namespaces.
-
-### No Superuser
-
-Even when using the root service we are still limited by the files and directories visible in the init processes namespace. For example, we wont be able to see sockets of other processes as socket directories are only mounted in the namespace of the owner process and its children.
-
-The root service is not a "superuser", it just happens to have access to a namespace that is the parent of all user-space namespaces, allowing for some operations that would otherwise be impossible. For example, if you wished to mount a directory in all namespaces, you would need to use the root service to do so as mounts made in user-space can only propagate to child namespaces.
-
-### Limiting Visibility or Permissions
-
-A common pattern in PatchworkOS is to bind a directory to itself with lower permissions or to bind `/dev/null` to a file/directory to hide it completely. However on its own this is not secure, as a process could simply unmount the bind mount to regain access to the original file/directory or bind an ancestor directory to circumvent the mount entierely.
-
-The solution to these problems are "locked" and "sticky" mounts and binds. A locked mount or bind cannot be unmounted, it will persist until the namespace containing it is destroyed.
-
-A sticky mount or bind applies to the dentry of the mountpoint no matter where it is mounted in the namespace tree. For example, if `/secret/data` is a sticky bind to `/dev/null`, then mounting `/secret` to `/other` will still cause `/other/data` to be bound to `/dev/null`.
-
-Combining these two features allows any file or directory to be permanently hidden or have its permissions limited in a namespace. An example of this is how the Desktop Window Manager limits `/dev/klog` to read-only access for all user processes or how it hides `/dev/fb` entirely, preventing user processes from accessing framebuffers directly.
-
-Check the [Init Process Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbc/group__programs__init.html) for the setup of the initial namespace.
+A background package on the other hand is intended for daemons and services that do not need to interact with the user. When a background package is spawned, it will run detached from the spawning process, without any stdio or similar.
 
 ## ACPI (WIP)
 

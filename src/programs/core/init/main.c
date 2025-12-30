@@ -18,7 +18,7 @@ static void init_spawn_pkgd(void)
     }
 
     stat_t info;
-    while (stat("/net/local/listen/pkg-spawn", &info) == ERR)
+    while (stat("/net/local/listen/pkgspawn", &info) == ERR)
     {
         nanosleep(CLOCKS_PER_SEC / 100);
     }
@@ -50,7 +50,7 @@ static void init_create_pkg_links(void)
             continue;
         }
 
-        if (symlink("pkg-spawn", F("/sys/bin/%s", dirents[i].path)) == ERR && errno != EEXIST)
+        if (symlink("pkgspawn", F("/sys/bin/%s", dirents[i].path)) == ERR && errno != EEXIST)
         {
             free(dirents);
             printf("init: failed to create launch symlink for package '%s' (%s)\n", dirents[i].path, strerror(errno));

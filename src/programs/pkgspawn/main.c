@@ -8,6 +8,12 @@
 
 #define BUFFER_MAX 0x1000
 
+void note_handler(void)
+{
+    // Do nothing
+    noted();
+}
+
 int main(int argc, char** argv)
 {
     if (argc < 1)
@@ -18,13 +24,13 @@ int main(int argc, char** argv)
     char* id = sreadfile("/net/local/seqpacket");
     if (id == NULL)
     {
-        printf("pkg-spawn: failed to open local seqpacket socket (%s)\n", strerror(errno));
+        printf("pkgspawn: failed to open local seqpacket socket (%s)\n", strerror(errno));
         return EXIT_FAILURE;
     }
 
-    if (swritefile(F("/net/local/%s/ctl", id), "connect pkg-spawn") == ERR)
+    if (swritefile(F("/net/local/%s/ctl", id), "connect pkgspawn") == ERR)
     {
-        printf("pkg-spawn: failed to bind to pkg (%s)\n", strerror(errno));
+        printf("pkgspawn: failed to bind to pkg (%s)\n", strerror(errno));
         free(id);
         return EXIT_FAILURE;
     }
@@ -34,7 +40,7 @@ int main(int argc, char** argv)
     {
         if (share(stdio[i], sizeof(stdio[i]), i, CLOCKS_PER_SEC) == ERR)
         {
-            printf("pkg-spawn: failed to share stdio (%s)\n", strerror(errno));
+            printf("pkgspawn: failed to share stdio (%s)\n", strerror(errno));
             free(id);
             return EXIT_FAILURE;
         }
@@ -58,7 +64,7 @@ int main(int argc, char** argv)
     {
         if (strlen(buffer) + 1 + strlen(argv[i]) >= BUFFER_MAX)
         {
-            printf("pkg-spawn: arguments too long\n");
+            printf("pkgspawn: arguments too long\n");
             free(id);
             return EXIT_FAILURE;
         }
@@ -69,14 +75,14 @@ int main(int argc, char** argv)
     fd_t data = open(F("/net/local/%s/data", id));
     if (data == ERR)
     {
-        printf("pkg-spawn: failed to open data socket (%s)\n", strerror(errno));
+        printf("pkgspawn: failed to open data socket (%s)\n", strerror(errno));
         free(id);
         return EXIT_FAILURE;
     }
 
     if (swrite(data, buffer) == ERR)
     {
-        printf("pkg-spawn: failed to send request (%s)\n", strerror(errno));
+        printf("pkgspawn: failed to send request (%s)\n", strerror(errno));
         free(id);
         close(data);
         return EXIT_FAILURE;
@@ -86,7 +92,7 @@ int main(int argc, char** argv)
 
     if (read(data, buffer, sizeof(buffer) - 1) == ERR)
     {
-        printf("pkg-spawn: failed to read response (%s)\n", strerror(errno));
+        printf("pkgspawn: failed to read response (%s)\n", strerror(errno));
         free(id);
         close(data);
         return EXIT_FAILURE;
@@ -95,7 +101,7 @@ int main(int argc, char** argv)
 
     if (wordcmp(buffer, "error") == 0)
     {
-        printf("pkg-spawn: %s\n", buffer);
+        printf("pkgspawn: %s\n", buffer);
         free(id);
         return EXIT_FAILURE;
     }
@@ -109,7 +115,7 @@ int main(int argc, char** argv)
     char waitkey[KEY_MAX];
     if (sscanf(buffer, "foreground %s", waitkey) != 1)
     {
-        printf("pkg-spawn: failed to parse response (%s)\n", strerror(errno));
+        printf("pkgspawn: failed to parse response (%s)\n", strerror(errno));
         free(id);
         return EXIT_FAILURE;
     }
@@ -117,7 +123,7 @@ int main(int argc, char** argv)
     fd_t wait = claim(waitkey);
     if (wait == ERR)
     {
-        printf("pkg-spawn: failed to claim response (%s)\n", strerror(errno));
+        printf("pkgspawn: failed to claim response (%s)\n", strerror(errno));
         free(id);
         return EXIT_FAILURE;
     }
@@ -125,7 +131,7 @@ int main(int argc, char** argv)
     char status[NOTE_MAX];
     if (read(wait, status, sizeof(status) - 1) == ERR)
     {
-        printf("pkg-spawn: failed to read status (%s)\n", strerror(errno));
+        printf("pkgspawn: failed to read status (%s)\n", strerror(errno));
         free(id);
         close(wait);
         return EXIT_FAILURE;

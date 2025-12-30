@@ -18,7 +18,7 @@
  *
  * ## Spawning Packages
  *
- * To spawn a package a request should be sent to the "pkg-spawn" socket in the format:
+ * To spawn a package a request should be sent to the "pkgspawn" socket in the format:
  *
  * ```
  * [key=value ...] -- <package_name> [arg1 arg2 ...]
@@ -31,7 +31,7 @@
  *
  * @note The `stdin`, `stdout` and `stderr` key values will only be used if the package is a foreground package.
  *
- * The "pkg-spawn" socket will send a response in the format:
+ * The "pkgspawn" socket will send a response in the format:
  *
  * ```
  * <background|foreground [key]|error [msg]>
@@ -40,7 +40,7 @@
  * On success, the response will either contain `background` if the package is a background package, or `foreground`
  * followed by a key for the packages `/proc/[pid]/wait` file if the package is a foreground package.
  *
- * On failure the response will contain `error` followed by an error message.
+ * On failure, the response will contain `error` followed by an error message.
  *
  * @todo Once filesystem servers are implemented the package deamon should use them instead of sockets.
  *
@@ -180,11 +180,14 @@ static void pkg_spawn(pkg_spawn_t* ctx)
     }
 
     section_t* sandbox = &manifest.sections[SECTION_SANDBOX];
-    char* profile = manifest_get_value(sandbox, "profile");
+    const char* profile = manifest_get_value(sandbox, "profile");
     if (profile == NULL)
     {
         profile = "empty";
     }
+
+    const char* foreground = manifest_get_value(sandbox, "foreground");
+    bool isForeground = foreground != NULL && strcmp(foreground, "true") == 0;
 
     spawn_flags_t flags = SPAWN_SUSPEND | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP;
     if (strcmp(profile, "empty") == 0)
@@ -204,6 +207,11 @@ static void pkg_spawn(pkg_spawn_t* ctx)
         snprintf(ctx->result, sizeof(ctx->result), "error due to manifest of '%s' having invalid 'profile' entry",
             args.pkg);
         goto cleanup;
+    }
+
+    if (!isForeground)
+    {
+        flags |= SPAWN_EMPTY_FDS;
     }
 
     const char* temp = argv[0];
@@ -263,13 +271,7 @@ static void pkg_spawn(pkg_spawn_t* ctx)
         }
     }
 
-    const char* foreground = manifest_get_value(sandbox, "foreground");
-    if (foreground == NULL)
-    {
-        foreground = "false";
-    }
-
-    if (strcmp(foreground, "true") == 0)
+    if (isForeground)
     {
         for (uint8_t i = 0; i < 3; i++)
         {
@@ -315,13 +317,6 @@ static void pkg_spawn(pkg_spawn_t* ctx)
     }
     else
     {
-        if (swrite(ctl, "close 0 -1") == ERR)
-        {
-            snprintf(ctx->result, sizeof(ctx->result), "error due to close failure for '%s' (%s)", args.pkg,
-                strerror(errno));
-            goto cleanup;
-        }
-
         snprintf(ctx->result, sizeof(ctx->result), "background");
     }
 
@@ -359,7 +354,7 @@ int main(void)
         abort();
     }
 
-    if (swritefile(F("/net/local/%s/ctl", id), "bind pkg-spawn && listen") == ERR)
+    if (swritefile(F("/net/local/%s/ctl", id), "bind pkgspawn && listen") == ERR)
     {
         printf("pkgd: failed to bind to pkg (%s)\n", strerror(errno));
         goto error;
