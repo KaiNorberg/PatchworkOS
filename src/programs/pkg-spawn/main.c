@@ -1,7 +1,9 @@
 #include <errno.h>
+#include <kernel/ipc/note.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/io.h>
+#include <sys/proc.h>
 #include <time.h>
 
 #define BUFFER_MAX 0x1000
@@ -64,13 +66,71 @@ int main(int argc, char** argv)
         strcat(buffer, argv[i]);
     }
 
-    if (swritefile(F("/net/local/%s/data", id), buffer) == ERR)
+    fd_t data = open(F("/net/local/%s/data", id));
+    if (data == ERR)
     {
-        printf("pkg-spawn: failed to send request (%s)\n", strerror(errno));
+        printf("pkg-spawn: failed to open data socket (%s)\n", strerror(errno));
         free(id);
         return EXIT_FAILURE;
     }
 
-    free(id);
-    return 0;
+    if (swrite(data, buffer) == ERR)
+    {
+        printf("pkg-spawn: failed to send request (%s)\n", strerror(errno));
+        free(id);
+        close(data);
+        return EXIT_FAILURE;
+    }
+
+    memset(buffer, 0, sizeof(buffer));
+
+    if (read(data, buffer, sizeof(buffer) - 1) == ERR)
+    {
+        printf("pkg-spawn: failed to read response (%s)\n", strerror(errno));
+        free(id);
+        close(data);
+        return EXIT_FAILURE;
+    }
+    close(data);
+
+    if (wordcmp(buffer, "error") == 0)
+    {
+        printf("pkg-spawn: %s\n", buffer);
+        free(id);
+        return EXIT_FAILURE;
+    }
+
+    if (wordcmp(buffer, "background") == 0)
+    {
+        free(id);
+        return 0;
+    }
+
+    char waitkey[KEY_MAX];
+    if (sscanf(buffer, "foreground %s", waitkey) != 1)
+    {
+        printf("pkg-spawn: failed to parse response (%s)\n", strerror(errno));
+        free(id);
+        return EXIT_FAILURE;
+    }
+
+    fd_t wait = claim(waitkey);
+    if (wait == ERR)
+    {
+        printf("pkg-spawn: failed to claim response (%s)\n", strerror(errno));
+        free(id);
+        return EXIT_FAILURE;
+    }
+
+    char status[NOTE_MAX];
+    if (read(wait, status, sizeof(status) - 1) == ERR)
+    {
+        printf("pkg-spawn: failed to read status (%s)\n", strerror(errno));
+        free(id);
+        close(wait);
+        return EXIT_FAILURE;
+    }
+    close(wait);
+
+    _exit(status);
 }

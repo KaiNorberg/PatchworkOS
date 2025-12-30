@@ -209,7 +209,6 @@ SYSCALL_DEFINE(SYS_CLAIM, fd_t, const char* key)
     file_t* file = key_claim(keyCopy);
     if (file == NULL)
     {
-        sched_nanosleep(CLOCKS_PER_SEC); // Prevent brute forcing keys.
         return ERR;
     }
     UNREF_DEFER(file);

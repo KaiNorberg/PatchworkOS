@@ -92,15 +92,8 @@ display_t* display_new(void)
     list_init(&disp->fonts);
     list_init(&disp->images);
 
+    // Default font might be `NULL`.
     disp->defaultFont = font_new(disp, "default", "regular", 16);
-    if (disp->defaultFont == NULL)
-    {
-        close(disp->data);
-        close(disp->ctl);
-        free(disp->id);
-        free(disp);
-        return NULL;
-    }
 
     if (mtx_init(&disp->mutex, mtx_recursive) == thrd_error)
     {

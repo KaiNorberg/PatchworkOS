@@ -16,6 +16,5 @@ foreground = true
 
 [namespace]
 /app:rx = $PKG
-/cfg:r = /cfg
 /net:rw = /net
 /dev/const:rw = /dev/const

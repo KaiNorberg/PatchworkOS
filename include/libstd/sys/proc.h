@@ -297,15 +297,13 @@ uint64_t notify(note_func_t handler);
 _NORETURN void noted(void);
 
 /**
- * @brief Helper for comparing note strings.
+ * @brief Helper for comparing the first word of a string.
  *
- * Will compare only the first word of the note string as the rest may contain additional details.
- *
- * @param note The note string.
+ * @param string The string.
  * @param word The word to compare against.
  * @return On match, returns `0`. On mismatch, returns a non-zero value.
  */
-int64_t notecmp(const char* note, const char* word);
+int64_t wordcmp(const char* string, const char* word);
 
 /**
  * @brief Action type for atnotify().

@@ -1,5 +1,6 @@
 #include "manifest.h"
 
+#include <_internal/fd_t.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,7 +18,7 @@
  *
  * ## Spawning Packages
  *
- * To spawn a package a request should be sent to the "pkg-spawn" socket, included below is the format of the request.
+ * To spawn a package a request should be sent to the "pkg-spawn" socket in the format:
  *
  * ```
  * [key=value ...] -- <package_name> [arg1 arg2 ...]
@@ -28,7 +29,18 @@
  * - `stdout`: The key for the shared file descriptor to use as standard output.
  * - `stderr`: The key for the shared file descriptor to use as standard error.
  *
- * @note Certain key values will only be used if the package is a foreground package.
+ * @note The `stdin`, `stdout` and `stderr` key values will only be used if the package is a foreground package.
+ *
+ * The "pkg-spawn" socket will send a response in the format:
+ *
+ * ```
+ * <background|foreground [key]|error [msg]>
+ * ```
+ *
+ * On success, the response will either contain `background` if the package is a background package, or `foreground`
+ * followed by a key for the packages `/proc/[pid]/wait` file if the package is a foreground package.
+ *
+ * On failure the response will contain `error` followed by an error message.
  *
  * @todo Once filesystem servers are implemented the package deamon should use them instead of sockets.
  *
@@ -38,63 +50,117 @@
 #define ARGV_MAX 512
 #define BUFFER_MAX 0x1000
 
-static void pkg_kill(pid_t pid)
+typedef struct
 {
-    swritefile(F("/sys/proc/%llu/ctl", pid), "kill");
-}
+    char input[BUFFER_MAX];
+    char result[BUFFER_MAX];
+} pkg_spawn_t;
 
-static uint64_t pkg_spawn(const char* buffer)
+typedef struct
 {
-    printf("pkgd: received spawn request: '%s'\n", buffer);
+    const char* pkg;
+    fd_t stdio[3];
+} pkg_args_t;
 
-    char argBuffer[BUFFER_MAX];
-    uint64_t argc;
-    const char** argv = argsplit_buf(argBuffer, sizeof(argBuffer), buffer, BUFFER_MAX, &argc);
-    if (argv == NULL || argc == 0)
-    {
-        printf("pkgd: failed to parse arguments\n");
-        return ERR;
-    }
-
-    const char* pkg = NULL;
+static uint64_t pkg_args_parse(pkg_args_t* args, uint64_t argc, const char** argv, pkg_spawn_t* ctx)
+{
     for (uint64_t i = 0; i < argc; i++)
     {
         if (strcmp(argv[i], "--") == 0)
         {
             if (i + 1 >= argc)
             {
-                printf("pkgd: missing package name\n");
+                snprintf(ctx->result, sizeof(ctx->result), "error due to missing package name");
                 return ERR;
             }
 
-            pkg = argv[i + 1];
+            args->pkg = argv[i + 1];
             break;
         }
 
-        /// @todo Implement handling of key value pairs.
+        char* equalSign = strchr(argv[i], '=');
+        if (equalSign == NULL)
+        {
+            continue;
+        }
+
+        *equalSign = '\0';
+
+        const char* key = argv[i];
+        const char* value = equalSign + 1;
+
+        if (strcmp(key, "stdin") == 0)
+        {
+            args->stdio[STDIN_FILENO] = claim(value);
+            if (args->stdio[STDIN_FILENO] == ERR)
+            {
+                snprintf(ctx->result, sizeof(ctx->result), "error due to invalid stdin");
+                return ERR;
+            }
+        }
+        else if (strcmp(key, "stdout") == 0)
+        {
+            args->stdio[STDOUT_FILENO] = claim(value);
+            if (args->stdio[STDOUT_FILENO] == ERR)
+            {
+                snprintf(ctx->result, sizeof(ctx->result), "error due to invalid stdout");
+                return ERR;
+            }
+        }
+        else if (strcmp(key, "stderr") == 0)
+        {
+            args->stdio[STDERR_FILENO] = claim(value);
+            if (args->stdio[STDERR_FILENO] == ERR)
+            {
+                snprintf(ctx->result, sizeof(ctx->result), "error due to invalid stderr");
+                return ERR;
+            }
+        }
+        else
+        {
+            snprintf(ctx->result, sizeof(ctx->result), "error due to unknown argument '%s'", key);
+            return ERR;
+        }
     }
 
-    if (pkg == NULL)
+    if (args->pkg == NULL || strchr(args->pkg, '/') != NULL || strchr(args->pkg, '.') != NULL)
     {
-        printf("pkgd: missing package name\n");
+        snprintf(ctx->result, sizeof(ctx->result), "error due to missing package name");
         return ERR;
     }
 
-    if (strchr(pkg, '/') != NULL || strchr(pkg, '.') != NULL)
+    return 0;
+}
+
+static void pkg_spawn(pkg_spawn_t* ctx)
+{
+    pkg_args_t args = {.pkg = NULL, .stdio = {FD_NONE}};
+    fd_t ctl = FD_NONE;
+    pid_t pid = ERR;
+
+    char argBuffer[BUFFER_MAX];
+    uint64_t argc;
+    const char** argv = argsplit_buf(argBuffer, sizeof(argBuffer), ctx->input, BUFFER_MAX, &argc);
+    if (argv == NULL || argc == 0)
     {
-        printf("pkgd: invalid package name '%s'\n", pkg);
-        return ERR;
+        snprintf(ctx->result, sizeof(ctx->result), "error due to invalid request");
+        goto cleanup;
+    }
+
+    if (pkg_args_parse(&args, argc, argv, ctx) == ERR)
+    {
+        goto cleanup;
     }
 
     manifest_t manifest;
-    if (manifest_parse(F("/pkg/%s/manifest", pkg), &manifest) == ERR)
+    if (manifest_parse(F("/pkg/%s/manifest", args.pkg), &manifest) == ERR)
     {
-        printf("pkgd: failed to parse manifest of '%s'\n", pkg);
-        return ERR;
+        snprintf(ctx->result, sizeof(ctx->result), "error due to invalid manifest for package '%s'", args.pkg);
+        goto cleanup;
     }
 
     substitution_t substitutions[] = {
-        {"PKG", F("/pkg/%s/", pkg)},
+        {"PKG", F("/pkg/%s/", args.pkg)},
     };
     manifest_substitute(&manifest, substitutions, sizeof(substitutions) / sizeof(substitution_t));
 
@@ -102,18 +168,16 @@ static uint64_t pkg_spawn(const char* buffer)
     char* bin = manifest_get_value(exec, "bin");
     if (bin == NULL)
     {
-        printf("pkgd: manifest of '%s' missing 'bin' entry\n", pkg);
-        return ERR;
+        snprintf(ctx->result, sizeof(ctx->result), "error due to manifest of '%s' missing 'bin' entry", args.pkg);
+        goto cleanup;
     }
 
     uint64_t priority = manifest_get_integer(exec, "priority");
     if (priority == ERR)
     {
-        printf("pkgd: manifest of '%s' invalid or missing 'priority' entry\n", pkg);
-        return ERR;
+        snprintf(ctx->result, sizeof(ctx->result), "error due to manifest of '%s' missing 'priority' entry", args.pkg);
+        goto cleanup;
     }
-
-    spawn_flags_t flags = (SPAWN_SUSPEND | SPAWN_EMPTY_ALL) & ~SPAWN_EMPTY_NS;
 
     section_t* sandbox = &manifest.sections[SECTION_SANDBOX];
     char* profile = manifest_get_value(sandbox, "profile");
@@ -122,6 +186,7 @@ static uint64_t pkg_spawn(const char* buffer)
         profile = "empty";
     }
 
+    spawn_flags_t flags = SPAWN_SUSPEND | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP;
     if (strcmp(profile, "empty") == 0)
     {
         flags |= SPAWN_EMPTY_NS;
@@ -136,25 +201,27 @@ static uint64_t pkg_spawn(const char* buffer)
     }
     else
     {
-        printf("pkgd: manifest of '%s' has unknown sandbox profile '%s'\n", argv[0], profile);
-        return ERR;
+        snprintf(ctx->result, sizeof(ctx->result), "error due to manifest of '%s' having invalid 'profile' entry",
+            args.pkg);
+        goto cleanup;
     }
 
     const char* temp = argv[0];
     argv[0] = bin;
-    pid_t pid = spawn(argv, flags);
+    pid = spawn(argv, flags);
     if (pid == ERR)
     {
-        printf("pkgd: failed to spawn '%s' (%s)\n", bin, strerror(errno));
-        return ERR;
+        snprintf(ctx->result, sizeof(ctx->result), "error due to spawn failure for '%s' (%s)", args.pkg,
+            strerror(errno));
+        goto cleanup;
     }
     argv[0] = temp;
 
     if (swritefile(F("/proc/%llu/prio", pid), F("%llu", priority)) == ERR)
     {
-        pkg_kill(pid);
-        printf("pkgd: failed to set priority of '%s' (%s)\n", argv[0], strerror(errno));
-        return ERR;
+        snprintf(ctx->result, sizeof(ctx->result), "error due to priority failure for '%s' (%s)", args.pkg,
+            strerror(errno));
+        goto cleanup;
     }
 
     section_t* env = &manifest.sections[SECTION_ENV];
@@ -162,26 +229,25 @@ static uint64_t pkg_spawn(const char* buffer)
     {
         if (swritefile(F("/proc/%llu/env/%s:cw", pid, env->entries[i].key), env->entries[i].value) == ERR)
         {
-            pkg_kill(pid);
-            printf("pkgd: failed to set environment variable '%s' (%s)\n", env->entries[i].key, strerror(errno));
-            return ERR;
+            snprintf(ctx->result, sizeof(ctx->result), "error due to environment variable failure for '%s' (%s)",
+                args.pkg, strerror(errno));
+            goto cleanup;
         }
     }
 
-    fd_t ctl = open(F("/proc/%llu/ctl", pid));
+    ctl = open(F("/proc/%llu/ctl", pid));
     if (ctl == ERR)
     {
-        pkg_kill(pid);
-        printf("pkgd: failed to open ctl of '%s' (%s)\n", pkg, strerror(errno));
-        return ERR;
+        snprintf(ctx->result, sizeof(ctx->result), "error due to ctl open failure for '%s' (%s)", args.pkg,
+            strerror(errno));
+        goto cleanup;
     }
 
     if (swrite(ctl, "mount /:LSrwx tmpfs") == ERR)
     {
-        close(ctl);
-        pkg_kill(pid);
-        printf("pkgd: failed to set root of '%s' (%s)\n", pkg, strerror(errno));
-        return ERR;
+        snprintf(ctx->result, sizeof(ctx->result), "error due to root mount failure for '%s' (%s)", args.pkg,
+            strerror(errno));
+        goto cleanup;
     }
 
     section_t* namespace = &manifest.sections[SECTION_NAMESPACE];
@@ -192,25 +258,96 @@ static uint64_t pkg_spawn(const char* buffer)
 
         if (swrite(ctl, F("touch %s:rwcp && bind %s %s", key, key, value)) == ERR)
         {
-            close(ctl);
-            pkg_kill(pid);
             printf("pkgd: failed to bind '%s' to '%s' (%s)\n", key, value, strerror(errno));
-            return ERR;
+            goto cleanup;
         }
+    }
+
+    const char* foreground = manifest_get_value(sandbox, "foreground");
+    if (foreground == NULL)
+    {
+        foreground = "false";
+    }
+
+    if (strcmp(foreground, "true") == 0)
+    {
+        for (uint8_t i = 0; i < 3; i++)
+        {
+            if (args.stdio[i] == FD_NONE)
+            {
+                continue;
+            }
+
+            if (swrite(ctl, F("dup2 %llu %llu", args.stdio[i], i)) == ERR)
+            {
+                snprintf(ctx->result, sizeof(ctx->result), "error due to dup2 failure for '%s' (%s)", args.pkg,
+                    strerror(errno));
+                goto cleanup;
+            }
+        }
+
+        if (swrite(ctl, "close 3 -1") == ERR)
+        {
+            snprintf(ctx->result, sizeof(ctx->result), "error due to close failure for '%s' (%s)", args.pkg,
+                strerror(errno));
+            goto cleanup;
+        }
+
+        fd_t wait = open(F("/proc/%llu/wait", pid));
+        if (wait == ERR)
+        {
+            snprintf(ctx->result, sizeof(ctx->result), "error due to wait open failure for '%s' (%s)", args.pkg,
+                strerror(errno));
+            goto cleanup;
+        }
+
+        char waitKey[KEY_128BIT];
+        if (share(waitKey, sizeof(waitKey), wait, CLOCKS_PER_SEC) == ERR)
+        {
+            close(wait);
+            snprintf(ctx->result, sizeof(ctx->result), "error due to wait share failure for '%s' (%s)", args.pkg,
+                strerror(errno));
+            goto cleanup;
+        }
+        close(wait);
+
+        snprintf(ctx->result, sizeof(ctx->result), "foreground %s", waitKey);
+    }
+    else
+    {
+        if (swrite(ctl, "close 0 -1") == ERR)
+        {
+            snprintf(ctx->result, sizeof(ctx->result), "error due to close failure for '%s' (%s)", args.pkg,
+                strerror(errno));
+            goto cleanup;
+        }
+
+        snprintf(ctx->result, sizeof(ctx->result), "background");
     }
 
     if (swrite(ctl, "start") == ERR)
     {
-        close(ctl);
-        pkg_kill(pid);
-        printf("pkgd: failed to start '%s' (%s)\n", pkg, strerror(errno));
-        return ERR;
+        snprintf(ctx->result, sizeof(ctx->result), "error due to start failure for '%s' (%s)", args.pkg,
+            strerror(errno));
+        goto cleanup;
     }
 
-    close(ctl);
-
-    printf("pkgd: spawned package '%s' with pid %llu\n", pkg, pid);
-    return 0;
+cleanup:
+    for (int i = 0; i < 3; i++)
+    {
+        if (args.stdio[i] != FD_NONE)
+        {
+            close(args.stdio[i]);
+        }
+    }
+    if (ctl != FD_NONE)
+    {
+        close(ctl);
+    }
+    if (pid != ERR)
+    {
+        swritefile(F("/sys/proc/%llu/ctl", pid), "kill");
+    }
 }
 
 int main(void)
@@ -238,18 +375,19 @@ int main(void)
             goto error;
         }
 
-        char buffer[BUFFER_MAX] = {0};
-        if (read(client, buffer, sizeof(buffer) - 1) == ERR)
+        pkg_spawn_t ctx = {0};
+        if (read(client, ctx.input, sizeof(ctx.input) - 1) == ERR)
         {
             printf("pkgd: failed to read pkg (%s)\n", strerror(errno));
             close(client);
             continue;
         }
 
-        if (pkg_spawn(buffer) == ERR)
+        pkg_spawn(&ctx);
+
+        if (swrite(client, ctx.result) == ERR)
         {
-            close(client);
-            continue;
+            printf("pkgd: failed to write pkg (%s)\n", strerror(errno));
         }
 
         close(client);

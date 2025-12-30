@@ -10,7 +10,7 @@ priority = 30
 
 [sandbox]
 profile = empty
-foreground = false
+foreground = true
 
 [env]
 PATH = /sys/bin
