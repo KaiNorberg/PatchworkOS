@@ -103,7 +103,7 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_h
     inode_t* dir = parent.dentry->inode;
     if (dir->ops == NULL || dir->ops->create == NULL)
     {
-        errno = ENOSYS;
+        errno = EPERM;
         return ERR;
     }
 
@@ -274,7 +274,7 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
 
     if (file->ops == NULL || file->ops->read == NULL)
     {
-        errno = ENOSYS;
+        errno = EINVAL;
         return ERR;
     }
 
@@ -313,7 +313,7 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
 
     if (file->ops == NULL || file->ops->write == NULL)
     {
-        errno = ENOSYS;
+        errno = EINVAL;
         return ERR;
     }
 
@@ -407,7 +407,7 @@ void* vfs_mmap(file_t* file, void* address, uint64_t length, pml_flags_t flags)
 
     if (file->ops == NULL || file->ops->mmap == NULL)
     {
-        errno = ENOSYS;
+        errno = ENODEV;
         return NULL;
     }
 
@@ -828,7 +828,7 @@ static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
     inode_t* dir = path->dentry->parent->inode;
     if (dir->ops == NULL || dir->ops->remove == NULL)
     {
-        errno = ENOSYS;
+        errno = EPERM;
         return ERR;
     }
 
@@ -1031,7 +1031,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
 
     if (newParent.dentry->inode->ops == NULL || newParent.dentry->inode->ops->link == NULL)
     {
-        errno = ENOSYS;
+        errno = EPERM;
         return ERR;
     }
 
@@ -1075,7 +1075,7 @@ uint64_t vfs_readlink(inode_t* symlink, char* buffer, uint64_t count)
 
     if (symlink->ops == NULL || symlink->ops->readlink == NULL)
     {
-        errno = ENOSYS;
+        errno = EINVAL;
         return ERR;
     }
 
@@ -1123,7 +1123,7 @@ uint64_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathnam
 
     if (newParent.dentry->inode->ops == NULL || newParent.dentry->inode->ops->symlink == NULL)
     {
-        errno = ENOSYS;
+        errno = EPERM;
         return ERR;
     }
 
@@ -1203,7 +1203,7 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
     inode_t* dir = parent.dentry->inode;
     if (dir->ops == NULL || dir->ops->remove == NULL)
     {
-        errno = ENOSYS;
+        errno = EPERM;
         return ERR;
     }
 
