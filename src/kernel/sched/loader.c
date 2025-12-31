@@ -172,16 +172,14 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     uint64_t argc = 0;
     char** argvCopy = NULL;
 
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
+
     if (argv == NULL)
     {
         errno = EINVAL;
         goto error;
     }
-
-    thread_t* thread = sched_thread();
-    process_t* process = thread->process;
-
-    gid_t gid = flags & SPAWN_EMPTY_GROUP ? GID_NONE : group_get_id(&process->group);
 
     namespace_handle_flags_t nsFlags;
     if (flags & SPAWN_EMPTY_NS)
@@ -197,7 +195,8 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
         nsFlags = NAMESPACE_HANDLE_SHARE;
     }
 
-    child = process_new(atomic_load(&process->priority), gid, &process->ns, nsFlags);
+    child = process_new(atomic_load(&process->priority), flags & SPAWN_EMPTY_GROUP ? NULL : &process->group,
+        &process->ns, nsFlags);
     if (child == NULL)
     {
         goto error;

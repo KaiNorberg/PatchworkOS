@@ -24,13 +24,17 @@
  *
  * ## Process Filesystem
  *
- * Each process has a directory located at `/proc/[pid]`, which contains various files that can be used to interact with
- * the process, these directories are only mounted in the namespace of the owner process and the parent namespaces.
+ * Each process has a directory located at `/proc/[pid]/`, which contains various files that can be used to interact
+ * with the process.
+ *
+ * A important distinction between a typical UNIX `/proc/` directory and our directories is that a processes
+ * `/proc/[pid]/` directory is only mounted in the namespace of the owner process and the parent namespaces. A child
+ * cannot see the `/proc/[pid]` directory of its ancestors.
  *
  * Additionally, there is a `/proc/self` dynamic symlink that points to the `/proc/[pid]` directory of the current
  * process.
  *
- * Included below is a list of all entries found in the `/proc/[pid]` directory along with their formats.
+ * Included below is a list of all entries found in the `/proc/[pid]/` directory.
  *
  * ## prio
  *
@@ -75,14 +79,10 @@
  *
  * @see kernel_ipc_note
  *
- * ## gid
+ * ## group
  *
- * A readable file that contains the group ID of the process.
- *
- * Format:
- * ```
- * %llu
- * ```
+ * Opening this file returns a file descriptor referring to the group. This file descriptor can be used with the
+ * `setgroup` command in the `ctl` file to switch groups.
  *
  * ## pid
  *
@@ -120,12 +120,9 @@
  *
  * ## ns
  *
- * A file that represents the namespace of the process. Opening this file returns a file descriptor referring to the
- * namespace. This file descriptor can be used with the `setns` command in the `ctl` file to switch namespaces.
+ * Opening this file returns a file descriptor referring to the namespace. This file descriptor can be used with the
+ * `setns` command in the `ctl` file to switch namespaces.
  *
- * @see share()
- * @see claim()
- * 
  * ## ctl
  *
  * A writable file that can be used to control certain aspects of the process, such as closing file descriptors.
@@ -176,11 +173,17 @@
  *
  * Sends a kill note to all threads in the process, effectively terminating it.
  *
- * ### setns <ns>
+ * ### setns <fd>
  *
  * Sets the namespace of the process to the one referred to by the file descriptor.
  *
  * The file descriptor must be one that was opened from `/proc/[pid]/ns`.
+ *
+ * ### setgroup <fd>
+ *
+ * Sets the group of the process to the one referred to by the file descriptor.
+ *
+ * The file descriptor must be one that was opened from `/proc/[pid]/group`.
  *
  * ## fd
  *
@@ -254,7 +257,6 @@ typedef struct
 typedef struct process
 {
     pid_t id;
-    group_member_t group;
     _Atomic(priority_t) priority;
     process_status_t status;
     space_t space;
@@ -272,6 +274,7 @@ typedef struct process
     process_dir_t dir;
     char** argv;
     uint64_t argc;
+    group_member_t group;
 } process_t;
 
 /**
@@ -280,13 +283,14 @@ typedef struct process
  * There is no `process_free()`, instead use `process_kill()` to push a process to the reaper.
  *
  * @param priority The priority of the new process.
- * @param gid The group ID of the new process, or `GID_NONE` to create a new group.
- * @param source The source namespace entry to copy from or share a namespace with, or `NULL` to create a new empty
+ * @param group A member of the group to add the new process to, or `NULL` to create a new group for the process.
+ * @param ns The source namespace handle to copy from or share a namespace with, or `NULL` to create a new empty
  * namespace.
- * @param flags Flags for the new namespace entry.
+ * @param flags Flags for the new namespace handle.
  * @return On success, the newly created process. On failure, `NULL` and `errno` is set.
  */
-process_t* process_new(priority_t priority, gid_t gid, namespace_handle_t* source, namespace_handle_flags_t flags);
+process_t* process_new(priority_t priority, group_member_t* group, namespace_handle_t* ns,
+    namespace_handle_flags_t flags);
 
 /**
  * @brief Kills a process, pushing it to the reaper.

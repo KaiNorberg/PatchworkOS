@@ -19,6 +19,7 @@
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
 #include <kernel/module/symbol.h>
+#include <kernel/proc/group.h>
 #include <kernel/proc/process.h>
 #include <kernel/proc/reaper.h>
 #include <kernel/sched/loader.h>
@@ -147,7 +148,7 @@ static inline void init_process_spawn(void)
 {
     LOG_INFO("spawning init process\n");
 
-    process_t* initProcess = process_new(PRIORITY_MAX_USER, GID_NONE, &process_get_kernel()->ns, NAMESPACE_HANDLE_COPY);
+    process_t* initProcess = process_new(PRIORITY_MAX_USER, NULL, &process_get_kernel()->ns, NAMESPACE_HANDLE_COPY);
     if (initProcess == NULL)
     {
         panic(NULL, "Failed to create init process");

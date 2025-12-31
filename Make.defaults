@@ -60,7 +60,7 @@ ifeq ($(DEBUG),1)
 	CFLAGS += -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline
 	LDFLAGS += -g
 else
-	CFLAGS += -O3 -DNDEBUG
+	CFLAGS += -O2 -DNDEBUG
 endif
 
 ifeq ($(NOSTDLIB),1)

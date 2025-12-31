@@ -287,17 +287,35 @@ static file_ops_t notegroupOps = {
     .write = process_notegroup_write,
 };
 
-static uint64_t process_gid_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t process_group_open(file_t* file)
 {
     process_t* process = file->inode->private;
+  
+    group_t* group = group_get(&process->group);
+    if (group == NULL)
+    {
+        return ERR;
+    }
 
-    char gidStr[MAX_NAME];
-    uint32_t length = snprintf(gidStr, MAX_NAME, "%llu", group_get_id(&process->group));
-    return BUFFER_READ(buffer, count, offset, gidStr, length);
+    file->private = group;
+    return 0;
 }
 
-static file_ops_t gidOps = {
-    .read = process_gid_read,
+static void process_group_close(file_t* file)
+{
+    group_t* group = file->private;
+    if (group == NULL)
+    {
+        return;
+    }
+
+    UNREF(group);
+    file->private = NULL;
+}
+
+static file_ops_t groupOps = {
+    .open = process_group_open,
+    .close = process_group_close,
 };
 
 static uint64_t process_pid_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
@@ -638,6 +656,95 @@ static uint64_t process_ctl_kill(file_t* file, uint64_t argc, const char** argv)
     return 0;
 }
 
+
+static uint64_t process_ctl_setns(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 2)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+
+    fd_t fd;
+    if (sscanf(argv[1], "%llu", &fd) != 1)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    file_t* nsFile = file_table_get(&process->fileTable, fd);
+    if (nsFile == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(nsFile);
+
+    if (nsFile->ops != &nsOps)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    namespace_handle_t* target = nsFile->private;
+    if (target == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    namespace_handle_deinit(&process->ns);
+
+    if (namespace_handle_init(&process->ns, target, NAMESPACE_HANDLE_SHARE) == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
+static uint64_t process_ctl_setgroup(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 2)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+
+    fd_t fd;
+    if (sscanf(argv[1], "%llu", &fd) != 1)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    file_t* groupFile = file_table_get(&process->fileTable, fd);
+    if (groupFile == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(groupFile);
+
+    if (groupFile->ops != &groupOps)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    group_t* target = groupFile->private;
+    if (target == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    group_add(target, &process->group);
+    return 0;
+}
+
 CTL_STANDARD_OPS_DEFINE(ctlOps,
     {
         {"close", process_ctl_close, 2, 3},
@@ -647,6 +754,8 @@ CTL_STANDARD_OPS_DEFINE(ctlOps,
         {"touch", process_ctl_touch, 2, 2},
         {"start", process_ctl_start, 1, 1},
         {"kill", process_ctl_kill, 1, 1},
+        {"setns", process_ctl_setns, 2, 2},
+        {"setgroup", process_ctl_setgroup, 2, 2},
         {0},
     })
 
@@ -808,7 +917,7 @@ static sysfs_file_desc_t files[] = {
     {.name = "cmdline", .inodeOps = NULL, .fileOps = &cmdlineOps},
     {.name = "note", .inodeOps = NULL, .fileOps = &noteOps},
     {.name = "notegroup", .inodeOps = NULL, .fileOps = &notegroupOps},
-    {.name = "gid", .inodeOps = NULL, .fileOps = &gidOps},
+    {.name = "group", .inodeOps = NULL, .fileOps = &groupOps},
     {.name = "pid", .inodeOps = NULL, .fileOps = &pidOps},
     {.name = "wait", .inodeOps = NULL, .fileOps = &waitOps},
     {.name = "perf", .inodeOps = NULL, .fileOps = &perfOps},
@@ -858,7 +967,7 @@ static uint64_t process_dir_init(process_t* process)
     return 0;
 }
 
-process_t* process_new(priority_t priority, gid_t gid, namespace_handle_t* source, namespace_handle_flags_t flags)
+process_t* process_new(priority_t priority, group_member_t* group, namespace_handle_t* ns, namespace_handle_flags_t flags)
 {
     process_t* process = malloc(sizeof(process_t));
     if (process == NULL)
@@ -868,7 +977,6 @@ process_t* process_new(priority_t priority, gid_t gid, namespace_handle_t* sourc
     }
 
     process->id = atomic_fetch_add(&newPid, 1);
-    group_member_init(&process->group);
     atomic_init(&process->priority, priority);
     memset_s(process->status.buffer, PROCESS_STATUS_MAX, 0, PROCESS_STATUS_MAX);
     lock_init(&process->status.lock);
@@ -880,7 +988,7 @@ process_t* process_new(priority_t priority, gid_t gid, namespace_handle_t* sourc
         return NULL;
     }
 
-    if (namespace_handle_init(&process->ns, source, flags) == ERR)
+    if (namespace_handle_init(&process->ns, ns, flags) == ERR)
     {
         space_deinit(&process->space);
         free(process);
@@ -911,9 +1019,9 @@ process_t* process_new(priority_t priority, gid_t gid, namespace_handle_t* sourc
     process->argv = NULL;
     process->argc = 0;
 
-    if (group_add(gid, &process->group) == ERR)
+    if (group_member_init(&process->group, group) == ERR)
     {
-        process_kill(process, "init failed");
+        process_kill(process, "group init failed");
         return NULL;
     }
 
@@ -1144,7 +1252,7 @@ process_t* process_get_kernel(void)
 {
     if (kernelProcess == NULL)
     {
-        kernelProcess = process_new(PRIORITY_MAX, GID_NONE, NULL, NAMESPACE_HANDLE_SHARE);
+        kernelProcess = process_new(PRIORITY_MAX, NULL, NULL, NAMESPACE_HANDLE_SHARE);
         if (kernelProcess == NULL)
         {
             panic(NULL, "Failed to create kernel process");

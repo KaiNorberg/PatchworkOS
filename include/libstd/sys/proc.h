@@ -15,7 +15,7 @@ extern "C"
 #include "_internal/clock_t.h"
 #include "_internal/config.h"
 #include "_internal/fd_t.h"
-#include "_internal/gid_t.h"
+
 #include "_internal/pid_t.h"
 #include "_internal/tid_t.h"
 
