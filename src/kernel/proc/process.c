@@ -375,6 +375,45 @@ static file_ops_t perfOps = {
     .read = process_perf_read,
 };
 
+static uint64_t process_ns_open(file_t* file)
+{
+    process_t* process = file->inode->private;
+
+    namespace_handle_t* handle = malloc(sizeof(namespace_handle_t));
+    if (handle == NULL)
+    {
+        errno = ENOMEM;
+        return ERR;
+    }
+
+    if (namespace_handle_init(handle, &process->ns, NAMESPACE_HANDLE_SHARE) == ERR)
+    {
+        free(handle);
+        return ERR;
+    }
+
+    file->private = handle;
+    return 0;
+}
+
+static void process_ns_close(file_t* file)
+{
+    if (file->private == NULL)
+    {
+        return;
+    }
+
+    namespace_handle_t* handle = file->private;
+    namespace_handle_deinit(handle);
+    free(handle);
+    file->private = NULL;
+}
+
+static file_ops_t nsOps = {
+    .open = process_ns_open,
+    .close = process_ns_close,
+};
+
 static uint64_t process_ctl_close(file_t* file, uint64_t argc, const char** argv)
 {
     if (argc != 2 && argc != 3)
@@ -773,6 +812,7 @@ static sysfs_file_desc_t files[] = {
     {.name = "pid", .inodeOps = NULL, .fileOps = &pidOps},
     {.name = "wait", .inodeOps = NULL, .fileOps = &waitOps},
     {.name = "perf", .inodeOps = NULL, .fileOps = &perfOps},
+    {.name = "ns", .inodeOps = NULL, .fileOps = &nsOps},
     {.name = "ctl", .inodeOps = NULL, .fileOps = &ctlOps},
     {0},
 };

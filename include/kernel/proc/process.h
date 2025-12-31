@@ -118,6 +118,14 @@
  * %llu %llu %llu %llu %llu
  * ```
  *
+ * ## ns
+ *
+ * A file that represents the namespace of the process. Opening this file returns a file descriptor referring to the
+ * namespace. This file descriptor can be used with the `setns` command in the `ctl` file to switch namespaces.
+ *
+ * @see share()
+ * @see claim()
+ * 
  * ## ctl
  *
  * A writable file that can be used to control certain aspects of the process, such as closing file descriptors.
@@ -167,6 +175,12 @@
  * ### kill
  *
  * Sends a kill note to all threads in the process, effectively terminating it.
+ *
+ * ### setns <ns>
+ *
+ * Sets the namespace of the process to the one referred to by the file descriptor.
+ *
+ * The file descriptor must be one that was opened from `/proc/[pid]/ns`.
  *
  * ## fd
  *
