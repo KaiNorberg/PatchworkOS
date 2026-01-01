@@ -4,7 +4,7 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/ipi.h>
 #include <kernel/cpu/tss.h>
-#include <kernel/defs.h>
+#include <sys/defs.h>
 #include <kernel/drivers/perf.h>
 #include <kernel/drivers/rand.h>
 #include <kernel/mem/vmm.h>

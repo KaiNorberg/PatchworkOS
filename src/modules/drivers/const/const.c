@@ -33,7 +33,7 @@ static dentry_t* nullFile;
 
 static uint64_t const_one_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)file; // Unused
+    UNUSED(file);
 
     memset(buffer, -1, count);
     *offset += count;
@@ -42,8 +42,8 @@ static uint64_t const_one_read(file_t* file, void* buffer, uint64_t count, uint6
 
 static void* const_one_mmap(file_t* file, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
 {
-    (void)file;   // Unused
-    (void)offset; // Unused
+    UNUSED(file);   // Unused
+    UNUSED(offset);
 
     addr = vmm_alloc(&sched_process()->space, addr, length, flags, VMM_ALLOC_OVERWRITE);
     if (addr == NULL)
@@ -62,7 +62,7 @@ static file_ops_t oneOps = {
 
 static uint64_t const_zero_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)file; // Unused
+    UNUSED(file);
 
     memset(buffer, 0, count);
     *offset += count;
@@ -71,8 +71,8 @@ static uint64_t const_zero_read(file_t* file, void* buffer, uint64_t count, uint
 
 static void* const_zero_mmap(file_t* file, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
 {
-    (void)file;   // Unused
-    (void)offset; // Unused
+    UNUSED(file);   // Unused
+    UNUSED(offset);
 
     addr = vmm_alloc(&sched_process()->space, addr, length, flags, VMM_ALLOC_OVERWRITE);
     if (addr == NULL)
@@ -91,8 +91,8 @@ static file_ops_t zeroOps = {
 
 static uint64_t const_null_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)file;   // Unused
-    (void)buffer; // Unused
+    UNUSED(file);   // Unused
+    UNUSED(buffer);
 
     *offset += count;
     return 0;
@@ -100,8 +100,8 @@ static uint64_t const_null_read(file_t* file, void* buffer, uint64_t count, uint
 
 static uint64_t const_null_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)file;   // Unused
-    (void)buffer; // Unused
+    UNUSED(file);   // Unused
+    UNUSED(buffer);
 
     *offset += count;
     return count;

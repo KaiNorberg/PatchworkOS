@@ -1,12 +1,12 @@
 #include "manifest.h"
 
-#include <_internal/fd_t.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/argsplit.h>
 #include <sys/io.h>
+#include <sys/defs.h>
 #include <sys/proc.h>
 
 /**
@@ -162,7 +162,7 @@ static void pkg_spawn(pkg_spawn_t* ctx)
     substitution_t substitutions[] = {
         {"PKG", F("/pkg/%s/", args.pkg)},
     };
-    manifest_substitute(&manifest, substitutions, sizeof(substitutions) / sizeof(substitution_t));
+    manifest_substitute(&manifest, substitutions, ARRAY_SIZE(substitutions));
 
     section_t* exec = &manifest.sections[SECTION_EXEC];
     char* bin = manifest_get_value(exec, "bin");

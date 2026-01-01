@@ -8,8 +8,10 @@
 
 #define BUFFER_MAX 0x1000
 
-void note_handler(void)
+void note_handler(char* note)
 {
+    UNUSED(note);
+
     // Do nothing
     noted();
 }
@@ -18,6 +20,12 @@ int main(int argc, char** argv)
 {
     if (argc < 1)
     {
+        return EXIT_FAILURE;
+    }
+
+    if (notify(note_handler) == ERR)
+    {
+        printf("pkgspawn: failed to register note handler (%s)\n", strerror(errno));
         return EXIT_FAILURE;
     }
 

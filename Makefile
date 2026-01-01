@@ -16,7 +16,7 @@ ROOT_DIRS = acpi sys sys/bin sys/lib sys/include sys/data pkg cfg dev efi efi/bo
 # Programs to copy to /sbin
 SBIN_PROGRAMS = init pkgd
 # Programs to copy to /sys/bin
-SYS_BIN_PROGRAMS = pkgspawn shell cat echo grep link ls mv readlink rm root stat symlink tail touch
+SYS_BIN_PROGRAMS = $(filter-out $(SBIN_PROGRAMS),$(basename $(notdir $(shell find bin/programs/))))
 
 # Programs to copy to /usr/bin
 #USR_BIN_PROGRAMS = $(filter-out $(BIN_PROGRAMS) $(SBIN_PROGRAMS),$(basename $(notdir $(shell find bin/programs/))))

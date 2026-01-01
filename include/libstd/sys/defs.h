@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _SYS_DEFS_H
+#define _SYS_DEFS_H 1
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -6,8 +7,8 @@
 
 /**
  * @brief Defines.
- * @defgroup kernel_defs Kernel Defines
- * @ingroup kernel
+ * @ingroup libstd
+ * @defgroup libstd_sys_defs Defines
  *
  * @{
  */
@@ -89,4 +90,23 @@
  */
 #define RED_ZONE_SIZE 128
 
+/**
+ * @brief Mark a variable as unused.
+ *
+ * This macro marks a variable as unused to prevent compiler warnings about unused variables.
+ *
+ * @param x The variable to mark as unused.
+ */
+#define UNUSED(x) (void)(x)
+
+/**
+ * @brief Get the number of elements in a static array.
+ *
+ * @param x The array.
+ * @return The number of elements in the array.
+ */
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
 /** @} */
+
+#endif

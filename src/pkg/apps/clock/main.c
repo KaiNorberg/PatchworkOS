@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/defs.h>
 #include <time.h>
 
 #define WINDOW_WIDTH 500
@@ -50,7 +51,7 @@ static void draw_hand(drawable_t* draw, point_t center, const point_t* handPoint
 
 static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
-    (void)win;
+    UNUSED(win);
 
     switch (event->type)
     {
@@ -87,7 +88,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         for (int i = 0; i < 12; i++)
         {
             double angle = i * (M_PI / 6);
-            draw_marker(&draw, center, radius, hourMarker, sizeof(hourMarker) / sizeof(hourMarker[0]), angle,
+            draw_marker(&draw, center, radius, hourMarker, ARRAY_SIZE(hourMarker), angle,
                 PIXEL_ARGB(255, 0, 0, 0));
         }
 
@@ -96,7 +97,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             if (i % 5 != 0)
             {
                 double angle = i * (M_PI / 30);
-                draw_marker(&draw, center, radius, minuteMarker, sizeof(minuteMarker) / sizeof(minuteMarker[0]), angle,
+                draw_marker(&draw, center, radius, minuteMarker, ARRAY_SIZE(minuteMarker), angle,
                     PIXEL_ARGB(255, 100, 100, 100));
             }
         }
@@ -105,10 +106,10 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         double minuteAngle = (t->tm_min + (double)t->tm_sec / 60.0) * (M_PI / 30);
         double secondAngle = t->tm_sec * (M_PI / 30);
 
-        draw_hand(&draw, center, hourHand, sizeof(hourHand) / sizeof(hourHand[0]), hourAngle, PIXEL_ARGB(255, 0, 0, 0));
-        draw_hand(&draw, center, minuteHand, sizeof(minuteHand) / sizeof(minuteHand[0]), minuteAngle,
+        draw_hand(&draw, center, hourHand, ARRAY_SIZE(hourHand), hourAngle, PIXEL_ARGB(255, 0, 0, 0));
+        draw_hand(&draw, center, minuteHand, ARRAY_SIZE(minuteHand), minuteAngle,
             PIXEL_ARGB(255, 0, 0, 0));
-        draw_hand(&draw, center, secondHand, sizeof(secondHand) / sizeof(secondHand[0]), secondAngle,
+        draw_hand(&draw, center, secondHand, ARRAY_SIZE(secondHand), secondAngle,
             PIXEL_ARGB(255, 255, 0, 0));
         element_draw_end(elem, &draw);
     }

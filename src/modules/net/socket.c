@@ -144,7 +144,7 @@ static file_ops_t dataOps = {
 
 static uint64_t socket_ctl_bind(file_t* file, uint64_t argc, const char** argv)
 {
-    (void)argc; // Unused
+    UNUSED(argc);
 
     socket_t* sock = socket_get(file);
     assert(sock != NULL);
@@ -210,7 +210,7 @@ static uint64_t socket_ctl_listen(file_t* file, uint64_t argc, const char** argv
 
 static uint64_t socket_ctl_connect(file_t* file, uint64_t argc, const char** argv)
 {
-    (void)argc; // Unused
+    UNUSED(argc);
 
     socket_t* sock = socket_get(file);
     assert(sock != NULL);

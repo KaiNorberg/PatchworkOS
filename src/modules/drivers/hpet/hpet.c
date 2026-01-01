@@ -168,7 +168,7 @@ static inline void hpet_reset_counter(void)
  */
 static void hpet_overflow_thread(void* arg)
 {
-    (void)arg;
+    UNUSED(arg);
 
     // Assume the worst case where the HPET is 32bit, since `clock_t` isent large enough to hold the time otherwise and
     // i feel paranoid.

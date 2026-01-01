@@ -68,7 +68,7 @@ void wait_init(wait_t* wait)
 
 void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self)
 {
-    (void)frame; // Unused
+    UNUSED(frame);
 
     LOCK_SCOPE(&self->wait.lock);
 
@@ -230,7 +230,7 @@ uint64_t wait_block_commit(void)
 
 bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread, clock_t uptime)
 {
-    (void)frame; // Unused
+    UNUSED(frame);
 
     thread->wait.owner = &self->wait;
     LOCK_SCOPE(&self->wait.lock);

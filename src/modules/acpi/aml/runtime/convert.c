@@ -74,7 +74,7 @@ static inline uint8_t aml_hex_to_byte(char chr)
 
 static uint64_t aml_buffer_to_buffer_field(aml_state_t* state, aml_object_t* buffer, aml_object_t* dest)
 {
-    (void)state;
+    UNUSED(state);
     if (dest->type != AML_BUFFER_FIELD)
     {
         return AML_CONVERT_TRY_NEXT_CONVERTER;
@@ -84,7 +84,7 @@ static uint64_t aml_buffer_to_buffer_field(aml_state_t* state, aml_object_t* buf
 
 static uint64_t aml_buffer_to_integer(aml_state_t* state, aml_object_t* buffer, aml_object_t* dest)
 {
-    (void)state;
+    UNUSED(state);
     aml_buffer_t* bufferData = &buffer->buffer;
 
     uint64_t value = 0;
@@ -104,7 +104,7 @@ static uint64_t aml_buffer_to_integer(aml_state_t* state, aml_object_t* buffer, 
 
 static uint64_t aml_buffer_to_string(aml_state_t* state, aml_object_t* buffer, aml_object_t* dest)
 {
-    (void)state;
+    UNUSED(state);
     aml_buffer_t* bufferData = &buffer->buffer;
 
     // Each byte becomes two hex chars with a space in between, except the last byte.
@@ -130,8 +130,8 @@ static uint64_t aml_buffer_to_string(aml_state_t* state, aml_object_t* buffer, a
 
 static uint64_t aml_buffer_to_debug_object(aml_state_t* state, aml_object_t* buffer, aml_object_t* dest)
 {
-    (void)state;
-    (void)dest;
+    UNUSED(state);
+    UNUSED(dest);
 
     if (buffer->buffer.length == 0)
     {
@@ -161,7 +161,7 @@ static aml_convert_entry_t bufferConverters[AML_TYPE_AMOUNT] = {
 
 static uint64_t aml_integer_to_buffer(aml_state_t* state, aml_object_t* integer, aml_object_t* dest)
 {
-    (void)state;
+    UNUSED(state);
     aml_integer_t* integerData = &integer->integer;
 
     if (dest->type == AML_BUFFER)
@@ -194,7 +194,7 @@ static uint64_t aml_integer_to_field_unit(aml_state_t* state, aml_object_t* inte
 
 static uint64_t aml_integer_to_buffer_field(aml_state_t* state, aml_object_t* integer, aml_object_t* dest)
 {
-    (void)state;
+    UNUSED(state);
     if (dest->type != AML_BUFFER_FIELD)
     {
         return AML_CONVERT_TRY_NEXT_CONVERTER;
@@ -204,7 +204,7 @@ static uint64_t aml_integer_to_buffer_field(aml_state_t* state, aml_object_t* in
 
 static uint64_t aml_integer_to_string(aml_state_t* state, aml_object_t* integer, aml_object_t* dest)
 {
-    (void)state;
+    UNUSED(state);
     const uint64_t stringLength = aml_integer_byte_size() * 2; // Two hex chars per byte
 
     if (aml_string_prepare(dest, stringLength) == ERR)
@@ -226,8 +226,8 @@ static uint64_t aml_integer_to_string(aml_state_t* state, aml_object_t* integer,
 
 static uint64_t aml_integer_to_debug_object(aml_state_t* state, aml_object_t* integer, aml_object_t* dest)
 {
-    (void)state;
-    (void)dest;
+    UNUSED(state);
+    UNUSED(dest);
     log_print(LOG_LEVEL_INFO, "0x%llx\n", integer->integer.value);
     return 0;
 }
@@ -242,8 +242,8 @@ static aml_convert_entry_t integerConverters[AML_TYPE_AMOUNT] = {
 
 static uint64_t aml_package_to_debug_object(aml_state_t* state, aml_object_t* package, aml_object_t* dest)
 {
-    (void)state;
-    (void)dest;
+    UNUSED(state);
+    UNUSED(dest);
     log_print(LOG_LEVEL_INFO, "[");
     for (uint64_t i = 0; i < package->package.length; i++)
     {
@@ -263,7 +263,7 @@ static aml_convert_entry_t packageConverters[AML_TYPE_AMOUNT] = {
 
 static uint64_t aml_string_to_integer(aml_state_t* state, aml_object_t* string, aml_object_t* dest)
 {
-    (void)state;
+    UNUSED(state);
     aml_string_t* stringData = &string->string;
 
     uint64_t value = 0;
@@ -289,7 +289,7 @@ static uint64_t aml_string_to_integer(aml_state_t* state, aml_object_t* string, 
 
 static uint64_t aml_string_to_buffer(aml_state_t* state, aml_object_t* string, aml_object_t* dest)
 {
-    (void)state;
+    UNUSED(state);
     aml_string_t* stringData = &string->string;
 
     // Regarding zero-length strings the spec says "... the string is treated as a buffer, with each
@@ -327,8 +327,8 @@ static uint64_t aml_string_to_buffer(aml_state_t* state, aml_object_t* string, a
 
 static uint64_t aml_string_to_debug_object(aml_state_t* state, aml_object_t* string, aml_object_t* dest)
 {
-    (void)state;
-    (void)dest;
+    UNUSED(state);
+    UNUSED(dest);
     if (string->string.length == 0)
     {
         log_print(LOG_LEVEL_INFO, "<empty string>\n");
@@ -654,7 +654,7 @@ uint64_t aml_convert_to_buffer(aml_state_t* state, aml_object_t* src, aml_object
 
 uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, aml_object_t** dest)
 {
-    (void)state;
+    UNUSED(state);
 
     if (src == NULL || dest == NULL)
     {
@@ -760,7 +760,7 @@ uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, am
 
 uint64_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_object_t** dest)
 {
-    (void)state;
+    UNUSED(state);
 
     if (src == NULL || dest == NULL)
     {
@@ -850,7 +850,7 @@ uint64_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_ob
 
 uint64_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_object_t** dest)
 {
-    (void)state;
+    UNUSED(state);
 
     if (src == NULL || dest == NULL)
     {

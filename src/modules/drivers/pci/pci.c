@@ -1,10 +1,10 @@
 #include <kernel/module/module.h>
 
-#include <kernel/defs.h>
+#include <sys/defs.h>
 
 uint64_t _module_procedure(const module_event_t* event)
 {
-    (void)event;
+    UNUSED(event);
     return 0;
 }
 

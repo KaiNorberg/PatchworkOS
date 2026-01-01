@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/defs.h>
+#include <sys/defs.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/rbtree.h>

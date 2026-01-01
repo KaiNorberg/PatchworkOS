@@ -4,6 +4,7 @@
 #include <kernel/fs/superblock.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
+#include <stdint.h>
 #include <sys/io.h>
 #include <sys/list.h>
 
@@ -27,16 +28,9 @@ typedef struct process process_t;
 #define NAMESPACE_MAX_TRAVERSE 32
 
 /**
- * @brief Mount stack entry.
- * @struct mount_stack_entry_t
- *
- * Used to store mounts in a stack, allowing the same mount to be stored in multiple namespaces.
+ * @brief Maximum number of mounts that can be mounted to a single mountpoint.
  */
-typedef struct mount_stack_entry
-{
-    list_entry_t entry;
-    mount_t* mount;
-} mount_stack_entry_t;
+#define MOUNT_STACK_MAX_MOUNTS 8
 
 /**
  * @brief Mount stack.
@@ -48,7 +42,8 @@ typedef struct mount_stack
 {
     list_entry_t entry;
     map_entry_t mapEntry;
-    list_t mounts; ///< List of `mount_stack_entry_t`.
+    mount_t* mounts[MOUNT_STACK_MAX_MOUNTS];
+    uint64_t count;
 } mount_stack_t;
 
 /**

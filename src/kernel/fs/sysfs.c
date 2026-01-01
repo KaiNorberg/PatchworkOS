@@ -41,8 +41,8 @@ typedef struct
 
 static dentry_t* sysfs_mount(filesystem_t* fs, const char* devName, void* private)
 {
-    (void)devName; // Unused
-    (void)private; // Unused
+    UNUSED(devName);
+    UNUSED(private);
 
     sysfs_mount_ctx_t* ctx = private;
 

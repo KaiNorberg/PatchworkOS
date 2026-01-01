@@ -28,7 +28,7 @@ static fb_t* fb;
 
 static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
 {
-    (void)fb; // Unused
+    UNUSED(fb);
 
     process_t* process = sched_process();
 

@@ -9,7 +9,7 @@
 #include <modules/acpi/tables.h>
 
 #include <assert.h>
-#include <kernel/defs.h>
+#include <sys/defs.h>
 
 static uint32_t ioapic_read(ioapic_t* ioapic, ioapic_register_t reg)
 {
@@ -75,7 +75,7 @@ static void ioapic_disable(irq_t* irq)
 
 static void ioapic_eoi(irq_t* irq)
 {
-    (void)irq;
+    UNUSED(irq);
 
     lapic_write(LAPIC_REG_EOI, 0);
 }

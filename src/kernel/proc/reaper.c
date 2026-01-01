@@ -13,7 +13,7 @@ static lock_t reaperLock = LOCK_CREATE();
 
 static void reaper_thread(void* arg)
 {
-    (void)arg;
+    UNUSED(arg);
 
     while (1)
     {

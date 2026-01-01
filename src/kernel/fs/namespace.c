@@ -78,11 +78,10 @@ static void namespace_free(namespace_t* ns)
     {
         mount_stack_t* stack = CONTAINER_OF(list_pop_first(&ns->stacks), mount_stack_t, entry);
 
-        while (!list_is_empty(&stack->mounts))
+        for (uint64_t i = 0; i < stack->count; i++)
         {
-            mount_stack_entry_t* stackEntry = CONTAINER_OF(list_pop_first(&stack->mounts), mount_stack_entry_t, entry);
-            UNREF(stackEntry->mount);
-            free(stackEntry);
+            UNREF(stack->mounts[i]);
+            stack->mounts[i] = NULL;
         }
 
         map_remove(&ns->mountMap, &stack->mapEntry);
@@ -129,8 +128,9 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, const map_key_t* 
 
         list_entry_init(&stack->entry);
         map_entry_init(&stack->mapEntry);
-        list_init(&stack->mounts);
-
+        memset((void*)stack->mounts, 0, sizeof(stack->mounts));
+        stack->count = 0;
+    
         if (map_insert(&ns->mountMap, key, &stack->mapEntry) == ERR)
         {
             free(stack);
@@ -139,24 +139,27 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, const map_key_t* 
         list_push_back(&ns->stacks, &stack->entry);
     }
 
-    mount_stack_entry_t* stackEntry = malloc(sizeof(mount_stack_entry_t));
-    if (stackEntry == NULL)
+    if (stack->count >= ARRAY_SIZE(stack->mounts))
     {
-        if (list_is_empty(&stack->mounts))
-        {
-            list_remove(&ns->stacks, &stack->entry);
-            map_remove(&ns->mountMap, &stack->mapEntry);
-            free(stack);
-        }
-
         errno = ENOMEM;
         return ERR;
     }
 
-    list_entry_init(&stackEntry->entry);
-    stackEntry->mount = REF(mount);
-
-    list_push_back(&stack->mounts, &stackEntry->entry);
+    if (mount->parent == NULL || mount->mode & MODE_STICKY)
+    {
+        stack->mounts[stack->count] = REF(mount);
+        stack->count++;
+    }
+    else
+    {
+        map_key_t parentKey = mount_key_from_mount(mount->parent);
+        mount_stack_t* parentStack = CONTAINER_OF_SAFE(map_get(&ns->mountMap, &parentKey), mount_stack_t, mapEntry);
+        if (parentStack != NULL)
+        {
+            stack->mounts[stack->count] = REF(mount);
+            stack->count++;
+        }
+    }
 
     if (mount->mode & MODE_PROPAGATE_CHILDREN)
     {
@@ -200,19 +203,22 @@ static void namespace_remove(namespace_t* ns, mount_t* mount, map_key_t* key, mo
     mount_stack_t* stack = CONTAINER_OF_SAFE(map_get(&ns->mountMap, key), mount_stack_t, mapEntry);
     if (stack != NULL)
     {
-        mount_stack_entry_t* stackEntry;
-        LIST_FOR_EACH(stackEntry, &stack->mounts, entry)
+        for (uint64_t i = 0; i < stack->count; i++)
         {
-            if (stackEntry->mount == mount)
+            if (stack->mounts[i] != mount)
             {
-                list_remove(&stack->mounts, &stackEntry->entry);
-                UNREF(stackEntry->mount);
-                free(stackEntry);
-                break;
+                continue;
             }
-        }
 
-        if (list_is_empty(&stack->mounts))
+            UNREF(stack->mounts[i]);
+            stack->mounts[i] = NULL;
+
+            memmove(&stack->mounts[i], &stack->mounts[i + 1], (stack->count - i - 1) * sizeof(mount_t*));
+            stack->count--;
+            break;
+        }
+        
+        if (stack->count == 0)
         {
             list_remove(&ns->stacks, &stack->entry);
             map_remove(&ns->mountMap, &stack->mapEntry);
@@ -311,16 +317,15 @@ uint64_t namespace_handle_init(namespace_handle_t* handle, namespace_handle_t* s
         mount_stack_t* stack;
         LIST_FOR_EACH(stack, &srcNs->stacks, entry)
         {
-            mount_stack_entry_t* stackEntry;
-            LIST_FOR_EACH(stackEntry, &stack->mounts, entry)
+            for (uint64_t i = 0; i < stack->count; i++)
             {
-                if (stackEntry->mount->mode & MODE_PRIVATE)
+                if (stack->mounts[i]->mode & MODE_PRIVATE)
                 {
                     continue;
                 }
 
-                map_key_t key = mount_key_from_mount(stackEntry->mount);
-                if (namespace_add(ns, stackEntry->mount, &key) == ERR)
+                map_key_t key = mount_key_from_mount(stack->mounts[i]);
+                if (namespace_add(ns, stack->mounts[i], &key) == ERR)
                 {
                     namespace_free(ns);
                     return ERR;
@@ -423,10 +428,10 @@ bool namespace_traverse(namespace_handle_t* handle, path_t* path)
             }
         }
 
-        mount_stack_entry_t* entry = CONTAINER_OF_SAFE(list_last(&stack->mounts), mount_stack_entry_t, entry);
-        assert(entry != NULL);
+        assert(stack->count > 0);
+        mount_t* mnt = stack->mounts[stack->count - 1];
 
-        path_set(path, entry->mount, entry->mount->source);
+        path_set(path, mnt, mnt->source);
         traversed = true;
     }
 
@@ -566,16 +571,16 @@ void namespace_get_root(namespace_handle_t* handle, path_t* out)
 
     map_key_t key = root_key();
     mount_stack_t* stack = CONTAINER_OF_SAFE(map_get(&ns->mountMap, &key), mount_stack_t, mapEntry);
-    if (stack == NULL || list_is_empty(&stack->mounts))
+    if (stack == NULL)
     {
         path_set(out, NULL, NULL);
         return;
     }
 
-    mount_stack_entry_t* entry = CONTAINER_OF(list_last(&stack->mounts), mount_stack_entry_t, entry);
-    assert(entry != NULL);
+    assert(stack->count > 0);
+    mount_t* mnt = stack->mounts[stack->count - 1];
 
-    path_set(out, entry->mount, entry->mount->source);
+    path_set(out, mnt, mnt->source);
 }
 
 SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* mountpoint, const char* fs, const char* device)

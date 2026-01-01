@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/defs.h>
 
 typedef struct button
 {
@@ -145,7 +146,7 @@ static void button_send_action(element_t* elem, action_type_t type)
 
 static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* event)
 {
-    (void)win; // Unused
+    UNUSED(win);
 
     switch (event->type)
     {

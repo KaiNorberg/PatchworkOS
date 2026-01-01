@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/defs.h>
 
 #include "common/digits.h"
 
@@ -61,7 +62,7 @@ static void _scan_unget(int c, _format_ctx_t* ctx)
         --(ctx->buffer);
     }
 #else
-    (void)c;
+    UNUSED(c);
     if (ctx->buffer != NULL)
     {
         --(ctx->buffer);

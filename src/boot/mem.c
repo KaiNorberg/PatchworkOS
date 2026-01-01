@@ -2,7 +2,7 @@
 #include "efidef.h"
 
 #include <efilib.h>
-#include <kernel/defs.h>
+#include <sys/defs.h>
 #include <kernel/mem/paging_types.h>
 
 #include <boot/boot_info.h>

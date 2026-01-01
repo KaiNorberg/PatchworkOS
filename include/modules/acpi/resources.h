@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/defs.h>
+#include <sys/defs.h>
 #include <modules/acpi/aml/encoding/arg.h>
 #include <stdint.h>
 

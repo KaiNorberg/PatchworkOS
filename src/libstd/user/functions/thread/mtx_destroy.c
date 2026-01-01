@@ -9,6 +9,6 @@
 
 void mtx_destroy(mtx_t* mutex)
 {
-    (void)mutex;
+    UNUSED(mutex);
     // Do nothing
 }

@@ -13,6 +13,7 @@
 #include <sys/kbd.h>
 #include <sys/proc.h>
 #include <threads.h>
+#include <sys/defs.h>
 
 static ansi_t ansi;
 static history_t history;
@@ -21,7 +22,7 @@ static uint64_t pos;
 
 static void interactive_sigint_handler(int sig)
 {
-    (void)sig;
+    UNUSED(sig);
 
     // Do nothing, only child processes should be interrupted.
 }

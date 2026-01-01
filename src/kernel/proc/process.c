@@ -41,7 +41,7 @@ static dentry_t* self = NULL;
 
 static uint64_t process_self_readlink(inode_t* inode, char* buffer, uint64_t count)
 {
-    (void)inode; // Unused
+    UNUSED(inode);
 
     process_t* process = sched_process();
     int ret = snprintf(buffer, count, "%llu", process->id);
@@ -70,7 +70,7 @@ static uint64_t process_prio_read(file_t* file, void* buffer, uint64_t count, ui
 
 static uint64_t process_prio_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)offset; // Unused
+    UNUSED(offset);
 
     process_t* process = file->inode->private;
 
@@ -124,7 +124,7 @@ static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count, uin
 
 static uint64_t process_cwd_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)offset; // Unused
+    UNUSED(offset);
 
     process_t* process = file->inode->private;
 
@@ -219,7 +219,7 @@ static file_ops_t cmdlineOps = {
 
 static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)offset; // Unused
+    UNUSED(offset);
 
     if (count == 0)
     {
@@ -259,7 +259,7 @@ static file_ops_t noteOps = {
 
 static uint64_t process_notegroup_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)offset; // Unused
+    UNUSED(offset);
 
     if (count == 0)
     {
@@ -623,7 +623,7 @@ static uint64_t process_ctl_touch(file_t* file, uint64_t argc, const char** argv
 
 static uint64_t process_ctl_start(file_t* file, uint64_t argc, const char** argv)
 {
-    (void)argv; // Unused
+    UNUSED(argv);
 
     if (argc != 1)
     {
@@ -641,7 +641,7 @@ static uint64_t process_ctl_start(file_t* file, uint64_t argc, const char** argv
 
 static uint64_t process_ctl_kill(file_t* file, uint64_t argc, const char** argv)
 {
-    (void)argv; // Unused
+    UNUSED(argv);
 
     if (argc != 1)
     {

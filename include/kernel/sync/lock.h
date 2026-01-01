@@ -6,7 +6,7 @@
 #include <kernel/log/panic.h>
 #endif
 
-#include <kernel/defs.h>
+#include <sys/defs.h>
 #include <kernel/drivers/com.h>
 #include <stdatomic.h>
 

@@ -70,7 +70,7 @@ static mode_t path_flag_to_mode(const char* flag, uint64_t length)
         return MODE_NONE;
     }
 
-    for (uint64_t i = 0; i < sizeof(flags) / sizeof(flags[0]); i++)
+    for (uint64_t i = 0; i < ARRAY_SIZE(flags); i++)
     {
         size_t len = strnlen_s(flags[i].name, MAX_NAME);
         if (len == length && strncmp(flag, flags[i].name, length) == 0)
@@ -640,7 +640,7 @@ uint64_t mode_to_string(mode_t mode, char* out, uint64_t length)
     }
 
     uint64_t index = 0;
-    for (uint64_t i = 0; i < sizeof(flags) / sizeof(flags[0]); i++)
+    for (uint64_t i = 0; i < ARRAY_SIZE(flags); i++)
     {
         if (mode & flags[i].mode)
         {

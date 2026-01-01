@@ -13,7 +13,7 @@ static aml_mutex_t* globalMutex = NULL;
 
 aml_object_t* aml_osi_implementation(aml_method_t* method, aml_object_t** args, uint64_t argCount)
 {
-    (void)method; // Unused
+    UNUSED(method);
 
     if (argCount != 1 || args[0]->type != AML_STRING)
     {
@@ -42,8 +42,8 @@ aml_object_t* aml_osi_implementation(aml_method_t* method, aml_object_t** args, 
 
 aml_object_t* aml_rev_implementation(aml_method_t* method, aml_object_t** args, uint64_t argCount)
 {
-    (void)method; // Unused
-    (void)args;   // Unused
+    UNUSED(method);
+    UNUSED(args);   // Unused
 
     if (argCount != 0)
     {
@@ -68,8 +68,8 @@ aml_object_t* aml_rev_implementation(aml_method_t* method, aml_object_t** args, 
 
 aml_object_t* aml_os_implementation(aml_method_t* method, aml_object_t** args, uint64_t argCount)
 {
-    (void)method; // Unused
-    (void)args;   // Unused
+    UNUSED(method);
+    UNUSED(args);   // Unused
 
     if (argCount != 0)
     {

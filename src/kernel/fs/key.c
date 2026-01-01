@@ -60,8 +60,8 @@ static uint64_t key_generate(char* buffer, uint64_t size)
 
 static void key_timer_handler(interrupt_frame_t* frame, cpu_t* self)
 {
-    (void)frame;
-    (void)self;
+    UNUSED(frame);
+    UNUSED(self);
 
     clock_t uptime = clock_uptime();
     LOCK_SCOPE(&keyLock);

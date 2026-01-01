@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/io.h>
+#include <sys/defs.h>
 #include <sys/proc.h>
 
 #define START_ENTRY_MAX 16
@@ -19,8 +20,6 @@ typedef struct
 } start_entry_t;
 
 static start_entry_t entries[START_ENTRY_MAX] = {0};
-
-#define ENTRY_AMOUNT (sizeof(entries) / sizeof(entries[0]))
 
 #define START_MENU_HEIGHT(frameSize) (frameSize + 12 * START_BUTTON_HEIGHT)
 
@@ -206,7 +205,7 @@ static void start_menu_load_entries(window_t* startMenu)
     }
 
     bool changed = false;
-    for (uint64_t i = 0; i < ENTRY_AMOUNT; i++)
+    for (uint64_t i = 0; i < ARRAY_SIZE(entries); i++)
     {
         char entryKey[32];
         snprintf(entryKey, sizeof(entryKey), "entry%lu", i);
@@ -249,7 +248,7 @@ static void start_menu_load_entries(window_t* startMenu)
     }
 
     // Clear existing buttons
-    for (uint64_t i = 0; i < ENTRY_AMOUNT; i++)
+    for (uint64_t i = 0; i < ARRAY_SIZE(entries); i++)
     {
         if (entries[i].button != NULL)
         {
@@ -259,7 +258,7 @@ static void start_menu_load_entries(window_t* startMenu)
     }
 
     const theme_t* theme = theme_global_get();
-    for (uint64_t i = 0; i < ENTRY_AMOUNT; i++)
+    for (uint64_t i = 0; i < ARRAY_SIZE(entries); i++)
     {
         if (entries[i].name == NULL || entries[i].path == NULL)
         {

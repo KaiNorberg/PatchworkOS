@@ -23,7 +23,7 @@ static dentry_t* file = NULL;
 
 static uint64_t log_file_op_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)file; // Unused
+    UNUSED(file);
 
     LOCK_SCOPE(&lock);
     uint64_t result = ring_read_at(&ring, *offset, buffer, count);
@@ -33,8 +33,8 @@ static uint64_t log_file_op_read(file_t* file, void* buffer, uint64_t count, uin
 
 static uint64_t log_file_op_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)file;   // Unused
-    (void)offset; // Unused
+    UNUSED(file);   // Unused
+    UNUSED(offset);
 
     log_nprint(LOG_LEVEL_USER, buffer, count);
     return count;
@@ -42,7 +42,7 @@ static uint64_t log_file_op_write(file_t* file, const void* buffer, uint64_t cou
 
 static wait_queue_t* log_file_op_poll(file_t* file, poll_events_t* revents)
 {
-    (void)file;
+    UNUSED(file);
 
     LOCK_SCOPE(&lock);
     if (ring.writeIndex != file->pos)

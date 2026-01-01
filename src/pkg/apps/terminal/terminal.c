@@ -7,6 +7,7 @@
 #include <sys/io.h>
 #include <sys/kbd.h>
 #include <sys/proc.h>
+#include <sys/defs.h>
 #include <time.h>
 
 static terminal_char_t terminal_char_create(char chr, pixel_t foreground, pixel_t background, uint16_t row,
@@ -213,8 +214,8 @@ static void terminal_put(terminal_t* term, element_t* elem, drawable_t* draw, ch
 
 static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t* draw, const event_kbd_t* kbd)
 {
-    (void)elem;
-    (void)draw;
+    UNUSED(elem);
+    UNUSED(draw);
 
     ansi_receiving_t ansi;
     ansi_kbd_to_receiving(&ansi, kbd);

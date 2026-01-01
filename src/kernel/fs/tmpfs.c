@@ -208,7 +208,7 @@ static dentry_ops_t dentryOps = {
 
 static void tmpfs_superblock_cleanup(superblock_t* superblock)
 {
-    (void)superblock; // Unused
+    UNUSED(superblock);
 
     panic(NULL, "tmpfs unmounted\n");
 }
@@ -278,8 +278,8 @@ static dentry_t* tmpfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
 
 static dentry_t* tmpfs_mount(filesystem_t* fs, const char* devName, void* private)
 {
-    (void)devName; // Unused
-    (void)private; // Unused
+    UNUSED(devName);
+    UNUSED(private);
 
     superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, &superOps, &dentryOps);
     if (superblock == NULL)

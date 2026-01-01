@@ -29,7 +29,7 @@ void mutex_acquire(mutex_t* mtx)
 {
     bool isAcquired = mutex_acquire_timeout(mtx, CLOCKS_NEVER);
     assert(isAcquired);
-    (void)isAcquired;
+    UNUSED(isAcquired);
 }
 
 bool mutex_acquire_timeout(mutex_t* mtx, clock_t timeout)

@@ -9,7 +9,7 @@
 #include <modules/acpi/tables.h>
 
 #include <kernel/cpu/regs.h>
-#include <kernel/defs.h>
+#include <sys/defs.h>
 
 #include <stdint.h>
 
