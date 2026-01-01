@@ -726,6 +726,153 @@ CTL_STANDARD_OPS_DEFINE(ctlOps,
         {0},
     })
 
+static uint64_t procfs_env_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    process_t* process = file->inode->private;
+
+    const char* value = env_get(&process->env, file->path.dentry->name);
+    if (value == NULL)
+    {
+        return 0;
+    }
+
+    uint64_t length = strlen(value);
+    return BUFFER_READ(buffer, count, offset, value, length);
+}
+
+static uint64_t procfs_env_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+{
+    UNUSED(offset);
+
+    process_t* process = file->inode->private;
+
+    char value[MAX_NAME];
+    if (count >= MAX_NAME)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    memcpy(value, buffer, count);
+    value[count] = '\0';
+
+    if (env_set(&process->env, file->path.dentry->name, value) == ERR)
+    {
+        return ERR;
+    }
+
+    return count;   
+}
+
+static file_ops_t envVarOps = {
+    .read = procfs_env_read,
+    .write = procfs_env_write,
+};
+
+static uint64_t procfs_env_lookup(inode_t* dir, dentry_t* target)
+{
+    UNUSED(target);
+
+    process_t* process = dir->private;
+    assert(process != NULL);
+
+    if (env_get(&process->env, target->name) == NULL)
+    {
+        return 0;
+    }
+
+    inode_t* inode = inode_new(dir->superblock, inode_number_gen(dir->number, target->name), INODE_FILE, NULL, &envVarOps);
+    if (inode == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(inode);
+    inode->private = process; // No reference
+
+    dentry_make_positive(target, inode);
+
+    return 0;
+}
+
+static uint64_t procfs_env_create(inode_t* dir, dentry_t* target, mode_t mode)
+{
+    if (mode & MODE_DIRECTORY)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = dir->private;
+    assert(process != NULL);
+
+    if (env_set(&process->env, target->name, "") == ERR)
+    {
+        return ERR;
+    }
+
+    inode_t* inode = inode_new(dir->superblock, inode_number_gen(dir->number, target->name), INODE_FILE, NULL, &envVarOps);
+    if (inode == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(inode);
+    inode->private = process; // No reference
+
+    dentry_make_positive(target, inode);
+    return 0;
+}
+
+static uint64_t procfs_env_remove(inode_t* dir, dentry_t* target)
+{
+    process_t* process = dir->private;
+    assert(process != NULL);
+
+    if (env_unset(&process->env, target->name) == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
+static inode_ops_t envInodeOps = {
+    .lookup = procfs_env_lookup,
+    .create = procfs_env_create,
+    .remove = procfs_env_remove,
+};
+
+static uint64_t procfs_env_iterate(dentry_t* dentry, dir_ctx_t* ctx)
+{
+    if (!dentry_iterate_dots(dentry, ctx))
+    {
+        return 0;
+    }
+
+    process_t* process = dentry->inode->private;
+    assert(process != NULL);
+
+    MUTEX_SCOPE(&process->env.mutex);
+
+    for (uint64_t i = 0; i < process->env.count; i++)
+    {
+        if (ctx->index++ < ctx->pos)
+        {   
+            continue;
+        }
+
+        if (!ctx->emit(ctx, process->env.vars[i].key, inode_number_gen(dentry->inode->number, process->env.vars[i].key), INODE_FILE))
+        {
+            return 0;
+        }
+    }
+
+    return 0;
+}
+
+static dentry_ops_t envDentryOps = {
+    .iterate = procfs_env_iterate,
+};
+
 static uint64_t procfs_self_readlink(inode_t* inode, char* buffer, uint64_t count)
 {
     UNUSED(inode);
@@ -748,94 +895,80 @@ typedef struct
 {
     const char* name;
     inode_type_t type;
-    inode_number_t number;
-    inode_ops_t* inodeOps;
-    file_ops_t* fileOps;
+    const inode_ops_t* inodeOps;
+    const file_ops_t* fileOps;
+    const dentry_ops_t* dentryOps;
 } procfs_entry_t;
 
 static const procfs_entry_t pidEntries[] = {
     {
         .name = "prio",
         .type = INODE_FILE,
-        .number = PROCFS_INODE_PRIO,
-        .inodeOps = NULL,
         .fileOps = &prioOps,
     },
     {
         .name = "cwd",
         .type = INODE_FILE,
-        .number = PROCFS_INODE_CWD,
-        .inodeOps = NULL,
         .fileOps = &cwdOps,
     },
     {
         .name = "cmdline",
         .type = INODE_FILE,
-        .number = PROCFS_INODE_CMDLINE,
-        .inodeOps = NULL,
         .fileOps = &cmdlineOps,
     },
     {
         .name = "note",
         .type = INODE_FILE,
-        .number = PROCFS_INODE_NOTE,
-        .inodeOps = NULL,
         .fileOps = &noteOps,
     },
     {
         .name = "notegroup",
         .type = INODE_FILE,
-        .number = PROCFS_INODE_NOTEGROUP,
-        .inodeOps = NULL,
         .fileOps = &notegroupOps,
     },
     {
         .name = "group",
         .type = INODE_FILE,
-        .number = PROCFS_INODE_GROUP,
-        .inodeOps = NULL,
         .fileOps = &groupOps,
     },
     {
         .name = "pid",
         .type = INODE_FILE,
-        .number = PROCFS_INODE_PID,
-        .inodeOps = NULL,
         .fileOps = &pidOps,
     },
     {
         .name = "wait",
         .type = INODE_FILE,
-        .number = PROCFS_INODE_WAIT,
-        .inodeOps = NULL,
         .fileOps = &waitOps,
     },
     {
         .name = "perf",
         .type = INODE_FILE,
-        .number = PROCFS_INODE_PERF,
-        .inodeOps = NULL,
         .fileOps = &perfOps,
     },
     {
         .name = "ns",
         .type = INODE_FILE,
-        .number = PROCFS_INODE_NS,
-        .inodeOps = NULL,
         .fileOps = &nsOps,
     },
     {
         .name = "ctl",
         .type = INODE_FILE,
-        .number = PROCFS_INODE_CTL,
-        .inodeOps = NULL,
         .fileOps = &ctlOps,
     },
     {
         .name = "env",
         .type = INODE_DIR,
-        .number = PROCFS_INODE_ENV,
-        .inodeOps = NULL,
+        .inodeOps = &envInodeOps,
+        .dentryOps = &envDentryOps,
+    },
+};
+
+static procfs_entry_t procEntries[] = {
+    {
+        .name = "self",
+        .type = INODE_SYMLINK,
+        .inodeOps = &selfOps,
         .fileOps = NULL,
     },
 };
@@ -852,7 +985,7 @@ static uint64_t procfs_pid_lookup(inode_t* dir, dentry_t* target)
             continue;
         }
 
-        inode_t* inode = inode_new(dir->superblock, (PROCFS_INODE_PID_BASE * process->id) + pidEntries[i].number,
+        inode_t* inode = inode_new(dir->superblock, inode_number_gen(dir->number, pidEntries[i].name),
             pidEntries[i].type, pidEntries[i].inodeOps, pidEntries[i].fileOps);
         if (inode == NULL)
         {
@@ -860,6 +993,11 @@ static uint64_t procfs_pid_lookup(inode_t* dir, dentry_t* target)
         }
         UNREF_DEFER(inode);
         inode->private = process; // No reference
+
+        if (pidEntries[i].dentryOps != NULL)
+        {
+            target->ops = pidEntries[i].dentryOps;
+        }
 
         dentry_make_positive(target, inode);
         return 0;
@@ -887,20 +1025,9 @@ static inode_ops_t pidInodeOps = {
 
 static uint64_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 {
-    if (0 >= ctx->pos)
+    if (!dentry_iterate_dots(dentry, ctx))
     {
-        if (!ctx->emit(ctx, ".", dentry->inode->number, dentry->inode->type))
-        {
-            return 0;
-        }
-    }
-
-    if (1 >= ctx->pos)
-    {
-        if (!ctx->emit(ctx, "..", dentry->parent->inode->number, dentry->parent->inode->type))
-        {
-            return 0;
-        }
+        return 0;
     }
 
     process_t* process = dentry->inode->private;
@@ -908,13 +1035,15 @@ static uint64_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
     for (size_t i = 0; i < ARRAY_SIZE(pidEntries); i++)
     {
-        if ((i + 2) >= ctx->pos)
+        if (ctx->index++ < ctx->pos)
+        {   
+            continue;
+        }
+
+        if (!ctx->emit(ctx, pidEntries[i].name, inode_number_gen(dentry->parent->inode->number, pidEntries[i].name),
+                pidEntries[i].type))
         {
-            if (!ctx->emit(ctx, pidEntries[i].name, (PROCFS_INODE_PID_BASE * process->id) + pidEntries[i].number,
-                    pidEntries[i].type))
-            {
-                return 0;
-            }
+            return 0;
         }
     }
 
@@ -923,16 +1052,6 @@ static uint64_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
 static dentry_ops_t pidDentryOps = {
     .iterate = procfs_pid_iterate,
-};
-
-static procfs_entry_t procEntries[] = {
-    {
-        .name = "self",
-        .type = INODE_SYMLINK,
-        .number = PROCFS_INODE_SELF,
-        .inodeOps = &selfOps,
-        .fileOps = NULL,
-    },
 };
 
 static uint64_t procfs_lookup(inode_t* dir, dentry_t* target)
@@ -944,11 +1063,11 @@ static uint64_t procfs_lookup(inode_t* dir, dentry_t* target)
             continue;
         }
 
-        inode_t* inode = inode_new(dir->superblock, procEntries[i].number, procEntries[i].type, procEntries[i].inodeOps,
+        inode_t* inode = inode_new(dir->superblock, inode_number_gen(dir->number, target->name), procEntries[i].type, procEntries[i].inodeOps,
             procEntries[i].fileOps);
         if (inode == NULL)
         {
-            return 0;
+            return ERR;
         }
         UNREF_DEFER(inode);
 
@@ -969,10 +1088,10 @@ static uint64_t procfs_lookup(inode_t* dir, dentry_t* target)
     }
     UNREF_DEFER(process);
 
-    inode_t* inode = inode_new(dir->superblock, PROCFS_INODE_PID_BASE * process->id, INODE_DIR, &pidInodeOps, NULL);
+    inode_t* inode = inode_new(dir->superblock, inode_number_gen(dir->number, target->name), INODE_DIR, &pidInodeOps, NULL);
     if (inode == NULL)
     {
-        return 0;
+        return ERR;
     }
     UNREF_DEFER(inode);
     inode->private = REF(process);
@@ -987,55 +1106,44 @@ static inode_ops_t procInodeOps = {
     .lookup = procfs_lookup,
 };
 
-static uint64_t procfs_iterate_func(process_t* process, void* arg)
-{
-    dir_ctx_t* ctx = (dir_ctx_t*)arg;
-
-    uint64_t index = 2 + ARRAY_SIZE(procEntries);
-    if (index >= ctx->pos)
-    {
-        char name[MAX_NAME];
-        snprintf(name, sizeof(name), "%llu", process->id);
-        if (!ctx->emit(ctx, name, PROCFS_INODE_PID_BASE + process->id, INODE_DIR))
-        {
-            return 0;
-        }
-    }
-    index++;
-
-    return 0;
-}
-
 static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 {
-    if (0 >= ctx->pos)
+    if (!dentry_iterate_dots(dentry, ctx))
     {
-        if (!ctx->emit(ctx, ".", dentry->inode->number, dentry->inode->type))
-        {
-            return 0;
-        }
-    }
-
-    if (1 >= ctx->pos)
-    {
-        if (!ctx->emit(ctx, "..", dentry->parent->inode->number, dentry->parent->inode->type))
-        {
-            return 0;
-        }
+        return 0;
     }
 
     for (size_t i = 0; i < ARRAY_SIZE(procEntries); i++)
     {
-        if ((i + 2) >= ctx->pos)
+        if (ctx->index++ < ctx->pos)
+        {   
+            continue;
+        }
+            
+        if (!ctx->emit(ctx, procEntries[i].name, inode_number_gen(dentry->parent->inode->number, procEntries[i].name), procEntries[i].type))
         {
-            if (!ctx->emit(ctx, procEntries[i].name, procEntries[i].number, procEntries[i].type))
-            {
-                return 0;
-            }
+            return 0;
         }
     }
 
-    return process_for_each(procfs_iterate_func, ctx);
+    process_t* process;
+    PROCESS_FOR_EACH(process)
+    {
+        if (ctx->index++ < ctx->pos)
+        {   
+            continue;
+        }
+
+        char name[MAX_NAME];
+        snprintf(name, sizeof(name), "%llu", process->id);
+        if (!ctx->emit(ctx, name, inode_number_gen(dentry->parent->inode->number, name), INODE_DIR))
+        {
+            UNREF(process);
+            return 0;
+        }
+    }
+
+    return 0;
 }
 
 static dentry_ops_t procDentryOps = {
@@ -1054,7 +1162,7 @@ static dentry_t* procfs_mount(filesystem_t* fs, const char* devName, void* priva
     }
     UNREF_DEFER(superblock);
 
-    inode_t* inode = inode_new(superblock, PROCFS_INODE_ROOT, INODE_DIR, &procInodeOps, NULL);
+    inode_t* inode = inode_new(superblock, 0, INODE_DIR, &procInodeOps, NULL);
     if (inode == NULL)
     {
         return NULL;

@@ -237,7 +237,7 @@ static void pkg_spawn(pkg_spawn_t* ctx)
     {
         if (swritefile(F("/proc/%llu/env/%s:cw", pid, env->entries[i].key), env->entries[i].value) == ERR)
         {
-            snprintf(ctx->result, sizeof(ctx->result), "error due to environment variable failure for '%s' (%s)",
+            snprintf(ctx->result, sizeof(ctx->result), "error due to env var failure for '%s' (%s)",
                 args.pkg, strerror(errno));
             goto cleanup;
         }

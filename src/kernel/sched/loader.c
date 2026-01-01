@@ -248,7 +248,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
 
     if (!(flags & SPAWN_EMPTY_ENV))
     {
-        if (process_copy_env(child, process) == ERR)
+        if (env_copy(&child->env, &process->env) == ERR)
         {
             goto error;
         }

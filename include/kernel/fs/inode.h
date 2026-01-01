@@ -40,15 +40,6 @@ typedef struct dentry dentry_t;
  */
 
 /**
- * @brief Inode flags.
- * @enum inode_flags_t
- */
-typedef enum
-{
-    INODE_NONE = 0, ///< None
-} inode_flags_t;
-
-/**
  * @brief Inode structure.
  * @struct inode_t
  *
@@ -59,7 +50,6 @@ typedef struct inode
     ref_t ref;
     inode_number_t number; ///< A value that uniquely identifies the inode within its filesystem.
     inode_type_t type;
-    inode_flags_t flags;
     _Atomic(uint64_t) dentryCount; ///< The number of dentries pointing to this inode.
     uint64_t size;
     uint64_t blocks;
@@ -207,5 +197,16 @@ void inode_notify_change(inode_t* inode);
  * @param inode The inode to truncate.
  */
 void inode_truncate(inode_t* inode);
+
+/**
+ * @brief Helper to generate a consistent inode number for an entry in a directory.
+ *
+ * This is useful for in-memory filesystems or filesystem that dont provide native inode numbers.
+ *
+ * @param parentNumber The inode number of the parent directory.
+ * @param name The name of the entry.
+ * @return The generated inode number.
+ */
+inode_number_t inode_number_gen(inode_number_t parentNumber, const char* name);
 
 /** @} */

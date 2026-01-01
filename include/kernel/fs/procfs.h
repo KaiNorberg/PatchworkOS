@@ -218,8 +218,35 @@ typedef enum
     PROCFS_INODE_CTL = 12,
     PROCFS_INODE_FD = 13,
     PROCFS_INODE_ENV = 14,
-    PROCFS_INODE_PID_BASE = 1000,
+    PROCFS_INODE_ENV_BASE = 15,
+    PROCFS_INODE_PID_BASE = PROCFS_INODE_ENV_BASE + CONFIG_MAX_ENV_VARS,
 } procfs_inode_nums_t;
+
+/**
+ * @brief A helper to get the inode number of a environment variable.
+ * 
+ * @param pid The process ID.
+ * @param pos The position of the environment variable within its `/proc/[pid]/env/` directory.
+ * @return The inode number of the environment variable.
+ */
+#define PROCFS_ENV_VAR_NUM(pid, pos) ((PROCFS_INODE_PID_BASE * (pid)) + PROCFS_INODE_ENV_BASE + ((pos) - DENTRY_DOTS_AMOUNT))
+
+/**
+ * @brief A helper to get the inode number of a process directory.
+ * 
+ * @param pid The process ID.
+ * @return The inode number of the process directory.
+ */
+#define PROCFS_PID_NUM(pid) (PROCFS_INODE_PID_BASE * (pid))
+
+/**
+ * @brief A helper to get the inode number of a entry in a processes directory.
+ * 
+ * @param pid The process ID.
+ * @param offset A value from the `procfs_inode_nums_t` enum to uniquely identify the file.
+ * @return The inode number of the process directory entry.
+ */
+#define PROCFS_PID_ENTRY_NUM(pid, offset) (PROCFS_PID_NUM(pid) + (offset))
 
 /**
  * @brief Register the procfs filesystem.

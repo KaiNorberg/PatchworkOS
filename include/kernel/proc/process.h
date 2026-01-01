@@ -12,6 +12,7 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/futex.h>
 #include <kernel/utils/map.h>
+#include <kernel/proc/env.h>
 #include <kernel/utils/ref.h>
 
 #include <stdatomic.h>
@@ -87,6 +88,7 @@ typedef struct process
     wait_queue_t dyingQueue;
     _Atomic(process_flags_t) flags;
     process_threads_t threads;
+    env_t env;
     char** argv;
     uint64_t argc;
     group_member_t group;
@@ -137,13 +139,29 @@ void process_kill(process_t* process, const char* status);
 void process_remove(process_t* process);
 
 /**
- * @brief Calls a function for each process in the system.
+ * @brief Gets the first process in the system for iteration.
  *
- * @param func The function to call for each process.
- * @param arg An argument to pass to the function.
- * @return On success, `0`. If the function returns `ERR`, iteration stops and that value is returned.
+ * @return A reference to the first process, or `NULL` if there are no processes.
  */
-uint64_t process_for_each(uint64_t (*func)(process_t* process, void* arg), void* arg);
+process_t* process_iterate_begin(void);
+
+/**
+ * @brief Gets the next process in the system for iteration.
+ *
+ * @param prev The current process in the iteration, will be unreferenced.
+ * @return A reference to the next process, or `NULL` if there are no more processes.
+ */
+process_t* process_iterate_next(process_t* prev);
+
+/**
+ * @brief Macro to iterate over all processes.
+ *
+ * @note If the loop is exited early the `process` variable must be unreferenced.
+ *
+ * @param process Loop variable, a pointer to `process_t`.
+ */
+#define PROCESS_FOR_EACH(process) \
+    for ((process) = process_iterate_begin(); (process) != NULL; (process) = process_iterate_next(process))
 
 /**
  * @brief Sets the command line arguments for a process.

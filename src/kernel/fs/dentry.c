@@ -256,32 +256,38 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode)
     }
 }
 
-uint64_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx)
+bool dentry_iterate_dots(dentry_t* dentry, dir_ctx_t* ctx)
 {
-    uint64_t index = 0;
-
-    if (index >= ctx->pos)
+    if (ctx->index++ >= ctx->pos)
     {
         if (!ctx->emit(ctx, ".", dentry->inode->number, dentry->inode->type))
         {
-            return 0;
+            return false;
         }
     }
-    index++;
 
-    if (index >= ctx->pos)
+    if (ctx->index++ >= ctx->pos)
     {
         if (!ctx->emit(ctx, "..", dentry->parent->inode->number, dentry->parent->inode->type))
         {
-            return 0;
+            return false;
         }
     }
-    index++;
+
+    return true;
+}
+
+uint64_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx)
+{
+    if (!dentry_iterate_dots(dentry, ctx))
+    {
+        return 0;
+    }
 
     dentry_t* child;
     LIST_FOR_EACH(child, &dentry->children, siblingEntry)
     {
-        if (index >= ctx->pos)
+        if (ctx->index++ >= ctx->pos)
         {
             assert(DENTRY_IS_POSITIVE(child));
             if (!ctx->emit(ctx, child->name, child->inode->number, child->inode->type))
@@ -289,7 +295,6 @@ uint64_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx)
                 return 0;
             }
         }
-        index++;
     }
 
     return 0;

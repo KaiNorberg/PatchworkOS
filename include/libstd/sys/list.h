@@ -26,7 +26,6 @@ typedef struct list list_t;
 
 /**
  * @brief A entry in a doubly linked list.
- * @ingroup libstd_sys_list
  * @struct list_entry_t
  *
  * This structure should be placed within another structure so that the `CONTAINER_OF()` macro can then be used to
@@ -41,7 +40,6 @@ typedef struct list_entry
 
 /**
  * @brief A doubly linked list.
- * @ingroup libstd_sys_list
  *
  * This structure simplifies reasoning around linked lists.
  */
@@ -54,7 +52,6 @@ typedef struct list
 
 /**
  * @brief Iterates over a list.
- * @ingroup libstd_sys_list
  *
  * @param elem The loop variable, a pointer to the structure containing the list entry.
  * @param list A pointer to the `list_t` structure to iterate over.
@@ -66,7 +63,6 @@ typedef struct list
 
 /**
  * @brief Safely iterates over a list, allowing for element removal during iteration.
- * @ingroup libstd_sys_list
  *
  * The `LIST_FOR_EACH_SAFE()` macro is similar to `LIST_FOR_EACH()` but uses a temporary variable to store the next
  * element, making it safe to remove the current element during iteration.
@@ -84,7 +80,6 @@ typedef struct list
 
 /**
  * @brief Iterates over a list in reverse.
- * @ingroup libstd_sys_list
  *
  * @param elem The loop variable, a pointer to the structure containing the list entry.
  * @param list A pointer to the `list_t` structure to iterate over.
@@ -96,7 +91,6 @@ typedef struct list
 
 /**
  * @brief Iterates over a list starting from a specific element.
- * @ingroup libstd_sys_list
  *
  * The `LIST_FOR_EACH_FROM()` macro iterates from a specific element, inclusive, until the end of the list.
  *
@@ -111,7 +105,6 @@ typedef struct list
 
 /**
  * @brief Iterates over a list in reverse order starting from a specific element.
- * @ingroup libstd_sys_list
  *
  * @param elem The loop variable, a pointer to the structure containing the list entry.
  * @param start A pointer to the `list_entry_t` from which to start reverse iteration.
@@ -124,7 +117,6 @@ typedef struct list
 
 /**
  * @brief Iterates over a list up to a specific element.
- * @ingroup libstd_sys_list
  *
  * The `LIST_FOR_EACH_TO()` macro iterates from the start of the list, inclusive, until a specified element, not
  * inclusive.
@@ -141,7 +133,6 @@ typedef struct list
 
 /**
  * @brief Iterates over a list in reverse order up to a specific element.
- * @ingroup libstd_sys_list
  *
  * @param elem The loop variable, a pointer to the structure containing the list entry.
  * @param end A pointer to the `list_entry_t` at which to stop reverse iteration (exclusive).
@@ -175,7 +166,6 @@ typedef struct list
 
 /**
  * @brief Initializes a list entry.
- * @ingroup libstd_sys_list
  *
  * @param entry A pointer to the `list_entry_t` to initialize.
  */
@@ -189,7 +179,6 @@ static inline void list_entry_init(list_entry_t* entry)
 
 /**
  * @brief Initializes a list.
- * @ingroup libstd_sys_list
  *
  * @param list A pointer to the `list_t` to initialize.
  */
@@ -203,7 +192,6 @@ static inline void list_init(list_t* list)
 
 /**
  * @brief Check if an entry belongs to a specific list.
- * @ingroup libstd_sys_list
  *
  * @param list A pointer to the `list_t` to search in.
  * @param entry A pointer to the `list_entry_t` to search for.
@@ -219,7 +207,6 @@ static inline bool list_contains_entry(list_t* list, list_entry_t* entry)
 
 /**
  * @brief Checks if a list is empty.
- * @ingroup libstd_sys_list
  *
  * @param list A pointer to the `list_t` to check.
  * @return `true` if the list is empty, `false` otherwise.
@@ -238,7 +225,6 @@ static inline bool list_is_empty(list_t* list)
 
 /**
  * @brief Gets the length of the list.
- * @ingroup libstd_sys_list
  *
  * @param list A pointer to the `list_t`.
  * @return The number of elements in the list.
@@ -251,7 +237,6 @@ static inline uint64_t list_length(list_t* list)
 
 /**
  * @brief Adds a new element between two existing list entries.
- * @ingroup libstd_sys_list
  *
  * @param list A pointer to the `list_t` that will contain the new element.
  * @param prev A pointer to the list entry that will precede the new element.
@@ -281,7 +266,6 @@ static inline void list_add(list_t* list, list_entry_t* prev, list_entry_t* next
 
 /**
  * @brief Appends an entry to the list.
- * @ingroup libstd_sys_list
  *
  * @param list A pointer to the `list_t` to append to.
  * @param prev A pointer to the list entry after which the new entry will be appended.
@@ -294,7 +278,6 @@ static inline void list_append(list_t* list, list_entry_t* prev, list_entry_t* e
 
 /**
  * @brief Prepends an entry to the list.
- * @ingroup libstd_sys_list
  *
  * @param list A pointer to the `list_t` to prepend to.
  * @param head A pointer to the list entry before which the new entry will be prepended.
@@ -307,7 +290,6 @@ static inline void list_prepend(list_t* list, list_entry_t* head, list_entry_t* 
 
 /**
  * @brief Removes a list entry from its current list.
- * @ingroup libstd_sys_list
  *
  * @param list A pointer to the `list_t` that contains the entry.
  * @param entry A pointer to the `list_entry_t` to remove.
@@ -335,7 +317,6 @@ static inline void list_remove(list_t* list, list_entry_t* entry)
 
 /**
  * @brief Pushes an entry to the end of the list.
- * @ingroup libstd_sys_list
  *
  * @param list A pointer to the `list_t` to push the entry to.
  * @param entry A pointer to the `list_entry_t` to push.
@@ -351,7 +332,6 @@ static inline void list_push_back(list_t* list, list_entry_t* entry)
 
 /**
  * @brief Pushes an entry to the front of the list.
- * @ingroup libstd_sys_list
  *
  * @param list A pointer to the `list_t` to push the entry to.
  * @param entry A pointer to the `list_entry_t` to push.
@@ -367,7 +347,6 @@ static inline void list_push_front(list_t* list, list_entry_t* entry)
 
 /**
  * @brief Pops the first entry from the list.
- * @ingroup libstd_sys_list
  *
  * @param list A pointer to the `list_t` to pop the entry from.
  * @return A pointer to the removed `list_entry_t`, or `NULL` if the list is empty.
@@ -388,7 +367,6 @@ static inline list_entry_t* list_pop_first(list_t* list)
 
 /**
  * @brief Pops the last entry from the list.
- * @ingroup libstd_sys_list
  *
  * @param list A pointer to the `list_t` to pop the entry from.
  * @return A pointer to the removed `list_entry_t`, or `NULL` if the list is empty.
@@ -409,7 +387,6 @@ static inline list_entry_t* list_pop_last(list_t* list)
 
 /**
  * @brief Gets the first entry in the list without removing it.
- * @ingroup libstd_sys_list
  *
  * @param list A pointer to the `list_t`.
  * @return A pointer to the first `list_entry_t` in the list, or `NULL` if the list is empty.
@@ -427,7 +404,6 @@ static inline list_entry_t* list_first(list_t* list)
 
 /**
  * @brief Gets the last entry in the list without removing it.
- * @ingroup libstd_sys_list
  *
  * @param list A pointer to the `list_t`.
  * @return A pointer to the last `list_entry_t` in the list, or `NULL` if the list is empty.
@@ -441,6 +417,46 @@ static inline list_entry_t* list_last(list_t* list)
         return NULL;
     }
     return list->head.prev;
+}
+
+/**
+ * @brief Gets the next entry in the list relative to a given entry.
+ *
+ * @param list A pointer to the `list_t`.
+ * @param entry A pointer to the `list_entry_t` to get the next entry from.
+ * @return A pointer to the next `list_entry_t` in the list, or `NULL` if the given entry is the last.
+ */
+static inline list_entry_t* list_next(list_t* list, list_entry_t* entry)
+{
+    assert(list != NULL);
+    assert(entry != NULL);
+    assert(entry->list == list);
+
+    if (entry->next == &list->head)
+    {
+        return NULL;
+    }
+    return entry->next;
+}
+
+/**
+ * @brief Gets the previous entry in the list relative to a given entry.
+ *
+ * @param list A pointer to the `list_t`.
+ * @param entry A pointer to the `list_entry_t` to get the previous entry from.
+ * @return A pointer to the previous `list_entry_t` in the list, or `NULL` if the given entry is the first.
+ */
+static inline list_entry_t* list_prev(list_t* list, list_entry_t* entry)
+{
+    assert(list != NULL);
+    assert(entry != NULL);
+    assert(entry->list == list);
+
+    if (entry->prev == &list->head)
+    {
+        return NULL;
+    }
+    return entry->prev;
 }
 
 #endif

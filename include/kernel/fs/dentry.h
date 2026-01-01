@@ -109,6 +109,8 @@ typedef struct dir_ctx
      */
     bool (*emit)(dir_ctx_t* ctx, const char* name, inode_number_t number, inode_type_t type);
     uint64_t pos; ///< The current position in the directory, can be used to skip entries.
+    void* private; ///< Private data that the filesystem can use to conveniently pass data.
+    uint64_t index; ///< An index that the filesystem can use for its own purposes.
 } dir_ctx_t;
 
 /**
@@ -214,6 +216,22 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name);
  * @param inode The inode to associate with the dentry, or `NULL` for no-op.
  */
 void dentry_make_positive(dentry_t* dentry, inode_t* inode);
+
+/**
+ * @brief The amount of special entries "." and ".." that `dentry_iterate_dots()` emits.
+ */
+#define DENTRY_DOTS_AMOUNT 2
+
+/**
+ * @brief Helper function to iterate over the special entries "." and "..".
+ * 
+ * Intended to be used in filesystem iterate implementations.
+ *
+ * @param dentry The directory dentry to iterate over.
+ * @param ctx The directory context to use for iteration.
+ * @return `true` if the iteration should continue, `false` if it should stop.
+ */
+bool dentry_iterate_dots(dentry_t* dentry, dir_ctx_t* ctx);
 
 /**
  * @brief Helper function for a basic iterate.

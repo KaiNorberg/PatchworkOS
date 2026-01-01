@@ -65,11 +65,10 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
     ref_init(&inode->ref, inode_free);
     inode->number = number;
     inode->type = type;
-    inode->flags = INODE_NONE;
     atomic_init(&inode->dentryCount, 0);
     inode->size = 0;
     inode->blocks = 0;
-    inode->accessTime = clock_epoch();
+    inode->accessTime = 0;
     inode->modifyTime = inode->accessTime;
     inode->changeTime = inode->accessTime;
     inode->createTime = inode->accessTime;
@@ -130,4 +129,24 @@ void inode_truncate(inode_t* inode)
         assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
         inode->ops->truncate(inode);
     }
+}
+
+inode_number_t inode_number_gen(inode_number_t parentNumber, const char* name)
+{
+    uint64_t hash = 0xcbf29ce484222325;
+    const uint64_t prime = 0x100000001b3;
+
+    for (int i = 0; i < 8; i++)
+    {
+        hash ^= (parentNumber >> (i * 8)) & 0xFF;
+        hash *= prime;
+    }
+
+    while (*name)
+    {
+        hash ^= (uint8_t)*name++;
+        hash *= prime;
+    }
+
+    return hash;
 }
