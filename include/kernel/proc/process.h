@@ -11,6 +11,7 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/futex.h>
+#include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 
 #include <stdatomic.h>
@@ -21,181 +22,6 @@
  * @ingroup kernel
  *
  * Processes store the shared resources for threads of execution, for example the address space and open files.
- *
- * ## Process Filesystem
- *
- * Each process has a directory located at `/proc/[pid]/`, which contains various files that can be used to interact
- * with the process.
- *
- * A important distinction between a typical UNIX `/proc/` directory and our directories is that a processes
- * `/proc/[pid]/` directory is only mounted in the namespace of the owner process and the parent namespaces. A child
- * cannot see the `/proc/[pid]` directory of its ancestors.
- *
- * Additionally, there is a `/proc/self` dynamic symlink that points to the `/proc/[pid]` directory of the current
- * process.
- *
- * Included below is a list of all entries found in the `/proc/[pid]/` directory.
- *
- * ## prio
- *
- * A readable and writable file that contains the scheduling priority of the process.
- *
- * Format:
- *
- * ```
- * %llu
- * ```
- *
- * ## cwd
- *
- * A readable and writable file that contains the current working directory of the process.
- *
- * Format:
- *
- * ```
- * %s
- * ```
- *
- * ## cmdline
- *
- * A readable file that contains the command line arguments of the process (argv).
- *
- * Format:
- *
- * ```
- * %s\0%s\0...%s\0
- * ```
- *
- * ## note
- *
- * A writable file that sends notes to the process. Writing to this file will enqueue that data as a
- * note in the note queue of one of the process's threads.
- *
- * @see kernel_ipc_note
- *
- * ## notegroup
- *
- * A writeable file that sends notes to every process in the group of the target process.
- *
- * @see kernel_ipc_note
- *
- * ## group
- *
- * Opening this file returns a file descriptor referring to the group. This file descriptor can be used with the
- * `setgroup` command in the `ctl` file to switch groups.
- *
- * ## pid
- *
- * A readable file that contains the process ID.
- *
- * Format:
- * ```
- * %llu
- * ```
- *
- * ## wait
- *
- * A readable and pollable file that can be used to wait for the process to exit. Reading
- * from this file will block until the process has exited.
- *
- * The read value is the exit status of the process, usually either a integer exit code or a string describing the
- * reason for termination often the note that caused it.
- *
- * Format:
- *
- * ```
- * %s
- * ```
- *
- * ## perf
- *
- * A readable file that contains performance statistics for the process.
- *
- * Format:
- *
- * ```
- * user_clocks kernel_sched_clocks start_clocks user_pages thread_count
- * %llu %llu %llu %llu %llu
- * ```
- *
- * ## ns
- *
- * Opening this file returns a file descriptor referring to the namespace. This file descriptor can be used with the
- * `setns` command in the `ctl` file to switch namespaces.
- *
- * ## ctl
- *
- * A writable file that can be used to control certain aspects of the process, such as closing file descriptors.
- *
- * Included is a list of all supported commands.
- *
- * @note Anytime a command refers to a file descriptor the file descriptor is the file descriptor of the target process,
- * not the current process.
- *
- * ### close <fd>
- *
- * Closes the specified file descriptor in the process.
- *
- * ### close <minfd> <maxfd>
- *
- * Closes the range `[minfd, maxfd)` of file descriptors in the process.
- *
- * Note that specifying `-1` as `maxfd` will close all file descriptors from `minfd` to the maximum allowed file
- * descriptor.
- *
- * ### dup2 <oldfd> <newfd>
- *
- * Duplicates the specified old file descriptor to the new file descriptor in the process.
- *
- * ### bind <target> <source>
- *
- * Bind a source path from the writing process to a target path in the processes namespace.
- *
- * Path flags for controlling the bind behaviour should to be specified in the target path.
- *
- * @see kernel_fs_path for information on path flags.
- *
- * ### mount <mountpoint> <fs> [device]
- *
- * Mounts a filesystem at the specified mountpoint in the process's namespace, optionally with a device.
- *
- * @see kernel_fs_path for information on path flags.
- *
- * ### touch <path>
- *
- * Open the specified path in the process and immediately close it.
- *
- * ### start
- *
- * Starts the process if it was previously suspended.
- *
- * ### kill
- *
- * Sends a kill note to all threads in the process, effectively terminating it.
- *
- * ### setns <fd>
- *
- * Sets the namespace of the process to the one referred to by the file descriptor.
- *
- * The file descriptor must be one that was opened from `/proc/[pid]/ns`.
- *
- * ### setgroup <fd>
- *
- * Sets the group of the process to the one referred to by the file descriptor.
- *
- * The file descriptor must be one that was opened from `/proc/[pid]/group`.
- *
- * ## fd
- *
- * @todo Implement the `/proc/[pid]/fd` directory.
- *
- * ## env
- *
- * A directory that contains the environment variables of the process. Each environment variable is represented as a
- * readable and writable file whose name is the name of the variable and whose content is the value of the variable.
- *
- * To add or modify an environment variable, create or write to a file with the name of the variable. To remove an
- * environment variable, delete the corresponding file.
  *
  * @{
  */
@@ -238,24 +64,15 @@ typedef struct
 } process_status_t;
 
 /**
- * @brief Process `/proc/[pid]` directory structure.
- * @struct process_dir_t
- */
-typedef struct
-{
-    mount_t* dir;      ///< The `/proc/[pid]/` directory.
-    list_t files;      ///< List of file dentries for the `/proc/[pid]/` directory.
-    dentry_t* env;     ///< The `/proc/[pid]/env/` directory.
-    list_t envEntries; ///< List of environment variable dentries.
-    lock_t lock;
-} process_dir_t;
-
-/**
  * @brief Process structure.
  * @struct process_t
  */
 typedef struct process
 {
+    ref_t ref;
+    list_entry_t entry;
+    map_entry_t mapEntry;
+    list_entry_t zombieEntry;
     pid_t id;
     _Atomic(priority_t) priority;
     process_status_t status;
@@ -270,8 +87,6 @@ typedef struct process
     wait_queue_t dyingQueue;
     _Atomic(process_flags_t) flags;
     process_threads_t threads;
-    list_entry_t zombieEntry;
-    process_dir_t dir;
     char** argv;
     uint64_t argc;
     group_member_t group;
@@ -280,7 +95,7 @@ typedef struct process
 /**
  * @brief Allocates and initializes a new process.
  *
- * There is no `process_free()`, instead use `process_kill()` to push a process to the reaper.
+ * It is the responsibility of the caller to `UNREF()` the returned process.
  *
  * @param priority The priority of the new process.
  * @param group A member of the group to add the new process to, or `NULL` to create a new group for the process.
@@ -293,7 +108,19 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_han
     namespace_handle_flags_t flags);
 
 /**
+ * @brief Gets a process by its ID.
+ *
+ * It is the responsibility of the caller to `UNREF()` the returned process.
+ *
+ * @param id The ID of the process to get.
+ * @return A reference to the process with the specified ID or `NULL` if no such process exists.
+ */
+process_t* process_get(pid_t id);
+
+/**
  * @brief Kills a process, pushing it to the reaper.
+ *
+ * The process will still exist until the reaper removes it.
  *
  * @param process The process to kill.
  * @param status The exit status of the process.
@@ -301,24 +128,22 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_han
 void process_kill(process_t* process, const char* status);
 
 /**
- * @brief Deinitializes the `/proc/[pid]` directory of a process.
+ * @brief Removes a process from the system.
  *
- * When there are no more references to any of the entries in the `/proc/[pid]` directory, the process will be freed.
+ * This should only be called by the reaper.
  *
- * @param process The process whose `/proc/[pid]` directory will be deinitialized.
+ * @param process The process to remove.
  */
-void process_dir_deinit(process_t* process);
+void process_remove(process_t* process);
 
 /**
- * @brief Copies the environment variables from one process to another.
+ * @brief Calls a function for each process in the system.
  *
- * @param dest The destination process, must have an empty environment.
- * @param src The source process.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EBUSY`: The destination process already has environment variables.
+ * @param func The function to call for each process.
+ * @param arg An argument to pass to the function.
+ * @return On success, `0`. If the function returns `ERR`, iteration stops and that value is returned.
  */
-uint64_t process_copy_env(process_t* dest, process_t* src);
+uint64_t process_for_each(uint64_t (*func)(process_t* process, void* arg), void* arg);
 
 /**
  * @brief Sets the command line arguments for a process.
@@ -349,17 +174,10 @@ bool process_has_thread(process_t* process, tid_t tid);
  * The kernel process will be initalized lazily on the first call to this function, which should happen during early
  * boot.
  *
- * Will never return `NULL`.
- *
- * Will not increment the reference count of the returned process as it should never be freed either way.
+ * Will never return `NULL` and will not increment the reference count of the returned process.
  *
  * @return The kernel process.
  */
 process_t* process_get_kernel(void);
-
-/**
- * @brief Initializes the `/proc` directory.
- */
-void process_procfs_init(void);
 
 /** @} */

@@ -2,9 +2,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/defs.h>
 #include <threads.h>
 #include <time.h>
-#include <sys/defs.h>
 
 #define PRIME_MAX (10000000)
 

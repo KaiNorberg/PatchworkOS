@@ -2,8 +2,8 @@
 #include "efidef.h"
 
 #include <efilib.h>
-#include <sys/defs.h>
 #include <kernel/mem/paging_types.h>
+#include <sys/defs.h>
 
 #include <boot/boot_info.h>
 #include <kernel/mem/paging.h>

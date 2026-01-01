@@ -42,7 +42,7 @@ static uint64_t const_one_read(file_t* file, void* buffer, uint64_t count, uint6
 
 static void* const_one_mmap(file_t* file, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
 {
-    UNUSED(file);   // Unused
+    UNUSED(file); // Unused
     UNUSED(offset);
 
     addr = vmm_alloc(&sched_process()->space, addr, length, flags, VMM_ALLOC_OVERWRITE);
@@ -71,7 +71,7 @@ static uint64_t const_zero_read(file_t* file, void* buffer, uint64_t count, uint
 
 static void* const_zero_mmap(file_t* file, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
 {
-    UNUSED(file);   // Unused
+    UNUSED(file); // Unused
     UNUSED(offset);
 
     addr = vmm_alloc(&sched_process()->space, addr, length, flags, VMM_ALLOC_OVERWRITE);
@@ -91,7 +91,7 @@ static file_ops_t zeroOps = {
 
 static uint64_t const_null_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    UNUSED(file);   // Unused
+    UNUSED(file); // Unused
     UNUSED(buffer);
 
     *offset += count;
@@ -100,7 +100,7 @@ static uint64_t const_null_read(file_t* file, void* buffer, uint64_t count, uint
 
 static uint64_t const_null_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
-    UNUSED(file);   // Unused
+    UNUSED(file); // Unused
     UNUSED(buffer);
 
     *offset += count;

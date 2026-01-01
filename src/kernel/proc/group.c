@@ -51,7 +51,7 @@ uint64_t group_member_init(group_member_t* member, group_member_t* group)
         {
             return ERR;
         }
-        
+
         group_add(grp, member);
         return 0;
     }

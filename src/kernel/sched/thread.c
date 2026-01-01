@@ -21,11 +21,27 @@ static uintptr_t thread_id_to_offset(tid_t tid, uint64_t maxPages)
     return tid * ((maxPages + STACK_POINTER_GUARD_PAGES) * PAGE_SIZE);
 }
 
-static uint64_t thread_init(thread_t* thread, process_t* process)
+thread_t* thread_new(process_t* process)
 {
     if (process == NULL)
     {
-        return ERR;
+        errno = EINVAL;
+        return NULL;
+    }
+
+    thread_t* thread = malloc(sizeof(thread_t));
+    if (thread == NULL)
+    {
+        errno = ENOMEM;
+        return NULL;
+    }
+
+    LOCK_SCOPE(&process->threads.lock);
+
+    if (atomic_load(&process->flags) & PROCESS_DYING)
+    {
+        errno = EINVAL;
+        return NULL;
     }
 
     thread->process = process;
@@ -38,18 +54,21 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
             VMM_KERNEL_STACKS_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_KERNEL_STACK_PAGES),
             CONFIG_MAX_KERNEL_STACK_PAGES) == ERR)
     {
-        return ERR;
+        free(thread);
+        return NULL;
     }
     if (stack_pointer_init(&thread->userStack,
             VMM_USER_SPACE_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_USER_STACK_PAGES),
             CONFIG_MAX_USER_STACK_PAGES) == ERR)
     {
-        return ERR;
+        free(thread);
+        return NULL;
     }
     wait_client_init(&thread->wait);
     if (simd_ctx_init(&thread->simd) == ERR)
     {
-        return ERR;
+        free(thread);
+        return NULL;
     }
     note_queue_init(&thread->notes);
     syscall_ctx_init(&thread->syscall, &thread->kernelStack);
@@ -57,37 +76,8 @@ static uint64_t thread_init(thread_t* thread, process_t* process)
 
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
 
-    lock_acquire(&process->threads.lock);
+    REF(process);
     list_push_back(&process->threads.list, &thread->processEntry);
-    lock_release(&process->threads.lock);
-
-    return 0;
-}
-
-thread_t* thread_new(process_t* process)
-{
-    if (process == NULL)
-    {
-        errno = EINVAL;
-        return NULL;
-    }
-
-    if (atomic_load(&process->flags) & PROCESS_DYING)
-    {
-        errno = EINVAL;
-        return NULL;
-    }
-
-    thread_t* thread = malloc(sizeof(thread_t));
-    if (thread == NULL)
-    {
-        return NULL;
-    }
-    if (thread_init(thread, process) == ERR)
-    {
-        free(thread);
-        return NULL;
-    }
     return thread;
 }
 
@@ -120,13 +110,12 @@ tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg)
 
 void thread_free(thread_t* thread)
 {
-    process_t* process = thread->process;
-    assert(process != NULL);
+    lock_acquire(&thread->process->threads.lock);
+    list_remove(&thread->process->threads.list, &thread->processEntry);
+    lock_release(&thread->process->threads.lock);
 
-    lock_acquire(&process->threads.lock);
-    list_remove(&process->threads.list, &thread->processEntry);
+    UNREF(thread->process);
     thread->process = NULL;
-    lock_release(&process->threads.lock);
 
     simd_ctx_deinit(&thread->simd);
     free(thread);

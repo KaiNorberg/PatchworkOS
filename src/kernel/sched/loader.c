@@ -270,8 +270,12 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     childThread->frame.rsp = childThread->kernelStack.top;
     childThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
 
-    pid_t volatile result = child->id; // Important to not deref after pushing the thread
     sched_submit(childThread);
+    pid_t result = child->id;
+    if (child != NULL)
+    {
+        UNREF(child);
+    }
     return result;
 
 error:
@@ -281,7 +285,7 @@ error:
     }
     if (child != NULL)
     {
-        process_kill(child, "spawn failed");
+        UNREF(child);
     }
     loader_strv_free(argvCopy, argc);
     return ERR;

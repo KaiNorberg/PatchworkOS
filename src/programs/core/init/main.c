@@ -8,6 +8,15 @@
 #include <threads.h>
 #include <time.h>
 
+static void init_mount_sys(void)
+{
+    if (mount("/proc:rwL", "procfs", NULL) == ERR)
+    {
+        printf("init: failed to mount procfs (%s)\n", strerror(errno));
+        abort();
+    }
+}
+
 static void init_spawn_pkgd(void)
 {
     const char* argv[] = {"/sbin/pkgd", NULL};
@@ -119,6 +128,8 @@ static void init_config_load(void)
 
 int main(void)
 {
+    init_mount_sys();
+
     fd_t klog = open("/dev/klog:rw");
     if (klog == ERR)
     {

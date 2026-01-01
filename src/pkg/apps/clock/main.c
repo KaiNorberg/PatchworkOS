@@ -88,8 +88,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         for (int i = 0; i < 12; i++)
         {
             double angle = i * (M_PI / 6);
-            draw_marker(&draw, center, radius, hourMarker, ARRAY_SIZE(hourMarker), angle,
-                PIXEL_ARGB(255, 0, 0, 0));
+            draw_marker(&draw, center, radius, hourMarker, ARRAY_SIZE(hourMarker), angle, PIXEL_ARGB(255, 0, 0, 0));
         }
 
         for (int i = 0; i < 60; i++)
@@ -107,10 +106,8 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         double secondAngle = t->tm_sec * (M_PI / 30);
 
         draw_hand(&draw, center, hourHand, ARRAY_SIZE(hourHand), hourAngle, PIXEL_ARGB(255, 0, 0, 0));
-        draw_hand(&draw, center, minuteHand, ARRAY_SIZE(minuteHand), minuteAngle,
-            PIXEL_ARGB(255, 0, 0, 0));
-        draw_hand(&draw, center, secondHand, ARRAY_SIZE(secondHand), secondAngle,
-            PIXEL_ARGB(255, 255, 0, 0));
+        draw_hand(&draw, center, minuteHand, ARRAY_SIZE(minuteHand), minuteAngle, PIXEL_ARGB(255, 0, 0, 0));
+        draw_hand(&draw, center, secondHand, ARRAY_SIZE(secondHand), secondAngle, PIXEL_ARGB(255, 255, 0, 0));
         element_draw_end(elem, &draw);
     }
     break;

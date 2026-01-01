@@ -57,8 +57,8 @@ typedef enum
 typedef struct inode
 {
     ref_t ref;
-    inode_number_t number; ///< Constant after creation.
-    inode_type_t type;     ///< Constant after creation.
+    inode_number_t number; ///< A value that uniquely identifies the inode within its filesystem.
+    inode_type_t type;
     inode_flags_t flags;
     _Atomic(uint64_t) dentryCount; ///< The number of dentries pointing to this inode.
     uint64_t size;
@@ -68,9 +68,9 @@ typedef struct inode
     time_t changeTime; ///< Unix time stamp for the last file metadata alteration.
     time_t createTime; ///< Unix time stamp for the inode creation.
     void* private;
-    superblock_t* superblock;  ///< Constant after creation.
-    const inode_ops_t* ops;    ///< Constant after creation.
-    const file_ops_t* fileOps; ///< Constant after creation.
+    superblock_t* superblock;
+    const inode_ops_t* ops;
+    const file_ops_t* fileOps;
     mutex_t mutex;
 } inode_t;
 

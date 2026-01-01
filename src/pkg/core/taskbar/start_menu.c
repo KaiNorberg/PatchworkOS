@@ -6,8 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/io.h>
 #include <sys/defs.h>
+#include <sys/io.h>
 #include <sys/proc.h>
 
 #define START_ENTRY_MAX 16

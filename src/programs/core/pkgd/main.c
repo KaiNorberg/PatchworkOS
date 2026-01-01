@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/argsplit.h>
-#include <sys/io.h>
 #include <sys/defs.h>
+#include <sys/io.h>
 #include <sys/proc.h>
 
 /**

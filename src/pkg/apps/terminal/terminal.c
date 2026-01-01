@@ -4,10 +4,10 @@
 #include <libpatchwork/display.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/defs.h>
 #include <sys/io.h>
 #include <sys/kbd.h>
 #include <sys/proc.h>
-#include <sys/defs.h>
 #include <time.h>
 
 static terminal_char_t terminal_char_create(char chr, pixel_t foreground, pixel_t background, uint16_t row,

@@ -1,0 +1,1088 @@
+#include <_internal/MAX_NAME.h>
+#include <kernel/fs/procfs.h>
+
+#include <kernel/fs/ctl.h>
+#include <kernel/fs/dentry.h>
+#include <kernel/fs/file.h>
+#include <kernel/fs/filesystem.h>
+#include <kernel/fs/inode.h>
+#include <kernel/fs/mount.h>
+#include <kernel/fs/namespace.h>
+#include <kernel/fs/path.h>
+#include <kernel/fs/superblock.h>
+#include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/sched/sched.h>
+#include <kernel/sched/thread.h>
+#include <kernel/sync/lock.h>
+
+#include <assert.h>
+#include <errno.h>
+#include <stdatomic.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/io.h>
+#include <sys/list.h>
+
+static uint64_t procfs_prio_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    process_t* process = file->inode->private;
+
+    priority_t priority = atomic_load(&process->priority);
+
+    char prioStr[MAX_NAME];
+    uint32_t length = snprintf(prioStr, MAX_NAME, "%llu", priority);
+    return BUFFER_READ(buffer, count, offset, prioStr, length);
+}
+
+static uint64_t procfs_prio_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+{
+    UNUSED(offset);
+
+    process_t* process = file->inode->private;
+
+    char prioStr[MAX_NAME];
+    if (count >= MAX_NAME)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    memcpy(prioStr, buffer, count);
+    prioStr[count] = '\0';
+
+    long long int prio = atoll(prioStr);
+    if (prio < 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+    if (prio > PRIORITY_MAX_USER)
+    {
+        errno = EACCES;
+        return ERR;
+    }
+
+    atomic_store(&process->priority, prio);
+    return count;
+}
+
+static file_ops_t prioOps = {
+    .read = procfs_prio_read,
+    .write = procfs_prio_write,
+};
+
+static uint64_t procfs_cwd_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    process_t* process = file->inode->private;
+
+    path_t cwd = cwd_get(&process->cwd, &process->ns);
+    PATH_DEFER(&cwd);
+
+    pathname_t cwdName;
+    if (path_to_name(&cwd, &cwdName) == ERR)
+    {
+        return ERR;
+    }
+
+    uint64_t length = strlen(cwdName.string);
+    return BUFFER_READ(buffer, count, offset, cwdName.string, length);
+}
+
+static uint64_t procfs_cwd_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+{
+    UNUSED(offset);
+
+    process_t* process = file->inode->private;
+
+    char cwdStr[MAX_PATH];
+    if (count >= MAX_PATH)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    memcpy(cwdStr, buffer, count);
+    cwdStr[count] = '\0';
+
+    pathname_t cwdPathname;
+    if (pathname_init(&cwdPathname, cwdStr) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t path = cwd_get(&process->cwd, &process->ns);
+    PATH_DEFER(&path);
+
+    if (path_walk(&path, &cwdPathname, &process->ns) == ERR)
+    {
+        return ERR;
+    }
+
+    if (!DENTRY_IS_POSITIVE(path.dentry))
+    {
+        errno = ENOENT;
+        return ERR;
+    }
+
+    if (!DENTRY_IS_DIR(path.dentry))
+    {
+        errno = ENOTDIR;
+        return ERR;
+    }
+
+    cwd_set(&process->cwd, &path);
+    return count;
+}
+
+static file_ops_t cwdOps = {
+    .read = procfs_cwd_read,
+    .write = procfs_cwd_write,
+};
+
+static uint64_t procfs_cmdline_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    process_t* process = file->inode->private;
+
+    if (process->argv == NULL || process->argc == 0)
+    {
+        return 0;
+    }
+
+    uint64_t totalSize = 0;
+    for (uint64_t i = 0; i < process->argc; i++)
+    {
+        totalSize += strlen(process->argv[i]) + 1;
+    }
+
+    if (totalSize == 0)
+    {
+        return 0;
+    }
+
+    char* cmdline = malloc(totalSize);
+    if (cmdline == NULL)
+    {
+        errno = ENOMEM;
+        return ERR;
+    }
+
+    char* dest = cmdline;
+    for (uint64_t i = 0; i < process->argc; i++)
+    {
+        uint64_t len = strlen(process->argv[i]) + 1;
+        memcpy(dest, process->argv[i], len);
+        dest += len;
+    }
+
+    uint64_t result = BUFFER_READ(buffer, count, offset, cmdline, totalSize);
+    free(cmdline);
+    return result;
+}
+
+static file_ops_t cmdlineOps = {
+    .read = procfs_cmdline_read,
+};
+
+static uint64_t procfs_note_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+{
+    UNUSED(offset);
+
+    if (count == 0)
+    {
+        return 0;
+    }
+
+    if (count >= NOTE_MAX)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+
+    LOCK_SCOPE(&process->threads.lock);
+
+    thread_t* thread = CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
+    if (thread == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    char string[NOTE_MAX] = {0};
+    memcpy_s(string, NOTE_MAX, buffer, count);
+    if (thread_send_note(thread, string) == ERR)
+    {
+        return ERR;
+    }
+
+    return count;
+}
+
+static file_ops_t noteOps = {
+    .write = procfs_note_write,
+};
+
+static uint64_t procfs_notegroup_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+{
+    UNUSED(offset);
+
+    if (count == 0)
+    {
+        return 0;
+    }
+
+    if (count >= NOTE_MAX)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+    process_t* process = file->inode->private;
+
+    char string[NOTE_MAX] = {0};
+    memcpy_s(string, NOTE_MAX, buffer, count);
+    if (group_send_note(&process->group, string) == ERR)
+    {
+        return ERR;
+    }
+
+    return count;
+}
+
+static file_ops_t notegroupOps = {
+    .write = procfs_notegroup_write,
+};
+
+static uint64_t procfs_group_open(file_t* file)
+{
+    process_t* process = file->inode->private;
+
+    group_t* group = group_get(&process->group);
+    if (group == NULL)
+    {
+        return ERR;
+    }
+
+    file->private = group;
+    return 0;
+}
+
+static void procfs_group_close(file_t* file)
+{
+    group_t* group = file->private;
+    if (group == NULL)
+    {
+        return;
+    }
+
+    UNREF(group);
+    file->private = NULL;
+}
+
+static file_ops_t groupOps = {
+    .open = procfs_group_open,
+    .close = procfs_group_close,
+};
+
+static uint64_t procfs_pid_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    process_t* process = file->inode->private;
+
+    char pidStr[MAX_NAME];
+    uint32_t length = snprintf(pidStr, MAX_NAME, "%llu", process->id);
+    return BUFFER_READ(buffer, count, offset, pidStr, length);
+}
+
+static file_ops_t pidOps = {
+    .read = procfs_pid_read,
+};
+
+static uint64_t procfs_wait_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    process_t* process = file->inode->private;
+
+    if (WAIT_BLOCK(&process->dyingQueue, atomic_load(&process->flags) & PROCESS_DYING) == ERR)
+    {
+        return ERR;
+    }
+
+    lock_acquire(&process->status.lock);
+    uint64_t result = BUFFER_READ(buffer, count, offset, process->status.buffer, strlen(process->status.buffer));
+    lock_release(&process->status.lock);
+    return result;
+}
+
+static wait_queue_t* procfs_wait_poll(file_t* file, poll_events_t* revents)
+{
+    process_t* process = file->inode->private;
+    if (atomic_load(&process->flags) & PROCESS_DYING)
+    {
+        *revents |= POLLIN;
+        return &process->dyingQueue;
+    }
+
+    return &process->dyingQueue;
+}
+
+static file_ops_t waitOps = {
+    .read = procfs_wait_read,
+    .poll = procfs_wait_poll,
+};
+
+static uint64_t procfs_perf_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    process_t* process = file->inode->private;
+    uint64_t userPages = space_user_page_count(&process->space);
+
+    lock_acquire(&process->threads.lock);
+    uint64_t threadCount = list_length(&process->threads.list);
+    lock_release(&process->threads.lock);
+
+    clock_t userClocks = atomic_load(&process->perf.userClocks);
+    clock_t kernelClocks = atomic_load(&process->perf.kernelClocks);
+    clock_t startTime = process->perf.startTime;
+
+    char statStr[MAX_PATH];
+    int length = snprintf(statStr, sizeof(statStr),
+        "user_clocks %llu\nkernel_sched_clocks %llu\nstart_clocks %llu\nuser_pages %llu\nthread_count %llu", userClocks,
+        kernelClocks, startTime, userPages, threadCount);
+    if (length < 0)
+    {
+        errno = EIO;
+        return ERR;
+    }
+
+    return BUFFER_READ(buffer, count, offset, statStr, (uint64_t)length);
+}
+
+static file_ops_t perfOps = {
+    .read = procfs_perf_read,
+};
+
+static uint64_t procfs_ns_open(file_t* file)
+{
+    process_t* process = file->inode->private;
+
+    namespace_handle_t* handle = malloc(sizeof(namespace_handle_t));
+    if (handle == NULL)
+    {
+        errno = ENOMEM;
+        return ERR;
+    }
+
+    if (namespace_handle_init(handle, &process->ns, NAMESPACE_HANDLE_SHARE) == ERR)
+    {
+        free(handle);
+        return ERR;
+    }
+
+    file->private = handle;
+    return 0;
+}
+
+static void procfs_ns_close(file_t* file)
+{
+    if (file->private == NULL)
+    {
+        return;
+    }
+
+    namespace_handle_t* handle = file->private;
+    namespace_handle_deinit(handle);
+    free(handle);
+    file->private = NULL;
+}
+
+static file_ops_t nsOps = {
+    .open = procfs_ns_open,
+    .close = procfs_ns_close,
+};
+
+static uint64_t procfs_ctl_close(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 2 && argc != 3)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+
+    if (argc == 2)
+    {
+        fd_t fd;
+        if (sscanf(argv[1], "%lld", &fd) != 1)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        if (file_table_close(&process->fileTable, fd) == ERR)
+        {
+            return ERR;
+        }
+    }
+    else
+    {
+        fd_t minFd;
+        if (sscanf(argv[1], "%lld", &minFd) != 1)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        fd_t maxFd;
+        if (sscanf(argv[2], "%lld", &maxFd) != 1)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        if (file_table_close_range(&process->fileTable, minFd, maxFd) == ERR)
+        {
+            return ERR;
+        }
+    }
+
+    return 0;
+}
+
+static uint64_t procfs_ctl_dup2(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 3)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+
+    fd_t oldFd;
+    if (sscanf(argv[1], "%lld", &oldFd) != 1)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    fd_t newFd;
+    if (sscanf(argv[2], "%lld", &newFd) != 1)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (file_table_dup2(&process->fileTable, oldFd, newFd) == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
+static uint64_t procfs_ctl_bind(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 3)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+    process_t* writing = sched_process();
+
+    pathname_t targetName;
+    if (pathname_init(&targetName, argv[1]) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t target = cwd_get(&process->cwd, &process->ns);
+    PATH_DEFER(&target);
+
+    if (path_walk(&target, &targetName, &process->ns) == ERR)
+    {
+        return ERR;
+    }
+
+    pathname_t sourceName;
+    if (pathname_init(&sourceName, argv[2]) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t source = cwd_get(&writing->cwd, &writing->ns);
+    PATH_DEFER(&source);
+
+    if (path_walk(&source, &sourceName, &writing->ns) == ERR)
+    {
+        return ERR;
+    }
+
+    mount_t* mount = namespace_bind(&process->ns, &target, &source, targetName.mode);
+    if (mount == NULL)
+    {
+        return ERR;
+    }
+    UNREF(mount);
+    return 0;
+}
+
+static uint64_t procfs_ctl_mount(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 3 && argc != 4)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+
+    pathname_t mountname;
+    if (pathname_init(&mountname, argv[1]) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t mountpath = cwd_get(&process->cwd, &process->ns);
+    PATH_DEFER(&mountpath);
+
+    if (path_walk(&mountpath, &mountname, &process->ns) == ERR)
+    {
+        return ERR;
+    }
+
+    const char* fsName = argv[2];
+    const char* deviceName = (argc == 4) ? argv[3] : VFS_DEVICE_NAME_NONE;
+    mount_t* mount = namespace_mount(&process->ns, &mountpath, fsName, deviceName, mountname.mode, NULL);
+    if (mount == NULL)
+    {
+        return ERR;
+    }
+    UNREF(mount);
+    return 0;
+}
+
+static uint64_t procfs_ctl_touch(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 2)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+
+    pathname_t pathname;
+    if (pathname_init(&pathname, argv[1]) == ERR)
+    {
+        return ERR;
+    }
+
+    file_t* touch = vfs_open(&pathname, process);
+    if (touch == NULL)
+    {
+        return ERR;
+    }
+    UNREF(touch);
+    return 0;
+}
+
+static uint64_t procfs_ctl_start(file_t* file, uint64_t argc, const char** argv)
+{
+    UNUSED(argv);
+
+    if (argc != 1)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+
+    atomic_fetch_and(&process->flags, ~PROCESS_SUSPENDED);
+    wait_unblock(&process->suspendQueue, WAIT_ALL, EOK);
+
+    return 0;
+}
+
+static uint64_t procfs_ctl_kill(file_t* file, uint64_t argc, const char** argv)
+{
+    UNUSED(argv);
+
+    if (argc != 1)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+
+    process_kill(process, 0);
+
+    return 0;
+}
+
+static uint64_t procfs_ctl_setns(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 2)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+
+    fd_t fd;
+    if (sscanf(argv[1], "%llu", &fd) != 1)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    file_t* nsFile = file_table_get(&process->fileTable, fd);
+    if (nsFile == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(nsFile);
+
+    if (nsFile->ops != &nsOps)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    namespace_handle_t* target = nsFile->private;
+    if (target == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    namespace_handle_deinit(&process->ns);
+
+    if (namespace_handle_init(&process->ns, target, NAMESPACE_HANDLE_SHARE) == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
+static uint64_t procfs_ctl_setgroup(file_t* file, uint64_t argc, const char** argv)
+{
+    if (argc != 2)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    process_t* process = file->inode->private;
+
+    fd_t fd;
+    if (sscanf(argv[1], "%llu", &fd) != 1)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    file_t* groupFile = file_table_get(&process->fileTable, fd);
+    if (groupFile == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(groupFile);
+
+    if (groupFile->ops != &groupOps)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    group_t* target = groupFile->private;
+    if (target == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    group_add(target, &process->group);
+    return 0;
+}
+
+CTL_STANDARD_OPS_DEFINE(ctlOps,
+    {
+        {"close", procfs_ctl_close, 2, 3},
+        {"dup2", procfs_ctl_dup2, 3, 3},
+        {"bind", procfs_ctl_bind, 3, 3},
+        {"mount", procfs_ctl_mount, 3, 4},
+        {"touch", procfs_ctl_touch, 2, 2},
+        {"start", procfs_ctl_start, 1, 1},
+        {"kill", procfs_ctl_kill, 1, 1},
+        {"setns", procfs_ctl_setns, 2, 2},
+        {"setgroup", procfs_ctl_setgroup, 2, 2},
+        {0},
+    })
+
+static uint64_t procfs_self_readlink(inode_t* inode, char* buffer, uint64_t count)
+{
+    UNUSED(inode);
+
+    process_t* process = sched_process();
+    int ret = snprintf(buffer, count, "%llu", process->id);
+    if (ret < 0 || ret >= (int)count)
+    {
+        return ERR;
+    }
+
+    return ret;
+}
+
+static inode_ops_t selfOps = {
+    .readlink = procfs_self_readlink,
+};
+
+typedef struct
+{
+    const char* name;
+    inode_type_t type;
+    inode_number_t number;
+    inode_ops_t* inodeOps;
+    file_ops_t* fileOps;
+} procfs_entry_t;
+
+static const procfs_entry_t pidEntries[] = {
+    {
+        .name = "prio",
+        .type = INODE_FILE,
+        .number = PROCFS_INODE_PRIO,
+        .inodeOps = NULL,
+        .fileOps = &prioOps,
+    },
+    {
+        .name = "cwd",
+        .type = INODE_FILE,
+        .number = PROCFS_INODE_CWD,
+        .inodeOps = NULL,
+        .fileOps = &cwdOps,
+    },
+    {
+        .name = "cmdline",
+        .type = INODE_FILE,
+        .number = PROCFS_INODE_CMDLINE,
+        .inodeOps = NULL,
+        .fileOps = &cmdlineOps,
+    },
+    {
+        .name = "note",
+        .type = INODE_FILE,
+        .number = PROCFS_INODE_NOTE,
+        .inodeOps = NULL,
+        .fileOps = &noteOps,
+    },
+    {
+        .name = "notegroup",
+        .type = INODE_FILE,
+        .number = PROCFS_INODE_NOTEGROUP,
+        .inodeOps = NULL,
+        .fileOps = &notegroupOps,
+    },
+    {
+        .name = "group",
+        .type = INODE_FILE,
+        .number = PROCFS_INODE_GROUP,
+        .inodeOps = NULL,
+        .fileOps = &groupOps,
+    },
+    {
+        .name = "pid",
+        .type = INODE_FILE,
+        .number = PROCFS_INODE_PID,
+        .inodeOps = NULL,
+        .fileOps = &pidOps,
+    },
+    {
+        .name = "wait",
+        .type = INODE_FILE,
+        .number = PROCFS_INODE_WAIT,
+        .inodeOps = NULL,
+        .fileOps = &waitOps,
+    },
+    {
+        .name = "perf",
+        .type = INODE_FILE,
+        .number = PROCFS_INODE_PERF,
+        .inodeOps = NULL,
+        .fileOps = &perfOps,
+    },
+    {
+        .name = "ns",
+        .type = INODE_FILE,
+        .number = PROCFS_INODE_NS,
+        .inodeOps = NULL,
+        .fileOps = &nsOps,
+    },
+    {
+        .name = "ctl",
+        .type = INODE_FILE,
+        .number = PROCFS_INODE_CTL,
+        .inodeOps = NULL,
+        .fileOps = &ctlOps,
+    },
+    {
+        .name = "env",
+        .type = INODE_DIR,
+        .number = PROCFS_INODE_ENV,
+        .inodeOps = NULL,
+        .fileOps = NULL,
+    },
+};
+
+static uint64_t procfs_pid_lookup(inode_t* dir, dentry_t* target)
+{
+    process_t* process = dir->private;
+    assert(process != NULL);
+
+    for (size_t i = 0; i < ARRAY_SIZE(pidEntries); i++)
+    {
+        if (strcmp(target->name, pidEntries[i].name) != 0)
+        {
+            continue;
+        }
+
+        inode_t* inode = inode_new(dir->superblock, (PROCFS_INODE_PID_BASE * process->id) + pidEntries[i].number,
+            pidEntries[i].type, pidEntries[i].inodeOps, pidEntries[i].fileOps);
+        if (inode == NULL)
+        {
+            return 0;
+        }
+        UNREF_DEFER(inode);
+        inode->private = process; // No reference
+
+        dentry_make_positive(target, inode);
+        return 0;
+    }
+
+    return 0;
+}
+
+static void procfs_pid_cleanup(inode_t* inode)
+{
+    process_t* process = inode->private;
+    if (process == NULL)
+    {
+        return;
+    }
+
+    UNREF(process);
+    inode->private = NULL;
+}
+
+static inode_ops_t pidInodeOps = {
+    .lookup = procfs_pid_lookup,
+    .cleanup = procfs_pid_cleanup,
+};
+
+static uint64_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
+{
+    if (0 >= ctx->pos)
+    {
+        if (!ctx->emit(ctx, ".", dentry->inode->number, dentry->inode->type))
+        {
+            return 0;
+        }
+    }
+
+    if (1 >= ctx->pos)
+    {
+        if (!ctx->emit(ctx, "..", dentry->parent->inode->number, dentry->parent->inode->type))
+        {
+            return 0;
+        }
+    }
+
+    process_t* process = dentry->inode->private;
+    assert(process != NULL);
+
+    for (size_t i = 0; i < ARRAY_SIZE(pidEntries); i++)
+    {
+        if ((i + 2) >= ctx->pos)
+        {
+            if (!ctx->emit(ctx, pidEntries[i].name, (PROCFS_INODE_PID_BASE * process->id) + pidEntries[i].number,
+                    pidEntries[i].type))
+            {
+                return 0;
+            }
+        }
+    }
+
+    return 0;
+}
+
+static dentry_ops_t pidDentryOps = {
+    .iterate = procfs_pid_iterate,
+};
+
+static procfs_entry_t procEntries[] = {
+    {
+        .name = "self",
+        .type = INODE_SYMLINK,
+        .number = PROCFS_INODE_SELF,
+        .inodeOps = &selfOps,
+        .fileOps = NULL,
+    },
+};
+
+static uint64_t procfs_lookup(inode_t* dir, dentry_t* target)
+{
+    for (size_t i = 0; i < ARRAY_SIZE(procEntries); i++)
+    {
+        if (strcmp(target->name, procEntries[i].name) != 0)
+        {
+            continue;
+        }
+
+        inode_t* inode = inode_new(dir->superblock, procEntries[i].number, procEntries[i].type, procEntries[i].inodeOps,
+            procEntries[i].fileOps);
+        if (inode == NULL)
+        {
+            return 0;
+        }
+        UNREF_DEFER(inode);
+
+        dentry_make_positive(target, inode);
+        return 0;
+    }
+
+    pid_t pid;
+    if (sscanf(target->name, "%llu", &pid) != 1)
+    {
+        return 0;
+    }
+
+    process_t* process = process_get(pid);
+    if (process == NULL)
+    {
+        return 0;
+    }
+    UNREF_DEFER(process);
+
+    inode_t* inode = inode_new(dir->superblock, PROCFS_INODE_PID_BASE * process->id, INODE_DIR, &pidInodeOps, NULL);
+    if (inode == NULL)
+    {
+        return 0;
+    }
+    UNREF_DEFER(inode);
+    inode->private = REF(process);
+
+    target->ops = &pidDentryOps;
+
+    dentry_make_positive(target, inode);
+    return 0;
+}
+
+static inode_ops_t procInodeOps = {
+    .lookup = procfs_lookup,
+};
+
+static uint64_t procfs_iterate_func(process_t* process, void* arg)
+{
+    dir_ctx_t* ctx = (dir_ctx_t*)arg;
+
+    uint64_t index = 2 + ARRAY_SIZE(procEntries);
+    if (index >= ctx->pos)
+    {
+        char name[MAX_NAME];
+        snprintf(name, sizeof(name), "%llu", process->id);
+        if (!ctx->emit(ctx, name, PROCFS_INODE_PID_BASE + process->id, INODE_DIR))
+        {
+            return 0;
+        }
+    }
+    index++;
+
+    return 0;
+}
+
+static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
+{
+    if (0 >= ctx->pos)
+    {
+        if (!ctx->emit(ctx, ".", dentry->inode->number, dentry->inode->type))
+        {
+            return 0;
+        }
+    }
+
+    if (1 >= ctx->pos)
+    {
+        if (!ctx->emit(ctx, "..", dentry->parent->inode->number, dentry->parent->inode->type))
+        {
+            return 0;
+        }
+    }
+
+    for (size_t i = 0; i < ARRAY_SIZE(procEntries); i++)
+    {
+        if ((i + 2) >= ctx->pos)
+        {
+            if (!ctx->emit(ctx, procEntries[i].name, procEntries[i].number, procEntries[i].type))
+            {
+                return 0;
+            }
+        }
+    }
+
+    return process_for_each(procfs_iterate_func, ctx);
+}
+
+static dentry_ops_t procDentryOps = {
+    .iterate = procfs_iterate,
+};
+
+static dentry_t* procfs_mount(filesystem_t* fs, const char* devName, void* private)
+{
+    UNUSED(devName);
+    UNUSED(private);
+
+    superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, NULL, NULL);
+    if (superblock == NULL)
+    {
+        return NULL;
+    }
+    UNREF_DEFER(superblock);
+
+    inode_t* inode = inode_new(superblock, PROCFS_INODE_ROOT, INODE_DIR, &procInodeOps, NULL);
+    if (inode == NULL)
+    {
+        return NULL;
+    }
+    UNREF_DEFER(inode);
+
+    dentry_t* dentry = dentry_new(superblock, NULL, VFS_ROOT_ENTRY_NAME);
+    if (dentry == NULL)
+    {
+        return NULL;
+    }
+    dentry->ops = &procDentryOps;
+
+    dentry_make_positive(dentry, inode);
+
+    superblock->root = dentry;
+    return superblock->root;
+}
+
+static filesystem_t procfs = {
+    .name = PROCFS_NAME,
+    .mount = procfs_mount,
+};
+
+void procfs_init(void)
+{
+    if (filesystem_register(&procfs) == ERR)
+    {
+        panic(NULL, "Failed to register procfs filesystem");
+    }
+}

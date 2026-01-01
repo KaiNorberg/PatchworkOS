@@ -23,6 +23,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <kernel/utils/map.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -36,7 +37,11 @@ static process_t* kernelProcess = NULL;
 
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 
-static mount_t* proc = NULL;
+static map_t pidMap = MAP_CREATE();
+static list_t processes = LIST_CREATE(processes);
+static rwlock_t processesLock = RWLOCK_CREATE();
+
+/*static mount_t* proc = NULL;
 static dentry_t* self = NULL;
 
 static uint64_t process_self_readlink(inode_t* inode, char* buffer, uint64_t count)
@@ -290,7 +295,7 @@ static file_ops_t notegroupOps = {
 static uint64_t process_group_open(file_t* file)
 {
     process_t* process = file->inode->private;
-  
+
     group_t* group = group_get(&process->group);
     if (group == NULL)
     {
@@ -965,9 +970,41 @@ static uint64_t process_dir_init(process_t* process)
     }
 
     return 0;
+}*/
+
+static void process_free(process_t* process)
+{
+    LOG_DEBUG("freeing process pid=%d\n", process->id);
+
+    assert(list_is_empty(&process->threads.list));
+
+    if (process->argv != NULL)
+    {
+        for (uint64_t i = 0; i < process->argc; i++)
+        {
+            if (process->argv[i] != NULL)
+            {
+                free(process->argv[i]);
+            }
+        }
+        free(process->argv);
+        process->argv = NULL;
+        process->argc = 0;
+    }
+
+    group_member_deinit(&process->group);
+    cwd_deinit(&process->cwd);
+    file_table_deinit(&process->fileTable);
+    namespace_handle_deinit(&process->ns);
+    space_deinit(&process->space);
+    wait_queue_deinit(&process->dyingQueue);
+    wait_queue_deinit(&process->suspendQueue);
+    futex_ctx_deinit(&process->futexCtx);
+    free(process);
 }
 
-process_t* process_new(priority_t priority, group_member_t* group, namespace_handle_t* ns, namespace_handle_flags_t flags)
+process_t* process_new(priority_t priority, group_member_t* group, namespace_handle_t* ns,
+    namespace_handle_flags_t flags)
 {
     process_t* process = malloc(sizeof(process_t));
     if (process == NULL)
@@ -976,6 +1013,10 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_han
         return NULL;
     }
 
+    ref_init(&process->ref, process_free);
+    list_entry_init(&process->entry);
+    map_entry_init(&process->mapEntry);
+    list_entry_init(&process->zombieEntry);
     process->id = atomic_fetch_add(&newPid, 1);
     atomic_init(&process->priority, priority);
     memset_s(process->status.buffer, PROCESS_STATUS_MAX, 0, PROCESS_STATUS_MAX);
@@ -1008,34 +1049,42 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_han
     list_init(&process->threads.list);
     lock_init(&process->threads.lock);
 
-    list_entry_init(&process->zombieEntry);
-
-    process->dir.dir = NULL;
-    list_init(&process->dir.files);
-    process->dir.env = NULL;
-    list_init(&process->dir.envEntries);
-    lock_init(&process->dir.lock);
-
     process->argv = NULL;
     process->argc = 0;
 
     if (group_member_init(&process->group, group) == ERR)
     {
-        process_kill(process, "group init failed");
+        process_free(process);
         return NULL;
     }
 
-    if (process->id != 0) // Delay kernel process /proc dir init
+    RWLOCK_WRITE_SCOPE(&processesLock);
+
+    map_key_t mapKey = map_key_uint64(process->id);
+    if (map_insert(&pidMap, &mapKey, &process->mapEntry) == ERR)
     {
-        if (process_dir_init(process) == ERR)
-        {
-            process_kill(process, "init failed");
-            return NULL;
-        }
+        process_free(process);
+        return NULL;
     }
 
     LOG_DEBUG("created process pid=%d\n", process->id);
-    return process;
+
+    list_push_back(&processes, &process->entry);
+    return REF(process);
+}
+
+process_t* process_get(pid_t id)
+{
+    RWLOCK_READ_SCOPE(&processesLock);
+
+    map_key_t mapKey = map_key_uint64(id);
+    map_entry_t* entry = map_get(&pidMap, &mapKey);
+    if (entry == NULL)
+    {
+        return NULL;
+    }
+
+    return REF(CONTAINER_OF(entry, process_t, mapEntry));
 }
 
 void process_kill(process_t* process, const char* status)
@@ -1070,8 +1119,6 @@ void process_kill(process_t* process, const char* status)
 
     // Anything that another process could be waiting on must be cleaned up here.
 
-    namespace_unmount(&process->ns, process->dir.dir, MODE_PROPAGATE_PARENTS);
-
     cwd_clear(&process->cwd);
     file_table_close_all(&process->fileTable);
     namespace_handle_clear(&process->ns);
@@ -1082,87 +1129,34 @@ void process_kill(process_t* process, const char* status)
     reaper_push(process);
 }
 
-void process_dir_deinit(process_t* process)
+void process_remove(process_t* process)
 {
-    if (process == NULL)
-    {
-        return;
-    }
+    rwlock_write_acquire(&processesLock);
+    map_remove(&pidMap, &process->mapEntry);
+    list_remove(&processes, &process->entry);
+    rwlock_write_release(&processesLock);
 
-    LOCK_SCOPE(&process->dir.lock);
-
-    while (!list_is_empty(&process->dir.envEntries))
-    {
-        UNREF(CONTAINER_OF_SAFE(list_pop_first(&process->dir.envEntries), dentry_t, otherEntry));
-    }
-
-    while (!list_is_empty(&process->dir.files))
-    {
-        UNREF(CONTAINER_OF_SAFE(list_pop_first(&process->dir.files), dentry_t, otherEntry));
-    }
-
-    if (process->dir.env != NULL)
-    {
-        UNREF(process->dir.env);
-        process->dir.env = NULL;
-    }
-
-    if (process->dir.dir != NULL)
-    {
-        UNREF(process->dir.dir);
-        process->dir.dir = NULL;
-    }
+    UNREF(process);
 }
 
-uint64_t process_copy_env(process_t* dest, process_t* src)
+uint64_t process_for_each(uint64_t (*func)(process_t* process, void* arg), void* arg)
 {
-    if (dest == NULL || src == NULL)
+    if (func == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    LOCK_SCOPE(&src->dir.lock);
-    LOCK_SCOPE(&dest->dir.lock);
+    RWLOCK_READ_SCOPE(&processesLock);
 
-    if (!list_is_empty(&dest->dir.envEntries))
+    process_t* process;
+    LIST_FOR_EACH(process, &processes, entry)
     {
-        errno = EBUSY;
-        return ERR;
-    }
-
-    superblock_t* superblock = dest->dir.env->inode->superblock;
-
-    dentry_t* srcDentry;
-    LIST_FOR_EACH(srcDentry, &src->dir.envEntries, otherEntry)
-    {
-        inode_t* inode = inode_new(superblock, vfs_id_get(), INODE_FILE, &envFileInodeOps, &envFileOps);
-        if (inode == NULL)
+        uint64_t result = func(process, arg);
+        if (result == ERR)
         {
             return ERR;
         }
-        UNREF_DEFER(inode);
-
-        MUTEX_SCOPE(&srcDentry->inode->mutex);
-        if (srcDentry->inode->private != NULL)
-        {
-            inode->private = malloc(srcDentry->inode->size);
-            if (inode->private == NULL)
-            {
-                return ERR;
-            }
-            memcpy(inode->private, srcDentry->inode->private, srcDentry->inode->size);
-            inode->size = srcDentry->inode->size;
-        }
-
-        dentry_t* dentry = dentry_new(superblock, dest->dir.env, srcDentry->name);
-        if (dentry == NULL)
-        {
-            return ERR;
-        }
-
-        dentry_make_positive(dentry, inode);
-        list_push_back(&dest->dir.envEntries, &dentry->otherEntry);
     }
 
     return 0;
@@ -1261,29 +1255,6 @@ process_t* process_get_kernel(void)
     }
 
     return kernelProcess;
-}
-
-void process_procfs_init(void)
-{
-    proc = sysfs_mount_new("proc", NULL, MODE_ALL_PERMS, NULL, NULL, NULL);
-    if (proc == NULL)
-    {
-        panic(NULL, "Failed to mount /proc");
-    }
-
-    self = sysfs_symlink_new(proc->source, "self", &selfOps, NULL);
-    if (self == NULL)
-    {
-        panic(NULL, "Failed to create /proc/self symlink");
-    }
-
-    assert(kernelProcess != NULL);
-
-    // Kernel process was created before sysfs was initialized, so we have to delay this until now.
-    if (process_dir_init(kernelProcess) == ERR)
-    {
-        panic(NULL, "Failed to create /proc/[pid] directory for kernel process");
-    }
 }
 
 SYSCALL_DEFINE(SYS_GETPID, pid_t)

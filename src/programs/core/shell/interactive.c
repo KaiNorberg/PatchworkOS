@@ -9,11 +9,11 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/defs.h>
 #include <sys/io.h>
 #include <sys/kbd.h>
 #include <sys/proc.h>
 #include <threads.h>
-#include <sys/defs.h>
 
 static ansi_t ansi;
 static history_t history;

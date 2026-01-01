@@ -6,6 +6,7 @@
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
+#include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/thread.h>
@@ -130,7 +131,7 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, const map_key_t* 
         map_entry_init(&stack->mapEntry);
         memset((void*)stack->mounts, 0, sizeof(stack->mounts));
         stack->count = 0;
-    
+
         if (map_insert(&ns->mountMap, key, &stack->mapEntry) == ERR)
         {
             free(stack);
@@ -217,7 +218,7 @@ static void namespace_remove(namespace_t* ns, mount_t* mount, map_key_t* key, mo
             stack->count--;
             break;
         }
-        
+
         if (stack->count == 0)
         {
             list_remove(&ns->stacks, &stack->entry);
@@ -603,7 +604,7 @@ SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* mountpoint, const char* fs, cons
     }
 
     char deviceName[MAX_NAME];
-    if (thread_copy_from_user_string(thread, deviceName, device, MAX_NAME) == ERR)
+    if (device != NULL && thread_copy_from_user_string(thread, deviceName, device, MAX_NAME) == ERR)
     {
         return ERR;
     }
@@ -614,7 +615,7 @@ SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* mountpoint, const char* fs, cons
         return ERR;
     }
 
-    mount_t* mount = namespace_mount(&process->ns, &mountpath, fsName, deviceName, mountname.mode, NULL);
+    mount_t* mount = namespace_mount(&process->ns, &mountpath, fsName, device != NULL ? deviceName : VFS_DEVICE_NAME_NONE, mountname.mode, NULL);
     if (mount == NULL)
     {
         return ERR;

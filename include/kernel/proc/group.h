@@ -67,9 +67,10 @@ void group_member_deinit(group_member_t* member);
 
 /**
  * @brief Retrieve the group of a group member.
- * 
- * It is the responsibility of the caller to use `UNREF()` or `UNREF_DEFER()` on the returned group when it is no longer needed.
- * 
+ *
+ * It is the responsibility of the caller to use `UNREF()` or `UNREF_DEFER()` on the returned group when it is no longer
+ * needed.
+ *
  * @param member The group member.
  * @return On success, a reference to the group. On failure, `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.

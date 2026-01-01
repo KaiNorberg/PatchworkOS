@@ -8,6 +8,7 @@
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/syscall.h>
 #include <kernel/drivers/pic.h>
+#include <kernel/fs/procfs.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/tmpfs.h>
 #include <kernel/fs/vfs.h>
@@ -85,9 +86,9 @@ static void init_finalize(void)
 
     tmpfs_init();
     sysfs_init();
+    procfs_init();
 
     log_file_expose();
-    process_procfs_init();
 
     reaper_init();
 
@@ -153,6 +154,7 @@ static inline void init_process_spawn(void)
     {
         panic(NULL, "Failed to create init process");
     }
+    UNREF_DEFER(initProcess);
 
     thread_t* initThread = thread_new(initProcess);
     if (initThread == NULL)
