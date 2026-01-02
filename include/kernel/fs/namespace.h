@@ -17,7 +17,8 @@ typedef struct process process_t;
  * @defgroup kernel_fs_namespace Namespaces
  * @ingroup kernel_fs
  *
- * The per-process namespace system allows each process to have its own view of the filesystem hierarchy, acting as the primary form of security.
+ * The per-process namespace system allows each process to have its own view of the filesystem hierarchy, acting as the
+ * primary form of security.
  *
  * @{
  */
@@ -143,7 +144,7 @@ bool namespace_traverse(namespace_handle_t* handle, path_t* path);
  * @param handle The namespace handle containing the namespace to mount to.
  * @param target The target path to mount to, can be `NULL` to mount to root.
  * @param fsName The filesystem name.
- * @param deviceName The device name, or `VFS_DEVICE_NAME_NONE` for no device.
+ * @param deviceName The device name, or `NULL` for no device.
  * @param flags Mount flags.
  * @param mode The mode specifying permissions and mount behaviour.
  * @param private Private data for the filesystem's mount function.

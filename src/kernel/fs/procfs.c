@@ -572,7 +572,7 @@ static uint64_t procfs_ctl_mount(file_t* file, uint64_t argc, const char** argv)
     }
 
     const char* fsName = argv[2];
-    const char* deviceName = (argc == 4) ? argv[3] : VFS_DEVICE_NAME_NONE;
+    const char* deviceName = (argc == 4) ? argv[3] : NULL;
     mount_t* mount = namespace_mount(&process->ns, &mountpath, fsName, deviceName, mountname.mode, NULL);
     if (mount == NULL)
     {
@@ -799,8 +799,7 @@ static uint64_t procfs_env_lookup(inode_t* dir, dentry_t* target)
         return 0;
     }
 
-    inode_t* inode =
-        inode_new(dir->superblock, inode_number_gen(dir->number, target->name), INODE_FILE, NULL, &envVarOps);
+    inode_t* inode = inode_new(dir->superblock, ino_gen(dir->number, target->name), INODE_FILE, NULL, &envVarOps);
     if (inode == NULL)
     {
         return ERR;
@@ -829,8 +828,7 @@ static uint64_t procfs_env_create(inode_t* dir, dentry_t* target, mode_t mode)
         return ERR;
     }
 
-    inode_t* inode =
-        inode_new(dir->superblock, inode_number_gen(dir->number, target->name), INODE_FILE, NULL, &envVarOps);
+    inode_t* inode = inode_new(dir->superblock, ino_gen(dir->number, target->name), INODE_FILE, NULL, &envVarOps);
     if (inode == NULL)
     {
         return ERR;
@@ -880,7 +878,7 @@ static uint64_t procfs_env_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, process->env.vars[i].key, inode_number_gen(dentry->inode->number, process->env.vars[i].key),
+        if (!ctx->emit(ctx, process->env.vars[i].key, ino_gen(dentry->inode->number, process->env.vars[i].key),
                 INODE_FILE))
         {
             return 0;
@@ -1014,8 +1012,8 @@ static uint64_t procfs_pid_lookup(inode_t* dir, dentry_t* target)
             continue;
         }
 
-        inode_t* inode = inode_new(dir->superblock, inode_number_gen(dir->number, pidEntries[i].name),
-            pidEntries[i].type, pidEntries[i].inodeOps, pidEntries[i].fileOps);
+        inode_t* inode = inode_new(dir->superblock, ino_gen(dir->number, pidEntries[i].name), pidEntries[i].type,
+            pidEntries[i].inodeOps, pidEntries[i].fileOps);
         if (inode == NULL)
         {
             return 0;
@@ -1076,8 +1074,7 @@ static uint64_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, pidEntries[i].name, inode_number_gen(dentry->parent->inode->number, pidEntries[i].name),
-                pidEntries[i].type))
+        if (!ctx->emit(ctx, pidEntries[i].name, ino_gen(dentry->inode->number, pidEntries[i].name), pidEntries[i].type))
         {
             return 0;
         }
@@ -1099,7 +1096,7 @@ static uint64_t procfs_lookup(inode_t* dir, dentry_t* target)
             continue;
         }
 
-        inode_t* inode = inode_new(dir->superblock, inode_number_gen(dir->number, target->name), procEntries[i].type,
+        inode_t* inode = inode_new(dir->superblock, ino_gen(dir->number, target->name), procEntries[i].type,
             procEntries[i].inodeOps, procEntries[i].fileOps);
         if (inode == NULL)
         {
@@ -1124,8 +1121,7 @@ static uint64_t procfs_lookup(inode_t* dir, dentry_t* target)
     }
     UNREF_DEFER(process);
 
-    inode_t* inode =
-        inode_new(dir->superblock, inode_number_gen(dir->number, target->name), INODE_DIR, &pidInodeOps, NULL);
+    inode_t* inode = inode_new(dir->superblock, ino_gen(dir->number, target->name), INODE_DIR, &pidInodeOps, NULL);
     if (inode == NULL)
     {
         return ERR;
@@ -1157,7 +1153,7 @@ static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, procEntries[i].name, inode_number_gen(dentry->parent->inode->number, procEntries[i].name),
+        if (!ctx->emit(ctx, procEntries[i].name, ino_gen(dentry->parent->inode->number, procEntries[i].name),
                 procEntries[i].type))
         {
             return 0;
@@ -1174,7 +1170,7 @@ static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
         char name[MAX_NAME];
         snprintf(name, sizeof(name), "%llu", process->id);
-        if (!ctx->emit(ctx, name, inode_number_gen(dentry->parent->inode->number, name), INODE_DIR))
+        if (!ctx->emit(ctx, name, ino_gen(dentry->parent->inode->number, name), INODE_DIR))
         {
             UNREF(process);
             return 0;
@@ -1188,12 +1184,11 @@ static dentry_ops_t procDentryOps = {
     .iterate = procfs_iterate,
 };
 
-static dentry_t* procfs_mount(filesystem_t* fs, const char* devName, void* private)
+static dentry_t* procfs_mount(filesystem_t* fs, dev_t device, void* private)
 {
-    UNUSED(devName);
     UNUSED(private);
 
-    superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, NULL, NULL);
+    superblock_t* superblock = superblock_new(fs, device, NULL, NULL);
     if (superblock == NULL)
     {
         return NULL;
@@ -1207,7 +1202,7 @@ static dentry_t* procfs_mount(filesystem_t* fs, const char* devName, void* priva
     }
     UNREF_DEFER(inode);
 
-    dentry_t* dentry = dentry_new(superblock, NULL, VFS_ROOT_ENTRY_NAME);
+    dentry_t* dentry = dentry_new(superblock, NULL, NULL);
     if (dentry == NULL)
     {
         return NULL;

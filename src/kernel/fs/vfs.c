@@ -592,7 +592,7 @@ typedef struct
     namespace_handle_t* ns;
 } vfs_dir_ctx_t;
 
-static bool vfs_dir_emit(dir_ctx_t* ctx, const char* name, inode_number_t number, inode_type_t type)
+static bool vfs_dir_emit(dir_ctx_t* ctx, const char* name, ino_t number, inode_type_t type)
 {
     vfs_dir_ctx_t* vctx = (vfs_dir_ctx_t*)ctx;
     if (vctx->written + sizeof(dirent_t) > vctx->count)
@@ -1005,7 +1005,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
         return ERR;
     }
 
-    if (oldParent.dentry->superblock->id != newParent.dentry->superblock->id)
+    if (oldParent.dentry->superblock != newParent.dentry->superblock)
     {
         errno = EXDEV;
         return ERR;

@@ -48,7 +48,7 @@ typedef struct dentry dentry_t;
 typedef struct inode
 {
     ref_t ref;
-    inode_number_t number; ///< A value that uniquely identifies the inode within its filesystem.
+    ino_t number;
     inode_type_t type;
     _Atomic(uint64_t) dentryCount; ///< The number of dentries pointing to this inode.
     uint64_t size;
@@ -158,7 +158,7 @@ typedef struct inode_ops
  * @param fileOps The file operations for files opened on this inode.
  * @return On success, the new inode. On failure, returns `NULL` and `errno` is set.
  */
-inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, const inode_ops_t* ops,
+inode_t* inode_new(superblock_t* superblock, ino_t number, inode_type_t type, const inode_ops_t* ops,
     const file_ops_t* fileOps);
 
 /**
@@ -207,6 +207,6 @@ void inode_truncate(inode_t* inode);
  * @param name The name of the entry.
  * @return The generated inode number.
  */
-inode_number_t inode_number_gen(inode_number_t parentNumber, const char* name);
+ino_t ino_gen(ino_t parentNumber, const char* name);
 
 /** @} */

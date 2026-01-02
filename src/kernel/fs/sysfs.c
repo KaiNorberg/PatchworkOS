@@ -39,15 +39,13 @@ typedef struct
     void* private;
 } sysfs_mount_ctx_t;
 
-static dentry_t* sysfs_mount(filesystem_t* fs, const char* devName, void* private)
+static dentry_t* sysfs_mount(filesystem_t* fs, dev_t device, void* private)
 {
-    UNUSED(devName);
     UNUSED(private);
 
     sysfs_mount_ctx_t* ctx = private;
 
-    superblock_t* superblock =
-        superblock_new(fs, VFS_DEVICE_NAME_NONE, ctx != NULL ? ctx->superblockOps : NULL, &dentryOps);
+    superblock_t* superblock = superblock_new(fs, device, ctx != NULL ? ctx->superblockOps : NULL, &dentryOps);
     if (superblock == NULL)
     {
         return NULL;
@@ -62,7 +60,7 @@ static dentry_t* sysfs_mount(filesystem_t* fs, const char* devName, void* privat
     UNREF_DEFER(inode);
     inode->private = ctx != NULL ? ctx->private : NULL;
 
-    dentry_t* dentry = dentry_new(superblock, NULL, VFS_ROOT_ENTRY_NAME);
+    dentry_t* dentry = dentry_new(superblock, NULL, NULL);
     if (dentry == NULL)
     {
         return NULL;
@@ -136,7 +134,7 @@ mount_t* sysfs_mount_new(const char* name, namespace_handle_t* ns, mode_t mode, 
         .private = private,
     };
 
-    return namespace_mount(ns, &mountpoint, SYSFS_NAME, VFS_DEVICE_NAME_NONE, mode, &ctx);
+    return namespace_mount(ns, &mountpoint, SYSFS_NAME, NULL, mode, &ctx);
 }
 
 mount_t* sysfs_submount_new(const path_t* parent, const char* name, namespace_handle_t* ns, mode_t mode,
@@ -185,7 +183,7 @@ mount_t* sysfs_submount_new(const path_t* parent, const char* name, namespace_ha
     path_t mountpoint = PATH_CREATE(parent->mount, dentry);
     PATH_DEFER(&mountpoint);
 
-    return namespace_mount(ns, &mountpoint, SYSFS_NAME, VFS_DEVICE_NAME_NONE, mode, &ctx);
+    return namespace_mount(ns, &mountpoint, SYSFS_NAME, NULL, mode, &ctx);
 }
 
 dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* private)

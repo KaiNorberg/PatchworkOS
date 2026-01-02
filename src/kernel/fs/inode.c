@@ -38,7 +38,7 @@ static void inode_free(inode_t* inode)
     free(inode);
 }
 
-inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, const inode_ops_t* ops,
+inode_t* inode_new(superblock_t* superblock, ino_t number, inode_type_t type, const inode_ops_t* ops,
     const file_ops_t* fileOps)
 {
     if (superblock == NULL)
@@ -131,7 +131,7 @@ void inode_truncate(inode_t* inode)
     }
 }
 
-inode_number_t inode_number_gen(inode_number_t parentNumber, const char* name)
+ino_t ino_gen(ino_t parentNumber, const char* name)
 {
     uint64_t hash = 0xcbf29ce484222325;
     const uint64_t prime = 0x100000001b3;

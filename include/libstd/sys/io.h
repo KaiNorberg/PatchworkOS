@@ -312,7 +312,7 @@ poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);
 
 /**
  * @brief Inode type enum.
- *
+ * @enum inode_type_t
  */
 typedef enum
 {
@@ -322,32 +322,44 @@ typedef enum
 } inode_type_t;
 
 /**
- * @brief Inode number enum.
- *
+ * @brief A value that uniquely identifies the inode within its filesystem.
  */
-typedef uint64_t inode_number_t;
+typedef uint64_t ino_t;
 
 /**
- * @brief Stat type.
- *
+ * @brief A value that uniquely identifies a mounted device.
  */
 typedef struct
 {
-    inode_number_t number; ///< The number of the entries inode.
-    inode_type_t type;     ///< The type of the entries inode.
-    uint64_t size;         ///< The size of the file that is visible outside the filesystem.
-    uint64_t blocks;       ///< The amount of blocks used on disk to store the file.
-    uint64_t linkAmount;   ///< The amount of times the inode appears in dentries.
-    time_t accessTime;     ///< Unix time stamp for the last inode access.
-    time_t modifyTime;     ///< Unix time stamp for last file content alteration.
-    time_t changeTime;     ///< Unix time stamp for the last file metadata alteration.
-    time_t createTime;     ///< Unix time stamp for the creation of the inode.
-    char name[MAX_PATH];   ///< The name of the entry, not the full filepath. Includes the flags of the paths mount.
-    uint8_t padding[64];   ///< Padding to leave space for future expansion.
+    uint32_t type; ///< The type of the device, `0` is reserved for virtual devices.
+    uint32_t id;   ///< An identifier that uniquely identifies a device of the given type.
+} dev_t;
+
+#define DEV_IS_VIRTUAL(dev) ((dev).type == 0) ///< Checks if the given device is a virtual device.
+
+/**
+ * @brief Stat type.
+ */
+typedef struct
+{
+    dev_t device;         ///< The device ID of the filesystem containing the file.
+    ino_t number;         ///< The number of the entries inode.
+    inode_type_t type;    ///< The type of the entries inode.
+    uint64_t size;        ///< The size of the file that is visible outside the filesystem.
+    uint64_t blocks;      ///< The amount of blocks used on disk to store the file.
+    uint64_t blockSize;   ///< The preferred block size of the filesystem.
+    uint64_t maxFileSize; ///< The maximum size of a file on this filesystem.
+    uint64_t linkAmount;  ///< The amount of times the inode appears in dentries.
+    time_t accessTime;    ///< Unix time stamp for the last inode access.
+    time_t modifyTime;    ///< Unix time stamp for last file content alteration.
+    time_t changeTime;    ///< Unix time stamp for the last file metadata alteration.
+    time_t createTime;    ///< Unix time stamp for the creation of the inode.
+    char name[MAX_PATH];  ///< The name of the entry, not the full filepath. Includes the flags of the paths mount.
+    uint8_t padding[64];  ///< Padding to leave space for future expansion.
 } stat_t;
 
 #ifdef static_assert
-static_assert(sizeof(stat_t) == 392, "invalid stat_t size");
+static_assert(sizeof(stat_t) == 416, "invalid stat_t size");
 #endif
 
 /**
@@ -407,7 +419,7 @@ typedef enum
  */
 typedef struct
 {
-    inode_number_t number;
+    ino_t number;
     inode_type_t type;
     dirent_flags_t flags;
     char path[MAX_PATH]; ///< The relative path of the entry.
@@ -488,6 +500,17 @@ uint64_t unlink(const char* path);
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t share(char* key, uint64_t size, fd_t fd, clock_t timeout);
+
+/**
+ * @brief Helper for sharing a file by its path.
+ *
+ * @param key Output buffer to store the generated key.
+ * @param size The size of the output buffer.
+ * @param path The path to the file to share.
+ * @param timeout The time until the shared file descriptor expires. If `CLOCKS_NEVER`, it never expires.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t sharefile(char* key, uint64_t size, const char* path, clock_t timeout);
 
 /**
  * @brief System call for claiming a shared file descriptor.

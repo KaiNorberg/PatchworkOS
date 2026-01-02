@@ -276,12 +276,11 @@ static dentry_t* tmpfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     return REF(dentry);
 }
 
-static dentry_t* tmpfs_mount(filesystem_t* fs, const char* devName, void* private)
+static dentry_t* tmpfs_mount(filesystem_t* fs, dev_t device, void* private)
 {
-    UNUSED(devName);
     UNUSED(private);
 
-    superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, &superOps, &dentryOps);
+    superblock_t* superblock = superblock_new(fs, device, &superOps, &dentryOps);
     if (superblock == NULL)
     {
         return NULL;
@@ -305,7 +304,7 @@ static dentry_t* tmpfs_mount(filesystem_t* fs, const char* devName, void* privat
         boot_info_t* bootInfo = boot_info_get();
         const boot_disk_t* disk = &bootInfo->disk;
 
-        dentry_t* root = tmpfs_load_dir(superblock, NULL, VFS_ROOT_ENTRY_NAME, disk->root);
+        dentry_t* root = tmpfs_load_dir(superblock, NULL, NULL, disk->root);
         if (root == NULL)
         {
             return NULL;
@@ -315,7 +314,7 @@ static dentry_t* tmpfs_mount(filesystem_t* fs, const char* devName, void* privat
         return REF(superblock->root);
     }
 
-    dentry_t* dentry = dentry_new(superblock, NULL, VFS_ROOT_ENTRY_NAME);
+    dentry_t* dentry = dentry_new(superblock, NULL, NULL);
     if (dentry == NULL)
     {
         return NULL;
@@ -381,8 +380,7 @@ void tmpfs_init(void)
     LOG_INFO("mounting tmpfs\n");
 
     process_t* process = sched_process();
-    mount_t* temp =
-        namespace_mount(&process->ns, NULL, TMPFS_NAME, VFS_DEVICE_NAME_NONE, MODE_PROPAGATE | MODE_ALL_PERMS, NULL);
+    mount_t* temp = namespace_mount(&process->ns, NULL, TMPFS_NAME, NULL, MODE_PROPAGATE | MODE_ALL_PERMS, NULL);
     if (temp == NULL)
     {
         panic(NULL, "Failed to mount tmpfs");

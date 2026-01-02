@@ -35,7 +35,7 @@ typedef struct dir_ctx dir_ctx_t;
  *
  * This means that the mountpoint does not "become" the root of the mounted filesystem, it simply points to it.
  *
- * Finally, note that just becouse a dentry is a mountpoint does not mean that it can be traversed by the current
+ * Finally, note that just because a dentry is a mountpoint does not mean that it can be traversed by the current
  * process, a process can only traverse a mountpoint if it is visible in its namespace, if its not visible the
  * dentry acts exactly like a normal dentry.
  *
@@ -107,7 +107,7 @@ typedef struct dir_ctx
      * @param type The inode type of the entry.
      * @return `true` to continue iterating, `false` to stop.
      */
-    bool (*emit)(dir_ctx_t* ctx, const char* name, inode_number_t number, inode_type_t type);
+    bool (*emit)(dir_ctx_t* ctx, const char* name, ino_t number, inode_type_t type);
     uint64_t pos;   ///< The current position in the directory, can be used to skip entries.
     void* private;  ///< Private data that the filesystem can use to conveniently pass data.
     uint64_t index; ///< An index that the filesystem can use for its own purposes.
@@ -177,8 +177,8 @@ typedef struct dentry
  * There is no `dentry_free()` instead use `UNREF()`.
  *
  * @param superblock The superblock the dentry belongs to.
- * @param parent The parent dentry, can be NULL if this is a root dentry.
- * @param name The name of the dentry.
+ * @param parent The parent dentry, can be `NULL`.
+ * @param name The name of the dentry, can be `NULL` if `parent` is also `NULL`.
  * @return On success, the new dentry. On failure, returns `NULL` and `errno` is set.
  */
 dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name);

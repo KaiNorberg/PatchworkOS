@@ -469,10 +469,26 @@ bool namespace_traverse(namespace_handle_t* handle, path_t* path)
     return traversed;
 }
 
+static uint64_t namespace_find_device(const char* deviceName, dev_t* out)
+{
+    /// @todo Implement physical device lookup.
+
+    static _Atomic(uint32_t) nextVirtId = ATOMIC_VAR_INIT(0);
+
+    if (deviceName != NULL)
+    {
+        errno = ENOSYS;
+        return ERR;
+    }
+
+    *out = (dev_t){.type = 0, .id = atomic_fetch_add_explicit(&nextVirtId, 1, memory_order_relaxed)};
+    return 0;
+}
+
 mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char* fsName, const char* deviceName,
     mode_t mode, void* private)
 {
-    if (handle == NULL || fsName == NULL || deviceName == NULL)
+    if (handle == NULL || fsName == NULL)
     {
         errno = EINVAL;
         return NULL;
@@ -481,11 +497,17 @@ mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char*
     filesystem_t* fs = filesystem_get(fsName);
     if (fs == NULL)
     {
-        errno = ENODEV;
+        errno = ENOENT;
         return NULL;
     }
 
-    dentry_t* root = fs->mount(fs, deviceName, private);
+    dev_t dev;
+    if (namespace_find_device(deviceName, &dev) == ERR)
+    {
+        return NULL;
+    }
+
+    dentry_t* root = fs->mount(fs, dev, private);
     if (root == NULL)
     {
         return NULL;
@@ -645,8 +667,8 @@ SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* mountpoint, const char* fs, cons
         return ERR;
     }
 
-    mount_t* mount = namespace_mount(&process->ns, &mountpath, fsName,
-        device != NULL ? deviceName : VFS_DEVICE_NAME_NONE, mountname.mode, NULL);
+    mount_t* mount =
+        namespace_mount(&process->ns, &mountpath, fsName, device != NULL ? deviceName : NULL, mountname.mode, NULL);
     if (mount == NULL)
     {
         return ERR;

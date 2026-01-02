@@ -31,7 +31,7 @@
  * "revalidate()" dentry operation.
  *
  * @see kernel_fs_namespace
- * 
+ *
  * Included below is a list of all entries found in the `/proc/[pid]/` directory. All entries with restricted visibility
  * will be marked with `(restricted)`.
  *

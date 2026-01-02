@@ -28,16 +28,6 @@
  */
 
 /**
- * @brief The name of the root entry.
- */
-#define VFS_ROOT_ENTRY_NAME "__root__"
-
-/**
- * @brief The name used to indicate no device.
- */
-#define VFS_DEVICE_NAME_NONE "__no_device__"
-
-/**
  * @brief Open a file.
  *
  * @param pathname The pathname of the file to open.

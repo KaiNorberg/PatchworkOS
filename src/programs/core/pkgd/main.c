@@ -24,15 +24,18 @@
  * [key=value ...] -- <package_name> [arg1 arg2 ...]
  * ```
  *
- * Where the following key values can be specified:
- * - `stdin`: The key for the shared file descriptor to use as standard input.
- * - `stdout`: The key for the shared file descriptor to use as standard output.
- * - `stderr`: The key for the shared file descriptor to use as standard error.
+ * Where the following values can be specified:
+ * - `stdin`: A shared file descriptor to use as standard input.
+ * - `stdout`: A shared file descriptor to use as standard output.
+ * - `stderr`: A shared file descriptor to use as standard error.
+ * - `group`: A shared file descriptor to use as the process group (`/proc/[pid]/group`)
+ * - `namespace`: A shared file descriptor to use as the process namespace (`/proc/[pid]/ns`).
  *
- * @note The `stdin`, `stdout` and `stderr` key values will only be used if the package is a foreground package.
+ * @note The `stdin`, `stdout`, `stderr` and `group` values will only be used if the package is a foreground package,
+ * meanwhile the `namespace` will only be used if the package uses the `inherit` sandbox profile.
  *
- * @todo Implement group and namespace specification via keys for foreground packages and the inherit profile.
- * 
+ * @todo Implement group and namespace specification for foreground packages and the inherit profile.
+ *
  * The "pkgspawn" socket will send a response in the format:
  *
  * ```
@@ -62,6 +65,8 @@ typedef struct
 {
     const char* pkg;
     fd_t stdio[3];
+    fd_t group;
+    fd_t namespace;
 } pkg_args_t;
 
 static uint64_t pkg_args_parse(pkg_args_t* args, uint64_t argc, const char** argv, pkg_spawn_t* ctx)
@@ -118,6 +123,24 @@ static uint64_t pkg_args_parse(pkg_args_t* args, uint64_t argc, const char** arg
                 return ERR;
             }
         }
+        else if (strcmp(key, "group") == 0)
+        {
+            args->group = claim(value);
+            if (args->group == ERR)
+            {
+                snprintf(ctx->result, sizeof(ctx->result), "error due to invalid group");
+                return ERR;
+            }
+        }
+        else if (strcmp(key, "namespace") == 0)
+        {
+            args->namespace = claim(value);
+            if (args->namespace == ERR)
+            {
+                snprintf(ctx->result, sizeof(ctx->result), "error due to invalid namespace");
+                return ERR;
+            }
+        }
         else
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to unknown argument '%s'", key);
@@ -136,7 +159,7 @@ static uint64_t pkg_args_parse(pkg_args_t* args, uint64_t argc, const char** arg
 
 static void pkg_spawn(pkg_spawn_t* ctx)
 {
-    pkg_args_t args = {.pkg = NULL, .stdio = {FD_NONE}};
+    pkg_args_t args = {.pkg = NULL, .stdio = {FD_NONE}, .group = FD_NONE, .namespace = FD_NONE};
     fd_t ctl = FD_NONE;
     pid_t pid = ERR;
 
@@ -190,22 +213,22 @@ static void pkg_spawn(pkg_spawn_t* ctx)
 
     const char* foreground = manifest_get_value(sandbox, "foreground");
     bool isForeground = foreground != NULL && strcmp(foreground, "true") == 0;
+    bool shouldInheritNamespace = false;
 
     spawn_flags_t flags = SPAWN_SUSPEND | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP;
     if (strcmp(profile, "empty") == 0)
     {
         flags |= SPAWN_EMPTY_NS;
     }
+    else if (strcmp(profile, "inherit") == 0)
+    {
+        shouldInheritNamespace = true;
+    }
     else
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to manifest of '%s' having invalid 'profile' entry",
             args.pkg);
         goto cleanup;
-    }
-
-    if (!isForeground)
-    {
-        flags |= SPAWN_EMPTY_FDS;
     }
 
     const char* temp = argv[0];
@@ -245,11 +268,23 @@ static void pkg_spawn(pkg_spawn_t* ctx)
         goto cleanup;
     }
 
-    if (swrite(ctl, "mount /:LSrwx tmpfs") == ERR)
+    if (shouldInheritNamespace)
     {
-        snprintf(ctx->result, sizeof(ctx->result), "error due to root mount failure for '%s' (%s)", args.pkg,
-            strerror(errno));
-        goto cleanup;
+        if (swrite(ctl, F("setns %llu", args.namespace)) == ERR)
+        {
+            snprintf(ctx->result, sizeof(ctx->result), "error due to setns failure for '%s' (%s)", args.pkg,
+                strerror(errno));
+            goto cleanup;
+        }
+    }
+    else
+    {
+        if (swrite(ctl, "mount /:LSrwx tmpfs") == ERR)
+        {
+            snprintf(ctx->result, sizeof(ctx->result), "error due to root mount failure for '%s' (%s)", args.pkg,
+                strerror(errno));
+            goto cleanup;
+        }
     }
 
     section_t* namespace = &manifest.sections[SECTION_NAMESPACE];
@@ -282,6 +317,13 @@ static void pkg_spawn(pkg_spawn_t* ctx)
             }
         }
 
+        if (swrite(ctl, F("setgroup %llu", args.group)) == ERR)
+        {
+            snprintf(ctx->result, sizeof(ctx->result), "error due to setns failure for '%s' (%s)", args.pkg,
+                strerror(errno));
+            goto cleanup;
+        }
+
         if (swrite(ctl, "close 3 -1") == ERR)
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to close failure for '%s' (%s)", args.pkg,
@@ -311,6 +353,13 @@ static void pkg_spawn(pkg_spawn_t* ctx)
     }
     else
     {
+        if (swrite(ctl, "close 0 -1") == ERR)
+        {
+            snprintf(ctx->result, sizeof(ctx->result), "error due to close failure for '%s' (%s)", args.pkg,
+                strerror(errno));
+            goto cleanup;
+        }
+
         snprintf(ctx->result, sizeof(ctx->result), "background");
     }
 
@@ -328,6 +377,14 @@ cleanup:
         {
             close(args.stdio[i]);
         }
+    }
+    if (args.group != FD_NONE)
+    {
+        close(args.group);
+    }
+    if (args.namespace != FD_NONE)
+    {
+        close(args.namespace);
     }
     if (ctl != FD_NONE)
     {

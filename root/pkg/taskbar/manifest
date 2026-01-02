@@ -19,5 +19,6 @@ foreground = false
 /cfg:r = /cfg
 /sys:rx = /sys
 /net:rw = /net
+/proc:rw = /proc
 /dev/const:rw = /dev/const
 /dev/klog:rw = /dev/klog

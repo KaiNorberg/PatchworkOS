@@ -54,9 +54,37 @@ int main(int argc, char** argv)
         }
     }
 
+    char group[KEY_128BIT] = {0};
+    char namespace[KEY_128BIT] = {0};
+    if (sharefile(group, sizeof(group), "/proc/self/group", CLOCKS_PER_SEC) == ERR)
+    {
+        if (errno != ENOENT)
+        {
+            printf("pkgspawn: failed to share group (%s)\n", strerror(errno));
+            free(id);
+            return EXIT_FAILURE;
+        }
+
+        printf("pkgspawn: `/proc` does not appear to be mounted, foreground packages will not work correctly\n");
+    }
+    else if (sharefile(namespace, sizeof(namespace), "/proc/self/ns", CLOCKS_PER_SEC) == ERR)
+    {
+        printf("pkgspawn: failed to share namespace (%s)\n", strerror(errno));
+        free(id);
+        return EXIT_FAILURE;
+    }
+
     char buffer[BUFFER_MAX];
-    snprintf(buffer, sizeof(buffer), "stdin=%s stdout=%s stderr=%s -- ", stdio[STDIN_FILENO], stdio[STDOUT_FILENO],
-        stdio[STDERR_FILENO]);
+    if (group[0] != '\0')
+    {
+        snprintf(buffer, sizeof(buffer), "group=%s namespace=%s stdin=%s stdout=%s stderr=%s -- ", group, namespace,
+            stdio[STDIN_FILENO], stdio[STDOUT_FILENO], stdio[STDERR_FILENO]);
+    }
+    else
+    {
+        snprintf(buffer, sizeof(buffer), "stdin=%s stdout=%s stderr=%s -- ", stdio[STDIN_FILENO], stdio[STDOUT_FILENO],
+            stdio[STDERR_FILENO]);
+    }
 
     const char* lastSlash = strrchr(argv[0], '/');
     if (lastSlash == NULL)
