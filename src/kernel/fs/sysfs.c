@@ -88,7 +88,7 @@ void sysfs_init(void)
         panic(NULL, "Failed to register sysfs");
     }
 
-    devMount = sysfs_mount_new("dev", NULL, MODE_PROPAGATE_CHILDREN | MODE_ALL_PERMS, NULL, NULL, NULL);
+    devMount = sysfs_mount_new("dev", NULL, MODE_PROPAGATE | MODE_ALL_PERMS, NULL, NULL, NULL);
     if (devMount == NULL)
     {
         panic(NULL, "Failed to create /dev filesystem");
@@ -329,7 +329,7 @@ uint64_t sysfs_files_create(dentry_t* parent, const sysfs_file_desc_t* descs, vo
         {
             while (!list_is_empty(&createdList))
             {
-                UNREF(CONTAINER_OF_SAFE(list_pop_first(&createdList), dentry_t, otherEntry));
+                UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry));
             }
             return ERR;
         }
@@ -343,14 +343,14 @@ uint64_t sysfs_files_create(dentry_t* parent, const sysfs_file_desc_t* descs, vo
     {
         while (!list_is_empty(&createdList))
         {
-            UNREF(CONTAINER_OF_SAFE(list_pop_first(&createdList), dentry_t, otherEntry));
+            UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry));
         }
         return count;
     }
 
     while (!list_is_empty(&createdList))
     {
-        dentry_t* file = CONTAINER_OF_SAFE(list_pop_first(&createdList), dentry_t, otherEntry);
+        dentry_t* file = CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry);
         list_push_back(out, &file->otherEntry);
     }
     return count;

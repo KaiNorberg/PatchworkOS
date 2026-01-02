@@ -108,8 +108,8 @@ typedef struct dir_ctx
      * @return `true` to continue iterating, `false` to stop.
      */
     bool (*emit)(dir_ctx_t* ctx, const char* name, inode_number_t number, inode_type_t type);
-    uint64_t pos; ///< The current position in the directory, can be used to skip entries.
-    void* private; ///< Private data that the filesystem can use to conveniently pass data.
+    uint64_t pos;   ///< The current position in the directory, can be used to skip entries.
+    void* private;  ///< Private data that the filesystem can use to conveniently pass data.
     uint64_t index; ///< An index that the filesystem can use for its own purposes.
 } dir_ctx_t;
 
@@ -119,6 +119,14 @@ typedef struct dir_ctx
  */
 typedef struct dentry_ops
 {
+    /**
+     * @brief Called when the dentry is looked up or retrieved from cache.
+     *
+     * Used for security by hiding files or directories based on filesystem defined logic.
+     *
+     * @return On success, `0`. On failure, `ERR` and `errno` is set.
+     */
+    uint64_t (*revalidate)(dentry_t* dentry);
     /**
      * @brief Iterate over the entries in a directory dentry.
      *
@@ -224,7 +232,7 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode);
 
 /**
  * @brief Helper function to iterate over the special entries "." and "..".
- * 
+ *
  * Intended to be used in filesystem iterate implementations.
  *
  * @param dentry The directory dentry to iterate over.

@@ -7,12 +7,12 @@
 #include <kernel/fs/sysfs.h>
 #include <kernel/ipc/note.h>
 #include <kernel/mem/space.h>
+#include <kernel/proc/env.h>
 #include <kernel/proc/group.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/futex.h>
 #include <kernel/utils/map.h>
-#include <kernel/proc/env.h>
 #include <kernel/utils/ref.h>
 
 #include <stdatomic.h>
@@ -28,17 +28,6 @@
  */
 
 /**
- * @brief Represents the threads in a process.
- * @struct process_threads_t
- */
-typedef struct
-{
-    tid_t newTid;
-    list_t list;
-    lock_t lock;
-} process_threads_t;
-
-/**
  * @brief Process flags enum.
  * @enum process_flags_t
  */
@@ -48,6 +37,17 @@ typedef enum
     PROCESS_DYING = 1 << 0,
     PROCESS_SUSPENDED = 1 << 1,
 } process_flags_t;
+
+/**
+ * @brief Represents the threads in a process.
+ * @struct process_threads_t
+ */
+typedef struct
+{
+    tid_t newTid;
+    list_t list;
+    lock_t lock;
+} process_threads_t;
 
 /**
  * @brief Maximum length of a process exit status.

@@ -351,7 +351,7 @@ static inline void list_push_front(list_t* list, list_entry_t* entry)
  * @param list A pointer to the `list_t` to pop the entry from.
  * @return A pointer to the removed `list_entry_t`, or `NULL` if the list is empty.
  */
-static inline list_entry_t* list_pop_first(list_t* list)
+static inline list_entry_t* list_pop_front(list_t* list)
 {
     assert(list != NULL);
 
@@ -371,7 +371,7 @@ static inline list_entry_t* list_pop_first(list_t* list)
  * @param list A pointer to the `list_t` to pop the entry from.
  * @return A pointer to the removed `list_entry_t`, or `NULL` if the list is empty.
  */
-static inline list_entry_t* list_pop_last(list_t* list)
+static inline list_entry_t* list_pop_back(list_t* list)
 {
     assert(list != NULL);
 

@@ -69,7 +69,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
         {
             if (currentArg == 0)
             {
-                printf("error: empty command in pipeline\n");
+                printf("shell: empty command in pipeline\n");
                 if (pipeline->cmds[currentCmd].shouldCloseStdin)
                 {
                     close(pipeline->cmds[currentCmd].stdin);
@@ -87,7 +87,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
             fd_t pipe[2];
             if (open2("/dev/pipe/new", pipe) == ERR)
             {
-                printf("error: unable to open pipe (%s)\n", strerror(errno));
+                printf("shell: unable to open pipe (%s)\n", strerror(errno));
                 goto token_parse_error;
             }
 
@@ -99,7 +99,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
             currentArgv = malloc(sizeof(char*) * (tokenAmount + 1));
             if (currentArgv == NULL)
             {
-                printf("error: out of memory\n");
+                printf("shell: out of memory\n");
                 goto token_parse_error;
             }
 
@@ -111,14 +111,14 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
         {
             if (i + 1 >= tokenAmount)
             {
-                printf("error: missing filename after <\n");
+                printf("shell: missing filename after <\n");
                 goto token_parse_error;
             }
 
             fd_t fd = open(tokens[i + 1]);
             if (fd == ERR)
             {
-                printf("error: unable to open %s (%s)\n", tokens[i + 1], strerror(errno));
+                printf("shell: unable to open %s (%s)\n", tokens[i + 1], strerror(errno));
                 goto token_parse_error;
             }
 
@@ -136,14 +136,14 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
         {
             if (i + 1 >= tokenAmount)
             {
-                printf("error: missing filename after >\n");
+                printf("shell: missing filename after >\n");
                 goto token_parse_error;
             }
 
             fd_t fd = open(tokens[i + 1]);
             if (fd == ERR)
             {
-                printf("error: unable to open %s (%s)\n", tokens[i + 1], strerror(errno));
+                printf("shell: unable to open %s (%s)\n", tokens[i + 1], strerror(errno));
                 goto token_parse_error;
             }
 
@@ -161,14 +161,14 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
         {
             if (i + 1 >= tokenAmount)
             {
-                printf("error: missing filename after 2>\n");
+                printf("shell: missing filename after 2>\n");
                 goto token_parse_error;
             }
 
             fd_t fd = open(tokens[i + 1]);
             if (fd == ERR)
             {
-                printf("error: unable to open %s (%s)\n", tokens[i + 1], strerror(errno));
+                printf("shell: unable to open %s (%s)\n", tokens[i + 1], strerror(errno));
                 goto token_parse_error;
             }
 
@@ -187,7 +187,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
             currentArgv[currentArg] = strdup(tokens[i]);
             if (currentArgv[currentArg] == NULL)
             {
-                printf("error: out of memory\n");
+                printf("shell: out of memory\n");
                 goto token_parse_error;
             }
             currentArg++;
@@ -206,7 +206,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
         free(currentArgv);
         if (pipeline->amount > 0 && currentCmd > 0)
         {
-            printf("error: pipeline ends with empty command\n");
+            printf("shell: pipeline ends with empty command\n");
             cmd_t* emptyCmd = &pipeline->cmds[currentCmd];
             if (emptyCmd->shouldCloseStdin)
             {
@@ -347,7 +347,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
         }
         else
         {
-            printf("error: %s not found\n", argv[0]);
+            printf("shell: %s not found\n", argv[0]);
             result = ERR;
         }
     }

@@ -34,7 +34,7 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['l'] = {.mode = MODE_NOFOLLOW},
     ['P'] = {.mode = MODE_PRIVATE},
     ['S'] = {.mode = MODE_STICKY},
-    ['C'] = {.mode = MODE_PROPAGATE_CHILDREN},
+    ['g'] = {.mode = MODE_PROPAGATE},
     ['L'] = {.mode = MODE_LOCKED},
 };
 
@@ -59,7 +59,7 @@ static const path_flag_t flags[] = {
     {.mode = MODE_NOFOLLOW, .name = "nofollow"},
     {.mode = MODE_PRIVATE, .name = "private"},
     {.mode = MODE_STICKY, .name = "sticky"},
-    {.mode = MODE_PROPAGATE_CHILDREN, .name = "children"},
+    {.mode = MODE_PROPAGATE, .name = "propagate"},
     {.mode = MODE_LOCKED, .name = "locked"},
 };
 

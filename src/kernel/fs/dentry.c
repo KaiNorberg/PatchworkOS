@@ -181,6 +181,25 @@ void dentry_remove(dentry_t* dentry)
     dentry_cache_remove(dentry);
 }
 
+static dentry_t* dentry_revalidate(dentry_t* dentry)
+{
+    if (dentry == NULL)
+    {
+        return NULL;
+    }
+
+    if (dentry->ops != NULL && dentry->ops->revalidate != NULL)
+    {
+        if (dentry->ops->revalidate(dentry) == ERR)
+        {
+            UNREF(dentry);
+            return NULL;
+        }
+    }
+
+    return dentry;
+}
+
 dentry_t* dentry_get(const dentry_t* parent, const char* name)
 {
     if (parent == NULL || name == NULL)
@@ -190,7 +209,7 @@ dentry_t* dentry_get(const dentry_t* parent, const char* name)
     }
 
     map_key_t key = dentry_cache_key(parent->id, name);
-    return dentry_cache_get(&key);
+    return dentry_revalidate(dentry_cache_get(&key));
 }
 
 dentry_t* dentry_lookup(const path_t* parent, const char* name)
@@ -205,7 +224,7 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name)
     dentry_t* dentry = dentry_cache_get(&key);
     if (dentry != NULL)
     {
-        return dentry;
+        return dentry_revalidate(dentry);
     }
 
     if (!DENTRY_IS_DIR(parent->dentry))
@@ -219,7 +238,7 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name)
     {
         if (errno == EEXIST)
         {
-            return dentry_cache_get(&key);
+            return dentry_revalidate(dentry_cache_get(&key));
         }
         return NULL;
     }
@@ -229,7 +248,7 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name)
     inode_t* dir = parent->dentry->inode;
     if (dir->ops == NULL || dir->ops->lookup == NULL)
     {
-        return dentry; // Leave it negative
+        return dentry_revalidate(dentry); // Leave it negative
     }
 
     if (dir->ops->lookup(dir, dentry) == ERR)
@@ -238,7 +257,7 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name)
         return NULL;
     }
 
-    return dentry;
+    return dentry_revalidate(dentry);
 }
 
 void dentry_make_positive(dentry_t* dentry, inode_t* inode)

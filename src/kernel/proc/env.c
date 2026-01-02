@@ -2,8 +2,8 @@
 #include <kernel/sync/mutex.h>
 
 #include <errno.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 void env_init(env_t* env)
 {

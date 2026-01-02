@@ -77,7 +77,7 @@ static void namespace_free(namespace_t* ns)
 {
     while (!list_is_empty(&ns->stacks))
     {
-        mount_stack_t* stack = CONTAINER_OF(list_pop_first(&ns->stacks), mount_stack_t, entry);
+        mount_stack_t* stack = CONTAINER_OF(list_pop_front(&ns->stacks), mount_stack_t, entry);
 
         for (uint64_t i = 0; i < stack->count; i++)
         {
@@ -94,7 +94,7 @@ static void namespace_free(namespace_t* ns)
         RWLOCK_WRITE_SCOPE(&ns->parent->lock);
         while (!list_is_empty(&ns->children))
         {
-            namespace_t* child = CONTAINER_OF(list_pop_first(&ns->children), namespace_t, entry);
+            namespace_t* child = CONTAINER_OF(list_pop_front(&ns->children), namespace_t, entry);
             RWLOCK_WRITE_SCOPE(&child->lock);
             list_push_back(&ns->parent->children, &child->entry);
             child->parent = ns->parent;
@@ -106,7 +106,7 @@ static void namespace_free(namespace_t* ns)
     {
         while (!list_is_empty(&ns->children))
         {
-            namespace_t* child = CONTAINER_OF(list_pop_first(&ns->children), namespace_t, entry);
+            namespace_t* child = CONTAINER_OF(list_pop_front(&ns->children), namespace_t, entry);
             RWLOCK_WRITE_SCOPE(&child->lock);
             child->parent = NULL;
         }
@@ -162,7 +162,7 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, const map_key_t* 
         }
     }
 
-    if (mount->mode & MODE_PROPAGATE_CHILDREN)
+    if (mount->mode & MODE_PROPAGATE)
     {
         namespace_t* child;
         LIST_FOR_EACH(child, &ns->children, entry)
@@ -173,16 +173,6 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, const map_key_t* 
             {
                 return ERR;
             }
-        }
-    }
-
-    if (mount->mode & MODE_PROPAGATE_PARENTS && ns->parent != NULL)
-    {
-        RWLOCK_WRITE_SCOPE(&ns->parent->lock);
-
-        if (namespace_add(ns->parent, mount, key) == ERR)
-        {
-            return ERR;
         }
     }
 
@@ -227,7 +217,7 @@ static void namespace_remove(namespace_t* ns, mount_t* mount, map_key_t* key, mo
         }
     }
 
-    if (mode & MODE_PROPAGATE_CHILDREN)
+    if (mode & MODE_PROPAGATE)
     {
         namespace_t* child;
         LIST_FOR_EACH(child, &ns->children, entry)
@@ -236,13 +226,6 @@ static void namespace_remove(namespace_t* ns, mount_t* mount, map_key_t* key, mo
 
             namespace_remove(child, mount, key, mode);
         }
-    }
-
-    if (mode & MODE_PROPAGATE_PARENTS && ns->parent != NULL)
-    {
-        RWLOCK_WRITE_SCOPE(&ns->parent->lock);
-
-        namespace_remove(ns->parent, mount, key, mode);
     }
 }
 
@@ -385,6 +368,53 @@ void namespace_handle_clear(namespace_handle_t* handle)
     }
 
     handle->ns = NULL;
+}
+
+static bool namespace_is_descendant(namespace_t* ancestor, namespace_t* descendant)
+{
+    // To prevent deadlocks we cant do a search starting from the child, we must always acquire looks from the top down.
+    // So this is a bit inefficient.
+
+    if (ancestor == descendant)
+    {
+        return true;
+    }
+
+    namespace_t* child;
+    LIST_FOR_EACH(child, &ancestor->children, entry)
+    {
+        RWLOCK_READ_SCOPE(&child->lock);
+        if (namespace_is_descendant(child, descendant))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool namespace_accessible(namespace_handle_t* handle, namespace_handle_t* other)
+{
+    if (handle == NULL || other == NULL)
+    {
+        return false;
+    }
+
+    if (handle == other)
+    {
+        return true;
+    }
+
+    RWLOCK_READ_SCOPE(&handle->lock);
+    RWLOCK_READ_SCOPE(&other->lock);
+
+    if (handle->ns == NULL || other->ns == NULL)
+    {
+        return false;
+    }
+
+    RWLOCK_READ_SCOPE(&handle->ns->lock);
+    return namespace_is_descendant(handle->ns, other->ns);
 }
 
 bool namespace_traverse(namespace_handle_t* handle, path_t* path)
@@ -615,7 +645,8 @@ SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* mountpoint, const char* fs, cons
         return ERR;
     }
 
-    mount_t* mount = namespace_mount(&process->ns, &mountpath, fsName, device != NULL ? deviceName : VFS_DEVICE_NAME_NONE, mountname.mode, NULL);
+    mount_t* mount = namespace_mount(&process->ns, &mountpath, fsName,
+        device != NULL ? deviceName : VFS_DEVICE_NAME_NONE, mountname.mode, NULL);
     if (mount == NULL)
     {
         return ERR;

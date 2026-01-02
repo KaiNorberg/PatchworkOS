@@ -383,7 +383,7 @@ static void socket_unmount(superblock_t* superblock)
 
     while (!list_is_empty(&sock->files))
     {
-        UNREF(CONTAINER_OF_SAFE(list_pop_first(&sock->files), dentry_t, otherEntry));
+        UNREF(CONTAINER_OF_SAFE(list_pop_front(&sock->files), dentry_t, otherEntry));
     }
 }
 

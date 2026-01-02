@@ -569,7 +569,7 @@ static void module_cache_clear(void)
         module_cached_device_entry_t* deviceEntry;
         while (!list_is_empty(&cachedDevice->entries))
         {
-            deviceEntry = CONTAINER_OF(list_pop_first(&cachedDevice->entries), module_cached_device_entry_t, listEntry);
+            deviceEntry = CONTAINER_OF(list_pop_front(&cachedDevice->entries), module_cached_device_entry_t, listEntry);
             free(deviceEntry);
         }
         free(cachedDevice);
@@ -715,7 +715,7 @@ static void module_gc_collect(void)
 
     while (!list_is_empty(&unreachables))
     {
-        module = CONTAINER_OF(list_pop_first(&unreachables), module_t, gcEntry);
+        module = CONTAINER_OF(list_pop_front(&unreachables), module_t, gcEntry);
         module_free(module);
     }
 }
@@ -1007,7 +1007,7 @@ static module_t* module_get_or_load(const char* filename, file_t* dir, const cha
     while (!list_is_empty(&ctx.dependencies))
     {
         // Go in reverse to start at the deepest dependency
-        module_t* dependency = CONTAINER_OF_SAFE(list_pop_last(&ctx.dependencies), module_t, loadEntry);
+        module_t* dependency = CONTAINER_OF_SAFE(list_pop_back(&ctx.dependencies), module_t, loadEntry);
         if (dependency == NULL)
         {
             break;
@@ -1024,7 +1024,7 @@ static module_t* module_get_or_load(const char* filename, file_t* dir, const cha
 
     while (!list_is_empty(&loadedDependencies))
     {
-        module_t* dependency = CONTAINER_OF(list_pop_first(&loadedDependencies), module_t, loadEntry);
+        module_t* dependency = CONTAINER_OF(list_pop_front(&loadedDependencies), module_t, loadEntry);
         LOG_DEBUG("finished loading dependency module '%s'\n", dependency->info.name);
     }
 
@@ -1040,13 +1040,13 @@ static module_t* module_get_or_load(const char* filename, file_t* dir, const cha
 error:
     while (!list_is_empty(&loadedDependencies))
     {
-        module_t* dependency = CONTAINER_OF(list_pop_last(&loadedDependencies), module_t, loadEntry);
+        module_t* dependency = CONTAINER_OF(list_pop_back(&loadedDependencies), module_t, loadEntry);
         module_call_unload_event(dependency);
         module_free(dependency);
     }
     while (!list_is_empty(&ctx.dependencies))
     {
-        module_t* dependency = CONTAINER_OF(list_pop_first(&ctx.dependencies), module_t, loadEntry);
+        module_t* dependency = CONTAINER_OF(list_pop_front(&ctx.dependencies), module_t, loadEntry);
         module_free(dependency);
     }
     module_free(module);
@@ -1133,7 +1133,7 @@ uint64_t module_device_attach(const char* type, const char* name, module_load_fl
     uint64_t loadedCount = list_length(&handlers);
     while (!list_is_empty(&handlers))
     {
-        module_device_handler_t* handler = CONTAINER_OF(list_pop_first(&handlers), module_device_handler_t, loadEntry);
+        module_device_handler_t* handler = CONTAINER_OF(list_pop_front(&handlers), module_device_handler_t, loadEntry);
         LOG_DEBUG("added handler with module '%s' and device '%s'\n", handler->module->info.name, name);
     }
 
@@ -1141,7 +1141,7 @@ uint64_t module_device_attach(const char* type, const char* name, module_load_fl
 error:
     while (!list_is_empty(&handlers))
     {
-        module_device_handler_t* handler = CONTAINER_OF(list_pop_first(&handlers), module_device_handler_t, loadEntry);
+        module_device_handler_t* handler = CONTAINER_OF(list_pop_front(&handlers), module_device_handler_t, loadEntry);
         module_handler_remove(handler);
     }
     if (list_is_empty(&device->handlers))

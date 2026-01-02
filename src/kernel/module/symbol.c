@@ -302,11 +302,11 @@ void symbol_remove_group(symbol_group_id_t groupId)
 
     while (!list_is_empty(&groupEntry->names))
     {
-        symbol_name_t* nameEntry = CONTAINER_OF(list_pop_first(&groupEntry->names), symbol_name_t, groupEntry);
+        symbol_name_t* nameEntry = CONTAINER_OF(list_pop_front(&groupEntry->names), symbol_name_t, groupEntry);
 
         while (!list_is_empty(&nameEntry->addrs))
         {
-            symbol_addr_t* addrEntry = CONTAINER_OF(list_pop_first(&nameEntry->addrs), symbol_addr_t, nameEntry);
+            symbol_addr_t* addrEntry = CONTAINER_OF(list_pop_front(&nameEntry->addrs), symbol_addr_t, nameEntry);
             free(addrEntry);
         }
 

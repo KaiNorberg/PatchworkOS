@@ -25,6 +25,24 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
+static uint64_t procfs_revalidate_hide(dentry_t* dentry)
+{
+    process_t* current = sched_process();
+    process_t* process = dentry->inode->private;
+
+    if (!namespace_accessible(&current->ns, &process->ns))
+    {
+        errno = ENOENT;
+        return ERR;
+    }
+
+    return 0;
+}
+
+static dentry_ops_t hideDentryOps = {
+    .revalidate = procfs_revalidate_hide,
+};
+
 static uint64_t procfs_prio_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     process_t* process = file->inode->private;
@@ -761,7 +779,7 @@ static uint64_t procfs_env_write(file_t* file, const void* buffer, uint64_t coun
         return ERR;
     }
 
-    return count;   
+    return count;
 }
 
 static file_ops_t envVarOps = {
@@ -781,7 +799,8 @@ static uint64_t procfs_env_lookup(inode_t* dir, dentry_t* target)
         return 0;
     }
 
-    inode_t* inode = inode_new(dir->superblock, inode_number_gen(dir->number, target->name), INODE_FILE, NULL, &envVarOps);
+    inode_t* inode =
+        inode_new(dir->superblock, inode_number_gen(dir->number, target->name), INODE_FILE, NULL, &envVarOps);
     if (inode == NULL)
     {
         return ERR;
@@ -810,7 +829,8 @@ static uint64_t procfs_env_create(inode_t* dir, dentry_t* target, mode_t mode)
         return ERR;
     }
 
-    inode_t* inode = inode_new(dir->superblock, inode_number_gen(dir->number, target->name), INODE_FILE, NULL, &envVarOps);
+    inode_t* inode =
+        inode_new(dir->superblock, inode_number_gen(dir->number, target->name), INODE_FILE, NULL, &envVarOps);
     if (inode == NULL)
     {
         return ERR;
@@ -856,11 +876,12 @@ static uint64_t procfs_env_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     for (uint64_t i = 0; i < process->env.count; i++)
     {
         if (ctx->index++ < ctx->pos)
-        {   
+        {
             continue;
         }
 
-        if (!ctx->emit(ctx, process->env.vars[i].key, inode_number_gen(dentry->inode->number, process->env.vars[i].key), INODE_FILE))
+        if (!ctx->emit(ctx, process->env.vars[i].key, inode_number_gen(dentry->inode->number, process->env.vars[i].key),
+                INODE_FILE))
         {
             return 0;
         }
@@ -871,6 +892,7 @@ static uint64_t procfs_env_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
 static dentry_ops_t envDentryOps = {
     .iterate = procfs_env_iterate,
+    .revalidate = procfs_revalidate_hide,
 };
 
 static uint64_t procfs_self_readlink(inode_t* inode, char* buffer, uint64_t count)
@@ -905,11 +927,13 @@ static const procfs_entry_t pidEntries[] = {
         .name = "prio",
         .type = INODE_FILE,
         .fileOps = &prioOps,
+        .dentryOps = &hideDentryOps,
     },
     {
         .name = "cwd",
         .type = INODE_FILE,
         .fileOps = &cwdOps,
+        .dentryOps = &hideDentryOps,
     },
     {
         .name = "cmdline",
@@ -920,16 +944,19 @@ static const procfs_entry_t pidEntries[] = {
         .name = "note",
         .type = INODE_FILE,
         .fileOps = &noteOps,
+        .dentryOps = &hideDentryOps,
     },
     {
         .name = "notegroup",
         .type = INODE_FILE,
         .fileOps = &notegroupOps,
+        .dentryOps = &hideDentryOps,
     },
     {
         .name = "group",
         .type = INODE_FILE,
         .fileOps = &groupOps,
+        .dentryOps = &hideDentryOps,
     },
     {
         .name = "pid",
@@ -950,11 +977,13 @@ static const procfs_entry_t pidEntries[] = {
         .name = "ns",
         .type = INODE_FILE,
         .fileOps = &nsOps,
+        .dentryOps = &hideDentryOps,
     },
     {
         .name = "ctl",
         .type = INODE_FILE,
         .fileOps = &ctlOps,
+        .dentryOps = &hideDentryOps,
     },
     {
         .name = "env",
@@ -1030,13 +1059,20 @@ static uint64_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         return 0;
     }
 
+    process_t* current = sched_process();
     process_t* process = dentry->inode->private;
     assert(process != NULL);
 
     for (size_t i = 0; i < ARRAY_SIZE(pidEntries); i++)
     {
+        if (pidEntries[i].dentryOps != NULL && pidEntries[i].dentryOps->revalidate == procfs_revalidate_hide &&
+            !namespace_accessible(&current->ns, &process->ns))
+        {
+            continue;
+        }
+
         if (ctx->index++ < ctx->pos)
-        {   
+        {
             continue;
         }
 
@@ -1063,8 +1099,8 @@ static uint64_t procfs_lookup(inode_t* dir, dentry_t* target)
             continue;
         }
 
-        inode_t* inode = inode_new(dir->superblock, inode_number_gen(dir->number, target->name), procEntries[i].type, procEntries[i].inodeOps,
-            procEntries[i].fileOps);
+        inode_t* inode = inode_new(dir->superblock, inode_number_gen(dir->number, target->name), procEntries[i].type,
+            procEntries[i].inodeOps, procEntries[i].fileOps);
         if (inode == NULL)
         {
             return ERR;
@@ -1088,7 +1124,8 @@ static uint64_t procfs_lookup(inode_t* dir, dentry_t* target)
     }
     UNREF_DEFER(process);
 
-    inode_t* inode = inode_new(dir->superblock, inode_number_gen(dir->number, target->name), INODE_DIR, &pidInodeOps, NULL);
+    inode_t* inode =
+        inode_new(dir->superblock, inode_number_gen(dir->number, target->name), INODE_DIR, &pidInodeOps, NULL);
     if (inode == NULL)
     {
         return ERR;
@@ -1116,11 +1153,12 @@ static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     for (size_t i = 0; i < ARRAY_SIZE(procEntries); i++)
     {
         if (ctx->index++ < ctx->pos)
-        {   
+        {
             continue;
         }
-            
-        if (!ctx->emit(ctx, procEntries[i].name, inode_number_gen(dentry->parent->inode->number, procEntries[i].name), procEntries[i].type))
+
+        if (!ctx->emit(ctx, procEntries[i].name, inode_number_gen(dentry->parent->inode->number, procEntries[i].name),
+                procEntries[i].type))
         {
             return 0;
         }
@@ -1130,7 +1168,7 @@ static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     PROCESS_FOR_EACH(process)
     {
         if (ctx->index++ < ctx->pos)
-        {   
+        {
             continue;
         }
 

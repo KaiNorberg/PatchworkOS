@@ -32,7 +32,7 @@ static void reaper_thread(void* arg)
 
         while (!list_is_empty(&zombies))
         {
-            process_t* process = CONTAINER_OF(list_pop_first(&zombies), process_t, zombieEntry);
+            process_t* process = CONTAINER_OF(list_pop_front(&zombies), process_t, zombieEntry);
 
             lock_acquire(&process->threads.lock);
             if (!list_is_empty(&process->threads.list))
@@ -49,7 +49,7 @@ static void reaper_thread(void* arg)
 
         while (!list_is_empty(&localZombies))
         {
-            process_t* process = CONTAINER_OF(list_pop_first(&localZombies), process_t, zombieEntry);
+            process_t* process = CONTAINER_OF(list_pop_front(&localZombies), process_t, zombieEntry);
             process_remove(process);
             UNREF(process);
         }

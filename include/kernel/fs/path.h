@@ -51,7 +51,7 @@ typedef struct namespace_handle namespace_handle_t;
  * | `nofollow`  | `l` | Do not follow symbolic links. | 
  * | `private`   | `P` | Any files with this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child namespace. | 
  * | `sticky`    | `S` | Makes the mount apply to the dentry regardless of the path used to reach it. | 
- * | `children`  | `C` | Propagate mounts and unmounts to child namespaces. | 
+ * | `propagate`  | `g` | Propagate mounts and unmounts to child namespaces. | 
  * | `locked`    | `L` | Forbid unmounting this mount, useful for hiding directories or files. |
  *
  * For convenience, a single letter short form is also available as shown above, these single letter forms do not need
@@ -92,9 +92,8 @@ typedef enum mode
     MODE_NOFOLLOW = 1 << 11,
     MODE_PRIVATE = 1 << 12,
     MODE_STICKY = 1 << 13,
-    MODE_PROPAGATE_PARENTS = 1 << 14, ///<  Cant be specified by user space.
-    MODE_PROPAGATE_CHILDREN = 1 << 15,
-    MODE_LOCKED = 1 << 16,
+    MODE_PROPAGATE = 1 << 14,
+    MODE_LOCKED = 1 << 15,
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
 } mode_t;
 

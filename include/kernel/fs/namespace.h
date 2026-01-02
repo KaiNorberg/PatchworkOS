@@ -116,6 +116,19 @@ void namespace_handle_deinit(namespace_handle_t* handle);
 void namespace_handle_clear(namespace_handle_t* handle);
 
 /**
+ * @brief Check if mounts in a namespace can be propagated to another namespace.
+ *
+ * This is equivalent to checkin if `other` is a child of `handle` and is intended to be used for security checks.
+ *
+ * If `handle` stores the same namespace as `other`, this will also return `true`.
+ *
+ * @param ns The source namespace handle.
+ * @param other The target namespace handle.
+ * @return `true` if mounts can be propagated, `false` otherwise.
+ */
+bool namespace_accessible(namespace_handle_t* handle, namespace_handle_t* other);
+
+/**
  * @brief If the given path is a mountpoint in the namespace, traverse to the mounted filesystem, else no-op.
  *
  * @param handle The namespace handle containing the namespace to traverse.

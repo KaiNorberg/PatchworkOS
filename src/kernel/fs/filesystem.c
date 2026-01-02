@@ -73,7 +73,7 @@ void filesystem_unregister(filesystem_t* fs)
 
     while (!list_is_empty(&fs->superblocks))
     {
-        list_pop_first(&fs->superblocks);
+        list_pop_front(&fs->superblocks);
     }
 }
 

@@ -289,7 +289,7 @@ _heap_header_t* _heap_alloc(uint64_t size)
     uint64_t freeBinIndex = bitmap_find_first_set(&freeBitmap, index, _HEAP_NUM_BINS);
     if (freeBinIndex != freeBitmap.length)
     {
-        suitableBlock = CONTAINER_OF(list_pop_first(&freeLists[freeBinIndex]), _heap_header_t, freeEntry);
+        suitableBlock = CONTAINER_OF(list_pop_front(&freeLists[freeBinIndex]), _heap_header_t, freeEntry);
         if (list_is_empty(&freeLists[freeBinIndex]))
         {
             bitmap_clear(&freeBitmap, freeBinIndex);

@@ -264,7 +264,6 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     // Call loader_exec()
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
     childThread->frame.rip = (uintptr_t)loader_entry;
-
     childThread->frame.cs = GDT_CS_RING0;
     childThread->frame.ss = GDT_SS_RING0;
     childThread->frame.rsp = childThread->kernelStack.top;

@@ -126,7 +126,7 @@ uint64_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t 
             while (1)
             {
                 wait_entry_t* other =
-                    CONTAINER_OF_SAFE(list_pop_first(&thread->wait.entries), wait_entry_t, threadEntry);
+                    CONTAINER_OF_SAFE(list_pop_front(&thread->wait.entries), wait_entry_t, threadEntry);
                 if (other == NULL)
                 {
                     break;
