@@ -39,7 +39,7 @@
     static ctl_t name##ctls[] = __VA_ARGS__; \
     static uint64_t name(file_t* file, const void* buffer, uint64_t count, uint64_t* offset) \
     { \
-        (void)offset; \
+        UNUSED(offset); \
         return ctl_dispatch(name##ctls, file, buffer, count); \
     }
 

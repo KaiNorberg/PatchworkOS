@@ -29,7 +29,7 @@ static void boot_dir_to_higher_half(boot_dir_t* dir)
 
     while (!list_is_empty(dirChildren))
     {
-        boot_dir_t* child = CONTAINER_OF(list_pop_first(dirChildren), boot_dir_t, entry);
+        boot_dir_t* child = CONTAINER_OF(list_pop_front(dirChildren), boot_dir_t, entry);
 
         child = (boot_dir_t*)PML_ENSURE_HIGHER_HALF(child);
         child->entry = LIST_ENTRY_CREATE(child->entry);
@@ -39,7 +39,7 @@ static void boot_dir_to_higher_half(boot_dir_t* dir)
 
     while (!list_is_empty(dirFiles))
     {
-        boot_file_t* file = CONTAINER_OF(list_pop_first(dirFiles), boot_file_t, entry);
+        boot_file_t* file = CONTAINER_OF(list_pop_front(dirFiles), boot_file_t, entry);
 
         file = (boot_file_t*)PML_ENSURE_HIGHER_HALF(file);
         file->entry = LIST_ENTRY_CREATE(file->entry);
@@ -53,14 +53,14 @@ static void boot_dir_to_higher_half(boot_dir_t* dir)
 
     while (!list_is_empty(&children))
     {
-        boot_dir_t* child = CONTAINER_OF_SAFE(list_pop_first(&children), boot_dir_t, entry);
+        boot_dir_t* child = CONTAINER_OF_SAFE(list_pop_front(&children), boot_dir_t, entry);
         list_push_back(&dir->children, &child->entry);
         boot_dir_to_higher_half(child);
     }
 
     while (!list_is_empty(&files))
     {
-        boot_file_t* file = CONTAINER_OF_SAFE(list_pop_first(&files), boot_file_t, entry);
+        boot_file_t* file = CONTAINER_OF_SAFE(list_pop_front(&files), boot_file_t, entry);
         list_push_back(&dir->files, &file->entry);
     }
 }

@@ -20,7 +20,7 @@
 #include <string.h>
 
 static bool mountInitialzed = false;
-static mount_t* mount = NULL;
+static mount_t* acpi = NULL;
 
 bool acpi_is_checksum_valid(void* table, uint64_t length)
 {
@@ -37,8 +37,8 @@ dentry_t* acpi_get_sysfs_root(void)
 {
     if (!mountInitialzed)
     {
-        mount = sysfs_mount_new("acpi", NULL, MODE_PARENTS | MODE_CHILDREN | MODE_ALL_PERMS, NULL, NULL, NULL);
-        if (mount == NULL)
+        acpi = sysfs_mount_new("acpi", &process_get_kernel()->ns, MODE_PROPAGATE | MODE_ALL_PERMS, NULL, NULL, NULL);
+        if (acpi == NULL)
         {
             panic(NULL, "failed to initialize ACPI sysfs group");
         }
@@ -46,7 +46,7 @@ dentry_t* acpi_get_sysfs_root(void)
         mountInitialzed = true;
     }
 
-    return REF(mount->source);
+    return REF(acpi->source);
 }
 
 void acpi_reclaim_memory(const boot_memory_map_t* map)

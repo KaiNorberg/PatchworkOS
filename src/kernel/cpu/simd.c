@@ -3,7 +3,7 @@
 #include <kernel/log/log.h>
 #include <kernel/mem/pmm.h>
 
-#include <kernel/defs.h>
+#include <sys/defs.h>
 
 #include <stdint.h>
 #include <string.h>

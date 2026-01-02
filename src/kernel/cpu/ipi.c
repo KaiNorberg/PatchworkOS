@@ -22,7 +22,7 @@ void ipi_cpu_ctx_init(ipi_cpu_ctx_t* ctx)
 
 void ipi_handle_pending(interrupt_frame_t* frame, cpu_t* self)
 {
-    (void)frame;
+    UNUSED(frame);
 
     ipi_cpu_ctx_t* ctx = &self->ipi;
 

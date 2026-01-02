@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kernel/cpu/tss.h>
-#include <kernel/defs.h>
+#include <sys/defs.h>
 
 #include <stdint.h>
 

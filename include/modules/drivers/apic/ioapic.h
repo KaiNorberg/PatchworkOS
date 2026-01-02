@@ -1,7 +1,7 @@
 #pragma once
 
-#include <kernel/defs.h>
 #include <stdint.h>
+#include <sys/defs.h>
 
 /**
  * @brief Input / Output Advanced Programmable Interrupt Controller.

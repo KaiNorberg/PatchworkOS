@@ -3,9 +3,9 @@
 
 #include "user/common/syscalls.h"
 
-uint64_t share(key_t* key, fd_t fd, clock_t timeout)
+uint64_t share(char* key, uint64_t size, fd_t fd, clock_t timeout)
 {
-    if (_syscall_share(key, fd, timeout) == ERR)
+    if (_syscall_share(key, size, fd, timeout) == ERR)
     {
         errno = _syscall_errno();
         return ERR;

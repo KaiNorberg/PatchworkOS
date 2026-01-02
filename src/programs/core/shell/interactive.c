@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/defs.h>
 #include <sys/io.h>
 #include <sys/kbd.h>
 #include <sys/proc.h>
@@ -21,7 +22,7 @@ static uint64_t pos;
 
 static void interactive_sigint_handler(int sig)
 {
-    (void)sig;
+    UNUSED(sig);
 
     // Do nothing, only child processes should be interrupted.
 }
@@ -59,7 +60,26 @@ static void interactive_execute(void)
 
     if (strlen(pipeline.status) > 0 && strcmp(pipeline.status, "0") != 0 && strcmp(pipeline.status, "-1") != 0)
     {
-        printf("shell: %s\n", pipeline.status);
+        int status;
+        if (sscanf(pipeline.status, "%d", &status) == 1)
+        {
+            if (status > 0 && status < EMAX)
+            {
+                printf("shell: %s\n", strerror(status));
+            }
+            else if (status < 0 && -status > 0 && -status < EMAX)
+            {
+                printf("shell: %s\n", strerror(-status));
+            }
+            else
+            {
+                printf("shell: %llu\n", status);
+            }
+        }
+        else
+        {
+            printf("shell: %s\n", pipeline.status);
+        }
     }
 
     pipeline_deinit(&pipeline);
@@ -182,10 +202,6 @@ static void interactive_handle_ansi(ansi_result_t* result)
         fflush(stdout);
         break;
     case ANSI_CTRL_C:
-        printf("^C\n");
-        memset(buffer, 0, MAX_PATH);
-        pos = 0;
-        interactive_prompt();
         break;
     default:
         break;

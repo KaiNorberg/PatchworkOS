@@ -10,26 +10,27 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/module/module.h>
+#include <kernel/proc/process.h>
 #include <sys/io.h>
 
-static mount_t* mount;
+static mount_t* net;
 
 mount_t* net_get_mount(void)
 {
-    return REF(mount);
+    return REF(net);
 }
 
 static uint64_t net_init(void)
 {
-    mount = sysfs_mount_new("net", NULL, MODE_CHILDREN | MODE_PARENTS | MODE_ALL_PERMS, NULL, NULL, NULL);
-    if (mount == NULL)
+    net = sysfs_mount_new("net", &process_get_kernel()->ns, MODE_PROPAGATE | MODE_ALL_PERMS, NULL, NULL, NULL);
+    if (net == NULL)
     {
         return ERR;
     }
 
     if (net_local_init() == ERR)
     {
-        UNREF(mount);
+        UNREF(net);
         return ERR;
     }
 
@@ -42,7 +43,7 @@ static void net_deinit(void)
 
     socket_family_unregister_all();
 
-    UNREF(mount);
+    UNREF(net);
 }
 
 uint64_t _module_procedure(const module_event_t* event)

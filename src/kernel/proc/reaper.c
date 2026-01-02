@@ -13,7 +13,7 @@ static lock_t reaperLock = LOCK_CREATE();
 
 static void reaper_thread(void* arg)
 {
-    (void)arg;
+    UNUSED(arg);
 
     while (1)
     {
@@ -32,7 +32,7 @@ static void reaper_thread(void* arg)
 
         while (!list_is_empty(&zombies))
         {
-            process_t* process = CONTAINER_OF(list_pop_first(&zombies), process_t, zombieEntry);
+            process_t* process = CONTAINER_OF(list_pop_front(&zombies), process_t, zombieEntry);
 
             lock_acquire(&process->threads.lock);
             if (!list_is_empty(&process->threads.list))
@@ -49,8 +49,9 @@ static void reaper_thread(void* arg)
 
         while (!list_is_empty(&localZombies))
         {
-            process_t* process = CONTAINER_OF(list_pop_first(&localZombies), process_t, zombieEntry);
-            process_dir_deinit(process);
+            process_t* process = CONTAINER_OF(list_pop_front(&localZombies), process_t, zombieEntry);
+            process_remove(process);
+            UNREF(process);
         }
     }
 }
@@ -66,7 +67,7 @@ void reaper_init(void)
 void reaper_push(process_t* process)
 {
     lock_acquire(&reaperLock);
-    list_push_back(&zombies, &process->zombieEntry);
-    nextReaperTime = clock_uptime() + CONFIG_PROCESS_REAPER_INTERVAL; // Delay reaper run
+    list_push_back(&zombies, &REF(process)->zombieEntry);
+    nextReaperTime = clock_uptime() + CONFIG_PROCESS_REAPER_INTERVAL;
     lock_release(&reaperLock);
 }

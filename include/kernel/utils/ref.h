@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/defs.h>
+#include <sys/defs.h>
 
 #include <assert.h>
 #include <stdatomic.h>

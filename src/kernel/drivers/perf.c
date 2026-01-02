@@ -27,7 +27,7 @@ static dentry_t* memFile = NULL;
 
 static uint64_t perf_cpu_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)file; // Unused
+    UNUSED(file);
 
     char* string = malloc(256 * (cpu_amount() + 1));
     if (string == NULL)
@@ -83,7 +83,7 @@ static file_ops_t cpuOps = {
 
 static uint64_t perf_mem_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)file; // Unused
+    UNUSED(file);
 
     char* string = malloc(256);
     if (string == NULL)

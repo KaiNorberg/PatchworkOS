@@ -27,7 +27,7 @@ void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx)
 
 void timer_ack_eoi(interrupt_frame_t* frame, cpu_t* self)
 {
-    (void)frame; // Unused
+    UNUSED(frame);
 
     RWLOCK_READ_SCOPE(&sourcesLock);
 

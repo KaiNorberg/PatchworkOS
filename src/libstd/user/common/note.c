@@ -41,23 +41,23 @@ _NORETURN static void _note_kernel_handler(char* note)
         }
     }
 
-    if (notecmp(note, "divbyzero") == 0)
+    if (wordcmp(note, "divbyzero") == 0)
     {
         _signal_invoke(SIGFPE, note);
     }
-    else if (notecmp(note, "illegal") == 0)
+    else if (wordcmp(note, "illegal") == 0)
     {
         _signal_invoke(SIGILL, note);
     }
-    else if (notecmp(note, "interrupt") == 0)
+    else if (wordcmp(note, "interrupt") == 0)
     {
         _signal_invoke(SIGINT, note);
     }
-    else if (notecmp(note, "pagefault") == 0)
+    else if (wordcmp(note, "pagefault") == 0 || wordcmp(note, "segfault") == 0)
     {
         _signal_invoke(SIGSEGV, note);
     }
-    else if (notecmp(note, "terminate") == 0)
+    else if (wordcmp(note, "terminate") == 0)
     {
         _signal_invoke(SIGTERM, note);
     }

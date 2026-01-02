@@ -208,11 +208,11 @@ void config_close(config_t* config)
 
     while (!list_is_empty(&config->sections))
     {
-        config_section_t* sec = CONTAINER_OF(list_pop_first(&config->sections), config_section_t, entry);
+        config_section_t* sec = CONTAINER_OF(list_pop_front(&config->sections), config_section_t, entry);
 
         while (!list_is_empty(&sec->pairs))
         {
-            config_pair_t* pair = CONTAINER_OF(list_pop_first(&sec->pairs), config_pair_t, entry);
+            config_pair_t* pair = CONTAINER_OF(list_pop_front(&sec->pairs), config_pair_t, entry);
             free(pair->key);
             free(pair->value);
             free(pair);

@@ -14,10 +14,10 @@ static fd_t zeroDev;
 
 static void init_generic()
 {
-    zeroDev = open("/dev/zero");
+    zeroDev = open("/dev/const/zero");
     if (zeroDev == ERR)
     {
-        perror("Failed to open /dev/zero");
+        perror("Failed to open /dev/const/zero");
         abort();
     }
 }

@@ -234,7 +234,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
 
         if (!list_is_empty(&listen->backlog))
         {
-            list_entry_t* entry = list_pop_first(&listen->backlog);
+            list_entry_t* entry = list_pop_front(&listen->backlog);
             local_conn_t* container = CONTAINER_OF(entry, local_conn_t, entry);
             conn = REF(container);
             listen->pendingAmount--;
@@ -271,7 +271,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
 
 static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t count, uint64_t* offset, mode_t mode)
 {
-    (void)offset; // Unused
+    UNUSED(offset);
 
     local_socket_t* data = sock->private;
     if (data == NULL)
@@ -344,7 +344,7 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
 
 static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, uint64_t* offset, mode_t mode)
 {
-    (void)offset; // Unused
+    UNUSED(offset);
 
     local_socket_t* data = sock->private;
     if (data == NULL)

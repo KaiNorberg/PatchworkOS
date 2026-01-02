@@ -35,7 +35,7 @@ typedef struct dir_ctx dir_ctx_t;
  *
  * This means that the mountpoint does not "become" the root of the mounted filesystem, it simply points to it.
  *
- * Finally, note that just becouse a dentry is a mountpoint does not mean that it can be traversed by the current
+ * Finally, note that just because a dentry is a mountpoint does not mean that it can be traversed by the current
  * process, a process can only traverse a mountpoint if it is visible in its namespace, if its not visible the
  * dentry acts exactly like a normal dentry.
  *
@@ -96,19 +96,21 @@ typedef struct dir_ctx
 {
     /**
      * @brief Emit function.
-     * 
+     *
      * Should be called on all entries inside a directory while iterating over it, until this function returns `false`.
-     * 
+     *
      * Will be implemented by the VFS not the filesystem.
-     * 
+     *
      * @param ctx The directory context.
      * @param name The name of the entry.
      * @param number The inode number of the entry.
      * @param type The inode type of the entry.
      * @return `true` to continue iterating, `false` to stop.
      */
-    bool (*emit)(dir_ctx_t* ctx, const char* name, inode_number_t number, inode_type_t type);
-    uint64_t pos; ///< The current position in the directory, can be used to skip entries.
+    bool (*emit)(dir_ctx_t* ctx, const char* name, ino_t number, inode_type_t type);
+    uint64_t pos;   ///< The current position in the directory, can be used to skip entries.
+    void* private;  ///< Private data that the filesystem can use to conveniently pass data.
+    uint64_t index; ///< An index that the filesystem can use for its own purposes.
 } dir_ctx_t;
 
 /**
@@ -117,6 +119,14 @@ typedef struct dir_ctx
  */
 typedef struct dentry_ops
 {
+    /**
+     * @brief Called when the dentry is looked up or retrieved from cache.
+     *
+     * Used for security by hiding files or directories based on filesystem defined logic.
+     *
+     * @return On success, `0`. On failure, `ERR` and `errno` is set.
+     */
+    uint64_t (*revalidate)(dentry_t* dentry);
     /**
      * @brief Iterate over the entries in a directory dentry.
      *
@@ -167,8 +177,8 @@ typedef struct dentry
  * There is no `dentry_free()` instead use `UNREF()`.
  *
  * @param superblock The superblock the dentry belongs to.
- * @param parent The parent dentry, can be NULL if this is a root dentry.
- * @param name The name of the dentry.
+ * @param parent The parent dentry, can be `NULL`.
+ * @param name The name of the dentry, can be `NULL` if `parent` is also `NULL`.
  * @return On success, the new dentry. On failure, returns `NULL` and `errno` is set.
  */
 dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name);
@@ -214,6 +224,22 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name);
  * @param inode The inode to associate with the dentry, or `NULL` for no-op.
  */
 void dentry_make_positive(dentry_t* dentry, inode_t* inode);
+
+/**
+ * @brief The amount of special entries "." and ".." that `dentry_iterate_dots()` emits.
+ */
+#define DENTRY_DOTS_AMOUNT 2
+
+/**
+ * @brief Helper function to iterate over the special entries "." and "..".
+ *
+ * Intended to be used in filesystem iterate implementations.
+ *
+ * @param dentry The directory dentry to iterate over.
+ * @param ctx The directory context to use for iteration.
+ * @return `true` if the iteration should continue, `false` if it should stop.
+ */
+bool dentry_iterate_dots(dentry_t* dentry, dir_ctx_t* ctx);
 
 /**
  * @brief Helper function for a basic iterate.

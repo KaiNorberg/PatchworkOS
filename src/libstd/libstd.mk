@@ -14,14 +14,7 @@ ASFLAGS += -Isrc/libstd
 
 CFLAGS += -D__STDC_WANT_LIB_EXT1__=1
 
-# Crt files need special handling
-CRT_SRC = $(wildcard src/libstd/user/crt/*.s)
-CRT_OBJ = $(patsubst src/libstd/user/crt/%.s, $(BINDIR)/%.o, $(CRT_SRC))
-$(BINDIR)/%.o: src/libstd/user/crt/%.s
-	$(MKCWD)
-	$(AS) $(ASFLAGS) $< -o $@
-
-all: $(TARGET) $(CRT_OBJ)
+all: $(TARGET)
 
 .PHONY: all
 

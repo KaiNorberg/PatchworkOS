@@ -8,8 +8,8 @@
 #include <kernel/sched/timer.h>
 #include <kernel/utils/utils.h>
 
-#include <kernel/defs.h>
 #include <stdint.h>
+#include <sys/defs.h>
 
 static uint64_t apic_timer_ticks_per_ms(void)
 {
@@ -33,7 +33,7 @@ static uint64_t apic_timer_ticks_per_ms(void)
 
 static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
 {
-    (void)uptime;
+    UNUSED(uptime);
 
     lapic_t* lapic = lapic_get(cpu_get_id_unsafe());
     if (lapic->ticksPerMs == 0)
@@ -66,7 +66,7 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
 
 static void apic_timer_eoi(cpu_t* cpu)
 {
-    (void)cpu;
+    UNUSED(cpu);
 
     lapic_write(LAPIC_REG_EOI, 0);
 }

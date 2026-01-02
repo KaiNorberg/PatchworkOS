@@ -557,7 +557,7 @@ void aml_overlay_deinit(aml_overlay_t* overlay)
 
     while (!list_is_empty(&overlay->objects))
     {
-        aml_object_t* obj = CONTAINER_OF(list_pop_first(&overlay->objects), aml_object_t, listEntry);
+        aml_object_t* obj = CONTAINER_OF(list_pop_front(&overlay->objects), aml_object_t, listEntry);
         aml_namespace_remove(obj);
     }
 

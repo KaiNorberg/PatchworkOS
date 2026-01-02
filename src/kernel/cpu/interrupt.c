@@ -186,6 +186,13 @@ static void exception_handler(interrupt_frame_t* frame)
         return;
     case VECTOR_NMI:
         return; /// @todo Handle NMIs properly.
+    case VECTOR_GENERAL_PROTECTION_FAULT:
+        if (!INTERRUPT_FRAME_IN_USER_SPACE(frame))
+        {
+            panic(frame, "general protection fault");
+        }
+        exception_handle_user(frame, F("segfault at 0x%llx", frame->rip));
+        return;
     case VECTOR_PAGE_FAULT:
         if (!INTERRUPT_FRAME_IN_USER_SPACE(frame))
         {

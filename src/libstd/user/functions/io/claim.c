@@ -3,7 +3,7 @@
 
 #include "user/common/syscalls.h"
 
-fd_t claim(key_t* key)
+fd_t claim(const char* key)
 {
     fd_t fd = _syscall_claim(key);
     if (fd == ERR)

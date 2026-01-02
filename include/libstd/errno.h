@@ -689,7 +689,7 @@ int* _errno_get(void);
 /**
  * @brief Maximum value for all error codes (not inclusive)
  */
-#define ERR_MAX 133
+#define EMAX 133
 
 /** @} */
 

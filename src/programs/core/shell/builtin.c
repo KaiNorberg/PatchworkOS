@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/defs.h>
 #include <sys/io.h>
 #include <sys/proc.h>
 
@@ -51,11 +52,11 @@ static uint64_t builtin_cd(uint64_t argc, const char** argv)
 
 static uint64_t builtin_help(uint64_t argc, const char** argv)
 {
-    (void)argc;
-    (void)argv;
+    UNUSED(argc);
+    UNUSED(argv);
 
     printf("\033[33mBUILTINS:\033[0m\n");
-    for (uint64_t i = 0; i < sizeof(builtins) / sizeof(builtins[0]); i++)
+    for (uint64_t i = 0; i < ARRAY_SIZE(builtins); i++)
     {
         printf("  %-20s\033[0m \t\033[90m%s\033[0m\n", builtins[i].usage, builtins[i].description);
     }
@@ -77,8 +78,8 @@ static uint64_t builtin_help(uint64_t argc, const char** argv)
 
 static uint64_t builtin_clear(uint64_t argc, const char** argv)
 {
-    (void)argc;
-    (void)argv;
+    UNUSED(argc);
+    UNUSED(argv);
 
     printf("\033[2J\033[H");
     return 0;
@@ -86,7 +87,7 @@ static uint64_t builtin_clear(uint64_t argc, const char** argv)
 
 bool builtin_exists(const char* name)
 {
-    for (uint64_t i = 0; i < sizeof(builtins) / sizeof(builtins[0]); i++)
+    for (uint64_t i = 0; i < ARRAY_SIZE(builtins); i++)
     {
         if (strcmp(name, builtins[i].name) == 0)
         {
@@ -104,7 +105,7 @@ uint64_t builtin_execute(uint64_t argc, const char** argv)
         return 0;
     }
 
-    for (uint64_t i = 0; i < sizeof(builtins) / sizeof(builtins[0]); i++)
+    for (uint64_t i = 0; i < ARRAY_SIZE(builtins); i++)
     {
         if (strcmp(argv[0], builtins[i].name) == 0)
         {

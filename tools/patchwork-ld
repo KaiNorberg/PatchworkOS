@@ -7,7 +7,4 @@ ld -m elf_x86_64 \
   -L"$SCRIPT_DIR/../bin/libstd" \
   -L"$SCRIPT_DIR/../bin/libpatchwork" \
   "$@" \
-  -lstd \
-  $SCRIPT_DIR/../bin/libstd/crti.o \
-  $SCRIPT_DIR/../bin/libstd/crt0.o \
-  $SCRIPT_DIR/../bin/libstd/crtn.o
+  -lstd

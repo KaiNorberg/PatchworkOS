@@ -150,3 +150,13 @@
  *
  */
 #define CONFIG_PROCESS_REAPER_INTERVAL (CLOCKS_PER_SEC * 1)
+
+/**
+ * @brief Maximum environment variables configuration.
+ * @ingroup kernel
+ * @def CONFIG_MAX_ENV_VARS
+ *
+ * The `CONFIG_MAX_ENV_VARS` constant defines the maximum number of environment variables that a process can have.
+ *
+ */
+#define CONFIG_MAX_ENV_VARS 4096

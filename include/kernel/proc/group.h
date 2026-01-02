@@ -1,10 +1,10 @@
 #pragma once
 
+#include <kernel/fs/file.h>
 #include <kernel/sync/lock.h>
-#include <kernel/utils/map.h>
+#include <kernel/utils/ref.h>
 
 #include <sys/list.h>
-#include <sys/proc.h>
 
 typedef struct process process_t;
 
@@ -35,6 +35,7 @@ typedef struct
 {
     list_entry_t entry;
     group_t* group;
+    lock_t lock;
 } group_member_t;
 
 /**
@@ -43,17 +44,19 @@ typedef struct
  */
 typedef struct group
 {
-    map_entry_t mapEntry;
-    gid_t id;
+    ref_t ref;
     list_t processes;
+    lock_t lock;
 } group_t;
 
 /**
  * @brief Initializes a group member.
  *
  * @param member The group member to initialize.
+ * @param group A member storing the group to add the new member to, or `NULL` to create a new group.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  */
-void group_member_init(group_member_t* member);
+uint64_t group_member_init(group_member_t* member, group_member_t* group);
 
 /**
  * @brief Deinitializes a group member.
@@ -63,17 +66,27 @@ void group_member_init(group_member_t* member);
 void group_member_deinit(group_member_t* member);
 
 /**
- * @brief Adds a process to a group.
+ * @brief Retrieve the group of a group member.
  *
- * @param gid The group ID to add the process to, or `GID_NONE` to create a new group.
- * @param member The group member of the process to add to the group.
- * @return On success, `0`. On failure, `ERR` and errno is set to:
+ * It is the responsibility of the caller to use `UNREF()` or `UNREF_DEFER()` on the returned group when it is no longer
+ * needed.
+ *
+ * @param member The group member.
+ * @return On success, a reference to the group. On failure, `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
- * - `ENOENT`: The specified group does not exist.
- * - `EBUSY`: The member is already part of a group.
- * - `ENOMEM`: Out of memory.
+ * - `ESRCH`: The member is not part of any group.
  */
-uint64_t group_add(gid_t gid, group_member_t* member);
+group_t* group_get(group_member_t* member);
+
+/**
+ * @brief Joins a process to a specific group.
+ *
+ * If the member is already in a group it will be removed from that group first.
+ *
+ * @param group The group to join.
+ * @param member The group member of the process to add to the group.
+ */
+void group_add(group_t* group, group_member_t* member);
 
 /**
  * @brief Removes a process from its group.
@@ -83,14 +96,6 @@ uint64_t group_add(gid_t gid, group_member_t* member);
  * @param member The group member of the process to remove from its group, or `NULL` for no-op.
  */
 void group_remove(group_member_t* member);
-
-/**
- * @brief Gets the ID of the group of the specified member.
- *
- * @param member The group member to get the group ID from.
- * @return The group ID or `GID_NONE` if the member is not part of a group.
- */
-gid_t group_get_id(group_member_t* member);
 
 /**
  * @brief Sends a note to all processes in the group of the specified member.

@@ -25,7 +25,7 @@
  */
 
 /**
- * @brief Filesystem structure, represents a filesystem type, e.g. fat32, ramfs, sysfs, etc.
+ * @brief Filesystem structure, represents a filesystem type, e.g. fat32, tmpfs, sysfs, etc.
  */
 typedef struct filesystem
 {
@@ -33,7 +33,7 @@ typedef struct filesystem
     list_t superblocks;   ///< Used internally.
     rwlock_t lock;        ///< Used internally.
     const char* name;
-    dentry_t* (*mount)(filesystem_t* fs, const char* devName, void* private);
+    dentry_t* (*mount)(filesystem_t* fs, dev_t dev, void* private);
 } filesystem_t;
 
 /**

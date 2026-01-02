@@ -8,8 +8,9 @@
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/syscall.h>
 #include <kernel/drivers/pic.h>
-#include <kernel/fs/ramfs.h>
+#include <kernel/fs/procfs.h>
 #include <kernel/fs/sysfs.h>
+#include <kernel/fs/tmpfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/init/boot_info.h>
 #include <kernel/log/log.h>
@@ -19,6 +20,7 @@
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
 #include <kernel/module/symbol.h>
+#include <kernel/proc/group.h>
 #include <kernel/proc/process.h>
 #include <kernel/proc/reaper.h>
 #include <kernel/sched/loader.h>
@@ -82,11 +84,11 @@ static void init_finalize(void)
 {
     pic_disable();
 
-    ramfs_init();
+    tmpfs_init();
     sysfs_init();
+    procfs_init();
 
     log_file_expose();
-    process_procfs_init();
 
     reaper_init();
 
@@ -147,11 +149,12 @@ static inline void init_process_spawn(void)
 {
     LOG_INFO("spawning init process\n");
 
-    process_t* initProcess = process_new(PRIORITY_MAX_USER, GID_NONE, &process_get_kernel()->ns, NAMESPACE_HANDLE_COPY);
+    process_t* initProcess = process_new(PRIORITY_MAX_USER, NULL, &process_get_kernel()->ns, NAMESPACE_HANDLE_COPY);
     if (initProcess == NULL)
     {
         panic(NULL, "Failed to create init process");
     }
+    UNREF_DEFER(initProcess);
 
     thread_t* initThread = thread_new(initProcess);
     if (initThread == NULL)

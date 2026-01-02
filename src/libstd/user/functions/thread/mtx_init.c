@@ -9,9 +9,9 @@
 
 int mtx_init(mtx_t* mutex, int type)
 {
-    (void)type; // We don't care about the type, we just implement all types the same way as the C specifcation says
-                // that, for example, if a non-recursive mutex is locked recursively, the behavior is undefined so we
-                // just say that it works.
+    UNUSED(type); // We don't care about the type, we just implement all types the same way as the C specifcation says
+                  // that, for example, if a non-recursive mutex is locked recursively, the behavior is undefined so we
+                  // just say that it works.
 
     atomic_init(&mutex->state, _MTX_UNLOCKED);
     mutex->owner = ERR;

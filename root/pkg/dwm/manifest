@@ -1,0 +1,25 @@
+[meta]
+description = Desktop Window Manager
+version = 1.0
+author = PatchworkOS
+license = MIT
+
+[exec]
+bin = /app/bin/dwm
+priority = 30
+
+[sandbox]
+profile = empty
+foreground = false
+
+[env]
+
+[namespace]
+/app:rx = $PKG
+/net:rw = /net
+/dev/fb:rw = /dev/fb
+/dev/kbd:rw = /dev/kbd
+/dev/mouse:rw = /dev/mouse
+/dev/klog:rw = /dev/klog
+/dev/const:rw = /dev/const
+/dev/shmem:rw = /dev/shmem

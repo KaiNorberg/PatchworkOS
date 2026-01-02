@@ -27,14 +27,14 @@ static void boot_dir_free(boot_dir_t* dir)
 
     while (!list_is_empty(&dir->children))
     {
-        list_entry_t* entry = list_pop_first(&dir->children);
+        list_entry_t* entry = list_pop_front(&dir->children);
         boot_dir_t* child = CONTAINER_OF(entry, boot_dir_t, entry);
         boot_dir_free(child);
     }
 
     while (!list_is_empty(&dir->files))
     {
-        list_entry_t* entry = list_pop_first(&dir->files);
+        list_entry_t* entry = list_pop_front(&dir->files);
         boot_file_t* file = CONTAINER_OF(entry, boot_file_t, entry);
         boot_file_free(file);
     }

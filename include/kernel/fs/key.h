@@ -13,7 +13,9 @@
  *
  * Keys are used with the `share()` and `claim()` system calls to send files between processes.
  *
- * Each key is a 64-bit one-time use randomly generated token that globally identifies a shared file.
+ * Each key is a one-time use randomly generated base64URL encoded string that globally identifies a shared file.
+ *
+ * @see https://en.wikipedia.org/wiki/Base64
  *
  * @{
  */
@@ -23,9 +25,9 @@
  */
 typedef struct
 {
-    list_entry_t entry;   ///< Used to store the key entry in a time sorted list.
-    map_entry_t mapEntry; ///< Used to store the key entry in a map for fast lookup.
-    key_t key;
+    list_entry_t entry;
+    map_entry_t mapEntry;
+    char key[KEY_MAX];
     file_t* file;
     clock_t expiry;
 } key_entry_t;
@@ -33,19 +35,20 @@ typedef struct
 /**
  * @brief Generates a key that can be used to retrieve the file within the specified timeout.
  *
- * @param key Output pointer to store the generated key.
+ * @param key Output buffer to store the generated key.
+ * @param size The size of the output buffer.
  * @param file The file to share.
  * @param timeout The time until the shared file expires. If `CLOCKS_NEVER`, it never expires.
  * @return On success, a key that can be used to claim the file. On failure, `ERR` and `errno` is set.
  */
-uint64_t key_share(key_t* key, file_t* file, clock_t timeout);
+uint64_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout);
 
 /**
  * @brief Claims a shared file using the provided key.
  *
- * @param key Pointer to the key identifying the shared file.
+ * @param key The key identifying the shared file.
  * @return On success, the claimed file. On failure, `NULL` and `errno` is set.
  */
-file_t* key_claim(key_t* key);
+file_t* key_claim(const char* key);
 
 /** @} */

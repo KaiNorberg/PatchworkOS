@@ -1,0 +1,21 @@
+[meta]
+description = DOOM
+version = 1.0
+author = ID Software (PatchworkOS Port)
+license = GPL-2.0
+
+[exec]
+bin = /app/bin/doom
+priority = 30
+
+[sandbox]
+profile = empty
+foreground = true
+
+[env]
+
+[namespace]
+/app/bin:rx = $PKG/bin
+/app/data:rw = $PKG/data
+/net/local:rw = /net/local
+/dev/const:rw = /dev/const

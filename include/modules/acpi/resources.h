@@ -1,8 +1,8 @@
 #pragma once
 
-#include <kernel/defs.h>
 #include <modules/acpi/aml/encoding/arg.h>
 #include <stdint.h>
+#include <sys/defs.h>
 
 /**
  * @brief ACPI resource settings.

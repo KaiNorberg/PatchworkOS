@@ -2,8 +2,8 @@
 
 #include <kernel/cpu/stack_pointer.h>
 
-#include <kernel/defs.h>
 #include <stdint.h>
+#include <sys/defs.h>
 
 /**
  * @brief Task State Segment

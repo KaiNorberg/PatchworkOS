@@ -6,7 +6,7 @@
 #include <kernel/log/log.h>
 #include <kernel/module/module.h>
 
-#include <kernel/defs.h>
+#include <sys/defs.h>
 
 /**
  * @brief Advanced Programmable Interrupt Controller.
@@ -21,7 +21,7 @@
 
 static void apic_cpu_handler(cpu_t* cpu, const cpu_event_t* event)
 {
-    (void)cpu;
+    UNUSED(cpu);
 
     switch (event->type)
     {

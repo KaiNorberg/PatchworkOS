@@ -15,7 +15,7 @@ extern "C"
 #include "_internal/clock_t.h"
 #include "_internal/config.h"
 #include "_internal/fd_t.h"
-#include "_internal/gid_t.h"
+
 #include "_internal/pid_t.h"
 #include "_internal/tid_t.h"
 
@@ -71,7 +71,11 @@ typedef enum
     SPAWN_EMPTY_ENV = 1 << 3,   ///< Don't inherit the parent's environment variables.
     SPAWN_EMPTY_CWD = 1 << 4,   ///< Don't inherit the parent's current working directory, starts at root (/).
     SPAWN_EMPTY_GROUP = 1 << 5, ///< Don't inherit the parent's process group, instead create a new group.
-    SPAWN_COPY_NS = 1 << 6      ///< Don't share the parent's namespace, instead create a new copy of it.
+    SPAWN_COPY_NS = 1 << 6,     ///< Don't share the parent's namespace, instead create a new copy of it.
+    SPAWN_EMPTY_NS =
+        1 << 7, ///< Create a new empty namespace, the new namespace will not contain any mountpoints or even a root.
+    SPAWN_EMPTY_ALL = SPAWN_EMPTY_FDS | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP |
+        SPAWN_EMPTY_NS ///< Empty all inheritable resources.
 } spawn_flags_t;
 
 /**
@@ -138,8 +142,8 @@ typedef enum
  * @brief System call to map memory from a file.
  *
  * The `mmap()` function maps memory to the currently running processes address space from a file, this is the only way
- * to allocate virtual memory from userspace. An example usage would be to map the `/dev/zero` file which would allocate
- * zeroed memory.
+ * to allocate virtual memory from userspace. An example usage would be to map the `/dev/const/zero` file which would
+ * allocate zeroed memory.
  *
  * @param fd The open file descriptor of the file to be mapped.
  * @param address The desired virtual destination address, if equal to `NULL` the kernel will choose a available
@@ -293,15 +297,13 @@ uint64_t notify(note_func_t handler);
 _NORETURN void noted(void);
 
 /**
- * @brief Helper for comparing note strings.
+ * @brief Helper for comparing the first word of a string.
  *
- * Will compare only the first word of the note string as the rest may contain additional details.
- *
- * @param note The note string.
+ * @param string The string.
  * @param word The word to compare against.
  * @return On match, returns `0`. On mismatch, returns a non-zero value.
  */
-int64_t notecmp(const char* note, const char* word);
+int64_t wordcmp(const char* string, const char* word);
 
 /**
  * @brief Action type for atnotify().

@@ -85,8 +85,8 @@ uint64_t note_send(note_queue_t* queue, const char* string)
 
 bool note_handle_pending(interrupt_frame_t* frame, cpu_t* self)
 {
-    (void)frame;
-    (void)self;
+    UNUSED(frame);
+    UNUSED(self);
 
     if (!INTERRUPT_FRAME_IN_USER_SPACE(frame))
     {

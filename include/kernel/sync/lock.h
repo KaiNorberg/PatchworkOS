@@ -6,9 +6,9 @@
 #include <kernel/log/panic.h>
 #endif
 
-#include <kernel/defs.h>
 #include <kernel/drivers/com.h>
 #include <stdatomic.h>
+#include <sys/defs.h>
 
 /**
  * @brief Ticket spinlock.

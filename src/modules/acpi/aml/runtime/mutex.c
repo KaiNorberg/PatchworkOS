@@ -93,7 +93,7 @@ void aml_mutex_id_deinit(aml_mutex_id_t* mutex)
 
 uint64_t aml_mutex_acquire(aml_mutex_id_t* mutex, aml_sync_level_t syncLevel, clock_t timeout)
 {
-    (void)timeout; // We ignore timeouts since we have the big mutex.
+    UNUSED(timeout); // We ignore timeouts since we have the big mutex.
 
     if (mutex == NULL)
     {

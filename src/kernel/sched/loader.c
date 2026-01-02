@@ -149,6 +149,7 @@ cleanup:
     {
         thread_jump(thread);
     }
+    LOG_DEBUG("exec failed due to %s\n", strerror(errno));
     sched_process_exit("exec failed");
 }
 
@@ -171,19 +172,31 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     uint64_t argc = 0;
     char** argvCopy = NULL;
 
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
+
     if (argv == NULL)
     {
         errno = EINVAL;
         goto error;
     }
 
-    thread_t* thread = sched_thread();
-    process_t* process = thread->process;
+    namespace_handle_flags_t nsFlags;
+    if (flags & SPAWN_EMPTY_NS)
+    {
+        nsFlags = NAMESPACE_HANDLE_EMPTY;
+    }
+    else if (flags & SPAWN_COPY_NS)
+    {
+        nsFlags = NAMESPACE_HANDLE_COPY;
+    }
+    else
+    {
+        nsFlags = NAMESPACE_HANDLE_SHARE;
+    }
 
-    gid_t gid = flags & SPAWN_EMPTY_GROUP ? GID_NONE : group_get_id(&process->group);
-    namespace_handle_flags_t nsFlags = flags & SPAWN_COPY_NS ? NAMESPACE_HANDLE_COPY : NAMESPACE_HANDLE_SHARE;
-
-    child = process_new(atomic_load(&process->priority), gid, &process->ns, nsFlags);
+    child = process_new(atomic_load(&process->priority), flags & SPAWN_EMPTY_GROUP ? NULL : &process->group,
+        &process->ns, nsFlags);
     if (child == NULL)
     {
         goto error;
@@ -235,7 +248,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
 
     if (!(flags & SPAWN_EMPTY_ENV))
     {
-        if (process_copy_env(child, process) == ERR)
+        if (env_copy(&child->env, &process->env) == ERR)
         {
             goto error;
         }
@@ -243,7 +256,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
 
     if (!(flags & SPAWN_EMPTY_CWD))
     {
-        path_t cwd = cwd_get(&process->cwd);
+        path_t cwd = cwd_get(&process->cwd, &process->ns);
         cwd_set(&child->cwd, &cwd);
         path_put(&cwd);
     }
@@ -251,14 +264,17 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     // Call loader_exec()
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
     childThread->frame.rip = (uintptr_t)loader_entry;
-
     childThread->frame.cs = GDT_CS_RING0;
     childThread->frame.ss = GDT_SS_RING0;
     childThread->frame.rsp = childThread->kernelStack.top;
     childThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
 
-    pid_t volatile result = child->id; // Important to not deref after pushing the thread
     sched_submit(childThread);
+    pid_t result = child->id;
+    if (child != NULL)
+    {
+        UNREF(child);
+    }
     return result;
 
 error:
@@ -268,7 +284,7 @@ error:
     }
     if (child != NULL)
     {
-        process_kill(child, "spawn failed");
+        UNREF(child);
     }
     loader_strv_free(argvCopy, argc);
     return ERR;

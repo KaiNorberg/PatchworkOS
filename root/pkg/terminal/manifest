@@ -1,0 +1,25 @@
+[meta]
+description = Terminal
+version = 1.0
+author = PatchworkOS
+license = MIT
+
+[exec]
+bin = /app/bin/terminal
+priority = 30
+
+[sandbox]
+profile = empty
+foreground = true
+
+[env]
+PATH = /sys/bin
+
+[namespace]
+/app:rx = $PKG
+/acpi:rw = /acpi
+/sys:rx = /sys
+/cfg:r = /cfg
+/dev:rw = /dev
+/net:rw = /net
+/proc:rw = /proc

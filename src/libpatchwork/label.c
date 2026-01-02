@@ -2,10 +2,11 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <sys/defs.h>
 
 static uint64_t label_procedure(window_t* win, element_t* elem, const event_t* event)
 {
-    (void)win; // Unused
+    UNUSED(win);
 
     const theme_t* theme = element_get_theme(elem);
 

@@ -46,8 +46,8 @@ static void* aml_ensure_mem_is_mapped(uint64_t address, aml_bit_size_t accessSiz
 static uint64_t aml_system_mem_read(aml_state_t* state, aml_opregion_t* opregion, uintptr_t address,
     aml_bit_size_t accessSize, uint64_t* out)
 {
-    (void)state;
-    (void)opregion;
+    UNUSED(state);
+    UNUSED(opregion);
 
     void* virtAddr = NULL;
     if (address >= VMM_IDENTITY_MAPPED_MIN)
@@ -88,8 +88,8 @@ static uint64_t aml_system_mem_read(aml_state_t* state, aml_opregion_t* opregion
 static uint64_t aml_system_mem_write(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t value)
 {
-    (void)state;
-    (void)opregion;
+    UNUSED(state);
+    UNUSED(opregion);
 
     void* virtAddr = NULL;
     if (address >= VMM_IDENTITY_MAPPED_MIN)
@@ -130,8 +130,8 @@ static uint64_t aml_system_mem_write(aml_state_t* state, aml_opregion_t* opregio
 static uint64_t aml_system_io_read(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t* out)
 {
-    (void)state;
-    (void)opregion;
+    UNUSED(state);
+    UNUSED(opregion);
 
     switch (accessSize)
     {
@@ -155,8 +155,8 @@ static uint64_t aml_system_io_read(aml_state_t* state, aml_opregion_t* opregion,
 static uint64_t aml_system_io_write(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t value)
 {
-    (void)state;
-    (void)opregion;
+    UNUSED(state);
+    UNUSED(opregion);
 
     switch (accessSize)
     {
@@ -180,7 +180,7 @@ static uint64_t aml_system_io_write(aml_state_t* state, aml_opregion_t* opregion
 static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_t* opregion, pci_segment_group_t* segmentGroup,
     pci_bus_t* bus, pci_slot_t* slot, pci_function_t* function)
 {
-    (void)state;
+    UNUSED(state);
     // Note that the aml_object_find function will recursively search parent scopes.
 
     // We assume zero for all parameters if the corresponding object is not found.
@@ -254,7 +254,7 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_t* opregion,
 static uint64_t aml_pci_config_read(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t* out)
 {
-    (void)state;
+    UNUSED(state);
 
     pci_segment_group_t segmentGroup;
     pci_bus_t bus;
@@ -321,8 +321,6 @@ static aml_region_handler_t regionHandlers[] = {
     [AML_REGION_PCI_CONFIG] = {.read = aml_pci_config_read, .write = aml_pci_config_write},
 };
 
-#define AML_REGION_MAX (sizeof(regionHandlers) / sizeof(regionHandlers[0]))
-
 static inline uint64_t aml_opregion_read(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t* out)
 {
@@ -332,7 +330,7 @@ static inline uint64_t aml_opregion_read(aml_state_t* state, aml_opregion_t* opr
         return ERR;
     }
 
-    if (opregion->space >= AML_REGION_MAX || regionHandlers[opregion->space].read == NULL)
+    if (opregion->space >= ARRAY_SIZE(regionHandlers) || regionHandlers[opregion->space].read == NULL)
     {
         LOG_ERR("unimplemented opregion read with opregion space '%s'\n", aml_region_space_to_string(opregion->space));
         errno = ENOSYS;
@@ -344,7 +342,7 @@ static inline uint64_t aml_opregion_read(aml_state_t* state, aml_opregion_t* opr
 static inline uint64_t aml_opregion_write(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t value)
 {
-    if (opregion->space >= AML_REGION_MAX || regionHandlers[opregion->space].write == NULL)
+    if (opregion->space >= ARRAY_SIZE(regionHandlers) || regionHandlers[opregion->space].write == NULL)
     {
         LOG_ERR("unimplemented opregion write with opregion space '%s'\n", aml_region_space_to_string(opregion->space));
         errno = ENOSYS;

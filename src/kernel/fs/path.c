@@ -27,13 +27,14 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['a'] = {.mode = MODE_APPEND},
     ['c'] = {.mode = MODE_CREATE},
     ['e'] = {.mode = MODE_EXCLUSIVE},
+    ['p'] = {.mode = MODE_PARENTS},
     ['t'] = {.mode = MODE_TRUNCATE},
     ['d'] = {.mode = MODE_DIRECTORY},
     ['R'] = {.mode = MODE_RECURSIVE},
     ['l'] = {.mode = MODE_NOFOLLOW},
-    ['p'] = {.mode = MODE_PRIVATE},
+    ['P'] = {.mode = MODE_PRIVATE},
     ['S'] = {.mode = MODE_STICKY},
-    ['C'] = {.mode = MODE_CHILDREN},
+    ['g'] = {.mode = MODE_PROPAGATE},
     ['L'] = {.mode = MODE_LOCKED},
 };
 
@@ -51,13 +52,14 @@ static const path_flag_t flags[] = {
     {.mode = MODE_APPEND, .name = "append"},
     {.mode = MODE_CREATE, .name = "create"},
     {.mode = MODE_EXCLUSIVE, .name = "exclusive"},
+    {.mode = MODE_PARENTS, .name = "parents"},
     {.mode = MODE_TRUNCATE, .name = "truncate"},
     {.mode = MODE_DIRECTORY, .name = "directory"},
     {.mode = MODE_RECURSIVE, .name = "recursive"},
     {.mode = MODE_NOFOLLOW, .name = "nofollow"},
     {.mode = MODE_PRIVATE, .name = "private"},
     {.mode = MODE_STICKY, .name = "sticky"},
-    {.mode = MODE_CHILDREN, .name = "children"},
+    {.mode = MODE_PROPAGATE, .name = "propagate"},
     {.mode = MODE_LOCKED, .name = "locked"},
 };
 
@@ -68,7 +70,7 @@ static mode_t path_flag_to_mode(const char* flag, uint64_t length)
         return MODE_NONE;
     }
 
-    for (uint64_t i = 0; i < sizeof(flags) / sizeof(flags[0]); i++)
+    for (uint64_t i = 0; i < ARRAY_SIZE(flags); i++)
     {
         size_t len = strnlen_s(flags[i].name, MAX_NAME);
         if (len == length && strncmp(flag, flags[i].name, length) == 0)
@@ -289,6 +291,12 @@ static bool path_is_name_valid(const char* name)
 
 static uint64_t path_handle_dotdot(path_t* path)
 {
+    if (!PATH_IS_VALID(path))
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     if (path->dentry == path->mount->source)
     {
         uint64_t iter = 0;
@@ -325,6 +333,12 @@ static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namesp
 
 static uint64_t path_follow_symlink(dentry_t* dentry, path_t* path, namespace_handle_t* ns, uint64_t symlinks)
 {
+    if (dentry == NULL || !PATH_IS_VALID(path) || ns == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     if (symlinks >= PATH_MAX_SYMLINK)
     {
         errno = ELOOP;
@@ -332,10 +346,12 @@ static uint64_t path_follow_symlink(dentry_t* dentry, path_t* path, namespace_ha
     }
 
     char symlinkPath[MAX_PATH];
-    if (vfs_readlink(dentry->inode, symlinkPath, MAX_PATH) == ERR)
+    uint64_t readCount = vfs_readlink(dentry->inode, symlinkPath, MAX_PATH - 1);
+    if (readCount == ERR)
     {
         return ERR;
     }
+    symlinkPath[readCount] = '\0';
 
     pathname_t pathname;
     if (pathname_init(&pathname, symlinkPath) == ERR)
@@ -392,23 +408,12 @@ uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_handle
 
 static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namespace_handle_t* ns, uint64_t symlinks)
 {
-    if (path == NULL || !PATHNAME_IS_VALID(pathname) || ns == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     const char* p = pathname->string;
     if (pathname->string[0] == '/')
     {
-        if (namespace_get_root_path(ns, path) == ERR)
-        {
-            return ERR;
-        }
+        namespace_get_root(ns, path);
         p++;
     }
-
-    assert(path->dentry != NULL && path->mount != NULL);
 
     char component[MAX_NAME];
     while (*p != '\0')
@@ -464,6 +469,12 @@ static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namesp
 
 uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_handle_t* ns)
 {
+    if (path == NULL || !PATHNAME_IS_VALID(pathname) || ns == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     return path_walk_depth(path, pathname, ns, 0);
 }
 
@@ -479,7 +490,7 @@ uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLas
 
     if (strcmp(pathname->string, "/") == 0)
     {
-        errno = ENOENT;
+        errno = EINVAL;
         return ERR;
     }
 
@@ -629,7 +640,7 @@ uint64_t mode_to_string(mode_t mode, char* out, uint64_t length)
     }
 
     uint64_t index = 0;
-    for (uint64_t i = 0; i < sizeof(flags) / sizeof(flags[0]); i++)
+    for (uint64_t i = 0; i < ARRAY_SIZE(flags); i++)
     {
         if (mode & flags[i].mode)
         {

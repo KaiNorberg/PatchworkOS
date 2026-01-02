@@ -4,13 +4,13 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/ipi.h>
 #include <kernel/cpu/tss.h>
-#include <kernel/defs.h>
 #include <kernel/drivers/perf.h>
 #include <kernel/drivers/rand.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
+#include <sys/defs.h>
 
 #include <kernel/utils/map.h>
 #include <stdatomic.h>

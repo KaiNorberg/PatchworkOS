@@ -11,45 +11,36 @@ static const char* type_to_string(inode_type_t type)
     switch (type)
     {
     case INODE_FILE:
-        return "File";
+        return "file";
     case INODE_DIR:
-        return "Directory";
+        return "directory";
+    case INODE_SYMLINK:
+        return "symlink";
     default:
-        return "Unknown";
+        return "unknown";
     }
 }
 
 static void print_stat(const char* path)
 {
-    stat_t st;
-    if (stat(path, &st) == ERR)
+    stat_t buffer;
+    if (stat(path, &buffer) == ERR)
     {
         printf("stat: failed to stat %s (%s)\n", path, strerror(errno));
         return;
     }
 
     printf("  File: %s\n", path);
-    printf("  Name: %s\n", st.name);
-    printf("Number: %llu\n", st.number);
-    printf("  Type: %s\n", type_to_string(st.type));
-    printf("  Size: %llu\n", st.size);
-    printf("Blocks: %llu\n", st.blocks);
-    printf(" Links: %llu\n", st.linkAmount);
-
-    struct tm timeData;
-    char buffer[MAX_PATH];
-    localtime_r(&st.accessTime, &timeData);
-    printf("Access: %02d:%02d %d-%02d-%02d\n", timeData.tm_hour, timeData.tm_min, timeData.tm_year + 1900,
-        timeData.tm_mon + 1, timeData.tm_mday);
-    localtime_r(&st.modifyTime, &timeData);
-    printf("Modify: %02d:%02d %d-%02d-%02d\n", timeData.tm_hour, timeData.tm_min, timeData.tm_year + 1900,
-        timeData.tm_mon + 1, timeData.tm_mday);
-    localtime_r(&st.changeTime, &timeData);
-    printf("Change: %02d:%02d %d-%02d-%02d\n", timeData.tm_hour, timeData.tm_min, timeData.tm_year + 1900,
-        timeData.tm_mon + 1, timeData.tm_mday);
-    localtime_r(&st.createTime, &timeData);
-    printf("Create: %02d:%02d %d-%02d-%02d\n", timeData.tm_hour, timeData.tm_min, timeData.tm_year + 1900,
-        timeData.tm_mon + 1, timeData.tm_mday);
+    printf("  Size: %llu\t\tBlocks: %llu\t   IO Block: %llu  %s\n", buffer.size, buffer.blocks, buffer.blockSize,
+        type_to_string(buffer.type));
+    printf("Device: %u,%u\tInode: %llu\tLinks: %llu\n", buffer.device.type, buffer.device.id, buffer.number,
+        buffer.linkAmount);
+    printf("   Max: %llu\n", buffer.maxFileSize);
+    printf("  Name: %s\n", buffer.name);
+    printf("Access: %s", ctime(&buffer.accessTime));
+    printf("Modify: %s", ctime(&buffer.modifyTime));
+    printf("Change: %s", ctime(&buffer.changeTime));
+    printf(" Birth: %s", ctime(&buffer.createTime));
 }
 
 int main(int argc, char** argv)

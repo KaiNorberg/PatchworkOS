@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/defs.h>
 
 #define WINDOW_CLIENT_ELEM_ID (UINT64_MAX)
 #define WINDOW_DECO_ELEM_ID (UINT64_MAX - 1)
@@ -28,7 +29,7 @@ typedef struct
 
 static void window_deco_titlebar_rect(window_t* win, element_t* elem, rect_t* rect)
 {
-    (void)win; // Unused
+    UNUSED(win);
 
     rect_t contentRect = element_get_content_rect(elem);
     const theme_t* theme = element_get_theme(elem);
@@ -367,7 +368,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     }
     win->surface = event.target;
 
-    fd_t shmem = claim(&event.surfaceNew.shmemKey);
+    fd_t shmem = claim(event.surfaceNew.shmemKey);
     if (shmem == ERR)
     {
         window_free(win);

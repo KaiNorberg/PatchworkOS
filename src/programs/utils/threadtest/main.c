@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/defs.h>
 #include <threads.h>
 #include <time.h>
 
@@ -49,7 +50,7 @@ static void count_primes(uint64_t start, uint64_t end)
 
 static int thread_entry(void* arg)
 {
-    (void)arg;
+    UNUSED(arg);
 
     uint64_t start;
     while ((start = atomic_fetch_add(&next, 1000)) < PRIME_MAX)

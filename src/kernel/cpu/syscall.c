@@ -8,7 +8,7 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 
-#include <kernel/defs.h>
+#include <sys/defs.h>
 
 #include <assert.h>
 #include <errno.h>

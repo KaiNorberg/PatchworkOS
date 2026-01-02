@@ -144,7 +144,7 @@ static file_ops_t dataOps = {
 
 static uint64_t socket_ctl_bind(file_t* file, uint64_t argc, const char** argv)
 {
-    (void)argc; // Unused
+    UNUSED(argc);
 
     socket_t* sock = socket_get(file);
     assert(sock != NULL);
@@ -210,7 +210,7 @@ static uint64_t socket_ctl_listen(file_t* file, uint64_t argc, const char** argv
 
 static uint64_t socket_ctl_connect(file_t* file, uint64_t argc, const char** argv)
 {
-    (void)argc; // Unused
+    UNUSED(argc);
 
     socket_t* sock = socket_get(file);
     assert(sock != NULL);
@@ -383,7 +383,7 @@ static void socket_unmount(superblock_t* superblock)
 
     while (!list_is_empty(&sock->files))
     {
-        UNREF(CONTAINER_OF_SAFE(list_pop_first(&sock->files), dentry_t, otherEntry));
+        UNREF(CONTAINER_OF_SAFE(list_pop_front(&sock->files), dentry_t, otherEntry));
     }
 }
 
@@ -415,8 +415,8 @@ uint64_t socket_create(socket_family_t* family, socket_type_t type, char* out, u
     path_t familyDir = socket_family_get_dir(family);
     PATH_DEFER(&familyDir);
 
-    mount_t* mount = sysfs_submount_new(&familyDir, sock->id, NULL, MODE_PRIVATE | MODE_ALL_PERMS, &dirInodeOps,
-        &superblockOps, sock);
+    mount_t* mount = sysfs_submount_new(&familyDir, sock->id, NULL,
+        MODE_STICKY | MODE_LOCKED | MODE_PRIVATE | MODE_ALL_PERMS, &dirInodeOps, &superblockOps, sock);
     if (mount == NULL)
     {
         socket_free(sock);

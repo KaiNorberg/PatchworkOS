@@ -4,6 +4,7 @@
 #include <kernel/fs/superblock.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
+#include <stdint.h>
 #include <sys/io.h>
 #include <sys/list.h>
 
@@ -16,7 +17,8 @@ typedef struct process process_t;
  * @defgroup kernel_fs_namespace Namespaces
  * @ingroup kernel_fs
  *
- * The per-process namespace system allows each process to have its own view of the filesystem hierarchy.
+ * The per-process namespace system allows each process to have its own view of the filesystem hierarchy, acting as the
+ * primary form of security.
  *
  * @{
  */
@@ -27,16 +29,9 @@ typedef struct process process_t;
 #define NAMESPACE_MAX_TRAVERSE 32
 
 /**
- * @brief Mount stack entry.
- * @struct mount_stack_entry_t
- *
- * Used to store mounts in a stack, allowing the same mount to be stored in multiple namespaces.
+ * @brief Maximum number of mounts that can be mounted to a single mountpoint.
  */
-typedef struct mount_stack_entry
-{
-    list_entry_t entry;
-    mount_t* mount;
-} mount_stack_entry_t;
+#define MOUNT_STACK_MAX_MOUNTS 8
 
 /**
  * @brief Mount stack.
@@ -48,7 +43,8 @@ typedef struct mount_stack
 {
     list_entry_t entry;
     map_entry_t mapEntry;
-    list_t mounts; ///< List of `mount_stack_entry_t`.
+    mount_t* mounts[MOUNT_STACK_MAX_MOUNTS];
+    uint64_t count;
 } mount_stack_t;
 
 /**
@@ -60,6 +56,7 @@ typedef enum
     NAMESPACE_HANDLE_SHARE = 0 << 0, ///< Share the same namespace as the source.
     NAMESPACE_HANDLE_COPY =
         1 << 1, ///< Copy the contents of the source into a new namespace with the source as the parent.
+    NAMESPACE_HANDLE_EMPTY = 1 << 2, ///< Create a new empty namespace with the source as the parent.
 } namespace_handle_flags_t;
 
 /**
@@ -86,7 +83,6 @@ typedef struct namespace
     namespace_t* parent; ///< The parent namespace, can be `NULL`.
     list_t stacks;       ///< List of stacks in this namespace.
     map_t mountMap;      ///< Map used to go from source dentries to namespace mount stacks.
-    mount_t* root;       ///< The root mount of the namespace.
     list_t handles;      ///< List of `namespace_handle_t` containing this namespace.
     rwlock_t lock;
     // clang-format off
@@ -121,6 +117,19 @@ void namespace_handle_deinit(namespace_handle_t* handle);
 void namespace_handle_clear(namespace_handle_t* handle);
 
 /**
+ * @brief Check if mounts in a namespace can be propagated to another namespace.
+ *
+ * This is equivalent to checkin if `other` is a child of `handle` and is intended to be used for security checks.
+ *
+ * If `handle` stores the same namespace as `other`, this will also return `true`.
+ *
+ * @param ns The source namespace handle.
+ * @param other The target namespace handle.
+ * @return `true` if mounts can be propagated, `false` otherwise.
+ */
+bool namespace_accessible(namespace_handle_t* handle, namespace_handle_t* other);
+
+/**
  * @brief If the given path is a mountpoint in the namespace, traverse to the mounted filesystem, else no-op.
  *
  * @param handle The namespace handle containing the namespace to traverse.
@@ -133,9 +142,9 @@ bool namespace_traverse(namespace_handle_t* handle, path_t* path);
  * @brief Mount a filesystem in a namespace.
  *
  * @param handle The namespace handle containing the namespace to mount to.
- * @param deviceName The device name, or `VFS_DEVICE_NAME_NONE` for no device.
- * @param target The target path to mount to.
+ * @param target The target path to mount to, can be `NULL` to mount to root.
  * @param fsName The filesystem name.
+ * @param deviceName The device name, or `NULL` for no device.
  * @param flags Mount flags.
  * @param mode The mode specifying permissions and mount behaviour.
  * @param private Private data for the filesystem's mount function.
@@ -149,15 +158,15 @@ bool namespace_traverse(namespace_handle_t* handle, path_t* path);
  * - `ENOENT`: The root does not exist or the target is negative.
  * - Other errors as returned by the filesystem's `mount()` function or `mount_new()`.
  */
-mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char* deviceName, const char* fsName,
+mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char* fsName, const char* deviceName,
     mode_t mode, void* private);
 
 /**
  * @brief Bind a source path to a target path in a namespace.
  *
  * @param handle The namespace handle containing the namespace to bind in.
+ * @param target The target path to bind to, can be `NULL` to bind to root.
  * @param source The source path to bind from, could be either a file or directory and from any filesystem.
- * @param target The target path to bind to.
  * @param mode The mode specifying permissions and mount behaviour.
  * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
@@ -165,7 +174,7 @@ mount_t* namespace_mount(namespace_handle_t* handle, path_t* target, const char*
  * - `ENOMEM`: Out of memory.
  * - Other errors as returned by `mount_new()`.
  */
-mount_t* namespace_bind(namespace_handle_t* handle, path_t* source, path_t* target, mode_t mode);
+mount_t* namespace_bind(namespace_handle_t* handle, path_t* target, path_t* source, mode_t mode);
 
 /**
  * @brief Remove a mount in a namespace.
@@ -180,11 +189,8 @@ void namespace_unmount(namespace_handle_t* handle, mount_t* mount, mode_t mode);
  * @brief Get the root path of a namespace.
  *
  * @param handle The namespace handle containing the namespace to get the root of.
- * @param out The output root path.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `ENOENT`: The namespace has no root mount.
+ * @param out The output root path, may be a invalid `NULL` path if the namespace is empty.
  */
-uint64_t namespace_get_root_path(namespace_handle_t* handle, path_t* out);
+void namespace_get_root(namespace_handle_t* handle, path_t* out);
 
 /** @} */

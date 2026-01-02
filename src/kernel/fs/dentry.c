@@ -114,17 +114,30 @@ static void dentry_free(dentry_t* dentry)
 
 dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name)
 {
-    if (name == NULL || superblock == NULL)
+    if (superblock == NULL)
     {
         errno = EINVAL;
         return NULL;
     }
 
-    size_t nameLen = strnlen_s(name, MAX_NAME);
-    if (nameLen >= MAX_NAME || nameLen == 0)
+    if ((parent == NULL || name == NULL) && ((void*)parent != (void*)name))
     {
         errno = EINVAL;
         return NULL;
+    }
+
+    if (name == NULL)
+    {
+        name = "";
+    }
+    else
+    {
+        size_t nameLen = strnlen_s(name, MAX_NAME);
+        if (nameLen >= MAX_NAME || nameLen == 0)
+        {
+            errno = EINVAL;
+            return NULL;
+        }
     }
 
     assert(parent == NULL || superblock == parent->superblock);
@@ -181,6 +194,25 @@ void dentry_remove(dentry_t* dentry)
     dentry_cache_remove(dentry);
 }
 
+static dentry_t* dentry_revalidate(dentry_t* dentry)
+{
+    if (dentry == NULL)
+    {
+        return NULL;
+    }
+
+    if (dentry->ops != NULL && dentry->ops->revalidate != NULL)
+    {
+        if (dentry->ops->revalidate(dentry) == ERR)
+        {
+            UNREF(dentry);
+            return NULL;
+        }
+    }
+
+    return dentry;
+}
+
 dentry_t* dentry_get(const dentry_t* parent, const char* name)
 {
     if (parent == NULL || name == NULL)
@@ -190,12 +222,12 @@ dentry_t* dentry_get(const dentry_t* parent, const char* name)
     }
 
     map_key_t key = dentry_cache_key(parent->id, name);
-    return dentry_cache_get(&key);
+    return dentry_revalidate(dentry_cache_get(&key));
 }
 
 dentry_t* dentry_lookup(const path_t* parent, const char* name)
 {
-    if (parent == NULL || parent->dentry == NULL || parent->mount == NULL || name == NULL)
+    if (!PATH_IS_VALID(parent) || name == NULL)
     {
         errno = EINVAL;
         return NULL;
@@ -205,7 +237,7 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name)
     dentry_t* dentry = dentry_cache_get(&key);
     if (dentry != NULL)
     {
-        return dentry;
+        return dentry_revalidate(dentry);
     }
 
     if (!DENTRY_IS_DIR(parent->dentry))
@@ -219,7 +251,7 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name)
     {
         if (errno == EEXIST)
         {
-            return dentry_cache_get(&key);
+            return dentry_revalidate(dentry_cache_get(&key));
         }
         return NULL;
     }
@@ -229,7 +261,7 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name)
     inode_t* dir = parent->dentry->inode;
     if (dir->ops == NULL || dir->ops->lookup == NULL)
     {
-        return dentry; // Leave it negative
+        return dentry_revalidate(dentry); // Leave it negative
     }
 
     if (dir->ops->lookup(dir, dentry) == ERR)
@@ -238,7 +270,7 @@ dentry_t* dentry_lookup(const path_t* parent, const char* name)
         return NULL;
     }
 
-    return dentry;
+    return dentry_revalidate(dentry);
 }
 
 void dentry_make_positive(dentry_t* dentry, inode_t* inode)
@@ -256,32 +288,38 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode)
     }
 }
 
-uint64_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx)
+bool dentry_iterate_dots(dentry_t* dentry, dir_ctx_t* ctx)
 {
-    uint64_t index = 0;
-
-    if (index >= ctx->pos)
+    if (ctx->index++ >= ctx->pos)
     {
         if (!ctx->emit(ctx, ".", dentry->inode->number, dentry->inode->type))
         {
-            return 0;
+            return false;
         }
     }
-    index++;
 
-    if (index >= ctx->pos)
+    if (ctx->index++ >= ctx->pos)
     {
         if (!ctx->emit(ctx, "..", dentry->parent->inode->number, dentry->parent->inode->type))
         {
-            return 0;
+            return false;
         }
     }
-    index++;
+
+    return true;
+}
+
+uint64_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx)
+{
+    if (!dentry_iterate_dots(dentry, ctx))
+    {
+        return 0;
+    }
 
     dentry_t* child;
     LIST_FOR_EACH(child, &dentry->children, siblingEntry)
     {
-        if (index >= ctx->pos)
+        if (ctx->index++ >= ctx->pos)
         {
             assert(DENTRY_IS_POSITIVE(child));
             if (!ctx->emit(ctx, child->name, child->inode->number, child->inode->type))
@@ -289,7 +327,6 @@ uint64_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx)
                 return 0;
             }
         }
-        index++;
     }
 
     return 0;

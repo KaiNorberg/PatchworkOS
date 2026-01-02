@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kernel/cpu/interrupt.h>
-#include <kernel/defs.h>
+#include <sys/defs.h>
 
 #include <stdatomic.h>
 

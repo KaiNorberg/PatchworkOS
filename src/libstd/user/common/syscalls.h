@@ -235,19 +235,24 @@ static inline uint64_t _syscall_link(const char* oldPath, const char* newPath)
     return _SYSCALL2(uint64_t, SYS_LINK, const char*, oldPath, const char*, newPath);
 }
 
-static inline uint64_t _syscall_share(key_t* key, fd_t fd, clock_t timeout)
+static inline uint64_t _syscall_share(char* key, uint64_t size, fd_t fd, clock_t timeout)
 {
-    return _SYSCALL3(uint64_t, SYS_SHARE, key_t*, key, fd_t, fd, clock_t, timeout);
+    return _SYSCALL4(uint64_t, SYS_SHARE, char*, key, uint64_t, size, fd_t, fd, clock_t, timeout);
 }
 
-static inline fd_t _syscall_claim(key_t* key)
+static inline fd_t _syscall_claim(const char* key)
 {
-    return _SYSCALL1(fd_t, SYS_CLAIM, key_t*, key);
+    return _SYSCALL1(fd_t, SYS_CLAIM, const char*, key);
 }
 
-static inline uint64_t _syscall_bind(fd_t source, const char* mountpoint)
+static inline uint64_t _syscall_bind(const char* mountpoint, fd_t source)
 {
-    return _SYSCALL2(uint64_t, SYS_BIND, fd_t, source, const char*, mountpoint);
+    return _SYSCALL2(uint64_t, SYS_BIND, const char*, mountpoint, fd_t, source);
+}
+
+static inline fd_t _syscall_openat(fd_t from, const char* path)
+{
+    return _SYSCALL2(fd_t, SYS_OPENAT, fd_t, from, const char*, path);
 }
 
 static inline uint64_t _syscall_notify(note_func_t func)
@@ -270,4 +275,14 @@ static inline uint64_t _syscall_readlink(const char* path, char* buffer, uint64_
 static inline uint64_t _syscall_symlink(const char* target, const char* linkpath)
 {
     return _SYSCALL2(uint64_t, SYS_SYMLINK, const char*, target, const char*, linkpath);
+}
+
+static inline uint64_t _syscall_mount(const char* mountpoint, const char* fs, const char* device)
+{
+    return _SYSCALL3(uint64_t, SYS_MOUNT, const char*, mountpoint, const char*, fs, const char*, device);
+}
+
+static inline uint64_t _syscall_umount(const char* mountpoint)
+{
+    return _SYSCALL1(uint64_t, SYS_UNMOUNT, const char*, mountpoint);
 }

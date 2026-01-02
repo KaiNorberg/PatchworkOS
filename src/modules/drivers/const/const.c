@@ -15,24 +15,25 @@
  * @defgroup modules_drivers_const Constant Devices
  * @ingroup modules_drivers
  *
- * This module provides the constant devices which provide user space
-with its primary means of allocating memory and obtaining constant data.
+ * This module provides the constant devices which provide user space with its primary means of allocating memory and
+ * obtaining constant data.
  *
- * The constant devices are exposed under the `/dev` directory:
- * - `/dev/one`: A readable and mappable file that returns bytes with all bits set to 1.
- * - `/dev/zero`: A readable and mappable file that returns bytes with all bits set to 0.
- * - `/dev/null`: A readable and writable file that discards all written data and returns EOF on read.
+ * The constant devices are exposed under the `/dev/const/` directory:
+ * - `/dev/const/one`: A readable and mappable file that returns bytes with all bits set to 1.
+ * - `/dev/const/zero`: A readable and mappable file that returns bytes with all bits set to 0.
+ * - `/dev/const/null`: A readable and writable file that discards all written data and returns EOF on read.
  *
  * @{
  */
 
+static dentry_t* constDir;
 static dentry_t* oneFile;
 static dentry_t* zeroFile;
 static dentry_t* nullFile;
 
 static uint64_t const_one_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)file; // Unused
+    UNUSED(file);
 
     memset(buffer, -1, count);
     *offset += count;
@@ -41,8 +42,8 @@ static uint64_t const_one_read(file_t* file, void* buffer, uint64_t count, uint6
 
 static void* const_one_mmap(file_t* file, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
 {
-    (void)file;   // Unused
-    (void)offset; // Unused
+    UNUSED(file); // Unused
+    UNUSED(offset);
 
     addr = vmm_alloc(&sched_process()->space, addr, length, flags, VMM_ALLOC_OVERWRITE);
     if (addr == NULL)
@@ -61,7 +62,7 @@ static file_ops_t oneOps = {
 
 static uint64_t const_zero_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)file; // Unused
+    UNUSED(file);
 
     memset(buffer, 0, count);
     *offset += count;
@@ -70,8 +71,8 @@ static uint64_t const_zero_read(file_t* file, void* buffer, uint64_t count, uint
 
 static void* const_zero_mmap(file_t* file, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
 {
-    (void)file;   // Unused
-    (void)offset; // Unused
+    UNUSED(file); // Unused
+    UNUSED(offset);
 
     addr = vmm_alloc(&sched_process()->space, addr, length, flags, VMM_ALLOC_OVERWRITE);
     if (addr == NULL)
@@ -90,8 +91,8 @@ static file_ops_t zeroOps = {
 
 static uint64_t const_null_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)file;   // Unused
-    (void)buffer; // Unused
+    UNUSED(file); // Unused
+    UNUSED(buffer);
 
     *offset += count;
     return 0;
@@ -99,8 +100,8 @@ static uint64_t const_null_read(file_t* file, void* buffer, uint64_t count, uint
 
 static uint64_t const_null_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
-    (void)file;   // Unused
-    (void)buffer; // Unused
+    UNUSED(file); // Unused
+    UNUSED(buffer);
 
     *offset += count;
     return count;
@@ -113,24 +114,34 @@ static file_ops_t nullOps = {
 
 static uint64_t const_init(void)
 {
-    oneFile = sysfs_file_new(NULL, "one", NULL, &oneOps, NULL);
+    constDir = sysfs_dir_new(NULL, "const", NULL, NULL);
+    if (constDir == NULL)
+    {
+        LOG_ERR("failed to init const directory\n");
+        return ERR;
+    }
+
+    oneFile = sysfs_file_new(constDir, "one", NULL, &oneOps, NULL);
     if (oneFile == NULL)
     {
+        UNREF(constDir);
         LOG_ERR("failed to init one file\n");
         return ERR;
     }
 
-    zeroFile = sysfs_file_new(NULL, "zero", NULL, &zeroOps, NULL);
+    zeroFile = sysfs_file_new(constDir, "zero", NULL, &zeroOps, NULL);
     if (zeroFile == NULL)
     {
+        UNREF(constDir);
         UNREF(oneFile);
         LOG_ERR("failed to init zero file\n");
         return ERR;
     }
 
-    nullFile = sysfs_file_new(NULL, "null", NULL, &nullOps, NULL);
+    nullFile = sysfs_file_new(constDir, "null", NULL, &nullOps, NULL);
     if (nullFile == NULL)
     {
+        UNREF(constDir);
         UNREF(oneFile);
         UNREF(zeroFile);
         LOG_ERR("failed to init null file\n");
@@ -142,6 +153,7 @@ static uint64_t const_init(void)
 
 static void const_deinit(void)
 {
+    UNREF(constDir);
     UNREF(oneFile);
     UNREF(zeroFile);
     UNREF(nullFile);

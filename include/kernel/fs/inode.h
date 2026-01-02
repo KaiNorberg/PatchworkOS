@@ -40,15 +40,6 @@ typedef struct dentry dentry_t;
  */
 
 /**
- * @brief Inode flags.
- * @enum inode_flags_t
- */
-typedef enum
-{
-    INODE_NONE = 0, ///< None
-} inode_flags_t;
-
-/**
  * @brief Inode structure.
  * @struct inode_t
  *
@@ -57,9 +48,8 @@ typedef enum
 typedef struct inode
 {
     ref_t ref;
-    inode_number_t number; ///< Constant after creation.
-    inode_type_t type;     ///< Constant after creation.
-    inode_flags_t flags;
+    ino_t number;
+    inode_type_t type;
     _Atomic(uint64_t) dentryCount; ///< The number of dentries pointing to this inode.
     uint64_t size;
     uint64_t blocks;
@@ -68,9 +58,9 @@ typedef struct inode
     time_t changeTime; ///< Unix time stamp for the last file metadata alteration.
     time_t createTime; ///< Unix time stamp for the inode creation.
     void* private;
-    superblock_t* superblock;  ///< Constant after creation.
-    const inode_ops_t* ops;    ///< Constant after creation.
-    const file_ops_t* fileOps; ///< Constant after creation.
+    superblock_t* superblock;
+    const inode_ops_t* ops;
+    const file_ops_t* fileOps;
     mutex_t mutex;
 } inode_t;
 
@@ -168,7 +158,7 @@ typedef struct inode_ops
  * @param fileOps The file operations for files opened on this inode.
  * @return On success, the new inode. On failure, returns `NULL` and `errno` is set.
  */
-inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, const inode_ops_t* ops,
+inode_t* inode_new(superblock_t* superblock, ino_t number, inode_type_t type, const inode_ops_t* ops,
     const file_ops_t* fileOps);
 
 /**
@@ -207,5 +197,16 @@ void inode_notify_change(inode_t* inode);
  * @param inode The inode to truncate.
  */
 void inode_truncate(inode_t* inode);
+
+/**
+ * @brief Helper to generate a consistent inode number for an entry in a directory.
+ *
+ * This is useful for in-memory filesystems or filesystem that dont provide native inode numbers.
+ *
+ * @param parentNumber The inode number of the parent directory.
+ * @param name The name of the entry.
+ * @return The generated inode number.
+ */
+ino_t ino_gen(ino_t parentNumber, const char* name);
 
 /** @} */

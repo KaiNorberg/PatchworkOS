@@ -1,9 +1,9 @@
 #pragma once
 
-#include <kernel/defs.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/rbtree.h>
+#include <sys/defs.h>
 
 #include <sys/list.h>
 #include <sys/proc.h>

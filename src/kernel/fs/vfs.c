@@ -39,8 +39,58 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_h
     path_t target = PATH_EMPTY;
     if (path_walk_parent_and_child(path, &parent, &target, pathname, ns) == ERR)
     {
-        return ERR;
+        if (errno != ENOENT || !(pathname->mode & MODE_PARENTS))
+        {
+            return ERR;
+        }
+
+        char parentString[MAX_PATH];
+        strncpy(parentString, pathname->string, MAX_PATH);
+        parentString[MAX_PATH - 1] = '\0';
+
+        size_t len = strlen(parentString);
+        while (len > 1 && parentString[len - 1] == '/')
+        {
+            parentString[--len] = '\0';
+        }
+
+        char* lastSlash = strrchr(parentString, '/');
+        if (lastSlash == NULL)
+        {
+            return ERR;
+        }
+
+        if (lastSlash == parentString)
+        {
+            parentString[1] = '\0';
+        }
+        else
+        {
+            *lastSlash = '\0';
+        }
+
+        pathname_t parentPathname;
+        if (pathname_init(&parentPathname, parentString) == ERR)
+        {
+            return ERR;
+        }
+
+        parentPathname.mode = MODE_DIRECTORY | MODE_CREATE | MODE_PARENTS;
+
+        path_t recursiveStart = PATH_CREATE(path->mount, path->dentry);
+        PATH_DEFER(&recursiveStart);
+
+        if (vfs_create(&recursiveStart, &parentPathname, ns) == ERR)
+        {
+            return ERR;
+        }
+
+        if (path_walk_parent_and_child(path, &parent, &target, pathname, ns) == ERR)
+        {
+            return ERR;
+        }
     }
+
     PATH_DEFER(&parent);
     PATH_DEFER(&target);
 
@@ -53,9 +103,11 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_h
     inode_t* dir = parent.dentry->inode;
     if (dir->ops == NULL || dir->ops->create == NULL)
     {
-        errno = ENOSYS;
+        errno = EPERM;
         return ERR;
     }
+
+    MUTEX_SCOPE(&dir->mutex);
 
     if (DENTRY_IS_POSITIVE(target.dentry))
     {
@@ -108,7 +160,7 @@ file_t* vfs_open(const pathname_t* pathname, process_t* process)
         return NULL;
     }
 
-    path_t cwd = cwd_get(&process->cwd);
+    path_t cwd = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&cwd);
 
     return vfs_openat(&cwd, pathname, process);
@@ -122,7 +174,7 @@ uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* proc
         return ERR;
     }
 
-    path_t path = cwd_get(&process->cwd);
+    path_t path = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&path);
 
     if (vfs_open_lookup(&path, pathname, &process->ns) == ERR)
@@ -222,7 +274,7 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
 
     if (file->ops == NULL || file->ops->read == NULL)
     {
-        errno = ENOSYS;
+        errno = EINVAL;
         return ERR;
     }
 
@@ -261,7 +313,7 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
 
     if (file->ops == NULL || file->ops->write == NULL)
     {
-        errno = ENOSYS;
+        errno = EINVAL;
         return ERR;
     }
 
@@ -355,7 +407,7 @@ void* vfs_mmap(file_t* file, void* address, uint64_t length, pml_flags_t flags)
 
     if (file->ops == NULL || file->ops->mmap == NULL)
     {
-        errno = ENOSYS;
+        errno = ENODEV;
         return NULL;
     }
 
@@ -540,7 +592,7 @@ typedef struct
     namespace_handle_t* ns;
 } vfs_dir_ctx_t;
 
-static bool vfs_dir_emit(dir_ctx_t* ctx, const char* name, inode_number_t number, inode_type_t type)
+static bool vfs_dir_emit(dir_ctx_t* ctx, const char* name, ino_t number, inode_type_t type)
 {
     vfs_dir_ctx_t* vctx = (vfs_dir_ctx_t*)ctx;
     if (vctx->written + sizeof(dirent_t) > vctx->count)
@@ -776,7 +828,7 @@ static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
     inode_t* dir = path->dentry->parent->inode;
     if (dir->ops == NULL || dir->ops->remove == NULL)
     {
-        errno = ENOSYS;
+        errno = EPERM;
         return ERR;
     }
 
@@ -872,7 +924,7 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
         return ERR;
     }
 
-    path_t path = cwd_get(&process->cwd);
+    path_t path = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&path);
 
     if (path_walk(&path, pathname, &process->ns) == ERR)
@@ -930,7 +982,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
         return ERR;
     }
 
-    path_t cwd = cwd_get(&process->cwd);
+    path_t cwd = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&cwd);
 
     path_t oldParent = PATH_EMPTY;
@@ -953,7 +1005,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
         return ERR;
     }
 
-    if (oldParent.dentry->superblock->id != newParent.dentry->superblock->id)
+    if (oldParent.dentry->superblock != newParent.dentry->superblock)
     {
         errno = EXDEV;
         return ERR;
@@ -979,7 +1031,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
 
     if (newParent.dentry->inode->ops == NULL || newParent.dentry->inode->ops->link == NULL)
     {
-        errno = ENOSYS;
+        errno = EPERM;
         return ERR;
     }
 
@@ -1023,7 +1075,7 @@ uint64_t vfs_readlink(inode_t* symlink, char* buffer, uint64_t count)
 
     if (symlink->ops == NULL || symlink->ops->readlink == NULL)
     {
-        errno = ENOSYS;
+        errno = EINVAL;
         return ERR;
     }
 
@@ -1044,7 +1096,7 @@ uint64_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathnam
         return ERR;
     }
 
-    path_t cwd = cwd_get(&process->cwd);
+    path_t cwd = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&cwd);
 
     path_t newParent = PATH_EMPTY;
@@ -1071,7 +1123,7 @@ uint64_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathnam
 
     if (newParent.dentry->inode->ops == NULL || newParent.dentry->inode->ops->symlink == NULL)
     {
-        errno = ENOSYS;
+        errno = EPERM;
         return ERR;
     }
 
@@ -1099,7 +1151,7 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
         return ERR;
     }
 
-    path_t cwd = cwd_get(&process->cwd);
+    path_t cwd = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&cwd);
 
     path_t parent = PATH_EMPTY;
@@ -1151,7 +1203,7 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
     inode_t* dir = parent.dentry->inode;
     if (dir->ops == NULL || dir->ops->remove == NULL)
     {
-        errno = ENOSYS;
+        errno = EPERM;
         return ERR;
     }
 
@@ -1250,7 +1302,7 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
     path_t fromPath = PATH_EMPTY;
     if (from == FD_NONE)
     {
-        path_t cwd = cwd_get(&process->cwd);
+        path_t cwd = cwd_get(&process->cwd, &process->ns);
         path_copy(&fromPath, &cwd);
         path_put(&cwd);
     }
@@ -1522,7 +1574,7 @@ SYSCALL_DEFINE(SYS_READLINK, uint64_t, const char* pathString, char* buffer, uin
         return ERR;
     }
 
-    path_t path = cwd_get(&process->cwd);
+    path_t path = cwd_get(&process->cwd, &process->ns);
     PATH_DEFER(&path);
 
     if (path_walk(&path, &pathname, &process->ns) == ERR)

@@ -212,7 +212,7 @@ void cpu_stacks_overflow_check(cpu_t* cpu)
 
 static void cpu_halt_ipi_handler(ipi_func_data_t* data)
 {
-    (void)data;
+    UNUSED(data);
 
     while (true)
     {

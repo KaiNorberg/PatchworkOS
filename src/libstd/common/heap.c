@@ -38,6 +38,16 @@ static fd_t zeroDev = ERR;
 
 void* _heap_map_memory(uint64_t size)
 {
+    if (zeroDev == ERR)
+    {
+        zeroDev = open("/dev/const/zero:rw");
+        if (zeroDev == ERR)
+        {
+            errno = ENOMEM;
+            return NULL;
+        }
+    }
+
     void* addr = mmap(zeroDev, NULL, size, PROT_READ | PROT_WRITE);
     if (addr == NULL)
     {
@@ -67,11 +77,6 @@ void _heap_init(void)
     lock_init(&mutex);
 #else
     mtx_init(&mutex, mtx_plain);
-    zeroDev = open("/dev/zero");
-    if (zeroDev == ERR)
-    {
-        abort();
-    }
 #endif
     for (uint64_t i = 0; i < _HEAP_NUM_BINS; i++)
     {
@@ -284,7 +289,7 @@ _heap_header_t* _heap_alloc(uint64_t size)
     uint64_t freeBinIndex = bitmap_find_first_set(&freeBitmap, index, _HEAP_NUM_BINS);
     if (freeBinIndex != freeBitmap.length)
     {
-        suitableBlock = CONTAINER_OF(list_pop_first(&freeLists[freeBinIndex]), _heap_header_t, freeEntry);
+        suitableBlock = CONTAINER_OF(list_pop_front(&freeLists[freeBinIndex]), _heap_header_t, freeEntry);
         if (list_is_empty(&freeLists[freeBinIndex]))
         {
             bitmap_clear(&freeBitmap, freeBinIndex);

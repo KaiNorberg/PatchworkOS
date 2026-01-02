@@ -169,12 +169,12 @@ uint64_t thread_copy_from_user(thread_t* thread, void* dest, const void* userSrc
  * Will pin the user pages in memory while performing the copy and expand the user stack if necessary.
  *
  * @param thread The thread performing the operation.
- * @param dest The destination buffer in user space.
- * @param userSrc The source buffer in kernel space.
+ * @param userDest The destination buffer in user space.
+ * @param src The source buffer in kernel space.
  * @param length The number of bytes to copy.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t thread_copy_to_user(thread_t* thread, void* dest, const void* userSrc, uint64_t length);
+uint64_t thread_copy_to_user(thread_t* thread, void* userDest, const void* src, uint64_t length);
 
 /**
  * @brief Safely copy a null-terminated array of objects from user space.
@@ -190,6 +190,17 @@ uint64_t thread_copy_to_user(thread_t* thread, void* dest, const void* userSrc, 
  */
 uint64_t thread_copy_from_user_terminated(thread_t* thread, const void* userArray, const void* terminator,
     uint8_t objectSize, uint64_t maxCount, void** outArray, uint64_t* outCount);
+
+/**
+ * @brief Safely copy a string from user space.
+ *
+ * @param thread The thread performing the operation.
+ * @param dest The destination buffer in kernel space.
+ * @param userSrc The source buffer in user space.
+ * @param size The size of the destination buffer.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t thread_copy_from_user_string(thread_t* thread, char* dest, const char* userSrc, uint64_t size);
 
 /**
  * @brief Safely copy a string from user space and use it to initialize a pathname.

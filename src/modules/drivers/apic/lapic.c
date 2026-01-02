@@ -9,7 +9,7 @@
 #include <modules/acpi/tables.h>
 
 #include <assert.h>
-#include <kernel/defs.h>
+#include <sys/defs.h>
 
 static uintptr_t lapicBase = 0;
 
@@ -62,7 +62,7 @@ static void lapic_interrupt(cpu_t* cpu, irq_virt_t virt)
 
 static void lapic_eoi(cpu_t* cpu)
 {
-    (void)cpu;
+    UNUSED(cpu);
 
     lapic_write(LAPIC_REG_EOI, 0);
 }

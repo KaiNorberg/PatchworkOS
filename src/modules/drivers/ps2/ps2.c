@@ -54,7 +54,6 @@ static ps2_known_device_t knownKeyboards[] = {
     {"PNP0343", "Korean Enhanced keyboard 101(b/c)"},
     {"PNP0344", "Korean Enhanced keyboard 103"},
 };
-#define PS2_KNOWN_KEYBOARD_COUNT (sizeof(knownKeyboards) / sizeof(ps2_known_device_t))
 
 static ps2_known_device_t knownMice[] = {
     {"PNP0F00", "Microsoft Bus Mouse"},
@@ -96,7 +95,6 @@ static ps2_known_device_t knownMice[] = {
     {"PNP0FFC", "Reserved (temporarily) by Microsoft Kernel team"},
     {"PNP0FFF", "Reserved by Microsoft Systems (SDA Standard Compliant SD Host Controller Vendor)"},
 };
-#define PS2_KNOWN_MOUSE_COUNT (sizeof(knownMice) / sizeof(ps2_known_device_t))
 
 static ps2_device_info_t devices[PS2_DEV_COUNT] = {
     [0] = {.device = PS2_DEV_FIRST},
@@ -639,7 +637,7 @@ static uint64_t ps2_attach_device(const char* type, const char* name)
     devices[targetDevice].name = NULL;
     if (targetDevice == PS2_DEV_FIRST)
     {
-        for (size_t i = 0; i < PS2_KNOWN_KEYBOARD_COUNT; i++)
+        for (size_t i = 0; i < ARRAY_SIZE(knownKeyboards); i++)
         {
             if (strcmp(type, knownKeyboards[i].pnpId) == 0)
             {
@@ -650,7 +648,7 @@ static uint64_t ps2_attach_device(const char* type, const char* name)
     }
     else
     {
-        for (size_t i = 0; i < PS2_KNOWN_MOUSE_COUNT; i++)
+        for (size_t i = 0; i < ARRAY_SIZE(knownMice); i++)
         {
             if (strcmp(type, knownMice[i].pnpId) == 0)
             {

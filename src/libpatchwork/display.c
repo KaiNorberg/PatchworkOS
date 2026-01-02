@@ -6,31 +6,41 @@
 #include <string.h>
 #include <sys/list.h>
 
-static inline uint64_t display_events_pipe_read(display_t* disp, event_t* event)
+static inline uint64_t display_events_read(display_t* disp, event_t* event)
 {
-    if (disp->eventsInPipe > 0)
+    if (disp->events.readIndex == disp->events.writeIndex)
     {
-        if (read(disp->eventsPipe, event, sizeof(event_t)) != sizeof(event_t))
-        {
-            disp->isConnected = false;
-            return ERR;
-        }
-        disp->eventsInPipe--;
-        return sizeof(event_t);
+        return 0;
     }
 
-    return 0;
+    *event = disp->events.buffer[disp->events.readIndex];
+    disp->events.readIndex = (disp->events.readIndex + 1) % DISPLAY_MAX_EVENT;
+    return sizeof(event_t);
 }
 
-static inline uint64_t display_events_pipe_write(display_t* disp, const event_t* event)
+static inline uint64_t display_events_write(display_t* disp, const event_t* event)
 {
-    if (write(disp->eventsPipe, event, sizeof(event_t)) != sizeof(event_t))
+    uint64_t nextIndex = (disp->events.writeIndex + 1) % DISPLAY_MAX_EVENT;
+    if (nextIndex == disp->events.readIndex)
     {
-        disp->isConnected = false;
         return ERR;
     }
-    disp->eventsInPipe++;
+
+    disp->events.buffer[disp->events.writeIndex] = *event;
+    disp->events.writeIndex = nextIndex;
     return sizeof(event_t);
+}
+
+static inline uint64_t display_events_amount(display_t* disp)
+{
+    if (disp->events.writeIndex >= disp->events.readIndex)
+    {
+        return disp->events.writeIndex - disp->events.readIndex;
+    }
+    else
+    {
+        return DISPLAY_MAX_EVENT - (disp->events.readIndex - disp->events.writeIndex);
+    }
 }
 
 display_t* display_new(void)
@@ -73,16 +83,7 @@ display_t* display_new(void)
         return NULL;
     }
 
-    disp->eventsPipe = open("/dev/pipe/new");
-    if (disp->eventsPipe == ERR)
-    {
-        close(disp->data);
-        close(disp->ctl);
-        free(disp->id);
-        free(disp);
-        return NULL;
-    }
-    disp->eventsInPipe = 0;
+    memset(&disp->events, 0, sizeof(disp->events));
 
     disp->isConnected = true;
     disp->cmds.amount = 0;
@@ -91,21 +92,12 @@ display_t* display_new(void)
     list_init(&disp->fonts);
     list_init(&disp->images);
 
+    // Default font might be `NULL`.
     disp->defaultFont = font_new(disp, "default", "regular", 16);
-    if (disp->defaultFont == NULL)
-    {
-        close(disp->eventsPipe);
-        close(disp->data);
-        close(disp->ctl);
-        free(disp->id);
-        free(disp);
-        return NULL;
-    }
 
     if (mtx_init(&disp->mutex, mtx_recursive) == thrd_error)
     {
         font_free(disp->defaultFont);
-        close(disp->eventsPipe);
         close(disp->data);
         close(disp->ctl);
         free(disp->id);
@@ -144,7 +136,6 @@ void display_free(display_t* disp)
         image_free(image);
     }
 
-    close(disp->eventsPipe);
     close(disp->ctl);
     close(disp->data);
     mtx_destroy(&disp->mutex);
@@ -232,7 +223,7 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
         errno = ENOTCONN;
         return ERR;
     }
-    uint64_t readBytes = display_events_pipe_read(disp, event);
+    uint64_t readBytes = display_events_read(disp, event);
     mtx_unlock(&disp->mutex);
     if (readBytes == sizeof(event_t))
     {
@@ -243,8 +234,7 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
         return ERR;
     }
 
-    pollfd_t fds[] = {{.fd = disp->data, .events = POLLIN}, {.fd = disp->eventsPipe, .events = POLLIN}};
-    poll_events_t revents = poll(fds, 2, timeout);
+    poll_events_t revents = poll1(disp->data, POLLIN, timeout);
     if (revents & POLLERR)
     {
         display_disconnect(disp);
@@ -263,30 +253,11 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
         errno = ENOTCONN;
         return ERR;
     }
-    if (fds[1].revents & POLLIN)
+    if (read(disp->data, event, sizeof(event_t)) != sizeof(event_t))
     {
-        readBytes = display_events_pipe_read(disp, event);
-        if (readBytes == sizeof(event_t))
-        {
-            mtx_unlock(&disp->mutex);
-            return 0;
-        }
-        else if (readBytes == ERR)
-        {
-            mtx_unlock(&disp->mutex);
-            return ERR;
-        }
-    }
-    if (fds[0].revents & POLLIN)
-    {
-        if (read(disp->data, event, sizeof(event_t)) != sizeof(event_t))
-        {
-            disp->isConnected = false;
-            mtx_unlock(&disp->mutex);
-            return ERR;
-        }
+        disp->isConnected = false;
         mtx_unlock(&disp->mutex);
-        return 0;
+        return ERR;
     }
     mtx_unlock(&disp->mutex);
     return 0;
@@ -315,21 +286,19 @@ uint64_t display_poll(display_t* disp, pollfd_t* fds, uint64_t nfds, clock_t tim
 
     allFds[0].fd = disp->data;
     allFds[0].events = POLLIN;
-    allFds[1].fd = disp->eventsPipe;
-    allFds[1].events = POLLIN;
     for (uint64_t i = 0; i < nfds; i++)
     {
-        allFds[i + 2] = fds[i];
+        allFds[i + 1] = fds[i];
     }
 
-    uint64_t ready = poll(allFds, nfds + 2, timeout);
+    uint64_t ready = poll(allFds, nfds + 1, timeout);
     if (ready == ERR)
     {
         free(allFds);
         return ERR;
     }
 
-    if (allFds[0].revents & POLLERR || allFds[1].revents & POLLERR)
+    if (allFds[0].revents & POLLERR)
     {
         display_disconnect(disp);
         free(allFds);
@@ -341,13 +310,9 @@ uint64_t display_poll(display_t* disp, pollfd_t* fds, uint64_t nfds, clock_t tim
     {
         totalReady--;
     }
-    if (allFds[1].revents & POLLIN)
-    {
-        totalReady--;
-    }
     for (uint64_t i = 0; i < nfds; i++)
     {
-        fds[i].revents = allFds[i + 2].revents;
+        fds[i].revents = allFds[i + 1].revents;
     }
     free(allFds);
     return totalReady;
@@ -367,7 +332,7 @@ void display_push(display_t* disp, surface_id_t target, event_type_t type, void*
     memcpy(event.raw, data, MIN(EVENT_MAX_DATA, size));
 
     mtx_lock(&disp->mutex);
-    display_events_pipe_write(disp, &event);
+    display_events_write(disp, &event);
     mtx_unlock(&disp->mutex);
 }
 
@@ -380,10 +345,10 @@ uint64_t display_wait(display_t* disp, event_t* event, event_type_t expected)
     }
 
     mtx_lock(&disp->mutex);
-    uint64_t initEventsInPipe = disp->eventsInPipe;
-    for (uint64_t i = 0; i < initEventsInPipe; i++)
+    uint64_t eventsInPipe = display_events_amount(disp);
+    for (uint64_t i = 0; i < eventsInPipe; i++)
     {
-        if (display_events_pipe_read(disp, event) == ERR)
+        if (display_events_read(disp, event) == ERR)
         {
             mtx_unlock(&disp->mutex);
             return ERR;
@@ -391,7 +356,7 @@ uint64_t display_wait(display_t* disp, event_t* event, event_type_t expected)
 
         if (event->type != expected)
         {
-            display_events_pipe_write(disp, event);
+            display_events_write(disp, event);
         }
         else
         {
@@ -414,12 +379,10 @@ uint64_t display_wait(display_t* disp, event_t* event, event_type_t expected)
             mtx_unlock(&disp->mutex);
             return 0;
         }
-        else
-        {
-            mtx_lock(&disp->mutex);
-            display_events_pipe_write(disp, event);
-            mtx_unlock(&disp->mutex);
-        }
+
+        mtx_lock(&disp->mutex);
+        display_events_write(disp, event);
+        mtx_unlock(&disp->mutex);
     }
 }
 
@@ -485,11 +448,11 @@ uint64_t display_dispatch_pending(display_t* disp, event_type_t type, surface_id
     }
 
     mtx_lock(&disp->mutex);
-    uint64_t initEventsInPipe = disp->eventsInPipe;
-    for (uint64_t i = 0; i < initEventsInPipe; i++)
+    uint64_t eventsInPipe = display_events_amount(disp);
+    for (uint64_t i = 0; i < eventsInPipe; i++)
     {
         event_t event;
-        if (display_events_pipe_read(disp, &event) == ERR)
+        if (display_events_read(disp, &event) == ERR)
         {
             mtx_unlock(&disp->mutex);
             return ERR;
@@ -505,7 +468,7 @@ uint64_t display_dispatch_pending(display_t* disp, event_type_t type, surface_id
         }
         else
         {
-            display_events_pipe_write(disp, &event);
+            display_events_write(disp, &event);
         }
     }
     mtx_unlock(&disp->mutex);
