@@ -17,7 +17,7 @@ typedef struct process process_t;
  * @defgroup kernel_fs_namespace Namespaces
  * @ingroup kernel_fs
  *
- * The per-process namespace system allows each process to have its own view of the filesystem hierarchy.
+ * The per-process namespace system allows each process to have its own view of the filesystem hierarchy, acting as the primary form of security.
  *
  * @{
  */

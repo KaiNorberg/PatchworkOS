@@ -31,6 +31,8 @@
  *
  * @note The `stdin`, `stdout` and `stderr` key values will only be used if the package is a foreground package.
  *
+ * @todo Implement group and namespace specification via keys for foreground packages and the inherit profile.
+ * 
  * The "pkgspawn" socket will send a response in the format:
  *
  * ```
@@ -193,14 +195,6 @@ static void pkg_spawn(pkg_spawn_t* ctx)
     if (strcmp(profile, "empty") == 0)
     {
         flags |= SPAWN_EMPTY_NS;
-    }
-    else if (strcmp(profile, "copy") == 0)
-    {
-        flags |= SPAWN_COPY_NS;
-    }
-    else if (strcmp(profile, "share") == 0)
-    {
-        // Do nothing, default is to share namespace.
     }
     else
     {

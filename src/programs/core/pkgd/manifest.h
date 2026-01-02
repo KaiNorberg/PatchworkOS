@@ -39,15 +39,8 @@
  * There are four possible sandbox profiles:
  * - `empty`: Start with an empty namespace, meaning the process will by default not have access to any files or
  * devices.
- * - `copy`: Copy the pkgd's namespace, meaning the process will have total access to the same files and devices as the
- * pkgd but changes to the namespace will not affect the pkgd.
- * - `share`: Share the pkgd's namespace, meaning any changes to the namespace will affect both the pkgd and the
- * process.
  * - `inherit`: Inherit the caller's namespace. This is useful for system utilities like `ls` or `grep` that need to
  * operate on the user's current environment.
- *
- * @warning The copy and share profiles should only be used for trusted packages as they provide almost complete access
- * to the system.
  *
  * @todo Implement the inherit sandbox profile.
  *
