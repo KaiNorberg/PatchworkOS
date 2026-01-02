@@ -202,10 +202,6 @@ static void interactive_handle_ansi(ansi_result_t* result)
         fflush(stdout);
         break;
     case ANSI_CTRL_C:
-        printf("^C\n");
-        memset(buffer, 0, MAX_PATH);
-        pos = 0;
-        interactive_prompt();
         break;
     default:
         break;

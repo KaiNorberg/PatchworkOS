@@ -1,0 +1,22 @@
+[meta]
+description = Tetris
+version = 1.0
+author = PatchworkOS
+license = MIT
+
+[exec]
+bin = /app/bin/tetris
+priority = 30
+
+[sandbox]
+profile = empty
+foreground = true
+
+[env]
+
+[namespace]
+/app:rx = $PKG
+/cfg:r = /cfg
+/sys/data:r = /sys/data
+/net:rw = /net
+/dev/const:rw = /dev/const

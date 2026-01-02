@@ -165,7 +165,7 @@ int main(int argc, char** argv)
     }
 
     char status[NOTE_MAX];
-    if (read(wait, status, sizeof(status) - 1) == ERR)
+    if (RETRY_EINTR(read(wait, status, sizeof(status) - 1)) == ERR)
     {
         printf("pkgspawn: failed to read status (%s)\n", strerror(errno));
         free(id);
