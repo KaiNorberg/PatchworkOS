@@ -1,5 +1,6 @@
 #pragma once
 
+#include <_internal/MAX_PATH.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
@@ -32,27 +33,14 @@ typedef struct local_listen
 {
     ref_t ref;
     map_entry_t entry;
-    char address[MAX_NAME];
+    char address[MAX_PATH];
     list_t backlog;
     uint32_t pendingAmount;
     uint32_t maxBacklog;
     bool isClosed;
     lock_t lock;
     wait_queue_t waitQueue;
-    dentry_t* file;
 } local_listen_t;
-
-/**
- * @brief Initialize the `/net/local/listen/` directory.
- *
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t local_listen_dir_init(void);
-
-/**
- * @brief Deinitialize the `/net/local/listen/` directory.
- */
-void local_listen_dir_deinit(void);
 
 /**
  * @brief Allocate and initialize a new local listener.

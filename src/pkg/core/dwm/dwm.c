@@ -39,7 +39,7 @@ static poll_ctx_t* pollCtx;
 
 static client_t* dwm_client_accept(void)
 {
-    fd_t fd = open(F("/net/local/%s/accept:nonblock", id));
+    fd_t fd = open(F("/net/%s/accept:nonblock", id));
     if (fd == ERR)
     {
         printf("dwm: failed to open accept file (%s)\n", strerror(errno));
@@ -131,13 +131,13 @@ void dwm_init(void)
         abort();
     }
 
-    if (swritefile(F("/net/local/%s/ctl", id), "bind dwm && listen") == ERR)
+    if (swritefile(F("/net/%s/ctl", id), "bind dwm && listen") == ERR)
     {
         printf("dwm: failed to bind socket (%s)\n", strerror(errno));
         abort();
     }
 
-    data = open(F("/net/local/%s/data:nonblock", id));
+    data = open(F("/net/%s/data:nonblock", id));
     if (data == ERR)
     {
         printf("dwm: failed to open data file (%s)\n", strerror(errno));

@@ -5,9 +5,9 @@
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/sysfs.h>
+#include <kernel/proc/group.h>
 #include <kernel/ipc/note.h>
 #include <kernel/mem/space.h>
-#include <kernel/proc/group.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/futex.h>
@@ -22,8 +22,8 @@
  *
  * The "procfs" filesystem is used to expose process information and control interfaces to user space.
  *
- * Each process has its own directory located at `/proc/[pid]/`, where `[pid]` is the process ID and for convenience,
- * `/proc/self/` is a dynamic symbolic link to the current process's directory.
+ * Each process has its own directory whose name is the process ID and for convenience,
+ * `/self` is a dynamic symbolic link to the current process's directory.
  *
  * Unlike traditional UNIX systems, security is implemented such that a process can access all files of all processes
  * that it could propagate mounts to, meaning any processes in its namespace or in child namespaces. If a process cant
@@ -32,8 +32,11 @@
  *
  * @see kernel_fs_namespace
  *
- * Included below is a list of all entries found in the `/proc/[pid]/` directory. All entries with restricted visibility
+ * Included below is a list of all entries found in each processes directory. All entries with restricted visibility
  * will be marked with `(restricted)`.
+ *
+ * @note Anytime a file descriptor is referred to it is from the perspective of the target process unless otherwise
+ * stated.
  *
  * ## prio (restricted)
  *
@@ -128,9 +131,6 @@
  *
  * Included is a list of all supported commands.
  *
- * @note Anytime a command refers to a file descriptor the file descriptor is the file descriptor of the target process,
- * not the current process.
- *
  * ### close <fd>
  *
  * Closes the specified file descriptor in the process.
@@ -176,13 +176,13 @@
  *
  * Sets the namespace of the process to the one referred to by the file descriptor.
  *
- * The file descriptor must be one that was opened from `/proc/[pid]/ns`.
+ * The file descriptor must be one that was opened from `/[pid]/ns`.
  *
  * ### setgroup <fd>
  *
  * Sets the group of the process to the one referred to by the file descriptor.
  *
- * The file descriptor must be one that was opened from `/proc/[pid]/group`.
+ * The file descriptor must be one that was opened from `/[pid]/group`.
  *
  * ## env (restricted)
  *

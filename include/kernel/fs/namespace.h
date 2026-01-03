@@ -4,6 +4,7 @@
 #include <kernel/fs/superblock.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
+#include <kernel/utils/ref.h>
 #include <stdint.h>
 #include <sys/io.h>
 #include <sys/list.h>
@@ -11,6 +12,7 @@
 typedef struct namespace namespace_t;
 typedef struct mount mount_t;
 typedef struct process process_t;
+typedef struct dentry dentry_t;
 
 /**
  * @brief Per-process Namespaces.
@@ -63,7 +65,7 @@ typedef enum
  * @brief Per-process namespace handle.
  * @struct namespace_handle_t
  *
- * Stored in each process, used to allow multiple processes to share a namespace.
+ * Stored in each process, used to allow multiple processes to share a namespace while avoiding the complexity of reference counting.
  */
 typedef struct namespace_handle
 {
@@ -81,9 +83,10 @@ typedef struct namespace
     list_entry_t entry;  ///< The entry for the parent's children list.
     list_t children;     ///< List of child namespaces.
     namespace_t* parent; ///< The parent namespace, can be `NULL`.
-    list_t stacks;       ///< List of stacks in this namespace.
+    list_t stacks;       ///< List of `mount_stack_t` in this namespace.
     map_t mountMap;      ///< Map used to go from source dentries to namespace mount stacks.
     list_t handles;      ///< List of `namespace_handle_t` containing this namespace.
+    list_t weakHandles; ///< List of `namespace_weak_handle_t` referencing this namespace.
     rwlock_t lock;
     // clang-format off
 } namespace_t;

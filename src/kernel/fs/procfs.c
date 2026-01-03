@@ -1045,11 +1045,6 @@ static void procfs_pid_cleanup(inode_t* inode)
     inode->private = NULL;
 }
 
-static inode_ops_t pidInodeOps = {
-    .lookup = procfs_pid_lookup,
-    .cleanup = procfs_pid_cleanup,
-};
-
 static uint64_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 {
     if (!dentry_iterate_dots(dentry, ctx))
@@ -1082,6 +1077,11 @@ static uint64_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
     return 0;
 }
+
+static inode_ops_t pidInodeOps = {
+    .lookup = procfs_pid_lookup,
+    .cleanup = procfs_pid_cleanup,
+};
 
 static dentry_ops_t pidDentryOps = {
     .iterate = procfs_pid_iterate,
@@ -1135,10 +1135,6 @@ static uint64_t procfs_lookup(inode_t* dir, dentry_t* target)
     return 0;
 }
 
-static inode_ops_t procInodeOps = {
-    .lookup = procfs_lookup,
-};
-
 static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 {
     if (!dentry_iterate_dots(dentry, ctx))
@@ -1153,7 +1149,7 @@ static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, procEntries[i].name, ino_gen(dentry->parent->inode->number, procEntries[i].name),
+        if (!ctx->emit(ctx, procEntries[i].name, ino_gen(dentry->inode->number, procEntries[i].name),
                 procEntries[i].type))
         {
             return 0;
@@ -1170,7 +1166,7 @@ static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
         char name[MAX_NAME];
         snprintf(name, sizeof(name), "%llu", process->id);
-        if (!ctx->emit(ctx, name, ino_gen(dentry->parent->inode->number, name), INODE_DIR))
+        if (!ctx->emit(ctx, name, ino_gen(dentry->inode->number, name), INODE_DIR))
         {
             UNREF(process);
             return 0;
@@ -1179,6 +1175,10 @@ static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
     return 0;
 }
+
+static inode_ops_t procInodeOps = {
+    .lookup = procfs_lookup,
+};
 
 static dentry_ops_t procDentryOps = {
     .iterate = procfs_iterate,

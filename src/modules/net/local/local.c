@@ -2,24 +2,23 @@
 
 #include "local_conn.h"
 #include "local_listen.h"
-#include "socket.h"
-#include "socket_family.h"
-#include "socket_type.h"
+
+#include <kernel/fs/filesystem.h>
 #include <kernel/fs/path.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/module/module.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/ref.h>
 #include <kernel/utils/ring.h>
+#include <modules/fs/netfs/netfs.h>
 
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/io.h>
 #include <sys/list.h>
 
-static local_listen_t* local_socket_data_get_listen(local_socket_t* data)
+static local_listen_t* local_socket_get_listen(local_socket_t* data)
 {
     if (data->listen.listen == NULL)
     {
@@ -29,7 +28,7 @@ static local_listen_t* local_socket_data_get_listen(local_socket_t* data)
     return REF(data->listen.listen);
 }
 
-static local_conn_t* local_socket_data_get_conn(local_socket_t* data)
+static local_conn_t* local_socket_get_conn(local_socket_t* data)
 {
     if (data->conn.conn == NULL)
     {
@@ -41,6 +40,12 @@ static local_conn_t* local_socket_data_get_conn(local_socket_t* data)
 
 static uint64_t local_socket_init(socket_t* sock)
 {
+    if (sock->type != SOCKET_SEQPACKET)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     local_socket_t* data = calloc(1, sizeof(local_socket_t));
     if (data == NULL)
     {
@@ -92,14 +97,8 @@ static void local_socket_deinit(socket_t* sock)
     sock->private = NULL;
 }
 
-static uint64_t local_socket_bind(socket_t* sock, const char* address)
+static uint64_t local_socket_bind(socket_t* sock)
 {
-    if (address[0] == '\0')
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     local_socket_t* data = sock->private;
     if (data == NULL)
     {
@@ -107,25 +106,18 @@ static uint64_t local_socket_bind(socket_t* sock, const char* address)
         return ERR;
     }
 
-    local_listen_t* listen = local_listen_new(address);
+    local_listen_t* listen = local_listen_new(sock->address);
     if (listen == NULL)
     {
         return ERR;
     }
-    UNREF_DEFER(listen);
 
-    data->listen.listen = REF(listen);
+    data->listen.listen = listen;
     return 0;
 }
 
 static uint64_t local_socket_listen(socket_t* sock, uint32_t backlog)
 {
-    if (backlog == 0)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     local_socket_t* data = sock->private;
     if (data == NULL)
     {
@@ -150,14 +142,8 @@ static uint64_t local_socket_listen(socket_t* sock, uint32_t backlog)
     return 0;
 }
 
-static uint64_t local_socket_connect(socket_t* sock, const char* address)
+static uint64_t local_socket_connect(socket_t* sock)
 {
-    if (address[0] == '\0')
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     local_socket_t* data = sock->private;
     if (data == NULL)
     {
@@ -165,7 +151,7 @@ static uint64_t local_socket_connect(socket_t* sock, const char* address)
         return ERR;
     }
 
-    local_listen_t* listen = local_listen_find(address);
+    local_listen_t* listen = local_listen_find(sock->address);
     if (listen == NULL)
     {
         errno = ECONNREFUSED;
@@ -213,7 +199,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
         return ERR;
     }
 
-    local_listen_t* listen = local_socket_data_get_listen(data);
+    local_listen_t* listen = local_socket_get_listen(data);
     if (listen == NULL)
     {
         errno = EINVAL;
@@ -280,7 +266,7 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
         return ERR;
     }
 
-    local_conn_t* conn = local_socket_data_get_conn(data);
+    local_conn_t* conn = local_socket_get_conn(data);
     if (conn == NULL)
     {
         errno = ECONNRESET;
@@ -353,7 +339,7 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
         return ERR;
     }
 
-    local_conn_t* conn = local_socket_data_get_conn(data);
+    local_conn_t* conn = local_socket_get_conn(data);
     if (conn == NULL)
     {
         errno = ECONNRESET;
@@ -489,7 +475,8 @@ static wait_queue_t* local_socket_poll(socket_t* sock, poll_events_t* revents)
     }
 }
 
-static socket_family_ops_t ops = {
+static net_family_t local = {
+    .name = "local",
     .init = local_socket_init,
     .deinit = local_socket_deinit,
     .bind = local_socket_bind,
@@ -501,26 +488,24 @@ static socket_family_ops_t ops = {
     .poll = local_socket_poll,
 };
 
-uint64_t net_local_init(void)
+uint64_t _module_procedure(const module_event_t* event)
 {
-    if (socket_family_register(&ops, "local", SOCKET_SEQPACKET) == ERR)
+    switch (event->type)
     {
-        LOG_ERR("failed to register local socket family\n");
-        return ERR;
-    }
-
-    if (local_listen_dir_init() == ERR)
-    {
-        socket_family_unregister("local");
-        return ERR;
+    case MODULE_EVENT_LOAD:
+        if (net_family_register(&local) == ERR)
+        {
+            return ERR;
+        }
+        break;
+    case MODULE_EVENT_UNLOAD:
+        net_family_unregister(&local);
+        break;
+    default:
+        break;
     }
 
     return 0;
 }
 
-void net_local_deinit(void)
-{
-    local_listen_dir_deinit();
-
-    socket_family_unregister("local");
-}
+MODULE_INFO("Local Networking", "Kai Norberg", "Local networking module", OS_VERSION, "MIT", "BOOT_ALWAYS");

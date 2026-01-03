@@ -10,6 +10,7 @@
 #include <kernel/log/log.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/thread.h>
+#include <kernel/sync/lock.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
 
@@ -68,6 +69,7 @@ static namespace_t* namespace_new(void)
     list_init(&ns->stacks);
     map_init(&ns->mountMap);
     list_init(&ns->handles);
+    list_init(&ns->weakHandles);
     rwlock_init(&ns->lock);
 
     return ns;
@@ -75,6 +77,24 @@ static namespace_t* namespace_new(void)
 
 static void namespace_free(namespace_t* ns)
 {
+    if (ns == NULL)
+    {
+        return;
+    }
+
+    while (!list_is_empty(&ns->weakHandles))
+    {
+        namespace_weak_handle_t* weak = CONTAINER_OF(list_first(&ns->weakHandles), namespace_weak_handle_t, entry);
+        lock_acquire(&weak->lock);
+        if (weak->callback != NULL)
+        {
+            weak->callback(weak->arg);
+        }
+        list_remove(&ns->weakHandles, &weak->entry);
+        weak->ns = NULL;
+        lock_release(&weak->lock);
+    }
+
     while (!list_is_empty(&ns->stacks))
     {
         mount_stack_t* stack = CONTAINER_OF(list_pop_front(&ns->stacks), mount_stack_t, entry);
