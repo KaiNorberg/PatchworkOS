@@ -25,15 +25,15 @@
 
 <img src="meta/screenshots/desktop.png" alt="Desktop Screenshot" />
 
-**PatchworkOS** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, its intended to be an educational and experimental operating system.
+**PatchworkOS** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, it's intended to be an educational and experimental operating system.
 
-In the end this is a project made for fun, but the goal is to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system without jumping ahead to user space features or drivers, a floppy disk driver and a round-robin scheduler are not enough.
+While primarily a project made for fun, the goal is still to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system without jumping ahead to user space features or drivers, a floppy disk driver and a round-robin scheduler are not enough.
 
-Also, this is not a UNIX clone, it's intended to be a (hopefully) interesting experiment in operating system design by attempting to use unique algorithms and designs over tried and tested ones. Sometimes this leads to bad results, and sometimes, with a bit of luck, good ones.
+PatchworkOS is not a UNIX clone, it's intended to be a (hopefully) interesting experiment in operating system design by attempting to use unique algorithms and designs over tried and tested ones. Sometimes this leads to bad results, and sometimes, with a bit of luck, good ones.
 
-Finally, despite its experimental nature and scale, the project aims to remain approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
+Despite its experimental nature and scale, the project aims to remain approachable and educational, something that can work as a middle ground between fully educational operating systems like xv6 and production operating system like Linux.
 
-Will this project ever reach its goals? Probably not, but thats not the point.
+Will this project ever reach its goals? Probably not, but that's not the point.
 
 <table>
 <tr>
@@ -54,7 +54,7 @@ Will this project ever reach its goals? Probably not, but thats not the point.
 
 ### Kernel
 
-- Fully preemptive and tickless [EEVDF scheduler](https://kainorberg.github.io/PatchworkOS/html/d7/d85/group__kernel__sched.html) based upon the [original paper](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564) and implemented using a [Augmented Red-Black tree](https://kainorberg.github.io/PatchworkOS/html/da/d90/group__kernel__utils__rbtree.html) to achieve `O(log n)` worst case complexity. EEVDF is the same algorithm used in the modern Linux kernel, but ours is obviously **a lot** less mature.
+- Fully preemptive and tickless [EEVDF scheduler](https://kainorberg.github.io/PatchworkOS/html/d7/d85/group__kernel__sched.html) based upon the [original paper](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564) and implemented using an [Augmented Red-Black tree](https://kainorberg.github.io/PatchworkOS/html/da/d90/group__kernel__utils__rbtree.html) to achieve `O(log n)` worst case complexity. EEVDF is the same algorithm used in the modern Linux kernel, but ours is obviously **a lot** less mature.
 - Multithreading and Symmetric Multi Processing with fine-grained locking.
 - Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info.
 - File based IPC including [pipes](https://kainorberg.github.io/PatchworkOS/html/d7/d64/group__modules__ipc__pipe.html), [shared memory](https://kainorberg.github.io/PatchworkOS/html/df/d3f/group__modules__ipc__shmem.html), [sockets](https://kainorberg.github.io/PatchworkOS/html/df/d65/group__module__net.html) and Plan9 inspired "signals" called [notes](https://kainorberg.github.io/PatchworkOS/html/d8/db1/group__kernel__ipc__note.html).
@@ -170,7 +170,7 @@ Finally, it defines the modules information. This information is, from left to r
 
 The list of device types is what causes the kernel to actually load the module. I will avoid going into too much detail (you can check the documentation for that), but I will explain it briefly.
 
-The module loader itself has no idea what these type strings actually are, but subsystems can specify that "a device of the type represented by this string is now available", the module loader can then load either one or all modules that have specified in their list of device types that it can handle the specified type. This means that any new subsystem, ACPI, USB, PCI, etc, can implement dynamic module loading using whatever types they want.
+The module loader itself has no idea what these type strings actually are, but subsystems can specify that "a device of the type represented by this string is now available", the module loader can then load either one or all modules that have specified in their list of device types that it can handle the specified type. This means that any new subsystem, ACPI, USB, PCI, etc., can implement dynamic module loading using whatever types they want.
 
 So what is `BOOT_ALWAYS`? It is the type of special device that the kernel will pretend to "attach" during boot. In this case, it simply causes our hello module to be loaded during boot.
 
@@ -180,7 +180,7 @@ For more information, check the [Module Documentation](https://kainorberg.github
 
 PatchworkOS strictly follows the "everything is a file" philosophy in a way inspired by Plan9, this can often result in unorthodox APIs that seem overcomplicated at first, but the goal is to provide a simple, consistent and most importantly composable interface for all kernel subsystems, more on this later.
 
-Included below are some examples to familiarize yourself with the concept. We, of course, cannot cover everything so the concepts presented here are the ones believed to provide the greatest insight into the philosophy.
+Included below are some examples to familiarize yourself with the concept. We, of course, cannot cover everything, so the concepts presented here are the ones believed to provide the greatest insight into the philosophy.
 
 ### Sockets
 
@@ -562,7 +562,7 @@ Then when the PS/2 driver is loaded, it gets told "you are handling a device wit
 
 Having access to this information for all devices also allows us to avoid resource conflicts, making sure two devices are not trying to use the same IRQ(s) or I/O port(s).
 
-Of course, it gets way, way worse than this, but hopefully this clarifies why the PS/2 driver and other drivers, might look a bit different than what you might be used to.
+Of course, it gets way, way worse than this, but hopefully this clarifies why the PS/2 driver and other drivers, might look a bit different from what you might be used to.
 
 ## Benchmarks
 
