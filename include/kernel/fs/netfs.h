@@ -10,7 +10,7 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
-typedef struct net_family net_family_t;
+typedef struct netfs_family netfs_family_t;
 
 /**
  * @brief Networking and Sockets.
@@ -128,7 +128,7 @@ typedef struct socket
     list_entry_t listEntry;
     char id[MAX_NAME];
     char address[MAX_PATH];
-    net_family_t* family;
+    netfs_family_t* family;
     socket_type_t type;
     socket_state_t state;
     weak_ptr_t ownerNs; ///< A weak pointer to the namespace that created the socket.
@@ -138,9 +138,9 @@ typedef struct socket
 
 /**
  * @brief Socket Family structure.
- * @struct net_family_t
+ * @struct netfs_family_t
  */
-typedef struct net_family
+typedef struct netfs_family
 {
     const char* name;
     /**
@@ -224,7 +224,12 @@ typedef struct net_family
     list_entry_t listEntry;
     list_t sockets;
     rwmutex_t mutex;
-} net_family_t;
+} netfs_family_t;
+
+/**
+ * @brief Initialize the networking filesystem.
+ */
+void netfs_init(void);
 
 /**
  * @brief Register a network family.
@@ -232,13 +237,13 @@ typedef struct net_family
  * @param family Pointer to the network family structure.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t net_family_register(net_family_t* family);
+uint64_t netfs_family_register(netfs_family_t* family);
 
 /**
  * @brief Unregister a network family.
  *
  * @param family Pointer to the network family structure.
  */
-void net_family_unregister(net_family_t* family);
+void netfs_family_unregister(netfs_family_t* family);
 
 /** @} */

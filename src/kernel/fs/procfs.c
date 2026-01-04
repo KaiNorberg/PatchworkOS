@@ -671,15 +671,15 @@ static uint64_t procfs_ctl_kill(file_t* file, uint64_t argc, const char** argv)
 {
     UNUSED(argv);
 
-    if (argc != 1)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     process_t* process = file->inode->private;
 
-    process_kill(process, 0);
+    if (argc == 2)
+    {
+        process_kill(process, argv[1]);
+        return 0;
+    }
+
+    process_kill(process, "killed");
 
     return 0;
 }
@@ -774,7 +774,7 @@ CTL_STANDARD_OPS_DEFINE(ctlOps,
         {"mount", procfs_ctl_mount, 3, 4},
         {"touch", procfs_ctl_touch, 2, 2},
         {"start", procfs_ctl_start, 1, 1},
-        {"kill", procfs_ctl_kill, 1, 1},
+        {"kill", procfs_ctl_kill, 1, 2},
         {"setns", procfs_ctl_setns, 2, 2},
         {"setgroup", procfs_ctl_setgroup, 2, 2},
         {0},

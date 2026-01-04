@@ -390,10 +390,6 @@ cleanup:
     {
         close(ctl);
     }
-    if (pid != ERR)
-    {
-        swritefile(F("/sys/proc/%llu/ctl", pid), "kill");
-    }
 }
 
 int main(void)

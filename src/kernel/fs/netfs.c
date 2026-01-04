@@ -11,7 +11,7 @@
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sync/rwmutex.h>
-#include <modules/fs/netfs/netfs.h>
+#include <kernel/fs/netfs.h>
 
 #include <sys/io.h>
 #include <sys/list.h>
@@ -37,7 +37,7 @@ static void socket_free(socket_t* socket)
     free(socket);
 }
 
-static socket_t* socket_new(net_family_t* family, socket_type_t type)
+static socket_t* socket_new(netfs_family_t* family, socket_type_t type)
 {
     static _Atomic(uint64_t) nextId = ATOMIC_VAR_INIT(0);
 
@@ -396,18 +396,18 @@ static dentry_ops_t socketDentryOps = {
     .iterate = netfs_socket_iterate,
 };
 
-typedef struct net_family_file
+typedef struct netfs_family_file
 {
     const char* name;
     socket_type_t type;
     file_ops_t* fileOps;
-} net_family_file_t;
+} netfs_family_file_t;
 
 typedef struct
 {
-    net_family_t* family;
-    net_family_file_t* fileInfo;
-} net_family_file_ctx_t;
+    netfs_family_t* family;
+    netfs_family_file_t* fileInfo;
+} netfs_family_file_ctx_t;
 
 static void socket_weak_ptr_callback(void* arg)
 {
@@ -417,7 +417,7 @@ static void socket_weak_ptr_callback(void* arg)
 
 static uint64_t netfs_factory_open(file_t* file)
 {
-    net_family_file_ctx_t* ctx = file->inode->private;
+    netfs_family_file_ctx_t* ctx = file->inode->private;
     assert(ctx != NULL);
     dentry_t* root = file->inode->superblock->root;
     assert(root != NULL);
@@ -476,7 +476,7 @@ static file_ops_t factoryFileOps = {
 
 static uint64_t netfs_addrs_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    net_family_file_ctx_t* ctx = file->inode->private;
+    netfs_family_file_ctx_t* ctx = file->inode->private;
     assert(ctx != NULL);
 
     RWMUTEX_READ_SCOPE(&ctx->family->mutex);
@@ -519,7 +519,7 @@ static file_ops_t addrsFileOps = {
     .read = netfs_addrs_read,
 };
 
-static net_family_file_t familyFiles[] = {
+static netfs_family_file_t familyFiles[] = {
     {.name = "stream", .type = SOCKET_STREAM, .fileOps = &factoryFileOps},
     {.name = "dgram", .type = SOCKET_DGRAM, .fileOps = &factoryFileOps},
     {.name = "seqpacket", .type = SOCKET_SEQPACKET, .fileOps = &factoryFileOps},
@@ -530,7 +530,7 @@ static net_family_file_t familyFiles[] = {
 
 static void netfs_file_cleanup(inode_t* inode)
 {
-    net_family_file_ctx_t* ctx = inode->private;
+    netfs_family_file_ctx_t* ctx = inode->private;
     if (ctx == NULL)
     {
         return;
@@ -546,7 +546,7 @@ static inode_ops_t familyFileInodeOps = {
 
 static uint64_t netfs_family_lookup(inode_t* dir, dentry_t* dentry)
 {
-    net_family_t* family = dir->private;
+    netfs_family_t* family = dir->private;
     assert(family != NULL);
 
     for (size_t i = 0; i < ARRAY_SIZE(familyFiles); i++)
@@ -564,7 +564,7 @@ static uint64_t netfs_family_lookup(inode_t* dir, dentry_t* dentry)
         }
         UNREF_DEFER(inode);
 
-        net_family_file_ctx_t* ctx = malloc(sizeof(net_family_file_ctx_t));
+        netfs_family_file_ctx_t* ctx = malloc(sizeof(netfs_family_file_ctx_t));
         if (ctx == NULL)
         {
             return ERR;
@@ -630,7 +630,7 @@ static uint64_t netfs_family_lookup(inode_t* dir, dentry_t* dentry)
 
 static uint64_t netfs_family_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 {
-    net_family_t* family = dentry->inode->private;
+    netfs_family_t* family = dentry->inode->private;
     assert(family != NULL);
 
     if (!dentry_iterate_dots(dentry, ctx))
@@ -706,7 +706,7 @@ static uint64_t netfs_lookup(inode_t* dir, dentry_t* dentry)
 {
     RWMUTEX_READ_SCOPE(&familiesMutex);
 
-    net_family_t* family;
+    netfs_family_t* family;
     LIST_FOR_EACH(family, &families, listEntry)
     {
         if (strcmp(family->name, dentry->name) != 0)
@@ -741,7 +741,7 @@ static uint64_t netfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
     RWMUTEX_READ_SCOPE(&familiesMutex);
 
-    net_family_t* family;
+    netfs_family_t* family;
     LIST_FOR_EACH(family, &families, listEntry)
     {
         if (ctx->index++ < ctx->pos)
@@ -802,7 +802,15 @@ static filesystem_t netfs = {
     .mount = netfs_mount,
 };
 
-uint64_t net_family_register(net_family_t* family)
+void netfs_init(void)
+{
+    if (filesystem_register(&netfs) == ERR)
+    {
+        panic(NULL, "Failed to register netfs filesystem");
+    }
+}
+
+uint64_t netfs_family_register(netfs_family_t* family)
 {
     if (family == NULL || family->init == NULL || family->deinit == NULL)
     {
@@ -821,7 +829,7 @@ uint64_t net_family_register(net_family_t* family)
     return 0;
 }
 
-void net_family_unregister(net_family_t* family)
+void netfs_family_unregister(netfs_family_t* family)
 {
     rwmutex_write_acquire(&familiesMutex);
     list_remove(&families, &family->listEntry);
@@ -829,26 +837,3 @@ void net_family_unregister(net_family_t* family)
 
     rwmutex_deinit(&family->mutex);
 }
-
-uint64_t _module_procedure(const module_event_t* event)
-{
-    switch (event->type)
-    {
-    case MODULE_EVENT_LOAD:
-        if (filesystem_register(&netfs) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case MODULE_EVENT_UNLOAD:
-        filesystem_unregister(&netfs);
-        break;
-    default:
-        break;
-    }
-
-    return 0;
-}
-
-MODULE_INFO("Networking Filesystem", "Kai Norberg", "File system providing networking and socket IPC functionality",
-    OS_VERSION, "MIT", "BOOT_ALWAYS");

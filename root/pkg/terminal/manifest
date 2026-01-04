@@ -13,12 +13,12 @@ profile = empty
 foreground = true
 
 [env]
-PATH = /sys/bin
+PATH = /base/bin
 
 [namespace]
 /app:rx = $PKG
 /acpi:rw = /acpi
-/sys:rx = /sys
+/base:rx = /base
 /cfg:r = /cfg
 /dev:rw = /dev
 /net:rw = /net

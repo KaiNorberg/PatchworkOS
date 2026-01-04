@@ -12,7 +12,7 @@
 #include <kernel/sync/lock.h>
 #include <kernel/utils/ref.h>
 #include <kernel/utils/ring.h>
-#include <modules/fs/netfs/netfs.h>
+#include <kernel/fs/netfs.h>
 
 #include <stdlib.h>
 #include <sys/io.h>
@@ -475,7 +475,7 @@ static wait_queue_t* local_socket_poll(socket_t* sock, poll_events_t* revents)
     }
 }
 
-static net_family_t local = {
+static netfs_family_t local = {
     .name = "local",
     .init = local_socket_init,
     .deinit = local_socket_deinit,
@@ -493,13 +493,13 @@ uint64_t _module_procedure(const module_event_t* event)
     switch (event->type)
     {
     case MODULE_EVENT_LOAD:
-        if (net_family_register(&local) == ERR)
+        if (netfs_family_register(&local) == ERR)
         {
             return ERR;
         }
         break;
     case MODULE_EVENT_UNLOAD:
-        net_family_unregister(&local);
+        netfs_family_unregister(&local);
         break;
     default:
         break;

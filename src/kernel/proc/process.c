@@ -206,7 +206,7 @@ void process_kill(process_t* process, const char* status)
     }
 
     lock_acquire(&process->status.lock);
-    strncpy_s(process->status.buffer, PROCESS_STATUS_MAX, status, PROCESS_STATUS_MAX - 1);
+    strncpy(process->status.buffer, status, PROCESS_STATUS_MAX - 1);
     process->status.buffer[PROCESS_STATUS_MAX - 1] = '\0';
     lock_release(&process->status.lock);
 

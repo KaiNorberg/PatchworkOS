@@ -11,6 +11,7 @@
 #include <kernel/fs/procfs.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/tmpfs.h>
+#include <kernel/fs/netfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/init/boot_info.h>
 #include <kernel/log/log.h>
@@ -87,6 +88,7 @@ static void init_finalize(void)
     tmpfs_init();
     sysfs_init();
     procfs_init();
+    netfs_init();
 
     log_file_expose();
 

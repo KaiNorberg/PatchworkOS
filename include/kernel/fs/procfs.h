@@ -168,9 +168,9 @@
  *
  * Starts the process if it was previously suspended.
  *
- * ### kill
+ * ### kill [status]
  *
- * Sends a kill note to all threads in the process, effectively terminating it.
+ * Sends a kill note to all threads in the process, effectively terminating it. The optional status will be set as the processes exit status.
  *
  * ### setns <fd>
  *

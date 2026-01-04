@@ -8,6 +8,41 @@
 #include <threads.h>
 #include <time.h>
 
+/**
+ * @brief Init Process.
+ * @defgroup programs_init Init
+ * @ingroup programs
+ * 
+ * The init process is the first user space process started by the kernel. It is responsible for setting up the "root namespace", the namespace the init process and pkgd run in, and for spawning initial processes.
+ *
+ * ## Root Namespace
+ * 
+ * The init process creates the root namespace, which is the parent of all other user-space namespaces. Included below is an overview of the root namespace.
+ * 
+ * <div align="center">
+ * | Name                                | Type      | Description                        |
+ * |-------------------------------------|-----------|------------------------------------|
+ * | `/base`                             | directory | Base system directory.             |
+ * | `/base/bin`                         | directory | Non-essential system binaries.     |
+ * | `/base/lib`                         | directory | System libraries.                  |
+ * | `/base/include`                     | directory | System header files.               |
+ * | `/base/data`                        | directory | System data files.                 |
+ * | `/cfg`                              | directory | System configuration files.        |
+ * | `/dev`                              | devfs     | Device filesystem.                 |
+ * | `/efi`                              | directory | EFI files.                         |
+ * | `/efi/boot`                         | directory | EFI bootloader files.              |
+ * | `/kernel`                           | directory | Kernel related files.              |
+ * | `/kernel/modules`                   | directory | Kernel modules directory.          |
+ * | `/kernel/modules/<kernel_verion>`   | directory | Version specific kernel modules.   |
+ * | `/net`                              | netfs     | Network filesystem.                |
+ * | `/pkg`                              | directory | Installed packages directory.      |
+ * | `/proc`                             | procfs    | Process filesystem.                |
+ * | `/sbin`                             | directory | Essential system binaries.         |
+ * | `/tmp`                              | tmpfs     | Temporary filesystem.              |
+ * </div>
+ * 
+ */
+
 static uint64_t init_socket_addr_wait(const char* family, const char* addr)
 {
     fd_t addrs = open(F("/net/%s/addrs", family));
@@ -47,17 +82,23 @@ static uint64_t init_socket_addr_wait(const char* family, const char* addr)
     return 0;
 }
 
-static void init_mount_sys(void)
+static void init_root_ns(void)
 {
+    if (mount("/net:rwL", "netfs", NULL) == ERR)
+    {
+        printf("init: failed to mount netfs (%s)\n", strerror(errno));
+        abort();
+    }
+
     if (mount("/proc:rwL", "procfs", NULL) == ERR)
     {
         printf("init: failed to mount procfs (%s)\n", strerror(errno));
         abort();
     }
 
-    if (mount("/net:rwL", "netfs", NULL) == ERR)
+    if (mount("/tmp:rwL", "tmpfs", NULL) == ERR)
     {
-        printf("init: failed to mount netfs (%s)\n", strerror(errno));
+        printf("init: failed to mount tmpfs (%s)\n", strerror(errno));
         abort();
     }
 }
@@ -104,7 +145,7 @@ static void init_create_pkg_links(void)
             continue;
         }
 
-        if (symlink("pkgspawn", F("/sys/bin/%s", dirents[i].path)) == ERR && errno != EEXIST)
+        if (symlink("pkgspawn", F("/base/bin/%s", dirents[i].path)) == ERR && errno != EEXIST)
         {
             free(dirents);
             printf("init: failed to create launch symlink for package '%s' (%s)\n", dirents[i].path, strerror(errno));
@@ -160,7 +201,7 @@ static void init_config_load(void)
 
 int main(void)
 {
-    init_mount_sys();
+    init_root_ns();
 
     fd_t klog = open("/dev/klog:rw");
     if (klog == ERR)

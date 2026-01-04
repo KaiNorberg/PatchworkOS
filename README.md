@@ -481,9 +481,9 @@ This means that the doom package cannot see or access user files, system configu
 
 A common concern with containers is usability. In PatchworkOS, packages are designed to be as simple as possible to the point where a user should not even need to know that they are using containers.
 
-First, It's important to know that in PatchworkOS there are only two directories for executables, `/sbin` for essential system binaries such as `init` and `/sys/bin` for everything else.
+First, It's important to know that in PatchworkOS there are only two directories for executables, `/sbin` for essential system binaries such as `init` and `/base/bin` for everything else.
 
-One of the binaries in `/sys/bin` is `pkgspawn` which is used to spawn packages. This binary is intended to be used via symlinks, for example there is a symlink at `/sys/bin/doom` pointing to `pkgspawn`. When a user runs `/sys/bin/doom` (or just `doom` if `/sys/bin` is in the shell's PATH), the `pkgspawn` binary will be executed, but the first argument will be `/sys/bin/doom` due to how symlinks work. `pkgspawn` will then resolve that to the package name `doom` and send a request to the `pkgd` daemon to spawn the package.
+One of the binaries in `/base/bin` is `pkgspawn` which is used to spawn packages. This binary is intended to be used via symlinks, for example there is a symlink at `/base/bin/doom` pointing to `pkgspawn`. When a user runs `/base/bin/doom` (or just `doom` if `/base/bin` is in the shell's PATH), the `pkgspawn` binary will be executed, but the first argument will be `/base/bin/doom` due to how symlinks work. `pkgspawn` will then resolve that to the package name `doom` and send a request to the `pkgd` daemon to spawn the package.
 
 All this means that from a user's perspective, running a containerized package is as simple as running any other binary, for example:
 
