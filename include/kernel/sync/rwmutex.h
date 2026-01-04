@@ -49,6 +49,20 @@ typedef struct rwmutex
 } rwmutex_t;
 
 /**
+ * @brief Create a rwmutex initializer.
+ * @def RWMUTEX_CREATE
+ *
+ * @param name The name of the rwmutex variable to initialize.
+ * @return A `rwmutex_t` initializer.
+ */
+#define RWMUTEX_CREATE(name) \
+    (rwmutex_t) \
+    { \
+        .activeReaders = 0, .waitingWriters = 0, .readerQueue = WAIT_QUEUE_CREATE(name.readerQueue), \
+        .writerQueue = WAIT_QUEUE_CREATE(name.writerQueue), .hasWriter = false, .lock = LOCK_CREATE() \
+    }
+
+/**
  * @brief Initializes a rwmutex.
  *
  * @param mtx Pointer to the rwmutex to initialize.

@@ -26,6 +26,8 @@
 
 /**
  * @brief Filesystem structure, represents a filesystem type, e.g. fat32, tmpfs, sysfs, etc.
+ *
+ * @todo Add safety for if a module defining a filesystem is unloaded.
  */
 typedef struct filesystem
 {

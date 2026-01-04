@@ -10,12 +10,9 @@ typedef struct local_listen local_listen_t;
 typedef struct local_conn local_conn_t;
 
 /**
- * @brief Local Sockets.
- * @defgroup module_net_local Local Sockets
+ * @brief Local Protocol.
+ * @defgroup module_net_local Local Protocol
  * @ingroup module_net
- *
- * Local Sockets are similar to UNIX domain sockets, they allow local communication on the host in a server-client
- * manner.
  *
  * @{
  */
@@ -70,17 +67,5 @@ typedef struct
         } conn;
     };
 } local_socket_t;
-
-/**
- * @brief Initialize the local networking subsystem.
- *
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
- */
-uint64_t net_local_init(void);
-
-/**
- * @brief Deinitialize the local networking subsystem.
- */
-void net_local_deinit(void);
 
 /** @} */

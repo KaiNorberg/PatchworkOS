@@ -12,6 +12,7 @@
 #include <kernel/sync/mutex.h>
 
 #include <stdlib.h>
+#include <sys/list.h>
 
 static map_t dentryCache = MAP_CREATE();
 static rwlock_t dentryCacheLock = RWLOCK_CREATE();
@@ -158,7 +159,7 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     list_entry_init(&dentry->siblingEntry);
     list_init(&dentry->children);
     dentry->superblock = REF(superblock);
-    dentry->ops = dentry->superblock != NULL ? dentry->superblock->dentryOps : NULL;
+    dentry->ops = dentry->superblock->dentryOps;
     dentry->private = NULL;
     atomic_init(&dentry->mountCount, 0);
     list_entry_init(&dentry->otherEntry);

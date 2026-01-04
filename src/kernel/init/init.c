@@ -149,7 +149,26 @@ static inline void init_process_spawn(void)
 {
     LOG_INFO("spawning init process\n");
 
-    process_t* initProcess = process_new(PRIORITY_MAX_USER, NULL, &process_get_kernel()->ns, NAMESPACE_HANDLE_COPY);
+    namespace_t* kernelNs = process_get_ns(process_get_kernel());
+    if (kernelNs == NULL)
+    {
+        panic(NULL, "Failed to get kernel namespace");
+    }
+    UNREF_DEFER(kernelNs);
+
+    namespace_t* rootNs = namespace_new(kernelNs);
+    if (rootNs == NULL)
+    {
+        panic(NULL, "Failed to create root namespace");
+    }
+    UNREF_DEFER(rootNs);
+
+    if (namespace_copy(rootNs, kernelNs) == ERR)
+    {
+        panic(NULL, "Failed to copy kernel namespace to root namespace");
+    }
+
+    process_t* initProcess = process_new(PRIORITY_MAX_USER, NULL, rootNs);
     if (initProcess == NULL)
     {
         panic(NULL, "Failed to create init process");

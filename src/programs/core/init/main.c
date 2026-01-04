@@ -8,11 +8,56 @@
 #include <threads.h>
 #include <time.h>
 
+static uint64_t init_socket_addr_wait(const char* family, const char* addr)
+{
+    fd_t addrs = open(F("/net/%s/addrs", family));
+    if (addrs == ERR)
+    {
+        return ERR;
+    }
+
+    clock_t start = uptime();
+    while (true)
+    {
+        const char* data = sreadfile(F("/net/%s/addrs", family));
+        if (data == NULL)
+        {
+            close(addrs);
+            return ERR;
+        }
+
+        if (strstr(data, addr) != NULL)
+        {
+            free((void*)data);
+            break;
+        }
+
+        free((void*)data);
+
+        nanosleep(CLOCKS_PER_SEC / 100);
+
+        if (uptime() - start > CLOCKS_PER_SEC * 30)
+        {
+            close(addrs);
+            return ERR;
+        }
+    }
+
+    close(addrs);
+    return 0;
+}
+
 static void init_mount_sys(void)
 {
     if (mount("/proc:rwL", "procfs", NULL) == ERR)
     {
         printf("init: failed to mount procfs (%s)\n", strerror(errno));
+        abort();
+    }
+
+    if (mount("/net:rwL", "netfs", NULL) == ERR)
+    {
+        printf("init: failed to mount netfs (%s)\n", strerror(errno));
         abort();
     }
 }
@@ -26,10 +71,10 @@ static void init_spawn_pkgd(void)
         abort();
     }
 
-    stat_t info;
-    while (stat("/net/local/listen/pkgspawn", &info) == ERR)
+    if (init_socket_addr_wait("local", "pkgspawn") == ERR)
     {
-        nanosleep(CLOCKS_PER_SEC / 100);
+        printf("init: timeout waiting for pkgd to create pkgspawn socket (%s)\n", strerror(errno));
+        abort();
     }
 }
 
@@ -82,44 +127,31 @@ static void init_config_load(void)
     config_array_t* services = config_get_array(config, "startup", "services");
     for (uint64_t i = 0; i < services->length; i++)
     {
+        printf("init: spawned service '%s'\n", services->items[i]);
         const char* argv[] = {services->items[i], NULL};
-        if (spawn(argv, SPAWN_DEFAULT) == ERR)
+        if (spawn(argv, SPAWN_EMPTY_FDS | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP) == ERR)
         {
             printf("init: failed to spawn service '%s' (%s)\n", services->items[i], strerror(errno));
         }
-        else
-        {
-            printf("init: spawned service '%s'\n", services->items[i]);
-        }
     }
 
-    config_array_t* serviceFiles = config_get_array(config, "startup", "service_files");
-    for (uint64_t i = 0; i < serviceFiles->length; i++)
+    config_array_t* sockets = config_get_array(config, "startup", "sockets");
+    for (uint64_t i = 0; i < sockets->length; i++)
     {
-        clock_t start = uptime();
-        stat_t info;
-        while (stat(serviceFiles->items[i], &info) == ERR)
+        if (init_socket_addr_wait("local", sockets->items[i]) == ERR)
         {
-            nanosleep(CLOCKS_PER_SEC / 100);
-            if (uptime() - start > CLOCKS_PER_SEC * 30)
-            {
-                printf("init: timeout waiting for service file '%s'\n", serviceFiles->items[i]);
-                abort();
-            }
+            printf("init: timeout waiting for socket '%s' (%s)\n", sockets->items[i], strerror(errno));
         }
     }
 
     config_array_t* programs = config_get_array(config, "startup", "programs");
     for (uint64_t i = 0; i < programs->length; i++)
     {
+        printf("init: spawned program '%s'\n", programs->items[i]);
         const char* argv[] = {programs->items[i], NULL};
-        if (spawn(argv, SPAWN_DEFAULT) == ERR)
+        if (spawn(argv, SPAWN_EMPTY_FDS | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP) == ERR)
         {
             printf("init: failed to spawn program '%s' (%s)\n", programs->items[i], strerror(errno));
-        }
-        else
-        {
-            printf("init: spawned program '%s'\n", programs->items[i]);
         }
     }
 

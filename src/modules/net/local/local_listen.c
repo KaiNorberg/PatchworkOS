@@ -1,7 +1,6 @@
 #include "local_listen.h"
 #include "local.h"
 #include "local_conn.h"
-#include "socket_family.h"
 
 #include <kernel/fs/sysfs.h>
 #include <kernel/log/log.h>
@@ -14,41 +13,12 @@
 #include <stdlib.h>
 #include <sys/list.h>
 
-static dentry_t* listenDir = NULL;
-
-static map_t listeners;
+static map_t listeners = MAP_CREATE();
 static rwlock_t listenersLock = RWLOCK_CREATE();
-
-uint64_t local_listen_dir_init(void)
-{
-    socket_family_t* family = socket_family_get("local");
-    if (family == NULL)
-    {
-        LOG_ERR("failed to get local socket family");
-        return ERR;
-    }
-
-    listenDir = sysfs_dir_new(family->dir, "listen", NULL, NULL);
-    if (listenDir == NULL)
-    {
-        LOG_ERR("failed to create local listen dir");
-        return ERR;
-    }
-
-    map_init(&listeners);
-    return 0;
-}
-
-void local_listen_dir_deinit(void)
-{
-    map_deinit(&listeners);
-
-    UNREF(listenDir);
-}
 
 local_listen_t* local_listen_new(const char* address)
 {
-    if (address == NULL)
+    if (address == NULL || *address == '\0')
     {
         errno = EINVAL;
         return NULL;
@@ -63,28 +33,20 @@ local_listen_t* local_listen_new(const char* address)
 
     ref_init(&listen->ref, local_listen_free);
     map_entry_init(&listen->entry);
-    strncpy(listen->address, address, MAX_NAME - 1);
-    listen->address[MAX_NAME - 1] = '\0';
+    strncpy(listen->address, address, sizeof(listen->address));
+    listen->address[sizeof(listen->address) - 1] = '\0';
     list_init(&listen->backlog);
     listen->pendingAmount = 0;
     listen->maxBacklog = LOCAL_MAX_BACKLOG;
     listen->isClosed = false;
     lock_init(&listen->lock);
     wait_queue_init(&listen->waitQueue);
-    listen->file = sysfs_file_new(listenDir, listen->address, NULL, NULL, listen);
-    if (listen->file == NULL)
-    {
-        wait_queue_deinit(&listen->waitQueue);
-        free(listen);
-        return NULL;
-    }
 
     RWLOCK_WRITE_SCOPE(&listenersLock);
 
     map_key_t key = map_key_string(listen->address);
     if (map_get(&listeners, &key) != NULL)
     {
-        UNREF(listen->file);
         wait_queue_deinit(&listen->waitQueue);
         free(listen);
 
@@ -94,7 +56,6 @@ local_listen_t* local_listen_new(const char* address)
 
     if (map_insert(&listeners, &key, &listen->entry) == ERR)
     {
-        UNREF(listen->file);
         wait_queue_deinit(&listen->waitQueue);
         free(listen);
         return NULL;
@@ -109,8 +70,6 @@ void local_listen_free(local_listen_t* listen)
     {
         return;
     }
-
-    UNREF(listen->file);
 
     rwlock_write_acquire(&listenersLock);
     map_remove(&listeners, &listen->entry);
@@ -134,6 +93,12 @@ void local_listen_free(local_listen_t* listen)
 
 local_listen_t* local_listen_find(const char* address)
 {
+    if (address == NULL || *address == '\0')
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
     RWLOCK_READ_SCOPE(&listenersLock);
 
     map_key_t key = map_key_string(address);

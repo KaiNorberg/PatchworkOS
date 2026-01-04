@@ -1,15 +1,21 @@
 #pragma once
 
+#include <kernel/sync/lock.h>
+
 #include <sys/defs.h>
+#include <sys/list.h>
 
 #include <assert.h>
 #include <stdatomic.h>
 #include <stdint.h>
 
+typedef struct ref ref_t;
+
 /**
- * @brief Reference counting
+ * @brief Reference counting with weak pointers.
  * @defgroup kernel_utils_ref Reference counting
  * @ingroup kernel_utils
+ *
  * @{
  */
 
@@ -17,6 +23,22 @@
  * @brief Magic value used in debug builds to check for corruption or invalid use of the `ref_t` structure.
  */
 #define REF_MAGIC 0x26CB6E4C
+
+/**
+ * @brief Weak pointer structure.
+ * @struct weak_ptr_t
+ *
+ * Used to hold a non-owning reference to an object. If all strong references to the object are released, the weak
+ * pointer will be set to `NULL` and an optional callback will be invoked.
+ */
+typedef struct weak_ptr
+{
+    ref_t* ref;
+    list_entry_t entry;
+    void (*callback)(void* arg);
+    void* arg;
+    lock_t lock;
+} weak_ptr_t;
 
 /**
  * @brief Reference counting structure
@@ -29,19 +51,12 @@
 typedef struct ref
 {
 #ifndef NDEBUG
-    /**
-     * @brief Debug magic value to detect corruption
-     */
     uint32_t magic;
 #endif
-    /**
-     * @brief Atomic reference counter
-     */
     atomic_uint32_t count;
-    /**
-     * @brief Cleanup function called when count reaches zero
-     */
-    void (*free)(void* self);
+    lock_t lock;
+    void (*callback)(void* self); ///< Cleanup function called when count reaches zero
+    list_t weakRefs;
 } ref_t;
 
 /**
@@ -64,7 +79,7 @@ typedef struct ref
  */
 #define REF(ptr) \
     ({ \
-        ref_t* ref = (ref_t*)ptr; \
+        ref_t* ref = (ref_t*)(ptr); \
         ref_inc(ref); \
         ptr; \
     })
@@ -79,7 +94,7 @@ typedef struct ref
  */
 #define UNREF(ptr) \
     ({ \
-        ref_t* ref = (ref_t*)ptr; \
+        ref_t* ref = (ref_t*)(ptr); \
         ref_dec(ref); \
     })
 
@@ -87,15 +102,17 @@ typedef struct ref
  * @brief Initialize a reference counter
  *
  * @param ref Pointer to the reference counter structure
- * @param free Cleanup function to call when count reaches zero
+ * @param callback Callback to call when count reaches zero
  */
-static inline void ref_init(ref_t* ref, void* free)
+static inline void ref_init(ref_t* ref, void* callback)
 {
 #ifndef NDEBUG
     ref->magic = REF_MAGIC;
 #endif
     atomic_init(&ref->count, 1);
-    ref->free = free;
+    ref->callback = callback;
+    list_init(&ref->weakRefs);
+    lock_init(&ref->lock);
 }
 
 /**
@@ -133,7 +150,7 @@ static inline void ref_dec(void* ptr)
     }
 
     assert(ref->magic == REF_MAGIC);
-    uint64_t count = atomic_fetch_sub_explicit(&ref->count, 1, memory_order_relaxed);
+    uint64_t count = atomic_fetch_sub_explicit(&ref->count, 1, memory_order_release);
     if (count > 1)
     {
         return;
@@ -141,7 +158,24 @@ static inline void ref_dec(void* ptr)
 
     atomic_thread_fence(memory_order_acquire);
     assert(count == 1); // Count is now zero, if it was zero before then we have a double free.
-    if (ref->free == NULL)
+
+    lock_acquire(&ref->lock);
+
+    weak_ptr_t* wp;
+    LIST_FOR_EACH(wp, &ref->weakRefs, entry)
+    {
+        lock_acquire(&wp->lock);
+        if (wp->callback)
+        {
+            wp->callback(wp->arg);
+        }
+        wp->ref = NULL;
+        lock_release(&wp->lock);
+    }
+
+    lock_release(&ref->lock);
+
+    if (ref->callback == NULL)
     {
         return;
     }
@@ -149,12 +183,111 @@ static inline void ref_dec(void* ptr)
 #ifndef NDEBUG
     ref->magic = 0;
 #endif
-    ref->free(ptr);
+    ref->callback(ptr);
 }
 
 static inline void ref_defer_cleanup(void** ptr)
 {
     ref_dec(*ptr);
+}
+
+/**
+ * @brief Set a weak pointer.
+ *
+ * The provided callback must not attempt to access the weak ptr as that would cause a deadlock.
+ *
+ * @param wp Pointer to the weak pointer structure
+ * @param ref Pointer to the reference counting structure to point to, can be `NULL`.
+ * @param callback Callback function to call when the strong reference count reaches zero.
+ * @param arg Argument to pass to the callback function.
+ */
+static inline void weak_ptr_set(weak_ptr_t* wp, ref_t* ref, void (*callback)(void*), void* arg)
+{
+    lock_init(&wp->lock);
+    if (ref == NULL)
+    {
+        wp->ref = NULL;
+        list_entry_init(&wp->entry);
+        wp->callback = NULL;
+        wp->arg = NULL;
+        return;
+    }
+    wp->ref = ref;
+    assert(wp->ref->magic == REF_MAGIC);
+    list_entry_init(&wp->entry);
+    wp->callback = callback;
+    wp->arg = arg;
+
+    LOCK_SCOPE(&wp->ref->lock);
+    list_push_back(&wp->ref->weakRefs, &wp->entry);
+}
+
+/**
+ * @brief Clear a weak pointer.
+ *
+ * Will not invoke the callback.
+ *
+ * @param wp Pointer to the weak pointer structure.
+ */
+static inline void weak_ptr_clear(weak_ptr_t* wp)
+{
+    while (true)
+    {
+        lock_acquire(&wp->lock);
+        ref_t* ref = wp->ref;
+        if (ref == NULL)
+        {
+            lock_release(&wp->lock);
+            return;
+        }
+
+        if (lock_try_acquire(&ref->lock))
+        {
+            list_remove(&ref->weakRefs, &wp->entry);
+            wp->ref = NULL;
+            wp->callback = NULL;
+            wp->arg = NULL;
+            lock_release(&ref->lock);
+            lock_release(&wp->lock);
+            return;
+        }
+
+        lock_release(&wp->lock);
+        asm volatile("pause");
+    }
+}
+
+/**
+ * @brief Upgrade a weak pointer to a strong pointer.
+ *
+ * If the strong reference count is zero, `NULL` is returned.
+ *
+ * @param wp Pointer to the weak pointer structure
+ * @return On success, pointer to the struct containing `ref_t` as its first member. On failure, `NULL`.
+ */
+static inline void* weak_ptr_get(weak_ptr_t* wp)
+{
+    lock_acquire(&wp->lock);
+    ref_t* ref = wp->ref;
+    if (ref == NULL)
+    {
+        lock_release(&wp->lock);
+        return NULL;
+    }
+
+    uint32_t count = atomic_load_explicit(&ref->count, memory_order_relaxed);
+    do
+    {
+        if (count == 0)
+        {
+            lock_release(&wp->lock);
+            return NULL;
+        }
+    } while (!atomic_compare_exchange_weak_explicit(&ref->count, &count, count + 1, memory_order_relaxed,
+        memory_order_relaxed));
+
+    lock_release(&wp->lock);
+    return ref;
 }
 
 /** @} */

@@ -78,7 +78,8 @@ typedef struct process
     _Atomic(priority_t) priority;
     process_status_t status;
     space_t space;
-    namespace_handle_t ns;
+    namespace_t* nspace;
+    lock_t nspaceLock;
     cwd_t cwd;
     file_table_t fileTable;
     futex_ctx_t futexCtx;
@@ -101,13 +102,10 @@ typedef struct process
  *
  * @param priority The priority of the new process.
  * @param group A member of the group to add the new process to, or `NULL` to create a new group for the process.
- * @param ns The source namespace handle to copy from or share a namespace with, or `NULL` to create a new empty
- * namespace.
- * @param flags Flags for the new namespace handle.
+ * @param ns The namespace to use for the new process.
  * @return On success, the newly created process. On failure, `NULL` and `errno` is set.
  */
-process_t* process_new(priority_t priority, group_member_t* group, namespace_handle_t* ns,
-    namespace_handle_flags_t flags);
+process_t* process_new(priority_t priority, group_member_t* group, namespace_t* ns);
 
 /**
  * @brief Gets a process by its ID.
@@ -118,6 +116,25 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_han
  * @return A reference to the process with the specified ID or `NULL` if no such process exists.
  */
 process_t* process_get(pid_t id);
+
+/**
+ * @brief Gets the namespace of a process.
+ *
+ * It is the responsibility of the caller to `UNREF()` the returned namespace.
+ *
+ * @param process The process to get the namespace of.
+ * @return On success, a reference to the namespace of the process. On failure, `NULL` and `errno` is set:
+ * - `EINVAL`: Invalid parameters.
+ */
+namespace_t* process_get_ns(process_t* process);
+
+/**
+ * @brief Sets the namespace of a process.
+ *
+ * @param process The process to set the namespace of.
+ * @param ns The new namespace for the process.
+ */
+void process_set_ns(process_t* process, namespace_t* ns);
 
 /**
  * @brief Kills a process, pushing it to the reaper.

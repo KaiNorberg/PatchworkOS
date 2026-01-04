@@ -65,6 +65,7 @@ void loader_exec(void)
     fileData = malloc(fileSize);
     if (fileData == NULL)
     {
+        errno = ENOMEM;
         goto cleanup;
     }
 
@@ -77,6 +78,7 @@ void loader_exec(void)
     Elf64_File elf;
     if (elf64_validate(&elf, fileData, fileSize) != 0)
     {
+        errno = ENOEXEC;
         goto cleanup;
     }
 
@@ -98,6 +100,7 @@ void loader_exec(void)
     addrs = malloc(sizeof(uintptr_t) * process->argc);
     if (addrs == NULL)
     {
+        errno = ENOMEM;
         goto cleanup;
     }
 
@@ -166,61 +169,80 @@ static void loader_entry(void)
 
 SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
 {
-    process_t* child = NULL;
-    thread_t* childThread = NULL;
-
-    uint64_t argc = 0;
-    char** argvCopy = NULL;
-
-    thread_t* thread = sched_thread();
-    process_t* process = thread->process;
-
     if (argv == NULL)
     {
         errno = EINVAL;
-        goto error;
+        return ERR;
     }
 
-    namespace_handle_flags_t nsFlags;
-    if (flags & SPAWN_EMPTY_NS)
+    thread_t* thread = sched_thread();
+    assert(thread != NULL);
+    process_t* process = thread->process;
+    assert(process != NULL);
+
+    namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
     {
-        nsFlags = NAMESPACE_HANDLE_EMPTY;
+        return ERR;
     }
-    else if (flags & SPAWN_COPY_NS)
+    UNREF_DEFER(ns);
+
+    namespace_t* childNs;
+    if (flags & SPAWN_EMPTY_NS || flags & SPAWN_COPY_NS)
     {
-        nsFlags = NAMESPACE_HANDLE_COPY;
+        childNs = namespace_new(ns);
+        if (childNs == NULL)
+        {
+            return ERR;
+        }
+
+        if (!(flags & SPAWN_EMPTY_NS))
+        {
+            if (namespace_copy(childNs, ns) == ERR)
+            {
+                UNREF(childNs);
+                return ERR;
+            }
+        }
     }
     else
     {
-        nsFlags = NAMESPACE_HANDLE_SHARE;
+        childNs = REF(ns);
     }
+    UNREF_DEFER(childNs);
 
-    child = process_new(atomic_load(&process->priority), flags & SPAWN_EMPTY_GROUP ? NULL : &process->group,
-        &process->ns, nsFlags);
+    process_t* child =
+        process_new(atomic_load(&process->priority), flags & SPAWN_EMPTY_GROUP ? NULL : &process->group, childNs);
     if (child == NULL)
     {
-        goto error;
+        return ERR;
     }
+    UNREF_DEFER(child);
 
-    childThread = thread_new(child);
+    thread_t* childThread = thread_new(child);
     if (childThread == NULL)
     {
-        goto error;
+        return ERR;
     }
 
+    char** argvCopy = NULL;
+    uint64_t argc = 0;
     if (thread_copy_from_user_string_array(thread, argv, &argvCopy, &argc) == ERR)
     {
-        goto error;
+        return ERR;
     }
 
     if (argc == 0 || argvCopy[0] == NULL)
     {
-        goto error;
+        loader_strv_free(argvCopy, argc);
+        errno = EINVAL;
+        return ERR;
     }
 
     if (process_set_cmdline(child, argvCopy, argc) == ERR)
     {
-        goto error;
+        loader_strv_free(argvCopy, argc);
+        return ERR;
     }
 
     if (flags & SPAWN_SUSPEND)
@@ -234,14 +256,16 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
         {
             if (file_table_copy(&child->fileTable, &process->fileTable, 0, 3) == ERR)
             {
-                goto error;
+                loader_strv_free(argvCopy, argc);
+                return ERR;
             }
         }
         else
         {
             if (file_table_copy(&child->fileTable, &process->fileTable, 0, CONFIG_MAX_FD) == ERR)
             {
-                goto error;
+                loader_strv_free(argvCopy, argc);
+                return ERR;
             }
         }
     }
@@ -250,13 +274,14 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     {
         if (env_copy(&child->env, &process->env) == ERR)
         {
-            goto error;
+            loader_strv_free(argvCopy, argc);
+            return ERR;
         }
     }
 
     if (!(flags & SPAWN_EMPTY_CWD))
     {
-        path_t cwd = cwd_get(&process->cwd, &process->ns);
+        path_t cwd = cwd_get(&process->cwd, ns);
         cwd_set(&child->cwd, &cwd);
         path_put(&cwd);
     }
@@ -270,24 +295,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     childThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
 
     sched_submit(childThread);
-    pid_t result = child->id;
-    if (child != NULL)
-    {
-        UNREF(child);
-    }
-    return result;
-
-error:
-    if (childThread != NULL)
-    {
-        thread_free(childThread);
-    }
-    if (child != NULL)
-    {
-        UNREF(child);
-    }
-    loader_strv_free(argvCopy, argc);
-    return ERR;
+    return child->id;
 }
 
 SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)

@@ -398,6 +398,9 @@ cleanup:
 
 int main(void)
 {
+    /// @todo Use nonblocking sockets to avoid hanging on accept or read, or just wait until we have filesystem servers
+    /// and do that instead.
+
     char* id = sreadfile("/net/local/seqpacket");
     if (id == NULL)
     {
