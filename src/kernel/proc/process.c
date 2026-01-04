@@ -23,7 +23,9 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <kernel/sync/seqlock.h>
 #include <kernel/utils/map.h>
+#include <kernel/utils/ref.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -64,7 +66,10 @@ static void process_free(process_t* process)
     group_member_deinit(&process->group);
     cwd_deinit(&process->cwd);
     file_table_deinit(&process->fileTable);
-    namespace_handle_deinit(&process->ns);
+    if (process->nspace != NULL)
+    {
+        UNREF(process->nspace);
+    }
     space_deinit(&process->space);
     wait_queue_deinit(&process->dyingQueue);
     wait_queue_deinit(&process->suspendQueue);
@@ -73,9 +78,14 @@ static void process_free(process_t* process)
     free(process);
 }
 
-process_t* process_new(priority_t priority, group_member_t* group, namespace_handle_t* ns,
-    namespace_handle_flags_t flags)
+process_t* process_new(priority_t priority, group_member_t* group, namespace_t* ns)
 {
+    if (ns == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
     process_t* process = malloc(sizeof(process_t));
     if (process == NULL)
     {
@@ -99,13 +109,8 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_han
         return NULL;
     }
 
-    if (namespace_handle_init(&process->ns, ns, flags) == ERR)
-    {
-        space_deinit(&process->space);
-        free(process);
-        return NULL;
-    }
-
+    process->nspace = REF(ns);
+    lock_init(&process->nspaceLock);
     cwd_init(&process->cwd);
     file_table_init(&process->fileTable);
     futex_ctx_init(&process->futexCtx);
@@ -156,6 +161,40 @@ process_t* process_get(pid_t id)
     return REF(CONTAINER_OF(entry, process_t, mapEntry));
 }
 
+namespace_t* process_get_ns(process_t* process)
+{
+    if (process == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    lock_acquire(&process->nspaceLock);
+    namespace_t* ns = process->nspace != NULL ? REF(process->nspace) : NULL;
+    lock_release(&process->nspaceLock);
+
+    if (ns == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    return ns;
+}
+
+void process_set_ns(process_t* process, namespace_t* ns)
+{
+    if (process == NULL || ns == NULL)
+    {
+        return;
+    }
+
+    lock_acquire(&process->nspaceLock);
+    UNREF(process->nspace);
+    process->nspace = REF(ns);
+    lock_release(&process->nspaceLock);
+}
+
 void process_kill(process_t* process, const char* status)
 {
     lock_acquire(&process->threads.lock);
@@ -190,7 +229,12 @@ void process_kill(process_t* process, const char* status)
 
     cwd_clear(&process->cwd);
     file_table_close_all(&process->fileTable);
-    namespace_handle_clear(&process->ns);
+
+    lock_acquire(&process->nspaceLock);
+    UNREF(process->nspace);
+    process->nspace = NULL;
+    lock_release(&process->nspaceLock);
+
     group_remove(&process->group);
 
     wait_unblock(&process->dyingQueue, WAIT_ALL, EOK);
@@ -319,7 +363,14 @@ process_t* process_get_kernel(void)
 {
     if (kernelProcess == NULL)
     {
-        kernelProcess = process_new(PRIORITY_MAX, NULL, NULL, NAMESPACE_HANDLE_SHARE);
+        namespace_t* ns = namespace_new(NULL);
+        if (ns == NULL)
+        {
+            panic(NULL, "Failed to create kernel namespace");
+        }
+        UNREF_DEFER(ns);
+
+        kernelProcess = process_new(PRIORITY_MAX, NULL, ns);
         if (kernelProcess == NULL)
         {
             panic(NULL, "Failed to create kernel process");

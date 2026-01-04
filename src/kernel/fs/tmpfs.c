@@ -380,7 +380,16 @@ void tmpfs_init(void)
     LOG_INFO("mounting tmpfs\n");
 
     process_t* process = sched_process();
-    mount_t* temp = namespace_mount(&process->ns, NULL, TMPFS_NAME, NULL, MODE_PROPAGATE | MODE_ALL_PERMS, NULL);
+    assert(process != NULL);
+
+    namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        panic(NULL, "Failed to get process namespace");
+    }
+    UNREF_DEFER(ns);
+
+    mount_t* temp = namespace_mount(ns, NULL, TMPFS_NAME, NULL, MODE_PROPAGATE | MODE_ALL_PERMS, NULL);
     if (temp == NULL)
     {
         panic(NULL, "Failed to mount tmpfs");

@@ -37,7 +37,14 @@ dentry_t* acpi_get_sysfs_root(void)
 {
     if (!mountInitialzed)
     {
-        acpi = sysfs_mount_new("acpi", &process_get_kernel()->ns, MODE_PROPAGATE | MODE_ALL_PERMS, NULL, NULL, NULL);
+        namespace_t* ns = process_get_ns(process_get_kernel());
+        if (ns == NULL)
+        {
+            panic(NULL, "failed to get kernel process namespace for ACPI sysfs group");
+        }
+        UNREF_DEFER(ns);
+
+        acpi = sysfs_mount_new("acpi", ns, MODE_PROPAGATE | MODE_ALL_PERMS, NULL, NULL, NULL);
         if (acpi == NULL)
         {
             panic(NULL, "failed to initialize ACPI sysfs group");

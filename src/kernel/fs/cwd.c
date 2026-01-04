@@ -16,7 +16,7 @@ void cwd_deinit(cwd_t* cwd)
     lock_release(&cwd->lock);
 }
 
-path_t cwd_get(cwd_t* cwd, namespace_handle_t* ns)
+path_t cwd_get(cwd_t* cwd, namespace_t* ns)
 {
     path_t result = PATH_EMPTY;
 

@@ -28,9 +28,25 @@
 static uint64_t procfs_revalidate_hide(dentry_t* dentry)
 {
     process_t* current = sched_process();
+    assert(current != NULL);
     process_t* process = dentry->inode->private;
+    assert(process != NULL);
 
-    if (!namespace_accessible(&current->ns, &process->ns))
+    namespace_t* currentNs = process_get_ns(current);
+    if (currentNs == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(currentNs);
+
+    namespace_t* processNs = process_get_ns(process);
+    if (processNs == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(processNs);
+
+    if (!namespace_accessible(currentNs, processNs))
     {
         errno = ENOENT;
         return ERR;
@@ -95,7 +111,14 @@ static uint64_t procfs_cwd_read(file_t* file, void* buffer, uint64_t count, uint
 {
     process_t* process = file->inode->private;
 
-    path_t cwd = cwd_get(&process->cwd, &process->ns);
+    namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(ns);
+
+    path_t cwd = cwd_get(&process->cwd, ns);
     PATH_DEFER(&cwd);
 
     pathname_t cwdName;
@@ -130,10 +153,17 @@ static uint64_t procfs_cwd_write(file_t* file, const void* buffer, uint64_t coun
         return ERR;
     }
 
-    path_t path = cwd_get(&process->cwd, &process->ns);
+    namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(ns);
+
+    path_t path = cwd_get(&process->cwd, ns);
     PATH_DEFER(&path);
 
-    if (path_walk(&path, &cwdPathname, &process->ns) == ERR)
+    if (path_walk(&path, &cwdPathname, ns) == ERR)
     {
         return ERR;
     }
@@ -383,20 +413,13 @@ static uint64_t procfs_ns_open(file_t* file)
 {
     process_t* process = file->inode->private;
 
-    namespace_handle_t* handle = malloc(sizeof(namespace_handle_t));
-    if (handle == NULL)
+    namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
     {
-        errno = ENOMEM;
         return ERR;
     }
 
-    if (namespace_handle_init(handle, &process->ns, NAMESPACE_HANDLE_SHARE) == ERR)
-    {
-        free(handle);
-        return ERR;
-    }
-
-    file->private = handle;
+    file->private = ns;
     return 0;
 }
 
@@ -407,9 +430,7 @@ static void procfs_ns_close(file_t* file)
         return;
     }
 
-    namespace_handle_t* handle = file->private;
-    namespace_handle_deinit(handle);
-    free(handle);
+    UNREF(file->private);
     file->private = NULL;
 }
 
@@ -516,10 +537,17 @@ static uint64_t procfs_ctl_bind(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    path_t target = cwd_get(&process->cwd, &process->ns);
+    namespace_t* processNs = process_get_ns(process);
+    if (processNs == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(processNs);
+
+    path_t target = cwd_get(&process->cwd, processNs);
     PATH_DEFER(&target);
 
-    if (path_walk(&target, &targetName, &process->ns) == ERR)
+    if (path_walk(&target, &targetName, processNs) == ERR)
     {
         return ERR;
     }
@@ -530,15 +558,22 @@ static uint64_t procfs_ctl_bind(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    path_t source = cwd_get(&writing->cwd, &writing->ns);
+    namespace_t* writingNs = process_get_ns(writing);
+    if (writingNs == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(writingNs);
+
+    path_t source = cwd_get(&writing->cwd, writingNs);
     PATH_DEFER(&source);
 
-    if (path_walk(&source, &sourceName, &writing->ns) == ERR)
+    if (path_walk(&source, &sourceName, writingNs) == ERR)
     {
         return ERR;
     }
 
-    mount_t* mount = namespace_bind(&process->ns, &target, &source, targetName.mode);
+    mount_t* mount = namespace_bind(processNs, &target, &source, targetName.mode);
     if (mount == NULL)
     {
         return ERR;
@@ -563,17 +598,24 @@ static uint64_t procfs_ctl_mount(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    path_t mountpath = cwd_get(&process->cwd, &process->ns);
+    namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(ns);
+
+    path_t mountpath = cwd_get(&process->cwd, ns);
     PATH_DEFER(&mountpath);
 
-    if (path_walk(&mountpath, &mountname, &process->ns) == ERR)
+    if (path_walk(&mountpath, &mountname, ns) == ERR)
     {
         return ERR;
     }
 
     const char* fsName = argv[2];
     const char* deviceName = (argc == 4) ? argv[3] : NULL;
-    mount_t* mount = namespace_mount(&process->ns, &mountpath, fsName, deviceName, mountname.mode, NULL);
+    mount_t* mount = namespace_mount(ns, &mountpath, fsName, deviceName, mountname.mode, NULL);
     if (mount == NULL)
     {
         return ERR;
@@ -672,20 +714,14 @@ static uint64_t procfs_ctl_setns(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    namespace_handle_t* target = nsFile->private;
-    if (target == NULL)
+    namespace_t* ns = nsFile->private;
+    if (ns == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    namespace_handle_deinit(&process->ns);
-
-    if (namespace_handle_init(&process->ns, target, NAMESPACE_HANDLE_SHARE) == ERR)
-    {
-        return ERR;
-    }
-
+    process_set_ns(process, ns);
     return 0;
 }
 
@@ -1058,10 +1094,18 @@ static uint64_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
     for (size_t i = 0; i < ARRAY_SIZE(pidEntries); i++)
     {
-        if (pidEntries[i].dentryOps != NULL && pidEntries[i].dentryOps->revalidate == procfs_revalidate_hide &&
-            !namespace_accessible(&current->ns, &process->ns))
+        if (pidEntries[i].dentryOps != NULL && pidEntries[i].dentryOps->revalidate == procfs_revalidate_hide)
         {
-            continue;
+            namespace_t* currentNs = process_get_ns(current);
+            UNREF_DEFER(currentNs);
+
+            namespace_t* processNs = process_get_ns(process);
+            UNREF_DEFER(processNs);
+
+            if (!namespace_accessible(currentNs, processNs))
+            {
+                continue;
+            }
         }
 
         if (ctx->index++ < ctx->pos)

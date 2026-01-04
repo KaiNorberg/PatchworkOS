@@ -33,7 +33,7 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
-static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_handle_t* ns)
+static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_t* ns)
 {
     path_t parent = PATH_EMPTY;
     path_t target = PATH_EMPTY;
@@ -137,7 +137,7 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_h
     return 0;
 }
 
-static uint64_t vfs_open_lookup(path_t* path, const pathname_t* pathname, namespace_handle_t* namespace)
+static uint64_t vfs_open_lookup(path_t* path, const pathname_t* pathname, namespace_t* namespace)
 {
     if (pathname->mode & MODE_CREATE)
     {
@@ -160,7 +160,14 @@ file_t* vfs_open(const pathname_t* pathname, process_t* process)
         return NULL;
     }
 
-    path_t cwd = cwd_get(&process->cwd, &process->ns);
+    namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return NULL;
+    }
+    UNREF_DEFER(ns);
+    
+    path_t cwd = cwd_get(&process->cwd, ns);
     PATH_DEFER(&cwd);
 
     return vfs_openat(&cwd, pathname, process);
@@ -174,10 +181,17 @@ uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* proc
         return ERR;
     }
 
-    path_t path = cwd_get(&process->cwd, &process->ns);
+    namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(ns);
+
+    path_t path = cwd_get(&process->cwd, ns);
     PATH_DEFER(&path);
 
-    if (vfs_open_lookup(&path, pathname, &process->ns) == ERR)
+    if (vfs_open_lookup(&path, pathname, ns) == ERR)
     {
         return ERR;
     }
@@ -224,10 +238,17 @@ file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* pr
         return NULL;
     }
 
+    namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return NULL;
+    }
+    UNREF_DEFER(ns);
+
     path_t path = PATH_CREATE(from->mount, from->dentry);
     PATH_DEFER(&path);
 
-    if (vfs_open_lookup(&path, pathname, &process->ns) == ERR)
+    if (vfs_open_lookup(&path, pathname, ns) == ERR)
     {
         return NULL;
     }
@@ -589,7 +610,7 @@ typedef struct
     uint64_t count;
     uint64_t written;
     path_t path;
-    namespace_handle_t* ns;
+    namespace_t* ns;
 } vfs_dir_ctx_t;
 
 static bool vfs_dir_emit(dir_ctx_t* ctx, const char* name, ino_t number, inode_type_t type)
@@ -631,7 +652,7 @@ static bool vfs_dir_emit(dir_ctx_t* ctx, const char* name, ino_t number, inode_t
 }
 
 static uint64_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_recursive_ctx_t* ctx,
-    const char* prefix, namespace_handle_t* ns)
+    const char* prefix, namespace_t* ns)
 {
     uint64_t offset = 0;
     uint64_t bufSize = 1024;
@@ -774,8 +795,9 @@ static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
             .count = bufSize,
             .written = 0,
             .path = *path,
-            .ns = &process->ns,
+            .ns = process_get_ns(process)
         };
+        UNREF_DEFER(vctx.ns);
 
         path->dentry->ops->iterate(path->dentry, &vctx.ctx);
         offset = vctx.ctx.pos;
@@ -800,7 +822,7 @@ static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
             path_t childPath = PATH_CREATE(path->mount, path->dentry);
             PATH_DEFER(&childPath);
 
-            if (path_step(&childPath, MODE_NONE, d->path, &process->ns) == ERR)
+            if (path_step(&childPath, MODE_NONE, d->path, vctx.ns) == ERR)
             {
                 free(buf);
                 return ERR;
@@ -875,6 +897,16 @@ uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count)
         return ERR;
     }
 
+    process_t* process = sched_process();
+    assert(process != NULL);
+
+    namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(ns);
+
     MUTEX_SCOPE(&file->inode->mutex);
 
     if (file->mode & MODE_RECURSIVE)
@@ -886,7 +918,7 @@ uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count)
             .skip = file->pos,
             .currentOffset = 0,
         };
-        if (vfs_getdents_recursive_step(&file->path, file->mode, &ctx, "", &sched_process()->ns) == ERR)
+        if (vfs_getdents_recursive_step(&file->path, file->mode, &ctx, "", ns) == ERR)
         {
             return ERR;
         }
@@ -902,7 +934,7 @@ uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count)
         .count = count,
         .written = 0,
         .path = file->path,
-        .ns = &sched_process()->ns,
+        .ns = ns
     };
 
     uint64_t result = file->path.dentry->ops->iterate(file->path.dentry, &ctx.ctx);
@@ -924,10 +956,17 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
         return ERR;
     }
 
-    path_t path = cwd_get(&process->cwd, &process->ns);
+    namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(ns);
+
+    path_t path = cwd_get(&process->cwd, ns);
     PATH_DEFER(&path);
 
-    if (path_walk(&path, pathname, &process->ns) == ERR)
+    if (path_walk(&path, pathname, ns) == ERR)
     {
         return ERR;
     }
@@ -982,7 +1021,14 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
         return ERR;
     }
 
-    path_t cwd = cwd_get(&process->cwd, &process->ns);
+    namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(ns);
+
+    path_t cwd = cwd_get(&process->cwd, ns);
     PATH_DEFER(&cwd);
 
     path_t oldParent = PATH_EMPTY;
@@ -990,7 +1036,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
     PATH_DEFER(&oldParent);
     PATH_DEFER(&old);
 
-    if (path_walk_parent_and_child(&cwd, &oldParent, &old, oldPathname, &process->ns) == ERR)
+    if (path_walk_parent_and_child(&cwd, &oldParent, &old, oldPathname, ns) == ERR)
     {
         return ERR;
     }
@@ -1000,7 +1046,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
     PATH_DEFER(&newParent);
     PATH_DEFER(&new);
 
-    if (path_walk_parent_and_child(&cwd, &newParent, &new, newPathname, &process->ns) == ERR)
+    if (path_walk_parent_and_child(&cwd, &newParent, &new, newPathname, ns) == ERR)
     {
         return ERR;
     }
@@ -1096,7 +1142,14 @@ uint64_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathnam
         return ERR;
     }
 
-    path_t cwd = cwd_get(&process->cwd, &process->ns);
+    namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(ns);
+    
+    path_t cwd = cwd_get(&process->cwd, ns);
     PATH_DEFER(&cwd);
 
     path_t newParent = PATH_EMPTY;
@@ -1104,7 +1157,7 @@ uint64_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathnam
     PATH_DEFER(&newParent);
     PATH_DEFER(&new);
 
-    if (path_walk_parent_and_child(&cwd, &newParent, &new, newPathname, &process->ns) == ERR)
+    if (path_walk_parent_and_child(&cwd, &newParent, &new, newPathname, ns) == ERR)
     {
         return ERR;
     }
@@ -1151,12 +1204,19 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
         return ERR;
     }
 
-    path_t cwd = cwd_get(&process->cwd, &process->ns);
+    namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(ns);
+
+    path_t cwd = cwd_get(&process->cwd, ns);
     PATH_DEFER(&cwd);
 
     path_t parent = PATH_EMPTY;
     path_t target = PATH_EMPTY;
-    if (path_walk_parent_and_child(&cwd, &parent, &target, pathname, &process->ns) == ERR)
+    if (path_walk_parent_and_child(&cwd, &parent, &target, pathname, ns) == ERR)
     {
         return ERR;
     }
@@ -1299,10 +1359,17 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
 
+    namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(ns);
+
     path_t fromPath = PATH_EMPTY;
     if (from == FD_NONE)
     {
-        path_t cwd = cwd_get(&process->cwd, &process->ns);
+        path_t cwd = cwd_get(&process->cwd, ns);
         path_copy(&fromPath, &cwd);
         path_put(&cwd);
     }
@@ -1574,10 +1641,17 @@ SYSCALL_DEFINE(SYS_READLINK, uint64_t, const char* pathString, char* buffer, uin
         return ERR;
     }
 
-    path_t path = cwd_get(&process->cwd, &process->ns);
+    namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return ERR;
+    }
+    UNREF_DEFER(ns);
+
+    path_t path = cwd_get(&process->cwd, ns);
     PATH_DEFER(&path);
 
-    if (path_walk(&path, &pathname, &process->ns) == ERR)
+    if (path_walk(&path, &pathname, ns) == ERR)
     {
         return ERR;
     }

@@ -329,9 +329,9 @@ static uint64_t path_handle_dotdot(path_t* path)
     return 0;
 }
 
-static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namespace_handle_t* ns, uint64_t symlinks);
+static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namespace_t* ns, uint64_t symlinks);
 
-static uint64_t path_follow_symlink(dentry_t* dentry, path_t* path, namespace_handle_t* ns, uint64_t symlinks)
+static uint64_t path_follow_symlink(dentry_t* dentry, path_t* path, namespace_t* ns, uint64_t symlinks)
 {
     if (dentry == NULL || !PATH_IS_VALID(path) || ns == NULL)
     {
@@ -367,7 +367,7 @@ static uint64_t path_follow_symlink(dentry_t* dentry, path_t* path, namespace_ha
     return 0;
 }
 
-static uint64_t path_step_depth(path_t* path, mode_t mode, const char* name, namespace_handle_t* ns, uint64_t symlinks)
+static uint64_t path_step_depth(path_t* path, mode_t mode, const char* name, namespace_t* ns, uint64_t symlinks)
 {
     namespace_traverse(ns, path);
 
@@ -395,7 +395,7 @@ static uint64_t path_step_depth(path_t* path, mode_t mode, const char* name, nam
     return 0;
 }
 
-uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_handle_t* ns)
+uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_t* ns)
 {
     if (path == NULL || name == NULL || !path_is_name_valid(name) || ns == NULL)
     {
@@ -406,7 +406,7 @@ uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_handle
     return path_step_depth(path, mode, name, ns, 0);
 }
 
-static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namespace_handle_t* ns, uint64_t symlinks)
+static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namespace_t* ns, uint64_t symlinks)
 {
     const char* p = pathname->string;
     if (pathname->string[0] == '/')
@@ -467,7 +467,7 @@ static uint64_t path_walk_depth(path_t* path, const pathname_t* pathname, namesp
     return 0;
 }
 
-uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_handle_t* ns)
+uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
 {
     if (path == NULL || !PATHNAME_IS_VALID(pathname) || ns == NULL)
     {
@@ -478,7 +478,7 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_handle_t*
     return path_walk_depth(path, pathname, ns, 0);
 }
 
-uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_handle_t* ns)
+uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_t* ns)
 {
     if (path == NULL || !PATHNAME_IS_VALID(pathname) || outLastName == NULL || ns == NULL)
     {
@@ -536,7 +536,7 @@ uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLas
 }
 
 uint64_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_t* outChild, const pathname_t* pathname,
-    namespace_handle_t* ns)
+    namespace_t* ns)
 {
     if (from == NULL || outParent == NULL || outChild == NULL || !PATHNAME_IS_VALID(pathname) || ns == NULL)
     {

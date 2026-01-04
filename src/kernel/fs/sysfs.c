@@ -86,7 +86,14 @@ void sysfs_init(void)
         panic(NULL, "Failed to register sysfs");
     }
 
-    devMount = sysfs_mount_new("dev", NULL, MODE_PROPAGATE | MODE_ALL_PERMS, NULL, NULL, NULL);
+    namespace_t* ns = process_get_ns(sched_process());
+    if (ns == NULL)
+    {
+        panic(NULL, "Failed to get process namespace");
+    }
+    UNREF_DEFER(ns);
+
+    devMount = sysfs_mount_new("dev", ns, MODE_PROPAGATE | MODE_ALL_PERMS, NULL, NULL, NULL);
     if (devMount == NULL)
     {
         panic(NULL, "Failed to create /dev filesystem");
@@ -99,19 +106,13 @@ dentry_t* sysfs_get_dev(void)
     return REF(devMount->source);
 }
 
-mount_t* sysfs_mount_new(const char* name, namespace_handle_t* ns, mode_t mode, const inode_ops_t* inodeOps,
+mount_t* sysfs_mount_new(const char* name, namespace_t* ns, mode_t mode, const inode_ops_t* inodeOps,
     const superblock_ops_t* superblockOps, void* private)
 {
-    if (name == NULL)
+    if (name == NULL || ns == NULL)
     {
         errno = EINVAL;
         return NULL;
-    }
-
-    if (ns == NULL)
-    {
-        process_t* process = sched_process();
-        ns = &process->ns;
     }
 
     path_t rootPath = PATH_EMPTY;
@@ -133,55 +134,6 @@ mount_t* sysfs_mount_new(const char* name, namespace_handle_t* ns, mode_t mode, 
         .inodeOps = inodeOps,
         .private = private,
     };
-
-    return namespace_mount(ns, &mountpoint, SYSFS_NAME, NULL, mode, &ctx);
-}
-
-mount_t* sysfs_submount_new(const path_t* parent, const char* name, namespace_handle_t* ns, mode_t mode,
-    const inode_ops_t* inodeOps, const superblock_ops_t* superblockOps, void* private)
-{
-    if (parent == NULL || name == NULL)
-    {
-        errno = EINVAL;
-        return NULL;
-    }
-
-    if (parent->dentry->superblock->fs != &sysfs)
-    {
-        errno = EXDEV;
-        return NULL;
-    }
-
-    if (ns == NULL)
-    {
-        process_t* process = sched_process();
-        ns = &process->ns;
-    }
-
-    inode_t* inode = inode_new(parent->dentry->superblock, vfs_id_get(), INODE_DIR, NULL, &dirOps);
-    if (inode == NULL)
-    {
-        return NULL;
-    }
-    UNREF_DEFER(inode);
-
-    dentry_t* dentry = dentry_new(parent->dentry->superblock, parent->dentry, name);
-    if (dentry == NULL)
-    {
-        return NULL;
-    }
-    UNREF_DEFER(dentry);
-
-    dentry_make_positive(dentry, inode);
-
-    sysfs_mount_ctx_t ctx = {
-        .superblockOps = superblockOps,
-        .inodeOps = inodeOps,
-        .private = private,
-    };
-
-    path_t mountpoint = PATH_CREATE(parent->mount, dentry);
-    PATH_DEFER(&mountpoint);
 
     return namespace_mount(ns, &mountpoint, SYSFS_NAME, NULL, mode, &ctx);
 }

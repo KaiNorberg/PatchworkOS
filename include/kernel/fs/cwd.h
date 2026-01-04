@@ -2,7 +2,7 @@
 
 #include <kernel/fs/path.h>
 #include <kernel/sync/lock.h>
-
+#include <kernel/fs/namespace.h>
 /**
  * @brief Current Working Directory
  * @defgroup kernel_fs_cwd Current Working Directory
@@ -43,10 +43,10 @@ void cwd_deinit(cwd_t* cwd);
  * a circular dependency where the kernel process needs to be initialized before the vfs.
  *
  * @param cwd The CWD structure.
- * @param ns The namespace handle to get the root path from if the cwd is not set.
+ * @param ns The namespace to get the root path from if the cwd is not set.
  * @return The current working directory path.
  */
-path_t cwd_get(cwd_t* cwd, namespace_handle_t* ns);
+path_t cwd_get(cwd_t* cwd, namespace_t* ns);
 
 /**
  * @brief Set the current working directory.
