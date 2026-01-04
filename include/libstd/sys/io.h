@@ -24,8 +24,8 @@ extern "C"
 
 /**
  * @brief System IO header.
- * @ingroup libc
- * @defgroup libc_sys_io System IO
+ * @defgroup libstd_sys_io System IO
+ * @ingroup libstd
  *
  * @{
  */
