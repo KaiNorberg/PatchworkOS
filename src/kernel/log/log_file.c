@@ -2,7 +2,7 @@
 #include <kernel/log/log_file.h>
 
 #include <kernel/fs/file.h>
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/log_screen.h>
 #include <kernel/log/panic.h>
@@ -61,10 +61,10 @@ static file_ops_t logFileOps = {
 
 void log_file_expose(void)
 {
-    file = sysfs_file_new(NULL, "klog", NULL, &logFileOps, NULL);
+    file = devfs_file_new(NULL, "klog", NULL, &logFileOps, NULL);
     if (file == NULL)
     {
-        panic(NULL, "failed to create klog sysfs file");
+        panic(NULL, "failed to create klog devfs file");
     }
 }
 

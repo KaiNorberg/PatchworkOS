@@ -1,7 +1,7 @@
 #pragma once
 
 #include <_internal/MAX_PATH.h>
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/map.h>

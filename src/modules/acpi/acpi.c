@@ -19,8 +19,8 @@
 #include <boot/boot_info.h>
 #include <string.h>
 
-static bool mountInitialzed = false;
-static mount_t* acpi = NULL;
+static bool dirInitialized = false;
+static dentry_t* acpi = NULL;
 
 bool acpi_is_checksum_valid(void* table, uint64_t length)
 {
@@ -33,27 +33,27 @@ bool acpi_is_checksum_valid(void* table, uint64_t length)
     return sum == 0;
 }
 
-dentry_t* acpi_get_sysfs_root(void)
+dentry_t* acpi_get_dir(void)
 {
-    if (!mountInitialzed)
+    if (!dirInitialized)
     {
         namespace_t* ns = process_get_ns(process_get_kernel());
         if (ns == NULL)
         {
-            panic(NULL, "failed to get kernel process namespace for ACPI sysfs group");
+            panic(NULL, "failed to get kernel process namespace for ACPI devfs group");
         }
         UNREF_DEFER(ns);
 
-        acpi = sysfs_mount_new("acpi", ns, MODE_PROPAGATE | MODE_ALL_PERMS, NULL, NULL, NULL);
+        acpi = devfs_dir_new(NULL, "acpi", NULL, NULL);
         if (acpi == NULL)
         {
-            panic(NULL, "failed to initialize ACPI sysfs group");
+            panic(NULL, "failed to initialize ACPI devfs group");
         }
 
-        mountInitialzed = true;
+        dirInitialized = true;
     }
 
-    return REF(acpi->source);
+    return REF(acpi);
 }
 
 void acpi_reclaim_memory(const boot_memory_map_t* map)
@@ -106,13 +106,13 @@ uint64_t _module_procedure(const module_event_t* event)
 
         if (acpi_tables_expose() == ERR)
         {
-            LOG_ERR("failed to expose ACPI tables via sysfs\n");
+            LOG_ERR("failed to expose ACPI tables via devfs\n");
             return ERR;
         }
 
         if (aml_namespace_expose() == ERR)
         {
-            LOG_ERR("failed to expose ACPI devices via sysfs\n");
+            LOG_ERR("failed to expose ACPI devices via devfs\n");
             return ERR;
         }
     }

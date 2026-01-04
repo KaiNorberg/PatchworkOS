@@ -18,7 +18,7 @@
 #define LOG_FILE_MAX_BUFFER 0x10000
 
 /**
- * @brief Expose the kernel log file to userspace in sysfs.
+ * @brief Expose the kernel log file to userspace in devfs.
  */
 void log_file_expose(void);
 

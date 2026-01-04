@@ -1,0 +1,24 @@
+[meta]
+description = Taskbar
+version = 1.0
+author = PatchworkOS
+license = MIT
+
+[exec]
+bin = /app/bin/taskbar
+priority = 30
+
+[sandbox]
+profile = empty
+foreground = false
+
+[env]
+
+[namespace]
+/app:rx = $BOX
+/cfg:r = /cfg
+/base:rx = /base
+/net:rw = /net
+/proc:rw = /proc
+/dev/const:rw = /dev/const
+/dev/klog:rw = /dev/klog

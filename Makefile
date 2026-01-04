@@ -4,28 +4,22 @@ VERSION_HEADER = include/kernel/version.h
 VERSION_STRING := $(shell git describe --tags --always --dirty --long 2>/dev/null || echo "unknown")
 
 SECTIONS = boot kernel libstd libpatchwork
-PACKAGES = $(shell find src/pkg/ -name "*.mk")
+BOXES = $(shell find src/box/ -name "*.mk")
 PROGRAMS = $(shell find src/programs/ -name "*.mk")
 MODULES = $(shell find src/modules/ -name "*.mk")
 
-ROOT_DIRS = acpi sys sys/bin sys/lib sys/include sys/data pkg cfg dev efi efi/boot kernel kernel/modules kernel/modules/$(VERSION_STRING) net proc sbin
-
-# Programs to copy to /bin
-#BIN_PROGRAMS = shell cat echo grep link ls mv readlink rm root stat symlink tail touch wall cursor taskbar dwm
+ROOT_DIRS = acpi base base/bin base/lib base/include base/data box cfg dev efi efi/boot kernel kernel/modules kernel/modules/$(VERSION_STRING) net proc sbin tmp
 
 # Programs to copy to /sbin
-SBIN_PROGRAMS = init pkgd
-# Programs to copy to /sys/bin
-SYS_BIN_PROGRAMS = $(filter-out $(SBIN_PROGRAMS),$(basename $(notdir $(shell find bin/programs/))))
+SBIN_PROGRAMS = init boxd
+# Programs to copy to /base/bin
+BASE_BIN_PROGRAMS = $(filter-out $(SBIN_PROGRAMS),$(basename $(notdir $(shell find bin/programs/))))
+# Programs to copy to /box/[box]/bin
+BOX_PROGRAMS = $(basename $(notdir $(shell find bin/box/)))
 
-# Programs to copy to /usr/bin
-#USR_BIN_PROGRAMS = $(filter-out $(BIN_PROGRAMS) $(SBIN_PROGRAMS),$(basename $(notdir $(shell find bin/programs/))))
+.PHONY: $(SECTIONS) $(PROGRAMS) $(BOXES) $(MODULES) all setup deploy run clean generate_version compile_commands format doxygen clean clean_programs nuke grub_loopback clone_acpica_and_compile_tests
 
-PKG_PACKAGES = $(basename $(notdir $(shell find bin/pkg/)))
-
-.PHONY: $(SECTIONS) $(PROGRAMS) $(PACKAGES) argon2 $(MODULES) all setup deploy run clean generate_version compile_commands format doxygen clean clean_programs nuke grub_loopback clone_acpica_and_compile_tests
-
-all: setup $(SECTIONS) $(MODULES) $(PACKAGES) $(PROGRAMS) deploy
+all: setup $(SECTIONS) $(MODULES) $(BOXES) $(PROGRAMS) deploy
 
 generate_version:
 	@printf "#pragma once\n\n" > $(VERSION_HEADER).tmp
@@ -63,10 +57,10 @@ $(MODULES): $(SECTIONS)
 #	fi
 #	$(MAKE) -C lib/argon2 -f Makefile.patchwork
 
-$(PACKAGES): $(MODULES) argon2
-	$(MAKE) -f $@ SRCDIR=$(basename $(dir $@)) BUILDDIR=$(patsubst src/%,build/%,$(basename $(dir $@))) BINDIR=bin/pkg PKG=$(basename $(notdir $@))
+$(BOXES): $(MODULES)
+	$(MAKE) -f $@ SRCDIR=$(basename $(dir $@)) BUILDDIR=$(patsubst src/%,build/%,$(basename $(dir $@))) BINDIR=bin/box BOX=$(basename $(notdir $@))
 
-$(PROGRAMS): $(PACKAGES)
+$(PROGRAMS): $(BOXES)
 	$(MAKE) -f $@ SRCDIR=$(basename $(dir $@)) BUILDDIR=$(patsubst src/%,build/%,$(basename $(dir $@))) BINDIR=bin/programs PROGRAM=$(basename $(notdir $@))
 
 deploy: $(PROGRAMS)
@@ -75,18 +69,16 @@ deploy: $(PROGRAMS)
 	mlabel -i $(IMAGE) ::PatchworkOS
 	$(foreach dir,$(ROOT_DIRS),mmd -i $(IMAGE) ::/$(dir);)
 	mcopy -i $(IMAGE) -s root/* ::
-	mcopy -i $(IMAGE) -s LICENSE ::/usr/license
+	mcopy -i $(IMAGE) -s LICENSE ::/base/license
 	mcopy -i $(IMAGE) -s bin/boot/bootx64.efi ::/efi/boot
 	mcopy -i $(IMAGE) -s bin/kernel/kernel ::/kernel
 	mcopy -i $(IMAGE) -s bin/modules/* ::/kernel/modules/$(VERSION_STRING)
-	mcopy -i $(IMAGE) -s bin/libstd/libstd.a ::/sys/lib
-	mcopy -i $(IMAGE) -s bin/libpatchwork/libpatchwork.a ::/sys/lib
-	mcopy -i $(IMAGE) -s include/* ::/sys/include
-#$(foreach prog,$(BIN_PROGRAMS),mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/bin;)
+	mcopy -i $(IMAGE) -s bin/libstd/libstd.a ::/base/lib
+	mcopy -i $(IMAGE) -s bin/libpatchwork/libpatchwork.a ::/base/lib
+	mcopy -i $(IMAGE) -s include/* ::/base/include
 	$(foreach prog,$(SBIN_PROGRAMS),mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/sbin;)
-	$(foreach prog,$(SYS_BIN_PROGRAMS),mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/sys/bin;)
-	$(foreach pkg,$(PKG_PACKAGES),mmd -i $(IMAGE) ::/pkg/$(pkg)/bin && mcopy -i $(IMAGE) -s bin/pkg/$(pkg) ::/pkg/$(pkg)/bin;)
-#$(foreach prog,$(USR_BIN_PROGRAMS),mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/usr/bin;)
+	$(foreach prog,$(BASE_BIN_PROGRAMS),mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/base/bin;)
+	$(foreach prog,$(BOX_PROGRAMS),mmd -i $(IMAGE) ::/box/$(prog)/bin && mcopy -i $(IMAGE) -s bin/box/$(prog) ::/box/$(prog)/bin;)
 
 # This will only work if you have setup a grub loopback entry as described in the README.md file.
 grub_loopback:

@@ -2,7 +2,7 @@
 
 #include <kernel/drivers/abstract/kbd.h>
 #include <kernel/fs/file.h>
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
@@ -94,7 +94,7 @@ kbd_t* kbd_new(const char* name)
 
     if (kbdDir == NULL)
     {
-        kbdDir = sysfs_dir_new(NULL, "kbd", NULL, NULL);
+        kbdDir = devfs_dir_new(NULL, "kbd", NULL, NULL);
         if (kbdDir == NULL)
         {
             return NULL;
@@ -126,7 +126,7 @@ kbd_t* kbd_new(const char* name)
         return NULL;
     }
 
-    kbd->dir = sysfs_dir_new(kbdDir, id, &dirInodeOps, kbd);
+    kbd->dir = devfs_dir_new(kbdDir, id, &dirInodeOps, kbd);
     if (kbd->dir == NULL)
     {
         wait_queue_deinit(&kbd->waitQueue);
@@ -134,13 +134,13 @@ kbd_t* kbd_new(const char* name)
         free(kbd);
         return NULL;
     }
-    kbd->eventsFile = sysfs_file_new(kbd->dir, "events", NULL, &eventsOps, kbd);
+    kbd->eventsFile = devfs_file_new(kbd->dir, "events", NULL, &eventsOps, kbd);
     if (kbd->eventsFile == NULL)
     {
         UNREF(kbd->dir); // kbd will be freed in kbd_dir_cleanup
         return NULL;
     }
-    kbd->nameFile = sysfs_file_new(kbd->dir, "name", NULL, &nameOps, kbd);
+    kbd->nameFile = devfs_file_new(kbd->dir, "name", NULL, &nameOps, kbd);
     if (kbd->nameFile == NULL)
     {
         UNREF(kbd->eventsFile);

@@ -5,7 +5,7 @@
 #include <kernel/fs/file.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -206,7 +206,7 @@ void process_kill(process_t* process, const char* status)
     }
 
     lock_acquire(&process->status.lock);
-    strncpy_s(process->status.buffer, PROCESS_STATUS_MAX, status, PROCESS_STATUS_MAX - 1);
+    strncpy(process->status.buffer, status, PROCESS_STATUS_MAX - 1);
     process->status.buffer[PROCESS_STATUS_MAX - 1] = '\0';
     lock_release(&process->status.lock);
 

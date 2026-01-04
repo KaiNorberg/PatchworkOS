@@ -4,7 +4,7 @@
 #include <kernel/fs/cwd.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/namespace.h>
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/ipc/note.h>
 #include <kernel/mem/space.h>
 #include <kernel/proc/group.h>
@@ -168,9 +168,9 @@
  *
  * Starts the process if it was previously suspended.
  *
- * ### kill
+ * ### kill [status]
  *
- * Sends a kill note to all threads in the process, effectively terminating it.
+ * Sends a kill note to all threads in the process, effectively terminating it. The optional status will be set as the processes exit status.
  *
  * ### setns <fd>
  *

@@ -31,14 +31,6 @@ extern "C"
  */
 
 /**
- * @brief The environment variables of the current process.
- *
- * The `environ` variable is a NULL-terminated array of strings representing the environment variables of the current
- * process in the format "KEY=VALUE".
- */
-extern char** environ;
-
-/**
  * @brief Priority type.
  * @typedef priority_t
  *
@@ -342,6 +334,15 @@ uint64_t atnotify(atnotify_func_t handler, atnotify_t action);
  * @return On success, `true` if a note was handled, `false` otherwise.
  */
 _NORETURN void _exit(const char* status);
+
+
+/**
+ * @brief Helper for sending the "kill" command to a process.
+ *
+ * @param pid The PID of the process to send the command to.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t kill(pid_t pid);
 
 #if defined(__cplusplus)
 }

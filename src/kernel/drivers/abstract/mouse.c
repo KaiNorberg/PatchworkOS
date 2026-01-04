@@ -1,6 +1,6 @@
 #include <kernel/drivers/abstract/mouse.h>
 #include <kernel/fs/file.h>
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/sched/clock.h>
@@ -91,7 +91,7 @@ mouse_t* mouse_new(const char* name)
 
     if (mouseDir == NULL)
     {
-        mouseDir = sysfs_dir_new(NULL, "mouse", NULL, NULL);
+        mouseDir = devfs_dir_new(NULL, "mouse", NULL, NULL);
         if (mouseDir == NULL)
         {
             return NULL;
@@ -122,7 +122,7 @@ mouse_t* mouse_new(const char* name)
         return NULL;
     }
 
-    mouse->dir = sysfs_dir_new(mouseDir, id, &dirInodeOps, mouse);
+    mouse->dir = devfs_dir_new(mouseDir, id, &dirInodeOps, mouse);
     if (mouse->dir == NULL)
     {
         wait_queue_deinit(&mouse->waitQueue);
@@ -130,13 +130,13 @@ mouse_t* mouse_new(const char* name)
         free(mouse);
         return NULL;
     }
-    mouse->eventsFile = sysfs_file_new(mouse->dir, "events", NULL, &eventsOps, mouse);
+    mouse->eventsFile = devfs_file_new(mouse->dir, "events", NULL, &eventsOps, mouse);
     if (mouse->eventsFile == NULL)
     {
         UNREF(mouse->dir); // mouse will be freed in mouse_dir_cleanup
         return NULL;
     }
-    mouse->nameFile = sysfs_file_new(mouse->dir, "name", NULL, &nameOps, mouse);
+    mouse->nameFile = devfs_file_new(mouse->dir, "name", NULL, &nameOps, mouse);
     if (mouse->nameFile == NULL)
     {
         UNREF(mouse->dir);

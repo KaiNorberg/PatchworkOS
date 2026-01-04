@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/utils/ref.h>
 
 #include <stdint.h>
@@ -20,9 +20,9 @@ typedef struct dentry dentry_t;
  * @ingroup kernel_fs
  *
  * A superblock represents a mounted filesystem, it can be thought of as "filesystem + device". The filesystem is
- * just the format of the data, e.g. fat32, tmpfs, sysfs, etc. and the device provides the data.
+ * just the format of the data, e.g. fat32, tmpfs, devfs, etc. and the device provides the data.
  *
- * In the case of certain special filesystems like tmpfs or sysfs there is no physical device, a virtual device will be
+ * In the case of certain special filesystems like tmpfs or devfs there is no physical device, a virtual device will be
  * specified (a device of type `0`).
  *
  * @{

@@ -50,7 +50,6 @@ typedef struct namespace namespace_t;
  * | `recursive` | `R` | If removing a directory, remove all its contents recursively. If using `getdents()`, list contents recursively. | 
  * | `nofollow`  | `l` | Do not follow symbolic links. | 
  * | `private`   | `P` | Any files with this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child namespace. | 
- * | `sticky`    | `S` | Makes the mount apply to the dentry regardless of the path used to reach it. | 
  * | `propagate`  | `g` | Propagate mounts and unmounts to child namespaces. | 
  * | `locked`    | `L` | Forbid unmounting this mount, useful for hiding directories or files. |
  *
@@ -91,9 +90,8 @@ typedef enum mode
     MODE_RECURSIVE = 1 << 10,
     MODE_NOFOLLOW = 1 << 11,
     MODE_PRIVATE = 1 << 12,
-    MODE_STICKY = 1 << 13,
-    MODE_PROPAGATE = 1 << 14,
-    MODE_LOCKED = 1 << 15,
+    MODE_PROPAGATE = 1 << 13,
+    MODE_LOCKED = 1 << 14,
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
 } mode_t;
 

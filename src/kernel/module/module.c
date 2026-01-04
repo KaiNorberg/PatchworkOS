@@ -1,5 +1,5 @@
 #include <kernel/fs/dentry.h>
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/module/module.h>
 
 #include <kernel/fs/vfs.h>

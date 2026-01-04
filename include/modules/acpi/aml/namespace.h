@@ -137,7 +137,7 @@ typedef uint32_t aml_name_t;
 void aml_namespace_init(aml_object_t* root);
 
 /**
- * @brief Expose the entire namespace heirarchy to sysfs.
+ * @brief Expose the entire namespace heirarchy to devfs.
  *
  * @return On success, `0`. On failure, `ERR`.
  */

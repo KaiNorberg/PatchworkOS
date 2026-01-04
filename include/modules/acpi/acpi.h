@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 
 #include <boot/boot_info.h>
 #include <sys/defs.h>
@@ -151,13 +151,13 @@ typedef struct PACKED
 bool acpi_is_checksum_valid(void* table, uint64_t length);
 
 /**
- * @brief Retrieve the sysfs root directory for ACPI.
+ * @brief Retrieve the devfs root directory for ACPI.
  *
  * The acpi group and by extension its directory is lazily initialized.
  *
- * @return Pointer to the ACPI sysfs root directory.
+ * @return Pointer to the ACPI devfs root directory.
  */
-dentry_t* acpi_get_sysfs_root(void);
+dentry_t* acpi_get_dir(void);
 
 /**
  * @brief Reclaim ACPI memory regions.

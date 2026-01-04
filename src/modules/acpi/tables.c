@@ -220,14 +220,14 @@ uint64_t acpi_tables_init(rsdp_t* rsdp)
 
 uint64_t acpi_tables_expose(void)
 {
-    dentry_t* acpiRoot = acpi_get_sysfs_root();
+    dentry_t* acpiRoot = acpi_get_dir();
     assert(acpiRoot != NULL);
     UNREF_DEFER(acpiRoot);
 
-    tablesDir = sysfs_dir_new(acpiRoot, "tables", NULL, NULL);
+    tablesDir = devfs_dir_new(acpiRoot, "tables", NULL, NULL);
     if (tablesDir == NULL)
     {
-        LOG_ERR("failed to create ACPI tables sysfs directory");
+        LOG_ERR("failed to create ACPI tables devfs directory");
         return ERR;
     }
 
@@ -246,10 +246,10 @@ uint64_t acpi_tables_expose(void)
             name[SDT_SIGNATURE_LENGTH] = '\0';
         }
 
-        cachedTables[i].file = sysfs_file_new(tablesDir, name, NULL, &tableFileOps, table);
+        cachedTables[i].file = devfs_file_new(tablesDir, name, NULL, &tableFileOps, table);
         if (cachedTables[i].file == NULL)
         {
-            LOG_ERR("failed to create ACPI table sysfs file for %.*s", SDT_SIGNATURE_LENGTH, table->signature);
+            LOG_ERR("failed to create ACPI table devfs file for %.*s", SDT_SIGNATURE_LENGTH, table->signature);
             return ERR;
         }
     }

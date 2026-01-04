@@ -1,5 +1,5 @@
 #include <kernel/fs/ctl.h>
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -228,14 +228,14 @@ static file_ops_t fileOps = {
 
 static uint64_t shmem_init(void)
 {
-    shmemDir = sysfs_dir_new(NULL, "shmem", NULL, NULL);
+    shmemDir = devfs_dir_new(NULL, "shmem", NULL, NULL);
     if (shmemDir == NULL)
     {
         LOG_ERR("failed to create /dev/shmem directory");
         return ERR;
     }
 
-    newFile = sysfs_file_new(shmemDir, "new", NULL, &fileOps, NULL);
+    newFile = devfs_file_new(shmemDir, "new", NULL, &fileOps, NULL);
     if (newFile == NULL)
     {
         UNREF(shmemDir);

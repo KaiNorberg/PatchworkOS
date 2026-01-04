@@ -54,7 +54,7 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 
 ### Kernel
 
-- Fully preemptive and tickless [EEVDF scheduler](https://kainorberg.github.io/PatchworkOS/html/d7/d85/group__kernel__sched.html) based upon the [original paper](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564) and implemented using an [Augmented Red-Black tree](https://kainorberg.github.io/PatchworkOS/html/da/d90/group__kernel__utils__rbtree.html) to achieve `O(log n)` worst case complexity. EEVDF is the same algorithm used in the modern Linux kernel, but ours is obviously **a lot** less mature.
+- Preemptive and tickless [EEVDF scheduler](https://kainorberg.github.io/PatchworkOS/html/d7/d85/group__kernel__sched.html) based upon the [original paper](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564) and implemented using an [Augmented Red-Black tree](https://kainorberg.github.io/PatchworkOS/html/da/d90/group__kernel__utils__rbtree.html) to achieve `O(log n)` worst case complexity. EEVDF is the same algorithm used in the modern Linux kernel, but ours is obviously **a lot** less mature.
 - Multithreading and Symmetric Multi Processing with fine-grained locking.
 - Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info.
 - File based IPC including [pipes](https://kainorberg.github.io/PatchworkOS/html/d7/d64/group__modules__ipc__pipe.html), [shared memory](https://kainorberg.github.io/PatchworkOS/html/df/d3f/group__modules__ipc__shmem.html), [sockets](https://kainorberg.github.io/PatchworkOS/html/df/d65/group__module__net.html) and Plan9 inspired "signals" called [notes](https://kainorberg.github.io/PatchworkOS/html/d8/db1/group__kernel__ipc__note.html).
@@ -64,7 +64,7 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 
 ### File System
 
-- Unix-style VFS with mountpoints, hardlinks, symlinks, per-process namespaces, etc.
+- UNIX-style VFS with mountpoints, hardlinks, symlinks, per-process namespaces, etc.
 - Custom [Framebuffer BitMaP](https://github.com/KaiNorberg/fbmp) (.fbmp) image format, allows for faster loading by removing the need for parsing.
 - Custom [Grayscale Raster Font](https://github.com/KaiNorberg/grf) (.grf) font format, allows for antialiasing and kerning without complex vector graphics.
 
@@ -85,10 +85,9 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 
 ## Notable Future Plans
 
-- Overhaul security to process containerization. <-- Currently being worked on.
-- Remove sticky mounts as they are no longer needed and break with ".." traversal. <-- Currently being worked on.
+- Implement user system in user-space using namespaces.
 - File servers (FUSE, 9P?).
-- Overhaul Desktop Window Manager to use new security system and File Servers?
+- Overhaul Desktop Window Manager to use the new security system and file servers?
 - Port LUA and use it for dynamic system configuration.
 - Fully Asynchronous I/O and syscalls (io_uring?).
 - USB support.
@@ -335,7 +334,7 @@ fd_t stdin = ...;
 fd_t stdout = ...;
 fd_t stderr = ...;
 
-const char* argv[] = {"/bin/shell", NULL};
+const char* argv[] = {"/base/bin/shell", NULL};
 pid_t child = spawn(argv, SPAWN_SUSPENDED);
 ```
 
@@ -401,15 +400,35 @@ Plus its fun.
 
 ## Security Model
 
-In PatchworkOS, there are no Access Control Lists, user IDs or similar mechanisms. Instead, PatchworkOS uses a pseudo-capability based security model based on per-process mountpoint namespaces and containerization. As in, each process has its own view of the filesystem.
+In PatchworkOS, there are no Access Control Lists, user IDs or similar mechanisms. Instead, PatchworkOS uses a pseudo-capability security model based on per-process mountpoint namespaces and containerization. This means that there is no global filesystem view, each process has its own view of the filesystem defined by what directories and files have been mounted or bound into its namespace.
 
-For a basic example, say we have a process A which has mounted a sensitive directory at `/secret` while process B has no such mountpoint. From process B's perspective, the `/secret` directory may not exist, may contain its original contents or may contain completely different contents depending on how process B's namespace is configured.
+For a basic example, say we have a process A which creates a child process B. Process A has access to a secret directory `/secret` that it does not want process B to access. To prevent process B from accessing the `/secret` directory, process A can create a new empty namespace for process B and simply not mount or bind the `/secret` directory into process B's namespace:
 
-> An interesting detail is that when process A opens the `/secret` directory, the dentry underlying the file descriptor is the dentry that was mounted or bound to `/secret`. Even if process B could see the `/secret` directory it would retrieve the dentry of the directory in the parent superblock, and thus see the content of that directory in the parent superblock. Namespaces prevent or enable mountpoint traversal not directory visibility. If this means nothing to you, don't worry about it.
+```c
+const char* argv[] = {"/base/bin/b", NULL};
+pid_t child = spawn(argv, SPAWN_EMPTY_NS | SPAWN_SUSPENDED);
+swritefile(F("/proc/%d/ctl", child), "bind ... && mount ... && start"); // Mount/bind other needed directories.
+```
 
-The namespace system allows for a composable, transparent and capability-based security model, where processes can be given access to any combination of files and directories without needing hidden permission bits or similar mechanisms. Additionally, since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc. For example, if you wish to prevent a process from using sockets, you could simply bind `/dev/null` to `/net` or just not mount the `/net` directory at all.
+Another way process A could prevent process B from accessing the `/secret` directory is to mount a new empty tmpfs instance in its own namespace over the `/secret` directory using the ":private" flag which prevents a child namespace from inheriting the mountpoint and store any secret files there:
 
-> Deciding if this model is truly a capability system is something that could be argued about. In the end, it does share the core properties of a capability system, namely that possession of a "capability" (a visible file/directory) grants access to an object (the contents or functionality of the file/directory) and that "capabilities" can be transferred between processes (using mechanisms like `share()` and `claim()` described below or through binding and mounting directories/files).
+```c
+// In process A.
+mount("/secret:private", "tmpfs", NULL);
+fd_t secretFile = open("/secret/file:create");
+...
+const char* argv[] = {"/base/bin/b", NULL};
+pid_t child = spawn(argv, SPAWN_COPY_NS); // Create a child namespace copying the parents namespace.
+
+// In process B.
+fd_t secretFile = open("/secret/file"); // Will fail to access the file.
+```
+
+> An interesting detail is that when process A opens the `/secret` directory, the dentry underlying the file descriptor is the dentry that was mounted or bound to `/secret`. Even if process B can see the `/secret` directory it would retrieve the dentry of the directory in the parent superblock, and thus see the content of that directory in the parent superblock. Namespaces prevent or enable mountpoint traversal not directory visibility. If this means nothing to you, don't worry about it.
+
+The namespace system allows for a composable, transparent and psuedo-capability security model, where processes can be given access to any combination of files and directories without needing hidden permission bits or similar mechanisms. Additionally, since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc. For example, if you wish to prevent a process from using sockets, you could simply not mount or bind the `/net` directory into its namespace.
+
+> Deciding if this model is truly a capability system could be argued about. In the end, it does share the core properties of a capability model, namely that possession of a "capability" (a visible file/directory) grants access to an object (the contents or functionality of the file/directory) and that "capabilities" can be transferred between processes (using mechanisms like `share()` and `claim()` described below or through binding and mounting directories/files). However, it does lack some traditional properties of capability systems, such as a clean way to revoke access once granted. Therefore, it does not fully qualify as a pure capability system, but rather a hybrid model which shares some properties with capability systems.
 
 It would even be possible to implement a user-like system entirely in user space using namespaces by having the init process bind different directories depending on the user logging in.
 
@@ -448,54 +467,50 @@ fd_t file = claim(&key);
 
 [Userspace IO API Documentation](https://kainorberg.github.io/PatchworkOS/html/d4/deb/group__libstd__sys__io.html)
 
-### Containerization
+### Boxes
 
-In userspace, PatchworkOS provides a simple containerization mechanism to isolate any processes from the rest of the system and to ensure that each such process can only access files and directories that it has explicitly been granted access to. We call such an isolated process a "package".
+In userspace, PatchworkOS provides a simple containerization mechanism to isolate any processes from the rest of the system and to ensure that each such process can only access files and directories that it has explicitly been granted access to. We call such an isolated process a "box".
 
-As we are about to mention a lot of file paths, note that file paths will be specified from the perspective of the "pkgd" daemons namespace, which is likely to be different from the namespace of any particular user process, for example these are not the file paths you would see in the terminal. Additionally, PatchworkOS does not follow the traditional UNIX filesystem hierarchy, instead the layout is defined to make the containerization system less cumbersome.
+> Note that all file paths will be specified from the perspective of the "boxd" daemons namespace, from now on called the "root" namespace as it is the ancestor of all user-space namespaces, which is likely to be different from the namespace of any particular process. For example the `/box/` Additionally, PatchworkOS does not follow the Filesystem Hierarchy Standard, so paths like `/bin` or `/etc` dont exist.
 
-Each package is stored in a `/pkg/[package_name]` directory which stores a `/pkg/[package_name]/manifest` ini-style configuration file containing all the metadata about the package, defining what files and directories the package is allowed to access and other configuration options. These configuration files are parsed by the "pkgd" daemon which is responsible for spawning and managing packages.
+Each box is stored in a `/box/[box_name]` directory which stores a `/box/[box_name]/manifest` ini-style configuration file containing all the metadata about the box, defining what files and directories the box is allowed to access and other configuration options. These configuration files are parsed by the "boxd" daemon which is responsible for spawning and managing boxes.
 
-Going over the entire package system is way beyond the scope of this discussion, as such we will limit the discussion to one example package and discuss how the package system is used by a user.
+Going over the entire box system is way beyond the scope of this discussion, as such we will limit the discussion to one example box and discuss how the box system is used by a user.
 
-### The DOOM Package
+### The DOOM Box
 
-As an example, PatchworkOS includes a package for running DOOM using the `doomgeneric` port stored at `/pkg/doom`. Its manifest file can be found [here](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/pkg/doom/manifest). Note that due to the containerization system, the `/pkg` directory is not mounted in all user processes and as such will appear to not exist.
+As an example, PatchworkOS includes a box for running DOOM using the `doomgeneric` port stored at `/box/doom`. Its manifest file can be found [here](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/box/doom/manifest). Note that due to the containerization system, the `/box` directory is not mounted in most user processes and as such will appear to not exist.
 
-First, the manifest file defines the packages metadata such as its version, author, license, etc. and information about the executable such as its path (within the packages namespace) and its desired scheduling priority.
+First, the manifest file defines the boxes metadata such as its version, author, license, etc. and information about the executable such as its path (within the boxes namespace) and its desired scheduling priority.
 
-After that it defines the packages "sandbox", which specifies how the package should be configured. In this case, it specifies the "empty" profile meaning that pkgd will create a completely empty namespace, to the root of which it will mount a tmpfs instance and that the package is a foreground package, more on that later.
+After that it defines the boxes "sandbox", which specifies how the box should be configured. In this case, it specifies the "empty" profile meaning that boxd will create a completely empty namespace, to the root of which it will mount a tmpfs instance and that the box is a foreground box, more on that later.
 
-Finally, it specifies a list of default environment variables to set in the package and the most important section, the "namespace" section.
+Finally, it specifies a list of default environment variables and the most important section, the "namespace" section.
 
-The namespace section specifies a list of files and directories to bind into the packages namespace which is what ultimately controls what the package can access. In this case, doom is given extremely limited access, only binding four directories:
+The namespace section specifies a list of files and directories to bind into the boxes namespace which is what ultimately controls what the box can access. In this case, doom is given extremely limited access, only binding four directories:
 
-- `/pkg/doom/bin` to `/app/bin`, allowing it to access its own executable stored in `/pkg/doom/bin/doom`.
-- `/pkg/doom/data` to `/app/data`, allowing it to access any WAD files or save files stored in `/pkg/doom/data`.
+- `/box/doom/bin` to `/app/bin`, allowing it to access its own executable stored in `/box/doom/bin/doom`.
+- `/box/doom/data` to `/app/data`, allowing it to access any WAD files or save files stored in `/box/doom/data`.
 - `/net/local` to itself to allow it to create sockets to communicate with the Desktop Window Manager.
 - `/dev/const` to itself to allow it to use the `/dev/const/zero` file to map/allocate memory.
 
-This means that the doom package cannot see or access user files, system configuration files, devices or anything else outside its bound directories, it can't even create pipes or shared memory as the `/dev/pipe/new` and `/dev/shmem/new` files do not exist in its namespace.
+This means that the doom box cannot see or access user files, system configuration files, devices or anything else outside its bound directories, it can't even create pipes or shared memory as the `/dev/pipe/new` and `/dev/shmem/new` files do not exist in its namespace.
 
-### Using Packages
+### Using Boxes
 
-A common concern with containers is usability. In PatchworkOS, packages are designed to be as simple as possible to the point where a user should not even need to know that they are using containers.
+Containerization and capability models often introduce friction to the user experience. In PatchworkOS, the goal is to minimize this friction. As such, using boxes should be seamless to the point that a user should not even need to know that they are using a box.
 
-First, It's important to know that in PatchworkOS there are only two directories for executables, `/sbin` for essential system binaries such as `init` and `/sys/bin` for everything else.
+To explain how this is achieved, it's important to know that in PatchworkOS there are only two directories for executables, `/sbin` for essential system binaries such as `init` and `/base/bin` for everything else.
 
-One of the binaries in `/sys/bin` is `pkgspawn` which is used to spawn packages. This binary is intended to be used via symlinks, for example there is a symlink at `/sys/bin/doom` pointing to `pkgspawn`. When a user runs `/sys/bin/doom` (or just `doom` if `/sys/bin` is in the shell's PATH), the `pkgspawn` binary will be executed, but the first argument will be `/sys/bin/doom` due to how symlinks work. `pkgspawn` will then resolve that to the package name `doom` and send a request to the `pkgd` daemon to spawn the package.
+Within the `/base/bin` directory is the `boxspawn` binary which is used via symlinks. For example, there is a symlink at `/base/bin/doom` pointing to `boxspawn`. When a user runs `/base/bin/doom` (or just `doom` if `/base/bin` is in the shell's PATH), the `boxspawn` binary will be executed, but the first argument passed to it will be `/base/bin/doom` due to the behavior of symlinks. The first argument is used to resolve the box name, `doom` in this case, and send a request to the `boxd` daemon to spawn the box.
 
-All this means that from a user's perspective, running a containerized package is as simple as running any other binary, for example:
+All this means that from a user's perspective, running a containerized box is as simple as running any other binary, running `doom` from the shell will work as expected.
 
-```bash
-doom
-```
+### Foreground and Background Boxes
 
-### Foreground and Background Packages
+Boxes can be either foreground or background boxes. When a foreground box is spawned, boxd will perform additional setup such that the box will appear to be a child of the process that spawned it, setting up its stdio, process group, allowing the spawning process to retrieve its exit status, etc. This allows for a system where using containerized boxes can be indistinguishable from using a regular binary from a user perspective.
 
-Packages can be either foreground or background packages. When a foreground package is spawned, pkgd will perform additional setup such that the package will appear to be a child of the process that spawned it, setting up its stdio, process group, allowing the spawning process to retrieve its exit status, etc. This allows for, as mentioned before, a system where using containerized packages can be indistinguishable from using a regular binary from a user perspective.
-
-A background package on the other hand is intended for daemons and services that do not need to interact with the user. When a background package is spawned, it will run detached from the spawning process, without any stdio or similar.
+A background box on the other hand is intended for daemons and services that do not need to interact with the user. When a background box is spawned, it will run detached from the spawning process, without any stdio or similar.
 
 ## ACPI (WIP)
 
@@ -619,6 +634,10 @@ touch file.txt:ce
 # Create the mydir directory.
 touch mydir:create:directory
 touch mydir:cd
+
+# Create directories and any parent directories as needed.
+touch dir1/dir2/dir3:create:directory:parents
+touch dir1/dir2/dir3:cdp
 ```
 
 ### `cat`

@@ -246,7 +246,7 @@ typedef struct PACKED
 typedef struct
 {
     sdt_header_t* table;
-    dentry_t* file; ///< The sysfs file representing the table.
+    dentry_t* file; ///< The devfs file representing the table.
 } acpi_cached_table_t;
 
 /**
@@ -258,7 +258,7 @@ typedef struct
 uint64_t acpi_tables_init(rsdp_t* rsdp);
 
 /**
- * @brief Expose ACPI tables to sysfs.
+ * @brief Expose ACPI tables to devfs.
  *
  * @return On success, `0`. On failure, `ERR`.
  */

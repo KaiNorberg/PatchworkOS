@@ -3,7 +3,7 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/fs/file.h>
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -135,18 +135,18 @@ void perf_thread_ctx_init(perf_thread_ctx_t* ctx)
 
 void perf_init(void)
 {
-    perfDir = sysfs_dir_new(NULL, "perf", NULL, NULL);
+    perfDir = devfs_dir_new(NULL, "perf", NULL, NULL);
     if (perfDir == NULL)
     {
         panic(NULL, "Failed to initialize performance directory");
     }
 
-    cpuFile = sysfs_file_new(perfDir, "cpu", NULL, &cpuOps, NULL);
+    cpuFile = devfs_file_new(perfDir, "cpu", NULL, &cpuOps, NULL);
     if (cpuFile == NULL)
     {
         panic(NULL, "Failed to create CPU performance file");
     }
-    memFile = sysfs_file_new(perfDir, "mem", NULL, &memOps, NULL);
+    memFile = devfs_file_new(perfDir, "mem", NULL, &memOps, NULL);
     if (memFile == NULL)
     {
         panic(NULL, "Failed to create memory performance file");
