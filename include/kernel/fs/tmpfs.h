@@ -10,8 +10,8 @@
 #include <sys/list.h>
 
 /**
- * @brief In-memory filesystem.
- * @defgroup kernel_fs_tmpfs TmpFS
+ * @brief Temporary Filesystem.
+ * @defgroup kernel_fs_tmpfs Temporary Filesystem
  * @ingroup kernel_fs
  *
  * A simple in-memory filesystem. All data is lost when power is lost.
