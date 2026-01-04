@@ -57,7 +57,7 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 - Preemptive and tickless [EEVDF scheduler](https://kainorberg.github.io/PatchworkOS/html/d7/d85/group__kernel__sched.html) based upon the [original paper](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564) and implemented using an [Augmented Red-Black tree](https://kainorberg.github.io/PatchworkOS/html/da/d90/group__kernel__utils__rbtree.html) to achieve `O(log n)` worst case complexity. EEVDF is the same algorithm used in the modern Linux kernel, but ours is obviously **a lot** less mature.
 - Multithreading and Symmetric Multi Processing with fine-grained locking.
 - Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info.
-- File based IPC including [pipes](https://kainorberg.github.io/PatchworkOS/html/d7/d64/group__modules__ipc__pipe.html), [shared memory](https://kainorberg.github.io/PatchworkOS/html/df/d3f/group__modules__ipc__shmem.html), [sockets](https://kainorberg.github.io/PatchworkOS/html/df/d65/group__module__net.html) and Plan9 inspired "signals" called [notes](https://kainorberg.github.io/PatchworkOS/html/d8/db1/group__kernel__ipc__note.html).
+- File based IPC including [pipes](https://kainorberg.github.io/PatchworkOS/html/d7/d64/group__modules__ipc__pipe.html), [shared memory](https://kainorberg.github.io/PatchworkOS/html/df/d3f/group__modules__ipc__shmem.html), [sockets](https://kainorberg.github.io/PatchworkOS/html/d4/db0/group__kernel__fs__netfs.html) and Plan9 inspired "signals" called [notes](https://kainorberg.github.io/PatchworkOS/html/d8/db1/group__kernel__ipc__note.html).
 - File based device API [abstractions](https://kainorberg.github.io/PatchworkOS/html/de/d7b/group__kernel__drivers__abstract.html), including framebuffers, input devices, etc.
 - [Synchronization primitives](https://kainorberg.github.io/PatchworkOS/html/dd/d6b/group__kernel__sync.html) including mutexes, read-write locks, sequential locks, futexes and others.
 - Highly [Modular design](#modules), even [SMP Bootstrapping](https://kainorberg.github.io/PatchworkOS/html/d3/d0a/group__modules__smp.html) is done in a module.
@@ -270,7 +270,7 @@ swritefile(F("/net/local/%s/ctl", id), "connect myserver");
 free(id);
 ```
 
-[Documentation](https://kainorberg.github.io/PatchworkOS/html/df/d65/group__module__net.html)
+[Documentation](https://kainorberg.github.io/PatchworkOS/html/d4/db0/group__kernel__fs__netfs.html)
 
 ### File Flags?
 
@@ -471,11 +471,13 @@ fd_t file = claim(&key);
 
 In userspace, PatchworkOS provides a simple containerization mechanism to isolate any processes from the rest of the system and to ensure that each such process can only access files and directories that it has explicitly been granted access to. We call such an isolated process a "box".
 
-> Note that all file paths will be specified from the perspective of the "boxd" daemons namespace, from now on called the "root" namespace as it is the ancestor of all user-space namespaces, which is likely to be different from the namespace of any particular process. For example the `/box/` Additionally, PatchworkOS does not follow the Filesystem Hierarchy Standard, so paths like `/bin` or `/etc` dont exist.
+> Note that all file paths will be specified from the perspective of the "boxd" daemons namespace, from now on called the "root" namespace as it is the ancestor of all user-space namespaces, which is likely to be different from the namespace of any particular process. For example the `/box/` Additionally, PatchworkOS does not follow the Filesystem Hierarchy Standard, so paths like `/bin` or `/etc` dont exist. See the [Init Process Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbc/group__programs__init.html) for more info on the root namespace layout.
 
 Each box is stored in a `/box/[box_name]` directory which stores a `/box/[box_name]/manifest` ini-style configuration file containing all the metadata about the box, defining what files and directories the box is allowed to access and other configuration options. These configuration files are parsed by the "boxd" daemon which is responsible for spawning and managing boxes.
 
 Going over the entire box system is way beyond the scope of this discussion, as such we will limit the discussion to one example box and discuss how the box system is used by a user.
+
+[Documentation](https://kainorberg.github.io/PatchworkOS/html/db/d64/group__programs__boxd.html)
 
 ### The DOOM Box
 
@@ -512,6 +514,8 @@ Boxes can be either foreground or background boxes. When a foreground box is spa
 
 A background box on the other hand is intended for daemons and services that do not need to interact with the user. When a background box is spawned, it will run detached from the spawning process, without any stdio or similar.
 
+[Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dd4/group__programs__boxd__manifest.html)
+
 ## ACPI (WIP)
 
 PatchworkOS features a from-scratch ACPI implementation and AML parser, with the goal of being, at least by ACPI standards, easy to understand and educational. It is tested on the [Tested Configurations](#tested-configurations) below and against [ACPICA's](https://github.com/acpica/acpica) runtime test suite, but remains a work in progress (and probably always will be).
@@ -530,7 +534,7 @@ AML or ACPI Machine Language is a Turing complete "mini language", and the sourc
 
 ### Device Configuration
 
-To demonstrate how ACPI is used for device configuration, we will use the [PS/2 driver](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/modules/drivers/ps2) as an example.
+To demonstrate how ACPI is used for device configuration, we will use the [PS/2 driver](https://kainorberg.github.io/PatchworkOS/html/d9/d70/group__modules__drivers__ps2.html) as an example.
 
 If you have followed a basic operating systems tutorial, you have probably implemented a PS/2 keyboard driver at some point, and most likely you hardcoded the I/O ports `0x60` and `0x64` for data and commands respectively, and IRQ `1` for keyboard interrupts.
 
