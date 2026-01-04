@@ -398,6 +398,9 @@ cleanup:
 
 int main(void)
 {
+    /// @todo Use nonblocking sockets to avoid hanging on accept or read, or just wait until we have filesystem servers
+    /// and do that instead.
+
     char* id = sreadfile("/net/local/seqpacket");
     if (id == NULL)
     {
@@ -405,7 +408,7 @@ int main(void)
         abort();
     }
 
-    if (swritefile(F("/net/%s/ctl", id), "bind pkgspawn && listen") == ERR)
+    if (swritefile(F("/net/local/%s/ctl", id), "bind pkgspawn && listen") == ERR)
     {
         printf("pkgd: failed to bind to pkg (%s)\n", strerror(errno));
         goto error;
@@ -414,7 +417,7 @@ int main(void)
     printf("pkgd: listening for connections...\n");
     while (1)
     {
-        fd_t client = open(F("/net/%s/accept", id));
+        fd_t client = open(F("/net/local/%s/accept", id));
         if (client == ERR)
         {
             printf("pkgd: failed to accept connection (%s)\n", strerror(errno));

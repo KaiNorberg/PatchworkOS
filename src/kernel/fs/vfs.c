@@ -166,7 +166,7 @@ file_t* vfs_open(const pathname_t* pathname, process_t* process)
         return NULL;
     }
     UNREF_DEFER(ns);
-    
+
     path_t cwd = cwd_get(&process->cwd, ns);
     PATH_DEFER(&cwd);
 
@@ -789,14 +789,12 @@ static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
 
     while (true)
     {
-        vfs_dir_ctx_t vctx = {
-            .ctx = {.emit = vfs_dir_emit, .pos = offset},
+        vfs_dir_ctx_t vctx = {.ctx = {.emit = vfs_dir_emit, .pos = offset},
             .buffer = buf,
             .count = bufSize,
             .written = 0,
             .path = *path,
-            .ns = process_get_ns(process)
-        };
+            .ns = process_get_ns(process)};
         UNREF_DEFER(vctx.ns);
 
         path->dentry->ops->iterate(path->dentry, &vctx.ctx);
@@ -928,14 +926,12 @@ uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count)
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
-    vfs_dir_ctx_t ctx = {
-        .ctx = {.emit = vfs_dir_emit, .pos = file->pos},
+    vfs_dir_ctx_t ctx = {.ctx = {.emit = vfs_dir_emit, .pos = file->pos},
         .buffer = buffer,
         .count = count,
         .written = 0,
         .path = file->path,
-        .ns = ns
-    };
+        .ns = ns};
 
     uint64_t result = file->path.dentry->ops->iterate(file->path.dentry, &ctx.ctx);
     file->pos = ctx.ctx.pos;
@@ -1148,7 +1144,7 @@ uint64_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathnam
         return ERR;
     }
     UNREF_DEFER(ns);
-    
+
     path_t cwd = cwd_get(&process->cwd, ns);
     PATH_DEFER(&cwd);
 

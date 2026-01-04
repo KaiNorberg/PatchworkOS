@@ -121,7 +121,7 @@ process_t* process_get(pid_t id);
  * @brief Gets the namespace of a process.
  *
  * It is the responsibility of the caller to `UNREF()` the returned namespace.
- * 
+ *
  * @param process The process to get the namespace of.
  * @return On success, a reference to the namespace of the process. On failure, `NULL` and `errno` is set:
  * - `EINVAL`: Invalid parameters.

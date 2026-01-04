@@ -8,6 +8,7 @@
 
 #include <kernel/drivers/com.h>
 #include <stdatomic.h>
+#include <stdbool.h>
 #include <sys/defs.h>
 
 /**
@@ -134,6 +135,43 @@ static inline void lock_acquire(lock_t* lock)
     }
 
     atomic_thread_fence(memory_order_seq_cst);
+}
+
+/**
+ * @brief Tries to acquire a lock.
+ *
+ * @param lock Pointer to the lock to acquire.
+ * @return true if the lock was acquired, false otherwise.
+ */
+static inline bool lock_try_acquire(lock_t* lock)
+{
+    interrupt_disable();
+
+    uint16_t ticket = atomic_load_explicit(&lock->nextTicket, memory_order_relaxed);
+    if (atomic_load_explicit(&lock->nowServing, memory_order_acquire) != ticket)
+    {
+        interrupt_enable();
+        return false;
+    }
+
+    if (!atomic_compare_exchange_strong_explicit(&lock->nextTicket, &ticket, ticket + 1, memory_order_relaxed,
+            memory_order_relaxed))
+    {
+        interrupt_enable();
+        return false;
+    }
+
+#ifndef NDEBUG
+    if (lock->canary != LOCK_CANARY)
+    {
+        interrupt_enable();
+        panic(NULL, "Lock canary corrupted");
+    }
+    lock->calledFrom = (uintptr_t)__builtin_return_address(0);
+#endif
+
+    atomic_thread_fence(memory_order_seq_cst);
+    return true;
 }
 
 /**

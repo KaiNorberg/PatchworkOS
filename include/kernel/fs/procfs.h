@@ -5,9 +5,9 @@
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/sysfs.h>
-#include <kernel/proc/group.h>
 #include <kernel/ipc/note.h>
 #include <kernel/mem/space.h>
+#include <kernel/proc/group.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/futex.h>

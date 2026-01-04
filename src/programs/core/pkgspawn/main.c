@@ -36,7 +36,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    if (swritefile(F("/net/%s/ctl", id), "connect pkgspawn") == ERR)
+    if (swritefile(F("/net/local/%s/ctl", id), "connect pkgspawn") == ERR)
     {
         printf("pkgspawn: failed to bind to pkg (%s)\n", strerror(errno));
         free(id);
@@ -108,7 +108,7 @@ int main(int argc, char** argv)
         strcat(buffer, argv[i]);
     }
 
-    fd_t data = open(F("/net/%s/data", id));
+    fd_t data = open(F("/net/local/%s/data", id));
     if (data == ERR)
     {
         printf("pkgspawn: failed to open data socket (%s)\n", strerror(errno));

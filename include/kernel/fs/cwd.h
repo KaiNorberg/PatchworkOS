@@ -1,8 +1,8 @@
 #pragma once
 
+#include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
 #include <kernel/sync/lock.h>
-#include <kernel/fs/namespace.h>
 /**
  * @brief Current Working Directory
  * @defgroup kernel_fs_cwd Current Working Directory

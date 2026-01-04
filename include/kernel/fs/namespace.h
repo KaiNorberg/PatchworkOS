@@ -77,7 +77,7 @@ namespace_t* namespace_new(namespace_t* parent);
 
 /**
  * @brief Copy mounts from one namespace to another.
- * 
+ *
  * @param dest The destination namespace.
  * @param src The source namespace.
  * @return On success, `0`. On failure, `ERR` and `errno`
@@ -126,8 +126,8 @@ bool namespace_traverse(namespace_t* ns, path_t* path);
  * - `ENOENT`: The root does not exist or the target is negative.
  * - Other errors as returned by the filesystem's `mount()` function or `mount_new()`.
  */
-mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* fsName, const char* deviceName,
-    mode_t mode, void* private);
+mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* fsName, const char* deviceName, mode_t mode,
+    void* private);
 
 /**
  * @brief Bind a source path to a target path in a namespace.

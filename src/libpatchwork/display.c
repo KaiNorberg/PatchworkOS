@@ -59,7 +59,7 @@ display_t* display_new(void)
         return NULL;
     }
 
-    disp->ctl = open(F("/net/%s/ctl", disp->id));
+    disp->ctl = open(F("/net/local/%s/ctl", disp->id));
     if (disp->ctl == ERR)
     {
         free(disp->id);
@@ -74,7 +74,7 @@ display_t* display_new(void)
         return NULL;
     }
 
-    disp->data = open(F("/net/%s/data", disp->id));
+    disp->data = open(F("/net/local/%s/data", disp->id));
     if (disp->data == ERR)
     {
         close(disp->ctl);

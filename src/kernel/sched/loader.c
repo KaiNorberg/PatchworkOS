@@ -211,7 +211,8 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     }
     UNREF_DEFER(childNs);
 
-    process_t* child = process_new(atomic_load(&process->priority), flags & SPAWN_EMPTY_GROUP ? NULL : &process->group, childNs);
+    process_t* child =
+        process_new(atomic_load(&process->priority), flags & SPAWN_EMPTY_GROUP ? NULL : &process->group, childNs);
     if (child == NULL)
     {
         return ERR;
@@ -272,7 +273,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     if (!(flags & SPAWN_EMPTY_ENV))
     {
         if (env_copy(&child->env, &process->env) == ERR)
-        {        
+        {
             loader_strv_free(argvCopy, argc);
             return ERR;
         }

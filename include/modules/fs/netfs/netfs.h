@@ -1,9 +1,9 @@
 #pragma once
 
-#include <_internal/MAX_PATH.h>
 #include <kernel/fs/path.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/mutex.h>
+#include <kernel/sync/rwmutex.h>
 #include <kernel/utils/ref.h>
 
 #include <stdint.h>
@@ -38,11 +38,12 @@ typedef struct net_family net_family_t;
  * ## Sockets
  *
  * Sockets are created by opening a factory file, named after the socket type it will create, located in each socket
- * family's directory. Once a socket is created, it will persist until the namespace that created it is destroyed and there are no more references to it.
+ * family's directory. Once a socket is created, it will persist until the namespace that created it is destroyed and
+ * there are no more references to it.
  *
  * For example, to create a local seqpacket socket, open the `/local/seqpacket` file. This returns a handle that when
- * read returns the socket's ID, which corresponds to the path `/<socket_id>/`, for example `/1234/`, which stores the
- * files used to interact with the socket.
+ * read returns the socket's ID, which corresponds to the path `/<family_name>/<socket_id>/`, for example
+ * `/local/1234/`, which stores the files used to interact with the socket.
  *
  * The sockets file will only be visible within the namespace of the creating process.
  *
@@ -50,7 +51,7 @@ typedef struct net_family net_family_t;
  *
  * ### accept
  *
- * The `/<socket_id>/accept` file can be opened on a listening socket to accept incoming connections.
+ * The `/<family_name>/<socket_id>/accept` file can be opened on a listening socket to accept incoming connections.
  * Working in an similar way to the POSIX `accept()` function, the returned file descriptor represents the new
  * connection.
  *
@@ -59,7 +60,7 @@ typedef struct net_family net_family_t;
  *
  * ### ctl
  *
- * The `/<socket_id>/ctl` file is used to send "commands" to the socket by writing to it. Here is a
+ * The `/<family_name>/<socket_id>/ctl` file is used to send "commands" to the socket by writing to it. Here is a
  * list of supported commands:
  * - `bind <address>`: Binds the socket to the specified address. (POSIX `bind()` function)
  * - `listen <backlog>`: Puts the socket into listening mode with the specified backlog length. (POSIX `listen()`
@@ -68,7 +69,7 @@ typedef struct net_family net_family_t;
  *
  * ### data
  *
- * The `/<socket_id>/data` file is used to send and receive data using the socket. Writing to this
+ * The `/<family_name>/<socket_id>/data` file is used to send and receive data using the socket. Writing to this
  * file sends data, reading from it receives data. (POSIX `send()` and `recv()` functions)
  *
  * If opened with `:nonblock`, read and write operations will fail with `EAGAIN` if no data is available or there is no
@@ -130,6 +131,7 @@ typedef struct socket
     net_family_t* family;
     socket_type_t type;
     socket_state_t state;
+    weak_ptr_t ownerNs; ///< A weak pointer to the namespace that created the socket.
     void* private;
     mutex_t mutex;
 } socket_t;
@@ -220,6 +222,8 @@ typedef struct net_family
      */
     wait_queue_t* (*poll)(socket_t* sock, poll_events_t* revents);
     list_entry_t listEntry;
+    list_t sockets;
+    rwmutex_t mutex;
 } net_family_t;
 
 /**

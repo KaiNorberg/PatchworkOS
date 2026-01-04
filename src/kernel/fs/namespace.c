@@ -175,7 +175,7 @@ static void namespace_free(namespace_t* ns)
     {
         return;
     }
-    
+
     rwlock_write_acquire(&ns->lock);
 
     while (!list_is_empty(&ns->stacks))
@@ -361,8 +361,8 @@ static uint64_t namespace_find_device(const char* deviceName, dev_t* out)
     return 0;
 }
 
-mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* fsName, const char* deviceName,
-    mode_t mode, void* private)
+mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* fsName, const char* deviceName, mode_t mode,
+    void* private)
 {
     if (ns == NULL || fsName == NULL)
     {
@@ -523,8 +523,7 @@ SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* mountpoint, const char* fs, cons
         return ERR;
     }
 
-    mount_t* mount =
-        namespace_mount(ns, &mountpath, fsName, device != NULL ? deviceName : NULL, mountname.mode, NULL);
+    mount_t* mount = namespace_mount(ns, &mountpath, fsName, device != NULL ? deviceName : NULL, mountname.mode, NULL);
     if (mount == NULL)
     {
         return ERR;
@@ -543,7 +542,7 @@ SYSCALL_DEFINE(SYS_UNMOUNT, uint64_t, const char* mountpoint)
     {
         return ERR;
     }
-    
+
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
