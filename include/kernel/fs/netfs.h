@@ -45,7 +45,7 @@ typedef struct netfs_family netfs_family_t;
  * read returns the socket's ID, which corresponds to the path `/<family_name>/<socket_id>/`, for example
  * `/local/1234/`, which stores the files used to interact with the socket.
  *
- * The sockets file will only be visible within the namespace of the creating process.
+ * The socket directory will only be visible in the namespace that created it.
  *
  * The files used to interact with sockets are listed below.
  *

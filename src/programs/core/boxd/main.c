@@ -66,6 +66,8 @@ typedef struct
 typedef struct
 {
     const char* box;
+    const char** argv;
+    uint64_t argc;
     fd_t stdio[3];
     fd_t group;
     fd_t namespace;
@@ -84,6 +86,8 @@ static uint64_t box_args_parse(box_args_t* args, uint64_t argc, const char** arg
             }
 
             args->box = argv[i + 1];
+            args->argv = &argv[i + 1];
+            args->argc = argc - (i + 1);
             break;
         }
 
@@ -233,16 +237,14 @@ static void box_spawn(box_spawn_t* ctx)
         goto error;
     }
 
-    const char* temp = argv[0];
-    argv[0] = bin;
-    pid = spawn(argv, flags);
+    args.argv[0] = bin;
+    pid = spawn(args.argv, flags);
     if (pid == ERR)
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to spawn failure for '%s' (%s)", args.box,
             strerror(errno));
         goto error;
     }
-    argv[0] = temp;
 
     if (swritefile(F("/proc/%llu/prio", pid), F("%llu", priority)) == ERR)
     {
