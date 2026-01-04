@@ -14,8 +14,8 @@ typedef struct netfs_family netfs_family_t;
 
 /**
  * @brief Networking and Sockets.
- * @defgroup module_netfs Networking Filesystem.
- * @ingroup modules_fs
+ * @defgroup kernel_fs_netfs Networking Filesystem
+ * @ingroup kernel_fs
  *
  * The networking filesystem provides networking and socket IPC functionality to the operating system. It exposes a
  * common interface for various networking protocols and inter-process communication (IPC) mechanisms.
