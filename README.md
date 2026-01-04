@@ -85,8 +85,7 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 
 ## Notable Future Plans
 
-- Overhaul security to process containerization. <-- Currently being worked on.
-- Remove sticky mounts as they are no longer needed and break with ".." traversal. <-- Currently being worked on.
+- Implement user system.
 - File servers (FUSE, 9P?).
 - Overhaul Desktop Window Manager to use new security system and File Servers?
 - Port LUA and use it for dynamic system configuration.

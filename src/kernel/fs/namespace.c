@@ -19,16 +19,14 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
-#define MOUNT_ID_STICKY UINT64_MAX
-
-static map_key_t mount_key(mount_id_t parentId, dentry_id_t mountpointId, mode_t mode)
+static map_key_t mount_key(mount_id_t parentId, dentry_id_t mountpointId)
 {
     struct
     {
         mount_id_t parentId;
         dentry_id_t mountpointId;
     } buffer;
-    buffer.parentId = mode & MODE_STICKY ? MOUNT_ID_STICKY : parentId;
+    buffer.parentId = parentId;
     buffer.mountpointId = mountpointId;
 
     return map_key_buffer(&buffer, sizeof(buffer));
@@ -52,7 +50,7 @@ static map_key_t mount_key_from_mount(mount_t* mount)
         return root_key();
     }
 
-    return mount_key(mount->parent->id, mount->target->id, mount->mode);
+    return mount_key(mount->parent->id, mount->target->id);
 }
 
 static uint64_t namespace_add(namespace_t* ns, mount_t* mount, const map_key_t* key)
@@ -86,7 +84,7 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount, const map_key_t* 
         return ERR;
     }
 
-    if (mount->parent == NULL || mount->mode & MODE_STICKY)
+    if (mount->parent == NULL)
     {
         stack->mounts[stack->count] = REF(mount);
         stack->count++;
@@ -322,17 +320,11 @@ bool namespace_traverse(namespace_t* ns, path_t* path)
             return traversed;
         }
 
-        map_key_t key = mount_key(path->mount->id, path->dentry->id, MODE_NONE);
+        map_key_t key = mount_key(path->mount->id, path->dentry->id);
         mount_stack_t* stack = CONTAINER_OF_SAFE(map_get(&ns->mountMap, &key), mount_stack_t, mapEntry);
         if (stack == NULL)
         {
-            key = mount_key(path->mount->id, path->dentry->id, MODE_STICKY);
-            stack = CONTAINER_OF_SAFE(map_get(&ns->mountMap, &key), mount_stack_t, mapEntry);
-
-            if (stack == NULL)
-            {
-                return traversed;
-            }
+            return traversed;
         }
 
         assert(stack->count > 0);

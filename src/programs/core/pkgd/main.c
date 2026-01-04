@@ -279,7 +279,7 @@ static void pkg_spawn(pkg_spawn_t* ctx)
     }
     else
     {
-        if (swrite(ctl, "mount /:LSrwx tmpfs") == ERR)
+        if (swrite(ctl, "mount /:Lrwx tmpfs") == ERR)
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to root mount failure for '%s' (%s)", args.pkg,
                 strerror(errno));
