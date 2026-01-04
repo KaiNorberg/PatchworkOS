@@ -23,7 +23,7 @@
  * priority = <scheduler priority [`PRIORITY_MIN`, `PRIORITY_MAX_USER`]>
  *
  * [sandbox]
- * profile = <empty|copy|share|inherit>
+ * profile = <empty|inherit>
  * foreground = <true|false>
  *
  * [env]
@@ -31,7 +31,7 @@
  * ...
  *
  * [namespace]
- * <target> = <source> ; Flags should be specified with the target, the source is specified in the boxd's namespace.
+ * <target> = <source> ; Flags should be specified with the target, the source is specified in the root namespace.
  * ```
  *
  * ## Sandbox Profiles
@@ -55,6 +55,8 @@
  * The following macros can be used in a manifest for substitution, a macro should be prefixed with `$`:
  * 
  * - `BOX`: The name of the box.
+ * 
+ * @see programs_init for information on the root namespaces filesystem heirarchy.
  * 
  * @{
  */

@@ -192,8 +192,9 @@ static void namespace_free(namespace_t* ns)
 
     if (ns->parent != NULL)
     {
-        RWLOCK_WRITE_SCOPE(&ns->parent->lock);
+        rwlock_write_acquire(&ns->parent->lock);
         list_remove(&ns->parent->children, &ns->entry);
+        rwlock_write_release(&ns->parent->lock);
         UNREF(ns->parent);
         ns->parent = NULL;
     }

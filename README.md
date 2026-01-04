@@ -626,7 +626,7 @@ The scheduler has not yet been properly benchmarked. However, testing using the 
 
 PatchworkOS includes its own shell utilities designed around its [file flags](#file-flags) system, when file flags are used we also demonstrate the short form. Included is a brief overview with some usage examples. For convenience the shell utilities are named after their POSIX counterparts, however they are not drop-in replacements.
 
-### `touch`
+### touch
 
 Opens a file path and then immediately closes it.
 
@@ -644,7 +644,7 @@ touch dir1/dir2/dir3:create:directory:parents
 touch dir1/dir2/dir3:cdp
 ```
 
-### `cat`
+### cat
 
 Reads from stdin or provided files and outputs to stdout.
 
@@ -660,7 +660,7 @@ cat < file.txt > dest.txt:create
 cat < file.txt > dest.txt:c
 ```
 
-### `echo`
+### echo
 
 Writes to stdout.
 
@@ -673,7 +673,7 @@ echo "..." > file.txt:append
 echo "..." > file.txt:a
 ```
 
-### `ls`
+### ls
 
 Reads the contents of a directory to stdout. A mounted path will be underlined.
 
@@ -693,7 +693,7 @@ ls :R
 ls -f 
 ```
 
-### `rm`
+### rm
 
 Removes a file or directory.
 
@@ -706,7 +706,7 @@ rm mydir:directory:recursive
 rm mydir:dR
 ```
 
-### `stat`
+### stat
 
 Retrieve information about a file or directory.
 
@@ -781,11 +781,13 @@ Source code can be found in the `src/` directory, with public API headers in the
 ├── lib               // Third party files, for example doomgeneric.
 ├── root              // Files to copy to the root of the generated image.
 └── <src|include>     // Source code and public API headers.
+    ├── boot          // UEFI bootloader.
+    ├── box           // Boxed applications.
     ├── kernel        // The kernel and its core subsystems.
-    ├── modules       // Kernel modules, drivers, filesystems, etc.
-    ├── programs      // User space programs.
+    ├── libpatchwork  // The PatchworkOS system library, gui, etc.
     ├── libstd        // The C standard library.
-    └── libpatchwork  // The PatchworkOS system library, gui, etc.
+    ├── modules       // Kernel modules, drivers, filesystems, etc.
+    └── programs      // User space programs.
 ```
 
 ### Grub Loopback
