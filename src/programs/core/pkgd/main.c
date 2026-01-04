@@ -169,19 +169,19 @@ static void pkg_spawn(pkg_spawn_t* ctx)
     if (argv == NULL || argc == 0)
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to invalid request");
-        goto cleanup;
+        goto error;
     }
 
     if (pkg_args_parse(&args, argc, argv, ctx) == ERR)
     {
-        goto cleanup;
+        goto error;
     }
 
     manifest_t manifest;
     if (manifest_parse(F("/pkg/%s/manifest", args.pkg), &manifest) == ERR)
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to invalid manifest for package '%s'", args.pkg);
-        goto cleanup;
+        goto error;
     }
 
     substitution_t substitutions[] = {
@@ -194,14 +194,14 @@ static void pkg_spawn(pkg_spawn_t* ctx)
     if (bin == NULL)
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to manifest of '%s' missing 'bin' entry", args.pkg);
-        goto cleanup;
+        goto error;
     }
 
     uint64_t priority = manifest_get_integer(exec, "priority");
     if (priority == ERR)
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to manifest of '%s' missing 'priority' entry", args.pkg);
-        goto cleanup;
+        goto error;
     }
 
     section_t* sandbox = &manifest.sections[SECTION_SANDBOX];
@@ -228,7 +228,7 @@ static void pkg_spawn(pkg_spawn_t* ctx)
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to manifest of '%s' having invalid 'profile' entry",
             args.pkg);
-        goto cleanup;
+        goto error;
     }
 
     const char* temp = argv[0];
@@ -238,7 +238,7 @@ static void pkg_spawn(pkg_spawn_t* ctx)
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to spawn failure for '%s' (%s)", args.pkg,
             strerror(errno));
-        goto cleanup;
+        goto error;
     }
     argv[0] = temp;
 
@@ -246,7 +246,7 @@ static void pkg_spawn(pkg_spawn_t* ctx)
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to priority failure for '%s' (%s)", args.pkg,
             strerror(errno));
-        goto cleanup;
+        goto error;
     }
 
     section_t* env = &manifest.sections[SECTION_ENV];
@@ -256,7 +256,7 @@ static void pkg_spawn(pkg_spawn_t* ctx)
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to env var failure for '%s' (%s)", args.pkg,
                 strerror(errno));
-            goto cleanup;
+            goto error;
         }
     }
 
@@ -265,7 +265,7 @@ static void pkg_spawn(pkg_spawn_t* ctx)
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to ctl open failure for '%s' (%s)", args.pkg,
             strerror(errno));
-        goto cleanup;
+        goto error;
     }
 
     if (shouldInheritNamespace)
@@ -274,7 +274,7 @@ static void pkg_spawn(pkg_spawn_t* ctx)
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to setns failure for '%s' (%s)", args.pkg,
                 strerror(errno));
-            goto cleanup;
+            goto error;
         }
     }
     else
@@ -283,7 +283,7 @@ static void pkg_spawn(pkg_spawn_t* ctx)
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to root mount failure for '%s' (%s)", args.pkg,
                 strerror(errno));
-            goto cleanup;
+            goto error;
         }
     }
 
@@ -296,7 +296,7 @@ static void pkg_spawn(pkg_spawn_t* ctx)
         if (swrite(ctl, F("touch %s:rwcp && bind %s %s", key, key, value)) == ERR)
         {
             printf("pkgd: failed to bind '%s' to '%s' (%s)\n", key, value, strerror(errno));
-            goto cleanup;
+            goto error;
         }
     }
 
@@ -313,7 +313,7 @@ static void pkg_spawn(pkg_spawn_t* ctx)
             {
                 snprintf(ctx->result, sizeof(ctx->result), "error due to dup2 failure for '%s' (%s)", args.pkg,
                     strerror(errno));
-                goto cleanup;
+                goto error;
             }
         }
 
@@ -321,14 +321,14 @@ static void pkg_spawn(pkg_spawn_t* ctx)
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to setns failure for '%s' (%s)", args.pkg,
                 strerror(errno));
-            goto cleanup;
+            goto error;
         }
 
         if (swrite(ctl, "close 3 -1") == ERR)
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to close failure for '%s' (%s)", args.pkg,
                 strerror(errno));
-            goto cleanup;
+            goto error;
         }
 
         fd_t wait = open(F("/proc/%llu/wait", pid));
@@ -336,7 +336,7 @@ static void pkg_spawn(pkg_spawn_t* ctx)
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to wait open failure for '%s' (%s)", args.pkg,
                 strerror(errno));
-            goto cleanup;
+            goto error;
         }
 
         char waitKey[KEY_128BIT];
@@ -345,7 +345,7 @@ static void pkg_spawn(pkg_spawn_t* ctx)
             close(wait);
             snprintf(ctx->result, sizeof(ctx->result), "error due to wait share failure for '%s' (%s)", args.pkg,
                 strerror(errno));
-            goto cleanup;
+            goto error;
         }
         close(wait);
 
@@ -357,7 +357,7 @@ static void pkg_spawn(pkg_spawn_t* ctx)
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to close failure for '%s' (%s)", args.pkg,
                 strerror(errno));
-            goto cleanup;
+            goto error;
         }
 
         snprintf(ctx->result, sizeof(ctx->result), "background");
@@ -367,9 +367,15 @@ static void pkg_spawn(pkg_spawn_t* ctx)
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to start failure for '%s' (%s)", args.pkg,
             strerror(errno));
-        goto cleanup;
+        goto error;
     }
 
+    goto cleanup;
+error:
+    if (pid != ERR)
+    {
+        kill(pid);
+    }
 cleanup:
     for (int i = 0; i < 3; i++)
     {

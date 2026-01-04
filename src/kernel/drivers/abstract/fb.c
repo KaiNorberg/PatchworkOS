@@ -1,7 +1,7 @@
 #include <kernel/drivers/abstract/fb.h>
 
 #include <kernel/fs/file.h>
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/sched/thread.h>
@@ -63,7 +63,7 @@ fb_t* fb_new(const fb_info_t* info, fb_mmap_t mmap)
 
     if (fbDir == NULL)
     {
-        fbDir = sysfs_dir_new(NULL, "fb", &dirInodeOps, NULL);
+        fbDir = devfs_dir_new(NULL, "fb", &dirInodeOps, NULL);
         if (fbDir == NULL)
         {
             return NULL;
@@ -85,19 +85,19 @@ fb_t* fb_new(const fb_info_t* info, fb_mmap_t mmap)
         return NULL;
     }
 
-    fb->dir = sysfs_dir_new(fbDir, id, &dirInodeOps, fb);
+    fb->dir = devfs_dir_new(fbDir, id, &dirInodeOps, fb);
     if (fb->dir == NULL)
     {
         free(fb);
         return NULL;
     }
-    fb->bufferFile = sysfs_file_new(fb->dir, "buffer", NULL, &bufferOps, fb);
+    fb->bufferFile = devfs_file_new(fb->dir, "buffer", NULL, &bufferOps, fb);
     if (fb->bufferFile == NULL)
     {
         UNREF(fb->dir); // fb will be freed in fb_dir_cleanup
         return NULL;
     }
-    fb->infoFile = sysfs_file_new(fb->dir, "info", NULL, &infoOps, fb);
+    fb->infoFile = devfs_file_new(fb->dir, "info", NULL, &infoOps, fb);
     if (fb->infoFile == NULL)
     {
         UNREF(fb->dir);

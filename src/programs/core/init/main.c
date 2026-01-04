@@ -84,6 +84,12 @@ static uint64_t init_socket_addr_wait(const char* family, const char* addr)
 
 static void init_root_ns(void)
 {
+    if (mount("/dev:rwL", "devfs", NULL) == ERR)
+    {
+        printf("init: failed to mount devfs (%s)\n", strerror(errno));
+        abort();
+    }
+
     if (mount("/net:rwL", "netfs", NULL) == ERR)
     {
         printf("init: failed to mount netfs (%s)\n", strerror(errno));

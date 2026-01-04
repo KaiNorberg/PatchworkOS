@@ -349,7 +349,7 @@ static uint64_t namespace_find_device(const char* deviceName, dev_t* out)
 {
     /// @todo Implement physical device lookup.
 
-    static _Atomic(uint32_t) nextVirtId = ATOMIC_VAR_INIT(0);
+    static _Atomic(uint32_t) nextVirtId = ATOMIC_VAR_INIT(1);
 
     if (deviceName != NULL)
     {

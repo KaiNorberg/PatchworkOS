@@ -9,7 +9,7 @@
 #include <kernel/fs/key.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>

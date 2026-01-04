@@ -6,7 +6,7 @@
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/proc/process.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
@@ -25,7 +25,7 @@
  */
 
 /**
- * @brief Filesystem structure, represents a filesystem type, e.g. fat32, tmpfs, sysfs, etc.
+ * @brief Filesystem structure, represents a filesystem type, e.g. fat32, tmpfs, devfs, etc.
  *
  * @todo Add safety for if a module defining a filesystem is unloaded.
  */

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/utils/ref.h>
 #include <modules/acpi/aml/encoding/name.h>
 #include <modules/acpi/aml/integer.h>
@@ -134,9 +134,9 @@ typedef enum
      */
     AML_OBJECT_EXCEPTION_ON_USE = 1 << 2,
     /**
-     * The object is exposed in sysfs. Will be set in `aml_namespace_expose()`.
+     * The object is exposed in devfs. Will be set in `aml_namespace_expose()`.
      */
-    AML_OBJECT_EXPOSED_IN_SYSFS = 1 << 3,
+    AML_OBJECT_EXPOSED_IN_DEVFS = 1 << 3,
 } aml_object_flags_t;
 
 /**
@@ -189,7 +189,7 @@ typedef aml_object_t* (*aml_method_implementation_t)(aml_method_t* method, aml_o
  * - `parent` Pointer to the parent object, `NULL` if root or unnamed.
  * - `flags` Flags for the object, see `aml_object_flags_t` for more details.
  * - `type` The type of the object, see `aml_type_t` for more details.
- * - `dir` Sysfs directory for the object, only valid if `flags` has `AML_OBJECT_EXPOSED_IN_SYSFS` set.
+ * - `dir` Sysfs directory for the object, only valid if `flags` has `AML_OBJECT_EXPOSED_IN_DEVFS` set.
  */
 #define AML_OBJECT_COMMON_HEADER \
     ref_t ref; \

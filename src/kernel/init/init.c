@@ -9,7 +9,7 @@
 #include <kernel/cpu/syscall.h>
 #include <kernel/drivers/pic.h>
 #include <kernel/fs/procfs.h>
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/tmpfs.h>
 #include <kernel/fs/netfs.h>
 #include <kernel/fs/vfs.h>
@@ -86,7 +86,7 @@ static void init_finalize(void)
     pic_disable();
 
     tmpfs_init();
-    sysfs_init();
+    devfs_init();
     procfs_init();
     netfs_init();
 

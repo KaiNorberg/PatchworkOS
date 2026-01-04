@@ -1,4 +1,4 @@
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -114,14 +114,14 @@ static file_ops_t nullOps = {
 
 static uint64_t const_init(void)
 {
-    constDir = sysfs_dir_new(NULL, "const", NULL, NULL);
+    constDir = devfs_dir_new(NULL, "const", NULL, NULL);
     if (constDir == NULL)
     {
         LOG_ERR("failed to init const directory\n");
         return ERR;
     }
 
-    oneFile = sysfs_file_new(constDir, "one", NULL, &oneOps, NULL);
+    oneFile = devfs_file_new(constDir, "one", NULL, &oneOps, NULL);
     if (oneFile == NULL)
     {
         UNREF(constDir);
@@ -129,7 +129,7 @@ static uint64_t const_init(void)
         return ERR;
     }
 
-    zeroFile = sysfs_file_new(constDir, "zero", NULL, &zeroOps, NULL);
+    zeroFile = devfs_file_new(constDir, "zero", NULL, &zeroOps, NULL);
     if (zeroFile == NULL)
     {
         UNREF(constDir);
@@ -138,7 +138,7 @@ static uint64_t const_init(void)
         return ERR;
     }
 
-    nullFile = sysfs_file_new(constDir, "null", NULL, &nullOps, NULL);
+    nullFile = devfs_file_new(constDir, "null", NULL, &nullOps, NULL);
     if (nullFile == NULL)
     {
         UNREF(constDir);

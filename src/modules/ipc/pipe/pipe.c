@@ -250,14 +250,14 @@ static file_ops_t fileOps = {
 
 uint64_t pipe_init(void)
 {
-    pipeDir = sysfs_dir_new(NULL, "pipe", NULL, NULL);
+    pipeDir = devfs_dir_new(NULL, "pipe", NULL, NULL);
     if (pipeDir == NULL)
     {
         LOG_ERR("failed to initialize pipe directory");
         return ERR;
     }
 
-    newFile = sysfs_file_new(pipeDir, "new", NULL, &fileOps, NULL);
+    newFile = devfs_file_new(pipeDir, "new", NULL, &fileOps, NULL);
     if (newFile == NULL)
     {
         UNREF(pipeDir);

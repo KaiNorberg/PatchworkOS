@@ -2,7 +2,7 @@
 #include "local.h"
 #include "local_conn.h"
 
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/wait.h>

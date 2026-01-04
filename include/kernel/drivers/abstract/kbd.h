@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/sched/wait.h>
 
 #include <stdint.h>

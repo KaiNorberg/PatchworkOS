@@ -2,7 +2,7 @@
 #include "local.h"
 #include "local_listen.h"
 
-#include <kernel/fs/sysfs.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 
