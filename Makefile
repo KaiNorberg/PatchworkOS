@@ -4,22 +4,22 @@ VERSION_HEADER = include/kernel/version.h
 VERSION_STRING := $(shell git describe --tags --always --dirty --long 2>/dev/null || echo "unknown")
 
 SECTIONS = boot kernel libstd libpatchwork
-PACKAGES = $(shell find src/pkg/ -name "*.mk")
+BOXES = $(shell find src/box/ -name "*.mk")
 PROGRAMS = $(shell find src/programs/ -name "*.mk")
 MODULES = $(shell find src/modules/ -name "*.mk")
 
-ROOT_DIRS = acpi base base/bin base/lib base/include base/data cfg dev efi efi/boot kernel kernel/modules kernel/modules/$(VERSION_STRING) net pkg proc sbin tmp
+ROOT_DIRS = acpi base base/bin base/lib base/include base/data box cfg dev efi efi/boot kernel kernel/modules kernel/modules/$(VERSION_STRING) net proc sbin tmp
 
 # Programs to copy to /sbin
-SBIN_PROGRAMS = init pkgd
+SBIN_PROGRAMS = init boxd
 # Programs to copy to /base/bin
 BASE_BIN_PROGRAMS = $(filter-out $(SBIN_PROGRAMS),$(basename $(notdir $(shell find bin/programs/))))
+# Programs to copy to /box/[box]/bin
+BOX_PROGRAMS = $(basename $(notdir $(shell find bin/box/)))
 
-PKG_PACKAGES = $(basename $(notdir $(shell find bin/pkg/)))
+.PHONY: $(SECTIONS) $(PROGRAMS) $(BOXES) $(MODULES) all setup deploy run clean generate_version compile_commands format doxygen clean clean_programs nuke grub_loopback clone_acpica_and_compile_tests
 
-.PHONY: $(SECTIONS) $(PROGRAMS) $(PACKAGES) $(MODULES) all setup deploy run clean generate_version compile_commands format doxygen clean clean_programs nuke grub_loopback clone_acpica_and_compile_tests
-
-all: setup $(SECTIONS) $(MODULES) $(PACKAGES) $(PROGRAMS) deploy
+all: setup $(SECTIONS) $(MODULES) $(BOXES) $(PROGRAMS) deploy
 
 generate_version:
 	@printf "#pragma once\n\n" > $(VERSION_HEADER).tmp
@@ -57,10 +57,10 @@ $(MODULES): $(SECTIONS)
 #	fi
 #	$(MAKE) -C lib/argon2 -f Makefile.patchwork
 
-$(PACKAGES): $(MODULES)
-	$(MAKE) -f $@ SRCDIR=$(basename $(dir $@)) BUILDDIR=$(patsubst src/%,build/%,$(basename $(dir $@))) BINDIR=bin/pkg PKG=$(basename $(notdir $@))
+$(BOXES): $(MODULES)
+	$(MAKE) -f $@ SRCDIR=$(basename $(dir $@)) BUILDDIR=$(patsubst src/%,build/%,$(basename $(dir $@))) BINDIR=bin/box BOX=$(basename $(notdir $@))
 
-$(PROGRAMS): $(PACKAGES)
+$(PROGRAMS): $(BOXES)
 	$(MAKE) -f $@ SRCDIR=$(basename $(dir $@)) BUILDDIR=$(patsubst src/%,build/%,$(basename $(dir $@))) BINDIR=bin/programs PROGRAM=$(basename $(notdir $@))
 
 deploy: $(PROGRAMS)
@@ -78,7 +78,7 @@ deploy: $(PROGRAMS)
 	mcopy -i $(IMAGE) -s include/* ::/base/include
 	$(foreach prog,$(SBIN_PROGRAMS),mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/sbin;)
 	$(foreach prog,$(BASE_BIN_PROGRAMS),mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/base/bin;)
-	$(foreach pkg,$(PKG_PACKAGES),mmd -i $(IMAGE) ::/pkg/$(pkg)/bin && mcopy -i $(IMAGE) -s bin/pkg/$(pkg) ::/pkg/$(pkg)/bin;)
+	$(foreach prog,$(BOX_PROGRAMS),mmd -i $(IMAGE) ::/box/$(prog)/bin && mcopy -i $(IMAGE) -s bin/box/$(prog) ::/box/$(prog)/bin;)
 
 # This will only work if you have setup a grub loopback entry as described in the README.md file.
 grub_loopback:

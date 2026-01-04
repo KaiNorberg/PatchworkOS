@@ -13,7 +13,7 @@
  * @defgroup programs_init Init
  * @ingroup programs
  * 
- * The init process is the first user space process started by the kernel. It is responsible for setting up the "root namespace", the namespace the init process and pkgd run in, and for spawning initial processes.
+ * The init process is the first user space process started by the kernel. It is responsible for setting up the "root namespace", the namespace the init process and boxd run in, and for spawning initial processes.
  *
  * ## Root Namespace
  * 
@@ -27,6 +27,7 @@
  * | `/base/lib`                         | directory | System libraries.                  |
  * | `/base/include`                     | directory | System header files.               |
  * | `/base/data`                        | directory | System data files.                 |
+ * | `/box`                              | directory | Installed boxes directory.         |
  * | `/cfg`                              | directory | System configuration files.        |
  * | `/dev`                              | devfs     | Device filesystem.                 |
  * | `/efi`                              | directory | EFI files.                         |
@@ -35,7 +36,6 @@
  * | `/kernel/modules`                   | directory | Kernel modules directory.          |
  * | `/kernel/modules/<kernel_verion>`   | directory | Version specific kernel modules.   |
  * | `/net`                              | netfs     | Network filesystem.                |
- * | `/pkg`                              | directory | Installed packages directory.      |
  * | `/proc`                             | procfs    | Process filesystem.                |
  * | `/sbin`                             | directory | Essential system binaries.         |
  * | `/tmp`                              | tmpfs     | Temporary filesystem.              |
@@ -109,40 +109,40 @@ static void init_root_ns(void)
     }
 }
 
-static void init_spawn_pkgd(void)
+static void init_spawn_boxd(void)
 {
-    const char* argv[] = {"/sbin/pkgd", NULL};
+    const char* argv[] = {"/sbin/boxd", NULL};
     if (spawn(argv, SPAWN_DEFAULT) == ERR)
     {
-        printf("init: failed to spawn pkgd (%s)\n", strerror(errno));
+        printf("init: failed to spawn boxd (%s)\n", strerror(errno));
         abort();
     }
 
-    if (init_socket_addr_wait("local", "pkgspawn") == ERR)
+    if (init_socket_addr_wait("local", "boxspawn") == ERR)
     {
-        printf("init: timeout waiting for pkgd to create pkgspawn socket (%s)\n", strerror(errno));
+        printf("init: timeout waiting for boxd to create boxspawn socket (%s)\n", strerror(errno));
         abort();
     }
 }
 
 static void init_create_pkg_links(void)
 {
-    fd_t pkg = open("/pkg");
-    if (pkg == ERR)
+    fd_t box = open("/box");
+    if (box == ERR)
     {
-        printf("init: failed to open /pkg (%s)\n", strerror(errno));
+        printf("init: failed to open /box (%s)\n", strerror(errno));
         abort();
     }
 
     dirent_t* dirents;
     uint64_t amount;
-    if (readdir(pkg, &dirents, &amount) == ERR)
+    if (readdir(box, &dirents, &amount) == ERR)
     {
-        close(pkg);
-        printf("init: failed to read /pkg (%s)\n", strerror(errno));
+        close(box);
+        printf("init: failed to read /box (%s)\n", strerror(errno));
         abort();
     }
-    close(pkg);
+    close(box);
 
     for (uint64_t i = 0; i < amount; i++)
     {
@@ -151,10 +151,10 @@ static void init_create_pkg_links(void)
             continue;
         }
 
-        if (symlink("pkgspawn", F("/base/bin/%s", dirents[i].path)) == ERR && errno != EEXIST)
+        if (symlink("boxspawn", F("/base/bin/%s", dirents[i].path)) == ERR && errno != EEXIST)
         {
             free(dirents);
-            printf("init: failed to create launch symlink for package '%s' (%s)\n", dirents[i].path, strerror(errno));
+            printf("init: failed to create launch symlink for box '%s' (%s)\n", dirents[i].path, strerror(errno));
             abort();
         }
     }
@@ -221,7 +221,7 @@ int main(void)
     }
     close(klog);
 
-    init_spawn_pkgd();
+    init_spawn_boxd();
 
     init_create_pkg_links();
 

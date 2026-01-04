@@ -1,0 +1,24 @@
+[meta]
+description = Terminal
+version = 1.0
+author = PatchworkOS
+license = MIT
+
+[exec]
+bin = /app/bin/terminal
+priority = 30
+
+[sandbox]
+profile = empty
+foreground = true
+
+[env]
+PATH = /base/bin
+
+[namespace]
+/app:rx = $BOX
+/base:rx = /base
+/cfg:r = /cfg
+/dev:rw = /dev
+/net:rw = /net
+/proc:rw = /proc
