@@ -49,15 +49,15 @@ $(SECTIONS): setup
 $(MODULES): $(SECTIONS)
 	$(MAKE) -f $@ SRCDIR=$(basename $(dir $@)) BUILDDIR=$(patsubst src/%,build/%,$(basename $(dir $@))) BINDIR=bin/modules MODULE=$(basename $(notdir $@))
 
-#argon2: $(MODULES)
-#	@if [ ! -d "lib/argon2" ]; then \
-#		git clone https://github.com/KaiNorberg/phc-winner-argon2-patchworkos.git lib/argon2; \
-#		mkdir -p include/argon2; \
-#		cp lib/argon2/include/argon2.h include/argon2/; \
-#	fi
-#	$(MAKE) -C lib/argon2 -f Makefile.patchwork
+argon2: $(MODULES)
+	@if [ ! -d "lib/argon2" ]; then \
+		git clone https://github.com/KaiNorberg/phc-winner-argon2-patchworkos.git lib/argon2; \
+		mkdir -p include/argon2; \
+		cp lib/argon2/include/argon2.h include/argon2/; \
+	fi
+	$(MAKE) -C lib/argon2 -f Makefile.patchwork
 
-$(BOXES): $(MODULES)
+$(BOXES): $(MODULES) argon2
 	$(MAKE) -f $@ SRCDIR=$(basename $(dir $@)) BUILDDIR=$(patsubst src/%,build/%,$(basename $(dir $@))) BINDIR=bin/box BOX=$(basename $(notdir $@))
 
 $(PROGRAMS): $(BOXES)
