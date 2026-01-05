@@ -73,7 +73,7 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 - Custom superset of the ANSI C standard library including threading, file I/O, math, PatchworkOS extensions, etc.
 - Highly modular shared memory based desktop environment.
 - Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
-- Capability based containerization security model using per-process mountpoint namespaces. See [Security Model](#security-model) for more info.
+- Capability based containerization security model using per-process mountpoint namespaces. See [Security](#security) for more info.
 - Note that currently a heavy focus has been placed on the kernel and low-level stuff, so user space is quite small... for now.
 
 *And much more...*
@@ -85,6 +85,7 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 
 ## Notable Future Plans
 
+- Fix filesystem mounting vulnerability.
 - File servers (FUSE, 9P?).
 - Implement user system in user-space using namespaces.
 - Improve `share()` and `claim()` security by specifying a target PID when sharing.
@@ -399,7 +400,7 @@ The core argument is not that each individual API is better than its POSIX count
 
 Plus its fun.
 
-## Security Model
+## Security
 
 In PatchworkOS, there are no Access Control Lists, user IDs or similar mechanisms. Instead, PatchworkOS uses a pseudo-capability security model based on per-process mountpoint namespaces and containerization. This means that there is no global filesystem view, each process has its own view of the filesystem defined by what directories and files have been mounted or bound into its namespace.
 
@@ -408,30 +409,31 @@ For a basic example, say we have a process A which creates a child process B. Pr
 ```c
 const char* argv[] = {"/base/bin/b", NULL};
 pid_t child = spawn(argv, SPAWN_EMPTY_NS | SPAWN_SUSPENDED);
-swritefile(F("/proc/%d/ctl", child), "bind ... && mount ... && start"); // Mount/bind other needed directories.
+// Mount/bind other needed directories but not /secret
+swritefile(F("/proc/%d/ctl", child), "mount ... && bind ... && start");
 ```
 
-Another way process A could prevent process B from accessing the `/secret` directory is to mount a new empty tmpfs instance in its own namespace over the `/secret` directory using the ":private" flag which prevents a child namespace from inheriting the mountpoint and store any secret files there:
+Alternatively, process A could mount a new empty tmpfs instance in its own namespace over the `/secret` directory using the ":private" flag. This prevents a child namespace from inheriting the mountpoint and process A could store whatever it wanted there:
 
 ```c
-// In process A.
+// In process A
 mount("/secret:private", "tmpfs", NULL);
 fd_t secretFile = open("/secret/file:create");
 ...
 const char* argv[] = {"/base/bin/b", NULL};
-pid_t child = spawn(argv, SPAWN_COPY_NS); // Create a child namespace copying the parents namespace.
+pid_t child = spawn(argv, SPAWN_COPY_NS); // Create a child namespace copying the parent's
 
-// In process B.
-fd_t secretFile = open("/secret/file"); // Will fail to access the file.
+// In process B
+fd_t secretFile = open("/secret/file"); // Will fail to access the file
 ```
 
-> An interesting detail is that when process A opens the `/secret` directory, the dentry underlying the file descriptor is the dentry that was mounted or bound to `/secret`. Even if process B can see the `/secret` directory it would retrieve the dentry of the directory in the parent superblock, and thus see the content of that directory in the parent superblock. Namespaces prevent or enable mountpoint traversal not directory visibility. If this means nothing to you, don't worry about it.
+> An interesting detail is that when process A opens the `/secret` directory, the dentry underlying the file descriptor is the dentry that was mounted or bound to `/secret`. Even if process B can see the `/secret` directory it would retrieve the dentry of the directory in the parent superblock, and thus see the content of that directory in the parent superblock. Namespaces prevent or enable mountpoint traversal not just directory visibility. If this means nothing to you, don't worry about it.
 
-The namespace system allows for a composable, transparent and pseudo-capability security model, where processes can be given access to any combination of files and directories without needing hidden permission bits or similar mechanisms. Additionally, since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc. For example, if you wish to prevent a process from using sockets, you could simply not mount or bind the `/net` directory into its namespace.
+The namespace system allows for a composable, transparent and pseudo-capability security model. Processes can be given access to any combination of files and directories without needing hidden permission bits or similar mechanisms. Since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc. For example, if you wish to prevent a process from using sockets, you could simply not mount or bind the `/net` directory into its namespace.
 
 > Deciding if this model is truly a capability system could be argued about. In the end, it does share the core properties of a capability model, namely that possession of a "capability" (a visible file/directory) grants access to an object (the contents or functionality of the file/directory) and that "capabilities" can be transferred between processes (using mechanisms like `share()` and `claim()` described below or through binding and mounting directories/files). However, it does lack some traditional properties of capability systems, such as a clean way to revoke access once granted. Therefore, it does not fully qualify as a pure capability system, but rather a hybrid model which shares some properties with capability systems.
 
-It would even be possible to implement a user-like system entirely in user space using namespaces by having the init process bind different directories depending on the user logging in.
+It would even be possible to implement a multi-user-like system entirely in user space using namespaces by having the init process bind different directories depending on the user logging in.
 
 [Namespace Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
 
@@ -439,16 +441,17 @@ It would even be possible to implement a user-like system entirely in user space
 
 ### Hiding Dentries
 
-For more complex use cases relaying on just mountpoints becomes exponentially complex as such the Virtual File System allows a filesystem to dynamically hide directories and files using the `revalidate()` dentry operation. 
+For complex use cases, relying on just mountpoints becomes exponentially complex. As such, the Virtual File System allows a filesystem to dynamically hide directories and files using the `revalidate()` dentry operation. 
 
-For example, in "procfs" this is used such that a process can see all the `/proc/[pid]/` files of processes in its namespace and in child namespaces but for processes in parent namespaces certain files will appear to not exist in the filesystem hierarchy. The "netfs" filesystem works similarly making sure that only processes in the namespace that created a socket can see its directory.
+For example, in "procfs", a process can see all the `/proc/[pid]/` files of processes in its namespace and in child namespaces but for processes in parent namespaces certain files will appear to not exist in the filesystem hierarchy. The "netfs" filesystem works similarly making sure that only processes in the namespace that created a socket can see its directory.
 
 [Process Filesystem Documentation](https://kainorberg.github.io/PatchworkOS/html/d0/d71/group__kernel__fs__procfs.html)
+
 [Networking Filesystem Documentation](https://kainorberg.github.io/PatchworkOS/html/d4/db0/group__kernel__fs__netfs.html)
 
 ### Share and Claim
 
-To securely send file descriptors from one process to another, we introduce two new system calls `share()` and `claim()` also acting as a replacement for `SCM_RIGHTS` in UNIX domain sockets.
+To securely send file descriptors from one process to another, we introduce two new system calls `share()` and `claim()`. These act as a replacement for `SCM_RIGHTS` in UNIX domain sockets.
 
 The `share()` system call generates a one-time use key which remains valid for a limited time. Since the key generated by this system call is a string it can be sent to any other process using conventional IPC.
 
@@ -466,8 +469,8 @@ share(&key, sizeof(key), file, CLOCKS_PER_SECOND * 60);
 
 // In process B.
 
-// Through IPC process B receives the key.
-char key[KEY_MAX] = ...;
+// Through IPC process B receives the key in a buffer of the max size since it cant know the size used in A.
+char key[KEY_MAX] = ...; 
 
 // Process B can now access the same file as in process A.
 fd_t file = claim(&key);
@@ -479,11 +482,11 @@ fd_t file = claim(&key);
 
 ### Boxes
 
-In userspace, PatchworkOS provides a simple containerization mechanism to isolate any processes from the rest of the system and to ensure that each such process can only access files and directories that it has explicitly been granted access to. We call such an isolated process a "box".
+In userspace, PatchworkOS provides a simple containerization mechanism to isolate processes from the rest of the system. We call such an isolated process a "box".
 
-> Note that all file paths will be specified from the perspective of the "boxd" daemons namespace, from now on called the "root" namespace as it is the ancestor of all user-space namespaces, which is likely to be different from the namespace of any particular process. For example the `/box/` Additionally, PatchworkOS does not follow the Filesystem Hierarchy Standard, so paths like `/bin` or `/etc` dont exist. See the [Init Process Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbc/group__programs__init.html) for more info on the root namespace layout.
+> Note that all file paths will be specified from the perspective of the "boxd" daemons namespace, from now on called the "root" namespace as it is the ancestor of all user-space namespaces. This namespace is likely different from the namespace of any particular process. For example, the `/box/` directory is hidden to the terminal box. Additionally, PatchworkOS does not follow the Filesystem Hierarchy Standard, so paths like `/bin` or `/etc` dont exist. See the [Init Process Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbc/group__programs__init.html) for more info on the root namespace layout.
 
-Each box is stored in a `/box/[box_name]` directory which stores a `/box/[box_name]/manifest` ini-style configuration file containing all the metadata about the box, defining what files and directories the box is allowed to access and other configuration options. These configuration files are parsed by the "boxd" daemon which is responsible for spawning and managing boxes.
+Each box is stored in a `/box/[box_name]` directory containing a `/box/[box_name]/manifest` ini-style configuration file. This file defines what files and directories the box is allowed to access. These are parsed by the boxd daemon, which is responsible for spawning and managing boxes.
 
 Going over the entire box system is way beyond the scope of this discussion, as such we will limit the discussion to one example box and discuss how the box system is used by a user.
 
@@ -491,7 +494,7 @@ Going over the entire box system is way beyond the scope of this discussion, as 
 
 ### The DOOM Box
 
-As an example, PatchworkOS includes a box for running DOOM using the `doomgeneric` port stored at `/box/doom`. Its manifest file can be found [here](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/box/doom/manifest). Note that due to the containerization system, the `/box` directory is not mounted in most user processes and as such will appear to not exist.
+As an example, PatchworkOS includes a box for running DOOM using the `doomgeneric` port stored at `/box/doom`. Its manifest file can be found [here](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/box/doom/manifest).
 
 First, the manifest file defines the boxes metadata such as its version, author, license, etc. and information about the executable such as its path (within the boxes namespace) and its desired scheduling priority.
 
@@ -505,14 +508,14 @@ The namespace section specifies a list of files and directories to bind into the
 - `/box/doom/data` to `/app/data`, allowing it to access any WAD files or save files stored in `/box/doom/data`.
 - `/net/local` to itself to allow it to create sockets to communicate with the Desktop Window Manager.
 - `/dev/const` to itself to allow it to use the `/dev/const/zero` file to map/allocate memory.
-
-This means that the doom box cannot see or access user files, system configuration files, devices or anything else outside its bound directories, it can't even create pipes or shared memory as the `/dev/pipe/new` and `/dev/shmem/new` files do not exist in its namespace.
+- 
+The doom box cannot see or access user files, system configuration files, devices or anything else outside its bound directories, it can't even create pipes or shared memory as the `/dev/pipe/new` and `/dev/shmem/new` files do not exist in its namespace.
 
 ### Using Boxes
 
-Containerization and capability models often introduce friction to the user experience. In PatchworkOS, the goal is to minimize this friction. As such, using boxes should be seamless to the point that a user should not even need to know that they are using a box.
+Containerization and capability models often introduce friction. In PatchworkOS, using boxes should be seamless to the point that a user should not even need to know that they are using a box.
 
-To explain how this is achieved, it's important to know that in PatchworkOS there are only two directories for executables, `/sbin` for essential system binaries such as `init` and `/base/bin` for everything else.
+In PatchworkOS there are only two directories for executables, `/sbin` for essential system binaries such as `init` and `/base/bin` for everything else.
 
 Within the `/base/bin` directory is the `boxspawn` binary which is used via symlinks. For example, there is a symlink at `/base/bin/doom` pointing to `boxspawn`. When a user runs `/base/bin/doom` (or just `doom` if `/base/bin` is in the shell's PATH), the `boxspawn` binary will be executed, but the first argument passed to it will be `/base/bin/doom` due to the behavior of symlinks. The first argument is used to resolve the box name, `doom` in this case, and send a request to the `boxd` daemon to spawn the box.
 
