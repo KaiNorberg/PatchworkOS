@@ -85,8 +85,9 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 
 ## Notable Future Plans
 
-- Implement user system in user-space using namespaces.
 - File servers (FUSE, 9P?).
+- Implement user system in user-space using namespaces.
+- Improve `share()` and `claim()` security by specifying a target PID when sharing.
 - Overhaul Desktop Window Manager to use the new security system and file servers?
 - Port LUA and use it for dynamic system configuration.
 - Fully Asynchronous I/O and syscalls (io_uring?).

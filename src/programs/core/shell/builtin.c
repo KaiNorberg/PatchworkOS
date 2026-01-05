@@ -71,7 +71,7 @@ static uint64_t builtin_help(uint64_t argc, const char** argv)
     printf("  Up/Down            \t\033[90mNavigate history\033[0m\n");
     printf("  Ctrl+C             \t\033[90mTerminate process\033[0m\n");
 
-    printf("\n\033[90mExternal commands are executed from /bin and /usr/bin.\033[0m\n");
+    printf("\n\033[90mExternal commands are executed from paths in the PATH environment variable.\033[0m\n");
 
     return 0;
 }
