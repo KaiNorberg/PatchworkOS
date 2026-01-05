@@ -32,9 +32,16 @@ static void superblock_free(superblock_t* superblock)
 
 superblock_t* superblock_new(filesystem_t* fs, dev_t device, const superblock_ops_t* ops, const dentry_ops_t* dentryOps)
 {
+    if (fs == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
     superblock_t* superblock = malloc(sizeof(superblock_t));
     if (superblock == NULL)
     {
+        errno = ENOMEM;
         return NULL;
     }
 
