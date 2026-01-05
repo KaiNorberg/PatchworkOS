@@ -54,7 +54,7 @@
  * 
  * The following macros can be used in a manifest for substitution, a macro should be prefixed with `$`:
  * 
- * - `BOX`: The name of the box.
+ * - `BOX`: The path to the box's directory in the root namespace, e.g. `/box/<box>`.
  * 
  * @see programs_init for information on the root namespaces filesystem heirarchy.
  * 

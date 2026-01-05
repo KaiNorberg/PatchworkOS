@@ -783,7 +783,7 @@ Source code can be found in the `src/` directory, with public API headers in the
 ├── root              // Files to copy to the root of the generated image.
 └── <src|include>     // Source code and public API headers.
     ├── boot          // UEFI bootloader.
-    ├── box           // Boxed applications.
+    ├── boxes         // Boxed applications.
     ├── kernel        // The kernel and its core subsystems.
     ├── libpatchwork  // The PatchworkOS system library, gui, etc.
     ├── libstd        // The C standard library.
