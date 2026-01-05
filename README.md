@@ -427,7 +427,7 @@ fd_t secretFile = open("/secret/file"); // Will fail to access the file.
 
 > An interesting detail is that when process A opens the `/secret` directory, the dentry underlying the file descriptor is the dentry that was mounted or bound to `/secret`. Even if process B can see the `/secret` directory it would retrieve the dentry of the directory in the parent superblock, and thus see the content of that directory in the parent superblock. Namespaces prevent or enable mountpoint traversal not directory visibility. If this means nothing to you, don't worry about it.
 
-The namespace system allows for a composable, transparent and psuedo-capability security model, where processes can be given access to any combination of files and directories without needing hidden permission bits or similar mechanisms. Additionally, since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc. For example, if you wish to prevent a process from using sockets, you could simply not mount or bind the `/net` directory into its namespace.
+The namespace system allows for a composable, transparent and pseudo-capability security model, where processes can be given access to any combination of files and directories without needing hidden permission bits or similar mechanisms. Additionally, since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc. For example, if you wish to prevent a process from using sockets, you could simply not mount or bind the `/net` directory into its namespace.
 
 > Deciding if this model is truly a capability system could be argued about. In the end, it does share the core properties of a capability model, namely that possession of a "capability" (a visible file/directory) grants access to an object (the contents or functionality of the file/directory) and that "capabilities" can be transferred between processes (using mechanisms like `share()` and `claim()` described below or through binding and mounting directories/files). However, it does lack some traditional properties of capability systems, such as a clean way to revoke access once granted. Therefore, it does not fully qualify as a pure capability system, but rather a hybrid model which shares some properties with capability systems.
 
@@ -436,6 +436,15 @@ It would even be possible to implement a user-like system entirely in user space
 [Namespace Documentation](https://kainorberg.github.io/PatchworkOS/html/d5/dbd/group__kernel__fs__namespace.html)
 
 [Userspace IO API Documentation](https://kainorberg.github.io/PatchworkOS/html/d4/deb/group__libstd__sys__io.html)
+
+### Hiding Dentries
+
+For more complex use cases relaying on just mountpoints becomes exponentially complex as such the Virtual File System allows a filesystem to dynamically hide directories and files using the `revalidate()` dentry operation. 
+
+For example, in "procfs" this is used such that a process can see all the `/proc/[pid]/` files of processes in its namespace and in child namespaces but for processes in parent namespaces certain files will appear to not exist in the filesystem hierarchy. The "netfs" filesystem works similarly making sure that only processes in the namespace that created a socket can see its directory.
+
+[Process Filesystem Documentation](https://kainorberg.github.io/PatchworkOS/html/d0/d71/group__kernel__fs__procfs.html)
+[Networking Filesystem Documentation](https://kainorberg.github.io/PatchworkOS/html/d4/db0/group__kernel__fs__netfs.html)
 
 ### Share and Claim
 
