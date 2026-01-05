@@ -96,7 +96,9 @@ typedef struct superblock_ops
  * @param device The device the superblock is mounted on.
  * @param ops The superblock operations, can be NULL.
  * @param dentryOps The dentry operations for dentries in this superblock, can be NULL.
- * @return On success, the new superblock. On failure, returns `NULL` and `errno` is set.
+ * @return On success, the new superblock. On failure, returns `NULL` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `ENOMEM`: Out of memory.
  */
 superblock_t* superblock_new(filesystem_t* fs, dev_t device, const superblock_ops_t* ops,
     const dentry_ops_t* dentryOps);
