@@ -1,4 +1,3 @@
-
 # PatchworkOS
 
 <br>
@@ -508,7 +507,7 @@ The namespace section specifies a list of files and directories to bind into the
 - `/box/doom/data` to `/app/data`, allowing it to access any WAD files or save files stored in `/box/doom/data`.
 - `/net/local` to itself to allow it to create sockets to communicate with the Desktop Window Manager.
 - `/dev/const` to itself to allow it to use the `/dev/const/zero` file to map/allocate memory.
-- 
+
 The doom box cannot see or access user files, system configuration files, devices or anything else outside its bound directories, it can't even create pipes or shared memory as the `/dev/pipe/new` and `/dev/shmem/new` files do not exist in its namespace.
 
 ### Using Boxes
