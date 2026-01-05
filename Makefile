@@ -4,7 +4,7 @@ VERSION_HEADER = include/kernel/version.h
 VERSION_STRING := $(shell git describe --tags --always --dirty --long 2>/dev/null || echo "unknown")
 
 SECTIONS = boot kernel libstd libpatchwork
-BOXES = $(shell find src/box/ -name "*.mk")
+BOXES = $(shell find src/boxes/ -name "*.mk")
 PROGRAMS = $(shell find src/programs/ -name "*.mk")
 MODULES = $(shell find src/modules/ -name "*.mk")
 
@@ -15,7 +15,7 @@ SBIN_PROGRAMS = init boxd
 # Programs to copy to /base/bin
 BASE_BIN_PROGRAMS = $(filter-out $(SBIN_PROGRAMS),$(basename $(notdir $(shell find bin/programs/))))
 # Programs to copy to /box/[box]/bin
-BOX_PROGRAMS = $(basename $(notdir $(shell find bin/box/)))
+BOX_PROGRAMS = $(basename $(notdir $(shell find bin/boxes/)))
 
 .PHONY: $(SECTIONS) $(PROGRAMS) $(BOXES) $(MODULES) all setup deploy run clean generate_version compile_commands format doxygen clean clean_programs nuke grub_loopback clone_acpica_and_compile_tests
 
@@ -58,7 +58,7 @@ argon2: $(MODULES)
 	$(MAKE) -C lib/argon2 -f Makefile.patchwork
 
 $(BOXES): $(MODULES) argon2
-	$(MAKE) -f $@ SRCDIR=$(basename $(dir $@)) BUILDDIR=$(patsubst src/%,build/%,$(basename $(dir $@))) BINDIR=bin/box BOX=$(basename $(notdir $@))
+	$(MAKE) -f $@ SRCDIR=$(basename $(dir $@)) BUILDDIR=$(patsubst src/%,build/%,$(basename $(dir $@))) BINDIR=bin/boxes BOX=$(basename $(notdir $@))
 
 $(PROGRAMS): $(BOXES)
 	$(MAKE) -f $@ SRCDIR=$(basename $(dir $@)) BUILDDIR=$(patsubst src/%,build/%,$(basename $(dir $@))) BINDIR=bin/programs PROGRAM=$(basename $(notdir $@))
@@ -78,7 +78,7 @@ deploy: $(PROGRAMS)
 	mcopy -i $(IMAGE) -s include/* ::/base/include
 	$(foreach prog,$(SBIN_PROGRAMS),mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/sbin;)
 	$(foreach prog,$(BASE_BIN_PROGRAMS),mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/base/bin;)
-	$(foreach prog,$(BOX_PROGRAMS),mmd -i $(IMAGE) ::/box/$(prog)/bin && mcopy -i $(IMAGE) -s bin/box/$(prog) ::/box/$(prog)/bin;)
+	$(foreach prog,$(BOX_PROGRAMS),mmd -i $(IMAGE) ::/box/$(prog)/bin && mcopy -i $(IMAGE) -s bin/boxes/$(prog) ::/box/$(prog)/bin;)
 
 # This will only work if you have setup a grub loopback entry as described in the README.md file.
 grub_loopback:
