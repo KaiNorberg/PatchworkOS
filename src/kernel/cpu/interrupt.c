@@ -165,6 +165,8 @@ static void exception_user_page_fault_handler(interrupt_frame_t* frame)
 
 static void exception_handler(interrupt_frame_t* frame)
 {
+    errno_t err = errno;
+
     switch (frame->vector)
     {
     case VECTOR_DIVIDE_ERROR:
@@ -173,26 +175,26 @@ static void exception_handler(interrupt_frame_t* frame)
             panic(frame, "divide by zero");
         }
         exception_handle_user(frame, F("divbyzero at 0x%llx", frame->rip));
-        return;
+        break;
     case VECTOR_INVALID_OPCODE:
         if (!INTERRUPT_FRAME_IN_USER_SPACE(frame))
         {
             panic(frame, "invalid opcode");
         }
         exception_handle_user(frame, F("illegal instruction at 0x%llx", frame->rip));
-        return;
+        break;
     case VECTOR_DOUBLE_FAULT:
         panic(frame, "double fault");
-        return;
+        break;
     case VECTOR_NMI:
-        return; /// @todo Handle NMIs properly.
+        break; /// @todo Handle NMIs properly.
     case VECTOR_GENERAL_PROTECTION_FAULT:
         if (!INTERRUPT_FRAME_IN_USER_SPACE(frame))
         {
             panic(frame, "general protection fault");
         }
         exception_handle_user(frame, F("segfault at 0x%llx", frame->rip));
-        return;
+        break;
     case VECTOR_PAGE_FAULT:
         if (!INTERRUPT_FRAME_IN_USER_SPACE(frame))
         {
@@ -200,10 +202,12 @@ static void exception_handler(interrupt_frame_t* frame)
             return;
         }
         exception_user_page_fault_handler(frame);
-        return;
+        break;
     default:
         panic(frame, "unhandled exception vector 0x%x", frame->vector);
     }
+
+    errno = err;
 }
 
 void interrupt_handler(interrupt_frame_t* frame)
