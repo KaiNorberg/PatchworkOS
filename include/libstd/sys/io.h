@@ -141,25 +141,6 @@ uint64_t read(fd_t fd, void* buffer, uint64_t count);
 char* sread(fd_t fd);
 
 /**
- * @brief System call for writing to files.
- *
- * @param fd The file descriptor to write to.
- * @param buffer A pointer to the buffer containing the data to write.
- * @param count The number of bytes to write.
- * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
- */
-uint64_t write(fd_t fd, const void* buffer, uint64_t count);
-
-/**
- * @brief Wrapper for writing a null-terminated string to a file.
- *
- * @param fd The file descriptor to write to.
- * @param string The null-terminated string to write.
- * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
- */
-uint64_t swrite(fd_t fd, const char* string);
-
-/**
  * @brief Wrapper for reading a file directly using a path.
  *
  * Equivalent to calling `open()`, `seek()`, `read()`, and `close()` in sequence.
@@ -184,6 +165,37 @@ uint64_t readfile(const char* path, void* buffer, uint64_t count, uint64_t offse
  * @return On success, a pointer to the null-terminated string. On failure, `NULL` and `errno` is set.
  */
 char* sreadfile(const char* path);
+
+/**
+ * @brief Wrapper for reading a line from a file descriptor.
+ *
+ * The `readline()` function reads an entire line from the file, until a newline character or EOF is reached.
+ *
+ * @param fd The file descriptor to read from.
+ * @param buffer The buffer to store the line, will be null-terminated.
+ * @param size The size of the buffer.
+ * @return On success, the number of bytes read, excluding the null terminator. On failure, `ERR` and `errno` is set.
+ */
+uint64_t readline(fd_t fd, char* buffer, uint64_t size);
+
+/**
+ * @brief System call for writing to files.
+ *
+ * @param fd The file descriptor to write to.
+ * @param buffer A pointer to the buffer containing the data to write.
+ * @param count The number of bytes to write.
+ * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
+ */
+uint64_t write(fd_t fd, const void* buffer, uint64_t count);
+
+/**
+ * @brief Wrapper for writing a null-terminated string to a file.
+ *
+ * @param fd The file descriptor to write to.
+ * @param string The null-terminated string to write.
+ * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
+ */
+uint64_t swrite(fd_t fd, const char* string);
 
 /**
  * @brief Wrapper for writing to a file directly using a path.
@@ -228,6 +240,15 @@ uint64_t scan(fd_t fd, const char* format, ...);
  * @return On success, the number of input items successfully matched and assigned. On failure, `ERR`.
  */
 uint64_t scanfile(const char* path, const char* format, ...);
+
+/**
+ * @brief Wrapper for reading a single line from a file descriptor using scan formatting.
+ * 
+ * @param fd The file descriptor to read from.
+ * @param format The format string.
+ * @return On success, the number of input items successfully matched and assigned. On EOF, `0`. On failure, `ERR`.
+ */
+uint64_t scanline(fd_t fd, const char* format, ...);
 
 /**
  * @brief Type for the `seek()` origin argument.

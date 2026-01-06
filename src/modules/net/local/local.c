@@ -20,22 +20,22 @@
 
 static local_listen_t* local_socket_get_listen(local_socket_t* data)
 {
-    if (data->listen.listen == NULL)
+    if (data->listen == NULL)
     {
         return NULL;
     }
 
-    return REF(data->listen.listen);
+    return REF(data->listen);
 }
 
 static local_conn_t* local_socket_get_conn(local_socket_t* data)
 {
-    if (data->conn.conn == NULL)
+    if (data->conn == NULL)
     {
         return NULL;
     }
 
-    return REF(data->conn.conn);
+    return REF(data->conn);
 }
 
 static uint64_t local_socket_init(socket_t* sock)
@@ -65,32 +65,26 @@ static void local_socket_deinit(socket_t* sock)
 
     switch (sock->state)
     {
-    case SOCKET_LISTENING:
-        if (data->listen.listen != NULL)
-        {
-            lock_acquire(&data->listen.listen->lock);
-            data->listen.listen->isClosed = true;
-            wait_unblock(&data->listen.listen->waitQueue, WAIT_ALL, EOK);
-            lock_release(&data->listen.listen->lock);
-
-            UNREF(data->listen.listen);
-            data->listen.listen = NULL;
-        }
-        break;
-    case SOCKET_CONNECTED:
-        if (data->conn.conn != NULL)
-        {
-            lock_acquire(&data->conn.conn->lock);
-            data->conn.conn->isClosed = true;
-            wait_unblock(&data->conn.conn->waitQueue, WAIT_ALL, EOK);
-            lock_release(&data->conn.conn->lock);
-
-            UNREF(data->conn.conn);
-            data->conn.conn = NULL;
-        }
-        break;
     default:
         break;
+    }
+
+    if (data->listen != NULL)
+    {
+        lock_acquire(&data->listen->lock);
+        data->listen->isClosed = true;
+        wait_unblock(&data->listen->waitQueue, WAIT_ALL, EOK);
+        lock_release(&data->listen->lock);
+        UNREF(data->listen);
+    }
+
+    if (data->conn != NULL)
+    {
+        lock_acquire(&data->conn->lock);
+        data->conn->isClosed = true;
+        wait_unblock(&data->conn->waitQueue, WAIT_ALL, EOK);
+        lock_release(&data->conn->lock);
+        UNREF(data->conn);
     }
 
     free(data);
@@ -106,13 +100,19 @@ static uint64_t local_socket_bind(socket_t* sock)
         return ERR;
     }
 
+    if (data->listen != NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     local_listen_t* listen = local_listen_new(sock->address);
     if (listen == NULL)
     {
         return ERR;
     }
 
-    data->listen.listen = listen;
+    data->listen = listen;
     return 0;
 }
 
@@ -125,7 +125,7 @@ static uint64_t local_socket_listen(socket_t* sock, uint32_t backlog)
         return ERR;
     }
 
-    local_listen_t* listen = data->listen.listen;
+    local_listen_t* listen = data->listen;
     if (listen == NULL)
     {
         errno = EINVAL;
@@ -148,6 +148,12 @@ static uint64_t local_socket_connect(socket_t* sock)
     if (data == NULL)
     {
         errno = EINVAL;
+        return ERR;
+    }
+
+    if (data->conn != NULL)
+    {
+        errno = EISCONN;
         return ERR;
     }
 
@@ -185,8 +191,8 @@ static uint64_t local_socket_connect(socket_t* sock)
 
     wait_unblock(&listen->waitQueue, WAIT_ALL, EOK);
 
-    data->conn.conn = REF(conn);
-    data->conn.isServer = false;
+    data->conn = REF(conn);
+    data->isServer = false;
     return 0;
 }
 
@@ -249,8 +255,8 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
         errno = EINVAL;
         return ERR;
     }
-    newData->conn.conn = REF(conn);
-    newData->conn.isServer = true;
+    newData->conn = REF(conn);
+    newData->isServer = true;
 
     return 0;
 }
@@ -277,7 +283,7 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
 
     if (conn->isClosed)
     {
-        errno = ECONNRESET;
+        errno = EPIPE;
         return ERR;
     }
 
@@ -287,17 +293,17 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
         return ERR;
     }
 
-    ring_t* ring = data->conn.isServer ? &conn->serverToClient : &conn->clientToServer;
+    ring_t* ring = data->isServer ? &conn->serverToClient : &conn->clientToServer;
 
     local_packet_header_t header = {.magic = LOCAL_PACKET_MAGIC, .size = count};
 
     uint64_t totalSize = sizeof(local_packet_header_t) + count;
 
-    while (ring_free_length(ring) < totalSize)
+    while (ring_bytes_free(ring, NULL) < totalSize)
     {
         if (conn->isClosed)
         {
-            errno = ECONNRESET;
+            errno = EPIPE;
             return ERR;
         }
         if (mode & MODE_NONBLOCK)
@@ -305,24 +311,20 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
             errno = EAGAIN;
             return ERR;
         }
-        if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock, conn->isClosed || ring_free_length(ring) >= totalSize) ==
+        if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock, conn->isClosed || ring_bytes_free(ring, NULL) >= totalSize) ==
             ERR)
         {
             return ERR;
         }
         if (conn->isClosed)
         {
-            errno = ECONNRESET;
+            errno = EPIPE;
             return ERR;
         }
     }
 
-    if (ring_write(ring, &header, sizeof(local_packet_header_t)) != sizeof(local_packet_header_t) ||
-        ring_write(ring, buffer, count) != count)
-    {
-        errno = EIO;
-        return ERR;
-    }
+    ring_write(ring, &header, sizeof(local_packet_header_t), NULL);
+    ring_write(ring, buffer, count, NULL);
 
     wait_unblock(&conn->waitQueue, WAIT_ALL, EOK);
     return count;
@@ -348,9 +350,9 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
     UNREF_DEFER(conn);
     LOCK_SCOPE(&conn->lock);
 
-    ring_t* ring = data->conn.isServer ? &conn->clientToServer : &conn->serverToClient;
+    ring_t* ring = data->isServer ? &conn->clientToServer : &conn->serverToClient;
 
-    while (ring_data_length(ring) < sizeof(local_packet_header_t))
+    while (ring_bytes_used(ring, NULL) < sizeof(local_packet_header_t))
     {
         if (conn->isClosed)
         {
@@ -362,18 +364,14 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
             return ERR;
         }
         if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-                conn->isClosed || ring_data_length(ring) >= sizeof(local_packet_header_t)) == ERR)
+                conn->isClosed || ring_bytes_used(ring, NULL) >= sizeof(local_packet_header_t)) == ERR)
         {
             return ERR;
         }
     }
 
     local_packet_header_t header;
-    if (ring_read(ring, &header, sizeof(local_packet_header_t)) != sizeof(local_packet_header_t))
-    {
-        errno = EIO;
-        return ERR;
-    }
+    ring_read(ring, &header, sizeof(local_packet_header_t), NULL);
 
     if (header.magic != LOCAL_PACKET_MAGIC)
     {
@@ -392,15 +390,19 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
     }
 
     uint64_t readCount = header.size < count ? header.size : count;
-    if (ring_read_at(ring, 0, buffer, readCount) != readCount)
-    {
-        LOG_DEBUG("failed to read local socket packet data\n");
-        errno = EIO;
-        return ERR;
-    }
+    ring_read(ring, buffer, readCount, NULL);
 
-    // Consume entire packet.
-    ring_move_read_forward(ring, header.size);
+    if (header.size > readCount)
+    {
+        uint64_t remaining = header.size - readCount;
+        char temp[128];
+        while (remaining > 0)
+        {
+            uint64_t toRead = remaining < sizeof(temp) ? remaining : sizeof(temp);
+            ring_read(ring, temp, toRead, NULL);
+            remaining -= toRead;
+        }
+    }
     wait_unblock(&conn->waitQueue, WAIT_ALL, EOK);
     return readCount;
 }
@@ -418,7 +420,7 @@ static wait_queue_t* local_socket_poll(socket_t* sock, poll_events_t* revents)
     {
     case SOCKET_LISTENING:
     {
-        local_listen_t* listen = data->listen.listen;
+        local_listen_t* listen = data->listen;
         if (listen == NULL)
         {
             *revents |= POLLERR;
@@ -439,7 +441,7 @@ static wait_queue_t* local_socket_poll(socket_t* sock, poll_events_t* revents)
     }
     case SOCKET_CONNECTED:
     {
-        local_conn_t* conn = data->conn.conn;
+        local_conn_t* conn = data->conn;
         if (conn == NULL)
         {
             *revents |= POLLERR;
@@ -453,15 +455,15 @@ static wait_queue_t* local_socket_poll(socket_t* sock, poll_events_t* revents)
         }
         else
         {
-            ring_t* readRing = data->conn.isServer ? &conn->clientToServer : &conn->serverToClient;
-            ring_t* writeRing = data->conn.isServer ? &conn->serverToClient : &conn->clientToServer;
+            ring_t* readRing = data->isServer ? &conn->clientToServer : &conn->serverToClient;
+            ring_t* writeRing = data->isServer ? &conn->serverToClient : &conn->clientToServer;
 
-            if (ring_data_length(readRing) >= sizeof(local_packet_header_t))
+            if (ring_bytes_used(readRing, NULL) >= sizeof(local_packet_header_t))
             {
                 *revents |= POLLIN;
             }
 
-            if (ring_free_length(writeRing) >= sizeof(local_packet_header_t) + 1)
+            if (ring_bytes_free(writeRing, NULL) >= sizeof(local_packet_header_t) + 1)
             {
                 *revents |= POLLOUT;
             }

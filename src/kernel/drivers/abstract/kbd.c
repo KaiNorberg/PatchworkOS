@@ -1,12 +1,15 @@
 #include <kernel/drivers/abstract/kbd.h>
 
-#include <kernel/drivers/abstract/kbd.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
+#include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
+#include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
+#include <kernel/utils/ring.h>
+#include <kernel/log/log.h>
 
 #include <errno.h>
 #include <stdio.h>
@@ -15,36 +18,62 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-static dentry_t* kbdDir = NULL;
+static dentry_t* dir = NULL;
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
+
+static uint64_t kbd_name_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    kbd_t* kbd = file->inode->private;
+    assert(kbd != NULL);
+
+    uint64_t length = strlen(kbd->name);
+    return BUFFER_READ(buffer, count, offset, kbd->name, length);
+}
+
+static file_ops_t nameOps = {
+    .read = kbd_name_read,
+};
 
 static uint64_t kbd_events_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     kbd_t* kbd = file->inode->private;
+    assert(kbd != NULL);
 
-    count = ROUND_DOWN(count, sizeof(kbd_event_t));
-    for (uint64_t i = 0; i < count / sizeof(kbd_event_t); i++)
+    if (count >= sizeof(kbd->buffer))
     {
-        LOCK_SCOPE(&kbd->lock);
-
-        if (WAIT_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, *offset != kbd->writeIndex) == ERR)
-        {
-            return i * sizeof(kbd_event_t);
-        }
-
-        ((kbd_event_t*)buffer)[i] = kbd->events[*offset];
-        *offset = (*offset + 1) % KBD_MAX_EVENT;
+        errno = EINVAL;
+        return ERR;
     }
 
-    return count;
+    LOCK_SCOPE(&kbd->lock);
+
+    if (ring_bytes_used(&kbd->events, offset) == 0)
+    {
+        if (file->mode & MODE_NONBLOCK)
+        {
+            errno = EAGAIN;
+            return ERR;
+        }
+
+        if (WAIT_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, ring_bytes_used(&kbd->events, offset) > 0))
+        {
+            return ERR;
+        }
+    }
+
+    uint64_t result = ring_read(&kbd->events, buffer, count, offset);
+    return result;
 }
 
 static wait_queue_t* kbd_events_poll(file_t* file, poll_events_t* revents)
 {
     kbd_t* kbd = file->inode->private;
+    assert(kbd != NULL);
+
     LOCK_SCOPE(&kbd->lock);
-    if (kbd->writeIndex != file->pos)
+
+    if (ring_bytes_used(&kbd->events, &file->pos) > 0)
     {
         *revents |= POLLIN;
     }
@@ -56,27 +85,14 @@ static file_ops_t eventsOps = {
     .poll = kbd_events_poll,
 };
 
-static uint64_t kbd_name_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
-{
-    kbd_t* kbd = file->inode->private;
-    uint64_t nameLen = strlen(kbd->name);
-    if (*offset >= nameLen)
-    {
-        return 0;
-    }
-
-    return BUFFER_READ(buffer, count, offset, kbd->name, nameLen);
-}
-
-static file_ops_t nameOps = {
-    .read = kbd_name_read,
-};
-
 static void kbd_dir_cleanup(inode_t* inode)
 {
     kbd_t* kbd = inode->private;
-    wait_queue_deinit(&kbd->waitQueue);
-    free(kbd->name);
+    if (kbd == NULL)
+    {
+        return;
+    }
+
     free(kbd);
 }
 
@@ -92,59 +108,67 @@ kbd_t* kbd_new(const char* name)
         return NULL;
     }
 
-    if (kbdDir == NULL)
+    if (dir == NULL)
     {
-        kbdDir = devfs_dir_new(NULL, "kbd", NULL, NULL);
-        if (kbdDir == NULL)
+        dir = devfs_dir_new(NULL, "kbd", NULL, NULL);
+        if (dir == NULL)
         {
             return NULL;
         }
     }
 
-    kbd_t* kbd = calloc(1, sizeof(kbd_t));
+    kbd_t* kbd = malloc(sizeof(kbd_t));
     if (kbd == NULL)
     {
+        errno = ENOMEM;
         return NULL;
     }
-    kbd->name = strdup(name);
-    if (kbd->name == NULL)
-    {
-        free(kbd);
-        return NULL;
-    }
-    kbd->writeIndex = 0;
-    kbd->mods = KBD_MOD_NONE;
+    strncpy(kbd->name, name, sizeof(kbd->name));
+    kbd->name[sizeof(kbd->name) - 1] = '\0';
+    ring_init(&kbd->events, kbd->buffer, sizeof(kbd->buffer));
     wait_queue_init(&kbd->waitQueue);
     lock_init(&kbd->lock);
+    kbd->dir = NULL;
+    list_init(&kbd->files);
 
     char id[MAX_NAME];
     if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
     {
         wait_queue_deinit(&kbd->waitQueue);
-        free(kbd->name);
+        free(kbd);
+        errno = EIO;
+        return NULL;
+    }
+
+    kbd->dir = devfs_dir_new(dir, id, &dirInodeOps, kbd);
+    if (kbd->dir == NULL)
+    {
+        wait_queue_deinit(&kbd->waitQueue);
         free(kbd);
         return NULL;
     }
 
-    kbd->dir = devfs_dir_new(kbdDir, id, &dirInodeOps, kbd);
-    if (kbd->dir == NULL)
+    devfs_file_desc_t files[] = {
+        {
+            .name = "name",
+            .fileOps = &nameOps,
+            .private = kbd,
+        },
+        {
+            .name = "events",
+            .fileOps = &eventsOps,
+            .private = kbd,
+        },
+        {
+            .name = NULL,
+        },
+    };
+
+    if (devfs_files_new(&kbd->files, kbd->dir, files) == ERR)
     {
         wait_queue_deinit(&kbd->waitQueue);
-        free(kbd->name);
-        free(kbd);
-        return NULL;
-    }
-    kbd->eventsFile = devfs_file_new(kbd->dir, "events", NULL, &eventsOps, kbd);
-    if (kbd->eventsFile == NULL)
-    {
-        UNREF(kbd->dir); // kbd will be freed in kbd_dir_cleanup
-        return NULL;
-    }
-    kbd->nameFile = devfs_file_new(kbd->dir, "name", NULL, &nameOps, kbd);
-    if (kbd->nameFile == NULL)
-    {
-        UNREF(kbd->eventsFile);
         UNREF(kbd->dir);
+        free(kbd);
         return NULL;
     }
 
@@ -159,58 +183,43 @@ void kbd_free(kbd_t* kbd)
     }
 
     UNREF(kbd->dir);
-    UNREF(kbd->eventsFile);
-    UNREF(kbd->nameFile);
-    // kbd will be freed in kbd_dir_cleanup
+    devfs_files_free(&kbd->files);
 }
 
-static void kbd_update_mod(kbd_t* kbd, kbd_event_type_t type, kbd_mods_t mod)
+void kbd_press(kbd_t* kbd, keycode_t code)
 {
-    if (type == KBD_PRESS)
+    if (kbd == NULL)
     {
-        kbd->mods |= mod;
+        return;
     }
-    else if (type == KBD_RELEASE)
-    {
-        kbd->mods &= ~mod;
-    }
-}
 
-void kbd_push(kbd_t* kbd, kbd_event_type_t type, keycode_t code)
-{
     LOCK_SCOPE(&kbd->lock);
 
-    switch (code)
+    char string[MAX_NAME];
+    int length = snprintf(string, MAX_NAME, "_%u\n", code);
+    if (length < 0)
     {
-    case KBD_CAPS_LOCK:
-        kbd_update_mod(kbd, type, KBD_MOD_CAPS);
-        break;
-    case KBD_LEFT_SHIFT:
-    case KBD_RIGHT_SHIFT:
-        kbd_update_mod(kbd, type, KBD_MOD_SHIFT);
-        break;
-    case KBD_LEFT_CTRL:
-    case KBD_RIGHT_CTRL:
-        kbd_update_mod(kbd, type, KBD_MOD_CTRL);
-        break;
-    case KBD_LEFT_ALT:
-    case KBD_RIGHT_ALT:
-        kbd_update_mod(kbd, type, KBD_MOD_ALT);
-        break;
-    case KBD_LEFT_SUPER:
-    case KBD_RIGHT_SUPER:
-        kbd_update_mod(kbd, type, KBD_MOD_SUPER);
-        break;
-    default:
-        break;
+        return;
+    }
+    ring_write(&kbd->events, string, (uint64_t)length, NULL);
+    wait_unblock(&kbd->waitQueue, WAIT_ALL, EOK);
+}
+
+void kbd_release(kbd_t* kbd, keycode_t code)
+{
+    if (kbd == NULL)
+    {
+        return;
     }
 
-    kbd->events[kbd->writeIndex] = (kbd_event_t){
-        .time = clock_uptime(),
-        .code = code,
-        .mods = kbd->mods,
-        .type = type,
-    };
-    kbd->writeIndex = (kbd->writeIndex + 1) % KBD_MAX_EVENT;
+    LOCK_SCOPE(&kbd->lock);
+
+    char string[MAX_NAME];
+    int length = snprintf(string, MAX_NAME, "^%u\n", code);
+    if (length < 0)
+    {
+        return;
+    }
+    ring_write(&kbd->events, string, (uint64_t)length, NULL);
     wait_unblock(&kbd->waitQueue, WAIT_ALL, EOK);
 }

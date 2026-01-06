@@ -1,6 +1,8 @@
 #include "kbd.h"
 
-/// @todo Use the configuration system for keymaps
+#include <stdbool.h>
+
+/// @todo Implement keymap files.
 
 typedef struct
 {
@@ -92,14 +94,26 @@ static keymap_t keymap = {
         },
 };
 
+keycode_t kbd_translate(keycode_t code)
+{
+    return code;
+}
+
 char kbd_ascii(keycode_t code, kbd_mods_t mods)
 {
     if (code < 0 || code >= UINT8_MAX)
     {
         return '\0';
     }
-    else
+
+    bool shift = mods & KBD_MOD_SHIFT;
+    if (mods & KBD_MOD_CAPS)
     {
-        return mods & KBD_MOD_SHIFT ? keymap.map[code].shift : keymap.map[code].norm;
+        if (code >= KBD_A && code <= KBD_Z)
+        {
+            shift = !shift;
+        }
     }
+
+    return shift ? keymap.map[code].shift : keymap.map[code].norm;
 }

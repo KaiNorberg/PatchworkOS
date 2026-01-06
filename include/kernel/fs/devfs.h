@@ -90,7 +90,7 @@ uint64_t devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t*
 
 /**
  * @brief Free all files in a list created by `devfs_files_new()`.
- * 
+ *
  * @param files The list of files to free.
  */
 void devfs_files_free(list_t* files);

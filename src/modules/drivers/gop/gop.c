@@ -1,4 +1,5 @@
 #include <kernel/drivers/abstract/fb.h>
+#include <kernel/fs/vfs.h>
 #include <kernel/init/boot_info.h>
 #include <kernel/init/init.h>
 #include <kernel/log/log.h>
@@ -7,7 +8,6 @@
 #include <kernel/module/module.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
-#include <kernel/fs/vfs.h>
 
 #include <errno.h>
 #include <string.h>
@@ -33,7 +33,7 @@ static uint64_t gop_info(fb_t* fb, fb_info_t* info)
     info->width = gop.width;
     info->height = gop.height;
     info->pitch = gop.stride * sizeof(uint32_t);
-    strncpy(info->format, "B8G8R8A8", FB_MAX_FORMAT);
+    strncpy(info->format, "B8G8R8A8", sizeof(info->format));
     return 0;
 }
 

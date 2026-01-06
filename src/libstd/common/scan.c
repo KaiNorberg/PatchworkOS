@@ -121,7 +121,7 @@ const char* _scan(const char* spec, _format_ctx_t* ctx)
     int rc;
     const char* prev_spec;
     const char* orig_spec = spec;
-    int value_parsed;
+    int valueParsed;
 
     if (*(++spec) == '%')
     {
@@ -240,7 +240,7 @@ const char* _scan(const char* spec, _format_ctx_t* ctx)
     /* Conversion specifier */
 
     /* whether valid input had been parsed */
-    value_parsed = 0;
+    valueParsed = 0;
 
     switch (*spec)
     {
@@ -300,11 +300,11 @@ const char* _scan(const char* spec, _format_ctx_t* ctx)
                 *(c++) = rc;
             }
 
-            value_parsed = 1;
+            valueParsed = 1;
         }
 
         /* width or input exhausted */
-        if (value_parsed)
+        if (valueParsed)
         {
             if (c != NULL)
             {
@@ -340,7 +340,7 @@ const char* _scan(const char* spec, _format_ctx_t* ctx)
             {
                 _scan_unget(rc, ctx);
 
-                if (value_parsed)
+                if (valueParsed)
                 {
                     /* matching sequence terminated by whitespace */
                     if (c != NULL)
@@ -365,12 +365,12 @@ const char* _scan(const char* spec, _format_ctx_t* ctx)
                     *(c++) = rc;
                 }
 
-                value_parsed = 1;
+                valueParsed = 1;
             }
         }
 
         /* width or input exhausted */
-        if (value_parsed)
+        if (valueParsed)
         {
             if (c != NULL)
             {
@@ -442,11 +442,11 @@ const char* _scan(const char* spec, _format_ctx_t* ctx)
                 *(c++) = rc;
             }
 
-            value_parsed = 1;
+            valueParsed = 1;
         }
 
         /* width or input exhausted */
-        if (value_parsed)
+        if (valueParsed)
         {
             if (c != NULL)
             {
@@ -567,7 +567,7 @@ const char* _scan(const char* spec, _format_ctx_t* ctx)
                                     {
                                         /* ...unless already set to other value */
                                         _scan_unget(rc, ctx);
-                                        value_parsed = 1;
+                                        valueParsed = 1;
                                     }
                                 }
                                 else
@@ -581,13 +581,13 @@ const char* _scan(const char* spec, _format_ctx_t* ctx)
                                     }
 
                                     /* in any case we have read a zero */
-                                    value_parsed = 1;
+                                    valueParsed = 1;
                                 }
                             }
                             else
                             {
                                 /* failed to read beyond the initial zero */
-                                value_parsed = 1;
+                                valueParsed = 1;
                                 break;
                             }
                         }
@@ -605,17 +605,17 @@ const char* _scan(const char* spec, _format_ctx_t* ctx)
 
                         value *= ctx->base;
                         value += digitptr - _digits;
-                        value_parsed = 1;
+                        valueParsed = 1;
                     }
                 }
             }
         }
 
         /* width or input exhausted, or non-matching character */
-        if (!value_parsed)
+        if (!valueParsed)
         {
             /* out of input before anything could be parsed - input error */
-            /* FIXME: if first character does not match, value_parsed is not set - but it is NOT an input error */
+            /* FIXME: if first character does not match, valueParsed is not set - but it is NOT an input error */
             if ((ctx->maxChars == 0) && (rc == EOF))
             {
                 ctx->maxChars = -1;

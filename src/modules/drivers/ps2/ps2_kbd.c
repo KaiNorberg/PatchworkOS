@@ -24,27 +24,28 @@ static void ps2_kbd_irq(irq_func_data_t* data)
         LOG_ERR("unexpected PS/2 keyboard response: %d\n", response);
         return;
     case PS2_DEV_RESPONSE_KBD_EXTENDED:
-      private
-        ->isExtended = true;
+        private->flags |= PS2_KBD_EXTENDED;
         return;
     case PS2_DEV_RESPONSE_KBD_RELEASE:
-      private
-        ->isRelease = true;
+        private->flags |= PS2_KBD_RELEASE;
         return;
     default:
         break;
     }
 
     ps2_scancode_t scancode = (ps2_scancode_t)response;
-    kbd_event_type_t type = private->isRelease ? KBD_RELEASE : KBD_PRESS;
+    keycode_t code = ps2_scancode_to_keycode(scancode, private->flags & PS2_KBD_EXTENDED);
 
-    keycode_t code = ps2_scancode_to_keycode(scancode, private->isExtended);
-    kbd_push(private->kbd, type, code);
+    if (private->flags & PS2_KBD_RELEASE)
+    {
+        kbd_release(private->kbd, code);
+    }
+    else
+    {
+        kbd_press(private->kbd, code);
+    }
 
-  private
-    ->isExtended = false;
-  private
-    ->isRelease = false;
+    private->flags = PS2_KBD_NONE;
 }
 
 uint64_t ps2_kbd_init(ps2_device_info_t* info)
@@ -61,20 +62,14 @@ uint64_t ps2_kbd_init(ps2_device_info_t* info)
         LOG_ERR("failed to allocate memory for PS/2 keyboard data\n");
         return ERR;
     }
-
-  private
-    ->kbd = kbd_new(info->name);
+    private->flags = PS2_KBD_NONE;
+    private->kbd = kbd_new(info->name);
     if (private->kbd == NULL)
     {
         free(private);
         LOG_ERR("failed to create PS/2 keyboard\n");
         return ERR;
     }
-
-  private
-    ->isExtended = false;
-  private
-    ->isRelease = false;
 
     info->private = private;
     return 0;

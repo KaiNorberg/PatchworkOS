@@ -26,9 +26,8 @@ static uint64_t log_file_op_read(file_t* file, void* buffer, uint64_t count, uin
     UNUSED(file);
 
     LOCK_SCOPE(&lock);
-    uint64_t result = ring_read_at(&ring, *offset, buffer, count);
-    *offset += result;
-    return result;
+
+    return ring_read(&ring, buffer, count, offset);
 }
 
 static uint64_t log_file_op_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
@@ -45,11 +44,11 @@ static wait_queue_t* log_file_op_poll(file_t* file, poll_events_t* revents)
     UNUSED(file);
 
     LOCK_SCOPE(&lock);
-    if (ring.writeIndex != file->pos)
+
+    if (ring_bytes_used(&ring, &file->pos) > 0)
     {
         *revents |= POLLIN;
     }
-
     return &waitQueue;
 }
 
@@ -93,10 +92,11 @@ void log_file_flush_to_screen(void)
 
     uint64_t lineLength = 0;
     uint64_t lineCount = 0;
-    for (uint64_t i = 0; i < ring_data_length(&ring); i++)
+    for (uint64_t i = 0; i < ring_bytes_used(&ring, NULL); i++)
     {
+        uint64_t offset = i;
         uint8_t chr;
-        ring_get_byte(&ring, i, &chr);
+        ring_read(&ring, &chr, 1, &offset);
 
         log_file_advance_fake_cursor(chr, &lineLength, &lineCount);
     }
@@ -108,19 +108,19 @@ void log_file_flush_to_screen(void)
     lineCount = 0;
 
     uint64_t i = 0;
-    for (; i < ring_data_length(&ring) && lineCount < totalLines - linesThatFit; i++)
+    for (; i < ring_bytes_used(&ring, NULL) && lineCount < totalLines - linesThatFit; i++)
     {
+        uint64_t offset = i;
         uint8_t chr;
-        ring_get_byte(&ring, i, &chr);
+        ring_read(&ring, &chr, 1, &offset);
 
         log_file_advance_fake_cursor(chr, &lineLength, &lineCount);
     }
 
-    for (; i < ring_data_length(&ring);)
+    for (; i < ring_bytes_used(&ring, NULL);)
     {
-        uint64_t toRead = MIN(ring_data_length(&ring) - i, sizeof(workingBuffer));
-        ring_read_at(&ring, i, workingBuffer, toRead);
-        i += toRead;
+        uint64_t toRead = MIN(ring_bytes_used(&ring, NULL) - i, sizeof(workingBuffer));
+        ring_read(&ring, workingBuffer, toRead, &i);
 
         log_screen_write(workingBuffer, toRead);
     }
@@ -134,7 +134,7 @@ void log_file_write(const char* string, uint64_t length)
     }
 
     LOCK_SCOPE(&lock);
-    ring_write(&ring, string, length);
+    ring_write(&ring, string, length, NULL);
 
     wait_unblock(&waitQueue, WAIT_ALL, EOK);
 }

@@ -1,7 +1,7 @@
 #include <kernel/drivers/abstract/fb.h>
 
-#include <kernel/fs/file.h>
 #include <kernel/fs/devfs.h>
+#include <kernel/fs/file.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/sched/thread.h>
@@ -94,7 +94,8 @@ static uint64_t fb_info_read(file_t* file, void* buffer, uint64_t count, uint64_
     }
 
     char string[256];
-    int length = snprintf(string, sizeof(string), "%llu %llu %llu %s", info.width, info.height, info.pitch, info.format);
+    int length =
+        snprintf(string, sizeof(string), "%llu %llu %llu %s", info.width, info.height, info.pitch, info.format);
     if (length < 0)
     {
         errno = EIO;
@@ -153,8 +154,8 @@ fb_t* fb_new(const char* name, const fb_ops_t* ops, void* private)
         errno = ENOMEM;
         return NULL;
     }
-    strncpy(fb->name, name, FB_MAX_NAME);
-    fb->name[FB_MAX_NAME - 1] = '\0';
+    strncpy(fb->name, name, sizeof(fb->name));
+    fb->name[sizeof(fb->name) - 1] = '\0';
     fb->ops = ops;
     fb->private = private;
     fb->dir = NULL;
@@ -164,6 +165,7 @@ fb_t* fb_new(const char* name, const fb_ops_t* ops, void* private)
     if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
     {
         free(fb);
+        errno = EIO;
         return NULL;
     }
 

@@ -14,8 +14,7 @@ typedef struct fb fb_t;
  * @defgroup kernel_drivers_abstract_fb Framebuffer Abstraction
  * @ingroup kernel_drivers_abstract
  *
- * Framebuffer devices are exposed as a `/dev/fb/[id]/` directory, included below are all the files that can be found in
- * a framebuffer device directory.
+ * Framebuffer devices are exposed as a `/dev/fb/[id]/` directory, containing the below files.
  *
  * ## name
  *
@@ -45,16 +44,6 @@ typedef struct fb fb_t;
  */
 
 /**
- * @brief Maximum length of framebuffer name.
- */
-#define FB_MAX_NAME 128
-
-/**
- * @brief Maximum length of framebuffer format string.
- */
-#define FB_MAX_FORMAT 32
-
-/**
  * @brief Framebuffer information.
  * @struct fb_info_t
  */
@@ -63,7 +52,7 @@ typedef struct fb_info
     uint32_t width;
     uint32_t height;
     uint32_t pitch;
-    char format[FB_MAX_FORMAT];
+    char format[MAX_PATH];
 } fb_info_t;
 
 /**
@@ -85,7 +74,7 @@ typedef struct fb_ops
  */
 typedef struct fb
 {
-    char name[FB_MAX_NAME];
+    char name[MAX_PATH];
     const fb_ops_t* ops;
     void* private;
     dentry_t* dir;
@@ -95,7 +84,7 @@ typedef struct fb
 /**
  * @brief Allocate and initialize a new framebuffer.
  *
- * @param name The name of the framebuffer.
+ * @param name The driver specified name of the framebuffer.
  * @param ops The operations for the framebuffer.
  * @param private Private data for the framebuffer.
  * @return On success, the new framebuffer. On failure, `NULL` and `errno` is set.

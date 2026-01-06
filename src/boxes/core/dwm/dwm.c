@@ -7,6 +7,7 @@
 #include "surface.h"
 
 #include <errno.h>
+#include <libpatchwork/event.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -95,7 +96,7 @@ void dwm_init(void)
     }
     close(klog);
 
-    kbd = open("/dev/kbd/0/events");
+    kbd = open("/dev/kbd/0/events:nonblock");
     if (kbd == ERR)
     {
         printf("dwm: failed to open keyboard (%s)\n", strerror(errno));
@@ -457,29 +458,82 @@ static surface_t* dwm_next_timer(void)
 
 static void dwm_kbd_read(void)
 {
-    if (poll1(kbd, POLLIN, 0) == POLLIN)
+    static kbd_mods_t mods = KBD_MOD_NONE;
+
+    char prefix;
+    keycode_t code;
+    if (scanline(kbd, "%c%lu", &prefix, &code) != 2)
     {
-        // The kbd_event_t and event_kbd_t naming is a bit weird.
-        kbd_event_t kbdEvent;
-        if (read(kbd, &kbdEvent, sizeof(kbd_event_t)) != sizeof(kbd_event_t))
-        {
-            printf("dwm: failed to read kbd event\n");
-            return;
-        }
+        return;
+    }
+    
+    code = kbd_translate(code);
 
-        if (focus == NULL)
+    if (code == KBD_LEFT_SHIFT || code == KBD_RIGHT_SHIFT)
+    {
+        if (prefix == '_')
         {
-            return;
+            mods |= KBD_MOD_SHIFT;
         }
+        else
+        {
+            mods &= ~KBD_MOD_SHIFT;
+        }
+    }
+    else if (code == KBD_LEFT_CTRL || code == KBD_RIGHT_CTRL)
+    {
+        if (prefix == '_')
+        {
+            mods |= KBD_MOD_CTRL;
+        }
+        else
+        {
+            mods &= ~KBD_MOD_CTRL;
+        }
+    }
+    else if (code == KBD_LEFT_ALT || code == KBD_RIGHT_ALT)
+    {
+        if (prefix == '_')
+        {
+            mods |= KBD_MOD_ALT;
+        }
+        else
+        {
+            mods &= ~KBD_MOD_ALT;
+        }
+    }
+    else if (code == KBD_LEFT_SUPER || code == KBD_RIGHT_SUPER)
+    {
+        if (prefix == '_')
+        {
+            mods |= KBD_MOD_SUPER;
+        }
+        else
+        {
+            mods &= ~KBD_MOD_SUPER;
+        }
+    }
+    else if (code == KBD_CAPS_LOCK && prefix == '_')
+    {
+        mods ^= KBD_MOD_CAPS;
+    }
 
+    printf("dwm: kbd event: prefix=%c code=%lu mods=0x%02x\n", prefix, code, mods);
+
+    if (focus != NULL)
+    {
         event_kbd_t event;
-        event.type = kbdEvent.type;
-        event.mods = kbdEvent.mods;
-        event.code = kbdEvent.code;
-        event.ascii = kbd_ascii(event.code, event.mods);
+        event.type = prefix == '_' ? KBD_PRESS : KBD_RELEASE;
+        event.mods = mods;
+        event.code = code;
+        event.ascii = kbd_ascii(code, mods);
         client_send_event(focus->client, focus->id, EVENT_KBD, &event, sizeof(event_kbd_t));
 
-        event_global_kbd_t globalEvent = event;
+        event_global_kbd_t globalEvent;
+        globalEvent.type = event.type;
+        globalEvent.mods = event.mods;
+        globalEvent.code = event.code;
+        globalEvent.ascii = event.ascii;
         dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_KBD, &globalEvent, sizeof(globalEvent));
     }
 }

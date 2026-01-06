@@ -37,8 +37,8 @@ static void frontbuffer_init(void)
         abort();
     }
 
-    printf("dwm: using framebuffer '%s' width=%lu height=%lu pitch=%lu format=%s\n", name, width,
-        height, pitch, format);
+    printf("dwm: using framebuffer '%s' width=%lu height=%lu pitch=%lu format=%s\n", name, width, height, pitch,
+        format);
 
     stride = pitch / sizeof(pixel_t);
 
@@ -49,7 +49,7 @@ static void frontbuffer_init(void)
         abort();
     }
 
-    frontbuffer = mmap(data, NULL,  height * pitch, PROT_READ | PROT_WRITE);
+    frontbuffer = mmap(data, NULL, height * pitch, PROT_READ | PROT_WRITE);
     if (frontbuffer == NULL)
     {
         printf("dwm: failed to map framebuffer memory (%s)\n", strerror(errno));
@@ -160,8 +160,7 @@ void screen_swap(void)
         for (int64_t y = 0; y < RECT_HEIGHT(rect); y++)
         {
             memcpy(&((uint32_t*)frontbuffer)[(rect->left) + (rect->top + y) * stride],
-                &((pixel_t*)backbuffer)[(rect->left) + (rect->top + y) * stride],
-                RECT_WIDTH(rect) * sizeof(uint32_t));
+                &((pixel_t*)backbuffer)[(rect->left) + (rect->top + y) * stride], RECT_WIDTH(rect) * sizeof(uint32_t));
         }
     }
 
