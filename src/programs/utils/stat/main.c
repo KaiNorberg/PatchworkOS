@@ -6,7 +6,7 @@
 #include <sys/io.h>
 #include <time.h>
 
-static const char* type_to_string(inode_type_t type)
+static const char* type_to_string(itype_t type)
 {
     switch (type)
     {
@@ -33,7 +33,7 @@ static void print_stat(const char* path)
     printf("  File: %s\n", path);
     printf("  Size: %llu\t\tBlocks: %llu\t   IO Block: %llu  %s\n", buffer.size, buffer.blocks, buffer.blockSize,
         type_to_string(buffer.type));
-    printf("Device: %u,%u\tInode: %llu\tLinks: %llu\n", buffer.device.type, buffer.device.id, buffer.number,
+    printf("Superblock: %llu\tInode: %llu\tLinks: %llu\n", buffer.sbid, buffer.number,
         buffer.linkAmount);
     printf("   Max: %llu\n", buffer.maxFileSize);
     printf("  Name: %s\n", buffer.name);

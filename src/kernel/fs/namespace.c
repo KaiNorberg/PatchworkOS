@@ -338,7 +338,7 @@ bool namespace_traverse(namespace_t* ns, path_t* path)
     return traversed;
 }
 
-static uint64_t namespace_find_device(const char* deviceName, dev_t* out)
+static uint64_t namespace_find_device(const char* deviceName, block_device_t** out)
 {
     /// @todo Implement physical device lookup.
 
@@ -350,7 +350,7 @@ static uint64_t namespace_find_device(const char* deviceName, dev_t* out)
         return ERR;
     }
 
-    *out = (dev_t){.type = 0, .id = atomic_fetch_add_explicit(&nextVirtId, 1, memory_order_relaxed)};
+    *out = NULL;
     return 0;
 }
 
@@ -370,13 +370,13 @@ mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* fsName, co
         return NULL;
     }
 
-    dev_t dev;
-    if (namespace_find_device(deviceName, &dev) == ERR)
+    block_device_t* device;
+    if (namespace_find_device(deviceName, &device) == ERR)
     {
         return NULL;
     }
 
-    dentry_t* root = fs->mount(fs, dev, private);
+    dentry_t* root = fs->mount(fs, device, private);
     if (root == NULL)
     {
         return NULL;

@@ -312,39 +312,38 @@ poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);
 
 /**
  * @brief Inode type enum.
- * @enum inode_type_t
+ * @enum itype_t
  */
 typedef enum
 {
     INODE_FILE,    ///< Is a file.
     INODE_DIR,     ///< Is a directory.
     INODE_SYMLINK, ///< Is a symbolic link.
-} inode_type_t;
+} itype_t;
 
 /**
- * @brief A value that uniquely identifies the inode within its filesystem.
+ * @brief A inode number that uniquely identifies the inode within its filesystem.
+ * 
+ * When combined with a superblock ID, this can uniquely identify an inode within the entire system.
  */
 typedef uint64_t ino_t;
 
 /**
- * @brief A value that uniquely identifies a mounted device.
+ * @brief A suberblock identifier that uniquely identifies a superblock within the system.
+ * 
+ * When combined with a inode number, this can uniquely identify an inode within the entire system.
  */
-typedef struct
-{
-    uint32_t type; ///< The type of the device, `0` is reserved for virtual devices.
-    uint32_t id;   ///< An identifier that uniquely identifies a device of the given type.
-} dev_t;
-
-#define DEV_IS_VIRTUAL(dev) ((dev).type == 0) ///< Checks if the given device is a virtual device.
+typedef uint64_t sbid_t;
 
 /**
  * @brief Stat type.
+ * @struct stat_t
  */
 typedef struct
 {
-    dev_t device;         ///< The device ID of the filesystem containing the file.
+    sbid_t sbid;          ///< The superblock ID of the filesystem containing the entry.
     ino_t number;         ///< The number of the entries inode.
-    inode_type_t type;    ///< The type of the entries inode.
+    itype_t type;         ///< The type of the entries inode.
     uint64_t size;        ///< The size of the file that is visible outside the filesystem.
     uint64_t blocks;      ///< The amount of blocks used on disk to store the file.
     uint64_t blockSize;   ///< The preferred block size of the filesystem.
@@ -420,7 +419,7 @@ typedef enum
 typedef struct
 {
     ino_t number;
-    inode_type_t type;
+    itype_t type;
     dirent_flags_t flags;
     char path[MAX_PATH]; ///< The relative path of the entry.
     char mode[MAX_PATH]; ///< The flags of the paths mount.

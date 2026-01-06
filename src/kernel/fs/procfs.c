@@ -950,7 +950,7 @@ static inode_ops_t selfOps = {
 typedef struct
 {
     const char* name;
-    inode_type_t type;
+    itype_t type;
     const inode_ops_t* inodeOps;
     const file_ops_t* fileOps;
     const dentry_ops_t* dentryOps;
@@ -1228,7 +1228,7 @@ static dentry_ops_t procDentryOps = {
     .iterate = procfs_iterate,
 };
 
-static dentry_t* procfs_mount(filesystem_t* fs, dev_t device, void* private)
+static dentry_t* procfs_mount(filesystem_t* fs, block_device_t* device, void* private)
 {
     UNUSED(private);
 

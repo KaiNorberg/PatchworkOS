@@ -49,7 +49,7 @@ typedef struct inode
 {
     ref_t ref;
     ino_t number;
-    inode_type_t type;
+    itype_t type;
     _Atomic(uint64_t) dentryCount; ///< The number of dentries pointing to this inode.
     uint64_t size;
     uint64_t blocks;
@@ -158,7 +158,7 @@ typedef struct inode_ops
  * @param fileOps The file operations for files opened on this inode.
  * @return On success, the new inode. On failure, returns `NULL` and `errno` is set.
  */
-inode_t* inode_new(superblock_t* superblock, ino_t number, inode_type_t type, const inode_ops_t* ops,
+inode_t* inode_new(superblock_t* superblock, ino_t number, itype_t type, const inode_ops_t* ops,
     const file_ops_t* fileOps);
 
 /**

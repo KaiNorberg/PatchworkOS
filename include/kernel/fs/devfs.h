@@ -15,7 +15,6 @@ typedef struct superblock_ops superblock_ops_t;
  * @ingroup kernel_fs
  * @defgroup kernel_fs_devfs Device Filesystem
  *
- *
  */
 
 /**

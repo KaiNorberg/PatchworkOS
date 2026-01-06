@@ -766,7 +766,7 @@ static dentry_ops_t netDentryOps = {
     .iterate = netfs_iterate,
 };
 
-static dentry_t* netfs_mount(filesystem_t* fs, dev_t device, void* private)
+static dentry_t* netfs_mount(filesystem_t* fs, block_device_t* device, void* private)
 {
     UNUSED(private);
 

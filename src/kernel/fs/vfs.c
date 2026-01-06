@@ -613,7 +613,7 @@ typedef struct
     namespace_t* ns;
 } vfs_dir_ctx_t;
 
-static bool vfs_dir_emit(dir_ctx_t* ctx, const char* name, ino_t number, inode_type_t type)
+static bool vfs_dir_emit(dir_ctx_t* ctx, const char* name, ino_t number, itype_t type)
 {
     vfs_dir_ctx_t* vctx = (vfs_dir_ctx_t*)ctx;
     if (vctx->written + sizeof(dirent_t) > vctx->count)

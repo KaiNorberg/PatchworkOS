@@ -38,7 +38,7 @@ static void inode_free(inode_t* inode)
     free(inode);
 }
 
-inode_t* inode_new(superblock_t* superblock, ino_t number, inode_type_t type, const inode_ops_t* ops,
+inode_t* inode_new(superblock_t* superblock, ino_t number, itype_t type, const inode_ops_t* ops,
     const file_ops_t* fileOps)
 {
     if (superblock == NULL)

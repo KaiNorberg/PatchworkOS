@@ -27,7 +27,7 @@
 
 static bool initialized = false;
 
-static inode_t* tmpfs_inode_new(superblock_t* superblock, inode_type_t type, void* buffer, uint64_t size);
+static inode_t* tmpfs_inode_new(superblock_t* superblock, itype_t type, void* buffer, uint64_t size);
 
 static void tmpfs_dentry_add(dentry_t* dentry)
 {
@@ -276,7 +276,7 @@ static dentry_t* tmpfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     return REF(dentry);
 }
 
-static dentry_t* tmpfs_mount(filesystem_t* fs, dev_t device, void* private)
+static dentry_t* tmpfs_mount(filesystem_t* fs, block_device_t* device, void* private)
 {
     UNUSED(private);
 
@@ -335,7 +335,7 @@ static dentry_t* tmpfs_mount(filesystem_t* fs, dev_t device, void* private)
     return REF(superblock->root);
 }
 
-static inode_t* tmpfs_inode_new(superblock_t* superblock, inode_type_t type, void* buffer, uint64_t size)
+static inode_t* tmpfs_inode_new(superblock_t* superblock, itype_t type, void* buffer, uint64_t size)
 {
     inode_t* inode = inode_new(superblock, vfs_id_get(), type, &inodeOps, &fileOps);
     if (inode == NULL)
