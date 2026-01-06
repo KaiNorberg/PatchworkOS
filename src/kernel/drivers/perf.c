@@ -2,8 +2,8 @@
 #include <kernel/drivers/perf.h>
 
 #include <kernel/cpu/cpu.h>
-#include <kernel/fs/file.h>
 #include <kernel/fs/devfs.h>
+#include <kernel/fs/file.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>

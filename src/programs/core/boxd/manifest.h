@@ -51,13 +51,13 @@
  * In short, in foreground mode the box will, as far as the creator is concerned, behave like a child process.
  *
  * ## Macros
- * 
+ *
  * The following macros can be used in a manifest for substitution, a macro should be prefixed with `$`:
- * 
+ *
  * - `BOX`: The path to the box's directory in the root namespace, e.g. `/box/<box>`.
- * 
+ *
  * @see programs_init for information on the root namespaces filesystem heirarchy.
- * 
+ *
  * @{
  */
 

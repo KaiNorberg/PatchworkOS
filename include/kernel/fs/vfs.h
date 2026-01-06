@@ -1,12 +1,12 @@
 #pragma once
 
 #include <kernel/fs/dentry.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/inode.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
-#include <kernel/fs/devfs.h>
 #include <kernel/proc/process.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
@@ -217,14 +217,14 @@ uint64_t vfs_id_get(void);
  * @param buffer The destination buffer.
  * @param count The number of bytes to write.
  * @param offset A pointer to the current offset, will be updated.
- * @param src The source buffer.
- * @param size The size of the source buffer.
+ * @param dest The destination buffer.
+ * @param size The size of the destination buffer.
  * @return The number of bytes written.
  */
-#define BUFFER_WRITE(buffer, count, offset, src, size) \
+#define BUFFER_WRITE(buffer, count, offset, dest, size) \
     ({ \
         uint64_t writeCount = (*(offset) <= (size)) ? MIN((count), (size) - *(offset)) : 0; \
-        memcpy((buffer) + *(offset), (src), writeCount); \
+        memcpy((dest) + *(offset), (buffer), writeCount); \
         *(offset) += writeCount; \
         writeCount; \
     })

@@ -335,7 +335,6 @@ uint64_t atnotify(atnotify_func_t handler, atnotify_t action);
  */
 _NORETURN void _exit(const char* status);
 
-
 /**
  * @brief Helper for sending the "kill" command to a process.
  *

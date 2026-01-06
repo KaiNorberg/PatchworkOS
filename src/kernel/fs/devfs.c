@@ -190,3 +190,71 @@ dentry_t* devfs_symlink_new(dentry_t* parent, const char* name, const inode_ops_
 
     return REF(dentry);
 }
+
+uint64_t devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t* descs)
+{
+    if (out == NULL || descs == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (parent == NULL)
+    {
+        parent = root;
+    }
+
+    if (parent->superblock->fs != &devfs)
+    {
+        errno = EXDEV;
+        return ERR;
+    }
+
+    list_t createdList = LIST_CREATE(createdList);
+
+    for (const devfs_file_desc_t* desc = descs; desc->name != NULL; desc++)
+    {
+        dentry_t* file = devfs_file_new(parent, desc->name, desc->inodeOps, desc->fileOps, desc->private);
+        if (file == NULL)
+        {
+            while (!list_is_empty(&createdList))
+            {
+                UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry));
+            }
+            return ERR;
+        }
+
+        list_push_back(&createdList, &file->otherEntry);
+    }
+
+    uint64_t count = list_length(&createdList);
+
+    if (out == NULL)
+    {
+        while (!list_is_empty(&createdList))
+        {
+            UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry));
+        }
+        return count;
+    }
+
+    while (!list_is_empty(&createdList))
+    {
+        dentry_t* file = CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry);
+        list_push_back(out, &file->otherEntry);
+    }
+    return count;
+}
+
+void devfs_files_free(list_t* files)
+{
+    if (files == NULL)
+    {
+        return;
+    }
+
+    while (!list_is_empty(files))
+    {
+        UNREF(CONTAINER_OF_SAFE(list_pop_back(files), dentry_t, otherEntry));
+    }
+}

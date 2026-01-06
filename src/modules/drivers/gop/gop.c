@@ -7,10 +7,10 @@
 #include <kernel/module/module.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
+#include <kernel/fs/vfs.h>
 
 #include <errno.h>
 #include <string.h>
-#include <sys/fb.h>
 #include <sys/math.h>
 
 /**
@@ -26,9 +26,42 @@
 static boot_gop_t gop;
 static fb_t* fb;
 
+static uint64_t gop_info(fb_t* fb, fb_info_t* info)
+{
+    UNUSED(fb);
+
+    info->width = gop.width;
+    info->height = gop.height;
+    info->pitch = gop.stride * sizeof(uint32_t);
+    strncpy(info->format, "B8G8R8A8", FB_MAX_FORMAT);
+    return 0;
+}
+
+static uint64_t gop_read(fb_t* fb, void* buffer, uint64_t count, uint64_t* offset)
+{
+    UNUSED(fb);
+
+    log_screen_disable();
+
+    uint64_t fbSize = gop.height * gop.stride * sizeof(uint32_t);
+    return BUFFER_READ(buffer, count, offset, ((uint8_t*)gop.virtAddr), fbSize);
+}
+
+static uint64_t gop_write(fb_t* fb, const void* buffer, uint64_t count, uint64_t* offset)
+{
+    UNUSED(fb);
+
+    log_screen_disable();
+
+    uint64_t fbSize = gop.height * gop.stride * sizeof(uint32_t);
+    return BUFFER_WRITE(buffer, count, offset, ((uint8_t*)gop.virtAddr), fbSize);
+}
+
 static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
 {
     UNUSED(fb);
+
+    log_screen_disable();
 
     process_t* process = sched_process();
 
@@ -40,15 +73,15 @@ static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, uint64_t* offset, p
         return NULL;
     }
 
-    addr = vmm_map(&process->space, addr, (void*)physAddr, length, flags, NULL, NULL);
-    if (addr == NULL)
-    {
-        return NULL;
-    }
-    return addr;
+    return vmm_map(&process->space, addr, (void*)physAddr, length, flags, NULL, NULL);
 }
 
-static fb_info_t info;
+static fb_ops_t ops = {
+    .info = gop_info,
+    .read = gop_read,
+    .write = gop_write,
+    .mmap = gop_mmap,
+};
 
 static uint64_t gop_init(void)
 {
@@ -60,21 +93,13 @@ static uint64_t gop_init(void)
     }
 
     gop = bootInfo->gop;
-    info.width = bootInfo->gop.width;
-    info.height = bootInfo->gop.height;
-    info.stride = bootInfo->gop.stride;
-    info.format = FB_ARGB32;
-    strncpy(info.name, "GOP Framebuffer", MAX_NAME - 1);
-    info.name[MAX_NAME - 1] = '\0';
-
-    fb = fb_new(&info, gop_mmap);
+    fb = fb_new("Graphics Output Protocol", &ops, NULL);
     if (fb == NULL)
     {
-        LOG_ERR("Failed to create GOP framebuffer");
+        LOG_ERR("failed to create GOP framebuffer");
         return ERR;
     }
 
-    LOG_INFO("GOP framebuffer initialized %ux%u\n", info.width, info.height);
     return 0;
 }
 

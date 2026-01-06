@@ -1,13 +1,13 @@
 #include <kernel/fs/tmpfs.h>
 
 #include <kernel/fs/dentry.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/filesystem.h>
 #include <kernel/fs/inode.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/devfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/init/boot_info.h>
 #include <kernel/log/log.h>
@@ -80,7 +80,7 @@ static uint64_t tmpfs_write(file_t* file, const void* buffer, uint64_t count, ui
         file->inode->size = requiredSize;
     }
 
-    return BUFFER_WRITE(file->inode->private, count, offset, buffer, file->inode->size);
+    return BUFFER_WRITE(buffer, count, offset, file->inode->private, file->inode->size);
 }
 
 static file_ops_t fileOps = {

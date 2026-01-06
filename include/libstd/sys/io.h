@@ -323,14 +323,14 @@ typedef enum
 
 /**
  * @brief A inode number that uniquely identifies the inode within its filesystem.
- * 
+ *
  * When combined with a superblock ID, this can uniquely identify an inode within the entire system.
  */
 typedef uint64_t ino_t;
 
 /**
  * @brief A suberblock identifier that uniquely identifies a superblock within the system.
- * 
+ *
  * When combined with a inode number, this can uniquely identify an inode within the entire system.
  */
 typedef uint64_t sbid_t;

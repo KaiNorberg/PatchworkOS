@@ -70,7 +70,7 @@ typedef struct namespace
  * @brief Create a new namespace.
  *
  * There is no `namespace_free()` instead use `UNREF()`.
- * 
+ *
  * @param parent The parent namespace, or `NULL` to create a root namespace.
  * @return On success, the new namespace. On failure, `NULL` and `errno` is set to:
  * - `ENOMEM`: Out of memory.

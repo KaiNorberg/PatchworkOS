@@ -1,9 +1,10 @@
 #include <kernel/fs/ctl.h>
 #include <kernel/fs/dentry.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/filesystem.h>
 #include <kernel/fs/mount.h>
+#include <kernel/fs/netfs.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/devfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -11,7 +12,6 @@
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sync/rwmutex.h>
-#include <kernel/fs/netfs.h>
 
 #include <sys/io.h>
 #include <sys/list.h>

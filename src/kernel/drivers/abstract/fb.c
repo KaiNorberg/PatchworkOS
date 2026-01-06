@@ -10,33 +10,104 @@
 #include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/fb.h>
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
-static dentry_t* fbDir = NULL;
+static dentry_t* dir = NULL;
+
+static uint64_t fb_name_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    fb_t* fb = file->inode->private;
+    assert(fb != NULL);
+
+    uint64_t length = strlen(fb->name);
+    return BUFFER_READ(buffer, count, offset, fb->name, length);
+}
+
+static file_ops_t nameOps = {
+    .read = fb_name_read,
+};
+
+static uint64_t fb_buffer_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    fb_t* fb = file->inode->private;
+    assert(fb != NULL);
+
+    if (fb->ops->read == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    return fb->ops->read(fb, buffer, count, offset);
+}
+
+static uint64_t fb_buffer_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+{
+    fb_t* fb = file->inode->private;
+    assert(fb != NULL);
+
+    if (fb->ops->write == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    return fb->ops->write(fb, buffer, count, offset);
+}
 
 static void* fb_buffer_mmap(file_t* file, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
 {
-    log_screen_disable();
-
     fb_t* fb = file->inode->private;
-    return fb->mmap(fb, addr, length, offset, flags);
+    assert(fb != NULL);
+
+    if (fb->ops->mmap == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    return fb->ops->mmap(fb, addr, length, offset, flags);
 }
 
-static file_ops_t bufferOps = {
+static file_ops_t dataOps = {
+    .read = fb_buffer_read,
+    .write = fb_buffer_write,
     .mmap = fb_buffer_mmap,
 };
 
 static uint64_t fb_info_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     fb_t* fb = file->inode->private;
-    if (*offset >= sizeof(fb_info_t))
+    assert(fb != NULL);
+
+    if (fb->ops->info == NULL)
     {
-        return 0;
+        errno = EINVAL;
+        return ERR;
     }
 
-    return BUFFER_READ(buffer, count, offset, &fb->info, sizeof(fb_info_t));
+    fb_info_t info = {0};
+    if (fb->ops->info(fb, &info) == ERR)
+    {
+        return ERR;
+    }
+
+    char string[256];
+    int length = snprintf(string, sizeof(string), "%llu %llu %llu %s", info.width, info.height, info.pitch, info.format);
+    if (length < 0)
+    {
+        errno = EIO;
+        return ERR;
+    }
+
+    if ((uint64_t)length > count)
+    {
+        errno = EOVERFLOW;
+        return ERR;
+    }
+
+    return BUFFER_READ(buffer, count, offset, string, length);
 }
 
 static file_ops_t infoOps = {
@@ -46,6 +117,12 @@ static file_ops_t infoOps = {
 static void fb_dir_cleanup(inode_t* inode)
 {
     fb_t* fb = inode->private;
+
+    if (fb->ops->cleanup != NULL)
+    {
+        fb->ops->cleanup(fb);
+    }
+
     free(fb);
 }
 
@@ -53,18 +130,18 @@ static inode_ops_t dirInodeOps = {
     .cleanup = fb_dir_cleanup,
 };
 
-fb_t* fb_new(const fb_info_t* info, fb_mmap_t mmap)
+fb_t* fb_new(const char* name, const fb_ops_t* ops, void* private)
 {
-    if (info == NULL || mmap == NULL)
+    if (name == NULL || ops == NULL)
     {
         errno = EINVAL;
         return NULL;
     }
 
-    if (fbDir == NULL)
+    if (dir == NULL)
     {
-        fbDir = devfs_dir_new(NULL, "fb", &dirInodeOps, NULL);
-        if (fbDir == NULL)
+        dir = devfs_dir_new(NULL, "fb", NULL, NULL);
+        if (dir == NULL)
         {
             return NULL;
         }
@@ -73,10 +150,15 @@ fb_t* fb_new(const fb_info_t* info, fb_mmap_t mmap)
     fb_t* fb = malloc(sizeof(fb_t));
     if (fb == NULL)
     {
+        errno = ENOMEM;
         return NULL;
     }
-    memcpy(&fb->info, info, sizeof(fb_info_t));
-    fb->mmap = mmap;
+    strncpy(fb->name, name, FB_MAX_NAME);
+    fb->name[FB_MAX_NAME - 1] = '\0';
+    fb->ops = ops;
+    fb->private = private;
+    fb->dir = NULL;
+    list_init(&fb->files);
 
     char id[MAX_NAME];
     if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
@@ -85,26 +167,45 @@ fb_t* fb_new(const fb_info_t* info, fb_mmap_t mmap)
         return NULL;
     }
 
-    fb->dir = devfs_dir_new(fbDir, id, &dirInodeOps, fb);
+    fb->dir = devfs_dir_new(dir, id, &dirInodeOps, fb);
     if (fb->dir == NULL)
     {
         free(fb);
         return NULL;
     }
-    fb->bufferFile = devfs_file_new(fb->dir, "buffer", NULL, &bufferOps, fb);
-    if (fb->bufferFile == NULL)
-    {
-        UNREF(fb->dir); // fb will be freed in fb_dir_cleanup
-        return NULL;
-    }
-    fb->infoFile = devfs_file_new(fb->dir, "info", NULL, &infoOps, fb);
-    if (fb->infoFile == NULL)
+
+    devfs_file_desc_t files[] = {
+        {
+            .name = "name",
+            .inodeOps = NULL,
+            .fileOps = &nameOps,
+            .private = fb,
+        },
+        {
+            .name = "info",
+            .inodeOps = NULL,
+            .fileOps = &infoOps,
+            .private = fb,
+        },
+        {
+            .name = "data",
+            .inodeOps = NULL,
+            .fileOps = &dataOps,
+            .private = fb,
+        },
+        {
+            .name = NULL,
+        },
+    };
+
+    if (devfs_files_new(&fb->files, fb->dir, files) == ERR)
     {
         UNREF(fb->dir);
-        UNREF(fb->bufferFile);
+        free(fb);
         return NULL;
     }
 
+    LOG_INFO("new framebuffer device with name %s and id %s", fb->name, id);
     return fb;
 }
 
@@ -116,7 +217,5 @@ void fb_free(fb_t* fb)
     }
 
     UNREF(fb->dir);
-    UNREF(fb->bufferFile);
-    UNREF(fb->infoFile);
-    // fb is freed in fb_dir_cleanup
+    devfs_files_free(&fb->files);
 }

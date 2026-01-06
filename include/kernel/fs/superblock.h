@@ -31,9 +31,9 @@ typedef struct dentry dentry_t;
 /**
  * @brief Block device type.
  * @struct block_device_t
- * 
+ *
  * Represents a device which can be used to back a filesystem.
- * 
+ *
  * @todo Implement block devices.
  */
 typedef struct

@@ -4,6 +4,7 @@
 #include "local_listen.h"
 
 #include <kernel/fs/filesystem.h>
+#include <kernel/fs/netfs.h>
 #include <kernel/fs/path.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -12,7 +13,6 @@
 #include <kernel/sync/lock.h>
 #include <kernel/utils/ref.h>
 #include <kernel/utils/ring.h>
-#include <kernel/fs/netfs.h>
 
 #include <stdlib.h>
 #include <sys/io.h>

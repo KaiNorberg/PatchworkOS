@@ -8,10 +8,10 @@
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/syscall.h>
 #include <kernel/drivers/pic.h>
-#include <kernel/fs/procfs.h>
 #include <kernel/fs/devfs.h>
-#include <kernel/fs/tmpfs.h>
 #include <kernel/fs/netfs.h>
+#include <kernel/fs/procfs.h>
+#include <kernel/fs/tmpfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/init/boot_info.h>
 #include <kernel/log/log.h>

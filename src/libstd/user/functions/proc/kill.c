@@ -1,5 +1,5 @@
-#include <sys/proc.h>
 #include <sys/io.h>
+#include <sys/proc.h>
 
 uint64_t kill(pid_t pid)
 {
