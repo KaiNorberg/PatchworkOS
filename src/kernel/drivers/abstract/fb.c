@@ -207,7 +207,7 @@ fb_t* fb_new(const char* name, const fb_ops_t* ops, void* private)
         return NULL;
     }
 
-    LOG_INFO("new framebuffer device with name %s and id %s", fb->name, id);
+    LOG_INFO("new framebuffer device `%s` with id '%s'\n", fb->name, id);
     return fb;
 }
 

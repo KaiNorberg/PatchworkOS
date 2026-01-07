@@ -16,6 +16,10 @@
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 
+#ifdef _TESTING_
+#include <kernel/utils/test.h>
+#endif
+
 #include <boot/boot_info.h>
 #include <string.h>
 
@@ -95,6 +99,10 @@ uint64_t _module_procedure(const module_event_t* event)
             LOG_ERR("failed to initialize AML subsystem\n");
             return ERR;
         }
+
+#ifdef _TESTING_
+        TEST_ALL();
+#endif
 
         if (acpi_devices_init() == ERR)
         {

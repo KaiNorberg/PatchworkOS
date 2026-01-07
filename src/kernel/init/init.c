@@ -34,6 +34,10 @@
 
 #include <libstd/_internal/init.h>
 
+#ifdef _TESTING_
+#include <kernel/utils/test.h>
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
@@ -204,6 +208,10 @@ void kmain(void)
     LOG_DEBUG("kmain entered\n");
 
     init_finalize();
+
+#ifdef _TESTING_
+    TEST_ALL();
+#endif
 
     init_process_spawn();
 

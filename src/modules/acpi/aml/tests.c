@@ -1,6 +1,4 @@
-#include <modules/acpi/aml/tests.h>
-
-#ifdef TESTING
+#ifdef _TESTING_
 
 #include "acpica_tests/all_tests.h"
 
@@ -14,6 +12,7 @@
 #include <modules/acpi/aml/state.h>
 #include <modules/acpi/aml/to_string.h>
 #include <modules/acpi/tables.h>
+#include <kernel/utils/test.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -128,7 +127,7 @@ static uint64_t aml_tests_acpica_run_all(void)
     return 0;
 }
 
-uint64_t aml_tests_run_all(void)
+TEST_DEFINE(aml)
 {
     if (aml_tests_check_object_leak() == ERR)
     {

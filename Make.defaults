@@ -53,7 +53,7 @@ LDFLAGS := \
     -Lbin/libpatchwork
 
 ifeq ($(TESTING),1)
-	CFLAGS += -DTESTING
+	CFLAGS += -D_TESTING_
 endif
 
 ifeq ($(DEBUG),1)
