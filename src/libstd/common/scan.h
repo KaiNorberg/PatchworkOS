@@ -394,15 +394,38 @@ static inline int _scan_format_scanset(_scan_ctx_t* ctx, _scan_format_ctx_t* for
         ctx->p++;
     }
 
-    while (true)
+    while (*ctx->p != '\0' && *ctx->p != ']')
     {
-        if (*ctx->p == ']')
+        if (ctx->p[1] == '-' && ctx->p[2] != ']' && ctx->p[2] != '\0')
         {
-            ctx->p++;
-            break;
-        }
+            unsigned char start = (unsigned char)*ctx->p;
+            unsigned char end = (unsigned char)ctx->p[2];
 
-        _scanset_set(&scanset, *ctx->p);
+            if (start <= end)
+            {
+                for (int i = start; i <= end; i++)
+                {
+                    _scanset_set(&scanset, (uint8_t)i);
+                }
+            }
+            else
+            {
+                _scanset_set(&scanset, start);
+                _scanset_set(&scanset, '-');
+                _scanset_set(&scanset, end);
+            }
+            
+            ctx->p += 3; 
+        }
+        else
+        {
+            _scanset_set(&scanset, *ctx->p);
+            ctx->p++;
+        }
+    }
+
+    if (*ctx->p == ']')
+    {
         ctx->p++;
     }
 
