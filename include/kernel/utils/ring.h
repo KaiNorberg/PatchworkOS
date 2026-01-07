@@ -71,28 +71,6 @@ static inline void ring_reset(ring_t* ring)
 }
 
 /**
- * @brief Return the number of bytes available for writing in a ring buffer.
- *
- * @param ring Pointer to the ring buffer structure.
- * @param offset Pointer to the offset to check from, set to `NULL` to check from head.
- * @return The number of bytes available for writing.
- */
-static inline uint64_t ring_bytes_free(const ring_t* ring, const uint64_t* offset)
-{
-    if (offset != NULL)
-    {
-        if (*offset >= ring->size - 1)
-        {
-            return 0;
-        }
-        return ring->size - *offset - 1;
-    }
-
-    uint64_t used = (ring->head >= ring->tail) ? (ring->head - ring->tail) : (ring->size - (ring->tail - ring->head));
-    return ring->size - used - 1;
-}
-
-/**
  * @brief Return the number of bytes used in a ring buffer.
  *
  * @param ring Pointer to the ring buffer structure.
@@ -113,6 +91,32 @@ static inline uint64_t ring_bytes_used(const ring_t* ring, const uint64_t* offse
     }
 
     return used;
+}
+
+/**
+ * @brief Return the number of bytes available for writing in a ring buffer.
+ *
+ * @param ring Pointer to the ring buffer structure.
+ * @param offset Pointer to the offset to check from, set to `NULL` to check from head.
+ * @return The number of bytes available for writing.
+ */
+static inline uint64_t ring_bytes_free(const ring_t* ring, const uint64_t* offset)
+{
+    if (offset != NULL)
+    {
+        if (*offset > ring_bytes_used(ring, NULL))
+        {
+            return 0;
+        }
+        if (*offset >= ring->size - 1)
+        {
+            return 0;
+        }
+        return ring->size - *offset - 1;
+    }
+
+    uint64_t used = ring_bytes_used(ring, NULL);
+    return ring->size - used - 1;
 }
 
 /**
@@ -177,7 +181,7 @@ static inline uint64_t ring_write(ring_t* ring, const void* buffer, uint64_t cou
     uint64_t used = ring_bytes_used(ring, NULL);
     uint64_t relative = (offset != NULL) ? *offset : used;
 
-    if (count == 0 || relative >= ring->size - 1)
+    if (count == 0 || relative > used || relative >= ring->size - 1)
     {
         return 0;
     }

@@ -19,7 +19,6 @@ uint64_t scanline(fd_t fd, const char* format, ...)
         return 0;
     }
 
-    printf("scanline: read line '%s'\n", buffer);
     va_list args;
     va_start(args, format);
     int items = vsscanf(buffer, format, args);

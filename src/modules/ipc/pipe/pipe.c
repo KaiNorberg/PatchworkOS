@@ -132,6 +132,8 @@ static void pipe_close(file_t* file)
 
 static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
+    UNUSED(offset);
+
     if (count == 0)
     {
         return 0;
@@ -152,7 +154,7 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* 
 
     LOCK_SCOPE(&data->lock);
 
-    if (ring_bytes_used(&data->ring, offset) == 0)
+    if (ring_bytes_used(&data->ring, NULL) == 0)
     {
         if (file->mode & MODE_NONBLOCK)
         {
@@ -161,19 +163,21 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* 
         }
 
         if (WAIT_BLOCK_LOCK(&data->waitQueue, &data->lock,
-                ring_bytes_used(&data->ring, offset) != 0 || data->isWriteClosed) == ERR)
+                ring_bytes_used(&data->ring, NULL) != 0 || data->isWriteClosed) == ERR)
         {
             return ERR;
         }
     }
 
-    uint64_t result = ring_read(&data->ring, buffer, count, offset);
+    uint64_t result = ring_read(&data->ring, buffer, count, NULL);
     wait_unblock(&data->waitQueue, WAIT_ALL, EOK);
     return result;
 }
 
 static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
+    UNUSED(offset);
+
     pipe_t* data = file->private;
     if (data->writeEnd != file)
     {
@@ -189,7 +193,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uin
 
     LOCK_SCOPE(&data->lock);
 
-    if (ring_bytes_free(&data->ring, offset) == 0)
+    if (ring_bytes_free(&data->ring, NULL) == 0)
     {
         if (file->mode & MODE_NONBLOCK)
         {
@@ -198,7 +202,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uin
         }
 
         if (WAIT_BLOCK_LOCK(&data->waitQueue, &data->lock,
-                ring_bytes_free(&data->ring, offset) != 0 || data->isReadClosed) == ERR)
+                ring_bytes_free(&data->ring, NULL) != 0 || data->isReadClosed) == ERR)
         {
             return ERR;
         }
@@ -211,7 +215,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uin
         return ERR;
     }
 
-    uint64_t result = ring_write(&data->ring, buffer, count, offset);
+    uint64_t result = ring_write(&data->ring, buffer, count, NULL);
     wait_unblock(&data->waitQueue, WAIT_ALL, EOK);
     return result;
 }
@@ -221,11 +225,11 @@ static wait_queue_t* pipe_poll(file_t* file, poll_events_t* revents)
     pipe_t* data = file->private;
     LOCK_SCOPE(&data->lock);
 
-    if (ring_bytes_used(&data->ring, &file->pos) != 0 || data->isWriteClosed)
+    if (ring_bytes_used(&data->ring, NULL) != 0 || data->isWriteClosed)
     {
         *revents |= POLLIN;
     }
-    if (ring_bytes_free(&data->ring, &file->pos) > 0 || data->isReadClosed)
+    if (ring_bytes_free(&data->ring, NULL) > 0 || data->isReadClosed)
     {
         *revents |= POLLOUT;
     }

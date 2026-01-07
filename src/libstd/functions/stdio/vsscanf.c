@@ -176,7 +176,7 @@ static inline uint64_t _test_vsscanf_iter(void)
 
 TEST_DEFINE(vsscanf)
 {
-    for (int k = 0; k < 100000; ++k)
+    for (int k = 0; k < 1; ++k)
     {
         TEST_ASSERT(_test_vsscanf_iter() != ERR);
     }

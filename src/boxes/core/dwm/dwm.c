@@ -518,8 +518,6 @@ static void dwm_kbd_read(void)
         mods ^= KBD_MOD_CAPS;
     }
 
-    printf("dwm: kbd event: prefix=%hhd code=%lu mods=0x%02x\n", prefix, code, mods);
-
     if (focus != NULL)
     {
         event_kbd_t event;
