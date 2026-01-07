@@ -1,9 +1,11 @@
 #pragma once
 
+#ifndef __ASSEMBLER__
 #include <kernel/cpu/tss.h>
 #include <sys/defs.h>
 
 #include <stdint.h>
+#endif
 
 /**
  * @brief Global Descriptor Table
@@ -18,75 +20,52 @@
  * @{
  */
 
-typedef enum
-{
-    GDT_RING0 = 0,
-    GDT_RING1 = 1,
-    GDT_RING2 = 2,
-    GDT_RING3 = 3
-} gdt_ring_t;
+#define GDT_RING0 0 ///< Kernel ring.
+#define GDT_RING1 1 ///< Unused ring.
+#define GDT_RING2 2 ///< Unused ring.
+#define GDT_RING3 3 ///< User ring.
 
-/**
- * @brief Segment selectors.
- * @enum gdt_segment_selector_t
- *
- * These values are stored in the segment registers (CS, DS, ES, FS, GS, SS) to tell the CPU which segment of the GDT to
- * use.
- */
-typedef enum
-{
-    GDT_NULL = 0,           ///< Null segment selector, unused but the gdt must start with it.
-    GDT_KERNEL_CODE = 0x08, ///< Kernel code segment selector.
-    GDT_KERNEL_DATA = 0x10, ///< Kernel data segment selector.
-    GDT_USER_DATA = 0x18,   ///< User data segment selector.
-    GDT_USER_CODE = 0x20,   ///< User code segment selector.
-    GDT_TSS = 0x28,         ///< TSS segment selector.
+#define GDT_NULL 0           ///< Null segment selector, unused but the gdt must start with it.
+#define GDT_KERNEL_CODE 0x08 ///< Kernel code segment selector.
+#define GDT_KERNEL_DATA 0x10 ///< Kernel data segment selector.
+#define GDT_USER_DATA 0x18   ///< User data segment selector.
+#define GDT_USER_CODE 0x20   ///< User code segment selector.
+#define GDT_TSS 0x28         ///< TSS segment selector.
 
-    GDT_CS_RING0 = GDT_KERNEL_CODE | GDT_RING0, ///< Value to load into the CS register for kernel code.
-    GDT_SS_RING0 = GDT_KERNEL_DATA | GDT_RING0, ///< Value to load into the SS register for kernel data.
+#define GDT_CS_RING0 (GDT_KERNEL_CODE | GDT_RING0) ///< Value to load into the CS register for kernel code.
+#define GDT_SS_RING0 (GDT_KERNEL_DATA | GDT_RING0) ///< Value to load into the SS register for kernel data.
 
-    GDT_CS_RING3 = GDT_USER_CODE | GDT_RING3, ///< Value to load into the CS register for user code.
-    GDT_SS_RING3 = GDT_USER_DATA | GDT_RING3, ///< Value to load into the SS register for user data.
-} gdt_segment_selector_t;
+#define GDT_CS_RING3 (GDT_USER_CODE | GDT_RING3) ///< Value to load into the CS register for user code.
+#define GDT_SS_RING3 (GDT_USER_DATA | GDT_RING3) ///< Value to load into the SS register for user data.
 
-/**
- * @brief Access byte.
- * @enum gdt_access_t
- */
-typedef enum
-{
-    GDT_ACCESS_ACCESSED = 1 << 0,   ///< Will be set to 1 when accessed, but its best to set it to 1 manually.
-    GDT_ACCESS_READ_WRITE = 1 << 1, ///< If set on a code segment, its readable. If set on a data segment, its writable.
-    GDT_ACCESS_DIRECTION_CONFORMING = 1 << 2, ///< If set on a data segment, the segment grows downwards. If
-                                              /// set on a code segment, conforming.
-    GDT_ACCESS_EXEC = 1 << 3,                 ///< If set, the segment is a code segment. If clear, its a data segment.
-    GDT_ACCESS_SYSTEM = 0 << 4,               ///< Is a system segment.
-    GDT_ACCESS_DATA_CODE = 1 << 4,            ///< Is a data or code segment.
+#define GDT_ACCESS_ACCESSED (1 << 0) ///< Will be set to 1 when accessed, but its best to set it to 1 manually.
+#define GDT_ACCESS_READ_WRITE \
+    (1 << 1) ///< If set on a code segment, its readable. If set on a data segment, its writable.
+#define GDT_ACCESS_DIRECTION_CONFORMING \
+    (1 << 2) ///< If set on a data segment, the segment grows downwards. If set on a code segment, conforming.
+#define GDT_ACCESS_EXEC (1 << 3)      ///< If set, the segment is a code segment. If clear, its a data segment.
+#define GDT_ACCESS_SYSTEM (0 << 4)    ///< Is a system segment.
+#define GDT_ACCESS_DATA_CODE (1 << 4) ///< Is a data or code segment.
 
-    GDT_ACCESS_TYPE_LDT = 0x2,           ///< Local Descriptor Table. Only used if the SYSTEM bit is 0.
-    GDT_ACCESS_TYPE_TSS_AVAILABLE = 0x9, ///< Available 64-bit Task State Segment. Only used if the SYSTEM bit is 0.
-    GDT_ACCESS_TYPE_TSS_BUSY = 0xB,      ///< Busy 64-bit Task State Segment. Only used if the SYSTEM bit is 0.
+#define GDT_ACCESS_TYPE_LDT 0x2           ///< Local Descriptor Table. Only used if the SYSTEM bit is 0.
+#define GDT_ACCESS_TYPE_TSS_AVAILABLE 0x9 ///< Available 64-bit Task State Segment. Only used if the SYSTEM bit is 0.
+#define GDT_ACCESS_TYPE_TSS_BUSY 0xB      ///< Busy 64-bit Task State Segment. Only used if the SYSTEM bit is 0.
 
-    GDT_ACCESS_RING0 = 0 << 5, ///< Descriptor Privilege Level 0 (kernel).
-    GDT_ACCESS_RING1 = 1 << 5, ///< Descriptor Privilege Level 1, unused.
-    GDT_ACCESS_RING2 = 2 << 5, ///< Descriptor Privilege Level 2, unused.
-    GDT_ACCESS_RING3 = 3 << 5, ///< Descriptor Privilege Level 3 (user).
+#define GDT_ACCESS_RING0 (0 << 5) ///< Descriptor Privilege Level 0 (kernel).
+#define GDT_ACCESS_RING1 (1 << 5) ///< Descriptor Privilege Level 1, unused.
+#define GDT_ACCESS_RING2 (2 << 5) ///< Descriptor Privilege Level 2, unused.
+#define GDT_ACCESS_RING3 (3 << 5) ///< Descriptor Privilege Level 3 (user).
 
-    GDT_ACCESS_PRESENT = 1 << 7, ///< Must be 1 for all valid segments.
-} gdt_access_t;
+#define GDT_ACCESS_PRESENT (1 << 7) ///< Must be 1 for all valid segments.
 
-/**
- * @brief Flags byte.
- * @enum gdt_flags_t
- */
-typedef enum
-{
-    GDT_FLAGS_NONE = 0,           ///< No flags set.
-    GDT_FLAGS_RESERVED = 1 << 0,  ///< Must be 0.
-    GDT_FLAGS_LONG_MODE = 1 << 1, ///< If set, its a 64-bit code segment.
-    GDT_FLAGS_SIZE = 1 << 2, ///< If set, its a 32-bit segment. If clear, its a 16-bit segment. Ignored in 64-bit mode.
-    GDT_FLAGS_4KB = 1 << 3   ///< If set, the limit is in 4KiB blocks. If clear, the limit is in bytes.
-} gdt_flags_t;
+#define GDT_FLAGS_NONE 0             ///< No flags set.
+#define GDT_FLAGS_RESERVED (1 << 0)  ///< Must be 0.
+#define GDT_FLAGS_LONG_MODE (1 << 1) ///< If set, its a 64-bit code segment.
+#define GDT_FLAGS_SIZE \
+    (1 << 2) ///< If set, its a 32-bit segment. If clear, its a 16-bit segment. Ignored in 64-bit mode.
+#define GDT_FLAGS_4KB (1 << 3) ///< If set, the limit is in 4KiB blocks. If clear, the limit is in bytes.
+
+#ifndef __ASSEMBLER__
 
 /**
  * @brief GDT descriptor structure.
@@ -184,5 +163,7 @@ void gdt_cpu_load(void);
  * @param tss The TSS to load.
  */
 void gdt_cpu_tss_load(tss_t* tss);
+
+#endif // __ASSEMBLER__
 
 /** @} */

@@ -1,11 +1,13 @@
 #pragma once
 
+#ifndef __ASSEMBLER__
 #include <kernel/cpu/cpu.h>
 
 #include <modules/drivers/apic/lapic.h>
 
 #include <stdint.h>
 #include <sys/proc.h>
+#endif
 
 /**
  * @brief Trampoline for CPU initialization
@@ -51,6 +53,8 @@
  * @brief Offset within the trampoline page where the stack pointer for the trampoline is stored.
  */
 #define TRAMPOLINE_STACK_OFFSET (TRAMPOLINE_DATA_OFFSET + 0x18)
+
+#ifndef __ASSEMBLER__
 
 /**
  * @brief The start of the trampoline code, defined in `trampoline.s`.
@@ -106,5 +110,7 @@ uint64_t trampoline_wait_ready(clock_t timeout);
  * @param self Pointer to the CPU structure of the current CPU, will still be uninitialized.
  */
 _NORETURN void trampoline_c_entry(cpu_t* self);
+
+#endif
 
 /** @} */

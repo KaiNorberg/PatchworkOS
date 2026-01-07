@@ -1,8 +1,0 @@
-#!/bin/bash
-
-SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
-
-nasm -f elf64 \
-  -I "$SCRIPT_DIR/../include/" \
-  -I "$SCRIPT_DIR/../include/libstd/" \
-  "$@"

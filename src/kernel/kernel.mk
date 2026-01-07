@@ -18,6 +18,8 @@ CFLAGS += \
 	-D_KERNEL_ \
 	-D__STDC_WANT_LIB_EXT1__=1
 
+ASFLAGS += -D_KERNEL_
+
 # Will cause a panic to trigger QEMU exit for testing purposes
 ifeq ($(QEMU_EXIT_ON_PANIC),1)
     CFLAGS += -DQEMU_EXIT_ON_PANIC

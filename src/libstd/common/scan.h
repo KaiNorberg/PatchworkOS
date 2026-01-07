@@ -440,8 +440,8 @@ static inline int _scan_format_scanset(_scan_ctx_t* ctx, _scan_format_ctx_t* for
                 _scanset_set(&scanset, '-');
                 _scanset_set(&scanset, end);
             }
-            
-            ctx->p += 3; 
+
+            ctx->p += 3;
         }
         else
         {

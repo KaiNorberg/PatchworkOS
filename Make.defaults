@@ -1,7 +1,7 @@
 MKCWD = mkdir -p $(@D)
 
 CC = gcc
-AS = nasm
+AS = gcc
 LD = ld
 AR = ar
 OBJCOPY := objcopy
@@ -24,7 +24,6 @@ CFLAGS := \
 	-nostdinc \
 	-ffreestanding \
 	-fno-builtin \
-	-fno-omit-frame-pointer \
 	-isystem include \
 	-isystem include/libstd \
 	-Lbin/libstd \
@@ -41,10 +40,14 @@ CFLAGS_DISABLE_SIMD := \
 	-mno-ssse3 -mno-sse4
 
 ASFLAGS := \
-	-f elf64 \
+	-nostdlib \
+	-nostdinc \
+	-ffreestanding \
+	-fno-builtin \
 	-Iinclude \
 	-Iinclude/libstd \
-	-I$(SRCDIR)
+	-I$(SRCDIR) \
+	-D_PATCHWORK_OS_
 
 LDFLAGS := \
     -m elf_x86_64 \
@@ -54,6 +57,7 @@ LDFLAGS := \
 
 ifeq ($(TESTING),1)
 	CFLAGS += -D_TESTING_
+	ASFLAGS += -D_TESTING_
 endif
 
 ifeq ($(DEBUG),1)
@@ -81,6 +85,13 @@ CFLAGS_MODULE := \
 	-D_KERNEL_MODULE_\
 	-D__STDC_WANT_LIB_EXT1__=1
 
+# Assembler flags for kernel modules
+ASFLAGS_MODULE := \
+	$(ASFLAGS) \
+	-fPIC \
+	-D_KERNEL_MODULE_\
+	-D__STDC_WANT_LIB_EXT1__=1
+
 # Linker flags for kernel modules
 LDFLAGS_MODULE := \
     $(LDFLAGS) \
@@ -89,7 +100,7 @@ LDFLAGS_MODULE := \
     -Tinclude/modules/linker.lds
 
 define find_sources
-$(shell find $(1) -name "*.c" -o -name "*.s")
+$(shell find $(1) -name "*.c" -o -name "*.S")
 endef
 
 SRC = $(call find_sources,$(SRCDIR))

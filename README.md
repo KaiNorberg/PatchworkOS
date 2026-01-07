@@ -731,7 +731,7 @@ There are other utils available that work as expected, for example `symlink` and
 | Requirement | Details |
 |:------------|:--------|
 | **OS** | Linux (WSL might work, but I make no guarantees) |
-| **Tools** | GCC, make, NASM, mtools, QEMU (optional) |
+| **Tools** | GCC, make, mtools, QEMU (optional) |
 
 ### Build and Run
 

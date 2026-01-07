@@ -1,15 +1,17 @@
-[bits 64]
+.code64
+.intel_syntax noprefix
 
-section .text
+.text
 
-%ifndef _KERNEL_
+#ifndef _KERNEL_
 
-global memcpy_sse2:function
+.global memcpy_sse2
+.type memcpy_sse2, @function
 
-; rdi = dest
-; rsi = src
-; rdx = n
-; return rdi
+// rdi = dest
+// rsi = src
+// rdx = n
+// return rdi
 memcpy_sse2:
     mov rax, rdi
     test rdx, rdx
@@ -20,18 +22,18 @@ memcpy_sse2:
     jz .done
     test rdi, 15
     jz .aligned
-    mov cl, byte [rsi]
-    mov byte [rdi], cl
+    mov cl, byte ptr [rsi]
+    mov byte ptr [rdi], cl
     inc rdi
     inc rsi
     dec rdx
     jnz .align_loop
 .aligned:
 
-    cmp rdx, 262144 ; 256KB
+    cmp rdx, 262144 // 256KB
     jb .small_copy
 
-.large_copy: ; Non temporal stores
+.large_copy: // Non temporal stores
     cmp rdx, 256
     jb .large_copy_done
     prefetchnta [rsi + 512]
@@ -95,8 +97,8 @@ memcpy_sse2:
 .copy_tail:
     test rdx, rdx
     jz .done
-    mov cl, byte [rsi]
-    mov byte [rdi], cl
+    mov cl, byte ptr [rsi]
+    mov byte ptr [rdi], cl
     inc rdi
     inc rsi
     dec rdx
@@ -106,4 +108,4 @@ memcpy_sse2:
 
     ret
 
-%endif ; _KERNEL_
+#endif // _KERNEL_

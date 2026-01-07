@@ -22,7 +22,8 @@
  *
  * ## stream
  *
- * A readable and pollable file that provides a stream of keyboard events represented as new line deliminated keycodes prefixed with either `^` or `_` if the event is a key release or press respectively.
+ * A readable and pollable file that provides a stream of keyboard events represented as new line deliminated keycodes
+ * prefixed with either `^` or `_` if the event is a key release or press respectively.
  *
  * For example, the stream:
  *

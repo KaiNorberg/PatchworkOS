@@ -1,29 +1,32 @@
-[bits 64]
+.code64
+.intel_syntax noprefix
 
-%include "kernel/cpu/interrupt.inc"
+#include "kernel/cpu/interrupt.h"
 
-%macro INTERRUPT_NAME 1
-    dq vector_%1
-%endmacro
+.macro INTERRUPT_NAME nr
+    .quad vector_\nr
+.endm
 
-%macro INTERRUPT_ERR 1
-vector_%1:
-    push qword %1
+.macro INTERRUPT_ERR nr
+vector_\nr:
+    push \nr
     jmp vector_common
-%endmacro
+.endm
 
-%macro INTERRUPT_NO_ERR 1
-vector_%1:
-    push qword 0
-    push qword %1
+.macro INTERRUPT_NO_ERR nr
+vector_\nr:
+    push 0
+    push \nr
     jmp vector_common
-%endmacro
+.endm
 
-extern interrupt_handler
-extern cpu_interrupt_stack_top
-extern memcpy
+.extern interrupt_handler
+.extern cpu_interrupt_stack_top
+.extern memcpy
+.global interrupt_fake
+.type interrupt_fake, @function
 
-section .text
+.text
 
 vector_common:
     INTERRUPT_FRAME_REGS_PUSH
@@ -34,7 +37,7 @@ vector_common:
 
     INTERRUPT_FRAME_REGS_POP
 
-    add rsp, 16 ; Pop error code and vector number
+    add rsp, 16 // Pop error code and vector number
     iretq
 
 INTERRUPT_NO_ERR 0
@@ -69,21 +72,22 @@ INTERRUPT_NO_ERR 28
 INTERRUPT_NO_ERR 29
 INTERRUPT_ERR 30
 INTERRUPT_NO_ERR 31
-%assign i 32
-%rep 224
-    INTERRUPT_NO_ERR i
-%assign i i+1
-%endrep
 
-; rdi = interrupt_frame_t* frame
-; rsi = cpu_t* self
-global interrupt_fake:function
+.altmacro
+.set i, 32
+.rept 224
+    INTERRUPT_NO_ERR %i
+    .set i, i+1
+.endr
+
+// rdi = interrupt_frame_t* frame
+// rsi = cpu_t* self
 interrupt_fake:
-    push qword 0 ; align stack
+    push 0 // align stack
 
-    mov r15, rdi ; frame
+    mov r15, rdi // frame
     
-    ; memcpy((r14 = cpu_interrupt_stack_top(self) - INTERRUPT_FRAME_SIZE), frame, INTERRUPT_FRAME_SIZE)
+    // memcpy((r14 = cpu_interrupt_stack_top(self) - INTERRUPT_FRAME_SIZE), frame, INTERRUPT_FRAME_SIZE)
     mov rdi, rsi
     call cpu_interrupt_stack_top
     mov rdi, rax
@@ -93,7 +97,7 @@ interrupt_fake:
     mov rdx, INTERRUPT_FRAME_SIZE
     call memcpy
 
-    ; interrupt_handler((rbp = rsp = r14))
+    // interrupt_handler((rbp = rsp = r14))
     mov rsp, r14
     mov rbp, rsp
     mov rdi, rsp
@@ -103,12 +107,13 @@ interrupt_fake:
     add rsp, 16
     iretq
 
-section .data
+.data
 
-global vectorTable:object
+.global vectorTable
+.type vectorTable, @object
 vectorTable:
-%assign i 0
-%rep 256
-    INTERRUPT_NAME i
-%assign i i+1
-%endrep
+.set i, 0
+.rept 256
+    INTERRUPT_NAME %i
+    .set i, i+1
+.endr
