@@ -19,8 +19,9 @@ typedef enum
 typedef struct
 {
     _ascii_flags_t flags;
-    unsigned char upper;
-    unsigned char lower;
+    uint8_t upper;
+    uint8_t lower;
+    uint8_t digit;
 } _ascii_entry_t;
 
-extern _ascii_entry_t _ascii_table[];
+extern _ascii_entry_t _asciiTable[];

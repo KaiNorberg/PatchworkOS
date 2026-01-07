@@ -5,6 +5,7 @@
 #include <kernel/log/log.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
+#include <kernel/utils/test.h>
 #include <modules/acpi/aml/aml.h>
 #include <modules/acpi/aml/encoding/term.h>
 #include <modules/acpi/aml/object.h>
@@ -12,7 +13,6 @@
 #include <modules/acpi/aml/state.h>
 #include <modules/acpi/aml/to_string.h>
 #include <modules/acpi/tables.h>
-#include <kernel/utils/test.h>
 
 #include <stdlib.h>
 #include <string.h>

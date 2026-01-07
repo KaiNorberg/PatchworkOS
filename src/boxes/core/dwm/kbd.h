@@ -1,7 +1,7 @@
 #pragma once
 
-#include <sys/kbd.h>
 #include <libpatchwork/event.h>
+#include <sys/kbd.h>
 
 keycode_t kbd_translate(keycode_t code);
 

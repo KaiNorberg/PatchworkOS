@@ -24,6 +24,5 @@ uint64_t scanline(fd_t fd, const char* format, ...)
     va_start(args, format);
     int items = vsscanf(buffer, format, args);
     va_end(args);
-
     return items < 0 ? ERR : (uint64_t)items;
 }

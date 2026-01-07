@@ -137,7 +137,7 @@ static uint64_t cpu_perf_read(cpu_perfs_t* cpuPerfs)
             break;
         }
 
-        if (sscanf(line, "%lu %lu %lu %lu", &cpuPerfs[i].id, &cpuPerfs[i].idleClocks, &cpuPerfs[i].activeClocks,
+        if (sscanf(line, "%llu %llu %llu %llu", &cpuPerfs[i].id, &cpuPerfs[i].idleClocks, &cpuPerfs[i].activeClocks,
                 &cpuPerfs[i].interruptClocks) != 4)
         {
             cpuPerfs[i].id = 0;
@@ -162,7 +162,7 @@ static uint64_t mem_perf_read(mem_perfs_t* memPerfs)
     uint64_t totalPages = 0;
     uint64_t freePages = 0;
     uint64_t usedPages = 0;
-    if (fscanf(file, "total_pages %lu\nfree_pages %lu\nused_pages %lu", &totalPages, &freePages, &usedPages) == 3)
+    if (fscanf(file, "total_pages %llu\nfree_pages %llu\nused_pages %llu", &totalPages, &freePages, &usedPages) == 3)
     {
         memPerfs->totalKiB = totalPages * (PAGE_SIZE / 1024);
         memPerfs->freeKiB = freePages * (PAGE_SIZE / 1024);
@@ -228,7 +228,7 @@ static proc_perfs_t* proc_perfs_read(uint64_t* procAmount)
             uint64_t userPages;
             proc_perfs_t procPerf;
             if (fscanf(perfFile,
-                    "user_clocks %lu\nkernel_sched_clocks %lu\nstart_clocks %lu\nuser_pages %lu\nthread_count %lu",
+                    "user_clocks %llu\nkernel_sched_clocks %llu\nstart_clocks %llu\nuser_pages %lu\nthread_count %llu",
                     &procPerf.userClocks, &procPerf.kernelClocks, &procPerf.startClocks, &userPages,
                     &procPerf.threadCount) != 5)
             {

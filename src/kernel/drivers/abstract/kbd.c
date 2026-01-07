@@ -4,12 +4,12 @@
 #include <kernel/fs/file.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/ring.h>
-#include <kernel/log/log.h>
 
 #include <errno.h>
 #include <stdio.h>

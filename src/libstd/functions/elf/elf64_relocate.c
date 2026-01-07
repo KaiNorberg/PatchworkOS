@@ -42,7 +42,7 @@ uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset
                     *patchAddr = base + value + rela[j].r_addend;
                     break;
                 }
-                
+
                 *patchAddr = (uint64_t)resolve_symbol(symName, private);
                 if (*patchAddr == 0)
                 {

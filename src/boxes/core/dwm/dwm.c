@@ -462,11 +462,11 @@ static void dwm_kbd_read(void)
 
     char prefix;
     keycode_t code;
-    if (scanline(kbd, "%c%lu", &prefix, &code) != 2)
+    if (scanline(kbd, "%c%d", &prefix, &code) != 2)
     {
         return;
     }
-    
+
     code = kbd_translate(code);
 
     if (code == KBD_LEFT_SHIFT || code == KBD_RIGHT_SHIFT)
@@ -518,7 +518,7 @@ static void dwm_kbd_read(void)
         mods ^= KBD_MOD_CAPS;
     }
 
-    printf("dwm: kbd event: prefix=%c code=%lu mods=0x%02x\n", prefix, code, mods);
+    printf("dwm: kbd event: prefix=%hhd code=%lu mods=0x%02x\n", prefix, code, mods);
 
     if (focus != NULL)
     {

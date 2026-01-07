@@ -21,7 +21,7 @@ extern "C"
 /**
  * @brief Keyboard keycode type.
  * @ingroup libstd_sys_kbd
- * 
+ *
  * We use USB HID Usage Tables for keycode definitions.
  *
  */
@@ -101,20 +101,20 @@ typedef enum
     KBD_F11 = 0x44, ///< F11 key
     KBD_F12 = 0x45, ///< F12 key
 
-    KBD_SYSRQ = 0x46,       ///< SysRq key
+    KBD_SYSRQ = 0x46,        ///< SysRq key
     KBD_PRINT_SCREEN = 0x46, ///< Print Screen key
-    KBD_SCROLL_LOCK = 0x47, ///< Scroll Lock key
-    KBD_PAUSE = 0x48,       ///< Pause key
-    KBD_INSERT = 0x49,      ///< Insert key
-    KBD_HOME = 0x4A,        ///< Home key
-    KBD_PAGE_UP = 0x4B,     ///< Page Up key
-    KBD_DELETE = 0x4C,      ///< Delete key
-    KBD_END = 0x4D,         ///< End key
-    KBD_PAGE_DOWN = 0x4E,   ///< Page Down key
-    KBD_RIGHT = 0x4F,       ///< Right arrow key
-    KBD_LEFT = 0x50,        ///< Left arrow key
-    KBD_DOWN = 0x51,        ///< Down arrow key
-    KBD_UP = 0x52,          ///< Up arrow key
+    KBD_SCROLL_LOCK = 0x47,  ///< Scroll Lock key
+    KBD_PAUSE = 0x48,        ///< Pause key
+    KBD_INSERT = 0x49,       ///< Insert key
+    KBD_HOME = 0x4A,         ///< Home key
+    KBD_PAGE_UP = 0x4B,      ///< Page Up key
+    KBD_DELETE = 0x4C,       ///< Delete key
+    KBD_END = 0x4D,          ///< End key
+    KBD_PAGE_DOWN = 0x4E,    ///< Page Down key
+    KBD_RIGHT = 0x4F,        ///< Right arrow key
+    KBD_LEFT = 0x50,         ///< Left arrow key
+    KBD_DOWN = 0x51,         ///< Down arrow key
+    KBD_UP = 0x52,           ///< Up arrow key
 
     KBD_NUM_LOCK = 0x53,    ///< Num Lock key
     KBD_KP_SLASH = 0x54,    ///< Keypad Slash

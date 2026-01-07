@@ -19,27 +19,24 @@
 typedef struct ring
 {
     uint8_t* buffer; ///< Pointer to the buffer memory.
-    uint64_t size; ///< The total size of the buffer.
-    uint64_t head; ///< The position to write to.
-    uint64_t tail; ///< The position to start reading from.
+    uint64_t size;   ///< The total size of the buffer.
+    uint64_t head;   ///< The position to write to.
+    uint64_t tail;   ///< The position to start reading from.
 } ring_t;
 
 /**
  * @brief Create a ring buffer initializer.
- * 
+ *
  * @param _buf Pointer to the buffer memory.
  * @param _size The size of the buffer in bytes.
  */
-#define RING_CREATE(_buf, _size) \
-    { \
-        .buffer = (uint8_t*)(_buf), .size = (_size), .head = 0, .tail = 0 \
-    }
+#define RING_CREATE(_buf, _size) {.buffer = (uint8_t*)(_buf), .size = (_size), .head = 0, .tail = 0}
 
 /**
  * @brief Define and initialize a ring buffer.
  *
  * Helps define a ring buffer with a backing buffer.
- *  
+ *
  * @param _name The name of the ring buffer.
  * @param _size The size of the ring buffer in bytes.
  */
@@ -49,7 +46,7 @@ typedef struct ring
 
 /**
  * @brief Initialize a ring buffer.
- * 
+ *
  * @param ring Pointer to the ring buffer structure.
  * @param buffer Pointer to the buffer memory.
  * @param size The size of the buffer in bytes.
@@ -64,7 +61,7 @@ static inline void ring_init(ring_t* ring, uint8_t* buffer, uint64_t size)
 
 /**
  * @brief Reset a ring buffer.
- * 
+ *
  * @param ring Pointer to the ring buffer structure.
  */
 static inline void ring_reset(ring_t* ring)
@@ -75,7 +72,7 @@ static inline void ring_reset(ring_t* ring)
 
 /**
  * @brief Return the number of bytes available for writing in a ring buffer.
- * 
+ *
  * @param ring Pointer to the ring buffer structure.
  * @param offset Pointer to the offset to check from, set to `NULL` to check from head.
  * @return The number of bytes available for writing.
@@ -97,7 +94,7 @@ static inline uint64_t ring_bytes_free(const ring_t* ring, const uint64_t* offse
 
 /**
  * @brief Return the number of bytes used in a ring buffer.
- * 
+ *
  * @param ring Pointer to the ring buffer structure.
  * @param offset Pointer to the offset to check from, set to `NULL` to check from tail.
  * @return The number of bytes used.

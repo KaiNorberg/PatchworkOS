@@ -21,7 +21,7 @@ uint64_t readline(fd_t fd, char* buffer, uint64_t size)
         {
             return ERR;
         }
-        
+
         if (bytesRead == 0) // EOF
         {
             break;

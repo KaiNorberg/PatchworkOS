@@ -243,7 +243,7 @@ uint64_t scanfile(const char* path, const char* format, ...);
 
 /**
  * @brief Wrapper for reading a single line from a file descriptor using scan formatting.
- * 
+ *
  * @param fd The file descriptor to read from.
  * @param format The format string.
  * @return On success, the number of input items successfully matched and assigned. On EOF, `0`. On failure, `ERR`.

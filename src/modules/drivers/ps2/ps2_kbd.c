@@ -24,10 +24,12 @@ static void ps2_kbd_irq(irq_func_data_t* data)
         LOG_ERR("unexpected PS/2 keyboard response: %d\n", response);
         return;
     case PS2_DEV_RESPONSE_KBD_EXTENDED:
-        private->flags |= PS2_KBD_EXTENDED;
+      private
+        ->flags |= PS2_KBD_EXTENDED;
         return;
     case PS2_DEV_RESPONSE_KBD_RELEASE:
-        private->flags |= PS2_KBD_RELEASE;
+      private
+        ->flags |= PS2_KBD_RELEASE;
         return;
     default:
         break;
@@ -45,7 +47,8 @@ static void ps2_kbd_irq(irq_func_data_t* data)
         kbd_press(private->kbd, code);
     }
 
-    private->flags = PS2_KBD_NONE;
+  private
+    ->flags = PS2_KBD_NONE;
 }
 
 uint64_t ps2_kbd_init(ps2_device_info_t* info)
@@ -62,8 +65,10 @@ uint64_t ps2_kbd_init(ps2_device_info_t* info)
         LOG_ERR("failed to allocate memory for PS/2 keyboard data\n");
         return ERR;
     }
-    private->flags = PS2_KBD_NONE;
-    private->kbd = kbd_new(info->name);
+  private
+    ->flags = PS2_KBD_NONE;
+  private
+    ->kbd = kbd_new(info->name);
     if (private->kbd == NULL)
     {
         free(private);

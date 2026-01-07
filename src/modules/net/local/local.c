@@ -311,8 +311,8 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
             errno = EAGAIN;
             return ERR;
         }
-        if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock, conn->isClosed || ring_bytes_free(ring, NULL) >= totalSize) ==
-            ERR)
+        if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
+                conn->isClosed || ring_bytes_free(ring, NULL) >= totalSize) == ERR)
         {
             return ERR;
         }

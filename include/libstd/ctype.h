@@ -6,35 +6,36 @@ extern "C"
 {
 #endif
 
+#include "_internal/ascii.h"
 #include "_internal/config.h"
 
-_PUBLIC int isalnum(int c);
+#define isalnum(c) ((int)(_asciiTable[(int)(c)].flags & (_ASCII_ALPHA | _ASCII_DIGIT)))
 
-_PUBLIC int isalpha(int c);
+#define isalpha(c) ((int)(_asciiTable[(int)(c)].flags & _ASCII_ALPHA))
 
-_PUBLIC int isblank(int c);
+#define isblank(c) ((int)(_asciiTable[(int)(c)].flags & _ASCII_BLANK))
 
-_PUBLIC int iscntrl(int c);
+#define iscntrl(c) ((int)(_asciiTable[(int)(c)].flags & _ASCII_CNTRL))
 
-_PUBLIC int isdigit(int c);
+#define isdigit(c) ((int)(_asciiTable[(int)(c)].flags & _ASCII_DIGIT))
 
-_PUBLIC int isgraph(int c);
+#define isgraph(c) ((int)(_asciiTable[(int)(c)].flags & _ASCII_GRAPH))
 
-_PUBLIC int islower(int c);
+#define islower(c) ((int)(_asciiTable[(int)(c)].flags & _ASCII_LOWER))
 
-_PUBLIC int isprint(int c);
+#define isprint(c) ((int)!(_asciiTable[(int)(c)].flags & _ASCII_CNTRL))
 
-_PUBLIC int ispunct(int c);
+#define ispunct(c) ((int)(_asciiTable[(int)(c)].flags & _ASCII_PUNCT))
 
-_PUBLIC int isspace(int c);
+#define isspace(c) ((int)(_asciiTable[(int)(c)].flags & _ASCII_SPACE))
 
-_PUBLIC int isupper(int c);
+#define isupper(c) ((int)(_asciiTable[(int)(c)].flags & _ASCII_UPPER))
 
-_PUBLIC int isxdigit(int c);
+#define isxdigit(c) ((int)(_asciiTable[(int)(c)].flags & _ASCII_XDIGIT))
 
-_PUBLIC int tolower(int c);
+#define tolower(c) ((int)(_asciiTable[(int)(c)].lower))
 
-_PUBLIC int toupper(int c);
+#define toupper(c) ((int)(_asciiTable[(int)(c)].upper))
 
 #if defined(__cplusplus)
 }

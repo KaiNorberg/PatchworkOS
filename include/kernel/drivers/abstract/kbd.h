@@ -2,8 +2,8 @@
 
 #include <kernel/fs/devfs.h>
 #include <kernel/sched/wait.h>
-#include <kernel/utils/ring.h>
 #include <kernel/sync/rwlock.h>
+#include <kernel/utils/ring.h>
 
 #include <stdint.h>
 #include <sys/kbd.h>
@@ -22,20 +22,22 @@
  *
  * ## stream
  *
- * A readable file that provides a stream of keyboard events represented as new line deliminated keycodes prefixed with either `^` or `_` if the event is a key release or press respectively.
+ * A readable file that provides a stream of keyboard events represented as new line deliminated keycodes prefixed with
+ * either `^` or `_` if the event is a key release or press respectively.
  *
  * For example, the stream:
- * 
+ *
  * ```
  * _30
  * ^30
  * _5
  * ```
- * 
+ *
  * represents a press of the `1` key, its subsequent release, and then a press of the `A` key.
  *
- * If no events are available to read, the read call will block until an event is available unless the file is opened in non-blocking mode in which case the read will fail with `EAGAIN`.
- * 
+ * If no events are available to read, the read call will block until an event is available unless the file is opened in
+ * non-blocking mode in which case the read will fail with `EAGAIN`.
+ *
  * @see libstd_sys_kbd for keycode definitions.
  *
  * @{
