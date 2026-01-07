@@ -28,7 +28,7 @@ static file_ops_t nameOps = {
     .read = fb_name_read,
 };
 
-static uint64_t fb_buffer_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t fb_data_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     fb_t* fb = file->inode->private;
     assert(fb != NULL);
@@ -42,7 +42,7 @@ static uint64_t fb_buffer_read(file_t* file, void* buffer, uint64_t count, uint6
     return fb->ops->read(fb, buffer, count, offset);
 }
 
-static uint64_t fb_buffer_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t fb_data_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
     fb_t* fb = file->inode->private;
     assert(fb != NULL);
@@ -56,7 +56,7 @@ static uint64_t fb_buffer_write(file_t* file, const void* buffer, uint64_t count
     return fb->ops->write(fb, buffer, count, offset);
 }
 
-static void* fb_buffer_mmap(file_t* file, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
+static void* fb_data_mmap(file_t* file, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
 {
     fb_t* fb = file->inode->private;
     assert(fb != NULL);
@@ -71,9 +71,9 @@ static void* fb_buffer_mmap(file_t* file, void* addr, uint64_t length, uint64_t*
 }
 
 static file_ops_t dataOps = {
-    .read = fb_buffer_read,
-    .write = fb_buffer_write,
-    .mmap = fb_buffer_mmap,
+    .read = fb_data_read,
+    .write = fb_data_write,
+    .mmap = fb_data_mmap,
 };
 
 static uint64_t fb_info_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
@@ -102,7 +102,7 @@ static uint64_t fb_info_read(file_t* file, void* buffer, uint64_t count, uint64_
         return ERR;
     }
 
-    if ((uint64_t)length > count)
+    if ((uint64_t)length >= sizeof(string))
     {
         errno = EOVERFLOW;
         return ERR;

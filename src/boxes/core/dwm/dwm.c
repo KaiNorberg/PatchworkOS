@@ -462,7 +462,7 @@ static void dwm_kbd_read(void)
 
     char prefix;
     keycode_t code;
-    if (scanline(kbd, "%c%d", &prefix, &code) != 2)
+    if (scan(kbd, "%c%d\n", &prefix, &code) != 2)
     {
         return;
     }

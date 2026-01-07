@@ -167,18 +167,6 @@ uint64_t readfile(const char* path, void* buffer, uint64_t count, uint64_t offse
 char* sreadfile(const char* path);
 
 /**
- * @brief Wrapper for reading a line from a file descriptor.
- *
- * The `readline()` function reads an entire line from the file, until a newline character or EOF is reached.
- *
- * @param fd The file descriptor to read from.
- * @param buffer The buffer to store the line, will be null-terminated.
- * @param size The size of the buffer.
- * @return On success, the number of bytes read, excluding the null terminator. On failure, `ERR` and `errno` is set.
- */
-uint64_t readline(fd_t fd, char* buffer, uint64_t size);
-
-/**
  * @brief System call for writing to files.
  *
  * @param fd The file descriptor to write to.
@@ -231,9 +219,19 @@ uint64_t swritefile(const char* path, const char* string);
 uint64_t scan(fd_t fd, const char* format, ...);
 
 /**
+ * @brief Wrapper for reading from a file descriptor using scan formatting with `va_list`.
+ *
+ * @param fd The file descriptor to read from.
+ * @param format The format string.
+ * @param args The va_list of arguments.
+ * @return On success, the number of input items successfully matched and assigned. On failure, `ERR`.
+ */
+uint64_t vscan(fd_t fd, const char* format, va_list args);
+
+/**
  * @brief Wrapper for reading from a file path using scan formatting.
  *
- * Equivalent to calling `open()`, `fscan()`, and `close()` in sequence.
+ * Equivalent to calling `open()`, `scan()`, and `close()` in sequence.
  *
  * @param path The path to the file.
  * @param format The format string.
@@ -242,13 +240,16 @@ uint64_t scan(fd_t fd, const char* format, ...);
 uint64_t scanfile(const char* path, const char* format, ...);
 
 /**
- * @brief Wrapper for reading a single line from a file descriptor using scan formatting.
+ * @brief Wrapper for reading from a file path using scan formatting with `va_list`.
  *
- * @param fd The file descriptor to read from.
+ * Equivalent to calling `open()`, `vscan()`, and `close()` in sequence.
+ *
+ * @param path The path to the file.
  * @param format The format string.
- * @return On success, the number of input items successfully matched and assigned. On EOF, `0`. On failure, `ERR`.
+ * @param args The va_list of arguments.
+ * @return On success, the number of input items successfully matched and assigned. On failure, `ERR`.
  */
-uint64_t scanline(fd_t fd, const char* format, ...);
+uint64_t vscanfile(const char* path, const char* format, va_list args);
 
 /**
  * @brief Type for the `seek()` origin argument.

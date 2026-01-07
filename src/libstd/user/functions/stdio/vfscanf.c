@@ -7,22 +7,7 @@
 #define _SCAN_GET(ctx) \
     ({ \
         FILE* file = (FILE*)(ctx)->private; \
-        int c = fgetc(file); \
-        if (c != EOF) \
-        { \
-            (ctx)->count++; \
-        } \
-        c; \
-    })
-
-#define _SCAN_UNGET(ctx, c) \
-    ({ \
-        FILE* file = (FILE*)(ctx)->private; \
-        if ((c) != EOF) \
-        { \
-            ungetc(c, file); \
-            (ctx)->count--; \
-        } \
+        fgetc(file); \
     })
 
 #include "common/scan.h"
