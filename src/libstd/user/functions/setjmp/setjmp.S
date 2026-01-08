@@ -1,5 +1,4 @@
 .code64
-.intel_syntax noprefix
 
 .global setjmp
 .type setjmp, @function
@@ -8,28 +7,28 @@
 
 // rdi = address of jmp_buf
 setjmp:
-    mov [rdi + 0], rbx    
-    mov [rdi + 8], rbp      
-    mov [rdi + 16], r12     
-    mov [rdi + 24], r13     
-    mov [rdi + 32], r14 
-    mov [rdi + 40], r15   
+    movq %rbx, (%rdi)
+    movq %rbp, 8(%rdi)
+    movq %r12, 16(%rdi)
+    movq %r13, 24(%rdi)
+    movq %r14, 32(%rdi)
+    movq %r15, 40(%rdi)
     
-    lea rax, [rsp + 8]
-    mov [rdi + 48], rax
+    leaq 8(%rsp), %rax
+    movq %rax, 48(%rdi)
     
-    mov rax, [rsp]
-    mov [rdi + 56], rax
+    movq (%rsp), %rax
+    movq %rax, 56(%rdi)
 
-    sub rsp, 8
-    stmxcsr dword ptr [rsp]
-    mov eax, dword ptr [rsp]
-    mov [rdi + 64], eax
+    subq $8, %rsp
+    stmxcsr (%rsp)
+    movl (%rsp), %eax
+    movl %eax, 64(%rdi)
     
-    fnstcw word ptr [rsp] 
-    movzx eax, word ptr [rsp]
-    mov [rdi + 68], eax
-    add rsp, 8
+    fnstcw (%rsp)
+    movzwl (%rsp), %eax
+    movl %eax, 68(%rdi)
+    addq $8, %rsp
     
-    xor eax, eax
+    xorl %eax, %eax
     ret

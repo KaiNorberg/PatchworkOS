@@ -1,5 +1,4 @@
 .code64
-.intel_syntax noprefix
 
 .extern init_early
 .extern bootInfo
@@ -16,10 +15,10 @@ _start:
     cld
 
     // rsp = early_init_stack_top
-    lea rsp, [early_init_stack_top]
+    leaq early_init_stack_top(%rip), %rsp
 
     // bootInfo = rdi
-    mov [bootInfo], rdi
+    movq %rdi, bootInfo(%rip)
 
     // init_early()
     call init_early

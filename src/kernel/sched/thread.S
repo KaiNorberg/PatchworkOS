@@ -1,5 +1,4 @@
 .code64
-.intel_syntax noprefix
 
 #include "kernel/cpu/interrupt.h"
 
@@ -16,13 +15,13 @@ thread_jump:
     cli
 
     // Allocate buffer for interrupt frame
-    sub rsp, INTERRUPT_FRAME_SIZE
+    subq $INTERRUPT_FRAME_SIZE, %rsp
 
     // thread_load(rdi, rsp)
-    mov rsi, rsp
+    movq %rsp, %rsi
     call thread_load
 
     INTERRUPT_FRAME_REGS_POP
 
-    add rsp, 16
+    addq $16, %rsp
     iretq

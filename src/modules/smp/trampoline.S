@@ -1,5 +1,4 @@
 .code64
-.intel_syntax noprefix
 
 #include "kernel/cpu/interrupt.h"
 #include "trampoline.h"
@@ -35,66 +34,66 @@ trampoline_start:
     cli
     cld
 
-    xor ax, ax
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
+    xorw %ax, %ax
+    movw %ax, %ds
+    movw %ax, %es
+    movw %ax, %fs
+    movw %ax, %gs
+    movw %ax, %ss
 
-    data32 lgdt [TRAMPOLINE_PHYS(protected_mode_gdtr)]
+    data32 lgdt TRAMPOLINE_PHYS(protected_mode_gdtr)
 
-    mov eax, cr0
-    or eax, CR0_PE
-    mov cr0, eax
+    movl %cr0, %eax
+    orl $CR0_PE, %eax
+    movl %eax, %cr0
 
-    data32 jmp GDT_CODE32_SEL, TRAMPOLINE_PHYS(trampoline_protected_mode_entry)
+    data32 ljmp $GDT_CODE32_SEL, $TRAMPOLINE_PHYS(trampoline_protected_mode_entry)
 
 .code32
 trampoline_protected_mode_entry:
-    mov bx, GDT_DATA32_SEL
-    mov ds, bx
-    mov es, bx
-    mov ss, bx
+    movw $GDT_DATA32_SEL, %bx
+    movw %bx, %ds
+    movw %bx, %es
+    movw %bx, %ss
 
-    mov eax, cr4
-    or eax, CR4_PAE
-    mov cr4, eax
+    movl %cr4, %eax
+    orl $CR4_PAE, %eax
+    movl %eax, %cr4
 
-    mov eax, [TRAMPOLINE_ADDR(TRAMPOLINE_PML4_OFFSET)]
-    mov cr3, eax
+    movl TRAMPOLINE_ADDR(TRAMPOLINE_PML4_OFFSET), %eax
+    movl %eax, %cr3
 
-    mov ecx, MSR_EFER
+    movl $MSR_EFER, %ecx
     rdmsr
-    or eax, EFER_LME
+    orl $EFER_LME, %eax
     wrmsr
 
-    mov eax, cr0
-    or eax, CR0_PG
-    mov cr0, eax
+    movl %cr0, %eax
+    orl $CR0_PG, %eax
+    movl %eax, %cr0
 
-    lgdt [TRAMPOLINE_PHYS(long_mode_gdtr)]
-    jmp GDT_CODE64_SEL, TRAMPOLINE_PHYS(trampoline_long_mode_entry)
+    lgdt TRAMPOLINE_PHYS(long_mode_gdtr)
+    ljmp $GDT_CODE64_SEL, $TRAMPOLINE_PHYS(trampoline_long_mode_entry)
 
 .code64
 trampoline_long_mode_entry:
-    mov ax, GDT_DATA64_SEL
-    mov ds, ax
-    mov es, ax
-    mov ss, ax
+    movw $GDT_DATA64_SEL, %ax
+    movw %ax, %ds
+    movw %ax, %es
+    movw %ax, %ss
 
-    xor ax, ax
-    mov fs, ax
-    mov gs, ax
+    xorw %ax, %ax
+    movw %ax, %fs
+    movw %ax, %gs
 
-    mov rsp, [TRAMPOLINE_ADDR(TRAMPOLINE_STACK_OFFSET)]
-    xor rbp, rbp
+    movq TRAMPOLINE_ADDR(TRAMPOLINE_STACK_OFFSET), %rsp
+    xorq %rbp, %rbp
 
-    push 0x0
+    pushq $0x0
     popfq
 
-    mov rdi, [TRAMPOLINE_ADDR(TRAMPOLINE_CPU_OFFSET)]
-    jmp qword ptr [TRAMPOLINE_ADDR(TRAMPOLINE_ENTRY_OFFSET)]
+    movq TRAMPOLINE_ADDR(TRAMPOLINE_CPU_OFFSET), %rdi
+    jmp *TRAMPOLINE_ADDR(TRAMPOLINE_ENTRY_OFFSET)
 
 .align 16
 protected_mode_gdtr:

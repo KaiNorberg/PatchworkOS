@@ -1,5 +1,4 @@
 .code64
-.intel_syntax noprefix
 
 .global idt_load_descriptor
 .type idt_load_descriptor, @function
@@ -8,5 +7,5 @@
 
 // rdi = idt descriptor
 idt_load_descriptor:
-    lidt  [rdi]
+    lidt (%rdi)
     ret

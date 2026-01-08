@@ -1,5 +1,4 @@
 .code64
-.intel_syntax noprefix
 
 #include "kernel/cpu/interrupt.h"
 
@@ -9,14 +8,14 @@
 
 .macro INTERRUPT_ERR nr
 vector_\nr:
-    push \nr
+    pushq $\nr
     jmp vector_common
 .endm
 
 .macro INTERRUPT_NO_ERR nr
 vector_\nr:
-    push 0
-    push \nr
+    pushq $0
+    pushq $\nr
     jmp vector_common
 .endm
 
@@ -31,13 +30,13 @@ vector_\nr:
 vector_common:
     INTERRUPT_FRAME_REGS_PUSH
 
-    mov rbp, rsp
-    mov rdi, rsp
+    movq %rsp, %rbp
+    movq %rsp, %rdi
     call interrupt_handler
 
     INTERRUPT_FRAME_REGS_POP
 
-    add rsp, 16 // Pop error code and vector number
+    addq $16, %rsp // Pop error code and vector number
     iretq
 
 INTERRUPT_NO_ERR 0
@@ -83,28 +82,28 @@ INTERRUPT_NO_ERR 31
 // rdi = interrupt_frame_t* frame
 // rsi = cpu_t* self
 interrupt_fake:
-    push 0 // align stack
+    pushq $0 // align stack
 
-    mov r15, rdi // frame
+    movq %rdi, %r15 // frame
     
     // memcpy((r14 = cpu_interrupt_stack_top(self) - INTERRUPT_FRAME_SIZE), frame, INTERRUPT_FRAME_SIZE)
-    mov rdi, rsi
+    movq %rsi, %rdi
     call cpu_interrupt_stack_top
-    mov rdi, rax
-    sub rdi, INTERRUPT_FRAME_SIZE
-    mov r14, rdi
-    mov rsi, r15
-    mov rdx, INTERRUPT_FRAME_SIZE
+    movq %rax, %rdi
+    subq $INTERRUPT_FRAME_SIZE, %rdi
+    movq %rdi, %r14
+    movq %r15, %rsi
+    movq $INTERRUPT_FRAME_SIZE, %rdx
     call memcpy
 
     // interrupt_handler((rbp = rsp = r14))
-    mov rsp, r14
-    mov rbp, rsp
-    mov rdi, rsp
+    movq %r14, %rsp
+    movq %rsp, %rbp
+    movq %rsp, %rdi
     call interrupt_handler
 
     INTERRUPT_FRAME_REGS_POP
-    add rsp, 16
+    addq $16, %rsp
     iretq
 
 .data
