@@ -1,5 +1,4 @@
 .code64
-.intel_syntax noprefix
 
 .extern main
 .extern exit
@@ -10,23 +9,23 @@
 
 .text
 
-_start:	
-    mov rbp, rsp    
+_start:
+    movq %rsp, %rbp
 
     // Check kernel_sched_loader for the stack layout and register setup
 
-    push rsi
-    push rdi
+    pushq %rsi
+    pushq %rdi
 
     call _std_init
 
-    pop rdi
-    pop rsi
+    popq %rdi
+    popq %rsi
 
     call main
-    push rax
+    pushq %rax
 
-    pop rdi
+    popq %rdi
     call exit
     ud2
 .end:

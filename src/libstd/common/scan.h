@@ -16,6 +16,10 @@
 #error "_SCAN_GET not defined"
 #endif
 
+#ifndef _SCAN_UNGET
+#error "_SCAN_UNGET not defined"
+#endif
+
 /**
  * @brief Internal Scan Implementation.
  * @defgroup libstd_scan Scan
@@ -24,10 +28,12 @@
  * Provides a common implementation for scanning formatted input, any function that needs to scan formatted input should
  * define the `_SCAN_GET()` and `_SCAN_UNGET()` macros before including this file.
  *
- * The `_SCAN_GET(ctx)` macro should evaluate to an expression that returns the next character from the input source and takes a pointer to the current `scan_ctx_t` as an argument.
- * 
- * The`_SCAN_UNGET(ctx, c)` macro should evaluate to an expression that pushes back the character `c` to the input source and takes a pointer to the current `scan_ctx_t` and the character to push back as argument.
- * 
+ * The `_SCAN_GET(ctx)` macro should evaluate to an expression that returns the next character from the input source and
+ * takes a pointer to the current `scan_ctx_t` as an argument.
+ *
+ * The`_SCAN_UNGET(ctx, c)` macro should evaluate to an expression that pushes back the character `c` to the input
+ * source and takes a pointer to the current `scan_ctx_t` and the character to push back as argument.
+ *
  * @see https://cplusplus.com/reference/cstdio/scanf/ for details on the format specifiers.
  *
  * @{
@@ -73,7 +79,7 @@ static inline void _scan_undo(_scan_ctx_t* ctx, int c)
 }
 
 static inline int _scan_whitespace(_scan_ctx_t* ctx)
-{            
+{
     while (isspace(*ctx->p))
     {
         ctx->p++;
@@ -711,7 +717,7 @@ static inline int _scan(const char* _RESTRICT format, va_list arg, void* private
         _SCAN_UNGET(&ctx, ctx.prev);
         ctx.prev = EOF;
     }
-         
+
     if (ctx.count == 0)
     {
         return EOF;

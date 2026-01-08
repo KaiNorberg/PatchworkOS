@@ -24,7 +24,8 @@ typedef struct kbd kbd_t;
  *
  * ## events
  *
- * A readable and pollable file that provides a stream of keyboard events represented as integer keycodes suffixed with a `_` or `^` to indicate press or release respectively.
+ * A readable and pollable file that provides a stream of keyboard events represented as integer keycodes suffixed with
+ * a `_` or `^` to indicate press or release respectively.
  *
  * The below example shows a press of the `1` key, its subsequent release, and then a press of the `A` key.
  *
@@ -35,8 +36,8 @@ typedef struct kbd kbd_t;
  * If no events are available to read, the read call will block until an event is available unless the file is opened in
  * non-blocking mode in which case the read will fail with `EAGAIN`.
  *
- * @note The given format is specified such that if `scan()` is used with "%u%c" the `scan()` call does not require any "ungets".
- * 
+ * @note The format is specified such that if `scan()` is used with "%u%c" the `scan()` call does not require any "ungets".
+ *
  * @see libstd_sys_kbd for keycode definitions.
  *
  * @{

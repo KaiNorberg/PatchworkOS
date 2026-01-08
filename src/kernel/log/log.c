@@ -70,7 +70,7 @@ static size_t klog_read(file_t* file, void* buffer, size_t count, size_t* offset
 
         ((char*)buffer)[i] = klogBuffer[(*offset)++ % CONFIG_KLOG_SIZE];
     }
-    
+
     return count;
 }
 

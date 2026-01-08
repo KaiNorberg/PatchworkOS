@@ -1,5 +1,4 @@
 .code64
-.intel_syntax noprefix
 
 #include "kernel/cpu/interrupt.h"
 #include "kernel/cpu/gdt.h"
@@ -29,30 +28,30 @@
 // Return value in rax
 syscall_entry:
     swapgs
-    mov qword ptr gs:[GS_USER_RSP], rsp
-    mov rsp, qword ptr gs:[GS_SYSCALL_RSP]
+    movq %rsp, %gs:GS_USER_RSP
+    movq %gs:GS_SYSCALL_RSP, %rsp
 
     // Construct interrupt_frame_t on stack representing 
     // the state before the syscall
-    push GDT_SS_RING3
-    push qword ptr gs:[GS_USER_RSP]
-    push r11 // rflags
-    push GDT_CS_RING3
-    push rcx // rip
+    pushq $GDT_SS_RING3
+    pushq %gs:GS_USER_RSP
+    pushq %r11 // rflags
+    pushq $GDT_CS_RING3
+    pushq %rcx // rip
     swapgs
 
     // Dummy error and vector
-    push 0
-    push 0
+    pushq $0
+    pushq $0
 
     INTERRUPT_FRAME_REGS_PUSH
 
     sti
 
     // syscall_handler(rsp)
-    mov rdi, rsp
+    movq %rsp, %rdi
     call syscall_handler
 
     INTERRUPT_FRAME_REGS_POP
-    mov rsp, [rsp + 8 * 5] // Load user rsp from interrupt frame
+    movq 8 * 5(%rsp), %rsp // Load user rsp from interrupt frame
     sysretq

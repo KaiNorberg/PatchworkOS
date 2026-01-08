@@ -3,8 +3,8 @@
 #include <kernel/init/boot_info.h>
 #include <kernel/init/init.h>
 #include <kernel/log/log.h>
-#include <kernel/log/screen.h>
 #include <kernel/log/panic.h>
+#include <kernel/log/screen.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
 #include <kernel/proc/process.h>

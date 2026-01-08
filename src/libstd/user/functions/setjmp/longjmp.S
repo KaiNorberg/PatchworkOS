@@ -1,5 +1,4 @@
 .code64
-.intel_syntax noprefix
 
 .global longjmp
 .type longjmp, @function
@@ -9,32 +8,32 @@
 // rdi = address of jmp_buf
 // rsi = return value
 longjmp:
-    test rsi, rsi
+    testq %rsi, %rsi
     jnz .valid_val
-    mov rsi, 1
+    movq $1, %rsi
     
 .valid_val:
-    mov eax, dword ptr [rdi + 64]
-    sub rsp, 8  
-    mov dword ptr [rsp], eax   
-    ldmxcsr dword ptr [rsp]    
+    movl 64(%rdi), %eax
+    subq $8, %rsp
+    movl %eax, (%rsp)
+    ldmxcsr (%rsp)
     
-    mov eax, dword ptr [rdi + 68]  
-    mov word ptr [rsp], ax 
-    fldcw word ptr [rsp]          
-    add rsp, 8 
+    movl 68(%rdi), %eax
+    movw %ax, (%rsp)
+    fldcw (%rsp)
+    addq $8, %rsp
     
-    mov rbx, qword ptr [rdi + 0]    
-    mov rbp, qword ptr [rdi + 8] 
-    mov r12, qword ptr [rdi + 16]    
-    mov r13, qword ptr [rdi + 24]    
-    mov r14, qword ptr [rdi + 32]    
-    mov r15, qword ptr [rdi + 40]    
+    movq (%rdi), %rbx
+    movq 8(%rdi), %rbp
+    movq 16(%rdi), %r12
+    movq 24(%rdi), %r13
+    movq 32(%rdi), %r14
+    movq 40(%rdi), %r15
     
-    mov rdx, qword ptr [rdi + 56]
+    movq 56(%rdi), %rdx
     
-    mov rsp, qword ptr [rdi + 48]
+    movq 48(%rdi), %rsp
     
-    mov rax, rsi
+    movq %rsi, %rax
     
-    jmp rdx
+    jmp *%rdx

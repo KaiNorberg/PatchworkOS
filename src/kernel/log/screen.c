@@ -1,10 +1,10 @@
 #include <kernel/log/screen.h>
 
 #include <kernel/drivers/com.h>
-#include <kernel/log/glyphs.h>
-#include <kernel/sync/lock.h>
 #include <kernel/init/boot_info.h>
+#include <kernel/log/glyphs.h>
 #include <kernel/log/panic.h>
+#include <kernel/sync/lock.h>
 
 #include <string.h>
 #include <sys/math.h>
@@ -81,7 +81,7 @@ static void screen_flush(void)
     for (uint64_t y = invalidStart.y; y < invalidEnd.y; y++)
     {
         screen_line_t* line = screen_get_line(y);
-        
+
         for (uint64_t pixelY = 0; pixelY < GLYPH_HEIGHT; pixelY++)
         {
             memcpy(&gop.virtAddr[invalidStart.x * GLYPH_WIDTH + (y * GLYPH_HEIGHT + pixelY) * gop.stride],

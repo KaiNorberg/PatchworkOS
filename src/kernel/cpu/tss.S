@@ -1,5 +1,4 @@
 .code64
-.intel_syntax noprefix
 
 #include "kernel/cpu/gdt.h"
 
@@ -9,6 +8,6 @@
 .text
 
 tss_load:
-    mov ax, GDT_TSS
-    ltr ax
+    movw $GDT_TSS, %ax
+    ltr %ax
     ret

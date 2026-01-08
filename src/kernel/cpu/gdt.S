@@ -1,5 +1,4 @@
 .code64
-.intel_syntax noprefix
 
 #include "kernel/cpu/gdt.h"
 
@@ -10,16 +9,16 @@
 
 // rdi = gdt descriptor
 gdt_load_descriptor:
-    lgdt  [rdi]
-    push GDT_KERNEL_CODE
-    lea rax, [rip + .reload_CS]
-    push rax
-    retfq
+    lgdt (%rdi)
+    pushq $GDT_KERNEL_CODE
+    leaq .reload_CS(%rip), %rax
+    pushq %rax
+    lretq
 .reload_CS:
-    mov ax, GDT_KERNEL_DATA
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
+    movw $GDT_KERNEL_DATA, %ax
+    movw %ax, %ds
+    movw %ax, %es
+    movw %ax, %fs
+    movw %ax, %gs
+    movw %ax, %ss
     ret

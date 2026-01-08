@@ -1,5 +1,4 @@
 .code64
-.intel_syntax noprefix
 
 .global rdrand_do
 .type rdrand_do, @function
@@ -11,15 +10,15 @@
 // return: On success, 0. On failure, `ERR`.
 rdrand_do:
 .retry:
-    rdrand eax
+    rdrand %eax
     jc .success
-    inc byte ptr [rsi]
-    cmp byte ptr [rsi], 10
+    incb (%rsi)
+    cmpb $10, (%rsi)
     jl .retry
-    xor rax, rax
-    not rax
+    xorq %rax, %rax
+    notq %rax
     ret
 .success:
-    mov [rdi], eax
-    mov rax, 0
+    movl %eax, (%rdi)
+    movq $0, %rax
     ret
