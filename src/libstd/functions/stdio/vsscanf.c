@@ -9,7 +9,6 @@
         if (c != '\0') \
         { \
             (*str)++; \
-            (ctx)->count++; \
         } \
         c == '\0' ? EOF : (unsigned char)c; \
     })
@@ -20,7 +19,6 @@
         if ((c) != EOF) \
         { \
             (*str)--; \
-            (ctx)->count--; \
         } \
     })
 

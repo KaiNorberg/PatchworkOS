@@ -7,12 +7,7 @@
 #define _SCAN_GET(ctx) \
     ({ \
         FILE* file = (FILE*)(ctx)->private; \
-        int c = fgetc(file); \
-        if (c != EOF) \
-        { \
-            (ctx)->count++; \
-        } \
-        c; \
+        fgetc(file); \
     })
 
 #define _SCAN_UNGET(ctx, c) \
@@ -21,7 +16,6 @@
         if ((c) != EOF) \
         { \
             ungetc(c, file); \
-            (ctx)->count--; \
         } \
     })
 

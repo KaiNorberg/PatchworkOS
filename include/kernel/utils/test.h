@@ -49,6 +49,7 @@ typedef struct test
             if (result == ERR) \
             { \
                 LOG_ERR("test '%s' FAILED in %llu ms\n", test->name, (end - start) / (CLOCKS_PER_SEC / 1000)); \
+                panic(NULL, "test failure"); \
             } \
             else \
             { \
