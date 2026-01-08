@@ -130,6 +130,30 @@ typedef struct
 } event_surface_new_t;
 
 /**
+ * @brief Keyboard event type.
+ *
+ */
+typedef enum
+{
+    KBD_PRESS = 0,  ///< Key press event
+    KBD_RELEASE = 1 ///< Key release event
+} kbd_event_type_t;
+
+/**
+ * @brief Keyboard modifiers type.
+ *
+ */
+typedef enum
+{
+    KBD_MOD_NONE = 0,       ///< No modifier
+    KBD_MOD_CAPS = 1 << 0,  ///< Caps Lock modifier
+    KBD_MOD_SHIFT = 1 << 1, ///< Shift modifier
+    KBD_MOD_CTRL = 1 << 2,  ///< Control modifier
+    KBD_MOD_ALT = 1 << 3,   ///< Alt modifier
+    KBD_MOD_SUPER = 1 << 4, ///< Super (Windows/Command) modifier
+} kbd_mods_t;
+
+/**
  * @brief Keyboard event.
  *
  * Sent when a key is pressed or released.

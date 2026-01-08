@@ -29,20 +29,32 @@ typedef struct dentry dentry_t;
  */
 
 /**
+ * @brief Block device type.
+ * @struct block_device_t
+ *
+ * Represents a device which can be used to back a filesystem.
+ *
+ * @todo Implement block devices.
+ */
+typedef struct
+{
+    uint64_t placeholder;
+} block_device_t;
+
+/**
  * @brief Superblock structure.
  * @struct superblock_t
- *
- * Superblocks are owned by the VFS, not the filesystem.
  */
 typedef struct superblock
 {
     ref_t ref;
     list_entry_t entry;
-    dev_t device;
+    sbid_t id;
     uint64_t blockSize;
     uint64_t maxFileSize;
     void* private;
     dentry_t* root; ///< Root dentry of the filesystem, should not take a reference.
+    block_device_t* device;
     const superblock_ops_t* ops;
     const dentry_ops_t* dentryOps;
     filesystem_t* fs;
@@ -93,14 +105,14 @@ typedef struct superblock_ops
  * Note that the superblock's `root` dentry must be created and assigned after calling this function.
  *
  * @param fs The filesystem type of the superblock.
- * @param device The device the superblock is mounted on.
+ * @param device The block device the filesystem is mounted on, can be `NULL` for virtual filesystems.
  * @param ops The superblock operations, can be NULL.
  * @param dentryOps The dentry operations for dentries in this superblock, can be NULL.
  * @return On success, the new superblock. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENOMEM`: Out of memory.
  */
-superblock_t* superblock_new(filesystem_t* fs, dev_t device, const superblock_ops_t* ops,
+superblock_t* superblock_new(filesystem_t* fs, block_device_t* device, const superblock_ops_t* ops,
     const dentry_ops_t* dentryOps);
 
 /**

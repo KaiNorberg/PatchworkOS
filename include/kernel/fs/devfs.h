@@ -15,7 +15,6 @@ typedef struct superblock_ops superblock_ops_t;
  * @ingroup kernel_fs
  * @defgroup kernel_fs_devfs Device Filesystem
  *
- *
  */
 
 /**
@@ -66,5 +65,34 @@ dentry_t* devfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* 
  * @return On success, the new devfs symbolic link. On failure, `NULL` and `errno` is set.
  */
 dentry_t* devfs_symlink_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* private);
+
+/**
+ * @brief Descriptor for batch file creation.
+ * @struct devfs_file_desc_t
+ */
+typedef struct devfs_file_desc
+{
+    const char* name;            ///< Name of the file, `NULL` marks end of array.
+    const inode_ops_t* inodeOps; ///< Inode operations, can be `NULL`.
+    const file_ops_t* fileOps;   ///< File operations, can be `NULL`.
+    void* private;               ///< Private data to store in the inode of the file.
+} devfs_file_desc_t;
+
+/**
+ * @brief Create multiple files in a devfs directory.
+ *
+ * @param out Output list to store created dentries, can be `NULL`. The dentries use the `otherEntry` list entry.
+ * @param parent The parent directory, if `NULL` then the root is used.
+ * @param descs Array of file descriptors, terminated by an entry with `name == NULL`.
+ * @return On success, the number of files created. On failure, `ERR` and `errno` is set.
+ */
+uint64_t devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t* descs);
+
+/**
+ * @brief Free all files in a list created by `devfs_files_new()`.
+ *
+ * @param files The list of files to free.
+ */
+void devfs_files_free(list_t* files);
 
 /** @} */

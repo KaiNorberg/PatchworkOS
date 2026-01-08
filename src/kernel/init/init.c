@@ -8,15 +8,15 @@
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/syscall.h>
 #include <kernel/drivers/pic.h>
-#include <kernel/fs/procfs.h>
 #include <kernel/fs/devfs.h>
-#include <kernel/fs/tmpfs.h>
 #include <kernel/fs/netfs.h>
+#include <kernel/fs/procfs.h>
+#include <kernel/fs/tmpfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/init/boot_info.h>
 #include <kernel/log/log.h>
-#include <kernel/log/log_file.h>
 #include <kernel/log/panic.h>
+#include <kernel/log/screen.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
@@ -33,6 +33,10 @@
 #include <boot/boot_info.h>
 
 #include <libstd/_internal/init.h>
+
+#ifdef _TESTING_
+#include <kernel/utils/test.h>
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -90,7 +94,7 @@ static void init_finalize(void)
     procfs_init();
     netfs_init();
 
-    log_file_expose();
+    log_expose();
 
     reaper_init();
 
@@ -204,6 +208,10 @@ void kmain(void)
     LOG_DEBUG("kmain entered\n");
 
     init_finalize();
+
+#ifdef _TESTING_
+    TEST_ALL();
+#endif
 
     init_process_spawn();
 

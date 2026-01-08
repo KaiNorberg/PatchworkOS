@@ -2,81 +2,185 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#define _SCAN_GET(ctx) \
+    ({ \
+        const char** str = (const char**)(ctx)->private; \
+        char c = **str; \
+        if (c != '\0') \
+        { \
+            (*str)++; \
+        } \
+        c == '\0' ? EOF : (unsigned char)c; \
+    })
+
+#define _SCAN_UNGET(ctx, c) \
+    ({ \
+        const char** str = (const char**)(ctx)->private; \
+        if ((c) != EOF) \
+        { \
+            (*str)--; \
+        } \
+    })
+
 #include "common/scan.h"
 
 int vsscanf(const char* _RESTRICT s, const char* _RESTRICT format, va_list arg)
 {
-    /* TODO: This function should interpret format as multibyte characters.  */
-    _format_ctx_t ctx;
-    ctx.base = 0;
-    ctx.flags = 0;
-    ctx.maxChars = 0;
-    ctx.totalChars = 0;
-    ctx.currentChars = 0;
-    ctx.buffer = (char*)s;
-    ctx.width = 0;
-    ctx.precision = EOF;
-    ctx.stream = NULL;
-    va_copy(ctx.arg, arg);
+    return _scan(format, arg, (void*)&s);
+}
 
-    while (*format != '\0')
+#ifdef _KERNEL_
+#ifdef _TESTING_
+
+#include <kernel/log/log.h>
+#include <kernel/sched/clock.h>
+#include <kernel/utils/test.h>
+
+#include <limits.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#define INT_MIN_DEZ_STR "2147483648"
+#define INT_MAX_DEZ_STR "2147483647"
+#define UINT_MAX_DEZ_STR "4294967295"
+#define INT_HEXDIG "fffffff"
+#define INT_OCTDIG "37777777777"
+
+static int _vsscanf_wrapper(const char* str, const char* format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    int ret = vsscanf(str, format, ap);
+    va_end(ap);
+    return ret;
+}
+
+#define SCANF_TEST(rc, input, fmt, ...) \
+    do \
+    { \
+        int ret = _vsscanf_wrapper(input, fmt, ##__VA_ARGS__); \
+        if (ret != rc) \
+        { \
+            LOG_ERR("SCANF_TEST failed at line %d: expected %d, got %d\n", __LINE__, rc, ret); \
+        } \
+    } while (0)
+
+static inline uint64_t _test_vsscanf_iter(void)
+{
+    char buffer[100];
+    int i;
+    unsigned int u;
+    int* p;
+    int n;
+
+    /* basic: reading of three-char string */
+    SCANF_TEST(1, "foo", "%3c", buffer);
+    TEST_ASSERT(memcmp(buffer, "foo", 3) == 0);
+
+    /* %% for single % */
+    SCANF_TEST(1, "%x", "%%%c%n", buffer, &n);
+    TEST_ASSERT(n == 2);
+    TEST_ASSERT(buffer[0] == 'x');
+    /* * to skip assignment */
+    SCANF_TEST(0, "abcdefg", "%*[cba]%n", &n);
+    TEST_ASSERT(n == 3);
+    SCANF_TEST(0, "foo", "%*s%n", &n);
+    TEST_ASSERT(n == 3);
+    SCANF_TEST(0, "abc", "%*c%n", &n);
+    TEST_ASSERT(n == 1);
+    SCANF_TEST(1, "3xfoo", "%*dx%3c", buffer);
+    TEST_ASSERT(memcmp(buffer, "foo", 3) == 0);
+
+    /* domain testing on 'int' type */
+    SCANF_TEST(1, "-" INT_MIN_DEZ_STR, "%d", &i);
+    TEST_ASSERT(i == INT_MIN);
+    SCANF_TEST(1, INT_MAX_DEZ_STR, "%d", &i);
+    TEST_ASSERT(i == INT_MAX);
+    SCANF_TEST(1, "-1", "%d", &i);
+    TEST_ASSERT(i == -1);
+    SCANF_TEST(1, "0", "%d", &i);
+    TEST_ASSERT(i == 0);
+    SCANF_TEST(1, "1", "%d", &i);
+    TEST_ASSERT(i == 1);
+    SCANF_TEST(1, "-" INT_MIN_DEZ_STR, "%i", &i);
+    TEST_ASSERT(i == INT_MIN);
+    SCANF_TEST(1, INT_MAX_DEZ_STR, "%i", &i);
+    TEST_ASSERT(i == INT_MAX);
+    SCANF_TEST(1, "-1", "%i", &i);
+    TEST_ASSERT(i == -1);
+    SCANF_TEST(1, "0", "%i", &i);
+    TEST_ASSERT(i == 0);
+    SCANF_TEST(1, "1", "%i", &i);
+    TEST_ASSERT(i == 1);
+    SCANF_TEST(1, "0x7" INT_HEXDIG, "%i", &i);
+    TEST_ASSERT(i == INT_MAX);
+    SCANF_TEST(1, "0x0", "%i", &i);
+    TEST_ASSERT(i == 0);
+    SCANF_TEST(1, "00", "%i%n", &i, &n);
+    TEST_ASSERT(i == 0);
+    TEST_ASSERT(n == 2);
+
+    /* domain testing on 'unsigned int' type */
+    SCANF_TEST(1, UINT_MAX_DEZ_STR, "%u", &u);
+    TEST_ASSERT(u == UINT_MAX);
+    SCANF_TEST(1, "0", "%u", &u);
+    TEST_ASSERT(u == 0);
+    SCANF_TEST(1, "f" INT_HEXDIG, "%x", &u);
+    TEST_ASSERT(u == UINT_MAX);
+    SCANF_TEST(1, "7" INT_HEXDIG, "%x", &u);
+    TEST_ASSERT(u == INT_MAX);
+    SCANF_TEST(1, "0", "%o", &u);
+    TEST_ASSERT(u == 0);
+    SCANF_TEST(1, INT_OCTDIG, "%o", &u);
+    TEST_ASSERT(u == UINT_MAX);
+    /* testing %c */
+    memset(buffer, '\0', 100);
+    SCANF_TEST(1, "x", "%c", buffer);
+    TEST_ASSERT(memcmp(buffer, "x\0", 2) == 0);
+    /* testing %s */
+    memset(buffer, '\0', 100);
+    SCANF_TEST(1, "foo bar", "%s%n", buffer, &n);
+    TEST_ASSERT(memcmp(buffer, "foo\0", 4) == 0);
+    TEST_ASSERT(n == 3);
+    SCANF_TEST(2, "foo bar  baz", "%s %s %n", buffer, buffer + 4, &n);
+    TEST_ASSERT(n == 9);
+    TEST_ASSERT(memcmp(buffer, "foo\0bar\0", 8) == 0);
+    /* testing %[ */
+    SCANF_TEST(1, "abcdefg", "%[cba]", buffer);
+    TEST_ASSERT(memcmp(buffer, "abc\0", 4) == 0);
+    SCANF_TEST(-1, "", "%[cba]", buffer);
+    SCANF_TEST(1, "3", "%u%[cba]", &u, buffer);
+    /* testing %p */
+    p = NULL;
+    sprintf(buffer, "%p", (void*)p);
+    p = &i;
+    SCANF_TEST(1, buffer, "%p", (void**)&p);
+    TEST_ASSERT(p == NULL);
+    p = &i;
+    sprintf(buffer, "%p", (void*)p);
+    p = NULL;
+    SCANF_TEST(1, buffer, "%p", (void**)&p);
+    TEST_ASSERT(p == &i);
+    /* errors */
+    SCANF_TEST(EOF, "", "%d", &i);
+    SCANF_TEST(1, "foo", "%5c", buffer);
+    TEST_ASSERT(memcmp(buffer, "foo", 3) == 0);
+
+    return 0;
+}
+
+TEST_DEFINE(vsscanf)
+{
+    for (int k = 0; k < 1; ++k)
     {
-        const char* rc;
-
-        if ((*format != '%') || ((rc = _scan(format, &ctx)) == format))
-        {
-            /* No conversion specifier, match verbatim */
-            if (isspace((unsigned char)*format))
-            {
-                /* Whitespace char in format string: Skip all whitespaces */
-                /* No whitespaces in input do not result in matching error */
-                while (isspace((unsigned char)*ctx.buffer))
-                {
-                    ++ctx.buffer;
-                    ++ctx.totalChars;
-                }
-            }
-            else
-            {
-                /* Non-whitespace char in format string: Match verbatim */
-                if (*ctx.buffer != *format)
-                {
-                    if (*ctx.buffer == '\0' && ctx.maxChars == 0)
-                    {
-                        /* Early input error */
-                        return EOF;
-                    }
-
-                    /* Matching error */
-                    return ctx.maxChars;
-                }
-                else
-                {
-                    ++ctx.buffer;
-                    ++ctx.totalChars;
-                }
-            }
-
-            ++format;
-        }
-        else
-        {
-            /* NULL return code indicates error */
-            if (rc == NULL)
-            {
-                if ((*ctx.buffer == '\n') && (ctx.maxChars == 0))
-                {
-                    ctx.maxChars = EOF;
-                }
-
-                break;
-            }
-
-            /* Continue parsing after conversion specifier */
-            format = rc;
-        }
+        TEST_ASSERT(_test_vsscanf_iter() != ERR);
     }
 
-    va_end(ctx.arg);
-    return ctx.maxChars;
+    return 0;
 }
+
+#endif
+#endif

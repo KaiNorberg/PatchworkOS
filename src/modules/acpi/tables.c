@@ -19,7 +19,7 @@ static acpi_cached_table_t* cachedTables = NULL;
 
 static dentry_t* tablesDir = NULL;
 
-static uint64_t acpi_table_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t acpi_table_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     if (file == NULL || buffer == NULL || offset == NULL)
     {

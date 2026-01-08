@@ -13,13 +13,23 @@
  */
 
 /**
+ * @brief PS/2 keyboard flags.
+ * @enum ps2_kbd_flags_t
+ */
+typedef enum
+{
+    PS2_KBD_NONE = 0,
+    PS2_KBD_EXTENDED = 1 << 0,
+    PS2_KBD_RELEASE = 1 << 1,
+} ps2_kbd_flags_t;
+
+/**
  * @brief PS/2 keyboard private data.
  * @struct ps2_kbd_data_t
  */
 typedef struct
 {
-    bool isExtended; // True if the current packet contains `PS2_DEV_RESPONSE_KBD_EXTENDED`.
-    bool isRelease;  // True if the current packet contains `PS2_DEV_RESPONSE_KBD_RELEASE`.
+    ps2_kbd_flags_t flags;
     kbd_t* kbd;
 } ps2_kbd_data_t;
 

@@ -2,10 +2,10 @@
 #include <kernel/cpu/gdt.h>
 #include <kernel/fs/ctl.h>
 #include <kernel/fs/dentry.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/devfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>

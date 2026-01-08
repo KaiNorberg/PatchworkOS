@@ -30,7 +30,8 @@ static void superblock_free(superblock_t* superblock)
     free(superblock);
 }
 
-superblock_t* superblock_new(filesystem_t* fs, dev_t device, const superblock_ops_t* ops, const dentry_ops_t* dentryOps)
+superblock_t* superblock_new(filesystem_t* fs, block_device_t* device, const superblock_ops_t* ops,
+    const dentry_ops_t* dentryOps)
 {
     if (fs == NULL)
     {
@@ -47,11 +48,12 @@ superblock_t* superblock_new(filesystem_t* fs, dev_t device, const superblock_op
 
     ref_init(&superblock->ref, superblock_free);
     list_entry_init(&superblock->entry);
-    superblock->device = device;
+    superblock->id = vfs_id_get();
     superblock->blockSize = PAGE_SIZE;
     superblock->maxFileSize = UINT64_MAX;
     superblock->private = NULL;
     superblock->root = NULL;
+    superblock->device = device;
     superblock->ops = ops;
     superblock->dentryOps = dentryOps;
     superblock->fs = fs;

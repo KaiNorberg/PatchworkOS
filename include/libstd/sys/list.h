@@ -47,7 +47,7 @@ typedef struct list
 {
     list_entry_t head; ///< The head of the list, where head::prev is the last entry of the list and head::next is the
                        ///< first entry of the list.
-    uint64_t length;   ///< The number of elements in the list (excluding the head).
+    size_t length;     ///< The number of elements in the list (excluding the head).
 } list_t;
 
 /**

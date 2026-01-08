@@ -29,6 +29,13 @@ SECTIONS
         *(.bss)
     }
 
+    ._tests : 
+    {
+        _testsStart = .;
+        KEEP(*(._tests))
+        _testsEnd = .;
+    }
+
     .syscall_table :
     {
         _syscallTableStart = .;

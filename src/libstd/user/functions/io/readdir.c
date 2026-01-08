@@ -6,7 +6,7 @@
 #include "common/print.h"
 #include "user/common/syscalls.h"
 
-uint64_t readdir(fd_t fd, dirent_t** buffer, uint64_t* count)
+size_t readdir(fd_t fd, dirent_t** buffer, uint64_t* count)
 {
     uint64_t size = 1024 * sizeof(dirent_t);
     dirent_t* dirents = malloc(size);

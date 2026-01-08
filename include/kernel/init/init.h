@@ -18,7 +18,7 @@
  * Having the scheduler running lets us load the boot thread which will jump to `kmain()` where we can do the rest
  * of the kernel initialization.
  *
- * Will be called in the `_start()` function found in `start.s` with interrupts disabled.
+ * Will be called in the `_start()` function found in `start.S` with interrupts disabled.
  */
 _NORETURN void init_early(void);
 

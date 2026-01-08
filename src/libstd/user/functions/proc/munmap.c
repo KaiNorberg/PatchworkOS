@@ -3,7 +3,7 @@
 
 #include "user/common/syscalls.h"
 
-void* munmap(void* address, uint64_t length)
+void* munmap(void* address, size_t length)
 {
     void* result = _syscall_munmap(address, length);
     if (result == NULL)

@@ -43,10 +43,10 @@ typedef struct
 {
     uint32_t* physAddr;
     uint32_t* virtAddr;
-    uint64_t size;
-    uint32_t width;
-    uint32_t height;
-    uint32_t stride;
+    size_t size;
+    size_t width;
+    size_t height;
+    size_t stride;
 } boot_gop_t;
 
 #define BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, index) \
@@ -55,7 +55,7 @@ typedef struct
 typedef struct
 {
     EFI_MEMORY_DESCRIPTOR* descriptors;
-    uint64_t length;
+    size_t length;
     UINTN descSize;
     UINT32 descVersion;
     UINTN key;
@@ -66,7 +66,7 @@ typedef struct boot_file
     list_entry_t entry;
     char name[MAX_NAME];
     void* data;
-    uint64_t size;
+    size_t size;
 } boot_file_t;
 
 typedef struct boot_dir

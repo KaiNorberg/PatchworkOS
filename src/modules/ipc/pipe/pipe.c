@@ -1,4 +1,5 @@
 #include <kernel/fs/file.h>
+#include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -6,7 +7,7 @@
 #include <kernel/module/module.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
-#include <kernel/utils/ring.h>
+#include <kernel/utils/fifo.h>
 
 #include <assert.h>
 #include <stdlib.h>
@@ -34,10 +35,11 @@
  *
  * @{
  */
+
 typedef struct
 {
     void* buffer;
-    ring_t ring;
+    fifo_t ring;
     bool isReadClosed;
     bool isWriteClosed;
     wait_queue_t waitQueue;
@@ -45,111 +47,100 @@ typedef struct
     // Note: These pointers are just for checking which end the current file is, they should not be referenced.
     void* readEnd;
     void* writeEnd;
-} pipe_private_t;
+} pipe_t;
 
 static dentry_t* pipeDir = NULL;
 static dentry_t* newFile = NULL;
 
 static uint64_t pipe_open(file_t* file)
 {
-    pipe_private_t* private = malloc(sizeof(pipe_private_t));
-    if (private == NULL)
+    pipe_t* data = malloc(sizeof(pipe_t));
+    if (data == NULL)
     {
         return ERR;
     }
-  private
-    ->buffer = pmm_alloc();
-    if (private->buffer == NULL)
+    data->buffer = pmm_alloc();
+    if (data->buffer == NULL)
     {
-        free(private);
+        free(data);
         return ERR;
     }
-    ring_init(&private->ring, private->buffer, PAGE_SIZE);
-  private
-    ->isReadClosed = false;
-  private
-    ->isWriteClosed = false;
-    wait_queue_init(&private->waitQueue);
-    lock_init(&private->lock);
+    fifo_init(&data->ring, data->buffer, PAGE_SIZE);
+    data->isReadClosed = false;
+    data->isWriteClosed = false;
+    wait_queue_init(&data->waitQueue);
+    lock_init(&data->lock);
+    data->readEnd = file;
+    data->writeEnd = file;
 
-  private
-    ->readEnd = file;
-  private
-    ->writeEnd = file;
-
-    file->private = private;
+    file->private = data;
     return 0;
 }
 
 static uint64_t pipe_open2(file_t* files[2])
 {
-    pipe_private_t* private = malloc(sizeof(pipe_private_t));
-    if (private == NULL)
+    pipe_t* data = malloc(sizeof(pipe_t));
+    if (data == NULL)
     {
         return ERR;
     }
-  private
-    ->buffer = pmm_alloc();
-    if (private->buffer == NULL)
+    data->buffer = pmm_alloc();
+    if (data->buffer == NULL)
     {
-        free(private);
+        free(data);
         return ERR;
     }
-    ring_init(&private->ring, private->buffer, PAGE_SIZE);
-  private
-    ->isReadClosed = false;
-  private
-    ->isWriteClosed = false;
-    wait_queue_init(&private->waitQueue);
-    lock_init(&private->lock);
+    fifo_init(&data->ring, data->buffer, PAGE_SIZE);
+    data->isReadClosed = false;
+    data->isWriteClosed = false;
+    wait_queue_init(&data->waitQueue);
+    lock_init(&data->lock);
 
-  private
-    ->readEnd = files[PIPE_READ];
-  private
-    ->writeEnd = files[PIPE_WRITE];
+    data->readEnd = files[PIPE_READ];
+    data->writeEnd = files[PIPE_WRITE];
 
-    files[0]->private = private;
-    files[1]->private = private;
+    files[0]->private = data;
+    files[1]->private = data;
     return 0;
 }
 
 static void pipe_close(file_t* file)
 {
-    pipe_private_t* private = file->private;
-    lock_acquire(&private->lock);
-    if (private->readEnd == file)
+    pipe_t* data = file->private;
+    lock_acquire(&data->lock);
+    if (data->readEnd == file)
     {
-      private
-        ->isReadClosed = true;
+        data->isReadClosed = true;
     }
-    if (private->writeEnd == file)
+    if (data->writeEnd == file)
     {
-      private
-        ->isWriteClosed = true;
+        data->isWriteClosed = true;
     }
 
-    wait_unblock(&private->waitQueue, WAIT_ALL, EOK);
-    if (private->isWriteClosed && private->isReadClosed)
+    wait_unblock(&data->waitQueue, WAIT_ALL, EOK);
+    if (data->isWriteClosed && data->isReadClosed)
     {
-        lock_release(&private->lock);
-        wait_queue_deinit(&private->waitQueue);
-        pmm_free(private->buffer);
-        free(private);
+        lock_release(&data->lock);
+        wait_queue_deinit(&data->waitQueue);
+        pmm_free(data->buffer);
+        free(data);
         return;
     }
 
-    lock_release(&private->lock);
+    lock_release(&data->lock);
 }
 
-static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t pipe_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
+    UNUSED(offset);
+
     if (count == 0)
     {
         return 0;
     }
 
-    pipe_private_t* private = file->private;
-    if (private->readEnd != file)
+    pipe_t* data = file->private;
+    if (data->readEnd != file)
     {
         errno = ENOSYS;
         return ERR;
@@ -161,30 +152,34 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* 
         return ERR;
     }
 
-    LOCK_SCOPE(&private->lock);
+    LOCK_SCOPE(&data->lock);
 
-    if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
-            ring_data_length(&private->ring) != 0 || private->isWriteClosed) == ERR)
+    if (fifo_bytes_readable(&data->ring) == 0)
     {
-        return ERR;
+        if (file->mode & MODE_NONBLOCK)
+        {
+            errno = EAGAIN;
+            return ERR;
+        }
+
+        if (WAIT_BLOCK_LOCK(&data->waitQueue, &data->lock,
+                fifo_bytes_readable(&data->ring) != 0 || data->isWriteClosed) == ERR)
+        {
+            return ERR;
+        }
     }
 
-    count = MIN(count, ring_data_length(&private->ring));
-    if (ring_read(&private->ring, buffer, count) == ERR)
-    {
-        panic(NULL, "Failed to read from pipe");
-    }
-
-    wait_unblock(&private->waitQueue, WAIT_ALL, EOK);
-
-    *offset += count;
-    return count;
+    uint64_t result = fifo_read(&data->ring, buffer, count);
+    wait_unblock(&data->waitQueue, WAIT_ALL, EOK);
+    return result;
 }
 
-static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t pipe_write(file_t* file, const void* buffer, size_t count, size_t* offset)
 {
-    pipe_private_t* private = file->private;
-    if (private->writeEnd != file)
+    UNUSED(offset);
+
+    pipe_t* data = file->private;
+    if (data->writeEnd != file)
     {
         errno = ENOSYS;
         return ERR;
@@ -196,47 +191,54 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uin
         return ERR;
     }
 
-    LOCK_SCOPE(&private->lock);
+    LOCK_SCOPE(&data->lock);
 
-    if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
-            ring_free_length(&private->ring) >= count || private->isReadClosed) == ERR)
+    if (fifo_bytes_writeable(&data->ring) == 0)
     {
-        return ERR;
+        if (file->mode & MODE_NONBLOCK)
+        {
+            errno = EAGAIN;
+            return ERR;
+        }
+
+        if (WAIT_BLOCK_LOCK(&data->waitQueue, &data->lock,
+                fifo_bytes_writeable(&data->ring) != 0 || data->isReadClosed) == ERR)
+        {
+            return ERR;
+        }
     }
 
-    if (private->isReadClosed)
+    if (data->isReadClosed)
     {
-        wait_unblock(&private->waitQueue, WAIT_ALL, EOK);
+        wait_unblock(&data->waitQueue, WAIT_ALL, EOK);
         errno = EPIPE;
         return ERR;
     }
 
-    if (ring_write(&private->ring, buffer, count) == ERR)
-    {
-        panic(NULL, "Failed to write to pipe");
-    }
-
-    wait_unblock(&private->waitQueue, WAIT_ALL, EOK);
-
-    *offset += count;
-    return count;
+    uint64_t result = fifo_write(&data->ring, buffer, count);
+    wait_unblock(&data->waitQueue, WAIT_ALL, EOK);
+    return result;
 }
 
 static wait_queue_t* pipe_poll(file_t* file, poll_events_t* revents)
 {
-    pipe_private_t* private = file->private;
-    LOCK_SCOPE(&private->lock);
+    pipe_t* data = file->private;
+    LOCK_SCOPE(&data->lock);
 
-    if (ring_data_length(&private->ring) != 0 || private->isWriteClosed)
+    if (fifo_bytes_readable(&data->ring) != 0 || data->isWriteClosed)
     {
         *revents |= POLLIN;
     }
-    if (ring_free_length(&private->ring) != 0 || private->isReadClosed)
+    if (fifo_bytes_writeable(&data->ring) > 0 || data->isReadClosed)
     {
         *revents |= POLLOUT;
     }
+    if ((file == data->readEnd && data->isWriteClosed) || (file == data->writeEnd && data->isReadClosed))
+    {
+        *revents |= POLLHUP;
+    }
 
-    return &private->waitQueue;
+    return &data->waitQueue;
 }
 
 static file_ops_t fileOps = {

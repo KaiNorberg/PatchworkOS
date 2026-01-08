@@ -1,12 +1,12 @@
 #pragma once
 
 #include <kernel/fs/dentry.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/inode.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
-#include <kernel/fs/devfs.h>
 #include <kernel/proc/process.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
@@ -35,7 +35,7 @@ typedef struct filesystem
     list_t superblocks;   ///< Used internally.
     rwlock_t lock;        ///< Used internally.
     const char* name;
-    dentry_t* (*mount)(filesystem_t* fs, dev_t dev, void* private);
+    dentry_t* (*mount)(filesystem_t* fs, block_device_t* device, void* private);
 } filesystem_t;
 
 /**

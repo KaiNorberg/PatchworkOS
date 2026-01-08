@@ -378,7 +378,7 @@ static uint64_t module_file_read(module_file_t* outFile, const path_t* dirPath, 
     }
     UNREF_DEFER(file);
 
-    uint64_t fileSize = vfs_seek(file, 0, SEEK_END);
+    size_t fileSize = vfs_seek(file, 0, SEEK_END);
     vfs_seek(file, 0, SEEK_SET);
     if (fileSize == ERR)
     {
@@ -599,7 +599,7 @@ static uint64_t module_cache_build(void)
     dirent_t buffer[PAGE_SIZE / sizeof(dirent_t)];
     while (true)
     {
-        uint64_t readCount = vfs_getdents(dir, buffer, sizeof(buffer));
+        size_t readCount = vfs_getdents(dir, buffer, sizeof(buffer));
         if (readCount == ERR)
         {
             module_cache_clear();

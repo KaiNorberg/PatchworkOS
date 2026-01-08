@@ -177,7 +177,7 @@ pml_flags_t vmm_prot_to_flags(prot_t prot);
  * - `ENOMEM`: Not enough memory.
  * - Other values from `space_mapping_start()`.
  */
-void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t pmlFlags, vmm_alloc_flags_t allocFlags);
+void* vmm_alloc(space_t* space, void* virtAddr, size_t length, pml_flags_t pmlFlags, vmm_alloc_flags_t allocFlags);
 
 /**
  * @brief Maps physical memory to virtual memory in a given address space.
@@ -202,7 +202,7 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t pml
  * - `ENOMEM`: Not enough memory.
  * - Other values from `space_mapping_start()`.
  */
-void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, pml_flags_t flags,
+void* vmm_map(space_t* space, void* virtAddr, void* physAddr, size_t length, pml_flags_t flags,
     space_callback_func_t func, void* private);
 
 /**
@@ -227,7 +227,7 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, p
  * - `ENOMEM`: Not enough memory.
  * - Other values from `space_mapping_start()`.
  */
-void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageAmount, pml_flags_t flags,
+void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, size_t pageAmount, pml_flags_t flags,
     space_callback_func_t func, void* private);
 
 /**
@@ -247,7 +247,7 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
  * - `EBUSY`: The region contains pinned pages.
  * - Other values from `space_mapping_start()`.
  */
-void* vmm_unmap(space_t* space, void* virtAddr, uint64_t length);
+void* vmm_unmap(space_t* space, void* virtAddr, size_t length);
 
 /**
  * @brief Changes memory protection flags for a virtual memory region in a given address space.
@@ -269,6 +269,6 @@ void* vmm_unmap(space_t* space, void* virtAddr, uint64_t length);
  * - `ENOENT`: The region is unmapped, or only partially mapped.
  * - Other values from `space_mapping_start()`.
  */
-void* vmm_protect(space_t* space, void* virtAddr, uint64_t length, pml_flags_t flags);
+void* vmm_protect(space_t* space, void* virtAddr, size_t length, pml_flags_t flags);
 
 /** @} */

@@ -15,7 +15,7 @@ void env_init(env_t* env)
 void env_deinit(env_t* env)
 {
     mutex_deinit(&env->mutex);
-    for (uint64_t i = 0; i < env->count; i++)
+    for (size_t i = 0; i < env->count; i++)
     {
         free(env->vars[i].key);
         free(env->vars[i].value);
@@ -33,7 +33,7 @@ uint64_t env_copy(env_t* dest, env_t* src)
 
     MUTEX_SCOPE(&src->mutex);
 
-    for (uint64_t i = 0; i < src->count; i++)
+    for (size_t i = 0; i < src->count; i++)
     {
         if (env_set(dest, src->vars[i].key, src->vars[i].value) == ERR)
         {
@@ -53,7 +53,7 @@ const char* env_get(env_t* env, const char* key)
 
     MUTEX_SCOPE(&env->mutex);
 
-    for (uint64_t i = 0; i < env->count; i++)
+    for (size_t i = 0; i < env->count; i++)
     {
         if (strcmp(env->vars[i].key, key) == 0)
         {
@@ -74,7 +74,7 @@ uint64_t env_set(env_t* env, const char* key, const char* value)
 
     MUTEX_SCOPE(&env->mutex);
 
-    for (uint64_t i = 0; i < env->count; i++)
+    for (size_t i = 0; i < env->count; i++)
     {
         if (strcmp(env->vars[i].key, key) != 0)
         {
@@ -134,7 +134,7 @@ uint64_t env_unset(env_t* env, const char* key)
 
     MUTEX_SCOPE(&env->mutex);
 
-    for (uint64_t i = 0; i < env->count; i++)
+    for (size_t i = 0; i < env->count; i++)
     {
         if (strcmp(env->vars[i].key, key) != 0)
         {
@@ -144,7 +144,7 @@ uint64_t env_unset(env_t* env, const char* key)
         free(env->vars[i].key);
         free(env->vars[i].value);
 
-        for (uint64_t j = i; j < env->count - 1; j++)
+        for (size_t j = i; j < env->count - 1; j++)
         {
             env->vars[j] = env->vars[j + 1];
         }

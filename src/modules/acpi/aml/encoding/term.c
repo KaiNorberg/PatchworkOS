@@ -10,7 +10,6 @@
 #include <modules/acpi/aml/encoding/statement.h>
 #include <modules/acpi/aml/runtime/convert.h>
 #include <modules/acpi/aml/state.h>
-#include <modules/acpi/aml/tests.h>
 #include <modules/acpi/aml/token.h>
 
 #include <errno.h>

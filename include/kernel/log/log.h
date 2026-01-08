@@ -25,16 +25,6 @@
 #define LOG_MAX_BUFFER 0x1000
 
 /**
- * @brief Logging output options.
- */
-typedef enum
-{
-    LOG_OUTPUT_SERIAL = 1 << 0,
-    LOG_OUTPUT_SCREEN = 1 << 1,
-    LOG_OUTPUT_FILE = 1 << 2
-} log_output_t;
-
-/**
  * @brief Log levels.
  */
 typedef enum
@@ -53,14 +43,9 @@ typedef enum
 void log_init(void);
 
 /**
- * @brief Enable logging to the screen.
+ * @brief Expose kernel logs via the `/dev/klog` file.
  */
-void log_screen_enable(void);
-
-/**
- * @brief Disable logging to the screen.
- */
-void log_screen_disable(void);
+void log_expose(void);
 
 /**
  * @brief Print a unformatted log message.

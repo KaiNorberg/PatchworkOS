@@ -11,9 +11,9 @@ extern "C"
 #include "_internal/clock_t.h"
 
 /**
- * @brief Keyboard device header.
+ * @brief Keyboard keycodes.
  * @ingroup libstd
- * @defgroup libstd_sys_kbd Keyboard device
+ * @defgroup libstd_sys_kbd Keyboard Keycodes
  *
  * @{
  */
@@ -21,6 +21,8 @@ extern "C"
 /**
  * @brief Keyboard keycode type.
  * @ingroup libstd_sys_kbd
+ *
+ * We use USB HID Usage Tables for keycode definitions.
  *
  */
 typedef enum
@@ -99,19 +101,20 @@ typedef enum
     KBD_F11 = 0x44, ///< F11 key
     KBD_F12 = 0x45, ///< F12 key
 
-    KBD_SYSRQ = 0x46,       ///< SysRq key
-    KBD_SCROLL_LOCK = 0x47, ///< Scroll Lock key
-    KBD_PAUSE = 0x48,       ///< Pause key
-    KBD_INSERT = 0x49,      ///< Insert key
-    KBD_HOME = 0x4A,        ///< Home key
-    KBD_PAGE_UP = 0x4B,     ///< Page Up key
-    KBD_DELETE = 0x4C,      ///< Delete key
-    KBD_END = 0x4D,         ///< End key
-    KBD_PAGE_DOWN = 0x4E,   ///< Page Down key
-    KBD_RIGHT = 0x4F,       ///< Right arrow key
-    KBD_LEFT = 0x50,        ///< Left arrow key
-    KBD_DOWN = 0x51,        ///< Down arrow key
-    KBD_UP = 0x52,          ///< Up arrow key
+    KBD_SYSRQ = 0x46,        ///< SysRq key
+    KBD_PRINT_SCREEN = 0x46, ///< Print Screen key
+    KBD_SCROLL_LOCK = 0x47,  ///< Scroll Lock key
+    KBD_PAUSE = 0x48,        ///< Pause key
+    KBD_INSERT = 0x49,       ///< Insert key
+    KBD_HOME = 0x4A,         ///< Home key
+    KBD_PAGE_UP = 0x4B,      ///< Page Up key
+    KBD_DELETE = 0x4C,       ///< Delete key
+    KBD_END = 0x4D,          ///< End key
+    KBD_PAGE_DOWN = 0x4E,    ///< Page Down key
+    KBD_RIGHT = 0x4F,        ///< Right arrow key
+    KBD_LEFT = 0x50,         ///< Left arrow key
+    KBD_DOWN = 0x51,         ///< Down arrow key
+    KBD_UP = 0x52,           ///< Up arrow key
 
     KBD_NUM_LOCK = 0x53,    ///< Num Lock key
     KBD_KP_SLASH = 0x54,    ///< Keypad Slash
@@ -133,6 +136,7 @@ typedef enum
 
     KBD_102ND = 0x64,    ///< 102nd key
     KBD_COMPOSE = 0x65,  ///< Compose key
+    KBD_MENU = 0x65,     ///< Menu / Application key
     KBD_POWER = 0x66,    ///< Power key
     KBD_KP_EQUAL = 0x67, ///< Keypad Equal
 
@@ -276,46 +280,6 @@ typedef enum
     KBD_MEDIA_REFRESH = 0xFA,       ///< Media Refresh key
     KBD_MEDIA_CALC = 0xFB,          ///< Media Calculator key
 } keycode_t;
-
-/**
- * @brief Keyboard event type.
- * @ingroup libstd_sys_kbd
- *
- */
-typedef enum
-{
-    KBD_PRESS = 0,  ///< Key press event
-    KBD_RELEASE = 1 ///< Key release event
-} kbd_event_type_t;
-
-/**
- * @brief Keyboard modifiers type.
- * @ingroup libstd_sys_kbd
- *
- */
-typedef enum
-{
-    KBD_MOD_NONE = 0,       ///< No modifier
-    KBD_MOD_CAPS = 1 << 0,  ///< Caps Lock modifier
-    KBD_MOD_SHIFT = 1 << 1, ///< Shift modifier
-    KBD_MOD_CTRL = 1 << 2,  ///< Control modifier
-    KBD_MOD_ALT = 1 << 3,   ///< Alt modifier
-    KBD_MOD_SUPER = 1 << 4, ///< Super (Windows/Command) modifier
-} kbd_mods_t;
-
-/**
- * @brief Keyboard event structure.
- * @ingroup libstd_sys_kbd
- *
- * The `kbd_event_t` structure read from a keyboards stream file, for example `/dev/kbd/0/events`.
- */
-typedef struct
-{
-    clock_t time;          ///< Timestamp of the event
-    kbd_event_type_t type; ///< Type of keyboard event (press or release)
-    kbd_mods_t mods;       ///< Active keyboard modifiers
-    keycode_t code;        ///< Keycode of the key involved in the event
-} kbd_event_t;
 
 #if defined(__cplusplus)
 }

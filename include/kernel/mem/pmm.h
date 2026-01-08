@@ -46,7 +46,7 @@ void* pmm_alloc(void);
  * @param count The number of pages to allocate.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t pmm_alloc_pages(void** addresses, uint64_t count);
+uint64_t pmm_alloc_pages(void** addresses, size_t count);
 
 /**
  * @brief Allocates a contiguous region of physical pages managed by the bitmap.
@@ -61,7 +61,7 @@ uint64_t pmm_alloc_pages(void** addresses, uint64_t count);
  * @param alignment The required alignment for the allocated region, in bytes.
  * @return On success, returns the higher half physical address of the allocated region. On failure, returns `NULL`.
  */
-void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment);
+void* pmm_alloc_bitmap(size_t count, uintptr_t maxAddr, uint64_t alignment);
 
 /**
  * @brief Frees a single physical page.
@@ -82,7 +82,7 @@ void pmm_free(void* address);
  * @param addresses An array containing the higher half physical addresses of the pages to free.
  * @param count The number of pages to free.
  */
-void pmm_free_pages(void** addresses, uint64_t count);
+void pmm_free_pages(void** addresses, size_t count);
 
 /**
  * @brief Frees a contiguous region of physical pages.
@@ -93,21 +93,21 @@ void pmm_free_pages(void** addresses, uint64_t count);
  * @param address The higher half physical address of the first page in the region to free.
  * @param count The number of pages to free.
  */
-void pmm_free_region(void* address, uint64_t count);
+void pmm_free_region(void* address, size_t count);
 
 /**
  * @brief Retrieves the total amount of physical memory managed by the PMM.
  *
  * @return The total amount of physical memory in pages.
  */
-uint64_t pmm_total_amount(void);
+size_t pmm_total_amount(void);
 
 /**
  * @brief Retrieves the amount of free physical memory.
  *
  * @return The amount of currently free physical memory in pages.
  */
-uint64_t pmm_free_amount(void);
+size_t pmm_free_amount(void);
 
 /**
  * @brief Retrieves the amount of reserved physical memory.
@@ -116,6 +116,6 @@ uint64_t pmm_free_amount(void);
  *
  * @return The amount of reserved physical memory in pages.
  */
-uint64_t pmm_used_amount(void);
+size_t pmm_used_amount(void);
 
 /** @} */

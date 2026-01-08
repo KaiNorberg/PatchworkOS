@@ -1,12 +1,14 @@
+#include <kernel/fs/devfs.h>
+#include <kernel/fs/file.h>
 #include <kernel/log/log.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/drivers/com.h>
 #include <kernel/init/boot_info.h>
-#include <kernel/log/log_file.h>
-#include <kernel/log/log_screen.h>
+#include <kernel/log/screen.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
+#include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 
 #include <boot/boot_info.h>
@@ -15,16 +17,21 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/io.h>
+#include <sys/math.h>
 #include <sys/proc.h>
 
 static lock_t lock = LOCK_CREATE();
 
+static char klogBuffer[CONFIG_KLOG_SIZE];
+static uint64_t klogHead = 0;
+static wait_queue_t klogQueue = WAIT_QUEUE_CREATE(klogQueue);
+static dentry_t* klog = NULL;
+
 static char lineBuffer[LOG_MAX_BUFFER] = {0};
 static char workingBuffer[LOG_MAX_BUFFER] = {0};
-static log_output_t outputs = 0;
-static log_level_t minLevel = 0;
-static bool isLastCharNewline = 0;
+static bool isLastCharNewline = false;
 static bool firstHeaderPrinted = false;
 
 static const char* levelNames[] = {
@@ -36,6 +43,63 @@ static const char* levelNames[] = {
     [LOG_LEVEL_PANIC] = "P",
 };
 
+static size_t klog_read(file_t* file, void* buffer, size_t count, size_t* offset)
+{
+    LOCK_SCOPE(&lock);
+
+    if (*offset >= klogHead)
+    {
+        if (file->mode & MODE_NONBLOCK)
+        {
+            errno = EAGAIN;
+            return ERR;
+        }
+
+        if (WAIT_BLOCK_LOCK(&klogQueue, &lock, *offset < klogHead))
+        {
+            return ERR;
+        }
+    }
+
+    for (size_t i = 0; i < count; i++)
+    {
+        if (*offset >= klogHead)
+        {
+            return i;
+        }
+
+        ((char*)buffer)[i] = klogBuffer[(*offset)++ % CONFIG_KLOG_SIZE];
+    }
+    
+    return count;
+}
+
+static size_t klog_write(file_t* file, const void* buffer, size_t count, size_t* offset)
+{
+    UNUSED(file);
+    UNUSED(offset);
+
+    log_nprint(LOG_LEVEL_INFO, buffer, count);
+    return count;
+}
+
+static wait_queue_t* klog_poll(file_t* file, poll_events_t* revents)
+{
+    LOCK_SCOPE(&lock);
+
+    if (file->pos < klogHead)
+    {
+        *revents |= POLLIN;
+    }
+    return &klogQueue;
+}
+
+static file_ops_t klogOps = {
+    .read = klog_read,
+    .write = klog_write,
+    .poll = klog_poll,
+};
+
 static void log_splash(void)
 {
 #ifdef NDEBUG
@@ -43,75 +107,60 @@ static void log_splash(void)
 #else
     LOG_INFO("Booting %s-kernel DEBUG %s (Built %s %s)\n", OS_NAME, OS_VERSION, __DATE__, __TIME__);
 #endif
-    LOG_INFO("Copyright (C) 2025 Kai Norberg. MIT Licensed. See /usr/license/LICENSE for details.\n");
-    LOG_INFO("min_level=%s outputs=%s%s%s\n", levelNames[minLevel], (outputs & LOG_OUTPUT_SERIAL) ? "serial " : "",
-        (outputs & LOG_OUTPUT_SCREEN) ? "screen " : "", (outputs & LOG_OUTPUT_FILE) ? "file " : "");
+    LOG_INFO("Copyright (C) 2025 Kai Norberg. MIT Licensed.\n");
 }
 
 void log_init(void)
 {
     const boot_info_t* bootInfo = boot_info_get();
+    assert(bootInfo != NULL);
+
     const boot_gop_t* gop = &bootInfo->gop;
+    assert(gop->virtAddr != NULL);
 
-    log_screen_init(gop);
-
-    outputs = 0;
-#ifndef NDEBUG
-    minLevel = LOG_LEVEL_DEBUG;
-#else
-    minLevel = LOG_LEVEL_USER;
-#endif
     isLastCharNewline = true;
 
-    outputs |= LOG_OUTPUT_SCREEN;
-    outputs |= LOG_OUTPUT_FILE;
+    screen_init();
+
 #if CONFIG_LOG_SERIAL
     com_init(COM1);
-    outputs |= LOG_OUTPUT_SERIAL;
 #endif
 
     log_splash();
 }
 
-void log_screen_enable()
+void log_expose(void)
 {
     LOCK_SCOPE(&lock);
 
-    if (outputs & LOG_OUTPUT_SCREEN)
+    if (klog != NULL)
     {
         return;
     }
 
-    log_file_flush_to_screen();
-    outputs |= LOG_OUTPUT_SCREEN;
-}
-
-void log_screen_disable(void)
-{
-    LOCK_SCOPE(&lock);
-
-    outputs &= ~LOG_OUTPUT_SCREEN;
+    klog = devfs_file_new(NULL, "klog", NULL, &klogOps, NULL);
+    if (klog == NULL)
+    {
+        return;
+    }
 }
 
 static void log_write(const char* string, uint64_t length)
 {
-    if (outputs & LOG_OUTPUT_FILE)
+    for (uint64_t i = 0; i < length; i++)
     {
-        log_file_write(string, length);
+        klogBuffer[klogHead++ % CONFIG_KLOG_SIZE] = string[i];
     }
+    wait_unblock(&klogQueue, WAIT_ALL, EOK);
 
-    if (outputs & LOG_OUTPUT_SERIAL)
+#if CONFIG_LOG_SERIAL
+    for (uint64_t i = 0; i < length; i++)
     {
-        for (uint64_t i = 0; i < length; i++)
-        {
-            com_write(COM1, string[i]);
-        }
+        com_write(COM1, string[i]);
     }
+#endif
 
-    if (outputs & LOG_OUTPUT_SCREEN)
-    {
-        log_screen_write(string, length);
-    }
+    screen_write(string, length);
 }
 
 static void log_print_header(log_level_t level)
@@ -167,11 +216,6 @@ static void log_handle_char(log_level_t level, char chr)
 
 void log_nprint(log_level_t level, const char* string, uint64_t length)
 {
-    if (level < minLevel)
-    {
-        return;
-    }
-
     if (level != LOG_LEVEL_PANIC)
     {
         lock_acquire(&lock);
@@ -198,11 +242,6 @@ void log_print(log_level_t level, const char* format, ...)
 
 void log_vprint(log_level_t level, const char* format, va_list args)
 {
-    if (level < minLevel)
-    {
-        return;
-    }
-
     if (level != LOG_LEVEL_PANIC)
     {
         lock_acquire(&lock);

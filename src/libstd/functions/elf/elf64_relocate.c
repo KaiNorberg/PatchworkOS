@@ -37,6 +37,12 @@ uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset
                 break;
             case R_X86_64_GLOB_DAT:
             case R_X86_64_JUMP_SLOT:
+                if (sym->st_shndx != SHN_UNDEF)
+                {
+                    *patchAddr = base + value + rela[j].r_addend;
+                    break;
+                }
+
                 *patchAddr = (uint64_t)resolve_symbol(symName, private);
                 if (*patchAddr == 0)
                 {

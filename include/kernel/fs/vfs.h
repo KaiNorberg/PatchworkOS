@@ -1,12 +1,12 @@
 #pragma once
 
 #include <kernel/fs/dentry.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/inode.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
-#include <kernel/fs/devfs.h>
 #include <kernel/proc/process.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
@@ -68,7 +68,7 @@ file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* pr
  * @param count The number of bytes to read.
  * @return On success, the number of bytes read. On failure, `ERR` and `errno` is set.
  */
-uint64_t vfs_read(file_t* file, void* buffer, uint64_t count);
+size_t vfs_read(file_t* file, void* buffer, size_t count);
 
 /**
  * @brief Write to a file.
@@ -80,7 +80,7 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count);
  * @param count The number of bytes to write.
  * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
  */
-uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count);
+size_t vfs_write(file_t* file, const void* buffer, size_t count);
 
 /**
  * @brief Seek in a file.
@@ -92,7 +92,7 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count);
  * @param origin The origin to seek from.
  * @return On success, the new file position. On failure, `ERR` and `errno` is set.
  */
-uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin);
+size_t vfs_seek(file_t* file, ssize_t offset, seek_origin_t origin);
 
 /**
  * @brief Perform an ioctl operation on a file.
@@ -103,7 +103,7 @@ uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin);
  * @param size The size of the argument.
  * @return On success, the result of the ioctl. On failure, `ERR` and `errno` is set.
  */
-uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size);
+uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, size_t size);
 
 /**
  * @brief Memory map a file.
@@ -114,7 +114,7 @@ uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size);
  * @param flags The page table flags for the mapping.
  * @return On success, the mapped address. On failure, returns `NULL` and `errno` is set.
  */
-void* vfs_mmap(file_t* file, void* address, uint64_t length, pml_flags_t flags);
+void* vfs_mmap(file_t* file, void* address, size_t length, pml_flags_t flags);
 
 /**
  * @brief Poll multiple files.
@@ -134,7 +134,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout);
  * @param count The number of bytes to read.
  * @return On success, the number of bytes read. On failure, `ERR` and `errno` is set.
  */
-uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count);
+size_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count);
 
 /**
  * @brief Get file information.
@@ -165,7 +165,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
  * @param process The process performing the readlink.
  * @return On success, the number of bytes read. On failure, `ERR` and `errno` is set.
  */
-uint64_t vfs_readlink(inode_t* symlink, char* buffer, uint64_t size);
+size_t vfs_readlink(inode_t* symlink, char* buffer, size_t size);
 
 /**
  * @brief Create a symbolic link.
@@ -205,7 +205,7 @@ uint64_t vfs_id_get(void);
  */
 #define BUFFER_READ(buffer, count, offset, src, size) \
     ({ \
-        uint64_t readCount = (*(offset) <= (size)) ? MIN((count), (size) - *(offset)) : 0; \
+        size_t readCount = (*(offset) <= (size)) ? MIN((count), (size) - *(offset)) : 0; \
         memcpy((buffer), (src) + *(offset), readCount); \
         *(offset) += readCount; \
         readCount; \
@@ -217,14 +217,14 @@ uint64_t vfs_id_get(void);
  * @param buffer The destination buffer.
  * @param count The number of bytes to write.
  * @param offset A pointer to the current offset, will be updated.
- * @param src The source buffer.
- * @param size The size of the source buffer.
+ * @param dest The destination buffer.
+ * @param size The size of the destination buffer.
  * @return The number of bytes written.
  */
-#define BUFFER_WRITE(buffer, count, offset, src, size) \
+#define BUFFER_WRITE(buffer, count, offset, dest, size) \
     ({ \
-        uint64_t writeCount = (*(offset) <= (size)) ? MIN((count), (size) - *(offset)) : 0; \
-        memcpy((buffer) + *(offset), (src), writeCount); \
+        size_t writeCount = (*(offset) <= (size)) ? MIN((count), (size) - *(offset)) : 0; \
+        memcpy((dest) + *(offset), (buffer), writeCount); \
         *(offset) += writeCount; \
         writeCount; \
     })

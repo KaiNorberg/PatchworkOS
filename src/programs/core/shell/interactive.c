@@ -247,7 +247,7 @@ void interactive_shell(void)
     while (true)
     {
         char buffer[MAX_PATH];
-        uint64_t readCount = RETRY_EINTR(read(STDIN_FILENO, buffer, MAX_PATH));
+        size_t readCount = RETRY_EINTR(read(STDIN_FILENO, buffer, MAX_PATH));
         if (readCount == ERR)
         {
             printf("shell: failed to read input (%s)\n", strerror(errno));

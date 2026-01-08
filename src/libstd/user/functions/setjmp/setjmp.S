@@ -1,10 +1,12 @@
-[bits 64]
+.code64
+.intel_syntax noprefix
 
-global setjmp:function
+.global setjmp
+.type setjmp, @function
 
-section .text
+.text
 
-; rdi = address of jmp_buf
+// rdi = address of jmp_buf
 setjmp:
     mov [rdi + 0], rbx    
     mov [rdi + 8], rbp      
@@ -20,12 +22,12 @@ setjmp:
     mov [rdi + 56], rax
 
     sub rsp, 8
-    stmxcsr [rsp]
-    mov eax, [rsp]
+    stmxcsr dword ptr [rsp]
+    mov eax, dword ptr [rsp]
     mov [rdi + 64], eax
     
-    fnstcw [rsp] 
-    movzx eax, word [rsp]
+    fnstcw word ptr [rsp] 
+    movzx eax, word ptr [rsp]
     mov [rdi + 68], eax
     add rsp, 8
     

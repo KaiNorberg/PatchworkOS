@@ -2,9 +2,9 @@
 
 #include <kernel/drivers/perf.h>
 #include <kernel/fs/cwd.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/namespace.h>
-#include <kernel/fs/devfs.h>
 #include <kernel/ipc/note.h>
 #include <kernel/mem/space.h>
 #include <kernel/proc/env.h>

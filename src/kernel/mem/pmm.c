@@ -81,7 +81,7 @@ static void pmm_free_unlocked(void* address)
     }
 }
 
-static void pmm_free_pages_unlocked(void* address, uint64_t count)
+static void pmm_free_pages_unlocked(void* address, size_t count)
 {
     address = (void*)ROUND_DOWN(address, PAGE_SIZE);
 
@@ -94,18 +94,18 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
     }
     else if (physStart < CONFIG_PMM_BITMAP_MAX_ADDR)
     {
-        uint64_t bitmapPageCount = (CONFIG_PMM_BITMAP_MAX_ADDR - physStart) / PAGE_SIZE;
+        size_t bitmapPageCount = (CONFIG_PMM_BITMAP_MAX_ADDR - physStart) / PAGE_SIZE;
         pmm_bitmap_free(&bitmap, address, bitmapPageCount);
 
         uintptr_t stackAddr = PML_LOWER_TO_HIGHER(CONFIG_PMM_BITMAP_MAX_ADDR);
-        for (uint64_t i = 0; i < count - bitmapPageCount; i++)
+        for (size_t i = 0; i < count - bitmapPageCount; i++)
         {
             pmm_stack_free(&stack, (void*)(stackAddr + i * PAGE_SIZE));
         }
     }
     else
     {
-        for (uint64_t i = 0; i < count; i++)
+        for (size_t i = 0; i < count; i++)
         {
             pmm_stack_free(&stack, (void*)((uintptr_t)address + i * PAGE_SIZE));
         }
@@ -116,7 +116,7 @@ static void pmm_detect_memory(const boot_memory_map_t* map)
 {
     LOG_INFO("UEFI-provided memory map\n");
 
-    for (uint64_t i = 0; i < map->length; i++)
+    for (size_t i = 0; i < map->length; i++)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
 
@@ -131,7 +131,7 @@ static void pmm_detect_memory(const boot_memory_map_t* map)
 
 static void pmm_load_memory(const boot_memory_map_t* map)
 {
-    for (uint64_t i = 0; i < map->length; i++)
+    for (size_t i = 0; i < map->length; i++)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
 
@@ -181,17 +181,17 @@ void* pmm_alloc(void)
     return address;
 }
 
-uint64_t pmm_alloc_pages(void** addresses, uint64_t count)
+uint64_t pmm_alloc_pages(void** addresses, size_t count)
 {
     LOCK_SCOPE(&lock);
-    for (uint64_t i = 0; i < count; i++)
+    for (size_t i = 0; i < count; i++)
     {
         void* address = pmm_stack_alloc(&stack);
         if (address == NULL)
         {
             LOG_WARN("failed to allocate page %llu of %llu, there are %llu pages left\n", i, count, stack.free);
             // Free previously allocated pages.
-            for (uint64_t j = 0; j < i; j++)
+            for (size_t j = 0; j < i; j++)
             {
                 pmm_stack_free(&stack, addresses[j]);
                 addresses[j] = NULL;
@@ -204,7 +204,7 @@ uint64_t pmm_alloc_pages(void** addresses, uint64_t count)
     return 0;
 }
 
-void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
+void* pmm_alloc_bitmap(size_t count, uintptr_t maxAddr, uint64_t alignment)
 {
     LOCK_SCOPE(&lock);
     void* address = pmm_bitmap_alloc(&bitmap, count, maxAddr, alignment);
@@ -223,34 +223,34 @@ void pmm_free(void* address)
     pmm_free_unlocked(address);
 }
 
-void pmm_free_pages(void** addresses, uint64_t count)
+void pmm_free_pages(void** addresses, size_t count)
 {
     LOCK_SCOPE(&lock);
-    for (uint64_t i = 0; i < count; i++)
+    for (size_t i = 0; i < count; i++)
     {
         pmm_free_unlocked(addresses[i]);
     }
 }
 
-void pmm_free_region(void* address, uint64_t count)
+void pmm_free_region(void* address, size_t count)
 {
     LOCK_SCOPE(&lock);
     pmm_free_pages_unlocked(address, count);
 }
 
-uint64_t pmm_total_amount(void)
+size_t pmm_total_amount(void)
 {
     LOCK_SCOPE(&lock);
     return pageAmount;
 }
 
-uint64_t pmm_free_amount(void)
+size_t pmm_free_amount(void)
 {
     LOCK_SCOPE(&lock);
     return stack.free + bitmap.free;
 }
 
-uint64_t pmm_used_amount(void)
+size_t pmm_used_amount(void)
 {
     LOCK_SCOPE(&lock);
     return pageAmount - (stack.free + bitmap.free);

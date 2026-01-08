@@ -5,7 +5,7 @@
 
 static gdt_t gdt ALIGNED(PAGE_SIZE);
 
-static gdt_segment_t gdt_segment(gdt_access_t access, gdt_flags_t flags)
+static gdt_segment_t gdt_segment(uint16_t access, uint16_t flags)
 {
     gdt_segment_t entry;
     entry.limitLow = 0;
@@ -17,8 +17,7 @@ static gdt_segment_t gdt_segment(gdt_access_t access, gdt_flags_t flags)
     return entry;
 }
 
-static gdt_long_system_segment_t gdt_long_system_segment(gdt_access_t access, gdt_flags_t flags, uint64_t base,
-    uint32_t limit)
+static gdt_long_system_segment_t gdt_long_system_segment(uint16_t access, uint16_t flags, uint64_t base, uint32_t limit)
 {
     gdt_long_system_segment_t entry;
     entry.limitLow = (uint16_t)(limit & 0xFFFF);

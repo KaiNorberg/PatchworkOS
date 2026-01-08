@@ -1,16 +1,18 @@
-[bits 64]
+.code64
+.intel_syntax noprefix
 
-%include "kernel/cpu/gdt.inc"
+#include "kernel/cpu/gdt.h"
 
-global gdt_load_descriptor:function
+.global gdt_load_descriptor
+.type gdt_load_descriptor, @function
 
-section .text
+.text
 
-;rdi = gdt descriptor
+// rdi = gdt descriptor
 gdt_load_descriptor:
     lgdt  [rdi]
     push GDT_KERNEL_CODE
-    lea rax, [rel .reload_CS]
+    lea rax, [rip + .reload_CS]
     push rax
     retfq
 .reload_CS:

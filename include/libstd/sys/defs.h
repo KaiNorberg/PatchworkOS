@@ -105,7 +105,25 @@
  * @param x The array.
  * @return The number of elements in the array.
  */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#define ARRAY_SIZE(x) ((size_t)(sizeof(x) / sizeof((x)[0])))
+
+/**
+ * @brief Mark a condition as likely.
+ *
+ * This macro marks a condition as likely to help the compiler optimize branch prediction.
+ *
+ * @param x The condition.
+ */
+#define LIKELY(x) __builtin_expect(!!(x), 1)
+
+/**
+ * @brief Mark a condition as unlikely.
+ *
+ * This macro marks a condition as unlikely to help the compiler optimize branch prediction.
+ *
+ * @param x The condition.
+ */
+#define UNLIKELY(x) __builtin_expect(!!(x), 0)
 
 /** @} */
 

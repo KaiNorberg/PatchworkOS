@@ -1,12 +1,11 @@
-#include <modules/acpi/aml/tests.h>
-
-#ifdef TESTING
+#ifdef _TESTING_
 
 #include "acpica_tests/all_tests.h"
 
 #include <kernel/log/log.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
+#include <kernel/utils/test.h>
 #include <modules/acpi/aml/aml.h>
 #include <modules/acpi/aml/encoding/term.h>
 #include <modules/acpi/aml/object.h>
@@ -128,7 +127,7 @@ static uint64_t aml_tests_acpica_run_all(void)
     return 0;
 }
 
-uint64_t aml_tests_run_all(void)
+TEST_DEFINE(aml)
 {
     if (aml_tests_check_object_leak() == ERR)
     {

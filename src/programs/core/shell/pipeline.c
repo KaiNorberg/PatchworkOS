@@ -457,7 +457,7 @@ void pipeline_wait(pipeline_t* pipeline)
         }
 
         memset(pipeline->status, 0, sizeof(pipeline->status));
-        uint64_t readCount = RETRY_EINTR(read(wait, pipeline->status, sizeof(pipeline->status)));
+        size_t readCount = RETRY_EINTR(read(wait, pipeline->status, sizeof(pipeline->status)));
         close(wait);
         if (readCount == ERR)
         {

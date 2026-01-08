@@ -12,13 +12,15 @@
  * @brief Init Process.
  * @defgroup programs_init Init
  * @ingroup programs
- * 
- * The init process is the first user space process started by the kernel. It is responsible for setting up the "root namespace", the namespace the init process and boxd run in, and for spawning initial processes.
+ *
+ * The init process is the first user space process started by the kernel. It is responsible for setting up the "root
+ * namespace", the namespace the init process and boxd run in, and for spawning initial processes.
  *
  * ## Root Namespace
- * 
- * The init process creates the root namespace, which is the parent of all other user-space namespaces. Included below is an overview of the root namespace.
- * 
+ *
+ * The init process creates the root namespace, which is the parent of all other user-space namespaces. Included below
+ * is an overview of the root namespace.
+ *
  * <div align="center">
  * | Name                                | Type      | Description                        |
  * |-------------------------------------|-----------|------------------------------------|
@@ -40,7 +42,7 @@
  * | `/sbin`                             | directory | Essential system binaries.         |
  * | `/tmp`                              | tmpfs     | Temporary filesystem.              |
  * </div>
- * 
+ *
  */
 
 static uint64_t init_socket_addr_wait(const char* family, const char* addr)

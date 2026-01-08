@@ -1,9 +1,10 @@
 #include <kernel/fs/ctl.h>
 #include <kernel/fs/dentry.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/filesystem.h>
 #include <kernel/fs/mount.h>
+#include <kernel/fs/netfs.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/devfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -11,7 +12,6 @@
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sync/rwmutex.h>
-#include <kernel/fs/netfs.h>
 
 #include <sys/io.h>
 #include <sys/list.h>
@@ -93,7 +93,7 @@ static void netfs_data_close(file_t* file)
     UNREF(sock);
 }
 
-static uint64_t netfs_data_read(file_t* file, void* buf, size_t count, uint64_t* offset)
+static size_t netfs_data_read(file_t* file, void* buf, size_t count, size_t* offset)
 {
     socket_t* sock = file->private;
     assert(sock != NULL);
@@ -115,7 +115,7 @@ static uint64_t netfs_data_read(file_t* file, void* buf, size_t count, uint64_t*
     return sock->family->recv(sock, buf, count, offset, file->mode);
 }
 
-static uint64_t netfs_data_write(file_t* file, const void* buf, size_t count, uint64_t* offset)
+static size_t netfs_data_write(file_t* file, const void* buf, size_t count, size_t* offset)
 {
     socket_t* sock = file->private;
     assert(sock != NULL);
@@ -457,7 +457,7 @@ static void netfs_factory_close(file_t* file)
     UNREF(socket);
 }
 
-static uint64_t netfs_factory_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t netfs_factory_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     socket_t* socket = file->private;
     if (socket == NULL)
@@ -474,7 +474,7 @@ static file_ops_t factoryFileOps = {
     .read = netfs_factory_read,
 };
 
-static uint64_t netfs_addrs_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t netfs_addrs_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     netfs_family_file_ctx_t* ctx = file->inode->private;
     assert(ctx != NULL);
@@ -493,7 +493,7 @@ static uint64_t netfs_addrs_read(file_t* file, void* buffer, uint64_t count, uin
         return ERR;
     }
 
-    uint64_t length = 0;
+    size_t length = 0;
     socket_t* socket;
     LIST_FOR_EACH(socket, &ctx->family->sockets, listEntry)
     {
@@ -510,7 +510,7 @@ static uint64_t netfs_addrs_read(file_t* file, void* buffer, uint64_t count, uin
         length += snprintf(string + length, MAX_PATH, "%s\n", socket->address);
     }
 
-    uint64_t bytesRead = BUFFER_READ(buffer, count, offset, string, length);
+    size_t bytesRead = BUFFER_READ(buffer, count, offset, string, length);
     free(string);
     return bytesRead;
 }
@@ -766,7 +766,7 @@ static dentry_ops_t netDentryOps = {
     .iterate = netfs_iterate,
 };
 
-static dentry_t* netfs_mount(filesystem_t* fs, dev_t device, void* private)
+static dentry_t* netfs_mount(filesystem_t* fs, block_device_t* device, void* private)
 {
     UNUSED(private);
 

@@ -8,7 +8,7 @@
 
 #define BUFFER_SIZE 1024
 
-static uint64_t read_fd(fd_t fd, const char* name, bool hexOutput)
+static size_t read_fd(fd_t fd, const char* name, bool hexOutput)
 {
     while (1)
     {

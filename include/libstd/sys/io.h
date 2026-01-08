@@ -20,6 +20,7 @@ extern "C"
 #include "_internal/clock_t.h"
 #include "_internal/config.h"
 #include "_internal/fd_t.h"
+#include "_internal/ssize_t.h"
 #include "_internal/time_t.h"
 
 /**
@@ -127,7 +128,7 @@ uint64_t close(fd_t fd);
  * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and `errno`
  * is set.
  */
-uint64_t read(fd_t fd, void* buffer, uint64_t count);
+size_t read(fd_t fd, void* buffer, size_t count);
 
 /**
  * @brief Wrapper for reading a file directly into a null-terminated string.
@@ -141,25 +142,6 @@ uint64_t read(fd_t fd, void* buffer, uint64_t count);
 char* sread(fd_t fd);
 
 /**
- * @brief System call for writing to files.
- *
- * @param fd The file descriptor to write to.
- * @param buffer A pointer to the buffer containing the data to write.
- * @param count The number of bytes to write.
- * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
- */
-uint64_t write(fd_t fd, const void* buffer, uint64_t count);
-
-/**
- * @brief Wrapper for writing a null-terminated string to a file.
- *
- * @param fd The file descriptor to write to.
- * @param string The null-terminated string to write.
- * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
- */
-uint64_t swrite(fd_t fd, const char* string);
-
-/**
  * @brief Wrapper for reading a file directly using a path.
  *
  * Equivalent to calling `open()`, `seek()`, `read()`, and `close()` in sequence.
@@ -170,7 +152,7 @@ uint64_t swrite(fd_t fd, const char* string);
  * @param offset The offset in the file to start reading from.
  * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t readfile(const char* path, void* buffer, uint64_t count, uint64_t offset);
+size_t readfile(const char* path, void* buffer, size_t count, size_t offset);
 
 /**
  * @brief Wrapper for reading an entire file directly into a null-terminated string.
@@ -186,6 +168,25 @@ uint64_t readfile(const char* path, void* buffer, uint64_t count, uint64_t offse
 char* sreadfile(const char* path);
 
 /**
+ * @brief System call for writing to files.
+ *
+ * @param fd The file descriptor to write to.
+ * @param buffer A pointer to the buffer containing the data to write.
+ * @param count The number of bytes to write.
+ * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
+ */
+size_t write(fd_t fd, const void* buffer, size_t count);
+
+/**
+ * @brief Wrapper for writing a null-terminated string to a file.
+ *
+ * @param fd The file descriptor to write to.
+ * @param string The null-terminated string to write.
+ * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
+ */
+size_t swrite(fd_t fd, const char* string);
+
+/**
  * @brief Wrapper for writing to a file directly using a path.
  *
  * Equivalent to calling `open()`, `seek()`, `write()`, and `close()` in sequence.
@@ -196,7 +197,7 @@ char* sreadfile(const char* path);
  * @param offset The offset in the file to start writing to.
  * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
  */
-uint64_t writefile(const char* path, const void* buffer, uint64_t count, uint64_t offset);
+size_t writefile(const char* path, const void* buffer, size_t count, size_t offset);
 
 /**
  * @brief Wrapper for writing a null-terminated string directly to a file using a path.
@@ -207,7 +208,7 @@ uint64_t writefile(const char* path, const void* buffer, uint64_t count, uint64_
  * @param string The null-terminated string to write.
  * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
  */
-uint64_t swritefile(const char* path, const char* string);
+size_t swritefile(const char* path, const char* string);
 
 /**
  * @brief Wrapper for reading from a file descriptor using scan formatting.
@@ -219,15 +220,37 @@ uint64_t swritefile(const char* path, const char* string);
 uint64_t scan(fd_t fd, const char* format, ...);
 
 /**
+ * @brief Wrapper for reading from a file descriptor using scan formatting with `va_list`.
+ *
+ * @param fd The file descriptor to read from.
+ * @param format The format string.
+ * @param args The va_list of arguments.
+ * @return On success, the number of input items successfully matched and assigned. On failure, `ERR`.
+ */
+uint64_t vscan(fd_t fd, const char* format, va_list args);
+
+/**
  * @brief Wrapper for reading from a file path using scan formatting.
  *
- * Equivalent to calling `open()`, `fscan()`, and `close()` in sequence.
+ * Equivalent to calling `open()`, `scan()`, and `close()` in sequence.
  *
  * @param path The path to the file.
  * @param format The format string.
  * @return On success, the number of input items successfully matched and assigned. On failure, `ERR`.
  */
 uint64_t scanfile(const char* path, const char* format, ...);
+
+/**
+ * @brief Wrapper for reading from a file path using scan formatting with `va_list`.
+ *
+ * Equivalent to calling `open()`, `vscan()`, and `close()` in sequence.
+ *
+ * @param path The path to the file.
+ * @param format The format string.
+ * @param args The va_list of arguments.
+ * @return On success, the number of input items successfully matched and assigned. On failure, `ERR`.
+ */
+uint64_t vscanfile(const char* path, const char* format, va_list args);
 
 /**
  * @brief Type for the `seek()` origin argument.
@@ -244,7 +267,7 @@ typedef uint8_t seek_origin_t;
  * @return On success, the new offset from the beginning of the file. On failure, `ERR` and `errno` is
  * set.
  */
-uint64_t seek(fd_t fd, int64_t offset, seek_origin_t origin);
+size_t seek(fd_t fd, ssize_t offset, seek_origin_t origin);
 
 /**
  * @brief System call for changing the cwd.
@@ -312,39 +335,38 @@ poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);
 
 /**
  * @brief Inode type enum.
- * @enum inode_type_t
+ * @enum itype_t
  */
 typedef enum
 {
     INODE_FILE,    ///< Is a file.
     INODE_DIR,     ///< Is a directory.
     INODE_SYMLINK, ///< Is a symbolic link.
-} inode_type_t;
+} itype_t;
 
 /**
- * @brief A value that uniquely identifies the inode within its filesystem.
+ * @brief A inode number that uniquely identifies the inode within its filesystem.
+ *
+ * When combined with a superblock ID, this can uniquely identify an inode within the entire system.
  */
 typedef uint64_t ino_t;
 
 /**
- * @brief A value that uniquely identifies a mounted device.
+ * @brief A suberblock identifier that uniquely identifies a superblock within the system.
+ *
+ * When combined with a inode number, this can uniquely identify an inode within the entire system.
  */
-typedef struct
-{
-    uint32_t type; ///< The type of the device, `0` is reserved for virtual devices.
-    uint32_t id;   ///< An identifier that uniquely identifies a device of the given type.
-} dev_t;
-
-#define DEV_IS_VIRTUAL(dev) ((dev).type == 0) ///< Checks if the given device is a virtual device.
+typedef uint64_t sbid_t;
 
 /**
  * @brief Stat type.
+ * @struct stat_t
  */
 typedef struct
 {
-    dev_t device;         ///< The device ID of the filesystem containing the file.
+    sbid_t sbid;          ///< The superblock ID of the filesystem containing the entry.
     ino_t number;         ///< The number of the entries inode.
-    inode_type_t type;    ///< The type of the entries inode.
+    itype_t type;         ///< The type of the entries inode.
     uint64_t size;        ///< The size of the file that is visible outside the filesystem.
     uint64_t blocks;      ///< The amount of blocks used on disk to store the file.
     uint64_t blockSize;   ///< The preferred block size of the filesystem.
@@ -384,7 +406,7 @@ uint64_t stat(const char* path, stat_t* stat);
  * @return On success, the return value depends on the driver but is usually 0. On failure, `ERR` and `errno` is
  * set.
  */
-uint64_t ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size);
+uint64_t ioctl(fd_t fd, uint64_t request, void* argp, size_t size);
 
 /**
  * @brief System call for duplicating file descriptors.
@@ -420,7 +442,7 @@ typedef enum
 typedef struct
 {
     ino_t number;
-    inode_type_t type;
+    itype_t type;
     dirent_flags_t flags;
     char path[MAX_PATH]; ///< The relative path of the entry.
     char mode[MAX_PATH]; ///< The flags of the paths mount.
@@ -435,7 +457,7 @@ typedef struct
  * @return On success, the total number of bytes written to the buffer. On failure,
  * returns `ERR` and `errno` is set.
  */
-uint64_t getdents(fd_t fd, dirent_t* buffer, uint64_t count);
+size_t getdents(fd_t fd, dirent_t* buffer, uint64_t count);
 
 /**
  * @brief Helper for reading all directory entries.
@@ -447,7 +469,7 @@ uint64_t getdents(fd_t fd, dirent_t* buffer, uint64_t count);
  * @param count Output pointer to store the number of bytes written to the buffer.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t readdir(fd_t fd, dirent_t** buffer, uint64_t* count);
+size_t readdir(fd_t fd, dirent_t** buffer, uint64_t* count);
 
 /**
  * @brief Wrapper for creating a directory.
@@ -560,7 +582,7 @@ uint64_t unmount(const char* mountpoint);
  * @param count The size of the buffer.
  * @return On success, the number of bytes read. On failure, `ERR` and `errno` is set.
  */
-uint64_t readlink(const char* path, char* buffer, uint64_t count);
+size_t readlink(const char* path, char* buffer, uint64_t count);
 
 /**
  * @brief System call for creating a symbolic link.

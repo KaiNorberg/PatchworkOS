@@ -2,9 +2,9 @@ $(BUILDDIR)/%.c.o: src/%.c
 	$(MKCWD)
 	$(CC) $(CFLAGS) -MMD -MP -MF $(BUILDDIR)/$*.c.d -c -o $@ $<
 
-$(BUILDDIR)/%.s.o: src/%.s
+$(BUILDDIR)/%.S.o: src/%.S
 	$(MKCWD)
-	$(AS) $(ASFLAGS) $< -o $@
+	$(AS) $(ASFLAGS) -MMD -MP -MF $(BUILDDIR)/$*.S.d -c -o $@ $<
 
 $(BINDIR)/%.a: $(OBJ)
 	$(MKCWD)

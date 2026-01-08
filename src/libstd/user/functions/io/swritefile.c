@@ -1,7 +1,7 @@
 #include <string.h>
 #include <sys/io.h>
 
-uint64_t swritefile(const char* path, const char* string)
+size_t swritefile(const char* path, const char* string)
 {
     fd_t fd = open(path);
     if (fd == ERR)

@@ -50,7 +50,7 @@
  * @todo Once filesystem servers are implemented the box deamon should use them instead of sockets.
  *
  * @todo Add a system for specifying environment variables.
- * 
+ *
  * @{
  */
 

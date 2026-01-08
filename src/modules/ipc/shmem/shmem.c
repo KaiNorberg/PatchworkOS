@@ -165,7 +165,7 @@ static void shmem_close(file_t* file)
     UNREF(shmem);
 }
 
-static void* shmem_mmap(file_t* file, void* address, uint64_t length, uint64_t* offset, pml_flags_t flags)
+static void* shmem_mmap(file_t* file, void* address, size_t length, size_t* offset, pml_flags_t flags)
 {
     shmem_object_t* shmem = file->private;
     if (shmem == NULL)

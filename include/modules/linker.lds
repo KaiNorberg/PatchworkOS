@@ -24,6 +24,13 @@ SECTIONS
         *(.bss)
     }
 
+    ._tests : 
+    {
+        _testsStart = .;
+        KEEP(*(._tests))
+        _testsEnd = .;
+    }
+    
     ._module_info : 
     {
         KEEP(*(._module_info))

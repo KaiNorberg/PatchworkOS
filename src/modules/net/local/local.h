@@ -55,17 +55,9 @@ typedef struct
  */
 typedef struct
 {
-    union {
-        struct
-        {
-            local_listen_t* listen;
-        } listen;
-        struct
-        {
-            local_conn_t* conn;
-            bool isServer;
-        } conn;
-    };
+    local_listen_t* listen;
+    local_conn_t* conn;
+    bool isServer;
 } local_socket_t;
 
 /** @} */

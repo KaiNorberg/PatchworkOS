@@ -37,7 +37,7 @@
  */
 #define CTL_STANDARD_WRITE_DEFINE(name, ...) \
     static ctl_t name##ctls[] = __VA_ARGS__; \
-    static uint64_t name(file_t* file, const void* buffer, uint64_t count, uint64_t* offset) \
+    static size_t name(file_t* file, const void* buffer, size_t count, size_t* offset) \
     { \
         UNUSED(offset); \
         return ctl_dispatch(name##ctls, file, buffer, count); \
@@ -83,6 +83,6 @@ typedef struct
  * @param count The number of bytes in the buffer.
  * @return On success, the number of bytes processed (count). On failure, `ERR` and `errno` is set.
  */
-uint64_t ctl_dispatch(ctl_t ctls[], file_t* file, const void* buffer, uint64_t count);
+uint64_t ctl_dispatch(ctl_t ctls[], file_t* file, const void* buffer, size_t count);
 
 /** @} */

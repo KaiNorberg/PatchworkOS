@@ -6,7 +6,7 @@
 #include "common/print.h"
 #include "user/common/syscalls.h"
 
-uint64_t read(fd_t fd, void* buffer, uint64_t count)
+size_t read(fd_t fd, void* buffer, size_t count)
 {
     uint64_t result = _syscall_read(fd, buffer, count);
     if (result == ERR)

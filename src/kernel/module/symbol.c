@@ -12,8 +12,8 @@
 #include <sys/proc.h>
 
 static symbol_addr_t** addrArray = NULL;
-static uint64_t addrAmount = 0;
-static uint64_t addrCapacity = 0;
+static size_t addrAmount = 0;
+static size_t addrCapacity = 0;
 
 static map_t nameMap = MAP_CREATE();
 
@@ -115,7 +115,7 @@ static uint64_t symbol_resolve_addr_unlocked(symbol_info_t* outSymbol, void* add
         return ERR;
     }
 
-    uint64_t index = symbol_get_floor_index_for_addr(addr);
+    size_t index = symbol_get_floor_index_for_addr(addr);
     if (index == addrAmount)
     {
         errno = ENOENT;
@@ -286,8 +286,8 @@ void symbol_remove_group(symbol_group_id_t groupId)
         return;
     }
 
-    uint64_t writeIdx = 0;
-    for (uint64_t readIdx = 0; readIdx < addrAmount; readIdx++)
+    size_t writeIdx = 0;
+    for (size_t readIdx = 0; readIdx < addrAmount; readIdx++)
     {
         if (addrArray[readIdx]->groupId != groupId)
         {

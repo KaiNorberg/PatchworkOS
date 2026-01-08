@@ -1,13 +1,13 @@
 #include <kernel/fs/tmpfs.h>
 
 #include <kernel/fs/dentry.h>
+#include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/filesystem.h>
 #include <kernel/fs/inode.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/devfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/init/boot_info.h>
 #include <kernel/log/log.h>
@@ -27,7 +27,7 @@
 
 static bool initialized = false;
 
-static inode_t* tmpfs_inode_new(superblock_t* superblock, inode_type_t type, void* buffer, uint64_t size);
+static inode_t* tmpfs_inode_new(superblock_t* superblock, itype_t type, void* buffer, uint64_t size);
 
 static void tmpfs_dentry_add(dentry_t* dentry)
 {
@@ -51,7 +51,7 @@ static void tmpfs_dentry_remove(dentry_t* dentry)
     dentry_remove(dentry);
 }
 
-static uint64_t tmpfs_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t tmpfs_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     MUTEX_SCOPE(&file->inode->mutex);
 
@@ -63,11 +63,11 @@ static uint64_t tmpfs_read(file_t* file, void* buffer, uint64_t count, uint64_t*
     return BUFFER_READ(buffer, count, offset, file->inode->private, file->inode->size);
 }
 
-static uint64_t tmpfs_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+static size_t tmpfs_write(file_t* file, const void* buffer, size_t count, size_t* offset)
 {
     MUTEX_SCOPE(&file->inode->mutex);
 
-    uint64_t requiredSize = *offset + count;
+    size_t requiredSize = *offset + count;
     if (requiredSize > file->inode->size)
     {
         void* newData = realloc(file->inode->private, requiredSize);
@@ -80,7 +80,7 @@ static uint64_t tmpfs_write(file_t* file, const void* buffer, uint64_t count, ui
         file->inode->size = requiredSize;
     }
 
-    return BUFFER_WRITE(file->inode->private, count, offset, buffer, file->inode->size);
+    return BUFFER_WRITE(buffer, count, offset, file->inode->private, file->inode->size);
 }
 
 static file_ops_t fileOps = {
@@ -276,7 +276,7 @@ static dentry_t* tmpfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     return REF(dentry);
 }
 
-static dentry_t* tmpfs_mount(filesystem_t* fs, dev_t device, void* private)
+static dentry_t* tmpfs_mount(filesystem_t* fs, block_device_t* device, void* private)
 {
     UNUSED(private);
 
@@ -335,7 +335,7 @@ static dentry_t* tmpfs_mount(filesystem_t* fs, dev_t device, void* private)
     return REF(superblock->root);
 }
 
-static inode_t* tmpfs_inode_new(superblock_t* superblock, inode_type_t type, void* buffer, uint64_t size)
+static inode_t* tmpfs_inode_new(superblock_t* superblock, itype_t type, void* buffer, uint64_t size)
 {
     inode_t* inode = inode_new(superblock, vfs_id_get(), type, &inodeOps, &fileOps);
     if (inode == NULL)

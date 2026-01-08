@@ -1,7 +1,9 @@
 #include <kernel/drivers/abstract/fb.h>
+#include <kernel/fs/vfs.h>
 #include <kernel/init/boot_info.h>
 #include <kernel/init/init.h>
 #include <kernel/log/log.h>
+#include <kernel/log/screen.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
@@ -10,7 +12,6 @@
 
 #include <errno.h>
 #include <string.h>
-#include <sys/fb.h>
 #include <sys/math.h>
 
 /**
@@ -26,29 +27,62 @@
 static boot_gop_t gop;
 static fb_t* fb;
 
-static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
+static uint64_t gop_info(fb_t* fb, fb_info_t* info)
 {
     UNUSED(fb);
 
+    info->width = gop.width;
+    info->height = gop.height;
+    info->pitch = gop.stride * sizeof(uint32_t);
+    strncpy(info->format, "B8G8R8A8", sizeof(info->format));
+    return 0;
+}
+
+static size_t gop_read(fb_t* fb, void* buffer, size_t count, size_t* offset)
+{
+    UNUSED(fb);
+
+    screen_hide();
+
+    size_t fbSize = gop.height * gop.stride * sizeof(uint32_t);
+    return BUFFER_READ(buffer, count, offset, ((uint8_t*)gop.virtAddr), fbSize);
+}
+
+static size_t gop_write(fb_t* fb, const void* buffer, size_t count, size_t* offset)
+{
+    UNUSED(fb);
+
+    screen_hide();
+
+    size_t fbSize = gop.height * gop.stride * sizeof(uint32_t);
+    return BUFFER_WRITE(buffer, count, offset, ((uint8_t*)gop.virtAddr), fbSize);
+}
+
+static void* gop_mmap(fb_t* fb, void* addr, size_t length, size_t* offset, pml_flags_t flags)
+{
+    UNUSED(fb);
+
+    screen_hide();
+
     process_t* process = sched_process();
 
-    uintptr_t physAddr = (uint64_t)gop.physAddr + *offset;
+    uintptr_t physAddr = (uintptr_t)gop.physAddr + *offset;
     uintptr_t endAddr = physAddr + length;
-    if (endAddr > (uint64_t)gop.physAddr + (gop.stride * gop.height * sizeof(uint32_t)))
+    if (endAddr > (uintptr_t)gop.physAddr + (gop.stride * gop.height * sizeof(uint32_t)))
     {
         errno = EINVAL;
         return NULL;
     }
 
-    addr = vmm_map(&process->space, addr, (void*)physAddr, length, flags, NULL, NULL);
-    if (addr == NULL)
-    {
-        return NULL;
-    }
-    return addr;
+    return vmm_map(&process->space, addr, (void*)physAddr, length, flags, NULL, NULL);
 }
 
-static fb_info_t info;
+static fb_ops_t ops = {
+    .info = gop_info,
+    .read = gop_read,
+    .write = gop_write,
+    .mmap = gop_mmap,
+};
 
 static uint64_t gop_init(void)
 {
@@ -60,21 +94,13 @@ static uint64_t gop_init(void)
     }
 
     gop = bootInfo->gop;
-    info.width = bootInfo->gop.width;
-    info.height = bootInfo->gop.height;
-    info.stride = bootInfo->gop.stride;
-    info.format = FB_ARGB32;
-    strncpy(info.name, "GOP Framebuffer", MAX_NAME - 1);
-    info.name[MAX_NAME - 1] = '\0';
-
-    fb = fb_new(&info, gop_mmap);
+    fb = fb_new("Graphics Output Protocol", &ops, NULL);
     if (fb == NULL)
     {
-        LOG_ERR("Failed to create GOP framebuffer");
+        LOG_ERR("failed to create GOP framebuffer");
         return ERR;
     }
 
-    LOG_INFO("GOP framebuffer initialized %ux%u\n", info.width, info.height);
     return 0;
 }
 

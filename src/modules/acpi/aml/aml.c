@@ -10,10 +10,6 @@
 #include <modules/acpi/aml/state.h>
 #include <modules/acpi/tables.h>
 
-#ifdef TESTING
-#include <modules/acpi/aml/tests.h>
-#endif
-
 #include <kernel/log/log.h>
 
 #include <errno.h>
@@ -164,14 +160,6 @@ uint64_t aml_init(void)
         LOG_ERR("there are still %llu unresolved objects after patch up\n", aml_patch_up_unresolved_count());
         return ERR;
     }
-
-#ifdef TESTING
-    if (aml_tests_run_all() == ERR)
-    {
-        LOG_ERR("failed to run tests post parse all\n");
-        return ERR;
-    }
-#endif
 
     return 0;
 }

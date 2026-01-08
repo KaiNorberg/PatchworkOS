@@ -201,7 +201,7 @@ typedef struct netfs_family
      * @param mode Mode flags for sending.
      * @return On success, number of bytes sent. On failure, `ERR` and `errno` is set.
      */
-    uint64_t (*send)(socket_t* sock, const void* buffer, uint64_t count, uint64_t* offset, mode_t mode);
+    size_t (*send)(socket_t* sock, const void* buffer, size_t count, size_t* offset, mode_t mode);
     /**
      * @brief Receive data on a socket.
      *
@@ -212,7 +212,7 @@ typedef struct netfs_family
      * @param mode Mode flags for receiving.
      * @return On success, number of bytes received. On failure, `ERR` and `errno` is set.
      */
-    uint64_t (*recv)(socket_t* sock, void* buffer, uint64_t count, uint64_t* offset, mode_t mode);
+    size_t (*recv)(socket_t* sock, void* buffer, size_t count, size_t* offset, mode_t mode);
     /**
      * @brief Poll a socket for events.
      *

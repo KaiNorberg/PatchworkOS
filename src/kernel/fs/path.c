@@ -61,14 +61,14 @@ static const path_flag_t flags[] = {
     {.mode = MODE_LOCKED, .name = "locked"},
 };
 
-static mode_t path_flag_to_mode(const char* flag, uint64_t length)
+static mode_t path_flag_to_mode(const char* flag, size_t length)
 {
     if (flag == NULL || length == 0)
     {
         return MODE_NONE;
     }
 
-    for (uint64_t i = 0; i < ARRAY_SIZE(flags); i++)
+    for (size_t i = 0; i < ARRAY_SIZE(flags); i++)
     {
         size_t len = strnlen_s(flags[i].name, MAX_NAME);
         if (len == length && strncmp(flag, flags[i].name, length) == 0)
@@ -78,7 +78,7 @@ static mode_t path_flag_to_mode(const char* flag, uint64_t length)
     }
 
     mode_t combinedMode = MODE_NONE;
-    for (uint64_t i = 0; i < length; i++)
+    for (size_t i = 0; i < length; i++)
     {
         if (flag[i] < 0 || (uint8_t)flag[i] >= INT8_MAX)
         {
@@ -344,7 +344,7 @@ static uint64_t path_follow_symlink(dentry_t* dentry, path_t* path, namespace_t*
     }
 
     char symlinkPath[MAX_PATH];
-    uint64_t readCount = vfs_readlink(dentry->inode, symlinkPath, MAX_PATH - 1);
+    size_t readCount = vfs_readlink(dentry->inode, symlinkPath, MAX_PATH - 1);
     if (readCount == ERR)
     {
         return ERR;
@@ -594,7 +594,7 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
         }
 
         size_t len = strnlen_s(dentry->name, MAX_NAME);
-        if ((uint64_t)(ptr - buffer) < len + 1)
+        if ((size_t)(ptr - buffer) < len + 1)
         {
             errno = ENAMETOOLONG;
             return ERR;
