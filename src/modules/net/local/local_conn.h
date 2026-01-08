@@ -2,8 +2,8 @@
 
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
+#include <kernel/utils/fifo.h>
 #include <kernel/utils/ref.h>
-#include <kernel/utils/ring.h>
 
 #include <sys/io.h>
 #include <sys/list.h>
@@ -29,9 +29,9 @@ typedef struct local_conn
 {
     ref_t ref;
     list_entry_t entry;
-    ring_t clientToServer;
+    fifo_t clientToServer;
     void* clientToServerBuffer;
-    ring_t serverToClient;
+    fifo_t serverToClient;
     void* serverToClientBuffer;
     local_listen_t* listen;
     bool isClosed;

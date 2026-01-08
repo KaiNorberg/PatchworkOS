@@ -8,7 +8,7 @@ size_t strnlen_s(const char* s, size_t maxsize)
         return 0;
     }
 
-    for (uint64_t i = 0; i < maxsize; i++)
+    for (size_t i = 0; i < maxsize; i++)
     {
         if (s[i] == '\0')
         {

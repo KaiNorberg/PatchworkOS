@@ -49,9 +49,9 @@ typedef struct fb fb_t;
  */
 typedef struct fb_info
 {
-    uint32_t width;
-    uint32_t height;
-    uint32_t pitch;
+    size_t width;
+    size_t height;
+    size_t pitch;
     char format[MAX_PATH];
 } fb_info_t;
 
@@ -62,9 +62,9 @@ typedef struct fb_info
 typedef struct fb_ops
 {
     uint64_t (*info)(fb_t* fb, fb_info_t* info);
-    uint64_t (*read)(fb_t* fb, void* buffer, uint64_t count, uint64_t* offset);
-    uint64_t (*write)(fb_t* fb, const void* buffer, uint64_t count, uint64_t* offset);
-    void* (*mmap)(fb_t* fb, void* address, uint64_t length, uint64_t* offset, pml_flags_t flags);
+    size_t (*read)(fb_t* fb, void* buffer, size_t count, size_t* offset);
+    size_t (*write)(fb_t* fb, const void* buffer, size_t count, size_t* offset);
+    void* (*mmap)(fb_t* fb, void* address, size_t length, size_t* offset, pml_flags_t flags);
     void (*cleanup)(fb_t* fb);
 } fb_ops_t;
 

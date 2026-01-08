@@ -146,7 +146,7 @@ typedef enum
  * @return On success, returns the address of the mapped memory, will always be page aligned, on failure returns `NULL`
  * and errno is set.
  */
-void* mmap(fd_t fd, void* address, uint64_t length, prot_t prot);
+void* mmap(fd_t fd, void* address, size_t length, prot_t prot);
 
 /**
  * @brief System call to unmap mapped memory.
@@ -157,7 +157,7 @@ void* mmap(fd_t fd, void* address, uint64_t length, prot_t prot);
  * @param length The length of the memory area to be unmapped.
  * @return On success, returns the address of the unmapped memory, on failure returns `NULL` and errno is set.
  */
-void* munmap(void* address, uint64_t length);
+void* munmap(void* address, size_t length);
 
 /**
  * @brief System call to change the protection flags of memory.
@@ -171,7 +171,7 @@ void* munmap(void* address, uint64_t length);
  * unmapped.
  * @return On success, returns the address of the modified memory area, on failure returns `NULL` and errno is set.
  */
-void* mprotect(void* address, uint64_t length, prot_t prot);
+void* mprotect(void* address, size_t length, prot_t prot);
 
 /**
  * @brief Futex operation enum.

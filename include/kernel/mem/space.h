@@ -169,7 +169,7 @@ void space_load(space_t* space);
  * - `EFAULT`: The region is not fully mapped or within the provided user stack.
  * - `ENOMEM`: Not enough memory.
  */
-uint64_t space_pin(space_t* space, const void* address, uint64_t length, stack_pointer_t* userStack);
+uint64_t space_pin(space_t* space, const void* address, size_t length, stack_pointer_t* userStack);
 
 /**
  * @brief Pins a region of memory terminated by a terminator value.
@@ -192,8 +192,8 @@ uint64_t space_pin(space_t* space, const void* address, uint64_t length, stack_p
  * - `EFAULT`: The region is not fully mapped or within the provided user stack.
  * - `ENOMEM`: Not enough memory.
  */
-uint64_t space_pin_terminated(space_t* space, const void* address, const void* terminator, uint8_t objectSize,
-    uint64_t maxCount, stack_pointer_t* userStack);
+uint64_t space_pin_terminated(space_t* space, const void* address, const void* terminator, size_t objectSize,
+    size_t maxCount, stack_pointer_t* userStack);
 
 /**
  * @brief Unpins pages in a region previously pinned with `space_pin()` or `space_pin_string()`.
@@ -204,7 +204,7 @@ uint64_t space_pin_terminated(space_t* space, const void* address, const void* t
  * @param address The address of the region to unpin, can be `NULL` if length is 0.
  * @param length The length of the region pointed to by `address`, in bytes.
  */
-void space_unpin(space_t* space, const void* address, uint64_t length);
+void space_unpin(space_t* space, const void* address, size_t length);
 
 /**
  * @brief Checks if a virtual memory region is within the allowed address range of the space.
@@ -221,7 +221,7 @@ void space_unpin(space_t* space, const void* address, uint64_t length);
  * - `EOVERFLOW`: Address overflow.
  * - `EFAULT`: The region is outside the allowed address range.
  */
-uint64_t space_check_access(space_t* space, const void* addr, uint64_t length);
+uint64_t space_check_access(space_t* space, const void* addr, size_t length);
 
 /**
  * @brief Helper structure for managing address space mappings.
@@ -231,7 +231,7 @@ typedef struct
 {
     void* virtAddr;
     void* physAddr;
-    uint64_t pageAmount;
+    size_t pageAmount;
     pml_flags_t flags;
 } space_mapping_t;
 
@@ -259,7 +259,7 @@ typedef struct
  * - `EFAULT`: The addresses are outside the allowed range.
  * - `ENOMEM`: Not enough memory.
  */
-uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, uint64_t length,
+uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, size_t length,
     pml_flags_t flags);
 
 /**
@@ -276,7 +276,7 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
  * @param private Private data to pass to the callback function.
  * @return On success, returns the callback ID. On failure, returns `PML_MAX_CALLBACK`.
  */
-pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, space_callback_func_t func, void* private);
+pml_callback_id_t space_alloc_callback(space_t* space, size_t pageAmount, space_callback_func_t func, void* private);
 
 /**
  * @brief Free a callback.
@@ -306,7 +306,7 @@ void space_free_callback(space_t* space, pml_callback_id_t callbackId);
  * @param virtAddr The starting virtual address of the region.
  * @param pageAmount The number of pages in the region.
  */
-void space_tlb_shootdown(space_t* space, void* virtAddr, uint64_t pageAmount);
+void space_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount);
 
 /**
  * @brief Performs cleanup after changes to the address space mappings.
@@ -329,7 +329,7 @@ void* space_mapping_end(space_t* space, space_mapping_t* mapping, errno_t err);
  * @param length The length of the memory region, in bytes.
  * @return `true` if the entire region is mapped, `false` otherwise.
  */
-bool space_is_mapped(space_t* space, const void* virtAddr, uint64_t length);
+bool space_is_mapped(space_t* space, const void* virtAddr, size_t length);
 
 /**
  * @brief Get the number of user pages allocated in the address space.

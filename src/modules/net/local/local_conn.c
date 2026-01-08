@@ -40,8 +40,8 @@ local_conn_t* local_conn_new(local_listen_t* listen)
 
     ref_init(&conn->ref, local_conn_free);
     list_entry_init(&conn->entry);
-    ring_init(&conn->serverToClient, conn->serverToClientBuffer, LOCAL_BUFFER_SIZE);
-    ring_init(&conn->clientToServer, conn->clientToServerBuffer, LOCAL_BUFFER_SIZE);
+    fifo_init(&conn->serverToClient, conn->serverToClientBuffer, LOCAL_BUFFER_SIZE);
+    fifo_init(&conn->clientToServer, conn->clientToServerBuffer, LOCAL_BUFFER_SIZE);
     conn->listen = REF(listen);
     conn->isClosed = false;
     lock_init(&conn->lock);

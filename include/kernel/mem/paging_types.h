@@ -1,6 +1,7 @@
 #pragma once
 
 #include <assert.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <sys/math.h>
 
@@ -352,14 +353,14 @@ typedef struct
  *
  * Used to allow both the kernel and bootloader to provide their own page allocation functions.
  */
-typedef uint64_t (*pml_alloc_pages_t)(void**, uint64_t);
+typedef uint64_t (*pml_alloc_pages_t)(void**, size_t);
 
 /**
  * @brief Generic page free function type.
  *
  * Used to allow both the kernel and bootloader to provide their own page free functions.
  */
-typedef void (*pml_free_pages_t)(void**, uint64_t);
+typedef void (*pml_free_pages_t)(void**, size_t);
 
 /**
  * @brief Size of the page buffer used to batch page allocations and frees.

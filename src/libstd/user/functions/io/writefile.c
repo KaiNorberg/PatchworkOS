@@ -1,6 +1,6 @@
 #include <sys/io.h>
 
-uint64_t writefile(const char* path, const void* buffer, uint64_t count, uint64_t offset)
+size_t writefile(const char* path, const void* buffer, size_t count, size_t offset)
 {
     fd_t fd = open(path);
     if (fd == ERR)

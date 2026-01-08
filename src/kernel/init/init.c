@@ -15,8 +15,8 @@
 #include <kernel/fs/vfs.h>
 #include <kernel/init/boot_info.h>
 #include <kernel/log/log.h>
-#include <kernel/log/log_file.h>
 #include <kernel/log/panic.h>
+#include <kernel/log/screen.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
@@ -94,7 +94,7 @@ static void init_finalize(void)
     procfs_init();
     netfs_init();
 
-    log_file_expose();
+    log_expose();
 
     reaper_init();
 

@@ -39,7 +39,7 @@ static uint64_t ctl_dispatch_one(ctl_t* ctls, file_t* file, uint64_t argc, const
     return ERR;
 }
 
-uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, uint64_t count)
+uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, size_t count)
 {
     if (ctls == NULL || file == NULL || buffer == NULL || count == 0)
     {

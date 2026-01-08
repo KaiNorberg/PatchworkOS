@@ -1,5 +1,6 @@
 #include <kernel/cpu/irq.h>
 #include <kernel/log/panic.h>
+#include <kernel/log/screen.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/interrupt.h>
@@ -143,11 +144,11 @@ static void panic_print_stack_dump(const interrupt_frame_t* frame)
 
     const int linesToDump = 8;
     const int bytesPerLine = 16;
-    uint64_t startaAddr = (rsp - (linesToDump / 2 - 1) * bytesPerLine) & ~(bytesPerLine - 1);
+    uint64_t startAddr = (rsp - (linesToDump / 2 - 1) * bytesPerLine) & ~(bytesPerLine - 1);
 
     for (int i = 0; i < linesToDump; i++)
     {
-        uint64_t lineAddr = startaAddr + (i * bytesPerLine);
+        uint64_t lineAddr = startAddr + (i * bytesPerLine);
 
         LOG_PANIC("  0x%016llx: ", lineAddr);
 
@@ -296,7 +297,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
         LOG_PANIC("failed to halt other CPUs due to '%s'\n", strerror(errno));
     }
 
-    log_screen_enable();
+    screen_show();
 
     LOG_PANIC("!!! KERNEL PANIC (%s version %s) !!!\n", OS_NAME, OS_VERSION);
     LOG_PANIC("cause: %s\n", panicBuffer);

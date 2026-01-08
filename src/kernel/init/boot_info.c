@@ -88,7 +88,7 @@ void boot_info_free(void)
 {
     // The memory map will be stored in the data we are freeing so we copy it first.
     boot_memory_map_t volatile mapCopy = bootInfo->memory.map;
-    uint64_t descriptorsSize = bootInfo->memory.map.descSize * bootInfo->memory.map.length;
+    size_t descriptorsSize = bootInfo->memory.map.descSize * bootInfo->memory.map.length;
     EFI_MEMORY_DESCRIPTOR* volatile descriptorsCopy = malloc(descriptorsSize);
     if (descriptorsCopy == NULL)
     {
@@ -97,7 +97,7 @@ void boot_info_free(void)
     memcpy_s(descriptorsCopy, descriptorsSize, bootInfo->memory.map.descriptors, descriptorsSize);
     mapCopy.descriptors = (EFI_MEMORY_DESCRIPTOR* const)descriptorsCopy;
 
-    for (uint64_t i = 0; i < mapCopy.length; i++)
+    for (size_t i = 0; i < mapCopy.length; i++)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(&mapCopy, i);
 

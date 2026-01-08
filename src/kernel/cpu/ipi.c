@@ -122,7 +122,7 @@ static uint64_t ipi_push(cpu_t* cpu, ipi_func_t func, void* private)
     ipi_cpu_ctx_t* ctx = &cpu->ipi;
     LOCK_SCOPE(&ctx->lock);
 
-    uint64_t nextWriteIndex = (ctx->writeIndex + 1) % IPI_QUEUE_SIZE;
+    size_t nextWriteIndex = (ctx->writeIndex + 1) % IPI_QUEUE_SIZE;
     if (nextWriteIndex == ctx->readIndex)
     {
         errno = EBUSY;

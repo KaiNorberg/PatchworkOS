@@ -25,7 +25,7 @@ static dentry_t* perfDir = NULL;
 static dentry_t* cpuFile = NULL;
 static dentry_t* memFile = NULL;
 
-static uint64_t perf_cpu_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t perf_cpu_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     UNUSED(file);
 
@@ -71,8 +71,8 @@ static uint64_t perf_cpu_read(file_t* file, void* buffer, uint64_t count, uint64
         }
     }
 
-    uint64_t length = strlen(string);
-    uint64_t readCount = BUFFER_READ(buffer, count, offset, string, length);
+    size_t length = strlen(string);
+    size_t readCount = BUFFER_READ(buffer, count, offset, string, length);
     free(string);
     return readCount;
 }
@@ -81,7 +81,7 @@ static file_ops_t cpuOps = {
     .read = perf_cpu_read,
 };
 
-static uint64_t perf_mem_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t perf_mem_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     UNUSED(file);
 
@@ -101,7 +101,7 @@ static uint64_t perf_mem_read(file_t* file, void* buffer, uint64_t count, uint64
         return ERR;
     }
 
-    uint64_t readCount = BUFFER_READ(buffer, count, offset, string, (uint64_t)length);
+    size_t readCount = BUFFER_READ(buffer, count, offset, string, (uint64_t)length);
     free(string);
     return readCount;
 }

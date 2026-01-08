@@ -22,8 +22,12 @@
  * @ingroup libstd
  *
  * Provides a common implementation for scanning formatted input, any function that needs to scan formatted input should
- * define the `_SCAN_GET` macro before including this file.
+ * define the `_SCAN_GET()` and `_SCAN_UNGET()` macros before including this file.
  *
+ * The `_SCAN_GET(ctx)` macro should evaluate to an expression that returns the next character from the input source and takes a pointer to the current `scan_ctx_t` as an argument.
+ * 
+ * The`_SCAN_UNGET(ctx, c)` macro should evaluate to an expression that pushes back the character `c` to the input source and takes a pointer to the current `scan_ctx_t` and the character to push back as argument.
+ * 
  * @see https://cplusplus.com/reference/cstdio/scanf/ for details on the format specifiers.
  *
  * @{
@@ -41,10 +45,10 @@ typedef struct
 
 static inline int _scan_next(_scan_ctx_t* ctx)
 {
-    if (ctx->prev != '\0')
+    if (ctx->prev != EOF)
     {
         int c = ctx->prev;
-        ctx->prev = '\0';
+        ctx->prev = EOF;
         ctx->count++;
         return c;
     }
@@ -57,19 +61,19 @@ static inline int _scan_next(_scan_ctx_t* ctx)
     return c;
 }
 
-static inline void _scan_unget(_scan_ctx_t* ctx, int c)
+static inline void _scan_undo(_scan_ctx_t* ctx, int c)
 {
     if (c != EOF)
     {
         assert(ctx->count > 0);
-        assert(ctx->prev == '\0');
+        assert(ctx->prev == EOF);
         ctx->prev = (char)c;
         ctx->count--;
     }
 }
 
 static inline int _scan_whitespace(_scan_ctx_t* ctx)
-{
+{            
     while (isspace(*ctx->p))
     {
         ctx->p++;
@@ -86,7 +90,7 @@ static inline int _scan_whitespace(_scan_ctx_t* ctx)
 
         if (!isspace(c))
         {
-            _scan_unget(ctx, c);
+            _scan_undo(ctx, c);
             break;
         }
     }
@@ -214,8 +218,7 @@ static inline int _scan_format_integer(_scan_ctx_t* ctx, _scan_format_ctx_t* for
             return EOF;
         }
     }
-
-    if (c == '+')
+    else if (c == '+')
     {
         c = _scan_next(ctx);
         if (c == EOF)
@@ -243,7 +246,7 @@ static inline int _scan_format_integer(_scan_ctx_t* ctx, _scan_format_ctx_t* for
 
                 if (next != EOF)
                 {
-                    _scan_unget(ctx, next);
+                    _scan_undo(ctx, next);
                 }
             }
         }
@@ -261,7 +264,7 @@ static inline int _scan_format_integer(_scan_ctx_t* ctx, _scan_format_ctx_t* for
         uint8_t digit = _digit_to_int(c);
         if (digit >= base)
         {
-            _scan_unget(ctx, c);
+            _scan_undo(ctx, c);
             break;
         }
 
@@ -272,7 +275,7 @@ static inline int _scan_format_integer(_scan_ctx_t* ctx, _scan_format_ctx_t* for
 
     if (digits == 0)
     {
-        return EOF;
+        return 0;
     }
 
     if (format->flags & _SCAN_SUPPRESS_ASSIGNMENT)
@@ -360,7 +363,7 @@ static inline int _scan_format_string(_scan_ctx_t* ctx, _scan_format_ctx_t* form
         {
             if (c != EOF)
             {
-                _scan_unget(ctx, c);
+                _scan_undo(ctx, c);
             }
             break;
         }
@@ -482,7 +485,7 @@ static inline int _scan_format_scanset(_scan_ctx_t* ctx, _scan_format_ctx_t* for
         }
         else
         {
-            _scan_unget(ctx, c);
+            _scan_undo(ctx, c);
             break;
         }
     }
@@ -523,7 +526,7 @@ static inline int _scan_format_percent(_scan_ctx_t* ctx, _scan_format_ctx_t* for
 
     if (c != '%')
     {
-        _scan_unget(ctx, c);
+        _scan_undo(ctx, c);
         return EOF;
     }
 
@@ -658,6 +661,7 @@ static inline int _scan(const char* _RESTRICT format, va_list arg, void* private
         .p = format,
         .private = private,
         .count = 0,
+        .prev = EOF,
     };
     va_copy(ctx.arg, arg);
 
@@ -693,7 +697,7 @@ static inline int _scan(const char* _RESTRICT format, va_list arg, void* private
 
         if (c != *ctx.p)
         {
-            _scan_unget(&ctx, c);
+            _scan_undo(&ctx, c);
             break;
         }
 
@@ -702,6 +706,12 @@ static inline int _scan(const char* _RESTRICT format, va_list arg, void* private
 
     va_end(ctx.arg);
 
+    if (ctx.prev != EOF)
+    {
+        _SCAN_UNGET(&ctx, ctx.prev);
+        ctx.prev = EOF;
+    }
+         
     if (ctx.count == 0)
     {
         return EOF;

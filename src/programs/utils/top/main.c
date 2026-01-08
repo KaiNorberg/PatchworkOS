@@ -192,7 +192,7 @@ static proc_perfs_t* proc_perfs_read(uint64_t* procAmount)
     dirent_t buffer[128];
     while (1)
     {
-        uint64_t readAmount = getdents(procDir, (dirent_t*)buffer, sizeof(buffer));
+        size_t readAmount = getdents(procDir, (dirent_t*)buffer, sizeof(buffer));
         if (readAmount == ERR)
         {
             free(procPerfs);

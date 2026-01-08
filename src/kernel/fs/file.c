@@ -66,11 +66,11 @@ file_t* file_new(const path_t* path, mode_t mode)
     return file;
 }
 
-uint64_t file_generic_seek(file_t* file, int64_t offset, seek_origin_t origin)
+size_t file_generic_seek(file_t* file, ssize_t offset, seek_origin_t origin)
 {
     MUTEX_SCOPE(&file->inode->mutex);
 
-    uint64_t newPos;
+    size_t newPos;
     switch (origin)
     {
     case SEEK_SET:

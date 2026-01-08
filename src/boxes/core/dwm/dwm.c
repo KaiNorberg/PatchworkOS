@@ -460,10 +460,12 @@ static void dwm_kbd_read(void)
 {
     static kbd_mods_t mods = KBD_MOD_NONE;
 
-    char prefix;
-    keycode_t code;
-    if (scan(kbd, "%c%d\n", &prefix, &code) != 2)
+    keycode_t code = -1;
+    char suffix = -1;
+    int result = scan(kbd, "%u%c", &code, &suffix);
+    if (result != 2)
     {
+        printf("dwm: failed to read keyboard event (s)\n", strerror(errno));
         return;
     }
 
@@ -471,7 +473,7 @@ static void dwm_kbd_read(void)
 
     if (code == KBD_LEFT_SHIFT || code == KBD_RIGHT_SHIFT)
     {
-        if (prefix == '_')
+        if (suffix == '_')
         {
             mods |= KBD_MOD_SHIFT;
         }
@@ -482,7 +484,7 @@ static void dwm_kbd_read(void)
     }
     else if (code == KBD_LEFT_CTRL || code == KBD_RIGHT_CTRL)
     {
-        if (prefix == '_')
+        if (suffix == '_')
         {
             mods |= KBD_MOD_CTRL;
         }
@@ -493,7 +495,7 @@ static void dwm_kbd_read(void)
     }
     else if (code == KBD_LEFT_ALT || code == KBD_RIGHT_ALT)
     {
-        if (prefix == '_')
+        if (suffix == '_')
         {
             mods |= KBD_MOD_ALT;
         }
@@ -504,7 +506,7 @@ static void dwm_kbd_read(void)
     }
     else if (code == KBD_LEFT_SUPER || code == KBD_RIGHT_SUPER)
     {
-        if (prefix == '_')
+        if (suffix == '_')
         {
             mods |= KBD_MOD_SUPER;
         }
@@ -513,7 +515,7 @@ static void dwm_kbd_read(void)
             mods &= ~KBD_MOD_SUPER;
         }
     }
-    else if (code == KBD_CAPS_LOCK && prefix == '_')
+    else if (code == KBD_CAPS_LOCK && suffix == '_')
     {
         mods ^= KBD_MOD_CAPS;
     }
@@ -521,7 +523,7 @@ static void dwm_kbd_read(void)
     if (focus != NULL)
     {
         event_kbd_t event;
-        event.type = prefix == '_' ? KBD_PRESS : KBD_RELEASE;
+        event.type = suffix == '_' ? KBD_PRESS : KBD_RELEASE;
         event.mods = mods;
         event.code = code;
         event.ascii = kbd_ascii(code, mods);

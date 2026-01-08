@@ -41,7 +41,7 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle)
         status = EFI_LOAD_ERROR;
         goto cleanup;
     }
-    uint64_t fileSize = fileInfo->FileSize;
+    size_t fileSize = fileInfo->FileSize;
     FreePool(fileInfo);
 
     void* fileData = AllocatePool(fileSize);
@@ -52,7 +52,7 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle)
         goto cleanup;
     }
 
-    uint64_t readSize = fileSize;
+    size_t readSize = fileSize;
     status = uefi_call_wrapper(file->Read, 3, file, &readSize, fileData);
     if (EFI_ERROR(status) || readSize != fileSize)
     {

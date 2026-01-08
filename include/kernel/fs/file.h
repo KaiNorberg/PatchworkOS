@@ -38,7 +38,7 @@ typedef struct poll_file poll_file_t;
 typedef struct file
 {
     ref_t ref;
-    uint64_t pos;
+    size_t pos;
     mode_t mode;
     inode_t* inode;
     path_t path;
@@ -55,12 +55,12 @@ typedef struct file_ops
     uint64_t (*open)(file_t* file);
     uint64_t (*open2)(file_t* files[2]);
     void (*close)(file_t* file);
-    uint64_t (*read)(file_t* file, void* buffer, uint64_t count, uint64_t* offset);
-    uint64_t (*write)(file_t* file, const void* buffer, uint64_t count, uint64_t* offset);
-    uint64_t (*seek)(file_t* file, int64_t offset, seek_origin_t origin);
-    uint64_t (*ioctl)(file_t* file, uint64_t request, void* argp, uint64_t size);
+    size_t (*read)(file_t* file, void* buffer, size_t count, size_t* offset);
+    size_t (*write)(file_t* file, const void* buffer, size_t count, size_t* offset);
+    size_t (*seek)(file_t* file, ssize_t offset, seek_origin_t origin);
+    uint64_t (*ioctl)(file_t* file, uint64_t request, void* argp, size_t size);
     wait_queue_t* (*poll)(file_t* file, poll_events_t* revents);
-    void* (*mmap)(file_t* file, void* address, uint64_t length, uint64_t* offset, pml_flags_t flags);
+    void* (*mmap)(file_t* file, void* address, size_t length, size_t* offset, pml_flags_t flags);
 } file_ops_t;
 
 /**
@@ -99,6 +99,6 @@ file_t* file_new(const path_t* path, mode_t mode);
  *
  * Used by setting the file ops seek to this function.
  */
-uint64_t file_generic_seek(file_t* file, int64_t offset, seek_origin_t origin);
+size_t file_generic_seek(file_t* file, ssize_t offset, seek_origin_t origin);
 
 /** @} */

@@ -58,40 +58,40 @@ typedef struct cpu cpu_t;
  * @brief Macro to be used in ASM to push general-purpose registers onto the stack.
  */
 #define INTERRUPT_FRAME_REGS_PUSH \
-    push rax;                       \
-    push rbx;                       \
-    push rcx;                       \
-    push rdx;                       \
-    push rsi;                       \
-    push rdi;                       \
-    push rbp;                       \
-    push r8;                        \
-    push r9;                        \
-    push r10;                       \
-    push r11;                       \
-    push r12;                       \
-    push r13;                       \
-    push r14;                       \
+    push rax; \
+    push rbx; \
+    push rcx; \
+    push rdx; \
+    push rsi; \
+    push rdi; \
+    push rbp; \
+    push r8; \
+    push r9; \
+    push r10; \
+    push r11; \
+    push r12; \
+    push r13; \
+    push r14; \
     push r15;
 
 /**
  * @brief Macro to be used in ASM to pop general-purpose registers from the stack.
  */
 #define INTERRUPT_FRAME_REGS_POP \
-    pop r15;                      \
-    pop r14;                      \
-    pop r13;                      \
-    pop r12;                      \
-    pop r11;                      \
-    pop r10;                      \
-    pop r9;                       \
-    pop r8;                       \
-    pop rbp;                      \
-    pop rdi;                      \
-    pop rsi;                      \
-    pop rdx;                      \
-    pop rcx;                      \
-    pop rbx;                      \
+    pop r15; \
+    pop r14; \
+    pop r13; \
+    pop r12; \
+    pop r11; \
+    pop r10; \
+    pop r9; \
+    pop r8; \
+    pop rbp; \
+    pop rdi; \
+    pop rsi; \
+    pop rdx; \
+    pop rcx; \
+    pop rbx; \
     pop rax;
 
 #ifndef __ASSEMBLER__

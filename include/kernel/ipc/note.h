@@ -140,8 +140,8 @@ typedef struct
 typedef struct
 {
     note_t notes[CONFIG_MAX_NOTES];
-    uint64_t readIndex;
-    uint64_t writeIndex;
+    size_t readIndex;
+    size_t writeIndex;
     uint64_t length;
     note_queue_flag_t flags;
     interrupt_frame_t noteFrame; ///< The interrupt frame to return to after handling a note.

@@ -65,7 +65,7 @@ void vmm_init(void)
         kernelSpace.pageTable.pml4->entries[i] = memory->table.pml4->entries[i];
     }
 
-    for (uint64_t i = 0; i < memory->map.length; i++)
+    for (size_t i = 0; i < memory->map.length; i++)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(&memory->map, i);
         if (desc->VirtualStart < PML_HIGHER_HALF_START)
@@ -160,7 +160,7 @@ static inline void vmm_page_table_unmap_with_shootdown(space_t* space, void* vir
     page_table_clear(&space->pageTable, virtAddr, pageAmount);
 }
 
-void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t pmlFlags, vmm_alloc_flags_t allocFlags)
+void* vmm_alloc(space_t* space, void* virtAddr, size_t length, pml_flags_t pmlFlags, vmm_alloc_flags_t allocFlags)
 {
     if (length == 0 || !(pmlFlags & PML_PRESENT))
     {
@@ -223,7 +223,7 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, pml_flags_t pml
     return space_mapping_end(space, &mapping, EOK);
 }
 
-void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, pml_flags_t flags,
+void* vmm_map(space_t* space, void* virtAddr, void* physAddr, size_t length, pml_flags_t flags,
     space_callback_func_t func, void* private)
 {
     if (physAddr == NULL || length == 0 || !(flags & PML_PRESENT))
@@ -277,7 +277,7 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, p
     return space_mapping_end(space, &mapping, EOK);
 }
 
-void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageAmount, pml_flags_t flags,
+void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, size_t pageAmount, pml_flags_t flags,
     space_callback_func_t func, void* private)
 {
     if (pages == NULL || pageAmount == 0 || !(flags & PML_PRESENT))
@@ -331,7 +331,7 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
     return space_mapping_end(space, &mapping, EOK);
 }
 
-void* vmm_unmap(space_t* space, void* virtAddr, uint64_t length)
+void* vmm_unmap(space_t* space, void* virtAddr, size_t length)
 {
     if (virtAddr == NULL || length == 0)
     {
@@ -379,7 +379,7 @@ void* vmm_unmap(space_t* space, void* virtAddr, uint64_t length)
     return space_mapping_end(space, &mapping, EOK);
 }
 
-SYSCALL_DEFINE(SYS_MUNMAP, void*, void* address, uint64_t length)
+SYSCALL_DEFINE(SYS_MUNMAP, void*, void* address, size_t length)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
@@ -393,7 +393,7 @@ SYSCALL_DEFINE(SYS_MUNMAP, void*, void* address, uint64_t length)
     return vmm_unmap(space, address, length);
 }
 
-void* vmm_protect(space_t* space, void* virtAddr, uint64_t length, pml_flags_t flags)
+void* vmm_protect(space_t* space, void* virtAddr, size_t length, pml_flags_t flags)
 {
     if (space == NULL || virtAddr == NULL || length == 0)
     {
@@ -437,7 +437,7 @@ void* vmm_protect(space_t* space, void* virtAddr, uint64_t length, pml_flags_t f
     return space_mapping_end(space, &mapping, EOK);
 }
 
-SYSCALL_DEFINE(SYS_MPROTECT, void*, void* address, uint64_t length, prot_t prot)
+SYSCALL_DEFINE(SYS_MPROTECT, void*, void* address, size_t length, prot_t prot)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;

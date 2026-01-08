@@ -59,7 +59,7 @@ void loader_exec(void)
         goto cleanup;
     }
 
-    uint64_t fileSize = vfs_seek(file, 0, SEEK_END);
+    size_t fileSize = vfs_seek(file, 0, SEEK_END);
     vfs_seek(file, 0, SEEK_SET);
 
     fileData = malloc(fileSize);
@@ -69,7 +69,7 @@ void loader_exec(void)
         goto cleanup;
     }
 
-    uint64_t readSize = vfs_read(file, fileData, fileSize);
+    size_t readSize = vfs_read(file, fileData, fileSize);
     if (readSize != fileSize)
     {
         goto cleanup;

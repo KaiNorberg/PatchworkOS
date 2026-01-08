@@ -15,7 +15,7 @@ static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
 static dentry_t* dir = NULL;
 
-static uint64_t fb_name_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t fb_name_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     fb_t* fb = file->inode->private;
     assert(fb != NULL);
@@ -28,7 +28,7 @@ static file_ops_t nameOps = {
     .read = fb_name_read,
 };
 
-static uint64_t fb_data_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t fb_data_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     fb_t* fb = file->inode->private;
     assert(fb != NULL);
@@ -42,7 +42,7 @@ static uint64_t fb_data_read(file_t* file, void* buffer, uint64_t count, uint64_
     return fb->ops->read(fb, buffer, count, offset);
 }
 
-static uint64_t fb_data_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+static size_t fb_data_write(file_t* file, const void* buffer, size_t count, size_t* offset)
 {
     fb_t* fb = file->inode->private;
     assert(fb != NULL);
@@ -56,7 +56,7 @@ static uint64_t fb_data_write(file_t* file, const void* buffer, uint64_t count, 
     return fb->ops->write(fb, buffer, count, offset);
 }
 
-static void* fb_data_mmap(file_t* file, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
+static void* fb_data_mmap(file_t* file, void* addr, size_t length, size_t* offset, pml_flags_t flags)
 {
     fb_t* fb = file->inode->private;
     assert(fb != NULL);
@@ -76,7 +76,7 @@ static file_ops_t dataOps = {
     .mmap = fb_data_mmap,
 };
 
-static uint64_t fb_info_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t fb_info_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     fb_t* fb = file->inode->private;
     assert(fb != NULL);

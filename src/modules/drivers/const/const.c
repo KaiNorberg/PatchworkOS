@@ -31,7 +31,7 @@ static dentry_t* oneFile;
 static dentry_t* zeroFile;
 static dentry_t* nullFile;
 
-static uint64_t const_one_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t const_one_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     UNUSED(file);
 
@@ -40,7 +40,7 @@ static uint64_t const_one_read(file_t* file, void* buffer, uint64_t count, uint6
     return count;
 }
 
-static void* const_one_mmap(file_t* file, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
+static void* const_one_mmap(file_t* file, void* addr, size_t length, size_t* offset, pml_flags_t flags)
 {
     UNUSED(file); // Unused
     UNUSED(offset);
@@ -60,7 +60,7 @@ static file_ops_t oneOps = {
     .mmap = const_one_mmap,
 };
 
-static uint64_t const_zero_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t const_zero_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     UNUSED(file);
 
@@ -69,7 +69,7 @@ static uint64_t const_zero_read(file_t* file, void* buffer, uint64_t count, uint
     return count;
 }
 
-static void* const_zero_mmap(file_t* file, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
+static void* const_zero_mmap(file_t* file, void* addr, size_t length, size_t* offset, pml_flags_t flags)
 {
     UNUSED(file); // Unused
     UNUSED(offset);
@@ -89,7 +89,7 @@ static file_ops_t zeroOps = {
     .mmap = const_zero_mmap,
 };
 
-static uint64_t const_null_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t const_null_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     UNUSED(file); // Unused
     UNUSED(buffer);
@@ -98,7 +98,7 @@ static uint64_t const_null_read(file_t* file, void* buffer, uint64_t count, uint
     return 0;
 }
 
-static uint64_t const_null_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t const_null_write(file_t* file, const void* buffer, size_t count, size_t* offset)
 {
     UNUSED(file); // Unused
     UNUSED(buffer);

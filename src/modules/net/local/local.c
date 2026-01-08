@@ -11,8 +11,8 @@
 #include <kernel/module/module.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
+#include <kernel/utils/fifo.h>
 #include <kernel/utils/ref.h>
-#include <kernel/utils/ring.h>
 
 #include <stdlib.h>
 #include <sys/io.h>
@@ -261,7 +261,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
     return 0;
 }
 
-static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t count, uint64_t* offset, mode_t mode)
+static size_t local_socket_send(socket_t* sock, const void* buffer, size_t count, size_t* offset, mode_t mode)
 {
     UNUSED(offset);
 
@@ -293,13 +293,12 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
         return ERR;
     }
 
-    ring_t* ring = data->isServer ? &conn->serverToClient : &conn->clientToServer;
+    fifo_t* ring = data->isServer ? &conn->serverToClient : &conn->clientToServer;
 
     local_packet_header_t header = {.magic = LOCAL_PACKET_MAGIC, .size = count};
 
-    uint64_t totalSize = sizeof(local_packet_header_t) + count;
-
-    while (ring_bytes_free(ring, NULL) < totalSize)
+    size_t totalSize = sizeof(local_packet_header_t) + count;
+    while (fifo_bytes_writeable(ring) < totalSize)
     {
         if (conn->isClosed)
         {
@@ -311,8 +310,8 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
             errno = EAGAIN;
             return ERR;
         }
-        if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-                conn->isClosed || ring_bytes_free(ring, NULL) >= totalSize) == ERR)
+        if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock, conn->isClosed || fifo_bytes_writeable(ring) >= totalSize) ==
+            ERR)
         {
             return ERR;
         }
@@ -323,14 +322,14 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
         }
     }
 
-    ring_write(ring, &header, sizeof(local_packet_header_t), NULL);
-    ring_write(ring, buffer, count, NULL);
+    fifo_write(ring, &header, sizeof(local_packet_header_t));
+    fifo_write(ring, buffer, count);
 
     wait_unblock(&conn->waitQueue, WAIT_ALL, EOK);
     return count;
 }
 
-static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, uint64_t* offset, mode_t mode)
+static size_t local_socket_recv(socket_t* sock, void* buffer, size_t count, size_t* offset, mode_t mode)
 {
     UNUSED(offset);
 
@@ -350,9 +349,9 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
     UNREF_DEFER(conn);
     LOCK_SCOPE(&conn->lock);
 
-    ring_t* ring = data->isServer ? &conn->clientToServer : &conn->serverToClient;
+    fifo_t* ring = data->isServer ? &conn->clientToServer : &conn->serverToClient;
 
-    while (ring_bytes_used(ring, NULL) < sizeof(local_packet_header_t))
+    while (fifo_bytes_readable(ring) < sizeof(local_packet_header_t))
     {
         if (conn->isClosed)
         {
@@ -364,14 +363,14 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
             return ERR;
         }
         if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-                conn->isClosed || ring_bytes_used(ring, NULL) >= sizeof(local_packet_header_t)) == ERR)
+                conn->isClosed || fifo_bytes_readable(ring) >= sizeof(local_packet_header_t)) == ERR)
         {
             return ERR;
         }
     }
 
     local_packet_header_t header;
-    ring_read(ring, &header, sizeof(local_packet_header_t), NULL);
+    fifo_read(ring, &header, sizeof(local_packet_header_t));
 
     if (header.magic != LOCAL_PACKET_MAGIC)
     {
@@ -389,8 +388,8 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
         return ERR;
     }
 
-    uint64_t readCount = header.size < count ? header.size : count;
-    ring_read(ring, buffer, readCount, NULL);
+    size_t readCount = header.size < count ? header.size : count;
+    fifo_read(ring, buffer, readCount);
 
     if (header.size > readCount)
     {
@@ -399,7 +398,7 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
         while (remaining > 0)
         {
             uint64_t toRead = remaining < sizeof(temp) ? remaining : sizeof(temp);
-            ring_read(ring, temp, toRead, NULL);
+            fifo_read(ring, temp, toRead);
             remaining -= toRead;
         }
     }
@@ -455,15 +454,15 @@ static wait_queue_t* local_socket_poll(socket_t* sock, poll_events_t* revents)
         }
         else
         {
-            ring_t* readRing = data->isServer ? &conn->clientToServer : &conn->serverToClient;
-            ring_t* writeRing = data->isServer ? &conn->serverToClient : &conn->clientToServer;
+            fifo_t* readRing = data->isServer ? &conn->clientToServer : &conn->serverToClient;
+            fifo_t* writeRing = data->isServer ? &conn->serverToClient : &conn->clientToServer;
 
-            if (ring_bytes_used(readRing, NULL) >= sizeof(local_packet_header_t))
+            if (fifo_bytes_readable(readRing) >= sizeof(local_packet_header_t))
             {
                 *revents |= POLLIN;
             }
 
-            if (ring_bytes_free(writeRing, NULL) >= sizeof(local_packet_header_t) + 1)
+            if (fifo_bytes_writeable(writeRing) >= sizeof(local_packet_header_t) + 1)
             {
                 *revents |= POLLOUT;
             }

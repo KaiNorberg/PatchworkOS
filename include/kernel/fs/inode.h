@@ -51,8 +51,8 @@ typedef struct inode
     ino_t number;
     itype_t type;
     _Atomic(uint64_t) dentryCount; ///< The number of dentries pointing to this inode.
-    uint64_t size;
-    uint64_t blocks;
+    size_t size;
+    size_t blocks;
     time_t accessTime; ///< Unix time stamp for the last inode access.
     time_t modifyTime; ///< Unix time stamp for last file content alteration.
     time_t changeTime; ///< Unix time stamp for the last file metadata alteration.

@@ -7,7 +7,7 @@
 #include <kernel/module/module.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
-#include <kernel/utils/ring.h>
+#include <kernel/utils/fifo.h>
 
 #include <assert.h>
 #include <stdlib.h>
@@ -39,7 +39,7 @@
 typedef struct
 {
     void* buffer;
-    ring_t ring;
+    fifo_t ring;
     bool isReadClosed;
     bool isWriteClosed;
     wait_queue_t waitQueue;
@@ -65,7 +65,7 @@ static uint64_t pipe_open(file_t* file)
         free(data);
         return ERR;
     }
-    ring_init(&data->ring, data->buffer, PAGE_SIZE);
+    fifo_init(&data->ring, data->buffer, PAGE_SIZE);
     data->isReadClosed = false;
     data->isWriteClosed = false;
     wait_queue_init(&data->waitQueue);
@@ -90,7 +90,7 @@ static uint64_t pipe_open2(file_t* files[2])
         free(data);
         return ERR;
     }
-    ring_init(&data->ring, data->buffer, PAGE_SIZE);
+    fifo_init(&data->ring, data->buffer, PAGE_SIZE);
     data->isReadClosed = false;
     data->isWriteClosed = false;
     wait_queue_init(&data->waitQueue);
@@ -130,7 +130,7 @@ static void pipe_close(file_t* file)
     lock_release(&data->lock);
 }
 
-static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t pipe_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     UNUSED(offset);
 
@@ -154,7 +154,7 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* 
 
     LOCK_SCOPE(&data->lock);
 
-    if (ring_bytes_used(&data->ring, NULL) == 0)
+    if (fifo_bytes_readable(&data->ring) == 0)
     {
         if (file->mode & MODE_NONBLOCK)
         {
@@ -163,18 +163,18 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* 
         }
 
         if (WAIT_BLOCK_LOCK(&data->waitQueue, &data->lock,
-                ring_bytes_used(&data->ring, NULL) != 0 || data->isWriteClosed) == ERR)
+                fifo_bytes_readable(&data->ring) != 0 || data->isWriteClosed) == ERR)
         {
             return ERR;
         }
     }
 
-    uint64_t result = ring_read(&data->ring, buffer, count, NULL);
+    uint64_t result = fifo_read(&data->ring, buffer, count);
     wait_unblock(&data->waitQueue, WAIT_ALL, EOK);
     return result;
 }
 
-static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t pipe_write(file_t* file, const void* buffer, size_t count, size_t* offset)
 {
     UNUSED(offset);
 
@@ -193,7 +193,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uin
 
     LOCK_SCOPE(&data->lock);
 
-    if (ring_bytes_free(&data->ring, NULL) == 0)
+    if (fifo_bytes_writeable(&data->ring) == 0)
     {
         if (file->mode & MODE_NONBLOCK)
         {
@@ -202,7 +202,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uin
         }
 
         if (WAIT_BLOCK_LOCK(&data->waitQueue, &data->lock,
-                ring_bytes_free(&data->ring, NULL) != 0 || data->isReadClosed) == ERR)
+                fifo_bytes_writeable(&data->ring) != 0 || data->isReadClosed) == ERR)
         {
             return ERR;
         }
@@ -215,7 +215,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uin
         return ERR;
     }
 
-    uint64_t result = ring_write(&data->ring, buffer, count, NULL);
+    uint64_t result = fifo_write(&data->ring, buffer, count);
     wait_unblock(&data->waitQueue, WAIT_ALL, EOK);
     return result;
 }
@@ -225,11 +225,11 @@ static wait_queue_t* pipe_poll(file_t* file, poll_events_t* revents)
     pipe_t* data = file->private;
     LOCK_SCOPE(&data->lock);
 
-    if (ring_bytes_used(&data->ring, NULL) != 0 || data->isWriteClosed)
+    if (fifo_bytes_readable(&data->ring) != 0 || data->isWriteClosed)
     {
         *revents |= POLLIN;
     }
-    if (ring_bytes_free(&data->ring, NULL) > 0 || data->isReadClosed)
+    if (fifo_bytes_writeable(&data->ring) > 0 || data->isReadClosed)
     {
         *revents |= POLLOUT;
     }

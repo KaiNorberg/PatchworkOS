@@ -223,7 +223,7 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
         errno = ENOTCONN;
         return ERR;
     }
-    uint64_t readBytes = display_events_read(disp, event);
+    size_t readBytes = display_events_read(disp, event);
     mtx_unlock(&disp->mutex);
     if (readBytes == sizeof(event_t))
     {
@@ -291,7 +291,7 @@ uint64_t display_poll(display_t* disp, pollfd_t* fds, uint64_t nfds, clock_t tim
         allFds[i + 1] = fds[i];
     }
 
-    uint64_t ready = poll(allFds, nfds + 1, timeout);
+    size_t ready = poll(allFds, nfds + 1, timeout);
     if (ready == ERR)
     {
         free(allFds);

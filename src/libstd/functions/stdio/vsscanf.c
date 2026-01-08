@@ -9,8 +9,19 @@
         if (c != '\0') \
         { \
             (*str)++; \
+            (ctx)->count++; \
         } \
         c == '\0' ? EOF : (unsigned char)c; \
+    })
+
+#define _SCAN_UNGET(ctx, c) \
+    ({ \
+        const char** str = (const char**)(ctx)->private; \
+        if ((c) != EOF) \
+        { \
+            (*str)--; \
+            (ctx)->count--; \
+        } \
     })
 
 #include "common/scan.h"

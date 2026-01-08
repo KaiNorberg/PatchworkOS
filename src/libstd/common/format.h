@@ -35,11 +35,11 @@ typedef struct
 {
     int32_t base;
     _format_flags_t flags;
-    uint64_t maxChars;
-    uint64_t totalChars;
-    uint64_t currentChars;
+    size_t maxChars;
+    size_t totalChars;
+    size_t currentChars;
     char* buffer;
-    uint64_t width;
+    size_t width;
     int64_t precision;
     FILE* stream;
     va_list arg;

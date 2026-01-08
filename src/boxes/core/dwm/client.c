@@ -435,7 +435,7 @@ uint64_t client_receive_cmds(client_t* client)
         return ERR;
     }
 
-    uint64_t readSize = read(client->fd, client->recvBuffer + client->recvLen, freeSpace);
+    size_t readSize = read(client->fd, client->recvBuffer + client->recvLen, freeSpace);
     if (readSize == ERR)
     {
         if (errno == EWOULDBLOCK)

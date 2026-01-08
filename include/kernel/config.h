@@ -160,3 +160,13 @@
  *
  */
 #define CONFIG_MAX_ENV_VARS 4096
+
+/**
+ * @brief Kernel log buffer size configuration.
+ * @ingroup kernel
+ * @def CONFIG_LOG_KLOG_BUFFER_SIZE
+ *
+ * The `CONFIG_LOG_KLOG_BUFFER_SIZE` constant defines the size of the buffer used for the `/dev/klog` file.
+ *
+ */
+#define CONFIG_KLOG_SIZE 0x4000

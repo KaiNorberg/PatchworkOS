@@ -105,7 +105,7 @@
  * @param x The array.
  * @return The number of elements in the array.
  */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#define ARRAY_SIZE(x) ((size_t)(sizeof(x) / sizeof((x)[0])))
 
 /**
  * @brief Mark a condition as likely.

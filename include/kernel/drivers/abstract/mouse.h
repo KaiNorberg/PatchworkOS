@@ -31,7 +31,7 @@ typedef struct
 {
     char* name;
     mouse_event_t events[MOUSE_MAX_EVENT];
-    uint64_t writeIndex;
+    size_t writeIndex;
     wait_queue_t waitQueue;
     lock_t lock;
     dentry_t* dir;

@@ -60,8 +60,8 @@ typedef struct window
 typedef struct
 {
     event_t buffer[DISPLAY_MAX_EVENT];
-    uint64_t readIndex;
-    uint64_t writeIndex;
+    size_t readIndex;
+    size_t writeIndex;
 } event_queue_t;
 
 typedef struct display

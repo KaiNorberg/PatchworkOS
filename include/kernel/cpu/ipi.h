@@ -91,8 +91,8 @@ typedef struct ipi
 typedef struct ipi_cpu_ctx
 {
     ipi_t queue[IPI_QUEUE_SIZE];
-    uint64_t readIndex;
-    uint64_t writeIndex;
+    size_t readIndex;
+    size_t writeIndex;
     lock_t lock;
 } ipi_cpu_ctx_t;
 

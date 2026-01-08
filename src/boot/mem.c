@@ -13,8 +13,8 @@
 struct
 {
     EFI_PHYSICAL_ADDRESS buffer;
-    uint64_t maxPages;
-    uint64_t pagesAllocated;
+    size_t maxPages;
+    size_t pagesAllocated;
     boot_gop_t* gop;
     boot_memory_map_t* map;
 } basicAllocator;
@@ -31,7 +31,7 @@ EFI_STATUS mem_init(void)
         return status;
     }
 
-    uint64_t availPages = 0;
+    size_t availPages = 0;
     for (size_t i = 0; i < map.length; i++)
     {
         EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(&map, i);
@@ -93,9 +93,9 @@ NORETURN static void panic_without_boot_services(uint8_t red, uint8_t green, uin
     // memory. A better solution might be to implement a very basic logging system, but for now we just fill the screen
     // with a color and halt the CPU.
     uint32_t color = 0xFF000000 | (red << 16) | (green << 8) | (blue);
-    for (uint64_t y = 0; y < basicAllocator.gop->height; y++)
+    for (size_t y = 0; y < basicAllocator.gop->height; y++)
     {
-        for (uint64_t x = 0; x < basicAllocator.gop->width; x++)
+        for (size_t x = 0; x < basicAllocator.gop->width; x++)
         {
             basicAllocator.gop->physAddr[x + y * basicAllocator.gop->stride] = color;
         }
@@ -106,14 +106,14 @@ NORETURN static void panic_without_boot_services(uint8_t red, uint8_t green, uin
     }
 }
 
-static uint64_t basic_allocator_alloc_pages(void** pages, uint64_t amount)
+static uint64_t basic_allocator_alloc_pages(void** pages, size_t amount)
 {
     if (basicAllocator.pagesAllocated + amount >= basicAllocator.maxPages)
     {
         panic_without_boot_services(0xFF, 0x00, 0x00);
     }
 
-    for (uint64_t i = 0; i < amount; i++)
+    for (size_t i = 0; i < amount; i++)
     {
         *pages = (void*)(basicAllocator.buffer + basicAllocator.pagesAllocated * PAGE_SIZE);
         basicAllocator.pagesAllocated++;
@@ -133,7 +133,7 @@ void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boot_gop_t
     }
 
     uintptr_t maxAddress = 0;
-    for (uint64_t i = 0; i < map->length; i++)
+    for (size_t i = 0; i < map->length; i++)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
         maxAddress = MAX(maxAddress, desc->PhysicalStart + desc->NumberOfPages * PAGE_SIZE);
@@ -146,7 +146,7 @@ void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boot_gop_t
         panic_without_boot_services(0xFF, 0xFF, 0x00);
     }
 
-    for (uint64_t i = 0; i < map->length; i++)
+    for (size_t i = 0; i < map->length; i++)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
         if (desc->VirtualStart < PML_HIGHER_HALF_START)
@@ -168,7 +168,7 @@ void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boot_gop_t
     Elf64_Addr minVaddr = 0;
     Elf64_Addr maxVaddr = 0;
     elf64_get_loadable_bounds(&kernel->elf, &minVaddr, &maxVaddr);
-    uint64_t kernelPageAmount = BYTES_TO_PAGES(maxVaddr - minVaddr);
+    size_t kernelPageAmount = BYTES_TO_PAGES(maxVaddr - minVaddr);
 
     if (page_table_map(table, (void*)minVaddr, kernel->physAddr, kernelPageAmount, PML_WRITE | PML_PRESENT,
             PML_CALLBACK_NONE) == ERR)

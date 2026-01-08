@@ -48,7 +48,7 @@ void qsort(void* base, size_t nmemb, size_t size, int (*compar)(const void*, con
 {
     char* i;
     char* j;
-    uint64_t thresh = T * size;
+    size_t thresh = T * size;
     char* base_ = (char*)base;
     char* limit = base_ + nmemb * size;
     PREPARE_STACK;

@@ -3,6 +3,7 @@
 #include <kernel/init/boot_info.h>
 #include <kernel/init/init.h>
 #include <kernel/log/log.h>
+#include <kernel/log/screen.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
@@ -37,37 +38,37 @@ static uint64_t gop_info(fb_t* fb, fb_info_t* info)
     return 0;
 }
 
-static uint64_t gop_read(fb_t* fb, void* buffer, uint64_t count, uint64_t* offset)
+static size_t gop_read(fb_t* fb, void* buffer, size_t count, size_t* offset)
 {
     UNUSED(fb);
 
-    log_screen_disable();
+    screen_hide();
 
-    uint64_t fbSize = gop.height * gop.stride * sizeof(uint32_t);
+    size_t fbSize = gop.height * gop.stride * sizeof(uint32_t);
     return BUFFER_READ(buffer, count, offset, ((uint8_t*)gop.virtAddr), fbSize);
 }
 
-static uint64_t gop_write(fb_t* fb, const void* buffer, uint64_t count, uint64_t* offset)
+static size_t gop_write(fb_t* fb, const void* buffer, size_t count, size_t* offset)
 {
     UNUSED(fb);
 
-    log_screen_disable();
+    screen_hide();
 
-    uint64_t fbSize = gop.height * gop.stride * sizeof(uint32_t);
+    size_t fbSize = gop.height * gop.stride * sizeof(uint32_t);
     return BUFFER_WRITE(buffer, count, offset, ((uint8_t*)gop.virtAddr), fbSize);
 }
 
-static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, uint64_t* offset, pml_flags_t flags)
+static void* gop_mmap(fb_t* fb, void* addr, size_t length, size_t* offset, pml_flags_t flags)
 {
     UNUSED(fb);
 
-    log_screen_disable();
+    screen_hide();
 
     process_t* process = sched_process();
 
-    uintptr_t physAddr = (uint64_t)gop.physAddr + *offset;
+    uintptr_t physAddr = (uintptr_t)gop.physAddr + *offset;
     uintptr_t endAddr = physAddr + length;
-    if (endAddr > (uint64_t)gop.physAddr + (gop.stride * gop.height * sizeof(uint32_t)))
+    if (endAddr > (uintptr_t)gop.physAddr + (gop.stride * gop.height * sizeof(uint32_t)))
     {
         errno = EINVAL;
         return NULL;

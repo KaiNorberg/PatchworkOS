@@ -9,9 +9,9 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
-#include <kernel/utils/ring.h>
 
 #include <errno.h>
+#include <kernel/utils/fifo.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/io.h>
@@ -22,12 +22,12 @@ static dentry_t* dir = NULL;
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
-static uint64_t kbd_name_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t kbd_name_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     kbd_t* kbd = file->inode->private;
     assert(kbd != NULL);
 
-    uint64_t length = strlen(kbd->name);
+    size_t length = strlen(kbd->name);
     return BUFFER_READ(buffer, count, offset, kbd->name, length);
 }
 
@@ -35,20 +35,63 @@ static file_ops_t nameOps = {
     .read = kbd_name_read,
 };
 
-static uint64_t kbd_events_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t kbd_events_open(file_t* file)
 {
     kbd_t* kbd = file->inode->private;
     assert(kbd != NULL);
 
-    if (count >= sizeof(kbd->buffer))
+    kbd_client_t* client = calloc(1, sizeof(kbd_client_t));
+    if (client == NULL)
     {
-        errno = EINVAL;
+        errno = ENOMEM;
         return ERR;
     }
+    list_entry_init(&client->entry);
+    fifo_init(&client->fifo, client->buffer, sizeof(client->buffer));
+
+    lock_acquire(&kbd->lock);
+    list_push_back(&kbd->clients, &client->entry);
+    lock_release(&kbd->lock);
+
+    file->private = client;
+    return 0;
+}
+
+static void kbd_events_close(file_t* file)
+{
+    kbd_t* kbd = file->inode->private;
+    assert(kbd != NULL);
+
+    kbd_client_t* client = file->private;
+    if (client == NULL)
+    {
+        return;
+    }
+
+    lock_acquire(&kbd->lock);
+    list_remove(&kbd->clients, &client->entry);
+    lock_release(&kbd->lock);
+
+    free(client);
+}
+
+static size_t kbd_events_read(file_t* file, void* buffer, size_t count, size_t* offset)
+{
+    UNUSED(offset);
+
+    if (count == 0)
+    {
+        return 0;
+    }
+
+    kbd_t* kbd = file->inode->private;
+    assert(kbd != NULL);
+    kbd_client_t* client = file->private;
+    assert(client != NULL);
 
     LOCK_SCOPE(&kbd->lock);
 
-    if (ring_bytes_used(&kbd->events, offset) == 0)
+    if (fifo_bytes_readable(&client->fifo) == 0)
     {
         if (file->mode & MODE_NONBLOCK)
         {
@@ -56,24 +99,25 @@ static uint64_t kbd_events_read(file_t* file, void* buffer, uint64_t count, uint
             return ERR;
         }
 
-        if (WAIT_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, ring_bytes_used(&kbd->events, offset) > 0))
+        if (WAIT_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, fifo_bytes_readable(&client->fifo) != 0) == ERR)
         {
             return ERR;
         }
     }
 
-    uint64_t result = ring_read(&kbd->events, buffer, count, offset);
-    return result;
+    return fifo_read(&client->fifo, buffer, count);
 }
 
 static wait_queue_t* kbd_events_poll(file_t* file, poll_events_t* revents)
 {
     kbd_t* kbd = file->inode->private;
     assert(kbd != NULL);
+    kbd_client_t* client = file->private;
+    assert(client != NULL);
 
     LOCK_SCOPE(&kbd->lock);
 
-    if (ring_bytes_used(&kbd->events, &file->pos) > 0)
+    if (fifo_bytes_readable(&client->fifo) != 0)
     {
         *revents |= POLLIN;
     }
@@ -81,6 +125,8 @@ static wait_queue_t* kbd_events_poll(file_t* file, poll_events_t* revents)
 }
 
 static file_ops_t eventsOps = {
+    .open = kbd_events_open,
+    .close = kbd_events_close,
     .read = kbd_events_read,
     .poll = kbd_events_poll,
 };
@@ -125,8 +171,8 @@ kbd_t* kbd_new(const char* name)
     }
     strncpy(kbd->name, name, sizeof(kbd->name));
     kbd->name[sizeof(kbd->name) - 1] = '\0';
-    ring_init(&kbd->events, kbd->buffer, sizeof(kbd->buffer));
     wait_queue_init(&kbd->waitQueue);
+    list_init(&kbd->clients);
     lock_init(&kbd->lock);
     kbd->dir = NULL;
     list_init(&kbd->files);
@@ -186,6 +232,20 @@ void kbd_free(kbd_t* kbd)
     devfs_files_free(&kbd->files);
 }
 
+static void kbd_broadcast(kbd_t* kbd, const char* string, uint64_t length)
+{
+    kbd_client_t* client;
+    LIST_FOR_EACH(client, &kbd->clients, entry)
+    {
+        if (fifo_bytes_writeable(&client->fifo) >= (size_t)length)
+        {
+            fifo_write(&client->fifo, string, (uint64_t)length);
+        }
+    }
+
+    wait_unblock(&kbd->waitQueue, WAIT_ALL, EOK);
+}
+
 void kbd_press(kbd_t* kbd, keycode_t code)
 {
     if (kbd == NULL)
@@ -196,13 +256,13 @@ void kbd_press(kbd_t* kbd, keycode_t code)
     LOCK_SCOPE(&kbd->lock);
 
     char string[MAX_NAME];
-    int length = snprintf(string, MAX_NAME, "_%u\n", code);
+    int length = snprintf(string, MAX_NAME, "%u_", code);
     if (length < 0)
     {
         return;
     }
-    ring_write(&kbd->events, string, (uint64_t)length, NULL);
-    wait_unblock(&kbd->waitQueue, WAIT_ALL, EOK);
+
+    kbd_broadcast(kbd, string, (uint64_t)length);
 }
 
 void kbd_release(kbd_t* kbd, keycode_t code)
@@ -215,11 +275,11 @@ void kbd_release(kbd_t* kbd, keycode_t code)
     LOCK_SCOPE(&kbd->lock);
 
     char string[MAX_NAME];
-    int length = snprintf(string, MAX_NAME, "^%u\n", code);
+    int length = snprintf(string, MAX_NAME, "%u^", code);
     if (length < 0)
     {
         return;
     }
-    ring_write(&kbd->events, string, (uint64_t)length, NULL);
-    wait_unblock(&kbd->waitQueue, WAIT_ALL, EOK);
+
+    kbd_broadcast(kbd, string, (uint64_t)length);
 }

@@ -59,7 +59,7 @@ static dentry_ops_t hideDentryOps = {
     .revalidate = procfs_revalidate_hide,
 };
 
-static uint64_t procfs_prio_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t procfs_prio_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     process_t* process = file->inode->private;
 
@@ -70,7 +70,7 @@ static uint64_t procfs_prio_read(file_t* file, void* buffer, uint64_t count, uin
     return BUFFER_READ(buffer, count, offset, prioStr, length);
 }
 
-static uint64_t procfs_prio_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+static size_t procfs_prio_write(file_t* file, const void* buffer, size_t count, size_t* offset)
 {
     UNUSED(offset);
 
@@ -107,7 +107,7 @@ static file_ops_t prioOps = {
     .write = procfs_prio_write,
 };
 
-static uint64_t procfs_cwd_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t procfs_cwd_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     process_t* process = file->inode->private;
 
@@ -127,11 +127,11 @@ static uint64_t procfs_cwd_read(file_t* file, void* buffer, uint64_t count, uint
         return ERR;
     }
 
-    uint64_t length = strlen(cwdName.string);
+    size_t length = strlen(cwdName.string);
     return BUFFER_READ(buffer, count, offset, cwdName.string, length);
 }
 
-static uint64_t procfs_cwd_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+static size_t procfs_cwd_write(file_t* file, const void* buffer, size_t count, size_t* offset)
 {
     UNUSED(offset);
 
@@ -189,7 +189,7 @@ static file_ops_t cwdOps = {
     .write = procfs_cwd_write,
 };
 
-static uint64_t procfs_cmdline_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t procfs_cmdline_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     process_t* process = file->inode->private;
 
@@ -198,7 +198,7 @@ static uint64_t procfs_cmdline_read(file_t* file, void* buffer, uint64_t count, 
         return 0;
     }
 
-    uint64_t totalSize = 0;
+    size_t totalSize = 0;
     for (uint64_t i = 0; i < process->argc; i++)
     {
         totalSize += strlen(process->argv[i]) + 1;
@@ -224,7 +224,7 @@ static uint64_t procfs_cmdline_read(file_t* file, void* buffer, uint64_t count, 
         dest += len;
     }
 
-    uint64_t result = BUFFER_READ(buffer, count, offset, cmdline, totalSize);
+    size_t result = BUFFER_READ(buffer, count, offset, cmdline, totalSize);
     free(cmdline);
     return result;
 }
@@ -233,7 +233,7 @@ static file_ops_t cmdlineOps = {
     .read = procfs_cmdline_read,
 };
 
-static uint64_t procfs_note_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+static size_t procfs_note_write(file_t* file, const void* buffer, size_t count, size_t* offset)
 {
     UNUSED(offset);
 
@@ -273,7 +273,7 @@ static file_ops_t noteOps = {
     .write = procfs_note_write,
 };
 
-static uint64_t procfs_notegroup_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+static size_t procfs_notegroup_write(file_t* file, const void* buffer, size_t count, size_t* offset)
 {
     UNUSED(offset);
 
@@ -334,7 +334,7 @@ static file_ops_t groupOps = {
     .close = procfs_group_close,
 };
 
-static uint64_t procfs_pid_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t procfs_pid_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     process_t* process = file->inode->private;
 
@@ -347,7 +347,7 @@ static file_ops_t pidOps = {
     .read = procfs_pid_read,
 };
 
-static uint64_t procfs_wait_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t procfs_wait_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     process_t* process = file->inode->private;
 
@@ -357,7 +357,7 @@ static uint64_t procfs_wait_read(file_t* file, void* buffer, uint64_t count, uin
     }
 
     lock_acquire(&process->status.lock);
-    uint64_t result = BUFFER_READ(buffer, count, offset, process->status.buffer, strlen(process->status.buffer));
+    size_t result = BUFFER_READ(buffer, count, offset, process->status.buffer, strlen(process->status.buffer));
     lock_release(&process->status.lock);
     return result;
 }
@@ -379,13 +379,13 @@ static file_ops_t waitOps = {
     .poll = procfs_wait_poll,
 };
 
-static uint64_t procfs_perf_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t procfs_perf_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     process_t* process = file->inode->private;
-    uint64_t userPages = space_user_page_count(&process->space);
+    size_t userPages = space_user_page_count(&process->space);
 
     lock_acquire(&process->threads.lock);
-    uint64_t threadCount = list_length(&process->threads.list);
+    size_t threadCount = list_length(&process->threads.list);
     lock_release(&process->threads.lock);
 
     clock_t userClocks = atomic_load(&process->perf.userClocks);
@@ -402,7 +402,7 @@ static uint64_t procfs_perf_read(file_t* file, void* buffer, uint64_t count, uin
         return ERR;
     }
 
-    return BUFFER_READ(buffer, count, offset, statStr, (uint64_t)length);
+    return BUFFER_READ(buffer, count, offset, statStr, (size_t)length);
 }
 
 static file_ops_t perfOps = {
@@ -780,7 +780,7 @@ CTL_STANDARD_OPS_DEFINE(ctlOps,
         {0},
     })
 
-static uint64_t procfs_env_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t procfs_env_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     process_t* process = file->inode->private;
 
@@ -790,11 +790,11 @@ static uint64_t procfs_env_read(file_t* file, void* buffer, uint64_t count, uint
         return 0;
     }
 
-    uint64_t length = strlen(value);
+    size_t length = strlen(value);
     return BUFFER_READ(buffer, count, offset, value, length);
 }
 
-static uint64_t procfs_env_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+static size_t procfs_env_write(file_t* file, const void* buffer, size_t count, size_t* offset)
 {
     UNUSED(offset);
 
@@ -907,7 +907,7 @@ static uint64_t procfs_env_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
     MUTEX_SCOPE(&process->env.mutex);
 
-    for (uint64_t i = 0; i < process->env.count; i++)
+    for (size_t i = 0; i < process->env.count; i++)
     {
         if (ctx->index++ < ctx->pos)
         {

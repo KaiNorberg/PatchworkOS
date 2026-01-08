@@ -279,7 +279,7 @@ file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* pr
     return file;
 }
 
-uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
+size_t vfs_read(file_t* file, void* buffer, size_t count)
 {
     if (file == NULL || buffer == NULL)
     {
@@ -306,8 +306,8 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    uint64_t offset = file->pos;
-    uint64_t result = file->ops->read(file, buffer, count, &offset);
+    size_t offset = file->pos;
+    size_t result = file->ops->read(file, buffer, count, &offset);
     file->pos = offset;
 
     if (result != ERR)
@@ -318,7 +318,7 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
     return result;
 }
 
-uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
+size_t vfs_write(file_t* file, const void* buffer, size_t count)
 {
     if (file == NULL || buffer == NULL)
     {
@@ -353,8 +353,8 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    uint64_t offset = file->pos;
-    uint64_t result = file->ops->write(file, buffer, count, &offset);
+    size_t offset = file->pos;
+    size_t result = file->ops->write(file, buffer, count, &offset);
     file->pos = offset;
 
     if (result != ERR)
@@ -365,7 +365,7 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
     return result;
 }
 
-uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
+size_t vfs_seek(file_t* file, ssize_t offset, seek_origin_t origin)
 {
     if (file == NULL)
     {
@@ -383,7 +383,7 @@ uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
     return ERR;
 }
 
-uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
+uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, size_t size)
 {
     if (file == NULL)
     {
@@ -412,7 +412,7 @@ uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
     return result;
 }
 
-void* vfs_mmap(file_t* file, void* address, uint64_t length, pml_flags_t flags)
+void* vfs_mmap(file_t* file, void* address, size_t length, pml_flags_t flags)
 {
     if (file == NULL)
     {
@@ -433,7 +433,7 @@ void* vfs_mmap(file_t* file, void* address, uint64_t length, pml_flags_t flags)
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    uint64_t offset = file->pos;
+    size_t offset = file->pos;
     void* result = file->ops->mmap(file, address, length, &offset, flags);
     if (result != NULL)
     {
@@ -490,7 +490,7 @@ static uint64_t vfs_poll_ctx_init(vfs_poll_ctx_t* ctx, poll_file_t* files, uint6
 
 static uint64_t vfs_poll_ctx_check_events(vfs_poll_ctx_t* ctx, poll_file_t* files, uint64_t amount)
 {
-    uint64_t readyCount = 0;
+    size_t readyCount = 0;
 
     for (uint64_t i = 0; i < amount; i++)
     {
@@ -557,7 +557,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
     clock_t uptime = clock_uptime();
     clock_t deadline = CLOCKS_DEADLINE(timeout, uptime);
 
-    uint64_t readyCount = 0;
+    size_t readyCount = 0;
     while (true)
     {
         uptime = clock_uptime();
@@ -863,7 +863,7 @@ static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
     return 0;
 }
 
-uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count)
+size_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count)
 {
     if (file == NULL || (buffer == NULL && count > 0))
     {
@@ -933,7 +933,7 @@ uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count)
         .path = file->path,
         .ns = ns};
 
-    uint64_t result = file->path.dentry->ops->iterate(file->path.dentry, &ctx.ctx);
+    size_t result = file->path.dentry->ops->iterate(file->path.dentry, &ctx.ctx);
     file->pos = ctx.ctx.pos;
 
     if (result != ERR)
@@ -1101,7 +1101,7 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
     return 0;
 }
 
-uint64_t vfs_readlink(inode_t* symlink, char* buffer, uint64_t count)
+size_t vfs_readlink(inode_t* symlink, char* buffer, size_t count)
 {
     if (symlink == NULL || buffer == NULL || count == 0)
     {
@@ -1122,7 +1122,7 @@ uint64_t vfs_readlink(inode_t* symlink, char* buffer, uint64_t count)
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    uint64_t result = symlink->ops->readlink(symlink, buffer, count);
+    size_t result = symlink->ops->readlink(symlink, buffer, count);
     if (result != ERR)
     {
         inode_notify_access(symlink);
@@ -1397,7 +1397,7 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
     return file_table_open(&process->fileTable, file);
 }
 
-SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, uint64_t count)
+SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, size_t count)
 {
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
@@ -1418,7 +1418,7 @@ SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, uint64_t count)
     return result;
 }
 
-SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, uint64_t count)
+SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, size_t count)
 {
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
@@ -1439,7 +1439,7 @@ SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, uint64_t count)
     return result;
 }
 
-SYSCALL_DEFINE(SYS_SEEK, uint64_t, fd_t fd, int64_t offset, seek_origin_t origin)
+SYSCALL_DEFINE(SYS_SEEK, uint64_t, fd_t fd, ssize_t offset, seek_origin_t origin)
 {
     process_t* process = sched_process();
 
@@ -1453,7 +1453,7 @@ SYSCALL_DEFINE(SYS_SEEK, uint64_t, fd_t fd, int64_t offset, seek_origin_t origin
     return vfs_seek(file, offset, origin);
 }
 
-SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, uint64_t size)
+SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, size_t size)
 {
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
@@ -1474,7 +1474,7 @@ SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, uint6
     return result;
 }
 
-SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, uint64_t length, prot_t prot)
+SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, size_t length, prot_t prot)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;

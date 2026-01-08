@@ -16,7 +16,7 @@ static dentry_t* mouseDir = NULL;
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
-static uint64_t mouse_events_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t mouse_events_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     mouse_t* mouse = file->inode->private;
 
@@ -53,10 +53,10 @@ static file_ops_t eventsOps = {
     .poll = mouse_events_poll,
 };
 
-static uint64_t mouse_name_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t mouse_name_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     mouse_t* mouse = file->inode->private;
-    uint64_t nameLen = strlen(mouse->name);
+    size_t nameLen = strlen(mouse->name);
     if (*offset >= nameLen)
     {
         return 0;

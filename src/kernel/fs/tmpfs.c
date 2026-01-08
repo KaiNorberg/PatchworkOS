@@ -51,7 +51,7 @@ static void tmpfs_dentry_remove(dentry_t* dentry)
     dentry_remove(dentry);
 }
 
-static uint64_t tmpfs_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static size_t tmpfs_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     MUTEX_SCOPE(&file->inode->mutex);
 
@@ -63,11 +63,11 @@ static uint64_t tmpfs_read(file_t* file, void* buffer, uint64_t count, uint64_t*
     return BUFFER_READ(buffer, count, offset, file->inode->private, file->inode->size);
 }
 
-static uint64_t tmpfs_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+static size_t tmpfs_write(file_t* file, const void* buffer, size_t count, size_t* offset)
 {
     MUTEX_SCOPE(&file->inode->mutex);
 
-    uint64_t requiredSize = *offset + count;
+    size_t requiredSize = *offset + count;
     if (requiredSize > file->inode->size)
     {
         void* newData = realloc(file->inode->private, requiredSize);

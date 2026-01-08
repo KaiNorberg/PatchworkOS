@@ -150,22 +150,22 @@ static inline uint64_t _syscall_close(fd_t fd)
     return _SYSCALL1(uint64_t, SYS_CLOSE, fd_t, fd);
 }
 
-static inline uint64_t _syscall_read(fd_t fd, void* buffer, uint64_t count)
+static inline uint64_t _syscall_read(fd_t fd, void* buffer, size_t count)
 {
     return _SYSCALL3(uint64_t, SYS_READ, fd_t, fd, void*, buffer, uint64_t, count);
 }
 
-static inline uint64_t _syscall_write(fd_t fd, const void* buffer, uint64_t count)
+static inline uint64_t _syscall_write(fd_t fd, const void* buffer, size_t count)
 {
     return _SYSCALL3(uint64_t, SYS_WRITE, fd_t, fd, const void*, buffer, uint64_t, count);
 }
 
-static inline uint64_t _syscall_seek(fd_t fd, int64_t offset, seek_origin_t origin)
+static inline uint64_t _syscall_seek(fd_t fd, ssize_t offset, seek_origin_t origin)
 {
     return _SYSCALL3(uint64_t, SYS_SEEK, fd_t, fd, int64_t, offset, seek_origin_t, origin);
 }
 
-static inline uint64_t _syscall_ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
+static inline uint64_t _syscall_ioctl(fd_t fd, uint64_t request, void* argp, size_t size)
 {
     return _SYSCALL4(uint64_t, SYS_IOCTL, fd_t, fd, uint64_t, request, void*, argp, uint64_t, size);
 }
@@ -180,17 +180,17 @@ static inline uint64_t _syscall_stat(const char* path, stat_t* info)
     return _SYSCALL2(uint64_t, SYS_STAT, const char*, path, stat_t*, info);
 }
 
-static inline void* _syscall_mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
+static inline void* _syscall_mmap(fd_t fd, void* address, size_t length, prot_t prot)
 {
     return _SYSCALL4(void*, SYS_MMAP, fd_t, fd, void*, address, uint64_t, length, prot_t, prot);
 }
 
-static inline void* _syscall_munmap(void* address, uint64_t length)
+static inline void* _syscall_munmap(void* address, size_t length)
 {
     return _SYSCALL2(void*, SYS_MUNMAP, void*, address, uint64_t, length);
 }
 
-static inline void* _syscall_mprotect(void* address, uint64_t length, prot_t prot)
+static inline void* _syscall_mprotect(void* address, size_t length, prot_t prot)
 {
     return _SYSCALL3(void*, SYS_MPROTECT, void*, address, uint64_t, length, prot_t, prot);
 }
