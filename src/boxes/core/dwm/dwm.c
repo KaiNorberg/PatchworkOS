@@ -110,7 +110,7 @@ void dwm_init(void)
         free(name);
     }
 
-    mouse = open("/dev/mouse/0/events");
+    mouse = open("/dev/mouse/0/events:nonblock");
     if (mouse == ERR)
     {
         printf("dwm: failed to open mouse (%s)\n", strerror(errno));
@@ -538,7 +538,7 @@ static void dwm_kbd_read(void)
     }
 }
 
-static void dwm_handle_mouse_event(const mouse_event_t* mouseEvent)
+static void dwm_handle_mouse_event(int64_t x, int64_t y, mouse_buttons_t buttons)
 {
     static mouse_buttons_t prevHeld = MOUSE_NONE;
 
@@ -547,13 +547,13 @@ static void dwm_handle_mouse_event(const mouse_event_t* mouseEvent)
         return;
     }
 
-    mouse_buttons_t held = mouseEvent->buttons;
-    mouse_buttons_t pressed = mouseEvent->buttons & ~prevHeld;
-    mouse_buttons_t released = prevHeld & ~mouseEvent->buttons;
+    mouse_buttons_t held = buttons;
+    mouse_buttons_t pressed = buttons & ~prevHeld;
+    mouse_buttons_t released = prevHeld & ~buttons;
 
     point_t oldCursorPos = cursor->pos;
-    cursor->pos.x = CLAMP(cursor->pos.x + mouseEvent->deltaX, 0, (int64_t)screen_width() - 1);
-    cursor->pos.y = CLAMP(cursor->pos.y + mouseEvent->deltaY, 0, (int64_t)screen_height() - 1);
+    cursor->pos.x = CLAMP(cursor->pos.x + x, 0, (int64_t)screen_width() - 1);
+    cursor->pos.y = CLAMP(cursor->pos.y + y, 0, (int64_t)screen_height() - 1);
 
     point_t cursorDelta = {.x = cursor->pos.x - oldCursorPos.x, .y = cursor->pos.y - oldCursorPos.y};
     surface_t* surface = dwm_surface_under_point(&cursor->pos);
@@ -632,25 +632,43 @@ static void dwm_mouse_read(void)
 {
     static mouse_buttons_t prevHeld = MOUSE_NONE;
 
-    mouse_event_t total = {0};
+    int64_t x = 0;
+    int64_t y = 0;
+    mouse_buttons_t buttons = 0;
+    
     bool received = false;
     while (1)
     {
-        if (poll1(mouse, POLLIN, 0) != POLLIN)
+        int64_t value;
+        char suffix;
+        if (scan(mouse, "%lld%c", &value, &suffix) != 2)
         {
+            if (errno != EAGAIN)
+            {
+                printf("dwm: failed to read mouse event (s)\n", strerror(errno));
+            }
             break;
         }
-
-        mouse_event_t mouseEvent;
-        if (read(mouse, &mouseEvent, sizeof(mouse_event_t)) != sizeof(mouse_event_t))
+        
+        switch (suffix)
         {
-            printf("dwm: failed to read mouse event\n");
-            return;
+        case 'x':
+            x += value;
+            break;
+        case 'y':
+            y += value;
+            break;
+        case '_':
+            buttons |= (1 << value);
+            break;
+        case '^':
+            buttons &= ~(1 << value);
+            break;
+        default:
+            printf("dwm: unknown mouse event suffix '%c'\n", suffix);
+            break;
         }
-
-        total.buttons |= mouseEvent.buttons;
-        total.deltaX += mouseEvent.deltaX;
-        total.deltaY += mouseEvent.deltaY;
+        
         received = true;
     }
 
@@ -659,7 +677,7 @@ static void dwm_mouse_read(void)
         return;
     }
 
-    dwm_handle_mouse_event(&total);
+    dwm_handle_mouse_event(x, y, buttons);
 }
 
 static void dwm_poll_ctx_update(void)

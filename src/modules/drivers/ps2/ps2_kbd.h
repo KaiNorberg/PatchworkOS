@@ -25,13 +25,13 @@ typedef enum
 
 /**
  * @brief PS/2 keyboard private data.
- * @struct ps2_kbd_data_t
+ * @struct ps2_kbd_t
  */
 typedef struct
 {
     ps2_kbd_flags_t flags;
     kbd_t* kbd;
-} ps2_kbd_data_t;
+} ps2_kbd_t;
 
 /**
  * @brief Initialize a PS/2 keyboard device.

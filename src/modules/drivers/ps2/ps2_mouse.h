@@ -55,15 +55,16 @@ typedef enum
 
 /**
  * @brief PS/2 mouse private data.
- * @struct ps2_mouse_data_t
+ * @struct ps2_mouse_t
  *
  */
 typedef struct
 {
-    ps2_mouse_packet_index_t index; ///< Current packet byte index.
-    ps2_mouse_packet_t packet;      ///< Current packet being assembled
+    ps2_mouse_packet_index_t index; 
+    ps2_mouse_packet_t prev;
+    ps2_mouse_packet_t current;
     mouse_t* mouse;
-} ps2_mouse_data_t;
+} ps2_mouse_t;
 
 /**
  * @brief Initialize a PS/2 mouse device.

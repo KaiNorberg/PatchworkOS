@@ -8,7 +8,7 @@
 
 static void ps2_kbd_irq(irq_func_data_t* data)
 {
-    ps2_kbd_data_t* private = data->private;
+    ps2_kbd_t* kbd = data->private;
 
     uint64_t response = ps2_read_no_wait();
     if (response == ERR)
@@ -24,11 +24,11 @@ static void ps2_kbd_irq(irq_func_data_t* data)
         LOG_ERR("unexpected PS/2 keyboard response: %d\n", response);
         return;
     case PS2_DEV_RESPONSE_KBD_EXTENDED:
-      private
+      kbd
         ->flags |= PS2_KBD_EXTENDED;
         return;
     case PS2_DEV_RESPONSE_KBD_RELEASE:
-      private
+      kbd
         ->flags |= PS2_KBD_RELEASE;
         return;
     default:
@@ -36,18 +36,18 @@ static void ps2_kbd_irq(irq_func_data_t* data)
     }
 
     ps2_scancode_t scancode = (ps2_scancode_t)response;
-    keycode_t code = ps2_scancode_to_keycode(scancode, private->flags & PS2_KBD_EXTENDED);
+    keycode_t code = ps2_scancode_to_keycode(scancode, kbd->flags & PS2_KBD_EXTENDED);
 
-    if (private->flags & PS2_KBD_RELEASE)
+    if (kbd->flags & PS2_KBD_RELEASE)
     {
-        kbd_release(private->kbd, code);
+        kbd_release(kbd->kbd, code);
     }
     else
     {
-        kbd_press(private->kbd, code);
+        kbd_press(kbd->kbd, code);
     }
 
-  private
+  kbd
     ->flags = PS2_KBD_NONE;
 }
 
@@ -59,38 +59,38 @@ uint64_t ps2_kbd_init(ps2_device_info_t* info)
         return ERR;
     }
 
-    ps2_kbd_data_t* private = malloc(sizeof(ps2_kbd_data_t));
-    if (private == NULL)
+    ps2_kbd_t* kbd = malloc(sizeof(ps2_kbd_t));
+    if (kbd == NULL)
     {
         LOG_ERR("failed to allocate memory for PS/2 keyboard data\n");
         return ERR;
     }
-  private
+  kbd
     ->flags = PS2_KBD_NONE;
-  private
+  kbd
     ->kbd = kbd_new(info->name);
-    if (private->kbd == NULL)
+    if (kbd->kbd == NULL)
     {
-        free(private);
+        free(kbd);
         LOG_ERR("failed to create PS/2 keyboard\n");
         return ERR;
     }
 
-    info->private = private;
+    info->private = kbd;
     return 0;
 }
 
 uint64_t ps2_kbd_irq_register(ps2_device_info_t* info)
 {
-    ps2_kbd_data_t* private = info->private;
-    if (private == NULL)
+    ps2_kbd_t* kbd = info->private;
+    if (kbd == NULL)
     {
         LOG_ERR("PS/2 keyboard data is NULL during IRQ registration\n");
         errno = EINVAL;
         return ERR;
     }
 
-    if (irq_handler_register(info->irq, ps2_kbd_irq, private) == ERR)
+    if (irq_handler_register(info->irq, ps2_kbd_irq, kbd) == ERR)
     {
         LOG_ERR("failed to register PS/2 keyboard IRQ handler\n");
         return ERR;
@@ -106,11 +106,11 @@ void ps2_kbd_deinit(ps2_device_info_t* info)
         return;
     }
 
-    ps2_kbd_data_t* private = info->private;
+    ps2_kbd_t* kbd = info->private;
 
     irq_handler_unregister(ps2_kbd_irq, info->irq);
-    kbd_free(private->kbd);
-    free(private);
+    kbd_free(kbd->kbd);
+    free(kbd);
 
     info->private = NULL;
 }

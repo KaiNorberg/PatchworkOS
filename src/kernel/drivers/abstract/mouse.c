@@ -12,36 +12,106 @@
 #include <stdlib.h>
 #include <sys/math.h>
 
-static dentry_t* mouseDir = NULL;
+static dentry_t* dir = NULL;
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
-static size_t mouse_events_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static size_t mouse_name_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     mouse_t* mouse = file->inode->private;
+    assert(mouse != NULL);
 
-    count = ROUND_DOWN(count, sizeof(mouse_event_t));
-    for (uint64_t i = 0; i < count / sizeof(mouse_event_t); i++)
+    size_t length = strlen(mouse->name);
+    return BUFFER_READ(buffer, count, offset, mouse->name, length);
+}
+
+static file_ops_t nameOps = {
+    .read = mouse_name_read,
+};
+
+static uint64_t mouse_events_open(file_t* file)
+{
+    mouse_t* mouse = file->inode->private;
+    assert(mouse != NULL);
+
+    mouse_client_t* client = calloc(1, sizeof(mouse_client_t));
+    if (client == NULL)
     {
-        LOCK_SCOPE(&mouse->lock);
+        errno = ENOMEM;
+        return ERR;
+    }
+    list_entry_init(&client->entry);
+    fifo_init(&client->fifo, client->buffer, sizeof(client->buffer));
 
-        if (WAIT_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, *offset != mouse->writeIndex) == ERR)
-        {
-            return i * sizeof(mouse_event_t);
-        }
+    lock_acquire(&mouse->lock);
+    list_push_back(&mouse->clients, &client->entry);
+    lock_release(&mouse->lock);
 
-        ((mouse_event_t*)buffer)[i] = mouse->events[*offset];
-        *offset = (*offset + 1) % MOUSE_MAX_EVENT;
+    file->private = client;
+    return 0;
+}
+
+static void mouse_events_close(file_t* file)
+{
+    mouse_t* mouse = file->inode->private;
+    assert(mouse != NULL);
+
+    mouse_client_t* client = file->private;
+    if (client == NULL)
+    {
+        return;
     }
 
-    return count;
+    lock_acquire(&mouse->lock);
+    list_remove(&mouse->clients, &client->entry);
+    lock_release(&mouse->lock);
+
+    free(client);
+}
+
+static size_t mouse_events_read(file_t* file, void* buffer, size_t count, size_t* offset)
+{
+    UNUSED(offset);
+
+    if (count == 0)
+    {
+        return 0;
+    }
+
+    mouse_t* mouse = file->inode->private;
+    assert(mouse != NULL);
+    mouse_client_t* client = file->private;
+    assert(client != NULL);
+
+    LOCK_SCOPE(&mouse->lock);
+
+    if (fifo_bytes_readable(&client->fifo) == 0)
+    {
+        if (file->mode & MODE_NONBLOCK)
+        {
+            errno = EAGAIN;
+            return ERR;
+        }
+
+        if (WAIT_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, fifo_bytes_readable(&client->fifo) != 0) == ERR)
+        {
+            return ERR;
+        }
+    }
+
+    return fifo_read(&client->fifo, buffer, count);
 }
 
 static wait_queue_t* mouse_events_poll(file_t* file, poll_events_t* revents)
 {
     mouse_t* mouse = file->inode->private;
+    assert(mouse != NULL);
+    mouse_client_t* client = file->private;
+    assert(client != NULL);
+
     LOCK_SCOPE(&mouse->lock);
-    if (mouse->writeIndex != file->pos)
+
+    if (fifo_bytes_readable(&client->fifo) != 0)
     {
         *revents |= POLLIN;
     }
@@ -49,31 +119,21 @@ static wait_queue_t* mouse_events_poll(file_t* file, poll_events_t* revents)
 }
 
 static file_ops_t eventsOps = {
+    .open = mouse_events_open,
+    .close = mouse_events_close,
     .read = mouse_events_read,
     .poll = mouse_events_poll,
-};
-
-static size_t mouse_name_read(file_t* file, void* buffer, size_t count, size_t* offset)
-{
-    mouse_t* mouse = file->inode->private;
-    size_t nameLen = strlen(mouse->name);
-    if (*offset >= nameLen)
-    {
-        return 0;
-    }
-
-    return BUFFER_READ(buffer, count, offset, mouse->name, nameLen);
-}
-
-static file_ops_t nameOps = {
-    .read = mouse_name_read,
 };
 
 static void mouse_dir_cleanup(inode_t* inode)
 {
     mouse_t* mouse = inode->private;
+    if (mouse == NULL)
+    {
+        return;
+    }
+
     wait_queue_deinit(&mouse->waitQueue);
-    free(mouse->name);
     free(mouse);
 }
 
@@ -89,29 +149,28 @@ mouse_t* mouse_new(const char* name)
         return NULL;
     }
 
-    if (mouseDir == NULL)
+    if (dir == NULL)
     {
-        mouseDir = devfs_dir_new(NULL, "mouse", NULL, NULL);
-        if (mouseDir == NULL)
+        dir = devfs_dir_new(NULL, "mouse", NULL, NULL);
+        if (dir == NULL)
         {
             return NULL;
         }
     }
 
-    mouse_t* mouse = calloc(1, sizeof(mouse_t));
+    mouse_t* mouse = malloc(sizeof(mouse_t));
     if (mouse == NULL)
     {
+        errno = ENOMEM;
         return NULL;
     }
-    mouse->name = strdup(name);
-    if (mouse->name == NULL)
-    {
-        free(mouse);
-        return NULL;
-    }
-    mouse->writeIndex = 0;
+    strncpy(mouse->name, name, sizeof(mouse->name));
+    mouse->name[sizeof(mouse->name) - 1] = '\0';
     wait_queue_init(&mouse->waitQueue);
+    list_init(&mouse->clients);
     lock_init(&mouse->lock);
+    mouse->dir = NULL;
+    list_init(&mouse->files);
 
     char id[MAX_NAME];
     if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
@@ -122,25 +181,35 @@ mouse_t* mouse_new(const char* name)
         return NULL;
     }
 
-    mouse->dir = devfs_dir_new(mouseDir, id, &dirInodeOps, mouse);
+    mouse->dir = devfs_dir_new(dir, id, &dirInodeOps, mouse);
     if (mouse->dir == NULL)
     {
         wait_queue_deinit(&mouse->waitQueue);
-        free(mouse->name);
         free(mouse);
         return NULL;
     }
-    mouse->eventsFile = devfs_file_new(mouse->dir, "events", NULL, &eventsOps, mouse);
-    if (mouse->eventsFile == NULL)
+
+    devfs_file_desc_t files[] = {
+        {
+            .name = "name",
+            .fileOps = &nameOps,
+            .private = mouse,
+        },
+        {
+            .name = "events",
+            .fileOps = &eventsOps,
+            .private = mouse,
+        },
+        {
+            .name = NULL,
+        },
+    };
+
+    if (devfs_files_new(&mouse->files, mouse->dir, files) == ERR)
     {
-        UNREF(mouse->dir); // mouse will be freed in mouse_dir_cleanup
-        return NULL;
-    }
-    mouse->nameFile = devfs_file_new(mouse->dir, "name", NULL, &nameOps, mouse);
-    if (mouse->nameFile == NULL)
-    {
+        wait_queue_deinit(&mouse->waitQueue);
         UNREF(mouse->dir);
-        UNREF(mouse->eventsFile);
+        free(mouse);
         return NULL;
     }
 
@@ -149,21 +218,117 @@ mouse_t* mouse_new(const char* name)
 
 void mouse_free(mouse_t* mouse)
 {
+    if (mouse == NULL)
+    {
+        return;
+    }
+
     UNREF(mouse->dir);
-    UNREF(mouse->eventsFile);
-    UNREF(mouse->nameFile);
-    // mouse will be freed in mouse_dir_cleanup
+    devfs_files_free(&mouse->files);
 }
 
-void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, int64_t deltaX, int64_t deltaY)
-{
+static void mouse_broadcast(mouse_t* mouse, const char* string, size_t length)
+{    
     LOCK_SCOPE(&mouse->lock);
-    mouse->events[mouse->writeIndex] = (mouse_event_t){
-        .time = clock_uptime(),
-        .buttons = buttons,
-        .deltaX = deltaX,
-        .deltaY = deltaY,
-    };
-    mouse->writeIndex = (mouse->writeIndex + 1) % MOUSE_MAX_EVENT;
+
+    mouse_client_t* client;
+    LIST_FOR_EACH(client, &mouse->clients, entry)
+    {
+        if (fifo_bytes_writeable(&client->fifo) >= length)
+        {
+            fifo_write(&client->fifo, string, length);
+        }
+    }
+
     wait_unblock(&mouse->waitQueue, WAIT_ALL, EOK);
+}
+
+void mouse_press(mouse_t* mouse, uint32_t button)
+{
+    if (mouse == NULL)
+    {
+        return;
+    }
+
+    char event[MAX_NAME];
+    int length = snprintf(event, sizeof(event), "%u_", button);
+    if (length < 0)
+    {
+        LOG_ERR("failed to format mouse press event\n");
+        return;
+    }
+
+    mouse_broadcast(mouse, event, (size_t)length);
+}
+
+void mouse_release(mouse_t* mouse, uint32_t button)
+{
+    if (mouse == NULL)
+    {
+        return;
+    }
+
+    char event[MAX_NAME];
+    int length = snprintf(event, sizeof(event), "%u^", button);
+    if (length < 0)
+    {
+        LOG_ERR("failed to format mouse release event\n");
+        return;
+    }
+
+    mouse_broadcast(mouse, event, (size_t)length);
+}
+
+void mouse_move_x(mouse_t* mouse, int64_t delta)
+{
+    if (mouse == NULL)
+    {
+        return;
+    }
+
+    char event[MAX_NAME];
+    int length = snprintf(event, sizeof(event), "%lldx", delta);
+    if (length < 0)
+    {
+        LOG_ERR("failed to format mouse move X event\n");
+        return;
+    }
+
+    mouse_broadcast(mouse, event, (size_t)length);
+}
+
+void mouse_move_y(mouse_t* mouse, int64_t delta)
+{
+    if (mouse == NULL)
+    {
+        return;
+    }
+
+    char event[MAX_NAME];
+    int length = snprintf(event, sizeof(event), "%lldy", delta);
+    if (length < 0)
+    {
+        LOG_ERR("failed to format mouse move Y event\n");
+        return;
+    }
+
+    mouse_broadcast(mouse, event, (size_t)length);
+}
+
+void mouse_scroll(mouse_t* mouse, int64_t delta)
+{
+    if (mouse == NULL)
+    {
+        return;
+    }
+
+    char event[MAX_NAME];
+    int length = snprintf(event, sizeof(event), "%lldz", delta);
+    if (length < 0)
+    {
+        LOG_ERR("failed to format mouse scroll event\n");
+        return;
+    }
+
+    mouse_broadcast(mouse, event, (size_t)length);
 }

@@ -58,41 +58,41 @@ typedef struct cpu cpu_t;
  * @brief Macro to be used in ASM to push general-purpose registers onto the stack.
  */
 #define INTERRUPT_FRAME_REGS_PUSH \
-    pushq %rax; \
-    pushq %rbx; \
-    pushq %rcx; \
-    pushq %rdx; \
-    pushq %rsi; \
-    pushq %rdi; \
-    pushq %rbp; \
-    pushq %r8; \
-    pushq %r9; \
-    pushq %r10; \
-    pushq %r11; \
-    pushq %r12; \
-    pushq %r13; \
-    pushq %r14; \
-    pushq %r15;
+    pushq % rax; \
+    pushq % rbx; \
+    pushq % rcx; \
+    pushq % rdx; \
+    pushq % rsi; \
+    pushq % rdi; \
+    pushq % rbp; \
+    pushq % r8; \
+    pushq % r9; \
+    pushq % r10; \
+    pushq % r11; \
+    pushq % r12; \
+    pushq % r13; \
+    pushq % r14; \
+    pushq % r15;
 
 /**
  * @brief Macro to be used in ASM to pop general-purpose registers from the stack.
  */
 #define INTERRUPT_FRAME_REGS_POP \
-    popq %r15; \
-    popq %r14; \
-    popq %r13; \
-    popq %r12; \
-    popq %r11; \
-    popq %r10; \
-    popq %r9; \
-    popq %r8; \
-    popq %rbp; \
-    popq %rdi; \
-    popq %rsi; \
-    popq %rdx; \
-    popq %rcx; \
-    popq %rbx; \
-    popq %rax;
+    popq % r15; \
+    popq % r14; \
+    popq % r13; \
+    popq % r12; \
+    popq % r11; \
+    popq % r10; \
+    popq % r9; \
+    popq % r8; \
+    popq % rbp; \
+    popq % rdi; \
+    popq % rsi; \
+    popq % rdx; \
+    popq % rcx; \
+    popq % rbx; \
+    popq % rax;
 
 #ifndef __ASSEMBLER__
 

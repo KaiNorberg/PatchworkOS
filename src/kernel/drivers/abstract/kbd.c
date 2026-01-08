@@ -139,6 +139,7 @@ static void kbd_dir_cleanup(inode_t* inode)
         return;
     }
 
+    wait_queue_deinit(&kbd->waitQueue);
     free(kbd);
 }
 
@@ -232,14 +233,16 @@ void kbd_free(kbd_t* kbd)
     devfs_files_free(&kbd->files);
 }
 
-static void kbd_broadcast(kbd_t* kbd, const char* string, uint64_t length)
-{
+static void kbd_broadcast(kbd_t* kbd, const char* string, size_t length)
+{    
+    LOCK_SCOPE(&kbd->lock);
+
     kbd_client_t* client;
     LIST_FOR_EACH(client, &kbd->clients, entry)
     {
-        if (fifo_bytes_writeable(&client->fifo) >= (size_t)length)
+        if (fifo_bytes_writeable(&client->fifo) >= length)
         {
-            fifo_write(&client->fifo, string, (uint64_t)length);
+            fifo_write(&client->fifo, string, length);
         }
     }
 
@@ -253,16 +256,15 @@ void kbd_press(kbd_t* kbd, keycode_t code)
         return;
     }
 
-    LOCK_SCOPE(&kbd->lock);
-
-    char string[MAX_NAME];
-    int length = snprintf(string, MAX_NAME, "%u_", code);
+    char event[MAX_NAME];
+    int length = snprintf(event, sizeof(event), "%u_", code);
     if (length < 0)
     {
+        LOG_ERR("failed to format keyboard press event\n");
         return;
     }
 
-    kbd_broadcast(kbd, string, (uint64_t)length);
+    kbd_broadcast(kbd, event, (size_t)length);
 }
 
 void kbd_release(kbd_t* kbd, keycode_t code)
@@ -272,14 +274,13 @@ void kbd_release(kbd_t* kbd, keycode_t code)
         return;
     }
 
-    LOCK_SCOPE(&kbd->lock);
-
-    char string[MAX_NAME];
-    int length = snprintf(string, MAX_NAME, "%u^", code);
+    char event[MAX_NAME];
+    int length = snprintf(event, sizeof(event), "%u^", code);
     if (length < 0)
     {
+        LOG_ERR("failed to format keyboard release event\n");
         return;
     }
 
-    kbd_broadcast(kbd, string, (uint64_t)length);
+    kbd_broadcast(kbd, event, (size_t)length);
 }

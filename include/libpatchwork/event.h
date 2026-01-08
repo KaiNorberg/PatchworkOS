@@ -10,7 +10,6 @@
 #include <stdint.h>
 #include <sys/io.h>
 #include <sys/kbd.h>
-#include <sys/mouse.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -165,6 +164,18 @@ typedef struct
     keycode_t code;
     char ascii;
 } event_kbd_t;
+
+/**
+ * @brief Mouse buttons enum.
+ *
+ */
+typedef enum
+{
+    MOUSE_NONE = 0,          ///< None
+    MOUSE_LEFT = (1 << 1),    ///< Left mouse button
+    MOUSE_RIGHT = (1 << 2),  ///< Right mouse button
+    MOUSE_MIDDLE = (1 << 3), ///< Middle mouse button
+} mouse_buttons_t;
 
 /**
  * @brief Mouse event.
