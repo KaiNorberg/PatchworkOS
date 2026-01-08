@@ -14,9 +14,8 @@ gdt_load_descriptor:
     push GDT_KERNEL_CODE
     lea rax, [rip + .reload_CS]
     push rax
-    rex.w jmp fword ptr [rsp]
+    retfq
 .reload_CS:
-    add rsp, 16
     mov ax, GDT_KERNEL_DATA
     mov ds, ax
     mov es, ax

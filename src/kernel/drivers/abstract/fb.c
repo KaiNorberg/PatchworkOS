@@ -102,13 +102,13 @@ static size_t fb_info_read(file_t* file, void* buffer, size_t count, size_t* off
         return ERR;
     }
 
-    if ((uint64_t)length >= sizeof(string))
+    if ((size_t)length >= sizeof(string))
     {
         errno = EOVERFLOW;
         return ERR;
     }
 
-    return BUFFER_READ(buffer, count, offset, string, length);
+    return BUFFER_READ(buffer, count, offset, string, (size_t)length);
 }
 
 static file_ops_t infoOps = {

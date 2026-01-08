@@ -50,7 +50,6 @@ ASFLAGS := \
 	-D_PATCHWORK_OS_
 
 LDFLAGS := \
-    -m elf_x86_64 \
     -nostdlib \
     -Lbin/libstd \
     -Lbin/libpatchwork
