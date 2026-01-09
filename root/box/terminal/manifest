@@ -22,3 +22,5 @@ PATH = /base/bin
 /dev:rw = /dev
 /net:rw = /net
 /proc:rw = /proc
+/sys:rw = /sys
+/tmp:rwL = /tmp

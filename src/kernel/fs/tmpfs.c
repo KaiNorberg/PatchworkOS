@@ -389,7 +389,7 @@ void tmpfs_init(void)
     }
     UNREF_DEFER(ns);
 
-    mount_t* temp = namespace_mount(ns, NULL, TMPFS_NAME, NULL, MODE_PROPAGATE | MODE_ALL_PERMS, NULL);
+    mount_t* temp = namespace_mount(ns, NULL, &tmpfs, NULL, MODE_PROPAGATE | MODE_ALL_PERMS, NULL);
     if (temp == NULL)
     {
         panic(NULL, "Failed to mount tmpfs");

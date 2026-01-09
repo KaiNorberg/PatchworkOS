@@ -58,6 +58,11 @@ superblock_t* superblock_new(filesystem_t* fs, block_device_t* device, const sup
     superblock->dentryOps = dentryOps;
     superblock->fs = fs;
     atomic_init(&superblock->mountCount, 0);
+
+    rwlock_write_acquire(&fs->lock);
+    list_push_back(&fs->superblocks, &superblock->entry);
+    rwlock_write_release(&fs->lock);
+
     return superblock;
 }
 

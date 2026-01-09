@@ -22,25 +22,26 @@
  * is an overview of the root namespace.
  *
  * <div align="center">
- * | Name                                | Type      | Description                        |
- * |-------------------------------------|-----------|------------------------------------|
- * | `/base`                             | directory | Base system directory.             |
- * | `/base/bin`                         | directory | Non-essential system binaries.     |
- * | `/base/lib`                         | directory | System libraries.                  |
- * | `/base/include`                     | directory | System header files.               |
- * | `/base/data`                        | directory | System data files.                 |
- * | `/box`                              | directory | Installed boxes directory.         |
- * | `/cfg`                              | directory | System configuration files.        |
- * | `/dev`                              | devfs     | Device filesystem.                 |
- * | `/efi`                              | directory | EFI files.                         |
- * | `/efi/boot`                         | directory | EFI bootloader files.              |
- * | `/kernel`                           | directory | Kernel related files.              |
- * | `/kernel/modules`                   | directory | Kernel modules directory.          |
- * | `/kernel/modules/<kernel_verion>`   | directory | Version specific kernel modules.   |
- * | `/net`                              | netfs     | Network filesystem.                |
- * | `/proc`                             | procfs    | Process filesystem.                |
- * | `/sbin`                             | directory | Essential system binaries.         |
- * | `/tmp`                              | tmpfs     | Temporary filesystem.              |
+ * | Name                                | Type      | Description                                |
+ * |-------------------------------------|-----------|--------------------------------------------|
+ * | `/base`                             | directory | Base system directory.                     |
+ * | `/base/bin`                         | directory | Non-essential system binaries.             |
+ * | `/base/lib`                         | directory | System libraries.                          |
+ * | `/base/include`                     | directory | System header files.                       |
+ * | `/base/data`                        | directory | System data files.                         |
+ * | `/box`                              | directory | Installed boxes directory.                 |
+ * | `/cfg`                              | directory | System configuration files.                |
+ * | `/dev`                              | devfs     | Device filesystem.                         |
+ * | `/efi`                              | directory | EFI files.                                 |
+ * | `/efi/boot`                         | directory | EFI bootloader files.                      |
+ * | `/kernel`                           | directory | Kernel related files.                      |
+ * | `/kernel/modules`                   | directory | Kernel modules directory.                  |
+ * | `/kernel/modules/<kernel_verion>`   | directory | Version specific kernel modules.           |
+ * | `/net`                              | netfs     | Network filesystem.                        |
+ * | `/proc`                             | procfs    | Process filesystem.                        |
+ * | `/sbin`                             | directory | Essential system binaries.                 |
+ * | `/sys`                              | sysfs     | System filesystem, mounted by the kernel.  |
+ * | `/tmp`                              | tmpfs     | Temporary filesystem.                      |
  * </div>
  *
  */
@@ -86,25 +87,25 @@ static uint64_t init_socket_addr_wait(const char* family, const char* addr)
 
 static void init_root_ns(void)
 {
-    if (mount("/dev:rwL", "devfs", NULL) == ERR)
+    if (mount("/dev:rwL", "/sys/fs/devfs", NULL) == ERR)
     {
         printf("init: failed to mount devfs (%s)\n", strerror(errno));
         abort();
     }
 
-    if (mount("/net:rwL", "netfs", NULL) == ERR)
+    if (mount("/net:rwL", "/sys/fs/netfs", NULL) == ERR)
     {
         printf("init: failed to mount netfs (%s)\n", strerror(errno));
         abort();
     }
 
-    if (mount("/proc:rwL", "procfs", NULL) == ERR)
+    if (mount("/proc:rwL", "/sys/fs/procfs", NULL) == ERR)
     {
         printf("init: failed to mount procfs (%s)\n", strerror(errno));
         abort();
     }
 
-    if (mount("/tmp:rwL", "tmpfs", NULL) == ERR)
+    if (mount("/tmp:rwL", "/sys/fs/tmpfs", NULL) == ERR)
     {
         printf("init: failed to mount tmpfs (%s)\n", strerror(errno));
         abort();

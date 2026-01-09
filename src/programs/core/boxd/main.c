@@ -283,7 +283,7 @@ static void box_spawn(box_spawn_t* ctx)
     }
     else
     {
-        if (swrite(ctl, "mount /:Lrwx tmpfs") == ERR)
+        if (swrite(ctl, "mount /:Lrwx /sys/fs/tmpfs") == ERR)
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to root mount failure for '%s' (%s)", args.box,
                 strerror(errno));

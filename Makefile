@@ -8,7 +8,7 @@ BOXES = $(shell find src/boxes/ -name "*.mk")
 PROGRAMS = $(shell find src/programs/ -name "*.mk")
 MODULES = $(shell find src/modules/ -name "*.mk")
 
-ROOT_DIRS = acpi base base/bin base/lib base/include base/data box cfg dev efi efi/boot kernel kernel/modules kernel/modules/$(VERSION_STRING) net proc sbin tmp
+ROOT_DIRS = acpi base base/bin base/lib base/include base/data box cfg dev efi efi/boot kernel kernel/modules kernel/modules/$(VERSION_STRING) net proc sbin sys tmp
 
 # Programs to copy to /sbin
 SBIN_PROGRAMS = init boxd

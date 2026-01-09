@@ -1,6 +1,7 @@
 #include <modules/acpi/tables.h>
 
 #include <kernel/fs/file.h>
+#include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -224,10 +225,10 @@ uint64_t acpi_tables_expose(void)
     assert(acpiRoot != NULL);
     UNREF_DEFER(acpiRoot);
 
-    tablesDir = devfs_dir_new(acpiRoot, "tables", NULL, NULL);
+    tablesDir = sysfs_dir_new(acpiRoot, "tables", NULL, NULL);
     if (tablesDir == NULL)
     {
-        LOG_ERR("failed to create ACPI tables devfs directory");
+        LOG_ERR("failed to create ACPI tables sysfs directory");
         return ERR;
     }
 
@@ -246,10 +247,10 @@ uint64_t acpi_tables_expose(void)
             name[SDT_SIGNATURE_LENGTH] = '\0';
         }
 
-        cachedTables[i].file = devfs_file_new(tablesDir, name, NULL, &tableFileOps, table);
+        cachedTables[i].file = sysfs_file_new(tablesDir, name, NULL, &tableFileOps, table);
         if (cachedTables[i].file == NULL)
         {
-            LOG_ERR("failed to create ACPI table devfs file for %.*s", SDT_SIGNATURE_LENGTH, table->signature);
+            LOG_ERR("failed to create ACPI table sysfs file for %.*s", SDT_SIGNATURE_LENGTH, table->signature);
             return ERR;
         }
     }

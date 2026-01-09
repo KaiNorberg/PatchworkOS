@@ -7,6 +7,7 @@
 
 #include <kernel/fs/mount.h>
 #include <kernel/fs/namespace.h>
+#include <kernel/fs/sysfs.h>
 #include <kernel/init/boot_info.h>
 #include <kernel/init/init.h>
 #include <kernel/log/log.h>
@@ -44,14 +45,14 @@ dentry_t* acpi_get_dir(void)
         namespace_t* ns = process_get_ns(process_get_kernel());
         if (ns == NULL)
         {
-            panic(NULL, "failed to get kernel process namespace for ACPI devfs group");
+            panic(NULL, "failed to get kernel process namespace for ACPI sysfs group");
         }
         UNREF_DEFER(ns);
 
-        acpi = devfs_dir_new(NULL, "acpi", NULL, NULL);
+        acpi = sysfs_dir_new(NULL, "acpi", NULL, NULL);
         if (acpi == NULL)
         {
-            panic(NULL, "failed to initialize ACPI devfs group");
+            panic(NULL, "failed to initialize ACPI sysfs group");
         }
 
         dirInitialized = true;
@@ -116,13 +117,13 @@ uint64_t _module_procedure(const module_event_t* event)
 
         if (acpi_tables_expose() == ERR)
         {
-            LOG_ERR("failed to expose ACPI tables via devfs\n");
+            LOG_ERR("failed to expose ACPI tables via sysfs\n");
             return ERR;
         }
 
         if (aml_namespace_expose() == ERR)
         {
-            LOG_ERR("failed to expose ACPI devices via devfs\n");
+            LOG_ERR("failed to expose ACPI devices via sysfs\n");
             return ERR;
         }
     }
