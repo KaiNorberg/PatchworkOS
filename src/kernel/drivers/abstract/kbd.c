@@ -234,7 +234,7 @@ void kbd_free(kbd_t* kbd)
 }
 
 static void kbd_broadcast(kbd_t* kbd, const char* string, size_t length)
-{    
+{
     LOCK_SCOPE(&kbd->lock);
 
     kbd_client_t* client;

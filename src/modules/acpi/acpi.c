@@ -101,7 +101,9 @@ uint64_t _module_procedure(const module_event_t* event)
         }
 
 #ifdef _TESTING_
+#ifndef _ACPI_NOTEST_
         TEST_ALL();
+#endif
 #endif
 
         if (acpi_devices_init() == ERR)

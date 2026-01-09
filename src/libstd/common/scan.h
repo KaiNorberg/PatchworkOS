@@ -10,7 +10,6 @@
 #include <sys/defs.h>
 
 #include "digits.h"
-#include "format.h"
 
 #ifndef _SCAN_GET
 #error "_SCAN_GET not defined"
@@ -33,6 +32,8 @@
  *
  * The`_SCAN_UNGET(ctx, c)` macro should evaluate to an expression that pushes back the character `c` to the input
  * source and takes a pointer to the current `scan_ctx_t` and the character to push back as argument.
+ *
+ * @todo Implement floating point scanning.
  *
  * @see https://cplusplus.com/reference/cstdio/scanf/ for details on the format specifiers.
  *
@@ -543,7 +544,11 @@ static inline int _scan_format(_scan_ctx_t* ctx)
 {
     // %[*][width][length]specifier
 
-    _scan_format_ctx_t format = {.flags = 0, .width = 0, .length = _SCAN_DEFAULT};
+    _scan_format_ctx_t format = {
+        .flags = 0,
+        .width = 0,
+        .length = _SCAN_DEFAULT,
+    };
 
     if (*ctx->p == '*')
     {

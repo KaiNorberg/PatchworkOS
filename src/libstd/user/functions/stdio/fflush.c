@@ -1,6 +1,5 @@
 #include <stdio.h>
 
-#include "common/print.h"
 #include "user/common/file.h"
 
 int fflush(FILE* stream)

@@ -1,7 +1,5 @@
 #include <stdio.h>
 
-#include "common/print.h"
-
 int printf(const char* _RESTRICT format, ...)
 {
     va_list args;

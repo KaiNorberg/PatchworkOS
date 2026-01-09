@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <sys/io.h>
 
-#include "common/print.h"
 #include "user/common/syscalls.h"
 
 uint64_t open2(const char* path, fd_t fds[2])

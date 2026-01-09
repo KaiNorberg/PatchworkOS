@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <sys/io.h>
 
-#include "common/print.h"
 #include "user/common/syscalls.h"
 
 size_t write(fd_t fd, const void* buffer, size_t count)

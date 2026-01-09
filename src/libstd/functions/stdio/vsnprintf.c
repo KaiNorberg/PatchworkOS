@@ -1,47 +1,39 @@
 #include <stdio.h>
 
+#define _PRINT_WRITE(ctx, buffer, count) \
+    ({ \
+        char* str = (char*)(ctx)->private; \
+        size_t i; \
+        for (i = 0; i < (size_t)(count); i++) \
+        { \
+            str[i] = (buffer)[i]; \
+        } \
+        str += i; \
+        (ctx)->private = str; \
+        (int)i; \
+    })
+
+#define _PRINT_FILL(ctx, c, count) \
+    ({ \
+        char* str = (char*)(ctx)->private; \
+        size_t i; \
+        for (i = 0; i < (size_t)(count); i++) \
+        { \
+            str[i] = (c); \
+        } \
+        str += i; \
+        (ctx)->private = str; \
+        (int)i; \
+    })
+
 #include "common/print.h"
 
 int vsnprintf(char* _RESTRICT s, size_t n, const char* _RESTRICT format, va_list arg)
 {
-    _format_ctx_t ctx;
-    ctx.base = 0;
-    ctx.flags = 0;
-    ctx.maxChars = n;
-    ctx.totalChars = 0;
-    ctx.currentChars = 0;
-    ctx.buffer = s;
-    ctx.width = 0;
-    ctx.precision = EOF;
-    ctx.stream = NULL;
-    va_copy(ctx.arg, arg);
-
-    while (*format != '\0')
+    int written = _print(format, n, arg, s);
+    if (n > 0 && written >= 0)
     {
-        const char* rc;
-
-        if ((*format != '%') || ((rc = _print(format, &ctx)) == format))
-        {
-            if (ctx.totalChars < n)
-            {
-                s[ctx.totalChars] = *format;
-            }
-
-            ctx.totalChars++;
-            format++;
-        }
-        else
-        {
-            /* Continue parsing after conversion specifier */
-            format = rc;
-        }
+        s[written] = '\0';
     }
-
-    if (ctx.totalChars < n)
-    {
-        s[ctx.totalChars] = '\0';
-    }
-
-    va_end(ctx.arg);
-    return ctx.totalChars;
+    return written;
 }

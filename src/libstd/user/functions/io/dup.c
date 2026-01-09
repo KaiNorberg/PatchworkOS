@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <sys/io.h>
 
-#include "common/print.h"
 #include "user/common/syscalls.h"
 
 fd_t dup(fd_t oldFd)

@@ -36,7 +36,8 @@ typedef struct kbd kbd_t;
  * If no events are available to read, the read call will block until an event is available unless the file is opened in
  * non-blocking mode in which case the read will fail with `EAGAIN`.
  *
- * @note The format is specified such that if `scan()` is used with "%u%c" the `scan()` call does not require any "ungets".
+ * @note The format is specified such that if `scan()` is used with "%u%c" the `scan()` call does not require any
+ * "ungets".
  *
  * @see libstd_sys_kbd for keycode definitions.
  *

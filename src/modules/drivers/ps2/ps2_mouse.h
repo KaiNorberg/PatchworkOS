@@ -60,7 +60,7 @@ typedef enum
  */
 typedef struct
 {
-    ps2_mouse_packet_index_t index; 
+    ps2_mouse_packet_index_t index;
     ps2_mouse_packet_t prev;
     ps2_mouse_packet_t current;
     mouse_t* mouse;

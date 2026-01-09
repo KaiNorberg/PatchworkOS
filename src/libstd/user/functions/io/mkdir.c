@@ -4,7 +4,6 @@
 #include <string.h>
 #include <sys/io.h>
 
-#include "common/print.h"
 #include "user/common/syscalls.h"
 
 uint64_t mkdir(const char* path)

@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <sys/io.h>
 
-#include "common/print.h"
 #include "user/common/syscalls.h"
 
 poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout)

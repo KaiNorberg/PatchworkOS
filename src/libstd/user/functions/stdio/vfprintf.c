@@ -1,63 +1,37 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "common/print.h"
 #include "user/common/file.h"
-#include "user/common/syscalls.h"
+
+#define _PRINT_WRITE(ctx, buffer, count) \
+    ({ \
+        FILE* file = (FILE*)(ctx)->private; \
+        int ret = 0; \
+        if (fwrite(buffer, 1, count, file) != (size_t)(count)) \
+        { \
+            ret = EOF; \
+        } \
+        ret; \
+    })
+
+#define _PRINT_FILL(ctx, c, count) \
+    ({ \
+        FILE* file = (FILE*)(ctx)->private; \
+        int ret = 0; \
+        for (size_t i = 0; i < (size_t)(count); i++) \
+        { \
+            if (fputc((c), file) == EOF) \
+            { \
+                ret = EOF; \
+                break; \
+            } \
+        } \
+        ret; \
+    })
+
+#include "common/print.h"
 
 int vfprintf(FILE* _RESTRICT stream, const char* _RESTRICT format, va_list arg)
 {
-    _format_ctx_t ctx;
-    ctx.base = 0;
-    ctx.flags = 0;
-    ctx.maxChars = SIZE_MAX;
-    ctx.totalChars = 0;
-    ctx.currentChars = 0;
-    ctx.buffer = NULL;
-    ctx.width = 0;
-    ctx.precision = EOF;
-    ctx.stream = stream;
-
-    mtx_lock(&stream->mtx);
-
-    if (_file_prepare_write(stream) == ERR)
-    {
-        mtx_unlock(&stream->mtx);
-        return EOF;
-    }
-
-    va_copy(ctx.arg, arg);
-
-    while (*format != '\0')
-    {
-        const char* rc;
-
-        if ((*format != '%') || ((rc = _print(format, &ctx)) == format))
-        {
-            /* No conversion specifier, print verbatim */
-            stream->buf[stream->bufIndex++] = *format;
-
-            if ((stream->bufIndex == stream->bufSize) || ((stream->flags & _FILE_LINE_BUFFERED) && (*format == '\n')) ||
-                (stream->flags & _FILE_UNBUFFERED))
-            {
-                if (_file_flush_buffer(stream) == ERR)
-                {
-                    mtx_unlock(&stream->mtx);
-                    return EOF;
-                }
-            }
-
-            ++format;
-            ctx.totalChars++;
-        }
-        else
-        {
-            /* Continue parsing after conversion specifier */
-            format = rc;
-        }
-    }
-
-    va_end(ctx.arg);
-    mtx_unlock(&stream->mtx);
-    return ctx.totalChars;
+    return _print(format, SIZE_MAX, arg, stream);
 }

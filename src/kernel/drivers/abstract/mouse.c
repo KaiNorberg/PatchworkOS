@@ -228,7 +228,7 @@ void mouse_free(mouse_t* mouse)
 }
 
 static void mouse_broadcast(mouse_t* mouse, const char* string, size_t length)
-{    
+{
     LOCK_SCOPE(&mouse->lock);
 
     mouse_client_t* client;

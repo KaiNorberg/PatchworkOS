@@ -635,7 +635,7 @@ static void dwm_mouse_read(void)
     int64_t x = 0;
     int64_t y = 0;
     mouse_buttons_t buttons = 0;
-    
+
     bool received = false;
     while (1)
     {
@@ -649,7 +649,7 @@ static void dwm_mouse_read(void)
             }
             break;
         }
-        
+
         switch (suffix)
         {
         case 'x':
@@ -668,7 +668,7 @@ static void dwm_mouse_read(void)
             printf("dwm: unknown mouse event suffix '%c'\n", suffix);
             break;
         }
-        
+
         received = true;
     }
 
