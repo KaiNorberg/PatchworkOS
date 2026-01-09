@@ -84,6 +84,7 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 
 ## Notable Future Plans
 
+- Fix filesystem mounting vulnerability.
 - File servers (FUSE, 9P?).
 - Implement user system in user-space using namespaces.
 - Improve `share()` and `claim()` security by specifying a target PID when sharing.
@@ -439,7 +440,7 @@ It would even be possible to implement a multi-user-like system entirely in user
 
 ### Hiding Dentries
 
-For complex use cases, relying on just mountpoints becomes exponentially complex. As such, the Virtual File System allows a filesystem to dynamically hide directories and files using the `revalidate()` dentry operation.
+For complex use cases, relying on just mountpoints becomes exponentially complex. As such, the Virtual File System allows a filesystem to dynamically hide directories and files using the `revalidate()` dentry operation. 
 
 For example, in "procfs", a process can see all the `/proc/[pid]/` files of processes in its namespace and in child namespaces but for processes in parent namespaces certain files will appear to not exist in the filesystem hierarchy. The "netfs" filesystem works similarly making sure that only processes in the namespace that created a socket can see its directory.
 
