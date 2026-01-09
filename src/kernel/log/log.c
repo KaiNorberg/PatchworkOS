@@ -26,7 +26,6 @@ static lock_t lock = LOCK_CREATE();
 
 static char klogBuffer[CONFIG_KLOG_SIZE];
 static uint64_t klogHead = 0;
-static wait_queue_t klogQueue = WAIT_QUEUE_CREATE(klogQueue);
 static dentry_t* klog = NULL;
 
 static char lineBuffer[LOG_MAX_BUFFER] = {0};
@@ -45,20 +44,13 @@ static const char* levelNames[] = {
 
 static size_t klog_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
+    UNUSED(file);
+
     LOCK_SCOPE(&lock);
 
     if (*offset >= klogHead)
     {
-        if (file->mode & MODE_NONBLOCK)
-        {
-            errno = EAGAIN;
-            return ERR;
-        }
-
-        if (WAIT_BLOCK_LOCK(&klogQueue, &lock, *offset < klogHead))
-        {
-            return ERR;
-        }
+        return 0;
     }
 
     for (size_t i = 0; i < count; i++)
@@ -83,21 +75,9 @@ static size_t klog_write(file_t* file, const void* buffer, size_t count, size_t*
     return count;
 }
 
-static wait_queue_t* klog_poll(file_t* file, poll_events_t* revents)
-{
-    LOCK_SCOPE(&lock);
-
-    if (file->pos < klogHead)
-    {
-        *revents |= POLLIN;
-    }
-    return &klogQueue;
-}
-
 static file_ops_t klogOps = {
     .read = klog_read,
     .write = klog_write,
-    .poll = klog_poll,
 };
 
 static void log_splash(void)
@@ -151,7 +131,6 @@ static void log_write(const char* string, uint64_t length)
     {
         klogBuffer[klogHead++ % CONFIG_KLOG_SIZE] = string[i];
     }
-    wait_unblock(&klogQueue, WAIT_ALL, EOK);
 
 #if CONFIG_LOG_SERIAL
     for (uint64_t i = 0; i < length; i++)
