@@ -53,7 +53,6 @@ static void ps2_mouse_handle_packet(mouse_t* mouse, ps2_mouse_t* ps2)
         }
     }
 
-
     ps2->prev = ps2->current;
 }
 

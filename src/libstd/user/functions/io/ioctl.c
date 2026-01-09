@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <sys/io.h>
 
-#include "common/print.h"
 #include "user/common/syscalls.h"
 
 uint64_t ioctl(fd_t fd, uint64_t request, void* argp, size_t size)

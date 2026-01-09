@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <sys/io.h>
 
-#include "common/print.h"
 #include "user/common/syscalls.h"
 
 size_t readdir(fd_t fd, dirent_t** buffer, uint64_t* count)

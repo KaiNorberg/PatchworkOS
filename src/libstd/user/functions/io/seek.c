@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <sys/io.h>
 
-#include "common/print.h"
 #include "user/common/syscalls.h"
 
 size_t seek(fd_t fd, ssize_t offset, seek_origin_t origin)
