@@ -630,13 +630,10 @@ static void dwm_handle_mouse_event(int64_t x, int64_t y, mouse_buttons_t buttons
 
 static void dwm_mouse_read(void)
 {
-    static mouse_buttons_t prevHeld = MOUSE_NONE;
+    static mouse_buttons_t buttons = MOUSE_NONE;
 
     int64_t x = 0;
     int64_t y = 0;
-    mouse_buttons_t buttons = 0;
-
-    bool received = false;
     while (1)
     {
         int64_t value;
@@ -659,25 +656,35 @@ static void dwm_mouse_read(void)
             y += value;
             break;
         case '_':
+            if (x != 0 || y != 0)
+            {
+                dwm_handle_mouse_event(x, y, buttons);
+                x = 0;
+                y = 0;
+            }
             buttons |= (1 << value);
+            dwm_handle_mouse_event(0, 0, buttons);
             break;
         case '^':
+            if (x != 0 || y != 0)
+            {
+                dwm_handle_mouse_event(x, y, buttons);
+                x = 0;
+                y = 0;
+            }
             buttons &= ~(1 << value);
+            dwm_handle_mouse_event(0, 0, buttons);
             break;
         default:
             printf("dwm: unknown mouse event suffix '%c'\n", suffix);
             break;
         }
-
-        received = true;
     }
 
-    if (!received)
+    if (x != 0 || y != 0)
     {
-        return;
+        dwm_handle_mouse_event(x, y, buttons);
     }
-
-    dwm_handle_mouse_event(x, y, buttons);
 }
 
 static void dwm_poll_ctx_update(void)
