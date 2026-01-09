@@ -45,7 +45,7 @@ static map_key_t filesystem_key(const char* name)
 static size_t superblock_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     superblock_t* sb = file->inode->private;
-    assert(fs != NULL);
+    assert(sb != NULL);
 
     char info[MAX_PATH];
     int len = snprintf(info, sizeof(info), "id: %llu\nblock_size: %llu\nmax_file_size: %llu\n", sb->id, sb->blockSize,
