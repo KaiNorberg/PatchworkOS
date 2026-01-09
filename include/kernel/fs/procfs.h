@@ -158,6 +158,8 @@
  *
  * Mounts a filesystem at the specified mountpoint in the process's namespace, optionally with a device.
  *
+ * The filesystem should be specified as a path to a directory in the `fs` sysfs directory.
+ *
  * @see kernel_fs_path for information on path flags.
  *
  * ### touch <path>

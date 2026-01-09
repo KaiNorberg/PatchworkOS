@@ -1,6 +1,6 @@
 #include <modules/acpi/aml/namespace.h>
 
-#include <kernel/fs/devfs.h>
+#include <kernel/fs/sysfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/utils/map.h>
@@ -94,10 +94,10 @@ static uint64_t aml_namespace_expose_object(aml_object_t* object, dentry_t* pare
         return ERR;
     }
 
-    object->dir = devfs_dir_new(parentDir, AML_NAME_TO_STRING(object->name), NULL, NULL);
+    object->dir = sysfs_dir_new(parentDir, AML_NAME_TO_STRING(object->name), NULL, NULL);
     if (object->dir == NULL)
     {
-        LOG_ERR("Failed to create devfs directory %s\n", AML_NAME_TO_STRING(object->name));
+        LOG_ERR("Failed to create sysfs directory %s\n", AML_NAME_TO_STRING(object->name));
         return ERR;
     }
 
@@ -108,7 +108,7 @@ static uint64_t aml_namespace_expose_object(aml_object_t* object, dentry_t* pare
         {
             if (aml_namespace_expose_object(child, object->dir) == ERR)
             {
-                LOG_ERR("Failed to expose child %s of %s in devfs\n", AML_NAME_TO_STRING(child->name),
+                LOG_ERR("Failed to expose child %s of %s in sysfs\n", AML_NAME_TO_STRING(child->name),
                     AML_NAME_TO_STRING(object->name));
                 return ERR;
             }
@@ -123,11 +123,11 @@ uint64_t aml_namespace_expose(void)
     dentry_t* acpiDir = acpi_get_dir();
     assert(acpiDir != NULL);
 
-    namespaceDir = devfs_dir_new(acpiDir, "namespace", NULL, NULL);
+    namespaceDir = sysfs_dir_new(acpiDir, "namespace", NULL, NULL);
     UNREF(acpiDir);
     if (namespaceDir == NULL)
     {
-        LOG_ERR("Failed to create ACPI namespace devfs directory");
+        LOG_ERR("Failed to create ACPI namespace sysfs directory");
         return ERR;
     }
 
@@ -138,7 +138,7 @@ uint64_t aml_namespace_expose(void)
         {
             UNREF(namespaceDir);
             namespaceDir = NULL;
-            LOG_ERR("Failed to expose ACPI namespace in devfs");
+            LOG_ERR("Failed to expose ACPI namespace in sysfs");
             return ERR;
         }
     }

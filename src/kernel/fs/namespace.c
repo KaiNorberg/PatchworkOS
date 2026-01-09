@@ -354,19 +354,12 @@ static uint64_t namespace_find_device(const char* deviceName, block_device_t** o
     return 0;
 }
 
-mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* fsName, const char* deviceName, mode_t mode,
+mount_t* namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, const char* deviceName, mode_t mode,
     void* private)
 {
-    if (ns == NULL || fsName == NULL)
+    if (ns == NULL || fs == NULL)
     {
         errno = EINVAL;
-        return NULL;
-    }
-
-    filesystem_t* fs = filesystem_get(fsName);
-    if (fs == NULL)
-    {
-        errno = ENOENT;
         return NULL;
     }
 
@@ -504,19 +497,26 @@ SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* mountpoint, const char* fs, cons
         return ERR;
     }
 
-    char deviceName[MAX_NAME];
-    if (device != NULL && thread_copy_from_user_string(thread, deviceName, device, MAX_NAME) == ERR)
+    char deviceCopy[MAX_NAME];
+    if (device != NULL && thread_copy_from_user_string(thread, deviceCopy, device, MAX_NAME) == ERR)
     {
         return ERR;
     }
 
-    char fsName[MAX_NAME];
-    if (thread_copy_from_user_string(thread, fsName, fs, MAX_NAME) == ERR)
+    char fsCopy[MAX_NAME];
+    if (thread_copy_from_user_string(thread, fsCopy, fs, MAX_NAME) == ERR)
     {
         return ERR;
     }
 
-    mount_t* mount = namespace_mount(ns, &mountpath, fsName, device != NULL ? deviceName : NULL, mountname.mode, NULL);
+    filesystem_t* filesystem = filesystem_get_by_path(fsCopy, process);
+    if (filesystem == NULL)
+    {
+        return ERR;
+    }
+
+    mount_t* mount =
+        namespace_mount(ns, &mountpath, filesystem, device != NULL ? deviceCopy : NULL, mountname.mode, NULL);
     if (mount == NULL)
     {
         return ERR;

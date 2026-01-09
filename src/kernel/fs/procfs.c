@@ -590,6 +590,7 @@ static uint64_t procfs_ctl_mount(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
+    process_t* writing = sched_process();
     process_t* process = file->inode->private;
 
     pathname_t mountname;
@@ -613,9 +614,14 @@ static uint64_t procfs_ctl_mount(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    const char* fsName = argv[2];
+    filesystem_t* fs = filesystem_get_by_path(argv[2], writing);
+    if (fs == NULL)
+    {
+        return ERR;
+    }
+
     const char* deviceName = (argc == 4) ? argv[3] : NULL;
-    mount_t* mount = namespace_mount(ns, &mountpath, fsName, deviceName, mountname.mode, NULL);
+    mount_t* mount = namespace_mount(ns, &mountpath, fs, deviceName, mountname.mode, NULL);
     if (mount == NULL)
     {
         return ERR;

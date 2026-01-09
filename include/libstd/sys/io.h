@@ -560,7 +560,7 @@ uint64_t bind(const char* mountpoint, fd_t source);
  * @brief System call for mounting a filesystem.
  *
  * @param mountpoint The target path to mount to.
- * @param fs The filesystem name.
+ * @param fs The path to the desired filesystem in the `fs` sysfs directory.
  * @param device The device name, or `NULL` for no device.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */

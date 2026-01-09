@@ -113,7 +113,7 @@ bool namespace_traverse(namespace_t* ns, path_t* path);
  *
  * @param ns The namespace containing the namespace to mount to.
  * @param target The target path to mount to, can be `NULL` to mount to root.
- * @param fsName The filesystem name.
+ * @param fs The filesystem to mount.
  * @param deviceName The device name, or `NULL` for no device.
  * @param flags Mount flags.
  * @param mode The mode specifying permissions and mount behaviour.
@@ -128,7 +128,7 @@ bool namespace_traverse(namespace_t* ns, path_t* path);
  * - `ENOENT`: The root does not exist or the target is negative.
  * - Other errors as returned by the filesystem's `mount()` function or `mount_new()`.
  */
-mount_t* namespace_mount(namespace_t* ns, path_t* target, const char* fsName, const char* deviceName, mode_t mode,
+mount_t* namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, const char* deviceName, mode_t mode,
     void* private);
 
 /**
