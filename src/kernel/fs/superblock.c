@@ -30,7 +30,7 @@ static void superblock_free(superblock_t* superblock)
     free(superblock);
 }
 
-superblock_t* superblock_new(filesystem_t* fs, block_device_t* device, const superblock_ops_t* ops,
+superblock_t* superblock_new(filesystem_t* fs, const superblock_ops_t* ops,
     const dentry_ops_t* dentryOps)
 {
     if (fs == NULL)
@@ -53,7 +53,6 @@ superblock_t* superblock_new(filesystem_t* fs, block_device_t* device, const sup
     superblock->maxFileSize = UINT64_MAX;
     superblock->private = NULL;
     superblock->root = NULL;
-    superblock->device = device;
     superblock->ops = ops;
     superblock->dentryOps = dentryOps;
     superblock->fs = fs;

@@ -1,10 +1,10 @@
-MKCWD = mkdir -p $(@D)
+MKCWD = @mkdir -p $(@D)
 
 CC = gcc
 AS = gcc
 LD = ld
 AR = ar
-OBJCOPY := objcopy
+OBJCOPY = objcopy
 
 CFLAGS := \
 	-std=gnu11 \
@@ -50,9 +50,9 @@ ASFLAGS := \
 	-D_PATCHWORK_OS_
 
 LDFLAGS := \
-    -nostdlib \
-    -Lbin/libstd \
-    -Lbin/libpatchwork
+	-nostdlib \
+	-Lbin/libstd \
+	-Lbin/libpatchwork
 
 ifeq ($(TESTING),1)
 	CFLAGS += -D_TESTING_
@@ -62,18 +62,18 @@ endif
 ifeq ($(DEBUG),1)
 	CFLAGS += -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline
 	LDFLAGS += -g
+	DEBUG_LDFLAGS = -g
 else
 	CFLAGS += -O2 -DNDEBUG
+	DEBUG_LDFLAGS =
 endif
 
 ifeq ($(NOSTDLIB),1)
 	LDSTDLIB :=
 else
-	LDSTDLIB := \
-		-lstd
+	LDSTDLIB := -lstd
 endif
 
-# Compiler flags for kernel modules
 CFLAGS_MODULE := \
 	$(CFLAGS_DISABLE_SIMD) \
 	-fno-strict-aliasing \
@@ -81,25 +81,23 @@ CFLAGS_MODULE := \
 	-fno-pie \
 	-mno-red-zone \
 	-fPIC \
-	-D_KERNEL_MODULE_\
+	-D_KERNEL_MODULE_ \
 	-D__STDC_WANT_LIB_EXT1__=1
 
-# Assembler flags for kernel modules
 ASFLAGS_MODULE := \
 	$(ASFLAGS) \
 	-fPIC \
-	-D_KERNEL_MODULE_\
+	-D_KERNEL_MODULE_ \
 	-D__STDC_WANT_LIB_EXT1__=1
 
-# Linker flags for kernel modules
 LDFLAGS_MODULE := \
-    $(LDFLAGS) \
-    -shared \
-    -fPIC \
-    -Tinclude/modules/linker.lds
+	$(LDFLAGS) \
+	-shared \
+	-fPIC \
+	-Tinclude/modules/linker.lds
 
 define find_sources
-$(shell find $(1) -name "*.c" -o -name "*.S")
+$(shell find $(1) -name "*.c" -o -name "*.S" 2>/dev/null)
 endef
 
 SRC = $(call find_sources,$(SRCDIR))

@@ -620,8 +620,8 @@ static uint64_t procfs_ctl_mount(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    const char* deviceName = (argc == 4) ? argv[3] : NULL;
-    mount_t* mount = namespace_mount(ns, &mountpath, fs, deviceName, mountname.mode, NULL);
+    const char* options = (argc == 4) ? argv[3] : NULL;
+    mount_t* mount = namespace_mount(ns, &mountpath, fs, options, mountname.mode, NULL);
     if (mount == NULL)
     {
         return ERR;
@@ -1234,11 +1234,17 @@ static dentry_ops_t procDentryOps = {
     .iterate = procfs_iterate,
 };
 
-static dentry_t* procfs_mount(filesystem_t* fs, block_device_t* device, void* private)
+static dentry_t* procfs_mount(filesystem_t* fs, const char* options, void* private)
 {
     UNUSED(private);
 
-    superblock_t* superblock = superblock_new(fs, device, NULL, NULL);
+    if (options != NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    superblock_t* superblock = superblock_new(fs, NULL, NULL);
     if (superblock == NULL)
     {
         return NULL;

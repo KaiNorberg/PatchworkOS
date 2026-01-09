@@ -277,9 +277,9 @@ static inline uint64_t _syscall_symlink(const char* target, const char* linkpath
     return _SYSCALL2(uint64_t, SYS_SYMLINK, const char*, target, const char*, linkpath);
 }
 
-static inline uint64_t _syscall_mount(const char* mountpoint, const char* fs, const char* device)
+static inline uint64_t _syscall_mount(const char* mountpoint, const char* fs, const char* options)
 {
-    return _SYSCALL3(uint64_t, SYS_MOUNT, const char*, mountpoint, const char*, fs, const char*, device);
+    return _SYSCALL3(uint64_t, SYS_MOUNT, const char*, mountpoint, const char*, fs, const char*, options);
 }
 
 static inline uint64_t _syscall_umount(const char* mountpoint)

@@ -766,11 +766,17 @@ static dentry_ops_t netDentryOps = {
     .iterate = netfs_iterate,
 };
 
-static dentry_t* netfs_mount(filesystem_t* fs, block_device_t* device, void* private)
+static dentry_t* netfs_mount(filesystem_t* fs, const char* options, void* private)
 {
     UNUSED(private);
 
-    superblock_t* superblock = superblock_new(fs, device, NULL, NULL);
+    if (options != NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    superblock_t* superblock = superblock_new(fs, NULL, NULL);
     if (superblock == NULL)
     {
         return NULL;
