@@ -9,7 +9,7 @@
 .extern syscall_handler
 .extern note_handle_pending
 .extern sched_do
-.extern cpu_get_unsafe
+.extern cpu_get
 
 .global syscall_entry
 .type syscall_entry, @function

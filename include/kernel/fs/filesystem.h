@@ -132,13 +132,16 @@ bool options_next(const char** iter, char* buffer, size_t size, char** key, char
  * @brief Helper macro for iterating over options passed to a filesystem mount operation.
  *
  * Each helper option is specified as `key=value` pairs, with multiple options separated by commas.
- * 
+ *
  * @param options The options string.
  * @param key The key variable.
  * @param value The value variable.
  */
 #define OPTIONS_FOR_EACH(options, key, value) \
-    for (struct { const char* iter; char buf[256]; } _state = { (options), {0} }; \
-         options_next(&_state.iter, _state.buf, sizeof(_state.buf), &(key), &(value)); )
+    for (struct { \
+             const char* iter; \
+             char buf[256]; \
+         } _state = {(options), {0}}; \
+        options_next(&_state.iter, _state.buf, sizeof(_state.buf), &(key), &(value));)
 
 /** @} */

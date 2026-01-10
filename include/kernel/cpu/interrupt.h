@@ -266,6 +266,13 @@ void interrupt_disable(void);
 void interrupt_enable(void);
 
 /**
+ * @brief Macro to create an interrupt scope.
+ *
+ * Disables interrupts and enables them again when going out of scope.
+ */
+#define INTERRUPT_SCOPE() interrupt_disable(); __attribute__((cleanup(interrupt_scope_cleanup))) int CONCAT(i, __COUNTER__) = 1;
+
+/**
  * @brief Handles CPU interrupts.
  *
  * This will be called from `vector_common` in `vectors.S`.
@@ -287,6 +294,11 @@ void interrupt_handler(interrupt_frame_t* frame);
  * the frame is modified.
  */
 _NORETURN extern void interrupt_fake(interrupt_frame_t* frame, cpu_t* self);
+
+static inline void interrupt_scope_cleanup(int* _)
+{
+    interrupt_enable();
+}
 
 #endif
 

@@ -58,12 +58,12 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 - Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info.
 - File based IPC including [pipes](https://kainorberg.github.io/PatchworkOS/html/d7/d64/group__modules__ipc__pipe.html), [shared memory](https://kainorberg.github.io/PatchworkOS/html/df/d3f/group__modules__ipc__shmem.html), [sockets](https://kainorberg.github.io/PatchworkOS/html/d4/db0/group__kernel__fs__netfs.html) and Plan9 inspired "signals" called [notes](https://kainorberg.github.io/PatchworkOS/html/d8/db1/group__kernel__ipc__note.html).
 - File based device API [abstractions](https://kainorberg.github.io/PatchworkOS/html/de/d7b/group__kernel__drivers__abstract.html), including framebuffers, input devices, etc.
-- [Synchronization primitives](https://kainorberg.github.io/PatchworkOS/html/dd/d6b/group__kernel__sync.html) including mutexes, read-write locks, sequential locks, futexes and others.
+- [Synchronization primitives](https://kainorberg.github.io/PatchworkOS/html/dd/d6b/group__kernel__sync.html) including Read-Copy-Update, mutexes, R/W locks, sequential locks, futexes and others.
 - Highly [Modular design](#modules), even [SMP Bootstrapping](https://kainorberg.github.io/PatchworkOS/html/d3/d0a/group__modules__smp.html) is done in a module.
 
 ### File System
 
-- UNIX-style VFS with mountpoints, hardlinks, symlinks, per-process namespaces, etc.
+- Inode and dentry based VFS with RCU traversal, hardlinks, symlinks, per-process namespaces, etc.
 - Custom [Framebuffer BitMaP](https://github.com/KaiNorberg/fbmp) (.fbmp) image format, allows for faster loading by removing the need for parsing.
 - Custom [Grayscale Raster Font](https://github.com/KaiNorberg/grf) (.grf) font format, allows for antialiasing and kerning without complex vector graphics.
 
@@ -84,7 +84,6 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 
 ## Notable Future Plans
 
-- Fix filesystem mounting vulnerability.
 - File servers (FUSE, 9P?).
 - Implement user system in user-space using namespaces.
 - Improve `share()` and `claim()` security by specifying a target PID when sharing.
@@ -440,7 +439,7 @@ It would even be possible to implement a multi-user-like system entirely in user
 
 ### Hiding Dentries
 
-For complex use cases, relying on just mountpoints becomes exponentially complex. As such, the Virtual File System allows a filesystem to dynamically hide directories and files using the `revalidate()` dentry operation. 
+For complex use cases, relying on just mountpoints becomes exponentially complex. As such, the Virtual File System allows a filesystem to dynamically hide directories and files using the `revalidate()` dentry operation.
 
 For example, in "procfs", a process can see all the `/proc/[pid]/` files of processes in its namespace and in child namespaces but for processes in parent namespaces certain files will appear to not exist in the filesystem hierarchy. The "netfs" filesystem works similarly making sure that only processes in the namespace that created a socket can see its directory.
 

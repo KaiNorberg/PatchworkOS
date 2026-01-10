@@ -84,7 +84,7 @@ typedef struct ipi
 
 /**
  * @brief Per-CPU IPI context.
- * @struct ipi_cpu_ctx_t
+ * @struct ipi_cpu_t
  *
  * Stores the IPIs received by the owner CPU.
  */
@@ -94,7 +94,7 @@ typedef struct ipi_cpu_ctx
     size_t readIndex;
     size_t writeIndex;
     lock_t lock;
-} ipi_cpu_ctx_t;
+} ipi_cpu_t;
 
 /**
  * @brief IPI flags.
@@ -112,7 +112,7 @@ typedef enum
  *
  * @param ctx The IPI context to initialize.
  */
-void ipi_cpu_ctx_init(ipi_cpu_ctx_t* ctx);
+void ipi_cpu_init(ipi_cpu_t* ctx);
 
 /**
  * @brief Handle pending IPIs on the current CPU.

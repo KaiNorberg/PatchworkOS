@@ -101,7 +101,7 @@ void syscall_handler(interrupt_frame_t* frame)
     asm volatile("cli" ::: "memory");
     if (thread_is_note_pending(thread) || (thread->syscall.flags & SYSCALL_FORCE_FAKE_INTERRUPT))
     {
-        cpu_t* self = cpu_get_unsafe();
+        cpu_t* self = cpu_get();
         frame->vector = VECTOR_FAKE;
         interrupt_fake(frame, self);
     }

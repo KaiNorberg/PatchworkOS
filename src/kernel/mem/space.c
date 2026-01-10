@@ -165,7 +165,7 @@ void space_load(space_t* space)
 
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
-    cpu_t* self = cpu_get_unsafe();
+    cpu_t* self = cpu_get();
     assert(self != NULL);
 
     assert(self->vmm.currentSpace != NULL);
@@ -658,7 +658,7 @@ void space_free_callback(space_t* space, pml_callback_id_t callbackId)
 
 static void space_tlb_shootdown_ipi_handler(ipi_func_data_t* data)
 {
-    vmm_cpu_ctx_t* ctx = &data->self->vmm;
+    vmm_cpu_t* ctx = &data->self->vmm;
     while (true)
     {
         lock_acquire(&ctx->lock);
@@ -692,7 +692,7 @@ void space_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount)
     {
         return;
     }
-    cpu_t* self = cpu_get_unsafe();
+    cpu_t* self = cpu_get();
 
     uint16_t expectedAcks = 0;
     atomic_store(&space->shootdownAcks, 0);

@@ -23,7 +23,7 @@
 
 static space_t kernelSpace;
 
-static void vmm_cpu_ctx_init_common(vmm_cpu_ctx_t* ctx)
+static void vmm_cpu_init_common(vmm_cpu_t* ctx)
 {
     cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
 
@@ -111,23 +111,23 @@ void vmm_kernel_space_load(void)
 {
     LOG_INFO("loading kernel space... ");
 
-    cpu_t* cpu = cpu_get_unsafe();
+    cpu_t* cpu = cpu_get();
     assert(cpu != NULL);
     assert(cpu->id == CPU_ID_BOOTSTRAP);
-    vmm_cpu_ctx_init_common(&cpu->vmm);
+    vmm_cpu_init_common(&cpu->vmm);
 
     LOG_INFO("done!\n");
 }
 
-void vmm_cpu_ctx_init(vmm_cpu_ctx_t* ctx)
+void vmm_cpu_init(vmm_cpu_t* ctx)
 {
-    cpu_t* cpu = cpu_get_unsafe();
+    cpu_t* cpu = cpu_get();
     if (cpu->id == CPU_ID_BOOTSTRAP) // Initalized early in vmm_init.
     {
         return;
     }
 
-    vmm_cpu_ctx_init_common(ctx);
+    vmm_cpu_init_common(ctx);
 }
 
 space_t* vmm_kernel_space_get(void)

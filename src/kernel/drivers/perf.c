@@ -110,7 +110,7 @@ static file_ops_t memOps = {
     .read = perf_mem_read,
 };
 
-void perf_cpu_ctx_init(perf_cpu_ctx_t* ctx)
+void perf_cpu_init(perf_cpu_t* ctx)
 {
     ctx->activeClocks = 0;
     ctx->interruptClocks = 0;
@@ -155,7 +155,7 @@ void perf_init(void)
 
 void perf_interrupt_begin(cpu_t* self)
 {
-    perf_cpu_ctx_t* perf = &self->perf;
+    perf_cpu_t* perf = &self->perf;
     LOCK_SCOPE(&perf->lock);
 
     if (perf->interruptEnd < perf->interruptBegin)

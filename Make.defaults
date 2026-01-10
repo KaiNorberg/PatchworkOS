@@ -2,8 +2,8 @@ MKCWD = @mkdir -p $(@D)
 
 CC = gcc
 AS = gcc
-LD = ld
-AR = ar
+LD = gcc
+AR = gcc-ar
 OBJCOPY = objcopy
 
 CFLAGS := \
@@ -85,13 +85,11 @@ CFLAGS_MODULE := \
 	-D__STDC_WANT_LIB_EXT1__=1
 
 ASFLAGS_MODULE := \
-	$(ASFLAGS) \
 	-fPIC \
 	-D_KERNEL_MODULE_ \
 	-D__STDC_WANT_LIB_EXT1__=1
 
 LDFLAGS_MODULE := \
-	$(LDFLAGS) \
 	-shared \
 	-fPIC \
 	-Tinclude/modules/linker.lds

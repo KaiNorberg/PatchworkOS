@@ -43,7 +43,7 @@ typedef struct thread thread_t;
 
 /**
  * @brief Per-CPU performance context.
- * @struct perf_cpu_ctx_t
+ * @struct perf_cpu_t
  */
 typedef struct
 {
@@ -53,7 +53,7 @@ typedef struct
     clock_t interruptBegin;
     clock_t interruptEnd;
     lock_t lock;
-} perf_cpu_ctx_t;
+} perf_cpu_t;
 
 /**
  * @brief Per-Process performance context.
@@ -85,7 +85,7 @@ typedef struct
  *
  * @param ctx The context to initialize.
  */
-void perf_cpu_ctx_init(perf_cpu_ctx_t* ctx);
+void perf_cpu_init(perf_cpu_t* ctx);
 
 /**
  * @brief Initializes a per-process performance context.

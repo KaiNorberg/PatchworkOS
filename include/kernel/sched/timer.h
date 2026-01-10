@@ -52,7 +52,7 @@ typedef struct
      * optimizations that could lead to stale reads.
      */
     clock_t volatile deadline;
-} timer_cpu_ctx_t;
+} timer_cpu_t;
 
 /**
  * @brief Maximum amount of timer sources.
@@ -88,7 +88,7 @@ typedef struct
  *
  * @param ctx The timer context to initialize.
  */
-void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx);
+void timer_cpu_init(timer_cpu_t* ctx);
 
 /**
  * @brief Acknowledge a timer interrupt and send EOI.

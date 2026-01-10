@@ -268,7 +268,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
 {
     asm volatile("cli");
 
-    cpu_t* self = cpu_get_unsafe();
+    cpu_t* self = cpu_get();
     uint32_t expectedCpuId = PANIC_NO_CPU_ID;
     if (!atomic_compare_exchange_strong(&panicCpuId, &expectedCpuId, self->id))
     {

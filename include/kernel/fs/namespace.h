@@ -114,7 +114,8 @@ bool namespace_traverse(namespace_t* ns, path_t* path);
  * @param ns The namespace containing the namespace to mount to.
  * @param target The target path to mount to, can be `NULL` to mount to root.
  * @param fs The filesystem to mount.
- * @param options A string containing filesystem defined `key=value` pairs, with multiple options separated by commas, or `NULL`.
+ * @param options A string containing filesystem defined `key=value` pairs, with multiple options separated by commas,
+ * or `NULL`.
  * @param flags Mount flags.
  * @param mode The mode specifying permissions and mount behaviour.
  * @param private Private data for the filesystem's mount function.
@@ -126,7 +127,7 @@ bool namespace_traverse(namespace_t* ns, path_t* path);
  * - `EBUSY`: Attempt to mount to already existing root.
  * - `ENOMEM`: Out of memory.
  * - `ENOENT`: The root does not exist or the target is negative.
- * - Other errors as returned by the filesystem's `mount()` function or `mount_new()`.
+ * - Other errors as returned by the filesystem's `mount()` operation or `mount_new()`.
  */
 mount_t* namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, const char* options, mode_t mode,
     void* private);

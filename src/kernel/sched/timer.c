@@ -20,7 +20,7 @@ static uint32_t sourceCount = 0;
 static const timer_source_t* bestSource = NULL;
 static rwlock_t sourcesLock = RWLOCK_CREATE();
 
-void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx)
+void timer_cpu_init(timer_cpu_t* ctx)
 {
     ctx->deadline = CLOCKS_NEVER;
 }
@@ -142,7 +142,7 @@ void timer_set(clock_t uptime, clock_t deadline)
 
     deadline = MAX(deadline, uptime + CONFIG_MIN_TIMER_TIMEOUT);
 
-    cpu_t* cpu = cpu_get_unsafe();
+    cpu_t* cpu = cpu_get();
     if (cpu->timer.deadline <= deadline)
     {
         return;

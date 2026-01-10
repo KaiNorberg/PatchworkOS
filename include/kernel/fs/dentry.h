@@ -147,15 +147,16 @@ typedef struct dentry_ops
  * @brief Directory entry structure.
  * @struct dentry_t
  *
- * A dentry structure is protected by the mutex of its inode.
+ * A dentry structure is protected by the mutex of its inode. Note that since move and rename are not supported in favor
+ * of link and remove, the parent of a dentry will never change after creation which allows some optimizations.
  */
 typedef struct dentry
 {
     ref_t ref;
     dentry_id_t id;
-    char name[MAX_NAME]; ///< Constant after creation.
+    char name[MAX_NAME]; ///< The name of the dentry, immutable after creation.
     inode_t* inode;      ///< Will be `NULL` if the dentry is negative, once positive it will never be modified.
-    dentry_t* parent;
+    dentry_t* parent; ///< The parent dentry, will be itself if this is the root dentry, immutable after creation.
     list_entry_t siblingEntry;
     list_t children;
     superblock_t* superblock;

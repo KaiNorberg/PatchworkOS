@@ -217,7 +217,7 @@ uint64_t pathname_init(pathname_t* pathname, const char* string);
  * @param path The path to check.
  * @return true if the path is empty, false otherwise.
  */
-#define PATH_IS_EMPTY(path) ((path).mount == NULL && (path).dentry == NULL
+#define PATH_IS_EMPTY(path) ((path).mount == NULL && (path).dentry == NULL)
 
 /**
  * @brief Check if a path is valid.

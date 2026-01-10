@@ -66,7 +66,7 @@ void simd_cpu_init(void)
         asm volatile("fxsave (%0)" : : "r"(initCtx));
     }
 
-    if (cpu_get_unsafe()->id != CPU_ID_BOOTSTRAP) // Only log for bootstrap CPU
+    if (cpu_get()->id != CPU_ID_BOOTSTRAP) // Only log for bootstrap CPU
     {
         return;
     }

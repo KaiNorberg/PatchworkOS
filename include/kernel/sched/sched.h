@@ -396,6 +396,7 @@ typedef struct sched
     vclock_t vtime;     ///< The current virtual time of the CPU.
     clock_t lastUpdate; ///< The real time when the last vtime update occurred.
     lock_t lock;        ///< The lock protecting the scheduler.
+    _Atomic(uint64_t) preemptCount; ///< If greater than zero, preemption is disabled.
     thread_t* volatile idleThread; ///< The idle thread for this CPU.
     thread_t* volatile runThread;  ///< The currently running thread on this CPU.
 } sched_t;
@@ -500,6 +501,16 @@ uint64_t sched_nanosleep(clock_t timeout);
  *
  */
 void sched_yield(void);
+
+/**
+ * @brief Disables preemption on the current CPU.
+ */
+void sched_preempt_disable(void);
+
+/**
+ * @brief Enables preemption on the current CPU.
+ */
+void sched_preempt_enable(void);
 
 /**
  * @brief Terminates the currently executing process and all it's threads.

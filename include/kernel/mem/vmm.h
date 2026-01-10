@@ -103,7 +103,7 @@ typedef struct
 
 /**
  * @brief Per-CPU VMM context.
- * @struct vmm_cpu_ctx_t
+ * @struct vmm_cpu_t
  */
 typedef struct
 {
@@ -112,7 +112,7 @@ typedef struct
     uint8_t shootdownCount;
     lock_t lock;
     space_t* currentSpace; ///< Will only be accessed by the owner CPU, so no lock.
-} vmm_cpu_ctx_t;
+} vmm_cpu_t;
 
 /**
  * @brief Flags for `vmm_alloc()`.
@@ -141,7 +141,7 @@ void vmm_kernel_space_load(void);
  *
  * @param ctx The CPU VMM context to initialize.
  */
-void vmm_cpu_ctx_init(vmm_cpu_ctx_t* ctx);
+void vmm_cpu_init(vmm_cpu_t* ctx);
 
 /**
  * @brief Retrieves the kernel's address space.

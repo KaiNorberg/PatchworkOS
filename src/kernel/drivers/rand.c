@@ -25,7 +25,7 @@ static uint64_t rand_gen_fallback(void* buffer, uint64_t size)
     return 0;
 }
 
-void rand_cpu_init(rand_cpu_ctx_t* ctx)
+void rand_cpu_init(rand_cpu_t* ctx)
 {
     cpuid_feature_info_t info;
     cpuid_feature_info(&info);
@@ -43,14 +43,14 @@ void rand_cpu_init(rand_cpu_ctx_t* ctx)
     {
         if (rdrand_do(&test, 100) == ERR)
         {
-            LOG_WARN("cpu%d rdrand instruction failed, disabling\n", cpu_get_unsafe()->id);
+            LOG_WARN("cpu%d rdrand instruction failed, disabling\n", cpu_get()->id);
             ctx->rdrandAvail = false;
             return;
         }
 
         if (prev != UINT64_MAX && prev == test)
         {
-            LOG_WARN("cpu%d rdrand producing same value repeatedly, disabling\n", cpu_get_unsafe()->id);
+            LOG_WARN("cpu%d rdrand producing same value repeatedly, disabling\n", cpu_get()->id);
             ctx->rdrandAvail = false;
             return;
         }
@@ -60,11 +60,11 @@ void rand_cpu_init(rand_cpu_ctx_t* ctx)
 
 uint64_t rand_gen(void* buffer, uint64_t size)
 {
-    cpu_t* self = cpu_get();
+    INTERRUPT_SCOPE();
 
+    cpu_t* self = cpu_get();
     if (!self->rand.rdrandAvail)
     {
-        cpu_put();
         return rand_gen_fallback(buffer, size);
     }
 
@@ -75,7 +75,6 @@ uint64_t rand_gen(void* buffer, uint64_t size)
         uint32_t value;
         if (rdrand_do(&value, 100) == ERR)
         {
-            cpu_put();
             return ERR;
         }
         memcpy(ptr, &value, sizeof(uint32_t));
@@ -88,12 +87,10 @@ uint64_t rand_gen(void* buffer, uint64_t size)
         uint32_t value;
         if (rdrand_do(&value, 100) == ERR)
         {
-            cpu_put();
             return ERR;
         }
         memcpy(ptr, &value, remaining);
     }
 
-    cpu_put();
     return 0;
 }

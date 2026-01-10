@@ -17,17 +17,17 @@
 
 /**
  * @brief CPU random number generator context.
- * @struct rand_cpu_ctx_t
+ * @struct rand_cpu_t
  */
 typedef struct
 {
     bool rdrandAvail; ///< If set, the `RDRAND` instruction is available and working.
-} rand_cpu_ctx_t;
+} rand_cpu_t;
 
 /**
  * @brief Initializes the random number generator.
  */
-void rand_cpu_init(rand_cpu_ctx_t* ctx);
+void rand_cpu_init(rand_cpu_t* ctx);
 
 /**
  * @brief Fills a buffer with random bytes.

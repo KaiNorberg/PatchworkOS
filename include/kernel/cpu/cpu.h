@@ -2,6 +2,7 @@
 
 #include <kernel/config.h>
 #include <kernel/cpu/interrupt.h>
+#include <kernel/sync/rcu.h>
 #include <kernel/cpu/ipi.h>
 #include <kernel/cpu/tss.h>
 #include <kernel/drivers/perf.h>
@@ -121,19 +122,20 @@ typedef struct
 typedef struct cpu
 {
     cpuid_t id;
+    rcu_cpu_t rcu;
     /**
      * If set, then since the last check, handlers have been registered or unregistered.
      */
     atomic_bool needHandlersCheck;
     tss_t tss;
-    vmm_cpu_ctx_t vmm;
+    vmm_cpu_t vmm;
     interrupt_ctx_t interrupt;
-    perf_cpu_ctx_t perf;
-    timer_cpu_ctx_t timer;
+    perf_cpu_t perf;
+    timer_cpu_t timer;
     wait_t wait;
     sched_t sched;
-    rand_cpu_ctx_t rand;
-    ipi_cpu_ctx_t ipi;
+    rand_cpu_t rand;
+    ipi_cpu_t ipi;
     stack_pointer_t exceptionStack;
     stack_pointer_t doubleFaultStack;
     stack_pointer_t nmiStack;
@@ -264,39 +266,11 @@ static inline cpu_t* cpu_get_by_id(cpuid_t id)
 /**
  * @brief Gets the current CPU structure.
  *
- * Disables interrupts to prevent migration to another CPU.
- *
- * Should be followed be a call to `cpu_put()` to re-enable interrupts.
- *
- * @return A pointer to the current CPU structure.
- */
-static inline cpu_t* cpu_get(void)
-{
-    interrupt_disable();
-    cpuid_t id = (cpuid_t)msr_read(MSR_CPU_ID);
-    cpu_t* cpu = _cpus[id];
-    assert(cpu != NULL && cpu->id == id);
-    return cpu;
-}
-
-/**
- * @brief Releases the current CPU structure.
- *
- * Re-enables interrupts.
- */
-static inline void cpu_put(void)
-{
-    interrupt_enable();
-}
-
-/**
- * @brief Gets the current CPU structure without disabling interrupts.
- *
  * @warning This function does not disable interrupts, it should thus only be used when interrupts are already disabled.
  *
  * @return A pointer to the current CPU structure.
  */
-static inline cpu_t* cpu_get_unsafe(void)
+static inline cpu_t* cpu_get(void)
 {
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
@@ -313,7 +287,7 @@ static inline cpu_t* cpu_get_unsafe(void)
  *
  * @return The current CPU ID.
  */
-static inline cpuid_t cpu_get_id_unsafe(void)
+static inline cpuid_t cpu_get_id(void)
 {
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 

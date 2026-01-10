@@ -107,8 +107,9 @@ uint64_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t 
         errno = EINVAL;
         return ERR;
     }
+    
+    interrupt_disable();
 
-    // Disable interrupts and retrieve thread.
     thread_t* thread = cpu_get()->sched.runThread;
 
     assert(thread != NULL);
@@ -139,7 +140,7 @@ uint64_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t 
                 lock_release(&waitQueues[j]->lock);
             }
 
-            cpu_put(); // Interrupts enable.
+            interrupt_enable();
             errno = ENOMEM;
             return ERR;
         }
@@ -179,7 +180,7 @@ void wait_block_cancel(void)
 {
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
-    thread_t* thread = cpu_get_unsafe()->sched.runThread;
+    thread_t* thread = cpu_get()->sched.runThread;
     assert(thread != NULL);
 
     thread_state_t state = atomic_exchange(&thread->state, THREAD_UNBLOCKING);
@@ -192,13 +193,13 @@ void wait_block_cancel(void)
     thread_state_t newState = atomic_exchange(&thread->state, THREAD_ACTIVE);
     assert(newState == THREAD_UNBLOCKING); // Make sure state did not change.
 
-    cpu_put(); // Release cpu from wait_block_prepare().
+    interrupt_enable(); // Release cpu from wait_block_prepare().
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 }
 
 uint64_t wait_block_commit(void)
 {
-    thread_t* thread = cpu_get_unsafe()->sched.runThread;
+    thread_t* thread = cpu_get()->sched.runThread;
 
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
@@ -208,10 +209,10 @@ uint64_t wait_block_commit(void)
     case THREAD_UNBLOCKING:
         wait_remove_wait_entries(thread, EOK);
         atomic_store(&thread->state, THREAD_ACTIVE);
-        cpu_put(); // Release cpu from wait_block_prepare().
+        interrupt_enable(); // Release cpu from wait_block_prepare().
         break;
     case THREAD_PRE_BLOCK:
-        cpu_put(); // Release cpu from wait_block_prepare().
+        interrupt_enable(); // Release cpu from wait_block_prepare().
         ipi_invoke();
         break;
     default:

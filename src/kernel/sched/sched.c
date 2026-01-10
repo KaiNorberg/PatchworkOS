@@ -221,7 +221,7 @@ static cpu_t* sched_get_least_loaded(void)
 
 static thread_t* sched_steal(void)
 {
-    cpu_t* self = cpu_get_unsafe();
+    cpu_t* self = cpu_get();
     sched_t* sched = &self->sched;
 
     cpu_t* mostLoaded = NULL;
@@ -330,6 +330,7 @@ void sched_init(sched_t* sched)
     sched->vtime = SCHED_FIXED_ZERO;
     sched->lastUpdate = 0;
     lock_init(&sched->lock);
+    atomic_init(&sched->preemptCount, 0);
 
     sched->idleThread = thread_new(process_get_kernel());
     if (sched->idleThread == NULL)
@@ -351,7 +352,7 @@ void sched_start(thread_t* bootThread)
 {
     assert(bootThread != NULL);
 
-    cpu_t* self = cpu_get_unsafe();
+    cpu_t* self = cpu_get();
     sched_t* sched = &self->sched;
 
     lock_acquire(&sched->lock);
@@ -376,6 +377,7 @@ void sched_submit(thread_t* thread)
 {
     assert(thread != NULL);
 
+    interrupt_disable();
     cpu_t* self = cpu_get();
 
     cpu_t* target;
@@ -397,7 +399,7 @@ void sched_submit(thread_t* thread)
     lock_release(&target->sched.lock);
 
     bool shouldWake = self != target || !self->interrupt.inInterrupt;
-    cpu_put();
+    interrupt_enable();
 
     if (shouldWake)
     {
@@ -535,6 +537,12 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     clock_t uptime = clock_uptime();
     sched_vtime_update(sched, uptime);
 
+    if (atomic_load(&sched->preemptCount) > 0 && atomic_load(&sched->runThread->state) == THREAD_ACTIVE)
+    {
+        lock_release(&sched->lock);
+        return;
+    }
+
     assert(sched->runThread != NULL);
     assert(sched->idleThread != NULL);
 
@@ -611,10 +619,9 @@ bool sched_is_idle(cpu_t* cpu)
 
 thread_t* sched_thread(void)
 {
-    cpu_t* self = cpu_get();
-    thread_t* thread = self->sched.runThread;
-    cpu_put();
-    return thread;
+    INTERRUPT_SCOPE();
+
+    return cpu_get()->sched.runThread;
 }
 
 process_t* sched_process(void)
@@ -625,7 +632,7 @@ process_t* sched_process(void)
 
 thread_t* sched_thread_unsafe(void)
 {
-    cpu_t* self = cpu_get_unsafe();
+    cpu_t* self = cpu_get();
     return self->sched.runThread;
 }
 
@@ -643,6 +650,22 @@ uint64_t sched_nanosleep(clock_t timeout)
 void sched_yield(void)
 {
     sched_nanosleep(CLOCKS_PER_SEC / 1000);
+}
+
+void sched_preempt_disable(void)
+{
+    INTERRUPT_SCOPE();
+
+    cpu_t* self = cpu_get();
+    atomic_fetch_add(&self->sched.preemptCount, 1);
+}
+
+void sched_preempt_enable(void)
+{
+    INTERRUPT_SCOPE();
+
+    cpu_t* self = cpu_get();
+    atomic_fetch_sub(&self->sched.preemptCount, 1);
 }
 
 void sched_process_exit(const char* status)

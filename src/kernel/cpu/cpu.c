@@ -80,13 +80,14 @@ void cpu_init(cpu_t* cpu)
     simd_cpu_init();
     syscalls_cpu_init();
 
-    vmm_cpu_ctx_init(&cpu->vmm);
+    rcu_cpu_init(&cpu->rcu);
+    vmm_cpu_init(&cpu->vmm);
     interrupt_ctx_init(&cpu->interrupt);
-    perf_cpu_ctx_init(&cpu->perf);
-    timer_cpu_ctx_init(&cpu->timer);
+    perf_cpu_init(&cpu->perf);
+    timer_cpu_init(&cpu->timer);
     wait_init(&cpu->wait);
     sched_init(&cpu->sched);
-    ipi_cpu_ctx_init(&cpu->ipi);
+    ipi_cpu_init(&cpu->ipi);
 
     LOCK_SCOPE(&eventHandlerLock);
     for (uint64_t i = 0; i < eventHandlerCount; i++)
@@ -126,7 +127,7 @@ uint64_t cpu_handler_register(cpu_func_t func)
     BITMAP_DEFINE_INIT(eventHandler->initializedCpus, CPU_MAX);
     bitmap_clear_range(&eventHandler->initializedCpus, 0, CPU_MAX);
 
-    cpu_t* self = cpu_get_unsafe();
+    cpu_t* self = cpu_get();
     if (self != NULL)
     {
         cpu_event_t event = {.type = CPU_ONLINE};
@@ -224,7 +225,7 @@ static void cpu_halt_ipi_handler(ipi_func_data_t* data)
 
 uint64_t cpu_halt_others(void)
 {
-    if (ipi_send(cpu_get_unsafe(), IPI_OTHERS, cpu_halt_ipi_handler, NULL) == ERR)
+    if (ipi_send(cpu_get(), IPI_OTHERS, cpu_halt_ipi_handler, NULL) == ERR)
     {
         return ERR;
     }

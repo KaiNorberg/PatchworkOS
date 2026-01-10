@@ -35,7 +35,9 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
 {
     UNUSED(uptime);
 
-    lapic_t* lapic = lapic_get(cpu_get_id_unsafe());
+    INTERRUPT_SCOPE();
+
+    lapic_t* lapic = lapic_get(cpu_get_id());
     if (lapic->ticksPerMs == 0)
     {
         lapic->ticksPerMs = apic_timer_ticks_per_ms();

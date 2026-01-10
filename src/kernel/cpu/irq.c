@@ -180,7 +180,7 @@ uint64_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu
 
     if (cpu == NULL)
     {
-        cpu = cpu_get_unsafe();
+        cpu = cpu_get();
     }
 
     irq_virt_t targetVirt = 0;

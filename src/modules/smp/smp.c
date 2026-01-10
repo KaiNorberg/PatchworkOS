@@ -43,7 +43,7 @@ static void smp_start_others(void)
 
     trampoline_init();
 
-    cpu_t* bootstrapCpu = cpu_get_unsafe();
+    cpu_t* bootstrapCpu = cpu_get();
     assert(bootstrapCpu->id == CPU_ID_BOOTSTRAP);
 
     lapic_t* bootstrapLapic = lapic_get(bootstrapCpu->id);

@@ -26,7 +26,7 @@ void interrupt_disable(void)
 {
     uint64_t rflags = rflags_read();
     asm volatile("cli" ::: "memory");
-    interrupt_ctx_t* ctx = &cpu_get_unsafe()->interrupt;
+    interrupt_ctx_t* ctx = &cpu_get()->interrupt;
     if (ctx->disableDepth == 0)
     {
         ctx->oldRflags = rflags;
@@ -38,7 +38,7 @@ void interrupt_enable(void)
 {
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
-    interrupt_ctx_t* ctx = &cpu_get_unsafe()->interrupt;
+    interrupt_ctx_t* ctx = &cpu_get()->interrupt;
     assert(ctx->disableDepth != 0);
     ctx->disableDepth--;
 
@@ -56,7 +56,7 @@ static void exception_handle_user(interrupt_frame_t* frame, const char* note)
         atomic_store(&thread->state, THREAD_DYING);
         process_kill(thread->process, note);
 
-        cpu_t* self = cpu_get_unsafe();
+        cpu_t* self = cpu_get();
         sched_do(frame, self);
     }
 }
@@ -223,7 +223,7 @@ void interrupt_handler(interrupt_frame_t* frame)
         return;
     }
 
-    cpu_t* self = cpu_get_unsafe();
+    cpu_t* self = cpu_get();
     assert(self != NULL);
 
     self->interrupt.inInterrupt = true;
