@@ -561,7 +561,7 @@ uint64_t bind(const char* mountpoint, fd_t source);
  *
  * @param mountpoint The target path to mount to.
  * @param fs The path to the desired filesystem in the `fs` sysfs directory.
- * @param options A string containing filesystem defined options, or `NULL`.
+ * @param options A string containing filesystem defined `key=value` pairs, with multiple options separated by commas, or `NULL`.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t mount(const char* mountpoint, const char* fs, const char* options);

@@ -30,8 +30,7 @@ static void superblock_free(superblock_t* superblock)
     free(superblock);
 }
 
-superblock_t* superblock_new(filesystem_t* fs, const superblock_ops_t* ops,
-    const dentry_ops_t* dentryOps)
+superblock_t* superblock_new(filesystem_t* fs, const superblock_ops_t* ops, const dentry_ops_t* dentryOps)
 {
     if (fs == NULL)
     {

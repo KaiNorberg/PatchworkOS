@@ -33,7 +33,7 @@ static dentry_ops_t dentryOps = {
 };
 
 static dentry_t* devfs_mount(filesystem_t* fs, const char* options, void* private)
-{   
+{
     UNUSED(fs);
     UNUSED(private);
 

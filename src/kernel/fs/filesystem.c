@@ -322,3 +322,38 @@ filesystem_t* filesystem_get_by_path(const char* path, process_t* process)
 
     return target.dentry->inode->private;
 }
+
+bool options_next(const char** iter, char* buffer, size_t size, char** key, char** value)
+{
+    while (*iter != NULL && **iter != '\0')
+    {
+        const char* start = *iter;
+        const char* end = strchr(start, ',');
+        size_t len = end != NULL ? (size_t)(end - start) : strlen(start);
+
+        *iter = end != NULL ? end + 1 : NULL;
+
+        if (len == 0)
+        {
+            continue;
+        }
+        if (len >= size)
+        {
+            continue;
+        }
+
+        memcpy(buffer, start, len);
+        buffer[len] = '\0';
+
+        *key = buffer;
+        *value = strchr(*key, '=');
+
+        if (*value != NULL)
+        {
+            *(*value)++ = '\0';
+            return true;
+        }
+    }
+
+    return false;
+}

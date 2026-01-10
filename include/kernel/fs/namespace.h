@@ -114,7 +114,7 @@ bool namespace_traverse(namespace_t* ns, path_t* path);
  * @param ns The namespace containing the namespace to mount to.
  * @param target The target path to mount to, can be `NULL` to mount to root.
  * @param fs The filesystem to mount.
- * @param options A string containing filesystem defined additional options, or `NULL`.
+ * @param options A string containing filesystem defined `key=value` pairs, with multiple options separated by commas, or `NULL`.
  * @param flags Mount flags.
  * @param mode The mode specifying permissions and mount behaviour.
  * @param private Private data for the filesystem's mount function.

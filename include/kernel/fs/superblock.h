@@ -19,7 +19,7 @@ typedef struct dentry dentry_t;
  * @defgroup kernel_fs_superblock Superblock
  * @ingroup kernel_fs
  *
- * A superblock represents a mounted filesystem. 
+ * A superblock represents a mounted filesystem.
  *
  * @{
  */
@@ -93,8 +93,7 @@ typedef struct superblock_ops
  * - `EINVAL`: Invalid parameters.
  * - `ENOMEM`: Out of memory.
  */
-superblock_t* superblock_new(filesystem_t* fs, const superblock_ops_t* ops,
-    const dentry_ops_t* dentryOps);
+superblock_t* superblock_new(filesystem_t* fs, const superblock_ops_t* ops, const dentry_ops_t* dentryOps);
 
 /**
  * @brief Increment the mount count of a superblock.
