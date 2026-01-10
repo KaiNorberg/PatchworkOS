@@ -154,9 +154,9 @@
  *
  * @see kernel_fs_path for information on path flags.
  *
- * ### mount <mountpoint> <fs> [device]
+ * ### mount <mountpoint> <fs> [options]
  *
- * Mounts a filesystem at the specified mountpoint in the process's namespace, optionally with a device.
+ * Mounts a filesystem at the specified mountpoint in the process's namespace, optionally with filesystem defined options.
  *
  * The filesystem should be specified as a path to a directory in the `fs` sysfs directory.
  *

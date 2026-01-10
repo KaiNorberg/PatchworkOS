@@ -1,24 +1,27 @@
 $(BUILDDIR)/%.c.o: src/%.c
 	$(MKCWD)
-	$(CC) $(CFLAGS) -MMD -MP -MF $(BUILDDIR)/$*.c.d -c -o $@ $<
+	@echo "  CC    $<"
+	@$(CC) $(CFLAGS) -MMD -MP -MF $(BUILDDIR)/$*.c.d -c -o $@ $<
 
 $(BUILDDIR)/%.S.o: src/%.S
 	$(MKCWD)
-	$(AS) $(ASFLAGS) -MMD -MP -MF $(BUILDDIR)/$*.S.d -c -o $@ $<
+	@echo "  AS    $<"
+	@$(AS) $(ASFLAGS) -MMD -MP -MF $(BUILDDIR)/$*.S.d -c -o $@ $<
 
 $(BINDIR)/%.a: $(OBJ)
 	$(MKCWD)
-	$(AR) rcs $@ $^
+	@echo "  AR    $@"
+	@$(AR) rcs $@ $^
 
 $(BINDIR)/%: $(OBJ)
 	$(MKCWD)
-	$(LD) -o $@ $^ $(LDFLAGS) $(LDSTDLIB)
+	@echo "  LD    $@"
+	@$(LD) -o $@ $^ $(LDFLAGS) $(LDSTDLIB)
 
-# Black magic, good luck. Used to link the bootloader.
 $(BINDIR)/%.efi: $(OBJ)
 	$(MKCWD)
-
-	gcc -shared -nostdlib -nostartfiles -fPIC -fno-stack-protector \
+	@echo "  LD    $@ (EFI)"
+	@gcc -shared -nostdlib -nostartfiles -fPIC -fno-stack-protector \
 		$(DEBUG_LDFLAGS) \
 		-Wl,-shared,-Bsymbolic \
 		-Wl,-T,lib/gnu-efi/gnuefi/elf_x86_64_efi.lds \
@@ -29,19 +32,19 @@ $(BINDIR)/%.efi: $(OBJ)
 		-lgnuefi -lefi
 
 ifeq ($(DEBUG),1)
-	$(OBJCOPY) --only-keep-debug $(BINDIR)/temp.so $(BINDIR)/$*.debug
-
-	$(OBJCOPY) \
+	@echo "  OBJCOPY $@ (with debug symbols)"
+	@$(OBJCOPY) --only-keep-debug $(BINDIR)/temp.so $(BINDIR)/$*.debug
+	@$(OBJCOPY) \
 		-j .text -j .sdata -j .data -j .dynamic -j .dynsym \
 		-j .rel -j .rela -j .rel.* -j .rela.* -j .reloc -j .eh_frame \
 		--target efi-app-x86_64 \
 		--subsystem=10 \
 		--add-gnu-debuglink=$(BINDIR)/$*.debug \
 		$(BINDIR)/temp.so $@
-
-	$(OBJCOPY) --strip-debug $@
+	@$(OBJCOPY) --strip-debug $@
 else
-	$(OBJCOPY) \
+	@echo "  OBJCOPY $@"
+	@$(OBJCOPY) \
 		-j .text -j .sdata -j .data -j .dynamic -j .dynsym \
 		-j .rel -j .rela -j .rel.* -j .rela.* -j .reloc -j .eh_frame \
 		--target efi-app-x86_64 \
@@ -49,4 +52,4 @@ else
 		$(BINDIR)/temp.so $@
 endif
 
-	rm -f $(BINDIR)/temp.so
+	@rm -f $(BINDIR)/temp.so

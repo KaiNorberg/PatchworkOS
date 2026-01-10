@@ -32,11 +32,16 @@ static dentry_ops_t dentryOps = {
     .iterate = dentry_generic_iterate,
 };
 
-static dentry_t* devfs_mount(filesystem_t* fs, block_device_t* device, void* private)
-{
+static dentry_t* devfs_mount(filesystem_t* fs, const char* options, void* private)
+{   
     UNUSED(fs);
-    UNUSED(device);
     UNUSED(private);
+
+    if (options != NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
 
     return REF(root);
 }
@@ -53,7 +58,7 @@ void devfs_init(void)
         panic(NULL, "Failed to register devfs");
     }
 
-    superblock_t* superblock = superblock_new(&devfs, NULL, NULL, &dentryOps);
+    superblock_t* superblock = superblock_new(&devfs, NULL, &dentryOps);
     if (superblock == NULL)
     {
         panic(NULL, "Failed to create devfs superblock");

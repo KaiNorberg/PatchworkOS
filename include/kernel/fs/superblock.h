@@ -19,27 +19,10 @@ typedef struct dentry dentry_t;
  * @defgroup kernel_fs_superblock Superblock
  * @ingroup kernel_fs
  *
- * A superblock represents a mounted filesystem, it can be thought of as "filesystem + device". The filesystem is
- * just the format of the data, e.g. fat32, tmpfs, devfs, etc. and the device provides the data.
- *
- * In the case of certain special filesystems like tmpfs or devfs there is no physical device, a virtual device will be
- * specified (a device of type `0`).
+ * A superblock represents a mounted filesystem. 
  *
  * @{
  */
-
-/**
- * @brief Block device type.
- * @struct block_device_t
- *
- * Represents a device which can be used to back a filesystem.
- *
- * @todo Implement block devices.
- */
-typedef struct
-{
-    uint64_t placeholder;
-} block_device_t;
 
 /**
  * @brief Superblock structure.
@@ -54,7 +37,6 @@ typedef struct superblock
     uint64_t maxFileSize;
     void* private;
     dentry_t* root; ///< Root dentry of the filesystem, should not take a reference.
-    block_device_t* device;
     const superblock_ops_t* ops;
     const dentry_ops_t* dentryOps;
     filesystem_t* fs;
@@ -105,14 +87,13 @@ typedef struct superblock_ops
  * Note that the superblock's `root` dentry must be created and assigned after calling this function.
  *
  * @param fs The filesystem type of the superblock.
- * @param device The block device the filesystem is mounted on, can be `NULL` for virtual filesystems.
  * @param ops The superblock operations, can be NULL.
  * @param dentryOps The dentry operations for dentries in this superblock, can be NULL.
  * @return On success, the new superblock. On failure, returns `NULL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENOMEM`: Out of memory.
  */
-superblock_t* superblock_new(filesystem_t* fs, block_device_t* device, const superblock_ops_t* ops,
+superblock_t* superblock_new(filesystem_t* fs, const superblock_ops_t* ops,
     const dentry_ops_t* dentryOps);
 
 /**

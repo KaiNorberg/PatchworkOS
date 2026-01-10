@@ -62,6 +62,7 @@ compile_commands.json
 lib/OVMFbin/OVMF_VARS-pure-efi.fd
 lib/doomgeneric
 lib/lua
+.built
 meta/docs
 meta/doxy/doxygen-awesome-css
 include/kernel/version.h

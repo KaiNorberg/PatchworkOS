@@ -56,10 +56,10 @@ typedef struct filesystem
     list_t superblocks;   ///< Used internally.
     rwlock_t lock;        ///< Used internally.
     const char* name;
-    dentry_t* (*mount)(filesystem_t* fs, block_device_t* device, void* private);
+    dentry_t* (*mount)(filesystem_t* fs, const char* details, void* private);
 } filesystem_t;
 
-/**
+/**s
  * @brief Exposes the sysfs `fs` directory.
  *
  * Must be called before `filesystem_get_by_path()` can be used.

@@ -338,23 +338,7 @@ bool namespace_traverse(namespace_t* ns, path_t* path)
     return traversed;
 }
 
-static uint64_t namespace_find_device(const char* deviceName, block_device_t** out)
-{
-    /// @todo Implement physical device lookup.
-
-    static _Atomic(uint32_t) nextVirtId = ATOMIC_VAR_INIT(1);
-
-    if (deviceName != NULL)
-    {
-        errno = ENOSYS;
-        return ERR;
-    }
-
-    *out = NULL;
-    return 0;
-}
-
-mount_t* namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, const char* deviceName, mode_t mode,
+mount_t* namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, const char* options, mode_t mode,
     void* private)
 {
     if (ns == NULL || fs == NULL)
@@ -363,13 +347,7 @@ mount_t* namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, cons
         return NULL;
     }
 
-    block_device_t* device;
-    if (namespace_find_device(deviceName, &device) == ERR)
-    {
-        return NULL;
-    }
-
-    dentry_t* root = fs->mount(fs, device, private);
+    dentry_t* root = fs->mount(fs, options, private);
     if (root == NULL)
     {
         return NULL;
@@ -471,7 +449,7 @@ void namespace_get_root(namespace_t* ns, path_t* out)
     path_set(out, mnt, mnt->source);
 }
 
-SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* mountpoint, const char* fs, const char* device)
+SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* mountpoint, const char* fs, const char* options)
 {
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
@@ -497,14 +475,14 @@ SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* mountpoint, const char* fs, cons
         return ERR;
     }
 
-    char deviceCopy[MAX_NAME];
-    if (device != NULL && thread_copy_from_user_string(thread, deviceCopy, device, MAX_NAME) == ERR)
+    char fsCopy[MAX_PATH];
+    if (thread_copy_from_user_string(thread, fsCopy, fs, MAX_PATH) == ERR)
     {
         return ERR;
     }
 
-    char fsCopy[MAX_NAME];
-    if (thread_copy_from_user_string(thread, fsCopy, fs, MAX_NAME) == ERR)
+    char optionsCopy[MAX_PATH];
+    if (options != NULL && thread_copy_from_user_string(thread, optionsCopy, options, MAX_PATH) == ERR)
     {
         return ERR;
     }
@@ -516,7 +494,7 @@ SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* mountpoint, const char* fs, cons
     }
 
     mount_t* mount =
-        namespace_mount(ns, &mountpath, filesystem, device != NULL ? deviceCopy : NULL, mountname.mode, NULL);
+        namespace_mount(ns, &mountpath, filesystem, options != NULL ? optionsCopy : NULL, mountname.mode, NULL);
     if (mount == NULL)
     {
         return ERR;

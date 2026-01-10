@@ -276,11 +276,17 @@ static dentry_t* tmpfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     return REF(dentry);
 }
 
-static dentry_t* tmpfs_mount(filesystem_t* fs, block_device_t* device, void* private)
+static dentry_t* tmpfs_mount(filesystem_t* fs, const char* options, void* private)
 {
     UNUSED(private);
 
-    superblock_t* superblock = superblock_new(fs, device, &superOps, &dentryOps);
+    if (options != NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    superblock_t* superblock = superblock_new(fs, &superOps, &dentryOps);
     if (superblock == NULL)
     {
         return NULL;
