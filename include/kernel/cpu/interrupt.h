@@ -270,7 +270,9 @@ void interrupt_enable(void);
  *
  * Disables interrupts and enables them again when going out of scope.
  */
-#define INTERRUPT_SCOPE() interrupt_disable(); __attribute__((cleanup(interrupt_scope_cleanup))) int CONCAT(i, __COUNTER__) = 1;
+#define INTERRUPT_SCOPE() \
+    interrupt_disable(); \
+    __attribute__((cleanup(interrupt_scope_cleanup))) int CONCAT(i, __COUNTER__) = 1;
 
 /**
  * @brief Handles CPU interrupts.

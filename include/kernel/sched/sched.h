@@ -397,8 +397,8 @@ typedef struct sched
     clock_t lastUpdate; ///< The real time when the last vtime update occurred.
     lock_t lock;        ///< The lock protecting the scheduler.
     _Atomic(uint64_t) preemptCount; ///< If greater than zero, preemption is disabled.
-    thread_t* volatile idleThread; ///< The idle thread for this CPU.
-    thread_t* volatile runThread;  ///< The currently running thread on this CPU.
+    thread_t* volatile idleThread;  ///< The idle thread for this CPU.
+    thread_t* volatile runThread;   ///< The currently running thread on this CPU.
 } sched_t;
 
 /**
@@ -438,6 +438,8 @@ void sched_submit(thread_t* thread);
  * @brief Perform a scheduling operation.
  *
  * This function is called on every interrupt to provide a scheduling opportunity.
+ *
+ * Will report a quiescent state to RCU if the CPU is idle or if a context switch occurs.
  *
  * @param frame The interrupt frame.
  * @param self The cpu performing the scheduling operation.
@@ -505,12 +507,19 @@ void sched_yield(void);
 /**
  * @brief Disables preemption on the current CPU.
  */
-void sched_preempt_disable(void);
+void sched_disable(void);
 
 /**
  * @brief Enables preemption on the current CPU.
  */
-void sched_preempt_enable(void);
+void sched_enable(void);
+
+/**
+ * @brief Disable preemption for the duration of the current scope.
+ */
+#define SCHED_SCOPE() \
+    sched_disable(); \
+    __attribute__((cleanup(sched_scope_cleanup))) int* CONCAT(i, __COUNTER__) = 0
 
 /**
  * @brief Terminates the currently executing process and all it's threads.
@@ -534,5 +543,10 @@ _NORETURN void sched_thread_exit(void);
  * This is where idle threads will run when there is nothing else to do.
  */
 _NORETURN extern void sched_idle_loop(void);
+
+static inline void sched_scope_cleanup(int* _)
+{
+    sched_enable();
+}
 
 /** @} */

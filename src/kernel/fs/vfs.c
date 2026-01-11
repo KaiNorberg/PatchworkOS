@@ -19,6 +19,7 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/mutex.h>
+#include <kernel/sync/rcu.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/ref.h>
 
@@ -160,17 +161,7 @@ file_t* vfs_open(const pathname_t* pathname, process_t* process)
         return NULL;
     }
 
-    namespace_t* ns = process_get_ns(process);
-    if (ns == NULL)
-    {
-        return NULL;
-    }
-    UNREF_DEFER(ns);
-
-    path_t cwd = cwd_get(&process->cwd, ns);
-    PATH_DEFER(&cwd);
-
-    return vfs_openat(&cwd, pathname, process);
+    return vfs_openat(NULL, pathname, process);
 }
 
 uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* process)
@@ -245,7 +236,15 @@ file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* pr
     }
     UNREF_DEFER(ns);
 
-    path_t path = PATH_CREATE(from->mount, from->dentry);
+    path_t path;
+    if (from != NULL)
+    {
+        path = PATH_CREATE(from->mount, from->dentry);
+    }
+    else
+    {
+        path = cwd_get(&process->cwd, ns);
+    }
     PATH_DEFER(&path);
 
     if (vfs_open_lookup(&path, pathname, ns) == ERR)
@@ -621,22 +620,25 @@ static bool vfs_dir_emit(dir_ctx_t* ctx, const char* name, ino_t number, itype_t
         return false;
     }
 
+    rcu_read_lock();
+
     dirent_flags_t flags = DIRENT_NONE;
     mode_t mode = vctx->path.mount->mode;
-    dentry_t* child = dentry_get(vctx->path.dentry, name);
-    if (child != NULL)
+    dentry_t* child = dentry_rcu_get(vctx->path.dentry, name, strlen(name));
+    if (REF_COUNT(child) != 0)
     {
-        path_t checkPath = PATH_CREATE(vctx->path.mount, child);
-        if (namespace_traverse(vctx->ns, &checkPath))
+        mount_t* mount = vctx->path.mount;
+        dentry_t* dentry = child;
+        if (namespace_rcu_traverse(vctx->ns, &mount, &dentry))
         {
-            number = checkPath.dentry->inode->number;
-            type = checkPath.dentry->inode->type;
-            mode = checkPath.mount->mode;
+            number = dentry->inode->number;
+            type = dentry->inode->type;
+            mode = mount->mode;
             flags |= DIRENT_MOUNTED;
         }
-        path_put(&checkPath);
-        UNREF(child);
     }
+
+    rcu_read_unlock();
 
     dirent_t* d = (dirent_t*)((uint8_t*)vctx->buffer + vctx->written);
     d->number = number;
@@ -1355,21 +1357,8 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
 
-    namespace_t* ns = process_get_ns(process);
-    if (ns == NULL)
-    {
-        return ERR;
-    }
-    UNREF_DEFER(ns);
-
     path_t fromPath = PATH_EMPTY;
-    if (from == FD_NONE)
-    {
-        path_t cwd = cwd_get(&process->cwd, ns);
-        path_copy(&fromPath, &cwd);
-        path_put(&cwd);
-    }
-    else
+    if (from != FD_NONE)
     {
         file_t* fromFile = file_table_get(&process->fileTable, from);
         if (fromFile == NULL)
@@ -1387,7 +1376,7 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
         return ERR;
     }
 
-    file_t* file = vfs_openat(&fromPath, &pathname, process);
+    file_t* file = vfs_openat(from != FD_NONE ? &fromPath : NULL, &pathname, process);
     if (file == NULL)
     {
         return ERR;

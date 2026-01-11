@@ -148,11 +148,12 @@ cleanup:
     {
         free(addrs);
     }
+    pid_t pid = process->id;
     if (errno == EOK)
     {
         thread_jump(thread);
     }
-    LOG_DEBUG("exec failed due to %s\n", strerror(errno));
+    LOG_DEBUG("exec failed due to %s pid=%llu\n", strerror(errno), pid);
     sched_process_exit("exec failed");
 }
 

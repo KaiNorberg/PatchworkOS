@@ -3,6 +3,7 @@
 #include <kernel/fs/inode.h>
 #include <kernel/fs/path.h>
 #include <kernel/sync/mutex.h>
+#include <kernel/sync/rcu.h>
 #include <kernel/sync/seqlock.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
@@ -156,14 +157,15 @@ typedef struct dentry
     dentry_id_t id;
     char name[MAX_NAME]; ///< The name of the dentry, immutable after creation.
     inode_t* inode;      ///< Will be `NULL` if the dentry is negative, once positive it will never be modified.
-    dentry_t* parent; ///< The parent dentry, will be itself if this is the root dentry, immutable after creation.
+    dentry_t* parent;    ///< The parent dentry, will be itself if this is the root dentry, immutable after creation.
     list_entry_t siblingEntry;
     list_t children;
     superblock_t* superblock;
     const dentry_ops_t* ops;
     void* private;
-    map_entry_t mapEntry;
+    struct dentry* next;          ///< Next dentry in the dentry cache hash bucket.
     _Atomic(uint64_t) mountCount; ///< Number of mounts targeting this dentry.
+    rcu_entry_t rcu;              ///< RCU entry for deferred cleanup.
     list_entry_t otherEntry;      ///< Made available for use by any other subsystems for convenience.
 } dentry_t;
 
@@ -194,27 +196,42 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
 void dentry_remove(dentry_t* dentry);
 
 /**
- * @brief Get a dentry for the given name. Will NOT traverse mountpoints.
+ * @brief Revalidate a dentry.
+ *
+ * Calls the dentry's revalidate operation if it has one.
+ *
+ * @param dentry The dentry to revalidate.
+ * @return On success, the dentry. On failure, `UNREF()` is called on the dentry, returns `NULL` and `errno` is set.
+ */
+dentry_t* dentry_revalidate(dentry_t* dentry);
+
+/**
+ * @brief Get a dentry from the dentry cache in an RCU read-side critical section without traversing mountpoints.
  *
  * Will only check the dentry cache and return a dentry if it exists there, will not call the filesystem's lookup
  * function.
  *
+ * @warning Will NOT return a reference to the dentry, the caller must ensure that this function is called in a RCU read
+ * critical section.
+ *
  * @param parent The parent path.
  * @param name The name of the dentry.
+ * @param length The length of the name.
  * @return On success, the dentry, might be negative. On failure, returns `NULL` and `errno` is set.
  */
-dentry_t* dentry_get(const dentry_t* parent, const char* name);
+dentry_t* dentry_rcu_get(const dentry_t* parent, const char* name, size_t length);
 
 /**
- * @brief Lookup a dentry for the given name. Will NOT traverse mountpoints.
+ * @brief Lookup a dentry for the given name without traversing mountpoints.
  *
  * If the dentry is not found in the dentry cache, the filesystem's lookup function will be called to try to find it.
  *
- * @param parent The parent path.
+ * @param parent The parent dentry.
  * @param name The name of the dentry.
- * @return On success, the dentry, might be negative. On failure, returns `NULL` and `errno` is set.
+ * @param length The length of the name.
+ * @return On success, a reference to the dentry, might be negative. On failure, returns `NULL` and `errno` is set.
  */
-dentry_t* dentry_lookup(const path_t* parent, const char* name);
+dentry_t* dentry_lookup(dentry_t* parent, const char* name, size_t length);
 
 /**
  * @brief Make a dentry positive by associating it with an inode.

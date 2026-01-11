@@ -2,44 +2,71 @@
 
 #include <kernel/cpu/interrupt.h>
 
+#include <kernel/sched/sched.h>
+#include <stdatomic.h>
 #include <stdint.h>
 #include <sys/io.h>
 #include <sys/list.h>
 #include <sys/proc.h>
-#include <stdatomic.h>
+
+typedef struct rcu_entry rcu_entry_t;
 
 /**
  * @brief Read-Copy-Update (RCU) primitive.
- * @defgroup kernel_sync_rcu Read-Copy-Update (RCU) 
+ * @defgroup kernel_sync_rcu Read-Copy-Update (RCU)
  * @ingroup kernel_sync
  *
  * RCU is a synchronization mechanism that allows readers to access shared data structures concurrently with writers,
- * without using locks. It works by deferring the reclamation of old data until all readers that might have been
- * accessing it have completed their operations.
+ * without using locks.
+ *
+ * ## Implementation
+ *
+ * RCU works by delaying the freeing of a resource until its known to be impossible for any CPU to be using said
+ * resource.
+ *
+ * This is implemented by allowing the resource to persist for a grace period, which is defined as the time taken for
+ * all CPUs to pass through a quiescent state. A quiescent state is any point at which the CPU is known to not be
+ * accessing RCU protected data.
+ *
+ * In our case, it is illegal for a context switch to occur while accessing RCU protected data, as preemption is
+ * disabled using `rcu_read_lock()`. Therefor, we know that once all CPUs, which were not idle, have performed a context
+ * switch, they must have passed through a quiescent state and it is thus safe to free any pending resources.
+ *
+ * ## Using RCU
+ *
+ * Using RCU is fairly straightforward, any data structure that is to be protected by RCU must include a `rcu_entry_t`
+ * member, when the structure is to be freed after use `rcu_call()` should be called with the address of the
+ * `rcu_entry_t` member and a callback function that will free the structure.
+ *
+ * To access RCU protected data, a read-side critical section must be created using `rcu_read_lock()` and
+ * `rcu_read_unlock()`, or the `RCU_READ_SCOPE()` macro. Within the critical section, RCU protected pointers should be
+ * accessed using the `RCU_DEREFERENCE()` macro, and any updates to RCU protected pointers should be done using the
+ * `RCU_ASSIGN_POINTER()` macro.
  *
  * @see https://en.wikipedia.org/wiki/Read-copy-update for more information about RCU.
  * @see https://www.kernel.org/doc/Documentation/RCU/whatisRCU.txt for a explanation of RCU in the Linux kernel.
- * 
+ *
  * @{
  */
 
 /**
  * @brief RCU callback function type.
  *
- * @param arg The argument passed to the callback.
+ * @param rcu The RCU entry being processed.
  */
-typedef void (*rcu_callback_t)(void*);
+typedef void (*rcu_callback_t)(void* arg);
 
 /**
  * @brief Intrusive RCU head structure.
  *
  * Used to queue objects for freeing.
  */
-typedef struct rcu_head
+typedef struct rcu_entry
 {
-    struct rcu_head* next;
+    list_entry_t entry;
     rcu_callback_t func;
-} rcu_head_t;
+    void* arg;
+} rcu_entry_t;
 
 /**
  * @brief Per-cpu RCU context.
@@ -47,7 +74,11 @@ typedef struct rcu_head
  */
 typedef struct rcu_cpu
 {
-    rcu_head_t* head;
+    uint64_t grace;  ///< The last grace period observed by this CPU.
+    list_t* batch;   ///< Callbacks queued during the current grace period.
+    list_t* waiting; ///< Callbacks waiting for the current grace period to end.
+    list_t* ready;   ///< Callbacks whose grace period has ended.
+    list_t lists[3]; //< Buffer storing three lists such that we can rotate them.
 } rcu_cpu_t;
 
 /**
@@ -57,7 +88,14 @@ typedef struct rcu_cpu
  */
 static inline void rcu_cpu_init(rcu_cpu_t* rcu)
 {
-    rcu->head = NULL;
+    rcu->grace = 0;
+    rcu->batch = &rcu->lists[0];
+    rcu->waiting = &rcu->lists[1];
+    rcu->ready = &rcu->lists[2];
+    for (size_t i = 0; i < ARRAY_SIZE(rcu->lists); i++)
+    {
+        list_init(&rcu->lists[i]);
+    }
 }
 
 /**
@@ -89,7 +127,7 @@ static inline void rcu_cpu_init(rcu_cpu_t* rcu)
  */
 static inline void rcu_read_lock(void)
 {
-    interrupt_disable();    
+    sched_disable();
 }
 
 /**
@@ -99,8 +137,15 @@ static inline void rcu_read_lock(void)
  */
 static inline void rcu_read_unlock(void)
 {
-    interrupt_enable();
+    sched_enable();
 }
+
+/**
+ * @brief RCU read-side critical section for the current scope.
+ */
+#define RCU_READ_SCOPE() \
+    rcu_read_lock(); \
+    __attribute__((cleanup(rcu_read_unlock_cleanup))) int CONCAT(r, __COUNTER__) = 1;
 
 /**
  * @brief Wait for all pre-existing RCU read-side critical sections to complete.
@@ -113,9 +158,32 @@ void rcu_synchronize(void);
 /**
  * @brief Add a callback to be executed after a grace period.
  *
- * @param head The RCU head structure embedded in the object to be freed.
+ * @param rcu The RCU entry structure embedded in the object to be freed.
  * @param func The callback function to execute.
  */
-void rcu_call(rcu_head_t* head, rcu_callback_t func);
+void rcu_call(rcu_entry_t* rcu, rcu_callback_t func, void* arg);
+
+/**
+ * @brief Called during a context switch to report a quiescent state.
+ *
+ * Will also be invoked via an IPI when a grace period starts if the CPU is not in a quiescent state.
+ *
+ * @param self The current CPU.
+ */
+void rcu_report_quiescent(cpu_t* self);
+
+/**
+ * @brief Helper callback to free a pointer.
+ *
+ * Can be used as a generic callback to free memory allocated with `malloc()`.
+ *
+ * @param arg The pointer to free.
+ */
+void rcu_call_free(void* arg);
+
+static inline void rcu_read_unlock_cleanup(int* _)
+{
+    rcu_read_unlock();
+}
 
 /** @} */

@@ -528,20 +528,21 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     sched_t* sched = &self->sched;
     lock_acquire(&sched->lock);
 
-    if (sched->runThread == sched->idleThread && rbtree_is_empty(&sched->runqueue)) // Nothing to do
-    {
-        lock_release(&sched->lock);
-        return;
-    }
-
-    clock_t uptime = clock_uptime();
-    sched_vtime_update(sched, uptime);
-
     if (atomic_load(&sched->preemptCount) > 0 && atomic_load(&sched->runThread->state) == THREAD_ACTIVE)
     {
         lock_release(&sched->lock);
         return;
     }
+
+    if (sched->runThread == sched->idleThread && rbtree_is_empty(&sched->runqueue)) // Nothing to do
+    {
+        lock_release(&sched->lock);
+        rcu_report_quiescent(self);
+        return;
+    }
+
+    clock_t uptime = clock_uptime();
+    sched_vtime_update(sched, uptime);
 
     assert(sched->runThread != NULL);
     assert(sched->idleThread != NULL);
@@ -607,6 +608,8 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         assert(threadToFree != sched->runThread);
         thread_free(threadToFree); // Cant hold any locks here
     }
+
+    rcu_report_quiescent(self);
 }
 
 bool sched_is_idle(cpu_t* cpu)
@@ -652,7 +655,7 @@ void sched_yield(void)
     sched_nanosleep(CLOCKS_PER_SEC / 1000);
 }
 
-void sched_preempt_disable(void)
+void sched_disable(void)
 {
     INTERRUPT_SCOPE();
 
@@ -660,7 +663,7 @@ void sched_preempt_disable(void)
     atomic_fetch_add(&self->sched.preemptCount, 1);
 }
 
-void sched_preempt_enable(void)
+void sched_enable(void)
 {
     INTERRUPT_SCOPE();
 

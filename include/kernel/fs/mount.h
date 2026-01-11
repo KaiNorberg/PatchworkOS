@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kernel/fs/path.h>
+#include <kernel/sync/rcu.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 #include <sys/list.h>
@@ -25,6 +26,14 @@ typedef struct path path_t;
  */
 
 /**
+ * @brief Check if a mount is a root mount within its namespace.
+ *
+ * @param mount The mount to check.
+ * @return `true` if the mount is a root mount, `false` otherwise.
+ */
+#define MOUNT_IS_ROOT(mount) ((mount)->parent == NULL)
+
+/**
  * @brief Mount ID type.
  */
 typedef uint64_t mount_id_t;
@@ -45,6 +54,7 @@ typedef struct mount
     superblock_t* superblock; ///< The superblock of the mounted filesystem.
     mount_t* parent;          ///< The parent mount, can be `NULL` for the root filesystem.
     mode_t mode;              ///< Specifies the maximum permissions for this mount and if it is a directory or a file.
+    rcu_entry_t rcu;          ///< RCU entry for deferred cleanup.
 } mount_t;
 
 /**

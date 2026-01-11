@@ -2,7 +2,6 @@
 
 #include <kernel/config.h>
 #include <kernel/cpu/interrupt.h>
-#include <kernel/sync/rcu.h>
 #include <kernel/cpu/ipi.h>
 #include <kernel/cpu/tss.h>
 #include <kernel/drivers/perf.h>
@@ -11,6 +10,7 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
+#include <kernel/sync/rcu.h>
 #include <sys/defs.h>
 
 #include <kernel/utils/map.h>
@@ -322,6 +322,6 @@ static inline cpu_t* cpu_get_next(cpu_t* current)
  */
 #define CPU_FOR_EACH(cpu) \
     for (cpuid_t _cpuId = 0; _cpuId < _cpuAmount; _cpuId++) \
-        for (cpu_t* cpu = _cpus[_cpuId]; cpu != NULL; cpu = NULL)
+        for (cpu = _cpus[_cpuId]; cpu != NULL; cpu = NULL)
 
 /** @} */

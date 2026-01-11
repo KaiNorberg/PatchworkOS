@@ -218,17 +218,17 @@ fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd)
         return ERR;
     }
 
-    if (oldFd == newFd)
-    {
-        return newFd;
-    }
-
     LOCK_SCOPE(&table->lock);
 
     if (oldFd >= CONFIG_MAX_FD || newFd >= CONFIG_MAX_FD || table->files[oldFd] == NULL)
     {
         errno = EBADF;
         return ERR;
+    }
+
+    if (oldFd == newFd)
+    {
+        return newFd;
     }
 
     if (table->files[newFd] != NULL)

@@ -116,6 +116,14 @@ typedef struct
 void bitmap_init(bitmap_t* map, void* buffer, uint64_t length);
 
 /**
+ * @brief Check if the bitmap is empty (all bits clear).
+ *
+ * @param map The bitmap.
+ * @return true if the bitmap is empty, false otherwise.
+ */
+bool bitmap_is_empty(bitmap_t* map);
+
+/**
  * @brief Check if a bit is set in the bitmap.
  *
  * @param map The bitmap.

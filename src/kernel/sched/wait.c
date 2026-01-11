@@ -107,7 +107,7 @@ uint64_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t 
         errno = EINVAL;
         return ERR;
     }
-    
+
     interrupt_disable();
 
     thread_t* thread = cpu_get()->sched.runThread;
