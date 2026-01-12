@@ -111,7 +111,7 @@ tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg)
 void thread_free(thread_t* thread)
 {
     lock_acquire(&thread->process->threads.lock);
-    list_remove(&thread->process->threads.list, &thread->processEntry);
+    list_remove(&thread->processEntry);
     lock_release(&thread->process->threads.lock);
 
     UNREF(thread->process);

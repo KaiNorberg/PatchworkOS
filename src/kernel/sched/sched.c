@@ -377,7 +377,7 @@ void sched_submit(thread_t* thread)
 {
     assert(thread != NULL);
 
-    interrupt_disable();
+    cli_push();
     cpu_t* self = cpu_get();
 
     cpu_t* target;
@@ -398,8 +398,8 @@ void sched_submit(thread_t* thread)
     sched_enter(&target->sched, thread, clock_uptime());
     lock_release(&target->sched.lock);
 
-    bool shouldWake = self != target || !self->interrupt.inInterrupt;
-    interrupt_enable();
+    bool shouldWake = self != target || !self->inInterrupt;
+    cli_pop();
 
     if (shouldWake)
     {
@@ -622,7 +622,7 @@ bool sched_is_idle(cpu_t* cpu)
 
 thread_t* sched_thread(void)
 {
-    INTERRUPT_SCOPE();
+    CLI_SCOPE();
 
     return cpu_get()->sched.runThread;
 }
@@ -657,7 +657,7 @@ void sched_yield(void)
 
 void sched_disable(void)
 {
-    INTERRUPT_SCOPE();
+    CLI_SCOPE();
 
     cpu_t* self = cpu_get();
     atomic_fetch_add(&self->sched.preemptCount, 1);
@@ -665,7 +665,7 @@ void sched_disable(void)
 
 void sched_enable(void)
 {
-    INTERRUPT_SCOPE();
+    CLI_SCOPE();
 
     cpu_t* self = cpu_get();
     atomic_fetch_sub(&self->sched.preemptCount, 1);

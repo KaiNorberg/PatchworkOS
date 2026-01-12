@@ -243,6 +243,7 @@ uint64_t sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t*
 
     list_t createdList = LIST_CREATE(createdList);
 
+    uint64_t count = 0;
     for (const sysfs_file_desc_t* desc = descs; desc->name != NULL; desc++)
     {
         dentry_t* file = sysfs_file_new(parent, desc->name, desc->inodeOps, desc->fileOps, desc->private);
@@ -256,9 +257,8 @@ uint64_t sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t*
         }
 
         list_push_back(&createdList, &file->otherEntry);
+        count++;
     }
-
-    uint64_t count = list_length(&createdList);
 
     if (out == NULL)
     {

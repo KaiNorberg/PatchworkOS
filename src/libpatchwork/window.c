@@ -450,7 +450,7 @@ void window_free(window_t* win)
     display_cmds_flush(win->disp);
 
     mtx_lock(&win->disp->mutex);
-    list_remove(&win->disp->windows, &win->entry);
+    list_remove(&win->entry);
     mtx_unlock(&win->disp->mutex);
 
     free(win);

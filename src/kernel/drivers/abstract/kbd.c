@@ -69,7 +69,7 @@ static void kbd_events_close(file_t* file)
     }
 
     lock_acquire(&kbd->lock);
-    list_remove(&kbd->clients, &client->entry);
+    list_remove(&client->entry);
     lock_release(&kbd->lock);
 
     free(client);

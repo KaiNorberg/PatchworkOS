@@ -1,4 +1,5 @@
 #include <kernel/sync/rwlock.h>
+#include <kernel/cpu/cli.h>
 
 #ifndef NDEBUG
 #include <kernel/log/panic.h>
@@ -17,7 +18,7 @@ void rwlock_init(rwlock_t* lock)
 
 void rwlock_read_acquire(rwlock_t* lock)
 {
-    interrupt_disable();
+    cli_push();
 
 #ifndef NDEBUG
     uint64_t iterations = 0;
@@ -56,12 +57,12 @@ void rwlock_read_release(rwlock_t* lock)
     atomic_fetch_sub_explicit(&lock->activeReaders, 1, memory_order_release);
     atomic_fetch_add_explicit(&lock->readServe, 1, memory_order_release);
 
-    interrupt_enable();
+    cli_pop();
 }
 
 void rwlock_write_acquire(rwlock_t* lock)
 {
-    interrupt_disable();
+    cli_push();
 
 #ifndef NDEBUG
     uint64_t iterations = 0;
@@ -111,5 +112,5 @@ void rwlock_write_release(rwlock_t* lock)
     atomic_store_explicit(&lock->activeWriter, false, memory_order_release);
     atomic_fetch_add_explicit(&lock->writeServe, 1, memory_order_release);
 
-    interrupt_enable();
+    cli_pop();
 }

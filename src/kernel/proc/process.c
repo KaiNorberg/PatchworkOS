@@ -246,7 +246,7 @@ void process_remove(process_t* process)
 {
     rwlock_write_acquire(&processesLock);
     map_remove(&pidMap, &process->mapEntry);
-    list_remove(&processes, &process->entry);
+    list_remove(&process->entry);
     rwlock_write_release(&processesLock);
 
     UNREF(process);

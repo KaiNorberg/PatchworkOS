@@ -271,7 +271,7 @@ void _files_push(FILE* file)
 void _files_remove(FILE* file)
 {
     mtx_lock(&filesMtx);
-    list_remove(&files, &file->entry);
+    list_remove(&file->entry);
     mtx_unlock(&filesMtx);
 }
 

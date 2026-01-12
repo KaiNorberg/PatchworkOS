@@ -195,7 +195,7 @@ void space_load(space_t* space)
         panic(NULL, "CPU not found in old space's CPU list");
     }
 #endif
-    list_remove(&oldSpace->cpus, &self->vmm.entry);
+    list_remove(&self->vmm.entry);
     lock_release(&oldSpace->lock);
 
     lock_acquire(&space->lock);
@@ -519,11 +519,11 @@ uint64_t space_check_access(space_t* space, const void* addr, size_t length)
     return 0;
 }
 
-static void* space_find_free_region(space_t* space, uint64_t pageAmount)
+static void* space_find_free_region(space_t* space, uint64_t pageAmount, uint64_t alignment)
 {
     void* addr;
     if (page_table_find_unmapped_region(&space->pageTable, (void*)space->freeAddress, (void*)space->endAddress,
-            pageAmount, &addr) != ERR)
+            pageAmount, alignment,&addr) != ERR)
     {
         space->freeAddress = (uintptr_t)addr + pageAmount * PAGE_SIZE;
         assert(page_table_is_unmapped(&space->pageTable, addr, pageAmount));
@@ -531,7 +531,7 @@ static void* space_find_free_region(space_t* space, uint64_t pageAmount)
     }
 
     if (page_table_find_unmapped_region(&space->pageTable, (void*)space->startAddress, (void*)space->freeAddress,
-            pageAmount, &addr) != ERR)
+            pageAmount, alignment, &addr) != ERR)
     {
         assert(page_table_is_unmapped(&space->pageTable, addr, pageAmount));
         return addr;
@@ -540,7 +540,7 @@ static void* space_find_free_region(space_t* space, uint64_t pageAmount)
     return NULL;
 }
 
-uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, size_t length,
+uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, size_t length, size_t alignment,
     pml_flags_t flags)
 {
     if (space == NULL || mapping == NULL || length == 0)
@@ -581,7 +581,7 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
     if (virtAddr == NULL)
     {
         pageAmount = BYTES_TO_PAGES(length);
-        virtAddr = space_find_free_region(space, pageAmount);
+        virtAddr = space_find_free_region(space, pageAmount, alignment);
         if (virtAddr == NULL)
         {
             lock_release(&space->lock);
@@ -593,6 +593,13 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
     {
         space_align_region(&virtAddr, &length);
         pageAmount = BYTES_TO_PAGES(length);
+
+        if ((uintptr_t)virtAddr % alignment != 0)
+        {
+            lock_release(&space->lock);
+            errno = EINVAL;
+            return ERR;
+        }
     }
 
     mapping->virtAddr = virtAddr;

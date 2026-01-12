@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/cli.h>
 
 #ifndef NDEBUG
 #include <kernel/log/panic.h>
@@ -103,12 +103,12 @@ static inline void lock_init(lock_t* lock)
  */
 static inline void lock_acquire(lock_t* lock)
 {
-    interrupt_disable();
+    cli_push();
 
 #ifndef NDEBUG
     if (lock->canary != LOCK_CANARY)
     {
-        interrupt_enable();
+        cli_pop();
         panic(NULL, "Lock canary corrupted");
     }
     lock->calledFrom = (uintptr_t)__builtin_return_address(0);
@@ -123,12 +123,12 @@ static inline void lock_acquire(lock_t* lock)
 #ifndef NDEBUG
         if (lock->canary != LOCK_CANARY)
         {
-            interrupt_enable();
+            cli_pop();
             panic(NULL, "Lock canary corrupted after %d iterations", iterations);
         }
         if (++iterations >= LOCK_DEADLOCK_ITERATIONS)
         {
-            interrupt_enable();
+            cli_pop();
             panic(NULL, "Deadlock detected in lock last acquired from %p", (void*)lock->calledFrom);
         }
 #endif
@@ -145,26 +145,26 @@ static inline void lock_acquire(lock_t* lock)
  */
 static inline bool lock_try_acquire(lock_t* lock)
 {
-    interrupt_disable();
+    cli_push();
 
     uint16_t ticket = atomic_load_explicit(&lock->nextTicket, memory_order_relaxed);
     if (atomic_load_explicit(&lock->nowServing, memory_order_acquire) != ticket)
     {
-        interrupt_enable();
+        cli_pop();
         return false;
     }
 
     if (!atomic_compare_exchange_strong_explicit(&lock->nextTicket, &ticket, ticket + 1, memory_order_relaxed,
             memory_order_relaxed))
     {
-        interrupt_enable();
+        cli_pop();
         return false;
     }
 
 #ifndef NDEBUG
     if (lock->canary != LOCK_CANARY)
     {
-        interrupt_enable();
+        cli_pop();
         panic(NULL, "Lock canary corrupted");
     }
     lock->calledFrom = (uintptr_t)__builtin_return_address(0);
@@ -191,7 +191,7 @@ static inline void lock_release(lock_t* lock)
 #endif
 
     atomic_fetch_add_explicit(&lock->nowServing, 1, memory_order_release);
-    interrupt_enable();
+    cli_pop();
 }
 
 static inline void lock_cleanup(lock_t** lock)

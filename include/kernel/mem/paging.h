@@ -356,7 +356,7 @@ static inline uint64_t page_table_get_phys_addr(page_table_t* table, const void*
  * @param pageAmount The number of pages to check.
  * @return `true` if the entire range is mapped, `false` otherwise.
  */
-static inline bool page_table_is_mapped(page_table_t* table, const void* virtAddr, uint64_t pageAmount)
+static inline bool page_table_is_mapped(page_table_t* table, const void* virtAddr, size_t pageAmount)
 {
     page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
     for (uint64_t i = 0; i < pageAmount; i++)
@@ -385,7 +385,7 @@ static inline bool page_table_is_mapped(page_table_t* table, const void* virtAdd
  * @param pageAmount The number of pages to check.
  * @return `true` if the entire range is unmapped, `false` otherwise.
  */
-static inline bool page_table_is_unmapped(page_table_t* table, const void* virtAddr, uint64_t pageAmount)
+static inline bool page_table_is_unmapped(page_table_t* table, const void* virtAddr, size_t pageAmount)
 {
     page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
 
@@ -418,7 +418,7 @@ static inline bool page_table_is_unmapped(page_table_t* table, const void* virtA
  * @param callbackId The callback ID to associate with the mapped pages or `PML_CALLBACK_NONE`.
  * @return On success, `0`. On failure, `ERR`.
  */
-static inline uint64_t page_table_map(page_table_t* table, void* virtAddr, void* physAddr, uint64_t pageAmount,
+static inline uint64_t page_table_map(page_table_t* table, void* virtAddr, void* physAddr, size_t pageAmount,
     pml_flags_t flags, pml_callback_id_t callbackId)
 {
     if (!(flags & PML_PRESENT))
@@ -465,7 +465,7 @@ static inline uint64_t page_table_map(page_table_t* table, void* virtAddr, void*
  * @param callbackId The callback ID to associate with the mapped pages or `PML_CALLBACK_NONE`.
  * @return On success, `0`. On failure, `ERR`.
  */
-static inline uint64_t page_table_map_pages(page_table_t* table, void* virtAddr, void** pages, uint64_t pageAmount,
+static inline uint64_t page_table_map_pages(page_table_t* table, void* virtAddr, void** pages, size_t pageAmount,
     pml_flags_t flags, pml_callback_id_t callbackId)
 {
     if (!(flags & PML_PRESENT))
@@ -511,7 +511,7 @@ static inline uint64_t page_table_map_pages(page_table_t* table, void* virtAddr,
  * @param virtAddr The starting virtual address.
  * @param pageAmount The number of pages to unmap.
  */
-static inline void page_table_unmap(page_table_t* table, void* virtAddr, uint64_t pageAmount)
+static inline void page_table_unmap(page_table_t* table, void* virtAddr, size_t pageAmount)
 {
     page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
 
@@ -625,7 +625,7 @@ static inline void page_table_clear_pml1_pml2_pml3(page_table_t* table, page_tab
  * @param virtAddr The starting virtual address.
  * @param pageAmount The number of pages to clear.
  */
-static inline void page_table_clear(page_table_t* table, void* virtAddr, uint64_t pageAmount)
+static inline void page_table_clear(page_table_t* table, void* virtAddr, size_t pageAmount)
 {
     page_table_page_buffer_t pageBuffer = {.pageCount = 0};
 
@@ -671,7 +671,7 @@ static inline void page_table_clear(page_table_t* table, void* virtAddr, uint64_
  * @param pageAmount The number of pages to check.
  * @param callbacks An array of size `PML_MAX_CALLBACK` that will be filled with the occurrences of each callback ID.
  */
-static inline void page_table_collect_callbacks(page_table_t* table, void* virtAddr, uint64_t pageAmount,
+static inline void page_table_collect_callbacks(page_table_t* table, void* virtAddr, size_t pageAmount,
     uint64_t* callbacks)
 {
     page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
@@ -707,7 +707,7 @@ static inline void page_table_collect_callbacks(page_table_t* table, void* virtA
  * @param flags The new flags to set. The `PML_OWNED` flag is preserved.
  * @return On success, `0`. On failure, `ERR`.
  */
-static inline uint64_t page_table_set_flags(page_table_t* table, void* virtAddr, uint64_t pageAmount, pml_flags_t flags)
+static inline uint64_t page_table_set_flags(page_table_t* table, void* virtAddr, size_t pageAmount, pml_flags_t flags)
 {
     page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
 
@@ -749,14 +749,20 @@ static inline uint64_t page_table_set_flags(page_table_t* table, void* virtAddr,
  * @param startAddr The start address to begin searching (inclusive).
  * @param endAddr The end address of the search range (exclusive).
  * @param pageAmount The number of consecutive unmapped pages needed.
+ * @param alignment The required alignment for the region in bytes.
  * @param outAddr Will be filled with the start address of the unmapped region if found.
  * @return On success, `0`. If no suitable region is found, `ERR`.
  */
 static inline uint64_t page_table_find_unmapped_region(page_table_t* table, void* startAddr, void* endAddr,
-    uint64_t pageAmount, void** outAddr)
+    size_t pageAmount, size_t alignment, void** outAddr)
 {
     uintptr_t currentAddr = ROUND_DOWN((uintptr_t)startAddr, PAGE_SIZE);
     uintptr_t end = (uintptr_t)endAddr;
+
+    if (alignment < PAGE_SIZE)
+    {
+        alignment = PAGE_SIZE;
+    }
 
     if (pageAmount >= (PML3_SIZE / PAGE_SIZE))
     {
@@ -768,8 +774,15 @@ static inline uint64_t page_table_find_unmapped_region(page_table_t* table, void
             pml_entry_t* entry4 = &table->pml4->entries[idx4];
             if (!entry4->present)
             {
-                *outAddr = (void*)currentAddr;
-                return 0;
+                uintptr_t alignedAddr = ROUND_UP(currentAddr, alignment);
+                uintptr_t nextPml4 = ROUND_UP(currentAddr + 1, PML4_SIZE);
+                if (alignedAddr < nextPml4 && alignedAddr < end)
+                {
+                    *outAddr = (void*)alignedAddr;
+                    return 0;
+                }
+                currentAddr = nextPml4;
+                continue;
             }
 
             pml_t* pml3 = (pml_t*)pml_accessible_addr(*entry4);
@@ -777,8 +790,13 @@ static inline uint64_t page_table_find_unmapped_region(page_table_t* table, void
 
             if (!entry3->present)
             {
-                *outAddr = (void*)currentAddr;
-                return 0;
+                uintptr_t alignedAddr = ROUND_UP(currentAddr, alignment);
+                uintptr_t nextPml3 = ROUND_UP(currentAddr + 1, PML3_SIZE);
+                if (alignedAddr < nextPml3 && alignedAddr < end)
+                {
+                    *outAddr = (void*)alignedAddr;
+                    return 0;
+                }
             }
 
             currentAddr = ROUND_UP(currentAddr + 1, PML3_SIZE);
@@ -795,8 +813,15 @@ static inline uint64_t page_table_find_unmapped_region(page_table_t* table, void
 
             if (!entry4->present)
             {
-                *outAddr = (void*)currentAddr;
-                return 0;
+                uintptr_t alignedAddr = ROUND_UP(currentAddr, alignment);
+                uintptr_t nextPml4 = ROUND_UP(currentAddr + 1, PML4_SIZE);
+                if (alignedAddr < nextPml4 && alignedAddr < end)
+                {
+                    *outAddr = (void*)alignedAddr;
+                    return 0;
+                }
+                currentAddr = nextPml4;
+                continue;
             }
 
             pml_t* pml3 = (pml_t*)pml_accessible_addr(*entry4);
@@ -805,8 +830,15 @@ static inline uint64_t page_table_find_unmapped_region(page_table_t* table, void
 
             if (!entry3->present)
             {
-                *outAddr = (void*)currentAddr;
-                return 0;
+                uintptr_t alignedAddr = ROUND_UP(currentAddr, alignment);
+                uintptr_t nextPml3 = ROUND_UP(currentAddr + 1, PML3_SIZE);
+                if (alignedAddr < nextPml3 && alignedAddr < end)
+                {
+                    *outAddr = (void*)alignedAddr;
+                    return 0;
+                }
+                currentAddr = nextPml3;
+                continue;
             }
 
             pml_t* pml2 = (pml_t*)pml_accessible_addr(*entry3);
@@ -815,8 +847,13 @@ static inline uint64_t page_table_find_unmapped_region(page_table_t* table, void
 
             if (!entry2->present)
             {
-                *outAddr = (void*)currentAddr;
-                return 0;
+                uintptr_t alignedAddr = ROUND_UP(currentAddr, alignment);
+                uintptr_t nextPml2 = ROUND_UP(currentAddr + 1, PML2_SIZE);
+                if (alignedAddr < nextPml2 && alignedAddr < end)
+                {
+                    *outAddr = (void*)alignedAddr;
+                    return 0;
+                }
             }
 
             currentAddr = ROUND_UP(currentAddr + 1, PML2_SIZE);
@@ -859,13 +896,22 @@ static inline uint64_t page_table_find_unmapped_region(page_table_t* table, void
 
         if (!entry3->present)
         {
+            uintptr_t skipTo = ROUND_UP(currentAddr + 1, PML3_SIZE);
+
             if (consecutiveUnmapped == 0)
             {
-                regionStart = currentAddr;
+                uintptr_t alignedAddr = ROUND_UP(currentAddr, alignment);
+                if (alignedAddr < skipTo && alignedAddr < end)
+                {
+                    regionStart = alignedAddr;
+                    consecutiveUnmapped = (MIN(skipTo, end) - alignedAddr) / PAGE_SIZE;
+                }
             }
-
-            uint64_t skippedPages = PML3_SIZE / PAGE_SIZE;
-            consecutiveUnmapped += skippedPages;
+            else
+            {
+                uint64_t skippedPages = (MIN(skipTo, end) - currentAddr) / PAGE_SIZE;
+                consecutiveUnmapped += skippedPages;
+            }
 
             if (consecutiveUnmapped >= pageAmount)
             {
@@ -873,7 +919,7 @@ static inline uint64_t page_table_find_unmapped_region(page_table_t* table, void
                 return 0;
             }
 
-            currentAddr = ROUND_UP(currentAddr + 1, PML3_SIZE);
+            currentAddr = skipTo;
             continue;
         }
 
@@ -883,13 +929,22 @@ static inline uint64_t page_table_find_unmapped_region(page_table_t* table, void
 
         if (!entry2->present)
         {
+            uintptr_t skipTo = ROUND_UP(currentAddr + 1, PML2_SIZE);
+
             if (consecutiveUnmapped == 0)
             {
-                regionStart = currentAddr;
+                uintptr_t alignedAddr = ROUND_UP(currentAddr, alignment);
+                if (alignedAddr < skipTo && alignedAddr < end)
+                {
+                    regionStart = alignedAddr;
+                    consecutiveUnmapped = (MIN(skipTo, end) - alignedAddr) / PAGE_SIZE;
+                }
             }
-
-            uint64_t skippedPages = PML2_SIZE / PAGE_SIZE;
-            consecutiveUnmapped += skippedPages;
+            else
+            {
+                uint64_t skippedPages = (MIN(skipTo, end) - currentAddr) / PAGE_SIZE;
+                consecutiveUnmapped += skippedPages;
+            }
 
             if (consecutiveUnmapped >= pageAmount)
             {
@@ -897,7 +952,7 @@ static inline uint64_t page_table_find_unmapped_region(page_table_t* table, void
                 return 0;
             }
 
-            currentAddr = ROUND_UP(currentAddr + 1, PML2_SIZE);
+            currentAddr = skipTo;
             continue;
         }
 
@@ -910,9 +965,17 @@ static inline uint64_t page_table_find_unmapped_region(page_table_t* table, void
             {
                 if (consecutiveUnmapped == 0)
                 {
-                    regionStart = currentAddr;
+                    uintptr_t alignedAddr = ROUND_UP(currentAddr, alignment);
+                    if (alignedAddr == currentAddr)
+                    {
+                        regionStart = currentAddr;
+                        consecutiveUnmapped++;
+                    }
                 }
-                consecutiveUnmapped++;
+                else
+                {
+                    consecutiveUnmapped++;
+                }
 
                 if (consecutiveUnmapped >= pageAmount)
                 {
@@ -938,7 +1001,7 @@ static inline uint64_t page_table_find_unmapped_region(page_table_t* table, void
  * @param pageAmount The number of pages to check.
  * @return `true` if any page in the range us pinned, `false` otherwise.
  */
-static inline bool page_table_is_pinned(page_table_t* table, const void* virtAddr, uint64_t pageAmount)
+static inline bool page_table_is_pinned(page_table_t* table, const void* virtAddr, size_t pageAmount)
 {
     page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
     for (uint64_t i = 0; i < pageAmount; i++)
@@ -974,7 +1037,7 @@ static inline bool page_table_is_pinned(page_table_t* table, const void* virtAdd
  * @param flags The flags to check for.
  * @return The number of pages with the specified flags set.
  */
-static inline uint64_t page_table_count_pages_with_flags(page_table_t* table, void* virtAddr, uint64_t pageAmount,
+static inline uint64_t page_table_count_pages_with_flags(page_table_t* table, void* virtAddr, size_t pageAmount,
     pml_flags_t flags)
 {
     uint64_t count = 0;

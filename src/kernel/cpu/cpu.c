@@ -35,6 +35,7 @@ void cpu_init_early(cpu_t* cpu)
     cpu->id = id;
     _cpus[id] = cpu;
 
+    cpu->inInterrupt = false;
     gdt_cpu_load();
     idt_cpu_load();
     tss_init(&cpu->tss);
@@ -82,7 +83,6 @@ void cpu_init(cpu_t* cpu)
 
     rcu_cpu_init(&cpu->rcu);
     vmm_cpu_init(&cpu->vmm);
-    interrupt_ctx_init(&cpu->interrupt);
     perf_cpu_init(&cpu->perf);
     timer_cpu_init(&cpu->timer);
     wait_init(&cpu->wait);

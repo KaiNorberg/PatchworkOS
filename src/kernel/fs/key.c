@@ -77,7 +77,7 @@ static void key_timer_handler(interrupt_frame_t* frame, cpu_t* self)
         }
 
         map_remove(&keyMap, &entry->mapEntry);
-        list_remove(&keyList, &entry->entry);
+        list_remove(&entry->entry);
         UNREF(entry->file);
         free(entry);
     }
@@ -119,7 +119,7 @@ uint64_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout)
     }
 
     memcpy(key, entry->key, size);
-    if (list_length(&keyList) == 0)
+    if (list_is_empty(&keyList))
     {
         list_push_back(&keyList, &entry->entry);
         timer_set(clock_uptime(), entry->expiry);
@@ -132,7 +132,7 @@ uint64_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout)
     {
         if (entry->expiry < other->expiry)
         {
-            list_prepend(&keyList, &other->entry, &entry->entry);
+            list_prepend(&other->entry, &entry->entry);
             if (first)
                 timer_set(clock_uptime(), entry->expiry);
             return 0;
@@ -162,7 +162,7 @@ file_t* key_claim(const char* key)
     }
 
     key_entry_t* entry = CONTAINER_OF(mapEntry, key_entry_t, mapEntry);
-    list_remove(&keyList, &entry->entry);
+    list_remove(&entry->entry);
 
     file_t* file = entry->file;
     free(entry);

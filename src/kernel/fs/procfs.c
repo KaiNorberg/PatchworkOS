@@ -385,7 +385,7 @@ static size_t procfs_perf_read(file_t* file, void* buffer, size_t count, size_t*
     size_t userPages = space_user_page_count(&process->space);
 
     lock_acquire(&process->threads.lock);
-    size_t threadCount = list_length(&process->threads.list);
+    size_t threadCount = list_size(&process->threads.list);
     lock_release(&process->threads.lock);
 
     clock_t userClocks = atomic_load(&process->perf.userClocks);

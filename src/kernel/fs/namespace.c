@@ -113,7 +113,7 @@ static void mount_stack_free(namespace_t* ns, mount_stack_t* stack)
     }
     stack->count = 0;
 
-    list_remove(&ns->stacks, &stack->entry);
+    list_remove(&stack->entry);
     map_remove(&ns->mountMap, &stack->mapEntry);
 
     if (&ns->root == stack)
@@ -229,7 +229,7 @@ static void namespace_free(namespace_t* ns)
     if (ns->parent != NULL)
     {
         rwlock_write_acquire(&ns->parent->lock);
-        list_remove(&ns->parent->children, &ns->entry);
+        list_remove(&ns->entry);
         rwlock_write_release(&ns->parent->lock);
         UNREF(ns->parent);
         ns->parent = NULL;

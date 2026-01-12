@@ -45,7 +45,7 @@ static void ioapic_redirect_write(ioapic_t* ioapic, ioapic_gsi_t gsi, ioapic_red
 
 static uint64_t ioapic_enable(irq_t* irq)
 {
-    INTERRUPT_SCOPE();
+    CLI_SCOPE();
 
     ioapic_t* ioapic = irq->domain->private;
     lapic_t* lapic = lapic_get(cpu_get_id());

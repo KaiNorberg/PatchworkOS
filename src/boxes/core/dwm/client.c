@@ -58,7 +58,7 @@ void client_free(client_t* client)
         rect_t screenRect = SURFACE_SCREEN_RECT(surface);
         compositor_invalidate(&screenRect);
 
-        list_remove(&client->surfaces, &surface->clientEntry);
+        list_remove(&surface->clientEntry);
         dwm_detach(surface);
         surface_free(surface);
     }
@@ -167,7 +167,7 @@ static uint64_t client_action_surface_free(client_t* client, const cmd_header_t*
     rect_t screenRect = SURFACE_SCREEN_RECT(surface);
     compositor_invalidate(&screenRect);
 
-    list_remove(&client->surfaces, &surface->clientEntry);
+    list_remove(&surface->clientEntry);
     dwm_detach(surface);
     surface_free(surface);
     return 0;

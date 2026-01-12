@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/defs.h>
 
 /**
  * @brief Doubly linked list header.
@@ -35,19 +36,15 @@ typedef struct list_entry
 {
     struct list_entry* prev; ///< The previous entry in the list
     struct list_entry* next; ///< The next entry in the list
-    list_t* list;            ///< The list this entry belongs to.
 } list_entry_t;
 
 /**
  * @brief A doubly linked list.
- *
- * This structure simplifies reasoning around linked lists.
  */
 typedef struct list
 {
     list_entry_t head; ///< The head of the list, where head::prev is the last entry of the list and head::next is the
-                       ///< first entry of the list.
-    size_t length;     ///< The number of elements in the list (excluding the head).
+                       /// first entry of the list.
 } list_t;
 
 /**
@@ -153,7 +150,7 @@ typedef struct list
 #define LIST_ENTRY_CREATE(name) \
     (list_entry_t) \
     { \
-        .prev = &(name), .next = &(name), .list = NULL \
+        .prev = &(name), .next = &(name), \
     }
 
 /**
@@ -162,7 +159,7 @@ typedef struct list
  * @param name The name of the list variable to initialize.
  * @return A `list_t` initializer for the specified list variable.
  */
-#define LIST_CREATE(name) (list_t){.head = {.prev = &(name).head, .next = &(name).head, .list = &(name)}, .length = 0}
+#define LIST_CREATE(name) (list_t){.head = {.prev = &(name).head, .next = &(name).head}}
 
 /**
  * @brief Initializes a list entry.
@@ -174,7 +171,6 @@ static inline void list_entry_init(list_entry_t* entry)
     assert(entry != NULL);
     entry->next = entry;
     entry->prev = entry;
-    entry->list = NULL;
 }
 
 /**
@@ -186,23 +182,19 @@ static inline void list_init(list_t* list)
 {
     assert(list != NULL);
     list_entry_init(&list->head);
-    list->head.next->list = list; // Also sets prev
-    list->length = 0;
 }
 
 /**
- * @brief Check if an entry belongs to a specific list.
+ * @brief Check if an entry is in a list.
  *
- * @param list A pointer to the `list_t` to search in.
- * @param entry A pointer to the `list_entry_t` to search for.
- * @return `true` if the entry is in the list, `false` otherwise.
+ * @param entry A pointer to the `list_entry_t` to check.
+ * @return `true` if the entry is in a list, `false` otherwise.
  */
-static inline bool list_contains_entry(list_t* list, list_entry_t* entry)
+static inline bool list_entry_in_list(list_entry_t* entry)
 {
-    assert(list != NULL);
     assert(entry != NULL);
 
-    return entry->list == list;
+    return entry->next != entry && entry->prev != entry;
 }
 
 /**
@@ -215,65 +207,39 @@ static inline bool list_is_empty(list_t* list)
 {
     assert(list != NULL);
 
-    bool emptyByHead = (list->head.next == &list->head);
-    bool emptyByLength = (list->length == 0);
-
-    assert(emptyByHead == emptyByLength);
-
-    return emptyByHead;
-}
-
-/**
- * @brief Gets the length of the list.
- *
- * @param list A pointer to the `list_t`.
- * @return The number of elements in the list.
- */
-static inline uint64_t list_length(list_t* list)
-{
-    assert(list != NULL);
-    return list->length;
+    return list->head.next == &list->head;
 }
 
 /**
  * @brief Adds a new element between two existing list entries.
  *
- * @param list A pointer to the `list_t` that will contain the new element.
  * @param prev A pointer to the list entry that will precede the new element.
  * @param next A pointer to the list entry that will follow the new element.
  * @param elem A pointer to the `list_entry_t` to add.
  */
-static inline void list_add(list_t* list, list_entry_t* prev, list_entry_t* next, list_entry_t* entry)
+static inline void list_add(list_entry_t* prev, list_entry_t* next, list_entry_t* entry)
 {
-    assert(list != NULL);
     assert(prev != NULL);
     assert(next != NULL);
     assert(entry != NULL);
     assert(entry->next == entry && entry->prev == entry);
     assert(prev->next == next && next->prev == prev);
-    assert(entry->list == NULL);
-    assert(prev->list == list);
-    assert(next->list == list);
 
     next->prev = entry;
     entry->next = next;
     entry->prev = prev;
     prev->next = entry;
-
-    entry->list = list;
-    list->length++;
 }
 
 /**
  * @brief Appends an entry to the list.
  *
- * @param list A pointer to the `list_t` to append to.
  * @param prev A pointer to the list entry after which the new entry will be appended.
  * @param entry A pointer to the `list_entry_t` to append.
  */
-static inline void list_append(list_t* list, list_entry_t* prev, list_entry_t* entry)
+static inline void list_append(list_entry_t* prev, list_entry_t* entry)
 {
-    list_add(list, prev, prev->next, entry);
+    list_add(prev, prev->next, entry);
 }
 
 /**
@@ -283,36 +249,23 @@ static inline void list_append(list_t* list, list_entry_t* prev, list_entry_t* e
  * @param head A pointer to the list entry before which the new entry will be prepended.
  * @param entry A pointer to the `list_entry_t` to prepend.
  */
-static inline void list_prepend(list_t* list, list_entry_t* head, list_entry_t* entry)
+static inline void list_prepend(list_entry_t* head, list_entry_t* entry)
 {
-    list_add(list, head->prev, head, entry);
+    list_add(head->prev, head, entry);
 }
 
 /**
  * @brief Removes a list entry from its current list.
  *
- * @param list A pointer to the `list_t` that contains the entry.
  * @param entry A pointer to the `list_entry_t` to remove.
  */
-static inline void list_remove(list_t* list, list_entry_t* entry)
+static inline void list_remove(list_entry_t* entry)
 {
-    if (entry->list == NULL)
-    {
-        return;
-    }
-
-    assert(list != NULL);
     assert(entry != NULL);
-    assert(list->length > 0);
-    assert(entry != &list->head);
-    assert(entry->list == list);
 
     entry->prev->next = entry->next;
     entry->next->prev = entry->prev;
     list_entry_init(entry);
-
-    entry->list = NULL;
-    list->length--;
 }
 
 /**
@@ -327,7 +280,7 @@ static inline void list_push_back(list_t* list, list_entry_t* entry)
     assert(entry != NULL);
     assert(entry->next == entry && entry->prev == entry);
 
-    list_add(list, list->head.prev, &list->head, entry);
+    list_add(list->head.prev, &list->head, entry);
 }
 
 /**
@@ -342,7 +295,7 @@ static inline void list_push_front(list_t* list, list_entry_t* entry)
     assert(entry != NULL);
     assert(entry->next == entry && entry->prev == entry);
 
-    list_add(list, &list->head, list->head.next, entry);
+    list_add(&list->head, list->head.next, entry);
 }
 
 /**
@@ -361,7 +314,7 @@ static inline list_entry_t* list_pop_front(list_t* list)
     }
 
     list_entry_t* entry = list->head.next;
-    list_remove(list, entry);
+    list_remove(entry);
     return entry;
 }
 
@@ -381,7 +334,7 @@ static inline list_entry_t* list_pop_back(list_t* list)
     }
 
     list_entry_t* entry = list->head.prev;
-    list_remove(list, entry);
+    list_remove(entry);
     return entry;
 }
 
@@ -430,7 +383,6 @@ static inline list_entry_t* list_next(list_t* list, list_entry_t* entry)
 {
     assert(list != NULL);
     assert(entry != NULL);
-    assert(entry->list == list);
 
     if (entry->next == &list->head)
     {
@@ -450,13 +402,30 @@ static inline list_entry_t* list_prev(list_t* list, list_entry_t* entry)
 {
     assert(list != NULL);
     assert(entry != NULL);
-    assert(entry->list == list);
 
     if (entry->prev == &list->head)
     {
         return NULL;
     }
     return entry->prev;
+}
+
+/**
+ * @brief Gets the size of the list.
+ *
+ * @param list A pointer to the `list_t`.
+ * @return The number of entries in the list.
+ */
+static inline uint64_t list_size(list_t* list)
+{
+    uint64_t size = 0;
+    list_entry_t* entry = list->head.next;
+    while (entry != &list->head)
+    {
+        size++;
+        entry = entry->next;
+    }
+    return size;
 }
 
 #endif

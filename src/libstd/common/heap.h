@@ -4,6 +4,13 @@
 #include <stdint.h>
 #include <sys/list.h>
 #include <sys/proc.h>
+#include <sys/defs.h>
+
+#ifdef _KERNEL_
+#include <kernel/sync/lock.h>
+#else
+#include <threads.h>
+#endif
 
 /**
  * @brief Internal Heap Implementation.
@@ -66,14 +73,14 @@ typedef enum
  *
  * Must have a size that is a multiple of `_HEAP_ALIGNMENT` for cache alignment.
  */
-typedef struct _heap_header
+typedef struct ALIGNED(_HEAP_ALIGNMENT) _heap_header
 {
     uint32_t magic;
     _heap_flags_t flags;
     uint64_t size;
     list_entry_t freeEntry;
     list_entry_t listEntry;
-    uint8_t data[];
+    uint8_t data[] ALIGNED(_HEAP_ALIGNMENT);
 } _heap_header_t;
 
 static_assert(sizeof(_heap_header_t) % _HEAP_ALIGNMENT == 0, "_heap_header_t size must be multiple of 64");
@@ -82,6 +89,12 @@ static_assert(sizeof(_heap_header_t) % _HEAP_ALIGNMENT == 0, "_heap_header_t siz
  * @brief A list of all blocks sorted by address.
  */
 extern list_t _heapList;
+
+#ifdef _KERNEL_
+extern lock_t _heapLock;
+#else
+extern mtx_t _heapLock;
+#endif
 
 /**
  * @brief Initialize the heap.
@@ -93,12 +106,26 @@ void _heap_init(void);
  *
  * Must be paired with a call to `_heap_release()`.
  */
-void _heap_acquire(void);
+static inline void _heap_acquire(void)
+{
+#ifdef _KERNEL_
+    lock_acquire(&_heapLock);
+#else
+    mtx_lock(&_heapLock);
+#endif
+}
 
 /**
  * @brief Release the heap lock.
  */
-void _heap_release(void);
+static inline void _heap_release(void)
+{
+#ifdef _KERNEL_
+    lock_release(&_heapLock);
+#else
+    mtx_unlock(&_heapLock);
+#endif
+}
 
 /**
  * @brief Get the bin index for a given size.

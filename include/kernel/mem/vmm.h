@@ -168,6 +168,7 @@ pml_flags_t vmm_prot_to_flags(prot_t prot);
  * @param space The target address space, if `NULL`, the kernel space is used.
  * @param virtAddr The desired virtual address. If `NULL`, the kernel chooses an available address.
  * @param length The length of the virtual memory region to allocate, in bytes.
+ * @param alignment The required alignment for the virtual memory region in bytes.
  * @param pmlFlags The page table flags for the mapping, will always include `PML_OWNED`, must have `PML_PRESENT` set.
  * @param allocFlags The allocation flags.
  * @return On success, the virtual address. On failure, returns `NULL` and `errno` is set to:
@@ -177,7 +178,7 @@ pml_flags_t vmm_prot_to_flags(prot_t prot);
  * - `ENOMEM`: Not enough memory.
  * - Other values from `space_mapping_start()`.
  */
-void* vmm_alloc(space_t* space, void* virtAddr, size_t length, pml_flags_t pmlFlags, vmm_alloc_flags_t allocFlags);
+void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment, pml_flags_t pmlFlags, vmm_alloc_flags_t allocFlags);
 
 /**
  * @brief Maps physical memory to virtual memory in a given address space.

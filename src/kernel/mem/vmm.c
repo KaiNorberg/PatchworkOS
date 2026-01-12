@@ -160,7 +160,7 @@ static inline void vmm_page_table_unmap_with_shootdown(space_t* space, void* vir
     page_table_clear(&space->pageTable, virtAddr, pageAmount);
 }
 
-void* vmm_alloc(space_t* space, void* virtAddr, size_t length, pml_flags_t pmlFlags, vmm_alloc_flags_t allocFlags)
+void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment, pml_flags_t pmlFlags, vmm_alloc_flags_t allocFlags)
 {
     if (length == 0 || !(pmlFlags & PML_PRESENT))
     {
@@ -174,7 +174,7 @@ void* vmm_alloc(space_t* space, void* virtAddr, size_t length, pml_flags_t pmlFl
     }
 
     space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, NULL, length, pmlFlags | PML_OWNED) == ERR)
+    if (space_mapping_start(space, &mapping, virtAddr, NULL, length, alignment, pmlFlags | PML_OWNED) == ERR)
     {
         return NULL;
     }
@@ -238,7 +238,7 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, size_t length, pml
     }
 
     space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, physAddr, length, flags) == ERR)
+    if (space_mapping_start(space, &mapping, virtAddr, physAddr, length, 1, flags) == ERR)
     {
         return NULL;
     }
@@ -292,7 +292,7 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, size_t pageAmo
     }
 
     space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, NULL, pageAmount * PAGE_SIZE, flags) == ERR)
+    if (space_mapping_start(space, &mapping, virtAddr, NULL, pageAmount * PAGE_SIZE, 1, flags) == ERR)
     {
         return NULL;
     }
@@ -345,7 +345,7 @@ void* vmm_unmap(space_t* space, void* virtAddr, size_t length)
     }
 
     space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, NULL, length, PML_NONE) == ERR)
+    if (space_mapping_start(space, &mapping, virtAddr, NULL, length, 1, PML_NONE) == ERR)
     {
         return NULL;
     }
@@ -412,7 +412,7 @@ void* vmm_protect(space_t* space, void* virtAddr, size_t length, pml_flags_t fla
     }
 
     space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, NULL, length, flags) == ERR)
+    if (space_mapping_start(space, &mapping, virtAddr, NULL, length, 1, flags) == ERR)
     {
         return NULL;
     }

@@ -252,7 +252,7 @@ nuke: clean
 	@rm -rf lib/doomgeneric-patchworkos lib/lua-5.4.7 lib/acpica lib/acpica_tests lib/argon2 include/argon2 meta/docs
 	@rm -rf lib/gnu-efi/.built lib/argon2/.built lib/acpica_tests/.built
 
-QEMU_MEMORY ?= 1G
+QEMU_MEMORY ?= 2G
 QEMU_CPUS ?= $(shell nproc 2>/dev/null || echo 8)
 QEMU_MACHINE ?= q35
 QEMU_ARGS ?=

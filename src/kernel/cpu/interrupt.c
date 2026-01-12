@@ -10,43 +10,9 @@
 #include <kernel/mem/paging_types.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/wait.h>
-
 #include <kernel/cpu/regs.h>
 
 #include <assert.h>
-
-void interrupt_ctx_init(interrupt_ctx_t* ctx)
-{
-    ctx->inInterrupt = false;
-    ctx->oldRflags = 0;
-    ctx->disableDepth = 0;
-}
-
-void interrupt_disable(void)
-{
-    uint64_t rflags = rflags_read();
-    asm volatile("cli" ::: "memory");
-    interrupt_ctx_t* ctx = &cpu_get()->interrupt;
-    if (ctx->disableDepth == 0)
-    {
-        ctx->oldRflags = rflags;
-    }
-    ctx->disableDepth++;
-}
-
-void interrupt_enable(void)
-{
-    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
-
-    interrupt_ctx_t* ctx = &cpu_get()->interrupt;
-    assert(ctx->disableDepth != 0);
-    ctx->disableDepth--;
-
-    if (ctx->disableDepth == 0 && (ctx->oldRflags & RFLAGS_INTERRUPT_ENABLE))
-    {
-        asm volatile("sti" ::: "memory");
-    }
-}
 
 static void exception_handle_user(interrupt_frame_t* frame, const char* note)
 {
@@ -66,7 +32,7 @@ static uint64_t exception_grow_stack(thread_t* thread, uintptr_t faultAddr, stac
     uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
     if (stack_pointer_is_in_stack(stack, alignedFaultAddr, 1))
     {
-        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, flags, VMM_ALLOC_FAIL_IF_MAPPED) ==
+        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PAGE_SIZE, flags, VMM_ALLOC_FAIL_IF_MAPPED) ==
             NULL)
         {
             if (errno == EEXIST) // Race condition, another CPU mapped the page.
@@ -226,7 +192,7 @@ void interrupt_handler(interrupt_frame_t* frame)
     cpu_t* self = cpu_get();
     assert(self != NULL);
 
-    self->interrupt.inInterrupt = true;
+    self->inInterrupt = false;
     perf_interrupt_begin(self);
 
     if (frame->vector >= VECTOR_EXTERNAL_START && frame->vector < VECTOR_EXTERNAL_END)
@@ -257,7 +223,7 @@ void interrupt_handler(interrupt_frame_t* frame)
     cpu_stacks_overflow_check(self);
 
     perf_interrupt_end(self);
-    self->interrupt.inInterrupt = false;
+    self->inInterrupt = false;
 
     // This is a sanity check to make sure blocking and scheduling is functioning correctly.
     assert(frame->rflags & RFLAGS_INTERRUPT_ENABLE);

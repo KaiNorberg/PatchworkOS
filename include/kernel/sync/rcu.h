@@ -181,6 +181,15 @@ void rcu_report_quiescent(cpu_t* self);
  */
 void rcu_call_free(void* arg);
 
+/**
+ * @brief Helper callback to free a cache object.
+ *
+ * Can be used as a generic callback to free memory allocated from a cache.
+ *
+ * @param arg The pointer to free.
+ */
+void rcu_call_cache_free(void* arg);
+
 static inline void rcu_read_unlock_cleanup(int* _)
 {
     rcu_read_unlock();

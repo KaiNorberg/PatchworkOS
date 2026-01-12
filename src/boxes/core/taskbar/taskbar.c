@@ -56,15 +56,13 @@ static rect_t taskbar_get_task_button_rect(taskbar_t* taskbar, element_t* elem, 
     uint64_t lastAvailPos = rightSeparator.left - theme->bigPadding;
     uint64_t availLength = lastAvailPos - firstAvailPos;
 
-    uint64_t entryCount = list_length(&taskbar->entries);
-
-    if (entryCount == 0)
+    if (taskbar->entryCount == 0)
     {
         return RECT_INIT_DIM(firstAvailPos, leftSeparator.top, 0, RECT_HEIGHT(&leftSeparator));
     }
 
-    uint64_t totalPadding = (entryCount - 1) * theme->bigPadding;
-    uint64_t buttonWidth = MIN(TASK_BUTTON_MAX_WIDTH, (availLength - totalPadding) / entryCount);
+    uint64_t totalPadding = (taskbar->entryCount - 1) * theme->bigPadding;
+    uint64_t buttonWidth = MIN(TASK_BUTTON_MAX_WIDTH, (availLength - totalPadding) / taskbar->entryCount);
 
     return RECT_INIT_DIM(firstAvailPos + (buttonWidth + theme->bigPadding) * index, leftSeparator.top, buttonWidth,
         RECT_HEIGHT(&leftSeparator));
@@ -94,14 +92,16 @@ static void taskbar_entry_add(taskbar_t* taskbar, element_t* elem, const surface
     strcpy(entry->name, name);
 
     list_push_back(&taskbar->entries, &entry->entry);
+    taskbar->entryCount++;
 
     element_redraw(elem, true);
 
-    rect_t rect = taskbar_get_task_button_rect(taskbar, elem, list_length(&taskbar->entries) - 1);
+    rect_t rect = taskbar_get_task_button_rect(taskbar, elem, taskbar->entryCount - 1);
     entry->button = button_new(elem, info->id, &rect, entry->name, ELEMENT_TOGGLE);
     if (entry->button == NULL)
     {
-        list_remove(&taskbar->entries, &entry->entry);
+        list_remove(&entry->entry);
+        taskbar->entryCount--;
         free(entry);
         return; // Same here
     }
@@ -119,7 +119,8 @@ static void taskbar_entry_remove(taskbar_t* taskbar, element_t* elem, surface_id
         if (entry->info.id == surface)
         {
             element_free(entry->button);
-            list_remove(&taskbar->entries, &entry->entry);
+            list_remove(&entry->entry);
+            taskbar->entryCount--;
             free(entry);
 
             taskbar_reposition_task_buttons(taskbar, elem);
@@ -196,6 +197,7 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
             return ERR;
         }
         list_init(&taskbar->entries);
+        taskbar->entryCount = 0;
 
         element_set_private(elem, taskbar);
     }
@@ -214,7 +216,8 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
         LIST_FOR_EACH_SAFE(entry, temp, &taskbar->entries, entry)
         {
             element_free(entry->button);
-            list_remove(&taskbar->entries, &entry->entry);
+            list_remove(&entry->entry);
+            taskbar->entryCount--;
             free(entry);
         }
 

@@ -187,7 +187,7 @@ typedef struct dentry
 dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name);
 
 /**
- * @brief Remove a dentry from the filesystem hierarchy.
+ * @brief Remove a dentry from the dentry cache.
  *
  * @note Will not free the dentry, use `UNREF()` for that.
  *

@@ -264,7 +264,7 @@ void filesystem_unregister(filesystem_t* fs)
 
     RWLOCK_WRITE_SCOPE(&lock);
     map_remove(&fsMap, &fs->mapEntry);
-    list_remove(&filesystems, &fs->entry);
+    list_remove(&fs->entry);
 
     while (!list_is_empty(&fs->superblocks))
     {

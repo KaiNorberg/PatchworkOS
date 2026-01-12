@@ -89,7 +89,7 @@ static module_t* module_new(module_info_t* info)
     map_key_t moduleKey = map_key_string(info->name);
     if (map_insert(&modulesMap, &moduleKey, &module->mapEntry) == ERR)
     {
-        list_remove(&modulesList, &module->listEntry);
+        list_remove(&module->listEntry);
         free(module);
         return NULL;
     }
@@ -97,7 +97,7 @@ static module_t* module_new(module_info_t* info)
     map_key_t providerKey = map_key_uint64(module->symbolGroupId);
     if (map_insert(&providerMap, &providerKey, &module->providerEntry) == ERR)
     {
-        list_remove(&modulesList, &module->listEntry);
+        list_remove(&module->listEntry);
         map_remove(&modulesMap, &module->mapEntry);
         free(module);
         return NULL;
@@ -112,7 +112,7 @@ static void module_free(module_t* module)
 
     assert(!(module->flags & MODULE_FLAG_LOADED));
 
-    list_remove(&modulesList, &module->listEntry);
+    list_remove(&module->listEntry);
     map_remove(&modulesMap, &module->mapEntry);
     map_remove(&providerMap, &module->providerEntry);
 
@@ -241,8 +241,8 @@ static inline void module_handler_remove(module_device_handler_t* handler)
     };
     handler->module->procedure(&detachEvent);
 
-    list_remove(&handler->device->handlers, &handler->deviceEntry);
-    list_remove(&handler->module->deviceHandlers, &handler->moduleEntry);
+    list_remove(&handler->deviceEntry);
+    list_remove(&handler->moduleEntry);
     free(handler);
 }
 
@@ -799,7 +799,7 @@ static uint64_t module_load_and_relocate_elf(module_t* module, Elf64_File* elf, 
     uint64_t moduleMemSize = maxVaddr - minVaddr;
 
     // Will be unmapped in module_free
-    module->baseAddr = vmm_alloc(NULL, NULL, moduleMemSize, PML_PRESENT | PML_WRITE | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
+    module->baseAddr = vmm_alloc(NULL, NULL, moduleMemSize, PAGE_SIZE, PML_PRESENT | PML_WRITE | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
     if (module->baseAddr == NULL)
     {
         return ERR;
@@ -1106,6 +1106,7 @@ uint64_t module_device_attach(const char* type, const char* name, module_load_fl
     }
 
     list_t handlers = LIST_CREATE(handlers);
+    uint64_t loadedCount = 0;
 
     module_cached_device_entry_t* deviceEntry;
     LIST_FOR_EACH(deviceEntry, &cachedDevice->entries, listEntry)
@@ -1123,6 +1124,7 @@ uint64_t module_device_attach(const char* type, const char* name, module_load_fl
             goto error;
         }
         list_push_back(&handlers, &handler->loadEntry);
+        loadedCount++;
 
         if (!(flags & MODULE_LOAD_ALL))
         {
@@ -1130,7 +1132,6 @@ uint64_t module_device_attach(const char* type, const char* name, module_load_fl
         }
     }
 
-    uint64_t loadedCount = list_length(&handlers);
     while (!list_is_empty(&handlers))
     {
         module_device_handler_t* handler = CONTAINER_OF(list_pop_front(&handlers), module_device_handler_t, loadEntry);

@@ -3,6 +3,8 @@
 #include <kernel/log/log.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rcu.h>
+#include <kernel/mem/cache.h>
+
 #include <stdlib.h>
 #include <sys/bitmap.h>
 
@@ -51,7 +53,7 @@ void rcu_call(rcu_entry_t* rcu, rcu_callback_t func, void* arg)
         return;
     }
 
-    INTERRUPT_SCOPE();
+    CLI_SCOPE();
 
     cpu_t* self = cpu_get();
 
@@ -140,4 +142,9 @@ void rcu_report_quiescent(cpu_t* self)
 void rcu_call_free(void* arg)
 {
     free(arg);
+}
+
+void rcu_call_cache_free(void* arg)
+{
+    cache_free(arg);
 }

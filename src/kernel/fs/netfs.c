@@ -27,10 +27,7 @@ static void socket_free(socket_t* socket)
     }
 
     rwmutex_write_acquire(&socket->family->mutex);
-    if (list_contains_entry(&socket->family->sockets, &socket->listEntry))
-    {
-        list_remove(&socket->family->sockets, &socket->listEntry);
-    }
+    list_remove(&socket->listEntry);
     rwmutex_write_release(&socket->family->mutex);
 
     socket->family->deinit(socket);
@@ -486,7 +483,7 @@ static size_t netfs_addrs_read(file_t* file, void* buffer, size_t count, size_t*
         return 0;
     }
 
-    char* string = malloc(list_length(&ctx->family->sockets) * (MAX_PATH + 1));
+    char* string = malloc(list_size(&ctx->family->sockets) * (MAX_PATH + 1));
     if (string == NULL)
     {
         errno = ENOMEM;
@@ -838,7 +835,7 @@ uint64_t netfs_family_register(netfs_family_t* family)
 void netfs_family_unregister(netfs_family_t* family)
 {
     rwmutex_write_acquire(&familiesMutex);
-    list_remove(&families, &family->listEntry);
+    list_remove(&family->listEntry);
     rwmutex_write_release(&familiesMutex);
 
     rwmutex_deinit(&family->mutex);

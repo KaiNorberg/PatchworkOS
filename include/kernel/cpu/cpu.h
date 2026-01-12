@@ -3,6 +3,7 @@
 #include <kernel/config.h>
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/ipi.h>
+#include <kernel/cpu/cpu_id.h>
 #include <kernel/cpu/tss.h>
 #include <kernel/drivers/perf.h>
 #include <kernel/drivers/rand.h>
@@ -11,9 +12,9 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/rcu.h>
-#include <sys/defs.h>
-
 #include <kernel/utils/map.h>
+
+#include <sys/defs.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <sys/bitmap.h>
@@ -45,26 +46,6 @@
  *
  * @{
  */
-
-/**
- * @brief Maximum number of CPUs supported.
- */
-#define CPU_MAX (UINT8_MAX + 1)
-
-/**
- * @brief ID of the bootstrap CPU.
- */
-#define CPU_ID_BOOTSTRAP 0
-
-/**
- * @brief Invalid CPU ID.
- */
-#define CPU_ID_INVALID UINT16_MAX
-
-/**
- * @brief Type used to identify a CPU.
- */
-typedef uint16_t cpuid_t;
 
 /**
  * @brief CPU stack canary value.
@@ -122,6 +103,7 @@ typedef struct
 typedef struct cpu
 {
     cpuid_t id;
+    volatile bool inInterrupt;
     rcu_cpu_t rcu;
     /**
      * If set, then since the last check, handlers have been registered or unregistered.
@@ -129,7 +111,6 @@ typedef struct cpu
     atomic_bool needHandlersCheck;
     tss_t tss;
     vmm_cpu_t vmm;
-    interrupt_ctx_t interrupt;
     perf_cpu_t perf;
     timer_cpu_t timer;
     wait_t wait;
@@ -274,24 +255,10 @@ static inline cpu_t* cpu_get(void)
 {
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
-    cpuid_t id = (cpuid_t)msr_read(MSR_CPU_ID);
+    cpuid_t id = cpu_get_id();
     cpu_t* cpu = _cpus[id];
     assert(cpu != NULL && cpu->id == id);
     return cpu;
-}
-
-/**
- * @brief Gets the current CPU ID.
- *
- * @warning This function does not disable interrupts, it should thus only be used when interrupts are already disabled.
- *
- * @return The current CPU ID.
- */
-static inline cpuid_t cpu_get_id(void)
-{
-    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
-
-    return (cpuid_t)msr_read(MSR_CPU_ID);
 }
 
 /**

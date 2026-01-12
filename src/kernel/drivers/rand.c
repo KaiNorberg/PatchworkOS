@@ -60,7 +60,7 @@ void rand_cpu_init(rand_cpu_t* ctx)
 
 uint64_t rand_gen(void* buffer, uint64_t size)
 {
-    INTERRUPT_SCOPE();
+    CLI_SCOPE();
 
     cpu_t* self = cpu_get();
     if (!self->rand.rdrandAvail)

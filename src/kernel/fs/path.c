@@ -474,7 +474,7 @@ static uint64_t path_rcu_step(path_walk_ctx_t* ctx, const char* name, size_t len
 
     if (length == 2 && name[0] == '.' && name[1] == '.')
     {
-        return path_rcu_dotdot(ctx);        
+        return path_rcu_dotdot(ctx);
     }
 
     dentry_t* next = dentry_rcu_get(ctx->dentry, name, length);

@@ -291,7 +291,7 @@ static inline void weak_ptr_clear(weak_ptr_t* wp)
 
         if (lock_try_acquire(&ref->lock))
         {
-            list_remove(&ref->weakRefs, &wp->entry);
+            list_remove(&wp->entry);
             wp->ref = NULL;
             wp->callback = NULL;
             wp->arg = NULL;

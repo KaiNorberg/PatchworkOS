@@ -10,11 +10,12 @@
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/sync/lock.h>
-static lock_t mutex;
+
+lock_t _heapLock;
 
 void* _heap_map_memory(uint64_t size)
 {
-    void* addr = vmm_alloc(NULL, NULL, size, PML_PRESENT | PML_WRITE | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
+    void* addr = vmm_alloc(NULL, NULL, size, PAGE_SIZE, PML_PRESENT | PML_WRITE | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
     if (addr == NULL)
     {
         return NULL;
@@ -28,11 +29,13 @@ void _heap_unmap_memory(void* addr, uint64_t size)
 {
     vmm_unmap(NULL, addr, size);
 }
-#else // ndef _KERNEL_
+
+#else
+
 #include <stdlib.h>
 #include <threads.h>
 
-static mtx_t mutex;
+mtx_t _heapLock;
 
 static fd_t zeroDev = ERR;
 
@@ -61,57 +64,25 @@ void _heap_unmap_memory(void* addr, uint64_t size)
 {
     munmap(addr, size);
 }
-#endif // ndef _KERNEL_
+
+#endif
 
 static list_t freeLists[_HEAP_NUM_BINS] = {0};
-static bitmap_t freeBitmap = {0};
-static uint64_t freeBitmapBuffer[BITMAP_BITS_TO_QWORDS(_HEAP_NUM_BINS)] = {0};
-
-static bool initialized = false;
+static BITMAP_CREATE_ZERO(freeBitmap, _HEAP_NUM_BINS);
 
 list_t _heapList = LIST_CREATE(_heapList);
 
 void _heap_init(void)
 {
 #ifdef _KERNEL_
-    lock_init(&mutex);
+    lock_init(&_heapLock);
 #else
-    mtx_init(&mutex, mtx_plain);
+    mtx_init(&_heapLock, mtx_plain);
 #endif
     for (uint64_t i = 0; i < _HEAP_NUM_BINS; i++)
     {
         list_init(&freeLists[i]);
     }
-    bitmap_init(&freeBitmap, freeBitmapBuffer, _HEAP_NUM_BINS);
-    initialized = true;
-}
-
-void _heap_acquire(void)
-{
-    if (!initialized)
-    {
-        return;
-    }
-
-#ifdef _KERNEL_
-    lock_acquire(&mutex);
-#else
-    mtx_lock(&mutex);
-#endif
-}
-
-void _heap_release(void)
-{
-    if (!initialized)
-    {
-        return;
-    }
-
-#ifdef _KERNEL_
-    lock_release(&mutex);
-#else
-    mtx_unlock(&mutex);
-#endif
 }
 
 uint64_t _heap_get_bin_index(uint64_t size)
@@ -132,11 +103,6 @@ uint64_t _heap_get_bin_index(uint64_t size)
 _heap_header_t* _heap_block_new(uint64_t minSize)
 {
     if (minSize == 0)
-    {
-        return NULL;
-    }
-
-    if (!initialized)
     {
         return NULL;
     }
@@ -168,7 +134,7 @@ _heap_header_t* _heap_block_new(uint64_t minSize)
     }
     else
     {
-        list_append(&_heapList, &last->listEntry, &newBlock->listEntry);
+        list_append(&last->listEntry, &newBlock->listEntry);
     }
 
     return newBlock;
@@ -177,11 +143,6 @@ _heap_header_t* _heap_block_new(uint64_t minSize)
 void _heap_block_split(_heap_header_t* block, uint64_t newSize)
 {
     if (block == NULL || newSize == 0)
-    {
-        return;
-    }
-
-    if (!initialized)
     {
         return;
     }
@@ -199,7 +160,7 @@ void _heap_block_split(_heap_header_t* block, uint64_t newSize)
 
     block->size = newSize;
 
-    list_append(&_heapList, &block->listEntry, &remainder->listEntry);
+    list_append(&block->listEntry, &remainder->listEntry);
 
     _heap_free(remainder);
 }
@@ -207,11 +168,6 @@ void _heap_block_split(_heap_header_t* block, uint64_t newSize)
 void _heap_add_to_free_list(_heap_header_t* block)
 {
     if (block == NULL)
-    {
-        return;
-    }
-
-    if (!initialized)
     {
         return;
     }
@@ -232,17 +188,12 @@ void _heap_remove_from_free_list(_heap_header_t* block)
         return;
     }
 
-    if (!initialized)
-    {
-        return;
-    }
-
     uint64_t binIndex = _heap_get_bin_index(block->size);
     if (binIndex == ERR)
     {
         return;
     }
-    list_remove(&freeLists[binIndex], &block->freeEntry);
+    list_remove(&block->freeEntry);
     if (list_is_empty(&freeLists[binIndex]))
     {
         bitmap_clear(&freeBitmap, binIndex);
@@ -252,11 +203,6 @@ void _heap_remove_from_free_list(_heap_header_t* block)
 _heap_header_t* _heap_alloc(uint64_t size)
 {
     if (size == 0)
-    {
-        return NULL;
-    }
-
-    if (!initialized)
     {
         return NULL;
     }
@@ -321,21 +267,14 @@ void _heap_free(_heap_header_t* block)
         return;
     }
 
-    if (!initialized)
-    {
-        return;
-    }
-
     if (block->flags & _HEAP_MAPPED)
     {
         assert(block->size > _HEAP_LARGE_ALLOC_THRESHOLD);
         _heap_unmap_memory(block, sizeof(_heap_header_t) + block->size);
         return;
     }
-    else
-    {
-        assert(block->size <= _HEAP_LARGE_ALLOC_THRESHOLD);
-    }
+
+    assert(block->size <= _HEAP_LARGE_ALLOC_THRESHOLD);
 
     block->flags &= ~_HEAP_ALLOCATED;
 
@@ -351,7 +290,7 @@ void _heap_free(_heap_header_t* block)
             block->size = newSize;
             block->flags = (block->flags & _HEAP_ZEROED) & (next->flags & _HEAP_ZEROED);
 
-            list_remove(&_heapList, &next->listEntry);
+            list_remove(&next->listEntry);
         }
     }
 
@@ -364,7 +303,7 @@ void _heap_free(_heap_header_t* block)
             prev->size = newSize;
             prev->flags = (prev->flags & _HEAP_ZEROED) & (block->flags & _HEAP_ZEROED);
 
-            list_remove(&_heapList, &block->listEntry);
+            list_remove(&block->listEntry);
 
             block = prev;
         }

@@ -12,29 +12,29 @@
 #include <kernel/sync/lock.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/sync/seqlock.h>
+#include <kernel/mem/cache.h>
 
 #include <stdlib.h>
 #include <sys/list.h>
 
-#define DENTRY_CACHE_SIZE 4096
-
-static dentry_t* cache[DENTRY_CACHE_SIZE] = {NULL};
+#define DENTRY_MAP_SIZE 4096
+static dentry_t* map[DENTRY_MAP_SIZE] = {NULL};
 static seqlock_t lock = SEQLOCK_CREATE();
 
 static uint64_t dentry_hash(dentry_id_t parentId, const char* name, size_t length)
 {
     uint64_t hash = hash_object(name, length);
     hash ^= parentId;
-    return hash % DENTRY_CACHE_SIZE;
+    return hash % DENTRY_MAP_SIZE;
 }
 
-static uint64_t dentry_cache_add(dentry_t* dentry)
+static uint64_t dentry_map_add(dentry_t* dentry)
 {
     size_t length = strlen(dentry->name);
     uint64_t hash = dentry_hash(dentry->parent->id, dentry->name, length);
 
     seqlock_write_acquire(&lock);
-    for (dentry_t* iter = cache[hash]; iter != NULL; iter = iter->next)
+    for (dentry_t* iter = map[hash]; iter != NULL; iter = iter->next)
     {
         if (iter->parent == dentry->parent && iter->name[length] == '\0' &&
             memcmp(iter->name, dentry->name, length) == 0)
@@ -47,19 +47,19 @@ static uint64_t dentry_cache_add(dentry_t* dentry)
             }
         }
     }
-    dentry->next = cache[hash];
-    cache[hash] = dentry;
+    dentry->next = map[hash];
+    map[hash] = dentry;
     seqlock_write_release(&lock);
 
     return 0;
 }
 
-static void dentry_cache_remove(dentry_t* dentry)
+static void dentry_map_remove(dentry_t* dentry)
 {
     uint64_t hash = dentry_hash(dentry->parent->id, dentry->name, strlen(dentry->name));
 
     seqlock_write_acquire(&lock);
-    dentry_t** curr = &cache[hash];
+    dentry_t** curr = &map[hash];
     while (*curr != NULL)
     {
         if (*curr == dentry)
@@ -76,7 +76,7 @@ static void dentry_free(dentry_t* dentry)
 {
     if (dentry->parent != NULL)
     {
-        dentry_cache_remove(dentry);
+        dentry_map_remove(dentry);
 
         if (!DENTRY_IS_ROOT(dentry))
         {
@@ -84,7 +84,7 @@ static void dentry_free(dentry_t* dentry)
             assert(dentry->parent->inode != NULL);
 
             mutex_acquire(&dentry->parent->inode->mutex);
-            list_remove(&dentry->parent->children, &dentry->siblingEntry);
+            list_remove(&dentry->siblingEntry);
             mutex_release(&dentry->parent->inode->mutex);
 
             UNREF(dentry->parent);
@@ -96,6 +96,7 @@ static void dentry_free(dentry_t* dentry)
     {
         dentry->ops->cleanup(dentry);
     }
+    dentry->private = NULL;
 
     if (dentry->inode != NULL)
     {
@@ -107,8 +108,30 @@ static void dentry_free(dentry_t* dentry)
     UNREF(dentry->superblock);
     dentry->superblock = NULL;
 
-    rcu_call(&dentry->rcu, rcu_call_free, dentry);
+    rcu_call(&dentry->rcu, rcu_call_cache_free, dentry);
 }
+
+static void dentry_ctor(void* ptr)
+{
+    dentry_t* dentry = (dentry_t*)ptr;
+ 
+    dentry->ref = (ref_t){0};
+    dentry->id = vfs_id_get();
+    dentry->name[0] = '\0';
+    dentry->inode = NULL;
+    dentry->parent = NULL;
+    list_entry_init(&dentry->siblingEntry);
+    list_init(&dentry->children);
+    dentry->superblock = NULL;
+    dentry->ops = NULL;
+    dentry->private = NULL;
+    dentry->next = NULL;
+    atomic_init(&dentry->mountCount, 0);
+    dentry->rcu = (rcu_entry_t){0};
+    list_entry_init(&dentry->otherEntry);
+}
+
+static cache_t cache = CACHE_CREATE(cache, "dentry", sizeof(dentry_t), CACHE_LINE, dentry_ctor, NULL);
 
 dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name)
 {
@@ -140,28 +163,21 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
 
     assert(parent == NULL || superblock == parent->superblock);
 
-    dentry_t* dentry = malloc(sizeof(dentry_t));
+    dentry_t* dentry = cache_alloc(&cache);
     if (dentry == NULL)
     {
+        errno = ENOMEM;
         return NULL;
     }
 
     ref_init(&dentry->ref, dentry_free);
-    dentry->id = vfs_id_get();
-    strncpy(dentry->name, name, MAX_NAME - 1);
-    dentry->name[MAX_NAME - 1] = '\0';
-    dentry->inode = NULL;
-    dentry->parent = parent != NULL ? REF(parent) : dentry;
-    list_entry_init(&dentry->siblingEntry);
-    list_init(&dentry->children);
     dentry->superblock = REF(superblock);
-    dentry->ops = dentry->superblock->dentryOps;
-    dentry->private = NULL;
-    dentry->next = NULL;
-    atomic_init(&dentry->mountCount, 0);
-    list_entry_init(&dentry->otherEntry);
+    dentry->ops = superblock->dentryOps;
+    strncpy(dentry->name, name, MAX_NAME);
+    dentry->name[MAX_NAME - 1] = '\0';
+    dentry->parent = parent != NULL ? REF(parent) : dentry;
 
-    if (dentry_cache_add(dentry) == ERR)
+    if (dentry_map_add(dentry) == ERR)
     {
         UNREF(dentry);
         return NULL;
@@ -177,19 +193,7 @@ void dentry_remove(dentry_t* dentry)
         return;
     }
 
-    if (!DENTRY_IS_ROOT(dentry))
-    {
-        assert(dentry->parent != NULL);
-
-        mutex_acquire(&dentry->parent->inode->mutex);
-        list_remove(&dentry->parent->children, &dentry->siblingEntry);
-        mutex_release(&dentry->parent->inode->mutex);
-
-        UNREF(dentry->parent);
-        dentry->parent = NULL;
-    }
-
-    dentry_cache_remove(dentry);
+    dentry_map_remove(dentry);
 }
 
 dentry_t* dentry_revalidate(dentry_t* dentry)
@@ -225,7 +229,7 @@ dentry_t* dentry_rcu_get(const dentry_t* parent, const char* name, size_t length
     do
     {
         seq = seqlock_read_begin(&lock);
-        for (dentry = cache[hash]; dentry != NULL; dentry = dentry->next)
+        for (dentry = map[hash]; dentry != NULL; dentry = dentry->next)
         {
             if (dentry->parent == parent && dentry->name[length] == '\0' && memcmp(dentry->name, name, length) == 0)
             {
@@ -255,7 +259,7 @@ static dentry_t* dentry_get(const dentry_t* parent, const char* name, size_t len
     do
     {
         seq = seqlock_read_begin(&lock);
-        for (dentry = cache[hash]; dentry != NULL; dentry = dentry->next)
+        for (dentry = map[hash]; dentry != NULL; dentry = dentry->next)
         {
             if (dentry->parent == parent && dentry->name[length] == '\0' && memcmp(dentry->name, name, length) == 0)
             {

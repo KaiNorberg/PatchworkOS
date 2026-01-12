@@ -93,6 +93,7 @@ static symbol_addr_t* symbol_insert_address(void* addr, symbol_group_id_t groupI
         return NULL;
     }
     list_entry_init(&addrEntry->nameEntry);
+    addrEntry->name = symbolName;
     addrEntry->addr = addr;
     addrEntry->groupId = groupId;
     addrEntry->binding = binding;
@@ -123,7 +124,7 @@ static uint64_t symbol_resolve_addr_unlocked(symbol_info_t* outSymbol, void* add
     }
 
     symbol_addr_t* addrEntry = addrArray[index];
-    symbol_name_t* nameEntry = CONTAINER_OF(addrEntry->nameEntry.list, symbol_name_t, addrs);
+    symbol_name_t* nameEntry = addrEntry->name;
 
     strncpy_s(outSymbol->name, SYMBOL_MAX_NAME, nameEntry->name, SYMBOL_MAX_NAME - 1);
     outSymbol->name[SYMBOL_MAX_NAME - 1] = '\0';
@@ -257,7 +258,7 @@ error:
         {
             map_key_t key = map_key_string(symbolName->name);
             map_remove(&nameMap, &symbolName->mapEntry);
-            list_remove(&symbolGroup->names, &symbolName->groupEntry);
+            list_remove(&symbolName->groupEntry);
             free(symbolName);
         }
     }

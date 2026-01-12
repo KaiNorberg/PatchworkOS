@@ -91,7 +91,7 @@ font_t* font_new(display_t* disp, const char* family, const char* weight, uint64
 void font_free(font_t* font)
 {
     mtx_lock(&font->disp->mutex);
-    list_remove(&font->disp->fonts, &font->entry);
+    list_remove(&font->entry);
     mtx_unlock(&font->disp->mutex);
     free(font);
 }

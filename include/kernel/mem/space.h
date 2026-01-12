@@ -252,6 +252,7 @@ typedef struct
  * @param virtAddr The virtual address the mapping will apply to. Can be `NULL` to let the kernel choose an address.
  * @param physAddr The physical address to map from. Can be `NULL`.
  * @param length The length of the virtual memory region to modify, in bytes.
+ * @param alignment The required alignment for the virtual memory region in bytes.
  * @param flags The page table flags for the mapping.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
@@ -259,7 +260,7 @@ typedef struct
  * - `EFAULT`: The addresses are outside the allowed range.
  * - `ENOMEM`: Not enough memory.
  */
-uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, size_t length,
+uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, size_t length, size_t alignment,
     pml_flags_t flags);
 
 /**

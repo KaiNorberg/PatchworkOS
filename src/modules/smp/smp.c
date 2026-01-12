@@ -32,12 +32,12 @@
  */
 static void smp_start_others(void)
 {
-    interrupt_disable();
+    cli_push();
 
     if (cpu_amount() > 1)
     {
         LOG_INFO("other cpus already started\n");
-        interrupt_enable();
+        cli_pop();
         return;
     }
 
@@ -70,7 +70,7 @@ static void smp_start_others(void)
             continue;
         }
 
-        cpu_t* cpu = vmm_alloc(NULL, NULL, sizeof(cpu_t), PML_WRITE | PML_PRESENT | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
+        cpu_t* cpu = vmm_alloc(NULL, NULL, sizeof(cpu_t), PAGE_SIZE, PML_WRITE | PML_PRESENT | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
         if (cpu == NULL)
         {
             panic(NULL, "Failed to allocate memory for cpu with lapicid %d", (uint64_t)lapic->apicId);
@@ -90,7 +90,7 @@ static void smp_start_others(void)
 
     trampoline_deinit();
 
-    interrupt_enable();
+    cli_pop();
 }
 
 /** @} */

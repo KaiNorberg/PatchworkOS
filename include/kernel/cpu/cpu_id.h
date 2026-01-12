@@ -1,6 +1,9 @@
 #pragma once
 
+#include <kernel/cpu/regs.h>
+
 #include <stdint.h>
+#include <assert.h>
 
 /**
  * @addtogroup kernel_cpu
@@ -27,5 +30,21 @@
  * @brief Type used to identify a CPU.
  */
 typedef uint16_t cpuid_t;
+
+/**
+ * @brief Gets the current CPU ID.
+ *
+ * @warning This function does not disable interrupts, it should thus only be used when interrupts are already disabled.
+ *
+ * @return The current CPU ID.
+ */
+static inline cpuid_t cpu_get_id(void)
+{
+    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
+
+    uint32_t eax, edx;
+    asm volatile("rdtscp" : "=a"(eax), "=d"(edx) : : "rcx");
+    return (cpuid_t)edx;
+}
 
 /** @} */

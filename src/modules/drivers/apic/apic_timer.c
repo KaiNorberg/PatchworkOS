@@ -13,7 +13,7 @@
 
 static uint64_t apic_timer_ticks_per_ms(void)
 {
-    interrupt_disable();
+    cli_push();
 
     lapic_write(LAPIC_REG_TIMER_DIVIDER, APIC_TIMER_DIV_DEFAULT);
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
@@ -27,7 +27,7 @@ static uint64_t apic_timer_ticks_per_ms(void)
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, 0);
 
-    interrupt_enable();
+    cli_pop();
     return ticks;
 }
 
@@ -35,7 +35,7 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
 {
     UNUSED(uptime);
 
-    INTERRUPT_SCOPE();
+    CLI_SCOPE();
 
     lapic_t* lapic = lapic_get(cpu_get_id());
     if (lapic->ticksPerMs == 0)

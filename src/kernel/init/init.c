@@ -222,3 +222,26 @@ void kmain(void)
     LOG_INFO("done with boot thread\n");
     sched_thread_exit();
 }
+
+/*#ifdef _TESTING_
+TEST_DEFINE(temp)
+{
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
+
+    namespace_t* ns = process_get_ns(process);
+    UNREF_DEFER(ns);
+
+    pathname_t* pathname = PATHNAME("/box/doom/data/doom1.wad");
+
+    for (uint64_t i = 0; i < 1; i++)
+    {
+        path_t path = cwd_get(&process->cwd, ns);
+        PATH_DEFER(&path);
+
+        TEST_ASSERT(path_walk(&path, pathname, ns) != ERR);
+    }
+
+    return 0;
+}
+#endif*/

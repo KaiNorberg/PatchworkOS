@@ -44,7 +44,7 @@ static void tmpfs_dentry_remove(dentry_t* dentry)
     tmpfs_superblock_data_t* super = dentry->superblock->private;
 
     lock_acquire(&super->lock);
-    list_remove(&super->dentrys, &dentry->otherEntry);
+    list_remove(&dentry->otherEntry);
     UNREF(dentry);
     lock_release(&super->lock);
 

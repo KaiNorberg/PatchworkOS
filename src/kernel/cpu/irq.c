@@ -282,8 +282,7 @@ void irq_virt_free(irq_virt_t virt)
 
     while (!list_is_empty(&irq->handlers))
     {
-        irq_handler_t* handler = CONTAINER_OF(list_first(&irq->handlers), irq_handler_t, entry);
-        list_remove(&irq->handlers, &handler->entry);
+        irq_handler_t* handler = CONTAINER_OF(list_pop_front(&irq->handlers), irq_handler_t, entry);
         free(handler);
     }
 }
@@ -363,7 +362,7 @@ uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, v
 
     if (irq_domain_rebind_orphaned_irqs(domain) == ERR)
     {
-        list_remove(&domains, &domain->entry);
+        list_remove(&domain->entry);
         free(domain);
         return ERR;
     }
@@ -411,7 +410,7 @@ void irq_chip_unregister(irq_chip_t* chip, irq_phys_t start, irq_phys_t end)
             rwlock_write_release(&irq->lock);
         }
 
-        list_remove(&domains, &domain->entry);
+        list_remove(&domain->entry);
         free(domain);
     }
 }
@@ -419,7 +418,7 @@ void irq_chip_unregister(irq_chip_t* chip, irq_phys_t start, irq_phys_t end)
 uint64_t irq_chip_amount(void)
 {
     RWLOCK_READ_SCOPE(&domainsLock);
-    return list_length(&domains);
+    return list_size(&domains);
 }
 
 uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* private)
@@ -491,7 +490,7 @@ void irq_handler_unregister(irq_func_t func, irq_virt_t virt)
     {
         if (iter->func == func)
         {
-            list_remove(&irq->handlers, &iter->entry);
+            list_remove(&iter->entry);
             free(iter);
 
             if (list_is_empty(&irq->handlers))

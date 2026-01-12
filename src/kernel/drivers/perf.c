@@ -209,7 +209,7 @@ void perf_interrupt_end(cpu_t* self)
 
 void perf_syscall_begin(void)
 {
-    interrupt_disable();
+    cli_push();
 
     thread_t* thread = sched_thread_unsafe();
     perf_thread_ctx_t* perf = &thread->perf;
@@ -228,12 +228,12 @@ void perf_syscall_begin(void)
 
     perf->syscallBegin = uptime;
 
-    interrupt_enable();
+    cli_pop();
 }
 
 void perf_syscall_end(void)
 {
-    interrupt_disable();
+    cli_push();
 
     thread_t* thread = sched_thread_unsafe();
     perf_thread_ctx_t* perf = &thread->perf;
@@ -244,5 +244,5 @@ void perf_syscall_end(void)
 
     atomic_fetch_add(&process->perf.kernelClocks, delta);
 
-    interrupt_enable();
+    cli_pop();
 }
