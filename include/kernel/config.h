@@ -170,3 +170,13 @@
  *
  */
 #define CONFIG_KLOG_SIZE 0x4000
+
+/**
+ * @brief Per-CPU data size configuration.
+ * @ingroup kernel
+ * @def CONFIG_PERCPU_SIZE
+ *
+ * The `CONFIG_PERCPU_SIZE` constant defines the size allocated for per-CPU data.
+ *
+ */
+#define CONFIG_PERCPU_SIZE 0x10000

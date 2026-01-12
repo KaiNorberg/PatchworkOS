@@ -196,16 +196,6 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
 void dentry_remove(dentry_t* dentry);
 
 /**
- * @brief Revalidate a dentry.
- *
- * Calls the dentry's revalidate operation if it has one.
- *
- * @param dentry The dentry to revalidate.
- * @return On success, the dentry. On failure, `UNREF()` is called on the dentry, returns `NULL` and `errno` is set.
- */
-dentry_t* dentry_revalidate(dentry_t* dentry);
-
-/**
  * @brief Get a dentry from the dentry cache in an RCU read-side critical section without traversing mountpoints.
  *
  * Will only check the dentry cache and return a dentry if it exists there, will not call the filesystem's lookup

@@ -87,8 +87,8 @@ void loader_exec(void)
     elf64_get_loadable_bounds(&elf, &minAddr, &maxAddr);
     uint64_t loadSize = maxAddr - minAddr;
 
-    if (vmm_alloc(&process->space, (void*)minAddr, loadSize, PAGE_SIZE, PML_USER | PML_WRITE | PML_PRESENT, VMM_ALLOC_OVERWRITE) ==
-        NULL)
+    if (vmm_alloc(&process->space, (void*)minAddr, loadSize, PAGE_SIZE, PML_USER | PML_WRITE | PML_PRESENT,
+            VMM_ALLOC_OVERWRITE) == NULL)
     {
         goto cleanup;
     }

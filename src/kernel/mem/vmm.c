@@ -13,6 +13,7 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
+#include <kernel/sched/clock.h>
 
 #include <boot/boot_info.h>
 
@@ -23,19 +24,28 @@
 
 static space_t kernelSpace;
 
-static void vmm_cpu_init_common(vmm_cpu_t* ctx)
+static void vmm_cpu_init(vmm_cpu_t* ctx)
 {
     cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
 
-    list_entry_init(&ctx->entry);
     ctx->shootdownCount = 0;
     lock_init(&ctx->lock);
 
     cr3_write(PML_ENSURE_LOWER_HALF(kernelSpace.pageTable.pml4));
-    ctx->currentSpace = &kernelSpace;
+    ctx->space = &kernelSpace;
     lock_acquire(&kernelSpace.lock);
-    list_push_back(&kernelSpace.cpus, &ctx->entry);
+    bitmap_set(&kernelSpace.cpus, SELF->id);
     lock_release(&kernelSpace.lock);
+}
+
+PERCPU_DEFINE_CTOR(static vmm_cpu_t, vmm)
+{
+    if (SELF->id == CPU_ID_BOOTSTRAP) // Initalized early in vmm_kernel_space_load.
+    {
+        return;
+    }
+
+    vmm_cpu_init(percpu_get(SELF->id, vmm));
 }
 
 void vmm_init(void)
@@ -111,23 +121,9 @@ void vmm_kernel_space_load(void)
 {
     LOG_INFO("loading kernel space... ");
 
-    cpu_t* cpu = cpu_get();
-    assert(cpu != NULL);
-    assert(cpu->id == CPU_ID_BOOTSTRAP);
-    vmm_cpu_init_common(&cpu->vmm);
+    vmm_cpu_init(percpu_get(SELF->id, vmm));
 
     LOG_INFO("done!\n");
-}
-
-void vmm_cpu_init(vmm_cpu_t* ctx)
-{
-    cpu_t* cpu = cpu_get();
-    if (cpu->id == CPU_ID_BOOTSTRAP) // Initalized early in vmm_init.
-    {
-        return;
-    }
-
-    vmm_cpu_init_common(ctx);
 }
 
 space_t* vmm_kernel_space_get(void)
@@ -156,11 +152,12 @@ pml_flags_t vmm_prot_to_flags(prot_t prot)
 static inline void vmm_page_table_unmap_with_shootdown(space_t* space, void* virtAddr, uint64_t pageAmount)
 {
     page_table_unmap(&space->pageTable, virtAddr, pageAmount);
-    space_tlb_shootdown(space, virtAddr, pageAmount);
+    vmm_tlb_shootdown(space, virtAddr, pageAmount);
     page_table_clear(&space->pageTable, virtAddr, pageAmount);
 }
 
-void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment, pml_flags_t pmlFlags, vmm_alloc_flags_t allocFlags)
+void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment, pml_flags_t pmlFlags,
+    vmm_alloc_flags_t allocFlags)
 {
     if (length == 0 || !(pmlFlags & PML_PRESENT))
     {
@@ -271,6 +268,7 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, size_t length, pml
             space_free_callback(space, callbackId);
         }
 
+        vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount);
         return space_mapping_end(space, &mapping, ENOMEM);
     }
 
@@ -325,6 +323,7 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, size_t pageAmo
             space_free_callback(space, callbackId);
         }
 
+        vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount);
         return space_mapping_end(space, &mapping, ENOMEM);
     }
 
@@ -432,9 +431,125 @@ void* vmm_protect(space_t* space, void* virtAddr, size_t length, pml_flags_t fla
         return space_mapping_end(space, &mapping, EINVAL);
     }
 
-    space_tlb_shootdown(space, mapping.virtAddr, mapping.pageAmount);
+    vmm_tlb_shootdown(space, mapping.virtAddr, mapping.pageAmount);
 
     return space_mapping_end(space, &mapping, EOK);
+}
+
+void vmm_load(space_t* space)
+{
+    if (space == NULL)
+    {
+        return;
+    }
+
+    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
+
+    assert(vmm->space != NULL);
+    if (space == vmm->space)
+    {
+        return;
+    }
+
+    space_t* oldSpace = vmm->space;
+    vmm->space = NULL;
+
+    lock_acquire(&oldSpace->lock);
+    bitmap_clear(&oldSpace->cpus, SELF->id);
+    lock_release(&oldSpace->lock);
+
+    lock_acquire(&space->lock);
+    bitmap_set(&space->cpus, SELF->id);
+    lock_release(&space->lock);
+    vmm->space = space;
+
+    page_table_load(&space->pageTable);
+}
+
+
+static void vmm_tlb_shootdown_ipi(ipi_func_data_t* data)
+{
+    UNUSED(data);
+
+    vmm_cpu_t* local = SELF_PTR(vmm);
+    while (true)
+    {
+        lock_acquire(&local->lock);
+        if (local->shootdownCount == 0)
+        {
+            lock_release(&local->lock);
+            break;
+        }
+
+        vmm_shootdown_t shootdown = local->shootdowns[local->shootdownCount - 1];
+        local->shootdownCount--;
+        lock_release(&local->lock);
+
+        assert(shootdown.space != NULL);
+        assert(shootdown.pageAmount != 0);
+        assert(shootdown.virtAddr != NULL);
+
+        tlb_invalidate(shootdown.virtAddr, shootdown.pageAmount);
+        atomic_fetch_add(&shootdown.space->shootdownAcks, 1);
+    }
+}
+
+void vmm_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount)
+{
+    if (space == NULL)
+    {
+        return;
+    }
+
+    if (cpu_amount() <= 1)
+    {
+        return;
+    }
+    
+    uint16_t expectedAcks = 0;
+    atomic_store(&space->shootdownAcks, 0);
+    
+    cpu_id_t id;
+    BITMAP_FOR_EACH_SET(&id, &space->cpus)
+    {
+        if (id == SELF->id)
+        {
+            continue;
+        }
+
+        vmm_cpu_t* cpu = percpu_get(id, vmm);
+
+        lock_acquire(&cpu->lock);
+        if (cpu->shootdownCount >= VMM_MAX_SHOOTDOWN_REQUESTS)
+        {
+            lock_release(&cpu->lock);
+            panic(NULL, "CPU %d shootdown buffer overflow", id);
+        }
+
+        vmm_shootdown_t* shootdown = &cpu->shootdowns[cpu->shootdownCount++];
+        shootdown->space = space;
+        shootdown->virtAddr = virtAddr;
+        shootdown->pageAmount = pageAmount;
+        lock_release(&cpu->lock);
+
+        if (ipi_send(cpu_get_by_id(id), IPI_SINGLE, vmm_tlb_shootdown_ipi, NULL) == ERR)
+        {
+            panic(NULL, "Failed to send TLB shootdown IPI to CPU %d", id);
+        }
+        expectedAcks++;
+    }
+
+    clock_t startTime = clock_uptime();
+    while (atomic_load(&space->shootdownAcks) < expectedAcks)
+    {
+        if (clock_uptime() - startTime > SPACE_TLB_SHOOTDOWN_TIMEOUT)
+        {
+            panic(NULL, "TLB shootdown timeout in space %p for region %p - %p", space, virtAddr,
+                (void*)((uintptr_t)virtAddr + pageAmount * PAGE_SIZE));
+        }
+
+        asm volatile("pause");
+    }
 }
 
 SYSCALL_DEFINE(SYS_MPROTECT, void*, void* address, size_t length, prot_t prot)

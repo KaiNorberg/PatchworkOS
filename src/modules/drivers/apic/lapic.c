@@ -13,19 +13,7 @@
 
 static uintptr_t lapicBase = 0;
 
-static lapic_t lapics[CPU_MAX] = {[0 ... CPU_MAX - 1] = {.lapicId = -1, .ticksPerMs = 0}};
-
-uint32_t lapic_read(uint32_t reg)
-{
-    return READ_32(lapicBase + reg);
-}
-
-void lapic_write(uint32_t reg, uint32_t value)
-{
-    WRITE_32(lapicBase + reg, value);
-}
-
-void lapic_init(cpu_t* cpu)
+PERCPU_DEFINE_CTOR(lapic_t, _lapic)
 {
     // Enable the local apic, enable spurious interrupts and mask everything for now.
 
@@ -43,18 +31,23 @@ void lapic_init(cpu_t* cpu)
 
     lapic_write(LAPIC_REG_TASK_PRIORITY, 0);
 
-    lapics[cpu->id].lapicId = (lapic_id_t)(lapic_read(LAPIC_REG_ID) >> LAPIC_REG_ID_OFFSET);
+    _lapic->lapicId = (lapic_id_t)(lapic_read(LAPIC_REG_ID) >> LAPIC_REG_ID_OFFSET);
 }
 
-lapic_t* lapic_get(uint32_t cpuId)
+uint32_t lapic_read(uint32_t reg)
 {
-    assert(cpuId < CPU_MAX);
-    return &lapics[cpuId];
+    return READ_32(lapicBase + reg);
+}
+
+void lapic_write(uint32_t reg, uint32_t value)
+{
+    WRITE_32(lapicBase + reg, value);
 }
 
 static void lapic_interrupt(cpu_t* cpu, irq_virt_t virt)
 {
-    lapic_id_t lapicId = lapics[cpu->id].lapicId;
+    lapic_t* lapic = percpu_get(cpu->id, _lapic);
+    lapic_id_t lapicId = _lapic->lapicId;
 
     lapic_write(LAPIC_REG_ICR1, lapicId << LAPIC_REG_ID_OFFSET);
     lapic_write(LAPIC_REG_ICR0, (uint32_t)virt | LAPIC_ICR_FIXED);
@@ -73,7 +66,7 @@ static ipi_chip_t lapicIpiChip = {
     .eoi = lapic_eoi,
 };
 
-uint64_t lapic_global_init(void)
+CONSTRUCTOR(101) static uint64_t lapic_global_init(void)
 {
     madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, sizeof(madt_t), 0);
     if (madt == NULL)

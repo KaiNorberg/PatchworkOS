@@ -2,9 +2,7 @@
 
 #include "kernel/cpu/interrupt.h"
 #include "kernel/cpu/gdt.h"
-
-#define GS_SYSCALL_RSP    0x0
-#define GS_USER_RSP     0x8
+#include "kernel/cpu/cpu.h"
 
 .extern syscall_handler
 .extern note_handle_pending
@@ -28,17 +26,17 @@
 // Return value in rax
 syscall_entry:
     swapgs
-    movq %rsp, %gs:GS_USER_RSP
-    movq %gs:GS_SYSCALL_RSP, %rsp
+
+    movq %rsp, %gs:CPU_OFFSET_USER_RSP
+    movq %gs:CPU_OFFSET_SYSCALL_RSP, %rsp
 
     // Construct interrupt_frame_t on stack representing 
     // the state before the syscall
     pushq $GDT_SS_RING3
-    pushq %gs:GS_USER_RSP
+    pushq %gs:CPU_OFFSET_USER_RSP
     pushq %r11 // rflags
     pushq $GDT_CS_RING3
     pushq %rcx // rip
-    swapgs
 
     // Dummy error and vector
     pushq $0
@@ -54,4 +52,6 @@ syscall_entry:
 
     INTERRUPT_FRAME_REGS_POP
     movq 8 * 5(%rsp), %rsp // Load user rsp from interrupt frame
+    cli
+    swapgs
     sysretq

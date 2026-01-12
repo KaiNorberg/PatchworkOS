@@ -95,9 +95,8 @@ uint64_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress
     space->flags = flags;
     space->callbacks = NULL;
     space->callbacksLength = 0;
-    bitmap_init(&space->callbackBitmap, space->bitmapBuffer, PML_MAX_CALLBACK);
-    memset(space->bitmapBuffer, 0, BITMAP_BITS_TO_BYTES(PML_MAX_CALLBACK));
-    list_init(&space->cpus);
+    BITMAP_DEFINE_INIT(space->callbackBitmap, PML_MAX_CALLBACK);
+    BITMAP_DEFINE_INIT(space->cpus, CPU_MAX);
     atomic_init(&space->shootdownAcks, 0);
     lock_init(&space->lock);
 
@@ -126,7 +125,7 @@ void space_deinit(space_t* space)
         return;
     }
 
-    if (!list_is_empty(&space->cpus))
+    if (!bitmap_is_empty(&space->cpus))
     {
         panic(NULL, "Attempted to free address space still in use by CPUs");
     }
@@ -154,56 +153,6 @@ void space_deinit(space_t* space)
 
     free(space->callbacks);
     page_table_deinit(&space->pageTable);
-}
-
-void space_load(space_t* space)
-{
-    if (space == NULL)
-    {
-        return;
-    }
-
-    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
-
-    cpu_t* self = cpu_get();
-    assert(self != NULL);
-
-    assert(self->vmm.currentSpace != NULL);
-    if (space == self->vmm.currentSpace)
-    {
-        return;
-    }
-
-    space_t* oldSpace = self->vmm.currentSpace;
-    self->vmm.currentSpace = NULL;
-
-    lock_acquire(&oldSpace->lock);
-#ifndef NDEBUG
-    bool found = false;
-    cpu_t* cpu;
-    LIST_FOR_EACH(cpu, &oldSpace->cpus, vmm.entry)
-    {
-        if (self == cpu)
-        {
-            found = true;
-            break;
-        }
-    }
-    if (!found)
-    {
-        lock_release(&oldSpace->lock);
-        panic(NULL, "CPU not found in old space's CPU list");
-    }
-#endif
-    list_remove(&self->vmm.entry);
-    lock_release(&oldSpace->lock);
-
-    lock_acquire(&space->lock);
-    list_push_back(&space->cpus, &self->vmm.entry);
-    lock_release(&space->lock);
-    self->vmm.currentSpace = space;
-
-    page_table_load(&space->pageTable);
 }
 
 static void space_align_region(void** virtAddr, size_t* length)
@@ -313,6 +262,7 @@ static inline uint64_t space_pin_depth_inc(space_t* space, const void* address, 
         space_pinned_page_t* newPinnedPage = malloc(sizeof(space_pinned_page_t));
         if (newPinnedPage == NULL)
         {
+            space_pin_depth_dec(space, address, i);
             return ERR;
         }
         map_entry_init(&newPinnedPage->mapEntry);
@@ -320,6 +270,7 @@ static inline uint64_t space_pin_depth_inc(space_t* space, const void* address, 
         if (map_insert(&space->pinnedPages, &key, &newPinnedPage->mapEntry) == ERR)
         {
             free(newPinnedPage);
+            space_pin_depth_dec(space, address, i);
             return ERR;
         }
     }
@@ -523,7 +474,7 @@ static void* space_find_free_region(space_t* space, uint64_t pageAmount, uint64_
 {
     void* addr;
     if (page_table_find_unmapped_region(&space->pageTable, (void*)space->freeAddress, (void*)space->endAddress,
-            pageAmount, alignment,&addr) != ERR)
+            pageAmount, alignment, &addr) != ERR)
     {
         space->freeAddress = (uintptr_t)addr + pageAmount * PAGE_SIZE;
         assert(page_table_is_unmapped(&space->pageTable, addr, pageAmount));
@@ -540,8 +491,8 @@ static void* space_find_free_region(space_t* space, uint64_t pageAmount, uint64_
     return NULL;
 }
 
-uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, size_t length, size_t alignment,
-    pml_flags_t flags)
+uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, size_t length,
+    size_t alignment, pml_flags_t flags)
 {
     if (space == NULL || mapping == NULL || length == 0)
     {
@@ -661,88 +612,6 @@ pml_callback_id_t space_alloc_callback(space_t* space, size_t pageAmount, space_
 void space_free_callback(space_t* space, pml_callback_id_t callbackId)
 {
     bitmap_clear(&space->callbackBitmap, callbackId);
-}
-
-static void space_tlb_shootdown_ipi_handler(ipi_func_data_t* data)
-{
-    vmm_cpu_t* ctx = &data->self->vmm;
-    while (true)
-    {
-        lock_acquire(&ctx->lock);
-        if (ctx->shootdownCount == 0)
-        {
-            lock_release(&ctx->lock);
-            break;
-        }
-
-        vmm_shootdown_t shootdown = ctx->shootdowns[ctx->shootdownCount - 1];
-        ctx->shootdownCount--;
-        lock_release(&ctx->lock);
-
-        assert(shootdown.space != NULL);
-        assert(shootdown.pageAmount != 0);
-        assert(shootdown.virtAddr != NULL);
-
-        tlb_invalidate(shootdown.virtAddr, shootdown.pageAmount);
-        atomic_fetch_add(&shootdown.space->shootdownAcks, 1);
-    }
-}
-
-void space_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount)
-{
-    if (space == NULL)
-    {
-        return;
-    }
-
-    if (cpu_amount() <= 1)
-    {
-        return;
-    }
-    cpu_t* self = cpu_get();
-
-    uint16_t expectedAcks = 0;
-    atomic_store(&space->shootdownAcks, 0);
-
-    cpu_t* cpu;
-    LIST_FOR_EACH(cpu, &space->cpus, vmm.entry)
-    {
-        if (cpu == self)
-        {
-            continue;
-        }
-
-        lock_acquire(&cpu->vmm.lock);
-        if (cpu->vmm.shootdownCount >= VMM_MAX_SHOOTDOWN_REQUESTS)
-        {
-            lock_release(&cpu->vmm.lock);
-            panic(NULL, "CPU %d shootdown buffer overflow", cpu->id);
-        }
-
-        vmm_shootdown_t* shootdown = &cpu->vmm.shootdowns[cpu->vmm.shootdownCount++];
-        shootdown->space = space;
-        shootdown->virtAddr = virtAddr;
-        shootdown->pageAmount = pageAmount;
-        lock_release(&cpu->vmm.lock);
-
-        if (ipi_send(cpu, IPI_SINGLE, space_tlb_shootdown_ipi_handler, NULL) == ERR)
-        {
-            panic(NULL, "Failed to send TLB shootdown IPI to CPU %d", cpu->id);
-        }
-        expectedAcks++;
-    }
-
-    clock_t startTime = clock_uptime();
-    while (atomic_load(&space->shootdownAcks) < expectedAcks)
-    {
-        if (clock_uptime() - startTime > SPACE_TLB_SHOOTDOWN_TIMEOUT)
-        {
-            panic(NULL, "TLB shootdown timeout in space %p for region %p - %p", space, virtAddr,
-                (void*)((uintptr_t)virtAddr + pageAmount * PAGE_SIZE));
-        }
-
-        asm volatile("pause");
-    }
 }
 
 static void space_update_free_address(space_t* space, uintptr_t virtAddr, uint64_t pageAmount)

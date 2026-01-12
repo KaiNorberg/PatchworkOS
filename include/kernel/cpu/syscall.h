@@ -1,8 +1,10 @@
 #pragma once
 
+#ifndef __ASSEMBLER__
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/mem/space.h>
+#endif
 
 /**
  * @brief System Call Interface.
@@ -21,6 +23,8 @@
  * but it is a little more complex to set up.
  *
  * ## Stack switching
+ *
+ * @todo The stack switching documentation is outdated.
  *
  * When a syscall is invoked, the CPU will not automatically switch stacks. We need to manually switch them. To do this,
  * we use the `MSR_KERNEL_GS_BASE` MSR to store a pointer to the `syscall_ctx_t` structure for the current thread.
@@ -56,6 +60,21 @@
  * @{
  */
 
+/**
+ * @brief The offset of the `syscallRsp` member in the `syscall_ctx_t` structure.
+ *
+ * Needed to access the syscall context from assembly code.
+ */
+#define SYSCALL_CTX_SYSCALL_RSP_OFFSET 0x0
+
+/**
+ * @brief The offset of the `userRsp` member in the `syscall_ctx_t` structure.
+ *
+ * Needed to access the syscall context from assembly code.
+ */
+#define SYSCALL_CTX_USER_RSP_OFFSET 0x8
+
+#ifndef __ASSEMBLER__
 /**
  * @brief System Call Numbers.
  * @enum syscall_number_t
@@ -158,7 +177,7 @@ extern syscall_descriptor_t _syscallTableEnd[];
 /**
  * @brief Macro to define a syscall.
  *
- * Uses the `.syscall_table` linker section to store the syscall descriptor.
+ * Uses the `._syscall_table` linker section to store the syscall descriptor.
  *
  * @param num The syscall number, must be unique, check `syscall_number_t`.
  * @param returnType The return type of the syscall handler, must be `uint64_t` compatible.
@@ -167,7 +186,7 @@ extern syscall_descriptor_t _syscallTableEnd[];
  */
 #define SYSCALL_DEFINE(num, returnType, ...) \
     returnType syscall_handler_##num(__VA_ARGS__); \
-    const syscall_descriptor_t __syscall_##num __attribute__((used, section(".syscall_table"))) = { \
+    const syscall_descriptor_t __syscall_##num __attribute__((used, section("._syscall_table"))) = { \
         .number = (num), \
         .handler = (void*)syscall_handler_##num, \
     }; \
@@ -222,5 +241,7 @@ void syscall_handler(interrupt_frame_t* frame);
  * The logic for saving/restoring registers and switching stacks is done here before calling `syscall_handler()`.
  */
 extern void syscall_entry(void);
+
+#endif
 
 /** @} */

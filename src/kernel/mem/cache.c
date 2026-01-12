@@ -1,13 +1,13 @@
-#include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/cpu.h>
+#include <kernel/cpu/interrupt.h>
+#include <kernel/log/log.h>
 #include <kernel/mem/cache.h>
 #include <kernel/mem/pmm.h>
-#include <kernel/log/log.h>
 
+#include <errno.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/sync/lock.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <sys/list.h>
 #include <sys/math.h>
 
@@ -26,7 +26,7 @@ static cache_slab_t* cache_slab_new(cache_t* cache)
     lock_init(&slab->lock);
     slab->cache = cache;
     slab->objects = (void*)((uintptr_t)slab + cache->layout.start);
-    
+
     if (cache->ctor != NULL)
     {
         for (uint32_t i = 0; i < cache->layout.amount; i++)
@@ -88,7 +88,8 @@ static inline void cache_precalc_layout(cache_t* cache)
 
     while (cache->layout.amount > 0)
     {
-        cache->layout.start = ROUND_UP(sizeof(cache_slab_t) + cache->layout.amount * sizeof(cache_bufctl_t), cache->alignment);
+        cache->layout.start =
+            ROUND_UP(sizeof(cache_slab_t) + cache->layout.amount * sizeof(cache_bufctl_t), cache->alignment);
 
         if (cache->layout.start + (cache->layout.amount * cache->layout.step) <= CACHE_SLAB_PAGES * PAGE_SIZE)
         {
@@ -149,11 +150,8 @@ allocate:
     if (cache->layout.amount == 0)
     {
         cache_precalc_layout(cache);
-        LOG_DEBUG("cache '%s' layout: step=%u, amount=%u, start=%u\n",
-            cache->name,
-            cache->layout.step,
-            cache->layout.amount,
-            cache->layout.start);
+        LOG_DEBUG("cache '%s' layout: step=%u, amount=%u, start=%u\n", cache->name, cache->layout.step,
+            cache->layout.amount, cache->layout.start);
     }
 
     if (!list_is_empty(&cache->free))
@@ -183,7 +181,7 @@ allocate:
 
     LOCK_SCOPE(&slab->lock);
     return cache_slab_alloc(slab);
-}   
+}
 
 void cache_free(void* ptr)
 {
@@ -207,7 +205,7 @@ void cache_free(void* ptr)
 
         if (slab->owner != CPU_ID_INVALID)
         {
-            if (isEmpty && slab->owner == cpu_get()->id)
+            if (isEmpty && slab->owner == cpu_id_get())
             {
                 cache->cpus[slab->owner].active = NULL;
                 slab->owner = CPU_ID_INVALID;
@@ -298,7 +296,8 @@ TEST_DEFINE(cache)
 
     free(ptrs);
 
-    LOG_INFO("cache: %llums, malloc: %llums\n", cacheTime / (CLOCKS_PER_SEC / 1000), mallocTime / (CLOCKS_PER_SEC / 1000));
+    LOG_INFO("cache: %llums, malloc: %llums\n", cacheTime / (CLOCKS_PER_SEC / 1000),
+        mallocTime / (CLOCKS_PER_SEC / 1000));
 
     return 0;
 }

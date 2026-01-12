@@ -132,7 +132,7 @@ void thread_load(thread_t* thread, interrupt_frame_t* frame)
 {
     *frame = thread->frame;
 
-    space_load(&thread->process->space);
+    vmm_load(&thread->process->space);
     simd_ctx_load(&thread->simd);
     syscall_ctx_load(&thread->syscall);
 }

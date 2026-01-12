@@ -1,9 +1,9 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/ipi.h>
 #include <kernel/log/log.h>
+#include <kernel/mem/cache.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rcu.h>
-#include <kernel/mem/cache.h>
 
 #include <stdlib.h>
 #include <sys/bitmap.h>
@@ -12,6 +12,20 @@ static BITMAP_CREATE_ZERO(ack, CPU_MAX);
 static uint64_t grace = 0;
 static bool active = false;
 static lock_t lock = LOCK_CREATE();
+
+PERCPU_DEFINE_CTOR(static rcu_t, rcu)
+{
+    rcu_t* local = SELF_PTR(rcu);
+
+    rcu->grace = 0;
+    rcu->batch = &local->lists[0];
+    rcu->waiting = &local->lists[1];
+    rcu->ready = &local->lists[2];
+    for (size_t i = 0; i < ARRAY_SIZE(rcu->lists); i++)
+    {
+        list_init(&local->lists[i]);
+    }
+}
 
 typedef struct
 {
@@ -46,30 +60,28 @@ void rcu_synchronize(void)
     wait_queue_deinit(&sync.wait);
 }
 
-void rcu_call(rcu_entry_t* rcu, rcu_callback_t func, void* arg)
+void rcu_call(rcu_entry_t* entry, rcu_callback_t func, void* arg)
 {
-    if (rcu == NULL || func == NULL)
+    if (entry == NULL || func == NULL)
     {
         return;
     }
 
     CLI_SCOPE();
 
-    cpu_t* self = cpu_get();
+    list_entry_init(&entry->entry);
+    entry->func = func;
+    entry->arg = arg;
 
-    list_entry_init(&rcu->entry);
-    rcu->func = func;
-    rcu->arg = arg;
-
-    list_push_back(self->rcu.batch, &rcu->entry);
+    list_push_back(rcu->batch, &entry->entry);
 }
 
-void rcu_report_quiescent(cpu_t* self)
+void rcu_report_quiescent(void)
 {
     lock_acquire(&lock);
-    if (active && bitmap_is_set(&ack, self->id))
+    if (active && bitmap_is_set(&ack, SELF->id))
     {
-        bitmap_clear(&ack, self->id);
+        bitmap_clear(&ack, SELF->id);
 
         if (bitmap_is_empty(&ack))
         {
@@ -78,41 +90,40 @@ void rcu_report_quiescent(cpu_t* self)
     }
 
     bool wake = false;
-    if (!list_is_empty(self->rcu.waiting))
+    if (!list_is_empty(rcu->waiting))
     {
-        if (grace > self->rcu.grace || (grace == self->rcu.grace && !active))
+        if (grace > rcu->grace || (grace == rcu->grace && !active))
         {
             wake = true;
         }
     }
     lock_release(&lock);
 
-    while (!list_is_empty(self->rcu.ready))
+    while (!list_is_empty(rcu->ready))
     {
-        list_entry_t* entry = list_pop_front(self->rcu.ready);
-        rcu_entry_t* rcu = CONTAINER_OF(entry, rcu_entry_t, entry);
-        rcu->func(rcu->arg);
+        rcu_entry_t* entry = CONTAINER_OF(list_pop_front(rcu->ready), rcu_entry_t, entry);
+        entry->func(entry->arg);
     }
 
     if (wake)
     {
-        list_t* temp = self->rcu.ready;
-        self->rcu.ready = self->rcu.waiting;
-        self->rcu.waiting = temp;
+        list_t* temp = rcu->ready;
+        rcu->ready = rcu->waiting;
+        rcu->waiting = temp;
     }
 
-    if (list_is_empty(self->rcu.waiting) && !list_is_empty(self->rcu.batch))
+    if (list_is_empty(rcu->waiting) && !list_is_empty(rcu->batch))
     {
-        list_t* temp = self->rcu.waiting;
-        self->rcu.waiting = self->rcu.batch;
-        self->rcu.batch = temp;
+        list_t* temp = rcu->waiting;
+        rcu->waiting = rcu->batch;
+        rcu->batch = temp;
 
         lock_acquire(&lock);
-        self->rcu.grace = grace + 1;
+        rcu->grace = grace + 1;
         lock_release(&lock);
     }
 
-    if (list_is_empty(self->rcu.waiting))
+    if (list_is_empty(rcu->waiting))
     {
         return;
     }

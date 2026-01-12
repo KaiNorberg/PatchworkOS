@@ -46,7 +46,7 @@ static void smp_start_others(void)
     cpu_t* bootstrapCpu = cpu_get();
     assert(bootstrapCpu->id == CPU_ID_BOOTSTRAP);
 
-    lapic_t* bootstrapLapic = lapic_get(bootstrapCpu->id);
+    lapic_t* bootstrapLapic = percpu_get(bootstrapCpu->id, _lapic);
     assert(bootstrapLapic != NULL);
 
     LOG_INFO("bootstrap cpu already started\n");
@@ -70,7 +70,8 @@ static void smp_start_others(void)
             continue;
         }
 
-        cpu_t* cpu = vmm_alloc(NULL, NULL, sizeof(cpu_t), PAGE_SIZE, PML_WRITE | PML_PRESENT | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
+        cpu_t* cpu =
+            vmm_alloc(NULL, NULL, sizeof(cpu_t), PAGE_SIZE, PML_WRITE | PML_PRESENT | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
         if (cpu == NULL)
         {
             panic(NULL, "Failed to allocate memory for cpu with lapicid %d", (uint64_t)lapic->apicId);

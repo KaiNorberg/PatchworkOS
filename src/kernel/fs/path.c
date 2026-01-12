@@ -519,8 +519,6 @@ static uint64_t path_rcu_step(path_walk_ctx_t* ctx, const char* name, size_t len
 
 static uint64_t path_rcu_walk(path_walk_ctx_t* ctx)
 {
-    RCU_READ_SCOPE();
-
     const char* p = ctx->pathname->string;
     if (ctx->pathname->string[0] == '/')
     {

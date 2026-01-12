@@ -37,10 +37,9 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
 
     CLI_SCOPE();
 
-    lapic_t* lapic = lapic_get(cpu_get_id());
-    if (lapic->ticksPerMs == 0)
+    if (_lapic->ticksPerMs == 0)
     {
-        lapic->ticksPerMs = apic_timer_ticks_per_ms();
+        _lapic->ticksPerMs = apic_timer_ticks_per_ms();
     }
 
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
@@ -51,7 +50,7 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
         return;
     }
 
-    uint64_t ticks = (timeout * lapic->ticksPerMs) / (CLOCKS_PER_SEC / 1000);
+    uint64_t ticks = (timeout * _lapic->ticksPerMs) / (CLOCKS_PER_SEC / 1000);
     if (ticks == 0)
     {
         ticks = 1;
@@ -85,7 +84,7 @@ static timer_source_t apicTimer = {
     .eoi = apic_timer_eoi,
 };
 
-uint64_t apic_timer_init(void)
+CONSTRUCTOR(102) static uint64_t apic_timer_init(void)
 {
     if (timer_source_register(&apicTimer) == ERR)
     {

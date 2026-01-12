@@ -8,11 +8,11 @@
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/mem/cache.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/sync/seqlock.h>
-#include <kernel/mem/cache.h>
 
 #include <stdlib.h>
 #include <sys/list.h>
@@ -65,6 +65,7 @@ static void dentry_map_remove(dentry_t* dentry)
         if (*curr == dentry)
         {
             *curr = dentry->next;
+            dentry->next = NULL;
             break;
         }
         curr = &(*curr)->next;
@@ -74,22 +75,19 @@ static void dentry_map_remove(dentry_t* dentry)
 
 static void dentry_free(dentry_t* dentry)
 {
-    if (dentry->parent != NULL)
+    dentry_map_remove(dentry);
+
+    if (!DENTRY_IS_ROOT(dentry))
     {
-        dentry_map_remove(dentry);
+        assert(dentry->parent != NULL);
+        assert(dentry->parent->inode != NULL);
 
-        if (!DENTRY_IS_ROOT(dentry))
-        {
-            assert(dentry->parent != NULL);
-            assert(dentry->parent->inode != NULL);
+        mutex_acquire(&dentry->parent->inode->mutex);
+        list_remove(&dentry->siblingEntry);
+        mutex_release(&dentry->parent->inode->mutex);
 
-            mutex_acquire(&dentry->parent->inode->mutex);
-            list_remove(&dentry->siblingEntry);
-            mutex_release(&dentry->parent->inode->mutex);
-
-            UNREF(dentry->parent);
-            dentry->parent = NULL;
-        }
+        UNREF(dentry->parent);
+        dentry->parent = NULL;
     }
 
     if (dentry->ops != NULL && dentry->ops->cleanup != NULL)
@@ -114,7 +112,7 @@ static void dentry_free(dentry_t* dentry)
 static void dentry_ctor(void* ptr)
 {
     dentry_t* dentry = (dentry_t*)ptr;
- 
+
     dentry->ref = (ref_t){0};
     dentry->id = vfs_id_get();
     dentry->name[0] = '\0';
@@ -196,25 +194,6 @@ void dentry_remove(dentry_t* dentry)
     dentry_map_remove(dentry);
 }
 
-dentry_t* dentry_revalidate(dentry_t* dentry)
-{
-    if (dentry == NULL)
-    {
-        return NULL;
-    }
-
-    if (dentry->ops != NULL && dentry->ops->revalidate != NULL)
-    {
-        if (dentry->ops->revalidate(dentry) == ERR)
-        {
-            UNREF(dentry);
-            return NULL;
-        }
-    }
-
-    return dentry;
-}
-
 dentry_t* dentry_rcu_get(const dentry_t* parent, const char* name, size_t length)
 {
     if (parent == NULL || name == NULL || length == 0)
@@ -252,23 +231,8 @@ dentry_t* dentry_rcu_get(const dentry_t* parent, const char* name, size_t length
 static dentry_t* dentry_get(const dentry_t* parent, const char* name, size_t length)
 {
     RCU_READ_SCOPE();
-    uint64_t hash = dentry_hash(parent->id, name, length);
-    dentry_t* dentry = NULL;
 
-    uint64_t seq;
-    do
-    {
-        seq = seqlock_read_begin(&lock);
-        for (dentry = map[hash]; dentry != NULL; dentry = dentry->next)
-        {
-            if (dentry->parent == parent && dentry->name[length] == '\0' && memcmp(dentry->name, name, length) == 0)
-            {
-                break;
-            }
-        }
-    } while (seqlock_read_retry(&lock, seq));
-
-    return REF_TRY(dentry);
+    return REF_TRY(dentry_rcu_get(parent, name, length));
 }
 
 dentry_t* dentry_lookup(dentry_t* parent, const char* name, size_t length)
@@ -282,7 +246,7 @@ dentry_t* dentry_lookup(dentry_t* parent, const char* name, size_t length)
     dentry_t* dentry = dentry_get(parent, name, length);
     if (dentry != NULL)
     {
-        return dentry_revalidate(dentry);
+        return dentry;
     }
 
     if (!DENTRY_IS_DIR(parent))
@@ -300,7 +264,7 @@ dentry_t* dentry_lookup(dentry_t* parent, const char* name, size_t length)
     {
         if (errno == EEXIST)
         {
-            return dentry_revalidate(dentry_get(parent, name, length));
+            return dentry_get(parent, name, length);
         }
         return NULL;
     }
@@ -310,7 +274,7 @@ dentry_t* dentry_lookup(dentry_t* parent, const char* name, size_t length)
     inode_t* dir = parent->inode;
     if (dir->ops == NULL || dir->ops->lookup == NULL)
     {
-        return dentry_revalidate(dentry); // Leave it negative
+        return dentry; // Leave it as negative.
     }
 
     if (dir->ops->lookup(dir, dentry) == ERR)
@@ -319,7 +283,16 @@ dentry_t* dentry_lookup(dentry_t* parent, const char* name, size_t length)
         return NULL;
     }
 
-    return dentry_revalidate(dentry);
+    if (dentry->ops != NULL && dentry->ops->revalidate != NULL)
+    {
+        if (dentry->ops->revalidate(dentry) == ERR)
+        {
+            UNREF(dentry);
+            return NULL;
+        }
+    }
+
+    return dentry;
 }
 
 void dentry_make_positive(dentry_t* dentry, inode_t* inode)

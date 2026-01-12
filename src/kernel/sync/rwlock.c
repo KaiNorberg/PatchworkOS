@@ -1,5 +1,5 @@
-#include <kernel/sync/rwlock.h>
 #include <kernel/cpu/cli.h>
+#include <kernel/sync/rwlock.h>
 
 #ifndef NDEBUG
 #include <kernel/log/panic.h>

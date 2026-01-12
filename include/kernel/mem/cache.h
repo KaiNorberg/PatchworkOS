@@ -1,8 +1,8 @@
 #pragma once
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <assert.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/sync/lock.h>
@@ -15,12 +15,13 @@ typedef struct cache cache_t;
  * @defgroup kernel_mem_cache Cache
  * @ingroup kernel_mem
  *
- * A object cache using CPU local SLAB allocation to improve performance of frequently allocated and deallocated objects.
+ * A object cache using CPU local SLAB allocation to improve performance of frequently allocated and deallocated
+ * objects.
  *
  * ## Slab Allocation
- * 
+ *
  * The object cache uses slab allocation to allocate memory, each slab consists of a buffer in the below format:
- * 
+ *
  * <div style="text-align: center;">
  * | Size                                  | Description         |
  * | :------------------------------------ | :------------------ |
@@ -29,20 +30,22 @@ typedef struct cache cache_t;
  * | ...                                   | Padding             |
  * | N * step                              | Objects             |
  * </div>
- * 
- * Where N is the number of objects that can fit in the slab given the object size and alignment and the step is the aligned size of the object.
- * 
+ *
+ * Where N is the number of objects that can fit in the slab given the object size and alignment and the step is the
+ * aligned size of the object.
+ *
  * ### Buffer Control List
- * 
- * 
- * 
+ *
+ *
+ *
  * @see https://en.wikipedia.org/wiki/Slab_allocation for more information.
- * @see https://www.kernel.org/doc/gorman/html/understand/understand011.html for an explanation of the Linux kernel slab allocator.
- * 
+ * @see https://www.kernel.org/doc/gorman/html/understand/understand011.html for an explanation of the Linux kernel slab
+ * allocator.
+ *
  * @{
  */
 
-#define CACHE_LIMIT 16  ///< Maximum number of free slabs in a cache.
+#define CACHE_LIMIT 16 ///< Maximum number of free slabs in a cache.
 
 typedef uint16_t cache_bufctl_t; ///< Buffer control type.
 
@@ -70,7 +73,7 @@ typedef struct
 typedef struct ALIGNED(CACHE_LINE)
 {
     list_entry_t entry;
-    cpuid_t owner;
+    cpu_id_t owner;
     uint16_t freeCount;
     uint16_t firstFree;
     lock_t lock;

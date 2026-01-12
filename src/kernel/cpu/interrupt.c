@@ -3,6 +3,7 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/irq.h>
+#include <kernel/cpu/regs.h>
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/drivers/perf.h>
 #include <kernel/log/log.h>
@@ -10,7 +11,6 @@
 #include <kernel/mem/paging_types.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/wait.h>
-#include <kernel/cpu/regs.h>
 
 #include <assert.h>
 
@@ -32,8 +32,8 @@ static uint64_t exception_grow_stack(thread_t* thread, uintptr_t faultAddr, stac
     uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
     if (stack_pointer_is_in_stack(stack, alignedFaultAddr, 1))
     {
-        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PAGE_SIZE, flags, VMM_ALLOC_FAIL_IF_MAPPED) ==
-            NULL)
+        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PAGE_SIZE, flags,
+                VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
         {
             if (errno == EEXIST) // Race condition, another CPU mapped the page.
             {
@@ -194,6 +194,8 @@ void interrupt_handler(interrupt_frame_t* frame)
 
     self->inInterrupt = false;
     perf_interrupt_begin(self);
+
+    percpu_update();
 
     if (frame->vector >= VECTOR_EXTERNAL_START && frame->vector < VECTOR_EXTERNAL_END)
     {

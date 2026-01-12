@@ -16,6 +16,7 @@
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
+
 #include <stdatomic.h>
 #include <stdint.h>
 #include <sys/list.h>
@@ -23,23 +24,23 @@
 cpu_t* _cpus[CPU_MAX] = {0};
 uint16_t _cpuAmount = 0;
 
-static cpu_handler_t eventHandlers[CPU_MAX_EVENT_HANDLERS] = {0};
-static uint64_t eventHandlerCount = 0;
-static lock_t eventHandlerLock = LOCK_CREATE();
-
 void cpu_init_early(cpu_t* cpu)
 {
-    cpuid_t id = _cpuAmount++;
-    msr_write(MSR_CPU_ID, (uint64_t)id);
-
-    cpu->id = id;
+    cpu_id_t id = _cpuAmount++;
     _cpus[id] = cpu;
 
+    cpu->self = cpu;
+    cpu->id = id;
+    cpu->syscallRsp = 0;
+    cpu->userRsp = 0;
     cpu->inInterrupt = false;
     gdt_cpu_load();
     idt_cpu_load();
     tss_init(&cpu->tss);
+
     gdt_cpu_tss_load(&cpu->tss);
+    msr_write(MSR_GS_BASE, (uintptr_t)cpu);
+    msr_write(MSR_KERNEL_GS_BASE, (uintptr_t)cpu);
 
     if (stack_pointer_init_buffer(&cpu->exceptionStack, cpu->exceptionStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) == ERR)
     {
@@ -74,6 +75,8 @@ void cpu_init_early(cpu_t* cpu)
     }
     *(uint64_t*)cpu->interruptStack.bottom = CPU_STACK_CANARY;
     tss_ist_load(&cpu->tss, TSS_IST_INTERRUPT, &cpu->interruptStack);
+
+    memset(cpu->percpu, 0, CONFIG_PERCPU_SIZE);
 }
 
 void cpu_init(cpu_t* cpu)
@@ -81,114 +84,13 @@ void cpu_init(cpu_t* cpu)
     simd_cpu_init();
     syscalls_cpu_init();
 
-    rcu_cpu_init(&cpu->rcu);
-    vmm_cpu_init(&cpu->vmm);
     perf_cpu_init(&cpu->perf);
     timer_cpu_init(&cpu->timer);
     wait_init(&cpu->wait);
     sched_init(&cpu->sched);
     ipi_cpu_init(&cpu->ipi);
 
-    LOCK_SCOPE(&eventHandlerLock);
-    for (uint64_t i = 0; i < eventHandlerCount; i++)
-    {
-        cpu_event_t event = {.type = CPU_ONLINE};
-        eventHandlers[i].func(cpu, &event);
-        bitmap_set(&eventHandlers[i].initializedCpus, cpu->id);
-    }
-}
-
-uint64_t cpu_handler_register(cpu_func_t func)
-{
-    if (func == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    LOCK_SCOPE(&eventHandlerLock);
-    if (eventHandlerCount >= CPU_MAX_EVENT_HANDLERS)
-    {
-        errno = EBUSY;
-        return ERR;
-    }
-
-    for (uint64_t i = 0; i < eventHandlerCount; i++)
-    {
-        if (eventHandlers[i].func == func)
-        {
-            errno = EEXIST;
-            return ERR;
-        }
-    }
-
-    cpu_handler_t* eventHandler = &eventHandlers[eventHandlerCount++];
-    eventHandler->func = func;
-    BITMAP_DEFINE_INIT(eventHandler->initializedCpus, CPU_MAX);
-    bitmap_clear_range(&eventHandler->initializedCpus, 0, CPU_MAX);
-
-    cpu_t* self = cpu_get();
-    if (self != NULL)
-    {
-        cpu_event_t event = {.type = CPU_ONLINE};
-        eventHandler->func(self, &event);
-        bitmap_set(&eventHandler->initializedCpus, self->id);
-    }
-
-    cpu_t* cpu;
-    CPU_FOR_EACH(cpu)
-    {
-        if (cpu == self)
-        {
-            continue;
-        }
-        atomic_store(&cpu->needHandlersCheck, true);
-    }
-
-    return 0;
-}
-
-void cpu_handler_unregister(cpu_func_t func)
-{
-    if (func == NULL)
-    {
-        return;
-    }
-
-    LOCK_SCOPE(&eventHandlerLock);
-
-    for (uint64_t i = 0; i < eventHandlerCount; i++)
-    {
-        cpu_handler_t* eventHandler = &eventHandlers[i];
-        if (eventHandler->func == func)
-        {
-            eventHandler->func = NULL;
-            eventHandlerCount--;
-            memmove(&eventHandlers[i], &eventHandlers[i + 1], (CPU_MAX_EVENT_HANDLERS - i - 1) * sizeof(cpu_func_t));
-            break;
-        }
-    }
-}
-
-void cpu_handlers_check(cpu_t* cpu)
-{
-    bool expected = true;
-    if (!atomic_compare_exchange_strong(&cpu->needHandlersCheck, &expected, false))
-    {
-        return;
-    }
-
-    LOCK_SCOPE(&eventHandlerLock);
-    for (uint64_t i = 0; i < eventHandlerCount; i++)
-    {
-        cpu_handler_t* eventHandler = &eventHandlers[i];
-        if (!bitmap_is_set(&eventHandler->initializedCpus, cpu->id))
-        {
-            cpu_event_t event = {.type = CPU_ONLINE};
-            eventHandler->func(cpu, &event);
-            bitmap_set(&eventHandler->initializedCpus, cpu->id);
-        }
-    }
+    percpu_update();
 }
 
 void cpu_stacks_overflow_check(cpu_t* cpu)

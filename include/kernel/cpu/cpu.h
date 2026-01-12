@@ -1,9 +1,10 @@
 #pragma once
 
+#ifndef __ASSEMBLER__
 #include <kernel/config.h>
+#include <kernel/cpu/cpu_id.h>
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/ipi.h>
-#include <kernel/cpu/cpu_id.h>
 #include <kernel/cpu/tss.h>
 #include <kernel/drivers/perf.h>
 #include <kernel/drivers/rand.h>
@@ -14,38 +15,38 @@
 #include <kernel/sync/rcu.h>
 #include <kernel/utils/map.h>
 
-#include <sys/defs.h>
+#include <assert.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <sys/bitmap.h>
+#include <sys/defs.h>
 #include <sys/list.h>
+#endif
 
 /**
  * @brief CPU
  * @defgroup kernel_cpu CPU
  * @ingroup kernel
  *
- * CPU structures and functions.
- *
- * ## Events
- *
- * Each CPU can generate events which can be handled by registering event handlers
- * using `cpu_handler_register()`.
- *
- * As an example, the `CPU_ONLINE` event allows other subsystems to perform per-CPU initialization on each CPU no matter
- * when they are initialized or even if IPIs are available yet.
- *
- * This is what makes it possible for SMP to be in a module, at the cost of the system being perhaps slightly
- * unintuitive and edge case heavy.
- *
- * For more details see `cpu_handler_register()`, `cpu_handler_unregister()`, and `cpu_handlers_check()`.
- *
- * ## Per-CPU Data
- *
- * @todo Implement per-CPU data. Use separate linker section?
- *
  * @{
  */
+
+/**
+ * @brief The offset of the `self` member in the `cpu_t` structure.
+ */
+#define CPU_OFFSET_SELF 0x0
+
+/**
+ * @brief The offset of the `syscall_ctx_t` pointer in the `cpu_t` structure.
+ */
+#define CPU_OFFSET_SYSCALL_RSP 0x10
+
+/**
+ * @brief The offset of the `userRsp` member in the `cpu_t` structure.
+ */
+#define CPU_OFFSET_USER_RSP 0x18
+
+#ifndef __ASSEMBLER__
 
 /**
  * @brief CPU stack canary value.
@@ -54,43 +55,6 @@
  * checking if its canary has been modified.
  */
 #define CPU_STACK_CANARY 0x1234567890ABCDEFULL
-
-/**
- * @brief CPU event types.
- * @enum cpu_event_type_t
- */
-typedef enum
-{
-    CPU_ONLINE,
-    CPU_OFFLINE,
-} cpu_event_type_t;
-
-/**
- * @brief CPU event structure.
- */
-typedef struct
-{
-    cpu_event_type_t type;
-} cpu_event_t;
-
-/**
- * @brief Maximum number of CPU event handlers that can be registered.
- *
- * We need to statically allocate the event handler array such that handlers can be registered before memory allocation
- * has been initialized.
- */
-#define CPU_MAX_EVENT_HANDLERS 32
-
-/**
- * @brief CPU event function type.
- */
-typedef void (*cpu_func_t)(cpu_t* cpu, const cpu_event_t* event);
-
-typedef struct
-{
-    cpu_func_t func;
-    BITMAP_DEFINE(initializedCpus, CPU_MAX);
-} cpu_handler_t;
 
 /**
  * @brief CPU structure.
@@ -102,15 +66,14 @@ typedef struct
  */
 typedef struct cpu
 {
-    cpuid_t id;
+    volatile cpu_t* self;
+    cpu_id_t id;
+    uint64_t syscallRsp;
+    uint64_t userRsp;
     volatile bool inInterrupt;
-    rcu_cpu_t rcu;
-    /**
-     * If set, then since the last check, handlers have been registered or unregistered.
-     */
-    atomic_bool needHandlersCheck;
+    uint64_t oldRflags; ///< The rflags value before disabling interrupts.
+    uint16_t cli;       ///< The CLI depth counter used in `cli_push()` and `cli_pop()`.
     tss_t tss;
-    vmm_cpu_t vmm;
     perf_cpu_t perf;
     timer_cpu_t timer;
     wait_t wait;
@@ -125,7 +88,19 @@ typedef struct cpu
     uint8_t doubleFaultStackBuffer[CONFIG_INTERRUPT_STACK_PAGES * PAGE_SIZE] ALIGNED(PAGE_SIZE);
     uint8_t nmiStackBuffer[CONFIG_INTERRUPT_STACK_PAGES * PAGE_SIZE] ALIGNED(PAGE_SIZE);
     uint8_t interruptStackBuffer[CONFIG_INTERRUPT_STACK_PAGES * PAGE_SIZE] ALIGNED(PAGE_SIZE);
+    uint8_t percpu[CONFIG_PERCPU_SIZE] ALIGNED(PAGE_SIZE);
 } cpu_t;
+
+static_assert(offsetof(cpu_t, self) == CPU_OFFSET_SELF,
+    "CPU_OFFSET_SELF does not match the offset of the self field in cpu_t");
+
+static_assert(offsetof(cpu_t, id) == CPU_OFFSET_ID, "CPU_OFFSET_ID does not match the offset of the id field in cpu_t");
+
+static_assert(offsetof(cpu_t, syscallRsp) == CPU_OFFSET_SYSCALL_RSP,
+    "CPU_OFFSET_SYSCALL_RSP does not match the offset of the syscallRsp field in cpu_t");
+
+static_assert(offsetof(cpu_t, userRsp) == CPU_OFFSET_USER_RSP,
+    "CPU_OFFSET_USER_RSP does not match the offset of the userRsp field in cpu_t");
 
 /**
  * @brief Array of pointers to cpu_t structures for each CPU, indexed by CPU ID.
@@ -160,36 +135,6 @@ void cpu_init_early(cpu_t* cpu);
  * @param cpu The CPU structure to initialize.
  */
 void cpu_init(cpu_t* cpu);
-
-/**
- * @brief Registers a CPU event handler for all CPUs.
- *
- * The registered handler will be immediately invoked with a `CPU_ONLINE` event on the current CPU, then invoked on all
- * others when they call `cpu_handlers_check()` and on any new cpus when they are initialized.
- *
- * @param func The event function to register a handler for.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EBUSY`: Too many event handlers registered.
- * - `EEXIST`: A handler with the same function is already registered.
- */
-uint64_t cpu_handler_register(cpu_func_t func);
-
-/**
- * @brief Unregisters a previously registered CPU event handler.
- *
- * Will be a no-op if the handler was not registered.
- *
- * @param func The event function of the handler to unregister, or `NULL` for no-op.
- */
-void cpu_handler_unregister(cpu_func_t func);
-
-/**
- * @brief Checks if any handlers have been registered since the last check, and invokes them if so.
- *
- * @param cpu The CPU to check, must be the current CPU.
- */
-void cpu_handlers_check(cpu_t* cpu);
 
 /**
  * @brief Checks for CPU stack overflows.
@@ -235,7 +180,7 @@ static inline uint16_t cpu_amount(void)
  * @param id The ID of the CPU to get.
  * @return A pointer to the CPU structure, or `NULL` if no CPU with the given ID exists.
  */
-static inline cpu_t* cpu_get_by_id(cpuid_t id)
+static inline cpu_t* cpu_get_by_id(cpu_id_t id)
 {
     if (id >= _cpuAmount)
     {
@@ -255,9 +200,8 @@ static inline cpu_t* cpu_get(void)
 {
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
-    cpuid_t id = cpu_get_id();
-    cpu_t* cpu = _cpus[id];
-    assert(cpu != NULL && cpu->id == id);
+    cpu_t* cpu;
+    asm volatile("movq %%gs:%P1, %0" : "=r"(cpu) : "i"(CPU_OFFSET_SELF));
     return cpu;
 }
 
@@ -271,7 +215,7 @@ static inline cpu_t* cpu_get(void)
  */
 static inline cpu_t* cpu_get_next(cpu_t* current)
 {
-    cpuid_t nextId = current->id + 1;
+    cpu_id_t nextId = current->id + 1;
     if (nextId >= _cpuAmount)
     {
         nextId = 0;
@@ -288,7 +232,9 @@ static inline cpu_t* cpu_get_next(cpu_t* current)
  * @param cpu Loop variable, a pointer to the current `cpu_t`.
  */
 #define CPU_FOR_EACH(cpu) \
-    for (cpuid_t _cpuId = 0; _cpuId < _cpuAmount; _cpuId++) \
+    for (cpu_id_t _cpuId = 0; _cpuId < _cpuAmount; _cpuId++) \
         for (cpu = _cpus[_cpuId]; cpu != NULL; cpu = NULL)
+
+#endif
 
 /** @} */

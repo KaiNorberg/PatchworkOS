@@ -107,11 +107,10 @@ typedef struct
  */
 typedef struct
 {
-    list_entry_t entry; ///< Used by a space to know which CPUs are using it, protected by the space lock.
     vmm_shootdown_t shootdowns[VMM_MAX_SHOOTDOWN_REQUESTS];
     uint8_t shootdownCount;
     lock_t lock;
-    space_t* currentSpace; ///< Will only be accessed by the owner CPU, so no lock.
+    space_t* space; ///< Will only be accessed by the owner CPU, so no lock.
 } vmm_cpu_t;
 
 /**
@@ -133,15 +132,6 @@ void vmm_init(void);
  * @brief Loads the kernel's address space into the current CPU.
  */
 void vmm_kernel_space_load(void);
-
-/**
- * @brief Initializes a per-CPU VMM context and performs per-CPU VMM initialization.
- *
- * Must be called on the CPU that owns the context.
- *
- * @param ctx The CPU VMM context to initialize.
- */
-void vmm_cpu_init(vmm_cpu_t* ctx);
 
 /**
  * @brief Retrieves the kernel's address space.
@@ -178,7 +168,8 @@ pml_flags_t vmm_prot_to_flags(prot_t prot);
  * - `ENOMEM`: Not enough memory.
  * - Other values from `space_mapping_start()`.
  */
-void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment, pml_flags_t pmlFlags, vmm_alloc_flags_t allocFlags);
+void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment, pml_flags_t pmlFlags,
+    vmm_alloc_flags_t allocFlags);
 
 /**
  * @brief Maps physical memory to virtual memory in a given address space.
@@ -271,5 +262,34 @@ void* vmm_unmap(space_t* space, void* virtAddr, size_t length);
  * - Other values from `space_mapping_start()`.
  */
 void* vmm_protect(space_t* space, void* virtAddr, size_t length, pml_flags_t flags);
+
+/**
+ * @brief Loads a virtual address space.
+ *
+ * Must be called with interrupts disabled.
+ *
+ * Will do nothing if the space is already loaded.
+ *
+ * @param space The address space to load.
+ */
+void vmm_load(space_t* space);
+
+/**
+ * @brief Performs a TLB shootdown for a region of the address space, and wait for acknowledgements.
+ *
+ * Must be called between `space_mapping_start()` and `space_mapping_end()`.
+ *
+ * This will cause all CPUs that have the address space loaded to invalidate their TLB entries for the specified region.
+ *
+ * Will not affect the current CPU's TLB, that is handled by the `page_table_t` directly when modifying page table
+ * entries.
+ *
+ * @todo Currently this does a busy wait for acknowledgements. Use a wait queue?
+ *
+ * @param space The target address space.
+ * @param virtAddr The starting virtual address of the region.
+ * @param pageAmount The number of pages in the region.
+ */
+void vmm_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount);
 
 /** @} */

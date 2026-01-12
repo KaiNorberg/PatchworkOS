@@ -1,5 +1,6 @@
 #pragma once
 
+#include <kernel/cpu/cli.h>
 #include <kernel/cpu/interrupt.h>
 
 #include <kernel/sched/sched.h>
@@ -70,33 +71,16 @@ typedef struct rcu_entry
 
 /**
  * @brief Per-cpu RCU context.
- * @struct rcu_ctx_t
+ * @struct rcu_t
  */
-typedef struct rcu_cpu
+typedef struct rcu
 {
     uint64_t grace;  ///< The last grace period observed by this CPU.
     list_t* batch;   ///< Callbacks queued during the current grace period.
     list_t* waiting; ///< Callbacks waiting for the current grace period to end.
     list_t* ready;   ///< Callbacks whose grace period has ended.
     list_t lists[3]; //< Buffer storing three lists such that we can rotate them.
-} rcu_cpu_t;
-
-/**
- * @brief Initializes the per-CPU RCU context.
- *
- * @param rcu The RCU context to initialize.
- */
-static inline void rcu_cpu_init(rcu_cpu_t* rcu)
-{
-    rcu->grace = 0;
-    rcu->batch = &rcu->lists[0];
-    rcu->waiting = &rcu->lists[1];
-    rcu->ready = &rcu->lists[2];
-    for (size_t i = 0; i < ARRAY_SIZE(rcu->lists); i++)
-    {
-        list_init(&rcu->lists[i]);
-    }
-}
+} rcu_t;
 
 /**
  * @brief Publishes a pointer to a new data structure.
@@ -158,19 +142,17 @@ void rcu_synchronize(void);
 /**
  * @brief Add a callback to be executed after a grace period.
  *
- * @param rcu The RCU entry structure embedded in the object to be freed.
+ * @param entry The RCU entry structure embedded in the object to be freed.
  * @param func The callback function to execute.
  */
-void rcu_call(rcu_entry_t* rcu, rcu_callback_t func, void* arg);
+void rcu_call(rcu_entry_t* entry, rcu_callback_t func, void* arg);
 
 /**
  * @brief Called during a context switch to report a quiescent state.
  *
  * Will also be invoked via an IPI when a grace period starts if the CPU is not in a quiescent state.
- *
- * @param self The current CPU.
  */
-void rcu_report_quiescent(cpu_t* self);
+void rcu_report_quiescent(void);
 
 /**
  * @brief Helper callback to free a pointer.

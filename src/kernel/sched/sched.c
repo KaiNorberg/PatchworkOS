@@ -537,7 +537,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     if (sched->runThread == sched->idleThread && rbtree_is_empty(&sched->runqueue)) // Nothing to do
     {
         lock_release(&sched->lock);
-        rcu_report_quiescent(self);
+        rcu_report_quiescent();
         return;
     }
 
@@ -609,7 +609,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         thread_free(threadToFree); // Cant hold any locks here
     }
 
-    rcu_report_quiescent(self);
+    rcu_report_quiescent();
 }
 
 bool sched_is_idle(cpu_t* cpu)

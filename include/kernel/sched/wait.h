@@ -1,7 +1,7 @@
 #pragma once
 
-#include <kernel/cpu/regs.h>
 #include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/regs.h>
 #include <kernel/sync/lock.h>
 
 #include <errno.h>

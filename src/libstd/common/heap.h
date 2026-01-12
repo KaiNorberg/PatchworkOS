@@ -2,9 +2,9 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/defs.h>
 #include <sys/list.h>
 #include <sys/proc.h>
-#include <sys/defs.h>
 
 #ifdef _KERNEL_
 #include <kernel/sync/lock.h>

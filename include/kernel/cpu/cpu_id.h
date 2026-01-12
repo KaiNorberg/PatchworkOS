@@ -2,14 +2,21 @@
 
 #include <kernel/cpu/regs.h>
 
-#include <stdint.h>
 #include <assert.h>
+#include <stdint.h>
 
 /**
  * @addtogroup kernel_cpu
  *
  * @{
  */
+
+/**
+ * @brief The offset of the `id` member in the `cpu_t` structure.
+ *
+ * Needed to access the CPU ID from assembly code.
+ */
+#define CPU_OFFSET_ID 0x8
 
 /**
  * @brief Maximum number of CPUs supported.
@@ -29,7 +36,7 @@
 /**
  * @brief Type used to identify a CPU.
  */
-typedef uint16_t cpuid_t;
+typedef uint16_t cpu_id_t;
 
 /**
  * @brief Gets the current CPU ID.
@@ -38,13 +45,11 @@ typedef uint16_t cpuid_t;
  *
  * @return The current CPU ID.
  */
-static inline cpuid_t cpu_get_id(void)
+static inline cpu_id_t cpu_id_get(void)
 {
-    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
-
-    uint32_t eax, edx;
-    asm volatile("rdtscp" : "=a"(eax), "=d"(edx) : : "rcx");
-    return (cpuid_t)edx;
+    cpu_id_t id;
+    asm volatile("movw %%gs:%P1, %0" : "=r"(id) : "i"(CPU_OFFSET_ID));
+    return id;
 }
 
 /** @} */

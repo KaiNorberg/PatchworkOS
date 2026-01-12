@@ -24,7 +24,9 @@ void syscall_ctx_init(syscall_ctx_t* ctx, const stack_pointer_t* syscallStack)
 
 void syscall_ctx_load(syscall_ctx_t* ctx)
 {
-    msr_write(MSR_KERNEL_GS_BASE, (uint64_t)ctx);
+    cpu_t* self = cpu_get();
+    self->syscallRsp = ctx->syscallRsp;
+    self->userRsp = ctx->userRsp;
 }
 
 static int syscall_descriptor_cmp(const void* a, const void* b)
