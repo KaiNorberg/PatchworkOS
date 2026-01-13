@@ -24,9 +24,9 @@
 
 <img src="meta/screenshots/desktop.png" alt="Desktop Screenshot" />
 
-**PatchworkOS** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy, in the style of Plan9. Built from scratch in C and assembly, it's intended to be an educational and experimental operating system.
+**PatchworkOS** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy often leaning on stringly typed interfaces. Built from scratch in C and assembly.
 
-While primarily a project made for fun, the goal is still to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system without jumping ahead to user space features or drivers, a floppy disk driver and a round-robin scheduler are not enough.
+While primarily a project made for fun, the goal is still to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system without jumping ahead to user space features or drivers, a floppy disk driver with a round-robin scheduler is not enough.
 
 PatchworkOS is not a UNIX clone, it's intended to be a (hopefully) interesting experiment in operating system design by attempting to use unique algorithms and designs over tried and tested ones. Sometimes this leads to bad results, and sometimes, with a bit of luck, good ones.
 
@@ -55,7 +55,7 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 
 - Preemptive and tickless [EEVDF scheduler](https://kainorberg.github.io/PatchworkOS/html/d7/d85/group__kernel__sched.html) based upon the [original paper](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564) and implemented using an [Augmented Red-Black tree](https://kainorberg.github.io/PatchworkOS/html/da/d90/group__kernel__utils__rbtree.html) to achieve `O(log n)` worst case complexity. EEVDF is the same algorithm used in the modern Linux kernel, but ours is obviously **a lot** less mature.
 - Multithreading and Symmetric Multi Processing with fine-grained locking.
-- Physical and virtual memory management is `O(1)` per page and `O(n)` where `n` is the number of pages per allocation/mapping operation, see [benchmarks](#benchmarks) for more info.
+- Optimized memory management, featuring object caching and `O(1)` per page physical and virtual memory managers. See [benchmarks](#benchmarks) for more info.
 - File based IPC including [pipes](https://kainorberg.github.io/PatchworkOS/html/d7/d64/group__modules__ipc__pipe.html), [shared memory](https://kainorberg.github.io/PatchworkOS/html/df/d3f/group__modules__ipc__shmem.html), [sockets](https://kainorberg.github.io/PatchworkOS/html/d4/db0/group__kernel__fs__netfs.html) and Plan9 inspired "signals" called [notes](https://kainorberg.github.io/PatchworkOS/html/d8/db1/group__kernel__ipc__note.html).
 - File based device API [abstractions](https://kainorberg.github.io/PatchworkOS/html/de/d7b/group__kernel__drivers__abstract.html), including framebuffers, input devices, etc.
 - [Synchronization primitives](https://kainorberg.github.io/PatchworkOS/html/dd/d6b/group__kernel__sync.html) including Read-Copy-Update, mutexes, R/W locks, sequential locks, futexes and others.
@@ -91,6 +91,24 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 - Port LUA and use it for dynamic system configuration.
 - Fully Asynchronous I/O and syscalls (io_uring?).
 - USB support.
+
+## Setup
+
+```bash
+# Install dependencies
+sudo dnf install gcc make mtools qemu-system-x86 # For Fedora
+sudo apt install build-essential mtools qemu-system-x86 # For Debian/Ubuntu
+
+# Clone this repository, you can also use the green Code button at the top of the Github.
+git clone https://github.com/KaiNorberg/PatchworkOS
+cd PatchworkOS
+
+# Build (creates PatchworkOS.img in bin/)
+make all
+
+# Run using QEMU
+make run
+```
 
 ---
 
@@ -635,7 +653,9 @@ The scheduler has not yet been properly benchmarked. However, testing using the 
 
 ## Shell Utilities
 
-PatchworkOS includes its own shell utilities designed around its [file flags](#file-flags) system, when file flags are used we also demonstrate the short form. Included is a brief overview with some usage examples. For convenience the shell utilities are named after their POSIX counterparts, however they are not drop-in replacements.
+PatchworkOS includes its own shell utilities designed around its [file flags](#file-flags) system, allowing all shell utilities to be "dumb" and rely on the virtual file system to provide more complex behavior.
+
+Included is a brief overview with some usage examples. For convenience the shell utilities are named after their POSIX counterparts, however they are not drop-in replacements. When file flags are used we also demonstrate the short form.
 
 ### touch
 
@@ -734,28 +754,7 @@ There are other utils available that work as expected, for example `symlink` and
 
 ---
 
-## Setup
-
-### Requirements
-
-| Requirement | Details |
-|:------------|:--------|
-| **OS** | Linux (WSL might work, but I make no guarantees) |
-| **Tools** | GCC, make, mtools, QEMU (optional) |
-
-### Build and Run
-
-```bash
-# Clone this repository, you can also use the green Code button at the top of the Github.
-git clone https://github.com/KaiNorberg/PatchworkOS
-cd PatchworkOS
-
-# Build (creates PatchworkOS.img in bin/)
-make all
-
-# Run using QEMU
-make run
-```
+## Development
 
 ### Additional commands
 
@@ -854,6 +853,10 @@ Contributions are welcome! Anything from bug reports/fixes, performance improvem
 If you are unsure where to start, check the [Todo List](https://kainorberg.github.io/PatchworkOS/html/dd/da0/todo.html).
 
 Check out the [contribution guidelines](CONTRIBUTING.md) to get started.
+
+## License
+
+Distributed under the MIT License. See [LICENSE](https://github.com/KaiNorberg/PatchworkOS/blob/main/LICENSE) for more information.
 
 ## Nostalgia
 
