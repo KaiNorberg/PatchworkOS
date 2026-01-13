@@ -3,11 +3,11 @@
 #include <kernel/cpu/regs.h>
 #include <kernel/mem/paging_types.h>
 
+#include <_internal/PAGE_SIZE.h>
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/proc.h>
 
 #ifdef _BOOT_
 #include <efi.h>
@@ -213,7 +213,8 @@ static inline uint64_t page_table_get_pml(page_table_t* table, pml_t* currentPml
         *outPml = (pml_t*)pml_accessible_addr(*entry);
         return 0;
     }
-    else if (flags & PML_PRESENT)
+    
+    if (flags & PML_PRESENT)
     {
         pml_t* nextPml;
         if (pml_new(table, &nextPml) == ERR)

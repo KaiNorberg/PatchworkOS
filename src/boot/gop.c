@@ -5,7 +5,6 @@
 #include <kernel/mem/paging_types.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <sys/proc.h>
 
 static void gop_select_mode(EFI_GRAPHICS_OUTPUT_PROTOCOL* gop, int64_t width, int64_t height)
 {

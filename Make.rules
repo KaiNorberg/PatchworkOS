@@ -21,7 +21,7 @@ $(BINDIR)/%: $(OBJ)
 $(BINDIR)/%.efi: $(OBJ)
 	$(MKCWD)
 	@echo "  LD    $@ (EFI)"
-	@$(CC) -shared -nostdlib -z noexecstack \
+	@$(LD) -shared -nostdlib -z noexecstack \
 		-nostartfiles -fPIC -fno-stack-protector \
 		-Wl,-shared,-Bsymbolic \
 		-Wl,-T,lib/gnu-efi/gnuefi/elf_x86_64_efi.lds \
@@ -30,26 +30,16 @@ $(BINDIR)/%.efi: $(OBJ)
 		lib/gnu-efi/x86_64/gnuefi/crt0-efi-x86_64.o $^ \
 		-o $(BINDIR)/temp.so \
 		-lgnuefi -lefi
-
-ifeq ($(DEBUG),1)
-	@echo "  OBJCOPY $@ (with debug symbols)"
-	@$(OBJCOPY) --only-keep-debug $(BINDIR)/temp.so $(BINDIR)/$*.debug
-	@$(OBJCOPY) \
-		-j .text -j .sdata -j .data -j .dynamic -j .dynsym \
-		-j .rel -j .rela -j .rel.* -j .rela.* -j .reloc -j .eh_frame \
-		--target efi-app-x86_64 \
-		--subsystem=10 \
-		--add-gnu-debuglink=$(BINDIR)/$*.debug \
-		$(BINDIR)/temp.so $@
-	@$(OBJCOPY) --strip-debug $@
-else
 	@echo "  OBJCOPY $@"
-	@$(OBJCOPY) \
-		-j .text -j .sdata -j .data -j .dynamic -j .dynsym \
-		-j .rel -j .rela -j .rel.* -j .rela.* -j .reloc -j .eh_frame \
-		--target efi-app-x86_64 \
-		--subsystem=10 \
-		$(BINDIR)/temp.so $@
-endif
-
+	@$(OBJCOPY) --target=efi-app-x86_64 \
+		  -j .text \
+          -j .sdata \
+          -j .data \
+          -j .rodata \
+          -j .dynamic \
+          -j .dynsym \
+          -j .rel \
+          -j .rela \
+          -j .reloc \
+		  $(BINDIR)/temp.so $@
 	@rm -f $(BINDIR)/temp.so

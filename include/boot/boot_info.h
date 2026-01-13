@@ -5,9 +5,9 @@
 #include <gnu-efi/inc/efi.h>
 #include <gnu-efi/inc/efilib.h>
 
+#include <_internal/MAX_NAME.h>
 #include <stdint.h>
 #include <sys/elf.h>
-#include <sys/io.h>
 #include <sys/list.h>
 
 /**

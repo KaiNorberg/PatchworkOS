@@ -11,23 +11,23 @@ SECTIONS
 {
     .text : ALIGN(4K)
     {
-        *(.text .text.*)
+        *(.text)
     } :text
 
     .rodata : ALIGN(4K)
     {
-        *(.rodata .rodata.*)
+        *(.rodata)
     } :text
 
     .data : ALIGN(4K)
     {
-        *(.data .data.*)
+        *(.data)
     } :data
 
     .bss : ALIGN(4K)
     {
         *(COMMON)
-        *(.bss .bss.*)
+        *(.bss)
     } :data
 
     ._percpu : ALIGN(4K)

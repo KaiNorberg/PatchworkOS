@@ -13,6 +13,7 @@ extern "C"
 #include "_internal/ERR.h"
 #include "_internal/NULL.h"
 #include "_internal/clock_t.h"
+#include "_internal/PAGE_SIZE.h"
 #include "_internal/config.h"
 #include "_internal/fd_t.h"
 
@@ -96,11 +97,6 @@ pid_t getpid(void);
  * @return The running threads tid.
  */
 tid_t gettid(void);
-
-/**
- * @brief The size of a memory page in bytes.
- */
-#define PAGE_SIZE 0x1000
 
 /**
  * @brief Convert a size in bytes to pages.
@@ -333,7 +329,7 @@ uint64_t atnotify(atnotify_func_t handler, atnotify_t action);
  * @param frame The interrupt frame of the current interrupt.
  * @return On success, `true` if a note was handled, `false` otherwise.
  */
-_NORETURN void _exit(const char* status);
+_NORETURN void proc_exit(const char* status);
 
 /**
  * @brief Helper for sending the "kill" command to a process.

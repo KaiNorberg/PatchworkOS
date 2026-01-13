@@ -20,7 +20,7 @@ static void _signal_invoke(int sig, const char* note)
 
     if (handler == SIG_DFL)
     {
-        _exit(note);
+        proc_exit(note);
     }
 
     handler(sig);
@@ -36,7 +36,7 @@ _NORETURN static void _note_kernel_handler(char* note)
             uint64_t result = func(note);
             if (result == ERR)
             {
-                _exit(note);
+                proc_exit(note);
             }
         }
     }
@@ -69,7 +69,7 @@ void _note_init(void)
 {
     if (notify(_note_kernel_handler) == ERR)
     {
-        _exit("notify failed");
+        proc_exit("notify failed");
     }
 }
 
