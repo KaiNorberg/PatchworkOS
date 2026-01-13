@@ -51,9 +51,10 @@ static void benchmark_getpid(void)
 
     clock_t procStart = clock();
 
+    char buffer[32];
     for (uint64_t i = 0; i < GETPID_ITER; i++)
     {
-        readfile("/proc/self/pid", NULL, 0, 0);
+        readfile("/proc/self/pid", buffer, sizeof(buffer), 0);
     }
 
     clock_t procEnd = clock();

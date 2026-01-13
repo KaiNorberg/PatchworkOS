@@ -3,6 +3,7 @@
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
@@ -10,7 +11,6 @@
 #include <kernel/sync/seqlock.h>
 #include <kernel/utils/utils.h>
 #include <modules/acpi/tables.h>
-#include <kernel/proc/process.h>
 
 /**
  * @brief High Precision Event Timer

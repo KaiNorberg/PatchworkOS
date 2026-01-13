@@ -180,3 +180,14 @@
  *
  */
 #define CONFIG_PERCPU_SIZE 0x10000
+
+/**
+ * @brief Maximum wait queues configuration.
+ * @ingroup kernel
+ * @def CONFIG_MAX_WAIT_QUEUES
+ *
+ * The `CONFIG_MAX_WAIT_QUEUES` constant defines the maximum amount of wait queues that a thread can wait on
+ * simultaneously.
+ *
+ */
+#define CONFIG_MAX_WAIT_QUEUES 64

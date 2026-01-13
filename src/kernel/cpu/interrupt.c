@@ -2,20 +2,20 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
+#include <kernel/cpu/ipi.h>
+#include <kernel/cpu/irq.h>
 #include <kernel/cpu/regs.h>
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/drivers/perf.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/paging_types.h>
-#include <kernel/sched/thread.h>
-#include <kernel/proc/process.h>
-#include <kernel/sched/wait.h>
-#include <kernel/sched/sched.h>
 #include <kernel/mem/vmm.h>
-#include <kernel/cpu/ipi.h>
-#include <kernel/cpu/irq.h>
+#include <kernel/proc/process.h>
+#include <kernel/sched/sched.h>
+#include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
+#include <kernel/sched/wait.h>
 
 #include <assert.h>
 

@@ -3,8 +3,8 @@
 
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>
-#include <kernel/sched/thread.h>
 #include <kernel/proc/process.h>
+#include <kernel/sched/thread.h>
 
 uint64_t stack_pointer_init(stack_pointer_t* stack, uintptr_t maxAddress, uint64_t maxPages)
 {

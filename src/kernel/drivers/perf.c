@@ -169,7 +169,7 @@ void perf_init(void)
 
 void perf_interrupt_begin(void)
 {
-    perf_cpu_t* perf = SELF_PTR(pcpu_perf);    
+    perf_cpu_t* perf = SELF_PTR(pcpu_perf);
     LOCK_SCOPE(&perf->lock);
 
     if (perf->interruptEnd < perf->interruptBegin)

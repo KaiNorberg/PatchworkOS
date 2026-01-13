@@ -36,7 +36,28 @@ typedef struct cache cache_t;
  *
  * ### Buffer Control List
  *
+ * The buffer control list is an alternative to a intrusive free list, which we cant use as we want free objects to
+ * remain in an initalized state.
  *
+ * Each index in the buffer control list corresponds to an object in the slab, and contains the index of the next free
+ * object, with the last index in the buffer control list being `CACHE_BUFCTL_END`.
+ *
+ * When an object is allocated we say that the next free object is the object att the current first free objects index,
+ * and when we free an object we set its index in the buffer control list to the current first free object and then
+ * update the first free object to be the freed object.
+ *
+ * In short, the buffer control list acts as a LIFO free list for the objects in the slab.
+ *
+ * ### Minimize CPU Contention
+ *
+ * To minimize CPU contention, each CPU has its own active slab from which it allocates and deallocates objects. It will
+ * continue using its own slab until its empty, at which point it will try to acquire a new slab from the shared cache.
+ *
+ * ### Constructors and Destructors
+ *
+ * Initializing objects, as in setting up their inital state, takes time. To avoid paying this cost on every allocation,
+ * the cache supports optional constructor and destructor functions. Such that when an object is freed, it remains in
+ * its initalized state allowins us to reuse it without reinitialization.
  *
  * @see https://en.wikipedia.org/wiki/Slab_allocation for more information.
  * @see https://www.kernel.org/doc/gorman/html/understand/understand011.html for an explanation of the Linux kernel slab
@@ -62,7 +83,8 @@ typedef uint16_t cache_bufctl_t; ///< Buffer control type.
 typedef struct
 {
     uint32_t start;
-    uint32_t step; ///< The power of two index for the object size.
+    uint32_t step;
+    uint32_t stepShift;
     uint32_t amount;
 } cache_slab_layout_t;
 
@@ -107,7 +129,7 @@ typedef struct cache
     void (*dtor)(void* obj);
     lock_t lock;
     list_t free;
-    list_t active;
+    list_t partial;
     list_t full;
     uint64_t freeCount;
     cache_cpu_t cpus[CPU_MAX];
@@ -133,7 +155,7 @@ typedef struct cache
         .dtor = (_dtor), \
         .lock = LOCK_CREATE(), \
         .free = LIST_CREATE((_cache).free), \
-        .active = LIST_CREATE((_cache).active), \
+        .partial = LIST_CREATE((_cache).partial), \
         .full = LIST_CREATE((_cache).full), \
         .freeCount = 0, \
         .cpus = {0}, \

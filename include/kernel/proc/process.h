@@ -10,11 +10,11 @@
 #include <kernel/proc/env.h>
 #include <kernel/proc/group.h>
 #include <kernel/sched/sched.h>
+#include <kernel/sched/thread.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/futex.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
-#include <kernel/sched/thread.h>
 
 #include <stdatomic.h>
 

@@ -1,9 +1,9 @@
 #include <kernel/cpu/irq.h>
 
 #include <kernel/cpu/cpu.h>
-#include <kernel/cpu/percpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/percpu.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sync/rwlock.h>

@@ -14,7 +14,7 @@
  * data within the current CPU structure.
  *
  * @note All percpu variables should use the `pcpu_` prefix for clarity.
- * 
+ *
  * ## Defining Per-CPU Variables
  *
  * To define a Per-CPU variable use the `PERCPU_DEFINE()` macro. This creates a variable that acts like a pointer, but
@@ -68,8 +68,9 @@ typedef struct
  * @brief Macro to access data in the current cpu.
  *
  * Intended to be used as a pointer to the current cpu structure.
- * 
- * @warning The value of this macro is not the address of the current cpu structure, to actually retrieve the address use `SELF->self`.
+ *
+ * @warning The value of this macro is not the address of the current cpu structure, to actually retrieve the address
+ * use `SELF->self`.
  */
 #define SELF ((cpu_t PERCPU)0)
 
@@ -103,8 +104,9 @@ typedef struct
  */
 #define PERCPU_DEFINE(type, name, ...) \
     type PERCPU name; \
-    static const percpu_def_t __attribute__((used, \
-        section("._percpu"))) _percpu##name = {.ptr = (percpu_t*)&(name), .size = sizeof(typeof(*name)), ##__VA_ARGS__}
+    static const percpu_def_t __attribute__((used, section("._percpu"))) _percpu##name = {.ptr = (percpu_t*)&(name), \
+        .size = sizeof(typeof(*name)), \
+        ##__VA_ARGS__}
 
 /**
  * @brief Macro to define a percpu variable with a constructor.

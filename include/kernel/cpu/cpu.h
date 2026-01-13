@@ -1,13 +1,13 @@
 #pragma once
 
 #ifndef __ASSEMBLER__
-#include <kernel/cpu/cpu_id.h>
-#include <kernel/cpu/tss.h>
-#include <kernel/cpu/stack_pointer.h>
 #include <kernel/config.h>
+#include <kernel/cpu/cpu_id.h>
+#include <kernel/cpu/stack_pointer.h>
+#include <kernel/cpu/tss.h>
 
-#include <stdint.h>
 #include <assert.h>
+#include <stdint.h>
 #include <sys/proc.h>
 
 typedef struct cpu cpu_t;
@@ -102,7 +102,7 @@ extern uint16_t _cpuAmount;
 
 /**
  * @brief Initializes a CPU structure.
- * 
+ *
  * Will note initialize percpu data, use `percpu_update()` after calling this function.
  *
  * @param cpu The CPU structure to initialize.

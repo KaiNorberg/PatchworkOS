@@ -149,15 +149,6 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     {
         name = "";
     }
-    else
-    {
-        size_t nameLen = strnlen_s(name, MAX_NAME);
-        if (nameLen >= MAX_NAME || nameLen == 0)
-        {
-            errno = EINVAL;
-            return NULL;
-        }
-    }
 
     assert(parent == NULL || superblock == parent->superblock);
 

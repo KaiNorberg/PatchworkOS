@@ -1,4 +1,5 @@
 #include <kernel/cpu/irq.h>
+#include <kernel/mem/cache.h>
 #include <kernel/sched/wait.h>
 
 #include <kernel/cpu/cpu.h>
@@ -16,6 +17,8 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <sys/list.h>
+
+static cache_t waitEntryCache = CACHE_CREATE(waitEntryCache, "wait_entry", sizeof(wait_entry_t), CACHE_LINE, NULL, NULL);
 
 PERCPU_DEFINE_CTOR(static wait_t, pcpu_wait)
 {
@@ -40,7 +43,7 @@ static void wait_remove_wait_entries(thread_t* thread, errno_t err)
         lock_release(&entry->queue->lock);
 
         list_remove(&entry->threadEntry); // Belongs to thread, no lock needed.
-        free(entry);
+        cache_free(entry);
     }
 }
 
@@ -124,7 +127,7 @@ uint64_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t 
 
     for (uint64_t i = 0; i < amount; i++)
     {
-        wait_entry_t* entry = malloc(sizeof(wait_entry_t));
+        wait_entry_t* entry = cache_alloc(&waitEntryCache);
         if (entry == NULL)
         {
             while (1)
@@ -135,7 +138,7 @@ uint64_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t 
                 {
                     break;
                 }
-                free(other);
+                cache_free(other);
             }
 
             for (uint64_t j = 0; j < amount; j++)
@@ -331,7 +334,7 @@ uint64_t wait_unblock(wait_queue_t* queue, uint64_t amount, errno_t err)
             {
                 list_remove(&waitEntry->queueEntry);
                 list_remove(&waitEntry->threadEntry);
-                free(waitEntry);
+                cache_free(waitEntry);
                 threads[collected] = thread;
                 collected++;
             }

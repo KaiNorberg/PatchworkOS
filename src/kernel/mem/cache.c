@@ -72,7 +72,7 @@ static inline void* cache_slab_alloc(cache_slab_t* slab)
 static inline void cache_slab_free(cache_slab_t* slab, void* ptr)
 {
     uintptr_t offset = (uintptr_t)ptr - (uintptr_t)slab->objects;
-    uint32_t index = offset / slab->cache->layout.step;
+    uint32_t index = offset >> slab->cache->layout.stepShift;
 
     slab->bufctl[index] = slab->firstFree;
     slab->firstFree = index;
@@ -82,6 +82,11 @@ static inline void cache_slab_free(cache_slab_t* slab, void* ptr)
 static inline void cache_precalc_layout(cache_t* cache)
 {
     cache->layout.step = ROUND_UP(cache->size, cache->alignment);
+    if (!IS_POW2(cache->layout.step))
+    {
+        cache->layout.step = next_pow2(cache->layout.step);
+    }
+    cache->layout.stepShift = __builtin_ctz(cache->layout.step);
 
     uint32_t available = CACHE_SLAB_PAGES * PAGE_SIZE - sizeof(cache_slab_t);
     cache->layout.amount = available / (cache->size + sizeof(cache_bufctl_t));
@@ -152,11 +157,27 @@ allocate:
             cache->layout.amount, cache->layout.start);
     }
 
+    cache_slab_t* slab;
+    LIST_FOR_EACH(slab, &cache->partial, entry)
+    {
+        if (slab->owner == CPU_ID_INVALID)
+        {
+            list_remove(&slab->entry);
+            list_push_back(&cache->partial, &slab->entry);
+            slab->owner = SELF->id;
+            cache->cpus[SELF->id].active = slab;
+            lock_release(&cache->lock);
+
+            LOCK_SCOPE(&slab->lock);
+            return cache_slab_alloc(slab);
+        }
+    }
+
     if (!list_is_empty(&cache->free))
     {
-        cache_slab_t* slab = CONTAINER_OF(list_pop_front(&cache->free), cache_slab_t, entry);
+        slab = CONTAINER_OF(list_pop_front(&cache->free), cache_slab_t, entry);
         cache->freeCount--;
-        list_push_back(&cache->active, &slab->entry);
+        list_push_back(&cache->partial, &slab->entry);
         slab->owner = SELF->id;
         cache->cpus[SELF->id].active = slab;
         lock_release(&cache->lock);
@@ -165,14 +186,14 @@ allocate:
         return cache_slab_alloc(slab);
     }
 
-    cache_slab_t* slab = cache_slab_new(cache);
+    slab = cache_slab_new(cache);
     if (slab == NULL)
     {
         lock_release(&cache->lock);
         return NULL;
     }
 
-    list_push_back(&cache->active, &slab->entry);
+    list_push_back(&cache->partial, &slab->entry);
     slab->owner = SELF->id;
     cache->cpus[SELF->id].active = slab;
     lock_release(&cache->lock);
@@ -194,39 +215,30 @@ void cache_free(void* ptr)
     lock_acquire(&slab->lock);
     bool wasFull = (slab->freeCount == 0);
     cache_slab_free(slab, ptr);
-    bool isEmpty = (slab->freeCount == slab->cache->layout.amount);
+    bool isEmpty = (slab->freeCount == cache->layout.amount);
     lock_release(&slab->lock);
 
     if (wasFull || isEmpty)
     {
         lock_acquire(&cache->lock);
 
-        if (slab->owner != CPU_ID_INVALID)
+        if (wasFull)
         {
-            if (isEmpty && slab->owner == SELF->id)
-            {
-                cache->cpus[slab->owner].active = NULL;
-                slab->owner = CPU_ID_INVALID;
-                list_remove(&slab->entry);
-                list_push_back(&cache->free, &slab->entry);
-                cache->freeCount++;
-            }
-        }
-        else
-        {
-            if (wasFull)
-            {
-                list_remove(&slab->entry);
-                list_push_back(&cache->free, &slab->entry);
-                cache->freeCount++;
-            }
+            list_remove(&slab->entry);
+            list_push_back(&cache->partial, &slab->entry);
         }
 
-        while (cache->freeCount > CACHE_LIMIT)
+        if (isEmpty && slab->owner == CPU_ID_INVALID)
         {
-            cache_slab_t* freeSlab = CONTAINER_OF(list_pop_front(&cache->free), cache_slab_t, entry);
-            cache->freeCount--;
-            cache_slab_destroy(freeSlab);
+            list_remove(&slab->entry);
+            list_push_back(&cache->free, &slab->entry);
+            cache->freeCount++;
+            while (cache->freeCount > CACHE_LIMIT)
+            {
+                cache_slab_t* freeSlab = CONTAINER_OF(list_pop_front(&cache->free), cache_slab_t, entry);
+                cache->freeCount--;
+                cache_slab_destroy(freeSlab);
+            }
         }
 
         lock_release(&cache->lock);
@@ -242,7 +254,6 @@ static cache_t testCache = CACHE_CREATE(testCache, "test", 100, CACHE_LINE, NULL
 
 TEST_DEFINE(cache)
 {
-    // Basic functionality test
     void* ptr1 = cache_alloc(&testCache);
     TEST_ASSERT(ptr1 != NULL);
     TEST_ASSERT(((uintptr_t)ptr1 & 7) == 0);
@@ -253,49 +264,6 @@ TEST_DEFINE(cache)
 
     cache_free(ptr1);
     cache_free(ptr2);
-
-    // Benchmark
-    const int iterations = 100000;
-    const int subIterations = 100;
-    void** ptrs = malloc(sizeof(void*) * subIterations);
-    TEST_ASSERT(ptrs != NULL);
-
-    clock_t start = clock_uptime();
-    for (int i = 0; i < iterations; i++)
-    {
-        for (int j = 0; j < subIterations; j++)
-        {
-            ptrs[j] = cache_alloc(&testCache);
-            TEST_ASSERT(ptrs[j] != NULL);
-        }
-        for (int j = 0; j < subIterations; j++)
-        {
-            cache_free(ptrs[j]);
-        }
-    }
-    clock_t end = clock_uptime();
-    uint64_t cacheTime = end - start;
-
-    start = clock_uptime();
-    for (int i = 0; i < iterations; i++)
-    {
-        for (int j = 0; j < subIterations; j++)
-        {
-            ptrs[j] = malloc(100);
-            TEST_ASSERT(ptrs[j] != NULL);
-        }
-        for (int j = 0; j < subIterations; j++)
-        {
-            free(ptrs[j]);
-        }
-    }
-    end = clock_uptime();
-    uint64_t mallocTime = end - start;
-
-    free(ptrs);
-
-    LOG_INFO("cache: %llums, malloc: %llums\n", cacheTime / (CLOCKS_PER_MS),
-        mallocTime / (CLOCKS_PER_MS));
 
     return 0;
 }

@@ -5,9 +5,9 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/space.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
-#include <kernel/proc/process.h>
 #include <kernel/sync/lock.h>
 
 #include <assert.h>

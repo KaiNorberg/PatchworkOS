@@ -3,10 +3,10 @@
 
 #include <alloca.h>
 #include <assert.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <errno.h>
 
 #if defined(__cplusplus)
 extern "C"

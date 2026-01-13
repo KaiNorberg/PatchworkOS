@@ -88,9 +88,9 @@ typedef struct space
      * Lazily initialized to a size equal to the largest used callback ID.
      */
     space_callback_t* callbacks;
-    uint64_t callbacksLength; ///< Length of the `callbacks` array.
+    uint64_t callbacksLength;                        ///< Length of the `callbacks` array.
     BITMAP_DEFINE(callbackBitmap, PML_MAX_CALLBACK); ///< Bitmap to track available callback IDs.
-    BITMAP_DEFINE(cpus, CPU_MAX); ///< Bitmap to track which CPUs are using this space.
+    BITMAP_DEFINE(cpus, CPU_MAX);                    ///< Bitmap to track which CPUs are using this space.
     atomic_uint16_t shootdownAcks;
     lock_t lock;
 } space_t;

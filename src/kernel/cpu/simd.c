@@ -1,6 +1,6 @@
 #include <kernel/cpu/cpu.h>
-#include <kernel/cpu/simd.h>
 #include <kernel/cpu/percpu.h>
+#include <kernel/cpu/simd.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/pmm.h>
 

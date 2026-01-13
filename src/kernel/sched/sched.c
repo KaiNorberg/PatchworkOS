@@ -38,7 +38,7 @@ static inline int64_t sched_fixed_cmp(int128_t a, int128_t b)
     {
         return 1;
     }
-    
+
     if (diff < -(SCHED_EPSILON + 1))
     {
         return -1;
@@ -56,7 +56,7 @@ static int64_t sched_node_compare(const rbnode_t* aNode, const rbnode_t* bNode)
     {
         return -1;
     }
-    
+
     if (a->vdeadline > b->vdeadline)
     {
         return 1;
@@ -66,7 +66,7 @@ static int64_t sched_node_compare(const rbnode_t* aNode, const rbnode_t* bNode)
     {
         return -1;
     }
-    
+
     if (a > b)
     {
         return 1;

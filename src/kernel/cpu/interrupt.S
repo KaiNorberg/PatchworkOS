@@ -99,6 +99,7 @@ interrupt_fake:
     movq %rax, %rdi
     subq $INTERRUPT_FRAME_SIZE, %rdi
     movq %rdi, %r14
+    movq %r15, %rsi
     movq $INTERRUPT_FRAME_SIZE, %rdx
     call memcpy
 

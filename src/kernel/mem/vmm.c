@@ -1,8 +1,8 @@
 #include <kernel/mem/vmm.h>
 
 #include <kernel/cpu/cpu.h>
-#include <kernel/cpu/regs.h>
 #include <kernel/cpu/ipi.h>
+#include <kernel/cpu/regs.h>
 #include <kernel/cpu/syscall.h>
 #include <kernel/init/boot_info.h>
 #include <kernel/log/log.h>
@@ -11,10 +11,10 @@
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/space.h>
 #include <kernel/proc/process.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
-#include <kernel/sched/clock.h>
 
 #include <boot/boot_info.h>
 
@@ -460,7 +460,6 @@ void vmm_load(space_t* space)
     page_table_load(&space->pageTable);
 }
 
-
 static void vmm_tlb_shootdown_ipi(ipi_func_data_t* data)
 {
     UNUSED(data);
@@ -499,10 +498,10 @@ void vmm_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount)
     {
         return;
     }
-    
+
     uint16_t expectedAcks = 0;
     atomic_store(&space->shootdownAcks, 0);
-    
+
     cpu_id_t id;
     BITMAP_FOR_EACH_SET(&id, &space->cpus)
     {

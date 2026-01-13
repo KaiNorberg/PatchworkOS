@@ -1,6 +1,8 @@
 #ifndef _SYS_MATH_H
 #define _SYS_MATH_H 1
 
+#include <stdint.h>
+
 /**
  * @brief Common math macros.
  * @ingroup libstd
@@ -21,6 +23,10 @@
 #define ROUND_DOWN(number, multiple) (((uint64_t)(number) / (uint64_t)(multiple)) * (uint64_t)(multiple))
 
 #define LERP_INT(start, end, t, minT, maxT) (((start) * ((maxT) - (t))) + ((end) * ((t) - (minT)))) / ((maxT) - (minT))
+
+#define IS_POW2(x) (((x) & ((x) - 1)) == 0)
+
+uint64_t next_pow2(uint64_t n);
 
 #endif
 

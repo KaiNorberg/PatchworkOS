@@ -33,7 +33,6 @@ static inline void cli_push(void)
     SELF->cli++;
 }
 
-
 /**
  * @brief Decrements the CLI depth, re-enabling interrupts if depth reaches zero and interrupts were enabled prior to
  * the first `cli_push()` call.

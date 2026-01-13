@@ -1,8 +1,8 @@
 #include <kernel/fs/file_table.h>
 
 #include <kernel/fs/path.h>
-#include <kernel/sched/thread.h>
 #include <kernel/proc/process.h>
+#include <kernel/sched/thread.h>
 
 #include <sys/bitmap.h>
 

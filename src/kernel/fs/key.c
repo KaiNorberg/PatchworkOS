@@ -4,13 +4,13 @@
 #include <kernel/drivers/rand.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
-#include <kernel/proc/process.h>
 
 #include <errno.h>
 #include <stdlib.h>
