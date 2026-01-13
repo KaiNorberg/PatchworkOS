@@ -10,6 +10,8 @@ CFLAGS := \
 	-ffreestanding \
 	-fno-builtin \
 	-fno-pie \
+	-fno-stack-protector \
+	-fcf-protection=none \
 	-mno-red-zone \
 	-nostdinc \
 	-Wall \
