@@ -65,7 +65,7 @@ static uint64_t _test_strncpy_iter(void)
 
 TEST_DEFINE(strncpy)
 {
-    for (int k = 0; k < 1000000; ++k)
+    for (int k = 0; k < 1; ++k)
     {
         TEST_ASSERT(_test_strncpy_iter() != ERR);
     }

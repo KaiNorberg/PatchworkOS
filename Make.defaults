@@ -8,6 +8,11 @@ OBJCOPY = objcopy
 
 CFLAGS := \
 	-std=gnu11 \
+	-ffreestanding \
+	-fno-builtin \
+	-fno-pie \
+	-mno-red-zone \
+	-nostdinc \
 	-Wall \
 	-Wextra \
 	-Werror \
@@ -20,14 +25,8 @@ CFLAGS := \
 	-Wno-deprecated-non-prototype \
 	-Wno-unused-but-set-parameter \
 	-Wno-unused-command-line-argument \
-	-nostdlib \
-	-nostdinc \
-	-ffreestanding \
-	-fno-builtin \
 	-isystem include \
 	-isystem include/libstd \
-	-Lbin/libstd \
-	-Lbin/libpatchwork \
 	-Iinclude \
 	-Ilib \
 	-I$(SRCDIR) \
@@ -40,7 +39,6 @@ CFLAGS_DISABLE_SIMD := \
 	-mno-ssse3 -mno-sse4
 
 ASFLAGS := \
-	-nostdlib \
 	-nostdinc \
 	-ffreestanding \
 	-fno-builtin \
@@ -52,7 +50,8 @@ ASFLAGS := \
 LDFLAGS := \
 	-nostdlib \
 	-Lbin/libstd \
-	-Lbin/libpatchwork
+	-Lbin/libpatchwork \
+	-no-pie
 
 ifeq ($(TESTING),1)
 	CFLAGS += -D_TESTING_

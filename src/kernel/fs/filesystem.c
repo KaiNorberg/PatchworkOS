@@ -48,14 +48,14 @@ static size_t superblock_read(file_t* file, void* buffer, size_t count, size_t* 
     assert(sb != NULL);
 
     char info[MAX_PATH];
-    int len = snprintf(info, sizeof(info), "id: %llu\nblock_size: %llu\nmax_file_size: %llu\n", sb->id, sb->blockSize,
+    int length = snprintf(info, sizeof(info), "id: %llu\nblock_size: %llu\nmax_file_size: %llu\n", sb->id, sb->blockSize,
         sb->maxFileSize);
-    if (len < 0)
+    if (length < 0)
     {
         return 0;
     }
 
-    return BUFFER_READ(buffer, count, offset, info, len);
+    return BUFFER_READ(buffer, count, offset, info, (size_t)length);
 }
 
 static void superblock_cleanup(inode_t* inode)
