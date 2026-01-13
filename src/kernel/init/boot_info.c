@@ -86,8 +86,7 @@ void boot_info_to_higher_half(void)
 
 void boot_info_free(void)
 {
-    // Removed for testing.
-    /*// The memory map will be stored in the data we are freeing so we copy it first.
+    // The memory map will be stored in the data we are freeing so we copy it first.
     boot_memory_map_t volatile mapCopy = bootInfo->memory.map;
     size_t descriptorsSize = bootInfo->memory.map.descSize * bootInfo->memory.map.length;
     EFI_MEMORY_DESCRIPTOR* volatile descriptorsCopy = malloc(descriptorsSize);
@@ -116,5 +115,5 @@ void boot_info_free(void)
 
     free(descriptorsCopy);
 
-    bootInfo = NULL;*/
+    bootInfo = NULL;
 }

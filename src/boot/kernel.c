@@ -77,7 +77,7 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle)
 
     Print(L"allocating %llu pages... ", kernelPageAmount);
     status =
-        uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, kernelPageAmount, &physStart);
+        uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiReservedMemoryType, kernelPageAmount, &physStart);
     if (EFI_ERROR(status))
     {
         Print(L"failed to allocate pages for kernel (0x%x)!\n", status);
