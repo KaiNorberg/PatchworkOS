@@ -123,7 +123,6 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
 
     memset(pathname->string, 0, MAX_PATH);
     pathname->mode = MODE_NONE;
-    pathname->isValid = false;
 
     if (string == NULL)
     {
@@ -169,7 +168,6 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
 
     if (string[index] != ':')
     {
-        pathname->isValid = true;
         return 0;
     }
 
@@ -216,7 +214,6 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
         pathname->mode |= mode;
     }
 
-    pathname->isValid = true;
     return 0;
 }
 
@@ -595,7 +592,7 @@ uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_t* ns)
 
 uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
 {
-    if (path == NULL || !PATHNAME_IS_VALID(pathname) || ns == NULL)
+    if (path == NULL || pathname == NULL || ns == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -635,7 +632,7 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
 
 uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_t* ns)
 {
-    if (path == NULL || !PATHNAME_IS_VALID(pathname) || outLastName == NULL || ns == NULL)
+    if (path == NULL || pathname == NULL || outLastName == NULL || ns == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -693,7 +690,7 @@ uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLas
 uint64_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_t* outChild, const pathname_t* pathname,
     namespace_t* ns)
 {
-    if (from == NULL || outParent == NULL || outChild == NULL || !PATHNAME_IS_VALID(pathname) || ns == NULL)
+    if (from == NULL || outParent == NULL || outChild == NULL || pathname == NULL || ns == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -781,8 +778,6 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
     memmove(buffer, ptr, totalLen + 1);
 
     pathname->mode = MODE_NONE;
-    pathname->isValid = true;
-
     return 0;
 }
 
@@ -839,3 +834,49 @@ uint64_t mode_check(mode_t* mode, mode_t maxPerms)
 
     return 0;
 }
+
+#ifdef _TESTING_
+
+#include <kernel/utils/test.h>
+
+TEST_DEFINE(path)
+{
+    pathname_t pathname;
+
+    TEST_ASSERT(pathname_init(&pathname, "/usr/bin/init") == 0);
+    TEST_ASSERT(strcmp(pathname.string, "/usr/bin/init") == 0);
+    TEST_ASSERT(pathname.mode == MODE_NONE);
+
+    TEST_ASSERT(pathname_init(&pathname, "/dev/sda:read:write") == 0);
+    TEST_ASSERT(strcmp(pathname.string, "/dev/sda") == 0);
+    TEST_ASSERT((pathname.mode & (MODE_READ | MODE_WRITE)) == (MODE_READ | MODE_WRITE));
+
+    TEST_ASSERT(pathname_init(&pathname, "/tmp/file:c:w") == 0);
+    TEST_ASSERT(strcmp(pathname.string, "/tmp/file") == 0);
+    TEST_ASSERT((pathname.mode & (MODE_CREATE | MODE_WRITE)) == (MODE_CREATE | MODE_WRITE));
+
+    TEST_ASSERT(pathname_init(&pathname, "/var/log:append:c") == 0);
+    TEST_ASSERT(strcmp(pathname.string, "/var/log") == 0);
+    TEST_ASSERT((pathname.mode & (MODE_APPEND | MODE_CREATE)) == (MODE_APPEND | MODE_CREATE));
+
+    TEST_ASSERT(pathname_init(&pathname, "/file:rw") == 0);
+    TEST_ASSERT(strcmp(pathname.string, "/file") == 0);
+    TEST_ASSERT((pathname.mode & (MODE_READ | MODE_WRITE)) == (MODE_READ | MODE_WRITE));
+
+    TEST_ASSERT(pathname_init(&pathname, "/home/user/fi?le") == ERR);
+    TEST_ASSERT(errno == EINVAL);
+
+    TEST_ASSERT(pathname_init(&pathname, "/home:invalid") == ERR);
+    TEST_ASSERT(errno == EINVAL);
+
+    TEST_ASSERT(pathname_init(&pathname, "") == 0);
+    TEST_ASSERT(strcmp(pathname.string, "") == 0);
+
+    TEST_ASSERT(pathname_init(&pathname, ":read") == 0);
+    TEST_ASSERT(strcmp(pathname.string, "") == 0);
+    TEST_ASSERT(pathname.mode == MODE_READ);
+
+    return 0;
+}
+
+#endif

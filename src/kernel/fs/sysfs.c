@@ -95,7 +95,13 @@ void sysfs_init(void)
     path_t target = cwd_get(&process->cwd, ns);
     PATH_DEFER(&target);
 
-    if (path_walk(&target, PATHNAME("/sys"), ns) == ERR)
+    pathname_t pathname;
+    if (pathname_init(&pathname, "/sys") == ERR)
+    {
+        panic(NULL, "Failed to init pathname for /sys");
+    }
+
+    if (path_walk(&target, &pathname, ns) == ERR)
     {
         panic(NULL, "Failed to walk to /sys");
     }

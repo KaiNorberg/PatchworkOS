@@ -371,7 +371,13 @@ typedef struct
 static uint64_t module_file_read(module_file_t* outFile, const path_t* dirPath, process_t* process,
     const char* filename)
 {
-    file_t* file = vfs_openat(dirPath, PATHNAME(filename), process);
+    pathname_t pathname;
+    if (pathname_init(&pathname, filename) == ERR)
+    {
+        return ERR;
+    }
+
+    file_t* file = vfs_openat(dirPath, &pathname, process);
     if (file == NULL)
     {
         return ERR;
@@ -589,7 +595,13 @@ static uint64_t module_cache_build(void)
     process_t* process = process_current();
     assert(process != NULL);
 
-    file_t* dir = vfs_open(PATHNAME(MODULE_DIR), process);
+    pathname_t moduleDir;
+    if (pathname_init(&moduleDir, MODULE_DIR) == ERR)
+    {
+        return ERR;
+    }
+
+    file_t* dir = vfs_open(&moduleDir, process);
     if (dir == NULL)
     {
         return ERR;
@@ -1075,7 +1087,13 @@ uint64_t module_device_attach(const char* type, const char* name, module_load_fl
         return 0;
     }
 
-    file_t* dir = vfs_open(PATHNAME(MODULE_DIR), process_current());
+    pathname_t moduleDir;
+    if (pathname_init(&moduleDir, MODULE_DIR) == ERR)
+    {
+        return ERR;
+    }
+
+    file_t* dir = vfs_open(&moduleDir, process_current());
     if (dir == NULL)
     {
         return ERR;

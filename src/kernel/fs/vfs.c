@@ -155,7 +155,7 @@ static uint64_t vfs_open_lookup(path_t* path, const pathname_t* pathname, namesp
 
 file_t* vfs_open(const pathname_t* pathname, process_t* process)
 {
-    if (!PATHNAME_IS_VALID(pathname) || process == NULL)
+    if (pathname == NULL || process == NULL)
     {
         errno = EINVAL;
         return NULL;
@@ -166,7 +166,7 @@ file_t* vfs_open(const pathname_t* pathname, process_t* process)
 
 uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* process)
 {
-    if (!PATHNAME_IS_VALID(pathname) || files == NULL || process == NULL)
+    if (pathname == NULL || files == NULL || process == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -223,7 +223,7 @@ uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* proc
 
 file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* process)
 {
-    if (!PATHNAME_IS_VALID(pathname) || process == NULL)
+    if (pathname == NULL || process == NULL)
     {
         errno = EINVAL;
         return NULL;
@@ -948,7 +948,7 @@ size_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count)
 
 uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process)
 {
-    if (!PATHNAME_IS_VALID(pathname) || buffer == NULL || process == NULL)
+    if (pathname == NULL || buffer == NULL || process == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -1013,7 +1013,7 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
 
 uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, process_t* process)
 {
-    if (!PATHNAME_IS_VALID(oldPathname) || !PATHNAME_IS_VALID(newPathname) || process == NULL)
+    if (oldPathname == NULL || newPathname == NULL || process == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -1134,7 +1134,7 @@ size_t vfs_readlink(inode_t* symlink, char* buffer, size_t count)
 
 uint64_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathname, process_t* process)
 {
-    if (!PATHNAME_IS_VALID(oldPathname) || !PATHNAME_IS_VALID(newPathname) || process == NULL)
+    if (oldPathname == NULL || newPathname == NULL || process == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -1196,7 +1196,7 @@ uint64_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathnam
 
 uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
 {
-    if (!PATHNAME_IS_VALID(pathname) || process == NULL)
+    if (pathname == NULL || process == NULL)
     {
         errno = EINVAL;
         return ERR;

@@ -47,7 +47,13 @@ void loader_exec(void)
 
     uintptr_t* addrs = NULL;
 
-    file = vfs_open(PATHNAME(process->argv[0]), process);
+    pathname_t pathname;
+    if (pathname_init(&pathname, process->argv[0]) == ERR)
+    {
+        goto cleanup;
+    }
+
+    file = vfs_open(&pathname, process);
     if (file == NULL)
     {
         goto cleanup;
