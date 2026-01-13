@@ -96,8 +96,8 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 
 ```bash
 # Install dependencies
-sudo dnf install clang make mtools qemu-system-x86 # For Fedora
-sudo apt install clang build-essential mtools qemu-system-x86 # For Debian/Ubuntu
+sudo dnf install clang llvm make mtools qemu-system-x86 # For Fedora
+sudo apt install clang llvm build-essential mtools qemu-system-x86 # For Debian/Ubuntu
 
 # Clone this repository, you can also use the green Code button at the top of the Github.
 git clone https://github.com/KaiNorberg/PatchworkOS

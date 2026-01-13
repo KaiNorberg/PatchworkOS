@@ -19,7 +19,7 @@ jobs:
     - name: Install build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang build-essential qemu-system-x86 mtools iasl
+        sudo apt-get install -y clang llvm build-essential qemu-system-x86 mtools iasl
 
     - name: Setup PatchworkOS
       run: make setup DEBUG=1 TESTING=1 QEMU_EXIT_ON_PANIC=1
