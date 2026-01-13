@@ -15,6 +15,9 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
+extern char _kernelStart;
+extern char _kernelEnd;
+
 static const char* efiMemTypeToString[] = {
     "reserved",
     "loader code",

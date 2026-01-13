@@ -23,6 +23,10 @@ CFLAGS = \
 	-Isrc/libstd \
 	-DEFI_FUNCTION_WRAPPER \
 
+LDFLAGS = 
+
+ASFLAGS =
+
 all: $(TARGET)
 
 .PHONY: all

@@ -66,10 +66,8 @@ endif
 ifeq ($(DEBUG),1)
 	CFLAGS += -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline
 	LDFLAGS += -g
-	DEBUG_LDFLAGS = -g
 else
 	CFLAGS += -O2 -DNDEBUG
-	DEBUG_LDFLAGS =
 endif
 
 ifeq ($(NOSTDLIB),1)
