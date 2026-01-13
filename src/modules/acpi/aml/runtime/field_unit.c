@@ -13,6 +13,7 @@
 #include <kernel/mem/vmm.h>
 
 #include <errno.h>
+#include <stdint.h>
 
 typedef struct aml_region_handler
 {
@@ -517,7 +518,7 @@ static uint64_t aml_field_unit_access(aml_state_t* state, aml_field_unit_t* fiel
     {
         aml_bit_size_t inAccessOffset = (fieldUnit->bitOffset + currentPos) & (accessSize - 1);
         aml_bit_size_t bitsToAccess = MIN(fieldUnit->bitSize - currentPos, accessSize - inAccessOffset);
-        uint64_t mask = (bitsToAccess >= 64) ? UINT64_MAX : ((UINT64_C(1) << bitsToAccess) - 1);
+        uint64_t mask = (bitsToAccess >= 64) ? UINT64_MAX : ((1ULL << bitsToAccess) - 1);
 
         switch (direction)
         {
@@ -555,7 +556,7 @@ static uint64_t aml_field_unit_access(aml_state_t* state, aml_field_unit_t* fiel
             }
             break;
             case AML_UPDATE_RULE_WRITE_AS_ONES:
-                value = UINT64_C(-1);
+                value = UINT64_MAX;
                 break;
             case AML_UPDATE_RULE_WRITE_AS_ZEROS:
                 value = 0;
