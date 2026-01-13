@@ -1,8 +1,8 @@
 MKCWD = @mkdir -p $(@D)
 
-CC = gcc
-AS = gcc
-LD = gcc
+CC = clang
+AS = clang
+LD = clang
 AR = ar
 OBJCOPY = objcopy
 CFLAGS := \
@@ -54,7 +54,6 @@ LDFLAGS := \
 	-nostdlib \
 	-Lbin/libstd \
 	-Lbin/libpatchwork \
-	-no-pie \
 	-z noexecstack
 
 ifeq ($(TESTING),1)
