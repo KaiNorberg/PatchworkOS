@@ -8,7 +8,6 @@
 
 #ifndef NDEBUG
 #include <kernel/log/panic.h>
-#include <kernel/sched/timer.h>
 #endif
 
 typedef struct thread thread_t;
