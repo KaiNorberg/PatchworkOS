@@ -23,7 +23,7 @@ void* rsdp_get(EFI_SYSTEM_TABLE* systemTable)
     }
     else
     {
-        Print(L"found at %p!\n", rsdp);
+        Print(L"found at 0x%x!\n", rsdp);
     }
     return rsdp;
 }

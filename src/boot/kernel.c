@@ -84,7 +84,7 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle)
         goto cleanup;
     }
 
-    Print(L"loading segments to %p... ", physStart);
+    Print(L"loading segments to 0x%x... ", physStart);
     elf64_load_segments(&kernel->elf, (Elf64_Addr)physStart, minVaddr);
     kernel->physAddr = physStart;
 
