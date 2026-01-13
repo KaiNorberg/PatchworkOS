@@ -116,7 +116,7 @@ static inline void lock_acquire(lock_t* lock)
 #endif
 
     uint16_t ticket = atomic_fetch_add_explicit(&lock->nextTicket, 1, memory_order_relaxed);
-    while (atomic_load_explicit(&lock->nowServing, memory_order_acquire) != ticket)
+    while (atomic_load_explicit(&lock->nowServing, memory_order_relaxed) != ticket)
     {
         asm volatile("pause");
 
@@ -134,7 +134,7 @@ static inline void lock_acquire(lock_t* lock)
 #endif
     }
 
-    atomic_thread_fence(memory_order_seq_cst);
+    atomic_thread_fence(memory_order_acquire);
 }
 
 /**
@@ -154,7 +154,7 @@ static inline bool lock_try_acquire(lock_t* lock)
         return false;
     }
 
-    if (!atomic_compare_exchange_strong_explicit(&lock->nextTicket, &ticket, ticket + 1, memory_order_relaxed,
+    if (!atomic_compare_exchange_strong_explicit(&lock->nextTicket, &ticket, ticket + 1, memory_order_acquire,
             memory_order_relaxed))
     {
         cli_pop();
@@ -170,7 +170,6 @@ static inline bool lock_try_acquire(lock_t* lock)
     lock->calledFrom = (uintptr_t)__builtin_return_address(0);
 #endif
 
-    atomic_thread_fence(memory_order_seq_cst);
     return true;
 }
 
