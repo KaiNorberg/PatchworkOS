@@ -9,6 +9,7 @@ CFLAGS := \
 	-std=gnu11 \
 	-ffreestanding \
 	-fno-builtin \
+	-march=x86-64 \
 	-fno-pie \
 	-fno-stack-protector \
 	-fcf-protection=none \

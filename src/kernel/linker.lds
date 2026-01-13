@@ -42,21 +42,21 @@ SECTIONS
         _earlyInitStackEnd = .;
     } :data
 
-    ._percpu : 
+    ._percpu : ALIGN(4K)
     {
         _percpuStart = .;
         KEEP(*(._percpu))
         _percpuEnd = .;
     } :data
 
-    ._tests : 
+    ._tests : ALIGN(4K)
     {
         _testsStart = .;
         KEEP(*(._tests))
         _testsEnd = .;
     } :data
 
-    ._syscall_table :
+    ._syscall_table : ALIGN(4K)
     {
         _syscallTableStart = .;
         KEEP(*(._syscall_table))

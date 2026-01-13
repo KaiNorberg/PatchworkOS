@@ -30,21 +30,21 @@ SECTIONS
         *(.bss)
     } :data
 
-    ._percpu : 
+    ._percpu : ALIGN(4K)
     {
         _percpuStart = .;
         KEEP(*(._percpu))
         _percpuEnd = .;
     } :data
 
-    ._tests : 
+    ._tests : ALIGN(4K)
     {
         _testsStart = .;
         KEEP(*(._tests))
         _testsEnd = .;
     } :data
     
-    ._module_info : 
+    ._module_info : ALIGN(4K)
     {
         KEEP(*(._module_info))
     } :data
