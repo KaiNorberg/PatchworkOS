@@ -24,7 +24,7 @@
 
 <img src="meta/screenshots/desktop.png" alt="Desktop Screenshot" />
 
-**PatchworkOS** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy often leaning on stringly typed interfaces. Built from scratch in C and assembly.
+**PatchworkOS** is a modular non-POSIX operating system for the x86_64 architecture that rigorously follows an "everything is a file" philosophy. Built from scratch in C and assembly.
 
 While primarily a project made for fun, the goal is still to make a "real" operating system, one that runs on real hardware and has the performance one would expect from a modern operating system without jumping ahead to user space features or drivers, a floppy disk driver with a round-robin scheduler is not enough.
 

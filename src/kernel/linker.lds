@@ -35,6 +35,13 @@ SECTIONS
         *(.bss)
     } :data
 
+    ._early_init_stack : ALIGN(4K)
+    {
+        _earlyInitStackStart = .; 
+        . += 4K;
+        _earlyInitStackEnd = .;
+    } :data
+
     ._percpu : 
     {
         _percpuStart = .;

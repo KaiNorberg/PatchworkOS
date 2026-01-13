@@ -84,6 +84,7 @@ void init_early(void)
     bootThread->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
 
     sched_start(bootThread);
+    panic(NULL, "sched_start returned unexpectedly");
 }
 
 static void init_finalize(void)
