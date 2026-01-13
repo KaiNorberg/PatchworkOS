@@ -10,10 +10,11 @@ void* rsdp_get(EFI_SYSTEM_TABLE* systemTable)
     for (uint64_t i = 0; i < systemTable->NumberOfTableEntries; i++)
     {
         if (CompareGuid(&configTable[i].VendorGuid, &acpi2TableGuid) &&
-            CompareMem("RSD PTR ", configTable[i].VendorTable, 8) == 0)
+            CompareMem("RSD PTR ", configTable->VendorTable, 8) == 0)
         {
-            rsdp = configTable[i].VendorTable;
+            rsdp = configTable->VendorTable;
         }
+        configTable++;
     }
 
     if (rsdp == NULL)
