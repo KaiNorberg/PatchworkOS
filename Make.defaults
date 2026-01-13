@@ -1,9 +1,9 @@
 MKCWD = @mkdir -p $(@D)
 
-CC = clang
-AS = clang
-LD = clang
-AR = llvm-ar
+CC = gcc
+AS = gcc
+LD = gcc
+AR = ar
 OBJCOPY = objcopy
 CFLAGS := \
 	-std=gnu11 \
