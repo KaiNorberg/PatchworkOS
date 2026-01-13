@@ -54,7 +54,9 @@ LDFLAGS := \
 	-nostdlib \
 	-Lbin/libstd \
 	-Lbin/libpatchwork \
-	-z noexecstack
+	-z noexecstack \
+	-Wno-unused-command-line-argument \
+	-no-pie 
 
 ifeq ($(TESTING),1)
 	CFLAGS += -D_TESTING_

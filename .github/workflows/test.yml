@@ -36,7 +36,7 @@ jobs:
 
     - name: Run PatchworkOS with QEMU (test launch and graceful timeout)
       id: qemu_test
-      run: | # We use this cheap trick to check if qemu runs properly, the idea is that we start qemu, and let it run for one minute and it does not crash thats considered a success, if it crashes, well thats bad. If it doesent we shut it down and call it a success, a bit simple but gets the job done.
+      run: |
         setsid make run DEBUG=1 TESTING=1 QEMU_EXIT_ON_PANIC=1 &
         QEMU_PID=$!
         echo "QEMU process started with PID=$QEMU_PID"
