@@ -104,7 +104,9 @@ typedef struct
  * @param name Name of the bitmap.
  * @param bits Length of the bitmap in bits.
  */
-#define BITMAP_DEFINE_INIT(name, bits) bitmap_init(&(name), name##Buffer, bits);
+#define BITMAP_DEFINE_INIT(name, bits) \
+    bitmap_init(&(name), name##Buffer, bits); \
+    memset(name##Buffer, 0, BITMAP_BITS_TO_BYTES(bits))
 
 /**
  * @brief Initialize a bitmap.
@@ -114,6 +116,14 @@ typedef struct
  * @param length Length of the bitmap in bits.
  */
 void bitmap_init(bitmap_t* map, void* buffer, uint64_t length);
+
+/**
+ * @brief Check if the bitmap is empty (all bits clear).
+ *
+ * @param map The bitmap.
+ * @return true if the bitmap is empty, false otherwise.
+ */
+bool bitmap_is_empty(bitmap_t* map);
 
 /**
  * @brief Check if a bit is set in the bitmap.

@@ -19,7 +19,7 @@ typedef struct dentry dentry_t;
  * @defgroup kernel_fs_superblock Superblock
  * @ingroup kernel_fs
  *
- * A superblock represents a mounted filesystem. 
+ * A superblock represents a mounted filesystem.
  *
  * @{
  */
@@ -56,16 +56,6 @@ typedef struct superblock
 typedef struct superblock_ops
 {
     /**
-     * Called when the VFS needs to create a new inode, if not specified `heap_alloc()` is used.
-     * This is usefull as it lets filesystems allocate a structure larget than `inode_t` and use the additional
-     * space for private data in addition to the `private` pointer in `inode_t`.
-     */
-    inode_t* (*allocInode)(superblock_t* superblock);
-    /**
-     * Called when the VFS wants to free an inode, if not specified `free()` is used.
-     */
-    void (*freeInode)(superblock_t* superblock, inode_t* inode);
-    /**
      * Called when the filesystem is superblock is being freed to give the filesystem a chance to clean up any private
      * data.
      */
@@ -93,8 +83,7 @@ typedef struct superblock_ops
  * - `EINVAL`: Invalid parameters.
  * - `ENOMEM`: Out of memory.
  */
-superblock_t* superblock_new(filesystem_t* fs, const superblock_ops_t* ops,
-    const dentry_ops_t* dentryOps);
+superblock_t* superblock_new(filesystem_t* fs, const superblock_ops_t* ops, const dentry_ops_t* dentryOps);
 
 /**
  * @brief Increment the mount count of a superblock.

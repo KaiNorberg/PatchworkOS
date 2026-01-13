@@ -138,43 +138,10 @@ typedef struct pathname
 {
     char string[MAX_PATH];
     mode_t mode;
-    bool isValid;
 } pathname_t;
 
 /**
- * @brief Check if a pathname is valid.
- *
- * A valid pathname is not `NULL` and has its `isValid` flag set to true.
- *
- * This flag is set in `pathname_init()`.
- *
- * @param pathname The pathname to check.
- * @return true if the pathname is valid, false otherwise.
- */
-#define PATHNAME_IS_VALID(pathname) ((pathname) != NULL && (pathname)->isValid)
-
-/**
- * @brief Helper to create a pathname.
- *
- * This macro will create a pathname on the stack and initialize it with the given string.
- *
- * This is also the reason we have the `isValid` flag in the `pathname_t` structure, to be able to check if this macro
- * failed without having to return an error code, streamlining the code a bit.
- *
- * @param string The string to initialize the pathname with.
- * @return The initialized pathname.
- */
-#define PATHNAME(string) \
-    ({ \
-        pathname_t* pathname = alloca(sizeof(pathname_t)); \
-        pathname_init(pathname, string); \
-        pathname; \
-    })
-
-/**
  * @brief Initialize a pathname.
- *
- * If the string is invalid, it will error and set pathname->isValid to false.
  *
  * @param pathname The pathname to initialize.
  * @param string The string to initialize the pathname with.
@@ -217,7 +184,7 @@ uint64_t pathname_init(pathname_t* pathname, const char* string);
  * @param path The path to check.
  * @return true if the path is empty, false otherwise.
  */
-#define PATH_IS_EMPTY(path) ((path).mount == NULL && (path).dentry == NULL
+#define PATH_IS_EMPTY(path) ((path).mount == NULL && (path).dentry == NULL)
 
 /**
  * @brief Check if a path is valid.

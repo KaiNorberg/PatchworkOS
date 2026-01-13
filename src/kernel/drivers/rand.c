@@ -6,6 +6,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 #include <sys/cpuid.h>
 
 static atomic_uint64_t seed = ATOMIC_VAR_INIT(0x123456789ABCDEF0);
@@ -25,8 +26,10 @@ static uint64_t rand_gen_fallback(void* buffer, uint64_t size)
     return 0;
 }
 
-void rand_cpu_init(rand_cpu_ctx_t* ctx)
+PERCPU_DEFINE_CTOR(rand_cpu_t, pcpu_rand)
 {
+    rand_cpu_t* ctx = SELF_PTR(pcpu_rand);
+
     cpuid_feature_info_t info;
     cpuid_feature_info(&info);
 
@@ -43,14 +46,14 @@ void rand_cpu_init(rand_cpu_ctx_t* ctx)
     {
         if (rdrand_do(&test, 100) == ERR)
         {
-            LOG_WARN("cpu%d rdrand instruction failed, disabling\n", cpu_get_unsafe()->id);
+            LOG_WARN("cpu%d rdrand instruction failed, disabling\n", SELF->id);
             ctx->rdrandAvail = false;
             return;
         }
 
         if (prev != UINT64_MAX && prev == test)
         {
-            LOG_WARN("cpu%d rdrand producing same value repeatedly, disabling\n", cpu_get_unsafe()->id);
+            LOG_WARN("cpu%d rdrand producing same value repeatedly, disabling\n", SELF->id);
             ctx->rdrandAvail = false;
             return;
         }
@@ -60,11 +63,10 @@ void rand_cpu_init(rand_cpu_ctx_t* ctx)
 
 uint64_t rand_gen(void* buffer, uint64_t size)
 {
-    cpu_t* self = cpu_get();
+    CLI_SCOPE();
 
-    if (!self->rand.rdrandAvail)
+    if (!pcpu_rand->rdrandAvail)
     {
-        cpu_put();
         return rand_gen_fallback(buffer, size);
     }
 
@@ -75,7 +77,6 @@ uint64_t rand_gen(void* buffer, uint64_t size)
         uint32_t value;
         if (rdrand_do(&value, 100) == ERR)
         {
-            cpu_put();
             return ERR;
         }
         memcpy(ptr, &value, sizeof(uint32_t));
@@ -88,12 +89,10 @@ uint64_t rand_gen(void* buffer, uint64_t size)
         uint32_t value;
         if (rdrand_do(&value, 100) == ERR)
         {
-            cpu_put();
             return ERR;
         }
         memcpy(ptr, &value, remaining);
     }
 
-    cpu_put();
     return 0;
 }

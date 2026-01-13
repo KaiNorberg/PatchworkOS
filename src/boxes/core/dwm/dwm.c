@@ -62,7 +62,7 @@ static client_t* dwm_client_accept(void)
 
 static void dwm_client_disconnect(client_t* client)
 {
-    list_remove(&clients, &client->entry);
+    list_remove(&client->entry);
     client_free(client);
     clientAmount--;
     printf("dwm: disconnect client\n");
@@ -300,12 +300,12 @@ void dwm_detach(surface_t* surface)
     {
     case SURFACE_WINDOW:
     {
-        list_remove(&windows, &surface->dwmEntry);
+        list_remove(&surface->dwmEntry);
     }
     break;
     case SURFACE_PANEL:
     {
-        list_remove(&panels, &surface->dwmEntry);
+        list_remove(&surface->dwmEntry);
     }
     break;
     case SURFACE_CURSOR:
@@ -356,7 +356,7 @@ void dwm_focus_set(surface_t* surface)
         if (surface->type == SURFACE_WINDOW)
         {
             // Move to end of list
-            list_remove(&windows, &surface->dwmEntry);
+            list_remove(&surface->dwmEntry);
             list_push_back(&windows, &surface->dwmEntry);
         }
         focus = surface;

@@ -29,6 +29,7 @@ typedef struct
     display_t* disp;
     window_t* startMenu;
     list_t entries;
+    uint64_t entryCount;
 } taskbar_t;
 
 window_t* taskbar_new(display_t* disp);

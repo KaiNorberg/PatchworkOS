@@ -50,7 +50,7 @@ void aml_patch_up_remove_unresolved(aml_unresolved_t* unresolved)
     {
         if (entry->unresolved == unresolved)
         {
-            list_remove(&unresolvedObjects, &entry->entry);
+            list_remove(&entry->entry);
             free(entry);
             return;
         }
@@ -104,5 +104,5 @@ uint64_t aml_patch_up_resolve_all(void)
 
 uint64_t aml_patch_up_unresolved_count(void)
 {
-    return list_length(&unresolvedObjects);
+    return list_size(&unresolvedObjects);
 }

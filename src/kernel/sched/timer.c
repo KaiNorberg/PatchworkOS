@@ -20,28 +20,33 @@ static uint32_t sourceCount = 0;
 static const timer_source_t* bestSource = NULL;
 static rwlock_t sourcesLock = RWLOCK_CREATE();
 
-void timer_cpu_ctx_init(timer_cpu_ctx_t* ctx)
+typedef struct
 {
-    ctx->deadline = CLOCKS_NEVER;
+    clock_t volatile deadline;
+} timer_cpu_t;
+
+PERCPU_DEFINE_CTOR(static timer_cpu_t, pcpu_timer)
+{
+    pcpu_timer->deadline = CLOCKS_NEVER;
 }
 
-void timer_ack_eoi(interrupt_frame_t* frame, cpu_t* self)
+void timer_ack_eoi(interrupt_frame_t* frame)
 {
     UNUSED(frame);
 
     RWLOCK_READ_SCOPE(&sourcesLock);
 
-    self->timer.deadline = CLOCKS_NEVER;
+    pcpu_timer->deadline = CLOCKS_NEVER;
 
     if (bestSource != NULL)
     {
         if (bestSource->ack != NULL)
         {
-            bestSource->ack(self);
+            bestSource->ack();
         }
         if (bestSource->eoi != NULL)
         {
-            bestSource->eoi(self);
+            bestSource->eoi();
         }
     }
 }
@@ -142,12 +147,11 @@ void timer_set(clock_t uptime, clock_t deadline)
 
     deadline = MAX(deadline, uptime + CONFIG_MIN_TIMER_TIMEOUT);
 
-    cpu_t* cpu = cpu_get_unsafe();
-    if (cpu->timer.deadline <= deadline)
+    if (pcpu_timer->deadline <= deadline)
     {
         return;
     }
-    cpu->timer.deadline = deadline;
+    pcpu_timer->deadline = deadline;
 
     if (bestSource != NULL)
     {

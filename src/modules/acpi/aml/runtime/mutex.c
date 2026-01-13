@@ -6,6 +6,7 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <sys/list.h>
 
 typedef struct
 {
@@ -51,7 +52,7 @@ static inline uint64_t aml_mutex_stack_push(aml_mutex_id_t id, aml_sync_level_t 
 
 static inline uint64_t aml_mutex_stack_pop(aml_mutex_id_t id)
 {
-    if (list_length(&mutexStack) == 0)
+    if (list_is_empty(&mutexStack))
     {
         LOG_ERR("Attempted to release a mutex when none are held\n");
         errno = EDEADLK;
@@ -66,10 +67,10 @@ static inline uint64_t aml_mutex_stack_pop(aml_mutex_id_t id)
         return ERR;
     }
 
-    list_remove(&mutexStack, &topEntry->entry);
+    list_remove(&topEntry->entry);
     free(topEntry);
 
-    if (list_length(&mutexStack) == 0)
+    if (list_is_empty(&mutexStack))
     {
         currentSyncLevel = 0;
     }

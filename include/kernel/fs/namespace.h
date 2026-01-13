@@ -61,6 +61,7 @@ typedef struct namespace
     namespace_t* parent; ///< The parent namespace, can be `NULL`.
     list_t stacks;       ///< List of `mount_stack_t` in this namespace.
     map_t mountMap;      ///< Map used to go from source dentries to namespace mount stacks.
+    mount_stack_t root;  ///< The root mount stack.
     rwlock_t lock;
     // clang-format off
 } namespace_t;
@@ -100,13 +101,18 @@ uint64_t namespace_copy(namespace_t* dest, namespace_t* src);
 bool namespace_accessible(namespace_t* ns, namespace_t* other);
 
 /**
- * @brief If the given path is a mountpoint in the namespace, traverse to the mounted filesystem, else no-op.
+ * @brief If the given path is a mountpoint in the namespace, traverse to the mounted filesystem in an RCU read critical
+ * section, else no-op.
+ *
+ * @warning Will not increase the reference count of the returned path's mount and dentry, the caller must ensure that
+ * they are not freed while in use.
  *
  * @param ns The namespace containing the namespace to traverse.
- * @param path The mountpoint path to traverse, will be updated to the new path if traversed.
+ * @param mount The output mount after traversal, may be unchanged if not traversed.
+ * @param dentry The output dentry after traversal, may be unchanged if not traversed.
  * @return `true` if the path was modified, `false` otherwise.
  */
-bool namespace_traverse(namespace_t* ns, path_t* path);
+bool namespace_rcu_traverse(namespace_t* ns, mount_t** mount, dentry_t** dentry);
 
 /**
  * @brief Mount a filesystem in a namespace.
@@ -114,7 +120,8 @@ bool namespace_traverse(namespace_t* ns, path_t* path);
  * @param ns The namespace containing the namespace to mount to.
  * @param target The target path to mount to, can be `NULL` to mount to root.
  * @param fs The filesystem to mount.
- * @param options A string containing filesystem defined additional options, or `NULL`.
+ * @param options A string containing filesystem defined `key=value` pairs, with multiple options separated by commas,
+ * or `NULL`.
  * @param flags Mount flags.
  * @param mode The mode specifying permissions and mount behaviour.
  * @param private Private data for the filesystem's mount function.
@@ -126,7 +133,7 @@ bool namespace_traverse(namespace_t* ns, path_t* path);
  * - `EBUSY`: Attempt to mount to already existing root.
  * - `ENOMEM`: Out of memory.
  * - `ENOENT`: The root does not exist or the target is negative.
- * - Other errors as returned by the filesystem's `mount()` function or `mount_new()`.
+ * - Other errors as returned by the filesystem's `mount()` operation or `mount_new()`.
  */
 mount_t* namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, const char* options, mode_t mode,
     void* private);
@@ -162,5 +169,17 @@ void namespace_unmount(namespace_t* ns, mount_t* mount, mode_t mode);
  * @param out The output root path, may be a invalid `NULL` path if the namespace is empty.
  */
 void namespace_get_root(namespace_t* ns, path_t* out);
+
+/**
+ * @brief Get the root mount of a namespace in an RCU read critical section.
+ *
+ * @warning Will not increase the reference count of the returned mount, the caller must ensure that the mount is not
+ * freed while in use.
+ *
+ * @param ns The namespace containing the namespace to get the root mount of.
+ * @param mount The output root mount, may be `NULL` if the namespace is empty.
+ * @param dentry The output root dentry, may be `NULL` if the namespace is empty.
+ */
+void namespace_rcu_get_root(namespace_t* ns, mount_t** mount, dentry_t** dentry);
 
 /** @} */

@@ -229,41 +229,9 @@ typedef struct interrupt_frame
 #define INTERRUPT_FRAME_IN_USER_SPACE(frame) ((frame)->ss == (GDT_SS_RING3) && (frame)->cs == (GDT_CS_RING3))
 
 /**
- * @brief Per-CPU Interrupt Context.
- * @struct interrupt_ctx_t
- *
- * Used to manage nested CLI (Clear Interrupt Flag) calls and track interrupt depth.
- */
-typedef struct
-{
-    bool inInterrupt;
-    uint64_t oldRflags;
-    uint32_t disableDepth;
-} interrupt_ctx_t;
-
-/**
  * @brief Pointers to functions to handle each vector.
  */
 extern void* vectorTable[IDT_GATE_AMOUNT];
-
-/**
- * @brief Initializes the interrupt context.
- *
- * @param ctx The interrupt context to initialize.
- */
-void interrupt_ctx_init(interrupt_ctx_t* ctx);
-
-/**
- * @brief Disable interrupts and increment the disableDepth.
- *
- * Must have a matching `interrupt_enable()` call to re-enable interrupts when depth reaches zero.
- */
-void interrupt_disable(void);
-
-/**
- * @brief Decrement the CLI depth and enable interrupts if depth reaches zero and interrupts were previously enabled.
- */
-void interrupt_enable(void);
 
 /**
  * @brief Handles CPU interrupts.
@@ -282,11 +250,10 @@ void interrupt_handler(interrupt_frame_t* frame);
  * @warning Must only be called when interrupts are disabled.
  *
  * @param frame The interrupt frame representing the state at the time of the fake interrupt.
- * @param self The current CPU.
  * @return Will not return, instead will load and jump to the given interrupt frame, unless the thread gets scheduled or
  * the frame is modified.
  */
-_NORETURN extern void interrupt_fake(interrupt_frame_t* frame, cpu_t* self);
+_NORETURN extern void interrupt_fake(interrupt_frame_t* frame);
 
 #endif
 

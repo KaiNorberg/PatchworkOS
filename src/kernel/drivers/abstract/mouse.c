@@ -63,7 +63,7 @@ static void mouse_events_close(file_t* file)
     }
 
     lock_acquire(&mouse->lock);
-    list_remove(&mouse->clients, &client->entry);
+    list_remove(&client->entry);
     lock_release(&mouse->lock);
 
     free(client);

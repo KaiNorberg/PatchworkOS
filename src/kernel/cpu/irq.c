@@ -3,6 +3,7 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/interrupt.h>
+#include <kernel/cpu/percpu.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sync/rwlock.h>
@@ -124,10 +125,9 @@ void irq_init(void)
     }
 }
 
-void irq_dispatch(interrupt_frame_t* frame, cpu_t* self)
+void irq_dispatch(interrupt_frame_t* frame)
 {
     assert(frame != NULL);
-    assert(self != NULL);
 
     irq_t* irq = irq_get(frame->vector);
     if (irq == NULL)
@@ -154,7 +154,6 @@ void irq_dispatch(interrupt_frame_t* frame, cpu_t* self)
     {
         irq_func_data_t data = {
             .frame = frame,
-            .self = self,
             .virt = frame->vector,
             .private = handler->private,
         };
@@ -180,7 +179,7 @@ uint64_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu
 
     if (cpu == NULL)
     {
-        cpu = cpu_get_unsafe();
+        cpu = SELF->self;
     }
 
     irq_virt_t targetVirt = 0;
@@ -282,8 +281,7 @@ void irq_virt_free(irq_virt_t virt)
 
     while (!list_is_empty(&irq->handlers))
     {
-        irq_handler_t* handler = CONTAINER_OF(list_first(&irq->handlers), irq_handler_t, entry);
-        list_remove(&irq->handlers, &handler->entry);
+        irq_handler_t* handler = CONTAINER_OF(list_pop_front(&irq->handlers), irq_handler_t, entry);
         free(handler);
     }
 }
@@ -363,7 +361,7 @@ uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, v
 
     if (irq_domain_rebind_orphaned_irqs(domain) == ERR)
     {
-        list_remove(&domains, &domain->entry);
+        list_remove(&domain->entry);
         free(domain);
         return ERR;
     }
@@ -411,7 +409,7 @@ void irq_chip_unregister(irq_chip_t* chip, irq_phys_t start, irq_phys_t end)
             rwlock_write_release(&irq->lock);
         }
 
-        list_remove(&domains, &domain->entry);
+        list_remove(&domain->entry);
         free(domain);
     }
 }
@@ -419,7 +417,7 @@ void irq_chip_unregister(irq_chip_t* chip, irq_phys_t start, irq_phys_t end)
 uint64_t irq_chip_amount(void)
 {
     RWLOCK_READ_SCOPE(&domainsLock);
-    return list_length(&domains);
+    return list_size(&domains);
 }
 
 uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* private)
@@ -491,7 +489,7 @@ void irq_handler_unregister(irq_func_t func, irq_virt_t virt)
     {
         if (iter->func == func)
         {
-            list_remove(&irq->handlers, &iter->entry);
+            list_remove(&iter->entry);
             free(iter);
 
             if (list_is_empty(&irq->handlers))
@@ -502,5 +500,5 @@ void irq_handler_unregister(irq_func_t func, irq_virt_t virt)
         }
     }
 
-    LOG_WARN("attempted to unregister non-registered irq handler %p for irq 0x%x", func, virt);
+    LOG_WARN("attempted to unregister non-registered irq handler %p for irq 0x%x\n", func, virt);
 }

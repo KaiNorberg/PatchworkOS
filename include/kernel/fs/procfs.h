@@ -156,7 +156,8 @@
  *
  * ### mount <mountpoint> <fs> [options]
  *
- * Mounts a filesystem at the specified mountpoint in the process's namespace, optionally with filesystem defined options.
+ * Mounts a filesystem at the specified mountpoint in the process's namespace, optionally with filesystem defined
+ * options.
  *
  * The filesystem should be specified as a path to a directory in the `fs` sysfs directory.
  *

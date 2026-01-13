@@ -52,8 +52,7 @@ void init_early(void)
     idt_init();
     irq_init();
 
-    cpu_init_early(&bootstrapCpu);
-    assert(bootstrapCpu.id == CPU_ID_BOOTSTRAP);
+    cpu_init(&bootstrapCpu);
 
     log_init();
 
@@ -66,9 +65,9 @@ void init_early(void)
 
     _std_init();
 
-    module_init_fake_kernel_module();
+    INIT_CALL();
 
-    cpu_init(&bootstrapCpu);
+    module_init_fake_kernel_module();
 
     LOG_INFO("early init done, jumping to boot thread\n");
     thread_t* bootThread = thread_new(process_get_kernel());

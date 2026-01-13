@@ -2,6 +2,8 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/irq.h>
+#include <kernel/cpu/percpu.h>
+
 #include <stdint.h>
 
 /**
@@ -126,11 +128,9 @@ typedef struct
 } lapic_t;
 
 /**
- * @brief Initialize the local APIC subsystem.
- *
- * @return On success, `0`. On failure, `ERR`.
+ * @brief The per-CPU local APIC structure.
  */
-uint64_t lapic_global_init(void);
+extern lapic_t PERCPU _pcpu_lapic;
 
 /**
  * @brief Initialize the local APIC for a CPU.
@@ -154,14 +154,6 @@ uint32_t lapic_read(uint32_t reg);
  * @param value The value to write.
  */
 void lapic_write(uint32_t reg, uint32_t value);
-
-/**
- * @brief Get the lapic data for the specified CPU.
- *
- * @param cpuId The CPU ID.
- * @return Pointer to the lapic structure for the CPU.
- */
-lapic_t* lapic_get(uint32_t cpuId);
 
 /**
  * @brief Send an INIT IPI to the specified local APIC.

@@ -13,19 +13,7 @@
 
 static uintptr_t lapicBase = 0;
 
-static lapic_t lapics[CPU_MAX] = {[0 ... CPU_MAX - 1] = {.lapicId = -1, .ticksPerMs = 0}};
-
-uint32_t lapic_read(uint32_t reg)
-{
-    return READ_32(lapicBase + reg);
-}
-
-void lapic_write(uint32_t reg, uint32_t value)
-{
-    WRITE_32(lapicBase + reg, value);
-}
-
-void lapic_init(cpu_t* cpu)
+PERCPU_DEFINE_CTOR(lapic_t, _pcpu_lapic)
 {
     // Enable the local apic, enable spurious interrupts and mask everything for now.
 
@@ -43,27 +31,29 @@ void lapic_init(cpu_t* cpu)
 
     lapic_write(LAPIC_REG_TASK_PRIORITY, 0);
 
-    lapics[cpu->id].lapicId = (lapic_id_t)(lapic_read(LAPIC_REG_ID) >> LAPIC_REG_ID_OFFSET);
+    _pcpu_lapic->lapicId = (lapic_id_t)(lapic_read(LAPIC_REG_ID) >> LAPIC_REG_ID_OFFSET);
 }
 
-lapic_t* lapic_get(uint32_t cpuId)
+uint32_t lapic_read(uint32_t reg)
 {
-    assert(cpuId < CPU_MAX);
-    return &lapics[cpuId];
+    return READ_32(lapicBase + reg);
+}
+
+void lapic_write(uint32_t reg, uint32_t value)
+{
+    WRITE_32(lapicBase + reg, value);
 }
 
 static void lapic_interrupt(cpu_t* cpu, irq_virt_t virt)
 {
-    lapic_id_t lapicId = lapics[cpu->id].lapicId;
+    lapic_t* local = CPU_PTR(cpu->id, _pcpu_lapic);
 
-    lapic_write(LAPIC_REG_ICR1, lapicId << LAPIC_REG_ID_OFFSET);
+    lapic_write(LAPIC_REG_ICR1, local->lapicId << LAPIC_REG_ID_OFFSET);
     lapic_write(LAPIC_REG_ICR0, (uint32_t)virt | LAPIC_ICR_FIXED);
 }
 
-static void lapic_eoi(cpu_t* cpu)
+static void lapic_eoi(void)
 {
-    UNUSED(cpu);
-
     lapic_write(LAPIC_REG_EOI, 0);
 }
 
@@ -73,7 +63,21 @@ static ipi_chip_t lapicIpiChip = {
     .eoi = lapic_eoi,
 };
 
-uint64_t lapic_global_init(void)
+void lapic_send_init(lapic_id_t id)
+{
+    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ID_OFFSET);
+    lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_INIT);
+}
+
+void lapic_send_sipi(lapic_id_t id, void* entryPoint)
+{
+    assert((uintptr_t)entryPoint % PAGE_SIZE == 0);
+
+    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ID_OFFSET);
+    lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_STARTUP | ((uintptr_t)entryPoint / PAGE_SIZE));
+}
+
+CONSTRUCTOR(101) static uint64_t lapic_global_init(void)
 {
     madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, sizeof(madt_t), 0);
     if (madt == NULL)
@@ -113,18 +117,4 @@ uint64_t lapic_global_init(void)
     }
 
     return 0;
-}
-
-void lapic_send_init(lapic_id_t id)
-{
-    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ID_OFFSET);
-    lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_INIT);
-}
-
-void lapic_send_sipi(lapic_id_t id, void* entryPoint)
-{
-    assert((uintptr_t)entryPoint % PAGE_SIZE == 0);
-
-    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ID_OFFSET);
-    lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_STARTUP | ((uintptr_t)entryPoint / PAGE_SIZE));
 }

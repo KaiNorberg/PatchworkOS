@@ -162,12 +162,10 @@ static void log_print_header(log_level_t level)
 
     clock_t uptime = clock_uptime();
     uint64_t seconds = uptime / CLOCKS_PER_SEC;
-    uint64_t milliseconds = (uptime % CLOCKS_PER_SEC) / (CLOCKS_PER_SEC / 1000);
-
-    cpu_t* self = cpu_get_unsafe();
+    uint64_t milliseconds = (uptime % CLOCKS_PER_SEC) / (CLOCKS_PER_MS);
 
     int length = snprintf(workingBuffer, sizeof(workingBuffer), "[%4llu.%03llu-%02x-%s] ", seconds, milliseconds,
-        self->id, levelNames[level]);
+        SELF->id, levelNames[level]);
     log_write(workingBuffer, length);
 }
 

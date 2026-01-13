@@ -56,6 +56,15 @@ typedef struct filesystem
     list_t superblocks;   ///< Used internally.
     rwlock_t lock;        ///< Used internally.
     const char* name;
+    /**
+     * @brief Mount a filesystem.
+     *
+     * @param fs The filesystem to mount.
+     * @param details A string containing filesystem defined `key=value` pairs, with multiple options separated by
+     * commas, or `NULL`.
+     * @param private Private data for the filesystem's mount function.
+     * @return On success, the root dentry of the mounted filesystem. On failure, `NULL` and `errno` is set.
+     */
     dentry_t* (*mount)(filesystem_t* fs, const char* details, void* private);
 } filesystem_t;
 
@@ -104,5 +113,35 @@ filesystem_t* filesystem_get_by_name(const char* name);
  * - `EINVAL`: The path is not a directory in the `fs` sysfs directory.
  */
 filesystem_t* filesystem_get_by_path(const char* path, process_t* process);
+
+/**
+ * @brief Helper function for iterating over options passed to a filesystem mount operation.
+ *
+ * Each helper option is specified as `key=value` pairs, with multiple options separated by commas.
+ *
+ * @param iter Pointer to the current iterator position. Updated on each call.
+ * @param buffer Buffer to store the current option.
+ * @param size Size of the buffer.
+ * @param key Pointer to store the key of the current option.
+ * @param value Pointer to store the value of the current option.
+ * @return `1` if an option was found, `0` if no more options are available.
+ */
+bool options_next(const char** iter, char* buffer, size_t size, char** key, char** value);
+
+/**
+ * @brief Helper macro for iterating over options passed to a filesystem mount operation.
+ *
+ * Each helper option is specified as `key=value` pairs, with multiple options separated by commas.
+ *
+ * @param options The options string.
+ * @param key The key variable.
+ * @param value The value variable.
+ */
+#define OPTIONS_FOR_EACH(options, key, value) \
+    for (struct { \
+             const char* iter; \
+             char buf[256]; \
+         } _state = {(options), {0}}; \
+        options_next(&_state.iter, _state.buf, sizeof(_state.buf), &(key), &(value));)
 
 /** @} */

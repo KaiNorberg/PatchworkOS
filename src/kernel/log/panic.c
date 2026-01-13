@@ -11,6 +11,7 @@
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/symbol.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/version.h>
@@ -84,6 +85,11 @@ static void panic_registers(const interrupt_frame_t* frame)
     LOG_PANIC("rbp: 0x%016llx r08: 0x%016llx r09: 0x%016llx\n", frame->rbp, frame->r8, frame->r9);
     LOG_PANIC("r10: 0x%016llx r11: 0x%016llx r12: 0x%016llx\n", frame->r10, frame->r11, frame->r12);
     LOG_PANIC("r13: 0x%016llx r14: 0x%016llx r15: 0x%016llx\n", frame->r13, frame->r14, frame->r15);
+
+    uint64_t fsBase = msr_read(MSR_FS_BASE);
+    uint64_t gsBase = msr_read(MSR_GS_BASE);
+    uint64_t kGsBase = msr_read(MSR_KERNEL_GS_BASE);
+    LOG_PANIC("fsbase: 0x%016llx gsbase: 0x%016llx kgsbase: 0x%016llx\n", fsBase, gsBase, kGsBase);
 }
 
 static bool panic_is_valid_address(uintptr_t addr)
@@ -264,15 +270,33 @@ void panic_stack_trace(const interrupt_frame_t* frame)
     panic_unwind_stack((uintptr_t*)frame->rbp);
 }
 
+static void panic_print_code(const interrupt_frame_t* frame)
+{
+    if (!panic_is_valid_address(frame->rip))
+    {
+        return;
+    }
+
+    LOG_PANIC("code: ");
+    uint8_t* ip = (uint8_t*)frame->rip;
+    for (int i = 0; i < 16; i++)
+    {
+        if (panic_is_valid_address((uintptr_t)(ip + i)))
+        {
+            LOG_PANIC("%02x ", ip[i]);
+        }
+    }
+    LOG_PANIC("\n");
+}
+
 void panic(const interrupt_frame_t* frame, const char* format, ...)
 {
     asm volatile("cli");
 
-    cpu_t* self = cpu_get_unsafe();
     uint32_t expectedCpuId = PANIC_NO_CPU_ID;
-    if (!atomic_compare_exchange_strong(&panicCpuId, &expectedCpuId, self->id))
+    if (!atomic_compare_exchange_strong(&panicCpuId, &expectedCpuId, SELF->id))
     {
-        if (expectedCpuId == self->id)
+        if (expectedCpuId == SELF->id)
         {
             // Print basic message for double panic on same CPU but avoid using the full panic stuff again.
             const char* message = "!!! KERNEL DOUBLE PANIC ON SAME CPU !!!\n";
@@ -284,7 +308,9 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
         }
     }
 
-    thread_t* currentThread = self->sched.runThread;
+    thread_t* currentThread = thread_current();
+    process_t* currentProcess = process_current();
+
     errno_t err = currentThread != NULL ? currentThread->error : 0;
 
     va_list args;
@@ -297,22 +323,22 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
         LOG_PANIC("failed to halt other CPUs due to '%s'\n", strerror(errno));
     }
 
-    screen_show();
+    screen_panic();
 
     LOG_PANIC("!!! KERNEL PANIC (%s version %s) !!!\n", OS_NAME, OS_VERSION);
     LOG_PANIC("cause: %s\n", panicBuffer);
 
     if (currentThread == NULL)
     {
-        LOG_PANIC("thread: cpu=%d null\n", self->id);
+        LOG_PANIC("thread: cpu=%d null\n", SELF->id);
     }
-    else if (currentThread == self->sched.idleThread)
+    else if (currentThread == thread_idle())
     {
-        LOG_PANIC("thread: cpu=%d idle\n", self->id);
+        LOG_PANIC("thread: cpu=%d idle\n", SELF->id);
     }
     else
     {
-        LOG_PANIC("thread: cpu=%d pid=%d tid=%d\n", self->id, currentThread->process->id, currentThread->id);
+        LOG_PANIC("thread: cpu=%d pid=%d tid=%d\n", SELF->id, currentProcess->id, currentThread->id);
     }
 
     LOG_PANIC("last errno: %d (%s)\n", err, strerror(err));
@@ -419,6 +445,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
     if (frame != NULL)
     {
         panic_registers(frame);
+        panic_print_code(frame);
         panic_print_stack_dump(frame);
         panic_stack_trace(frame);
     }

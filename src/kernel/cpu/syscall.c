@@ -14,6 +14,17 @@
 #include <errno.h>
 #include <stdlib.h>
 
+PERCPU_DEFINE_CTOR(static void, pcpu_syscall)
+{
+    msr_write(MSR_EFER, msr_read(MSR_EFER) | EFER_SYSCALL_ENABLE);
+
+    msr_write(MSR_STAR, ((uint64_t)(GDT_USER_CODE - 16) | GDT_RING3) << 48 | ((uint64_t)(GDT_KERNEL_CODE)) << 32);
+    msr_write(MSR_LSTAR, (uint64_t)syscall_entry);
+
+    msr_write(MSR_SYSCALL_FLAG_MASK,
+        RFLAGS_TRAP | RFLAGS_DIRECTION | RFLAGS_INTERRUPT_ENABLE | RFLAGS_IOPL | RFLAGS_AUX_CARRY | RFLAGS_NESTED_TASK);
+}
+
 void syscall_ctx_init(syscall_ctx_t* ctx, const stack_pointer_t* syscallStack)
 {
     ctx->syscallRsp = syscallStack->top;
@@ -24,7 +35,8 @@ void syscall_ctx_init(syscall_ctx_t* ctx, const stack_pointer_t* syscallStack)
 
 void syscall_ctx_load(syscall_ctx_t* ctx)
 {
-    msr_write(MSR_KERNEL_GS_BASE, (uint64_t)ctx);
+    SELF->syscallRsp = ctx->syscallRsp;
+    SELF->userRsp = ctx->userRsp;
 }
 
 static int syscall_descriptor_cmp(const void* a, const void* b)
@@ -50,17 +62,6 @@ void syscall_table_init(void)
     }
 }
 
-void syscalls_cpu_init(void)
-{
-    msr_write(MSR_EFER, msr_read(MSR_EFER) | EFER_SYSCALL_ENABLE);
-
-    msr_write(MSR_STAR, ((uint64_t)(GDT_USER_CODE - 16) | GDT_RING3) << 48 | ((uint64_t)(GDT_KERNEL_CODE)) << 32);
-    msr_write(MSR_LSTAR, (uint64_t)syscall_entry);
-
-    msr_write(MSR_SYSCALL_FLAG_MASK,
-        RFLAGS_TRAP | RFLAGS_DIRECTION | RFLAGS_INTERRUPT_ENABLE | RFLAGS_IOPL | RFLAGS_AUX_CARRY | RFLAGS_NESTED_TASK);
-}
-
 const syscall_descriptor_t* syscall_get_descriptor(uint64_t number)
 {
     if (number > SYS_TOTAL_AMOUNT)
@@ -82,7 +83,7 @@ void syscall_handler(interrupt_frame_t* frame)
         return;
     }
 
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     perf_syscall_begin();
 
     thread->syscall.frame = frame;
@@ -101,8 +102,7 @@ void syscall_handler(interrupt_frame_t* frame)
     asm volatile("cli" ::: "memory");
     if (thread_is_note_pending(thread) || (thread->syscall.flags & SYSCALL_FORCE_FAKE_INTERRUPT))
     {
-        cpu_t* self = cpu_get_unsafe();
         frame->vector = VECTOR_FAKE;
-        interrupt_fake(frame, self);
+        interrupt_fake(frame);
     }
 }

@@ -38,7 +38,8 @@ static inline int64_t sched_fixed_cmp(int128_t a, int128_t b)
     {
         return 1;
     }
-    else if (diff < -(SCHED_EPSILON + 1))
+
+    if (diff < -(SCHED_EPSILON + 1))
     {
         return -1;
     }
@@ -55,7 +56,8 @@ static int64_t sched_node_compare(const rbnode_t* aNode, const rbnode_t* bNode)
     {
         return -1;
     }
-    else if (a->vdeadline > b->vdeadline)
+
+    if (a->vdeadline > b->vdeadline)
     {
         return 1;
     }
@@ -64,7 +66,8 @@ static int64_t sched_node_compare(const rbnode_t* aNode, const rbnode_t* bNode)
     {
         return -1;
     }
-    else if (a > b)
+
+    if (a > b)
     {
         return 1;
     }
@@ -92,6 +95,33 @@ static void sched_node_update(rbnode_t* node)
         }
     }
     client->vminEligible = minEligible;
+}
+
+PERCPU_DEFINE_CTOR(sched_t, _pcpu_sched)
+{
+    sched_t* sched = SELF_PTR(_pcpu_sched);
+
+    atomic_init(&sched->totalWeight, 0);
+    rbtree_init(&sched->runqueue, sched_node_compare, sched_node_update);
+    sched->vtime = SCHED_FIXED_ZERO;
+    sched->lastUpdate = 0;
+    lock_init(&sched->lock);
+    atomic_init(&sched->preemptCount, 0);
+
+    sched->idleThread = thread_new(process_get_kernel());
+    if (sched->idleThread == NULL)
+    {
+        panic(NULL, "Failed to create idle thread");
+    }
+
+    sched->idleThread->frame.rip = (uintptr_t)sched_idle_loop;
+    sched->idleThread->frame.rsp = sched->idleThread->kernelStack.top;
+    sched->idleThread->frame.cs = GDT_CS_RING0;
+    sched->idleThread->frame.ss = GDT_SS_RING0;
+    sched->idleThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+
+    sched->runThread = sched->idleThread;
+    atomic_store(&sched->runThread->state, THREAD_ACTIVE);
 }
 
 static bool sched_is_cache_hot(thread_t* thread, clock_t uptime)
@@ -201,10 +231,10 @@ static cpu_t* sched_get_least_loaded(void)
     cpu_t* leastLoaded = NULL;
     uint64_t leastLoad = UINT64_MAX;
 
-    for (uint32_t i = 0; i < _cpuAmount; i++)
+    cpu_t* cpu;
+    CPU_FOR_EACH(cpu)
     {
-        cpu_t* cpu = _cpus[i];
-        sched_t* sched = &cpu->sched;
+        sched_t* sched = CPU_PTR(cpu->id, _pcpu_sched);
 
         uint64_t load = atomic_load(&sched->totalWeight);
 
@@ -221,28 +251,24 @@ static cpu_t* sched_get_least_loaded(void)
 
 static thread_t* sched_steal(void)
 {
-    cpu_t* self = cpu_get_unsafe();
-    sched_t* sched = &self->sched;
-
-    cpu_t* mostLoaded = NULL;
+    sched_t* mostLoaded = NULL;
     uint64_t mostLoad = 0;
 
     cpu_t* cpu;
     CPU_FOR_EACH(cpu)
     {
-        if (cpu == self)
+        if (cpu->id == SELF->id)
         {
             continue;
         }
 
-        sched_t* sched = &cpu->sched;
-
+        sched_t* sched = CPU_PTR(cpu->id, _pcpu_sched);
         uint64_t load = atomic_load(&sched->totalWeight);
 
         if (load > mostLoad)
         {
             mostLoad = load;
-            mostLoaded = cpu;
+            mostLoaded = sched;
         }
     }
 
@@ -251,24 +277,24 @@ static thread_t* sched_steal(void)
         return NULL;
     }
 
-    lock_acquire(&mostLoaded->sched.lock);
+    lock_acquire(&mostLoaded->lock);
 
     clock_t uptime = clock_uptime();
 
     thread_t* thread;
-    RBTREE_FOR_EACH(thread, &mostLoaded->sched.runqueue, sched.node)
+    RBTREE_FOR_EACH(thread, &mostLoaded->runqueue, sched.node)
     {
-        if (thread == mostLoaded->sched.runThread || sched_is_cache_hot(thread, uptime))
+        if (thread == mostLoaded->runThread || sched_is_cache_hot(thread, uptime))
         {
             continue;
         }
 
-        sched_leave(&mostLoaded->sched, thread, uptime);
-        lock_release(&mostLoaded->sched.lock);
+        sched_leave(mostLoaded, thread, uptime);
+        lock_release(&mostLoaded->lock);
         return thread;
     }
 
-    lock_release(&mostLoaded->sched.lock);
+    lock_release(&mostLoaded->lock);
     return NULL;
 }
 
@@ -321,54 +347,27 @@ static thread_t* sched_first_eligible(sched_t* sched)
     return sched->idleThread;
 }
 
-void sched_init(sched_t* sched)
-{
-    assert(sched != NULL);
-
-    atomic_init(&sched->totalWeight, 0);
-    rbtree_init(&sched->runqueue, sched_node_compare, sched_node_update);
-    sched->vtime = SCHED_FIXED_ZERO;
-    sched->lastUpdate = 0;
-    lock_init(&sched->lock);
-
-    sched->idleThread = thread_new(process_get_kernel());
-    if (sched->idleThread == NULL)
-    {
-        panic(NULL, "Failed to create idle thread");
-    }
-
-    sched->idleThread->frame.rip = (uintptr_t)sched_idle_loop;
-    sched->idleThread->frame.rsp = sched->idleThread->kernelStack.top;
-    sched->idleThread->frame.cs = GDT_CS_RING0;
-    sched->idleThread->frame.ss = GDT_SS_RING0;
-    sched->idleThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
-
-    sched->runThread = sched->idleThread;
-    atomic_store(&sched->runThread->state, THREAD_ACTIVE);
-}
-
 void sched_start(thread_t* bootThread)
 {
     assert(bootThread != NULL);
 
-    cpu_t* self = cpu_get_unsafe();
-    sched_t* sched = &self->sched;
+    sched_t* self = SELF_PTR(_pcpu_sched);
 
-    lock_acquire(&sched->lock);
+    lock_acquire(&self->lock);
 
-    assert(self->sched.runThread == self->sched.idleThread);
-    assert(rbtree_is_empty(&sched->runqueue));
-    assert(atomic_load(&sched->totalWeight) == 0);
+    assert(self->runThread == self->idleThread);
+    assert(rbtree_is_empty(&self->runqueue));
+    assert(atomic_load(&self->totalWeight) == 0);
 
     bootThread->sched.weight = atomic_load(&bootThread->process->priority) + SCHED_WEIGHT_BASE;
-    sched_client_update_veligible(&bootThread->sched, sched->vtime);
+    sched_client_update_veligible(&bootThread->sched, self->vtime);
     atomic_store(&bootThread->state, THREAD_ACTIVE);
 
-    atomic_fetch_add(&sched->totalWeight, bootThread->sched.weight);
-    sched->runThread = bootThread;
-    rbtree_insert(&sched->runqueue, &bootThread->sched.node);
+    atomic_fetch_add(&self->totalWeight, bootThread->sched.weight);
+    self->runThread = bootThread;
+    rbtree_insert(&self->runqueue, &bootThread->sched.node);
 
-    lock_release(&sched->lock);
+    lock_release(&self->lock);
     thread_jump(bootThread);
 }
 
@@ -376,28 +375,31 @@ void sched_submit(thread_t* thread)
 {
     assert(thread != NULL);
 
-    cpu_t* self = cpu_get();
+    cli_push();
+    sched_t* self = SELF_PTR(_pcpu_sched);
 
     cpu_t* target;
     if (thread->sched.lastCpu != NULL && sched_is_cache_hot(thread, clock_uptime()))
     {
         target = thread->sched.lastCpu;
     }
-    else if (atomic_load(&self->sched.totalWeight) == 0)
+    else if (atomic_load(&self->totalWeight) == 0)
     {
-        target = self;
+        target = SELF->self;
     }
     else
     {
         target = sched_get_least_loaded();
     }
 
-    lock_acquire(&target->sched.lock);
-    sched_enter(&target->sched, thread, clock_uptime());
-    lock_release(&target->sched.lock);
+    sched_t* sched = CPU_PTR(target->id, _pcpu_sched);
 
-    bool shouldWake = self != target || !self->interrupt.inInterrupt;
-    cpu_put();
+    lock_acquire(&sched->lock);
+    sched_enter(sched, thread, clock_uptime());
+    lock_release(&sched->lock);
+
+    bool shouldWake = SELF->id != target->id || !SELF->inInterrupt;
+    cli_pop();
 
     if (shouldWake)
     {
@@ -518,17 +520,23 @@ static void sched_verify(sched_t* sched)
 }
 #endif
 
-void sched_do(interrupt_frame_t* frame, cpu_t* self)
+void sched_do(interrupt_frame_t* frame)
 {
     assert(frame != NULL);
-    assert(self != NULL);
 
-    sched_t* sched = &self->sched;
+    sched_t* sched = SELF_PTR(_pcpu_sched);
     lock_acquire(&sched->lock);
+
+    if (atomic_load(&sched->preemptCount) > 0 && atomic_load(&sched->runThread->state) == THREAD_ACTIVE)
+    {
+        lock_release(&sched->lock);
+        return;
+    }
 
     if (sched->runThread == sched->idleThread && rbtree_is_empty(&sched->runqueue)) // Nothing to do
     {
         lock_release(&sched->lock);
+        rcu_report_quiescent();
         return;
     }
 
@@ -559,7 +567,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
     case THREAD_PRE_BLOCK:
     case THREAD_UNBLOCKING:
         assert(sched->runThread != sched->idleThread);
-        if (wait_block_finalize(frame, self, sched->runThread, uptime))
+        if (wait_block_finalize(frame, sched->runThread, uptime))
         {
             sched_leave(sched, sched->runThread, uptime);
             break;
@@ -579,7 +587,7 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
 
     if (next != sched->runThread)
     {
-        sched->runThread->sched.lastCpu = self;
+        sched->runThread->sched.lastCpu = SELF->self;
         sched->runThread->sched.stop = uptime;
         thread_save(sched->runThread, frame);
         assert(atomic_load(&next->state) == THREAD_ACTIVE);
@@ -599,40 +607,18 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self)
         assert(threadToFree != sched->runThread);
         thread_free(threadToFree); // Cant hold any locks here
     }
+
+    rcu_report_quiescent();
 }
 
 bool sched_is_idle(cpu_t* cpu)
 {
     assert(cpu != NULL);
 
-    LOCK_SCOPE(&cpu->sched.lock);
-    return cpu->sched.runThread == cpu->sched.idleThread;
-}
+    sched_t* sched = CPU_PTR(cpu->id, _pcpu_sched);
 
-thread_t* sched_thread(void)
-{
-    cpu_t* self = cpu_get();
-    thread_t* thread = self->sched.runThread;
-    cpu_put();
-    return thread;
-}
-
-process_t* sched_process(void)
-{
-    thread_t* thread = sched_thread();
-    return thread->process;
-}
-
-thread_t* sched_thread_unsafe(void)
-{
-    cpu_t* self = cpu_get_unsafe();
-    return self->sched.runThread;
-}
-
-process_t* sched_process_unsafe(void)
-{
-    thread_t* thread = sched_thread_unsafe();
-    return thread->process;
+    LOCK_SCOPE(&sched->lock);
+    return sched->runThread == sched->idleThread;
 }
 
 uint64_t sched_nanosleep(clock_t timeout)
@@ -642,12 +628,28 @@ uint64_t sched_nanosleep(clock_t timeout)
 
 void sched_yield(void)
 {
-    sched_nanosleep(CLOCKS_PER_SEC / 1000);
+    sched_nanosleep(CLOCKS_PER_MS);
+}
+
+void sched_disable(void)
+{
+    CLI_SCOPE();
+
+    sched_t* sched = SELF_PTR(_pcpu_sched);
+    atomic_fetch_add(&sched->preemptCount, 1);
+}
+
+void sched_enable(void)
+{
+    CLI_SCOPE();
+
+    sched_t* sched = SELF_PTR(_pcpu_sched);
+    atomic_fetch_sub(&sched->preemptCount, 1);
 }
 
 void sched_process_exit(const char* status)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_kill(thread->process, status);
 
     atomic_store(&thread->state, THREAD_DYING);
@@ -657,7 +659,7 @@ void sched_process_exit(const char* status)
 
 void sched_thread_exit(void)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     atomic_store(&thread->state, THREAD_DYING);
     ipi_invoke();
     panic(NULL, "Return to sched_thread_exit");

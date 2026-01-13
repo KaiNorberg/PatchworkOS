@@ -3,7 +3,6 @@
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/fs/path.h>
 #include <kernel/mem/paging_types.h>
-#include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 
 #include <boot/boot_info.h>
@@ -89,13 +88,9 @@ typedef struct space
      * Lazily initialized to a size equal to the largest used callback ID.
      */
     space_callback_t* callbacks;
-    uint64_t callbacksLength; ///< Length of the `callbacks` array.
-    bitmap_t callbackBitmap;  ///< Bitmap to track available callback IDs.
-    /**
-     * Buffer for the callback bitmap, see `bitmap_t` for more info.
-     */
-    uint64_t bitmapBuffer[BITMAP_BITS_TO_QWORDS(PML_MAX_CALLBACK)];
-    list_t cpus; ///< List of CPUs using this address space.
+    uint64_t callbacksLength;                        ///< Length of the `callbacks` array.
+    BITMAP_DEFINE(callbackBitmap, PML_MAX_CALLBACK); ///< Bitmap to track available callback IDs.
+    BITMAP_DEFINE(cpus, CPU_MAX);                    ///< Bitmap to track which CPUs are using this space.
     atomic_uint16_t shootdownAcks;
     lock_t lock;
 } space_t;
@@ -124,17 +119,6 @@ uint64_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress
  * @param space The address space to deinitialize.
  */
 void space_deinit(space_t* space);
-
-/**
- * @brief Loads a virtual address space.
- *
- * Must be called with interrupts disabled.
- *
- * Will do nothing if the space is already loaded.
- *
- * @param space The address space to load.
- */
-void space_load(space_t* space);
 
 /**
  * @brief Pins pages within a region of the address space.
@@ -252,6 +236,7 @@ typedef struct
  * @param virtAddr The virtual address the mapping will apply to. Can be `NULL` to let the kernel choose an address.
  * @param physAddr The physical address to map from. Can be `NULL`.
  * @param length The length of the virtual memory region to modify, in bytes.
+ * @param alignment The required alignment for the virtual memory region in bytes.
  * @param flags The page table flags for the mapping.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
@@ -260,7 +245,7 @@ typedef struct
  * - `ENOMEM`: Not enough memory.
  */
 uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, size_t length,
-    pml_flags_t flags);
+    size_t alignment, pml_flags_t flags);
 
 /**
  * @brief Allocate a callback.
@@ -289,24 +274,6 @@ pml_callback_id_t space_alloc_callback(space_t* space, size_t pageAmount, space_
  * @param callbackId The callback ID to free.
  */
 void space_free_callback(space_t* space, pml_callback_id_t callbackId);
-
-/**
- * @brief Performs a TLB shootdown for a region of the address space, and wait for acknowledgements.
- *
- * Must be called between `space_mapping_start()` and `space_mapping_end()`.
- *
- * This will cause all CPUs that have the address space loaded to invalidate their TLB entries for the specified region.
- *
- * Will not affect the current CPU's TLB, that is handled by the `page_table_t` directly when modifying page table
- * entries.
- *
- * @todo Currently this does a busy wait for acknowledgements. Use a wait queue?
- *
- * @param space The target address space.
- * @param virtAddr The starting virtual address of the region.
- * @param pageAmount The number of pages in the region.
- */
-void space_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount);
 
 /**
  * @brief Performs cleanup after changes to the address space mappings.

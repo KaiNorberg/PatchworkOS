@@ -13,7 +13,7 @@ int* _errno_get(void)
     static int garbage;
 
 #ifdef _KERNEL_
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     if (thread == NULL)
     {
         return &garbage;

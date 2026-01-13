@@ -66,6 +66,11 @@ void screen_show(void);
 void screen_hide(void);
 
 /**
+ * @brief Show the screen without locking, for panic situations.
+ */
+void screen_panic(void);
+
+/**
  * @brief Get screen width in characters.
  */
 uint64_t screen_get_width(void);

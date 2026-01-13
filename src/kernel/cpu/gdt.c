@@ -3,6 +3,8 @@
 #include <kernel/cpu/tss.h>
 #include <kernel/mem/pmm.h>
 
+#include <sys/proc.h>
+
 static gdt_t gdt ALIGNED(PAGE_SIZE);
 
 static gdt_segment_t gdt_segment(uint16_t access, uint16_t flags)

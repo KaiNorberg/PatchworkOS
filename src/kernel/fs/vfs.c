@@ -19,6 +19,7 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/mutex.h>
+#include <kernel/sync/rcu.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/ref.h>
 
@@ -154,28 +155,18 @@ static uint64_t vfs_open_lookup(path_t* path, const pathname_t* pathname, namesp
 
 file_t* vfs_open(const pathname_t* pathname, process_t* process)
 {
-    if (!PATHNAME_IS_VALID(pathname) || process == NULL)
+    if (pathname == NULL || process == NULL)
     {
         errno = EINVAL;
         return NULL;
     }
 
-    namespace_t* ns = process_get_ns(process);
-    if (ns == NULL)
-    {
-        return NULL;
-    }
-    UNREF_DEFER(ns);
-
-    path_t cwd = cwd_get(&process->cwd, ns);
-    PATH_DEFER(&cwd);
-
-    return vfs_openat(&cwd, pathname, process);
+    return vfs_openat(NULL, pathname, process);
 }
 
 uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* process)
 {
-    if (!PATHNAME_IS_VALID(pathname) || files == NULL || process == NULL)
+    if (pathname == NULL || files == NULL || process == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -232,7 +223,7 @@ uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* proc
 
 file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* process)
 {
-    if (!PATHNAME_IS_VALID(pathname) || process == NULL)
+    if (pathname == NULL || process == NULL)
     {
         errno = EINVAL;
         return NULL;
@@ -245,7 +236,15 @@ file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* pr
     }
     UNREF_DEFER(ns);
 
-    path_t path = PATH_CREATE(from->mount, from->dentry);
+    path_t path;
+    if (from != NULL)
+    {
+        path = PATH_CREATE(from->mount, from->dentry);
+    }
+    else
+    {
+        path = cwd_get(&process->cwd, ns);
+    }
     PATH_DEFER(&path);
 
     if (vfs_open_lookup(&path, pathname, ns) == ERR)
@@ -621,22 +620,25 @@ static bool vfs_dir_emit(dir_ctx_t* ctx, const char* name, ino_t number, itype_t
         return false;
     }
 
+    rcu_read_lock();
+
     dirent_flags_t flags = DIRENT_NONE;
     mode_t mode = vctx->path.mount->mode;
-    dentry_t* child = dentry_get(vctx->path.dentry, name);
-    if (child != NULL)
+    dentry_t* child = dentry_rcu_get(vctx->path.dentry, name, strlen(name));
+    if (REF_COUNT(child) != 0)
     {
-        path_t checkPath = PATH_CREATE(vctx->path.mount, child);
-        if (namespace_traverse(vctx->ns, &checkPath))
+        mount_t* mount = vctx->path.mount;
+        dentry_t* dentry = child;
+        if (namespace_rcu_traverse(vctx->ns, &mount, &dentry))
         {
-            number = checkPath.dentry->inode->number;
-            type = checkPath.dentry->inode->type;
-            mode = checkPath.mount->mode;
+            number = dentry->inode->number;
+            type = dentry->inode->type;
+            mode = mount->mode;
             flags |= DIRENT_MOUNTED;
         }
-        path_put(&checkPath);
-        UNREF(child);
     }
+
+    rcu_read_unlock();
 
     dirent_t* d = (dirent_t*)((uint8_t*)vctx->buffer + vctx->written);
     d->number = number;
@@ -895,7 +897,7 @@ size_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count)
         return ERR;
     }
 
-    process_t* process = sched_process();
+    process_t* process = process_current();
     assert(process != NULL);
 
     namespace_t* ns = process_get_ns(process);
@@ -946,7 +948,7 @@ size_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count)
 
 uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process)
 {
-    if (!PATHNAME_IS_VALID(pathname) || buffer == NULL || process == NULL)
+    if (pathname == NULL || buffer == NULL || process == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -1011,7 +1013,7 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
 
 uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, process_t* process)
 {
-    if (!PATHNAME_IS_VALID(oldPathname) || !PATHNAME_IS_VALID(newPathname) || process == NULL)
+    if (oldPathname == NULL || newPathname == NULL || process == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -1132,7 +1134,7 @@ size_t vfs_readlink(inode_t* symlink, char* buffer, size_t count)
 
 uint64_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathname, process_t* process)
 {
-    if (!PATHNAME_IS_VALID(oldPathname) || !PATHNAME_IS_VALID(newPathname) || process == NULL)
+    if (oldPathname == NULL || newPathname == NULL || process == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -1194,7 +1196,7 @@ uint64_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathnam
 
 uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
 {
-    if (!PATHNAME_IS_VALID(pathname) || process == NULL)
+    if (pathname == NULL || process == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -1283,7 +1285,7 @@ uint64_t vfs_id_get(void)
 
 SYSCALL_DEFINE(SYS_OPEN, fd_t, const char* pathString)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t pathname;
@@ -1310,7 +1312,7 @@ SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
         return ERR;
     }
 
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t pathname;
@@ -1352,24 +1354,11 @@ SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
 
 SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
-    namespace_t* ns = process_get_ns(process);
-    if (ns == NULL)
-    {
-        return ERR;
-    }
-    UNREF_DEFER(ns);
-
     path_t fromPath = PATH_EMPTY;
-    if (from == FD_NONE)
-    {
-        path_t cwd = cwd_get(&process->cwd, ns);
-        path_copy(&fromPath, &cwd);
-        path_put(&cwd);
-    }
-    else
+    if (from != FD_NONE)
     {
         file_t* fromFile = file_table_get(&process->fileTable, from);
         if (fromFile == NULL)
@@ -1387,7 +1376,7 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
         return ERR;
     }
 
-    file_t* file = vfs_openat(&fromPath, &pathname, process);
+    file_t* file = vfs_openat(from != FD_NONE ? &fromPath : NULL, &pathname, process);
     if (file == NULL)
     {
         return ERR;
@@ -1399,7 +1388,7 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
 
 SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, size_t count)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     file_t* file = file_table_get(&process->fileTable, fd);
@@ -1420,7 +1409,7 @@ SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, size_t count)
 
 SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, size_t count)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     file_t* file = file_table_get(&process->fileTable, fd);
@@ -1441,7 +1430,7 @@ SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, size_t count)
 
 SYSCALL_DEFINE(SYS_SEEK, uint64_t, fd_t fd, ssize_t offset, seek_origin_t origin)
 {
-    process_t* process = sched_process();
+    process_t* process = process_current();
 
     file_t* file = file_table_get(&process->fileTable, fd);
     if (file == NULL)
@@ -1455,7 +1444,7 @@ SYSCALL_DEFINE(SYS_SEEK, uint64_t, fd_t fd, ssize_t offset, seek_origin_t origin
 
 SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, size_t size)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     file_t* file = file_table_get(&process->fileTable, fd);
@@ -1476,7 +1465,7 @@ SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, size_
 
 SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, size_t length, prot_t prot)
 {
-    process_t* process = sched_process();
+    process_t* process = process_current();
     space_t* space = &process->space;
 
     if (address != NULL && space_check_access(space, address, length) == ERR)
@@ -1510,7 +1499,7 @@ SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, size_t length, prot_t pr
 
 SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeout)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     if (amount == 0 || amount >= CONFIG_MAX_FD)
@@ -1567,7 +1556,7 @@ SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeo
 
 SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     file_t* file = file_table_get(&process->fileTable, fd);
@@ -1588,7 +1577,7 @@ SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count
 
 SYSCALL_DEFINE(SYS_STAT, uint64_t, const char* pathString, stat_t* buffer)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t pathname;
@@ -1608,7 +1597,7 @@ SYSCALL_DEFINE(SYS_STAT, uint64_t, const char* pathString, stat_t* buffer)
 
 SYSCALL_DEFINE(SYS_LINK, uint64_t, const char* oldPathString, const char* newPathString)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t oldPathname;
@@ -1628,7 +1617,7 @@ SYSCALL_DEFINE(SYS_LINK, uint64_t, const char* oldPathString, const char* newPat
 
 SYSCALL_DEFINE(SYS_READLINK, uint64_t, const char* pathString, char* buffer, uint64_t count)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t pathname;
@@ -1669,7 +1658,7 @@ SYSCALL_DEFINE(SYS_READLINK, uint64_t, const char* pathString, char* buffer, uin
 
 SYSCALL_DEFINE(SYS_SYMLINK, uint64_t, const char* targetString, const char* linkpathString)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t target;
@@ -1689,7 +1678,7 @@ SYSCALL_DEFINE(SYS_SYMLINK, uint64_t, const char* targetString, const char* link
 
 SYSCALL_DEFINE(SYS_REMOVE, uint64_t, const char* pathString)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t pathname;

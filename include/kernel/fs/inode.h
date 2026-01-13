@@ -2,6 +2,7 @@
 
 #include <kernel/fs/path.h>
 #include <kernel/sync/mutex.h>
+#include <kernel/sync/rcu.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 
@@ -61,6 +62,7 @@ typedef struct inode
     superblock_t* superblock;
     const inode_ops_t* ops;
     const file_ops_t* fileOps;
+    rcu_entry_t rcu;
     mutex_t mutex;
 } inode_t;
 

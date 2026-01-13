@@ -95,7 +95,7 @@
  * The `CONFIG_TIME_SLICE` constant defines the default time slice given to threads when they are scheduled.
  *
  */
-#define CONFIG_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 10)
+#define CONFIG_TIME_SLICE ((CLOCKS_PER_MS) * 10)
 
 /**
  * @brief Cache hot threshold configuration.
@@ -106,7 +106,7 @@
  * hot", meaning that the data is likely still in the CPU cache.
  *
  */
-#define CONFIG_CACHE_HOT_THRESHOLD ((CLOCKS_PER_SEC / 1000) * 5)
+#define CONFIG_CACHE_HOT_THRESHOLD ((CLOCKS_PER_MS) * 5)
 
 /**
  * @brief Maximum mutex slow spin configuration.
@@ -170,3 +170,24 @@
  *
  */
 #define CONFIG_KLOG_SIZE 0x4000
+
+/**
+ * @brief Per-CPU data size configuration.
+ * @ingroup kernel
+ * @def CONFIG_PERCPU_SIZE
+ *
+ * The `CONFIG_PERCPU_SIZE` constant defines the size allocated for per-CPU data.
+ *
+ */
+#define CONFIG_PERCPU_SIZE 0x10000
+
+/**
+ * @brief Maximum wait queues configuration.
+ * @ingroup kernel
+ * @def CONFIG_MAX_WAIT_QUEUES
+ *
+ * The `CONFIG_MAX_WAIT_QUEUES` constant defines the maximum amount of wait queues that a thread can wait on
+ * simultaneously.
+ *
+ */
+#define CONFIG_MAX_WAIT_QUEUES 64

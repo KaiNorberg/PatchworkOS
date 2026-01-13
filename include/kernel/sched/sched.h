@@ -310,6 +310,11 @@ typedef struct sched sched_t;
  */
 
 /**
+ * @brief The per CPU scheduler.
+ */
+extern sched_t PERCPU _pcpu_sched;
+
+/**
  * @brief Virtual clock type.
  * @typedef vclock_t
  */
@@ -396,8 +401,9 @@ typedef struct sched
     vclock_t vtime;     ///< The current virtual time of the CPU.
     clock_t lastUpdate; ///< The real time when the last vtime update occurred.
     lock_t lock;        ///< The lock protecting the scheduler.
-    thread_t* volatile idleThread; ///< The idle thread for this CPU.
-    thread_t* volatile runThread;  ///< The currently running thread on this CPU.
+    _Atomic(uint64_t) preemptCount; ///< If greater than zero, preemption is disabled.
+    thread_t* volatile idleThread;  ///< The idle thread for this CPU.
+    thread_t* volatile runThread;   ///< The currently running thread on this CPU.
 } sched_t;
 
 /**
@@ -406,13 +412,6 @@ typedef struct sched
  * @param client The scheduler context to initialize.
  */
 void sched_client_init(sched_client_t* client);
-
-/**
- * @brief Initialize the scheduler for a CPU.
- *
- * @param sched The scheduler to initialize.
- */
-void sched_init(sched_t* sched);
 
 /**
  * @brief Starts the scheduler by jumping to the boot thread.
@@ -438,10 +437,11 @@ void sched_submit(thread_t* thread);
  *
  * This function is called on every interrupt to provide a scheduling opportunity.
  *
+ * Will report a quiescent state to RCU if the CPU is idle or if a context switch occurs.
+ *
  * @param frame The interrupt frame.
- * @param self The cpu performing the scheduling operation.
  */
-void sched_do(interrupt_frame_t* frame, cpu_t* self);
+void sched_do(interrupt_frame_t* frame);
 
 /**
  * @brief Checks if the CPU is currently idle.
@@ -450,40 +450,6 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self);
  * @return `true` if the CPU is idle, `false` otherwise.
  */
 bool sched_is_idle(cpu_t* cpu);
-
-/**
- * @brief Retrieves the currently running thread.
- *
- * @return The currently running thread.
- */
-thread_t* sched_thread(void);
-
-/**
- * @brief Retrieves the process of the currently running thread.
- *
- * @note Will not increment the reference count of the returned process, as we consider the currently running thread to
- * always be referencing its process.
- *
- * @return The process of the currently running thread.
- */
-process_t* sched_process(void);
-
-/**
- * @brief Retrieves the currently running thread without disabling interrupts.
- *
- * @return The currently running thread.
- */
-thread_t* sched_thread_unsafe(void);
-
-/**
- * @brief Retrieves the process of the currently running thread without disabling interrupts.
- *
- * @note Will not increment the reference count of the returned process, as we consider the currently running thread to
- * always be referencing its process.
- *
- * @return The process of the currently running thread.
- */
-process_t* sched_process_unsafe(void);
 
 /**
  * @brief Sleeps the current thread for a specified duration in nanoseconds.
@@ -500,6 +466,23 @@ uint64_t sched_nanosleep(clock_t timeout);
  *
  */
 void sched_yield(void);
+
+/**
+ * @brief Disables preemption on the current CPU.
+ */
+void sched_disable(void);
+
+/**
+ * @brief Enables preemption on the current CPU.
+ */
+void sched_enable(void);
+
+/**
+ * @brief Disable preemption for the duration of the current scope.
+ */
+#define SCHED_SCOPE() \
+    sched_disable(); \
+    __attribute__((cleanup(sched_scope_cleanup))) int* CONCAT(i, __COUNTER__) = 0
 
 /**
  * @brief Terminates the currently executing process and all it's threads.
@@ -523,5 +506,10 @@ _NORETURN void sched_thread_exit(void);
  * This is where idle threads will run when there is nothing else to do.
  */
 _NORETURN extern void sched_idle_loop(void);
+
+static inline void sched_scope_cleanup(int* _)
+{
+    sched_enable();
+}
 
 /** @} */

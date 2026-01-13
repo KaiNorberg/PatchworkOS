@@ -97,22 +97,22 @@ lib/gnu-efi/.built: | lib/gnu-efi
 
 $(BOOT_TARGET): setup | bin/boot
 	@echo "BUILD   boot"
-	@$(MAKE) -s --no-print-directory -f src/boot/boot.mk SRCDIR=src/boot BUILDDIR=build/boot BINDIR=bin/boot
+	@$(MAKE) -s --no-print-directory -f src/boot/boot.mk SRCDIR=src/boot BUILDDIR=build/boot BINDIR=bin/boot all
 	@touch $@
 
 $(KERNEL_TARGET): setup | bin/kernel
 	@echo "BUILD   kernel"
-	@$(MAKE) -s --no-print-directory -f src/kernel/kernel.mk SRCDIR=src/kernel BUILDDIR=build/kernel BINDIR=bin/kernel
+	@$(MAKE) -s --no-print-directory -f src/kernel/kernel.mk SRCDIR=src/kernel BUILDDIR=build/kernel BINDIR=bin/kernel all
 	@touch $@
 
 $(LIBSTD_TARGET): setup | bin/libstd
 	@echo "BUILD   libstd"
-	@$(MAKE) -s --no-print-directory -f src/libstd/libstd.mk SRCDIR=src/libstd BUILDDIR=build/libstd BINDIR=bin/libstd
+	@$(MAKE) -s --no-print-directory -f src/libstd/libstd.mk SRCDIR=src/libstd BUILDDIR=build/libstd BINDIR=bin/libstd all
 	@touch $@
 
 $(LIBPATCHWORK_TARGET): setup | bin/libpatchwork
 	@echo "BUILD   libpatchwork"
-	@$(MAKE) -s --no-print-directory -f src/libpatchwork/libpatchwork.mk SRCDIR=src/libpatchwork BUILDDIR=build/libpatchwork BINDIR=bin/libpatchwork
+	@$(MAKE) -s --no-print-directory -f src/libpatchwork/libpatchwork.mk SRCDIR=src/libpatchwork BUILDDIR=build/libpatchwork BINDIR=bin/libpatchwork all
 	@touch $@
 
 lib/argon2/.built: $(MODULES_TARGETS)
@@ -129,7 +129,7 @@ lib/argon2/.built: $(MODULES_TARGETS)
 define MODULE_RULE
 bin/modules/.$(1).built: $(filter %/$(1).mk,$(MODULES_MK)) $(BOOT_TARGET) $(KERNEL_TARGET) $(LIBSTD_TARGET) $(LIBPATCHWORK_TARGET) | bin/modules
 	@echo "BUILD   module $(1)"
-	@$(MAKE) -s --no-print-directory -f $(filter %/$(1).mk,$(MODULES_MK)) SRCDIR=$(dir $(filter %/$(1).mk,$(MODULES_MK))) BUILDDIR=build/modules/$(1) BINDIR=bin/modules MODULE=$(1)
+	@$$(MAKE) -s --no-print-directory -f $$(filter %/$(1).mk,$$(MODULES_MK)) SRCDIR=$$(dir $$(filter %/$(1).mk,$$(MODULES_MK))) BUILDDIR=build/modules/$(1) BINDIR=bin/modules MODULE=$(1) all
 	@touch $$@
 endef
 
@@ -138,7 +138,7 @@ $(foreach mod,$(MODULES_NAMES),$(eval $(call MODULE_RULE,$(mod))))
 define BOX_RULE
 bin/boxes/.$(1).built: $(filter %/$(1).mk,$(BOXES_MK)) $(MODULES_TARGETS) lib/argon2/.built | bin/boxes
 	@echo "BUILD   box $(1)"
-	@$(MAKE) -s --no-print-directory -f $(filter %/$(1).mk,$(BOXES_MK)) SRCDIR=$(dir $(filter %/$(1).mk,$(BOXES_MK))) BUILDDIR=build/boxes/$(1) BINDIR=bin/boxes BOX=$(1)
+	@$$(MAKE) -s --no-print-directory -f $$(filter %/$(1).mk,$$(BOXES_MK)) SRCDIR=$$(dir $$(filter %/$(1).mk,$$(BOXES_MK))) BUILDDIR=build/boxes/$(1) BINDIR=bin/boxes BOX=$(1) all
 	@touch $$@
 endef
 
@@ -147,7 +147,7 @@ $(foreach box,$(BOXES_NAMES),$(eval $(call BOX_RULE,$(box))))
 define PROGRAM_RULE
 bin/programs/.$(1).built: $(filter %/$(1).mk,$(PROGRAMS_MK)) $(BOXES_TARGETS) | bin/programs
 	@echo "BUILD   program $(1)"
-	@$(MAKE) -s --no-print-directory -f $(filter %/$(1).mk,$(PROGRAMS_MK)) SRCDIR=$(dir $(filter %/$(1).mk,$(PROGRAMS_MK))) BUILDDIR=build/programs/$(1) BINDIR=bin/programs PROGRAM=$(1)
+	@$$(MAKE) -s --no-print-directory -f $$(filter %/$(1).mk,$$(PROGRAMS_MK)) SRCDIR=$$(dir $$(filter %/$(1).mk,$$(PROGRAMS_MK))) BUILDDIR=build/programs/$(1) BINDIR=bin/programs PROGRAM=$(1) all
 	@touch $$@
 endef
 
@@ -252,7 +252,7 @@ nuke: clean
 	@rm -rf lib/doomgeneric-patchworkos lib/lua-5.4.7 lib/acpica lib/acpica_tests lib/argon2 include/argon2 meta/docs
 	@rm -rf lib/gnu-efi/.built lib/argon2/.built lib/acpica_tests/.built
 
-QEMU_MEMORY ?= 1G
+QEMU_MEMORY ?= 2G
 QEMU_CPUS ?= $(shell nproc 2>/dev/null || echo 8)
 QEMU_MACHINE ?= q35
 QEMU_ARGS ?=

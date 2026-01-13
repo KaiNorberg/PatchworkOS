@@ -28,6 +28,11 @@ vector_\nr:
 .text
 
 vector_common:
+    // Swap to kernel GS if we are from user space
+    testb $3, 24(%rsp)
+    jz 1f
+    swapgs
+1:
     INTERRUPT_FRAME_REGS_PUSH
 
     movq %rsp, %rbp
@@ -36,6 +41,10 @@ vector_common:
 
     INTERRUPT_FRAME_REGS_POP
 
+    testb $3, 24(%rsp)
+    jz 1f
+    swapgs
+1:
     addq $16, %rsp // Pop error code and vector number
     iretq
 
@@ -80,14 +89,12 @@ INTERRUPT_NO_ERR 31
 .endr
 
 // rdi = interrupt_frame_t* frame
-// rsi = cpu_t* self
 interrupt_fake:
     pushq $0 // align stack
 
     movq %rdi, %r15 // frame
     
-    // memcpy((r14 = cpu_interrupt_stack_top(self) - INTERRUPT_FRAME_SIZE), frame, INTERRUPT_FRAME_SIZE)
-    movq %rsi, %rdi
+    // memcpy((r14 = cpu_interrupt_stack_top() - INTERRUPT_FRAME_SIZE), frame, INTERRUPT_FRAME_SIZE)
     call cpu_interrupt_stack_top
     movq %rax, %rdi
     subq $INTERRUPT_FRAME_SIZE, %rdi

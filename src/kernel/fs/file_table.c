@@ -1,6 +1,7 @@
 #include <kernel/fs/file_table.h>
 
 #include <kernel/fs/path.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/thread.h>
 
 #include <sys/bitmap.h>
@@ -218,17 +219,17 @@ fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd)
         return ERR;
     }
 
-    if (oldFd == newFd)
-    {
-        return newFd;
-    }
-
     LOCK_SCOPE(&table->lock);
 
     if (oldFd >= CONFIG_MAX_FD || newFd >= CONFIG_MAX_FD || table->files[oldFd] == NULL)
     {
         errno = EBADF;
         return ERR;
+    }
+
+    if (oldFd == newFd)
+    {
+        return newFd;
     }
 
     if (table->files[newFd] != NULL)
@@ -275,15 +276,15 @@ uint64_t file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t m
 
 SYSCALL_DEFINE(SYS_CLOSE, uint64_t, fd_t fd)
 {
-    return file_table_close(&sched_process()->fileTable, fd);
+    return file_table_close(&process_current()->fileTable, fd);
 }
 
 SYSCALL_DEFINE(SYS_DUP, uint64_t, fd_t oldFd)
 {
-    return file_table_dup(&sched_process()->fileTable, oldFd);
+    return file_table_dup(&process_current()->fileTable, oldFd);
 }
 
 SYSCALL_DEFINE(SYS_DUP2, uint64_t, fd_t oldFd, fd_t newFd)
 {
-    return file_table_dup2(&sched_process()->fileTable, oldFd, newFd);
+    return file_table_dup2(&process_current()->fileTable, oldFd, newFd);
 }

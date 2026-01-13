@@ -48,14 +48,14 @@ static size_t superblock_read(file_t* file, void* buffer, size_t count, size_t* 
     assert(sb != NULL);
 
     char info[MAX_PATH];
-    int len = snprintf(info, sizeof(info), "id: %llu\nblock_size: %llu\nmax_file_size: %llu\n", sb->id, sb->blockSize,
+    int length = snprintf(info, sizeof(info), "id: %llu\nblock_size: %llu\nmax_file_size: %llu\n", sb->id, sb->blockSize,
         sb->maxFileSize);
-    if (len < 0)
+    if (length < 0)
     {
         return 0;
     }
 
-    return BUFFER_READ(buffer, count, offset, info, len);
+    return BUFFER_READ(buffer, count, offset, info, (size_t)length);
 }
 
 static void superblock_cleanup(inode_t* inode)
@@ -264,7 +264,7 @@ void filesystem_unregister(filesystem_t* fs)
 
     RWLOCK_WRITE_SCOPE(&lock);
     map_remove(&fsMap, &fs->mapEntry);
-    list_remove(&filesystems, &fs->entry);
+    list_remove(&fs->entry);
 
     while (!list_is_empty(&fs->superblocks))
     {
@@ -321,4 +321,39 @@ filesystem_t* filesystem_get_by_path(const char* path, process_t* process)
     }
 
     return target.dentry->inode->private;
+}
+
+bool options_next(const char** iter, char* buffer, size_t size, char** key, char** value)
+{
+    while (*iter != NULL && **iter != '\0')
+    {
+        const char* start = *iter;
+        const char* end = strchr(start, ',');
+        size_t len = end != NULL ? (size_t)(end - start) : strlen(start);
+
+        *iter = end != NULL ? end + 1 : NULL;
+
+        if (len == 0)
+        {
+            continue;
+        }
+        if (len >= size)
+        {
+            continue;
+        }
+
+        memcpy(buffer, start, len);
+        buffer[len] = '\0';
+
+        *key = buffer;
+        *value = strchr(*key, '=');
+
+        if (*value != NULL)
+        {
+            *(*value)++ = '\0';
+            return true;
+        }
+    }
+
+    return false;
 }

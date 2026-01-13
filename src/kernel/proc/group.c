@@ -105,7 +105,7 @@ void group_add(group_t* group, group_member_t* member)
     if (member->group != NULL)
     {
         lock_acquire(&member->group->lock);
-        list_remove(&member->group->processes, &member->entry);
+        list_remove(&member->entry);
         lock_release(&member->group->lock);
         UNREF(member->group);
         member->group = NULL;
@@ -131,7 +131,7 @@ void group_remove(group_member_t* member)
     }
 
     lock_acquire(&member->group->lock);
-    list_remove(&member->group->processes, &member->entry);
+    list_remove(&member->entry);
     lock_release(&member->group->lock);
 
     UNREF(member->group);

@@ -4,6 +4,7 @@
 #include <kernel/drivers/rand.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
@@ -77,7 +78,7 @@ static void key_timer_handler(interrupt_frame_t* frame, cpu_t* self)
         }
 
         map_remove(&keyMap, &entry->mapEntry);
-        list_remove(&keyList, &entry->entry);
+        list_remove(&entry->entry);
         UNREF(entry->file);
         free(entry);
     }
@@ -119,7 +120,7 @@ uint64_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout)
     }
 
     memcpy(key, entry->key, size);
-    if (list_length(&keyList) == 0)
+    if (list_is_empty(&keyList))
     {
         list_push_back(&keyList, &entry->entry);
         timer_set(clock_uptime(), entry->expiry);
@@ -132,7 +133,7 @@ uint64_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout)
     {
         if (entry->expiry < other->expiry)
         {
-            list_prepend(&keyList, &other->entry, &entry->entry);
+            list_prepend(&other->entry, &entry->entry);
             if (first)
                 timer_set(clock_uptime(), entry->expiry);
             return 0;
@@ -162,7 +163,7 @@ file_t* key_claim(const char* key)
     }
 
     key_entry_t* entry = CONTAINER_OF(mapEntry, key_entry_t, mapEntry);
-    list_remove(&keyList, &entry->entry);
+    list_remove(&entry->entry);
 
     file_t* file = entry->file;
     free(entry);
@@ -171,7 +172,7 @@ file_t* key_claim(const char* key)
 
 SYSCALL_DEFINE(SYS_SHARE, uint64_t, char* key, uint64_t size, fd_t fd, clock_t timeout)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     file_t* file = file_table_get(&process->fileTable, fd);
@@ -197,7 +198,7 @@ SYSCALL_DEFINE(SYS_SHARE, uint64_t, char* key, uint64_t size, fd_t fd, clock_t t
 
 SYSCALL_DEFINE(SYS_CLAIM, fd_t, const char* key)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     char keyCopy[KEY_MAX];

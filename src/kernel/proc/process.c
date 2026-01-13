@@ -246,7 +246,7 @@ void process_remove(process_t* process)
 {
     rwlock_write_acquire(&processesLock);
     map_remove(&pidMap, &process->mapEntry);
-    list_remove(&processes, &process->entry);
+    list_remove(&process->entry);
     rwlock_write_release(&processesLock);
 
     UNREF(process);
@@ -383,5 +383,5 @@ process_t* process_get_kernel(void)
 
 SYSCALL_DEFINE(SYS_GETPID, pid_t)
 {
-    return sched_process()->id;
+    return process_current()->id;
 }

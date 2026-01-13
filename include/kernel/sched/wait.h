@@ -1,5 +1,6 @@
 #pragma once
 
+#include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/regs.h>
 #include <kernel/sync/lock.h>
 
@@ -30,6 +31,8 @@ typedef struct wait wait_t;
  *
  * @note Generally its preferred to use the `WAIT_BLOCK*` macros instead of directly calling the functions provided by
  * this subsystem.
+ * 
+ * @todo Replace with `epoll()` style system?
  *
  * @{
  */
@@ -240,21 +243,13 @@ void wait_queue_deinit(wait_queue_t* queue);
 void wait_client_init(wait_client_t* client);
 
 /**
- * @brief Initialize an instance of the waiting subsystem.
- *
- * @param wait The instance to initialize.
- */
-void wait_init(wait_t* wait);
-
-/**
  * @brief Check for timeouts and unblock threads as needed.
  *
  * Will be called by the `interrupt_handler()`.
  *
  * @param frame The interrupt frame.
- * @param self The current CPU.
  */
-void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self);
+void wait_check_timeouts(interrupt_frame_t* frame);
 
 /**
  * @brief Prepare to block the currently running thread.
@@ -313,12 +308,11 @@ uint64_t wait_block_commit(void);
  * immediately.
  *
  * @param frame The interrupt frame.
- * @param self The CPU the thread is being blocked on.
  * @param thread The thread to block.
  * @param uptime The current uptime.
  * @return `true` if the thread was blocked, `false` if the thread was prematurely unblocked.
  */
-bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread, clock_t uptime);
+bool wait_block_finalize(interrupt_frame_t* frame, thread_t* thread, clock_t uptime);
 
 /**
  * @brief Unblock a specific thread.

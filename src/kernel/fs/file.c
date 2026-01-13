@@ -4,6 +4,7 @@
 #include <kernel/fs/inode.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
+#include <kernel/mem/cache.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/utils/ref.h>
 
@@ -26,8 +27,10 @@ static void file_free(file_t* file)
     file->inode = NULL;
     path_put(&file->path);
 
-    free(file);
+    cache_free(file);
 }
+
+static cache_t cache = CACHE_CREATE(cache, "file", sizeof(file_t), CACHE_LINE, NULL, NULL);
 
 file_t* file_new(const path_t* path, mode_t mode)
 {
@@ -48,7 +51,7 @@ file_t* file_new(const path_t* path, mode_t mode)
         return NULL;
     }
 
-    file_t* file = malloc(sizeof(file_t));
+    file_t* file = cache_alloc(&cache);
     if (file == NULL)
     {
         errno = ENOMEM;
@@ -62,7 +65,6 @@ file_t* file_new(const path_t* path, mode_t mode)
     file->path = PATH_CREATE(path->mount, path->dentry);
     file->ops = path->dentry->inode->fileOps;
     file->private = NULL;
-
     return file;
 }
 

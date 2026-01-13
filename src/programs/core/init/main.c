@@ -57,6 +57,8 @@ static uint64_t init_socket_addr_wait(const char* family, const char* addr)
     clock_t start = uptime();
     while (true)
     {
+        nanosleep(CLOCKS_PER_SEC / 10);
+
         const char* data = sreadfile(F("/net/%s/addrs", family));
         if (data == NULL)
         {
@@ -72,9 +74,7 @@ static uint64_t init_socket_addr_wait(const char* family, const char* addr)
 
         free((void*)data);
 
-        nanosleep(CLOCKS_PER_SEC / 100);
-
-        if (uptime() - start > CLOCKS_PER_SEC * 30)
+        if (uptime() - start > CLOCKS_PER_SEC * 10)
         {
             close(addrs);
             return ERR;
@@ -177,6 +177,7 @@ static void init_config_load(void)
     config_array_t* services = config_get_array(config, "startup", "services");
     for (uint64_t i = 0; i < services->length; i++)
     {
+        nanosleep(CLOCKS_PER_MS);
         printf("init: spawned service '%s'\n", services->items[i]);
         const char* argv[] = {services->items[i], NULL};
         if (spawn(argv, SPAWN_EMPTY_FDS | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP) == ERR)
@@ -197,7 +198,8 @@ static void init_config_load(void)
     config_array_t* programs = config_get_array(config, "startup", "programs");
     for (uint64_t i = 0; i < programs->length; i++)
     {
-        printf("init: spawned program '%s'\n", programs->items[i]);
+        nanosleep(CLOCKS_PER_MS);
+        printf("init: spawn program '%s'\n", programs->items[i]);
         const char* argv[] = {programs->items[i], NULL};
         if (spawn(argv, SPAWN_EMPTY_FDS | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP) == ERR)
         {

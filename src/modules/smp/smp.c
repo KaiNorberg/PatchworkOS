@@ -32,23 +32,18 @@
  */
 static void smp_start_others(void)
 {
-    interrupt_disable();
+    cli_push();
 
     if (cpu_amount() > 1)
     {
         LOG_INFO("other cpus already started\n");
-        interrupt_enable();
+        cli_pop();
         return;
     }
 
     trampoline_init();
 
-    cpu_t* bootstrapCpu = cpu_get_unsafe();
-    assert(bootstrapCpu->id == CPU_ID_BOOTSTRAP);
-
-    lapic_t* bootstrapLapic = lapic_get(bootstrapCpu->id);
-    assert(bootstrapLapic != NULL);
-
+    assert(SELF->id == CPU_ID_BOOTSTRAP);
     LOG_INFO("bootstrap cpu already started\n");
 
     madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, sizeof(madt_t), 0);
@@ -60,7 +55,7 @@ static void smp_start_others(void)
     processor_local_apic_t* lapic;
     MADT_FOR_EACH(madt, lapic)
     {
-        if (lapic->header.type != INTERRUPT_CONTROLLER_PROCESSOR_LOCAL_APIC || bootstrapLapic->lapicId == lapic->apicId)
+        if (lapic->header.type != INTERRUPT_CONTROLLER_PROCESSOR_LOCAL_APIC || _pcpu_lapic->lapicId == lapic->apicId)
         {
             continue;
         }
@@ -70,7 +65,8 @@ static void smp_start_others(void)
             continue;
         }
 
-        cpu_t* cpu = vmm_alloc(NULL, NULL, sizeof(cpu_t), PML_WRITE | PML_PRESENT | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
+        cpu_t* cpu =
+            vmm_alloc(NULL, NULL, sizeof(cpu_t), PAGE_SIZE, PML_WRITE | PML_PRESENT | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
         if (cpu == NULL)
         {
             panic(NULL, "Failed to allocate memory for cpu with lapicid %d", (uint64_t)lapic->apicId);
@@ -90,7 +86,7 @@ static void smp_start_others(void)
 
     trampoline_deinit();
 
-    interrupt_enable();
+    cli_pop();
 }
 
 /** @} */

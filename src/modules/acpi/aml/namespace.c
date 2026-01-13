@@ -492,8 +492,8 @@ void aml_namespace_remove(aml_object_t* object)
     }
 
     map_remove(&object->overlay->map, &object->mapEntry);
-    list_remove(&object->overlay->objects, &object->listEntry);
-    list_remove(&object->parent->children, &object->siblingsEntry);
+    list_remove(&object->listEntry);
+    list_remove(&object->siblingsEntry);
 
     object->overlay = NULL;
     object->parent = NULL;
@@ -524,7 +524,7 @@ uint64_t aml_namespace_commit(aml_overlay_t* overlay)
             return ERR;
         }
 
-        list_remove(&overlay->objects, &object->listEntry);
+        list_remove(&object->listEntry);
         list_push_back(&overlay->parent->objects, &object->listEntry);
 
         object->overlay = overlay->parent;

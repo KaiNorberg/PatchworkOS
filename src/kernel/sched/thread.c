@@ -6,6 +6,7 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
@@ -111,7 +112,7 @@ tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg)
 void thread_free(thread_t* thread)
 {
     lock_acquire(&thread->process->threads.lock);
-    list_remove(&thread->process->threads.list, &thread->processEntry);
+    list_remove(&thread->processEntry);
     lock_release(&thread->process->threads.lock);
 
     UNREF(thread->process);
@@ -132,7 +133,7 @@ void thread_load(thread_t* thread, interrupt_frame_t* frame)
 {
     *frame = thread->frame;
 
-    space_load(&thread->process->space);
+    vmm_load(&thread->process->space);
     simd_ctx_load(&thread->simd);
     syscall_ctx_load(&thread->syscall);
 }
@@ -165,7 +166,7 @@ SYSCALL_DEFINE(SYS_ERRNO, errno_t)
 
 SYSCALL_DEFINE(SYS_GETTID, tid_t)
 {
-    return sched_thread()->id;
+    return thread_current()->id;
 }
 
 uint64_t thread_copy_from_user(thread_t* thread, void* dest, const void* userSrc, uint64_t length)

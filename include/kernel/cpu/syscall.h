@@ -1,8 +1,9 @@
 #pragma once
 
+#ifndef __ASSEMBLER__
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/stack_pointer.h>
-#include <kernel/mem/space.h>
+#endif
 
 /**
  * @brief System Call Interface.
@@ -19,22 +20,6 @@
  *
  * Instead, we use the modern `SYSCALL` instruction, which allows for a faster transition from user mode to kernel mode,
  * but it is a little more complex to set up.
- *
- * ## Stack switching
- *
- * When a syscall is invoked, the CPU will not automatically switch stacks. We need to manually switch them. To do this,
- * we use the `MSR_KERNEL_GS_BASE` MSR to store a pointer to the `syscall_ctx_t` structure for the current thread.
- *
- * When `swapgs` is called, the `GS` segment register will be swapped with the value in `MSR_KERNEL_GS_BASE`, allowing
- * us to access the syscall context for the current thread.
- *
- * We now cache the user stack pointer in the syscall context, and load the `syscallRsp` stack pointer. We then
- * immediately push the user stack pointer onto the new stack and call `swapgs` again to restore the original `GS`
- * value. Finally, we can enable interrupts and call the main C syscall handler.
- *
- * @note Swapping the `GS` register back before enabling interrupts is important, as it ensures user space can modify
- * its own `GS` base without affecting the kernel and that preemptions do not overwrite the `MSR_KERNEL_GS_BASE` MSR or
- * the `GS` register.
  *
  * ## Calling Convention
  *
@@ -56,6 +41,21 @@
  * @{
  */
 
+/**
+ * @brief The offset of the `syscallRsp` member in the `syscall_ctx_t` structure.
+ *
+ * Needed to access the syscall context from assembly code.
+ */
+#define SYSCALL_CTX_SYSCALL_RSP_OFFSET 0x0
+
+/**
+ * @brief The offset of the `userRsp` member in the `syscall_ctx_t` structure.
+ *
+ * Needed to access the syscall context from assembly code.
+ */
+#define SYSCALL_CTX_USER_RSP_OFFSET 0x8
+
+#ifndef __ASSEMBLER__
 /**
  * @brief System Call Numbers.
  * @enum syscall_number_t
@@ -158,7 +158,7 @@ extern syscall_descriptor_t _syscallTableEnd[];
 /**
  * @brief Macro to define a syscall.
  *
- * Uses the `.syscall_table` linker section to store the syscall descriptor.
+ * Uses the `._syscall_table` linker section to store the syscall descriptor.
  *
  * @param num The syscall number, must be unique, check `syscall_number_t`.
  * @param returnType The return type of the syscall handler, must be `uint64_t` compatible.
@@ -167,7 +167,7 @@ extern syscall_descriptor_t _syscallTableEnd[];
  */
 #define SYSCALL_DEFINE(num, returnType, ...) \
     returnType syscall_handler_##num(__VA_ARGS__); \
-    const syscall_descriptor_t __syscall_##num __attribute__((used, section(".syscall_table"))) = { \
+    const syscall_descriptor_t __syscall_##num __attribute__((used, section("._syscall_table"))) = { \
         .number = (num), \
         .handler = (void*)syscall_handler_##num, \
     }; \
@@ -194,17 +194,6 @@ void syscall_ctx_load(syscall_ctx_t* ctx);
 void syscall_table_init(void);
 
 /**
- * @brief Initialize syscalls on the current CPU.
- *
- * Will modify four MSRs:
- * - `MSR_EFER`: Used to enable the `SYSCALL` instruction.
- * - `MSR_STAR`: Used to set the code segments for kernel and user mode.
- * - `MSR_LSTAR`: Used to set the entry point for the `SYSCALL` instruction.
- * - `MSR_SYSCALL_FLAG_MASK`: Specifies which rflags to clear when entering kernel mode.
- */
-void syscalls_cpu_init(void);
-
-/**
  * @brief Main C syscall handler.
  *
  * This is called from the assembly `syscall_entry()` function.
@@ -222,5 +211,7 @@ void syscall_handler(interrupt_frame_t* frame);
  * The logic for saving/restoring registers and switching stacks is done here before calling `syscall_handler()`.
  */
 extern void syscall_entry(void);
+
+#endif
 
 /** @} */

@@ -10,6 +10,7 @@
 #include <kernel/proc/env.h>
 #include <kernel/proc/group.h>
 #include <kernel/sched/sched.h>
+#include <kernel/sched/thread.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/futex.h>
 #include <kernel/utils/map.h>
@@ -106,6 +107,33 @@ typedef struct process
  * @return On success, the newly created process. On failure, `NULL` and `errno` is set.
  */
 process_t* process_new(priority_t priority, group_member_t* group, namespace_t* ns);
+
+/**
+ * @brief Retrieves the process of the currently running thread.
+ *
+ * @note Will not increment the reference count of the returned process, as we consider the currently running thread to
+ * always be referencing its process.
+ *
+ * @return The process of the currently running thread.
+ */
+static inline process_t* process_current(void)
+{
+    CLI_SCOPE();
+    return _pcpu_sched->runThread->process;
+}
+
+/**
+ * @brief Retrieves the process of the currently running thread without disabling interrupts.
+ *
+ * @note Will not increment the reference count of the returned process, as we consider the currently running thread to
+ * always be referencing its process.
+ *
+ * @return The process of the currently running thread.
+ */
+static inline process_t* process_current_unsafe(void)
+{
+    return _pcpu_sched->runThread->process;
+}
 
 /**
  * @brief Gets a process by its ID.

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <kernel/cpu/regs.h>
+
+#include <assert.h>
 #include <stdint.h>
 
 /**
@@ -7,6 +10,13 @@
  *
  * @{
  */
+
+/**
+ * @brief The offset of the `id` member in the `cpu_t` structure.
+ *
+ * Needed to access the CPU ID from assembly code.
+ */
+#define CPU_OFFSET_ID 0x8
 
 /**
  * @brief Maximum number of CPUs supported.
@@ -26,6 +36,6 @@
 /**
  * @brief Type used to identify a CPU.
  */
-typedef uint16_t cpuid_t;
+typedef uint16_t cpu_id_t;
 
 /** @} */

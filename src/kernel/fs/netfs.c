@@ -27,10 +27,7 @@ static void socket_free(socket_t* socket)
     }
 
     rwmutex_write_acquire(&socket->family->mutex);
-    if (list_contains_entry(&socket->family->sockets, &socket->listEntry))
-    {
-        list_remove(&socket->family->sockets, &socket->listEntry);
-    }
+    list_remove(&socket->listEntry);
     rwmutex_write_release(&socket->family->mutex);
 
     socket->family->deinit(socket);
@@ -433,7 +430,7 @@ static uint64_t netfs_factory_open(file_t* file)
     list_push_back(&ctx->family->sockets, &socket->listEntry);
     rwmutex_write_release(&ctx->family->mutex);
 
-    namespace_t* ns = process_get_ns(sched_process());
+    namespace_t* ns = process_get_ns(process_current());
     if (ns == NULL)
     {
         return ERR;
@@ -486,7 +483,7 @@ static size_t netfs_addrs_read(file_t* file, void* buffer, size_t count, size_t*
         return 0;
     }
 
-    char* string = malloc(list_length(&ctx->family->sockets) * (MAX_PATH + 1));
+    char* string = malloc(list_size(&ctx->family->sockets) * (MAX_PATH + 1));
     if (string == NULL)
     {
         errno = ENOMEM;
@@ -584,7 +581,7 @@ static uint64_t netfs_family_lookup(inode_t* dir, dentry_t* dentry)
         return 0;
     }
 
-    namespace_t* ns = process_get_ns(sched_process());
+    namespace_t* ns = process_get_ns(process_current());
     if (ns == NULL)
     {
         return ERR;
@@ -658,7 +655,7 @@ static uint64_t netfs_family_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         return 0;
     }
 
-    namespace_t* ns = process_get_ns(sched_process());
+    namespace_t* ns = process_get_ns(process_current());
     if (ns == NULL)
     {
         return ERR;
@@ -838,7 +835,7 @@ uint64_t netfs_family_register(netfs_family_t* family)
 void netfs_family_unregister(netfs_family_t* family)
 {
     rwmutex_write_acquire(&familiesMutex);
-    list_remove(&families, &family->listEntry);
+    list_remove(&family->listEntry);
     rwmutex_write_release(&familiesMutex);
 
     rwmutex_deinit(&family->mutex);

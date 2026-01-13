@@ -34,7 +34,7 @@ static void mount_free(mount_t* mount)
         UNREF(mount->parent);
     }
 
-    free(mount);
+    rcu_call(&mount->rcu, rcu_call_free, mount);
 }
 
 mount_t* mount_new(superblock_t* superblock, dentry_t* source, dentry_t* target, mount_t* parent, mode_t mode)

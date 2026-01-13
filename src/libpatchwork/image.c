@@ -74,7 +74,7 @@ image_t* image_new(display_t* disp, const char* path)
 void image_free(image_t* image)
 {
     mtx_lock(&image->draw.disp->mutex);
-    list_remove(&image->draw.disp->images, &image->entry);
+    list_remove(&image->entry);
     mtx_unlock(&image->draw.disp->mutex);
 
     free(image->draw.buffer);

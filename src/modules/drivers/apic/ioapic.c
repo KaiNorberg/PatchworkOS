@@ -45,8 +45,9 @@ static void ioapic_redirect_write(ioapic_t* ioapic, ioapic_gsi_t gsi, ioapic_red
 
 static uint64_t ioapic_enable(irq_t* irq)
 {
+    CLI_SCOPE();
+
     ioapic_t* ioapic = irq->domain->private;
-    lapic_t* lapic = lapic_get(cpu_get_id_unsafe());
 
     ioapic_redirect_entry_t redirect = {
         .vector = irq->virt,
@@ -57,7 +58,7 @@ static uint64_t ioapic_enable(irq_t* irq)
         .remoteIRR = 0,
         .triggerMode = irq->flags & IRQ_TRIGGER_EDGE ? IOAPIC_TRIGGER_EDGE : IOAPIC_TRIGGER_LEVEL,
         .mask = 0,
-        .destination = lapic->lapicId,
+        .destination = _pcpu_lapic->lapicId,
     };
 
     ioapic_redirect_write(ioapic, irq->phys, redirect);
@@ -88,7 +89,7 @@ static irq_chip_t ioApicChip = {
     .eoi = ioapic_eoi,
 };
 
-uint64_t ioapic_all_init(void)
+CONSTRUCTOR(103) static uint64_t ioapic_all_init(void)
 {
     madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, sizeof(madt_t), 0);
     if (madt == NULL)

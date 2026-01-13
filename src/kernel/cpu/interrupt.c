@@ -2,62 +2,32 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
+#include <kernel/cpu/ipi.h>
 #include <kernel/cpu/irq.h>
+#include <kernel/cpu/regs.h>
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/drivers/perf.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/paging_types.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/proc/process.h>
+#include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
+#include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
-
-#include <kernel/cpu/regs.h>
 
 #include <assert.h>
 
-void interrupt_ctx_init(interrupt_ctx_t* ctx)
-{
-    ctx->inInterrupt = false;
-    ctx->oldRflags = 0;
-    ctx->disableDepth = 0;
-}
-
-void interrupt_disable(void)
-{
-    uint64_t rflags = rflags_read();
-    asm volatile("cli" ::: "memory");
-    interrupt_ctx_t* ctx = &cpu_get_unsafe()->interrupt;
-    if (ctx->disableDepth == 0)
-    {
-        ctx->oldRflags = rflags;
-    }
-    ctx->disableDepth++;
-}
-
-void interrupt_enable(void)
-{
-    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
-
-    interrupt_ctx_t* ctx = &cpu_get_unsafe()->interrupt;
-    assert(ctx->disableDepth != 0);
-    ctx->disableDepth--;
-
-    if (ctx->disableDepth == 0 && (ctx->oldRflags & RFLAGS_INTERRUPT_ENABLE))
-    {
-        asm volatile("sti" ::: "memory");
-    }
-}
-
 static void exception_handle_user(interrupt_frame_t* frame, const char* note)
 {
-    thread_t* thread = sched_thread_unsafe();
+    thread_t* thread = thread_current_unsafe();
     if (thread_send_note(thread, note) == ERR)
     {
         atomic_store(&thread->state, THREAD_DYING);
         process_kill(thread->process, note);
 
-        cpu_t* self = cpu_get_unsafe();
-        sched_do(frame, self);
+        sched_do(frame);
     }
 }
 
@@ -66,8 +36,8 @@ static uint64_t exception_grow_stack(thread_t* thread, uintptr_t faultAddr, stac
     uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
     if (stack_pointer_is_in_stack(stack, alignedFaultAddr, 1))
     {
-        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, flags, VMM_ALLOC_FAIL_IF_MAPPED) ==
-            NULL)
+        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PAGE_SIZE, flags,
+                VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
         {
             if (errno == EEXIST) // Race condition, another CPU mapped the page.
             {
@@ -85,7 +55,7 @@ static uint64_t exception_grow_stack(thread_t* thread, uintptr_t faultAddr, stac
 
 static void exception_kernel_page_fault_handler(interrupt_frame_t* frame)
 {
-    thread_t* thread = sched_thread_unsafe();
+    thread_t* thread = thread_current_unsafe();
     process_t* process = thread->process;
     uintptr_t faultAddr = (uintptr_t)cr2_read();
 
@@ -127,7 +97,7 @@ static void exception_kernel_page_fault_handler(interrupt_frame_t* frame)
 
 static void exception_user_page_fault_handler(interrupt_frame_t* frame)
 {
-    thread_t* thread = sched_thread_unsafe();
+    thread_t* thread = thread_current_unsafe();
     process_t* process = thread->process;
     uintptr_t faultAddr = (uintptr_t)cr2_read();
 
@@ -223,15 +193,14 @@ void interrupt_handler(interrupt_frame_t* frame)
         return;
     }
 
-    cpu_t* self = cpu_get_unsafe();
-    assert(self != NULL);
+    SELF->inInterrupt = false;
+    perf_interrupt_begin();
 
-    self->interrupt.inInterrupt = true;
-    perf_interrupt_begin(self);
+    percpu_update();
 
     if (frame->vector >= VECTOR_EXTERNAL_START && frame->vector < VECTOR_EXTERNAL_END)
     {
-        irq_dispatch(frame, self);
+        irq_dispatch(frame);
     }
     else if (frame->vector == VECTOR_FAKE)
     {
@@ -239,26 +208,26 @@ void interrupt_handler(interrupt_frame_t* frame)
     }
     else if (frame->vector == VECTOR_TIMER)
     {
-        timer_ack_eoi(frame, self);
+        timer_ack_eoi(frame);
     }
     else if (frame->vector == VECTOR_IPI)
     {
-        ipi_handle_pending(frame, self);
+        ipi_handle_pending(frame);
     }
     else
     {
         panic(NULL, "Invalid interrupt vector 0x%x", frame->vector);
     }
 
-    note_handle_pending(frame, self);
-    wait_check_timeouts(frame, self);
-    sched_do(frame, self);
+    note_handle_pending(frame);
+    wait_check_timeouts(frame);
+    sched_do(frame);
 
-    cpu_stacks_overflow_check(self);
+    cpu_stacks_overflow_check();
 
-    perf_interrupt_end(self);
-    self->interrupt.inInterrupt = false;
+    perf_interrupt_end();
+    SELF->inInterrupt = false;
 
-    // This is a sanity check to make sure blocking and scheduling is functioning correctly.
+    // Sanity check to make sure blocking and scheduling is functioning correctly.
     assert(frame->rflags & RFLAGS_INTERRUPT_ENABLE);
 }

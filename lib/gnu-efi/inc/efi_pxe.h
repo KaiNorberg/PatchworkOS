@@ -153,7 +153,7 @@ typedef PXE_UINT16 PXE_OPCODE;
 //
 // Read & change state of external interrupt enables.
 //
-#define PXE_OPCODE_INTERRUPT_ENABLES                0x0008
+#define PXE_OPCODE_cli_popS                0x0008
 
 //
 // Read & change state of packet receive filters.
@@ -272,8 +272,8 @@ typedef PXE_UINT16 PXE_OPFLAGS;
 // Setting both enable and disable will return PXE_STATCODE_INVALID_OPFLAGS.
 //
 #define PXE_OPFLAGS_INTERRUPT_OPMASK                0xC000
-#define PXE_OPFLAGS_INTERRUPT_ENABLE                0x8000
-#define PXE_OPFLAGS_INTERRUPT_DISABLE           0x4000
+#define PXE_OPFLAGS_cli_pop                0x8000
+#define PXE_OPFLAGS_cli_push           0x4000
 #define PXE_OPFLAGS_INTERRUPT_READ              0x0000
 
 //

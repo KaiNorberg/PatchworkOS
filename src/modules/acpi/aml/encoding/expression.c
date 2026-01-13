@@ -1600,7 +1600,7 @@ aml_object_t* aml_def_acquire_read(aml_term_list_ctx_t* ctx)
         return NULL;
     }
 
-    clock_t clockTimeout = (timeout == 0xFFFF) ? CLOCKS_NEVER : (clock_t)timeout * (CLOCKS_PER_SEC / 1000);
+    clock_t clockTimeout = (timeout == 0xFFFF) ? CLOCKS_NEVER : (clock_t)timeout * (CLOCKS_PER_MS);
     // If timedout result == 1, else result == 0.
     uint64_t acquireResult = aml_mutex_acquire(&mutex->mutex.mutex, mutex->mutex.syncLevel, clockTimeout);
     if (acquireResult == ERR)

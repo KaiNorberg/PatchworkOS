@@ -79,7 +79,7 @@ void local_listen_free(local_listen_t* listen)
     local_conn_t* conn;
     LIST_FOR_EACH_SAFE(conn, temp, &listen->backlog, entry)
     {
-        list_remove(&listen->backlog, &conn->entry);
+        list_remove(&conn->entry);
         lock_acquire(&conn->lock);
         conn->isClosed = true;
         wait_unblock(&conn->waitQueue, WAIT_ALL, EOK);

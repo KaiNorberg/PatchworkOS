@@ -5,40 +5,6 @@
 #include <string.h>
 #include <sys/math.h>
 
-static bool is_power_of_two(uint64_t n)
-{
-    return n > 0 && (n & (n - 1)) == 0;
-}
-
-static uint64_t next_power_of_two(uint64_t n)
-{
-    if (n <= 1)
-    {
-        return 2;
-    }
-
-    if ((n > 0 && (n & (n - 1)) == 0))
-    {
-        return n;
-    }
-
-    n--;
-    n |= n >> 1;
-    n |= n >> 2;
-    n |= n >> 4;
-    n |= n >> 8;
-    n |= n >> 16;
-    n |= n >> 32;
-    n++;
-
-    if (n == 0)
-    {
-        return (UINT64_MAX >> 1) + 1;
-    }
-
-    return n;
-}
-
 uint64_t hash_object(const void* object, uint64_t length)
 {
     uint64_t hash = 0xcbf29ce484222325ULL;
@@ -120,9 +86,9 @@ static uint64_t map_find_slot(const map_t* map, const map_key_t* key, bool forIn
 
 static uint64_t map_resize(map_t* map, uint64_t newCapacity)
 {
-    if (!is_power_of_two(newCapacity))
+    if (!IS_POW2(newCapacity))
     {
-        newCapacity = next_power_of_two(newCapacity);
+        newCapacity = next_pow2(newCapacity);
     }
 
     if (newCapacity <= map->capacity)
@@ -422,7 +388,7 @@ uint64_t map_reserve(map_t* map, uint64_t minCapacity)
         return 0;
     }
 
-    uint64_t newCapacity = next_power_of_two(minCapacity);
+    uint64_t newCapacity = next_pow2(minCapacity);
     if (map_resize(map, newCapacity) == ERR)
     {
         errno = ENOMEM;

@@ -39,7 +39,7 @@ static void loader_strv_free(char** array, uint64_t amount)
 
 void loader_exec(void)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     file_t* file = NULL;
@@ -47,7 +47,13 @@ void loader_exec(void)
 
     uintptr_t* addrs = NULL;
 
-    file = vfs_open(PATHNAME(process->argv[0]), process);
+    pathname_t pathname;
+    if (pathname_init(&pathname, process->argv[0]) == ERR)
+    {
+        goto cleanup;
+    }
+
+    file = vfs_open(&pathname, process);
     if (file == NULL)
     {
         goto cleanup;
@@ -87,8 +93,8 @@ void loader_exec(void)
     elf64_get_loadable_bounds(&elf, &minAddr, &maxAddr);
     uint64_t loadSize = maxAddr - minAddr;
 
-    if (vmm_alloc(&process->space, (void*)minAddr, loadSize, PML_USER | PML_WRITE | PML_PRESENT, VMM_ALLOC_OVERWRITE) ==
-        NULL)
+    if (vmm_alloc(&process->space, (void*)minAddr, loadSize, PAGE_SIZE, PML_USER | PML_WRITE | PML_PRESENT,
+            VMM_ALLOC_OVERWRITE) == NULL)
     {
         goto cleanup;
     }
@@ -148,17 +154,18 @@ cleanup:
     {
         free(addrs);
     }
+    pid_t pid = process->id;
     if (errno == EOK)
     {
         thread_jump(thread);
     }
-    LOG_DEBUG("exec failed due to %s\n", strerror(errno));
+    LOG_DEBUG("exec failed due to %s pid=%llu\n", strerror(errno), pid);
     sched_process_exit("exec failed");
 }
 
 static void loader_entry(void)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
 
     WAIT_BLOCK(&thread->process->suspendQueue, !(atomic_load(&thread->process->flags) & PROCESS_SUSPENDED));
 
@@ -175,7 +182,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
         return ERR;
     }
 
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     assert(thread != NULL);
     process_t* process = thread->process;
     assert(process != NULL);
@@ -300,7 +307,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
 
 SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
     space_t* space = &process->space;
 

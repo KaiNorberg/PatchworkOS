@@ -176,7 +176,7 @@ static void* shmem_mmap(file_t* file, void* address, size_t length, size_t* offs
 
     LOCK_SCOPE(&shmem->lock);
 
-    process_t* process = sched_process_unsafe();
+    process_t* process = process_current_unsafe();
     space_t* space = &process->space;
 
     uint64_t pageAmount = BYTES_TO_PAGES(length);

@@ -5,6 +5,7 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/space.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
@@ -57,7 +58,7 @@ uint64_t note_send(note_queue_t* queue, const char* string)
         return ERR;
     }
 
-    process_t* sender = sched_process();
+    process_t* sender = process_current();
 
     LOCK_SCOPE(&queue->lock);
 
@@ -83,17 +84,16 @@ uint64_t note_send(note_queue_t* queue, const char* string)
     return 0;
 }
 
-bool note_handle_pending(interrupt_frame_t* frame, cpu_t* self)
+bool note_handle_pending(interrupt_frame_t* frame)
 {
     UNUSED(frame);
-    UNUSED(self);
 
     if (!INTERRUPT_FRAME_IN_USER_SPACE(frame))
     {
         return false;
     }
 
-    thread_t* thread = sched_thread_unsafe();
+    thread_t* thread = thread_current_unsafe();
     process_t* process = thread->process;
     note_queue_t* queue = &thread->notes;
     note_handler_t* handler = &process->noteHandler;
@@ -146,7 +146,7 @@ bool note_handle_pending(interrupt_frame_t* frame, cpu_t* self)
 
 SYSCALL_DEFINE(SYS_NOTIFY, uint64_t, note_func_t handler)
 {
-    process_t* process = sched_process();
+    process_t* process = process_current();
     note_handler_t* noteHandler = &process->noteHandler;
 
     if (handler != NULL && space_check_access(&process->space, (void*)handler, 1) == ERR)
@@ -163,7 +163,7 @@ SYSCALL_DEFINE(SYS_NOTIFY, uint64_t, note_func_t handler)
 
 SYSCALL_DEFINE(SYS_NOTED, void)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     note_queue_t* queue = &thread->notes;
 
     lock_acquire(&queue->lock);

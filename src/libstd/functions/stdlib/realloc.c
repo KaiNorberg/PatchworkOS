@@ -77,7 +77,7 @@ void* realloc(void* ptr, size_t size)
                 assert(!(next->flags & _HEAP_MAPPED));
                 _heap_remove_from_free_list(next);
                 block->size = combinedSize;
-                list_remove(&_heapList, &next->listEntry);
+                list_remove(&next->listEntry);
 
                 uint64_t remainder = combinedSize - alignedSize;
                 if (remainder >= sizeof(_heap_header_t) + _HEAP_ALIGNMENT)

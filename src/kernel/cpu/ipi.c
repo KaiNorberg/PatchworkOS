@@ -1,6 +1,7 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/ipi.h>
 #include <kernel/cpu/irq.h>
+#include <kernel/cpu/percpu.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sync/lock.h>
@@ -12,24 +13,26 @@
 static ipi_chip_t* registeredChip = NULL;
 static rwlock_t chipLock = RWLOCK_CREATE();
 
-void ipi_cpu_ctx_init(ipi_cpu_ctx_t* ctx)
+PERCPU_DEFINE_CTOR(static void, pcpu_ipi)
 {
+    ipi_cpu_t* ctx = SELF_PTR(pcpu_ipi);
+
     memset(ctx->queue, 0, sizeof(ctx->queue));
     ctx->readIndex = 0;
     ctx->writeIndex = 0;
     lock_init(&ctx->lock);
 }
 
-void ipi_handle_pending(interrupt_frame_t* frame, cpu_t* self)
+void ipi_handle_pending(interrupt_frame_t* frame)
 {
     UNUSED(frame);
 
-    ipi_cpu_ctx_t* ctx = &self->ipi;
+    ipi_cpu_t* ctx = SELF_PTR(pcpu_ipi);
 
     rwlock_read_acquire(&chipLock);
     if (registeredChip != NULL && registeredChip->ack != NULL)
     {
-        registeredChip->ack(self);
+        registeredChip->ack();
     }
     rwlock_read_release(&chipLock);
 
@@ -46,7 +49,6 @@ void ipi_handle_pending(interrupt_frame_t* frame, cpu_t* self)
         ctx->readIndex = (ctx->readIndex + 1) % IPI_QUEUE_SIZE;
 
         ipi_func_data_t ipiData = {
-            .self = self,
             .private = ipi.private,
         };
         ipi.func(&ipiData);
@@ -55,7 +57,7 @@ void ipi_handle_pending(interrupt_frame_t* frame, cpu_t* self)
     rwlock_read_acquire(&chipLock);
     if (registeredChip != NULL && registeredChip->eoi != NULL)
     {
-        registeredChip->eoi(self);
+        registeredChip->eoi();
     }
     rwlock_read_release(&chipLock);
 }
@@ -119,7 +121,7 @@ static uint64_t ipi_push(cpu_t* cpu, ipi_func_t func, void* private)
         return ERR;
     }
 
-    ipi_cpu_ctx_t* ctx = &cpu->ipi;
+    ipi_cpu_t* ctx = CPU_PTR(cpu->id, pcpu_ipi);
     LOCK_SCOPE(&ctx->lock);
 
     size_t nextWriteIndex = (ctx->writeIndex + 1) % IPI_QUEUE_SIZE;

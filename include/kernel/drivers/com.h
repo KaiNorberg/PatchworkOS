@@ -18,7 +18,7 @@ typedef enum com_reg
 {
     COM_REG_RECEIVE = 0,
     COM_REG_TRANSMIT = 0,
-    COM_REG_INTERRUPT_ENABLE = 1,
+    COM_REG_cli_pop = 1,
     COM_REG_BAUD_LOW = 0,  // DLAB must be set to 1
     COM_REG_BAUD_HIGH = 1, // DLAB must be set to 1
     COM_REG_INTERRUPT_ID = 2,

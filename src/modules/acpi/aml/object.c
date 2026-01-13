@@ -15,9 +15,6 @@
 // Used to check for memory leaks
 static uint64_t totalObjects = 0;
 
-// Cache for aml_object_t to avoid frequent allocations
-static list_t objectsCache = LIST_CREATE(objectsCache);
-
 static aml_object_id_t newObjectId = AML_OBJECT_ID_NONE + 1;
 
 uint64_t aml_object_get_total_count(void)
@@ -47,33 +44,16 @@ static void aml_object_free(aml_object_t* object)
         object->dir = NULL;
     }
 
-    if (list_length(&objectsCache) < AML_OBJECT_CACHE_SIZE)
-    {
-        list_push_back(&objectsCache, &object->listEntry);
-    }
-    else
-    {
-        free(object);
-    }
-
+    free(object);
     totalObjects--;
 }
 
 aml_object_t* aml_object_new(void)
 {
-    aml_object_t* object = NULL;
-    if (!list_is_empty(&objectsCache))
-    {
-        object = CONTAINER_OF_SAFE(list_pop_front(&objectsCache), aml_object_t, listEntry);
-    }
-
+    aml_object_t* object = calloc(1, sizeof(aml_object_t));
     if (object == NULL)
     {
-        object = calloc(1, sizeof(aml_object_t));
-        if (object == NULL)
-        {
-            return NULL;
-        }
+        return NULL;
     }
 
     ref_init(&object->ref, aml_object_free);

@@ -27,7 +27,7 @@
 
 static uint64_t procfs_revalidate_hide(dentry_t* dentry)
 {
-    process_t* current = sched_process();
+    process_t* current = process_current();
     assert(current != NULL);
     process_t* process = dentry->inode->private;
     assert(process != NULL);
@@ -385,7 +385,7 @@ static size_t procfs_perf_read(file_t* file, void* buffer, size_t count, size_t*
     size_t userPages = space_user_page_count(&process->space);
 
     lock_acquire(&process->threads.lock);
-    size_t threadCount = list_length(&process->threads.list);
+    size_t threadCount = list_size(&process->threads.list);
     lock_release(&process->threads.lock);
 
     clock_t userClocks = atomic_load(&process->perf.userClocks);
@@ -529,7 +529,7 @@ static uint64_t procfs_ctl_bind(file_t* file, uint64_t argc, const char** argv)
     }
 
     process_t* process = file->inode->private;
-    process_t* writing = sched_process();
+    process_t* writing = process_current();
 
     pathname_t targetName;
     if (pathname_init(&targetName, argv[1]) == ERR)
@@ -590,7 +590,7 @@ static uint64_t procfs_ctl_mount(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    process_t* writing = sched_process();
+    process_t* writing = process_current();
     process_t* process = file->inode->private;
 
     pathname_t mountname;
@@ -939,7 +939,7 @@ static uint64_t procfs_self_readlink(inode_t* inode, char* buffer, uint64_t coun
 {
     UNUSED(inode);
 
-    process_t* process = sched_process();
+    process_t* process = process_current();
     int ret = snprintf(buffer, count, "%llu", process->id);
     if (ret < 0 || ret >= (int)count)
     {
@@ -1094,7 +1094,7 @@ static uint64_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         return 0;
     }
 
-    process_t* current = sched_process();
+    process_t* current = process_current();
     process_t* process = dentry->inode->private;
     assert(process != NULL);
 

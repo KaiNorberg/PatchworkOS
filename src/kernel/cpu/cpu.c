@@ -16,6 +16,7 @@
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
+
 #include <stdatomic.h>
 #include <stdint.h>
 #include <sys/list.h>
@@ -23,22 +24,23 @@
 cpu_t* _cpus[CPU_MAX] = {0};
 uint16_t _cpuAmount = 0;
 
-static cpu_handler_t eventHandlers[CPU_MAX_EVENT_HANDLERS] = {0};
-static uint64_t eventHandlerCount = 0;
-static lock_t eventHandlerLock = LOCK_CREATE();
-
-void cpu_init_early(cpu_t* cpu)
+void cpu_init(cpu_t* cpu)
 {
-    cpuid_t id = _cpuAmount++;
-    msr_write(MSR_CPU_ID, (uint64_t)id);
-
-    cpu->id = id;
+    cpu_id_t id = _cpuAmount++;
     _cpus[id] = cpu;
 
+    cpu->self = cpu;
+    cpu->id = id;
+    cpu->syscallRsp = 0;
+    cpu->userRsp = 0;
+    cpu->inInterrupt = false;
     gdt_cpu_load();
     idt_cpu_load();
     tss_init(&cpu->tss);
+
     gdt_cpu_tss_load(&cpu->tss);
+    msr_write(MSR_GS_BASE, (uintptr_t)cpu);
+    msr_write(MSR_KERNEL_GS_BASE, (uintptr_t)cpu);
 
     if (stack_pointer_init_buffer(&cpu->exceptionStack, cpu->exceptionStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) == ERR)
     {
@@ -73,140 +75,27 @@ void cpu_init_early(cpu_t* cpu)
     }
     *(uint64_t*)cpu->interruptStack.bottom = CPU_STACK_CANARY;
     tss_ist_load(&cpu->tss, TSS_IST_INTERRUPT, &cpu->interruptStack);
+
+    memset(cpu->percpu, 0, CONFIG_PERCPU_SIZE);
 }
 
-void cpu_init(cpu_t* cpu)
+void cpu_stacks_overflow_check(void)
 {
-    simd_cpu_init();
-    syscalls_cpu_init();
-
-    vmm_cpu_ctx_init(&cpu->vmm);
-    interrupt_ctx_init(&cpu->interrupt);
-    perf_cpu_ctx_init(&cpu->perf);
-    timer_cpu_ctx_init(&cpu->timer);
-    wait_init(&cpu->wait);
-    sched_init(&cpu->sched);
-    ipi_cpu_ctx_init(&cpu->ipi);
-
-    LOCK_SCOPE(&eventHandlerLock);
-    for (uint64_t i = 0; i < eventHandlerCount; i++)
+    if (*(uint64_t*)SELF->exceptionStack.bottom != CPU_STACK_CANARY)
     {
-        cpu_event_t event = {.type = CPU_ONLINE};
-        eventHandlers[i].func(cpu, &event);
-        bitmap_set(&eventHandlers[i].initializedCpus, cpu->id);
+        panic(NULL, "CPU%u exception stack overflow detected", SELF->id);
     }
-}
-
-uint64_t cpu_handler_register(cpu_func_t func)
-{
-    if (func == NULL)
+    if (*(uint64_t*)SELF->doubleFaultStack.bottom != CPU_STACK_CANARY)
     {
-        errno = EINVAL;
-        return ERR;
+        panic(NULL, "CPU%u double fault stack overflow detected", SELF->id);
     }
-
-    LOCK_SCOPE(&eventHandlerLock);
-    if (eventHandlerCount >= CPU_MAX_EVENT_HANDLERS)
+    if (*(uint64_t*)SELF->nmiStack.bottom != CPU_STACK_CANARY)
     {
-        errno = EBUSY;
-        return ERR;
+        panic(NULL, "CPU%u NMI stack overflow detected", SELF->id);
     }
-
-    for (uint64_t i = 0; i < eventHandlerCount; i++)
+    if (*(uint64_t*)SELF->interruptStack.bottom != CPU_STACK_CANARY)
     {
-        if (eventHandlers[i].func == func)
-        {
-            errno = EEXIST;
-            return ERR;
-        }
-    }
-
-    cpu_handler_t* eventHandler = &eventHandlers[eventHandlerCount++];
-    eventHandler->func = func;
-    BITMAP_DEFINE_INIT(eventHandler->initializedCpus, CPU_MAX);
-    bitmap_clear_range(&eventHandler->initializedCpus, 0, CPU_MAX);
-
-    cpu_t* self = cpu_get_unsafe();
-    if (self != NULL)
-    {
-        cpu_event_t event = {.type = CPU_ONLINE};
-        eventHandler->func(self, &event);
-        bitmap_set(&eventHandler->initializedCpus, self->id);
-    }
-
-    cpu_t* cpu;
-    CPU_FOR_EACH(cpu)
-    {
-        if (cpu == self)
-        {
-            continue;
-        }
-        atomic_store(&cpu->needHandlersCheck, true);
-    }
-
-    return 0;
-}
-
-void cpu_handler_unregister(cpu_func_t func)
-{
-    if (func == NULL)
-    {
-        return;
-    }
-
-    LOCK_SCOPE(&eventHandlerLock);
-
-    for (uint64_t i = 0; i < eventHandlerCount; i++)
-    {
-        cpu_handler_t* eventHandler = &eventHandlers[i];
-        if (eventHandler->func == func)
-        {
-            eventHandler->func = NULL;
-            eventHandlerCount--;
-            memmove(&eventHandlers[i], &eventHandlers[i + 1], (CPU_MAX_EVENT_HANDLERS - i - 1) * sizeof(cpu_func_t));
-            break;
-        }
-    }
-}
-
-void cpu_handlers_check(cpu_t* cpu)
-{
-    bool expected = true;
-    if (!atomic_compare_exchange_strong(&cpu->needHandlersCheck, &expected, false))
-    {
-        return;
-    }
-
-    LOCK_SCOPE(&eventHandlerLock);
-    for (uint64_t i = 0; i < eventHandlerCount; i++)
-    {
-        cpu_handler_t* eventHandler = &eventHandlers[i];
-        if (!bitmap_is_set(&eventHandler->initializedCpus, cpu->id))
-        {
-            cpu_event_t event = {.type = CPU_ONLINE};
-            eventHandler->func(cpu, &event);
-            bitmap_set(&eventHandler->initializedCpus, cpu->id);
-        }
-    }
-}
-
-void cpu_stacks_overflow_check(cpu_t* cpu)
-{
-    if (*(uint64_t*)cpu->exceptionStack.bottom != CPU_STACK_CANARY)
-    {
-        panic(NULL, "CPU%u exception stack overflow detected", cpu->id);
-    }
-    if (*(uint64_t*)cpu->doubleFaultStack.bottom != CPU_STACK_CANARY)
-    {
-        panic(NULL, "CPU%u double fault stack overflow detected", cpu->id);
-    }
-    if (*(uint64_t*)cpu->nmiStack.bottom != CPU_STACK_CANARY)
-    {
-        panic(NULL, "CPU%u NMI stack overflow detected", cpu->id);
-    }
-    if (*(uint64_t*)cpu->interruptStack.bottom != CPU_STACK_CANARY)
-    {
-        panic(NULL, "CPU%u interrupt stack overflow detected", cpu->id);
+        panic(NULL, "CPU%u interrupt stack overflow detected", SELF->id);
     }
 }
 
@@ -224,14 +113,14 @@ static void cpu_halt_ipi_handler(ipi_func_data_t* data)
 
 uint64_t cpu_halt_others(void)
 {
-    if (ipi_send(cpu_get_unsafe(), IPI_OTHERS, cpu_halt_ipi_handler, NULL) == ERR)
+    if (ipi_send(SELF->self, IPI_OTHERS, cpu_halt_ipi_handler, NULL) == ERR)
     {
         return ERR;
     }
     return 0;
 }
 
-uintptr_t cpu_interrupt_stack_top(cpu_t* cpu)
+uintptr_t cpu_interrupt_stack_top(void)
 {
-    return cpu->interruptStack.top;
+    return SELF->interruptStack.top;
 }

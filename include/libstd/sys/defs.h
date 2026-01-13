@@ -125,6 +125,30 @@
  */
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
 
+/**
+ * @brief GCC constructor function attribute.
+ *
+ * Will add the function to the `.init_array` section with the given priority, the function can then be called using
+ * `INIT_CALL()`.
+ *
+ * Functions with a higher priority number are called last.
+ *
+ * @param priority The priority of the constructor function.
+ */
+#define CONSTRUCTOR(priority) __attribute__((used, constructor(priority)))
+
+/**
+ * @brief GCC destructor function attribute.
+ *
+ * Will add the function to the `.finit_array` section with the given priority, the function can then be called using
+ * `FINIT_CALL()`.
+ *
+ * Functions with a higher priority number are called last.
+ *
+ * @param priority The priority of the destructor function.
+ */
+#define DESTRUCTOR(priority) __attribute__((used, destructor(priority)))
+
 /** @} */
 
 #endif

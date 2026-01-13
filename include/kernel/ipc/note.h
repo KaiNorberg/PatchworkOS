@@ -187,9 +187,8 @@ uint64_t note_send(note_queue_t* queue, const char* string);
  * If the frame is not from user space, this function will return immediately.
  *
  * @param frame The interrupt frame.
- * @param self The current CPU.
  * @return `true` if a note was handled, `false` otherwise.
  */
-bool note_handle_pending(interrupt_frame_t* frame, cpu_t* self);
+bool note_handle_pending(interrupt_frame_t* frame);
 
 /** @} */

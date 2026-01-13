@@ -103,6 +103,7 @@ typedef struct
 typedef struct
 {
     list_entry_t nameEntry;
+    symbol_name_t* name;
     void* addr;
     symbol_group_id_t groupId;
     Elf64_Symbol_Binding binding;

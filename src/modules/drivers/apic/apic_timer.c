@@ -13,13 +13,13 @@
 
 static uint64_t apic_timer_ticks_per_ms(void)
 {
-    interrupt_disable();
+    CLI_SCOPE();
 
     lapic_write(LAPIC_REG_TIMER_DIVIDER, APIC_TIMER_DIV_DEFAULT);
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, UINT32_MAX);
 
-    clock_wait(CLOCKS_PER_SEC / 1000);
+    clock_wait(CLOCKS_PER_MS);
 
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
 
@@ -27,7 +27,6 @@ static uint64_t apic_timer_ticks_per_ms(void)
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, 0);
 
-    interrupt_enable();
     return ticks;
 }
 
@@ -35,10 +34,11 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
 {
     UNUSED(uptime);
 
-    lapic_t* lapic = lapic_get(cpu_get_id_unsafe());
-    if (lapic->ticksPerMs == 0)
+    CLI_SCOPE();
+
+    if (_pcpu_lapic->ticksPerMs == 0)
     {
-        lapic->ticksPerMs = apic_timer_ticks_per_ms();
+        _pcpu_lapic->ticksPerMs = apic_timer_ticks_per_ms();
     }
 
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
@@ -49,7 +49,7 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
         return;
     }
 
-    uint64_t ticks = (timeout * lapic->ticksPerMs) / (CLOCKS_PER_SEC / 1000);
+    uint64_t ticks = (timeout * _pcpu_lapic->ticksPerMs) / (CLOCKS_PER_MS);
     if (ticks == 0)
     {
         ticks = 1;
@@ -64,10 +64,8 @@ static void apic_timer_set(irq_virt_t virt, clock_t uptime, clock_t timeout)
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, ticks);
 }
 
-static void apic_timer_eoi(cpu_t* cpu)
+static void apic_timer_eoi(void)
 {
-    UNUSED(cpu);
-
     lapic_write(LAPIC_REG_EOI, 0);
 }
 
@@ -83,7 +81,7 @@ static timer_source_t apicTimer = {
     .eoi = apic_timer_eoi,
 };
 
-uint64_t apic_timer_init(void)
+CONSTRUCTOR(102) static uint64_t apic_timer_init(void)
 {
     if (timer_source_register(&apicTimer) == ERR)
     {

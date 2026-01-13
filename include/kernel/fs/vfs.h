@@ -51,7 +51,7 @@ uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* proc
 /**
  * @brief Open a file relative to another path.
  *
- * @param from The path to open the file relative to.
+ * @param from The path to open the file relative to, or `NULL` to use the process's current working directory.
  * @param pathname The pathname of the file to open.
  * @param process The process opening the file.
  * @return On success, the opened file. On failure, returns `NULL` and `errno` is set.
