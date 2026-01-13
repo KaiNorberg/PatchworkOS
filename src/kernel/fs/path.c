@@ -391,13 +391,12 @@ static uint64_t path_rcu_dotdot(path_walk_ctx_t* ctx)
             break;
         }
 
-        REF(ctx->mount->parent);
-        REF(ctx->mount->target);
-
+        mount_t* nextMount = REF(ctx->mount->parent);
+        dentry_t* nextDentry = REF(ctx->mount->target);
         UNREF(ctx->mount);
-        ctx->mount = ctx->mount->parent;
+        ctx->mount = nextMount;
         UNREF(ctx->dentry);
-        ctx->dentry = ctx->mount->target;
+        ctx->dentry = nextDentry;
 
         iter++;
         if (iter >= PATH_MAX_DOTDOT)

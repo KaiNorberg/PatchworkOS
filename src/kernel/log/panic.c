@@ -85,6 +85,11 @@ static void panic_registers(const interrupt_frame_t* frame)
     LOG_PANIC("rbp: 0x%016llx r08: 0x%016llx r09: 0x%016llx\n", frame->rbp, frame->r8, frame->r9);
     LOG_PANIC("r10: 0x%016llx r11: 0x%016llx r12: 0x%016llx\n", frame->r10, frame->r11, frame->r12);
     LOG_PANIC("r13: 0x%016llx r14: 0x%016llx r15: 0x%016llx\n", frame->r13, frame->r14, frame->r15);
+
+    uint64_t fsBase = msr_read(MSR_FS_BASE);
+    uint64_t gsBase = msr_read(MSR_GS_BASE);
+    uint64_t kGsBase = msr_read(MSR_KERNEL_GS_BASE);
+    LOG_PANIC("fsbase: 0x%016llx gsbase: 0x%016llx kgsbase: 0x%016llx\n", fsBase, gsBase, kGsBase);
 }
 
 static bool panic_is_valid_address(uintptr_t addr)
@@ -265,6 +270,25 @@ void panic_stack_trace(const interrupt_frame_t* frame)
     panic_unwind_stack((uintptr_t*)frame->rbp);
 }
 
+static void panic_print_code(const interrupt_frame_t* frame)
+{
+    if (!panic_is_valid_address(frame->rip))
+    {
+        return;
+    }
+
+    LOG_PANIC("code: ");
+    uint8_t* ip = (uint8_t*)frame->rip;
+    for (int i = 0; i < 16; i++)
+    {
+        if (panic_is_valid_address((uintptr_t)(ip + i)))
+        {
+            LOG_PANIC("%02x ", ip[i]);
+        }
+    }
+    LOG_PANIC("\n");
+}
+
 void panic(const interrupt_frame_t* frame, const char* format, ...)
 {
     asm volatile("cli");
@@ -299,7 +323,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
         LOG_PANIC("failed to halt other CPUs due to '%s'\n", strerror(errno));
     }
 
-    screen_show();
+    screen_panic();
 
     LOG_PANIC("!!! KERNEL PANIC (%s version %s) !!!\n", OS_NAME, OS_VERSION);
     LOG_PANIC("cause: %s\n", panicBuffer);
@@ -421,6 +445,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
     if (frame != NULL)
     {
         panic_registers(frame);
+        panic_print_code(frame);
         panic_print_stack_dump(frame);
         panic_stack_trace(frame);
     }

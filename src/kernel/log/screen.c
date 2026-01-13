@@ -198,6 +198,12 @@ void screen_hide(void)
     hidden = true;
 }
 
+void screen_panic(void)
+{
+    lock_init(&lock);
+    screen_show();
+}
+
 void screen_show(void)
 {
     LOCK_SCOPE(&lock);

@@ -228,6 +228,6 @@ void interrupt_handler(interrupt_frame_t* frame)
     perf_interrupt_end();
     SELF->inInterrupt = false;
 
-    // This is a sanity check to make sure blocking and scheduling is functioning correctly.
+    // Sanity check to make sure blocking and scheduling is functioning correctly.
     assert(frame->rflags & RFLAGS_INTERRUPT_ENABLE);
 }
