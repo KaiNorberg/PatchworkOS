@@ -45,6 +45,7 @@ ASFLAGS := \
 	-nostdinc \
 	-ffreestanding \
 	-fno-builtin \
+	-march=x86-64 \
 	-Iinclude \
 	-Iinclude/libstd \
 	-I$(SRCDIR) \
