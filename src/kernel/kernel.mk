@@ -27,7 +27,7 @@ endif
 
 ASFLAGS += -D_KERNEL_ -Isrc/libstd
 
-LDFLAGS += -T$(SRCDIR)/linker.lds -z max-page-size=0x1000 -z norelro
+LDFLAGS += -no-pie -T$(SRCDIR)/linker.lds -z max-page-size=0x1000 -z norelro
 
 all: $(TARGET)
 
