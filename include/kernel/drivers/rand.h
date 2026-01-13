@@ -25,11 +25,6 @@ typedef struct
 } rand_cpu_t;
 
 /**
- * @brief Initializes the random number generator.
- */
-void rand_cpu_init(rand_cpu_t* ctx);
-
-/**
  * @brief Fills a buffer with random bytes.
  *
  * If the RDRAND instruction is available and working, it will be used. Otherwise, a fallback time based RNG will be

@@ -52,10 +52,8 @@ static void lapic_interrupt(cpu_t* cpu, irq_virt_t virt)
     lapic_write(LAPIC_REG_ICR0, (uint32_t)virt | LAPIC_ICR_FIXED);
 }
 
-static void lapic_eoi(cpu_t* cpu)
+static void lapic_eoi(void)
 {
-    UNUSED(cpu);
-
     lapic_write(LAPIC_REG_EOI, 0);
 }
 

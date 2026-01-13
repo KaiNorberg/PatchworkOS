@@ -63,7 +63,6 @@ typedef uint8_t irq_virt_t;
 typedef struct
 {
     interrupt_frame_t* frame;
-    cpu_t* self;
     irq_virt_t virt;
     void* private;
 } irq_func_data_t;
@@ -164,9 +163,8 @@ void irq_init(void);
  * Will panic on failure.
  *
  * @param frame The interrupt frame of the IRQ.
- * @param self The CPU on which the IRQ was received.
  */
-void irq_dispatch(interrupt_frame_t* frame, cpu_t* self);
+void irq_dispatch(interrupt_frame_t* frame);
 
 /**
  * @brief Allocate a virtual IRQ mapped to the given physical IRQ.

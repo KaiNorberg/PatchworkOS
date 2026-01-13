@@ -381,7 +381,7 @@ void sched_submit(thread_t* thread)
     cpu_t* target;
     if (thread->sched.lastCpu != NULL && sched_is_cache_hot(thread, clock_uptime()))
     {
-        target = CPU_PTR(thread->sched.lastCpu->id, _pcpu_sched);
+        target = thread->sched.lastCpu;
     }
     else if (atomic_load(&self->totalWeight) == 0)
     {

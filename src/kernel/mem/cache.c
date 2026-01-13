@@ -110,11 +110,9 @@ void* cache_alloc(cache_t* cache)
 
     CLI_SCOPE();
 
-    cpu_t* self = cpu_get();
-
-    if (cache->cpus[self->id].active != NULL)
+    if (cache->cpus[SELF->id].active != NULL)
     {
-        cache_slab_t* active = cache->cpus[self->id].active;
+        cache_slab_t* active = cache->cpus[SELF->id].active;
         lock_acquire(&active->lock);
 
         void* result = cache_slab_alloc(active);
@@ -137,7 +135,7 @@ void* cache_alloc(cache_t* cache)
         }
 
         active->owner = CPU_ID_INVALID;
-        cache->cpus[self->id].active = NULL;
+        cache->cpus[SELF->id].active = NULL;
         list_remove(&active->entry);
         list_push_back(&cache->full, &active->entry);
         lock_release(&active->lock);
@@ -159,8 +157,8 @@ allocate:
         cache_slab_t* slab = CONTAINER_OF(list_pop_front(&cache->free), cache_slab_t, entry);
         cache->freeCount--;
         list_push_back(&cache->active, &slab->entry);
-        slab->owner = self->id;
-        cache->cpus[self->id].active = slab;
+        slab->owner = SELF->id;
+        cache->cpus[SELF->id].active = slab;
         lock_release(&cache->lock);
 
         LOCK_SCOPE(&slab->lock);
@@ -175,8 +173,8 @@ allocate:
     }
 
     list_push_back(&cache->active, &slab->entry);
-    slab->owner = self->id;
-    cache->cpus[self->id].active = slab;
+    slab->owner = SELF->id;
+    cache->cpus[SELF->id].active = slab;
     lock_release(&cache->lock);
 
     LOCK_SCOPE(&slab->lock);
@@ -205,7 +203,7 @@ void cache_free(void* ptr)
 
         if (slab->owner != CPU_ID_INVALID)
         {
-            if (isEmpty && slab->owner == cpu_id_get())
+            if (isEmpty && slab->owner == SELF->id)
             {
                 cache->cpus[slab->owner].active = NULL;
                 slab->owner = CPU_ID_INVALID;

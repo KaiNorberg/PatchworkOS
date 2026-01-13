@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #if defined(__cplusplus)
 extern "C"

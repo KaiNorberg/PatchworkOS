@@ -3,7 +3,6 @@
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/fs/path.h>
 #include <kernel/mem/paging_types.h>
-#include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 
 #include <boot/boot_info.h>

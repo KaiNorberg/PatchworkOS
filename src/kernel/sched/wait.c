@@ -2,6 +2,7 @@
 #include <kernel/sched/wait.h>
 
 #include <kernel/cpu/cpu.h>
+#include <kernel/cpu/ipi.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/clock.h>

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <kernel/mem/paging_types.h>
-#include <kernel/sched/sched.h>
-
 #include <stdint.h>
+#include <stdbool.h>
+
+typedef struct thread thread_t;
 
 /**
  * @brief Helpers for managing stacks.

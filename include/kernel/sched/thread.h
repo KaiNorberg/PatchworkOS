@@ -6,6 +6,7 @@
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/cpu/syscall.h>
 #include <kernel/ipc/note.h>
+#include <kernel/fs/path.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/wait.h>
 #include <kernel/utils/ref.h>

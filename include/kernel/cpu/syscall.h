@@ -3,7 +3,6 @@
 #ifndef __ASSEMBLER__
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/stack_pointer.h>
-#include <kernel/mem/space.h>
 #endif
 
 /**
@@ -21,24 +20,6 @@
  *
  * Instead, we use the modern `SYSCALL` instruction, which allows for a faster transition from user mode to kernel mode,
  * but it is a little more complex to set up.
- *
- * ## Stack switching
- *
- * @todo The stack switching documentation is outdated.
- *
- * When a syscall is invoked, the CPU will not automatically switch stacks. We need to manually switch them. To do this,
- * we use the `MSR_KERNEL_GS_BASE` MSR to store a pointer to the `syscall_ctx_t` structure for the current thread.
- *
- * When `swapgs` is called, the `GS` segment register will be swapped with the value in `MSR_KERNEL_GS_BASE`, allowing
- * us to access the syscall context for the current thread.
- *
- * We now cache the user stack pointer in the syscall context, and load the `syscallRsp` stack pointer. We then
- * immediately push the user stack pointer onto the new stack and call `swapgs` again to restore the original `GS`
- * value. Finally, we can enable interrupts and call the main C syscall handler.
- *
- * @note Swapping the `GS` register back before enabling interrupts is important, as it ensures user space can modify
- * its own `GS` base without affecting the kernel and that preemptions do not overwrite the `MSR_KERNEL_GS_BASE` MSR or
- * the `GS` register.
  *
  * ## Calling Convention
  *

@@ -35,9 +35,8 @@ void syscall_ctx_init(syscall_ctx_t* ctx, const stack_pointer_t* syscallStack)
 
 void syscall_ctx_load(syscall_ctx_t* ctx)
 {
-    cpu_t* self = cpu_get();
-    self->syscallRsp = ctx->syscallRsp;
-    self->userRsp = ctx->userRsp;
+    SELF->syscallRsp = ctx->syscallRsp;
+    SELF->userRsp = ctx->userRsp;
 }
 
 static int syscall_descriptor_cmp(const void* a, const void* b)
@@ -103,8 +102,7 @@ void syscall_handler(interrupt_frame_t* frame)
     asm volatile("cli" ::: "memory");
     if (thread_is_note_pending(thread) || (thread->syscall.flags & SYSCALL_FORCE_FAKE_INTERRUPT))
     {
-        cpu_t* self = cpu_get();
         frame->vector = VECTOR_FAKE;
-        interrupt_fake(frame, self);
+        interrupt_fake(frame);
     }
 }

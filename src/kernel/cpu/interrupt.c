@@ -2,7 +2,6 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
-#include <kernel/cpu/irq.h>
 #include <kernel/cpu/regs.h>
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/drivers/perf.h>
@@ -13,6 +12,10 @@
 #include <kernel/proc/process.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sched/sched.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/cpu/ipi.h>
+#include <kernel/cpu/irq.h>
+#include <kernel/sched/timer.h>
 
 #include <assert.h>
 
@@ -190,9 +193,6 @@ void interrupt_handler(interrupt_frame_t* frame)
         return;
     }
 
-    cpu_t* self = cpu_get();
-    assert(self != NULL);
-
     SELF->inInterrupt = false;
     perf_interrupt_begin();
 
@@ -200,7 +200,7 @@ void interrupt_handler(interrupt_frame_t* frame)
 
     if (frame->vector >= VECTOR_EXTERNAL_START && frame->vector < VECTOR_EXTERNAL_END)
     {
-        irq_dispatch(frame, self);
+        irq_dispatch(frame);
     }
     else if (frame->vector == VECTOR_FAKE)
     {
@@ -212,18 +212,18 @@ void interrupt_handler(interrupt_frame_t* frame)
     }
     else if (frame->vector == VECTOR_IPI)
     {
-        ipi_handle_pending(frame, self);
+        ipi_handle_pending(frame);
     }
     else
     {
         panic(NULL, "Invalid interrupt vector 0x%x", frame->vector);
     }
 
-    note_handle_pending(frame, self);
+    note_handle_pending(frame);
     wait_check_timeouts(frame);
     sched_do(frame);
 
-    cpu_stacks_overflow_check(self);
+    cpu_stacks_overflow_check();
 
     perf_interrupt_end();
     SELF->inInterrupt = false;

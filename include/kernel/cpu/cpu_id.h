@@ -38,18 +38,4 @@
  */
 typedef uint16_t cpu_id_t;
 
-/**
- * @brief Gets the current CPU ID.
- *
- * @warning This function does not disable interrupts, it should thus only be used when interrupts are already disabled.
- *
- * @return The current CPU ID.
- */
-static inline cpu_id_t cpu_id_get(void)
-{
-    cpu_id_t id;
-    asm volatile("movw %%gs:%P1, %0" : "=r"(id) : "i"(CPU_OFFSET_ID));
-    return id;
-}
-
 /** @} */

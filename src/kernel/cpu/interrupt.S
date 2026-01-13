@@ -89,19 +89,16 @@ INTERRUPT_NO_ERR 31
 .endr
 
 // rdi = interrupt_frame_t* frame
-// rsi = cpu_t* self
 interrupt_fake:
     pushq $0 // align stack
 
     movq %rdi, %r15 // frame
     
-    // memcpy((r14 = cpu_interrupt_stack_top(self) - INTERRUPT_FRAME_SIZE), frame, INTERRUPT_FRAME_SIZE)
-    movq %rsi, %rdi
+    // memcpy((r14 = cpu_interrupt_stack_top() - INTERRUPT_FRAME_SIZE), frame, INTERRUPT_FRAME_SIZE)
     call cpu_interrupt_stack_top
     movq %rax, %rdi
     subq $INTERRUPT_FRAME_SIZE, %rdi
     movq %rdi, %r14
-    movq %r15, %rsi
     movq $INTERRUPT_FRAME_SIZE, %rdx
     call memcpy
 

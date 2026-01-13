@@ -1,26 +1,16 @@
 #pragma once
 
 #ifndef __ASSEMBLER__
-#include <kernel/config.h>
 #include <kernel/cpu/cpu_id.h>
-#include <kernel/cpu/interrupt.h>
-#include <kernel/cpu/ipi.h>
 #include <kernel/cpu/tss.h>
-#include <kernel/drivers/perf.h>
-#include <kernel/drivers/rand.h>
-#include <kernel/mem/vmm.h>
-#include <kernel/sched/sched.h>
-#include <kernel/sched/timer.h>
-#include <kernel/sched/wait.h>
-#include <kernel/sync/rcu.h>
-#include <kernel/utils/map.h>
+#include <kernel/cpu/stack_pointer.h>
+#include <kernel/config.h>
 
-#include <assert.h>
-#include <stdatomic.h>
 #include <stdint.h>
-#include <sys/bitmap.h>
-#include <sys/defs.h>
-#include <sys/list.h>
+#include <assert.h>
+#include <sys/proc.h>
+
+typedef struct cpu cpu_t;
 #endif
 
 /**
@@ -74,8 +64,6 @@ typedef struct cpu
     uint64_t oldRflags; ///< The rflags value before disabling interrupts.
     uint16_t cli;       ///< The CLI depth counter used in `cli_push()` and `cli_pop()`.
     tss_t tss;
-    rand_cpu_t rand;
-    ipi_cpu_t ipi;
     stack_pointer_t exceptionStack;
     stack_pointer_t doubleFaultStack;
     stack_pointer_t nmiStack;
@@ -113,33 +101,20 @@ extern cpu_t* _cpus[CPU_MAX];
 extern uint16_t _cpuAmount;
 
 /**
- * @brief Only initialize the parts of the CPU structure needed for early boot.
- *
- * The only reason we need this is to split the initialization of the bootstrap CPU to avoid circular dependencies
- * during early boot and since we cant use memory allocation yet.
- *
- * @param cpu The CPU structure to initialize.
- */
-void cpu_init_early(cpu_t* cpu);
-
-/**
- * @brief Initializes the CPU represented by the `cpu_t` structure.
- *
- * Must be called on the CPU that will be represented by the `cpu` structure, after setting the CPU ID MSR using
- * `cpu_init_early()`.
+ * @brief Initializes a CPU structure.
+ * 
+ * Will note initialize percpu data, use `percpu_update()` after calling this function.
  *
  * @param cpu The CPU structure to initialize.
  */
 void cpu_init(cpu_t* cpu);
 
 /**
- * @brief Checks for CPU stack overflows.
+ * @brief Checks the current CPU for stack overflows.
  *
  * Checks the canary values at the bottom of each CPU stack and if its been modified panics.
- *
- * @param cpu The CPU to check.
  */
-void cpu_stacks_overflow_check(cpu_t* cpu);
+void cpu_stacks_overflow_check(void);
 
 /**
  * @brief Halts all other CPUs.
@@ -149,14 +124,13 @@ void cpu_stacks_overflow_check(cpu_t* cpu);
 uint64_t cpu_halt_others(void);
 
 /**
- * @brief Gets the top of the interrupt stack for a CPU.
+ * @brief Gets the top of the interrupt stack for the current CPU.
  *
  * Usefull as we might need to retrieve the interrupt stack in assembly, so this avoid code duplication.
  *
- * @param cpu The CPU to get the interrupt stack top for.
  * @return The top of the interrupt stack.
  */
-uintptr_t cpu_interrupt_stack_top(cpu_t* cpu);
+uintptr_t cpu_interrupt_stack_top(void);
 
 /**
  * @brief Gets the number of identified CPUs.
@@ -183,22 +157,6 @@ static inline cpu_t* cpu_get_by_id(cpu_id_t id)
         return NULL;
     }
     return _cpus[id];
-}
-
-/**
- * @brief Gets the current CPU structure.
- *
- * @warning This function does not disable interrupts, it should thus only be used when interrupts are already disabled.
- *
- * @return A pointer to the current CPU structure.
- */
-static inline cpu_t* cpu_get(void)
-{
-    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
-
-    cpu_t* cpu;
-    asm volatile("movq %%gs:%P1, %0" : "=r"(cpu) : "i"(CPU_OFFSET_SELF));
-    return cpu;
 }
 
 /**

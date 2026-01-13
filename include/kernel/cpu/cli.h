@@ -1,7 +1,7 @@
 #pragma once
 
 #include <assert.h>
-#include <kernel/cpu/cpu_id.h>
+#include <kernel/cpu/cpu.h>
 #include <kernel/cpu/percpu.h>
 #include <kernel/cpu/regs.h>
 #include <stdbool.h>
@@ -21,7 +21,18 @@
  *
  * @warning Must have a matching `cli_pop()` call to re-enable interrupts when depth reaches zero.
  */
-void cli_push(void);
+static inline void cli_push(void)
+{
+    uint64_t rflags = rflags_read();
+    asm volatile("cli" ::: "memory");
+
+    if (SELF->cli == 0)
+    {
+        SELF->oldRflags = rflags;
+    }
+    SELF->cli++;
+}
+
 
 /**
  * @brief Decrements the CLI depth, re-enabling interrupts if depth reaches zero and interrupts were enabled prior to
@@ -29,7 +40,16 @@ void cli_push(void);
  *
  * @warning This function should only be called after a `cli_push()` call.
  */
-void cli_pop(void);
+static inline void cli_pop(void)
+{
+    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
+    assert(SELF->cli != 0);
+    SELF->cli--;
+    if (SELF->cli == 0 && (SELF->oldRflags & RFLAGS_INTERRUPT_ENABLE))
+    {
+        asm volatile("sti" ::: "memory");
+    }
+}
 
 /**
  * @brief Macro to increment CLI depth for the duration of the current scope.

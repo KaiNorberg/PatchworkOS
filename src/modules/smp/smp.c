@@ -43,12 +43,7 @@ static void smp_start_others(void)
 
     trampoline_init();
 
-    cpu_t* bootstrapCpu = cpu_get();
-    assert(bootstrapCpu->id == CPU_ID_BOOTSTRAP);
-
-    lapic_t* bootstrapLapic = CPU_PTR(bootstrapCpu->id, _pcpu_lapic);
-    assert(bootstrapLapic != NULL);
-
+    assert(SELF->id == CPU_ID_BOOTSTRAP);
     LOG_INFO("bootstrap cpu already started\n");
 
     madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, sizeof(madt_t), 0);
@@ -60,7 +55,7 @@ static void smp_start_others(void)
     processor_local_apic_t* lapic;
     MADT_FOR_EACH(madt, lapic)
     {
-        if (lapic->header.type != INTERRUPT_CONTROLLER_PROCESSOR_LOCAL_APIC || bootstrapLapic->lapicId == lapic->apicId)
+        if (lapic->header.type != INTERRUPT_CONTROLLER_PROCESSOR_LOCAL_APIC || _pcpu_lapic->lapicId == lapic->apicId)
         {
             continue;
         }

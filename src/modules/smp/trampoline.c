@@ -2,6 +2,7 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
+#include <kernel/cpu/percpu.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
@@ -109,9 +110,9 @@ static void trampoline_after_jump(void)
 
 void trampoline_c_entry(cpu_t* cpu)
 {
-    cpu_init_early(cpu);
-
     cpu_init(cpu);
+
+    percpu_update();
 
     thread_t* thread = thread_current_unsafe();
     assert(thread != NULL);

@@ -250,11 +250,10 @@ void interrupt_handler(interrupt_frame_t* frame);
  * @warning Must only be called when interrupts are disabled.
  *
  * @param frame The interrupt frame representing the state at the time of the fake interrupt.
- * @param self The current CPU.
  * @return Will not return, instead will load and jump to the given interrupt frame, unless the thread gets scheduled or
  * the frame is modified.
  */
-_NORETURN extern void interrupt_fake(interrupt_frame_t* frame, cpu_t* self);
+_NORETURN extern void interrupt_fake(interrupt_frame_t* frame);
 
 #endif
 

@@ -287,10 +287,31 @@ void symbol_remove_group(symbol_group_id_t groupId)
         return;
     }
 
+    while (!list_is_empty(&groupEntry->names))
+    {
+        symbol_name_t* nameEntry = CONTAINER_OF(list_pop_front(&groupEntry->names), symbol_name_t, groupEntry);
+        list_entry_init(&nameEntry->groupEntry);
+    }
+
     size_t writeIdx = 0;
     for (size_t readIdx = 0; readIdx < addrAmount; readIdx++)
     {
-        if (addrArray[readIdx]->groupId != groupId)
+        symbol_addr_t* addrEntry = addrArray[readIdx];
+        if (addrEntry->groupId == groupId)
+        {
+            symbol_name_t* nameEntry = addrEntry->name;
+
+            list_remove(&addrEntry->nameEntry);
+            free(addrEntry);
+
+            if (list_is_empty(&nameEntry->addrs))
+            {
+                map_remove(&nameMap, &nameEntry->mapEntry);
+                list_remove(&nameEntry->groupEntry);
+                free(nameEntry);
+            }
+        }
+        else
         {
             if (writeIdx != readIdx)
             {
@@ -300,20 +321,6 @@ void symbol_remove_group(symbol_group_id_t groupId)
         }
     }
     addrAmount = writeIdx;
-
-    while (!list_is_empty(&groupEntry->names))
-    {
-        symbol_name_t* nameEntry = CONTAINER_OF(list_pop_front(&groupEntry->names), symbol_name_t, groupEntry);
-
-        while (!list_is_empty(&nameEntry->addrs))
-        {
-            symbol_addr_t* addrEntry = CONTAINER_OF(list_pop_front(&nameEntry->addrs), symbol_addr_t, nameEntry);
-            free(addrEntry);
-        }
-
-        map_remove(&nameMap, &nameEntry->mapEntry);
-        free(nameEntry);
-    }
 
     map_remove(&groupMap, &groupEntry->mapEntry);
     free(groupEntry);

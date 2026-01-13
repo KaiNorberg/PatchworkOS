@@ -2,6 +2,8 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/irq.h>
+#include <kernel/cpu/percpu.h>
+
 #include <stdint.h>
 
 /**

@@ -24,7 +24,7 @@
 cpu_t* _cpus[CPU_MAX] = {0};
 uint16_t _cpuAmount = 0;
 
-void cpu_init_early(cpu_t* cpu)
+void cpu_init(cpu_t* cpu)
 {
     cpu_id_t id = _cpuAmount++;
     _cpus[id] = cpu;
@@ -79,30 +79,23 @@ void cpu_init_early(cpu_t* cpu)
     memset(cpu->percpu, 0, CONFIG_PERCPU_SIZE);
 }
 
-void cpu_init(cpu_t* cpu)
+void cpu_stacks_overflow_check(void)
 {
-    ipi_cpu_init(&cpu->ipi);
-
-    percpu_update();
-}
-
-void cpu_stacks_overflow_check(cpu_t* cpu)
-{
-    if (*(uint64_t*)cpu->exceptionStack.bottom != CPU_STACK_CANARY)
+    if (*(uint64_t*)SELF->exceptionStack.bottom != CPU_STACK_CANARY)
     {
-        panic(NULL, "CPU%u exception stack overflow detected", cpu->id);
+        panic(NULL, "CPU%u exception stack overflow detected", SELF->id);
     }
-    if (*(uint64_t*)cpu->doubleFaultStack.bottom != CPU_STACK_CANARY)
+    if (*(uint64_t*)SELF->doubleFaultStack.bottom != CPU_STACK_CANARY)
     {
-        panic(NULL, "CPU%u double fault stack overflow detected", cpu->id);
+        panic(NULL, "CPU%u double fault stack overflow detected", SELF->id);
     }
-    if (*(uint64_t*)cpu->nmiStack.bottom != CPU_STACK_CANARY)
+    if (*(uint64_t*)SELF->nmiStack.bottom != CPU_STACK_CANARY)
     {
-        panic(NULL, "CPU%u NMI stack overflow detected", cpu->id);
+        panic(NULL, "CPU%u NMI stack overflow detected", SELF->id);
     }
-    if (*(uint64_t*)cpu->interruptStack.bottom != CPU_STACK_CANARY)
+    if (*(uint64_t*)SELF->interruptStack.bottom != CPU_STACK_CANARY)
     {
-        panic(NULL, "CPU%u interrupt stack overflow detected", cpu->id);
+        panic(NULL, "CPU%u interrupt stack overflow detected", SELF->id);
     }
 }
 
@@ -120,14 +113,14 @@ static void cpu_halt_ipi_handler(ipi_func_data_t* data)
 
 uint64_t cpu_halt_others(void)
 {
-    if (ipi_send(cpu_get(), IPI_OTHERS, cpu_halt_ipi_handler, NULL) == ERR)
+    if (ipi_send(SELF->self, IPI_OTHERS, cpu_halt_ipi_handler, NULL) == ERR)
     {
         return ERR;
     }
     return 0;
 }
 
-uintptr_t cpu_interrupt_stack_top(cpu_t* cpu)
+uintptr_t cpu_interrupt_stack_top(void)
 {
-    return cpu->interruptStack.top;
+    return SELF->interruptStack.top;
 }

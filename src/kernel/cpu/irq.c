@@ -1,6 +1,7 @@
 #include <kernel/cpu/irq.h>
 
 #include <kernel/cpu/cpu.h>
+#include <kernel/cpu/percpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/interrupt.h>
 #include <kernel/log/log.h>
@@ -124,10 +125,9 @@ void irq_init(void)
     }
 }
 
-void irq_dispatch(interrupt_frame_t* frame, cpu_t* self)
+void irq_dispatch(interrupt_frame_t* frame)
 {
     assert(frame != NULL);
-    assert(self != NULL);
 
     irq_t* irq = irq_get(frame->vector);
     if (irq == NULL)
@@ -154,7 +154,6 @@ void irq_dispatch(interrupt_frame_t* frame, cpu_t* self)
     {
         irq_func_data_t data = {
             .frame = frame,
-            .self = self,
             .virt = frame->vector,
             .private = handler->private,
         };
@@ -180,7 +179,7 @@ uint64_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu
 
     if (cpu == NULL)
     {
-        cpu = cpu_get();
+        cpu = SELF->self;
     }
 
     irq_virt_t targetVirt = 0;
