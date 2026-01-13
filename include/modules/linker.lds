@@ -30,20 +30,6 @@ SECTIONS
         *(.bss)
     } :data
 
-    .init_array : 
-    {
-        _initArrayStart = .;
-        KEEP(*(.init_array .init_array.*))
-        _initArrayEnd = .;
-    } :data
-
-    .fini_array : 
-    {
-        _finiArrayStart = .;
-        KEEP(*(.fini_array .fini_array.*))
-        _finiArrayEnd = .;
-    } :data
-
     ._percpu : 
     {
         _percpuStart = .;

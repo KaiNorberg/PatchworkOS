@@ -150,4 +150,11 @@ typedef union {
     } raw;
 } ioapic_redirect_entry_t;
 
+/**
+ * @brief Initialize all IO APICs found in the system.
+ *
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t ioapic_all_init(void);
+
 /** @} */

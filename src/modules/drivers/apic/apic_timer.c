@@ -81,7 +81,7 @@ static timer_source_t apicTimer = {
     .eoi = apic_timer_eoi,
 };
 
-CONSTRUCTOR(102) static uint64_t apic_timer_init(void)
+uint64_t apic_timer_init(void)
 {
     if (timer_source_register(&apicTimer) == ERR)
     {

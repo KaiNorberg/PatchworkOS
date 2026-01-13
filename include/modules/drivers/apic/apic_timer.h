@@ -39,4 +39,11 @@ typedef enum
     APIC_TIMER_DIV_DEFAULT = APIC_TIMER_DIV_16
 } apic_timer_divider_t;
 
+/**
+ * @brief Initialize the APIC timer.
+ *
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t apic_timer_init(void);
+
 /** @} */

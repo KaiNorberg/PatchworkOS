@@ -77,7 +77,7 @@ void lapic_send_sipi(lapic_id_t id, void* entryPoint)
     lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_STARTUP | ((uintptr_t)entryPoint / PAGE_SIZE));
 }
 
-CONSTRUCTOR(101) static uint64_t lapic_global_init(void)
+ uint64_t lapic_global_init(void)
 {
     madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, sizeof(madt_t), 0);
     if (madt == NULL)

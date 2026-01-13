@@ -65,7 +65,7 @@ void init_early(void)
 
     _std_init();
 
-    INIT_CALL();
+    PERCPU_INIT();
 
     module_init_fake_kernel_module();
 

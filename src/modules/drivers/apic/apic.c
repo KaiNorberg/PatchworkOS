@@ -25,7 +25,25 @@ uint64_t _module_procedure(const module_event_t* event)
     switch (event->type)
     {
     case MODULE_EVENT_DEVICE_ATTACH:
-        INIT_CALL();
+        if (lapic_global_init() == ERR)
+        {
+            LOG_ERR("failed to initialize local APICs\n");
+            return ERR;
+        }
+        if (apic_timer_init() == ERR)
+        {
+            LOG_ERR("failed to initialize APIC timer\n");
+            return ERR;
+        }
+        if (ioapic_all_init() == ERR)
+        {
+            LOG_ERR("failed to initialize IO APICs\n");
+            return ERR;
+        }
+        PERCPU_INIT();
+        break;
+    case MODULE_EVENT_DEVICE_DETACH:
+        PERCPU_DEINIT();
         break;
     default:
         break;

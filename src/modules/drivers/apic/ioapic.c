@@ -89,7 +89,7 @@ static irq_chip_t ioApicChip = {
     .eoi = ioapic_eoi,
 };
 
-CONSTRUCTOR(103) static uint64_t ioapic_all_init(void)
+uint64_t ioapic_all_init(void)
 {
     madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, sizeof(madt_t), 0);
     if (madt == NULL)
