@@ -4,6 +4,7 @@
 #include <kernel/cpu/cpu_id.h>
 #include <kernel/cpu/percpu.h>
 #include <kernel/cpu/regs.h>
+#include <kernel/sched/clock.h>
 #include <stdbool.h>
 #include <stdint.h>
 

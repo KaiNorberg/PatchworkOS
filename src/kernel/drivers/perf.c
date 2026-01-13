@@ -25,6 +25,28 @@ static dentry_t* perfDir = NULL;
 static dentry_t* cpuFile = NULL;
 static dentry_t* memFile = NULL;
 
+typedef struct
+{
+    clock_t activeClocks;
+    clock_t interruptClocks;
+    clock_t idleClocks;
+    clock_t interruptBegin;
+    clock_t interruptEnd;
+    lock_t lock;
+} perf_cpu_t;
+
+PERCPU_DEFINE_CTOR(static perf_cpu_t, pcpu_perf)
+{
+    perf_cpu_t* perf = SELF_PTR(pcpu_perf);
+
+    perf->activeClocks = 0;
+    perf->interruptClocks = 0;
+    perf->idleClocks = 0;
+    perf->interruptBegin = 0;
+    perf->interruptEnd = 0;
+    lock_init(&perf->lock);
+}
+
 static size_t perf_cpu_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
     UNUSED(file);
@@ -43,23 +65,25 @@ static size_t perf_cpu_read(file_t* file, void* buffer, size_t count, size_t* of
     {
         sprintf(string + strlen(string), "\n");
 
-        lock_acquire(&cpu->perf.lock);
+        perf_cpu_t* perf = CPU_PTR(cpu->id, pcpu_perf);
+
+        lock_acquire(&perf->lock);
         clock_t uptime = clock_uptime();
-        clock_t delta = uptime - cpu->perf.interruptEnd;
+        clock_t delta = uptime - perf->interruptEnd;
         if (sched_is_idle(cpu))
         {
-            cpu->perf.idleClocks += delta;
+            perf->idleClocks += delta;
         }
         else
         {
-            cpu->perf.activeClocks += delta;
+            perf->activeClocks += delta;
         }
-        cpu->perf.interruptEnd = uptime;
+        perf->interruptEnd = uptime;
 
-        clock_t volatile activeClocks = cpu->perf.activeClocks;
-        clock_t volatile interruptClocks = cpu->perf.interruptClocks;
-        clock_t volatile idleClocks = cpu->perf.idleClocks;
-        lock_release(&cpu->perf.lock);
+        clock_t volatile activeClocks = perf->activeClocks;
+        clock_t volatile interruptClocks = perf->interruptClocks;
+        clock_t volatile idleClocks = perf->idleClocks;
+        lock_release(&perf->lock);
 
         int length =
             sprintf(string + strlen(string), "%lu %lu %lu %lu", cpu->id, idleClocks, activeClocks, interruptClocks);
@@ -110,16 +134,6 @@ static file_ops_t memOps = {
     .read = perf_mem_read,
 };
 
-void perf_cpu_init(perf_cpu_t* ctx)
-{
-    ctx->activeClocks = 0;
-    ctx->interruptClocks = 0;
-    ctx->idleClocks = 0;
-    ctx->interruptBegin = 0;
-    ctx->interruptEnd = 0;
-    lock_init(&ctx->lock);
-}
-
 void perf_process_ctx_init(perf_process_ctx_t* ctx)
 {
     atomic_init(&ctx->userClocks, 0);
@@ -153,9 +167,9 @@ void perf_init(void)
     }
 }
 
-void perf_interrupt_begin(cpu_t* self)
+void perf_interrupt_begin(void)
 {
-    perf_cpu_t* perf = &self->perf;
+    perf_cpu_t* perf = SELF_PTR(pcpu_perf);    
     LOCK_SCOPE(&perf->lock);
 
     if (perf->interruptEnd < perf->interruptBegin)
@@ -166,7 +180,7 @@ void perf_interrupt_begin(cpu_t* self)
 
     perf->interruptBegin = clock_uptime();
     clock_t delta = perf->interruptBegin - perf->interruptEnd;
-    if (sched_is_idle(self))
+    if (sched_is_idle(SELF->self))
     {
         perf->idleClocks += delta;
     }
@@ -175,7 +189,7 @@ void perf_interrupt_begin(cpu_t* self)
         perf->activeClocks += delta;
     }
 
-    thread_t* thread = sched_thread_unsafe();
+    thread_t* thread = thread_current_unsafe();
     // Do not count interrupt time as part of syscalls
     if (thread->perf.syscallEnd < thread->perf.syscallBegin)
     {
@@ -189,29 +203,31 @@ void perf_interrupt_begin(cpu_t* self)
     }
 }
 
-void perf_interrupt_end(cpu_t* self)
+void perf_interrupt_end(void)
 {
-    LOCK_SCOPE(&self->perf.lock);
+    perf_cpu_t* perf = SELF_PTR(pcpu_perf);
 
-    self->perf.interruptEnd = clock_uptime();
-    self->perf.interruptClocks += self->perf.interruptEnd - self->perf.interruptBegin;
+    LOCK_SCOPE(&perf->lock);
 
-    thread_t* thread = sched_thread_unsafe();
+    perf->interruptEnd = clock_uptime();
+    perf->interruptClocks += perf->interruptEnd - perf->interruptBegin;
+
+    thread_t* thread = thread_current_unsafe();
     if (thread->perf.syscallEnd < thread->perf.syscallBegin)
     {
-        thread->perf.syscallBegin = self->perf.interruptEnd;
+        thread->perf.syscallBegin = perf->interruptEnd;
     }
     else
     {
-        thread->perf.syscallEnd = self->perf.interruptEnd;
+        thread->perf.syscallEnd = perf->interruptEnd;
     }
 }
 
 void perf_syscall_begin(void)
 {
-    cli_push();
+    CLI_SCOPE();
 
-    thread_t* thread = sched_thread_unsafe();
+    thread_t* thread = thread_current_unsafe();
     perf_thread_ctx_t* perf = &thread->perf;
 
     clock_t uptime = clock_uptime();
@@ -227,15 +243,13 @@ void perf_syscall_begin(void)
     }
 
     perf->syscallBegin = uptime;
-
-    cli_pop();
 }
 
 void perf_syscall_end(void)
 {
-    cli_push();
+    CLI_SCOPE();
 
-    thread_t* thread = sched_thread_unsafe();
+    thread_t* thread = thread_current_unsafe();
     perf_thread_ctx_t* perf = &thread->perf;
     process_t* process = thread->process;
 
@@ -243,6 +257,4 @@ void perf_syscall_end(void)
     clock_t delta = perf->syscallEnd - perf->syscallBegin;
 
     atomic_fetch_add(&process->perf.kernelClocks, delta);
-
-    cli_pop();
 }

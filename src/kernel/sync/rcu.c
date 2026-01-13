@@ -13,17 +13,26 @@ static uint64_t grace = 0;
 static bool active = false;
 static lock_t lock = LOCK_CREATE();
 
-PERCPU_DEFINE_CTOR(static rcu_t, rcu)
+typedef struct rcu
 {
-    rcu_t* local = SELF_PTR(rcu);
+    uint64_t grace;  ///< The last grace period observed by this CPU.
+    list_t* batch;   ///< Callbacks queued during the current grace period.
+    list_t* waiting; ///< Callbacks waiting for the current grace period to end.
+    list_t* ready;   ///< Callbacks whose grace period has ended.
+    list_t lists[3]; //< Buffer storing three lists such that we can rotate them.
+} rcu_t;
+
+PERCPU_DEFINE_CTOR(static rcu_t, pcpu_rcu)
+{
+    rcu_t* rcu = SELF_PTR(pcpu_rcu);
 
     rcu->grace = 0;
-    rcu->batch = &local->lists[0];
-    rcu->waiting = &local->lists[1];
-    rcu->ready = &local->lists[2];
+    rcu->batch = &rcu->lists[0];
+    rcu->waiting = &rcu->lists[1];
+    rcu->ready = &rcu->lists[2];
     for (size_t i = 0; i < ARRAY_SIZE(rcu->lists); i++)
     {
-        list_init(&local->lists[i]);
+        list_init(&rcu->lists[i]);
     }
 }
 
@@ -73,7 +82,7 @@ void rcu_call(rcu_entry_t* entry, rcu_callback_t func, void* arg)
     entry->func = func;
     entry->arg = arg;
 
-    list_push_back(rcu->batch, &entry->entry);
+    list_push_back(pcpu_rcu->batch, &entry->entry);
 }
 
 void rcu_report_quiescent(void)
@@ -90,40 +99,40 @@ void rcu_report_quiescent(void)
     }
 
     bool wake = false;
-    if (!list_is_empty(rcu->waiting))
+    if (!list_is_empty(pcpu_rcu->waiting))
     {
-        if (grace > rcu->grace || (grace == rcu->grace && !active))
+        if (grace > pcpu_rcu->grace || (grace == pcpu_rcu->grace && !active))
         {
             wake = true;
         }
     }
     lock_release(&lock);
 
-    while (!list_is_empty(rcu->ready))
+    while (!list_is_empty(pcpu_rcu->ready))
     {
-        rcu_entry_t* entry = CONTAINER_OF(list_pop_front(rcu->ready), rcu_entry_t, entry);
+        rcu_entry_t* entry = CONTAINER_OF(list_pop_front(pcpu_rcu->ready), rcu_entry_t, entry);
         entry->func(entry->arg);
     }
 
     if (wake)
     {
-        list_t* temp = rcu->ready;
-        rcu->ready = rcu->waiting;
-        rcu->waiting = temp;
+        list_t* temp = pcpu_rcu->ready;
+        pcpu_rcu->ready = pcpu_rcu->waiting;
+        pcpu_rcu->waiting = temp;
     }
 
-    if (list_is_empty(rcu->waiting) && !list_is_empty(rcu->batch))
+    if (list_is_empty(pcpu_rcu->waiting) && !list_is_empty(pcpu_rcu->batch))
     {
-        list_t* temp = rcu->waiting;
-        rcu->waiting = rcu->batch;
-        rcu->batch = temp;
+        list_t* temp = pcpu_rcu->waiting;
+        pcpu_rcu->waiting = pcpu_rcu->batch;
+        pcpu_rcu->batch = temp;
 
         lock_acquire(&lock);
-        rcu->grace = grace + 1;
+        pcpu_rcu->grace = grace + 1;
         lock_release(&lock);
     }
 
-    if (list_is_empty(rcu->waiting))
+    if (list_is_empty(pcpu_rcu->waiting))
     {
         return;
     }

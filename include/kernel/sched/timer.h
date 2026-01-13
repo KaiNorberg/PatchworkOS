@@ -40,21 +40,6 @@ precision as the active timer source.
  */
 
 /**
- * @brief Per-CPU system time context.
- */
-typedef struct
-{
-    /**
-     * The next time the owner cpus apic timer will fire, specified in nanoseconds since boot, used in
-     * `timer_set()`.
-     *
-     * Will be accessed in interrupt and non-interrupt context, so must be declared `volatile` to avoid compiler
-     * optimizations that could lead to stale reads.
-     */
-    clock_t volatile deadline;
-} timer_cpu_t;
-
-/**
  * @brief Maximum amount of timer sources.
  */
 #define TIMER_MAX_SOURCES 4
@@ -77,26 +62,16 @@ typedef struct
      * @param timeout The desired timeout in nanoseconds, if `CLOCKS_NEVER`, the timer should be disabled.
      */
     void (*set)(irq_virt_t virt, clock_t uptime, clock_t timeout);
-    void (*ack)(cpu_t* cpu);
-    void (*eoi)(cpu_t* cpu);
+    void (*ack)(void);
+    void (*eoi)(void);
 } timer_source_t;
-
-/**
- * @brief Initialize per-CPU timer context.
- *
- * Must be called on the CPU who owns the context.
- *
- * @param ctx The timer context to initialize.
- */
-void timer_cpu_init(timer_cpu_t* ctx);
 
 /**
  * @brief Acknowledge a timer interrupt and send EOI.
  *
  * @param frame The interrupt frame of the timer interrupt.
- * @param self The CPU on which the timer interrupt was received.
  */
-void timer_ack_eoi(interrupt_frame_t* frame, cpu_t* self);
+void timer_ack_eoi(interrupt_frame_t* frame);
 
 /**
  * @brief Register a timer source.

@@ -13,6 +13,8 @@
  * the `MSR_GS_BASE` msr stores the address of the currently running CPU and the `gs` register can used to access
  * data within the current CPU structure.
  *
+ * @note All percpu variables should use the `pcpu_` prefix for clarity.
+ * 
  * ## Defining Per-CPU Variables
  *
  * To define a Per-CPU variable use the `PERCPU_DEFINE()` macro. This creates a variable that acts like a pointer, but
@@ -66,6 +68,8 @@ typedef struct
  * @brief Macro to access data in the current cpu.
  *
  * Intended to be used as a pointer to the current cpu structure.
+ * 
+ * @warning The value of this macro is not the address of the current cpu structure, to actually retrieve the address use `SELF->self`.
  */
 #define SELF ((cpu_t PERCPU)0)
 
@@ -76,6 +80,16 @@ typedef struct
  * @return A pointer to the percpu variable for the current CPU.
  */
 #define SELF_PTR(ptr) ((void*)((uintptr_t)(SELF->self->percpu) + ((uintptr_t)(ptr) - offsetof(cpu_t, percpu))))
+
+/**
+ * @brief Macro to get a pointer to a percpu variable on a specific CPU.
+ *
+ * @param id The ID of the CPU.
+ * @param ptr The percpu variable pointer.
+ * @return A pointer to the percpu variable for the specified CPU.
+ */
+#define CPU_PTR(id, ptr) \
+    ((void*)((uintptr_t)(cpu_get_by_id(id)->percpu) + ((uintptr_t)(ptr) - offsetof(cpu_t, percpu))))
 
 /**
  * @brief Macro to define a percpu variable.
@@ -135,15 +149,6 @@ percpu_t percpu_alloc(size_t size);
  * @param size The size of the percpu variable.
  */
 void percpu_free(percpu_t ptr, size_t size);
-
-/**
- * @brief Get the value of a percpu variable for a specific CPU.
- *
- * @param id The ID of the CPU.
- * @param ptr The offset into the `GS` segment register.
- * @return The value of the percpu variable.
- */
-void* percpu_get(cpu_id_t id, void PERCPU ptr);
 
 /**
  * @brief Update percpu sections on the current CPU.

@@ -64,7 +64,7 @@ static void* gop_mmap(fb_t* fb, void* addr, size_t length, size_t* offset, pml_f
 
     screen_hide();
 
-    process_t* process = sched_process();
+    process_t* process = process_current();
 
     uintptr_t physAddr = (uintptr_t)gop.physAddr + *offset;
     uintptr_t endAddr = physAddr + length;

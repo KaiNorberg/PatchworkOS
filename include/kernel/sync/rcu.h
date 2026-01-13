@@ -70,48 +70,13 @@ typedef struct rcu_entry
 } rcu_entry_t;
 
 /**
- * @brief Per-cpu RCU context.
- * @struct rcu_t
- */
-typedef struct rcu
-{
-    uint64_t grace;  ///< The last grace period observed by this CPU.
-    list_t* batch;   ///< Callbacks queued during the current grace period.
-    list_t* waiting; ///< Callbacks waiting for the current grace period to end.
-    list_t* ready;   ///< Callbacks whose grace period has ended.
-    list_t lists[3]; //< Buffer storing three lists such that we can rotate them.
-} rcu_t;
-
-/**
- * @brief Publishes a pointer to a new data structure.
- *
- * Ensures that the initialization of the structure is visible to readers before the pointer is updated.
- */
-#define RCU_ASSIGN_POINTER(p, v) \
-    ({ \
-        atomic_thread_fence(memory_order_release); \
-        (p) = (v); \
-    })
-
-/**
- * @brief Fetches a RCU-protected pointer.
- *
- * Ensures that the pointer fetch is ordered before any subsequent data access.
- */
-#define RCU_DEREFERENCE(p) \
-    ({ \
-        atomic_thread_fence(memory_order_consume); \
-        (p); \
-    })
-
-/**
  * @brief RCU read-side critical section begin.
  *
  * Should be called before accessing RCU protected data.
  */
 static inline void rcu_read_lock(void)
 {
-    sched_disable();
+    cli_push();
 }
 
 /**
@@ -121,7 +86,7 @@ static inline void rcu_read_lock(void)
  */
 static inline void rcu_read_unlock(void)
 {
-    sched_enable();
+    cli_pop();
 }
 
 /**

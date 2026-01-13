@@ -10,6 +10,7 @@
 #include <kernel/sync/seqlock.h>
 #include <kernel/utils/utils.h>
 #include <modules/acpi/tables.h>
+#include <kernel/proc/process.h>
 
 /**
  * @brief High Precision Event Timer

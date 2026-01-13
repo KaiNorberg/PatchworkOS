@@ -13,7 +13,7 @@
 
 static uintptr_t lapicBase = 0;
 
-PERCPU_DEFINE_CTOR(lapic_t, _lapic)
+PERCPU_DEFINE_CTOR(lapic_t, _pcpu_lapic)
 {
     // Enable the local apic, enable spurious interrupts and mask everything for now.
 
@@ -31,7 +31,7 @@ PERCPU_DEFINE_CTOR(lapic_t, _lapic)
 
     lapic_write(LAPIC_REG_TASK_PRIORITY, 0);
 
-    _lapic->lapicId = (lapic_id_t)(lapic_read(LAPIC_REG_ID) >> LAPIC_REG_ID_OFFSET);
+    _pcpu_lapic->lapicId = (lapic_id_t)(lapic_read(LAPIC_REG_ID) >> LAPIC_REG_ID_OFFSET);
 }
 
 uint32_t lapic_read(uint32_t reg)
@@ -46,10 +46,9 @@ void lapic_write(uint32_t reg, uint32_t value)
 
 static void lapic_interrupt(cpu_t* cpu, irq_virt_t virt)
 {
-    lapic_t* lapic = percpu_get(cpu->id, _lapic);
-    lapic_id_t lapicId = _lapic->lapicId;
+    lapic_t* local = CPU_PTR(cpu->id, _pcpu_lapic);
 
-    lapic_write(LAPIC_REG_ICR1, lapicId << LAPIC_REG_ID_OFFSET);
+    lapic_write(LAPIC_REG_ICR1, local->lapicId << LAPIC_REG_ID_OFFSET);
     lapic_write(LAPIC_REG_ICR0, (uint32_t)virt | LAPIC_ICR_FIXED);
 }
 
@@ -65,6 +64,20 @@ static ipi_chip_t lapicIpiChip = {
     .interrupt = lapic_interrupt,
     .eoi = lapic_eoi,
 };
+
+void lapic_send_init(lapic_id_t id)
+{
+    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ID_OFFSET);
+    lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_INIT);
+}
+
+void lapic_send_sipi(lapic_id_t id, void* entryPoint)
+{
+    assert((uintptr_t)entryPoint % PAGE_SIZE == 0);
+
+    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ID_OFFSET);
+    lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_STARTUP | ((uintptr_t)entryPoint / PAGE_SIZE));
+}
 
 CONSTRUCTOR(101) static uint64_t lapic_global_init(void)
 {
@@ -106,18 +119,4 @@ CONSTRUCTOR(101) static uint64_t lapic_global_init(void)
     }
 
     return 0;
-}
-
-void lapic_send_init(lapic_id_t id)
-{
-    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ID_OFFSET);
-    lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_INIT);
-}
-
-void lapic_send_sipi(lapic_id_t id, void* entryPoint)
-{
-    assert((uintptr_t)entryPoint % PAGE_SIZE == 0);
-
-    lapic_write(LAPIC_REG_ICR1, id << LAPIC_REG_ID_OFFSET);
-    lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_STARTUP | ((uintptr_t)entryPoint / PAGE_SIZE));
 }

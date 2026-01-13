@@ -82,7 +82,7 @@ void sysfs_init(void)
     superblock->root = dentry;
     root = dentry;
 
-    process_t* process = sched_process();
+    process_t* process = process_current();
     assert(process != NULL);
 
     namespace_t* ns = process_get_ns(process);

@@ -52,6 +52,5 @@ syscall_entry:
 
     INTERRUPT_FRAME_REGS_POP
     movq 8 * 5(%rsp), %rsp // Load user rsp from interrupt frame
-    cli
     swapgs
     sysretq

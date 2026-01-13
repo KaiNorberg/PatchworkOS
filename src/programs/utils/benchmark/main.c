@@ -47,7 +47,7 @@ static void benchmark_getpid(void)
     }
 
     clock_t end = clock();
-    printf("getpid: %llums\n", (end - start) / (CLOCKS_PER_SEC / 1000));
+    printf("getpid: %llums\n", (end - start) / (CLOCKS_PER_MS));
 
     clock_t procStart = clock();
 
@@ -57,7 +57,7 @@ static void benchmark_getpid(void)
     }
 
     clock_t procEnd = clock();
-    printf("/proc/self/pid: %llums\n", (procEnd - procStart) / (CLOCKS_PER_SEC / 1000));
+    printf("/proc/self/pid: %llums\n", (procEnd - procStart) / (CLOCKS_PER_MS));
 
     printf("overhead: %lluns\n", ((procEnd - procStart) - (end - start)) / GETPID_ITER);
 }
@@ -117,7 +117,7 @@ static void benchmark_mmap(uint64_t pages)
     }
 
     clock_t end = clock();
-    printf("mmap pages=%llu bytes: %llums\n", pages, (end - start) / (CLOCKS_PER_SEC / 1000));
+    printf("mmap pages=%llu bytes: %llums\n", pages, (end - start) / (CLOCKS_PER_MS));
 }
 
 int main()

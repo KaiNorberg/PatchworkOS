@@ -39,7 +39,7 @@ static void loader_strv_free(char** array, uint64_t amount)
 
 void loader_exec(void)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     file_t* file = NULL;
@@ -159,7 +159,7 @@ cleanup:
 
 static void loader_entry(void)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
 
     WAIT_BLOCK(&thread->process->suspendQueue, !(atomic_load(&thread->process->flags) & PROCESS_SUSPENDED));
 
@@ -176,7 +176,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
         return ERR;
     }
 
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     assert(thread != NULL);
     process_t* process = thread->process;
     assert(process != NULL);
@@ -301,7 +301,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
 
 SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
     space_t* space = &process->space;
 

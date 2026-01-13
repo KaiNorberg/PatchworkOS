@@ -25,8 +25,8 @@ static size_t sectionCount = 0;
 static uint64_t globalGeneration = 0;
 static uint64_t globalAck = 0;
 
-static PERCPU_DEFINE(uint64_t, localGeneration);
-static PERCPU_DEFINE(uint64_t, localAck);
+static PERCPU_DEFINE(uint64_t, pcpu_generation);
+static PERCPU_DEFINE(uint64_t, pcpu_ack);
 
 static lock_t lock = LOCK_CREATE();
 
@@ -68,17 +68,6 @@ void percpu_free(percpu_t ptr, size_t size)
     bitmap_clear_range(&allocated, offset, offset + (size / PERCPU_ALIGNMENT));
 }
 
-void* percpu_get(cpu_id_t id, void PERCPU ptr)
-{
-    cpu_t* cpu = cpu_get_by_id(id);
-    if (cpu == NULL)
-    {
-        return NULL;
-    }
-
-    return (void*)((uintptr_t)cpu->percpu + ((uintptr_t)ptr - offsetof(cpu_t, percpu)));
-}
-
 static void percpu_run_ctors(percpu_section_t* section)
 {
     for (percpu_def_t* def = section->start; def < section->end; def++)
@@ -105,30 +94,30 @@ void percpu_update(void)
 {
     LOCK_SCOPE(&lock);
 
-    if (*localGeneration < globalGeneration)
+    if (*pcpu_generation < globalGeneration)
     {
         for (size_t i = 0; i < sectionCount; i++)
         {
             percpu_section_t* section = &sections[i];
-            if (section->generation > *localGeneration && !section->dying)
+            if (section->generation > *pcpu_generation && !section->dying)
             {
                 percpu_run_ctors(section);
             }
         }
-        *localGeneration = globalGeneration;
+        *pcpu_generation = globalGeneration;
     }
 
-    if (*localAck < globalAck)
+    if (*pcpu_ack < globalAck)
     {
         for (size_t i = 0; i < sectionCount; i++)
         {
             percpu_section_t* section = &sections[i];
-            if (section->generation > *localAck && section->dying)
+            if (section->generation > *pcpu_ack && section->dying)
             {
                 percpu_run_dtors(section);
             }
         }
-        *localAck = globalAck;
+        *pcpu_ack = globalAck;
     }
 }
 
@@ -197,7 +186,7 @@ void percpu_finit_section(percpu_def_t* start, percpu_def_t* end)
         cpu_t* cpu;
         CPU_FOR_EACH(cpu)
         {
-            uint64_t* cpuAck = percpu_get(cpu->id, localAck);
+            uint64_t* cpuAck = CPU_PTR(cpu->id, pcpu_ack);
             if (*cpuAck < globalAck)
             {
                 allAcked = false;

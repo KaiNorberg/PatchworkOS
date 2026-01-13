@@ -156,7 +156,7 @@ SYSCALL_DEFINE(SYS_UNIX_EPOCH, time_t, time_t* timePtr)
     time_t epoch = clock_epoch();
     if (timePtr != NULL)
     {
-        if (thread_copy_to_user(sched_thread(), timePtr, &epoch, sizeof(epoch)) == ERR)
+        if (thread_copy_to_user(thread_current(), timePtr, &epoch, sizeof(epoch)) == ERR)
         {
             return ERR;
         }

@@ -48,12 +48,12 @@ typedef struct test
             clock_t end = clock_uptime(); \
             if (result == ERR) \
             { \
-                LOG_ERR("test '%s' FAILED in %llu ms\n", test->name, (end - start) / (CLOCKS_PER_SEC / 1000)); \
+                LOG_ERR("test '%s' FAILED in %llu ms\n", test->name, (end - start) / (CLOCKS_PER_MS)); \
                 panic(NULL, "test failure"); \
             } \
             else \
             { \
-                LOG_INFO("test '%s' passed in %llu ms\n", test->name, (end - start) / (CLOCKS_PER_SEC / 1000)); \
+                LOG_INFO("test '%s' passed in %llu ms\n", test->name, (end - start) / (CLOCKS_PER_MS)); \
             } \
             test++; \
         } \

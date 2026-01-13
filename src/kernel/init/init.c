@@ -54,8 +54,6 @@ void init_early(void)
 
     cpu_init_early(&bootstrapCpu);
 
-    INIT_CALL();
-
     log_init();
 
     pmm_init();
@@ -69,6 +67,7 @@ void init_early(void)
 
     module_init_fake_kernel_module();
 
+    INIT_CALL();
     cpu_init(&bootstrapCpu);
 
     LOG_INFO("early init done, jumping to boot thread\n");

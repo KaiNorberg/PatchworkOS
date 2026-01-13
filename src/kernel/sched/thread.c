@@ -10,6 +10,7 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
+#include <kernel/proc/process.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -165,7 +166,7 @@ SYSCALL_DEFINE(SYS_ERRNO, errno_t)
 
 SYSCALL_DEFINE(SYS_GETTID, tid_t)
 {
-    return sched_thread()->id;
+    return thread_current()->id;
 }
 
 uint64_t thread_copy_from_user(thread_t* thread, void* dest, const void* userSrc, uint64_t length)

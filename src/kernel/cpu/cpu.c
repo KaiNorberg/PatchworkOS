@@ -81,13 +81,6 @@ void cpu_init_early(cpu_t* cpu)
 
 void cpu_init(cpu_t* cpu)
 {
-    simd_cpu_init();
-    syscalls_cpu_init();
-
-    perf_cpu_init(&cpu->perf);
-    timer_cpu_init(&cpu->timer);
-    wait_init(&cpu->wait);
-    sched_init(&cpu->sched);
     ipi_cpu_init(&cpu->ipi);
 
     percpu_update();

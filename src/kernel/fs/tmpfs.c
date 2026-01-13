@@ -385,7 +385,7 @@ void tmpfs_init(void)
     }
     LOG_INFO("mounting tmpfs\n");
 
-    process_t* process = sched_process();
+    process_t* process = process_current();
     assert(process != NULL);
 
     namespace_t* ns = process_get_ns(process);

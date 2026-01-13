@@ -128,7 +128,7 @@ typedef struct
 /**
  * @brief The per-CPU local APIC structure.
  */
-extern lapic_t PERCPU _lapic;
+extern lapic_t PERCPU _pcpu_lapic;
 
 /**
  * @brief Initialize the local APIC for a CPU.

@@ -66,7 +66,7 @@
  */
 typedef struct cpu
 {
-    volatile cpu_t* self;
+    cpu_t* self;
     cpu_id_t id;
     uint64_t syscallRsp;
     uint64_t userRsp;
@@ -74,10 +74,6 @@ typedef struct cpu
     uint64_t oldRflags; ///< The rflags value before disabling interrupts.
     uint16_t cli;       ///< The CLI depth counter used in `cli_push()` and `cli_pop()`.
     tss_t tss;
-    perf_cpu_t perf;
-    timer_cpu_t timer;
-    wait_t wait;
-    sched_t sched;
     rand_cpu_t rand;
     ipi_cpu_t ipi;
     stack_pointer_t exceptionStack;

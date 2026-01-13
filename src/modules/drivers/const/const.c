@@ -45,7 +45,7 @@ static void* const_one_mmap(file_t* file, void* addr, size_t length, size_t* off
     UNUSED(file); // Unused
     UNUSED(offset);
 
-    addr = vmm_alloc(&sched_process()->space, addr, length, PAGE_SIZE, flags, VMM_ALLOC_OVERWRITE);
+    addr = vmm_alloc(&process_current()->space, addr, length, PAGE_SIZE, flags, VMM_ALLOC_OVERWRITE);
     if (addr == NULL)
     {
         return NULL;
@@ -74,7 +74,7 @@ static void* const_zero_mmap(file_t* file, void* addr, size_t length, size_t* of
     UNUSED(file); // Unused
     UNUSED(offset);
 
-    addr = vmm_alloc(&sched_process()->space, addr, length, PAGE_SIZE, flags, VMM_ALLOC_OVERWRITE);
+    addr = vmm_alloc(&process_current()->space, addr, length, PAGE_SIZE, flags, VMM_ALLOC_OVERWRITE);
     if (addr == NULL)
     {
         return NULL;

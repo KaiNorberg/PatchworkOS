@@ -310,6 +310,11 @@ typedef struct sched sched_t;
  */
 
 /**
+ * @brief The per CPU scheduler.
+ */
+extern sched_t PERCPU _pcpu_sched;
+
+/**
  * @brief Virtual clock type.
  * @typedef vclock_t
  */
@@ -409,13 +414,6 @@ typedef struct sched
 void sched_client_init(sched_client_t* client);
 
 /**
- * @brief Initialize the scheduler for a CPU.
- *
- * @param sched The scheduler to initialize.
- */
-void sched_init(sched_t* sched);
-
-/**
  * @brief Starts the scheduler by jumping to the boot thread.
  *
  * Will never return.
@@ -442,9 +440,8 @@ void sched_submit(thread_t* thread);
  * Will report a quiescent state to RCU if the CPU is idle or if a context switch occurs.
  *
  * @param frame The interrupt frame.
- * @param self The cpu performing the scheduling operation.
  */
-void sched_do(interrupt_frame_t* frame, cpu_t* self);
+void sched_do(interrupt_frame_t* frame);
 
 /**
  * @brief Checks if the CPU is currently idle.
@@ -453,40 +450,6 @@ void sched_do(interrupt_frame_t* frame, cpu_t* self);
  * @return `true` if the CPU is idle, `false` otherwise.
  */
 bool sched_is_idle(cpu_t* cpu);
-
-/**
- * @brief Retrieves the currently running thread.
- *
- * @return The currently running thread.
- */
-thread_t* sched_thread(void);
-
-/**
- * @brief Retrieves the process of the currently running thread.
- *
- * @note Will not increment the reference count of the returned process, as we consider the currently running thread to
- * always be referencing its process.
- *
- * @return The process of the currently running thread.
- */
-process_t* sched_process(void);
-
-/**
- * @brief Retrieves the currently running thread without disabling interrupts.
- *
- * @return The currently running thread.
- */
-thread_t* sched_thread_unsafe(void);
-
-/**
- * @brief Retrieves the process of the currently running thread without disabling interrupts.
- *
- * @note Will not increment the reference count of the returned process, as we consider the currently running thread to
- * always be referencing its process.
- *
- * @return The process of the currently running thread.
- */
-process_t* sched_process_unsafe(void);
 
 /**
  * @brief Sleeps the current thread for a specified duration in nanoseconds.

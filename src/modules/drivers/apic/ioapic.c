@@ -58,7 +58,7 @@ static uint64_t ioapic_enable(irq_t* irq)
         .remoteIRR = 0,
         .triggerMode = irq->flags & IRQ_TRIGGER_EDGE ? IOAPIC_TRIGGER_EDGE : IOAPIC_TRIGGER_LEVEL,
         .mask = 0,
-        .destination = _lapic->lapicId,
+        .destination = _pcpu_lapic->lapicId,
     };
 
     ioapic_redirect_write(ioapic, irq->phys, redirect);

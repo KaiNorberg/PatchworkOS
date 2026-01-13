@@ -113,7 +113,7 @@ void trampoline_c_entry(cpu_t* cpu)
 
     cpu_init(cpu);
 
-    thread_t* thread = sched_thread_unsafe();
+    thread_t* thread = thread_current_unsafe();
     assert(thread != NULL);
     assert(sched_is_idle(cpu));
     thread->frame.rip = (uintptr_t)trampoline_after_jump;

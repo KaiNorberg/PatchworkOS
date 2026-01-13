@@ -383,5 +383,5 @@ process_t* process_get_kernel(void)
 
 SYSCALL_DEFINE(SYS_GETPID, pid_t)
 {
-    return sched_process()->id;
+    return process_current()->id;
 }

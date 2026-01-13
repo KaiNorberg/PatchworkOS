@@ -213,17 +213,6 @@ void syscall_ctx_load(syscall_ctx_t* ctx);
 void syscall_table_init(void);
 
 /**
- * @brief Initialize syscalls on the current CPU.
- *
- * Will modify four MSRs:
- * - `MSR_EFER`: Used to enable the `SYSCALL` instruction.
- * - `MSR_STAR`: Used to set the code segments for kernel and user mode.
- * - `MSR_LSTAR`: Used to set the entry point for the `SYSCALL` instruction.
- * - `MSR_SYSCALL_FLAG_MASK`: Specifies which rflags to clear when entering kernel mode.
- */
-void syscalls_cpu_init(void);
-
-/**
  * @brief Main C syscall handler.
  *
  * This is called from the assembly `syscall_entry()` function.

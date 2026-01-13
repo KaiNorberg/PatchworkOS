@@ -13,6 +13,7 @@
 typedef __UINT64_TYPE__ clock_t;
 
 #define CLOCKS_PER_SEC ((clock_t)1000000000ULL)
+#define CLOCKS_PER_MS ((clock_t)1000000ULL)
 #define CLOCKS_NEVER ((clock_t)__UINT64_MAX__)
 
 /**

@@ -586,7 +586,7 @@ static uint64_t module_cache_build(void)
         return 0;
     }
 
-    process_t* process = sched_process();
+    process_t* process = process_current();
     assert(process != NULL);
 
     file_t* dir = vfs_open(PATHNAME(MODULE_DIR), process);
@@ -961,7 +961,7 @@ static module_t* module_get_or_load(const char* filename, file_t* dir, const cha
     module_load_ctx_t ctx = {
         .dir = dir,
         .filename = filename,
-        .process = sched_process(),
+        .process = process_current(),
         .current = NULL,
         .dependencies = LIST_CREATE(ctx.dependencies),
     };
@@ -1075,7 +1075,7 @@ uint64_t module_device_attach(const char* type, const char* name, module_load_fl
         return 0;
     }
 
-    file_t* dir = vfs_open(PATHNAME(MODULE_DIR), sched_process());
+    file_t* dir = vfs_open(PATHNAME(MODULE_DIR), process_current());
     if (dir == NULL)
     {
         return ERR;

@@ -11,6 +11,7 @@
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/symbol.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/version.h>
@@ -268,11 +269,10 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
 {
     asm volatile("cli");
 
-    cpu_t* self = cpu_get();
     uint32_t expectedCpuId = PANIC_NO_CPU_ID;
-    if (!atomic_compare_exchange_strong(&panicCpuId, &expectedCpuId, self->id))
+    if (!atomic_compare_exchange_strong(&panicCpuId, &expectedCpuId, SELF->id))
     {
-        if (expectedCpuId == self->id)
+        if (expectedCpuId == SELF->id)
         {
             // Print basic message for double panic on same CPU but avoid using the full panic stuff again.
             const char* message = "!!! KERNEL DOUBLE PANIC ON SAME CPU !!!\n";
@@ -284,7 +284,9 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
         }
     }
 
-    thread_t* currentThread = self->sched.runThread;
+    thread_t* currentThread = thread_current();
+    process_t* currentProcess = process_current();
+
     errno_t err = currentThread != NULL ? currentThread->error : 0;
 
     va_list args;
@@ -304,15 +306,15 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
 
     if (currentThread == NULL)
     {
-        LOG_PANIC("thread: cpu=%d null\n", self->id);
+        LOG_PANIC("thread: cpu=%d null\n", SELF->id);
     }
-    else if (currentThread == self->sched.idleThread)
+    else if (currentThread == thread_idle())
     {
-        LOG_PANIC("thread: cpu=%d idle\n", self->id);
+        LOG_PANIC("thread: cpu=%d idle\n", SELF->id);
     }
     else
     {
-        LOG_PANIC("thread: cpu=%d pid=%d tid=%d\n", self->id, currentThread->process->id, currentThread->id);
+        LOG_PANIC("thread: cpu=%d pid=%d tid=%d\n", SELF->id, currentProcess->id, currentThread->id);
     }
 
     LOG_PANIC("last errno: %d (%s)\n", err, strerror(err));

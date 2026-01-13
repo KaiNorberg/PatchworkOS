@@ -35,7 +35,7 @@ void mutex_acquire(mutex_t* mtx)
 bool mutex_acquire_timeout(mutex_t* mtx, clock_t timeout)
 {
     assert(mtx != NULL);
-    thread_t* self = sched_thread();
+    thread_t* self = thread_current();
     assert(self != NULL);
 
     if (mtx->owner == self)
@@ -107,7 +107,7 @@ void mutex_release(mutex_t* mtx)
     assert(mtx != NULL);
     LOCK_SCOPE(&mtx->lock);
 
-    assert(mtx->owner == sched_thread_unsafe());
+    assert(mtx->owner == thread_current_unsafe());
 
     mtx->depth--;
     if (mtx->depth == 0)

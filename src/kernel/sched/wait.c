@@ -16,6 +16,14 @@
 #include <stdlib.h>
 #include <sys/list.h>
 
+PERCPU_DEFINE_CTOR(static wait_t, pcpu_wait)
+{
+    wait_t* wait = SELF_PTR(pcpu_wait);
+
+    list_init(&wait->blockedThreads);
+    lock_init(&wait->lock);
+}
+
 static void wait_remove_wait_entries(thread_t* thread, errno_t err)
 {
     assert(atomic_load(&thread->state) == THREAD_UNBLOCKING);
@@ -60,21 +68,16 @@ void wait_client_init(wait_client_t* client)
     client->owner = NULL;
 }
 
-void wait_init(wait_t* wait)
-{
-    list_init(&wait->blockedThreads);
-    lock_init(&wait->lock);
-}
-
-void wait_check_timeouts(interrupt_frame_t* frame, cpu_t* self)
+void wait_check_timeouts(interrupt_frame_t* frame)
 {
     UNUSED(frame);
 
-    LOCK_SCOPE(&self->wait.lock);
+    wait_t* wait = SELF_PTR(pcpu_wait);
+    LOCK_SCOPE(&wait->lock);
 
     while (1)
     {
-        thread_t* thread = CONTAINER_OF_SAFE(list_first(&self->wait.blockedThreads), thread_t, wait.entry);
+        thread_t* thread = CONTAINER_OF_SAFE(list_first(&wait->blockedThreads), thread_t, wait.entry);
         if (thread == NULL)
         {
             return;
@@ -110,8 +113,7 @@ uint64_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t 
 
     cli_push();
 
-    thread_t* thread = cpu_get()->sched.runThread;
-
+    thread_t* thread = thread_current_unsafe();
     assert(thread != NULL);
 
     for (uint64_t i = 0; i < amount; i++)
@@ -180,7 +182,7 @@ void wait_block_cancel(void)
 {
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
-    thread_t* thread = cpu_get()->sched.runThread;
+    thread_t* thread = thread_current_unsafe();
     assert(thread != NULL);
 
     thread_state_t state = atomic_exchange(&thread->state, THREAD_UNBLOCKING);
@@ -199,7 +201,8 @@ void wait_block_cancel(void)
 
 uint64_t wait_block_commit(void)
 {
-    thread_t* thread = cpu_get()->sched.runThread;
+    thread_t* thread = thread_current_unsafe();
+    assert(thread != NULL);
 
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
@@ -229,25 +232,27 @@ uint64_t wait_block_commit(void)
     return 0;
 }
 
-bool wait_block_finalize(interrupt_frame_t* frame, cpu_t* self, thread_t* thread, clock_t uptime)
+bool wait_block_finalize(interrupt_frame_t* frame, thread_t* thread, clock_t uptime)
 {
     UNUSED(frame);
 
-    thread->wait.owner = &self->wait;
-    LOCK_SCOPE(&self->wait.lock);
+    wait_t* wait = SELF_PTR(pcpu_wait);
 
-    thread_t* lastThread = (CONTAINER_OF(list_last(&self->wait.blockedThreads), thread_t, wait.entry));
+    thread->wait.owner = wait;
+    LOCK_SCOPE(&wait->lock);
+
+    thread_t* lastThread = (CONTAINER_OF(list_last(&wait->blockedThreads), thread_t, wait.entry));
 
     // Sort blocked threads by deadline
-    if (thread->wait.deadline == CLOCKS_NEVER || list_is_empty(&self->wait.blockedThreads) ||
+    if (thread->wait.deadline == CLOCKS_NEVER || list_is_empty(&wait->blockedThreads) ||
         lastThread->wait.deadline <= thread->wait.deadline)
     {
-        list_push_back(&self->wait.blockedThreads, &thread->wait.entry);
+        list_push_back(&wait->blockedThreads, &thread->wait.entry);
     }
     else
     {
         thread_t* other;
-        LIST_FOR_EACH(other, &self->wait.blockedThreads, wait.entry)
+        LIST_FOR_EACH(other, &wait->blockedThreads, wait.entry)
         {
             if (other->wait.deadline > thread->wait.deadline)
             {

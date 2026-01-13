@@ -38,14 +38,9 @@ static void vmm_cpu_init(vmm_cpu_t* ctx)
     lock_release(&kernelSpace.lock);
 }
 
-PERCPU_DEFINE_CTOR(static vmm_cpu_t, vmm)
+PERCPU_DEFINE_CTOR(static vmm_cpu_t, pcpu_vmm)
 {
-    if (SELF->id == CPU_ID_BOOTSTRAP) // Initalized early in vmm_kernel_space_load.
-    {
-        return;
-    }
-
-    vmm_cpu_init(percpu_get(SELF->id, vmm));
+    vmm_cpu_init(SELF_PTR(pcpu_vmm));
 }
 
 void vmm_init(void)
@@ -120,9 +115,7 @@ void vmm_init(void)
 void vmm_kernel_space_load(void)
 {
     LOG_INFO("loading kernel space... ");
-
-    vmm_cpu_init(percpu_get(SELF->id, vmm));
-
+    vmm_cpu_init(SELF_PTR(pcpu_vmm));
     LOG_INFO("done!\n");
 }
 
@@ -380,7 +373,7 @@ void* vmm_unmap(space_t* space, void* virtAddr, size_t length)
 
 SYSCALL_DEFINE(SYS_MUNMAP, void*, void* address, size_t length)
 {
-    process_t* process = sched_process();
+    process_t* process = process_current();
     space_t* space = &process->space;
 
     if (space_check_access(space, address, length) == ERR)
@@ -445,14 +438,14 @@ void vmm_load(space_t* space)
 
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
-    assert(vmm->space != NULL);
-    if (space == vmm->space)
+    assert(pcpu_vmm->space != NULL);
+    if (space == pcpu_vmm->space)
     {
         return;
     }
 
-    space_t* oldSpace = vmm->space;
-    vmm->space = NULL;
+    space_t* oldSpace = pcpu_vmm->space;
+    pcpu_vmm->space = NULL;
 
     lock_acquire(&oldSpace->lock);
     bitmap_clear(&oldSpace->cpus, SELF->id);
@@ -461,7 +454,7 @@ void vmm_load(space_t* space)
     lock_acquire(&space->lock);
     bitmap_set(&space->cpus, SELF->id);
     lock_release(&space->lock);
-    vmm->space = space;
+    pcpu_vmm->space = space;
 
     page_table_load(&space->pageTable);
 }
@@ -471,19 +464,19 @@ static void vmm_tlb_shootdown_ipi(ipi_func_data_t* data)
 {
     UNUSED(data);
 
-    vmm_cpu_t* local = SELF_PTR(vmm);
+    vmm_cpu_t* vmm = SELF_PTR(pcpu_vmm);
     while (true)
     {
-        lock_acquire(&local->lock);
-        if (local->shootdownCount == 0)
+        lock_acquire(&vmm->lock);
+        if (vmm->shootdownCount == 0)
         {
-            lock_release(&local->lock);
+            lock_release(&vmm->lock);
             break;
         }
 
-        vmm_shootdown_t shootdown = local->shootdowns[local->shootdownCount - 1];
-        local->shootdownCount--;
-        lock_release(&local->lock);
+        vmm_shootdown_t shootdown = vmm->shootdowns[vmm->shootdownCount - 1];
+        vmm->shootdownCount--;
+        lock_release(&vmm->lock);
 
         assert(shootdown.space != NULL);
         assert(shootdown.pageAmount != 0);
@@ -517,7 +510,7 @@ void vmm_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount)
             continue;
         }
 
-        vmm_cpu_t* cpu = percpu_get(id, vmm);
+        vmm_cpu_t* cpu = CPU_PTR(id, pcpu_vmm);
 
         lock_acquire(&cpu->lock);
         if (cpu->shootdownCount >= VMM_MAX_SHOOTDOWN_REQUESTS)
@@ -554,7 +547,7 @@ void vmm_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount)
 
 SYSCALL_DEFINE(SYS_MPROTECT, void*, void* address, size_t length, prot_t prot)
 {
-    process_t* process = sched_process();
+    process_t* process = process_current();
     space_t* space = &process->space;
 
     if (space_check_access(space, address, length) == ERR)

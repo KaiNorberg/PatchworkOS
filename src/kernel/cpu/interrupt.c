@@ -10,20 +10,21 @@
 #include <kernel/log/panic.h>
 #include <kernel/mem/paging_types.h>
 #include <kernel/sched/thread.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/wait.h>
+#include <kernel/sched/sched.h>
 
 #include <assert.h>
 
 static void exception_handle_user(interrupt_frame_t* frame, const char* note)
 {
-    thread_t* thread = sched_thread_unsafe();
+    thread_t* thread = thread_current_unsafe();
     if (thread_send_note(thread, note) == ERR)
     {
         atomic_store(&thread->state, THREAD_DYING);
         process_kill(thread->process, note);
 
-        cpu_t* self = cpu_get();
-        sched_do(frame, self);
+        sched_do(frame);
     }
 }
 
@@ -51,7 +52,7 @@ static uint64_t exception_grow_stack(thread_t* thread, uintptr_t faultAddr, stac
 
 static void exception_kernel_page_fault_handler(interrupt_frame_t* frame)
 {
-    thread_t* thread = sched_thread_unsafe();
+    thread_t* thread = thread_current_unsafe();
     process_t* process = thread->process;
     uintptr_t faultAddr = (uintptr_t)cr2_read();
 
@@ -93,7 +94,7 @@ static void exception_kernel_page_fault_handler(interrupt_frame_t* frame)
 
 static void exception_user_page_fault_handler(interrupt_frame_t* frame)
 {
-    thread_t* thread = sched_thread_unsafe();
+    thread_t* thread = thread_current_unsafe();
     process_t* process = thread->process;
     uintptr_t faultAddr = (uintptr_t)cr2_read();
 
@@ -192,8 +193,8 @@ void interrupt_handler(interrupt_frame_t* frame)
     cpu_t* self = cpu_get();
     assert(self != NULL);
 
-    self->inInterrupt = false;
-    perf_interrupt_begin(self);
+    SELF->inInterrupt = false;
+    perf_interrupt_begin();
 
     percpu_update();
 
@@ -207,7 +208,7 @@ void interrupt_handler(interrupt_frame_t* frame)
     }
     else if (frame->vector == VECTOR_TIMER)
     {
-        timer_ack_eoi(frame, self);
+        timer_ack_eoi(frame);
     }
     else if (frame->vector == VECTOR_IPI)
     {
@@ -219,13 +220,13 @@ void interrupt_handler(interrupt_frame_t* frame)
     }
 
     note_handle_pending(frame, self);
-    wait_check_timeouts(frame, self);
-    sched_do(frame, self);
+    wait_check_timeouts(frame);
+    sched_do(frame);
 
     cpu_stacks_overflow_check(self);
 
-    perf_interrupt_end(self);
-    self->inInterrupt = false;
+    perf_interrupt_end();
+    SELF->inInterrupt = false;
 
     // This is a sanity check to make sure blocking and scheduling is functioning correctly.
     assert(frame->rflags & RFLAGS_INTERRUPT_ENABLE);

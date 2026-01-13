@@ -430,7 +430,7 @@ static uint64_t netfs_factory_open(file_t* file)
     list_push_back(&ctx->family->sockets, &socket->listEntry);
     rwmutex_write_release(&ctx->family->mutex);
 
-    namespace_t* ns = process_get_ns(sched_process());
+    namespace_t* ns = process_get_ns(process_current());
     if (ns == NULL)
     {
         return ERR;
@@ -581,7 +581,7 @@ static uint64_t netfs_family_lookup(inode_t* dir, dentry_t* dentry)
         return 0;
     }
 
-    namespace_t* ns = process_get_ns(sched_process());
+    namespace_t* ns = process_get_ns(process_current());
     if (ns == NULL)
     {
         return ERR;
@@ -655,7 +655,7 @@ static uint64_t netfs_family_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         return 0;
     }
 
-    namespace_t* ns = process_get_ns(sched_process());
+    namespace_t* ns = process_get_ns(process_current());
     if (ns == NULL)
     {
         return ERR;

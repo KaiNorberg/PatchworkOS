@@ -46,7 +46,7 @@ static void smp_start_others(void)
     cpu_t* bootstrapCpu = cpu_get();
     assert(bootstrapCpu->id == CPU_ID_BOOTSTRAP);
 
-    lapic_t* bootstrapLapic = percpu_get(bootstrapCpu->id, _lapic);
+    lapic_t* bootstrapLapic = CPU_PTR(bootstrapCpu->id, _pcpu_lapic);
     assert(bootstrapLapic != NULL);
 
     LOG_INFO("bootstrap cpu already started\n");

@@ -42,20 +42,6 @@ typedef struct thread thread_t;
  */
 
 /**
- * @brief Per-CPU performance context.
- * @struct perf_cpu_t
- */
-typedef struct
-{
-    clock_t activeClocks;
-    clock_t interruptClocks;
-    clock_t idleClocks;
-    clock_t interruptBegin;
-    clock_t interruptEnd;
-    lock_t lock;
-} perf_cpu_t;
-
-/**
  * @brief Per-Process performance context.
  * @struct stat_process_ctx_t
  */
@@ -81,13 +67,6 @@ typedef struct
 } perf_thread_ctx_t;
 
 /**
- * @brief Initializes a per-CPU performance context, must be called on the CPU that owns the context.
- *
- * @param ctx The context to initialize.
- */
-void perf_cpu_init(perf_cpu_t* ctx);
-
-/**
  * @brief Initializes a per-process performance context.
  *
  * @param ctx The context to initialize.
@@ -110,19 +89,15 @@ void perf_init(void);
  * @brief Called at the beginning of an interrupt to update cpu performance data.
  *
  * Must be called with interrupts disabled.
- *
- * @param self The current CPU.
  */
-void perf_interrupt_begin(cpu_t* self);
+void perf_interrupt_begin(void);
 
 /**
  * @brief Called at the end of an interrupt to update cpu performance data.
  *
  * Must be called with interrupts disabled.
- *
- * @param self The current CPU.
  */
-void perf_interrupt_end(cpu_t* self);
+void perf_interrupt_end(void);
 
 /**
  * @brief Called at the beginning of a syscall to update process performance data.

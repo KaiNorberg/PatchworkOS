@@ -38,7 +38,7 @@ static void simd_xsave_init(void)
     xcr0_write(0, xcr0);
 }
 
-void simd_cpu_init(void)
+PERCPU_DEFINE_CTOR(static void, pcpu_simd)
 {
     cr0_write(cr0_read() & ~((uint64_t)CR0_EMULATION));
     cr0_write(cr0_read() | CR0_MONITOR_CO_PROCESSOR | CR0_NUMERIC_ERROR_ENABLE);
@@ -66,7 +66,7 @@ void simd_cpu_init(void)
         asm volatile("fxsave (%0)" : : "r"(initCtx));
     }
 
-    if (cpu_get()->id != CPU_ID_BOOTSTRAP) // Only log for bootstrap CPU
+    if (SELF->id != CPU_ID_BOOTSTRAP) // Only log for bootstrap CPU
     {
         return;
     }

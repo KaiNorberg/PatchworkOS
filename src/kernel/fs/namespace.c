@@ -518,7 +518,7 @@ void namespace_rcu_get_root(namespace_t* ns, mount_t** mount, dentry_t** dentry)
 
 SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* mountpoint, const char* fs, const char* options)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t mountname;
@@ -572,7 +572,7 @@ SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* mountpoint, const char* fs, cons
 
 SYSCALL_DEFINE(SYS_UNMOUNT, uint64_t, const char* mountpoint)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t mountname;
@@ -602,7 +602,7 @@ SYSCALL_DEFINE(SYS_UNMOUNT, uint64_t, const char* mountpoint)
 
 SYSCALL_DEFINE(SYS_BIND, uint64_t, const char* mountpoint, fd_t source)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t mountname;

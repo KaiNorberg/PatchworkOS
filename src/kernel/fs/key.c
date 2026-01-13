@@ -10,6 +10,7 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
+#include <kernel/proc/process.h>
 
 #include <errno.h>
 #include <stdlib.h>
@@ -171,7 +172,7 @@ file_t* key_claim(const char* key)
 
 SYSCALL_DEFINE(SYS_SHARE, uint64_t, char* key, uint64_t size, fd_t fd, clock_t timeout)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     file_t* file = file_table_get(&process->fileTable, fd);
@@ -197,7 +198,7 @@ SYSCALL_DEFINE(SYS_SHARE, uint64_t, char* key, uint64_t size, fd_t fd, clock_t t
 
 SYSCALL_DEFINE(SYS_CLAIM, fd_t, const char* key)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     char keyCopy[KEY_MAX];

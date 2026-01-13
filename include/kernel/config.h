@@ -95,7 +95,7 @@
  * The `CONFIG_TIME_SLICE` constant defines the default time slice given to threads when they are scheduled.
  *
  */
-#define CONFIG_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 10)
+#define CONFIG_TIME_SLICE ((CLOCKS_PER_MS) * 10)
 
 /**
  * @brief Cache hot threshold configuration.
@@ -106,7 +106,7 @@
  * hot", meaning that the data is likely still in the CPU cache.
  *
  */
-#define CONFIG_CACHE_HOT_THRESHOLD ((CLOCKS_PER_SEC / 1000) * 5)
+#define CONFIG_CACHE_HOT_THRESHOLD ((CLOCKS_PER_MS) * 5)
 
 /**
  * @brief Maximum mutex slow spin configuration.

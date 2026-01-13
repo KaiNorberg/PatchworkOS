@@ -6,13 +6,16 @@
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/cpu/syscall.h>
 #include <kernel/ipc/note.h>
-#include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/wait.h>
 #include <kernel/utils/ref.h>
+#include <kernel/drivers/perf.h>
 
 #include <sys/list.h>
 #include <sys/proc.h>
+
+typedef struct process process_t;
+typedef struct thread thread_t;
 
 /**
  * @brief Thread of execution.
@@ -110,6 +113,48 @@ tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg);
  * @param thread The thread to be freed.
  */
 void thread_free(thread_t* thread);
+
+/**
+ * @brief Retrieves the currently running thread.
+ *
+ * @return The currently running thread.
+ */
+static inline thread_t* thread_current(void)
+{
+    CLI_SCOPE();
+    return _pcpu_sched->runThread;
+}
+
+/**
+ * @brief Retrieves the currently running thread without disabling interrupts.
+ *
+ * @return The currently running thread.
+ */
+static inline thread_t* thread_current_unsafe(void)
+{
+    return _pcpu_sched->runThread;
+}
+
+/**
+ * @brief Retrieves the idle thread for the current CPU.
+ *
+ * @return The idle thread for the current CPU.
+ */
+static inline thread_t* thread_idle(void)
+{
+    CLI_SCOPE();
+    return _pcpu_sched->idleThread;
+}
+
+/**
+ * @brief Retrieves the idle thread for the current CPU without disabling interrupts.
+ *
+ * @return The idle thread for the current CPU.
+ */
+static inline thread_t* thread_idle_unsafe(void)
+{
+    return _pcpu_sched->idleThread;
+}
 
 /**
  * @brief Save state to a thread.

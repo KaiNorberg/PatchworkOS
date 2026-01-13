@@ -897,7 +897,7 @@ size_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count)
         return ERR;
     }
 
-    process_t* process = sched_process();
+    process_t* process = process_current();
     assert(process != NULL);
 
     namespace_t* ns = process_get_ns(process);
@@ -1285,7 +1285,7 @@ uint64_t vfs_id_get(void)
 
 SYSCALL_DEFINE(SYS_OPEN, fd_t, const char* pathString)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t pathname;
@@ -1312,7 +1312,7 @@ SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
         return ERR;
     }
 
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t pathname;
@@ -1354,7 +1354,7 @@ SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
 
 SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     path_t fromPath = PATH_EMPTY;
@@ -1388,7 +1388,7 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
 
 SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, size_t count)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     file_t* file = file_table_get(&process->fileTable, fd);
@@ -1409,7 +1409,7 @@ SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, size_t count)
 
 SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, size_t count)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     file_t* file = file_table_get(&process->fileTable, fd);
@@ -1430,7 +1430,7 @@ SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, size_t count)
 
 SYSCALL_DEFINE(SYS_SEEK, uint64_t, fd_t fd, ssize_t offset, seek_origin_t origin)
 {
-    process_t* process = sched_process();
+    process_t* process = process_current();
 
     file_t* file = file_table_get(&process->fileTable, fd);
     if (file == NULL)
@@ -1444,7 +1444,7 @@ SYSCALL_DEFINE(SYS_SEEK, uint64_t, fd_t fd, ssize_t offset, seek_origin_t origin
 
 SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, size_t size)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     file_t* file = file_table_get(&process->fileTable, fd);
@@ -1465,7 +1465,7 @@ SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, size_
 
 SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, size_t length, prot_t prot)
 {
-    process_t* process = sched_process();
+    process_t* process = process_current();
     space_t* space = &process->space;
 
     if (address != NULL && space_check_access(space, address, length) == ERR)
@@ -1499,7 +1499,7 @@ SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, size_t length, prot_t pr
 
 SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeout)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     if (amount == 0 || amount >= CONFIG_MAX_FD)
@@ -1556,7 +1556,7 @@ SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeo
 
 SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     file_t* file = file_table_get(&process->fileTable, fd);
@@ -1577,7 +1577,7 @@ SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count
 
 SYSCALL_DEFINE(SYS_STAT, uint64_t, const char* pathString, stat_t* buffer)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t pathname;
@@ -1597,7 +1597,7 @@ SYSCALL_DEFINE(SYS_STAT, uint64_t, const char* pathString, stat_t* buffer)
 
 SYSCALL_DEFINE(SYS_LINK, uint64_t, const char* oldPathString, const char* newPathString)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t oldPathname;
@@ -1617,7 +1617,7 @@ SYSCALL_DEFINE(SYS_LINK, uint64_t, const char* oldPathString, const char* newPat
 
 SYSCALL_DEFINE(SYS_READLINK, uint64_t, const char* pathString, char* buffer, uint64_t count)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t pathname;
@@ -1658,7 +1658,7 @@ SYSCALL_DEFINE(SYS_READLINK, uint64_t, const char* pathString, char* buffer, uin
 
 SYSCALL_DEFINE(SYS_SYMLINK, uint64_t, const char* targetString, const char* linkpathString)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t target;
@@ -1678,7 +1678,7 @@ SYSCALL_DEFINE(SYS_SYMLINK, uint64_t, const char* targetString, const char* link
 
 SYSCALL_DEFINE(SYS_REMOVE, uint64_t, const char* pathString)
 {
-    thread_t* thread = sched_thread();
+    thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t pathname;

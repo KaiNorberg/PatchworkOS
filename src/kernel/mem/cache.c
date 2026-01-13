@@ -296,8 +296,8 @@ TEST_DEFINE(cache)
 
     free(ptrs);
 
-    LOG_INFO("cache: %llums, malloc: %llums\n", cacheTime / (CLOCKS_PER_SEC / 1000),
-        mallocTime / (CLOCKS_PER_SEC / 1000));
+    LOG_INFO("cache: %llums, malloc: %llums\n", cacheTime / (CLOCKS_PER_MS),
+        mallocTime / (CLOCKS_PER_MS));
 
     return 0;
 }
