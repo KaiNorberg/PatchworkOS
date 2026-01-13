@@ -104,16 +104,7 @@ clock_t clock_uptime(void)
         return 0;
     }
 
-    clock_t time = bestNsSource->read_ns();
-#ifdef DEBUG
-    clock_t lastTime = atomic_exchange(&lastNsTime, time);
-    if (time < lastTime)
-    {
-        panic(NULL, "system time source '%s' returned non-monotonic time value %lu ns (last %lu ns)",
-            bestNsSource->name, time, lastTime);
-    }
-#endif
-    return time;
+    return bestNsSource->read_ns();
 }
 
 time_t clock_epoch(void)

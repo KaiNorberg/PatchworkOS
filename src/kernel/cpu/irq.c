@@ -500,5 +500,5 @@ void irq_handler_unregister(irq_func_t func, irq_virt_t virt)
         }
     }
 
-    LOG_WARN("attempted to unregister non-registered irq handler %p for irq 0x%x", func, virt);
+    LOG_WARN("attempted to unregister non-registered irq handler %p for irq 0x%x\n", func, virt);
 }

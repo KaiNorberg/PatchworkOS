@@ -111,19 +111,30 @@ static inline void rwlock_read_acquire(rwlock_t* lock)
 #endif
     }
 
-    while (atomic_load_explicit(&lock->writeServe, memory_order_relaxed) !=
-        atomic_load_explicit(&lock->writeTicket, memory_order_relaxed))
+    while (true)
     {
-#ifndef NDEBUG
-        if (++iterations >= RWLOCK_DEADLOCK_ITERATIONS)
-        {
-            panic(NULL, "Deadlock in rwlock_read_acquire detected");
-        }
-#endif
-        asm volatile("pause");
-    }
+        atomic_fetch_add_explicit(&lock->activeReaders, 1, memory_order_seq_cst);
 
-    atomic_fetch_add_explicit(&lock->activeReaders, 1, memory_order_acquire);
+        if (atomic_load_explicit(&lock->writeServe, memory_order_seq_cst) ==
+            atomic_load_explicit(&lock->writeTicket, memory_order_seq_cst))
+        {
+            break;
+        }
+
+        atomic_fetch_sub_explicit(&lock->activeReaders, 1, memory_order_seq_cst);
+
+        while (atomic_load_explicit(&lock->writeServe, memory_order_relaxed) !=
+            atomic_load_explicit(&lock->writeTicket, memory_order_relaxed))
+        {
+#ifndef NDEBUG
+            if (++iterations >= RWLOCK_DEADLOCK_ITERATIONS)
+            {
+                panic(NULL, "Deadlock in rwlock_read_acquire detected");
+            }
+#endif
+            asm volatile("pause");
+        }
+    }
     atomic_fetch_add_explicit(&lock->readServe, 1, memory_order_release);
 }
 
@@ -152,7 +163,7 @@ static inline void rwlock_write_acquire(rwlock_t* lock)
     uint64_t iterations = 0;
 #endif
 
-    uint16_t ticket = atomic_fetch_add_explicit(&lock->writeTicket, 1, memory_order_relaxed);
+    uint16_t ticket = atomic_fetch_add_explicit(&lock->writeTicket, 1, memory_order_seq_cst);
 
     while (atomic_load_explicit(&lock->writeServe, memory_order_acquire) != ticket)
     {
