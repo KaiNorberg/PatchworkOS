@@ -138,7 +138,7 @@ DivU64x32 (
     OUT UINTN   *Remainder OPTIONAL
     )
 // divide 64bit by 32bit and get a 64bit result
-// N.b. only works for 31bit divisors!!
+// N.B. only works for 31bit divisors!!
 {
 #if 0 && defined(__GNUC__) && !defined(__MINGW32__)
     if (Remainder)
@@ -158,7 +158,7 @@ DivU64x32 (
     Rem = 0;
     for (bit=0; bit < 64; bit++) {
 #if defined(__GNUC__) || defined(__MINGW32__)
-        __asm__ (
+        asm (
             "shll	$1, %0\n\t"
             "rcll	$1, 4%0\n\t"
             "rcll	$1, %2\n\t"

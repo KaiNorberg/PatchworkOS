@@ -153,7 +153,7 @@ typedef PXE_UINT16 PXE_OPCODE;
 //
 // Read & change state of external interrupt enables.
 //
-#define PXE_OPCODE_cli_popS                0x0008
+#define PXE_OPCODE_INTERRUPT_ENABLES                0x0008
 
 //
 // Read & change state of packet receive filters.
@@ -272,8 +272,8 @@ typedef PXE_UINT16 PXE_OPFLAGS;
 // Setting both enable and disable will return PXE_STATCODE_INVALID_OPFLAGS.
 //
 #define PXE_OPFLAGS_INTERRUPT_OPMASK                0xC000
-#define PXE_OPFLAGS_cli_pop                0x8000
-#define PXE_OPFLAGS_cli_push           0x4000
+#define PXE_OPFLAGS_INTERRUPT_ENABLE                0x8000
+#define PXE_OPFLAGS_INTERRUPT_DISABLE           0x4000
 #define PXE_OPFLAGS_INTERRUPT_READ              0x0000
 
 //
@@ -326,7 +326,7 @@ typedef PXE_UINT16 PXE_OPFLAGS;
 #define PXE_OPFLAGS_RECEIVE_FILTER_UNICAST          0x0001
 
 //
-// Enable broadcast packet receiving.  Packets sent to the broadcast
+// Enable broadcast packet receiving.  Packets sent to the broadcast 
 // MAC address will be received.
 //
 #define PXE_OPFLAGS_RECEIVE_FILTER_BROADCAST        0x0002
@@ -690,7 +690,7 @@ typedef PXE_UINT16 PXE_CONTROL;
 // Setting this flag directs the UNDI to queue this command for later
 // execution if the UNDI is busy and it supports command queuing.
 // If queuing is not supported, a PXE_STATCODE_INVALID_CONTROL error
-// is returned.  If the queue is full, a PXE_STATCODE_CDB_QUEUE_FULL
+// is returned.  If the queue is full, a PXE_STATCODE_CDB_QUEUE_FULL 
 // error is returned.
 //
 #define PXE_CONTROL_QUEUE_IF_BUSY               0x0002
@@ -913,7 +913,7 @@ PXE_SW_UNDI sw;
 #define PXE_ROMID_IMP_PACKET_RX_INT_SUPPORTED       0x00000002
 #define PXE_ROMID_IMP_CMD_COMPLETE_INT_SUPPORTED        0x00000001
 
-
+ 
 typedef struct s_pxe_cdb {
 PXE_OPCODE OpCode;
 PXE_OPFLAGS OpFlags;
@@ -978,7 +978,7 @@ typedef struct s_pxe_cpb_start {
     //
     // UNDI will never request a delay smaller than 10 microseconds
     // and will always request delays in increments of 10 microseconds.
-    // The Delay() CallBack routine must delay between n and n + 10
+    // The Delay() CallBack routine must delay between n and n + 10 
     // microseconds before returning control to the UNDI.
     //
     // This field cannot be set to zero.
@@ -1010,16 +1010,16 @@ typedef struct s_pxe_cpb_start {
     // buffer.  If virtual and physical addresses are the same, just
     // copy the virtual address to the physical address buffer.
     //
-    // This field can be set to zero if virtual and physical addresses
+    // This field can be set to zero if virtual and physical addresses 
     // are equal.
     //
     PXE_UINT64 Virt2Phys;
     //
-    // PXE_VOID Mem_IO(PXE_UINT8 read_write, PXE_UINT8 len, PXE_UINT64 port,
+    // PXE_VOID Mem_IO(PXE_UINT8 read_write, PXE_UINT8 len, PXE_UINT64 port, 
     //              PXE_UINT64 buf_addr);
     //
-    // UNDI will read or write the device io space using this call back
-    // function. It passes the number of bytes as the len parameter and it
+    // UNDI will read or write the device io space using this call back 
+    // function. It passes the number of bytes as the len parameter and it 
     // will be either 1,2,4 or 8.
     //
     // This field can not be set to zero.
@@ -1087,10 +1087,10 @@ typedef struct s_pxe_db_get_init_info {
     PXE_UINT16 MCastFilterCnt;
 
     //
-    // Default number and size of transmit and receive buffers that will
-    // be allocated by the UNDI.  If MemoryRequired is non-zero, this
-    // allocation will come out of the memory buffer given to the Initialize
-    // command.  If MemoryRequired is zero, this allocation will come out of
+    // Default number and size of transmit and receive buffers that will 
+    // be allocated by the UNDI.  If MemoryRequired is non-zero, this 
+    // allocation will come out of the memory buffer given to the Initialize 
+    // command.  If MemoryRequired is zero, this allocation will come out of 
     // memory on the NIC.
     //
     PXE_UINT16 TxBufCnt;
@@ -1144,7 +1144,7 @@ typedef struct s_pxe_pci_config_info {
     PXE_UINT8 Function;
 
     //
-    // This is a copy of the PCI configuration space for this
+    // This is a copy of the PCI configuration space for this 
     // network device.
     //
     union {
@@ -1161,7 +1161,7 @@ typedef struct s_pxe_pcc_config_info {
     // For PCC bus devices, this field is set to PXE_BUSTYPE_PCC.
     //
     PXE_UINT32 BusType;
-
+    
     //
     // This identifies the PCC network device that this UNDI interface
     // is bound to.
@@ -1171,7 +1171,7 @@ typedef struct s_pxe_pcc_config_info {
     PXE_UINT8 Function;
 
     //
-    // This is a copy of the PCC configuration space for this
+    // This is a copy of the PCC configuration space for this 
     // network device.
     //
     union {
@@ -1226,7 +1226,7 @@ typedef struct s_pxe_cpb_initialize {
     //
     // Suggested number and size of receive and transmit buffers to
     // allocate.  If MemoryAddr and MemoryLength are non-zero, this
-    // allocation comes out of the supplied memory buffer.  If MemoryAddr
+    // allocation comes out of the supplied memory buffer.  If MemoryAddr 
     // and MemoryLength are zero, this allocation comes out of memory
     // on the NIC.
     //
@@ -1239,10 +1239,10 @@ typedef struct s_pxe_cpb_initialize {
     PXE_UINT16 RxBufSize;
 
     //
-    // The following configuration parameters are optional and must be zero
+    // The following configuration parameters are optional and must be zero 
     // to use the default values.
     //
-    PXE_UINT8 Duplex;
+    PXE_UINT8 Duplex; 
 
     PXE_UINT8 LoopBack;
 } PXE_CPB_INITIALIZE;
@@ -1263,7 +1263,7 @@ typedef struct s_pxe_db_initialize {
     // may be less that the amount of memory suppllied and may be zero if
     // the UNDI and network device do not use external memory buffers.
     //
-    // Memory used by the UNDI and network device is allocated from the
+    // Memory used by the UNDI and network device is allocated from the 
     // lowest memory buffer address.
     //
     PXE_UINT32 MemoryUsed;
@@ -1325,7 +1325,7 @@ typedef struct s_pxe_dpb_station_address {
 
 typedef struct s_pxe_db_statistics {
     //
-    // Bit field identifying what statistic data is collected by the
+    // Bit field identifying what statistic data is collected by the 
     // UNDI/NIC.
     // If bit 0x00 is set, Data[0x00] is collected.
     // If bit 0x01 is set, Data[0x01] is collected.
@@ -1445,7 +1445,7 @@ typedef struct s_pxe_cpb_nvdata_sparse {
         PXE_UINT32 Addr;
 
         // Data item to write into above storage address.
-
+    
         union {
             PXE_UINT8 Byte;
             PXE_UINT16 Word;
@@ -1740,3 +1740,4 @@ typedef struct s_pxe_db_receive {
 
 /* EOF - efi_pxe.h */
 #endif /* _EFI_PXE_H */
+

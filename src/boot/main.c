@@ -176,7 +176,7 @@ EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
         return status;
     }
 
-    page_table_load(&bootInfo->memory.table);
+    cr3_write((uint64_t)bootInfo->memory.table.pml4);
 
     void (*kernel_entry)(boot_info_t*) = (void (*)(boot_info_t*))bootInfo->kernel.elf.header->e_entry;
     kernel_entry(bootInfo);

@@ -264,6 +264,4 @@ ASM_PFX(_ll_div0):
 ASM_PFX(__aeabi_ldiv0):
   bx      r14
 
-#if defined(__ELF__) && defined(__linux__)
-	.section .note.GNU-stack,"",%progbits
-#endif
+

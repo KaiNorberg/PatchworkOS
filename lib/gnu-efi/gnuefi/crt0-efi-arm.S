@@ -136,14 +136,10 @@ _start:
 	bne		0f
 
 	ldmfd		sp, {r0-r1}
-	bl		_entry
+	bl		efi_main
 
 0:	add		sp, sp, #12
 	ldr		pc, [sp], #4
 
 .L_DYNAMIC:
 	.word		_DYNAMIC - .
-
-#if defined(__ELF__) && defined(__linux__)
-	.section .note.GNU-stack,"",%progbits
-#endif

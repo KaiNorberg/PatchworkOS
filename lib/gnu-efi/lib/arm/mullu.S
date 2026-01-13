@@ -31,7 +31,3 @@ ASM_PFX(__aeabi_lmul):
   mla     r1, r2, r1, ip
   mla     r1, r3, lr, r1
   ldmia   sp!, {pc}
-
-#if defined(__ELF__) && defined(__linux__)
-	.section .note.GNU-stack,"",%progbits
-#endif

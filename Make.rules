@@ -21,7 +21,7 @@ $(BINDIR)/%: $(OBJ)
 $(BINDIR)/%.efi: $(OBJ)
 	$(MKCWD)
 	@echo "  LD    $@ (EFI)"
-	@gcc -shared -nostdlib -nostartfiles -fPIC -fno-stack-protector \
+	@$(CC) -shared -nostdlib -nostartfiles -fPIC -fno-stack-protector \
 		$(DEBUG_LDFLAGS) \
 		-Wl,-shared,-Bsymbolic \
 		-Wl,-T,lib/gnu-efi/gnuefi/elf_x86_64_efi.lds \

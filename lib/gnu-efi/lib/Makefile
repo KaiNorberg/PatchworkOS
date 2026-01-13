@@ -43,8 +43,8 @@ include $(SRCDIR)/../Make.defaults
 TOPDIR = $(SRCDIR)/..
 
 CDIR = $(TOPDIR)/..
-FILES = boxdraw smbios console crc data debug dpath \
-        entry error event exit guid hand hw init lock \
+FILES = boxdraw smbios console crc data debug dpath  \
+        error event exit guid hand hw init lock   \
         misc pause print sread str cmdline\
 	runtime/rtlock runtime/efirtlib runtime/rtstr runtime/vm runtime/rtdata  \
 	$(ARCH)/initplat $(ARCH)/math $(ARCH)/setjmp
@@ -62,45 +62,20 @@ FILES += $(ARCH)/uldiv $(ARCH)/ldivmod $(ARCH)/div $(ARCH)/llsl $(ARCH)/llsr \
 	 $(ARCH)/mullu
 endif
 
-OBJS  = $(FILES:%=%.o) ctors.o
+OBJS  = $(FILES:%=%.o)
 
-SUBDIRS = ia32 x86_64 ia64 aarch64 arm mips64el riscv64 loongarch64 runtime
+SUBDIRS = ia32 x86_64 ia64 aarch64 arm mips64el riscv64 runtime
 
 LIBDIRINSTALL = $(INSTALLROOT)$(LIBDIR)
 
-# Modified to fix bug where files are unnecessarily recompiled
+all: libsubdirs libefi.a
 
-#all: libsubdirs libefi.a
-#
-#.PHONY: libsubdirs
-#libsubdirs:
-#	@set -e ; for sdir in $(SUBDIRS); do mkdir -p $$sdir; done
-#
-#$(OBJS): libsubdirs
-#
-#libefi.a: $(OBJS)
-#	$(AR) $(ARFLAGS) $@ $^
-#
-#include $(SRCDIR)/../Make.rules
-
-# New stuff
-
-all: libefi.a
-
-$(OBJS):
+.PHONY: libsubdirs
+libsubdirs:
+	for sdir in $(SUBDIRS); do mkdir -p $$sdir; done
 
 libefi.a: $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
-
-%.o: %.c
-	mkdir -p $(@D)
-	$(CC) $(INCDIR) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
-
-%.o: %.S
-	mkdir -p $(@D)
-	$(CC) $(INCDIR) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
-
-# End of new stuff
 
 clean:
 	rm -f libefi.a *~ $(OBJS) */*.o
@@ -112,3 +87,7 @@ $(LIBDIRINSTALL)/libefi.a: libefi.a | $(LIBDIRINSTALL)
 	$(INSTALL) -m 644 $< $(dir $@)
 
 install: $(LIBDIRINSTALL)/libefi.a
+
+include $(SRCDIR)/../Make.rules
+
+.PHONY: libsubdirs

@@ -90,7 +90,3 @@ longjmp:
 	li	$v0, 1
 	movn	$v0, $a1, $a1
 	jr	$ra
-
-#if defined(__ELF__) && defined(__linux__)
-	.section .note.GNU-stack,"",%progbits
-#endif

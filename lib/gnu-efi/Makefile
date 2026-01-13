@@ -34,7 +34,7 @@
 #    SUCH DAMAGE.
 #
 
-export VERSION = 3.0.17
+VERSION = 3.0.14
 
 MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 SRCDIR = $(dir $(MKFILE_PATH))
@@ -44,11 +44,9 @@ VPATH = $(SRCDIR)
 include $(SRCDIR)/Make.defaults
 
 SUBDIRS = lib gnuefi inc apps
+gnuefi: lib
 
 all:	check_gcc $(SUBDIRS)
-
-gnuefi: lib
-apps:	gnuefi
 
 mkvars:
 	@echo AR=$(AR)
@@ -83,14 +81,14 @@ $(SUBDIRS):
 
 clean:
 	rm -f *~
-	@set -e ; for d in $(SUBDIRS); do \
+	@for d in $(SUBDIRS); do \
 		if [ -d $(OBJDIR)/$$d ]; then \
 			$(MAKE) -C $(OBJDIR)/$$d -f $(SRCDIR)/$$d/Makefile SRCDIR=$(SRCDIR)/$$d clean; \
 		fi; \
 	done
 
 install:
-	@set -e ; for d in $(SUBDIRS); do \
+	@for d in $(SUBDIRS); do \
 		mkdir -p $(OBJDIR)/$$d; \
 		$(MAKE) -C $(OBJDIR)/$$d -f $(SRCDIR)/$$d/Makefile SRCDIR=$(SRCDIR)/$$d install; done
 

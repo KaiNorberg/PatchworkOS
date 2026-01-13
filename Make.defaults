@@ -3,9 +3,8 @@ MKCWD = @mkdir -p $(@D)
 CC = gcc
 AS = gcc
 LD = gcc
-AR = gcc-ar
+AR = ar
 OBJCOPY = objcopy
-
 CFLAGS := \
 	-std=gnu11 \
 	-ffreestanding \

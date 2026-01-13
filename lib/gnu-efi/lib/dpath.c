@@ -237,7 +237,7 @@ FileDevicePath (
     )
 /*++
 
-    N.b. Results are allocated from pool.  The caller must FreePool
+    N.B. Results are allocated from pool.  The caller must FreePool
     the resulting device path structure
 
 --*/
@@ -1175,7 +1175,7 @@ DevicePathToStr (
         }
 
         //
-        //  Put a path separator in if needed
+        //  Put a path seperator in if needed
         //
 
         if (Str.len  &&  DumpNode != _DevPathEndInstance) {

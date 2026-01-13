@@ -43,7 +43,3 @@ longjmp:
 	movl	(%edx), %ebx
 	movl	4(%edx), %esi
 	movl	8(%edx), %edi
-
-#if defined(__ELF__) && defined(__linux__)
-	.section .note.GNU-stack,"",%progbits
-#endif

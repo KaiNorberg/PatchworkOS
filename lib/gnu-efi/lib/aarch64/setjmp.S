@@ -58,7 +58,3 @@ longjmp:
 	mov	w0, #1
 	csel	w0, w1, w0, ne
 	br	x30
-
-#if defined(__ELF__) && defined(__linux__)
-	.section .note.GNU-stack,"",%progbits
-#endif

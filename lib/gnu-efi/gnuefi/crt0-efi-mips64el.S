@@ -172,8 +172,8 @@ _pc:
 
 	// a0: ImageHandle
 	ld		$a0, 16($sp)
-	// call _start
-	dla		$t9, _entry
+	// call efi_main
+	dla		$t9, efi_main
 	jalr		$t9
 	// a1: SystemTable
 	ld		$a1, 24($sp)
@@ -186,7 +186,3 @@ _pc:
 	.end		_start
 
 	.set		pop
-
-#if defined(__ELF__) && defined(__linux__)
-	.section .note.GNU-stack,"",%progbits
-#endif

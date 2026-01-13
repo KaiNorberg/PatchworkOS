@@ -42,36 +42,50 @@ include $(SRCDIR)/../Make.defaults
 
 TOPDIR = $(SRCDIR)/..
 
-CDIR=$(TOPDIR)/..
-FILES	= reloc_$(ARCH)  
+CDIR = $(TOPDIR)/..
+FILES = boxdraw smbios console crc data debug dpath  \
+        error event guid hand hw init lock   \
+        misc print sread str cmdline \
+	runtime/rtlock runtime/efirtlib runtime/rtstr runtime/vm runtime/rtdata  \
+	$(ARCH)/initplat $(ARCH)/math 
 
-OBJS	= $(FILES:%=%.o)
-
-# on aarch64, avoid jump tables before all relocations have been processed
-reloc_aarch64.o: CFLAGS += -fno-jump-tables
-
-TARGETS	= crt0-efi-$(ARCH).o libgnuefi.a
-
-all:	$(TARGETS)
-
-libgnuefi.a: $(OBJS)
-	$(AR) $(ARFLAGS) $@ $^
-
-
-clean:
-	rm -f $(TARGETS) *~ *.o $(OBJS)
-
-install:
-	mkdir -p $(INSTALLROOT)$(LIBDIR)
-	$(INSTALL) -m 644 $(TARGETS) $(INSTALLROOT)$(LIBDIR)
-ifneq (,$(findstring FreeBSD,$(OS)))
- ifeq ($(ARCH),x86_64)
-	$(INSTALL) -m 644 $(SRCDIR)/elf_$(ARCH)_fbsd_efi.lds $(INSTALLROOT)$(LIBDIR)
- else
-	$(INSTALL) -m 644 $(SRCDIR)/elf_$(ARCH)_efi.lds $(INSTALLROOT)$(LIBDIR)
- endif
-else
-	$(INSTALL) -m 644 $(SRCDIR)/elf_$(ARCH)_efi.lds $(INSTALLROOT)$(LIBDIR)
+ifeq ($(ARCH),ia64)
+FILES += $(ARCH)/salpal $(ARCH)/palproc
 endif
 
+ifeq ($(ARCH),x86_64)
+FILES += $(ARCH)/callwrap $(ARCH)/efi_stub
+endif
+
+ifeq ($(ARCH),arm)
+FILES += $(ARCH)/lib1funcs $(ARCH)/div64
+endif
+
+OBJS  = $(FILES:%=%.o)
+
+SUBDIRS = ia32 x86_64 ia64 aarch64 arm runtime
+
+LIBDIRINSTALL = $(INSTALLROOT)$(LIBDIR)
+
+all: libsubdirs libefi.a
+
+.PHONY: libsubdirs
+libsubdirs:
+	for sdir in $(SUBDIRS); do mkdir -p $$sdir; done
+
+libefi.a: $(patsubst %,libefi.a(%),$(OBJS))
+
+clean:
+	rm -f libefi.a *~ $(OBJS) */*.o
+
+$(LIBDIRINSTALL):
+	mkdir -p $@
+
+$(LIBDIRINSTALL)/libefi.a: libefi.a | $(LIBDIRINSTALL)
+	$(INSTALL) -m 644 $< $(dir $@)
+
+install: $(LIBDIRINSTALL)/libefi.a
+
 include $(SRCDIR)/../Make.rules
+
+.PHONY: libsubdirs

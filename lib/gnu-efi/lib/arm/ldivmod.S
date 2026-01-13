@@ -57,6 +57,5 @@ L_Test3:
 L_Exit:
     pop      {r4,pc}
 
-#if defined(__ELF__) && defined(__linux__)
-	.section .note.GNU-stack,"",%progbits
-#endif
+
+

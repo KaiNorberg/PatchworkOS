@@ -23,7 +23,3 @@ setjmp:
 	.type	longjmp, %function
 longjmp:
 	ldmia	r0, {r3-r12,r14}
-
-#if defined(__ELF__) && defined(__linux__)
-	.section .note.GNU-stack,"",%progbits
-#endif

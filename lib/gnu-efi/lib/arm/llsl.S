@@ -39,7 +39,3 @@ ASM_PFX(__aeabi_llsl):
     lsl      r1,r0,r3
     mov      r0,#0
     bx       lr
-
-#if defined(__ELF__) && defined(__linux__)
-	.section .note.GNU-stack,"",%progbits
-#endif

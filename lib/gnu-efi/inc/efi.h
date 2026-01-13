@@ -48,12 +48,10 @@ Revision History
 #include "aarch64/efibind.h"
 #elif defined (_M_ARM) || defined(__arm__)
 #include "arm/efibind.h"
-#elif defined (_M_MIPS64) || defined(__mips64__) || defined(__mips64)
+#elif defined (_M_MIPS64) || defined(__mips64__)
 #include "mips64el/efibind.h"
 #elif defined (__riscv) && __riscv_xlen == 64
 #include "riscv64/efibind.h"
-#elif defined (__loongarch64)
-#include "loongarch64/efibind.h"
 #else
 #error Usupported architecture
 #endif

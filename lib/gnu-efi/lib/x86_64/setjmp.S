@@ -39,7 +39,3 @@ longjmp:
 	cmp	%rax,%rdx
 	cmove	%rcx,%rax
 	jmp	*0x38(%rdi)
-
-#if defined(__ELF__) && defined(__linux__)
-	.section .note.GNU-stack,"",%progbits
-#endif

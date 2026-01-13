@@ -15,9 +15,7 @@ SECTIONS
   }
   _etext = .;
   _text_size = . - _text;
-  . = DATA_SEGMENT_ALIGN (CONSTANT (MAXPAGESIZE), CONSTANT (COMMONPAGESIZE));
   .dynamic  : { *(.dynamic) }
-  . = ALIGN(4096);
   .data :
   {
    _data = .;
@@ -29,26 +27,6 @@ SECTIONS
    HIDDEN (_gp = ALIGN (16) + 0x7ff0);
    *(.got)
 
-   /*
-    * Note that these aren't the using the GNU "CONSTRUCTOR" output section
-    * command, so they don't start with a size.  Because of p2align and the
-    * end/END definitions, and the fact that they're mergeable, they can also
-    * have NULLs which aren't guaranteed to be at the end.
-    */
-   . = ALIGN(16);
-   _init_array = .;
-   *(SORT_BY_NAME(.init_array))
-   _init_array_end = .;
-   __CTOR_LIST__ = .;
-   *(SORT_BY_NAME(.ctors))
-   __CTOR_END__ = .;
-   __DTOR_LIST__ = .;
-   *(SORT_BY_NAME(.dtors))
-   __DTOR_END__ = .;
-   _fini_array = .;
-   *(SORT_BY_NAME(.fini_array))
-   _fini_array_end = .;
-
    /* the EFI loader doesn't seem to like a .bss section, so we stick
       it all into .data: */
    . = ALIGN(16);
@@ -56,23 +34,16 @@ SECTIONS
    *(.sbss)
    *(.scommon)
    *(.dynbss)
-   *(.bss*)
+   *(.bss)
    *(COMMON)
    . = ALIGN(16);
    _bss_end = .;
   }
 
-  . = ALIGN(4096);
-  .rel :
-  {
-    *(.rel.text*)
-    *(.rel.data*)
-    *(.rel.got)
-    *(.rel.dyn)
-    *(.rel.stab)
-  }
-  . = ALIGN(4096);
+  .rel.dyn : { *(.rel.dyn) }
   .rel.plt : { *(.rel.plt) }
+  .rel.got : { *(.rel.got) }
+  .rel.data : { *(.rel.data) *(.rel.data*) }
   _edata = .;
   _data_size = . - _etext;
 
@@ -82,7 +53,6 @@ SECTIONS
   .dynstr   : { *(.dynstr) }
   . = ALIGN(4096);
   .note.gnu.build-id : { *(.note.gnu.build-id) }
-  . = DATA_SEGMENT_END (.);
   /DISCARD/ :
   {
     *(.rel.reloc)

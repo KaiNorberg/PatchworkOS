@@ -153,7 +153,3 @@ label1:
   @ What to do about division by zero?  For now, just return.
 ASM_PFX(__aeabi_idiv0):
   bx      r14
-
-#if defined(__ELF__) && defined(__linux__)
-	.section .note.GNU-stack,"",%progbits
-#endif

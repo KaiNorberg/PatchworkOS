@@ -74,14 +74,13 @@ EFI_STATUS
     OUT VOID                        **Buffer
     );
 
-
 typedef
 EFI_STATUS
 (EFIAPI *EFI_FREE_POOL) (
     IN VOID                         *Buffer
     );
 
-typedef
+typedef 
 EFI_STATUS
 (EFIAPI *EFI_SET_VIRTUAL_ADDRESS_MAP) (
     IN UINTN                        MemoryMapSize,
@@ -96,7 +95,7 @@ EFI_STATUS
 #define EFI_INTERNAL_PTR            0x00000004      // Pointer to internal runtime data
 
 
-typedef
+typedef 
 EFI_STATUS
 (EFIAPI *EFI_CONVERT_POINTER) (
     IN UINTN                        DebugDisposition,
@@ -170,7 +169,7 @@ EFI_STATUS
     IN EFI_EVENT                Event
     );
 
-typedef
+typedef 
 EFI_STATUS
 (EFIAPI *EFI_WAIT_FOR_EVENT) (
     IN UINTN                    NumberOfEvents,
@@ -355,24 +354,16 @@ EFI_STATUS
 #define EFI_IMAGE_MACHINE_RISCV128  0x5128
 #endif
 
-#if !defined(EFI_IMAGE_MACHINE_LOONGARCH32)
-#define EFI_IMAGE_MACHINE_LOONGARCH32   0x6232
-#endif
-
-#if !defined(EFI_IMAGE_MACHINE_LOONGARCH64)
-#define EFI_IMAGE_MACHINE_LOONGARCH64   0x6264
-#endif
-
 // Image Entry prototype
 
-typedef
+typedef 
 EFI_STATUS
 (EFIAPI *EFI_IMAGE_ENTRY_POINT) (
     IN EFI_HANDLE                   ImageHandle,
     IN struct _EFI_SYSTEM_TABLE     *SystemTable
     );
 
-typedef
+typedef 
 EFI_STATUS
 (EFIAPI *EFI_IMAGE_LOAD) (
     IN BOOLEAN                      BootPolicy,
@@ -383,7 +374,7 @@ EFI_STATUS
     OUT EFI_HANDLE                  *ImageHandle
     );
 
-typedef
+typedef 
 EFI_STATUS
 (EFIAPI *EFI_IMAGE_START) (
     IN EFI_HANDLE                   ImageHandle,
@@ -717,7 +708,7 @@ EFI_STATUS
     );
 
 typedef
-EFI_STATUS
+EFI_STATUS 
 (EFIAPI *EFI_REGISTER_PROTOCOL_NOTIFY) (
     IN EFI_GUID                 *Protocol,
     IN EFI_EVENT                Event,
@@ -849,7 +840,7 @@ typedef struct _EFI_BOOT_SERVICES {
     EFI_CREATE_EVENT                CreateEvent;
     EFI_SET_TIMER                   SetTimer;
     EFI_WAIT_FOR_EVENT              WaitForEvent;
-    EFI_SIGNAL_EVENT                SignaEVENT_LIB;
+    EFI_SIGNAL_EVENT                SignalEvent;
     EFI_CLOSE_EVENT                 CloseEvent;
     EFI_CHECK_EVENT                 CheckEvent;
 
@@ -987,3 +978,4 @@ typedef struct _EFI_SYSTEM_TABLE {
 } EFI_SYSTEM_TABLE;
 
 #endif
+

@@ -9,7 +9,7 @@
 #include <efi.h>
 #include <efilib.h>
 
-#define elf_strcmp(Str1, Str2) strcmpa((Str1), (Str2))
+#define elf_strcmp(Str1, Str2) strcmpa((void*)(Str1), (void*)(Str2))
 #define elf_memcpy(Dest, Src, Size) CopyMem((Dest), (Src), (Size))
 #define elf_memset(Dest, Value, Size) SetMem((Dest), (Size), (Value))
 

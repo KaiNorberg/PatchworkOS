@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause */
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copright (C) 2014 Linaro Ltd. <ard.biesheuvel@linaro.org>
  * Copright (C) 2018 Alexander Graf <agraf@suse.de>
@@ -134,7 +134,3 @@ _start:
 	ld		ra, 16(sp)
 0:	addi		sp, sp, 24
 	ret
-
-#if defined(__ELF__) && defined(__linux__)
-	.section .note.GNU-stack,"",%progbits
-#endif
