@@ -90,7 +90,11 @@ $(VERSION_HEADER): .FORCE | include/kernel
 include/kernel:
 	@mkdir -p $@
 
-lib/gnu-efi/.built: | lib/gnu-efi
+lib/gnu-efi/.built:
+	@if [ ! -d "lib/gnu-efi" ]; then \
+		echo "CLONE   gnu-efi"; \
+		git clone https://github.com/ncroxon/gnu-efi.git lib/gnu-efi >/dev/null 2>&1; \
+	fi
 	@echo "BUILD   gnu-efi"
 	@$(MAKE) -C lib/gnu-efi >/dev/null 2>&1
 	@touch $@
@@ -248,9 +252,7 @@ clean_programs:
 
 nuke: clean
 	@echo "NUKE    all"
-	@$(MAKE) -C lib/gnu-efi clean 2>/dev/null || true
-	@rm -rf lib/doomgeneric-patchworkos lib/lua-5.4.7 lib/acpica lib/acpica_tests lib/argon2 include/argon2 meta/docs
-	@rm -rf lib/gnu-efi/.built lib/argon2/.built lib/acpica_tests/.built
+	@rm -rf lib/doomgeneric lib/lua lib/acpica lib/acpica_tests lib/argon2 include/argon2 meta/docs lib/gnu-efi 
 
 QEMU_MEMORY ?= 2G
 QEMU_CPUS ?= $(shell nproc 2>/dev/null || echo 8)
@@ -259,14 +261,18 @@ QEMU_ARGS ?=
 
 QEMU_FLAGS = \
 	-M $(QEMU_MACHINE) \
-	-display sdl \
-	-serial stdio \
 	-drive format=raw,file=$(IMAGE) \
 	-m $(QEMU_MEMORY) \
 	-smp $(QEMU_CPUS) \
 	-cpu qemu64 \
 	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
 	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd
+
+ifeq ($(QEMU_NOGRAPHIC),1)
+QEMU_FLAGS += -nographic
+else
+QEMU_FLAGS += -display sdl -serial stdio
+endif
 
 ifeq ($(DEBUG),1)
 else

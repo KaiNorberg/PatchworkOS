@@ -3,14 +3,16 @@ MKCWD = @mkdir -p $(@D)
 CC = gcc
 AS = gcc
 LD = gcc
-AR = gcc-ar
+AR = ar
 OBJCOPY = objcopy
-
 CFLAGS := \
 	-std=gnu11 \
 	-ffreestanding \
 	-fno-builtin \
+	-march=x86-64 \
 	-fno-pie \
+	-fno-stack-protector \
+	-fcf-protection=none \
 	-mno-red-zone \
 	-nostdinc \
 	-Wall \
@@ -36,7 +38,8 @@ CFLAGS_DISABLE_SIMD := \
 	-mno-mmx -mno-3dnow \
 	-mno-80387 -mno-sse \
 	-mno-sse2 -mno-sse3 \
-	-mno-ssse3 -mno-sse4
+	-mno-ssse3 -mno-sse4 \
+	-mno-avx -mno-avx2
 
 ASFLAGS := \
 	-nostdinc \
@@ -51,7 +54,9 @@ LDFLAGS := \
 	-nostdlib \
 	-Lbin/libstd \
 	-Lbin/libpatchwork \
-	-no-pie
+	-z noexecstack \
+	-Wno-unused-command-line-argument \
+	-no-pie 
 
 ifeq ($(TESTING),1)
 	CFLAGS += -D_TESTING_
@@ -61,10 +66,8 @@ endif
 ifeq ($(DEBUG),1)
 	CFLAGS += -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline
 	LDFLAGS += -g
-	DEBUG_LDFLAGS = -g
 else
 	CFLAGS += -O2 -DNDEBUG
-	DEBUG_LDFLAGS =
 endif
 
 ifeq ($(NOSTDLIB),1)

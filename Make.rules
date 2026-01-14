@@ -17,39 +17,3 @@ $(BINDIR)/%: $(OBJ)
 	$(MKCWD)
 	@echo "  LD    $@"
 	@$(LD) -o $@ $^ $(LDFLAGS) $(LDSTDLIB)
-
-$(BINDIR)/%.efi: $(OBJ)
-	$(MKCWD)
-	@echo "  LD    $@ (EFI)"
-	@gcc -shared -nostdlib -nostartfiles -fPIC -fno-stack-protector \
-		$(DEBUG_LDFLAGS) \
-		-Wl,-shared,-Bsymbolic \
-		-Wl,-T,lib/gnu-efi/gnuefi/elf_x86_64_efi.lds \
-		-Llib/gnu-efi/x86_64/lib \
-		-Llib/gnu-efi/x86_64/gnuefi \
-		lib/gnu-efi/x86_64/gnuefi/crt0-efi-x86_64.o $^ \
-		-o $(BINDIR)/temp.so \
-		-lgnuefi -lefi
-
-ifeq ($(DEBUG),1)
-	@echo "  OBJCOPY $@ (with debug symbols)"
-	@$(OBJCOPY) --only-keep-debug $(BINDIR)/temp.so $(BINDIR)/$*.debug
-	@$(OBJCOPY) \
-		-j .text -j .sdata -j .data -j .dynamic -j .dynsym \
-		-j .rel -j .rela -j .rel.* -j .rela.* -j .reloc -j .eh_frame \
-		--target efi-app-x86_64 \
-		--subsystem=10 \
-		--add-gnu-debuglink=$(BINDIR)/$*.debug \
-		$(BINDIR)/temp.so $@
-	@$(OBJCOPY) --strip-debug $@
-else
-	@echo "  OBJCOPY $@"
-	@$(OBJCOPY) \
-		-j .text -j .sdata -j .data -j .dynamic -j .dynsym \
-		-j .rel -j .rela -j .rel.* -j .rela.* -j .reloc -j .eh_frame \
-		--target efi-app-x86_64 \
-		--subsystem=10 \
-		$(BINDIR)/temp.so $@
-endif
-
-	@rm -f $(BINDIR)/temp.so

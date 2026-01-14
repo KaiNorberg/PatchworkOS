@@ -7,7 +7,6 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/defs.h>
 
 /**
  * @brief Doubly linked list header.
@@ -160,7 +159,6 @@ typedef struct list
  * @return A `list_t` initializer for the specified list variable.
  */
 #define LIST_CREATE(name) \
-    (list_t) \
     { \
         .head = {.prev = &(name).head, .next = &(name).head } \
     }

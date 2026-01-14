@@ -34,13 +34,13 @@ void cpu_init(cpu_t* cpu)
     cpu->syscallRsp = 0;
     cpu->userRsp = 0;
     cpu->inInterrupt = false;
+
     gdt_cpu_load();
     idt_cpu_load();
     tss_init(&cpu->tss);
-
     gdt_cpu_tss_load(&cpu->tss);
-    msr_write(MSR_GS_BASE, (uintptr_t)cpu);
-    msr_write(MSR_KERNEL_GS_BASE, (uintptr_t)cpu);
+
+    percpu_init(cpu);
 
     if (stack_pointer_init_buffer(&cpu->exceptionStack, cpu->exceptionStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) == ERR)
     {
@@ -105,7 +105,7 @@ static void cpu_halt_ipi_handler(ipi_func_data_t* data)
 
     while (true)
     {
-        asm volatile("cli; hlt");
+        ASM("cli; hlt");
     }
 
     __builtin_unreachable();

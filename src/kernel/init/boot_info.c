@@ -48,8 +48,8 @@ static void boot_dir_to_higher_half(boot_dir_t* dir)
         list_push_back(&files, &file->entry);
     }
 
-    dir->children = LIST_CREATE(dir->children);
-    dir->files = LIST_CREATE(dir->files);
+    list_init(&dir->children);
+    list_init(&dir->files);
 
     while (!list_is_empty(&children))
     {

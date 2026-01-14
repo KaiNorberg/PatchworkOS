@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <sys/defs.h>
 
 /**
  * @brief I/O port operations and reservations
@@ -70,7 +71,7 @@ void io_release(port_t base, uint64_t length);
  */
 static inline void io_out8(port_t port, uint8_t val)
 {
-    asm volatile("outb %0, %1" : : "a"(val), "Nd"(port) : "memory");
+    ASM("outb %0, %1" : : "a"(val), "Nd"(port) : "memory");
 }
 
 /**
@@ -82,7 +83,7 @@ static inline void io_out8(port_t port, uint8_t val)
 static inline uint8_t io_in8(port_t port)
 {
     uint8_t ret;
-    asm volatile("inb %1, %0" : "=a"(ret) : "Nd"(port) : "memory");
+    ASM("inb %1, %0" : "=a"(ret) : "Nd"(port) : "memory");
     return ret;
 }
 
@@ -94,7 +95,7 @@ static inline uint8_t io_in8(port_t port)
  */
 static inline void io_out16(port_t port, uint16_t val)
 {
-    asm volatile("outw %0, %1" : : "a"(val), "Nd"(port) : "memory");
+    ASM("outw %0, %1" : : "a"(val), "Nd"(port) : "memory");
 }
 
 /**
@@ -106,7 +107,7 @@ static inline void io_out16(port_t port, uint16_t val)
 static inline uint16_t io_in16(port_t port)
 {
     uint16_t ret;
-    asm volatile("inw %1, %0" : "=a"(ret) : "Nd"(port) : "memory");
+    ASM("inw %1, %0" : "=a"(ret) : "Nd"(port) : "memory");
     return ret;
 }
 
@@ -119,7 +120,7 @@ static inline uint16_t io_in16(port_t port)
 static inline uint32_t io_in32(port_t port)
 {
     uint32_t ret;
-    asm volatile("inl %1, %0" : "=a"(ret) : "Nd"(port) : "memory");
+    ASM("inl %1, %0" : "=a"(ret) : "Nd"(port) : "memory");
     return ret;
 }
 
@@ -131,7 +132,7 @@ static inline uint32_t io_in32(port_t port)
  */
 static inline void io_out32(port_t port, uint32_t val)
 {
-    asm volatile("outl %0, %1" : : "a"(val), "Nd"(port) : "memory");
+    ASM("outl %0, %1" : : "a"(val), "Nd"(port) : "memory");
 }
 
 /** @} */

@@ -541,7 +541,7 @@ void vmm_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount)
                 (void*)((uintptr_t)virtAddr + pageAmount * PAGE_SIZE));
         }
 
-        asm volatile("pause");
+        ASM("pause");
     }
 }
 

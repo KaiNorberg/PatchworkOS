@@ -148,12 +148,12 @@ typedef struct
 /**
  * @brief Linker defined start of the syscall table.
  */
-extern syscall_descriptor_t _syscallTableStart[];
+extern syscall_descriptor_t _syscall_table_start[];
 
 /**
  * @brief Linker defined end of the syscall table.
  */
-extern syscall_descriptor_t _syscallTableEnd[];
+extern syscall_descriptor_t _syscall_table_end[];
 
 /**
  * @brief Macro to define a syscall.

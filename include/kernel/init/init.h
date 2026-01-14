@@ -32,36 +32,4 @@ _NORETURN void init_early(void);
  */
 _NORETURN void kmain(void);
 
-/**
- * @brief Calls all functions in the `.init_array` section and initializes percpu variables for the current module.
- */
-#define INIT_CALL() \
-    do \
-    { \
-        extern void* _initArrayStart; \
-        extern void* _initArrayEnd; \
-        for (void** func = &_initArrayStart; func < &_initArrayEnd; func++) \
-        { \
-            void (*initFunc)(void) = (void (*)(void)) * func; \
-            initFunc(); \
-        } \
-        PERCPU_INIT(); \
-    } while (0)
-
-/**
- * @brief Calls all functions in the `.finit_array` section and deinitializes percpu variables for the current module.
- */
-#define FINIT_CALL() \
-    do \
-    { \
-        PERCPU_FINIT(); \
-        extern void* _finitArrayStart; \
-        extern void* _finitArrayEnd; \
-        for (void** func = &_finitArrayStart; func < &_finitArrayEnd; func++) \
-        { \
-            void (*finitFunc)(void) = (void (*)(void)) * func; \
-            finitFunc(); \
-        } \
-    } while (0)
-
 /** @} */

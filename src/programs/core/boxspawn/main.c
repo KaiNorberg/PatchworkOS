@@ -174,5 +174,5 @@ int main(int argc, char** argv)
     }
     close(wait);
 
-    _exit(status);
+    proc_exit(status);
 }

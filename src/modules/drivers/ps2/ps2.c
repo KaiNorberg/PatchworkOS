@@ -342,7 +342,7 @@ uint64_t ps2_wait_until_set(ps2_status_bits_t status)
             errno = ETIMEDOUT;
             return ERR;
         }
-        asm volatile("pause");
+        ASM("pause");
     }
     return 0;
 }
@@ -357,7 +357,7 @@ uint64_t ps2_wait_until_clear(ps2_status_bits_t status)
             errno = ETIMEDOUT;
             return ERR;
         }
-        asm volatile("pause");
+        ASM("pause");
     }
     return 0;
 }

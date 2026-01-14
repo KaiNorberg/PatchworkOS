@@ -174,4 +174,11 @@ void lapic_send_init(lapic_id_t id);
  */
 void lapic_send_sipi(lapic_id_t id, void* entryPoint);
 
+/**
+ * @brief Global initialization for the local APICs.
+ *
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t lapic_global_init(void);
+
 /** @} */

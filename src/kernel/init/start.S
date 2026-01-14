@@ -2,6 +2,7 @@
 
 .extern init_early
 .extern bootInfo
+.extern _early_init_stack_end
 
 .global _start
 .type _start, @function
@@ -14,8 +15,8 @@ _start:
     cli
     cld
 
-    // rsp = early_init_stack_top
-    leaq early_init_stack_top(%rip), %rsp
+    // rsp = _early_init_stack_end
+    movq $_early_init_stack_end, %rsp
 
     // bootInfo = rdi
     movq %rdi, bootInfo(%rip)
@@ -23,9 +24,3 @@ _start:
     // init_early()
     call init_early
     ud2 // Should never be reached
-
-.section .bss
-.align 0x1000
-early_init_stack_bottom:
-.skip 0x1000
-early_init_stack_top:

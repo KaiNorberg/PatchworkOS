@@ -301,7 +301,7 @@ static inline void weak_ptr_clear(weak_ptr_t* wp)
         }
 
         lock_release(&wp->lock);
-        asm volatile("pause");
+        ASM("pause");
     }
 }
 

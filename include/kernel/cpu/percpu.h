@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/cpu/cpu_id.h>
+#include <kernel/cpu/cpu.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -9,27 +9,37 @@
  * @defgroup kernel_cpu_percpu Per-CPU Data
  * @ingroup kernel_cpu
  *
- * Per-CPU data is stored using the `gs` segment register and the `MSR_GS_BASE` model specific register (MSR). Such that
- * the `MSR_GS_BASE` msr stores the address of the currently running CPU and the `gs` register can used to access
- * data within the current CPU structure.
+ * In the x86 architecture the `gs` and `fs` segment registers can be used to access data relative to the address stored
+ * in the `MSR_GS_BASE` or `MSR_FS_BASE` MSRs. In AT&T assembly this would look like this:
  *
- * @note All percpu variables should use the `pcpu_` prefix for clarity.
+ * ```
+ * mov %gs:0x10, %rax ; Load the value at address in `MSR_GS_BASE` + 0x10 into rax
+ * ```
+ *
+ * This means that, since each cpu has its own `MSR_GS_BASE`, we can store the address of each CPU's structure in its
+ * own `MSR_GS_BASE` and then access data within that structure using offsets.
+ *
+ * Allocating a percpu variable then becomes as simple as allocating an offset within the `percpu` buffer in the CPU
+ * structure, and accessing it using the `gs` segment register.
+ *
+ * @note Its important to be aware of the distinction that the `gs` register does not store an address directly, rather
+ * it allows us to access memory relative to the address stored in the `MSR_GS_BASE` MSR. This is why we define Per-CPU
+ * variables as offsets within the CPU structure rather than absolute addresses.
  *
  * ## Defining Per-CPU Variables
  *
- * To define a Per-CPU variable use the `PERCPU_DEFINE()` macro. This creates a variable that acts like a pointer, but
- * in reality its a `percpu_t` (64-bit integer) storing an offset into the CPU structure.
+ * To define a Per-CPU variable use the `PERCPU_DEFINE()` macro. This will add a `percpu_def_t` entry to the `._percpu`
+ * section. The PERCPU_INIT()` macro can be used to allocate and initialize all Per-CPU variables defined in the
+ * module's `._percpu` section, potentially invoking any needed constructors.
  *
- * As such, even though there appears to be only one instance of the variable, each CPU will have its own instance of
- * the variable stored at the offset within its CPU structure.
+ * @note All percpu variables should use the `pcpu_` prefix for clarity.
  *
  * ## Constructors and Destructors
  *
  * All Per-CPU variables can optionally have constructors (ctor) and destructors (dtor) defined. These will be called on
- * each CPU when the Per-CPU section containing the variable is initialized and deinitialized respectively.
+ * each CPU either during boot, when the CPU is initialized, or via a call to `percpu_update()`.
  *
- * By default, all variables are zero-initialized when allocated, but if a constructor is defined, it will be called
- * after zero-initialization.
+ * By default, all variables are zero-initialized when allocated.
  *
  * @{
  */
@@ -137,6 +147,15 @@ typedef struct
     static void name##_dtor(void)
 
 /**
+ * @brief Initialize the percpu system.
+ *
+ * This will setup the `gs` segment register to point to the  CPU structure.
+ *
+ * @param cpu The CPU to initialize percpu for, should be the current CPU.
+ */
+void percpu_init(cpu_t* cpu);
+
+/**
  * @brief Allocates a percpu variable.
  *
  * @param size The size of the percpu variable.
@@ -162,37 +181,33 @@ void percpu_update(void);
 /**
  * @brief Register a percpu section and run constructors.
  */
-void percpu_init_section(percpu_def_t* start, percpu_def_t* end);
+void percpu_section_init(percpu_def_t* start, percpu_def_t* end);
 
 /**
  * @brief Unregister a percpu section and run destructors.
  */
-void percpu_finit_section(percpu_def_t* start, percpu_def_t* end);
+void percpu_section_deinit(percpu_def_t* start, percpu_def_t* end);
 
 /**
  * @brief Initialize all percpu variables within the current modules `.percpu` section.
- *
- * @note Generally, it is prefered to call `INIT_CALL()` to initialize percpu variables.
  */
 #define PERCPU_INIT() \
     do \
     { \
-        extern percpu_def_t _percpuStart; \
-        extern percpu_def_t _percpuEnd; \
-        percpu_init_section(&_percpuStart, &_percpuEnd); \
+        extern percpu_def_t _percpu_start; \
+        extern percpu_def_t _percpu_end; \
+        percpu_section_init(&_percpu_start, &_percpu_end); \
     } while (0)
 
 /**
  * @brief Deinitialize all percpu variables within the current modules `.percpu` section.
- *
- * @note Generally, it is prefered to call `FINIT_CALL()` to deinitialize percpu variables.
  */
-#define PERCPU_FINIT() \
+#define PERCPU_DEINIT() \
     do \
     { \
-        extern percpu_def_t _percpuStart; \
-        extern percpu_def_t _percpuEnd; \
-        percpu_finit_section(&_percpuStart, &_percpuEnd); \
+        extern percpu_def_t _percpu_start; \
+        extern percpu_def_t _percpu_end; \
+        percpu_section_deinit(&_percpu_start, &_percpu_end); \
     } while (0)
 
 /** @} */

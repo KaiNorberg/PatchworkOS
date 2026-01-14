@@ -129,7 +129,7 @@ void loader_exec(void)
     argvStack[process->argc] = 0;
 
     // Disable interrupts, they will be enabled when we jump to user space.
-    asm volatile("cli");
+    ASM("cli");
 
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
     thread->frame.rsp = ROUND_DOWN((uintptr_t)rsp - sizeof(uint64_t), 16);

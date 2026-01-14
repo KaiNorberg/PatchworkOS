@@ -10,7 +10,7 @@
 #define _SYSCALL0(retType, num) \
     ({ \
         register retType ret asm("rax"); \
-        asm volatile("syscall\n" : "=a"(ret) : "a"(num) : "rcx", "r11", "memory"); \
+        ASM("syscall\n" : "=a"(ret) : "a"(num) : "rcx", "r11", "memory"); \
         ret; \
     })
 
@@ -18,7 +18,7 @@
     ({ \
         register retType ret asm("rax"); \
         register type1 _a1 asm("rdi") = (arg1); \
-        asm volatile("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1) : "rcx", "r11", "memory"); \
+        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1) : "rcx", "r11", "memory"); \
         ret; \
     })
 
@@ -27,7 +27,7 @@
         register retType ret asm("rax"); \
         register type1 _a1 asm("rdi") = (arg1); \
         register type2 _a2 asm("rsi") = (arg2); \
-        asm volatile("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1), "r"(_a2) : "rcx", "r11", "memory"); \
+        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1), "r"(_a2) : "rcx", "r11", "memory"); \
         ret; \
     })
 
@@ -37,7 +37,7 @@
         register type1 _a1 asm("rdi") = (arg1); \
         register type2 _a2 asm("rsi") = (arg2); \
         register type3 _a3 asm("rdx") = (arg3); \
-        asm volatile("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3) : "rcx", "r11", "memory"); \
+        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3) : "rcx", "r11", "memory"); \
         ret; \
     })
 
@@ -48,10 +48,7 @@
         register type2 _a2 asm("rsi") = (arg2); \
         register type3 _a3 asm("rdx") = (arg3); \
         register type4 _a4 asm("r10") = (arg4); \
-        asm volatile("syscall\n" \
-            : "=a"(ret) \
-            : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3), "r"(_a4) \
-            : "rcx", "r11", "memory"); \
+        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3), "r"(_a4) : "rcx", "r11", "memory"); \
         ret; \
     })
 
@@ -63,10 +60,8 @@
         register type3 _a3 asm("rdx") = (arg3); \
         register type4 _a4 asm("r10") = (arg4); \
         register type5 _a5 asm("r8") = (arg5); \
-        asm volatile("syscall\n" \
-            : "=a"(ret) \
-            : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3), "r"(_a4), "r"(_a5) \
-            : "rcx", "r11", "memory"); \
+        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3), "r"(_a4), "r"(_a5) : "rcx", "r11", \
+            "memory"); \
         ret; \
     })
 
@@ -79,24 +74,22 @@
         register type4 _a4 asm("r10") = (arg4); \
         register type5 _a5 asm("r8") = (arg5); \
         register type6 _a6 asm("r9") = (arg6); \
-        asm volatile("syscall\n" \
-            : "=a"(ret) \
-            : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3), "r"(_a4), "r"(_a5), "r"(_a6) \
-            : "rcx", "r11", "memory"); \
+        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3), "r"(_a4), "r"(_a5), "r"(_a6) : "rcx", \
+            "r11", "memory"); \
         ret; \
     })
 
 _NORETURN static inline void _syscall_process_exit(const char* status)
 {
     _SYSCALL1(uint64_t, SYS_PROCESS_EXIT, const char*, status);
-    asm volatile("ud2");
+    ASM("ud2");
     __builtin_unreachable();
 }
 
 _NORETURN static inline void _syscall_thread_exit(void)
 {
     _SYSCALL0(uint64_t, SYS_THREAD_EXIT);
-    asm volatile("ud2");
+    ASM("ud2");
     __builtin_unreachable();
 }
 
@@ -263,7 +256,7 @@ static inline uint64_t _syscall_notify(note_func_t func)
 _NORETURN static inline uint64_t _syscall_noted(void)
 {
     _SYSCALL0(uint64_t, SYS_NOTED);
-    asm volatile("ud2");
+    ASM("ud2");
     __builtin_unreachable();
 }
 

@@ -3,11 +3,11 @@
 #include <kernel/mem/paging_types.h>
 
 #include <gnu-efi/inc/efi.h>
-#include <gnu-efi/inc/efilib.h>
 
+#include <_internal/MAX_NAME.h>
 #include <stdint.h>
+#include <sys/defs.h>
 #include <sys/elf.h>
-#include <sys/io.h>
 #include <sys/list.h>
 
 /**
@@ -21,7 +21,7 @@
  * @{
  */
 
-static bool boot_is_mem_ram(EFI_MEMORY_TYPE type)
+static UNUSED_FUNC bool boot_is_mem_ram(EFI_MEMORY_TYPE type)
 {
     switch (type)
     {

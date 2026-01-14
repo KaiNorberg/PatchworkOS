@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/defs.h>
 
 /**
  * @brief CPU feature detection
@@ -181,7 +182,7 @@ typedef struct
  */
 static inline void cpuid(cpuid_input_eax_t eax, cpuid_input_ecx_t ecx, cpuid_output_t* out)
 {
-    asm volatile("cpuid" : "=a"(out->eax), "=b"(out->ebx), "=c"(out->ecx), "=d"(out->edx) : "a"(eax), "c"(ecx));
+    ASM("cpuid" : "=a"(out->eax), "=b"(out->ebx), "=c"(out->ecx), "=d"(out->edx) : "a"(eax), "c"(ecx));
 }
 
 /**

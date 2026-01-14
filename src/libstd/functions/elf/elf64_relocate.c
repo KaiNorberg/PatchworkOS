@@ -11,19 +11,25 @@ uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset
             continue;
         }
 
-        Elf64_Shdr* targetShdr = ELF64_GET_SHDR(elf, shdr->sh_info);
+        Elf64_Shdr* symtabShdr = ELF64_GET_SHDR(elf, shdr->sh_link);
+        void* symTableBase = ELF64_AT_OFFSET(elf, symtabShdr->sh_offset);
+        uint64_t symCount = symtabShdr->sh_size / symtabShdr->sh_entsize;
 
         Elf64_Rela* rela = ELF64_AT_OFFSET(elf, shdr->sh_offset);
         uint64_t relaCount = shdr->sh_size / sizeof(Elf64_Rela);
 
         for (uint64_t j = 0; j < relaCount; j++)
         {
-            Elf64_Addr* patchAddr = (Elf64_Addr*)(base + (targetShdr->sh_addr + rela[j].r_offset - offset));
+            Elf64_Addr* patchAddr = (Elf64_Addr*)(base + (rela[j].r_offset - offset));
             Elf64_Xword type = ELF64_R_TYPE(rela[j].r_info);
             Elf64_Xword symIndex = ELF64_R_SYM(rela[j].r_info);
 
-            Elf64_Sym* sym = elf64_get_dynamic_symbol_by_index(elf, symIndex);
-            const char* symName = elf64_get_dynamic_symbol_name(elf, sym);
+            if (symIndex >= symCount)
+            {
+                return ERR;
+            }
+            Elf64_Sym* sym = (Elf64_Sym*)((uintptr_t)symTableBase + (symIndex * symtabShdr->sh_entsize));
+            const char* symName = elf64_get_string(elf, symtabShdr->sh_link, sym->st_name);
 
             Elf64_Addr value = sym->st_shndx != SHN_UNDEF ? sym->st_value : 0;
 

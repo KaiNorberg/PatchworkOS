@@ -2,7 +2,6 @@
 
 #ifndef __ASSEMBLER__
 #include <kernel/config.h>
-#include <kernel/cpu/cpu_id.h>
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/cpu/tss.h>
 
@@ -39,6 +38,33 @@ typedef struct cpu cpu_t;
 #ifndef __ASSEMBLER__
 
 /**
+ * @brief The offset of the `id` member in the `cpu_t` structure.
+ *
+ * Needed to access the CPU ID from assembly code.
+ */
+#define CPU_OFFSET_ID 0x8
+
+/**
+ * @brief Maximum number of CPUs supported.
+ */
+#define CPU_MAX UINT8_MAX
+
+/**
+ * @brief ID of the bootstrap CPU.
+ */
+#define CPU_ID_BOOTSTRAP 0
+
+/**
+ * @brief Invalid CPU ID.
+ */
+#define CPU_ID_INVALID UINT16_MAX
+
+/**
+ * @brief Type used to identify a CPU.
+ */
+typedef uint16_t cpu_id_t;
+
+/**
  * @brief CPU stack canary value.
  *
  * Placed at the bottom of CPU stacks, we then check in the interrupt handler if any of the stacks have overflowed by
@@ -72,7 +98,7 @@ typedef struct cpu
     uint8_t doubleFaultStackBuffer[CONFIG_INTERRUPT_STACK_PAGES * PAGE_SIZE] ALIGNED(PAGE_SIZE);
     uint8_t nmiStackBuffer[CONFIG_INTERRUPT_STACK_PAGES * PAGE_SIZE] ALIGNED(PAGE_SIZE);
     uint8_t interruptStackBuffer[CONFIG_INTERRUPT_STACK_PAGES * PAGE_SIZE] ALIGNED(PAGE_SIZE);
-    uint8_t percpu[CONFIG_PERCPU_SIZE] ALIGNED(PAGE_SIZE);
+    uint8_t percpu[CONFIG_PERCPU_SIZE] ALIGNED(PAGE_SIZE); ///< Buffer used for per-CPU data.
 } cpu_t;
 
 static_assert(offsetof(cpu_t, self) == CPU_OFFSET_SELF,

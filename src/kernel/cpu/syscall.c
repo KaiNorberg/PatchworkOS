@@ -50,15 +50,15 @@ void syscall_table_init(void)
 {
     // Syscalls are not inserted into the table by the linker in the correct order so we sort them.
     const uint64_t syscallsInTable =
-        (((uint64_t)_syscallTableEnd - (uint64_t)_syscallTableStart) / sizeof(syscall_descriptor_t));
+        (((uint64_t)_syscall_table_end - (uint64_t)_syscall_table_start) / sizeof(syscall_descriptor_t));
     assert(syscallsInTable == SYS_TOTAL_AMOUNT);
 
     LOG_INFO("sorting syscall table, total system calls %d\n", SYS_TOTAL_AMOUNT);
-    qsort(_syscallTableStart, syscallsInTable, sizeof(syscall_descriptor_t), syscall_descriptor_cmp);
+    qsort(_syscall_table_start, syscallsInTable, sizeof(syscall_descriptor_t), syscall_descriptor_cmp);
 
     for (uint64_t i = 0; i < syscallsInTable; i++)
     {
-        assert(_syscallTableStart[i].number == i);
+        assert(_syscall_table_start[i].number == i);
     }
 }
 
@@ -69,7 +69,7 @@ const syscall_descriptor_t* syscall_get_descriptor(uint64_t number)
         return NULL;
     }
 
-    return &_syscallTableStart[number];
+    return &_syscall_table_start[number];
 }
 
 void syscall_handler(interrupt_frame_t* frame)
@@ -99,7 +99,7 @@ void syscall_handler(interrupt_frame_t* frame)
     perf_syscall_end();
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    asm volatile("cli" ::: "memory");
+    ASM("cli" :: : "memory");
     if (thread_is_note_pending(thread) || (thread->syscall.flags & SYSCALL_FORCE_FAKE_INTERRUPT))
     {
         frame->vector = VECTOR_FAKE;

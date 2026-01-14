@@ -25,7 +25,7 @@ Elf64_Shdr* elf64_get_section_by_name(const Elf64_File* elf, const char* name)
     {
         Elf64_Shdr* shdr = ELF64_GET_SHDR(elf, i);
         const char* sectionName = elf64_get_string(elf, shstrndx, shdr->sh_name);
-        if (sectionName != NULL && elf_strcmp(sectionName, name) == 0)
+        if (sectionName != NULL && strcmp(sectionName, name) == 0)
         {
             return shdr;
         }

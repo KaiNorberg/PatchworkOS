@@ -18,7 +18,8 @@
 #include <stdlib.h>
 #include <sys/list.h>
 
-static cache_t waitEntryCache = CACHE_CREATE(waitEntryCache, "wait_entry", sizeof(wait_entry_t), CACHE_LINE, NULL, NULL);
+static cache_t waitEntryCache =
+    CACHE_CREATE(waitEntryCache, "wait_entry", sizeof(wait_entry_t), CACHE_LINE, NULL, NULL);
 
 PERCPU_DEFINE_CTOR(static wait_t, pcpu_wait)
 {

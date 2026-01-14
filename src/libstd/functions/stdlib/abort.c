@@ -12,6 +12,6 @@ void abort(void)
     panic(NULL, "abort() called");
 #else
     raise(SIGABRT);
-    _exit("aborted");
+    proc_exit("aborted");
 #endif
 }

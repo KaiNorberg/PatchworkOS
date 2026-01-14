@@ -14,18 +14,24 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        submodules: trues
+        submodules: true
 
     - name: Install build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential qemu-system-x86 mtools iasl
-
-    - name: Setup PatchworkOS
-      run: make setup DEBUG=1 TESTING=1 QEMU_EXIT_ON_PANIC=1
+        sudo apt-get install -y clang llvm build-essential qemu-system-x86 mtools iasl
 
     - name: Build PatchworkOS
       run: make all DEBUG=1 TESTING=1 QEMU_EXIT_ON_PANIC=1
+
+    - name: Inspect kernel ELF
+      run: |
+        echo "=== Kernel ELF Program Headers ==="
+        readelf -l bin/kernel/kernel || true
+        echo "=== Kernel ELF Section Headers ==="
+        readelf -S bin/kernel/kernel || true
+        echo "=== Kernel file size ==="
+        ls -la bin/kernel/kernel
 
     - name: Verify PatchworkOS.img exists
       run: |
@@ -34,10 +40,10 @@ jobs:
           exit 1
         fi
 
-    - name: Run PatchworkOS with QEMU (test launch and graceful timeout)
+    - name: Run PatchworkOS with QEMU
       id: qemu_test
-      run: | # We use this cheap trick to check if qemu runs properly, the idea is that we start qemu, and let it run for one minute and it does not crash thats considered a success, if it crashes, well thats bad. If it doesent we shut it down and call it a success, a bit simple but gets the job done.
-        setsid make run DEBUG=1 TESTING=1 QEMU_EXIT_ON_PANIC=1 &
+      run: |
+        setsid make run DEBUG=1 TESTING=1 QEMU_EXIT_ON_PANIC=1 QEMU_NOGRAPHIC=1 &
         QEMU_PID=$!
         echo "QEMU process started with PID=$QEMU_PID"
         echo "QEMU_PID=$QEMU_PID" >> $GITHUB_OUTPUT

@@ -37,7 +37,11 @@ typedef struct
  *
  * @return A `seqlock_t` initializer.
  */
-#define SEQLOCK_CREATE() {.sequence = ATOMIC_VAR_INIT(0), .writeLock = LOCK_CREATE()}
+#define SEQLOCK_CREATE() \
+    { \
+        .sequence = ATOMIC_VAR_INIT(0), \
+        .writeLock = LOCK_CREATE(), \
+    }
 
 /**
  * @brief Initializes a sequence lock.

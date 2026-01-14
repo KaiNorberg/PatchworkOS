@@ -231,7 +231,7 @@ void interactive_shell(void)
 {
     if (signal(SIGINT, interactive_sigint_handler) == SIG_ERR)
     {
-        _exit(F("shell: failed to set SIGINT handler (%s)\n", strerror(errno)));
+        proc_exit(F("shell: failed to set SIGINT handler (%s)\n", strerror(errno)));
     }
 
     printf("Welcome to the PatchworkOS Shell!\n");

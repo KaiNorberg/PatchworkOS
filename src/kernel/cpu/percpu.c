@@ -30,6 +30,12 @@ static PERCPU_DEFINE(uint64_t, pcpu_ack);
 
 static lock_t lock = LOCK_CREATE();
 
+void percpu_init(cpu_t* cpu)
+{
+    msr_write(MSR_GS_BASE, (uintptr_t)cpu);
+    msr_write(MSR_KERNEL_GS_BASE, (uintptr_t)cpu);
+}
+
 percpu_t percpu_alloc(size_t size)
 {
     size = ROUND_UP(size, PERCPU_ALIGNMENT);
@@ -121,7 +127,7 @@ void percpu_update(void)
     }
 }
 
-void percpu_init_section(percpu_def_t* start, percpu_def_t* end)
+void percpu_section_init(percpu_def_t* start, percpu_def_t* end)
 {
     for (percpu_def_t* percpu = start; percpu < end; percpu++)
     {
@@ -150,7 +156,7 @@ void percpu_init_section(percpu_def_t* start, percpu_def_t* end)
     percpu_update();
 }
 
-void percpu_finit_section(percpu_def_t* start, percpu_def_t* end)
+void percpu_section_deinit(percpu_def_t* start, percpu_def_t* end)
 {
     percpu_section_t* target = NULL;
 
@@ -195,7 +201,7 @@ void percpu_finit_section(percpu_def_t* start, percpu_def_t* end)
         }
         if (!allAcked)
         {
-            asm volatile("pause");
+            ASM("pause");
         }
     }
 

@@ -1,6 +1,8 @@
 #ifndef _INTERNAL_NULL_H
 #define _INTERNAL_NULL_H 1
 
+#ifndef NULL
+
 #ifdef __cplusplus
 #if __cplusplus >= 201103L
 #define _NULL nullptr
@@ -21,5 +23,7 @@
  *
  */
 #define NULL _NULL
+
+#endif
 
 #endif

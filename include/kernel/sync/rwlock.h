@@ -1,10 +1,10 @@
 #pragma once
 
-#include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/cli.h>
+#include <kernel/cpu/interrupt.h>
 
-#include <sys/defs.h>
 #include <stdatomic.h>
+#include <sys/defs.h>
 
 #ifndef NDEBUG
 #include <kernel/log/panic.h>
@@ -102,7 +102,7 @@ static inline void rwlock_read_acquire(rwlock_t* lock)
 
     while (atomic_load_explicit(&lock->readServe, memory_order_acquire) != ticket)
     {
-        asm volatile("pause");
+        ASM("pause");
 #ifndef NDEBUG
         if (++iterations >= RWLOCK_DEADLOCK_ITERATIONS)
         {
@@ -132,7 +132,7 @@ static inline void rwlock_read_acquire(rwlock_t* lock)
                 panic(NULL, "Deadlock in rwlock_read_acquire detected");
             }
 #endif
-            asm volatile("pause");
+            ASM("pause");
         }
     }
     atomic_fetch_add_explicit(&lock->readServe, 1, memory_order_release);
@@ -173,7 +173,7 @@ static inline void rwlock_write_acquire(rwlock_t* lock)
             panic(NULL, "Deadlock in rwlock_write_acquire detected");
         }
 #endif
-        asm volatile("pause");
+        ASM("pause");
     }
 
     while (atomic_load_explicit(&lock->activeReaders, memory_order_acquire) > 0)
@@ -184,7 +184,7 @@ static inline void rwlock_write_acquire(rwlock_t* lock)
             panic(NULL, "Deadlock in rwlock_write_acquire detected");
         }
 #endif
-        asm volatile("pause");
+        ASM("pause");
     }
 }
 
