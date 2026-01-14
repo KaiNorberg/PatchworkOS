@@ -9,6 +9,7 @@
 
 #include <errno.h>
 #include <kernel/sync/lock.h>
+#include <kernel/sync/rcu.h>
 #include <stdlib.h>
 
 static void group_free(group_t* group)
@@ -158,9 +159,9 @@ uint64_t group_send_note(group_member_t* member, const char* note)
     process_t* process;
     LIST_FOR_EACH(process, &group->processes, group.entry)
     {
-        LOCK_SCOPE(&process->threads.lock);
+        RCU_READ_SCOPE();
 
-        thread_t* thread = CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
+        thread_t* thread = process_rcu_first_thread(process);
         if (thread == NULL)
         {
             continue;

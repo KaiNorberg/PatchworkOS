@@ -3,7 +3,7 @@
 #include "common/clock.h"
 #include "common/exit_stack.h"
 #include "common/std_streams.h"
-#include "common/thread.h"
+#include "common/threading.h"
 #include "user/common/file.h"
 #include "user/common/note.h"
 

@@ -5,7 +5,7 @@
 #include <threads.h>
 
 #include "user/common/syscalls.h"
-#include "user/common/thread.h"
+#include "user/common/threading.h"
 
 int thrd_sleep(const struct timespec* duration, struct timespec* remaining)
 {

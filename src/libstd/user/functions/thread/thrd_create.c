@@ -6,7 +6,7 @@
 #include <threads.h>
 
 #include "user/common/syscalls.h"
-#include "user/common/thread.h"
+#include "user/common/threading.h"
 
 int thrd_create(thrd_t* thr, thrd_start_t func, void* arg)
 {

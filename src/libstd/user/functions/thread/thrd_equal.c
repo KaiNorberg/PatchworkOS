@@ -5,7 +5,7 @@
 #include <threads.h>
 
 #include "user/common/syscalls.h"
-#include "user/common/thread.h"
+#include "user/common/threading.h"
 
 int thrd_equal(thrd_t lhs, thrd_t rhs)
 {

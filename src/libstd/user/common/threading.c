@@ -1,4 +1,4 @@
-#include "thread.h"
+#include "threading.h"
 #include "syscalls.h"
 
 #include <stdlib.h>
@@ -75,10 +75,6 @@ void _threading_init(void)
 
 _NORETURN static void _thread_entry(_thread_t* thread)
 {
-    // Synchronize with creator
-    mtx_lock(&entryMutex);
-    mtx_unlock(&entryMutex);
-
     thrd_exit(thread->func(thread->arg));
 }
 

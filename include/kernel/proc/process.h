@@ -13,6 +13,7 @@
 #include <kernel/sched/thread.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/futex.h>
+#include <kernel/sync/rcu.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 
@@ -45,8 +46,9 @@ typedef enum
  */
 typedef struct
 {
-    tid_t newTid;
-    list_t list;
+    _Atomic(tid_t) newTid;
+    list_t list; ///< Reads are RCU protected, writes require the lock.
+    uint64_t count;
     lock_t lock;
 } process_threads_t;
 
@@ -94,7 +96,15 @@ typedef struct process
     char** argv;
     uint64_t argc;
     group_member_t group;
+    rcu_entry_t rcu;
 } process_t;
+
+/**
+ * @brief Global list of all processes.
+ *
+ * @warning Should only be read while in a RCU read-side critical section.
+ */
+extern list_t _processes;
 
 /**
  * @brief Allocates and initializes a new process.
@@ -184,29 +194,49 @@ void process_kill(process_t* process, const char* status);
 void process_remove(process_t* process);
 
 /**
- * @brief Gets the first process in the system for iteration.
+ * @brief Gets the first thread of a process.
  *
- * @return A reference to the first process, or `NULL` if there are no processes.
+ * @warning Must be used within a RCU read-side critical section.
+ *
+ * @param process The process to get the first thread of.
+ * @return The first thread of the process, or `NULL` if the process has no threads.
  */
-process_t* process_iterate_begin(void);
+static inline thread_t* process_rcu_first_thread(process_t* process)
+{
+    return CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
+}
 
 /**
- * @brief Gets the next process in the system for iteration.
+ * @brief Gets the amount of threads in a process.
  *
- * @param prev The current process in the iteration, will be unreferenced.
- * @return A reference to the next process, or `NULL` if there are no more processes.
+ * @warning Must be used within a RCU read-side critical section.
+ *
+ * @param process The process to get the thread amount of.
+ * @return The amount of threads in the process.
  */
-process_t* process_iterate_next(process_t* prev);
+static inline uint64_t process_rcu_thread_count(process_t* process)
+{
+    return process->threads.count;
+}
+
+/**
+ * @brief Macro to iterate over all threads in a process.
+ *
+ * @warning Must be used within a RCU read-side critical section.
+ *
+ * @param thread Loop variable, a pointer to `thread_t`.
+ * @param process The process to iterate the threads of.
+ */
+#define PROCESS_RCU_THREAD_FOR_EACH(thread, process) LIST_FOR_EACH(thread, &(process)->threads.list, processEntry)
 
 /**
  * @brief Macro to iterate over all processes.
  *
- * @note If the loop is exited early the `process` variable must be unreferenced.
+ * @warning Must be used within a RCU read-side critical section.
  *
  * @param process Loop variable, a pointer to `process_t`.
  */
-#define PROCESS_FOR_EACH(process) \
-    for ((process) = process_iterate_begin(); (process) != NULL; (process) = process_iterate_next(process))
+#define PROCESS_RCU_FOR_EACH(process) LIST_FOR_EACH(process, &_processes, entry)
 
 /**
  * @brief Sets the command line arguments for a process.

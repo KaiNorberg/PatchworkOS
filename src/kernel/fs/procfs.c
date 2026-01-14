@@ -13,12 +13,14 @@
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
 
 #include <assert.h>
 #include <errno.h>
+#include <kernel/sync/rcu.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
@@ -250,9 +252,9 @@ static size_t procfs_note_write(file_t* file, const void* buffer, size_t count, 
 
     process_t* process = file->inode->private;
 
-    LOCK_SCOPE(&process->threads.lock);
+    RCU_READ_SCOPE();
 
-    thread_t* thread = CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
+    thread_t* thread = process_rcu_first_thread(process);
     if (thread == NULL)
     {
         errno = EINVAL;
@@ -384,9 +386,9 @@ static size_t procfs_perf_read(file_t* file, void* buffer, size_t count, size_t*
     process_t* process = file->inode->private;
     size_t userPages = space_user_page_count(&process->space);
 
-    lock_acquire(&process->threads.lock);
-    size_t threadCount = list_size(&process->threads.list);
-    lock_release(&process->threads.lock);
+    RCU_READ_SCOPE();
+
+    size_t threadCount = process_rcu_thread_count(process);
 
     clock_t userClocks = atomic_load(&process->perf.userClocks);
     clock_t kernelClocks = atomic_load(&process->perf.kernelClocks);
@@ -1206,8 +1208,10 @@ static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         }
     }
 
+    RCU_READ_SCOPE();
+
     process_t* process;
-    PROCESS_FOR_EACH(process)
+    PROCESS_RCU_FOR_EACH(process)
     {
         if (ctx->index++ < ctx->pos)
         {
@@ -1218,7 +1222,6 @@ static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         snprintf(name, sizeof(name), "%llu", process->id);
         if (!ctx->emit(ctx, name, ino_gen(dentry->inode->number, name), INODE_DIR))
         {
-            UNREF(process);
             return 0;
         }
     }

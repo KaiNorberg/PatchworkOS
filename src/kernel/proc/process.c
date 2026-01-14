@@ -9,6 +9,7 @@
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/mem/cache.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/proc/group.h>
 #include <kernel/proc/process.h>
@@ -19,7 +20,7 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
-#include <kernel/sync/rwlock.h>
+#include <kernel/sync/rcu.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -40,8 +41,11 @@ static process_t* kernelProcess = NULL;
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 
 static map_t pidMap = MAP_CREATE();
-static list_t processes = LIST_CREATE(processes);
-static rwlock_t processesLock = RWLOCK_CREATE();
+
+list_t _processes = LIST_CREATE(_processes);
+static lock_t processesLock = LOCK_CREATE();
+
+static cache_t cache = CACHE_CREATE(cache, "process", sizeof(process_t), CACHE_LINE, NULL, NULL);
 
 static void process_free(process_t* process)
 {
@@ -75,7 +79,8 @@ static void process_free(process_t* process)
     wait_queue_deinit(&process->suspendQueue);
     futex_ctx_deinit(&process->futexCtx);
     env_deinit(&process->env);
-    free(process);
+
+    rcu_call(&process->rcu, rcu_call_cache_free, process);
 }
 
 process_t* process_new(priority_t priority, group_member_t* group, namespace_t* ns)
@@ -86,7 +91,7 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
         return NULL;
     }
 
-    process_t* process = malloc(sizeof(process_t));
+    process_t* process = cache_alloc(&cache);
     if (process == NULL)
     {
         errno = ENOMEM;
@@ -105,7 +110,7 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
     if (space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
             SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY) == ERR)
     {
-        free(process);
+        cache_free(process);
         return NULL;
     }
 
@@ -119,8 +124,9 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
     wait_queue_init(&process->suspendQueue);
     wait_queue_init(&process->dyingQueue);
     atomic_init(&process->flags, PROCESS_NONE);
-    process->threads.newTid = 0;
+    atomic_init(&process->threads.newTid, 0);
     list_init(&process->threads.list);
+    process->threads.count = 0;
     lock_init(&process->threads.lock);
     env_init(&process->env);
     process->argv = NULL;
@@ -132,24 +138,26 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
         return NULL;
     }
 
-    RWLOCK_WRITE_SCOPE(&processesLock);
+    lock_acquire(&processesLock);
 
     map_key_t mapKey = map_key_uint64(process->id);
     if (map_insert(&pidMap, &mapKey, &process->mapEntry) == ERR)
     {
+        lock_release(&processesLock);
         process_free(process);
         return NULL;
     }
 
     LOG_DEBUG("created process pid=%d\n", process->id);
 
-    list_push_back(&processes, &process->entry);
+    list_push_back(&_processes, &process->entry);
+    lock_release(&processesLock);
     return REF(process);
 }
 
 process_t* process_get(pid_t id)
 {
-    RWLOCK_READ_SCOPE(&processesLock);
+    RCU_READ_SCOPE();
 
     map_key_t mapKey = map_key_uint64(id);
     map_entry_t* entry = map_get(&pidMap, &mapKey);
@@ -197,11 +205,8 @@ void process_set_ns(process_t* process, namespace_t* ns)
 
 void process_kill(process_t* process, const char* status)
 {
-    lock_acquire(&process->threads.lock);
-
     if (atomic_fetch_or(&process->flags, PROCESS_DYING) & PROCESS_DYING)
     {
-        lock_release(&process->threads.lock);
         return;
     }
 
@@ -210,9 +215,11 @@ void process_kill(process_t* process, const char* status)
     process->status.buffer[PROCESS_STATUS_MAX - 1] = '\0';
     lock_release(&process->status.lock);
 
+    RCU_READ_SCOPE();
+
     uint64_t killCount = 0;
     thread_t* thread;
-    LIST_FOR_EACH(thread, &process->threads.list, processEntry)
+    PROCESS_RCU_THREAD_FOR_EACH(thread, process)
     {
         thread_send_note(thread, "kill");
         killCount++;
@@ -222,8 +229,6 @@ void process_kill(process_t* process, const char* status)
     {
         LOG_DEBUG("sent kill note to %llu threads in process pid=%d\n", killCount, process->id);
     }
-
-    lock_release(&process->threads.lock);
 
     // Anything that another process could be waiting on must be cleaned up here.
 
@@ -244,39 +249,12 @@ void process_kill(process_t* process, const char* status)
 
 void process_remove(process_t* process)
 {
-    rwlock_write_acquire(&processesLock);
+    lock_acquire(&processesLock);
     map_remove(&pidMap, &process->mapEntry);
     list_remove(&process->entry);
-    rwlock_write_release(&processesLock);
+    lock_release(&processesLock);
 
     UNREF(process);
-}
-
-process_t* process_iterate_begin(void)
-{
-    RWLOCK_READ_SCOPE(&processesLock);
-
-    if (list_is_empty(&processes))
-    {
-        return NULL;
-    }
-
-    return REF(CONTAINER_OF(list_first(&processes), process_t, entry));
-}
-
-process_t* process_iterate_next(process_t* prev)
-{
-    RWLOCK_READ_SCOPE(&processesLock);
-
-    list_entry_t* nextEntry = list_next(&processes, &prev->entry);
-    UNREF(prev);
-
-    if (nextEntry == NULL)
-    {
-        return NULL;
-    }
-
-    return REF(CONTAINER_OF(nextEntry, process_t, entry));
 }
 
 uint64_t process_set_cmdline(process_t* process, char** argv, uint64_t argc)
@@ -345,10 +323,10 @@ uint64_t process_set_cmdline(process_t* process, char** argv, uint64_t argc)
 
 bool process_has_thread(process_t* process, tid_t tid)
 {
-    LOCK_SCOPE(&process->threads.lock);
+    RCU_READ_SCOPE();
 
     thread_t* thread;
-    LIST_FOR_EACH(thread, &process->threads.list, processEntry)
+    PROCESS_RCU_THREAD_FOR_EACH(thread, process)
     {
         if (thread->id == tid)
         {

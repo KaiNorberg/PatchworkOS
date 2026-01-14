@@ -10,6 +10,7 @@
 #include <kernel/ipc/note.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/wait.h>
+#include <kernel/sync/rcu.h>
 #include <kernel/utils/ref.h>
 
 #include <sys/list.h>
@@ -77,6 +78,7 @@ typedef struct thread
     note_queue_t notes;
     syscall_ctx_t syscall;
     perf_thread_ctx_t perf;
+    rcu_entry_t rcu;
     /**
      * The threads interrupt frame is used to save the values in the CPU registers such that the scheduler can continue
      * executing the thread later on.
@@ -95,6 +97,13 @@ typedef struct thread
 thread_t* thread_new(process_t* process);
 
 /**
+ * @brief Frees a thread structure.
+ *
+ * @param thread The thread to be freed.
+ */
+void thread_free(thread_t* thread);
+
+/**
  * @brief Kernel thread entry point function type.
  */
 typedef void (*thread_kernel_entry_t)(void* arg);
@@ -107,13 +116,6 @@ typedef void (*thread_kernel_entry_t)(void* arg);
  * @return On success, returns the newly created thread ID. On failure, returns `ERR` and `errno` is set.
  */
 tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg);
-
-/**
- * @brief Frees a thread structure.
- *
- * @param thread The thread to be freed.
- */
-void thread_free(thread_t* thread);
 
 /**
  * @brief Retrieves the currently running thread.
