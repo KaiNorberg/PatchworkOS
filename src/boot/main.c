@@ -1,16 +1,23 @@
-/**
- * @brief PatchworkOS UEFI Bootloader
- * @defgroup boot Bootloader
- *
- * @warning UEFI is exceptionally finicky as such to simpify the linking process which can have machine specific issues,
- * the bootloader should be compiled into a single object file.
- *
- * @{
- */
-
 #include <stddef.h>
+#include <boot/boot_info.h>
+#include <efi.h>
+#include <efilib.h>
+#include <kernel/mem/paging.h>
+#include <kernel/mem/paging_types.h>
+#include <kernel/version.h>
+#include <sys/defs.h>
+#include <sys/elf.h>
+#include <sys/list.h>
+#include <sys/math.h>
+#include <sys/proc.h>
 
-static inline int strcmp(const char* str1, const char* str2)
+// Include functions directly to avoid multiple object files
+#include <functions/assert/assert.c>
+#include <functions/elf/elf64_get_loadable_bounds.c>
+#include <functions/elf/elf64_load_segments.c>
+#include <functions/elf/elf64_validate.c>
+
+int strcmp(const char* str1, const char* str2)
 {
     while (*str1 != '\0' && *str2 != '\0')
     {
@@ -24,28 +31,7 @@ static inline int strcmp(const char* str1, const char* str2)
     return (unsigned char)*str1 - (unsigned char)*str2;
 }
 
-static inline void* memcpy(void* dest, const void* src, size_t n)
-{
-    unsigned char* d = (unsigned char*)dest;
-    const unsigned char* s = (const unsigned char*)src;
-    for (size_t i = 0; i < n; i++)
-    {
-        d[i] = s[i];
-    }
-    return dest;
-}
-
-static inline void* memset(void* ptr, int value, size_t num)
-{
-    unsigned char* p = (unsigned char*)ptr;
-    for (size_t i = 0; i < num; i++)
-    {
-        p[i] = (unsigned char)value;
-    }
-    return ptr;
-}
-
-static inline void* memchr(const void* ptr, int value, size_t num)
+void* memchr(const void* ptr, int value, size_t num)
 {
     const unsigned char* p = (const unsigned char*)ptr;
     for (size_t i = 0; i < num; i++)
@@ -58,23 +44,15 @@ static inline void* memchr(const void* ptr, int value, size_t num)
     return NULL;
 }
 
-#include <boot/boot_info.h>
-#include <efi.h>
-#include <efilib.h>
-#include <kernel/mem/paging.h>
-#include <kernel/mem/paging_types.h>
-#include <kernel/version.h>
-#include <sys/defs.h>
-#include <sys/elf.h>
-#include <sys/list.h>
-#include <sys/math.h>
-#include <sys/proc.h>
-
-// Include ELF loader functions directly to avoid multiple object files
-#include <functions/assert/assert.c>
-#include <functions/elf/elf64_get_loadable_bounds.c>
-#include <functions/elf/elf64_load_segments.c>
-#include <functions/elf/elf64_validate.c>
+/**
+ * @brief PatchworkOS UEFI Bootloader
+ * @defgroup boot Bootloader
+ *
+ * @warning UEFI is exceptionally finicky as such to simpify the linking process which can have machine specific issues,
+ * the bootloader should be compiled into a single object file.
+ *
+ * @{
+ */
 
 #define GOP_WIDTH 1920
 #define GOP_HEIGHT 1080

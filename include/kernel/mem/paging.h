@@ -7,13 +7,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
-
-#ifdef _BOOT_
-#include <efi.h>
-#include <efilib.h>
-#else
 #include <string.h>
-#endif
 
 /**
  * @addtogroup kernel_mem_paging
