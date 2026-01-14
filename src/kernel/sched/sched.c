@@ -327,15 +327,19 @@ static thread_t* sched_first_eligible(sched_t* sched)
         current = current->children[RBNODE_RIGHT];
     }
 
-#ifndef NDEBUG
     if (!rbtree_is_empty(&sched->runqueue))
     {
+#ifndef NDEBUG
         vclock_t vminEligible =
             CONTAINER_OF_SAFE(rbtree_find_min(sched->runqueue.root), sched_client_t, node)->vminEligible;
         panic(NULL, "No eligible threads found, vminEligible=%lld vtime=%lld", SCHED_FIXED_FROM(vminEligible),
             SCHED_FIXED_FROM(sched->vtime));
-    }
+#else
+        LOG_WARN("No eligible threads found, falling back to first thread in runqueue\n");
+        sched_client_t* first = CONTAINER_OF(rbtree_find_min(sched->runqueue.root), sched_client_t, node);
+        return CONTAINER_OF(first, thread_t, sched);
 #endif
+    }
 
     thread_t* victim = sched_steal();
     if (victim != NULL)
