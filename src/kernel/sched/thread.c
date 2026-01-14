@@ -5,6 +5,7 @@
 #include <kernel/init/init.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/mem/cache.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
@@ -16,6 +17,8 @@
 #include <string.h>
 #include <sys/list.h>
 #include <sys/math.h>
+
+static cache_t cache = CACHE_CREATE(cache, "thread", sizeof(thread_t), CACHE_LINE, NULL, NULL);
 
 static uintptr_t thread_id_to_offset(tid_t tid, uint64_t maxPages)
 {
@@ -30,24 +33,23 @@ thread_t* thread_new(process_t* process)
         return NULL;
     }
 
-    thread_t* thread = malloc(sizeof(thread_t));
+    thread_t* thread = cache_alloc(&cache);
     if (thread == NULL)
     {
         errno = ENOMEM;
         return NULL;
     }
 
-    LOCK_SCOPE(&process->threads.lock);
-
     if (atomic_load(&process->flags) & PROCESS_DYING)
     {
+        cache_free(thread);
         errno = EINVAL;
         return NULL;
     }
 
     thread->process = process;
+    thread->id = atomic_fetch_add_explicit(&process->threads.newTid, 1, memory_order_relaxed);
     list_entry_init(&thread->processEntry);
-    thread->id = thread->process->threads.newTid++;
     sched_client_init(&thread->sched);
     atomic_init(&thread->state, THREAD_PARKED);
     thread->error = 0;
@@ -55,20 +57,20 @@ thread_t* thread_new(process_t* process)
             VMM_KERNEL_STACKS_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_KERNEL_STACK_PAGES),
             CONFIG_MAX_KERNEL_STACK_PAGES) == ERR)
     {
-        free(thread);
+        cache_free(thread);
         return NULL;
     }
     if (stack_pointer_init(&thread->userStack,
             VMM_USER_SPACE_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_USER_STACK_PAGES),
             CONFIG_MAX_USER_STACK_PAGES) == ERR)
     {
-        free(thread);
+        cache_free(thread);
         return NULL;
     }
     wait_client_init(&thread->wait);
     if (simd_ctx_init(&thread->simd) == ERR)
     {
-        free(thread);
+        cache_free(thread);
         return NULL;
     }
     note_queue_init(&thread->notes);
@@ -78,8 +80,27 @@ thread_t* thread_new(process_t* process)
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
 
     REF(process);
+
+    lock_acquire(&process->threads.lock);
+    process->threads.count++;
     list_push_back(&process->threads.list, &thread->processEntry);
+    lock_release(&process->threads.lock);
     return thread;
+}
+
+void thread_free(thread_t* thread)
+{
+    lock_acquire(&thread->process->threads.lock);
+    thread->process->threads.count--;
+    list_remove(&thread->processEntry);
+    lock_release(&thread->process->threads.lock);
+
+    UNREF(thread->process);
+    thread->process = NULL;
+
+    simd_ctx_deinit(&thread->simd);
+
+    rcu_call(&thread->rcu, rcu_call_cache_free, thread);
 }
 
 tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg)
@@ -107,19 +128,6 @@ tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg)
     tid_t volatile tid = thread->id;
     sched_submit(thread);
     return tid;
-}
-
-void thread_free(thread_t* thread)
-{
-    lock_acquire(&thread->process->threads.lock);
-    list_remove(&thread->processEntry);
-    lock_release(&thread->process->threads.lock);
-
-    UNREF(thread->process);
-    thread->process = NULL;
-
-    simd_ctx_deinit(&thread->simd);
-    free(thread);
 }
 
 void thread_save(thread_t* thread, const interrupt_frame_t* frame)

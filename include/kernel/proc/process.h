@@ -12,8 +12,8 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/wait.h>
-#include <kernel/sync/rcu.h>
 #include <kernel/sync/futex.h>
+#include <kernel/sync/rcu.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 
@@ -46,8 +46,9 @@ typedef enum
  */
 typedef struct
 {
-    tid_t newTid;
-    list_t list;
+    _Atomic(tid_t) newTid;
+    list_t list; ///< Reads are RCU protected, writes require the lock.
+    uint64_t count;
     lock_t lock;
 } process_threads_t;
 
@@ -100,7 +101,7 @@ typedef struct process
 
 /**
  * @brief Global list of all processes.
- * 
+ *
  * @warning Should only be read while in a RCU read-side critical section.
  */
 extern list_t _processes;
@@ -193,14 +194,49 @@ void process_kill(process_t* process, const char* status);
 void process_remove(process_t* process);
 
 /**
+ * @brief Gets the first thread of a process.
+ *
+ * @warning Must be used within a RCU read-side critical section.
+ *
+ * @param process The process to get the first thread of.
+ * @return The first thread of the process, or `NULL` if the process has no threads.
+ */
+static inline thread_t* process_rcu_first_thread(process_t* process)
+{
+    return CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
+}
+
+/**
+ * @brief Gets the amount of threads in a process.
+ *
+ * @warning Must be used within a RCU read-side critical section.
+ *
+ * @param process The process to get the thread amount of.
+ * @return The amount of threads in the process.
+ */
+static inline uint64_t process_rcu_thread_count(process_t* process)
+{
+    return process->threads.count;
+}
+
+/**
+ * @brief Macro to iterate over all threads in a process.
+ *
+ * @warning Must be used within a RCU read-side critical section.
+ *
+ * @param thread Loop variable, a pointer to `thread_t`.
+ * @param process The process to iterate the threads of.
+ */
+#define PROCESS_RCU_THREAD_FOR_EACH(thread, process) LIST_FOR_EACH(thread, &(process)->threads.list, processEntry)
+
+/**
  * @brief Macro to iterate over all processes.
  *
  * @warning Must be used within a RCU read-side critical section.
  *
  * @param process Loop variable, a pointer to `process_t`.
  */
-#define PROCESS_RCU_FOR_EACH(process) \
-    LIST_FOR_EACH(process, &_processes, entry)
+#define PROCESS_RCU_FOR_EACH(process) LIST_FOR_EACH(process, &_processes, entry)
 
 /**
  * @brief Sets the command line arguments for a process.

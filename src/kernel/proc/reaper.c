@@ -6,6 +6,7 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
+#include <kernel/sync/rcu.h>
 
 static list_t zombies = LIST_CREATE(zombies);
 static clock_t nextReaperTime = CLOCKS_NEVER;
@@ -34,14 +35,12 @@ static void reaper_thread(void* arg)
         {
             process_t* process = CONTAINER_OF(list_pop_front(&zombies), process_t, zombieEntry);
 
-            lock_acquire(&process->threads.lock);
-            if (!list_is_empty(&process->threads.list))
+            RCU_READ_SCOPE();
+            if (process_rcu_thread_count(process) > 0)
             {
-                lock_release(&process->threads.lock);
                 list_push_back(&zombies, &process->zombieEntry);
                 continue;
             }
-            lock_release(&process->threads.lock);
 
             list_push_back(&localZombies, &process->zombieEntry);
         }
