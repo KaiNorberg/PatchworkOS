@@ -5,6 +5,7 @@ PHDRS
 {
     text PT_LOAD FLAGS(5);
     data PT_LOAD FLAGS(6);
+    dynamic PT_DYNAMIC FLAGS(6);
 }
 
 SECTIONS
@@ -22,13 +23,44 @@ SECTIONS
         *(.eh_frame_hdr)
     } :text
 
+    .gnu.hash : 
+    {
+         *(.gnu.hash) 
+    } :text
+    .dynsym : 
+    { 
+        *(.dynsym) 
+    } :text
+    .dynstr : 
+    {
+        *(.dynstr) 
+    } :text
+    .rela.dyn : 
+    {
+        *(.rela.dyn) *(.rela.plt) 
+    } :text
+    .rela.plt : 
+    {
+        *(.rela.plt) 
+    } :text
+    .plt : 
+    {
+        *(.plt) 
+    } :text
+
     . = ALIGN(4K);
+
+    .dynamic : 
+    {
+        *(.dynamic) 
+    } :data :dynamic
 
     .data : ALIGN(4K)
     {
         *(.data .data.*)
         *(.data.rel.ro .data.rel.ro.*)
         *(.got .got.*)
+        *(.got.plt)
         *(.init_array .init_array.*)
         *(.fini_array .fini_array.*)
     } :data
@@ -61,7 +93,6 @@ SECTIONS
     /DISCARD/ :
     {
         *(.comment)
-        *(.gnu.hash)
         *(.interp)
     }
 }

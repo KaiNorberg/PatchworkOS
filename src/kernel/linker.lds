@@ -76,6 +76,7 @@ SECTIONS
     /DISCARD/ :
     {
         *(.comment)
+        *(.gnu.hash)
         *(.interp)
     }
 }
