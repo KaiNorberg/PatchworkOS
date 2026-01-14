@@ -16,17 +16,12 @@ void elf64_load_segments(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offse
             continue;
         }
 
-        // Dont use memcpy or memset here since the bootloader uses this file
-        uint8_t* dest = (uint8_t*)(base + (phdr->p_vaddr - offset));
-        uint8_t* src = ELF64_AT_OFFSET(elf, phdr->p_offset);
-        uint64_t j = 0;
-        for (; j < phdr->p_filesz; j++)
+        void* dest = (void*)(base + (phdr->p_vaddr - offset));
+        void* src = ELF64_AT_OFFSET(elf, phdr->p_offset);
+        memcpy(dest, src, phdr->p_filesz);
+        if (phdr->p_memsz > phdr->p_filesz)
         {
-            dest[j] = src[j];
-        }
-        for (; j < phdr->p_memsz; j++)
-        {
-            dest[j] = 0;
+            memset((void*)((uintptr_t)dest + phdr->p_filesz), 0, phdr->p_memsz - phdr->p_filesz);
         }
     }
 }

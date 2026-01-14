@@ -14,7 +14,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        submodules: trues
+        submodules: true
 
     - name: Install build dependencies
       run: |
