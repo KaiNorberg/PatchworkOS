@@ -261,14 +261,18 @@ QEMU_ARGS ?=
 
 QEMU_FLAGS = \
 	-M $(QEMU_MACHINE) \
-	-display sdl \
-	-serial stdio \
 	-drive format=raw,file=$(IMAGE) \
 	-m $(QEMU_MEMORY) \
 	-smp $(QEMU_CPUS) \
 	-cpu qemu64 \
 	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
 	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd
+
+ifeq ($(QEMU_NOGRAPHIC),1)
+QEMU_FLAGS += -nographic
+else
+QEMU_FLAGS += -display sdl -serial stdio
+endif
 
 ifeq ($(DEBUG),1)
 else

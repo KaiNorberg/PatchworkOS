@@ -21,9 +21,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y clang llvm build-essential qemu-system-x86 mtools iasl
 
-    - name: Setup PatchworkOS
-      run: make setup DEBUG=1 TESTING=1 QEMU_EXIT_ON_PANIC=1
-
     - name: Build PatchworkOS
       run: make all DEBUG=1 TESTING=1 QEMU_EXIT_ON_PANIC=1
 
@@ -37,7 +34,7 @@ jobs:
     - name: Run PatchworkOS with QEMU (test launch and graceful timeout)
       id: qemu_test
       run: |
-        setsid make run DEBUG=1 TESTING=1 QEMU_EXIT_ON_PANIC=1 &
+        setsid make run DEBUG=1 TESTING=1 QEMU_EXIT_ON_PANIC=1 QEMU_NOGRAPHIC=1 &
         QEMU_PID=$!
         echo "QEMU process started with PID=$QEMU_PID"
         echo "QEMU_PID=$QEMU_PID" >> $GITHUB_OUTPUT
