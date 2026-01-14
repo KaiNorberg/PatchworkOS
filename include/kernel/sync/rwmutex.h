@@ -56,12 +56,14 @@ typedef struct rwmutex
  * @return A `rwmutex_t` initializer.
  */
 #define RWMUTEX_CREATE(name) \
-    {.activeReaders = 0, \
+    { \
+        .activeReaders = 0, \
         .waitingWriters = 0, \
         .readerQueue = WAIT_QUEUE_CREATE(name.readerQueue), \
         .writerQueue = WAIT_QUEUE_CREATE(name.writerQueue), \
         .hasWriter = false, \
-        .lock = LOCK_CREATE()}
+        .lock = LOCK_CREATE(), \
+    }
 
 /**
  * @brief Initializes a rwmutex.
