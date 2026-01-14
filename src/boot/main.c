@@ -14,6 +14,7 @@
 // Include functions directly to avoid multiple object files
 #include <functions/assert/assert.c>
 #include <functions/elf/elf64_get_loadable_bounds.c>
+#include <functions/elf/elf64_load_segments.c>
 #include <functions/elf/elf64_validate.c>
 
 /**
@@ -28,7 +29,7 @@
 
 #define GOP_WIDTH 1920 ///< Ignored if `GOP_USE_DEFAULT_RES` is set to 1
 #define GOP_HEIGHT 1080 ///< Ignored if `GOP_USE_DEFAULT_RES` is set to 1
-#define GOP_USE_DEFAULT_RES 1 
+#define GOP_USE_DEFAULT_RES 1
 
 #define MEM_BASIC_ALLOCATOR_RESERVE_PERCENTAGE 10
 #define MEM_BASIC_ALLOCATOR_MIN_PAGES 8192
@@ -874,27 +875,7 @@ static EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle)
     }
 
     Print(L"  Loading kernel...\n");
-    Elf64_Ehdr* header = (Elf64_Ehdr*)kernel->elf.header;
-    for (uint32_t i = 0; i < header->e_phnum; i++)
-    {
-        Elf64_Phdr* phdr = ELF64_GET_PHDR(&kernel->elf, i);
-        if (phdr->p_type != PT_LOAD)
-        {
-            continue;
-        }
-
-        uint8_t* dest = (uint8_t*)(kernelPhys + (phdr->p_vaddr - minVaddr));
-        uint8_t* src = ELF64_AT_OFFSET(&kernel->elf, phdr->p_offset);
-        uint64_t j = 0;
-        for (; j < phdr->p_filesz; j++)
-        {
-            dest[j] = src[j];
-        }
-        for (; j < phdr->p_memsz; j++)
-        {
-            dest[j] = 0;
-        }
-    }
+    elf64_load_segments(&kernel->elf, (Elf64_Addr)kernelPhys, minVaddr);
     kernel->physAddr = (void*)kernelPhys;
 
     Print(L"  Entry Code: ");

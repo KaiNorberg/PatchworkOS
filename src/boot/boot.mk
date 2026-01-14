@@ -7,7 +7,7 @@ all: $(BINDIR)/bootx64.efi
 $(BUILDDIR)/main.o: $(SRCDIR)/main.c
 	$(MKCWD)
 	@echo "  CC    $<"
-	@gcc -DNDEBUG -DEFI_FUNCTION_WRAPPER -D_BOOT_ -Ilib -Iinclude -Iinclude/libstd -Isrc/libstd -Ilib/gnu-efi/inc -Ilib/gnu-efi/inc/x86_64 -fpic -ffreestanding -fno-builtin -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -c $(SRCDIR)/main.c -o $(BUILDDIR)/main.o
+	@gcc -DNDEBUG -DEFI_FUNCTION_WRAPPER -D_BOOT_ -Ilib -Iinclude -Iinclude/libstd -Isrc/libstd -Ilib/gnu-efi/inc -Ilib/gnu-efi/inc/x86_64 -fpic -ffreestanding -fno-builtin -fno-builtin-memcpy -fno-builtin-memset -fno-tree-loop-distribute-patterns -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -c $(SRCDIR)/main.c -o $(BUILDDIR)/main.o
 
 $(BINDIR)/bootx64.efi: $(BUILDDIR)/main.o
 	$(MKCWD)
