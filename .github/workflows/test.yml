@@ -24,7 +24,7 @@ jobs:
     - name: Build PatchworkOS
       run: make all DEBUG=1 TESTING=1 QEMU_EXIT_ON_PANIC=1
 
-    - name: Debug kernel ELF
+    - name: Inspect kernel ELF
       run: |
         echo "=== Kernel ELF Program Headers ==="
         readelf -l bin/kernel/kernel || true
@@ -40,7 +40,7 @@ jobs:
           exit 1
         fi
 
-    - name: Run PatchworkOS with QEMU (test launch and graceful timeout)
+    - name: Run PatchworkOS with QEMU
       id: qemu_test
       run: |
         setsid make run DEBUG=1 TESTING=1 QEMU_EXIT_ON_PANIC=1 QEMU_NOGRAPHIC=1 &

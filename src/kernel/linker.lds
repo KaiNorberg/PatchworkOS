@@ -75,7 +75,6 @@ SECTIONS
 
     /DISCARD/ :
     {
-        *(.note .note.*)
         *(.comment)
         *(.gnu.hash)
         *(.interp)
