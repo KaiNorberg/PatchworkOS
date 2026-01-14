@@ -19,6 +19,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <kernel/sync/rcu.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1206,8 +1207,10 @@ static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         }
     }
 
+    RCU_READ_SCOPE();
+
     process_t* process;
-    PROCESS_FOR_EACH(process)
+    PROCESS_RCU_FOR_EACH(process)
     {
         if (ctx->index++ < ctx->pos)
         {
@@ -1218,7 +1221,6 @@ static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         snprintf(name, sizeof(name), "%llu", process->id);
         if (!ctx->emit(ctx, name, ino_gen(dentry->inode->number, name), INODE_DIR))
         {
-            UNREF(process);
             return 0;
         }
     }

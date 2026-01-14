@@ -12,6 +12,7 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/wait.h>
+#include <kernel/sync/rcu.h>
 #include <kernel/sync/futex.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
@@ -94,7 +95,15 @@ typedef struct process
     char** argv;
     uint64_t argc;
     group_member_t group;
+    rcu_entry_t rcu;
 } process_t;
+
+/**
+ * @brief Global list of all processes.
+ * 
+ * @warning Should only be read while in a RCU read-side critical section.
+ */
+extern list_t _processes;
 
 /**
  * @brief Allocates and initializes a new process.
@@ -184,29 +193,14 @@ void process_kill(process_t* process, const char* status);
 void process_remove(process_t* process);
 
 /**
- * @brief Gets the first process in the system for iteration.
- *
- * @return A reference to the first process, or `NULL` if there are no processes.
- */
-process_t* process_iterate_begin(void);
-
-/**
- * @brief Gets the next process in the system for iteration.
- *
- * @param prev The current process in the iteration, will be unreferenced.
- * @return A reference to the next process, or `NULL` if there are no more processes.
- */
-process_t* process_iterate_next(process_t* prev);
-
-/**
  * @brief Macro to iterate over all processes.
  *
- * @note If the loop is exited early the `process` variable must be unreferenced.
+ * @warning Must be used within a RCU read-side critical section.
  *
  * @param process Loop variable, a pointer to `process_t`.
  */
-#define PROCESS_FOR_EACH(process) \
-    for ((process) = process_iterate_begin(); (process) != NULL; (process) = process_iterate_next(process))
+#define PROCESS_RCU_FOR_EACH(process) \
+    LIST_FOR_EACH(process, &_processes, entry)
 
 /**
  * @brief Sets the command line arguments for a process.

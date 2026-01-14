@@ -19,7 +19,7 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
-#include <kernel/sync/rwlock.h>
+#include <kernel/sync/rcu.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -40,8 +40,9 @@ static process_t* kernelProcess = NULL;
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 
 static map_t pidMap = MAP_CREATE();
-static list_t processes = LIST_CREATE(processes);
-static rwlock_t processesLock = RWLOCK_CREATE();
+
+list_t _processes = LIST_CREATE(_processes);
+static lock_t processesLock = LOCK_CREATE();
 
 static void process_free(process_t* process)
 {
@@ -75,7 +76,8 @@ static void process_free(process_t* process)
     wait_queue_deinit(&process->suspendQueue);
     futex_ctx_deinit(&process->futexCtx);
     env_deinit(&process->env);
-    free(process);
+    
+    rcu_call(&process->rcu, rcu_call_free, process);
 }
 
 process_t* process_new(priority_t priority, group_member_t* group, namespace_t* ns)
@@ -132,24 +134,26 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
         return NULL;
     }
 
-    RWLOCK_WRITE_SCOPE(&processesLock);
+    lock_acquire(&processesLock);
 
     map_key_t mapKey = map_key_uint64(process->id);
     if (map_insert(&pidMap, &mapKey, &process->mapEntry) == ERR)
     {
+        lock_release(&processesLock);
         process_free(process);
         return NULL;
     }
 
     LOG_DEBUG("created process pid=%d\n", process->id);
 
-    list_push_back(&processes, &process->entry);
+    list_push_back(&_processes, &process->entry);
+    lock_release(&processesLock);
     return REF(process);
 }
 
 process_t* process_get(pid_t id)
 {
-    RWLOCK_READ_SCOPE(&processesLock);
+    RCU_READ_SCOPE();
 
     map_key_t mapKey = map_key_uint64(id);
     map_entry_t* entry = map_get(&pidMap, &mapKey);
@@ -244,39 +248,12 @@ void process_kill(process_t* process, const char* status)
 
 void process_remove(process_t* process)
 {
-    rwlock_write_acquire(&processesLock);
+    lock_acquire(&processesLock);
     map_remove(&pidMap, &process->mapEntry);
     list_remove(&process->entry);
-    rwlock_write_release(&processesLock);
+    lock_release(&processesLock);
 
     UNREF(process);
-}
-
-process_t* process_iterate_begin(void)
-{
-    RWLOCK_READ_SCOPE(&processesLock);
-
-    if (list_is_empty(&processes))
-    {
-        return NULL;
-    }
-
-    return REF(CONTAINER_OF(list_first(&processes), process_t, entry));
-}
-
-process_t* process_iterate_next(process_t* prev)
-{
-    RWLOCK_READ_SCOPE(&processesLock);
-
-    list_entry_t* nextEntry = list_next(&processes, &prev->entry);
-    UNREF(prev);
-
-    if (nextEntry == NULL)
-    {
-        return NULL;
-    }
-
-    return REF(CONTAINER_OF(nextEntry, process_t, entry));
 }
 
 uint64_t process_set_cmdline(process_t* process, char** argv, uint64_t argc)
