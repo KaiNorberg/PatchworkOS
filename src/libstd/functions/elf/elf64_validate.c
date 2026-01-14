@@ -266,9 +266,12 @@ uint64_t elf64_validate(Elf64_File* elf, void* data, uint64_t size)
                 return 42;
             }
             unsigned char* interpData = (unsigned char*)((uintptr_t)data + phdr->p_offset);
-            if (memchr(interpData, '\0', phdr->p_filesz) == NULL)
+            for (uint64_t j = 0; j < phdr->p_filesz; j++)
             {
-                return 43;
+                if (interpData[j] == '\0')
+                {
+                    return 43;
+                }
             }
             break;
         case PT_PHDR:

@@ -17,33 +17,6 @@
 #include <functions/elf/elf64_load_segments.c>
 #include <functions/elf/elf64_validate.c>
 
-int strcmp(const char* str1, const char* str2)
-{
-    while (*str1 != '\0' && *str2 != '\0')
-    {
-        if (*str1 != *str2)
-        {
-            return (unsigned char)*str1 - (unsigned char)*str2;
-        }
-        str1++;
-        str2++;
-    }
-    return (unsigned char)*str1 - (unsigned char)*str2;
-}
-
-void* memchr(const void* ptr, int value, size_t num)
-{
-    const unsigned char* p = (const unsigned char*)ptr;
-    for (size_t i = 0; i < num; i++)
-    {
-        if (p[i] == (unsigned char)value)
-        {
-            return (void*)&p[i];
-        }
-    }
-    return NULL;
-}
-
 /**
  * @brief PatchworkOS UEFI Bootloader
  * @defgroup boot Bootloader
@@ -54,9 +27,9 @@ void* memchr(const void* ptr, int value, size_t num)
  * @{
  */
 
-#define GOP_WIDTH 1920
-#define GOP_HEIGHT 1080
-#define GOP_USE_DEFAULT_RES 1
+#define GOP_WIDTH 1920 ///< Ignored if `GOP_USE_DEFAULT_RES` is set to 1
+#define GOP_HEIGHT 1080 ///< Ignored if `GOP_USE_DEFAULT_RES` is set to 1
+#define GOP_USE_DEFAULT_RES 1 
 
 #define MEM_BASIC_ALLOCATOR_RESERVE_PERCENTAGE 10
 #define MEM_BASIC_ALLOCATOR_MIN_PAGES 8192
