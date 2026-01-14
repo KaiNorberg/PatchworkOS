@@ -100,6 +100,13 @@
 #define UNUSED(x) (void)(x)
 
 /**
+ * @brief GCC unused function attribute.
+ *
+ * Tells the compiler that the function with said attribute might be unused, preventing warnings.
+ */
+#define UNUSED_FUNC __attribute__((unused))
+
+/**
  * @brief Get the number of elements in a static array.
  *
  * @param x The array.
@@ -148,6 +155,13 @@
  * @param priority The priority of the destructor function.
  */
 #define DESTRUCTOR(priority) __attribute__((used, destructor(priority)))
+
+/**
+ * @brief Inline assembly macro.
+ *
+ * @param ... The assembly code to embed.
+ */
+#define ASM(...) __asm__ volatile (__VA_ARGS__)
 
 /** @} */
 

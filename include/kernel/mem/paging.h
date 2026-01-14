@@ -44,7 +44,7 @@ static inline void tlb_invalidate(void* virtAddr, uint64_t pageCount)
     {
         for (uint64_t i = 0; i < pageCount; i++)
         {
-            asm volatile("invlpg (%0)" ::"r"(virtAddr + i * PAGE_SIZE) : "memory");
+            ASM("invlpg (%0)" ::"r"(virtAddr + i * PAGE_SIZE) : "memory");
         }
     }
 }

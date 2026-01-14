@@ -58,14 +58,14 @@ PERCPU_DEFINE_CTOR(static void, pcpu_simd)
         simd_xsave_init();
     }
 
-    asm volatile("fninit");
+    ASM("fninit");
     if (info.featuresEcx & CPUID_ECX_OSXSAVE)
     {
-        asm volatile("xsave %0" : : "m"(*initCtx), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
+        ASM("xsave %0" : : "m"(*initCtx), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
     }
     else
     {
-        asm volatile("fxsave (%0)" : : "r"(initCtx));
+        ASM("fxsave (%0)" : : "r"(initCtx));
     }
 
     if (SELF->id != CPU_ID_BOOTSTRAP) // Only log for bootstrap CPU
@@ -145,11 +145,11 @@ void simd_ctx_save(simd_ctx_t* ctx)
 
     if (info.featuresEcx & CPUID_ECX_OSXSAVE)
     {
-        asm volatile("xsave %0" : : "m"(*ctx->buffer), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
+        ASM("xsave %0" : : "m"(*ctx->buffer), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
     }
     else
     {
-        asm volatile("fxsave (%0)" : : "r"(ctx->buffer));
+        ASM("fxsave (%0)" : : "r"(ctx->buffer));
     }
 }
 
@@ -160,10 +160,10 @@ void simd_ctx_load(simd_ctx_t* ctx)
 
     if (info.featuresEcx & CPUID_ECX_OSXSAVE)
     {
-        asm volatile("xrstor %0" : : "m"(*ctx->buffer), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
+        ASM("xrstor %0" : : "m"(*ctx->buffer), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
     }
     else
     {
-        asm volatile("fxrstor (%0)" : : "r"(ctx->buffer));
+        ASM("fxrstor (%0)" : : "r"(ctx->buffer));
     }
 }

@@ -109,6 +109,11 @@ static void* rsdp_locate(EFI_SYSTEM_TABLE* systemTable)
             if (CompareMem("RSD PTR ", systemTable->ConfigurationTable[i].VendorTable, 8) == 0)
             {
                 rsdp = systemTable->ConfigurationTable[i].VendorTable;
+                if (*((uint8_t*)rsdp + 15) < 2) // Check revision
+                {
+                    rsdp = NULL;
+                    continue;
+                }
             }
         }
     }
@@ -141,6 +146,8 @@ static void* rsdp_locate(EFI_SYSTEM_TABLE* systemTable)
     Print(L"  WARNING: No ACPI RSDP found in configuration table\n");
     return NULL;
 }
+
+#if !(GOP_USE_DEFAULT_RES)
 
 /**
  * @brief Finds the best matching graphics mode for the requested resolution.
@@ -198,6 +205,8 @@ static EFI_STATUS gop_set_mode(EFI_GRAPHICS_OUTPUT_PROTOCOL* gop, int64_t reques
     UINT32 targetMode = gop_find_best_mode(gop, requestedWidth, requestedHeight);
     return uefi_call_wrapper(gop->SetMode, 2, gop, targetMode);
 }
+
+#endif
 
 /**
  * @brief Initializes the GOP buffer structure with framebuffer information.
@@ -331,7 +340,7 @@ _NORETURN static void panic_halt(panic_code_t code)
 
     for (;;)
     {
-        asm volatile("cli; hlt");
+        ASM("cli; hlt");
     }
 }
 
@@ -831,6 +840,7 @@ static EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle)
     EFI_FILE* kernelFile = NULL;
     void* fileData = NULL;
     EFI_PHYSICAL_ADDRESS kernelPhys = 0;
+    uint64_t kernelPageCount = 0;
     Elf64_Addr minVaddr = 0;
     Elf64_Addr maxVaddr = 0;
     EFI_STATUS status;
@@ -902,7 +912,7 @@ static EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle)
 
     elf64_get_loadable_bounds(&kernel->elf, &minVaddr, &maxVaddr);
     size_t kernelSize = maxVaddr - minVaddr;
-    uint64_t kernelPageCount = BYTES_TO_PAGES(kernelSize);
+    kernelPageCount = BYTES_TO_PAGES(kernelSize);
 
     Print(L"  Allocating %lu pages for kernel...\n", kernelPageCount);
     status =

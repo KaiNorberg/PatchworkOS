@@ -133,7 +133,7 @@ void clock_wait(clock_t nanoseconds)
 
     while (clock_uptime() - start < nanoseconds)
     {
-        asm volatile("pause");
+        ASM("pause");
     }
 }
 

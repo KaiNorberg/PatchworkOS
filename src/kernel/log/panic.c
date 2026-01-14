@@ -291,7 +291,7 @@ static void panic_print_code(const interrupt_frame_t* frame)
 
 void panic(const interrupt_frame_t* frame, const char* format, ...)
 {
-    asm volatile("cli");
+    ASM("cli");
 
     uint32_t expectedCpuId = PANIC_NO_CPU_ID;
     if (!atomic_compare_exchange_strong(&panicCpuId, &expectedCpuId, SELF->id))
@@ -304,7 +304,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
         }
         while (true)
         {
-            asm volatile("hlt");
+            ASM("hlt");
         }
     }
 
@@ -462,6 +462,6 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
 
     while (true)
     {
-        asm volatile("hlt");
+        ASM("hlt");
     }
 }

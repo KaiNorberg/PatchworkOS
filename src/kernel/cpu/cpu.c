@@ -105,7 +105,7 @@ static void cpu_halt_ipi_handler(ipi_func_data_t* data)
 
     while (true)
     {
-        asm volatile("cli; hlt");
+        ASM("cli; hlt");
     }
 
     __builtin_unreachable();

@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
+#include <sys/defs.h>
 
 // https://cppreference.com/w/c/numeric/math/sin.html
 double sin(double x)
@@ -22,6 +23,6 @@ double sin(double x)
     }
 
     double result;
-    asm volatile("fsin" : "=t"(result) : "0"(x));
+    ASM("fsin" : "=t"(result) : "0"(x));
     return result;
 }

@@ -118,7 +118,7 @@ static inline void lock_acquire(lock_t* lock)
     uint16_t ticket = atomic_fetch_add_explicit(&lock->nextTicket, 1, memory_order_relaxed);
     while (atomic_load_explicit(&lock->nowServing, memory_order_relaxed) != ticket)
     {
-        asm volatile("pause");
+        ASM("pause");
 
 #ifndef NDEBUG
         if (lock->canary != LOCK_CANARY)

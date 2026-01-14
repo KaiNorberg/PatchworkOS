@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <sys/elf.h>
 #include <sys/list.h>
+#include <sys/defs.h>
 
 /**
  * @brief Boot information.
@@ -20,7 +21,7 @@
  * @{
  */
 
-static bool boot_is_mem_ram(EFI_MEMORY_TYPE type)
+static UNUSED_FUNC bool boot_is_mem_ram(EFI_MEMORY_TYPE type)
 {
     switch (type)
     {

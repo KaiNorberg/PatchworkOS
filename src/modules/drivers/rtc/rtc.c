@@ -48,7 +48,7 @@ static time_t rtc_read_epoch(void)
 
     while (rtc_update_in_progress())
     {
-        asm volatile("pause");
+        ASM("pause");
     }
 
     uint8_t seconds = rtc_bcd_to_bin(rtc_read(0x00));

@@ -15,7 +15,7 @@ uint8_t com_read(com_port_t port)
 {
     while ((com_reg_read(port, COM_REG_LINE_STATUS) & COM_LINE_READ_READY) == 0)
     {
-        asm volatile("pause");
+        ASM("pause");
     }
     return com_reg_read(port, COM_REG_RECEIVE);
 }
@@ -24,7 +24,7 @@ void com_write(com_port_t port, uint8_t value)
 {
     while ((com_reg_read(port, COM_REG_LINE_STATUS) & COM_LINE_WRITE_READY) == 0)
     {
-        asm volatile("pause");
+        ASM("pause");
     }
     com_reg_write(port, COM_REG_TRANSMIT, value);
 }

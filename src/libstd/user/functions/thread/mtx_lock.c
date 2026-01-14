@@ -26,7 +26,7 @@ int mtx_lock(mtx_t* mutex)
             mutex->depth = 1;
             return thrd_success;
         }
-        asm volatile("pause");
+        ASM("pause");
     }
 
     do

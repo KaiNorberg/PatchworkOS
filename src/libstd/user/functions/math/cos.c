@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
+#include <sys/defs.h>
 
 // https://cppreference.com/w/c/numeric/math/cos.html
 double cos(double x)
@@ -22,6 +23,6 @@ double cos(double x)
     }
 
     double result;
-    asm volatile("fcos" : "=t"(result) : "0"(x));
+    ASM("fcos" : "=t"(result) : "0"(x));
     return result;
 }

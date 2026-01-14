@@ -201,7 +201,7 @@ void percpu_section_deinit(percpu_def_t* start, percpu_def_t* end)
         }
         if (!allAcked)
         {
-            asm volatile("pause");
+            ASM("pause");
         }
     }
 

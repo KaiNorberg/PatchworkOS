@@ -24,7 +24,7 @@
 static inline void cli_push(void)
 {
     uint64_t rflags = rflags_read();
-    asm volatile("cli" ::: "memory");
+    ASM("cli" ::: "memory");
 
     if (SELF->cli == 0)
     {
@@ -46,7 +46,7 @@ static inline void cli_pop(void)
     SELF->cli--;
     if (SELF->cli == 0 && (SELF->oldRflags & RFLAGS_INTERRUPT_ENABLE))
     {
-        asm volatile("sti" ::: "memory");
+        ASM("sti" ::: "memory");
     }
 }
 

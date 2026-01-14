@@ -285,6 +285,6 @@ void irq_handler_unregister(irq_func_t func, irq_virt_t virt);
  *
  * @param virt The virtual IRQ to invoke.
  */
-#define IRQ_INVOKE(virt) asm volatile("int %0" : : "i"(virt));
+#define IRQ_INVOKE(virt) ASM("int %0" : : "i"(virt));
 
 /** @} */
