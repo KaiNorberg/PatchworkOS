@@ -38,9 +38,9 @@ typedef struct test
     do \
     { \
         extern test_t _tests_start; \
-        extern test_t _testsEnd; \
+        extern test_t _tests_end; \
         const test_t* test = &_tests_start; \
-        while (test < &_testsEnd) \
+        while (test < &_tests_end) \
         { \
             LOG_INFO("running test '%s'\n", test->name); \
             clock_t start = clock_uptime(); \
