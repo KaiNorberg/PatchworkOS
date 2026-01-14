@@ -6,7 +6,7 @@
 #include <threads.h>
 
 #include "user/common/syscalls.h"
-#include "user/common/thread.h"
+#include "user/common/threading.h"
 
 void thrd_exit(int res)
 {

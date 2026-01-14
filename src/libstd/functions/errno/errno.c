@@ -4,7 +4,7 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #else
-#include "user/common/thread.h"
+#include "user/common/threading.h"
 #include <sys/proc.h>
 #endif
 
