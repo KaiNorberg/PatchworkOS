@@ -66,17 +66,9 @@ typedef struct
  * @return A `lock_t` initializer.
  */
 #ifndef NDEBUG
-#define LOCK_CREATE() \
-    (lock_t) \
-    { \
-        .nextTicket = ATOMIC_VAR_INIT(0), .nowServing = ATOMIC_VAR_INIT(0), .canary = LOCK_CANARY \
-    }
+#define LOCK_CREATE() {.nextTicket = ATOMIC_VAR_INIT(0), .nowServing = ATOMIC_VAR_INIT(0), .canary = LOCK_CANARY}
 #else
-#define LOCK_CREATE() \
-    (lock_t) \
-    { \
-        .nextTicket = ATOMIC_VAR_INIT(0), .nowServing = ATOMIC_VAR_INIT(0) \
-    }
+#define LOCK_CREATE() {.nextTicket = ATOMIC_VAR_INIT(0), .nowServing = ATOMIC_VAR_INIT(0)}
 #endif
 
 /**

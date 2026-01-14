@@ -6,9 +6,9 @@
 
 #include <_internal/MAX_NAME.h>
 #include <stdint.h>
+#include <sys/defs.h>
 #include <sys/elf.h>
 #include <sys/list.h>
-#include <sys/defs.h>
 
 /**
  * @brief Boot information.

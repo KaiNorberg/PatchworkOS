@@ -48,10 +48,7 @@
         register type2 _a2 asm("rsi") = (arg2); \
         register type3 _a3 asm("rdx") = (arg3); \
         register type4 _a4 asm("r10") = (arg4); \
-        ASM("syscall\n" \
-            : "=a"(ret) \
-            : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3), "r"(_a4) \
-            : "rcx", "r11", "memory"); \
+        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3), "r"(_a4) : "rcx", "r11", "memory"); \
         ret; \
     })
 
@@ -63,10 +60,8 @@
         register type3 _a3 asm("rdx") = (arg3); \
         register type4 _a4 asm("r10") = (arg4); \
         register type5 _a5 asm("r8") = (arg5); \
-        ASM("syscall\n" \
-            : "=a"(ret) \
-            : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3), "r"(_a4), "r"(_a5) \
-            : "rcx", "r11", "memory"); \
+        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3), "r"(_a4), "r"(_a5) : "rcx", "r11", \
+            "memory"); \
         ret; \
     })
 
@@ -79,10 +74,8 @@
         register type4 _a4 asm("r10") = (arg4); \
         register type5 _a5 asm("r8") = (arg5); \
         register type6 _a6 asm("r9") = (arg6); \
-        ASM("syscall\n" \
-            : "=a"(ret) \
-            : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3), "r"(_a4), "r"(_a5), "r"(_a6) \
-            : "rcx", "r11", "memory"); \
+        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3), "r"(_a4), "r"(_a5), "r"(_a6) : "rcx", \
+            "r11", "memory"); \
         ret; \
     })
 

@@ -1,10 +1,10 @@
-#include <stddef.h>
 #include <boot/boot_info.h>
 #include <efi.h>
 #include <efilib.h>
 #include <kernel/mem/paging.h>
 #include <kernel/mem/paging_types.h>
 #include <kernel/version.h>
+#include <stddef.h>
 #include <sys/defs.h>
 #include <sys/elf.h>
 #include <sys/list.h>
@@ -27,7 +27,7 @@
  * @{
  */
 
-#define GOP_WIDTH 1920 ///< Ignored if `GOP_USE_DEFAULT_RES` is set to 1
+#define GOP_WIDTH 1920  ///< Ignored if `GOP_USE_DEFAULT_RES` is set to 1
 #define GOP_HEIGHT 1080 ///< Ignored if `GOP_USE_DEFAULT_RES` is set to 1
 #define GOP_USE_DEFAULT_RES 1
 

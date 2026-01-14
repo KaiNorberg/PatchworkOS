@@ -161,7 +161,7 @@
  *
  * @param ... The assembly code to embed.
  */
-#define ASM(...) __asm__ volatile (__VA_ARGS__)
+#define ASM(...) __asm__ volatile(__VA_ARGS__)
 
 /** @} */
 

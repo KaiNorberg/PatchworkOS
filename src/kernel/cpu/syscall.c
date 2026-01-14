@@ -99,7 +99,7 @@ void syscall_handler(interrupt_frame_t* frame)
     perf_syscall_end();
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    ASM("cli" ::: "memory");
+    ASM("cli" :: : "memory");
     if (thread_is_note_pending(thread) || (thread->syscall.flags & SYSCALL_FORCE_FAKE_INTERRUPT))
     {
         frame->vector = VECTOR_FAKE;
