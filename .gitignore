@@ -69,5 +69,6 @@ include/kernel/version.h
 lib/acpica
 lib/acpica_tests
 lib/argon2
+lib/gnu-efi
 include/argon2
 temp.md
