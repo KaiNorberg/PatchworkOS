@@ -7,11 +7,12 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <string.h>
 
 #ifdef _BOOT_
 #include <efi.h>
 #include <efilib.h>
+#else
+#include <string.h>
 #endif
 
 /**
@@ -101,11 +102,7 @@ static inline uint64_t pml_new(page_table_t* table, pml_t** outPml)
     {
         return ERR;
     }
-#ifdef _BOOT_
-    SetMem(pml, PAGE_SIZE, 0);
-#else
     memset(pml, 0, PAGE_SIZE);
-#endif
     *outPml = pml;
     return 0;
 }
@@ -213,7 +210,7 @@ static inline uint64_t page_table_get_pml(page_table_t* table, pml_t* currentPml
         *outPml = (pml_t*)pml_accessible_addr(*entry);
         return 0;
     }
-    
+
     if (flags & PML_PRESENT)
     {
         pml_t* nextPml;

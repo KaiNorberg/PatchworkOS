@@ -34,7 +34,7 @@ void cpu_init(cpu_t* cpu)
     cpu->syscallRsp = 0;
     cpu->userRsp = 0;
     cpu->inInterrupt = false;
-    
+
     gdt_cpu_load();
     idt_cpu_load();
     tss_init(&cpu->tss);

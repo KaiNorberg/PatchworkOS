@@ -18,10 +18,10 @@ void elf64_load_segments(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offse
 
         void* dest = (void*)(base + (phdr->p_vaddr - offset));
         void* src = ELF64_AT_OFFSET(elf, phdr->p_offset);
-        elf_memcpy(dest, src, phdr->p_filesz);
+        memcpy(dest, src, phdr->p_filesz);
         if (phdr->p_memsz > phdr->p_filesz)
         {
-            elf_memset((void*)((uintptr_t)dest + phdr->p_filesz), 0, phdr->p_memsz - phdr->p_filesz);
+            memset((void*)((uintptr_t)dest + phdr->p_filesz), 0, phdr->p_memsz - phdr->p_filesz);
         }
     }
 }

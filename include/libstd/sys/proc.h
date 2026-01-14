@@ -12,8 +12,8 @@ extern "C"
 
 #include "_internal/ERR.h"
 #include "_internal/NULL.h"
-#include "_internal/clock_t.h"
 #include "_internal/PAGE_SIZE.h"
+#include "_internal/clock_t.h"
 #include "_internal/config.h"
 #include "_internal/fd_t.h"
 

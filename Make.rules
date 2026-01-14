@@ -17,33 +17,3 @@ $(BINDIR)/%: $(OBJ)
 	$(MKCWD)
 	@echo "  LD    $@"
 	@$(LD) -o $@ $^ $(LDFLAGS) $(LDSTDLIB)
-
-$(BINDIR)/%.efi: $(OBJ)
-	$(MKCWD)
-	@echo "  LD    $@ (EFI)"
-	@$(LD) -shared \
-		-nostdlib \
-		-z noexecstack \
-		-nostartfiles \
-		-fPIC \
-		-fno-stack-protector \
-		-Wl,-shared,-Bsymbolic \
-		-Wl,-T,lib/gnu-efi/gnuefi/elf_x86_64_efi.lds \
-		-Llib/gnu-efi/x86_64/lib \
-		-Llib/gnu-efi/x86_64/gnuefi \
-		lib/gnu-efi/x86_64/gnuefi/crt0-efi-x86_64.o $^ \
-		-o $(BINDIR)/temp.so \
-		-lgnuefi -lefi
-	@echo "  OBJCOPY $@"
-	@$(OBJCOPY) --target=efi-app-x86_64 \
-		  -j .text \
-          -j .sdata \
-          -j .data \
-          -j .rodata \
-          -j .dynamic \
-          -j .dynsym \
-          -j .rel \
-          -j .rela \
-          -j .reloc \
-		  $(BINDIR)/temp.so $@
-	@rm -f $(BINDIR)/temp.so

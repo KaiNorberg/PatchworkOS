@@ -16,7 +16,7 @@ _start:
     cld
 
     // rsp = _earlyInitStackEnd
-    leaq _earlyInitStackEnd(%rip), %rsp
+    movq $_earlyInitStackEnd, %rsp
 
     // bootInfo = rdi
     movq %rdi, bootInfo(%rip)

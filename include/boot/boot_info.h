@@ -3,7 +3,6 @@
 #include <kernel/mem/paging_types.h>
 
 #include <gnu-efi/inc/efi.h>
-#include <gnu-efi/inc/efilib.h>
 
 #include <_internal/MAX_NAME.h>
 #include <stdint.h>

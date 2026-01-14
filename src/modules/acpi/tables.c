@@ -1,3 +1,4 @@
+#include <kernel/mem/paging_types.h>
 #include <modules/acpi/tables.h>
 
 #include <kernel/fs/file.h>
@@ -77,6 +78,8 @@ static bool acpi_is_xsdt_valid(xsdt_t* xsdt)
 
 static bool acpi_is_rsdp_valid(rsdp_t* rsdp)
 {
+    LOG_DEBUG("validating RSDP at [%p-%p]\n", rsdp, (void*)((uintptr_t)rsdp + rsdp->length));
+
     if (memcmp(rsdp->signature, "RSD PTR ", RSDP_SIGNATURE_LENGTH) != 0)
     {
         LOG_ERR("invalid RSDP signature\n");
@@ -89,15 +92,10 @@ static bool acpi_is_rsdp_valid(rsdp_t* rsdp)
         return false;
     }
 
-    if (!acpi_is_checksum_valid(rsdp, rsdp->length))
-    {
-        LOG_ERR("invalid extended RSDP checksum\n");
-        return false;
-    }
-
     if (rsdp->revision != RSDP_CURRENT_REVISION)
     {
         LOG_ERR("unsupported ACPI revision %u\n", rsdp->revision);
+        return false;
     }
 
     if (!acpi_is_checksum_valid(rsdp, rsdp->length))
@@ -197,7 +195,7 @@ uint64_t acpi_tables_init(rsdp_t* rsdp)
 {
     if (!acpi_is_rsdp_valid(rsdp))
     {
-        LOG_ERR("invalid RSDP provided to ACPI tables init");
+        LOG_ERR("invalid RSDP provided to ACPI tables init\n");
         return ERR;
     }
 

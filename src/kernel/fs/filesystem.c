@@ -48,8 +48,8 @@ static size_t superblock_read(file_t* file, void* buffer, size_t count, size_t* 
     assert(sb != NULL);
 
     char info[MAX_PATH];
-    int length = snprintf(info, sizeof(info), "id: %llu\nblock_size: %llu\nmax_file_size: %llu\n", sb->id, sb->blockSize,
-        sb->maxFileSize);
+    int length = snprintf(info, sizeof(info), "id: %llu\nblock_size: %llu\nmax_file_size: %llu\n", sb->id,
+        sb->blockSize, sb->maxFileSize);
     if (length < 0)
     {
         return 0;

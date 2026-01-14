@@ -8,22 +8,29 @@
  * @brief Per CPU data.
  * @defgroup kernel_cpu_percpu Per-CPU Data
  * @ingroup kernel_cpu
- * 
- * In the x86 architecture the `gs` and `fs` segment registers can be used to access data relative to the address stored in the `MSR_GS_BASE` or `MSR_FS_BASE` MSRs. In AT&T assembly this would look like this:
- * 
+ *
+ * In the x86 architecture the `gs` and `fs` segment registers can be used to access data relative to the address stored
+ * in the `MSR_GS_BASE` or `MSR_FS_BASE` MSRs. In AT&T assembly this would look like this:
+ *
  * ```
  * mov %gs:0x10, %rax ; Load the value at address in `MSR_GS_BASE` + 0x10 into rax
  * ```
- * 
- * This means that, since each cpu has its own `MSR_GS_BASE`, we can store the address of each CPU's structure in its own `MSR_GS_BASE` and then access data within that structure using offsets.
  *
- * Allocating a percpu variable then becomes as simple as allocating an offset within the `percpu` buffer in the CPU structure, and accessing it using the `gs` segment register.
- * 
- * @note Its important to be aware of the distinction that the `gs` register does not store an address directly, rather it allows us to access memory relative to the address stored in the `MSR_GS_BASE` MSR. This is why we define Per-CPU variables as offsets within the CPU structure rather than absolute addresses.
+ * This means that, since each cpu has its own `MSR_GS_BASE`, we can store the address of each CPU's structure in its
+ * own `MSR_GS_BASE` and then access data within that structure using offsets.
+ *
+ * Allocating a percpu variable then becomes as simple as allocating an offset within the `percpu` buffer in the CPU
+ * structure, and accessing it using the `gs` segment register.
+ *
+ * @note Its important to be aware of the distinction that the `gs` register does not store an address directly, rather
+ * it allows us to access memory relative to the address stored in the `MSR_GS_BASE` MSR. This is why we define Per-CPU
+ * variables as offsets within the CPU structure rather than absolute addresses.
  *
  * ## Defining Per-CPU Variables
  *
- * To define a Per-CPU variable use the `PERCPU_DEFINE()` macro. This will add a `percpu_def_t` entry to the `._percpu` section. The PERCPU_INIT()` macro can be used to allocate and initialize all Per-CPU variables defined in the module's `._percpu` section, potentially invoking any needed constructors.
+ * To define a Per-CPU variable use the `PERCPU_DEFINE()` macro. This will add a `percpu_def_t` entry to the `._percpu`
+ * section. The PERCPU_INIT()` macro can be used to allocate and initialize all Per-CPU variables defined in the
+ * module's `._percpu` section, potentially invoking any needed constructors.
  *
  * @note All percpu variables should use the `pcpu_` prefix for clarity.
  *
@@ -143,7 +150,7 @@ typedef struct
  * @brief Initialize the percpu system.
  *
  * This will setup the `gs` segment register to point to the  CPU structure.
- * 
+ *
  * @param cpu The CPU to initialize percpu for, should be the current CPU.
  */
 void percpu_init(cpu_t* cpu);

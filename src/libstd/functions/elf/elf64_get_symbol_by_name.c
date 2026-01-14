@@ -21,7 +21,7 @@ Elf64_Sym* elf64_get_symbol_by_name(const Elf64_File* elf, const char* name)
     {
         Elf64_Sym* symbol = (Elf64_Sym*)((uintptr_t)symTableBase + (i * elf->symtab->sh_entsize));
         const char* symbolName = &strTable[symbol->st_name];
-        if (elf_strcmp(symbolName, name) == 0)
+        if (strcmp(symbolName, name) == 0)
         {
             return symbol;
         }

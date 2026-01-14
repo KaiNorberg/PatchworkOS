@@ -1,10 +1,10 @@
 #pragma once
 
-#include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/cli.h>
+#include <kernel/cpu/interrupt.h>
 
-#include <sys/defs.h>
 #include <stdatomic.h>
+#include <sys/defs.h>
 
 #ifndef NDEBUG
 #include <kernel/log/panic.h>
