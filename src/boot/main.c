@@ -927,6 +927,13 @@ static EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle)
     elf64_load_segments(&kernel->elf, (Elf64_Addr)kernelPhys, minVaddr);
     kernel->physAddr = (void*)kernelPhys;
 
+    Print(L"  Entry Code: ");
+    for (size_t i = 0; i < 16; i++)
+    {
+        Print(L"%02x ", ((uint8_t*)kernel->physAddr)[kernel->elf.header->e_entry - minVaddr + i]);
+    }
+    Print(L"\n");
+
     Print(L"  Kernel loaded at 0x%lx, entry=0x%lx, size=%lu\n", kernelPhys, kernel->elf.header->e_entry, kernelSize);
 
     status = EFI_SUCCESS;
