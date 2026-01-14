@@ -194,9 +194,9 @@ void percpu_section_deinit(percpu_def_t* start, percpu_def_t* end);
 #define PERCPU_INIT() \
     do \
     { \
-        extern percpu_def_t _percpuStart; \
-        extern percpu_def_t _percpuEnd; \
-        percpu_section_init(&_percpuStart, &_percpuEnd); \
+        extern percpu_def_t _percpu_start; \
+        extern percpu_def_t _percpu_end; \
+        percpu_section_init(&_percpu_start, &_percpu_end); \
     } while (0)
 
 /**
@@ -205,9 +205,9 @@ void percpu_section_deinit(percpu_def_t* start, percpu_def_t* end);
 #define PERCPU_DEINIT() \
     do \
     { \
-        extern percpu_def_t _percpuStart; \
-        extern percpu_def_t _percpuEnd; \
-        percpu_section_deinit(&_percpuStart, &_percpuEnd); \
+        extern percpu_def_t _percpu_start; \
+        extern percpu_def_t _percpu_end; \
+        percpu_section_deinit(&_percpu_start, &_percpu_end); \
     } while (0)
 
 /** @} */

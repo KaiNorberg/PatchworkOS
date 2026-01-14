@@ -2,7 +2,7 @@
 
 .extern init_early
 .extern bootInfo
-.extern _earlyInitStackEnd
+.extern _early_init_stack_end
 
 .global _start
 .type _start, @function
@@ -15,8 +15,8 @@ _start:
     cli
     cld
 
-    // rsp = _earlyInitStackEnd
-    movq $_earlyInitStackEnd, %rsp
+    // rsp = _early_init_stack_end
+    movq $_early_init_stack_end, %rsp
 
     // bootInfo = rdi
     movq %rdi, bootInfo(%rip)

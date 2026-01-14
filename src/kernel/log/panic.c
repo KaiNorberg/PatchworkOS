@@ -26,8 +26,8 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-extern uint64_t _kernelStart;
-extern uint64_t _kernelEnd;
+extern uint64_t _kernel_start;
+extern uint64_t _kernel_end;
 
 static char panicBuffer[LOG_MAX_BUFFER] = {0};
 
@@ -349,7 +349,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
 
     LOG_PANIC("memory: %lluK/%lluK available (%lluK kernel code/data, %lluK reserved)\n",
         (freePages * PAGE_SIZE) / 1024, (totalPages * PAGE_SIZE) / 1024,
-        (((uintptr_t)&_kernelEnd - (uintptr_t)&_kernelStart) / 1024), (reservedPages * PAGE_SIZE) / 1024);
+        (((uintptr_t)&_kernel_end - (uintptr_t)&_kernel_start) / 1024), (reservedPages * PAGE_SIZE) / 1024);
 
     uint64_t cr0 = cr0_read();
     uint64_t cr2 = cr2_read();

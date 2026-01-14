@@ -37,9 +37,9 @@ typedef struct test
 #define TEST_ALL() \
     do \
     { \
-        extern test_t _testsStart; \
+        extern test_t _tests_start; \
         extern test_t _testsEnd; \
-        const test_t* test = &_testsStart; \
+        const test_t* test = &_tests_start; \
         while (test < &_testsEnd) \
         { \
             LOG_INFO("running test '%s'\n", test->name); \

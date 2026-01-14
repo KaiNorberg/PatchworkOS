@@ -1,4 +1,5 @@
 OUTPUT_FORMAT(elf64-x86-64)
+OUTPUT_ARCH(i386:x86-64)
 ENTRY(_module_procedure)
 
 PHDRS
@@ -12,55 +13,35 @@ SECTIONS
 {
     .text : ALIGN(4K)
     {
-        *(.multiboot)
         *(.text .text.*)
     } :text
 
     .rodata : ALIGN(4K)
     {
         *(.rodata .rodata.*)
-        *(.eh_frame)
+        *(.eh_frame .eh_frame.*)
         *(.eh_frame_hdr)
+        *(.note.gnu.build-id)
     } :text
 
-    .gnu.hash : 
-    {
-         *(.gnu.hash) 
-    } :text
-    .dynsym : 
-    { 
-        *(.dynsym) 
-    } :text
-    .dynstr : 
-    {
-        *(.dynstr) 
-    } :text
-    .rela.dyn : 
-    {
-        *(.rela.dyn) *(.rela.plt) 
-    } :text
-    .rela.plt : 
-    {
-        *(.rela.plt) 
-    } :text
-    .plt : 
-    {
-        *(.plt) 
-    } :text
+    .gnu.hash : { *(.gnu.hash) } :text
+    .dynsym   : { *(.dynsym) } :text
+    .dynstr   : { *(.dynstr) } :text
+    .rela.dyn : { *(.rela.dyn) } :text
+    .rela.plt : { *(.rela.plt) } :text
+    .plt : { *(.plt .plt.*) } :text
 
     . = ALIGN(4K);
 
-    .dynamic : 
-    {
-        *(.dynamic) 
-    } :data :dynamic
+    .dynamic : { *(.dynamic) } :data :dynamic
+
+    .got : { *(.got) } :data
+    .got.plt : { *(.got.plt) } :data
 
     .data : ALIGN(4K)
     {
         *(.data .data.*)
         *(.data.rel.ro .data.rel.ro.*)
-        *(.got .got.*)
-        *(.got.plt)
         *(.init_array .init_array.*)
         *(.fini_array .fini_array.*)
     } :data
@@ -71,27 +52,31 @@ SECTIONS
         *(.bss .bss.*)
     } :data
 
-    ._percpu : ALIGN(4K)
+    . = ALIGN(4K);
+    ._percpu :
     {
-        _percpuStart = .;
+        _percpu_start = .;
         KEEP(*(._percpu))
-        _percpuEnd = .;
+        _percpu_end = .;
     } :data
 
-    ._tests : ALIGN(4K)
+    . = ALIGN(4K);
+    ._tests :
     {
-        _testsStart = .;
+        _tests_start = .;
         KEEP(*(._tests))
-        _testsEnd = .;
+        _tests_end = .;
     } :data
-    
-    ._module_info : ALIGN(4K)
+
+    . = ALIGN(4K);
+    ._module_info :
     {
         KEEP(*(._module_info))
     } :data
 
     /DISCARD/ :
     {
+        *(.note.GNU-stack)
         *(.comment)
         *(.interp)
     }
