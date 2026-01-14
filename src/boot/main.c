@@ -875,34 +875,7 @@ static EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle)
     }
 
     Print(L"  Loading kernel...\n");
-    Elf64_Ehdr* header = (Elf64_Ehdr*)kernel->elf.header;
-    for (uint32_t i = 0; i < header->e_phnum; i++)
-    {
-        Elf64_Phdr* phdr = ELF64_GET_PHDR(&kernel->elf, i);
-        if (phdr->p_type != PT_LOAD)
-        {
-            Print(L"    Skipping non-loadable segment %u\n", i);
-            continue;
-        }
-        Print(L"    Loading segment %u: vaddr=0x%lx, offset=0x%lx, filesz=%lu, memsz=%lu\n", i, phdr->p_vaddr,
-            phdr->p_offset, phdr->p_filesz, phdr->p_memsz);
-        void* dest = (void*)(kernelPhys + (phdr->p_vaddr - minVaddr));
-        void* src = ELF64_AT_OFFSET(&kernel->elf, phdr->p_offset);
-        Print(L"    First bytes: ");
-        for (size_t j = 0; j < MIN(4, phdr->p_filesz); j++)
-        {
-            Print(L"%02x ", ((uint8_t*)src)[j]);
-        }
-        Print(L"\n");
-        Print(L"    Copying %lu bytes from 0x%lx to 0x%lx\n", phdr->p_filesz, src, dest);
-        memcpy(dest, src, phdr->p_filesz);
-        if (phdr->p_memsz > phdr->p_filesz)
-        {
-            Print(L"    Zeroing %lu bytes at 0x%lx\n", phdr->p_memsz - phdr->p_filesz,
-                (uintptr_t)dest + phdr->p_filesz);
-            memset((void*)((uintptr_t)dest + phdr->p_filesz), 0, phdr->p_memsz - phdr->p_filesz);
-        }
-    }
+    elf64_load_segments(&kernel->elf, kernelPhys, minVaddr);
     kernel->physAddr = (void*)kernelPhys;
 
     Print(L"  Entry Code: ");
