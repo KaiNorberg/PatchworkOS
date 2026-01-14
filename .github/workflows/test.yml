@@ -24,6 +24,15 @@ jobs:
     - name: Build PatchworkOS
       run: make all DEBUG=1 TESTING=1 QEMU_EXIT_ON_PANIC=1
 
+    - name: Debug kernel ELF
+      run: |
+        echo "=== Kernel ELF Program Headers ==="
+        readelf -l bin/kernel/kernel || true
+        echo "=== Kernel ELF Section Headers ==="
+        readelf -S bin/kernel/kernel || true
+        echo "=== Kernel file size ==="
+        ls -la bin/kernel/kernel
+
     - name: Verify PatchworkOS.img exists
       run: |
         if [ ! -f bin/PatchworkOS.img ]; then

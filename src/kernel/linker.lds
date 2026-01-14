@@ -16,23 +16,31 @@ SECTIONS
     .text : ALIGN(4K)
     {
         *(.multiboot)
-        *(.text)
+        *(.text .text.*)
     } :text
 
     .rodata : ALIGN(4K)
     {
-        *(.rodata)
+        *(.rodata .rodata.*)
+        *(.eh_frame)
+        *(.eh_frame_hdr)
     } :text
+
+    . = ALIGN(4K);
 
     .data : ALIGN(4K)
     {
-        *(.data)
+        *(.data .data.*)
+        *(.data.rel.ro .data.rel.ro.*)
+        *(.got .got.*)
+        *(.init_array .init_array.*)
+        *(.fini_array .fini_array.*)
     } :data
 
     .bss : ALIGN(4K)
     {
         *(COMMON)
-        *(.bss)
+        *(.bss .bss.*)
     } :data
 
     ._early_init_stack : ALIGN(4K)
@@ -64,4 +72,12 @@ SECTIONS
     } :data
 
     _kernelEnd = .;
+
+    /DISCARD/ :
+    {
+        *(.note .note.*)
+        *(.comment)
+        *(.gnu.hash)
+        *(.interp)
+    }
 }
