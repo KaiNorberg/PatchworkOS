@@ -22,8 +22,8 @@
 
 /**
  * @brief Internal Print Implementation.
- * @defgroup libstd_print Print
- * @ingroup libstd
+ * @defgroup libstd_common_print Print
+ * @ingroup libstd_common
  *
  * Provides a common implementation for printing formatted output, any function that needs to print formatted output
  * should define the `_PRINT_WRITE()` and `_PRINT_FILL()` macros before including this file.

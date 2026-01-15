@@ -79,9 +79,9 @@
         ret; \
     })
 
-_NORETURN static inline void _syscall_process_exit(const char* status)
+_NORETURN static inline void _syscall_exits(const char* status)
 {
-    _SYSCALL1(uint64_t, SYS_PROCESS_EXIT, const char*, status);
+    _SYSCALL1(uint64_t, SYS_EXITS, const char*, status);
     ASM("ud2");
     __builtin_unreachable();
 }
@@ -125,7 +125,7 @@ static inline clock_t _syscall_uptime(void)
 
 static inline time_t _syscall_unix_epoch(void)
 {
-    return _SYSCALL0(time_t, SYS_UNIX_EPOCH);
+    return _SYSCALL0(time_t, SYS_EPOCH);
 }
 
 static inline fd_t _syscall_open(const char* path)
@@ -278,4 +278,9 @@ static inline uint64_t _syscall_mount(const char* mountpoint, const char* fs, co
 static inline uint64_t _syscall_umount(const char* mountpoint)
 {
     return _SYSCALL1(uint64_t, SYS_UNMOUNT, const char*, mountpoint);
+}
+
+static inline uint64_t _syscall_arch_prctl(arch_prctl_t code, uintptr_t addr)
+{
+    return _SYSCALL2(uint64_t, SYS_ARCH_PRCTL, arch_prctl_t, code, uintptr_t, addr);
 }

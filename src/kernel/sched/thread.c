@@ -1,3 +1,4 @@
+#include <kernel/cpu/syscall.h>
 #include <kernel/sched/thread.h>
 
 #include <kernel/cpu/cpu.h>
@@ -17,6 +18,27 @@
 #include <string.h>
 #include <sys/list.h>
 #include <sys/math.h>
+
+static void thread_ctor(void* ptr)
+{
+    thread_t* thread = (thread_t*)ptr;
+
+    thread->process = NULL;
+    thread->id = 0;
+    list_entry_init(&thread->processEntry);
+    atomic_init(&thread->state, THREAD_PARKED);
+    thread->error = 0;
+    thread->kernelStack = (stack_pointer_t){0};
+    thread->userStack = (stack_pointer_t){0};
+    thread->wait = (wait_client_t){0};
+    thread->simd = (simd_ctx_t){0};
+    thread->notes = (note_queue_t){0};
+    thread->syscall = (syscall_ctx_t){0};
+    thread->perf = (perf_thread_ctx_t){0};
+    thread->rcu = (rcu_entry_t){0};
+    thread->fsBase = 0;
+    memset_s(&thread->frame, sizeof(interrupt_frame_t), 0, sizeof(interrupt_frame_t));
+}
 
 static cache_t cache = CACHE_CREATE(cache, "thread", sizeof(thread_t), CACHE_LINE, NULL, NULL);
 
@@ -49,9 +71,8 @@ thread_t* thread_new(process_t* process)
 
     thread->process = process;
     thread->id = atomic_fetch_add_explicit(&process->threads.newTid, 1, memory_order_relaxed);
-    list_entry_init(&thread->processEntry);
     sched_client_init(&thread->sched);
-    atomic_init(&thread->state, THREAD_PARKED);
+    atomic_store(&thread->state, THREAD_PARKED);
     thread->error = 0;
     if (stack_pointer_init(&thread->kernelStack,
             VMM_KERNEL_STACKS_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_KERNEL_STACK_PAGES),
@@ -77,13 +98,12 @@ thread_t* thread_new(process_t* process)
     syscall_ctx_init(&thread->syscall, &thread->kernelStack);
     perf_thread_ctx_init(&thread->perf);
 
-    memset(&thread->frame, 0, sizeof(interrupt_frame_t));
+    thread->fsBase = 0;
 
     REF(process);
-
     lock_acquire(&process->threads.lock);
     process->threads.count++;
-    list_push_back(&process->threads.list, &thread->processEntry);
+    list_push_back_rcu(&process->threads.list, &thread->processEntry);
     lock_release(&process->threads.lock);
     return thread;
 }
@@ -92,7 +112,7 @@ void thread_free(thread_t* thread)
 {
     lock_acquire(&thread->process->threads.lock);
     thread->process->threads.count--;
-    list_remove(&thread->processEntry);
+    list_remove_rcu(&thread->processEntry);
     lock_release(&thread->process->threads.lock);
 
     UNREF(thread->process);
@@ -144,6 +164,8 @@ void thread_load(thread_t* thread, interrupt_frame_t* frame)
     vmm_load(&thread->process->space);
     simd_ctx_load(&thread->simd);
     syscall_ctx_load(&thread->syscall);
+
+    msr_write(MSR_FS_BASE, thread->fsBase);
 }
 
 bool thread_is_note_pending(thread_t* thread)
@@ -364,4 +386,26 @@ uint64_t thread_load_atomic_from_user(thread_t* thread, atomic_uint64_t* userObj
     *outValue = atomic_load(userObj);
     space_unpin(&thread->process->space, userObj, sizeof(atomic_uint64_t));
     return 0;
+}
+
+SYSCALL_DEFINE(SYS_ARCH_PRCTL, uint64_t, arch_prctl_t op, uintptr_t addr)
+{
+    thread_t* thread = thread_current();
+
+    switch (op)
+    {
+    case ARCH_SET_FS:
+        thread->fsBase = addr;
+        msr_write(MSR_FS_BASE, addr);
+        return 0;
+    case ARCH_GET_FS:
+        if (thread_copy_to_user(thread, (void*)addr, &thread->fsBase, sizeof(uintptr_t)) == ERR)
+        {
+            return ERR;
+        }
+        return 0;
+    default:
+        errno = EINVAL;
+        return ERR;
+    }
 }

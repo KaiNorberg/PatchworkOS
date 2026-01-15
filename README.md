@@ -69,7 +69,7 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 
 ### User Space
 
-- Custom superset of the ANSI C standard library including threading, file I/O, math, PatchworkOS extensions, etc.
+- Custom superset of the ANSI C standard library including threading, buffered I/O, math.h, PatchworkOS extensions, etc.
 - Highly modular shared memory based desktop environment.
 - Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
 - Capability based containerization security model using per-process mountpoint namespaces. See [Security](#security) for more info.
@@ -84,12 +84,12 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 
 ## Notable Future Plans
 
+- Fully Asynchronous I/O and syscalls (io_uring?). <-- Currently being worked on.
 - Implement 9P file servers. <-- Currently being worked on.
 - Implement user system in user-space using namespaces.
 - Improve `share()` and `claim()` security by specifying a target PID when sharing.
 - Overhaul Desktop Window Manager to use the new security system and file servers?
 - Port LUA and use it for dynamic system configuration.
-- Fully Asynchronous I/O and syscalls (io_uring?).
 - USB support.
 
 ## Setup
@@ -215,20 +215,20 @@ read(fd, id, 31);
 close(fd);
 ```
 
-Using the `sread()` helper which reads a null-terminated string from a file descriptor, we can simplify this to:
+Using the `reads()` helper which reads a null-terminated string from a file descriptor, we can simplify this to:
 
 ```c
 fd_t fd = open("/net/local/seqpacket");
-char* id = sread(fd); 
+char* id = reads(fd); 
 close(fd);
 // ... do stuff ...
 free(id);
 ```
 
-Finally, using use the `sreadfile()` helper which reads a null-terminated string from a file from its path, we can simplify this even further to:
+Finally, using use the `readfiles()` helper which reads a null-terminated string from a file from its path, we can simplify this even further to:
 
 ```c
-char* id = sreadfile("/net/local/seqpacket"); 
+char* id = readfiles("/net/local/seqpacket"); 
 // ... do stuff ...
 free(id);
 ```
@@ -256,18 +256,18 @@ write(ctl, str, strlen(str));
 close(ctl);
 ```
 
-Using the `F()` macro which allocates formatted strings on the stack and the `swrite()` helper that writes a null-terminated string to a file descriptor:
+Using the `F()` macro which allocates formatted strings on the stack and the `writes()` helper that writes a null-terminated string to a file descriptor:
 
 ```c
 fd_t ctl = open(F("/net/local/%s/ctl", id));
-swrite(ctl, "bind myserver && listen")
+writes(ctl, "bind myserver && listen")
 close(ctl);
 ```
 
-Finally, using the `swritefile()` helper which writes a null-terminated string to a file from its path:
+Finally, using the `writefiles()` helper which writes a null-terminated string to a file from its path:
 
 ```c
-swritefile(F("/net/local/%s/ctl", id), "bind myserver && listen");
+writefiles(F("/net/local/%s/ctl", id), "bind myserver && listen");
 ```
 
 If we wanted to accept a connection using our newly created server, we just open its accept file:
@@ -283,8 +283,8 @@ The file descriptor returned when the accept file is opened can be used to send 
 For the sake of completeness, to connect the server we just create a new socket and use the `connect` command:
 
 ```c
-char* id = sreadfile("/net/local/seqpacket");
-swritefile(F("/net/local/%s/ctl", id), "connect myserver");
+char* id = readfiles("/net/local/seqpacket");
+writefiles(F("/net/local/%s/ctl", id), "connect myserver");
 free(id);
 ```
 
@@ -361,7 +361,7 @@ At this point, the process exists but its stuck blocking before it is can load i
 Now we can redirect the stdio file descriptors in the child process using the `/proc/[pid]/ctl` file, which just like the socket ctl file, allows us to send commands to control the process. In this case, we want to use two commands, `dup2` to redirect the stdio file descriptors and `close` to close the unneeded file descriptors.
 
 ```c
-swritefile(F("/proc/%d/ctl", child), F("dup2 %d 0 && dup2 %d 1 && dup2 %d 2 && close 3 -1", stdin, stdout, stderr));
+writefiles(F("/proc/%d/ctl", child), F("dup2 %d 0 && dup2 %d 1 && dup2 %d 2 && close 3 -1", stdin, stdout, stderr));
 ```
 
 > Note that `close` can either take one or two arguments. When two arguments are provided, it closes all file descriptors in the specified range. In our case `-1` causes a underflow to the maximum file descriptor value, closing all file descriptors higher than or equal to the first argument.
@@ -369,13 +369,13 @@ swritefile(F("/proc/%d/ctl", child), F("dup2 %d 0 && dup2 %d 1 && dup2 %d 2 && c
 Next, we create the environment variable by creating a file in the child's `/proc/[pid]/env/` directory:
 
 ```c
-swritefile(F("/proc/%d/env/MY_VAR:create", child), "my_value");
+writefiles(F("/proc/%d/env/MY_VAR:create", child), "my_value");
 ```
 
 Finally, we can start the child process using the `start` command:
 
 ```c
-swritefile(F("/proc/%d/ctl", child), "start");
+writefiles(F("/proc/%d/ctl", child), "start");
 ```
 
 At this point the child process will begin executing with its stdio redirected to the specified file descriptors and the environment variable set as expected.
@@ -426,7 +426,7 @@ For a basic example, say we have a process A which creates a child process B. Pr
 const char* argv[] = {"/base/bin/b", NULL};
 pid_t child = spawn(argv, SPAWN_EMPTY_NS | SPAWN_SUSPENDED);
 // Mount/bind other needed directories but not /secret
-swritefile(F("/proc/%d/ctl", child), "mount ... && bind ... && start");
+writefiles(F("/proc/%d/ctl", child), "mount ... && bind ... && start");
 ```
 
 Alternatively, process A could mount a new empty tmpfs instance in its own namespace over the `/secret` directory using the ":private" flag. This prevents a child namespace from inheriting the mountpoint and process A could store whatever it wanted there:

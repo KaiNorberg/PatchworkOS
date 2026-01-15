@@ -52,7 +52,7 @@ display_t* display_new(void)
         return NULL;
     }
 
-    disp->id = sreadfile("/net/local/seqpacket");
+    disp->id = readfiles("/net/local/seqpacket");
     if (disp->id == NULL)
     {
         free(disp);
@@ -66,7 +66,7 @@ display_t* display_new(void)
         free(disp);
         return NULL;
     }
-    if (swrite(disp->ctl, "connect dwm") == ERR)
+    if (writes(disp->ctl, "connect dwm") == ERR)
     {
         close(disp->ctl);
         free(disp->id);

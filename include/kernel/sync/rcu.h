@@ -40,12 +40,10 @@ typedef struct rcu_entry rcu_entry_t;
  * `rcu_entry_t` member and a callback function that will free the structure.
  *
  * To access RCU protected data, a read-side critical section must be created using `rcu_read_lock()` and
- * `rcu_read_unlock()`, or the `RCU_READ_SCOPE()` macro. Within the critical section, RCU protected pointers should be
- * accessed using the `RCU_DEREFERENCE()` macro, and any updates to RCU protected pointers should be done using the
- * `RCU_ASSIGN_POINTER()` macro.
+ * `rcu_read_unlock()`, or the `RCU_READ_SCOPE()` macro. 
  *
- * @see https://en.wikipedia.org/wiki/Read-copy-update for more information about RCU.
- * @see https://www.kernel.org/doc/Documentation/RCU/whatisRCU.txt for a explanation of RCU in the Linux kernel.
+ * @see [https://en.wikipedia.org/wiki/Read-copy-update](Wikipedia) for more information about RCU.
+ * @see [https://www.kernel.org/doc/Documentation/RCU/whatisRCU.txt](kernel.org) for a explanation of RCU in the Linux kernel.
  *
  * @{
  */
@@ -76,7 +74,7 @@ typedef struct rcu_entry
  */
 static inline void rcu_read_lock(void)
 {
-    cli_push();
+    sched_disable();
 }
 
 /**
@@ -86,7 +84,7 @@ static inline void rcu_read_lock(void)
  */
 static inline void rcu_read_unlock(void)
 {
-    cli_pop();
+    sched_enable();
 }
 
 /**
@@ -114,8 +112,6 @@ void rcu_call(rcu_entry_t* entry, rcu_callback_t func, void* arg);
 
 /**
  * @brief Called during a context switch to report a quiescent state.
- *
- * Will also be invoked via an IPI when a grace period starts if the CPU is not in a quiescent state.
  */
 void rcu_report_quiescent(void);
 

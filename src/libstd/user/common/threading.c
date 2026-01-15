@@ -51,6 +51,7 @@ static void _thread_remove(_thread_t* thread)
 
 static void _thread_init(_thread_t* thread)
 {
+    thread->self = thread;
     atomic_init(&thread->state, _THREAD_ATTACHED);
     thread->id = 0;
     thread->result = 0;
@@ -71,10 +72,14 @@ void _threading_init(void)
     thread0.id = _syscall_gettid();
 
     _thread_insert(&thread0);
+
+    arch_prctl(ARCH_SET_FS, (uintptr_t)&thread0);
 }
 
 _NORETURN static void _thread_entry(_thread_t* thread)
 {
+    arch_prctl(ARCH_SET_FS, (uintptr_t)thread);
+
     thrd_exit(thread->func(thread->arg));
 }
 

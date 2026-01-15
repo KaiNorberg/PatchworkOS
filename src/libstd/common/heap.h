@@ -14,8 +14,8 @@
 
 /**
  * @brief Internal Heap Implementation.
- * @defgroup libstd_heap Heap
- * @ingroup libstd
+ * @defgroup libstd_common_heap Heap
+ * @ingroup libstd_common
  *
  * We use a "segregated free list" allocator with a set of bins where each bin stores free blocks of size \f$n \cdot
  * 64\f$ bytes where \f$n\f$ is the index of the bin, up to `_HEAP_LARGE_ALLOC_THRESHOLD`. Above this size, blocks are

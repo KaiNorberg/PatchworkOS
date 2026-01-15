@@ -354,7 +354,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
     else
     {
         bool isFound = false;
-        char* pathEnv = sreadfile("/proc/self/env/PATH");
+        char* pathEnv = readfiles("/proc/self/env/PATH");
         if (pathEnv == NULL)
         {
             pathEnv = strdup("/bin:/usr/bin");

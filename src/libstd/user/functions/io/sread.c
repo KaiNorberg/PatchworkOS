@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <sys/io.h>
 
-char* sread(fd_t fd)
+char* reads(fd_t fd)
 {
     uint64_t size = 4096;
     char* buffer = malloc(size);

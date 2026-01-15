@@ -4,9 +4,9 @@
 #include <stdint.h>
 
 /**
- * @brief Common math macros.
+ * @brief Helper Macros for math operations.
  * @ingroup libstd
- * @defgroup libstd_sys_math Common math macros
+ * @defgroup libstd_sys_math Math Helpers
  *
  * The `sys/math.h` header provides common math macros for operations such as clamping, rounding, and linear
  * interpolation.

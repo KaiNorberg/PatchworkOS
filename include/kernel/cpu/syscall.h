@@ -62,7 +62,7 @@
  */
 typedef enum
 {
-    SYS_PROCESS_EXIT,
+    SYS_EXITS,
     SYS_THREAD_EXIT,
     SYS_SPAWN,
     SYS_NANOSLEEP,
@@ -70,7 +70,7 @@ typedef enum
     SYS_GETPID,
     SYS_GETTID,
     SYS_UPTIME,
-    SYS_UNIX_EPOCH,
+    SYS_EPOCH,
     SYS_OPEN,
     SYS_OPEN2,
     SYS_CLOSE,
@@ -101,6 +101,7 @@ typedef enum
     SYS_SYMLINK,
     SYS_MOUNT,
     SYS_UNMOUNT,
+    SYS_ARCH_PRCTL,
     SYS_TOTAL_AMOUNT
 } syscall_number_t;
 

@@ -21,11 +21,6 @@ int* _errno_get(void)
 
     return &thread->error;
 #else
-    _thread_t* thread = _thread_get(gettid());
-    if (thread == NULL)
-    {
-        return &garbage;
-    }
-    return &thread->err;
+    return &_THREAD_SELF->self->err;
 #endif
 }

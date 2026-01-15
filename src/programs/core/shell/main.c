@@ -59,13 +59,13 @@ void execute_command(const char* cmdline)
     pipeline_t pipeline;
     if (pipeline_init(&pipeline, cmdline, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO) == ERR)
     {
-        proc_exit(F("shell: failed to initialize pipeline (%s)\n", strerror(errno)));
+        exits(F("shell: failed to initialize pipeline (%s)\n", strerror(errno)));
     }
 
     pipeline_execute(&pipeline);
     pipeline_wait(&pipeline);
 
-    proc_exit(pipeline.status);
+    exits(pipeline.status);
 }
 
 int main(int argc, char* argv[])

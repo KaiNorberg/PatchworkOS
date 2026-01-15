@@ -6,6 +6,18 @@
 #include <sys/proc.h>
 #include <threads.h>
 
+/**
+ * @brief Threading.
+ * @defgroup libstd_common_user_threading Threading
+ * @ingroup libstd_common_user
+ * 
+ * @todo Write threading documentation.
+ * 
+ * @todo Implement Thread Local Storage (TLS).
+ * 
+ * @{
+ */
+
 #define _MTX_SPIN_COUNT 100
 
 #define _THREADS_MAX 2048
@@ -21,6 +33,7 @@ typedef void (*_thread_entry_t)(_thread_t*);
 
 typedef struct _thread
 {
+    _thread_t* self;
     atomic_uint64_t state;
     tid_t id;
     int result;
@@ -36,3 +49,7 @@ _thread_t* _thread_new(thrd_start_t func, void* arg);
 void _thread_free(_thread_t* thread);
 
 _thread_t* _thread_get(tid_t id);
+
+#define _THREAD_SELF ((_thread_t __seg_fs*)0)
+
+/** @} */

@@ -1,14 +1,14 @@
 #include <string.h>
 #include <sys/io.h>
 
-size_t swritefile(const char* path, const char* string)
+size_t writefiles(const char* path, const char* string)
 {
     fd_t fd = open(path);
     if (fd == ERR)
     {
         return ERR;
     }
-    uint64_t totalWritten = swrite(fd, string);
+    uint64_t totalWritten = writes(fd, string);
     close(fd);
     return totalWritten;
 }

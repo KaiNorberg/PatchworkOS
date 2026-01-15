@@ -227,7 +227,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
 
     if (ansi.length == 1 && ansi.buffer[0] == '\003')
     {
-        swritefile(F("/proc/%llu/notegroup", term->shell), "interrupt due to ctrl+c");
+        writefiles(F("/proc/%llu/notegroup", term->shell), "interrupt due to ctrl+c");
     }
 }
 
@@ -607,11 +607,11 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
             return ERR;
         }
 
-        if (swritefile(F("/proc/%d/ctl", term->shell),
+        if (writefiles(F("/proc/%d/ctl", term->shell),
                 F("dup2 %d 0 && dup2 %d 1 && dup2 %d 2 && close 3 -1 && start", term->stdin[0], term->stdout[1],
                     term->stdout[1])) == ERR)
         {
-            swritefile(F("/proc/%d/ctl", term->shell), "kill");
+            writefiles(F("/proc/%d/ctl", term->shell), "kill");
             close(term->stdin[0]);
             close(term->stdin[1]);
             close(term->stdout[0]);
@@ -638,7 +638,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         close(term->stdout[0]);
         close(term->stdout[1]);
 
-        swritefile(F("/proc/%d/notegroup", term->shell), "terminate due to terminal close");
+        writefiles(F("/proc/%d/notegroup", term->shell), "terminate due to terminal close");
     }
     break;
     case EVENT_LIB_QUIT:
