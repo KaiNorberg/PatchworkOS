@@ -150,7 +150,7 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
 
     LOG_DEBUG("created process pid=%d\n", process->id);
 
-    list_push_back(&_processes, &process->entry);
+    list_push_back_rcu(&_processes, &process->entry);
     lock_release(&processesLock);
     return REF(process);
 }
@@ -166,7 +166,7 @@ process_t* process_get(pid_t id)
         return NULL;
     }
 
-    return REF(CONTAINER_OF(entry, process_t, mapEntry));
+    return REF_TRY(CONTAINER_OF(entry, process_t, mapEntry));
 }
 
 namespace_t* process_get_ns(process_t* process)
@@ -251,7 +251,7 @@ void process_remove(process_t* process)
 {
     lock_acquire(&processesLock);
     map_remove(&pidMap, &process->mapEntry);
-    list_remove(&process->entry);
+    list_remove_rcu(&process->entry);
     lock_release(&processesLock);
 
     UNREF(process);

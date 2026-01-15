@@ -83,7 +83,7 @@ thread_t* thread_new(process_t* process)
 
     lock_acquire(&process->threads.lock);
     process->threads.count++;
-    list_push_back(&process->threads.list, &thread->processEntry);
+    list_push_back_rcu(&process->threads.list, &thread->processEntry);
     lock_release(&process->threads.lock);
     return thread;
 }
@@ -92,7 +92,7 @@ void thread_free(thread_t* thread)
 {
     lock_acquire(&thread->process->threads.lock);
     thread->process->threads.count--;
-    list_remove(&thread->processEntry);
+    list_remove_rcu(&thread->processEntry);
     lock_release(&thread->process->threads.lock);
 
     UNREF(thread->process);

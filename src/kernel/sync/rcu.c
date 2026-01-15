@@ -85,7 +85,7 @@ void rcu_call(rcu_entry_t* entry, rcu_callback_t func, void* arg)
     list_push_back(pcpu_rcu->batch, &entry->entry);
 }
 
-void rcu_report_quiescent(void)
+static bool rcu_check_quiescent(void)
 {
     lock_acquire(&lock);
     if (active && bitmap_is_set(&ack, SELF->id))
@@ -107,13 +107,11 @@ void rcu_report_quiescent(void)
         }
     }
     lock_release(&lock);
+    return wake;
+}
 
-    while (!list_is_empty(pcpu_rcu->ready))
-    {
-        rcu_entry_t* entry = CONTAINER_OF(list_pop_front(pcpu_rcu->ready), rcu_entry_t, entry);
-        entry->func(entry->arg);
-    }
-
+static void rcu_advance(bool wake)
+{
     if (wake)
     {
         list_t* temp = pcpu_rcu->ready;
@@ -130,8 +128,12 @@ void rcu_report_quiescent(void)
         lock_acquire(&lock);
         pcpu_rcu->grace = grace + 1;
         lock_release(&lock);
+        pcpu_rcu->grace = active ? grace : grace + 1;
     }
+}
 
+static void rcu_start_grace(void)
+{
     if (list_is_empty(pcpu_rcu->waiting))
     {
         return;
@@ -155,8 +157,32 @@ void rcu_report_quiescent(void)
             continue;
         }
 
-        ipi_wake_up(cpu, IPI_SINGLE);
+        bitmap_clear(&ack, cpu->id);
     }
+}
+
+static void rcu_invoke_callbacks(void)
+{
+    while (!list_is_empty(pcpu_rcu->ready))
+    {
+        rcu_entry_t* entry = CONTAINER_OF(list_pop_front(pcpu_rcu->ready), rcu_entry_t, entry);
+        entry->func(entry->arg);
+    }
+}
+
+void rcu_report_quiescent(void)
+{
+    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
+
+    bool wake = rcu_check_quiescent();
+
+    rcu_invoke_callbacks();
+
+    rcu_advance(wake);
+
+    rcu_invoke_callbacks();
+
+    rcu_start_grace();
 }
 
 void rcu_call_free(void* arg)

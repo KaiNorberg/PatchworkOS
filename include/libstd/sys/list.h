@@ -7,17 +7,19 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdatomic.h>
 
 /**
  * @brief Doubly linked list header.
  * @ingroup libstd
  * @defgroup libstd_sys_list Doubly linked list
  *
- * The `sys/list.h` header implements a intrusive doubly linked list where the linked list entry structure is stored
- * within each entry instead of each entry having a pointer to each stucture.
+ * The `sys/list.h` header implements a intrusive doubly linked list.
  *
  * Given a entry within a structure, the `CONTAINER_OF()` macro can be used to get a pointer to the structure from the
  * list entry pointer.
+ * 
+ * @warning If a list is protected with RCU, the `list_*_rcu()` functions must be used.
  *
  * @{
  */
@@ -234,6 +236,30 @@ static inline void list_add(list_entry_t* prev, list_entry_t* next, list_entry_t
 }
 
 /**
+ * @brief Adds a new element between two existing list entries in a RCU-safe manner.
+ *
+ * @param prev A pointer to the list entry that will precede the new element.
+ * @param next A pointer to the list entry that will follow the new element.
+ * @param elem A pointer to the `list_entry_t` to add.
+ */
+static inline void list_add_rcu(list_entry_t* prev, list_entry_t* next, list_entry_t* entry)
+{
+    assert(prev != NULL);
+    assert(next != NULL);
+    assert(entry != NULL);
+    // For RCU we allow adding an entry that is already in a list 
+    // as we cant properly remove it until all readers are done.
+    //assert(entry->next == entry && entry->prev == entry);
+    //assert(prev->next == next && next->prev == prev);
+
+    next->prev = entry;
+    entry->next = next;
+    entry->prev = prev;
+    atomic_thread_fence(memory_order_release);
+    prev->next = entry;
+}
+
+/**
  * @brief Appends an entry to the list.
  *
  * @param prev A pointer to the list entry after which the new entry will be appended.
@@ -271,6 +297,22 @@ static inline void list_remove(list_entry_t* entry)
 }
 
 /**
+ * @brief Removes a list entry from its current list in a RCU-safe manner.
+ *
+ * @warning After calling this function the entry will still be connected to the list, but iteration over the list will not find it.
+ *
+ * @param entry A pointer to the `list_entry_t` to remove.
+ */
+static inline void list_remove_rcu(list_entry_t* entry)
+{
+    assert(entry != NULL);
+
+    entry->prev->next = entry->next;
+    atomic_thread_fence(memory_order_release);
+    entry->next->prev = entry->prev;
+}
+
+/**
  * @brief Pushes an entry to the end of the list.
  *
  * @param list A pointer to the `list_t` to push the entry to.
@@ -283,6 +325,21 @@ static inline void list_push_back(list_t* list, list_entry_t* entry)
     assert(entry->next == entry && entry->prev == entry);
 
     list_add(list->head.prev, &list->head, entry);
+}
+
+/**
+ * @brief Pushes an entry to the end of the list in a RCU-safe manner.
+ *
+ * @param list A pointer to the `list_t` to push the entry to.
+ * @param entry A pointer to the `list_entry_t` to push.
+ */
+static inline void list_push_back_rcu(list_t* list, list_entry_t* entry)
+{
+    assert(list != NULL);
+    assert(entry != NULL);
+    assert(entry->next == entry && entry->prev == entry);
+
+    list_add_rcu(list->head.prev, &list->head, entry);
 }
 
 /**
