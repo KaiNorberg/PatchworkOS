@@ -134,13 +134,13 @@ size_t read(fd_t fd, void* buffer, size_t count);
 /**
  * @brief Wrapper for reading a file directly into a null-terminated string.
  *
- * The `sread()` function reads the entire contents of a file into a newly allocated null-terminated string.
+ * The `reads()` function reads the entire contents of a file into a newly allocated null-terminated string.
  * The caller is responsible for freeing the returned string.
  *
  * @param fd The file descriptor to read from.
  * @return On success, a pointer to the null-terminated string. On failure, `NULL` and `errno` is set.
  */
-char* sread(fd_t fd);
+char* reads(fd_t fd);
 
 /**
  * @brief Wrapper for reading a file directly using a path.
@@ -158,15 +158,15 @@ size_t readfile(const char* path, void* buffer, size_t count, size_t offset);
 /**
  * @brief Wrapper for reading an entire file directly into a null-terminated string.
  *
- * The `sreadfile()` function reads the entire contents of a file into a newly allocated null-terminated string.
+ * The `readfiles()` function reads the entire contents of a file into a newly allocated null-terminated string.
  * The caller is responsible for freeing the returned string.
  *
- * Equivalent to calling `open()`, `sread()`, and `close()` in sequence.
+ * Equivalent to calling `open()`, `reads()`, and `close()` in sequence.
  *
  * @param path The path to the file.
  * @return On success, a pointer to the null-terminated string. On failure, `NULL` and `errno` is set.
  */
-char* sreadfile(const char* path);
+char* readfiles(const char* path);
 
 /**
  * @brief System call for writing to files.
@@ -185,7 +185,7 @@ size_t write(fd_t fd, const void* buffer, size_t count);
  * @param string The null-terminated string to write.
  * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
  */
-size_t swrite(fd_t fd, const char* string);
+size_t writes(fd_t fd, const char* string);
 
 /**
  * @brief Wrapper for writing to a file directly using a path.
@@ -203,13 +203,13 @@ size_t writefile(const char* path, const void* buffer, size_t count, size_t offs
 /**
  * @brief Wrapper for writing a null-terminated string directly to a file using a path.
  *
- * Equivalent to calling `open()`, `swrite()`, and `close()` in sequence.
+ * Equivalent to calling `open()`, `writes()`, and `close()` in sequence.
  *
  * @param path The path to the file.
  * @param string The null-terminated string to write.
  * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
  */
-size_t swritefile(const char* path, const char* string);
+size_t writefiles(const char* path, const char* string);
 
 /**
  * @brief Wrapper for reading from a file descriptor using scan formatting.

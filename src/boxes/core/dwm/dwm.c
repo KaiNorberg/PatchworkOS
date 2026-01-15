@@ -103,7 +103,7 @@ void dwm_init(void)
         abort();
     }
 
-    char* name = sreadfile("/dev/kbd/0/name");
+    char* name = readfiles("/dev/kbd/0/name");
     if (name != NULL)
     {
         printf("dwm: using keyboard '%s'\n", name);
@@ -117,21 +117,21 @@ void dwm_init(void)
         abort();
     }
 
-    name = sreadfile("/dev/mouse/0/name");
+    name = readfiles("/dev/mouse/0/name");
     if (name != NULL)
     {
         printf("dwm: using mouse '%s'\n", name);
         free(name);
     }
 
-    id = sreadfile("/net/local/seqpacket:nonblock");
+    id = readfiles("/net/local/seqpacket:nonblock");
     if (id == NULL)
     {
         printf("dwm: failed to read seqpacket id (%s)\n", strerror(errno));
         abort();
     }
 
-    if (swritefile(F("/net/local/%s/ctl", id), "bind dwm && listen") == ERR)
+    if (writefiles(F("/net/local/%s/ctl", id), "bind dwm && listen") == ERR)
     {
         printf("dwm: failed to bind socket (%s)\n", strerror(errno));
         abort();

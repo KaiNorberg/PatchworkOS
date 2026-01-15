@@ -6,5 +6,5 @@
 
 void exit(int status)
 {
-    proc_exit(F("%d", status));
+    exits(F("%d", status));
 }

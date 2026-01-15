@@ -142,7 +142,7 @@ SYSCALL_DEFINE(SYS_UPTIME, clock_t)
     return clock_uptime();
 }
 
-SYSCALL_DEFINE(SYS_UNIX_EPOCH, time_t, time_t* timePtr)
+SYSCALL_DEFINE(SYS_EPOCH, time_t, time_t* timePtr)
 {
     time_t epoch = clock_epoch();
     if (timePtr != NULL)

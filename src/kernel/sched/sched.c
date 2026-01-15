@@ -674,7 +674,7 @@ SYSCALL_DEFINE(SYS_NANOSLEEP, uint64_t, clock_t nanoseconds)
     return sched_nanosleep(nanoseconds);
 }
 
-SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, const char* status)
+SYSCALL_DEFINE(SYS_EXITS, void, const char* status)
 {
     sched_process_exit(status);
 

@@ -329,7 +329,7 @@ uint64_t atnotify(atnotify_func_t handler, atnotify_t action);
  * @param frame The interrupt frame of the current interrupt.
  * @return On success, `true` if a note was handled, `false` otherwise.
  */
-_NORETURN void proc_exit(const char* status);
+_NORETURN void exits(const char* status);
 
 /**
  * @brief Helper for sending the "kill" command to a process.

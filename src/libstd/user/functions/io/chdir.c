@@ -7,7 +7,7 @@
 
 uint64_t chdir(const char* path)
 {
-    if (swritefile("/proc/self/cwd", path) == ERR)
+    if (writefiles("/proc/self/cwd", path) == ERR)
     {
         return ERR;
     }

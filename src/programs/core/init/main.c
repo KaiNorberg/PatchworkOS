@@ -59,7 +59,7 @@ static uint64_t init_socket_addr_wait(const char* family, const char* addr)
     {
         nanosleep(CLOCKS_PER_SEC / 10);
 
-        const char* data = sreadfile(F("/net/%s/addrs", family));
+        const char* data = readfiles(F("/net/%s/addrs", family));
         if (data == NULL)
         {
             close(addrs);

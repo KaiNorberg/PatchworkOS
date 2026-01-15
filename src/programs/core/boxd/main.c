@@ -246,7 +246,7 @@ static void box_spawn(box_spawn_t* ctx)
         goto error;
     }
 
-    if (swritefile(F("/proc/%llu/prio", pid), F("%llu", priority)) == ERR)
+    if (writefiles(F("/proc/%llu/prio", pid), F("%llu", priority)) == ERR)
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to priority failure for '%s' (%s)", args.box,
             strerror(errno));
@@ -256,7 +256,7 @@ static void box_spawn(box_spawn_t* ctx)
     section_t* env = &manifest.sections[SECTION_ENV];
     for (uint64_t i = 0; i < env->amount; i++)
     {
-        if (swritefile(F("/proc/%llu/env/%s:cw", pid, env->entries[i].key), env->entries[i].value) == ERR)
+        if (writefiles(F("/proc/%llu/env/%s:cw", pid, env->entries[i].key), env->entries[i].value) == ERR)
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to env var failure for '%s' (%s)", args.box,
                 strerror(errno));
@@ -274,7 +274,7 @@ static void box_spawn(box_spawn_t* ctx)
 
     if (shouldInheritNamespace)
     {
-        if (swrite(ctl, F("setns %llu", args.namespace)) == ERR)
+        if (writes(ctl, F("setns %llu", args.namespace)) == ERR)
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to setns failure for '%s' (%s)", args.box,
                 strerror(errno));
@@ -283,7 +283,7 @@ static void box_spawn(box_spawn_t* ctx)
     }
     else
     {
-        if (swrite(ctl, "mount /:Lrwx /sys/fs/tmpfs") == ERR)
+        if (writes(ctl, "mount /:Lrwx /sys/fs/tmpfs") == ERR)
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to root mount failure for '%s' (%s)", args.box,
                 strerror(errno));
@@ -297,7 +297,7 @@ static void box_spawn(box_spawn_t* ctx)
         char* key = namespace->entries[i].key;
         char* value = namespace->entries[i].value;
 
-        if (swrite(ctl, F("touch %s:rwcp && bind %s %s", key, key, value)) == ERR)
+        if (writes(ctl, F("touch %s:rwcp && bind %s %s", key, key, value)) == ERR)
         {
             printf("boxd: failed to bind '%s' to '%s' (%s)\n", key, value, strerror(errno));
             goto error;
@@ -313,7 +313,7 @@ static void box_spawn(box_spawn_t* ctx)
                 continue;
             }
 
-            if (swrite(ctl, F("dup2 %llu %llu", args.stdio[i], i)) == ERR)
+            if (writes(ctl, F("dup2 %llu %llu", args.stdio[i], i)) == ERR)
             {
                 snprintf(ctx->result, sizeof(ctx->result), "error due to dup2 failure for '%s' (%s)", args.box,
                     strerror(errno));
@@ -321,14 +321,14 @@ static void box_spawn(box_spawn_t* ctx)
             }
         }
 
-        if (swrite(ctl, F("setgroup %llu", args.group)) == ERR)
+        if (writes(ctl, F("setgroup %llu", args.group)) == ERR)
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to setns failure for '%s' (%s)", args.box,
                 strerror(errno));
             goto error;
         }
 
-        if (swrite(ctl, "close 3 -1") == ERR)
+        if (writes(ctl, "close 3 -1") == ERR)
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to close failure for '%s' (%s)", args.box,
                 strerror(errno));
@@ -357,7 +357,7 @@ static void box_spawn(box_spawn_t* ctx)
     }
     else
     {
-        if (swrite(ctl, "close 0 -1") == ERR)
+        if (writes(ctl, "close 0 -1") == ERR)
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to close failure for '%s' (%s)", args.box,
                 strerror(errno));
@@ -367,7 +367,7 @@ static void box_spawn(box_spawn_t* ctx)
         snprintf(ctx->result, sizeof(ctx->result), "background");
     }
 
-    if (swrite(ctl, "start") == ERR)
+    if (writes(ctl, "start") == ERR)
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to start failure for '%s' (%s)", args.box,
             strerror(errno));
@@ -407,14 +407,14 @@ int main(void)
     /// @todo Use nonblocking sockets to avoid hanging on accept or read, or just wait until we have filesystem servers
     /// and do that instead.
 
-    char* id = sreadfile("/net/local/seqpacket");
+    char* id = readfiles("/net/local/seqpacket");
     if (id == NULL)
     {
         printf("boxd: failed to open local seqpacket socket (%s)\n", strerror(errno));
         abort();
     }
 
-    if (swritefile(F("/net/local/%s/ctl", id), "bind boxspawn && listen") == ERR)
+    if (writefiles(F("/net/local/%s/ctl", id), "bind boxspawn && listen") == ERR)
     {
         printf("boxd: failed to bind to box (%s)\n", strerror(errno));
         goto error;
@@ -440,7 +440,7 @@ int main(void)
 
         box_spawn(&ctx);
 
-        if (swrite(client, ctx.result) == ERR)
+        if (writes(client, ctx.result) == ERR)
         {
             printf("boxd: failed to write response (%s)\n", strerror(errno));
         }

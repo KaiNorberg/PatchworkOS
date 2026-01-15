@@ -29,14 +29,14 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    char* id = sreadfile("/net/local/seqpacket");
+    char* id = readfiles("/net/local/seqpacket");
     if (id == NULL)
     {
         printf("boxspawn: failed to open local seqpacket socket (%s)\n", strerror(errno));
         return EXIT_FAILURE;
     }
 
-    if (swritefile(F("/net/local/%s/ctl", id), "connect boxspawn") == ERR)
+    if (writefiles(F("/net/local/%s/ctl", id), "connect boxspawn") == ERR)
     {
         printf("boxspawn: failed to connect to boxspawn (%s)\n", strerror(errno));
         free(id);
@@ -116,7 +116,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    if (swrite(data, buffer) == ERR)
+    if (writes(data, buffer) == ERR)
     {
         printf("boxspawn: failed to send request (%s)\n", strerror(errno));
         free(id);
@@ -174,5 +174,5 @@ int main(int argc, char** argv)
     }
     close(wait);
 
-    proc_exit(status);
+    exits(status);
 }

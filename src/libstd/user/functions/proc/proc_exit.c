@@ -4,9 +4,9 @@
 #include "user/common/file.h"
 #include "user/common/syscalls.h"
 
-void proc_exit(const char* status)
+void exits(const char* status)
 {
     _exit_stack_dispatch();
     _files_close();
-    _syscall_process_exit(status);
+    _syscall_exits(status);
 }

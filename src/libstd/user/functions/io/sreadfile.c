@@ -1,13 +1,13 @@
 #include <sys/io.h>
 
-char* sreadfile(const char* path)
+char* readfiles(const char* path)
 {
     fd_t fd = open(path);
     if (fd == ERR)
     {
         return NULL;
     }
-    char* str = sread(fd);
+    char* str = reads(fd);
     close(fd);
     return str;
 }
