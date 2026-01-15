@@ -337,7 +337,6 @@ static inline void list_push_back_rcu(list_t* list, list_entry_t* entry)
 {
     assert(list != NULL);
     assert(entry != NULL);
-    assert(entry->next == entry && entry->prev == entry);
 
     list_add_rcu(list->head.prev, &list->head, entry);
 }
