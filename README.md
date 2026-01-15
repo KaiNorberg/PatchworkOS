@@ -84,12 +84,12 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 
 ## Notable Future Plans
 
+- Fully Asynchronous I/O and syscalls (io_uring?). <-- Currently being worked on.
 - Implement 9P file servers. <-- Currently being worked on.
 - Implement user system in user-space using namespaces.
 - Improve `share()` and `claim()` security by specifying a target PID when sharing.
 - Overhaul Desktop Window Manager to use the new security system and file servers?
 - Port LUA and use it for dynamic system configuration.
-- Fully Asynchronous I/O and syscalls (io_uring?).
 - USB support.
 
 ## Setup
