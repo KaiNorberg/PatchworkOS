@@ -491,7 +491,7 @@ void sched_enable(void);
  *
  * @param status The exit status of the process.
  */
-_NORETURN void sched_process_exit(const char* status);
+_NORETURN void sched_exits(const char* status);
 
 /**
  * @brief Terminates the currently executing thread.

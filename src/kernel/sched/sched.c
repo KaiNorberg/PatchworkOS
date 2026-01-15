@@ -651,14 +651,14 @@ void sched_enable(void)
     atomic_fetch_sub(&sched->preemptCount, 1);
 }
 
-void sched_process_exit(const char* status)
+void sched_exits(const char* status)
 {
     thread_t* thread = thread_current();
     process_kill(thread->process, status);
 
     atomic_store(&thread->state, THREAD_DYING);
     ipi_invoke();
-    panic(NULL, "Return to sched_process_exit");
+    panic(NULL, "Return to sched_exits");
 }
 
 void sched_thread_exit(void)
@@ -676,9 +676,9 @@ SYSCALL_DEFINE(SYS_NANOSLEEP, uint64_t, clock_t nanoseconds)
 
 SYSCALL_DEFINE(SYS_EXITS, void, const char* status)
 {
-    sched_process_exit(status);
+    sched_exits(status);
 
-    panic(NULL, "Return to syscall_process_exit");
+    panic(NULL, "Return to syscall_exits");
 }
 
 SYSCALL_DEFINE(SYS_THREAD_EXIT, void)

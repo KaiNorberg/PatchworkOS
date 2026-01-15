@@ -160,7 +160,7 @@ cleanup:
         thread_jump(thread);
     }
     LOG_DEBUG("exec failed due to %s pid=%llu\n", strerror(errno), pid);
-    sched_process_exit("exec failed");
+    sched_exits("exec failed");
 }
 
 static void loader_entry(void)
