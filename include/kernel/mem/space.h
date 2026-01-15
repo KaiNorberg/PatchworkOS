@@ -39,7 +39,7 @@ typedef enum
 /**
  * @brief Space callback function.
  */
-typedef void (*space_callback_func_t)(void* private);
+typedef void (*space_callback_func_t)( void* data);
 
 /**
  * @brief Space callback structure.
@@ -48,7 +48,7 @@ typedef void (*space_callback_func_t)(void* private);
 typedef struct
 {
     space_callback_func_t func;
-    void* private;
+    void* data;
     uint64_t pageAmount;
 } space_callback_t;
 
@@ -261,7 +261,7 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
  * @param private Private data to pass to the callback function.
  * @return On success, returns the callback ID. On failure, returns `PML_MAX_CALLBACK`.
  */
-pml_callback_id_t space_alloc_callback(space_t* space, size_t pageAmount, space_callback_func_t func, void* private);
+pml_callback_id_t space_alloc_callback(space_t* space, size_t pageAmount, space_callback_func_t func,  void* data);
 
 /**
  * @brief Free a callback.

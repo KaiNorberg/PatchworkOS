@@ -64,7 +64,7 @@ typedef struct
 {
     interrupt_frame_t* frame;
     irq_virt_t virt;
-    void* private;
+    void* data;
 } irq_func_data_t;
 
 /**
@@ -79,7 +79,7 @@ typedef struct
 {
     list_entry_t entry;
     irq_func_t func;
-    void* private;
+    void* data;
     irq_virt_t virt;
 } irq_handler_t;
 
@@ -127,7 +127,7 @@ typedef struct irq_domain
 {
     list_entry_t entry;
     irq_chip_t* chip;
-    void* private;
+    void* data;
     irq_phys_t start; ///< Inclusive
     irq_phys_t end;   ///< Exclusive
 } irq_domain_t;
@@ -222,14 +222,14 @@ uint64_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu);
  * @param chip The IRQ chip to register.
  * @param start The start of the physical IRQ range.
  * @param end The end of the physical IRQ range.
- * @param private Private data for the IRQ chip, will be found in `irq_t->domain->private`.
+ * @param private Private data for the IRQ chip, will be found in `irq_t->domain->data`.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `EEXIST`: A chip with a domain overlapping the given range is already registered.
  * - `ENOMEM`: Memory allocation failed.
  * - Other errors as returned by the IRQ chip's `enable` function.
  */
-uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, void* private);
+uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end,  void* data);
 
 /**
  * @brief Unregister all instances of the given IRQ chip within the specified range.
@@ -265,7 +265,7 @@ uint64_t irq_chip_amount(void);
  * - `ENOMEM`: Memory allocation failed.
  * - Other errors as returned by the IRQ chip's `enable` function.
  */
-uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* private);
+uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func,  void* data);
 
 /**
  * @brief Unregister an IRQ handler.

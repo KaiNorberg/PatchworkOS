@@ -64,7 +64,7 @@ file_t* file_new(const path_t* path, mode_t mode)
     file->inode = REF(path->dentry->inode);
     file->path = PATH_CREATE(path->mount, path->dentry);
     file->ops = path->dentry->inode->fileOps;
-    file->private = NULL;
+    file->data = NULL;
     return file;
 }
 

@@ -86,9 +86,9 @@ static shmem_object_t* shmem_object_new(void)
     return shmem;
 }
 
-static void shmem_vmm_callback(void* private)
+static void shmem_vmm_callback( void* data)
 {
-    shmem_object_t* shmem = private;
+    shmem_object_t* shmem = data;
     if (shmem == NULL)
     {
         return;
@@ -150,13 +150,13 @@ static uint64_t shmem_open(file_t* file)
         return ERR;
     }
 
-    file->private = shmem;
+    file->data = shmem;
     return 0;
 }
 
 static void shmem_close(file_t* file)
 {
-    shmem_object_t* shmem = file->private;
+    shmem_object_t* shmem = file->data;
     if (shmem == NULL)
     {
         return;
@@ -167,7 +167,7 @@ static void shmem_close(file_t* file)
 
 static void* shmem_mmap(file_t* file, void* address, size_t length, size_t* offset, pml_flags_t flags)
 {
-    shmem_object_t* shmem = file->private;
+    shmem_object_t* shmem = file->data;
     if (shmem == NULL)
     {
         errno = EINVAL;

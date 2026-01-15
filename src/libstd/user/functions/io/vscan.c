@@ -5,7 +5,7 @@
 
 #define _SCAN_GET(ctx) \
     ({ \
-        fd_t fd = (fd_t)(ctx)->private; \
+        fd_t fd = (fd_t)(ctx)->data; \
         int res = EOF; \
         char c; \
         if (read(fd, &c, 1) == 1) \
@@ -17,7 +17,7 @@
 
 #define _SCAN_UNGET(ctx, c) \
     ({ \
-        fd_t fd = (fd_t)(ctx)->private; \
+        fd_t fd = (fd_t)(ctx)->data; \
         if ((c) != EOF) \
         { \
             seek(fd, -1, SEEK_CUR); \

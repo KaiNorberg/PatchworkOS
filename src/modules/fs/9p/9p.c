@@ -33,7 +33,7 @@ typedef struct
 
 static void ninep_super_cleanup(superblock_t* sb)
 {
-    ninep_t* ninep = sb->private;
+    ninep_t* ninep = sb->data;
     if (ninep == NULL)
     {
         return;
@@ -42,16 +42,16 @@ static void ninep_super_cleanup(superblock_t* sb)
     UNREF(ninep->in);
     UNREF(ninep->out);
     free(ninep);
-    sb->private = NULL;
+    sb->data = NULL;
 }
 
 static superblock_ops_t superOps = {
     .cleanup = ninep_super_cleanup,
 };
 
-static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* private)
+static dentry_t* ninep_mount(filesystem_t* fs, const char* options,  void* data)
 {
-    UNUSED(private);
+    UNUSED(data);
 
     if (options == NULL)
     {
@@ -128,7 +128,7 @@ static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* privat
         return NULL;
     }
 
-    superblock->private = ninep;
+    superblock->data = ninep;
 
     inode_t* inode = inode_new(superblock, 0, INODE_DIR, NULL, NULL);
     if (inode == NULL)

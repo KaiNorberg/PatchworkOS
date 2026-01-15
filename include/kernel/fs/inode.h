@@ -58,7 +58,7 @@ typedef struct inode
     time_t modifyTime; ///< Unix time stamp for last file content alteration.
     time_t changeTime; ///< Unix time stamp for the last file metadata alteration.
     time_t createTime; ///< Unix time stamp for the inode creation.
-    void* private;
+    void* data;
     superblock_t* superblock;
     const inode_ops_t* ops;
     const file_ops_t* fileOps;

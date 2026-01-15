@@ -215,7 +215,7 @@ void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment,
 }
 
 void* vmm_map(space_t* space, void* virtAddr, void* physAddr, size_t length, pml_flags_t flags,
-    space_callback_func_t func, void* private)
+    space_callback_func_t func,  void* data)
 {
     if (physAddr == NULL || length == 0 || !(flags & PML_PRESENT))
     {
@@ -242,7 +242,7 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, size_t length, pml
     pml_callback_id_t callbackId = PML_CALLBACK_NONE;
     if (func != NULL)
     {
-        callbackId = space_alloc_callback(space, mapping.pageAmount, func, private);
+        callbackId = space_alloc_callback(space, mapping.pageAmount, func, data);
         if (callbackId == PML_MAX_CALLBACK)
         {
             return space_mapping_end(space, &mapping, ENOSPC);
@@ -270,7 +270,7 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, size_t length, pml
 }
 
 void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, size_t pageAmount, pml_flags_t flags,
-    space_callback_func_t func, void* private)
+    space_callback_func_t func,  void* data)
 {
     if (pages == NULL || pageAmount == 0 || !(flags & PML_PRESENT))
     {
@@ -297,7 +297,7 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, size_t pageAmo
     pml_callback_id_t callbackId = PML_CALLBACK_NONE;
     if (func != NULL)
     {
-        callbackId = space_alloc_callback(space, pageAmount, func, private);
+        callbackId = space_alloc_callback(space, pageAmount, func, data);
         if (callbackId == PML_MAX_CALLBACK)
         {
             return space_mapping_end(space, &mapping, ENOSPC);
@@ -364,7 +364,7 @@ void* vmm_unmap(space_t* space, void* virtAddr, size_t length)
         if (callback->pageAmount == 0)
         {
             assert(index < space->callbacksLength);
-            space->callbacks[index].func(space->callbacks[index].private);
+            space->callbacks[index].func(space->callbacks[index].data);
             space_free_callback(space, index);
         }
     }

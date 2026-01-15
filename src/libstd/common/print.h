@@ -51,7 +51,7 @@ typedef struct
     size_t n;
     const char* p;
     va_list arg;
-    void* private;
+    void* data;
 } _print_ctx_t;
 typedef enum
 {
@@ -614,7 +614,7 @@ flags_done:
     return ret;
 }
 
-static inline int _print(const char* _RESTRICT format, size_t n, va_list arg, void* private)
+static inline int _print(const char* _RESTRICT format, size_t n, va_list arg,  void* data)
 {
     assert(format != NULL);
 
@@ -622,7 +622,7 @@ static inline int _print(const char* _RESTRICT format, size_t n, va_list arg, vo
         .written = 0,
         .n = n,
         .p = format,
-        .private = private,
+        .data = data,
     };
     va_copy(ctx.arg, arg);
 

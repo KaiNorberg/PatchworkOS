@@ -56,7 +56,7 @@ typedef struct ipi_chip
  */
 typedef struct
 {
-    void* private;
+    void* data;
 } ipi_func_data_t;
 
 /**
@@ -73,7 +73,7 @@ typedef void (*ipi_func_t)(ipi_func_data_t* data);
 typedef struct ipi
 {
     ipi_func_t func;
-    void* private;
+    void* data;
 } ipi_t;
 
 /**
@@ -158,7 +158,7 @@ uint64_t ipi_chip_amount(void);
  * @param cpu The specified CPU, check `ipi_flags_t`.
  * @param flags The flags for how to send the IPI.
  * @param func The function to execute on target CPU(s).
- * @param private The private data to pass to the function, will be found in `irq_func_data_t->private`.
+ * @param private The private data to pass to the function, will be found in `irq_func_data_t->data`.
  * @return On success, `0`. On failure, `ERR` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENODEV`: No IPI chip is registered.
@@ -166,7 +166,7 @@ uint64_t ipi_chip_amount(void);
  * - `EBUSY`: The target CPU's IPI queue is full, some or all IPIs could not be sent.
  * - Other errors returned by the IPI chip's `notify` function.
  */
-uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* private);
+uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func,  void* data);
 
 /**
  * @brief Wake up one or more CPUs.

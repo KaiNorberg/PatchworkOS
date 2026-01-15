@@ -18,7 +18,7 @@ static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
 static size_t mouse_name_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    mouse_t* mouse = file->inode->private;
+    mouse_t* mouse = file->inode->data;
     assert(mouse != NULL);
 
     size_t length = strlen(mouse->name);
@@ -31,7 +31,7 @@ static file_ops_t nameOps = {
 
 static uint64_t mouse_events_open(file_t* file)
 {
-    mouse_t* mouse = file->inode->private;
+    mouse_t* mouse = file->inode->data;
     assert(mouse != NULL);
 
     mouse_client_t* client = calloc(1, sizeof(mouse_client_t));
@@ -47,16 +47,16 @@ static uint64_t mouse_events_open(file_t* file)
     list_push_back(&mouse->clients, &client->entry);
     lock_release(&mouse->lock);
 
-    file->private = client;
+    file->data = client;
     return 0;
 }
 
 static void mouse_events_close(file_t* file)
 {
-    mouse_t* mouse = file->inode->private;
+    mouse_t* mouse = file->inode->data;
     assert(mouse != NULL);
 
-    mouse_client_t* client = file->private;
+    mouse_client_t* client = file->data;
     if (client == NULL)
     {
         return;
@@ -78,9 +78,9 @@ static size_t mouse_events_read(file_t* file, void* buffer, size_t count, size_t
         return 0;
     }
 
-    mouse_t* mouse = file->inode->private;
+    mouse_t* mouse = file->inode->data;
     assert(mouse != NULL);
-    mouse_client_t* client = file->private;
+    mouse_client_t* client = file->data;
     assert(client != NULL);
 
     LOCK_SCOPE(&mouse->lock);
@@ -104,9 +104,9 @@ static size_t mouse_events_read(file_t* file, void* buffer, size_t count, size_t
 
 static wait_queue_t* mouse_events_poll(file_t* file, poll_events_t* revents)
 {
-    mouse_t* mouse = file->inode->private;
+    mouse_t* mouse = file->inode->data;
     assert(mouse != NULL);
-    mouse_client_t* client = file->private;
+    mouse_client_t* client = file->data;
     assert(client != NULL);
 
     LOCK_SCOPE(&mouse->lock);
@@ -127,7 +127,7 @@ static file_ops_t eventsOps = {
 
 static void mouse_dir_cleanup(inode_t* inode)
 {
-    mouse_t* mouse = inode->private;
+    mouse_t* mouse = inode->data;
     if (mouse == NULL)
     {
         return;
@@ -193,12 +193,12 @@ mouse_t* mouse_new(const char* name)
         {
             .name = "name",
             .fileOps = &nameOps,
-            .private = mouse,
+            .data = mouse,
         },
         {
             .name = "events",
             .fileOps = &eventsOps,
-            .private = mouse,
+            .data = mouse,
         },
         {
             .name = NULL,

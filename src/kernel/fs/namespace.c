@@ -385,7 +385,7 @@ bool namespace_rcu_traverse(namespace_t* ns, mount_t** mount, dentry_t** dentry)
 }
 
 mount_t* namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, const char* options, mode_t mode,
-    void* private)
+     void* data)
 {
     if (ns == NULL || fs == NULL)
     {
@@ -393,7 +393,7 @@ mount_t* namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, cons
         return NULL;
     }
 
-    dentry_t* root = fs->mount(fs, options, private);
+    dentry_t* root = fs->mount(fs, options, data);
     if (root == NULL)
     {
         return NULL;

@@ -51,13 +51,13 @@ static uint64_t local_socket_init(socket_t* sock)
     {
         return ERR;
     }
-    sock->private = data;
+    sock->data = data;
     return 0;
 }
 
 static void local_socket_deinit(socket_t* sock)
 {
-    local_socket_t* data = sock->private;
+    local_socket_t* data = sock->data;
     if (data == NULL)
     {
         return;
@@ -88,12 +88,12 @@ static void local_socket_deinit(socket_t* sock)
     }
 
     free(data);
-    sock->private = NULL;
+    sock->data = NULL;
 }
 
 static uint64_t local_socket_bind(socket_t* sock)
 {
-    local_socket_t* data = sock->private;
+    local_socket_t* data = sock->data;
     if (data == NULL)
     {
         errno = EINVAL;
@@ -118,7 +118,7 @@ static uint64_t local_socket_bind(socket_t* sock)
 
 static uint64_t local_socket_listen(socket_t* sock, uint32_t backlog)
 {
-    local_socket_t* data = sock->private;
+    local_socket_t* data = sock->data;
     if (data == NULL)
     {
         errno = EINVAL;
@@ -144,7 +144,7 @@ static uint64_t local_socket_listen(socket_t* sock, uint32_t backlog)
 
 static uint64_t local_socket_connect(socket_t* sock)
 {
-    local_socket_t* data = sock->private;
+    local_socket_t* data = sock->data;
     if (data == NULL)
     {
         errno = EINVAL;
@@ -198,7 +198,7 @@ static uint64_t local_socket_connect(socket_t* sock)
 
 static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mode)
 {
-    local_socket_t* data = sock->private;
+    local_socket_t* data = sock->data;
     if (data == NULL)
     {
         errno = EINVAL;
@@ -249,7 +249,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
 
     assert(conn != NULL);
 
-    local_socket_t* newData = newSock->private;
+    local_socket_t* newData = newSock->data;
     if (newData == NULL)
     {
         errno = EINVAL;
@@ -265,7 +265,7 @@ static size_t local_socket_send(socket_t* sock, const void* buffer, size_t count
 {
     UNUSED(offset);
 
-    local_socket_t* data = sock->private;
+    local_socket_t* data = sock->data;
     if (data == NULL)
     {
         errno = EINVAL;
@@ -333,7 +333,7 @@ static size_t local_socket_recv(socket_t* sock, void* buffer, size_t count, size
 {
     UNUSED(offset);
 
-    local_socket_t* data = sock->private;
+    local_socket_t* data = sock->data;
     if (data == NULL)
     {
         errno = EINVAL;
@@ -408,7 +408,7 @@ static size_t local_socket_recv(socket_t* sock, void* buffer, size_t count, size
 
 static wait_queue_t* local_socket_poll(socket_t* sock, poll_events_t* revents)
 {
-    local_socket_t* data = sock->private;
+    local_socket_t* data = sock->data;
     if (data == NULL)
     {
         errno = EINVAL;

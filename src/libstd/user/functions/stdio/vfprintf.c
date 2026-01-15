@@ -5,7 +5,7 @@
 
 #define _PRINT_WRITE(ctx, buffer, count) \
     ({ \
-        FILE* file = (FILE*)(ctx)->private; \
+        FILE* file = (FILE*)(ctx)->data; \
         int ret = 0; \
         if (fwrite(buffer, 1, count, file) != (size_t)(count)) \
         { \
@@ -16,7 +16,7 @@
 
 #define _PRINT_FILL(ctx, c, count) \
     ({ \
-        FILE* file = (FILE*)(ctx)->private; \
+        FILE* file = (FILE*)(ctx)->data; \
         int ret = 0; \
         for (size_t i = 0; i < (size_t)(count); i++) \
         { \

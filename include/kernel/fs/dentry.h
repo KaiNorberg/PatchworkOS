@@ -110,7 +110,7 @@ typedef struct dir_ctx
      */
     bool (*emit)(dir_ctx_t* ctx, const char* name, ino_t number, itype_t type);
     size_t pos;    ///< The current position in the directory, can be used to skip entries.
-    void* private; ///< Private data that the filesystem can use to conveniently pass data.
+    void* data; ///< Private data that the filesystem can use to conveniently pass data.
     size_t index;  ///< An index that the filesystem can use for its own purposes.
 } dir_ctx_t;
 
@@ -162,7 +162,7 @@ typedef struct dentry
     list_t children;
     superblock_t* superblock;
     const dentry_ops_t* ops;
-    void* private;
+    void* data;
     struct dentry* next;          ///< Next dentry in the dentry cache hash bucket.
     _Atomic(uint64_t) mountCount; ///< Number of mounts targeting this dentry.
     rcu_entry_t rcu;              ///< RCU entry for deferred cleanup.

@@ -6,13 +6,13 @@
 
 #define _SCAN_GET(ctx) \
     ({ \
-        FILE* file = (FILE*)(ctx)->private; \
+        FILE* file = (FILE*)(ctx)->data; \
         fgetc(file); \
     })
 
 #define _SCAN_UNGET(ctx, c) \
     ({ \
-        FILE* file = (FILE*)(ctx)->private; \
+        FILE* file = (FILE*)(ctx)->data; \
         if ((c) != EOF) \
         { \
             ungetc(c, file); \

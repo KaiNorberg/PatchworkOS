@@ -31,7 +31,7 @@ static inode_t* tmpfs_inode_new(superblock_t* superblock, itype_t type, void* bu
 
 static void tmpfs_dentry_add(dentry_t* dentry)
 {
-    tmpfs_superblock_data_t* super = dentry->superblock->private;
+    tmpfs_superblock_data_t* super = dentry->superblock->data;
 
     lock_acquire(&super->lock);
     list_push_back(&super->dentrys, &dentry->otherEntry);
@@ -41,7 +41,7 @@ static void tmpfs_dentry_add(dentry_t* dentry)
 
 static void tmpfs_dentry_remove(dentry_t* dentry)
 {
-    tmpfs_superblock_data_t* super = dentry->superblock->private;
+    tmpfs_superblock_data_t* super = dentry->superblock->data;
 
     lock_acquire(&super->lock);
     list_remove(&dentry->otherEntry);
@@ -55,12 +55,12 @@ static size_t tmpfs_read(file_t* file, void* buffer, size_t count, size_t* offse
 {
     MUTEX_SCOPE(&file->inode->mutex);
 
-    if (file->inode->private == NULL)
+    if (file->inode->data == NULL)
     {
         return 0;
     }
 
-    return BUFFER_READ(buffer, count, offset, file->inode->private, file->inode->size);
+    return BUFFER_READ(buffer, count, offset, file->inode->data, file->inode->size);
 }
 
 static size_t tmpfs_write(file_t* file, const void* buffer, size_t count, size_t* offset)
@@ -70,17 +70,17 @@ static size_t tmpfs_write(file_t* file, const void* buffer, size_t count, size_t
     size_t requiredSize = *offset + count;
     if (requiredSize > file->inode->size)
     {
-        void* newData = realloc(file->inode->private, requiredSize);
+        void* newData = realloc(file->inode->data, requiredSize);
         if (newData == NULL)
         {
             return ERR;
         }
         memset(newData + file->inode->size, 0, requiredSize - file->inode->size);
-        file->inode->private = newData;
+        file->inode->data = newData;
         file->inode->size = requiredSize;
     }
 
-    return BUFFER_WRITE(buffer, count, offset, file->inode->private, file->inode->size);
+    return BUFFER_WRITE(buffer, count, offset, file->inode->data, file->inode->size);
 }
 
 static file_ops_t fileOps = {
@@ -110,10 +110,10 @@ static void tmpfs_truncate(inode_t* inode)
 {
     MUTEX_SCOPE(&inode->mutex);
 
-    if (inode->private != NULL)
+    if (inode->data != NULL)
     {
-        free(inode->private);
-        inode->private = NULL;
+        free(inode->data);
+        inode->data = NULL;
     }
     inode->size = 0;
 }
@@ -132,14 +132,14 @@ static uint64_t tmpfs_readlink(inode_t* inode, char* buffer, uint64_t count)
 {
     MUTEX_SCOPE(&inode->mutex);
 
-    if (inode->private == NULL)
+    if (inode->data == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
     uint64_t copySize = MIN(count, inode->size);
-    memcpy(buffer, inode->private, copySize);
+    memcpy(buffer, inode->data, copySize);
     return copySize;
 }
 
@@ -184,10 +184,10 @@ static uint64_t tmpfs_remove(inode_t* dir, dentry_t* target)
 
 static void tmpfs_inode_cleanup(inode_t* inode)
 {
-    if (inode->private != NULL)
+    if (inode->data != NULL)
     {
-        free(inode->private);
-        inode->private = NULL;
+        free(inode->data);
+        inode->data = NULL;
         inode->size = 0;
     }
 }
@@ -242,7 +242,7 @@ static dentry_t* tmpfs_load_file(superblock_t* superblock, dentry_t* parent, con
 
 static dentry_t* tmpfs_load_dir(superblock_t* superblock, dentry_t* parent, const char* name, const boot_dir_t* in)
 {
-    tmpfs_superblock_data_t* superData = superblock->private;
+    tmpfs_superblock_data_t* superData = superblock->data;
 
     dentry_t* dentry = dentry_new(superblock, parent, name);
     if (dentry == NULL)
@@ -276,9 +276,9 @@ static dentry_t* tmpfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     return REF(dentry);
 }
 
-static dentry_t* tmpfs_mount(filesystem_t* fs, const char* options, void* private)
+static dentry_t* tmpfs_mount(filesystem_t* fs, const char* options,  void* data)
 {
-    UNUSED(private);
+    UNUSED(data);
 
     if (options != NULL)
     {
@@ -296,14 +296,14 @@ static dentry_t* tmpfs_mount(filesystem_t* fs, const char* options, void* privat
     superblock->blockSize = 0;
     superblock->maxFileSize = UINT64_MAX;
 
-    tmpfs_superblock_data_t* data = malloc(sizeof(tmpfs_superblock_data_t));
-    if (data == NULL)
+    tmpfs_superblock_data_t* tmpfsData = malloc(sizeof(tmpfs_superblock_data_t));
+    if (tmpfsData == NULL)
     {
         return NULL;
     }
-    list_init(&data->dentrys);
-    lock_init(&data->lock);
-    superblock->private = data;
+    list_init(&tmpfsData->dentrys);
+    lock_init(&tmpfsData->lock);
+    superblock->data = tmpfsData;
 
     if (!initialized)
     {
@@ -354,17 +354,17 @@ static inode_t* tmpfs_inode_new(superblock_t* superblock, itype_t type, void* bu
 
     if (buffer != NULL)
     {
-        inode->private = malloc(size);
-        if (inode->private == NULL)
+        inode->data = malloc(size);
+        if (inode->data == NULL)
         {
             return NULL;
         }
-        memcpy(inode->private, buffer, size);
+        memcpy(inode->data, buffer, size);
         inode->size = size;
     }
     else
     {
-        inode->private = NULL;
+        inode->data = NULL;
         inode->size = 0;
     }
 

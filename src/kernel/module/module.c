@@ -46,7 +46,7 @@ static bool cacheValid = false;
 
 static mutex_t lock = MUTEX_CREATE(lock);
 
-static void* module_resolve_symbol_callback(const char* name, void* private);
+static void* module_resolve_symbol_callback(const char* name,  void* data);
 
 #define MODULE_SYMBOL_ALLOWED(type, binding, name) \
     (((type) == STT_OBJECT || (type) == STT_FUNC) && ((binding) == STB_GLOBAL) && \
@@ -909,9 +909,9 @@ static uint64_t module_load_dependency(module_load_ctx_t* ctx, const char* symbo
     return 0;
 }
 
-static void* module_resolve_symbol_callback(const char* symbolName, void* private)
+static void* module_resolve_symbol_callback(const char* symbolName,  void* data)
 {
-    module_load_ctx_t* ctx = private;
+    module_load_ctx_t* ctx = data;
 
     symbol_info_t symbolInfo;
     if (symbol_resolve_name(&symbolInfo, symbolName) == ERR)

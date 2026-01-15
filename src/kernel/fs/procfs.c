@@ -31,7 +31,7 @@ static uint64_t procfs_revalidate_hide(dentry_t* dentry)
 {
     process_t* current = process_current();
     assert(current != NULL);
-    process_t* process = dentry->inode->private;
+    process_t* process = dentry->inode->data;
     assert(process != NULL);
 
     namespace_t* currentNs = process_get_ns(current);
@@ -63,7 +63,7 @@ static dentry_ops_t hideDentryOps = {
 
 static size_t procfs_prio_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     priority_t priority = atomic_load(&process->priority);
 
@@ -76,7 +76,7 @@ static size_t procfs_prio_write(file_t* file, const void* buffer, size_t count, 
 {
     UNUSED(offset);
 
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     char prioStr[MAX_NAME];
     if (count >= MAX_NAME)
@@ -111,7 +111,7 @@ static file_ops_t prioOps = {
 
 static size_t procfs_cwd_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
@@ -137,7 +137,7 @@ static size_t procfs_cwd_write(file_t* file, const void* buffer, size_t count, s
 {
     UNUSED(offset);
 
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     char cwdStr[MAX_PATH];
     if (count >= MAX_PATH)
@@ -193,7 +193,7 @@ static file_ops_t cwdOps = {
 
 static size_t procfs_cmdline_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     if (process->argv == NULL || process->argc == 0)
     {
@@ -250,7 +250,7 @@ static size_t procfs_note_write(file_t* file, const void* buffer, size_t count, 
         return ERR;
     }
 
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     RCU_READ_SCOPE();
 
@@ -289,7 +289,7 @@ static size_t procfs_notegroup_write(file_t* file, const void* buffer, size_t co
         errno = EINVAL;
         return ERR;
     }
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     char string[NOTE_MAX] = {0};
     memcpy_s(string, NOTE_MAX, buffer, count);
@@ -307,7 +307,7 @@ static file_ops_t notegroupOps = {
 
 static uint64_t procfs_group_open(file_t* file)
 {
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     group_t* group = group_get(&process->group);
     if (group == NULL)
@@ -315,20 +315,20 @@ static uint64_t procfs_group_open(file_t* file)
         return ERR;
     }
 
-    file->private = group;
+    file->data = group;
     return 0;
 }
 
 static void procfs_group_close(file_t* file)
 {
-    group_t* group = file->private;
+    group_t* group = file->data;
     if (group == NULL)
     {
         return;
     }
 
     UNREF(group);
-    file->private = NULL;
+    file->data = NULL;
 }
 
 static file_ops_t groupOps = {
@@ -338,7 +338,7 @@ static file_ops_t groupOps = {
 
 static size_t procfs_pid_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     char pidStr[MAX_NAME];
     uint32_t length = snprintf(pidStr, MAX_NAME, "%llu", process->id);
@@ -351,7 +351,7 @@ static file_ops_t pidOps = {
 
 static size_t procfs_wait_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     if (WAIT_BLOCK(&process->dyingQueue, atomic_load(&process->flags) & PROCESS_DYING) == ERR)
     {
@@ -366,7 +366,7 @@ static size_t procfs_wait_read(file_t* file, void* buffer, size_t count, size_t*
 
 static wait_queue_t* procfs_wait_poll(file_t* file, poll_events_t* revents)
 {
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
     if (atomic_load(&process->flags) & PROCESS_DYING)
     {
         *revents |= POLLIN;
@@ -383,7 +383,7 @@ static file_ops_t waitOps = {
 
 static size_t procfs_perf_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
     size_t userPages = space_user_page_count(&process->space);
 
     RCU_READ_SCOPE();
@@ -413,7 +413,7 @@ static file_ops_t perfOps = {
 
 static uint64_t procfs_ns_open(file_t* file)
 {
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
@@ -421,19 +421,19 @@ static uint64_t procfs_ns_open(file_t* file)
         return ERR;
     }
 
-    file->private = ns;
+    file->data = ns;
     return 0;
 }
 
 static void procfs_ns_close(file_t* file)
 {
-    if (file->private == NULL)
+    if (file->data == NULL)
     {
         return;
     }
 
-    UNREF(file->private);
-    file->private = NULL;
+    UNREF(file->data);
+    file->data = NULL;
 }
 
 static file_ops_t nsOps = {
@@ -449,7 +449,7 @@ static uint64_t procfs_ctl_close(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     if (argc == 2)
     {
@@ -498,7 +498,7 @@ static uint64_t procfs_ctl_dup2(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     fd_t oldFd;
     if (sscanf(argv[1], "%lld", &oldFd) != 1)
@@ -530,7 +530,7 @@ static uint64_t procfs_ctl_bind(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
     process_t* writing = process_current();
 
     pathname_t targetName;
@@ -593,7 +593,7 @@ static uint64_t procfs_ctl_mount(file_t* file, uint64_t argc, const char** argv)
     }
 
     process_t* writing = process_current();
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     pathname_t mountname;
     if (pathname_init(&mountname, argv[1]) == ERR)
@@ -640,7 +640,7 @@ static uint64_t procfs_ctl_touch(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     pathname_t pathname;
     if (pathname_init(&pathname, argv[1]) == ERR)
@@ -667,7 +667,7 @@ static uint64_t procfs_ctl_start(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     atomic_fetch_and(&process->flags, ~PROCESS_SUSPENDED);
     wait_unblock(&process->suspendQueue, WAIT_ALL, EOK);
@@ -679,7 +679,7 @@ static uint64_t procfs_ctl_kill(file_t* file, uint64_t argc, const char** argv)
 {
     UNUSED(argv);
 
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     if (argc == 2)
     {
@@ -700,7 +700,7 @@ static uint64_t procfs_ctl_setns(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     fd_t fd;
     if (sscanf(argv[1], "%llu", &fd) != 1)
@@ -722,7 +722,7 @@ static uint64_t procfs_ctl_setns(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    namespace_t* ns = nsFile->private;
+    namespace_t* ns = nsFile->data;
     if (ns == NULL)
     {
         errno = EINVAL;
@@ -741,7 +741,7 @@ static uint64_t procfs_ctl_setgroup(file_t* file, uint64_t argc, const char** ar
         return ERR;
     }
 
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     fd_t fd;
     if (sscanf(argv[1], "%llu", &fd) != 1)
@@ -763,7 +763,7 @@ static uint64_t procfs_ctl_setgroup(file_t* file, uint64_t argc, const char** ar
         return ERR;
     }
 
-    group_t* target = groupFile->private;
+    group_t* target = groupFile->data;
     if (target == NULL)
     {
         errno = EINVAL;
@@ -790,7 +790,7 @@ CTL_STANDARD_OPS_DEFINE(ctlOps,
 
 static size_t procfs_env_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     const char* value = env_get(&process->env, file->path.dentry->name);
     if (value == NULL)
@@ -806,7 +806,7 @@ static size_t procfs_env_write(file_t* file, const void* buffer, size_t count, s
 {
     UNUSED(offset);
 
-    process_t* process = file->inode->private;
+    process_t* process = file->inode->data;
 
     char value[MAX_NAME];
     if (count >= MAX_NAME)
@@ -835,7 +835,7 @@ static uint64_t procfs_env_lookup(inode_t* dir, dentry_t* target)
 {
     UNUSED(target);
 
-    process_t* process = dir->private;
+    process_t* process = dir->data;
     assert(process != NULL);
 
     if (env_get(&process->env, target->name) == NULL)
@@ -849,7 +849,7 @@ static uint64_t procfs_env_lookup(inode_t* dir, dentry_t* target)
         return ERR;
     }
     UNREF_DEFER(inode);
-    inode->private = process; // No reference
+    inode->data = process; // No reference
 
     dentry_make_positive(target, inode);
 
@@ -864,7 +864,7 @@ static uint64_t procfs_env_create(inode_t* dir, dentry_t* target, mode_t mode)
         return ERR;
     }
 
-    process_t* process = dir->private;
+    process_t* process = dir->data;
     assert(process != NULL);
 
     if (env_set(&process->env, target->name, "") == ERR)
@@ -878,7 +878,7 @@ static uint64_t procfs_env_create(inode_t* dir, dentry_t* target, mode_t mode)
         return ERR;
     }
     UNREF_DEFER(inode);
-    inode->private = process; // No reference
+    inode->data = process; // No reference
 
     dentry_make_positive(target, inode);
     return 0;
@@ -886,7 +886,7 @@ static uint64_t procfs_env_create(inode_t* dir, dentry_t* target, mode_t mode)
 
 static uint64_t procfs_env_remove(inode_t* dir, dentry_t* target)
 {
-    process_t* process = dir->private;
+    process_t* process = dir->data;
     assert(process != NULL);
 
     if (env_unset(&process->env, target->name) == ERR)
@@ -910,7 +910,7 @@ static uint64_t procfs_env_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         return 0;
     }
 
-    process_t* process = dentry->inode->private;
+    process_t* process = dentry->inode->data;
     assert(process != NULL);
 
     MUTEX_SCOPE(&process->env.mutex);
@@ -1046,7 +1046,7 @@ static procfs_entry_t procEntries[] = {
 
 static uint64_t procfs_pid_lookup(inode_t* dir, dentry_t* target)
 {
-    process_t* process = dir->private;
+    process_t* process = dir->data;
     assert(process != NULL);
 
     for (size_t i = 0; i < ARRAY_SIZE(pidEntries); i++)
@@ -1063,7 +1063,7 @@ static uint64_t procfs_pid_lookup(inode_t* dir, dentry_t* target)
             return 0;
         }
         UNREF_DEFER(inode);
-        inode->private = process; // No reference
+        inode->data = process; // No reference
 
         if (pidEntries[i].dentryOps != NULL)
         {
@@ -1079,14 +1079,14 @@ static uint64_t procfs_pid_lookup(inode_t* dir, dentry_t* target)
 
 static void procfs_pid_cleanup(inode_t* inode)
 {
-    process_t* process = inode->private;
+    process_t* process = inode->data;
     if (process == NULL)
     {
         return;
     }
 
     UNREF(process);
-    inode->private = NULL;
+    inode->data = NULL;
 }
 
 static uint64_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
@@ -1097,7 +1097,7 @@ static uint64_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     }
 
     process_t* current = process_current();
-    process_t* process = dentry->inode->private;
+    process_t* process = dentry->inode->data;
     assert(process != NULL);
 
     for (size_t i = 0; i < ARRAY_SIZE(pidEntries); i++)
@@ -1179,7 +1179,7 @@ static uint64_t procfs_lookup(inode_t* dir, dentry_t* target)
         return ERR;
     }
     UNREF_DEFER(inode);
-    inode->private = REF(process);
+    inode->data = REF(process);
 
     target->ops = &pidDentryOps;
 
@@ -1237,9 +1237,9 @@ static dentry_ops_t procDentryOps = {
     .iterate = procfs_iterate,
 };
 
-static dentry_t* procfs_mount(filesystem_t* fs, const char* options, void* private)
+static dentry_t* procfs_mount(filesystem_t* fs, const char* options,  void* data)
 {
-    UNUSED(private);
+    UNUSED(data);
 
     if (options != NULL)
     {

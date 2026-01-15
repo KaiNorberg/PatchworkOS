@@ -47,7 +47,7 @@ static uint64_t ioapic_enable(irq_t* irq)
 {
     CLI_SCOPE();
 
-    ioapic_t* ioapic = irq->domain->private;
+    ioapic_t* ioapic = irq->domain->data;
 
     ioapic_redirect_entry_t redirect = {
         .vector = irq->virt,
@@ -67,7 +67,7 @@ static uint64_t ioapic_enable(irq_t* irq)
 
 static void ioapic_disable(irq_t* irq)
 {
-    ioapic_t* ioapic = irq->domain->private;
+    ioapic_t* ioapic = irq->domain->data;
 
     ioapic_redirect_entry_t redirect = {.mask = 1};
 

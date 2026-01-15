@@ -94,7 +94,7 @@ static void dentry_free(dentry_t* dentry)
     {
         dentry->ops->cleanup(dentry);
     }
-    dentry->private = NULL;
+    dentry->data = NULL;
 
     if (dentry->inode != NULL)
     {
@@ -122,7 +122,7 @@ static void dentry_ctor(void* ptr)
     list_init(&dentry->children);
     dentry->superblock = NULL;
     dentry->ops = NULL;
-    dentry->private = NULL;
+    dentry->data = NULL;
     dentry->next = NULL;
     atomic_init(&dentry->mountCount, 0);
     dentry->rcu = (rcu_entry_t){0};

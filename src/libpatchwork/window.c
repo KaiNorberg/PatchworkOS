@@ -311,7 +311,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
 }
 
 window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surface_type_t type, window_flags_t flags,
-    procedure_t procedure, void* private)
+    procedure_t procedure,  void* data)
 {
     if (disp == NULL || name == NULL || rect == NULL || procedure == NULL || strnlen_s(name, MAX_NAME + 1) >= MAX_NAME)
     {
@@ -402,7 +402,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
             RECT_WIDTH(&win->rect) - theme->frameSize, RECT_HEIGHT(&win->rect) - theme->frameSize);
 
         win->clientElement =
-            element_new(win->root, WINDOW_CLIENT_ELEM_ID, &clientRect, "client", ELEMENT_NONE, procedure, private);
+            element_new(win->root, WINDOW_CLIENT_ELEM_ID, &clientRect, "client", ELEMENT_NONE, procedure, data);
         if (win->clientElement == NULL)
         {
             window_free(win);
@@ -412,7 +412,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     else
     {
         win->clientElement =
-            element_new_root(win, WINDOW_CLIENT_ELEM_ID, &rootRect, "client", ELEMENT_NONE, procedure, private);
+            element_new_root(win, WINDOW_CLIENT_ELEM_ID, &rootRect, "client", ELEMENT_NONE, procedure, data);
         if (win->clientElement == NULL)
         {
             window_free(win);

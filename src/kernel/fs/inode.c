@@ -19,7 +19,7 @@ static void inode_free(inode_t* inode)
     {
         inode->ops->cleanup(inode);
     }
-    inode->private = NULL;
+    inode->data = NULL;
 
     if (inode->superblock != NULL)
     {
@@ -44,7 +44,7 @@ static void inode_ctor(void* ptr)
     inode->modifyTime = 0;
     inode->changeTime = 0;
     inode->createTime = 0;
-    inode->private = NULL;
+    inode->data = NULL;
     inode->superblock = NULL;
     inode->ops = NULL;
     inode->fileOps = NULL;

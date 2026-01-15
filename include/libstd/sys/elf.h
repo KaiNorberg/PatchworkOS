@@ -896,7 +896,7 @@ void elf64_load_segments(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offse
  * @return On success, `0`. On failure, `ERR`.
  */
 uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset,
-    void* (*resolve_symbol)(const char* name, void* private), void* private);
+    void* (*resolve_symbol)(const char* name,  void* data),  void* data);
 
 /**
  * @brief Get a string from the string table section at the given offset

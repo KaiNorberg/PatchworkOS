@@ -16,7 +16,7 @@ static uint64_t element_send_init(element_t* elem)
 }
 
 static element_t* element_new_raw(element_id_t id, const rect_t* rect, const char* text, element_flags_t flags,
-    procedure_t procedure, void* private)
+    procedure_t procedure,  void* data)
 {
     element_t* elem = malloc(sizeof(element_t));
     if (elem == NULL)
@@ -29,7 +29,7 @@ static element_t* element_new_raw(element_id_t id, const rect_t* rect, const cha
     elem->id = id;
     elem->proc = procedure;
     elem->win = NULL;
-    elem->private = private;
+    elem->data = data;
     elem->rect = *rect;
     elem->flags = flags;
     elem->text = strdup(text);
@@ -46,7 +46,7 @@ static element_t* element_new_raw(element_id_t id, const rect_t* rect, const cha
 }
 
 element_t* element_new(element_t* parent, element_id_t id, const rect_t* rect, const char* text, element_flags_t flags,
-    procedure_t procedure, void* private)
+    procedure_t procedure,  void* data)
 {
     if (parent == NULL || rect == NULL || text == NULL || procedure == NULL)
     {
@@ -54,7 +54,7 @@ element_t* element_new(element_t* parent, element_id_t id, const rect_t* rect, c
         return NULL;
     }
 
-    element_t* elem = element_new_raw(id, rect, text, flags, procedure, private);
+    element_t* elem = element_new_raw(id, rect, text, flags, procedure, data);
     if (elem == NULL)
     {
         errno = ENOMEM;
@@ -74,7 +74,7 @@ element_t* element_new(element_t* parent, element_id_t id, const rect_t* rect, c
 }
 
 element_t* element_new_root(window_t* win, element_id_t id, const rect_t* rect, const char* text, element_flags_t flags,
-    procedure_t procedure, void* private)
+    procedure_t procedure,  void* data)
 {
     if (win == NULL || rect == NULL || text == NULL || procedure == NULL)
     {
@@ -82,7 +82,7 @@ element_t* element_new_root(window_t* win, element_id_t id, const rect_t* rect, 
         return NULL;
     }
 
-    element_t* elem = element_new_raw(id, rect, text, flags, procedure, private);
+    element_t* elem = element_new_raw(id, rect, text, flags, procedure, data);
     if (elem == NULL)
     {
         errno = ENOMEM;
@@ -160,14 +160,14 @@ element_t* element_find(element_t* elem, element_id_t id)
     return NULL;
 }
 
-void element_set_private(element_t* elem, void* private)
+void element_set_private(element_t* elem,  void* data)
 {
     if (elem == NULL)
     {
         return;
     }
 
-    elem->private = private;
+    elem->data = data;
 }
 
 void* element_get_private(element_t* elem)
@@ -177,7 +177,7 @@ void* element_get_private(element_t* elem)
         return NULL;
     }
 
-    return elem->private;
+    return elem->data;
 }
 
 element_id_t element_get_id(element_t* elem)
