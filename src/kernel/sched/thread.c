@@ -18,6 +18,26 @@
 #include <sys/list.h>
 #include <sys/math.h>
 
+static void thread_ctor(void* ptr)
+{
+    thread_t* thread = (thread_t*)ptr;
+
+    thread->process = NULL;
+    thread->id = 0;
+    list_entry_init(&thread->processEntry);
+    atomic_init(&thread->state, THREAD_PARKED);
+    thread->error = 0;
+    thread->kernelStack = (stack_pointer_t){0};
+    thread->userStack = (stack_pointer_t){0};
+    thread->wait = (wait_client_t){0};
+    thread->simd = (simd_ctx_t){0};
+    thread->notes = (note_queue_t){0};
+    thread->syscall = (syscall_ctx_t){0};
+    thread->perf = (perf_thread_ctx_t){0};
+    thread->rcu = (rcu_entry_t){0};
+    memset_s(&thread->frame, sizeof(interrupt_frame_t), 0, sizeof(interrupt_frame_t));
+}
+
 static cache_t cache = CACHE_CREATE(cache, "thread", sizeof(thread_t), CACHE_LINE, NULL, NULL);
 
 static uintptr_t thread_id_to_offset(tid_t tid, uint64_t maxPages)
@@ -49,9 +69,8 @@ thread_t* thread_new(process_t* process)
 
     thread->process = process;
     thread->id = atomic_fetch_add_explicit(&process->threads.newTid, 1, memory_order_relaxed);
-    list_entry_init(&thread->processEntry);
     sched_client_init(&thread->sched);
-    atomic_init(&thread->state, THREAD_PARKED);
+    atomic_store(&thread->state, THREAD_PARKED);
     thread->error = 0;
     if (stack_pointer_init(&thread->kernelStack,
             VMM_KERNEL_STACKS_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_KERNEL_STACK_PAGES),
@@ -77,10 +96,7 @@ thread_t* thread_new(process_t* process)
     syscall_ctx_init(&thread->syscall, &thread->kernelStack);
     perf_thread_ctx_init(&thread->perf);
 
-    memset(&thread->frame, 0, sizeof(interrupt_frame_t));
-
     REF(process);
-
     lock_acquire(&process->threads.lock);
     process->threads.count++;
     list_push_back_rcu(&process->threads.list, &thread->processEntry);

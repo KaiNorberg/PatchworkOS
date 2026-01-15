@@ -45,7 +45,41 @@ static map_t pidMap = MAP_CREATE();
 list_t _processes = LIST_CREATE(_processes);
 static lock_t processesLock = LOCK_CREATE();
 
-static cache_t cache = CACHE_CREATE(cache, "process", sizeof(process_t), CACHE_LINE, NULL, NULL);
+static void process_ctor(void* ptr)
+{
+    process_t* process = (process_t*)ptr;
+
+    process->ref = (ref_t){0};
+    list_entry_init(&process->entry);
+    map_entry_init(&process->mapEntry);
+    list_entry_init(&process->zombieEntry);
+    process->id = 0;
+    atomic_init(&process->priority, 0);
+    memset_s(process->status.buffer, PROCESS_STATUS_MAX, 0, PROCESS_STATUS_MAX);
+    lock_init(&process->status.lock);
+    process->space = (space_t){0};
+    process->nspace = NULL;
+    lock_init(&process->nspaceLock);
+    process->cwd = (cwd_t){0};
+    process->fileTable = (file_table_t){0};
+    process->futexCtx = (futex_ctx_t){0};
+    process->perf = (perf_process_ctx_t){0};
+    process->noteHandler = (note_handler_t){0};
+    process->suspendQueue = (wait_queue_t){0};
+    process->dyingQueue = (wait_queue_t){0};
+    atomic_init(&process->flags, PROCESS_NONE);
+    atomic_init(&process->threads.newTid, 0);
+    list_init(&process->threads.list);
+    process->threads.count = 0;
+    lock_init(&process->threads.lock);
+    env_init(&process->env);
+    process->argv = NULL;
+    process->argc = 0;
+    process->group = (group_member_t){0};
+    process->rcu = (rcu_entry_t){0};
+}
+
+static cache_t cache = CACHE_CREATE(cache, "process", sizeof(process_t), CACHE_LINE, process_ctor, NULL);
 
 static void process_free(process_t* process)
 {
@@ -62,7 +96,7 @@ static void process_free(process_t* process)
                 free(process->argv[i]);
             }
         }
-        free(process->argv);
+        free((void*)process->argv);
         process->argv = NULL;
         process->argc = 0;
     }
@@ -99,13 +133,9 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
     }
 
     ref_init(&process->ref, process_free);
-    list_entry_init(&process->entry);
-    map_entry_init(&process->mapEntry);
-    list_entry_init(&process->zombieEntry);
-    process->id = atomic_fetch_add(&newPid, 1);
-    atomic_init(&process->priority, priority);
-    memset_s(process->status.buffer, PROCESS_STATUS_MAX, 0, PROCESS_STATUS_MAX);
-    lock_init(&process->status.lock);
+    process->id = atomic_fetch_add_explicit(&newPid, 1, memory_order_relaxed);
+    atomic_store(&process->priority, priority);
+    process->status.buffer[0] = '\0';
 
     if (space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
             SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY) == ERR)
@@ -115,7 +145,6 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
     }
 
     process->nspace = REF(ns);
-    lock_init(&process->nspaceLock);
     cwd_init(&process->cwd);
     file_table_init(&process->fileTable);
     futex_ctx_init(&process->futexCtx);
@@ -123,14 +152,10 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
     note_handler_init(&process->noteHandler);
     wait_queue_init(&process->suspendQueue);
     wait_queue_init(&process->dyingQueue);
-    atomic_init(&process->flags, PROCESS_NONE);
-    atomic_init(&process->threads.newTid, 0);
-    list_init(&process->threads.list);
-    process->threads.count = 0;
+    atomic_store(&process->flags, PROCESS_NONE);
+    atomic_store(&process->threads.newTid, 0);
     lock_init(&process->threads.lock);
     env_init(&process->env);
-    process->argv = NULL;
-    process->argc = 0;
 
     if (group_member_init(&process->group, group) == ERR)
     {
