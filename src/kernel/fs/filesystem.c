@@ -44,7 +44,7 @@ static map_key_t filesystem_key(const char* name)
 
 static size_t superblock_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    superblock_t* sb = file->inode->private;
+    superblock_t* sb = file->inode->data;
     assert(sb != NULL);
 
     char info[MAX_PATH];
@@ -60,14 +60,14 @@ static size_t superblock_read(file_t* file, void* buffer, size_t count, size_t* 
 
 static void superblock_cleanup(inode_t* inode)
 {
-    superblock_t* sb = inode->private;
+    superblock_t* sb = inode->data;
     if (sb == NULL)
     {
         return;
     }
 
     UNREF(sb);
-    inode->private = NULL;
+    inode->data = NULL;
 }
 
 static file_ops_t sbFileOps = {
@@ -80,7 +80,7 @@ static inode_ops_t sbInodeOps = {
 
 static uint64_t filesystem_lookup(inode_t* dir, dentry_t* dentry)
 {
-    filesystem_t* fs = dir->private;
+    filesystem_t* fs = dir->data;
     assert(fs != NULL);
 
     sbid_t id;
@@ -105,7 +105,7 @@ static uint64_t filesystem_lookup(inode_t* dir, dentry_t* dentry)
         {
             return ERR;
         }
-        inode->private = REF(sb);
+        inode->data = REF(sb);
         dentry_make_positive(dentry, inode);
         return 0;
     }
@@ -120,7 +120,7 @@ static uint64_t filesystem_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         return 0;
     }
 
-    filesystem_t* fs = dentry->inode->private;
+    filesystem_t* fs = dentry->inode->data;
     assert(fs != NULL);
 
     RWLOCK_READ_SCOPE(&fs->lock);
@@ -170,7 +170,7 @@ static uint64_t filesystem_dir_lookup(inode_t* dir, dentry_t* dentry)
         return ERR;
     }
     UNREF_DEFER(inode);
-    inode->private = fs;
+    inode->data = fs;
 
     dentry->ops = &fsDentryOps;
     dentry_make_positive(dentry, inode);
@@ -320,7 +320,7 @@ filesystem_t* filesystem_get_by_path(const char* path, process_t* process)
         return NULL;
     }
 
-    return target.dentry->inode->private;
+    return target.dentry->inode->data;
 }
 
 bool options_next(const char** iter, char* buffer, size_t size, char** key, char** value)

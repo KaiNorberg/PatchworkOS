@@ -76,7 +76,7 @@ typedef struct fb
 {
     char name[MAX_PATH];
     const fb_ops_t* ops;
-    void* private;
+    void* data;
     dentry_t* dir;
     list_t files;
 } fb_t;
@@ -89,7 +89,7 @@ typedef struct fb
  * @param private Private data for the framebuffer.
  * @return On success, the new framebuffer. On failure, `NULL` and `errno` is set.
  */
-fb_t* fb_new(const char* name, const fb_ops_t* ops, void* private);
+fb_t* fb_new(const char* name, const fb_ops_t* ops,  void* data);
 
 /**
  * @brief Frees a framebuffer.

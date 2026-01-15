@@ -132,7 +132,7 @@ typedef struct socket
     socket_type_t type;
     socket_state_t state;
     weak_ptr_t ownerNs; ///< A weak pointer to the namespace that created the socket.
-    void* private;
+    void* data;
     mutex_t mutex;
 } socket_t;
 

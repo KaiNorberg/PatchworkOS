@@ -28,6 +28,7 @@ void cpu_init(cpu_t* cpu)
 {
     cpu_id_t id = _cpuAmount++;
     _cpus[id] = cpu;
+    msr_write(MSR_TSC_AUX, id);
 
     cpu->self = cpu;
     cpu->id = id;

@@ -17,7 +17,7 @@ static dentry_t* dir = NULL;
 
 static size_t fb_name_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    fb_t* fb = file->inode->private;
+    fb_t* fb = file->inode->data;
     assert(fb != NULL);
 
     uint64_t length = strlen(fb->name);
@@ -30,7 +30,7 @@ static file_ops_t nameOps = {
 
 static size_t fb_data_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    fb_t* fb = file->inode->private;
+    fb_t* fb = file->inode->data;
     assert(fb != NULL);
 
     if (fb->ops->read == NULL)
@@ -44,7 +44,7 @@ static size_t fb_data_read(file_t* file, void* buffer, size_t count, size_t* off
 
 static size_t fb_data_write(file_t* file, const void* buffer, size_t count, size_t* offset)
 {
-    fb_t* fb = file->inode->private;
+    fb_t* fb = file->inode->data;
     assert(fb != NULL);
 
     if (fb->ops->write == NULL)
@@ -58,7 +58,7 @@ static size_t fb_data_write(file_t* file, const void* buffer, size_t count, size
 
 static void* fb_data_mmap(file_t* file, void* addr, size_t length, size_t* offset, pml_flags_t flags)
 {
-    fb_t* fb = file->inode->private;
+    fb_t* fb = file->inode->data;
     assert(fb != NULL);
 
     if (fb->ops->mmap == NULL)
@@ -78,7 +78,7 @@ static file_ops_t dataOps = {
 
 static size_t fb_info_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    fb_t* fb = file->inode->private;
+    fb_t* fb = file->inode->data;
     assert(fb != NULL);
 
     if (fb->ops->info == NULL)
@@ -117,7 +117,7 @@ static file_ops_t infoOps = {
 
 static void fb_dir_cleanup(inode_t* inode)
 {
-    fb_t* fb = inode->private;
+    fb_t* fb = inode->data;
 
     if (fb->ops->cleanup != NULL)
     {
@@ -131,7 +131,7 @@ static inode_ops_t dirInodeOps = {
     .cleanup = fb_dir_cleanup,
 };
 
-fb_t* fb_new(const char* name, const fb_ops_t* ops, void* private)
+fb_t* fb_new(const char* name, const fb_ops_t* ops,  void* data)
 {
     if (name == NULL || ops == NULL)
     {
@@ -157,7 +157,7 @@ fb_t* fb_new(const char* name, const fb_ops_t* ops, void* private)
     strncpy(fb->name, name, sizeof(fb->name));
     fb->name[sizeof(fb->name) - 1] = '\0';
     fb->ops = ops;
-    fb->private = private;
+    fb->data = data;
     fb->dir = NULL;
     list_init(&fb->files);
 
@@ -181,19 +181,19 @@ fb_t* fb_new(const char* name, const fb_ops_t* ops, void* private)
             .name = "name",
             .inodeOps = NULL,
             .fileOps = &nameOps,
-            .private = fb,
+            .data = fb,
         },
         {
             .name = "info",
             .inodeOps = NULL,
             .fileOps = &infoOps,
-            .private = fb,
+            .data = fb,
         },
         {
             .name = "data",
             .inodeOps = NULL,
             .fileOps = &dataOps,
-            .private = fb,
+            .data = fb,
         },
         {
             .name = NULL,

@@ -73,7 +73,7 @@ static uint64_t pipe_open(file_t* file)
     data->readEnd = file;
     data->writeEnd = file;
 
-    file->private = data;
+    file->data = data;
     return 0;
 }
 
@@ -99,14 +99,14 @@ static uint64_t pipe_open2(file_t* files[2])
     data->readEnd = files[PIPE_READ];
     data->writeEnd = files[PIPE_WRITE];
 
-    files[0]->private = data;
-    files[1]->private = data;
+    files[0]->data = data;
+    files[1]->data = data;
     return 0;
 }
 
 static void pipe_close(file_t* file)
 {
-    pipe_t* data = file->private;
+    pipe_t* data = file->data;
     lock_acquire(&data->lock);
     if (data->readEnd == file)
     {
@@ -139,7 +139,7 @@ static uint64_t pipe_read(file_t* file, void* buffer, size_t count, size_t* offs
         return 0;
     }
 
-    pipe_t* data = file->private;
+    pipe_t* data = file->data;
     if (data->readEnd != file)
     {
         errno = ENOSYS;
@@ -178,7 +178,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, size_t count, size_
 {
     UNUSED(offset);
 
-    pipe_t* data = file->private;
+    pipe_t* data = file->data;
     if (data->writeEnd != file)
     {
         errno = ENOSYS;
@@ -222,7 +222,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, size_t count, size_
 
 static wait_queue_t* pipe_poll(file_t* file, poll_events_t* revents)
 {
-    pipe_t* data = file->private;
+    pipe_t* data = file->data;
     LOCK_SCOPE(&data->lock);
 
     if (fifo_bytes_readable(&data->ring) != 0 || data->isWriteClosed)

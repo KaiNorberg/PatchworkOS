@@ -32,10 +32,10 @@ static dentry_ops_t dentryOps = {
     .iterate = dentry_generic_iterate,
 };
 
-static dentry_t* devfs_mount(filesystem_t* fs, const char* options, void* private)
+static dentry_t* devfs_mount(filesystem_t* fs, const char* options,  void* data)
 {
     UNUSED(fs);
-    UNUSED(private);
+    UNUSED(data);
 
     if (options != NULL)
     {
@@ -83,7 +83,7 @@ void devfs_init(void)
     root = dentry;
 }
 
-dentry_t* devfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* private)
+dentry_t* devfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps,  void* data)
 {
     if (name == NULL)
     {
@@ -115,7 +115,7 @@ dentry_t* devfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* i
         return NULL;
     }
     UNREF_DEFER(inode);
-    inode->private = private;
+    inode->data = data;
 
     dentry_make_positive(dir, inode);
 
@@ -123,7 +123,7 @@ dentry_t* devfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* i
 }
 
 dentry_t* devfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, const file_ops_t* fileOps,
-    void* private)
+     void* data)
 {
     if (name == NULL)
     {
@@ -155,14 +155,14 @@ dentry_t* devfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* 
         return NULL;
     }
     UNREF_DEFER(inode);
-    inode->private = private;
+    inode->data = data;
 
     dentry_make_positive(dentry, inode);
 
     return REF(dentry);
 }
 
-dentry_t* devfs_symlink_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* private)
+dentry_t* devfs_symlink_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps,  void* data)
 {
     if (parent == NULL || name == NULL || inodeOps == NULL)
     {
@@ -189,7 +189,7 @@ dentry_t* devfs_symlink_new(dentry_t* parent, const char* name, const inode_ops_
         return NULL;
     }
     UNREF_DEFER(inode);
-    inode->private = private;
+    inode->data = data;
 
     dentry_make_positive(dentry, inode);
 
@@ -220,7 +220,7 @@ uint64_t devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t*
     uint64_t count = 0;
     for (const devfs_file_desc_t* desc = descs; desc->name != NULL; desc++)
     {
-        dentry_t* file = devfs_file_new(parent, desc->name, desc->inodeOps, desc->fileOps, desc->private);
+        dentry_t* file = devfs_file_new(parent, desc->name, desc->inodeOps, desc->fileOps, desc->data);
         if (file == NULL)
         {
             while (!list_is_empty(&createdList))

@@ -133,7 +133,7 @@ void space_deinit(space_t* space)
     uint64_t index;
     BITMAP_FOR_EACH_SET(&index, &space->callbackBitmap)
     {
-        space->callbacks[index].func(space->callbacks[index].private);
+        space->callbacks[index].func(space->callbacks[index].data);
     }
 
     if (space->flags & SPACE_MAP_KERNEL_BINARY)
@@ -568,7 +568,7 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
     return 0; // We return with the lock still acquired.
 }
 
-pml_callback_id_t space_alloc_callback(space_t* space, size_t pageAmount, space_callback_func_t func, void* private)
+pml_callback_id_t space_alloc_callback(space_t* space, size_t pageAmount, space_callback_func_t func,  void* data)
 {
     if (space == NULL)
     {
@@ -604,7 +604,7 @@ pml_callback_id_t space_alloc_callback(space_t* space, size_t pageAmount, space_
     bitmap_set(&space->callbackBitmap, callbackId);
     space_callback_t* callback = &space->callbacks[callbackId];
     callback->func = func;
-    callback->private = private;
+    callback->data = data;
     callback->pageAmount = pageAmount;
     return callbackId;
 }

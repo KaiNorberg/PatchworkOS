@@ -49,7 +49,7 @@ void ipi_handle_pending(interrupt_frame_t* frame)
         ctx->readIndex = (ctx->readIndex + 1) % IPI_QUEUE_SIZE;
 
         ipi_func_data_t ipiData = {
-            .private = ipi.private,
+            .data = ipi.data,
         };
         ipi.func(&ipiData);
     }
@@ -107,7 +107,7 @@ uint64_t ipi_chip_amount(void)
     return registeredChip != NULL ? 1 : 0;
 }
 
-static uint64_t ipi_push(cpu_t* cpu, ipi_func_t func, void* private)
+static uint64_t ipi_push(cpu_t* cpu, ipi_func_t func,  void* data)
 {
     if (registeredChip == NULL)
     {
@@ -132,12 +132,12 @@ static uint64_t ipi_push(cpu_t* cpu, ipi_func_t func, void* private)
     }
 
     ctx->queue[ctx->writeIndex].func = func;
-    ctx->queue[ctx->writeIndex].private = private;
+    ctx->queue[ctx->writeIndex].data = data;
     ctx->writeIndex = nextWriteIndex;
     return 0;
 }
 
-uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* private)
+uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* data)
 {
     if (func == NULL)
     {
@@ -157,7 +157,7 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* private)
             return ERR;
         }
 
-        if (ipi_push(cpu, func, private) == ERR)
+        if (ipi_push(cpu, func, data) == ERR)
         {
             return ERR;
         }
@@ -170,7 +170,7 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* private)
         cpu_t* cpu;
         CPU_FOR_EACH(cpu)
         {
-            if (ipi_push(cpu, func, private) == ERR)
+            if (ipi_push(cpu, func, data) == ERR)
             {
                 return ERR;
             }
@@ -195,7 +195,7 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* private)
                 continue;
             }
 
-            if (ipi_push(iter, func, private) == ERR)
+            if (ipi_push(iter, func, data) == ERR)
             {
                 return ERR;
             }

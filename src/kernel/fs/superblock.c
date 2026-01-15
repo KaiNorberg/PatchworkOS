@@ -50,7 +50,7 @@ superblock_t* superblock_new(filesystem_t* fs, const superblock_ops_t* ops, cons
     superblock->id = vfs_id_get();
     superblock->blockSize = PAGE_SIZE;
     superblock->maxFileSize = UINT64_MAX;
-    superblock->private = NULL;
+    superblock->data = NULL;
     superblock->root = NULL;
     superblock->ops = ops;
     superblock->dentryOps = dentryOps;

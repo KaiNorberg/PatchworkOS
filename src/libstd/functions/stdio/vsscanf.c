@@ -4,7 +4,7 @@
 
 #define _SCAN_GET(ctx) \
     ({ \
-        const char** str = (const char**)(ctx)->private; \
+        const char** str = (const char**)(ctx)->data; \
         char c = **str; \
         if (c != '\0') \
         { \
@@ -15,7 +15,7 @@
 
 #define _SCAN_UNGET(ctx, c) \
     ({ \
-        const char** str = (const char**)(ctx)->private; \
+        const char** str = (const char**)(ctx)->data; \
         if ((c) != EOF) \
         { \
             (*str)--; \

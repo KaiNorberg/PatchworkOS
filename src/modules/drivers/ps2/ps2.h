@@ -206,7 +206,7 @@ typedef struct
     irq_virt_t irq;      ///< IRQ assigned to the device by ACPI.
     bool attached;       ///< The device has been attached from ACPI.
     bool initialized;    ///< The device has been initialized.
-    void* private;       ///< Driver-specific private data.
+    void* data;       ///< Driver-specific private data.
 } ps2_device_info_t;
 
 /**

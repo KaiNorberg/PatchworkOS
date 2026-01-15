@@ -98,7 +98,7 @@ typedef struct
  * @return On success, a pointer to the new element. On failure, `NULL` and `errno` is set.
  */
 element_t* element_new(element_t* parent, element_id_t id, const rect_t* rect, const char* text, element_flags_t flags,
-    procedure_t procedure, void* private);
+    procedure_t procedure,  void* data);
 
 /**
  * @brief Deinitialize and free an element and all its children.
@@ -126,7 +126,7 @@ element_t* element_find(element_t* elem, element_id_t id);
  * @param elem The element.
  * @param private Pointer to the private data.
  */
-void element_set_private(element_t* elem, void* private);
+void element_set_private(element_t* elem,  void* data);
 
 /**
  * @brief Get private data for an element.

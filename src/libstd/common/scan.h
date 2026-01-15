@@ -45,7 +45,7 @@ typedef struct
     int parsedItems;
     const char* p;
     va_list arg;
-    void* private;
+    void* data;
     uint64_t count;
     char prev;
 } _scan_ctx_t;
@@ -663,14 +663,14 @@ static inline int _scan_format(_scan_ctx_t* ctx)
     return ret;
 }
 
-static inline int _scan(const char* _RESTRICT format, va_list arg, void* private)
+static inline int _scan(const char* _RESTRICT format, va_list arg,  void* data)
 {
     assert(format != NULL);
 
     _scan_ctx_t ctx = {
         .parsedItems = 0,
         .p = format,
-        .private = private,
+        .data = data,
         .count = 0,
         .prev = EOF,
     };

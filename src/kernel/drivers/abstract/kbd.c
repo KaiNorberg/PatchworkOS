@@ -24,7 +24,7 @@ static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
 static size_t kbd_name_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    kbd_t* kbd = file->inode->private;
+    kbd_t* kbd = file->inode->data;
     assert(kbd != NULL);
 
     size_t length = strlen(kbd->name);
@@ -37,7 +37,7 @@ static file_ops_t nameOps = {
 
 static uint64_t kbd_events_open(file_t* file)
 {
-    kbd_t* kbd = file->inode->private;
+    kbd_t* kbd = file->inode->data;
     assert(kbd != NULL);
 
     kbd_client_t* client = calloc(1, sizeof(kbd_client_t));
@@ -53,16 +53,16 @@ static uint64_t kbd_events_open(file_t* file)
     list_push_back(&kbd->clients, &client->entry);
     lock_release(&kbd->lock);
 
-    file->private = client;
+    file->data = client;
     return 0;
 }
 
 static void kbd_events_close(file_t* file)
 {
-    kbd_t* kbd = file->inode->private;
+    kbd_t* kbd = file->inode->data;
     assert(kbd != NULL);
 
-    kbd_client_t* client = file->private;
+    kbd_client_t* client = file->data;
     if (client == NULL)
     {
         return;
@@ -84,9 +84,9 @@ static size_t kbd_events_read(file_t* file, void* buffer, size_t count, size_t* 
         return 0;
     }
 
-    kbd_t* kbd = file->inode->private;
+    kbd_t* kbd = file->inode->data;
     assert(kbd != NULL);
-    kbd_client_t* client = file->private;
+    kbd_client_t* client = file->data;
     assert(client != NULL);
 
     LOCK_SCOPE(&kbd->lock);
@@ -110,9 +110,9 @@ static size_t kbd_events_read(file_t* file, void* buffer, size_t count, size_t* 
 
 static wait_queue_t* kbd_events_poll(file_t* file, poll_events_t* revents)
 {
-    kbd_t* kbd = file->inode->private;
+    kbd_t* kbd = file->inode->data;
     assert(kbd != NULL);
-    kbd_client_t* client = file->private;
+    kbd_client_t* client = file->data;
     assert(client != NULL);
 
     LOCK_SCOPE(&kbd->lock);
@@ -133,7 +133,7 @@ static file_ops_t eventsOps = {
 
 static void kbd_dir_cleanup(inode_t* inode)
 {
-    kbd_t* kbd = inode->private;
+    kbd_t* kbd = inode->data;
     if (kbd == NULL)
     {
         return;
@@ -199,12 +199,12 @@ kbd_t* kbd_new(const char* name)
         {
             .name = "name",
             .fileOps = &nameOps,
-            .private = kbd,
+            .data = kbd,
         },
         {
             .name = "events",
             .fileOps = &eventsOps,
-            .private = kbd,
+            .data = kbd,
         },
         {
             .name = NULL,

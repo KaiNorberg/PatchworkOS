@@ -43,7 +43,7 @@ typedef struct file
     inode_t* inode;
     path_t path;
     const file_ops_t* ops;
-    void* private;
+    void* data;
 } file_t;
 
 /**

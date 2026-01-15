@@ -58,7 +58,7 @@ static void ps2_mouse_handle_packet(mouse_t* mouse, ps2_mouse_t* ps2)
 
 static void ps2_mouse_irq(irq_func_data_t* data)
 {
-    ps2_mouse_t* mouse = data->private;
+    ps2_mouse_t* mouse = data->data;
     uint64_t byte = ps2_read_no_wait();
     if (byte == ERR)
     {
@@ -134,13 +134,13 @@ uint64_t ps2_mouse_init(ps2_device_info_t* info)
         return ERR;
     }
 
-    info->private = mouse;
+    info->data = mouse;
     return 0;
 }
 
 uint64_t ps2_mouse_irq_register(ps2_device_info_t* info)
 {
-    ps2_mouse_t* mouse = info->private;
+    ps2_mouse_t* mouse = info->data;
     if (mouse == NULL)
     {
         LOG_ERR("PS/2 mouse data is NULL during IRQ registration\n");
@@ -159,16 +159,16 @@ uint64_t ps2_mouse_irq_register(ps2_device_info_t* info)
 
 void ps2_mouse_deinit(ps2_device_info_t* info)
 {
-    if (info->private == NULL)
+    if (info->data == NULL)
     {
         return;
     }
 
-    ps2_mouse_t* mouse = info->private;
+    ps2_mouse_t* mouse = info->data;
 
     irq_handler_unregister(ps2_mouse_irq, info->irq);
     mouse_free(mouse->mouse);
     free(mouse);
 
-    info->private = NULL;
+    info->data = NULL;
 }

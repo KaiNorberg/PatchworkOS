@@ -52,7 +52,7 @@ static socket_t* socket_new(netfs_family_t* family, socket_type_t type)
     socket->type = type;
     socket->state = SOCKET_NEW;
     weak_ptr_set(&socket->ownerNs, NULL, NULL, NULL);
-    socket->private = NULL;
+    socket->data = NULL;
     mutex_init(&socket->mutex);
 
     if (socket->family->init(socket) == ERR)
@@ -72,16 +72,16 @@ typedef struct socket_file
 
 static uint64_t netfs_data_open(file_t* file)
 {
-    socket_t* sock = file->inode->private;
+    socket_t* sock = file->inode->data;
     assert(sock != NULL);
 
-    file->private = REF(sock);
+    file->data = REF(sock);
     return 0;
 }
 
 static void netfs_data_close(file_t* file)
 {
-    socket_t* sock = file->private;
+    socket_t* sock = file->data;
     if (sock == NULL)
     {
         return;
@@ -92,7 +92,7 @@ static void netfs_data_close(file_t* file)
 
 static size_t netfs_data_read(file_t* file, void* buf, size_t count, size_t* offset)
 {
-    socket_t* sock = file->private;
+    socket_t* sock = file->data;
     assert(sock != NULL);
 
     if (sock->family->recv == NULL)
@@ -114,7 +114,7 @@ static size_t netfs_data_read(file_t* file, void* buf, size_t count, size_t* off
 
 static size_t netfs_data_write(file_t* file, const void* buf, size_t count, size_t* offset)
 {
-    socket_t* sock = file->private;
+    socket_t* sock = file->data;
     assert(sock != NULL);
 
     if (sock->family->send == NULL)
@@ -136,7 +136,7 @@ static size_t netfs_data_write(file_t* file, const void* buf, size_t count, size
 
 static wait_queue_t* netfs_data_poll(file_t* file, poll_events_t* revents)
 {
-    socket_t* sock = file->private;
+    socket_t* sock = file->data;
     assert(sock != NULL);
 
     if (sock->family->poll == NULL)
@@ -160,7 +160,7 @@ static file_ops_t dataOps = {
 
 static uint64_t netfs_accept_open(file_t* file)
 {
-    socket_t* sock = file->inode->private;
+    socket_t* sock = file->inode->data;
     assert(sock != NULL);
 
     if (sock->family->accept == NULL)
@@ -190,7 +190,7 @@ static uint64_t netfs_accept_open(file_t* file)
     }
 
     newSock->state = SOCKET_CONNECTED;
-    file->private = newSock;
+    file->data = newSock;
     file->ops = &dataOps;
     return 0;
 }
@@ -203,7 +203,7 @@ static uint64_t netfs_ctl_bind(file_t* file, uint64_t argc, const char** argv)
 {
     UNUSED(argc);
 
-    socket_t* sock = file->inode->private;
+    socket_t* sock = file->inode->data;
     assert(sock != NULL);
 
     if (sock->family->bind == NULL)
@@ -252,7 +252,7 @@ static uint64_t netfs_ctl_listen(file_t* file, uint64_t argc, const char** argv)
         }
     }
 
-    socket_t* sock = file->inode->private;
+    socket_t* sock = file->inode->data;
     assert(sock != NULL);
 
     if (sock->family->listen == NULL)
@@ -282,7 +282,7 @@ static uint64_t netfs_ctl_connect(file_t* file, uint64_t argc, const char** argv
 {
     UNUSED(argc);
 
-    socket_t* sock = file->inode->private;
+    socket_t* sock = file->inode->data;
     assert(sock != NULL);
 
     if (sock->family->connect == NULL)
@@ -341,7 +341,7 @@ static uint64_t netfs_socket_lookup(inode_t* dir, dentry_t* dentry)
             return ERR;
         }
         UNREF_DEFER(inode);
-        inode->private = dir->private; // No reference
+        inode->data = dir->data; // No reference
 
         dentry_make_positive(dentry, inode);
         return 0;
@@ -352,7 +352,7 @@ static uint64_t netfs_socket_lookup(inode_t* dir, dentry_t* dentry)
 
 static void netfs_socket_cleanup(inode_t* inode)
 {
-    socket_t* socket = (socket_t*)inode->private;
+    socket_t* socket = (socket_t*)inode->data;
     if (socket == NULL)
     {
         return;
@@ -414,7 +414,7 @@ static void socket_weak_ptr_callback(void* arg)
 
 static uint64_t netfs_factory_open(file_t* file)
 {
-    netfs_family_file_ctx_t* ctx = file->inode->private;
+    netfs_family_file_ctx_t* ctx = file->inode->data;
     assert(ctx != NULL);
     dentry_t* root = file->inode->superblock->root;
     assert(root != NULL);
@@ -439,13 +439,13 @@ static uint64_t netfs_factory_open(file_t* file)
 
     weak_ptr_set(&socket->ownerNs, &ns->ref, socket_weak_ptr_callback, REF(socket));
 
-    file->private = REF(socket);
+    file->data = REF(socket);
     return 0;
 }
 
 static void netfs_factory_close(file_t* file)
 {
-    socket_t* socket = file->private;
+    socket_t* socket = file->data;
     if (socket == NULL)
     {
         return;
@@ -456,7 +456,7 @@ static void netfs_factory_close(file_t* file)
 
 static size_t netfs_factory_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    socket_t* socket = file->private;
+    socket_t* socket = file->data;
     if (socket == NULL)
     {
         return 0;
@@ -473,7 +473,7 @@ static file_ops_t factoryFileOps = {
 
 static size_t netfs_addrs_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    netfs_family_file_ctx_t* ctx = file->inode->private;
+    netfs_family_file_ctx_t* ctx = file->inode->data;
     assert(ctx != NULL);
 
     RWMUTEX_READ_SCOPE(&ctx->family->mutex);
@@ -527,14 +527,14 @@ static netfs_family_file_t familyFiles[] = {
 
 static void netfs_file_cleanup(inode_t* inode)
 {
-    netfs_family_file_ctx_t* ctx = inode->private;
+    netfs_family_file_ctx_t* ctx = inode->data;
     if (ctx == NULL)
     {
         return;
     }
 
     free(ctx);
-    inode->private = NULL;
+    inode->data = NULL;
 }
 
 static inode_ops_t familyFileInodeOps = {
@@ -543,7 +543,7 @@ static inode_ops_t familyFileInodeOps = {
 
 static uint64_t netfs_family_lookup(inode_t* dir, dentry_t* dentry)
 {
-    netfs_family_t* family = dir->private;
+    netfs_family_t* family = dir->data;
     assert(family != NULL);
 
     for (size_t i = 0; i < ARRAY_SIZE(familyFiles); i++)
@@ -568,7 +568,7 @@ static uint64_t netfs_family_lookup(inode_t* dir, dentry_t* dentry)
         }
         ctx->family = family;
         ctx->fileInfo = &familyFiles[i];
-        inode->private = ctx;
+        inode->data = ctx;
 
         dentry_make_positive(dentry, inode);
         return 0;
@@ -614,7 +614,7 @@ static uint64_t netfs_family_lookup(inode_t* dir, dentry_t* dentry)
             return ERR;
         }
         UNREF_DEFER(inode);
-        inode->private = REF(socket);
+        inode->data = REF(socket);
 
         dentry->ops = &socketDentryOps;
 
@@ -627,7 +627,7 @@ static uint64_t netfs_family_lookup(inode_t* dir, dentry_t* dentry)
 
 static uint64_t netfs_family_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 {
-    netfs_family_t* family = dentry->inode->private;
+    netfs_family_t* family = dentry->inode->data;
     assert(family != NULL);
 
     if (!dentry_iterate_dots(dentry, ctx))
@@ -718,7 +718,7 @@ static uint64_t netfs_lookup(inode_t* dir, dentry_t* dentry)
             return ERR;
         }
         UNREF_DEFER(inode);
-        inode->private = family;
+        inode->data = family;
 
         dentry->ops = &familyDentryOps;
 
@@ -763,9 +763,9 @@ static dentry_ops_t netDentryOps = {
     .iterate = netfs_iterate,
 };
 
-static dentry_t* netfs_mount(filesystem_t* fs, const char* options, void* private)
+static dentry_t* netfs_mount(filesystem_t* fs, const char* options,  void* data)
 {
-    UNUSED(private);
+    UNUSED(data);
 
     if (options != NULL)
     {
