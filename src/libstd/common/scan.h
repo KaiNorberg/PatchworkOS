@@ -21,8 +21,8 @@
 
 /**
  * @brief Internal Scan Implementation.
- * @defgroup libstd_scan Scan
- * @ingroup libstd
+ * @defgroup libstd_common_scan Scan
+ * @ingroup libstd_common
  *
  * Provides a common implementation for scanning formatted input, any function that needs to scan formatted input should
  * define the `_SCAN_GET()` and `_SCAN_UNGET()` macros before including this file.

@@ -339,6 +339,25 @@ _NORETURN void exits(const char* status);
  */
 uint64_t kill(pid_t pid);
 
+/**
+ * @brief Architecture specific thread data codes.
+ * @typedef arch_prctl_t
+ */
+typedef enum
+{
+    ARCH_GET_FS = 0, ///< Get the FS base address.
+    ARCH_SET_FS = 1, ///< Set the FS base address.
+} arch_prctl_t;
+
+/**
+ * @brief System call for setting architecture specific thread data.
+ * 
+ * @param op The operation to perform.
+ * @param addr If getting data, a pointer to store the retrieved address. If setting data, the address to set.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t arch_prctl(arch_prctl_t op, uintptr_t addr);
+
 #if defined(__cplusplus)
 }
 #endif

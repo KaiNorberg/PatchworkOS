@@ -69,7 +69,7 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 
 ### User Space
 
-- Custom superset of the ANSI C standard library including threading, file I/O, math, PatchworkOS extensions, etc.
+- Custom superset of the ANSI C standard library including threading, buffered I/O, math.h, PatchworkOS extensions, etc.
 - Highly modular shared memory based desktop environment.
 - Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
 - Capability based containerization security model using per-process mountpoint namespaces. See [Security](#security) for more info.

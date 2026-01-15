@@ -279,3 +279,8 @@ static inline uint64_t _syscall_umount(const char* mountpoint)
 {
     return _SYSCALL1(uint64_t, SYS_UNMOUNT, const char*, mountpoint);
 }
+
+static inline uint64_t _syscall_arch_prctl(arch_prctl_t code, uintptr_t addr)
+{
+    return _SYSCALL2(uint64_t, SYS_ARCH_PRCTL, arch_prctl_t, code, uintptr_t, addr);
+}

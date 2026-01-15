@@ -10,7 +10,7 @@
 
 void thrd_exit(int res)
 {
-    _thread_t* thread = _thread_get(gettid());
+    _thread_t* thread = _THREAD_SELF->self;
     if (thread == NULL)
     {
         fprintf(stderr, "libstd: thrd_exit called from unknown thread\n");

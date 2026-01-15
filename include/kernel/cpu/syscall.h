@@ -101,6 +101,7 @@ typedef enum
     SYS_SYMLINK,
     SYS_MOUNT,
     SYS_UNMOUNT,
+    SYS_ARCH_PRCTL,
     SYS_TOTAL_AMOUNT
 } syscall_number_t;
 
