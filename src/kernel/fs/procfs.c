@@ -1237,7 +1237,7 @@ static dentry_ops_t procDentryOps = {
     .iterate = procfs_iterate,
 };
 
-static dentry_t* procfs_mount(filesystem_t* fs, const char* options,  void* data)
+static dentry_t* procfs_mount(filesystem_t* fs, const char* options, void* data)
 {
     UNUSED(data);
 

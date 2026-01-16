@@ -351,7 +351,7 @@ typedef enum
 
 /**
  * @brief System call for setting architecture specific thread data.
- * 
+ *
  * @param op The operation to perform.
  * @param addr If getting data, a pointer to store the retrieved address. If setting data, the address to set.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.

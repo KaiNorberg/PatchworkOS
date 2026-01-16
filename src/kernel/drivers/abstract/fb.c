@@ -131,7 +131,7 @@ static inode_ops_t dirInodeOps = {
     .cleanup = fb_dir_cleanup,
 };
 
-fb_t* fb_new(const char* name, const fb_ops_t* ops,  void* data)
+fb_t* fb_new(const char* name, const fb_ops_t* ops, void* data)
 {
     if (name == NULL || ops == NULL)
     {

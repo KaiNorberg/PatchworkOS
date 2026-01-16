@@ -109,9 +109,9 @@ typedef struct dir_ctx
      * @return `true` to continue iterating, `false` to stop.
      */
     bool (*emit)(dir_ctx_t* ctx, const char* name, ino_t number, itype_t type);
-    size_t pos;    ///< The current position in the directory, can be used to skip entries.
-    void* data; ///< Private data that the filesystem can use to conveniently pass data.
-    size_t index;  ///< An index that the filesystem can use for its own purposes.
+    size_t pos;   ///< The current position in the directory, can be used to skip entries.
+    void* data;   ///< Private data that the filesystem can use to conveniently pass data.
+    size_t index; ///< An index that the filesystem can use for its own purposes.
 } dir_ctx_t;
 
 /**

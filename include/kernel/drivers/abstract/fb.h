@@ -89,7 +89,7 @@ typedef struct fb
  * @param private Private data for the framebuffer.
  * @return On success, the new framebuffer. On failure, `NULL` and `errno` is set.
  */
-fb_t* fb_new(const char* name, const fb_ops_t* ops,  void* data);
+fb_t* fb_new(const char* name, const fb_ops_t* ops, void* data);
 
 /**
  * @brief Frees a framebuffer.

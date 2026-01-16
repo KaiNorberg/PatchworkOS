@@ -191,3 +191,24 @@
  *
  */
 #define CONFIG_MAX_WAIT_QUEUES 64
+
+/**
+ * @brief Maximum asynchronous rings configuration.
+ * @ingroup kernel
+ * @def CONFIG_MAX_ASYNC_RINGS
+ *
+ * The `CONFIG_MAX_ASYNC_RINGS` constant defines the maximum amount of asynchronous rings that each process can have.
+ *
+ */
+#define CONFIG_MAX_ASYNC_RINGS 8
+
+/**
+ * @brief Maximum async ring pages configuration.
+ * @ingroup kernel
+ * @def CONFIG_MAX_ASYNC_PAGES
+ *
+ * The `CONFIG_MAX_ASYNC_PAGES` constant defines the maximum amount of pages that can be allocated for a async rings
+ * buffer.
+ *
+ */
+#define CONFIG_MAX_ASYNC_PAGES 1024

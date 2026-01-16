@@ -38,7 +38,7 @@ typedef struct element
 } element_t;
 
 element_t* element_new_root(window_t* win, element_id_t id, const rect_t* rect, const char* text, element_flags_t flags,
-    procedure_t procedure,  void* data);
+    procedure_t procedure, void* data);
 
 typedef struct window
 {

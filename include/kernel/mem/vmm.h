@@ -119,8 +119,9 @@ typedef struct
  */
 typedef enum
 {
-    VMM_ALLOC_OVERWRITE = 0 << 0,     ///< If any page is already mapped, overwrite the mapping.
-    VMM_ALLOC_FAIL_IF_MAPPED = 1 << 0 ///< If set and any page is already mapped, fail and set `errno` to `EEXIST`.
+    VMM_ALLOC_OVERWRITE = 0 << 0,      ///< If any page is already mapped, overwrite the mapping.
+    VMM_ALLOC_FAIL_IF_MAPPED = 1 << 0, ///< If set and any page is already mapped, fail and set `errno` to `EEXIST`.
+    VMM_ALLOC_ZERO = 1 << 1            ///< If set, atomically zero the allocated pages.
 } vmm_alloc_flags_t;
 
 /**
@@ -195,7 +196,7 @@ void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment,
  * - Other values from `space_mapping_start()`.
  */
 void* vmm_map(space_t* space, void* virtAddr, void* physAddr, size_t length, pml_flags_t flags,
-    space_callback_func_t func,  void* data);
+    space_callback_func_t func, void* data);
 
 /**
  * @brief Maps an array of physical pages to virtual memory in a given address space.
@@ -220,7 +221,7 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, size_t length, pml
  * - Other values from `space_mapping_start()`.
  */
 void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, size_t pageAmount, pml_flags_t flags,
-    space_callback_func_t func,  void* data);
+    space_callback_func_t func, void* data);
 
 /**
  * @brief Unmaps virtual memory from a given address space.

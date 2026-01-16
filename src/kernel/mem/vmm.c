@@ -200,6 +200,14 @@ void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment,
             return space_mapping_end(space, &mapping, ENOMEM);
         }
 
+        if (allocFlags & VMM_ALLOC_ZERO)
+        {
+            for (uint64_t i = 0; i < batchSize; i++)
+            {
+                memset(addresses[i], 0, PAGE_SIZE);
+            }
+        }
+
         if (page_table_map_pages(&space->pageTable, (void*)currentVirtAddr, addresses, batchSize, mapping.flags,
                 PML_CALLBACK_NONE) == ERR)
         {
@@ -215,7 +223,7 @@ void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment,
 }
 
 void* vmm_map(space_t* space, void* virtAddr, void* physAddr, size_t length, pml_flags_t flags,
-    space_callback_func_t func,  void* data)
+    space_callback_func_t func, void* data)
 {
     if (physAddr == NULL || length == 0 || !(flags & PML_PRESENT))
     {
@@ -270,7 +278,7 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, size_t length, pml
 }
 
 void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, size_t pageAmount, pml_flags_t flags,
-    space_callback_func_t func,  void* data)
+    space_callback_func_t func, void* data)
 {
     if (pages == NULL || pageAmount == 0 || !(flags & PML_PRESENT))
     {

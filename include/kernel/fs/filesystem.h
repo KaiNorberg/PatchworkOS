@@ -65,7 +65,7 @@ typedef struct filesystem
      * @param private Private data for the filesystem's mount function.
      * @return On success, the root dentry of the mounted filesystem. On failure, `NULL` and `errno` is set.
      */
-    dentry_t* (*mount)(filesystem_t* fs, const char* details,  void* data);
+    dentry_t* (*mount)(filesystem_t* fs, const char* details, void* data);
 } filesystem_t;
 
 /**s

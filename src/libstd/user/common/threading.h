@@ -10,11 +10,11 @@
  * @brief Threading.
  * @defgroup libstd_common_user_threading Threading
  * @ingroup libstd_common_user
- * 
+ *
  * @todo Write threading documentation.
- * 
+ *
  * @todo Implement Thread Local Storage (TLS).
- * 
+ *
  * @{
  */
 

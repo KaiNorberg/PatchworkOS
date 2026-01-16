@@ -49,7 +49,7 @@ static superblock_ops_t superOps = {
     .cleanup = ninep_super_cleanup,
 };
 
-static dentry_t* ninep_mount(filesystem_t* fs, const char* options,  void* data)
+static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* data)
 {
     UNUSED(data);
 

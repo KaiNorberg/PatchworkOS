@@ -276,7 +276,7 @@ static dentry_t* tmpfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     return REF(dentry);
 }
 
-static dentry_t* tmpfs_mount(filesystem_t* fs, const char* options,  void* data)
+static dentry_t* tmpfs_mount(filesystem_t* fs, const char* options, void* data)
 {
     UNUSED(data);
 

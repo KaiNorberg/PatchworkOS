@@ -86,7 +86,7 @@ static shmem_object_t* shmem_object_new(void)
     return shmem;
 }
 
-static void shmem_vmm_callback( void* data)
+static void shmem_vmm_callback(void* data)
 {
     shmem_object_t* shmem = data;
     if (shmem == NULL)

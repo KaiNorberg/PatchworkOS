@@ -102,6 +102,9 @@ typedef enum
     SYS_MOUNT,
     SYS_UNMOUNT,
     SYS_ARCH_PRCTL,
+    SYS_ASYNC_INIT,
+    SYS_ASYNC_DEINIT,
+    SYS_ASYNC_NOTIFY,
     SYS_TOTAL_AMOUNT
 } syscall_number_t;
 

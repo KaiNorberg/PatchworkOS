@@ -61,7 +61,7 @@ typedef enum window_flags
  * @return On success, the new window. On failure, returns `NULL` and `errno` is set.
  */
 window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surface_type_t type, window_flags_t flags,
-    procedure_t procedure,  void* data);
+    procedure_t procedure, void* data);
 
 /**
  * @brief Free a window.

@@ -19,6 +19,7 @@
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
+#include <kernel/sync/async.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rcu.h>
 
@@ -109,9 +110,10 @@ static void process_free(process_t* process)
         UNREF(process->nspace);
     }
     space_deinit(&process->space);
+    futex_ctx_deinit(&process->futexCtx);
+    async_ctx_deinit(&process->async);
     wait_queue_deinit(&process->dyingQueue);
     wait_queue_deinit(&process->suspendQueue);
-    futex_ctx_deinit(&process->futexCtx);
     env_deinit(&process->env);
 
     rcu_call(&process->rcu, rcu_call_cache_free, process);
@@ -149,6 +151,7 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
     file_table_init(&process->fileTable);
     futex_ctx_init(&process->futexCtx);
     perf_process_ctx_init(&process->perf);
+    async_ctx_init(&process->async);
     note_handler_init(&process->noteHandler);
     wait_queue_init(&process->suspendQueue);
     wait_queue_init(&process->dyingQueue);

@@ -568,7 +568,7 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
     return 0; // We return with the lock still acquired.
 }
 
-pml_callback_id_t space_alloc_callback(space_t* space, size_t pageAmount, space_callback_func_t func,  void* data)
+pml_callback_id_t space_alloc_callback(space_t* space, size_t pageAmount, space_callback_func_t func, void* data)
 {
     if (space == NULL)
     {

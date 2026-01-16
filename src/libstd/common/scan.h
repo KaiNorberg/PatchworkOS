@@ -663,7 +663,7 @@ static inline int _scan_format(_scan_ctx_t* ctx)
     return ret;
 }
 
-static inline int _scan(const char* _RESTRICT format, va_list arg,  void* data)
+static inline int _scan(const char* _RESTRICT format, va_list arg, void* data)
 {
     assert(format != NULL);
 

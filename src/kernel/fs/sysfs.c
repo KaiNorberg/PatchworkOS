@@ -32,7 +32,7 @@ static dentry_ops_t dentryOps = {
     .iterate = dentry_generic_iterate,
 };
 
-static dentry_t* sysfs_mount(filesystem_t* fs, const char* options,  void* data)
+static dentry_t* sysfs_mount(filesystem_t* fs, const char* options, void* data)
 {
     UNUSED(fs);
     UNUSED(data);
@@ -115,7 +115,7 @@ void sysfs_init(void)
     LOG_INFO("sysfs mounted to '/sys'\n");
 }
 
-dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps,  void* data)
+dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* data)
 {
     if (name == NULL)
     {
@@ -155,7 +155,7 @@ dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* i
 }
 
 dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, const file_ops_t* fileOps,
-     void* data)
+    void* data)
 {
     if (name == NULL)
     {
@@ -194,7 +194,7 @@ dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* 
     return REF(dentry);
 }
 
-dentry_t* sysfs_symlink_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps,  void* data)
+dentry_t* sysfs_symlink_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* data)
 {
     if (parent == NULL || name == NULL || inodeOps == NULL)
     {

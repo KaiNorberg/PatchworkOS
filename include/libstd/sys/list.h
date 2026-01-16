@@ -5,9 +5,9 @@
 #include "_internal/NULL.h"
 
 #include <assert.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdatomic.h>
 
 /**
  * @brief Doubly linked list header.
@@ -18,7 +18,7 @@
  *
  * Given a entry within a structure, the `CONTAINER_OF()` macro can be used to get a pointer to the structure from the
  * list entry pointer.
- * 
+ *
  * @warning If a list is protected with RCU, the `list_*_rcu()` functions must be used.
  *
  * @{
@@ -247,10 +247,10 @@ static inline void list_add_rcu(list_entry_t* prev, list_entry_t* next, list_ent
     assert(prev != NULL);
     assert(next != NULL);
     assert(entry != NULL);
-    // For RCU we allow adding an entry that is already in a list 
+    // For RCU we allow adding an entry that is already in a list
     // as we cant properly remove it until all readers are done.
-    //assert(entry->next == entry && entry->prev == entry);
-    //assert(prev->next == next && next->prev == prev);
+    // assert(entry->next == entry && entry->prev == entry);
+    // assert(prev->next == next && next->prev == prev);
 
     next->prev = entry;
     entry->next = next;
@@ -299,7 +299,8 @@ static inline void list_remove(list_entry_t* entry)
 /**
  * @brief Removes a list entry from its current list in a RCU-safe manner.
  *
- * @warning After calling this function the entry will still be connected to the list, but iteration over the list will not find it.
+ * @warning After calling this function the entry will still be connected to the list, but iteration over the list will
+ * not find it.
  *
  * @param entry A pointer to the `list_entry_t` to remove.
  */

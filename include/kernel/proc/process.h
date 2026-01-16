@@ -12,6 +12,7 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/wait.h>
+#include <kernel/sync/async.h>
 #include <kernel/sync/futex.h>
 #include <kernel/sync/rcu.h>
 #include <kernel/utils/map.h>
@@ -87,6 +88,7 @@ typedef struct process
     file_table_t fileTable;
     futex_ctx_t futexCtx;
     perf_process_ctx_t perf;
+    async_ctx_t async;
     note_handler_t noteHandler;
     wait_queue_t suspendQueue;
     wait_queue_t dyingQueue;

@@ -376,8 +376,8 @@ static inline uint64_t bitmap_find_first_set(bitmap_t* map, uint64_t startIdx, u
  * @param alignment Alignment of the region.
  * @return Starting index of the found region, or `map->length` if not found.
  */
-static inline uint64_t bitmap_find_clear_region_and_set(bitmap_t* map, uint64_t minIdx, uintptr_t maxIdx, uint64_t length,
-    uint64_t alignment)
+static inline uint64_t bitmap_find_clear_region_and_set(bitmap_t* map, uint64_t minIdx, uintptr_t maxIdx,
+    uint64_t length, uint64_t alignment)
 {
     if (length == 0 || minIdx >= maxIdx || maxIdx > map->length)
     {

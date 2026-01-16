@@ -51,14 +51,24 @@ typedef struct fifo
  * @param buffer Pointer to the buffer memory.
  * @param size The size of the buffer in bytes.
  */
-void fifo_init(fifo_t* fifo, uint8_t* buffer, size_t size);
+static inline void fifo_init(fifo_t* fifo, uint8_t* buffer, size_t size)
+{
+    fifo->buffer = buffer;
+    fifo->size = size;
+    fifo->head = 0;
+    fifo->tail = 0;
+}
 
 /**
  * @brief Reset a fifo buffer.
  *
  * @param fifo Pointer to the fifo buffer structure.
  */
-void fifo_reset(fifo_t* fifo);
+static inline void fifo_reset(fifo_t* fifo)
+{
+    fifo->head = 0;
+    fifo->tail = 0;
+}
 
 /**
  * @brief Return the number of bytes available for reading in a fifo buffer.
@@ -66,7 +76,15 @@ void fifo_reset(fifo_t* fifo);
  * @param fifo Pointer to the fifo buffer structure.
  * @return The number of bytes used.
  */
-size_t fifo_bytes_readable(const fifo_t* fifo);
+static inline size_t fifo_bytes_readable(const fifo_t* fifo)
+{
+    if (fifo->head >= fifo->tail)
+    {
+        return fifo->head - fifo->tail;
+    }
+
+    return fifo->size - (fifo->tail - fifo->head);
+}
 
 /**
  * @brief Return the number of bytes available for writing in a fifo buffer.
@@ -74,7 +92,15 @@ size_t fifo_bytes_readable(const fifo_t* fifo);
  * @param fifo Pointer to the fifo buffer structure.
  * @return The number of bytes available for writing.
  */
-size_t fifo_bytes_writeable(const fifo_t* fifo);
+static inline size_t fifo_bytes_writeable(const fifo_t* fifo)
+{
+    if (fifo->tail > fifo->head)
+    {
+        return fifo->tail - fifo->head - 1;
+    }
+
+    return fifo->size - (fifo->head - fifo->tail) - 1;
+}
 
 /**
  * @brief Read data from a fifo buffer at a specific offset.
@@ -84,7 +110,37 @@ size_t fifo_bytes_writeable(const fifo_t* fifo);
  * @param count The number of bytes to read.
  * @return The number of bytes read.
  */
-size_t fifo_read(fifo_t* fifo, void* buffer, size_t count);
+static inline size_t fifo_read(fifo_t* fifo, void* buffer, size_t count)
+{
+    size_t readable = fifo_bytes_readable(fifo);
+    if (readable == 0)
+    {
+        return 0;
+    }
+
+    if (count > readable)
+    {
+        count = readable;
+    }
+
+    size_t firstSize = fifo->size - fifo->tail;
+    if (firstSize > count)
+    {
+        firstSize = count;
+    }
+
+    memcpy(buffer, fifo->buffer + fifo->tail, firstSize);
+    fifo->tail = (fifo->tail + firstSize) % fifo->size;
+
+    size_t remaining = count - firstSize;
+    if (remaining > 0)
+    {
+        memcpy((uint8_t*)buffer + firstSize, fifo->buffer + fifo->tail, remaining);
+        fifo->tail = (fifo->tail + remaining) % fifo->size;
+    }
+
+    return count;
+}
 
 /**
  * @brief Write data to the fifo buffer.
@@ -96,7 +152,32 @@ size_t fifo_read(fifo_t* fifo, void* buffer, size_t count);
  * @param count The number of bytes to write.
  * @return The number of bytes written.
  */
-size_t fifo_write(fifo_t* fifo, const void* buffer, size_t count);
+static inline size_t fifo_write(fifo_t* fifo, const void* buffer, size_t count)
+{
+    size_t writeable = fifo_bytes_writeable(fifo);
+    if (count > writeable)
+    {
+        count = writeable;
+    }
+
+    size_t firstSize = fifo->size - fifo->head;
+    if (firstSize > count)
+    {
+        firstSize = count;
+    }
+
+    memcpy(fifo->buffer + fifo->head, buffer, firstSize);
+    fifo->head = (fifo->head + firstSize) % fifo->size;
+
+    size_t remaining = count - firstSize;
+    if (remaining > 0)
+    {
+        memcpy(fifo->buffer + fifo->head, (uint8_t*)buffer + firstSize, remaining);
+        fifo->head = (fifo->head + remaining) % fifo->size;
+    }
+
+    return count;
+}
 
 /**
  * @brief Advance the head of the fifo buffer.
@@ -104,7 +185,10 @@ size_t fifo_write(fifo_t* fifo, const void* buffer, size_t count);
  * @param fifo Pointer to the fifo buffer structure.
  * @param count The number of bytes to advance the head by.
  */
-void fifo_advance_head(fifo_t* fifo, size_t count);
+static inline void fifo_advance_head(fifo_t* fifo, size_t count)
+{
+    fifo->head = (fifo->head + count) % fifo->size;
+}
 
 /**
  * @brief Advance the tail of the fifo buffer.
@@ -112,6 +196,9 @@ void fifo_advance_head(fifo_t* fifo, size_t count);
  * @param fifo Pointer to the fifo buffer structure.
  * @param count The number of bytes to advance the tail by.
  */
-void fifo_advance_tail(fifo_t* fifo, size_t count);
+static inline void fifo_advance_tail(fifo_t* fifo, size_t count)
+{
+    fifo->tail = (fifo->tail + count) % fifo->size;
+}
 
 /** @} */

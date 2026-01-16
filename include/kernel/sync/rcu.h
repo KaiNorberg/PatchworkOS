@@ -40,10 +40,11 @@ typedef struct rcu_entry rcu_entry_t;
  * `rcu_entry_t` member and a callback function that will free the structure.
  *
  * To access RCU protected data, a read-side critical section must be created using `rcu_read_lock()` and
- * `rcu_read_unlock()`, or the `RCU_READ_SCOPE()` macro. 
+ * `rcu_read_unlock()`, or the `RCU_READ_SCOPE()` macro.
  *
  * @see [Wikipedia](https://en.wikipedia.org/wiki/Read-copy-update) for more information about RCU.
- * @see [kernel.org](https://www.kernel.org/doc/Documentation/RCU/whatisRCU.txt) for a explanation of RCU in the Linux kernel.
+ * @see [kernel.org](https://www.kernel.org/doc/Documentation/RCU/whatisRCU.txt) for a explanation of RCU in the Linux
+ * kernel.
  *
  * @{
  */

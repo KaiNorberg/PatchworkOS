@@ -136,7 +136,7 @@ bool namespace_rcu_traverse(namespace_t* ns, mount_t** mount, dentry_t** dentry)
  * - Other errors as returned by the filesystem's `mount()` operation or `mount_new()`.
  */
 mount_t* namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, const char* options, mode_t mode,
-     void* data);
+    void* data);
 
 /**
  * @brief Bind a source path to a target path in a namespace.

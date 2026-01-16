@@ -16,7 +16,7 @@ static uint64_t element_send_init(element_t* elem)
 }
 
 static element_t* element_new_raw(element_id_t id, const rect_t* rect, const char* text, element_flags_t flags,
-    procedure_t procedure,  void* data)
+    procedure_t procedure, void* data)
 {
     element_t* elem = malloc(sizeof(element_t));
     if (elem == NULL)
@@ -46,7 +46,7 @@ static element_t* element_new_raw(element_id_t id, const rect_t* rect, const cha
 }
 
 element_t* element_new(element_t* parent, element_id_t id, const rect_t* rect, const char* text, element_flags_t flags,
-    procedure_t procedure,  void* data)
+    procedure_t procedure, void* data)
 {
     if (parent == NULL || rect == NULL || text == NULL || procedure == NULL)
     {
@@ -74,7 +74,7 @@ element_t* element_new(element_t* parent, element_id_t id, const rect_t* rect, c
 }
 
 element_t* element_new_root(window_t* win, element_id_t id, const rect_t* rect, const char* text, element_flags_t flags,
-    procedure_t procedure,  void* data)
+    procedure_t procedure, void* data)
 {
     if (win == NULL || rect == NULL || text == NULL || procedure == NULL)
     {
@@ -160,7 +160,7 @@ element_t* element_find(element_t* elem, element_id_t id)
     return NULL;
 }
 
-void element_set_private(element_t* elem,  void* data)
+void element_set_private(element_t* elem, void* data)
 {
     if (elem == NULL)
     {
