@@ -130,9 +130,9 @@ typedef enum
     SQE_LOAD4 = SQE_LOAD3 + SQE_REG_SHIFT, ///< The offset to specify which register to load into the fifth argument.
     SQE_SAVE = SQE_LOAD4 + SQE_REG_SHIFT,  ///< The offset to specify the register to save the result into.
     SQE_FLAGS_SHIFT = SQE_SAVE + SQE_REG_SHIFT, ///< The bitshift for where bit flags start in a `sqe_flags_t`.
-    SQE_LINK = 1 << (SQE_FLAGS_SHIFT), ///< Only process the next SQE if and when this one completes successfully, only
-                                       ///< applies within one `enter()` call.
-    SQE_RESET = 1 << (SQE_FLAGS_SHIFT + 1), ///< Reset registers before processing this SQE.
+    SQE_LINK = 1 << (SQE_FLAGS_SHIFT), ///< Only process the next SQE when this one completes successfully, only
+                                       /// applies within one `enter()` call.
+    SQE_HARDLINK = 1 << (SQE_FLAGS_SHIFT + 1), ///< Like `SQE_LINK`, but will process the next SQE even if this one fails.
 } sqe_flags_t;
 
 /**

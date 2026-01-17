@@ -258,10 +258,26 @@ static void async_request_complete(request_t* request)
 
     async_ctx_push_cqe(ctx, request->type, request->err, request->data, request->result);
 
-    request_t* next = request_next(request);
-    if (next != NULL)
+    if (request->err != EOK && !(request->flags & SQE_HARDLINK))
     {
-        async_dispatch(next);
+        while (true)
+        {
+            request_t* next = request_next(request);
+            if (next == NULL)
+            {
+                break;
+            }
+
+            request_free(next);
+        }
+    }
+    else
+    {
+        request_t* next = request_next(request);
+        if (next != NULL)
+        {
+            async_dispatch(next);
+        }
     }
 
     request_free(request);
@@ -304,6 +320,11 @@ static uint64_t async_handle_sqe(async_ctx_t* ctx, async_notify_ctx_t* notify, s
     request->data = sqe->data;
     request->result = 0;
 
+    for (uint64_t i = 0; i < SEQ_MAX_ARGS; i++)
+    {
+        request->args[i] = sqe->args[i];
+    }
+
     if (notify->link != NULL)
     {
         notify->link->next = request->index;
@@ -314,7 +335,7 @@ static uint64_t async_handle_sqe(async_ctx_t* ctx, async_notify_ctx_t* notify, s
         list_push_back(&notify->requests, &request->entry);
     }
 
-    if (sqe->flags & SQE_LINK)
+    if (sqe->flags & SQE_LINK || sqe->flags & SQE_HARDLINK)
     {
         notify->link = request;
     }

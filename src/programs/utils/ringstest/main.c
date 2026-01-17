@@ -20,7 +20,7 @@ int main()
     memset(&rings.shared->regs, -1, sizeof(rings.shared->regs));
 
     printf("pushing nop sqe to rings %llu...\n", id);
-    sqe_t sqe = SQE_CREATE(RINGS_NOP, SQE_LINK | (SQE_REG0 << SQE_SAVE), CLOCKS_PER_SEC, 0x1234);
+    sqe_t sqe = SQE_CREATE(RINGS_NOP, SQE_HARDLINK | (SQE_REG0 << SQE_SAVE), CLOCKS_PER_SEC, 0x1234);
     sqe_push(&rings, &sqe);
 
     printf("pushing nop sqe to rings %llu...\n", id);
