@@ -3,9 +3,9 @@
 #include <kernel/cpu/syscall.h>
 
 #include <stdint.h>
-#include <sys/rings.h>
 #include <sys/io.h>
 #include <sys/proc.h>
+#include <sys/rings.h>
 #include <time.h>
 
 #define _SYSCALL0(retType, num) \
@@ -288,8 +288,7 @@ static inline uint64_t _syscall_arch_prctl(arch_prctl_t code, uintptr_t addr)
 
 static inline uint64_t _syscall_setup(rings_t* rings, void* address, size_t sentries, size_t centries)
 {
-    return _SYSCALL4(uint64_t, SYS_SETUP, rings_t*, rings, void*, address, size_t, sentries, size_t,
-        centries);
+    return _SYSCALL4(uint64_t, SYS_SETUP, rings_t*, rings, void*, address, size_t, sentries, size_t, centries);
 }
 
 static inline uint64_t _syscall_teardown(void)

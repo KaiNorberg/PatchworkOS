@@ -17,21 +17,24 @@ typedef struct process process_t;
  * @ingroup kernel_sync
  *
  * ## Callbacks
- * 
+ *
  * Requests can define three callbacks, included is a list of their expected semantics.
- * 
+ *
  * ### Completion Callback
- * 
- * The `complete()` callback should be called when the request has been completed, the `complete()` implementation does not need to guarantee that the request structure will remain valid after a call to this function.
- * 
+ *
+ * The `complete()` callback should be called when the request has been completed, the `complete()` implementation does
+ * not need to guarantee that the request structure will remain valid after a call to this function.
+ *
  * ### Cancellation Callback
- * 
- * The optional `cancel()` callback is called when attempting to cancel an in-progress request, if the request cannot be cancelled, the callback should return `false`, otherwise `true`.
- * 
+ *
+ * The optional `cancel()` callback is called when attempting to cancel an in-progress request, if the request cannot be
+ * cancelled, the callback should return `false`, otherwise `true`.
+ *
  * ### Timeout Callback
  *
- * The optional `timeout()` callback is called when a request has timed out, the request * will be removed from the timeout queue before this callback is called and it will never * be called more than once.
- * 
+ * The optional `timeout()` callback is called when a request has timed out, the request * will be removed from the
+ * timeout queue before this callback is called and it will never * be called more than once.
+ *
  * @{
  */
 
@@ -93,8 +96,8 @@ typedef enum
  * @brief Generic request structure.
  * @struct request_t
  *
- * @warning Due to optimization done while allocating requests in the async system, no request structure should be larger than
- * this structure.
+ * @warning Due to optimization done while allocating requests in the async system, no request structure should be
+ * larger than this structure.
  */
 typedef struct request
 {
@@ -163,6 +166,13 @@ void request_timeouts_check(void);
         (_request)->result = (typeof((_request)->result))0; \
     })
 
+/**
+ * @brief Macro to call a function with a request and handle early completions.
+ *
+ * @param _request Pointer to the request.
+ * @param _func Function to call with the request.
+ * @return The result of the function call.
+ */
 #define REQUEST_CALL(_request, _func) \
     ({ \
         typeof((_request)->result) result = _func(_request); \
@@ -179,6 +189,14 @@ void request_timeouts_check(void);
         result; \
     })
 
+/**
+ * @brief Macro to delay the completion of a request without adding it to a queue.
+ *
+ * Primarily intended for use with timeout handling.
+ *
+ * @param _request Pointer to the request to delay.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
 #define REQUEST_DELAY_NO_QUEUE(_request) \
     ({ \
         uint64_t result = 0; \
@@ -199,6 +217,12 @@ void request_timeouts_check(void);
         result; \
     })
 
+/**
+ * @brief Macro to delay the completion of a request.
+ *
+ * @param _request Pointer to the request to delay.
+ * @param _queue Pointer to the request queue to add the request to.
+ */
 #define REQUEST_DELAY(_request, _queue) \
     ({ \
         list_push_back(&(_queue)->requests, &(_request)->entry); \
@@ -210,9 +234,22 @@ void request_timeouts_check(void);
         result; \
     })
 
+/**
+ * @brief Macro to get the next request from a queue.
+ *
+ * @param _queue Pointer to the request queue.
+ * @param _type The type of the request structure.
+ * @return Pointer to the next request, or `NULL` if the queue is empty.
+ */
 #define REQUEST_NEXT(_queue, _type) \
     (list_is_empty(&(_queue)->requests) ? NULL : CONTAINER_OF(list_first(&(_queue)->requests), _type, entry))
 
+/**
+ * @brief Macro to complete a request with an error.
+ *
+ * @param _request Pointer to the request.
+ * @param _errno The errno code.
+ */
 #define REQUEST_ERROR(_request, _errno) \
     ({ \
         if ((_request)->flags & REQUEST_TIMEOUT) \
@@ -225,6 +262,12 @@ void request_timeouts_check(void);
         (_request)->complete((_request)); \
     })
 
+/**
+ * @brief Macro to complete a request.
+ *
+ * @param _request Pointer to the request.
+ * @param _result The result of the request.
+ */
 #define REQUEST_COMPLETE(_request, _result) \
     ({ \
         if ((_request)->flags & REQUEST_TIMEOUT) \
@@ -237,6 +280,12 @@ void request_timeouts_check(void);
         (_request)->complete((_request)); \
     })
 
+/**
+ * @brief Macro to cancel a request.
+ *
+ * @param _request Pointer to the request.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
 #define REQUEST_CANCEL(_request) \
     ({ \
         uint64_t result = 0; \

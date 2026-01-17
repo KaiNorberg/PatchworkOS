@@ -6,7 +6,7 @@
  * @brief Kernel Request Implementations
  * @defgroup kernel_sync_requests Requests
  * @ingroup kernel_sync
- * 
+ *
  * @{
  */
 

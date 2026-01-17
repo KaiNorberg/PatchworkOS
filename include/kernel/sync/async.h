@@ -1,11 +1,11 @@
 #pragma once
 
 #include <kernel/config.h>
+#include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/request.h>
-#include <kernel/log/panic.h>
 
 #include <string.h>
 #include <sys/rings.h>
@@ -14,6 +14,8 @@
  * @brief Asynchronous Rings
  * @defgroup kernel_sync_async Async
  * @ingroup kernel_sync
+ *
+ * @see libstd_rings for the userspace rings API.
  *
  * @{
  */
@@ -35,9 +37,9 @@ typedef enum
  */
 typedef struct async_ctx
 {
-    rings_t rings;    ///< Asynchronous rings information.
-    request_t* requests; ///< A preallocated array of requests, one for each CQE.
-    list_t freeTasks;        ///< Free list of tasks.
+    rings_t rings;          ///< Asynchronous rings information.
+    request_t* requests;    ///< A preallocated array of requests, one for each CQE.
+    list_t freeTasks;       ///< Free list of tasks.
     void* userAddr;         ///< Userspace address of the rings.
     void* kernelAddr;       ///< Kernel address of the rings.
     size_t pageAmount;      ///< Amount of pages mapped for the rings.

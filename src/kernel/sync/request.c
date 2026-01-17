@@ -1,7 +1,7 @@
 #include <kernel/sched/clock.h>
+#include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/request.h>
-#include <kernel/sched/timer.h>
 
 #include <kernel/cpu/percpu.h>
 

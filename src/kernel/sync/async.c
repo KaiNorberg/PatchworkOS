@@ -1,24 +1,26 @@
-#include <kernel/mem/paging_types.h>
-#include <kernel/mem/vmm.h>
-#include <kernel/mem/pmm.h>
-#include <kernel/proc/process.h>
-#include <kernel/sync/async.h>
 #include <kernel/cpu/syscall.h>
-#include <kernel/log/panic.h>
-#include <kernel/sync/requests.h>
 #include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/mem/paging_types.h>
+#include <kernel/mem/pmm.h>
+#include <kernel/mem/vmm.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
+#include <kernel/sync/async.h>
+#include <kernel/sync/requests.h>
 
 #include <errno.h>
-#include <time.h>
-#include <sys/rings.h>
 #include <sys/list.h>
+#include <sys/rings.h>
+#include <time.h>
 
-static inline uint64_t async_ctx_map(async_ctx_t* ctx, space_t* space, rings_t* userRings, void* address, size_t sentries, size_t centries)
+static inline uint64_t async_ctx_map(async_ctx_t* ctx, space_t* space, rings_t* userRings, void* address,
+    size_t sentries, size_t centries)
 {
     rings_t* kernelRings = &ctx->rings;
 
-    size_t pageAmount = BYTES_TO_PAGES(sizeof(rings_shared_t) + (sentries * sizeof(sqe_t)) + (centries * sizeof(cqe_t)));
+    size_t pageAmount =
+        BYTES_TO_PAGES(sizeof(rings_shared_t) + (sentries * sizeof(sqe_t)) + (centries * sizeof(cqe_t)));
     if (pageAmount >= CONFIG_MAX_ASYNC_PAGES)
     {
         errno = ENOMEM;
@@ -85,7 +87,7 @@ static inline uint64_t async_ctx_map(async_ctx_t* ctx, space_t* space, rings_t* 
     kernelRings->sentries = sentries;
     kernelRings->smask = sentries - 1;
     kernelRings->cqueue = (cqe_t*)((uintptr_t)kernelAddr + sizeof(rings_shared_t) + (sentries * sizeof(sqe_t)));
-    kernelRings->centries = centries;    
+    kernelRings->centries = centries;
     kernelRings->cmask = centries - 1;
 
     ctx->requests = requests;
@@ -169,7 +171,7 @@ static void async_nop_complete(request_nop_t* nop)
     cqe.data = nop->data;
     cqe.opcode = RINGS_NOP;
     cqe.error = EOK;
-    
+
     process_t* process = nop->process;
     async_ctx_push_cqe(&process->async, &cqe);
     async_ctx_free_request(&process->async, (request_t*)nop);
@@ -294,7 +296,7 @@ SYSCALL_DEFINE(SYS_SETUP, uint64_t, rings_t* userRings, void* address, size_t se
     process_t* process = process_current();
     async_ctx_t* ctx = &process->async;
     space_t* space = &process->space;
-    
+
     if (async_ctx_acquire(ctx) == ERR)
     {
         errno = EBUSY;
