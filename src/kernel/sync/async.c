@@ -6,8 +6,11 @@
 #include <kernel/cpu/syscall.h>
 #include <kernel/log/panic.h>
 #include <kernel/sync/requests.h>
+#include <kernel/log/log.h>
+#include <kernel/sched/clock.h>
 
 #include <errno.h>
+#include <time.h>
 #include <sys/rings.h>
 #include <sys/list.h>
 
@@ -175,6 +178,12 @@ static void async_nop_complete(request_nop_t* nop)
 
 static uint64_t async_handle_sqe(async_ctx_t* ctx, sqe_t* sqe)
 {
+    if (sqe->opcode < RINGS_MIN_OPCODE || sqe->opcode >= RINGS_MAX_OPCODE)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     request_t* request = async_ctx_alloc_request(ctx);
     if (request == NULL)
     {
@@ -182,13 +191,16 @@ static uint64_t async_handle_sqe(async_ctx_t* ctx, sqe_t* sqe)
         return ERR;
     }
 
+    clock_t uptime = clock_uptime();
+    request->data = sqe->data;
+    request->process = REF(process_current());
+    request->deadline = CLOCKS_DEADLINE(sqe->timeout, uptime);
+
     switch (sqe->opcode)
     {
     case RINGS_NOP:
     {
         request_nop_t* nop = (request_nop_t*)request;
-        nop->data = sqe->data;
-        nop->process = REF(process_current());
         nop->complete = async_nop_complete;
         nop->cancel = request_nop_cancel;
         nop->timeout = request_nop_timeout;
@@ -196,12 +208,19 @@ static uint64_t async_handle_sqe(async_ctx_t* ctx, sqe_t* sqe)
     }
     break;
     default:
-        async_ctx_free_request(ctx, request);
-        errno = EINVAL;
-        return ERR;
+        // Impossible due to above check.
+        panic(NULL, "Invalid opcode %d", sqe->opcode);
     }
 
     return 0;
+}
+
+static inline uint64_t async_ctx_avail_cqes(async_ctx_t* ctx)
+{
+    rings_t* rings = &ctx->rings;
+    uint32_t ctail = atomic_load_explicit(&rings->shared->ctail, memory_order_relaxed);
+    uint32_t chead = atomic_load_explicit(&rings->shared->chead, memory_order_acquire);
+    return ctail - chead;
 }
 
 uint64_t async_ctx_notify(async_ctx_t* ctx, size_t amount, size_t wait)
@@ -254,21 +273,10 @@ uint64_t async_ctx_notify(async_ctx_t* ctx, size_t amount, size_t wait)
         return processed;
     }
 
-    while (true)
+    if (WAIT_BLOCK(&ctx->waitQueue, async_ctx_avail_cqes(ctx) >= wait) == ERR)
     {
-        uint32_t ctail = atomic_load_explicit(&rings->shared->ctail, memory_order_relaxed);
-        uint32_t chead = atomic_load_explicit(&rings->shared->chead, memory_order_acquire);
-
-        if ((ctail - chead) >= wait)
-        {
-            break;
-        }
-
-        if (WAIT_BLOCK(&ctx->waitQueue, false) == ERR)
-        {
-            async_ctx_release(ctx);
-            return processed > 0 ? processed : ERR;
-        }
+        async_ctx_release(ctx);
+        return processed > 0 ? processed : ERR;
     }
 
     async_ctx_release(ctx);

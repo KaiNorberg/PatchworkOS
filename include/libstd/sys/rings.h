@@ -41,7 +41,9 @@ extern "C"
  */
 typedef enum
 {
+    RINGS_MIN_OPCODE = 0,
     RINGS_NOP = 0, ///< Never completes, can be used to implement a sleep equivalent.
+    RINGS_MAX_OPCODE,
 } rings_op_t;
 
 /**
@@ -50,13 +52,12 @@ typedef enum
  *
  * Used to modify the behavior of asynchronous operations.
  *
- * @todo Implement `SQE_LINK` and `SQE_IMMEDIATE`.
+ * @todo Implement `SQE_LINK`.
  */
 typedef enum
 {
     SQE_DEFAULT = 0,
     SQE_LINK = 1 << 0,      ///< Must be completed before the next SQE in the submission queue is started.
-    SQE_IMMEDIATE = 1 << 1, ///< Fail if the operation cannot be completed immediately.
 } sqe_flags_t;
 
 /**
