@@ -18,7 +18,10 @@ void request_timeout_add(request_t* request)
     request_ctx_t* ctx = SELF_PTR(pcpu_requests);
     LOCK_SCOPE(&ctx->lock);
 
-    request->ctx = ctx;
+    request->cpu = SELF->id;
+
+    clock_t now = clock_uptime();
+    request->deadline = CLOCKS_DEADLINE(request->timeout, now);
 
     request_t* entry;
     LIST_FOR_EACH(entry, &ctx->timeouts, timeoutEntry)
@@ -26,20 +29,21 @@ void request_timeout_add(request_t* request)
         if (request->deadline < entry->deadline)
         {
             list_prepend(&entry->entry, &request->timeoutEntry);
+            timer_set(now, request->deadline);
             return;
         }
     }
 
     list_push_back(&ctx->timeouts, &request->timeoutEntry);
-
-    timer_set(clock_uptime(), request->deadline);
+    timer_set(now, request->deadline);
 }
 
 void request_timeout_remove(request_t* request)
 {
-    assert(request->ctx != NULL);
-    LOCK_SCOPE(&request->ctx->lock);
-
+    request_ctx_t* ctx = CPU_PTR(request->cpu, pcpu_requests);
+    assert(ctx != NULL);
+    
+    LOCK_SCOPE(&ctx->lock);
     list_remove(&request->timeoutEntry);
 }
 
@@ -70,8 +74,9 @@ void request_timeouts_check(void)
         list_remove(&request->timeoutEntry);
         lock_release(&ctx->lock);
 
-        assert(request->timeout != NULL);
-        request->timeout(request);
+        assert(request->cancel != NULL);
+        request->err = ETIMEDOUT;
+        request->cancel(request);
 
         lock_acquire(&ctx->lock);
     }

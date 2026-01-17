@@ -30,10 +30,13 @@ extern "C"
  *
  * Synchronous operations are implemented on top of this API in userspace.
  *
+ * @see [Wikipedia](https://en.wikipedia.org/wiki/Io_uring) for information about `io_uring`.
+ * @see [Manpages](https://man7.org/linux/man-pages/man7/io_uring.7.html) for more information about `io_uring`.
+ *
  * ## Registers
  *
  * Operations performed on a ring can load arguments from, and save their results to, seven 64-bit general purpose
- * registers. All registers are initialized to zero.
+ * registers. All registers are stored in the shared area of the rings structure, as such they can be inspected and modified by user space.
  *
  * When a SQE is processed, the kernel will check six register specifiers in the SQE flags, one for the result, and for
  * each argument. Each specifier is stored as three bits, with a zero value indicating no-op and any other value
@@ -45,9 +48,7 @@ extern "C"
  * would be possible to open a file, read from it, and close it, with a single `enter()` call.
  *
  * @see `sqe_flags_t` for more information about register specifiers and their formatting.
- *
- * @see [Wikipedia](https://en.wikipedia.org/wiki/Io_uring) for information about `io_uring`.
- * @see [Manpages](https://man7.org/linux/man-pages/man7/io_uring.7.html) for more information about `io_uring`.
+
  *
  * @{
  */
@@ -87,6 +88,7 @@ typedef enum
     SQE_REG7 = 7,         ///< The seventh register.
     SQE_REG_SHIFT = 3,    ///< The bitshift for each register specifier in a `sqe_flags_t`.
     SQE_REG_MASK = 0b111, ///< The bitmask for a register specifier in a `sqe_flags_t`.
+    SEQ_REGS_MAX = 7,     ///< The maximum number of registers.
 } seq_regs_t;
 
 /**
@@ -102,7 +104,7 @@ typedef enum
     SQE_LOAD3 = SQE_LOAD2 + SQE_REG_SHIFT, ///< The offset to specify which register to load into the fourth argument.
     SQE_LOAD4 = SQE_LOAD3 + SQE_REG_SHIFT, ///< The offset to specify which register to load into the fifth argument.
     SQE_FLAGS_SHIFT = SQE_LOAD4 + SQE_REG_SHIFT, ///< The bitshift for where bit flags start in a `sqe_flags_t`.
-    SQE_LINK = 1 << (SQE_FLAGS_SHIFT),      ///< =nly process the next SQE if and when this one completes successfully.
+    SQE_LINK = 1 << (SQE_FLAGS_SHIFT),      ///< Only process the next SQE if and when this one completes successfully, only applies within one `enter()` call.
     SQE_RESET = 1 << (SQE_FLAGS_SHIFT + 1), ///< Reset registers before processing this SQE.
 } sqe_flags_t;
 
@@ -158,6 +160,7 @@ typedef struct ALIGNED(32) cqe
     rings_op_t opcode; ///< Operation code from the submission entry.
     errno_t error;     ///< Error code, if not equal to `EOK` an error occurred.
     union {
+        uint64_t nop;
         uint64_t _raw;
     };
 } cqe_t;
@@ -177,15 +180,16 @@ typedef uint64_t rings_id_t;
  *
  * Used as the intermediate between userspace and the kernel.
  *
+ * @note The structure is aligned in such a way to reduce false sharing.
+ * 
  */
 typedef struct ALIGNED(64) rings_shared
 {
     atomic_uint32_t shead; ///< Submission head index, updated by the kernel.
     atomic_uint32_t ctail; ///< Completion tail index, updated by the kernel.
-    uint8_t _padding[64 -
-        sizeof(atomic_uint32_t) * 2]; ///< Padding to prevent false sharing between user space and the kernel.
-    atomic_uint32_t stail;            ///< Submission tail index, updated by userspace.
-    atomic_uint32_t chead;            ///< Completion head index, updated by userspace.
+    atomic_uint32_t stail ALIGNED(64); ///< Submission tail index, updated by userspace.
+    atomic_uint32_t chead; ///< Completion head index, updated by userspace.
+    atomic_uint64_t regs[SEQ_REGS_MAX] ALIGNED(64); ///< General purpose registers.
 } rings_shared_t;
 
 /**

@@ -40,7 +40,6 @@ typedef struct async_ctx
     rings_t rings;          ///< Asynchronous rings information.
     request_t* requests;    ///< A preallocated array of requests, one for each CQE.
     list_t freeRequests;    ///< Free list of requests.
-    uint64_t pending;       ///< The amount of pending requests.
     void* userAddr;         ///< Userspace address of the rings.
     void* kernelAddr;       ///< Kernel address of the rings.
     size_t pageAmount;      ///< Amount of pages mapped for the rings.

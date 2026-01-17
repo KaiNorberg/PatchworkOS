@@ -20,6 +20,5 @@ typedef struct request_nop
 } request_nop_t;
 
 bool request_nop_cancel(request_nop_t* request);
-void request_nop_timeout(request_nop_t* request);
 
 /** @} */

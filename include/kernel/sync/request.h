@@ -7,6 +7,7 @@
 #include <sys/io.h>
 #include <sys/list.h>
 #include <sys/math.h>
+#include <sys/rings.h>
 #include <time.h>
 
 typedef struct async_ctx async_ctx_t;
@@ -17,27 +18,25 @@ typedef struct process process_t;
  * @defgroup kernel_sync_request Request
  * @ingroup kernel_sync
  *
- * ## Callbacks
- *
- * Requests can define three callbacks, included is a list of their expected semantics.
- *
- * ### Completion Callback
+ * ## Completion Callback
  *
  * The `complete()` callback should be called when the request has been completed, the `complete()` implementation does
  * not need to guarantee that the request structure will remain valid after a call to this function.
  *
- * ### Cancellation Callback
+ * Generally, the completion callback should be implemented by the creator of the request while the `cancel()` callback is implemented by the subsystem processing the request.
+ * 
+ * ## Cancellation Callback
  *
- * The optional `cancel()` callback is called when attempting to cancel an in-progress request, if the request cannot be
+ * The optional `cancel()` callback is called when attempting to cancel an in-progress request or when its deadline expires, if the request cannot be
  * cancelled, the callback should return `false`, otherwise `true`.
- *
- * ### Timeout Callback
- *
- * The optional `timeout()` callback is called when a request has timed out, the request * will be removed from the
- * timeout queue before this callback is called and it will never * be called more than once.
  *
  * @{
  */
+
+/**
+ * @brief Represents that there is no next request in a chain.
+ */
+#define REQUEST_NO_INDEX UINT16_MAX
 
 /**
  * @brief Per-CPU request queues.
@@ -63,34 +62,40 @@ typedef enum
  * @brief Macro to define common request structure members.
  *
  * All requests contain the below common members:
- * - `list_entry_t entry`: List entry for requests queues and completion queues.
+ * - `list_entry_t entry`: List entry made available for use by any subsystem.
  * - `list_entry_t timeoutEntry`: List entry for timeout queues.
- * - `request_ctx_t* ctx`: Pointer to the per-CPU request context storing this request for timeouts.
+ * - `uint16_t flags`: Request flags, see `request_flags_t`.
+ * - `uint16_t err`: Errno value for the request, or `EOK`.
+ * - `cpu_id_t cpu`: The ID of the cpu with the request context storing this request for timeouts.
+ * - `uint16_t next`: Index of the next request in a chain, or `REQUEST_NO_INDEX`. Used since a pointer would be to large.
  * - `async_ctx_t* async`: Pointer to the async context that created this request, or `NULL`.
  * - `void* data`: Pointer to user data.
  * - `void (*complete)(_type*)`: Completion callback.
  * - `bool (*cancel)(_type*)`: Cancellation callback.
- * - `void (*timeout)(_type*)`: Timeout callback.
- * - `request_flags_t flags`: Task flags.
- * - `errno_t err`: Error code for the request.
- * - `clock_t deadline`: Deadline for the request.
+ * - `union { clock_t deadline; clock_t timeout; }`: Before a request is queued for processing, this member represents the timeout duration for the request. After being queued, it represents the absolute deadline for the request.
  * - `_resultType result`: Result of the request.
  *
+ * @note The ordering here is important to avoid padding and keeping the full `request_t` structure at 128 bytes.
+ * 
  * @param _type The type of the request structure.
  * @param _resultType The type of the request result.
  */
 #define REQUEST_COMMON(_type, _resultType) \
     list_entry_t entry; \
     list_entry_t timeoutEntry; \
-    request_ctx_t* ctx; \
+    uint16_t flags; \
+    uint16_t err; \
+    cpu_id_t cpu; \
+    uint16_t next; \
     async_ctx_t* async; \
     void* data; \
     void (*complete)(_type*); \
     bool (*cancel)(_type*); \
-    void (*timeout)(_type*); \
-    request_flags_t flags; \
-    errno_t err; \
-    clock_t deadline; \
+    union \
+    { \
+        clock_t deadline; \
+        clock_t timeout; \
+    }; \
     _resultType result
 
 /**
@@ -103,27 +108,12 @@ typedef enum
 typedef struct request
 {
     REQUEST_COMMON(struct request, uint64_t);
-    uint64_t _padding[4];
+    uint64_t _padding[SEQ_MAX_ARGS];
 } request_t;
 
-/**
- * @brief Task queue structure.
- * @struct request_queue_t
- */
-typedef struct
-{
-    list_t requests;
-} request_queue_t;
-
-/**
- * @brief Initializes a request queue.
- *
- * @param queue Pointer to the request queue to initialize.
- */
-static inline void request_queue_init(request_queue_t* queue)
-{
-    list_init(&queue->requests);
-}
+#ifdef static_assert
+static_assert(sizeof(request_t) == 128, "request_t is not 128 bytes");
+#endif
 
 /**
  * @brief Adds a request to the per-CPU timeout queue.
@@ -155,14 +145,14 @@ void request_timeouts_check(void);
     ({ \
         (_request)->entry = LIST_ENTRY_CREATE((_request)->entry); \
         (_request)->timeoutEntry = LIST_ENTRY_CREATE((_request)->timeoutEntry); \
-        (_request)->ctx = NULL; \
+        (_request)->flags = 0; \
+        (_request)->err = EOK; \
+        (_request)->cpu = CPU_ID_INVALID; \
+        (_request)->next = REQUEST_NO_INDEX; \
         (_request)->async = NULL; \
         (_request)->data = NULL; \
         (_request)->complete = NULL; \
         (_request)->cancel = NULL; \
-        (_request)->timeout = NULL; \
-        (_request)->flags = 0; \
-        (_request)->err = EOK; \
         (_request)->deadline = CLOCKS_NEVER; \
         (_request)->result = (typeof((_request)->result))0; \
     })
@@ -204,16 +194,8 @@ void request_timeouts_check(void);
         (_request)->flags |= REQUEST_DELAYED; \
         if ((_request)->deadline != CLOCKS_NEVER) \
         { \
-            if ((_request)->timeout == NULL) \
-            { \
-                errno = EINVAL; \
-                result = ERR; \
-            } \
-            else \
-            { \
-                (_request)->flags |= REQUEST_TIMEOUT; \
-                request_timeout_add((request_t*)(_request)); \
-            } \
+            (_request)->flags |= REQUEST_TIMEOUT; \
+            request_timeout_add((request_t*)(_request)); \
         } \
         result; \
     })
@@ -222,11 +204,11 @@ void request_timeouts_check(void);
  * @brief Macro to delay the completion of a request.
  *
  * @param _request Pointer to the request to delay.
- * @param _queue Pointer to the request queue to add the request to.
+ * @param _queue Pointer to a list to add the request to.
  */
 #define REQUEST_DELAY(_request, _queue) \
     ({ \
-        list_push_back(&(_queue)->requests, &(_request)->entry); \
+        list_push_back(_queue, &(_request)->entry); \
         uint64_t result = REQUEST_DELAY_NO_QUEUE(_request); \
         if (result == ERR) \
         { \
