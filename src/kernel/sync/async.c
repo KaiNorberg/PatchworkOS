@@ -8,14 +8,14 @@
 #include <kernel/sync/requests.h>
 
 #include <errno.h>
-#include <sys/async.h>
+#include <sys/rings.h>
 #include <sys/list.h>
 
-static inline uint64_t async_ctx_map(async_ctx_t* ctx, space_t* space, async_rings_t* userRings, void* address, size_t sentries, size_t centries)
+static inline uint64_t async_ctx_map(async_ctx_t* ctx, space_t* space, rings_t* userRings, void* address, size_t sentries, size_t centries)
 {
-    async_rings_t* kernelRings = &ctx->rings;
+    rings_t* kernelRings = &ctx->rings;
 
-    size_t pageAmount = BYTES_TO_PAGES(sizeof(async_shared_t) + (sentries * sizeof(async_sqe_t)) + (centries * sizeof(async_cqe_t)));
+    size_t pageAmount = BYTES_TO_PAGES(sizeof(rings_shared_t) + (sentries * sizeof(sqe_t)) + (centries * sizeof(cqe_t)));
     if (pageAmount >= CONFIG_MAX_ASYNC_PAGES)
     {
         errno = ENOMEM;
@@ -63,25 +63,25 @@ static inline uint64_t async_ctx_map(async_ctx_t* ctx, space_t* space, async_rin
         list_push_back(&ctx->freeTasks, &requests[i].entry);
     }
 
-    async_shared_t* shared = (async_shared_t*)kernelAddr;
+    rings_shared_t* shared = (rings_shared_t*)kernelAddr;
     atomic_init(&shared->shead, 0);
     atomic_init(&shared->stail, 0);
     atomic_init(&shared->ctail, 0);
     atomic_init(&shared->chead, 0);
 
     userRings->shared = userAddr;
-    userRings->squeue = (async_sqe_t*)((uintptr_t)userAddr + sizeof(async_shared_t));
+    userRings->squeue = (sqe_t*)((uintptr_t)userAddr + sizeof(rings_shared_t));
     userRings->sentries = sentries;
     userRings->smask = sentries - 1;
-    userRings->cqueue = (async_cqe_t*)((uintptr_t)userAddr + sizeof(async_shared_t) + (sentries * sizeof(async_sqe_t)));
+    userRings->cqueue = (cqe_t*)((uintptr_t)userAddr + sizeof(rings_shared_t) + (sentries * sizeof(sqe_t)));
     userRings->centries = centries;
     userRings->cmask = centries - 1;
 
     kernelRings->shared = kernelAddr;
-    kernelRings->squeue = (async_sqe_t*)((uintptr_t)kernelAddr + sizeof(async_shared_t));
+    kernelRings->squeue = (sqe_t*)((uintptr_t)kernelAddr + sizeof(rings_shared_t));
     kernelRings->sentries = sentries;
     kernelRings->smask = sentries - 1;
-    kernelRings->cqueue = (async_cqe_t*)((uintptr_t)kernelAddr + sizeof(async_shared_t) + (sentries * sizeof(async_sqe_t)));
+    kernelRings->cqueue = (cqe_t*)((uintptr_t)kernelAddr + sizeof(rings_shared_t) + (sentries * sizeof(sqe_t)));
     kernelRings->centries = centries;    
     kernelRings->cmask = centries - 1;
 
@@ -162,9 +162,9 @@ void async_ctx_deinit(async_ctx_t* ctx)
 
 static void async_nop_complete(request_nop_t* nop)
 {
-    async_cqe_t cqe;
+    cqe_t cqe;
     cqe.data = nop->data;
-    cqe.opcode = ASYNC_OP_NOP;
+    cqe.opcode = RINGS_NOP;
     cqe.error = EOK;
     
     process_t* process = nop->process;
@@ -173,7 +173,7 @@ static void async_nop_complete(request_nop_t* nop)
     UNREF(nop->process);
 }
 
-static uint64_t async_handle_sqe(async_ctx_t* ctx, async_sqe_t* sqe)
+static uint64_t async_handle_sqe(async_ctx_t* ctx, sqe_t* sqe)
 {
     request_t* request = async_ctx_alloc_request(ctx);
     if (request == NULL)
@@ -184,7 +184,7 @@ static uint64_t async_handle_sqe(async_ctx_t* ctx, async_sqe_t* sqe)
 
     switch (sqe->opcode)
     {
-    case ASYNC_OP_NOP:
+    case RINGS_NOP:
     {
         request_nop_t* nop = (request_nop_t*)request;
         nop->data = sqe->data;
@@ -224,7 +224,7 @@ uint64_t async_ctx_notify(async_ctx_t* ctx, size_t amount, size_t wait)
         return ERR;
     }
 
-    async_rings_t* rings = &ctx->rings;
+    rings_t* rings = &ctx->rings;
     size_t processed = 0;
 
     while (processed < amount)
@@ -237,7 +237,7 @@ uint64_t async_ctx_notify(async_ctx_t* ctx, size_t amount, size_t wait)
             break;
         }
 
-        async_sqe_t sqe = rings->squeue[shead & rings->smask];
+        sqe_t sqe = rings->squeue[shead & rings->smask];
         atomic_store_explicit(&rings->shared->shead, shead + 1, memory_order_release);
 
         if (async_handle_sqe(ctx, &sqe) == ERR)
@@ -275,7 +275,7 @@ uint64_t async_ctx_notify(async_ctx_t* ctx, size_t amount, size_t wait)
     return processed;
 }
 
-SYSCALL_DEFINE(SYS_ASYNC_INIT, uint64_t, async_rings_t* userRings, void* address, size_t sentries, size_t centries)
+SYSCALL_DEFINE(SYS_SETUP, uint64_t, rings_t* userRings, void* address, size_t sentries, size_t centries)
 {
     if (userRings == NULL || sentries == 0 || centries == 0 || !IS_POW2(sentries) || !IS_POW2(centries))
     {
@@ -310,7 +310,7 @@ SYSCALL_DEFINE(SYS_ASYNC_INIT, uint64_t, async_rings_t* userRings, void* address
     return 0;
 }
 
-SYSCALL_DEFINE(SYS_ASYNC_DEINIT, uint64_t)
+SYSCALL_DEFINE(SYS_TEARDOWN, uint64_t)
 {
     process_t* process = process_current();
     async_ctx_t* ctx = &process->async;
@@ -339,7 +339,7 @@ SYSCALL_DEFINE(SYS_ASYNC_DEINIT, uint64_t)
     return 0;
 }
 
-SYSCALL_DEFINE(SYS_ASYNC_NOTIFY, uint64_t, size_t amount, size_t wait)
+SYSCALL_DEFINE(SYS_ENTER, uint64_t, size_t amount, size_t wait)
 {
     process_t* process = process_current();
     async_ctx_t* ctx = &process->async;

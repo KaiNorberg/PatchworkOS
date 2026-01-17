@@ -8,11 +8,11 @@
 #include <kernel/log/panic.h>
 
 #include <string.h>
-#include <sys/async.h>
+#include <sys/rings.h>
 
 /**
  * @brief Asynchronous Rings
- * @defgroup kernel_sync_rings Rings
+ * @defgroup kernel_sync_async Async
  * @ingroup kernel_sync
  *
  * @{
@@ -35,7 +35,7 @@ typedef enum
  */
 typedef struct async_ctx
 {
-    async_rings_t rings;    ///< Asynchronous rings information.
+    rings_t rings;    ///< Asynchronous rings information.
     request_t* requests; ///< A preallocated array of requests, one for each CQE.
     list_t freeTasks;        ///< Free list of tasks.
     void* userAddr;         ///< Userspace address of the rings.
@@ -104,9 +104,9 @@ static inline void async_ctx_release(async_ctx_t* ctx)
  * @param ctx Pointer to the async context.
  * @param cqe Pointer to the CQE to push.
  */
-static inline void async_ctx_push_cqe(async_ctx_t* ctx, async_cqe_t* cqe)
+static inline void async_ctx_push_cqe(async_ctx_t* ctx, cqe_t* cqe)
 {
-    async_rings_t* rings = &ctx->rings;
+    rings_t* rings = &ctx->rings;
 
     uint32_t tail = atomic_load_explicit(&rings->shared->ctail, memory_order_relaxed);
     uint32_t head = atomic_load_explicit(&rings->shared->chead, memory_order_acquire);

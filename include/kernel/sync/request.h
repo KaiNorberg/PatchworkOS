@@ -16,6 +16,22 @@ typedef struct process process_t;
  * @defgroup kernel_sync_request Request
  * @ingroup kernel_sync
  *
+ * ## Callbacks
+ * 
+ * Requests can define three callbacks, included is a list of their expected semantics.
+ * 
+ * ### Completion Callback
+ * 
+ * The `complete()` callback should be called when the request has been completed, the `complete()` implementation does not need to guarantee that the request structure will remain valid after a call to this function.
+ * 
+ * ### Cancellation Callback
+ * 
+ * The optional `cancel()` callback is called when attempting to cancel an in-progress request, if the request cannot be cancelled, the callback should return `false`, otherwise `true`.
+ * 
+ * ### Timeout Callback
+ *
+ * The optional `timeout()` callback is called when a request has timed out, the request * will be removed from the timeout queue before this callback is called and it will never * be called more than once.
+ * 
  * @{
  */
 
@@ -26,7 +42,6 @@ typedef struct process process_t;
 typedef struct request_ctx
 {
     list_t timeouts;
-    list_t completed;
     lock_t lock;
 } request_ctx_t;
 
@@ -50,7 +65,7 @@ typedef enum
  * - `process_t* process` - Pointer to the process that created the request.
  * - `void* data` - Pointer to user data.
  * - `void (*complete)(_type*)` - Completion callback.
- * - `bool (*cancel)(_type*)` - Cancellation callback, should return `true` if the request was cancelled.
+ * - `bool (*cancel)(_type*)` - Cancellation callback.
  * - `void (*timeout)(_type*)` - Timeout callback.
  * - `request_flags_t flags` - Task flags.
  * - `errno_t err` - Error code for the request.

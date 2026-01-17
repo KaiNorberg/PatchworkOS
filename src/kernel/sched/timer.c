@@ -136,7 +136,7 @@ uint64_t timer_source_amount(void)
     return amount;
 }
 
-void timer_set(clock_t uptime, clock_t deadline)
+void timer_set(clock_t now, clock_t deadline)
 {
     if (deadline == CLOCKS_NEVER)
     {
@@ -145,7 +145,7 @@ void timer_set(clock_t uptime, clock_t deadline)
 
     RWLOCK_READ_SCOPE(&sourcesLock);
 
-    deadline = MAX(deadline, uptime + CONFIG_MIN_TIMER_TIMEOUT);
+    deadline = MAX(deadline, now + CONFIG_MIN_TIMER_TIMEOUT);
 
     if (pcpu_timer->deadline <= deadline)
     {
@@ -155,6 +155,6 @@ void timer_set(clock_t uptime, clock_t deadline)
 
     if (bestSource != NULL)
     {
-        bestSource->set(VECTOR_TIMER, uptime, deadline - uptime);
+        bestSource->set(VECTOR_TIMER, now, deadline - now);
     }
 }
