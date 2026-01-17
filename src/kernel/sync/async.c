@@ -7,12 +7,30 @@
 #include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sync/async.h>
+#include <kernel/sync/request.h>
 #include <kernel/sync/requests.h>
 
 #include <errno.h>
 #include <sys/list.h>
 #include <sys/rings.h>
 #include <time.h>
+
+static inline uint64_t async_ctx_acquire(async_ctx_t* ctx)
+{
+    async_ctx_flags_t expected = atomic_load(&ctx->flags);
+    if (!(expected & ASYNC_CTX_BUSY) &&
+        atomic_compare_exchange_strong(&ctx->flags, &expected, expected | ASYNC_CTX_BUSY))
+    {
+        return 0;
+    }
+
+    return ERR;
+}
+
+static inline void async_ctx_release(async_ctx_t* ctx)
+{
+    atomic_fetch_and(&ctx->flags, ~ASYNC_CTX_BUSY);
+}
 
 static inline uint64_t async_ctx_map(async_ctx_t* ctx, space_t* space, rings_id_t id, rings_t* userRings, void* address,
     size_t sentries, size_t centries)
@@ -24,6 +42,12 @@ static inline uint64_t async_ctx_map(async_ctx_t* ctx, space_t* space, rings_id_
     if (pageAmount >= CONFIG_MAX_ASYNC_PAGES)
     {
         errno = ENOMEM;
+        return ERR;
+    }
+
+    if (centries >= REQUEST_ID_MAX)
+    {
+        errno = EINVAL;
         return ERR;
     }
 
@@ -54,18 +78,12 @@ static inline uint64_t async_ctx_map(async_ctx_t* ctx, space_t* space, rings_id_
         return ERR;
     }
 
-    request_t* requests = malloc(sizeof(request_t) * centries);
+    request_pool_t* requests = request_pool_new(centries, ctx);
     if (requests == NULL)
     {
         vmm_unmap(space, userAddr, pageAmount * PAGE_SIZE);
         vmm_unmap(NULL, kernelAddr, pageAmount * PAGE_SIZE);
         return ERR;
-    }
-
-    for (size_t i = 0; i < centries; i++)
-    {
-        REQUEST_INIT(&requests[i]);
-        list_push_back(&ctx->freeRequests, &requests[i].entry);
     }
 
     rings_shared_t* shared = (rings_shared_t*)kernelAddr;
@@ -108,8 +126,7 @@ static inline uint64_t async_ctx_map(async_ctx_t* ctx, space_t* space, rings_id_
 
 static inline uint64_t async_ctx_unmap(async_ctx_t* ctx)
 {
-    list_init(&ctx->freeRequests);
-    free(ctx->requests);
+    request_pool_free(ctx->requests);
     ctx->requests = NULL;
 
     vmm_unmap(ctx->space, ctx->userAddr, ctx->pageAmount * PAGE_SIZE);
@@ -118,22 +135,6 @@ static inline uint64_t async_ctx_unmap(async_ctx_t* ctx)
     atomic_fetch_and(&ctx->flags, ~ASYNC_CTX_MAPPED);
     return 0;
 }
-
-static inline request_t* async_ctx_alloc_request(async_ctx_t* ctx)
-{
-    if (list_is_empty(&ctx->freeRequests))
-    {
-        return NULL;
-    }
-
-    return CONTAINER_OF(list_pop_back(&ctx->freeRequests), request_t, entry);
-}
-
-static inline void async_ctx_free_request(async_ctx_t* ctx, request_t* request)
-{
-    list_push_back(&ctx->freeRequests, &request->entry);
-}
-
 
 static inline uint64_t async_ctx_avail_cqes(async_ctx_t* ctx)
 {
@@ -152,7 +153,6 @@ void async_ctx_init(async_ctx_t* ctx)
 
     ctx->rings = (rings_t){0};
     ctx->requests = NULL;
-    list_init(&ctx->freeRequests);
     ctx->userAddr = NULL;
     ctx->kernelAddr = NULL;
     ctx->pageAmount = 0;
@@ -187,87 +187,106 @@ void async_ctx_deinit(async_ctx_t* ctx)
 
 typedef struct
 {
-    async_ctx_t* ctx;
     list_t requests;
     request_t* link;
 } async_notify_ctx_t;
 
 static void async_dispatch(request_t* request)
 {
-    REQUEST_DELAY_NO_QUEUE(request);
+    switch (request->type)
+    {
+    case RINGS_NOP:
+    {
+        request_nop_t* nop = (request_nop_t*)request;
+        nop->cancel = request_nop_cancel;
+        REQUEST_DELAY_NO_QUEUE(nop);
+    }
+    break;
+    default:
+        // Impossible due to the check in async_handle_sqe.
+        panic(NULL, "Invalid opcode %d", request->type);
+        break;
+    }
 }
 
-static void async_nop_complete(request_nop_t* nop)
+static void async_ctx_push_cqe(async_ctx_t* ctx, rings_op_t opcode, errno_t error, void* data, uint64_t result)
 {
-    LOG_INFO("completing NOP request data=%p\n", nop->data);
+    rings_t* rings = &ctx->rings;
 
-    cqe_t cqe;
-    cqe.data = nop->data;
-    cqe.opcode = RINGS_NOP;
-    cqe.error = EOK;
+    uint32_t tail = atomic_load_explicit(&rings->shared->ctail, memory_order_relaxed);
+    uint32_t head = atomic_load_explicit(&rings->shared->chead, memory_order_acquire);
 
-    async_ctx_t* async = nop->async;
-    assert(async != NULL);
-    assert(async->rings.id < CONFIG_MAX_ASYNC_RINGS);
-    
-    async_ctx_push_cqe(async, &cqe);
-
-    if (nop->next != REQUEST_NO_INDEX)
+    if ((tail - head) >= rings->centries)
     {
-        request_t* next = &async->requests[nop->next];
-        async_dispatch(next);
-        nop->next = REQUEST_NO_INDEX;
+        /// @todo Handle overflow properly.
+        panic(NULL, "Async completion queue overflow");
     }
 
-    async_ctx_free_request(async, (request_t*)nop);
+    cqe_t* cqe = &rings->cqueue[tail & rings->cmask];
+    cqe->opcode = opcode;
+    cqe->error = error;
+    cqe->data = data;
+    cqe->_raw = result;
 
-    // process_t* process = CONTAINER_OF(async, process_t, async[async->rings.id]);
-    /// @todo What to do if the process gets killed?
+    atomic_store_explicit(&rings->shared->ctail, tail + 1, memory_order_release);
+
+    wait_unblock(&ctx->waitQueue, WAIT_ALL, EOK);
 }
 
-static uint64_t async_handle_sqe(async_notify_ctx_t* notify, sqe_t* sqe)
+static void async_request_complete(request_t* request)
+{
+    async_ctx_t* ctx = request_get_ctx(request);
+
+    async_ctx_push_cqe(ctx, request->type, request->err, request->data, request->result);
+
+    request_t* next = request_next(request);
+    if (next != NULL)
+    {
+        async_dispatch(next);
+    }
+
+    request_free(request);
+
+    if (ctx->requests->used == 0)
+    {
+        UNREF(ctx->process);
+        ctx->process = NULL;
+    }
+}
+
+static uint64_t async_handle_sqe(async_ctx_t* ctx, async_notify_ctx_t* notify, sqe_t* sqe)
 {
     if (sqe->opcode < RINGS_MIN_OPCODE || sqe->opcode >= RINGS_MAX_OPCODE)
     {
-        cqe_t cqe;
-        cqe.data = sqe->data;
-        cqe.opcode = sqe->opcode;
-        cqe.error = EINVAL;
-        cqe._raw = ERR;
-        async_ctx_push_cqe(notify->ctx, &cqe);
+        async_ctx_push_cqe(ctx, sqe->opcode, EINVAL, sqe->data, ERR);
         return 0;
     }
 
-    request_t* request = async_ctx_alloc_request(notify->ctx);
+    request_t* request = request_new(ctx->requests);
     if (request == NULL)
     {
         errno = ENOSPC;
         return ERR;
     }
 
-    request->data = sqe->data;
-    request->async = notify->ctx;
+    if (ctx->requests->used == 1)
+    {
+        process_t* process = process_current();
+        assert(process->async[0] <= ctx && ctx <= process->async[CONFIG_MAX_ASYNC_RINGS - 1]);
+        ctx->process = REF(process);
+    }
+
+    request->complete = async_request_complete;
+    request->cancel = NULL;
     request->timeout = sqe->timeout;
-    
-    switch (sqe->opcode)
-    {
-    case RINGS_NOP:
-    {
-        request_nop_t* nop = (request_nop_t*)request;
-        nop->complete = async_nop_complete;
-        nop->cancel = request_nop_cancel;
-    }
-    break;
-    default:
-        // Impossible due to above check.
-        panic(NULL, "Invalid opcode %d", sqe->opcode);
-    }
+    request->type = sqe->opcode;
+    request->err = EOK;
+    request->data = sqe->data;
+    request->result = 0;
 
     if (notify->link != NULL)
     {
-        size_t index = request - notify->ctx->requests;
-        assert(index < REQUEST_NO_INDEX);
-        notify->link->next = (uint16_t)index;
+        notify->link->next = request->index;
         notify->link = NULL;
     }
     else
@@ -309,11 +328,10 @@ uint64_t async_ctx_notify(async_ctx_t* ctx, size_t amount, size_t wait)
     size_t processed = 0;
 
     async_notify_ctx_t notify = {
-        .ctx = ctx,
         .requests = LIST_CREATE(notify.requests),
         .link = NULL,
     };
-    
+
     while (processed < amount)
     {
         uint32_t stail = atomic_load_explicit(&rings->shared->stail, memory_order_acquire);
@@ -327,7 +345,7 @@ uint64_t async_ctx_notify(async_ctx_t* ctx, size_t amount, size_t wait)
         sqe_t sqe = rings->squeue[shead & rings->smask];
         atomic_store_explicit(&rings->shared->shead, shead + 1, memory_order_release);
 
-        if (async_handle_sqe(&notify, &sqe) == ERR)
+        if (async_handle_sqe(ctx, &notify, &sqe) == ERR)
         {
             break;
         }
@@ -416,6 +434,13 @@ SYSCALL_DEFINE(SYS_TEARDOWN, uint64_t, rings_id_t id)
     {
         async_ctx_release(ctx);
         errno = EINVAL;
+        return ERR;
+    }
+
+    if (ctx->requests != NULL && ctx->requests->used > 0)
+    {
+        async_ctx_release(ctx);
+        errno = EBUSY;
         return ERR;
     }
 

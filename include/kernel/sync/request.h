@@ -18,35 +18,39 @@ typedef struct process process_t;
  * @defgroup kernel_sync_request Request
  * @ingroup kernel_sync
  *
+ * The request primitive is designed to be generic enough to be used by any system in the kernel, however it is
+ * primarily used by the asynchronous rings system.
+ *
+ * @warning The request system is not thread-safe, it is the responsibility of the caller to ensure proper
+ * synchronization.
+ *
+ * @see kernel_sync_async for the asynchronous rings system.
+ *
  * ## Completion Callback
  *
  * The `complete()` callback should be called when the request has been completed, the `complete()` implementation does
  * not need to guarantee that the request structure will remain valid after a call to this function.
  *
- * Generally, the completion callback should be implemented by the creator of the request while the `cancel()` callback is implemented by the subsystem processing the request.
- * 
+ * Generally, the completion callback should be implemented by the creator of the request while the `cancel()` callback
+ * is implemented by the subsystem processing the request.
+ *
  * ## Cancellation Callback
  *
- * The optional `cancel()` callback is called when attempting to cancel an in-progress request or when its deadline expires, if the request cannot be
- * cancelled, the callback should return `false`, otherwise `true`.
+ * The optional `cancel()` callback is called when attempting to cancel an in-progress request or when its deadline
+ * expires, if the request cannot be cancelled, the callback should return `false`, otherwise `true`.
  *
  * @{
  */
 
 /**
- * @brief Represents that there is no next request in a chain.
+ * @brief Request ID type.
  */
-#define REQUEST_NO_INDEX UINT16_MAX
+typedef uint16_t request_id_t;
 
 /**
- * @brief Per-CPU request queues.
- * @struct request_ctx_t
+ * @brief The maximum id value for requests.
  */
-typedef struct request_ctx
-{
-    list_t timeouts;
-    lock_t lock;
-} request_ctx_t;
+#define REQUEST_ID_MAX UINT16_MAX
 
 /**
  * @brief Task flags.
@@ -61,59 +65,145 @@ typedef enum
 /**
  * @brief Macro to define common request structure members.
  *
- * All requests contain the below common members:
- * - `list_entry_t entry`: List entry made available for use by any subsystem.
- * - `list_entry_t timeoutEntry`: List entry for timeout queues.
- * - `uint16_t flags`: Request flags, see `request_flags_t`.
- * - `uint16_t err`: Errno value for the request, or `EOK`.
- * - `cpu_id_t cpu`: The ID of the cpu with the request context storing this request for timeouts.
- * - `uint16_t next`: Index of the next request in a chain, or `REQUEST_NO_INDEX`. Used since a pointer would be to large.
- * - `async_ctx_t* async`: Pointer to the async context that created this request, or `NULL`.
- * - `void* data`: Pointer to user data.
- * - `void (*complete)(_type*)`: Completion callback.
- * - `bool (*cancel)(_type*)`: Cancellation callback.
- * - `union { clock_t deadline; clock_t timeout; }`: Before a request is queued for processing, this member represents the timeout duration for the request. After being queued, it represents the absolute deadline for the request.
- * - `_resultType result`: Result of the request.
- *
  * @note The ordering here is important to avoid padding and keeping the full `request_t` structure at 128 bytes.
- * 
+ *
  * @param _type The type of the request structure.
  * @param _resultType The type of the request result.
  */
 #define REQUEST_COMMON(_type, _resultType) \
+    static_assert(sizeof(_resultType) == sizeof(uint64_t), "result type must be 64 bits"); \
     list_entry_t entry; \
     list_entry_t timeoutEntry; \
-    uint16_t flags; \
-    uint16_t err; \
-    cpu_id_t cpu; \
-    uint16_t next; \
-    async_ctx_t* async; \
-    void* data; \
     void (*complete)(_type*); \
     bool (*cancel)(_type*); \
-    union \
-    { \
+    union { \
         clock_t deadline; \
         clock_t timeout; \
     }; \
-    _resultType result
+    request_id_t index; \
+    request_id_t next; \
+    cpu_id_t cpu; \
+    uint8_t flags; \
+    uint8_t type; \
+    uint8_t err; \
+    void* data; \
+    _resultType result;
 
 /**
  * @brief Generic request structure.
  * @struct request_t
  *
- * @warning Due to optimization done while allocating requests in the async system, no request structure should be
+ * @warning Due to optimization for the request pools, no request structure should be
  * larger than this structure.
  */
 typedef struct request
 {
     REQUEST_COMMON(struct request, uint64_t);
-    uint64_t _padding[SEQ_MAX_ARGS];
+    uint64_t _raw[SEQ_MAX_ARGS]; ///< Should be used by requests to store data.
 } request_t;
 
-#ifdef static_assert
 static_assert(sizeof(request_t) == 128, "request_t is not 128 bytes");
-#endif
+
+/**
+ * @brief Request pool structure.
+ * @struct request_pool_t
+ */
+typedef struct request_pool
+{
+    void* ctx;
+    size_t used;
+    list_t free;
+    request_t requests[];
+} request_pool_t;
+
+/**
+ * @brief Allocate a new request pool.
+ *
+ * @param size The amount of requests to allocate.
+ * @param ctx The context of the request pool.
+ * @return On success, a pointer to the new request pool. On failure, `NULL` and `errno` is set.
+ */
+request_pool_t* request_pool_new(size_t size, void* ctx);
+
+/**
+ * @brief Free a request pool.
+ *
+ * @param pool Pointer to the request pool to free.
+ */
+void request_pool_free(request_pool_t* pool);
+
+/**
+ * @brief Retrieve the request pool that a request was allocated from.
+ *
+ * @param request Pointer to the request.
+ * @return Pointer to the request pool.
+ */
+static inline request_pool_t* request_get_pool(request_t* request)
+{
+    return CONTAINER_OF(request, request_pool_t, requests[request->index]);
+}
+
+/**
+ * @brief Retrieve the context of the request pool that a request was allocated from.
+ *
+ * @param request Pointer to the request.
+ * @return Pointer to the context.
+ */
+static inline void* request_get_ctx(request_t* request)
+{
+    return request_get_pool(request)->ctx;
+}
+
+/**
+ * @brief Retrieve the next request and clear the next field.
+ *
+ * @param request Pointer to the current request.
+ * @return Pointer to the next request, or `NULL` if there is no next request.
+ */
+static inline request_t* request_next(request_t* request)
+{
+    request_pool_t* pool = request_get_pool(request);
+    if (request->next == REQUEST_ID_MAX)
+    {
+        return NULL;
+    }
+
+    request_t* next = &pool->requests[request->next];
+    request->next = REQUEST_ID_MAX;
+    return next;
+}
+
+/**
+ * @brief Allocate a new request from a pool.
+ *
+ * The pool that the request was allocated from, and its context, can be retrieved using the `request_get_pool()`
+ * function.
+ *
+ * @param pool Pointer to the request pool.
+ * @return On success, a pointer to the allocated request. On failure, `NULL`.
+ */
+static inline request_t* request_new(request_pool_t* pool)
+{
+    if (list_is_empty(&pool->free))
+    {
+        return NULL;
+    }
+
+    pool->used++;
+    return CONTAINER_OF(list_pop_back(&pool->free), request_t, entry);
+}
+
+/**
+ * @brief Free a request back to its pool.
+ *
+ * @param request Pointer to the request to free.
+ */
+static inline void request_free(request_t* request)
+{
+    request_pool_t* pool = request_get_pool(request);
+    pool->used--;
+    list_push_back(&pool->free, &request->entry);
+}
 
 /**
  * @brief Adds a request to the per-CPU timeout queue.
@@ -135,27 +225,6 @@ void request_timeout_remove(request_t* request);
  * @warning Must be called with interrupts disabled.
  */
 void request_timeouts_check(void);
-
-/**
- * @brief Macro to initialize a requests common members.
- *
- * @param _request Pointer to the request to initialize.
- */
-#define REQUEST_INIT(_request) \
-    ({ \
-        (_request)->entry = LIST_ENTRY_CREATE((_request)->entry); \
-        (_request)->timeoutEntry = LIST_ENTRY_CREATE((_request)->timeoutEntry); \
-        (_request)->flags = 0; \
-        (_request)->err = EOK; \
-        (_request)->cpu = CPU_ID_INVALID; \
-        (_request)->next = REQUEST_NO_INDEX; \
-        (_request)->async = NULL; \
-        (_request)->data = NULL; \
-        (_request)->complete = NULL; \
-        (_request)->cancel = NULL; \
-        (_request)->deadline = CLOCKS_NEVER; \
-        (_request)->result = (typeof((_request)->result))0; \
-    })
 
 /**
  * @brief Macro to call a function with a request and handle early completions.

@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/rings.h>
 
 #define SENTRIES 64
@@ -35,15 +36,11 @@ int main()
     while (cqe_pop(&rings, &cqe))
     {
         printf("popped cqe...\n");
-        if (cqe.error != EOK)
-        {
-            printf("cqe returned error\n");
-            return cqe.error;
-        }
 
         printf("cqe data: %p\n", cqe.data);
         printf("cqe opcode: %d\n", cqe.opcode);
-        printf("cqe error: %d\n", cqe.error);
+        printf("cqe error: %s\n", strerror(cqe.error));
+        printf("cqe result: %llu\n", cqe._raw);
     }
 
     printf("tearing down rings...\n");

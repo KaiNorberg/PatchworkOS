@@ -36,7 +36,8 @@ extern "C"
  * ## Registers
  *
  * Operations performed on a ring can load arguments from, and save their results to, seven 64-bit general purpose
- * registers. All registers are stored in the shared area of the rings structure, as such they can be inspected and modified by user space.
+ * registers. All registers are stored in the shared area of the rings structure, as such they can be inspected and
+ * modified by user space.
  *
  * When a SQE is processed, the kernel will check six register specifiers in the SQE flags, one for the result, and for
  * each argument. Each specifier is stored as three bits, with a zero value indicating no-op and any other value
@@ -47,8 +48,32 @@ extern "C"
  * This system, when combined with `SQE_LINK`, allows for multiple operations to be performed at once, for example, it
  * would be possible to open a file, read from it, and close it, with a single `enter()` call.
  *
+ * ## Errors
+ *
+ * The majority of errors are returned in the completion queue entries, certain errors (such as `ENOMEM`) may be
+ * reported directly from the `enter()` call.
+ *
+ * Certain error values that may be returned in a completion queue entry include:
+ * - `EOK`: Success.
+ * - `ECANCELED`: The operation was cancelled.
+ * - `ETIMEDOUT`: The operation timed out.
+ * - Other values may be returned depending on the operation.
+ *
  * @see `sqe_flags_t` for more information about register specifiers and their formatting.
-
+ *
+ * ## Syncronization
+ *
+ * The rings structure is designed to be safe under the assumption that there is a single producer (one user-space
+ * thread) and a single consumer (the kernel).
+ *
+ * If a rings structure needs multiple producers (needs to be accessed by multiple threads) it is the responsibility of
+ * the caller to ensure proper synchronization.
+ *
+ * @note The reason for this limitation is optimization for the common case, as the syncronization logic for multiple
+ * producers would add significant overhead.
+ *
+ * Regarding the rings structure itself, the structure can only be torndown as long as nothing is using it and there are
+ * no pending operations.
  *
  * @{
  */
@@ -104,7 +129,8 @@ typedef enum
     SQE_LOAD3 = SQE_LOAD2 + SQE_REG_SHIFT, ///< The offset to specify which register to load into the fourth argument.
     SQE_LOAD4 = SQE_LOAD3 + SQE_REG_SHIFT, ///< The offset to specify which register to load into the fifth argument.
     SQE_FLAGS_SHIFT = SQE_LOAD4 + SQE_REG_SHIFT, ///< The bitshift for where bit flags start in a `sqe_flags_t`.
-    SQE_LINK = 1 << (SQE_FLAGS_SHIFT),      ///< Only process the next SQE if and when this one completes successfully, only applies within one `enter()` call.
+    SQE_LINK = 1 << (SQE_FLAGS_SHIFT), ///< Only process the next SQE if and when this one completes successfully, only
+                                       ///< applies within one `enter()` call.
     SQE_RESET = 1 << (SQE_FLAGS_SHIFT + 1), ///< Reset registers before processing this SQE.
 } sqe_flags_t;
 
@@ -156,9 +182,9 @@ static_assert(sizeof(sqe_t) == 64, "sqe_t is not 64 bytes");
  */
 typedef struct ALIGNED(32) cqe
 {
-    void* data;        ///< Private data from the submission entry.
     rings_op_t opcode; ///< Operation code from the submission entry.
     errno_t error;     ///< Error code, if not equal to `EOK` an error occurred.
+    void* data;        ///< Private data from the submission entry.
     union {
         uint64_t nop;
         uint64_t _raw;
@@ -181,14 +207,14 @@ typedef uint64_t rings_id_t;
  * Used as the intermediate between userspace and the kernel.
  *
  * @note The structure is aligned in such a way to reduce false sharing.
- * 
+ *
  */
 typedef struct ALIGNED(64) rings_shared
 {
-    atomic_uint32_t shead; ///< Submission head index, updated by the kernel.
-    atomic_uint32_t ctail; ///< Completion tail index, updated by the kernel.
-    atomic_uint32_t stail ALIGNED(64); ///< Submission tail index, updated by userspace.
-    atomic_uint32_t chead; ///< Completion head index, updated by userspace.
+    atomic_uint32_t shead;                          ///< Submission head index, updated by the kernel.
+    atomic_uint32_t ctail;                          ///< Completion tail index, updated by the kernel.
+    atomic_uint32_t stail ALIGNED(64);              ///< Submission tail index, updated by userspace.
+    atomic_uint32_t chead;                          ///< Completion head index, updated by userspace.
     atomic_uint64_t regs[SEQ_REGS_MAX] ALIGNED(64); ///< General purpose registers.
 } rings_shared_t;
 
