@@ -9,9 +9,9 @@ int main()
 {
     printf("setting up rings test...\n");
     rings_t rings;
-    setup(&rings, NULL, SENTRIES, CENTRIES);
+    rings_id_t id = setup(&rings, NULL, SENTRIES, CENTRIES);
 
-    printf("pushing nop sqe...\n");
+    printf("pushing nop sqe to rings %llu...\n", id);
     sqe_t sqe = SQE_CREATE(RINGS_NOP, SQE_REG1 << SQE_SAVE, CLOCKS_PER_SEC, 0x1234);
     sqe_push(&rings, &sqe);
 
@@ -19,7 +19,7 @@ int main()
     sqe_push(&rings, &sqe);
 
     printf("entering rings...\n");
-    enter(1, 1);
+    enter(id, 1, 1);
 
     printf("popping cqe...\n");
     cqe_t cqe;
@@ -35,6 +35,6 @@ int main()
     printf("cqe error: %d\n", cqe.error);
 
     printf("tearing down rings...\n");
-    teardown();
+    teardown(id);
     return 0;
 }

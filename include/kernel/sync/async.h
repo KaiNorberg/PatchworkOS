@@ -27,7 +27,7 @@
 typedef enum
 {
     ASYNC_CTX_NONE = 0,        ///< No flags set.
-    ASYNC_CTX_BUSY = 1 << 0,   ///< Context is currently being used.
+    ASYNC_CTX_BUSY = 1 << 0,   ///< Context is currently being used, used for fast locking.
     ASYNC_CTX_MAPPED = 1 << 1, ///< Context rings are mapped.
 } async_ctx_flags_t;
 
@@ -39,7 +39,8 @@ typedef struct async_ctx
 {
     rings_t rings;          ///< Asynchronous rings information.
     request_t* requests;    ///< A preallocated array of requests, one for each CQE.
-    list_t freeTasks;       ///< Free list of tasks.
+    list_t freeRequests;    ///< Free list of requests.
+    uint64_t pending;       ///< The amount of pending requests.
     void* userAddr;         ///< Userspace address of the rings.
     void* kernelAddr;       ///< Kernel address of the rings.
     size_t pageAmount;      ///< Amount of pages mapped for the rings.

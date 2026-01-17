@@ -111,7 +111,10 @@ static void process_free(process_t* process)
     }
     space_deinit(&process->space);
     futex_ctx_deinit(&process->futexCtx);
-    async_ctx_deinit(&process->async);
+    for (uint64_t i = 0; i < CONFIG_MAX_ASYNC_RINGS; i++)
+    {
+        async_ctx_deinit(&process->async[i]);
+    }
     wait_queue_deinit(&process->dyingQueue);
     wait_queue_deinit(&process->suspendQueue);
     env_deinit(&process->env);
@@ -151,7 +154,10 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
     file_table_init(&process->fileTable);
     futex_ctx_init(&process->futexCtx);
     perf_process_ctx_init(&process->perf);
-    async_ctx_init(&process->async);
+    for (uint64_t i = 0; i < CONFIG_MAX_ASYNC_RINGS; i++)
+    {
+        async_ctx_init(&process->async[i]);
+    }
     note_handler_init(&process->noteHandler);
     wait_queue_init(&process->suspendQueue);
     wait_queue_init(&process->dyingQueue);

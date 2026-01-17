@@ -88,7 +88,7 @@ typedef struct process
     file_table_t fileTable;
     futex_ctx_t futexCtx;
     perf_process_ctx_t perf;
-    async_ctx_t async;
+    async_ctx_t async[CONFIG_MAX_ASYNC_RINGS];
     note_handler_t noteHandler;
     wait_queue_t suspendQueue;
     wait_queue_t dyingQueue;

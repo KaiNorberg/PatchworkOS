@@ -2,9 +2,9 @@
 
 #include "user/common/syscalls.h"
 
-uint64_t teardown(void)
+uint64_t enter(rings_id_t id, size_t amount, size_t wait)
 {
-    uint64_t result = _syscall_teardown();
+    uint64_t result = _syscall_enter(id, amount, wait);
     if (result == ERR)
     {
         errno = _syscall_errno();

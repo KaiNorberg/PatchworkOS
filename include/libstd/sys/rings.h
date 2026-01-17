@@ -102,8 +102,7 @@ typedef enum
     SQE_LOAD3 = SQE_LOAD2 + SQE_REG_SHIFT, ///< The offset to specify which register to load into the fourth argument.
     SQE_LOAD4 = SQE_LOAD3 + SQE_REG_SHIFT, ///< The offset to specify which register to load into the fifth argument.
     SQE_FLAGS_SHIFT = SQE_LOAD4 + SQE_REG_SHIFT, ///< The bitshift for where bit flags start in a `sqe_flags_t`.
-    SQE_LINK = 1 << SQE_FLAGS_SHIFT, ///< Link this operation to the next SQE, only process the next SQE if and when
-                                     ///< this one completes successfully.
+    SQE_LINK = 1 << (SQE_FLAGS_SHIFT),      ///< =nly process the next SQE if and when this one completes successfully.
     SQE_RESET = 1 << (SQE_FLAGS_SHIFT + 1), ///< Reset registers before processing this SQE.
 } sqe_flags_t;
 
@@ -166,6 +165,12 @@ typedef struct ALIGNED(32) cqe
 #ifdef static_assert
 static_assert(sizeof(cqe_t) == 32, "cqe_t is not 32 bytes");
 #endif
+
+/**
+ * @brief Rings ID type.
+ */
+typedef uint64_t rings_id_t;
+
 /**
  * @brief Shared asynchronous rings structure.
  * @struct rings_shared_t
@@ -192,6 +197,7 @@ typedef struct ALIGNED(64) rings_shared
 typedef struct rings
 {
     rings_shared_t* shared; ///< Pointer to the shared structure.
+    rings_id_t id;          ///< The ID of the rings.
     sqe_t* squeue;          ///< Pointer to the submission queue.
     size_t sentries;        ///< Number of entries in the submission queue.
     size_t smask;           ///< Bitmask for submission queue (sentries - 1).
@@ -216,32 +222,31 @@ typedef struct rings
  * This system call will populate the given structure with the necessary pointers and metadata for the submission and
  * completion rings.
  *
- * @note Since each process can only have one rings set, the `teardown()` system call must be used before calling
- * this function again.
- *
  * @param rings Pointer to the structure to populate.
  * @param address Desired address to allocate the rings, or `NULL` to let the kernel choose.
  * @param sentries Number of entires to allocate for the submission queue, must be a power of two.
  * @param centries Number of entries to allocate for the completion queue, must be a power of two.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, the ring ID. On failure, `ERR` and `errno` is set.
  */
-uint64_t setup(rings_t* rings, void* address, size_t sentries, size_t centries);
+rings_id_t setup(rings_t* rings, void* address, size_t sentries, size_t centries);
 
 /**
  * @brief System call to deinitialize the asynchronous rings.
  *
+ * @param id The ID of the rings to deinitialize.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t teardown(void);
+uint64_t teardown(rings_id_t id);
 
 /**
  * @brief System call to notify the kernel of new submission queue entries (SQEs).
  *
+ * @param id The ID of the rings to notify.
  * @param amount The number of SQEs that the kernel should process.
  * @param wait The minimum number of completion queue entries (CQEs) to wait for.
  * @return On success, the number of SQEs successfully processed. On failure, `ERR` and `errno` is set.
  */
-uint64_t enter(size_t amount, size_t wait);
+uint64_t enter(rings_id_t id, size_t amount, size_t wait);
 
 /**
  * @brief Pushes a submission queue entry (SQE) to the submission queue.

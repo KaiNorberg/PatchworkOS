@@ -9,6 +9,7 @@
 #include <sys/math.h>
 #include <time.h>
 
+typedef struct async_ctx async_ctx_t;
 typedef struct process process_t;
 
 /**
@@ -62,18 +63,18 @@ typedef enum
  * @brief Macro to define common request structure members.
  *
  * All requests contain the below common members:
- * - `list_entry_t entry` - List entry for requests queues and completion queues.
- * - `list_entry_t timeoutEntry` - List entry for timeout queues.
- * - `request_ctx_t* ctx` - Pointer to the per-CPU request context storing this request for timeouts.
- * - `process_t* process` - Pointer to the process that created the request.
- * - `void* data` - Pointer to user data.
- * - `void (*complete)(_type*)` - Completion callback.
- * - `bool (*cancel)(_type*)` - Cancellation callback.
- * - `void (*timeout)(_type*)` - Timeout callback.
- * - `request_flags_t flags` - Task flags.
- * - `errno_t err` - Error code for the request.
- * - `clock_t deadline` - Deadline for the request.
- * - `_resultType result` - Result of the request.
+ * - `list_entry_t entry`: List entry for requests queues and completion queues.
+ * - `list_entry_t timeoutEntry`: List entry for timeout queues.
+ * - `request_ctx_t* ctx`: Pointer to the per-CPU request context storing this request for timeouts.
+ * - `async_ctx_t* async`: Pointer to the async context that created this request, or `NULL`.
+ * - `void* data`: Pointer to user data.
+ * - `void (*complete)(_type*)`: Completion callback.
+ * - `bool (*cancel)(_type*)`: Cancellation callback.
+ * - `void (*timeout)(_type*)`: Timeout callback.
+ * - `request_flags_t flags`: Task flags.
+ * - `errno_t err`: Error code for the request.
+ * - `clock_t deadline`: Deadline for the request.
+ * - `_resultType result`: Result of the request.
  *
  * @param _type The type of the request structure.
  * @param _resultType The type of the request result.
@@ -82,7 +83,7 @@ typedef enum
     list_entry_t entry; \
     list_entry_t timeoutEntry; \
     request_ctx_t* ctx; \
-    process_t* process; \
+    async_ctx_t* async; \
     void* data; \
     void (*complete)(_type*); \
     bool (*cancel)(_type*); \
@@ -155,7 +156,7 @@ void request_timeouts_check(void);
         (_request)->entry = LIST_ENTRY_CREATE((_request)->entry); \
         (_request)->timeoutEntry = LIST_ENTRY_CREATE((_request)->timeoutEntry); \
         (_request)->ctx = NULL; \
-        (_request)->process = NULL; \
+        (_request)->async = NULL; \
         (_request)->data = NULL; \
         (_request)->complete = NULL; \
         (_request)->cancel = NULL; \
