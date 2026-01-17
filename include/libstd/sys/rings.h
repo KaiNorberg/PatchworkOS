@@ -39,14 +39,15 @@ extern "C"
  * registers. All registers are stored in the shared area of the rings structure, as such they can be inspected and
  * modified by user space.
  *
- * When a SQE is processed, the kernel will check six register specifiers in the SQE flags, one for the result, and for
- * each argument. Each specifier is stored as three bits, with a zero value indicating no-op and any other value
- * representing the n-th register. The offset of the specifier specifies its meaning, for example, the first specifier
- * (bits 0-2) specifies which register to save the result into, while the second specifier (bits 3-5) specifies which
- * register to load into the first argument, and so on.
+ * When a SQE is processed, the kernel will check six register specifiers in the SQE flags, one for each argument and
+ * one for the result. Each specifier is stored as three bits, with a `SQE_REG_NONE` value indicating no-op and any
+ * other value representing the n-th register. The offset of the specifier specifies its meaning, for example, bits
+ * `0-2` specify the register to load into the first argument, bits `3-5` specify the register to load into the second
+ * argument, and so on until bits `15-18` which specify the register to save the result into.
  *
  * This system, when combined with `SQE_LINK`, allows for multiple operations to be performed at once, for example, it
- * would be possible to open a file, read from it, and close it, with a single `enter()` call.
+ * would be possible to open a file, read from it, seek to a new position, write to it, and finally close the file, with
+ * a single `enter()` call.
  *
  * ## Errors
  *
@@ -103,17 +104,17 @@ typedef enum
  */
 typedef enum
 {
-    SQE_REG_NONE = 0,     ///< Dont perform any save or load operation.
-    SQE_REG1 = 1,         ///< The first register.
-    SQE_REG2 = 2,         ///< The second register.
-    SQE_REG3 = 3,         ///< The third register.
-    SQE_REG4 = 4,         ///< The fourth register.
-    SQE_REG5 = 5,         ///< The fifth register.
-    SQE_REG6 = 6,         ///< The sixth register.
-    SQE_REG7 = 7,         ///< The seventh register.
+    SQE_REG0 = 0,         ///< The first register.
+    SQE_REG1 = 1,         ///< The second register.
+    SQE_REG2 = 2,         ///< The third register.
+    SQE_REG3 = 3,         ///< The fourth register.
+    SQE_REG4 = 4,         ///< The fifth register.
+    SQE_REG5 = 5,         ///< The sixth register.
+    SQE_REG6 = 6,         ///< The seventh register.
+    SQE_REG_NONE = 7,     ///< No register.
+    SEQ_REGS_MAX = 7,     ///< The maximum number of registers.
     SQE_REG_SHIFT = 3,    ///< The bitshift for each register specifier in a `sqe_flags_t`.
     SQE_REG_MASK = 0b111, ///< The bitmask for a register specifier in a `sqe_flags_t`.
-    SEQ_REGS_MAX = 7,     ///< The maximum number of registers.
 } seq_regs_t;
 
 /**
@@ -122,13 +123,13 @@ typedef enum
  */
 typedef enum
 {
-    SQE_SAVE = 0,                          ///< The offset to specify the register to save the result into.
-    SQE_LOAD0 = SQE_SAVE + SQE_REG_SHIFT,  ///< The offset to specify which register to load into the first argument.
+    SQE_LOAD0 = 0,                         ///< The offset to specify which register to load into the first argument.
     SQE_LOAD1 = SQE_LOAD0 + SQE_REG_SHIFT, ///< The offset to specify which register to load into the second argument.
     SQE_LOAD2 = SQE_LOAD1 + SQE_REG_SHIFT, ///< The offset to specify which register to load into the third argument.
     SQE_LOAD3 = SQE_LOAD2 + SQE_REG_SHIFT, ///< The offset to specify which register to load into the fourth argument.
     SQE_LOAD4 = SQE_LOAD3 + SQE_REG_SHIFT, ///< The offset to specify which register to load into the fifth argument.
-    SQE_FLAGS_SHIFT = SQE_LOAD4 + SQE_REG_SHIFT, ///< The bitshift for where bit flags start in a `sqe_flags_t`.
+    SQE_SAVE = SQE_LOAD4 + SQE_REG_SHIFT,  ///< The offset to specify the register to save the result into.
+    SQE_FLAGS_SHIFT = SQE_SAVE + SQE_REG_SHIFT, ///< The bitshift for where bit flags start in a `sqe_flags_t`.
     SQE_LINK = 1 << (SQE_FLAGS_SHIFT), ///< Only process the next SQE if and when this one completes successfully, only
                                        ///< applies within one `enter()` call.
     SQE_RESET = 1 << (SQE_FLAGS_SHIFT + 1), ///< Reset registers before processing this SQE.

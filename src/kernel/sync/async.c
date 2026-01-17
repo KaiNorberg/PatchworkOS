@@ -193,6 +193,19 @@ typedef struct
 
 static void async_dispatch(request_t* request)
 {
+    async_ctx_t* ctx = request_get_ctx(request);
+
+    for (uint64_t i = 0; i < SEQ_MAX_ARGS; i++)
+    {
+        seq_regs_t reg = (request->flags >> (i * SQE_REG_SHIFT)) & SQE_REG_MASK;
+        if (reg == SQE_REG_NONE)
+        {
+            continue;
+        }
+
+        request->args[i] = atomic_load_explicit(&ctx->rings.shared->regs[reg], memory_order_acquire);
+    }
+
     switch (request->type)
     {
     case RINGS_NOP:
@@ -237,6 +250,12 @@ static void async_request_complete(request_t* request)
 {
     async_ctx_t* ctx = request_get_ctx(request);
 
+    seq_regs_t reg = (request->flags >> SQE_SAVE) & SQE_REG_MASK;
+    if (reg != SQE_REG_NONE)
+    {
+        atomic_store_explicit(&ctx->rings.shared->regs[reg], request->result, memory_order_release);
+    }
+
     async_ctx_push_cqe(ctx, request->type, request->err, request->data, request->result);
 
     request_t* next = request_next(request);
@@ -272,13 +291,14 @@ static uint64_t async_handle_sqe(async_ctx_t* ctx, async_notify_ctx_t* notify, s
     if (ctx->requests->used == 1)
     {
         process_t* process = process_current();
-        assert(process->async[0] <= ctx && ctx <= process->async[CONFIG_MAX_ASYNC_RINGS - 1]);
+        assert(&process->async[0] <= ctx && ctx <= &process->async[CONFIG_MAX_ASYNC_RINGS - 1]);
         ctx->process = REF(process);
     }
 
     request->complete = async_request_complete;
     request->cancel = NULL;
     request->timeout = sqe->timeout;
+    request->flags = sqe->flags;
     request->type = sqe->opcode;
     request->err = EOK;
     request->data = sqe->data;

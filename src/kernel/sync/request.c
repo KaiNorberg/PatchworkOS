@@ -46,17 +46,17 @@ request_pool_t* request_pool_new(size_t size, void* ctx)
         request->complete = NULL;
         request->cancel = NULL;
         request->deadline = CLOCKS_NEVER;
+        request->cpu = CPU_ID_INVALID;
         request->index = i;
         request->next = REQUEST_ID_MAX;
-        request->cpu = CPU_ID_INVALID;
         request->flags = 0;
         request->type = 0;
         request->err = 0;
         request->data = NULL;
         request->result = 0;
-        for (size_t j = 0; j < ARRAY_SIZE(request->_raw); j++)
+        for (size_t j = 0; j < ARRAY_SIZE(request->args); j++)
         {
-            request->_raw[j] = 0;
+            request->args[j] = 0;
         }
 
         list_push_back(&pool->free, &pool->requests[i].entry);

@@ -53,16 +53,6 @@ typedef uint16_t request_id_t;
 #define REQUEST_ID_MAX UINT16_MAX
 
 /**
- * @brief Task flags.
- * @enum request_flags_t
- */
-typedef enum
-{
-    REQUEST_DELAYED = 1 << 0, ///< The completion of the request has been delayed.
-    REQUEST_TIMEOUT = 1 << 1, ///< The request is in a timeout queue.
-} request_flags_t;
-
-/**
  * @brief Macro to define common request structure members.
  *
  * @note The ordering here is important to avoid padding and keeping the full `request_t` structure at 128 bytes.
@@ -80,10 +70,10 @@ typedef enum
         clock_t deadline; \
         clock_t timeout; \
     }; \
+    cpu_id_t cpu; \
     request_id_t index; \
     request_id_t next; \
-    cpu_id_t cpu; \
-    uint8_t flags; \
+    uint32_t flags; \
     uint8_t type; \
     uint8_t err; \
     void* data; \
@@ -94,12 +84,13 @@ typedef enum
  * @struct request_t
  *
  * @warning Due to optimization for the request pools, no request structure should be
- * larger than this structure.
+ * larger than this structure. Additionally, due to how arguments are handled, all arguments should be aligned to 64
+ * bits.
  */
 typedef struct request
 {
     REQUEST_COMMON(struct request, uint64_t);
-    uint64_t _raw[SEQ_MAX_ARGS]; ///< Should be used by requests to store data.
+    uint64_t args[SEQ_MAX_ARGS]; ///< Should be used by requests to store data.
 } request_t;
 
 static_assert(sizeof(request_t) == 128, "request_t is not 128 bytes");
@@ -238,7 +229,6 @@ void request_timeouts_check(void);
         typeof((_request)->result) result = _func(_request); \
         if ((_request)->err != EOK) \
         { \
-            (_request)->flags &= ~REQUEST_DELAYED; \
             (_request)->complete(_request); \
         } \
         else if (!((_request)->flags & REQUEST_DELAYED)) \
@@ -260,10 +250,8 @@ void request_timeouts_check(void);
 #define REQUEST_DELAY_NO_QUEUE(_request) \
     ({ \
         uint64_t result = 0; \
-        (_request)->flags |= REQUEST_DELAYED; \
         if ((_request)->deadline != CLOCKS_NEVER) \
         { \
-            (_request)->flags |= REQUEST_TIMEOUT; \
             request_timeout_add((request_t*)(_request)); \
         } \
         result; \
@@ -304,12 +292,8 @@ void request_timeouts_check(void);
  */
 #define REQUEST_ERROR(_request, _errno) \
     ({ \
-        if ((_request)->flags & REQUEST_TIMEOUT) \
-        { \
-            request_timeout_remove((request_t*)(_request)); \
-        } \
+        request_timeout_remove((request_t*)(_request)); \
         list_remove(&(_request)->entry); \
-        (_request)->flags &= ~REQUEST_DELAYED; \
         (_request)->err = (_errno); \
         (_request)->complete((_request)); \
     })
@@ -322,12 +306,8 @@ void request_timeouts_check(void);
  */
 #define REQUEST_COMPLETE(_request, _result) \
     ({ \
-        if ((_request)->flags & REQUEST_TIMEOUT) \
-        { \
-            request_timeout_remove((request_t*)(_request)); \
-        } \
+        request_timeout_remove((request_t*)(_request)); \
         list_remove(&(_request)->entry); \
-        (_request)->flags &= ~REQUEST_DELAYED; \
         (_request)->result = (_result); \
         (_request)->complete((_request)); \
     })

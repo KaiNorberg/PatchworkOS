@@ -17,8 +17,10 @@ int main()
         return errno;
     }
 
+    memset(&rings.shared->regs, -1, sizeof(rings.shared->regs));
+
     printf("pushing nop sqe to rings %llu...\n", id);
-    sqe_t sqe = SQE_CREATE(RINGS_NOP, SQE_LINK, CLOCKS_PER_SEC, 0x1234);
+    sqe_t sqe = SQE_CREATE(RINGS_NOP, SQE_LINK | (SQE_REG0 << SQE_SAVE), CLOCKS_PER_SEC, 0x1234);
     sqe_push(&rings, &sqe);
 
     printf("pushing nop sqe to rings %llu...\n", id);
@@ -35,12 +37,18 @@ int main()
     cqe_t cqe;
     while (cqe_pop(&rings, &cqe))
     {
-        printf("popped cqe...\n");
+        printf("cqe:\n");
 
         printf("cqe data: %p\n", cqe.data);
         printf("cqe opcode: %d\n", cqe.opcode);
         printf("cqe error: %s\n", strerror(cqe.error));
         printf("cqe result: %llu\n", cqe._raw);
+    }
+
+    printf("registers:\n");
+    for (uint64_t i = 0; i < SEQ_REGS_MAX; i++)
+    {
+        printf("reg[%llu]: %llu\n", i, rings.shared->regs[i]);
     }
 
     printf("tearing down rings...\n");
