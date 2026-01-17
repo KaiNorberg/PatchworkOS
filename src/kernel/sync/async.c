@@ -5,7 +5,7 @@
 #include <kernel/sync/async.h>
 #include <kernel/cpu/syscall.h>
 #include <kernel/log/panic.h>
-#include <kernel/sync/tasks.h>
+#include <kernel/sync/requests.h>
 
 #include <errno.h>
 #include <sys/async.h>
@@ -49,8 +49,8 @@ static inline uint64_t async_ctx_map(async_ctx_t* ctx, space_t* space, async_rin
         return ERR;
     }
 
-    task_t* tasks = malloc(sizeof(task_t) * centries);
-    if (tasks == NULL)
+    request_t* requests = malloc(sizeof(request_t) * centries);
+    if (requests == NULL)
     {
         vmm_unmap(space, userAddr, pageAmount * PAGE_SIZE);
         vmm_unmap(NULL, kernelAddr, pageAmount * PAGE_SIZE);
@@ -59,8 +59,8 @@ static inline uint64_t async_ctx_map(async_ctx_t* ctx, space_t* space, async_rin
 
     for (size_t i = 0; i < centries; i++)
     {
-        TASK_INIT(&tasks[i]);
-        list_push_back(&ctx->freeTasks, &tasks[i].entry);
+        REQUEST_INIT(&requests[i]);
+        list_push_back(&ctx->freeTasks, &requests[i].entry);
     }
 
     async_shared_t* shared = (async_shared_t*)kernelAddr;
@@ -85,7 +85,7 @@ static inline uint64_t async_ctx_map(async_ctx_t* ctx, space_t* space, async_rin
     kernelRings->centries = centries;    
     kernelRings->cmask = centries - 1;
 
-    ctx->tasks = tasks;
+    ctx->requests = requests;
     ctx->userAddr = userAddr;
     ctx->kernelAddr = kernelAddr;
     ctx->pageAmount = pageAmount;
@@ -98,8 +98,8 @@ static inline uint64_t async_ctx_map(async_ctx_t* ctx, space_t* space, async_rin
 static inline uint64_t async_ctx_unmap(async_ctx_t* ctx)
 {
     list_init(&ctx->freeTasks);
-    free(ctx->tasks);
-    ctx->tasks = NULL;
+    free(ctx->requests);
+    ctx->requests = NULL;
 
     vmm_unmap(ctx->space, ctx->userAddr, ctx->pageAmount * PAGE_SIZE);
     vmm_unmap(NULL, ctx->kernelAddr, ctx->pageAmount * PAGE_SIZE);
@@ -108,19 +108,19 @@ static inline uint64_t async_ctx_unmap(async_ctx_t* ctx)
     return 0;
 }
 
-static inline task_t* async_ctx_alloc_task(async_ctx_t* ctx)
+static inline request_t* async_ctx_alloc_request(async_ctx_t* ctx)
 {
     if (list_is_empty(&ctx->freeTasks))
     {
         return NULL;
     }
 
-    return CONTAINER_OF(list_pop_back(&ctx->freeTasks), task_t, entry);
+    return CONTAINER_OF(list_pop_back(&ctx->freeTasks), request_t, entry);
 }
 
-static inline void async_ctx_free_task(async_ctx_t* ctx, task_t* task)
+static inline void async_ctx_free_request(async_ctx_t* ctx, request_t* request)
 {
-    list_push_back(&ctx->freeTasks, &task->entry);
+    list_push_back(&ctx->freeTasks, &request->entry);
 }
 
 void async_ctx_init(async_ctx_t* ctx)
@@ -160,7 +160,7 @@ void async_ctx_deinit(async_ctx_t* ctx)
     wait_queue_deinit(&ctx->waitQueue);
 }
 
-static void async_nop_complete(task_nop_t* nop)
+static void async_nop_complete(request_nop_t* nop)
 {
     async_cqe_t cqe;
     cqe.data = nop->data;
@@ -169,14 +169,14 @@ static void async_nop_complete(task_nop_t* nop)
     
     process_t* process = nop->process;
     async_ctx_push_cqe(&process->async, &cqe);
-    async_ctx_free_task(&process->async, (task_t*)nop);
+    async_ctx_free_request(&process->async, (request_t*)nop);
     UNREF(nop->process);
 }
 
 static uint64_t async_handle_sqe(async_ctx_t* ctx, async_sqe_t* sqe)
 {
-    task_t* task = async_ctx_alloc_task(ctx);
-    if (task == NULL)
+    request_t* request = async_ctx_alloc_request(ctx);
+    if (request == NULL)
     {
         errno = ENOSPC;
         return ERR;
@@ -186,17 +186,17 @@ static uint64_t async_handle_sqe(async_ctx_t* ctx, async_sqe_t* sqe)
     {
     case ASYNC_OP_NOP:
     {
-        task_nop_t* nop = (task_nop_t*)task;
+        request_nop_t* nop = (request_nop_t*)request;
         nop->data = sqe->data;
         nop->process = REF(process_current());
         nop->complete = async_nop_complete;
-        nop->cancel = task_nop_cancel;
-        nop->timeout = task_nop_timeout;
-        TASK_DELAY_NO_QUEUE(nop);
+        nop->cancel = request_nop_cancel;
+        nop->timeout = request_nop_timeout;
+        REQUEST_DELAY_NO_QUEUE(nop);
     }
     break;
     default:
-        async_ctx_free_task(ctx, task);
+        async_ctx_free_request(ctx, request);
         errno = EINVAL;
         return ERR;
     }

@@ -4,7 +4,7 @@
 #include <kernel/mem/vmm.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
-#include <kernel/sync/task.h>
+#include <kernel/sync/request.h>
 #include <kernel/log/panic.h>
 
 #include <string.h>
@@ -36,7 +36,7 @@ typedef enum
 typedef struct async_ctx
 {
     async_rings_t rings;    ///< Asynchronous rings information.
-    task_t* tasks; ///< A preallocated array of tasks, one for each CQE.
+    request_t* requests; ///< A preallocated array of requests, one for each CQE.
     list_t freeTasks;        ///< Free list of tasks.
     void* userAddr;         ///< Userspace address of the rings.
     void* kernelAddr;       ///< Kernel address of the rings.

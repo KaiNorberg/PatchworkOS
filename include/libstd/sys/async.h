@@ -1,10 +1,10 @@
-#include <sys/list.h>
 #ifndef _SYS_ASYNC_H
 #define _SYS_ASYNC_H 1
 
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/list.h>
 #include <sys/defs.h>
 
 #if defined(__cplusplus)
@@ -50,7 +50,7 @@ typedef enum
  *
  * Used to modify the behavior of asynchronous operations.
  *
- * @todo Implement `ASYNC_SEQ_LINK`.
+ * @todo Implement `ASYNC_SEQ_LINK` and `ASYNC_SEQ_IMMEDIATE`.
  */
 typedef enum
 {
