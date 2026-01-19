@@ -200,7 +200,7 @@ uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* proc
         return ERR;
     }
 
-    if (pathname->mode & MODE_TRUNCATE && files[0]->inode->type == INODE_FILE)
+    if (pathname->mode & MODE_TRUNCATE && files[0]->inode->type == INODE_REGULAR)
     {
         inode_truncate(files[0]->inode);
     }
@@ -258,7 +258,7 @@ file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* pr
         return NULL;
     }
 
-    if (pathname->mode & MODE_TRUNCATE && file->inode->type == INODE_FILE)
+    if (pathname->mode & MODE_TRUNCATE && file->inode->type == INODE_REGULAR)
     {
         inode_truncate(file->inode);
     }

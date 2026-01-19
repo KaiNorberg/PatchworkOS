@@ -10,7 +10,7 @@ static const char* type_to_string(itype_t type)
 {
     switch (type)
     {
-    case INODE_FILE:
+    case INODE_REGULAR:
         return "file";
     case INODE_DIR:
         return "directory";

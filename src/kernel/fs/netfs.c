@@ -334,7 +334,7 @@ static uint64_t netfs_socket_lookup(inode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        inode_t* inode = inode_new(dir->superblock, ino_gen(dir->number, socketFiles[i].name), INODE_FILE, NULL,
+        inode_t* inode = inode_new(dir->superblock, ino_gen(dir->number, socketFiles[i].name), INODE_REGULAR, NULL,
             socketFiles[i].fileOps);
         if (inode == NULL)
         {
@@ -375,7 +375,7 @@ static uint64_t netfs_socket_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, socketFiles[i].name, ino_gen(dentry->inode->number, socketFiles[i].name), INODE_FILE))
+        if (!ctx->emit(ctx, socketFiles[i].name, ino_gen(dentry->inode->number, socketFiles[i].name), INODE_REGULAR))
         {
             return 0;
         }
@@ -553,7 +553,7 @@ static uint64_t netfs_family_lookup(inode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        inode_t* inode = inode_new(dir->superblock, ino_gen(dir->number, familyFiles[i].name), INODE_FILE,
+        inode_t* inode = inode_new(dir->superblock, ino_gen(dir->number, familyFiles[i].name), INODE_REGULAR,
             &familyFileInodeOps, familyFiles[i].fileOps);
         if (inode == NULL)
         {
@@ -642,7 +642,7 @@ static uint64_t netfs_family_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, familyFiles[i].name, ino_gen(dentry->inode->number, familyFiles[i].name), INODE_FILE))
+        if (!ctx->emit(ctx, familyFiles[i].name, ino_gen(dentry->inode->number, familyFiles[i].name), INODE_REGULAR))
         {
             return 0;
         }

@@ -181,7 +181,7 @@ dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* 
     }
     UNREF_DEFER(dentry);
 
-    inode_t* inode = inode_new(parent->superblock, vfs_id_get(), INODE_FILE, inodeOps, fileOps);
+    inode_t* inode = inode_new(parent->superblock, vfs_id_get(), INODE_REGULAR, inodeOps, fileOps);
     if (inode == NULL)
     {
         return NULL;

@@ -100,7 +100,7 @@ static uint64_t filesystem_lookup(inode_t* dir, dentry_t* dentry)
         }
 
         inode_t* inode =
-            inode_new(dentry->superblock, ino_gen(dir->number, dentry->name), INODE_FILE, NULL, &sbFileOps);
+            inode_new(dentry->superblock, ino_gen(dir->number, dentry->name), INODE_REGULAR, NULL, &sbFileOps);
         if (inode == NULL)
         {
             return ERR;
@@ -136,7 +136,7 @@ static uint64_t filesystem_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         char name[MAX_NAME];
         snprintf(name, MAX_NAME, "%llu", sb->id);
 
-        if (!ctx->emit(ctx, name, ino_gen(dentry->inode->number, name), INODE_FILE))
+        if (!ctx->emit(ctx, name, ino_gen(dentry->inode->number, name), INODE_REGULAR))
         {
             return 0;
         }

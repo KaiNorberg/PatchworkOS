@@ -843,7 +843,7 @@ static uint64_t procfs_env_lookup(inode_t* dir, dentry_t* target)
         return 0;
     }
 
-    inode_t* inode = inode_new(dir->superblock, ino_gen(dir->number, target->name), INODE_FILE, NULL, &envVarOps);
+    inode_t* inode = inode_new(dir->superblock, ino_gen(dir->number, target->name), INODE_REGULAR, NULL, &envVarOps);
     if (inode == NULL)
     {
         return ERR;
@@ -872,7 +872,7 @@ static uint64_t procfs_env_create(inode_t* dir, dentry_t* target, mode_t mode)
         return ERR;
     }
 
-    inode_t* inode = inode_new(dir->superblock, ino_gen(dir->number, target->name), INODE_FILE, NULL, &envVarOps);
+    inode_t* inode = inode_new(dir->superblock, ino_gen(dir->number, target->name), INODE_REGULAR, NULL, &envVarOps);
     if (inode == NULL)
     {
         return ERR;
@@ -923,7 +923,7 @@ static uint64_t procfs_env_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         }
 
         if (!ctx->emit(ctx, process->env.vars[i].key, ino_gen(dentry->inode->number, process->env.vars[i].key),
-                INODE_FILE))
+                INODE_REGULAR))
         {
             return 0;
         }
@@ -967,63 +967,63 @@ typedef struct
 static const procfs_entry_t pidEntries[] = {
     {
         .name = "prio",
-        .type = INODE_FILE,
+        .type = INODE_REGULAR,
         .fileOps = &prioOps,
         .dentryOps = &hideDentryOps,
     },
     {
         .name = "cwd",
-        .type = INODE_FILE,
+        .type = INODE_REGULAR,
         .fileOps = &cwdOps,
         .dentryOps = &hideDentryOps,
     },
     {
         .name = "cmdline",
-        .type = INODE_FILE,
+        .type = INODE_REGULAR,
         .fileOps = &cmdlineOps,
     },
     {
         .name = "note",
-        .type = INODE_FILE,
+        .type = INODE_REGULAR,
         .fileOps = &noteOps,
         .dentryOps = &hideDentryOps,
     },
     {
         .name = "notegroup",
-        .type = INODE_FILE,
+        .type = INODE_REGULAR,
         .fileOps = &notegroupOps,
         .dentryOps = &hideDentryOps,
     },
     {
         .name = "group",
-        .type = INODE_FILE,
+        .type = INODE_REGULAR,
         .fileOps = &groupOps,
         .dentryOps = &hideDentryOps,
     },
     {
         .name = "pid",
-        .type = INODE_FILE,
+        .type = INODE_REGULAR,
         .fileOps = &pidOps,
     },
     {
         .name = "wait",
-        .type = INODE_FILE,
+        .type = INODE_REGULAR,
         .fileOps = &waitOps,
     },
     {
         .name = "perf",
-        .type = INODE_FILE,
+        .type = INODE_REGULAR,
         .fileOps = &perfOps,
     },
     {
         .name = "ns",
-        .type = INODE_FILE,
+        .type = INODE_REGULAR,
         .fileOps = &nsOps,
         .dentryOps = &hideDentryOps,
     },
     {
         .name = "ctl",
-        .type = INODE_FILE,
+        .type = INODE_REGULAR,
         .fileOps = &ctlOps,
         .dentryOps = &hideDentryOps,
     },

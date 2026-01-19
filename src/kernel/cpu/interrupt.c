@@ -16,7 +16,7 @@
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
-#include <kernel/sync/request.h>
+#include <kernel/sync/irp.h>
 
 #include <assert.h>
 
@@ -221,7 +221,7 @@ void interrupt_handler(interrupt_frame_t* frame)
     }
 
     note_handle_pending(frame);
-    request_timeouts_check();
+    irp_timeouts_check();
     wait_check_timeouts(frame);
     sched_do(frame);
 

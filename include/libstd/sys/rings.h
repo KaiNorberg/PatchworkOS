@@ -12,128 +12,53 @@ extern "C"
 {
 #endif
 
+#include "_internal/MAX_NAME.h"
 #include "_internal/MAX_PATH.h"
 #include "_internal/clock_t.h"
 #include "_internal/errno_t.h"
 #include "_internal/fd_t.h"
 
 /**
- * @brief Programmable submission/completion interface.
- * @defgroup libstd_rings Rings
- * @ingroup libstd
- *
- * @todo The rings system is primarily a design document for now as it remains very work in progress and subject to
- * change, currently being mostly unimplemented.
- *
- * Asynchronous operations provide the core of all IO interfaces in PatchworkOS, all implemented in an interface
- * inspired by `io_uring()` from Linux.
- *
- * Synchronous operations are implemented on top of this API in userspace.
- *
- * @see [Wikipedia](https://en.wikipedia.org/wiki/Io_uring) for information about `io_uring`.
- * @see [Manpages](https://man7.org/linux/man-pages/man7/io_uring.7.html) for more information about `io_uring`.
- *
- * ## Registers
- *
- * Operations performed on a ring can load arguments from, and save their results to, seven 64-bit general purpose
- * registers. All registers are stored in the shared area of the rings structure, as such they can be inspected and
- * modified by user space.
- *
- * When a SQE is processed, the kernel will check six register specifiers in the SQE flags, one for each argument and
- * one for the result. Each specifier is stored as three bits, with a `SQE_REG_NONE` value indicating no-op and any
- * other value representing the n-th register. The offset of the specifier specifies its meaning, for example, bits
- * `0-2` specify the register to load into the first argument, bits `3-5` specify the register to load into the second
- * argument, and so on until bits `15-18` which specify the register to save the result into.
- *
- * This system, when combined with `SQE_LINK`, allows for multiple operations to be performed at once, for example, it
- * would be possible to open a file, read from it, seek to a new position, write to it, and finally close the file, with
- * a single `enter()` call.
- *
- * ## Errors
- *
- * The majority of errors are returned in the completion queue entries, certain errors (such as `ENOMEM`) may be
- * reported directly from the `enter()` call.
- *
- * Certain error values that may be returned in a completion queue entry include:
- * - `EOK`: Success.
- * - `ECANCELED`: The operation was cancelled.
- * - `ETIMEDOUT`: The operation timed out.
- * - Other values may be returned depending on the operation.
- *
- * @see `sqe_flags_t` for more information about register specifiers and their formatting.
- *
- * ## Syncronization
- *
- * The rings structure is designed to be safe under the assumption that there is a single producer (one user-space
- * thread) and a single consumer (the kernel).
- *
- * If a rings structure needs multiple producers (needs to be accessed by multiple threads) it is the responsibility of
- * the caller to ensure proper synchronization.
- *
- * @note The reason for this limitation is optimization for the common case, as the syncronization logic for multiple
- * producers would add significant overhead.
- *
- * Regarding the rings structure itself, the structure can only be torndown as long as nothing is using it and there are
- * no pending operations.
- *
+ * @addtogroup kernel_sync_async
  * @{
  */
 
-/**
- * @brief Rings operation codes.
- * @enum rings_op_t
- */
-typedef enum
-{
-    RINGS_MIN_OPCODE = 0,
-    RINGS_NOP = 0, ///< Never completes, can be used to implement a sleep equivalent by specifying a timeout.
-    RINGS_MAX_OPCODE = 1,
-} rings_op_t;
+typedef uint8_t verb_t; ///< Verb type.
 
-/**
- * @brief Maximum number of arguments for a rings operation.
- */
-#define SEQ_MAX_ARGS 5
+#define VERB_NOP 0  ///< No-op verb.
+#define VERB_OPEN 1 ///< Open file verb.
+#define VERB_MAX 1  ///< Maximum verb.
 
-/**
- * @brief Rings register specifiers.
- * @enum seq_regs_t
- *
- * Used in the `sqe_flags_t` enum to specify which registers to load into arguments or save the result into.
- *
- */
-typedef enum
-{
-    SQE_REG0 = 0,         ///< The first register.
-    SQE_REG1 = 1,         ///< The second register.
-    SQE_REG2 = 2,         ///< The third register.
-    SQE_REG3 = 3,         ///< The fourth register.
-    SQE_REG4 = 4,         ///< The fifth register.
-    SQE_REG5 = 5,         ///< The sixth register.
-    SQE_REG6 = 6,         ///< The seventh register.
-    SQE_REG_NONE = 7,     ///< No register.
-    SEQ_REGS_MAX = 7,     ///< The maximum number of registers.
-    SQE_REG_SHIFT = 3,    ///< The bitshift for each register specifier in a `sqe_flags_t`.
-    SQE_REG_MASK = 0b111, ///< The bitmask for a register specifier in a `sqe_flags_t`.
-} seq_regs_t;
+#define SEQ_MAX_ARGS 5 ///< Maximum number of arguments for a rings operation.
 
-/**
- * @brief Submission queue entry (SQE) flags.
- * @enum sqe_flags_t
- */
-typedef enum
-{
-    SQE_LOAD0 = 0,                         ///< The offset to specify which register to load into the first argument.
-    SQE_LOAD1 = SQE_LOAD0 + SQE_REG_SHIFT, ///< The offset to specify which register to load into the second argument.
-    SQE_LOAD2 = SQE_LOAD1 + SQE_REG_SHIFT, ///< The offset to specify which register to load into the third argument.
-    SQE_LOAD3 = SQE_LOAD2 + SQE_REG_SHIFT, ///< The offset to specify which register to load into the fourth argument.
-    SQE_LOAD4 = SQE_LOAD3 + SQE_REG_SHIFT, ///< The offset to specify which register to load into the fifth argument.
-    SQE_SAVE = SQE_LOAD4 + SQE_REG_SHIFT,  ///< The offset to specify the register to save the result into.
-    SQE_FLAGS_SHIFT = SQE_SAVE + SQE_REG_SHIFT, ///< The bitshift for where bit flags start in a `sqe_flags_t`.
-    SQE_LINK = 1 << (SQE_FLAGS_SHIFT), ///< Only process the next SQE when this one completes successfully, only
-                                       /// applies within one `enter()` call.
-    SQE_HARDLINK = 1 << (SQE_FLAGS_SHIFT + 1), ///< Like `SQE_LINK`, but will process the next SQE even if this one fails.
-} sqe_flags_t;
+typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
+
+#define SQE_REG0 (0)         ///< The first register.
+#define SQE_REG1 (1)         ///< The second register.
+#define SQE_REG2 (2)         ///< The third register.
+#define SQE_REG3 (3)         ///< The fourth register.
+#define SQE_REG4 (4)         ///< The fifth register.
+#define SQE_REG5 (5)         ///< The sixth register.
+#define SQE_REG6 (6)         ///< The seventh register.
+#define SQE_REG_NONE (7)     ///< No register.
+#define SEQ_REGS_MAX (7)     ///< The maximum number of registers.
+#define SQE_REG_SHIFT (3)    ///< The bitshift for each register specifier in a `sqe_flags_t`.
+#define SQE_REG_MASK (0b111) ///< The bitmask for a register specifier in a `sqe_flags_t`.
+
+#define SQE_LOAD0 (0) ///< The offset to specify which register to load into the first argument.
+#define SQE_LOAD1 \
+    (SQE_LOAD0 + SQE_REG_SHIFT) ///< The offset to specify which register to load into the second argument.
+#define SQE_LOAD2 (SQE_LOAD1 + SQE_REG_SHIFT) ///< The offset to specify which register to load into the third argument.
+#define SQE_LOAD3 \
+    (SQE_LOAD2 + SQE_REG_SHIFT) ///< The offset to specify which register to load into the fourth argument.
+#define SQE_LOAD4 (SQE_LOAD3 + SQE_REG_SHIFT) ///< The offset to specify which register to load into the fifth argument.
+#define SQE_SAVE (SQE_LOAD4 + SQE_REG_SHIFT)  ///< The offset to specify the register to save the result into.
+#define SQE_FLAGS_SHIFT (SQE_SAVE + SQE_REG_SHIFT) ///< The bitshift for where bit flags start in a `sqe_flags_t`.
+#define SQE_LINK \
+    (1 << (SQE_FLAGS_SHIFT)) ///< Only process the next SQE when this one completes successfully) only
+                             /// applies within one `enter()` call.
+#define SQE_HARDLINK \
+    (1 << (SQE_FLAGS_SHIFT + 1)) ///< Like `SQE_LINK`) but will process the next SQE even if this one fails.
 
 /**
  * @brief Asynchronous submission queue entry (SQE).
@@ -141,19 +66,27 @@ typedef enum
  *
  * @warning It is the responsibility of userspace to ensure that any pointers
  * passed to the kernel remain valid until the operation is complete.
+ *
+ * @see kernel_sync_async for more information on the possible operations.
  */
 typedef struct sqe
 {
-    rings_op_t opcode; ///< Operation code.
+    verb_t verb; ///< Verb specifying the action to perform.
+    uint8_t _reserved[3];
     sqe_flags_t flags; ///< Submission flags.
     clock_t timeout;   ///< Timeout for the operation, `CLOCKS_NEVER` for no timeout.
     void* data;        ///< Private data for the operation, will be returned in the completion entry.
     union {
         struct
         {
-
+            uint64_t none;
         } nop;
-        uint64_t args[SEQ_MAX_ARGS];
+        struct
+        {
+            fd_t from;
+            char* path;
+        } open;
+        uint64_t _args[SEQ_MAX_ARGS];
     };
 } sqe_t;
 
@@ -164,14 +97,14 @@ static_assert(sizeof(sqe_t) == 64, "sqe_t is not 64 bytes");
 /**
  * @brief Macro to create an asynchronous submission queue entry (SQE).
  *
- * @param _opcode Operation code.
+ * @param _verb Operation verb.
  * @param _flags Submission flags.
  * @param _timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout.
  * @param _data Private data for the operation.
  */
-#define SQE_CREATE(_opcode, _flags, _timeout, _data) \
+#define SQE_CREATE(_verb, _flags, _timeout, _data) \
     { \
-        .opcode = (_opcode), \
+        .verb = (_verb), \
         .flags = (_flags), \
         .timeout = (_timeout), \
         .data = (void*)(_data), \
@@ -180,15 +113,19 @@ static_assert(sizeof(sqe_t) == 64, "sqe_t is not 64 bytes");
 /**
  * @brief Asynchronous completion queue entry (CQE).
  * @struct cqe_t
+ *
+ * @see kernel_sync_async for more information on the possible operations.
  */
 typedef struct ALIGNED(32) cqe
 {
-    rings_op_t opcode; ///< Operation code from the submission entry.
-    errno_t error;     ///< Error code, if not equal to `EOK` an error occurred.
-    void* data;        ///< Private data from the submission entry.
+    verb_t verb; ///< Verb specifying the action that was performed.
+    uint8_t _reserved[3];
+    errno_t error; ///< Error code, if not equal to `EOK` an error occurred.
+    void* data;    ///< Private data from the submission entry.
     union {
         uint64_t nop;
-        uint64_t _raw;
+        fd_t open;
+        uint64_t _result;
     };
 } cqe_t;
 
@@ -236,6 +173,19 @@ typedef struct rings
     size_t centries;        ///< Number of entries in the completion queue.
     size_t cmask;           ///< Bitmask for completion queue (centries - 1).
 } rings_t;
+
+/**
+ * @}
+ * @brief User-side asynchronous rings interface.
+ * @defgroup libstd_sys_rings User Asynchronous Rings
+ * @ingroup libstd
+ *
+ * The rings interface acts as the interface for all asynchronous operations in the kernel.
+ *
+ * @see kernel_sync_async for more information about the asynchronous rings system.
+ *
+ * @{
+ */
 
 /**
  * @brief Dont wait for any submissions to complete.

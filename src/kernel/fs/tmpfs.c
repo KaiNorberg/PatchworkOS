@@ -93,7 +93,7 @@ static uint64_t tmpfs_create(inode_t* dir, dentry_t* target, mode_t mode)
 {
     MUTEX_SCOPE(&dir->mutex);
 
-    inode_t* inode = tmpfs_inode_new(dir->superblock, mode & MODE_DIRECTORY ? INODE_DIR : INODE_FILE, NULL, 0);
+    inode_t* inode = tmpfs_inode_new(dir->superblock, mode & MODE_DIRECTORY ? INODE_DIR : INODE_REGULAR, NULL, 0);
     if (inode == NULL)
     {
         return ERR;
@@ -164,7 +164,7 @@ static uint64_t tmpfs_remove(inode_t* dir, dentry_t* target)
 {
     MUTEX_SCOPE(&dir->mutex);
 
-    if (target->inode->type == INODE_FILE || target->inode->type == INODE_SYMLINK)
+    if (target->inode->type == INODE_REGULAR || target->inode->type == INODE_SYMLINK)
     {
         tmpfs_dentry_remove(target);
     }
@@ -228,7 +228,7 @@ static dentry_t* tmpfs_load_file(superblock_t* superblock, dentry_t* parent, con
 
     tmpfs_dentry_add(dentry);
 
-    inode_t* inode = tmpfs_inode_new(superblock, INODE_FILE, in->data, in->size);
+    inode_t* inode = tmpfs_inode_new(superblock, INODE_REGULAR, in->data, in->size);
     if (inode == NULL)
     {
         panic(NULL, "Failed to create tmpfs file inode");

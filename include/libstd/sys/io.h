@@ -340,7 +340,7 @@ poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);
  */
 typedef enum
 {
-    INODE_FILE,    ///< Is a file.
+    INODE_REGULAR, ///< Is a regular file.
     INODE_DIR,     ///< Is a directory.
     INODE_SYMLINK, ///< Is a symbolic link.
 } itype_t;

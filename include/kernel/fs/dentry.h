@@ -67,12 +67,12 @@ typedef uint64_t dentry_id_t;
 #define DENTRY_IS_POSITIVE(dentry) ((dentry)->inode != NULL)
 
 /**
- * @brief Check if the inode associated with a dentry is a file.
+ * @brief Check if the inode associated with a dentry is a regular file.
  *
  * @param dentry The dentry to check.
- * @return true if the dentry is a file, false otherwise or if the dentry is negative.
+ * @return true if the dentry is a regular file, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_FILE(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->inode->type == INODE_FILE)
+#define DENTRY_IS_REGULAR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->inode->type == INODE_REGULAR)
 
 /**
  * @brief Check if the inode associated with a dentry is a directory.

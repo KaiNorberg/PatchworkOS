@@ -75,10 +75,6 @@
  * @return The concatenated token.
  */
 #define CONCAT(a, b) CONCAT_INNER(a, b)
-
-/**
- * @brief Inner helper macro for token concatenation.
- */
 #define CONCAT_INNER(a, b) a##b
 
 /**

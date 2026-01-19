@@ -20,11 +20,11 @@ int main()
     memset(&rings.shared->regs, -1, sizeof(rings.shared->regs));
 
     printf("pushing nop sqe to rings %llu...\n", id);
-    sqe_t sqe = SQE_CREATE(RINGS_NOP, SQE_HARDLINK | (SQE_REG0 << SQE_SAVE), CLOCKS_PER_SEC, 0x1234);
+    sqe_t sqe = SQE_CREATE(VERB_NOP, SQE_HARDLINK | (SQE_REG0 << SQE_SAVE), CLOCKS_PER_SEC, 0x1234);
     sqe_push(&rings, &sqe);
 
     printf("pushing nop sqe to rings %llu...\n", id);
-    sqe = (sqe_t)SQE_CREATE(RINGS_NOP, SQE_LINK, CLOCKS_PER_SEC, 0x5678);
+    sqe = (sqe_t)SQE_CREATE(VERB_NOP, SQE_LINK, CLOCKS_PER_SEC, 0x5678);
     sqe_push(&rings, &sqe);
 
     printf("entering rings...\n");
@@ -40,9 +40,9 @@ int main()
         printf("cqe:\n");
 
         printf("cqe data: %p\n", cqe.data);
-        printf("cqe opcode: %d\n", cqe.opcode);
+        printf("cqe verb: %d\n", cqe.verb);
         printf("cqe error: %s\n", strerror(cqe.error));
-        printf("cqe result: %llu\n", cqe._raw);
+        printf("cqe result: %llu\n", cqe._result);
     }
 
     printf("registers:\n");

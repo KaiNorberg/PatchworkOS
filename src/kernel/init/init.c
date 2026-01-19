@@ -63,6 +63,9 @@ void init_early(void)
 
     vmm_kernel_space_load();
 
+    irp_table_init();
+    syscall_table_init();
+
     _std_init();
 
     PERCPU_INIT();
@@ -103,8 +106,6 @@ static void init_finalize(void)
     reaper_init();
 
     perf_init();
-
-    syscall_table_init();
 
     boot_info_t* bootInfo = boot_info_get();
 
