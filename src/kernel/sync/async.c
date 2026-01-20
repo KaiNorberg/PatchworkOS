@@ -4,6 +4,7 @@
 #include <kernel/fs/path.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/mem/mem_desc.h>
 #include <kernel/mem/paging_types.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
@@ -52,7 +53,7 @@ static inline uint64_t async_map(async_t* ctx, space_t* space, rings_id_t id, ri
         return ERR;
     }
 
-    void* pages[CONFIG_MAX_ASYNC_PAGES];
+    pfn_t pages[CONFIG_MAX_ASYNC_PAGES];
     if (pmm_alloc_pages(pages, pageAmount) == ERR)
     {
         errno = ENOMEM;
@@ -61,7 +62,7 @@ static inline uint64_t async_map(async_t* ctx, space_t* space, rings_id_t id, ri
 
     for (size_t i = 0; i < pageAmount; i++)
     {
-        memset(pages[i], 0, PAGE_SIZE);
+        memset(PFN_TO_VIRT(pages[i]), 0, PAGE_SIZE);
     }
 
     // PML_OWNED means that the pages will be freed when unmapped.
@@ -82,6 +83,16 @@ static inline uint64_t async_map(async_t* ctx, space_t* space, rings_id_t id, ri
     irp_pool_t* irps = irp_pool_new(centries, ctx);
     if (irps == NULL)
     {
+        vmm_unmap(space, userAddr, pageAmount * PAGE_SIZE);
+        vmm_unmap(NULL, kernelAddr, pageAmount * PAGE_SIZE);
+        return ERR;
+    }
+
+    mem_desc_pool_t* descs = mem_desc_pool_new(centries);
+    if (descs == NULL)
+    {
+        irp_pool_free(irps);
+        mem_desc_pool_free(descs);
         vmm_unmap(space, userAddr, pageAmount * PAGE_SIZE);
         vmm_unmap(NULL, kernelAddr, pageAmount * PAGE_SIZE);
         return ERR;
@@ -116,6 +127,7 @@ static inline uint64_t async_map(async_t* ctx, space_t* space, rings_id_t id, ri
     kernelRings->cmask = centries - 1;
 
     ctx->irps = irps;
+    ctx->descs = descs;
     ctx->userAddr = userAddr;
     ctx->kernelAddr = kernelAddr;
     ctx->pageAmount = pageAmount;
@@ -129,6 +141,9 @@ static inline uint64_t async_unmap(async_t* ctx)
 {
     irp_pool_free(ctx->irps);
     ctx->irps = NULL;
+
+    mem_desc_pool_free(ctx->descs);
+    ctx->descs = NULL;
 
     vmm_unmap(ctx->space, ctx->userAddr, ctx->pageAmount * PAGE_SIZE);
     vmm_unmap(NULL, ctx->kernelAddr, ctx->pageAmount * PAGE_SIZE);
@@ -269,7 +284,7 @@ static void async_dispatch(irp_t* irp)
     {
     case VERB_NOP:
         break;
-    case VERB_OPEN:
+    /*case VERB_OPEN:
     {
         file_t* from = NULL;
         if (irp->sqe.open.from != FD_NONE)
@@ -283,15 +298,9 @@ static void async_dispatch(irp_t* irp)
         }
 
         irp->open.from = from;
-        irp->open.path = malloc(sizeof(pathname_t));
-        if (irp->open.path == NULL)
-        {
-            UNREF(from);
-            irp->err = ENOMEM;
-            break;
-        }
+        irp->open.path =
     }
-    break;
+    break;*/
     default:
         break;
     }

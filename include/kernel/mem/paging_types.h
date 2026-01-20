@@ -32,6 +32,61 @@
  */
 
 /**
+ * @brief Page Frame Number type.
+ */
+typedef size_t pfn_t;
+
+/**
+ * @brief Physical address type.
+ */
+typedef uintptr_t phys_addr_t;
+
+/**
+ * @brief Invalid physical address.
+ */
+#define PHYS_ADDR_INVALID ((phys_addr_t)(UINTPTR_MAX))
+
+/**
+ * @brief Convert a PFN to its physical address.
+ * 
+ * @param _pfn The Page Frame Number.
+ * @return The physical address of the page.
+ */
+#define PFN_TO_PHYS(_pfn) ((phys_addr_t)(_pfn) * PAGE_SIZE)
+
+/**
+ * @brief Convert a physical address to its PFN.
+ * 
+ * @param _addr The physical address.
+ * @return The Page Frame Number of the page.
+ */
+#define PHYS_TO_PFN(_addr) ((pfn_t)(_addr) / PAGE_SIZE)
+
+/**
+ * @brief Convert a PFN to its identity mapped higher half virtual address.
+ * 
+ * @param _pfn The Page Frame Number.
+ * @return The higher half virtual address of the page.
+ */
+#ifndef _BOOT_
+#define PFN_TO_VIRT(_pfn) ((void*)PML_LOWER_TO_HIGHER((uintptr_t)(_pfn) * PAGE_SIZE))
+#else
+#define PFN_TO_VIRT(_pfn) ((void*)PFN_TO_PHYS(_pfn))
+#endif
+
+/**
+ * @brief Convert a identity mapped higher half virtual address to its PFN.
+ * 
+ * @param _addr The higher half virtual address.
+ * @return The Page Frame Number of the page.
+ */
+#ifndef _BOOT_
+#define VIRT_TO_PFN(_addr) ((pfn_t)(PML_HIGHER_TO_LOWER(_addr) / PAGE_SIZE))
+#else
+#define VIRT_TO_PFN(_pfn) PHYS_TO_PFN(_pfn)
+#endif
+
+/**
  * @brief One entry in a page table.
  * @typedef pml_entry_t
  */
@@ -77,7 +132,7 @@ typedef struct
              * Check the virtual memory manager for more information. (Defined by PatchworkOS)
              */
             uint64_t lowCallbackId : 1;
-            uint64_t addr : 40; ///< The address contained in the entry, note that this is shifted right by 12 bits.
+            pfn_t pfn : 40; ///< The physical frame number (physical address >> 12).
             /**
              * The high bits of the callback ID associated with this page.
              *
@@ -272,7 +327,7 @@ typedef enum
  * @return The address in the lower half of the address space.
  */
 #define PML_ENSURE_LOWER_HALF(addr) \
-    ((uintptr_t)(addr) >= PML_HIGHER_HALF_START ? PML_HIGHER_TO_LOWER(addr) : (uintptr_t)(addr))
+    ((phys_addr_t)(addr) >= PML_HIGHER_HALF_START ? PML_HIGHER_TO_LOWER(addr) : (phys_addr_t)(addr))
 
 /**
  * @brief Ensures that the given address is in the higher half of the address space.
@@ -353,14 +408,14 @@ typedef struct
  *
  * Used to allow both the kernel and bootloader to provide their own page allocation functions.
  */
-typedef uint64_t (*pml_alloc_pages_t)(void**, size_t);
+typedef uint64_t (*pml_alloc_pages_t)(pfn_t*, size_t);
 
 /**
  * @brief Generic page free function type.
  *
  * Used to allow both the kernel and bootloader to provide their own page free functions.
  */
-typedef void (*pml_free_pages_t)(void**, size_t);
+typedef void (*pml_free_pages_t)(pfn_t*, size_t);
 
 /**
  * @brief Size of the page buffer used to batch page allocations and frees.

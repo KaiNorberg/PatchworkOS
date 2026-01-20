@@ -2,6 +2,7 @@
 
 #include <kernel/config.h>
 #include <kernel/log/panic.h>
+#include <kernel/mem/mem_desc.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/irp.h>
@@ -112,6 +113,7 @@ typedef struct async
 {
     rings_t rings;          ///< Asynchronous rings information.
     irp_pool_t* irps;       ///< Pool of preallocated IRPs.
+    mem_desc_pool_t* descs; ///< Pool of preallocated memory descriptors.
     void* userAddr;         ///< Userspace address of the rings.
     void* kernelAddr;       ///< Kernel address of the rings.
     size_t pageAmount;      ///< Amount of pages mapped for the rings.

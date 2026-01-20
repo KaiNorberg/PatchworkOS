@@ -214,7 +214,7 @@ uint64_t space_check_access(space_t* space, const void* addr, size_t length);
 typedef struct
 {
     void* virtAddr;
-    void* physAddr;
+    phys_addr_t physAddr;
     size_t pageAmount;
     pml_flags_t flags;
 } space_mapping_t;
@@ -234,7 +234,7 @@ typedef struct
  * @param space The target address space.
  * @param mapping Will be filled with parsed information about the mapping.
  * @param virtAddr The virtual address the mapping will apply to. Can be `NULL` to let the kernel choose an address.
- * @param physAddr The physical address to map from. Can be `NULL`.
+ * @param physAddr The physical address to map from. Can be `PHYS_ADDR_INVALID`.
  * @param length The length of the virtual memory region to modify, in bytes.
  * @param alignment The required alignment for the virtual memory region in bytes.
  * @param flags The page table flags for the mapping.
@@ -244,7 +244,7 @@ typedef struct
  * - `EFAULT`: The addresses are outside the allowed range.
  * - `ENOMEM`: Not enough memory.
  */
-uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, size_t length,
+uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, phys_addr_t physAddr, size_t length,
     size_t alignment, pml_flags_t flags);
 
 /**

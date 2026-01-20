@@ -67,7 +67,7 @@ static void boot_dir_to_higher_half(boot_dir_t* dir)
 
 void boot_info_to_higher_half(void)
 {
-    bootInfo->gop.physAddr = (void*)PML_ENSURE_HIGHER_HALF(bootInfo->gop.physAddr);
+    bootInfo->gop.physAddr = PML_ENSURE_HIGHER_HALF(bootInfo->gop.physAddr);
     bootInfo->gop.virtAddr = (void*)PML_ENSURE_HIGHER_HALF(bootInfo->gop.virtAddr);
 
     bootInfo->rsdp = (void*)PML_ENSURE_HIGHER_HALF(bootInfo->rsdp);
@@ -77,7 +77,7 @@ void boot_info_to_higher_half(void)
     bootInfo->disk.root = (boot_dir_t*)PML_ENSURE_HIGHER_HALF(bootInfo->disk.root);
     boot_dir_to_higher_half(bootInfo->disk.root);
 
-    bootInfo->kernel.physAddr = (void*)PML_ENSURE_HIGHER_HALF(bootInfo->kernel.physAddr);
+    bootInfo->kernel.physAddr = PML_ENSURE_HIGHER_HALF(bootInfo->kernel.physAddr);
 
     bootInfo->memory.map.descriptors = (EFI_MEMORY_DESCRIPTOR*)PML_ENSURE_HIGHER_HALF(bootInfo->memory.map.descriptors);
 
@@ -109,7 +109,7 @@ void boot_info_free(void)
             // Clear the memory to deliberately cause corruption if the memory is actually being used.
             memset((void*)desc->VirtualStart, 0xCC, desc->NumberOfPages * PAGE_SIZE);
 #endif
-            pmm_free_region((void*)desc->VirtualStart, desc->NumberOfPages);
+            pmm_free_region(VIRT_TO_PFN(desc->VirtualStart), desc->NumberOfPages);
         }
     }
 

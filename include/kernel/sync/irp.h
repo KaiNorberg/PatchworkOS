@@ -3,20 +3,17 @@
 #include <kernel/fs/path.h>
 #include <kernel/mem/pool.h>
 #include <kernel/sync/lock.h>
+#include <kernel/mem/mem_desc.h>
 
 #include <assert.h>
 #include <stdatomic.h>
+#include <time.h>
 #include <stdlib.h>
 #include <sys/io.h>
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/rings.h>
-#include <time.h>
 
-typedef struct async async_t;
-typedef struct process process_t;
-typedef struct file file_t;
-typedef struct pathname pathname_t;
 
 typedef struct irp irp_t;
 
@@ -274,7 +271,8 @@ typedef struct ALIGNED(64) irp
                 struct
                 {
                     file_t* from;
-                    pathname_t* path;
+                    mem_desc_t* path;
+                    size_t length;
                 } open;
                 uint64_t _args[IRP_ARGS_MAX];
             };
@@ -332,7 +330,7 @@ void irp_pool_free(irp_pool_t* pool);
  */
 static inline irp_pool_t* irp_pool_get(irp_t* irp)
 {
-    return (irp_pool_t*)((uintptr_t)irp - (irp->index * sizeof(irp_t)) - offsetof(irp_pool_t, irps));
+    return CONTAINER_OF(irp, irp_pool_t, irps[irp->index]);
 }
 
 /**

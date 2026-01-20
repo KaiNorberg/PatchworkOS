@@ -1,3 +1,4 @@
+#include <kernel/mem/paging_types.h>
 #include <modules/acpi/aml/runtime/field_unit.h>
 
 #include <modules/acpi/aml/predefined.h>
@@ -31,7 +32,7 @@ static void* aml_ensure_mem_is_mapped(uint64_t address, aml_bit_size_t accessSiz
 
     for (uint64_t page = 0; page < (crossesBoundary ? 2 : 1); page++)
     {
-        void* physAddr = (void*)((uintptr_t)address + page * PAGE_SIZE);
+        phys_addr_t physAddr = (phys_addr_t)address + page * PAGE_SIZE;
         void* virtAddt = (void*)PML_LOWER_TO_HIGHER(physAddr);
         if (vmm_map(NULL, virtAddt, physAddr, PAGE_SIZE, PML_GLOBAL | PML_WRITE | PML_PRESENT, NULL, NULL) == NULL)
         {

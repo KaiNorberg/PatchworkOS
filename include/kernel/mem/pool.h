@@ -15,8 +15,8 @@
  * performance-critical structures and as a even more specialized alternative to the Object Cache.
  *
  * In addition to its performance advantages, since the pool uses an array to store its objects, it is possible for
- * certain structures to avoid storing full pointers to objects allocated from a pool instead using a `pool_idx_t` and
- * thus saving memory or allowing better caching.
+ * certain structures to avoid storing full pointers to objects allocated from a pool instead using a `pool_idx_t` thus
+ * saving memory or allowing better caching.
  *
  * @{
  */

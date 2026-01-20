@@ -43,7 +43,7 @@ static uint64_t pci_config_init(void)
         uint64_t length = busCount * 256 * 4096;
 
         void* virtAddr = (void*)PML_LOWER_TO_HIGHER(entry->base);
-        if (vmm_map(NULL, virtAddr, (void*)entry->base, length, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) ==
+        if (vmm_map(NULL, virtAddr, entry->base, length, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) ==
             NULL)
         {
             LOG_ERR("failed to map PCI-e configuration space at %p\n", entry->base);

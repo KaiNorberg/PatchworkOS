@@ -84,6 +84,7 @@ typedef struct sqe
         {
             fd_t from;
             char* path;
+            size_t length;
         } open;
         uint64_t _args[SEQ_MAX_ARGS];
     };

@@ -59,7 +59,7 @@ static uint64_t pipe_open(file_t* file)
     {
         return ERR;
     }
-    data->buffer = pmm_alloc();
+    data->buffer = malloc(PAGE_SIZE);
     if (data->buffer == NULL)
     {
         free(data);
@@ -84,7 +84,7 @@ static uint64_t pipe_open2(file_t* files[2])
     {
         return ERR;
     }
-    data->buffer = pmm_alloc();
+    data->buffer = malloc(PAGE_SIZE);
     if (data->buffer == NULL)
     {
         free(data);
@@ -122,7 +122,7 @@ static void pipe_close(file_t* file)
     {
         lock_release(&data->lock);
         wait_queue_deinit(&data->waitQueue);
-        pmm_free(data->buffer);
+        free(data->buffer);
         free(data);
         return;
     }

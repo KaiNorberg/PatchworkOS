@@ -44,7 +44,7 @@
  * at `VMM_KERNEL_HEAP_MIN` and grows up towards `VMM_KERNEL_HEAP_MAX`. This section takes up 2 indices in the
  * page table and is mapped identically for all processes.
  *
- * Fourthly (is fourthly really a word?), we have the identity mapped physical memory. All physical memory will be
+ * Fourthly, we have the identity mapped physical memory. All physical memory will be
  * mapped here by simply taking the original physical address and adding `0xFFFF800000000000` to it. This means that the
  * physical address `0x123456` will be mapped to the virtual address `0xFFFF800000123456`. This section takes up all
  * remaining indices below the kernel heap to the end of the higher half and is mapped identically for all processes.
@@ -182,7 +182,7 @@ void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment,
  *
  * @param space The target address space, if `NULL`, the kernel space is used.
  * @param virtAddr The desired virtual address to map to, if `NULL`, the kernel chooses an available address.
- * @param physAddr The physical address to map from. Must not be `NULL`.
+ * @param physAddr The physical address to map from. Must not be `PHYS_ADDR_INVALID`.
  * @param length The length of the memory region to map, in bytes.
  * @param flags The page table flags for the mapping, must have `PML_PRESENT` set.
  * @param func The callback function to call when the mapped memory is unmapped or the address space is freed. If
@@ -195,7 +195,7 @@ void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment,
  * - `ENOMEM`: Not enough memory.
  * - Other values from `space_mapping_start()`.
  */
-void* vmm_map(space_t* space, void* virtAddr, void* physAddr, size_t length, pml_flags_t flags,
+void* vmm_map(space_t* space, void* virtAddr, phys_addr_t physAddr, size_t length, pml_flags_t flags,
     space_callback_func_t func, void* data);
 
 /**
@@ -207,8 +207,8 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, size_t length, pml
  *
  * @param space The target address space, if `NULL`, the kernel space is used.
  * @param virtAddr The desired virtual address to map to, if `NULL`, the kernel chooses an available address.
- * @param pages An array of physical page addresses to map.
- * @param pageAmount The number of physical pages in the `pages` array, must not be zero.
+ * @param pfns An array of page frame numbers to map from.
+ * @param amount The number of pages to map.
  * @param flags The page table flags for the mapping, must have `PML_PRESENT` set.
  * @param func The callback function to call when the mapped memory is unmapped or the address space is freed. If
  * `NULL`, then no callback will be called.
@@ -220,7 +220,7 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, size_t length, pml
  * - `ENOMEM`: Not enough memory.
  * - Other values from `space_mapping_start()`.
  */
-void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, size_t pageAmount, pml_flags_t flags,
+void* vmm_map_pages(space_t* space, void* virtAddr, pfn_t* pfns, size_t amount, pml_flags_t flags,
     space_callback_func_t func, void* data);
 
 /**

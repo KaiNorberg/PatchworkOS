@@ -99,7 +99,7 @@ uint64_t lapic_global_init(void)
     }
 
     lapicBase = PML_LOWER_TO_HIGHER(madt->localInterruptControllerAddress);
-    if (vmm_map(NULL, (void*)lapicBase, (void*)(uintptr_t)madt->localInterruptControllerAddress, PAGE_SIZE,
+    if (vmm_map(NULL, (void*)lapicBase, madt->localInterruptControllerAddress, PAGE_SIZE,
             PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) == NULL)
     {
         LOG_ERR("failed to map local apic\n");
