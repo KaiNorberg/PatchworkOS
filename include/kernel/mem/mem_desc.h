@@ -128,8 +128,17 @@ uint64_t mem_desc_add(mem_desc_t* desc, phys_addr_t phys, size_t size);
 uint64_t mem_desc_add_user(mem_desc_t* desc, process_t* process, const void* addr, size_t size);
 
 /**
+ * @brief Get a Memory Segment from a Memory Descriptor.
+ *
+ * @param desc The Memory Descriptor to get the segment from.
+ * @param index The index of the segment to get.
+ * @return On success, a pointer to the Memory Segment. On failure, `NULL`.
+ */
+mem_seg_t* mem_desc_get_seg(mem_desc_t* desc, size_t index);
+
+/**
  * @brief Read from a Memory Descriptor into a buffer.
- * 
+ *
  * @param desc The Memory Descriptor to read from.
  * @param buffer The buffer to read into.
  * @param count Number of bytes to read.
@@ -140,33 +149,74 @@ uint64_t mem_desc_read(mem_desc_t* desc, void* buffer, size_t count, size_t offs
 
 /**
  * @brief Write to a Memory Descriptor from a buffer.
- * 
+ *
  * @param desc The Memory Descriptor to write to.
  * @param buffer The buffer to write from.
  * @param count Number of bytes to write.
  * @param offset Offset within the Memory Descriptor to start writing to.
- * @return The number of bytes written. 
+ * @return The number of bytes written.
  */
 uint64_t mem_desc_write(mem_desc_t* desc, const void* buffer, size_t count, size_t offset);
 
 /**
- * @brief Copy data between two Memory Descriptors.
- * 
- * @param dest The destination Memory Descriptor.
- * @param destOffset Offset within the destination Memory Descriptor to start writing to.
- * @param src The source Memory Descriptor.
- * @param srcOffset Offset within the source Memory Descriptor to start reading from.
- * @param count Number of bytes to copy.
- * @return The number of bytes copied.
+ * @brief Memory Descriptor Iterator structure.
+ * @struct mem_desc_iter_t
  */
-uint64_t mem_desc_copy(mem_desc_t* dest, size_t destOffset, mem_desc_t* src, size_t srcOffset, size_t count);
+typedef struct
+{
+    mem_desc_t* desc;
+    size_t segIndex;
+    size_t segOffset;
+} mem_desc_iter_t;
 
 /**
- * @brief Iterate over objects within a Memory Descriptor.
+ * @brief Create a Memory Descriptor Iterator initializer.
  *
- * @param _element The iterator variable.
+ * @param _desc Pointer to the Memory Descriptor to iterate over.
+ * @return Memory Descriptor Iterator initializer.
+ */
+#define MEM_DESC_ITER_CREATE(_desc) \
+    { \
+        .desc = (_desc), \
+        .segIndex = 0, \
+        .segOffset = 0, \
+    }
+
+/**
+ * @brief Get the next byte from a Memory Descriptor Iterator.
+ *
+ * @param iter Pointer to the Memory Descriptor Iterator.
+ * @param byte Pointer to store the retrieved byte.
+ * @return `true` if a byte was retrieved, `false` if the end of the Memory Descriptor was reached.
+ */
+static inline bool mem_desc_iter_next(mem_desc_iter_t* iter, uint8_t* byte)
+{
+    mem_seg_t* seg = mem_desc_get_seg(iter->desc, iter->segIndex);
+    if (seg == NULL)
+    {
+        return false;
+    }
+
+    uint8_t* addr = PFN_TO_VIRT(seg->pfn) + seg->offset + iter->segOffset;
+    *byte = *(addr);
+
+    iter->segOffset++;
+    if (iter->segOffset >= seg->size)
+    {
+        iter->segIndex++;
+        iter->segOffset = 0;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Iterate over bytes within a Memory Descriptor.
+ *
+ * @param _byte The iterator variable.
  * @param _desc Pointer to the Memory Descriptor.
  */
-#define MEM_DESC_FOR_EACH(_element, _desc)
+#define MEM_DESC_FOR_EACH(_byte, _desc) \
+    for (mem_desc_iter_t _iter = MEM_DESC_ITER_CREATE(_desc); mem_desc_iter_next(&_iter, (_byte));)
 
 /** @} */

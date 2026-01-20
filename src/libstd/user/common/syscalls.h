@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <sys/io.h>
 #include <sys/proc.h>
-#include <sys/rings.h>
+#include <sys/uring.h>
 #include <time.h>
 
 #define _SYSCALL0(retType, num) \
@@ -286,17 +286,17 @@ static inline uint64_t _syscall_arch_prctl(arch_prctl_t code, uintptr_t addr)
     return _SYSCALL2(uint64_t, SYS_ARCH_PRCTL, arch_prctl_t, code, uintptr_t, addr);
 }
 
-static inline uint64_t _syscall_setup(rings_t* rings, void* address, size_t sentries, size_t centries)
+static inline uint64_t _syscall_setup(ring_t* ring, void* address, size_t sentries, size_t centries)
 {
-    return _SYSCALL4(uint64_t, SYS_SETUP, rings_t*, rings, void*, address, size_t, sentries, size_t, centries);
+    return _SYSCALL4(uint64_t, SYS_SETUP, ring_t*, ring, void*, address, size_t, sentries, size_t, centries);
 }
 
-static inline uint64_t _syscall_teardown(rings_id_t id)
+static inline uint64_t _syscall_teardown(ring_id_t id)
 {
-    return _SYSCALL1(uint64_t, SYS_TEARDOWN, rings_id_t, id);
+    return _SYSCALL1(uint64_t, SYS_TEARDOWN, ring_id_t, id);
 }
 
-static inline uint64_t _syscall_enter(rings_id_t id, size_t amount, size_t wait)
+static inline uint64_t _syscall_enter(ring_id_t id, size_t amount, size_t wait)
 {
-    return _SYSCALL3(uint64_t, SYS_ENTER, rings_id_t, id, size_t, amount, size_t, wait);
+    return _SYSCALL3(uint64_t, SYS_ENTER, ring_id_t, id, size_t, amount, size_t, wait);
 }

@@ -7,21 +7,6 @@
 #include <stdlib.h>
 #include <sys/proc.h>
 
-static inline mem_seg_t* mem_desc_get_seg(mem_desc_t* desc, size_t index)
-{
-    if (index >= desc->amount)
-    {
-        return NULL;
-    }
-
-    if (index < MEM_SEGS_SMALL_MAX)
-    {
-        return &desc->small[index];
-    }
-    
-    return &desc->large[index - MEM_SEGS_SMALL_MAX];
-}
-
 mem_desc_pool_t* mem_desc_pool_new(size_t size)
 {
     size_t poolSize = sizeof(mem_desc_pool_t) + (size * sizeof(mem_desc_t));
@@ -100,7 +85,13 @@ void mem_desc_free(mem_desc_t* desc)
 
 uint64_t mem_desc_add(mem_desc_t* desc, phys_addr_t phys, size_t size)
 {
-    if (desc == NULL)
+    if (size > UINT32_MAX)
+    {
+        errno = EOVERFLOW;
+        return ERR;
+    }
+
+    if (desc == NULL || desc->size + size < desc->size)
     {
         errno = EINVAL;
         return ERR;
@@ -109,11 +100,11 @@ uint64_t mem_desc_add(mem_desc_t* desc, phys_addr_t phys, size_t size)
     mem_seg_t* seg = NULL;
     if (desc->amount < MEM_SEGS_SMALL_MAX)
     {
-        seg = &desc->small[desc->amount++];
+        seg = &desc->small[desc->amount];
     }
     else if (desc->amount - MEM_SEGS_SMALL_MAX < desc->capacity)
     {
-        seg = &desc->large[desc->amount++ - MEM_SEGS_SMALL_MAX];
+        seg = &desc->large[desc->amount - MEM_SEGS_SMALL_MAX];
     }
     else
     {
@@ -126,7 +117,7 @@ uint64_t mem_desc_add(mem_desc_t* desc, phys_addr_t phys, size_t size)
 
         desc->large = newLarge;
         desc->capacity += 4;
-        seg = &desc->large[desc->amount++ - MEM_SEGS_SMALL_MAX];
+        seg = &desc->large[desc->amount - MEM_SEGS_SMALL_MAX];
     }
 
     pfn_t pfn = PHYS_TO_PFN(phys);
@@ -141,6 +132,8 @@ uint64_t mem_desc_add(mem_desc_t* desc, phys_addr_t phys, size_t size)
     seg->size = size;
     seg->offset = offset;
     desc->size += size;
+
+    desc->amount++;
     return 0;
 }
 
@@ -172,28 +165,95 @@ uint64_t mem_desc_add_user(mem_desc_t* desc, process_t* process, const void* add
     return 0;
 }
 
+mem_seg_t* mem_desc_get_seg(mem_desc_t* desc, size_t index)
+{
+    if (index >= desc->amount)
+    {
+        return NULL;
+    }
+
+    if (index < MEM_SEGS_SMALL_MAX)
+    {
+        return &desc->small[index];
+    }
+
+    return &desc->large[index - MEM_SEGS_SMALL_MAX];
+}
+
 uint64_t mem_desc_read(mem_desc_t* desc, void* buffer, size_t count, size_t offset)
 {
-    if (desc == NULL || buffer == NULL || offset + count > desc->size)
+    if (desc == NULL || buffer == NULL || offset > desc->size || count > desc->size - offset)
     {
         return 0;
     }
 
+    size_t start = 0;
+    size_t i = 0;
+    for (; i < desc->amount; i++)
+    {
+        mem_seg_t* seg = mem_desc_get_seg(desc, i);
+        if (start + seg->size > offset)
+        {
+            break;
+        }
+        start += seg->size;
+    }
+
+    uint8_t* ptr = buffer;
+    size_t remaining = count;
+
+    size_t segOffset = offset - start;
+    while (remaining > 0 && i < desc->amount)
+    {
+        mem_seg_t* seg = mem_desc_get_seg(desc, i);
+        size_t toRead = MIN(remaining, seg->size - segOffset);
+        void* addr = PFN_TO_VIRT(seg->pfn) + seg->offset + segOffset;
+        memcpy(ptr, addr, toRead);
+
+        ptr += toRead;
+        remaining -= toRead;
+        segOffset = 0;
+        i++;
+    }
+
+    return count - remaining;
 }
 
 uint64_t mem_desc_write(mem_desc_t* desc, const void* buffer, size_t count, size_t offset)
 {
-    if (desc == NULL || buffer == NULL || offset + count > desc->size)
+    if (desc == NULL || buffer == NULL || offset > desc->size || count > desc->size - offset)
     {
         return 0;
     }
-}
 
- uint64_t mem_desc_copy(mem_desc_t* dest, size_t destOffset, mem_desc_t* src, size_t srcOffset,
-    size_t count)
-{
-    if (dest == NULL || src == NULL || destOffset + count > dest->size || srcOffset + count > src->size)
+    size_t start = 0;
+    size_t i = 0;
+    for (; i < desc->amount; i++)
     {
-        return 0;
+        mem_seg_t* seg = mem_desc_get_seg(desc, i);
+        if (start + seg->size > offset)
+        {
+            break;
+        }
+        start += seg->size;
     }
+
+    const uint8_t* ptr = buffer;
+    size_t remaining = count;
+
+    size_t segOffset = offset - start;
+    while (remaining > 0 && i < desc->amount)
+    {
+        mem_seg_t* seg = mem_desc_get_seg(desc, i);
+        size_t toWrite = MIN(remaining, seg->size - segOffset);
+        void* addr = PFN_TO_VIRT(seg->pfn) + seg->offset + segOffset;
+        memcpy(addr, ptr, toWrite);
+
+        ptr += toWrite;
+        remaining -= toWrite;
+        segOffset = 0;
+        i++;
+    }
+
+    return count - remaining;
 }

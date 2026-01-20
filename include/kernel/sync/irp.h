@@ -11,7 +11,7 @@
 #include <sys/io.h>
 #include <sys/list.h>
 #include <sys/math.h>
-#include <sys/rings.h>
+#include <sys/uring.h>
 #include <time.h>
 
 typedef struct irp irp_t;
@@ -25,7 +25,7 @@ typedef struct irp irp_t;
  * structure used internally by the kernel for asynchronous operations.
  *
  * The IRP system is designed to be generic enough to be used by any system in the kernel, however it is primarily used
- * by the asynchronous rings system.
+ * by the ring system.
  *
  * @warning While the cancellation or completion of an IRP is thread safe, the setup of an IRP is not (as in pushing
  * layers to it). As such, its up to the caller to ensure that only one thread is manipulating it during setup.
@@ -134,7 +134,7 @@ typedef struct irp irp_t;
  * Each time a completion is called via `irp_complete()`, the next completion on the stack is called until the stack is
  * empty, at which point the IRP is considered fully completed.
  *
- * A real world example of this would be the Async Rings system allocating a IRP, pushing a completion which will add a
+ * A real world example of this would be the ring system allocating a IRP, pushing a completion which will add a
  * `cqe_t` to its Rings, before passing the IRP to the VFS which may pass it to a filesystem. Each layer pushing its own
  * completion to handle its part of the operation.
  *
@@ -238,7 +238,7 @@ typedef struct irp irp_t;
  * - `ETIMEDOUT`: Operation timed out.
  * - `EINPROGRESS`: Operation is in a timeout queue.
  *
- * @see kernel_sync_async for the asynchronous rings system.
+ * @see kernel_sync_ring for the ring system.
  * @see [Wikipedia](https://en.wikipedia.org/wiki/I/O_request_packet) for more information about IRPs.
  * @see [Microsoft _IRP](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_irp) for information
  * on how Windows NT implements IRPs.

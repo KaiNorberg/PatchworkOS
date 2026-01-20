@@ -1,8 +1,14 @@
 #pragma once
 
 /**
+ * @brief Kernel configuration.
+ * @defgroup kernel_config Configuration
+ *
+ * @{
+ */
+
+/**
  * @brief Interrupt stack configuration.
- * @ingroup kernel
  * @def CONFIG_INTERRUPT_STACK_PAGES
  *
  * The `CONFIG_INTERRUPT_STACK_PAGES` constant defines the amount of pages that are allocated for the per-CPU interrupt,
@@ -15,7 +21,6 @@
 
 /**
  * @brief Kernel stack configuration.
- * @ingroup kernel
  * @def CONFIG_MAX_KERNEL_STACK_PAGES
  *
  * The `CONFIG_MAX_KERNEL_STACK_PAGES` constant defines the maximum amount of pages that are allowed to be allocated for
@@ -27,7 +32,6 @@
 
 /**
  * @brief User stack configuration.
- * @ingroup kernel
  * @def CONFIG_MAX_USER_STACK_PAGES
  *
  * The `CONFIG_MAX_USER_STACK_PAGES` constant defines the maximum amount of pages that are allowed to be allocated for a
@@ -38,7 +42,6 @@
 
 /**
  * @brief Maximum file descriptor configuration.
- * @ingroup kernel
  * @def CONFIG_MAX_FD
  *
  * The `CONFIG_MAX_FD` constant defines the maximum amount of file descriptors that a process is allowed to have open.
@@ -48,7 +51,6 @@
 
 /**
  * @brief Serial logging configuration.
- * @ingroup kernel
  * @def CONFIG_LOG_SERIAL
  *
  * The `CONFIG_LOG_SERIAL` constant defines if to output logged strings via serial.
@@ -58,7 +60,6 @@
 
 /**
  * @brief Maximum note queue configuration.
- * @ingroup kernel
  * @def CONFIG_MAX_NOTES
  *
  * The `CONFIG_MAX_NOTES` constant defines the maximum length of a threads note queue.
@@ -68,7 +69,6 @@
 
 /**
  * @brief Maximum argument vector configuration.
- * @ingroup kernel
  * @def CONFIG_MAX_ARGC
  *
  * The `CONFIG_MAX_ARGC` constant defines the maximum amount of arguments that can be passed to a process via its
@@ -79,7 +79,6 @@
 
 /**
  * @brief Minimum timer timeout configuration.
- * @ingroup kernel
  * @def CONFIG_MIN_TIMER_TIMEOUT
  *
  * The `CONFIG_MIN_TIMER_TIMEOUT` constant defines the minimum timeout that can be set for timers.
@@ -89,7 +88,6 @@
 
 /**
  * @brief Time slice configuration.
- * @ingroup kernel
  * @def CONFIG_TIME_SLICE
  *
  * The `CONFIG_TIME_SLICE` constant defines the default time slice given to threads when they are scheduled.
@@ -99,7 +97,6 @@
 
 /**
  * @brief Cache hot threshold configuration.
- * @ingroup kernel
  * @def CONFIG_CACHE_HOT_THRESHOLD
  *
  * The `CONFIG_CACHE_HOT_THRESHOLD` constant defines the threshold below which a time duration is considered "cache
@@ -110,7 +107,6 @@
 
 /**
  * @brief Maximum mutex slow spin configuration.
- * @ingroup kernel
  * @def CONFIG_MUTEX_MAX_SLOW_SPIN
  *
  * The `CONFIG_MUTEX_MAX_SLOW_SPIN` constant defines the maximum number of iterations a thread will spin before blocking
@@ -121,7 +117,6 @@
 
 /**
  * @brief Maximum screen lines configuration.
- * @ingroup kernel
  * @def CONFIG_SCREEN_MAX_LINES
  *
  * The `CONFIG_SCREEN_MAX_LINES` constant defines the maximum number of lines that the logging system will display.
@@ -131,7 +126,6 @@
 
 /**
  * @brief Maximum bitmap allocator address.
- * @ingroup kernel
  * @def CONFIG_PMM_BITMAP_MAX_ADDR
  *
  * The `CONFIG_PMM_BITMAP_MAX_ADDR` constant defines the maximum address below which pages will be handled by the bitmap
@@ -142,7 +136,6 @@
 
 /**
  * @brief Process reaper interval configuration.
- * @ingroup kernel
  * @def CONFIG_PROCESS_REAPER_INTERVAL
  *
  * The `CONFIG_PROCESS_REAPER_INTERVAL` constant defines the minimum interval at which the process reaper runs to clean
@@ -153,7 +146,6 @@
 
 /**
  * @brief Maximum environment variables configuration.
- * @ingroup kernel
  * @def CONFIG_MAX_ENV_VARS
  *
  * The `CONFIG_MAX_ENV_VARS` constant defines the maximum number of environment variables that a process can have.
@@ -163,7 +155,6 @@
 
 /**
  * @brief Kernel log buffer size configuration.
- * @ingroup kernel
  * @def CONFIG_LOG_KLOG_BUFFER_SIZE
  *
  * The `CONFIG_LOG_KLOG_BUFFER_SIZE` constant defines the size of the buffer used for the `/dev/klog` file.
@@ -173,7 +164,6 @@
 
 /**
  * @brief Per-CPU data size configuration.
- * @ingroup kernel
  * @def CONFIG_PERCPU_SIZE
  *
  * The `CONFIG_PERCPU_SIZE` constant defines the size allocated for per-CPU data.
@@ -183,7 +173,6 @@
 
 /**
  * @brief Maximum wait queues configuration.
- * @ingroup kernel
  * @def CONFIG_MAX_WAIT_QUEUES
  *
  * The `CONFIG_MAX_WAIT_QUEUES` constant defines the maximum amount of wait queues that a thread can wait on
@@ -193,22 +182,22 @@
 #define CONFIG_MAX_WAIT_QUEUES 64
 
 /**
- * @brief Maximum asynchronous rings configuration.
- * @ingroup kernel
- * @def CONFIG_MAX_ASYNC_RINGS
+ * @brief Maximum rings configuration.
+ * @def CONFIG_MAX_RINGS
  *
- * The `CONFIG_MAX_ASYNC_RINGS` constant defines the maximum amount of asynchronous rings that each process can have.
+ * The `CONFIG_MAX_RINGS` constant defines the maximum amount of asynchronous rings that each process can have.
  *
  */
-#define CONFIG_MAX_ASYNC_RINGS 8
+#define CONFIG_MAX_RINGS 8
 
 /**
  * @brief Maximum async ring pages configuration.
- * @ingroup kernel
- * @def CONFIG_MAX_ASYNC_PAGES
+ * @def CONFIG_MAX_RINGS_PAGES
  *
- * The `CONFIG_MAX_ASYNC_PAGES` constant defines the maximum amount of pages that can be allocated for a async rings
+ * The `CONFIG_MAX_RINGS_PAGES` constant defines the maximum amount of pages that can be allocated for a async rings
  * buffer.
  *
  */
-#define CONFIG_MAX_ASYNC_PAGES 1024
+#define CONFIG_MAX_RINGS_PAGES 1024
+
+/** @} */

@@ -1,5 +1,5 @@
-#ifndef _SYS_RINGS_H
-#define _SYS_RINGS_H 1
+#ifndef _SYS_URING_H
+#define _SYS_URING_H 1
 
 #include <stdatomic.h>
 #include <stddef.h>
@@ -19,7 +19,7 @@ extern "C"
 #include "_internal/fd_t.h"
 
 /**
- * @addtogroup kernel_sync_async
+ * @addtogroup kernel_sync_ring
  * @{
  */
 
@@ -29,7 +29,7 @@ typedef uint32_t verb_t; ///< Verb type.
 #define VERB_OPEN 1 ///< Open file verb.
 #define VERB_MAX 1  ///< Maximum verb.
 
-#define SEQ_MAX_ARGS 5 ///< Maximum number of arguments for a rings operation.
+#define SQE_MAX_ARGS 5 ///< Maximum number of arguments for a ring operation.
 
 typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
 
@@ -41,30 +41,39 @@ typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
 #define SQE_REG5 (5)         ///< The sixth register.
 #define SQE_REG6 (6)         ///< The seventh register.
 #define SQE_REG_NONE (7)     ///< No register.
-#define SEQ_REGS_MAX (7)     ///< The maximum number of registers.
+#define SQE_REGS_MAX (7)     ///< The maximum number of registers.
 #define SQE_REG_SHIFT (3)    ///< The bitshift for each register specifier in a `sqe_flags_t`.
 #define SQE_REG_MASK (0b111) ///< The bitmask for a register specifier in a `sqe_flags_t`.
 
-#define SQE_LOAD0 (0) ///< The offset to specify which register to load into the first argument.
-#define SQE_LOAD1 \
-    (SQE_LOAD0 + SQE_REG_SHIFT) ///< The offset to specify which register to load into the second argument.
-#define SQE_LOAD2 (SQE_LOAD1 + SQE_REG_SHIFT) ///< The offset to specify which register to load into the third argument.
-#define SQE_LOAD3 \
-    (SQE_LOAD2 + SQE_REG_SHIFT) ///< The offset to specify which register to load into the fourth argument.
-#define SQE_LOAD4 (SQE_LOAD3 + SQE_REG_SHIFT) ///< The offset to specify which register to load into the fifth argument.
+#define SQE_LOAD0 (0)                         ///< The offset to specify the register to load into the first argument.
+#define SQE_LOAD1 (SQE_LOAD0 + SQE_REG_SHIFT) ///< The offset to specify the register to load into the second argument.
+#define SQE_LOAD2 (SQE_LOAD1 + SQE_REG_SHIFT) ///< The offset to specify the register to load into the third argument.
+#define SQE_LOAD3 (SQE_LOAD2 + SQE_REG_SHIFT) ///< The offset to specify the register to load into the fourth argument.
+#define SQE_LOAD4 (SQE_LOAD3 + SQE_REG_SHIFT) ///< The offset to specify the register to load into the fifth argument.
 #define SQE_SAVE (SQE_LOAD4 + SQE_REG_SHIFT)  ///< The offset to specify the register to save the result into.
-#define SQE_FLAGS_SHIFT (SQE_SAVE + SQE_REG_SHIFT) ///< The bitshift for where bit flags start in a `sqe_flags_t`.
-#define SQE_LINK \
-    (1 << (SQE_FLAGS_SHIFT)) ///< Only process the next SQE when this one completes successfully) only
-                             /// applies within one `enter()` call.
-#define SQE_HARDLINK \
-    (1 << (SQE_FLAGS_SHIFT + 1)) ///< Like `SQE_LINK`) but will process the next SQE even if this one fails.
+
+#define _SEQ_FLAGS (SQE_SAVE + SQE_REG_SHIFT) ///< The bitshift for where bit flags start in a `sqe_flags_t`.
+
 #ifdef _KERNEL_
-#define SQE_KERNEL \
-    (1 << (SQE_FLAGS_SHIFT + 2)) ///< The operation was created by the kernel, used internally by the kernel.
-#define SQE_KERNEL_ENTERED \
-    (1 << (SQE_FLAGS_SHIFT + 3)) ///< The operations enter callback has been called, used internally by the kernel.
+/**
+ * The operation was created by the kernel, used internally by the kernel.
+ */
+#define SQE_KERNEL (1 << (_SEQ_FLAGS))
+
+/**
+ * The operations enter callback has been called, used internally by the kernel.
+ */
+#define SQE_KERNEL_ENTERED (1 << (_SEQ_FLAGS + 1))
 #endif
+
+/**
+ * Only process the next SQE when this one completes successfully) only applies within one `enter()` call.
+ */
+#define SQE_LINK (1 << (_SEQ_FLAGS + 2))
+/**
+ * Like `SQE_LINK` but will process the next SQE even if this one fails.
+ */
+#define SQE_HARDLINK (1 << (_SEQ_FLAGS + 3))
 
 /**
  * @brief Asynchronous submission queue entry (SQE).
@@ -92,7 +101,7 @@ typedef struct sqe
             char* path;
             size_t length;
         } open;
-        uint64_t _args[SEQ_MAX_ARGS];
+        uint64_t _args[SQE_MAX_ARGS];
     };
 } sqe_t;
 
@@ -139,20 +148,20 @@ static_assert(sizeof(cqe_t) == 32, "cqe_t is not 32 bytes");
 #endif
 
 /**
- * @brief Rings ID type.
+ * @brief User-Rings ID type.
  */
-typedef uint64_t rings_id_t;
+typedef uint64_t ring_id_t;
 
 /**
- * @brief Shared asynchronous rings structure.
- * @struct rings_shared_t
+ * @brief Shared ring control structure.
+ * @struct ring_ctrl_t
  *
  * Used as the intermediate between userspace and the kernel.
  *
  * @note The structure is aligned in such a way to reduce false sharing.
  *
  */
-typedef struct ALIGNED(64) rings_shared
+typedef struct ALIGNED(64) ring_ctrl
 {
     atomic_uint32_t shead; ///< Submission head index, updated by the kernel.
     atomic_uint32_t ctail; ///< Completion tail index, updated by the kernel.
@@ -160,40 +169,40 @@ typedef struct ALIGNED(64) rings_shared
     atomic_uint32_t stail; ///< Submission tail index, updated by userspace.
     atomic_uint32_t chead; ///< Completion head index, updated by userspace.
     uint8_t _padding1[64 - sizeof(atomic_uint32_t) * 2];
-    atomic_uint64_t regs[SEQ_REGS_MAX] ALIGNED(64); ///< General purpose registers.
+    atomic_uint64_t regs[SQE_REGS_MAX] ALIGNED(64); ///< General purpose registers.
     uint8_t _reserved[8];
-} rings_shared_t;
-
-/**
- * @brief Asynchronous rings structure.
- * @struct rings_t
- *
- * The kernel and userspace will have their own instances of this structure.
- */
-typedef struct rings
-{
-    rings_shared_t* shared; ///< Pointer to the shared structure.
-    rings_id_t id;          ///< The ID of the rings.
-    sqe_t* squeue;          ///< Pointer to the submission queue.
-    size_t sentries;        ///< Number of entries in the submission queue.
-    size_t smask;           ///< Bitmask for submission queue (sentries - 1).
-    cqe_t* cqueue;          ///< Pointer to the completion queue.
-    size_t centries;        ///< Number of entries in the completion queue.
-    size_t cmask;           ///< Bitmask for completion queue (centries - 1).
-} rings_t;
+} ring_ctrl_t;
 
 /**
  * @}
- * @brief User-side asynchronous rings interface.
- * @defgroup libstd_sys_rings User Asynchronous Rings
+ * @brief User-side asynchronous ring interface.
+ * @defgroup libstd_sys_uring User-Side Ring Interface
  * @ingroup libstd
  *
- * The rings interface acts as the interface for all asynchronous operations in the kernel.
+ * The ring interface acts as the interface for all asynchronous operations in the kernel.
  *
- * @see kernel_sync_async for more information about the asynchronous rings system.
+ * @see kernel_sync_ring for more information about the asynchronous ring system.
  *
  * @{
  */
+
+/**
+ * @brief User asynchronous ring structure.
+ * @struct ring_t
+ *
+ * The kernel and userspace will have their own instances of this structure.
+ */
+typedef struct ring
+{
+    ring_ctrl_t* ctrl; ///< Pointer to the shared control structure.
+    ring_id_t id;      ///< The ID of the ring.
+    sqe_t* squeue;     ///< Pointer to the submission queue.
+    size_t sentries;   ///< Number of entries in the submission queue.
+    size_t smask;      ///< Bitmask for submission queue (sentries - 1).
+    cqe_t* cqueue;     ///< Pointer to the completion queue.
+    size_t centries;   ///< Number of entries in the completion queue.
+    size_t cmask;      ///< Bitmask for completion queue (centries - 1).
+} ring_t;
 
 /**
  * @brief Dont wait for any submissions to complete.
@@ -206,58 +215,58 @@ typedef struct rings
 #define WAIT_ONE 0x1
 
 /**
- * @brief System call to initialize the asynchronous rings.
+ * @brief System call to initialize the asynchronous ring.
  *
  * This system call will populate the given structure with the necessary pointers and metadata for the submission and
- * completion rings.
+ * completion ring.
  *
- * @param rings Pointer to the structure to populate.
- * @param address Desired address to allocate the rings, or `NULL` to let the kernel choose.
+ * @param ring Pointer to the ring structure to populate.
+ * @param address Desired address to allocate the ring, or `NULL` to let the kernel choose.
  * @param sentries Number of entires to allocate for the submission queue, must be a power of two.
  * @param centries Number of entries to allocate for the completion queue, must be a power of two.
  * @return On success, the ring ID. On failure, `ERR` and `errno` is set.
  */
-rings_id_t setup(rings_t* rings, void* address, size_t sentries, size_t centries);
+ring_id_t setup(ring_t* ring, void* address, size_t sentries, size_t centries);
 
 /**
- * @brief System call to deinitialize the asynchronous rings.
+ * @brief System call to deinitialize the asynchronous ring.
  *
- * @param id The ID of the rings to deinitialize.
+ * @param id The ID of the ring to deinitialize.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t teardown(rings_id_t id);
+uint64_t teardown(ring_id_t id);
 
 /**
  * @brief System call to notify the kernel of new submission queue entries (SQEs).
  *
- * @param id The ID of the rings to notify.
+ * @param id The ID of the ring to notify.
  * @param amount The number of SQEs that the kernel should process.
  * @param wait The minimum number of completion queue entries (CQEs) to wait for.
  * @return On success, the number of SQEs successfully processed. On failure, `ERR` and `errno` is set.
  */
-uint64_t enter(rings_id_t id, size_t amount, size_t wait);
+uint64_t enter(ring_id_t id, size_t amount, size_t wait);
 
 /**
  * @brief Pushes a submission queue entry (SQE) to the submission queue.
  *
  * After pushing SQEs, `enter()` must be called to notify the kernel of the new entries.
  *
- * @param rings Pointer to the asynchronous rings structure.
+ * @param ring Pointer to the asynchronous ring structure.
  * @param sqe Pointer to the SQE to push.
  * @return `true` if the SQE was pushed, `false` if the submission queue is full.
  */
-static inline bool sqe_push(rings_t* rings, sqe_t* sqe)
+static inline bool sqe_push(ring_t* ring, sqe_t* sqe)
 {
-    uint32_t tail = atomic_load_explicit(&rings->shared->stail, memory_order_relaxed);
-    uint32_t head = atomic_load_explicit(&rings->shared->shead, memory_order_acquire);
+    uint32_t tail = atomic_load_explicit(&ring->ctrl->stail, memory_order_relaxed);
+    uint32_t head = atomic_load_explicit(&ring->ctrl->shead, memory_order_acquire);
 
-    if ((tail - head) >= rings->sentries)
+    if ((tail - head) >= ring->sentries)
     {
         return false;
     }
 
-    rings->squeue[tail & rings->smask] = *sqe;
-    atomic_store_explicit(&rings->shared->stail, tail + 1, memory_order_release);
+    ring->squeue[tail & ring->smask] = *sqe;
+    atomic_store_explicit(&ring->ctrl->stail, tail + 1, memory_order_release);
 
     return true;
 }
@@ -265,22 +274,22 @@ static inline bool sqe_push(rings_t* rings, sqe_t* sqe)
 /**
  * @brief Pops a completion queue entry (CQE) from the completion queue.
  *
- * @param rings Pointer to the asynchronous rings structure.
+ * @param ring Pointer to the asynchronous ring structure.
  * @param cqe Pointer to the CQE to pop.
  * @return `true` if a CQE was popped, `false` if the completion queue is empty.
  */
-static inline bool cqe_pop(rings_t* rings, cqe_t* cqe)
+static inline bool cqe_pop(ring_t* ring, cqe_t* cqe)
 {
-    uint32_t head = atomic_load_explicit(&rings->shared->chead, memory_order_relaxed);
-    uint32_t tail = atomic_load_explicit(&rings->shared->ctail, memory_order_acquire);
+    uint32_t head = atomic_load_explicit(&ring->ctrl->chead, memory_order_relaxed);
+    uint32_t tail = atomic_load_explicit(&ring->ctrl->ctail, memory_order_acquire);
 
     if (head == tail)
     {
         return false;
     }
 
-    *cqe = rings->cqueue[head & rings->cmask];
-    atomic_store_explicit(&rings->shared->chead, head + 1, memory_order_release);
+    *cqe = ring->cqueue[head & ring->cmask];
+    atomic_store_explicit(&ring->ctrl->chead, head + 1, memory_order_release);
 
     return true;
 }

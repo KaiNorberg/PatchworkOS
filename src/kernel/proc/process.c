@@ -19,9 +19,9 @@
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
-#include <kernel/sync/async.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rcu.h>
+#include <kernel/sync/ring.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -111,9 +111,9 @@ static void process_free(process_t* process)
     }
     space_deinit(&process->space);
     futex_ctx_deinit(&process->futexCtx);
-    for (uint64_t i = 0; i < CONFIG_MAX_ASYNC_RINGS; i++)
+    for (uint64_t i = 0; i < ARRAY_SIZE(process->rings); i++)
     {
-        async_deinit(&process->async[i]);
+        ring_ctx_deinit(&process->rings[i]);
     }
     wait_queue_deinit(&process->dyingQueue);
     wait_queue_deinit(&process->suspendQueue);
@@ -154,9 +154,9 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
     file_table_init(&process->fileTable);
     futex_ctx_init(&process->futexCtx);
     perf_process_ctx_init(&process->perf);
-    for (uint64_t i = 0; i < CONFIG_MAX_ASYNC_RINGS; i++)
+    for (uint64_t i = 0; i < ARRAY_SIZE(process->rings); i++)
     {
-        async_init(&process->async[i]);
+        ring_ctx_init(&process->rings[i]);
     }
     note_handler_init(&process->noteHandler);
     wait_queue_init(&process->suspendQueue);

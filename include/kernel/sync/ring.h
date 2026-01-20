@@ -9,43 +9,43 @@
 #include <kernel/sync/lock.h>
 
 #include <string.h>
-#include <sys/rings.h>
+#include <sys/uring.h>
 
 /**
  * @brief Programmable submission/completion interface.
- * @defgroup kernel_sync_async Asynchronous Rings
+ * @defgroup kernel_sync_ring Kernel-Side Ring Interface
  * @ingroup kernel_sync
  *
- * @todo The rings system is primarily a design document for now as it remains very work in progress and subject to
+ * @todo The ring system is primarily a design document for now as it remains very work in progress and subject to
  * change, currently being mostly unimplemented.
  *
- * The Asynchronous rings provide the core of all interfaces in PatchworkOS, all implemented in an interface
+ * The ring provide the core of all interfaces in PatchworkOS, all implemented in an interface
  * inspired by `io_uring()` from Linux.
  *
  * Synchronous operations are implemented on top of this API in userspace.
  *
- * @see libstd_sys_rings for the userspace interface to the asynchronous rings.
+ * @see libstd_sys_uring for the userspace interface to the asynchronous ring.
  * @see [Wikipedia](https://en.wikipedia.org/wiki/Io_uring) for information about `io_uring`.
  * @see [Manpages](https://man7.org/linux/man-pages/man7/io_uring.7.html) for more information about `io_uring`.
  *
  * ## Syncronization
  *
- * The rings structure is designed to be safe under the assumption that there is a single producer (one user-space
+ * The ring structure is designed to be safe under the assumption that there is a single producer (one user-space
  * thread) and a single consumer (the kernel).
  *
- * If a rings structure needs multiple producers (needs to be accessed by multiple threads) it is the responsibility of
+ * If a ring structure needs multiple producers (needs to be accessed by multiple threads) it is the responsibility of
  * the caller to ensure proper synchronization.
  *
  * @note The reason for this limitation is optimization for the common case, as the syncronization logic for multiple
  * producers would add significant overhead.
  *
- * Regarding the rings structure itself, the structure can only be torndown as long as nothing is using it and there are
+ * Regarding the ring structure itself, the structure can only be torndown as long as nothing is using it and there are
  * no pending operations.
  *
  * ## Registers
  *
  * Operations performed on a ring can load arguments from, and save their results to, seven 64-bit general purpose
- * registers. All registers are stored in the shared area of the rings structure, as such they can be inspected and
+ * registers. All registers are stored in the shared area of the ring structure, as such they can be inspected and
  * modified by user space.
  *
  * When a SQE is processed, the kernel will check six register specifiers in the SQE flags, one for each argument and
@@ -95,47 +95,47 @@
  */
 
 /**
- * @brief Async context flags.
- * @enum async_flags_t
+ * @brief Ring context flags.
+ * @enum ring_ctx_flags_t
  */
 typedef enum
 {
-    ASYNC_NONE = 0,        ///< No flags set.
-    ASYNC_BUSY = 1 << 0,   ///< Context is currently being used, used for fast locking.
-    ASYNC_MAPPED = 1 << 1, ///< Context rings are mapped.
-} async_flags_t;
+    RING_CTX_NONE = 0,        ///< No flags set.
+    RING_CTX_BUSY = 1 << 0,   ///< Context is currently being used, used for fast locking.
+    RING_CTX_MAPPED = 1 << 1, ///< Context is currently mapped into userspace.
+} ring_ctx_flags_t;
 
 /**
- * @brief The kernel-side asynchronous context structure.
- * @struct async_t
+ * @brief The kernel-side ring context structure.
+ * @struct ring_ctx_t
  */
-typedef struct async
+typedef struct ring_ctx
 {
-    rings_t rings;          ///< Asynchronous rings information.
+    ring_t ring;            ///< The kernel-side ring structure.
     irp_pool_t* irps;       ///< Pool of preallocated IRPs.
     mem_desc_pool_t* descs; ///< Pool of preallocated memory descriptors.
-    void* userAddr;         ///< Userspace address of the rings.
-    void* kernelAddr;       ///< Kernel address of the rings.
-    size_t pageAmount;      ///< Amount of pages mapped for the rings.
+    void* userAddr;         ///< Userspace address of the ring.
+    void* kernelAddr;       ///< Kernel address of the ring.
+    size_t pageAmount;      ///< Amount of pages mapped for the ring.
     space_t* space;         ///< Pointer to the owning address space.
     wait_queue_t waitQueue; ///< Wait queue for completions.
     process_t* process;     ///< Holds a reference to the owner process while there are pending requests.
-    _Atomic(async_flags_t) flags;
-} async_t;
+    _Atomic(ring_ctx_flags_t) flags;
+} ring_ctx_t;
 
 /**
- * @brief Initialize a async context.
+ * @brief Initialize a ring context.
  *
  * @param ctx Pointer to the context to initialize.
  */
-void async_init(async_t* ctx);
+void ring_ctx_init(ring_ctx_t* ctx);
 
 /**
- * @brief Deinitialize a async context.
+ * @brief Deinitialize a ring context.
  *
  * @param ctx Pointer to the context to deinitialize.
  */
-void async_deinit(async_t* ctx);
+void ring_ctx_deinit(ring_ctx_t* ctx);
 
 /**
  * @brief Notify the context of new SQEs.
@@ -145,6 +145,6 @@ void async_deinit(async_t* ctx);
  * @param wait The minimum number of CQEs to wait for.
  * @return On success, the number of SQEs processed. On failure, `ERR` and `errno` is set.
  */
-uint64_t async_notify(async_t* ctx, size_t amount, size_t wait);
+uint64_t ring_ctx_notify(ring_ctx_t* ctx, size_t amount, size_t wait);
 
 /** @} */

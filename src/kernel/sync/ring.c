@@ -9,18 +9,18 @@
 #include <kernel/mem/vmm.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
-#include <kernel/sync/async.h>
 #include <kernel/sync/irp.h>
+#include <kernel/sync/ring.h>
 
 #include <errno.h>
 #include <sys/list.h>
-#include <sys/rings.h>
+#include <sys/uring.h>
 #include <time.h>
 
-static inline uint64_t async_acquire(async_t* ctx)
+static inline uint64_t ring_ctx_acquire(ring_ctx_t* ctx)
 {
-    async_flags_t expected = atomic_load(&ctx->flags);
-    if (!(expected & ASYNC_BUSY) && atomic_compare_exchange_strong(&ctx->flags, &expected, expected | ASYNC_BUSY))
+    ring_ctx_flags_t expected = atomic_load(&ctx->flags);
+    if (!(expected & RING_CTX_BUSY) && atomic_compare_exchange_strong(&ctx->flags, &expected, expected | RING_CTX_BUSY))
     {
         return 0;
     }
@@ -28,19 +28,18 @@ static inline uint64_t async_acquire(async_t* ctx)
     return ERR;
 }
 
-static inline void async_release(async_t* ctx)
+static inline void ring_ctx_release(ring_ctx_t* ctx)
 {
-    atomic_fetch_and(&ctx->flags, ~ASYNC_BUSY);
+    atomic_fetch_and(&ctx->flags, ~RING_CTX_BUSY);
 }
 
-static inline uint64_t async_map(async_t* ctx, space_t* space, rings_id_t id, rings_t* userRings, void* address,
+static inline uint64_t ring_ctx_map(ring_ctx_t* ctx, space_t* space, ring_id_t id, ring_t* userRing, void* address,
     size_t sentries, size_t centries)
 {
-    rings_t* kernelRings = &ctx->rings;
+    ring_t* kernelRing = &ctx->ring;
 
-    size_t pageAmount =
-        BYTES_TO_PAGES(sizeof(rings_shared_t) + (sentries * sizeof(sqe_t)) + (centries * sizeof(cqe_t)));
-    if (pageAmount >= CONFIG_MAX_ASYNC_PAGES)
+    size_t pageAmount = BYTES_TO_PAGES(sizeof(ring_ctrl_t) + (sentries * sizeof(sqe_t)) + (centries * sizeof(cqe_t)));
+    if (pageAmount >= CONFIG_MAX_RINGS_PAGES)
     {
         errno = ENOMEM;
         return ERR;
@@ -52,7 +51,7 @@ static inline uint64_t async_map(async_t* ctx, space_t* space, rings_id_t id, ri
         return ERR;
     }
 
-    pfn_t pages[CONFIG_MAX_ASYNC_PAGES];
+    pfn_t pages[CONFIG_MAX_RINGS_PAGES];
     if (pmm_alloc_pages(pages, pageAmount) == ERR)
     {
         errno = ENOMEM;
@@ -97,33 +96,33 @@ static inline uint64_t async_map(async_t* ctx, space_t* space, rings_id_t id, ri
         return ERR;
     }
 
-    rings_shared_t* shared = (rings_shared_t*)kernelAddr;
-    atomic_init(&shared->shead, 0);
-    atomic_init(&shared->stail, 0);
-    atomic_init(&shared->ctail, 0);
-    atomic_init(&shared->chead, 0);
-    for (size_t i = 0; i < SEQ_REGS_MAX; i++)
+    ring_ctrl_t* ctrl = (ring_ctrl_t*)kernelAddr;
+    atomic_init(&ctrl->shead, 0);
+    atomic_init(&ctrl->stail, 0);
+    atomic_init(&ctrl->ctail, 0);
+    atomic_init(&ctrl->chead, 0);
+    for (size_t i = 0; i < SQE_REGS_MAX; i++)
     {
-        atomic_init(&shared->regs[i], 0);
+        atomic_init(&ctrl->regs[i], 0);
     }
 
-    userRings->shared = userAddr;
-    userRings->id = id;
-    userRings->squeue = (sqe_t*)((uintptr_t)userAddr + sizeof(rings_shared_t));
-    userRings->sentries = sentries;
-    userRings->smask = sentries - 1;
-    userRings->cqueue = (cqe_t*)((uintptr_t)userAddr + sizeof(rings_shared_t) + (sentries * sizeof(sqe_t)));
-    userRings->centries = centries;
-    userRings->cmask = centries - 1;
+    userRing->ctrl = userAddr;
+    userRing->id = id;
+    userRing->squeue = (sqe_t*)((uintptr_t)userAddr + sizeof(ring_ctrl_t));
+    userRing->sentries = sentries;
+    userRing->smask = sentries - 1;
+    userRing->cqueue = (cqe_t*)((uintptr_t)userAddr + sizeof(ring_ctrl_t) + (sentries * sizeof(sqe_t)));
+    userRing->centries = centries;
+    userRing->cmask = centries - 1;
 
-    kernelRings->shared = kernelAddr;
-    kernelRings->id = id;
-    kernelRings->squeue = (sqe_t*)((uintptr_t)kernelAddr + sizeof(rings_shared_t));
-    kernelRings->sentries = sentries;
-    kernelRings->smask = sentries - 1;
-    kernelRings->cqueue = (cqe_t*)((uintptr_t)kernelAddr + sizeof(rings_shared_t) + (sentries * sizeof(sqe_t)));
-    kernelRings->centries = centries;
-    kernelRings->cmask = centries - 1;
+    kernelRing->ctrl = kernelAddr;
+    kernelRing->id = id;
+    kernelRing->squeue = (sqe_t*)((uintptr_t)kernelAddr + sizeof(ring_ctrl_t));
+    kernelRing->sentries = sentries;
+    kernelRing->smask = sentries - 1;
+    kernelRing->cqueue = (cqe_t*)((uintptr_t)kernelAddr + sizeof(ring_ctrl_t) + (sentries * sizeof(sqe_t)));
+    kernelRing->centries = centries;
+    kernelRing->cmask = centries - 1;
 
     ctx->irps = irps;
     ctx->descs = descs;
@@ -132,11 +131,11 @@ static inline uint64_t async_map(async_t* ctx, space_t* space, rings_id_t id, ri
     ctx->pageAmount = pageAmount;
     ctx->space = space;
 
-    atomic_fetch_or(&ctx->flags, ASYNC_MAPPED);
+    atomic_fetch_or(&ctx->flags, RING_CTX_MAPPED);
     return 0;
 }
 
-static inline uint64_t async_unmap(async_t* ctx)
+static inline uint64_t ring_ctx_unmap(ring_ctx_t* ctx)
 {
     irp_pool_free(ctx->irps);
     ctx->irps = NULL;
@@ -147,90 +146,90 @@ static inline uint64_t async_unmap(async_t* ctx)
     vmm_unmap(ctx->space, ctx->userAddr, ctx->pageAmount * PAGE_SIZE);
     vmm_unmap(NULL, ctx->kernelAddr, ctx->pageAmount * PAGE_SIZE);
 
-    atomic_fetch_and(&ctx->flags, ~ASYNC_MAPPED);
+    atomic_fetch_and(&ctx->flags, ~RING_CTX_MAPPED);
     return 0;
 }
 
-static inline uint64_t async_avail_cqes(async_t* ctx)
+static inline uint64_t ring_ctx_avail_cqes(ring_ctx_t* ctx)
 {
-    rings_t* rings = &ctx->rings;
-    uint32_t ctail = atomic_load_explicit(&rings->shared->ctail, memory_order_relaxed);
-    uint32_t chead = atomic_load_explicit(&rings->shared->chead, memory_order_acquire);
+    ring_t* ring = &ctx->ring;
+    uint32_t ctail = atomic_load_explicit(&ring->ctrl->ctail, memory_order_relaxed);
+    uint32_t chead = atomic_load_explicit(&ring->ctrl->chead, memory_order_acquire);
     return ctail - chead;
 }
 
-void async_init(async_t* ctx)
+void ring_ctx_init(ring_ctx_t* ctx)
 {
     if (ctx == NULL)
     {
         return;
     }
 
-    ctx->rings = (rings_t){0};
+    ctx->ring = (ring_t){0};
     ctx->irps = NULL;
     ctx->userAddr = NULL;
     ctx->kernelAddr = NULL;
     ctx->pageAmount = 0;
     ctx->space = NULL;
     wait_queue_init(&ctx->waitQueue);
-    atomic_init(&ctx->flags, ASYNC_NONE);
+    atomic_init(&ctx->flags, RING_CTX_NONE);
 }
 
-void async_deinit(async_t* ctx)
+void ring_ctx_deinit(ring_ctx_t* ctx)
 {
     if (ctx == NULL)
     {
         return;
     }
 
-    if (async_acquire(ctx) == ERR)
+    if (ring_ctx_acquire(ctx) == ERR)
     {
         panic(NULL, "failed to acquire async context for deinitialization");
     }
 
-    if (atomic_load(&ctx->flags) & ASYNC_MAPPED)
+    if (atomic_load(&ctx->flags) & RING_CTX_MAPPED)
     {
-        if (async_unmap(ctx) == ERR)
+        if (ring_ctx_unmap(ctx) == ERR)
         {
             panic(NULL, "failed to deinitialize async context");
         }
     }
 
-    async_release(ctx);
+    ring_ctx_release(ctx);
     wait_queue_deinit(&ctx->waitQueue);
 }
 
-static void async_dispatch(irp_t* irp);
+static void ring_ctx_dispatch(irp_t* irp);
 
-static void async_complete(irp_t* irp, void* _ptr)
+static void ring_ctx_complete(irp_t* irp, void* _ptr)
 {
     UNUSED(_ptr);
 
-    async_t* ctx = irp_get_ctx(irp);
+    ring_ctx_t* ctx = irp_get_ctx(irp);
+    ring_t* ring = &ctx->ring;
 
     sqe_flags_t reg = (irp->flags >> SQE_SAVE) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        atomic_store_explicit(&ctx->rings.shared->regs[reg], irp->result, memory_order_release);
+        atomic_store_explicit(&ring->ctrl->regs[reg], irp->result, memory_order_release);
     }
 
-    rings_t* rings = &ctx->rings;
-    uint32_t tail = atomic_load_explicit(&rings->shared->ctail, memory_order_relaxed);
-    uint32_t head = atomic_load_explicit(&rings->shared->chead, memory_order_acquire);
+    uint32_t tail = atomic_load_explicit(&ring->ctrl->ctail, memory_order_relaxed);
+    uint32_t head = atomic_load_explicit(&ring->ctrl->chead, memory_order_acquire);
 
-    if ((tail - head) >= rings->centries)
+    if ((tail - head) >= ring->centries)
     {
         /// @todo Handle overflow properly.
         panic(NULL, "Async completion queue overflow");
     }
 
-    cqe_t* cqe = &rings->cqueue[tail & rings->cmask];
+    cqe_t* cqe = &ring->cqueue[tail & ring->cmask];
     cqe->verb = irp->verb;
     cqe->error = irp->err;
     cqe->data = irp->data;
     cqe->_result = irp->result;
 
-    atomic_store_explicit(&rings->shared->ctail, tail + 1, memory_order_release);
+    atomic_store_explicit(&ring->ctrl->ctail, tail + 1, memory_order_release);
     wait_unblock(&ctx->waitQueue, WAIT_ALL, EOK);
 
     if (irp->err != EOK && !(irp->flags & SQE_HARDLINK))
@@ -251,7 +250,7 @@ static void async_complete(irp_t* irp, void* _ptr)
         irp_t* next = irp_next(irp);
         if (next != NULL)
         {
-            async_dispatch(next);
+            ring_ctx_dispatch(next);
         }
     }
 
@@ -264,11 +263,12 @@ static void async_complete(irp_t* irp, void* _ptr)
     }
 }
 
-static void async_dispatch(irp_t* irp)
+static void ring_ctx_dispatch(irp_t* irp)
 {
-    async_t* ctx = irp_get_ctx(irp);
+    ring_ctx_t* ctx = irp_get_ctx(irp);
+    ring_t* ring = &ctx->ring;
 
-    for (uint64_t i = 0; i < SEQ_MAX_ARGS; i++)
+    for (uint64_t i = 0; i < SQE_MAX_ARGS; i++)
     {
         sqe_flags_t reg = (irp->flags >> (i * SQE_REG_SHIFT)) & SQE_REG_MASK;
         if (reg == SQE_REG_NONE)
@@ -276,10 +276,10 @@ static void async_dispatch(irp_t* irp)
             continue;
         }
 
-        irp->sqe._args[i] = atomic_load_explicit(&ctx->rings.shared->regs[reg], memory_order_acquire);
+        irp->sqe._args[i] = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
     }
 
-    irp_push(irp, async_complete, NULL);
+    irp_push(irp, ring_ctx_complete, NULL);
     irp_dispatch(irp);
 }
 
@@ -287,20 +287,18 @@ typedef struct
 {
     list_t irps;
     irp_t* link;
-} async_notify_ctx_t;
+} ring_ctx_notify_ctx_t;
 
-static uint64_t async_sqe_pop(async_t* ctx, async_notify_ctx_t* notify)
+static uint64_t ring_ctx_sqe_pop(ring_ctx_t* ctx, ring_ctx_notify_ctx_t* notify)
 {
     if (atomic_load(&ctx->irps->pool.used) == 1)
     {
-        process_t* process = process_current();
-        assert(&process->async[0] <= ctx && ctx <= &process->async[CONFIG_MAX_ASYNC_RINGS - 1]);
-        ctx->process = REF(process);
+        ctx->process = REF(process_current());
     }
 
-    rings_t* rings = &ctx->rings;
-    uint32_t stail = atomic_load_explicit(&rings->shared->stail, memory_order_acquire);
-    uint32_t shead = atomic_load_explicit(&rings->shared->shead, memory_order_relaxed);
+    ring_t* ring = &ctx->ring;
+    uint32_t stail = atomic_load_explicit(&ring->ctrl->stail, memory_order_acquire);
+    uint32_t shead = atomic_load_explicit(&ring->ctrl->shead, memory_order_relaxed);
 
     if (shead == stail)
     {
@@ -308,14 +306,14 @@ static uint64_t async_sqe_pop(async_t* ctx, async_notify_ctx_t* notify)
         return ERR;
     }
 
-    sqe_t* sqe = &rings->squeue[shead & rings->smask];
+    sqe_t* sqe = &ring->squeue[shead & ring->smask];
     irp_t* irp = irp_new(ctx->irps, sqe);
     if (irp == NULL)
     {
         return ERR;
     }
 
-    atomic_store_explicit(&rings->shared->shead, shead + 1, memory_order_release);
+    atomic_store_explicit(&ring->ctrl->shead, shead + 1, memory_order_release);
 
     if (notify->link != NULL)
     {
@@ -335,36 +333,36 @@ static uint64_t async_sqe_pop(async_t* ctx, async_notify_ctx_t* notify)
     return 0;
 }
 
-uint64_t async_notify(async_t* ctx, size_t amount, size_t wait)
+uint64_t ring_ctx_notify(ring_ctx_t* ctx, size_t amount, size_t wait)
 {
     if (amount == 0)
     {
         return 0;
     }
 
-    if (async_acquire(ctx) == ERR)
+    if (ring_ctx_acquire(ctx) == ERR)
     {
         errno = EBUSY;
         return ERR;
     }
 
-    if (!(atomic_load(&ctx->flags) & ASYNC_MAPPED))
+    if (!(atomic_load(&ctx->flags) & RING_CTX_MAPPED))
     {
-        async_release(ctx);
+        ring_ctx_release(ctx);
         errno = EINVAL;
         return ERR;
     }
 
     size_t processed = 0;
 
-    async_notify_ctx_t notify = {
+    ring_ctx_notify_ctx_t notify = {
         .irps = LIST_CREATE(notify.irps),
         .link = NULL,
     };
 
     while (processed < amount)
     {
-        if (async_sqe_pop(ctx, &notify) == ERR)
+        if (ring_ctx_sqe_pop(ctx, &notify) == ERR)
         {
             break;
         }
@@ -374,28 +372,28 @@ uint64_t async_notify(async_t* ctx, size_t amount, size_t wait)
     while (!list_is_empty(&notify.irps))
     {
         irp_t* irp = CONTAINER_OF(list_pop_front(&notify.irps), irp_t, entry);
-        async_dispatch(irp);
+        ring_ctx_dispatch(irp);
     }
 
     if (wait == 0)
     {
-        async_release(ctx);
+        ring_ctx_release(ctx);
         return processed;
     }
 
-    if (WAIT_BLOCK(&ctx->waitQueue, async_avail_cqes(ctx) >= wait) == ERR)
+    if (WAIT_BLOCK(&ctx->waitQueue, ring_ctx_avail_cqes(ctx) >= wait) == ERR)
     {
-        async_release(ctx);
+        ring_ctx_release(ctx);
         return processed > 0 ? processed : ERR;
     }
 
-    async_release(ctx);
+    ring_ctx_release(ctx);
     return processed;
 }
 
-SYSCALL_DEFINE(SYS_SETUP, rings_id_t, rings_t* userRings, void* address, size_t sentries, size_t centries)
+SYSCALL_DEFINE(SYS_SETUP, ring_id_t, ring_t* userRing, void* address, size_t sentries, size_t centries)
 {
-    if (userRings == NULL || sentries == 0 || centries == 0 || !IS_POW2(sentries) || !IS_POW2(centries))
+    if (userRing == NULL || sentries == 0 || centries == 0 || !IS_POW2(sentries) || !IS_POW2(centries))
     {
         errno = EINVAL;
         return ERR;
@@ -404,14 +402,14 @@ SYSCALL_DEFINE(SYS_SETUP, rings_id_t, rings_t* userRings, void* address, size_t 
     process_t* process = process_current();
     space_t* space = &process->space;
 
-    async_t* ctx = NULL;
-    rings_id_t id = 0;
-    for (id = 0; id < CONFIG_MAX_ASYNC_RINGS; id++)
+    ring_ctx_t* ctx = NULL;
+    ring_id_t id = 0;
+    for (id = 0; id < ARRAY_SIZE(process->rings); id++)
     {
-        async_flags_t expected = ASYNC_NONE;
-        if (atomic_compare_exchange_strong(&process->async[id].flags, &expected, ASYNC_BUSY))
+        ring_ctx_flags_t expected = RING_CTX_NONE;
+        if (atomic_compare_exchange_strong(&process->rings[id].flags, &expected, RING_CTX_BUSY))
         {
-            ctx = &process->async[id];
+            ctx = &process->rings[id];
             break;
         }
     }
@@ -422,67 +420,65 @@ SYSCALL_DEFINE(SYS_SETUP, rings_id_t, rings_t* userRings, void* address, size_t 
         return ERR;
     }
 
-    if (async_map(ctx, space, id, userRings, address, sentries, centries) == ERR)
+    if (ring_ctx_map(ctx, space, id, userRing, address, sentries, centries) == ERR)
     {
-        async_release(ctx);
+        ring_ctx_release(ctx);
         return ERR;
     }
 
-    async_release(ctx);
+    ring_ctx_release(ctx);
     return id;
 }
 
-SYSCALL_DEFINE(SYS_TEARDOWN, uint64_t, rings_id_t id)
+SYSCALL_DEFINE(SYS_TEARDOWN, uint64_t, ring_id_t id)
 {
-    if (id >= CONFIG_MAX_ASYNC_RINGS)
+    process_t* process = process_current();
+    if (id >= ARRAY_SIZE(process->rings))
     {
         errno = EINVAL;
         return ERR;
     }
 
-    process_t* process = process_current();
-    async_t* ctx = &process->async[id];
-
-    if (async_acquire(ctx) == ERR)
+    ring_ctx_t* ctx = &process->rings[id];
+    if (ring_ctx_acquire(ctx) == ERR)
     {
         errno = EBUSY;
         return ERR;
     }
 
-    if (!(atomic_load(&ctx->flags) & ASYNC_MAPPED))
+    if (!(atomic_load(&ctx->flags) & RING_CTX_MAPPED))
     {
-        async_release(ctx);
+        ring_ctx_release(ctx);
         errno = EINVAL;
         return ERR;
     }
 
     if (ctx->irps != NULL && atomic_load(&ctx->irps->pool.used) != 0)
     {
-        async_release(ctx);
+        ring_ctx_release(ctx);
         errno = EBUSY;
         return ERR;
     }
 
-    if (async_unmap(ctx) == ERR)
+    if (ring_ctx_unmap(ctx) == ERR)
     {
-        async_release(ctx);
+        ring_ctx_release(ctx);
         return ERR;
     }
 
-    async_release(ctx);
+    ring_ctx_release(ctx);
     return 0;
 }
 
-SYSCALL_DEFINE(SYS_ENTER, uint64_t, rings_id_t id, size_t amount, size_t wait)
+SYSCALL_DEFINE(SYS_ENTER, uint64_t, ring_id_t id, size_t amount, size_t wait)
 {
-    if (id >= CONFIG_MAX_ASYNC_RINGS)
+    process_t* process = process_current();
+    if (id >= ARRAY_SIZE(process->rings))
     {
         errno = EINVAL;
         return ERR;
     }
 
-    process_t* process = process_current();
-    async_t* ctx = &process->async[id];
-
-    return async_notify(ctx, amount, wait);
+    ring_ctx_t* ctx = &process->rings[id];
+    return ring_ctx_notify(ctx, amount, wait);
 }
