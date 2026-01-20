@@ -24,7 +24,7 @@ PERCPU_DEFINE_CTOR(irp_ctx_t, pcpu_irps)
 
 irp_pool_t* irp_pool_new(size_t size, void* ctx)
 {
-    if (size == 0 || size >= IRP_IDX_MAX)
+    if (size == 0 || size >= POOL_IDX_MAX)
     {
         errno = EINVAL;
         return NULL;
@@ -38,9 +38,7 @@ irp_pool_t* irp_pool_new(size_t size, void* ctx)
     }
 
     pool->ctx = ctx;
-    atomic_init(&pool->used, 0);
-    atomic_init(&pool->free, 0);
-    for (irp_idx_t i = 0; i < (irp_idx_t)size; i++)
+    for (pool_idx_t i = 0; i < (pool_idx_t)size; i++)
     {
         irp_t* irp = &pool->irps[i];
         list_entry_init(&irp->entry);
@@ -57,7 +55,7 @@ irp_pool_t* irp_pool_new(size_t size, void* ctx)
         irp->result = 0;
         irp->err = EOK;
         irp->index = i;
-        irp->next = i < size - 1 ? i + 1 : IRP_IDX_MAX;
+        irp->next = i < size - 1 ? i + 1 : POOL_IDX_MAX;
         irp->location = IRP_LOC_MAX;
         irp->cpu = CPU_ID_INVALID;
         for (size_t j = 0; j < IRP_LOC_MAX; j++)
@@ -66,6 +64,8 @@ irp_pool_t* irp_pool_new(size_t size, void* ctx)
             irp->stack[j].complete = NULL;
         }
     }
+
+    pool_init(&pool->pool, pool->irps, size, sizeof(irp_t), offsetof(irp_t, next));
 
     return pool;
 }
@@ -77,34 +77,21 @@ void irp_pool_free(irp_pool_t* pool)
 
 irp_t* irp_new(irp_pool_t* pool)
 {
-    irp_idx_t idx;
-    for (;;)
+    pool_idx_t idx = pool_alloc(&pool->pool);
+    if (idx == POOL_IDX_MAX)
     {
-        uint64_t head = atomic_load_explicit(&pool->free, memory_order_acquire);
-        idx = (irp_idx_t)(head & IRP_IDX_MAX);
-        if (idx == IRP_IDX_MAX)
-        {
-            return NULL;
-        }
-
-        uint64_t newHead = ((head & ~IRP_IDX_MAX) + IRP_TAG_INC) | pool->irps[idx].next;
-        if (atomic_compare_exchange_weak_explicit(&pool->free, &head, newHead, memory_order_acquire,
-                memory_order_relaxed))
-        {
-            break;
-        }
-        ASM("pause");
+        errno = ENOSPC;
+        return NULL;
     }
 
-    atomic_fetch_add_explicit(&pool->used, 1, memory_order_relaxed);
     irp_t* irp = &pool->irps[idx];
     irp->location = IRP_LOC_MAX;
-    irp->next = IRP_IDX_MAX;
+    irp->next = POOL_IDX_MAX;
     irp->err = EINPROGRESS;
     irp->result = 0;
     irp->sqe = (sqe_t){0};
     atomic_store_explicit(&irp->cancel, NULL, memory_order_relaxed);
-    irp->next = IRP_IDX_MAX;
+    irp->next = POOL_IDX_MAX;
     irp->cpu = CPU_ID_INVALID;
     for (size_t j = 0; j < IRP_LOC_MAX; j++)
     {
@@ -117,22 +104,7 @@ irp_t* irp_new(irp_pool_t* pool)
 void irp_free(irp_t* irp)
 {
     irp_pool_t* pool = irp_pool_get(irp);
-
-    irp_idx_t idx = irp->index;
-    for (;;)
-    {
-        uint64_t head = atomic_load_explicit(&pool->free, memory_order_relaxed);
-        irp->next = (irp_idx_t)(head & IRP_IDX_MAX);
-        uint64_t newHead = ((head & ~IRP_IDX_MAX) + IRP_TAG_INC) | idx;
-
-        if (atomic_compare_exchange_weak_explicit(&pool->free, &head, newHead, memory_order_release,
-                memory_order_relaxed))
-        {
-            break;
-        }
-        ASM("pause");
-    }
-    atomic_fetch_sub_explicit(&pool->used, 1, memory_order_relaxed);
+    pool_free(&pool->pool, irp->index);
 }
 
 uint64_t irp_cancel(irp_t* irp)
@@ -253,6 +225,12 @@ void irp_timeouts_check(void)
 
 void irp_dispatch(irp_t* irp)
 {
+    if (irp->err != EINPROGRESS)
+    {
+        irp_complete(irp);
+        return;
+    }
+
     if (irp->verb >= VERB_MAX || _irp_table_start[irp->verb].handler == NULL)
     {
         irp->err = ENOSYS;
@@ -267,7 +245,7 @@ static int irp_handler_cmp(const void* a, const void* b)
 {
     const irp_handler_t* irpA = (const irp_handler_t*)a;
     const irp_handler_t* irpB = (const irp_handler_t*)b;
-    return irpA->verb - irpB->verb;
+    return (int32_t)irpA->verb - (int32_t)irpB->verb;
 }
 
 void irp_table_init(void)

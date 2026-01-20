@@ -221,7 +221,7 @@ static uint64_t hpet_init(void)
     if (vmm_map(NULL, (void*)address, (void*)hpet->address, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL,
             NULL) == NULL)
     {
-        LOG_ERR("failed to map HPET memory at 0x%016lx\n", hpet->address);
+        LOG_ERR("failed to map HPET memory at %p\n", hpet->address);
         return ERR;
     }
 
@@ -234,7 +234,7 @@ static uint64_t hpet_init(void)
         return ERR;
     }
 
-    LOG_INFO("started HPET timer phys=0x%016lx virt=0x%016lx period=%lluns timers=%u %s-bit\n", hpet->address, address,
+    LOG_INFO("started HPET timer phys=%p virt=%p period=%lluns timers=%u %s-bit\n", hpet->address, address,
         period / (HPET_FEMTOSECONDS_PER_SECOND / CLOCKS_PER_SEC), hpet->comparatorCount + 1,
         hpet->counterIs64Bit ? "64" : "32");
 

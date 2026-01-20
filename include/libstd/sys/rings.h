@@ -23,7 +23,7 @@ extern "C"
  * @{
  */
 
-typedef uint8_t verb_t; ///< Verb type.
+typedef uint32_t verb_t; ///< Verb type.
 
 #define VERB_NOP 0  ///< No-op verb.
 #define VERB_OPEN 1 ///< Open file verb.
@@ -71,8 +71,7 @@ typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
  */
 typedef struct sqe
 {
-    verb_t verb; ///< Verb specifying the action to perform.
-    uint8_t _reserved[3];
+    verb_t verb;       ///< Verb specifying the action to perform.
     sqe_flags_t flags; ///< Submission flags.
     clock_t timeout;   ///< Timeout for the operation, `CLOCKS_NEVER` for no timeout.
     void* data;        ///< Private data for the operation, will be returned in the completion entry.
@@ -118,8 +117,7 @@ static_assert(sizeof(sqe_t) == 64, "sqe_t is not 64 bytes");
  */
 typedef struct ALIGNED(32) cqe
 {
-    verb_t verb; ///< Verb specifying the action that was performed.
-    uint8_t _reserved[3];
+    verb_t verb;   ///< Verb specifying the action that was performed.
     errno_t error; ///< Error code, if not equal to `EOK` an error occurred.
     void* data;    ///< Private data from the submission entry.
     union {

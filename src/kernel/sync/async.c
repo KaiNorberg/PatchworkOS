@@ -1,4 +1,7 @@
+#include <_internal/fd_t.h>
 #include <kernel/cpu/syscall.h>
+#include <kernel/fs/file_table.h>
+#include <kernel/fs/path.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/paging_types.h>
@@ -17,8 +20,7 @@
 static inline uint64_t async_acquire(async_t* ctx)
 {
     async_flags_t expected = atomic_load(&ctx->flags);
-    if (!(expected & ASYNC_CTX_BUSY) &&
-        atomic_compare_exchange_strong(&ctx->flags, &expected, expected | ASYNC_CTX_BUSY))
+    if (!(expected & ASYNC_BUSY) && atomic_compare_exchange_strong(&ctx->flags, &expected, expected | ASYNC_BUSY))
     {
         return 0;
     }
@@ -28,7 +30,7 @@ static inline uint64_t async_acquire(async_t* ctx)
 
 static inline void async_release(async_t* ctx)
 {
-    atomic_fetch_and(&ctx->flags, ~ASYNC_CTX_BUSY);
+    atomic_fetch_and(&ctx->flags, ~ASYNC_BUSY);
 }
 
 static inline uint64_t async_map(async_t* ctx, space_t* space, rings_id_t id, rings_t* userRings, void* address,
@@ -44,7 +46,7 @@ static inline uint64_t async_map(async_t* ctx, space_t* space, rings_id_t id, ri
         return ERR;
     }
 
-    if (centries >= IRP_IDX_MAX)
+    if (centries >= POOL_IDX_MAX)
     {
         errno = EINVAL;
         return ERR;
@@ -119,7 +121,7 @@ static inline uint64_t async_map(async_t* ctx, space_t* space, rings_id_t id, ri
     ctx->pageAmount = pageAmount;
     ctx->space = space;
 
-    atomic_fetch_or(&ctx->flags, ASYNC_CTX_MAPPED);
+    atomic_fetch_or(&ctx->flags, ASYNC_MAPPED);
     return 0;
 }
 
@@ -131,7 +133,7 @@ static inline uint64_t async_unmap(async_t* ctx)
     vmm_unmap(ctx->space, ctx->userAddr, ctx->pageAmount * PAGE_SIZE);
     vmm_unmap(NULL, ctx->kernelAddr, ctx->pageAmount * PAGE_SIZE);
 
-    atomic_fetch_and(&ctx->flags, ~ASYNC_CTX_MAPPED);
+    atomic_fetch_and(&ctx->flags, ~ASYNC_MAPPED);
     return 0;
 }
 
@@ -157,7 +159,7 @@ void async_init(async_t* ctx)
     ctx->pageAmount = 0;
     ctx->space = NULL;
     wait_queue_init(&ctx->waitQueue);
-    atomic_init(&ctx->flags, ASYNC_CTX_NONE);
+    atomic_init(&ctx->flags, ASYNC_NONE);
 }
 
 void async_deinit(async_t* ctx)
@@ -172,7 +174,7 @@ void async_deinit(async_t* ctx)
         panic(NULL, "failed to acquire async context for deinitialization");
     }
 
-    if (atomic_load(&ctx->flags) & ASYNC_CTX_MAPPED)
+    if (atomic_load(&ctx->flags) & ASYNC_MAPPED)
     {
         if (async_unmap(ctx) == ERR)
         {
@@ -241,7 +243,7 @@ static void async_complete(irp_t* irp, void* _ptr)
 
     irp_free(irp);
 
-    if (atomic_load(&ctx->irps->used) == 0)
+    if (atomic_load(&ctx->irps->pool.used) == 0)
     {
         UNREF(ctx->process);
         ctx->process = NULL;
@@ -267,6 +269,29 @@ static void async_dispatch(irp_t* irp)
     {
     case VERB_NOP:
         break;
+    case VERB_OPEN:
+    {
+        file_t* from = NULL;
+        if (irp->sqe.open.from != FD_NONE)
+        {
+            from = file_table_get(&ctx->process->fileTable, irp->sqe.open.from);
+            if (from == NULL)
+            {
+                irp->err = EBADF;
+                break;
+            }
+        }
+
+        irp->open.from = from;
+        irp->open.path = malloc(sizeof(pathname_t));
+        if (irp->open.path == NULL)
+        {
+            UNREF(from);
+            irp->err = ENOMEM;
+            break;
+        }
+    }
+    break;
     default:
         break;
     }
@@ -290,7 +315,7 @@ static uint64_t async_sqe_pop(async_t* ctx, async_notify_ctx_t* notify)
         return ERR;
     }
 
-    if (atomic_load(&ctx->irps->used) == 1)
+    if (atomic_load(&ctx->irps->pool.used) == 1)
     {
         process_t* process = process_current();
         assert(&process->async[0] <= ctx && ctx <= &process->async[CONFIG_MAX_ASYNC_RINGS - 1]);
@@ -341,7 +366,7 @@ uint64_t async_notify(async_t* ctx, size_t amount, size_t wait)
         return ERR;
     }
 
-    if (!(atomic_load(&ctx->flags) & ASYNC_CTX_MAPPED))
+    if (!(atomic_load(&ctx->flags) & ASYNC_MAPPED))
     {
         async_release(ctx);
         errno = EINVAL;
@@ -401,8 +426,8 @@ SYSCALL_DEFINE(SYS_SETUP, rings_id_t, rings_t* userRings, void* address, size_t 
     rings_id_t id = 0;
     for (id = 0; id < CONFIG_MAX_ASYNC_RINGS; id++)
     {
-        async_flags_t expected = ASYNC_CTX_NONE;
-        if (atomic_compare_exchange_strong(&process->async[id].flags, &expected, ASYNC_CTX_BUSY))
+        async_flags_t expected = ASYNC_NONE;
+        if (atomic_compare_exchange_strong(&process->async[id].flags, &expected, ASYNC_BUSY))
         {
             ctx = &process->async[id];
             break;
@@ -442,14 +467,14 @@ SYSCALL_DEFINE(SYS_TEARDOWN, uint64_t, rings_id_t id)
         return ERR;
     }
 
-    if (!(atomic_load(&ctx->flags) & ASYNC_CTX_MAPPED))
+    if (!(atomic_load(&ctx->flags) & ASYNC_MAPPED))
     {
         async_release(ctx);
         errno = EINVAL;
         return ERR;
     }
 
-    if (ctx->irps != NULL && atomic_load(&ctx->irps->used) != 0)
+    if (ctx->irps != NULL && atomic_load(&ctx->irps->pool.used) != 0)
     {
         async_release(ctx);
         errno = EBUSY;

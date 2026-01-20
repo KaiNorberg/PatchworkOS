@@ -103,7 +103,7 @@ void boot_info_free(void)
 
         if (desc->Type == EfiLoaderData)
         {
-            LOG_INFO("free boot memory [0x%016lx-0x%016lx]\n", desc->VirtualStart,
+            LOG_INFO("free boot memory [%p-%p]\n", desc->VirtualStart,
                 (uintptr_t)desc->VirtualStart + (desc->NumberOfPages * PAGE_SIZE));
 #ifndef NDEBUG
             // Clear the memory to deliberately cause corruption if the memory is actually being used.

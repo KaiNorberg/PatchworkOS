@@ -46,11 +46,11 @@ static uint64_t pci_config_init(void)
         if (vmm_map(NULL, virtAddr, (void*)entry->base, length, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) ==
             NULL)
         {
-            LOG_ERR("failed to map PCI-e configuration space at 0x%016lx\n", entry->base);
+            LOG_ERR("failed to map PCI-e configuration space at %p\n", entry->base);
             return ERR;
         }
 
-        LOG_INFO("mapped PCI-e config space 0x%016lx (segment=%u bus=%u-%u)\n", entry->base, entry->segmentGroup,
+        LOG_INFO("mapped PCI-e config space %p (segment=%u bus=%u-%u)\n", entry->base, entry->segmentGroup,
             entry->startBus, entry->endBus);
     }
 

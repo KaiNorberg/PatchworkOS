@@ -85,6 +85,16 @@ typedef struct
     bitmap_t name = {.firstZeroIdx = 0, .length = (bits), .buffer = name##Buffer}
 
 /**
+ * @brief Define and create a one-initialized bitmap and its buffer.
+ *
+ * @param name Name of the bitmap.
+ * @param bits Length of the bitmap in bits.
+ */
+#define BITMAP_CREATE_ONE(name, bits) \
+    uint64_t name##Buffer[BITMAP_BITS_TO_QWORDS(bits)] = {-1ULL}; \
+    bitmap_t name = {.firstZeroIdx = 0, .length = (bits), .buffer = name##Buffer}
+
+/**
  * @brief Define a bitmap and its buffer.
  *
  * Will not initialize the bitmap, use `BITMAP_DEFINE_INIT` to initialize it.
@@ -311,7 +321,8 @@ static inline uint64_t bitmap_find_first_clear(bitmap_t* map, uint64_t startIdx,
         uint64_t maskedQword = qword | ((1ULL << bitIdx) - 1);
         if (maskedQword != ~0ULL)
         {
-            return qwordIdx * 64 + __builtin_ctzll(~maskedQword);
+            uint64_t res = qwordIdx * 64 + __builtin_ctzll(~maskedQword);
+            return res < endIdx ? res : map->length;
         }
         qwordIdx++;
     }
@@ -320,7 +331,8 @@ static inline uint64_t bitmap_find_first_clear(bitmap_t* map, uint64_t startIdx,
     {
         if (map->buffer[i] != ~0ULL)
         {
-            return i * 64 + __builtin_ctzll(~map->buffer[i]);
+            uint64_t res = i * 64 + __builtin_ctzll(~map->buffer[i]);
+            return res < endIdx ? res : map->length;
         }
     }
 
@@ -356,7 +368,8 @@ static inline uint64_t bitmap_find_first_set(bitmap_t* map, uint64_t startIdx, u
 
         if (qword != 0)
         {
-            return startQwordIdx * 64 + __builtin_ctzll(qword);
+            uint64_t res = startQwordIdx * 64 + __builtin_ctzll(qword);
+            return res < endIdx ? res : map->length;
         }
 
         startQwordIdx++;

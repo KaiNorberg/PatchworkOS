@@ -43,7 +43,7 @@ static int syscall_descriptor_cmp(const void* a, const void* b)
 {
     const syscall_descriptor_t* sysA = (const syscall_descriptor_t*)a;
     const syscall_descriptor_t* sysB = (const syscall_descriptor_t*)b;
-    return sysA->number - sysB->number;
+    return (int32_t)sysA->number - (int32_t)sysB->number;
 }
 
 void syscall_table_init(void)

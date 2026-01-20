@@ -106,8 +106,7 @@ uint64_t lapic_global_init(void)
         return ERR;
     }
 
-    LOG_INFO("local apic mapped base=0x%016lx phys=0x%016lx\n", lapicBase,
-        (uintptr_t)madt->localInterruptControllerAddress);
+    LOG_INFO("local apic mapped base=%p phys=%p\n", lapicBase, (uintptr_t)madt->localInterruptControllerAddress);
 
     if (ipi_chip_register(&lapicIpiChip) == ERR)
     {

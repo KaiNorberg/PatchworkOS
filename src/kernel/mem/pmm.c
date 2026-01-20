@@ -1,22 +1,21 @@
+#include <kernel/mem/paging_types.h>
 #include <kernel/mem/pmm.h>
 
 #include <kernel/config.h>
 #include <kernel/init/boot_info.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <kernel/mem/pmm_bitmap.h>
-#include <kernel/mem/pmm_stack.h>
 #include <kernel/sync/lock.h>
 
 #include <boot/boot_info.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <sys/bitmap.h>
 
 #include <errno.h>
 #include <string.h>
 #include <sys/math.h>
 #include <sys/proc.h>
-
-extern char _kernel_start;
-extern char _kernel_end;
 
 static const char* efiMemTypeToString[] = {
     "reserved",
@@ -36,19 +35,20 @@ static const char* efiMemTypeToString[] = {
     "persistent",
 };
 
-#define PMM_BITMAP_SIZE (CONFIG_PMM_BITMAP_MAX_ADDR / PAGE_SIZE)
+static pmm_ref_t* refs = NULL;
 
-static pmm_stack_t stack;
-static pmm_bitmap_t bitmap;
+static page_stack_t* stack = NULL;
+static size_t location = FREE_PAGE_MAX;
 
-// Stores the bitmap data
-static uint64_t bitmapBuffer[BITMAP_BITS_TO_QWORDS(PMM_BITMAP_SIZE)];
+BITMAP_CREATE_ONE(bitmap, CONFIG_PMM_BITMAP_MAX_ADDR / PAGE_SIZE);
 
-static uint64_t pageAmount = 0;
+static uintptr_t highest = 0;
+static size_t total = 0;
+static size_t avail = 0;
 
 static lock_t lock = LOCK_CREATE();
 
-static bool pmm_is_efi_mem_available(EFI_MEMORY_TYPE type)
+static bool pmm_is_mem_avail(EFI_MEMORY_TYPE type)
 {
     if (!boot_is_mem_ram(type))
     {
@@ -68,50 +68,111 @@ static bool pmm_is_efi_mem_available(EFI_MEMORY_TYPE type)
     }
 }
 
-static void pmm_free_unlocked(void* address)
+static inline pmm_ref_t* pmm_ref_get(void* address)
 {
-    if (address >= (void*)PML_LOWER_TO_HIGHER(CONFIG_PMM_BITMAP_MAX_ADDR))
+    return &refs[PML_HIGHER_TO_LOWER(address) / PAGE_SIZE];
+}
+
+static inline void pmm_ref_set(void* address, size_t count, pmm_ref_t value)
+{
+    pmm_ref_t* ref = pmm_ref_get(address);
+    for (size_t i = 0; i < count; i++)
     {
-        pmm_stack_free(&stack, address);
-    }
-    else if (address >= (void*)PML_LOWER_TO_HIGHER(0))
-    {
-        pmm_bitmap_free(&bitmap, address, 1);
-    }
-    else
-    {
-        panic(NULL, "pmm: attempt to free lower half address %p", address);
+        ref[i] = value;
     }
 }
 
-static void pmm_free_pages_unlocked(void* address, size_t count)
+static inline size_t pmm_refs_size(void)
 {
-    address = (void*)ROUND_DOWN(address, PAGE_SIZE);
+    return (PML_HIGHER_TO_LOWER(highest) / PAGE_SIZE) * sizeof(pmm_ref_t);
+}
 
-    uintptr_t physStart = PML_HIGHER_TO_LOWER(address);
-    uintptr_t physEnd = physStart + count * PAGE_SIZE;
-
-    if (physEnd <= CONFIG_PMM_BITMAP_MAX_ADDR)
+static inline void pmm_stack_push(void* addr)
+{
+    if (stack == NULL || location == 0)
     {
-        pmm_bitmap_free(&bitmap, address, count);
+        page_stack_t* page = addr;
+        page->next = stack;
+        stack = page;
+        location = FREE_PAGE_MAX;
+
+        return;
     }
-    else if (physStart < CONFIG_PMM_BITMAP_MAX_ADDR)
-    {
-        size_t bitmapPageCount = (CONFIG_PMM_BITMAP_MAX_ADDR - physStart) / PAGE_SIZE;
-        pmm_bitmap_free(&bitmap, address, bitmapPageCount);
 
-        uintptr_t stackAddr = PML_LOWER_TO_HIGHER(CONFIG_PMM_BITMAP_MAX_ADDR);
-        for (size_t i = 0; i < count - bitmapPageCount; i++)
+    stack->pages[--location] = addr;
+}
+
+static inline void* pmm_stack_pop(void)
+{
+    if (location == FREE_PAGE_MAX)
+    {
+        if (stack == NULL)
         {
-            pmm_stack_free(&stack, (void*)(stackAddr + i * PAGE_SIZE));
+            return NULL;
         }
+
+        void* addr = stack;
+        stack = stack->next;
+        location = (stack == NULL) ? FREE_PAGE_MAX : 0;
+        return addr;
+    }
+
+    return stack->pages[location++];
+}
+
+static inline void* pmm_bitmap_set(size_t count, uintptr_t maxAddr, size_t alignment)
+{
+    alignment = MAX(ROUND_UP(alignment, PAGE_SIZE), PAGE_SIZE);
+    maxAddr = MIN(maxAddr, CONFIG_PMM_BITMAP_MAX_ADDR);
+
+    size_t index = bitmap_find_clear_region_and_set(&bitmap, 0, maxAddr / PAGE_SIZE, count, alignment / PAGE_SIZE);
+    if (index == bitmap.length)
+    {
+        return NULL;
+    }
+
+    return (void*)PML_LOWER_TO_HIGHER(index * PAGE_SIZE);
+}
+
+static inline void pmm_bitmap_clear(void* addr, size_t pageAmount)
+{
+    addr = (void*)ROUND_DOWN(addr, PAGE_SIZE);
+
+    size_t index = PML_HIGHER_TO_LOWER(addr) / PAGE_SIZE;
+    bitmap_clear_range(&bitmap, index, pageAmount);
+}
+
+static void pmm_free_unlocked(void* address)
+{
+    pmm_ref_t* ref = pmm_ref_get(address);
+    assert(*ref > 0);
+    (*ref)--;
+    if (*ref > 0)
+    {
+        return;
+    }
+
+    if (address >= (void*)PML_LOWER_TO_HIGHER(CONFIG_PMM_BITMAP_MAX_ADDR))
+    {
+        pmm_stack_push(address);
+    }
+    else if (address >= (void*)PML_LOWER_TO_HIGHER(0))
+    {
+        pmm_bitmap_clear(address, 1);
     }
     else
     {
-        for (size_t i = 0; i < count; i++)
-        {
-            pmm_stack_free(&stack, (void*)((uintptr_t)address + i * PAGE_SIZE));
-        }
+        panic(NULL, "Attempt to free lower half address %p", address);
+    }
+
+    avail++;
+}
+
+static void pmm_free_region_unlocked(void* address, size_t count)
+{
+    for (size_t i = 0; i < count; i++)
+    {
+        pmm_free_unlocked((void*)((uintptr_t)address + (i * PAGE_SIZE)));
     }
 }
 
@@ -125,11 +186,32 @@ static void pmm_detect_memory(const boot_memory_map_t* map)
 
         if (boot_is_mem_ram(desc->Type))
         {
-            pageAmount += desc->NumberOfPages;
+            total += desc->NumberOfPages;
+        }
+        highest = MAX(highest, (uintptr_t)desc->VirtualStart + (desc->NumberOfPages * PAGE_SIZE));
+    }
+
+    LOG_INFO("page amount %llu\n", total);
+    LOG_INFO("highest address %p\n", highest);
+}
+
+static void pmm_init_refs(const boot_memory_map_t* map)
+{
+    size_t size = pmm_refs_size();
+    size_t pages = BYTES_TO_PAGES(size);
+    for (size_t i = 0; i < map->length; i++)
+    {
+        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
+        if (desc->Type == EfiConventionalMemory && desc->NumberOfPages >= pages)
+        {
+            refs = (pmm_ref_t*)desc->VirtualStart;
+            memset(refs, -1, pages * PAGE_SIZE);
+            LOG_INFO("pmm ref [%p-%p]\n", refs, (uintptr_t)refs + pages * PAGE_SIZE);
+            return;
         }
     }
 
-    LOG_INFO("page amount %llu\n", pageAmount);
+    panic(NULL, "Failed to allocate pmm refs array");
 }
 
 static void pmm_load_memory(const boot_memory_map_t* map)
@@ -138,24 +220,35 @@ static void pmm_load_memory(const boot_memory_map_t* map)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
 
-        if (pmm_is_efi_mem_available(desc->Type))
+        uintptr_t address = desc->VirtualStart;
+        size_t pages = desc->NumberOfPages;
+        if (address == (uintptr_t)refs)
+        {
+            // Skip the refs array.
+            size_t refPages = BYTES_TO_PAGES(pmm_refs_size());
+            assert(pages >= refPages);
+            address += refPages * PAGE_SIZE;
+            pages -= refPages;
+        }
+
+        if (pmm_is_mem_avail(desc->Type))
         {
 #ifndef NDEBUG
-            // Clear the memory to deliberatly cause corruption if the memory is actually being used.
-            memset((void*)desc->VirtualStart, 0xCC, desc->NumberOfPages * PAGE_SIZE);
+            // Clear the memory to deliberately cause corruption if the memory is actually being used.
+            memset((void*)address, 0xCC, pages * PAGE_SIZE);
 #endif
-            pmm_free_pages_unlocked((void*)desc->VirtualStart, desc->NumberOfPages);
+            pmm_ref_set((void*)address, pages, 1);
+            pmm_free_region_unlocked((void*)address, pages);
         }
         else
         {
-            LOG_INFO("reserve [0x%016lx-0x%016lx] pages=%d type=%s\n", desc->VirtualStart,
-                (uint64_t)desc->VirtualStart + desc->NumberOfPages * PAGE_SIZE, desc->NumberOfPages,
+            LOG_INFO("reserve [%p-%p] pages=%d type=%s\n", address, (uintptr_t)address + (pages * PAGE_SIZE), pages,
                 efiMemTypeToString[desc->Type]);
         }
     }
 
-    LOG_INFO("memory %llu MB (usable %llu MB reserved %llu MB)\n", (pageAmount * PAGE_SIZE) / 1000000,
-        (pmm_free_amount() * PAGE_SIZE) / 1000000, ((pageAmount - pmm_free_amount()) * PAGE_SIZE) / 1000000);
+    LOG_INFO("memory %llu MB (usable %llu MB reserved %llu MB)\n", (total * PAGE_SIZE) / 1000000,
+        (pmm_avail_pages() * PAGE_SIZE) / 1000000, ((total - pmm_avail_pages()) * PAGE_SIZE) / 1000000);
 }
 
 void pmm_init(void)
@@ -164,97 +257,157 @@ void pmm_init(void)
     const boot_memory_map_t* map = &bootInfo->memory.map;
 
     pmm_detect_memory(map);
-
-    pmm_stack_init(&stack);
-    pmm_bitmap_init(&bitmap, bitmapBuffer, PMM_BITMAP_SIZE, CONFIG_PMM_BITMAP_MAX_ADDR);
-
+    pmm_init_refs(map);
     pmm_load_memory(map);
 }
 
 void* pmm_alloc(void)
 {
-    LOCK_SCOPE(&lock);
-    void* address = pmm_stack_alloc(&stack);
-    if (address == NULL)
+    lock_acquire(&lock);
+    void* addr = pmm_stack_pop();
+    if (addr == NULL)
     {
-        LOG_WARN("failed to allocate single page, there are %llu pages left\n", stack.free);
-        errno = ENOMEM;
-        return NULL;
+        addr = pmm_bitmap_set(1, CONFIG_PMM_BITMAP_MAX_ADDR, PAGE_SIZE);
     }
-    return address;
+
+    if (addr != NULL)
+    {
+        pmm_ref_t* ref = pmm_ref_get(addr);
+        assert(*ref == 0);
+        *ref = 1;
+        avail--;
+    }
+    lock_release(&lock);
+
+    if (addr == NULL)
+    {
+        LOG_WARN("out of memory in pmm_alloc()\n");
+    }
+
+    return addr;
 }
 
 uint64_t pmm_alloc_pages(void** addresses, size_t count)
 {
-    LOCK_SCOPE(&lock);
+    lock_acquire(&lock);
     for (size_t i = 0; i < count; i++)
     {
-        void* address = pmm_stack_alloc(&stack);
-        if (address == NULL)
+        addresses[i] = pmm_stack_pop();
+        if (addresses[i] == NULL)
         {
-            LOG_WARN("failed to allocate page %llu of %llu, there are %llu pages left\n", i, count, stack.free);
-            // Free previously allocated pages.
+            addresses[i] = pmm_bitmap_set(1, CONFIG_PMM_BITMAP_MAX_ADDR, PAGE_SIZE);
+        }
+
+        if (addresses[i] == NULL)
+        {
+            LOG_WARN("out of memory in pmm_alloc_pages()\n");
             for (size_t j = 0; j < i; j++)
             {
-                pmm_stack_free(&stack, addresses[j]);
-                addresses[j] = NULL;
+                if (addresses[j] >= (void*)PML_LOWER_TO_HIGHER(CONFIG_PMM_BITMAP_MAX_ADDR))
+                {
+                    pmm_stack_push(addresses[j]);
+                }
+                else
+                {
+                    pmm_bitmap_clear(addresses[j], 1);
+                }
             }
-            errno = ENOMEM;
+            lock_release(&lock);
             return ERR;
         }
-        addresses[i] = address;
     }
+
+    for (size_t i = 0; i < count; i++)
+    {
+        pmm_ref_t* ref = pmm_ref_get(addresses[i]);
+        assert(*ref == 0);
+        *ref = 1;
+    }
+
+    avail -= count;
+    lock_release(&lock);
     return 0;
 }
 
 void* pmm_alloc_bitmap(size_t count, uintptr_t maxAddr, uint64_t alignment)
 {
-    LOCK_SCOPE(&lock);
-    void* address = pmm_bitmap_alloc(&bitmap, count, maxAddr, alignment);
-    if (address == NULL)
+    lock_acquire(&lock);
+    void* addr = pmm_bitmap_set(count, maxAddr, alignment);
+    if (addr != NULL)
     {
-        LOG_WARN("failed to allocate %llu pages from bitmap, there are %llu bitmap pages left\n", count, bitmap.free);
-        errno = ENOMEM;
-        return NULL;
+        for (size_t i = 0; i < count; i++)
+        {
+            pmm_ref_t* ref = pmm_ref_get((void*)((uintptr_t)addr + (i * PAGE_SIZE)));
+            assert(*ref == 0);
+            *ref = 1;
+        }
+        avail -= count;
     }
-    return address;
+    lock_release(&lock);
+
+    if (addr == NULL)
+    {
+        LOG_WARN("out of memory in pmm_alloc_bitmap()\n");
+    }
+
+    return addr;
 }
 
 void pmm_free(void* address)
 {
-    LOCK_SCOPE(&lock);
+    lock_acquire(&lock);
     pmm_free_unlocked(address);
+    lock_release(&lock);
 }
 
 void pmm_free_pages(void** addresses, size_t count)
 {
-    LOCK_SCOPE(&lock);
+    lock_acquire(&lock);
     for (size_t i = 0; i < count; i++)
     {
         pmm_free_unlocked(addresses[i]);
     }
+    lock_release(&lock);
 }
 
 void pmm_free_region(void* address, size_t count)
 {
-    LOCK_SCOPE(&lock);
-    pmm_free_pages_unlocked(address, count);
+    lock_acquire(&lock);
+    pmm_free_region_unlocked(address, count);
+    lock_release(&lock);
 }
 
-size_t pmm_total_amount(void)
+uint64_t pmm_ref_inc(void* address)
 {
-    LOCK_SCOPE(&lock);
-    return pageAmount;
+    lock_acquire(&lock);
+    pmm_ref_t* ref = pmm_ref_get(address);
+    assert(*ref != PAGE_REF_MAX);
+    (*ref)++;
+    uint64_t ret = *ref;
+    lock_release(&lock);
+    return ret;
 }
 
-size_t pmm_free_amount(void)
+size_t pmm_total_pages(void)
 {
-    LOCK_SCOPE(&lock);
-    return stack.free + bitmap.free;
+    lock_acquire(&lock);
+    size_t ret = total;
+    lock_release(&lock);
+    return ret;
 }
 
-size_t pmm_used_amount(void)
+size_t pmm_avail_pages(void)
 {
-    LOCK_SCOPE(&lock);
-    return pageAmount - (stack.free + bitmap.free);
+    lock_acquire(&lock);
+    size_t ret = avail;
+    lock_release(&lock);
+    return ret;
+}
+
+size_t pmm_used_pages(void)
+{
+    lock_acquire(&lock);
+    size_t ret = total - avail;
+    lock_release(&lock);
+    return ret;
 }

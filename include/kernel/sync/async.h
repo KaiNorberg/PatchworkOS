@@ -99,16 +99,16 @@
  */
 typedef enum
 {
-    ASYNC_CTX_NONE = 0,        ///< No flags set.
-    ASYNC_CTX_BUSY = 1 << 0,   ///< Context is currently being used, used for fast locking.
-    ASYNC_CTX_MAPPED = 1 << 1, ///< Context rings are mapped.
+    ASYNC_NONE = 0,        ///< No flags set.
+    ASYNC_BUSY = 1 << 0,   ///< Context is currently being used, used for fast locking.
+    ASYNC_MAPPED = 1 << 1, ///< Context rings are mapped.
 } async_flags_t;
 
 /**
  * @brief The kernel-side asynchronous context structure.
  * @struct async_t
  */
-typedef struct async_ctx
+typedef struct async
 {
     rings_t rings;          ///< Asynchronous rings information.
     irp_pool_t* irps;       ///< Pool of preallocated IRPs.

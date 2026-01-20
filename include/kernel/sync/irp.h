@@ -1,5 +1,7 @@
 #pragma once
 
+#include <kernel/fs/path.h>
+#include <kernel/mem/pool.h>
 #include <kernel/sync/lock.h>
 
 #include <assert.h>
@@ -11,9 +13,10 @@
 #include <sys/rings.h>
 #include <time.h>
 
-typedef struct async_ctx async_t;
+typedef struct async async_t;
 typedef struct process process_t;
 typedef struct file file_t;
+typedef struct pathname pathname_t;
 
 typedef struct irp irp_t;
 
@@ -209,17 +212,6 @@ typedef struct irp irp_t;
  * @{
  */
 
-/**
- * @brief Represents the index of a IRP in a IRP pool.
- *
- * Used to save space in a IRP, by storing indexes instead of pointers.
- */
-typedef uint16_t irp_idx_t;
-
-#define IRP_IDX_MAX UINT16_MAX ///< The maximum index value for IRP.
-
-#define IRP_TAG_INC ((uint64_t)(IRP_IDX_MAX) + 1) ///< The amount to increment the tag by in the tagged free list.
-
 #define IRP_LOC_MAX 8 ///< The maximum number of locations in a IRP.
 
 #define IRP_ARGS_MAX 5 ///< The maximum number of arguments in a IRP.
@@ -271,8 +263,7 @@ typedef struct ALIGNED(64) irp
     union {
         struct
         {
-            verb_t verb; ///< Verb specifying the action to perform.
-            uint8_t _reserved1[3];
+            verb_t verb;       ///< Verb specifying the action to perform.
             sqe_flags_t flags; ///< Submission flags.
             union {
                 clock_t timeout;  ///< The timeout starting from when the IRP is added to a timeout queue.
@@ -283,7 +274,7 @@ typedef struct ALIGNED(64) irp
                 struct
                 {
                     file_t* from;
-                    char* path;
+                    pathname_t* path;
                 } open;
                 uint64_t _args[IRP_ARGS_MAX];
             };
@@ -292,8 +283,8 @@ typedef struct ALIGNED(64) irp
     };
     uint64_t result;  ///< Result of the IRP.
     errno_t err;      ///< The error code of the operation, also used to specify its current state.
-    irp_idx_t index;  ///< Index of the IRP in its pool.
-    irp_idx_t next;   ///< Index of the next IRP in a chain or in the free list.
+    pool_idx_t index; ///< Index of the IRP in its pool.
+    pool_idx_t next;  ///< Index of the next IRP in a chain or in the free list.
     cpu_id_t cpu;     ///< The CPU whose timeout queue the IRP is in.
     uint8_t location; ///< The index of the current location in the stack.
     uint8_t _reserved2[5];
@@ -312,10 +303,9 @@ static_assert(offsetof(irp_t, _args) == offsetof(irp_t, sqe._args), "args offset
  */
 typedef struct irp_pool
 {
-    void* ctx;            ///< Context pointer.
-    atomic_size_t used;   ///< Number of used IRPs.
-    atomic_uint64_t free; ///< The tagged head of the free list.
-    irp_t irps[];         ///< Array of IRPs.
+    void* ctx;
+    pool_t pool;
+    irp_t irps[];
 } irp_pool_t;
 
 /**
@@ -433,13 +423,13 @@ static inline void* irp_get_ctx(irp_t* irp)
 static inline irp_t* irp_next(irp_t* irp)
 {
     irp_pool_t* pool = irp_pool_get(irp);
-    if (irp->next == IRP_IDX_MAX)
+    if (irp->next == POOL_IDX_MAX)
     {
         return NULL;
     }
 
     irp_t* next = &pool->irps[irp->next];
-    irp->next = IRP_IDX_MAX;
+    irp->next = POOL_IDX_MAX;
     return next;
 }
 
@@ -520,6 +510,8 @@ uint64_t irp_cancel(irp_t* irp);
 
 /**
  * @brief Dispatch an IRP to the appropriate handler.
+ *
+ * If `irp->err != EINPROGRESS` the IRP is immediately completed.
  *
  * @param irp Pointer to the IRP to dispatch.
  */
