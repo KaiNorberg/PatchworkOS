@@ -1,6 +1,6 @@
-#include <_internal/clock_t.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/log/log.h>
+#include <kernel/log/panic.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/irp.h>
@@ -75,7 +75,7 @@ void irp_pool_free(irp_pool_t* pool)
     free(pool);
 }
 
-irp_t* irp_new(irp_pool_t* pool)
+irp_t* irp_new(irp_pool_t* pool, sqe_t* sqe)
 {
     pool_idx_t idx = pool_alloc(&pool->pool);
     if (idx == POOL_IDX_MAX)
@@ -89,8 +89,19 @@ irp_t* irp_new(irp_pool_t* pool)
     irp->next = POOL_IDX_MAX;
     irp->err = EINPROGRESS;
     irp->result = 0;
-    irp->sqe = (sqe_t){0};
     atomic_store_explicit(&irp->cancel, NULL, memory_order_relaxed);
+
+    if (sqe == NULL)
+    {
+        irp->sqe = (sqe_t){0};
+        irp->flags |= SQE_KERNEL;
+    }
+    else
+    {
+        irp->sqe = *sqe;
+        irp->sqe.flags &= ~(SQE_KERNEL | SQE_KERNEL_ENTERED);
+    }
+
     irp->next = POOL_IDX_MAX;
     irp->cpu = CPU_ID_INVALID;
     for (size_t j = 0; j < IRP_LOC_MAX; j++)
@@ -103,6 +114,12 @@ irp_t* irp_new(irp_pool_t* pool)
 
 void irp_free(irp_t* irp)
 {
+    if (irp->flags & SQE_KERNEL_ENTERED && irp->verb < VERB_MAX && _irp_table_start[irp->verb].leave != NULL)
+    {
+        assert(!(irp->flags & SQE_KERNEL));
+        _irp_table_start[irp->verb].leave(irp);
+    }
+
     irp_pool_t* pool = irp_pool_get(irp);
     pool_free(&pool->pool, irp->index);
 }
@@ -238,6 +255,15 @@ void irp_dispatch(irp_t* irp)
         return;
     }
 
+    if (!(irp->flags & SQE_KERNEL) && !(irp->flags & SQE_KERNEL_ENTERED))
+    {
+        if (_irp_table_start[irp->verb].enter != NULL)
+        {
+            _irp_table_start[irp->verb].enter(irp);
+        }
+        irp->flags |= SQE_KERNEL_ENTERED;
+    }
+
     _irp_table_start[irp->verb].handler(irp);
 }
 
@@ -279,4 +305,4 @@ void nop_do(irp_t* irp)
     }
 }
 
-IRP_REGISTER(VERB_NOP, nop_do);
+IRP_REGISTER(VERB_NOP, NULL, NULL, nop_do);

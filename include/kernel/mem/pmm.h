@@ -33,14 +33,15 @@
  */
 
 /**
- * @brief The type used for page reference counts.
+ * @brief Page metadata structure.
+ * @struct page_t
+ *
+ * Used internally by the PMM.
  */
-typedef uint16_t page_ref_t;
-
-/**
- * @brief Invalid page reference count.
- */
-#define PAGE_REF_MAX UINT16_MAX
+typedef struct
+{
+    uint16_t ref;
+} page_t;
 
 /**
  * @brief Maximum number of free pages that can be stored in a free page.
@@ -70,7 +71,7 @@ void pmm_init(void);
  * Will by default use the free stack allocator, but if no pages are available there, it will fall back to the bitmap
  * allocator.
  *
- * @return The PFN of the allocated page, or `ERR` if no memory is available.
+ * @return On success, the PFN of the allocated page. On failure, `ERR`.
  */
 pfn_t pmm_alloc(void);
 
@@ -91,7 +92,7 @@ uint64_t pmm_alloc_pages(pfn_t* pfns, size_t count);
  * @param count Number of pages to allocate.
  * @param maxPfn Maximum PFN to allocate up to (exclusive).
  * @param alignPfn Alignment of the region in pages.
- * @return The PFN of the first allocated page, or `ERR` if no memory is available.
+ * @return On success, the PFN of the first page of the allocated region. On failure, `ERR`.
  */
 pfn_t pmm_alloc_bitmap(size_t count, pfn_t maxPfn, pfn_t alignPfn);
 
@@ -127,14 +128,28 @@ void pmm_free_pages(pfn_t* pfns, size_t count);
 void pmm_free_region(pfn_t pfn, size_t count);
 
 /**
- * @brief Increment the reference count of a physical page.
+ * @brief Increment the reference count of a physical region.
  *
- * Will fail if the page is not allocated.
+ * Will fail if any of the pages are not allocated.
  *
- * @param pfn The PFN of the physical page.
+ * @param pfn The PFN of the first physical page.
+ * @param count Number of pages to increment the reference count of.
  * @return On success, the new reference count. On failure, `ERR`.
  */
-uint64_t pmm_ref_inc(pfn_t pfn);
+uint64_t pmm_ref_inc(pfn_t pfn, size_t count);
+
+/**
+ * @brief Decrement the reference count of a physical region.
+ *
+ * If the reference count reaches zero, the pages will be freed.
+ *
+ * @param pfn The PFN of the first physical page.
+ * @param count Number of pages to decrement the reference count of.
+ */
+static inline void pmm_ref_dec(pfn_t pfn, size_t count)
+{
+    pmm_free_region(pfn, count);
+}
 
 /**
  * @brief Get the total number of physical pages.

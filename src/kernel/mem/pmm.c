@@ -35,7 +35,7 @@ static const char* efiMemTypeToString[] = {
     "persistent",
 };
 
-static page_ref_t* refs = NULL;
+static page_t* pages = NULL;
 
 static page_stack_t* stack = NULL;
 static size_t location = FREE_PAGE_MAX;
@@ -66,25 +66,6 @@ static bool pmm_is_mem_avail(EFI_MEMORY_TYPE type)
     default:
         return false;
     }
-}
-
-static inline page_ref_t* pmm_ref_get(pfn_t pfn)
-{
-    return &refs[pfn];
-}
-
-static inline void pmm_ref_set(pfn_t pfn, size_t count, page_ref_t value)
-{
-    page_ref_t* ref = pmm_ref_get(pfn);
-    for (size_t i = 0; i < count; i++)
-    {
-        ref[i] = value;
-    }
-}
-
-static inline size_t pmm_refs_size(void)
-{
-    return highest * sizeof(page_ref_t);
 }
 
 static inline void pmm_stack_push(pfn_t pfn)
@@ -141,10 +122,9 @@ static inline void pmm_bitmap_clear(pfn_t pfn, size_t pageAmount)
 
 static void pmm_free_unlocked(pfn_t pfn)
 {
-    page_ref_t* ref = pmm_ref_get(pfn);
-    assert(*ref > 0);
-    (*ref)--;
-    if (*ref > 0)
+    page_t* page = &pages[pfn];
+    assert(page->ref > 0);
+    if (--page->ref > 0)
     {
         return;
     }
@@ -191,16 +171,14 @@ static void pmm_detect_memory(const boot_memory_map_t* map)
 
 static void pmm_init_refs(const boot_memory_map_t* map)
 {
-    size_t size = pmm_refs_size();
-    size_t pages = BYTES_TO_PAGES(size);
+    size_t size = highest * sizeof(page_t);
     for (size_t i = 0; i < map->length; i++)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
-        if (desc->Type == EfiConventionalMemory && desc->NumberOfPages >= pages)
+        if (desc->Type == EfiConventionalMemory && desc->NumberOfPages >= BYTES_TO_PAGES(size))
         {
-            refs = (page_ref_t*)desc->VirtualStart;
-            memset(refs, -1, pages * PAGE_SIZE);
-            LOG_INFO("pmm ref [%p-%p]\n", refs, (uintptr_t)refs + pages * PAGE_SIZE);
+            pages = (page_t*)desc->VirtualStart;
+            LOG_INFO("pages    [%p-%p]\n", pages, (uintptr_t)pages + size);
             return;
         }
     }
@@ -210,35 +188,45 @@ static void pmm_init_refs(const boot_memory_map_t* map)
 
 static void pmm_load_memory(const boot_memory_map_t* map)
 {
-    pfn_t refsPfn = VIRT_TO_PFN(refs);
-    size_t refPages = BYTES_TO_PAGES(pmm_refs_size());
+    pfn_t pagesPfn = VIRT_TO_PFN(pages);
 
     for (size_t i = 0; i < map->length; i++)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
 
         pfn_t pfn = VIRT_TO_PFN(desc->VirtualStart);
-        size_t pages = desc->NumberOfPages;
+        size_t amount = desc->NumberOfPages;
 
-        if (pfn == refsPfn)
+        if (pfn == pagesPfn)
         {
-            // Skip the refs array.
-            assert(pages >= refPages);
-            pfn += refPages;
-            pages -= refPages;
+            // Skip the pages array.
+            size_t toSkip = BYTES_TO_PAGES(highest * sizeof(page_t));
+            pfn += toSkip;
+            amount -= toSkip;
         }
 
         if (pmm_is_mem_avail(desc->Type))
         {
 #ifndef NDEBUG
             // Clear the memory to deliberately cause corruption if the memory is actually being used.
-            memset(PFN_TO_VIRT(pfn), 0xCC, pages * PAGE_SIZE);
+            memset(PFN_TO_VIRT(pfn), 0xCC, amount * PAGE_SIZE);
 #endif
-            pmm_ref_set(pfn, pages, 1);
-            pmm_free_region_unlocked(pfn, pages);
+            for (size_t j = 0; j < amount; j++)
+            {
+                page_t* page = &pages[pfn + j];
+                page->ref = 1;
+            }
+
+            pmm_free_region_unlocked(pfn, amount);
         }
         else
         {
+            for (size_t j = 0; j < amount; j++)
+            {
+                page_t* page = &pages[pfn + j];
+                page->ref = UINT16_MAX;
+            }
+
             LOG_INFO("reserve [%p-%p] pages=%d type=%s\n", PFN_TO_VIRT(pfn), PFN_TO_VIRT(pfn + pages), pages,
                 efiMemTypeToString[desc->Type]);
         }
@@ -269,9 +257,9 @@ pfn_t pmm_alloc(void)
 
     if (pfn != ERR)
     {
-        page_ref_t* ref = pmm_ref_get(pfn);
-        assert(*ref == 0);
-        *ref = 1;
+        page_t* page = &pages[pfn];
+        assert(page->ref == 0);
+        page->ref = 1;
         avail--;
     }
     lock_release(&lock);
@@ -316,9 +304,9 @@ uint64_t pmm_alloc_pages(pfn_t* pfns, size_t count)
 
     for (size_t i = 0; i < count; i++)
     {
-        page_ref_t* ref = pmm_ref_get(pfns[i]);
-        assert(*ref == 0);
-        *ref = 1;
+        page_t* page = &pages[pfns[i]];
+        assert(page->ref == 0);
+        page->ref = 1;
     }
 
     avail -= count;
@@ -334,9 +322,9 @@ pfn_t pmm_alloc_bitmap(size_t count, pfn_t maxPfn, pfn_t alignPfn)
     {
         for (size_t i = 0; i < count; i++)
         {
-            page_ref_t* ref = pmm_ref_get(pfn + i);
-            assert(*ref == 0);
-            *ref = 1;
+            page_t* page = &pages[pfn + i];
+            assert(page->ref == 0);
+            page->ref = 1;
         }
         avail -= count;
     }
@@ -374,13 +362,24 @@ void pmm_free_region(pfn_t pfn, size_t count)
     lock_release(&lock);
 }
 
-uint64_t pmm_ref_inc(pfn_t pfn)
+uint64_t pmm_ref_inc(pfn_t pfn, size_t count)
 {
     lock_acquire(&lock);
-    page_ref_t* ref = pmm_ref_get(pfn);
-    assert(*ref != PAGE_REF_MAX);
-    (*ref)++;
-    uint64_t ret = *ref;
+    for (size_t i = 0; i < count; i++)
+    {
+        page_t* page = &pages[pfn + i];
+        if (page->ref == 0 || page->ref == UINT16_MAX)
+        {
+            for (size_t j = 0; j < i; j++)
+            {
+                pages[pfn + j].ref--;
+            }
+            lock_release(&lock);
+            return ERR;
+        }
+        page->ref++;
+    }
+    uint64_t ret = pages[pfn].ref;
     lock_release(&lock);
     return ret;
 }

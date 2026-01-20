@@ -218,8 +218,8 @@ static uint64_t hpet_init(void)
     }
 
     address = (uintptr_t)PML_LOWER_TO_HIGHER(hpet->address);
-    if (vmm_map(NULL, (void*)address, hpet->address, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL,
-            NULL) == NULL)
+    if (vmm_map(NULL, (void*)address, hpet->address, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) ==
+        NULL)
     {
         LOG_ERR("failed to map HPET memory at %p\n", hpet->address);
         return ERR;

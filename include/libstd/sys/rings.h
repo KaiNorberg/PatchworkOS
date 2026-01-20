@@ -59,6 +59,12 @@ typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
                              /// applies within one `enter()` call.
 #define SQE_HARDLINK \
     (1 << (SQE_FLAGS_SHIFT + 1)) ///< Like `SQE_LINK`) but will process the next SQE even if this one fails.
+#ifdef _KERNEL_
+#define SQE_KERNEL \
+    (1 << (SQE_FLAGS_SHIFT + 2)) ///< The operation was created by the kernel, used internally by the kernel.
+#define SQE_KERNEL_ENTERED \
+    (1 << (SQE_FLAGS_SHIFT + 3)) ///< The operations enter callback has been called, used internally by the kernel.
+#endif
 
 /**
  * @brief Asynchronous submission queue entry (SQE).
@@ -148,11 +154,14 @@ typedef uint64_t rings_id_t;
  */
 typedef struct ALIGNED(64) rings_shared
 {
-    atomic_uint32_t shead;                          ///< Submission head index, updated by the kernel.
-    atomic_uint32_t ctail;                          ///< Completion tail index, updated by the kernel.
-    atomic_uint32_t stail ALIGNED(64);              ///< Submission tail index, updated by userspace.
-    atomic_uint32_t chead;                          ///< Completion head index, updated by userspace.
+    atomic_uint32_t shead; ///< Submission head index, updated by the kernel.
+    atomic_uint32_t ctail; ///< Completion tail index, updated by the kernel.
+    uint8_t _padding0[64 - sizeof(atomic_uint32_t) * 2];
+    atomic_uint32_t stail; ///< Submission tail index, updated by userspace.
+    atomic_uint32_t chead; ///< Completion head index, updated by userspace.
+    uint8_t _padding1[64 - sizeof(atomic_uint32_t) * 2];
     atomic_uint64_t regs[SEQ_REGS_MAX] ALIGNED(64); ///< General purpose registers.
+    uint8_t _reserved[8];
 } rings_shared_t;
 
 /**

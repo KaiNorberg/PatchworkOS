@@ -644,8 +644,7 @@ static inline void page_table_clear(page_table_t* table, void* addr, size_t amou
  * @param amount The number of pages to check.
  * @param callbacks An array of size `PML_MAX_CALLBACK` that will be filled with the occurrences of each callback ID.
  */
-static inline void page_table_collect_callbacks(page_table_t* table, void* addr, size_t amount,
-    uint64_t* callbacks)
+static inline void page_table_collect_callbacks(page_table_t* table, void* addr, size_t amount, uint64_t* callbacks)
 {
     page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
 
@@ -1054,8 +1053,7 @@ static inline uint64_t page_table_count_pages_with_flags(page_table_t* table, vo
         pml_t* pml1 = PFN_TO_VIRT(entry2->pfn);
         pml_index_t idx1 = PML_ADDR_TO_INDEX((uintptr_t)addr, PML1);
 
-        for (; idx1 < PML_INDEX_AMOUNT && amount > 0;
-            idx1++, addr = (void*)((uintptr_t)addr + PAGE_SIZE), amount--)
+        for (; idx1 < PML_INDEX_AMOUNT && amount > 0; idx1++, addr = (void*)((uintptr_t)addr + PAGE_SIZE), amount--)
         {
             pml_entry_t* entry1 = &pml1->entries[idx1];
             if (!entry1->present)

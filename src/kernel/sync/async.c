@@ -1,4 +1,3 @@
-#include <_internal/fd_t.h>
 #include <kernel/cpu/syscall.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/path.h>
@@ -280,31 +279,6 @@ static void async_dispatch(irp_t* irp)
         irp->sqe._args[i] = atomic_load_explicit(&ctx->rings.shared->regs[reg], memory_order_acquire);
     }
 
-    switch (irp->verb)
-    {
-    case VERB_NOP:
-        break;
-    /*case VERB_OPEN:
-    {
-        file_t* from = NULL;
-        if (irp->sqe.open.from != FD_NONE)
-        {
-            from = file_table_get(&ctx->process->fileTable, irp->sqe.open.from);
-            if (from == NULL)
-            {
-                irp->err = EBADF;
-                break;
-            }
-        }
-
-        irp->open.from = from;
-        irp->open.path =
-    }
-    break;*/
-    default:
-        break;
-    }
-
     irp_push(irp, async_complete, NULL);
     irp_dispatch(irp);
 }
@@ -317,13 +291,6 @@ typedef struct
 
 static uint64_t async_sqe_pop(async_t* ctx, async_notify_ctx_t* notify)
 {
-    irp_t* irp = irp_new(ctx->irps);
-    if (irp == NULL)
-    {
-        errno = ENOSPC;
-        return ERR;
-    }
-
     if (atomic_load(&ctx->irps->pool.used) == 1)
     {
         process_t* process = process_current();
@@ -337,11 +304,17 @@ static uint64_t async_sqe_pop(async_t* ctx, async_notify_ctx_t* notify)
 
     if (shead == stail)
     {
-        irp_free(irp);
+        errno = EAGAIN;
         return ERR;
     }
 
-    irp->sqe = rings->squeue[shead & rings->smask];
+    sqe_t* sqe = &rings->squeue[shead & rings->smask];
+    irp_t* irp = irp_new(ctx->irps, sqe);
+    if (irp == NULL)
+    {
+        return ERR;
+    }
+
     atomic_store_explicit(&rings->shared->shead, shead + 1, memory_order_release);
 
     if (notify->link != NULL)

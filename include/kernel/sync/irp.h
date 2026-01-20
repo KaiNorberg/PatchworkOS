@@ -1,19 +1,18 @@
 #pragma once
 
 #include <kernel/fs/path.h>
+#include <kernel/mem/mem_desc.h>
 #include <kernel/mem/pool.h>
 #include <kernel/sync/lock.h>
-#include <kernel/mem/mem_desc.h>
 
 #include <assert.h>
 #include <stdatomic.h>
-#include <time.h>
 #include <stdlib.h>
 #include <sys/io.h>
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/rings.h>
-
+#include <time.h>
 
 typedef struct irp irp_t;
 
@@ -28,7 +27,8 @@ typedef struct irp irp_t;
  * The IRP system is designed to be generic enough to be used by any system in the kernel, however it is primarily used
  * by the asynchronous rings system.
  *
- * @warning The IRP system is not thread-safe, it is the responsibility of the caller to ensure proper synchronization.
+ * @warning While the cancellation or completion of an IRP is thread safe, the setup of an IRP is not (as in pushing
+ * layers to it). As such, its up to the caller to ensure that only one thread is manipulating it during setup.
  *
  * ## Completion
  *
@@ -55,6 +55,7 @@ typedef struct irp irp_t;
  * }
  *
  * int result = fun_a();
+ * // Do stuff with the result
  * ```
  *
  * When the code is executed, `fun_a()` would be called, which calls `fun_b()`, which in turn calls `fun_c()`. At this
@@ -114,8 +115,15 @@ typedef struct irp irp_t;
  *     fun_b(irp);
  * }
  *
- * irp_t* irp = irp_new(pool);
- * // We could add our own complete here to handle the final result.
+ * void my_completion(irp_t* irp)
+ * {
+ *     //  Do stuff with the result in irp->result.
+ *     irp_free(irp);
+ * }
+ *
+ * irp_t* irp = irp_new(pool, NULL);
+ * // We can set arguments here if we want.
+ * irp_push(irp, my_completion, NULL); // Our completion to handle cleanup.
  * fun_a_do(irp);
  * // Continue executing even if fun_c() cannot complete immediately.
  * ```
@@ -129,6 +137,32 @@ typedef struct irp irp_t;
  * A real world example of this would be the Async Rings system allocating a IRP, pushing a completion which will add a
  * `cqe_t` to its Rings, before passing the IRP to the VFS which may pass it to a filesystem. Each layer pushing its own
  * completion to handle its part of the operation.
+ *
+ * Finally, it is also possible to use the `irp_dispatch()` function. This function allows us to dispatch the IRP to a
+ * appropriate handler depending on the IRPs specified verb. For example:
+ *
+ * ```
+ * void my_completion(irp_t* irp)
+ * {
+ *     //  Do stuff with the result in irp->result.
+ *     irp_free(irp);
+ * }
+ *
+ * irp_t* irp = irp_new(pool, NULL);
+ *
+ * // Set our desired verb and arguments.
+ * irp->verb = VERB_OPEN;
+ * irp->open.from = from;
+ * irp->open.path = path;
+ * irp->open.length = strlen(path);
+ *
+ * // Our completion to receive the result.
+ * irp_push(irp, my_completion, NULL);
+ *
+ * // Finally, dispatch the IRP to the appropriate handler.
+ * irp_dispatch(irp);
+ * // Continue executing even if the operation cannot complete immediately.
+ * ```
  *
  * ## Cancellation
  *
@@ -206,6 +240,8 @@ typedef struct irp irp_t;
  *
  * @see kernel_sync_async for the asynchronous rings system.
  * @see [Wikipedia](https://en.wikipedia.org/wiki/I/O_request_packet) for more information about IRPs.
+ * @see [Microsoft _IRP](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_irp) for information
+ * on how Windows NT implements IRPs.
  * @{
  */
 
@@ -272,7 +308,6 @@ typedef struct ALIGNED(64) irp
                 {
                     file_t* from;
                     mem_desc_t* path;
-                    size_t length;
                 } open;
                 uint64_t _args[IRP_ARGS_MAX];
             };
@@ -358,13 +393,20 @@ void irp_timeouts_check(void);
  * The pool that the IRP was allocated from, and its context, can be retrieved using the `irp_pool_get()`
  * function.
  *
+ * @note If a SQE is provided then the IRP will be considered a user IRP, causing the `irp_handler_t::enter` and
+ * `irp_handler_t::leave` callbacks to be invoked on the IRP when its dispatched and freed respectively. Otherwise, the
+ * caller is responsible for the lifecycle and arguments of the IRP.
+ *
  * @param pool Pointer to the IRP pool.
- * @return On success, a pointer to the allocated IRP. On failure, `NULL`.
+ * @param sqe The Submission Queue Entry associated with the IRP, if `NULL` the IRP will be a kernel IRP.
+ * @return On success, a pointer to the allocated IRP. On failure, `NULL` and `errno` is set.
  */
-irp_t* irp_new(irp_pool_t* pool);
+irp_t* irp_new(irp_pool_t* pool, sqe_t* sqe);
 
 /**
  * @brief Free a IRP back to its pool.
+ *
+ * If the IRP is a user IRP, the `irp_handler_t::leave` callback will be invoked before freeing the IRP.
  *
  * @param irp Pointer to the IRP to free.
  */
@@ -511,6 +553,9 @@ uint64_t irp_cancel(irp_t* irp);
  *
  * If `irp->err != EINPROGRESS` the IRP is immediately completed.
  *
+ * If the IRP is a user IRP and it has not yet been entered, the `irp_handler_t::enter` callback for the verb is
+ * invoked.
+ *
  * @param irp Pointer to the IRP to dispatch.
  */
 void irp_dispatch(irp_t* irp);
@@ -527,11 +572,15 @@ void irp_table_init(void);
 typedef struct
 {
     verb_t verb;
-    void (*handler)(irp_t* irp);
+    void (*enter)(irp_t* irp);   ///< Will be called on user IRPs to process arguments.
+    void (*leave)(irp_t* irp);   ///< Will be called on user IRPs to cleanup resources.
+    void (*handler)(irp_t* irp); ///< The handler function for the verb.
 } irp_handler_t;
 
 /**
  * @brief Linker defined start of the IRP handlers table.
+ *
+ * After `irp_table_init()` has sorted the IRP table, the table can be indexed by verb.
  */
 extern irp_handler_t _irp_table_start[];
 
@@ -544,11 +593,15 @@ extern irp_handler_t _irp_table_end[];
  * @brief Macro to register a IRP handler to a verb using the `._irp_table` section.
  *
  * @param _verb The verb to register the handler for.
+ * @param _enter The enter function.
+ * @param _leave The leave function.
  * @param _handler The handler function.
  */
-#define IRP_REGISTER(_verb, _handler) \
+#define IRP_REGISTER(_verb, _enter, _leave, _handler) \
     static irp_handler_t __irp_##_verb __attribute__((section("._irp_table"), used)) = { \
         .verb = (_verb), \
+        .enter = (_enter), \
+        .leave = (_leave), \
         .handler = (_handler), \
     };
 

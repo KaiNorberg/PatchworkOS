@@ -178,8 +178,8 @@ static uint64_t space_populate_user_region(space_t* space, const void* buffer, s
             return ERR;
         }
 
-        if (page_table_map(&space->pageTable, (void*)addr, PFN_TO_PHYS(pfn), 1, PML_PRESENT | PML_USER | PML_WRITE | PML_OWNED,
-                PML_CALLBACK_NONE) == ERR)
+        if (page_table_map(&space->pageTable, (void*)addr, PFN_TO_PHYS(pfn), 1,
+                PML_PRESENT | PML_USER | PML_WRITE | PML_OWNED, PML_CALLBACK_NONE) == ERR)
         {
             pmm_free(pfn);
             return ERR;
@@ -491,8 +491,8 @@ static void* space_find_free_region(space_t* space, uint64_t pageAmount, uint64_
     return NULL;
 }
 
-uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, phys_addr_t physAddr, size_t length,
-    size_t alignment, pml_flags_t flags)
+uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, phys_addr_t physAddr,
+    size_t length, size_t alignment, pml_flags_t flags)
 {
     if (space == NULL || mapping == NULL || length == 0)
     {
@@ -665,4 +665,23 @@ uint64_t space_user_page_count(space_t* space)
     LOCK_SCOPE(&space->lock);
     return page_table_count_pages_with_flags(&space->pageTable, (void*)VMM_USER_SPACE_MIN,
         BYTES_TO_PAGES(VMM_USER_SPACE_MAX - VMM_USER_SPACE_MIN), PML_PRESENT | PML_USER | PML_OWNED);
+}
+
+phys_addr_t space_virt_to_phys(space_t* space, const void* virtAddr)
+{
+    if (space == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    phys_addr_t physAddr;
+    LOCK_SCOPE(&space->lock);
+    if (page_table_get_phys_addr(&space->pageTable, (void*)virtAddr, &physAddr) == ERR)
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    return physAddr;
 }

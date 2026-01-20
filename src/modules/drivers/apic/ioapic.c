@@ -107,7 +107,8 @@ uint64_t ioapic_all_init(void)
         }
 
         void* virtAddr = (void*)PML_LOWER_TO_HIGHER(ioapic->ioApicAddress);
-        if (vmm_map(NULL, virtAddr, ioapic->ioApicAddress, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) == NULL)
+        if (vmm_map(NULL, virtAddr, ioapic->ioApicAddress, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL,
+                NULL) == NULL)
         {
             LOG_ERR("failed to map io apic\n");
             return ERR;

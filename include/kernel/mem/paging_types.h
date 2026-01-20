@@ -48,7 +48,7 @@ typedef uintptr_t phys_addr_t;
 
 /**
  * @brief Convert a PFN to its physical address.
- * 
+ *
  * @param _pfn The Page Frame Number.
  * @return The physical address of the page.
  */
@@ -56,7 +56,7 @@ typedef uintptr_t phys_addr_t;
 
 /**
  * @brief Convert a physical address to its PFN.
- * 
+ *
  * @param _addr The physical address.
  * @return The Page Frame Number of the page.
  */
@@ -64,7 +64,7 @@ typedef uintptr_t phys_addr_t;
 
 /**
  * @brief Convert a PFN to its identity mapped higher half virtual address.
- * 
+ *
  * @param _pfn The Page Frame Number.
  * @return The higher half virtual address of the page.
  */
@@ -76,7 +76,7 @@ typedef uintptr_t phys_addr_t;
 
 /**
  * @brief Convert a identity mapped higher half virtual address to its PFN.
- * 
+ *
  * @param _addr The higher half virtual address.
  * @return The Page Frame Number of the page.
  */

@@ -244,8 +244,8 @@ typedef struct
  * - `EFAULT`: The addresses are outside the allowed range.
  * - `ENOMEM`: Not enough memory.
  */
-uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, phys_addr_t physAddr, size_t length,
-    size_t alignment, pml_flags_t flags);
+uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, phys_addr_t physAddr,
+    size_t length, size_t alignment, pml_flags_t flags);
 
 /**
  * @brief Allocate a callback.
@@ -307,5 +307,16 @@ bool space_is_mapped(space_t* space, const void* virtAddr, size_t length);
  * @return The number of user pages mapped.
  */
 uint64_t space_user_page_count(space_t* space);
+
+/**
+ * @brief Translate a virtual address to a physical address in the address space.
+ *
+ * @param space The target address space.
+ * @param virtAddr The virtual address to translate.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EFAULT`: The virtual address is not mapped.
+ */
+phys_addr_t space_virt_to_phys(space_t* space, const void* virtAddr);
 
 /** @} */

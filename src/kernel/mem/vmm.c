@@ -83,8 +83,8 @@ void vmm_init(void)
             panic(NULL, "Memory descriptor %d has invalid physical address %p", i, desc->PhysicalStart);
         }
 
-        if (page_table_map(&kernelSpace.pageTable, (void*)desc->VirtualStart, desc->PhysicalStart,
-                desc->NumberOfPages, PML_WRITE | PML_GLOBAL | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
+        if (page_table_map(&kernelSpace.pageTable, (void*)desc->VirtualStart, desc->PhysicalStart, desc->NumberOfPages,
+                PML_WRITE | PML_GLOBAL | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
         {
             panic(NULL, "Failed to map memory descriptor %d (phys=%p-%p virt=%p)", i, desc->PhysicalStart,
                 desc->PhysicalStart + desc->NumberOfPages * PAGE_SIZE, desc->VirtualStart);
@@ -165,7 +165,8 @@ void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment,
     }
 
     space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, PHYS_ADDR_INVALID, length, alignment, pmlFlags | PML_OWNED) == ERR)
+    if (space_mapping_start(space, &mapping, virtAddr, PHYS_ADDR_INVALID, length, alignment, pmlFlags | PML_OWNED) ==
+        ERR)
     {
         return NULL;
     }
