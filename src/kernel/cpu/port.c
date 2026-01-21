@@ -1,4 +1,4 @@
-#include <kernel/cpu/io.h>
+#include <kernel/cpu/port.h>
 #include <kernel/sync/lock.h>
 
 #include <kernel/log/log.h>
@@ -9,10 +9,10 @@
 #include <sys/bitmap.h>
 #include <sys/list.h>
 
-static BITMAP_CREATE(ports, IO_PORT_MAX + 1);
+static BITMAP_CREATE(ports, PORT_MAX + 1);
 static lock_t lock = LOCK_CREATE();
 
-uint64_t io_reserve(port_t* out, port_t minBase, port_t maxBase, uint64_t alignment, uint64_t length, const char* owner)
+uint64_t port_reserve(port_t* out, port_t minBase, port_t maxBase, uint64_t alignment, uint64_t length, const char* owner)
 {
     UNUSED(owner);
 
@@ -40,7 +40,7 @@ uint64_t io_reserve(port_t* out, port_t minBase, port_t maxBase, uint64_t alignm
     return 0;
 }
 
-void io_release(port_t base, uint64_t length)
+void port_release(port_t base, uint64_t length)
 {
     if (length == 0 || base + length < base || base + length > ports.length)
     {

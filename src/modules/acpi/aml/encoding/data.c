@@ -349,7 +349,7 @@ uint64_t aml_package_element_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
 
     if (token.props->type == AML_TOKEN_TYPE_NAME)
     {
-        aml_name_string_t nameString;
+        aml_name_stioring_t nameString;
         if (aml_name_string_read(ctx, &nameString) == ERR)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read NameString");

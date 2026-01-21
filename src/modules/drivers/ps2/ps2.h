@@ -1,8 +1,8 @@
 #pragma once
 
-#include <kernel/cpu/io.h>
-
+#include <kernel/cpu/port.h>
 #include <kernel/cpu/irq.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 

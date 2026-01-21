@@ -82,7 +82,7 @@ uint64_t aml_term_arg_read_integer(aml_term_list_ctx_t* ctx, aml_uint_t* out)
     return 0;
 }
 
-aml_string_t* aml_term_arg_read_string(aml_term_list_ctx_t* ctx)
+aml_stioring_t* aml_term_arg_read_string(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* temp = aml_term_arg_read(ctx, AML_STRING);
     if (temp == NULL)

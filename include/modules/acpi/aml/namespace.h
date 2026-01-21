@@ -207,7 +207,7 @@ aml_object_t* aml_namespace_find(aml_overlay_t* overlay, aml_object_t* start, ui
  * @return The object reference or `NULL` if it could not be found.
  */
 aml_object_t* aml_namespace_find_by_name_string(aml_overlay_t* overlay, aml_object_t* start,
-    const aml_name_string_t* nameString);
+    const aml_name_stioring_t* nameString);
 
 /**
  * @brief Find an object in the namespace heirarchy by a path string.
@@ -255,7 +255,7 @@ uint64_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, a
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* start,
-    const aml_name_string_t* nameString, aml_object_t* object);
+    const aml_name_stioring_t* nameString, aml_object_t* object);
 
 /**
  * @brief Remove an object from the namespace heirarchy it was added to.

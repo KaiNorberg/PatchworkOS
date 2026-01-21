@@ -81,14 +81,14 @@ typedef struct
 
 /**
  * @brief A NameString structure.
- * @struct aml_name_string_t
+ * @struct aml_name_stioring_t
  */
 typedef struct
 {
     aml_root_char_t rootChar;
     aml_prefix_path_t prefixPath;
     aml_name_path_t namePath;
-} aml_name_string_t;
+} aml_name_stioring_t;
 
 /**
  * @brief Reads the next data as a SegCount structure from the AML bytecode stream.
@@ -192,7 +192,7 @@ uint64_t aml_root_char_read(aml_term_list_ctx_t* ctx, aml_root_char_t* out);
  * @param out Pointer to destination where the NameString will be stored.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_string_t* out);
+uint64_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_stioring_t* out);
 
 /**
  * @brief Reads the next data as a NameString structure from the AML bytecode stream and resolves it to a object.

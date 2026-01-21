@@ -178,7 +178,7 @@ static void pmm_init_refs(const boot_memory_map_t* map)
         if (desc->Type == EfiConventionalMemory && desc->NumberOfPages >= BYTES_TO_PAGES(size))
         {
             pages = (page_t*)desc->VirtualStart;
-            LOG_INFO("pages    [%p-%p]\n", pages, (uintptr_t)pages + size);
+            LOG_INFO("pages   [%p-%p]\n", pages, (uintptr_t)pages + size);
             return;
         }
     }

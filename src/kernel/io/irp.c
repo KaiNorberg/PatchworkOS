@@ -3,7 +3,7 @@
 #include <kernel/log/panic.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
-#include <kernel/sync/irp.h>
+#include <kernel/io/irp.h>
 #include <kernel/sync/lock.h>
 
 #include <kernel/cpu/percpu.h>

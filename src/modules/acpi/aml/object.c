@@ -227,7 +227,7 @@ void aml_object_clear(aml_object_t* object)
             UNREF(object->unresolved.from);
         }
         object->unresolved.from = NULL;
-        object->unresolved.nameString = (aml_name_string_t){0};
+        object->unresolved.nameString = (aml_name_stioring_t){0};
         object->unresolved.callback = NULL;
         break;
     case AML_PREDEFINED_SCOPE:
@@ -1062,7 +1062,7 @@ uint64_t aml_string_set(aml_object_t* object, const char* str)
     return 0;
 }
 
-uint64_t aml_string_resize(aml_string_t* string, uint64_t newLength)
+uint64_t aml_string_resize(aml_stioring_t* string, uint64_t newLength)
 {
     if (string == NULL)
     {
@@ -1169,7 +1169,7 @@ aml_object_t* aml_alias_traverse(aml_alias_t* alias)
     return current;
 }
 
-uint64_t aml_unresolved_set(aml_object_t* object, const aml_name_string_t* nameString, aml_object_t* from,
+uint64_t aml_unresolved_set(aml_object_t* object, const aml_name_stioring_t* nameString, aml_object_t* from,
     aml_patch_up_resolve_callback_t callback)
 {
     if (object == NULL || nameString == NULL || callback == NULL)

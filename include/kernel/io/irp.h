@@ -11,15 +11,15 @@
 #include <sys/io.h>
 #include <sys/list.h>
 #include <sys/math.h>
-#include <sys/uring.h>
+#include <sys/ioring.h>
 #include <time.h>
 
 typedef struct irp irp_t;
 
 /**
  * @brief I/O Request Packet.
- * @defgroup kernel_sync_irp I/O Request Packet
- * @ingroup kernel_sync
+ * @defgroup kernel_io_irp I/O Request Packet
+ * @ingroup kernel_io
  *
  * The I/O Request Packet is a lock-less, self-contained, layered, completion-based request that act as the primary
  * structure used internally by the kernel for asynchronous operations.
@@ -34,6 +34,7 @@ typedef struct irp irp_t;
  *
  * The IRP system is designed around the concept of layered completions as it may take more than one subsystem within
  * the kernel to complete a IRP.
+ * the kernel to complete an IRP.
  *
  * Consider a traditional synchronous set of functions:
  *
@@ -134,8 +135,8 @@ typedef struct irp irp_t;
  * Each time a completion is called via `irp_complete()`, the next completion on the stack is called until the stack is
  * empty, at which point the IRP is considered fully completed.
  *
- * A real world example of this would be the ring system allocating a IRP, pushing a completion which will add a
- * `cqe_t` to its Rings, before passing the IRP to the VFS which may pass it to a filesystem. Each layer pushing its own
+ * A real world example of this would be the ring system allocating an IRP, pushing a completion which will add a
+ * `cqe_t` to its rings, before passing the IRP to the VFS which may pass it to a filesystem. Each layer pushing its own
  * completion to handle its part of the operation.
  *
  * Finally, it is also possible to use the `irp_dispatch()` function. This function allows us to dispatch the IRP to a
@@ -174,12 +175,12 @@ typedef struct irp irp_t;
  * though the synchronous `fun_c()` returned an error code instead of the data.
  *
  * The owner implements cancellation by calling `irp_set_cancel()` to set a cancellation callback when it pushes its
- * completion. When a IRP is to be cancelled or timedout the cancellation callback will be invoked and atomically
+ * completion. When an IRP is to be cancelled or timed out the cancellation callback will be invoked and atomically
  * exchanged with a `IRP_CANCELLED` sentinel value. At which point the owner should cleanup the IRP and call
  * `irp_complete()`.
  *
  * It is not possible for the IRP system to perform this atomic exchange for completions. As such, to avoid race
- * conditions while completing a IRP, it is vital that the owner of the IRP atomically exchanges the cancellation
+ * conditions while completing an IRP, it is vital that the owner of the IRP atomically exchanges the cancellation
  * callback with the `IRP_CANCELLED` sentinel value. For the sake of convenience, the `irp_claim()` function is provided
  * to perform this operation.
  *
@@ -238,7 +239,7 @@ typedef struct irp irp_t;
  * - `ETIMEDOUT`: Operation timed out.
  * - `EINPROGRESS`: Operation is in a timeout queue.
  *
- * @see kernel_sync_ring for the ring system.
+ * @see kernel_io for the ring system.
  * @see [Wikipedia](https://en.wikipedia.org/wiki/I/O_request_packet) for more information about IRPs.
  * @see [Microsoft _IRP](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_irp) for information
  * on how Windows NT implements IRPs.
@@ -247,7 +248,7 @@ typedef struct irp irp_t;
 
 #define IRP_LOC_MAX 8 ///< The maximum number of locations in a IRP.
 
-#define IRP_ARGS_MAX 5 ///< The maximum number of arguments in a IRP.
+#define IRP_ARGS_MAX SQE_MAX_ARGS ///< The maximum number of arguments in an IRP.
 
 /**
  * @brief IRP completion callback type.
@@ -292,7 +293,7 @@ typedef struct ALIGNED(64) irp
 {
     list_entry_t entry;           ///< Used to store the IRP in various lists.
     list_entry_t timeoutEntry;    ///< Used to store the IRP in the timeout queue.
-    _Atomic(irp_cancel_t) cancel; ///< Cancellation callback, must be atomic to ensure a IRP is only cancelled once.
+    _Atomic(irp_cancel_t) cancel; ///< Cancellation callback, must be atomic to ensure an IRP is only cancelled once.
     union {
         struct
         {
@@ -444,7 +445,7 @@ static inline bool irp_claim(irp_t* irp)
 }
 
 /**
- * @brief Retrieve the context of the IRP pool that a IRP was allocated from.
+ * @brief Retrieve the context of the IRP pool that an IRP was allocated from.
  *
  * @param irp Pointer to the IRP.
  * @return Pointer to the context.

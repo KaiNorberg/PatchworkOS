@@ -336,7 +336,7 @@ static void acpi_device_cfg_free(acpi_device_cfg_t* cfg)
 
     for (uint64_t i = 0; i < cfg->ioCount; i++)
     {
-        io_release(cfg->ios[i].base, cfg->ios[i].length);
+        port_release(cfg->ios[i].base, cfg->ios[i].length);
     }
 
     free(cfg->irqs);
@@ -451,7 +451,7 @@ static uint64_t acpi_device_configure(const char* name)
             cfg->ios = newIos;
 
             port_t base;
-            if (io_reserve(&base, desc->minBase, desc->maxBase, desc->alignment, desc->length, name) == ERR)
+            if (port_reserve(&base, desc->minBase, desc->maxBase, desc->alignment, desc->length, name) == ERR)
             {
                 LOG_ERR("failed to reserve IO ports for ACPI device '%s' due to '%s'\n", name, strerror(errno));
                 goto error;

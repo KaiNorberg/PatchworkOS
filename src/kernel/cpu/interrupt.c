@@ -16,7 +16,7 @@
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
-#include <kernel/sync/irp.h>
+#include <kernel/io/irp.h>
 
 #include <assert.h>
 

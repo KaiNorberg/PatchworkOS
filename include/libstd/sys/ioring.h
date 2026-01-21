@@ -1,5 +1,5 @@
-#ifndef _SYS_URING_H
-#define _SYS_URING_H 1
+#ifndef _SYS_IORING_H
+#define _SYS_IORING_H 1
 
 #include <stdatomic.h>
 #include <stddef.h>
@@ -19,7 +19,7 @@ extern "C"
 #include "_internal/fd_t.h"
 
 /**
- * @addtogroup kernel_sync_ring
+ * @addtogroup kernel_io
  * @{
  */
 
@@ -52,28 +52,28 @@ typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
 #define SQE_LOAD4 (SQE_LOAD3 + SQE_REG_SHIFT) ///< The offset to specify the register to load into the fifth argument.
 #define SQE_SAVE (SQE_LOAD4 + SQE_REG_SHIFT)  ///< The offset to specify the register to save the result into.
 
-#define _SEQ_FLAGS (SQE_SAVE + SQE_REG_SHIFT) ///< The bitshift for where bit flags start in a `sqe_flags_t`.
+#define _SQE_FLAGS (SQE_SAVE + SQE_REG_SHIFT) ///< The bitshift for where bit flags start in a `sqe_flags_t`.
 
 #ifdef _KERNEL_
 /**
  * The operation was created by the kernel, used internally by the kernel.
  */
-#define SQE_KERNEL (1 << (_SEQ_FLAGS))
+#define SQE_KERNEL (1 << (_SQE_FLAGS))
 
 /**
  * The operations enter callback has been called, used internally by the kernel.
  */
-#define SQE_KERNEL_ENTERED (1 << (_SEQ_FLAGS + 1))
+#define SQE_KERNEL_ENTERED (1 << (_SQE_FLAGS + 1))
 #endif
 
 /**
  * Only process the next SQE when this one completes successfully) only applies within one `enter()` call.
  */
-#define SQE_LINK (1 << (_SEQ_FLAGS + 2))
+#define SQE_LINK (1 << (_SQE_FLAGS + 2))
 /**
  * Like `SQE_LINK` but will process the next SQE even if this one fails.
  */
-#define SQE_HARDLINK (1 << (_SEQ_FLAGS + 3))
+#define SQE_HARDLINK (1 << (_SQE_FLAGS + 3))
 
 /**
  * @brief Asynchronous submission queue entry (SQE).
@@ -82,7 +82,7 @@ typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
  * @warning It is the responsibility of userspace to ensure that any pointers
  * passed to the kernel remain valid until the operation is complete.
  *
- * @see kernel_sync_async for more information on the possible operations.
+ * @see kernel_io for more information on the possible operations.
  */
 typedef struct sqe
 {
@@ -129,7 +129,7 @@ static_assert(sizeof(sqe_t) == 64, "sqe_t is not 64 bytes");
  * @brief Asynchronous completion queue entry (CQE).
  * @struct cqe_t
  *
- * @see kernel_sync_async for more information on the possible operations.
+ * @see kernel_io for more information on the possible operations.
  */
 typedef struct ALIGNED(32) cqe
 {
@@ -148,20 +148,15 @@ static_assert(sizeof(cqe_t) == 32, "cqe_t is not 32 bytes");
 #endif
 
 /**
- * @brief User-Rings ID type.
- */
-typedef uint64_t ring_id_t;
-
-/**
  * @brief Shared ring control structure.
- * @struct ring_ctrl_t
+ * @struct ioring_ctrl_t
  *
  * Used as the intermediate between userspace and the kernel.
  *
  * @note The structure is aligned in such a way to reduce false sharing.
  *
  */
-typedef struct ALIGNED(64) ring_ctrl
+typedef struct ALIGNED(64) ioring_ctrl
 {
     atomic_uint32_t shead; ///< Submission head index, updated by the kernel.
     atomic_uint32_t ctail; ///< Completion tail index, updated by the kernel.
@@ -171,51 +166,43 @@ typedef struct ALIGNED(64) ring_ctrl
     uint8_t _padding1[64 - sizeof(atomic_uint32_t) * 2];
     atomic_uint64_t regs[SQE_REGS_MAX] ALIGNED(64); ///< General purpose registers.
     uint8_t _reserved[8];
-} ring_ctrl_t;
+} ioring_ctrl_t;
 
 /**
  * @}
- * @brief User-side asynchronous ring interface.
- * @defgroup libstd_sys_uring User-Side Ring Interface
+ * @brief Programmable submission/completion interface.
+ * @defgroup libstd_sys_ioring User-side I/O Ring Interface
  * @ingroup libstd
  *
  * The ring interface acts as the interface for all asynchronous operations in the kernel.
  *
- * @see kernel_sync_ring for more information about the asynchronous ring system.
+ * @see kernel_io for more information about the I/O ring system.
  *
  * @{
  */
 
+typedef uint64_t io_id_t; ///< I/O ring ID type.
+
 /**
- * @brief User asynchronous ring structure.
- * @struct ring_t
+ * @brief User I/O ring structure.
+ * @struct ioring_t
  *
  * The kernel and userspace will have their own instances of this structure.
  */
-typedef struct ring
+typedef struct ioring
 {
-    ring_ctrl_t* ctrl; ///< Pointer to the shared control structure.
-    ring_id_t id;      ///< The ID of the ring.
-    sqe_t* squeue;     ///< Pointer to the submission queue.
-    size_t sentries;   ///< Number of entries in the submission queue.
-    size_t smask;      ///< Bitmask for submission queue (sentries - 1).
-    cqe_t* cqueue;     ///< Pointer to the completion queue.
-    size_t centries;   ///< Number of entries in the completion queue.
-    size_t cmask;      ///< Bitmask for completion queue (centries - 1).
-} ring_t;
+    ioring_ctrl_t* ctrl; ///< Pointer to the shared control structure.
+    io_id_t id;          ///< The ID of the ring.
+    sqe_t* squeue;       ///< Pointer to the submission queue.
+    size_t sentries;     ///< Number of entries in the submission queue.
+    size_t smask;        ///< Bitmask for submission queue (sentries - 1).
+    cqe_t* cqueue;       ///< Pointer to the completion queue.
+    size_t centries;     ///< Number of entries in the completion queue.
+    size_t cmask;        ///< Bitmask for completion queue (centries - 1).
+} ioring_t;
 
 /**
- * @brief Dont wait for any submissions to complete.
- */
-#define WAIT_NONE 0x0
-
-/**
- * @brief Wait for at least one submission to complete.
- */
-#define WAIT_ONE 0x1
-
-/**
- * @brief System call to initialize the asynchronous ring.
+ * @brief System call to initialize the I/O ring.
  *
  * This system call will populate the given structure with the necessary pointers and metadata for the submission and
  * completion ring.
@@ -224,38 +211,38 @@ typedef struct ring
  * @param address Desired address to allocate the ring, or `NULL` to let the kernel choose.
  * @param sentries Number of entires to allocate for the submission queue, must be a power of two.
  * @param centries Number of entries to allocate for the completion queue, must be a power of two.
- * @return On success, the ring ID. On failure, `ERR` and `errno` is set.
+ * @return On success, the ID of the new I/O ring. On failure, `ERR` and `errno` is set.
  */
-ring_id_t setup(ring_t* ring, void* address, size_t sentries, size_t centries);
+io_id_t setup(ioring_t* ring, void* address, size_t sentries, size_t centries);
 
 /**
- * @brief System call to deinitialize the asynchronous ring.
+ * @brief System call to deinitialize the I/O ring.
  *
- * @param id The ID of the ring to deinitialize.
+ * @param id The ID of the I/O ring to teardown.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t teardown(ring_id_t id);
+uint64_t teardown(io_id_t id);
 
 /**
  * @brief System call to notify the kernel of new submission queue entries (SQEs).
  *
- * @param id The ID of the ring to notify.
+ * @param id The ID of the I/O ring to notify.
  * @param amount The number of SQEs that the kernel should process.
  * @param wait The minimum number of completion queue entries (CQEs) to wait for.
  * @return On success, the number of SQEs successfully processed. On failure, `ERR` and `errno` is set.
  */
-uint64_t enter(ring_id_t id, size_t amount, size_t wait);
+uint64_t enter(io_id_t id, size_t amount, size_t wait);
 
 /**
  * @brief Pushes a submission queue entry (SQE) to the submission queue.
  *
  * After pushing SQEs, `enter()` must be called to notify the kernel of the new entries.
  *
- * @param ring Pointer to the asynchronous ring structure.
+ * @param ring Pointer to the I/O ring structure.
  * @param sqe Pointer to the SQE to push.
  * @return `true` if the SQE was pushed, `false` if the submission queue is full.
  */
-static inline bool sqe_push(ring_t* ring, sqe_t* sqe)
+static inline bool sqe_push(ioring_t* ring, sqe_t* sqe)
 {
     uint32_t tail = atomic_load_explicit(&ring->ctrl->stail, memory_order_relaxed);
     uint32_t head = atomic_load_explicit(&ring->ctrl->shead, memory_order_acquire);
@@ -274,11 +261,11 @@ static inline bool sqe_push(ring_t* ring, sqe_t* sqe)
 /**
  * @brief Pops a completion queue entry (CQE) from the completion queue.
  *
- * @param ring Pointer to the asynchronous ring structure.
+ * @param ring Pointer to the I/O ring structure.
  * @param cqe Pointer to the CQE to pop.
  * @return `true` if a CQE was popped, `false` if the completion queue is empty.
  */
-static inline bool cqe_pop(ring_t* ring, cqe_t* cqe)
+static inline bool cqe_pop(ioring_t* ring, cqe_t* cqe)
 {
     uint32_t head = atomic_load_explicit(&ring->ctrl->chead, memory_order_relaxed);
     uint32_t tail = atomic_load_explicit(&ring->ctrl->ctail, memory_order_acquire);

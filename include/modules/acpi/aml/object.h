@@ -15,7 +15,7 @@ typedef struct acpi_device_cfg acpi_device_cfg_t;
 typedef struct aml_state aml_state_t;
 typedef struct aml_object aml_object_t;
 typedef struct aml_opregion aml_opregion_t;
-typedef struct aml_string aml_string_t;
+typedef struct aml_string aml_stioring_t;
 typedef struct aml_method aml_method_t;
 
 /**
@@ -384,7 +384,7 @@ typedef struct aml_processor
 
 /**
  * @brief Data for a string object.
- * @struct aml_string_t
+ * @struct aml_stioring_t
  */
 typedef struct aml_string
 {
@@ -392,7 +392,7 @@ typedef struct aml_string
     char* content;
     uint64_t length;
     char smallString[AML_SMALL_STRING_SIZE + 1]; ///< Used for small object optimization.
-} aml_string_t;
+} aml_stioring_t;
 
 /**
  * @brief Data for an alias object.
@@ -411,7 +411,7 @@ typedef struct aml_alias
 typedef struct aml_unresolved
 {
     AML_OBJECT_COMMON_HEADER;
-    aml_name_string_t nameString;             ///< The NameString representing the path to the target object.
+    aml_name_stioring_t nameString;             ///< The NameString representing the path to the target object.
     aml_object_t* from;                       ///< The object to start the search from when resolving the reference.
     aml_patch_up_resolve_callback_t callback; ///< The callback to call when a matching object is found.
 } aml_unresolved_t;
@@ -464,7 +464,7 @@ typedef struct aml_object
         aml_package_t package;
         aml_power_resource_t powerResource;
         aml_processor_t processor;
-        aml_string_t string;
+        aml_stioring_t string;
 
         aml_alias_t alias;
         aml_unresolved_t unresolved;
@@ -773,7 +773,7 @@ uint64_t aml_string_set(aml_object_t* object, const char* str);
  * @param newLength The new length of the string, not including the null terminator.
  * @return On success, the new length of the string. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_string_resize(aml_string_t* string, uint64_t newLength);
+uint64_t aml_string_resize(aml_stioring_t* string, uint64_t newLength);
 
 /**
  * @brief Set a object as a thermal zone.
@@ -815,7 +815,7 @@ aml_object_t* aml_alias_traverse(aml_alias_t* alias);
  * @param callback Pointer to a callback function that will be called when a matching object is found
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_unresolved_set(aml_object_t* object, const aml_name_string_t* nameString, aml_object_t* from,
+uint64_t aml_unresolved_set(aml_object_t* object, const aml_name_stioring_t* nameString, aml_object_t* from,
     aml_patch_up_resolve_callback_t callback);
 
 /**

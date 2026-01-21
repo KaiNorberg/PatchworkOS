@@ -235,7 +235,7 @@ aml_object_t* aml_namespace_find(aml_overlay_t* overlay, aml_object_t* start, ui
 }
 
 aml_object_t* aml_namespace_find_by_name_string(aml_overlay_t* overlay, aml_object_t* start,
-    const aml_name_string_t* nameString)
+    const aml_name_stioring_t* nameString)
 {
     if (nameString == NULL)
     {
@@ -447,7 +447,7 @@ uint64_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, a
 }
 
 uint64_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* start,
-    const aml_name_string_t* nameString, aml_object_t* object)
+    const aml_name_stioring_t* nameString, aml_object_t* object)
 {
     if (nameString == NULL || nameString->namePath.segmentCount == 0)
     {
@@ -470,7 +470,7 @@ uint64_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* 
         return aml_namespace_add_child(overlay, parent, targetName, object);
     }
 
-    aml_name_string_t parentNameString = *nameString;
+    aml_name_stioring_t parentNameString = *nameString;
     parentNameString.namePath.segmentCount--;
 
     aml_object_t* parent = aml_namespace_find_by_name_string(overlay, start, &parentNameString);

@@ -21,7 +21,7 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rcu.h>
-#include <kernel/sync/ring.h>
+#include <kernel/io/io.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -113,7 +113,7 @@ static void process_free(process_t* process)
     futex_ctx_deinit(&process->futexCtx);
     for (uint64_t i = 0; i < ARRAY_SIZE(process->rings); i++)
     {
-        ring_ctx_deinit(&process->rings[i]);
+        io_ctx_deinit(&process->rings[i]);
     }
     wait_queue_deinit(&process->dyingQueue);
     wait_queue_deinit(&process->suspendQueue);
@@ -156,7 +156,7 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
     perf_process_ctx_init(&process->perf);
     for (uint64_t i = 0; i < ARRAY_SIZE(process->rings); i++)
     {
-        ring_ctx_init(&process->rings[i]);
+        io_ctx_init(&process->rings[i]);
     }
     note_handler_init(&process->noteHandler);
     wait_queue_init(&process->suspendQueue);

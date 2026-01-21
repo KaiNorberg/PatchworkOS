@@ -1,7 +1,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/uring.h>
+#include <sys/ioring.h>
 
 #define SENTRIES 64
 #define CENTRIES 128
@@ -9,8 +9,8 @@
 int main()
 {
     printf("setting up ring test...\n");
-    ring_t ring;
-    ring_id_t id = setup(&ring, NULL, SENTRIES, CENTRIES);
+    ioring_t ring;
+    io_id_t id = isetup(&ring, NULL, SENTRIES, CENTRIES);
     if (id == ERR)
     {
         printf("failed to set up ring\n");
@@ -19,11 +19,11 @@ int main()
 
     memset(&ring.ctrl->regs, -1, sizeof(ring.ctrl->regs));
 
-    printf("pushing nop sqe to ring %llu...\n", id);
+    printf("pushing nop sqe to ring %llu...\n", ring.id);
     sqe_t sqe = SQE_CREATE(VERB_NOP, SQE_HARDLINK | (SQE_REG0 << SQE_SAVE), CLOCKS_PER_SEC, 0x1234);
     sqe_push(&ring, &sqe);
 
-    printf("pushing nop sqe to ring %llu...\n", id);
+    printf("pushing nop sqe to ring %llu...\n", ring.id);
     sqe = (sqe_t)SQE_CREATE(VERB_NOP, SQE_LINK, CLOCKS_PER_SEC, 0x5678);
     sqe_push(&ring, &sqe);
 

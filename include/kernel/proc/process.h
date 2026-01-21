@@ -14,7 +14,7 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/futex.h>
 #include <kernel/sync/rcu.h>
-#include <kernel/sync/ring.h>
+#include <kernel/io/io.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 
@@ -88,7 +88,7 @@ typedef struct process
     file_table_t fileTable;
     futex_ctx_t futexCtx;
     perf_process_ctx_t perf;
-    ring_ctx_t rings[CONFIG_MAX_RINGS];
+    io_ctx_t rings[CONFIG_MAX_RINGS];
     note_handler_t noteHandler;
     wait_queue_t suspendQueue;
     wait_queue_t dyingQueue;

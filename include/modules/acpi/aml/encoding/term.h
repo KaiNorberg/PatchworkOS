@@ -69,7 +69,7 @@ uint64_t aml_term_arg_read_integer(aml_term_list_ctx_t* ctx, aml_uint_t* out);
  * @param ctx The context of the TermList that this structure is part of.
  * @return On success, the string. On failure, `NULL` and `errno` is set.
  */
-aml_string_t* aml_term_arg_read_string(aml_term_list_ctx_t* ctx);
+aml_stioring_t* aml_term_arg_read_string(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Wrapper around `aml_term_arg_read()` that converts the result to a buffer.

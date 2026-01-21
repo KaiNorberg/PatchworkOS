@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/cpu/io.h>
+#include <kernel/cpu/port.h>
 #include <kernel/cpu/irq.h>
 #include <modules/acpi/aml/object.h>
 #include <modules/acpi/resources.h>
