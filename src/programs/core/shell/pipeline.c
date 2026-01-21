@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/argsplit.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/proc.h>
 
 uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd_t stdout, fd_t stderr)

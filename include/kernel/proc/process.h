@@ -5,6 +5,7 @@
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/namespace.h>
+#include <kernel/io/io.h>
 #include <kernel/ipc/note.h>
 #include <kernel/mem/space.h>
 #include <kernel/proc/env.h>
@@ -14,7 +15,6 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/futex.h>
 #include <kernel/sync/rcu.h>
-#include <kernel/io/io.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 

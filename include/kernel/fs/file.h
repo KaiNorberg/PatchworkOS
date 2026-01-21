@@ -6,7 +6,7 @@
 
 #include <stdatomic.h>
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/proc.h>
 
 typedef struct wait_queue wait_queue_t;

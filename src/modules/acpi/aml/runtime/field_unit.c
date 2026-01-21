@@ -1,15 +1,15 @@
+#include <kernel/cpu/port.h>
+#include <kernel/log/log.h>
 #include <kernel/mem/paging_types.h>
-#include <modules/acpi/aml/runtime/field_unit.h>
+#include <kernel/mem/vmm.h>
 #include <modules/acpi/aml/predefined.h>
 #include <modules/acpi/aml/runtime/access_type.h>
 #include <modules/acpi/aml/runtime/evaluate.h>
+#include <modules/acpi/aml/runtime/field_unit.h>
 #include <modules/acpi/aml/runtime/method.h>
 #include <modules/acpi/aml/state.h>
 #include <modules/acpi/aml/to_string.h>
 #include <modules/drivers/pci/config.h>
-#include <kernel/cpu/port.h>
-#include <kernel/log/log.h>
-#include <kernel/mem/vmm.h>
 
 #include <errno.h>
 #include <stdint.h>

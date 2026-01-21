@@ -8,7 +8,7 @@
 #include "surface.h"
 
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/proc.h>
 
 #if defined(__cplusplus)

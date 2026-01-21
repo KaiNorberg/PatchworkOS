@@ -3,7 +3,7 @@
 #include <kernel/fs/file.h>
 #include <kernel/utils/map.h>
 
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 /**

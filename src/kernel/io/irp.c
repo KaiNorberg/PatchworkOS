@@ -1,9 +1,9 @@
 #include <kernel/cpu/cpu.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
-#include <kernel/io/irp.h>
 #include <kernel/sync/lock.h>
 
 #include <kernel/cpu/percpu.h>
@@ -48,11 +48,11 @@ irp_pool_t* irp_pool_new(size_t size, void* ctx)
         irp->flags = 0;
         irp->timeout = CLOCKS_NEVER;
         irp->data = NULL;
-        for (size_t j = 0; j < IRP_ARGS_MAX; j++)
+        for (size_t j = 0; j < IRP_ARG_MAX; j++)
         {
-            irp->sqe._args[j] = 0;
+            irp->_args[j] = 0;
         }
-        irp->result = 0;
+        irp->result._raw = 0;
         irp->err = EOK;
         irp->index = i;
         irp->next = i < size - 1 ? i + 1 : POOL_IDX_MAX;
@@ -88,7 +88,7 @@ irp_t* irp_new(irp_pool_t* pool, sqe_t* sqe)
     irp->location = IRP_LOC_MAX;
     irp->next = POOL_IDX_MAX;
     irp->err = EINPROGRESS;
-    irp->result = 0;
+    irp->result._raw = 0;
     atomic_store_explicit(&irp->cancel, NULL, memory_order_relaxed);
 
     if (sqe == NULL)

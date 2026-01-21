@@ -7,7 +7,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 

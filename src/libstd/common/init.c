@@ -8,7 +8,7 @@
 #include "user/user.h"
 #endif
 
-#include <sys/io.h>
+#include <sys/fs.h>
 
 void _std_init(void)
 {

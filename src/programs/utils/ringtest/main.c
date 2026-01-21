@@ -10,7 +10,7 @@ int main()
 {
     printf("setting up ring test...\n");
     ioring_t ring;
-    io_id_t id = isetup(&ring, NULL, SENTRIES, CENTRIES);
+    io_id_t id = setup(&ring, NULL, SENTRIES, CENTRIES);
     if (id == ERR)
     {
         printf("failed to set up ring\n");

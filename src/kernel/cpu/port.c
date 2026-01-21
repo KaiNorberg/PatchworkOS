@@ -12,7 +12,8 @@
 static BITMAP_CREATE(ports, PORT_MAX + 1);
 static lock_t lock = LOCK_CREATE();
 
-uint64_t port_reserve(port_t* out, port_t minBase, port_t maxBase, uint64_t alignment, uint64_t length, const char* owner)
+uint64_t port_reserve(port_t* out, port_t minBase, port_t maxBase, uint64_t alignment, uint64_t length,
+    const char* owner)
 {
     UNUSED(owner);
 

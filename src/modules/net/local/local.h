@@ -3,7 +3,7 @@
 #include <kernel/sync/lock.h>
 
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 typedef struct local_listen local_listen_t;

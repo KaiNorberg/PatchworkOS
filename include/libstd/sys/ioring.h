@@ -17,19 +17,29 @@ extern "C"
 #include "_internal/clock_t.h"
 #include "_internal/errno_t.h"
 #include "_internal/fd_t.h"
+#include "_internal/ssize_t.h"
 
 /**
  * @addtogroup kernel_io
  * @{
  */
 
+typedef uint64_t whence_t;     ///< Seek origin type.
+#define IO_SET ((ssize_t) - 3) ///< Use the start of the file.
+#define IO_END ((ssize_t) - 2) ///< Use the end of the file.
+#define IO_CUR ((ssize_t) - 1) ///< Use the current file offset.
+
+typedef uint64_t events_t;   ///< Poll events type.
+#define IO_READABLE (1 << 0) ///< File descriptor is ready to read.
+#define IO_WRITABLE (1 << 1) ///< File descriptor is ready to write
+#define IO_ERROR (1 << 2)    ///< File descriptor caused an error.
+#define IO_CLOSED (1 << 3)   ///< File descriptor is closed.
+#define IO_INVALID (1 << 4)  ///< Invalid file descriptor.
+
 typedef uint32_t verb_t; ///< Verb type.
-
-#define VERB_NOP 0  ///< No-op verb.
-#define VERB_OPEN 1 ///< Open file verb.
-#define VERB_MAX 1  ///< Maximum verb.
-
-#define SQE_MAX_ARGS 5 ///< Maximum number of arguments for a ring operation.
+#define VERB_NOP 0       ///< No-op verb.
+#define VERB_OPEN 1      ///< Open file verb.
+#define VERB_MAX 1       ///< Maximum verb.
 
 typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
 
@@ -75,6 +85,8 @@ typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
  */
 #define SQE_HARDLINK (1 << (_SQE_FLAGS + 3))
 
+#define SQE_ARG_MAX 5 ///< Maximum number of arguments for a ring operation.
+
 /**
  * @brief Asynchronous submission queue entry (SQE).
  * @struct sqe_t
@@ -82,7 +94,7 @@ typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
  * @warning It is the responsibility of userspace to ensure that any pointers
  * passed to the kernel remain valid until the operation is complete.
  *
- * @see kernel_io for more information on the possible operations.
+ * @see kernel_io for more information for each possible verb.
  */
 typedef struct sqe
 {
@@ -91,17 +103,35 @@ typedef struct sqe
     clock_t timeout;   ///< Timeout for the operation, `CLOCKS_NEVER` for no timeout.
     void* data;        ///< Private data for the operation, will be returned in the completion entry.
     union {
+        uint64_t _args[SQE_ARG_MAX];
         struct
         {
-            uint64_t none;
-        } nop;
+            fd_t fd;
+        } handle;
         struct
         {
-            fd_t from;
+            fd_t dirfd;
             char* path;
-            size_t length;
-        } open;
-        uint64_t _args[SQE_MAX_ARGS];
+            size_t len;
+        } path;
+        struct
+        {
+            fd_t fd;
+            void* buffer;
+            size_t len;
+            ssize_t off;
+        } rw;
+        struct
+        {
+            fd_t fd;
+            ssize_t off;
+            whence_t whence;
+        } seek;
+        struct
+        {
+            fd_t fd;
+            events_t events;
+        } poll;
     };
 } sqe_t;
 
@@ -137,8 +167,10 @@ typedef struct ALIGNED(32) cqe
     errno_t error; ///< Error code, if not equal to `EOK` an error occurred.
     void* data;    ///< Private data from the submission entry.
     union {
-        uint64_t nop;
-        fd_t open;
+        fd_t fd;
+        size_t count;
+        void* ptr;
+        events_t events;
         uint64_t _result;
     };
 } cqe_t;

@@ -16,7 +16,7 @@
 
 #include <errno.h>
 #include <stdlib.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 static map_key_t mount_key(mount_id_t parentId, dentry_id_t mountpointId)

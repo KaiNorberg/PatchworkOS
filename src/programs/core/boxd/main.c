@@ -6,7 +6,7 @@
 #include <string.h>
 #include <sys/argsplit.h>
 #include <sys/defs.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/proc.h>
 
 /**

@@ -11,7 +11,7 @@
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
 
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>

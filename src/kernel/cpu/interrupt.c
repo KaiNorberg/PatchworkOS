@@ -7,6 +7,7 @@
 #include <kernel/cpu/regs.h>
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/drivers/perf.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/paging_types.h>
@@ -16,7 +17,6 @@
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
-#include <kernel/io/irp.h>
 
 #include <assert.h>
 

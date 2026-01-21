@@ -6,7 +6,7 @@
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 typedef struct namespace namespace_t;

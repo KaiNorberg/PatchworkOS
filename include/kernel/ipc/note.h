@@ -5,7 +5,7 @@
 #include <kernel/sync/lock.h>
 
 #include <kernel/utils/map.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/proc.h>
 
 typedef struct cpu cpu_t;

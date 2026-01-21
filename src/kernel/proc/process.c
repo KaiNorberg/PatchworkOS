@@ -7,6 +7,7 @@
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/io/io.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/cache.h>
@@ -21,7 +22,6 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rcu.h>
-#include <kernel/io/io.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -32,7 +32,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>

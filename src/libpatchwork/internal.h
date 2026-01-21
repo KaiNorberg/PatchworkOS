@@ -1,6 +1,6 @@
 #include <libpatchwork/patchwork.h>
 
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 #include <threads.h>
 

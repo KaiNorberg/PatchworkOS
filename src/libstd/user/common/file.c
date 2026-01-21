@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 
 static list_t files;
 static mtx_t filesMtx;

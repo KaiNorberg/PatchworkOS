@@ -15,7 +15,7 @@
 #include <kernel/utils/ref.h>
 
 #include <stdlib.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 static local_listen_t* local_socket_get_listen(local_socket_t* data)

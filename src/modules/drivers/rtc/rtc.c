@@ -2,9 +2,9 @@
 #include <kernel/log/log.h>
 #include <kernel/module/module.h>
 #include <kernel/sched/clock.h>
+#include <kernel/sync/lock.h>
 #include <modules/acpi/devices.h>
 #include <modules/acpi/tables.h>
-#include <kernel/sync/lock.h>
 
 #include <time.h>
 

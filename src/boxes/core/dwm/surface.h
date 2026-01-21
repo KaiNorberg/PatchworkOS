@@ -5,7 +5,7 @@
 #include <libpatchwork/point.h>
 #include <libpatchwork/rect.h>
 #include <libpatchwork/surface.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 typedef struct client client_t;

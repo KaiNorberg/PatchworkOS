@@ -14,7 +14,7 @@
 #include <kernel/utils/fifo.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 

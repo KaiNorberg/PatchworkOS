@@ -1,6 +1,8 @@
 #include <kernel/cpu/syscall.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/path.h>
+#include <kernel/io/io.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/mem_desc.h>
@@ -9,12 +11,10 @@
 #include <kernel/mem/vmm.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
-#include <kernel/io/irp.h>
-#include <kernel/io/io.h>
 
 #include <errno.h>
-#include <sys/list.h>
 #include <sys/ioring.h>
+#include <sys/list.h>
 #include <time.h>
 
 static inline uint64_t io_ctx_acquire(io_ctx_t* ctx)
@@ -211,7 +211,7 @@ static void io_ctx_complete(irp_t* irp, void* _ptr)
     sqe_flags_t reg = (irp->flags >> SQE_SAVE) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        atomic_store_explicit(&ring->ctrl->regs[reg], irp->result, memory_order_release);
+        atomic_store_explicit(&ring->ctrl->regs[reg], irp->result._raw, memory_order_release);
     }
 
     uint32_t tail = atomic_load_explicit(&ring->ctrl->ctail, memory_order_relaxed);
@@ -227,7 +227,7 @@ static void io_ctx_complete(irp_t* irp, void* _ptr)
     cqe->verb = irp->verb;
     cqe->error = irp->err;
     cqe->data = irp->data;
-    cqe->_result = irp->result;
+    cqe->_result = irp->result._raw;
 
     atomic_store_explicit(&ring->ctrl->ctail, tail + 1, memory_order_release);
     wait_unblock(&ctx->waitQueue, WAIT_ALL, EOK);
@@ -268,7 +268,7 @@ static void io_ctx_dispatch(irp_t* irp)
     io_ctx_t* ctx = irp_get_ctx(irp);
     ioring_t* ring = &ctx->ring;
 
-    for (uint64_t i = 0; i < SQE_MAX_ARGS; i++)
+    for (uint64_t i = 0; i < SQE_ARG_MAX; i++)
     {
         sqe_flags_t reg = (irp->flags >> (i * SQE_REG_SHIFT)) & SQE_REG_MASK;
         if (reg == SQE_REG_NONE)

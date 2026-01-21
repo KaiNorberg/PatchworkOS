@@ -5,7 +5,7 @@
 #include <kernel/utils/fifo.h>
 #include <kernel/utils/ref.h>
 
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 typedef struct local_listen local_listen_t;

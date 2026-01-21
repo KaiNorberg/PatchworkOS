@@ -1,11 +1,11 @@
 #pragma once
 
-#include <kernel/cpu/port.h>
 #include <kernel/cpu/irq.h>
+#include <kernel/cpu/port.h>
 #include <modules/acpi/aml/object.h>
 #include <modules/acpi/resources.h>
 
-#include <sys/io.h>
+#include <sys/fs.h>
 
 /**
  * @brief Device and Power Management

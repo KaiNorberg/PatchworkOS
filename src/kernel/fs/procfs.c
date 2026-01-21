@@ -24,7 +24,7 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 static uint64_t procfs_revalidate_hide(dentry_t* dentry)

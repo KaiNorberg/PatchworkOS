@@ -3,9 +3,9 @@
 #include <kernel/cpu/syscall.h>
 
 #include <stdint.h>
-#include <sys/io.h>
-#include <sys/proc.h>
+#include <sys/fs.h>
 #include <sys/ioring.h>
+#include <sys/proc.h>
 #include <time.h>
 
 #define _SYSCALL0(retType, num) \

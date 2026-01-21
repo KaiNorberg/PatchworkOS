@@ -8,7 +8,7 @@
 
 #include <assert.h>
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/kbd.h>
 
 #if defined(__cplusplus)

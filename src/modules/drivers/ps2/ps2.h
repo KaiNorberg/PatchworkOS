@@ -1,7 +1,7 @@
 #pragma once
 
-#include <kernel/cpu/port.h>
 #include <kernel/cpu/irq.h>
+#include <kernel/cpu/port.h>
 
 #include <stdbool.h>
 #include <stdint.h>

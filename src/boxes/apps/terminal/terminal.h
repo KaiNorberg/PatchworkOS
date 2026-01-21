@@ -4,7 +4,7 @@
 
 #include <libpatchwork/patchwork.h>
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/kbd.h>
 #include <threads.h>
 

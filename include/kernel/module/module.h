@@ -10,7 +10,7 @@
 #include <modules/acpi/devices.h>
 
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 typedef struct module module_t;

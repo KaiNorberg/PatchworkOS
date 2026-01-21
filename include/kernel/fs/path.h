@@ -6,7 +6,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 
 typedef struct path path_t;
 typedef struct mount mount_t;

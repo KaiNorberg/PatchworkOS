@@ -1,11 +1,11 @@
 #pragma once
 
 #include <kernel/config.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/mem_desc.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/sched/wait.h>
-#include <kernel/io/irp.h>
 #include <kernel/sync/lock.h>
 
 #include <string.h>
@@ -19,13 +19,18 @@
  * @todo The I/O ring system is primarily a design document for now as it remains very work in progress and subject to
  * change, currently being mostly unimplemented.
  *
- * The I/O ring provides the core of all interfaces in PatchworkOS, all implemented in an interface
- * inspired by `io_uring()` from Linux.
+ * The I/O ring provides the core of all interfaces in PatchworkOS, where user-space submits Submission Queue Entries
+ * (SQEs) and receives Completion Queue Entries (CQEs) from it, all within shared memory. Allowing for highly efficient
+ * and asynchronous I/O operations, especially since PatchworkOS is designed to be natively asynchronous.
+ *
+ * Each SQE specifies a verb (the operation to perform) and a set of up to `SQE_MAX_ARG` arguments, while each CQE
+ * returns the result of a previously submitted SQE.
  *
  * Synchronous operations are implemented on top of this API in userspace.
  *
  * @see libstd_sys_ioring for the userspace interface to the asynchronous ring.
- * @see [Wikipedia](https://en.wikipedia.org/wiki/Io_uring) for information about `io_uring`.
+ * @see [Wikipedia](https://en.wikipedia.org/wiki/Io_uring) for information about `io_uring`, the inspiration for this
+ * system.
  * @see [Manpages](https://man7.org/linux/man-pages/man7/io_uring.7.html) for more information about `io_uring`.
  *
  * ## Syncronization
@@ -37,16 +42,17 @@
  * the caller to ensure proper synchronization.
  *
  * @note The reason for this limitation is optimization for the common case, as the syncronization logic for multiple
- * producers would add significant overhead.
+ * producers would add significant overhead. Additionally, it is rather straight forward for user-space to protect the
+ * ring with a mutex should it need to.
  *
- * Regarding the I/O ring structure itself, the structure can only be torndown as long as nothing is using it and there are
- * no pending operations.
+ * Regarding the I/O ring structure itself, the structure can only be torndown as long as nothing is using it and there
+ * are no pending operations.
  *
  * ## Registers
  *
  * Operations performed on a I/O ring can load arguments from, and save their results to, seven 64-bit general purpose
- * registers. All registers are stored in the shared control area of the I/O ring structure (`ioring_ctrl_t`), as such they can be inspected and
- * modified by user space.
+ * registers. All registers are stored in the shared control area of the I/O ring structure (`ioring_ctrl_t`), as such
+ * they can be inspected and modified by user space.
  *
  * When a SQE is processed, the kernel will check six register specifiers in the SQE flags, one for each argument and
  * one for the result. Each specifier is stored as three bits, with a `SQE_REG_NONE` value indicating no-op and any
@@ -60,36 +66,91 @@
  *
  * @see `sqe_flags_t` for more information about register specifiers and their formatting.
  *
+ * ## Arguments
+ *
+ * Instead of manually indexing the `_args` array each SQE stores the arguments in a union with several "argument
+ * archetypes". Such that several verbs can use the same archetype for their arguments.
+ *
+ * @note The kernels internal I/O Request Packet structure contains the same archetypes but with the kernel equivalents
+ * of the arguments, for example, a `file_t*` instead of a `fd_t`.
+ *
+ * Included below is a list of all argument archetypes.
+ *
+ * ### `.handle`
+ *
+ * Used for verbs that act on a single existing file descriptor.
+ *
+ * **Arguments:**
+ * - `fd`: The file descriptor to act upon.
+ *
+ * ### `.path`
+ *
+ * Used for verbs that act on a filesystem path.
+ *
+ * **Arguments:**
+ * - `dirfd`: The directory file descriptor to resolve the path from, or `FD_CWD` to use the current working directory.
+ * - `path`: Pointer to the path string, null-termination is ignored.
+ * - `len`: Length of the path string.
+ *
+ * ### `.rw`
+ *
+ * Used for verbs used for data transfer.
+ *
+ * **Arguments:**
+ * - `fd`: The file descriptor to access.
+ * - `buffer`: Pointer to the buffer to read into or write from.
+ * - `len`: Length of the buffer.
+ * - `off`: Offset within the file to access, or `IO_CUR` to use the current file offset.
+ *
+ * ### `.seek`
+ *
+ * Used for verbs that seek within a file.
+ *
+ * **Arguments:**
+ * - `fd`: The file descriptor to seek within.
+ * - `off`: Offset to seek to.
+ * - `whence`: Origin for the seek operation, `IO_SET`, `IO_END` or `IO_CUR`.
+ *
+ * ### `.poll`
+ *
+ * Used for verbs that wait for events on a file descriptor.
+ *
+ * **Arguments:**
+ * - `fd`: The file descriptor to poll.
+ * - `events`: The events to wait for (e.g., `POLLIN`, `POLLOUT`).
+ *
+ * ## Results
+ *
+ * The result of a SQE is stored in its corresponding CQE using a single 64-bit value. For convenience, the result is
+ * stored as a union of various types. Note that this does not actually change the stored value, just how it is
+ * interpreted.
+ *
+ * If a SQE fails, the error code will be stored separately from the result and the result it self may be undefined.
+ * Some verbs may allow partial failures in which case the result may still be valid even if an error code is present.
+ *
+ * @todo Decide if partial failures are a good idea or not.
+ *
  * ## Errors
  *
- * The majority of errors are returned in the completion queue entries, certain errors (such as `ENOMEM`) may be
+ * The majority of errors are returned in the CQEs, certain errors (such as `ENOMEM`) may be
  * reported directly from the `enter()` call.
  *
- * Certain error values that may be returned in a completion queue entry include:
+ * Error values that may be returned in a CQE include:
  * - `EOK`: Success.
- * - `ECANCELED`: The operation was cancelled.
- * - `ETIMEDOUT`: The operation timed out.
- * - Other values may be returned depending on the operation.
+ * - `ECANCELED`: The verb was cancelled.
+ * - `ETIMEDOUT`: The verb timed out.
+ * - Other values may be returned depending on the verb.
  *
  * ## Verbs
  *
- * A verb specifies the operation to perform. Included is a list of currently defines verbs.
+ * Included below is a list of all currently implemented verbs.
  *
  * ### `VERB_NOP`
  *
- * Never completes, can be used to implement a sleep equivalent by specifying a timeout.
+ * A no-operation verb that does nothing but is usefull for implementing sleeping.
  *
  * @param None
- * @return Always `0`.
- *
- * ### `VERB_OPEN`
- *
- * Opens a file, including regular files, directories, symlinks, etc.
- *
- * @param from The file descriptor to open the file relative to, or `FD_NONE` to open from the current working
- * directory.
- * @param path Pointer to a null-terminated string containing the path to the file to open
- * @return The file descriptor of the opened file.
+ * @result None
  *
  * @{
  */
@@ -111,7 +172,7 @@ typedef enum
  */
 typedef struct io_ctx
 {
-    ioring_t ring;            ///< The kernel-side ring structure.
+    ioring_t ring;          ///< The kernel-side ring structure.
     irp_pool_t* irps;       ///< Pool of preallocated IRPs.
     mem_desc_pool_t* descs; ///< Pool of preallocated memory descriptors.
     void* userAddr;         ///< Userspace address of the ring.

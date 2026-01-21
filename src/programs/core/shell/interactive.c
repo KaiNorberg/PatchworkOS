@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/defs.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/kbd.h>
 #include <sys/proc.h>
 #include <threads.h>

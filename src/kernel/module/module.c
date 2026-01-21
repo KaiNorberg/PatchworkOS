@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/elf.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 static module_info_t fakeKernelModuleInfo = {

@@ -6,7 +6,7 @@
 
 #include <boot/boot_info.h>
 
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 /**

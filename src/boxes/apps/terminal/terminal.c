@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/defs.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/kbd.h>
 #include <sys/proc.h>
 #include <time.h>

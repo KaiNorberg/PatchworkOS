@@ -411,7 +411,7 @@ typedef struct aml_alias
 typedef struct aml_unresolved
 {
     AML_OBJECT_COMMON_HEADER;
-    aml_name_stioring_t nameString;             ///< The NameString representing the path to the target object.
+    aml_name_stioring_t nameString;           ///< The NameString representing the path to the target object.
     aml_object_t* from;                       ///< The object to start the search from when resolving the reference.
     aml_patch_up_resolve_callback_t callback; ///< The callback to call when a matching object is found.
 } aml_unresolved_t;

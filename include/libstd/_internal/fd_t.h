@@ -2,23 +2,17 @@
 #define _INTERNAL_FD_T_H 1
 
 /**
- * @brief A file descriptor.
- * @ingroup libstd
+ * @addtogroup libstd
  *
- * The `fd_t` type represents a file descriptor, which is a index into the processes files table. We also define the
- * special value `FD_NONE` which is equal to `UINT64_MAX` to represent no file descriptor.
- *
+ * @{
  */
-typedef __UINT64_TYPE__ fd_t;
 
-/**
- * @brief No file descriptor constant.
- * @ingroup libstd
- * @def FD_NONE
- *
- * The `FD_NONE` value represents no file descriptor.
- *
- */
-#define FD_NONE __UINT64_MAX__
+typedef __UINT64_TYPE__ fd_t; ///< File descriptor type.
+
+#define FD_NONE ((fd_t) - 1) ///< No file descriptor.
+
+#define FD_CWD ((fd_t) - 2) ///< Use the current working directory.)
+
+/** @} */
 
 #endif

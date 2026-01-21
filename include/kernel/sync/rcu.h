@@ -6,7 +6,7 @@
 #include <kernel/sched/sched.h>
 #include <stdatomic.h>
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 #include <sys/proc.h>
 

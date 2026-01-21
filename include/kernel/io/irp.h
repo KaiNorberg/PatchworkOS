@@ -7,11 +7,12 @@
 
 #include <assert.h>
 #include <stdatomic.h>
+#include <stddef.h>
 #include <stdlib.h>
-#include <sys/io.h>
+#include <sys/fs.h>
+#include <sys/ioring.h>
 #include <sys/list.h>
 #include <sys/math.h>
-#include <sys/ioring.h>
 #include <time.h>
 
 typedef struct irp irp_t;
@@ -248,7 +249,7 @@ typedef struct irp irp_t;
 
 #define IRP_LOC_MAX 8 ///< The maximum number of locations in a IRP.
 
-#define IRP_ARGS_MAX SQE_MAX_ARGS ///< The maximum number of arguments in an IRP.
+#define IRP_ARG_MAX SQE_ARG_MAX ///< The maximum number of arguments in an IRP.
 
 /**
  * @brief IRP completion callback type.
@@ -288,6 +289,8 @@ typedef struct irp_loc
  * @note We need the ability to store both the original arguments from a SQE and the parsed arguments. For example,
  * opening a `fd_t` into a `file_t*`. As such, to avoid using another cache line, the SQE is stored in a union with the
  * parsed arguments.
+ *
+ * @see kernel_io for more information for each possible verb.
  */
 typedef struct ALIGNED(64) irp
 {
@@ -305,17 +308,45 @@ typedef struct ALIGNED(64) irp
             };
             void* data; ///< Private data for the operation, will be returned in the completion entry.
             union {
+                uint64_t _args[IRP_ARG_MAX];
                 struct
                 {
-                    file_t* from;
+                    file_t* file;
+                } handle;
+                struct
+                {
+                    file_t* file;
                     mem_desc_t* path;
-                } open;
-                uint64_t _args[IRP_ARGS_MAX];
+                } path;
+                struct
+                {
+                    file_t* file;
+                    mem_desc_t* buffer;
+                    size_t len;
+                    ssize_t off;
+                } rw;
+                struct
+                {
+                    file_t* file;
+                    ssize_t off;
+                    whence_t whence;
+                } seek;
+                struct
+                {
+                    file_t* file;
+                    events_t events;
+                } poll;
             };
         };
         sqe_t sqe; ///< The original SQE for this IRP.
     };
-    uint64_t result;  ///< Result of the IRP.
+    union {
+        file_t* file;
+        size_t count;
+        void* ptr;
+        events_t events;
+        uint64_t _raw;
+    } result;
     errno_t err;      ///< The error code of the operation, also used to specify its current state.
     pool_idx_t index; ///< Index of the IRP in its pool.
     pool_idx_t next;  ///< Index of the next IRP in a chain or in the free list.

@@ -8,7 +8,7 @@
 #include <kernel/utils/ref.h>
 
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 typedef struct socket_family socket_family_t;

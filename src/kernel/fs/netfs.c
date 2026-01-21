@@ -13,7 +13,7 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sync/rwmutex.h>
 
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 static list_t families = LIST_CREATE(families);

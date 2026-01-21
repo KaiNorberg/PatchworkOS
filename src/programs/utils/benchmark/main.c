@@ -7,7 +7,7 @@
 #define GETPID_ITER 100000
 
 #ifdef _PATCHWORK_OS_
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/proc.h>
 
 static fd_t zeroDev;
