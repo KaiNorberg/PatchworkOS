@@ -5,7 +5,6 @@
 #include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <kernel/mem/mem_desc.h>
 #include <kernel/mem/paging_types.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
@@ -33,7 +32,7 @@ static inline void io_ctx_release(io_ctx_t* ctx)
     atomic_fetch_and(&ctx->flags, ~IO_CTX_BUSY);
 }
 
-static inline uint64_t io_ctx_map(io_ctx_t* ctx, space_t* space, io_id_t id, ioring_t* userRing, void* address,
+static inline uint64_t io_ctx_map(io_ctx_t* ctx, process_t* process, io_id_t id, ioring_t* userRing, void* address,
     size_t sentries, size_t centries)
 {
     ioring_t* kernelRing = &ctx->ring;
@@ -71,27 +70,18 @@ static inline uint64_t io_ctx_map(io_ctx_t* ctx, space_t* space, io_id_t id, ior
         return ERR;
     }
 
-    void* userAddr = vmm_map_pages(space, address, pages, pageAmount, PML_WRITE | PML_PRESENT | PML_USER, NULL, NULL);
+    void* userAddr =
+        vmm_map_pages(&process->space, address, pages, pageAmount, PML_WRITE | PML_PRESENT | PML_USER, NULL, NULL);
     if (userAddr == NULL)
     {
         vmm_unmap(NULL, kernelAddr, pageAmount * PAGE_SIZE);
         return ERR;
     }
 
-    irp_pool_t* irps = irp_pool_new(centries, ctx);
+    irp_pool_t* irps = irp_pool_new(centries, process, ctx);
     if (irps == NULL)
     {
-        vmm_unmap(space, userAddr, pageAmount * PAGE_SIZE);
-        vmm_unmap(NULL, kernelAddr, pageAmount * PAGE_SIZE);
-        return ERR;
-    }
-
-    mem_desc_pool_t* descs = mem_desc_pool_new(centries);
-    if (descs == NULL)
-    {
-        irp_pool_free(irps);
-        mem_desc_pool_free(descs);
-        vmm_unmap(space, userAddr, pageAmount * PAGE_SIZE);
+        vmm_unmap(&process->space, userAddr, pageAmount * PAGE_SIZE);
         vmm_unmap(NULL, kernelAddr, pageAmount * PAGE_SIZE);
         return ERR;
     }
@@ -125,11 +115,9 @@ static inline uint64_t io_ctx_map(io_ctx_t* ctx, space_t* space, io_id_t id, ior
     kernelRing->cmask = centries - 1;
 
     ctx->irps = irps;
-    ctx->descs = descs;
     ctx->userAddr = userAddr;
     ctx->kernelAddr = kernelAddr;
     ctx->pageAmount = pageAmount;
-    ctx->space = space;
 
     atomic_fetch_or(&ctx->flags, IO_CTX_MAPPED);
     return 0;
@@ -137,14 +125,11 @@ static inline uint64_t io_ctx_map(io_ctx_t* ctx, space_t* space, io_id_t id, ior
 
 static inline uint64_t io_ctx_unmap(io_ctx_t* ctx)
 {
+    vmm_unmap(&ctx->irps->process->space, ctx->userAddr, ctx->pageAmount * PAGE_SIZE);
+    vmm_unmap(NULL, ctx->kernelAddr, ctx->pageAmount * PAGE_SIZE);
+
     irp_pool_free(ctx->irps);
     ctx->irps = NULL;
-
-    mem_desc_pool_free(ctx->descs);
-    ctx->descs = NULL;
-
-    vmm_unmap(ctx->space, ctx->userAddr, ctx->pageAmount * PAGE_SIZE);
-    vmm_unmap(NULL, ctx->kernelAddr, ctx->pageAmount * PAGE_SIZE);
 
     atomic_fetch_and(&ctx->flags, ~IO_CTX_MAPPED);
     return 0;
@@ -170,7 +155,6 @@ void io_ctx_init(io_ctx_t* ctx)
     ctx->userAddr = NULL;
     ctx->kernelAddr = NULL;
     ctx->pageAmount = 0;
-    ctx->space = NULL;
     wait_queue_init(&ctx->waitQueue);
     atomic_init(&ctx->flags, IO_CTX_NONE);
 }
@@ -255,12 +239,6 @@ static void io_ctx_complete(irp_t* irp, void* _ptr)
     }
 
     irp_free(irp);
-
-    if (atomic_load(&ctx->irps->pool.used) == 0)
-    {
-        UNREF(ctx->process);
-        ctx->process = NULL;
-    }
 }
 
 static void io_ctx_dispatch(irp_t* irp)
@@ -291,11 +269,6 @@ typedef struct
 
 static uint64_t io_ctx_sqe_pop(io_ctx_t* ctx, io_ctx_notify_ctx_t* notify)
 {
-    if (atomic_load(&ctx->irps->pool.used) == 1)
-    {
-        ctx->process = REF(process_current());
-    }
-
     ioring_t* ring = &ctx->ring;
     uint32_t stail = atomic_load_explicit(&ring->ctrl->stail, memory_order_acquire);
     uint32_t shead = atomic_load_explicit(&ring->ctrl->shead, memory_order_relaxed);
@@ -400,7 +373,6 @@ SYSCALL_DEFINE(SYS_SETUP, io_id_t, ioring_t* userRing, void* address, size_t sen
     }
 
     process_t* process = process_current();
-    space_t* space = &process->space;
 
     io_ctx_t* ctx = NULL;
     io_id_t id = 0;
@@ -420,7 +392,7 @@ SYSCALL_DEFINE(SYS_SETUP, io_id_t, ioring_t* userRing, void* address, size_t sen
         return ERR;
     }
 
-    if (io_ctx_map(ctx, space, id, userRing, address, sentries, centries) == ERR)
+    if (io_ctx_map(ctx, process, id, userRing, address, sentries, centries) == ERR)
     {
         io_ctx_release(ctx);
         return ERR;

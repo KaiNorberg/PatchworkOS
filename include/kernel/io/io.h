@@ -3,7 +3,7 @@
 #include <kernel/config.h>
 #include <kernel/io/irp.h>
 #include <kernel/log/panic.h>
-#include <kernel/mem/mem_desc.h>
+#include <kernel/mem/mdl.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
@@ -94,7 +94,7 @@
  *
  * ### `.rw`
  *
- * Used for verbs used for data transfer.
+ * Used for verbs that transfer data to or from a file.
  *
  * **Arguments:**
  * - `fd`: The file descriptor to access.
@@ -147,11 +147,20 @@
  *
  * ### `VERB_NOP`
  *
- * A no-operation verb that does nothing but is usefull for implementing sleeping.
+ * A no-operation verb that does nothing but is useful for implementing sleeping.
  *
- * @param None
- * @result None
+ * **Arguments:** None.
  *
+ * **Result:** None.
+ *
+ * ### `VERB_READ`
+ *
+ * Reads data from a file descriptor.
+ *
+ * **Arguments:** `.rw`
+
+ * **Result:** The number of bytes read.
+ * 
  * @{
  */
 
@@ -174,13 +183,10 @@ typedef struct io_ctx
 {
     ioring_t ring;          ///< The kernel-side ring structure.
     irp_pool_t* irps;       ///< Pool of preallocated IRPs.
-    mem_desc_pool_t* descs; ///< Pool of preallocated memory descriptors.
     void* userAddr;         ///< Userspace address of the ring.
     void* kernelAddr;       ///< Kernel address of the ring.
     size_t pageAmount;      ///< Amount of pages mapped for the ring.
-    space_t* space;         ///< Pointer to the owning address space.
     wait_queue_t waitQueue; ///< Wait queue for completions.
-    process_t* process;     ///< Holds a reference to the owner process while there are pending requests.
     _Atomic(io_ctx_flags_t) flags;
 } io_ctx_t;
 

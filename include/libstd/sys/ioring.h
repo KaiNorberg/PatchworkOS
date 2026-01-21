@@ -38,8 +38,10 @@ typedef uint64_t events_t;   ///< Poll events type.
 
 typedef uint32_t verb_t; ///< Verb type.
 #define VERB_NOP 0       ///< No-op verb.
-#define VERB_OPEN 1      ///< Open file verb.
-#define VERB_MAX 1       ///< Maximum verb.
+#define VERB_READ 1      ///< Read verb.
+// #define VERB_WRITE 2     ///< Write verb.
+// #define VERB_POLL 3      ///< Poll verb.
+#define VERB_MAX 2 ///< The maximum number of verbs.
 
 typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
 
@@ -161,7 +163,7 @@ static_assert(sizeof(sqe_t) == 64, "sqe_t is not 64 bytes");
  *
  * @see kernel_io for more information on the possible operations.
  */
-typedef struct ALIGNED(32) cqe
+typedef struct cqe
 {
     verb_t verb;   ///< Verb specifying the action that was performed.
     errno_t error; ///< Error code, if not equal to `EOK` an error occurred.
@@ -173,6 +175,7 @@ typedef struct ALIGNED(32) cqe
         events_t events;
         uint64_t _result;
     };
+    uint64_t _padding[1];
 } cqe_t;
 
 #ifdef static_assert

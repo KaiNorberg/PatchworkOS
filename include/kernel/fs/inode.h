@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kernel/fs/path.h>
+#include <kernel/io/verb.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/sync/rcu.h>
 #include <kernel/utils/map.h>
@@ -62,6 +63,7 @@ typedef struct inode
     superblock_t* superblock;
     const inode_ops_t* ops;
     const file_ops_t* fileOps;
+    const verb_table_t* verbs;
     rcu_entry_t rcu;
     mutex_t mutex;
 } inode_t;

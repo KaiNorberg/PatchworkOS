@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kernel/fs/path.h>
-#include <kernel/mem/mem_desc.h>
+#include <kernel/mem/mdl.h>
 #include <kernel/mem/pool.h>
 #include <kernel/sync/lock.h>
 
@@ -153,10 +153,11 @@ typedef struct irp irp_t;
  * irp_t* irp = irp_new(pool, NULL);
  *
  * // Set our desired verb and arguments.
- * irp->verb = VERB_OPEN;
- * irp->open.from = from;
- * irp->open.path = path;
- * irp->open.length = strlen(path);
+ * irp->verb = VERB_READ;
+ * irp->rw.file = file;
+ * irp->rw.buffer = buffer;
+ * irp->rw.len = len;
+ * irp->rw.off = off;
  *
  * // Our completion to receive the result.
  * irp_push(irp, my_completion, NULL);
@@ -247,7 +248,7 @@ typedef struct irp irp_t;
  * @{
  */
 
-#define IRP_LOC_MAX 8 ///< The maximum number of locations in a IRP.
+#define IRP_LOC_MAX 5 ///< The maximum number of locations in a IRP.
 
 #define IRP_ARG_MAX SQE_ARG_MAX ///< The maximum number of arguments in an IRP.
 
@@ -286,9 +287,18 @@ typedef struct irp_loc
  * @brief I/O Request Packet structure.
  * @struct irp_t
  *
+ * The I/O Request Packet structure is designed to preallocate as much as possible such that in the common case there is
+ * no need for any allocation beyond the allocation of the IRP itself. This does require careful consideration of
+ * padding, alignment and field sizes to keep it within a reasonable size.
+ *
+ * @warning The `sqe` field is only valid if the IRP is a user IRP and only until the IRP is entered into the kernel via
+ * `irp_dispatch()`.
+ *
  * @note We need the ability to store both the original arguments from a SQE and the parsed arguments. For example,
  * opening a `fd_t` into a `file_t*`. As such, to avoid using another cache line, the SQE is stored in a union with the
  * parsed arguments.
+ *
+ * @todo Consider raising `IRP_LOC_MAX` to 9 if needed, it will add another cache line tho.
  *
  * @see kernel_io for more information for each possible verb.
  */
@@ -316,12 +326,12 @@ typedef struct ALIGNED(64) irp
                 struct
                 {
                     file_t* file;
-                    mem_desc_t* path;
+                    mdl_t* path;
                 } path;
                 struct
                 {
                     file_t* file;
-                    mem_desc_t* buffer;
+                    mdl_t* buffer;
                     size_t len;
                     ssize_t off;
                 } rw;
@@ -347,12 +357,12 @@ typedef struct ALIGNED(64) irp
         events_t events;
         uint64_t _raw;
     } result;
-    errno_t err;      ///< The error code of the operation, also used to specify its current state.
-    pool_idx_t index; ///< Index of the IRP in its pool.
-    pool_idx_t next;  ///< Index of the next IRP in a chain or in the free list.
-    cpu_id_t cpu;     ///< The CPU whose timeout queue the IRP is in.
-    uint8_t location; ///< The index of the current location in the stack.
-    uint8_t _reserved2[5];
+    mdl_t mdl;                   ///< A preallocated memory descriptor list for use by the IRP.
+    pool_idx_t index;             ///< Index of the IRP in its pool.
+    pool_idx_t next;              ///< Index of the next IRP in a chain or in the free list.
+    cpu_id_t cpu;                 ///< The CPU whose timeout queue the IRP is in.
+    uint8_t err;                  ///< The error code of the operation, also used to specify its current state.
+    uint8_t location;             ///< The index of the current location in the stack.
     irp_loc_t stack[IRP_LOC_MAX]; ///< The location stack, grows downwards.
 } irp_t;
 
@@ -362,6 +372,8 @@ static_assert(offsetof(irp_t, timeout) == offsetof(irp_t, sqe.timeout), "timeout
 static_assert(offsetof(irp_t, data) == offsetof(irp_t, sqe.data), "data offset mismatch");
 static_assert(offsetof(irp_t, _args) == offsetof(irp_t, sqe._args), "args offset mismatch");
 
+static_assert(sizeof(irp_t) == 256, "irp_t is not 256 bytes");
+
 /**
  * @brief Request pool structure.
  * @struct irp_pool
@@ -369,6 +381,7 @@ static_assert(offsetof(irp_t, _args) == offsetof(irp_t, sqe._args), "args offset
 typedef struct irp_pool
 {
     void* ctx;
+    process_t* process; ///< Will only hold a reference if there is at least one allocated IRP.
     pool_t pool;
     irp_t irps[];
 } irp_pool_t;
@@ -377,10 +390,11 @@ typedef struct irp_pool
  * @brief Allocate a new IRP pool.
  *
  * @param size The amount of requests to allocate.
+ * @param process The process that will own the IRPs allocated from this pool.
  * @param ctx The context of the IRP pool.
  * @return On success, a pointer to the new IRP pool. On failure, `NULL` and `errno` is set.
  */
-irp_pool_t* irp_pool_new(size_t size, void* ctx);
+irp_pool_t* irp_pool_new(size_t size, process_t* process, void* ctx);
 
 /**
  * @brief Free a IRP pool.
@@ -388,17 +402,6 @@ irp_pool_t* irp_pool_new(size_t size, void* ctx);
  * @param pool Pointer to the IRP pool to free.
  */
 void irp_pool_free(irp_pool_t* pool);
-
-/**
- * @brief Retrieve the IRP pool that an IRP was allocated from.
- *
- * @param irp Pointer to the IRP.
- * @return Pointer to the IRP pool.
- */
-static inline irp_pool_t* irp_pool_get(irp_t* irp)
-{
-    return CONTAINER_OF(irp, irp_pool_t, irps[irp->index]);
-}
 
 /**
  * @brief Add an IRP to a per-CPU timeout queue with the timeout specified in the IRP.
@@ -422,7 +425,7 @@ void irp_timeouts_check(void);
 /**
  * @brief Allocate a new IRP from a pool.
  *
- * The pool that the IRP was allocated from, and its context, can be retrieved using the `irp_pool_get()`
+ * The pool that the IRP was allocated from, and its context, can be retrieved using the `irp_get_pool()`
  * function.
  *
  * @note If a SQE is provided then the IRP will be considered a user IRP, causing the `irp_handler_t::enter` and
@@ -443,6 +446,28 @@ irp_t* irp_new(irp_pool_t* pool, sqe_t* sqe);
  * @param irp Pointer to the IRP to free.
  */
 void irp_free(irp_t* irp);
+
+/**
+ * @brief Retrieve the IRP pool that an IRP was allocated from.
+ *
+ * @param irp Pointer to the IRP.
+ * @return Pointer to the IRP pool.
+ */
+static inline irp_pool_t* irp_get_pool(irp_t* irp)
+{
+    return CONTAINER_OF(irp, irp_pool_t, irps[irp->index]);
+}
+
+/**
+ * @brief Retrieve the process that owns an IRP.
+ *
+ * @param irp Pointer to the IRP.
+ * @return Pointer to the process.
+ */
+static inline process_t* irp_get_process(irp_t* irp)
+{
+    return irp_get_pool(irp)->process;
+}
 
 /**
  * @brief Set the cancellation callback for an IRP.
@@ -483,7 +508,7 @@ static inline bool irp_claim(irp_t* irp)
  */
 static inline void* irp_get_ctx(irp_t* irp)
 {
-    return irp_pool_get(irp)->ctx;
+    return irp_get_pool(irp)->ctx;
 }
 
 /**
@@ -494,7 +519,7 @@ static inline void* irp_get_ctx(irp_t* irp)
  */
 static inline irp_t* irp_next(irp_t* irp)
 {
-    irp_pool_t* pool = irp_pool_get(irp);
+    irp_pool_t* pool = irp_get_pool(irp);
     if (irp->next == POOL_IDX_MAX)
     {
         return NULL;
@@ -573,12 +598,36 @@ static inline void irp_complete(irp_t* irp)
 }
 
 /**
+ * @brief Helper to set an error code and complete the IRP.
+ * 
+ * @param irp Pointer to the IRP.
+ * @param err The error code to set.
+ */
+static inline void irp_error(irp_t* irp, uint8_t err)
+{
+    irp->err = err;
+    irp_complete(irp);
+}
+
+/**
  * @brief Attempt to cancel an IRP.
  *
  * @param irp Pointer to the IRP to cancel.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t irp_cancel(irp_t* irp);
+
+/**
+ * @brief Execute an IRP synchronously.
+ *
+ * This function dispatches the IRP and blocks the current thread until the operation is complete.
+ *
+ * @warning This function should only be used when the alternative of using asynchronous operations is simply not worth
+ * the complexity. For example, while loading modules.
+ *
+ * @param irp Pointer to the IRP to execute.
+ */
+void irp_run(irp_t* irp);
 
 /**
  * @brief Dispatch an IRP to the appropriate handler.
@@ -604,8 +653,6 @@ void irp_table_init(void);
 typedef struct
 {
     verb_t verb;
-    void (*enter)(irp_t* irp);   ///< Will be called on user IRPs to process arguments.
-    void (*leave)(irp_t* irp);   ///< Will be called on user IRPs to cleanup resources.
     void (*handler)(irp_t* irp); ///< The handler function for the verb.
 } irp_handler_t;
 
@@ -622,28 +669,16 @@ extern irp_handler_t _irp_table_start[];
 extern irp_handler_t _irp_table_end[];
 
 /**
- * @brief Macro to register a IRP handler to a verb using the `._irp_table` section.
+ * @brief Macro to define an IRP handler.
  *
- * @param _verb The verb to register the handler for.
- * @param _enter The enter function.
- * @param _leave The leave function.
- * @param _handler The handler function.
+ * @param _verb The verb to define the handler for.
  */
-#define IRP_REGISTER(_verb, _enter, _leave, _handler) \
+#define IRP_DEFINE(_verb) \
+    static void __irp_handler_##_verb(irp_t* irp); \
     static irp_handler_t __irp_##_verb __attribute__((section("._irp_table"), used)) = { \
         .verb = (_verb), \
-        .enter = (_enter), \
-        .leave = (_leave), \
-        .handler = (_handler), \
-    };
-
-/**
- * @brief Function to asynchronously do nothing.
- *
- * Usefull as a sleep or delay operation.
- *
- * @param irp Pointer to a IRP to do nothing with.
- */
-void nop_do(irp_t* irp);
+        .handler = __irp_handler_##_verb, \
+    }; \
+    static void __irp_handler_##_verb(irp_t* irp)
 
 /** @} */

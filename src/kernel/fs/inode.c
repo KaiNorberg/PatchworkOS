@@ -76,6 +76,7 @@ inode_t* inode_new(superblock_t* superblock, ino_t number, itype_t type, const i
     inode->superblock = REF(superblock);
     inode->ops = ops;
     inode->fileOps = fileOps;
+    inode->verbs = NULL;
     return inode;
 }
 

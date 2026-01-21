@@ -24,6 +24,9 @@
  * The Virtual File System (VFS) provides a single unified interface for any and all filesystems, including virtual
  * filesystems used to expose kernel resources to user space.
  *
+ * @todo Most of this is going to be removed when the new IRP system is fully implemented, but for now its usefull to
+ * keep it around during the refactor.
+ *
  * @{
  */
 
