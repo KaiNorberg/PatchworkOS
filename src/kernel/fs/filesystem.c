@@ -4,7 +4,7 @@
 #include <kernel/fs/cwd.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file_table.h>
-#include <kernel/fs/inode.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/fs/key.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
@@ -44,7 +44,7 @@ static map_key_t filesystem_key(const char* name)
 
 static size_t superblock_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    superblock_t* sb = file->inode->data;
+    superblock_t* sb = file->vnode->data;
     assert(sb != NULL);
 
     char info[MAX_PATH];
@@ -58,27 +58,27 @@ static size_t superblock_read(file_t* file, void* buffer, size_t count, size_t* 
     return BUFFER_READ(buffer, count, offset, info, (size_t)length);
 }
 
-static void superblock_cleanup(inode_t* inode)
+static void superblock_cleanup(vnode_t* vnode)
 {
-    superblock_t* sb = inode->data;
+    superblock_t* sb = vnode->data;
     if (sb == NULL)
     {
         return;
     }
 
     UNREF(sb);
-    inode->data = NULL;
+    vnode->data = NULL;
 }
 
 static file_ops_t sbFileOps = {
     .read = superblock_read,
 };
 
-static inode_ops_t sbInodeOps = {
+static vnode_ops_t sbVnodeOps = {
     .cleanup = superblock_cleanup,
 };
 
-static uint64_t filesystem_lookup(inode_t* dir, dentry_t* dentry)
+static uint64_t filesystem_lookup(vnode_t* dir, dentry_t* dentry)
 {
     filesystem_t* fs = dir->data;
     assert(fs != NULL);
@@ -99,14 +99,14 @@ static uint64_t filesystem_lookup(inode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        inode_t* inode =
-            inode_new(dentry->superblock, ino_gen(dir->number, dentry->name), INODE_REGULAR, NULL, &sbFileOps);
-        if (inode == NULL)
+        vnode_t* vnode =
+            vnode_new(dentry->superblock, VREG, NULL, &sbFileOps);
+        if (vnode == NULL)
         {
             return ERR;
         }
-        inode->data = REF(sb);
-        dentry_make_positive(dentry, inode);
+        vnode->data = REF(sb);
+        dentry_make_positive(dentry, vnode);
         return 0;
     }
 
@@ -120,7 +120,7 @@ static uint64_t filesystem_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         return 0;
     }
 
-    filesystem_t* fs = dentry->inode->data;
+    filesystem_t* fs = dentry->vnode->data;
     assert(fs != NULL);
 
     RWLOCK_READ_SCOPE(&fs->lock);
@@ -136,7 +136,7 @@ static uint64_t filesystem_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         char name[MAX_NAME];
         snprintf(name, MAX_NAME, "%llu", sb->id);
 
-        if (!ctx->emit(ctx, name, ino_gen(dentry->inode->number, name), INODE_REGULAR))
+        if (!ctx->emit(ctx, name, VREG))
         {
             return 0;
         }
@@ -145,7 +145,7 @@ static uint64_t filesystem_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     return 0;
 }
 
-static inode_ops_t fsInodeOps = {
+static vnode_ops_t fsVnodeOps = {
     .lookup = filesystem_lookup,
 };
 
@@ -153,8 +153,10 @@ static dentry_ops_t fsDentryOps = {
     .iterate = filesystem_iterate,
 };
 
-static uint64_t filesystem_dir_lookup(inode_t* dir, dentry_t* dentry)
+static uint64_t filesystem_dir_lookup(vnode_t* dir, dentry_t* dentry)
 {
+    UNUSED(dir);
+
     RWLOCK_READ_SCOPE(&lock);
 
     map_key_t key = filesystem_key(dentry->name);
@@ -164,16 +166,16 @@ static uint64_t filesystem_dir_lookup(inode_t* dir, dentry_t* dentry)
         return 0;
     }
 
-    inode_t* inode = inode_new(dentry->superblock, ino_gen(dir->number, fs->name), INODE_DIR, &fsInodeOps, NULL);
-    if (inode == NULL)
+    vnode_t* vnode = vnode_new(dentry->superblock, VDIR, &fsVnodeOps, NULL);
+    if (vnode == NULL)
     {
         return ERR;
     }
-    UNREF_DEFER(inode);
-    inode->data = fs;
+    UNREF_DEFER(vnode);
+    vnode->data = fs;
 
     dentry->ops = &fsDentryOps;
-    dentry_make_positive(dentry, inode);
+    dentry_make_positive(dentry, vnode);
     return 0;
 }
 
@@ -194,7 +196,7 @@ static uint64_t filesystem_dir_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, fs->name, ino_gen(dentry->inode->number, fs->name), INODE_DIR))
+        if (!ctx->emit(ctx, fs->name, VDIR))
         {
             return 0;
         }
@@ -203,7 +205,7 @@ static uint64_t filesystem_dir_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     return 0;
 }
 
-static inode_ops_t dirInodeOps = {
+static vnode_ops_t dirVnodeOps = {
     .lookup = filesystem_dir_lookup,
 };
 
@@ -221,7 +223,7 @@ void filesystem_expose(void)
         return;
     }
 
-    dir = sysfs_dir_new(NULL, "fs", &dirInodeOps, NULL);
+    dir = sysfs_dir_new(NULL, "fs", &dirVnodeOps, NULL);
     if (dir == NULL)
     {
         panic(NULL, "failed to expose filesystem sysfs directory");
@@ -320,7 +322,7 @@ filesystem_t* filesystem_get_by_path(const char* path, process_t* process)
         return NULL;
     }
 
-    return target.dentry->inode->data;
+    return target.dentry->vnode->data;
 }
 
 bool options_next(const char** iter, char* buffer, size_t size, char** key, char** value)

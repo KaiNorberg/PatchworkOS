@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/fs/inode.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/fs/path.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/sync/rcu.h>
@@ -15,7 +15,7 @@
 
 typedef struct dentry dentry_t;
 typedef struct dentry_ops dentry_ops_t;
-typedef struct inode inode_t;
+typedef struct vnode vnode_t;
 typedef struct superblock superblock_t;
 typedef struct dir_ctx dir_ctx_t;
 
@@ -25,7 +25,7 @@ typedef struct dir_ctx dir_ctx_t;
  * @ingroup kernel_fs
  *
  * A dentry represents the actual name in the filesystem hierarchy. It can be either positive, meaning it has an
- * associated inode, or negative, meaning it does not have an associated inode.
+ * associated vnode, or negative, meaning it does not have an associated vnode.
  *
  * ## Mountpoints and Root Dentries
  *
@@ -64,31 +64,31 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is positive, false if it is negative.
  */
-#define DENTRY_IS_POSITIVE(dentry) ((dentry)->inode != NULL)
+#define DENTRY_IS_POSITIVE(dentry) ((dentry)->vnode != NULL)
 
 /**
- * @brief Check if the inode associated with a dentry is a regular file.
+ * @brief Check if the vnode associated with a dentry is a regular file.
  *
  * @param dentry The dentry to check.
  * @return true if the dentry is a regular file, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_REGULAR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->inode->type == INODE_REGULAR)
+#define DENTRY_IS_REGULAR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->type == VREG)
 
 /**
- * @brief Check if the inode associated with a dentry is a directory.
+ * @brief Check if the vnode associated with a dentry is a directory.
  *
  * @param dentry The dentry to check.
  * @return true if the dentry is a directory, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_DIR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->inode->type == INODE_DIR)
+#define DENTRY_IS_DIR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->type == VDIR)
 
 /**
- * @brief Check if the inode associated with a dentry is a symbolic link.
+ * @brief Check if the vnode associated with a dentry is a symbolic link.
  *
  * @param dentry The dentry to check.
  * @return true if the dentry is a symbolic link, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_SYMLINK(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->inode->type == INODE_SYMLINK)
+#define DENTRY_IS_SYMLINK(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->type == VSYMLINK)
 
 /**
  * @brief Directory context used to iterate over directory entries.
@@ -104,11 +104,11 @@ typedef struct dir_ctx
      *
      * @param ctx The directory context.
      * @param name The name of the entry.
-     * @param number The inode number of the entry.
-     * @param type The inode type of the entry.
+     * @param number The vnode number of the entry.
+     * @param type The vnode type of the entry.
      * @return `true` to continue iterating, `false` to stop.
      */
-    bool (*emit)(dir_ctx_t* ctx, const char* name, ino_t number, itype_t type);
+    bool (*emit)(dir_ctx_t* ctx, const char* name, vtype_t type);
     size_t pos;   ///< The current position in the directory, can be used to skip entries.
     void* data;   ///< Private data that the filesystem can use to conveniently pass data.
     size_t index; ///< An index that the filesystem can use for its own purposes.
@@ -148,7 +148,7 @@ typedef struct dentry_ops
  * @brief Directory entry structure.
  * @struct dentry_t
  *
- * A dentry structure is protected by the mutex of its inode. Note that since move and rename are not supported in favor
+ * A dentry structure is protected by the mutex of its vnode. Note that since move and rename are not supported in favor
  * of link and remove, the parent of a dentry will never change after creation which allows some optimizations.
  */
 typedef struct dentry
@@ -156,7 +156,7 @@ typedef struct dentry
     ref_t ref;
     dentry_id_t id;
     char name[MAX_NAME]; ///< The name of the dentry, immutable after creation.
-    inode_t* inode;      ///< Will be `NULL` if the dentry is negative, once positive it will never be modified.
+    vnode_t* vnode;      ///< Will be `NULL` if the dentry is negative, once positive it will never be modified.
     dentry_t* parent;    ///< The parent dentry, will be itself if this is the root dentry, immutable after creation.
     list_entry_t siblingEntry;
     list_t children;
@@ -224,14 +224,14 @@ dentry_t* dentry_rcu_get(const dentry_t* parent, const char* name, size_t length
 dentry_t* dentry_lookup(dentry_t* parent, const char* name, size_t length);
 
 /**
- * @brief Make a dentry positive by associating it with an inode.
+ * @brief Make a dentry positive by associating it with an vnode.
  *
- * This function is expected to be protected by the parent inode's mutex.
+ * This function is expected to be protected by the parent vnode's mutex.
  *
  * @param dentry The dentry to make positive, or `NULL` for no-op.
- * @param inode The inode to associate with the dentry, or `NULL` for no-op.
+ * @param vnode The vnode to associate with the dentry, or `NULL` for no-op.
  */
-void dentry_make_positive(dentry_t* dentry, inode_t* inode);
+void dentry_make_positive(dentry_t* dentry, vnode_t* vnode);
 
 /**
  * @brief The amount of special entries "." and ".." that `dentry_iterate_dots()` emits.

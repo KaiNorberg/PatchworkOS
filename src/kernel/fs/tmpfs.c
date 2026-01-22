@@ -4,7 +4,7 @@
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/filesystem.h>
-#include <kernel/fs/inode.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
@@ -27,7 +27,7 @@
 
 static bool initialized = false;
 
-static inode_t* tmpfs_inode_new(superblock_t* superblock, itype_t type, void* buffer, uint64_t size);
+static vnode_t* tmpfs_vnode_new(superblock_t* superblock, vtype_t type, void* buffer, uint64_t size);
 
 static void tmpfs_dentry_add(dentry_t* dentry)
 {
@@ -53,34 +53,34 @@ static void tmpfs_dentry_remove(dentry_t* dentry)
 
 static size_t tmpfs_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    MUTEX_SCOPE(&file->inode->mutex);
+    MUTEX_SCOPE(&file->vnode->mutex);
 
-    if (file->inode->data == NULL)
+    if (file->vnode->data == NULL)
     {
         return 0;
     }
 
-    return BUFFER_READ(buffer, count, offset, file->inode->data, file->inode->size);
+    return BUFFER_READ(buffer, count, offset, file->vnode->data, file->vnode->size);
 }
 
 static size_t tmpfs_write(file_t* file, const void* buffer, size_t count, size_t* offset)
 {
-    MUTEX_SCOPE(&file->inode->mutex);
+    MUTEX_SCOPE(&file->vnode->mutex);
 
     size_t requiredSize = *offset + count;
-    if (requiredSize > file->inode->size)
+    if (requiredSize > file->vnode->size)
     {
-        void* newData = realloc(file->inode->data, requiredSize);
+        void* newData = realloc(file->vnode->data, requiredSize);
         if (newData == NULL)
         {
             return ERR;
         }
-        memset(newData + file->inode->size, 0, requiredSize - file->inode->size);
-        file->inode->data = newData;
-        file->inode->size = requiredSize;
+        memset(newData + file->vnode->size, 0, requiredSize - file->vnode->size);
+        file->vnode->data = newData;
+        file->vnode->size = requiredSize;
     }
 
-    return BUFFER_WRITE(buffer, count, offset, file->inode->data, file->inode->size);
+    return BUFFER_WRITE(buffer, count, offset, file->vnode->data, file->vnode->size);
 }
 
 static file_ops_t fileOps = {
@@ -89,86 +89,86 @@ static file_ops_t fileOps = {
     .seek = file_generic_seek,
 };
 
-static uint64_t tmpfs_create(inode_t* dir, dentry_t* target, mode_t mode)
+static uint64_t tmpfs_create(vnode_t* dir, dentry_t* target, mode_t mode)
 {
     MUTEX_SCOPE(&dir->mutex);
 
-    inode_t* inode = tmpfs_inode_new(dir->superblock, mode & MODE_DIRECTORY ? INODE_DIR : INODE_REGULAR, NULL, 0);
-    if (inode == NULL)
+    vnode_t* vnode = tmpfs_vnode_new(dir->superblock, mode & MODE_DIRECTORY ? VDIR : VREG, NULL, 0);
+    if (vnode == NULL)
     {
         return ERR;
     }
-    UNREF_DEFER(inode);
+    UNREF_DEFER(vnode);
 
-    dentry_make_positive(target, inode);
+    dentry_make_positive(target, vnode);
     tmpfs_dentry_add(target);
 
     return 0;
 }
 
-static void tmpfs_truncate(inode_t* inode)
+static void tmpfs_truncate(vnode_t* vnode)
 {
-    MUTEX_SCOPE(&inode->mutex);
+    MUTEX_SCOPE(&vnode->mutex);
 
-    if (inode->data != NULL)
+    if (vnode->data != NULL)
     {
-        free(inode->data);
-        inode->data = NULL;
+        free(vnode->data);
+        vnode->data = NULL;
     }
-    inode->size = 0;
+    vnode->size = 0;
 }
 
-static uint64_t tmpfs_link(inode_t* dir, dentry_t* old, dentry_t* target)
+static uint64_t tmpfs_link(vnode_t* dir, dentry_t* old, dentry_t* target)
 {
     MUTEX_SCOPE(&dir->mutex);
 
-    dentry_make_positive(target, old->inode);
+    dentry_make_positive(target, old->vnode);
     tmpfs_dentry_add(target);
 
     return 0;
 }
 
-static uint64_t tmpfs_readlink(inode_t* inode, char* buffer, uint64_t count)
+static uint64_t tmpfs_readlink(vnode_t* vnode, char* buffer, uint64_t count)
 {
-    MUTEX_SCOPE(&inode->mutex);
+    MUTEX_SCOPE(&vnode->mutex);
 
-    if (inode->data == NULL)
+    if (vnode->data == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    uint64_t copySize = MIN(count, inode->size);
-    memcpy(buffer, inode->data, copySize);
+    uint64_t copySize = MIN(count, vnode->size);
+    memcpy(buffer, vnode->data, copySize);
     return copySize;
 }
 
-static uint64_t tmpfs_symlink(inode_t* dir, dentry_t* target, const char* dest)
+static uint64_t tmpfs_symlink(vnode_t* dir, dentry_t* target, const char* dest)
 {
     MUTEX_SCOPE(&dir->mutex);
 
-    inode_t* inode = tmpfs_inode_new(dir->superblock, INODE_SYMLINK, (void*)dest, strlen(dest));
-    if (inode == NULL)
+    vnode_t* vnode = tmpfs_vnode_new(dir->superblock, VSYMLINK, (void*)dest, strlen(dest));
+    if (vnode == NULL)
     {
         return ERR;
     }
-    UNREF_DEFER(inode);
+    UNREF_DEFER(vnode);
 
-    dentry_make_positive(target, inode);
+    dentry_make_positive(target, vnode);
     tmpfs_dentry_add(target);
 
     return 0;
 }
 
-static uint64_t tmpfs_remove(inode_t* dir, dentry_t* target)
+static uint64_t tmpfs_remove(vnode_t* dir, dentry_t* target)
 {
     MUTEX_SCOPE(&dir->mutex);
 
-    if (target->inode->type == INODE_REGULAR || target->inode->type == INODE_SYMLINK)
+    if (target->vnode->type == VREG || target->vnode->type == VSYMLINK)
     {
         tmpfs_dentry_remove(target);
     }
-    else if (target->inode->type == INODE_DIR)
+    else if (target->vnode->type == VDIR)
     {
         if (!list_is_empty(&target->children))
         {
@@ -182,24 +182,24 @@ static uint64_t tmpfs_remove(inode_t* dir, dentry_t* target)
     return 0;
 }
 
-static void tmpfs_inode_cleanup(inode_t* inode)
+static void tmpfs_vnode_cleanup(vnode_t* vnode)
 {
-    if (inode->data != NULL)
+    if (vnode->data != NULL)
     {
-        free(inode->data);
-        inode->data = NULL;
-        inode->size = 0;
+        free(vnode->data);
+        vnode->data = NULL;
+        vnode->size = 0;
     }
 }
 
-static inode_ops_t inodeOps = {
+static vnode_ops_t vnodeOps = {
     .create = tmpfs_create,
     .truncate = tmpfs_truncate,
     .link = tmpfs_link,
     .readlink = tmpfs_readlink,
     .symlink = tmpfs_symlink,
     .remove = tmpfs_remove,
-    .cleanup = tmpfs_inode_cleanup,
+    .cleanup = tmpfs_vnode_cleanup,
 };
 
 static dentry_ops_t dentryOps = {
@@ -228,14 +228,14 @@ static dentry_t* tmpfs_load_file(superblock_t* superblock, dentry_t* parent, con
 
     tmpfs_dentry_add(dentry);
 
-    inode_t* inode = tmpfs_inode_new(superblock, INODE_REGULAR, in->data, in->size);
-    if (inode == NULL)
+    vnode_t* vnode = tmpfs_vnode_new(superblock, VREG, in->data, in->size);
+    if (vnode == NULL)
     {
-        panic(NULL, "Failed to create tmpfs file inode");
+        panic(NULL, "Failed to create tmpfs file vnode");
     }
-    UNREF_DEFER(inode);
+    UNREF_DEFER(vnode);
 
-    dentry_make_positive(dentry, inode);
+    dentry_make_positive(dentry, vnode);
 
     return REF(dentry);
 }
@@ -251,15 +251,15 @@ static dentry_t* tmpfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     }
     UNREF_DEFER(dentry);
 
-    inode_t* inode = tmpfs_inode_new(superblock, INODE_DIR, NULL, 0);
-    if (inode == NULL)
+    vnode_t* vnode = tmpfs_vnode_new(superblock, VDIR, NULL, 0);
+    if (vnode == NULL)
     {
-        panic(NULL, "Failed to create tmpfs inode");
+        panic(NULL, "Failed to create tmpfs vnode");
     }
-    UNREF_DEFER(inode);
+    UNREF_DEFER(vnode);
 
     tmpfs_dentry_add(dentry);
-    dentry_make_positive(dentry, inode);
+    dentry_make_positive(dentry, vnode);
 
     boot_file_t* file;
     LIST_FOR_EACH(file, &in->files, entry)
@@ -327,48 +327,46 @@ static dentry_t* tmpfs_mount(filesystem_t* fs, const char* options, void* data)
     }
     UNREF_DEFER(dentry);
 
-    inode_t* inode = tmpfs_inode_new(superblock, INODE_DIR, NULL, 0);
-    if (inode == NULL)
+    vnode_t* vnode = tmpfs_vnode_new(superblock, VDIR, NULL, 0);
+    if (vnode == NULL)
     {
         return NULL;
     }
-    UNREF_DEFER(inode);
+    UNREF_DEFER(vnode);
 
     tmpfs_dentry_add(dentry);
-    dentry_make_positive(dentry, inode);
+    dentry_make_positive(dentry, vnode);
 
     superblock->root = dentry;
     return REF(superblock->root);
 }
 
-static inode_t* tmpfs_inode_new(superblock_t* superblock, itype_t type, void* buffer, uint64_t size)
+static vnode_t* tmpfs_vnode_new(superblock_t* superblock, vtype_t type, void* buffer, uint64_t size)
 {
-    inode_t* inode = inode_new(superblock, vfs_id_get(), type, &inodeOps, &fileOps);
-    if (inode == NULL)
+    vnode_t* vnode = vnode_new(superblock, type, &vnodeOps, &fileOps);
+    if (vnode == NULL)
     {
         return NULL;
     }
-    UNREF_DEFER(inode);
-
-    inode->blocks = 0;
+    UNREF_DEFER(vnode);
 
     if (buffer != NULL)
     {
-        inode->data = malloc(size);
-        if (inode->data == NULL)
+        vnode->data = malloc(size);
+        if (vnode->data == NULL)
         {
             return NULL;
         }
-        memcpy(inode->data, buffer, size);
-        inode->size = size;
+        memcpy(vnode->data, buffer, size);
+        vnode->size = size;
     }
     else
     {
-        inode->data = NULL;
-        inode->size = 0;
+        vnode->data = NULL;
+        vnode->size = 0;
     }
 
-    return REF(inode);
+    return REF(vnode);
 }
 
 static filesystem_t tmpfs = {

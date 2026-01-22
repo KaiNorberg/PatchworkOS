@@ -335,29 +335,41 @@ uint64_t poll(pollfd_t* fds, uint64_t amount, clock_t timeout);
 poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);
 
 /**
- * @brief Inode type enum.
- * @enum itype_t
+ * @brief Vnode type enum.
+ * @enum vtype_t
  */
 typedef enum
 {
-    INODE_REGULAR, ///< Is a regular file.
-    INODE_DIR,     ///< Is a directory.
-    INODE_SYMLINK, ///< Is a symbolic link.
-} itype_t;
-
-/**
- * @brief A inode number that uniquely identifies the inode within its filesystem.
- *
- * When combined with a superblock ID, this can uniquely identify an inode within the entire system.
- */
-typedef uint64_t ino_t;
+    VREG, ///< Is a regular file.
+    VDIR,     ///< Is a directory.
+    VSYMLINK, ///< Is a symbolic link.
+} vtype_t;
 
 /**
  * @brief A suberblock identifier that uniquely identifies a superblock within the system.
  *
- * When combined with a inode number, this can uniquely identify an inode within the entire system.
+ * When combined with a vnode number, this can uniquely identify an vnode within the entire system.
  */
 typedef uint64_t sbid_t;
+
+/**
+ * @brief Vnode attributes structure.
+ * @struct vattr_t
+ */
+typedef struct vattr
+{
+    vtype_t type;
+    uint64_t nlink;
+    uint64_t id;
+    uint64_t size;
+    uint64_t blocks;
+    uint64_t blockSize;
+    uint64_t rdev;
+    time_t atime;
+    time_t mtime;
+    time_t ctime;
+    uint8_t padding[64];  ///< Padding to leave space for future expansion.
+} vattr_t;
 
 /**
  * @brief Stat type.
@@ -366,17 +378,17 @@ typedef uint64_t sbid_t;
 typedef struct
 {
     sbid_t sbid;          ///< The superblock ID of the filesystem containing the entry.
-    ino_t number;         ///< The number of the entries inode.
-    itype_t type;         ///< The type of the entries inode.
+    uint64_t number;         ///< The number of the entries vnode.
+    vtype_t type;         ///< The type of the entries vnode.
     uint64_t size;        ///< The size of the file that is visible outside the filesystem.
     uint64_t blocks;      ///< The amount of blocks used on disk to store the file.
     uint64_t blockSize;   ///< The preferred block size of the filesystem.
     uint64_t maxFileSize; ///< The maximum size of a file on this filesystem.
-    uint64_t linkAmount;  ///< The amount of times the inode appears in dentries.
-    time_t accessTime;    ///< Unix time stamp for the last inode access.
+    uint64_t linkAmount;  ///< The amount of times the vnode appears in dentries.
+    time_t accessTime;    ///< Unix time stamp for the last vnode access.
     time_t modifyTime;    ///< Unix time stamp for last file content alteration.
     time_t changeTime;    ///< Unix time stamp for the last file metadata alteration.
-    time_t createTime;    ///< Unix time stamp for the creation of the inode.
+    time_t createTime;    ///< Unix time stamp for the creation of the vnode.
     char name[MAX_PATH];  ///< The name of the entry, not the full filepath. Includes the flags of the paths mount.
     uint8_t padding[64];  ///< Padding to leave space for future expansion.
 } stat_t;
@@ -442,8 +454,7 @@ typedef enum
  */
 typedef struct
 {
-    ino_t number;
-    itype_t type;
+    vtype_t type;
     dirent_flags_t flags;
     char path[MAX_PATH]; ///< The relative path of the entry.
     char mode[MAX_PATH]; ///< The flags of the paths mount.

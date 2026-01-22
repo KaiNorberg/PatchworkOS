@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kernel/fs/dentry.h>
-#include <kernel/fs/inode.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/fs/superblock.h>
 
 #include <boot/boot_info.h>

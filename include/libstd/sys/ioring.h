@@ -39,9 +39,9 @@ typedef uint64_t events_t;   ///< Poll events type.
 typedef uint32_t verb_t; ///< Verb type.
 #define VERB_NOP 0       ///< No-op verb.
 #define VERB_READ 1      ///< Read verb.
-// #define VERB_WRITE 2     ///< Write verb.
-// #define VERB_POLL 3      ///< Poll verb.
-#define VERB_MAX 2 ///< The maximum number of verbs.
+#define VERB_WRITE 2     ///< Write verb.
+#define VERB_POLL 3      ///< Poll verb.
+#define VERB_MAX 4 ///< The maximum number of verbs.
 
 typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
 
@@ -106,6 +106,7 @@ typedef struct sqe
     {
         uint64_t arg1;
         void* buffer;
+        events_t events;
     };
     union
     {

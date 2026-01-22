@@ -130,12 +130,12 @@ static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* data)
 
     superblock->data = ninep;
 
-    inode_t* inode = inode_new(superblock, 0, INODE_DIR, NULL, NULL);
-    if (inode == NULL)
+    vnode_t* vnode = vnode_new(superblock, VDIR, NULL, NULL);
+    if (vnode == NULL)
     {
         return NULL;
     }
-    UNREF_DEFER(inode);
+    UNREF_DEFER(vnode);
 
     dentry_t* dentry = dentry_new(superblock, NULL, NULL);
     if (dentry == NULL)
@@ -143,7 +143,7 @@ static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* data)
         return NULL;
     }
 
-    dentry_make_positive(dentry, inode);
+    dentry_make_positive(dentry, vnode);
 
     superblock->root = dentry;
     return superblock->root;

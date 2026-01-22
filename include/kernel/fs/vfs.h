@@ -3,7 +3,7 @@
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
-#include <kernel/fs/inode.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
@@ -162,13 +162,13 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
 /**
  * @brief Read the path in a symbolic link.
  *
- * @param symlink The symbolic link inode.
+ * @param symlink The symbolic link vnode.
  * @param buffer The buffer to store the path in.
  * @param size The size of the buffer.
  * @param process The process performing the readlink.
  * @return On success, the number of bytes read. On failure, `ERR` and `errno` is set.
  */
-size_t vfs_readlink(inode_t* symlink, char* buffer, size_t size);
+size_t vfs_readlink(vnode_t* symlink, char* buffer, size_t size);
 
 /**
  * @brief Create a symbolic link.

@@ -323,7 +323,8 @@ typedef struct ALIGNED(64) irp
             union
             {
                 uint64_t arg1;
-                mdl_t* buffer;
+                mdl_t* buffer;        
+                events_t events;
             };
             union
             {

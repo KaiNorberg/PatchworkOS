@@ -72,7 +72,7 @@ typedef struct socket_file
 
 static uint64_t netfs_data_open(file_t* file)
 {
-    socket_t* sock = file->inode->data;
+    socket_t* sock = file->vnode->data;
     assert(sock != NULL);
 
     file->data = REF(sock);
@@ -160,7 +160,7 @@ static file_ops_t dataOps = {
 
 static uint64_t netfs_accept_open(file_t* file)
 {
-    socket_t* sock = file->inode->data;
+    socket_t* sock = file->vnode->data;
     assert(sock != NULL);
 
     if (sock->family->accept == NULL)
@@ -203,7 +203,7 @@ static uint64_t netfs_ctl_bind(file_t* file, uint64_t argc, const char** argv)
 {
     UNUSED(argc);
 
-    socket_t* sock = file->inode->data;
+    socket_t* sock = file->vnode->data;
     assert(sock != NULL);
 
     if (sock->family->bind == NULL)
@@ -252,7 +252,7 @@ static uint64_t netfs_ctl_listen(file_t* file, uint64_t argc, const char** argv)
         }
     }
 
-    socket_t* sock = file->inode->data;
+    socket_t* sock = file->vnode->data;
     assert(sock != NULL);
 
     if (sock->family->listen == NULL)
@@ -282,7 +282,7 @@ static uint64_t netfs_ctl_connect(file_t* file, uint64_t argc, const char** argv
 {
     UNUSED(argc);
 
-    socket_t* sock = file->inode->data;
+    socket_t* sock = file->vnode->data;
     assert(sock != NULL);
 
     if (sock->family->connect == NULL)
@@ -325,7 +325,7 @@ static socket_file_t socketFiles[] = {
     {.name = "ctl", .fileOps = &ctlOps},
 };
 
-static uint64_t netfs_socket_lookup(inode_t* dir, dentry_t* dentry)
+static uint64_t netfs_socket_lookup(vnode_t* dir, dentry_t* dentry)
 {
     for (size_t i = 0; i < ARRAY_SIZE(socketFiles); i++)
     {
@@ -334,25 +334,25 @@ static uint64_t netfs_socket_lookup(inode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        inode_t* inode = inode_new(dir->superblock, ino_gen(dir->number, socketFiles[i].name), INODE_REGULAR, NULL,
+        vnode_t* vnode = vnode_new(dir->superblock, VREG, NULL,
             socketFiles[i].fileOps);
-        if (inode == NULL)
+        if (vnode == NULL)
         {
             return ERR;
         }
-        UNREF_DEFER(inode);
-        inode->data = dir->data; // No reference
+        UNREF_DEFER(vnode);
+        vnode->data = dir->data; // No reference
 
-        dentry_make_positive(dentry, inode);
+        dentry_make_positive(dentry, vnode);
         return 0;
     }
 
     return 0;
 }
 
-static void netfs_socket_cleanup(inode_t* inode)
+static void netfs_socket_cleanup(vnode_t* vnode)
 {
-    socket_t* socket = (socket_t*)inode->data;
+    socket_t* socket = (socket_t*)vnode->data;
     if (socket == NULL)
     {
         return;
@@ -375,7 +375,7 @@ static uint64_t netfs_socket_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, socketFiles[i].name, ino_gen(dentry->inode->number, socketFiles[i].name), INODE_REGULAR))
+        if (!ctx->emit(ctx, socketFiles[i].name, VREG))
         {
             return 0;
         }
@@ -384,7 +384,7 @@ static uint64_t netfs_socket_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     return 0;
 }
 
-static inode_ops_t socketInodeOps = {
+static vnode_ops_t socketVnodeOps = {
     .lookup = netfs_socket_lookup,
     .cleanup = netfs_socket_cleanup,
 };
@@ -414,9 +414,9 @@ static void socket_weak_ptr_callback(void* arg)
 
 static uint64_t netfs_factory_open(file_t* file)
 {
-    netfs_family_file_ctx_t* ctx = file->inode->data;
+    netfs_family_file_ctx_t* ctx = file->vnode->data;
     assert(ctx != NULL);
-    dentry_t* root = file->inode->superblock->root;
+    dentry_t* root = file->vnode->superblock->root;
     assert(root != NULL);
 
     socket_t* socket = socket_new(ctx->family, ctx->fileInfo->type);
@@ -473,7 +473,7 @@ static file_ops_t factoryFileOps = {
 
 static size_t netfs_addrs_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    netfs_family_file_ctx_t* ctx = file->inode->data;
+    netfs_family_file_ctx_t* ctx = file->vnode->data;
     assert(ctx != NULL);
 
     RWMUTEX_READ_SCOPE(&ctx->family->mutex);
@@ -525,23 +525,23 @@ static netfs_family_file_t familyFiles[] = {
     {.name = "addrs", .type = 0, .fileOps = &addrsFileOps},
 };
 
-static void netfs_file_cleanup(inode_t* inode)
+static void netfs_file_cleanup(vnode_t* vnode)
 {
-    netfs_family_file_ctx_t* ctx = inode->data;
+    netfs_family_file_ctx_t* ctx = vnode->data;
     if (ctx == NULL)
     {
         return;
     }
 
     free(ctx);
-    inode->data = NULL;
+    vnode->data = NULL;
 }
 
-static inode_ops_t familyFileInodeOps = {
+static vnode_ops_t familyFileVnodeOps = {
     .cleanup = netfs_file_cleanup,
 };
 
-static uint64_t netfs_family_lookup(inode_t* dir, dentry_t* dentry)
+static uint64_t netfs_family_lookup(vnode_t* dir, dentry_t* dentry)
 {
     netfs_family_t* family = dir->data;
     assert(family != NULL);
@@ -553,13 +553,13 @@ static uint64_t netfs_family_lookup(inode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        inode_t* inode = inode_new(dir->superblock, ino_gen(dir->number, familyFiles[i].name), INODE_REGULAR,
-            &familyFileInodeOps, familyFiles[i].fileOps);
-        if (inode == NULL)
+        vnode_t* vnode = vnode_new(dir->superblock, VREG,
+            &familyFileVnodeOps, familyFiles[i].fileOps);
+        if (vnode == NULL)
         {
             return ERR;
         }
-        UNREF_DEFER(inode);
+        UNREF_DEFER(vnode);
 
         netfs_family_file_ctx_t* ctx = malloc(sizeof(netfs_family_file_ctx_t));
         if (ctx == NULL)
@@ -568,9 +568,9 @@ static uint64_t netfs_family_lookup(inode_t* dir, dentry_t* dentry)
         }
         ctx->family = family;
         ctx->fileInfo = &familyFiles[i];
-        inode->data = ctx;
+        vnode->data = ctx;
 
-        dentry_make_positive(dentry, inode);
+        dentry_make_positive(dentry, vnode);
         return 0;
     }
 
@@ -608,17 +608,17 @@ static uint64_t netfs_family_lookup(inode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        inode_t* inode = inode_new(dir->superblock, ino_gen(dir->number, socket->id), INODE_DIR, &socketInodeOps, NULL);
-        if (inode == NULL)
+        vnode_t* vnode = vnode_new(dir->superblock, VDIR, &socketVnodeOps, NULL);
+        if (vnode == NULL)
         {
             return ERR;
         }
-        UNREF_DEFER(inode);
-        inode->data = REF(socket);
+        UNREF_DEFER(vnode);
+        vnode->data = REF(socket);
 
         dentry->ops = &socketDentryOps;
 
-        dentry_make_positive(dentry, inode);
+        dentry_make_positive(dentry, vnode);
         return 0;
     }
 
@@ -627,7 +627,7 @@ static uint64_t netfs_family_lookup(inode_t* dir, dentry_t* dentry)
 
 static uint64_t netfs_family_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 {
-    netfs_family_t* family = dentry->inode->data;
+    netfs_family_t* family = dentry->vnode->data;
     assert(family != NULL);
 
     if (!dentry_iterate_dots(dentry, ctx))
@@ -642,7 +642,7 @@ static uint64_t netfs_family_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, familyFiles[i].name, ino_gen(dentry->inode->number, familyFiles[i].name), INODE_REGULAR))
+        if (!ctx->emit(ctx, familyFiles[i].name, VREG))
         {
             return 0;
         }
@@ -682,7 +682,7 @@ static uint64_t netfs_family_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, socket->id, ino_gen(dentry->inode->number, socket->id), INODE_DIR))
+        if (!ctx->emit(ctx, socket->id, VDIR))
         {
             return 0;
         }
@@ -691,7 +691,7 @@ static uint64_t netfs_family_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     return 0;
 }
 
-static inode_ops_t familyInodeOps = {
+static vnode_ops_t familyVnodeOps = {
     .lookup = netfs_family_lookup,
 };
 
@@ -699,7 +699,7 @@ static dentry_ops_t familyDentryOps = {
     .iterate = netfs_family_iterate,
 };
 
-static uint64_t netfs_lookup(inode_t* dir, dentry_t* dentry)
+static uint64_t netfs_lookup(vnode_t* dir, dentry_t* dentry)
 {
     RWMUTEX_READ_SCOPE(&familiesMutex);
 
@@ -711,18 +711,18 @@ static uint64_t netfs_lookup(inode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        inode_t* inode =
-            inode_new(dir->superblock, ino_gen(dir->number, family->name), INODE_DIR, &familyInodeOps, NULL);
-        if (inode == NULL)
+        vnode_t* vnode =
+            vnode_new(dir->superblock, VDIR, &familyVnodeOps, NULL);
+        if (vnode == NULL)
         {
             return ERR;
         }
-        UNREF_DEFER(inode);
-        inode->data = family;
+        UNREF_DEFER(vnode);
+        vnode->data = family;
 
         dentry->ops = &familyDentryOps;
 
-        dentry_make_positive(dentry, inode);
+        dentry_make_positive(dentry, vnode);
         return 0;
     }
 
@@ -746,7 +746,7 @@ static uint64_t netfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, family->name, ino_gen(dentry->inode->number, family->name), INODE_DIR))
+        if (!ctx->emit(ctx, family->name, VDIR))
         {
             return 0;
         }
@@ -755,7 +755,7 @@ static uint64_t netfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     return 0;
 }
 
-static inode_ops_t netInodeOps = {
+static vnode_ops_t netVnodeOps = {
     .lookup = netfs_lookup,
 };
 
@@ -780,12 +780,12 @@ static dentry_t* netfs_mount(filesystem_t* fs, const char* options, void* data)
     }
     UNREF_DEFER(superblock);
 
-    inode_t* inode = inode_new(superblock, 0, INODE_DIR, &netInodeOps, NULL);
-    if (inode == NULL)
+    vnode_t* vnode = vnode_new(superblock, VDIR, &netVnodeOps, NULL);
+    if (vnode == NULL)
     {
         return NULL;
     }
-    UNREF_DEFER(inode);
+    UNREF_DEFER(vnode);
 
     dentry_t* dentry = dentry_new(superblock, NULL, NULL);
     if (dentry == NULL)
@@ -794,7 +794,7 @@ static dentry_t* netfs_mount(filesystem_t* fs, const char* options, void* data)
     }
     dentry->ops = &netDentryOps;
 
-    dentry_make_positive(dentry, inode);
+    dentry_make_positive(dentry, vnode);
 
     superblock->root = dentry;
     return superblock->root;

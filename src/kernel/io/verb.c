@@ -66,17 +66,30 @@ static void verb_dispatch_file(irp_t* irp)
     file_t* file = irp->file;
     assert(file != NULL);
 
+    switch (irp->verb)
+    {
+    case VERB_READ:
+        if (!(file->mode & MODE_READ))
+        {
+            irp_error(irp, EBADF);
+            return;
+        }
+    break;
+    default:
+        break;
+    }
+
     if (verb_invoke(irp, file->verbs))
     {
         return;
     }
 
-    if (verb_invoke(irp, file->inode->verbs))
+    if (verb_invoke(irp, file->vnode->verbs))
     {
         return;
     }
 
-    if (verb_invoke(irp, file->inode->superblock->verbs))
+    if (verb_invoke(irp, file->vnode->superblock->verbs))
     {
         return;
     }

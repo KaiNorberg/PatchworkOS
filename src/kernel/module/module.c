@@ -624,7 +624,7 @@ static uint64_t module_cache_build(void)
 
         for (uint64_t i = 0; i < readCount / sizeof(dirent_t); i++)
         {
-            if (buffer[i].path[0] == '.' || buffer[i].type != INODE_REGULAR)
+            if (buffer[i].path[0] == '.' || buffer[i].type != VREG)
             {
                 continue;
             }

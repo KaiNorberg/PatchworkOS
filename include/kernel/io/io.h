@@ -133,6 +133,28 @@
  * @param arg4 Unused
  * @result The number of bytes read.
  * 
+ * ### `VERB_WRITE`
+ *
+ * Writes data to a file descriptor.
+ * 
+ * @param fd The file descriptor to write to.
+ * @param buffer The buffer to write the data from.
+ * @param count The number of bytes to write.
+ * @param offset The offset to write to, or `IO_CUR` to use the current position.
+ * @param arg4 Unused
+ * @result The number of bytes written.
+ *
+ * ### `VERB_POLL`
+ *
+ * Polls a file descriptor for events.
+ *
+ * @param fd The file descriptor to poll.
+ * @param events The events to wait for.
+ * @param arg2 Unused
+ * @param arg3 Unused
+ * @param arg4 Unused
+ * @result The events that occurred.
+ * 
  * @{
  */
 

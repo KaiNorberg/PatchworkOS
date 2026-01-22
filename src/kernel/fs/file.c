@@ -2,7 +2,7 @@
 
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file_table.h>
-#include <kernel/fs/inode.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
@@ -28,8 +28,8 @@ static void file_free(file_t* file)
         file->ops->close(file);
     }
 
-    UNREF(file->inode);
-    file->inode = NULL;
+    UNREF(file->vnode);
+    file->vnode = NULL;
     path_put(&file->path);
 
     cache_free(file);
@@ -66,17 +66,17 @@ file_t* file_new(const path_t* path, mode_t mode)
     ref_init(&file->ref, file_free);
     file->pos = 0;
     file->mode = mode;
-    file->inode = REF(path->dentry->inode);
+    file->vnode = REF(path->dentry->vnode);
     file->path = PATH_CREATE(path->mount, path->dentry);
-    file->ops = path->dentry->inode->fileOps;
-    file->verbs = file->inode->verbs;
+    file->ops = path->dentry->vnode->fileOps;
+    file->verbs = file->vnode->verbs;
     file->data = NULL;
     return file;
 }
 
 size_t file_generic_seek(file_t* file, ssize_t offset, seek_origin_t origin)
 {
-    MUTEX_SCOPE(&file->inode->mutex);
+    MUTEX_SCOPE(&file->vnode->mutex);
 
     size_t newPos;
     switch (origin)
@@ -88,7 +88,7 @@ size_t file_generic_seek(file_t* file, ssize_t offset, seek_origin_t origin)
         newPos = file->pos + offset;
         break;
     case SEEK_END:
-        newPos = file->inode->size + offset;
+        newPos = file->vnode->size + offset;
         break;
     default:
         errno = EINVAL;

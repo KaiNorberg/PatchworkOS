@@ -18,7 +18,7 @@ static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
 static size_t mouse_name_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    mouse_t* mouse = file->inode->data;
+    mouse_t* mouse = file->vnode->data;
     assert(mouse != NULL);
 
     size_t length = strlen(mouse->name);
@@ -31,7 +31,7 @@ static file_ops_t nameOps = {
 
 static uint64_t mouse_events_open(file_t* file)
 {
-    mouse_t* mouse = file->inode->data;
+    mouse_t* mouse = file->vnode->data;
     assert(mouse != NULL);
 
     mouse_client_t* client = calloc(1, sizeof(mouse_client_t));
@@ -53,7 +53,7 @@ static uint64_t mouse_events_open(file_t* file)
 
 static void mouse_events_close(file_t* file)
 {
-    mouse_t* mouse = file->inode->data;
+    mouse_t* mouse = file->vnode->data;
     assert(mouse != NULL);
 
     mouse_client_t* client = file->data;
@@ -78,7 +78,7 @@ static size_t mouse_events_read(file_t* file, void* buffer, size_t count, size_t
         return 0;
     }
 
-    mouse_t* mouse = file->inode->data;
+    mouse_t* mouse = file->vnode->data;
     assert(mouse != NULL);
     mouse_client_t* client = file->data;
     assert(client != NULL);
@@ -104,7 +104,7 @@ static size_t mouse_events_read(file_t* file, void* buffer, size_t count, size_t
 
 static wait_queue_t* mouse_events_poll(file_t* file, poll_events_t* revents)
 {
-    mouse_t* mouse = file->inode->data;
+    mouse_t* mouse = file->vnode->data;
     assert(mouse != NULL);
     mouse_client_t* client = file->data;
     assert(client != NULL);
@@ -125,9 +125,9 @@ static file_ops_t eventsOps = {
     .poll = mouse_events_poll,
 };
 
-static void mouse_dir_cleanup(inode_t* inode)
+static void mouse_dir_cleanup(vnode_t* vnode)
 {
-    mouse_t* mouse = inode->data;
+    mouse_t* mouse = vnode->data;
     if (mouse == NULL)
     {
         return;
@@ -137,7 +137,7 @@ static void mouse_dir_cleanup(inode_t* inode)
     free(mouse);
 }
 
-static inode_ops_t dirInodeOps = {
+static vnode_ops_t dirVnodeOps = {
     .cleanup = mouse_dir_cleanup,
 };
 
@@ -181,7 +181,7 @@ mouse_t* mouse_new(const char* name)
         return NULL;
     }
 
-    mouse->dir = devfs_dir_new(dir, id, &dirInodeOps, mouse);
+    mouse->dir = devfs_dir_new(dir, id, &dirVnodeOps, mouse);
     if (mouse->dir == NULL)
     {
         wait_queue_deinit(&mouse->waitQueue);

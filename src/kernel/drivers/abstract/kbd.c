@@ -24,7 +24,7 @@ static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
 static size_t kbd_name_read(file_t* file, void* buffer, size_t count, size_t* offset)
 {
-    kbd_t* kbd = file->inode->data;
+    kbd_t* kbd = file->vnode->data;
     assert(kbd != NULL);
 
     size_t length = strlen(kbd->name);
@@ -37,7 +37,7 @@ static file_ops_t nameOps = {
 
 static uint64_t kbd_events_open(file_t* file)
 {
-    kbd_t* kbd = file->inode->data;
+    kbd_t* kbd = file->vnode->data;
     assert(kbd != NULL);
 
     kbd_client_t* client = calloc(1, sizeof(kbd_client_t));
@@ -59,7 +59,7 @@ static uint64_t kbd_events_open(file_t* file)
 
 static void kbd_events_close(file_t* file)
 {
-    kbd_t* kbd = file->inode->data;
+    kbd_t* kbd = file->vnode->data;
     assert(kbd != NULL);
 
     kbd_client_t* client = file->data;
@@ -84,7 +84,7 @@ static size_t kbd_events_read(file_t* file, void* buffer, size_t count, size_t* 
         return 0;
     }
 
-    kbd_t* kbd = file->inode->data;
+    kbd_t* kbd = file->vnode->data;
     assert(kbd != NULL);
     kbd_client_t* client = file->data;
     assert(client != NULL);
@@ -110,7 +110,7 @@ static size_t kbd_events_read(file_t* file, void* buffer, size_t count, size_t* 
 
 static wait_queue_t* kbd_events_poll(file_t* file, poll_events_t* revents)
 {
-    kbd_t* kbd = file->inode->data;
+    kbd_t* kbd = file->vnode->data;
     assert(kbd != NULL);
     kbd_client_t* client = file->data;
     assert(client != NULL);
@@ -131,9 +131,9 @@ static file_ops_t eventsOps = {
     .poll = kbd_events_poll,
 };
 
-static void kbd_dir_cleanup(inode_t* inode)
+static void kbd_dir_cleanup(vnode_t* vnode)
 {
-    kbd_t* kbd = inode->data;
+    kbd_t* kbd = vnode->data;
     if (kbd == NULL)
     {
         return;
@@ -143,7 +143,7 @@ static void kbd_dir_cleanup(inode_t* inode)
     free(kbd);
 }
 
-static inode_ops_t dirInodeOps = {
+static vnode_ops_t dirVnodeOps = {
     .cleanup = kbd_dir_cleanup,
 };
 
@@ -187,7 +187,7 @@ kbd_t* kbd_new(const char* name)
         return NULL;
     }
 
-    kbd->dir = devfs_dir_new(dir, id, &dirInodeOps, kbd);
+    kbd->dir = devfs_dir_new(dir, id, &dirVnodeOps, kbd);
     if (kbd->dir == NULL)
     {
         wait_queue_deinit(&kbd->waitQueue);

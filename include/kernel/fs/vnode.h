@@ -20,7 +20,7 @@ typedef struct file_ops file_ops_t;
 typedef struct dentry dentry_t;
 
 /**
- * @brief Index node.
+ * @brief Virtual node.
  * @defgroup kernel_fs_vnode Vnode
  * @ingroup kernel_fs
  *
@@ -31,7 +31,7 @@ typedef struct dentry dentry_t;
  *
  * ## Synchronization
  *
- * Vnodes have an additional purpose within the Virtual File System (VFS) as they act as the primary means of
+ * vnodes have an additional purpose within the Virtual File System (VFS) as they act as the primary means of
  * synchronization. All dentries synchronize upon their vnodes mutex, open files synchronize upon the mutex of the
  * underlying vnode and operations like create, remove, etc synchronize upon the vnode mutex of the parent directory.
  *
@@ -42,24 +42,18 @@ typedef struct dentry dentry_t;
  */
 
 /**
- * @brief Vnode structure.
+ * @brief vnode structure.
  * @struct vnode_t
  *
- * Vnodes are owned by the filesystem, not the VFS.
+ * vnodes are owned by the filesystem, not the VFS.
  */
 typedef struct vnode
 {
     ref_t ref;
-    ino_t number;
     vtype_t type;
     _Atomic(uint64_t) dentryCount; ///< The number of dentries pointing to this vnode.
-    size_t size;
-    size_t blocks;
-    time_t accessTime; ///< Unix time stamp for the last vnode access.
-    time_t modifyTime; ///< Unix time stamp for last file content alteration.
-    time_t changeTime; ///< Unix time stamp for the last file metadata alteration.
-    time_t createTime; ///< Unix time stamp for the vnode creation.
-    void* data;
+    void* data; ///< Filesystem defined data.
+    uint64_t size; ///< Used for convenience by certain filesystems, does not represent the file size.
     superblock_t* superblock;
     const vnode_ops_t* ops;
     const file_ops_t* fileOps;
@@ -69,7 +63,7 @@ typedef struct vnode
 } vnode_t;
 
 /**
- * @brief Vnode operations structure.
+ * @brief vnode operations structure.
  * @struct vnode_ops_t
  *
  * Note that the vnodes mutex will be acquired by the vfs.
@@ -150,47 +144,18 @@ typedef struct vnode_ops
 /**
  * @brief Create a new vnode.
  *
- * This DOES add the vnode to the vnode cache. It also does not associate the vnode with a dentry, that is done when a
- * dentry is made positive with `dentry_make_positive()`.
+ * Does not associate the vnode with a dentry, that is done when a dentry is made positive with `dentry_make_positive()`.
  *
  * There is no `vnode_free()` instead use `UNREF()`.
  *
  * @param superblock The superblock the vnode belongs to.
- * @param number The vnode number, for a generic filesystem `vfs_id_get()` can be used.
  * @param type The vnode type.
  * @param ops The vnode operations.
  * @param fileOps The file operations for files opened on this vnode.
  * @return On success, the new vnode. On failure, returns `NULL` and `errno` is set.
  */
-vnode_t* vnode_new(superblock_t* superblock, ino_t number, vtype_t type, const vnode_ops_t* ops,
+vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_ops_t* ops,
     const file_ops_t* fileOps);
-
-/**
- * @brief Notify the vnode that it has been accessed.
- *
- * This updates the access time.
- *
- * @param vnode The vnode to notify.
- */
-void vnode_notify_access(vnode_t* vnode);
-
-/**
- * @brief Notify the vnode that its content has been modified.
- *
- * This updates the modify time and change time.
- *
- * @param vnode The vnode to notify.
- */
-void vnode_notify_modify(vnode_t* vnode);
-
-/**
- * @brief Notify the vnode that its metadata has changed.
- *
- * This updates the change time.
- *
- * @param vnode The vnode to notify.
- */
-void vnode_notify_change(vnode_t* vnode);
 
 /**
  * @brief Truncate the vnode.
@@ -201,16 +166,5 @@ void vnode_notify_change(vnode_t* vnode);
  * @param vnode The vnode to truncate.
  */
 void vnode_truncate(vnode_t* vnode);
-
-/**
- * @brief Helper to generate a consistent vnode number for an entry in a directory.
- *
- * This is useful for in-memory filesystems or filesystem that dont provide native vnode numbers.
- *
- * @param parentNumber The vnode number of the parent directory.
- * @param name The name of the entry.
- * @return The generated vnode number.
- */
-ino_t ino_gen(ino_t parentNumber, const char* name);
 
 /** @} */

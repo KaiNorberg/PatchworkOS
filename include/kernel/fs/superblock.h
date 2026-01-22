@@ -11,7 +11,7 @@ typedef struct filesystem filesystem_t;
 typedef struct superblock superblock_t;
 typedef struct superblock_ops superblock_ops_t;
 typedef struct dentry_ops dentry_ops_t;
-typedef struct inode inode_t;
+typedef struct vnode vnode_t;
 typedef struct dentry dentry_t;
 
 /**

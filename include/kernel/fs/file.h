@@ -15,7 +15,7 @@ typedef struct wait_queue wait_queue_t;
 typedef struct file file_t;
 typedef struct file_ops file_ops_t;
 typedef struct dentry dentry_t;
-typedef struct inode inode_t;
+typedef struct vnode vnode_t;
 typedef struct poll_file poll_file_t;
 
 /**
@@ -33,7 +33,7 @@ typedef struct poll_file poll_file_t;
  * @brief File structure.
  * @struct file_t
  *
- * A file structure is protected by the mutex of its inode.
+ * A file structure is protected by the mutex of its vnode.
  *
  */
 typedef struct file
@@ -41,7 +41,7 @@ typedef struct file
     ref_t ref;
     size_t pos;
     mode_t mode;
-    inode_t* inode;
+    vnode_t* vnode;
     path_t path;
     const file_ops_t* ops;
     const verb_table_t* verbs;

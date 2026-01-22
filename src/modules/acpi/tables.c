@@ -29,7 +29,7 @@ static uint64_t acpi_table_read(file_t* file, void* buffer, size_t count, size_t
         return ERR;
     }
 
-    sdt_header_t* table = file->inode->data;
+    sdt_header_t* table = file->vnode->data;
     if (table == NULL)
     {
         errno = EINVAL;

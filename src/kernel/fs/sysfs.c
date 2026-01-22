@@ -3,7 +3,7 @@
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/filesystem.h>
-#include <kernel/fs/inode.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
@@ -23,10 +23,6 @@
 #include <sys/list.h>
 
 static dentry_t* root = NULL;
-
-static file_ops_t dirOps = {
-    .seek = file_generic_seek,
-};
 
 static dentry_ops_t dentryOps = {
     .iterate = dentry_generic_iterate,
@@ -65,12 +61,12 @@ void sysfs_init(void)
     }
     UNREF_DEFER(superblock);
 
-    inode_t* inode = inode_new(superblock, vfs_id_get(), INODE_DIR, NULL, &dirOps);
-    if (inode == NULL)
+    vnode_t* vnode = vnode_new(superblock, VDIR, NULL, NULL);
+    if (vnode == NULL)
     {
-        panic(NULL, "Failed to create sysfs root inode");
+        panic(NULL, "Failed to create sysfs root vnode");
     }
-    UNREF_DEFER(inode);
+    UNREF_DEFER(vnode);
 
     dentry_t* dentry = dentry_new(superblock, NULL, NULL);
     if (dentry == NULL)
@@ -78,7 +74,7 @@ void sysfs_init(void)
         panic(NULL, "Failed to create sysfs root dentry");
     }
 
-    dentry_make_positive(dentry, inode);
+    dentry_make_positive(dentry, vnode);
     superblock->root = dentry;
     root = dentry;
 
@@ -115,7 +111,7 @@ void sysfs_init(void)
     LOG_INFO("sysfs mounted to '/sys'\n");
 }
 
-dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* data)
+dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const vnode_ops_t* vnodeOps, void* data)
 {
     if (name == NULL)
     {
@@ -141,20 +137,20 @@ dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const inode_ops_t* i
     }
     UNREF_DEFER(dir);
 
-    inode_t* inode = inode_new(parent->superblock, vfs_id_get(), INODE_DIR, inodeOps, &dirOps);
-    if (inode == NULL)
+    vnode_t* vnode = vnode_new(parent->superblock, VDIR, vnodeOps, NULL);
+    if (vnode == NULL)
     {
         return NULL;
     }
-    UNREF_DEFER(inode);
-    inode->data = data;
+    UNREF_DEFER(vnode);
+    vnode->data = data;
 
-    dentry_make_positive(dir, inode);
+    dentry_make_positive(dir, vnode);
 
     return REF(dir);
 }
 
-dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, const file_ops_t* fileOps,
+dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const vnode_ops_t* vnodeOps, const file_ops_t* fileOps,
     void* data)
 {
     if (name == NULL)
@@ -181,22 +177,22 @@ dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const inode_ops_t* 
     }
     UNREF_DEFER(dentry);
 
-    inode_t* inode = inode_new(parent->superblock, vfs_id_get(), INODE_REGULAR, inodeOps, fileOps);
-    if (inode == NULL)
+    vnode_t* vnode = vnode_new(parent->superblock, VREG, vnodeOps, fileOps);
+    if (vnode == NULL)
     {
         return NULL;
     }
-    UNREF_DEFER(inode);
-    inode->data = data;
+    UNREF_DEFER(vnode);
+    vnode->data = data;
 
-    dentry_make_positive(dentry, inode);
+    dentry_make_positive(dentry, vnode);
 
     return REF(dentry);
 }
 
-dentry_t* sysfs_symlink_new(dentry_t* parent, const char* name, const inode_ops_t* inodeOps, void* data)
+dentry_t* sysfs_symlink_new(dentry_t* parent, const char* name, const vnode_ops_t* vnodeOps, void* data)
 {
-    if (parent == NULL || name == NULL || inodeOps == NULL)
+    if (parent == NULL || name == NULL || vnodeOps == NULL)
     {
         errno = EINVAL;
         return NULL;
@@ -215,15 +211,15 @@ dentry_t* sysfs_symlink_new(dentry_t* parent, const char* name, const inode_ops_
     }
     UNREF_DEFER(dentry);
 
-    inode_t* inode = inode_new(parent->superblock, vfs_id_get(), INODE_SYMLINK, inodeOps, NULL);
-    if (inode == NULL)
+    vnode_t* vnode = vnode_new(parent->superblock, VSYMLINK, vnodeOps, NULL);
+    if (vnode == NULL)
     {
         return NULL;
     }
-    UNREF_DEFER(inode);
-    inode->data = data;
+    UNREF_DEFER(vnode);
+    vnode->data = data;
 
-    dentry_make_positive(dentry, inode);
+    dentry_make_positive(dentry, vnode);
 
     return REF(dentry);
 }
@@ -252,7 +248,7 @@ uint64_t sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t*
     uint64_t count = 0;
     for (const sysfs_file_desc_t* desc = descs; desc->name != NULL; desc++)
     {
-        dentry_t* file = sysfs_file_new(parent, desc->name, desc->inodeOps, desc->fileOps, desc->data);
+        dentry_t* file = sysfs_file_new(parent, desc->name, desc->vnodeOps, desc->fileOps, desc->data);
         if (file == NULL)
         {
             while (!list_is_empty(&createdList))
