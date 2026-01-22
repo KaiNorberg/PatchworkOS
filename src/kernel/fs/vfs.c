@@ -6,10 +6,10 @@
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file_table.h>
-#include <kernel/fs/vnode.h>
 #include <kernel/fs/key.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
@@ -698,8 +698,7 @@ static uint64_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_
             }
             ctx->currentOffset += sizeof(dirent_t);
 
-            if ((d->type == VDIR || d->type == VSYMLINK) && strcmp(d->path, ".") != 0 &&
-                strcmp(d->path, "..") != 0)
+            if ((d->type == VDIR || d->type == VSYMLINK) && strcmp(d->path, ".") != 0 && strcmp(d->path, "..") != 0)
             {
                 path_t childPath = PATH_CREATE(path->mount, path->dentry);
                 PATH_DEFER(&childPath);
@@ -960,7 +959,7 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
         return ERR;
     }
 
-    /// @todo Reimplement this after the async system. 
+    /// @todo Reimplement this after the async system.
     vnode_t* vnode = path.dentry->vnode;
     mutex_acquire(&vnode->mutex);
     buffer->number = 0;

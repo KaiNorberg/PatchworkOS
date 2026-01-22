@@ -48,8 +48,7 @@ static void vnode_ctor(void* ptr)
 
 static cache_t cache = CACHE_CREATE(cache, "vnode", sizeof(vnode_t), CACHE_LINE, vnode_ctor, NULL);
 
-vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_ops_t* ops,
-    const file_ops_t* fileOps)
+vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_ops_t* ops, const file_ops_t* fileOps)
 {
     if (superblock == NULL)
     {

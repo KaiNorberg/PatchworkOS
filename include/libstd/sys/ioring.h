@@ -24,38 +24,39 @@ extern "C"
  * @{
  */
 
-typedef uint64_t whence_t;     ///< Seek origin type.
-#define IO_SET ((ssize_t) - 3) ///< Use the start of the file.
-#define IO_END ((ssize_t) - 2) ///< Use the end of the file.
-#define IO_CUR ((ssize_t) - 1) ///< Use the current file offset.
+#define IO_OFF_CUR ((ssize_t) - 1) ///< Use the current file offset.
 
-typedef uint64_t events_t;   ///< Poll events type.
-#define IO_READABLE (1 << 0) ///< File descriptor is ready to read.
-#define IO_WRITABLE (1 << 1) ///< File descriptor is ready to write
-#define IO_ERROR (1 << 2)    ///< File descriptor caused an error.
-#define IO_CLOSED (1 << 3)   ///< File descriptor is closed.
-#define IO_INVALID (1 << 4)  ///< Invalid file descriptor.
+typedef uint64_t io_whence_t; ///< Seek origin type.
+#define IO_SEEK_SET (1)       ///< Use the start of the file.
+#define IO_SEEK_END (2)       ///< Use the end of the file.
+#define IO_SEEK_CUR (3)       ///< Use the current file offset.
 
-typedef uint32_t verb_t; ///< Verb type.
-#define VERB_NOP 0       ///< No-op verb.
-#define VERB_READ 1      ///< Read verb.
-#define VERB_WRITE 2     ///< Write verb.
-#define VERB_POLL 3      ///< Poll verb.
-#define VERB_MAX 4 ///< The maximum number of verbs.
+typedef uint64_t io_events_t;  ///< Poll events type.
+#define IO_POLL_READ (1 << 0)  ///< File descriptor is ready to read.
+#define IO_POLL_WRITE (1 << 1) ///< File descriptor is ready to write
+#define IO_POLL_ERROR (1 << 2) ///< File descriptor caused an error.
+#define IO_POLL_HUP (1 << 3)   ///< File descriptor is closed.
+#define IO_POLL_NVAL (1 << 4)  ///< Invalid file descriptor.
+
+typedef uint32_t ioring_op_t; ///< I/O operation code type.
+#define IORING_NOP 0          ///< No-op operation.
+#define IORING_READ 1         ///< Read operation.
+#define IORING_WRITE 2        ///< Write operation.
+#define IORING_POLL 3         ///< Poll operation.
+#define IORING_MAX 4          ///< The maximum number of operation.
 
 typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
-
-#define SQE_REG0 (0)         ///< The first register.
-#define SQE_REG1 (1)         ///< The second register.
-#define SQE_REG2 (2)         ///< The third register.
-#define SQE_REG3 (3)         ///< The fourth register.
-#define SQE_REG4 (4)         ///< The fifth register.
-#define SQE_REG5 (5)         ///< The sixth register.
-#define SQE_REG6 (6)         ///< The seventh register.
-#define SQE_REG_NONE (7)     ///< No register.
-#define SQE_REGS_MAX (7)     ///< The maximum number of registers.
-#define SQE_REG_SHIFT (3)    ///< The bitshift for each register specifier in a `sqe_flags_t`.
-#define SQE_REG_MASK (0b111) ///< The bitmask for a register specifier in a `sqe_flags_t`.
+#define SQE_REG0 (0)          ///< The first register.
+#define SQE_REG1 (1)          ///< The second register.
+#define SQE_REG2 (2)          ///< The third register.
+#define SQE_REG3 (3)          ///< The fourth register.
+#define SQE_REG4 (4)          ///< The fifth register.
+#define SQE_REG5 (5)          ///< The sixth register.
+#define SQE_REG6 (6)          ///< The seventh register.
+#define SQE_REG_NONE (7)      ///< No register.
+#define SQE_REGS_MAX (7)      ///< The maximum number of registers.
+#define SQE_REG_SHIFT (3)     ///< The bitshift for each register specifier in a `sqe_flags_t`.
+#define SQE_REG_MASK (0b111)  ///< The bitmask for a register specifier in a `sqe_flags_t`.
 
 #define SQE_LOAD0 (0)                         ///< The offset to specify the register to load into the first argument.
 #define SQE_LOAD1 (SQE_LOAD0 + SQE_REG_SHIFT) ///< The offset to specify the register to load into the second argument.
@@ -66,21 +67,44 @@ typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
 
 #define _SQE_FLAGS (SQE_SAVE + SQE_REG_SHIFT) ///< The bitshift for where bit flags start in a `sqe_flags_t`.
 
-#ifdef _KERNEL_
-/**
- * The operation was created by the kernel, used internally by the kernel.
- */
-#define SQE_KERNEL (1 << (_SQE_FLAGS))
-#endif
-
 /**
  * Only process the next SQE when this one completes successfully) only applies within one `enter()` call.
  */
-#define SQE_LINK (1 << (_SQE_FLAGS + 2))
+#define SQE_LINK (1 << (_SQE_FLAGS))
 /**
  * Like `SQE_LINK` but will process the next SQE even if this one fails.
  */
-#define SQE_HARDLINK (1 << (_SQE_FLAGS + 3))
+#define SQE_HARDLINK (1 << (_SQE_FLAGS + 1))
+
+/**
+ * @brief Asynchronous submission queue entry (SQE) arguments.
+ * @struct sqe_args_t
+ *
+ * @see kernel_io for more information for each possible operation.
+ */
+typedef struct sqe_args
+{
+    union {
+        uint64_t arg0;
+        fd_t fd;
+    };
+    union {
+        uint64_t arg1;
+        void* buffer;
+        io_events_t events;
+    };
+    union {
+        uint64_t arg2;
+        size_t count;
+    };
+    union {
+        uint64_t arg3;
+        ssize_t offset;
+    };
+    union {
+        uint64_t arg4;
+    };
+} sqe_args_t;
 
 /**
  * @brief Asynchronous submission queue entry (SQE).
@@ -89,39 +113,15 @@ typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
  * @warning It is the responsibility of userspace to ensure that any pointers
  * passed to the kernel remain valid until the operation is complete.
  *
- * @see kernel_io for more information for each possible verb.
+ * @see kernel_io for more information for each possible operation.
  */
 typedef struct sqe
 {
-    verb_t verb;       ///< Verb specifying the action to perform.
+    ioring_op_t op;    ///< The operation to perform.
     sqe_flags_t flags; ///< Submission flags.
     clock_t timeout;   ///< Timeout for the operation, `CLOCKS_NEVER` for no timeout.
     void* data;        ///< Private data for the operation, will be returned in the completion entry.
-    union
-    {
-        uint64_t arg0; 
-        fd_t fd;
-    };
-    union
-    {
-        uint64_t arg1;
-        void* buffer;
-        events_t events;
-    };
-    union
-    {
-        uint64_t arg2;
-        size_t count;
-    };
-    union
-    {
-        uint64_t arg3;
-        ssize_t offset;
-    };
-    union
-    {
-        uint64_t arg4;
-    };
+    sqe_args_t args;
 } sqe_t;
 
 #ifdef static_assert
@@ -131,14 +131,14 @@ static_assert(sizeof(sqe_t) == 64, "sqe_t is not 64 bytes");
 /**
  * @brief Macro to create an asynchronous submission queue entry (SQE).
  *
- * @param _verb Operation verb.
+ * @param _op The operation to perform.
  * @param _flags Submission flags.
  * @param _timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout.
  * @param _data Private data for the operation.
  */
-#define SQE_CREATE(_verb, _flags, _timeout, _data) \
+#define SQE_CREATE(_op, _flags, _timeout, _data) \
     { \
-        .verb = (_verb), \
+        .op = (_op), \
         .flags = (_flags), \
         .timeout = (_timeout), \
         .data = (void*)(_data), \
@@ -152,14 +152,14 @@ static_assert(sizeof(sqe_t) == 64, "sqe_t is not 64 bytes");
  */
 typedef struct cqe
 {
-    verb_t verb;   ///< Verb specifying the action that was performed.
-    errno_t error; ///< Error code, if not equal to `EOK` an error occurred.
-    void* data;    ///< Private data from the submission entry.
+    ioring_op_t op; ///< The operation that was performed.
+    errno_t error;  ///< Error code, if not equal to `EOK` an error occurred.
+    void* data;     ///< Private data from the submission entry.
     union {
         fd_t fd;
         size_t count;
         void* ptr;
-        events_t events;
+        io_events_t events;
         uint64_t _result;
     };
     uint64_t _padding[1];
@@ -203,7 +203,7 @@ typedef struct ALIGNED(64) ioring_ctrl
  * @{
  */
 
-typedef uint64_t io_id_t; ///< I/O ring ID type.
+typedef uint64_t ioring_id_t; ///< I/O ring ID type.
 
 /**
  * @brief User I/O ring structure.
@@ -214,7 +214,7 @@ typedef uint64_t io_id_t; ///< I/O ring ID type.
 typedef struct ioring
 {
     ioring_ctrl_t* ctrl; ///< Pointer to the shared control structure.
-    io_id_t id;          ///< The ID of the ring.
+    ioring_id_t id;      ///< The ID of the ring.
     sqe_t* squeue;       ///< Pointer to the submission queue.
     size_t sentries;     ///< Number of entries in the submission queue.
     size_t smask;        ///< Bitmask for submission queue (sentries - 1).
@@ -235,7 +235,7 @@ typedef struct ioring
  * @param centries Number of entries to allocate for the completion queue, must be a power of two.
  * @return On success, the ID of the new I/O ring. On failure, `ERR` and `errno` is set.
  */
-io_id_t setup(ioring_t* ring, void* address, size_t sentries, size_t centries);
+ioring_id_t ioring_setup(ioring_t* ring, void* address, size_t sentries, size_t centries);
 
 /**
  * @brief System call to deinitialize the I/O ring.
@@ -243,7 +243,7 @@ io_id_t setup(ioring_t* ring, void* address, size_t sentries, size_t centries);
  * @param id The ID of the I/O ring to teardown.
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
-uint64_t teardown(io_id_t id);
+uint64_t ioring_teardown(ioring_id_t id);
 
 /**
  * @brief System call to notify the kernel of new submission queue entries (SQEs).
@@ -253,7 +253,7 @@ uint64_t teardown(io_id_t id);
  * @param wait The minimum number of completion queue entries (CQEs) to wait for.
  * @return On success, the number of SQEs successfully processed. On failure, `ERR` and `errno` is set.
  */
-uint64_t enter(io_id_t id, size_t amount, size_t wait);
+uint64_t ioring_enter(ioring_id_t id, size_t amount, size_t wait);
 
 /**
  * @brief Pushes a submission queue entry (SQE) to the submission queue.

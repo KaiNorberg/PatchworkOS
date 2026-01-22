@@ -291,12 +291,12 @@ static inline uint64_t _syscall_setup(ioring_t* ring, void* address, size_t sent
     return _SYSCALL4(uint64_t, SYS_SETUP, ioring_t*, ring, void*, address, size_t, sentries, size_t, centries);
 }
 
-static inline uint64_t _syscall_teardown(io_id_t id)
+static inline uint64_t _syscall_teardown(ioring_id_t id)
 {
-    return _SYSCALL1(uint64_t, SYS_TEARDOWN, io_id_t, id);
+    return _SYSCALL1(uint64_t, SYS_TEARDOWN, ioring_id_t, id);
 }
 
-static inline uint64_t _syscall_enter(io_id_t id, size_t amount, size_t wait)
+static inline uint64_t _syscall_enter(ioring_id_t id, size_t amount, size_t wait)
 {
-    return _SYSCALL3(uint64_t, SYS_ENTER, io_id_t, id, size_t, amount, size_t, wait);
+    return _SYSCALL3(uint64_t, SYS_ENTER, ioring_id_t, id, size_t, amount, size_t, wait);
 }

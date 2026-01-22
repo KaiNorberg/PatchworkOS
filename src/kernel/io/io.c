@@ -32,7 +32,7 @@ static inline void io_ctx_release(io_ctx_t* ctx)
     atomic_fetch_and(&ctx->flags, ~IO_CTX_BUSY);
 }
 
-static inline uint64_t io_ctx_map(io_ctx_t* ctx, process_t* process, io_id_t id, ioring_t* userRing, void* address,
+static inline uint64_t io_ctx_map(io_ctx_t* ctx, process_t* process, ioring_id_t id, ioring_t* userRing, void* address,
     size_t sentries, size_t centries)
 {
     ioring_t* kernelRing = &ctx->ring;
@@ -220,7 +220,7 @@ static void io_ctx_complete(irp_t* irp, void* _ptr)
     {
         while (true)
         {
-            irp_t* next = irp_next(irp);
+            irp_t* next = irp_chain_next(irp);
             if (next == NULL)
             {
                 break;
@@ -231,7 +231,7 @@ static void io_ctx_complete(irp_t* irp, void* _ptr)
     }
     else
     {
-        irp_t* next = irp_next(irp);
+        irp_t* next = irp_chain_next(irp);
         if (next != NULL)
         {
             io_ctx_dispatch(next);
@@ -251,31 +251,31 @@ static void io_ctx_dispatch(irp_t* irp)
     sqe_flags_t reg = (irp->flags >> SQE_LOAD0) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        irp->sqe.arg0 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+        irp->arg0 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
     }
 
     reg = (irp->flags >> SQE_LOAD1) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        irp->sqe.arg1 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+        irp->arg1 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
     }
 
     reg = (irp->flags >> SQE_LOAD2) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        irp->sqe.arg2 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+        irp->arg2 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
     }
 
     reg = (irp->flags >> SQE_LOAD3) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        irp->sqe.arg3 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+        irp->arg3 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
     }
 
     reg = (irp->flags >> SQE_LOAD4) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        irp->sqe.arg4 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+        irp->arg4 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
     }
 
     irp_push(irp, io_ctx_complete, NULL);
@@ -319,7 +319,7 @@ static uint64_t io_ctx_sqe_pop(io_ctx_t* ctx, io_ctx_notify_ctx_t* notify)
         list_push_back(&notify->irps, &irp->entry);
     }
 
-    if (irp->sqe.flags & SQE_LINK || irp->sqe.flags & SQE_HARDLINK)
+    if (irp->flags & SQE_LINK || irp->flags & SQE_HARDLINK)
     {
         notify->link = irp;
     }
@@ -385,7 +385,7 @@ uint64_t io_ctx_notify(io_ctx_t* ctx, size_t amount, size_t wait)
     return processed;
 }
 
-SYSCALL_DEFINE(SYS_SETUP, io_id_t, ioring_t* userRing, void* address, size_t sentries, size_t centries)
+SYSCALL_DEFINE(SYS_SETUP, ioring_id_t, ioring_t* userRing, void* address, size_t sentries, size_t centries)
 {
     if (userRing == NULL || sentries == 0 || centries == 0 || !IS_POW2(sentries) || !IS_POW2(centries))
     {
@@ -396,7 +396,7 @@ SYSCALL_DEFINE(SYS_SETUP, io_id_t, ioring_t* userRing, void* address, size_t sen
     process_t* process = process_current();
 
     io_ctx_t* ctx = NULL;
-    io_id_t id = 0;
+    ioring_id_t id = 0;
     for (id = 0; id < ARRAY_SIZE(process->rings); id++)
     {
         io_ctx_flags_t expected = IO_CTX_NONE;
@@ -423,7 +423,7 @@ SYSCALL_DEFINE(SYS_SETUP, io_id_t, ioring_t* userRing, void* address, size_t sen
     return id;
 }
 
-SYSCALL_DEFINE(SYS_TEARDOWN, uint64_t, io_id_t id)
+SYSCALL_DEFINE(SYS_TEARDOWN, uint64_t, ioring_id_t id)
 {
     process_t* process = process_current();
     if (id >= ARRAY_SIZE(process->rings))
@@ -463,7 +463,7 @@ SYSCALL_DEFINE(SYS_TEARDOWN, uint64_t, io_id_t id)
     return 0;
 }
 
-SYSCALL_DEFINE(SYS_ENTER, uint64_t, io_id_t id, size_t amount, size_t wait)
+SYSCALL_DEFINE(SYS_ENTER, uint64_t, ioring_id_t id, size_t amount, size_t wait)
 {
     process_t* process = process_current();
     if (id >= ARRAY_SIZE(process->rings))

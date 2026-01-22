@@ -68,17 +68,20 @@
  *
  * ## Arguments
  *
- * Arguments within a SQE are stored in five 64-bit values, `arg1` through `arg5`. For convenience, each argument value is stored as a union with various types.
- * 
- * To avoid nameing conflicts and to avoid having to define new arguments for each verb, we define a convention to be used for the arguments.
- * 
+ * Arguments within a SQE are stored in five 64-bit values, `arg1` through `arg5`. For convenience, each argument value
+ * is stored as a union with various types.
+ *
+ * To avoid nameing conflicts and to avoid having to define new arguments for each verb, we define a convention to be
+ * used for the arguments.
+ *
  * - `arg0`: The noun or subject of the verb, for example, a `fd_t` for file operations.
  * - `arg1`: The source or payload of the verb, for example, a buffer or path.
  * - `arg2`: The magnitude of the operation, for example, a size or encoding.
  * - `arg3`: The location or a modifier to the operation, for example, an offset or flags.
  * - `arg4`: An auxiliary argument, for example, additional flags or options.
- * 
- * It may not always be possible for a verb to follow these conventions, but they should be followed whenever reasonable.
+ *
+ * It may not always be possible for a verb to follow these conventions, but they should be followed whenever
+ * reasonable.
  *
  * @note The kernels internal I/O Request Packet structure uses a similar system but with the kernel equivalents
  * of the arguments, for example, a `file_t*` instead of a `fd_t`.
@@ -108,7 +111,7 @@
  * ## Verbs
  *
  * Included below is a list of all currently implemented verbs.
- * 
+ *
  * The arguments of each verb is specified in order as `arg0`, `arg1`, `arg2`, `arg3`, `arg4`.
  *
  * ### `VERB_NOP`
@@ -121,7 +124,7 @@
  * @param arg3 Unused
  * @param arg4 Unused
  * @result None
- * 
+ *
  * ### `VERB_READ`
  *
  * Reads data from a file descriptor.
@@ -132,11 +135,11 @@
  * @param offset The offset to read from, or `IO_CUR` to use the current position.
  * @param arg4 Unused
  * @result The number of bytes read.
- * 
+ *
  * ### `VERB_WRITE`
  *
  * Writes data to a file descriptor.
- * 
+ *
  * @param fd The file descriptor to write to.
  * @param buffer The buffer to write the data from.
  * @param count The number of bytes to write.
@@ -154,7 +157,7 @@
  * @param arg3 Unused
  * @param arg4 Unused
  * @result The events that occurred.
- * 
+ *
  * @{
  */
 

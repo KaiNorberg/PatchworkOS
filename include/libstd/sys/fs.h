@@ -340,7 +340,7 @@ poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);
  */
 typedef enum
 {
-    VREG, ///< Is a regular file.
+    VREG,     ///< Is a regular file.
     VDIR,     ///< Is a directory.
     VSYMLINK, ///< Is a symbolic link.
 } vtype_t;
@@ -364,11 +364,10 @@ typedef struct vattr
     uint64_t size;
     uint64_t blocks;
     uint64_t blockSize;
-    uint64_t rdev;
     time_t atime;
     time_t mtime;
     time_t ctime;
-    uint8_t padding[64];  ///< Padding to leave space for future expansion.
+    uint8_t padding[64]; ///< Padding to leave space for future expansion.
 } vattr_t;
 
 /**
@@ -378,7 +377,7 @@ typedef struct vattr
 typedef struct
 {
     sbid_t sbid;          ///< The superblock ID of the filesystem containing the entry.
-    uint64_t number;         ///< The number of the entries vnode.
+    uint64_t number;      ///< The number of the entries vnode.
     vtype_t type;         ///< The type of the entries vnode.
     uint64_t size;        ///< The size of the file that is visible outside the filesystem.
     uint64_t blocks;      ///< The amount of blocks used on disk to store the file.

@@ -14,7 +14,7 @@
 
 /**
  * @brief Verb function type.
- * 
+ *
  * @param irp Pointer to the IRP.
  */
 typedef void (*verb_func_t)(irp_t* irp);
@@ -29,19 +29,10 @@ typedef struct verb_table
 } verb_table_t;
 
 /**
- * @brief Cleanup the arguments used by a verb.
- * 
- * Handles both kernel IRPs and parsed user IRPs.
- * 
- * @param irp Pointer to the IRP.
- */
-void verb_args_cleanup(irp_t* irp);
-
-/**
  * @brief Dispatch an IRP to the appropriate verb handler.
- * 
+ *
  * If the IRP is a user IRP, the arguments will be parsed before invoking the handler.
- * 
+ *
  * @param irp Pointer to the IRP.
  */
 void verb_dispatch(irp_t* irp);

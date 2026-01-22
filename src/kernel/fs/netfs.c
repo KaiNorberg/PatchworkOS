@@ -334,8 +334,7 @@ static uint64_t netfs_socket_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->superblock, VREG, NULL,
-            socketFiles[i].fileOps);
+        vnode_t* vnode = vnode_new(dir->superblock, VREG, NULL, socketFiles[i].fileOps);
         if (vnode == NULL)
         {
             return ERR;
@@ -553,8 +552,7 @@ static uint64_t netfs_family_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->superblock, VREG,
-            &familyFileVnodeOps, familyFiles[i].fileOps);
+        vnode_t* vnode = vnode_new(dir->superblock, VREG, &familyFileVnodeOps, familyFiles[i].fileOps);
         if (vnode == NULL)
         {
             return ERR;
@@ -711,8 +709,7 @@ static uint64_t netfs_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode =
-            vnode_new(dir->superblock, VDIR, &familyVnodeOps, NULL);
+        vnode_t* vnode = vnode_new(dir->superblock, VDIR, &familyVnodeOps, NULL);
         if (vnode == NULL)
         {
             return ERR;

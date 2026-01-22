@@ -31,7 +31,7 @@ void mdl_deinit(mdl_t* mdl)
     mdl->capacity = 0;
 }
 
-void mdl_free_chain(mdl_t* mdl, void(*free)(void*))
+void mdl_free_chain(mdl_t* mdl, void (*free)(void*))
 {
     while (mdl != NULL)
     {

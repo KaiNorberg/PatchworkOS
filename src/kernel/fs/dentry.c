@@ -4,8 +4,8 @@
 #include <kernel/sync/seqlock.h>
 #include <stdio.h>
 
-#include <kernel/fs/vnode.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/cache.h>

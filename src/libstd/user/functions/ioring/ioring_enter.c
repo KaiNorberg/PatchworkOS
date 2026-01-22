@@ -2,9 +2,9 @@
 
 #include "user/common/syscalls.h"
 
-io_id_t setup(ioring_t* ring, void* address, size_t sentries, size_t centries)
+uint64_t ioring_enter(ioring_id_t id, size_t amount, size_t wait)
 {
-    io_id_t result = _syscall_setup(ring, address, sentries, centries);
+    uint64_t result = _syscall_enter(id, amount, wait);
     if (result == ERR)
     {
         errno = _syscall_errno();

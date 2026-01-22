@@ -1,6 +1,7 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/io/irp.h>
+#include <kernel/io/verb.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/mdl.h>
@@ -9,7 +10,7 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
-#include <kernel/io/verb.h>
+#include <string.h>
 
 #include <kernel/cpu/percpu.h>
 
@@ -61,12 +62,11 @@ irp_pool_t* irp_pool_new(size_t size, process_t* process, void* ctx)
         irp->arg4 = 0;
         irp->res._raw = 0;
         mdl_init(&irp->mdl, NULL);
-        irp->sqe = (sqe_t){0};
         irp->index = i;
         irp->err = EOK;
         irp->cpu = CPU_ID_INVALID;
-        irp->location = IRP_LOC_MAX;
-        for (size_t j = 0; j < IRP_LOC_MAX; j++)
+        irp->location = IRP_FRAME_MAX;
+        for (size_t j = 0; j < IRP_FRAME_MAX; j++)
         {
             irp->stack[j].ctx = NULL;
             irp->stack[j].complete = NULL;
@@ -93,7 +93,7 @@ irp_t* irp_new(irp_pool_t* pool, sqe_t* sqe)
     }
 
     irp_t* irp = &pool->irps[idx];
-    irp->location = IRP_LOC_MAX;
+    irp->location = IRP_FRAME_MAX;
     irp->next = POOL_IDX_MAX;
     irp->err = EINPROGRESS;
     irp->res._raw = 0;
@@ -101,18 +101,34 @@ irp_t* irp_new(irp_pool_t* pool, sqe_t* sqe)
 
     if (sqe == NULL)
     {
-        irp->sqe = (sqe_t){0};
+        irp->verb = 0;
+        irp->flags = 0;
+        irp->timeout = 0;
+        irp->data = NULL;
+        irp->arg0 = 0;
+        irp->arg1 = 0;
+        irp->arg2 = 0;
+        irp->arg3 = 0;
+        irp->arg4 = 0;
         irp->flags |= SQE_KERNEL;
     }
     else
     {
-        irp->sqe = *sqe;
-        irp->sqe.flags &= ~SQE_KERNEL;
+        irp->verb = sqe->verb;
+        irp->flags = sqe->flags;
+        irp->timeout = sqe->timeout;
+        irp->data = sqe->data;
+        irp->arg0 = sqe->arg0;
+        irp->arg1 = sqe->arg1;
+        irp->arg2 = sqe->arg2;
+        irp->arg3 = sqe->arg3;
+        irp->arg4 = sqe->arg4;
+        irp->flags &= ~SQE_KERNEL;
     }
 
     irp->next = POOL_IDX_MAX;
     irp->cpu = CPU_ID_INVALID;
-    for (size_t j = 0; j < IRP_LOC_MAX; j++)
+    for (size_t j = 0; j < IRP_FRAME_MAX; j++)
     {
         irp->stack[j].ctx = NULL;
         irp->stack[j].complete = NULL;
@@ -126,7 +142,6 @@ irp_t* irp_new(irp_pool_t* pool, sqe_t* sqe)
     return irp;
 }
 
-
 void irp_free(irp_t* irp)
 {
     if (irp == NULL)
@@ -136,11 +151,9 @@ void irp_free(irp_t* irp)
 
     irp_timeout_remove(irp);
 
-    assert(irp->location == IRP_LOC_MAX);
+    assert(irp->location == IRP_FRAME_MAX);
     assert(irp->next == POOL_IDX_MAX);
     assert(irp->cpu == CPU_ID_INVALID);
-
-    verb_args_cleanup(irp);
 
     mdl_t* next = irp->mdl.next;
     mdl_deinit(&irp->mdl);

@@ -10,7 +10,7 @@ int main()
 {
     printf("setting up ring test...\n");
     ioring_t ring;
-    io_id_t id = setup(&ring, NULL, SENTRIES, CENTRIES);
+    ioring_id_t id = ioring_setup(&ring, NULL, SENTRIES, CENTRIES);
     if (id == ERR)
     {
         printf("failed to set up ring\n");
@@ -20,15 +20,15 @@ int main()
     memset(&ring.ctrl->regs, -1, sizeof(ring.ctrl->regs));
 
     printf("pushing nop sqe to ring %llu...\n", ring.id);
-    sqe_t sqe = SQE_CREATE(VERB_NOP, SQE_HARDLINK | (SQE_REG0 << SQE_SAVE), CLOCKS_PER_SEC, 0x1234);
+    sqe_t sqe = SQE_CREATE(IORING_NOP, SQE_HARDLINK | (SQE_REG0 << SQE_SAVE), CLOCKS_PER_SEC, 0x1234);
     sqe_push(&ring, &sqe);
 
     printf("pushing nop sqe to ring %llu...\n", ring.id);
-    sqe = (sqe_t)SQE_CREATE(VERB_NOP, SQE_LINK, CLOCKS_PER_SEC, 0x5678);
+    sqe = (sqe_t)SQE_CREATE(IORING_NOP, SQE_LINK, CLOCKS_PER_SEC, 0x5678);
     sqe_push(&ring, &sqe);
 
     printf("entering ring...\n");
-    if (enter(id, 2, 2) == ERR)
+    if (ioring_enter(id, 2, 2) == ERR)
     {
         printf("failed to enter ring\n");
         return errno;
@@ -40,7 +40,7 @@ int main()
         printf("cqe:\n");
 
         printf("cqe data: %p\n", cqe.data);
-        printf("cqe verb: %d\n", cqe.verb);
+        printf("cqe op: %d\n", cqe.op);
         printf("cqe error: %s\n", strerror(cqe.error));
         printf("cqe result: %llu\n", cqe._result);
     }
@@ -52,6 +52,6 @@ int main()
     }
 
     printf("tearing down ring...\n");
-    teardown(id);
+    ioring_teardown(id);
     return 0;
 }

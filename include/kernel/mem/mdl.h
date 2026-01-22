@@ -89,11 +89,11 @@ void mdl_deinit(mdl_t* mdl);
  * @brief Free a Memory Descriptor List chain.
  *
  * Will traverse the entire chain to deinitialize and free each MDL structure using the provided `free` function.
- * 
+ *
  * @param mdl Pointer to the first MDL in the chain.
  * @param free Function to free the MDL structure itself, or `NULL` to only deinitialize.
  */
-void mdl_free_chain(mdl_t* mdl, void(*free)(void*));
+void mdl_free_chain(mdl_t* mdl, void (*free)(void*));
 
 /**
  * @brief Initialize a Memory Descriptor List from a memory region.

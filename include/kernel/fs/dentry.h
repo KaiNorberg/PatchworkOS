@@ -1,7 +1,7 @@
 #pragma once
 
-#include <kernel/fs/vnode.h>
 #include <kernel/fs/path.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/sync/rcu.h>
 #include <kernel/sync/seqlock.h>

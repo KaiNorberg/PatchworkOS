@@ -1,23 +1,16 @@
-#include <kernel/io/verb.h>
-#include <kernel/io/io.h>
-#include <kernel/sched/wait.h>
 #include <kernel/fs/file_table.h>
+#include <kernel/io/io.h>
+#include <kernel/io/verb.h>
 #include <kernel/mem/mdl.h>
 #include <kernel/proc/process.h>
+#include <kernel/sched/wait.h>
 
-void verb_args_cleanup(irp_t* irp)
+static void verb_args_read_complete(irp_t* irp, void* ctx)
 {
-    switch (irp->verb)
-    {
-    case VERB_READ:
-    {
-        UNREF(irp->file);
-        irp->file = NULL;
-    }
-    break;
-    default:
-        break;
-    }
+    UNUSED(ctx);
+
+    UNREF(irp->file);
+    irp->file = NULL;
 }
 
 static void verb_args_user(irp_t* irp)
@@ -46,8 +39,8 @@ static void verb_args_user(irp_t* irp)
 
         irp->file = file;
         irp->buffer = &irp->mdl;
-        irp->count = irp->sqe.count;
-        irp->offset = irp->sqe.offset;
+
+        irp_push(irp, verb_args_read_complete, NULL);
     }
     break;
     default:
@@ -74,7 +67,7 @@ static void verb_dispatch_file(irp_t* irp)
             irp_error(irp, EBADF);
             return;
         }
-    break;
+        break;
     default:
         break;
     }

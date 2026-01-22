@@ -35,9 +35,6 @@ typedef struct dentry dentry_t;
  * synchronization. All dentries synchronize upon their vnodes mutex, open files synchronize upon the mutex of the
  * underlying vnode and operations like create, remove, etc synchronize upon the vnode mutex of the parent directory.
  *
- * @todo Implement actually writing/syncing dirty vnodes, for now vnodes should use the notify functions but they will
- * never actually be "cleaned."
- *
  * @{
  */
 
@@ -52,8 +49,8 @@ typedef struct vnode
     ref_t ref;
     vtype_t type;
     _Atomic(uint64_t) dentryCount; ///< The number of dentries pointing to this vnode.
-    void* data; ///< Filesystem defined data.
-    uint64_t size; ///< Used for convenience by certain filesystems, does not represent the file size.
+    void* data;                    ///< Filesystem defined data.
+    uint64_t size;                 ///< Used for convenience by certain filesystems, does not represent the file size.
     superblock_t* superblock;
     const vnode_ops_t* ops;
     const file_ops_t* fileOps;
@@ -144,7 +141,8 @@ typedef struct vnode_ops
 /**
  * @brief Create a new vnode.
  *
- * Does not associate the vnode with a dentry, that is done when a dentry is made positive with `dentry_make_positive()`.
+ * Does not associate the vnode with a dentry, that is done when a dentry is made positive with
+ * `dentry_make_positive()`.
  *
  * There is no `vnode_free()` instead use `UNREF()`.
  *
@@ -154,8 +152,7 @@ typedef struct vnode_ops
  * @param fileOps The file operations for files opened on this vnode.
  * @return On success, the new vnode. On failure, returns `NULL` and `errno` is set.
  */
-vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_ops_t* ops,
-    const file_ops_t* fileOps);
+vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_ops_t* ops, const file_ops_t* fileOps);
 
 /**
  * @brief Truncate the vnode.

@@ -5,12 +5,12 @@
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/filesystem.h>
-#include <kernel/fs/vnode.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/proc/process.h>
@@ -922,8 +922,7 @@ static uint64_t procfs_env_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, process->env.vars[i].key,
-                VREG))
+        if (!ctx->emit(ctx, process->env.vars[i].key, VREG))
         {
             return 0;
         }
@@ -1056,8 +1055,7 @@ static uint64_t procfs_pid_lookup(vnode_t* dir, dentry_t* target)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->superblock, pidEntries[i].type,
-            pidEntries[i].vnodeOps, pidEntries[i].fileOps);
+        vnode_t* vnode = vnode_new(dir->superblock, pidEntries[i].type, pidEntries[i].vnodeOps, pidEntries[i].fileOps);
         if (vnode == NULL)
         {
             return 0;
@@ -1148,8 +1146,8 @@ static uint64_t procfs_lookup(vnode_t* dir, dentry_t* target)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->superblock, procEntries[i].type,
-            procEntries[i].vnodeOps, procEntries[i].fileOps);
+        vnode_t* vnode =
+            vnode_new(dir->superblock, procEntries[i].type, procEntries[i].vnodeOps, procEntries[i].fileOps);
         if (vnode == NULL)
         {
             return ERR;
@@ -1201,8 +1199,7 @@ static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, procEntries[i].name,
-                procEntries[i].type))
+        if (!ctx->emit(ctx, procEntries[i].name, procEntries[i].type))
         {
             return 0;
         }
