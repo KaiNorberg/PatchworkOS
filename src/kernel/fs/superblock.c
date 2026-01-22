@@ -54,7 +54,7 @@ superblock_t* superblock_new(filesystem_t* fs, const superblock_ops_t* ops, cons
     superblock->root = NULL;
     superblock->ops = ops;
     superblock->dentryOps = dentryOps;
-    superblock->defaultVerbs = NULL;
+    superblock->verbs = NULL;
     superblock->fs = fs;
     atomic_init(&superblock->mountCount, 0);
 

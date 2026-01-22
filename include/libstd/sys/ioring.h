@@ -71,11 +71,6 @@ typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
  * The operation was created by the kernel, used internally by the kernel.
  */
 #define SQE_KERNEL (1 << (_SQE_FLAGS))
-
-/**
- * The operations enter callback has been called, used internally by the kernel.
- */
-#define SQE_KERNEL_ENTERED (1 << (_SQE_FLAGS + 1))
 #endif
 
 /**
@@ -86,8 +81,6 @@ typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
  * Like `SQE_LINK` but will process the next SQE even if this one fails.
  */
 #define SQE_HARDLINK (1 << (_SQE_FLAGS + 3))
-
-#define SQE_ARG_MAX 5 ///< Maximum number of arguments for a ring operation.
 
 /**
  * @brief Asynchronous submission queue entry (SQE).
@@ -104,36 +97,29 @@ typedef struct sqe
     sqe_flags_t flags; ///< Submission flags.
     clock_t timeout;   ///< Timeout for the operation, `CLOCKS_NEVER` for no timeout.
     void* data;        ///< Private data for the operation, will be returned in the completion entry.
-    union {
-        uint64_t _args[SQE_ARG_MAX];
-        struct
-        {
-            fd_t fd;
-        } handle;
-        struct
-        {
-            fd_t dirfd;
-            char* path;
-            size_t len;
-        } path;
-        struct
-        {
-            fd_t fd;
-            void* buffer;
-            size_t len;
-            ssize_t off;
-        } rw;
-        struct
-        {
-            fd_t fd;
-            ssize_t off;
-            whence_t whence;
-        } seek;
-        struct
-        {
-            fd_t fd;
-            events_t events;
-        } poll;
+    union
+    {
+        uint64_t arg0; 
+        fd_t fd;
+    };
+    union
+    {
+        uint64_t arg1;
+        void* buffer;
+    };
+    union
+    {
+        uint64_t arg2;
+        size_t count;
+    };
+    union
+    {
+        uint64_t arg3;
+        ssize_t offset;
+    };
+    union
+    {
+        uint64_t arg4;
     };
 } sqe_t;
 

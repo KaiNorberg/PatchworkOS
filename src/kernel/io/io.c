@@ -195,7 +195,7 @@ static void io_ctx_complete(irp_t* irp, void* _ptr)
     sqe_flags_t reg = (irp->flags >> SQE_SAVE) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        atomic_store_explicit(&ring->ctrl->regs[reg], irp->result._raw, memory_order_release);
+        atomic_store_explicit(&ring->ctrl->regs[reg], irp->res._raw, memory_order_release);
     }
 
     uint32_t tail = atomic_load_explicit(&ring->ctrl->ctail, memory_order_relaxed);
@@ -211,7 +211,7 @@ static void io_ctx_complete(irp_t* irp, void* _ptr)
     cqe->verb = irp->verb;
     cqe->error = irp->err;
     cqe->data = irp->data;
-    cqe->_result = irp->result._raw;
+    cqe->_result = irp->res._raw;
 
     atomic_store_explicit(&ring->ctrl->ctail, tail + 1, memory_order_release);
     wait_unblock(&ctx->waitQueue, WAIT_ALL, EOK);
@@ -246,19 +246,40 @@ static void io_ctx_dispatch(irp_t* irp)
     io_ctx_t* ctx = irp_get_ctx(irp);
     ioring_t* ring = &ctx->ring;
 
-    for (uint64_t i = 0; i < SQE_ARG_MAX; i++)
-    {
-        sqe_flags_t reg = (irp->flags >> (i * SQE_REG_SHIFT)) & SQE_REG_MASK;
-        if (reg == SQE_REG_NONE)
-        {
-            continue;
-        }
+    // Ugly but the alternative is a super messy SQE structure.
 
-        irp->sqe._args[i] = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+    sqe_flags_t reg = (irp->flags >> SQE_LOAD0) & SQE_REG_MASK;
+    if (reg != SQE_REG_NONE)
+    {
+        irp->sqe.arg0 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+    }
+
+    reg = (irp->flags >> SQE_LOAD1) & SQE_REG_MASK;
+    if (reg != SQE_REG_NONE)
+    {
+        irp->sqe.arg1 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+    }
+
+    reg = (irp->flags >> SQE_LOAD2) & SQE_REG_MASK;
+    if (reg != SQE_REG_NONE)
+    {
+        irp->sqe.arg2 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+    }
+
+    reg = (irp->flags >> SQE_LOAD3) & SQE_REG_MASK;
+    if (reg != SQE_REG_NONE)
+    {
+        irp->sqe.arg3 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+    }
+
+    reg = (irp->flags >> SQE_LOAD4) & SQE_REG_MASK;
+    if (reg != SQE_REG_NONE)
+    {
+        irp->sqe.arg4 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
     }
 
     irp_push(irp, io_ctx_complete, NULL);
-    irp_dispatch(irp);
+    verb_dispatch(irp);
 }
 
 typedef struct

@@ -227,7 +227,7 @@ static void pmm_load_memory(const boot_memory_map_t* map)
                 page->ref = UINT16_MAX;
             }
 
-            LOG_INFO("reserve [%p-%p] pages=%d type=%s\n", PFN_TO_VIRT(pfn), PFN_TO_VIRT(pfn + pages), pages,
+            LOG_INFO("reserve [%p-%p] pages=%d type=%s\n", PFN_TO_VIRT(pfn), PFN_TO_VIRT(pfn + amount), amount,
                 efiMemTypeToString[desc->Type]);
         }
     }

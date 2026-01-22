@@ -39,7 +39,7 @@ typedef struct superblock
     dentry_t* root; ///< Root dentry of the filesystem, should not take a reference.
     const superblock_ops_t* ops;
     const dentry_ops_t* dentryOps;
-    const verb_table_t* defaultVerbs;
+    const verb_table_t* verbs;
     filesystem_t* fs;
     /**
      * The number of mounts of this superblock.

@@ -74,7 +74,7 @@ static uint64_t init_socket_addr_wait(const char* family, const char* addr)
 
         free((void*)data);
 
-        if (uptime() - start > CLOCKS_PER_SEC * 10)
+        if ((uptime() - start) >= CLOCKS_PER_SEC * 10)
         {
             close(addrs);
             return ERR;

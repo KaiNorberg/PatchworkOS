@@ -69,7 +69,7 @@ file_t* file_new(const path_t* path, mode_t mode)
     file->inode = REF(path->dentry->inode);
     file->path = PATH_CREATE(path->mount, path->dentry);
     file->ops = path->dentry->inode->fileOps;
-    file->verbs = path->dentry->superblock->defaultVerbs;
+    file->verbs = file->inode->verbs;
     file->data = NULL;
     return file;
 }
@@ -97,16 +97,4 @@ size_t file_generic_seek(file_t* file, ssize_t offset, seek_origin_t origin)
 
     file->pos = newPos;
     return newPos;
-}
-
-IRP_DEFINE(VERB_READ)
-{
-    file_t* file = irp->rw.file;
-    if (file->verbs == NULL || file->verbs->handlers[VERB_READ] == NULL)
-    {
-        irp_error(irp, ENOSYS);
-        return;
-    }
-
-    file->verbs->handlers[VERB_READ](irp);
 }

@@ -63,7 +63,6 @@ void init_early(void)
 
     vmm_kernel_space_load();
 
-    irp_table_init();
     syscall_table_init();
 
     _std_init();

@@ -9,6 +9,7 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
+#include <kernel/io/verb.h>
 
 #include <kernel/cpu/percpu.h>
 
@@ -53,11 +54,12 @@ irp_pool_t* irp_pool_new(size_t size, process_t* process, void* ctx)
         irp->flags = 0;
         irp->timeout = CLOCKS_NEVER;
         irp->data = NULL;
-        for (size_t j = 0; j < IRP_ARG_MAX; j++)
-        {
-            irp->_args[j] = 0;
-        }
-        irp->result._raw = 0;
+        irp->arg0 = 0;
+        irp->arg1 = 0;
+        irp->arg2 = 0;
+        irp->arg3 = 0;
+        irp->arg4 = 0;
+        irp->res._raw = 0;
         mdl_init(&irp->mdl, NULL);
         irp->sqe = (sqe_t){0};
         irp->index = i;
@@ -81,55 +83,6 @@ void irp_pool_free(irp_pool_t* pool)
     free(pool);
 }
 
-static inline void irp_enter(irp_t* irp)
-{
-    process_t* process = irp_get_process(irp);
-
-    switch (irp->verb)
-    {
-    case VERB_READ:
-    {
-        file_t* file = file_table_get(&process->fileTable, irp->sqe.rw.fd);
-        if (file == NULL)
-        {
-            irp->err = EBADF;
-            return;
-        }
-
-        if (mdl_from_region(&irp->mdl, NULL, &process->space, irp->sqe.rw.buffer, irp->sqe.rw.len) == ERR)
-        {
-            UNREF(file);
-            irp->err = EFAULT;
-            return;
-        }
-
-        irp->rw.file = file;
-        irp->rw.buffer = &irp->mdl;
-        irp->rw.len = irp->sqe.rw.len;
-        irp->rw.off = irp->sqe.rw.off;
-    }
-    break;
-    default:
-        break;
-    }
-}
-
-static inline void irp_leave(irp_t* irp)
-{
-    // MDL will be deinitialized in irp_free
-
-    switch (irp->verb)
-    {
-    case VERB_READ:
-    {
-        UNREF(irp->rw.file);
-    }
-    break;
-    default:
-        break;
-    }
-}
-
 irp_t* irp_new(irp_pool_t* pool, sqe_t* sqe)
 {
     pool_idx_t idx = pool_alloc(&pool->pool);
@@ -143,7 +96,7 @@ irp_t* irp_new(irp_pool_t* pool, sqe_t* sqe)
     irp->location = IRP_LOC_MAX;
     irp->next = POOL_IDX_MAX;
     irp->err = EINPROGRESS;
-    irp->result._raw = 0;
+    irp->res._raw = 0;
     atomic_store_explicit(&irp->cancel, NULL, memory_order_relaxed);
 
     if (sqe == NULL)
@@ -154,7 +107,7 @@ irp_t* irp_new(irp_pool_t* pool, sqe_t* sqe)
     else
     {
         irp->sqe = *sqe;
-        irp->sqe.flags &= ~(SQE_KERNEL | SQE_KERNEL_ENTERED);
+        irp->sqe.flags &= ~SQE_KERNEL;
     }
 
     irp->next = POOL_IDX_MAX;
@@ -173,13 +126,21 @@ irp_t* irp_new(irp_pool_t* pool, sqe_t* sqe)
     return irp;
 }
 
+
 void irp_free(irp_t* irp)
 {
-    if (irp->flags & SQE_KERNEL_ENTERED && irp->verb < VERB_MAX)
+    if (irp == NULL)
     {
-        assert(!(irp->flags & SQE_KERNEL));
-        irp_leave(irp);
+        return;
     }
+
+    irp_timeout_remove(irp);
+
+    assert(irp->location == IRP_LOC_MAX);
+    assert(irp->next == POOL_IDX_MAX);
+    assert(irp->cpu == CPU_ID_INVALID);
+
+    verb_args_cleanup(irp);
 
     mdl_t* next = irp->mdl.next;
     mdl_deinit(&irp->mdl);
@@ -209,29 +170,10 @@ uint64_t irp_cancel(irp_t* irp)
         return ERR;
     }
 
+    irp_timeout_remove(irp);
+
     irp->err = ECANCELED;
     return handler(irp);
-}
-
-static void irp_run_completion(irp_t* irp, void* ctx)
-{
-    UNUSED(irp);
-
-    wait_queue_t* wait = (wait_queue_t*)ctx;
-    wait_unblock(wait, WAIT_ALL, EOK);
-}
-
-void irp_run(irp_t* irp)
-{
-    wait_queue_t wait;
-    wait_queue_init(&wait);
-
-    irp_push(irp, irp_run_completion, &wait);
-    irp_dispatch(irp);
-
-    WAIT_BLOCK(&wait, irp->err != EINPROGRESS);
-
-    wait_queue_deinit(&wait);
 }
 
 void irp_timeout_add(irp_t* irp)
@@ -312,9 +254,9 @@ void irp_timeouts_check(void)
         list_remove(&irp->timeoutEntry);
         irp->deadline = CLOCKS_NEVER;
         irp->cpu = CPU_ID_INVALID;
+        irp_cancel_t handler = atomic_exchange(&irp->cancel, IRP_CANCELLED);
         lock_release(&ctx->lock);
 
-        irp_cancel_t handler = atomic_exchange(&irp->cancel, IRP_CANCELLED);
         if (handler == IRP_CANCELLED)
         {
             // Already cancelled
@@ -329,66 +271,4 @@ void irp_timeouts_check(void)
     }
 
     lock_release(&ctx->lock);
-}
-
-void irp_dispatch(irp_t* irp)
-{
-    if (irp->verb >= VERB_MAX || _irp_table_start[irp->verb].handler == NULL)
-    {
-        irp->err = ENOSYS;
-        irp_complete(irp);
-        return;
-    }
-
-    if (!(irp->flags & SQE_KERNEL) && !(irp->flags & SQE_KERNEL_ENTERED))
-    {
-        irp_enter(irp);
-        irp->flags |= SQE_KERNEL_ENTERED;
-    }
-
-    if (irp->err != EINPROGRESS)
-    {
-        irp_complete(irp);
-        return;
-    }
-
-    _irp_table_start[irp->verb].handler(irp);
-}
-
-static int irp_handler_cmp(const void* a, const void* b)
-{
-    const irp_handler_t* irpA = (const irp_handler_t*)a;
-    const irp_handler_t* irpB = (const irp_handler_t*)b;
-    return (int32_t)irpA->verb - (int32_t)irpB->verb;
-}
-
-void irp_table_init(void)
-{
-    const uint64_t irpsInTable = (((uint64_t)_irp_table_end - (uint64_t)_irp_table_start) / sizeof(irp_handler_t));
-    assert(irpsInTable == VERB_MAX);
-
-    LOG_INFO("sorting IRP table, total IRPs %d\n", VERB_MAX);
-    qsort(_irp_table_start, irpsInTable, sizeof(irp_handler_t), irp_handler_cmp);
-
-    for (uint64_t i = 0; i < irpsInTable; i++)
-    {
-        assert(_irp_table_start[i].verb == i);
-    }
-}
-
-static uint64_t _nop_cancel(irp_t* irp)
-{
-    irp_complete(irp);
-    return 0;
-}
-
-IRP_DEFINE(VERB_NOP)
-{
-    irp_set_cancel(irp, _nop_cancel);
-
-    if (irp->timeout != CLOCKS_NEVER)
-    {
-        irp_timeout_add(irp);
-        return;
-    }
 }

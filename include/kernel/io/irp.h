@@ -163,7 +163,7 @@ typedef struct irp irp_t;
  * irp_push(irp, my_completion, NULL);
  *
  * // Finally, dispatch the IRP to the appropriate handler.
- * irp_dispatch(irp);
+ * verb_dispatch(irp);
  * // Continue executing even if the operation cannot complete immediately.
  * ```
  *
@@ -250,8 +250,6 @@ typedef struct irp irp_t;
 
 #define IRP_LOC_MAX 5 ///< The maximum number of locations in a IRP.
 
-#define IRP_ARG_MAX SQE_ARG_MAX ///< The maximum number of arguments in an IRP.
-
 /**
  * @brief IRP completion callback type.
  *
@@ -317,35 +315,29 @@ typedef struct ALIGNED(64) irp
                 clock_t deadline; ///< The time at which the IRP will be removed from a timeout queue.
             };
             void* data; ///< Private data for the operation, will be returned in the completion entry.
-            union {
-                uint64_t _args[IRP_ARG_MAX];
-                struct
-                {
-                    file_t* file;
-                } handle;
-                struct
-                {
-                    file_t* file;
-                    mdl_t* path;
-                } path;
-                struct
-                {
-                    file_t* file;
-                    mdl_t* buffer;
-                    size_t len;
-                    ssize_t off;
-                } rw;
-                struct
-                {
-                    file_t* file;
-                    ssize_t off;
-                    whence_t whence;
-                } seek;
-                struct
-                {
-                    file_t* file;
-                    events_t events;
-                } poll;
+            union
+            {
+                uint64_t arg0; 
+                file_t* file;
+            };
+            union
+            {
+                uint64_t arg1;
+                mdl_t* buffer;
+            };
+            union
+            {
+                uint64_t arg2;
+                size_t count;
+            };
+            union
+            {
+                uint64_t arg3;
+                ssize_t offset;
+            };
+            union
+            {
+                uint64_t arg4;
             };
         };
         sqe_t sqe; ///< The original SQE for this IRP.
@@ -356,7 +348,7 @@ typedef struct ALIGNED(64) irp
         void* ptr;
         events_t events;
         uint64_t _raw;
-    } result;
+    } res;
     mdl_t mdl;                   ///< A preallocated memory descriptor list for use by the IRP.
     pool_idx_t index;             ///< Index of the IRP in its pool.
     pool_idx_t next;              ///< Index of the next IRP in a chain or in the free list.
@@ -370,7 +362,11 @@ static_assert(offsetof(irp_t, verb) == offsetof(irp_t, sqe.verb), "verb offset m
 static_assert(offsetof(irp_t, flags) == offsetof(irp_t, sqe.flags), "flags offset mismatch");
 static_assert(offsetof(irp_t, timeout) == offsetof(irp_t, sqe.timeout), "timeout offset mismatch");
 static_assert(offsetof(irp_t, data) == offsetof(irp_t, sqe.data), "data offset mismatch");
-static_assert(offsetof(irp_t, _args) == offsetof(irp_t, sqe._args), "args offset mismatch");
+static_assert(offsetof(irp_t, arg0) == offsetof(irp_t, sqe.arg0), "arg0 offset mismatch");
+static_assert(offsetof(irp_t, arg1) == offsetof(irp_t, sqe.arg1), "arg1 offset mismatch");
+static_assert(offsetof(irp_t, arg2) == offsetof(irp_t, sqe.arg2), "arg2 offset mismatch");
+static_assert(offsetof(irp_t, arg3) == offsetof(irp_t, sqe.arg3), "arg3 offset mismatch");
+static_assert(offsetof(irp_t, arg4) == offsetof(irp_t, sqe.arg4), "arg4 offset mismatch");
 
 static_assert(sizeof(irp_t) == 256, "irp_t is not 256 bytes");
 
@@ -427,10 +423,6 @@ void irp_timeouts_check(void);
  *
  * The pool that the IRP was allocated from, and its context, can be retrieved using the `irp_get_pool()`
  * function.
- *
- * @note If a SQE is provided then the IRP will be considered a user IRP, causing the `irp_handler_t::enter` and
- * `irp_handler_t::leave` callbacks to be invoked on the IRP when its dispatched and freed respectively. Otherwise, the
- * caller is responsible for the lifecycle and arguments of the IRP.
  *
  * @param pool Pointer to the IRP pool.
  * @param sqe The Submission Queue Entry associated with the IRP, if `NULL` the IRP will be a kernel IRP.
@@ -616,69 +608,5 @@ static inline void irp_error(irp_t* irp, uint8_t err)
  * @return On success, `0`. On failure, `ERR` and `errno` is set.
  */
 uint64_t irp_cancel(irp_t* irp);
-
-/**
- * @brief Execute an IRP synchronously.
- *
- * This function dispatches the IRP and blocks the current thread until the operation is complete.
- *
- * @warning This function should only be used when the alternative of using asynchronous operations is simply not worth
- * the complexity. For example, while loading modules.
- *
- * @param irp Pointer to the IRP to execute.
- */
-void irp_run(irp_t* irp);
-
-/**
- * @brief Dispatch an IRP to the appropriate handler.
- *
- * If `irp->err != EINPROGRESS` the IRP is immediately completed.
- *
- * If the IRP is a user IRP and it has not yet been entered, the `irp_handler_t::enter` callback for the verb is
- * invoked.
- *
- * @param irp Pointer to the IRP to dispatch.
- */
-void irp_dispatch(irp_t* irp);
-
-/**
- * @brief Sort and validate the IRP handlers table.
- */
-void irp_table_init(void);
-
-/**
- * @brief IRP handler structure.
- * @struct irp_handler_t
- */
-typedef struct
-{
-    verb_t verb;
-    void (*handler)(irp_t* irp); ///< The handler function for the verb.
-} irp_handler_t;
-
-/**
- * @brief Linker defined start of the IRP handlers table.
- *
- * After `irp_table_init()` has sorted the IRP table, the table can be indexed by verb.
- */
-extern irp_handler_t _irp_table_start[];
-
-/**
- * @brief Linker defined end of the IRP handlers table.
- */
-extern irp_handler_t _irp_table_end[];
-
-/**
- * @brief Macro to define an IRP handler.
- *
- * @param _verb The verb to define the handler for.
- */
-#define IRP_DEFINE(_verb) \
-    static void __irp_handler_##_verb(irp_t* irp); \
-    static irp_handler_t __irp_##_verb __attribute__((section("._irp_table"), used)) = { \
-        .verb = (_verb), \
-        .handler = __irp_handler_##_verb, \
-    }; \
-    static void __irp_handler_##_verb(irp_t* irp)
 
 /** @} */

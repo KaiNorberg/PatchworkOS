@@ -68,56 +68,20 @@
  *
  * ## Arguments
  *
- * Instead of manually indexing the `_args` array each SQE stores the arguments in a union with several "argument
- * archetypes". Such that several verbs can use the same archetype for their arguments.
+ * Arguments within a SQE are stored in five 64-bit values, `arg1` through `arg5`. For convenience, each argument value is stored as a union with various types.
+ * 
+ * To avoid nameing conflicts and to avoid having to define new arguments for each verb, we define a convention to be used for the arguments.
+ * 
+ * - `arg0`: The noun or subject of the verb, for example, a `fd_t` for file operations.
+ * - `arg1`: The source or payload of the verb, for example, a buffer or path.
+ * - `arg2`: The magnitude of the operation, for example, a size or encoding.
+ * - `arg3`: The location or a modifier to the operation, for example, an offset or flags.
+ * - `arg4`: An auxiliary argument, for example, additional flags or options.
+ * 
+ * It may not always be possible for a verb to follow these conventions, but they should be followed whenever reasonable.
  *
- * @note The kernels internal I/O Request Packet structure contains the same archetypes but with the kernel equivalents
+ * @note The kernels internal I/O Request Packet structure uses a similar system but with the kernel equivalents
  * of the arguments, for example, a `file_t*` instead of a `fd_t`.
- *
- * Included below is a list of all argument archetypes.
- *
- * ### `.handle`
- *
- * Used for verbs that act on a single existing file descriptor.
- *
- * **Arguments:**
- * - `fd`: The file descriptor to act upon.
- *
- * ### `.path`
- *
- * Used for verbs that act on a filesystem path.
- *
- * **Arguments:**
- * - `dirfd`: The directory file descriptor to resolve the path from, or `FD_CWD` to use the current working directory.
- * - `path`: Pointer to the path string, null-termination is ignored.
- * - `len`: Length of the path string.
- *
- * ### `.rw`
- *
- * Used for verbs that transfer data to or from a file.
- *
- * **Arguments:**
- * - `fd`: The file descriptor to access.
- * - `buffer`: Pointer to the buffer to read into or write from.
- * - `len`: Length of the buffer.
- * - `off`: Offset within the file to access, or `IO_CUR` to use the current file offset.
- *
- * ### `.seek`
- *
- * Used for verbs that seek within a file.
- *
- * **Arguments:**
- * - `fd`: The file descriptor to seek within.
- * - `off`: Offset to seek to.
- * - `whence`: Origin for the seek operation, `IO_SET`, `IO_END` or `IO_CUR`.
- *
- * ### `.poll`
- *
- * Used for verbs that wait for events on a file descriptor.
- *
- * **Arguments:**
- * - `fd`: The file descriptor to poll.
- * - `events`: The events to wait for (e.g., `POLLIN`, `POLLOUT`).
  *
  * ## Results
  *
@@ -144,22 +108,30 @@
  * ## Verbs
  *
  * Included below is a list of all currently implemented verbs.
+ * 
+ * The arguments of each verb is specified in order as `arg0`, `arg1`, `arg2`, `arg3`, `arg4`.
  *
  * ### `VERB_NOP`
  *
  * A no-operation verb that does nothing but is useful for implementing sleeping.
  *
- * **Arguments:** None.
- *
- * **Result:** None.
- *
+ * @param arg0 Unused
+ * @param arg1 Unused
+ * @param arg2 Unused
+ * @param arg3 Unused
+ * @param arg4 Unused
+ * @result None
+ * 
  * ### `VERB_READ`
  *
  * Reads data from a file descriptor.
  *
- * **Arguments:** `.rw`
-
- * **Result:** The number of bytes read.
+ * @param fd The file descriptor to read from.
+ * @param buffer The buffer to read the data into.
+ * @param count The number of bytes to read.
+ * @param offset The offset to read from, or `IO_CUR` to use the current position.
+ * @param arg4 Unused
+ * @result The number of bytes read.
  * 
  * @{
  */
