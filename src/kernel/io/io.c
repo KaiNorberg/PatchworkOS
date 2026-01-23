@@ -192,7 +192,7 @@ static void io_ctx_complete(irp_t* irp, void* _ptr)
     io_ctx_t* ctx = irp_get_ctx(irp);
     ioring_t* ring = &ctx->ring;
 
-    sqe_flags_t reg = (irp->flags >> SQE_SAVE) & SQE_REG_MASK;
+    sqe_flags_t reg = (irp->sqe.flags >> SQE_SAVE) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
         atomic_store_explicit(&ring->ctrl->regs[reg], irp->res._raw, memory_order_release);
@@ -208,15 +208,15 @@ static void io_ctx_complete(irp_t* irp, void* _ptr)
     }
 
     cqe_t* cqe = &ring->cqueue[tail & ring->cmask];
-    cqe->verb = irp->verb;
+    cqe->op = irp->sqe.op;
     cqe->error = irp->err;
-    cqe->data = irp->data;
+    cqe->data = irp->sqe.data;
     cqe->_result = irp->res._raw;
 
     atomic_store_explicit(&ring->ctrl->ctail, tail + 1, memory_order_release);
     wait_unblock(&ctx->waitQueue, WAIT_ALL, EOK);
 
-    if (irp->err != EOK && !(irp->flags & SQE_HARDLINK))
+    if (irp->err != EOK && !(irp->sqe.flags & SQE_HARDLINK))
     {
         while (true)
         {
@@ -226,7 +226,7 @@ static void io_ctx_complete(irp_t* irp, void* _ptr)
                 break;
             }
 
-            irp_free(next);
+            irp_complete(next);
         }
     }
     else
@@ -234,11 +234,18 @@ static void io_ctx_complete(irp_t* irp, void* _ptr)
         irp_t* next = irp_chain_next(irp);
         if (next != NULL)
         {
-            io_ctx_dispatch(next);
+            irp_set_complete(next, io_ctx_complete, NULL);
+            irp_call_direct(next, io_ctx_dispatch);
         }
     }
 
-    irp_free(irp);
+    irp_complete(irp);
+}
+
+static uint64_t nop_cancel(irp_t* irp)
+{
+    irp_complete(irp);
+    return 0;
 }
 
 static void io_ctx_dispatch(irp_t* irp)
@@ -248,38 +255,46 @@ static void io_ctx_dispatch(irp_t* irp)
 
     // Ugly but the alternative is a super messy SQE structure.
 
-    sqe_flags_t reg = (irp->flags >> SQE_LOAD0) & SQE_REG_MASK;
+    sqe_flags_t reg = (irp->sqe.flags >> SQE_LOAD0) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        irp->arg0 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+        irp->sqe.arg0 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
     }
 
-    reg = (irp->flags >> SQE_LOAD1) & SQE_REG_MASK;
+    reg = (irp->sqe.flags >> SQE_LOAD1) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        irp->arg1 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+        irp->sqe.arg1 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
     }
 
-    reg = (irp->flags >> SQE_LOAD2) & SQE_REG_MASK;
+    reg = (irp->sqe.flags >> SQE_LOAD2) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        irp->arg2 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+        irp->sqe.arg2 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
     }
 
-    reg = (irp->flags >> SQE_LOAD3) & SQE_REG_MASK;
+    reg = (irp->sqe.flags >> SQE_LOAD3) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        irp->arg3 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+        irp->sqe.arg3 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
     }
 
-    reg = (irp->flags >> SQE_LOAD4) & SQE_REG_MASK;
+    reg = (irp->sqe.flags >> SQE_LOAD4) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        irp->arg4 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+        irp->sqe.arg4 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
     }
 
-    irp_push(irp, io_ctx_complete, NULL);
-    verb_dispatch(irp);
+    switch (irp->sqe.op)
+    {
+    case IORING_NOP:
+        irp_set_cancel(irp, nop_cancel);
+        irp_timeout_add(irp, irp->sqe.timeout);
+        break;
+    default:
+        irp_error(irp, EINVAL);
+        break;
+    }
 }
 
 typedef struct
@@ -291,6 +306,7 @@ typedef struct
 static uint64_t io_ctx_sqe_pop(io_ctx_t* ctx, io_ctx_notify_ctx_t* notify)
 {
     ioring_t* ring = &ctx->ring;
+
     uint32_t stail = atomic_load_explicit(&ring->ctrl->stail, memory_order_acquire);
     uint32_t shead = atomic_load_explicit(&ring->ctrl->shead, memory_order_relaxed);
 
@@ -300,12 +316,12 @@ static uint64_t io_ctx_sqe_pop(io_ctx_t* ctx, io_ctx_notify_ctx_t* notify)
         return ERR;
     }
 
-    sqe_t* sqe = &ring->squeue[shead & ring->smask];
-    irp_t* irp = irp_new(ctx->irps, sqe);
+    irp_t* irp = irp_new(ctx->irps);
     if (irp == NULL)
     {
         return ERR;
     }
+    irp->sqe = ring->squeue[shead & ring->smask];
 
     atomic_store_explicit(&ring->ctrl->shead, shead + 1, memory_order_release);
 
@@ -319,7 +335,7 @@ static uint64_t io_ctx_sqe_pop(io_ctx_t* ctx, io_ctx_notify_ctx_t* notify)
         list_push_back(&notify->irps, &irp->entry);
     }
 
-    if (irp->flags & SQE_LINK || irp->flags & SQE_HARDLINK)
+    if (irp->sqe.flags & SQE_LINK || irp->sqe.flags & SQE_HARDLINK)
     {
         notify->link = irp;
     }
@@ -347,13 +363,12 @@ uint64_t io_ctx_notify(io_ctx_t* ctx, size_t amount, size_t wait)
         return ERR;
     }
 
-    size_t processed = 0;
-
     io_ctx_notify_ctx_t notify = {
         .irps = LIST_CREATE(notify.irps),
         .link = NULL,
     };
 
+    size_t processed = 0;
     while (processed < amount)
     {
         if (io_ctx_sqe_pop(ctx, &notify) == ERR)
@@ -366,7 +381,9 @@ uint64_t io_ctx_notify(io_ctx_t* ctx, size_t amount, size_t wait)
     while (!list_is_empty(&notify.irps))
     {
         irp_t* irp = CONTAINER_OF(list_pop_front(&notify.irps), irp_t, entry);
-        io_ctx_dispatch(irp);
+
+        irp_set_complete(irp, io_ctx_complete, NULL);
+        irp_call_direct(irp, io_ctx_dispatch);
     }
 
     if (wait == 0)

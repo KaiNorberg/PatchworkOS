@@ -1,7 +1,6 @@
 #pragma once
 
 #include <kernel/fs/path.h>
-#include <kernel/io/verb.h>
 #include <kernel/mem/paging_types.h>
 #include <kernel/utils/ref.h>
 
@@ -44,7 +43,6 @@ typedef struct file
     vnode_t* vnode;
     path_t path;
     const file_ops_t* ops;
-    const verb_table_t* verbs;
     void* data;
 } file_t;
 

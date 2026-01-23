@@ -68,7 +68,7 @@ vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_ops_t* op
     vnode->superblock = REF(superblock);
     vnode->ops = ops;
     vnode->fileOps = fileOps;
-    vnode->verbs = superblock->verbs;
+    vnode->vtable = NULL;
     return vnode;
 }
 

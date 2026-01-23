@@ -63,19 +63,19 @@ typedef struct mdl
 /**
  * @brief Initialize a Memory Descriptor List.
  *
- * @param mdl Pointer to the MDL.
+ * @param next Pointer to the MDL.
  * @param prev Pointer to the previous MDL in the chain, or `NULL` if none.
  */
-static inline void mdl_init(mdl_t* mdl, mdl_t* prev)
+static inline void mdl_init(mdl_t* next, mdl_t* prev)
 {
     if (prev != NULL)
     {
-        prev->next = mdl;
+        prev->next = next;
     }
-    mdl->next = NULL;
-    mdl->segments = mdl->small;
-    mdl->amount = 0;
-    mdl->capacity = MDL_SEGS_SMALL_MAX;
+    next->next = NULL;
+    next->segments = next->small;
+    next->amount = 0;
+    next->capacity = MDL_SEGS_SMALL_MAX;
 }
 
 /**

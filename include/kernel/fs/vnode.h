@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kernel/fs/path.h>
-#include <kernel/io/verb.h>
+#include <kernel/io/irp.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/sync/rcu.h>
 #include <kernel/utils/map.h>
@@ -31,7 +31,7 @@ typedef struct dentry dentry_t;
  *
  * ## Synchronization
  *
- * vnodes have an additional purpose within the Virtual File System (VFS) as they act as the primary means of
+ * Vnodes have an additional purpose within the Virtual File System (VFS) as they act as the primary means of
  * synchronization. All dentries synchronize upon their vnodes mutex, open files synchronize upon the mutex of the
  * underlying vnode and operations like create, remove, etc synchronize upon the vnode mutex of the parent directory.
  *
@@ -54,7 +54,7 @@ typedef struct vnode
     superblock_t* superblock;
     const vnode_ops_t* ops;
     const file_ops_t* fileOps;
-    const verb_table_t* verbs;
+    const irp_vtable_t* vtable;
     rcu_entry_t rcu;
     mutex_t mutex;
 } vnode_t;

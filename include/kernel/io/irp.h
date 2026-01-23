@@ -4,6 +4,7 @@
 #include <kernel/mem/mdl.h>
 #include <kernel/mem/pool.h>
 #include <kernel/sync/lock.h>
+#include <kernel/utils/ref.h>
 
 #include <assert.h>
 #include <stdatomic.h>
@@ -17,6 +18,7 @@
 
 typedef struct file file_t;
 typedef struct process process_t;
+typedef struct vnode vnode_t;
 
 typedef struct irp irp_t;
 
@@ -25,138 +27,37 @@ typedef struct irp irp_t;
  * @defgroup kernel_io_irp I/O Request Packet
  * @ingroup kernel_io
  *
- * The I/O Request Packet is a lock-less, self-contained, layered, completion-based request that act as the primary
- * structure used internally by the kernel for asynchronous operations.
+ * The I/O Request Packet (IRP) is a lock-less, self-contained, layered, continuation-passing request that acts as the
+ * primary structure used internally by the kernel for asynchronous operations.
  *
- * The IRP system is designed to be generic enough to be used by any system in the kernel, however it is primarily used
- * by the ring system.
+ * The IRP structure is designed to be generic enough to be used by any system in the kernel, however it is primarily
+ * used by the I/O ring system.
  *
  * @warning While the cancellation or completion of an IRP is thread safe, the setup of an IRP is not (as in pushing
- * layers to it). As such, its up to the caller to ensure that only one thread is manipulating it during setup.
+ * layers to it). It is assumed that only one thread is manipulating an IRP during its setup.
  *
  * ## Completion
  *
- * The IRP system is designed to allow multiple subsystems or functions to asynchronously "call" each other.
- *
- * Consider a traditional synchronous set of functions:
- *
- * ```
- * int fun_b(int val)
- * {
- *     wait_until_data_ready();
- *     return val * get_data();
- * }
- *
- * int fun_a(int val)
- * {
- *     return fun_b(val) * 2;
- * }
- *
- * int result = fun_a(5);
- * // Do stuff with the result
- * ```
- *
- * The above may seem obvious, but in a asynchronous kernel we are not allowed to block, as such `fun_b()` should not be
- * implemented this way. We must however still be able to achieve the same result.
- *
- * @note In practice its possible that more than just one layer needs to block, as such the IRP system needs to handle
- * such cases as well.
- *
- * The idea behind IRPs is to effectively create a call stack which is detached from the actual CPU stack. Each frame in
- * the IRP stack represents a function call with associated arguments and a "return address" in the form of a function
- * pointer and "local variables" in the form of a context pointer.
- *
- * Using the IRP system, the above code would be written as:
- *
- * ```
- * void fun_b_interrupt(void)
- * {
- *     irp_t* irp = pop_irp_from_list();
- *     irp_frame_t* frame = irp_current(irp);
- *     irp->res.u64 = frame->args[0] * get_data();
- *     irp_complete(irp);
- * }
- *
- * void fun_b(irp_t* irp)
- * {
- *     irp_frame_t* frame = irp_current(irp);
- *     if (can_complete_now())
- *     {
- *         irp->res.u64 = frame->args[0] * get_data();
- *         irp_complete(irp);
- *         return;
- *     }
- *
- *     add_irp_to_list(irp);
- * }
- *
- * void fun_a_return_address(irp_t* irp, void* ctx)
- * {
- *     irp->res.u64 *= 2;
- *     irp_complete(irp);
- *     return;
- * }
- *
- * void fun_a(irp_t* irp)
- * {
- *     irp_frame_t* current = irp_current(irp);
- *     irp_frame_t* next = irp_next(irp);
- *
- *     next->args[0] = current->args[0];
- *     next->ret = fun_a_return_address;
- *
- *     irp_call(irp, fun_b);
- * }
- *
- * void my_return_address(irp_t* irp, void* ctx)
- * {
- *     //  Do stuff with the result in irp->result.
- *     irp_free(irp);
- * }
- *
- * irp_t* irp = irp_new(pool);
- *
- * // Setup the "stack frame" for our function call.
- * irp_frame_t* next = irp_next(irp);
- * next->args[0] = 5;
- * next->ret = my_return_address;
- *
- * // Call `fun_a()` and advance the stack frame.
- * irp_call(irp, fun_a);
- *
- * // Continue executing even if fun_b() cannot complete immediately.
- * ```
+ * @todo Write the IRP documentation.
  *
  * ## Cancellation
  *
- * The current owner of a IRP is responsible for handling cancellation. The current owner being the last subsystem to
- * advance the IRP stack frame.
+ * Cancelling an IRP can intuitively be considered equivalent to forcing the last completion to fail, thus resulting in
+ * all the other completions to fail as well.
  *
- * @note Intuitively, we can think of "cancelling" a IRP to be equivalent to causing the last completion to fail, thus
- * resulting in all the other return addresses to fail as well. In the examples from the Completion section, it would be
- * as though the synchronous `fun_c()` returned an error code instead of the data.
+ * The current owner of a IRP is responsible for handling cancellation by specifying a cancellation callback via
+ * `irp_set_cancel()`. The current owner being the last target of a `irp_call()` or `irp_call_direct()`.
  *
- * The owner implements cancellation by calling `irp_set_cancel()` to set a cancellation callback. When an IRP is to be
- * cancelled or timed out the cancellation callback will be invoked and atomically exchanged with a `IRP_CANCELLED`
- * sentinel value. At which point the owner should cleanup the IRP and call `irp_complete(irp)`.
+ * When an IRP is cancelled or timed out the cancellation callback will be invoked and atomically exchanged with a
+ * `IRP_CANCELLED` sentinel value. At which point the owner should perform whatever logic is needed to cancel the IRP,
+ * if it is not possible immediately cancel the IRP it should return `ERR`.
  *
- * It is not possible for the IRP system to perform this atomic exchange for return addresses. As such, to avoid race
- * conditions while completing an IRP, it is vital that the owner of the IRP atomically exchanges the cancellation
- * callback with the `IRP_CANCELLED` sentinel value. For the sake of convenience, the `irp_claim()` function is provided
- * to perform this operation.
- *
- * Below is an example of how to safely implement a return address with an associated cancellation callback:
+ * Below is an example of how to implement a completion with an associated cancellation callback:
  *
  * ```
- * void my_return_address(irp_t* irp, void* ctx)
+ * void my_completion(irp_t* irp, void* ctx)
  * {
- *     if (!irp_claim(irp))
- *     {
- *         // The IRP has already been cancelled, nothing to do here.
- *         return;
- *     }
- *
- *     // Complete the IRP...
+ *     // Do stuff...
  *
  *     irp_complete(irp);
  * }
@@ -174,7 +75,7 @@ typedef struct irp irp_t;
  *         // We were explicitly cancelled.
  *     }
  *
- *     // Perform cancellation...
+ *     // Do stuff...
  *
  *     uint64_t result = ...;
  *     if (result == ERR) // If an error occurs we can reassign the cancellation callback.
@@ -183,7 +84,6 @@ typedef struct irp irp_t;
  *         return ERR;
  *     }
  *
- *     irp_complete(irp);
  *     return 0;
  * }
  * ```
@@ -193,12 +93,11 @@ typedef struct irp irp_t;
  * The IRP system uses the `err` field to indicate both the current state of the IRP as well as any error that may have
  * occurred during its processing.
  *
- * Included below are a list of "special" values which the IRP system will recognize:
+ * Included below are a list of "special" values which the IRP system will set:
  *
  * - `EOK`: Operation completed successfully.
  * - `ECANCELED`: Operation was cancelled.
  * - `ETIMEDOUT`: Operation timed out.
- * - `EINPROGRESS`: Operation is in a timeout queue.
  *
  * @see kernel_io for the ring system.
  * @see [Wikipedia](https://en.wikipedia.org/wiki/I/O_request_packet) for more information about IRPs.
@@ -208,17 +107,17 @@ typedef struct irp irp_t;
  */
 
 /**
- * @brief IRP return address type.
+ * @brief IRP complete callback type.
  *
- * @param irp Pointer to the IRP.
- * @param ctx Context pointer.
+ * @param irp The IRP.
+ * @param ctx The contxt pointer from the `irp_frame_t` structure.
  */
-typedef void (*irp_ret_t)(irp_t* irp, void* ctx);
+typedef void (*irp_complete_t)(irp_t* irp, void* ctx);
 
 /**
  * @brief IRP cancellation callback type.
  *
- * @param irp Pointer to the IRP.
+ * @param irp The IRP.
  * @return On success, `0`. On failure, `ERR`.
  */
 typedef uint64_t (*irp_cancel_t)(irp_t* irp);
@@ -228,7 +127,16 @@ typedef uint64_t (*irp_cancel_t)(irp_t* irp);
  */
 #define IRP_CANCELLED ((irp_cancel_t)1)
 
-#define IRP_ARGS_MAX 5 ///< The maximum number of 64-bit arguments in a IRP frame.
+typedef uint16_t irp_major_t;
+#define IRP_MJ_READ 0
+#define IRP_MJ_WRITE 1
+#define IRP_MJ_POLL 2
+#define IRP_MJ_MAX 3
+
+typedef uint16_t irp_minor_t;
+#define IRP_MN_NORMAL 0
+
+#define IRP_ARGS_MAX 4 ///< The maximum number of 64-bit arguments in an `irp_frame_t`.
 
 /**
  * @brief IRP stack frame structure.
@@ -236,20 +144,34 @@ typedef uint64_t (*irp_cancel_t)(irp_t* irp);
  */
 typedef struct irp_frame
 {
-    irp_ret_t ret; ///< Return Address.
-    void* local; ///< Local context.
+    irp_major_t major; ///< Major function number.
+    irp_minor_t minor; ///< Minor function number.
+    uint8_t _reserved[4];
+    irp_complete_t complete; ///< Completion callback.
+    void* ctx;               ///< Local context.
+    vnode_t* vnode;          ///< Vnode associated with the operation.
     union {
         struct
         {
-            file_t* file;
             mdl_t* buffer;
-            size_t len;
-            ssize_t off;
+            uint64_t off;
+            void* data;
+            uint32_t len;
+            mode_t mode;
         } read;
-        uint64_t args[IRP_ARGS_MAX];
-        sqe_args_t sqe;
+        struct
+        {
+            mdl_t* buffer;
+            uint64_t off;
+            void* data;
+            uint32_t len;
+            mode_t mode;
+        } write;
+        uint64_t args[IRP_ARGS_MAX]; ///< Generic arguments.
     };
 } irp_frame_t;
+
+static_assert(sizeof(irp_frame_t) == 64, "irp_frame_t is not 64 bytes");
 
 #define IRP_FRAME_MAX 5 ///< The maximum number of frames in a IRP stack.
 
@@ -261,8 +183,6 @@ typedef struct irp_frame
  * no need for any allocation beyond the allocation of the IRP itself. This does require careful consideration of
  * padding, alignment and field sizes to keep it within a reasonable size.
  *
- * @todo Consider raising `IRP_FRAME_MAX` if needed, it will add more cache lines tho.
- *
  * @see kernel_io for more information for each possible verb.
  */
 typedef struct ALIGNED(64) irp
@@ -270,15 +190,11 @@ typedef struct ALIGNED(64) irp
     list_entry_t entry;           ///< Used to store the IRP in various lists.
     list_entry_t timeoutEntry;    ///< Used to store the IRP in the timeout queue.
     _Atomic(irp_cancel_t) cancel; ///< Cancellation callback, must be atomic to ensure an IRP is only cancelled once.
+    clock_t deadline;             ///< The time at which the IRP will be removed from a timeout queue.
     union {
-        clock_t timeout;  ///< The timeout starting from when the IRP is added to a timeout queue.
-        clock_t deadline; ///< The time at which the IRP will be removed from a timeout queue.
-    };
-    void* data; ///< Private data for the operation, will be returned in the completion entry.
-    union {
-        uint64_t u64;
-        int64_t s64;
         size_t read;
+        size_t write;
+        uint64_t _raw;
     } res;
     mdl_t mdl;                        ///< A preallocated memory descriptor list for use by the IRP.
     pool_idx_t index;                 ///< Index of the IRP in its pool.
@@ -287,9 +203,11 @@ typedef struct ALIGNED(64) irp
     uint8_t err;                      ///< The error code of the operation, also used to specify its current state.
     uint8_t frame;                    ///< The index of the current frame in the stack.
     irp_frame_t stack[IRP_FRAME_MAX]; ///< The frame stack, grows downwards.
+    sqe_t sqe;                        // A copy of the submission queue entry associated with this IRP.
+    uint8_t reserved[8];
 } irp_t;
 
-static_assert(sizeof(irp_t) == 448, "irp_t is not 448 bytes");
+static_assert(sizeof(irp_t) == 512, "irp_t is not 512 bytes");
 
 /**
  * @brief Request pool structure.
@@ -298,10 +216,25 @@ static_assert(sizeof(irp_t) == 448, "irp_t is not 448 bytes");
 typedef struct irp_pool
 {
     void* ctx;
-    process_t* process; ///< Will only hold a reference if there is at least one allocated IRP.
+    process_t* process; ///< Will only hold a reference if there is at least one active IRP.
+    atomic_size_t active;
     pool_t pool;
     irp_t irps[];
 } irp_pool_t;
+
+/**
+ * @brief IRP function type.
+ */
+typedef void (*irp_func_t)(irp_t* irp);
+
+/**
+ * @brief IRP vtable structure.
+ * @struct irp_vtable_t
+ */
+typedef struct irp_vtable
+{
+    irp_func_t funcs[IRP_MJ_MAX];
+} irp_vtable_t;
 
 /**
  * @brief Allocate a new IRP pool.
@@ -316,21 +249,22 @@ irp_pool_t* irp_pool_new(size_t size, process_t* process, void* ctx);
 /**
  * @brief Free a IRP pool.
  *
- * @param pool Pointer to the IRP pool to free.
+ * @param pool The IRP pool to free.
  */
 void irp_pool_free(irp_pool_t* pool);
 
 /**
- * @brief Add an IRP to a per-CPU timeout queue with the timeout specified in the IRP.
+ * @brief Add an IRP to a per-CPU timeout queue.
  *
- * @param irp Pointer to the IRP to add.
+ * @param irp The IRP to add.
+ * @param timeout The timeout of the IRP.
  */
-void irp_timeout_add(irp_t* irp);
+void irp_timeout_add(irp_t* irp, clock_t timeout);
 
 /**
  * @brief Remove an IRP from its per-CPU timeout queue.
  *
- * @param irp Pointer to the IRP to remove.
+ * @param irp The IRP to remove.
  */
 void irp_timeout_remove(irp_t* irp);
 
@@ -345,23 +279,28 @@ void irp_timeouts_check(void);
  * The pool that the IRP was allocated from, and its context, can be retrieved using the `irp_get_pool()`
  * function.
  *
- * @param pool Pointer to the IRP pool.
+ * @param pool The IRP pool.
  * @return On success, a pointer to the allocated IRP. On failure, `NULL` and `errno` is set.
  */
 irp_t* irp_new(irp_pool_t* pool);
 
 /**
- * @brief Free a IRP back to its pool.
+ * @brief Retrieve a memory descriptor list and associate it with an IRP.
  *
- * @param irp Pointer to the IRP to free.
+ * All MDLs associated with a IRP will be cleaned up when finished.
+ *
+ * @param irp The IRP to associate the MDL with.
+ * @param addr The virtual address of the memory region to add to the MDL, or `NULL` for a blank MDL.
+ * @param size The size of the memory region.
+ * @return On success, a pointer to the MDL. On failure, `NULL` and `errno` is set.
  */
-void irp_free(irp_t* irp);
+mdl_t* irp_get_mdl(irp_t* irp, const void* addr, size_t size);
 
 /**
  * @brief Retrieve the IRP pool that an IRP was allocated from.
  *
- * @param irp Pointer to the IRP.
- * @return Pointer to the IRP pool.
+ * @param irp The IRP.
+ * @return The IRP pool.
  */
 static inline irp_pool_t* irp_get_pool(irp_t* irp)
 {
@@ -371,8 +310,8 @@ static inline irp_pool_t* irp_get_pool(irp_t* irp)
 /**
  * @brief Retrieve the context of the IRP pool that an IRP was allocated from.
  *
- * @param irp Pointer to the IRP.
- * @return Pointer to the context.
+ * @param irp The IRP.
+ * @return The context.
  */
 static inline void* irp_get_ctx(irp_t* irp)
 {
@@ -382,8 +321,8 @@ static inline void* irp_get_ctx(irp_t* irp)
 /**
  * @brief Retrieve the process that owns an IRP.
  *
- * @param irp Pointer to the IRP.
- * @return Pointer to the process.
+ * @param irp The IRP.
+ * @return The process.
  */
 static inline process_t* irp_get_process(irp_t* irp)
 {
@@ -391,9 +330,37 @@ static inline process_t* irp_get_process(irp_t* irp)
 }
 
 /**
+ * @brief Retrieve the next IRP in a chain and advance the chain.
+ *
+ * @param irp The current IRP.
+ * @return The next IRP, or `NULL` if there is no next IRP.
+ */
+static inline irp_t* irp_chain_next(irp_t* irp)
+{
+    irp_pool_t* pool = irp_get_pool(irp);
+    if (irp->next == POOL_IDX_MAX)
+    {
+        return NULL;
+    }
+
+    irp_t* next = &pool->irps[irp->next];
+    irp->next = next->next;
+    next->next = POOL_IDX_MAX;
+    return next;
+}
+
+/**
+ * @brief Attempt to cancel an IRP.
+ *
+ * @param irp The IRP to cancel.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t irp_cancel(irp_t* irp);
+
+/**
  * @brief Set the cancellation callback for an IRP.
  *
- * @param irp Pointer to the IRP.
+ * @param irp The IRP.
  * @param cancel The cancellation callback.
  * @return The previous cancellation callback.
  */
@@ -411,40 +378,10 @@ static inline irp_cancel_t irp_set_cancel(irp_t* irp, irp_cancel_t cancel)
 }
 
 /**
- * @brief Attempt to claim an IRP for completion.
- *
- * @param irp Pointer to the IRP.
- * @return `true` if the IRP was successfully claimed, `false` if it was already cancelled.
- */
-static inline bool irp_claim(irp_t* irp)
-{
-    return irp_set_cancel(irp, NULL) != IRP_CANCELLED;
-}
-
-/**
- * @brief Retrieve the next IRP in a chain and clear the next field.
- *
- * @param irp Pointer to the current IRP.
- * @return Pointer to the next IRP, or `NULL` if there is no next IRP.
- */
-static inline irp_t* irp_chain_next(irp_t* irp)
-{
-    irp_pool_t* pool = irp_get_pool(irp);
-    if (irp->next == POOL_IDX_MAX)
-    {
-        return NULL;
-    }
-
-    irp_t* next = &pool->irps[irp->next];
-    irp->next = POOL_IDX_MAX;
-    return next;
-}
-
-/**
  * @brief Retrieve the current frame in the IRP stack.
  *
- * @param irp Pointer to the IRP to retrieve the frame from.
- * @return Pointer to the current frame.
+ * @param irp The IRP to retrieve the frame from.
+ * @return The current frame.
  */
 static inline irp_frame_t* irp_current(irp_t* irp)
 {
@@ -455,8 +392,8 @@ static inline irp_frame_t* irp_current(irp_t* irp)
 /**
  * @brief Retrieve the next frame in the IRP stack.
  *
- * @param irp Pointer to the IRP to retrieve the frame from.
- * @return Pointer to the next frame, or `NULL` if we are at the bottom of the stack.
+ * @param irp The IRP to retrieve the frame from.
+ * @return The next frame, or `NULL` if we are at the bottom of the stack.
  */
 static inline irp_frame_t* irp_next(irp_t* irp)
 {
@@ -466,46 +403,96 @@ static inline irp_frame_t* irp_next(irp_t* irp)
     }
     return &irp->stack[irp->frame - 1];
 }
+
 /**
- * @brief Call a function with an IRP, advancing the frame in the IRP stack.
- * 
- * @param irp Pointer to the IRP.
+ * @brief Copy the current frame in the IRP stack to the next.
+ *
+ * @param irp The IRP.
+ */
+static inline void irp_copy_to_next(irp_t* irp)
+{
+    irp_frame_t* current = irp_current(irp);
+    irp_frame_t* next = irp_next(irp);
+
+    if (next->vnode != NULL)
+    {
+        UNREF(next->vnode);
+        next->vnode = NULL;
+    }
+
+    *next = *current;
+    next->vnode = NULL;
+    next->complete = NULL;
+    next->ctx = NULL;
+}
+
+/**
+ * @brief Skip the current stack frame, meaning the next call will run in the same stack frame.
+ *
+ * @param irp The IRP.
+ */
+static inline void irp_skip(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    if (frame->vnode != NULL)
+    {
+        UNREF(frame->vnode);
+        frame->vnode = NULL;
+    }
+    assert(irp->frame < IRP_FRAME_MAX);
+    irp->frame++;
+}
+
+/**
+ * @brief Send an IRP to a specified vnode.
+ *
+ * Will advance the IRP stack.
+ *
+ * @param irp The IRP to send.
+ * @param vnode The vnode to associated with the next IRP stack frame.
+ */
+void irp_call(irp_t* irp, vnode_t* vnode);
+
+/**
+ * @brief Send an IRP to a specified function directly.
+ *
+ * Will advance the IRP stack.
+ *
+ * @param irp The IRP to send.
  * @param func The function to call.
  */
-static inline void irp_call(irp_t* irp, void (*func)(irp_t* irp))
-{
-    assert(irp->frame > 0);
-    irp->frame--;
-    func(irp);
-}
+void irp_call_direct(irp_t* irp, irp_func_t func);
 
 /**
  * @brief Complete the current frame in the IRP stack.
  *
- * @param irp Pointer to the IRP to complete.
+ * If the current frame does not have a completion, it will automatically complete the next frame in the stack.
+ *
+ * If the last frame is reached, the IRP is considered finished. Which will causing its resources to be freed and for
+ * the IRP to be returned to its pool.
+ *
+ * @param irp The IRP to complete.
  */
-static inline void irp_complete(irp_t* irp)
+void irp_complete(irp_t* irp);
+
+/**
+ * @brief Set the completion callback and context for the next frame in the IRP stack.
+ *
+ * @param irp The IRP to set.
+ * @param complete The completion callback.
+ * @param ctx The context pointer to pass to the completion callback.
+ */
+static inline void irp_set_complete(irp_t* irp, irp_complete_t complete, void* ctx)
 {
-    if (irp->frame == IRP_FRAME_MAX)
-    {
-        return;
-    }
-
-    irp_frame_t* loc = irp_current(irp);
-    irp->frame++;
-
-    if (irp->frame == IRP_FRAME_MAX)
-    {
-        irp_timeout_remove(irp);
-    }
-
-    loc->ret(irp, loc->local);
+    irp_frame_t* next = irp_next(irp);
+    next->complete = complete;
+    next->ctx = ctx;
 }
 
 /**
  * @brief Helper to set an error code and complete the IRP.
- * 
- * @param irp Pointer to the IRP.
+ *
+ * @param irp The IRP to error.
  * @param err The error code to set.
  */
 static inline void irp_error(irp_t* irp, uint8_t err)
@@ -515,11 +502,72 @@ static inline void irp_error(irp_t* irp, uint8_t err)
 }
 
 /**
- * @brief Attempt to cancel an IRP.
+ * @brief Prepares the next IRP stack frame for a generic operation.
  *
- * @param irp Pointer to the IRP to cancel.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @param irp The IRP.
+ * @param major The major function number.
+ * @param arg0 Generic argument 0.
+ * @param arg1 Generic argument 1.
+ * @param arg2 Generic argument 2.
+ * @param arg3 Generic argument 3.
  */
-uint64_t irp_cancel(irp_t* irp);
+static inline void irp_prepare_generic(irp_t* irp, irp_major_t major, uint64_t arg0, uint64_t arg1, uint64_t arg2,
+    uint64_t arg3)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = major;
+    next->args[0] = arg0;
+    next->args[1] = arg1;
+    next->args[2] = arg2;
+    next->args[3] = arg3;
+}
+
+/**
+ * @brief Prepares the next IRP stack frame for a read operation.
+ *
+ * @param irp The IRP.
+ * @param buffer The memory descriptor list to read into.
+ * @param data The buffer to read into.
+ * @param off The offset in the file to read from.
+ * @param len The number of bytes to read.
+ * @param mode The mode.
+ */
+static inline void irp_prepare_read(irp_t* irp, mdl_t* buffer, void* data, uint64_t off, uint32_t len, mode_t mode)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_READ;
+    next->read.buffer = buffer;
+    next->read.data = data;
+    next->read.off = off;
+    next->read.len = len;
+    next->read.mode = mode;
+}
+
+/**
+ * @brief Prepares the next IRP stack frame for a write operation.
+ *
+ * @param irp The IRP.
+ * @param buffer The memory descriptor list to write from.
+ * @param data The buffer to write from.
+ * @param off The offset in the file to write to.
+ * @param len The number of bytes to write.
+ * @param mode The mode.
+ */
+static inline void irp_prepare_write(irp_t* irp, mdl_t* buffer, void* data, uint64_t off, uint32_t len, mode_t mode)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_WRITE;
+    next->write.buffer = buffer;
+    next->write.data = data;
+    next->write.off = off;
+    next->write.len = len;
+    next->write.mode = mode;
+}
 
 /** @} */

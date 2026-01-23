@@ -69,7 +69,6 @@ file_t* file_new(const path_t* path, mode_t mode)
     file->vnode = REF(path->dentry->vnode);
     file->path = PATH_CREATE(path->mount, path->dentry);
     file->ops = path->dentry->vnode->fileOps;
-    file->verbs = file->vnode->verbs;
     file->data = NULL;
     return file;
 }

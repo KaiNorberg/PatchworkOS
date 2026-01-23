@@ -77,13 +77,20 @@ typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
 #define SQE_HARDLINK (1 << (_SQE_FLAGS + 1))
 
 /**
- * @brief Asynchronous submission queue entry (SQE) arguments.
- * @struct sqe_args_t
+ * @brief Asynchronous submission queue entry (SQE).
+ * @struct sqe_t
+ *
+ * @warning It is the responsibility of userspace to ensure that any pointers
+ * passed to the kernel remain valid until the operation is complete.
  *
  * @see kernel_io for more information for each possible operation.
  */
-typedef struct sqe_args
+typedef struct sqe
 {
+    clock_t timeout;   ///< Timeout for the operation, `CLOCKS_NEVER` for no timeout.
+    void* data;        ///< Private data for the operation, will be returned in the completion entry.
+    ioring_op_t op;    ///< The operation to perform.
+    sqe_flags_t flags; ///< Submission flags.
     union {
         uint64_t arg0;
         fd_t fd;
@@ -104,24 +111,6 @@ typedef struct sqe_args
     union {
         uint64_t arg4;
     };
-} sqe_args_t;
-
-/**
- * @brief Asynchronous submission queue entry (SQE).
- * @struct sqe_t
- *
- * @warning It is the responsibility of userspace to ensure that any pointers
- * passed to the kernel remain valid until the operation is complete.
- *
- * @see kernel_io for more information for each possible operation.
- */
-typedef struct sqe
-{
-    ioring_op_t op;    ///< The operation to perform.
-    sqe_flags_t flags; ///< Submission flags.
-    clock_t timeout;   ///< Timeout for the operation, `CLOCKS_NEVER` for no timeout.
-    void* data;        ///< Private data for the operation, will be returned in the completion entry.
-    sqe_args_t args;
 } sqe_t;
 
 #ifdef static_assert

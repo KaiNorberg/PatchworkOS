@@ -19,6 +19,8 @@
  * @todo The I/O ring system is primarily a design document for now as it remains very work in progress and subject to
  * change, currently being mostly unimplemented.
  *
+ * @todo Rewrite the Kernel-side I/O Ring Interface documentation to match the new system.
+ * 
  * The I/O ring provides the core of all interfaces in PatchworkOS, where user-space submits Submission Queue Entries
  * (SQEs) and receives Completion Queue Entries (CQEs) from it, all within shared memory. Allowing for highly efficient
  * and asynchronous I/O operations, especially since PatchworkOS is designed to be natively asynchronous.
