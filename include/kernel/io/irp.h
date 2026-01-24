@@ -76,14 +76,7 @@ typedef struct irp irp_t;
  *
  *     // Do stuff...
  *
- *     uint64_t result = ...;
- *     if (result == ERR) // If an error occurs we can reassign the cancellation callback.
- *     {
- *         irp_set_cancel(irp, my_cancel);
- *         return ERR;
- *     }
- *
- *     return 0;
+ *     return EOK;
  * }
  * ```
  *
@@ -117,9 +110,9 @@ typedef void (*irp_complete_t)(irp_t* irp, void* ctx);
  * @brief IRP cancellation callback type.
  *
  * @param irp The IRP.
- * @return On success, `0`. On failure, `ERR`.
+ * @return On success, `EOK`. On failure, a non-zero error code.
  */
-typedef uint64_t (*irp_cancel_t)(irp_t* irp);
+typedef errno_t (*irp_cancel_t)(irp_t* irp);
 
 /**
  * @brief Sentinel value indicating that the IRP has been cancelled.
@@ -218,6 +211,7 @@ typedef struct irp_pool
     process_t* process; ///< Will only hold a reference if there is at least one active IRP.
     atomic_size_t active;
     pool_t pool;
+    size_t size;
     irp_t irps[];
 } irp_pool_t;
 
@@ -251,6 +245,13 @@ irp_pool_t* irp_pool_new(size_t size, process_t* process, void* ctx);
  * @param pool The IRP pool to free.
  */
 void irp_pool_free(irp_pool_t* pool);
+
+/**
+ * @brief Attempt to cancel all IRPs in a pool.
+ *
+ * @param pool The IRP pool.
+ */
+void irp_pool_cancel_all(irp_pool_t* pool);
 
 /**
  * @brief Add an IRP to a per-CPU timeout queue.
@@ -291,9 +292,9 @@ irp_t* irp_new(irp_pool_t* pool);
  * @param irp The IRP to associate the MDL with.
  * @param addr The virtual address of the memory region to add to the MDL, or `NULL` for a blank MDL.
  * @param size The size of the memory region.
- * @return On success, a pointer to the MDL. On failure, `NULL` and `errno` is set.
+ * @return On success, `EOK`. On failure, a non-zero error code.
  */
-mdl_t* irp_get_mdl(irp_t* irp, const void* addr, size_t size);
+errno_t irp_get_mdl(irp_t* irp, const void* addr, size_t size, mdl_t** out);
 
 /**
  * @brief Retrieve the IRP pool that an IRP was allocated from.
@@ -352,9 +353,9 @@ static inline irp_t* irp_chain_next(irp_t* irp)
  * @brief Attempt to cancel an IRP.
  *
  * @param irp The IRP to cancel.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `EOK`. On failure, a non-zero error code.
  */
-uint64_t irp_cancel(irp_t* irp);
+errno_t irp_cancel(irp_t* irp);
 
 /**
  * @brief Set the cancellation callback for an IRP.
@@ -567,6 +568,21 @@ static inline void irp_prepare_write(irp_t* irp, mdl_t* buffer, void* data, uint
     next->write.off = off;
     next->write.len = len;
     next->write.mode = mode;
+}
+
+/**
+ * @brief Prepares the next IRP stack frame for a poll operation.
+ *
+ * @param irp The IRP.
+ * @param events The events to wait for.
+ */
+static inline void irp_prepare_poll(irp_t* irp, io_events_t events)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_POLL;
+    next->args[0] = events;
 }
 
 /** @} */

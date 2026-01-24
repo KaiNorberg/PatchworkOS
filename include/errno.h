@@ -12,9 +12,9 @@ extern "C"
 int* _errno_get(void);
 
 /**
- * @brief Error values.
+ * @brief Error Numbers.
+ * @defgroup libstd_errno Error Numbers
  * @ingroup libstd
- * @defgroup libstd_errno Errno
  *
  * The errno values in Patchwork are taken from POSIX.
  *

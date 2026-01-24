@@ -20,7 +20,14 @@ extern "C"
 #include "_libstd/ssize_t.h"
 
 /**
- * @addtogroup kernel_io
+ * @brief Programmable submission/completion interface.
+ * @defgroup libstd_sys_ioring I/O Ring ABI
+ * @ingroup libstd
+ *
+ * The ring interface acts as the interface for all asynchronous operations in the kernel.
+ *
+ * @see kernel_io_ioring for more information about I/O rings.
+ *
  * @{
  */
 
@@ -39,21 +46,56 @@ typedef uint64_t io_events_t;  ///< Poll events type.
 #define IO_POLL_NVAL (1 << 4)  ///< Invalid file descriptor.
 
 typedef uint32_t io_op_t; ///< I/O operation code type.
-#define IO_OP_NOP 0          ///< No-op operation.
-#define IO_OP_READ 1         ///< Read operation.
-#define IO_OP_WRITE 2        ///< Write operation.
-#define IO_OP_POLL 3         ///< Poll operation.
-#define IO_OP_MAX 4          ///< The maximum number of operation.
+
+/**
+ * @brief No-op operation.
+ *
+ * @see sqe_prep_nop
+ */
+#define IO_OP_NOP 0
+
+/**
+ * @brief Read operation.
+ *
+ * @see sqe_prep_read
+ */
+#define IO_OP_READ 1
+
+/**
+ * @brief Write operation.
+ *
+ * @see sqe_prep_write
+ */
+#define IO_OP_WRITE 2
+
+/**
+ * @brief Poll operation.
+ *
+ * @see sqe_prep_poll
+ */
+#define IO_OP_POLL 3
+
+/**
+ * @brief Cancel operation.
+ * @see sqe_prep_cancel
+ */
+#define IO_OP_CANCEL 4
+
+#define IO_OP_MAX 5          ///< The maximum number of operation.
+
+typedef uint64_t io_cancel_t; ///< Cancel operation flags.
+#define IO_CANCEL_ALL (1 << 0) ///< Cancel all matching requests.
+#define IO_CANCEL_ANY (1 << 1) ///< Match any user data.
 
 typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
-#define SQE_REG0 (0)          ///< The first register.
-#define SQE_REG1 (1)          ///< The second register.
-#define SQE_REG2 (2)          ///< The third register.
-#define SQE_REG3 (3)          ///< The fourth register.
-#define SQE_REG4 (4)          ///< The fifth register.
-#define SQE_REG5 (5)          ///< The sixth register.
-#define SQE_REG6 (6)          ///< The seventh register.
-#define SQE_REG_NONE (7)      ///< No register.
+#define SQE_REG_NONE (0)      ///< No register.
+#define SQE_REG0 (1)          ///< The first register.
+#define SQE_REG1 (2)          ///< The second register.
+#define SQE_REG2 (3)          ///< The third register.
+#define SQE_REG3 (4)          ///< The fourth register.
+#define SQE_REG4 (5)          ///< The fifth register.
+#define SQE_REG5 (6)          ///< The sixth register.
+#define SQE_REG6 (7)          ///< The seventh register.
 #define SQE_REGS_MAX (7)      ///< The maximum number of registers.
 #define SQE_REG_SHIFT (3)     ///< The bitshift for each register specifier in a `sqe_flags_t`.
 #define SQE_REG_MASK (0b111)  ///< The bitmask for a register specifier in a `sqe_flags_t`.
@@ -66,6 +108,8 @@ typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
 #define SQE_SAVE (SQE_LOAD4 + SQE_REG_SHIFT)  ///< The offset to specify the register to save the result into.
 
 #define _SQE_FLAGS (SQE_SAVE + SQE_REG_SHIFT) ///< The bitshift for where bit flags start in a `sqe_flags_t`.
+
+#define SQE_NORMAL 0 ///< Default behaviour flags.
 
 /**
  * Only process the next SQE when this one completes successfully) only applies within one `enter()` call.
@@ -88,17 +132,19 @@ typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
 typedef struct sqe
 {
     clock_t timeout;   ///< Timeout for the operation, `CLOCKS_NEVER` for no timeout.
-    void* data;        ///< Private data for the operation, will be returned in the completion entry.
+    uintptr_t data;        ///< Private data for the operation, will be returned in the completion entry.
     io_op_t op;    ///< The operation to perform.
     sqe_flags_t flags; ///< Submission flags.
     union {
         uint64_t arg0;
         fd_t fd;
+        uintptr_t target;
     };
     union {
         uint64_t arg1;
         void* buffer;
         io_events_t events;
+        io_cancel_t cancel;
     };
     union {
         uint64_t arg2;
@@ -126,11 +172,11 @@ static_assert(sizeof(sqe_t) == 64, "sqe_t is not 64 bytes");
  * @param _data Private data for the operation.
  */
 #define SQE_CREATE(_op, _flags, _timeout, _data) \
-    { \
+    (sqe_t){ \
         .op = (_op), \
         .flags = (_flags), \
         .timeout = (_timeout), \
-        .data = (void*)(_data), \
+        .data = (_data), \
     }
 
 /**
@@ -143,7 +189,7 @@ typedef struct cqe
 {
     io_op_t op; ///< The operation that was performed.
     errno_t error;  ///< Error code, if not equal to `EOK` an error occurred.
-    void* data;     ///< Private data from the submission entry.
+    uintptr_t data;     ///< Private data from the submission entry.
     union {
         fd_t fd;
         size_t count;
@@ -178,19 +224,6 @@ typedef struct ALIGNED(64) ioring_ctrl
     atomic_uint64_t regs[SQE_REGS_MAX] ALIGNED(64); ///< General purpose registers.
     uint8_t _reserved[8];
 } ioring_ctrl_t;
-
-/**
- * @}
- * @brief Programmable submission/completion interface.
- * @defgroup libstd_sys_ioring User-side I/O Ring Interface
- * @ingroup libstd
- *
- * The ring interface acts as the interface for all asynchronous operations in the kernel.
- *
- * @see kernel_io for more information about the I/O ring system.
- *
- * @{
- */
 
 typedef uint64_t ioring_id_t; ///< I/O ring ID type.
 
@@ -245,38 +278,141 @@ uint64_t ioring_teardown(ioring_id_t id);
 uint64_t ioring_enter(ioring_id_t id, size_t amount, size_t wait);
 
 /**
- * @brief Pushes a submission queue entry (SQE) to the submission queue.
- *
- * After pushing SQEs, `enter()` must be called to notify the kernel of the new entries.
- *
- * @param ring Pointer to the I/O ring structure.
- * @param sqe Pointer to the SQE to push.
- * @return `true` if the SQE was pushed, `false` if the submission queue is full.
+ * @brief Retrieve the next available submission queue entry (SQE) from the ring.
+ * 
+ * @param ring The I/O ring.
+ * @return On success, a pointer to the next available SQE. If the ring is full, `NULL`.
  */
-static inline bool sqe_push(ioring_t* ring, sqe_t* sqe)
+static inline sqe_t* sqe_get(ioring_t* ring)
 {
     uint32_t tail = atomic_load_explicit(&ring->ctrl->stail, memory_order_relaxed);
     uint32_t head = atomic_load_explicit(&ring->ctrl->shead, memory_order_acquire);
 
     if ((tail - head) >= ring->sentries)
     {
-        return false;
+        return NULL;
     }
 
-    ring->squeue[tail & ring->smask] = *sqe;
-    atomic_store_explicit(&ring->ctrl->stail, tail + 1, memory_order_release);
-
-    return true;
+    return &ring->squeue[tail & ring->smask];
 }
 
 /**
- * @brief Pops a completion queue entry (CQE) from the completion queue.
- *
- * @param ring Pointer to the I/O ring structure.
- * @param cqe Pointer to the CQE to pop.
- * @return `true` if a CQE was popped, `false` if the completion queue is empty.
+ * @brief Commit the next submission queue entry (SQE) to the ring.
+ * 
+ * @param ring The I/O ring.
  */
-static inline bool cqe_pop(ioring_t* ring, cqe_t* cqe)
+static inline void sqe_put(ioring_t* ring)
+{
+    uint32_t tail = atomic_load_explicit(&ring->ctrl->stail, memory_order_relaxed);
+    atomic_store_explicit(&ring->ctrl->stail, tail + 1, memory_order_release);
+}
+
+/**
+ * @brief Prepare a no-op submission queue entry (SQE).
+ * 
+ * @param sqe The SQE to prepare.
+ * @param flags Submission flags.
+ * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout.
+ * @param data Private data for the operation.
+ *
+ * @see `IO_OP_NOP`
+ */
+static inline void sqe_prep_nop(sqe_t* sqe, sqe_flags_t flags, clock_t timeout, uintptr_t data)
+{
+    *sqe = SQE_CREATE(IO_OP_NOP, flags, timeout, data);
+}
+
+/**
+ * @brief Prepare a read submission queue entry (SQE).
+ *
+ * @param sqe The SQE to prepare.
+ * @param flags Submission flags.
+ * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout.
+ * @param data Private data for the operation.
+ * @param fd The file descriptor to read from (arg0).
+ * @param buffer The buffer to read into (arg1).
+ * @param count The number of bytes to read (arg2).
+ * @param offset The offset to read from, or `IO_OFF_CUR` to use the current position (arg3).
+ *
+ * @see `IO_OP_READ`
+ */
+static inline void sqe_prep_read(sqe_t* sqe, sqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd, void* buffer, size_t count, ssize_t offset)
+{
+    *sqe = SQE_CREATE(IO_OP_READ, flags, timeout, data);
+    sqe->fd = fd;
+    sqe->buffer = buffer;
+    sqe->count = count;
+    sqe->offset = offset;
+}
+
+/**
+ * @brief Prepare a write submission queue entry (SQE).
+ *
+ * @param sqe The SQE to prepare.
+ * @param flags Submission flags.
+ * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout.
+ * @param data Private data for the operation.
+ * @param fd The file descriptor to write to (arg0).
+ * @param buffer The buffer to write from (arg1).
+ * @param count The number of bytes to write (arg2).
+ * @param offset The offset to write to, or `IO_OFF_CUR` to use the current position (arg3).
+ *
+ * @see `IO_OP_WRITE`
+ */
+static inline void sqe_prep_write(sqe_t* sqe, sqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd, const void* buffer, size_t count, ssize_t offset)
+{
+    *sqe = SQE_CREATE(IO_OP_WRITE, flags, timeout, data);
+    sqe->fd = fd;
+    sqe->buffer = (void*)buffer;
+    sqe->count = count;
+    sqe->offset = offset;
+}
+
+/**
+ * @brief Prepare a poll submission queue entry (SQE).
+ *
+ * @param sqe The SQE to prepare.
+ * @param flags Submission flags.
+ * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout.
+ * @param data Private data for the operation.
+ * @param fd The file descriptor to poll (arg0).
+ * @param events The events to wait for (arg1).
+ *
+ * @see `IO_OP_POLL`
+ */
+static inline void sqe_prep_poll(sqe_t* sqe, sqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd, io_events_t events)
+{
+    *sqe = SQE_CREATE(IO_OP_POLL, flags, timeout, data);
+    sqe->fd = fd;
+    sqe->events = events;
+}
+
+/**
+ * @brief Prepare a cancel submission queue entry (SQE).
+ *
+ * @param sqe The SQE to prepare.
+ * @param flags Submission flags.
+ * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout.
+ * @param data Private data for the operation.
+ * @param target The user data of the operation(s) to cancel (arg0).
+ * @param cancel Cancellation flags (arg1).
+ *
+ * @see `IO_OP_CANCEL`
+ */
+static inline void sqe_prep_cancel(sqe_t* sqe, sqe_flags_t flags, clock_t timeout, uintptr_t data, uintptr_t target, io_cancel_t cancel)
+{
+    *sqe = SQE_CREATE(IO_OP_CANCEL, flags, timeout, data);
+    sqe->target = target;
+    sqe->cancel = cancel;
+}
+
+/**
+ * @brief Retrieve the next available completion queue entry (CQE) from the ring.
+ *
+ * @param ring The I/O ring.
+ * @return On success, a pointer to the next available CQE. If the ring is empty, `NULL`.
+ */
+static inline cqe_t* cqe_get(ioring_t* ring)
 {
     uint32_t head = atomic_load_explicit(&ring->ctrl->chead, memory_order_relaxed);
     uint32_t tail = atomic_load_explicit(&ring->ctrl->ctail, memory_order_acquire);
@@ -286,10 +422,18 @@ static inline bool cqe_pop(ioring_t* ring, cqe_t* cqe)
         return false;
     }
 
-    *cqe = ring->cqueue[head & ring->cmask];
-    atomic_store_explicit(&ring->ctrl->chead, head + 1, memory_order_release);
+    return &ring->cqueue[head & ring->cmask];
+}
 
-    return true;
+/**
+ * @brief Commit the next completion queue entry (CQE) to the ring.
+ *
+ * @param ring The I/O ring.
+ */
+static inline void cqe_put(ioring_t* ring)
+{
+    uint32_t head = atomic_load_explicit(&ring->ctrl->chead, memory_order_relaxed);
+    atomic_store_explicit(&ring->ctrl->chead, head + 1, memory_order_release);
 }
 
 /** @} */

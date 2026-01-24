@@ -313,9 +313,7 @@ uint64_t space_user_page_count(space_t* space);
  *
  * @param space The target address space.
  * @param virtAddr The virtual address to translate.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EFAULT`: The virtual address is not mapped.
+ * @return On success, `0`. On failure, `ERR`.
  */
 phys_addr_t space_virt_to_phys(space_t* space, const void* virtAddr);
 

@@ -4,7 +4,7 @@
 
 uint64_t ioring_teardown(ioring_id_t id)
 {
-    uint64_t result = _syscall_teardown(id);
+    uint64_t result = _syscall_ioring_teardown(id);
     if (result == ERR)
     {
         errno = _syscall_errno();

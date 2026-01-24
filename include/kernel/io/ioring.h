@@ -12,25 +12,22 @@
 #include <sys/ioring.h>
 
 /**
- * @brief Programmable submission/completion interface.
- * @defgroup kernel_io_ring Kernel-side I/O Ring Interface
+ * @brief Kernel-side I/O ring interface.
+ * @defgroup kernel_io_ioring Kernel-side I/O Ring Interface
  * @ingroup kernel_io
  *
  * @todo The I/O ring system is primarily a design document for now as it remains very work in progress and subject to
  * change, currently being mostly unimplemented.
- *
- * @todo Rewrite the Kernel-side I/O Ring Interface documentation to match the new system.
  * 
  * The I/O ring provides the core of all interfaces in PatchworkOS, where user-space submits Submission Queue Entries
  * (SQEs) and receives Completion Queue Entries (CQEs) from it, all within shared memory. Allowing for highly efficient
- * and asynchronous I/O operations, especially since PatchworkOS is designed to be natively asynchronous.
+ * and asynchronous I/O operations, especially since PatchworkOS is designed to be natively asynchronous with its I/O Request Packet system.
  *
- * Each SQE specifies a verb (the operation to perform) and a set of up to `SQE_MAX_ARG` arguments, while each CQE
- * returns the result of a previously submitted SQE.
+ * Each SQE specifies an operation to perform and a set of up to `SQE_MAX_ARG` arguments, while each CQE returns the result of a previously submitted SQE.
  *
  * Synchronous operations are implemented on top of this API in userspace.
  *
- * @see libstd_sys_ioring for the userspace interface to the asynchronous ring.
+ * @see libstd_sys_ioring for the list of operations and their arguments.
  * @see [Wikipedia](https://en.wikipedia.org/wiki/Io_uring) for information about `io_uring`, the inspiration for this
  * system.
  * @see [Manpages](https://man7.org/linux/man-pages/man7/io_uring.7.html) for more information about `io_uring`.
@@ -57,36 +54,32 @@
  * they can be inspected and modified by user space.
  *
  * When a SQE is processed, the kernel will check six register specifiers in the SQE flags, one for each argument and
- * one for the result. Each specifier is stored as three bits, with a `SQE_REG_NONE` value indicating no-op and any
- * other value representing the n-th register. The offset of the specifier specifies its meaning, for example, bits
- * `0-2` specify the register to load into the first argument, bits `3-5` specify the register to load into the second
- * argument, and so on until bits `15-17` which specify the register to save the result into.
+ * one for the result. Each specifier is stored as three bits, with a `SQE_REG_NONE` value indicating no register.
+ * 
+ * The offset of the specifier specifies its meaning, for example, bits `0-2` specify the register to load into the first argument, bits `3-5` specify the register to load into the second argument, and so on until bits `15-17` which specify the register to save the result into.
  *
  * This system, when combined with `SQE_LINK`, allows for multiple operations to be performed at once, for example, it
  * would be possible to open a file, read from it, seek to a new position, write to it, and finally close the file, with
- * a single `enter()` call.
+ * a single `ioring_enter()` call.
  *
  * @see `sqe_flags_t` for more information about register specifiers and their formatting.
  *
  * ## Arguments
  *
- * Arguments within a SQE are stored in five 64-bit values, `arg1` through `arg5`. For convenience, each argument value
+ * Arguments within a SQE are stored in five 64-bit values, `arg0` through `arg4`. For convenience, each argument value
  * is stored as a union with various types.
  *
- * To avoid nameing conflicts and to avoid having to define new arguments for each verb, we define a convention to be
+ * To avoid nameing conflicts and to avoid having to define new arguments for each operation, we define a convention to be
  * used for the arguments.
  *
- * - `arg0`: The noun or subject of the verb, for example, a `fd_t` for file operations.
- * - `arg1`: The source or payload of the verb, for example, a buffer or path.
+ * - `arg0`: The subject of the operation, for example, a `fd_t` for file operations.
+ * - `arg1`: The source or payload of the operation, for example, a buffer or path.
  * - `arg2`: The magnitude of the operation, for example, a size or encoding.
  * - `arg3`: The location or a modifier to the operation, for example, an offset or flags.
  * - `arg4`: An auxiliary argument, for example, additional flags or options.
  *
- * It may not always be possible for a verb to follow these conventions, but they should be followed whenever
+ * It may not always be possible for a operation to follow these conventions, but they should be followed whenever
  * reasonable.
- *
- * @note The kernels internal I/O Request Packet structure uses a similar system but with the kernel equivalents
- * of the arguments, for example, a `file_t*` instead of a `fd_t`.
  *
  * ## Results
  *
@@ -95,70 +88,20 @@
  * interpreted.
  *
  * If a SQE fails, the error code will be stored separately from the result and the result it self may be undefined.
- * Some verbs may allow partial failures in which case the result may still be valid even if an error code is present.
+ * Some operations may allow partial failures in which case the result may still be valid even if an error code is present.
  *
  * @todo Decide if partial failures are a good idea or not.
  *
  * ## Errors
  *
  * The majority of errors are returned in the CQEs, certain errors (such as `ENOMEM`) may be
- * reported directly from the `enter()` call.
+ * reported directly from the `ioring_enter()` call.
  *
  * Error values that may be returned in a CQE include:
  * - `EOK`: Success.
- * - `ECANCELED`: The verb was cancelled.
- * - `ETIMEDOUT`: The verb timed out.
+ * - `ECANCELED`: The operation was cancelled.
+ * - `ETIMEDOUT`: The operation timed out.
  * - Other values may be returned depending on the verb.
- *
- * ## Verbs
- *
- * Included below is a list of all currently implemented verbs.
- *
- * The arguments of each verb is specified in order as `arg0`, `arg1`, `arg2`, `arg3`, `arg4`.
- *
- * ### `VERB_NOP`
- *
- * A no-operation verb that does nothing but is useful for implementing sleeping.
- *
- * @param arg0 Unused
- * @param arg1 Unused
- * @param arg2 Unused
- * @param arg3 Unused
- * @param arg4 Unused
- * @result None
- *
- * ### `VERB_READ`
- *
- * Reads data from a file descriptor.
- *
- * @param fd The file descriptor to read from.
- * @param buffer The buffer to read the data into.
- * @param count The number of bytes to read.
- * @param offset The offset to read from, or `IO_CUR` to use the current position.
- * @param arg4 Unused
- * @result The number of bytes read.
- *
- * ### `VERB_WRITE`
- *
- * Writes data to a file descriptor.
- *
- * @param fd The file descriptor to write to.
- * @param buffer The buffer to write the data from.
- * @param count The number of bytes to write.
- * @param offset The offset to write to, or `IO_CUR` to use the current position.
- * @param arg4 Unused
- * @result The number of bytes written.
- *
- * ### `VERB_POLL`
- *
- * Polls a file descriptor for events.
- *
- * @param fd The file descriptor to poll.
- * @param events The events to wait for.
- * @param arg2 Unused
- * @param arg3 Unused
- * @param arg4 Unused
- * @result The events that occurred.
  *
  * @{
  */

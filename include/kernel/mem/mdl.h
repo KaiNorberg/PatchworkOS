@@ -103,10 +103,10 @@ void mdl_free_chain(mdl_t* mdl, void (*free)(void*));
  * @param space The address space of the region.
  * @param addr The virtual address of the memory region.
  * @param size The size of the memory region in bytes.
- * @return On success, `0`. On failure, `ERR` and `errno` is set:
+ * @return On success, `EOK`. On failure, one of the following error codes:
  * - See `mdl_add()` for possible error codes.
  */
-uint64_t mdl_from_region(mdl_t* mdl, mdl_t* prev, space_t* space, const void* addr, size_t size);
+errno_t mdl_from_region(mdl_t* mdl, mdl_t* prev, space_t* space, const void* addr, size_t size);
 
 /**
  * @brief Add a memory region to the Memory Descriptor List.
@@ -115,10 +115,13 @@ uint64_t mdl_from_region(mdl_t* mdl, mdl_t* prev, space_t* space, const void* ad
  * @param space The address space of the user process.
  * @param addr The virtual address of the memory region.
  * @param size The size of the memory region in bytes.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - See `mdl_add()` for possible error codes.
+ * @return On success, `EOK`. On failure, one of the following error codes:
+ * - `EINVAL`: Invalid parameters.
+ * - `ENOMEM`: Not enough memory to allocate segments.
+ * - `EOVERFLOW`: The size specified is to large.
+ * - `EFAULT`: Invalid address.
  */
-uint64_t mdl_add(mdl_t* mdl, space_t* space, const void* addr, size_t size);
+errno_t mdl_add(mdl_t* mdl, space_t* space, const void* addr, size_t size);
 
 /**
  * @brief Read from a Memory Descriptor List into a buffer.

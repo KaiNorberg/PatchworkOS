@@ -1,7 +1,7 @@
 #include <kernel/cpu/syscall.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/path.h>
-#include <kernel/io/ring.h>
+#include <kernel/io/ioring.h>
 #include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -195,7 +195,7 @@ static void ioring_ctx_complete(irp_t* irp, void* _ptr)
     sqe_flags_t reg = (irp->sqe.flags >> SQE_SAVE) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        atomic_store_explicit(&ring->ctrl->regs[reg], irp->res._raw, memory_order_release);
+        atomic_store_explicit(&ring->ctrl->regs[reg - 1], irp->res._raw, memory_order_release);
     }
 
     uint32_t tail = atomic_load_explicit(&ring->ctrl->ctail, memory_order_relaxed);
@@ -239,13 +239,14 @@ static void ioring_ctx_complete(irp_t* irp, void* _ptr)
         }
     }
 
+    LOG_DEBUG("ioring: completed op %d with error %d and result %llu\n", irp->sqe.op, irp->err, irp->res._raw);
     irp_complete(irp);
 }
 
-static uint64_t nop_cancel(irp_t* irp)
+static errno_t nop_cancel(irp_t* irp)
 {
     irp_complete(irp);
-    return 0;
+    return EOK;
 }
 
 static void ioring_ctx_dispatch(irp_t* irp)
@@ -258,31 +259,31 @@ static void ioring_ctx_dispatch(irp_t* irp)
     sqe_flags_t reg = (irp->sqe.flags >> SQE_LOAD0) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        irp->sqe.arg0 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+        irp->sqe.arg0 = atomic_load_explicit(&ring->ctrl->regs[reg - 1], memory_order_acquire);
     }
 
     reg = (irp->sqe.flags >> SQE_LOAD1) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        irp->sqe.arg1 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+        irp->sqe.arg1 = atomic_load_explicit(&ring->ctrl->regs[reg - 1], memory_order_acquire);
     }
 
     reg = (irp->sqe.flags >> SQE_LOAD2) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        irp->sqe.arg2 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+        irp->sqe.arg2 = atomic_load_explicit(&ring->ctrl->regs[reg - 1], memory_order_acquire);
     }
 
     reg = (irp->sqe.flags >> SQE_LOAD3) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        irp->sqe.arg3 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+        irp->sqe.arg3 = atomic_load_explicit(&ring->ctrl->regs[reg - 1], memory_order_acquire);
     }
 
     reg = (irp->sqe.flags >> SQE_LOAD4) & SQE_REG_MASK;
     if (reg != SQE_REG_NONE)
     {
-        irp->sqe.arg4 = atomic_load_explicit(&ring->ctrl->regs[reg], memory_order_acquire);
+        irp->sqe.arg4 = atomic_load_explicit(&ring->ctrl->regs[reg - 1], memory_order_acquire);
     }
 
     switch (irp->sqe.op)
@@ -291,6 +292,38 @@ static void ioring_ctx_dispatch(irp_t* irp)
         irp_set_cancel(irp, nop_cancel);
         irp_timeout_add(irp, irp->sqe.timeout);
         break;
+    case IO_OP_CANCEL: 
+    {
+        size_t count = 0;
+        for (size_t i = 0; i < ctx->irps->size; i++)
+        {
+            irp_t* target = &ctx->irps->irps[i];
+            if (target == irp)
+            {
+                continue;
+            }
+
+            if (target->sqe.data != irp->sqe.target && !(irp->sqe.cancel & IO_CANCEL_ANY))
+            {
+                continue;
+            }
+                
+            if (irp_cancel(target) == EOK)
+            {
+                count++;
+            }
+
+            if (!(irp->sqe.cancel & IO_CANCEL_ALL))
+            {
+                break;
+            }
+        }
+
+        irp->res._raw = count;
+        irp->err = (count == 0) ? ENOENT : EOK;
+        irp_complete(irp);
+    }
+    break;
     default:
         irp_error(irp, EINVAL);
         break;
@@ -402,7 +435,7 @@ uint64_t ioring_ctx_notify(ioring_ctx_t* ctx, size_t amount, size_t wait)
     return processed;
 }
 
-SYSCALL_DEFINE(SYS_SETUP, ioring_id_t, ioring_t* userRing, void* address, size_t sentries, size_t centries)
+SYSCALL_DEFINE(SYS_IORING_SETUP, ioring_id_t, ioring_t* userRing, void* address, size_t sentries, size_t centries)
 {
     if (userRing == NULL || sentries == 0 || centries == 0 || !IS_POW2(sentries) || !IS_POW2(centries))
     {
@@ -440,7 +473,7 @@ SYSCALL_DEFINE(SYS_SETUP, ioring_id_t, ioring_t* userRing, void* address, size_t
     return id;
 }
 
-SYSCALL_DEFINE(SYS_TEARDOWN, uint64_t, ioring_id_t id)
+SYSCALL_DEFINE(SYS_IORING_TEARDOWN, uint64_t, ioring_id_t id)
 {
     process_t* process = process_current();
     if (id >= ARRAY_SIZE(process->rings))
@@ -465,9 +498,15 @@ SYSCALL_DEFINE(SYS_TEARDOWN, uint64_t, ioring_id_t id)
 
     if (ctx->irps != NULL && atomic_load(&ctx->irps->pool.used) != 0)
     {
-        ioring_ctx_release(ctx);
-        errno = EBUSY;
-        return ERR;
+        irp_pool_cancel_all(ctx->irps);
+
+        // Operations that can be cancelled should have been cancelled immediately.
+        if (atomic_load(&ctx->irps->pool.used) != 0)
+        {
+            ioring_ctx_release(ctx);
+            errno = EBUSY;
+            return ERR;
+        }
     }
 
     if (ioring_ctx_unmap(ctx) == ERR)
@@ -480,7 +519,7 @@ SYSCALL_DEFINE(SYS_TEARDOWN, uint64_t, ioring_id_t id)
     return 0;
 }
 
-SYSCALL_DEFINE(SYS_ENTER, uint64_t, ioring_id_t id, size_t amount, size_t wait)
+SYSCALL_DEFINE(SYS_IORING_ENTER, uint64_t, ioring_id_t id, size_t amount, size_t wait)
 {
     process_t* process = process_current();
     if (id >= ARRAY_SIZE(process->rings))

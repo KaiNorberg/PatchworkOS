@@ -671,7 +671,6 @@ phys_addr_t space_virt_to_phys(space_t* space, const void* virtAddr)
 {
     if (space == NULL)
     {
-        errno = EINVAL;
         return ERR;
     }
 
@@ -679,7 +678,6 @@ phys_addr_t space_virt_to_phys(space_t* space, const void* virtAddr)
     LOCK_SCOPE(&space->lock);
     if (page_table_get_phys_addr(&space->pageTable, (void*)virtAddr, &physAddr) == ERR)
     {
-        errno = EFAULT;
         return ERR;
     }
 
