@@ -1,11 +1,11 @@
-#include <modules/acpi/aml/object.h>
+#include <kernel/acpi/aml/object.h>
 
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <modules/acpi/acpi.h>
-#include <modules/acpi/aml/aml.h>
-#include <modules/acpi/aml/to_string.h>
-#include <modules/acpi/aml/token.h>
+#include <kernel/acpi/acpi.h>
+#include <kernel/acpi/aml/aml.h>
+#include <kernel/acpi/aml/to_string.h>
+#include <kernel/acpi/aml/token.h>
 
 #include <errno.h>
 #include <stddef.h>

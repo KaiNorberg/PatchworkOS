@@ -16,8 +16,8 @@
 
 /**
  * @brief GOP (Graphics Output Protocol) driver.
- * @defgroup modules_drivers_gop GOP Driver
- * @ingroup modules_drivers
+ * @defgroup kernel_drivers_gop GOP Driver
+ * @ingroup kernel_drivers
  *
  * This module provides a framebuffer device for the GOP framebuffer provided by the bootloader.
  *

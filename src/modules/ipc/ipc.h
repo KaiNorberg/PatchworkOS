@@ -2,6 +2,6 @@
 
 /**
  * @brief Inter-Process Communication.
- * @defgroup modules_ipc IPC Modules
- * @ingroup modules
+ * @defgroup kernel_ipc IPC Modules
+ * @ingroup kernel
  */

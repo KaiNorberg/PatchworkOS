@@ -8,8 +8,8 @@
 
 /**
  * @brief 9P Filesystems.
- * @defgroup modules_fs_9p 9P Filesystem
- * @ingroup modules_fs
+ * @defgroup kernel_fs_9p 9P Filesystem
+ * @ingroup kernel_fs
  *
  * This module provides an implementation of the 9P filesystem protocol where the kernel acts as a client to a 9P
  * server, allowing the 9P server to be mounted as a filesystem within the kernel's VFS.

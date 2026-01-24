@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ctype.h>
-#include <libpatchwork/event.h>
+#include <patchwork/event.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>

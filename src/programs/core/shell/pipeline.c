@@ -1,7 +1,7 @@
 #include "pipeline.h"
 #include "builtin.h"
 
-#include <_internal/MAX_PATH.h>
+#include <_libstd/MAX_PATH.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>

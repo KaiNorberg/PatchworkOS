@@ -3,7 +3,7 @@
 #include <kernel/cpu/regs.h>
 #include <kernel/mem/paging_types.h>
 
-#include <_internal/PAGE_SIZE.h>
+#include <_libstd/PAGE_SIZE.h>
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>

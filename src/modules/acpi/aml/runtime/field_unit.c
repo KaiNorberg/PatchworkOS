@@ -2,14 +2,14 @@
 #include <kernel/log/log.h>
 #include <kernel/mem/paging_types.h>
 #include <kernel/mem/vmm.h>
-#include <modules/acpi/aml/predefined.h>
-#include <modules/acpi/aml/runtime/access_type.h>
-#include <modules/acpi/aml/runtime/evaluate.h>
-#include <modules/acpi/aml/runtime/field_unit.h>
-#include <modules/acpi/aml/runtime/method.h>
-#include <modules/acpi/aml/state.h>
-#include <modules/acpi/aml/to_string.h>
-#include <modules/drivers/pci/config.h>
+#include <kernel/acpi/aml/predefined.h>
+#include <kernel/acpi/aml/runtime/access_type.h>
+#include <kernel/acpi/aml/runtime/evaluate.h>
+#include <kernel/acpi/aml/runtime/field_unit.h>
+#include <kernel/acpi/aml/runtime/method.h>
+#include <kernel/acpi/aml/state.h>
+#include <kernel/acpi/aml/to_string.h>
+#include <kernel/drivers/pci/config.h>
 
 #include <errno.h>
 #include <stdint.h>

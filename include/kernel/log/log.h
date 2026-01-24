@@ -12,8 +12,8 @@
 #include <sys/proc.h>
 
 /**
- * @brief Logging
- * @defgroup kernel_log Logging
+ * @brief Kernel logging and debugging.
+ * @defgroup kernel_log Logging Subsystem
  * @ingroup kernel
  *
  * @{

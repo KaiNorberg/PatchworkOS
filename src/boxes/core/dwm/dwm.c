@@ -7,7 +7,7 @@
 #include "surface.h"
 
 #include <errno.h>
-#include <libpatchwork/event.h>
+#include <patchwork/event.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

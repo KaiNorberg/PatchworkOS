@@ -1,4 +1,4 @@
-#include <modules/acpi/aml/to_string.h>
+#include <kernel/acpi/aml/to_string.h>
 
 #include <stdio.h>
 

@@ -8,8 +8,8 @@
 
 /**
  * @brief IBM Personal Computer/2 ports.
- * @defgroup modules_drivers_ps2 PS/2
- * @ingroup modules_drivers
+ * @defgroup kernel_drivers_ps2 PS/2
+ * @ingroup kernel_drivers
  *
  * @see https://wiki.osdev.org/I8042_PS/2_Controller
  * @see https://www-ug.eecg.toronto.edu/msl/nios_devices/datasheets/PS2%20Keyboard%20Protocol.htm

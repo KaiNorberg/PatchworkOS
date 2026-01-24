@@ -4,7 +4,7 @@
 
 #include <gnu-efi/inc/efi.h>
 
-#include <_internal/MAX_NAME.h>
+#include <_libstd/MAX_NAME.h>
 #include <stdint.h>
 #include <sys/defs.h>
 #include <sys/elf.h>

@@ -1,4 +1,4 @@
-#include <_internal/MAX_PATH.h>
+#include <_libstd/MAX_PATH.h>
 #include <kernel/fs/path.h>
 
 #include <kernel/fs/dentry.h>

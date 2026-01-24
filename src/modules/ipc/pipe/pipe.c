@@ -16,8 +16,8 @@
 
 /**
  * @brief Pipes.
- * @defgroup modules_ipc_pipe Pipes
- * @ingroup modules_ipc
+ * @defgroup kernel_ipc_pipe Pipes
+ * @ingroup kernel_ipc
  *
  * Pipes are exposed in the `/dev/pipe` directory. Pipes are unidirectional communication channels that can be used for
  * inter-process communication (IPC).

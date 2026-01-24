@@ -1,4 +1,4 @@
-#include <modules/acpi/aml/runtime/eisa_id.h>
+#include <kernel/acpi/aml/runtime/eisa_id.h>
 
 #include <errno.h>
 #include <string.h>

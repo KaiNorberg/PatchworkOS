@@ -1,6 +1,6 @@
 #pragma once
 
-#include <_internal/MAX_PATH.h>
+#include <_libstd/MAX_PATH.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/mem/vmm.h>
 

@@ -1,4 +1,4 @@
-#include "libstd/_internal/init.h"
+#include "_libstd/init.h"
 
 #include "constraint_handler.h"
 #include "heap.h"

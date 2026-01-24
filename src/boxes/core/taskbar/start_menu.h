@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libpatchwork/patchwork.h>
+#include <patchwork/patchwork.h>
 #include <stdbool.h>
 
 #define START_BUTTON_HEIGHT 32

@@ -14,7 +14,7 @@ typedef struct cpu cpu_t;
 
 /**
  * @brief CPU
- * @defgroup kernel_cpu CPU
+ * @defgroup kernel_cpu CPU Management
  * @ingroup kernel
  *
  * @{

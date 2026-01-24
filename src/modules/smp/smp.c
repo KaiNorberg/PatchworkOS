@@ -6,7 +6,7 @@
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
-#include <modules/acpi/tables.h>
+#include <kernel/acpi/tables.h>
 
 #include <kernel/cpu/regs.h>
 #include <sys/defs.h>
@@ -15,8 +15,8 @@
 
 /**
  * @brief Symmetric Multiprocessing support via APIC.
- * @defgroup modules_smp SMP
- * @ingroup modules
+ * @defgroup kernel_smp SMP
+ * @ingroup kernel
  *
  * Symmetric Multiprocessing (SMP) support is implemented using the Advanced Programmable Interrupt Controller (APIC)
  * system.

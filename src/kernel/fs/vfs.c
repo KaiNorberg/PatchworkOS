@@ -1,4 +1,4 @@
-#include <_internal/MAX_PATH.h>
+#include <_libstd/MAX_PATH.h>
 #include <kernel/fs/vfs.h>
 
 #include <kernel/cpu/syscall.h>

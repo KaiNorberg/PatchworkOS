@@ -2,7 +2,7 @@
 
 #include "ansi.h"
 
-#include <libpatchwork/patchwork.h>
+#include <patchwork/patchwork.h>
 #include <stdint.h>
 #include <sys/fs.h>
 #include <sys/kbd.h>

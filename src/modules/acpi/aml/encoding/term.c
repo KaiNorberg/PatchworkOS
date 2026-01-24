@@ -1,16 +1,16 @@
-#include <modules/acpi/aml/encoding/term.h>
+#include <kernel/acpi/aml/encoding/term.h>
 
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
-#include <modules/acpi/aml/debug.h>
-#include <modules/acpi/aml/encoding/data.h>
-#include <modules/acpi/aml/encoding/expression.h>
-#include <modules/acpi/aml/encoding/named.h>
-#include <modules/acpi/aml/encoding/namespace_modifier.h>
-#include <modules/acpi/aml/encoding/statement.h>
-#include <modules/acpi/aml/runtime/convert.h>
-#include <modules/acpi/aml/state.h>
-#include <modules/acpi/aml/token.h>
+#include <kernel/acpi/aml/debug.h>
+#include <kernel/acpi/aml/encoding/data.h>
+#include <kernel/acpi/aml/encoding/expression.h>
+#include <kernel/acpi/aml/encoding/named.h>
+#include <kernel/acpi/aml/encoding/namespace_modifier.h>
+#include <kernel/acpi/aml/encoding/statement.h>
+#include <kernel/acpi/aml/runtime/convert.h>
+#include <kernel/acpi/aml/state.h>
+#include <kernel/acpi/aml/token.h>
 
 #include <errno.h>
 #include <stdint.h>

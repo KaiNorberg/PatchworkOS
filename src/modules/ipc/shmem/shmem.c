@@ -17,8 +17,8 @@
 #include <sys/list.h>
 /**
  * @brief Shared Memory
- * @defgroup modules_ipc_shmem Shared Memory
- * @ingroup modules_ipc
+ * @defgroup kernel_ipc_shmem Shared Memory
+ * @ingroup kernel_ipc
  *
  * Shared memory is exposed in the `/dev/shmem` directory. Shared memory allows multiple processes to share a section of
  * memory for inter-process communication (IPC).

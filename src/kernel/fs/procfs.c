@@ -1,4 +1,4 @@
-#include <_internal/MAX_NAME.h>
+#include <_libstd/MAX_NAME.h>
 #include <kernel/fs/procfs.h>
 
 #include <kernel/fs/ctl.h>

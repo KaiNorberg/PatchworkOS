@@ -5,7 +5,7 @@
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/namespace.h>
-#include <kernel/io/io.h>
+#include <kernel/io/ring.h>
 #include <kernel/ipc/note.h>
 #include <kernel/mem/space.h>
 #include <kernel/proc/env.h>
@@ -22,7 +22,7 @@
 
 /**
  * @brief Process management.
- * @defgroup kernel_proc Process
+ * @defgroup kernel_proc Process Subsystem
  * @ingroup kernel
  *
  * Processes store the shared resources for threads of execution, for example the address space and open files.
@@ -88,7 +88,7 @@ typedef struct process
     file_table_t fileTable;
     futex_ctx_t futexCtx;
     perf_process_ctx_t perf;
-    io_ctx_t rings[CONFIG_MAX_RINGS];
+    ioring_ctx_t rings[CONFIG_MAX_RINGS];
     note_handler_t noteHandler;
     wait_queue_t suspendQueue;
     wait_queue_t dyingQueue;

@@ -1,9 +1,9 @@
 #include <kernel/fs/path.h>
-#include <modules/acpi/acpi.h>
+#include <kernel/acpi/acpi.h>
 
-#include <modules/acpi/aml/aml.h>
-#include <modules/acpi/devices.h>
-#include <modules/acpi/tables.h>
+#include <kernel/acpi/aml/aml.h>
+#include <kernel/acpi/devices.h>
+#include <kernel/acpi/tables.h>
 
 #include <kernel/fs/mount.h>
 #include <kernel/fs/namespace.h>

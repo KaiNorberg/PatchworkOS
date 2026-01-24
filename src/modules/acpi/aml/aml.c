@@ -1,14 +1,14 @@
-#include <modules/acpi/aml/aml.h>
+#include <kernel/acpi/aml/aml.h>
 
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <modules/acpi/aml/encoding/term.h>
-#include <modules/acpi/aml/integer.h>
-#include <modules/acpi/aml/namespace.h>
-#include <modules/acpi/aml/patch_up.h>
-#include <modules/acpi/aml/predefined.h>
-#include <modules/acpi/aml/state.h>
-#include <modules/acpi/tables.h>
+#include <kernel/acpi/aml/encoding/term.h>
+#include <kernel/acpi/aml/integer.h>
+#include <kernel/acpi/aml/namespace.h>
+#include <kernel/acpi/aml/patch_up.h>
+#include <kernel/acpi/aml/predefined.h>
+#include <kernel/acpi/aml/state.h>
+#include <kernel/acpi/tables.h>
 
 #include <kernel/log/log.h>
 

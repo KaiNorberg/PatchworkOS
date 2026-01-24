@@ -3,8 +3,8 @@
 #include <kernel/module/module.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sync/lock.h>
-#include <modules/acpi/devices.h>
-#include <modules/acpi/tables.h>
+#include <kernel/acpi/devices.h>
+#include <kernel/acpi/tables.h>
 
 #include <time.h>
 

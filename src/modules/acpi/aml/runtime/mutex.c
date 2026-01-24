@@ -1,4 +1,4 @@
-#include <modules/acpi/aml/runtime/mutex.h>
+#include <kernel/acpi/aml/runtime/mutex.h>
 
 #include <kernel/log/log.h>
 #include <kernel/sched/sched.h>

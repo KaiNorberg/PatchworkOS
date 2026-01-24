@@ -1,5 +1,5 @@
-#include <libpatchwork/display.h>
-#include <libpatchwork/image.h>
+#include <patchwork/display.h>
+#include <patchwork/image.h>
 #define __STDC_WANT_LIB_EXT1__ 1
 #include "internal.h"
 

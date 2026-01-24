@@ -3,7 +3,7 @@
 #ifndef __ASSEMBLER__
 #include <kernel/cpu/cpu.h>
 
-#include <modules/drivers/apic/lapic.h>
+#include <kernel/drivers/apic/lapic.h>
 
 #include <stdint.h>
 #include <sys/proc.h>
@@ -11,8 +11,8 @@
 
 /**
  * @brief Trampoline for CPU initialization
- * @defgroup modules_smp_trampoline Trampoline
- * @ingroup modules_smp
+ * @defgroup kernel_smp_trampoline Trampoline
+ * @ingroup kernel_smp
  *
  * The trampoline is a small piece of code used during the initialization of other CPUs in a multiprocessor system. The
  * code itself must be position-independent and fit within a single memory page, this is why we do all the weird offset

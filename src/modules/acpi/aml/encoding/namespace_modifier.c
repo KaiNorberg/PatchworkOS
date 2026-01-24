@@ -1,14 +1,14 @@
-#include <modules/acpi/aml/encoding/namespace_modifier.h>
+#include <kernel/acpi/aml/encoding/namespace_modifier.h>
 
 #include <kernel/log/log.h>
-#include <modules/acpi/aml/debug.h>
-#include <modules/acpi/aml/encoding/data.h>
-#include <modules/acpi/aml/encoding/name.h>
-#include <modules/acpi/aml/encoding/package_length.h>
-#include <modules/acpi/aml/encoding/term.h>
-#include <modules/acpi/aml/state.h>
-#include <modules/acpi/aml/to_string.h>
-#include <modules/acpi/aml/token.h>
+#include <kernel/acpi/aml/debug.h>
+#include <kernel/acpi/aml/encoding/data.h>
+#include <kernel/acpi/aml/encoding/name.h>
+#include <kernel/acpi/aml/encoding/package_length.h>
+#include <kernel/acpi/aml/encoding/term.h>
+#include <kernel/acpi/aml/state.h>
+#include <kernel/acpi/aml/to_string.h>
+#include <kernel/acpi/aml/token.h>
 
 #include <sys/list.h>
 

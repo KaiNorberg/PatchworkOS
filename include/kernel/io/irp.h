@@ -28,10 +28,9 @@ typedef struct irp irp_t;
  * @ingroup kernel_io
  *
  * The I/O Request Packet (IRP) is a lock-less, self-contained, layered, continuation-passing request that acts as the
- * primary structure used internally by the kernel for asynchronous operations.
+ * primary primitive used by the kernel for asynchronous operations.
  *
- * The IRP structure is designed to be generic enough to be used by any system in the kernel, however it is primarily
- * used by the I/O ring system.
+ * The IRP is designed to be generic enough to be used by any system in the kernel, however it is primarily used by the I/O ring system.
  *
  * @warning While the cancellation or completion of an IRP is thread safe, the setup of an IRP is not (as in pushing
  * layers to it). It is assumed that only one thread is manipulating an IRP during its setup.

@@ -34,7 +34,7 @@
 
 #include <boot/boot_info.h>
 
-#include <libstd/_internal/init.h>
+#include <_libstd/init.h>
 
 #ifdef _TESTING_
 #include <kernel/utils/test.h>

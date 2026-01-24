@@ -1,4 +1,4 @@
-#include <_internal/clock_t.h>
+#include <_libstd/clock_t.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>

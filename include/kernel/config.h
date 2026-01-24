@@ -2,6 +2,7 @@
 
 /**
  * @brief Kernel configuration.
+ * @ingroup kernel
  * @defgroup kernel_config Configuration
  *
  * @{

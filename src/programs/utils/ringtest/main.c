@@ -20,11 +20,11 @@ int main()
     memset(&ring.ctrl->regs, -1, sizeof(ring.ctrl->regs));
 
     printf("pushing nop sqe to ring %llu...\n", ring.id);
-    sqe_t sqe = SQE_CREATE(IORING_NOP, SQE_HARDLINK | (SQE_REG0 << SQE_SAVE), CLOCKS_PER_SEC, 0x1234);
+    sqe_t sqe = SQE_CREATE(IO_OP_NOP, SQE_HARDLINK | (SQE_REG0 << SQE_SAVE), CLOCKS_PER_SEC, 0x1234);
     sqe_push(&ring, &sqe);
 
     printf("pushing nop sqe to ring %llu...\n", ring.id);
-    sqe = (sqe_t)SQE_CREATE(IORING_NOP, SQE_LINK, CLOCKS_PER_SEC, 0x5678);
+    sqe = (sqe_t)SQE_CREATE(IO_OP_NOP, SQE_LINK, CLOCKS_PER_SEC, 0x5678);
     sqe_push(&ring, &sqe);
 
     printf("entering ring...\n");

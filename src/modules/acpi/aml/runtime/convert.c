@@ -1,12 +1,12 @@
-#include <modules/acpi/aml/runtime/convert.h>
+#include <kernel/acpi/aml/runtime/convert.h>
 
 #include <kernel/log/log.h>
-#include <modules/acpi/aml/object.h>
-#include <modules/acpi/aml/runtime/buffer_field.h>
-#include <modules/acpi/aml/runtime/copy.h>
-#include <modules/acpi/aml/runtime/field_unit.h>
-#include <modules/acpi/aml/runtime/store.h>
-#include <modules/acpi/aml/to_string.h>
+#include <kernel/acpi/aml/object.h>
+#include <kernel/acpi/aml/runtime/buffer_field.h>
+#include <kernel/acpi/aml/runtime/copy.h>
+#include <kernel/acpi/aml/runtime/field_unit.h>
+#include <kernel/acpi/aml/runtime/store.h>
+#include <kernel/acpi/aml/to_string.h>
 
 #include <errno.h>
 #include <stdio.h>

@@ -1,4 +1,4 @@
-#include <libpatchwork/patchwork.h>
+#include <patchwork/patchwork.h>
 
 #include <ctype.h>
 #include <stdarg.h>

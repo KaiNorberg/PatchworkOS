@@ -1,7 +1,7 @@
 #include "terminal.h"
 #include "ansi.h"
 
-#include <libpatchwork/display.h>
+#include <patchwork/display.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/defs.h>

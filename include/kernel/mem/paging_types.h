@@ -1,8 +1,8 @@
 #pragma once
 
-#include <_internal/size_t.h>
 #include <assert.h>
 #include <stdint.h>
+#include <stddef.h>
 #include <sys/math.h>
 
 /**

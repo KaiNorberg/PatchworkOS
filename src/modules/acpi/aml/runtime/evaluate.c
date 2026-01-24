@@ -1,9 +1,9 @@
-#include <modules/acpi/aml/encoding/arg.h>
-#include <modules/acpi/aml/runtime/evaluate.h>
+#include <kernel/acpi/aml/encoding/arg.h>
+#include <kernel/acpi/aml/runtime/evaluate.h>
 
-#include <modules/acpi/aml/runtime/convert.h>
-#include <modules/acpi/aml/runtime/method.h>
-#include <modules/acpi/aml/state.h>
+#include <kernel/acpi/aml/runtime/convert.h>
+#include <kernel/acpi/aml/runtime/method.h>
+#include <kernel/acpi/aml/state.h>
 
 aml_object_t* aml_evaluate(aml_state_t* state, aml_object_t* object, aml_type_t targetTypes)
 {

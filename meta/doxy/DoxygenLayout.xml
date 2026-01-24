@@ -192,7 +192,7 @@
     <detaileddescription visible="yes" title=""/>
     <memberdecl>
       <nestedgroups visible="yes" title=""/>
-      <modules visible="yes" title=""/>
+      <kernel visible="yes" title=""/>
       <dirs visible="yes" title=""/>
       <files visible="yes" title=""/>
       <namespaces visible="yes" title=""/>

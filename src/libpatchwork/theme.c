@@ -1,7 +1,7 @@
 #include "internal.h"
 
-#include <libpatchwork/config.h>
-#include <libpatchwork/theme.h>
+#include <patchwork/config.h>
+#include <patchwork/theme.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>

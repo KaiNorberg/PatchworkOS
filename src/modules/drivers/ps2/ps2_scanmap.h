@@ -7,7 +7,7 @@
 /**
  * @brief PS/2 Scanmap.
  * @defgroup module_drivers_ps2_scanmap PS/2 Scanmap
- * @ingroup modules_drivers_ps2
+ * @ingroup kernel_drivers_ps2
  *
  * @{
  */
