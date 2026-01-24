@@ -1,6 +1,7 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/io/irp.h>
+#include <kernel/io/irp_cleanup.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/mdl.h>
@@ -147,6 +148,8 @@ static void irp_perform_completion(irp_t* irp)
             frame->vnode = NULL;
         }
 
+        irp_cleanup_args(frame);
+
         if (frame->complete != NULL)
         {
             frame->complete(irp, frame->ctx);
@@ -224,7 +227,7 @@ void irp_timeouts_check(void)
     lock_release(&ctx->lock);
 }
 
-irp_t* irp_new(irp_pool_t* pool)
+irp_t* irp_get(irp_pool_t* pool)
 {
     pool_idx_t idx = pool_alloc(&pool->pool);
     if (idx == POOL_IDX_MAX)

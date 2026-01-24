@@ -1,13 +1,13 @@
 #include <kernel/acpi/aml/namespace.h>
 
-#include <kernel/fs/sysfs.h>
-#include <kernel/log/log.h>
-#include <kernel/log/panic.h>
-#include <kernel/utils/map.h>
 #include <kernel/acpi/acpi.h>
 #include <kernel/acpi/aml/aml.h>
 #include <kernel/acpi/aml/object.h>
 #include <kernel/acpi/aml/to_string.h>
+#include <kernel/fs/sysfs.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
+#include <kernel/utils/map.h>
 
 #include <errno.h>
 

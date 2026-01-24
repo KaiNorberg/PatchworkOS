@@ -2,10 +2,6 @@
 
 #include "acpica_tests/all_tests.h"
 
-#include <kernel/log/log.h>
-#include <kernel/sched/clock.h>
-#include <kernel/sched/timer.h>
-#include <kernel/utils/test.h>
 #include <kernel/acpi/aml/aml.h>
 #include <kernel/acpi/aml/encoding/term.h>
 #include <kernel/acpi/aml/object.h>
@@ -13,6 +9,10 @@
 #include <kernel/acpi/aml/state.h>
 #include <kernel/acpi/aml/to_string.h>
 #include <kernel/acpi/tables.h>
+#include <kernel/log/log.h>
+#include <kernel/sched/clock.h>
+#include <kernel/sched/timer.h>
+#include <kernel/utils/test.h>
 
 #include <stdlib.h>
 #include <string.h>

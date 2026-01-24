@@ -1,5 +1,5 @@
-#include <kernel/fs/path.h>
 #include <kernel/acpi/acpi.h>
+#include <kernel/fs/path.h>
 
 #include <kernel/acpi/aml/aml.h>
 #include <kernel/acpi/devices.h>

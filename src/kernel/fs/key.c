@@ -175,7 +175,7 @@ SYSCALL_DEFINE(SYS_SHARE, uint64_t, char* key, uint64_t size, fd_t fd, clock_t t
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
-    file_t* file = file_table_get(&process->fileTable, fd);
+    file_t* file = file_table_get(&process->files, fd);
     if (file == NULL)
     {
         return ERR;
@@ -214,5 +214,5 @@ SYSCALL_DEFINE(SYS_CLAIM, fd_t, const char* key)
     }
     UNREF_DEFER(file);
 
-    return file_table_open(&process->fileTable, file);
+    return file_table_open(&process->files, file);
 }

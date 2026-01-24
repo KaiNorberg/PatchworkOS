@@ -626,7 +626,7 @@ SYSCALL_DEFINE(SYS_BIND, uint64_t, const char* mountpoint, fd_t source)
         return ERR;
     }
 
-    file_t* sourceFile = file_table_get(&process->fileTable, source);
+    file_t* sourceFile = file_table_get(&process->files, source);
     if (sourceFile == NULL)
     {
         return ERR;

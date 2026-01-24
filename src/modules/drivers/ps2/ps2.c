@@ -2,6 +2,10 @@
 #include "ps2_kbd.h"
 #include "ps2_mouse.h"
 
+#include <kernel/acpi/aml/object.h>
+#include <kernel/acpi/devices.h>
+#include <kernel/acpi/resources.h>
+#include <kernel/acpi/tables.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -9,10 +13,6 @@
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
-#include <kernel/acpi/aml/object.h>
-#include <kernel/acpi/devices.h>
-#include <kernel/acpi/resources.h>
-#include <kernel/acpi/tables.h>
 
 #include <errno.h>
 #include <string.h>

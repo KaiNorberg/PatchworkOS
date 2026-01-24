@@ -1,12 +1,12 @@
 #include "trampoline.h"
 
+#include <kernel/acpi/tables.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/interrupt.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
-#include <kernel/acpi/tables.h>
 
 #include <kernel/cpu/regs.h>
 #include <sys/defs.h>

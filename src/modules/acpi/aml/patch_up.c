@@ -1,10 +1,10 @@
 #include <kernel/acpi/aml/patch_up.h>
 
-#include <kernel/log/log.h>
-#include <kernel/log/panic.h>
 #include <kernel/acpi/aml/object.h>
 #include <kernel/acpi/aml/state.h>
 #include <kernel/acpi/aml/to_string.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
 
 #include <errno.h>
 #include <stdlib.h>

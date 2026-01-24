@@ -1,3 +1,4 @@
+#include <kernel/acpi/tables.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -10,7 +11,6 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/seqlock.h>
 #include <kernel/utils/utils.h>
-#include <kernel/acpi/tables.h>
 
 /**
  * @brief High Precision Event Timer

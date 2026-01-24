@@ -1,7 +1,5 @@
 #include <kernel/acpi/aml/encoding/term.h>
 
-#include <kernel/sched/sched.h>
-#include <kernel/sched/thread.h>
 #include <kernel/acpi/aml/debug.h>
 #include <kernel/acpi/aml/encoding/data.h>
 #include <kernel/acpi/aml/encoding/expression.h>
@@ -11,6 +9,8 @@
 #include <kernel/acpi/aml/runtime/convert.h>
 #include <kernel/acpi/aml/state.h>
 #include <kernel/acpi/aml/token.h>
+#include <kernel/sched/sched.h>
+#include <kernel/sched/thread.h>
 
 #include <errno.h>
 #include <stdint.h>

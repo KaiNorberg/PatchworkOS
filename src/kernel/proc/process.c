@@ -62,7 +62,7 @@ static void process_ctor(void* ptr)
     process->nspace = NULL;
     lock_init(&process->nspaceLock);
     process->cwd = (cwd_t){0};
-    process->fileTable = (file_table_t){0};
+    process->files = (file_table_t){0};
     process->futexCtx = (futex_ctx_t){0};
     process->perf = (perf_process_ctx_t){0};
     process->noteHandler = (note_handler_t){0};
@@ -104,7 +104,7 @@ static void process_free(process_t* process)
 
     group_member_deinit(&process->group);
     cwd_deinit(&process->cwd);
-    file_table_deinit(&process->fileTable);
+    file_table_deinit(&process->files);
     if (process->nspace != NULL)
     {
         UNREF(process->nspace);
@@ -151,7 +151,7 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
 
     process->nspace = REF(ns);
     cwd_init(&process->cwd);
-    file_table_init(&process->fileTable);
+    file_table_init(&process->files);
     futex_ctx_init(&process->futexCtx);
     perf_process_ctx_init(&process->perf);
     for (uint64_t i = 0; i < ARRAY_SIZE(process->rings); i++)
@@ -267,7 +267,7 @@ void process_kill(process_t* process, const char* status)
     // Anything that another process could be waiting on must be cleaned up here.
 
     cwd_clear(&process->cwd);
-    file_table_close_all(&process->fileTable);
+    file_table_close_all(&process->files);
 
     lock_acquire(&process->nspaceLock);
     UNREF(process->nspace);

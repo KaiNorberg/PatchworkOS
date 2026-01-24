@@ -1,10 +1,10 @@
+#include <kernel/acpi/devices.h>
+#include <kernel/acpi/tables.h>
 #include <kernel/cpu/port.h>
 #include <kernel/log/log.h>
 #include <kernel/module/module.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sync/lock.h>
-#include <kernel/acpi/devices.h>
-#include <kernel/acpi/tables.h>
 
 #include <time.h>
 

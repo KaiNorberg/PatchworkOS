@@ -85,7 +85,7 @@ typedef struct process
     namespace_t* nspace;
     lock_t nspaceLock;
     cwd_t cwd;
-    file_table_t fileTable;
+    file_table_t files;
     futex_ctx_t futexCtx;
     perf_process_ctx_t perf;
     ioring_ctx_t rings[CONFIG_MAX_RINGS];

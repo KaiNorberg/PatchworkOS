@@ -18,12 +18,14 @@
  *
  * @todo The I/O ring system is primarily a design document for now as it remains very work in progress and subject to
  * change, currently being mostly unimplemented.
- * 
+ *
  * The I/O ring provides the core of all interfaces in PatchworkOS, where user-space submits Submission Queue Entries
  * (SQEs) and receives Completion Queue Entries (CQEs) from it, all within shared memory. Allowing for highly efficient
- * and asynchronous I/O operations, especially since PatchworkOS is designed to be natively asynchronous with its I/O Request Packet system.
+ * and asynchronous I/O operations, especially since PatchworkOS is designed to be natively asynchronous with its I/O
+ * Request Packet system.
  *
- * Each SQE specifies an operation to perform and a set of up to `SQE_MAX_ARG` arguments, while each CQE returns the result of a previously submitted SQE.
+ * Each SQE specifies an operation to perform and a set of up to `SQE_MAX_ARG` arguments, while each CQE returns the
+ * result of a previously submitted SQE.
  *
  * Synchronous operations are implemented on top of this API in userspace.
  *
@@ -55,8 +57,10 @@
  *
  * When a SQE is processed, the kernel will check six register specifiers in the SQE flags, one for each argument and
  * one for the result. Each specifier is stored as three bits, with a `SQE_REG_NONE` value indicating no register.
- * 
- * The offset of the specifier specifies its meaning, for example, bits `0-2` specify the register to load into the first argument, bits `3-5` specify the register to load into the second argument, and so on until bits `15-17` which specify the register to save the result into.
+ *
+ * The offset of the specifier specifies its meaning, for example, bits `0-2` specify the register to load into the
+ * first argument, bits `3-5` specify the register to load into the second argument, and so on until bits `15-17` which
+ * specify the register to save the result into.
  *
  * This system, when combined with `SQE_LINK`, allows for multiple operations to be performed at once, for example, it
  * would be possible to open a file, read from it, seek to a new position, write to it, and finally close the file, with
@@ -69,8 +73,8 @@
  * Arguments within a SQE are stored in five 64-bit values, `arg0` through `arg4`. For convenience, each argument value
  * is stored as a union with various types.
  *
- * To avoid nameing conflicts and to avoid having to define new arguments for each operation, we define a convention to be
- * used for the arguments.
+ * To avoid nameing conflicts and to avoid having to define new arguments for each operation, we define a convention to
+ * be used for the arguments.
  *
  * - `arg0`: The subject of the operation, for example, a `fd_t` for file operations.
  * - `arg1`: The source or payload of the operation, for example, a buffer or path.
@@ -88,7 +92,8 @@
  * interpreted.
  *
  * If a SQE fails, the error code will be stored separately from the result and the result it self may be undefined.
- * Some operations may allow partial failures in which case the result may still be valid even if an error code is present.
+ * Some operations may allow partial failures in which case the result may still be valid even if an error code is
+ * present.
  *
  * @todo Decide if partial failures are a good idea or not.
  *

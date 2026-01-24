@@ -1258,7 +1258,7 @@ SYSCALL_DEFINE(SYS_OPEN, fd_t, const char* pathString)
     }
     UNREF_DEFER(file);
 
-    return file_table_open(&process->fileTable, file);
+    return file_table_open(&process->files, file);
 }
 
 SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
@@ -1287,22 +1287,22 @@ SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
     UNREF_DEFER(files[1]);
 
     fd_t fdsLocal[2];
-    fdsLocal[0] = file_table_open(&process->fileTable, files[0]);
+    fdsLocal[0] = file_table_open(&process->files, files[0]);
     if (fdsLocal[0] == ERR)
     {
         return ERR;
     }
-    fdsLocal[1] = file_table_open(&process->fileTable, files[1]);
+    fdsLocal[1] = file_table_open(&process->files, files[1]);
     if (fdsLocal[1] == ERR)
     {
-        file_table_close(&process->fileTable, fdsLocal[0]);
+        file_table_close(&process->files, fdsLocal[0]);
         return ERR;
     }
 
     if (thread_copy_to_user(thread, fds, fdsLocal, sizeof(fd_t) * 2) == ERR)
     {
-        file_table_close(&process->fileTable, fdsLocal[0]);
-        file_table_close(&process->fileTable, fdsLocal[1]);
+        file_table_close(&process->files, fdsLocal[0]);
+        file_table_close(&process->files, fdsLocal[1]);
         return ERR;
     }
 
@@ -1317,7 +1317,7 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
     path_t fromPath = PATH_EMPTY;
     if (from != FD_NONE)
     {
-        file_t* fromFile = file_table_get(&process->fileTable, from);
+        file_t* fromFile = file_table_get(&process->files, from);
         if (fromFile == NULL)
         {
             return ERR;
@@ -1340,7 +1340,7 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
     }
     UNREF_DEFER(file);
 
-    return file_table_open(&process->fileTable, file);
+    return file_table_open(&process->files, file);
 }
 
 SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, size_t count)
@@ -1348,7 +1348,7 @@ SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, size_t count)
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
-    file_t* file = file_table_get(&process->fileTable, fd);
+    file_t* file = file_table_get(&process->files, fd);
     if (file == NULL)
     {
         return ERR;
@@ -1369,7 +1369,7 @@ SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, size_t count)
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
-    file_t* file = file_table_get(&process->fileTable, fd);
+    file_t* file = file_table_get(&process->files, fd);
     if (file == NULL)
     {
         return ERR;
@@ -1389,7 +1389,7 @@ SYSCALL_DEFINE(SYS_SEEK, uint64_t, fd_t fd, ssize_t offset, seek_origin_t origin
 {
     process_t* process = process_current();
 
-    file_t* file = file_table_get(&process->fileTable, fd);
+    file_t* file = file_table_get(&process->files, fd);
     if (file == NULL)
     {
         return ERR;
@@ -1404,7 +1404,7 @@ SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, size_
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
-    file_t* file = file_table_get(&process->fileTable, fd);
+    file_t* file = file_table_get(&process->files, fd);
     if (file == NULL)
     {
         return ERR;
@@ -1437,7 +1437,7 @@ SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, size_t length, prot_t pr
         return NULL;
     }
 
-    file_t* file = file_table_get(&process->fileTable, fd);
+    file_t* file = file_table_get(&process->files, fd);
     if (file == NULL)
     {
         return NULL;
@@ -1474,7 +1474,7 @@ SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeo
     poll_file_t files[CONFIG_MAX_FD];
     for (uint64_t i = 0; i < amount; i++)
     {
-        files[i].file = file_table_get(&process->fileTable, fds[i].fd);
+        files[i].file = file_table_get(&process->files, fds[i].fd);
         if (files[i].file == NULL)
         {
             for (uint64_t j = 0; j < i; j++)
@@ -1516,7 +1516,7 @@ SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
-    file_t* file = file_table_get(&process->fileTable, fd);
+    file_t* file = file_table_get(&process->files, fd);
     if (file == NULL)
     {
         return ERR;

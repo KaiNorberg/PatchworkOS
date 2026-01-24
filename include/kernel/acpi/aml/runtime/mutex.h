@@ -1,7 +1,7 @@
 #pragma once
 
-#include <kernel/sync/mutex.h>
 #include <kernel/acpi/aml/encoding/named.h>
+#include <kernel/sync/mutex.h>
 
 typedef struct aml_thread aml_thread_t;
 

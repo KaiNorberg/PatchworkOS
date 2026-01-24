@@ -1,10 +1,10 @@
 #pragma once
 
-#include <kernel/sync/mutex.h>
 #include <kernel/acpi/aml/encoding/data.h>
 #include <kernel/acpi/aml/encoding/expression.h>
 #include <kernel/acpi/aml/encoding/name.h>
 #include <kernel/acpi/aml/encoding/named.h>
+#include <kernel/sync/mutex.h>
 
 #include <stdint.h>
 

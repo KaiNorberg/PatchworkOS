@@ -1,12 +1,12 @@
 #pragma once
 
-#include <kernel/fs/devfs.h>
-#include <kernel/utils/ref.h>
 #include <kernel/acpi/aml/encoding/name.h>
 #include <kernel/acpi/aml/integer.h>
 #include <kernel/acpi/aml/namespace.h>
 #include <kernel/acpi/aml/patch_up.h>
 #include <kernel/acpi/aml/runtime/mutex.h>
+#include <kernel/fs/devfs.h>
+#include <kernel/utils/ref.h>
 
 #include <stdint.h>
 

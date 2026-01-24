@@ -115,13 +115,13 @@ static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* data)
     process_t* process = process_current();
     assert(process != NULL);
 
-    ninep->in = file_table_get(&process->fileTable, in);
+    ninep->in = file_table_get(&process->files, in);
     if (ninep->in == NULL)
     {
         free(ninep);
         return NULL;
     }
-    ninep->out = file_table_get(&process->fileTable, out);
+    ninep->out = file_table_get(&process->files, out);
     if (ninep->out == NULL)
     {
         UNREF(ninep->in);

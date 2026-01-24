@@ -1,13 +1,13 @@
 #pragma once
 
 #include <_libstd/MAX_PATH.h>
+#include <kernel/acpi/devices.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/path.h>
 #include <kernel/module/symbol.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 #include <kernel/version.h>
-#include <kernel/acpi/devices.h>
 
 #include <stdint.h>
 #include <sys/fs.h>

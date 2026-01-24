@@ -1,12 +1,12 @@
 #include <kernel/drivers/apic/ioapic.h>
 #include <kernel/drivers/apic/lapic.h>
 
+#include <kernel/acpi/tables.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/utils/utils.h>
-#include <kernel/acpi/tables.h>
 
 #include <assert.h>
 #include <sys/defs.h>

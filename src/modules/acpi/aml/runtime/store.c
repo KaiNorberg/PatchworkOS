@@ -1,9 +1,9 @@
 #include <kernel/acpi/aml/runtime/store.h>
 
-#include <kernel/log/log.h>
 #include <kernel/acpi/aml/runtime/convert.h>
 #include <kernel/acpi/aml/runtime/copy.h>
 #include <kernel/acpi/aml/to_string.h>
+#include <kernel/log/log.h>
 
 #include <errno.h>
 

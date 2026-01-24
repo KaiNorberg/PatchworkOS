@@ -1,9 +1,9 @@
 #pragma once
 
-#include <kernel/cpu/irq.h>
-#include <kernel/cpu/port.h>
 #include <kernel/acpi/aml/object.h>
 #include <kernel/acpi/resources.h>
+#include <kernel/cpu/irq.h>
+#include <kernel/cpu/port.h>
 
 #include <sys/fs.h>
 

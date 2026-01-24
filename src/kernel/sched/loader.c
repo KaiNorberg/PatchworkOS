@@ -169,7 +169,7 @@ static void loader_entry(void)
 
     WAIT_BLOCK(&thread->process->suspendQueue, !(atomic_load(&thread->process->flags) & PROCESS_SUSPENDED));
 
-    file_table_close_mode(&thread->process->fileTable, MODE_PRIVATE);
+    file_table_close_mode(&thread->process->files, MODE_PRIVATE);
 
     loader_exec();
 }
@@ -261,7 +261,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     {
         if (flags & SPAWN_STDIO_FDS)
         {
-            if (file_table_copy(&child->fileTable, &process->fileTable, 0, 3) == ERR)
+            if (file_table_copy(&child->files, &process->files, 0, 3) == ERR)
             {
                 loader_strv_free(argvCopy, argc);
                 return ERR;
@@ -269,7 +269,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
         }
         else
         {
-            if (file_table_copy(&child->fileTable, &process->fileTable, 0, CONFIG_MAX_FD) == ERR)
+            if (file_table_copy(&child->files, &process->files, 0, CONFIG_MAX_FD) == ERR)
             {
                 loader_strv_free(argvCopy, argc);
                 return ERR;

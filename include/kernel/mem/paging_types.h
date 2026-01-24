@@ -1,8 +1,8 @@
 #pragma once
 
 #include <assert.h>
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <sys/math.h>
 
 /**

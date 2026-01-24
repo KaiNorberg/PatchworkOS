@@ -288,7 +288,8 @@ static inline uint64_t _syscall_arch_prctl(arch_prctl_t code, uintptr_t addr)
 
 static inline ioring_id_t _syscall_ioring_setup(ioring_t* ring, void* address, size_t sentries, size_t centries)
 {
-    return _SYSCALL4(ioring_id_t, SYS_IORING_SETUP, ioring_t*, ring, void*, address, size_t, sentries, size_t, centries);
+    return _SYSCALL4(ioring_id_t, SYS_IORING_SETUP, ioring_t*, ring, void*, address, size_t, sentries, size_t,
+        centries);
 }
 
 static inline uint64_t _syscall_ioring_teardown(ioring_id_t id)

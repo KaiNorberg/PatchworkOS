@@ -1,7 +1,7 @@
 #include <kernel/acpi/aml/runtime/compare.h>
 
-#include <kernel/log/log.h>
 #include <kernel/acpi/aml/to_string.h>
+#include <kernel/log/log.h>
 
 static inline aml_uint_t aml_compare_integers(aml_uint_t a, aml_uint_t b, aml_compare_operation_t operation)
 {

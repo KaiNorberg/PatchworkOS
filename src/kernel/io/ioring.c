@@ -3,6 +3,7 @@
 #include <kernel/fs/path.h>
 #include <kernel/io/ioring.h>
 #include <kernel/io/irp.h>
+#include <kernel/io/ops.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/paging_types.h>
@@ -19,7 +20,8 @@
 static inline uint64_t ioring_ctx_acquire(ioring_ctx_t* ctx)
 {
     ioring_ctx_flags_t expected = atomic_load(&ctx->flags);
-    if (!(expected & IORING_CTX_BUSY) && atomic_compare_exchange_strong(&ctx->flags, &expected, expected | IORING_CTX_BUSY))
+    if (!(expected & IORING_CTX_BUSY) &&
+        atomic_compare_exchange_strong(&ctx->flags, &expected, expected | IORING_CTX_BUSY))
     {
         return 0;
     }
@@ -32,8 +34,8 @@ static inline void ioring_ctx_release(ioring_ctx_t* ctx)
     atomic_fetch_and(&ctx->flags, ~IORING_CTX_BUSY);
 }
 
-static inline uint64_t ioring_ctx_map(ioring_ctx_t* ctx, process_t* process, ioring_id_t id, ioring_t* userRing, void* address,
-    size_t sentries, size_t centries)
+static inline uint64_t ioring_ctx_map(ioring_ctx_t* ctx, process_t* process, ioring_id_t id, ioring_t* userRing,
+    void* address, size_t sentries, size_t centries)
 {
     ioring_t* kernelRing = &ctx->ring;
 
@@ -183,8 +185,6 @@ void ioring_ctx_deinit(ioring_ctx_t* ctx)
     wait_queue_deinit(&ctx->waitQueue);
 }
 
-static void ioring_ctx_dispatch(irp_t* irp);
-
 static void ioring_ctx_complete(irp_t* irp, void* _ptr)
 {
     UNUSED(_ptr);
@@ -235,11 +235,10 @@ static void ioring_ctx_complete(irp_t* irp, void* _ptr)
         if (next != NULL)
         {
             irp_set_complete(next, ioring_ctx_complete, NULL);
-            irp_call_direct(next, ioring_ctx_dispatch);
+            irp_call_direct(next, io_op_dispatch);
         }
     }
 
-    LOG_DEBUG("ioring: completed op %d with error %d and result %llu\n", irp->sqe.op, irp->err, irp->res._raw);
     irp_complete(irp);
 }
 
@@ -247,87 +246,6 @@ static errno_t nop_cancel(irp_t* irp)
 {
     irp_complete(irp);
     return EOK;
-}
-
-static void ioring_ctx_dispatch(irp_t* irp)
-{
-    ioring_ctx_t* ctx = irp_get_ctx(irp);
-    ioring_t* ring = &ctx->ring;
-
-    // Ugly but the alternative is a super messy SQE structure.
-
-    sqe_flags_t reg = (irp->sqe.flags >> SQE_LOAD0) & SQE_REG_MASK;
-    if (reg != SQE_REG_NONE)
-    {
-        irp->sqe.arg0 = atomic_load_explicit(&ring->ctrl->regs[reg - 1], memory_order_acquire);
-    }
-
-    reg = (irp->sqe.flags >> SQE_LOAD1) & SQE_REG_MASK;
-    if (reg != SQE_REG_NONE)
-    {
-        irp->sqe.arg1 = atomic_load_explicit(&ring->ctrl->regs[reg - 1], memory_order_acquire);
-    }
-
-    reg = (irp->sqe.flags >> SQE_LOAD2) & SQE_REG_MASK;
-    if (reg != SQE_REG_NONE)
-    {
-        irp->sqe.arg2 = atomic_load_explicit(&ring->ctrl->regs[reg - 1], memory_order_acquire);
-    }
-
-    reg = (irp->sqe.flags >> SQE_LOAD3) & SQE_REG_MASK;
-    if (reg != SQE_REG_NONE)
-    {
-        irp->sqe.arg3 = atomic_load_explicit(&ring->ctrl->regs[reg - 1], memory_order_acquire);
-    }
-
-    reg = (irp->sqe.flags >> SQE_LOAD4) & SQE_REG_MASK;
-    if (reg != SQE_REG_NONE)
-    {
-        irp->sqe.arg4 = atomic_load_explicit(&ring->ctrl->regs[reg - 1], memory_order_acquire);
-    }
-
-    switch (irp->sqe.op)
-    {
-    case IO_OP_NOP:
-        irp_set_cancel(irp, nop_cancel);
-        irp_timeout_add(irp, irp->sqe.timeout);
-        break;
-    case IO_OP_CANCEL: 
-    {
-        size_t count = 0;
-        for (size_t i = 0; i < ctx->irps->size; i++)
-        {
-            irp_t* target = &ctx->irps->irps[i];
-            if (target == irp)
-            {
-                continue;
-            }
-
-            if (target->sqe.data != irp->sqe.target && !(irp->sqe.cancel & IO_CANCEL_ANY))
-            {
-                continue;
-            }
-                
-            if (irp_cancel(target) == EOK)
-            {
-                count++;
-            }
-
-            if (!(irp->sqe.cancel & IO_CANCEL_ALL))
-            {
-                break;
-            }
-        }
-
-        irp->res._raw = count;
-        irp->err = (count == 0) ? ENOENT : EOK;
-        irp_complete(irp);
-    }
-    break;
-    default:
-        irp_error(irp, EINVAL);
-        break;
-    }
 }
 
 typedef struct
@@ -349,7 +267,7 @@ static uint64_t ioring_ctx_sqe_pop(ioring_ctx_t* ctx, ioring_ctx_notify_ctx_t* n
         return ERR;
     }
 
-    irp_t* irp = irp_new(ctx->irps);
+    irp_t* irp = irp_get(ctx->irps);
     if (irp == NULL)
     {
         return ERR;
@@ -416,7 +334,7 @@ uint64_t ioring_ctx_notify(ioring_ctx_t* ctx, size_t amount, size_t wait)
         irp_t* irp = CONTAINER_OF(list_pop_front(&notify.irps), irp_t, entry);
 
         irp_set_complete(irp, ioring_ctx_complete, NULL);
-        irp_call_direct(irp, ioring_ctx_dispatch);
+        irp_call_direct(irp, io_op_dispatch);
     }
 
     if (wait == 0)

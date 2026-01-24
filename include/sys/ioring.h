@@ -55,35 +55,35 @@ typedef uint32_t io_op_t; ///< I/O operation code type.
 #define IO_OP_NOP 0
 
 /**
+ * @brief Cancel operation.
+ * @see sqe_prep_cancel
+ */
+#define IO_OP_CANCEL 1
+
+/**
  * @brief Read operation.
  *
  * @see sqe_prep_read
  */
-#define IO_OP_READ 1
+#define IO_OP_READ 2
 
 /**
  * @brief Write operation.
  *
  * @see sqe_prep_write
  */
-#define IO_OP_WRITE 2
+#define IO_OP_WRITE 3
 
 /**
  * @brief Poll operation.
  *
  * @see sqe_prep_poll
  */
-#define IO_OP_POLL 3
+#define IO_OP_POLL 4
 
-/**
- * @brief Cancel operation.
- * @see sqe_prep_cancel
- */
-#define IO_OP_CANCEL 4
+#define IO_OP_MAX 5 ///< The maximum number of operation.
 
-#define IO_OP_MAX 5          ///< The maximum number of operation.
-
-typedef uint64_t io_cancel_t; ///< Cancel operation flags.
+typedef uint64_t io_cancel_t;  ///< Cancel operation flags.
 #define IO_CANCEL_ALL (1 << 0) ///< Cancel all matching requests.
 #define IO_CANCEL_ANY (1 << 1) ///< Match any user data.
 
@@ -132,8 +132,8 @@ typedef uint32_t sqe_flags_t; ///< Submission queue entry (SQE) flags.
 typedef struct sqe
 {
     clock_t timeout;   ///< Timeout for the operation, `CLOCKS_NEVER` for no timeout.
-    uintptr_t data;        ///< Private data for the operation, will be returned in the completion entry.
-    io_op_t op;    ///< The operation to perform.
+    uintptr_t data;    ///< Private data for the operation, will be returned in the completion entry.
+    io_op_t op;        ///< The operation to perform.
     sqe_flags_t flags; ///< Submission flags.
     union {
         uint64_t arg0;
@@ -172,11 +172,9 @@ static_assert(sizeof(sqe_t) == 64, "sqe_t is not 64 bytes");
  * @param _data Private data for the operation.
  */
 #define SQE_CREATE(_op, _flags, _timeout, _data) \
-    (sqe_t){ \
-        .op = (_op), \
-        .flags = (_flags), \
-        .timeout = (_timeout), \
-        .data = (_data), \
+    (sqe_t) \
+    { \
+        .op = (_op), .flags = (_flags), .timeout = (_timeout), .data = (_data), \
     }
 
 /**
@@ -187,9 +185,9 @@ static_assert(sizeof(sqe_t) == 64, "sqe_t is not 64 bytes");
  */
 typedef struct cqe
 {
-    io_op_t op; ///< The operation that was performed.
+    io_op_t op;     ///< The operation that was performed.
     errno_t error;  ///< Error code, if not equal to `EOK` an error occurred.
-    uintptr_t data;     ///< Private data from the submission entry.
+    uintptr_t data; ///< Private data from the submission entry.
     union {
         fd_t fd;
         size_t count;
@@ -279,7 +277,7 @@ uint64_t ioring_enter(ioring_id_t id, size_t amount, size_t wait);
 
 /**
  * @brief Retrieve the next available submission queue entry (SQE) from the ring.
- * 
+ *
  * @param ring The I/O ring.
  * @return On success, a pointer to the next available SQE. If the ring is full, `NULL`.
  */
@@ -298,7 +296,7 @@ static inline sqe_t* sqe_get(ioring_t* ring)
 
 /**
  * @brief Commit the next submission queue entry (SQE) to the ring.
- * 
+ *
  * @param ring The I/O ring.
  */
 static inline void sqe_put(ioring_t* ring)
@@ -309,7 +307,7 @@ static inline void sqe_put(ioring_t* ring)
 
 /**
  * @brief Prepare a no-op submission queue entry (SQE).
- * 
+ *
  * @param sqe The SQE to prepare.
  * @param flags Submission flags.
  * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout.
@@ -336,7 +334,8 @@ static inline void sqe_prep_nop(sqe_t* sqe, sqe_flags_t flags, clock_t timeout, 
  *
  * @see `IO_OP_READ`
  */
-static inline void sqe_prep_read(sqe_t* sqe, sqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd, void* buffer, size_t count, ssize_t offset)
+static inline void sqe_prep_read(sqe_t* sqe, sqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd, void* buffer,
+    size_t count, ssize_t offset)
 {
     *sqe = SQE_CREATE(IO_OP_READ, flags, timeout, data);
     sqe->fd = fd;
@@ -359,7 +358,8 @@ static inline void sqe_prep_read(sqe_t* sqe, sqe_flags_t flags, clock_t timeout,
  *
  * @see `IO_OP_WRITE`
  */
-static inline void sqe_prep_write(sqe_t* sqe, sqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd, const void* buffer, size_t count, ssize_t offset)
+static inline void sqe_prep_write(sqe_t* sqe, sqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
+    const void* buffer, size_t count, ssize_t offset)
 {
     *sqe = SQE_CREATE(IO_OP_WRITE, flags, timeout, data);
     sqe->fd = fd;
@@ -380,7 +380,8 @@ static inline void sqe_prep_write(sqe_t* sqe, sqe_flags_t flags, clock_t timeout
  *
  * @see `IO_OP_POLL`
  */
-static inline void sqe_prep_poll(sqe_t* sqe, sqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd, io_events_t events)
+static inline void sqe_prep_poll(sqe_t* sqe, sqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
+    io_events_t events)
 {
     *sqe = SQE_CREATE(IO_OP_POLL, flags, timeout, data);
     sqe->fd = fd;
@@ -399,7 +400,8 @@ static inline void sqe_prep_poll(sqe_t* sqe, sqe_flags_t flags, clock_t timeout,
  *
  * @see `IO_OP_CANCEL`
  */
-static inline void sqe_prep_cancel(sqe_t* sqe, sqe_flags_t flags, clock_t timeout, uintptr_t data, uintptr_t target, io_cancel_t cancel)
+static inline void sqe_prep_cancel(sqe_t* sqe, sqe_flags_t flags, clock_t timeout, uintptr_t data, uintptr_t target,
+    io_cancel_t cancel)
 {
     *sqe = SQE_CREATE(IO_OP_CANCEL, flags, timeout, data);
     sqe->target = target;
@@ -419,7 +421,7 @@ static inline cqe_t* cqe_get(ioring_t* ring)
 
     if (head == tail)
     {
-        return false;
+        return NULL;
     }
 
     return &ring->cqueue[head & ring->cmask];

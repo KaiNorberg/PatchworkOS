@@ -1,12 +1,12 @@
 #include <kernel/acpi/aml/encoding/name.h>
 
-#include <kernel/log/log.h>
 #include <kernel/acpi/aml/aml.h>
 #include <kernel/acpi/aml/debug.h>
 #include <kernel/acpi/aml/encoding/data.h>
 #include <kernel/acpi/aml/encoding/debug.h>
 #include <kernel/acpi/aml/encoding/term.h>
 #include <kernel/acpi/aml/token.h>
+#include <kernel/log/log.h>
 
 #include <errno.h>
 #include <stdint.h>

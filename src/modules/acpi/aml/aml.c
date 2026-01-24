@@ -1,7 +1,5 @@
 #include <kernel/acpi/aml/aml.h>
 
-#include <kernel/log/log.h>
-#include <kernel/log/panic.h>
 #include <kernel/acpi/aml/encoding/term.h>
 #include <kernel/acpi/aml/integer.h>
 #include <kernel/acpi/aml/namespace.h>
@@ -9,6 +7,8 @@
 #include <kernel/acpi/aml/predefined.h>
 #include <kernel/acpi/aml/state.h>
 #include <kernel/acpi/tables.h>
+#include <kernel/log/log.h>
+#include <kernel/log/panic.h>
 
 #include <kernel/log/log.h>
 

@@ -30,7 +30,8 @@ typedef struct irp irp_t;
  * The I/O Request Packet (IRP) is a lock-less, self-contained, layered, continuation-passing request that acts as the
  * primary primitive used by the kernel for asynchronous operations.
  *
- * The IRP is designed to be generic enough to be used by any system in the kernel, however it is primarily used by the I/O ring system.
+ * The IRP is designed to be generic enough to be used by any system in the kernel, however it is primarily used by the
+ * I/O ring system.
  *
  * @warning While the cancellation or completion of an IRP is thread safe, the setup of an IRP is not (as in pushing
  * layers to it). It is assumed that only one thread is manipulating an IRP during its setup.
@@ -145,20 +146,23 @@ typedef struct irp_frame
     union {
         struct
         {
+            file_t* file;
             mdl_t* buffer;
-            uint64_t off;
-            void* data;
-            uint32_t len;
-            mode_t mode;
+            size_t count;
+            size_t offset;
         } read;
         struct
         {
+            file_t* file;
             mdl_t* buffer;
-            uint64_t off;
-            void* data;
-            uint32_t len;
-            mode_t mode;
+            size_t count;
+            size_t offset;
         } write;
+        struct
+        {
+            file_t* file;
+            io_events_t events;
+        } poll;
         uint64_t args[IRP_ARGS_MAX]; ///< Generic arguments.
     };
 } irp_frame_t;
@@ -183,20 +187,20 @@ typedef struct ALIGNED(64) irp
     list_entry_t timeoutEntry;    ///< Used to store the IRP in the timeout queue.
     _Atomic(irp_cancel_t) cancel; ///< Cancellation callback, must be atomic to ensure an IRP is only cancelled once.
     clock_t deadline;             ///< The time at which the IRP will be removed from a timeout queue.
+    mdl_t mdl;                    ///< A preallocated memory descriptor list for use by the IRP.
     union {
         size_t read;
         size_t write;
         uint64_t _raw;
     } res;
-    mdl_t mdl;                        ///< A preallocated memory descriptor list for use by the IRP.
-    pool_idx_t index;                 ///< Index of the IRP in its pool.
-    pool_idx_t next;                  ///< Index of the next IRP in a chain or in the free list.
-    cpu_id_t cpu;                     ///< The CPU whose timeout queue the IRP is in.
-    uint8_t err;                      ///< The error code of the operation, also used to specify its current state.
-    uint8_t frame;                    ///< The index of the current frame in the stack.
+    errno_t err;      ///< The error code of the operation, also used to specify its current state.
+    pool_idx_t index; ///< Index of the IRP in its pool.
+    pool_idx_t next;  ///< Index of the next IRP in a chain or in the free list.
+    cpu_id_t cpu;     ///< The CPU whose timeout queue the IRP is in.
+    uint8_t frame;    ///< The index of the current frame in the stack.
+    uint8_t reserved[5];
     irp_frame_t stack[IRP_FRAME_MAX]; ///< The frame stack, grows downwards.
     sqe_t sqe;                        // A copy of the submission queue entry associated with this IRP.
-    uint8_t reserved[8];
 } irp_t;
 
 static_assert(sizeof(irp_t) == 512, "irp_t is not 512 bytes");
@@ -274,15 +278,14 @@ void irp_timeout_remove(irp_t* irp);
 void irp_timeouts_check(void);
 
 /**
- * @brief Allocate a new IRP from a pool.
+ * @brief Retrieve an inactive IRP from an IRP pool.
  *
- * The pool that the IRP was allocated from, and its context, can be retrieved using the `irp_get_pool()`
- * function.
+ * The pool that the IRP is part off can be retrieved using the `irp_get_pool()` function.
  *
  * @param pool The IRP pool.
- * @return On success, a pointer to the allocated IRP. On failure, `NULL` and `errno` is set.
+ * @return On success, a pointer to the IRP. On failure, `NULL` and `errno` is set.
  */
-irp_t* irp_new(irp_pool_t* pool);
+irp_t* irp_get(irp_pool_t* pool);
 
 /**
  * @brief Retrieve a memory descriptor list and associate it with an IRP.
@@ -511,7 +514,7 @@ static inline void irp_error(irp_t* irp, uint8_t err)
  * @param arg2 Generic argument 2.
  * @param arg3 Generic argument 3.
  */
-static inline void irp_prepare_generic(irp_t* irp, irp_major_t major, uint64_t arg0, uint64_t arg1, uint64_t arg2,
+static inline void irp_prep_generic(irp_t* irp, irp_major_t major, uint64_t arg0, uint64_t arg1, uint64_t arg2,
     uint64_t arg3)
 {
     irp_frame_t* next = irp_next(irp);
@@ -528,61 +531,59 @@ static inline void irp_prepare_generic(irp_t* irp, irp_major_t major, uint64_t a
  * @brief Prepares the next IRP stack frame for a read operation.
  *
  * @param irp The IRP.
+ * @param file The file to read from, will not take a new reference.
  * @param buffer The memory descriptor list to read into.
- * @param data The buffer to read into.
- * @param off The offset in the file to read from.
- * @param len The number of bytes to read.
- * @param mode The mode.
+ * @param count The number of bytes to read.
+ * @param offset The offset in the file to read from.
  */
-static inline void irp_prepare_read(irp_t* irp, mdl_t* buffer, void* data, uint64_t off, uint32_t len, mode_t mode)
+static inline void irp_prep_read(irp_t* irp, file_t* file, mdl_t* buffer, size_t count, size_t offset)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
 
     next->major = IRP_MJ_READ;
+    next->read.file = file;
     next->read.buffer = buffer;
-    next->read.data = data;
-    next->read.off = off;
-    next->read.len = len;
-    next->read.mode = mode;
+    next->read.count = count;
+    next->read.offset = offset;
 }
 
 /**
  * @brief Prepares the next IRP stack frame for a write operation.
  *
  * @param irp The IRP.
+ * @param file The file to write to, will not take a new reference.
  * @param buffer The memory descriptor list to write from.
- * @param data The buffer to write from.
- * @param off The offset in the file to write to.
- * @param len The number of bytes to write.
- * @param mode The mode.
+ * @param count The number of bytes to write.
+ * @param offset The offset in the file to write to.
  */
-static inline void irp_prepare_write(irp_t* irp, mdl_t* buffer, void* data, uint64_t off, uint32_t len, mode_t mode)
+static inline void irp_prep_write(irp_t* irp, file_t* file, mdl_t* buffer, size_t count, size_t offset)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
 
     next->major = IRP_MJ_WRITE;
+    next->write.file = file;
     next->write.buffer = buffer;
-    next->write.data = data;
-    next->write.off = off;
-    next->write.len = len;
-    next->write.mode = mode;
+    next->write.count = count;
+    next->write.offset = offset;
 }
 
 /**
  * @brief Prepares the next IRP stack frame for a poll operation.
  *
  * @param irp The IRP.
+ * @param file The file to poll, will not take a new reference.
  * @param events The events to wait for.
  */
-static inline void irp_prepare_poll(irp_t* irp, io_events_t events)
+static inline void irp_prep_poll(irp_t* irp, file_t* file, io_events_t events)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
 
     next->major = IRP_MJ_POLL;
-    next->args[0] = events;
+    next->poll.file = file;
+    next->poll.events = events;
 }
 
 /** @} */

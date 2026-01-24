@@ -460,7 +460,7 @@ static uint64_t procfs_ctl_close(file_t* file, uint64_t argc, const char** argv)
             return ERR;
         }
 
-        if (file_table_close(&process->fileTable, fd) == ERR)
+        if (file_table_close(&process->files, fd) == ERR)
         {
             return ERR;
         }
@@ -481,7 +481,7 @@ static uint64_t procfs_ctl_close(file_t* file, uint64_t argc, const char** argv)
             return ERR;
         }
 
-        if (file_table_close_range(&process->fileTable, minFd, maxFd) == ERR)
+        if (file_table_close_range(&process->files, minFd, maxFd) == ERR)
         {
             return ERR;
         }
@@ -514,7 +514,7 @@ static uint64_t procfs_ctl_dup2(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    if (file_table_dup2(&process->fileTable, oldFd, newFd) == ERR)
+    if (file_table_dup2(&process->files, oldFd, newFd) == ERR)
     {
         return ERR;
     }
@@ -709,7 +709,7 @@ static uint64_t procfs_ctl_setns(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    file_t* nsFile = file_table_get(&process->fileTable, fd);
+    file_t* nsFile = file_table_get(&process->files, fd);
     if (nsFile == NULL)
     {
         return ERR;
@@ -750,7 +750,7 @@ static uint64_t procfs_ctl_setgroup(file_t* file, uint64_t argc, const char** ar
         return ERR;
     }
 
-    file_t* groupFile = file_table_get(&process->fileTable, fd);
+    file_t* groupFile = file_table_get(&process->files, fd);
     if (groupFile == NULL)
     {
         return ERR;
