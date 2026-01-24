@@ -3,7 +3,8 @@
 #include <kernel/cpu/syscall.h>
 
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
+#include <sys/ioring.h>
 #include <sys/proc.h>
 #include <time.h>
 
@@ -283,4 +284,19 @@ static inline uint64_t _syscall_umount(const char* mountpoint)
 static inline uint64_t _syscall_arch_prctl(arch_prctl_t code, uintptr_t addr)
 {
     return _SYSCALL2(uint64_t, SYS_ARCH_PRCTL, arch_prctl_t, code, uintptr_t, addr);
+}
+
+static inline uint64_t _syscall_setup(ioring_t* ring, void* address, size_t sentries, size_t centries)
+{
+    return _SYSCALL4(uint64_t, SYS_SETUP, ioring_t*, ring, void*, address, size_t, sentries, size_t, centries);
+}
+
+static inline uint64_t _syscall_teardown(ioring_id_t id)
+{
+    return _SYSCALL1(uint64_t, SYS_TEARDOWN, ioring_id_t, id);
+}
+
+static inline uint64_t _syscall_enter(ioring_id_t id, size_t amount, size_t wait)
+{
+    return _SYSCALL3(uint64_t, SYS_ENTER, ioring_id_t, id, size_t, amount, size_t, wait);
 }

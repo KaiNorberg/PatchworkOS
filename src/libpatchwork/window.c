@@ -1,5 +1,5 @@
-#include <libpatchwork/display.h>
-#include <libpatchwork/image.h>
+#include <patchwork/display.h>
+#include <patchwork/image.h>
 #define __STDC_WANT_LIB_EXT1__ 1
 #include "internal.h"
 
@@ -311,7 +311,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
 }
 
 window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surface_type_t type, window_flags_t flags,
-    procedure_t procedure,  void* data)
+    procedure_t procedure, void* data)
 {
     if (disp == NULL || name == NULL || rect == NULL || procedure == NULL || strnlen_s(name, MAX_NAME + 1) >= MAX_NAME)
     {

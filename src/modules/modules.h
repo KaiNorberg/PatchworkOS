@@ -2,6 +2,6 @@
 
 /**
  * @brief Kernel Modules.
- * @defgroup modules Modules
+ * @defgroup kernel Modules
  *
  */

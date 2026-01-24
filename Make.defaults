@@ -28,8 +28,6 @@ CFLAGS := \
 	-Wno-unused-but-set-parameter \
 	-Wno-unused-command-line-argument \
 	-isystem include \
-	-isystem include/libstd \
-	-Iinclude \
 	-Ilib \
 	-I$(SRCDIR) \
 	-D_PATCHWORK_OS_
@@ -46,7 +44,6 @@ ASFLAGS := \
 	-ffreestanding \
 	-fno-builtin \
 	-Iinclude \
-	-Iinclude/libstd \
 	-I$(SRCDIR) \
 	-D_PATCHWORK_OS_
 
@@ -94,7 +91,7 @@ ASFLAGS_MODULE := \
 LDFLAGS_MODULE := \
 	-shared \
 	-fPIC \
-	-Tinclude/modules/linker.lds
+	-Tinclude/kernel/module.lds
 
 define find_sources
 $(shell find $(1) -name "*.c" -o -name "*.S" 2>/dev/null)

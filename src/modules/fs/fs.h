@@ -2,6 +2,6 @@
 
 /**
  * @brief Filesystem Modules.
- * @defgroup modules_fs Filesystem Modules
- * @ingroup modules
+ * @defgroup kernel_fs Filesystem Modules
+ * @ingroup kernel
  */

@@ -3,5 +3,5 @@
 /**
  * @brief Networking protocols.
  * @defgroup module_net Networking Protocols
- * @ingroup modules
+ * @ingroup kernel
  */

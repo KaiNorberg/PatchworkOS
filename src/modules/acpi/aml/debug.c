@@ -1,8 +1,8 @@
-#include <modules/acpi/aml/debug.h>
+#include <kernel/acpi/aml/debug.h>
 
 #include <kernel/log/log.h>
 #include <kernel/sched/timer.h>
-#include <modules/acpi/aml/state.h>
+#include <kernel/acpi/aml/state.h>
 
 static void aml_debug_dump_print_line(const uint8_t* start, uint64_t lineStart, uint64_t lineEnd)
 {

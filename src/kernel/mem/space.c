@@ -17,20 +17,20 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-static uint64_t space_pmm_bitmap_alloc_pages(void** pages, size_t pageAmount)
+static uint64_t space_pmm_bitmap_alloc_pages(pfn_t* pfns, size_t pageAmount)
 {
     for (size_t i = 0; i < pageAmount; i++)
     {
-        void* page = pmm_alloc_bitmap(1, UINT32_MAX, 0);
-        if (page == NULL)
+        pfn_t pfn = pmm_alloc_bitmap(1, UINT32_MAX, 0);
+        if (pfn == ERR)
         {
             for (size_t j = 0; j < i; j++)
             {
-                pmm_free(pages[j]);
+                pmm_free(pfns[j]);
             }
             return ERR;
         }
-        pages[i] = page;
+        pfns[i] = pfn;
     }
     return 0;
 }
@@ -172,16 +172,16 @@ static uint64_t space_populate_user_region(space_t* space, const void* buffer, s
             continue;
         }
 
-        void* page = pmm_alloc();
-        if (page == NULL)
+        pfn_t pfn = pmm_alloc();
+        if (pfn == ERR)
         {
             return ERR;
         }
 
-        if (page_table_map(&space->pageTable, (void*)addr, page, 1, PML_PRESENT | PML_USER | PML_WRITE | PML_OWNED,
-                PML_CALLBACK_NONE) == ERR)
+        if (page_table_map(&space->pageTable, (void*)addr, PFN_TO_PHYS(pfn), 1,
+                PML_PRESENT | PML_USER | PML_WRITE | PML_OWNED, PML_CALLBACK_NONE) == ERR)
         {
-            pmm_free(page);
+            pmm_free(pfn);
             return ERR;
         }
     }
@@ -189,14 +189,14 @@ static uint64_t space_populate_user_region(space_t* space, const void* buffer, s
     return 0;
 }
 
-static void space_pin_depth_dec(space_t* space, const void* address, uint64_t pageAmount)
+static void space_pin_depth_dec(space_t* space, const void* address, uint64_t amount)
 {
     address = (void*)ROUND_DOWN((uintptr_t)address, PAGE_SIZE);
 
     page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
-    for (uint64_t i = 0; i < pageAmount; i++)
+    for (uint64_t i = 0; i < amount; i++)
     {
-        uintptr_t addr = (uintptr_t)address + (i * PAGE_SIZE);
+        const void* addr = address + (i * PAGE_SIZE);
         if (page_table_traverse(&space->pageTable, &traverse, addr, PML_NONE) == ERR)
         {
             continue;
@@ -207,7 +207,7 @@ static void space_pin_depth_dec(space_t* space, const void* address, uint64_t pa
             continue;
         }
 
-        map_key_t key = map_key_uint64(addr);
+        map_key_t key = map_key_uint64((uintptr_t)addr);
         map_entry_t* entry = map_get(&space->pinnedPages, &key);
         if (entry == NULL) // Not pinned more then once
         {
@@ -226,14 +226,14 @@ static void space_pin_depth_dec(space_t* space, const void* address, uint64_t pa
     }
 }
 
-static inline uint64_t space_pin_depth_inc(space_t* space, const void* address, uint64_t pageAmount)
+static inline uint64_t space_pin_depth_inc(space_t* space, const void* address, uint64_t amount)
 {
     address = (void*)ROUND_DOWN((uintptr_t)address, PAGE_SIZE);
 
     page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
-    for (uint64_t i = 0; i < pageAmount; i++)
+    for (uint64_t i = 0; i < amount; i++)
     {
-        uintptr_t addr = (uintptr_t)address + (i * PAGE_SIZE);
+        const void* addr = address + (i * PAGE_SIZE);
         if (page_table_traverse(&space->pageTable, &traverse, addr, PML_NONE) == ERR)
         {
             continue;
@@ -250,7 +250,7 @@ static inline uint64_t space_pin_depth_inc(space_t* space, const void* address, 
             continue;
         }
 
-        map_key_t key = map_key_uint64(addr);
+        map_key_t key = map_key_uint64((uintptr_t)addr);
         map_entry_t* entry = map_get(&space->pinnedPages, &key);
         if (entry != NULL) // Already pinned more than once
         {
@@ -491,8 +491,8 @@ static void* space_find_free_region(space_t* space, uint64_t pageAmount, uint64_
     return NULL;
 }
 
-uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, size_t length,
-    size_t alignment, pml_flags_t flags)
+uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, phys_addr_t physAddr,
+    size_t length, size_t alignment, pml_flags_t flags)
 {
     if (space == NULL || mapping == NULL || length == 0)
     {
@@ -508,7 +508,7 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
     }
 
     uintptr_t physOverflow = (uintptr_t)physAddr + length;
-    if (physAddr != NULL && physOverflow < (uintptr_t)physAddr)
+    if (physAddr != PHYS_ADDR_INVALID && physOverflow < (uintptr_t)physAddr)
     {
         errno = EOVERFLOW;
         return ERR;
@@ -554,13 +554,13 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
     }
 
     mapping->virtAddr = virtAddr;
-    if (physAddr != NULL)
+    if (physAddr != PHYS_ADDR_INVALID)
     {
-        mapping->physAddr = (void*)PML_ENSURE_LOWER_HALF(ROUND_DOWN(physAddr, PAGE_SIZE));
+        mapping->physAddr = PML_ENSURE_LOWER_HALF(ROUND_DOWN(physAddr, PAGE_SIZE));
     }
     else
     {
-        mapping->physAddr = NULL;
+        mapping->physAddr = PHYS_ADDR_INVALID;
     }
 
     mapping->flags = flags;
@@ -568,7 +568,7 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
     return 0; // We return with the lock still acquired.
 }
 
-pml_callback_id_t space_alloc_callback(space_t* space, size_t pageAmount, space_callback_func_t func,  void* data)
+pml_callback_id_t space_alloc_callback(space_t* space, size_t pageAmount, space_callback_func_t func, void* data)
 {
     if (space == NULL)
     {
@@ -665,4 +665,23 @@ uint64_t space_user_page_count(space_t* space)
     LOCK_SCOPE(&space->lock);
     return page_table_count_pages_with_flags(&space->pageTable, (void*)VMM_USER_SPACE_MIN,
         BYTES_TO_PAGES(VMM_USER_SPACE_MAX - VMM_USER_SPACE_MIN), PML_PRESENT | PML_USER | PML_OWNED);
+}
+
+phys_addr_t space_virt_to_phys(space_t* space, const void* virtAddr)
+{
+    if (space == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    phys_addr_t physAddr;
+    LOCK_SCOPE(&space->lock);
+    if (page_table_get_phys_addr(&space->pageTable, (void*)virtAddr, &physAddr) == ERR)
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    return physAddr;
 }

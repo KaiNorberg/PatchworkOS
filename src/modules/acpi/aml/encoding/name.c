@@ -1,12 +1,12 @@
-#include <modules/acpi/aml/encoding/name.h>
+#include <kernel/acpi/aml/encoding/name.h>
 
 #include <kernel/log/log.h>
-#include <modules/acpi/aml/aml.h>
-#include <modules/acpi/aml/debug.h>
-#include <modules/acpi/aml/encoding/data.h>
-#include <modules/acpi/aml/encoding/debug.h>
-#include <modules/acpi/aml/encoding/term.h>
-#include <modules/acpi/aml/token.h>
+#include <kernel/acpi/aml/aml.h>
+#include <kernel/acpi/aml/debug.h>
+#include <kernel/acpi/aml/encoding/data.h>
+#include <kernel/acpi/aml/encoding/debug.h>
+#include <kernel/acpi/aml/encoding/term.h>
+#include <kernel/acpi/aml/token.h>
 
 #include <errno.h>
 #include <stdint.h>
@@ -186,12 +186,12 @@ uint64_t aml_root_char_read(aml_term_list_ctx_t* ctx, aml_root_char_t* out)
     return 0;
 }
 
-uint64_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_string_t* out)
+uint64_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_stioring_t* out)
 {
     aml_token_t token;
     aml_token_peek(ctx, &token);
 
-    aml_name_string_t nameString = {0};
+    aml_name_stioring_t nameString = {0};
     // Starts with either rootchar or prefixpath.
     switch (token.num)
     {
@@ -226,7 +226,7 @@ uint64_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_string_t* out)
 
 aml_object_t* aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx)
 {
-    aml_name_string_t nameStringLocal;
+    aml_name_stioring_t nameStringLocal;
     if (aml_name_string_read(ctx, &nameStringLocal) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NameString");

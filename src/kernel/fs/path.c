@@ -1,4 +1,4 @@
-#include <_internal/MAX_PATH.h>
+#include <_libstd/MAX_PATH.h>
 #include <kernel/fs/path.h>
 
 #include <kernel/fs/dentry.h>
@@ -432,7 +432,7 @@ static uint64_t path_rcu_symlink(path_walk_ctx_t* ctx, dentry_t* symlink)
     }
 
     char symlinkPath[MAX_PATH];
-    size_t readCount = vfs_readlink(symlink->inode, symlinkPath, MAX_PATH - 1);
+    size_t readCount = vfs_readlink(symlink->vnode, symlinkPath, MAX_PATH - 1);
 
     path_walk_release(ctx);
 

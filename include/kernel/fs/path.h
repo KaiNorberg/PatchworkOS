@@ -6,12 +6,13 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 
 typedef struct path path_t;
 typedef struct mount mount_t;
 typedef struct dentry dentry_t;
 typedef struct namespace namespace_t;
+typedef struct file file_t;
 
 // clang-format off
 /**

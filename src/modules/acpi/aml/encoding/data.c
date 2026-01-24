@@ -1,14 +1,14 @@
-#include <modules/acpi/aml/encoding/data.h>
+#include <kernel/acpi/aml/encoding/data.h>
 
 #include <kernel/log/log.h>
-#include <modules/acpi/aml/aml.h>
-#include <modules/acpi/aml/debug.h>
-#include <modules/acpi/aml/encoding/expression.h>
-#include <modules/acpi/aml/encoding/name.h>
-#include <modules/acpi/aml/encoding/package_length.h>
-#include <modules/acpi/aml/patch_up.h>
-#include <modules/acpi/aml/runtime/convert.h>
-#include <modules/acpi/aml/token.h>
+#include <kernel/acpi/aml/aml.h>
+#include <kernel/acpi/aml/debug.h>
+#include <kernel/acpi/aml/encoding/expression.h>
+#include <kernel/acpi/aml/encoding/name.h>
+#include <kernel/acpi/aml/encoding/package_length.h>
+#include <kernel/acpi/aml/patch_up.h>
+#include <kernel/acpi/aml/runtime/convert.h>
+#include <kernel/acpi/aml/token.h>
 
 #include <errno.h>
 #include <stdint.h>
@@ -349,7 +349,7 @@ uint64_t aml_package_element_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
 
     if (token.props->type == AML_TOKEN_TYPE_NAME)
     {
-        aml_name_string_t nameString;
+        aml_name_stioring_t nameString;
         if (aml_name_string_read(ctx, &nameString) == ERR)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read NameString");

@@ -1,4 +1,4 @@
-#include <modules/acpi/aml/to_string.h>
+#include <kernel/acpi/aml/to_string.h>
 
 #include <stdio.h>
 
@@ -251,7 +251,7 @@ const char* aml_object_to_string(aml_object_t* object)
     }
 }
 
-const char* aml_name_string_to_string(const aml_name_string_t* nameString)
+const char* aml_name_stioring_to_string(const aml_name_stioring_t* nameString)
 {
     static char buffer[256];
     memset(buffer, 0, sizeof(buffer));

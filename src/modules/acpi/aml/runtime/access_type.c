@@ -1,4 +1,4 @@
-#include <modules/acpi/aml/runtime/access_type.h>
+#include <kernel/acpi/aml/runtime/access_type.h>
 
 #include <errno.h>
 

@@ -1,6 +1,6 @@
-#include <modules/acpi/acpi.h>
-#include <modules/acpi/aml/namespace.h>
-#include <modules/acpi/devices.h>
+#include <kernel/acpi/acpi.h>
+#include <kernel/acpi/aml/namespace.h>
+#include <kernel/acpi/devices.h>
 
 #include <kernel/cpu/irq.h>
 #include <kernel/log/log.h>
@@ -8,15 +8,15 @@
 #include <kernel/module/module.h>
 #include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
-#include <modules/acpi/aml/aml.h>
-#include <modules/acpi/aml/object.h>
-#include <modules/acpi/aml/runtime/eisa_id.h>
-#include <modules/acpi/aml/runtime/evaluate.h>
-#include <modules/acpi/aml/runtime/method.h>
-#include <modules/acpi/aml/state.h>
-#include <modules/acpi/aml/to_string.h>
-#include <modules/acpi/resources.h>
-#include <modules/acpi/tables.h>
+#include <kernel/acpi/aml/aml.h>
+#include <kernel/acpi/aml/object.h>
+#include <kernel/acpi/aml/runtime/eisa_id.h>
+#include <kernel/acpi/aml/runtime/evaluate.h>
+#include <kernel/acpi/aml/runtime/method.h>
+#include <kernel/acpi/aml/state.h>
+#include <kernel/acpi/aml/to_string.h>
+#include <kernel/acpi/resources.h>
+#include <kernel/acpi/tables.h>
 
 #include <errno.h>
 #include <stdint.h>
@@ -336,7 +336,7 @@ static void acpi_device_cfg_free(acpi_device_cfg_t* cfg)
 
     for (uint64_t i = 0; i < cfg->ioCount; i++)
     {
-        io_release(cfg->ios[i].base, cfg->ios[i].length);
+        port_release(cfg->ios[i].base, cfg->ios[i].length);
     }
 
     free(cfg->irqs);
@@ -451,7 +451,7 @@ static uint64_t acpi_device_configure(const char* name)
             cfg->ios = newIos;
 
             port_t base;
-            if (io_reserve(&base, desc->minBase, desc->maxBase, desc->alignment, desc->length, name) == ERR)
+            if (port_reserve(&base, desc->minBase, desc->maxBase, desc->alignment, desc->length, name) == ERR)
             {
                 LOG_ERR("failed to reserve IO ports for ACPI device '%s' due to '%s'\n", name, strerror(errno));
                 goto error;

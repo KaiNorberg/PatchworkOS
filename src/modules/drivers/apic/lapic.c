@@ -1,4 +1,4 @@
-#include <modules/drivers/apic/lapic.h>
+#include <kernel/drivers/apic/lapic.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/ipi.h>
@@ -6,7 +6,7 @@
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/utils/utils.h>
-#include <modules/acpi/tables.h>
+#include <kernel/acpi/tables.h>
 
 #include <assert.h>
 #include <sys/defs.h>
@@ -99,15 +99,14 @@ uint64_t lapic_global_init(void)
     }
 
     lapicBase = PML_LOWER_TO_HIGHER(madt->localInterruptControllerAddress);
-    if (vmm_map(NULL, (void*)lapicBase, (void*)(uintptr_t)madt->localInterruptControllerAddress, PAGE_SIZE,
+    if (vmm_map(NULL, (void*)lapicBase, madt->localInterruptControllerAddress, PAGE_SIZE,
             PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) == NULL)
     {
         LOG_ERR("failed to map local apic\n");
         return ERR;
     }
 
-    LOG_INFO("local apic mapped base=0x%016lx phys=0x%016lx\n", lapicBase,
-        (uintptr_t)madt->localInterruptControllerAddress);
+    LOG_INFO("local apic mapped base=%p phys=%p\n", lapicBase, (uintptr_t)madt->localInterruptControllerAddress);
 
     if (ipi_chip_register(&lapicIpiChip) == ERR)
     {

@@ -1,13 +1,13 @@
 #include "pipeline.h"
 #include "builtin.h"
 
-#include <_internal/MAX_PATH.h>
+#include <_libstd/MAX_PATH.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/argsplit.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/proc.h>
 
 uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd_t stdout, fd_t stderr)
@@ -341,7 +341,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
     else if (strchr(argv[0], '/') != NULL)
     {
         stat_t info;
-        if (stat(argv[0], &info) != ERR && info.type != INODE_DIR)
+        if (stat(argv[0], &info) != ERR && info.type != VDIR)
         {
             result = spawn(argv, SPAWN_STDIO_FDS);
         }
@@ -369,7 +369,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
                 if (snprintf(path, MAX_PATH, "%s/%s", token, argv[0]) < MAX_PATH)
                 {
                     stat_t info;
-                    if (stat(path, &info) != ERR && info.type != INODE_DIR)
+                    if (stat(path, &info) != ERR && info.type != VDIR)
                     {
                         const char* newArgv[argc + 1];
                         newArgv[0] = path;

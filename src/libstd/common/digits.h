@@ -1,6 +1,6 @@
 #pragma once
 
-#include <_internal/ascii.h>
+#include <_libstd/ascii.h>
 #include <stdint.h>
 
 extern const char _digits[];

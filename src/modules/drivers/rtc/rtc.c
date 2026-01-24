@@ -1,11 +1,11 @@
-#include <kernel/cpu/io.h>
+#include <kernel/cpu/port.h>
 #include <kernel/log/log.h>
 #include <kernel/module/module.h>
 #include <kernel/sched/clock.h>
-#include <modules/acpi/devices.h>
-#include <modules/acpi/tables.h>
-
 #include <kernel/sync/lock.h>
+#include <kernel/acpi/devices.h>
+#include <kernel/acpi/tables.h>
+
 #include <time.h>
 
 /**
@@ -28,8 +28,8 @@ static lock_t lock = LOCK_CREATE();
 
 static uint8_t rtc_read(uint8_t reg)
 {
-    io_out8(addressPort, reg | 0x80); // Force NMI disable
-    return io_in8(dataPort);
+    out8(addressPort, reg | 0x80); // Force NMI disable
+    return in8(dataPort);
 }
 
 static int rtc_update_in_progress(void)

@@ -17,8 +17,8 @@
 #include <sys/list.h>
 /**
  * @brief Shared Memory
- * @defgroup modules_ipc_shmem Shared Memory
- * @ingroup modules_ipc
+ * @defgroup kernel_ipc_shmem Shared Memory
+ * @ingroup kernel_ipc
  *
  * Shared memory is exposed in the `/dev/shmem` directory. Shared memory allows multiple processes to share a section of
  * memory for inter-process communication (IPC).
@@ -44,7 +44,7 @@ typedef struct
 {
     ref_t ref;
     uint64_t pageAmount;
-    void** pages;
+    pfn_t* pages;
     lock_t lock;
 } shmem_object_t;
 
@@ -86,7 +86,7 @@ static shmem_object_t* shmem_object_new(void)
     return shmem;
 }
 
-static void shmem_vmm_callback( void* data)
+static void shmem_vmm_callback(void* data)
 {
     shmem_object_t* shmem = data;
     if (shmem == NULL)
@@ -100,7 +100,7 @@ static void shmem_vmm_callback( void* data)
 static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmount, space_t* space, void* address,
     pml_flags_t flags)
 {
-    shmem->pages = malloc(sizeof(void*) * pageAmount);
+    shmem->pages = malloc(sizeof(pfn_t) * pageAmount);
     if (shmem->pages == NULL)
     {
         return NULL;
@@ -110,7 +110,7 @@ static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmo
     for (uint64_t i = 0; i < pageAmount; i++)
     {
         shmem->pages[i] = pmm_alloc();
-        if (shmem->pages[i] == NULL)
+        if (shmem->pages[i] == ERR)
         {
             for (uint64_t j = 0; j < i; j++)
             {
@@ -197,27 +197,25 @@ static void* shmem_mmap(file_t* file, void* address, size_t length, size_t* offs
         assert(shmem->pages == NULL);
         return shmem_object_allocate_pages(shmem, pageAmount, space, address, flags);
     }
-    else
+
+    assert(shmem->pages != NULL);
+
+    if (*offset >= shmem->pageAmount * PAGE_SIZE)
     {
-        assert(shmem->pages != NULL);
-
-        if (*offset >= shmem->pageAmount * PAGE_SIZE)
-        {
-            errno = EINVAL;
-            return NULL;
-        }
-
-        if (*offset % PAGE_SIZE != 0)
-        {
-            errno = EINVAL;
-            return NULL;
-        }
-
-        uint64_t pageOffset = *offset / PAGE_SIZE;
-        uint64_t availablePages = shmem->pageAmount - pageOffset;
-        return vmm_map_pages(space, address, &shmem->pages[pageOffset], MIN(pageAmount, availablePages), flags,
-            shmem_vmm_callback, REF(shmem));
+        errno = EINVAL;
+        return NULL;
     }
+
+    if (*offset % PAGE_SIZE != 0)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    uint64_t pageOffset = *offset / PAGE_SIZE;
+    uint64_t availablePages = shmem->pageAmount - pageOffset;
+    return vmm_map_pages(space, address, &shmem->pages[pageOffset], MIN(pageAmount, availablePages), flags,
+        shmem_vmm_callback, REF(shmem));
 }
 
 static file_ops_t fileOps = {

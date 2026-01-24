@@ -11,13 +11,13 @@
 
 #include <assert.h>
 #include <stdlib.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/math.h>
 
 /**
  * @brief Pipes.
- * @defgroup modules_ipc_pipe Pipes
- * @ingroup modules_ipc
+ * @defgroup kernel_ipc_pipe Pipes
+ * @ingroup kernel_ipc
  *
  * Pipes are exposed in the `/dev/pipe` directory. Pipes are unidirectional communication channels that can be used for
  * inter-process communication (IPC).
@@ -59,7 +59,7 @@ static uint64_t pipe_open(file_t* file)
     {
         return ERR;
     }
-    data->buffer = pmm_alloc();
+    data->buffer = malloc(PAGE_SIZE);
     if (data->buffer == NULL)
     {
         free(data);
@@ -84,7 +84,7 @@ static uint64_t pipe_open2(file_t* files[2])
     {
         return ERR;
     }
-    data->buffer = pmm_alloc();
+    data->buffer = malloc(PAGE_SIZE);
     if (data->buffer == NULL)
     {
         free(data);
@@ -122,7 +122,7 @@ static void pipe_close(file_t* file)
     {
         lock_release(&data->lock);
         wait_queue_deinit(&data->waitQueue);
-        pmm_free(data->buffer);
+        free(data->buffer);
         free(data);
         return;
     }

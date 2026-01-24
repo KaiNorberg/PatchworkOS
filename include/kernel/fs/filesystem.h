@@ -3,15 +3,15 @@
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
-#include <kernel/fs/inode.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/proc/process.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
 
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>
@@ -65,7 +65,7 @@ typedef struct filesystem
      * @param private Private data for the filesystem's mount function.
      * @return On success, the root dentry of the mounted filesystem. On failure, `NULL` and `errno` is set.
      */
-    dentry_t* (*mount)(filesystem_t* fs, const char* details,  void* data);
+    dentry_t* (*mount)(filesystem_t* fs, const char* details, void* data);
 } filesystem_t;
 
 /**s

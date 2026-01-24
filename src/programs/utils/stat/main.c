@@ -3,18 +3,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <time.h>
 
-static const char* type_to_string(itype_t type)
+static const char* type_to_string(vtype_t type)
 {
     switch (type)
     {
-    case INODE_FILE:
+    case VREG:
         return "file";
-    case INODE_DIR:
+    case VDIR:
         return "directory";
-    case INODE_SYMLINK:
+    case VSYMLINK:
         return "symlink";
     default:
         return "unknown";
@@ -33,7 +33,7 @@ static void print_stat(const char* path)
     printf("  File: %s\n", path);
     printf("  Size: %llu\t\tBlocks: %llu\t   IO Block: %llu  %s\n", buffer.size, buffer.blocks, buffer.blockSize,
         type_to_string(buffer.type));
-    printf("Superblock: %llu\tInode: %llu\tLinks: %llu\n", buffer.sbid, buffer.number, buffer.linkAmount);
+    printf("Superblock: %llu\tVnode: %llu\tLinks: %llu\n", buffer.sbid, buffer.number, buffer.linkAmount);
     printf("   Max: %llu\n", buffer.maxFileSize);
     printf("  Name: %s\n", buffer.name);
     printf("Access: %s", ctime(&buffer.accessTime));

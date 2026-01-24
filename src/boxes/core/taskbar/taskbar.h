@@ -2,8 +2,8 @@
 
 #include "start_menu.h"
 
-#include <libpatchwork/patchwork.h>
-#include <sys/io.h>
+#include <patchwork/patchwork.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 #define START_WIDTH 100

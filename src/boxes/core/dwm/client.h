@@ -2,9 +2,9 @@
 
 #include "surface.h"
 
-#include <libpatchwork/cmd.h>
-#include <libpatchwork/event.h>
-#include <sys/io.h>
+#include <patchwork/cmd.h>
+#include <patchwork/event.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 #define CLIENT_RECV_BUFFER_SIZE (sizeof(cmd_buffer_t) + 128)

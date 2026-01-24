@@ -16,8 +16,8 @@
 
 /**
  * @brief GOP (Graphics Output Protocol) driver.
- * @defgroup modules_drivers_gop GOP Driver
- * @ingroup modules_drivers
+ * @defgroup kernel_drivers_gop GOP Driver
+ * @ingroup kernel_drivers
  *
  * This module provides a framebuffer device for the GOP framebuffer provided by the bootloader.
  *
@@ -67,14 +67,14 @@ static void* gop_mmap(fb_t* fb, void* addr, size_t length, size_t* offset, pml_f
     process_t* process = process_current();
 
     uintptr_t physAddr = (uintptr_t)gop.physAddr + *offset;
-    uintptr_t endAddr = physAddr + length;
-    if (endAddr > (uintptr_t)gop.physAddr + (gop.stride * gop.height * sizeof(uint32_t)))
+    phys_addr_t endAddr = physAddr + length;
+    if (endAddr > gop.physAddr + (gop.stride * gop.height * sizeof(uint32_t)))
     {
         errno = EINVAL;
         return NULL;
     }
 
-    return vmm_map(&process->space, addr, (void*)physAddr, length, flags, NULL, NULL);
+    return vmm_map(&process->space, addr, physAddr, length, flags, NULL, NULL);
 }
 
 static fb_ops_t ops = {

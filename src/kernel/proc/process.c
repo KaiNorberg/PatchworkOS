@@ -7,6 +7,7 @@
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/io/io.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/cache.h>
@@ -31,7 +32,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>
@@ -109,9 +110,13 @@ static void process_free(process_t* process)
         UNREF(process->nspace);
     }
     space_deinit(&process->space);
+    futex_ctx_deinit(&process->futexCtx);
+    for (uint64_t i = 0; i < ARRAY_SIZE(process->rings); i++)
+    {
+        ioring_ctx_deinit(&process->rings[i]);
+    }
     wait_queue_deinit(&process->dyingQueue);
     wait_queue_deinit(&process->suspendQueue);
-    futex_ctx_deinit(&process->futexCtx);
     env_deinit(&process->env);
 
     rcu_call(&process->rcu, rcu_call_cache_free, process);
@@ -149,6 +154,10 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
     file_table_init(&process->fileTable);
     futex_ctx_init(&process->futexCtx);
     perf_process_ctx_init(&process->perf);
+    for (uint64_t i = 0; i < ARRAY_SIZE(process->rings); i++)
+    {
+        ioring_ctx_init(&process->rings[i]);
+    }
     note_handler_init(&process->noteHandler);
     wait_queue_init(&process->suspendQueue);
     wait_queue_init(&process->dyingQueue);

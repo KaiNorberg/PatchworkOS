@@ -1,5 +1,5 @@
-#include <modules/drivers/apic/apic_timer.h>
-#include <modules/drivers/apic/lapic.h>
+#include <kernel/drivers/apic/apic_timer.h>
+#include <kernel/drivers/apic/lapic.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/irq.h>

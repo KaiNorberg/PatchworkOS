@@ -39,7 +39,7 @@ typedef enum
 /**
  * @brief Space callback function.
  */
-typedef void (*space_callback_func_t)( void* data);
+typedef void (*space_callback_func_t)(void* data);
 
 /**
  * @brief Space callback structure.
@@ -214,7 +214,7 @@ uint64_t space_check_access(space_t* space, const void* addr, size_t length);
 typedef struct
 {
     void* virtAddr;
-    void* physAddr;
+    phys_addr_t physAddr;
     size_t pageAmount;
     pml_flags_t flags;
 } space_mapping_t;
@@ -234,7 +234,7 @@ typedef struct
  * @param space The target address space.
  * @param mapping Will be filled with parsed information about the mapping.
  * @param virtAddr The virtual address the mapping will apply to. Can be `NULL` to let the kernel choose an address.
- * @param physAddr The physical address to map from. Can be `NULL`.
+ * @param physAddr The physical address to map from. Can be `PHYS_ADDR_INVALID`.
  * @param length The length of the virtual memory region to modify, in bytes.
  * @param alignment The required alignment for the virtual memory region in bytes.
  * @param flags The page table flags for the mapping.
@@ -244,8 +244,8 @@ typedef struct
  * - `EFAULT`: The addresses are outside the allowed range.
  * - `ENOMEM`: Not enough memory.
  */
-uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, size_t length,
-    size_t alignment, pml_flags_t flags);
+uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, phys_addr_t physAddr,
+    size_t length, size_t alignment, pml_flags_t flags);
 
 /**
  * @brief Allocate a callback.
@@ -261,7 +261,7 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
  * @param private Private data to pass to the callback function.
  * @return On success, returns the callback ID. On failure, returns `PML_MAX_CALLBACK`.
  */
-pml_callback_id_t space_alloc_callback(space_t* space, size_t pageAmount, space_callback_func_t func,  void* data);
+pml_callback_id_t space_alloc_callback(space_t* space, size_t pageAmount, space_callback_func_t func, void* data);
 
 /**
  * @brief Free a callback.
@@ -307,5 +307,16 @@ bool space_is_mapped(space_t* space, const void* virtAddr, size_t length);
  * @return The number of user pages mapped.
  */
 uint64_t space_user_page_count(space_t* space);
+
+/**
+ * @brief Translate a virtual address to a physical address in the address space.
+ *
+ * @param space The target address space.
+ * @param virtAddr The virtual address to translate.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * - `EINVAL`: Invalid parameters.
+ * - `EFAULT`: The virtual address is not mapped.
+ */
+phys_addr_t space_virt_to_phys(space_t* space, const void* virtAddr);
 
 /** @} */

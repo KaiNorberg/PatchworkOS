@@ -4,8 +4,8 @@
 #include <kernel/sync/seqlock.h>
 #include <stdio.h>
 
-#include <kernel/fs/inode.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/cache.h>
@@ -80,11 +80,11 @@ static void dentry_free(dentry_t* dentry)
     if (!DENTRY_IS_ROOT(dentry))
     {
         assert(dentry->parent != NULL);
-        assert(dentry->parent->inode != NULL);
+        assert(dentry->parent->vnode != NULL);
 
-        mutex_acquire(&dentry->parent->inode->mutex);
+        mutex_acquire(&dentry->parent->vnode->mutex);
         list_remove(&dentry->siblingEntry);
-        mutex_release(&dentry->parent->inode->mutex);
+        mutex_release(&dentry->parent->vnode->mutex);
 
         UNREF(dentry->parent);
         dentry->parent = NULL;
@@ -96,11 +96,11 @@ static void dentry_free(dentry_t* dentry)
     }
     dentry->data = NULL;
 
-    if (dentry->inode != NULL)
+    if (dentry->vnode != NULL)
     {
-        atomic_fetch_sub_explicit(&dentry->inode->dentryCount, 1, memory_order_relaxed);
-        UNREF(dentry->inode);
-        dentry->inode = NULL;
+        atomic_fetch_sub_explicit(&dentry->vnode->dentryCount, 1, memory_order_relaxed);
+        UNREF(dentry->vnode);
+        dentry->vnode = NULL;
     }
 
     UNREF(dentry->superblock);
@@ -116,7 +116,7 @@ static void dentry_ctor(void* ptr)
     dentry->ref = (ref_t){0};
     dentry->id = vfs_id_get();
     dentry->name[0] = '\0';
-    dentry->inode = NULL;
+    dentry->vnode = NULL;
     dentry->parent = NULL;
     list_entry_init(&dentry->siblingEntry);
     list_init(&dentry->children);
@@ -262,7 +262,7 @@ dentry_t* dentry_lookup(dentry_t* parent, const char* name, size_t length)
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
-    inode_t* dir = parent->inode;
+    vnode_t* dir = parent->vnode;
     if (dir->ops == NULL || dir->ops->lookup == NULL)
     {
         return dentry; // Leave it as negative.
@@ -286,15 +286,15 @@ dentry_t* dentry_lookup(dentry_t* parent, const char* name, size_t length)
     return dentry;
 }
 
-void dentry_make_positive(dentry_t* dentry, inode_t* inode)
+void dentry_make_positive(dentry_t* dentry, vnode_t* vnode)
 {
-    if (dentry == NULL || inode == NULL)
+    if (dentry == NULL || vnode == NULL)
     {
         return;
     }
 
-    atomic_fetch_add_explicit(&inode->dentryCount, 1, memory_order_relaxed);
-    dentry->inode = REF(inode);
+    atomic_fetch_add_explicit(&vnode->dentryCount, 1, memory_order_relaxed);
+    dentry->vnode = REF(vnode);
     if (!DENTRY_IS_ROOT(dentry))
     {
         list_push_back(&dentry->parent->children, &dentry->siblingEntry);
@@ -305,7 +305,7 @@ bool dentry_iterate_dots(dentry_t* dentry, dir_ctx_t* ctx)
 {
     if (ctx->index++ >= ctx->pos)
     {
-        if (!ctx->emit(ctx, ".", dentry->inode->number, dentry->inode->type))
+        if (!ctx->emit(ctx, ".", dentry->vnode->type))
         {
             return false;
         }
@@ -313,7 +313,7 @@ bool dentry_iterate_dots(dentry_t* dentry, dir_ctx_t* ctx)
 
     if (ctx->index++ >= ctx->pos)
     {
-        if (!ctx->emit(ctx, "..", dentry->parent->inode->number, dentry->parent->inode->type))
+        if (!ctx->emit(ctx, "..", dentry->parent->vnode->type))
         {
             return false;
         }
@@ -335,7 +335,7 @@ uint64_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         if (ctx->index++ >= ctx->pos)
         {
             assert(DENTRY_IS_POSITIVE(child));
-            if (!ctx->emit(ctx, child->name, child->inode->number, child->inode->type))
+            if (!ctx->emit(ctx, child->name, child->vnode->type))
             {
                 return 0;
             }

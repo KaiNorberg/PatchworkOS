@@ -113,10 +113,10 @@ uint64_t timer_source_amount(void);
  * @note Will never set the timeout to be less than `CONFIG_MIN_TIMER_TIMEOUT` to avoid spamming the CPU with timer
  * interrupts.
  *
- * @param uptime The time since boot, we need to specify this as an argument to avoid inconsistency in the
+ * @param now The time since boot, we need to specify this as an argument to avoid inconsistency in the
  * timeout/deadline calculations.
  * @param deadline The desired deadline.
  */
-void timer_set(clock_t uptime, clock_t deadline);
+void timer_set(clock_t now, clock_t deadline);
 
 /** @} */

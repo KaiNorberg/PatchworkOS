@@ -614,7 +614,7 @@ flags_done:
     return ret;
 }
 
-static inline int _print(const char* _RESTRICT format, size_t n, va_list arg,  void* data)
+static inline int _print(const char* _RESTRICT format, size_t n, va_list arg, void* data)
 {
     assert(format != NULL);
 

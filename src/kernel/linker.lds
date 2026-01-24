@@ -101,6 +101,14 @@ SECTIONS
     } :data
 
     . = ALIGN(4K);
+    ._irp_table : AT(ADDR(._irp_table) - KERNEL_START)
+    {
+        _irp_table_start = .;
+        KEEP(*(._irp_table))
+        _irp_table_end = .;
+    } :data
+
+    . = ALIGN(4K);
     _kernel_end = .;
 
     .got.plt (INFO) : { *(.got.plt) }

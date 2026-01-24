@@ -1,12 +1,12 @@
 #include <kernel/mem/paging_types.h>
-#include <modules/acpi/tables.h>
+#include <kernel/acpi/tables.h>
 
 #include <kernel/fs/file.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <modules/acpi/acpi.h>
+#include <kernel/acpi/acpi.h>
 
 #include <boot/boot_info.h>
 
@@ -29,7 +29,7 @@ static uint64_t acpi_table_read(file_t* file, void* buffer, size_t count, size_t
         return ERR;
     }
 
-    sdt_header_t* table = file->inode->data;
+    sdt_header_t* table = file->vnode->data;
     if (table == NULL)
     {
         errno = EINVAL;
@@ -132,7 +132,7 @@ static uint64_t acpi_tables_push(sdt_header_t* table)
     }
     cachedTables[tableAmount++].table = cachedTable;
 
-    LOG_INFO("%.*s 0x%016lx 0x%06x v%02X %.*s\n", SDT_SIGNATURE_LENGTH, cachedTable->signature, cachedTable,
+    LOG_INFO("%.*s %p 0x%06x v%02X %.*s\n", SDT_SIGNATURE_LENGTH, cachedTable->signature, cachedTable,
         cachedTable->length, cachedTable->revision, SDT_OEM_ID_LENGTH, cachedTable->oemId);
     return 0;
 }
@@ -200,7 +200,7 @@ uint64_t acpi_tables_init(rsdp_t* rsdp)
     }
 
     xsdt_t* xsdt = (xsdt_t*)PML_ENSURE_HIGHER_HALF(rsdp->xsdtAddress);
-    LOG_INFO("located XSDT at 0x%016lx\n", rsdp->xsdtAddress);
+    LOG_INFO("located XSDT at %p\n", rsdp->xsdtAddress);
 
     if (acpi_tables_load_from_xsdt(xsdt) == ERR)
     {

@@ -8,8 +8,8 @@
 
 /**
  * @brief 9P Filesystems.
- * @defgroup modules_fs_9p 9P Filesystem
- * @ingroup modules_fs
+ * @defgroup kernel_fs_9p 9P Filesystem
+ * @ingroup kernel_fs
  *
  * This module provides an implementation of the 9P filesystem protocol where the kernel acts as a client to a 9P
  * server, allowing the 9P server to be mounted as a filesystem within the kernel's VFS.
@@ -49,7 +49,7 @@ static superblock_ops_t superOps = {
     .cleanup = ninep_super_cleanup,
 };
 
-static dentry_t* ninep_mount(filesystem_t* fs, const char* options,  void* data)
+static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* data)
 {
     UNUSED(data);
 
@@ -130,12 +130,12 @@ static dentry_t* ninep_mount(filesystem_t* fs, const char* options,  void* data)
 
     superblock->data = ninep;
 
-    inode_t* inode = inode_new(superblock, 0, INODE_DIR, NULL, NULL);
-    if (inode == NULL)
+    vnode_t* vnode = vnode_new(superblock, VDIR, NULL, NULL);
+    if (vnode == NULL)
     {
         return NULL;
     }
-    UNREF_DEFER(inode);
+    UNREF_DEFER(vnode);
 
     dentry_t* dentry = dentry_new(superblock, NULL, NULL);
     if (dentry == NULL)
@@ -143,7 +143,7 @@ static dentry_t* ninep_mount(filesystem_t* fs, const char* options,  void* data)
         return NULL;
     }
 
-    dentry_make_positive(dentry, inode);
+    dentry_make_positive(dentry, vnode);
 
     superblock->root = dentry;
     return superblock->root;

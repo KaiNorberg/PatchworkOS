@@ -1,7 +1,7 @@
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/filesystem.h>
-#include <kernel/fs/inode.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/log/log.h>
 #include <kernel/proc/group.h>
 #include <kernel/proc/process.h>

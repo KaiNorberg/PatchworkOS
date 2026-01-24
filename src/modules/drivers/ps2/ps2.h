@@ -1,15 +1,15 @@
 #pragma once
 
-#include <kernel/cpu/io.h>
-
 #include <kernel/cpu/irq.h>
+#include <kernel/cpu/port.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 
 /**
  * @brief IBM Personal Computer/2 ports.
- * @defgroup modules_drivers_ps2 PS/2
- * @ingroup modules_drivers
+ * @defgroup kernel_drivers_ps2 PS/2
+ * @ingroup kernel_drivers
  *
  * @see https://wiki.osdev.org/I8042_PS/2_Controller
  * @see https://www-ug.eecg.toronto.edu/msl/nios_devices/datasheets/PS2%20Keyboard%20Protocol.htm
@@ -206,7 +206,7 @@ typedef struct
     irq_virt_t irq;      ///< IRQ assigned to the device by ACPI.
     bool attached;       ///< The device has been attached from ACPI.
     bool initialized;    ///< The device has been initialized.
-    void* data;       ///< Driver-specific private data.
+    void* data;          ///< Driver-specific private data.
 } ps2_device_info_t;
 
 /**

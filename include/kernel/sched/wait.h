@@ -32,7 +32,7 @@ typedef struct wait wait_t;
  * @note Generally its preferred to use the `WAIT_BLOCK*` macros instead of directly calling the functions provided by
  * this subsystem.
  *
- * @todo Replace with `epoll()` style system?
+ * @todo Replace with a more optimized system for async stuff.
  *
  * @{
  */

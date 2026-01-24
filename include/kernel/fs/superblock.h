@@ -1,17 +1,18 @@
 #pragma once
 
 #include <kernel/fs/devfs.h>
+#include <kernel/io/irp.h>
 #include <kernel/utils/ref.h>
 
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 typedef struct filesystem filesystem_t;
 typedef struct superblock superblock_t;
 typedef struct superblock_ops superblock_ops_t;
 typedef struct dentry_ops dentry_ops_t;
-typedef struct inode inode_t;
+typedef struct vnode vnode_t;
 typedef struct dentry dentry_t;
 
 /**
@@ -39,6 +40,7 @@ typedef struct superblock
     dentry_t* root; ///< Root dentry of the filesystem, should not take a reference.
     const superblock_ops_t* ops;
     const dentry_ops_t* dentryOps;
+    const irp_vtable_t* vtable;
     filesystem_t* fs;
     /**
      * The number of mounts of this superblock.

@@ -1,12 +1,12 @@
-#include <modules/drivers/apic/ioapic.h>
-#include <modules/drivers/apic/lapic.h>
+#include <kernel/drivers/apic/ioapic.h>
+#include <kernel/drivers/apic/lapic.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/utils/utils.h>
-#include <modules/acpi/tables.h>
+#include <kernel/acpi/tables.h>
 
 #include <assert.h>
 #include <sys/defs.h>
@@ -106,9 +106,9 @@ uint64_t ioapic_all_init(void)
             continue;
         }
 
-        void* physAddr = (void*)(uint64_t)ioapic->ioApicAddress;
-        void* virtAddr = (void*)PML_LOWER_TO_HIGHER(physAddr);
-        if (vmm_map(NULL, virtAddr, physAddr, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) == NULL)
+        void* virtAddr = (void*)PML_LOWER_TO_HIGHER(ioapic->ioApicAddress);
+        if (vmm_map(NULL, virtAddr, ioapic->ioApicAddress, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL,
+                NULL) == NULL)
         {
             LOG_ERR("failed to map io apic\n");
             return ERR;

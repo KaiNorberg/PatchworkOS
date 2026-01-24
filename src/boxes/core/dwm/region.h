@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libpatchwork/rect.h>
+#include <patchwork/rect.h>
 #include <stdbool.h>
 #include <stdint.h>
 

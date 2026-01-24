@@ -194,7 +194,7 @@ static EFI_STATUS gop_init(boot_gop_t* buffer)
     }
 #endif
 
-    buffer->physAddr = (uint32_t*)gop->Mode->FrameBufferBase;
+    buffer->physAddr = gop->Mode->FrameBufferBase;
     buffer->virtAddr = (uint32_t*)PML_LOWER_TO_HIGHER(gop->Mode->FrameBufferBase);
     buffer->size = gop->Mode->FrameBufferSize;
     buffer->width = gop->Mode->Info->HorizontalResolution;
@@ -284,7 +284,7 @@ _NORETURN static void panic_halt(panic_code_t code)
         {
             for (size_t x = 0; x < gop->width; x++)
             {
-                gop->physAddr[x + (y * gop->stride)] = color;
+                ((uint32_t*)gop->physAddr)[x + (y * gop->stride)] = color;
             }
         }
     }
@@ -404,18 +404,21 @@ static EFI_STATUS mem_allocator_init(void)
 /**
  * @brief Allocate pages from the basic allocator.
  *
- * @param pages Output pointer to store the allocated pages.
+ * @param pfns Pointer to store allocated page PFNs.
  * @param amount Number of pages to allocate.
  * @return Always returns `0`.
  */
-static uint64_t basic_allocator_alloc_pages(void** pages, size_t amount)
+static uint64_t basic_allocator_alloc_pages(pfn_t* pfns, size_t amount)
 {
     if (basicAllocator.pagesAllocated + amount > basicAllocator.maxPages)
     {
         panic_halt(PANIC_ALLOCATOR_EXHAUSTED);
     }
 
-    *pages = (void*)(uintptr_t)(basicAllocator.buffer + (basicAllocator.pagesAllocated * PAGE_SIZE));
+    for (size_t i = 0; i < amount; i++)
+    {
+        pfns[i] = PHYS_TO_PFN(basicAllocator.buffer + ((basicAllocator.pagesAllocated + i) * PAGE_SIZE));
+    }
     basicAllocator.pagesAllocated += amount;
 
     return 0;
@@ -465,7 +468,7 @@ static void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boo
             panic_halt(PANIC_HIGHER_HALF_INVALID);
         }
 
-        if (page_table_map(table, (void*)desc->VirtualStart, (void*)desc->PhysicalStart, desc->NumberOfPages,
+        if (page_table_map(table, (void*)desc->VirtualStart, desc->PhysicalStart, desc->NumberOfPages,
                 PML_WRITE | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
         {
             panic_halt(PANIC_HIGHER_HALF_MAP);
@@ -483,7 +486,7 @@ static void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boo
         panic_halt(PANIC_KERNEL_MAP);
     }
 
-    if (page_table_map(table, (void*)gop->virtAddr, (void*)gop->physAddr, BYTES_TO_PAGES(gop->size),
+    if (page_table_map(table, (void*)gop->virtAddr, gop->physAddr, BYTES_TO_PAGES(gop->size),
             PML_WRITE | PML_PRESENT | PML_WRITE_THROUGH, PML_CALLBACK_NONE) == ERR)
     {
         panic_halt(PANIC_GOP_MAP);
@@ -876,7 +879,7 @@ static EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle)
 
     Print(L"  Loading kernel...\n");
     elf64_load_segments(&kernel->elf, kernelPhys, minVaddr);
-    kernel->physAddr = (void*)kernelPhys;
+    kernel->physAddr = kernelPhys;
 
     Print(L"  Entry Code: ");
     for (size_t i = 0; i < 16; i++)

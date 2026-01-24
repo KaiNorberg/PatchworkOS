@@ -1,16 +1,16 @@
-#include <modules/acpi/aml/encoding/named.h>
+#include <kernel/acpi/aml/encoding/named.h>
 
 #include <kernel/log/log.h>
-#include <modules/acpi/aml/debug.h>
-#include <modules/acpi/aml/encoding/data.h>
-#include <modules/acpi/aml/encoding/name.h>
-#include <modules/acpi/aml/encoding/package_length.h>
-#include <modules/acpi/aml/encoding/term.h>
-#include <modules/acpi/aml/object.h>
-#include <modules/acpi/aml/state.h>
-#include <modules/acpi/aml/to_string.h>
-#include <modules/acpi/aml/token.h>
-#include <modules/acpi/tables.h>
+#include <kernel/acpi/aml/debug.h>
+#include <kernel/acpi/aml/encoding/data.h>
+#include <kernel/acpi/aml/encoding/name.h>
+#include <kernel/acpi/aml/encoding/package_length.h>
+#include <kernel/acpi/aml/encoding/term.h>
+#include <kernel/acpi/aml/object.h>
+#include <kernel/acpi/aml/state.h>
+#include <kernel/acpi/aml/to_string.h>
+#include <kernel/acpi/aml/token.h>
+#include <kernel/acpi/tables.h>
 
 uint64_t aml_bank_value_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
@@ -73,7 +73,7 @@ uint64_t aml_def_opregion_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_name_string_t nameString;
+    aml_name_stioring_t nameString;
     if (aml_name_string_read(ctx, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NameString");
@@ -104,7 +104,7 @@ uint64_t aml_def_opregion_read(aml_term_list_ctx_t* ctx)
     aml_object_t* newObject = aml_object_new();
     if (newObject == NULL)
     {
-        AML_DEBUG_ERROR(ctx, "Failed to create object '%s'", aml_name_string_to_string(&nameString));
+        AML_DEBUG_ERROR(ctx, "Failed to create object '%s'", aml_name_stioring_to_string(&nameString));
         return ERR;
     }
     UNREF_DEFER(newObject);
@@ -112,7 +112,7 @@ uint64_t aml_def_opregion_read(aml_term_list_ctx_t* ctx)
     if (aml_operation_region_set(newObject, regionSpace, regionOffset, regionLen) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
     {
-        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_stioring_to_string(&nameString));
         return ERR;
     }
 
@@ -554,7 +554,7 @@ uint64_t aml_def_method_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_name_string_t nameString;
+    aml_name_stioring_t nameString;
     if (aml_name_string_read(ctx, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NameString");
@@ -580,7 +580,7 @@ uint64_t aml_def_method_read(aml_term_list_ctx_t* ctx)
     if (aml_method_set(newObject, methodFlags, ctx->current, end, NULL) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
     {
-        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_stioring_to_string(&nameString));
         return ERR;
     }
 
@@ -607,7 +607,7 @@ uint64_t aml_def_device_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_name_string_t nameString;
+    aml_name_stioring_t nameString;
     if (aml_name_string_read(ctx, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NameString");
@@ -626,7 +626,7 @@ uint64_t aml_def_device_read(aml_term_list_ctx_t* ctx)
     if (aml_device_set(device) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, device) == ERR)
     {
-        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_stioring_to_string(&nameString));
         return ERR;
     }
 
@@ -668,7 +668,7 @@ uint64_t aml_def_mutex_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_name_string_t nameString;
+    aml_name_stioring_t nameString;
     if (aml_name_string_read(ctx, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NameString");
@@ -692,7 +692,7 @@ uint64_t aml_def_mutex_read(aml_term_list_ctx_t* ctx)
     if (aml_mutex_set(newObject, syncFlags) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
     {
-        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_stioring_to_string(&nameString));
         return ERR;
     }
 
@@ -746,7 +746,7 @@ uint64_t aml_def_processor_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_name_string_t nameString;
+    aml_name_stioring_t nameString;
     if (aml_name_string_read(ctx, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NameString");
@@ -786,7 +786,7 @@ uint64_t aml_def_processor_read(aml_term_list_ctx_t* ctx)
     if (aml_processor_set(processor, procId, pblkAddr, pblkLen) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, processor) == ERR)
     {
-        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_stioring_to_string(&nameString));
         return ERR;
     }
 
@@ -859,7 +859,7 @@ uint64_t aml_def_create_bit_field_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_name_string_t nameString;
+    aml_name_stioring_t nameString;
     if (aml_name_string_read(ctx, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NameString");
@@ -876,7 +876,7 @@ uint64_t aml_def_create_bit_field_read(aml_term_list_ctx_t* ctx)
     if (aml_buffer_field_set(newObject, sourceBuff, bitIndex, 1) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
     {
-        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_stioring_to_string(&nameString));
         return ERR;
     }
 
@@ -909,7 +909,7 @@ static inline uint64_t aml_def_create_field_read_helper(aml_term_list_ctx_t* ctx
         return ERR;
     }
 
-    aml_name_string_t nameString;
+    aml_name_stioring_t nameString;
     if (aml_name_string_read(ctx, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NameString");
@@ -926,7 +926,7 @@ static inline uint64_t aml_def_create_field_read_helper(aml_term_list_ctx_t* ctx
     if (aml_buffer_field_set(newObject, sourceBuff, byteIndex * 8, fieldWidth) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
     {
-        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_stioring_to_string(&nameString));
         return ERR;
     }
 
@@ -961,7 +961,7 @@ uint64_t aml_def_event_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_name_string_t nameString;
+    aml_name_stioring_t nameString;
     if (aml_name_string_read(ctx, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NameString");
@@ -978,7 +978,7 @@ uint64_t aml_def_event_read(aml_term_list_ctx_t* ctx)
     if (aml_event_set(newObject) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
     {
-        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_stioring_to_string(&nameString));
         return ERR;
     }
 
@@ -1002,7 +1002,7 @@ uint64_t aml_def_thermal_zone_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_name_string_t nameString;
+    aml_name_stioring_t nameString;
     if (aml_name_string_read(ctx, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NameString");
@@ -1021,7 +1021,7 @@ uint64_t aml_def_thermal_zone_read(aml_term_list_ctx_t* ctx)
     if (aml_thermal_zone_set(thermalZone) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, thermalZone) == ERR)
     {
-        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_stioring_to_string(&nameString));
         return ERR;
     }
 
@@ -1072,7 +1072,7 @@ uint64_t aml_def_power_res_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_name_string_t nameString;
+    aml_name_stioring_t nameString;
     if (aml_name_string_read(ctx, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NameString");
@@ -1105,7 +1105,7 @@ uint64_t aml_def_power_res_read(aml_term_list_ctx_t* ctx)
     if (aml_power_resource_set(powerResource, systemLevel, resourceOrder) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, powerResource) == ERR)
     {
-        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_stioring_to_string(&nameString));
         return ERR;
     }
 
@@ -1162,7 +1162,7 @@ uint64_t aml_def_create_field_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_name_string_t nameString;
+    aml_name_stioring_t nameString;
     if (aml_name_string_read(ctx, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NameString");
@@ -1179,7 +1179,7 @@ uint64_t aml_def_create_field_read(aml_term_list_ctx_t* ctx)
     if (aml_buffer_field_set(newObject, sourceBuff, bitIndex, numBits) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
     {
-        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_stioring_to_string(&nameString));
         return ERR;
     }
 
@@ -1194,14 +1194,14 @@ uint64_t aml_def_data_region_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_name_string_t regionName;
+    aml_name_stioring_t regionName;
     if (aml_name_string_read(ctx, &regionName) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read RegionName");
         return ERR;
     }
 
-    aml_string_t* signature = aml_term_arg_read_string(ctx);
+    aml_stioring_t* signature = aml_term_arg_read_string(ctx);
     if (signature == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Signature");
@@ -1209,7 +1209,7 @@ uint64_t aml_def_data_region_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(signature);
 
-    aml_string_t* oemId = aml_term_arg_read_string(ctx);
+    aml_stioring_t* oemId = aml_term_arg_read_string(ctx);
     if (oemId == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read OemId");
@@ -1217,7 +1217,7 @@ uint64_t aml_def_data_region_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(oemId);
 
-    aml_string_t* oemTableId = aml_term_arg_read_string(ctx);
+    aml_stioring_t* oemTableId = aml_term_arg_read_string(ctx);
     if (oemTableId == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read OemTableId");
@@ -1285,7 +1285,7 @@ uint64_t aml_def_data_region_read(aml_term_list_ctx_t* ctx)
         if (aml_operation_region_set(newObject, AML_REGION_SYSTEM_MEMORY, (uint64_t)table, table->length) == ERR ||
             aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &regionName, newObject) == ERR)
         {
-            AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&regionName));
+            AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_stioring_to_string(&regionName));
             return ERR;
         }
 

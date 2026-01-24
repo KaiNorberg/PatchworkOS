@@ -7,13 +7,13 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 
 /**
- * @brief Logging
- * @defgroup kernel_log Logging
+ * @brief Kernel logging and debugging.
+ * @defgroup kernel_log Logging Subsystem
  * @ingroup kernel
  *
  * @{

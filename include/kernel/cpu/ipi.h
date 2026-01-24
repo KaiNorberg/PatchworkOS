@@ -166,7 +166,7 @@ uint64_t ipi_chip_amount(void);
  * - `EBUSY`: The target CPU's IPI queue is full, some or all IPIs could not be sent.
  * - Other errors returned by the IPI chip's `notify` function.
  */
-uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func,  void* data);
+uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* data);
 
 /**
  * @brief Wake up one or more CPUs.

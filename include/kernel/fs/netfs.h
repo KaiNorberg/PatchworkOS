@@ -7,7 +7,7 @@
 #include <kernel/utils/ref.h>
 
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 typedef struct netfs_family netfs_family_t;

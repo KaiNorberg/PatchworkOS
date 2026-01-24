@@ -1,10 +1,10 @@
-#include <modules/acpi/aml/patch_up.h>
+#include <kernel/acpi/aml/patch_up.h>
 
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <modules/acpi/aml/object.h>
-#include <modules/acpi/aml/state.h>
-#include <modules/acpi/aml/to_string.h>
+#include <kernel/acpi/aml/object.h>
+#include <kernel/acpi/aml/state.h>
+#include <kernel/acpi/aml/to_string.h>
 
 #include <errno.h>
 #include <stdlib.h>
@@ -74,7 +74,7 @@ uint64_t aml_patch_up_resolve_all(void)
             aml_namespace_find_by_name_string(&state.overlay, entry->unresolved->from, &entry->unresolved->nameString);
         if (match == NULL)
         {
-            LOG_DEBUG("Still could not resolve '%s'\n", aml_name_string_to_string(&entry->unresolved->nameString));
+            LOG_DEBUG("Still could not resolve '%s'\n", aml_name_stioring_to_string(&entry->unresolved->nameString));
             errno = EOK;
             continue;
         }

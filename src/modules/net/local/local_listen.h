@@ -1,6 +1,6 @@
 #pragma once
 
-#include <_internal/MAX_PATH.h>
+#include <_libstd/MAX_PATH.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
@@ -8,7 +8,7 @@
 #include <kernel/utils/ref.h>
 
 #include <stdint.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 typedef struct socket_family socket_family_t;

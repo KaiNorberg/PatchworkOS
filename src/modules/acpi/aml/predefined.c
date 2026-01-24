@@ -1,9 +1,9 @@
-#include <modules/acpi/aml/predefined.h>
+#include <kernel/acpi/aml/predefined.h>
 
 #include <kernel/log/log.h>
-#include <modules/acpi/acpi.h>
-#include <modules/acpi/aml/aml.h>
-#include <modules/acpi/aml/object.h>
+#include <kernel/acpi/acpi.h>
+#include <kernel/acpi/aml/aml.h>
+#include <kernel/acpi/aml/object.h>
 
 #include <kernel/version.h>
 

@@ -9,10 +9,10 @@
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
-#include <modules/acpi/aml/object.h>
-#include <modules/acpi/devices.h>
-#include <modules/acpi/resources.h>
-#include <modules/acpi/tables.h>
+#include <kernel/acpi/aml/object.h>
+#include <kernel/acpi/devices.h>
+#include <kernel/acpi/resources.h>
+#include <kernel/acpi/tables.h>
 
 #include <errno.h>
 #include <string.h>
@@ -325,9 +325,9 @@ static uint64_t ps2_devices_test(void)
 void ps2_drain(void)
 {
     clock_wait(PS2_SMALL_DELAY);
-    while ((io_in8(statusPort)) & PS2_STATUS_OUT_FULL)
+    while ((in8(statusPort)) & PS2_STATUS_OUT_FULL)
     {
-        io_in8(dataPort);
+        in8(dataPort);
         clock_wait(PS2_SMALL_DELAY);
     }
 }
@@ -335,7 +335,7 @@ void ps2_drain(void)
 uint64_t ps2_wait_until_set(ps2_status_bits_t status)
 {
     uint64_t startTime = clock_uptime();
-    while ((io_in8(statusPort) & status) == 0)
+    while ((in8(statusPort) & status) == 0)
     {
         if ((clock_uptime() - startTime) > PS2_WAIT_TIMEOUT)
         {
@@ -350,7 +350,7 @@ uint64_t ps2_wait_until_set(ps2_status_bits_t status)
 uint64_t ps2_wait_until_clear(ps2_status_bits_t status)
 {
     uint64_t startTime = clock_uptime();
-    while ((io_in8(statusPort) & status) != 0)
+    while ((in8(statusPort) & status) != 0)
     {
         if ((clock_uptime() - startTime) > PS2_WAIT_TIMEOUT)
         {
@@ -369,18 +369,18 @@ uint64_t ps2_read(void)
         errno = ETIMEDOUT;
         return ERR;
     }
-    return io_in8(dataPort);
+    return in8(dataPort);
 }
 
 uint64_t ps2_read_no_wait(void)
 {
-    if (!(io_in8(statusPort) & PS2_STATUS_OUT_FULL))
+    if (!(in8(statusPort) & PS2_STATUS_OUT_FULL))
     {
         errno = EAGAIN;
         return ERR;
     }
 
-    return io_in8(dataPort);
+    return in8(dataPort);
 }
 
 uint64_t ps2_write(uint8_t data)
@@ -390,7 +390,7 @@ uint64_t ps2_write(uint8_t data)
         errno = ETIMEDOUT;
         return ERR;
     }
-    io_out8(dataPort, data);
+    out8(dataPort, data);
     return 0;
 }
 
@@ -401,7 +401,7 @@ uint64_t ps2_cmd(ps2_cmd_t command)
         errno = ETIMEDOUT;
         return ERR;
     }
-    io_out8(commandPort, command);
+    out8(commandPort, command);
     return 0;
 }
 

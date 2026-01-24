@@ -1,4 +1,4 @@
-#include <libpatchwork/patchwork.h>
+#include <patchwork/patchwork.h>
 
 #include <ctype.h>
 #include <stdarg.h>
@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 typedef struct config_pair

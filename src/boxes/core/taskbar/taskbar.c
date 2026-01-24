@@ -1,10 +1,10 @@
 #include "taskbar.h"
 
-#include <libpatchwork/display.h>
-#include <libpatchwork/element.h>
-#include <libpatchwork/event.h>
-#include <libpatchwork/patchwork.h>
-#include <libpatchwork/window.h>
+#include <patchwork/display.h>
+#include <patchwork/element.h>
+#include <patchwork/event.h>
+#include <patchwork/patchwork.h>
+#include <patchwork/window.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

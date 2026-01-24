@@ -10,12 +10,12 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/seqlock.h>
 #include <kernel/utils/utils.h>
-#include <modules/acpi/tables.h>
+#include <kernel/acpi/tables.h>
 
 /**
  * @brief High Precision Event Timer
- * @defgroup modules_drivers_hpet HPET
- * @ingroup modules_drivers
+ * @defgroup kernel_drivers_hpet HPET
+ * @ingroup kernel_drivers
  *
  * @note Since the HPET might be 32bit it could overflow rather quickly, so we implement a system for checking roughly
  * when it will overflow and accumulate the counter into a 64 bit nanosecond counter.
@@ -218,10 +218,10 @@ static uint64_t hpet_init(void)
     }
 
     address = (uintptr_t)PML_LOWER_TO_HIGHER(hpet->address);
-    if (vmm_map(NULL, (void*)address, (void*)hpet->address, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL,
-            NULL) == NULL)
+    if (vmm_map(NULL, (void*)address, hpet->address, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) ==
+        NULL)
     {
-        LOG_ERR("failed to map HPET memory at 0x%016lx\n", hpet->address);
+        LOG_ERR("failed to map HPET memory at %p\n", hpet->address);
         return ERR;
     }
 
@@ -234,7 +234,7 @@ static uint64_t hpet_init(void)
         return ERR;
     }
 
-    LOG_INFO("started HPET timer phys=0x%016lx virt=0x%016lx period=%lluns timers=%u %s-bit\n", hpet->address, address,
+    LOG_INFO("started HPET timer phys=%p virt=%p period=%lluns timers=%u %s-bit\n", hpet->address, address,
         period / (HPET_FEMTOSECONDS_PER_SECOND / CLOCKS_PER_SEC), hpet->comparatorCount + 1,
         hpet->counterIs64Bit ? "64" : "32");
 

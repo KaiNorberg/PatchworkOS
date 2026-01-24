@@ -16,7 +16,7 @@
 
 #include <errno.h>
 #include <stdlib.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 static map_key_t mount_key(mount_id_t parentId, dentry_id_t mountpointId)
@@ -385,7 +385,7 @@ bool namespace_rcu_traverse(namespace_t* ns, mount_t** mount, dentry_t** dentry)
 }
 
 mount_t* namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, const char* options, mode_t mode,
-     void* data)
+    void* data)
 {
     if (ns == NULL || fs == NULL)
     {

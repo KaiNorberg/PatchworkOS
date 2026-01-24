@@ -325,7 +325,7 @@ uint64_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu)
     return 0;
 }
 
-uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end,  void* data)
+uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, void* data)
 {
     if (chip == NULL || chip->enable == NULL || chip->disable == NULL || start >= end)
     {
@@ -420,7 +420,7 @@ uint64_t irq_chip_amount(void)
     return list_size(&domains);
 }
 
-uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func,  void* data)
+uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* data)
 {
     if (func == NULL)
     {

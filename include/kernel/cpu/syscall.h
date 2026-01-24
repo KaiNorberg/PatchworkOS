@@ -102,6 +102,9 @@ typedef enum
     SYS_MOUNT,
     SYS_UNMOUNT,
     SYS_ARCH_PRCTL,
+    SYS_SETUP,
+    SYS_TEARDOWN,
+    SYS_ENTER,
     SYS_TOTAL_AMOUNT
 } syscall_number_t;
 

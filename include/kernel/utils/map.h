@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 
 typedef struct map_key map_key_t;
 typedef struct map_entry map_entry_t;

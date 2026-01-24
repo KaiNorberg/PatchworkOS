@@ -229,7 +229,7 @@ uint64_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu);
  * - `ENOMEM`: Memory allocation failed.
  * - Other errors as returned by the IRQ chip's `enable` function.
  */
-uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end,  void* data);
+uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, void* data);
 
 /**
  * @brief Unregister all instances of the given IRQ chip within the specified range.
@@ -265,7 +265,7 @@ uint64_t irq_chip_amount(void);
  * - `ENOMEM`: Memory allocation failed.
  * - Other errors as returned by the IRQ chip's `enable` function.
  */
-uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func,  void* data);
+uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* data);
 
 /**
  * @brief Unregister an IRQ handler.

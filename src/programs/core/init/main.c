@@ -1,9 +1,9 @@
 #include <errno.h>
-#include <libpatchwork/patchwork.h>
+#include <patchwork/patchwork.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/proc.h>
 #include <threads.h>
 #include <time.h>
@@ -74,7 +74,7 @@ static uint64_t init_socket_addr_wait(const char* family, const char* addr)
 
         free((void*)data);
 
-        if (uptime() - start > CLOCKS_PER_SEC * 10)
+        if ((uptime() - start) >= CLOCKS_PER_SEC * 10)
         {
             close(addrs);
             return ERR;
@@ -149,7 +149,7 @@ static void init_create_pkg_links(void)
 
     for (uint64_t i = 0; i < amount; i++)
     {
-        if (dirents[i].type != INODE_DIR || dirents[i].path[0] == '.')
+        if (dirents[i].type != VDIR || dirents[i].path[0] == '.')
         {
             continue;
         }

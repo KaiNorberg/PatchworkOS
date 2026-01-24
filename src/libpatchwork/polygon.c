@@ -1,4 +1,4 @@
-#include <libpatchwork/polygon.h>
+#include <patchwork/polygon.h>
 #include <math.h>
 
 void polygon_rotate(point_t* points, uint64_t pointCount, double angle, point_t center)

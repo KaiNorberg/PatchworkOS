@@ -1,9 +1,9 @@
 #include <kernel/fs/path.h>
-#include <modules/acpi/acpi.h>
+#include <kernel/acpi/acpi.h>
 
-#include <modules/acpi/aml/aml.h>
-#include <modules/acpi/devices.h>
-#include <modules/acpi/tables.h>
+#include <kernel/acpi/aml/aml.h>
+#include <kernel/acpi/devices.h>
+#include <kernel/acpi/tables.h>
 
 #include <kernel/fs/mount.h>
 #include <kernel/fs/namespace.h>
@@ -69,8 +69,8 @@ void acpi_reclaim_memory(const boot_memory_map_t* map)
 
         if (desc->Type == EfiACPIReclaimMemory)
         {
-            pmm_free_region((void*)PML_LOWER_TO_HIGHER(desc->PhysicalStart), desc->NumberOfPages);
-            LOG_INFO("reclaim memory [0x%016lx-0x%016lx]\n", desc->PhysicalStart,
+            pmm_free_region(PHYS_TO_PFN(desc->PhysicalStart), desc->NumberOfPages);
+            LOG_INFO("reclaim memory [%p-%p]\n", desc->PhysicalStart,
                 ((uintptr_t)desc->PhysicalStart) + desc->NumberOfPages * PAGE_SIZE);
         }
     }

@@ -17,7 +17,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 #include <sys/math.h>
 
@@ -116,8 +116,8 @@ static size_t perf_mem_read(file_t* file, void* buffer, size_t count, size_t* of
         return ERR;
     }
 
-    int length = sprintf(string, "total_pages %lu\nfree_pages %lu\nused_pages %lu", pmm_total_amount(),
-        pmm_free_amount(), pmm_used_amount());
+    int length = sprintf(string, "total_pages %lu\nfree_pages %lu\nused_pages %lu", pmm_total_pages(),
+        pmm_avail_pages(), pmm_used_pages());
     if (length < 0)
     {
         free(string);

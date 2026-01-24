@@ -57,11 +57,11 @@ void vmm_init(void)
     }
 
     LOG_DEBUG("address space layout:\n");
-    LOG_DEBUG("  kernel binary:    0x%016lx-0x%016lx\n", VMM_KERNEL_BINARY_MIN, VMM_KERNEL_BINARY_MAX);
-    LOG_DEBUG("  kernel stacks:    0x%016lx-0x%016lx\n", VMM_KERNEL_STACKS_MIN, VMM_KERNEL_STACKS_MAX);
-    LOG_DEBUG("  kernel heap:      0x%016lx-0x%016lx\n", VMM_KERNEL_HEAP_MIN, VMM_KERNEL_HEAP_MAX);
-    LOG_DEBUG("  identity map:     0x%016lx-0x%016lx\n", VMM_IDENTITY_MAPPED_MIN, VMM_IDENTITY_MAPPED_MAX);
-    LOG_DEBUG("  user space:       0x%016lx-0x%016lx\n", VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX);
+    LOG_DEBUG("  kernel binary:    %p-%p\n", VMM_KERNEL_BINARY_MIN, VMM_KERNEL_BINARY_MAX);
+    LOG_DEBUG("  kernel stacks:    %p-%p\n", VMM_KERNEL_STACKS_MIN, VMM_KERNEL_STACKS_MAX);
+    LOG_DEBUG("  kernel heap:      %p-%p\n", VMM_KERNEL_HEAP_MIN, VMM_KERNEL_HEAP_MAX);
+    LOG_DEBUG("  identity map:     %p-%p\n", VMM_IDENTITY_MAPPED_MIN, VMM_IDENTITY_MAPPED_MAX);
+    LOG_DEBUG("  user space:       %p-%p\n", VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX);
 
     LOG_INFO("kernel pml4 allocated at 0x%lx\n", kernelSpace.pageTable.pml4);
 
@@ -76,18 +76,18 @@ void vmm_init(void)
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(&memory->map, i);
         if (desc->VirtualStart < PML_HIGHER_HALF_START)
         {
-            panic(NULL, "Memory descriptor %d has invalid virtual address 0x%016lx", i, desc->VirtualStart);
+            panic(NULL, "Memory descriptor %d has invalid virtual address %p", i, desc->VirtualStart);
         }
         if (desc->PhysicalStart > PML_LOWER_HALF_END)
         {
-            panic(NULL, "Memory descriptor %d has invalid physical address 0x%016lx", i, desc->PhysicalStart);
+            panic(NULL, "Memory descriptor %d has invalid physical address %p", i, desc->PhysicalStart);
         }
 
-        if (page_table_map(&kernelSpace.pageTable, (void*)desc->VirtualStart, (void*)desc->PhysicalStart,
-                desc->NumberOfPages, PML_WRITE | PML_GLOBAL | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
+        if (page_table_map(&kernelSpace.pageTable, (void*)desc->VirtualStart, desc->PhysicalStart, desc->NumberOfPages,
+                PML_WRITE | PML_GLOBAL | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
         {
-            panic(NULL, "Failed to map memory descriptor %d (phys=0x%016lx-0x%016lx virt=0x%016lx)", i,
-                desc->PhysicalStart, desc->PhysicalStart + desc->NumberOfPages * PAGE_SIZE, desc->VirtualStart);
+            panic(NULL, "Failed to map memory descriptor %d (phys=%p-%p virt=%p)", i, desc->PhysicalStart,
+                desc->PhysicalStart + desc->NumberOfPages * PAGE_SIZE, desc->VirtualStart);
         }
     }
 
@@ -96,17 +96,17 @@ void vmm_init(void)
     elf64_get_loadable_bounds(&kernel->elf, &minVaddr, &maxVaddr);
     uint64_t kernelPageAmount = BYTES_TO_PAGES(maxVaddr - minVaddr);
 
-    LOG_INFO("kernel virt=[0x%016lx-0x%016lx] phys=[0x%016lx-0x%016lx]\n", minVaddr, maxVaddr,
-        (uintptr_t)kernel->physAddr, (uintptr_t)kernel->physAddr + kernelPageAmount * PAGE_SIZE);
+    LOG_INFO("kernel virt=[%p-%p] phys=[%p-%p]\n", minVaddr, maxVaddr, (uintptr_t)kernel->physAddr,
+        (uintptr_t)kernel->physAddr + kernelPageAmount * PAGE_SIZE);
     if (page_table_map(&kernelSpace.pageTable, (void*)minVaddr, kernel->physAddr, kernelPageAmount,
             PML_WRITE | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
     {
         panic(NULL, "Failed to map kernel memory");
     }
 
-    LOG_INFO("GOP    virt=[0x%016lx-0x%016lx] phys=[0x%016lx-0x%016lx]\n", gop->virtAddr, gop->virtAddr + gop->size,
-        gop->physAddr, gop->physAddr + gop->size);
-    if (page_table_map(&kernelSpace.pageTable, (void*)gop->virtAddr, (void*)gop->physAddr, BYTES_TO_PAGES(gop->size),
+    LOG_INFO("GOP    virt=[%p-%p] phys=[%p-%p]\n", gop->virtAddr, gop->virtAddr + gop->size, gop->physAddr,
+        gop->physAddr + gop->size);
+    if (page_table_map(&kernelSpace.pageTable, (void*)gop->virtAddr, gop->physAddr, BYTES_TO_PAGES(gop->size),
             PML_WRITE | PML_GLOBAL | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
     {
         panic(NULL, "Failed to map GOP memory");
@@ -165,7 +165,8 @@ void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment,
     }
 
     space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, NULL, length, alignment, pmlFlags | PML_OWNED) == ERR)
+    if (space_mapping_start(space, &mapping, virtAddr, PHYS_ADDR_INVALID, length, alignment, pmlFlags | PML_OWNED) ==
+        ERR)
     {
         return NULL;
     }
@@ -189,18 +190,26 @@ void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment,
     uint64_t remainingPages = mapping.pageAmount;
     while (remainingPages != 0)
     {
-        uintptr_t currentVirtAddr = (uintptr_t)mapping.virtAddr + (mapping.pageAmount - remainingPages) * PAGE_SIZE;
+        void* currentVirtAddr = mapping.virtAddr + (mapping.pageAmount - remainingPages) * PAGE_SIZE;
 
-        void* addresses[maxBatchSize];
+        pfn_t pages[maxBatchSize];
         uint64_t batchSize = MIN(remainingPages, maxBatchSize);
-        if (pmm_alloc_pages(addresses, batchSize) == ERR)
+        if (pmm_alloc_pages(pages, batchSize) == ERR)
         {
             // Page table will free the previously allocated pages as they are owned by the Page table.
             vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount - remainingPages);
             return space_mapping_end(space, &mapping, ENOMEM);
         }
 
-        if (page_table_map_pages(&space->pageTable, (void*)currentVirtAddr, addresses, batchSize, mapping.flags,
+        if (allocFlags & VMM_ALLOC_ZERO)
+        {
+            for (uint64_t i = 0; i < batchSize; i++)
+            {
+                memset(PFN_TO_VIRT(pages[i]), 0, PAGE_SIZE);
+            }
+        }
+
+        if (page_table_map_pages(&space->pageTable, currentVirtAddr, pages, batchSize, mapping.flags,
                 PML_CALLBACK_NONE) == ERR)
         {
             // Page table will free the previously allocated pages as they are owned by the Page table.
@@ -214,10 +223,10 @@ void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment,
     return space_mapping_end(space, &mapping, EOK);
 }
 
-void* vmm_map(space_t* space, void* virtAddr, void* physAddr, size_t length, pml_flags_t flags,
-    space_callback_func_t func,  void* data)
+void* vmm_map(space_t* space, void* virtAddr, phys_addr_t physAddr, size_t length, pml_flags_t flags,
+    space_callback_func_t func, void* data)
 {
-    if (physAddr == NULL || length == 0 || !(flags & PML_PRESENT))
+    if (physAddr == PHYS_ADDR_INVALID || length == 0 || !(flags & PML_PRESENT))
     {
         errno = EINVAL;
         return NULL;
@@ -269,10 +278,10 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, size_t length, pml
     return space_mapping_end(space, &mapping, EOK);
 }
 
-void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, size_t pageAmount, pml_flags_t flags,
-    space_callback_func_t func,  void* data)
+void* vmm_map_pages(space_t* space, void* virtAddr, pfn_t* pfns, size_t amount, pml_flags_t flags,
+    space_callback_func_t func, void* data)
 {
-    if (pages == NULL || pageAmount == 0 || !(flags & PML_PRESENT))
+    if (pfns == NULL || amount == 0 || !(flags & PML_PRESENT))
     {
         errno = EINVAL;
         return NULL;
@@ -284,7 +293,7 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, size_t pageAmo
     }
 
     space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, NULL, pageAmount * PAGE_SIZE, 1, flags) == ERR)
+    if (space_mapping_start(space, &mapping, virtAddr, PHYS_ADDR_INVALID, amount * PAGE_SIZE, 1, flags) == ERR)
     {
         return NULL;
     }
@@ -297,7 +306,7 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, size_t pageAmo
     pml_callback_id_t callbackId = PML_CALLBACK_NONE;
     if (func != NULL)
     {
-        callbackId = space_alloc_callback(space, pageAmount, func, data);
+        callbackId = space_alloc_callback(space, amount, func, data);
         if (callbackId == PML_MAX_CALLBACK)
         {
             return space_mapping_end(space, &mapping, ENOSPC);
@@ -309,7 +318,7 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, size_t pageAmo
         vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount);
     }
 
-    if (page_table_map_pages(&space->pageTable, mapping.virtAddr, pages, mapping.pageAmount, mapping.flags,
+    if (page_table_map_pages(&space->pageTable, mapping.virtAddr, pfns, mapping.pageAmount, mapping.flags,
             callbackId) == ERR)
     {
         if (callbackId != PML_CALLBACK_NONE)
@@ -338,7 +347,7 @@ void* vmm_unmap(space_t* space, void* virtAddr, size_t length)
     }
 
     space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, NULL, length, 1, PML_NONE) == ERR)
+    if (space_mapping_start(space, &mapping, virtAddr, PHYS_ADDR_INVALID, length, 1, PML_NONE) == ERR)
     {
         return NULL;
     }
@@ -405,7 +414,7 @@ void* vmm_protect(space_t* space, void* virtAddr, size_t length, pml_flags_t fla
     }
 
     space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, NULL, length, 1, flags) == ERR)
+    if (space_mapping_start(space, &mapping, virtAddr, PHYS_ADDR_INVALID, length, 1, flags) == ERR)
     {
         return NULL;
     }

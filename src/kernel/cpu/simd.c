@@ -122,12 +122,12 @@ PERCPU_DEFINE_CTOR(static void, pcpu_simd)
 
 uint64_t simd_ctx_init(simd_ctx_t* ctx)
 {
-    ctx->buffer = pmm_alloc();
-    if (ctx->buffer == NULL)
+    pfn_t pfn = pmm_alloc();
+    if (pfn == ERR)
     {
         return ERR;
     }
-
+    ctx->buffer = PFN_TO_VIRT(pfn);
     memcpy(ctx->buffer, initCtx, PAGE_SIZE);
 
     return 0;
@@ -135,7 +135,8 @@ uint64_t simd_ctx_init(simd_ctx_t* ctx)
 
 void simd_ctx_deinit(simd_ctx_t* ctx)
 {
-    pmm_free(ctx->buffer);
+    pfn_t pfn = VIRT_TO_PFN(ctx->buffer);
+    pmm_free(pfn);
 }
 
 void simd_ctx_save(simd_ctx_t* ctx)

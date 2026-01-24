@@ -3,15 +3,15 @@
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
-#include <kernel/fs/inode.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/proc/process.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/map.h>
 
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>
@@ -23,6 +23,9 @@
  *
  * The Virtual File System (VFS) provides a single unified interface for any and all filesystems, including virtual
  * filesystems used to expose kernel resources to user space.
+ *
+ * @todo Most of this is going to be removed when the new IRP system is fully implemented, but for now its usefull to
+ * keep it around during the refactor.
  *
  * @{
  */
@@ -159,13 +162,13 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
 /**
  * @brief Read the path in a symbolic link.
  *
- * @param symlink The symbolic link inode.
+ * @param symlink The symbolic link vnode.
  * @param buffer The buffer to store the path in.
  * @param size The size of the buffer.
  * @param process The process performing the readlink.
  * @return On success, the number of bytes read. On failure, `ERR` and `errno` is set.
  */
-size_t vfs_readlink(inode_t* symlink, char* buffer, size_t size);
+size_t vfs_readlink(vnode_t* symlink, char* buffer, size_t size);
 
 /**
  * @brief Create a symbolic link.

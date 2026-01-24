@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 
 static uint8_t _stdin_buff[BUFSIZ];
 static uint8_t _stdout_buff[BUFSIZ];

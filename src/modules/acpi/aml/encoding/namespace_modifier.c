@@ -1,14 +1,14 @@
-#include <modules/acpi/aml/encoding/namespace_modifier.h>
+#include <kernel/acpi/aml/encoding/namespace_modifier.h>
 
 #include <kernel/log/log.h>
-#include <modules/acpi/aml/debug.h>
-#include <modules/acpi/aml/encoding/data.h>
-#include <modules/acpi/aml/encoding/name.h>
-#include <modules/acpi/aml/encoding/package_length.h>
-#include <modules/acpi/aml/encoding/term.h>
-#include <modules/acpi/aml/state.h>
-#include <modules/acpi/aml/to_string.h>
-#include <modules/acpi/aml/token.h>
+#include <kernel/acpi/aml/debug.h>
+#include <kernel/acpi/aml/encoding/data.h>
+#include <kernel/acpi/aml/encoding/name.h>
+#include <kernel/acpi/aml/encoding/package_length.h>
+#include <kernel/acpi/aml/encoding/term.h>
+#include <kernel/acpi/aml/state.h>
+#include <kernel/acpi/aml/to_string.h>
+#include <kernel/acpi/aml/token.h>
 
 #include <sys/list.h>
 
@@ -31,7 +31,7 @@ uint64_t aml_def_alias_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(source);
 
-    aml_name_string_t nameString;
+    aml_name_stioring_t nameString;
     if (aml_name_string_read(ctx, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve target NameString");
@@ -48,7 +48,7 @@ uint64_t aml_def_alias_read(aml_term_list_ctx_t* ctx)
     if (aml_alias_set(newObject, source) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
     {
-        AML_DEBUG_ERROR(ctx, "Failed to add alias object '%s'", aml_name_string_to_string(&nameString));
+        AML_DEBUG_ERROR(ctx, "Failed to add alias object '%s'", aml_name_stioring_to_string(&nameString));
         return ERR;
     }
 
@@ -63,7 +63,7 @@ uint64_t aml_def_name_read(aml_term_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_name_string_t nameString;
+    aml_name_stioring_t nameString;
     if (aml_name_string_read(ctx, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NameString");
@@ -80,7 +80,7 @@ uint64_t aml_def_name_read(aml_term_list_ctx_t* ctx)
     if (aml_data_ref_object_read(ctx, newObject) == ERR ||
         aml_namespace_add_by_name_string(&ctx->state->overlay, ctx->scope, &nameString, newObject) == ERR)
     {
-        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        AML_DEBUG_ERROR(ctx, "Failed to add object '%s'", aml_name_stioring_to_string(&nameString));
         return ERR;
     }
 

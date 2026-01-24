@@ -1,4 +1,4 @@
-#include <libpatchwork/patchwork.h>
+#include <patchwork/patchwork.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

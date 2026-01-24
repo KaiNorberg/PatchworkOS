@@ -1,12 +1,12 @@
-#include <modules/acpi/aml/runtime/convert.h>
+#include <kernel/acpi/aml/runtime/convert.h>
 
 #include <kernel/log/log.h>
-#include <modules/acpi/aml/object.h>
-#include <modules/acpi/aml/runtime/buffer_field.h>
-#include <modules/acpi/aml/runtime/copy.h>
-#include <modules/acpi/aml/runtime/field_unit.h>
-#include <modules/acpi/aml/runtime/store.h>
-#include <modules/acpi/aml/to_string.h>
+#include <kernel/acpi/aml/object.h>
+#include <kernel/acpi/aml/runtime/buffer_field.h>
+#include <kernel/acpi/aml/runtime/copy.h>
+#include <kernel/acpi/aml/runtime/field_unit.h>
+#include <kernel/acpi/aml/runtime/store.h>
+#include <kernel/acpi/aml/to_string.h>
 
 #include <errno.h>
 #include <stdio.h>
@@ -261,10 +261,10 @@ static aml_convert_entry_t packageConverters[AML_TYPE_AMOUNT] = {
     {AML_PACKAGE, AML_DEBUG_OBJECT, aml_package_to_debug_object},
 };
 
-static uint64_t aml_string_to_integer(aml_state_t* state, aml_object_t* string, aml_object_t* dest)
+static uint64_t aml_stioring_to_integer(aml_state_t* state, aml_object_t* string, aml_object_t* dest)
 {
     UNUSED(state);
-    aml_string_t* stringData = &string->string;
+    aml_stioring_t* stringData = &string->string;
 
     uint64_t value = 0;
     uint64_t maxChars = MIN(stringData->length, aml_integer_byte_size() * 2); // Two hex chars per byte
@@ -287,10 +287,10 @@ static uint64_t aml_string_to_integer(aml_state_t* state, aml_object_t* string, 
     return aml_integer_set(dest, value);
 }
 
-static uint64_t aml_string_to_buffer(aml_state_t* state, aml_object_t* string, aml_object_t* dest)
+static uint64_t aml_stioring_to_buffer(aml_state_t* state, aml_object_t* string, aml_object_t* dest)
 {
     UNUSED(state);
-    aml_string_t* stringData = &string->string;
+    aml_stioring_t* stringData = &string->string;
 
     // Regarding zero-length strings the spec says "... the string is treated as a buffer, with each
     // ASCII string character copied to one buffer byte, including the null
@@ -325,7 +325,7 @@ static uint64_t aml_string_to_buffer(aml_state_t* state, aml_object_t* string, a
     return 0;
 }
 
-static uint64_t aml_string_to_debug_object(aml_state_t* state, aml_object_t* string, aml_object_t* dest)
+static uint64_t aml_stioring_to_debug_object(aml_state_t* state, aml_object_t* string, aml_object_t* dest)
 {
     UNUSED(state);
     UNUSED(dest);
@@ -340,9 +340,9 @@ static uint64_t aml_string_to_debug_object(aml_state_t* state, aml_object_t* str
 }
 
 static aml_convert_entry_t stringConverters[AML_TYPE_AMOUNT] = {
-    {AML_STRING, AML_INTEGER, aml_string_to_integer},
-    {AML_STRING, AML_BUFFER, aml_string_to_buffer},
-    {AML_STRING, AML_DEBUG_OBJECT, aml_string_to_debug_object},
+    {AML_STRING, AML_INTEGER, aml_stioring_to_integer},
+    {AML_STRING, AML_BUFFER, aml_stioring_to_buffer},
+    {AML_STRING, AML_DEBUG_OBJECT, aml_stioring_to_debug_object},
 };
 
 static aml_convert_entry_t* aml_converters_get(aml_type_t srcType)
@@ -639,7 +639,7 @@ uint64_t aml_convert_to_buffer(aml_state_t* state, aml_object_t* src, aml_object
     }
     else if (src->type == AML_STRING)
     {
-        if (aml_string_to_buffer(state, src, temp) == ERR)
+        if (aml_stioring_to_buffer(state, src, temp) == ERR)
         {
             return ERR;
         }
@@ -881,7 +881,7 @@ uint64_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_objec
 
     if (src->type == AML_STRING)
     {
-        aml_string_t* stringData = &src->string;
+        aml_stioring_t* stringData = &src->string;
         if (stringData->length == 0 || stringData->content == NULL)
         {
             errno = EILSEQ;

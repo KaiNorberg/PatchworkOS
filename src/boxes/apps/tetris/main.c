@@ -1,5 +1,5 @@
 #include <errno.h>
-#include <libpatchwork/patchwork.h>
+#include <patchwork/patchwork.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>

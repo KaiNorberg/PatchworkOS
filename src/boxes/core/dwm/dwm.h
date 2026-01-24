@@ -2,8 +2,8 @@
 
 #include "surface.h"
 
-#include <libpatchwork/event.h>
-#include <sys/io.h>
+#include <patchwork/event.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 /**

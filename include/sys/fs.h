@@ -1,0 +1,644 @@
+#ifndef _SYS_IO_H
+#define _SYS_IO_H 1
+
+#include <alloca.h>
+#include <assert.h>
+#include <errno.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdlib.h>
+
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
+
+#include "_libstd/ERR.h"
+#include "_libstd/MAX_NAME.h"
+#include "_libstd/MAX_PATH.h"
+#include "_libstd/NULL.h"
+#include "_libstd/SEEK.h"
+#include "_libstd/clock_t.h"
+#include "_libstd/config.h"
+#include "_libstd/fd_t.h"
+#include "_libstd/ssize_t.h"
+#include "_libstd/time_t.h"
+
+/**
+ * @brief Filesystem header.
+ * @defgroup libstd_sys_fs Filesystem IO
+ * @ingroup libstd
+ *
+ * @{
+ */
+
+#define STDIN_FILENO 0  ///< Standard input file descriptor.
+#define STDOUT_FILENO 1 ///< Standard output file descriptor.
+#define STDERR_FILENO 2 ///< Standard error file descriptor.
+
+/**
+ * @brief Pipe read end.
+ *
+ * The `PIPE_READ` constant defines which file descriptor in `fd` from a `open2` call on the `/dev/pipe` file will
+ * be the read end of the pipe.
+ *
+ */
+#define PIPE_READ 0
+
+/**
+ * @brief Pipe write end.
+ *
+ * The `PIPE_WRITE` constant defines which file descriptor in `fd` from a `open2` call on the `/dev/pipe` file will
+ * be the write end of the pipe.
+ *
+ */
+#define PIPE_WRITE 1
+
+/**
+ * @brief Maximum buffer size for the `F()` macro.
+ */
+#define F_MAX_SIZE 512
+
+/**
+ * @brief Allocates a formatted string on the stack.
+ *
+ * @warning Will terminate the program if the size of the formatted string is too large or if an encoding error occurs.
+ */
+#define F(format, ...) \
+    ({ \
+        char* _buffer = alloca(F_MAX_SIZE); \
+        int _len = snprintf(_buffer, F_MAX_SIZE, format, __VA_ARGS__); \
+        if (_len < 0 || _len >= F_MAX_SIZE) \
+        { \
+            abort(); \
+        } \
+        _buffer; \
+    })
+
+/**
+ * @brief System call for opening files.
+ *
+ * The `open()` function opens a file located at a given path.
+ *
+ * @param path The path to the desired file.
+ * @return On success, the file descriptor, on failure returns `ERR` and `errno` is set.
+ */
+fd_t open(const char* path);
+
+/**
+ * @brief System call for opening 2 file descriptors from one file.
+
+ * This is intended as a more generic
+ implementation
+ * of system calls like pipe() in POSIX systems. One example use case of this system call is pipes, if
+ * `open2` is called on `/dev/pipe` then `fd[0]` will store the read end of the pipe and `fd[1]` will store the
+ write
+ * end of the pipe. But if `open()` is called on `/dev/pipe` then the returned file descriptor would be both
+ * ends.
+ *
+ * @param path The path to the desired file.
+ * @param fd An array of two `fd_t` where the new file descriptors will be stored.
+ * @return On success, 0, on failure returns `ERR` and `errno` is set.
+ */
+uint64_t open2(const char* path, fd_t fd[2]);
+
+/**
+ * @brief System call for opening files relative to another file descriptor.
+ *
+ * @param from The file descriptor to open the file relative to, or `FD_NONE` to open from the current working
+ * directory.
+ * @param path The path to the desired file.
+ * @return On success, the file descriptor, on failure returns `ERR` and `errno` is set.
+ */
+fd_t openat(fd_t from, const char* path);
+
+/**
+ * @brief System call for closing files.
+ *
+ * @param fd The file descriptor to close.
+ * @return On success, 0, on failure returns `ERR` and `errno` is set.
+ */
+uint64_t close(fd_t fd);
+
+/**
+ * @brief System call for reading from files.
+ *
+ * @param fd The file descriptor to read from.
+ * @param buffer A pointer to the buffer where the data will be stored.
+ * @param count The maximum number of bytes to read.
+ * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and `errno`
+ * is set.
+ */
+size_t read(fd_t fd, void* buffer, size_t count);
+
+/**
+ * @brief Wrapper for reading a file directly into a null-terminated string.
+ *
+ * The `reads()` function reads the entire contents of a file into a newly allocated null-terminated string.
+ * The caller is responsible for freeing the returned string.
+ *
+ * @param fd The file descriptor to read from.
+ * @return On success, a pointer to the null-terminated string. On failure, `NULL` and `errno` is set.
+ */
+char* reads(fd_t fd);
+
+/**
+ * @brief Wrapper for reading a file directly using a path.
+ *
+ * Equivalent to calling `open()`, `seek()`, `read()`, and `close()` in sequence.
+ *
+ * @param path The path to the file.
+ * @param buffer A pointer to the buffer where the data will be stored.
+ * @param count The maximum number of bytes to read.
+ * @param offset The offset in the file to start reading from.
+ * @return On success, the number of bytes read. On end-of-file, 0. On failure, `ERR` and `errno` is set.
+ */
+size_t readfile(const char* path, void* buffer, size_t count, size_t offset);
+
+/**
+ * @brief Wrapper for reading an entire file directly into a null-terminated string.
+ *
+ * The `readfiles()` function reads the entire contents of a file into a newly allocated null-terminated string.
+ * The caller is responsible for freeing the returned string.
+ *
+ * Equivalent to calling `open()`, `reads()`, and `close()` in sequence.
+ *
+ * @param path The path to the file.
+ * @return On success, a pointer to the null-terminated string. On failure, `NULL` and `errno` is set.
+ */
+char* readfiles(const char* path);
+
+/**
+ * @brief System call for writing to files.
+ *
+ * @param fd The file descriptor to write to.
+ * @param buffer A pointer to the buffer containing the data to write.
+ * @param count The number of bytes to write.
+ * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
+ */
+size_t write(fd_t fd, const void* buffer, size_t count);
+
+/**
+ * @brief Wrapper for writing a null-terminated string to a file.
+ *
+ * @param fd The file descriptor to write to.
+ * @param string The null-terminated string to write.
+ * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
+ */
+size_t writes(fd_t fd, const char* string);
+
+/**
+ * @brief Wrapper for writing to a file directly using a path.
+ *
+ * Equivalent to calling `open()`, `seek()`, `write()`, and `close()` in sequence.
+ *
+ * @param path The path to the file.
+ * @param buffer A pointer to the buffer containing the data to write.
+ * @param count The number of bytes to write.
+ * @param offset The offset in the file to start writing to.
+ * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
+ */
+size_t writefile(const char* path, const void* buffer, size_t count, size_t offset);
+
+/**
+ * @brief Wrapper for writing a null-terminated string directly to a file using a path.
+ *
+ * Equivalent to calling `open()`, `writes()`, and `close()` in sequence.
+ *
+ * @param path The path to the file.
+ * @param string The null-terminated string to write.
+ * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
+ */
+size_t writefiles(const char* path, const char* string);
+
+/**
+ * @brief Wrapper for reading from a file descriptor using scan formatting.
+ *
+ * @param fd The file descriptor to read from.
+ * @param format The format string.
+ * @return On success, the number of input items successfully matched and assigned. On failure, `ERR`.
+ */
+uint64_t scan(fd_t fd, const char* format, ...);
+
+/**
+ * @brief Wrapper for reading from a file descriptor using scan formatting with `va_list`.
+ *
+ * @param fd The file descriptor to read from.
+ * @param format The format string.
+ * @param args The va_list of arguments.
+ * @return On success, the number of input items successfully matched and assigned. On failure, `ERR`.
+ */
+uint64_t vscan(fd_t fd, const char* format, va_list args);
+
+/**
+ * @brief Wrapper for reading from a file path using scan formatting.
+ *
+ * Equivalent to calling `open()`, `scan()`, and `close()` in sequence.
+ *
+ * @param path The path to the file.
+ * @param format The format string.
+ * @return On success, the number of input items successfully matched and assigned. On failure, `ERR`.
+ */
+uint64_t scanfile(const char* path, const char* format, ...);
+
+/**
+ * @brief Wrapper for reading from a file path using scan formatting with `va_list`.
+ *
+ * Equivalent to calling `open()`, `vscan()`, and `close()` in sequence.
+ *
+ * @param path The path to the file.
+ * @param format The format string.
+ * @param args The va_list of arguments.
+ * @return On success, the number of input items successfully matched and assigned. On failure, `ERR`.
+ */
+uint64_t vscanfile(const char* path, const char* format, va_list args);
+
+/**
+ * @brief Type for the `seek()` origin argument.
+ *
+ */
+typedef uint8_t seek_origin_t;
+
+/**
+ * @brief System call for changing the file offset.
+ *
+ * @param fd The file descriptor.
+ * @param offset The offset to move the file pointer.
+ * @param origin The origin that the offset is relative to (e.g., `SEEK_SET`, `SEEK_CUR`, `SEEK_END`).
+ * @return On success, the new offset from the beginning of the file. On failure, `ERR` and `errno` is
+ * set.
+ */
+size_t seek(fd_t fd, ssize_t offset, seek_origin_t origin);
+
+/**
+ * @brief System call for changing the cwd.
+ *
+ * @param path The path to the new directory.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t chdir(const char* path);
+
+/**
+ * @brief Poll events type.
+ *
+ */
+typedef enum
+{
+    POLLNONE = 0,        ///< None
+    POLLIN = (1 << 0),   ///< File descriptor is ready to read.
+    POLLOUT = (1 << 1),  ///< File descriptor is ready to write.
+    POLLERR = (1 << 2),  ///< File descriptor caused an error.
+    POLLHUP = (1 << 3),  ///< Stream socket peer closed connection, or shut down writing of connection.
+    POLLNVAL = (1 << 4), ///< Invalid file descriptor.
+} poll_events_t;
+
+/**
+ * @brief Poll event values that will always be checked and included even if not specified.
+ */
+#define POLL_SPECIAL (POLLERR | POLLHUP | POLLNVAL)
+
+/**
+ * @brief Poll file descriptor structure.
+ *
+ */
+typedef struct pollfd
+{
+    fd_t fd;               ///< The file descriptor to poll.
+    poll_events_t events;  ///< The events to wait for.
+    poll_events_t revents; ///< The events that occurred.
+} pollfd_t;
+
+/**
+ * @brief System call for polling files.
+ *
+ * @param fds An array of `pollfd_t` structures, each specifying a file descriptor to poll in pollfd_t::fd and the
+ * events to wait for in pollfd_t::events.
+ * @param amount The number of `pollfd_t` structures in the `fds` array.
+ * @param timeout The maximum time (in clock ticks) to wait for an event. If `CLOCKS_NEVER`, it waits forever.
+ * @return On success, the number of file descriptors for which the events occurred. On timeout, 0. On
+ * failure, `ERR` and `errno` is set.
+ */
+uint64_t poll(pollfd_t* fds, uint64_t amount, clock_t timeout);
+
+/**
+ * @brief Wrapper for polling one file.
+ *
+ * The `poll1()` function waits for events on a single file descriptor. Otherwise it is identical to `poll()` and exists
+ * simply for convenience.
+ *
+ * @param fd The file descriptor to poll.
+ * @param events The events to wait for (e.g., `POLLIN`, `POLLOUT`).
+ * @param timeout The maximum time (in clock ticks) to wait for an event. If `CLOCKS_NEVER`, it waits forever.
+ * @return On success, the events that occurred. On timeout, 0. On failure, the `POLLERR` event bit is
+ * set and `errno` is set.
+ */
+poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);
+
+/**
+ * @brief Vnode type enum.
+ * @enum vtype_t
+ */
+typedef enum
+{
+    VREG,     ///< Is a regular file.
+    VDIR,     ///< Is a directory.
+    VSYMLINK, ///< Is a symbolic link.
+} vtype_t;
+
+/**
+ * @brief A suberblock identifier that uniquely identifies a superblock within the system.
+ *
+ * When combined with a vnode number, this can uniquely identify an vnode within the entire system.
+ */
+typedef uint64_t sbid_t;
+
+/**
+ * @brief Vnode attributes structure.
+ * @struct vattr_t
+ */
+typedef struct vattr
+{
+    vtype_t type;
+    uint64_t nlink;
+    uint64_t id;
+    uint64_t size;
+    uint64_t blocks;
+    uint64_t blockSize;
+    time_t atime;
+    time_t mtime;
+    time_t ctime;
+    uint8_t padding[64]; ///< Padding to leave space for future expansion.
+} vattr_t;
+
+/**
+ * @brief Stat type.
+ * @struct stat_t
+ */
+typedef struct
+{
+    sbid_t sbid;          ///< The superblock ID of the filesystem containing the entry.
+    uint64_t number;      ///< The number of the entries vnode.
+    vtype_t type;         ///< The type of the entries vnode.
+    uint64_t size;        ///< The size of the file that is visible outside the filesystem.
+    uint64_t blocks;      ///< The amount of blocks used on disk to store the file.
+    uint64_t blockSize;   ///< The preferred block size of the filesystem.
+    uint64_t maxFileSize; ///< The maximum size of a file on this filesystem.
+    uint64_t linkAmount;  ///< The amount of times the vnode appears in dentries.
+    time_t accessTime;    ///< Unix time stamp for the last vnode access.
+    time_t modifyTime;    ///< Unix time stamp for last file content alteration.
+    time_t changeTime;    ///< Unix time stamp for the last file metadata alteration.
+    time_t createTime;    ///< Unix time stamp for the creation of the vnode.
+    char name[MAX_PATH];  ///< The name of the entry, not the full filepath. Includes the flags of the paths mount.
+    uint8_t padding[64];  ///< Padding to leave space for future expansion.
+} stat_t;
+
+#ifdef static_assert
+static_assert(sizeof(stat_t) == 416, "invalid stat_t size");
+#endif
+
+/**
+ * @brief System call for retrieving info about a file or directory.
+ *
+ * @param path The path to the file or directory.
+ * @param stat A pointer to a `stat_t` structure where the file information will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t stat(const char* path, stat_t* stat);
+
+/**
+ * @brief System call for extended driver behaviour.
+ *
+ * The `ioctl()` function allows drivers to implement unusual behaviour that would be impossible or impractical with a
+ * normal file-based API.
+ *
+ * @param fd The file descriptor of the file.
+ * @param request The driver-dependent request code.
+ * @param argp A pointer to an argument that depends on the request, can be `NULL` if size is 0.
+ * @param size The size of the argument pointed to by `argp`.
+ * @return On success, the return value depends on the driver but is usually 0. On failure, `ERR` and `errno` is
+ * set.
+ */
+uint64_t ioctl(fd_t fd, uint64_t request, void* argp, size_t size);
+
+/**
+ * @brief System call for duplicating file descriptors.
+ *
+ * @param oldFd The open file descriptor to duplicate.
+ * @return On success, the new file descriptor. On failure, `ERR` and `errno` is set.
+ */
+fd_t dup(fd_t oldFd);
+
+/**
+ * @brief System call for duplicating file descriptors, with a destination.
+ *
+ * @param oldFd The open file descriptor to duplicate.
+ * @param newFd The desired new file descriptor.
+ * @return On success, the new file descriptor. On failure, `ERR` and `errno` is set.
+ */
+fd_t dup2(fd_t oldFd, fd_t newFd);
+
+/**
+ * @brief Directory entry flags.
+ * @enum dirent_flags_t
+ */
+typedef enum
+{
+    DIRENT_NONE = 0,
+    DIRENT_MOUNTED = 1 << 0, ///< The directory entry is a mountpoint.
+} dirent_flags_t;
+
+/**
+ * @brief Directory entry struct.
+ *
+ */
+typedef struct
+{
+    vtype_t type;
+    dirent_flags_t flags;
+    char path[MAX_PATH]; ///< The relative path of the entry.
+    char mode[MAX_PATH]; ///< The flags of the paths mount.
+} dirent_t;
+
+/**
+ * @brief System call for reading directory entires.
+ *
+ * @param fd The file descriptor of the directory to read.
+ * @param buffer The destination buffer.
+ * @param count The size of the buffer in bytes.
+ * @return On success, the total number of bytes written to the buffer. On failure,
+ * returns `ERR` and `errno` is set.
+ */
+size_t getdents(fd_t fd, dirent_t* buffer, uint64_t count);
+
+/**
+ * @brief Helper for reading all directory entries.
+ *
+ * The caller is responsible for freeing the returned pointer.
+ *
+ * @param fd The file descriptor of the directory to read.
+ * @param buffer Output pointer to store the allocated buffer containing the directory entries.
+ * @param count Output pointer to store the number of bytes written to the buffer.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+size_t readdir(fd_t fd, dirent_t** buffer, uint64_t* count);
+
+/**
+ * @brief Wrapper for creating a directory.
+ *
+ * @param path The path of the directory to create.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t mkdir(const char* path);
+
+/**
+ * @brief Wrapper for removing a directory.
+ *
+ * @param path The path of the directory to remove.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t rmdir(const char* path);
+
+/**
+ * @brief System call for creating a hardlink.
+ *
+ * @param oldPath
+ * @param newPath
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t link(const char* oldPath, const char* newPath);
+
+/**
+ * @brief Wrapper for removing a file.
+ *
+ * @param path The path of the file to remove.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t unlink(const char* path);
+
+#define KEY_MAX 128 ///< Maximum size of a key generated by `share()`.
+
+#define KEY_128BIT 25 ///< The size of a buffer needed to hold a 128-bit key.
+
+#define KEY_256BIT 45 ///< The size of a buffer needed to hold a 256-bit key.
+
+#define KEY_512BIT 89 ///< The size of a buffer needed to hold a 512-bit key.
+
+/**
+ * @brief System call for sharing a file descriptor with another process.
+ *
+ * @param key Output buffer to store the generated key.
+ * @param size The size of the output buffer.
+ * @param fd The file descriptor to share.
+ * @param timeout The time until the shared file descriptor expires. If `CLOCKS_NEVER`, it never expires.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t share(char* key, uint64_t size, fd_t fd, clock_t timeout);
+
+/**
+ * @brief Helper for sharing a file by its path.
+ *
+ * @param key Output buffer to store the generated key.
+ * @param size The size of the output buffer.
+ * @param path The path to the file to share.
+ * @param timeout The time until the shared file descriptor expires. If `CLOCKS_NEVER`, it never expires.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t sharefile(char* key, uint64_t size, const char* path, clock_t timeout);
+
+/**
+ * @brief System call for claiming a shared file descriptor.
+ *
+ * After claiming a shared file descriptor, the key is no longer valid and cannot be used again.
+ *
+ * @param key The key identifying the shared file descriptor.
+ * @return On success, the claimed file descriptor. On failure, `ERR` and `errno` is set.
+ */
+fd_t claim(const char* key);
+
+/**
+ * @brief System call for binding a file descriptor to a mountpoint.
+ *
+ * The created mount will inherit permissions from the source while the mount behaviour will follow the flags specified
+ * in `mountpoint`.
+ *
+ * @param mountpoint The mountpoint path.
+ * @param source The file descriptor to bind, must represent a directory.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t bind(const char* mountpoint, fd_t source);
+
+/**
+ * @brief System call for mounting a filesystem.
+ *
+ * @param mountpoint The target path to mount to.
+ * @param fs The path to the desired filesystem in the `fs` sysfs directory.
+ * @param options A string containing filesystem defined `key=value` pairs, with multiple options separated by commas,
+ * or `NULL`.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t mount(const char* mountpoint, const char* fs, const char* options);
+
+/**
+ * @brief System call for unmounting a filesystem.
+ *
+ * @param mountpoint The target path to unmount.
+ * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ */
+uint64_t unmount(const char* mountpoint);
+
+/**
+ * @brief System call for reading the target of a symbolic link.
+ *
+ * @param path The path to the symbolic link.
+ * @param buffer A buffer to store the target path.
+ * @param count The size of the buffer.
+ * @return On success, the number of bytes read. On failure, `ERR` and `errno` is set.
+ */
+size_t readlink(const char* path, char* buffer, uint64_t count);
+
+/**
+ * @brief System call for creating a symbolic link.
+ *
+ * @param target The target path of the symbolic link.
+ * @param linkpath The path where the symbolic link will be created.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t symlink(const char* target, const char* linkpath);
+
+/**
+ * @brief Macro to automatically retry a function that returns an integer if it errors and `errno == EINTR`.
+ *
+ * @param expr The expression to evaluate.
+ */
+#define RETRY_EINTR(expr) \
+    ({ \
+        uint64_t _result; \
+        do \
+        { \
+            _result = (expr); \
+        } while (_result == ERR && errno == EINTR); \
+        _result; \
+    })
+
+/**
+ * @brief Macro to automatically retry a function that returns a pointer if it errors and `errno == EINTR`.
+ *
+ * @param expr The expression to evaluate.
+ */
+#define RETRY_EINTR_PTR(expr) \
+    ({ \
+        void* _result; \
+        do \
+        { \
+            _result = (expr); \
+        } while (_result == NULL && errno == EINTR); \
+        _result; \
+    })
+
+/** @} */
+
+#if defined(__cplusplus)
+}
+#endif
+
+#endif

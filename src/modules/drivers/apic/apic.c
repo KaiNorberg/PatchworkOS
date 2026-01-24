@@ -1,6 +1,6 @@
-#include <modules/drivers/apic/apic_timer.h>
-#include <modules/drivers/apic/ioapic.h>
-#include <modules/drivers/apic/lapic.h>
+#include <kernel/drivers/apic/apic_timer.h>
+#include <kernel/drivers/apic/ioapic.h>
+#include <kernel/drivers/apic/lapic.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/init/init.h>
@@ -11,8 +11,8 @@
 
 /**
  * @brief Advanced Programmable Interrupt Controller.
- * @defgroup modules_drivers_apic APIC
- * @ingroup modules_drivers
+ * @defgroup kernel_drivers_apic APIC
+ * @ingroup kernel_drivers
  *
  * This module implements the Advanced Programmable Interrupt Controller (APIC) driver, which includes the per-CPU
  * local APICs, the IO APICs and the APIC timer.

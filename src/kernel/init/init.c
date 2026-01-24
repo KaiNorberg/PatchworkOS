@@ -34,7 +34,7 @@
 
 #include <boot/boot_info.h>
 
-#include <libstd/_internal/init.h>
+#include <_libstd/init.h>
 
 #ifdef _TESTING_
 #include <kernel/utils/test.h>
@@ -62,6 +62,8 @@ void init_early(void)
     boot_info_to_higher_half();
 
     vmm_kernel_space_load();
+
+    syscall_table_init();
 
     _std_init();
 
@@ -103,8 +105,6 @@ static void init_finalize(void)
     reaper_init();
 
     perf_init();
-
-    syscall_table_init();
 
     boot_info_t* bootInfo = boot_info_get();
 
@@ -152,7 +152,7 @@ static void init_finalize(void)
         panic(NULL, "No IPI chip registered, most likely no IPI chips with a provided driver was found");
     }
 
-    LOG_INFO("kernel initalized using %llu kb of memory\n", pmm_used_amount() * PAGE_SIZE / 1024);
+    LOG_INFO("kernel initalized using %llu kb of memory\n", pmm_used_pages() * PAGE_SIZE / 1024);
 }
 
 static inline void init_process_spawn(void)

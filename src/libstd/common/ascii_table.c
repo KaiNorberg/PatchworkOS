@@ -1,4 +1,4 @@
-#include <_internal/ascii.h>
+#include <_libstd/ascii.h>
 #include <stdint.h>
 
 _ascii_entry_t _asciiTable[UINT8_MAX + 1] = {

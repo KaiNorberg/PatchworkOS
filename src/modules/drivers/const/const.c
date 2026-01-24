@@ -12,8 +12,8 @@
 
 /**
  * @brief Constant devices
- * @defgroup modules_drivers_const Constant Devices
- * @ingroup modules_drivers
+ * @defgroup kernel_drivers_const Constant Devices
+ * @ingroup kernel_drivers
  *
  * This module provides the constant devices which provide user space with its primary means of allocating memory and
  * obtaining constant data.

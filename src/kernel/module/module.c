@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/elf.h>
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 static module_info_t fakeKernelModuleInfo = {
@@ -46,7 +46,7 @@ static bool cacheValid = false;
 
 static mutex_t lock = MUTEX_CREATE(lock);
 
-static void* module_resolve_symbol_callback(const char* name,  void* data);
+static void* module_resolve_symbol_callback(const char* name, void* data);
 
 #define MODULE_SYMBOL_ALLOWED(type, binding, name) \
     (((type) == STT_OBJECT || (type) == STT_FUNC) && ((binding) == STB_GLOBAL) && \
@@ -624,7 +624,7 @@ static uint64_t module_cache_build(void)
 
         for (uint64_t i = 0; i < readCount / sizeof(dirent_t); i++)
         {
-            if (buffer[i].path[0] == '.' || buffer[i].type != INODE_FILE)
+            if (buffer[i].path[0] == '.' || buffer[i].type != VREG)
             {
                 continue;
             }
@@ -909,7 +909,7 @@ static uint64_t module_load_dependency(module_load_ctx_t* ctx, const char* symbo
     return 0;
 }
 
-static void* module_resolve_symbol_callback(const char* symbolName,  void* data)
+static void* module_resolve_symbol_callback(const char* symbolName, void* data)
 {
     module_load_ctx_t* ctx = data;
 

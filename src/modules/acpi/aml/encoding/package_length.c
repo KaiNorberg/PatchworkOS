@@ -1,8 +1,8 @@
-#include <modules/acpi/aml/encoding/package_length.h>
+#include <kernel/acpi/aml/encoding/package_length.h>
 
-#include <modules/acpi/aml/debug.h>
-#include <modules/acpi/aml/encoding/data.h>
-#include <modules/acpi/aml/state.h>
+#include <kernel/acpi/aml/debug.h>
+#include <kernel/acpi/aml/encoding/data.h>
+#include <kernel/acpi/aml/state.h>
 
 #include <errno.h>
 #include <stdint.h>

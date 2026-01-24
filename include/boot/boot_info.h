@@ -4,7 +4,7 @@
 
 #include <gnu-efi/inc/efi.h>
 
-#include <_internal/MAX_NAME.h>
+#include <_libstd/MAX_NAME.h>
 #include <stdint.h>
 #include <sys/defs.h>
 #include <sys/elf.h>
@@ -41,7 +41,7 @@ static UNUSED_FUNC bool boot_is_mem_ram(EFI_MEMORY_TYPE type)
 }
 typedef struct
 {
-    uint32_t* physAddr;
+    phys_addr_t physAddr;
     uint32_t* virtAddr;
     size_t size;
     size_t width;
@@ -87,7 +87,7 @@ typedef struct boot_info boot_info_t;
 typedef struct
 {
     Elf64_File elf;
-    void* physAddr;
+    phys_addr_t physAddr;
 } boot_kernel_t;
 
 typedef struct

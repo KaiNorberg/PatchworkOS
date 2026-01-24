@@ -23,22 +23,24 @@ static atomic_bool cpuReadyFlag = ATOMIC_VAR_INIT(false);
 
 void trampoline_init(void)
 {
-    backupBuffer = pmm_alloc();
-    if (backupBuffer == NULL)
+    pfn_t pfn = pmm_alloc();
+    if (pfn == ERR)
     {
         panic(NULL, "Failed to allocate memory for trampoline backup");
     }
+    backupBuffer = PFN_TO_VIRT(pfn);
 
-    trampolineStack = pmm_alloc();
-    if (trampolineStack == NULL)
+    pfn = pmm_alloc();
+    if (pfn == ERR)
     {
         panic(NULL, "Failed to allocate memory for trampoline stack");
     }
+    trampolineStack = PFN_TO_VIRT(pfn);
 
     assert(TRAMPOLINE_SIZE < PAGE_SIZE);
 
-    if (vmm_map(NULL, (void*)TRAMPOLINE_BASE_ADDR, (void*)TRAMPOLINE_BASE_ADDR, PAGE_SIZE, PML_WRITE | PML_PRESENT,
-            NULL, NULL) == NULL)
+    if (vmm_map(NULL, (void*)TRAMPOLINE_BASE_ADDR, TRAMPOLINE_BASE_ADDR, PAGE_SIZE, PML_WRITE | PML_PRESENT, NULL,
+            NULL) == NULL)
     {
         panic(NULL, "Failed to map trampoline");
     }
@@ -63,9 +65,9 @@ void trampoline_deinit(void)
 
     vmm_unmap(NULL, (void*)TRAMPOLINE_BASE_ADDR, PAGE_SIZE);
 
-    pmm_free(backupBuffer);
+    pmm_free(VIRT_TO_PFN(backupBuffer));
     backupBuffer = NULL;
-    pmm_free(trampolineStack);
+    pmm_free(VIRT_TO_PFN(trampolineStack));
     trampolineStack = NULL;
 
     LOG_DEBUG("trampoline deinitialized\n");

@@ -7,6 +7,7 @@
 #include <kernel/cpu/regs.h>
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/drivers/perf.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/paging_types.h>
@@ -220,6 +221,7 @@ void interrupt_handler(interrupt_frame_t* frame)
     }
 
     note_handle_pending(frame);
+    irp_timeouts_check();
     wait_check_timeouts(frame);
     sched_do(frame);
 

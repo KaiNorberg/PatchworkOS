@@ -107,7 +107,7 @@ uint64_t ipi_chip_amount(void)
     return registeredChip != NULL ? 1 : 0;
 }
 
-static uint64_t ipi_push(cpu_t* cpu, ipi_func_t func,  void* data)
+static uint64_t ipi_push(cpu_t* cpu, ipi_func_t func, void* data)
 {
     if (registeredChip == NULL)
     {

@@ -1,8 +1,8 @@
-#include <modules/drivers/pci/config.h>
+#include <kernel/drivers/pci/config.h>
 
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>
-#include <modules/acpi/tables.h>
+#include <kernel/acpi/tables.h>
 
 static uint64_t entryCount;
 static mcfg_t* mcfg;
@@ -43,14 +43,13 @@ static uint64_t pci_config_init(void)
         uint64_t length = busCount * 256 * 4096;
 
         void* virtAddr = (void*)PML_LOWER_TO_HIGHER(entry->base);
-        if (vmm_map(NULL, virtAddr, (void*)entry->base, length, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) ==
-            NULL)
+        if (vmm_map(NULL, virtAddr, entry->base, length, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) == NULL)
         {
-            LOG_ERR("failed to map PCI-e configuration space at 0x%016lx\n", entry->base);
+            LOG_ERR("failed to map PCI-e configuration space at %p\n", entry->base);
             return ERR;
         }
 
-        LOG_INFO("mapped PCI-e config space 0x%016lx (segment=%u bus=%u-%u)\n", entry->base, entry->segmentGroup,
+        LOG_INFO("mapped PCI-e config space %p (segment=%u bus=%u-%u)\n", entry->base, entry->segmentGroup,
             entry->startBus, entry->endBus);
     }
 

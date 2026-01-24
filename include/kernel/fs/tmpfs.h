@@ -1,12 +1,12 @@
 #pragma once
 
 #include <kernel/fs/dentry.h>
-#include <kernel/fs/inode.h>
 #include <kernel/fs/superblock.h>
+#include <kernel/fs/vnode.h>
 
 #include <boot/boot_info.h>
 
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/list.h>
 
 /**

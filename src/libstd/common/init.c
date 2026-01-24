@@ -1,4 +1,4 @@
-#include "libstd/_internal/init.h"
+#include "_libstd/init.h"
 
 #include "constraint_handler.h"
 #include "heap.h"
@@ -8,7 +8,7 @@
 #include "user/user.h"
 #endif
 
-#include <sys/io.h>
+#include <sys/fs.h>
 
 void _std_init(void)
 {

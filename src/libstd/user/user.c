@@ -7,7 +7,7 @@
 #include "user/common/file.h"
 #include "user/common/note.h"
 
-#include <sys/io.h>
+#include <sys/fs.h>
 #include <sys/proc.h>
 
 static void _populate_std_descriptors(void)
