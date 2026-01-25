@@ -37,7 +37,7 @@ void devfs_init(void);
  * @param name The name of the new directory.
  * @param vnodeOps The vnode operations for the new directory, can be `NULL`.
  * @param private Private data to store in the vnode of the new directory, can be `NULL`.
- * @return On success, the new devfs directory. On failure, `NULL` and `errno` is set.
+ * @return On success, the new devfs directory. On failure, `NULL`.
  */
 dentry_t* devfs_dir_new(dentry_t* parent, const char* name, const vnode_ops_t* vnodeOps, void* data);
 
@@ -49,7 +49,7 @@ dentry_t* devfs_dir_new(dentry_t* parent, const char* name, const vnode_ops_t* v
  * @param vnodeOps The vnode operations for the new file, can be `NULL`.
  * @param fileOps The file operations for the new file, can be `NULL`.
  * @param private Private data to store in the vnode of the new file, can be `NULL`.
- * @return On success, the new devfs file. On failure, `NULL` and `errno` is set.
+ * @return On success, the new devfs file. On failure, `NULL`.
  */
 dentry_t* devfs_file_new(dentry_t* parent, const char* name, const vnode_ops_t* vnodeOps, const file_ops_t* fileOps,
     void* data);
@@ -61,7 +61,7 @@ dentry_t* devfs_file_new(dentry_t* parent, const char* name, const vnode_ops_t* 
  * @param name The name of the new symbolic link.
  * @param vnodeOps The vnode operations for the new symbolic link.
  * @param private Private data to store in the vnode of the new symbolic link, can be `NULL`.
- * @return On success, the new devfs symbolic link. On failure, `NULL` and `errno` is set.
+ * @return On success, the new devfs symbolic link. On failure, `NULL`.
  */
 dentry_t* devfs_symlink_new(dentry_t* parent, const char* name, const vnode_ops_t* vnodeOps, void* data);
 
@@ -83,9 +83,9 @@ typedef struct devfs_file_desc
  * @param out Output list to store created dentries, can be `NULL`. The dentries use the `otherEntry` list entry.
  * @param parent The parent directory, if `NULL` then the root is used.
  * @param descs Array of file descriptors, terminated by an entry with `name == NULL`.
- * @return On success, the number of files created. On failure, `ERR` and `errno` is set.
+ * @return On success, the number of files created. On failure, `_FAIL` and `errno` is set.
  */
-uint64_t devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t* descs);
+bool devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t* descs);
 
 /**
  * @brief Free all files in a list created by `devfs_files_new()`.

@@ -46,7 +46,7 @@ percpu_t percpu_alloc(size_t size)
     if (offset == allocated.length)
     {
         errno = ENOMEM;
-        return ERR;
+        return _FAIL;
     }
 
     cpu_t* cpu;
@@ -62,7 +62,7 @@ percpu_t percpu_alloc(size_t size)
 
 void percpu_free(percpu_t ptr, size_t size)
 {
-    if (ptr == ERR)
+    if (ptr == _FAIL)
     {
         return;
     }
@@ -132,7 +132,7 @@ void percpu_section_init(percpu_def_t* start, percpu_def_t* end)
     for (percpu_def_t* percpu = start; percpu < end; percpu++)
     {
         *percpu->ptr = percpu_alloc(percpu->size);
-        if (*percpu->ptr == (percpu_t)ERR)
+        if (*percpu->ptr == (percpu_t)_FAIL)
         {
             panic(NULL, "failed to allocate percpu variable");
         }

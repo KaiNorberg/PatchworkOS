@@ -36,16 +36,16 @@ static inline uint64_t aml_string_prepare(aml_object_t* obj, uint64_t length)
     aml_type_t type = obj->type;
     if (type == AML_STRING)
     {
-        if (aml_string_resize(&obj->string, length) == ERR)
+        if (aml_string_resize(&obj->string, length) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
     else
     {
-        if (aml_string_set_empty(obj, length) == ERR)
+        if (aml_string_set_empty(obj, length) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -110,9 +110,9 @@ static uint64_t aml_buffer_to_string(aml_state_t* state, aml_object_t* buffer, a
     // Each byte becomes two hex chars with a space in between, except the last byte.
     uint64_t length = bufferData->length > 0 ? bufferData->length * 3 - 1 : 0;
 
-    if (aml_string_prepare(dest, length) == ERR)
+    if (aml_string_prepare(dest, length) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     char* content = dest->string.content;
@@ -207,9 +207,9 @@ static uint64_t aml_integer_to_string(aml_state_t* state, aml_object_t* integer,
     UNUSED(state);
     const uint64_t stringLength = aml_integer_byte_size() * 2; // Two hex chars per byte
 
-    if (aml_string_prepare(dest, stringLength) == ERR)
+    if (aml_string_prepare(dest, stringLength) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     aml_integer_t* integerData = &integer->integer;
@@ -308,9 +308,9 @@ static uint64_t aml_stioring_to_buffer(aml_state_t* state, aml_object_t* string,
     else
     {
         bufferLength = stringData->length + 1; // +1 for null terminator
-        if (aml_buffer_set_empty(dest, bufferLength) == ERR)
+        if (aml_buffer_set_empty(dest, bufferLength) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -372,14 +372,14 @@ uint64_t aml_convert(aml_state_t* state, aml_object_t* src, aml_object_t* dest, 
     {
         LOG_ERR("src/dest object is NULL\n");
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (src->type == AML_UNINITIALIZED)
     {
         LOG_ERR("source object is uninitialized\n");
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     // BufferFields and FieldUnits are treated as either Buffers or Integers based on size
@@ -388,34 +388,34 @@ uint64_t aml_convert(aml_state_t* state, aml_object_t* src, aml_object_t* dest, 
         aml_object_t* temp = aml_object_new();
         if (temp == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
         UNREF_DEFER(temp);
 
         if (src->type == AML_FIELD_UNIT)
         {
-            if (aml_field_unit_load(state, &src->fieldUnit, temp) == ERR)
+            if (aml_field_unit_load(state, &src->fieldUnit, temp) == _FAIL)
             {
                 LOG_ERR("failed to load FieldUnit\n");
-                return ERR;
+                return _FAIL;
             }
         }
         else // AML_BUFFER_FIELD
         {
-            if (aml_buffer_field_load(&src->bufferField, temp) == ERR)
+            if (aml_buffer_field_load(&src->bufferField, temp) == _FAIL)
             {
                 LOG_ERR("failed to load BufferField\n");
-                return ERR;
+                return _FAIL;
             }
         }
 
         aml_type_t tempType = temp->type;
         if (tempType & allowedTypes)
         {
-            if (aml_copy_data_and_type(temp, dest) == ERR)
+            if (aml_copy_data_and_type(temp, dest) == _FAIL)
             {
                 LOG_ERR("failed to copy loaded field to destination\n");
-                return ERR;
+                return _FAIL;
             }
             return 0;
         }
@@ -427,11 +427,11 @@ uint64_t aml_convert(aml_state_t* state, aml_object_t* src, aml_object_t* dest, 
     // highest priority conversion.
     if (src->type & allowedTypes && (src->type == dest->type || dest->type == AML_UNINITIALIZED))
     {
-        if (aml_copy_data_and_type(src, dest) == ERR)
+        if (aml_copy_data_and_type(src, dest) == _FAIL)
         {
             LOG_ERR("failed to copy from '%s' to '%s'\n", aml_type_to_string(src->type),
                 aml_type_to_string(dest->type));
-            return ERR;
+            return _FAIL;
         }
         return 0;
     }
@@ -440,7 +440,7 @@ uint64_t aml_convert(aml_state_t* state, aml_object_t* src, aml_object_t* dest, 
     if (converters == NULL)
     {
         LOG_ERR("no converters defined for source type '%s'\n", aml_type_to_string(src->type));
-        return ERR;
+        return _FAIL;
     }
 
     for (size_t i = 0; i < AML_TYPE_AMOUNT; i++)
@@ -451,7 +451,7 @@ uint64_t aml_convert(aml_state_t* state, aml_object_t* src, aml_object_t* dest, 
         {
             LOG_ERR("no valid converter found from '%s' to any allowed type\n", aml_type_to_string(src->type));
             errno = EILSEQ;
-            return ERR;
+            return _FAIL;
         }
 
         if (!(allowedTypes & entry->destType))
@@ -464,15 +464,15 @@ uint64_t aml_convert(aml_state_t* state, aml_object_t* src, aml_object_t* dest, 
             LOG_ERR("converter from '%s' to '%s' not implemented\n", aml_type_to_string(src->type),
                 aml_type_to_string(entry->destType));
             errno = ENOSYS;
-            return ERR;
+            return _FAIL;
         }
 
         uint64_t result = entry->convertFunc(state, src, dest);
-        if (result == ERR)
+        if (result == _FAIL)
         {
             LOG_ERR("conversion from '%s' to '%s' failed\n", aml_type_to_string(src->type),
                 aml_type_to_string(entry->destType));
-            return ERR;
+            return _FAIL;
         }
         else if (result == AML_CONVERT_TRY_NEXT_CONVERTER)
         {
@@ -483,7 +483,7 @@ uint64_t aml_convert(aml_state_t* state, aml_object_t* src, aml_object_t* dest, 
     }
 
     errno = EILSEQ;
-    return ERR;
+    return _FAIL;
 }
 
 uint64_t aml_convert_result(aml_state_t* state, aml_object_t* result, aml_object_t* target)
@@ -492,14 +492,14 @@ uint64_t aml_convert_result(aml_state_t* state, aml_object_t* result, aml_object
     {
         LOG_ERR("result object is NULL\n");
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (result->type == AML_UNINITIALIZED || target->type == AML_UNINITIALIZED)
     {
         LOG_ERR("result/target object is uninitialized\n");
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (target == NULL)
@@ -509,12 +509,12 @@ uint64_t aml_convert_result(aml_state_t* state, aml_object_t* result, aml_object
 
     if (target->type == AML_ARG || target->type == AML_LOCAL)
     {
-        if (aml_store(state, result, target) == ERR)
+        if (aml_store(state, result, target) == _FAIL)
         {
             LOG_ERR("failed to store result '%s' of type '%s' to target '%s' of type '%s'\n",
                 AML_NAME_TO_STRING(result->name), aml_type_to_string(result->type), AML_NAME_TO_STRING(target->name),
                 aml_type_to_string(target->type));
-            return ERR;
+            return _FAIL;
         }
         return 0;
     }
@@ -522,21 +522,21 @@ uint64_t aml_convert_result(aml_state_t* state, aml_object_t* result, aml_object
     // I am assuming that "fixed type" means not a DataRefObject, let me know if this is wrong.
     if (!(target->type & AML_DATA_REF_OBJECTS))
     {
-        if (aml_convert(state, result, target, target->type) == ERR)
+        if (aml_convert(state, result, target, target->type) == _FAIL)
         {
             LOG_ERR("failed to convert result '%s' of type '%s' to target '%s' of '%s'\n",
                 AML_NAME_TO_STRING(result->name), aml_type_to_string(result->type), AML_NAME_TO_STRING(target->name),
                 aml_type_to_string(target->type));
-            return ERR;
+            return _FAIL;
         }
         return 0;
     }
 
-    if (aml_copy_data_and_type(result, target) == ERR)
+    if (aml_copy_data_and_type(result, target) == _FAIL)
     {
         LOG_ERR("failed to copy result '%s' of type '%s' to target '%s' of '%s'\n", AML_NAME_TO_STRING(result->name),
             aml_type_to_string(result->type), AML_NAME_TO_STRING(target->name), aml_type_to_string(target->type));
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -548,14 +548,14 @@ uint64_t aml_convert_source(aml_state_t* state, aml_object_t* src, aml_object_t*
     {
         LOG_ERR("src/dest object is NULL\n");
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (src->type == AML_UNINITIALIZED)
     {
         LOG_ERR("source object is uninitialized\n");
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (src->type == AML_ARG)
@@ -586,14 +586,14 @@ uint64_t aml_convert_source(aml_state_t* state, aml_object_t* src, aml_object_t*
     *dest = aml_object_new();
     if (*dest == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
-    if (aml_convert(state, src, *dest, allowedTypes) == ERR)
+    if (aml_convert(state, src, *dest, allowedTypes) == _FAIL)
     {
         UNREF(*dest);
         *dest = NULL;
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -605,14 +605,14 @@ uint64_t aml_convert_to_buffer(aml_state_t* state, aml_object_t* src, aml_object
     {
         LOG_ERR("src/dest object is NULL\n");
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (src->type == AML_UNINITIALIZED)
     {
         LOG_ERR("src object is uninitialized\n");
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (src->type == AML_BUFFER)
@@ -624,24 +624,24 @@ uint64_t aml_convert_to_buffer(aml_state_t* state, aml_object_t* src, aml_object
     aml_object_t* temp = aml_object_new();
     if (temp == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(temp);
 
     if (src->type == AML_INTEGER)
     {
-        if (aml_integer_to_buffer(state, src, temp) == ERR)
+        if (aml_integer_to_buffer(state, src, temp) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         *dest = REF(temp);
         return 0;
     }
     else if (src->type == AML_STRING)
     {
-        if (aml_stioring_to_buffer(state, src, temp) == ERR)
+        if (aml_stioring_to_buffer(state, src, temp) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         *dest = REF(temp);
         return 0;
@@ -649,7 +649,7 @@ uint64_t aml_convert_to_buffer(aml_state_t* state, aml_object_t* src, aml_object
 
     LOG_ERR("cannot convert '%s' to Buffer\n", aml_type_to_string(src->type));
     errno = EILSEQ;
-    return ERR;
+    return _FAIL;
 }
 
 uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, aml_object_t** dest)
@@ -660,14 +660,14 @@ uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, am
     {
         LOG_ERR("src/dest object is NULL\n");
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (src->type == AML_UNINITIALIZED)
     {
         LOG_ERR("src object is uninitialized\n");
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (src->type == AML_STRING)
@@ -679,7 +679,7 @@ uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, am
     aml_object_t* temp = aml_object_new();
     if (temp == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(temp);
 
@@ -689,12 +689,12 @@ uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, am
         int length = snprintf(buffer, sizeof(buffer), "%llu", src->integer.value);
         if (length < 0)
         {
-            return ERR;
+            return _FAIL;
         }
 
-        if (aml_string_set_empty(temp, length) == ERR)
+        if (aml_string_set_empty(temp, length) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         memcpy(temp->string.content, buffer, length);
         *dest = REF(temp);
@@ -706,9 +706,9 @@ uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, am
 
         if (bufferData->length == 0)
         {
-            if (aml_string_set_empty(temp, 0) == ERR)
+            if (aml_string_set_empty(temp, 0) == _FAIL)
             {
-                return ERR;
+                return _FAIL;
             }
             *dest = REF(temp);
             return 0;
@@ -718,7 +718,7 @@ uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, am
         char* buff = malloc(maxLen + 1);
         if (buff == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
 
         char* p = buff;
@@ -730,7 +730,7 @@ uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, am
             {
                 free(buff);
                 errno = EILSEQ;
-                return ERR;
+                return _FAIL;
             }
             p += written;
 
@@ -742,10 +742,10 @@ uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, am
         *p = '\0';
 
         uint64_t length = p - buff;
-        if (aml_string_prepare(temp, length) == ERR)
+        if (aml_string_prepare(temp, length) == _FAIL)
         {
             free(temp);
-            return ERR;
+            return _FAIL;
         }
         memcpy(temp->string.content, temp, length);
         free(buff);
@@ -755,7 +755,7 @@ uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, am
 
     LOG_ERR("cannot convert '%s' to String\n", aml_type_to_string(src->type));
     errno = EILSEQ;
-    return ERR;
+    return _FAIL;
 }
 
 uint64_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_object_t** dest)
@@ -766,14 +766,14 @@ uint64_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_ob
     {
         LOG_ERR("src/dest object is NULL\n");
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (src->type == AML_UNINITIALIZED)
     {
         LOG_ERR("src object is uninitialized\n");
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (src->type == AML_STRING)
@@ -785,7 +785,7 @@ uint64_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_ob
     aml_object_t* temp = aml_object_new();
     if (temp == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(temp);
 
@@ -795,13 +795,13 @@ uint64_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_ob
         int len = snprintf(buffer, sizeof(buffer), "%llx", (unsigned long long)src->integer.value);
         if (len < 0)
         {
-            return ERR;
+            return _FAIL;
         }
 
-        if (aml_string_set_empty(temp, len) == ERR)
+        if (aml_string_set_empty(temp, len) == _FAIL)
         {
             UNREF(temp);
-            return ERR;
+            return _FAIL;
         }
         memcpy(temp->string.content, buffer, len + 1);
         *dest = REF(temp);
@@ -813,20 +813,20 @@ uint64_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_ob
 
         if (bufferData->length == 0)
         {
-            if (aml_string_set_empty(temp, 0) == ERR)
+            if (aml_string_set_empty(temp, 0) == _FAIL)
             {
                 UNREF(temp);
-                return ERR;
+                return _FAIL;
             }
             *dest = REF(temp);
             return 0;
         }
 
         uint64_t len = bufferData->length * 3 - 1; // "XX," per byte except last
-        if (aml_string_set_empty(temp, len) == ERR)
+        if (aml_string_set_empty(temp, len) == _FAIL)
         {
             UNREF(temp);
-            return ERR;
+            return _FAIL;
         }
 
         char* content = temp->string.content;
@@ -845,7 +845,7 @@ uint64_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_ob
 
     LOG_ERR("cannot convert '%s' to String\n", aml_type_to_string(src->type));
     errno = EILSEQ;
-    return ERR;
+    return _FAIL;
 }
 
 uint64_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_object_t** dest)
@@ -856,14 +856,14 @@ uint64_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_objec
     {
         LOG_ERR("src/dest object is NULL\n");
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (src->type == AML_UNINITIALIZED)
     {
         LOG_ERR("src object is uninitialized\n");
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (src->type == AML_INTEGER)
@@ -875,7 +875,7 @@ uint64_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_objec
     aml_object_t* temp = aml_object_new();
     if (temp == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(temp);
 
@@ -885,7 +885,7 @@ uint64_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_objec
         if (stringData->length == 0 || stringData->content == NULL)
         {
             errno = EILSEQ;
-            return ERR;
+            return _FAIL;
         }
 
         // Determine if hex (0x prefix) or decimal
@@ -926,18 +926,18 @@ uint64_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_objec
             }
         }
 
-        if (aml_integer_set(temp, value) == ERR)
+        if (aml_integer_set(temp, value) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         *dest = REF(temp);
         return 0;
     }
     else if (src->type == AML_BUFFER)
     {
-        if (aml_buffer_to_integer(state, src, temp) == ERR)
+        if (aml_buffer_to_integer(state, src, temp) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         *dest = REF(temp);
         return 0;
@@ -945,7 +945,7 @@ uint64_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_objec
 
     LOG_ERR("cannot convert '%s' to Integer\n", aml_type_to_string(src->type));
     errno = EILSEQ;
-    return ERR;
+    return _FAIL;
 }
 
 uint64_t aml_convert_integer_to_bcd(aml_uint_t value, aml_uint_t* out)
@@ -953,7 +953,7 @@ uint64_t aml_convert_integer_to_bcd(aml_uint_t value, aml_uint_t* out)
     if (out == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     aml_uint_t bcd = 0;

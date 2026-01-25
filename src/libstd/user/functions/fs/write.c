@@ -8,7 +8,7 @@
 size_t write(fd_t fd, const void* buffer, size_t count)
 {
     uint64_t result = _syscall_write(fd, buffer, count);
-    if (result == ERR)
+    if (result == _FAIL)
     {
         errno = _syscall_errno();
     }

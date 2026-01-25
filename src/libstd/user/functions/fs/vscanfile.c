@@ -6,9 +6,9 @@
 uint64_t vscanfile(const char* path, const char* format, va_list args)
 {
     fd_t fd = open(path);
-    if (fd == ERR)
+    if (fd == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     uint64_t result = vscan(fd, format, args);
     close(fd);

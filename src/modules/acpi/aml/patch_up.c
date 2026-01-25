@@ -23,13 +23,13 @@ uint64_t aml_patch_up_add_unresolved(aml_unresolved_t* unresolved)
     if (unresolved == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     aml_patch_up_entry_t* entry = malloc(sizeof(aml_patch_up_entry_t));
     if (entry == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     list_entry_init(&entry->entry);
@@ -60,10 +60,10 @@ void aml_patch_up_remove_unresolved(aml_unresolved_t* unresolved)
 uint64_t aml_patch_up_resolve_all(void)
 {
     aml_state_t state;
-    if (aml_state_init(&state, NULL) == ERR)
+    if (aml_state_init(&state, NULL) == _FAIL)
     {
         LOG_PANIC("Failed to init AML state\n");
-        return ERR;
+        return _FAIL;
     }
 
     aml_patch_up_entry_t* entry = NULL;
@@ -81,11 +81,11 @@ uint64_t aml_patch_up_resolve_all(void)
 
         aml_unresolved_t* unresolved = entry->unresolved;
         aml_object_t* obj = CONTAINER_OF(unresolved, aml_object_t, unresolved);
-        if (unresolved->callback(&state, match, obj) == ERR)
+        if (unresolved->callback(&state, match, obj) == _FAIL)
         {
             aml_state_deinit(&state);
             LOG_ERR("Failed to patch up unresolved object\n");
-            return ERR;
+            return _FAIL;
         }
 
         // When a unresolved object changes type it will call aml_patch_up_remove_unresolved itself.
@@ -94,7 +94,7 @@ uint64_t aml_patch_up_resolve_all(void)
             aml_state_deinit(&state);
             LOG_ERR("Unresolved object did not change type\n");
             errno = EILSEQ;
-            return ERR;
+            return _FAIL;
         }
     }
 

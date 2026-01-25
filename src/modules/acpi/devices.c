@@ -34,9 +34,9 @@ static uint64_t acpi_id_object_to_string(aml_object_t* idObject, char* out, size
     }
     else if (idObject->type == AML_INTEGER)
     {
-        if (aml_eisa_id_to_string(idObject->integer.value, out, outSize) == ERR)
+        if (aml_eisa_id_to_string(idObject->integer.value, out, outSize) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
     else
@@ -44,7 +44,7 @@ static uint64_t acpi_id_object_to_string(aml_object_t* idObject, char* out, size
         LOG_ERR("id object '%s' is of invalid type '%s'\n", AML_NAME_TO_STRING(idObject->name),
             aml_type_to_string(idObject->type));
         errno = EILSEQ;
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -64,7 +64,7 @@ static uint64_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t* out)
     if (staResult == NULL)
     {
         LOG_ERR("failed to evaluate %s._STA\n", AML_NAME_TO_STRING(device->name));
-        return ERR;
+        return _FAIL;
     }
     aml_uint_t value = staResult->integer.value;
     UNREF(staResult);
@@ -74,7 +74,7 @@ static uint64_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t* out)
     {
         LOG_ERR("%s._STA returned invalid value 0x%llx\n", AML_NAME_TO_STRING(device->name), value);
         errno = EILSEQ;
-        return ERR;
+        return _FAIL;
     }
 
     *out = (acpi_sta_flags_t)value;
@@ -104,7 +104,7 @@ static uint64_t acpi_ids_push(acpi_ids_t* ids, const char* hid, const char* cid,
     acpi_id_t* newArray = realloc(ids->array, sizeof(acpi_id_t) * (ids->length + 1));
     if (newArray == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     ids->array = newArray;
 
@@ -150,13 +150,13 @@ static uint64_t acpi_ids_push_device(acpi_ids_t* ids, aml_object_t* device, cons
     aml_object_t* hidResult = aml_evaluate(NULL, hid, AML_STRING | AML_INTEGER);
     if (hidResult == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(hidResult);
 
-    if (acpi_id_object_to_string(hidResult, deviceId.hid, MAX_NAME) == ERR)
+    if (acpi_id_object_to_string(hidResult, deviceId.hid, MAX_NAME) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     if (strcmp(deviceId.hid, "ACPI0010") == 0) // Ignore Processor Container Device
@@ -172,19 +172,19 @@ static uint64_t acpi_ids_push_device(acpi_ids_t* ids, aml_object_t* device, cons
         aml_object_t* cidResult = aml_evaluate(NULL, cid, AML_STRING | AML_INTEGER);
         if (cidResult == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
         UNREF_DEFER(cidResult);
 
-        if (acpi_id_object_to_string(cidResult, deviceId.cid, MAX_NAME) == ERR)
+        if (acpi_id_object_to_string(cidResult, deviceId.cid, MAX_NAME) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
 
-    if (acpi_ids_push(ids, deviceId.hid, deviceId.cid, path) == ERR)
+    if (acpi_ids_push(ids, deviceId.hid, deviceId.cid, path) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -201,7 +201,7 @@ static aml_object_t* acpi_sb_init(void)
     UNREF_DEFER(sb);
 
     acpi_sta_flags_t sta;
-    if (acpi_sta_get_flags(sb, &sta) == ERR)
+    if (acpi_sta_get_flags(sb, &sta) == _FAIL)
     {
         return NULL;
     }
@@ -248,9 +248,9 @@ static uint64_t acpi_device_init_children(acpi_ids_t* ids, aml_object_t* device,
         }
 
         acpi_sta_flags_t sta;
-        if (acpi_sta_get_flags(child, &sta) == ERR)
+        if (acpi_sta_get_flags(child, &sta) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
 
         if (sta & ACPI_STA_PRESENT)
@@ -263,22 +263,22 @@ static uint64_t acpi_device_init_children(acpi_ids_t* ids, aml_object_t* device,
                 if (iniResult == NULL)
                 {
                     LOG_ERR("failed to evaluate %s._INI\n", childPath);
-                    return ERR;
+                    return _FAIL;
                 }
                 UNREF(iniResult);
             }
 
-            if (acpi_ids_push_device(ids, child, childPath) == ERR)
+            if (acpi_ids_push_device(ids, child, childPath) == _FAIL)
             {
-                return ERR;
+                return _FAIL;
             }
         }
 
         if (sta & (ACPI_STA_PRESENT | ACPI_STA_FUNCTIONAL))
         {
-            if (acpi_device_init_children(ids, child, childPath) == ERR)
+            if (acpi_device_init_children(ids, child, childPath) == _FAIL)
             {
-                return ERR;
+                return _FAIL;
             }
         }
     }
@@ -356,7 +356,7 @@ static uint64_t acpi_device_configure(const char* name)
     if (device == NULL)
     {
         LOG_ERR("failed to find ACPI device '%s' in namespace for configuration\n", name);
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(device);
 
@@ -364,7 +364,7 @@ static uint64_t acpi_device_configure(const char* name)
     {
         LOG_ERR("ACPI object '%s' is not a device, cannot configure\n", name);
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (device->device.cfg != NULL)
@@ -376,7 +376,7 @@ static uint64_t acpi_device_configure(const char* name)
     acpi_device_cfg_t* cfg = calloc(1, sizeof(acpi_device_cfg_t));
     if (cfg == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     acpi_resources_t* resources = acpi_resources_current(device);
@@ -389,7 +389,7 @@ static uint64_t acpi_device_configure(const char* name)
         }
         LOG_ERR("failed to get current resources for ACPI device '%s' due to '%s'\n", name, strerror(errno));
         free(cfg);
-        return ERR;
+        return _FAIL;
     }
 
     acpi_resource_t* resource;
@@ -415,7 +415,7 @@ static uint64_t acpi_device_configure(const char* name)
                 }
 
                 irq_virt_t virt;
-                if (irq_virt_alloc(&virt, phys, flags, NULL) == ERR)
+                if (irq_virt_alloc(&virt, phys, flags, NULL) == _FAIL)
                 {
                     LOG_ERR("failed to allocate virtual IRQ for ACPI device '%s' due to '%s'\n", name, strerror(errno));
                     goto error;
@@ -451,7 +451,7 @@ static uint64_t acpi_device_configure(const char* name)
             cfg->ios = newIos;
 
             port_t base;
-            if (port_reserve(&base, desc->minBase, desc->maxBase, desc->alignment, desc->length, name) == ERR)
+            if (port_reserve(&base, desc->minBase, desc->maxBase, desc->alignment, desc->length, name) == _FAIL)
             {
                 LOG_ERR("failed to reserve IO ports for ACPI device '%s' due to '%s'\n", name, strerror(errno));
                 goto error;
@@ -474,7 +474,7 @@ static uint64_t acpi_device_configure(const char* name)
 error:
     free(resources);
     acpi_device_cfg_free(cfg);
-    return ERR;
+    return _FAIL;
 }
 
 uint64_t acpi_devices_init(void)
@@ -490,15 +490,15 @@ uint64_t acpi_devices_init(void)
     if (sb == NULL)
     {
         LOG_ERR("failed to initialize ACPI devices\n");
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(sb);
 
     LOG_DEBUG("initializing ACPI devices under \\_SB_\n");
-    if (acpi_device_init_children(&ids, sb, "\\_SB_") == ERR)
+    if (acpi_device_init_children(&ids, sb, "\\_SB_") == _FAIL)
     {
         LOG_ERR("failed to initialize ACPI devices\n");
-        return ERR;
+        return _FAIL;
     }
 
     // Because of... reasons some hardware wont report certain devices via ACPI
@@ -506,19 +506,19 @@ uint64_t acpi_devices_init(void)
 
     if (acpi_tables_lookup("HPET", sizeof(sdt_header_t), 0) != NULL) // HPET
     {
-        if (acpi_ids_push_if_absent(&ids, "PNP0103", ".HPET") == ERR)
+        if (acpi_ids_push_if_absent(&ids, "PNP0103", ".HPET") == _FAIL)
         {
             LOG_ERR("failed to initialize ACPI devices\n");
-            return ERR;
+            return _FAIL;
         }
     }
 
     if (acpi_tables_lookup("APIC", sizeof(sdt_header_t), 0) != NULL) // APIC
     {
-        if (acpi_ids_push_if_absent(&ids, "PNP0003", ".APIC") == ERR)
+        if (acpi_ids_push_if_absent(&ids, "PNP0003", ".APIC") == _FAIL)
         {
             LOG_ERR("failed to initialize ACPI devices\n");
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -529,7 +529,7 @@ uint64_t acpi_devices_init(void)
 
     for (size_t i = 0; i < ids.length; i++)
     {
-        if (acpi_device_configure(ids.array[i].path) == ERR)
+        if (acpi_device_configure(ids.array[i].path) == _FAIL)
         {
             // Dont load module for unconfigurable device
             memmove(&ids.array[i], &ids.array[i + 1], sizeof(acpi_id_t) * (ids.length - i - 1));
@@ -542,7 +542,7 @@ uint64_t acpi_devices_init(void)
     for (size_t i = 0; i < ids.length; i++)
     {
         uint64_t loadedModules = module_device_attach(ids.array[i].hid, ids.array[i].path, MODULE_LOAD_ONE);
-        if (loadedModules == ERR)
+        if (loadedModules == _FAIL)
         {
             LOG_ERR("failed to load module for HID '%s' due to '%s'\n", ids.array[i].hid, strerror(errno));
             continue;
@@ -554,7 +554,7 @@ uint64_t acpi_devices_init(void)
         }
 
         loadedModules = module_device_attach(ids.array[i].cid, ids.array[i].path, MODULE_LOAD_ONE);
-        if (loadedModules == ERR)
+        if (loadedModules == _FAIL)
         {
             LOG_ERR("failed to load module for CID '%s' due to '%s'\n", ids.array[i].cid, strerror(errno));
         }
@@ -605,7 +605,7 @@ uint64_t acpi_device_cfg_get_port(acpi_device_cfg_t* cfg, uint64_t index, port_t
     if (cfg == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     for (uint64_t i = 0; i < cfg->ioCount; i++)
@@ -619,5 +619,5 @@ uint64_t acpi_device_cfg_get_port(acpi_device_cfg_t* cfg, uint64_t index, port_t
     }
 
     errno = ENOSPC;
-    return ERR;
+    return _FAIL;
 }

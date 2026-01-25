@@ -175,9 +175,9 @@ uint64_t note_amount(note_queue_t* queue);
  *
  * @param queue The destination queue.
  * @param string The string to write, should be a null-terminated string.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t note_send(note_queue_t* queue, const char* string);
+status_t note_send(note_queue_t* queue, const char* string);
 
 /**
  * @brief Handle pending notes for the current thread.
@@ -187,8 +187,7 @@ uint64_t note_send(note_queue_t* queue, const char* string);
  * If the frame is not from user space, this function will return immediately.
  *
  * @param frame The interrupt frame.
- * @return `true` if a note was handled, `false` otherwise.
  */
-bool note_handle_pending(interrupt_frame_t* frame);
+void note_handle_pending(interrupt_frame_t* frame);
 
 /** @} */

@@ -11,7 +11,7 @@ uint64_t aml_integer_handling_init(void)
     if (dsdt == NULL)
     {
         LOG_ERR("failed to retrieve DSDT\n");
-        return ERR;
+        return _FAIL;
     }
     integerByteSize = dsdt->header.revision < 2 ? 4 : 8; // Section 5.2.11.1
 

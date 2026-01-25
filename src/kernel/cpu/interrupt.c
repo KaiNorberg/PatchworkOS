@@ -23,7 +23,7 @@
 static void exception_handle_user(interrupt_frame_t* frame, const char* note)
 {
     thread_t* thread = thread_current_unsafe();
-    if (thread_send_note(thread, note) == ERR)
+    if (thread_send_note(thread, note) == _FAIL)
     {
         atomic_store(&thread->state, THREAD_DYING);
         process_kill(thread->process, note);
@@ -32,26 +32,27 @@ static void exception_handle_user(interrupt_frame_t* frame, const char* note)
     }
 }
 
-static uint64_t exception_grow_stack(thread_t* thread, uintptr_t faultAddr, stack_pointer_t* stack, pml_flags_t flags)
+static status_t exception_grow_stack(thread_t* thread, uintptr_t faultAddr, stack_pointer_t* stack, pml_flags_t flags)
 {
     uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
     if (stack_pointer_is_in_stack(stack, alignedFaultAddr, 1))
     {
-        if (vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PAGE_SIZE, flags,
-                VMM_ALLOC_FAIL_IF_MAPPED) == NULL)
+        status_t status = vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PAGE_SIZE, flags,
+                VMM_ALLOC_FAIL_IF_MAPPED);
+        if (IS_ERR(status))
         {
-            if (errno == EEXIST) // Race condition, another CPU mapped the page.
+            if (ST_CODE(status) == ST_CODE_MAPPED)
             {
-                return 0;
+                return OK;
             }
-            return ERR;
+            return status;
         }
         memset_s((void*)alignedFaultAddr, PAGE_SIZE, 0, PAGE_SIZE);
 
-        return 1;
+        return INFO(INT, IN_STACK);
     }
 
-    return 0;
+    return OK;
 }
 
 static void exception_kernel_page_fault_handler(interrupt_frame_t* frame)
@@ -71,24 +72,24 @@ static void exception_kernel_page_fault_handler(interrupt_frame_t* frame)
         panic(frame, "kernel stack overflow at address 0x%llx", faultAddr);
     }
 
-    uint64_t result = exception_grow_stack(thread, faultAddr, &thread->kernelStack, PML_WRITE | PML_PRESENT);
-    if (result == ERR)
+    status_t status = exception_grow_stack(thread, faultAddr, &thread->kernelStack, PML_WRITE | PML_PRESENT);
+    if (IS_ERR(status))
     {
         panic(frame, "failed to grow kernel stack for page fault at address 0x%llx", faultAddr);
     }
 
-    if (result == 1)
+    if (ST_CODE(status) == ST_CODE_IN_STACK)
     {
         return;
     }
 
-    result = exception_grow_stack(thread, faultAddr, &thread->userStack, PML_USER | PML_WRITE | PML_PRESENT);
-    if (result == ERR)
+    status = exception_grow_stack(thread, faultAddr, &thread->userStack, PML_USER | PML_WRITE | PML_PRESENT);
+    if (IS_ERR(status))
     {
         panic(frame, "failed to grow user stack for page fault at address 0x%llx", faultAddr);
     }
 
-    if (result == 1)
+    if (ST_CODE(status) == ST_CODE_IN_STACK)
     {
         return;
     }
@@ -117,14 +118,14 @@ static void exception_user_page_fault_handler(interrupt_frame_t* frame)
         return;
     }
 
-    uint64_t result = exception_grow_stack(thread, faultAddr, &thread->userStack, PML_USER | PML_WRITE | PML_PRESENT);
-    if (result == ERR)
+    status_t status = exception_grow_stack(thread, faultAddr, &thread->userStack, PML_USER | PML_WRITE | PML_PRESENT);
+    if (IS_ERR(status))
     {
         exception_handle_user(frame, F("pagefault at 0x%llx failed to grow stack at 0x%llx", frame->rip, faultAddr));
         return;
     }
 
-    if (result == 1)
+    if (ST_CODE(status) == ST_CODE_IN_STACK)
     {
         return;
     }

@@ -23,7 +23,8 @@
 // rax = syscall number
 // rcx = user rip
 // r11 = user rflags
-// Return value in rax
+// Status in rax
+// Result in rdx
 syscall_entry:
     swapgs
 

@@ -10,10 +10,10 @@
 uint64_t aml_pkg_lead_byte_read(aml_term_list_ctx_t* ctx, aml_pkg_lead_byte_t* out)
 {
     uint8_t pkgLeadByte;
-    if (aml_byte_data_read(ctx, &pkgLeadByte) == ERR)
+    if (aml_byte_data_read(ctx, &pkgLeadByte) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read ByteData");
-        return ERR;
+        return _FAIL;
     }
 
     out->byteDataCount = (pkgLeadByte >> 6) & 0x03;   // bits (7-6)
@@ -25,7 +25,7 @@ uint64_t aml_pkg_lead_byte_read(aml_term_list_ctx_t* ctx, aml_pkg_lead_byte_t* o
     {
         AML_DEBUG_ERROR(ctx, "Invalid PkgLeadByte '0x%x'", pkgLeadByte);
         errno = EILSEQ;
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -36,10 +36,10 @@ uint64_t aml_pkg_length_read(aml_term_list_ctx_t* ctx, aml_pkg_length_t* out)
     const uint8_t* start = ctx->current;
 
     aml_pkg_lead_byte_t pkgLeadByte;
-    if (aml_pkg_lead_byte_read(ctx, &pkgLeadByte) == ERR)
+    if (aml_pkg_lead_byte_read(ctx, &pkgLeadByte) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read PkgLeadByte");
-        return ERR;
+        return _FAIL;
     }
 
     // If no bytes follow, then the smallLengthBits store the package length.
@@ -54,10 +54,10 @@ uint64_t aml_pkg_length_read(aml_term_list_ctx_t* ctx, aml_pkg_length_t* out)
     for (uint32_t i = 0; i < pkgLeadByte.byteDataCount; i++)
     {
         uint8_t byte;
-        if (aml_byte_data_read(ctx, &byte) == ERR)
+        if (aml_byte_data_read(ctx, &byte) == _FAIL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read ByteData");
-            return ERR;
+            return _FAIL;
         }
         length |= ((uint32_t)byte) << (4 + i * 8);
     }
@@ -67,7 +67,7 @@ uint64_t aml_pkg_length_read(aml_term_list_ctx_t* ctx, aml_pkg_length_t* out)
     {
         AML_DEBUG_ERROR(ctx, "Package length out of range: %lu", length);
         errno = ERANGE;
-        return ERR;
+        return _FAIL;
     }
 
     *out = length;

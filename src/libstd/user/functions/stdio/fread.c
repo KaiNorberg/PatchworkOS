@@ -10,14 +10,14 @@ size_t fread(void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTRICT str
 
     uint64_t n = 0;
 
-    if (_file_prepare_read(stream) != ERR)
+    if (_file_prepare_read(stream) != _FAIL)
     {
         for (; n < nmemb; n++)
         {
             /// @todo For better performance, read block-wise, not byte-wise.
             for (uint64_t i = 0; i < size; i++)
             {
-                if (_FILE_CHECK_AVAIL(stream) == ERR)
+                if (_FILE_CHECK_AVAIL(stream) == _FAIL)
                 {
                     mtx_unlock(&stream->mtx);
                     return n;

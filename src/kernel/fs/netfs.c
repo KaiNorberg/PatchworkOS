@@ -55,7 +55,7 @@ static socket_t* socket_new(netfs_family_t* family, socket_type_t type)
     socket->data = NULL;
     mutex_init(&socket->mutex);
 
-    if (socket->family->init(socket) == ERR)
+    if (socket->family->init(socket) == _FAIL)
     {
         free(socket);
         return NULL;
@@ -106,7 +106,7 @@ static size_t netfs_data_read(file_t* file, void* buf, size_t count, size_t* off
     if (sock->state != SOCKET_CONNECTED)
     {
         errno = ENOTCONN;
-        return ERR;
+        return _FAIL;
     }
 
     return sock->family->recv(sock, buf, count, offset, file->mode);
@@ -128,7 +128,7 @@ static size_t netfs_data_write(file_t* file, const void* buf, size_t count, size
     if (sock->state != SOCKET_CONNECTED)
     {
         errno = ENOTCONN;
-        return ERR;
+        return _FAIL;
     }
 
     return sock->family->send(sock, buf, count, offset, file->mode);
@@ -166,7 +166,7 @@ static uint64_t netfs_accept_open(file_t* file)
     if (sock->family->accept == NULL)
     {
         errno = ENOSYS;
-        return ERR;
+        return _FAIL;
     }
 
     MUTEX_SCOPE(&sock->mutex);
@@ -174,19 +174,19 @@ static uint64_t netfs_accept_open(file_t* file)
     if (sock->state != SOCKET_LISTENING)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     socket_t* newSock = socket_new(sock->family, sock->type);
     if (newSock == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
-    if (sock->family->accept(sock, newSock, file->mode) == ERR)
+    if (sock->family->accept(sock, newSock, file->mode) == _FAIL)
     {
         socket_free(newSock);
-        return ERR;
+        return _FAIL;
     }
 
     newSock->state = SOCKET_CONNECTED;
@@ -209,7 +209,7 @@ static uint64_t netfs_ctl_bind(file_t* file, uint64_t argc, const char** argv)
     if (sock->family->bind == NULL)
     {
         errno = ENOSYS;
-        return ERR;
+        return _FAIL;
     }
 
     MUTEX_SCOPE(&sock->mutex);
@@ -217,15 +217,15 @@ static uint64_t netfs_ctl_bind(file_t* file, uint64_t argc, const char** argv)
     if (sock->state != SOCKET_NEW)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     strncpy(sock->address, argv[1], sizeof(sock->address));
     sock->address[sizeof(sock->address) - 1] = '\0';
 
-    if (sock->family->bind(sock) == ERR)
+    if (sock->family->bind(sock) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     sock->state = SOCKET_BOUND;
@@ -242,13 +242,13 @@ static uint64_t netfs_ctl_listen(file_t* file, uint64_t argc, const char** argv)
         if (sscanf(argv[1], "%llu", &backlog) != 1)
         {
             errno = EINVAL;
-            return ERR;
+            return _FAIL;
         }
 
         if (backlog == 0)
         {
             errno = EINVAL;
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -258,7 +258,7 @@ static uint64_t netfs_ctl_listen(file_t* file, uint64_t argc, const char** argv)
     if (sock->family->listen == NULL)
     {
         errno = ENOSYS;
-        return ERR;
+        return _FAIL;
     }
 
     MUTEX_SCOPE(&sock->mutex);
@@ -266,12 +266,12 @@ static uint64_t netfs_ctl_listen(file_t* file, uint64_t argc, const char** argv)
     if (sock->state != SOCKET_BOUND)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
-    if (sock->family->listen(sock, backlog) == ERR)
+    if (sock->family->listen(sock, backlog) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     sock->state = SOCKET_LISTENING;
@@ -288,7 +288,7 @@ static uint64_t netfs_ctl_connect(file_t* file, uint64_t argc, const char** argv
     if (sock->family->connect == NULL)
     {
         errno = ENOSYS;
-        return ERR;
+        return _FAIL;
     }
 
     MUTEX_SCOPE(&sock->mutex);
@@ -296,15 +296,15 @@ static uint64_t netfs_ctl_connect(file_t* file, uint64_t argc, const char** argv
     if (sock->state != SOCKET_NEW && sock->state != SOCKET_BOUND)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     strncpy(sock->address, argv[1], sizeof(sock->address));
     sock->address[sizeof(sock->address) - 1] = '\0';
 
-    if (sock->family->connect(sock) == ERR)
+    if (sock->family->connect(sock) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     sock->state = SOCKET_CONNECTED;
@@ -337,7 +337,7 @@ static uint64_t netfs_socket_lookup(vnode_t* dir, dentry_t* dentry)
         vnode_t* vnode = vnode_new(dir->superblock, VREG, NULL, socketFiles[i].fileOps);
         if (vnode == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
         UNREF_DEFER(vnode);
         vnode->data = dir->data; // No reference
@@ -421,7 +421,7 @@ static uint64_t netfs_factory_open(file_t* file)
     socket_t* socket = socket_new(ctx->family, ctx->fileInfo->type);
     if (socket == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(socket);
 
@@ -432,7 +432,7 @@ static uint64_t netfs_factory_open(file_t* file)
     namespace_t* ns = process_get_ns(process_current());
     if (ns == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(ns);
 
@@ -486,7 +486,7 @@ static size_t netfs_addrs_read(file_t* file, void* buffer, size_t count, size_t*
     if (string == NULL)
     {
         errno = ENOMEM;
-        return ERR;
+        return _FAIL;
     }
 
     size_t length = 0;
@@ -555,14 +555,14 @@ static uint64_t netfs_family_lookup(vnode_t* dir, dentry_t* dentry)
         vnode_t* vnode = vnode_new(dir->superblock, VREG, &familyFileVnodeOps, familyFiles[i].fileOps);
         if (vnode == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
         UNREF_DEFER(vnode);
 
         netfs_family_file_ctx_t* ctx = malloc(sizeof(netfs_family_file_ctx_t));
         if (ctx == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
         ctx->family = family;
         ctx->fileInfo = &familyFiles[i];
@@ -582,7 +582,7 @@ static uint64_t netfs_family_lookup(vnode_t* dir, dentry_t* dentry)
     namespace_t* ns = process_get_ns(process_current());
     if (ns == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(ns);
 
@@ -609,7 +609,7 @@ static uint64_t netfs_family_lookup(vnode_t* dir, dentry_t* dentry)
         vnode_t* vnode = vnode_new(dir->superblock, VDIR, &socketVnodeOps, NULL);
         if (vnode == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
         UNREF_DEFER(vnode);
         vnode->data = REF(socket);
@@ -656,7 +656,7 @@ static uint64_t netfs_family_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     namespace_t* ns = process_get_ns(process_current());
     if (ns == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(ns);
 
@@ -712,7 +712,7 @@ static uint64_t netfs_lookup(vnode_t* dir, dentry_t* dentry)
         vnode_t* vnode = vnode_new(dir->superblock, VDIR, &familyVnodeOps, NULL);
         if (vnode == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
         UNREF_DEFER(vnode);
         vnode->data = family;
@@ -804,7 +804,7 @@ static filesystem_t netfs = {
 
 void netfs_init(void)
 {
-    if (filesystem_register(&netfs) == ERR)
+    if (filesystem_register(&netfs) == _FAIL)
     {
         panic(NULL, "Failed to register netfs filesystem");
     }
@@ -815,7 +815,7 @@ uint64_t netfs_family_register(netfs_family_t* family)
     if (family == NULL || family->init == NULL || family->deinit == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     list_entry_init(&family->listEntry);

@@ -4,9 +4,9 @@
 uint64_t sharefile(char* key, uint64_t size, const char* path, clock_t timeout)
 {
     fd_t fd = open(path);
-    if (fd == ERR)
+    if (fd == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t result = share(key, size, fd, timeout);

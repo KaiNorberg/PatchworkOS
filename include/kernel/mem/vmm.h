@@ -157,19 +157,14 @@ pml_flags_t vmm_prot_to_flags(prot_t prot);
  * @see `vmm_map()` for details on TLB shootdowns.
  *
  * @param space The target address space, if `NULL`, the kernel space is used.
- * @param virtAddr The desired virtual address. If `NULL`, the kernel chooses an available address.
+ * @param addr The output pointer to store the virtual address, the value it currently points to is used as the desired virtual address. If it points to `NULL`, the kernel chooses an address.
  * @param length The length of the virtual memory region to allocate, in bytes.
  * @param alignment The required alignment for the virtual memory region in bytes.
  * @param pmlFlags The page table flags for the mapping, will always include `PML_OWNED`, must have `PML_PRESENT` set.
  * @param allocFlags The allocation flags.
- * @return On success, the virtual address. On failure, returns `NULL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EBUSY`: The region contains pinned pages.
- * - `EEXIST`: The region is already mapped and `VMM_ALLOC_FAIL_IF_MAPPED` is set.
- * - `ENOMEM`: Not enough memory.
- * - Other values from `space_mapping_start()`.
+ * @return An appropriate status value.
  */
-void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment, pml_flags_t pmlFlags,
+status_t vmm_alloc(space_t* space, void** addr, size_t length, size_t alignment, pml_flags_t pmlFlags,
     vmm_alloc_flags_t allocFlags);
 
 /**
@@ -181,21 +176,16 @@ void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment,
  * page fault. However if the page is already mapped then it must first be unmapped as described in `vmm_unmap()`.
  *
  * @param space The target address space, if `NULL`, the kernel space is used.
- * @param virtAddr The desired virtual address to map to, if `NULL`, the kernel chooses an available address.
- * @param physAddr The physical address to map from. Must not be `PHYS_ADDR_INVALID`.
+ * @param addr The output pointer to store the virtual address, the value it currently points to is used as the desired virtual address. If it points to `NULL`, the kernel chooses an address.
+ * @param phys The physical address to map from.
  * @param length The length of the memory region to map, in bytes.
  * @param flags The page table flags for the mapping, must have `PML_PRESENT` set.
  * @param func The callback function to call when the mapped memory is unmapped or the address space is freed. If
  * `NULL`, then no callback will be called.
- * @param private Private data to pass to the callback function.
- * @return On success, the virtual address. On failure, returns `NULL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EBUSY`: The region contains pinned pages.
- * - `ENOSPC`: No available callback slots.
- * - `ENOMEM`: Not enough memory.
- * - Other values from `space_mapping_start()`.
+ * @param data Private data to pass to the callback function.
+ * @return An appropriate status value.
  */
-void* vmm_map(space_t* space, void* virtAddr, phys_addr_t physAddr, size_t length, pml_flags_t flags,
+status_t vmm_map(space_t* space, void** addr, phys_addr_t phys, size_t length, pml_flags_t flags,
     space_callback_func_t func, void* data);
 
 /**
@@ -206,21 +196,16 @@ void* vmm_map(space_t* space, void* virtAddr, phys_addr_t physAddr, size_t lengt
  * @see `vmm_map()` for details on TLB shootdowns.
  *
  * @param space The target address space, if `NULL`, the kernel space is used.
- * @param virtAddr The desired virtual address to map to, if `NULL`, the kernel chooses an available address.
+ * @param virtAddr The output pointer to store the virtual address, the value it currently points to is used as the desired virtual address. If it points to `NULL`, the kernel chooses an address.
  * @param pfns An array of page frame numbers to map from.
  * @param amount The number of pages to map.
  * @param flags The page table flags for the mapping, must have `PML_PRESENT` set.
  * @param func The callback function to call when the mapped memory is unmapped or the address space is freed. If
  * `NULL`, then no callback will be called.
  * @param private Private data to pass to the callback function.
- * @return On success, the virtual address. On failure, returns `NULL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EBUSY`: The region contains pinned pages.
- * - `ENOSPC`: No available callback slots.
- * - `ENOMEM`: Not enough memory.
- * - Other values from `space_mapping_start()`.
+ * @return An appropriate status value.
  */
-void* vmm_map_pages(space_t* space, void* virtAddr, pfn_t* pfns, size_t amount, pml_flags_t flags,
+status_t vmm_map_pages(space_t* space, void** addr, pfn_t* pfns, size_t amount, pml_flags_t flags,
     space_callback_func_t func, void* data);
 
 /**
@@ -235,12 +220,9 @@ void* vmm_map_pages(space_t* space, void* virtAddr, pfn_t* pfns, size_t amount, 
  * @param space The target address space, if `NULL`, the kernel space is used.
  * @param virtAddr The virtual address of the memory region.
  * @param length The length of the memory region, in bytes.
- * @return On success, `virtAddr`. On failure, `NULL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EBUSY`: The region contains pinned pages.
- * - Other values from `space_mapping_start()`.
+ * @return An appropriate status value.
  */
-void* vmm_unmap(space_t* space, void* virtAddr, size_t length);
+status_t vmm_unmap(space_t* space, void* virtAddr, size_t length);
 
 /**
  * @brief Changes memory protection flags for a virtual memory region in a given address space.
@@ -256,13 +238,9 @@ void* vmm_unmap(space_t* space, void* virtAddr, size_t length);
  * @param length The length of the memory region, in bytes.
  * @param flags The new page table flags for the memory region, if `PML_PRESENT` is not set, the memory will be
  * unmapped.
- * @return On success, `virtAddr`. On failure, `NULL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EBUSY`: The region contains pinned pages.
- * - `ENOENT`: The region is unmapped, or only partially mapped.
- * - Other values from `space_mapping_start()`.
+ * @return An appropriate status value.
  */
-void* vmm_protect(space_t* space, void* virtAddr, size_t length, pml_flags_t flags);
+status_t vmm_protect(space_t* space, void* virtAddr, size_t length, pml_flags_t flags);
 
 /**
  * @brief Loads a virtual address space.

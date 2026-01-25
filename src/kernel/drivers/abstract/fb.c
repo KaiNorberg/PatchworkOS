@@ -15,59 +15,57 @@ static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
 static dentry_t* dir = NULL;
 
-static size_t fb_name_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t fb_name_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     fb_t* fb = file->vnode->data;
     assert(fb != NULL);
 
     uint64_t length = strlen(fb->name);
-    return BUFFER_READ(buffer, count, offset, fb->name, length);
+    *bytesRead = BUFFER_READ(buffer, count, offset, fb->name, length);
+    return OK;
 }
 
 static file_ops_t nameOps = {
     .read = fb_name_read,
 };
 
-static size_t fb_data_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t fb_data_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     fb_t* fb = file->vnode->data;
     assert(fb != NULL);
 
-    if (fb->ops->read == NULL)
+    if (fb->read == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return ERR(DRIVER, INVAL);
     }
 
-    return fb->ops->read(fb, buffer, count, offset);
+    return fb->read(fb, buffer, count, offset, bytesRead);
 }
 
-static size_t fb_data_write(file_t* file, const void* buffer, size_t count, size_t* offset)
+static status_t fb_data_write(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
 {
     fb_t* fb = file->vnode->data;
     assert(fb != NULL);
 
-    if (fb->ops->write == NULL)
+    if (fb->write == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return ERR(DRIVER, INVAL);
     }
 
-    return fb->ops->write(fb, buffer, count, offset);
+    return fb->write(fb, buffer, count, offset, bytesWritten);
 }
 
-static void* fb_data_mmap(file_t* file, void* addr, size_t length, size_t* offset, pml_flags_t flags)
+static status_t fb_data_mmap(file_t* file, void** addr, size_t length, size_t* offset, pml_flags_t flags)
 {
     fb_t* fb = file->vnode->data;
     assert(fb != NULL);
 
-    if (fb->ops->mmap == NULL)
+    if (fb->mmap == NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(DRIVER, INVAL);
     }
 
-    return fb->ops->mmap(fb, addr, length, offset, flags);
+    return fb->mmap(fb, addr, length, offset, flags);
 }
 
 static file_ops_t dataOps = {
@@ -76,39 +74,34 @@ static file_ops_t dataOps = {
     .mmap = fb_data_mmap,
 };
 
-static size_t fb_info_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t fb_info_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     fb_t* fb = file->vnode->data;
     assert(fb != NULL);
 
-    if (fb->ops->info == NULL)
+    if (fb->info == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return ERR(DRIVER, INVAL);
     }
 
     fb_info_t info = {0};
-    if (fb->ops->info(fb, &info) == ERR)
+    status_t status = fb->info(fb, &info);
+    if (IS_FAIL(status))
     {
-        return ERR;
+        return status;
     }
 
     char string[256];
-    int length =
-        snprintf(string, sizeof(string), "%llu %llu %llu %s", info.width, info.height, info.pitch, info.format);
-    if (length < 0)
-    {
-        errno = EIO;
-        return ERR;
-    }
+    int length = snprintf(string, sizeof(string), "%llu %llu %llu %s", info.width, info.height, info.pitch, info.format);
+    assert(length > 0);
 
     if ((size_t)length >= sizeof(string))
     {
-        errno = EOVERFLOW;
-        return ERR;
+        return ERR(DRIVER, OVERFLOW);
     }
 
-    return BUFFER_READ(buffer, count, offset, string, (size_t)length);
+    *bytesRead = BUFFER_READ(buffer, count, offset, string, (size_t)length);
+    return OK;
 }
 
 static file_ops_t infoOps = {
@@ -119,24 +112,21 @@ static void fb_dir_cleanup(vnode_t* vnode)
 {
     fb_t* fb = vnode->data;
 
-    if (fb->ops->cleanup != NULL)
+    if (fb->cleanup != NULL)
     {
-        fb->ops->cleanup(fb);
+        fb->cleanup(fb);
     }
-
-    free(fb);
 }
 
 static vnode_ops_t dirVnodeOps = {
     .cleanup = fb_dir_cleanup,
 };
 
-fb_t* fb_new(const char* name, const fb_ops_t* ops, void* data)
+status_t fb_register(fb_t* fb)
 {
-    if (name == NULL || ops == NULL)
+    if (fb == NULL || fb->name == NULL || fb->info == NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(DRIVER, INVAL);
     }
 
     if (dir == NULL)
@@ -144,36 +134,19 @@ fb_t* fb_new(const char* name, const fb_ops_t* ops, void* data)
         dir = devfs_dir_new(NULL, "fb", NULL, NULL);
         if (dir == NULL)
         {
-            return NULL;
+            return ERR(DRIVER, NOMEM);
         }
     }
 
-    fb_t* fb = malloc(sizeof(fb_t));
-    if (fb == NULL)
-    {
-        errno = ENOMEM;
-        return NULL;
-    }
-    strncpy(fb->name, name, sizeof(fb->name));
-    fb->name[sizeof(fb->name) - 1] = '\0';
-    fb->ops = ops;
-    fb->data = data;
-    fb->dir = NULL;
     list_init(&fb->files);
 
     char id[MAX_NAME];
-    if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
-    {
-        free(fb);
-        errno = EIO;
-        return NULL;
-    }
+    snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1));
 
     fb->dir = devfs_dir_new(dir, id, &dirVnodeOps, fb);
     if (fb->dir == NULL)
     {
-        free(fb);
-        return NULL;
+        return ERR(DRIVER, NOMEM);
     }
 
     devfs_file_desc_t files[] = {
@@ -200,18 +173,17 @@ fb_t* fb_new(const char* name, const fb_ops_t* ops, void* data)
         },
     };
 
-    if (devfs_files_new(&fb->files, fb->dir, files) == ERR)
+    if (!devfs_files_new(&fb->files, fb->dir, files))
     {
         UNREF(fb->dir);
-        free(fb);
-        return NULL;
+        return ERR(DRIVER, NOMEM);
     }
 
     LOG_INFO("new framebuffer device `%s` with id '%s'\n", fb->name, id);
-    return fb;
+    return OK;
 }
 
-void fb_free(fb_t* fb)
+void fb_unregister(fb_t* fb)
 {
     if (fb == NULL)
     {

@@ -88,7 +88,7 @@ typedef struct sysfs_file_desc
  * @param out Output list to store created dentries, can be `NULL`. The dentries use the `otherEntry` list entry.
  * @param parent The parent directory, if `NULL` then the root is used.
  * @param descs Array of file descriptors, terminated by an entry with `name == NULL`.
- * @return On success, the number of files created. On failure, `ERR` and `errno` is set.
+ * @return On success, the number of files created. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t* descs);
 

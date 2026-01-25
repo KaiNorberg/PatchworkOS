@@ -83,19 +83,19 @@ uint64_t lapic_global_init(void)
     if (madt == NULL)
     {
         LOG_ERR("no MADT table found\n");
-        return ERR;
+        return _FAIL;
     }
 
     if (madt->header.length < sizeof(madt_t))
     {
         LOG_ERR("madt table too small\n");
-        return ERR;
+        return _FAIL;
     }
 
     if (madt->localInterruptControllerAddress == (uintptr_t)NULL)
     {
         LOG_ERR("madt has invalid lapic address\n");
-        return ERR;
+        return _FAIL;
     }
 
     lapicBase = PML_LOWER_TO_HIGHER(madt->localInterruptControllerAddress);
@@ -103,16 +103,16 @@ uint64_t lapic_global_init(void)
             PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) == NULL)
     {
         LOG_ERR("failed to map local apic\n");
-        return ERR;
+        return _FAIL;
     }
 
     LOG_INFO("local apic mapped base=%p phys=%p\n", lapicBase, (uintptr_t)madt->localInterruptControllerAddress);
 
-    if (ipi_chip_register(&lapicIpiChip) == ERR)
+    if (ipi_chip_register(&lapicIpiChip) == _FAIL)
     {
         vmm_unmap(NULL, (void*)lapicBase, PAGE_SIZE);
         LOG_ERR("failed to register lapic ipi chip\n");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;

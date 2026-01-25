@@ -829,7 +829,7 @@ typedef struct
  * @param elf Pointer to the structure to initialize
  * @param data Pointer to the ELF file data in memory, caller retains ownership
  * @param size Size of the ELF file data in bytes
- * @return On success, `0`. On failure, a non-zero error code. Check the implementation. Does not use `ERR` or `errno`.
+ * @return On success, `0`. On failure, a non-zero error code. Check the implementation. Does not use `_FAIL` or `errno`.
  */
 uint64_t elf64_validate(Elf64_File* elf, void* data, uint64_t size);
 
@@ -893,7 +893,7 @@ void elf64_load_segments(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offse
  * @param offset The offset in bytes that was subtracted from each segment's virtual address when loading
  * @param resolve_symbol Callback function to resolve symbol names to addresses
  * @param private Private data pointer passed to the `resolve_symbol` callback
- * @return On success, `0`. On failure, `ERR`.
+ * @return On success, `0`. On failure, `_FAIL`.
  */
 uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset,
     void* (*resolve_symbol)(const char* name, void* data), void* data);

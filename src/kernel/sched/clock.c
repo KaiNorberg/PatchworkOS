@@ -49,7 +49,7 @@ uint64_t clock_source_register(const clock_source_t* source)
     if (source == NULL || (source->read_ns == NULL && source->read_epoch == NULL) || source->precision == 0)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     rwlock_write_acquire(&sourcesLock);
@@ -57,7 +57,7 @@ uint64_t clock_source_register(const clock_source_t* source)
     {
         rwlock_write_release(&sourcesLock);
         errno = ENOSPC;
-        return ERR;
+        return _FAIL;
     }
 
     sources[sourceCount++] = source;
@@ -147,9 +147,9 @@ SYSCALL_DEFINE(SYS_EPOCH, time_t, time_t* timePtr)
     time_t epoch = clock_epoch();
     if (timePtr != NULL)
     {
-        if (thread_copy_to_user(thread_current(), timePtr, &epoch, sizeof(epoch)) == ERR)
+        if (thread_copy_to_user(thread_current(), timePtr, &epoch, sizeof(epoch)) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
 

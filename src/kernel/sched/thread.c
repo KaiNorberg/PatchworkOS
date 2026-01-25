@@ -47,26 +47,23 @@ static uintptr_t thread_id_to_offset(tid_t tid, uint64_t maxPages)
     return tid * ((maxPages + STACK_POINTER_GUARD_PAGES) * PAGE_SIZE);
 }
 
-thread_t* thread_new(process_t* process)
+status_t thread_new(thread_t** out, process_t* process)
 {
-    if (process == NULL)
+    if (out == NULL || process == NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(SCHED, INVAL);
     }
 
     thread_t* thread = cache_alloc(&cache);
     if (thread == NULL)
     {
-        errno = ENOMEM;
-        return NULL;
+        return ERR(SCHED, NOMEM);
     }
 
     if (atomic_load(&process->flags) & PROCESS_DYING)
     {
         cache_free(thread);
-        errno = EINVAL;
-        return NULL;
+        return ERR(SCHED, DYING);
     }
 
     thread->process = process;
@@ -74,25 +71,18 @@ thread_t* thread_new(process_t* process)
     sched_client_init(&thread->sched);
     atomic_store(&thread->state, THREAD_PARKED);
     thread->error = 0;
-    if (stack_pointer_init(&thread->kernelStack,
+    stack_pointer_init(&thread->kernelStack,
             VMM_KERNEL_STACKS_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_KERNEL_STACK_PAGES),
-            CONFIG_MAX_KERNEL_STACK_PAGES) == ERR)
-    {
-        cache_free(thread);
-        return NULL;
-    }
-    if (stack_pointer_init(&thread->userStack,
+            CONFIG_MAX_KERNEL_STACK_PAGES);
+    stack_pointer_init(&thread->userStack,
             VMM_USER_SPACE_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_USER_STACK_PAGES),
-            CONFIG_MAX_USER_STACK_PAGES) == ERR)
-    {
-        cache_free(thread);
-        return NULL;
-    }
+            CONFIG_MAX_USER_STACK_PAGES);
     wait_client_init(&thread->wait);
-    if (simd_ctx_init(&thread->simd) == ERR)
+    status_t status = simd_ctx_init(&thread->simd);
+    if (IS_ERR(status))
     {
         cache_free(thread);
-        return NULL;
+        return status;
     }
     note_queue_init(&thread->notes);
     syscall_ctx_init(&thread->syscall, &thread->kernelStack);
@@ -105,7 +95,9 @@ thread_t* thread_new(process_t* process)
     process->threads.count++;
     list_push_back_rcu(&process->threads.list, &thread->processEntry);
     lock_release(&process->threads.lock);
-    return thread;
+
+    *out = thread;
+    return OK;
 }
 
 void thread_free(thread_t* thread)
@@ -123,18 +115,18 @@ void thread_free(thread_t* thread)
     rcu_call(&thread->rcu, rcu_call_cache_free, thread);
 }
 
-tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg)
+status_t thread_kernel_create(tid_t* out, thread_kernel_entry_t entry, void* arg)
 {
-    if (entry == NULL)
+    if (out == NULL || entry == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return ERR(SCHED, INVAL);
     }
 
-    thread_t* thread = thread_new(process_get_kernel());
-    if (thread == NULL)
+    thread_t* thread;
+    status_t status = thread_new(&thread, process_get_kernel());
+    if (IS_ERR(status))
     {
-        return ERR;
+        return status;
     }
 
     thread->frame.rip = (uintptr_t)entry;
@@ -145,9 +137,9 @@ tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg)
     thread->frame.ss = GDT_SS_RING0;
     thread->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
 
-    tid_t volatile tid = thread->id;
+    *out = thread->id;
     sched_submit(thread);
-    return tid;
+    return OK;
 }
 
 void thread_save(thread_t* thread, const interrupt_frame_t* frame)
@@ -175,9 +167,9 @@ bool thread_is_note_pending(thread_t* thread)
 
 uint64_t thread_send_note(thread_t* thread, const char* string)
 {
-    if (note_send(&thread->notes, string) == ERR)
+    if (note_send(&thread->notes, string) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     thread_state_t expected = THREAD_BLOCKED;
@@ -199,57 +191,57 @@ SYSCALL_DEFINE(SYS_GETTID, tid_t)
     return thread_current()->id;
 }
 
-uint64_t thread_copy_from_user(thread_t* thread, void* dest, const void* userSrc, uint64_t length)
+status_t thread_copy_from_user(thread_t* thread, void* dest, const void* userSrc, uint64_t length)
 {
     if (thread == NULL || dest == NULL || userSrc == NULL || length == 0)
     {
-        errno = EINVAL;
-        return ERR;
+        return ERR(SCHED, INVAL);
     }
 
-    if (space_pin(&thread->process->space, userSrc, length, &thread->userStack) == ERR)
+    status_t status = space_pin(&thread->process->space, userSrc, length, &thread->userStack);
+    if (IS_FAIL(status))
     {
-        return ERR;
+        return status;
     }
 
     memcpy(dest, userSrc, length);
     space_unpin(&thread->process->space, userSrc, length);
-    return 0;
+    return OK;
 }
 
-uint64_t thread_copy_to_user(thread_t* thread, void* userDest, const void* src, uint64_t length)
+status_t thread_copy_to_user(thread_t* thread, void* userDest, const void* src, uint64_t length)
 {
     if (thread == NULL || userDest == NULL || src == NULL || length == 0)
     {
-        errno = EINVAL;
-        return ERR;
+        return ERR(SCHED, INVAL);
     }
 
-    if (space_pin(&thread->process->space, userDest, length, &thread->userStack) == ERR)
+    status_t status = space_pin(&thread->process->space, userDest, length, &thread->userStack);
+    if (IS_FAIL(status))
     {
-        return ERR;
+        return status;
     }
 
     memcpy(userDest, src, length);
     space_unpin(&thread->process->space, userDest, length);
-    return 0;
+    return OK;
 }
 
-uint64_t thread_copy_from_user_terminated(thread_t* thread, const void* userArray, const void* terminator,
+status_t thread_copy_from_user_terminated(thread_t* thread, const void* userArray, const void* terminator,
     uint8_t objectSize, uint64_t maxCount, void** outArray, uint64_t* outCount)
 {
     if (thread == NULL || userArray == NULL || terminator == NULL || objectSize == 0 || maxCount == 0 ||
         outArray == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return ERR(SCHED, INVAL);
     }
 
-    uint64_t arraySize =
-        space_pin_terminated(&thread->process->space, userArray, terminator, objectSize, maxCount, &thread->userStack);
-    if (arraySize == ERR)
+    size_t arraySize;
+    status_t status = space_pin_terminated(&arraySize, &thread->process->space, userArray, terminator, objectSize,
+        maxCount, &thread->userStack);
+    if (IS_FAIL(status))
     {
-        return ERR;
+        return status;
     }
 
     uint64_t elementCount = arraySize / objectSize;
@@ -259,8 +251,7 @@ uint64_t thread_copy_from_user_terminated(thread_t* thread, const void* userArra
     if (kernelArray == NULL)
     {
         space_unpin(&thread->process->space, userArray, arraySize);
-        errno = ENOMEM;
-        return ERR;
+        return ERR(SCHED, NOMEM);
     }
 
     memcpy(kernelArray, userArray, arraySize);
@@ -272,74 +263,75 @@ uint64_t thread_copy_from_user_terminated(thread_t* thread, const void* userArra
         *outCount = elementCount - 1;
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t thread_copy_from_user_string(thread_t* thread, char* dest, const char* userSrc, uint64_t size)
+status_t thread_copy_from_user_string(thread_t* thread, char* dest, const char* userSrc, uint64_t size)
 {
     if (thread == NULL || dest == NULL || userSrc == NULL || size <= 1)
     {
-        errno = EINVAL;
-        return ERR;
+        return ERR(SCHED, INVAL);
     }
 
     char terminator = '\0';
-    uint64_t strLength =
-        space_pin_terminated(&thread->process->space, userSrc, &terminator, sizeof(char), size - 1, &thread->userStack);
-    if (strLength == ERR)
+    size_t strLength;
+    status_t status = space_pin_terminated(&strLength, &thread->process->space, userSrc, &terminator, sizeof(char),
+        size - 1, &thread->userStack);
+    if (IS_FAIL(status))
     {
-        return ERR;
+        return status;
     }
     dest[size - 1] = '\0';
 
     memcpy(dest, userSrc, strLength);
     space_unpin(&thread->process->space, userSrc, strLength);
-    return 0;
+    return OK;
 }
 
-uint64_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, const char* userPath)
+status_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, const char* userPath)
 {
     if (thread == NULL || pathname == NULL || userPath == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return ERR(SCHED, INVAL);
     }
 
     char terminator = '\0';
-    uint64_t pathLength = space_pin_terminated(&thread->process->space, userPath, &terminator, sizeof(char), MAX_PATH,
-        &thread->userStack);
-    if (pathLength == ERR)
+    size_t pathLength;
+    status_t status = space_pin_terminated(&pathLength, &thread->process->space, userPath, &terminator, sizeof(char),
+        MAX_PATH, &thread->userStack);
+    if (IS_FAIL(status))
     {
-        return ERR;
+        return status;
     }
 
     char copy[MAX_PATH];
     memcpy(copy, userPath, pathLength);
     space_unpin(&thread->process->space, userPath, pathLength);
 
-    if (pathname_init(pathname, copy) == ERR)
+    status = pathname_init(pathname, copy);
+    if (IS_FAIL(status))
     {
-        return ERR;
+        return status;
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t thread_copy_from_user_string_array(thread_t* thread, const char** user, char*** out, uint64_t* outAmount)
+status_t thread_copy_from_user_string_array(thread_t* thread, const char** user, char*** out, uint64_t* outAmount)
 {
     if (thread == NULL || user == NULL || out == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return ERR(SCHED, INVAL);
     }
 
     char** copy;
     uint64_t amount;
     char* terminator = NULL;
-    if (thread_copy_from_user_terminated(thread, (void*)user, (void*)&terminator, sizeof(char*), CONFIG_MAX_ARGC,
-            (void**)&copy, &amount) == ERR)
+    status_t status = thread_copy_from_user_terminated(thread, (void*)user, (void*)&terminator, sizeof(char*),
+        CONFIG_MAX_ARGC, (void**)&copy, &amount);
+    if (IS_FAIL(status))
     {
-        return ERR;
+        return status;
     }
 
     for (uint64_t i = 0; i < amount; i++)
@@ -347,15 +339,16 @@ uint64_t thread_copy_from_user_string_array(thread_t* thread, const char** user,
         char* strCopy;
         uint64_t strLen;
         char strTerminator = '\0';
-        if (thread_copy_from_user_terminated(thread, copy[i], &strTerminator, sizeof(char), MAX_PATH, (void**)&strCopy,
-                &strLen) == ERR)
+        status = thread_copy_from_user_terminated(thread, copy[i], &strTerminator, sizeof(char), MAX_PATH,
+            (void**)&strCopy, &strLen);
+        if (IS_FAIL(status))
         {
             for (uint64_t j = 0; j < i; j++)
             {
                 free(copy[j]);
             }
             free((void*)copy);
-            return ERR;
+            return status;
         }
 
         copy[i] = strCopy;
@@ -367,25 +360,25 @@ uint64_t thread_copy_from_user_string_array(thread_t* thread, const char** user,
         *outAmount = amount;
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t thread_load_atomic_from_user(thread_t* thread, atomic_uint64_t* userObj, uint64_t* outValue)
+status_t thread_load_atomic_from_user(thread_t* thread, atomic_uint64_t* userObj, uint64_t* outValue)
 {
     if (thread == NULL || userObj == NULL || outValue == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return ERR(SCHED, INVAL);
     }
 
-    if (space_pin(&thread->process->space, userObj, sizeof(atomic_uint64_t), &thread->userStack) == ERR)
+    status_t status = space_pin(&thread->process->space, userObj, sizeof(atomic_uint64_t), &thread->userStack);
+    if (IS_FAIL(status))
     {
-        return ERR;
+        return status;
     }
 
     *outValue = atomic_load(userObj);
     space_unpin(&thread->process->space, userObj, sizeof(atomic_uint64_t));
-    return 0;
+    return OK;
 }
 
 SYSCALL_DEFINE(SYS_ARCH_PRCTL, uint64_t, arch_prctl_t op, uintptr_t addr)
@@ -399,13 +392,13 @@ SYSCALL_DEFINE(SYS_ARCH_PRCTL, uint64_t, arch_prctl_t op, uintptr_t addr)
         msr_write(MSR_FS_BASE, addr);
         return 0;
     case ARCH_GET_FS:
-        if (thread_copy_to_user(thread, (void*)addr, &thread->fsBase, sizeof(uintptr_t)) == ERR)
+        if (IS_FAIL(thread_copy_to_user(thread, (void*)addr, &thread->fsBase, sizeof(uintptr_t))))
         {
-            return ERR;
+            return _FAIL;
         }
         return 0;
     default:
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 }

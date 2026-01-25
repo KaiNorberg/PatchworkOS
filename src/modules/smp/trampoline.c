@@ -24,14 +24,14 @@ static atomic_bool cpuReadyFlag = ATOMIC_VAR_INIT(false);
 void trampoline_init(void)
 {
     pfn_t pfn = pmm_alloc();
-    if (pfn == ERR)
+    if (pfn == _FAIL)
     {
         panic(NULL, "Failed to allocate memory for trampoline backup");
     }
     backupBuffer = PFN_TO_VIRT(pfn);
 
     pfn = pmm_alloc();
-    if (pfn == ERR)
+    if (pfn == _FAIL)
     {
         panic(NULL, "Failed to allocate memory for trampoline stack");
     }
@@ -101,7 +101,7 @@ uint64_t trampoline_wait_ready(clock_t timeout)
         elapsed += CLOCKS_PER_SEC / 10000;
     }
 
-    return ERR;
+    return _FAIL;
 }
 
 static void trampoline_after_jump(void)

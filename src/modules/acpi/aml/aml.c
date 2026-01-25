@@ -22,7 +22,7 @@ static inline uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
     if (start == NULL || end == NULL || start > end)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (start == end)
@@ -36,9 +36,9 @@ static inline uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
     // So the entire code is a termlist.
 
     aml_state_t state;
-    if (aml_state_init(&state, NULL) == ERR)
+    if (aml_state_init(&state, NULL) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     aml_object_t* root = aml_namespace_get_root();
@@ -46,7 +46,7 @@ static inline uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
 
     uint64_t result = aml_term_list_read(&state, root, start, end, NULL);
 
-    if (result != ERR)
+    if (result != _FAIL)
     {
         aml_namespace_commit(&state.overlay);
     }
@@ -61,16 +61,16 @@ static inline uint64_t aml_init_parse_all(void)
     if (dsdt == NULL)
     {
         LOG_ERR("failed to retrieve DSDT\n");
-        return ERR;
+        return _FAIL;
     }
 
     LOG_INFO("DSDT found containing %llu bytes of AML code\n", dsdt->header.length - sizeof(dsdt_t));
 
     const uint8_t* dsdtEnd = (const uint8_t*)dsdt + dsdt->header.length;
-    if (aml_parse(dsdt->definitionBlock, dsdtEnd) == ERR)
+    if (aml_parse(dsdt->definitionBlock, dsdtEnd) == _FAIL)
     {
         LOG_ERR("failed to parse DSDT\n");
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t index = 0;
@@ -86,10 +86,10 @@ static inline uint64_t aml_init_parse_all(void)
         LOG_INFO("SSDT%llu found containing %llu bytes of AML code\n", index, ssdt->header.length - sizeof(ssdt_t));
 
         const uint8_t* ssdtEnd = (const uint8_t*)ssdt + ssdt->header.length;
-        if (aml_parse(ssdt->definitionBlock, ssdtEnd) == ERR)
+        if (aml_parse(ssdt->definitionBlock, ssdtEnd) == _FAIL)
         {
             LOG_ERR("failed to parse SSDT%llu\n", index);
-            return ERR;
+            return _FAIL;
         }
 
         index++;
@@ -111,54 +111,54 @@ uint64_t aml_init(void)
     if (root == NULL)
     {
         LOG_ERR("failed to create root AML object\n");
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(root);
 
     // We dont need to add the root to the namespace map as it has no name.
-    if (aml_predefined_scope_set(root) == ERR)
+    if (aml_predefined_scope_set(root) == _FAIL)
     {
         LOG_ERR("failed to set predefined scope for root object\n");
-        return ERR;
+        return _FAIL;
     }
 
     aml_namespace_init(root);
 
-    if (aml_integer_handling_init() == ERR)
+    if (aml_integer_handling_init() == _FAIL)
     {
         LOG_ERR("failed to initialize AML integer handling\n");
-        return ERR;
+        return _FAIL;
     }
 
-    if (aml_predefined_init() == ERR)
+    if (aml_predefined_init() == _FAIL)
     {
         LOG_ERR("failed to initialize AML predefined names\n");
-        return ERR;
+        return _FAIL;
     }
 
-    if (aml_patch_up_init() == ERR)
+    if (aml_patch_up_init() == _FAIL)
     {
         LOG_ERR("failed to initialize AML patch up\n");
-        return ERR;
+        return _FAIL;
     }
 
-    if (aml_init_parse_all() == ERR)
+    if (aml_init_parse_all() == _FAIL)
     {
         LOG_ERR("failed to parse all AML code\n");
-        return ERR;
+        return _FAIL;
     }
 
     LOG_INFO("resolving %llu unresolved objects\n", aml_patch_up_unresolved_count());
-    if (aml_patch_up_resolve_all() == ERR)
+    if (aml_patch_up_resolve_all() == _FAIL)
     {
         LOG_ERR("failed to resolve all unresolved objects\n");
-        return ERR;
+        return _FAIL;
     }
 
     if (aml_patch_up_unresolved_count() > 0)
     {
         LOG_ERR("there are still %llu unresolved objects after patch up\n", aml_patch_up_unresolved_count());
-        return ERR;
+        return _FAIL;
     }
 
     return 0;

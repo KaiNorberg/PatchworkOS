@@ -20,21 +20,21 @@ uint64_t port_reserve(port_t* out, port_t minBase, port_t maxBase, uint64_t alig
     if (out == NULL || length == 0 || minBase > maxBase)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
     LOCK_SCOPE(&lock);
 
     if (maxBase + length < maxBase || maxBase + length > ports.length)
     {
         errno = EOVERFLOW;
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t base = bitmap_find_clear_region_and_set(&ports, minBase, maxBase + length, length, alignment);
     if (base == ports.length)
     {
         errno = ENOSPC;
-        return ERR;
+        return _FAIL;
     }
 
     *out = (port_t)base;

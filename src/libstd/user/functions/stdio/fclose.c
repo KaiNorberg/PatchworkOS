@@ -10,7 +10,7 @@ int fclose(struct FILE* stream)
 
     if (stream->flags & _FILE_WRITE)
     {
-        if (_file_flush_buffer(stream) == ERR)
+        if (_file_flush_buffer(stream) == _FAIL)
         {
             mtx_unlock(&stream->mtx);
             return EOF;

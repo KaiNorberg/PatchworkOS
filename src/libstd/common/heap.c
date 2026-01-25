@@ -37,14 +37,14 @@ void _heap_unmap_memory(void* addr, uint64_t size)
 
 mtx_t _heapLock;
 
-static fd_t zeroDev = ERR;
+static fd_t zeroDev = _FAIL;
 
 void* _heap_map_memory(uint64_t size)
 {
-    if (zeroDev == ERR)
+    if (zeroDev == _FAIL)
     {
         zeroDev = open("/dev/const/zero:rw");
-        if (zeroDev == ERR)
+        if (zeroDev == _FAIL)
         {
             errno = ENOMEM;
             return NULL;
@@ -89,7 +89,7 @@ uint64_t _heap_get_bin_index(uint64_t size)
 {
     if (size > _HEAP_LARGE_ALLOC_THRESHOLD)
     {
-        return ERR;
+        return _FAIL;
     }
 
     if (size < _HEAP_ALIGNMENT)
@@ -173,7 +173,7 @@ void _heap_add_to_free_list(_heap_header_t* block)
     }
 
     uint64_t binIndex = _heap_get_bin_index(block->size);
-    if (binIndex == ERR)
+    if (binIndex == _FAIL)
     {
         return;
     }
@@ -189,7 +189,7 @@ void _heap_remove_from_free_list(_heap_header_t* block)
     }
 
     uint64_t binIndex = _heap_get_bin_index(block->size);
-    if (binIndex == ERR)
+    if (binIndex == _FAIL)
     {
         return;
     }

@@ -167,7 +167,7 @@ typedef struct cache
  * The object will be constructed using the cache's constructor if one is provided.
  *
  * @param cache The cache to allocate from.
- * @return Pointer to the allocated object, or `NULL` on failures.
+ * @return On success, pointer to the allocated object. On failure, `NULL`.
  */
 void* cache_alloc(cache_t* cache);
 

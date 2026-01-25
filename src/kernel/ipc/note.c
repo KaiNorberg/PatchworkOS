@@ -43,19 +43,17 @@ uint64_t note_amount(note_queue_t* queue)
     return length;
 }
 
-uint64_t note_send(note_queue_t* queue, const char* string)
+status_t note_send(note_queue_t* queue, const char* string)
 {
     if (queue == NULL || string == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return ERR(IPC, INVAL);
     }
 
     size_t count = strnlen_s(string, NOTE_MAX);
     if (count == 0 || count >= NOTE_MAX)
     {
-        errno = EINVAL;
-        return ERR;
+        return ERR(IPC, INVAL);
     }
 
     process_t* sender = process_current();
@@ -65,13 +63,12 @@ uint64_t note_send(note_queue_t* queue, const char* string)
     if (strcmp(string, "kill") == 0)
     {
         queue->flags |= NOTE_QUEUE_RECEIVED_KILL;
-        return 0;
+        return OK;
     }
 
     if (queue->length >= CONFIG_MAX_NOTES)
     {
-        errno = EAGAIN;
-        return ERR;
+        return ERR(IPC, FULL);
     }
 
     note_t* note = &queue->notes[queue->writeIndex];
@@ -81,16 +78,16 @@ uint64_t note_send(note_queue_t* queue, const char* string)
     memcpy_s(note->buffer, NOTE_MAX, string, count);
     note->buffer[count] = '\0';
     note->sender = sender->id;
-    return 0;
+    return OK;
 }
 
-bool note_handle_pending(interrupt_frame_t* frame)
+void note_handle_pending(interrupt_frame_t* frame)
 {
     UNUSED(frame);
 
     if (!INTERRUPT_FRAME_IN_USER_SPACE(frame))
     {
-        return false;
+        return;
     }
 
     thread_t* thread = thread_current_unsafe();
@@ -104,12 +101,12 @@ bool note_handle_pending(interrupt_frame_t* frame)
     {
         atomic_store(&thread->state, THREAD_DYING);
         queue->flags &= ~NOTE_QUEUE_RECEIVED_KILL;
-        return true;
+        return;
     }
 
     if (queue->length == 0 || (queue->flags & NOTE_QUEUE_HANDLING))
     {
-        return false;
+        return;
     }
 
     LOCK_SCOPE(&handler->lock);
@@ -117,7 +114,7 @@ bool note_handle_pending(interrupt_frame_t* frame)
     if (handler->func == NULL)
     {
         atomic_store(&thread->state, THREAD_DYING);
-        return false;
+        return;
     }
 
     note_t* note = &queue->notes[queue->readIndex];
@@ -129,10 +126,10 @@ bool note_handle_pending(interrupt_frame_t* frame)
 
     // func(note->buffer)
     frame->rsp = ROUND_DOWN(frame->rsp - (RED_ZONE_SIZE + NOTE_MAX), 16);
-    if (thread_copy_to_user(thread, (void*)frame->rsp, note->buffer, NOTE_MAX) == ERR)
+    if (IS_FAIL(thread_copy_to_user(thread, (void*)frame->rsp, note->buffer, NOTE_MAX)))
     {
         atomic_store(&thread->state, THREAD_DYING);
-        return true;
+        return;
     }
     frame->rip = (uint64_t)handler->func;
     frame->rdi = frame->rsp;
@@ -140,28 +137,21 @@ bool note_handle_pending(interrupt_frame_t* frame)
 
     LOG_DEBUG("delivering note '%s' to pid=%d rsp=%p rip=%p\n", note->buffer, process->id, (void*)frame->rsp,
         (void*)frame->rip);
-
-    return true;
 }
 
-SYSCALL_DEFINE(SYS_NOTIFY, uint64_t, note_func_t handler)
+SYSCALL_DEFINE(SYS_NOTIFY, note_func_t handler)
 {
     process_t* process = process_current();
     note_handler_t* noteHandler = &process->noteHandler;
-
-    if (handler != NULL && space_check_access(&process->space, (void*)handler, 1) == ERR)
-    {
-        return ERR;
-    }
 
     lock_acquire(&noteHandler->lock);
     noteHandler->func = handler;
     lock_release(&noteHandler->lock);
 
-    return 0;
+    return OK;
 }
 
-SYSCALL_DEFINE(SYS_NOTED, void)
+SYSCALL_DEFINE(SYS_NOTED)
 {
     thread_t* thread = thread_current();
     note_queue_t* queue = &thread->notes;
@@ -181,4 +171,5 @@ SYSCALL_DEFINE(SYS_NOTED, void)
     thread->syscall.flags |= SYSCALL_FORCE_FAKE_INTERRUPT;
 
     lock_release(&queue->lock);
+    return OK;
 }

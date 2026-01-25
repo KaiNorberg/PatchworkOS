@@ -36,32 +36,27 @@ void rwmutex_read_acquire(rwmutex_t* mtx)
 
     LOCK_SCOPE(&mtx->lock);
 
-    while (WAIT_BLOCK_LOCK(&mtx->readerQueue, &mtx->lock, !(mtx->hasWriter || mtx->waitingWriters > 0)) == ERR)
-    {
-        // Wait until unblocked.
-    }
+    RETRY(WAIT_BLOCK_LOCK(&mtx->readerQueue, &mtx->lock, !(mtx->hasWriter || mtx->waitingWriters > 0)));
 
     mtx->activeReaders++;
 }
 
-uint64_t rwmutex_read_try_acquire(rwmutex_t* mtx)
+bool rwmutex_read_try_acquire(rwmutex_t* mtx)
 {
     if (mtx == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return false;
     }
 
     LOCK_SCOPE(&mtx->lock);
 
     if (mtx->waitingWriters > 0 || mtx->hasWriter)
     {
-        errno = EWOULDBLOCK;
-        return ERR;
+        return false;
     }
 
     mtx->activeReaders++;
-    return 0;
+    return true;
 }
 
 void rwmutex_read_release(rwmutex_t* mtx)
@@ -92,33 +87,28 @@ void rwmutex_write_acquire(rwmutex_t* mtx)
     LOCK_SCOPE(&mtx->lock);
 
     mtx->waitingWriters++;
-    while (WAIT_BLOCK_LOCK(&mtx->writerQueue, &mtx->lock, !(mtx->activeReaders > 0 || mtx->hasWriter)) == ERR)
-    {
-        // Wait until unblocked
-    }
+    RETRY(WAIT_BLOCK_LOCK(&mtx->writerQueue, &mtx->lock, !(mtx->activeReaders > 0 || mtx->hasWriter)));
 
     mtx->waitingWriters--;
     mtx->hasWriter = true;
 }
 
-uint64_t rwmutex_write_try_acquire(rwmutex_t* mtx)
+bool rwmutex_write_try_acquire(rwmutex_t* mtx)
 {
     if (mtx == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return false;
     }
 
     LOCK_SCOPE(&mtx->lock);
 
     if (mtx->activeReaders > 0 || mtx->hasWriter)
     {
-        errno = EWOULDBLOCK;
-        return ERR;
+        return false;
     }
 
     mtx->hasWriter = true;
-    return 0;
+    return true;
 }
 
 void rwmutex_write_release(rwmutex_t* mtx)

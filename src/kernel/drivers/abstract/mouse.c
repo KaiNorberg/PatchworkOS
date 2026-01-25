@@ -16,20 +16,21 @@ static dentry_t* dir = NULL;
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
-static size_t mouse_name_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t mouse_name_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     mouse_t* mouse = file->vnode->data;
     assert(mouse != NULL);
 
     size_t length = strlen(mouse->name);
-    return BUFFER_READ(buffer, count, offset, mouse->name, length);
+    *bytesRead = BUFFER_READ(buffer, count, offset, mouse->name, length);
+    return OK;
 }
 
 static file_ops_t nameOps = {
     .read = mouse_name_read,
 };
 
-static uint64_t mouse_events_open(file_t* file)
+static status_t mouse_events_open(file_t* file)
 {
     mouse_t* mouse = file->vnode->data;
     assert(mouse != NULL);
@@ -37,8 +38,7 @@ static uint64_t mouse_events_open(file_t* file)
     mouse_client_t* client = calloc(1, sizeof(mouse_client_t));
     if (client == NULL)
     {
-        errno = ENOMEM;
-        return ERR;
+        return ERR(DRIVER, NOMEM);
     }
     list_entry_init(&client->entry);
     fifo_init(&client->fifo, client->buffer, sizeof(client->buffer));
@@ -48,7 +48,7 @@ static uint64_t mouse_events_open(file_t* file)
     lock_release(&mouse->lock);
 
     file->data = client;
-    return 0;
+    return OK;
 }
 
 static void mouse_events_close(file_t* file)
@@ -69,13 +69,14 @@ static void mouse_events_close(file_t* file)
     free(client);
 }
 
-static size_t mouse_events_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t mouse_events_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     UNUSED(offset);
 
     if (count == 0)
     {
-        return 0;
+        *bytesRead = 0;
+        return OK;
     }
 
     mouse_t* mouse = file->vnode->data;
@@ -89,20 +90,21 @@ static size_t mouse_events_read(file_t* file, void* buffer, size_t count, size_t
     {
         if (file->mode & MODE_NONBLOCK)
         {
-            errno = EAGAIN;
-            return ERR;
+            return INFO(DRIVER, AGAIN);
         }
 
-        if (WAIT_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, fifo_bytes_readable(&client->fifo) != 0) == ERR)
+        status_t status = WAIT_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, fifo_bytes_readable(&client->fifo) != 0);
+        if (!IS_ERR(status))
         {
-            return ERR;
+            return status;
         }
     }
 
-    return fifo_read(&client->fifo, buffer, count);
+    *bytesRead = fifo_read(&client->fifo, buffer, count);
+    return OK;
 }
 
-static wait_queue_t* mouse_events_poll(file_t* file, poll_events_t* revents)
+static status_t mouse_events_poll(file_t* file, poll_events_t* revents, wait_queue_t** queue)
 {
     mouse_t* mouse = file->vnode->data;
     assert(mouse != NULL);
@@ -115,7 +117,8 @@ static wait_queue_t* mouse_events_poll(file_t* file, poll_events_t* revents)
     {
         *revents |= POLLIN;
     }
-    return &mouse->waitQueue;
+    *queue = &mouse->waitQueue;
+    return OK;
 }
 
 static file_ops_t eventsOps = {
@@ -134,19 +137,17 @@ static void mouse_dir_cleanup(vnode_t* vnode)
     }
 
     wait_queue_deinit(&mouse->waitQueue);
-    free(mouse);
 }
 
 static vnode_ops_t dirVnodeOps = {
     .cleanup = mouse_dir_cleanup,
 };
 
-mouse_t* mouse_new(const char* name)
+status_t mouse_register(mouse_t* mouse)
 {
-    if (name == NULL)
+    if (mouse == NULL || mouse->name == NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(DRIVER, INVAL);
     }
 
     if (dir == NULL)
@@ -154,18 +155,10 @@ mouse_t* mouse_new(const char* name)
         dir = devfs_dir_new(NULL, "mouse", NULL, NULL);
         if (dir == NULL)
         {
-            return NULL;
+            return ERR(DRIVER, NOMEM);
         }
     }
 
-    mouse_t* mouse = malloc(sizeof(mouse_t));
-    if (mouse == NULL)
-    {
-        errno = ENOMEM;
-        return NULL;
-    }
-    strncpy(mouse->name, name, sizeof(mouse->name));
-    mouse->name[sizeof(mouse->name) - 1] = '\0';
     wait_queue_init(&mouse->waitQueue);
     list_init(&mouse->clients);
     lock_init(&mouse->lock);
@@ -176,17 +169,14 @@ mouse_t* mouse_new(const char* name)
     if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
     {
         wait_queue_deinit(&mouse->waitQueue);
-        free(mouse->name);
-        free(mouse);
-        return NULL;
+        return ERR(DRIVER, IMPL);
     }
 
     mouse->dir = devfs_dir_new(dir, id, &dirVnodeOps, mouse);
     if (mouse->dir == NULL)
     {
         wait_queue_deinit(&mouse->waitQueue);
-        free(mouse);
-        return NULL;
+        return ERR(DRIVER, NOMEM);
     }
 
     devfs_file_desc_t files[] = {
@@ -205,18 +195,17 @@ mouse_t* mouse_new(const char* name)
         },
     };
 
-    if (devfs_files_new(&mouse->files, mouse->dir, files) == ERR)
+    if (!devfs_files_new(&mouse->files, mouse->dir, files))
     {
         wait_queue_deinit(&mouse->waitQueue);
         UNREF(mouse->dir);
-        free(mouse);
-        return NULL;
+        return ERR(DRIVER, NOMEM);
     }
 
-    return mouse;
+    return OK;
 }
 
-void mouse_free(mouse_t* mouse)
+void mouse_unregister(mouse_t* mouse)
 {
     if (mouse == NULL)
     {

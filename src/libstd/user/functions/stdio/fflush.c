@@ -16,5 +16,5 @@ int fflush(FILE* stream)
         mtx_unlock(&stream->mtx);
     }
 
-    return result == ERR ? EOF : 0;
+    return result == _FAIL ? EOF : 0;
 }

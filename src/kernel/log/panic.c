@@ -72,7 +72,7 @@ static void panic_registers(const interrupt_frame_t* frame)
     LOG_PANIC("rip: %04llx:0x%016llx ", frame->cs, frame->rip);
 
     symbol_info_t symbol;
-    if (symbol_resolve_addr(&symbol, (void*)frame->rip) != ERR)
+    if (symbol_resolve_addr(&symbol, (void*)frame->rip) != _FAIL)
     {
         LOG_PANIC("<%s+0x%llx>", symbol.name, frame->rip - (uintptr_t)symbol.addr);
     }
@@ -207,14 +207,14 @@ static uint64_t panic_print_trace_address(uintptr_t addr)
     if (addr >= VMM_USER_SPACE_MIN && addr < VMM_USER_SPACE_MAX)
     {
         LOG_PANIC("  [0x%016llx] <user space address>\n", addr);
-        return ERR;
+        return _FAIL;
     }
 
     symbol_info_t symbol;
-    if (symbol_resolve_addr(&symbol, (void*)addr) == ERR)
+    if (symbol_resolve_addr(&symbol, (void*)addr) == _FAIL)
     {
         LOG_PANIC("  [0x%016llx] <unknown>\n", addr);
-        return ERR;
+        return _FAIL;
     }
 
     LOG_PANIC("  [0x%016llx] <%s+0x%llx>\n", addr, symbol.name, addr - (uintptr_t)symbol.addr);
@@ -248,7 +248,7 @@ static void panic_unwind_stack(uintptr_t* rbp)
             break;
         }
 
-        if (panic_print_trace_address(returnAddress) == ERR)
+        if (panic_print_trace_address(returnAddress) == _FAIL)
         {
             LOG_PANIC("  [0x%016llx] <failed to resolve>\n", returnAddress);
             break;
@@ -318,7 +318,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
     vsnprintf(panicBuffer, sizeof(panicBuffer), format, args);
     va_end(args);
 
-    if (cpu_halt_others() == ERR)
+    if (cpu_halt_others() == _FAIL)
     {
         LOG_PANIC("failed to halt other CPUs due to '%s'\n", strerror(errno));
     }

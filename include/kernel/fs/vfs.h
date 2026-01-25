@@ -200,7 +200,7 @@ uint64_t vfs_id_get(void);
  * @brief Helper macros for implementing file operations dealing with simple buffers.
  *
  * @param buffer The destination buffer.
- * @param count The number of bytes to read/write.
+ * @param count The number of bytes to read.
  * @param offset A pointer to the current offset, will be updated.
  * @param src The source buffer.
  * @param size The size of the source buffer.

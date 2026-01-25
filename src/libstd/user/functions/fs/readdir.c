@@ -11,17 +11,17 @@ size_t readdir(fd_t fd, dirent_t** buffer, uint64_t* count)
     dirent_t* dirents = malloc(size);
     if (dirents == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t totalRead = 0;
     while (1)
     {
         uint64_t bytesRead = getdents(fd, (dirent_t*)((uint64_t)dirents + totalRead), size - totalRead);
-        if (bytesRead == ERR)
+        if (bytesRead == _FAIL)
         {
             free(dirents);
-            return ERR;
+            return _FAIL;
         }
 
         if (bytesRead == 0)
@@ -37,7 +37,7 @@ size_t readdir(fd_t fd, dirent_t** buffer, uint64_t* count)
             if (newDirents == NULL)
             {
                 free(dirents);
-                return ERR;
+                return _FAIL;
             }
             dirents = newDirents;
         }

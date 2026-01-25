@@ -73,7 +73,7 @@ static size_t tmpfs_write(file_t* file, const void* buffer, size_t count, size_t
         void* newData = realloc(file->vnode->data, requiredSize);
         if (newData == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
         memset(newData + file->vnode->size, 0, requiredSize - file->vnode->size);
         file->vnode->data = newData;
@@ -96,7 +96,7 @@ static uint64_t tmpfs_create(vnode_t* dir, dentry_t* target, mode_t mode)
     vnode_t* vnode = tmpfs_vnode_new(dir->superblock, mode & MODE_DIRECTORY ? VDIR : VREG, NULL, 0);
     if (vnode == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(vnode);
 
@@ -135,7 +135,7 @@ static uint64_t tmpfs_readlink(vnode_t* vnode, char* buffer, uint64_t count)
     if (vnode->data == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t copySize = MIN(count, vnode->size);
@@ -150,7 +150,7 @@ static uint64_t tmpfs_symlink(vnode_t* dir, dentry_t* target, const char* dest)
     vnode_t* vnode = tmpfs_vnode_new(dir->superblock, VSYMLINK, (void*)dest, strlen(dest));
     if (vnode == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(vnode);
 
@@ -173,7 +173,7 @@ static uint64_t tmpfs_remove(vnode_t* dir, dentry_t* target)
         if (!list_is_empty(&target->children))
         {
             errno = ENOTEMPTY;
-            return ERR;
+            return _FAIL;
         }
 
         tmpfs_dentry_remove(target);
@@ -377,7 +377,7 @@ static filesystem_t tmpfs = {
 void tmpfs_init(void)
 {
     LOG_INFO("registering tmpfs\n");
-    if (filesystem_register(&tmpfs) == ERR)
+    if (filesystem_register(&tmpfs) == _FAIL)
     {
         panic(NULL, "Failed to register tmpfs");
     }

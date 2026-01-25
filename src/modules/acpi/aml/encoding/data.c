@@ -19,7 +19,7 @@ uint64_t aml_byte_data_read(aml_term_list_ctx_t* ctx, uint8_t* out)
     {
         AML_DEBUG_ERROR(ctx, "Not enough data to read ByteData");
         errno = ENODATA;
-        return ERR;
+        return _FAIL;
     }
 
     *out = *ctx->current;
@@ -30,10 +30,10 @@ uint64_t aml_byte_data_read(aml_term_list_ctx_t* ctx, uint8_t* out)
 uint64_t aml_word_data_read(aml_term_list_ctx_t* ctx, uint16_t* out)
 {
     uint8_t byte1, byte2;
-    if (aml_byte_data_read(ctx, &byte1) == ERR || aml_byte_data_read(ctx, &byte2) == ERR)
+    if (aml_byte_data_read(ctx, &byte1) == _FAIL || aml_byte_data_read(ctx, &byte2) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read word data");
-        return ERR;
+        return _FAIL;
     }
     *out = ((uint16_t)byte1) | (((uint16_t)byte2) << 8);
     return 0;
@@ -42,10 +42,10 @@ uint64_t aml_word_data_read(aml_term_list_ctx_t* ctx, uint16_t* out)
 uint64_t aml_dword_data_read(aml_term_list_ctx_t* ctx, uint32_t* out)
 {
     uint16_t word1, word2;
-    if (aml_word_data_read(ctx, &word1) == ERR || aml_word_data_read(ctx, &word2) == ERR)
+    if (aml_word_data_read(ctx, &word1) == _FAIL || aml_word_data_read(ctx, &word2) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read dword data");
-        return ERR;
+        return _FAIL;
     }
     *out = ((uint32_t)word1) | (((uint32_t)word2) << 16);
     return 0;
@@ -54,10 +54,10 @@ uint64_t aml_dword_data_read(aml_term_list_ctx_t* ctx, uint32_t* out)
 uint64_t aml_qword_data_read(aml_term_list_ctx_t* ctx, uint64_t* out)
 {
     uint32_t dword1, dword2;
-    if (aml_dword_data_read(ctx, &dword1) == ERR || aml_dword_data_read(ctx, &dword2) == ERR)
+    if (aml_dword_data_read(ctx, &dword1) == _FAIL || aml_dword_data_read(ctx, &dword2) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read qword data");
-        return ERR;
+        return _FAIL;
     }
     *out = ((uint64_t)dword1) | (((uint64_t)dword2) << 32);
     return 0;
@@ -65,10 +65,10 @@ uint64_t aml_qword_data_read(aml_term_list_ctx_t* ctx, uint64_t* out)
 
 uint64_t aml_byte_const_read(aml_term_list_ctx_t* ctx, uint8_t* out)
 {
-    if (aml_token_expect(ctx, AML_BYTE_PREFIX) == ERR)
+    if (aml_token_expect(ctx, AML_BYTE_PREFIX) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read byte prefix");
-        return ERR;
+        return _FAIL;
     }
 
     return aml_byte_data_read(ctx, out);
@@ -76,10 +76,10 @@ uint64_t aml_byte_const_read(aml_term_list_ctx_t* ctx, uint8_t* out)
 
 uint64_t aml_word_const_read(aml_term_list_ctx_t* ctx, uint16_t* out)
 {
-    if (aml_token_expect(ctx, AML_WORD_PREFIX) == ERR)
+    if (aml_token_expect(ctx, AML_WORD_PREFIX) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read word prefix");
-        return ERR;
+        return _FAIL;
     }
 
     return aml_word_data_read(ctx, out);
@@ -87,10 +87,10 @@ uint64_t aml_word_const_read(aml_term_list_ctx_t* ctx, uint16_t* out)
 
 uint64_t aml_dword_const_read(aml_term_list_ctx_t* ctx, uint32_t* out)
 {
-    if (aml_token_expect(ctx, AML_DWORD_PREFIX) == ERR)
+    if (aml_token_expect(ctx, AML_DWORD_PREFIX) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read dword prefix");
-        return ERR;
+        return _FAIL;
     }
 
     return aml_dword_data_read(ctx, out);
@@ -98,10 +98,10 @@ uint64_t aml_dword_const_read(aml_term_list_ctx_t* ctx, uint32_t* out)
 
 uint64_t aml_qword_const_read(aml_term_list_ctx_t* ctx, uint64_t* out)
 {
-    if (aml_token_expect(ctx, AML_QWORD_PREFIX) == ERR)
+    if (aml_token_expect(ctx, AML_QWORD_PREFIX) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read qword prefix");
-        return ERR;
+        return _FAIL;
     }
 
     return aml_qword_data_read(ctx, out);
@@ -115,27 +115,27 @@ uint64_t aml_const_obj_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
     switch (token.num)
     {
     case AML_ZERO_OP:
-        if (aml_integer_set(out, 0) == ERR)
+        if (aml_integer_set(out, 0) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         break;
     case AML_ONE_OP:
-        if (aml_integer_set(out, 1) == ERR)
+        if (aml_integer_set(out, 1) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         break;
     case AML_ONES_OP:
-        if (aml_integer_set(out, aml_integer_ones()) == ERR)
+        if (aml_integer_set(out, aml_integer_ones()) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         break;
     default:
         AML_DEBUG_ERROR(ctx, "Invalid ConstObj token '0x%x'", token.num);
         errno = EILSEQ;
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -143,20 +143,20 @@ uint64_t aml_const_obj_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
 
 uint64_t aml_string_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
 {
-    if (aml_token_expect(ctx, AML_STRING_PREFIX) == ERR)
+    if (aml_token_expect(ctx, AML_STRING_PREFIX) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read StringPrefix");
-        return ERR;
+        return _FAIL;
     }
 
     const char* start = (const char*)ctx->current;
     while (1)
     {
         uint8_t c;
-        if (aml_byte_data_read(ctx, &c) == ERR)
+        if (aml_byte_data_read(ctx, &c) == _FAIL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read byte in string");
-            return ERR;
+            return _FAIL;
         }
 
         if (c == 0x00)
@@ -168,13 +168,13 @@ uint64_t aml_string_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
         {
             AML_DEBUG_ERROR(ctx, "Invalid ASCII character '0x%x' in string", c);
             errno = EILSEQ;
-            return ERR;
+            return _FAIL;
         }
     }
 
-    if (aml_string_set(out, start) == ERR)
+    if (aml_string_set(out, start) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -182,15 +182,15 @@ uint64_t aml_string_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
 
 uint64_t aml_revision_op_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
 {
-    if (aml_token_expect(ctx, AML_REVISION_OP) == ERR)
+    if (aml_token_expect(ctx, AML_REVISION_OP) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read RevisionOp");
-        return ERR;
+        return _FAIL;
     }
 
-    if (aml_integer_set(out, AML_CURRENT_REVISION) == ERR)
+    if (aml_integer_set(out, AML_CURRENT_REVISION) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -207,106 +207,106 @@ uint64_t aml_computational_data_read(aml_term_list_ctx_t* ctx, aml_object_t* out
     case AML_BYTE_PREFIX:
     {
         uint8_t byte;
-        if (aml_byte_const_read(ctx, &byte) == ERR)
+        if (aml_byte_const_read(ctx, &byte) == _FAIL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read ByteConst");
-            return ERR;
+            return _FAIL;
         }
 
-        if (aml_integer_set(out, byte) == ERR)
+        if (aml_integer_set(out, byte) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         return 0;
     }
     case AML_WORD_PREFIX:
     {
         uint16_t word;
-        if (aml_word_const_read(ctx, &word) == ERR)
+        if (aml_word_const_read(ctx, &word) == _FAIL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read WordConst");
-            return ERR;
+            return _FAIL;
         }
 
-        if (aml_integer_set(out, word) == ERR)
+        if (aml_integer_set(out, word) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         return 0;
     }
     case AML_DWORD_PREFIX:
     {
         uint32_t dword;
-        if (aml_dword_const_read(ctx, &dword) == ERR)
+        if (aml_dword_const_read(ctx, &dword) == _FAIL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read DWordConst");
-            return ERR;
+            return _FAIL;
         }
 
-        if (aml_integer_set(out, dword) == ERR)
+        if (aml_integer_set(out, dword) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         return 0;
     }
     case AML_QWORD_PREFIX:
     {
         uint64_t qword;
-        if (aml_qword_const_read(ctx, &qword) == ERR)
+        if (aml_qword_const_read(ctx, &qword) == _FAIL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read QWordConst");
-            return ERR;
+            return _FAIL;
         }
 
-        if (aml_integer_set(out, qword) == ERR)
+        if (aml_integer_set(out, qword) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         return 0;
     }
     case AML_STRING_PREFIX:
-        if (aml_string_read(ctx, out) == ERR)
+        if (aml_string_read(ctx, out) == _FAIL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read String");
-            return ERR;
+            return _FAIL;
         }
         return 0;
     case AML_ZERO_OP:
     case AML_ONE_OP:
     case AML_ONES_OP:
-        if (aml_const_obj_read(ctx, out) == ERR)
+        if (aml_const_obj_read(ctx, out) == _FAIL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read ConstObj");
-            return ERR;
+            return _FAIL;
         }
         return 0;
     case AML_BUFFER_OP:
-        if (aml_def_buffer_read(ctx, out) == ERR)
+        if (aml_def_buffer_read(ctx, out) == _FAIL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read Buffer");
-            return ERR;
+            return _FAIL;
         }
         return 0;
     case AML_REVISION_OP:
-        if (aml_revision_op_read(ctx, out) == ERR)
+        if (aml_revision_op_read(ctx, out) == _FAIL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read RevisionOp");
-            return ERR;
+            return _FAIL;
         }
         return 0;
     default:
         AML_DEBUG_ERROR(ctx, "Invalid ComputationalData '%s' (0x%x)", token.props->name, token.num);
         errno = EILSEQ;
-        return ERR;
+        return _FAIL;
     }
 }
 
 uint64_t aml_num_elements_read(aml_term_list_ctx_t* ctx, uint8_t* out)
 {
-    if (aml_byte_data_read(ctx, out) == ERR)
+    if (aml_byte_data_read(ctx, out) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NumElements");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -324,19 +324,19 @@ static inline uint64_t aml_package_element_handle_name(aml_state_t* state, aml_o
     {
         // Unsure what the spec means by "actual data" but converting to DataObject seems to be the most sensible
         // interpretation.
-        if (aml_convert_source(state, in, &out, AML_DATA_OBJECTS) == ERR)
+        if (aml_convert_source(state, in, &out, AML_DATA_OBJECTS) == _FAIL)
         {
             LOG_ERR("failed to convert to data object in aml_package_element_handle_name()\n");
-            return ERR;
+            return _FAIL;
         }
         return 0;
     }
     else // "... returned in the package as references"
     {
-        if (aml_object_reference_set(out, in) == ERR)
+        if (aml_object_reference_set(out, in) == _FAIL)
         {
             LOG_ERR("failed to init ObjectReference in aml_package_element_handle_name()\n");
-            return ERR;
+            return _FAIL;
         }
         return 0;
     }
@@ -350,35 +350,35 @@ uint64_t aml_package_element_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
     if (token.props->type == AML_TOKEN_TYPE_NAME)
     {
         aml_name_stioring_t nameString;
-        if (aml_name_string_read(ctx, &nameString) == ERR)
+        if (aml_name_string_read(ctx, &nameString) == _FAIL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read NameString");
-            return ERR;
+            return _FAIL;
         }
 
         aml_object_t* object = aml_namespace_find_by_name_string(&ctx->state->overlay, ctx->scope, &nameString);
         if (object == NULL)
         {
-            if (aml_unresolved_set(out, &nameString, ctx->scope, aml_package_element_handle_name) == ERR)
+            if (aml_unresolved_set(out, &nameString, ctx->scope, aml_package_element_handle_name) == _FAIL)
             {
-                return ERR;
+                return _FAIL;
             }
             return 0;
         }
 
-        if (aml_package_element_handle_name(ctx->state, object, out) == ERR)
+        if (aml_package_element_handle_name(ctx->state, object, out) == _FAIL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to handle name in PackageElement");
-            return ERR;
+            return _FAIL;
         }
 
         return 0;
     }
 
-    if (aml_data_ref_object_read(ctx, out) == ERR)
+    if (aml_data_ref_object_read(ctx, out) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DataRefObject");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -389,14 +389,14 @@ uint64_t aml_package_element_list_read(aml_term_list_ctx_t* ctx, aml_package_t* 
     uint64_t i = 0;
     while (ctx->current < end && i < package->length)
     {
-        if (aml_package_element_read(ctx, package->elements[i]) == ERR)
+        if (aml_package_element_read(ctx, package->elements[i]) == _FAIL)
         {
             for (uint64_t j = 0; j < i; j++)
             {
                 aml_object_clear(package->elements[j]);
             }
             AML_DEBUG_ERROR(ctx, "Failed to read PackageElement %llu", i);
-            return ERR;
+            return _FAIL;
         }
         i++;
     }
@@ -406,41 +406,41 @@ uint64_t aml_package_element_list_read(aml_term_list_ctx_t* ctx, aml_package_t* 
 
 uint64_t aml_def_package_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
 {
-    if (aml_token_expect(ctx, AML_PACKAGE_OP) == ERR)
+    if (aml_token_expect(ctx, AML_PACKAGE_OP) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read PackageOp");
-        return ERR;
+        return _FAIL;
     }
 
     const uint8_t* start = ctx->current;
 
     // PkgLength specifies how many elements in the package are defined, others are left uninitialized.
     aml_pkg_length_t pkgLength;
-    if (aml_pkg_length_read(ctx, &pkgLength) == ERR)
+    if (aml_pkg_length_read(ctx, &pkgLength) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read PkgLength");
-        return ERR;
+        return _FAIL;
     }
 
     const uint8_t* end = start + pkgLength;
 
     // NumElements specifies the capacity of the package.
     uint8_t numElements;
-    if (aml_num_elements_read(ctx, &numElements) == ERR)
+    if (aml_num_elements_read(ctx, &numElements) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
-    if (aml_package_set(out, numElements) == ERR)
+    if (aml_package_set(out, numElements) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
-    if (aml_package_element_list_read(ctx, &out->package, end) == ERR)
+    if (aml_package_element_list_read(ctx, &out->package, end) == _FAIL)
     {
         aml_object_clear(out);
         AML_DEBUG_ERROR(ctx, "Failed to read PackageElementList");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -448,10 +448,10 @@ uint64_t aml_def_package_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
 
 uint64_t aml_def_var_num_elements_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
-    if (aml_term_arg_read_integer(ctx, out) == ERR)
+    if (aml_term_arg_read_integer(ctx, out) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermArg for VarNumElements");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -459,40 +459,40 @@ uint64_t aml_def_var_num_elements_read(aml_term_list_ctx_t* ctx, aml_uint_t* out
 
 uint64_t aml_def_var_package_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
 {
-    if (aml_token_expect(ctx, AML_VAR_PACKAGE_OP) == ERR)
+    if (aml_token_expect(ctx, AML_VAR_PACKAGE_OP) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read VarPackageOp");
-        return ERR;
+        return _FAIL;
     }
 
     const uint8_t* start = ctx->current;
 
     aml_pkg_length_t pkgLength;
-    if (aml_pkg_length_read(ctx, &pkgLength) == ERR)
+    if (aml_pkg_length_read(ctx, &pkgLength) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read PkgLength");
-        return ERR;
+        return _FAIL;
     }
 
     const uint8_t* end = start + pkgLength;
 
     uint64_t numElements;
-    if (aml_def_var_num_elements_read(ctx, &numElements) == ERR)
+    if (aml_def_var_num_elements_read(ctx, &numElements) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read VarNumElements");
-        return ERR;
+        return _FAIL;
     }
 
-    if (aml_package_set(out, numElements) == ERR)
+    if (aml_package_set(out, numElements) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
-    if (aml_package_element_list_read(ctx, &out->package, end) == ERR)
+    if (aml_package_element_list_read(ctx, &out->package, end) == _FAIL)
     {
         aml_object_clear(out);
         AML_DEBUG_ERROR(ctx, "Failed to read PackageElementList");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -517,10 +517,10 @@ uint64_t aml_data_object_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
         break;
     }
 
-    if (result == ERR)
+    if (result == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read %s", token.props->name);
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -528,10 +528,10 @@ uint64_t aml_data_object_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
 
 uint64_t aml_data_ref_object_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
 {
-    if (aml_data_object_read(ctx, out) == ERR)
+    if (aml_data_object_read(ctx, out) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DataObject");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;

@@ -184,7 +184,7 @@ void irq_dispatch(interrupt_frame_t* frame);
  * @param phys The physical IRQ number.
  * @param flags The IRQ flags.
  * @param cpu The target CPU for the IRQ, or `NULL` for the current CPU.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `EBUSY`: The IRQ is already allocated with incompatible flags, or is exclusive.
  * - `ENOSPC`: No more virtual IRQs can be allocated.
@@ -206,7 +206,7 @@ void irq_virt_free(irq_virt_t virt);
  *
  * @param virt The virtual IRQ to set the affinity for.
  * @param cpu The target CPU for the IRQ.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENOENT`: The given virtual IRQ is not a external vector.
  * - `ENODEV`: The IRQ has no associated IRQ chip.
@@ -223,7 +223,7 @@ uint64_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu);
  * @param start The start of the physical IRQ range.
  * @param end The end of the physical IRQ range.
  * @param private Private data for the IRQ chip, will be found in `irq_t->domain->data`.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `EEXIST`: A chip with a domain overlapping the given range is already registered.
  * - `ENOMEM`: Memory allocation failed.
@@ -258,7 +258,7 @@ uint64_t irq_chip_amount(void);
  * @param virt The virtual IRQ to register the handler for.
  * @param func The handler function to register.
  * @param private The private data to pass to the handler function.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENOENT`: The given virtual IRQ is not a external vector.
  * - `EEXIST`: The given handler is already registered for the given virtual IRQ.

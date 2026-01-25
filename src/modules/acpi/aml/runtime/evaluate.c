@@ -16,7 +16,7 @@ aml_object_t* aml_evaluate(aml_state_t* state, aml_object_t* object, aml_type_t 
     if (state == NULL)
     {
         aml_state_t tempState;
-        if (aml_state_init(&tempState, NULL) == ERR)
+        if (aml_state_init(&tempState, NULL) == _FAIL)
         {
             return NULL;
         }
@@ -41,7 +41,7 @@ aml_object_t* aml_evaluate(aml_state_t* state, aml_object_t* object, aml_type_t 
         UNREF_DEFER(result);
 
         aml_object_t* converted = NULL;
-        if (aml_convert_source(state, result, &converted, targetTypes) == ERR)
+        if (aml_convert_source(state, result, &converted, targetTypes) == _FAIL)
         {
             return NULL;
         }
@@ -50,7 +50,7 @@ aml_object_t* aml_evaluate(aml_state_t* state, aml_object_t* object, aml_type_t 
     }
 
     aml_object_t* converted = NULL;
-    if (aml_convert_source(state, object, &converted, targetTypes) == ERR)
+    if (aml_convert_source(state, object, &converted, targetTypes) == _FAIL)
     {
         return NULL;
     }

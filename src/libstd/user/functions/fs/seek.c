@@ -8,7 +8,7 @@
 size_t seek(fd_t fd, ssize_t offset, seek_origin_t origin)
 {
     uint64_t result = _syscall_seek(fd, offset, origin);
-    if (result == ERR)
+    if (result == _FAIL)
     {
         errno = _syscall_errno();
     }

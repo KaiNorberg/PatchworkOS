@@ -34,14 +34,12 @@ superblock_t* superblock_new(filesystem_t* fs, const superblock_ops_t* ops, cons
 {
     if (fs == NULL)
     {
-        errno = EINVAL;
         return NULL;
     }
 
     superblock_t* superblock = malloc(sizeof(superblock_t));
     if (superblock == NULL)
     {
-        errno = ENOMEM;
         return NULL;
     }
 

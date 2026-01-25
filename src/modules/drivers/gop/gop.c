@@ -90,15 +90,15 @@ static uint64_t gop_init(void)
     if (bootInfo == NULL || bootInfo->gop.virtAddr == NULL)
     {
         LOG_ERR("no GOP provided by bootloader");
-        return ERR;
+        return _FAIL;
     }
 
     gop = bootInfo->gop;
-    fb = fb_new("Graphics Output Protocol", &ops, NULL);
+    fb = fb_register("Graphics Output Protocol", &ops, NULL);
     if (fb == NULL)
     {
         LOG_ERR("failed to create GOP framebuffer");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -111,9 +111,9 @@ uint64_t _module_procedure(const module_event_t* event)
     switch (event->type)
     {
     case MODULE_EVENT_LOAD:
-        if (gop_init() == ERR)
+        if (gop_init() == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         break;
     default:

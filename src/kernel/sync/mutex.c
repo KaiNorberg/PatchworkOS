@@ -67,10 +67,12 @@ bool mutex_acquire_timeout(mutex_t* mtx, clock_t timeout)
     if (timeout == CLOCKS_NEVER)
     {
         lock_acquire(&mtx->lock);
-        while (WAIT_BLOCK_LOCK(&mtx->waitQueue, &mtx->lock, mtx->owner == NULL) == ERR)
+        status_t status = WAIT_BLOCK_LOCK(&mtx->waitQueue, &mtx->lock, mtx->owner == NULL);
+        if (IS_FAIL(status))
         {
+            lock_release(&mtx->lock);
+            return false;
         }
-
         mtx->owner = self;
         mtx->depth = 1;
         lock_release(&mtx->lock);
@@ -89,7 +91,8 @@ bool mutex_acquire_timeout(mutex_t* mtx, clock_t timeout)
         }
 
         clock_t waitTime = end - now;
-        if (WAIT_BLOCK_LOCK_TIMEOUT(&mtx->waitQueue, &mtx->lock, mtx->owner == NULL, waitTime) == ERR)
+        status_t status = WAIT_BLOCK_LOCK_TIMEOUT(&mtx->waitQueue, &mtx->lock, mtx->owner == NULL, waitTime);
+        if (IS_FAIL(status))
         {
             lock_release(&mtx->lock);
             return false;

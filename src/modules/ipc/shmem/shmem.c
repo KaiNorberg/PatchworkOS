@@ -110,7 +110,7 @@ static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmo
     for (uint64_t i = 0; i < pageAmount; i++)
     {
         shmem->pages[i] = pmm_alloc();
-        if (shmem->pages[i] == ERR)
+        if (shmem->pages[i] == _FAIL)
         {
             for (uint64_t j = 0; j < i; j++)
             {
@@ -147,7 +147,7 @@ static uint64_t shmem_open(file_t* file)
     shmem_object_t* shmem = shmem_object_new();
     if (shmem == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     file->data = shmem;
@@ -230,7 +230,7 @@ static uint64_t shmem_init(void)
     if (shmemDir == NULL)
     {
         LOG_ERR("failed to create /dev/shmem directory");
-        return ERR;
+        return _FAIL;
     }
 
     newFile = devfs_file_new(shmemDir, "new", NULL, &fileOps, NULL);
@@ -238,7 +238,7 @@ static uint64_t shmem_init(void)
     {
         UNREF(shmemDir);
         LOG_ERR("failed to create /dev/shmem/new file");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -259,9 +259,9 @@ uint64_t _module_procedure(const module_event_t* event)
     switch (event->type)
     {
     case MODULE_EVENT_LOAD:
-        if (shmem_init() == ERR)
+        if (shmem_init() == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         break;
     case MODULE_EVENT_UNLOAD:

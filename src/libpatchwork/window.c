@@ -171,7 +171,7 @@ error:
     {
         element_free(minimizeButton);
     }
-    return ERR;
+    return _FAIL;
 }
 
 static uint64_t window_deco_init(window_t* win, element_t* elem)
@@ -179,7 +179,7 @@ static uint64_t window_deco_init(window_t* win, element_t* elem)
     deco_private_t* private = malloc(sizeof(deco_private_t));
     if (private == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
   private
     ->isFocused = false;
@@ -194,10 +194,10 @@ static uint64_t window_deco_init(window_t* win, element_t* elem)
 
     if (!(win->flags & WINDOW_NO_CONTROLS))
     {
-        if (window_deco_init_controls(win, elem, private) == ERR)
+        if (window_deco_init_controls(win, elem, private) == _FAIL)
         {
             free(private);
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -361,7 +361,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     strcpy(cmd->name, win->name);
     display_cmds_flush(disp);
     event_t event;
-    if (display_wait(disp, &event, EVENT_SURFACE_NEW) == ERR)
+    if (display_wait(disp, &event, EVENT_SURFACE_NEW) == _FAIL)
     {
         window_free(win);
         return NULL;
@@ -369,7 +369,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     win->surface = event.target;
 
     fd_t shmem = claim(event.surfaceNew.shmemKey);
-    if (shmem == ERR)
+    if (shmem == _FAIL)
     {
         window_free(win);
         return NULL;
@@ -521,20 +521,20 @@ uint64_t window_move(window_t* win, const rect_t* rect)
     if (win == NULL || rect == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     bool hasSizeChanged = RECT_WIDTH(&win->rect) != RECT_WIDTH(rect) || RECT_HEIGHT(&win->rect) != RECT_HEIGHT(rect);
     if (hasSizeChanged && !(win->flags & WINDOW_RESIZABLE))
     {
         errno = EPERM;
-        return ERR;
+        return _FAIL;
     }
 
     cmd_surface_move_t* cmd = display_cmd_alloc(win->disp, CMD_SURFACE_MOVE, sizeof(cmd_surface_move_t));
     if (cmd == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     cmd->target = win->surface;
     cmd->rect = *rect;
@@ -547,13 +547,13 @@ uint64_t window_set_timer(window_t* win, timer_flags_t flags, clock_t timeout)
     if (win == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     cmd_surface_timer_set_t* cmd = display_cmd_alloc(win->disp, CMD_SURFACE_TIMER_SET, sizeof(cmd_surface_timer_set_t));
     if (cmd == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     cmd->target = win->surface;
     cmd->flags = flags;
@@ -584,7 +584,7 @@ uint64_t window_invalidate_flush(window_t* win)
     if (win == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (RECT_AREA(&win->invalidRect) == 0)
@@ -596,7 +596,7 @@ uint64_t window_invalidate_flush(window_t* win)
         display_cmd_alloc(win->disp, CMD_SURFACE_INVALIDATE, sizeof(cmd_surface_invalidate_t));
     if (cmd == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     cmd->target = win->surface;
@@ -612,7 +612,7 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
     if (win == NULL || event == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     switch (event->type)
@@ -622,12 +622,12 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
         element_t* elem = element_find(win->root, event->libRedraw.id);
         if (elem == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
 
-        if (element_dispatch(elem, event) == ERR)
+        if (element_dispatch(elem, event) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
     break;
@@ -636,12 +636,12 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
         element_t* elem = element_find(win->root, event->libForceAction.dest);
         if (elem == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
 
-        if (element_dispatch(elem, event) == ERR)
+        if (element_dispatch(elem, event) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
     break;
@@ -662,17 +662,17 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
             win->rect = newRect;
         }
 
-        if (element_dispatch(win->root, event) == ERR)
+        if (element_dispatch(win->root, event) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
     break;
     default:
     {
-        if (element_dispatch(win->root, event) == ERR)
+        if (element_dispatch(win->root, event) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
     break;
@@ -687,13 +687,13 @@ uint64_t window_set_focus(window_t* win)
     if (win == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     cmd_surface_focus_set_t* cmd = display_cmd_alloc(win->disp, CMD_SURFACE_FOCUS_SET, sizeof(cmd_surface_focus_set_t));
     if (cmd == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     cmd->isGlobal = false;
     cmd->target = win->surface;
@@ -706,19 +706,19 @@ uint64_t window_set_visible(window_t* win, bool isVisible)
     if (win == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
-    if (display_dispatch_pending(win->disp, EVENT_LIB_REDRAW, win->surface) == ERR)
+    if (display_dispatch_pending(win->disp, EVENT_LIB_REDRAW, win->surface) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     cmd_surface_visible_set_t* cmd =
         display_cmd_alloc(win->disp, CMD_SURFACE_VISIBLE_SET, sizeof(cmd_surface_visible_set_t));
     if (cmd == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     cmd->isGlobal = false;
     cmd->target = win->surface;

@@ -145,7 +145,7 @@ void cpu_stacks_overflow_check(void);
 /**
  * @brief Halts all other CPUs.
  *
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t cpu_halt_others(void);
 

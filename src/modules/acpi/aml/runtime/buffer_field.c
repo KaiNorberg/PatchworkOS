@@ -11,22 +11,22 @@ uint64_t aml_buffer_field_load(aml_buffer_field_t* bufferField, aml_object_t* ou
     if (bufferField == NULL || out == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t byteSize = (bufferField->bitSize + 7) / 8;
     if (byteSize > aml_integer_byte_size())
     {
-        if (aml_buffer_set_empty(out, byteSize) == ERR)
+        if (aml_buffer_set_empty(out, byteSize) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
     else
     {
-        if (aml_integer_set(out, 0) == ERR)
+        if (aml_integer_set(out, 0) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -41,16 +41,16 @@ uint64_t aml_buffer_field_load(aml_buffer_field_t* bufferField, aml_object_t* ou
 
         uint8_t temp[AML_BUFFER_FIELD_TEMP_SIZE] = {0};
         uint64_t bitsToRead = MIN(remainingBits, AML_BUFFER_FIELD_TEMP_SIZE * 8);
-        if (aml_object_get_bits_at(bufferField->target, bufferField->bitOffset + i, bitsToRead, temp) == ERR)
+        if (aml_object_get_bits_at(bufferField->target, bufferField->bitOffset + i, bitsToRead, temp) == _FAIL)
         {
             aml_object_clear(out);
-            return ERR;
+            return _FAIL;
         }
 
-        if (aml_object_set_bits_at(out, i, bitsToRead, temp) == ERR)
+        if (aml_object_set_bits_at(out, i, bitsToRead, temp) == _FAIL)
         {
             aml_object_clear(out);
-            return ERR;
+            return _FAIL;
         }
 
         i += bitsToRead;
@@ -64,14 +64,14 @@ uint64_t aml_buffer_field_store(aml_buffer_field_t* bufferField, aml_object_t* i
     if (bufferField == NULL || in == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     aml_type_t inType = in->type;
     if (inType != AML_BUFFER && inType != AML_INTEGER)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t i = 0;
@@ -85,14 +85,14 @@ uint64_t aml_buffer_field_store(aml_buffer_field_t* bufferField, aml_object_t* i
 
         uint8_t temp[AML_BUFFER_FIELD_TEMP_SIZE] = {0};
         uint64_t bitsToWrite = MIN(remainingBits, AML_BUFFER_FIELD_TEMP_SIZE * 8);
-        if (aml_object_get_bits_at(in, i, bitsToWrite, temp) == ERR)
+        if (aml_object_get_bits_at(in, i, bitsToWrite, temp) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
 
-        if (aml_object_set_bits_at(bufferField->target, bufferField->bitOffset + i, bitsToWrite, temp) == ERR)
+        if (aml_object_set_bits_at(bufferField->target, bufferField->bitOffset + i, bitsToWrite, temp) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
 
         i += bitsToWrite;

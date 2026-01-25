@@ -54,7 +54,7 @@ fd_t file_table_open(file_table_t* table, file_t* file)
     if (table == NULL || file == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     LOCK_SCOPE(&table->lock);
@@ -63,7 +63,7 @@ fd_t file_table_open(file_table_t* table, file_t* file)
     if (index >= CONFIG_MAX_FD)
     {
         errno = EMFILE;
-        return ERR;
+        return _FAIL;
     }
 
     table->files[index] = REF(file);
@@ -76,7 +76,7 @@ uint64_t file_table_close(file_table_t* table, fd_t fd)
     if (table == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     LOCK_SCOPE(&table->lock);
@@ -84,7 +84,7 @@ uint64_t file_table_close(file_table_t* table, fd_t fd)
     if (fd >= CONFIG_MAX_FD || table->files[fd] == NULL)
     {
         errno = EBADF;
-        return ERR;
+        return _FAIL;
     }
 
     UNREF(table->files[fd]);
@@ -138,7 +138,7 @@ uint64_t file_table_close_range(file_table_t* table, fd_t min, fd_t max)
     if (table == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     LOCK_SCOPE(&table->lock);
@@ -161,7 +161,7 @@ fd_t file_table_set(file_table_t* table, fd_t fd, file_t* file)
     if (table == NULL || file == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     LOCK_SCOPE(&table->lock);
@@ -169,7 +169,7 @@ fd_t file_table_set(file_table_t* table, fd_t fd, file_t* file)
     if (fd >= CONFIG_MAX_FD)
     {
         errno = EBADF;
-        return ERR;
+        return _FAIL;
     }
 
     if (table->files[fd] != NULL)
@@ -188,7 +188,7 @@ fd_t file_table_dup(file_table_t* table, fd_t oldFd)
     if (table == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     LOCK_SCOPE(&table->lock);
@@ -196,14 +196,14 @@ fd_t file_table_dup(file_table_t* table, fd_t oldFd)
     if (oldFd >= CONFIG_MAX_FD || table->files[oldFd] == NULL)
     {
         errno = EBADF;
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t index = bitmap_find_first_clear(&table->bitmap, 0, CONFIG_MAX_FD);
     if (index >= CONFIG_MAX_FD)
     {
         errno = EMFILE;
-        return ERR;
+        return _FAIL;
     }
 
     table->files[index] = REF(table->files[oldFd]);
@@ -216,7 +216,7 @@ fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd)
     if (table == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     LOCK_SCOPE(&table->lock);
@@ -224,7 +224,7 @@ fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd)
     if (oldFd >= CONFIG_MAX_FD || newFd >= CONFIG_MAX_FD || table->files[oldFd] == NULL)
     {
         errno = EBADF;
-        return ERR;
+        return _FAIL;
     }
 
     if (oldFd == newFd)
@@ -248,7 +248,7 @@ uint64_t file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t m
     if (dest == NULL || src == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     LOCK_SCOPE(&src->lock);

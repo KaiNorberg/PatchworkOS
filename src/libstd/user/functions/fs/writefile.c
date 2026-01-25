@@ -3,15 +3,15 @@
 size_t writefile(const char* path, const void* buffer, size_t count, size_t offset)
 {
     fd_t fd = open(path);
-    if (fd == ERR)
+    if (fd == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
-    if (offset != 0 && seek(fd, offset, SEEK_SET) == ERR)
+    if (offset != 0 && seek(fd, offset, SEEK_SET) == _FAIL)
     {
         close(fd);
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t bytesWritten = write(fd, buffer, count);

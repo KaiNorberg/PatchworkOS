@@ -15,6 +15,7 @@
 
 #include <sys/list.h>
 #include <sys/proc.h>
+#include <sys/status.h>
 
 typedef struct process process_t;
 typedef struct thread thread_t;
@@ -92,10 +93,11 @@ typedef struct thread
  *
  * Does not push the created thread to the scheduler or similar, merely handling allocation and initialization.
  *
+ * @param out Output pointer for the thread.
  * @param process The parent process that the thread will execute within.
- * @return On success, returns the newly created thread. On failure, returns `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-thread_t* thread_new(process_t* process);
+status_t thread_new(thread_t** out, process_t* process);
 
 /**
  * @brief Frees a thread structure.
@@ -114,9 +116,9 @@ typedef void (*thread_kernel_entry_t)(void* arg);
  *
  * @param entry The entry point function for the thread.
  * @param arg An argument to pass to the entry point function.
- * @return On success, returns the newly created thread ID. On failure, returns `ERR` and `errno` is set.
+ * @return An appropriate status value.
  */
-tid_t thread_kernel_create(thread_kernel_entry_t entry, void* arg);
+status_t thread_kernel_create(tid_t* tid, thread_kernel_entry_t entry, void* arg);
 
 /**
  * @brief Retrieves the currently running thread.
@@ -194,7 +196,7 @@ bool thread_is_note_pending(thread_t* thread);
  *
  * @param thread The destination thread.
  * @param string The note string to send, should be a null-terminated string.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
  * - See `note_send()` for possible error codes.
  */
 uint64_t thread_send_note(thread_t* thread, const char* string);
@@ -208,9 +210,9 @@ uint64_t thread_send_note(thread_t* thread, const char* string);
  * @param dest The destination buffer in kernel space.
  * @param userSrc The source buffer in user space.
  * @param length The number of bytes to copy.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t thread_copy_from_user(thread_t* thread, void* dest, const void* userSrc, uint64_t length);
+status_t thread_copy_from_user(thread_t* thread, void* dest, const void* userSrc, uint64_t length);
 
 /**
  * @brief Safely copy data to user space.
@@ -221,9 +223,9 @@ uint64_t thread_copy_from_user(thread_t* thread, void* dest, const void* userSrc
  * @param userDest The destination buffer in user space.
  * @param src The source buffer in kernel space.
  * @param length The number of bytes to copy.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t thread_copy_to_user(thread_t* thread, void* userDest, const void* src, uint64_t length);
+status_t thread_copy_to_user(thread_t* thread, void* userDest, const void* src, uint64_t length);
 
 /**
  * @brief Safely copy a null-terminated array of objects from user space.
@@ -235,9 +237,9 @@ uint64_t thread_copy_to_user(thread_t* thread, void* userDest, const void* src, 
  * @param maxCount The maximum number of objects to copy.
  * @param outArray Output pointer to store the allocated array in kernel space, must be freed by the caller.
  * @param outCount Output pointer to store the number of objects copied, can be `NULL`.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t thread_copy_from_user_terminated(thread_t* thread, const void* userArray, const void* terminator,
+status_t thread_copy_from_user_terminated(thread_t* thread, const void* userArray, const void* terminator,
     uint8_t objectSize, uint64_t maxCount, void** outArray, uint64_t* outCount);
 
 /**
@@ -247,9 +249,9 @@ uint64_t thread_copy_from_user_terminated(thread_t* thread, const void* userArra
  * @param dest The destination buffer in kernel space.
  * @param userSrc The source buffer in user space.
  * @param size The size of the destination buffer.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t thread_copy_from_user_string(thread_t* thread, char* dest, const char* userSrc, uint64_t size);
+status_t thread_copy_from_user_string(thread_t* thread, char* dest, const char* userSrc, uint64_t size);
 
 /**
  * @brief Safely copy a string from user space and use it to initialize a pathname.
@@ -257,9 +259,9 @@ uint64_t thread_copy_from_user_string(thread_t* thread, char* dest, const char* 
  * @param thread The thread performing the operation.
  * @param pathname A pointer to the pathname to initialize.
  * @param userPath The string in user space.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, const char* userPath);
+status_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, const char* userPath);
 
 /**
  * @brief Safely copy a null-terminated array of strings and their contents from user space into a string vector.
@@ -268,9 +270,9 @@ uint64_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, 
  * @param user The source array of strings in user space.
  * @param out Output pointer to store the allocated array of strings in kernel space, must be freed by the caller.
  * @param outAmount Output pointer to store the number of strings copied, can be `NULL`.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t thread_copy_from_user_string_array(thread_t* thread, const char** user, char*** out, uint64_t* outAmount);
+status_t thread_copy_from_user_string_array(thread_t* thread, const char** user, char*** out, uint64_t* outAmount);
 
 /**
  * @brief Atomically load a 64-bit value from a user-space atomic variable.
@@ -280,9 +282,9 @@ uint64_t thread_copy_from_user_string_array(thread_t* thread, const char** user,
  * @param thread The thread performing the operation.
  * @param userObj The user-space atomic variable to load from.
  * @param outValue Output pointer to store the loaded value.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t thread_load_atomic_from_user(thread_t* thread, atomic_uint64_t* userObj, uint64_t* outValue);
+status_t thread_load_atomic_from_user(thread_t* thread, atomic_uint64_t* userObj, uint64_t* outValue);
 
 /**
  * @brief Jump to a thread by calling `thread_load()` and then loading its interrupt frame.

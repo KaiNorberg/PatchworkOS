@@ -8,7 +8,7 @@
 uint64_t symlink(const char* target, const char* linkpath)
 {
     uint64_t result = _syscall_symlink(target, linkpath);
-    if (result == ERR)
+    if (result == _FAIL)
     {
         errno = _syscall_errno();
     }

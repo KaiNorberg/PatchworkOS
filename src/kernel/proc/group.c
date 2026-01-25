@@ -50,7 +50,7 @@ uint64_t group_member_init(group_member_t* member, group_member_t* group)
         group_t* grp = group_get(group);
         if (grp == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
 
         group_add(grp, member);
@@ -60,7 +60,7 @@ uint64_t group_member_init(group_member_t* member, group_member_t* group)
     group_t* newGroup = group_new();
     if (newGroup == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     lock_acquire(&newGroup->lock);
@@ -144,14 +144,14 @@ uint64_t group_send_note(group_member_t* member, const char* note)
     if (member == NULL || note == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     group_t* group = member->group;
     if (group == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     LOCK_SCOPE(&group->lock);
@@ -167,9 +167,9 @@ uint64_t group_send_note(group_member_t* member, const char* note)
             continue;
         }
 
-        if (thread_send_note(thread, note) == ERR)
+        if (thread_send_note(thread, note) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
 

@@ -455,7 +455,7 @@ bool sched_is_idle(cpu_t* cpu);
  * @brief Sleeps the current thread for a specified duration in nanoseconds.
  *
  * @param timeout The duration to sleep in nanoseconds.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t sched_nanosleep(clock_t timeout);
 

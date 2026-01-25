@@ -248,7 +248,7 @@ static inline uint64_t process_rcu_thread_count(process_t* process)
  * @param process The process to set the cmdline for.
  * @param argv The array of argument strings.
  * @param argc The number of arguments.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENOMEM`: Out of memory.
  */

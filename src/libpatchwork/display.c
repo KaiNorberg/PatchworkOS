@@ -23,7 +23,7 @@ static inline uint64_t display_events_write(display_t* disp, const event_t* even
     uint64_t nextIndex = (disp->events.writeIndex + 1) % DISPLAY_MAX_EVENT;
     if (nextIndex == disp->events.readIndex)
     {
-        return ERR;
+        return _FAIL;
     }
 
     disp->events.buffer[disp->events.writeIndex] = *event;
@@ -60,13 +60,13 @@ display_t* display_new(void)
     }
 
     disp->ctl = open(F("/net/local/%s/ctl", disp->id));
-    if (disp->ctl == ERR)
+    if (disp->ctl == _FAIL)
     {
         free(disp->id);
         free(disp);
         return NULL;
     }
-    if (writes(disp->ctl, "connect dwm") == ERR)
+    if (writes(disp->ctl, "connect dwm") == _FAIL)
     {
         close(disp->ctl);
         free(disp->id);
@@ -75,7 +75,7 @@ display_t* display_new(void)
     }
 
     disp->data = open(F("/net/local/%s/data", disp->id));
-    if (disp->data == ERR)
+    if (disp->data == _FAIL)
     {
         close(disp->ctl);
         free(disp->id);
@@ -213,7 +213,7 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
     if (disp == NULL || event == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     mtx_lock(&disp->mutex);
@@ -221,7 +221,7 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
     {
         mtx_unlock(&disp->mutex);
         errno = ENOTCONN;
-        return ERR;
+        return _FAIL;
     }
     size_t readBytes = display_events_read(disp, event);
     mtx_unlock(&disp->mutex);
@@ -229,21 +229,21 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
     {
         return 0;
     }
-    else if (readBytes == ERR)
+    else if (readBytes == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     poll_events_t revents = poll1(disp->data, POLLIN, timeout);
     if (revents & POLLERR)
     {
         display_disconnect(disp);
-        return ERR;
+        return _FAIL;
     }
     else if (!(revents & POLLIN))
     {
         errno = ETIMEDOUT;
-        return ERR;
+        return _FAIL;
     }
 
     mtx_lock(&disp->mutex);
@@ -251,13 +251,13 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
     {
         mtx_unlock(&disp->mutex);
         errno = ENOTCONN;
-        return ERR;
+        return _FAIL;
     }
     if (read(disp->data, event, sizeof(event_t)) != sizeof(event_t))
     {
         disp->isConnected = false;
         mtx_unlock(&disp->mutex);
-        return ERR;
+        return _FAIL;
     }
     mtx_unlock(&disp->mutex);
     return 0;
@@ -268,20 +268,20 @@ uint64_t display_poll(display_t* disp, pollfd_t* fds, uint64_t nfds, clock_t tim
     if (disp == NULL || fds == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (!display_is_connected(disp))
     {
         errno = ENOTCONN;
-        return ERR;
+        return _FAIL;
     }
 
     pollfd_t* allFds = malloc(sizeof(pollfd_t) * (nfds + 2));
     if (allFds == NULL)
     {
         errno = ENOMEM;
-        return ERR;
+        return _FAIL;
     }
 
     allFds[0].fd = disp->data;
@@ -292,17 +292,17 @@ uint64_t display_poll(display_t* disp, pollfd_t* fds, uint64_t nfds, clock_t tim
     }
 
     size_t ready = poll(allFds, nfds + 1, timeout);
-    if (ready == ERR)
+    if (ready == _FAIL)
     {
         free(allFds);
-        return ERR;
+        return _FAIL;
     }
 
     if (allFds[0].revents & POLLERR)
     {
         display_disconnect(disp);
         free(allFds);
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t totalReady = ready;
@@ -341,17 +341,17 @@ uint64_t display_wait(display_t* disp, event_t* event, event_type_t expected)
     if (disp == NULL || event == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     mtx_lock(&disp->mutex);
     uint64_t eventsInPipe = display_events_amount(disp);
     for (uint64_t i = 0; i < eventsInPipe; i++)
     {
-        if (display_events_read(disp, event) == ERR)
+        if (display_events_read(disp, event) == _FAIL)
         {
             mtx_unlock(&disp->mutex);
-            return ERR;
+            return _FAIL;
         }
 
         if (event->type != expected)
@@ -371,7 +371,7 @@ uint64_t display_wait(display_t* disp, event_t* event, event_type_t expected)
         {
             disp->isConnected = false;
             mtx_unlock(&disp->mutex);
-            return ERR;
+            return _FAIL;
         }
 
         if (event->type == expected)
@@ -391,7 +391,7 @@ uint64_t display_emit(display_t* disp, surface_id_t target, event_type_t type, v
     if (disp == NULL || (data == NULL && size > 0) || size > EVENT_MAX_DATA)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     event_t event = {
@@ -399,9 +399,9 @@ uint64_t display_emit(display_t* disp, surface_id_t target, event_type_t type, v
         .type = type,
     };
     memcpy(event.raw, data, MIN(EVENT_MAX_DATA, size));
-    if (display_dispatch(disp, &event) == ERR)
+    if (display_dispatch(disp, &event) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -412,7 +412,7 @@ uint64_t display_dispatch(display_t* disp, const event_t* event)
     if (disp == NULL || event == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     mtx_lock(&disp->mutex);
@@ -422,7 +422,7 @@ uint64_t display_dispatch(display_t* disp, const event_t* event)
     {
         if (event->target == win->surface || event->target == SURFACE_ID_NONE)
         {
-            if (window_dispatch(win, event) == ERR)
+            if (window_dispatch(win, event) == _FAIL)
             {
                 disp->isConnected = false;
             }
@@ -444,7 +444,7 @@ uint64_t display_dispatch_pending(display_t* disp, event_type_t type, surface_id
     if (disp == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     mtx_lock(&disp->mutex);
@@ -452,18 +452,18 @@ uint64_t display_dispatch_pending(display_t* disp, event_type_t type, surface_id
     for (uint64_t i = 0; i < eventsInPipe; i++)
     {
         event_t event;
-        if (display_events_read(disp, &event) == ERR)
+        if (display_events_read(disp, &event) == _FAIL)
         {
             mtx_unlock(&disp->mutex);
-            return ERR;
+            return _FAIL;
         }
 
         if (event.type == type && (event.target == target || target == SURFACE_ID_NONE))
         {
-            if (display_dispatch(disp, &event) == ERR)
+            if (display_dispatch(disp, &event) == _FAIL)
             {
                 mtx_unlock(&disp->mutex);
-                return ERR;
+                return _FAIL;
             }
         }
         else
@@ -481,14 +481,14 @@ uint64_t display_subscribe(display_t* disp, event_type_t type)
     if (disp == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     cmd_subscribe_t* cmd = display_cmd_alloc(disp, CMD_SUBSCRIBE, sizeof(cmd_subscribe_t));
     if (cmd == NULL)
     {
         mtx_unlock(&disp->mutex);
-        return ERR;
+        return _FAIL;
     }
     cmd->event = type;
     display_cmds_flush(disp);
@@ -500,14 +500,14 @@ uint64_t display_unsubscribe(display_t* disp, event_type_t type)
     if (disp == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     cmd_unsubscribe_t* cmd = display_cmd_alloc(disp, CMD_UNSUBSCRIBE, sizeof(cmd_unsubscribe_t));
     if (cmd == NULL)
     {
         mtx_unlock(&disp->mutex);
-        return ERR;
+        return _FAIL;
     }
     cmd->event = type;
     display_cmds_flush(disp);
@@ -519,23 +519,23 @@ uint64_t display_get_surface_info(display_t* disp, surface_id_t id, surface_info
     if (disp == NULL || info == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     cmd_surface_report_t* cmd = display_cmd_alloc(disp, CMD_SURFACE_REPORT, sizeof(cmd_surface_report_t));
     if (cmd == NULL)
     {
         mtx_unlock(&disp->mutex);
-        return ERR;
+        return _FAIL;
     }
     cmd->isGlobal = true;
     cmd->target = id;
     display_cmds_flush(disp);
 
     event_t event;
-    if (display_wait(disp, &event, EVENT_REPORT) == ERR)
+    if (display_wait(disp, &event, EVENT_REPORT) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     *info = event.report.info;
     return 0;
@@ -547,7 +547,7 @@ uint64_t display_set_focus(display_t* disp, surface_id_t id)
     if (cmd == NULL)
     {
         mtx_unlock(&disp->mutex);
-        return ERR;
+        return _FAIL;
     }
     cmd->isGlobal = true;
     cmd->target = id;
@@ -561,7 +561,7 @@ uint64_t display_set_is_visible(display_t* disp, surface_id_t id, bool isVisible
         display_cmd_alloc(disp, CMD_SURFACE_VISIBLE_SET, sizeof(cmd_surface_visible_set_t));
     if (cmd == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     cmd->isGlobal = true;
     cmd->target = id;
@@ -575,21 +575,21 @@ uint64_t display_get_screen(display_t* disp, rect_t* rect, uint64_t index)
     if (disp == NULL || rect == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     cmd_screen_info_t* cmd = display_cmd_alloc(disp, CMD_SCREEN_INFO, sizeof(cmd_screen_info_t));
     if (cmd == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     cmd->index = index;
     display_cmds_flush(disp);
 
     event_t event;
-    if (display_wait(disp, &event, EVENT_SCREEN_INFO) == ERR)
+    if (display_wait(disp, &event, EVENT_SCREEN_INFO) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     *rect = RECT_INIT(0, 0, event.screenInfo.width, event.screenInfo.height);
     return 0;

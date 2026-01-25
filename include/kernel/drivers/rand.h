@@ -32,7 +32,7 @@ typedef struct
  *
  * @param buffer A pointer to the buffer to fill.
  * @param size The number of bytes to fill.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t rand_gen(void* buffer, uint64_t size);
 
@@ -41,7 +41,7 @@ uint64_t rand_gen(void* buffer, uint64_t size);
  *
  * @param value A pointer to store the generated random value.
  * @param retries The number of retries to attempt if RDRAND fails.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 extern uint64_t rdrand_do(uint32_t* value, uint8_t retries);
 

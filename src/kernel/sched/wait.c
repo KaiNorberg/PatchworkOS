@@ -29,11 +29,11 @@ PERCPU_DEFINE_CTOR(static wait_t, pcpu_wait)
     lock_init(&wait->lock);
 }
 
-static void wait_remove_wait_entries(thread_t* thread, errno_t err)
+static void wait_remove_wait_entries(thread_t* thread, status_t status)
 {
     assert(atomic_load(&thread->state) == THREAD_UNBLOCKING);
 
-    thread->wait.err = err;
+    thread->wait.status = status;
 
     wait_entry_t* temp;
     wait_entry_t* entry;
@@ -68,7 +68,7 @@ void wait_client_init(wait_client_t* client)
 {
     list_entry_init(&client->entry);
     list_init(&client->entries);
-    client->err = EOK;
+    client->status = OK;
     client->deadline = 0;
     client->owner = NULL;
 }
@@ -103,17 +103,16 @@ void wait_check_timeouts(interrupt_frame_t* frame)
             continue;
         }
 
-        wait_remove_wait_entries(thread, ETIMEDOUT);
+        wait_remove_wait_entries(thread, ERR(SCHED, TIMEOUT));
         sched_submit(thread);
     }
 }
 
-uint64_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t timeout)
+status_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t timeout)
 {
     if (waitQueues == NULL || amount == 0)
     {
-        errno = EINVAL;
-        return ERR;
+        return ERR(SCHED, INVAL);
     }
 
     cli_push();
@@ -148,8 +147,7 @@ uint64_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t 
             }
 
             cli_pop();
-            errno = ENOMEM;
-            return ERR;
+            return ERR(SCHED, NOMEM);
         }
         list_entry_init(&entry->queueEntry);
         list_entry_init(&entry->threadEntry);
@@ -160,7 +158,7 @@ uint64_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t 
         list_push_back(&entry->queue->entries, &entry->queueEntry);
     }
 
-    thread->wait.err = EOK;
+    thread->wait.status = OK;
     thread->wait.deadline = CLOCKS_DEADLINE(timeout, clock_uptime());
     thread->wait.owner = NULL;
 
@@ -180,7 +178,7 @@ uint64_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t 
     }
 
     // Return without enabling interrupts, they will be enabled in wait_block_commit() or wait_block_cancel().
-    return 0;
+    return OK;
 }
 
 void wait_block_cancel(void)
@@ -195,7 +193,7 @@ void wait_block_cancel(void)
     // State might already be unblocking if the thread unblocked prematurely.
     assert(state == THREAD_PRE_BLOCK || state == THREAD_UNBLOCKING);
 
-    wait_remove_wait_entries(thread, EOK);
+    wait_remove_wait_entries(thread, OK);
 
     thread_state_t newState = atomic_exchange(&thread->state, THREAD_ACTIVE);
     assert(newState == THREAD_UNBLOCKING); // Make sure state did not change.
@@ -204,7 +202,7 @@ void wait_block_cancel(void)
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 }
 
-uint64_t wait_block_commit(void)
+status_t wait_block_commit(void)
 {
     thread_t* thread = thread_current_unsafe();
     assert(thread != NULL);
@@ -215,7 +213,7 @@ uint64_t wait_block_commit(void)
     switch (state)
     {
     case THREAD_UNBLOCKING:
-        wait_remove_wait_entries(thread, EOK);
+        wait_remove_wait_entries(thread, OK);
         atomic_store(&thread->state, THREAD_ACTIVE);
         cli_pop(); // Release cpu from wait_block_prepare().
         break;
@@ -229,12 +227,7 @@ uint64_t wait_block_commit(void)
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
-    if (thread->wait.err != EOK)
-    {
-        errno = thread->wait.err;
-        return ERR;
-    }
-    return 0;
+    return thread->wait.status;
 }
 
 bool wait_block_finalize(interrupt_frame_t* frame, thread_t* thread, clock_t uptime)
@@ -271,7 +264,7 @@ bool wait_block_finalize(interrupt_frame_t* frame, thread_t* thread, clock_t upt
     if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_BLOCKED)) // Prematurely unblocked
     {
         list_remove(&thread->wait.entry);
-        wait_remove_wait_entries(thread, EOK);
+        wait_remove_wait_entries(thread, OK);
         atomic_store(&thread->state, THREAD_ACTIVE);
         return false;
     }
@@ -282,7 +275,7 @@ bool wait_block_finalize(interrupt_frame_t* frame, thread_t* thread, clock_t upt
         if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
         {
             list_remove(&thread->wait.entry);
-            wait_remove_wait_entries(thread, EINTR);
+            wait_remove_wait_entries(thread, ERR(SCHED, CANCELLED));
             atomic_store(&thread->state, THREAD_ACTIVE);
             return false;
         }
@@ -292,19 +285,19 @@ bool wait_block_finalize(interrupt_frame_t* frame, thread_t* thread, clock_t upt
     return true;
 }
 
-void wait_unblock_thread(thread_t* thread, errno_t err)
+void wait_unblock_thread(thread_t* thread, status_t status)
 {
     assert(atomic_load(&thread->state) == THREAD_UNBLOCKING);
 
     lock_acquire(&thread->wait.owner->lock);
     list_remove(&thread->wait.entry);
-    wait_remove_wait_entries(thread, err);
+    wait_remove_wait_entries(thread, status);
     lock_release(&thread->wait.owner->lock);
 
     sched_submit(thread);
 }
 
-uint64_t wait_unblock(wait_queue_t* queue, uint64_t amount, errno_t err)
+uint64_t wait_unblock(wait_queue_t* queue, uint64_t amount, status_t status)
 {
     uint64_t amountUnblocked = 0;
 
@@ -352,7 +345,7 @@ uint64_t wait_unblock(wait_queue_t* queue, uint64_t amount, errno_t err)
         {
             lock_acquire(&threads[i]->wait.owner->lock);
             list_remove(&threads[i]->wait.entry);
-            wait_remove_wait_entries(threads[i], err);
+            wait_remove_wait_entries(threads[i], status);
             lock_release(&threads[i]->wait.owner->lock);
 
             sched_submit(threads[i]);

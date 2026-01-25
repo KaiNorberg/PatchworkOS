@@ -82,10 +82,15 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 - Currently limited to RAM disks only (Waiting for USB support).
 - Only support for x86_64.
 
+## Current Work
+
+- Rewrite error handling to use a NTSTATUS based system.
+- Rewrite the kernel to a I/O Request Packet from Windows NT style system.
+- Fully Asynchronous I/O and syscalls based on io_uring.
+
 ## Notable Future Plans
 
-- Fully Asynchronous I/O and syscalls (io_uring?). <-- Currently being worked on.
-- Implement 9P file servers. <-- Currently being worked on.
+- Implement 9P file servers.
 - Implement user system in user-space using namespaces.
 - Improve `share()` and `claim()` security by specifying a target PID when sharing.
 - Overhaul Desktop Window Manager to use the new security system and file servers?

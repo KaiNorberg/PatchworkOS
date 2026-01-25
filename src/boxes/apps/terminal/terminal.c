@@ -555,26 +555,26 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         terminal_t* term = malloc(sizeof(terminal_t));
         if (term == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
         term->win = win;
         term->font = ctx->font;
         term->cursorBlink = false;
         term->isCursorVisible = true;
 
-        if (open2("/dev/pipe/new", term->stdin) == ERR)
+        if (open2("/dev/pipe/new", term->stdin) == _FAIL)
         {
             font_free(term->font);
             free(term);
-            return ERR;
+            return _FAIL;
         }
-        if (open2("/dev/pipe/new", term->stdout) == ERR)
+        if (open2("/dev/pipe/new", term->stdout) == _FAIL)
         {
             close(term->stdin[0]);
             close(term->stdin[1]);
             font_free(term->font);
             free(term);
-            return ERR;
+            return _FAIL;
         }
 
         const theme_t* theme = element_get_theme(elem);
@@ -596,7 +596,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
 
         const char* argv[] = {"/base/bin/shell", NULL};
         term->shell = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS);
-        if (term->shell == ERR)
+        if (term->shell == _FAIL)
         {
             close(term->stdin[0]);
             close(term->stdin[1]);
@@ -604,12 +604,12 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
             close(term->stdout[1]);
             font_free(term->font);
             free(term);
-            return ERR;
+            return _FAIL;
         }
 
         if (writefiles(F("/proc/%d/ctl", term->shell),
                 F("dup2 %d 0 && dup2 %d 1 && dup2 %d 2 && close 3 -1 && start", term->stdin[0], term->stdout[1],
-                    term->stdout[1])) == ERR)
+                    term->stdout[1])) == _FAIL)
         {
             writefiles(F("/proc/%d/ctl", term->shell), "kill");
             close(term->stdin[0]);
@@ -618,7 +618,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
             close(term->stdout[1]);
             font_free(term->font);
             free(term);
-            return ERR;
+            return _FAIL;
         }
 
         element_set_private(elem, term);
@@ -721,7 +721,7 @@ window_t* terminal_new(display_t* disp)
         return NULL;
     }
 
-    if (window_set_visible(win, true) == ERR)
+    if (window_set_visible(win, true) == _FAIL)
     {
         window_free(win);
         font_free(ctx.font);
@@ -761,13 +761,13 @@ void terminal_loop(window_t* win)
             .fd = terminal->stdout[PIPE_READ],
             .events = POLLIN,
         }};
-        if (display_poll(disp, fds, 1, timeout) == ERR)
+        if (display_poll(disp, fds, 1, timeout) == _FAIL)
         {
             break;
         }
 
         event_t event = {0};
-        while (display_next(disp, &event, 0) != ERR)
+        while (display_next(disp, &event, 0) != _FAIL)
         {
             display_dispatch(disp, &event);
         }
@@ -790,7 +790,7 @@ void terminal_loop(window_t* win)
         if (fds[0].revents & POLLIN)
         {
             size_t readCount = read(terminal->stdout[PIPE_READ], &buffer[length], TERMINAL_MAX_DATA - length);
-            if (readCount == ERR || readCount == 0)
+            if (readCount == _FAIL || readCount == 0)
             {
                 break;
             }

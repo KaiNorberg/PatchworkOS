@@ -27,7 +27,7 @@ surface_t* surface_new(client_t* client, const char* name, const point_t* point,
     surface->client = client;
     surface->pos = *point;
     surface->shmem = open("/dev/shmem/new");
-    if (surface->shmem == ERR)
+    if (surface->shmem == _FAIL)
     {
         free(surface);
         printf("dwm surface error: failed to open shmem\n");

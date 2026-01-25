@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <sys/defs.h>
 #include <sys/list.h>
+#include <sys/status.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -186,7 +187,7 @@ static_assert(sizeof(sqe_t) == 64, "sqe_t is not 64 bytes");
 typedef struct cqe
 {
     io_op_t op;     ///< The operation that was performed.
-    errno_t error;  ///< Error code, if not equal to `EOK` an error occurred.
+    status_t status;  ///< The status of the operation.
     uintptr_t data; ///< Private data from the submission entry.
     union {
         fd_t fd;
@@ -253,7 +254,7 @@ typedef struct ioring
  * @param address Desired address to allocate the ring, or `NULL` to let the kernel choose.
  * @param sentries Number of entires to allocate for the submission queue, must be a power of two.
  * @param centries Number of entries to allocate for the completion queue, must be a power of two.
- * @return On success, the ID of the new I/O ring. On failure, `ERR` and `errno` is set.
+ * @return On success, the ID of the new I/O ring. On failure, `_FAIL` and `errno` is set.
  */
 ioring_id_t ioring_setup(ioring_t* ring, void* address, size_t sentries, size_t centries);
 
@@ -261,7 +262,7 @@ ioring_id_t ioring_setup(ioring_t* ring, void* address, size_t sentries, size_t 
  * @brief System call to deinitialize the I/O ring.
  *
  * @param id The ID of the I/O ring to teardown.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t ioring_teardown(ioring_id_t id);
 
@@ -271,7 +272,7 @@ uint64_t ioring_teardown(ioring_id_t id);
  * @param id The ID of the I/O ring to notify.
  * @param amount The number of SQEs that the kernel should process.
  * @param wait The minimum number of completion queue entries (CQEs) to wait for.
- * @return On success, the number of SQEs successfully processed. On failure, `ERR` and `errno` is set.
+ * @return On success, the number of SQEs successfully processed. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t ioring_enter(ioring_id_t id, size_t amount, size_t wait);
 

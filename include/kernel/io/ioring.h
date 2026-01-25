@@ -157,7 +157,7 @@ void ioring_ctx_deinit(ioring_ctx_t* ctx);
  * @param ctx Pointer to the context.
  * @param amount The number of SQEs to process.
  * @param wait The minimum number of CQEs to wait for.
- * @return On success, the number of SQEs processed. On failure, `ERR` and `errno` is set.
+ * @return On success, the number of SQEs processed. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t ioring_ctx_notify(ioring_ctx_t* ctx, size_t amount, size_t wait);
 

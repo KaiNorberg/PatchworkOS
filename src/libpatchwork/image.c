@@ -27,7 +27,7 @@ image_t* image_new_blank(display_t* disp, uint64_t width, uint64_t height)
 image_t* image_new(display_t* disp, const char* path)
 {
     fd_t file = open(path);
-    if (file == ERR)
+    if (file == _FAIL)
     {
         return NULL;
     }
@@ -38,7 +38,7 @@ image_t* image_new(display_t* disp, const char* path)
         uint32_t width;
         uint32_t height;
     } header;
-    if (read(file, &header, sizeof(header)) == ERR)
+    if (read(file, &header, sizeof(header)) == _FAIL)
     {
         close(file);
         return NULL;
@@ -60,7 +60,7 @@ image_t* image_new(display_t* disp, const char* path)
         return NULL;
     }
 
-    if (read(file, image->draw.buffer, header.width * header.height * sizeof(pixel_t)) == ERR)
+    if (read(file, image->draw.buffer, header.width * header.height * sizeof(pixel_t)) == _FAIL)
     {
         image_free(image);
         close(file);

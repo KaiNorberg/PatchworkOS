@@ -10,6 +10,7 @@
 #include <sys/bitmap.h>
 #include <sys/list.h>
 #include <sys/proc.h>
+#include <sys/status.h>
 
 /**
  * @brief Address Space handling.
@@ -107,11 +108,9 @@ typedef struct space
  * @param startAddress The starting address for allocations in this address space.
  * @param endAddress The ending address for allocations in this address space.
  * @param flags Flags to control the initialization behavior.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `ENOMEM`: Not enough memory to initialize the address space.
+ * @return An appropriate status value.
  */
-uint64_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress, space_flags_t flags);
+status_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress, space_flags_t flags);
 
 /**
  * @brief Deinitializes a virtual address space.
@@ -147,13 +146,9 @@ void space_deinit(space_t* space);
  * @param address The address to pin, can be `NULL` if length is 0.
  * @param length The length of the region pointed to by `address`, in bytes.
  * @param userStack Pointer to the user stack of the calling thread, can be `NULL, see above.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EOVERFLOW`: Address overflow.
- * - `EFAULT`: The region is not fully mapped or within the provided user stack.
- * - `ENOMEM`: Not enough memory.
+ * @return An appropriate status value.
  */
-uint64_t space_pin(space_t* space, const void* address, size_t length, stack_pointer_t* userStack);
+status_t space_pin(space_t* space, const void* address, size_t length, stack_pointer_t* userStack);
 
 /**
  * @brief Pins a region of memory terminated by a terminator value.
@@ -163,20 +158,16 @@ uint64_t space_pin(space_t* space, const void* address, size_t length, stack_poi
  *
  * Used for null-terminated strings or other buffers that have a specific terminator.
  *
+ * @param outPinned Output pointer for the number of bytes pinned, not including the terminator.
  * @param space The target address space.
  * @param address The starting address of the region to pin.
  * @param terminator The terminator value to search for.
  * @param objectSize The size of each object to compare against the terminator, in bytes.
  * @param maxCount The maximum number of objects to scan before failing.
  * @param userStack Pointer to the user stack of the calling thread, can be `NULL`, see `space_pin()`.
- * @return On success, the number of bytes pinned, not including the terminator. On failure, `ERR` and `errno` is set
- * to:
- * - `EINVAL`: Invalid parameters.
- * - `EOVERFLOW`: Address overflow.
- * - `EFAULT`: The region is not fully mapped or within the provided user stack.
- * - `ENOMEM`: Not enough memory.
+ * @return An appropriate status value.
  */
-uint64_t space_pin_terminated(space_t* space, const void* address, const void* terminator, size_t objectSize,
+status_t space_pin_terminated(size_t* outPinned, space_t* space, const void* address, const void* terminator, size_t objectSize,
     size_t maxCount, stack_pointer_t* userStack);
 
 /**
@@ -200,93 +191,9 @@ void space_unpin(space_t* space, const void* address, size_t length);
  * @param space The target address space.
  * @param addr The starting address of the memory region, can be `NULL` if length is 0.
  * @param length The length of the memory region, in bytes.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EOVERFLOW`: Address overflow.
- * - `EFAULT`: The region is outside the allowed address range.
+ * @return `true` if the region is within the allowed address range, `false` otherwise.
  */
-uint64_t space_check_access(space_t* space, const void* addr, size_t length);
-
-/**
- * @brief Helper structure for managing address space mappings.
- * @struct space_mapping_t
- */
-typedef struct
-{
-    void* virtAddr;
-    phys_addr_t physAddr;
-    size_t pageAmount;
-    pml_flags_t flags;
-} space_mapping_t;
-
-/**
- * @brief Prepare for changes to the address space mappings.
- *
- * Will return with the spaces mutex acquired for writing, which must be released by calling
- * `space_mapping_end()`.
- *
- * If `flags & PML_USER` then the addresses must be in the user space range.
- *
- * @note Handling page faults to grow stacks requires mapping memory, this means that if we were to run out of memory
- * while executing this function, it could lead to a deadlock. To avoid this, this function will call
- * `stack_pointer_poke()` to ensure that sufficient stack space is available.
- *
- * @param space The target address space.
- * @param mapping Will be filled with parsed information about the mapping.
- * @param virtAddr The virtual address the mapping will apply to. Can be `NULL` to let the kernel choose an address.
- * @param physAddr The physical address to map from. Can be `PHYS_ADDR_INVALID`.
- * @param length The length of the virtual memory region to modify, in bytes.
- * @param alignment The required alignment for the virtual memory region in bytes.
- * @param flags The page table flags for the mapping.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EOVERFLOW`: Address overflow.
- * - `EFAULT`: The addresses are outside the allowed range.
- * - `ENOMEM`: Not enough memory.
- */
-uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, phys_addr_t physAddr,
-    size_t length, size_t alignment, pml_flags_t flags);
-
-/**
- * @brief Allocate a callback.
- *
- * Must be called between `space_mapping_start()` and `space_mapping_end()`.
- *
- * When `pageAmount` number of pages with this callback ID are unmapped or the address space is freed,
- * the callback function will be called with the provided private data.
- *
- * @param space The target address space.
- * @param pageAmount The number of pages the callback is responsible for.
- * @param func The callback function.
- * @param private Private data to pass to the callback function.
- * @return On success, returns the callback ID. On failure, returns `PML_MAX_CALLBACK`.
- */
-pml_callback_id_t space_alloc_callback(space_t* space, size_t pageAmount, space_callback_func_t func, void* data);
-
-/**
- * @brief Free a callback.
- *
- * Must be called between `space_mapping_start()` and `space_mapping_end()`.
- *
- * Allows the callback ID to be reused. The callback function will not be called.
- *
- * @param space The target address space.
- * @param callbackId The callback ID to free.
- */
-void space_free_callback(space_t* space, pml_callback_id_t callbackId);
-
-/**
- * @brief Performs cleanup after changes to the address space mappings.
- *
- * Must be called after `space_mapping_start()`.
- *
- * @param space The target address space.
- * @param mapping The parsed information about the mapping.
- * @param err The error code, if 0 then no error.
- * @return If `err` is `EOK`, returns the virtual address of the mapping. If `err` is not `EOK`, returns `NULL` and
- * `errno` is set to `err`.
- */
-void* space_mapping_end(space_t* space, space_mapping_t* mapping, errno_t err);
+bool space_check_access(space_t* space, const void* addr, size_t length);
 
 /**
  * @brief Checks if a virtual memory region is fully mapped.
@@ -304,17 +211,18 @@ bool space_is_mapped(space_t* space, const void* virtAddr, size_t length);
  * Will count the number of pages with the `PML_OWNED` flag set in user space.
  *
  * @param space The target address space.
- * @return The number of user pages mapped.
+ * @return The number of user pages.
  */
 uint64_t space_user_page_count(space_t* space);
 
 /**
  * @brief Translate a virtual address to a physical address in the address space.
  *
+ * @param out Output pointer for the physical address.
  * @param space The target address space.
  * @param virtAddr The virtual address to translate.
- * @return On success, `0`. On failure, `ERR`.
+ * @return An appropriate status value.
  */
-phys_addr_t space_virt_to_phys(space_t* space, const void* virtAddr);
+status_t space_virt_to_phys(phys_addr_t* out, space_t* space, const void* virtAddr);
 
 /** @} */

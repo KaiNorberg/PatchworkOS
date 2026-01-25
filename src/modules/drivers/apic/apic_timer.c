@@ -83,10 +83,10 @@ static timer_source_t apicTimer = {
 
 uint64_t apic_timer_init(void)
 {
-    if (timer_source_register(&apicTimer) == ERR)
+    if (timer_source_register(&apicTimer) == _FAIL)
     {
         LOG_ERR("failed to register apic timer source\n");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;

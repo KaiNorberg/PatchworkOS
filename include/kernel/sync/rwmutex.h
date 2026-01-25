@@ -89,15 +89,12 @@ void rwmutex_read_acquire(rwmutex_t* mtx);
 /**
  * @brief Tries to acquire a rwmutex for reading.
  *
- * If the rwmutex is owned by another thread for writing or a writer is waiting, this function
- * will fail with `EWOULDBLOCK`.
- *
  * If the function succeeds, `rwmutex_read_release()` must be called to release the rwmutex.
  *
  * @param mtx Pointer to the rwmutex to acquire.
- * @return On success, `0`. On error, `ERR` and `errno` is set.
+ * @return `true` if the mutex was acquired, `false` otherwise.
  */
-uint64_t rwmutex_read_try_acquire(rwmutex_t* mtx);
+bool rwmutex_read_try_acquire(rwmutex_t* mtx);
 
 /**
  * @brief Releases a rwmutex from reading.
@@ -119,9 +116,9 @@ void rwmutex_write_acquire(rwmutex_t* mtx);
  * If the function succeeds, `rwmutex_write_release()` must be called to release the rwmutex.
  *
  * @param mtx Pointer to the rwmutex to acquire.
- * @return On success, `0`. On error, `ERR` and `errno` is set.
+ * @return `true` if the mutex was acquired, `false` otherwise.
  */
-uint64_t rwmutex_write_try_acquire(rwmutex_t* mtx);
+bool rwmutex_write_try_acquire(rwmutex_t* mtx);
 
 /**
  * @brief Releases a rwmutex from writing.

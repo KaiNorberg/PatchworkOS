@@ -45,121 +45,116 @@ typedef struct wait wait_t;
 /**
  * @brief Blocks until the condition is true, will test the condition on every wakeup.
  *
- * @return On success, `0`. On error, `ERR` and `errno` is set to:
- * - Check `wait_block_commit()`.
+ * @return An appropriate status value.
  */
 #define WAIT_BLOCK(queue, condition) \
     ({ \
         assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE); \
-        uint64_t result = 0; \
-        while (!(condition) && result == 0) \
+        status_t status = OK; \
+        while (!(condition) && IS_OK(status)) \
         { \
             wait_queue_t* temp = queue; \
-            if (wait_block_prepare(&temp, 1, CLOCKS_NEVER) == ERR) \
+            status = wait_block_prepare(&temp, 1, CLOCKS_NEVER); \
+            if (IS_FAIL(status)) \
             { \
-                result = ERR; \
                 break; \
             } \
-            result = wait_block_commit(); \
+            status = wait_block_commit(); \
         } \
-        result; \
+        status; \
     })
 
 /**
  * @brief Blocks until the condition is true, condition will be tested on every wakeup. Reaching the timeout will always
  * unblock.
  *
- * @return On success, `0`. On error, `ERR` and `errno` is set to:
- * - Check `wait_block_commit()`.
+ * @return An appropriate status value.
  */
 #define WAIT_BLOCK_TIMEOUT(queue, condition, timeout) \
     ({ \
         assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE); \
-        uint64_t result = 0; \
+        status_t status = OK; \
         clock_t uptime = clock_uptime(); \
         clock_t deadline = CLOCKS_DEADLINE(timeout, uptime); \
-        while (!(condition) && result == 0) \
+        while (!(condition) && IS_OK(status)) \
         { \
             if (deadline <= uptime) \
             { \
-                errno = ETIMEDOUT; \
-                result = ERR; \
+                status = ERR(SCHED, TIMEOUT); \
                 break; \
             } \
             clock_t remaining = CLOCKS_REMAINING(deadline, uptime); \
             wait_queue_t* temp = queue; \
-            if (wait_block_prepare(&temp, 1, remaining) == ERR) \
+            status = wait_block_prepare(&temp, 1, remaining); \
+            if (IS_FAIL(status)) \
             { \
-                result = ERR; \
                 break; \
             } \
-            result = wait_block_commit(); \
+            status = wait_block_commit(); \
             uptime = clock_uptime(); \
         } \
-        result; \
+        status; \
     })
 
 /**
  * @brief Blocks until the condition is true, condition will be tested on every wakeup. Will release the lock before
  * blocking and acquire it again after waking up.
  *
- * @return On success, `0`. On error, `ERR` and `errno` is set to:
- * - Check `wait_block_commit()`.
+ * @return An appropriate status value.
  */
 #define WAIT_BLOCK_LOCK(queue, lock, condition) \
     ({ \
         assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE)); \
-        uint64_t result = 0; \
-        while (!(condition) && result == 0) \
+        status_t status = OK; \
+        while (!(condition) && IS_OK(status)) \
         { \
             wait_queue_t* temp = queue; \
-            if (wait_block_prepare(&temp, 1, CLOCKS_NEVER) == ERR) \
+            status = wait_block_prepare(&temp, 1, CLOCKS_NEVER); \
+            if (IS_FAIL(status)) \
             { \
-                result = ERR; \
                 break; \
             } \
             lock_release(lock); \
-            result = wait_block_commit(); \
+            status = wait_block_commit(); \
             assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE); \
             lock_acquire(lock); \
         } \
-        result; \
+        status; \
     })
 
 /**
  * @brief Blocks until the condition is true, condition will be tested on every wakeup. Will release the lock before
  * blocking and acquire it again after waking up. Reaching the timeout will always unblock.
  *
- * @return On success, `0`. On error, `ERR` and `errno` is set to:
+ * @return On success, `0`. On error, `_FAIL` and `errno` is set to:
  * - Check `wait_block_commit()`.
  */
 #define WAIT_BLOCK_LOCK_TIMEOUT(queue, lock, condition, timeout) \
     ({ \
-        uint64_t result = 0; \
+        status_t status = OK; \
         clock_t uptime = clock_uptime(); \
         clock_t deadline = CLOCKS_DEADLINE(timeout, uptime); \
-        while (!(condition) && result == ERR) \
+        while (!(condition) && IS_OK(status)) \
         { \
             if (deadline <= uptime) \
             { \
-                errno = ETIMEDOUT; \
-                result = ERR; \
+                status = ERR(SCHED, TIMEOUT); \
                 break; \
             } \
             clock_t remaining = CLOCKS_REMAINING(deadline, uptime); \
             wait_queue_t* temp = queue; \
-            if (wait_block_prepare(&temp, 1, remaining) == ERR) \
+            status = wait_block_prepare(&temp, 1, remaining); \
+            if (IS_FAIL(status)) \
             { \
-                result = ERR; \
                 break; \
             } \
             lock_release(lock); \
-            result = wait_block_commit(); \
+            status = wait_block_commit(); \
             assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE); \
             lock_acquire(lock); \
             uptime = clock_uptime(); \
         } \
-        result; \
+        status; \
     })
 
 /**
@@ -198,7 +193,7 @@ typedef struct wait_client
 {
     list_entry_t entry;
     list_t entries;   ///< List of wait entries, one for each wait queue the thread is waiting on.
-    errno_t err;      ///< Error number set when unblocking the thread, `EOK` for no error.
+    status_t status;      ///< The status to return when unblocking the thread.
     clock_t deadline; ///< Deadline for timeout, `CLOCKS_NEVER` for no timeout.
     wait_t* owner;    ///< The wait cpu context of the cpu the thread is blocked on.
 } wait_client_t;
@@ -267,11 +262,9 @@ void wait_check_timeouts(interrupt_frame_t* frame);
  * @param waitQueues Array of wait queues to add the thread to.
  * @param amount Number of wait queues to add the thread to.
  * @param timeout Timeout.
- * @return On success, `0`. On failure, returns `ERR` and `errno` is set to:
- * - `EINVAL`: Invalid arguments.
- * - `ENOMEM`: Out of memory.
+ * @return An appropriate status value.
  */
-uint64_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t timeout);
+status_t wait_block_prepare(wait_queue_t** waitQueues, size_t amount, clock_t timeout);
 
 /**
  * @brief Cancels blocking of the currently running thread.
@@ -290,12 +283,9 @@ void wait_block_cancel(void);
  *
  * Will reenable interrupts.
  *
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `ETIMEDOUT`: The thread timed out.
- * - `EINTR`: The thread was interrupted by a note.
- * - Other error codes as set by the subsystem utilizing the wait queue.
+ * @return An appropriate status value.
  */
-uint64_t wait_block_commit(void);
+status_t wait_block_commit(void);
 
 /**
  * @brief Finalize blocking of a thread.
@@ -322,18 +312,18 @@ bool wait_block_finalize(interrupt_frame_t* frame, thread_t* thread, clock_t upt
  * The thread must be in the `THREAD_UNBLOCKING` state when this function is called.
  *
  * @param thread The thread to unblock.
- * @param err The errno value to set for the thread or `EOK` for no error.
+ * @param status The status value to return to the thread.
  */
-void wait_unblock_thread(thread_t* thread, errno_t err);
+void wait_unblock_thread(thread_t* thread, status_t status);
 
 /**
  * @brief Unblock threads waiting on a wait queue.
  *
  * @param queue The wait queue to unblock threads from.
  * @param amount The number of threads to unblock or `WAIT_ALL` to unblock all threads.
- * @param err The errno value to set for the unblocked threads or `EOK` for no error.
+ * @param status The status value to return to the threads.
  * @return The number of threads that were unblocked.
  */
-uint64_t wait_unblock(wait_queue_t* queue, uint64_t amount, errno_t err);
+uint64_t wait_unblock(wait_queue_t* queue, uint64_t amount, status_t status);
 
 /** @} */

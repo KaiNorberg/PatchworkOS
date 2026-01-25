@@ -8,7 +8,7 @@
 uint64_t stat(const char* path, stat_t* info)
 {
     uint64_t result = _syscall_stat(path, info);
-    if (result == ERR)
+    if (result == _FAIL)
     {
         errno = _syscall_errno();
     }

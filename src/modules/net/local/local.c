@@ -43,13 +43,13 @@ static uint64_t local_socket_init(socket_t* sock)
     if (sock->type != SOCKET_SEQPACKET)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     local_socket_t* data = calloc(1, sizeof(local_socket_t));
     if (data == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     sock->data = data;
     return 0;
@@ -97,19 +97,19 @@ static uint64_t local_socket_bind(socket_t* sock)
     if (data == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (data->listen != NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     local_listen_t* listen = local_listen_new(sock->address);
     if (listen == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     data->listen = listen;
@@ -122,14 +122,14 @@ static uint64_t local_socket_listen(socket_t* sock, uint32_t backlog)
     if (data == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     local_listen_t* listen = data->listen;
     if (listen == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
     LOCK_SCOPE(&listen->lock);
 
@@ -148,27 +148,27 @@ static uint64_t local_socket_connect(socket_t* sock)
     if (data == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (data->conn != NULL)
     {
         errno = EISCONN;
-        return ERR;
+        return _FAIL;
     }
 
     local_listen_t* listen = local_listen_find(sock->address);
     if (listen == NULL)
     {
         errno = ECONNREFUSED;
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(listen);
 
     local_conn_t* conn = local_conn_new(listen);
     if (conn == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(conn);
 
@@ -177,13 +177,13 @@ static uint64_t local_socket_connect(socket_t* sock)
     if (listen->isClosed)
     {
         errno = ECONNREFUSED;
-        return ERR;
+        return _FAIL;
     }
 
     if (listen->pendingAmount >= listen->maxBacklog)
     {
         errno = ECONNREFUSED;
-        return ERR;
+        return _FAIL;
     }
 
     listen->pendingAmount++;
@@ -202,14 +202,14 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
     if (data == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     local_listen_t* listen = local_socket_get_listen(data);
     if (listen == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(listen);
 
@@ -221,7 +221,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
         if (listen->isClosed)
         {
             errno = ECONNABORTED;
-            return ERR;
+            return _FAIL;
         }
 
         if (!list_is_empty(&listen->backlog))
@@ -236,13 +236,13 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
         if (mode & MODE_NONBLOCK)
         {
             errno = EWOULDBLOCK;
-            return ERR;
+            return _FAIL;
         }
 
         if (WAIT_BLOCK_LOCK(&listen->waitQueue, &listen->lock, listen->isClosed || !list_is_empty(&listen->backlog)) ==
-            ERR)
+            _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
     UNREF_DEFER(conn);
@@ -253,7 +253,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
     if (newData == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
     newData->conn = REF(conn);
     newData->isServer = true;
@@ -269,14 +269,14 @@ static size_t local_socket_send(socket_t* sock, const void* buffer, size_t count
     if (data == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     local_conn_t* conn = local_socket_get_conn(data);
     if (conn == NULL)
     {
         errno = ECONNRESET;
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(conn);
     LOCK_SCOPE(&conn->lock);
@@ -284,13 +284,13 @@ static size_t local_socket_send(socket_t* sock, const void* buffer, size_t count
     if (conn->isClosed)
     {
         errno = EPIPE;
-        return ERR;
+        return _FAIL;
     }
 
     if (count > LOCAL_MAX_PACKET_SIZE)
     {
         errno = EMSGSIZE;
-        return ERR;
+        return _FAIL;
     }
 
     fifo_t* ring = data->isServer ? &conn->serverToClient : &conn->clientToServer;
@@ -303,22 +303,22 @@ static size_t local_socket_send(socket_t* sock, const void* buffer, size_t count
         if (conn->isClosed)
         {
             errno = EPIPE;
-            return ERR;
+            return _FAIL;
         }
         if (mode & MODE_NONBLOCK)
         {
             errno = EAGAIN;
-            return ERR;
+            return _FAIL;
         }
         if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock, conn->isClosed || fifo_bytes_writeable(ring) >= totalSize) ==
-            ERR)
+            _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         if (conn->isClosed)
         {
             errno = EPIPE;
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -337,14 +337,14 @@ static size_t local_socket_recv(socket_t* sock, void* buffer, size_t count, size
     if (data == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     local_conn_t* conn = local_socket_get_conn(data);
     if (conn == NULL)
     {
         errno = ECONNRESET;
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(conn);
     LOCK_SCOPE(&conn->lock);
@@ -360,12 +360,12 @@ static size_t local_socket_recv(socket_t* sock, void* buffer, size_t count, size
         if (mode & MODE_NONBLOCK)
         {
             errno = EWOULDBLOCK;
-            return ERR;
+            return _FAIL;
         }
         if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-                conn->isClosed || fifo_bytes_readable(ring) >= sizeof(local_packet_header_t)) == ERR)
+                conn->isClosed || fifo_bytes_readable(ring) >= sizeof(local_packet_header_t)) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -377,7 +377,7 @@ static size_t local_socket_recv(socket_t* sock, void* buffer, size_t count, size
         errno = EBADMSG;
         conn->isClosed = true;
         wait_unblock(&conn->waitQueue, WAIT_ALL, EOK);
-        return ERR;
+        return _FAIL;
     }
 
     if (header.size > LOCAL_MAX_PACKET_SIZE)
@@ -385,7 +385,7 @@ static size_t local_socket_recv(socket_t* sock, void* buffer, size_t count, size
         errno = EMSGSIZE;
         conn->isClosed = true;
         wait_unblock(&conn->waitQueue, WAIT_ALL, EOK);
-        return ERR;
+        return _FAIL;
     }
 
     size_t readCount = header.size < count ? header.size : count;
@@ -494,9 +494,9 @@ uint64_t _module_procedure(const module_event_t* event)
     switch (event->type)
     {
     case MODULE_EVENT_LOAD:
-        if (netfs_family_register(&local) == ERR)
+        if (netfs_family_register(&local) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         break;
     case MODULE_EVENT_UNLOAD:

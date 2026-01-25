@@ -15,7 +15,7 @@ static fd_t zeroDev;
 static void init_generic()
 {
     zeroDev = open("/dev/const/zero");
-    if (zeroDev == ERR)
+    if (zeroDev == _FAIL)
     {
         perror("Failed to open /dev/const/zero");
         abort();
@@ -34,7 +34,7 @@ static void* mmap_generic(size_t length)
 
 static uint64_t munmap_generic(void* addr, size_t length)
 {
-    return munmap(addr, length) == NULL ? ERR : 0;
+    return munmap(addr, length) == NULL ? _FAIL : 0;
 }
 
 static void benchmark_getpid(void)
@@ -68,7 +68,7 @@ static void benchmark_getpid(void)
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#define ERR ((uint64_t)-1)
+#define _FAIL ((uint64_t)-1)
 
 static void init_generic()
 {
@@ -87,7 +87,7 @@ static void* mmap_generic(size_t length)
 
 static uint64_t munmap_generic(void* addr, size_t length)
 {
-    return munmap(addr, length) == -1 ? ERR : 0;
+    return munmap(addr, length) == -1 ? _FAIL : 0;
 }
 
 #endif

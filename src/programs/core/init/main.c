@@ -49,9 +49,9 @@
 static uint64_t init_socket_addr_wait(const char* family, const char* addr)
 {
     fd_t addrs = open(F("/net/%s/addrs", family));
-    if (addrs == ERR)
+    if (addrs == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     clock_t start = uptime();
@@ -63,7 +63,7 @@ static uint64_t init_socket_addr_wait(const char* family, const char* addr)
         if (data == NULL)
         {
             close(addrs);
-            return ERR;
+            return _FAIL;
         }
 
         if (strstr(data, addr) != NULL)
@@ -77,7 +77,7 @@ static uint64_t init_socket_addr_wait(const char* family, const char* addr)
         if ((uptime() - start) >= CLOCKS_PER_SEC * 10)
         {
             close(addrs);
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -87,25 +87,25 @@ static uint64_t init_socket_addr_wait(const char* family, const char* addr)
 
 static void init_root_ns(void)
 {
-    if (mount("/dev:rwL", "/sys/fs/devfs", NULL) == ERR)
+    if (mount("/dev:rwL", "/sys/fs/devfs", NULL) == _FAIL)
     {
         printf("init: failed to mount devfs (%s)\n", strerror(errno));
         abort();
     }
 
-    if (mount("/net:rwL", "/sys/fs/netfs", NULL) == ERR)
+    if (mount("/net:rwL", "/sys/fs/netfs", NULL) == _FAIL)
     {
         printf("init: failed to mount netfs (%s)\n", strerror(errno));
         abort();
     }
 
-    if (mount("/proc:rwL", "/sys/fs/procfs", NULL) == ERR)
+    if (mount("/proc:rwL", "/sys/fs/procfs", NULL) == _FAIL)
     {
         printf("init: failed to mount procfs (%s)\n", strerror(errno));
         abort();
     }
 
-    if (mount("/tmp:rwL", "/sys/fs/tmpfs", NULL) == ERR)
+    if (mount("/tmp:rwL", "/sys/fs/tmpfs", NULL) == _FAIL)
     {
         printf("init: failed to mount tmpfs (%s)\n", strerror(errno));
         abort();
@@ -115,13 +115,13 @@ static void init_root_ns(void)
 static void init_spawn_boxd(void)
 {
     const char* argv[] = {"/sbin/boxd", NULL};
-    if (spawn(argv, SPAWN_DEFAULT) == ERR)
+    if (spawn(argv, SPAWN_DEFAULT) == _FAIL)
     {
         printf("init: failed to spawn boxd (%s)\n", strerror(errno));
         abort();
     }
 
-    if (init_socket_addr_wait("local", "boxspawn") == ERR)
+    if (init_socket_addr_wait("local", "boxspawn") == _FAIL)
     {
         printf("init: timeout waiting for boxd to create boxspawn socket (%s)\n", strerror(errno));
         abort();
@@ -131,7 +131,7 @@ static void init_spawn_boxd(void)
 static void init_create_pkg_links(void)
 {
     fd_t box = open("/box");
-    if (box == ERR)
+    if (box == _FAIL)
     {
         printf("init: failed to open /box (%s)\n", strerror(errno));
         abort();
@@ -139,7 +139,7 @@ static void init_create_pkg_links(void)
 
     dirent_t* dirents;
     uint64_t amount;
-    if (readdir(box, &dirents, &amount) == ERR)
+    if (readdir(box, &dirents, &amount) == _FAIL)
     {
         close(box);
         printf("init: failed to read /box (%s)\n", strerror(errno));
@@ -154,7 +154,7 @@ static void init_create_pkg_links(void)
             continue;
         }
 
-        if (symlink("boxspawn", F("/base/bin/%s", dirents[i].path)) == ERR && errno != EEXIST)
+        if (symlink("boxspawn", F("/base/bin/%s", dirents[i].path)) == _FAIL && errno != EEXIST)
         {
             free(dirents);
             printf("init: failed to create launch symlink for box '%s' (%s)\n", dirents[i].path, strerror(errno));
@@ -180,7 +180,7 @@ static void init_config_load(void)
         nanosleep(CLOCKS_PER_MS);
         printf("init: spawned service '%s'\n", services->items[i]);
         const char* argv[] = {services->items[i], NULL};
-        if (spawn(argv, SPAWN_EMPTY_FDS | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP) == ERR)
+        if (spawn(argv, SPAWN_EMPTY_FDS | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP) == _FAIL)
         {
             printf("init: failed to spawn service '%s' (%s)\n", services->items[i], strerror(errno));
         }
@@ -189,7 +189,7 @@ static void init_config_load(void)
     config_array_t* sockets = config_get_array(config, "startup", "sockets");
     for (uint64_t i = 0; i < sockets->length; i++)
     {
-        if (init_socket_addr_wait("local", sockets->items[i]) == ERR)
+        if (init_socket_addr_wait("local", sockets->items[i]) == _FAIL)
         {
             printf("init: timeout waiting for socket '%s' (%s)\n", sockets->items[i], strerror(errno));
         }
@@ -201,7 +201,7 @@ static void init_config_load(void)
         nanosleep(CLOCKS_PER_MS);
         printf("init: spawn program '%s'\n", programs->items[i]);
         const char* argv[] = {programs->items[i], NULL};
-        if (spawn(argv, SPAWN_EMPTY_FDS | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP) == ERR)
+        if (spawn(argv, SPAWN_EMPTY_FDS | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP) == _FAIL)
         {
             printf("init: failed to spawn program '%s' (%s)\n", programs->items[i], strerror(errno));
         }
@@ -215,11 +215,11 @@ int main(void)
     init_root_ns();
 
     fd_t klog = open("/dev/klog:rw");
-    if (klog == ERR)
+    if (klog == _FAIL)
     {
         return EXIT_FAILURE;
     }
-    if (dup2(klog, STDOUT_FILENO) == ERR || dup2(klog, STDERR_FILENO) == ERR)
+    if (dup2(klog, STDOUT_FILENO) == _FAIL || dup2(klog, STDERR_FILENO) == _FAIL)
     {
         close(klog);
         return EXIT_FAILURE;

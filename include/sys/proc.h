@@ -4,13 +4,14 @@
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/syscall.h>
 
 #if defined(__cplusplus)
 extern "C"
 {
 #endif
 
-#include "_libstd/ERR.h"
+#include "_libstd/_FAIL.h"
 #include "_libstd/NULL.h"
 #include "_libstd/PAGE_SIZE.h"
 #include "_libstd/clock_t.h"
@@ -80,7 +81,7 @@ typedef enum
  *
  * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable.
  * @param flags Spawn behaviour flags.
- * @return On success, the childs pid. On failure, `ERR` and `errno` is set.
+ * @return On success, the childs pid. On failure, `_FAIL` and `errno` is set.
  */
 pid_t spawn(const char** argv, spawn_flags_t flags);
 
@@ -151,9 +152,12 @@ void* mmap(fd_t fd, void* address, size_t length, prot_t prot);
  *
  * @param address The starting virtual address of the memory area to be unmapped.
  * @param length The length of the memory area to be unmapped.
- * @return On success, returns the address of the unmapped memory, on failure returns `NULL` and errno is set.
+ * @return An appropriate status value.
  */
-void* munmap(void* address, size_t length);
+static inline status_t munmap(void* address, size_t length)
+{
+    return syscall2(SYS_MUNMAP, (uintptr_t)address, length, NULL);
+}
 
 /**
  * @brief System call to change the protection flags of memory.
@@ -165,9 +169,12 @@ void* munmap(void* address, size_t length);
  * @param length The length of the memory area to be modifed.
  * @param prot The new protection flags of the memory area, if equal to `PROT_NONE` the memory area will be
  * unmapped.
- * @return On success, returns the address of the modified memory area, on failure returns `NULL` and errno is set.
+ * @return An appropriate status value.
  */
-void* mprotect(void* address, size_t length, prot_t prot);
+static inline status_t mprotect(void* address, size_t length, prot_t prot)
+{
+    return syscall3(SYS_MPROTECT, (uintptr_t)address, length, prot, NULL);
+}
 
 /**
  * @brief Futex operation enum.
@@ -212,9 +219,13 @@ typedef enum
  * @param val The value used by the futex operation, its meaning depends on the operation.
  * @param op The futex operation to perform (e.g., `FUTEX_WAIT` or `FUTEX_WAKE`).
  * @param timeout An optional timeout for `FUTEX_WAIT`. If `CLOCKS_NEVER`, it waits forever.
- * @return On success, depends on the operation. On failure, `ERR` and errno is set.
+ * @param result Optional output pointer for the result.
+ * @return An appropriate status value.
  */
-uint64_t futex(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout);
+static inline status_t futex(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout, uint64_t* result)
+{
+    return syscall4(SYS_FUTEX, (uintptr_t)addr, val, op, timeout, result);
+}
 
 /**
  * @brief System call for retreving the time since boot.
@@ -232,7 +243,7 @@ clock_t uptime(void);
  *
  * @param timeout The duration in nanoseconds for which to sleep, if equal to `CLOCKS_NEVER` then it will sleep forever,
  * not sure why you would want to do that but you can.
- * @return On success, `0`. On failure, `ERR` and errno is set.
+ * @return On success, `0`. On failure, `_FAIL` and errno is set.
  */
 uint64_t nanosleep(clock_t timeout);
 
@@ -267,7 +278,7 @@ typedef void (*note_func_t)(char* note);
  * @see kernel_ipc_note
  *
  * @param handler The handler function to be called on notes, can be `NULL` to unregister the current handler.
- * @return On success, `0`. On failure, `ERR` and errno is set.
+ * @return On success, `0`. On failure, `_FAIL` and errno is set.
  */
 uint64_t notify(note_func_t handler);
 
@@ -311,11 +322,11 @@ typedef uint64_t (*atnotify_func_t)(char* note);
 /**
  * @brief Adds or removes a handler to be called in user space when a note is received.
  *
- * If the return value of a handler is `ERR`, the process will exit.
+ * If the return value of a handler is `_FAIL`, the process will exit.
  *
  * @param handler The handler function to be modified.
  * @param action The action to perform.
- * @return On success, `0`. On failure, `ERR` and errno is set.
+ * @return On success, `0`. On failure, `_FAIL` and errno is set.
  */
 uint64_t atnotify(atnotify_func_t handler, atnotify_t action);
 
@@ -335,7 +346,7 @@ _NORETURN void exits(const char* status);
  * @brief Helper for sending the "kill" command to a process.
  *
  * @param pid The PID of the process to send the command to.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t kill(pid_t pid);
 
@@ -354,7 +365,7 @@ typedef enum
  *
  * @param op The operation to perform.
  * @param addr If getting data, a pointer to store the retrieved address. If setting data, the address to set.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t arch_prctl(arch_prctl_t op, uintptr_t addr);
 

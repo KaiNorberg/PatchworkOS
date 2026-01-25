@@ -125,7 +125,7 @@ typedef struct dentry_ops
      *
      * Used for security by hiding files or directories based on filesystem defined logic.
      *
-     * @return On success, `0`. On failure, `ERR` and `errno` is set.
+     * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
      */
     uint64_t (*revalidate)(dentry_t* dentry);
     /**
@@ -133,7 +133,7 @@ typedef struct dentry_ops
      *
      * @param dentry The directory dentry to iterate over.
      * @param ctx The directory context to use for iteration.
-     * @return On success, `0`. On failure, `ERR` and `errno` is set.
+     * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
      */
     uint64_t (*iterate)(dentry_t* dentry, dir_ctx_t* ctx);
     /**
@@ -182,7 +182,7 @@ typedef struct dentry
  * @param superblock The superblock the dentry belongs to.
  * @param parent The parent dentry, can be `NULL`.
  * @param name The name of the dentry, can be `NULL` if `parent` is also `NULL`.
- * @return On success, the new dentry. On failure, returns `NULL` and `errno` is set.
+ * @return On success, the new dentry. On failure, returns `NULL`.
  */
 dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name);
 

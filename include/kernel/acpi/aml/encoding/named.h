@@ -177,7 +177,7 @@ typedef uint16_t aml_resource_order_t;
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the bank value.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_bank_value_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
@@ -188,7 +188,7 @@ uint64_t aml_bank_value_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the region space.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_region_space_read(aml_term_list_ctx_t* ctx, aml_region_space_t* out);
 
@@ -199,7 +199,7 @@ uint64_t aml_region_space_read(aml_term_list_ctx_t* ctx, aml_region_space_t* out
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the RegionOffset.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_region_offset_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
@@ -210,7 +210,7 @@ uint64_t aml_region_offset_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the region length.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_region_len_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
@@ -222,7 +222,7 @@ uint64_t aml_region_len_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
  * @see Section 19.6.100 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_opregion_read(aml_term_list_ctx_t* ctx);
 
@@ -256,7 +256,7 @@ uint64_t aml_def_opregion_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The buffer to store the FieldFlags structure.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_field_flags_read(aml_term_list_ctx_t* ctx, aml_field_flags_t* out);
 
@@ -269,7 +269,7 @@ uint64_t aml_field_flags_read(aml_term_list_ctx_t* ctx, aml_field_flags_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param fieldCtx The AML field list context.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_name_field_read(aml_term_list_ctx_t* ctx, aml_field_list_ctx_t* fieldCtx);
 
@@ -282,7 +282,7 @@ uint64_t aml_name_field_read(aml_term_list_ctx_t* ctx, aml_field_list_ctx_t* fie
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param fieldCtx The AML field list context.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_reserved_field_read(aml_term_list_ctx_t* ctx, aml_field_list_ctx_t* fieldCtx);
 
@@ -296,7 +296,7 @@ uint64_t aml_reserved_field_read(aml_term_list_ctx_t* ctx, aml_field_list_ctx_t*
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param fieldCtx The AML field list context.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_field_element_read(aml_term_list_ctx_t* ctx, aml_field_list_ctx_t* fieldCtx);
 
@@ -310,7 +310,7 @@ uint64_t aml_field_element_read(aml_term_list_ctx_t* ctx, aml_field_list_ctx_t* 
  * @param ctx The context of the TermList that this structure is part of.
  * @param fieldCtx The AML field list context.
  * @param end The index at which the FieldList ends.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_field_list_read(aml_term_list_ctx_t* ctx, aml_field_list_ctx_t* fieldCtx, const uint8_t* end);
 
@@ -320,7 +320,7 @@ uint64_t aml_field_list_read(aml_term_list_ctx_t* ctx, aml_field_list_ctx_t* fie
  * The DefField structure is defined as `DefField := FieldOp PkgLength NameString FieldFlags FieldList`.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_field_read(aml_term_list_ctx_t* ctx);
 
@@ -339,7 +339,7 @@ uint64_t aml_def_field_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.64 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_index_field_read(aml_term_list_ctx_t* ctx);
 
@@ -359,7 +359,7 @@ uint64_t aml_def_index_field_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.7 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_bank_field_read(aml_term_list_ctx_t* ctx);
 
@@ -375,7 +375,7 @@ uint64_t aml_def_bank_field_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the MethodFlags structure.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_method_flags_read(aml_term_list_ctx_t* ctx, aml_method_flags_t* out);
 
@@ -387,7 +387,7 @@ uint64_t aml_method_flags_read(aml_term_list_ctx_t* ctx, aml_method_flags_t* out
  * @see Section 19.6.85 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_method_read(aml_term_list_ctx_t* ctx);
 
@@ -399,7 +399,7 @@ uint64_t aml_def_method_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.31 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_device_read(aml_term_list_ctx_t* ctx);
 
@@ -412,7 +412,7 @@ uint64_t aml_def_device_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the SyncFlags structure.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_sync_flags_read(aml_term_list_ctx_t* ctx, aml_sync_level_t* out);
 
@@ -424,7 +424,7 @@ uint64_t aml_sync_flags_read(aml_term_list_ctx_t* ctx, aml_sync_level_t* out);
  * @see Section 19.6.89 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_mutex_read(aml_term_list_ctx_t* ctx);
 
@@ -435,7 +435,7 @@ uint64_t aml_def_mutex_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the processor ID.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_proc_id_read(aml_term_list_ctx_t* ctx, aml_proc_id_t* out);
 
@@ -446,7 +446,7 @@ uint64_t aml_proc_id_read(aml_term_list_ctx_t* ctx, aml_proc_id_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the Pblk address.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_pblk_addr_read(aml_term_list_ctx_t* ctx, aml_pblk_addr_t* out);
 
@@ -457,7 +457,7 @@ uint64_t aml_pblk_addr_read(aml_term_list_ctx_t* ctx, aml_pblk_addr_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the Pblk length.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_pblk_len_read(aml_term_list_ctx_t* ctx, aml_pblk_len_t* out);
 
@@ -471,7 +471,7 @@ uint64_t aml_pblk_len_read(aml_term_list_ctx_t* ctx, aml_pblk_len_t* out);
  * section 19.6.108 of the same for more details about its behavior.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_processor_read(aml_term_list_ctx_t* ctx);
 
@@ -494,7 +494,7 @@ aml_object_t* aml_source_buff_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The destination buffer to store the BitIndex.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_bit_index_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
@@ -505,7 +505,7 @@ uint64_t aml_bit_index_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The destination buffer to store the ByteIndex.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_byte_index_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
@@ -526,7 +526,7 @@ uint64_t aml_byte_index_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
  * @see Section 19.6.18 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_create_bit_field_read(aml_term_list_ctx_t* ctx);
 
@@ -542,7 +542,7 @@ uint64_t aml_def_create_bit_field_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.19 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_create_byte_field_read(aml_term_list_ctx_t* ctx);
 
@@ -558,7 +558,7 @@ uint64_t aml_def_create_byte_field_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.23 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_create_word_field_read(aml_term_list_ctx_t* ctx);
 
@@ -574,7 +574,7 @@ uint64_t aml_def_create_word_field_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.20 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_create_dword_field_read(aml_term_list_ctx_t* ctx);
 
@@ -590,7 +590,7 @@ uint64_t aml_def_create_dword_field_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.22 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_create_qword_field_read(aml_term_list_ctx_t* ctx);
 
@@ -602,7 +602,7 @@ uint64_t aml_def_create_qword_field_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.42 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_event_read(aml_term_list_ctx_t* ctx);
 
@@ -614,7 +614,7 @@ uint64_t aml_def_event_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.135 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_thermal_zone_read(aml_term_list_ctx_t* ctx);
 
@@ -625,7 +625,7 @@ uint64_t aml_def_thermal_zone_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the system level.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_system_level_read(aml_term_list_ctx_t* ctx, aml_system_level_t* out);
 
@@ -636,7 +636,7 @@ uint64_t aml_system_level_read(aml_term_list_ctx_t* ctx, aml_system_level_t* out
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the resource order.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_resource_order_read(aml_term_list_ctx_t* ctx, aml_resource_order_t* out);
 
@@ -649,7 +649,7 @@ uint64_t aml_resource_order_read(aml_term_list_ctx_t* ctx, aml_resource_order_t*
  * @see Section 19.6.108 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_power_res_read(aml_term_list_ctx_t* ctx);
 
@@ -660,7 +660,7 @@ uint64_t aml_def_power_res_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the number of bits.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_num_bits_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
@@ -672,7 +672,7 @@ uint64_t aml_num_bits_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
  * @see Section 19.6.21 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_create_field_read(aml_term_list_ctx_t* ctx);
 
@@ -689,7 +689,7 @@ uint64_t aml_def_create_field_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.21 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_create_field_read(aml_term_list_ctx_t* ctx);
 
@@ -705,7 +705,7 @@ uint64_t aml_def_create_field_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.25 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_data_region_read(aml_term_list_ctx_t* ctx);
 
@@ -740,7 +740,7 @@ uint64_t aml_def_data_region_read(aml_term_list_ctx_t* ctx);
  * - `DefExternal`
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_named_obj_read(aml_term_list_ctx_t* ctx);
 

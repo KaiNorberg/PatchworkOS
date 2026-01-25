@@ -48,7 +48,7 @@
 /**
  * @brief Initialize the AML subsystem.
  *
- * @return On success, `0`. On failure, `ERR`.
+ * @return On success, `0`. On failure, `_FAIL`.
  */
 uint64_t aml_init(void);
 

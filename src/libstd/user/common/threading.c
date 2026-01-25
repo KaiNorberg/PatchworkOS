@@ -27,7 +27,7 @@ static uint64_t _thread_insert(_thread_t* thread)
             return 0;
         }
     }
-    return ERR;
+    return _FAIL;
 }
 
 static void _thread_remove(_thread_t* thread)
@@ -98,7 +98,7 @@ _thread_t* _thread_new(thrd_start_t func, void* arg)
     mtx_lock(&entryMutex);
 
     thread->id = _syscall_thread_create(_thread_entry, thread);
-    if (thread->id == ERR)
+    if (thread->id == _FAIL)
     {
         errno = _syscall_errno();
         mtx_unlock(&entryMutex);
@@ -106,7 +106,7 @@ _thread_t* _thread_new(thrd_start_t func, void* arg)
         return NULL;
     }
 
-    if (_thread_insert(thread) == ERR)
+    if (_thread_insert(thread) == _FAIL)
     {
         errno = ENOSPC;
         mtx_unlock(&entryMutex);

@@ -522,7 +522,7 @@ uint64_t aml_object_count_children(aml_object_t* parent);
  * @param bitOffset The bit offset within the object's data to start storing to.
  * @param bitSize The number of bits to store, `in` must be large enough to hold this many bits.
  * @param in Pointer to a buffer containing the bits to store.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, uint8_t* in);
 
@@ -539,7 +539,7 @@ uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
  * @param bitOffset The bit offset within the object's data to start extracting from.
  * @param bitSize The number of bits to store, `out` must be large enough to hold this many bits.
  * @param out Pointer to a buffer where the extracted bits will be stored.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, uint8_t* out);
 
@@ -550,7 +550,7 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
  *
  * @param buffer Pointer to the buffer object to resize.
  * @param newLength The new length of the buffer.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_buffer_resize(aml_buffer_t* buffer, uint64_t newLength);
 
@@ -559,7 +559,7 @@ uint64_t aml_buffer_resize(aml_buffer_t* buffer, uint64_t newLength);
  *
  * @param object Pointer to the object to initialize.
  * @param length Length of the buffer will also be the capacity.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_buffer_set_empty(aml_object_t* object, uint64_t length);
 
@@ -570,7 +570,7 @@ uint64_t aml_buffer_set_empty(aml_object_t* object, uint64_t length);
  * @param buffer Pointer to the buffer.
  * @param bytesToCopy Number of bytes to copy from `buffer` to the object, the rest will be zeroed.
  * @param length The total length of the buffer.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_buffer_set(aml_object_t* object, const uint8_t* buffer, uint64_t bytesToCopy, uint64_t length);
 
@@ -581,7 +581,7 @@ uint64_t aml_buffer_set(aml_object_t* object, const uint8_t* buffer, uint64_t by
  * @param target Pointer to the object to create the buffer field from, must be `AML_BUFFER` or `AML_STRING`.
  * @param bitOffset Bit offset within the buffer.
  * @param bitSize Size of the field in bits.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_buffer_field_set(aml_object_t* object, aml_object_t* target, aml_bit_size_t bitOffset,
     aml_bit_size_t bitSize);
@@ -590,7 +590,7 @@ uint64_t aml_buffer_field_set(aml_object_t* object, aml_object_t* target, aml_bi
  * @brief Set a object as a debug object.
  *
  * @param object Pointer to the object to initialize.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_debug_object_set(aml_object_t* object);
 
@@ -598,7 +598,7 @@ uint64_t aml_debug_object_set(aml_object_t* object);
  * @brief Set a object as a device or bus.
  *
  * @param object Pointer to the object to initialize.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_device_set(aml_object_t* object);
 
@@ -606,7 +606,7 @@ uint64_t aml_device_set(aml_object_t* object);
  * @brief Set a object as an event.
  *
  * @param object Pointer to the object to initialize.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_event_set(aml_object_t* object);
 
@@ -618,7 +618,7 @@ uint64_t aml_event_set(aml_object_t* object);
  * @param flags Flags for the field unit.
  * @param bitOffset Bit offset within the operation region.
  * @param bitSize Size of the field in bits.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_field_unit_field_set(aml_object_t* object, aml_opregion_t* opregion, aml_field_flags_t flags,
     aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
@@ -632,7 +632,7 @@ uint64_t aml_field_unit_field_set(aml_object_t* object, aml_opregion_t* opregion
  * @param flags Flags for the field unit.
  * @param bitOffset Bit offset within the operation region.
  * @param bitSize Size of the field in bits.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_field_unit_index_field_set(aml_object_t* object, aml_field_unit_t* index, aml_field_unit_t* data,
     aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
@@ -647,7 +647,7 @@ uint64_t aml_field_unit_index_field_set(aml_object_t* object, aml_field_unit_t* 
  * @param flags Flags for the field unit.
  * @param bitOffset Bit offset within the operation region.
  * @param bitSize Size of the field in bits.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_t* opregion, aml_field_unit_t* bank,
     uint64_t bankValue, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
@@ -657,7 +657,7 @@ uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_t* opr
  *
  * @param object Pointer to the object to initialize.
  * @param value The integer value to set.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_integer_set(aml_object_t* object, aml_uint_t value);
 
@@ -670,7 +670,7 @@ uint64_t aml_integer_set(aml_object_t* object, aml_uint_t value);
  * @param end Pointer to the end of the method's AML bytecode.
  * @param implementation Pointer to a C function that will execute the method, or `NULL` if the method is a normal
  * AML method.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_method_set(aml_object_t* object, aml_method_flags_t flags, const uint8_t* start, const uint8_t* end,
     aml_method_implementation_t implementation);
@@ -688,7 +688,7 @@ aml_method_t* aml_method_find(const uint8_t* addr);
  *
  * @param object Pointer to the object to initialize.
  * @param syncLevel The synchronization level of the mutex (0-15).
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_mutex_set(aml_object_t* object, aml_sync_level_t syncLevel);
 
@@ -697,7 +697,7 @@ uint64_t aml_mutex_set(aml_object_t* object, aml_sync_level_t syncLevel);
  *
  * @param object Pointer to the object to initialize.
  * @param target Pointer to the target object the ObjectReference will point to.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_object_reference_set(aml_object_t* object, aml_object_t* target);
 
@@ -708,7 +708,7 @@ uint64_t aml_object_reference_set(aml_object_t* object, aml_object_t* target);
  * @param space The address space of the operation region.
  * @param offset The offset within the address space.
  * @param length The length of the operation region.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_operation_region_set(aml_object_t* object, aml_region_space_t space, uintptr_t offset, uint32_t length);
 
@@ -717,7 +717,7 @@ uint64_t aml_operation_region_set(aml_object_t* object, aml_region_space_t space
  *
  * @param object Pointer to the object to initialize.
  * @param length Number of elements the package will be able to hold.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_package_set(aml_object_t* object, uint64_t length);
 
@@ -727,7 +727,7 @@ uint64_t aml_package_set(aml_object_t* object, uint64_t length);
  * @param object Pointer to the object to initialize.
  * @param systemLevel The system level of the power resource.
  * @param resourceOrder The resource order of the power resource.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_power_resource_set(aml_object_t* object, aml_system_level_t systemLevel,
     aml_resource_order_t resourceOrder);
@@ -739,7 +739,7 @@ uint64_t aml_power_resource_set(aml_object_t* object, aml_system_level_t systemL
  * @param procId The processor ID.
  * @param pblkAddr The pblk address.
  * @param pblkLen The length of the pblk.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_processor_set(aml_object_t* object, aml_proc_id_t procId, aml_pblk_addr_t pblkAddr,
     aml_pblk_len_t pblkLen);
@@ -751,7 +751,7 @@ uint64_t aml_processor_set(aml_object_t* object, aml_proc_id_t procId, aml_pblk_
  *
  * @param object Pointer to the object to initialize.
  * @param length Length of the string, not including the null terminator.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_string_set_empty(aml_object_t* object, uint64_t length);
 
@@ -760,7 +760,7 @@ uint64_t aml_string_set_empty(aml_object_t* object, uint64_t length);
  *
  * @param object Pointer to the object to initialize.
  * @param str Pointer to the string.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_string_set(aml_object_t* object, const char* str);
 
@@ -771,7 +771,7 @@ uint64_t aml_string_set(aml_object_t* object, const char* str);
  *
  * @param string Pointer to the string object to resize.
  * @param newLength The new length of the string, not including the null terminator.
- * @return On success, the new length of the string. On failure, `ERR` and `errno` is set.
+ * @return On success, the new length of the string. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_string_resize(aml_stioring_t* string, uint64_t newLength);
 
@@ -779,7 +779,7 @@ uint64_t aml_string_resize(aml_stioring_t* string, uint64_t newLength);
  * @brief Set a object as a thermal zone.
  *
  * @param object Pointer to the object to initialize.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_thermal_zone_set(aml_object_t* object);
 
@@ -790,7 +790,7 @@ uint64_t aml_thermal_zone_set(aml_object_t* object);
  *
  * @param object Pointer to the object to initialize.
  * @param target Pointer to the target object the alias will point to.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_alias_set(aml_object_t* object, aml_object_t* target);
 
@@ -813,7 +813,7 @@ aml_object_t* aml_alias_traverse(aml_alias_t* alias);
  * @param nameString Pointer to the namestring representing the path to the target object.
  * @param from Pointer to the object to start the search from, can be `NULL` to start from the root.
  * @param callback Pointer to a callback function that will be called when a matching object is found
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_unresolved_set(aml_object_t* object, const aml_name_stioring_t* nameString, aml_object_t* from,
     aml_patch_up_resolve_callback_t callback);
@@ -824,7 +824,7 @@ uint64_t aml_unresolved_set(aml_object_t* object, const aml_name_stioring_t* nam
  * This is used to implement predefined scopes like \_SB, \_GPE, etc.
  *
  * @param object Pointer to the object to initialize.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_predefined_scope_set(aml_object_t* object);
 
@@ -833,7 +833,7 @@ uint64_t aml_predefined_scope_set(aml_object_t* object);
  *
  * @param object Pointer to the object to initialize.
  * @param value Pointer to the object the argument will point to, can be `NULL`.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_arg_set(aml_object_t* object, aml_object_t* value);
 
@@ -841,7 +841,7 @@ uint64_t aml_arg_set(aml_object_t* object, aml_object_t* value);
  * @brief Set a object as a empty local variable.
  *
  * @param object Pointer to the object to initialize.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_local_set(aml_object_t* object);
 

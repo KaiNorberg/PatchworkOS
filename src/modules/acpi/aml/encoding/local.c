@@ -20,7 +20,7 @@ aml_object_t* aml_local_obj_read(aml_term_list_ctx_t* ctx)
     if (ctx->state->locals[index] == NULL)
     {
         aml_object_t* local = aml_object_new();
-        if (local == NULL || aml_local_set(local) == ERR)
+        if (local == NULL || aml_local_set(local) == _FAIL)
         {
             if (local != NULL)
             {

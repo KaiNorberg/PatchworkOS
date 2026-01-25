@@ -126,7 +126,7 @@ void ipi_handle_pending(interrupt_frame_t* frame);
  * There can only be a single IPI chip registered at a time.
  *
  * @param chip The IPI chip to register.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `EBUSY`: An IPI chip is already registered.
  */
@@ -159,7 +159,7 @@ uint64_t ipi_chip_amount(void);
  * @param flags The flags for how to send the IPI.
  * @param func The function to execute on target CPU(s).
  * @param private The private data to pass to the function, will be found in `irq_func_data_t->data`.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENODEV`: No IPI chip is registered.
  * - `ENOSYS`: The registered IPI chip does not have a `notify` function.

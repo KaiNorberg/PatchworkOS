@@ -45,34 +45,34 @@ void mdl_free_chain(mdl_t* mdl, void (*free)(void*))
     }
 }
 
-errno_t mdl_from_region(mdl_t* mdl, mdl_t* prev, space_t* space, const void* addr, size_t size)
+status_t mdl_from_region(mdl_t* mdl, mdl_t* prev, space_t* space, const void* addr, size_t size)
 {
     if (mdl == NULL)
     {
-        return EINVAL;
+        return ERR(MMU, INVAL);
     }
     mdl_init(mdl, prev);
 
-    errno_t err = mdl_add(mdl, space, addr, size);
-    if (err != EOK)
+    status_t status = mdl_add(mdl, space, addr, size);
+    if (IS_ERR(status))
     {
         mdl_deinit(mdl);
-        return err;
+        return status;
     }
 
-    return EOK;
+    return OK;
 }
 
-static errno_t mdl_push(mdl_t* mdl, phys_addr_t phys, size_t size)
+static status_t mdl_push(mdl_t* mdl, phys_addr_t phys, size_t size)
 {
     if (size > UINT32_MAX)
     {
-        return EOVERFLOW;
+        return ERR(MMU, OVERFLOW);
     }
 
     if (mdl == NULL)
     {
-        return EINVAL;
+        return ERR(MMU, INVAL);
     }
 
     if (mdl->amount == mdl->capacity)
@@ -95,7 +95,7 @@ static errno_t mdl_push(mdl_t* mdl, phys_addr_t phys, size_t size)
 
         if (newSegments == NULL)
         {
-            return ENOMEM;
+            return ERR(MMU, NOMEM);
         }
 
         mdl->segments = newSegments;
@@ -105,9 +105,9 @@ static errno_t mdl_push(mdl_t* mdl, phys_addr_t phys, size_t size)
     mdl_seg_t* seg = &mdl->segments[mdl->amount];
     pfn_t pfn = PHYS_TO_PFN(phys);
     uint32_t offset = phys % PAGE_SIZE;
-    if (pmm_ref_inc(pfn, BYTES_TO_PAGES(offset + size)) == ERR)
+    if (pmm_ref_inc(pfn, BYTES_TO_PAGES(offset + size)) == 0)
     {
-        return EFAULT;
+        return ERR(MMU, FAULT);
     }
 
     seg->pfn = pfn;
@@ -115,39 +115,40 @@ static errno_t mdl_push(mdl_t* mdl, phys_addr_t phys, size_t size)
     seg->offset = offset;
 
     mdl->amount++;
-    return EOK;
+    return OK;
 }
 
-errno_t mdl_add(mdl_t* mdl, space_t* space, const void* addr, size_t size)
+status_t mdl_add(mdl_t* mdl, space_t* space, const void* addr, size_t size)
 {
     const uint8_t* ptr = addr;
     size_t remaining = size;
 
     while (remaining > 0)
     {
-        phys_addr_t phys = space_virt_to_phys(space, ptr);
-        if (phys == ERR)
+        phys_addr_t phys;
+        status_t status = space_virt_to_phys(&phys, space, ptr);
+        if (IS_ERR(status))
         {
-            return EFAULT;
+            return status;
         }
 
         size_t offset = phys % PAGE_SIZE;
         size_t len = MIN(remaining, PAGE_SIZE - offset);
 
-        errno_t err = mdl_push(mdl, phys, len);
-        if (err != EOK)
+        status = mdl_push(mdl, phys, len);
+        if (IS_ERR(status))
         {
-            return err;
+            return status;
         }
 
         ptr += len;
         remaining -= len;
     }
 
-    return EOK;
+    return OK;
 }
 
-uint64_t mdl_read(mdl_t* mdl, void* buffer, size_t count, size_t offset)
+size_t mdl_read(mdl_t* mdl, void* buffer, size_t count, size_t offset)
 {
     if (mdl == NULL || buffer == NULL)
     {
@@ -186,7 +187,7 @@ uint64_t mdl_read(mdl_t* mdl, void* buffer, size_t count, size_t offset)
     return count - remaining;
 }
 
-uint64_t mdl_write(mdl_t* mdl, const void* buffer, size_t count, size_t offset)
+size_t mdl_write(mdl_t* mdl, const void* buffer, size_t count, size_t offset)
 {
     if (mdl == NULL || buffer == NULL)
     {

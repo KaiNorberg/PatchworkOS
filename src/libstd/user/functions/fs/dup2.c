@@ -8,7 +8,7 @@
 fd_t dup2(fd_t oldFd, fd_t newFd)
 {
     uint64_t result = _syscall_dup2(oldFd, newFd);
-    if (result == ERR)
+    if (result == _FAIL)
     {
         errno = _syscall_errno();
     }

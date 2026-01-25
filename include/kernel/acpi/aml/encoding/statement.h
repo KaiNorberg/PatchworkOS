@@ -25,7 +25,7 @@ typedef struct aml_term_list_ctx aml_term_list_ctx_t;
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The destination buffer to store the integer value of the Predicate.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_predicate_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
@@ -38,7 +38,7 @@ uint64_t aml_predicate_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param shouldExecute Whether the TermList should be executed or skipped.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_else_read(aml_term_list_ctx_t* ctx, bool shouldExecute);
 
@@ -53,7 +53,7 @@ uint64_t aml_def_else_read(aml_term_list_ctx_t* ctx, bool shouldExecute);
  * @see Section 19.6.60 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_if_else_read(aml_term_list_ctx_t* ctx);
 
@@ -65,7 +65,7 @@ uint64_t aml_def_if_else_read(aml_term_list_ctx_t* ctx);
  * A Noop does nothing.
  *
  * @param state Pointer to the current AML state.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_noop_read(aml_term_list_ctx_t* ctx);
 
@@ -89,7 +89,7 @@ aml_object_t* aml_arg_object_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.120 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_return_read(aml_term_list_ctx_t* ctx);
 
@@ -101,7 +101,7 @@ uint64_t aml_def_return_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.8 of the ACPI specification for more details.
  *
  * @param state Pointer to the current AML state.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_break_read(aml_term_list_ctx_t* ctx);
 
@@ -113,7 +113,7 @@ uint64_t aml_def_break_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.16 of the ACPI specification for more details.
  *
  * @param state Pointer to the current AML state.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_continue_read(aml_term_list_ctx_t* ctx);
 
@@ -125,7 +125,7 @@ uint64_t aml_def_continue_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.117 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_release_read(aml_term_list_ctx_t* ctx);
 
@@ -140,7 +140,7 @@ uint64_t aml_def_release_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.158 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_while_read(aml_term_list_ctx_t* ctx);
 
@@ -160,7 +160,7 @@ uint64_t aml_def_while_read(aml_term_list_ctx_t* ctx);
  * - `DefStall`
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_statement_opcode_read(aml_term_list_ctx_t* ctx);
 

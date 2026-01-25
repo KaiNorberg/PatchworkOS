@@ -7,19 +7,19 @@ int system(const char* command)
 {
     const char* argv[] = {"/bin/shell", command, NULL};
     pid_t shell = spawn(argv, SPAWN_DEFAULT);
-    if (shell == ERR)
+    if (shell == _FAIL)
     {
         return -1;
     }
 
     fd_t wait = open(F("/proc/%d/wait", shell));
-    if (wait == ERR)
+    if (wait == _FAIL)
     {
         return -1;
     }
 
     char buf[MAX_PATH];
-    if (read(wait, buf, MAX_PATH) == ERR)
+    if (read(wait, buf, MAX_PATH) == _FAIL)
     {
         close(wait);
         return -1;

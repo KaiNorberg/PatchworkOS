@@ -257,7 +257,7 @@ const char* element_get_text(element_t* elem);
  *
  * @param elem The element.
  * @param text The new text.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t element_set_text(element_t* elem, const char* text);
 
@@ -373,7 +373,7 @@ uint64_t element_dispatch(element_t* elem, const event_t* event);
  * @param type The event type.
  * @param data Pointer to the event data, can be `NULL` if `size` is `0`.
  * @param size The size of the event data.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t element_emit(element_t* elem, event_type_t type, const void* data, uint64_t size);
 

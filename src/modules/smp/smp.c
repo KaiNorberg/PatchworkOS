@@ -76,7 +76,7 @@ static void smp_start_others(void)
         LOG_DEBUG("starting cpu with lapicid %d\n", (uint64_t)lapic->apicId);
         trampoline_send_startup_ipi(cpu, lapic->apicId);
 
-        if (trampoline_wait_ready(CLOCKS_PER_SEC) == ERR)
+        if (trampoline_wait_ready(CLOCKS_PER_SEC) == _FAIL)
         {
             panic(NULL, "Timeout waiting for cpu with lapicid %d to start", (uint64_t)lapic->apicId);
         }

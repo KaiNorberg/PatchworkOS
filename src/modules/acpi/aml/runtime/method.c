@@ -42,7 +42,7 @@ aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_t* method, 
 
     if (method->methodFlags.isSerialized)
     {
-        if (aml_mutex_acquire(&method->mutex, method->methodFlags.syncLevel, CLOCKS_NEVER) == ERR)
+        if (aml_mutex_acquire(&method->mutex, method->methodFlags.syncLevel, CLOCKS_NEVER) == _FAIL)
         {
             LOG_ERR("could not acquire method mutex\n");
             return NULL;
@@ -54,7 +54,7 @@ aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_t* method, 
         aml_object_t* temp = method->implementation(method, args, argCount);
         if (method->methodFlags.isSerialized)
         {
-            if (aml_mutex_release(&method->mutex) == ERR)
+            if (aml_mutex_release(&method->mutex) == _FAIL)
             {
                 LOG_ERR("could not release method mutex\n");
                 return NULL;
@@ -64,7 +64,7 @@ aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_t* method, 
     }
 
     aml_state_t state;
-    if (aml_state_init(&state, args) == ERR)
+    if (aml_state_init(&state, args) == _FAIL)
     {
         LOG_ERR("could not initialize AML state\n");
         if (method->methodFlags.isSerialized)
@@ -94,7 +94,7 @@ aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_t* method, 
     // control method execution for this package are relative to that location." - Section 19.6.85
 
     // The method body is just a TermList.
-    if (aml_term_list_read(&state, methodObj, method->start, method->end, NULL) == ERR)
+    if (aml_term_list_read(&state, methodObj, method->start, method->end, NULL) == _FAIL)
     {
         LOG_ERR("failed to read method body for method '%s'\n", AML_NAME_TO_STRING(method->name));
         aml_state_deinit(&state);
@@ -107,7 +107,7 @@ aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_t* method, 
 
     if (method->methodFlags.isSerialized)
     {
-        if (aml_mutex_release(&method->mutex) == ERR)
+        if (aml_mutex_release(&method->mutex) == _FAIL)
         {
             LOG_ERR("could not release method mutex\n");
             aml_state_deinit(&state);

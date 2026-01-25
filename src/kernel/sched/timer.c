@@ -56,7 +56,7 @@ uint64_t timer_source_register(const timer_source_t* source)
     if (source == NULL || source->set == NULL || source->precision == 0 || source->name == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     rwlock_write_acquire(&sourcesLock);
@@ -64,7 +64,7 @@ uint64_t timer_source_register(const timer_source_t* source)
     {
         rwlock_write_release(&sourcesLock);
         errno = ENOSPC;
-        return ERR;
+        return _FAIL;
     }
 
     for (uint32_t i = 0; i < sourceCount; i++)

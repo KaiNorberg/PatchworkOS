@@ -12,7 +12,7 @@ int main()
     printf("setting up ring test...\n");
     ioring_t ring;
     ioring_id_t id = ioring_setup(&ring, NULL, SENTRIES, CENTRIES);
-    if (id == ERR)
+    if (id == _FAIL)
     {
         printf("failed to set up ring\n");
         return errno;
@@ -31,7 +31,7 @@ int main()
     sqe_put(&ring);
 
     printf("entering ring...\n");
-    if (ioring_enter(id, 2, 0) == ERR)
+    if (ioring_enter(id, 2, 0) == _FAIL)
     {
         printf("failed to enter ring\n");
         return errno;
@@ -43,7 +43,7 @@ int main()
     sqe_put(&ring);
 
     printf("entering ring to submit cancel sqe...\n");
-    if (ioring_enter(id, 1, 0) == ERR)
+    if (ioring_enter(id, 1, 0) == _FAIL)
     {
         printf("failed to enter ring\n");
         return errno;

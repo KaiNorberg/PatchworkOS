@@ -22,20 +22,21 @@ static dentry_t* dir = NULL;
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
-static size_t kbd_name_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t kbd_name_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     kbd_t* kbd = file->vnode->data;
     assert(kbd != NULL);
 
     size_t length = strlen(kbd->name);
-    return BUFFER_READ(buffer, count, offset, kbd->name, length);
+    *bytesRead = BUFFER_READ(buffer, count, offset, kbd->name, length);
+    return OK;
 }
 
 static file_ops_t nameOps = {
     .read = kbd_name_read,
 };
 
-static uint64_t kbd_events_open(file_t* file)
+static status_t kbd_events_open(file_t* file)
 {
     kbd_t* kbd = file->vnode->data;
     assert(kbd != NULL);
@@ -43,8 +44,7 @@ static uint64_t kbd_events_open(file_t* file)
     kbd_client_t* client = calloc(1, sizeof(kbd_client_t));
     if (client == NULL)
     {
-        errno = ENOMEM;
-        return ERR;
+        return ERR(DRIVER, NOMEM);
     }
     list_entry_init(&client->entry);
     fifo_init(&client->fifo, client->buffer, sizeof(client->buffer));
@@ -54,7 +54,7 @@ static uint64_t kbd_events_open(file_t* file)
     lock_release(&kbd->lock);
 
     file->data = client;
-    return 0;
+    return OK;
 }
 
 static void kbd_events_close(file_t* file)
@@ -75,13 +75,14 @@ static void kbd_events_close(file_t* file)
     free(client);
 }
 
-static size_t kbd_events_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t kbd_events_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     UNUSED(offset);
 
     if (count == 0)
     {
-        return 0;
+        *bytesRead = 0;
+        return OK;
     }
 
     kbd_t* kbd = file->vnode->data;
@@ -95,20 +96,21 @@ static size_t kbd_events_read(file_t* file, void* buffer, size_t count, size_t* 
     {
         if (file->mode & MODE_NONBLOCK)
         {
-            errno = EAGAIN;
-            return ERR;
+            return INFO(DRIVER, AGAIN);
         }
 
-        if (WAIT_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, fifo_bytes_readable(&client->fifo) != 0) == ERR)
+        status_t status = WAIT_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, fifo_bytes_readable(&client->fifo) != 0);
+        if (!IS_ERR(status))
         {
-            return ERR;
+            return status;
         }
     }
 
-    return fifo_read(&client->fifo, buffer, count);
+    *bytesRead = fifo_read(&client->fifo, buffer, count);
+    return OK;
 }
 
-static wait_queue_t* kbd_events_poll(file_t* file, poll_events_t* revents)
+static status_t kbd_events_poll(file_t* file, poll_events_t* revents, wait_queue_t** queue)
 {
     kbd_t* kbd = file->vnode->data;
     assert(kbd != NULL);
@@ -121,7 +123,8 @@ static wait_queue_t* kbd_events_poll(file_t* file, poll_events_t* revents)
     {
         *revents |= POLLIN;
     }
-    return &kbd->waitQueue;
+    *queue = &kbd->waitQueue;
+    return OK;
 }
 
 static file_ops_t eventsOps = {
@@ -140,19 +143,17 @@ static void kbd_dir_cleanup(vnode_t* vnode)
     }
 
     wait_queue_deinit(&kbd->waitQueue);
-    free(kbd);
 }
 
 static vnode_ops_t dirVnodeOps = {
     .cleanup = kbd_dir_cleanup,
 };
 
-kbd_t* kbd_new(const char* name)
+status_t kbd_register(kbd_t* kbd)
 {
-    if (name == NULL)
+    if (kbd == NULL || kbd->name == NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(DRIVER, INVAL);
     }
 
     if (dir == NULL)
@@ -160,18 +161,10 @@ kbd_t* kbd_new(const char* name)
         dir = devfs_dir_new(NULL, "kbd", NULL, NULL);
         if (dir == NULL)
         {
-            return NULL;
+            return ERR(DRIVER, NOMEM);
         }
     }
 
-    kbd_t* kbd = malloc(sizeof(kbd_t));
-    if (kbd == NULL)
-    {
-        errno = ENOMEM;
-        return NULL;
-    }
-    strncpy(kbd->name, name, sizeof(kbd->name));
-    kbd->name[sizeof(kbd->name) - 1] = '\0';
     wait_queue_init(&kbd->waitQueue);
     list_init(&kbd->clients);
     lock_init(&kbd->lock);
@@ -182,17 +175,14 @@ kbd_t* kbd_new(const char* name)
     if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
     {
         wait_queue_deinit(&kbd->waitQueue);
-        free(kbd);
-        errno = EIO;
-        return NULL;
+        return ERR(DRIVER, IMPL);
     }
 
     kbd->dir = devfs_dir_new(dir, id, &dirVnodeOps, kbd);
     if (kbd->dir == NULL)
     {
         wait_queue_deinit(&kbd->waitQueue);
-        free(kbd);
-        return NULL;
+        return ERR(DRIVER, NOMEM);
     }
 
     devfs_file_desc_t files[] = {
@@ -211,18 +201,17 @@ kbd_t* kbd_new(const char* name)
         },
     };
 
-    if (devfs_files_new(&kbd->files, kbd->dir, files) == ERR)
+    if (!devfs_files_new(&kbd->files, kbd->dir, files))
     {
         wait_queue_deinit(&kbd->waitQueue);
         UNREF(kbd->dir);
-        free(kbd);
-        return NULL;
+        return ERR(DRIVER, NOMEM);
     }
 
-    return kbd;
+    return OK;
 }
 
-void kbd_free(kbd_t* kbd)
+void kbd_unregister(kbd_t* kbd)
 {
     if (kbd == NULL)
     {

@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/fs.h>
+#include <sys/status.h>
 
 typedef struct path path_t;
 typedef struct mount mount_t;
@@ -146,11 +147,9 @@ typedef struct pathname
  *
  * @param pathname The pathname to initialize.
  * @param string The string to initialize the pathname with.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `ENAMETOOLONG`: The string is too long or a component name is too long.
+ * @return An appropriate status code.
  */
-uint64_t pathname_init(pathname_t* pathname, const char* string);
+status_t pathname_init(pathname_t* pathname, const char* string);
 
 /**
  * @brief Helper to create an empty path.
@@ -232,7 +231,7 @@ void path_put(path_t* path);
  * @param mode The mode to open the new path with.
  * @param name The name of the new path component.
  * @param ns The namespace to access mountpoints.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_t* ns);
 
@@ -242,7 +241,7 @@ uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_t* ns)
  * @param path The path to start from, will be updated to the new path, may be negative.
  * @param pathname The pathname to walk to.
  * @param ns The namespace to access mountpoints.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns);
 
@@ -255,7 +254,7 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns);
  * @param pathname The pathname to traverse.
  * @param outLastName The output last component name, must be at least `MAX_NAME` bytes.
  * @param ns The namespace to access mountpoints.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_t* ns);
 
@@ -269,7 +268,7 @@ uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLas
  * @param outChild The output child path, may be negative.
  * @param pathname The pathname to traverse.
  * @param ns The namespace to access mountpoints.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_t* outChild, const pathname_t* pathname,
     namespace_t* ns);
@@ -281,7 +280,7 @@ uint64_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_
  *
  * @param path The path to convert.
  * @param pathname The output pathname.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t path_to_name(const path_t* path, pathname_t* pathname);
 
@@ -293,7 +292,7 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname);
  * @param mode The mode to convert.
  * @param out The output string buffer.
  * @param length The length of the output string buffer.
- * @return On success, the length of the resulting string, excluding the null terminator. On failure, `ERR` and `errno`
+ * @return On success, the length of the resulting string, excluding the null terminator. On failure, `_FAIL` and `errno`
  * is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENAMETOOLONG`: The output buffer is too small.
@@ -307,7 +306,7 @@ uint64_t mode_to_string(mode_t mode, char* out, uint64_t length);
  *
  * @param mode The mode to check and adjust.
  * @param maxPerms The maximum allowed permissions.
- * @return On success, the adjusted mode. On failure, `ERR` and `errno` is set to:
+ * @return On success, the adjusted mode. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `EACCES`: Requested permissions exceed maximum allowed permissions.
  */

@@ -83,7 +83,7 @@ namespace_t* namespace_new(namespace_t* parent);
  *
  * @param dest The destination namespace.
  * @param src The source namespace.
- * @return On success, `0`. On failure, `ERR` and `errno`
+ * @return On success, `0`. On failure, `_FAIL` and `errno`
  */
 uint64_t namespace_copy(namespace_t* dest, namespace_t* src);
 

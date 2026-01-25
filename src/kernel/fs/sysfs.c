@@ -49,7 +49,7 @@ static filesystem_t sysfs = {
 
 void sysfs_init(void)
 {
-    if (filesystem_register(&sysfs) == ERR)
+    if (filesystem_register(&sysfs) == _FAIL)
     {
         panic(NULL, "Failed to register sysfs");
     }
@@ -92,12 +92,12 @@ void sysfs_init(void)
     PATH_DEFER(&target);
 
     pathname_t pathname;
-    if (pathname_init(&pathname, "/sys") == ERR)
+    if (pathname_init(&pathname, "/sys") == _FAIL)
     {
         panic(NULL, "Failed to init pathname for /sys");
     }
 
-    if (path_walk(&target, &pathname, ns) == ERR)
+    if (path_walk(&target, &pathname, ns) == _FAIL)
     {
         panic(NULL, "Failed to walk to /sys");
     }
@@ -229,7 +229,7 @@ uint64_t sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t*
     if (out == NULL || descs == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (parent == NULL)
@@ -240,7 +240,7 @@ uint64_t sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t*
     if (parent->superblock->fs != &sysfs)
     {
         errno = EXDEV;
-        return ERR;
+        return _FAIL;
     }
 
     list_t createdList = LIST_CREATE(createdList);
@@ -255,7 +255,7 @@ uint64_t sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t*
             {
                 UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry));
             }
-            return ERR;
+            return _FAIL;
         }
 
         list_push_back(&createdList, &file->otherEntry);

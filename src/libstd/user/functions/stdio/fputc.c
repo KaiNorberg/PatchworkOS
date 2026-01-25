@@ -8,7 +8,7 @@ int fputc(int c, FILE* stream)
 {
     mtx_lock(&stream->mtx);
 
-    if (_file_prepare_write(stream) == ERR)
+    if (_file_prepare_write(stream) == _FAIL)
     {
         mtx_unlock(&stream->mtx);
         return EOF;
@@ -19,7 +19,7 @@ int fputc(int c, FILE* stream)
         (stream->flags & _FILE_UNBUFFERED))
     {
         // buffer filled, unbuffered stream, or end-of-line.
-        c = (_file_flush_buffer(stream) != ERR) ? c : EOF;
+        c = (_file_flush_buffer(stream) != _FAIL) ? c : EOF;
     }
 
     mtx_unlock(&stream->mtx);

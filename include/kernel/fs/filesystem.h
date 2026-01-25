@@ -79,7 +79,7 @@ void filesystem_expose(void);
  * @brief Registers a filesystem.
  *
  * @param fs The filesystem to register.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - Other values from `map_insert()`.
  */

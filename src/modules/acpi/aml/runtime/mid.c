@@ -17,14 +17,14 @@ aml_object_t* aml_mid(aml_state_t* state, aml_object_t* bufferString, aml_uint_t
 
     if (bufferString->type == AML_BUFFER)
     {
-        if (aml_buffer_set_empty(result, length) == ERR)
+        if (aml_buffer_set_empty(result, length) == _FAIL)
         {
             return NULL;
         }
     }
     else
     {
-        if (aml_string_set_empty(result, length) == ERR)
+        if (aml_string_set_empty(result, length) == _FAIL)
         {
             return NULL;
         }

@@ -20,6 +20,7 @@
 #include <sys/fs.h>
 #include <sys/list.h>
 #include <sys/math.h>
+#include <sys/status.h>
 
 static dentry_t* perfDir = NULL;
 static dentry_t* cpuFile = NULL;
@@ -47,15 +48,14 @@ PERCPU_DEFINE_CTOR(static perf_cpu_t, pcpu_perf)
     lock_init(&perf->lock);
 }
 
-static size_t perf_cpu_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t perf_cpu_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     UNUSED(file);
 
     char* string = malloc(256 * (cpu_amount() + 1));
     if (string == NULL)
     {
-        errno = ENOMEM;
-        return ERR;
+        return ERR(DRIVER, NOMEM);
     }
 
     strcpy(string, "cpu idle_clocks active_clocks interrupt_clocks");
@@ -90,30 +90,28 @@ static size_t perf_cpu_read(file_t* file, void* buffer, size_t count, size_t* of
         if (length < 0)
         {
             free(string);
-            errno = EIO;
-            return ERR;
+            return ERR(DRIVER, IMPL);
         }
     }
 
     size_t length = strlen(string);
-    size_t readCount = BUFFER_READ(buffer, count, offset, string, length);
+    *bytesRead = BUFFER_READ(buffer, count, offset, string, length);
     free(string);
-    return readCount;
+    return OK;
 }
 
 static file_ops_t cpuOps = {
     .read = perf_cpu_read,
 };
 
-static size_t perf_mem_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t perf_mem_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     UNUSED(file);
 
     char* string = malloc(256);
     if (string == NULL)
     {
-        errno = ENOMEM;
-        return ERR;
+        return ERR(DRIVER, NOMEM);
     }
 
     int length = sprintf(string, "total_pages %lu\nfree_pages %lu\nused_pages %lu", pmm_total_pages(),
@@ -121,13 +119,12 @@ static size_t perf_mem_read(file_t* file, void* buffer, size_t count, size_t* of
     if (length < 0)
     {
         free(string);
-        errno = EIO;
-        return ERR;
+        return ERR(DRIVER, IMPL);
     }
 
-    size_t readCount = BUFFER_READ(buffer, count, offset, string, (uint64_t)length);
+    *bytesRead = BUFFER_READ(buffer, count, offset, string, (uint64_t)length);
     free(string);
-    return readCount;
+    return OK;
 }
 
 static file_ops_t memOps = {

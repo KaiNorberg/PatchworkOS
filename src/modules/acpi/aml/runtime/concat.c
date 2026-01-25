@@ -15,9 +15,9 @@ static uint64_t aml_concat_resolve_to_integer(aml_state_t* state, aml_object_t* 
     else if (source->type == AML_STRING || source->type == AML_BUFFER)
     {
         aml_object_t* temp = NULL;
-        if (aml_convert_source(state, source, &temp, AML_INTEGER) == ERR)
+        if (aml_convert_source(state, source, &temp, AML_INTEGER) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
 
         *out = temp->integer.value;
@@ -27,7 +27,7 @@ static uint64_t aml_concat_resolve_to_integer(aml_state_t* state, aml_object_t* 
     else
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 }
 
@@ -43,9 +43,9 @@ static uint64_t aml_concat_resolve_to_string(aml_state_t* state, aml_object_t* s
     else if (source->type == AML_INTEGER || source->type == AML_BUFFER)
     {
         aml_object_t* temp = NULL;
-        if (aml_convert_source(state, source, &temp, AML_STRING) == ERR)
+        if (aml_convert_source(state, source, &temp, AML_STRING) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
 
         *outStr = temp->string.content;
@@ -133,7 +133,7 @@ static uint64_t aml_concat_resolve_to_string(aml_state_t* state, aml_object_t* s
     else
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 }
 
@@ -150,9 +150,9 @@ static uint64_t aml_concat_resolve_to_buffer(aml_state_t* state, aml_object_t* s
     else if (source->type == AML_INTEGER || source->type == AML_STRING)
     {
         aml_object_t* temp = NULL;
-        if (aml_convert_source(state, source, &temp, AML_BUFFER) == ERR)
+        if (aml_convert_source(state, source, &temp, AML_BUFFER) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
 
         *outBuf = temp->buffer.content;
@@ -165,9 +165,9 @@ static uint64_t aml_concat_resolve_to_buffer(aml_state_t* state, aml_object_t* s
         // The spec seems a bit vague on this. But my assumption is that when resolving other types to a buffer,
         // we first convert them to a string, then take the string's bytes as the buffer content.
         const char* str;
-        if (aml_concat_resolve_to_string(state, source, &str, outTemp) == ERR)
+        if (aml_concat_resolve_to_string(state, source, &str, outTemp) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
 
         *outBuf = (uint8_t*)str;
@@ -182,14 +182,14 @@ static uint64_t aml_concat_integer(aml_state_t* state, aml_object_t* source1, am
     assert(source1->type == AML_INTEGER);
     aml_uint_t value1 = source1->integer.value;
     aml_uint_t value2;
-    if (aml_concat_resolve_to_integer(state, source2, &value2) == ERR)
+    if (aml_concat_resolve_to_integer(state, source2, &value2) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
-    if (aml_buffer_set_empty(result, aml_integer_byte_size() * 2) == ERR)
+    if (aml_buffer_set_empty(result, aml_integer_byte_size() * 2) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     memcpy(result->buffer.content, &value1, aml_integer_byte_size());
     memcpy(result->buffer.content + aml_integer_byte_size(), &value2, aml_integer_byte_size());
@@ -204,18 +204,18 @@ static uint64_t aml_concat_string(aml_state_t* state, aml_object_t* source1, aml
     const char* str1 = source1->string.content;
     const char* str2;
     aml_object_t* temp2 = NULL;
-    if (aml_concat_resolve_to_string(state, source2, &str2, &temp2) == ERR)
+    if (aml_concat_resolve_to_string(state, source2, &str2, &temp2) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(temp2);
 
     size_t len1 = strlen(str1);
     size_t len2 = strlen(str2);
 
-    if (aml_string_set_empty(result, len1 + len2) == ERR)
+    if (aml_string_set_empty(result, len1 + len2) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     memcpy(result->string.content, str1, len1);
     memcpy(result->string.content + len1, str2, len2);
@@ -232,15 +232,15 @@ static uint64_t aml_concat_buffer(aml_state_t* state, aml_object_t* source1, aml
     uint8_t* buf2;
     uint64_t len2;
     aml_object_t* temp2 = NULL;
-    if (aml_concat_resolve_to_buffer(state, source2, &buf2, &len2, &temp2) == ERR)
+    if (aml_concat_resolve_to_buffer(state, source2, &buf2, &len2, &temp2) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(temp2);
 
-    if (aml_buffer_set_empty(result, len1 + len2) == ERR)
+    if (aml_buffer_set_empty(result, len1 + len2) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     memcpy(result->buffer.content, buf1, len1);
     memcpy(result->buffer.content + len1, buf2, len2);
@@ -253,26 +253,26 @@ static uint64_t aml_concat_other_types(aml_state_t* state, aml_object_t* source1
 {
     const char* str1;
     aml_object_t* temp1 = NULL;
-    if (aml_concat_resolve_to_string(state, source1, &str1, &temp1) == ERR)
+    if (aml_concat_resolve_to_string(state, source1, &str1, &temp1) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(temp1);
 
     const char* str2;
     aml_object_t* temp2 = NULL;
-    if (aml_concat_resolve_to_string(state, source2, &str2, &temp2) == ERR)
+    if (aml_concat_resolve_to_string(state, source2, &str2, &temp2) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(temp2);
 
     size_t len1 = strlen(str1);
     size_t len2 = strlen(str2);
 
-    if (aml_string_set_empty(result, len1 + len2) == ERR)
+    if (aml_string_set_empty(result, len1 + len2) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     memcpy(result->string.content, str1, len1);
     memcpy(result->string.content + len1, str2, len2);
@@ -285,13 +285,13 @@ uint64_t aml_concat(aml_state_t* state, aml_object_t* source1, aml_object_t* sou
     if (source1 == NULL || source2 == NULL || result == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (source1->type == AML_UNINITIALIZED || source2->type == AML_UNINITIALIZED)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     switch (source1->type)

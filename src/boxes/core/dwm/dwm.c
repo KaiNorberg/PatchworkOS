@@ -40,7 +40,7 @@ static poll_ctx_t* pollCtx;
 static client_t* dwm_client_accept(void)
 {
     fd_t fd = open(F("/net/local/%s/accept:nonblock", id));
-    if (fd == ERR)
+    if (fd == _FAIL)
     {
         printf("dwm: failed to open accept file (%s)\n", strerror(errno));
         return NULL;
@@ -74,7 +74,7 @@ static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* 
     client_t* temp;
     LIST_FOR_EACH_SAFE(client, temp, &clients, entry)
     {
-        if (client_send_event(client, target, type, data, size) == ERR)
+        if (client_send_event(client, target, type, data, size) == _FAIL)
         {
             dwm_client_disconnect(client);
         }
@@ -84,12 +84,12 @@ static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* 
 void dwm_init(void)
 {
     fd_t klog = open("/dev/klog");
-    if (klog == ERR)
+    if (klog == _FAIL)
     {
         abort();
     }
 
-    if (dup2(klog, STDOUT_FILENO) == ERR)
+    if (dup2(klog, STDOUT_FILENO) == _FAIL)
     {
         close(klog);
         abort();
@@ -97,7 +97,7 @@ void dwm_init(void)
     close(klog);
 
     kbd = open("/dev/kbd/0/events:nonblock");
-    if (kbd == ERR)
+    if (kbd == _FAIL)
     {
         printf("dwm: failed to open keyboard (%s)\n", strerror(errno));
         abort();
@@ -111,7 +111,7 @@ void dwm_init(void)
     }
 
     mouse = open("/dev/mouse/0/events:nonblock");
-    if (mouse == ERR)
+    if (mouse == _FAIL)
     {
         printf("dwm: failed to open mouse (%s)\n", strerror(errno));
         abort();
@@ -131,14 +131,14 @@ void dwm_init(void)
         abort();
     }
 
-    if (writefiles(F("/net/local/%s/ctl", id), "bind dwm && listen") == ERR)
+    if (writefiles(F("/net/local/%s/ctl", id), "bind dwm && listen") == _FAIL)
     {
         printf("dwm: failed to bind socket (%s)\n", strerror(errno));
         abort();
     }
 
     data = open(F("/net/local/%s/data:nonblock", id));
-    if (data == ERR)
+    if (data == _FAIL)
     {
         printf("dwm: failed to open data file (%s)\n", strerror(errno));
         abort();
@@ -236,7 +236,7 @@ uint64_t dwm_attach(surface_t* surface)
         {
             printf("dwm: attach (cursor != NULL)\n");
             errno = EALREADY;
-            return ERR;
+            return _FAIL;
         }
 
         cursor = surface;
@@ -248,7 +248,7 @@ uint64_t dwm_attach(surface_t* surface)
         {
             printf("dwm: attach (wall != NULL)\n");
             errno = EALREADY;
-            return ERR;
+            return _FAIL;
         }
 
         wall = surface;
@@ -260,7 +260,7 @@ uint64_t dwm_attach(surface_t* surface)
         {
             printf("dwm: attach (fullscreen != NULL)\n");
             errno = EALREADY;
-            return ERR;
+            return _FAIL;
         }
 
         fullscreen = surface;
@@ -271,7 +271,7 @@ uint64_t dwm_attach(surface_t* surface)
     {
         printf("dwm: attach (default)\n");
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
     }
 
@@ -733,7 +733,7 @@ static void dwm_poll(void)
     }
 
     uint64_t events = poll((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, timeout);
-    if (events == ERR)
+    if (events == _FAIL)
     {
         printf("dwm: poll failed (%s)\n", strerror(errno));
         abort();
@@ -790,7 +790,7 @@ static void dwm_update(void)
         }
         else if (fd->revents & POLLIN)
         {
-            if (client_receive_cmds(client) == ERR)
+            if (client_receive_cmds(client) == _FAIL)
             {
                 printf("dwm: client %d receive commands failed (%s)\n", client->fd, strerror(errno));
                 dwm_client_disconnect(client);

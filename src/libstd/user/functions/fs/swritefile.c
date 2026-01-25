@@ -4,9 +4,9 @@
 size_t writefiles(const char* path, const char* string)
 {
     fd_t fd = open(path);
-    if (fd == ERR)
+    if (fd == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     uint64_t totalWritten = writes(fd, string);
     close(fd);

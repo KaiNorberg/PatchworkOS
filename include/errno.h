@@ -6,7 +6,7 @@ extern "C"
 {
 #endif
 
-#include "_libstd/ERR.h"
+#include "_libstd/_FAIL.h"
 #include "_libstd/config.h"
 
 int* _errno_get(void);

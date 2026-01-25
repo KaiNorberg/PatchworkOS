@@ -12,7 +12,7 @@ uint64_t aml_store(aml_state_t* state, aml_object_t* src, aml_object_t* dest)
     if (src == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (dest == NULL)
@@ -27,7 +27,7 @@ uint64_t aml_store(aml_state_t* state, aml_object_t* src, aml_object_t* dest)
             aml_object_t* newValue = aml_object_new();
             if (newValue == NULL)
             {
-                return ERR;
+                return _FAIL;
             }
 
             dest->arg.value = newValue; // Transfer ownership

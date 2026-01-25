@@ -95,7 +95,7 @@ uint64_t ioapic_all_init(void)
     if (madt == NULL)
     {
         LOG_ERR("no MADT table found\n");
-        return ERR;
+        return _FAIL;
     }
 
     ioapic_t* ioapic;
@@ -111,7 +111,7 @@ uint64_t ioapic_all_init(void)
                 NULL) == NULL)
         {
             LOG_ERR("failed to map io apic\n");
-            return ERR;
+            return _FAIL;
         }
 
         uint32_t maxRedirs = ioapic_version_read(ioapic).maxRedirs;
@@ -127,10 +127,10 @@ uint64_t ioapic_all_init(void)
         }
 
         if (irq_chip_register(&ioApicChip, ioapic->globalSystemInterruptBase,
-                ioapic->globalSystemInterruptBase + maxRedirs, ioapic) == ERR)
+                ioapic->globalSystemInterruptBase + maxRedirs, ioapic) == _FAIL)
         {
             LOG_ERR("failed to register io apic irq chip\n");
-            return ERR;
+            return _FAIL;
         }
     }
 

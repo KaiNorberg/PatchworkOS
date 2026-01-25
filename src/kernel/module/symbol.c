@@ -113,14 +113,14 @@ static uint64_t symbol_resolve_addr_unlocked(symbol_info_t* outSymbol, void* add
     if (outSymbol == NULL || addr == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     size_t index = symbol_get_floor_index_for_addr(addr);
     if (index == addrAmount)
     {
         errno = ENOENT;
-        return ERR;
+        return _FAIL;
     }
 
     symbol_addr_t* addrEntry = addrArray[index];
@@ -141,7 +141,7 @@ static uint64_t symbol_resolve_name_unlocked(symbol_info_t* outSymbol, const cha
     if (outSymbol == NULL || name == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     map_key_t key = map_key_string(name);
@@ -149,7 +149,7 @@ static uint64_t symbol_resolve_name_unlocked(symbol_info_t* outSymbol, const cha
     if (nameEntry == NULL || list_is_empty(&nameEntry->addrs))
     {
         errno = ENOENT;
-        return ERR;
+        return _FAIL;
     }
     symbol_addr_t* addrEntry = CONTAINER_OF(list_first(&nameEntry->addrs), symbol_addr_t, nameEntry);
 
@@ -174,7 +174,7 @@ uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf
     if (name == NULL || addr == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     RWLOCK_WRITE_SCOPE(&lock);
@@ -182,11 +182,11 @@ uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf
     if (binding == STB_GLOBAL)
     {
         symbol_info_t existingSymbol;
-        if (symbol_resolve_name_unlocked(&existingSymbol, name) != ERR)
+        if (symbol_resolve_name_unlocked(&existingSymbol, name) != _FAIL)
         {
             LOG_DEBUG("global symbol name conflict for '%s'\n", name);
             errno = EEXIST;
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -209,7 +209,7 @@ uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf
         list_init(&symbolGroup->names);
         symbolGroup->id = groupId;
 
-        if (map_insert(&groupMap, &groupKey, &symbolGroup->mapEntry) == ERR)
+        if (map_insert(&groupMap, &groupKey, &symbolGroup->mapEntry) == _FAIL)
         {
             free(symbolGroup);
             symbolGroup = NULL;
@@ -233,7 +233,7 @@ uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf
         strncpy_s(symbolName->name, SYMBOL_MAX_NAME, name, SYMBOL_MAX_NAME - 1);
         symbolName->name[SYMBOL_MAX_NAME - 1] = '\0';
 
-        if (map_insert(&nameMap, &nameKey, &symbolName->mapEntry) == ERR)
+        if (map_insert(&nameMap, &nameKey, &symbolName->mapEntry) == _FAIL)
         {
             free(symbolName);
             symbolName = NULL;
@@ -273,7 +273,7 @@ error:
     }
 
     LOG_DEBUG("failed to add symbol '%s' at address %p (%s)\n", name, addr, strerror(errno));
-    return ERR;
+    return _FAIL;
 }
 
 void symbol_remove_group(symbol_group_id_t groupId)

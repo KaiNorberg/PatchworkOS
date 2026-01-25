@@ -54,7 +54,7 @@ local_listen_t* local_listen_new(const char* address)
         return NULL;
     }
 
-    if (map_insert(&listeners, &key, &listen->entry) == ERR)
+    if (map_insert(&listeners, &key, &listen->entry) == _FAIL)
     {
         wait_queue_deinit(&listen->waitQueue);
         free(listen);

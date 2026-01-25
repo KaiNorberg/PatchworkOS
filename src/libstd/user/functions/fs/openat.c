@@ -8,7 +8,7 @@
 fd_t openat(fd_t from, const char* path)
 {
     fd_t fd = _syscall_openat(from, path);
-    if (fd == ERR)
+    if (fd == _FAIL)
     {
         errno = _syscall_errno();
     }

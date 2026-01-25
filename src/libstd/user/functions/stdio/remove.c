@@ -6,7 +6,7 @@
 int remove(const char* pathname)
 {
     uint64_t result = _syscall_remove(pathname);
-    if (result == ERR)
+    if (result == _FAIL)
     {
         errno = _syscall_errno();
         return EOF;

@@ -134,7 +134,7 @@ typedef struct acpi_device_cfg
  *  - If the device is present and functional, the device's _INI is evaluated and its children are enumerated.
  *
  * @see Section 6.5.1 of the ACPI specification for more details.
- * @return On success, 0. On failure, `ERR`.
+ * @return On success, 0. On failure, `_FAIL`.
  */
 uint64_t acpi_devices_init(void);
 
@@ -158,7 +158,7 @@ acpi_device_cfg_t* acpi_device_cfg_lookup(const char* name);
  * @param cfg The device configuration to retrieve the port from.
  * @param index The index of the IO port to retrieve.
  * @param out Output pointer to store the retrieved port.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENOSPC`: The specified index is out of bounds.
  */

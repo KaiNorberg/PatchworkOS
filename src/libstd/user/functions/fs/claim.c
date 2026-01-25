@@ -6,10 +6,10 @@
 fd_t claim(const char* key)
 {
     fd_t fd = _syscall_claim(key);
-    if (fd == ERR)
+    if (fd == _FAIL)
     {
         errno = _syscall_errno();
-        return ERR;
+        return _FAIL;
     }
     return fd;
 }

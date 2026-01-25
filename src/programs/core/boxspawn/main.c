@@ -23,7 +23,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    if (notify(note_handler) == ERR)
+    if (notify(note_handler) == _FAIL)
     {
         printf("boxspawn: failed to register note handler (%s)\n", strerror(errno));
         return EXIT_FAILURE;
@@ -36,7 +36,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    if (writefiles(F("/net/local/%s/ctl", id), "connect boxspawn") == ERR)
+    if (writefiles(F("/net/local/%s/ctl", id), "connect boxspawn") == _FAIL)
     {
         printf("boxspawn: failed to connect to boxspawn (%s)\n", strerror(errno));
         free(id);
@@ -46,7 +46,7 @@ int main(int argc, char** argv)
     char stdio[3][KEY_128BIT];
     for (uint8_t i = 0; i < 3; i++)
     {
-        if (share(stdio[i], sizeof(stdio[i]), i, CLOCKS_PER_SEC) == ERR)
+        if (share(stdio[i], sizeof(stdio[i]), i, CLOCKS_PER_SEC) == _FAIL)
         {
             printf("boxspawn: failed to share stdio (%s)\n", strerror(errno));
             free(id);
@@ -56,7 +56,7 @@ int main(int argc, char** argv)
 
     char group[KEY_128BIT] = {0};
     char namespace[KEY_128BIT] = {0};
-    if (sharefile(group, sizeof(group), "/proc/self/group", CLOCKS_PER_SEC) == ERR)
+    if (sharefile(group, sizeof(group), "/proc/self/group", CLOCKS_PER_SEC) == _FAIL)
     {
         if (errno != ENOENT)
         {
@@ -67,7 +67,7 @@ int main(int argc, char** argv)
 
         printf("boxspawn: `/proc` does not appear to be mounted, foreground boxes will not work correctly\n");
     }
-    else if (sharefile(namespace, sizeof(namespace), "/proc/self/ns", CLOCKS_PER_SEC) == ERR)
+    else if (sharefile(namespace, sizeof(namespace), "/proc/self/ns", CLOCKS_PER_SEC) == _FAIL)
     {
         printf("boxspawn: failed to share namespace (%s)\n", strerror(errno));
         free(id);
@@ -109,14 +109,14 @@ int main(int argc, char** argv)
     }
 
     fd_t data = open(F("/net/local/%s/data", id));
-    if (data == ERR)
+    if (data == _FAIL)
     {
         printf("boxspawn: failed to open data socket (%s)\n", strerror(errno));
         free(id);
         return EXIT_FAILURE;
     }
 
-    if (writes(data, buffer) == ERR)
+    if (writes(data, buffer) == _FAIL)
     {
         printf("boxspawn: failed to send request (%s)\n", strerror(errno));
         free(id);
@@ -126,7 +126,7 @@ int main(int argc, char** argv)
 
     memset(buffer, 0, sizeof(buffer));
 
-    if (read(data, buffer, sizeof(buffer) - 1) == ERR)
+    if (read(data, buffer, sizeof(buffer) - 1) == _FAIL)
     {
         printf("boxspawn: failed to read response (%s)\n", strerror(errno));
         free(id);
@@ -157,7 +157,7 @@ int main(int argc, char** argv)
     }
 
     fd_t wait = claim(waitkey);
-    if (wait == ERR)
+    if (wait == _FAIL)
     {
         printf("boxspawn: failed to claim response (%s)\n", strerror(errno));
         free(id);
@@ -165,7 +165,7 @@ int main(int argc, char** argv)
     }
 
     char status[NOTE_MAX];
-    if (RETRY_EINTR(read(wait, status, sizeof(status) - 1)) == ERR)
+    if (RETRY_EINTR(read(wait, status, sizeof(status) - 1)) == _FAIL)
     {
         printf("boxspawn: failed to read status (%s)\n", strerror(errno));
         free(id);

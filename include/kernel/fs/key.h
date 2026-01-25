@@ -39,7 +39,7 @@ typedef struct
  * @param size The size of the output buffer.
  * @param file The file to share.
  * @param timeout The time until the shared file expires. If `CLOCKS_NEVER`, it never expires.
- * @return On success, a key that can be used to claim the file. On failure, `ERR` and `errno` is set.
+ * @return On success, a key that can be used to claim the file. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout);
 

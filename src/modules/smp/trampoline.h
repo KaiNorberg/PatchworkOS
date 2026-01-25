@@ -96,7 +96,7 @@ void trampoline_send_startup_ipi(cpu_t* cpu, lapic_id_t lapicId);
  * @brief Waits for the currently starting CPU to signal that it is ready.
  *
  * @param timeout The maximum time to wait in clock ticks.
- * @return On success, `0`. On timeout, `ERR` and `errno` is set.
+ * @return On success, `0`. On timeout, `_FAIL` and `errno` is set.
  */
 uint64_t trampoline_wait_ready(clock_t timeout);
 

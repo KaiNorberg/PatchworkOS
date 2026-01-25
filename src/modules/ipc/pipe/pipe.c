@@ -57,13 +57,13 @@ static uint64_t pipe_open(file_t* file)
     pipe_t* data = malloc(sizeof(pipe_t));
     if (data == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     data->buffer = malloc(PAGE_SIZE);
     if (data->buffer == NULL)
     {
         free(data);
-        return ERR;
+        return _FAIL;
     }
     fifo_init(&data->ring, data->buffer, PAGE_SIZE);
     data->isReadClosed = false;
@@ -82,13 +82,13 @@ static uint64_t pipe_open2(file_t* files[2])
     pipe_t* data = malloc(sizeof(pipe_t));
     if (data == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     data->buffer = malloc(PAGE_SIZE);
     if (data->buffer == NULL)
     {
         free(data);
-        return ERR;
+        return _FAIL;
     }
     fifo_init(&data->ring, data->buffer, PAGE_SIZE);
     data->isReadClosed = false;
@@ -143,13 +143,13 @@ static uint64_t pipe_read(file_t* file, void* buffer, size_t count, size_t* offs
     if (data->readEnd != file)
     {
         errno = ENOSYS;
-        return ERR;
+        return _FAIL;
     }
 
     if (count >= PAGE_SIZE)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     LOCK_SCOPE(&data->lock);
@@ -159,13 +159,13 @@ static uint64_t pipe_read(file_t* file, void* buffer, size_t count, size_t* offs
         if (file->mode & MODE_NONBLOCK)
         {
             errno = EAGAIN;
-            return ERR;
+            return _FAIL;
         }
 
         if (WAIT_BLOCK_LOCK(&data->waitQueue, &data->lock,
-                fifo_bytes_readable(&data->ring) != 0 || data->isWriteClosed) == ERR)
+                fifo_bytes_readable(&data->ring) != 0 || data->isWriteClosed) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -182,13 +182,13 @@ static uint64_t pipe_write(file_t* file, const void* buffer, size_t count, size_
     if (data->writeEnd != file)
     {
         errno = ENOSYS;
-        return ERR;
+        return _FAIL;
     }
 
     if (count >= PAGE_SIZE)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     LOCK_SCOPE(&data->lock);
@@ -198,13 +198,13 @@ static uint64_t pipe_write(file_t* file, const void* buffer, size_t count, size_
         if (file->mode & MODE_NONBLOCK)
         {
             errno = EAGAIN;
-            return ERR;
+            return _FAIL;
         }
 
         if (WAIT_BLOCK_LOCK(&data->waitQueue, &data->lock,
-                fifo_bytes_writeable(&data->ring) != 0 || data->isReadClosed) == ERR)
+                fifo_bytes_writeable(&data->ring) != 0 || data->isReadClosed) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -212,7 +212,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, size_t count, size_
     {
         wait_unblock(&data->waitQueue, WAIT_ALL, EOK);
         errno = EPIPE;
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t result = fifo_write(&data->ring, buffer, count);
@@ -256,7 +256,7 @@ uint64_t pipe_init(void)
     if (pipeDir == NULL)
     {
         LOG_ERR("failed to initialize pipe directory");
-        return ERR;
+        return _FAIL;
     }
 
     newFile = devfs_file_new(pipeDir, "new", NULL, &fileOps, NULL);
@@ -264,7 +264,7 @@ uint64_t pipe_init(void)
     {
         UNREF(pipeDir);
         LOG_ERR("failed to initialize pipe new file");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -285,9 +285,9 @@ uint64_t _module_procedure(const module_event_t* event)
     switch (event->type)
     {
     case MODULE_EVENT_LOAD:
-        if (pipe_init() == ERR)
+        if (pipe_init() == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         break;
     case MODULE_EVENT_UNLOAD:

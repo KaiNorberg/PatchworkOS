@@ -55,7 +55,7 @@ void env_deinit(env_t* env);
  *
  * @param dest The destination environment.
  * @param src The source environment.
- * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `_FAIL` and `errno` is set.
  */
 uint64_t env_copy(env_t* dest, env_t* src);
 
@@ -76,7 +76,7 @@ const char* env_get(env_t* env, const char* key);
  * @param env The environment to modify.
  * @param key The name of the environment variable.
  * @param value The value to set the environment variable to.
- * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `_FAIL` and `errno` is set.
  */
 uint64_t env_set(env_t* env, const char* key, const char* value);
 
@@ -87,7 +87,7 @@ uint64_t env_set(env_t* env, const char* key, const char* value);
  *
  * @param env The environment to modify.
  * @param key The name of the environment variable.
- * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, returns `_FAIL` and `errno` is set.
  */
 uint64_t env_unset(env_t* env, const char* key);
 

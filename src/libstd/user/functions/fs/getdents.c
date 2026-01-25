@@ -8,7 +8,7 @@
 size_t getdents(fd_t fd, dirent_t* buffer, uint64_t count)
 {
     uint64_t result = _syscall_getdents(fd, buffer, count);
-    if (result == ERR)
+    if (result == _FAIL)
     {
         errno = _syscall_errno();
     }

@@ -39,13 +39,13 @@ void map_entry_init(map_entry_t* entry)
     memset(entry->key.key, 0, sizeof(entry->key.key));
     entry->key.len = 0;
     entry->key.hash = 0;
-    entry->index = ERR;
+    entry->index = _FAIL;
 }
 
 static uint64_t map_find_slot(const map_t* map, const map_key_t* key, bool forInsertion)
 {
     uint64_t index = (uint64_t)(key->hash & (map->capacity - 1));
-    uint64_t firstTombstone = ERR;
+    uint64_t firstTombstone = _FAIL;
 
     for (uint64_t i = 0; i < map->capacity; i++)
     {
@@ -54,7 +54,7 @@ static uint64_t map_find_slot(const map_t* map, const map_key_t* key, bool forIn
 
         if (entry == NULL)
         {
-            if (forInsertion && firstTombstone != ERR)
+            if (forInsertion && firstTombstone != _FAIL)
             {
                 return firstTombstone;
             }
@@ -63,7 +63,7 @@ static uint64_t map_find_slot(const map_t* map, const map_key_t* key, bool forIn
 
         if (entry == MAP_TOMBSTONE)
         {
-            if (forInsertion && firstTombstone == ERR)
+            if (forInsertion && firstTombstone == _FAIL)
             {
                 firstTombstone = currentIndex;
             }
@@ -76,12 +76,12 @@ static uint64_t map_find_slot(const map_t* map, const map_key_t* key, bool forIn
         }
     }
 
-    if (forInsertion && firstTombstone != ERR)
+    if (forInsertion && firstTombstone != _FAIL)
     {
         return firstTombstone;
     }
 
-    return ERR;
+    return _FAIL;
 }
 
 static uint64_t map_resize(map_t* map, uint64_t newCapacity)
@@ -99,7 +99,7 @@ static uint64_t map_resize(map_t* map, uint64_t newCapacity)
     map_entry_t** newEntries = calloc(newCapacity, sizeof(map_entry_t*));
     if (newEntries == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     map_entry_t** oldEntries = map->entries;
@@ -118,14 +118,14 @@ static uint64_t map_resize(map_t* map, uint64_t newCapacity)
         if (entry != NULL && entry != MAP_TOMBSTONE)
         {
             uint64_t newIndex = map_find_slot(map, &entry->key, true);
-            if (newIndex == ERR)
+            if (newIndex == _FAIL)
             {
                 free(newEntries);
                 map->entries = oldEntries;
                 map->capacity = oldCapacity;
                 map->length = oldLength;
                 map->tombstones = oldTombstones;
-                return ERR;
+                return _FAIL;
             }
 
             entry->index = newIndex;
@@ -172,27 +172,27 @@ uint64_t map_insert(map_t* map, const map_key_t* key, map_entry_t* entry)
     if (entry == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
-    if (map_resize_check(map) == ERR)
+    if (map_resize_check(map) == _FAIL)
     {
         errno = ENOMEM;
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t index = map_find_slot(map, key, true);
-    if (index == ERR)
+    if (index == _FAIL)
     {
         errno = ENOMEM;
-        return ERR;
+        return _FAIL;
     }
 
     if (map->entries[index] != NULL && map->entries[index] != MAP_TOMBSTONE &&
         map_key_is_equal(&map->entries[index]->key, key))
     {
         errno = EEXIST;
-        return ERR;
+        return _FAIL;
     }
 
     if (map->entries[index] == MAP_TOMBSTONE)
@@ -215,20 +215,20 @@ uint64_t map_replace(map_t* map, const map_key_t* key, map_entry_t* entry)
     if (entry == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
-    if (map_resize_check(map) == ERR)
+    if (map_resize_check(map) == _FAIL)
     {
         errno = ENOMEM;
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t index = map_find_slot(map, key, true);
-    if (index == ERR)
+    if (index == _FAIL)
     {
         errno = ENOMEM;
-        return ERR;
+        return _FAIL;
     }
 
     if (map->entries[index] == MAP_TOMBSTONE)
@@ -253,7 +253,7 @@ uint64_t map_replace(map_t* map, const map_key_t* key, map_entry_t* entry)
 map_entry_t* map_get(map_t* map, const map_key_t* key)
 {
     uint64_t index = map_find_slot(map, key, false);
-    if (index == ERR)
+    if (index == _FAIL)
     {
         return NULL;
     }
@@ -294,14 +294,14 @@ static void map_remove_index(map_t* map, uint64_t index)
         map_resize(map, newCapacity); // If we fail here, we can just ignore it
     }
 
-    entry->index = ERR;
+    entry->index = _FAIL;
     entry->map = NULL;
 }
 
 map_entry_t* map_get_and_remove(map_t* map, const map_key_t* key)
 {
     uint64_t index = map_find_slot(map, key, false);
-    if (index == ERR)
+    if (index == _FAIL)
     {
         return NULL;
     }
@@ -318,7 +318,7 @@ map_entry_t* map_get_and_remove(map_t* map, const map_key_t* key)
 
 void map_remove(map_t* map, map_entry_t* entry)
 {
-    if (entry == NULL || entry->index == ERR)
+    if (entry == NULL || entry->index == _FAIL)
     {
         return;
     }
@@ -330,7 +330,7 @@ void map_remove(map_t* map, map_entry_t* entry)
 void map_remove_key(map_t* map, const map_key_t* key)
 {
     uint64_t index = map_find_slot(map, key, false);
-    if (index == ERR)
+    if (index == _FAIL)
     {
         return;
     }
@@ -371,7 +371,7 @@ void map_clear(map_t* map)
         map_entry_t* entry = map->entries[i];
         if (entry != NULL && entry != MAP_TOMBSTONE)
         {
-            entry->index = ERR;
+            entry->index = _FAIL;
             entry->map = NULL;
         }
         map->entries[i] = NULL;
@@ -389,10 +389,10 @@ uint64_t map_reserve(map_t* map, uint64_t minCapacity)
     }
 
     uint64_t newCapacity = next_pow2(minCapacity);
-    if (map_resize(map, newCapacity) == ERR)
+    if (map_resize(map, newCapacity) == _FAIL)
     {
         errno = ENOMEM;
-        return ERR;
+        return _FAIL;
     }
     return 0;
 }

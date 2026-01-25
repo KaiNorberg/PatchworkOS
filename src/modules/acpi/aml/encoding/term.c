@@ -40,7 +40,7 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
             break;
         }
 
-        if (aml_data_object_read(ctx, value) == ERR)
+        if (aml_data_object_read(ctx, value) == _FAIL)
         {
             UNREF(value);
             value = NULL;
@@ -56,7 +56,7 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
     UNREF_DEFER(value);
 
     aml_object_t* out = NULL;
-    if (aml_convert_source(ctx->state, value, &out, allowedTypes) == ERR)
+    if (aml_convert_source(ctx->state, value, &out, allowedTypes) == _FAIL)
     {
         return NULL;
     }
@@ -72,7 +72,7 @@ uint64_t aml_term_arg_read_integer(aml_term_list_ctx_t* ctx, aml_uint_t* out)
     if (temp == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
-        return ERR;
+        return _FAIL;
     }
 
     assert(temp->type == AML_INTEGER);
@@ -138,7 +138,7 @@ uint64_t aml_object_read(aml_term_list_ctx_t* ctx)
     default:
         AML_DEBUG_ERROR(ctx, "Invalid token type '%s'", aml_token_type_to_string(token.props->type));
         errno = EILSEQ;
-        return ERR;
+        return _FAIL;
     }
 }
 
@@ -160,7 +160,7 @@ uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx)
         if (expression == NULL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read ExpressionOpcode");
-            result = ERR;
+            result = _FAIL;
             break;
         }
         // Set the result of the state to the last evaluated expression, check `aml_method_invoke()` for more details.
@@ -176,10 +176,10 @@ uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx)
         break;
     }
 
-    if (result == ERR)
+    if (result == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermObj '%s' (0x%x)", token.props->name, token.num);
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -191,7 +191,7 @@ uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* scope, const uint8
     if (state == NULL || scope == NULL || start == NULL || end == NULL || start > end)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     aml_term_list_ctx_t ctx = {
@@ -206,9 +206,9 @@ uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* scope, const uint8
     while (ctx.end > ctx.current && ctx.stopReason == AML_STOP_REASON_NONE)
     {
         // End of buffer not reached => byte is not nothing => must be a termobj.
-        if (aml_term_obj_read(&ctx) == ERR)
+        if (aml_term_obj_read(&ctx) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
 

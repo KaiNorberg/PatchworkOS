@@ -5,10 +5,10 @@
 uint64_t unlink(const char* path)
 {
     uint64_t result = _syscall_remove(path);
-    if (result == ERR)
+    if (result == _FAIL)
     {
         errno = _syscall_errno();
-        return ERR;
+        return _FAIL;
     }
 
     return result;

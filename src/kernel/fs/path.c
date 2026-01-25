@@ -113,28 +113,20 @@ static inline bool path_is_char_valid(char ch)
     return !forbidden[(uint8_t)ch];
 }
 
-uint64_t pathname_init(pathname_t* pathname, const char* string)
+status_t pathname_init(pathname_t* pathname, const char* string)
 {
-    if (pathname == NULL)
+    if (pathname == NULL || string == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return ERR(VFS, INVAL);
     }
 
     memset(pathname->string, 0, MAX_PATH);
     pathname->mode = MODE_NONE;
 
-    if (string == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     uint64_t length = strnlen_s(string, MAX_PATH);
     if (length >= MAX_PATH)
     {
-        errno = ENAMETOOLONG;
-        return ERR;
+        return ERR(VFS, PATHTOOLONG);
     }
 
     uint64_t index = 0;
@@ -149,14 +141,12 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
         {
             if (!path_is_char_valid(string[index]))
             {
-                errno = EINVAL;
-                return ERR;
+                return ERR(VFS, INVALCHAR);
             }
             currentNameLength++;
             if (currentNameLength >= MAX_NAME)
             {
-                errno = ENAMETOOLONG;
-                return ERR;
+                return ERR(VFS, NAMETOOLONG);
             }
         }
 
@@ -168,7 +158,7 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
 
     if (string[index] != ':')
     {
-        return 0;
+        return OK;
     }
 
     index++; // Skip ':'.
@@ -191,8 +181,7 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
         {
             if (!isalnum(string[index]))
             {
-                errno = EINVAL;
-                return ERR;
+                return ERR(VFS, INVALCHAR);
             }
             index++;
         }
@@ -200,21 +189,19 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
         uint64_t tokenLength = &string[index] - token;
         if (tokenLength >= MAX_NAME)
         {
-            errno = ENAMETOOLONG;
-            return ERR;
+            return ERR(VFS, NAMETOOLONG);
         }
 
         mode_t mode = path_flag_to_mode(token, tokenLength);
         if (mode == MODE_NONE)
         {
-            errno = EINVAL;
-            return ERR;
+            return ERR(VFS, INVALFLAG);
         }
 
         pathname->mode |= mode;
     }
 
-    return 0;
+    return OK;
 }
 
 static bool path_is_name_valid(const char* name)
@@ -303,13 +290,13 @@ static inline uint64_t path_walk_acquire(path_walk_ctx_t* ctx)
     if (REF_TRY(ctx->dentry) == NULL)
     {
         errno = ENOENT;
-        return ERR;
+        return _FAIL;
     }
     if (REF_TRY(ctx->mount) == NULL)
     {
         UNREF(ctx->dentry);
         errno = ENOENT;
-        return ERR;
+        return _FAIL;
     }
 
     rcu_read_unlock();
@@ -347,14 +334,14 @@ static inline uint64_t path_walk_get_result(path_walk_ctx_t* ctx, path_t* path)
     if (ctx->mount != NULL && REF_TRY(ctx->mount) == NULL)
     {
         errno = ENONET;
-        return ERR;
+        return _FAIL;
     }
 
     if ((ctx->lookup == NULL || ctx->dentry != ctx->lookup) && ctx->dentry != NULL && REF_TRY(ctx->dentry) == NULL)
     {
         UNREF(ctx->mount);
         errno = ENOENT;
-        return ERR;
+        return _FAIL;
     }
 
     UNREF(path->mount);
@@ -373,9 +360,9 @@ static inline uint64_t path_walk_get_result(path_walk_ctx_t* ctx, path_t* path)
 
 static uint64_t path_rcu_dotdot(path_walk_ctx_t* ctx)
 {
-    if (path_walk_acquire(ctx) == ERR)
+    if (path_walk_acquire(ctx) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t result = 0;
@@ -399,7 +386,7 @@ static uint64_t path_rcu_dotdot(path_walk_ctx_t* ctx)
         if (iter >= PATH_MAX_DOTDOT)
         {
             errno = ELOOP;
-            result = ERR;
+            result = _FAIL;
             break;
         }
     }
@@ -417,18 +404,18 @@ static uint64_t path_rcu_symlink(path_walk_ctx_t* ctx, dentry_t* symlink)
     if (ctx->symlinks >= PATH_MAX_SYMLINK)
     {
         errno = ELOOP;
-        return ERR;
+        return _FAIL;
     }
 
     if (REF_TRY(symlink) == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(symlink);
 
-    if (path_walk_acquire(ctx) == ERR)
+    if (path_walk_acquire(ctx) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     char symlinkPath[MAX_PATH];
@@ -436,16 +423,16 @@ static uint64_t path_rcu_symlink(path_walk_ctx_t* ctx, dentry_t* symlink)
 
     path_walk_release(ctx);
 
-    if (readCount == ERR)
+    if (readCount == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     symlinkPath[readCount] = '\0';
 
     pathname_t pathname;
-    if (pathname_init(&pathname, symlinkPath) == ERR)
+    if (pathname_init(&pathname, symlinkPath) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     const pathname_t* oldPathname = ctx->pathname;
@@ -476,9 +463,9 @@ static uint64_t path_rcu_step(path_walk_ctx_t* ctx, const char* name, size_t len
     dentry_t* next = dentry_rcu_get(ctx->dentry, name, length);
     if (next == NULL)
     {
-        if (path_walk_acquire(ctx) == ERR)
+        if (path_walk_acquire(ctx) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
 
         next = dentry_lookup(ctx->dentry, name, length);
@@ -487,7 +474,7 @@ static uint64_t path_rcu_step(path_walk_ctx_t* ctx, const char* name, size_t len
 
         if (next == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
 
         path_walk_set_lookup(ctx, next);
@@ -495,9 +482,9 @@ static uint64_t path_rcu_step(path_walk_ctx_t* ctx, const char* name, size_t len
 
     if (DENTRY_IS_SYMLINK(next) && !(ctx->mode & MODE_NOFOLLOW))
     {
-        if (path_rcu_symlink(ctx, next) == ERR)
+        if (path_rcu_symlink(ctx, next) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
     else
@@ -541,9 +528,9 @@ static uint64_t path_rcu_walk(path_walk_ctx_t* ctx)
         }
         size_t length = p - component;
 
-        if (path_rcu_step(ctx, component, length) == ERR)
+        if (path_rcu_step(ctx, component, length) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -555,7 +542,7 @@ uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_t* ns)
     if (path == NULL || name == NULL || !path_is_name_valid(name) || ns == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     RCU_READ_SCOPE();
@@ -575,16 +562,16 @@ uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_t* ns)
         namespace_rcu_traverse(ctx.ns, &ctx.mount, &ctx.dentry);
     }
 
-    if (path_rcu_step(&ctx, name, strlen(name)) == ERR)
+    if (path_rcu_step(&ctx, name, strlen(name)) == _FAIL)
     {
         path_walk_cleanup(&ctx);
-        return ERR;
+        return _FAIL;
     }
 
-    if (path_walk_get_result(&ctx, path) == ERR)
+    if (path_walk_get_result(&ctx, path) == _FAIL)
     {
         path_walk_cleanup(&ctx);
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -595,7 +582,7 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
     if (path == NULL || pathname == NULL || ns == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     RCU_READ_SCOPE();
@@ -615,16 +602,16 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
         namespace_rcu_traverse(ctx.ns, &ctx.mount, &ctx.dentry);
     }
 
-    if (path_rcu_walk(&ctx) == ERR)
+    if (path_rcu_walk(&ctx) == _FAIL)
     {
         path_walk_cleanup(&ctx);
-        return ERR;
+        return _FAIL;
     }
 
-    if (path_walk_get_result(&ctx, path) == ERR)
+    if (path_walk_get_result(&ctx, path) == _FAIL)
     {
         path_walk_cleanup(&ctx);
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -635,7 +622,7 @@ uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLas
     if (path == NULL || pathname == NULL || outLastName == NULL || ns == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     memset(outLastName, 0, MAX_NAME);
@@ -643,7 +630,7 @@ uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLas
     if (strcmp(pathname->string, "/") == 0)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     char string[MAX_PATH];
@@ -679,9 +666,9 @@ uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLas
     }
 
     pathname_t parentPathname;
-    if (pathname_init(&parentPathname, string) == ERR)
+    if (pathname_init(&parentPathname, string) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     return path_walk(path, &parentPathname, ns);
@@ -693,20 +680,20 @@ uint64_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_
     if (from == NULL || outParent == NULL || outChild == NULL || pathname == NULL || ns == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     char lastName[MAX_NAME];
     path_copy(outParent, from);
-    if (path_walk_parent(outParent, pathname, lastName, ns) == ERR)
+    if (path_walk_parent(outParent, pathname, lastName, ns) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     path_copy(outChild, outParent);
-    if (path_step(outChild, pathname->mode, lastName, ns) == ERR)
+    if (path_step(outChild, pathname->mode, lastName, ns) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -717,7 +704,7 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
     if (path == NULL || path->dentry == NULL || path->mount == NULL || pathname == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     char* buffer = pathname->string;
@@ -744,14 +731,14 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
         if (dentry->parent == NULL)
         {
             errno = ENOENT;
-            return ERR;
+            return _FAIL;
         }
 
         size_t len = strnlen_s(dentry->name, MAX_NAME);
         if ((size_t)(ptr - buffer) < len + 1)
         {
             errno = ENAMETOOLONG;
-            return ERR;
+            return _FAIL;
         }
 
         ptr -= len;
@@ -768,7 +755,7 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
         if (ptr == buffer)
         {
             errno = ENAMETOOLONG;
-            return ERR;
+            return _FAIL;
         }
         ptr--;
         *ptr = '/';
@@ -786,7 +773,7 @@ uint64_t mode_to_string(mode_t mode, char* out, uint64_t length)
     if (out == NULL || length == 0)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t index = 0;
@@ -798,7 +785,7 @@ uint64_t mode_to_string(mode_t mode, char* out, uint64_t length)
             if (index + nameLength + 1 >= length)
             {
                 errno = ENAMETOOLONG;
-                return ERR;
+                return _FAIL;
             }
 
             out[index] = ':';
@@ -818,13 +805,13 @@ uint64_t mode_check(mode_t* mode, mode_t maxPerms)
     if (mode == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (((*mode & MODE_ALL_PERMS) & ~maxPerms) != MODE_NONE)
     {
         errno = EACCES;
-        return ERR;
+        return _FAIL;
     }
 
     if ((*mode & MODE_ALL_PERMS) == MODE_NONE)
@@ -863,10 +850,10 @@ TEST_DEFINE(path)
     TEST_ASSERT(strcmp(pathname.string, "/file") == 0);
     TEST_ASSERT((pathname.mode & (MODE_READ | MODE_WRITE)) == (MODE_READ | MODE_WRITE));
 
-    TEST_ASSERT(pathname_init(&pathname, "/home/user/fi?le") == ERR);
+    TEST_ASSERT(pathname_init(&pathname, "/home/user/fi?le") == _FAIL);
     TEST_ASSERT(errno == EINVAL);
 
-    TEST_ASSERT(pathname_init(&pathname, "/home:invalid") == ERR);
+    TEST_ASSERT(pathname_init(&pathname, "/home:invalid") == _FAIL);
     TEST_ASSERT(errno == EINVAL);
 
     TEST_ASSERT(pathname_init(&pathname, "") == 0);

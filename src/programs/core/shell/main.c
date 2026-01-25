@@ -18,7 +18,7 @@ static uint64_t cmdline_read(char* buffer, uint64_t size)
         char chr;
         if (read(STDIN_FILENO, &chr, 1) == 0)
         {
-            return ERR;
+            return _FAIL;
         }
         else if (chr == '\n')
         {
@@ -57,7 +57,7 @@ static void join_args(char* buffer, uint64_t size, int argc, char* argv[])
 void execute_command(const char* cmdline)
 {
     pipeline_t pipeline;
-    if (pipeline_init(&pipeline, cmdline, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO) == ERR)
+    if (pipeline_init(&pipeline, cmdline, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO) == _FAIL)
     {
         exits(F("shell: failed to initialize pipeline (%s)\n", strerror(errno)));
     }

@@ -10,7 +10,7 @@ uint64_t aml_eisa_id_from_string(const char* str)
     if (str == NULL || strnlen_s(str, 8) != 7)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     for (uint64_t i = 0; i < 3; i++)
@@ -18,7 +18,7 @@ uint64_t aml_eisa_id_from_string(const char* str)
         if (str[i] < 'A' || str[i] > 'Z')
         {
             errno = EINVAL;
-            return ERR;
+            return _FAIL;
         }
     }
     for (uint64_t i = 3; i < 7; i++)
@@ -26,7 +26,7 @@ uint64_t aml_eisa_id_from_string(const char* str)
         if ((str[i] < '0' || str[i] > '9') && (str[i] < 'A' || str[i] > 'F'))
         {
             errno = EINVAL;
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -58,7 +58,7 @@ uint64_t aml_eisa_id_to_string(uint32_t eisaId, char* buffer, size_t bufferSize)
     if (buffer == NULL || bufferSize < 8)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     buffer[0] = AML_EISA_ID_CHAR((eisaId >> 2) & 0x1F);

@@ -59,7 +59,7 @@ static futex_t* futex_ctx_get(futex_ctx_t* ctx, void* addr)
     return futex;
 }
 
-SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
+SYSCALL_DEFINE(SYS_FUTEX, atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
@@ -68,7 +68,7 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
     futex_t* futex = futex_ctx_get(ctx, addr);
     if (futex == NULL)
     {
-        return ERR;
+        return ERR(SYNC, NOMEM);
     }
 
     switch (op)
@@ -76,46 +76,42 @@ SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_o
     case FUTEX_WAIT:
     {
         wait_queue_t* queue = &futex->queue;
-        if (wait_block_prepare(&queue, 1, timeout) == ERR)
+        
+        status_t status = wait_block_prepare(&queue, 1, timeout);
+        if (IS_FAIL(status))
         {
-            return ERR;
+            return status;
         }
 
         uint64_t loadedVal;
-        if (thread_load_atomic_from_user(thread, addr, &loadedVal) == ERR)
+        status = thread_load_atomic_from_user(thread, addr, &loadedVal);
+        if (IS_FAIL(status))
         {
             wait_block_cancel();
-            return ERR;
+            return status;
         }
 
         if (loadedVal != val)
         {
             wait_block_cancel();
-            errno = EAGAIN;
-            return ERR;
+            return ERR(SYNC, CHANGED);
         }
 
-        if (wait_block_commit() == ERR)
+        status = wait_block_commit();
+        if (IS_FAIL(status))
         {
-            return ERR;
+            return status;
         }
 
-        return 0;
+        return OK;
     }
     case FUTEX_WAKE:
     {
-        uint64_t amount = wait_unblock(&futex->queue, val, EOK);
-        if (amount == ERR)
-        {
-            return ERR;
-        }
-
-        return amount;
+        return wait_unblock(&futex->queue, val, OK);
     }
     default:
     {
-        errno = EINVAL;
-        return ERR;
+        return ERR(SYNC, INVAL);
     }
     }
 }

@@ -81,9 +81,7 @@ typedef struct superblock_ops
  * @param fs The filesystem type of the superblock.
  * @param ops The superblock operations, can be NULL.
  * @param dentryOps The dentry operations for dentries in this superblock, can be NULL.
- * @return On success, the new superblock. On failure, returns `NULL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `ENOMEM`: Out of memory.
+ * @return On success, the new superblock. On failure, returns `NULL`.
  */
 superblock_t* superblock_new(filesystem_t* fs, const superblock_ops_t* ops, const dentry_ops_t* dentryOps);
 

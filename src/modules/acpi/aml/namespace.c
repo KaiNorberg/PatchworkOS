@@ -83,7 +83,7 @@ static uint64_t aml_namespace_expose_object(aml_object_t* object, dentry_t* pare
 {
     if (object == NULL || parentDir == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     if (!(object->flags & AML_OBJECT_NAMED))
@@ -91,14 +91,14 @@ static uint64_t aml_namespace_expose_object(aml_object_t* object, dentry_t* pare
         // Something is very wrong if we have an unnamed object in the namespace heirarchy
         LOG_ERR("unnamed object %s of type %s found in the namespace heirarchy\n", AML_NAME_TO_STRING(object->name),
             aml_type_to_string(object->type));
-        return ERR;
+        return _FAIL;
     }
 
     object->dir = sysfs_dir_new(parentDir, AML_NAME_TO_STRING(object->name), NULL, NULL);
     if (object->dir == NULL)
     {
         LOG_ERR("Failed to create sysfs directory %s\n", AML_NAME_TO_STRING(object->name));
-        return ERR;
+        return _FAIL;
     }
 
     if (object->type & AML_NAMESPACES)
@@ -106,11 +106,11 @@ static uint64_t aml_namespace_expose_object(aml_object_t* object, dentry_t* pare
         aml_object_t* child = NULL;
         LIST_FOR_EACH(child, &object->children, siblingsEntry)
         {
-            if (aml_namespace_expose_object(child, object->dir) == ERR)
+            if (aml_namespace_expose_object(child, object->dir) == _FAIL)
             {
                 LOG_ERR("Failed to expose child %s of %s in sysfs\n", AML_NAME_TO_STRING(child->name),
                     AML_NAME_TO_STRING(object->name));
-                return ERR;
+                return _FAIL;
             }
         }
     }
@@ -128,18 +128,18 @@ uint64_t aml_namespace_expose(void)
     if (namespaceDir == NULL)
     {
         LOG_ERR("Failed to create ACPI namespace sysfs directory");
-        return ERR;
+        return _FAIL;
     }
 
     aml_object_t* child = NULL;
     LIST_FOR_EACH(child, &namespaceRoot->children, siblingsEntry)
     {
-        if (aml_namespace_expose_object(child, namespaceDir) == ERR)
+        if (aml_namespace_expose_object(child, namespaceDir) == _FAIL)
         {
             UNREF(namespaceDir);
             namespaceDir = NULL;
             LOG_ERR("Failed to expose ACPI namespace in sysfs");
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -397,20 +397,20 @@ uint64_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, a
     if (object == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (object->type == AML_UNINITIALIZED)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     parent = parent != NULL ? parent : namespaceRoot;
     if (!(parent->flags & AML_OBJECT_NAMED) || (object->flags & AML_OBJECT_NAMED))
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (overlay == NULL)
@@ -425,14 +425,14 @@ uint64_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, a
         if (map_get(&currentOverlay->map, &key) != NULL)
         {
             errno = EEXIST;
-            return ERR;
+            return _FAIL;
         }
         currentOverlay = currentOverlay->parent;
     }
 
-    if (map_insert(&overlay->map, &key, &object->mapEntry) == ERR)
+    if (map_insert(&overlay->map, &key, &object->mapEntry) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     list_push_back(&overlay->objects, &object->listEntry);
     list_push_back(&parent->children, &object->siblingsEntry);
@@ -452,7 +452,7 @@ uint64_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* 
     if (nameString == NULL || nameString->namePath.segmentCount == 0)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     aml_name_t targetName = nameString->namePath.segments[nameString->namePath.segmentCount - 1];
@@ -463,7 +463,7 @@ uint64_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* 
         parent = aml_namespace_traverse_parents(parent, nameString->prefixPath.depth);
         if (parent == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
         UNREF_DEFER(parent);
 
@@ -477,7 +477,7 @@ uint64_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* 
     if (parent == NULL)
     {
         errno = ENOENT;
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(parent);
 
@@ -508,7 +508,7 @@ uint64_t aml_namespace_commit(aml_overlay_t* overlay)
     if (overlay == NULL || overlay->parent == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     aml_object_t* object;
@@ -519,9 +519,9 @@ uint64_t aml_namespace_commit(aml_overlay_t* overlay)
 
         map_key_t key =
             aml_object_map_key(object->parent != NULL ? object->parent->id : AML_OBJECT_ID_NONE, object->name);
-        if (map_insert(&overlay->parent->map, &key, &object->mapEntry) == ERR)
+        if (map_insert(&overlay->parent->map, &key, &object->mapEntry) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
 
         list_remove(&object->listEntry);

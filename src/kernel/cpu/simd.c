@@ -120,17 +120,17 @@ PERCPU_DEFINE_CTOR(static void, pcpu_simd)
     LOG_INFO("enabled\n");
 }
 
-uint64_t simd_ctx_init(simd_ctx_t* ctx)
+status_t simd_ctx_init(simd_ctx_t* ctx)
 {
     pfn_t pfn = pmm_alloc();
-    if (pfn == ERR)
+    if (pfn == PFN_INVALID)
     {
-        return ERR;
+        return ERR(SIMD, NOMEM);
     }
     ctx->buffer = PFN_TO_VIRT(pfn);
     memcpy(ctx->buffer, initCtx, PAGE_SIZE);
 
-    return 0;
+    return OK;
 }
 
 void simd_ctx_deinit(simd_ctx_t* ctx)

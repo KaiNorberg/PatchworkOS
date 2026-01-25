@@ -105,7 +105,7 @@ static uint64_t cpu_perf_count_cpus(void)
     FILE* file = fopen("/dev/perf/cpu", "r");
     if (file == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t cpuCount = 0;
@@ -124,7 +124,7 @@ static uint64_t cpu_perf_read(cpu_perfs_t* cpuPerfs)
     FILE* file = fopen("/dev/perf/cpu", "r");
     if (file == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     char line[1024];
@@ -156,7 +156,7 @@ static uint64_t mem_perf_read(mem_perfs_t* memPerfs)
     FILE* file = fopen("/dev/perf/mem", "r");
     if (file == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t totalPages = 0;
@@ -182,7 +182,7 @@ static uint64_t mem_perf_read(mem_perfs_t* memPerfs)
 static proc_perfs_t* proc_perfs_read(uint64_t* procAmount)
 {
     fd_t procDir = open("/proc:directory");
-    if (procDir == ERR)
+    if (procDir == _FAIL)
     {
         return NULL;
     }
@@ -193,7 +193,7 @@ static proc_perfs_t* proc_perfs_read(uint64_t* procAmount)
     while (1)
     {
         size_t readAmount = getdents(procDir, (dirent_t*)buffer, sizeof(buffer));
-        if (readAmount == ERR)
+        if (readAmount == _FAIL)
         {
             free(procPerfs);
             close(procDir);
@@ -422,13 +422,13 @@ static void perfs_update(perfs_t* perfs)
     perfs->prevProcPerfs = perfs->procPerfs;
     perfs->prevProcAmount = perfs->procAmount;
 
-    if (cpu_perf_read(perfs->cpuPerfs) == ERR)
+    if (cpu_perf_read(perfs->cpuPerfs) == _FAIL)
     {
         printf("Failed to read CPU performance data\n");
         abort();
     }
 
-    if (mem_perf_read(&perfs->memPerfs) == ERR)
+    if (mem_perf_read(&perfs->memPerfs) == _FAIL)
     {
         printf("Failed to read memory performance data\n");
         abort();
@@ -714,7 +714,7 @@ static void perfs_print(perfs_t* perfs)
 int main(void)
 {
     cpuAmount = cpu_perf_count_cpus();
-    if (cpuAmount == ERR)
+    if (cpuAmount == _FAIL)
     {
         printf("Failed to read CPU amount\n");
         abort();

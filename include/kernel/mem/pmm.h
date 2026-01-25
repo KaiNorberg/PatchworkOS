@@ -1,5 +1,6 @@
 #pragma once
 
+#include <kernel/mem/paging_types.h>
 #include <boot/boot_info.h>
 
 #include <sys/proc.h>
@@ -71,7 +72,7 @@ void pmm_init(void);
  * Will by default use the free stack allocator, but if no pages are available there, it will fall back to the bitmap
  * allocator.
  *
- * @return On success, the PFN of the allocated page. On failure, `ERR`.
+ * @return On success, the PFN of the allocated page. On failure, `PFN_INVALID`.
  */
 pfn_t pmm_alloc(void);
 
@@ -82,9 +83,9 @@ pfn_t pmm_alloc(void);
  *
  * @param pfns Array to store the allocated page PFNs.
  * @param count Number of pages to allocate.
- * @return On success, `0`. On failure, `ERR` and no pages are allocated.
+ * @return `true` if the pages were allocated, `false` otherwise.
  */
-uint64_t pmm_alloc_pages(pfn_t* pfns, size_t count);
+bool pmm_alloc_pages(pfn_t* pfns, size_t count);
 
 /**
  * @brief Allocate a contiguous region of physical memory using the bitmap.
@@ -92,7 +93,7 @@ uint64_t pmm_alloc_pages(pfn_t* pfns, size_t count);
  * @param count Number of pages to allocate.
  * @param maxPfn Maximum PFN to allocate up to (exclusive).
  * @param alignPfn Alignment of the region in pages.
- * @return On success, the PFN of the first page of the allocated region. On failure, `ERR`.
+ * @return On success, the PFN of the first page of the allocated region. On failure, `PFN_INVALID`.
  */
 pfn_t pmm_alloc_bitmap(size_t count, pfn_t maxPfn, pfn_t alignPfn);
 
@@ -134,7 +135,7 @@ void pmm_free_region(pfn_t pfn, size_t count);
  *
  * @param pfn The PFN of the first physical page.
  * @param count Number of pages to increment the reference count of.
- * @return On success, the new reference count. On failure, `ERR`.
+ * @return The new reference count, `0` means the reference count was zero and was not incremented.
  */
 uint64_t pmm_ref_inc(pfn_t pfn, size_t count);
 

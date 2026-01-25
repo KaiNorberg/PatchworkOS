@@ -8,10 +8,12 @@
 #include <sys/proc.h>
 #include <time.h>
 
+// This file is deprecated due to the refactor to using statuses instead of errno.
+
 #define _SYSCALL0(retType, num) \
     ({ \
         register retType ret asm("rax"); \
-        ASM("syscall\n" : "=a"(ret) : "a"(num) : "rcx", "r11", "memory"); \
+        ASM("syscall\n" : "=a"(ret) : "a"(num) : "rcx", "r11", "rdx", "memory"); \
         ret; \
     })
 
@@ -19,7 +21,7 @@
     ({ \
         register retType ret asm("rax"); \
         register type1 _a1 asm("rdi") = (arg1); \
-        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1) : "rcx", "r11", "memory"); \
+        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1) : "rcx", "r11", "rdx", "memory"); \
         ret; \
     })
 
@@ -28,7 +30,7 @@
         register retType ret asm("rax"); \
         register type1 _a1 asm("rdi") = (arg1); \
         register type2 _a2 asm("rsi") = (arg2); \
-        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1), "r"(_a2) : "rcx", "r11", "memory"); \
+        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1), "r"(_a2) : "rcx", "r11", "rdx", "memory"); \
         ret; \
     })
 
@@ -38,7 +40,7 @@
         register type1 _a1 asm("rdi") = (arg1); \
         register type2 _a2 asm("rsi") = (arg2); \
         register type3 _a3 asm("rdx") = (arg3); \
-        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3) : "rcx", "r11", "memory"); \
+        ASM("syscall\n" : "=a"(ret), "+r"(_a3) : "a"(num), "r"(_a1), "r"(_a2) : "rcx", "r11", "memory"); \
         ret; \
     })
 
@@ -49,7 +51,7 @@
         register type2 _a2 asm("rsi") = (arg2); \
         register type3 _a3 asm("rdx") = (arg3); \
         register type4 _a4 asm("r10") = (arg4); \
-        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3), "r"(_a4) : "rcx", "r11", "memory"); \
+        ASM("syscall\n" : "=a"(ret), "+r"(_a3) : "a"(num), "r"(_a1), "r"(_a2), "r"(_a4) : "rcx", "r11", "memory"); \
         ret; \
     })
 
@@ -61,7 +63,7 @@
         register type3 _a3 asm("rdx") = (arg3); \
         register type4 _a4 asm("r10") = (arg4); \
         register type5 _a5 asm("r8") = (arg5); \
-        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3), "r"(_a4), "r"(_a5) : "rcx", "r11", \
+        ASM("syscall\n" : "=a"(ret), "+r"(_a3) : "a"(num), "r"(_a1), "r"(_a2), "r"(_a4), "r"(_a5) : "rcx", "r11", \
             "memory"); \
         ret; \
     })
@@ -75,7 +77,7 @@
         register type4 _a4 asm("r10") = (arg4); \
         register type5 _a5 asm("r8") = (arg5); \
         register type6 _a6 asm("r9") = (arg6); \
-        ASM("syscall\n" : "=a"(ret) : "a"(num), "r"(_a1), "r"(_a2), "r"(_a3), "r"(_a4), "r"(_a5), "r"(_a6) : "rcx", \
+        ASM("syscall\n" : "=a"(ret), "+r"(_a3) : "a"(num), "r"(_a1), "r"(_a2), "r"(_a4), "r"(_a5), "r"(_a6) : "rcx", \
             "r11", "memory"); \
         ret; \
     })

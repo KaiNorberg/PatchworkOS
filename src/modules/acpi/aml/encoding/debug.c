@@ -5,7 +5,7 @@
 
 aml_object_t* aml_debug_obj_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_DEBUG_OP) == ERR)
+    if (aml_token_expect(ctx, AML_DEBUG_OP) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DebugOp");
         return NULL;
@@ -17,7 +17,7 @@ aml_object_t* aml_debug_obj_read(aml_term_list_ctx_t* ctx)
         return NULL;
     }
 
-    if (aml_debug_object_set(obj) == ERR)
+    if (aml_debug_object_set(obj) == _FAIL)
     {
         UNREF(obj);
         return NULL;

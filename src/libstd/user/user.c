@@ -14,7 +14,7 @@ static void _populate_std_descriptors(void)
 {
     for (uint64_t i = 0; i <= STDERR_FILENO; i++)
     {
-        if (write(i, NULL, 0) == ERR && errno == EBADF)
+        if (write(i, NULL, 0) == _FAIL && errno == EBADF)
         {
             fd_t nullFd = open("/dev/const/null");
             if (nullFd != i)

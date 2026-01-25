@@ -15,7 +15,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    if (link(argv[1], argv[2]) == ERR)
+    if (link(argv[1], argv[2]) == _FAIL)
     {
         fprintf(stderr, "link: failed to create link (%s)\n", strerror(errno));
         return EXIT_FAILURE;

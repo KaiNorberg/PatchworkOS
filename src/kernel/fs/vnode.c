@@ -52,14 +52,12 @@ vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_ops_t* op
 {
     if (superblock == NULL)
     {
-        errno = EINVAL;
         return NULL;
     }
 
     vnode_t* vnode = cache_alloc(&cache);
     if (vnode == NULL)
     {
-        errno = ENOMEM;
         return NULL;
     }
 

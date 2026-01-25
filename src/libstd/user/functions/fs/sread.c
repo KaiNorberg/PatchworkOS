@@ -27,7 +27,7 @@ char* reads(fd_t fd)
         }
 
         uint64_t bytesRead = read(fd, buffer + totalRead, size - totalRead);
-        if (bytesRead == ERR)
+        if (bytesRead == _FAIL)
         {
             free(buffer);
             return NULL;

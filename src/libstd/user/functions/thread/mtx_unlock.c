@@ -20,7 +20,7 @@ int mtx_unlock(mtx_t* mutex)
     {
         return thrd_success;
     }
-    mutex->owner = ERR;
+    mutex->owner = _FAIL;
 
     if (atomic_exchange(&(mutex->state), _MTX_UNLOCKED) == _MTX_CONTESTED)
     {

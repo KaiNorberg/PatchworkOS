@@ -19,11 +19,11 @@ char* fgets(char* _RESTRICT s, int size, FILE* _RESTRICT stream)
 
     mtx_lock(&stream->mtx);
 
-    if (_file_prepare_read(stream) != ERR)
+    if (_file_prepare_read(stream) != _FAIL)
     {
         do
         {
-            if (_FILE_CHECK_AVAIL(stream) == ERR)
+            if (_FILE_CHECK_AVAIL(stream) == _FAIL)
             {
                 /* In case of error / EOF before a character is read, this
                    will lead to a \0 be written anyway. Since the results

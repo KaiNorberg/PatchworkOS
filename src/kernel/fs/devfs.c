@@ -49,7 +49,7 @@ static filesystem_t devfs = {
 
 void devfs_init(void)
 {
-    if (filesystem_register(&devfs) == ERR)
+    if (filesystem_register(&devfs) == _FAIL)
     {
         panic(NULL, "Failed to register devfs");
     }
@@ -83,7 +83,6 @@ dentry_t* devfs_dir_new(dentry_t* parent, const char* name, const vnode_ops_t* v
 {
     if (name == NULL)
     {
-        errno = EINVAL;
         return NULL;
     }
 
@@ -92,11 +91,7 @@ dentry_t* devfs_dir_new(dentry_t* parent, const char* name, const vnode_ops_t* v
         parent = root;
     }
 
-    if (parent->superblock->fs != &devfs)
-    {
-        errno = EXDEV;
-        return NULL;
-    }
+    assert(parent->superblock->fs != &devfs);
 
     dentry_t* dir = dentry_new(parent->superblock, parent, name);
     if (dir == NULL)
@@ -121,22 +116,12 @@ dentry_t* devfs_dir_new(dentry_t* parent, const char* name, const vnode_ops_t* v
 dentry_t* devfs_file_new(dentry_t* parent, const char* name, const vnode_ops_t* vnodeOps, const file_ops_t* fileOps,
     void* data)
 {
-    if (name == NULL)
-    {
-        errno = EINVAL;
-        return NULL;
-    }
-
     if (parent == NULL)
     {
         parent = root;
     }
 
-    if (parent->superblock->fs != &devfs)
-    {
-        errno = EXDEV;
-        return NULL;
-    }
+    assert(parent->superblock->fs != &devfs);
 
     dentry_t* dentry = dentry_new(parent->superblock, parent, name);
     if (dentry == NULL)
@@ -192,28 +177,17 @@ dentry_t* devfs_symlink_new(dentry_t* parent, const char* name, const vnode_ops_
     return REF(dentry);
 }
 
-uint64_t devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t* descs)
+bool devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t* descs)
 {
-    if (out == NULL || descs == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     if (parent == NULL)
     {
         parent = root;
     }
 
-    if (parent->superblock->fs != &devfs)
-    {
-        errno = EXDEV;
-        return ERR;
-    }
+    assert(parent->superblock->fs != &devfs);
 
     list_t createdList = LIST_CREATE(createdList);
 
-    uint64_t count = 0;
     for (const devfs_file_desc_t* desc = descs; desc->name != NULL; desc++)
     {
         dentry_t* file = devfs_file_new(parent, desc->name, desc->vnodeOps, desc->fileOps, desc->data);
@@ -223,11 +197,10 @@ uint64_t devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t*
             {
                 UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry));
             }
-            return ERR;
+            return false;
         }
 
         list_push_back(&createdList, &file->otherEntry);
-        count++;
     }
 
     if (out == NULL)
@@ -236,7 +209,7 @@ uint64_t devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t*
         {
             UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry));
         }
-        return count;
+        return true;
     }
 
     while (!list_is_empty(&createdList))
@@ -244,7 +217,7 @@ uint64_t devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t*
         dentry_t* file = CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry);
         list_push_back(out, &file->otherEntry);
     }
-    return count;
+    return true;
 }
 
 void devfs_files_free(list_t* files)

@@ -105,7 +105,7 @@ uint64_t _file_init(FILE* stream, fd_t fd, _file_flags_t flags, void* buffer, ui
         stream->buf = malloc(bufferSize);
         if (stream->buf == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
         if (stream->flags & _FILE_OWNS_BUFFER)
         {
@@ -137,7 +137,7 @@ uint64_t _file_init(FILE* stream, fd_t fd, _file_flags_t flags, void* buffer, ui
         {
             free(stream->buf);
         }
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -163,10 +163,10 @@ uint64_t _file_flush_buffer(FILE* stream)
     }
 
     uint64_t count = write(stream->fd, stream->buf, stream->bufIndex);
-    if (count == ERR)
+    if (count == _FAIL)
     {
         stream->flags |= _FILE_ERROR;
-        return ERR;
+        return _FAIL;
     }
 
     stream->pos.offset += count;
@@ -177,15 +177,15 @@ uint64_t _file_flush_buffer(FILE* stream)
 uint64_t _file_fill_buffer(FILE* stream)
 {
     uint64_t count = read(stream->fd, stream->buf, stream->bufSize);
-    if (count == ERR)
+    if (count == _FAIL)
     {
         stream->flags |= _FILE_ERROR;
-        return ERR;
+        return _FAIL;
     }
     if (count == 0)
     {
         stream->flags |= _FILE_EOF;
-        return ERR;
+        return _FAIL;
     }
 
     if (!(stream->flags & _FILE_BIN))
@@ -204,14 +204,14 @@ uint64_t _file_seek(FILE* stream, int64_t offset, int whence)
     if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t result = seek(stream->fd, offset, whence);
 
-    if (result == ERR)
+    if (result == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     stream->ungetIndex = 0;
@@ -229,7 +229,7 @@ uint64_t _file_prepare_read(FILE* stream)
     {
         errno = EBADF;
         stream->flags |= _FILE_ERROR;
-        return ERR;
+        return _FAIL;
     }
 
     stream->flags |= _FILE_READ | _FILE_BYTESTREAM;
@@ -244,7 +244,7 @@ uint64_t _file_prepare_write(FILE* stream)
     {
         errno = EBADF;
         stream->flags |= _FILE_ERROR;
-        return ERR;
+        return _FAIL;
     }
 
     stream->flags |= _FILE_WRITE | _FILE_BYTESTREAM;
@@ -299,7 +299,7 @@ uint64_t _files_flush(void)
     {
         if (fflush(stream) == EOF)
         {
-            result = ERR;
+            result = _FAIL;
         }
     }
 

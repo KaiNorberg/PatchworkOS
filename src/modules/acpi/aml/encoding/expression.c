@@ -37,17 +37,17 @@ aml_object_t* aml_operand_read(aml_term_list_ctx_t* ctx, aml_type_t allowedTypes
 static inline uint64_t aml_op_operand_operand_target_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
     aml_type_t allowedTypes, aml_object_t** operand1, aml_object_t** operand2, aml_object_t** target)
 {
-    if (aml_token_expect(ctx, expectedOp) == ERR)
+    if (aml_token_expect(ctx, expectedOp) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read %s", aml_token_lookup(expectedOp)->name);
-        return ERR;
+        return _FAIL;
     }
 
     *operand1 = aml_operand_read(ctx, allowedTypes);
     if (*operand1 == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read operand1");
-        return ERR;
+        return _FAIL;
     }
 
     // Operand2 must be the same type as operand1.
@@ -56,15 +56,15 @@ static inline uint64_t aml_op_operand_operand_target_read(aml_term_list_ctx_t* c
     {
         UNREF(*operand1);
         AML_DEBUG_ERROR(ctx, "Failed to read operand2");
-        return ERR;
+        return _FAIL;
     }
 
-    if (aml_target_read_and_resolve(ctx, target) == ERR)
+    if (aml_target_read_and_resolve(ctx, target) == _FAIL)
     {
         UNREF(*operand1);
         UNREF(*operand2);
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve Target");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -73,17 +73,17 @@ static inline uint64_t aml_op_operand_operand_target_read(aml_term_list_ctx_t* c
 static inline uint64_t aml_op_operand_operand_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
     aml_type_t allowedTypes, aml_object_t** operand1, aml_object_t** operand2)
 {
-    if (aml_token_expect(ctx, expectedOp) == ERR)
+    if (aml_token_expect(ctx, expectedOp) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read %s", aml_token_lookup(expectedOp)->name);
-        return ERR;
+        return _FAIL;
     }
 
     *operand1 = aml_operand_read(ctx, allowedTypes);
     if (*operand1 == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read operand1");
-        return ERR;
+        return _FAIL;
     }
 
     // Operand2 must be the same type as operand1.
@@ -92,7 +92,7 @@ static inline uint64_t aml_op_operand_operand_read(aml_term_list_ctx_t* ctx, aml
     {
         UNREF(*operand1);
         AML_DEBUG_ERROR(ctx, "Failed to read operand2");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -101,17 +101,17 @@ static inline uint64_t aml_op_operand_operand_read(aml_term_list_ctx_t* ctx, aml
 static inline uint64_t aml_op_operand_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
     aml_type_t allowedTypes, aml_object_t** operand)
 {
-    if (aml_token_expect(ctx, expectedOp) == ERR)
+    if (aml_token_expect(ctx, expectedOp) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read %s", aml_token_lookup(expectedOp)->name);
-        return ERR;
+        return _FAIL;
     }
 
     *operand = aml_operand_read(ctx, allowedTypes);
     if (*operand == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read operand");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -120,24 +120,24 @@ static inline uint64_t aml_op_operand_read(aml_term_list_ctx_t* ctx, aml_token_n
 static inline uint64_t aml_op_operand_target_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
     aml_type_t allowedTypes, aml_object_t** operand, aml_object_t** target)
 {
-    if (aml_token_expect(ctx, expectedOp) == ERR)
+    if (aml_token_expect(ctx, expectedOp) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read %s", aml_token_lookup(expectedOp)->name);
-        return ERR;
+        return _FAIL;
     }
 
     *operand = aml_operand_read(ctx, allowedTypes);
     if (*operand == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read operand");
-        return ERR;
+        return _FAIL;
     }
 
-    if (aml_target_read_and_resolve(ctx, target) == ERR)
+    if (aml_target_read_and_resolve(ctx, target) == _FAIL)
     {
         UNREF(*operand);
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve Target");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -146,31 +146,31 @@ static inline uint64_t aml_op_operand_target_read(aml_term_list_ctx_t* ctx, aml_
 static inline uint64_t aml_op_operand_shiftcount_target_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
     aml_type_t allowedTypes, aml_object_t** operand, aml_uint_t* shiftCount, aml_object_t** target)
 {
-    if (aml_token_expect(ctx, expectedOp) == ERR)
+    if (aml_token_expect(ctx, expectedOp) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read %s", aml_token_lookup(expectedOp)->name);
-        return ERR;
+        return _FAIL;
     }
 
     *operand = aml_operand_read(ctx, allowedTypes);
     if (*operand == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read operand");
-        return ERR;
+        return _FAIL;
     }
 
-    if (aml_shift_count_read(ctx, shiftCount) == ERR)
+    if (aml_shift_count_read(ctx, shiftCount) == _FAIL)
     {
         UNREF(*operand);
         AML_DEBUG_ERROR(ctx, "Failed to read ShiftCount");
-        return ERR;
+        return _FAIL;
     }
 
-    if (aml_target_read_and_resolve(ctx, target) == ERR)
+    if (aml_target_read_and_resolve(ctx, target) == _FAIL)
     {
         UNREF(*operand);
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve Target");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -179,17 +179,17 @@ static inline uint64_t aml_op_operand_shiftcount_target_read(aml_term_list_ctx_t
 static inline uint64_t aml_op_data_data_target_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
     aml_object_t** data1, aml_object_t** data2, aml_object_t** target)
 {
-    if (aml_token_expect(ctx, expectedOp) == ERR)
+    if (aml_token_expect(ctx, expectedOp) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read %s", aml_token_lookup(expectedOp)->name);
-        return ERR;
+        return _FAIL;
     }
 
     *data1 = aml_data_read(ctx);
     if (*data1 == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read data1");
-        return ERR;
+        return _FAIL;
     }
 
     *data2 = aml_data_read(ctx);
@@ -197,15 +197,15 @@ static inline uint64_t aml_op_data_data_target_read(aml_term_list_ctx_t* ctx, am
     {
         UNREF(*data1);
         AML_DEBUG_ERROR(ctx, "Failed to read data2");
-        return ERR;
+        return _FAIL;
     }
 
-    if (aml_target_read_and_resolve(ctx, target) == ERR)
+    if (aml_target_read_and_resolve(ctx, target) == _FAIL)
     {
         UNREF(*data1);
         UNREF(*data2);
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve Target");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -214,17 +214,17 @@ static inline uint64_t aml_op_data_data_target_read(aml_term_list_ctx_t* ctx, am
 static inline uint64_t aml_op_termarg_simplename_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
     aml_type_t allowedTypes, aml_object_t** termarg, aml_object_t** simplename)
 {
-    if (aml_token_expect(ctx, expectedOp) == ERR)
+    if (aml_token_expect(ctx, expectedOp) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read %s", aml_token_lookup(expectedOp)->name);
-        return ERR;
+        return _FAIL;
     }
 
     *termarg = aml_term_arg_read(ctx, allowedTypes);
     if (*termarg == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
-        return ERR;
+        return _FAIL;
     }
 
     *simplename = aml_simple_name_read_and_resolve(ctx);
@@ -232,7 +232,7 @@ static inline uint64_t aml_op_termarg_simplename_read(aml_term_list_ctx_t* ctx, 
     {
         UNREF(*termarg);
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve SimpleName");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -241,17 +241,17 @@ static inline uint64_t aml_op_termarg_simplename_read(aml_term_list_ctx_t* ctx, 
 static inline uint64_t aml_op_supername_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
     aml_object_t** supername)
 {
-    if (aml_token_expect(ctx, expectedOp) == ERR)
+    if (aml_token_expect(ctx, expectedOp) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read %s", aml_token_lookup(expectedOp)->name);
-        return ERR;
+        return _FAIL;
     }
 
     *supername = aml_super_name_read_and_resolve(ctx);
     if (*supername == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve SuperName");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -260,17 +260,17 @@ static inline uint64_t aml_op_supername_read(aml_term_list_ctx_t* ctx, aml_token
 static inline uint64_t aml_op_termarg_supername_read(aml_term_list_ctx_t* ctx, aml_token_num_t expectedOp,
     aml_type_t allowedTypes, aml_object_t** termarg, aml_object_t** supername)
 {
-    if (aml_token_expect(ctx, expectedOp) == ERR)
+    if (aml_token_expect(ctx, expectedOp) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read %s", aml_token_lookup(expectedOp)->name);
-        return ERR;
+        return _FAIL;
     }
 
     *termarg = aml_term_arg_read(ctx, allowedTypes);
     if (*termarg == NULL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
-        return ERR;
+        return _FAIL;
     }
 
     *supername = aml_super_name_read_and_resolve(ctx);
@@ -278,7 +278,7 @@ static inline uint64_t aml_op_termarg_supername_read(aml_term_list_ctx_t* ctx, a
     {
         UNREF(*termarg);
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve SuperName");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -286,45 +286,45 @@ static inline uint64_t aml_op_termarg_supername_read(aml_term_list_ctx_t* ctx, a
 
 uint64_t aml_buffer_size_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
-    if (aml_term_arg_read_integer(ctx, out) == ERR)
+    if (aml_term_arg_read_integer(ctx, out) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
-        return ERR;
+        return _FAIL;
     }
     return 0;
 }
 
 uint64_t aml_def_buffer_read(aml_term_list_ctx_t* ctx, aml_object_t* out)
 {
-    if (aml_token_expect(ctx, AML_BUFFER_OP) == ERR)
+    if (aml_token_expect(ctx, AML_BUFFER_OP) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read BufferOp");
-        return ERR;
+        return _FAIL;
     }
 
     const uint8_t* start = ctx->current;
 
     aml_pkg_length_t pkgLength;
-    if (aml_pkg_length_read(ctx, &pkgLength) == ERR)
+    if (aml_pkg_length_read(ctx, &pkgLength) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read PkgLength");
-        return ERR;
+        return _FAIL;
     }
 
     const uint8_t* end = start + pkgLength;
 
     aml_uint_t bufferSize;
-    if (aml_buffer_size_read(ctx, &bufferSize) == ERR)
+    if (aml_buffer_size_read(ctx, &bufferSize) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read BufferSize");
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t availableBytes = (uint64_t)(end - ctx->current);
 
-    if (aml_buffer_set(out, ctx->current, availableBytes, bufferSize) == ERR)
+    if (aml_buffer_set(out, ctx->current, availableBytes, bufferSize) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     ctx->current = end;
@@ -336,7 +336,7 @@ uint64_t aml_term_arg_list_read(aml_term_list_ctx_t* ctx, uint64_t argCount, aml
     if (argCount > AML_MAX_ARGS)
     {
         errno = EILSEQ;
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t i = 0;
@@ -350,7 +350,7 @@ uint64_t aml_term_arg_list_read(aml_term_list_ctx_t* ctx, uint64_t argCount, aml
                 UNREF(out->args[j]);
                 out->args[j] = NULL;
             }
-            return ERR;
+            return _FAIL;
         }
     }
     out->args[i] = NULL;
@@ -371,7 +371,7 @@ aml_object_t* aml_method_invocation_read(aml_term_list_ctx_t* ctx)
     if (target->type == AML_METHOD)
     {
         aml_term_arg_list_t args = {0};
-        if (aml_term_arg_list_read(ctx, target->method.methodFlags.argCount, &args) == ERR)
+        if (aml_term_arg_list_read(ctx, target->method.methodFlags.argCount, &args) == _FAIL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to read method arguments");
             return NULL;
@@ -406,7 +406,7 @@ aml_object_t* aml_method_invocation_read(aml_term_list_ctx_t* ctx)
 
 aml_object_t* aml_def_cond_ref_of_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_COND_REF_OF_OP) == ERR)
+    if (aml_token_expect(ctx, AML_COND_REF_OF_OP) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read CondRefOfOp");
         return NULL;
@@ -421,7 +421,7 @@ aml_object_t* aml_def_cond_ref_of_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(source);
 
     aml_object_t* result = NULL;
-    if (aml_target_read_and_resolve(ctx, &result) == ERR)
+    if (aml_target_read_and_resolve(ctx, &result) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve Target");
         return NULL;
@@ -438,7 +438,7 @@ aml_object_t* aml_def_cond_ref_of_read(aml_term_list_ctx_t* ctx)
     if (source == NULL)
     {
         // Return false since the source did not resolve to an object.
-        if (aml_integer_set(output, 0) == ERR)
+        if (aml_integer_set(output, 0) == _FAIL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to init false integer");
             return NULL;
@@ -449,7 +449,7 @@ aml_object_t* aml_def_cond_ref_of_read(aml_term_list_ctx_t* ctx)
     if (result == NULL)
     {
         // Return true since source resolved to an object and result dident so we dont need to store anything.
-        if (aml_integer_set(output, AML_TRUE) == ERR)
+        if (aml_integer_set(output, AML_TRUE) == _FAIL)
         {
             AML_DEBUG_ERROR(ctx, "Failed to init true integer");
             return NULL;
@@ -459,13 +459,13 @@ aml_object_t* aml_def_cond_ref_of_read(aml_term_list_ctx_t* ctx)
 
     // Store a reference to source in the result and return true.
 
-    if (aml_object_reference_set(result, source) == ERR)
+    if (aml_object_reference_set(result, source) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to init ObjectReference in result");
         return NULL;
     }
 
-    if (aml_integer_set(output, AML_TRUE) == ERR)
+    if (aml_integer_set(output, AML_TRUE) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to init true integer");
         return NULL;
@@ -478,7 +478,7 @@ aml_object_t* aml_def_store_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* source = NULL;
     aml_object_t* destination = NULL;
-    if (aml_op_termarg_supername_read(ctx, AML_STORE_OP, AML_DATA_REF_OBJECTS, &source, &destination) == ERR)
+    if (aml_op_termarg_supername_read(ctx, AML_STORE_OP, AML_DATA_REF_OBJECTS, &source, &destination) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefStore structure");
         return NULL;
@@ -486,7 +486,7 @@ aml_object_t* aml_def_store_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(source);
     UNREF_DEFER(destination);
 
-    if (aml_store(ctx->state, source, destination) == ERR)
+    if (aml_store(ctx->state, source, destination) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to store source '%s' in destination '%s'", AML_NAME_TO_STRING(source->name),
             AML_NAME_TO_STRING(destination->name));
@@ -498,10 +498,10 @@ aml_object_t* aml_def_store_read(aml_term_list_ctx_t* ctx)
 
 uint64_t aml_dividend_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
-    if (aml_term_arg_read_integer(ctx, out) == ERR)
+    if (aml_term_arg_read_integer(ctx, out) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -509,10 +509,10 @@ uint64_t aml_dividend_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 
 uint64_t aml_divisor_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
-    if (aml_term_arg_read_integer(ctx, out) == ERR)
+    if (aml_term_arg_read_integer(ctx, out) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -521,7 +521,7 @@ uint64_t aml_divisor_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 aml_object_t* aml_remainder_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* result = NULL;
-    if (aml_target_read_and_resolve(ctx, &result) == ERR)
+    if (aml_target_read_and_resolve(ctx, &result) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve Target");
         return NULL;
@@ -533,7 +533,7 @@ aml_object_t* aml_remainder_read(aml_term_list_ctx_t* ctx)
 aml_object_t* aml_quotient_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* result = NULL;
-    if (aml_target_read_and_resolve(ctx, &result) == ERR)
+    if (aml_target_read_and_resolve(ctx, &result) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve Target");
         return NULL;
@@ -547,7 +547,7 @@ aml_object_t* aml_def_add_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_operand_target_read(ctx, AML_ADD_OP, AML_INTEGER, &operand1, &operand2, &target) == ERR)
+    if (aml_op_operand_operand_target_read(ctx, AML_ADD_OP, AML_INTEGER, &operand1, &operand2, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefAdd structure");
         return NULL;
@@ -564,7 +564,7 @@ aml_object_t* aml_def_add_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(result);
 
     if (aml_integer_set(result, operand1->integer.value + operand2->integer.value) ||
-        aml_store(ctx->state, result, target) == ERR)
+        aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -577,7 +577,7 @@ aml_object_t* aml_def_subtract_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_operand_target_read(ctx, AML_SUBTRACT_OP, AML_INTEGER, &operand1, &operand2, &target) == ERR)
+    if (aml_op_operand_operand_target_read(ctx, AML_SUBTRACT_OP, AML_INTEGER, &operand1, &operand2, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefSubtract structure");
         return NULL;
@@ -594,7 +594,7 @@ aml_object_t* aml_def_subtract_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(result);
 
     if (aml_integer_set(result, operand1->integer.value - operand2->integer.value) ||
-        aml_store(ctx->state, result, target) == ERR)
+        aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -607,7 +607,7 @@ aml_object_t* aml_def_multiply_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_operand_target_read(ctx, AML_MULTIPLY_OP, AML_INTEGER, &operand1, &operand2, &target) == ERR)
+    if (aml_op_operand_operand_target_read(ctx, AML_MULTIPLY_OP, AML_INTEGER, &operand1, &operand2, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefMultiply structure");
         return NULL;
@@ -624,7 +624,7 @@ aml_object_t* aml_def_multiply_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(result);
 
     if (aml_integer_set(result, operand1->integer.value * operand2->integer.value) ||
-        aml_store(ctx->state, result, target) == ERR)
+        aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -634,21 +634,21 @@ aml_object_t* aml_def_multiply_read(aml_term_list_ctx_t* ctx)
 
 aml_object_t* aml_def_divide_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_DIVIDE_OP) == ERR)
+    if (aml_token_expect(ctx, AML_DIVIDE_OP) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DivideOp");
         return NULL;
     }
 
     aml_uint_t dividend;
-    if (aml_dividend_read(ctx, &dividend) == ERR)
+    if (aml_dividend_read(ctx, &dividend) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Dividend");
         return NULL;
     }
 
     aml_uint_t divisor;
-    if (aml_divisor_read(ctx, &divisor) == ERR)
+    if (aml_divisor_read(ctx, &divisor) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Divisor");
         return NULL;
@@ -683,14 +683,14 @@ aml_object_t* aml_def_divide_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(result);
 
     // Init with remainder.
-    if (aml_integer_set(result, dividend % divisor) == ERR || aml_store(ctx->state, result, remainderDest))
+    if (aml_integer_set(result, dividend % divisor) == _FAIL || aml_store(ctx->state, result, remainderDest))
     {
         AML_DEBUG_ERROR(ctx, "Failed to store remainder");
         return NULL;
     }
 
     // Init with quotient.
-    if (aml_integer_set(result, dividend / divisor) == ERR || aml_store(ctx->state, result, quotientDest))
+    if (aml_integer_set(result, dividend / divisor) == _FAIL || aml_store(ctx->state, result, quotientDest))
     {
         AML_DEBUG_ERROR(ctx, "Failed to store quotient");
         return NULL;
@@ -702,28 +702,28 @@ aml_object_t* aml_def_divide_read(aml_term_list_ctx_t* ctx)
 
 aml_object_t* aml_def_mod_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_MOD_OP) == ERR)
+    if (aml_token_expect(ctx, AML_MOD_OP) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read ModOp");
         return NULL;
     }
 
     aml_uint_t dividend;
-    if (aml_dividend_read(ctx, &dividend) == ERR)
+    if (aml_dividend_read(ctx, &dividend) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Dividend");
         return NULL;
     }
 
     aml_uint_t divisor;
-    if (aml_divisor_read(ctx, &divisor) == ERR)
+    if (aml_divisor_read(ctx, &divisor) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Divisor");
         return NULL;
     }
 
     aml_object_t* target = NULL;
-    if (aml_target_read_and_resolve(ctx, &target) == ERR)
+    if (aml_target_read_and_resolve(ctx, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve Target");
         return NULL;
@@ -742,7 +742,7 @@ aml_object_t* aml_def_mod_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_integer_set(result, dividend % divisor) == ERR || aml_store(ctx->state, result, target) == ERR)
+    if (aml_integer_set(result, dividend % divisor) == _FAIL || aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -755,7 +755,7 @@ aml_object_t* aml_def_and_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_operand_target_read(ctx, AML_AND_OP, AML_INTEGER, &operand1, &operand2, &target) == ERR)
+    if (aml_op_operand_operand_target_read(ctx, AML_AND_OP, AML_INTEGER, &operand1, &operand2, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefAnd structure");
         return NULL;
@@ -772,7 +772,7 @@ aml_object_t* aml_def_and_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(result);
 
     if (aml_integer_set(result, operand1->integer.value & operand2->integer.value) ||
-        aml_store(ctx->state, result, target) == ERR)
+        aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -785,7 +785,7 @@ aml_object_t* aml_def_nand_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_operand_target_read(ctx, AML_NAND_OP, AML_INTEGER, &operand1, &operand2, &target) == ERR)
+    if (aml_op_operand_operand_target_read(ctx, AML_NAND_OP, AML_INTEGER, &operand1, &operand2, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefNand structure");
         return NULL;
@@ -802,7 +802,7 @@ aml_object_t* aml_def_nand_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(result);
 
     if (aml_integer_set(result, ~(operand1->integer.value & operand2->integer.value)) ||
-        aml_store(ctx->state, result, target) == ERR)
+        aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -815,7 +815,7 @@ aml_object_t* aml_def_or_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_operand_target_read(ctx, AML_OR_OP, AML_INTEGER, &operand1, &operand2, &target) == ERR)
+    if (aml_op_operand_operand_target_read(ctx, AML_OR_OP, AML_INTEGER, &operand1, &operand2, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefOr structure");
         return NULL;
@@ -832,7 +832,7 @@ aml_object_t* aml_def_or_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(result);
 
     if (aml_integer_set(result, operand1->integer.value | operand2->integer.value) ||
-        aml_store(ctx->state, result, target) == ERR)
+        aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -845,7 +845,7 @@ aml_object_t* aml_def_nor_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_operand_target_read(ctx, AML_NOR_OP, AML_INTEGER, &operand1, &operand2, &target) == ERR)
+    if (aml_op_operand_operand_target_read(ctx, AML_NOR_OP, AML_INTEGER, &operand1, &operand2, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefNor structure");
         return NULL;
@@ -862,7 +862,7 @@ aml_object_t* aml_def_nor_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(result);
 
     if (aml_integer_set(result, ~(operand1->integer.value | operand2->integer.value)) ||
-        aml_store(ctx->state, result, target) == ERR)
+        aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -875,7 +875,7 @@ aml_object_t* aml_def_xor_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_operand_target_read(ctx, AML_XOR_OP, AML_INTEGER, &operand1, &operand2, &target) == ERR)
+    if (aml_op_operand_operand_target_read(ctx, AML_XOR_OP, AML_INTEGER, &operand1, &operand2, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefXor structure");
         return NULL;
@@ -892,7 +892,7 @@ aml_object_t* aml_def_xor_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(result);
 
     if (aml_integer_set(result, operand1->integer.value ^ operand2->integer.value) ||
-        aml_store(ctx->state, result, target) == ERR)
+        aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -904,7 +904,7 @@ aml_object_t* aml_def_not_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_target_read(ctx, AML_NOT_OP, AML_INTEGER, &operand, &target) == ERR)
+    if (aml_op_operand_target_read(ctx, AML_NOT_OP, AML_INTEGER, &operand, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefNot structure");
         return NULL;
@@ -919,7 +919,7 @@ aml_object_t* aml_def_not_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_integer_set(result, ~operand->integer.value) || aml_store(ctx->state, result, target) == ERR)
+    if (aml_integer_set(result, ~operand->integer.value) || aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -929,10 +929,10 @@ aml_object_t* aml_def_not_read(aml_term_list_ctx_t* ctx)
 
 uint64_t aml_shift_count_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
-    if (aml_term_arg_read_integer(ctx, out) == ERR)
+    if (aml_term_arg_read_integer(ctx, out) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -944,7 +944,7 @@ aml_object_t* aml_def_shift_left_read(aml_term_list_ctx_t* ctx)
     aml_object_t* target = NULL;
     aml_uint_t shiftCount;
     if (aml_op_operand_shiftcount_target_read(ctx, AML_SHIFT_LEFT_OP, AML_INTEGER, &operand, &shiftCount, &target) ==
-        ERR)
+        _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefShiftLeft structure");
         return NULL;
@@ -962,7 +962,7 @@ aml_object_t* aml_def_shift_left_read(aml_term_list_ctx_t* ctx)
     // C will discard the most significant bits
     if (shiftCount >= aml_integer_bit_size())
     {
-        if (aml_integer_set(result, 0) == ERR)
+        if (aml_integer_set(result, 0) == _FAIL)
         {
             return NULL;
         }
@@ -970,13 +970,13 @@ aml_object_t* aml_def_shift_left_read(aml_term_list_ctx_t* ctx)
     else
     {
         aml_uint_t operandValue = operand->integer.value;
-        if (aml_integer_set(result, operandValue << shiftCount) == ERR)
+        if (aml_integer_set(result, operandValue << shiftCount) == _FAIL)
         {
             return NULL;
         }
     }
 
-    if (aml_store(ctx->state, result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -990,7 +990,7 @@ aml_object_t* aml_def_shift_right_read(aml_term_list_ctx_t* ctx)
     aml_object_t* target = NULL;
     aml_uint_t shiftCount;
     if (aml_op_operand_shiftcount_target_read(ctx, AML_SHIFT_RIGHT_OP, AML_INTEGER, &operand, &shiftCount, &target) ==
-        ERR)
+        _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefShiftRight structure");
         return NULL;
@@ -1008,7 +1008,7 @@ aml_object_t* aml_def_shift_right_read(aml_term_list_ctx_t* ctx)
     // C will zero the most significant bits
     if (shiftCount >= aml_integer_bit_size())
     {
-        if (aml_integer_set(result, 0) == ERR)
+        if (aml_integer_set(result, 0) == _FAIL)
         {
             return NULL;
         }
@@ -1016,13 +1016,13 @@ aml_object_t* aml_def_shift_right_read(aml_term_list_ctx_t* ctx)
     else
     {
         aml_uint_t operandValue = operand->integer.value;
-        if (aml_integer_set(result, operandValue >> shiftCount) == ERR)
+        if (aml_integer_set(result, operandValue >> shiftCount) == _FAIL)
         {
             return NULL;
         }
     }
 
-    if (aml_store(ctx->state, result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -1033,7 +1033,7 @@ aml_object_t* aml_def_shift_right_read(aml_term_list_ctx_t* ctx)
 aml_object_t* aml_def_increment_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* superName = NULL;
-    if (aml_op_supername_read(ctx, AML_INCREMENT_OP, &superName) == ERR)
+    if (aml_op_supername_read(ctx, AML_INCREMENT_OP, &superName) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefIncrement structure");
         return NULL;
@@ -1041,7 +1041,7 @@ aml_object_t* aml_def_increment_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(superName);
 
     aml_object_t* source = NULL;
-    if (aml_convert_source(ctx->state, superName, &source, AML_INTEGER) == ERR)
+    if (aml_convert_source(ctx->state, superName, &source, AML_INTEGER) == _FAIL)
     {
         return NULL;
     }
@@ -1054,8 +1054,8 @@ aml_object_t* aml_def_increment_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_integer_set(result, source->integer.value + 1) == ERR ||
-        aml_convert_result(ctx->state, result, superName) == ERR)
+    if (aml_integer_set(result, source->integer.value + 1) == _FAIL ||
+        aml_convert_result(ctx->state, result, superName) == _FAIL)
     {
         return NULL;
     }
@@ -1066,7 +1066,7 @@ aml_object_t* aml_def_increment_read(aml_term_list_ctx_t* ctx)
 aml_object_t* aml_def_decrement_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* superName = NULL;
-    if (aml_op_supername_read(ctx, AML_DECREMENT_OP, &superName) == ERR)
+    if (aml_op_supername_read(ctx, AML_DECREMENT_OP, &superName) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefDecrement structure");
         return NULL;
@@ -1074,7 +1074,7 @@ aml_object_t* aml_def_decrement_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(superName);
 
     aml_object_t* source = NULL;
-    if (aml_convert_source(ctx->state, superName, &source, AML_INTEGER) == ERR)
+    if (aml_convert_source(ctx->state, superName, &source, AML_INTEGER) == _FAIL)
     {
         return NULL;
     }
@@ -1087,8 +1087,8 @@ aml_object_t* aml_def_decrement_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_integer_set(result, source->integer.value - 1) == ERR ||
-        aml_convert_result(ctx->state, result, superName) == ERR)
+    if (aml_integer_set(result, source->integer.value - 1) == _FAIL ||
+        aml_convert_result(ctx->state, result, superName) == _FAIL)
     {
         return NULL;
     }
@@ -1130,7 +1130,7 @@ aml_object_t* aml_obj_reference_read(aml_term_list_ctx_t* ctx)
 
 aml_object_t* aml_def_deref_of_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_DEREF_OF_OP) == ERR)
+    if (aml_token_expect(ctx, AML_DEREF_OF_OP) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DerefOfOp");
         return NULL;
@@ -1160,10 +1160,10 @@ aml_object_t* aml_buff_pkg_str_obj_read(aml_term_list_ctx_t* ctx)
 
 uint64_t aml_index_value_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
-    if (aml_term_arg_read_integer(ctx, out) == ERR)
+    if (aml_term_arg_read_integer(ctx, out) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -1171,7 +1171,7 @@ uint64_t aml_index_value_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 
 aml_object_t* aml_def_index_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_INDEX_OP) == ERR)
+    if (aml_token_expect(ctx, AML_INDEX_OP) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read IndexOp");
         return NULL;
@@ -1186,14 +1186,14 @@ aml_object_t* aml_def_index_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(buffPkgStrObj);
 
     aml_uint_t index;
-    if (aml_index_value_read(ctx, &index) == ERR)
+    if (aml_index_value_read(ctx, &index) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read IndexValue");
         return NULL;
     }
 
     aml_object_t* target = NULL;
-    if (aml_target_read_and_resolve(ctx, &target) == ERR)
+    if (aml_target_read_and_resolve(ctx, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve Target");
         return NULL;
@@ -1220,7 +1220,7 @@ aml_object_t* aml_def_index_read(aml_term_list_ctx_t* ctx)
             return NULL;
         }
 
-        if (aml_object_reference_set(result, package->elements[index]) == ERR)
+        if (aml_object_reference_set(result, package->elements[index]) == _FAIL)
         {
             return NULL;
         }
@@ -1243,12 +1243,12 @@ aml_object_t* aml_def_index_read(aml_term_list_ctx_t* ctx)
         }
         UNREF_DEFER(byteField);
 
-        if (aml_buffer_field_set(byteField, buffPkgStrObj, index * 8, 8) == ERR)
+        if (aml_buffer_field_set(byteField, buffPkgStrObj, index * 8, 8) == _FAIL)
         {
             return NULL;
         }
 
-        if (aml_object_reference_set(result, byteField) == ERR)
+        if (aml_object_reference_set(result, byteField) == _FAIL)
         {
             return NULL;
         }
@@ -1271,12 +1271,12 @@ aml_object_t* aml_def_index_read(aml_term_list_ctx_t* ctx)
         }
         UNREF_DEFER(byteField);
 
-        if (aml_buffer_field_set(byteField, buffPkgStrObj, index * 8, 8) == ERR)
+        if (aml_buffer_field_set(byteField, buffPkgStrObj, index * 8, 8) == _FAIL)
         {
             return NULL;
         }
 
-        if (aml_object_reference_set(result, byteField) == ERR)
+        if (aml_object_reference_set(result, byteField) == _FAIL)
         {
             return NULL;
         }
@@ -1289,7 +1289,7 @@ aml_object_t* aml_def_index_read(aml_term_list_ctx_t* ctx)
         return NULL;
     }
 
-    if (aml_store(ctx->state, result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -1301,7 +1301,7 @@ aml_object_t* aml_def_land_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
-    if (aml_op_operand_operand_read(ctx, AML_LAND_OP, AML_INTEGER, &operand1, &operand2) == ERR)
+    if (aml_op_operand_operand_read(ctx, AML_LAND_OP, AML_INTEGER, &operand1, &operand2) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefLand structure");
         return NULL;
@@ -1316,7 +1316,7 @@ aml_object_t* aml_def_land_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_integer_set(result, aml_compare(operand1, operand2, AML_COMPARE_AND)) == ERR)
+    if (aml_integer_set(result, aml_compare(operand1, operand2, AML_COMPARE_AND)) == _FAIL)
     {
         return NULL;
     }
@@ -1329,7 +1329,7 @@ aml_object_t* aml_def_lequal_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
     if (aml_op_operand_operand_read(ctx, AML_LEQUAL_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand1, &operand2) ==
-        ERR)
+        _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefLequal structure");
         return NULL;
@@ -1344,7 +1344,7 @@ aml_object_t* aml_def_lequal_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_integer_set(result, aml_compare(operand1, operand2, AML_COMPARE_EQUAL)) == ERR)
+    if (aml_integer_set(result, aml_compare(operand1, operand2, AML_COMPARE_EQUAL)) == _FAIL)
     {
         return NULL;
     }
@@ -1357,7 +1357,7 @@ aml_object_t* aml_def_lgreater_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
     if (aml_op_operand_operand_read(ctx, AML_LGREATER_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand1,
-            &operand2) == ERR)
+            &operand2) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefLgreater structure");
         return NULL;
@@ -1372,7 +1372,7 @@ aml_object_t* aml_def_lgreater_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_integer_set(result, aml_compare(operand1, operand2, AML_COMPARE_GREATER)) == ERR)
+    if (aml_integer_set(result, aml_compare(operand1, operand2, AML_COMPARE_GREATER)) == _FAIL)
     {
         return NULL;
     }
@@ -1385,7 +1385,7 @@ aml_object_t* aml_def_lgreater_equal_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
     if (aml_op_operand_operand_read(ctx, AML_LGREATER_EQUAL_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand1,
-            &operand2) == ERR)
+            &operand2) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefLgreaterEqual structure");
         return NULL;
@@ -1400,7 +1400,7 @@ aml_object_t* aml_def_lgreater_equal_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_integer_set(result, aml_compare(operand1, operand2, AML_COMPARE_GREATER_EQUAL)) == ERR)
+    if (aml_integer_set(result, aml_compare(operand1, operand2, AML_COMPARE_GREATER_EQUAL)) == _FAIL)
     {
         return NULL;
     }
@@ -1413,7 +1413,7 @@ aml_object_t* aml_def_lless_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
     if (aml_op_operand_operand_read(ctx, AML_LLESS_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand1, &operand2) ==
-        ERR)
+        _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefLless structure");
         return NULL;
@@ -1428,7 +1428,7 @@ aml_object_t* aml_def_lless_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_integer_set(result, aml_compare(operand1, operand2, AML_COMPARE_LESS)) == ERR)
+    if (aml_integer_set(result, aml_compare(operand1, operand2, AML_COMPARE_LESS)) == _FAIL)
     {
         return NULL;
     }
@@ -1441,7 +1441,7 @@ aml_object_t* aml_def_lless_equal_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
     if (aml_op_operand_operand_read(ctx, AML_LLESS_EQUAL_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand1,
-            &operand2) == ERR)
+            &operand2) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefLlessEqual structure");
         return NULL;
@@ -1456,7 +1456,7 @@ aml_object_t* aml_def_lless_equal_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_integer_set(result, aml_compare(operand1, operand2, AML_COMPARE_LESS_EQUAL)) == ERR)
+    if (aml_integer_set(result, aml_compare(operand1, operand2, AML_COMPARE_LESS_EQUAL)) == _FAIL)
     {
         return NULL;
     }
@@ -1467,7 +1467,7 @@ aml_object_t* aml_def_lless_equal_read(aml_term_list_ctx_t* ctx)
 aml_object_t* aml_def_lnot_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand = NULL;
-    if (aml_op_operand_read(ctx, AML_LNOT_OP, AML_INTEGER, &operand) == ERR)
+    if (aml_op_operand_read(ctx, AML_LNOT_OP, AML_INTEGER, &operand) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefLnot structure");
         return NULL;
@@ -1481,7 +1481,7 @@ aml_object_t* aml_def_lnot_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_integer_set(result, aml_compare_not(operand->integer.value)) == ERR)
+    if (aml_integer_set(result, aml_compare_not(operand->integer.value)) == _FAIL)
     {
         return NULL;
     }
@@ -1494,7 +1494,7 @@ aml_object_t* aml_def_lnot_equal_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
     if (aml_op_operand_operand_read(ctx, AML_LNOT_EQUAL_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand1,
-            &operand2) == ERR)
+            &operand2) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefLnotEqual structure");
         return NULL;
@@ -1509,7 +1509,7 @@ aml_object_t* aml_def_lnot_equal_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_integer_set(result, aml_compare(operand1, operand2, AML_COMPARE_NOT_EQUAL)) == ERR)
+    if (aml_integer_set(result, aml_compare(operand1, operand2, AML_COMPARE_NOT_EQUAL)) == _FAIL)
     {
         return NULL;
     }
@@ -1521,7 +1521,7 @@ aml_object_t* aml_def_lor_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand1 = NULL;
     aml_object_t* operand2 = NULL;
-    if (aml_op_operand_operand_read(ctx, AML_LOR_OP, AML_INTEGER, &operand1, &operand2) == ERR)
+    if (aml_op_operand_operand_read(ctx, AML_LOR_OP, AML_INTEGER, &operand1, &operand2) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefLor structure");
         return NULL;
@@ -1536,7 +1536,7 @@ aml_object_t* aml_def_lor_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_integer_set(result, aml_compare(operand1, operand2, AML_COMPARE_OR)) == ERR)
+    if (aml_integer_set(result, aml_compare(operand1, operand2, AML_COMPARE_OR)) == _FAIL)
     {
         return NULL;
     }
@@ -1566,10 +1566,10 @@ aml_object_t* aml_mutex_object_read(aml_term_list_ctx_t* ctx)
 
 uint64_t aml_timeout_read(aml_term_list_ctx_t* ctx, uint16_t* out)
 {
-    if (aml_word_data_read(ctx, out) == ERR)
+    if (aml_word_data_read(ctx, out) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read WordData");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -1577,7 +1577,7 @@ uint64_t aml_timeout_read(aml_term_list_ctx_t* ctx, uint16_t* out)
 
 aml_object_t* aml_def_acquire_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_ACQUIRE_OP) == ERR)
+    if (aml_token_expect(ctx, AML_ACQUIRE_OP) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read AcquireOp");
         return NULL;
@@ -1594,7 +1594,7 @@ aml_object_t* aml_def_acquire_read(aml_term_list_ctx_t* ctx)
     assert(mutex->type == AML_MUTEX);
 
     uint16_t timeout;
-    if (aml_timeout_read(ctx, &timeout) == ERR)
+    if (aml_timeout_read(ctx, &timeout) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Timeout");
         return NULL;
@@ -1603,7 +1603,7 @@ aml_object_t* aml_def_acquire_read(aml_term_list_ctx_t* ctx)
     clock_t clockTimeout = (timeout == 0xFFFF) ? CLOCKS_NEVER : (clock_t)timeout * (CLOCKS_PER_MS);
     // If timedout result == 1, else result == 0.
     uint64_t acquireResult = aml_mutex_acquire(&mutex->mutex.mutex, mutex->mutex.syncLevel, clockTimeout);
-    if (acquireResult == ERR)
+    if (acquireResult == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to acquire mutex");
         return NULL;
@@ -1616,7 +1616,7 @@ aml_object_t* aml_def_acquire_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_integer_set(result, acquireResult) == ERR)
+    if (aml_integer_set(result, acquireResult) == _FAIL)
     {
         return NULL;
     }
@@ -1628,7 +1628,7 @@ aml_object_t* aml_def_to_bcd_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_target_read(ctx, AML_TO_BCD_OP, AML_INTEGER, &operand, &target) == ERR)
+    if (aml_op_operand_target_read(ctx, AML_TO_BCD_OP, AML_INTEGER, &operand, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefToBcd structure");
         return NULL;
@@ -1643,13 +1643,13 @@ aml_object_t* aml_def_to_bcd_read(aml_term_list_ctx_t* ctx)
     }
 
     aml_uint_t bcd;
-    if (aml_convert_integer_to_bcd(operand->integer.value, &bcd) == ERR)
+    if (aml_convert_integer_to_bcd(operand->integer.value, &bcd) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to convert integer to BCD");
         return NULL;
     }
 
-    if (aml_integer_set(result, bcd) == ERR || aml_store(ctx->state, result, target) == ERR)
+    if (aml_integer_set(result, bcd) == _FAIL || aml_store(ctx->state, result, target) == _FAIL)
     {
         UNREF(result);
         return NULL;
@@ -1663,7 +1663,7 @@ aml_object_t* aml_def_to_buffer_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand = NULL;
     aml_object_t* target = NULL;
     if (aml_op_operand_target_read(ctx, AML_TO_BUFFER_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand, &target) ==
-        ERR)
+        _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefToBuffer structure");
         return NULL;
@@ -1672,12 +1672,12 @@ aml_object_t* aml_def_to_buffer_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(target);
 
     aml_object_t* result = NULL;
-    if (aml_convert_to_buffer(ctx->state, operand, &result) == ERR)
+    if (aml_convert_to_buffer(ctx->state, operand, &result) == _FAIL)
     {
         return NULL;
     }
 
-    if (aml_store(ctx->state, result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == _FAIL)
     {
         UNREF(result);
         return NULL;
@@ -1690,7 +1690,7 @@ aml_object_t* aml_def_to_decimal_string_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_target_read(ctx, AML_TO_DECIMAL_STRING_OP, AML_INTEGER, &operand, &target) == ERR)
+    if (aml_op_operand_target_read(ctx, AML_TO_DECIMAL_STRING_OP, AML_INTEGER, &operand, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefToDecimalString structure");
         return NULL;
@@ -1699,12 +1699,12 @@ aml_object_t* aml_def_to_decimal_string_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(target);
 
     aml_object_t* result = NULL;
-    if (aml_convert_to_decimal_string(ctx->state, operand, &result) == ERR)
+    if (aml_convert_to_decimal_string(ctx->state, operand, &result) == _FAIL)
     {
         return NULL;
     }
 
-    if (aml_store(ctx->state, result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == _FAIL)
     {
         UNREF(result);
         return NULL;
@@ -1717,7 +1717,7 @@ aml_object_t* aml_def_to_hex_string_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_target_read(ctx, AML_TO_HEX_STRING_OP, AML_INTEGER, &operand, &target) == ERR)
+    if (aml_op_operand_target_read(ctx, AML_TO_HEX_STRING_OP, AML_INTEGER, &operand, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefToHexString structure");
         return NULL;
@@ -1726,12 +1726,12 @@ aml_object_t* aml_def_to_hex_string_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(target);
 
     aml_object_t* result = NULL;
-    if (aml_convert_to_hex_string(ctx->state, operand, &result) == ERR)
+    if (aml_convert_to_hex_string(ctx->state, operand, &result) == _FAIL)
     {
         return NULL;
     }
 
-    if (aml_store(ctx->state, result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == _FAIL)
     {
         UNREF(result);
         return NULL;
@@ -1745,7 +1745,7 @@ aml_object_t* aml_def_to_integer_read(aml_term_list_ctx_t* ctx)
     aml_object_t* operand = NULL;
     aml_object_t* target = NULL;
     if (aml_op_operand_target_read(ctx, AML_TO_INTEGER_OP, AML_INTEGER | AML_STRING | AML_BUFFER, &operand, &target) ==
-        ERR)
+        _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefToInteger structure");
         return NULL;
@@ -1754,12 +1754,12 @@ aml_object_t* aml_def_to_integer_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(target);
 
     aml_object_t* result = NULL;
-    if (aml_convert_to_integer(ctx->state, operand, &result) == ERR)
+    if (aml_convert_to_integer(ctx->state, operand, &result) == _FAIL)
     {
         return NULL;
     }
 
-    if (aml_store(ctx->state, result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == _FAIL)
     {
         UNREF(result);
         return NULL;
@@ -1770,10 +1770,10 @@ aml_object_t* aml_def_to_integer_read(aml_term_list_ctx_t* ctx)
 
 uint64_t aml_length_arg_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
-    if (aml_term_arg_read_integer(ctx, out) == ERR)
+    if (aml_term_arg_read_integer(ctx, out) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -1781,7 +1781,7 @@ uint64_t aml_length_arg_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 
 aml_object_t* aml_def_to_string_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_TO_STRING_OP) == ERR)
+    if (aml_token_expect(ctx, AML_TO_STRING_OP) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read ToStringOp");
         return NULL;
@@ -1796,14 +1796,14 @@ aml_object_t* aml_def_to_string_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(source);
 
     aml_uint_t length;
-    if (aml_length_arg_read(ctx, &length) == ERR)
+    if (aml_length_arg_read(ctx, &length) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read LengthArg");
         return NULL;
     }
 
     aml_object_t* target = NULL;
-    if (aml_target_read_and_resolve(ctx, &target) == ERR)
+    if (aml_target_read_and_resolve(ctx, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve Target");
         return NULL;
@@ -1818,7 +1818,7 @@ aml_object_t* aml_def_to_string_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(result);
 
     length = MIN(length, source->length);
-    if (aml_string_set_empty(result, length) == ERR)
+    if (aml_string_set_empty(result, length) == _FAIL)
     {
         return NULL;
     }
@@ -1828,7 +1828,7 @@ aml_object_t* aml_def_to_string_read(aml_term_list_ctx_t* ctx)
         result->string.content[i] = (char)source->content[i];
     }
 
-    if (aml_store(ctx->state, result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -1838,7 +1838,7 @@ aml_object_t* aml_def_to_string_read(aml_term_list_ctx_t* ctx)
 
 aml_object_t* aml_def_timer_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_TIMER_OP) == ERR)
+    if (aml_token_expect(ctx, AML_TIMER_OP) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TimerOp");
         return NULL;
@@ -1854,7 +1854,7 @@ aml_object_t* aml_def_timer_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_integer_set(result, time100ns) == ERR)
+    if (aml_integer_set(result, time100ns) == _FAIL)
     {
         return NULL;
     }
@@ -1866,7 +1866,7 @@ aml_object_t* aml_def_copy_object_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* source = NULL;
     aml_object_t* destination = NULL;
-    if (aml_op_termarg_simplename_read(ctx, AML_COPY_OBJECT_OP, AML_DATA_REF_OBJECTS, &source, &destination) == ERR)
+    if (aml_op_termarg_simplename_read(ctx, AML_COPY_OBJECT_OP, AML_DATA_REF_OBJECTS, &source, &destination) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefCopyObject structure");
         return NULL;
@@ -1874,7 +1874,7 @@ aml_object_t* aml_def_copy_object_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(source);
     UNREF_DEFER(destination);
 
-    if (aml_copy_object(ctx->state, source, destination) == ERR)
+    if (aml_copy_object(ctx->state, source, destination) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to copy object");
         return NULL;
@@ -1900,7 +1900,7 @@ aml_object_t* aml_def_concat_read(aml_term_list_ctx_t* ctx)
     aml_object_t* source1 = NULL;
     aml_object_t* source2 = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_data_data_target_read(ctx, AML_CONCAT_OP, &source1, &source2, &target) == ERR)
+    if (aml_op_data_data_target_read(ctx, AML_CONCAT_OP, &source1, &source2, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefConcat structure");
         return NULL;
@@ -1916,7 +1916,7 @@ aml_object_t* aml_def_concat_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_concat(ctx->state, source1, source2, result) == ERR || aml_store(ctx->state, result, target) == ERR)
+    if (aml_concat(ctx->state, source1, source2, result) == _FAIL || aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -1927,7 +1927,7 @@ aml_object_t* aml_def_concat_read(aml_term_list_ctx_t* ctx)
 aml_object_t* aml_def_size_of_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* object = NULL;
-    if (aml_op_supername_read(ctx, AML_SIZE_OF_OP, &object) == ERR)
+    if (aml_op_supername_read(ctx, AML_SIZE_OF_OP, &object) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefSizeOf structure");
         return NULL;
@@ -1978,7 +1978,7 @@ aml_object_t* aml_def_size_of_read(aml_term_list_ctx_t* ctx)
         return NULL;
     }
 
-    if (aml_integer_set(result, size) == ERR)
+    if (aml_integer_set(result, size) == _FAIL)
     {
         return NULL;
     }
@@ -1989,7 +1989,7 @@ aml_object_t* aml_def_size_of_read(aml_term_list_ctx_t* ctx)
 aml_object_t* aml_def_ref_of_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* object = NULL;
-    if (aml_op_supername_read(ctx, AML_REF_OF_OP, &object) == ERR)
+    if (aml_op_supername_read(ctx, AML_REF_OF_OP, &object) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefRefOf structure");
         return NULL;
@@ -2003,7 +2003,7 @@ aml_object_t* aml_def_ref_of_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_object_reference_set(result, object) == ERR)
+    if (aml_object_reference_set(result, object) == _FAIL)
     {
         return NULL;
     }
@@ -2013,7 +2013,7 @@ aml_object_t* aml_def_ref_of_read(aml_term_list_ctx_t* ctx)
 
 aml_object_t* aml_def_object_type_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_OBJECT_TYPE_OP) == ERR)
+    if (aml_token_expect(ctx, AML_OBJECT_TYPE_OP) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read ObjectTypeOp");
         return NULL;
@@ -2106,7 +2106,7 @@ aml_object_t* aml_def_object_type_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_integer_set(result, typeNum) == ERR)
+    if (aml_integer_set(result, typeNum) == _FAIL)
     {
         return NULL;
     }
@@ -2170,7 +2170,7 @@ aml_object_t* aml_def_find_set_left_bit_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_target_read(ctx, AML_FIND_SET_LEFT_BIT_OP, AML_INTEGER, &operand, &target) == ERR)
+    if (aml_op_operand_target_read(ctx, AML_FIND_SET_LEFT_BIT_OP, AML_INTEGER, &operand, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefFindSetLeftBit structure");
         return NULL;
@@ -2187,7 +2187,7 @@ aml_object_t* aml_def_find_set_left_bit_read(aml_term_list_ctx_t* ctx)
 
     if (operand->integer.value == 0)
     {
-        if (aml_integer_set(result, 0) == ERR)
+        if (aml_integer_set(result, 0) == _FAIL)
         {
             return NULL;
         }
@@ -2198,7 +2198,7 @@ aml_object_t* aml_def_find_set_left_bit_read(aml_term_list_ctx_t* ctx)
         {
             if (operand->integer.value & (1ULL << (aml_integer_bit_size() - 1 - i)))
             {
-                if (aml_integer_set(result, aml_integer_bit_size() - i) == ERR)
+                if (aml_integer_set(result, aml_integer_bit_size() - i) == _FAIL)
                 {
                     return NULL;
                 }
@@ -2207,7 +2207,7 @@ aml_object_t* aml_def_find_set_left_bit_read(aml_term_list_ctx_t* ctx)
         }
     }
 
-    if (aml_store(ctx->state, result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -2219,7 +2219,7 @@ aml_object_t* aml_def_find_set_right_bit_read(aml_term_list_ctx_t* ctx)
 {
     aml_object_t* operand = NULL;
     aml_object_t* target = NULL;
-    if (aml_op_operand_target_read(ctx, AML_FIND_SET_RIGHT_BIT_OP, AML_INTEGER, &operand, &target) == ERR)
+    if (aml_op_operand_target_read(ctx, AML_FIND_SET_RIGHT_BIT_OP, AML_INTEGER, &operand, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DefFindSetRightBit structure");
         return NULL;
@@ -2236,7 +2236,7 @@ aml_object_t* aml_def_find_set_right_bit_read(aml_term_list_ctx_t* ctx)
 
     if (operand->integer.value == 0)
     {
-        if (aml_integer_set(result, 0) == ERR)
+        if (aml_integer_set(result, 0) == _FAIL)
         {
             return NULL;
         }
@@ -2247,7 +2247,7 @@ aml_object_t* aml_def_find_set_right_bit_read(aml_term_list_ctx_t* ctx)
         {
             if (operand->integer.value & (1ULL << i))
             {
-                if (aml_integer_set(result, i + 1) == ERR)
+                if (aml_integer_set(result, i + 1) == _FAIL)
                 {
                     return NULL;
                 }
@@ -2256,7 +2256,7 @@ aml_object_t* aml_def_find_set_right_bit_read(aml_term_list_ctx_t* ctx)
         }
     }
 
-    if (aml_store(ctx->state, result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -2279,17 +2279,17 @@ aml_package_t* aml_search_pkg_read(aml_term_list_ctx_t* ctx)
 uint64_t aml_match_opcode_read(aml_term_list_ctx_t* ctx, aml_match_opcode_t* out)
 {
     uint8_t byteData;
-    if (aml_byte_data_read(ctx, &byteData) == ERR)
+    if (aml_byte_data_read(ctx, &byteData) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read ByteData");
-        return ERR;
+        return _FAIL;
     }
 
     if (byteData > AML_MATCH_MGT)
     {
         AML_DEBUG_ERROR(ctx, "Invalid MatchOpcode value %u", byteData);
         errno = EILSEQ;
-        return ERR;
+        return _FAIL;
     }
 
     *out = (aml_match_opcode_t)byteData;
@@ -2298,10 +2298,10 @@ uint64_t aml_match_opcode_read(aml_term_list_ctx_t* ctx, aml_match_opcode_t* out
 
 uint64_t aml_start_index_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
-    if (aml_term_arg_read_integer(ctx, out) == ERR)
+    if (aml_term_arg_read_integer(ctx, out) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -2331,7 +2331,7 @@ static bool aml_match_compare(aml_object_t* obj1, aml_object_t* obj2, aml_match_
 
 aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_MATCH_OP) == ERR)
+    if (aml_token_expect(ctx, AML_MATCH_OP) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read MatchOp");
         return NULL;
@@ -2346,7 +2346,7 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(searchPkg);
 
     aml_match_opcode_t op1;
-    if (aml_match_opcode_read(ctx, &op1) == ERR)
+    if (aml_match_opcode_read(ctx, &op1) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Op1");
         return NULL;
@@ -2361,7 +2361,7 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(object1);
 
     aml_match_opcode_t op2;
-    if (aml_match_opcode_read(ctx, &op2) == ERR)
+    if (aml_match_opcode_read(ctx, &op2) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Op2");
         return NULL;
@@ -2376,7 +2376,7 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(object2);
 
     aml_uint_t startIndex;
-    if (aml_start_index_read(ctx, &startIndex) == ERR)
+    if (aml_start_index_read(ctx, &startIndex) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read StartIndex");
         return NULL;
@@ -2403,7 +2403,7 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
         }
 
         aml_object_t* convertedFor1 = NULL;
-        if (aml_convert_source(ctx->state, element, &convertedFor1, object1->type) == ERR)
+        if (aml_convert_source(ctx->state, element, &convertedFor1, object1->type) == _FAIL)
         {
             errno = EOK;
             continue;
@@ -2411,7 +2411,7 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
         UNREF_DEFER(convertedFor1);
 
         aml_object_t* convertedFor2 = NULL;
-        if (aml_convert_source(ctx->state, element, &convertedFor2, object2->type) == ERR)
+        if (aml_convert_source(ctx->state, element, &convertedFor2, object2->type) == _FAIL)
         {
             errno = EOK;
             continue;
@@ -2420,7 +2420,7 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
 
         if (aml_match_compare(convertedFor1, object1, op1) && aml_match_compare(convertedFor2, object2, op2))
         {
-            if (aml_integer_set(result, i) == ERR)
+            if (aml_integer_set(result, i) == _FAIL)
             {
                 return NULL;
             }
@@ -2428,7 +2428,7 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx)
         }
     }
 
-    if (aml_integer_set(result, aml_integer_ones()) == ERR)
+    if (aml_integer_set(result, aml_integer_ones()) == _FAIL)
     {
         return NULL;
     }
@@ -2449,7 +2449,7 @@ aml_object_t* aml_mid_obj_read(aml_term_list_ctx_t* ctx)
 
 aml_object_t* aml_def_mid_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_MID_OP) == ERR)
+    if (aml_token_expect(ctx, AML_MID_OP) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read MidOp");
         return NULL;
@@ -2464,21 +2464,21 @@ aml_object_t* aml_def_mid_read(aml_term_list_ctx_t* ctx)
     UNREF_DEFER(midObj);
 
     aml_uint_t index;
-    if (aml_term_arg_read_integer(ctx, &index) == ERR)
+    if (aml_term_arg_read_integer(ctx, &index) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Index");
         return NULL;
     }
 
     aml_uint_t length;
-    if (aml_term_arg_read_integer(ctx, &length) == ERR)
+    if (aml_term_arg_read_integer(ctx, &length) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Length");
         return NULL;
     }
 
     aml_object_t* target = NULL;
-    if (aml_target_read_and_resolve(ctx, &target) == ERR)
+    if (aml_target_read_and_resolve(ctx, &target) == _FAIL)
     {
         AML_DEBUG_ERROR(ctx, "Failed to read or resolve Target");
         return NULL;
@@ -2492,7 +2492,7 @@ aml_object_t* aml_def_mid_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(result);
 
-    if (aml_store(ctx->state, result, target) == ERR)
+    if (aml_store(ctx->state, result, target) == _FAIL)
     {
         return NULL;
     }
@@ -2526,7 +2526,7 @@ aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx)
                 return NULL;
             }
 
-            if (aml_def_buffer_read(ctx, result) == ERR)
+            if (aml_def_buffer_read(ctx, result) == _FAIL)
             {
                 UNREF(result);
                 AML_DEBUG_ERROR(ctx, "Failed to read opcode 'DefBuffer'");
@@ -2542,7 +2542,7 @@ aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx)
                 return NULL;
             }
 
-            if (aml_def_package_read(ctx, result) == ERR)
+            if (aml_def_package_read(ctx, result) == _FAIL)
             {
                 UNREF(result);
                 AML_DEBUG_ERROR(ctx, "Failed to read opcode 'DefPackage'");
@@ -2558,7 +2558,7 @@ aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx)
                 return NULL;
             }
 
-            if (aml_def_var_package_read(ctx, result) == ERR)
+            if (aml_def_var_package_read(ctx, result) == _FAIL)
             {
                 UNREF(result);
                 AML_DEBUG_ERROR(ctx, "Failed to read opcode 'DefVarPackage'");

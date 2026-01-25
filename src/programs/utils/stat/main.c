@@ -24,7 +24,7 @@ static const char* type_to_string(vtype_t type)
 static void print_stat(const char* path)
 {
     stat_t buffer;
-    if (stat(path, &buffer) == ERR)
+    if (stat(path, &buffer) == _FAIL)
     {
         printf("stat: failed to stat %s (%s)\n", path, strerror(errno));
         return;

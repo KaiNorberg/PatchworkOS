@@ -33,13 +33,13 @@ static inline uint64_t aml_mutex_stack_push(aml_mutex_id_t id, aml_sync_level_t 
     {
         LOG_ERR("Attempted to acquire a mutex with a lower SyncLevel than the current SyncLevel\n");
         errno = EDEADLK;
-        return ERR;
+        return _FAIL;
     }
 
     aml_mutex_entry_t* entry = malloc(sizeof(aml_mutex_entry_t));
     if (entry == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     list_entry_init(&entry->entry);
     entry->id = id;
@@ -56,7 +56,7 @@ static inline uint64_t aml_mutex_stack_pop(aml_mutex_id_t id)
     {
         LOG_ERR("Attempted to release a mutex when none are held\n");
         errno = EDEADLK;
-        return ERR;
+        return _FAIL;
     }
 
     aml_mutex_entry_t* topEntry = CONTAINER_OF(list_last(&mutexStack), aml_mutex_entry_t, entry);
@@ -64,7 +64,7 @@ static inline uint64_t aml_mutex_stack_pop(aml_mutex_id_t id)
     {
         LOG_ERR("Mutex release not in LIFO order\n");
         errno = EDEADLK;
-        return ERR;
+        return _FAIL;
     }
 
     list_remove(&topEntry->entry);
@@ -99,15 +99,15 @@ uint64_t aml_mutex_acquire(aml_mutex_id_t* mutex, aml_sync_level_t syncLevel, cl
     if (mutex == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     // As mentioned, mutexes arent implemented since we have the big mutex, so we just pretend that
     // we acquired it immediately.
 
-    if (aml_mutex_stack_push(*mutex, syncLevel) == ERR)
+    if (aml_mutex_stack_push(*mutex, syncLevel) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     return 0;
 }
@@ -117,12 +117,12 @@ uint64_t aml_mutex_release(aml_mutex_id_t* mutex)
     if (mutex == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
-    if (aml_mutex_stack_pop(*mutex) == ERR)
+    if (aml_mutex_stack_pop(*mutex) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     return 0;
 }

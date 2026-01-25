@@ -6,7 +6,7 @@
 uint64_t nanosleep(clock_t timeout)
 {
     uint64_t result = _syscall_nanosleep(timeout);
-    if (result == ERR)
+    if (result == _FAIL)
     {
         errno = _syscall_errno();
     }

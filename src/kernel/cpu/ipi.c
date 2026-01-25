@@ -67,7 +67,7 @@ uint64_t ipi_chip_register(ipi_chip_t* chip)
     if (chip == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     RWLOCK_WRITE_SCOPE(&chipLock);
@@ -75,7 +75,7 @@ uint64_t ipi_chip_register(ipi_chip_t* chip)
     if (registeredChip != NULL)
     {
         errno = EBUSY;
-        return ERR;
+        return _FAIL;
     }
 
     registeredChip = chip;
@@ -112,13 +112,13 @@ static uint64_t ipi_push(cpu_t* cpu, ipi_func_t func, void* data)
     if (registeredChip == NULL)
     {
         errno = ENODEV;
-        return ERR;
+        return _FAIL;
     }
 
     if (registeredChip->interrupt == NULL)
     {
         errno = ENOSYS;
-        return ERR;
+        return _FAIL;
     }
 
     ipi_cpu_t* ctx = CPU_PTR(cpu->id, pcpu_ipi);
@@ -128,7 +128,7 @@ static uint64_t ipi_push(cpu_t* cpu, ipi_func_t func, void* data)
     if (nextWriteIndex == ctx->readIndex)
     {
         errno = EBUSY;
-        return ERR;
+        return _FAIL;
     }
 
     ctx->queue[ctx->writeIndex].func = func;
@@ -142,7 +142,7 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* data)
     if (func == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     RWLOCK_READ_SCOPE(&chipLock);
@@ -154,12 +154,12 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* data)
         if (cpu == NULL)
         {
             errno = EINVAL;
-            return ERR;
+            return _FAIL;
         }
 
-        if (ipi_push(cpu, func, data) == ERR)
+        if (ipi_push(cpu, func, data) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
 
         registeredChip->interrupt(cpu, VECTOR_IPI);
@@ -170,9 +170,9 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* data)
         cpu_t* cpu;
         CPU_FOR_EACH(cpu)
         {
-            if (ipi_push(cpu, func, data) == ERR)
+            if (ipi_push(cpu, func, data) == _FAIL)
             {
-                return ERR;
+                return _FAIL;
             }
 
             registeredChip->interrupt(cpu, VECTOR_IPI);
@@ -184,7 +184,7 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* data)
         if (cpu == NULL)
         {
             errno = EINVAL;
-            return ERR;
+            return _FAIL;
         }
 
         cpu_t* iter;
@@ -195,9 +195,9 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* data)
                 continue;
             }
 
-            if (ipi_push(iter, func, data) == ERR)
+            if (ipi_push(iter, func, data) == _FAIL)
             {
-                return ERR;
+                return _FAIL;
             }
 
             registeredChip->interrupt(iter, VECTOR_IPI);
@@ -206,7 +206,7 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* data)
     break;
     default:
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     return 0;

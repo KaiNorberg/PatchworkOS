@@ -4,10 +4,10 @@
 
 uint64_t bind(const char* mountpoint, fd_t source)
 {
-    if (_syscall_bind(mountpoint, source) == ERR)
+    if (_syscall_bind(mountpoint, source) == _FAIL)
     {
         errno = _syscall_errno();
-        return ERR;
+        return _FAIL;
     }
 
     return 0;

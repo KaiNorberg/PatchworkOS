@@ -147,7 +147,7 @@ typedef struct netfs_family
      * @brief Initialize a socket.
      *
      * @param sock Pointer to the socket to initialize.
-     * @return On success, `0`. On failure, `ERR` and `errno` is set.
+     * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
      */
     uint64_t (*init)(socket_t* sock);
     /**
@@ -162,7 +162,7 @@ typedef struct netfs_family
      * The address is stored in `socket_t::address`.
      *
      * @param sock Pointer to the socket to bind.
-     * @return On success, `0`. On failure, `ERR` and `errno` is set.
+     * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
      */
     uint64_t (*bind)(socket_t* sock);
     /**
@@ -170,7 +170,7 @@ typedef struct netfs_family
      *
      * @param sock Pointer to the socket to listen on.
      * @param backlog Maximum number of pending connections.
-     * @return On success, `0`. On failure, `ERR` and `errno` is set.
+     * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
      */
     uint64_t (*listen)(socket_t* sock, uint32_t backlog);
     /**
@@ -179,7 +179,7 @@ typedef struct netfs_family
      * The address is stored in `socket_t::address`.
      *
      * @param sock Pointer to the socket to connect.
-     * @return On success, `0`. On failure, `ERR` and `errno` is set.
+     * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
      */
     uint64_t (*connect)(socket_t* sock);
     /**
@@ -188,7 +188,7 @@ typedef struct netfs_family
      * @param sock Pointer to the listening socket.
      * @param newSock Pointer to the socket to initialize for the new connection.
      * @param mode Mode flags for the new socket.
-     * @return On success, `0`. On failure, `ERR` and `errno` is set.
+     * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
      */
     uint64_t (*accept)(socket_t* sock, socket_t* newSock, mode_t mode);
     /**
@@ -199,7 +199,7 @@ typedef struct netfs_family
      * @param count Number of bytes to send.
      * @param offset Pointer to the position in the file, families may ignore this.
      * @param mode Mode flags for sending.
-     * @return On success, number of bytes sent. On failure, `ERR` and `errno` is set.
+     * @return On success, number of bytes sent. On failure, `_FAIL` and `errno` is set.
      */
     size_t (*send)(socket_t* sock, const void* buffer, size_t count, size_t* offset, mode_t mode);
     /**
@@ -210,7 +210,7 @@ typedef struct netfs_family
      * @param count Maximum number of bytes to receive.
      * @param offset Pointer to the position in the file, families may ignore this.
      * @param mode Mode flags for receiving.
-     * @return On success, number of bytes received. On failure, `ERR` and `errno` is set.
+     * @return On success, number of bytes received. On failure, `_FAIL` and `errno` is set.
      */
     size_t (*recv)(socket_t* sock, void* buffer, size_t count, size_t* offset, mode_t mode);
     /**
@@ -235,7 +235,7 @@ void netfs_init(void);
  * @brief Register a network family.
  *
  * @param family Pointer to the network family structure.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t netfs_family_register(netfs_family_t* family);
 

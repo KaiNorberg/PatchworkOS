@@ -38,7 +38,7 @@
  * @param parentState The current AML state, this will not be used for anything other than getting the parent overlay.
  * @param method Pointer to the method to invoke.
  * @param args Array of pointers to the argument objects, can be `NULL`, must be null-terminated.
- * @return On success, the return value of the method. On failure, `ERR` and `errno` is set.
+ * @return On success, the return value of the method. On failure, `_FAIL` and `errno` is set.
  */
 aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_t* method, aml_object_t** args);
 

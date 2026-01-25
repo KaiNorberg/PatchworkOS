@@ -10,9 +10,9 @@ int fgetc(FILE* stream)
 
     mtx_lock(&stream->mtx);
 
-    if (_file_prepare_read(stream) != ERR)
+    if (_file_prepare_read(stream) != _FAIL)
     {
-        if (_FILE_CHECK_AVAIL(stream) != ERR)
+        if (_FILE_CHECK_AVAIL(stream) != _FAIL)
         {
             result = _FILE_GETC(stream);
         }

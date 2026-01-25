@@ -26,7 +26,7 @@ typedef struct aml_term_list_ctx aml_term_list_ctx_t;
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer where the byte value will be stored.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_byte_data_read(aml_term_list_ctx_t* ctx, uint8_t* out);
 
@@ -37,7 +37,7 @@ uint64_t aml_byte_data_read(aml_term_list_ctx_t* ctx, uint8_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer where the word value will be stored.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_word_data_read(aml_term_list_ctx_t* ctx, uint16_t* out);
 
@@ -48,7 +48,7 @@ uint64_t aml_word_data_read(aml_term_list_ctx_t* ctx, uint16_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer where the dword value will be stored.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_dword_data_read(aml_term_list_ctx_t* ctx, uint32_t* out);
 
@@ -59,7 +59,7 @@ uint64_t aml_dword_data_read(aml_term_list_ctx_t* ctx, uint32_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer to the qword value will be stored.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_qword_data_read(aml_term_list_ctx_t* ctx, uint64_t* out);
 
@@ -70,7 +70,7 @@ uint64_t aml_qword_data_read(aml_term_list_ctx_t* ctx, uint64_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer to the byte value will be stored.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_byte_const_read(aml_term_list_ctx_t* ctx, uint8_t* out);
 
@@ -81,7 +81,7 @@ uint64_t aml_byte_const_read(aml_term_list_ctx_t* ctx, uint8_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer to the word value will be stored.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_word_const_read(aml_term_list_ctx_t* ctx, uint16_t* out);
 
@@ -92,7 +92,7 @@ uint64_t aml_word_const_read(aml_term_list_ctx_t* ctx, uint16_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer to the dword value will be stored.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_dword_const_read(aml_term_list_ctx_t* ctx, uint32_t* out);
 
@@ -103,7 +103,7 @@ uint64_t aml_dword_const_read(aml_term_list_ctx_t* ctx, uint32_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer to the qword value will be stored.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_qword_const_read(aml_term_list_ctx_t* ctx, uint64_t* out);
 
@@ -116,7 +116,7 @@ uint64_t aml_qword_const_read(aml_term_list_ctx_t* ctx, uint64_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer to the object to store the result.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_const_obj_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
 
@@ -130,7 +130,7 @@ uint64_t aml_const_obj_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer to the object to store the result.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_string_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
 
@@ -143,7 +143,7 @@ uint64_t aml_string_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer to the object to store the result.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_revision_op_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
 
@@ -155,7 +155,7 @@ uint64_t aml_revision_op_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer to the object to store the result.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_computational_data_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
 
@@ -166,7 +166,7 @@ uint64_t aml_computational_data_read(aml_term_list_ctx_t* ctx, aml_object_t* out
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer to the integer to be filled with the number of elements.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_num_elements_read(aml_term_list_ctx_t* ctx, uint8_t* out);
 
@@ -179,7 +179,7 @@ uint64_t aml_num_elements_read(aml_term_list_ctx_t* ctx, uint8_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to the object to initialize with the read element.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_package_element_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
 
@@ -191,7 +191,7 @@ uint64_t aml_package_element_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
  * @param ctx The context of the TermList that this structure is part of.
  * @param package Pointer to the package to fill with the read elements.
  * @param end Pointer to the end of the PackageElementList.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_package_element_list_read(aml_term_list_ctx_t* ctx, aml_package_t* package, const uint8_t* end);
 
@@ -204,7 +204,7 @@ uint64_t aml_package_element_list_read(aml_term_list_ctx_t* ctx, aml_package_t* 
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer to the object to store the result.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_package_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
 
@@ -215,7 +215,7 @@ uint64_t aml_def_package_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer to the integer to be filled with the number of elements.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_var_num_elements_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
@@ -228,7 +228,7 @@ uint64_t aml_def_var_num_elements_read(aml_term_list_ctx_t* ctx, aml_uint_t* out
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer to the object to store the result.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_def_var_package_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
 
@@ -239,7 +239,7 @@ uint64_t aml_def_var_package_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer to the object to store the result.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_data_object_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
 
@@ -253,7 +253,7 @@ uint64_t aml_data_object_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Output pointer to the object to store the result.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_data_ref_object_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
 

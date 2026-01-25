@@ -6,47 +6,42 @@
 #include <kernel/proc/process.h>
 #include <kernel/sched/thread.h>
 
-uint64_t stack_pointer_init(stack_pointer_t* stack, uintptr_t maxAddress, uint64_t maxPages)
+bool stack_pointer_init(stack_pointer_t* stack, uintptr_t maxAddress, uint64_t maxPages)
 {
     if (stack == NULL || maxPages == 0 || !VMM_IS_PAGE_ALIGNED(maxAddress))
     {
-        errno = EINVAL;
-        return ERR;
+        return false;
     }
 
     stack->top = maxAddress;
     stack->bottom = stack->top - (maxPages * PAGE_SIZE);
     if (stack->bottom >= stack->top) // Overflow
     {
-        errno = EOVERFLOW;
-        return ERR;
+        return false;
     }
     stack->guardTop = stack->bottom;
     stack->guardBottom = stack->guardTop - (STACK_POINTER_GUARD_PAGES * PAGE_SIZE);
     if (stack->guardBottom >= stack->guardTop) // Overflow
     {
-        errno = EOVERFLOW;
-        return ERR;
+        return false;
     }
     stack->lastPageFault = 0;
 
-    return 0;
+    return true;
 }
 
-uint64_t stack_pointer_init_buffer(stack_pointer_t* stack, void* buffer, uint64_t pages)
+bool stack_pointer_init_buffer(stack_pointer_t* stack, void* buffer, uint64_t pages)
 {
     if (stack == NULL || buffer == NULL || pages == 0 || !VMM_IS_PAGE_ALIGNED(buffer))
     {
-        errno = EINVAL;
-        return ERR;
+        return false;
     }
 
     stack->top = (uintptr_t)buffer + pages * PAGE_SIZE;
     stack->bottom = (uintptr_t)buffer;
     if (stack->bottom >= stack->top) // Overflow
     {
-        errno = EOVERFLOW;
-        return ERR;
+        return false;
     }
     // No guard pages when using a buffer.
     stack->guardTop = stack->bottom;
@@ -55,7 +50,7 @@ uint64_t stack_pointer_init_buffer(stack_pointer_t* stack, void* buffer, uint64_
 
     memset(buffer, 0, pages * PAGE_SIZE);
 
-    return 0;
+    return true;
 }
 
 void stack_pointer_deinit(stack_pointer_t* stack, thread_t* thread)

@@ -6,7 +6,7 @@
 uint64_t arch_prctl(arch_prctl_t op, uintptr_t addr)
 {
     uint64_t result = _syscall_arch_prctl(op, addr);
-    if (result == ERR)
+    if (result == _FAIL)
     {
         errno = _syscall_errno();
     }

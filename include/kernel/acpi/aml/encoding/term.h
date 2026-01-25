@@ -59,7 +59,7 @@ aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedType
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the integer value of the TermArg.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_term_arg_read_integer(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
@@ -93,7 +93,7 @@ aml_package_t* aml_term_arg_read_package(aml_term_list_ctx_t* ctx);
  * An Object is defined as `Object := NameSpaceModifierObj | NamedObj`.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_object_read(aml_term_list_ctx_t* ctx);
 
@@ -103,7 +103,7 @@ uint64_t aml_object_read(aml_term_list_ctx_t* ctx);
  * A TermObj is defined as `TermObj := Object | StatementOpcode | ExpressionOpcode`.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx);
 
@@ -122,7 +122,7 @@ uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx);
  * @param end Pointer to the end of the TermList in the AML byte stream.
  * @param parentCtx The previous TermList context, or `NULL` if this is the top-level TermList, used to propagate stop
  * reasons.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* scope, const uint8_t* start, const uint8_t* end,
     aml_term_list_ctx_t* parentCtx);

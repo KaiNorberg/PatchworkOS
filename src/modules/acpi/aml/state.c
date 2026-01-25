@@ -28,11 +28,11 @@ uint64_t aml_state_init(aml_state_t* state, aml_object_t** args)
                     UNREF(state->args[k]);
                 }
                 errno = E2BIG;
-                return ERR;
+                return _FAIL;
             }
 
             aml_object_t* arg = aml_object_new();
-            if (arg == NULL || aml_arg_set(arg, args[argIndex]) == ERR)
+            if (arg == NULL || aml_arg_set(arg, args[argIndex]) == _FAIL)
             {
                 if (arg != NULL)
                 {
@@ -46,7 +46,7 @@ uint64_t aml_state_init(aml_state_t* state, aml_object_t** args)
                 {
                     UNREF(state->args[k]);
                 }
-                return ERR;
+                return _FAIL;
             }
 
             state->args[argIndex] = &arg->arg;
@@ -100,7 +100,7 @@ aml_object_t* aml_state_result_get(aml_state_t* state)
     if (state->result == NULL)
     {
         // The method never had any expressions evaluated or explicitly returned a value.
-        if (aml_integer_set(result, 0) == ERR)
+        if (aml_integer_set(result, 0) == _FAIL)
         {
             UNREF(result);
             return NULL;
@@ -109,7 +109,7 @@ aml_object_t* aml_state_result_get(aml_state_t* state)
         return result; // Transfer ownership
     }
 
-    if (aml_copy_object(state, state->result, result) == ERR)
+    if (aml_copy_object(state, state->result, result) == _FAIL)
     {
         UNREF(result);
         return NULL;

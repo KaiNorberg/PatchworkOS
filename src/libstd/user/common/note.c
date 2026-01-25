@@ -34,7 +34,7 @@ _NORETURN static void _note_kernel_handler(char* note)
         if (func != NULL)
         {
             uint64_t result = func(note);
-            if (result == ERR)
+            if (result == _FAIL)
             {
                 exits(note);
             }
@@ -67,7 +67,7 @@ _NORETURN static void _note_kernel_handler(char* note)
 
 void _note_init(void)
 {
-    if (notify(_note_kernel_handler) == ERR)
+    if (notify(_note_kernel_handler) == _FAIL)
     {
         exits("notify failed");
     }
@@ -84,7 +84,7 @@ uint64_t _note_handler_add(atnotify_func_t func)
         }
     }
 
-    return ERR;
+    return _FAIL;
 }
 
 void _note_handler_remove(atnotify_func_t func)

@@ -96,14 +96,14 @@ static uint64_t rtc_init(const char* deviceName)
     if (acpiCfg == NULL)
     {
         LOG_ERR("rtc failed to get ACPI device config for '%s'\n", deviceName);
-        return ERR;
+        return _FAIL;
     }
 
-    if (acpi_device_cfg_get_port(acpiCfg, 0, &addressPort) == ERR ||
-        acpi_device_cfg_get_port(acpiCfg, 1, &dataPort) == ERR)
+    if (acpi_device_cfg_get_port(acpiCfg, 0, &addressPort) == _FAIL ||
+        acpi_device_cfg_get_port(acpiCfg, 1, &dataPort) == _FAIL)
     {
         LOG_ERR("rtc device '%s' has invalid port resources\n", deviceName);
-        return ERR;
+        return _FAIL;
     }
 
     fadt_t* fadt = (fadt_t*)acpi_tables_lookup(FADT_SIGNATURE, sizeof(fadt_t), 0);
@@ -112,10 +112,10 @@ static uint64_t rtc_init(const char* deviceName)
         centuryRegister = fadt->century;
     }
 
-    if (clock_source_register(&source) == ERR)
+    if (clock_source_register(&source) == _FAIL)
     {
         LOG_ERR("failed to register RTC\n");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -128,10 +128,10 @@ uint64_t _module_procedure(const module_event_t* event)
     switch (event->type)
     {
     case MODULE_EVENT_DEVICE_ATTACH:
-        if (rtc_init(event->deviceAttach.name) == ERR)
+        if (rtc_init(event->deviceAttach.name) == _FAIL)
         {
             LOG_ERR("failed to initialize RTC\n");
-            return ERR;
+            return _FAIL;
         }
         break;
     default:

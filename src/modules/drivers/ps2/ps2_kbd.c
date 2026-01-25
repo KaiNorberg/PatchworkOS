@@ -11,7 +11,7 @@ static void ps2_kbd_irq(irq_func_data_t* data)
     ps2_kbd_t* kbd = data->data;
 
     uint64_t response = ps2_read_no_wait();
-    if (response == ERR)
+    if (response == _FAIL)
     {
         return;
     }
@@ -50,17 +50,17 @@ static void ps2_kbd_irq(irq_func_data_t* data)
 
 uint64_t ps2_kbd_init(ps2_device_info_t* info)
 {
-    if (ps2_device_sub_cmd(info->device, PS2_DEV_CMD_SET_SCANCODE_SET, PS2_SCAN_CODE_SET) == ERR)
+    if (ps2_device_sub_cmd(info->device, PS2_DEV_CMD_SET_SCANCODE_SET, PS2_SCAN_CODE_SET) == _FAIL)
     {
         LOG_ERR("failed to set PS/2 keyboard scan code set\n");
-        return ERR;
+        return _FAIL;
     }
 
     ps2_kbd_t* kbd = malloc(sizeof(ps2_kbd_t));
     if (kbd == NULL)
     {
         LOG_ERR("failed to allocate memory for PS/2 keyboard data\n");
-        return ERR;
+        return _FAIL;
     }
     kbd->flags = PS2_KBD_NONE;
     kbd->kbd = kbd_new(info->name);
@@ -68,7 +68,7 @@ uint64_t ps2_kbd_init(ps2_device_info_t* info)
     {
         free(kbd);
         LOG_ERR("failed to create PS/2 keyboard\n");
-        return ERR;
+        return _FAIL;
     }
 
     info->data = kbd;
@@ -82,13 +82,13 @@ uint64_t ps2_kbd_irq_register(ps2_device_info_t* info)
     {
         LOG_ERR("PS/2 keyboard data is NULL during IRQ registration\n");
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
-    if (irq_handler_register(info->irq, ps2_kbd_irq, kbd) == ERR)
+    if (irq_handler_register(info->irq, ps2_kbd_irq, kbd) == _FAIL)
     {
         LOG_ERR("failed to register PS/2 keyboard IRQ handler\n");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;

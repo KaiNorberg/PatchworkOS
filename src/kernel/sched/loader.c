@@ -48,7 +48,7 @@ void loader_exec(void)
     uintptr_t* addrs = NULL;
 
     pathname_t pathname;
-    if (pathname_init(&pathname, process->argv[0]) == ERR)
+    if (pathname_init(&pathname, process->argv[0]) == _FAIL)
     {
         goto cleanup;
     }
@@ -179,7 +179,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     if (argv == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     thread_t* thread = thread_current();
@@ -190,7 +190,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(ns);
 
@@ -200,15 +200,15 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
         childNs = namespace_new(ns);
         if (childNs == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
 
         if (!(flags & SPAWN_EMPTY_NS))
         {
-            if (namespace_copy(childNs, ns) == ERR)
+            if (namespace_copy(childNs, ns) == _FAIL)
             {
                 UNREF(childNs);
-                return ERR;
+                return _FAIL;
             }
         }
     }
@@ -222,34 +222,34 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
         process_new(atomic_load(&process->priority), flags & SPAWN_EMPTY_GROUP ? NULL : &process->group, childNs);
     if (child == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(child);
 
     thread_t* childThread = thread_new(child);
     if (childThread == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     char** argvCopy = NULL;
     uint64_t argc = 0;
-    if (thread_copy_from_user_string_array(thread, argv, &argvCopy, &argc) == ERR)
+    if (thread_copy_from_user_string_array(thread, argv, &argvCopy, &argc) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     if (argc == 0 || argvCopy[0] == NULL)
     {
         loader_strv_free(argvCopy, argc);
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
-    if (process_set_cmdline(child, argvCopy, argc) == ERR)
+    if (process_set_cmdline(child, argvCopy, argc) == _FAIL)
     {
         loader_strv_free(argvCopy, argc);
-        return ERR;
+        return _FAIL;
     }
 
     if (flags & SPAWN_SUSPEND)
@@ -261,28 +261,28 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, spawn_flags_t flags)
     {
         if (flags & SPAWN_STDIO_FDS)
         {
-            if (file_table_copy(&child->files, &process->files, 0, 3) == ERR)
+            if (file_table_copy(&child->files, &process->files, 0, 3) == _FAIL)
             {
                 loader_strv_free(argvCopy, argc);
-                return ERR;
+                return _FAIL;
             }
         }
         else
         {
-            if (file_table_copy(&child->files, &process->files, 0, CONFIG_MAX_FD) == ERR)
+            if (file_table_copy(&child->files, &process->files, 0, CONFIG_MAX_FD) == _FAIL)
             {
                 loader_strv_free(argvCopy, argc);
-                return ERR;
+                return _FAIL;
             }
         }
     }
 
     if (!(flags & SPAWN_EMPTY_ENV))
     {
-        if (env_copy(&child->env, &process->env) == ERR)
+        if (env_copy(&child->env, &process->env) == _FAIL)
         {
             loader_strv_free(argvCopy, argc);
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -311,9 +311,9 @@ SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)
     process_t* process = thread->process;
     space_t* space = &process->space;
 
-    if (space_check_access(space, entry, sizeof(uint64_t)) == ERR)
+    if (space_check_access(space, entry, sizeof(uint64_t)) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     // Dont check arg user space can use it however it wants
@@ -321,7 +321,7 @@ SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)
     thread_t* newThread = thread_new(process);
     if (newThread == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));

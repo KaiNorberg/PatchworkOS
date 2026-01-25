@@ -17,7 +17,7 @@
  *
  * @param src Pointer to the source object to copy from.
  * @param dest Pointer to the destination object to copy to, can be of type `AML_UNINITIALIZED`.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_copy_data_and_type(aml_object_t* src, aml_object_t* dest);
 
@@ -33,7 +33,7 @@ uint64_t aml_copy_data_and_type(aml_object_t* src, aml_object_t* dest);
  * @param state Pointer to the current AML state.
  * @param src Pointer to the source object to copy from.
  * @param dest Pointer to the destination object to copy to, can be of type `AML_UNINITIALIZED`.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_copy_object(aml_state_t* state, aml_object_t* src, aml_object_t* dest);
 

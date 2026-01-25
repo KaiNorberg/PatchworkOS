@@ -4,10 +4,10 @@
 
 uint64_t unmount(const char* mountpoint)
 {
-    if (_syscall_umount(mountpoint) == ERR)
+    if (_syscall_umount(mountpoint) == _FAIL)
     {
         errno = _syscall_errno();
-        return ERR;
+        return _FAIL;
     }
 
     return 0;

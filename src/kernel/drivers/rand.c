@@ -44,7 +44,7 @@ PERCPU_DEFINE_CTOR(rand_cpu_t, pcpu_rand)
     uint32_t test;
     for (uint64_t i = 0; i < 10; i++)
     {
-        if (rdrand_do(&test, 100) == ERR)
+        if (rdrand_do(&test, 100) == _FAIL)
         {
             LOG_WARN("cpu%d rdrand instruction failed, disabling\n", SELF->id);
             ctx->rdrandAvail = false;
@@ -75,9 +75,9 @@ uint64_t rand_gen(void* buffer, uint64_t size)
     while (remaining >= sizeof(uint32_t))
     {
         uint32_t value;
-        if (rdrand_do(&value, 100) == ERR)
+        if (rdrand_do(&value, 100) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         memcpy(ptr, &value, sizeof(uint32_t));
         ptr += sizeof(uint32_t);
@@ -87,9 +87,9 @@ uint64_t rand_gen(void* buffer, uint64_t size)
     if (remaining > 0)
     {
         uint32_t value;
-        if (rdrand_do(&value, 100) == ERR)
+        if (rdrand_do(&value, 100) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         memcpy(ptr, &value, remaining);
     }

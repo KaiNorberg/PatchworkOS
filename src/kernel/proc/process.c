@@ -143,7 +143,7 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
     process->status.buffer[0] = '\0';
 
     if (space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
-            SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY) == ERR)
+            SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY) == _FAIL)
     {
         cache_free(process);
         return NULL;
@@ -166,7 +166,7 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
     lock_init(&process->threads.lock);
     env_init(&process->env);
 
-    if (group_member_init(&process->group, group) == ERR)
+    if (group_member_init(&process->group, group) == _FAIL)
     {
         process_free(process);
         return NULL;
@@ -175,7 +175,7 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
     lock_acquire(&processesLock);
 
     map_key_t mapKey = map_key_uint64(process->id);
-    if (map_insert(&pidMap, &mapKey, &process->mapEntry) == ERR)
+    if (map_insert(&pidMap, &mapKey, &process->mapEntry) == _FAIL)
     {
         lock_release(&processesLock);
         process_free(process);
@@ -296,7 +296,7 @@ uint64_t process_set_cmdline(process_t* process, char** argv, uint64_t argc)
     if (process == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     if (argv == NULL || argc == 0)
@@ -310,7 +310,7 @@ uint64_t process_set_cmdline(process_t* process, char** argv, uint64_t argc)
     if (newArgv == NULL)
     {
         errno = ENOMEM;
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t i = 0;
@@ -330,7 +330,7 @@ uint64_t process_set_cmdline(process_t* process, char** argv, uint64_t argc)
             }
             free(newArgv);
             errno = ENOMEM;
-            return ERR;
+            return _FAIL;
         }
         memcpy(newArgv[i], argv[i], len);
     }

@@ -13,9 +13,10 @@
 
 static cache_slab_t* cache_slab_new(cache_t* cache)
 {
-    cache_slab_t* slab = vmm_alloc(NULL, NULL, CACHE_SLAB_PAGES * PAGE_SIZE, CACHE_SLAB_PAGES * PAGE_SIZE,
+    cache_slab_t* slab = NULL;
+    status_t status = vmm_alloc(NULL, (void*)&slab, CACHE_SLAB_PAGES * PAGE_SIZE, CACHE_SLAB_PAGES * PAGE_SIZE,
         PML_PRESENT | PML_WRITE | PML_GLOBAL, VMM_ALLOC_FAIL_IF_MAPPED);
-    if (slab == NULL)
+    if (IS_ERR(status))
     {
         return NULL;
     }

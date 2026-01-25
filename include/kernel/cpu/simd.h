@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/status.h>
 
 /**
  * @brief SIMD context management
@@ -23,7 +24,7 @@ typedef struct
     uint8_t* buffer;
 } simd_ctx_t;
 
-uint64_t simd_ctx_init(simd_ctx_t* ctx);
+status_t simd_ctx_init(simd_ctx_t* ctx);
 
 void simd_ctx_deinit(simd_ctx_t* ctx);
 

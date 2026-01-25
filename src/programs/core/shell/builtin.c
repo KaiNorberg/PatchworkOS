@@ -41,10 +41,10 @@ static uint64_t builtin_cd(uint64_t argc, const char** argv)
         return 0;
     }
 
-    if (chdir(argv[1]) == ERR)
+    if (chdir(argv[1]) == _FAIL)
     {
         fprintf(stderr, "cd: %s\n", strerror(errno));
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -114,5 +114,5 @@ uint64_t builtin_execute(uint64_t argc, const char** argv)
         }
     }
 
-    return ERR;
+    return _FAIL;
 }

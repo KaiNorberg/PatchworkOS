@@ -182,7 +182,7 @@ void map_deinit(map_t* map);
  * @param map The map to insert into.
  * @param key The key to insert.
  * @param value The value to insert.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t map_insert(map_t* map, const map_key_t* key, map_entry_t* value);
 
@@ -194,7 +194,7 @@ uint64_t map_insert(map_t* map, const map_key_t* key, map_entry_t* value);
  * @param map The map to replace in.
  * @param key The key to replace.
  * @param value The value to replace.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t map_replace(map_t* map, const map_key_t* key, map_entry_t* entry);
 
@@ -283,7 +283,7 @@ void map_clear(map_t* map);
  *
  * @param map The map to reserve space in.
  * @param minCapacity The minimum capacity to reserve.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t map_reserve(map_t* map, uint64_t minCapacity);
 

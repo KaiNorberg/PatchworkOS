@@ -58,7 +58,7 @@ static uint64_t mount_stack_push(mount_stack_t* stack, mount_t* mount)
     if (stack->count >= ARRAY_SIZE(stack->mounts))
     {
         errno = ENOMEM;
-        return ERR;
+        return _FAIL;
     }
 
     stack->mounts[stack->count] = REF(mount);
@@ -91,9 +91,9 @@ static uint64_t mount_stack_init(namespace_t* ns, mount_stack_t* stack, map_key_
     map_entry_init(&stack->mapEntry);
     stack->count = 0;
 
-    if (map_insert(&ns->mountMap, key, &stack->mapEntry) == ERR)
+    if (map_insert(&ns->mountMap, key, &stack->mapEntry) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     list_push_back(&ns->stacks, &stack->entry);
     return 0;
@@ -133,9 +133,9 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount)
 {
     if (MOUNT_IS_ROOT(mount))
     {
-        if (mount_stack_push(&ns->root, mount) == ERR)
+        if (mount_stack_push(&ns->root, mount) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         goto propagate;
     }
@@ -148,19 +148,19 @@ static uint64_t namespace_add(namespace_t* ns, mount_t* mount)
         if (stack == NULL)
         {
             errno = ENOMEM;
-            return ERR;
+            return _FAIL;
         }
 
-        if (mount_stack_init(ns, stack, &key) == ERR)
+        if (mount_stack_init(ns, stack, &key) == _FAIL)
         {
             free(stack);
-            return ERR;
+            return _FAIL;
         }
     }
 
-    if (mount_stack_push(stack, mount) == ERR)
+    if (mount_stack_push(stack, mount) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
 propagate:
@@ -171,9 +171,9 @@ propagate:
         {
             RWLOCK_WRITE_SCOPE(&child->lock);
 
-            if (namespace_add(child, mount) == ERR)
+            if (namespace_add(child, mount) == _FAIL)
             {
-                return ERR;
+                return _FAIL;
             }
         }
     }
@@ -266,7 +266,7 @@ namespace_t* namespace_new(namespace_t* parent)
     map_init(&ns->mountMap);
 
     map_key_t key = root_key();
-    if (mount_stack_init(ns, &ns->root, &key) == ERR)
+    if (mount_stack_init(ns, &ns->root, &key) == _FAIL)
     {
         free(ns);
         return NULL;
@@ -289,7 +289,7 @@ uint64_t namespace_copy(namespace_t* dest, namespace_t* src)
     if (dest == NULL || src == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     RWLOCK_WRITE_SCOPE(&dest->lock);
@@ -305,9 +305,9 @@ uint64_t namespace_copy(namespace_t* dest, namespace_t* src)
                 continue;
             }
 
-            if (namespace_add(dest, stack->mounts[i]) == ERR)
+            if (namespace_add(dest, stack->mounts[i]) == _FAIL)
             {
-                return ERR;
+                return _FAIL;
             }
         }
     }
@@ -415,7 +415,7 @@ mount_t* namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, cons
         return NULL;
     }
 
-    if (namespace_add(ns, mount) == ERR)
+    if (namespace_add(ns, mount) == _FAIL)
     {
         UNREF(mount);
         return NULL;
@@ -432,7 +432,7 @@ mount_t* namespace_bind(namespace_t* ns, path_t* target, path_t* source, mode_t 
         return NULL;
     }
 
-    if (mode_check(&mode, source->mount->mode) == ERR)
+    if (mode_check(&mode, source->mount->mode) == _FAIL)
     {
         return NULL;
     }
@@ -446,7 +446,7 @@ mount_t* namespace_bind(namespace_t* ns, path_t* target, path_t* source, mode_t 
         return NULL;
     }
 
-    if (namespace_add(ns, mount) == ERR)
+    if (namespace_add(ns, mount) == _FAIL)
     {
         UNREF(mount);
         errno = ENOMEM;
@@ -522,49 +522,49 @@ SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* mountpoint, const char* fs, cons
     process_t* process = thread->process;
 
     pathname_t mountname;
-    if (thread_copy_from_user_pathname(thread, &mountname, mountpoint) == ERR)
+    if (thread_copy_from_user_pathname(thread, &mountname, mountpoint) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(ns);
 
     path_t mountpath = cwd_get(&process->cwd, ns);
     PATH_DEFER(&mountpath);
 
-    if (path_walk(&mountpath, &mountname, ns) == ERR)
+    if (path_walk(&mountpath, &mountname, ns) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     char fsCopy[MAX_PATH];
-    if (thread_copy_from_user_string(thread, fsCopy, fs, MAX_PATH) == ERR)
+    if (thread_copy_from_user_string(thread, fsCopy, fs, MAX_PATH) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     char optionsCopy[MAX_PATH];
-    if (options != NULL && thread_copy_from_user_string(thread, optionsCopy, options, MAX_PATH) == ERR)
+    if (options != NULL && thread_copy_from_user_string(thread, optionsCopy, options, MAX_PATH) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     filesystem_t* filesystem = filesystem_get_by_path(fsCopy, process);
     if (filesystem == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     mount_t* mount =
         namespace_mount(ns, &mountpath, filesystem, options != NULL ? optionsCopy : NULL, mountname.mode, NULL);
     if (mount == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF(mount);
     return 0;
@@ -576,24 +576,24 @@ SYSCALL_DEFINE(SYS_UNMOUNT, uint64_t, const char* mountpoint)
     process_t* process = thread->process;
 
     pathname_t mountname;
-    if (thread_copy_from_user_pathname(thread, &mountname, mountpoint) == ERR)
+    if (thread_copy_from_user_pathname(thread, &mountname, mountpoint) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(ns);
 
     path_t mountpath = cwd_get(&process->cwd, ns);
     PATH_DEFER(&mountpath);
 
-    if (path_walk(&mountpath, &mountname, ns) == ERR)
+    if (path_walk(&mountpath, &mountname, ns) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     namespace_unmount(ns, mountpath.mount, mountname.mode);
@@ -606,37 +606,37 @@ SYSCALL_DEFINE(SYS_BIND, uint64_t, const char* mountpoint, fd_t source)
     process_t* process = thread->process;
 
     pathname_t mountname;
-    if (thread_copy_from_user_pathname(thread, &mountname, mountpoint) == ERR)
+    if (thread_copy_from_user_pathname(thread, &mountname, mountpoint) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(ns);
 
     path_t mountpath = cwd_get(&process->cwd, ns);
     PATH_DEFER(&mountpath);
 
-    if (path_walk(&mountpath, &mountname, ns) == ERR)
+    if (path_walk(&mountpath, &mountname, ns) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     file_t* sourceFile = file_table_get(&process->files, source);
     if (sourceFile == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(sourceFile);
 
     mount_t* bind = namespace_bind(ns, &mountpath, &sourceFile->path, mountname.mode);
     if (bind == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF(bind);
     return 0;

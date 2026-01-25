@@ -74,6 +74,6 @@ uint64_t aml_get_access_size(aml_bit_size_t bitSize, aml_access_type_t accessTyp
     }
     default:
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 }

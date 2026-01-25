@@ -7,12 +7,12 @@
 int main(void)
 {
     fd_t klog = open("/dev/klog");
-    if (klog == ERR)
+    if (klog == _FAIL)
     {
         printf("taskbar: failed to open klog\n");
         return EXIT_FAILURE;
     }
-    if (dup2(klog, STDOUT_FILENO) == ERR || dup2(klog, STDERR_FILENO) == ERR)
+    if (dup2(klog, STDOUT_FILENO) == _FAIL || dup2(klog, STDERR_FILENO) == _FAIL)
     {
         printf("taskbar: failed to redirect stdout/stderr to klog\n");
         close(klog);
@@ -36,7 +36,7 @@ int main(void)
     }
 
     event_t event = {0};
-    while (display_next(disp, &event, CLOCKS_NEVER) != ERR)
+    while (display_next(disp, &event, CLOCKS_NEVER) != _FAIL)
     {
         display_dispatch(disp, &event);
     }

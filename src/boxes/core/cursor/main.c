@@ -31,12 +31,12 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 int main(void)
 {
     fd_t klog = open("/dev/klog");
-    if (klog == ERR)
+    if (klog == _FAIL)
     {
         printf("cursor: failed to open klog\n");
         return EXIT_FAILURE;
     }
-    if (dup2(klog, STDOUT_FILENO) == ERR || dup2(klog, STDERR_FILENO) == ERR)
+    if (dup2(klog, STDOUT_FILENO) == _FAIL || dup2(klog, STDERR_FILENO) == _FAIL)
     {
         printf("cursor: failed to redirect stdout/stderr to klog\n");
         close(klog);
@@ -71,7 +71,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    if (window_set_visible(win, true) == ERR)
+    if (window_set_visible(win, true) == _FAIL)
     {
         printf("cursor: failed to show window\n");
         window_free(win);
@@ -80,7 +80,7 @@ int main(void)
     }
 
     event_t event = {0};
-    while (display_next(disp, &event, CLOCKS_NEVER) != ERR)
+    while (display_next(disp, &event, CLOCKS_NEVER) != _FAIL)
     {
         display_dispatch(disp, &event);
     }

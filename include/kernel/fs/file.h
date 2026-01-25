@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <sys/fs.h>
 #include <sys/proc.h>
+#include <sys/status.h>
 
 typedef struct wait_queue wait_queue_t;
 
@@ -52,15 +53,14 @@ typedef struct file
  */
 typedef struct file_ops
 {
-    uint64_t (*open)(file_t* file);
-    uint64_t (*open2)(file_t* files[2]);
+    status_t (*open)(file_t* file);
+    status_t (*open2)(file_t* files[2]);
     void (*close)(file_t* file);
-    size_t (*read)(file_t* file, void* buffer, size_t count, size_t* offset);
-    size_t (*write)(file_t* file, const void* buffer, size_t count, size_t* offset);
-    size_t (*seek)(file_t* file, ssize_t offset, seek_origin_t origin);
-    uint64_t (*ioctl)(file_t* file, uint64_t request, void* argp, size_t size);
-    wait_queue_t* (*poll)(file_t* file, poll_events_t* revents);
-    void* (*mmap)(file_t* file, void* address, size_t length, size_t* offset, pml_flags_t flags);
+    status_t (*read)(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead);
+    status_t (*write)(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten);
+    status_t (*seek)(file_t* file, ssize_t offset, seek_origin_t origin, size_t* newPos);
+    status_t (*poll)(file_t* file, poll_events_t* revents, wait_queue_t** queue);
+    status_t (*mmap)(file_t* file, void** address, size_t length, size_t* offset, pml_flags_t flags);
 } file_ops_t;
 
 /**
@@ -84,11 +84,7 @@ typedef struct poll_file
  * @param path The path of the file.
  * @param mode The mode with which the file was opened, if no permissions are specified the maximum allowed permissions
  * from the mount are used.
- * @return On success, the new file. On failure, returns `NULL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EACCES`: The requested mode exceeds the maximum allowed permissions.
- * - `ENOENT`: The dentry of the path is negative.
- * - `ENOMEM`: Out of memory.
+ * @return On success, a pointer to the allocated file. On failure, `NULL`.
  */
 file_t* file_new(const path_t* path, mode_t mode);
 
@@ -99,6 +95,6 @@ file_t* file_new(const path_t* path, mode_t mode);
  *
  * Used by setting the file ops seek to this function.
  */
-size_t file_generic_seek(file_t* file, ssize_t offset, seek_origin_t origin);
+status_t file_generic_seek(file_t* file, ssize_t offset, seek_origin_t origin, size_t* newPos);
 
 /** @} */

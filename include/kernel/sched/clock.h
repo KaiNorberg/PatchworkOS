@@ -43,7 +43,7 @@ typedef struct
  * @brief Register a system timer source.
  *
  * @param source The timer source to register.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `ENOSPC`: No more timer sources can be registered.
  */

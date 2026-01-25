@@ -47,7 +47,7 @@ typedef uint16_t port_t;
  * @param alignment The alignment of the I/O ports to reserve.
  * @param length The amount of contiguous I/O ports to reserve.
  * @param owner A string identifying the owner of the reservation, for debugging purposes, can be `NULL`.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `EOVERFLOW`: The requested range overflows.
  * - `ENOSPC`: No suitable range of I/O ports available.

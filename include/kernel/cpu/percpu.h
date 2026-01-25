@@ -159,7 +159,7 @@ void percpu_init(cpu_t* cpu);
  * @brief Allocates a percpu variable.
  *
  * @param size The size of the percpu variable.
- * @return The offset into the `GS` segment register, or `ERR` on failure.
+ * @return The offset into the `GS` segment register, or `_FAIL` on failure.
  */
 percpu_t percpu_alloc(size_t size);
 

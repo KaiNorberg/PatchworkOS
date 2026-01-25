@@ -15,7 +15,7 @@ uint64_t _exit_stack_push(void (*func)(void))
 {
     if (_length == _EXIT_STACK_SIZE)
     {
-        return ERR;
+        return _FAIL;
     }
     else
     {

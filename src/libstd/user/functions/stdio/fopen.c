@@ -40,7 +40,7 @@ FILE* fopen(const char* _RESTRICT filename, const char* _RESTRICT mode)
     }
 
     fd_t fd = open(F("%s%s", filename, _flags_to_string(flags)));
-    if (fd == ERR)
+    if (fd == _FAIL)
     {
         return NULL;
     }
@@ -53,7 +53,7 @@ FILE* fopen(const char* _RESTRICT filename, const char* _RESTRICT mode)
         return NULL;
     }
 
-    if (_file_init(stream, fd, flags | _FILE_FULLY_BUFFERED, NULL, BUFSIZ) == ERR)
+    if (_file_init(stream, fd, flags | _FILE_FULLY_BUFFERED, NULL, BUFSIZ) == _FAIL)
     {
         errno = ENOMEM;
         close(fd);

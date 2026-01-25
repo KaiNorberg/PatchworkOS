@@ -13,6 +13,7 @@
 #include <kernel/sync/mutex.h>
 #include <kernel/utils/ref.h>
 
+#include <sys/status.h>
 #include <errno.h>
 #include <stdlib.h>
 
@@ -39,27 +40,9 @@ static cache_t cache = CACHE_CREATE(cache, "file", sizeof(file_t), CACHE_LINE, N
 
 file_t* file_new(const path_t* path, mode_t mode)
 {
-    if (path == NULL)
-    {
-        errno = EINVAL;
-        return NULL;
-    }
-
-    if (mode_check(&mode, path->mount->mode) == ERR)
-    {
-        return NULL;
-    }
-
-    if (!DENTRY_IS_POSITIVE(path->dentry))
-    {
-        errno = ENOENT;
-        return NULL;
-    }
-
     file_t* file = cache_alloc(&cache);
     if (file == NULL)
     {
-        errno = ENOMEM;
         return NULL;
     }
 
@@ -73,27 +56,30 @@ file_t* file_new(const path_t* path, mode_t mode)
     return file;
 }
 
-size_t file_generic_seek(file_t* file, ssize_t offset, seek_origin_t origin)
+status_t file_generic_seek(file_t* file, ssize_t offset, seek_origin_t origin, size_t* newPos)
 {
     MUTEX_SCOPE(&file->vnode->mutex);
 
-    size_t newPos;
+    size_t pos;
     switch (origin)
     {
     case SEEK_SET:
-        newPos = offset;
+        pos = offset;
         break;
     case SEEK_CUR:
-        newPos = file->pos + offset;
+        pos = file->pos + offset;
         break;
     case SEEK_END:
-        newPos = file->vnode->size + offset;
+        pos = file->vnode->size + offset;
         break;
     default:
-        errno = EINVAL;
-        return ERR;
+        return ERR(IO, INVAL);
     }
 
-    file->pos = newPos;
-    return newPos;
+    file->pos = pos;
+    if (newPos != NULL)
+    {
+        *newPos = pos;
+    }
+    return OK;
 }

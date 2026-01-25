@@ -40,7 +40,7 @@ static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_
         {
             printf("startmenu: failed to allocate start menu private data\n");
             errno = ENOMEM;
-            return ERR;
+            return _FAIL;
         }
         menu->win = win;
         menu->taskbar = element_get_private(elem);
@@ -88,7 +88,7 @@ static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_
             start_menu_close(win);
 
             const char* argv[] = {entries[event->libAction.source].path, NULL};
-            if (spawn(argv, SPAWN_STDIO_FDS | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS) == ERR)
+            if (spawn(argv, SPAWN_STDIO_FDS | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS) == _FAIL)
             {
                 char buffer[MAX_PATH];
                 sprintf(buffer, "Failed to spawn (%s)!", entries[event->libAction.source].path);
@@ -142,14 +142,14 @@ static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_
         uint64_t height = RECT_HEIGHT(&rect);
         rect.top = currentY;
         rect.bottom = currentY + height;
-        if (window_move(win, &rect) == ERR)
+        if (window_move(win, &rect) == _FAIL)
         {
             printf("startmenu: failed to move window during animation (%s)\n", strerror(errno));
         }
 
         if (isAnimComplete)
         {
-            if (window_set_timer(win, TIMER_NONE, CLOCKS_NEVER) == ERR)
+            if (window_set_timer(win, TIMER_NONE, CLOCKS_NEVER) == _FAIL)
             {
                 printf("startmenu: failed to disable timer (%s)\n", strerror(errno));
             }
@@ -186,7 +186,7 @@ window_t* start_menu_new(window_t* taskbar, display_t* disp)
         return NULL;
     }
 
-    if (window_set_visible(win, true) == ERR)
+    if (window_set_visible(win, true) == _FAIL)
     {
         window_free(win);
         return NULL;

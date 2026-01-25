@@ -30,7 +30,7 @@ static void interactive_sigint_handler(int sig)
 static void interactive_prompt(void)
 {
     char cwd[MAX_PATH] = {0};
-    if (readfile("/proc/self/cwd", cwd, MAX_PATH - 1, 0) == ERR)
+    if (readfile("/proc/self/cwd", cwd, MAX_PATH - 1, 0) == _FAIL)
     {
         strcpy(cwd, "?");
     }
@@ -49,7 +49,7 @@ static void interactive_execute(void)
     history_push(&history, buffer);
 
     pipeline_t pipeline;
-    if (pipeline_init(&pipeline, buffer, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO) == ERR)
+    if (pipeline_init(&pipeline, buffer, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO) == _FAIL)
     {
         interactive_prompt();
         return;
@@ -213,7 +213,7 @@ static void interactive_handle_input(const char* input, uint64_t length)
     for (uint64_t i = 0; i < length; i++)
     {
         ansi_result_t result;
-        if (ansi_parse(&ansi, input[i], &result) == ERR)
+        if (ansi_parse(&ansi, input[i], &result) == _FAIL)
         {
             continue;
         }
@@ -248,7 +248,7 @@ void interactive_shell(void)
     {
         char buffer[MAX_PATH];
         size_t readCount = RETRY_EINTR(read(STDIN_FILENO, buffer, MAX_PATH));
-        if (readCount == ERR)
+        if (readCount == _FAIL)
         {
             printf("shell: failed to read input (%s)\n", strerror(errno));
             exit(EXIT_FAILURE);

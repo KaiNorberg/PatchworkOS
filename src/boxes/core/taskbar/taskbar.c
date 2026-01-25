@@ -139,10 +139,10 @@ static uint64_t taskbar_update_clock(element_t* elem)
         timeData.tm_mon + 1, timeData.tm_mday);
     element_t* clockLabel = element_find(elem, CLOCK_LABEL_ID);
 
-    if (element_set_text(clockLabel, buffer) == ERR)
+    if (element_set_text(clockLabel, buffer) == _FAIL)
     {
         printf("taskbar: failed to update clock label\n");
-        return ERR;
+        return _FAIL;
     }
     element_redraw(clockLabel, false);
 
@@ -163,22 +163,22 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
         if (button_new(elem, START_ID, &startRect, "Start", ELEMENT_TOGGLE | ELEMENT_NO_OUTLINE) == NULL)
         {
             printf("taskbar: failed to create start button\n");
-            return ERR;
+            return _FAIL;
         }
 
         rect_t clockRect = taskbar_get_clock_rect(elem);
         if (label_new(elem, CLOCK_LABEL_ID, &clockRect, "0", ELEMENT_NONE) == NULL)
         {
             printf("taskbar: failed to create clock label\n");
-            return ERR;
+            return _FAIL;
         }
 
         window_set_timer(win, TIMER_REPEAT, CLOCKS_PER_SEC * 10);
 
-        if (taskbar_update_clock(elem) == ERR)
+        if (taskbar_update_clock(elem) == _FAIL)
         {
             printf("taskbar: failed to update clock\n");
-            return ERR;
+            return _FAIL;
         }
 
         taskbar_t* taskbar = malloc(sizeof(taskbar_t));
@@ -186,7 +186,7 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
         {
             printf("taskbar: failed to allocate taskbar private data\n");
             errno = ENOMEM;
-            return ERR;
+            return _FAIL;
         }
         taskbar->win = win;
         taskbar->disp = window_get_display(win);
@@ -194,7 +194,7 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
         if (taskbar->startMenu == NULL)
         {
             free(taskbar);
-            return ERR;
+            return _FAIL;
         }
         list_init(&taskbar->entries);
         taskbar->entryCount = 0;
@@ -226,9 +226,9 @@ static uint64_t taskbar_procedure(window_t* win, element_t* elem, const event_t*
     break;
     case EVENT_TIMER:
     {
-        if (taskbar_update_clock(elem) == ERR)
+        if (taskbar_update_clock(elem) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
     break;
@@ -357,8 +357,8 @@ window_t* taskbar_new(display_t* disp)
     display_get_screen(disp, &rect, 0);
     rect.top = rect.bottom - theme_global_get()->panelSize;
 
-    if (display_subscribe(disp, EVENT_GLOBAL_ATTACH) == ERR || display_subscribe(disp, EVENT_GLOBAL_DETACH) == ERR ||
-        display_subscribe(disp, EVENT_GLOBAL_REPORT) == ERR || display_subscribe(disp, EVENT_GLOBAL_KBD) == ERR)
+    if (display_subscribe(disp, EVENT_GLOBAL_ATTACH) == _FAIL || display_subscribe(disp, EVENT_GLOBAL_DETACH) == _FAIL ||
+        display_subscribe(disp, EVENT_GLOBAL_REPORT) == _FAIL || display_subscribe(disp, EVENT_GLOBAL_KBD) == _FAIL)
     {
         printf("taskbar: failed to subscribe to global events\n");
         return NULL;
@@ -371,7 +371,7 @@ window_t* taskbar_new(display_t* disp)
         return NULL;
     }
 
-    if (window_set_visible(win, true) == ERR)
+    if (window_set_visible(win, true) == _FAIL)
     {
         printf("taskbar: failed to show taskbar window\n");
         window_free(win);

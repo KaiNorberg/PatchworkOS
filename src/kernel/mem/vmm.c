@@ -51,7 +51,7 @@ void vmm_init(void)
     const boot_gop_t* gop = &bootInfo->gop;
     const boot_kernel_t* kernel = &bootInfo->kernel;
 
-    if (space_init(&kernelSpace, VMM_KERNEL_HEAP_MIN, VMM_KERNEL_HEAP_MAX, SPACE_USE_PMM_BITMAP) == ERR)
+    if (IS_FAIL(space_init(&kernelSpace, VMM_KERNEL_HEAP_MIN, VMM_KERNEL_HEAP_MAX, SPACE_USE_PMM_BITMAP)))
     {
         panic(NULL, "Failed to initialize kernel address space");
     }
@@ -83,8 +83,8 @@ void vmm_init(void)
             panic(NULL, "Memory descriptor %d has invalid physical address %p", i, desc->PhysicalStart);
         }
 
-        if (page_table_map(&kernelSpace.pageTable, (void*)desc->VirtualStart, desc->PhysicalStart, desc->NumberOfPages,
-                PML_WRITE | PML_GLOBAL | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
+        if (!page_table_map(&kernelSpace.pageTable, (void*)desc->VirtualStart, desc->PhysicalStart, desc->NumberOfPages,
+                PML_WRITE | PML_GLOBAL | PML_PRESENT, PML_CALLBACK_NONE))
         {
             panic(NULL, "Failed to map memory descriptor %d (phys=%p-%p virt=%p)", i, desc->PhysicalStart,
                 desc->PhysicalStart + desc->NumberOfPages * PAGE_SIZE, desc->VirtualStart);
@@ -98,16 +98,16 @@ void vmm_init(void)
 
     LOG_INFO("kernel virt=[%p-%p] phys=[%p-%p]\n", minVaddr, maxVaddr, (uintptr_t)kernel->physAddr,
         (uintptr_t)kernel->physAddr + kernelPageAmount * PAGE_SIZE);
-    if (page_table_map(&kernelSpace.pageTable, (void*)minVaddr, kernel->physAddr, kernelPageAmount,
-            PML_WRITE | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
+    if (!page_table_map(&kernelSpace.pageTable, (void*)minVaddr, kernel->physAddr, kernelPageAmount,
+            PML_WRITE | PML_PRESENT, PML_CALLBACK_NONE))
     {
         panic(NULL, "Failed to map kernel memory");
     }
 
     LOG_INFO("GOP    virt=[%p-%p] phys=[%p-%p]\n", gop->virtAddr, gop->virtAddr + gop->size, gop->physAddr,
         gop->physAddr + gop->size);
-    if (page_table_map(&kernelSpace.pageTable, (void*)gop->virtAddr, gop->physAddr, BYTES_TO_PAGES(gop->size),
-            PML_WRITE | PML_GLOBAL | PML_PRESENT, PML_CALLBACK_NONE) == ERR)
+    if (!page_table_map(&kernelSpace.pageTable, (void*)gop->virtAddr, gop->physAddr, BYTES_TO_PAGES(gop->size),
+            PML_WRITE | PML_GLOBAL | PML_PRESENT, PML_CALLBACK_NONE))
     {
         panic(NULL, "Failed to map GOP memory");
     }
@@ -140,6 +140,80 @@ pml_flags_t vmm_prot_to_flags(prot_t prot)
     }
 }
 
+static pml_callback_id_t vmm_alloc_callback(space_t* space, size_t pageAmount, space_callback_func_t func, void* data)
+{
+    if (space == NULL)
+    {
+        return PML_MAX_CALLBACK;
+    }
+
+    pml_callback_id_t callbackId = bitmap_find_first_clear(&space->callbackBitmap, 0, PML_MAX_CALLBACK);
+    if (callbackId == PML_MAX_CALLBACK)
+    {
+        return PML_MAX_CALLBACK;
+    }
+
+    if (callbackId >= space->callbacksLength)
+    {
+        space_callback_t* newCallbacks = malloc(sizeof(space_callback_t) * (callbackId + 1));
+        if (newCallbacks == NULL)
+        {
+            return PML_MAX_CALLBACK;
+        }
+
+        if (space->callbacks != NULL)
+        {
+            memcpy(newCallbacks, space->callbacks, sizeof(space_callback_t) * space->callbacksLength);
+            free(space->callbacks);
+        }
+        memset(&newCallbacks[space->callbacksLength], 0,
+            sizeof(space_callback_t) * (callbackId + 1 - space->callbacksLength));
+
+        space->callbacks = newCallbacks;
+        space->callbacksLength = callbackId + 1;
+    }
+
+    bitmap_set(&space->callbackBitmap, callbackId);
+    space_callback_t* callback = &space->callbacks[callbackId];
+    callback->func = func;
+    callback->data = data;
+    callback->pageAmount = pageAmount;
+    return callbackId;
+}
+
+static void vmm_free_callback(space_t* space, pml_callback_id_t callbackId)
+{
+    bitmap_clear(&space->callbackBitmap, callbackId);
+}
+
+static void* vmm_find_free_region(space_t* space, size_t pageAmount, size_t alignment)
+{
+    void* addr;
+    if (page_table_find_unmapped_region(&space->pageTable, space->freeAddress, space->endAddress,
+            pageAmount, alignment, &addr))
+    {
+        space->freeAddress = (uintptr_t)addr + (pageAmount * PAGE_SIZE);
+        assert(page_table_is_unmapped(&space->pageTable, addr, pageAmount));
+        return addr;
+    }
+
+    if (page_table_find_unmapped_region(&space->pageTable, space->startAddress, space->freeAddress,
+            pageAmount, alignment, &addr))
+    {
+        assert(page_table_is_unmapped(&space->pageTable, addr, pageAmount));
+        return addr;
+    }
+
+    return NULL;
+}
+
+static void vmm_align_region(void** addr, size_t* length)
+{
+    void* aligned = (void*)ROUND_DOWN(*addr, PAGE_SIZE);
+    *length += ((uintptr_t)*addr - (uintptr_t)aligned);
+    *addr = aligned;
+}
+
 // Handles the logic of unmapping with a shootdown, should be called with the spaces lock acquired.
 // We need to make sure that any underlying physical pages owned by the page table are freed after every CPU
 // has invalidated their TLBs.
@@ -150,13 +224,22 @@ static inline void vmm_page_table_unmap_with_shootdown(space_t* space, void* vir
     page_table_clear(&space->pageTable, virtAddr, pageAmount);
 }
 
-void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment, pml_flags_t pmlFlags,
+status_t vmm_alloc(space_t* space, void** addr, size_t length, size_t alignment, pml_flags_t pmlFlags,
     vmm_alloc_flags_t allocFlags)
 {
-    if (length == 0 || !(pmlFlags & PML_PRESENT))
+    if (addr == NULL ||length == 0 || !(pmlFlags & PML_PRESENT))
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(MMU, INVAL);
+    }
+
+    if (*addr + length > *addr)
+    {
+        return ERR(MMU, OVERFLOW);
+    }
+
+    if (pmlFlags & PML_USER && (*addr < (void*)VMM_USER_SPACE_MIN || *addr + length > (void*)VMM_USER_SPACE_MAX))
+    {
+        return ERR(MMU, ACCESS);
     }
 
     if (space == NULL)
@@ -164,41 +247,57 @@ void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment,
         space = vmm_kernel_space_get();
     }
 
-    space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, PHYS_ADDR_INVALID, length, alignment, pmlFlags | PML_OWNED) ==
-        ERR)
+    LOCK_SCOPE(&space->lock);
+
+    size_t pageAmount;
+    if (*addr == NULL)
     {
-        return NULL;
+        pageAmount = BYTES_TO_PAGES(length);
+        *addr = vmm_find_free_region(space, pageAmount, alignment);
+        if (*addr == NULL)
+        {
+            return ERR(MMU, NOSPACE);
+        }
+    }
+    else
+    {
+        vmm_align_region(addr, &length);
+        pageAmount = BYTES_TO_PAGES(length);
+
+        if ((uintptr_t)addr % alignment != 0)
+        {
+            return ERR(MMU, ALIGN);
+        }
     }
 
-    if (page_table_is_pinned(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
+    if (page_table_is_pinned(&space->pageTable, *addr, pageAmount))
     {
-        return space_mapping_end(space, &mapping, EBUSY);
+        return ERR(MMU, PINNED);
     }
 
-    if (!page_table_is_unmapped(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
+    if (!page_table_is_unmapped(&space->pageTable, *addr, pageAmount))
     {
         if (allocFlags & VMM_ALLOC_FAIL_IF_MAPPED)
         {
-            return space_mapping_end(space, &mapping, EEXIST);
+            return ERR(MMU, MAPPED);
         }
 
-        vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount);
+        vmm_page_table_unmap_with_shootdown(space, *addr, pageAmount);
     }
 
     const uint64_t maxBatchSize = 64;
-    uint64_t remainingPages = mapping.pageAmount;
-    while (remainingPages != 0)
+    size_t remainingPages = pageAmount;
+    while (remainingPages > 0)
     {
-        void* currentVirtAddr = mapping.virtAddr + (mapping.pageAmount - remainingPages) * PAGE_SIZE;
+        void* current = *addr + ((pageAmount - remainingPages) * PAGE_SIZE);
 
         pfn_t pages[maxBatchSize];
         uint64_t batchSize = MIN(remainingPages, maxBatchSize);
-        if (pmm_alloc_pages(pages, batchSize) == ERR)
+        if (!pmm_alloc_pages(pages, batchSize))
         {
             // Page table will free the previously allocated pages as they are owned by the Page table.
-            vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount - remainingPages);
-            return space_mapping_end(space, &mapping, ENOMEM);
+            vmm_page_table_unmap_with_shootdown(space, *addr, pageAmount - remainingPages);
+            return ERR(MMU, NOMEM);
         }
 
         if (allocFlags & VMM_ALLOC_ZERO)
@@ -209,27 +308,40 @@ void* vmm_alloc(space_t* space, void* virtAddr, size_t length, size_t alignment,
             }
         }
 
-        if (page_table_map_pages(&space->pageTable, currentVirtAddr, pages, batchSize, mapping.flags,
-                PML_CALLBACK_NONE) == ERR)
+        if (!page_table_map_pages(&space->pageTable, current, pages, batchSize, pmlFlags,
+                PML_CALLBACK_NONE))
         {
-            // Page table will free the previously allocated pages as they are owned by the Page table.
-            vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount - remainingPages);
-            return space_mapping_end(space, &mapping, ENOMEM);
+            vmm_page_table_unmap_with_shootdown(space, *addr, pageAmount - remainingPages);
+            return ERR(MMU, NOMEM);
         }
 
         remainingPages -= batchSize;
     }
 
-    return space_mapping_end(space, &mapping, EOK);
+    return OK;
 }
 
-void* vmm_map(space_t* space, void* virtAddr, phys_addr_t physAddr, size_t length, pml_flags_t flags,
+status_t vmm_map(space_t* space, void** addr, phys_addr_t phys, size_t length, pml_flags_t flags,
     space_callback_func_t func, void* data)
 {
-    if (physAddr == PHYS_ADDR_INVALID || length == 0 || !(flags & PML_PRESENT))
+    if (addr == NULL || phys == PHYS_ADDR_INVALID || length == 0 || !(flags & PML_PRESENT))
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(MMU, INVAL);
+    }
+
+    if (*addr + length < *addr)
+    {
+        return ERR(MMU, OVERFLOW);
+    }
+
+    if (phys + length < phys)
+    {
+        return ERR(MMU, OVERFLOW);
+    }
+
+    if (flags & PML_USER && (*addr < (void*)VMM_USER_SPACE_MIN || *addr + length > (void*)VMM_USER_SPACE_MAX))
+    {
+        return ERR(MMU, ACCESS);
     }
 
     if (space == NULL)
@@ -237,54 +349,76 @@ void* vmm_map(space_t* space, void* virtAddr, phys_addr_t physAddr, size_t lengt
         space = vmm_kernel_space_get();
     }
 
-    space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, physAddr, length, 1, flags) == ERR)
+    LOCK_SCOPE(&space->lock);
+
+    size_t pageAmount;
+    if (*addr == NULL)
     {
-        return NULL;
+        pageAmount = BYTES_TO_PAGES(length);
+        *addr = vmm_find_free_region(space, pageAmount, 1);
+        if (*addr == NULL)
+        {
+            return ERR(MMU, NOSPACE);
+        }
+    }
+    else
+    {
+        vmm_align_region(addr, &length);
+        pageAmount = BYTES_TO_PAGES(length);
     }
 
-    if (page_table_is_pinned(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
+    if (page_table_is_pinned(&space->pageTable, *addr, pageAmount))
     {
-        return space_mapping_end(space, &mapping, EBUSY);
+        return ERR(MMU, PINNED);
     }
 
     pml_callback_id_t callbackId = PML_CALLBACK_NONE;
     if (func != NULL)
     {
-        callbackId = space_alloc_callback(space, mapping.pageAmount, func, data);
+        callbackId = vmm_alloc_callback(space, pageAmount, func, data);
         if (callbackId == PML_MAX_CALLBACK)
         {
-            return space_mapping_end(space, &mapping, ENOSPC);
+            return ERR(MMU, SHARED_LIMIT);
         }
     }
 
-    if (!page_table_is_unmapped(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
+    if (!page_table_is_unmapped(&space->pageTable, *addr, pageAmount))
     {
-        vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount);
+        vmm_page_table_unmap_with_shootdown(space, *addr, pageAmount);
     }
 
-    if (page_table_map(&space->pageTable, mapping.virtAddr, mapping.physAddr, mapping.pageAmount, flags, callbackId) ==
-        ERR)
+    if (!page_table_map(&space->pageTable, *addr, PML_ENSURE_LOWER_HALF(ROUND_DOWN(phys, PAGE_SIZE)), pageAmount, flags,
+            callbackId))
     {
         if (callbackId != PML_CALLBACK_NONE)
         {
-            space_free_callback(space, callbackId);
+            vmm_free_callback(space, callbackId);
         }
 
-        vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount);
-        return space_mapping_end(space, &mapping, ENOMEM);
+        vmm_page_table_unmap_with_shootdown(space, *addr, pageAmount);
+        return ERR(MMU, NOMEM);
     }
 
-    return space_mapping_end(space, &mapping, EOK);
+    return OK;
 }
 
-void* vmm_map_pages(space_t* space, void* virtAddr, pfn_t* pfns, size_t amount, pml_flags_t flags,
+status_t vmm_map_pages(space_t* space, void** addr, pfn_t* pfns, size_t amount, pml_flags_t flags,
     space_callback_func_t func, void* data)
 {
-    if (pfns == NULL || amount == 0 || !(flags & PML_PRESENT))
+    if (addr == NULL || pfns == NULL || amount == 0 || !(flags & PML_PRESENT))
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(MMU, INVAL);
+    }
+
+    if (*addr + amount * PAGE_SIZE < *addr)
+    {
+        return ERR(MMU, OVERFLOW);
+    }
+
+    if (flags & PML_USER &&
+        (*addr < (void*)VMM_USER_SPACE_MIN || *addr + amount * PAGE_SIZE > (void*)VMM_USER_SPACE_MAX))
+    {
+        return ERR(MMU, ACCESS);
     }
 
     if (space == NULL)
@@ -292,53 +426,62 @@ void* vmm_map_pages(space_t* space, void* virtAddr, pfn_t* pfns, size_t amount, 
         space = vmm_kernel_space_get();
     }
 
-    space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, PHYS_ADDR_INVALID, amount * PAGE_SIZE, 1, flags) == ERR)
+    LOCK_SCOPE(&space->lock);
+
+    if (*addr == NULL)
     {
-        return NULL;
+        *addr = vmm_find_free_region(space, amount, 1);
+        if (*addr == NULL)
+        {
+            return ERR(MMU, NOSPACE);
+        }
+    }
+    else
+    {
+        size_t length = amount * PAGE_SIZE;
+        vmm_align_region(addr, &length);
+        amount = BYTES_TO_PAGES(length);
     }
 
-    if (page_table_is_pinned(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
+    if (page_table_is_pinned(&space->pageTable, *addr, amount))
     {
-        return space_mapping_end(space, &mapping, EBUSY);
+        return ERR(MMU, PINNED);
     }
 
     pml_callback_id_t callbackId = PML_CALLBACK_NONE;
     if (func != NULL)
     {
-        callbackId = space_alloc_callback(space, amount, func, data);
+        callbackId = vmm_alloc_callback(space, amount, func, data);
         if (callbackId == PML_MAX_CALLBACK)
         {
-            return space_mapping_end(space, &mapping, ENOSPC);
+            return ERR(MMU, SHARED_LIMIT);
         }
     }
 
-    if (!page_table_is_unmapped(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
+    if (!page_table_is_unmapped(&space->pageTable, *addr, amount))
     {
-        vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount);
+        vmm_page_table_unmap_with_shootdown(space, *addr, amount);
     }
 
-    if (page_table_map_pages(&space->pageTable, mapping.virtAddr, pfns, mapping.pageAmount, mapping.flags,
-            callbackId) == ERR)
+    if (!page_table_map_pages(&space->pageTable, *addr, pfns, amount, flags, callbackId))
     {
         if (callbackId != PML_CALLBACK_NONE)
         {
-            space_free_callback(space, callbackId);
+            vmm_free_callback(space, callbackId);
         }
 
-        vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount);
-        return space_mapping_end(space, &mapping, ENOMEM);
+        vmm_page_table_unmap_with_shootdown(space, *addr, amount);
+        return ERR(MMU, NOMEM);
     }
 
-    return space_mapping_end(space, &mapping, EOK);
+    return OK;
 }
 
-void* vmm_unmap(space_t* space, void* virtAddr, size_t length)
+status_t vmm_unmap(space_t* space, void* virtAddr, size_t length)
 {
     if (virtAddr == NULL || length == 0)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(MMU, INVAL);
     }
 
     if (space == NULL)
@@ -346,61 +489,64 @@ void* vmm_unmap(space_t* space, void* virtAddr, size_t length)
         space = vmm_kernel_space_get();
     }
 
-    space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, PHYS_ADDR_INVALID, length, 1, PML_NONE) == ERR)
-    {
-        return NULL;
-    }
+    LOCK_SCOPE(&space->lock);
 
-    if (page_table_is_pinned(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
+    vmm_align_region(&virtAddr, &length);
+    uint64_t pageAmount = BYTES_TO_PAGES(length);
+
+    if (page_table_is_pinned(&space->pageTable, virtAddr, pageAmount))
     {
-        return space_mapping_end(space, &mapping, EBUSY);
+        return ERR(MMU, PINNED);
     }
 
     // Stores the amount of pages that have each callback id within the region.
     uint64_t callbacks[PML_MAX_CALLBACK] = {0};
-    page_table_collect_callbacks(&space->pageTable, mapping.virtAddr, mapping.pageAmount, callbacks);
+    page_table_collect_callbacks(&space->pageTable, virtAddr, pageAmount, callbacks);
 
-    vmm_page_table_unmap_with_shootdown(space, mapping.virtAddr, mapping.pageAmount);
+    vmm_page_table_unmap_with_shootdown(space, virtAddr, pageAmount);
 
     uint64_t index;
     BITMAP_FOR_EACH_SET(&index, &space->callbackBitmap)
     {
         space_callback_t* callback = &space->callbacks[index];
-        assert(callback->pageAmount >= callbacks[index]);
+        if (callback->pageAmount >= callbacks[index])
+        {
+            callback->pageAmount -= callbacks[index];
+        }
+        else
+        {
+            callback->pageAmount = 0;
+        }
 
-        callback->pageAmount -= callbacks[index];
         if (callback->pageAmount == 0)
         {
             assert(index < space->callbacksLength);
             space->callbacks[index].func(space->callbacks[index].data);
-            space_free_callback(space, index);
+            vmm_free_callback(space, index);
         }
     }
 
-    return space_mapping_end(space, &mapping, EOK);
+    return OK;
 }
 
-SYSCALL_DEFINE(SYS_MUNMAP, void*, void* address, size_t length)
+SYSCALL_DEFINE(SYS_MUNMAP, void* address, size_t length)
 {
     process_t* process = process_current();
     space_t* space = &process->space;
 
-    if (space_check_access(space, address, length) == ERR)
+    if (!space_check_access(space, address, length))
     {
-        errno = EFAULT;
-        return NULL;
+        return ERR(MMU, FAULT);
     }
 
     return vmm_unmap(space, address, length);
 }
 
-void* vmm_protect(space_t* space, void* virtAddr, size_t length, pml_flags_t flags)
+status_t vmm_protect(space_t* space, void* virtAddr, size_t length, pml_flags_t flags)
 {
     if (space == NULL || virtAddr == NULL || length == 0)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(MMU, INVAL);
     }
 
     if (!(flags & PML_PRESENT))
@@ -413,30 +559,29 @@ void* vmm_protect(space_t* space, void* virtAddr, size_t length, pml_flags_t fla
         space = vmm_kernel_space_get();
     }
 
-    space_mapping_t mapping;
-    if (space_mapping_start(space, &mapping, virtAddr, PHYS_ADDR_INVALID, length, 1, flags) == ERR)
+    LOCK_SCOPE(&space->lock);
+
+    vmm_align_region(&virtAddr, &length);
+    uint64_t pageAmount = BYTES_TO_PAGES(length);
+
+    if (page_table_is_pinned(&space->pageTable, virtAddr, pageAmount))
     {
-        return NULL;
+        return ERR(MMU, PINNED);
     }
 
-    if (page_table_is_pinned(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
+    if (page_table_is_unmapped(&space->pageTable, virtAddr, pageAmount))
     {
-        return space_mapping_end(space, &mapping, EBUSY);
+        return ERR(MMU, UNMAPPED);
     }
 
-    if (page_table_is_unmapped(&space->pageTable, mapping.virtAddr, mapping.pageAmount))
+    if (!page_table_set_flags(&space->pageTable, virtAddr, pageAmount, flags))
     {
-        return space_mapping_end(space, &mapping, ENOENT);
+        return ERR(MMU, INVAL);
     }
 
-    if (page_table_set_flags(&space->pageTable, mapping.virtAddr, mapping.pageAmount, mapping.flags) == ERR)
-    {
-        return space_mapping_end(space, &mapping, EINVAL);
-    }
+    vmm_tlb_shootdown(space, virtAddr, pageAmount);
 
-    vmm_tlb_shootdown(space, mapping.virtAddr, mapping.pageAmount);
-
-    return space_mapping_end(space, &mapping, EOK);
+    return OK;
 }
 
 void vmm_load(space_t* space)
@@ -534,7 +679,7 @@ void vmm_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount)
         shootdown->pageAmount = pageAmount;
         lock_release(&cpu->lock);
 
-        if (ipi_send(cpu_get_by_id(id), IPI_SINGLE, vmm_tlb_shootdown_ipi, NULL) == ERR)
+        if (ipi_send(cpu_get_by_id(id), IPI_SINGLE, vmm_tlb_shootdown_ipi, NULL) == _FAIL)
         {
             panic(NULL, "Failed to send TLB shootdown IPI to CPU %d", id);
         }
@@ -547,22 +692,22 @@ void vmm_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount)
         if (clock_uptime() - startTime > SPACE_TLB_SHOOTDOWN_TIMEOUT)
         {
             panic(NULL, "TLB shootdown timeout in space %p for region %p - %p", space, virtAddr,
-                (void*)((uintptr_t)virtAddr + pageAmount * PAGE_SIZE));
+                (void*)((uintptr_t)virtAddr + (pageAmount * PAGE_SIZE)));
         }
 
         ASM("pause");
     }
 }
 
-SYSCALL_DEFINE(SYS_MPROTECT, void*, void* address, size_t length, prot_t prot)
+SYSCALL_DEFINE(SYS_MPROTECT, void* address, size_t length, prot_t prot)
 {
     process_t* process = process_current();
     space_t* space = &process->space;
 
-    if (space_check_access(space, address, length) == ERR)
+    if (!space_check_access(space, address, length))
     {
-        return NULL;
+        return ERR(MMU, FAULT);
     }
 
-    return vmm_protect(space, address, length, vmm_prot_to_flags(prot) | PML_USER);
+    return vmm_protect(space, address, length, vmm_prot_to_flags(prot));
 }

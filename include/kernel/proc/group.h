@@ -54,7 +54,7 @@ typedef struct group
  *
  * @param member The group member to initialize.
  * @param group A member storing the group to add the new member to, or `NULL` to create a new group.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
  */
 uint64_t group_member_init(group_member_t* member, group_member_t* group);
 
@@ -102,7 +102,7 @@ void group_remove(group_member_t* member);
  *
  * @param member The member within the group to send the note to.
  * @param note The note string to send.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - Other values from `thread_send_note()`.
  */

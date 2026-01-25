@@ -14,6 +14,7 @@
 #include <sys/ioring.h>
 #include <sys/list.h>
 #include <sys/math.h>
+#include <sys/status.h>
 #include <time.h>
 
 typedef struct file file_t;
@@ -50,7 +51,7 @@ typedef struct irp irp_t;
  *
  * When an IRP is cancelled or timed out the cancellation callback will be invoked and atomically exchanged with a
  * `IRP_CANCELLED` sentinel value. At which point the owner should perform whatever logic is needed to cancel the IRP,
- * if it is not possible immediately cancel the IRP it should return `ERR`.
+ * if it is not possible immediately cancel the IRP it should return `_FAIL`.
  *
  * Below is an example of how to implement a completion with an associated cancellation callback:
  *
@@ -111,9 +112,9 @@ typedef void (*irp_complete_t)(irp_t* irp, void* ctx);
  * @brief IRP cancellation callback type.
  *
  * @param irp The IRP.
- * @return On success, `EOK`. On failure, a non-zero error code.
+ * @return On success, `OK`. On failure, a non-zero status.
  */
-typedef errno_t (*irp_cancel_t)(irp_t* irp);
+typedef status_t (*irp_cancel_t)(irp_t* irp);
 
 /**
  * @brief Sentinel value indicating that the IRP has been cancelled.
@@ -193,7 +194,7 @@ typedef struct ALIGNED(64) irp
         size_t write;
         uint64_t _raw;
     } res;
-    errno_t err;      ///< The error code of the operation, also used to specify its current state.
+    status_t status;  ///< The status of the operation, also used to specify its current state.
     pool_idx_t index; ///< Index of the IRP in its pool.
     pool_idx_t next;  ///< Index of the next IRP in a chain or in the free list.
     cpu_id_t cpu;     ///< The CPU whose timeout queue the IRP is in.
@@ -236,12 +237,13 @@ typedef struct irp_vtable
 /**
  * @brief Allocate a new IRP pool.
  *
+ * @param out Output pointer for the pool.
  * @param size The amount of requests to allocate.
  * @param process The process that will own the IRPs allocated from this pool.
  * @param ctx The context of the IRP pool.
- * @return On success, a pointer to the new IRP pool. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-irp_pool_t* irp_pool_new(size_t size, process_t* process, void* ctx);
+status_t irp_pool_new(irp_pool_t** out, size_t size, process_t* process, void* ctx);
 
 /**
  * @brief Free a IRP pool.
@@ -282,22 +284,24 @@ void irp_timeouts_check(void);
  *
  * The pool that the IRP is part off can be retrieved using the `irp_get_pool()` function.
  *
+ * @param out Output pointer for the IRP.
  * @param pool The IRP pool.
- * @return On success, a pointer to the IRP. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-irp_t* irp_get(irp_pool_t* pool);
+status_t irp_get(irp_t** out, irp_pool_t* pool);
 
 /**
  * @brief Retrieve a memory descriptor list and associate it with an IRP.
  *
  * All MDLs associated with a IRP will be cleaned up when finished.
  *
+ * @param out Output pointer for the MDL.
  * @param irp The IRP to associate the MDL with.
  * @param addr The virtual address of the memory region to add to the MDL, or `NULL` for a blank MDL.
  * @param size The size of the memory region.
- * @return On success, `EOK`. On failure, a non-zero error code.
+ * @return An appropriate status value.
  */
-errno_t irp_get_mdl(irp_t* irp, const void* addr, size_t size, mdl_t** out);
+status_t irp_get_mdl(mdl_t** out, irp_t* irp, const void* addr, size_t size);
 
 /**
  * @brief Retrieve the IRP pool that an IRP was allocated from.
@@ -356,9 +360,9 @@ static inline irp_t* irp_chain_next(irp_t* irp)
  * @brief Attempt to cancel an IRP.
  *
  * @param irp The IRP to cancel.
- * @return On success, `EOK`. On failure, a non-zero error code.
+ * @return An appropriate status value.
  */
-errno_t irp_cancel(irp_t* irp);
+status_t irp_cancel(irp_t* irp);
 
 /**
  * @brief Set the cancellation callback for an IRP.
@@ -490,18 +494,6 @@ static inline void irp_set_complete(irp_t* irp, irp_complete_t complete, void* c
     irp_frame_t* next = irp_next(irp);
     next->complete = complete;
     next->ctx = ctx;
-}
-
-/**
- * @brief Helper to set an error code and complete the IRP.
- *
- * @param irp The IRP to error.
- * @param err The error code to set.
- */
-static inline void irp_error(irp_t* irp, uint8_t err)
-{
-    irp->err = err;
-    irp_complete(irp);
 }
 
 /**

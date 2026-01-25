@@ -30,19 +30,17 @@ PERCPU_DEFINE_CTOR(irp_ctx_t, pcpu_irps)
     lock_init(&ctx->lock);
 }
 
-irp_pool_t* irp_pool_new(size_t size, process_t* process, void* ctx)
+status_t irp_pool_new(irp_pool_t** out, size_t size, process_t* process, void* ctx)
 {
-    if (size == 0 || process == NULL || size >= POOL_IDX_MAX)
+    if (out == NULL || size == 0 || process == NULL || size >= POOL_IDX_MAX)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(IO, INVAL);
     }
 
     irp_pool_t* pool = malloc(sizeof(irp_pool_t) + (sizeof(irp_t) * size));
     if (pool == NULL)
     {
-        errno = ENOMEM;
-        return NULL;
+        return ERR(IO, NOMEM);
     }
 
     pool->ctx = ctx;
@@ -58,7 +56,8 @@ irp_pool_t* irp_pool_new(size_t size, process_t* process, void* ctx)
 
     pool_init(&pool->pool, pool->irps, size, sizeof(irp_t), offsetof(irp_t, next));
 
-    return pool;
+    *out = pool;
+    return OK;
 }
 
 void irp_pool_free(irp_pool_t* pool)
@@ -212,7 +211,7 @@ void irp_timeouts_check(void)
         }
         else if (handler != NULL)
         {
-            irp->err = ETIMEDOUT;
+            irp->status = INFO(IO, TIMEOUT);
             handler(irp);
             irp_perform_completion(irp);
         }
@@ -227,13 +226,12 @@ void irp_timeouts_check(void)
     lock_release(&ctx->lock);
 }
 
-irp_t* irp_get(irp_pool_t* pool)
+status_t irp_get(irp_t** out, irp_pool_t* pool)
 {
     pool_idx_t idx = pool_alloc(&pool->pool);
     if (idx == POOL_IDX_MAX)
     {
-        errno = ENOSPC;
-        return NULL;
+        return ERR(IO, NOSPACE);
     }
 
     if (atomic_fetch_add(&pool->active, 1) == 0)
@@ -252,50 +250,49 @@ irp_t* irp_get(irp_pool_t* pool)
     mdl_init(&irp->mdl, NULL);
     irp->next = POOL_IDX_MAX;
     irp->cpu = CPU_ID_INVALID;
-    irp->err = EOK;
+    irp->status = OK;
     irp->frame = IRP_FRAME_MAX;
-    return irp;
+    
+    *out = irp;
+    return OK;
 }
 
-errno_t irp_get_mdl(irp_t* irp, const void* addr, size_t size, mdl_t** out)
+status_t irp_get_mdl(mdl_t** out, irp_t* irp, const void* addr, size_t size)
 {
-    if (irp == NULL || addr == NULL || size == 0 || out == NULL)
+    if (out == NULL || irp == NULL || addr == NULL || size == 0)
     {
-        return EINVAL;
+        return ERR(IO, INVAL);
     }
 
     process_t* process = irp_get_process(irp);
-    if (process == NULL)
-    {
-        return EINVAL;
-    }
+    assert(process != NULL);
 
-    mdl_t* mdl = &irp->mdl;
-    while (mdl->amount > 0)
+    mdl_t* current = &irp->mdl;
+    while (current->amount > 0)
     {
-        if (mdl->next != NULL)
+        if (current->next != NULL)
         {
-            mdl = mdl->next;
+            current = current->next;
             continue;
         }
 
         mdl_t* next = malloc(sizeof(mdl_t));
         if (next == NULL)
         {
-            return ENOMEM;
+            return ERR(IO, NOMEM);
         }
-        mdl_init(next, mdl);
-        mdl = next;
+        mdl_init(next, current);
+        current = next;
     }
 
-    errno_t err = mdl_from_region(mdl, NULL, &process->space, addr, size);
-    if (err != EOK)
+    status_t status = mdl_from_region(current, NULL, &process->space, addr, size);
+    if (IS_ERR(status))
     {
-        return err;
+        return status;
     }
 
-    *out = mdl;
-    return EOK;
+    *out = current;
+    return OK;
 }
 
 void irp_call(irp_t* irp, vnode_t* vnode)
@@ -306,20 +303,23 @@ void irp_call(irp_t* irp, vnode_t* vnode)
     irp_frame_t* frame = irp_current(irp);
     if (UNLIKELY(frame->major >= IRP_MJ_MAX))
     {
-        irp_error(irp, EINVAL);
+        irp->status = ERR(IO, MJ_OVERFLOW);
+        irp_complete(irp);
         return;
     }
 
     if (vnode == NULL || vnode->vtable == NULL)
     {
-        irp_error(irp, EINVAL);
+        irp->status = ERR(IO, MJ_NOSYS);
+        irp_complete(irp);
         return;
     }
 
     irp_func_t func = vnode->vtable->funcs[frame->major];
     if (func == NULL)
     {
-        irp_error(irp, ENOSYS);
+        irp->status = ERR(IO, MJ_NOSYS);
+        irp_complete(irp);
         return;
     }
 
@@ -346,26 +346,26 @@ void irp_call_direct(irp_t* irp, irp_func_t func)
     func(irp);
 }
 
-errno_t irp_cancel(irp_t* irp)
+status_t irp_cancel(irp_t* irp)
 {
     irp_cancel_t handler = atomic_exchange(&irp->cancel, IRP_CANCELLED);
     if (handler == IRP_CANCELLED)
     {
-        return EBUSY;
+        return ERR(IO, CANCELLED);
     }
 
     if (handler == NULL)
     {
         atomic_store(&irp->cancel, NULL);
-        return EBUSY;
+        return ERR(IO, NOT_CANCELLABLE);
     }
 
     irp_timeout_remove(irp);
 
-    irp->err = ECANCELED;
-    errno_t result = handler(irp);
+    irp->status = INFO(IO, CANCELLED);
+    status_t status = handler(irp);
     irp_perform_completion(irp);
-    return result;
+    return status;
 }
 
 void irp_complete(irp_t* irp)

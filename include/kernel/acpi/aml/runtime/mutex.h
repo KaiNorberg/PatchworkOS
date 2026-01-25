@@ -50,7 +50,7 @@ void aml_mutex_id_deinit(aml_mutex_id_t* mutex);
  * @param mutex The mutex to acquire.
  * @param syncLevel The SyncLevel at which to acquire the mutex.
  * @param timeout The timeout in clock ticks to wait for the mutex, or `CLOCKS_NEVER` to wait indefinitely.
- * @return On success, `0`. If timed out, 1. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. If timed out, 1. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_mutex_acquire(aml_mutex_id_t* mutex, aml_sync_level_t syncLevel, clock_t timeout);
 
@@ -60,7 +60,7 @@ uint64_t aml_mutex_acquire(aml_mutex_id_t* mutex, aml_sync_level_t syncLevel, cl
  * The mutex must have a SyncLevel equal to the current SyncLevel and must be owned by the current thread.
  *
  * @param mutex The mutex to release.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_mutex_release(aml_mutex_id_t* mutex);
 

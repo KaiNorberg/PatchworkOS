@@ -6,9 +6,9 @@
 static uint64_t element_send_init(element_t* elem)
 {
     event_t event = {.target = elem->win->surface, .type = EVENT_LIB_INIT};
-    if (elem->proc(elem->win, elem, &event) == ERR)
+    if (elem->proc(elem->win, elem, &event) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     element_redraw(elem, false);
@@ -65,7 +65,7 @@ element_t* element_new(element_t* parent, element_id_t id, const rect_t* rect, c
     elem->win = parent->win;
     list_push_back(&parent->children, &elem->entry);
 
-    if (element_send_init(elem) == ERR)
+    if (element_send_init(elem) == _FAIL)
     {
         element_free(elem);
         return NULL;
@@ -91,7 +91,7 @@ element_t* element_new_root(window_t* win, element_id_t id, const rect_t* rect, 
 
     elem->win = win;
 
-    if (element_send_init(elem) == ERR)
+    if (element_send_init(elem) == _FAIL)
     {
         element_free(elem);
         return NULL;
@@ -344,13 +344,13 @@ uint64_t element_set_text(element_t* elem, const char* text)
 {
     if (elem == NULL || text == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     char* newText = strdup(text);
     if (newText == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     free(elem->text);
     elem->text = newText;
@@ -478,24 +478,24 @@ uint64_t element_dispatch(element_t* elem, const event_t* event)
     if (elem == NULL || event == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     switch (event->type)
     {
     case EVENT_LIB_INIT:
     {
-        if (elem->proc(elem->win, elem, event) == ERR)
+        if (elem->proc(elem->win, elem, event) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
     break;
     case EVENT_LIB_REDRAW:
     {
-        if (elem->proc(elem->win, elem, event) == ERR)
+        if (elem->proc(elem->win, elem, event) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
 
         if (event->libRedraw.shouldPropagate)
@@ -515,34 +515,34 @@ uint64_t element_dispatch(element_t* elem, const event_t* event)
         movedEvent.mouse.pos.x -= elem->rect.left;
         movedEvent.mouse.pos.y -= elem->rect.top;
 
-        if (elem->proc(elem->win, elem, &movedEvent) == ERR)
+        if (elem->proc(elem->win, elem, &movedEvent) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
 
         element_t* child;
         LIST_FOR_EACH(child, &elem->children, entry)
         {
-            if (element_dispatch(child, &movedEvent) == ERR)
+            if (element_dispatch(child, &movedEvent) == _FAIL)
             {
-                return ERR;
+                return _FAIL;
             }
         }
     }
     break;
     default:
     {
-        if (elem->proc(elem->win, elem, event) == ERR)
+        if (elem->proc(elem->win, elem, event) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
 
         element_t* child;
         LIST_FOR_EACH(child, &elem->children, entry)
         {
-            if (element_dispatch(child, event) == ERR)
+            if (element_dispatch(child, event) == _FAIL)
             {
-                return ERR;
+                return _FAIL;
             }
         }
     }
@@ -557,7 +557,7 @@ uint64_t element_emit(element_t* elem, event_type_t type, const void* data, uint
     if (elem == NULL || (data == NULL && size > 0) || size > EVENT_MAX_DATA)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     event_t event = {

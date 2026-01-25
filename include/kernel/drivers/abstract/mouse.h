@@ -69,7 +69,7 @@ typedef struct mouse_client
  */
 typedef struct
 {
-    char name[MAX_PATH];
+    const char* name;
     wait_queue_t waitQueue;
     list_t clients;
     lock_t lock;
@@ -78,23 +78,19 @@ typedef struct
 } mouse_t;
 
 /**
- * @brief Allocate and initialize a mouse structure.
+ * @brief Register a new mouse.
  *
- * Will make the mouse available under `/dev/mouse/[id]`.
- *
- * @param name Driver specified name of the mouse device.
- * @return On success, the new mouse structure. On failure, `NULL` and `errno` is set.
+ * @param mouse Pointer to the mouse structure to initialize.
+ * @return An appropriate status value.
  */
-mouse_t* mouse_new(const char* name);
+status_t mouse_register(mouse_t* mouse);
 
 /**
- * @brief Free and deinitialize a mouse structure.
+ * @brief Unregister a mouse.
  *
- * Removes the mouse from `/dev/mouse/[id]`.
- *
- * @param mouse Pointer to the mouse structure to free.
+ * @param mouse The mouse to unregister.
  */
-void mouse_free(mouse_t* mouse);
+void mouse_unregister(mouse_t* mouse);
 
 /**
  * @brief Push a mouse button press event to the mouse event queue.

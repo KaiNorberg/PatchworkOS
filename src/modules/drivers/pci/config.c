@@ -23,14 +23,14 @@ static uint64_t pci_config_init(void)
     if (mcfg == NULL)
     {
         LOG_ERR("no MCFG table found\n");
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t entriesLength = mcfg->header.length - sizeof(mcfg_t);
     if (entriesLength % sizeof(pci_config_bar_t) != 0)
     {
         LOG_ERR("MCFG table does not contain a whole number of entries\n");
-        return ERR;
+        return _FAIL;
     }
 
     entryCount = entriesLength / sizeof(pci_config_bar_t);
@@ -46,7 +46,7 @@ static uint64_t pci_config_init(void)
         if (vmm_map(NULL, virtAddr, entry->base, length, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) == NULL)
         {
             LOG_ERR("failed to map PCI-e configuration space at %p\n", entry->base);
-            return ERR;
+            return _FAIL;
         }
 
         LOG_INFO("mapped PCI-e config space %p (segment=%u bus=%u-%u)\n", entry->base, entry->segmentGroup,
@@ -60,7 +60,7 @@ static uint64_t pci_config_init(void)
 
 static pci_config_bar_t* pci_config_bar_get(pci_segment_group_t segmentGroup, pci_bus_t bus)
 {
-    if (pci_config_init() == ERR)
+    if (pci_config_init() == _FAIL)
     {
         return NULL;
     }
@@ -79,7 +79,7 @@ static pci_config_bar_t* pci_config_bar_get(pci_segment_group_t segmentGroup, pc
 static volatile void* pci_config_get_address(pci_segment_group_t segmentGroup, pci_bus_t bus, pci_slot_t slot,
     uint8_t function, uint16_t offset)
 {
-    if (pci_config_init() == ERR)
+    if (pci_config_init() == _FAIL)
     {
         return NULL;
     }
@@ -103,7 +103,7 @@ static volatile void* pci_config_get_address(pci_segment_group_t segmentGroup, p
 uint8_t pci_config_read8(pci_segment_group_t segmentGroup, pci_bus_t bus, pci_slot_t slot, pci_function_t function,
     uint16_t offset)
 {
-    if (pci_config_init() == ERR)
+    if (pci_config_init() == _FAIL)
     {
         return 0xFF;
     }
@@ -119,7 +119,7 @@ uint8_t pci_config_read8(pci_segment_group_t segmentGroup, pci_bus_t bus, pci_sl
 uint16_t pci_config_read16(pci_segment_group_t segmentGroup, pci_bus_t bus, pci_slot_t slot, pci_function_t function,
     uint16_t offset)
 {
-    if (pci_config_init() == ERR)
+    if (pci_config_init() == _FAIL)
     {
         return 0xFFFF;
     }
@@ -135,7 +135,7 @@ uint16_t pci_config_read16(pci_segment_group_t segmentGroup, pci_bus_t bus, pci_
 uint32_t pci_config_read32(pci_segment_group_t segmentGroup, pci_bus_t bus, pci_slot_t slot, pci_function_t function,
     uint16_t offset)
 {
-    if (pci_config_init() == ERR)
+    if (pci_config_init() == _FAIL)
     {
         return 0xFFFFFFFF;
     }
@@ -161,7 +161,7 @@ void pci_config_write8(pci_segment_group_t segmentGroup, pci_bus_t bus, pci_slot
 void pci_config_write16(pci_segment_group_t segmentGroup, pci_bus_t bus, pci_slot_t slot, pci_function_t function,
     uint16_t offset, uint16_t value)
 {
-    if (pci_config_init() == ERR)
+    if (pci_config_init() == _FAIL)
     {
         return;
     }
@@ -176,7 +176,7 @@ void pci_config_write16(pci_segment_group_t segmentGroup, pci_bus_t bus, pci_slo
 void pci_config_write32(pci_segment_group_t segmentGroup, pci_bus_t bus, pci_slot_t slot, pci_function_t function,
     uint16_t offset, uint32_t value)
 {
-    if (pci_config_init() == ERR)
+    if (pci_config_init() == _FAIL)
     {
         return;
     }

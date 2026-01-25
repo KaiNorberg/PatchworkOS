@@ -31,7 +31,7 @@ aml_object_t* aml_osi_implementation(aml_method_t* method, aml_object_t** args, 
 
     /// @todo Implement _OSI strings properly. For now, we just return true for everything.
 
-    if (aml_integer_set(result, UINT64_MAX) == ERR)
+    if (aml_integer_set(result, UINT64_MAX) == _FAIL)
     {
         UNREF(result);
         return NULL;
@@ -57,7 +57,7 @@ aml_object_t* aml_rev_implementation(aml_method_t* method, aml_object_t** args, 
         return NULL;
     }
 
-    if (aml_integer_set(result, RSDP_CURRENT_REVISION) == ERR)
+    if (aml_integer_set(result, RSDP_CURRENT_REVISION) == _FAIL)
     {
         UNREF(result);
         return NULL;
@@ -83,7 +83,7 @@ aml_object_t* aml_os_implementation(aml_method_t* method, aml_object_t** args, u
         return NULL;
     }
 
-    if (aml_string_set(result, OS_NAME) == ERR)
+    if (aml_string_set(result, OS_NAME) == _FAIL)
     {
         UNREF(result);
         return NULL;
@@ -97,13 +97,13 @@ static inline uint64_t aml_create_predefined_scope(aml_name_t name)
     aml_object_t* object = aml_object_new();
     if (object == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(object);
 
-    if (aml_predefined_scope_set(object) == ERR || aml_namespace_add_child(NULL, NULL, name, object) == ERR)
+    if (aml_predefined_scope_set(object) == _FAIL || aml_namespace_add_child(NULL, NULL, name, object) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -117,20 +117,20 @@ aml_mutex_t* aml_gl_get(void)
 uint64_t aml_predefined_init(void)
 {
     // Normal predefined root objects, see section 5.3.1 of the ACPI specification.
-    if (aml_create_predefined_scope(AML_NAME('_', 'G', 'P', 'E')) == ERR ||
-        aml_create_predefined_scope(AML_NAME('_', 'P', 'R', '_')) == ERR ||
-        aml_create_predefined_scope(AML_NAME('_', 'S', 'B', '_')) == ERR ||
-        aml_create_predefined_scope(AML_NAME('_', 'S', 'I', '_')) == ERR ||
-        aml_create_predefined_scope(AML_NAME('_', 'T', 'Z', '_')) == ERR)
+    if (aml_create_predefined_scope(AML_NAME('_', 'G', 'P', 'E')) == _FAIL ||
+        aml_create_predefined_scope(AML_NAME('_', 'P', 'R', '_')) == _FAIL ||
+        aml_create_predefined_scope(AML_NAME('_', 'S', 'B', '_')) == _FAIL ||
+        aml_create_predefined_scope(AML_NAME('_', 'S', 'I', '_')) == _FAIL ||
+        aml_create_predefined_scope(AML_NAME('_', 'T', 'Z', '_')) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     // OS specific predefined objects, see section 5.7 of the ACPI specification.
     aml_object_t* osi = aml_object_new();
     if (osi == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(osi);
     aml_method_flags_t osiFlags = {
@@ -138,16 +138,16 @@ uint64_t aml_predefined_init(void)
         .isSerialized = true,
         .syncLevel = 15,
     };
-    if (aml_method_set(osi, osiFlags, NULL, NULL, aml_osi_implementation) == ERR ||
-        aml_namespace_add_child(NULL, NULL, AML_NAME('_', 'O', 'S', 'I'), osi) == ERR)
+    if (aml_method_set(osi, osiFlags, NULL, NULL, aml_osi_implementation) == _FAIL ||
+        aml_namespace_add_child(NULL, NULL, AML_NAME('_', 'O', 'S', 'I'), osi) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     aml_object_t* rev = aml_object_new();
     if (rev == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(rev);
     aml_method_flags_t revFlags = {
@@ -155,16 +155,16 @@ uint64_t aml_predefined_init(void)
         .isSerialized = true,
         .syncLevel = 15,
     };
-    if (aml_method_set(rev, revFlags, NULL, NULL, aml_rev_implementation) == ERR ||
-        aml_namespace_add_child(NULL, NULL, AML_NAME('_', 'R', 'E', 'V'), rev) == ERR)
+    if (aml_method_set(rev, revFlags, NULL, NULL, aml_rev_implementation) == _FAIL ||
+        aml_namespace_add_child(NULL, NULL, AML_NAME('_', 'R', 'E', 'V'), rev) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     aml_object_t* os = aml_object_new();
     if (os == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(os);
     aml_method_flags_t osFlags = {
@@ -172,22 +172,22 @@ uint64_t aml_predefined_init(void)
         .isSerialized = true,
         .syncLevel = 15,
     };
-    if (aml_method_set(os, osFlags, NULL, NULL, aml_os_implementation) == ERR ||
-        aml_namespace_add_child(NULL, NULL, AML_NAME('_', 'O', 'S', '_'), os) == ERR)
+    if (aml_method_set(os, osFlags, NULL, NULL, aml_os_implementation) == _FAIL ||
+        aml_namespace_add_child(NULL, NULL, AML_NAME('_', 'O', 'S', '_'), os) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     /// @todo Implement _GL properly.
     aml_object_t* gl = aml_object_new();
     if (gl == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(gl);
-    if (aml_mutex_set(gl, 0) == ERR || aml_namespace_add_child(NULL, NULL, AML_NAME('_', 'G', 'L', '_'), gl) == ERR)
+    if (aml_mutex_set(gl, 0) == _FAIL || aml_namespace_add_child(NULL, NULL, AML_NAME('_', 'G', 'L', '_'), gl) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     globalMutex = REF(&gl->mutex);

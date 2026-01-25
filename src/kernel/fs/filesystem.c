@@ -102,7 +102,7 @@ static uint64_t filesystem_lookup(vnode_t* dir, dentry_t* dentry)
         vnode_t* vnode = vnode_new(dentry->superblock, VREG, NULL, &sbFileOps);
         if (vnode == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
         vnode->data = REF(sb);
         dentry_make_positive(dentry, vnode);
@@ -168,7 +168,7 @@ static uint64_t filesystem_dir_lookup(vnode_t* dir, dentry_t* dentry)
     vnode_t* vnode = vnode_new(dentry->superblock, VDIR, &fsVnodeOps, NULL);
     if (vnode == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(vnode);
     vnode->data = fs;
@@ -235,7 +235,7 @@ uint64_t filesystem_register(filesystem_t* fs)
     if (fs == NULL || strnlen_s(fs->name, MAX_NAME) > MAX_NAME)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     list_entry_init(&fs->entry);
@@ -247,9 +247,9 @@ uint64_t filesystem_register(filesystem_t* fs)
 
     RWLOCK_WRITE_SCOPE(&lock);
 
-    if (map_insert(&fsMap, &key, &fs->mapEntry) == ERR)
+    if (map_insert(&fsMap, &key, &fs->mapEntry) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     list_push_back(&filesystems, &fs->entry);
 
@@ -289,7 +289,7 @@ filesystem_t* filesystem_get_by_path(const char* path, process_t* process)
     }
 
     pathname_t pathname;
-    if (pathname_init(&pathname, path) == ERR)
+    if (pathname_init(&pathname, path) == _FAIL)
     {
         return NULL;
     }
@@ -304,7 +304,7 @@ filesystem_t* filesystem_get_by_path(const char* path, process_t* process)
     path_t target = cwd_get(&process->cwd, ns);
     PATH_DEFER(&target);
 
-    if (path_walk(&target, &pathname, ns) == ERR)
+    if (path_walk(&target, &pathname, ns) == _FAIL)
     {
         return NULL;
     }

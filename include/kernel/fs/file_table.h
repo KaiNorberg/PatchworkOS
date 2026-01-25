@@ -59,7 +59,7 @@ file_t* file_table_get(file_table_t* table, fd_t fd);
  *
  * @param table The file table.
  * @param file The file to associate with the new file descriptor.
- * @return On success, the allocated file descriptor. On failure, `ERR` and `errno` is set to:
+ * @return On success, the allocated file descriptor. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `EMFILE`: Too many open files.
  */
@@ -72,7 +72,7 @@ fd_t file_table_open(file_table_t* table, file_t* file);
  *
  * @param table The file table.
  * @param fd The file descriptor to free.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `EBADF`: The file descriptor is invalid.
  */
@@ -101,7 +101,7 @@ void file_table_close_mode(file_table_t* table, mode_t mode);
  * @param table The file table.
  * @param min The minimum file descriptor to free, inclusive.
  * @param max The maximum file descriptor to free, exclusive.
- * @return On success, `0`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  */
 uint64_t file_table_close_range(file_table_t* table, fd_t min, fd_t max);
@@ -114,7 +114,7 @@ uint64_t file_table_close_range(file_table_t* table, fd_t min, fd_t max);
  * @param table The file table.
  * @param fd The file descriptor to set.
  * @param file The file to associate with the file descriptor.
- * @return On success, `fd`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `fd`. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `EBADF`: The file descriptor is invalid.
  */
@@ -127,7 +127,7 @@ fd_t file_table_set(file_table_t* table, fd_t fd, file_t* file);
  *
  * @param table The file table.
  * @param oldFd The file descriptor to duplicate.
- * @return On success, the new file descriptor. On failure, `ERR` and `errno` is set to:
+ * @return On success, the new file descriptor. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `EBADF`: The file descriptor is invalid.
  * - `EMFILE`: Too many open files.
@@ -142,7 +142,7 @@ fd_t file_table_dup(file_table_t* table, fd_t oldFd);
  * @param table The file table.
  * @param oldFd The file descriptor to duplicate.
  * @param newFd The file descriptor to duplicate to.
- * @return On success, `newFd`. On failure, `ERR` and `errno` is set to:
+ * @return On success, `newFd`. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  * - `EBADF`: One of the file descriptors is invalid.
  * - `EMFILE`: Too many open files.
@@ -156,7 +156,7 @@ fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd);
  * @param src The source file table.
  * @param min The minimum file descriptor to copy, inclusive.
  * @param max The maximum file descriptor to copy, exclusive.
- * @return On success, the number of copied file descriptors. On failure, `ERR` and `errno` is set to:
+ * @return On success, the number of copied file descriptors. On failure, `_FAIL` and `errno` is set to:
  * - `EINVAL`: Invalid parameters.
  */
 uint64_t file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t max);

@@ -70,7 +70,7 @@ typedef struct
  * @brief Initialize a PS/2 mouse device.
  *
  * @param info Device information structure
- * @return On success, `0`. On failure, `ERR`.
+ * @return On success, `0`. On failure, `_FAIL`.
  */
 uint64_t ps2_mouse_init(ps2_device_info_t* info);
 
@@ -78,7 +78,7 @@ uint64_t ps2_mouse_init(ps2_device_info_t* info);
  * @brief Register the IRQ handler for a PS/2 mouse device.
  *
  * @param info Device information structure.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t ps2_mouse_irq_register(ps2_device_info_t* info);
 

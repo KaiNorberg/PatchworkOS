@@ -67,7 +67,7 @@ TEST_DEFINE(strncpy)
 {
     for (int k = 0; k < 1; ++k)
     {
-        TEST_ASSERT(_test_strncpy_iter() != ERR);
+        TEST_ASSERT(_test_strncpy_iter() != _FAIL);
     }
 
     return 0;

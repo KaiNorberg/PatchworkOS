@@ -6,7 +6,7 @@
 clock_t uptime(void)
 {
     clock_t result = _syscall_uptime();
-    if (result == ERR)
+    if (result == _FAIL)
     {
         errno = _syscall_errno();
     }

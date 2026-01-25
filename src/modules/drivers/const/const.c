@@ -118,7 +118,7 @@ static uint64_t const_init(void)
     if (constDir == NULL)
     {
         LOG_ERR("failed to init const directory\n");
-        return ERR;
+        return _FAIL;
     }
 
     oneFile = devfs_file_new(constDir, "one", NULL, &oneOps, NULL);
@@ -126,7 +126,7 @@ static uint64_t const_init(void)
     {
         UNREF(constDir);
         LOG_ERR("failed to init one file\n");
-        return ERR;
+        return _FAIL;
     }
 
     zeroFile = devfs_file_new(constDir, "zero", NULL, &zeroOps, NULL);
@@ -135,7 +135,7 @@ static uint64_t const_init(void)
         UNREF(constDir);
         UNREF(oneFile);
         LOG_ERR("failed to init zero file\n");
-        return ERR;
+        return _FAIL;
     }
 
     nullFile = devfs_file_new(constDir, "null", NULL, &nullOps, NULL);
@@ -145,7 +145,7 @@ static uint64_t const_init(void)
         UNREF(oneFile);
         UNREF(zeroFile);
         LOG_ERR("failed to init null file\n");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;

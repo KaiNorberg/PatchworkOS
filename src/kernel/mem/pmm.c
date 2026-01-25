@@ -89,7 +89,7 @@ static inline pfn_t pmm_stack_pop(void)
     {
         if (stack == NULL)
         {
-            return ERR;
+            return PFN_INVALID;
         }
 
         page_stack_t* page = stack;
@@ -109,7 +109,7 @@ static inline pfn_t pmm_bitmap_set(size_t count, pfn_t maxPfn, pfn_t alignPfn)
     size_t index = bitmap_find_clear_region_and_set(&bitmap, 0, maxPfn, count, alignPfn);
     if (index == bitmap.length)
     {
-        return ERR;
+        return PFN_INVALID;
     }
 
     return (pfn_t)index;
@@ -250,12 +250,12 @@ pfn_t pmm_alloc(void)
 {
     lock_acquire(&lock);
     pfn_t pfn = pmm_stack_pop();
-    if (pfn == ERR)
+    if (pfn == PFN_INVALID)
     {
         pfn = pmm_bitmap_set(1, CONFIG_PMM_BITMAP_MAX_ADDR / PAGE_SIZE, 1);
     }
 
-    if (pfn != ERR)
+    if (pfn != PFN_INVALID)
     {
         page_t* page = &pages[pfn];
         assert(page->ref == 0);
@@ -264,7 +264,7 @@ pfn_t pmm_alloc(void)
     }
     lock_release(&lock);
 
-    if (pfn == ERR)
+    if (pfn == PFN_INVALID)
     {
         LOG_WARN("out of memory in pmm_alloc()\n");
     }
@@ -272,18 +272,18 @@ pfn_t pmm_alloc(void)
     return pfn;
 }
 
-uint64_t pmm_alloc_pages(pfn_t* pfns, size_t count)
+bool pmm_alloc_pages(pfn_t* pfns, size_t count)
 {
     lock_acquire(&lock);
     for (size_t i = 0; i < count; i++)
     {
         pfns[i] = pmm_stack_pop();
-        if (pfns[i] == ERR)
+        if (pfns[i] == _FAIL)
         {
             pfns[i] = pmm_bitmap_set(1, CONFIG_PMM_BITMAP_MAX_ADDR / PAGE_SIZE, 1);
         }
 
-        if (pfns[i] == ERR)
+        if (pfns[i] == _FAIL)
         {
             LOG_WARN("out of memory in pmm_alloc_pages()\n");
             for (size_t j = 0; j < i; j++)
@@ -298,7 +298,7 @@ uint64_t pmm_alloc_pages(pfn_t* pfns, size_t count)
                 }
             }
             lock_release(&lock);
-            return ERR;
+            return false;
         }
     }
 
@@ -311,14 +311,14 @@ uint64_t pmm_alloc_pages(pfn_t* pfns, size_t count)
 
     avail -= count;
     lock_release(&lock);
-    return 0;
+    return true;
 }
 
 pfn_t pmm_alloc_bitmap(size_t count, pfn_t maxPfn, pfn_t alignPfn)
 {
     lock_acquire(&lock);
     pfn_t pfn = pmm_bitmap_set(count, maxPfn, alignPfn);
-    if (pfn != ERR)
+    if (pfn != PFN_INVALID)
     {
         for (size_t i = 0; i < count; i++)
         {
@@ -330,7 +330,7 @@ pfn_t pmm_alloc_bitmap(size_t count, pfn_t maxPfn, pfn_t alignPfn)
     }
     lock_release(&lock);
 
-    if (pfn == ERR)
+    if (pfn == PFN_INVALID)
     {
         LOG_WARN("out of memory in pmm_alloc_bitmap()\n");
     }
@@ -375,7 +375,7 @@ uint64_t pmm_ref_inc(pfn_t pfn, size_t count)
                 pages[pfn + j].ref--;
             }
             lock_release(&lock);
-            return ERR;
+            return 0;
         }
         page->ref++;
     }

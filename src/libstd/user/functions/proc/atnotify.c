@@ -9,16 +9,16 @@ uint64_t atnotify(atnotify_func_t func, atnotify_t action)
     if (func == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     switch (action)
     {
     case ATNOTIFY_ADD:
-        if (_note_handler_add(func) == ERR)
+        if (_note_handler_add(func) == _FAIL)
         {
             errno = ENOMEM;
-            return ERR;
+            return _FAIL;
         }
         break;
     case ATNOTIFY_REMOVE:
@@ -26,7 +26,7 @@ uint64_t atnotify(atnotify_func_t func, atnotify_t action)
         break;
     default:
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     return 0;

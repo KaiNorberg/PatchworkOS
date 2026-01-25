@@ -6,7 +6,7 @@
 pid_t spawn(const char** argv, spawn_flags_t flags)
 {
     pid_t result = _syscall_spawn(argv, flags);
-    if (result == ERR)
+    if (result == _FAIL)
     {
         errno = _syscall_errno();
     }

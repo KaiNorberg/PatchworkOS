@@ -200,7 +200,7 @@ static clock_source_t source = {
 /**
  * @brief Initialize the HPET.
  *
- * @return On success, `0`. On failure, `ERR`.
+ * @return On success, `0`. On failure, `_FAIL`.
  */
 static uint64_t hpet_init(void)
 {
@@ -208,13 +208,13 @@ static uint64_t hpet_init(void)
     if (hpet == NULL)
     {
         LOG_ERR("failed to locate HPET table\n");
-        return ERR;
+        return _FAIL;
     }
 
     if (hpet->addressSpaceId != HPET_ADDRESS_SPACE_MEMORY)
     {
         LOG_ERR("HPET address space is not memory (id=%u) which is not supported\n", hpet->addressSpaceId);
-        return ERR;
+        return _FAIL;
     }
 
     address = (uintptr_t)PML_LOWER_TO_HIGHER(hpet->address);
@@ -222,7 +222,7 @@ static uint64_t hpet_init(void)
         NULL)
     {
         LOG_ERR("failed to map HPET memory at %p\n", hpet->address);
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t capabilities = hpet_read(HPET_REG_GENERAL_CAPABILITIES_ID);
@@ -231,7 +231,7 @@ static uint64_t hpet_init(void)
     if (period == 0 || period >= 0x05F5E100)
     {
         LOG_ERR("HPET reported an invalid counter period %llu fs\n", period);
-        return ERR;
+        return _FAIL;
     }
 
     LOG_INFO("started HPET timer phys=%p virt=%p period=%lluns timers=%u %s-bit\n", hpet->address, address,
@@ -241,18 +241,18 @@ static uint64_t hpet_init(void)
     hpet_reset_counter();
 
     source.precision = hpet_ns_per_tick();
-    if (clock_source_register(&source) == ERR)
+    if (clock_source_register(&source) == _FAIL)
     {
         LOG_ERR("failed to register HPET as system time source\n");
-        return ERR;
+        return _FAIL;
     }
 
     overflowThreadTid = thread_kernel_create(hpet_overflow_thread, NULL);
-    if (overflowThreadTid == ERR)
+    if (overflowThreadTid == _FAIL)
     {
         LOG_ERR("failed to create HPET overflow thread\n");
         clock_source_unregister(&source);
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -282,7 +282,7 @@ uint64_t _module_procedure(const module_event_t* event)
     switch (event->type)
     {
     case MODULE_EVENT_DEVICE_ATTACH:
-        if (hpet_init() == ERR)
+        if (hpet_init() == _FAIL)
         {
             panic(NULL, "Failed to initialize HPET module");
         }

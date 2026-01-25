@@ -23,7 +23,7 @@
  * @param method The _OSI method object.
  * @param args The arguments passed to the method.
  * @param argCount The number of arguments passed to the method.
- * @return On success, the return value of the method. On failure, `ERR` and `errno` is set.
+ * @return On success, the return value of the method. On failure, `_FAIL` and `errno` is set.
  */
 aml_object_t* aml_osi_implementation(aml_method_t* method, aml_object_t** args, uint64_t argCount);
 
@@ -37,7 +37,7 @@ aml_object_t* aml_osi_implementation(aml_method_t* method, aml_object_t** args, 
  * @param method The _REV method object.
  * @param args The arguments passed to the method.
  * @param argCount The number of arguments passed to the method.
- * @return On success, the return value of the method. On failure, `ERR` and `errno` is set.
+ * @return On success, the return value of the method. On failure, `_FAIL` and `errno` is set.
  */
 aml_object_t* aml_rev_implementation(aml_method_t* method, aml_object_t** args, uint64_t argCount);
 
@@ -49,7 +49,7 @@ aml_object_t* aml_rev_implementation(aml_method_t* method, aml_object_t** args, 
  * @param method The _OS method object.
  * @param args The arguments passed to the method.
  * @param argCount The number of arguments passed to the method.
- * @return On success, the return value of the method. On failure, `ERR` and `errno` is set.
+ * @return On success, the return value of the method. On failure, `_FAIL` and `errno` is set.
  */
 aml_object_t* aml_os_implementation(aml_method_t* method, aml_object_t** args, uint64_t argCount);
 
@@ -63,7 +63,7 @@ aml_mutex_t* aml_gl_get(void);
 /**
  * @brief Initialize predefined AML names and objects.
  *
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_predefined_init(void);
 

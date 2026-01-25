@@ -3,7 +3,7 @@
 char* readfiles(const char* path)
 {
     fd_t fd = open(path);
-    if (fd == ERR)
+    if (fd == _FAIL)
     {
         return NULL;
     }

@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <sys/list.h>
+#include <sys/status.h>
 
 typedef struct process process_t;
 
@@ -103,10 +104,9 @@ void mdl_free_chain(mdl_t* mdl, void (*free)(void*));
  * @param space The address space of the region.
  * @param addr The virtual address of the memory region.
  * @param size The size of the memory region in bytes.
- * @return On success, `EOK`. On failure, one of the following error codes:
- * - See `mdl_add()` for possible error codes.
+ * @return An appropriate status value.
  */
-errno_t mdl_from_region(mdl_t* mdl, mdl_t* prev, space_t* space, const void* addr, size_t size);
+status_t mdl_from_region(mdl_t* mdl, mdl_t* prev, space_t* space, const void* addr, size_t size);
 
 /**
  * @brief Add a memory region to the Memory Descriptor List.
@@ -115,13 +115,9 @@ errno_t mdl_from_region(mdl_t* mdl, mdl_t* prev, space_t* space, const void* add
  * @param space The address space of the user process.
  * @param addr The virtual address of the memory region.
  * @param size The size of the memory region in bytes.
- * @return On success, `EOK`. On failure, one of the following error codes:
- * - `EINVAL`: Invalid parameters.
- * - `ENOMEM`: Not enough memory to allocate segments.
- * - `EOVERFLOW`: The size specified is to large.
- * - `EFAULT`: Invalid address.
+ * @return An appropriate status value.
  */
-errno_t mdl_add(mdl_t* mdl, space_t* space, const void* addr, size_t size);
+status_t mdl_add(mdl_t* mdl, space_t* space, const void* addr, size_t size);
 
 /**
  * @brief Read from a Memory Descriptor List into a buffer.
@@ -132,7 +128,7 @@ errno_t mdl_add(mdl_t* mdl, space_t* space, const void* addr, size_t size);
  * @param offset Offset within the MDL to start reading from.
  * @return The number of bytes read.
  */
-uint64_t mdl_read(mdl_t* mdl, void* buffer, size_t count, size_t offset);
+size_t mdl_read(mdl_t* mdl, void* buffer, size_t count, size_t offset);
 
 /**
  * @brief Write to a Memory Descriptor List from a buffer.
@@ -143,7 +139,7 @@ uint64_t mdl_read(mdl_t* mdl, void* buffer, size_t count, size_t offset);
  * @param offset Offset within the MDL to start writing to.
  * @return The number of bytes written.
  */
-uint64_t mdl_write(mdl_t* mdl, const void* buffer, size_t count, size_t offset);
+size_t mdl_write(mdl_t* mdl, const void* buffer, size_t count, size_t offset);
 
 /**
  * @brief Memory Descriptor List Iterator structure.

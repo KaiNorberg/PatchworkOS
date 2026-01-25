@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <sys/math.h>
 
 /**
@@ -45,6 +46,11 @@ typedef uintptr_t phys_addr_t;
  * @brief Invalid physical address.
  */
 #define PHYS_ADDR_INVALID ((phys_addr_t)(UINTPTR_MAX))
+
+/**
+ * @brief Invalid page frame number.
+ */
+#define PFN_INVALID ((pfn_t)(UINTPTR_MAX))
 
 /**
  * @brief Convert a PFN to its physical address.
@@ -408,7 +414,7 @@ typedef struct
  *
  * Used to allow both the kernel and bootloader to provide their own page allocation functions.
  */
-typedef uint64_t (*pml_alloc_pages_t)(pfn_t*, size_t);
+typedef bool (*pml_alloc_pages_t)(pfn_t*, size_t);
 
 /**
  * @brief Generic page free function type.

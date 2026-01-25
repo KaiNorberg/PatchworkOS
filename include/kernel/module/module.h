@@ -234,7 +234,7 @@ typedef enum module_event_type
     /**
      * Received when the module is loaded.
      *
-     * If the module returns `ERR`, the module load will fail.
+     * If the module returns `_FAIL`, the module load will fail.
      */
     MODULE_EVENT_LOAD,
     /**
@@ -246,7 +246,7 @@ typedef enum module_event_type
     /**
      * This event is sent when a device is attached that the module specified it supports.
      *
-     * A return value of `ERR` can be used to specify that the module is unable to handle the device.
+     * A return value of `_FAIL` can be used to specify that the module is unable to handle the device.
      */
     MODULE_EVENT_DEVICE_ATTACH,
     /**
@@ -419,7 +419,7 @@ void module_init_fake_kernel_module();
  * @param type The device type string.
  * @param name The unique device name string.
  * @param flags Load flags, see `module_load_flags_t`.
- * @return On success, the amount of modules loaded. On failure, `ERR` and `errno` is set.
+ * @return On success, the amount of modules loaded. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t module_device_attach(const char* type, const char* name, module_load_flags_t flags);
 

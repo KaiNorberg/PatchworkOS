@@ -59,8 +59,8 @@ static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* data)
         return NULL;
     }
 
-    fd_t in = ERR;
-    fd_t out = ERR;
+    fd_t in = _FAIL;
+    fd_t out = _FAIL;
     const char* version = "9P2000";
 
     char* key;
@@ -86,7 +86,7 @@ static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* data)
         }
     }
 
-    if (in == ERR || out == ERR)
+    if (in == _FAIL || out == _FAIL)
     {
         errno = EINVAL;
         return NULL;
@@ -161,9 +161,9 @@ uint64_t _module_procedure(const module_event_t* event)
     switch (event->type)
     {
     case MODULE_EVENT_LOAD:
-        if (filesystem_register(&ninep) == ERR)
+        if (filesystem_register(&ninep) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         break;
     case MODULE_EVENT_UNLOAD:

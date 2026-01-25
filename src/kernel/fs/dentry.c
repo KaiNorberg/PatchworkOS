@@ -43,7 +43,7 @@ static uint64_t dentry_map_add(dentry_t* dentry)
             {
                 seqlock_write_release(&lock);
                 errno = EEXIST;
-                return ERR;
+                return _FAIL;
             }
         }
     }
@@ -133,29 +133,9 @@ static cache_t cache = CACHE_CREATE(cache, "dentry", sizeof(dentry_t), CACHE_LIN
 
 dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name)
 {
-    if (superblock == NULL)
-    {
-        errno = EINVAL;
-        return NULL;
-    }
-
-    if ((parent == NULL || name == NULL) && ((void*)parent != (void*)name))
-    {
-        errno = EINVAL;
-        return NULL;
-    }
-
-    if (name == NULL)
-    {
-        name = "";
-    }
-
-    assert(parent == NULL || superblock == parent->superblock);
-
     dentry_t* dentry = cache_alloc(&cache);
     if (dentry == NULL)
     {
-        errno = ENOMEM;
         return NULL;
     }
 
@@ -166,7 +146,7 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     dentry->name[MAX_NAME - 1] = '\0';
     dentry->parent = parent != NULL ? REF(parent) : dentry;
 
-    if (dentry_map_add(dentry) == ERR)
+    if (dentry_map_add(dentry) == _FAIL)
     {
         UNREF(dentry);
         return NULL;
@@ -210,7 +190,7 @@ dentry_t* dentry_rcu_get(const dentry_t* parent, const char* name, size_t length
 
     if (dentry != NULL && dentry->ops != NULL && dentry->ops->revalidate != NULL)
     {
-        if (dentry->ops->revalidate(dentry) == ERR)
+        if (dentry->ops->revalidate(dentry) == _FAIL)
         {
             return NULL;
         }
@@ -268,7 +248,7 @@ dentry_t* dentry_lookup(dentry_t* parent, const char* name, size_t length)
         return dentry; // Leave it as negative.
     }
 
-    if (dir->ops->lookup(dir, dentry) == ERR)
+    if (dir->ops->lookup(dir, dentry) == _FAIL)
     {
         UNREF(dentry);
         return NULL;
@@ -276,7 +256,7 @@ dentry_t* dentry_lookup(dentry_t* parent, const char* name, size_t length)
 
     if (dentry->ops != NULL && dentry->ops->revalidate != NULL)
     {
-        if (dentry->ops->revalidate(dentry) == ERR)
+        if (dentry->ops->revalidate(dentry) == _FAIL)
         {
             UNREF(dentry);
             return NULL;

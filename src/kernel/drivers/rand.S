@@ -7,7 +7,7 @@
 
 // rdi: uint32_t* value
 // rsi: uint8_t* retries
-// return: On success, 0. On failure, `ERR`.
+// return: On success, 0. On failure, `_FAIL`.
 rdrand_do:
 .retry:
     rdrand %eax

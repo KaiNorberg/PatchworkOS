@@ -26,14 +26,14 @@ static uint64_t acpi_table_read(file_t* file, void* buffer, size_t count, size_t
     if (file == NULL || buffer == NULL || offset == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     sdt_header_t* table = file->vnode->data;
     if (table == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     return BUFFER_READ(buffer, count, offset, table, table->length);
@@ -112,14 +112,14 @@ static uint64_t acpi_tables_push(sdt_header_t* table)
     if (!acpi_is_table_valid(table))
     {
         LOG_ERR("invalid table %.*s\n", SDT_SIGNATURE_LENGTH, table->signature);
-        return ERR;
+        return _FAIL;
     }
 
     sdt_header_t* cachedTable = malloc(table->length);
     if (cachedTable == NULL)
     {
         LOG_ERR("failed to allocate memory for ACPI table\n");
-        return ERR;
+        return _FAIL;
     }
     memcpy(cachedTable, table, table->length);
 
@@ -128,7 +128,7 @@ static uint64_t acpi_tables_push(sdt_header_t* table)
     {
         LOG_ERR("failed to allocate memory for ACPI table cache\n");
         free(cachedTable);
-        return ERR;
+        return _FAIL;
     }
     cachedTables[tableAmount++].table = cachedTable;
 
@@ -141,17 +141,17 @@ static uint64_t acpi_tables_load_from_xsdt(xsdt_t* xsdt)
 {
     if (!acpi_is_xsdt_valid(xsdt))
     {
-        return ERR;
+        return _FAIL;
     }
 
     uint64_t amountOfTablesInXsdt = (xsdt->header.length - sizeof(sdt_header_t)) / sizeof(sdt_header_t*);
     for (uint64_t i = 0; i < amountOfTablesInXsdt; i++)
     {
         sdt_header_t* table = (sdt_header_t*)PML_ENSURE_HIGHER_HALF(xsdt->tables[i]);
-        if (acpi_tables_push(table) == ERR)
+        if (acpi_tables_push(table) == _FAIL)
         {
             LOG_ERR("failed to cache table %.4s\n", table->signature);
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -164,28 +164,28 @@ static uint64_t acpi_tables_load_from_fadt(void)
     if (fadt == NULL)
     {
         LOG_ERR("failed to find FACP table\n");
-        return ERR;
+        return _FAIL;
     }
 
     if (fadt->dsdt == 0 && fadt->xDsdt == 0)
     {
         LOG_ERR("FADT has no DSDT pointer\n");
-        return ERR;
+        return _FAIL;
     }
 
     if (fadt->dsdt == 0)
     {
-        if (acpi_tables_push((void*)PML_ENSURE_HIGHER_HALF(fadt->xDsdt)) == ERR)
+        if (acpi_tables_push((void*)PML_ENSURE_HIGHER_HALF(fadt->xDsdt)) == _FAIL)
         {
             LOG_ERR("failed to cache DSDT table from fadt_t::xDsdt\n");
-            return ERR;
+            return _FAIL;
         }
     }
 
-    if (acpi_tables_push((void*)PML_ENSURE_HIGHER_HALF(fadt->dsdt)) == ERR)
+    if (acpi_tables_push((void*)PML_ENSURE_HIGHER_HALF(fadt->dsdt)) == _FAIL)
     {
         LOG_ERR("failed to cache DSDT table from fadt_t::dsdt\n");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -196,22 +196,22 @@ uint64_t acpi_tables_init(rsdp_t* rsdp)
     if (!acpi_is_rsdp_valid(rsdp))
     {
         LOG_ERR("invalid RSDP provided to ACPI tables init\n");
-        return ERR;
+        return _FAIL;
     }
 
     xsdt_t* xsdt = (xsdt_t*)PML_ENSURE_HIGHER_HALF(rsdp->xsdtAddress);
     LOG_INFO("located XSDT at %p\n", rsdp->xsdtAddress);
 
-    if (acpi_tables_load_from_xsdt(xsdt) == ERR)
+    if (acpi_tables_load_from_xsdt(xsdt) == _FAIL)
     {
         LOG_ERR("failed to load ACPI tables from XSDT\n");
-        return ERR;
+        return _FAIL;
     }
 
-    if (acpi_tables_load_from_fadt() == ERR)
+    if (acpi_tables_load_from_fadt() == _FAIL)
     {
         LOG_ERR("failed to load ACPI tables from FADT\n");
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -227,7 +227,7 @@ uint64_t acpi_tables_expose(void)
     if (tablesDir == NULL)
     {
         LOG_ERR("failed to create ACPI tables sysfs directory");
-        return ERR;
+        return _FAIL;
     }
 
     for (uint64_t i = 0; i < tableAmount; i++)
@@ -249,7 +249,7 @@ uint64_t acpi_tables_expose(void)
         if (cachedTables[i].file == NULL)
         {
             LOG_ERR("failed to create ACPI table sysfs file for %.*s", SDT_SIGNATURE_LENGTH, table->signature);
-            return ERR;
+            return _FAIL;
         }
     }
 

@@ -66,7 +66,7 @@ typedef struct kbd_client
  */
 typedef struct kbd
 {
-    char name[MAX_PATH];
+    const char* name;
     wait_queue_t waitQueue;
     list_t clients;
     lock_t lock;
@@ -75,19 +75,19 @@ typedef struct kbd
 } kbd_t;
 
 /**
- * @brief Allocate and initialize a new keyboard.
+ * @brief Register a new keyboard.
  *
- * @param name The driver specified name of the keyboard.
- * @return On success, the new keyboard. On failure, `NULL` and `errno` is set.
+ * @param kbd Pointer to the keyboard structure to initialize.
+ * @return An appropriate status value.
  */
-kbd_t* kbd_new(const char* name);
+status_t kbd_register(kbd_t* kbd);
 
 /**
- * @brief Frees a keyboard.
+ * @brief Unregister a keyboard.
  *
- * @param kbd The keyboard to free.
+ * @param kbd The keyboard to unregister.
  */
-void kbd_free(kbd_t* kbd);
+void kbd_unregister(kbd_t* kbd);
 
 /**
  * @brief Push a keyboard press event to the keyboard event queue.

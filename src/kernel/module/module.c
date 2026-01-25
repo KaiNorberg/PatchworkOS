@@ -87,7 +87,7 @@ static module_t* module_new(module_info_t* info)
     list_push_back(&modulesList, &module->listEntry);
 
     map_key_t moduleKey = map_key_string(info->name);
-    if (map_insert(&modulesMap, &moduleKey, &module->mapEntry) == ERR)
+    if (map_insert(&modulesMap, &moduleKey, &module->mapEntry) == _FAIL)
     {
         list_remove(&module->listEntry);
         free(module);
@@ -95,7 +95,7 @@ static module_t* module_new(module_info_t* info)
     }
 
     map_key_t providerKey = map_key_uint64(module->symbolGroupId);
-    if (map_insert(&providerMap, &providerKey, &module->providerEntry) == ERR)
+    if (map_insert(&providerMap, &providerKey, &module->providerEntry) == _FAIL)
     {
         list_remove(&module->listEntry);
         map_remove(&modulesMap, &module->mapEntry);
@@ -132,10 +132,10 @@ static uint64_t module_call_load_event(module_t* module)
     module_event_t loadEvent = {
         .type = MODULE_EVENT_LOAD,
     };
-    if (module->procedure(&loadEvent) == ERR)
+    if (module->procedure(&loadEvent) == _FAIL)
     {
         LOG_ERR("call to load event for module '%s' failed\n", module->info.name);
-        return ERR;
+        return _FAIL;
     }
     module->flags |= MODULE_FLAG_LOADED;
     return 0;
@@ -179,7 +179,7 @@ static module_device_t* module_device_new(const char* type, const char* name)
     list_init(&device->handlers);
 
     map_key_t deviceKey = map_key_string(name);
-    if (map_insert(&deviceMap, &deviceKey, &device->mapEntry) == ERR)
+    if (map_insert(&deviceMap, &deviceKey, &device->mapEntry) == _FAIL)
     {
         free(device);
         return NULL;
@@ -220,7 +220,7 @@ static inline module_device_handler_t* module_handler_add(module_t* module, modu
         .deviceAttach.type = device->type,
         .deviceAttach.name = device->name,
     };
-    if (module->procedure(&attachEvent) == ERR)
+    if (module->procedure(&attachEvent) == _FAIL)
     {
         LOG_ERR("call to attach event for module '%s' failed\n", module->info.name);
         free(handler);
@@ -372,43 +372,43 @@ static uint64_t module_file_read(module_file_t* outFile, const path_t* dirPath, 
     const char* filename)
 {
     pathname_t pathname;
-    if (pathname_init(&pathname, filename) == ERR)
+    if (pathname_init(&pathname, filename) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     file_t* file = vfs_openat(dirPath, &pathname, process);
     if (file == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(file);
 
     size_t fileSize = vfs_seek(file, 0, SEEK_END);
     vfs_seek(file, 0, SEEK_SET);
-    if (fileSize == ERR)
+    if (fileSize == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     uint8_t* fileData = malloc(fileSize);
     if (fileData == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     if (vfs_read(file, fileData, fileSize) != fileSize)
     {
         free(fileData);
-        return ERR;
+        return _FAIL;
     }
 
-    if (elf64_validate(&outFile->elf, fileData, fileSize) == ERR)
+    if (elf64_validate(&outFile->elf, fileData, fileSize) == _FAIL)
     {
         LOG_ERR("failed to validate ELF file '%s' while reading module metadata\n", filename);
         free(fileData);
         errno = EILSEQ;
-        return ERR;
+        return _FAIL;
     }
 
     Elf64_Shdr* moduleInfoShdr = elf64_get_section_by_name(&outFile->elf, MODULE_INFO_SECTION);
@@ -418,7 +418,7 @@ static uint64_t module_file_read(module_file_t* outFile, const path_t* dirPath, 
         LOG_ERR("failed to find valid module info section in ELF file '%s'\n", filename);
         free(fileData);
         errno = EILSEQ;
-        return ERR;
+        return _FAIL;
     }
 
     outFile->info = module_info_parse((const char*)((uintptr_t)outFile->elf.header + moduleInfoShdr->sh_offset));
@@ -426,7 +426,7 @@ static uint64_t module_file_read(module_file_t* outFile, const path_t* dirPath, 
     {
         free(fileData);
         errno = EILSEQ;
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
@@ -465,25 +465,25 @@ static uint64_t module_cache_symbols_add(module_file_t* file, const char* path)
         module_cached_symbol_t* symbolEntry = malloc(sizeof(module_cached_symbol_t));
         if (symbolEntry == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
         map_entry_init(&symbolEntry->mapEntry);
         symbolEntry->modulePath = strdup(path);
         if (symbolEntry->modulePath == NULL)
         {
             free(symbolEntry);
-            return ERR;
+            return _FAIL;
         }
 
         map_key_t symbolKey = map_key_string(symName);
-        if (map_insert(&symbolCache, &symbolKey, &symbolEntry->mapEntry) == ERR)
+        if (map_insert(&symbolCache, &symbolKey, &symbolEntry->mapEntry) == _FAIL)
         {
             if (errno == EEXIST)
             {
                 LOG_ERR("symbol name collision for '%s' in module '%s'\n", symName, path);
             }
             free(symbolEntry);
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -511,22 +511,22 @@ static uint64_t module_cache_device_types_add(module_file_t* file, const char* p
             cachedDevice = malloc(sizeof(module_cached_device_t));
             if (cachedDevice == NULL)
             {
-                return ERR;
+                return _FAIL;
             }
             map_entry_init(&cachedDevice->mapEntry);
             list_init(&cachedDevice->entries);
 
-            if (map_insert(&deviceCache, &key, &cachedDevice->mapEntry) == ERR)
+            if (map_insert(&deviceCache, &key, &cachedDevice->mapEntry) == _FAIL)
             {
                 free(cachedDevice);
-                return ERR;
+                return _FAIL;
             }
         }
 
         module_cached_device_entry_t* deviceEntry = malloc(sizeof(module_cached_device_entry_t));
         if (deviceEntry == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
         list_entry_init(&deviceEntry->listEntry);
         strncpy_s(deviceEntry->path, MAX_PATH, path, MAX_PATH);
@@ -596,15 +596,15 @@ static uint64_t module_cache_build(void)
     assert(process != NULL);
 
     pathname_t moduleDir;
-    if (pathname_init(&moduleDir, MODULE_DIR) == ERR)
+    if (pathname_init(&moduleDir, MODULE_DIR) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     file_t* dir = vfs_open(&moduleDir, process);
     if (dir == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(dir);
 
@@ -612,10 +612,10 @@ static uint64_t module_cache_build(void)
     while (true)
     {
         size_t readCount = vfs_getdents(dir, buffer, sizeof(buffer));
-        if (readCount == ERR)
+        if (readCount == _FAIL)
         {
             module_cache_clear();
-            return ERR;
+            return _FAIL;
         }
         if (readCount == 0)
         {
@@ -630,7 +630,7 @@ static uint64_t module_cache_build(void)
             }
 
             module_file_t file;
-            if (module_file_read(&file, &dir->path, process, buffer[i].path) == ERR)
+            if (module_file_read(&file, &dir->path, process, buffer[i].path) == _FAIL)
             {
                 if (errno == EILSEQ)
                 {
@@ -638,21 +638,21 @@ static uint64_t module_cache_build(void)
                     continue;
                 }
                 module_cache_clear();
-                return ERR;
+                return _FAIL;
             }
 
-            if (module_cache_symbols_add(&file, buffer[i].path) == ERR)
+            if (module_cache_symbols_add(&file, buffer[i].path) == _FAIL)
             {
                 module_file_deinit(&file);
                 module_cache_clear();
-                return ERR;
+                return _FAIL;
             }
 
-            if (module_cache_device_types_add(&file, buffer[i].path) == ERR)
+            if (module_cache_device_types_add(&file, buffer[i].path) == _FAIL)
             {
                 module_file_deinit(&file);
                 module_cache_clear();
-                return ERR;
+                return _FAIL;
             }
 
             LOG_DEBUG("built cache entry for module '%s'\n", file.info->name);
@@ -758,7 +758,7 @@ void module_init_fake_kernel_module(void)
         void* symAddr = (void*)sym->st_value;
         Elf64_Symbol_Binding binding = ELF64_ST_BIND(sym->st_info);
         Elf64_Symbol_Type type = ELF64_ST_TYPE(sym->st_info);
-        if (symbol_add(symName, symAddr, kernelModule->symbolGroupId, binding, type) == ERR)
+        if (symbol_add(symName, symAddr, kernelModule->symbolGroupId, binding, type) == _FAIL)
         {
             panic(NULL, "Failed to load kernel symbol '%s' (%s)", symName, strerror(errno));
         }
@@ -815,7 +815,7 @@ static uint64_t module_load_and_relocate_elf(module_t* module, Elf64_File* elf, 
         vmm_alloc(NULL, NULL, moduleMemSize, PAGE_SIZE, PML_PRESENT | PML_WRITE | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
     if (module->baseAddr == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     module->size = moduleMemSize;
     module->procedure = (module_procedure_t)((uintptr_t)module->baseAddr + (elf->header->e_entry - minVaddr));
@@ -845,18 +845,18 @@ static uint64_t module_load_and_relocate_elf(module_t* module, Elf64_File* elf, 
         }
 
         void* symAddr = (void*)((uintptr_t)module->baseAddr + (sym->st_value - minVaddr));
-        if (symbol_add(symName, symAddr, module->symbolGroupId, binding, type) == ERR)
+        if (symbol_add(symName, symAddr, module->symbolGroupId, binding, type) == _FAIL)
         {
             LOG_ERR("failed to add symbol '%s' to module '%s'\n", symName, module->info.name);
-            return ERR;
+            return _FAIL;
         }
     }
 
     module_t* previous = ctx->current;
     ctx->current = module;
-    if (elf64_relocate(elf, (Elf64_Addr)module->baseAddr, minVaddr, module_resolve_symbol_callback, ctx) == ERR)
+    if (elf64_relocate(elf, (Elf64_Addr)module->baseAddr, minVaddr, module_resolve_symbol_callback, ctx) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     ctx->current = previous;
 
@@ -871,13 +871,13 @@ static uint64_t module_load_dependency(module_load_ctx_t* ctx, const char* symbo
     if (cacheEntry == NULL)
     {
         LOG_ERR("no cached module found for symbol '%s'\n", symbolName);
-        return ERR;
+        return _FAIL;
     }
 
     module_file_t file;
-    if (module_file_read(&file, &ctx->dir->path, ctx->process, cacheEntry->modulePath) == ERR)
+    if (module_file_read(&file, &ctx->dir->path, ctx->process, cacheEntry->modulePath) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     if (module_find_by_name(file.info->name) != NULL)
@@ -890,18 +890,18 @@ static uint64_t module_load_dependency(module_load_ctx_t* ctx, const char* symbo
     if (dependency == NULL)
     {
         module_file_deinit(&file);
-        return ERR;
+        return _FAIL;
     }
 
     LOG_INFO("loading dependency '%s' version %s by %s\n", dependency->info.name, dependency->info.version,
         dependency->info.author);
     LOG_DEBUG("  description: %s\n  licence:     %s\n", dependency->info.description, dependency->info.license);
 
-    if (module_load_and_relocate_elf(dependency, &file.elf, ctx) == ERR)
+    if (module_load_and_relocate_elf(dependency, &file.elf, ctx) == _FAIL)
     {
         module_file_deinit(&file);
         module_free(dependency);
-        return ERR;
+        return _FAIL;
     }
 
     list_push_back(&ctx->dependencies, &dependency->loadEntry);
@@ -914,14 +914,14 @@ static void* module_resolve_symbol_callback(const char* symbolName, void* data)
     module_load_ctx_t* ctx = data;
 
     symbol_info_t symbolInfo;
-    if (symbol_resolve_name(&symbolInfo, symbolName) == ERR)
+    if (symbol_resolve_name(&symbolInfo, symbolName) == _FAIL)
     {
-        if (module_load_dependency(ctx, symbolName) == ERR)
+        if (module_load_dependency(ctx, symbolName) == _FAIL)
         {
             return NULL;
         }
 
-        if (symbol_resolve_name(&symbolInfo, symbolName) == ERR)
+        if (symbol_resolve_name(&symbolInfo, symbolName) == _FAIL)
         {
             LOG_ERR("failed to resolve symbol '%s' after loading dependency\n", symbolName);
             return NULL;
@@ -979,7 +979,7 @@ static module_t* module_get_or_load(const char* filename, file_t* dir, const cha
     };
 
     module_file_t file;
-    if (module_file_read(&file, &ctx.dir->path, ctx.process, filename) == ERR)
+    if (module_file_read(&file, &ctx.dir->path, ctx.process, filename) == _FAIL)
     {
         return NULL;
     }
@@ -1012,7 +1012,7 @@ static module_t* module_get_or_load(const char* filename, file_t* dir, const cha
 
     uint64_t loadResult = module_load_and_relocate_elf(module, &file.elf, &ctx);
     module_file_deinit(&file);
-    if (loadResult == ERR)
+    if (loadResult == _FAIL)
     {
         goto error;
     }
@@ -1026,7 +1026,7 @@ static module_t* module_get_or_load(const char* filename, file_t* dir, const cha
             break;
         }
 
-        if (module_call_load_event(dependency) == ERR)
+        if (module_call_load_event(dependency) == _FAIL)
         {
             module_free(dependency);
             goto error;
@@ -1041,7 +1041,7 @@ static module_t* module_get_or_load(const char* filename, file_t* dir, const cha
         LOG_DEBUG("finished loading dependency module '%s'\n", dependency->info.name);
     }
 
-    if (module_call_load_event(module) == ERR)
+    if (module_call_load_event(module) == _FAIL)
     {
         goto error;
     }
@@ -1071,14 +1071,14 @@ uint64_t module_device_attach(const char* type, const char* name, module_load_fl
     if (type == NULL || name == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     MUTEX_SCOPE(&lock);
 
-    if (module_cache_build() == ERR)
+    if (module_cache_build() == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     module_cached_device_t* cachedDevice = module_cache_lookup_device_type(type);
@@ -1088,15 +1088,15 @@ uint64_t module_device_attach(const char* type, const char* name, module_load_fl
     }
 
     pathname_t moduleDir;
-    if (pathname_init(&moduleDir, MODULE_DIR) == ERR)
+    if (pathname_init(&moduleDir, MODULE_DIR) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     file_t* dir = vfs_open(&moduleDir, process_current());
     if (dir == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(dir);
 
@@ -1107,7 +1107,7 @@ uint64_t module_device_attach(const char* type, const char* name, module_load_fl
         {
             LOG_ERR("device '%s' type mismatch (expected '%s', got '%s')\n", name, device->type, type);
             errno = EINVAL;
-            return ERR;
+            return _FAIL;
         }
 
         if (!(flags & MODULE_LOAD_ALL) && !list_is_empty(&device->handlers))
@@ -1120,7 +1120,7 @@ uint64_t module_device_attach(const char* type, const char* name, module_load_fl
         device = module_device_new(type, name);
         if (device == NULL)
         {
-            return ERR;
+            return _FAIL;
         }
     }
 
@@ -1169,7 +1169,7 @@ error:
         module_device_free(device);
     }
     module_gc_collect();
-    return ERR;
+    return _FAIL;
 }
 
 void module_device_detach(const char* name)

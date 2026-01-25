@@ -86,19 +86,19 @@ uint64_t _module_procedure(const module_event_t* event)
         if (bootInfo == NULL || bootInfo->rsdp == NULL)
         {
             LOG_ERR("no RSDP provided by bootloader\n");
-            return ERR;
+            return _FAIL;
         }
 
-        if (acpi_tables_init(bootInfo->rsdp) == ERR)
+        if (acpi_tables_init(bootInfo->rsdp) == _FAIL)
         {
             LOG_ERR("failed to initialize ACPI tables\n");
-            return ERR;
+            return _FAIL;
         }
 
-        if (aml_init() == ERR)
+        if (aml_init() == _FAIL)
         {
             LOG_ERR("failed to initialize AML subsystem\n");
-            return ERR;
+            return _FAIL;
         }
 
 #ifdef _TESTING_
@@ -107,24 +107,24 @@ uint64_t _module_procedure(const module_event_t* event)
 #endif
 #endif
 
-        if (acpi_devices_init() == ERR)
+        if (acpi_devices_init() == _FAIL)
         {
             LOG_ERR("failed to initialize ACPI devices\n");
-            return ERR;
+            return _FAIL;
         }
 
         acpi_reclaim_memory(&bootInfo->memory.map);
 
-        if (acpi_tables_expose() == ERR)
+        if (acpi_tables_expose() == _FAIL)
         {
             LOG_ERR("failed to expose ACPI tables via sysfs\n");
-            return ERR;
+            return _FAIL;
         }
 
-        if (aml_namespace_expose() == ERR)
+        if (aml_namespace_expose() == _FAIL)
         {
             LOG_ERR("failed to expose ACPI devices via sysfs\n");
-            return ERR;
+            return _FAIL;
         }
     }
     break;

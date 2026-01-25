@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
     }
 
     fd_t file = open(filename);
-    if (file == ERR)
+    if (file == _FAIL)
     {
         fprintf(stderr, "tail: cannot open file '%s'\n", filename);
         return EXIT_FAILURE;

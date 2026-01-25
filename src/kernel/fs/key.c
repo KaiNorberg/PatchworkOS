@@ -49,9 +49,9 @@ static uint64_t key_generate(char* buffer, uint64_t size)
     {
         assert(size <= KEY_MAX);
         uint8_t bytes[((size - 1) / 4) * 3];
-        if (rand_gen(bytes, sizeof(bytes)) == ERR)
+        if (rand_gen(bytes, sizeof(bytes)) == _FAIL)
         {
-            return ERR;
+            return _FAIL;
         }
         key_base64_encode(bytes, sizeof(bytes), buffer);
         mapKey = map_key_string(buffer);
@@ -89,13 +89,13 @@ uint64_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout)
     if (key == NULL || size == 0 || size > KEY_MAX || file == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     key_entry_t* entry = malloc(sizeof(key_entry_t));
     if (entry == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     list_entry_init(&entry->entry);
     map_entry_init(&entry->mapEntry);
@@ -104,19 +104,19 @@ uint64_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout)
 
     LOCK_SCOPE(&keyLock);
 
-    if (key_generate(entry->key, size) == ERR)
+    if (key_generate(entry->key, size) == _FAIL)
     {
         UNREF(entry->file);
         free(entry);
-        return ERR;
+        return _FAIL;
     }
 
     map_key_t mapKey = map_key_string(entry->key);
-    if (map_insert(&keyMap, &mapKey, &entry->mapEntry) == ERR)
+    if (map_insert(&keyMap, &mapKey, &entry->mapEntry) == _FAIL)
     {
         UNREF(entry->file);
         free(entry);
-        return ERR;
+        return _FAIL;
     }
 
     memcpy(key, entry->key, size);
@@ -178,20 +178,20 @@ SYSCALL_DEFINE(SYS_SHARE, uint64_t, char* key, uint64_t size, fd_t fd, clock_t t
     file_t* file = file_table_get(&process->files, fd);
     if (file == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(file);
 
     char keyCopy[KEY_MAX] = {0};
-    if (key_share(keyCopy, size, file, timeout) == ERR)
+    if (key_share(keyCopy, size, file, timeout) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
-    if (thread_copy_to_user(thread, key, keyCopy, size) == ERR)
+    if (thread_copy_to_user(thread, key, keyCopy, size) == _FAIL)
     {
         UNREF(key_claim(keyCopy));
-        return ERR;
+        return _FAIL;
     }
     return 0;
 }
@@ -202,15 +202,15 @@ SYSCALL_DEFINE(SYS_CLAIM, fd_t, const char* key)
     process_t* process = thread->process;
 
     char keyCopy[KEY_MAX];
-    if (thread_copy_from_user_string(thread, keyCopy, key, KEY_MAX) == ERR)
+    if (thread_copy_from_user_string(thread, keyCopy, key, KEY_MAX) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
 
     file_t* file = key_claim(keyCopy);
     if (file == NULL)
     {
-        return ERR;
+        return _FAIL;
     }
     UNREF_DEFER(file);
 

@@ -8,7 +8,7 @@
 fd_t dup(fd_t oldFd)
 {
     uint64_t result = _syscall_dup(oldFd);
-    if (result == ERR)
+    if (result == _FAIL)
     {
         errno = _syscall_errno();
     }

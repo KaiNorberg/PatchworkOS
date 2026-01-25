@@ -14,11 +14,11 @@ static size_t read_fd(fd_t fd, const char* name, bool hexOutput)
     {
         char buffer[BUFFER_SIZE];
         uint64_t count = read(fd, buffer, BUFFER_SIZE - 1);
-        if (count == ERR)
+        if (count == _FAIL)
         {
             printf("cat: failed to read %s (%s)\n", name, strerror(errno));
             close(fd);
-            return ERR;
+            return _FAIL;
         }
         if (count == 0)
         {
@@ -58,13 +58,13 @@ int main(int argc, char** argv)
     for (; i < argc; i++)
     {
         fd_t fd = open(argv[i]);
-        if (fd == ERR)
+        if (fd == _FAIL)
         {
             printf("cat: failed to open %s (%s)\n", argv[i], strerror(errno));
             return EXIT_FAILURE;
         }
 
-        if (read_fd(fd, argv[i], hexOutput) == ERR)
+        if (read_fd(fd, argv[i], hexOutput) == _FAIL)
         {
             return EXIT_FAILURE;
         }

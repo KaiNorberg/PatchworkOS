@@ -81,7 +81,7 @@ typedef struct
  * @param file The file the ctl command was sent to.
  * @param buffer The buffer containing the command and its arguments.
  * @param count The number of bytes in the buffer.
- * @return On success, the number of bytes processed (count). On failure, `ERR` and `errno` is set.
+ * @return On success, the number of bytes processed (count). On failure, `_FAIL` and `errno` is set.
  */
 uint64_t ctl_dispatch(ctl_t ctls[], file_t* file, const void* buffer, size_t count);
 

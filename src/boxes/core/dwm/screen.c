@@ -25,13 +25,13 @@ static region_t invalidRegion;
 static void frontbuffer_init(void)
 {
     char name[MAX_PATH] = {0};
-    if (readfile("/dev/fb/0/name", name, sizeof(name) - 1, 0) == ERR)
+    if (readfile("/dev/fb/0/name", name, sizeof(name) - 1, 0) == _FAIL)
     {
         printf("dwm: failed to read framebuffer name (%s)\n", strerror(errno));
         abort();
     }
 
-    if (scanfile("/dev/fb/0/info", "%lu %lu %lu %s", &width, &height, &pitch, format) == ERR)
+    if (scanfile("/dev/fb/0/info", "%lu %lu %lu %s", &width, &height, &pitch, format) == _FAIL)
     {
         printf("dwm: failed to read framebuffer info (%s)\n", strerror(errno));
         abort();
@@ -43,7 +43,7 @@ static void frontbuffer_init(void)
     stride = pitch / sizeof(pixel_t);
 
     fd_t data = open("/dev/fb/0/data");
-    if (data == ERR)
+    if (data == _FAIL)
     {
         printf("dwm: failed to open framebuffer device (%s)\n", strerror(errno));
         abort();

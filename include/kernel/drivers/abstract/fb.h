@@ -56,46 +56,35 @@ typedef struct fb_info
 } fb_info_t;
 
 /**
- * @brief Framebuffer operations.
- * @struct fb_ops_t
- */
-typedef struct fb_ops
-{
-    uint64_t (*info)(fb_t* fb, fb_info_t* info);
-    size_t (*read)(fb_t* fb, void* buffer, size_t count, size_t* offset);
-    size_t (*write)(fb_t* fb, const void* buffer, size_t count, size_t* offset);
-    void* (*mmap)(fb_t* fb, void* address, size_t length, size_t* offset, pml_flags_t flags);
-    void (*cleanup)(fb_t* fb);
-} fb_ops_t;
-
-/**
  * @brief Framebuffer structure.
  * @struct fb_t
  */
 typedef struct fb
 {
-    char name[MAX_PATH];
-    const fb_ops_t* ops;
+    char* name;
+    status_t (*info)(fb_t* fb, fb_info_t* info);
+    status_t (*mmap)(fb_t* fb, void** address, size_t length, size_t* offset, pml_flags_t flags);
+    status_t (*read)(fb_t* fb, void* buffer, size_t count, size_t* offset, size_t* bytesRead);
+    status_t (*write)(fb_t* fb, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten);
+    void (*cleanup)(fb_t* fb);
     void* data;
     dentry_t* dir;
     list_t files;
 } fb_t;
 
 /**
- * @brief Allocate and initialize a new framebuffer.
+ * @brief Register a new framebuffer.
  *
- * @param name The driver specified name of the framebuffer.
- * @param ops The operations for the framebuffer.
- * @param private Private data for the framebuffer.
- * @return On success, the new framebuffer. On failure, `NULL` and `errno` is set.
+ * @param fb Pointer to the framebuffer structure to initialize.
+ * @return An appropriate status value.
  */
-fb_t* fb_new(const char* name, const fb_ops_t* ops, void* data);
+status_t fb_register(fb_t* fb);
 
 /**
- * @brief Frees a framebuffer.
+ * @brief Unregister a framebuffer.
  *
- * @param fb The framebuffer to free.
+ * @param fb The framebuffer to unregister.
  */
-void fb_free(fb_t* fb);
+void fb_unregister(fb_t* fb);
 
 /** @} */

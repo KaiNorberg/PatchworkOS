@@ -11,7 +11,7 @@ static uint64_t ctl_dispatch_one(ctl_t* ctls, file_t* file, uint64_t argc, const
     if (ctls == NULL || file == NULL || argv == NULL || argc == 0)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     ctl_t* ctl = &ctls[0];
@@ -22,12 +22,12 @@ static uint64_t ctl_dispatch_one(ctl_t* ctls, file_t* file, uint64_t argc, const
             if (argc < ctl->argcMin || argc > ctl->argcMax)
             {
                 errno = EINVAL;
-                return ERR;
+                return _FAIL;
             }
 
-            if (ctl->func(file, argc, argv) == ERR)
+            if (ctl->func(file, argc, argv) == _FAIL)
             {
-                return ERR;
+                return _FAIL;
             }
             return 0;
         }
@@ -36,7 +36,7 @@ static uint64_t ctl_dispatch_one(ctl_t* ctls, file_t* file, uint64_t argc, const
     }
 
     errno = ENOENT;
-    return ERR;
+    return _FAIL;
 }
 
 uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, size_t count)
@@ -44,7 +44,7 @@ uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, size_t coun
     if (ctls == NULL || file == NULL || buffer == NULL || count == 0)
     {
         errno = EINVAL;
-        return ERR;
+        return _FAIL;
     }
 
     uint8_t argBuffer[CTL_MAX_BUFFER];
@@ -54,12 +54,12 @@ uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, size_t coun
     if (argv == NULL)
     {
         errno = E2BIG;
-        return ERR;
+        return _FAIL;
     }
     if (argc == 0)
     {
         errno = ENOENT;
-        return ERR;
+        return _FAIL;
     }
 
     for (uint64_t i = 0; i < argc; i++)
@@ -67,9 +67,9 @@ uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, size_t coun
         if (strcmp(argv[i], "&&") == 0)
         {
             uint64_t res = ctl_dispatch_one(ctls, file, i, argv);
-            if (res == ERR)
+            if (res == _FAIL)
             {
-                return ERR;
+                return _FAIL;
             }
 
             argc -= (i + 1);
@@ -78,9 +78,9 @@ uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, size_t coun
         }
     }
 
-    if (ctl_dispatch_one(ctls, file, argc, argv) == ERR)
+    if (ctl_dispatch_one(ctls, file, argc, argv) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     return count;
 }

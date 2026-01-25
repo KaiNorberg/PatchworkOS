@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <sys/syscall.h>
 
 PERCPU_DEFINE_CTOR(static void, pcpu_syscall)
 {
@@ -79,7 +80,7 @@ void syscall_handler(interrupt_frame_t* frame)
     {
         LOG_DEBUG("Unknown syscall %u\n", frame->rax);
         errno = ENOSYS;
-        frame->rax = ERR;
+        frame->rax = _FAIL;
         return;
     }
 
@@ -89,11 +90,13 @@ void syscall_handler(interrupt_frame_t* frame)
     thread->syscall.frame = frame;
     thread->syscall.flags = SYSCALL_NORMAL;
 
+    uint64_t result = 0;
     // This is safe for any input type and any number of arguments up to 6 as they will simply be ignored.
-    uint64_t result = desc->handler(frame->rdi, frame->rsi, frame->rdx, frame->r10, frame->r8, frame->r9);
+    status_t status = desc->handler(&result, frame->rdi, frame->rsi, frame->rdx, frame->r10, frame->r8, frame->r9);
     if (!(thread->syscall.flags & SYSCALL_FORCE_FAKE_INTERRUPT))
     {
-        frame->rax = result;
+        frame->rax = status;
+        frame->rdx = result;
     }
 
     perf_syscall_end();

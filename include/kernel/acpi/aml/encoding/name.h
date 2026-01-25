@@ -97,7 +97,7 @@ typedef struct
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the SegCount will be stored.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_seg_count_read(aml_term_list_ctx_t* ctx, uint8_t* out);
 
@@ -109,7 +109,7 @@ uint64_t aml_seg_count_read(aml_term_list_ctx_t* ctx, uint8_t* out);
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to the destination where the pointer to the NameSeg will be stored. Will be located within the AML
  * bytecode stream.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_name_seg_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out);
 
@@ -121,7 +121,7 @@ uint64_t aml_name_seg_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out);
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the pointer to the array of two NameSeg will be stored. Will be located
  * within the AML bytecode stream.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_dual_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out);
 
@@ -134,7 +134,7 @@ uint64_t aml_dual_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out)
  * @param outSegments Pointer to destination where the pointer to the array of NameSeg will be stored. Will be located
  * within the AML bytecode stream.
  * @param outSegCount Pointer to destination where the number of segments will be stored.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_multi_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** outSegments, uint64_t* outSegCount);
 
@@ -144,7 +144,7 @@ uint64_t aml_multi_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out
  * A NullName structure is defined as `NullName := 0x00`.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_null_name_read(aml_term_list_ctx_t* ctx);
 
@@ -155,7 +155,7 @@ uint64_t aml_null_name_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the NamePath will be stored.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_name_path_read(aml_term_list_ctx_t* ctx, aml_name_path_t* out);
 
@@ -168,7 +168,7 @@ uint64_t aml_name_path_read(aml_term_list_ctx_t* ctx, aml_name_path_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the PrefixPath will be stored.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_prefix_path_read(aml_term_list_ctx_t* ctx, aml_prefix_path_t* out);
 
@@ -179,7 +179,7 @@ uint64_t aml_prefix_path_read(aml_term_list_ctx_t* ctx, aml_prefix_path_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the RootChar will be stored.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_root_char_read(aml_term_list_ctx_t* ctx, aml_root_char_t* out);
 
@@ -190,7 +190,7 @@ uint64_t aml_root_char_read(aml_term_list_ctx_t* ctx, aml_root_char_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the NameString will be stored.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_stioring_t* out);
 
@@ -243,7 +243,7 @@ aml_object_t* aml_super_name_read_and_resolve(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to where the pointer to the resolved object will be stored, might be set to point to `NULL`.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t aml_target_read_and_resolve(aml_term_list_ctx_t* ctx, aml_object_t** out);
 

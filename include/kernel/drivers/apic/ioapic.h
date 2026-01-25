@@ -153,7 +153,7 @@ typedef union {
 /**
  * @brief Initialize all IO APICs found in the system.
  *
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 uint64_t ioapic_all_init(void);
 

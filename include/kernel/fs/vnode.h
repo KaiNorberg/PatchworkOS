@@ -75,7 +75,7 @@ typedef struct vnode_ops
      *
      * @param dir The directory vnode to look in.
      * @param target The dentry to look up.
-     * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+     * @return On success, `0`. On failure, returns `_FAIL` and `errno` is set.
      */
     uint64_t (*lookup)(vnode_t* dir, dentry_t* target);
     /**
@@ -86,7 +86,7 @@ typedef struct vnode_ops
      * @param dir The directory vnode to create the entry in.
      * @param target The negative dentry to create.
      * @param mode The mode to create the entry with.
-     * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+     * @return On success, `0`. On failure, returns `_FAIL` and `errno` is set.
      */
     uint64_t (*create)(vnode_t* dir, dentry_t* target, mode_t mode);
     /**
@@ -101,7 +101,7 @@ typedef struct vnode_ops
      * @param dir The directory vnode to create the link in.
      * @param old The existing dentry containing the vnode to link to.
      * @param new The negative dentry to store the same vnode as old.
-     * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+     * @return On success, `0`. On failure, returns `_FAIL` and `errno` is set.
      */
     uint64_t (*link)(vnode_t* dir, dentry_t* old, dentry_t* new);
     /**
@@ -110,7 +110,7 @@ typedef struct vnode_ops
      * @param vnode The symbolic link vnode.
      * @param buffer The buffer to store the path in.
      * @param size The size of the buffer.
-     * @return On success, the number of bytes read. On failure, returns `ERR` and `errno` is set.
+     * @return On success, the number of bytes read. On failure, returns `_FAIL` and `errno` is set.
      */
     uint64_t (*readlink)(vnode_t* vnode, char* buffer, uint64_t size);
     /**
@@ -119,7 +119,7 @@ typedef struct vnode_ops
      * @param dir The directory vnode to create the symbolic link in.
      * @param target The negative dentry to create.
      * @param dest The path to which the symbolic link will point.
-     * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+     * @return On success, `0`. On failure, returns `_FAIL` and `errno` is set.
      */
     uint64_t (*symlink)(vnode_t* dir, dentry_t* target, const char* dest);
     /**
@@ -127,7 +127,7 @@ typedef struct vnode_ops
      *
      * @param dir The directory vnode containing the target.
      * @param target The dentry to remove.
-     * @return On success, `0`. On failure, returns `ERR` and `errno` is set.
+     * @return On success, `0`. On failure, returns `_FAIL` and `errno` is set.
      */
     uint64_t (*remove)(vnode_t* dir, dentry_t* target);
     /**
@@ -150,7 +150,7 @@ typedef struct vnode_ops
  * @param type The vnode type.
  * @param ops The vnode operations.
  * @param fileOps The file operations for files opened on this vnode.
- * @return On success, the new vnode. On failure, returns `NULL` and `errno` is set.
+ * @return On success, the new vnode. On failure, returns `NULL`.
  */
 vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_ops_t* ops, const file_ops_t* fileOps);
 

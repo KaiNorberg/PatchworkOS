@@ -43,15 +43,14 @@ void cpu_init(cpu_t* cpu)
 
     percpu_init(cpu);
 
-    if (stack_pointer_init_buffer(&cpu->exceptionStack, cpu->exceptionStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) == ERR)
+    if (!stack_pointer_init_buffer(&cpu->exceptionStack, cpu->exceptionStackBuffer, CONFIG_INTERRUPT_STACK_PAGES))
     {
         panic(NULL, "Failed to init exception stack for cpu %u\n", cpu->id);
     }
     *(uint64_t*)cpu->exceptionStack.bottom = CPU_STACK_CANARY;
     tss_ist_load(&cpu->tss, TSS_IST_EXCEPTION, &cpu->exceptionStack);
 
-    if (stack_pointer_init_buffer(&cpu->doubleFaultStack, cpu->doubleFaultStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) ==
-        ERR)
+    if (!stack_pointer_init_buffer(&cpu->doubleFaultStack, cpu->doubleFaultStackBuffer, CONFIG_INTERRUPT_STACK_PAGES))
     {
         stack_pointer_deinit_buffer(&cpu->exceptionStack);
         panic(NULL, "Failed to init double fault stack for cpu %u\n", cpu->id);
@@ -59,7 +58,7 @@ void cpu_init(cpu_t* cpu)
     *(uint64_t*)cpu->doubleFaultStack.bottom = CPU_STACK_CANARY;
     tss_ist_load(&cpu->tss, TSS_IST_DOUBLE_FAULT, &cpu->doubleFaultStack);
 
-    if (stack_pointer_init_buffer(&cpu->nmiStack, cpu->nmiStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) == ERR)
+    if (!stack_pointer_init_buffer(&cpu->nmiStack, cpu->nmiStackBuffer, CONFIG_INTERRUPT_STACK_PAGES))
     {
         stack_pointer_deinit_buffer(&cpu->exceptionStack);
         stack_pointer_deinit_buffer(&cpu->doubleFaultStack);
@@ -68,7 +67,7 @@ void cpu_init(cpu_t* cpu)
     *(uint64_t*)cpu->nmiStack.bottom = CPU_STACK_CANARY;
     tss_ist_load(&cpu->tss, TSS_IST_NMI, &cpu->nmiStack);
 
-    if (stack_pointer_init_buffer(&cpu->interruptStack, cpu->interruptStackBuffer, CONFIG_INTERRUPT_STACK_PAGES) == ERR)
+    if (!stack_pointer_init_buffer(&cpu->interruptStack, cpu->interruptStackBuffer, CONFIG_INTERRUPT_STACK_PAGES))
     {
         stack_pointer_deinit_buffer(&cpu->exceptionStack);
         stack_pointer_deinit_buffer(&cpu->doubleFaultStack);
@@ -114,9 +113,9 @@ static void cpu_halt_ipi_handler(ipi_func_data_t* data)
 
 uint64_t cpu_halt_others(void)
 {
-    if (ipi_send(SELF->self, IPI_OTHERS, cpu_halt_ipi_handler, NULL) == ERR)
+    if (ipi_send(SELF->self, IPI_OTHERS, cpu_halt_ipi_handler, NULL) == _FAIL)
     {
-        return ERR;
+        return _FAIL;
     }
     return 0;
 }

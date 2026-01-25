@@ -348,7 +348,7 @@ static inline void aml_token_read(aml_term_list_ctx_t* ctx, aml_token_t* out)
  *
  * @param ctx The AML term list context to parse from.
  * @param expected The expected token number.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
  */
 static inline uint64_t aml_token_expect(aml_term_list_ctx_t* ctx, aml_token_num_t expected)
 {
@@ -358,7 +358,7 @@ static inline uint64_t aml_token_expect(aml_term_list_ctx_t* ctx, aml_token_num_
     if (token.num != expected)
     {
         errno = EILSEQ;
-        return ERR;
+        return _FAIL;
     }
 
     return 0;
