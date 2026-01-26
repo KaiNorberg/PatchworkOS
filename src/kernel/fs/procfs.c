@@ -19,15 +19,15 @@
 #include <kernel/sync/lock.h>
 
 #include <assert.h>
-#include <errno.h>
 #include <kernel/sync/rcu.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fs.h>
 #include <sys/list.h>
+#include <sys/status.h>
 
-static uint64_t procfs_revalidate_hide(dentry_t* dentry)
+static bool procfs_revalidate_hide(dentry_t* dentry)
 {
     process_t* current = process_current();
     assert(current != NULL);
@@ -35,33 +35,20 @@ static uint64_t procfs_revalidate_hide(dentry_t* dentry)
     assert(process != NULL);
 
     namespace_t* currentNs = process_get_ns(current);
-    if (currentNs == NULL)
-    {
-        return _FAIL;
-    }
     UNREF_DEFER(currentNs);
 
     namespace_t* processNs = process_get_ns(process);
-    if (processNs == NULL)
-    {
-        return _FAIL;
-    }
     UNREF_DEFER(processNs);
 
-    if (!namespace_accessible(currentNs, processNs))
-    {
-        errno = ENOENT;
-        return _FAIL;
-    }
-
-    return 0;
+    return namespace_accessible(currentNs, processNs);
 }
 
 static dentry_ops_t hideDentryOps = {
     .revalidate = procfs_revalidate_hide,
 };
 
-static size_t procfs_prio_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t procfs_prio_read(
+    file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     process_t* process = file->vnode->data;
 
@@ -69,10 +56,11 @@ static size_t procfs_prio_read(file_t* file, void* buffer, size_t count, size_t*
 
     char prioStr[MAX_NAME];
     uint32_t length = snprintf(prioStr, MAX_NAME, "%llu", priority);
-    return BUFFER_READ(buffer, count, offset, prioStr, length);
+    return buffer_read(buffer, count, offset, bytesRead, prioStr, length);
 }
 
-static size_t procfs_prio_write(file_t* file, const void* buffer, size_t count, size_t* offset)
+static status_t procfs_prio_write(
+    file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
 {
     UNUSED(offset);
 
@@ -81,8 +69,7 @@ static size_t procfs_prio_write(file_t* file, const void* buffer, size_t count, 
     char prioStr[MAX_NAME];
     if (count >= MAX_NAME)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
 
     memcpy(prioStr, buffer, count);
@@ -91,17 +78,16 @@ static size_t procfs_prio_write(file_t* file, const void* buffer, size_t count, 
     long long int prio = atoll(prioStr);
     if (prio < 0)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
     if (prio > PRIORITY_MAX_USER)
     {
-        errno = EACCES;
-        return _FAIL;
+        return ERR(FS, ACCESS);
     }
 
     atomic_store(&process->priority, prio);
-    return count;
+    *bytesWritten = count;
+    return OK;
 }
 
 static file_ops_t prioOps = {
@@ -109,31 +95,29 @@ static file_ops_t prioOps = {
     .write = procfs_prio_write,
 };
 
-static size_t procfs_cwd_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t procfs_cwd_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     process_t* process = file->vnode->data;
 
     namespace_t* ns = process_get_ns(process);
-    if (ns == NULL)
-    {
-        return _FAIL;
-    }
     UNREF_DEFER(ns);
 
     path_t cwd = cwd_get(&process->cwd, ns);
     PATH_DEFER(&cwd);
 
     pathname_t cwdName;
-    if (path_to_name(&cwd, &cwdName) == _FAIL)
+    status_t status = path_to_name(&cwd, &cwdName);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     size_t length = strlen(cwdName.string);
-    return BUFFER_READ(buffer, count, offset, cwdName.string, length);
+    return buffer_read(buffer, count, offset, bytesRead, cwdName.string, length);
 }
 
-static size_t procfs_cwd_write(file_t* file, const void* buffer, size_t count, size_t* offset)
+static status_t procfs_cwd_write(
+    file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
 {
     UNUSED(offset);
 
@@ -142,48 +126,44 @@ static size_t procfs_cwd_write(file_t* file, const void* buffer, size_t count, s
     char cwdStr[MAX_PATH];
     if (count >= MAX_PATH)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
 
     memcpy(cwdStr, buffer, count);
     cwdStr[count] = '\0';
 
     pathname_t cwdPathname;
-    if (pathname_init(&cwdPathname, cwdStr) == _FAIL)
+    status_t status = pathname_init(&cwdPathname, cwdStr);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     namespace_t* ns = process_get_ns(process);
-    if (ns == NULL)
-    {
-        return _FAIL;
-    }
     UNREF_DEFER(ns);
 
     path_t path = cwd_get(&process->cwd, ns);
     PATH_DEFER(&path);
 
-    if (path_walk(&path, &cwdPathname, ns) == _FAIL)
+    status = path_walk(&path, &cwdPathname, ns);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     if (!DENTRY_IS_POSITIVE(path.dentry))
     {
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(FS, NOENT);
     }
 
     if (!DENTRY_IS_DIR(path.dentry))
     {
-        errno = ENOTDIR;
-        return _FAIL;
+        return ERR(FS, NOTDIR);
     }
 
     cwd_set(&process->cwd, &path);
-    return count;
+    *bytesWritten = count;
+    return OK;
 }
 
 static file_ops_t cwdOps = {
@@ -191,13 +171,15 @@ static file_ops_t cwdOps = {
     .write = procfs_cwd_write,
 };
 
-static size_t procfs_cmdline_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t procfs_cmdline_read(
+    file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     process_t* process = file->vnode->data;
 
     if (process->argv == NULL || process->argc == 0)
     {
-        return 0;
+        *bytesRead = 0;
+        return OK;
     }
 
     size_t totalSize = 0;
@@ -208,14 +190,14 @@ static size_t procfs_cmdline_read(file_t* file, void* buffer, size_t count, size
 
     if (totalSize == 0)
     {
-        return 0;
+        *bytesRead = 0;
+        return OK;
     }
 
     char* cmdline = malloc(totalSize);
     if (cmdline == NULL)
     {
-        errno = ENOMEM;
-        return _FAIL;
+        return ERR(FS, NOMEM);
     }
 
     char* dest = cmdline;
@@ -226,28 +208,29 @@ static size_t procfs_cmdline_read(file_t* file, void* buffer, size_t count, size
         dest += len;
     }
 
-    size_t result = BUFFER_READ(buffer, count, offset, cmdline, totalSize);
+    status_t status = buffer_read(buffer, count, offset, bytesRead, cmdline, totalSize);
     free(cmdline);
-    return result;
+    return status;
 }
 
 static file_ops_t cmdlineOps = {
     .read = procfs_cmdline_read,
 };
 
-static size_t procfs_note_write(file_t* file, const void* buffer, size_t count, size_t* offset)
+static status_t procfs_note_write(
+    file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
 {
     UNUSED(offset);
 
     if (count == 0)
     {
-        return 0;
+        *bytesWritten = 0;
+        return OK;
     }
 
     if (count >= NOTE_MAX)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
 
     process_t* process = file->vnode->data;
@@ -257,66 +240,70 @@ static size_t procfs_note_write(file_t* file, const void* buffer, size_t count, 
     thread_t* thread = process_rcu_first_thread(process);
     if (thread == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
 
     char string[NOTE_MAX] = {0};
     memcpy_s(string, NOTE_MAX, buffer, count);
-    if (thread_send_note(thread, string) == _FAIL)
+    status_t status = thread_send_note(thread, string);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
-    return count;
+    *bytesWritten = count;
+    return OK;
 }
 
 static file_ops_t noteOps = {
     .write = procfs_note_write,
 };
 
-static size_t procfs_notegroup_write(file_t* file, const void* buffer, size_t count, size_t* offset)
+static status_t procfs_notegroup_write(
+    file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
 {
     UNUSED(offset);
 
     if (count == 0)
     {
-        return 0;
+        *bytesWritten = 0;
+        return OK;
     }
 
     if (count >= NOTE_MAX)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
     process_t* process = file->vnode->data;
 
     char string[NOTE_MAX] = {0};
     memcpy_s(string, NOTE_MAX, buffer, count);
-    if (group_send_note(&process->group, string) == _FAIL)
+    status_t status = group_send_note(&process->group, string);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
-    return count;
+    *bytesWritten = count;
+    return OK;
 }
 
 static file_ops_t notegroupOps = {
     .write = procfs_notegroup_write,
 };
 
-static uint64_t procfs_group_open(file_t* file)
+static status_t procfs_group_open(file_t* file)
 {
     process_t* process = file->vnode->data;
 
     group_t* group = group_get(&process->group);
     if (group == NULL)
     {
-        return _FAIL;
+        return ERR(FS, NOGROUP);
     }
 
     file->data = group;
-    return 0;
+    return OK;
 }
 
 static void procfs_group_close(file_t* file)
@@ -336,44 +323,49 @@ static file_ops_t groupOps = {
     .close = procfs_group_close,
 };
 
-static size_t procfs_pid_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t procfs_pid_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     process_t* process = file->vnode->data;
 
     char pidStr[MAX_NAME];
     uint32_t length = snprintf(pidStr, MAX_NAME, "%llu", process->id);
-    return BUFFER_READ(buffer, count, offset, pidStr, length);
+    return buffer_read(buffer, count, offset, bytesRead, pidStr, length);
 }
 
 static file_ops_t pidOps = {
     .read = procfs_pid_read,
 };
 
-static size_t procfs_wait_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t procfs_wait_read(
+    file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     process_t* process = file->vnode->data;
 
-    if (WAIT_BLOCK(&process->dyingQueue, atomic_load(&process->flags) & PROCESS_DYING) == _FAIL)
+    status_t status = WAIT_BLOCK(&process->dyingQueue, atomic_load(&process->flags) & PROCESS_DYING);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     lock_acquire(&process->status.lock);
-    size_t result = BUFFER_READ(buffer, count, offset, process->status.buffer, strlen(process->status.buffer));
+    status = buffer_read(
+        buffer, count, offset, bytesRead, process->status.buffer, strlen(process->status.buffer));
     lock_release(&process->status.lock);
-    return result;
+    return status;
 }
 
-static wait_queue_t* procfs_wait_poll(file_t* file, poll_events_t* revents)
+static status_t procfs_wait_poll(file_t* file, poll_events_t* revents, wait_queue_t** queue)
 {
     process_t* process = file->vnode->data;
     if (atomic_load(&process->flags) & PROCESS_DYING)
     {
         *revents |= POLLIN;
-        return &process->dyingQueue;
+        *queue = &process->dyingQueue;
+        return OK;
     }
 
-    return &process->dyingQueue;
+    *queue = &process->dyingQueue;
+    return OK;
 }
 
 static file_ops_t waitOps = {
@@ -381,7 +373,8 @@ static file_ops_t waitOps = {
     .poll = procfs_wait_poll,
 };
 
-static size_t procfs_perf_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t procfs_perf_read(
+    file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     process_t* process = file->vnode->data;
     size_t userPages = space_user_page_count(&process->space);
@@ -396,33 +389,32 @@ static size_t procfs_perf_read(file_t* file, void* buffer, size_t count, size_t*
 
     char statStr[MAX_PATH];
     int length = snprintf(statStr, sizeof(statStr),
-        "user_clocks %llu\nkernel_sched_clocks %llu\nstart_clocks %llu\nuser_pages %llu\nthread_count %llu", userClocks,
-        kernelClocks, startTime, userPages, threadCount);
+        "user_clocks %llu\nkernel_sched_clocks %llu\nstart_clocks %llu\nuser_pages %llu\nthread_count %llu",
+        userClocks, kernelClocks, startTime, userPages, threadCount);
     if (length < 0)
     {
-        errno = EIO;
-        return _FAIL;
+        return ERR(FS, IMPL);
     }
 
-    return BUFFER_READ(buffer, count, offset, statStr, (size_t)length);
+    return buffer_read(buffer, count, offset, bytesRead, statStr, (size_t)length);
 }
 
 static file_ops_t perfOps = {
     .read = procfs_perf_read,
 };
 
-static uint64_t procfs_ns_open(file_t* file)
+static status_t procfs_ns_open(file_t* file)
 {
     process_t* process = file->vnode->data;
 
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return _FAIL;
+        return ERR(FS, NOENT);
     }
 
     file->data = ns;
-    return 0;
+    return OK;
 }
 
 static void procfs_ns_close(file_t* file)
@@ -441,14 +433,8 @@ static file_ops_t nsOps = {
     .close = procfs_ns_close,
 };
 
-static uint64_t procfs_ctl_close(file_t* file, uint64_t argc, const char** argv)
+static status_t procfs_ctl_close(file_t* file, uint64_t argc, const char** argv)
 {
-    if (argc != 2 && argc != 3)
-    {
-        errno = EINVAL;
-        return _FAIL;
-    }
-
     process_t* process = file->vnode->data;
 
     if (argc == 2)
@@ -456,46 +442,33 @@ static uint64_t procfs_ctl_close(file_t* file, uint64_t argc, const char** argv)
         fd_t fd;
         if (sscanf(argv[1], "%lld", &fd) != 1)
         {
-            errno = EINVAL;
-            return _FAIL;
+            return ERR(FS, INVAL);
         }
 
-        if (file_table_close(&process->files, fd) == _FAIL)
-        {
-            return _FAIL;
-        }
+        return file_table_close(&process->files, fd);
     }
-    else
+
+    fd_t minFd;
+    if (sscanf(argv[1], "%lld", &minFd) != 1)
     {
-        fd_t minFd;
-        if (sscanf(argv[1], "%lld", &minFd) != 1)
-        {
-            errno = EINVAL;
-            return _FAIL;
-        }
-
-        fd_t maxFd;
-        if (sscanf(argv[2], "%lld", &maxFd) != 1)
-        {
-            errno = EINVAL;
-            return _FAIL;
-        }
-
-        if (file_table_close_range(&process->files, minFd, maxFd) == _FAIL)
-        {
-            return _FAIL;
-        }
+        return ERR(FS, INVAL);
     }
 
-    return 0;
+    fd_t maxFd;
+    if (sscanf(argv[2], "%lld", &maxFd) != 1)
+    {
+        return ERR(FS, INVAL);
+    }
+
+    file_table_close_range(&process->files, minFd, maxFd);
+    return OK;
 }
 
-static uint64_t procfs_ctl_dup2(file_t* file, uint64_t argc, const char** argv)
+static status_t procfs_ctl_dup(file_t* file, uint64_t argc, const char** argv)
 {
     if (argc != 3)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, ARGC);
     }
 
     process_t* process = file->vnode->data;
@@ -503,179 +476,152 @@ static uint64_t procfs_ctl_dup2(file_t* file, uint64_t argc, const char** argv)
     fd_t oldFd;
     if (sscanf(argv[1], "%lld", &oldFd) != 1)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
 
     fd_t newFd;
     if (sscanf(argv[2], "%lld", &newFd) != 1)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
 
-    if (file_table_dup2(&process->files, oldFd, newFd) == _FAIL)
-    {
-        return _FAIL;
-    }
-
-    return 0;
+    return file_table_dup(&process->files, oldFd, &newFd);
 }
 
-static uint64_t procfs_ctl_bind(file_t* file, uint64_t argc, const char** argv)
+static status_t procfs_ctl_bind(file_t* file, uint64_t argc, const char** argv)
 {
     if (argc != 3)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, ARGC);
     }
 
     process_t* process = file->vnode->data;
     process_t* writing = process_current();
 
     pathname_t targetName;
-    if (pathname_init(&targetName, argv[1]) == _FAIL)
+    status_t status = pathname_init(&targetName, argv[1]);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     namespace_t* processNs = process_get_ns(process);
-    if (processNs == NULL)
-    {
-        return _FAIL;
-    }
     UNREF_DEFER(processNs);
 
     path_t target = cwd_get(&process->cwd, processNs);
     PATH_DEFER(&target);
 
-    if (path_walk(&target, &targetName, processNs) == _FAIL)
+    status = path_walk(&target, &targetName, processNs);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     pathname_t sourceName;
-    if (pathname_init(&sourceName, argv[2]) == _FAIL)
+    status = pathname_init(&sourceName, argv[2]);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     namespace_t* writingNs = process_get_ns(writing);
-    if (writingNs == NULL)
-    {
-        return _FAIL;
-    }
     UNREF_DEFER(writingNs);
 
     path_t source = cwd_get(&writing->cwd, writingNs);
     PATH_DEFER(&source);
 
-    if (path_walk(&source, &sourceName, writingNs) == _FAIL)
+    status = path_walk(&source, &sourceName, writingNs);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
-    mount_t* mount = namespace_bind(processNs, &target, &source, targetName.mode);
-    if (mount == NULL)
-    {
-        return _FAIL;
-    }
-    UNREF(mount);
-    return 0;
+    return namespace_bind(processNs, &target, &source, targetName.mode, NULL);
 }
 
-static uint64_t procfs_ctl_mount(file_t* file, uint64_t argc, const char** argv)
+static status_t procfs_ctl_mount(file_t* file, uint64_t argc, const char** argv)
 {
     if (argc != 3 && argc != 4)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, ARGC);
     }
 
     process_t* writing = process_current();
     process_t* process = file->vnode->data;
 
     pathname_t mountname;
-    if (pathname_init(&mountname, argv[1]) == _FAIL)
+    status_t status = pathname_init(&mountname, argv[1]);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     namespace_t* ns = process_get_ns(process);
-    if (ns == NULL)
-    {
-        return _FAIL;
-    }
     UNREF_DEFER(ns);
 
     path_t mountpath = cwd_get(&process->cwd, ns);
     PATH_DEFER(&mountpath);
 
-    if (path_walk(&mountpath, &mountname, ns) == _FAIL)
+    status = path_walk(&mountpath, &mountname, ns);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     filesystem_t* fs = filesystem_get_by_path(argv[2], writing);
     if (fs == NULL)
     {
-        return _FAIL;
+        return ERR(FS, NOFS);
     }
 
     const char* options = (argc == 4) ? argv[3] : NULL;
-    mount_t* mount = namespace_mount(ns, &mountpath, fs, options, mountname.mode, NULL);
-    if (mount == NULL)
-    {
-        return _FAIL;
-    }
-    UNREF(mount);
-    return 0;
+    return namespace_mount(ns, &mountpath, fs, options, mountname.mode, NULL, NULL);
 }
 
-static uint64_t procfs_ctl_touch(file_t* file, uint64_t argc, const char** argv)
+static status_t procfs_ctl_touch(file_t* file, uint64_t argc, const char** argv)
 {
     if (argc != 2)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, ARGC);
     }
 
     process_t* process = file->vnode->data;
 
     pathname_t pathname;
-    if (pathname_init(&pathname, argv[1]) == _FAIL)
+    status_t status = pathname_init(&pathname, argv[1]);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
-    file_t* touch = vfs_open(&pathname, process);
-    if (touch == NULL)
+    file_t* touch;
+    status = vfs_open(&touch, &pathname, process);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     UNREF(touch);
-    return 0;
+    return OK;
 }
 
-static uint64_t procfs_ctl_start(file_t* file, uint64_t argc, const char** argv)
+static status_t procfs_ctl_start(file_t* file, uint64_t argc, const char** argv)
 {
     UNUSED(argv);
 
     if (argc != 1)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, ARGC);
     }
 
     process_t* process = file->vnode->data;
 
     atomic_fetch_and(&process->flags, ~PROCESS_SUSPENDED);
-    wait_unblock(&process->suspendQueue, WAIT_ALL, EOK);
+    wait_unblock(&process->suspendQueue, WAIT_ALL, OK);
 
-    return 0;
+    return OK;
 }
 
-static uint64_t procfs_ctl_kill(file_t* file, uint64_t argc, const char** argv)
+static status_t procfs_ctl_kill(file_t* file, uint64_t argc, const char** argv)
 {
     UNUSED(argv);
 
@@ -684,20 +630,19 @@ static uint64_t procfs_ctl_kill(file_t* file, uint64_t argc, const char** argv)
     if (argc == 2)
     {
         process_kill(process, argv[1]);
-        return 0;
+        return OK;
     }
 
     process_kill(process, "killed");
 
-    return 0;
+    return OK;
 }
 
-static uint64_t procfs_ctl_setns(file_t* file, uint64_t argc, const char** argv)
+static status_t procfs_ctl_setns(file_t* file, uint64_t argc, const char** argv)
 {
     if (argc != 2)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, ARGC);
     }
 
     process_t* process = file->vnode->data;
@@ -705,40 +650,36 @@ static uint64_t procfs_ctl_setns(file_t* file, uint64_t argc, const char** argv)
     fd_t fd;
     if (sscanf(argv[1], "%llu", &fd) != 1)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
 
     file_t* nsFile = file_table_get(&process->files, fd);
     if (nsFile == NULL)
     {
-        return _FAIL;
+        return ERR(FS, BADFD);
     }
     UNREF_DEFER(nsFile);
 
     if (nsFile->ops != &nsOps)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
 
     namespace_t* ns = nsFile->data;
     if (ns == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
 
     process_set_ns(process, ns);
-    return 0;
+    return OK;
 }
 
-static uint64_t procfs_ctl_setgroup(file_t* file, uint64_t argc, const char** argv)
+static status_t procfs_ctl_setgroup(file_t* file, uint64_t argc, const char** argv)
 {
     if (argc != 2)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, ARGC);
     }
 
     process_t* process = file->vnode->data;
@@ -746,38 +687,35 @@ static uint64_t procfs_ctl_setgroup(file_t* file, uint64_t argc, const char** ar
     fd_t fd;
     if (sscanf(argv[1], "%llu", &fd) != 1)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
 
     file_t* groupFile = file_table_get(&process->files, fd);
     if (groupFile == NULL)
     {
-        return _FAIL;
+        return ERR(FS, BADFD);
     }
     UNREF_DEFER(groupFile);
 
     if (groupFile->ops != &groupOps)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
 
     group_t* target = groupFile->data;
     if (target == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
 
     group_add(target, &process->group);
-    return 0;
+    return OK;
 }
 
 CTL_STANDARD_OPS_DEFINE(ctlOps,
     {
         {"close", procfs_ctl_close, 2, 3},
-        {"dup2", procfs_ctl_dup2, 3, 3},
+        {"dup", procfs_ctl_dup, 3, 3},
         {"bind", procfs_ctl_bind, 3, 3},
         {"mount", procfs_ctl_mount, 3, 4},
         {"touch", procfs_ctl_touch, 2, 2},
@@ -788,21 +726,23 @@ CTL_STANDARD_OPS_DEFINE(ctlOps,
         {0},
     })
 
-static size_t procfs_env_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t procfs_env_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     process_t* process = file->vnode->data;
 
     const char* value = env_get(&process->env, file->path.dentry->name);
     if (value == NULL)
     {
-        return 0;
+        *bytesRead = 0;
+        return OK;
     }
 
     size_t length = strlen(value);
-    return BUFFER_READ(buffer, count, offset, value, length);
+    return buffer_read(buffer, count, offset, bytesRead, value, length);
 }
 
-static size_t procfs_env_write(file_t* file, const void* buffer, size_t count, size_t* offset)
+static status_t procfs_env_write(
+    file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
 {
     UNUSED(offset);
 
@@ -811,19 +751,20 @@ static size_t procfs_env_write(file_t* file, const void* buffer, size_t count, s
     char value[MAX_NAME];
     if (count >= MAX_NAME)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
 
     memcpy(value, buffer, count);
     value[count] = '\0';
 
-    if (env_set(&process->env, file->path.dentry->name, value) == _FAIL)
+    status_t status = env_set(&process->env, file->path.dentry->name, value);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
-    return count;
+    *bytesWritten = count;
+    return OK;
 }
 
 static file_ops_t envVarOps = {
@@ -831,7 +772,7 @@ static file_ops_t envVarOps = {
     .write = procfs_env_write,
 };
 
-static uint64_t procfs_env_lookup(vnode_t* dir, dentry_t* target)
+static status_t procfs_env_lookup(vnode_t* dir, dentry_t* target)
 {
     UNUSED(target);
 
@@ -840,61 +781,56 @@ static uint64_t procfs_env_lookup(vnode_t* dir, dentry_t* target)
 
     if (env_get(&process->env, target->name) == NULL)
     {
-        return 0;
+        return INFO(FS, NEGATIVE);
     }
 
     vnode_t* vnode = vnode_new(dir->superblock, VREG, NULL, &envVarOps);
     if (vnode == NULL)
     {
-        return _FAIL;
+        return ERR(FS, NOMEM);
     }
     UNREF_DEFER(vnode);
     vnode->data = process; // No reference
 
     dentry_make_positive(target, vnode);
 
-    return 0;
+    return OK;
 }
 
-static uint64_t procfs_env_create(vnode_t* dir, dentry_t* target, mode_t mode)
+static status_t procfs_env_create(vnode_t* dir, dentry_t* target, mode_t mode)
 {
     if (mode & MODE_DIRECTORY)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
 
     process_t* process = dir->data;
     assert(process != NULL);
 
-    if (env_set(&process->env, target->name, "") == _FAIL)
+    status_t status = env_set(&process->env, target->name, "");
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     vnode_t* vnode = vnode_new(dir->superblock, VREG, NULL, &envVarOps);
     if (vnode == NULL)
     {
-        return _FAIL;
+        return ERR(FS, NOMEM);
     }
     UNREF_DEFER(vnode);
     vnode->data = process; // No reference
 
     dentry_make_positive(target, vnode);
-    return 0;
+    return OK;
 }
 
-static uint64_t procfs_env_remove(vnode_t* dir, dentry_t* target)
+static status_t procfs_env_remove(vnode_t* dir, dentry_t* target)
 {
     process_t* process = dir->data;
     assert(process != NULL);
 
-    if (env_unset(&process->env, target->name) == _FAIL)
-    {
-        return _FAIL;
-    }
-
-    return 0;
+    return env_unset(&process->env, target->name);
 }
 
 static vnode_ops_t envVnodeOps = {
@@ -903,11 +839,11 @@ static vnode_ops_t envVnodeOps = {
     .remove = procfs_env_remove,
 };
 
-static uint64_t procfs_env_iterate(dentry_t* dentry, dir_ctx_t* ctx)
+static status_t procfs_env_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 {
     if (!dentry_iterate_dots(dentry, ctx))
     {
-        return 0;
+        return OK;
     }
 
     process_t* process = dentry->vnode->data;
@@ -924,11 +860,11 @@ static uint64_t procfs_env_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
         if (!ctx->emit(ctx, process->env.vars[i].key, VREG))
         {
-            return 0;
+            return OK;
         }
     }
 
-    return 0;
+    return OK;
 }
 
 static dentry_ops_t envDentryOps = {
@@ -936,18 +872,24 @@ static dentry_ops_t envDentryOps = {
     .revalidate = procfs_revalidate_hide,
 };
 
-static uint64_t procfs_self_readlink(vnode_t* vnode, char* buffer, uint64_t count)
+static status_t procfs_self_readlink(vnode_t* vnode, char* buffer, size_t size, size_t* bytesRead)
 {
     UNUSED(vnode);
 
     process_t* process = process_current();
-    int ret = snprintf(buffer, count, "%llu", process->id);
-    if (ret < 0 || ret >= (int)count)
+    int ret = snprintf(buffer, size, "%llu", process->id);
+    if (ret < 0)
     {
-        return _FAIL;
+        return ERR(FS, IMPL);
     }
 
-    return ret;
+    if ((size_t)ret >= size)
+    {
+        return ERR(FS, NAMETOOLONG);
+    }
+
+    *bytesRead = ret;
+    return OK;
 }
 
 static vnode_ops_t selfOps = {
@@ -1043,7 +985,7 @@ static procfs_entry_t procEntries[] = {
     },
 };
 
-static uint64_t procfs_pid_lookup(vnode_t* dir, dentry_t* target)
+static status_t procfs_pid_lookup(vnode_t* dir, dentry_t* target)
 {
     process_t* process = dir->data;
     assert(process != NULL);
@@ -1058,7 +1000,7 @@ static uint64_t procfs_pid_lookup(vnode_t* dir, dentry_t* target)
         vnode_t* vnode = vnode_new(dir->superblock, pidEntries[i].type, pidEntries[i].vnodeOps, pidEntries[i].fileOps);
         if (vnode == NULL)
         {
-            return 0;
+            return ERR(FS, NOMEM);
         }
         UNREF_DEFER(vnode);
         vnode->data = process; // No reference
@@ -1069,10 +1011,10 @@ static uint64_t procfs_pid_lookup(vnode_t* dir, dentry_t* target)
         }
 
         dentry_make_positive(target, vnode);
-        return 0;
+        return OK;
     }
 
-    return 0;
+    return INFO(FS, NEGATIVE);
 }
 
 static void procfs_pid_cleanup(vnode_t* vnode)
@@ -1087,11 +1029,11 @@ static void procfs_pid_cleanup(vnode_t* vnode)
     vnode->data = NULL;
 }
 
-static uint64_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
+static status_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 {
     if (!dentry_iterate_dots(dentry, ctx))
     {
-        return 0;
+        return OK;
     }
 
     process_t* current = process_current();
@@ -1121,11 +1063,11 @@ static uint64_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
         if (!ctx->emit(ctx, pidEntries[i].name, pidEntries[i].type))
         {
-            return 0;
+            return OK;
         }
     }
 
-    return 0;
+    return OK;
 }
 
 static vnode_ops_t pidVnodeOps = {
@@ -1137,7 +1079,7 @@ static dentry_ops_t pidDentryOps = {
     .iterate = procfs_pid_iterate,
 };
 
-static uint64_t procfs_lookup(vnode_t* dir, dentry_t* target)
+static status_t procfs_lookup(vnode_t* dir, dentry_t* target)
 {
     for (size_t i = 0; i < ARRAY_SIZE(procEntries); i++)
     {
@@ -1150,31 +1092,31 @@ static uint64_t procfs_lookup(vnode_t* dir, dentry_t* target)
             vnode_new(dir->superblock, procEntries[i].type, procEntries[i].vnodeOps, procEntries[i].fileOps);
         if (vnode == NULL)
         {
-            return _FAIL;
+            return ERR(FS, NOMEM);
         }
         UNREF_DEFER(vnode);
 
         dentry_make_positive(target, vnode);
-        return 0;
+        return OK;
     }
 
     pid_t pid;
     if (sscanf(target->name, "%llu", &pid) != 1)
     {
-        return 0;
+        return INFO(FS, NEGATIVE);
     }
 
     process_t* process = process_get(pid);
     if (process == NULL)
     {
-        return 0;
+        return INFO(FS, NEGATIVE);
     }
     UNREF_DEFER(process);
 
     vnode_t* vnode = vnode_new(dir->superblock, VDIR, &pidVnodeOps, NULL);
     if (vnode == NULL)
     {
-        return _FAIL;
+        return ERR(FS, NOMEM);
     }
     UNREF_DEFER(vnode);
     vnode->data = REF(process);
@@ -1182,14 +1124,14 @@ static uint64_t procfs_lookup(vnode_t* dir, dentry_t* target)
     target->ops = &pidDentryOps;
 
     dentry_make_positive(target, vnode);
-    return 0;
+    return OK;
 }
 
-static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
+static status_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 {
     if (!dentry_iterate_dots(dentry, ctx))
     {
-        return 0;
+        return OK;
     }
 
     for (size_t i = 0; i < ARRAY_SIZE(procEntries); i++)
@@ -1201,7 +1143,7 @@ static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
         if (!ctx->emit(ctx, procEntries[i].name, procEntries[i].type))
         {
-            return 0;
+            return OK;
         }
     }
 
@@ -1219,11 +1161,11 @@ static uint64_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         snprintf(name, sizeof(name), "%llu", process->id);
         if (!ctx->emit(ctx, name, VDIR))
         {
-            return 0;
+            return OK;
         }
     }
 
-    return 0;
+    return OK;
 }
 
 static vnode_ops_t procVnodeOps = {
@@ -1234,41 +1176,41 @@ static dentry_ops_t procDentryOps = {
     .iterate = procfs_iterate,
 };
 
-static dentry_t* procfs_mount(filesystem_t* fs, const char* options, void* data)
+static status_t procfs_mount(filesystem_t* fs,  dentry_t** out, const char* options, void* data)
 {
     UNUSED(data);
 
     if (options != NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(FS, INVAL);
     }
 
     superblock_t* superblock = superblock_new(fs, NULL, NULL);
     if (superblock == NULL)
     {
-        return NULL;
+        return ERR(FS, NOMEM);
     }
     UNREF_DEFER(superblock);
 
     vnode_t* vnode = vnode_new(superblock, VDIR, &procVnodeOps, NULL);
     if (vnode == NULL)
     {
-        return NULL;
+        return ERR(FS, NOMEM);
     }
     UNREF_DEFER(vnode);
 
     dentry_t* dentry = dentry_new(superblock, NULL, NULL);
     if (dentry == NULL)
     {
-        return NULL;
+        return ERR(FS, NOMEM);
     }
     dentry->ops = &procDentryOps;
 
     dentry_make_positive(dentry, vnode);
 
     superblock->root = dentry;
-    return superblock->root;
+    *out = superblock->root;
+    return OK;
 }
 
 static filesystem_t procfs = {
@@ -1278,7 +1220,7 @@ static filesystem_t procfs = {
 
 void procfs_init(void)
 {
-    if (filesystem_register(&procfs) == _FAIL)
+    if (IS_ERR(filesystem_register(&procfs)))
     {
         panic(NULL, "Failed to register procfs filesystem");
     }

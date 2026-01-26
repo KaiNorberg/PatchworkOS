@@ -15,9 +15,20 @@ static symbol_addr_t** addrArray = NULL;
 static size_t addrAmount = 0;
 static size_t addrCapacity = 0;
 
-static map_t nameMap = MAP_CREATE();
+static bool symbol_name_cmp(map_entry_t* entry, const void* key)
+{
+    symbol_name_t* s = CONTAINER_OF(entry, symbol_name_t, mapEntry);
+    return strcmp(s->name, (const char*)key) == 0;
+}
 
-static map_t groupMap = MAP_CREATE();
+static bool symbol_group_cmp(map_entry_t* entry, const void* key)
+{
+    symbol_group_t* g = CONTAINER_OF(entry, symbol_group_t, mapEntry);
+    return g->id == *(const symbol_group_id_t*)key;
+}
+
+static MAP_CREATE(nameMap, 1024, symbol_name_cmp);
+static MAP_CREATE(groupMap, 64, symbol_group_cmp);
 
 static rwlock_t lock = RWLOCK_CREATE();
 
@@ -144,8 +155,9 @@ static uint64_t symbol_resolve_name_unlocked(symbol_info_t* outSymbol, const cha
         return _FAIL;
     }
 
-    map_key_t key = map_key_string(name);
-    symbol_name_t* nameEntry = CONTAINER_OF_SAFE(map_get(&nameMap, &key), symbol_name_t, mapEntry);
+    uint64_t hash = hash_buffer(name, strlen(name));
+    map_entry_t* entry = map_find(&nameMap, name, hash);
+    symbol_name_t* nameEntry = entry ? CONTAINER_OF(entry, symbol_name_t, mapEntry) : NULL;
     if (nameEntry == NULL || list_is_empty(&nameEntry->addrs))
     {
         errno = ENOENT;
@@ -196,8 +208,9 @@ uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf
     bool groupWasCreated = false;
     bool nameWasCreated = false;
 
-    map_key_t groupKey = map_key_uint64(groupId);
-    symbolGroup = CONTAINER_OF_SAFE(map_get(&groupMap, &groupKey), symbol_group_t, mapEntry);
+    uint64_t groupHash = hash_uint64(groupId);
+    map_entry_t* groupEntry = map_find(&groupMap, &groupId, groupHash);
+    symbolGroup = groupEntry ? CONTAINER_OF(groupEntry, symbol_group_t, mapEntry) : NULL;
     if (symbolGroup == NULL)
     {
         symbolGroup = malloc(sizeof(symbol_group_t));
@@ -209,17 +222,13 @@ uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf
         list_init(&symbolGroup->names);
         symbolGroup->id = groupId;
 
-        if (map_insert(&groupMap, &groupKey, &symbolGroup->mapEntry) == _FAIL)
-        {
-            free(symbolGroup);
-            symbolGroup = NULL;
-            goto error;
-        }
+        map_insert(&groupMap, &symbolGroup->mapEntry, groupHash);
         groupWasCreated = true;
     }
 
-    map_key_t nameKey = map_key_string(name);
-    symbolName = CONTAINER_OF_SAFE(map_get(&nameMap, &nameKey), symbol_name_t, mapEntry);
+    uint64_t nameHash = hash_buffer(name, strlen(name));
+    map_entry_t* nameEntry = map_find(&nameMap, name, nameHash);
+    symbolName = nameEntry ? CONTAINER_OF(nameEntry, symbol_name_t, mapEntry) : NULL;
     if (symbolName == NULL)
     {
         symbolName = malloc(sizeof(symbol_name_t));
@@ -233,12 +242,7 @@ uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf
         strncpy_s(symbolName->name, SYMBOL_MAX_NAME, name, SYMBOL_MAX_NAME - 1);
         symbolName->name[SYMBOL_MAX_NAME - 1] = '\0';
 
-        if (map_insert(&nameMap, &nameKey, &symbolName->mapEntry) == _FAIL)
-        {
-            free(symbolName);
-            symbolName = NULL;
-            goto error;
-        }
+        map_insert(&nameMap, &symbolName->mapEntry, nameHash);
         list_push_back(&symbolGroup->names, &symbolName->groupEntry);
         nameWasCreated = true;
     }
@@ -256,8 +260,8 @@ error:
     {
         if (symbolName != NULL && nameWasCreated)
         {
-            map_key_t key = map_key_string(symbolName->name);
-            map_remove(&nameMap, &symbolName->mapEntry);
+            uint64_t nameHash = hash_buffer(symbolName->name, strlen(symbolName->name));
+            map_remove(&nameMap, &symbolName->mapEntry, nameHash);
             list_remove(&symbolName->groupEntry);
             free(symbolName);
         }
@@ -267,7 +271,8 @@ error:
     {
         if (symbolGroup != NULL && groupWasCreated)
         {
-            map_remove(&groupMap, &symbolGroup->mapEntry);
+            uint64_t groupHash = hash_uint64(symbolGroup->id);
+            map_remove(&groupMap, &symbolGroup->mapEntry, groupHash);
             free(symbolGroup);
         }
     }
@@ -280,8 +285,9 @@ void symbol_remove_group(symbol_group_id_t groupId)
 {
     RWLOCK_WRITE_SCOPE(&lock);
 
-    map_key_t groupKey = map_key_uint64(groupId);
-    symbol_group_t* groupEntry = CONTAINER_OF_SAFE(map_get(&groupMap, &groupKey), symbol_group_t, mapEntry);
+    uint64_t groupHash = hash_uint64(groupId);
+    map_entry_t* entry = map_find(&groupMap, &groupId, groupHash);
+    symbol_group_t* groupEntry = entry ? CONTAINER_OF(entry, symbol_group_t, mapEntry) : NULL;
     if (groupEntry == NULL)
     {
         return;
@@ -306,7 +312,8 @@ void symbol_remove_group(symbol_group_id_t groupId)
 
             if (list_is_empty(&nameEntry->addrs))
             {
-                map_remove(&nameMap, &nameEntry->mapEntry);
+                uint64_t nameHash = hash_buffer(nameEntry->name, strlen(nameEntry->name));
+                map_remove(&nameMap, &nameEntry->mapEntry, nameHash);
                 list_remove(&nameEntry->groupEntry);
                 free(nameEntry);
             }
@@ -322,7 +329,7 @@ void symbol_remove_group(symbol_group_id_t groupId)
     }
     addrAmount = writeIdx;
 
-    map_remove(&groupMap, &groupEntry->mapEntry);
+    map_remove(&groupMap, &groupEntry->mapEntry, groupHash);
     free(groupEntry);
 
     if (addrAmount == 0)

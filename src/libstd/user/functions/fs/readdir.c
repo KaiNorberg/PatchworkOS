@@ -1,35 +1,19 @@
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/fs.h>
 
-#include "user/common/syscalls.h"
-
-size_t readdir(fd_t fd, dirent_t** buffer, uint64_t* count)
+status_t readdir(fd_t fd, dirent_t** buffer, uint64_t* count)
 {
     uint64_t size = 1024 * sizeof(dirent_t);
     dirent_t* dirents = malloc(size);
     if (dirents == NULL)
     {
-        return _FAIL;
+        return ERR(LIBSTD, NOMEM);
     }
 
     uint64_t totalRead = 0;
     while (1)
     {
-        uint64_t bytesRead = getdents(fd, (dirent_t*)((uint64_t)dirents + totalRead), size - totalRead);
-        if (bytesRead == _FAIL)
-        {
-            free(dirents);
-            return _FAIL;
-        }
-
-        if (bytesRead == 0)
-        {
-            break;
-        }
-        totalRead += bytesRead;
-
         if (size - totalRead < sizeof(dirent_t))
         {
             size *= 2;
@@ -37,10 +21,24 @@ size_t readdir(fd_t fd, dirent_t** buffer, uint64_t* count)
             if (newDirents == NULL)
             {
                 free(dirents);
-                return _FAIL;
+                return ERR(LIBSTD, NOMEM);
             }
             dirents = newDirents;
         }
+
+        size_t bytesRead;
+        status_t status = getdents(fd, (dirent_t*)((uint8_t*)dirents + totalRead), size - totalRead, &bytesRead);
+        if (IS_ERR(status))
+        {
+            free(dirents);
+            return status;
+        }
+
+        if (bytesRead == 0)
+        {
+            break;
+        }
+        totalRead += bytesRead;
     }
 
     if (totalRead > 0 && totalRead < size)
@@ -54,5 +52,5 @@ size_t readdir(fd_t fd, dirent_t** buffer, uint64_t* count)
 
     *buffer = dirents;
     *count = totalRead / sizeof(dirent_t);
-    return 0;
+    return OK;
 }

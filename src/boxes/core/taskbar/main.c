@@ -12,7 +12,7 @@ int main(void)
         printf("taskbar: failed to open klog\n");
         return EXIT_FAILURE;
     }
-    if (dup2(klog, STDOUT_FILENO) == _FAIL || dup2(klog, STDERR_FILENO) == _FAIL)
+    if (dup(klog, STDOUT_FILENO) == _FAIL || dup(klog, STDERR_FILENO) == _FAIL)
     {
         printf("taskbar: failed to redirect stdout/stderr to klog\n");
         close(klog);

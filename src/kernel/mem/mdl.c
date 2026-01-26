@@ -67,7 +67,7 @@ static status_t mdl_push(mdl_t* mdl, phys_addr_t phys, size_t size)
 {
     if (size > UINT32_MAX)
     {
-        return ERR(MMU, OVERFLOW);
+        return ERR(MMU, TOOBIG);
     }
 
     if (mdl == NULL)

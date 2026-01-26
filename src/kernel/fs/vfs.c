@@ -26,7 +26,6 @@
 #include <kernel/cpu/regs.h>
 
 #include <assert.h>
-#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,15 +33,16 @@
 #include <sys/fs.h>
 #include <sys/list.h>
 
-static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_t* ns)
+static status_t vfs_create(path_t* path, const pathname_t* pathname, namespace_t* ns)
 {
     path_t parent = PATH_EMPTY;
     path_t target = PATH_EMPTY;
-    if (path_walk_parent_and_child(path, &parent, &target, pathname, ns) == _FAIL)
+    status_t status = path_walk_parent_and_child(path, &parent, &target, pathname, ns);
+    if (IS_ERR(status))
     {
-        if (errno != ENOENT || !(pathname->mode & MODE_PARENTS))
+        if (!IS_CODE(status, NOENT) || !(pathname->mode & MODE_PARENTS))
         {
-            return _FAIL;
+            return status;
         }
 
         char parentString[MAX_PATH];
@@ -58,7 +58,7 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_t
         char* lastSlash = strrchr(parentString, '/');
         if (lastSlash == NULL)
         {
-            return _FAIL;
+            return ERR(VFS, INVAL);
         }
 
         if (lastSlash == parentString)
@@ -71,9 +71,10 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_t
         }
 
         pathname_t parentPathname;
-        if (pathname_init(&parentPathname, parentString) == _FAIL)
+        status_t status = pathname_init(&parentPathname, parentString);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return ERR(VFS, INVAL);
         }
 
         parentPathname.mode = MODE_DIRECTORY | MODE_CREATE | MODE_PARENTS;
@@ -81,14 +82,16 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_t
         path_t recursiveStart = PATH_CREATE(path->mount, path->dentry);
         PATH_DEFER(&recursiveStart);
 
-        if (vfs_create(&recursiveStart, &parentPathname, ns) == _FAIL)
+        status = vfs_create(&recursiveStart, &parentPathname, ns);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
-        if (path_walk_parent_and_child(path, &parent, &target, pathname, ns) == _FAIL)
+        status = path_walk_parent_and_child(path, &parent, &target, pathname, ns);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
     }
 
@@ -97,15 +100,13 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_t
 
     if (!DENTRY_IS_POSITIVE(parent.dentry))
     {
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(VFS, NOENT);
     }
 
     vnode_t* dir = parent.dentry->vnode;
     if (dir->ops == NULL || dir->ops->create == NULL)
     {
-        errno = EPERM;
-        return _FAIL;
+        return ERR(VFS, PERM);
     }
 
     MUTEX_SCOPE(&dir->mutex);
@@ -114,102 +115,95 @@ static uint64_t vfs_create(path_t* path, const pathname_t* pathname, namespace_t
     {
         if (pathname->mode & MODE_EXCLUSIVE)
         {
-            errno = EEXIST;
-            return _FAIL;
+            return ERR(VFS, EXIST);
         }
 
         path_copy(path, &target);
-        return 0;
+        return OK;
     }
 
     if (!(parent.mount->mode & MODE_WRITE))
     {
-        errno = EACCES;
-        return _FAIL;
+        return ERR(VFS, ACCESS);
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    if (dir->ops->create(dir, target.dentry, pathname->mode) == _FAIL)
+    status = dir->ops->create(dir, target.dentry, pathname->mode);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     path_copy(path, &target);
-    return 0;
+    return OK;
 }
 
-static uint64_t vfs_open_lookup(path_t* path, const pathname_t* pathname, namespace_t* namespace)
+static status_t vfs_open_lookup(path_t* path, const pathname_t* pathname, namespace_t* namespace)
 {
     if (pathname->mode & MODE_CREATE)
     {
         return vfs_create(path, pathname, namespace);
     }
 
-    if (path_walk(path, pathname, namespace) == _FAIL)
-    {
-        return _FAIL;
-    }
-
-    return 0;
+    return path_walk(path, pathname, namespace);
 }
 
-file_t* vfs_open(const pathname_t* pathname, process_t* process)
+status_t vfs_open(file_t** out, const pathname_t* pathname, process_t* process)
 {
-    if (pathname == NULL || process == NULL)
+    if (out == NULL || pathname == NULL || process == NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(VFS, INVAL);
     }
 
-    return vfs_openat(NULL, pathname, process);
+    return vfs_openat(out, NULL, pathname, process);
 }
 
-uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* process)
+status_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* process)
 {
     if (pathname == NULL || files == NULL || process == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
     UNREF_DEFER(ns);
 
     path_t path = cwd_get(&process->cwd, ns);
     PATH_DEFER(&path);
 
-    if (vfs_open_lookup(&path, pathname, ns) == _FAIL)
+    status_t status = vfs_open_lookup(&path, pathname, ns);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     mode_t mode = pathname->mode;
-    if (mode_check(&mode, path.mount->mode) == _FAIL)
+    status = mode_check(&mode, path.mount->mode);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     if (!DENTRY_IS_POSITIVE(path.dentry))
     {
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(VFS, NOENT);
     }
 
     files[0] = file_new(&path, mode);
     if (files[0] == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, NOMEM);
     }
 
     files[1] = file_new(&path, mode);
     if (files[1] == NULL)
     {
         UNREF(files[0]);
-        return _FAIL;
+        return ERR(VFS, NOMEM);
     }
 
     if (pathname->mode & MODE_TRUNCATE && files[0]->vnode->type == VREG)
@@ -220,30 +214,29 @@ uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* proc
     if (files[0]->ops != NULL && files[0]->ops->open2 != NULL)
     {
         assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-        uint64_t result = files[0]->ops->open2(files);
-        if (result == _FAIL)
+        status = files[0]->ops->open2(files);
+        if (IS_ERR(status))
         {
             UNREF(files[0]);
             UNREF(files[1]);
-            return _FAIL;
+            return status;
         }
     }
 
-    return 0;
+    return OK;
 }
 
-file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* process)
+status_t vfs_openat(file_t** out, const path_t* from, const pathname_t* pathname, process_t* process)
 {
-    if (pathname == NULL || process == NULL)
+    if (out == NULL || pathname == NULL || process == NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(VFS, INVAL);
     }
 
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return NULL;
+        return ERR(VFS, INVAL);
     }
     UNREF_DEFER(ns);
 
@@ -258,27 +251,28 @@ file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* pr
     }
     PATH_DEFER(&path);
 
-    if (vfs_open_lookup(&path, pathname, ns) == _FAIL)
+    status_t status = vfs_open_lookup(&path, pathname, ns);
+    if (IS_ERR(status))
     {
-        return NULL;
+        return status;
     }
 
     mode_t mode = pathname->mode;
-    if (mode_check(&mode, path.mount->mode) == _FAIL)
+    status = mode_check(&mode, path.mount->mode);
+    if (IS_ERR(status))
     {
-        return NULL;
+        return status;
     }
 
     if (!DENTRY_IS_POSITIVE(path.dentry))
     {
-        errno = ENOENT;
-        return NULL;
+        return ERR(VFS, NOENT);
     }
 
     file_t* file = file_new(&path, mode);
     if (file == NULL)
     {
-        return NULL;
+        return ERR(VFS, NOMEM);
     }
 
     if (pathname->mode & MODE_TRUNCATE && file->vnode->type == VREG)
@@ -289,163 +283,155 @@ file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* pr
     if (file->ops != NULL && file->ops->open != NULL)
     {
         assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-        uint64_t result = file->ops->open(file);
-        if (result == _FAIL)
+        status = file->ops->open(file);
+        if (IS_ERR(status))
         {
             UNREF(file);
-            return NULL;
+            return status;
         }
     }
 
-    return file;
+    *out = file;
+    return OK;
 }
 
-size_t vfs_read(file_t* file, void* buffer, size_t count)
+status_t vfs_read(file_t* file, void* buffer, size_t count, size_t* bytesRead)
 {
-    if (file == NULL || buffer == NULL)
+    if (file == NULL || buffer == NULL || bytesRead == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     if (file->vnode->type == VDIR)
     {
-        errno = EISDIR;
-        return _FAIL;
+        return ERR(VFS, ISDIR);
     }
 
     if (file->ops == NULL || file->ops->read == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     if (!(file->mode & MODE_READ))
     {
-        errno = EBADF;
-        return _FAIL;
+        return ERR(VFS, BADFD);
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     size_t offset = file->pos;
-    size_t result = file->ops->read(file, buffer, count, &offset);
-    file->pos = offset;
+    status_t status = file->ops->read(file, buffer, count, &offset, bytesRead);
+    if (IS_OK(status))
+    {
+        file->pos = offset;
+    }
 
-    return result;
+    return status;
 }
 
-size_t vfs_write(file_t* file, const void* buffer, size_t count)
+status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* bytesWritten)
 {
-    if (file == NULL || buffer == NULL)
+    if (file == NULL || buffer == NULL || bytesWritten == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     if (file->vnode->type == VDIR)
     {
-        errno = EISDIR;
-        return _FAIL;
+        return ERR(VFS, ISDIR);
     }
 
     if (file->ops == NULL || file->ops->write == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     if (file->mode & MODE_APPEND)
     {
-        if (file->ops->seek != NULL && file->ops->seek(file, 0, SEEK_END) == _FAIL)
+        size_t newPos;
+        if (file->ops->seek != NULL && IS_ERR(file->ops->seek(file, 0, SEEK_END, &newPos)))
         {
-            return _FAIL;
+            return ERR(VFS, IO);
         }
     }
 
     if (!(file->mode & MODE_WRITE))
     {
-        errno = EBADF;
-        return _FAIL;
+        return ERR(VFS, BADFD);
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     size_t offset = file->pos;
-    size_t result = file->ops->write(file, buffer, count, &offset);
-    file->pos = offset;
+    status_t status = file->ops->write(file, buffer, count, &offset, bytesWritten);
+    if (IS_OK(status))
+    {
+        file->pos = offset;
+    }
 
-    return result;
+    return status;
 }
 
-size_t vfs_seek(file_t* file, ssize_t offset, seek_origin_t origin)
+status_t vfs_seek(file_t* file, ssize_t offset, seek_origin_t origin, size_t* newPos)
 {
-    if (file == NULL)
+    if (file == NULL || newPos == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     if (file->ops != NULL && file->ops->seek != NULL)
     {
         assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-        return file->ops->seek(file, offset, origin);
+        return file->ops->seek(file, offset, origin, newPos);
     }
 
-    errno = ESPIPE;
-    return _FAIL;
+    return ERR(VFS, SPIPE);
 }
 
-uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, size_t size)
+status_t vfs_ioctl(file_t* file, uint64_t request, void* argp, size_t size, uint64_t* result)
 {
-    if (file == NULL)
+    if (file == NULL || result == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     if (file->vnode->type == VDIR)
     {
-        errno = EISDIR;
-        return _FAIL;
+        return ERR(VFS, ISDIR);
     }
 
     if (file->ops == NULL || file->ops->ioctl == NULL)
     {
-        errno = ENOTTY;
-        return _FAIL;
+        return ERR(VFS, NOTTY);
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    return file->ops->ioctl(file, request, argp, size);
+    return file->ops->ioctl(file, request, argp, size, result);
 }
 
-void* vfs_mmap(file_t* file, void* address, size_t length, pml_flags_t flags)
+status_t vfs_mmap(file_t* file, void** addr, size_t length, pml_flags_t flags)
 {
-    if (file == NULL)
+    if (file == NULL || addr == NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(VFS, INVAL);
     }
 
     if (file->vnode->type == VDIR)
     {
-        errno = EISDIR;
-        return NULL;
+        return ERR(VFS, ISDIR);
     }
 
     if (file->ops == NULL || file->ops->mmap == NULL)
     {
-        errno = ENODEV;
-        return NULL;
+        return ERR(VFS, NODEV);
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     size_t offset = file->pos;
-    void* result = file->ops->mmap(file, address, length, &offset, flags);
-    if (result != NULL)
+    status_t status = file->ops->mmap(file, addr, length, &offset, flags);
+    if (IS_OK(status))
     {
         file->pos = offset;
     }
-    return result;
+    return status;
 }
 
 typedef struct
@@ -455,7 +441,7 @@ typedef struct
     uint16_t queueAmount;
 } vfs_poll_ctx_t;
 
-static uint64_t vfs_poll_ctx_init(vfs_poll_ctx_t* ctx, poll_file_t* files, uint64_t amount)
+static status_t vfs_poll_ctx_init(vfs_poll_ctx_t* ctx, poll_file_t* files, uint64_t amount)
 {
     memset(ctx->queues, 0, sizeof(wait_queue_t*) * CONFIG_MAX_FD);
     memset(ctx->lookupTable, 0, sizeof(uint16_t) * CONFIG_MAX_FD);
@@ -464,10 +450,10 @@ static uint64_t vfs_poll_ctx_init(vfs_poll_ctx_t* ctx, poll_file_t* files, uint6
     for (uint64_t i = 0; i < amount; i++)
     {
         files[i].revents = POLLNONE;
-        wait_queue_t* queue = files[i].file->ops->poll(files[i].file, &files[i].revents);
-        if (queue == NULL)
+        wait_queue_t* queue = NULL;
+        if (IS_ERR(files[i].file->ops->poll(files[i].file, &files[i].revents, &queue)))
         {
-            return _FAIL;
+            return ERR(VFS, IO);
         }
 
         // Avoid duplicate queues.
@@ -490,113 +476,110 @@ static uint64_t vfs_poll_ctx_init(vfs_poll_ctx_t* ctx, poll_file_t* files, uint6
         }
     }
 
-    return 0;
+    return OK;
 }
 
-static uint64_t vfs_poll_ctx_check_events(vfs_poll_ctx_t* ctx, poll_file_t* files, uint64_t amount)
+static status_t vfs_poll_ctx_check_events(vfs_poll_ctx_t* ctx, poll_file_t* files, uint64_t amount, size_t* readyCount)
 {
-    size_t readyCount = 0;
+    *readyCount = 0;
 
     for (uint64_t i = 0; i < amount; i++)
     {
         poll_events_t revents = POLLNONE;
-        wait_queue_t* queue = files[i].file->ops->poll(files[i].file, &revents);
-        if (queue == NULL)
+        wait_queue_t* queue = NULL;
+        if (IS_ERR(files[i].file->ops->poll(files[i].file, &revents, &queue)))
         {
-            return _FAIL;
+            return ERR(VFS, IO);
         }
 
         files[i].revents = (revents & (files[i].events | POLL_SPECIAL));
 
-        // Make sure the queue hasn't changed, just for debugging.
-        if (queue != ctx->queues[ctx->lookupTable[i]])
+        if (queue != NULL && queue != ctx->queues[ctx->lookupTable[i]])
         {
-            errno = EIO;
-            return _FAIL;
+            return ERR(VFS, IMPL);
         }
 
         if ((files[i].revents & (files[i].events | POLL_SPECIAL)) != 0)
         {
-            readyCount++;
+            (*readyCount)++;
         }
     }
 
-    return readyCount;
+    return OK;
 }
 
-uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
+status_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout, size_t* readyCount)
 {
-    if (files == NULL || amount == 0 || amount > CONFIG_MAX_FD)
+    if (files == NULL || amount == 0 || amount > CONFIG_MAX_FD || readyCount == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     for (uint64_t i = 0; i < amount; i++)
     {
         if (files[i].file == NULL)
         {
-            errno = EINVAL;
-            return _FAIL;
+            return ERR(VFS, INVAL);
         }
 
         if (files[i].file->vnode->type == VDIR)
         {
-            errno = EISDIR;
-            return _FAIL;
+            return ERR(VFS, ISDIR);
         }
 
         if (files[i].file->ops == NULL || files[i].file->ops->poll == NULL)
         {
-            errno = ENOSYS;
-            return _FAIL;
+            return ERR(VFS, IMPL);
         }
     }
 
     vfs_poll_ctx_t ctx;
-    if (vfs_poll_ctx_init(&ctx, files, amount) == _FAIL)
+    status_t status = vfs_poll_ctx_init(&ctx, files, amount);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     clock_t uptime = clock_uptime();
     clock_t deadline = CLOCKS_DEADLINE(timeout, uptime);
 
-    size_t readyCount = 0;
+    *readyCount = 0;
     while (true)
     {
         uptime = clock_uptime();
         clock_t remaining = CLOCKS_REMAINING(deadline, uptime);
 
-        if (wait_block_prepare(ctx.queues, ctx.queueAmount, remaining) == _FAIL)
+        status = wait_block_prepare(ctx.queues, ctx.queueAmount, remaining);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
-        readyCount = vfs_poll_ctx_check_events(&ctx, files, amount);
-        if (readyCount == _FAIL)
+        status = vfs_poll_ctx_check_events(&ctx, files, amount, readyCount);
+        if (IS_ERR(status))
         {
             wait_block_cancel();
-            return _FAIL;
+            return status;
         }
 
-        if (readyCount > 0 || uptime >= deadline)
+        if (*readyCount > 0 || uptime >= deadline)
         {
             wait_block_cancel();
             break;
         }
 
-        if (wait_block_commit() == _FAIL)
+        status = wait_block_commit();
+        if (IS_ERR(status))
         {
-            if (errno == ETIMEDOUT)
+            if (IS_CODE(status, TIMEOUT))
             {
                 break;
             }
-            return _FAIL;
+            return status;
         }
     }
 
-    return readyCount;
+    return OK;
 }
 
 typedef struct
@@ -650,14 +633,14 @@ static bool vfs_dir_emit(dir_ctx_t* ctx, const char* name, vtype_t type)
     d->flags = flags;
     strncpy(d->path, name, MAX_PATH - 1);
     d->path[MAX_PATH - 1] = '\0';
-    mode_to_string(mode, d->mode, MAX_PATH);
+    mode_to_string(mode, d->mode, MAX_PATH, NULL);
 
     vctx->written += sizeof(dirent_t);
     vctx->ctx.pos++;
     return true;
 }
 
-static uint64_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_recursive_ctx_t* ctx,
+static status_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_recursive_ctx_t* ctx,
     const char* prefix, namespace_t* ns)
 {
     uint64_t offset = 0;
@@ -665,8 +648,7 @@ static uint64_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_
     dirent_t* buf = malloc(bufSize);
     if (buf == NULL)
     {
-        errno = ENOMEM;
-        return _FAIL;
+        return ERR(VFS, NOMEM);
     }
 
     while (true)
@@ -698,7 +680,7 @@ static uint64_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_
             {
                 if (ctx->pos + sizeof(dirent_t) > ctx->count)
                 {
-                    return 0;
+                    return OK;
                 }
 
                 dirent_t* out = (dirent_t*)((uint8_t*)ctx->buffer + ctx->pos);
@@ -727,10 +709,11 @@ static uint64_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_
                 path_t childPath = PATH_CREATE(path->mount, path->dentry);
                 PATH_DEFER(&childPath);
 
-                if (path_step(&childPath, mode, d->path, ns) == _FAIL)
+                status_t status = path_step(&childPath, mode, d->path, ns);
+                if (IS_ERR(status))
                 {
                     free(buf);
-                    return _FAIL;
+                    return status;
                 }
 
                 if (!DENTRY_IS_DIR(childPath.dentry))
@@ -748,10 +731,11 @@ static uint64_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_
                     snprintf(newPrefix, MAX_PATH, "%s/%s", prefix, d->path);
                 }
 
-                if (vfs_getdents_recursive_step(&childPath, mode, ctx, newPrefix, ns) == _FAIL)
+                status = vfs_getdents_recursive_step(&childPath, mode, ctx, newPrefix, ns);
+                if (IS_ERR(status))
                 {
                     free(buf);
-                    return _FAIL;
+                    return status;
                 }
                 path_put(&childPath);
             }
@@ -759,25 +743,24 @@ static uint64_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_
     }
 
     free(buf);
-    return 0;
+    return OK;
 }
 
-static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
+static status_t vfs_remove_recursive(path_t* path, process_t* process)
 {
     if (DENTRY_IS_ROOT(path->dentry))
     {
-        errno = EBUSY;
-        return _FAIL;
+        return ERR(VFS, BUSY);
     }
 
     if (!DENTRY_IS_DIR(path->dentry))
     {
         vnode_t* dir = path->dentry->parent->vnode;
-        if (dir->ops->remove(dir, path->dentry) == _FAIL)
+        if (IS_ERR(dir->ops->remove(dir, path->dentry)))
         {
-            return _FAIL;
+            return ERR(VFS, IO);
         }
-        return 0;
+        return OK;
     }
 
     getdents_recursive_ctx_t ctx = {.buffer = NULL, .count = 0, .pos = 0, .skip = 0, .currentOffset = 0};
@@ -787,8 +770,7 @@ static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
     dirent_t* buf = malloc(bufSize);
     if (buf == NULL)
     {
-        errno = ENOMEM;
-        return _FAIL;
+        return ERR(VFS, NOMEM);
     }
 
     while (true)
@@ -824,16 +806,18 @@ static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
             path_t childPath = PATH_CREATE(path->mount, path->dentry);
             PATH_DEFER(&childPath);
 
-            if (path_step(&childPath, MODE_NONE, d->path, vctx.ns) == _FAIL)
+            status_t status = path_step(&childPath, MODE_NONE, d->path, vctx.ns);
+            if (IS_ERR(status))
             {
                 free(buf);
-                return _FAIL;
+                return status;
             }
 
-            if (vfs_remove_recursive(&childPath, process) == _FAIL)
+            status = vfs_remove_recursive(&childPath, process);
+            if (IS_ERR(status))
             {
                 free(buf);
-                return _FAIL;
+                return status;
             }
 
             removed = true;
@@ -852,50 +836,39 @@ static uint64_t vfs_remove_recursive(path_t* path, process_t* process)
     vnode_t* dir = path->dentry->parent->vnode;
     if (dir->ops == NULL || dir->ops->remove == NULL)
     {
-        errno = EPERM;
-        return _FAIL;
+        return ERR(VFS, PERM);
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
-    if (dir->ops->remove(dir, path->dentry) == _FAIL)
-    {
-        return _FAIL;
-    }
-
-    return 0;
+    return dir->ops->remove(dir, path->dentry);
 }
 
-size_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count)
+status_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count, size_t* bytesWritten)
 {
-    if (file == NULL || (buffer == NULL && count > 0))
+    if (file == NULL || (buffer == NULL && count > 0) || bytesWritten == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     if (file->vnode == NULL || file->vnode->type != VDIR)
     {
-        errno = ENOTDIR;
-        return _FAIL;
+        return ERR(VFS, NOTDIR);
     }
 
     if (file->path.dentry == NULL || file->path.dentry->parent == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     if (file->path.dentry->ops == NULL || file->path.dentry->ops->iterate == NULL)
     {
-        errno = ENOSYS;
-        return _FAIL;
+        return ERR(VFS, IMPL);
     }
 
     if (!(file->mode & MODE_READ))
     {
-        errno = EBADF;
-        return _FAIL;
+        return ERR(VFS, BADFD);
     }
 
     process_t* process = process_current();
@@ -904,7 +877,7 @@ size_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count)
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
     UNREF_DEFER(ns);
 
@@ -919,12 +892,14 @@ size_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count)
             .skip = file->pos,
             .currentOffset = 0,
         };
-        if (vfs_getdents_recursive_step(&file->path, file->mode, &ctx, "", ns) == _FAIL)
+        status_t status = vfs_getdents_recursive_step(&file->path, file->mode, &ctx, "", ns);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
         file->pos = ctx.skip + ctx.pos;
-        return ctx.pos;
+        *bytesWritten = ctx.pos;
+        return OK;
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
@@ -936,51 +911,49 @@ size_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count)
         .path = file->path,
         .ns = ns};
 
-    size_t result = file->path.dentry->ops->iterate(file->path.dentry, &ctx.ctx);
+    status_t status = file->path.dentry->ops->iterate(file->path.dentry, &ctx.ctx);
     file->pos = ctx.ctx.pos;
 
-    if (result != _FAIL)
+    if (IS_OK(status))
     {
-        return ctx.written;
+        *bytesWritten = ctx.written;
     }
-    return result;
+    return status;
 }
 
-uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process)
+status_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process)
 {
     if (pathname == NULL || buffer == NULL || process == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
     UNREF_DEFER(ns);
 
     path_t path = cwd_get(&process->cwd, ns);
     PATH_DEFER(&path);
 
-    if (path_walk(&path, pathname, ns) == _FAIL)
+    status_t status = path_walk(&path, pathname, ns);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     if (!(path.mount->mode & MODE_READ))
     {
-        errno = EACCES;
-        return _FAIL;
+        return ERR(VFS, ACCESS);
     }
 
     memset(buffer, 0, sizeof(stat_t));
 
     if (!DENTRY_IS_POSITIVE(path.dentry))
     {
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(VFS, NOENT);
     }
 
     /// @todo Reimplement this after the async system.
@@ -997,34 +970,31 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
     buffer->createTime = 0;
 
     char mode[MAX_PATH];
-    if (mode_to_string(path.mount->mode, mode, MAX_PATH) == _FAIL)
+    status = mode_to_string(path.mount->mode, mode, MAX_PATH, NULL);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        mutex_release(&vnode->mutex);
+        return status;
     }
 
     if (snprintf(buffer->name, sizeof(buffer->name), "%s%s", path.dentry->name, mode) < 0)
     {
-        errno = EIO;
-        return _FAIL;
+        mutex_release(&vnode->mutex);
+        return ERR(VFS, IO);
     }
 
     mutex_release(&vnode->mutex);
-    return 0;
+    return OK;
 }
 
-uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, process_t* process)
+status_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, process_t* process)
 {
     if (oldPathname == NULL || newPathname == NULL || process == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     namespace_t* ns = process_get_ns(process);
-    if (ns == NULL)
-    {
-        return _FAIL;
-    }
     UNREF_DEFER(ns);
 
     path_t cwd = cwd_get(&process->cwd, ns);
@@ -1035,9 +1005,10 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
     PATH_DEFER(&oldParent);
     PATH_DEFER(&old);
 
-    if (path_walk_parent_and_child(&cwd, &oldParent, &old, oldPathname, ns) == _FAIL)
+    status_t status = path_walk_parent_and_child(&cwd, &oldParent, &old, oldPathname, ns);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     path_t newParent = PATH_EMPTY;
@@ -1045,98 +1016,83 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
     PATH_DEFER(&newParent);
     PATH_DEFER(&new);
 
-    if (path_walk_parent_and_child(&cwd, &newParent, &new, newPathname, ns) == _FAIL)
+    status = path_walk_parent_and_child(&cwd, &newParent, &new, newPathname, ns);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     if (oldParent.dentry->superblock != newParent.dentry->superblock)
     {
-        errno = EXDEV;
-        return _FAIL;
+        return ERR(VFS, XDEV);
     }
 
     if (!DENTRY_IS_POSITIVE(old.dentry))
     {
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(VFS, NOENT);
     }
 
     if (DENTRY_IS_DIR(old.dentry))
     {
-        errno = EISDIR;
-        return _FAIL;
+        return ERR(VFS, ISDIR);
     }
 
     if (!DENTRY_IS_POSITIVE(newParent.dentry))
     {
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(VFS, NOENT);
     }
 
     if (newParent.dentry->vnode->ops == NULL || newParent.dentry->vnode->ops->link == NULL)
     {
-        errno = EPERM;
-        return _FAIL;
+        return ERR(VFS, PERM);
     }
 
     if (!(old.mount->mode & MODE_READ))
     {
-        errno = EACCES;
-        return _FAIL;
+        return ERR(VFS, ACCESS);
     }
 
     if (!(newParent.mount->mode & MODE_WRITE))
     {
-        errno = EACCES;
-        return _FAIL;
+        return ERR(VFS, ACCESS);
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    if (newParent.dentry->vnode->ops->link(newParent.dentry->vnode, old.dentry, new.dentry) == _FAIL)
-    {
-        return _FAIL;
-    }
-
-    return 0;
+    return newParent.dentry->vnode->ops->link(newParent.dentry->vnode, old.dentry, new.dentry);
 }
 
-size_t vfs_readlink(vnode_t* symlink, char* buffer, size_t count)
+status_t vfs_readlink(vnode_t* symlink, char* buffer, size_t count, size_t* bytesRead)
 {
-    if (symlink == NULL || buffer == NULL || count == 0)
+    if (symlink == NULL || buffer == NULL || count == 0 || bytesRead == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     if (symlink->type != VSYMLINK)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     if (symlink->ops == NULL || symlink->ops->readlink == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    return symlink->ops->readlink(symlink, buffer, count);
+    return symlink->ops->readlink(symlink, buffer, count, bytesRead);
 }
 
-uint64_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathname, process_t* process)
+status_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathname, process_t* process)
 {
     if (oldPathname == NULL || newPathname == NULL || process == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
     UNREF_DEFER(ns);
 
@@ -1148,51 +1104,47 @@ uint64_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathnam
     PATH_DEFER(&newParent);
     PATH_DEFER(&new);
 
-    if (path_walk_parent_and_child(&cwd, &newParent, &new, newPathname, ns) == _FAIL)
+    status_t status = path_walk_parent_and_child(&cwd, &newParent, &new, newPathname, ns);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     if (!DENTRY_IS_POSITIVE(newParent.dentry))
     {
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(VFS, NOENT);
     }
 
     if (DENTRY_IS_POSITIVE(new.dentry))
     {
-        errno = EEXIST;
-        return _FAIL;
+        return ERR(VFS, EXIST);
     }
 
     if (newParent.dentry->vnode->ops == NULL || newParent.dentry->vnode->ops->symlink == NULL)
     {
-        errno = EPERM;
-        return _FAIL;
+        return ERR(VFS, PERM);
     }
 
     if (!(newParent.mount->mode & MODE_WRITE))
     {
-        errno = EACCES;
-        return _FAIL;
+        return ERR(VFS, ACCESS);
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     return newParent.dentry->vnode->ops->symlink(newParent.dentry->vnode, new.dentry, oldPathname->string);
 }
 
-uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
+status_t vfs_remove(const pathname_t* pathname, process_t* process)
 {
     if (pathname == NULL || process == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
     UNREF_DEFER(ns);
 
@@ -1201,17 +1153,17 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
 
     path_t parent = PATH_EMPTY;
     path_t target = PATH_EMPTY;
-    if (path_walk_parent_and_child(&cwd, &parent, &target, pathname, ns) == _FAIL)
+    status_t status = path_walk_parent_and_child(&cwd, &parent, &target, pathname, ns);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     PATH_DEFER(&parent);
     PATH_DEFER(&target);
 
     if (!DENTRY_IS_POSITIVE(target.dentry))
     {
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(VFS, NOENT);
     }
 
     if (!(pathname->mode & MODE_RECURSIVE))
@@ -1220,24 +1172,21 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
         {
             if (!DENTRY_IS_DIR(target.dentry))
             {
-                errno = ENOTDIR;
-                return _FAIL;
+                return ERR(VFS, NOTDIR);
             }
         }
         else
         {
             if (DENTRY_IS_DIR(target.dentry))
             {
-                errno = EISDIR;
-                return _FAIL;
+                return ERR(VFS, ISDIR);
             }
         }
     }
 
     if (!(target.mount->mode & MODE_WRITE))
     {
-        errno = EACCES;
-        return _FAIL;
+        return ERR(VFS, ACCESS);
     }
 
     if (pathname->mode & MODE_RECURSIVE)
@@ -1248,8 +1197,7 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process)
     vnode_t* dir = parent.dentry->vnode;
     if (dir->ops == NULL || dir->ops->remove == NULL)
     {
-        errno = EPERM;
-        return _FAIL;
+        return ERR(VFS, PERM);
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
@@ -1264,48 +1212,52 @@ uint64_t vfs_id_get(void)
     return atomic_fetch_add(&newVfsId, 1);
 }
 
-SYSCALL_DEFINE(SYS_OPEN, fd_t, const char* pathString)
+SYSCALL_DEFINE(SYS_OPEN, const char* pathString)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t pathname;
-    if (thread_copy_from_user_pathname(thread, &pathname, pathString) == _FAIL)
+    status_t status = thread_copy_from_user_pathname(thread, &pathname, pathString);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
-    file_t* file = vfs_open(&pathname, process);
-    if (file == NULL)
+    file_t* file = NULL;
+    status = vfs_open(&file, &pathname, process);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     UNREF_DEFER(file);
 
-    return file_table_open(&process->files, file);
+    *_result = file_table_open(&process->files, file);
+    return OK;
 }
 
-SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
+SYSCALL_DEFINE(SYS_OPEN2, const char* pathString, fd_t fds[2])
 {
     if (fds == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t pathname;
-    if (thread_copy_from_user_pathname(thread, &pathname, pathString) == _FAIL)
+    status_t status = thread_copy_from_user_pathname(thread, &pathname, pathString);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     file_t* files[2];
-    if (vfs_open2(&pathname, files, process) == _FAIL)
+    status = vfs_open2(&pathname, files, process);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     UNREF_DEFER(files[0]);
     UNREF_DEFER(files[1]);
@@ -1314,26 +1266,27 @@ SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
     fdsLocal[0] = file_table_open(&process->files, files[0]);
     if (fdsLocal[0] == _FAIL)
     {
-        return _FAIL;
+        return ERR(VFS, NOMEM);
     }
     fdsLocal[1] = file_table_open(&process->files, files[1]);
     if (fdsLocal[1] == _FAIL)
     {
         file_table_close(&process->files, fdsLocal[0]);
-        return _FAIL;
+        return ERR(VFS, NOMEM);
     }
 
-    if (thread_copy_to_user(thread, fds, fdsLocal, sizeof(fd_t) * 2) == _FAIL)
+    status = thread_copy_to_user(thread, fds, fdsLocal, sizeof(fd_t) * 2);
+    if (IS_ERR(status))
     {
         file_table_close(&process->files, fdsLocal[0]);
         file_table_close(&process->files, fdsLocal[1]);
-        return _FAIL;
+        return status;
     }
 
-    return 0;
+    return OK;
 }
 
-SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
+SYSCALL_DEFINE(SYS_OPENAT, fd_t from, const char* pathString)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
@@ -1344,7 +1297,7 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
         file_t* fromFile = file_table_get(&process->files, from);
         if (fromFile == NULL)
         {
-            return _FAIL;
+            return ERR(VFS, BADFD);
         }
         path_copy(&fromPath, &fromFile->path);
         UNREF(fromFile);
@@ -1352,22 +1305,25 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t, fd_t from, const char* pathString)
     PATH_DEFER(&fromPath);
 
     pathname_t pathname;
-    if (thread_copy_from_user_pathname(thread, &pathname, pathString) == _FAIL)
+    status_t status = thread_copy_from_user_pathname(thread, &pathname, pathString);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
-    file_t* file = vfs_openat(from != FD_NONE ? &fromPath : NULL, &pathname, process);
-    if (file == NULL)
+    file_t* file = NULL;
+    status = vfs_openat(&file, from != FD_NONE ? &fromPath : NULL, &pathname, process);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     UNREF_DEFER(file);
 
-    return file_table_open(&process->files, file);
+    *_result = file_table_open(&process->files, file);
+    return OK;
 }
 
-SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, size_t count)
+SYSCALL_DEFINE(SYS_READ, fd_t fd, void* buffer, size_t count)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
@@ -1375,20 +1331,26 @@ SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, size_t count)
     file_t* file = file_table_get(&process->files, fd);
     if (file == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, BADFD);
     }
     UNREF_DEFER(file);
 
-    if (space_pin(&process->space, buffer, count, &thread->userStack) == _FAIL)
+    status_t status = space_pin(&process->space, buffer, count, &thread->userStack);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
-    uint64_t result = vfs_read(file, buffer, count);
+    size_t bytesRead = 0;
+    status = vfs_read(file, buffer, count, &bytesRead);
     space_unpin(&process->space, buffer, count);
-    return result;
+    if (IS_OK(status))
+    {
+        *_result = bytesRead;
+    }
+    return status;
 }
 
-SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, size_t count)
+SYSCALL_DEFINE(SYS_WRITE, fd_t fd, const void* buffer, size_t count)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
@@ -1396,34 +1358,46 @@ SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, size_t count)
     file_t* file = file_table_get(&process->files, fd);
     if (file == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, BADFD);
     }
     UNREF_DEFER(file);
 
-    if (space_pin(&process->space, buffer, count, &thread->userStack) == _FAIL)
+    status_t status = space_pin(&process->space, buffer, count, &thread->userStack);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
-    uint64_t result = vfs_write(file, buffer, count);
+    size_t bytesWritten = 0;
+    status = vfs_write(file, buffer, count, &bytesWritten);
     space_unpin(&process->space, buffer, count);
-    return result;
+    if (IS_OK(status))
+    {
+        *_result = bytesWritten;
+    }
+    return status;
 }
 
-SYSCALL_DEFINE(SYS_SEEK, uint64_t, fd_t fd, ssize_t offset, seek_origin_t origin)
+SYSCALL_DEFINE(SYS_SEEK, fd_t fd, ssize_t offset, seek_origin_t origin)
 {
     process_t* process = process_current();
 
     file_t* file = file_table_get(&process->files, fd);
     if (file == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, BADFD);
     }
     UNREF_DEFER(file);
 
-    return vfs_seek(file, offset, origin);
+    size_t newPos = 0;
+    status_t status = vfs_seek(file, offset, origin, &newPos);
+    if (IS_OK(status))
+    {
+        *_result = newPos;
+    }
+    return status;
 }
 
-SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, size_t size)
+SYSCALL_DEFINE(SYS_IOCTL, fd_t fd, uint64_t request, void* argp, size_t size)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
@@ -1431,68 +1405,76 @@ SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, size_
     file_t* file = file_table_get(&process->files, fd);
     if (file == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, BADFD);
     }
     UNREF_DEFER(file);
 
-    if (space_pin(&process->space, argp, size, &thread->userStack) == _FAIL)
+    status_t status = space_pin(&process->space, argp, size, &thread->userStack);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
-    uint64_t result = vfs_ioctl(file, request, argp, size);
+    uint64_t ioctlResult = 0;
+    status = vfs_ioctl(file, request, argp, size, &ioctlResult);
     space_unpin(&process->space, argp, size);
-    return result;
+    if (IS_OK(status))
+    {
+        *_result = ioctlResult;
+    }
+    return status;
 }
 
-SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, size_t length, prot_t prot)
+SYSCALL_DEFINE(SYS_MMAP, fd_t fd, void* addr, size_t length, prot_t prot)
 {
     process_t* process = process_current();
     space_t* space = &process->space;
 
-    if (address != NULL && space_check_access(space, address, length) == _FAIL)
+    if (addr != NULL && IS_ERR(space_check_access(space, addr, length)))
     {
-        return NULL;
+        return ERR(VFS, INVAL);
     }
 
     pml_flags_t flags = vmm_prot_to_flags(prot);
     if (flags == PML_NONE)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(VFS, INVAL);
     }
 
     file_t* file = file_table_get(&process->files, fd);
     if (file == NULL)
     {
-        return NULL;
+        return ERR(VFS, BADFD);
     }
     UNREF_DEFER(file);
 
     if ((!(file->mode & MODE_READ) && (prot & PROT_READ)) || (!(file->mode & MODE_WRITE) && (prot & PROT_WRITE)) ||
         (!(file->mode & MODE_EXECUTE) && (prot & PROT_EXECUTE)))
     {
-        errno = EACCES;
-        return NULL;
+        return ERR(VFS, ACCESS);
     }
 
-    return vfs_mmap(file, address, length, flags | PML_USER);
+    status_t status = vfs_mmap(file, &addr, length, flags | PML_USER);
+    if (IS_OK(status))
+    {
+        *_result = (uint64_t)addr;
+    }
+    return status;
 }
 
-SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeout)
+SYSCALL_DEFINE(SYS_POLL, pollfd_t* fds, uint64_t amount, clock_t timeout)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     if (amount == 0 || amount >= CONFIG_MAX_FD)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
-    if (space_pin(&process->space, fds, sizeof(pollfd_t) * amount, &thread->userStack) == _FAIL)
+    status_t status = space_pin(&process->space, fds, sizeof(pollfd_t) * amount, &thread->userStack);
+    if (IS_ERR(status))
     {
-        errno = EFAULT;
-        return _FAIL;
+        return ERR(VFS, FAULT);
     }
 
     poll_file_t files[CONFIG_MAX_FD];
@@ -1505,25 +1487,24 @@ SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeo
             {
                 UNREF(files[j].file);
             }
-            if (errno == EBADF)
-            {
-                fds[i].revents = POLLNVAL;
-            }
+            fds[i].revents = POLLNVAL;
             space_unpin(&process->space, fds, sizeof(pollfd_t) * amount);
-            return _FAIL;
+            return ERR(VFS, BADFD);
         }
 
         files[i].events = fds[i].events;
         files[i].revents = POLLNONE;
     }
 
-    uint64_t result = vfs_poll(files, amount, timeout);
-    if (result != _FAIL)
+    size_t readyCount = 0;
+    status = vfs_poll(files, amount, timeout, &readyCount);
+    if (IS_OK(status))
     {
         for (uint64_t i = 0; i < amount; i++)
         {
             fds[i].revents = files[i].revents;
         }
+        *_result = readyCount;
     }
     space_unpin(&process->space, fds, sizeof(pollfd_t) * amount);
 
@@ -1532,10 +1513,10 @@ SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeo
         UNREF(files[i].file);
     }
 
-    return result;
+    return status;
 }
 
-SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count)
+SYSCALL_DEFINE(SYS_GETDENTS, fd_t fd, dirent_t* buffer, uint64_t count)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
@@ -1543,129 +1524,149 @@ SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count
     file_t* file = file_table_get(&process->files, fd);
     if (file == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, BADFD);
     }
     UNREF_DEFER(file);
 
-    if (space_pin(&process->space, buffer, count, &thread->userStack) == _FAIL)
+    status_t status = space_pin(&process->space, buffer, count, &thread->userStack);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
-    uint64_t result = vfs_getdents(file, buffer, count);
+    size_t bytesWritten = 0;
+    status = vfs_getdents(file, buffer, count, &bytesWritten);
     space_unpin(&process->space, buffer, count);
-    return result;
+    if (IS_OK(status))
+    {
+        *_result = bytesWritten;
+    }
+    return status;
 }
 
-SYSCALL_DEFINE(SYS_STAT, uint64_t, const char* pathString, stat_t* buffer)
+SYSCALL_DEFINE(SYS_STAT, const char* pathString, stat_t* buffer)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t pathname;
-    if (thread_copy_from_user_pathname(thread, &pathname, pathString) == _FAIL)
+    status_t status = thread_copy_from_user_pathname(thread, &pathname, pathString);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
-    if (space_pin(&process->space, buffer, sizeof(stat_t), &thread->userStack) == _FAIL)
+    status = space_pin(&process->space, buffer, sizeof(stat_t), &thread->userStack);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
-    uint64_t result = vfs_stat(&pathname, buffer, process);
+    status = vfs_stat(&pathname, buffer, process);
     space_unpin(&process->space, buffer, sizeof(stat_t));
-    return result;
+    return status;
 }
 
-SYSCALL_DEFINE(SYS_LINK, uint64_t, const char* oldPathString, const char* newPathString)
+SYSCALL_DEFINE(SYS_LINK, const char* oldPathString, const char* newPathString)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t oldPathname;
-    if (thread_copy_from_user_pathname(thread, &oldPathname, oldPathString) == _FAIL)
+    status_t status = thread_copy_from_user_pathname(thread, &oldPathname, oldPathString);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     pathname_t newPathname;
-    if (thread_copy_from_user_pathname(thread, &newPathname, newPathString) == _FAIL)
+    status = thread_copy_from_user_pathname(thread, &newPathname, newPathString);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     return vfs_link(&oldPathname, &newPathname, process);
 }
 
-SYSCALL_DEFINE(SYS_READLINK, uint64_t, const char* pathString, char* buffer, uint64_t count)
+SYSCALL_DEFINE(SYS_READLINK, const char* pathString, char* buffer, uint64_t count)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t pathname;
-    if (thread_copy_from_user_pathname(thread, &pathname, pathString) == _FAIL)
+    status_t status = thread_copy_from_user_pathname(thread, &pathname, pathString);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
     UNREF_DEFER(ns);
 
     path_t path = cwd_get(&process->cwd, ns);
     PATH_DEFER(&path);
 
-    if (path_walk(&path, &pathname, ns) == _FAIL)
+    status = path_walk(&path, &pathname, ns);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     if (!DENTRY_IS_POSITIVE(path.dentry))
     {
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(VFS, NOENT);
     }
 
-    if (space_pin(&process->space, buffer, count, &thread->userStack) == _FAIL)
+    status = space_pin(&process->space, buffer, count, &thread->userStack);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
-    uint64_t result = vfs_readlink(path.dentry->vnode, buffer, count);
+    size_t bytesRead = 0;
+    status = vfs_readlink(path.dentry->vnode, buffer, count, &bytesRead);
     space_unpin(&process->space, buffer, count);
-    return result;
+    if (IS_OK(status))
+    {
+        *_result = bytesRead;
+    }
+    return status;
 }
 
-SYSCALL_DEFINE(SYS_SYMLINK, uint64_t, const char* targetString, const char* linkpathString)
+SYSCALL_DEFINE(SYS_SYMLINK, const char* targetString, const char* linkpathString)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t target;
-    if (thread_copy_from_user_pathname(thread, &target, targetString) == _FAIL)
+    status_t status = thread_copy_from_user_pathname(thread, &target, targetString);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     pathname_t linkpath;
-    if (thread_copy_from_user_pathname(thread, &linkpath, linkpathString) == _FAIL)
+    status = thread_copy_from_user_pathname(thread, &linkpath, linkpathString);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     return vfs_symlink(&target, &linkpath, process);
 }
 
-SYSCALL_DEFINE(SYS_REMOVE, uint64_t, const char* pathString)
+SYSCALL_DEFINE(SYS_REMOVE, const char* pathString)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t pathname;
-    if (thread_copy_from_user_pathname(thread, &pathname, pathString) == _FAIL)
+    status_t status = thread_copy_from_user_pathname(thread, &pathname, pathString);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     return vfs_remove(&pathname, process);

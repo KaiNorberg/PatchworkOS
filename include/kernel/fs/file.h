@@ -59,6 +59,7 @@ typedef struct file_ops
     status_t (*read)(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead);
     status_t (*write)(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten);
     status_t (*seek)(file_t* file, ssize_t offset, seek_origin_t origin, size_t* newPos);
+    status_t (*ioctl)(file_t* file, uint64_t request, void* argp, size_t size, uint64_t* result);
     status_t (*poll)(file_t* file, poll_events_t* revents, wait_queue_t** queue);
     status_t (*mmap)(file_t* file, void** address, size_t length, size_t* offset, pml_flags_t flags);
 } file_ops_t;

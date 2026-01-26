@@ -72,8 +72,9 @@ void init_early(void)
     module_init_fake_kernel_module();
 
     LOG_INFO("early init done, jumping to boot thread\n");
-    thread_t* bootThread = thread_new(process_get_kernel());
-    if (bootThread == NULL)
+    thread_t* bootThread;
+    status_t status = thread_new(&bootThread, process_get_kernel());
+    if (IS_ERR(status))
     {
         panic(NULL, "Failed to create boot thread");
     }
@@ -173,7 +174,8 @@ static inline void init_process_spawn(void)
     }
     UNREF_DEFER(rootNs);
 
-    if (namespace_copy(rootNs, kernelNs) == _FAIL)
+    status_t status = namespace_copy(rootNs, kernelNs);
+    if (IS_ERR(status))
     {
         panic(NULL, "Failed to copy kernel namespace to root namespace");
     }
@@ -185,8 +187,9 @@ static inline void init_process_spawn(void)
     }
     UNREF_DEFER(initProcess);
 
-    thread_t* initThread = thread_new(initProcess);
-    if (initThread == NULL)
+    thread_t* initThread;
+    status = thread_new(&initThread, initProcess);
+    if (IS_ERR(status))
     {
         panic(NULL, "Failed to create init thread");
     }

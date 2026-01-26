@@ -135,15 +135,17 @@ typedef enum
  * allocate zeroed memory.
  *
  * @param fd The open file descriptor of the file to be mapped.
- * @param address The desired virtual destination address, if equal to `NULL` the kernel will choose a available
+ * @param addr The output pointer to store the virtual address, the value it currently points to is used as the desired virtual address. If it points to `NULL`, the kernel chooses an address.
  * address, will be rounded down to the nearest page multiple.
  * @param length The length of the segment to be mapped, note that this length will be rounded up to the nearest page
  * multiple by the kernel factoring in page boundaries.
  * @param prot Protection flags, must have at least `PROT_READ` set.
- * @return On success, returns the address of the mapped memory, will always be page aligned, on failure returns `NULL`
- * and errno is set.
+ * @return An appropriate status value.
  */
-void* mmap(fd_t fd, void* address, size_t length, prot_t prot);
+static inline status_t mmap(fd_t fd, void** addr, size_t length, prot_t prot)
+{
+    return syscall4(SYS_MMAP, (void*)addr, fd, (uint64_t)*addr, length, prot);
+}
 
 /**
  * @brief System call to unmap mapped memory.
@@ -156,7 +158,7 @@ void* mmap(fd_t fd, void* address, size_t length, prot_t prot);
  */
 static inline status_t munmap(void* address, size_t length)
 {
-    return syscall2(SYS_MUNMAP, (uintptr_t)address, length, NULL);
+    return syscall2(SYS_MUNMAP, NULL, (uintptr_t)address, length);
 }
 
 /**
@@ -173,7 +175,7 @@ static inline status_t munmap(void* address, size_t length)
  */
 static inline status_t mprotect(void* address, size_t length, prot_t prot)
 {
-    return syscall3(SYS_MPROTECT, (uintptr_t)address, length, prot, NULL);
+    return syscall3(SYS_MPROTECT, NULL, (uintptr_t)address, length, prot);
 }
 
 /**
@@ -222,9 +224,9 @@ typedef enum
  * @param result Optional output pointer for the result.
  * @return An appropriate status value.
  */
-static inline status_t futex(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout, uint64_t* result)
+static inline status_t futex(uint64_t* result, atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
-    return syscall4(SYS_FUTEX, (uintptr_t)addr, val, op, timeout, result);
+    return syscall4(SYS_FUTEX, result, (uintptr_t)addr, val, op, timeout);
 }
 
 /**

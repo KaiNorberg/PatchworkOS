@@ -46,7 +46,6 @@ typedef enum
     SYS_THREAD_CREATE,
     SYS_YIELD,
     SYS_DUP,
-    SYS_DUP2,
     SYS_FUTEX,
     SYS_REMOVE,
     SYS_LINK,
@@ -98,7 +97,7 @@ static inline status_t syscall0(syscall_number_t number, uint64_t* result)
     return res.status;
 }
 
-static inline status_t syscall1(syscall_number_t number, uint64_t arg1, uint64_t* result)
+static inline status_t syscall1(syscall_number_t number, uint64_t* result, uint64_t arg1)
 {
     syscall_result_t res;
     ASM("syscall"
@@ -112,7 +111,7 @@ static inline status_t syscall1(syscall_number_t number, uint64_t arg1, uint64_t
     return res.status;
 }
 
-static inline status_t syscall2(syscall_number_t number, uint64_t arg1, uint64_t arg2, uint64_t* result)
+static inline status_t syscall2(syscall_number_t number,  uint64_t* result, uint64_t arg1, uint64_t arg2)
 {
     syscall_result_t res;
     ASM("syscall"
@@ -126,7 +125,7 @@ static inline status_t syscall2(syscall_number_t number, uint64_t arg1, uint64_t
     return res.status;
 }
 
-static inline status_t syscall3(syscall_number_t number, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t* result)
+static inline status_t syscall3(syscall_number_t number, uint64_t* result, uint64_t arg1, uint64_t arg2, uint64_t arg3)
 {
     syscall_result_t res;
     res.rdx = arg3;
@@ -141,8 +140,7 @@ static inline status_t syscall3(syscall_number_t number, uint64_t arg1, uint64_t
     return res.status;
 }
 
-static inline status_t syscall4(syscall_number_t number, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4,
-    uint64_t* result)
+static inline status_t syscall4(syscall_number_t number, uint64_t* result, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4)
 {
     syscall_result_t res;
     res.rdx = arg3;
@@ -158,8 +156,8 @@ static inline status_t syscall4(syscall_number_t number, uint64_t arg1, uint64_t
     return res.status;
 }
 
-static inline status_t syscall5(syscall_number_t number, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4,
-    uint64_t arg5, uint64_t* result)
+static inline status_t syscall5(syscall_number_t number, uint64_t* result, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4,
+    uint64_t arg5)
 {
     syscall_result_t res;
     res.rdx = arg3;
@@ -176,8 +174,8 @@ static inline status_t syscall5(syscall_number_t number, uint64_t arg1, uint64_t
     return res.status;
 }
 
-static inline status_t syscall6(syscall_number_t number, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4,
-    uint64_t arg5, uint64_t arg6, uint64_t* result)
+static inline status_t syscall6(syscall_number_t number, uint64_t* result, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4,
+    uint64_t arg5, uint64_t arg6)
 {
     syscall_result_t res;
     res.rdx = arg3;

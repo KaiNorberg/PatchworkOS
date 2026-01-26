@@ -54,7 +54,7 @@ dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const vnode_ops_t* v
  * @param vnodeOps The vnode operations for the new file, can be `NULL`.
  * @param fileOps The file operations for the new file, can be `NULL`.
  * @param private Private data to store in the vnode of the new file, can be `NULL`.
- * @return On success, the new sysfs file. On failure, `NULL` and `errno` is set.
+ * @return On success, the new sysfs file. On failure, `NULL`.
  */
 dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const vnode_ops_t* vnodeOps, const file_ops_t* fileOps,
     void* data);
@@ -66,7 +66,7 @@ dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const vnode_ops_t* 
  * @param name The name of the new symbolic link.
  * @param vnodeOps The vnode operations for the new symbolic link.
  * @param private Private data to store in the vnode of the new symbolic link, can be `NULL`.
- * @return On success, the new sysfs symbolic link. On failure, `NULL` and `errno` is set.
+ * @return On success, the new sysfs symbolic link. On failure, `NULL`.
  */
 dentry_t* sysfs_symlink_new(dentry_t* parent, const char* name, const vnode_ops_t* vnodeOps, void* data);
 
@@ -88,9 +88,9 @@ typedef struct sysfs_file_desc
  * @param out Output list to store created dentries, can be `NULL`. The dentries use the `otherEntry` list entry.
  * @param parent The parent directory, if `NULL` then the root is used.
  * @param descs Array of file descriptors, terminated by an entry with `name == NULL`.
- * @return On success, the number of files created. On failure, `_FAIL` and `errno` is set.
+ * @return `true` on success, `false` on failure.
  */
-uint64_t sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t* descs);
+bool sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t* descs);
 
 /**
  * @brief Free all files in a list created by `sysfs_files_new()`.

@@ -1,20 +1,25 @@
 #include <sys/fs.h>
 
-size_t readfile(const char* path, void* buffer, size_t count, size_t offset)
+status_t readfile(const char* path, void* buffer, size_t count, size_t offset, size_t* bytesRead)
 {
-    fd_t fd = open(path);
-    if (fd == _FAIL)
+    fd_t fd;
+    status_t status = open(&fd, path);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
-    if (offset != 0 && seek(fd, offset, SEEK_SET) == _FAIL)
+    if (offset != 0)
     {
-        close(fd);
-        return _FAIL;
+        status = seek(fd, offset, SEEK_SET, NULL);
+        if (IS_ERR(status))
+        {
+            close(fd);
+            return status;
+        }
     }
 
-    uint64_t bytesRead = read(fd, buffer, count);
+    status = read(fd, buffer, count, bytesRead);
     close(fd);
-    return bytesRead;
+    return status;
 }

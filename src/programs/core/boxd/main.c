@@ -313,9 +313,9 @@ static void box_spawn(box_spawn_t* ctx)
                 continue;
             }
 
-            if (writes(ctl, F("dup2 %llu %llu", args.stdio[i], i)) == _FAIL)
+            if (writes(ctl, F("dup %llu %llu", args.stdio[i], i)) == _FAIL)
             {
-                snprintf(ctx->result, sizeof(ctx->result), "error due to dup2 failure for '%s' (%s)", args.box,
+                snprintf(ctx->result, sizeof(ctx->result), "error due to dup failure for '%s' (%s)", args.box,
                     strerror(errno));
                 goto error;
             }

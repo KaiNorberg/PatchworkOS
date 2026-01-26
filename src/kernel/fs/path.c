@@ -8,9 +8,7 @@
 #include <kernel/log/panic.h>
 #include <kernel/sync/mutex.h>
 
-#include <errno.h>
 #include <kernel/sync/rcu.h>
-#include <kernel/utils/map.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -283,24 +281,22 @@ typedef struct
     dentry_t* lookup;
 } path_walk_ctx_t;
 
-static uint64_t path_rcu_walk(path_walk_ctx_t* ctx);
+static status_t path_rcu_walk(path_walk_ctx_t* ctx);
 
-static inline uint64_t path_walk_acquire(path_walk_ctx_t* ctx)
+static inline status_t path_walk_acquire(path_walk_ctx_t* ctx)
 {
     if (REF_TRY(ctx->dentry) == NULL)
     {
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(VFS, NOENT);
     }
     if (REF_TRY(ctx->mount) == NULL)
     {
         UNREF(ctx->dentry);
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(VFS, NOENT);
     }
 
     rcu_read_unlock();
-    return 0;
+    return OK;
 }
 
 static inline void path_walk_release(path_walk_ctx_t* ctx)
@@ -329,19 +325,17 @@ static inline void path_walk_cleanup(path_walk_ctx_t* ctx)
     }
 }
 
-static inline uint64_t path_walk_get_result(path_walk_ctx_t* ctx, path_t* path)
+static inline status_t path_walk_get_result(path_walk_ctx_t* ctx, path_t* path)
 {
     if (ctx->mount != NULL && REF_TRY(ctx->mount) == NULL)
     {
-        errno = ENONET;
-        return _FAIL;
+        return ERR(VFS, NOENT);
     }
 
     if ((ctx->lookup == NULL || ctx->dentry != ctx->lookup) && ctx->dentry != NULL && REF_TRY(ctx->dentry) == NULL)
     {
         UNREF(ctx->mount);
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(VFS, NOENT);
     }
 
     UNREF(path->mount);
@@ -355,18 +349,18 @@ static inline uint64_t path_walk_get_result(path_walk_ctx_t* ctx, path_t* path)
     }
     ctx->lookup = NULL;
 
-    return 0;
+    return OK;
 }
 
-static uint64_t path_rcu_dotdot(path_walk_ctx_t* ctx)
+static status_t path_rcu_dotdot(path_walk_ctx_t* ctx)
 {
-    if (path_walk_acquire(ctx) == _FAIL)
+    status_t status = path_walk_acquire(ctx);
+    if (!IS_OK(status))
     {
-        return _FAIL;
+        return status;
     }
 
-    uint64_t result = 0;
-
+    status = OK;
     uint64_t iter = 0;
     while (ctx->dentry == ctx->mount->source)
     {
@@ -385,8 +379,7 @@ static uint64_t path_rcu_dotdot(path_walk_ctx_t* ctx)
         iter++;
         if (iter >= PATH_MAX_DOTDOT)
         {
-            errno = ELOOP;
-            result = _FAIL;
+            status = ERR(VFS, LOOP);
             break;
         }
     }
@@ -396,43 +389,45 @@ static uint64_t path_rcu_dotdot(path_walk_ctx_t* ctx)
     ctx->dentry = parent;
 
     path_walk_release(ctx);
-    return result;
+    return status;
 }
 
-static uint64_t path_rcu_symlink(path_walk_ctx_t* ctx, dentry_t* symlink)
+static status_t path_rcu_symlink(path_walk_ctx_t* ctx, dentry_t* symlink)
 {
     if (ctx->symlinks >= PATH_MAX_SYMLINK)
     {
-        errno = ELOOP;
-        return _FAIL;
+        return ERR(VFS, LOOP);
     }
 
     if (REF_TRY(symlink) == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, NOENT);
     }
     UNREF_DEFER(symlink);
 
-    if (path_walk_acquire(ctx) == _FAIL)
+    status_t status = path_walk_acquire(ctx);
+    if (!IS_OK(status))
     {
-        return _FAIL;
+        return status;
     }
 
     char symlinkPath[MAX_PATH];
-    size_t readCount = vfs_readlink(symlink->vnode, symlinkPath, MAX_PATH - 1);
+    size_t readCount;
+    status = vfs_readlink(symlink->vnode, symlinkPath, MAX_PATH - 1, &readCount);
 
     path_walk_release(ctx);
 
-    if (readCount == _FAIL)
+    if (!IS_OK(status))
     {
-        return _FAIL;
+        return status;
     }
     symlinkPath[readCount] = '\0';
 
     pathname_t pathname;
-    if (pathname_init(&pathname, symlinkPath) == _FAIL)
+    status = pathname_init(&pathname, symlinkPath);
+    if (!IS_OK(status))
     {
-        return _FAIL;
+        return status;
     }
 
     const pathname_t* oldPathname = ctx->pathname;
@@ -440,19 +435,19 @@ static uint64_t path_rcu_symlink(path_walk_ctx_t* ctx, dentry_t* symlink)
     ctx->pathname = &pathname;
     ctx->symlinks++;
 
-    uint64_t result = path_rcu_walk(ctx);
+    status = path_rcu_walk(ctx);
 
     ctx->symlinks--;
     ctx->pathname = oldPathname;
 
-    return result;
+    return status;
 }
 
-static uint64_t path_rcu_step(path_walk_ctx_t* ctx, const char* name, size_t length)
+static status_t path_rcu_step(path_walk_ctx_t* ctx, const char* name, size_t length)
 {
     if (length == 1 && name[0] == '.')
     {
-        return 0;
+        return OK;
     }
 
     if (length == 2 && name[0] == '.' && name[1] == '.')
@@ -463,18 +458,19 @@ static uint64_t path_rcu_step(path_walk_ctx_t* ctx, const char* name, size_t len
     dentry_t* next = dentry_rcu_get(ctx->dentry, name, length);
     if (next == NULL)
     {
-        if (path_walk_acquire(ctx) == _FAIL)
+        status_t status = path_walk_acquire(ctx);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
-        next = dentry_lookup(ctx->dentry, name, length);
+        status = dentry_lookup(&next, ctx->dentry, name, length);
 
         path_walk_release(ctx);
 
-        if (next == NULL)
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
         path_walk_set_lookup(ctx, next);
@@ -482,9 +478,10 @@ static uint64_t path_rcu_step(path_walk_ctx_t* ctx, const char* name, size_t len
 
     if (DENTRY_IS_SYMLINK(next) && !(ctx->mode & MODE_NOFOLLOW))
     {
-        if (path_rcu_symlink(ctx, next) == _FAIL)
+        status_t status = path_rcu_symlink(ctx, next);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
     }
     else
@@ -497,10 +494,10 @@ static uint64_t path_rcu_step(path_walk_ctx_t* ctx, const char* name, size_t len
         namespace_rcu_traverse(ctx->ns, &ctx->mount, &ctx->dentry);
     }
 
-    return 0;
+    return OK;
 }
 
-static uint64_t path_rcu_walk(path_walk_ctx_t* ctx)
+static status_t path_rcu_walk(path_walk_ctx_t* ctx)
 {
     const char* p = ctx->pathname->string;
     if (ctx->pathname->string[0] == '/')
@@ -528,21 +525,21 @@ static uint64_t path_rcu_walk(path_walk_ctx_t* ctx)
         }
         size_t length = p - component;
 
-        if (path_rcu_step(ctx, component, length) == _FAIL)
+        status_t status = path_rcu_step(ctx, component, length);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_t* ns)
+status_t path_step(path_t* path, mode_t mode, const char* name, namespace_t* ns)
 {
     if (path == NULL || name == NULL || !path_is_name_valid(name) || ns == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     RCU_READ_SCOPE();
@@ -562,27 +559,28 @@ uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_t* ns)
         namespace_rcu_traverse(ctx.ns, &ctx.mount, &ctx.dentry);
     }
 
-    if (path_rcu_step(&ctx, name, strlen(name)) == _FAIL)
+    status_t status = path_rcu_step(&ctx, name, strlen(name));
+    if (IS_ERR(status))
     {
         path_walk_cleanup(&ctx);
-        return _FAIL;
+        return status;
     }
 
-    if (path_walk_get_result(&ctx, path) == _FAIL)
+    status = path_walk_get_result(&ctx, path);
+    if (IS_ERR(status))
     {
         path_walk_cleanup(&ctx);
-        return _FAIL;
+        return status;
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
+status_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
 {
     if (path == NULL || pathname == NULL || ns == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     RCU_READ_SCOPE();
@@ -602,35 +600,35 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
         namespace_rcu_traverse(ctx.ns, &ctx.mount, &ctx.dentry);
     }
 
-    if (path_rcu_walk(&ctx) == _FAIL)
+    status_t status = path_rcu_walk(&ctx);
+    if (IS_ERR(status))
     {
         path_walk_cleanup(&ctx);
-        return _FAIL;
+        return status;
     }
 
-    if (path_walk_get_result(&ctx, path) == _FAIL)
+    status = path_walk_get_result(&ctx, path);
+    if (IS_ERR(status))
     {
         path_walk_cleanup(&ctx);
-        return _FAIL;
+        return status;
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_t* ns)
+status_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_t* ns)
 {
     if (path == NULL || pathname == NULL || outLastName == NULL || ns == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     memset(outLastName, 0, MAX_NAME);
 
     if (strcmp(pathname->string, "/") == 0)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     char string[MAX_PATH];
@@ -649,7 +647,7 @@ uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLas
     {
         strncpy(outLastName, string, MAX_NAME - 1);
         outLastName[MAX_NAME - 1] = '\0';
-        return 0;
+        return OK;
     }
 
     char* lastComponent = lastSlash + 1;
@@ -666,45 +664,46 @@ uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLas
     }
 
     pathname_t parentPathname;
-    if (pathname_init(&parentPathname, string) == _FAIL)
+    status_t status = pathname_init(&parentPathname, string);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     return path_walk(path, &parentPathname, ns);
 }
 
-uint64_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_t* outChild, const pathname_t* pathname,
+status_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_t* outChild, const pathname_t* pathname,
     namespace_t* ns)
 {
     if (from == NULL || outParent == NULL || outChild == NULL || pathname == NULL || ns == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     char lastName[MAX_NAME];
     path_copy(outParent, from);
-    if (path_walk_parent(outParent, pathname, lastName, ns) == _FAIL)
+    status_t status = path_walk_parent(outParent, pathname, lastName, ns);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     path_copy(outChild, outParent);
-    if (path_step(outChild, pathname->mode, lastName, ns) == _FAIL)
+    status = path_step(outChild, pathname->mode, lastName, ns);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t path_to_name(const path_t* path, pathname_t* pathname)
+status_t path_to_name(const path_t* path, pathname_t* pathname)
 {
     if (path == NULL || path->dentry == NULL || path->mount == NULL || pathname == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     char* buffer = pathname->string;
@@ -730,15 +729,13 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
 
         if (dentry->parent == NULL)
         {
-            errno = ENOENT;
-            return _FAIL;
+            return ERR(VFS, NOENT);
         }
 
         size_t len = strnlen_s(dentry->name, MAX_NAME);
         if ((size_t)(ptr - buffer) < len + 1)
         {
-            errno = ENAMETOOLONG;
-            return _FAIL;
+            return ERR(VFS, NAMETOOLONG);
         }
 
         ptr -= len;
@@ -754,8 +751,7 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
     {
         if (ptr == buffer)
         {
-            errno = ENAMETOOLONG;
-            return _FAIL;
+            return ERR(VFS, NAMETOOLONG);
         }
         ptr--;
         *ptr = '/';
@@ -765,15 +761,14 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
     memmove(buffer, ptr, totalLen + 1);
 
     pathname->mode = MODE_NONE;
-    return 0;
+    return OK;
 }
 
-uint64_t mode_to_string(mode_t mode, char* out, uint64_t length)
+status_t mode_to_string(mode_t mode, char* out, uint64_t length, uint64_t* outLength)
 {
     if (out == NULL || length == 0)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     uint64_t index = 0;
@@ -784,8 +779,7 @@ uint64_t mode_to_string(mode_t mode, char* out, uint64_t length)
             uint64_t nameLength = strnlen_s(flags[i].name, MAX_NAME);
             if (index + nameLength + 1 >= length)
             {
-                errno = ENAMETOOLONG;
-                return _FAIL;
+                return ERR(VFS, NAMETOOLONG);
             }
 
             out[index] = ':';
@@ -797,21 +791,23 @@ uint64_t mode_to_string(mode_t mode, char* out, uint64_t length)
     }
 
     out[index] = '\0';
-    return index;
+    if (outLength != NULL)
+    {
+        *outLength = index;
+    }
+    return OK;
 }
 
-uint64_t mode_check(mode_t* mode, mode_t maxPerms)
+status_t mode_check(mode_t* mode, mode_t maxPerms)
 {
     if (mode == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     if (((*mode & MODE_ALL_PERMS) & ~maxPerms) != MODE_NONE)
     {
-        errno = EACCES;
-        return _FAIL;
+        return ERR(VFS, ACCESS);
     }
 
     if ((*mode & MODE_ALL_PERMS) == MODE_NONE)
@@ -819,7 +815,7 @@ uint64_t mode_check(mode_t* mode, mode_t maxPerms)
         *mode |= maxPerms & MODE_ALL_PERMS;
     }
 
-    return 0;
+    return OK;
 }
 
 #ifdef _TESTING_
@@ -830,36 +826,34 @@ TEST_DEFINE(path)
 {
     pathname_t pathname;
 
-    TEST_ASSERT(pathname_init(&pathname, "/usr/bin/init") == 0);
+    TEST_ASSERT(IS_OK(pathname_init(&pathname, "/usr/bin/init")));
     TEST_ASSERT(strcmp(pathname.string, "/usr/bin/init") == 0);
     TEST_ASSERT(pathname.mode == MODE_NONE);
 
-    TEST_ASSERT(pathname_init(&pathname, "/dev/sda:read:write") == 0);
+    TEST_ASSERT(IS_OK(pathname_init(&pathname, "/dev/sda:read:write")));
     TEST_ASSERT(strcmp(pathname.string, "/dev/sda") == 0);
     TEST_ASSERT((pathname.mode & (MODE_READ | MODE_WRITE)) == (MODE_READ | MODE_WRITE));
 
-    TEST_ASSERT(pathname_init(&pathname, "/tmp/file:c:w") == 0);
+    TEST_ASSERT(IS_OK(pathname_init(&pathname, "/tmp/file:c:w")));
     TEST_ASSERT(strcmp(pathname.string, "/tmp/file") == 0);
     TEST_ASSERT((pathname.mode & (MODE_CREATE | MODE_WRITE)) == (MODE_CREATE | MODE_WRITE));
 
-    TEST_ASSERT(pathname_init(&pathname, "/var/log:append:c") == 0);
+    TEST_ASSERT(IS_OK(pathname_init(&pathname, "/var/log:append:c")));
     TEST_ASSERT(strcmp(pathname.string, "/var/log") == 0);
     TEST_ASSERT((pathname.mode & (MODE_APPEND | MODE_CREATE)) == (MODE_APPEND | MODE_CREATE));
 
-    TEST_ASSERT(pathname_init(&pathname, "/file:rw") == 0);
+    TEST_ASSERT(IS_OK(pathname_init(&pathname, "/file:rw")));
     TEST_ASSERT(strcmp(pathname.string, "/file") == 0);
     TEST_ASSERT((pathname.mode & (MODE_READ | MODE_WRITE)) == (MODE_READ | MODE_WRITE));
 
-    TEST_ASSERT(pathname_init(&pathname, "/home/user/fi?le") == _FAIL);
-    TEST_ASSERT(errno == EINVAL);
+    TEST_ASSERT(IS_CODE(pathname_init(&pathname, "/home/user/fi?le"), INVALCHAR));
 
-    TEST_ASSERT(pathname_init(&pathname, "/home:invalid") == _FAIL);
-    TEST_ASSERT(errno == EINVAL);
+    TEST_ASSERT(IS_CODE(pathname_init(&pathname, "/home:invalid"), INVALFLAG));
 
-    TEST_ASSERT(pathname_init(&pathname, "") == 0);
+    TEST_ASSERT(IS_OK(pathname_init(&pathname, "")));
     TEST_ASSERT(strcmp(pathname.string, "") == 0);
 
-    TEST_ASSERT(pathname_init(&pathname, ":read") == 0);
+    TEST_ASSERT(IS_OK(pathname_init(&pathname, ":read")));
     TEST_ASSERT(strcmp(pathname.string, "") == 0);
     TEST_ASSERT(pathname.mode == MODE_READ);
 

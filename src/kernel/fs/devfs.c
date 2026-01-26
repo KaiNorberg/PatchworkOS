@@ -28,18 +28,18 @@ static dentry_ops_t dentryOps = {
     .iterate = dentry_generic_iterate,
 };
 
-static dentry_t* devfs_mount(filesystem_t* fs, const char* options, void* data)
+static status_t devfs_mount(filesystem_t* fs, dentry_t** out, const char* options, void* data)
 {
     UNUSED(fs);
     UNUSED(data);
 
     if (options != NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(FS, INVAL);
     }
 
-    return REF(root);
+    *out = REF(root);
+    return OK;
 }
 
 static filesystem_t devfs = {
@@ -49,7 +49,8 @@ static filesystem_t devfs = {
 
 void devfs_init(void)
 {
-    if (filesystem_register(&devfs) == _FAIL)
+    status_t status = filesystem_register(&devfs);
+    if (IS_ERR(status))
     {
         panic(NULL, "Failed to register devfs");
     }
@@ -147,15 +148,10 @@ dentry_t* devfs_symlink_new(dentry_t* parent, const char* name, const vnode_ops_
 {
     if (parent == NULL || name == NULL || vnodeOps == NULL)
     {
-        errno = EINVAL;
         return NULL;
     }
 
-    if (parent->superblock->fs != &devfs)
-    {
-        errno = EXDEV;
-        return NULL;
-    }
+    assert(parent->superblock->fs != &devfs);
 
     dentry_t* dentry = dentry_new(parent->superblock, parent, name);
     if (dentry == NULL)

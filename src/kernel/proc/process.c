@@ -22,12 +22,12 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rcu.h>
+#include <kernel/sync/seqlock.h>
+#include <kernel/utils/ref.h>
 
 #include <assert.h>
 #include <errno.h>
-#include <kernel/sync/seqlock.h>
-#include <kernel/utils/map.h>
-#include <kernel/utils/ref.h>
+#include <sys/map.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -205,21 +205,13 @@ process_t* process_get(pid_t id)
 
 namespace_t* process_get_ns(process_t* process)
 {
-    if (process == NULL)
-    {
-        errno = EINVAL;
-        return NULL;
-    }
+    assert(process != NULL);
 
     lock_acquire(&process->nspaceLock);
     namespace_t* ns = process->nspace != NULL ? REF(process->nspace) : NULL;
     lock_release(&process->nspaceLock);
 
-    if (ns == NULL)
-    {
-        errno = EINVAL;
-        return NULL;
-    }
+    assert(ns != NULL);
 
     return ns;
 }

@@ -608,7 +608,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         }
 
         if (writefiles(F("/proc/%d/ctl", term->shell),
-                F("dup2 %d 0 && dup2 %d 1 && dup2 %d 2 && close 3 -1 && start", term->stdin[0], term->stdout[1],
+                F("dup %d 0 && dup %d 1 && dup %d 2 && close 3 -1 && start", term->stdin[0], term->stdout[1],
                     term->stdout[1])) == _FAIL)
         {
             writefiles(F("/proc/%d/ctl", term->shell), "kill");

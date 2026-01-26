@@ -1,7 +1,5 @@
 #pragma once
 
-#include <kernel/utils/map.h>
-
 #include <alloca.h>
 #include <ctype.h>
 #include <stdbool.h>
@@ -231,9 +229,9 @@ void path_put(path_t* path);
  * @param mode The mode to open the new path with.
  * @param name The name of the new path component.
  * @param ns The namespace to access mountpoints.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_t* ns);
+status_t path_step(path_t* path, mode_t mode, const char* name, namespace_t* ns);
 
 /**
  * @brief Walk a pathname to a path.
@@ -241,9 +239,9 @@ uint64_t path_step(path_t* path, mode_t mode, const char* name, namespace_t* ns)
  * @param path The path to start from, will be updated to the new path, may be negative.
  * @param pathname The pathname to walk to.
  * @param ns The namespace to access mountpoints.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns);
+status_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns);
 
 /**
  * @brief Walk a pathname to its parent and get the name of the last component.
@@ -254,9 +252,9 @@ uint64_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns);
  * @param pathname The pathname to traverse.
  * @param outLastName The output last component name, must be at least `MAX_NAME` bytes.
  * @param ns The namespace to access mountpoints.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_t* ns);
+status_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_t* ns);
 
 /**
  * @brief Traverse a pathname to its parent and child paths.
@@ -268,9 +266,9 @@ uint64_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLas
  * @param outChild The output child path, may be negative.
  * @param pathname The pathname to traverse.
  * @param ns The namespace to access mountpoints.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_t* outChild, const pathname_t* pathname,
+status_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_t* outChild, const pathname_t* pathname,
     namespace_t* ns);
 
 /**
@@ -280,9 +278,9 @@ uint64_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_
  *
  * @param path The path to convert.
  * @param pathname The output pathname.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t path_to_name(const path_t* path, pathname_t* pathname);
+status_t path_to_name(const path_t* path, pathname_t* pathname);
 
 /**
  * @brief Convert a mode to a string representation.
@@ -292,12 +290,10 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname);
  * @param mode The mode to convert.
  * @param out The output string buffer.
  * @param length The length of the output string buffer.
- * @return On success, the length of the resulting string, excluding the null terminator. On failure, `_FAIL` and `errno`
- * is set to:
- * - `EINVAL`: Invalid parameters.
- * - `ENAMETOOLONG`: The output buffer is too small.
+ * @param outLength Output pointer to store the length of the resulting string, excluding the null terminator.
+ * @return An appropriate status value.
  */
-uint64_t mode_to_string(mode_t mode, char* out, uint64_t length);
+status_t mode_to_string(mode_t mode, char* out, uint64_t length, uint64_t* outLength);
 
 /**
  * @brief Check and adjust mode permissions.
@@ -306,11 +302,9 @@ uint64_t mode_to_string(mode_t mode, char* out, uint64_t length);
  *
  * @param mode The mode to check and adjust.
  * @param maxPerms The maximum allowed permissions.
- * @return On success, the adjusted mode. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EACCES`: Requested permissions exceed maximum allowed permissions.
+ * @return An appropriate status value.
  */
-uint64_t mode_check(mode_t* mode, mode_t maxPerms);
+status_t mode_check(mode_t* mode, mode_t maxPerms);
 
 static inline void path_defer_cleanup(path_t** path)
 {

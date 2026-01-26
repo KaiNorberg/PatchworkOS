@@ -48,9 +48,7 @@ void file_table_deinit(file_table_t* table);
  *
  * @param table The file table.
  * @param fd The file descriptor.
- * @return On success, a new reference to the file. On failure, returns `NULL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EBADF`: The file descriptor is invalid.
+ * @return On success, a new reference to the file. On failure, `NULL`.
  */
 file_t* file_table_get(file_table_t* table, fd_t fd);
 
@@ -59,24 +57,20 @@ file_t* file_table_get(file_table_t* table, fd_t fd);
  *
  * @param table The file table.
  * @param file The file to associate with the new file descriptor.
- * @return On success, the allocated file descriptor. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EMFILE`: Too many open files.
+ * @return On success, the allocated file descriptor. On failure, `FD_NONE`.
  */
 fd_t file_table_open(file_table_t* table, file_t* file);
 
 /**
  * @brief Free a file descriptor.
  *
- * If the file has no other references, it will be closed.
+ * If the file has no other references, it will be freed.
  *
  * @param table The file table.
  * @param fd The file descriptor to free.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EBADF`: The file descriptor is invalid.
+ * @return An appropriate status value.
  */
-uint64_t file_table_close(file_table_t* table, fd_t fd);
+status_t file_table_close(file_table_t* table, fd_t fd);
 
 /**
  * @brief Close all files in the file table.
@@ -96,15 +90,13 @@ void file_table_close_mode(file_table_t* table, mode_t mode);
 /**
  * @brief Free a range of file descriptors.
  *
- * If the files have no other references, they will be closed.
+ * If the files have no other references, they will be freed.
  *
  * @param table The file table.
  * @param min The minimum file descriptor to free, inclusive.
  * @param max The maximum file descriptor to free, exclusive.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
  */
-uint64_t file_table_close_range(file_table_t* table, fd_t min, fd_t max);
+void file_table_close_range(file_table_t* table, fd_t min, fd_t max);
 
 /**
  * @brief Set a specific file descriptor to a file.
@@ -114,11 +106,9 @@ uint64_t file_table_close_range(file_table_t* table, fd_t min, fd_t max);
  * @param table The file table.
  * @param fd The file descriptor to set.
  * @param file The file to associate with the file descriptor.
- * @return On success, `fd`. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EBADF`: The file descriptor is invalid.
+ * @return `true` if the file descriptor was set, `false` otherwise.
  */
-fd_t file_table_set(file_table_t* table, fd_t fd, file_t* file);
+bool file_table_set(file_table_t* table, fd_t fd, file_t* file);
 
 /**
  * @brief Duplicate a file descriptor.
@@ -127,27 +117,10 @@ fd_t file_table_set(file_table_t* table, fd_t fd, file_t* file);
  *
  * @param table The file table.
  * @param oldFd The file descriptor to duplicate.
- * @return On success, the new file descriptor. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EBADF`: The file descriptor is invalid.
- * - `EMFILE`: Too many open files.
+ * @param newFd Output pointer for the new file descriptor, if `FD_NONE` any free file descriptor will be used, otherwise the specified file descriptor will be used.
+ * @return An appropriate status value.
  */
-fd_t file_table_dup(file_table_t* table, fd_t oldFd);
-
-/**
- * @brief Duplicate a file descriptor to a specific file descriptor.
- *
- * If `newFd` is already in use, the old file will be closed.
- *
- * @param table The file table.
- * @param oldFd The file descriptor to duplicate.
- * @param newFd The file descriptor to duplicate to.
- * @return On success, `newFd`. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EBADF`: One of the file descriptors is invalid.
- * - `EMFILE`: Too many open files.
- */
-fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd);
+status_t file_table_dup(file_table_t* table, fd_t oldFd, fd_t* newFd);
 
 /**
  * @brief Copy a file table, closing any overlapping file descriptors.
@@ -156,9 +129,7 @@ fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd);
  * @param src The source file table.
  * @param min The minimum file descriptor to copy, inclusive.
  * @param max The maximum file descriptor to copy, exclusive.
- * @return On success, the number of copied file descriptors. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
  */
-uint64_t file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t max);
+void file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t max);
 
 /** @} */

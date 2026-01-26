@@ -34,7 +34,6 @@ file_t* file_table_get(file_table_t* table, fd_t fd)
 {
     if (table == NULL)
     {
-        errno = EINVAL;
         return NULL;
     }
 
@@ -42,7 +41,6 @@ file_t* file_table_get(file_table_t* table, fd_t fd)
 
     if (fd >= CONFIG_MAX_FD || table->files[fd] == NULL)
     {
-        errno = EBADF;
         return NULL;
     }
 
@@ -53,8 +51,7 @@ fd_t file_table_open(file_table_t* table, file_t* file)
 {
     if (table == NULL || file == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return FD_NONE;
     }
 
     LOCK_SCOPE(&table->lock);
@@ -62,8 +59,7 @@ fd_t file_table_open(file_table_t* table, file_t* file)
     uint64_t index = bitmap_find_first_clear(&table->bitmap, 0, CONFIG_MAX_FD);
     if (index >= CONFIG_MAX_FD)
     {
-        errno = EMFILE;
-        return _FAIL;
+        return FD_NONE;
     }
 
     table->files[index] = REF(file);
@@ -71,26 +67,24 @@ fd_t file_table_open(file_table_t* table, file_t* file)
     return (fd_t)index;
 }
 
-uint64_t file_table_close(file_table_t* table, fd_t fd)
+status_t file_table_close(file_table_t* table, fd_t fd)
 {
     if (table == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     LOCK_SCOPE(&table->lock);
 
     if (fd >= CONFIG_MAX_FD || table->files[fd] == NULL)
     {
-        errno = EBADF;
-        return _FAIL;
+        return ERR(VFS, BADFD);
     }
 
     UNREF(table->files[fd]);
     table->files[fd] = NULL;
     bitmap_clear(&table->bitmap, fd);
-    return 0;
+    return OK;
 }
 
 void file_table_close_all(file_table_t* table)
@@ -133,12 +127,11 @@ void file_table_close_mode(file_table_t* table, mode_t mode)
     }
 }
 
-uint64_t file_table_close_range(file_table_t* table, fd_t min, fd_t max)
+void file_table_close_range(file_table_t* table, fd_t min, fd_t max)
 {
     if (table == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return;
     }
 
     LOCK_SCOPE(&table->lock);
@@ -152,24 +145,20 @@ uint64_t file_table_close_range(file_table_t* table, fd_t min, fd_t max)
             bitmap_clear(&table->bitmap, fd);
         }
     }
-
-    return 0;
 }
 
-fd_t file_table_set(file_table_t* table, fd_t fd, file_t* file)
+bool file_table_set(file_table_t* table, fd_t fd, file_t* file)
 {
     if (table == NULL || file == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return false;
     }
 
     LOCK_SCOPE(&table->lock);
 
     if (fd >= CONFIG_MAX_FD)
     {
-        errno = EBADF;
-        return _FAIL;
+        return false;
     }
 
     if (table->files[fd] != NULL)
@@ -180,30 +169,32 @@ fd_t file_table_set(file_table_t* table, fd_t fd, file_t* file)
 
     table->files[fd] = REF(file);
     bitmap_set(&table->bitmap, fd);
-    return fd;
+    return true;
 }
 
-fd_t file_table_dup(file_table_t* table, fd_t oldFd)
+status_t file_table_dup(file_table_t* table, fd_t oldFd, fd_t* newFd)
 {
-    if (table == NULL)
+    if (table == NULL || newFd == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     LOCK_SCOPE(&table->lock);
 
-    if (oldFd >= CONFIG_MAX_FD || table->files[oldFd] == NULL)
+    if (oldFd >= CONFIG_MAX_FD)
     {
-        errno = EBADF;
-        return _FAIL;
+        return ERR(VFS, FD_OVERFLOW);
+    }
+
+    if (table->files[oldFd] == NULL)
+    {
+        return ERR(VFS, BADFD);
     }
 
     uint64_t index = bitmap_find_first_clear(&table->bitmap, 0, CONFIG_MAX_FD);
     if (index >= CONFIG_MAX_FD)
     {
-        errno = EMFILE;
-        return _FAIL;
+        return ERR(VFS, MFILE);
     }
 
     table->files[index] = REF(table->files[oldFd]);
@@ -211,44 +202,11 @@ fd_t file_table_dup(file_table_t* table, fd_t oldFd)
     return (fd_t)index;
 }
 
-fd_t file_table_dup2(file_table_t* table, fd_t oldFd, fd_t newFd)
-{
-    if (table == NULL)
-    {
-        errno = EINVAL;
-        return _FAIL;
-    }
-
-    LOCK_SCOPE(&table->lock);
-
-    if (oldFd >= CONFIG_MAX_FD || newFd >= CONFIG_MAX_FD || table->files[oldFd] == NULL)
-    {
-        errno = EBADF;
-        return _FAIL;
-    }
-
-    if (oldFd == newFd)
-    {
-        return newFd;
-    }
-
-    if (table->files[newFd] != NULL)
-    {
-        UNREF(table->files[newFd]);
-        table->files[newFd] = NULL;
-    }
-
-    table->files[newFd] = REF(table->files[oldFd]);
-    bitmap_set(&table->bitmap, newFd);
-    return newFd;
-}
-
-uint64_t file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t max)
+void file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t max)
 {
     if (dest == NULL || src == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return;
     }
 
     LOCK_SCOPE(&src->lock);
@@ -270,21 +228,16 @@ uint64_t file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t m
         dest->files[i] = REF(src->files[i]);
         bitmap_set(&dest->bitmap, i);
     }
-
-    return 0;
 }
 
-SYSCALL_DEFINE(SYS_CLOSE, uint64_t, fd_t fd)
+SYSCALL_DEFINE(SYS_CLOSE, fd_t fd)
 {
     return file_table_close(&process_current()->files, fd);
 }
 
-SYSCALL_DEFINE(SYS_DUP, uint64_t, fd_t oldFd)
+SYSCALL_DEFINE(SYS_DUP, fd_t oldFd, fd_t newFd)
 {
-    return file_table_dup(&process_current()->files, oldFd);
-}
-
-SYSCALL_DEFINE(SYS_DUP2, uint64_t, fd_t oldFd, fd_t newFd)
-{
-    return file_table_dup2(&process_current()->files, oldFd, newFd);
+    status_t status = file_table_dup(&process_current()->files, oldFd, &newFd);
+    *_result = newFd;
+    return status;
 }

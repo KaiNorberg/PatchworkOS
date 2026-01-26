@@ -15,10 +15,9 @@ rdrand_do:
     incb (%rsi)
     cmpb $10, (%rsi)
     jl .retry
-    xorq %rax, %rax
-    notq %rax
+    movq $0, %rax
     ret
 .success:
     movl %eax, (%rdi)
-    movq $0, %rax
+    movq $1, %rax
     ret

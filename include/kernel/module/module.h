@@ -5,11 +5,11 @@
 #include <kernel/fs/file.h>
 #include <kernel/fs/path.h>
 #include <kernel/module/symbol.h>
-#include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 #include <kernel/version.h>
 
 #include <stdint.h>
+#include <sys/map.h>
 #include <sys/fs.h>
 #include <sys/list.h>
 

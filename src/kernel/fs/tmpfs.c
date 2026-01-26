@@ -24,6 +24,7 @@
 #include <sys/fs.h>
 #include <sys/list.h>
 #include <sys/math.h>
+#include <sys/status.h>
 
 static bool initialized = false;
 
@@ -51,19 +52,20 @@ static void tmpfs_dentry_remove(dentry_t* dentry)
     dentry_remove(dentry);
 }
 
-static size_t tmpfs_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t tmpfs_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     MUTEX_SCOPE(&file->vnode->mutex);
 
     if (file->vnode->data == NULL)
     {
-        return 0;
+        *bytesRead = 0;
+        return OK;
     }
 
-    return BUFFER_READ(buffer, count, offset, file->vnode->data, file->vnode->size);
+    return buffer_read(buffer, count, offset, bytesRead, file->vnode->data, file->vnode->size);
 }
 
-static size_t tmpfs_write(file_t* file, const void* buffer, size_t count, size_t* offset)
+static status_t tmpfs_write(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
 {
     MUTEX_SCOPE(&file->vnode->mutex);
 
@@ -73,14 +75,15 @@ static size_t tmpfs_write(file_t* file, const void* buffer, size_t count, size_t
         void* newData = realloc(file->vnode->data, requiredSize);
         if (newData == NULL)
         {
-            return _FAIL;
+            return ERR(FS, NOMEM);
         }
-        memset(newData + file->vnode->size, 0, requiredSize - file->vnode->size);
+        memset((uint8_t*)newData + file->vnode->size, 0, requiredSize - file->vnode->size);
         file->vnode->data = newData;
         file->vnode->size = requiredSize;
     }
 
-    return BUFFER_WRITE(buffer, count, offset, file->vnode->data, file->vnode->size);
+    *bytesWritten = BUFFER_WRITE(buffer, count, offset, (uint8_t*)file->vnode->data, file->vnode->size);
+    return OK;
 }
 
 static file_ops_t fileOps = {
@@ -89,21 +92,21 @@ static file_ops_t fileOps = {
     .seek = file_generic_seek,
 };
 
-static uint64_t tmpfs_create(vnode_t* dir, dentry_t* target, mode_t mode)
+static status_t tmpfs_create(vnode_t* dir, dentry_t* target, mode_t mode)
 {
     MUTEX_SCOPE(&dir->mutex);
 
     vnode_t* vnode = tmpfs_vnode_new(dir->superblock, mode & MODE_DIRECTORY ? VDIR : VREG, NULL, 0);
     if (vnode == NULL)
     {
-        return _FAIL;
+        return ERR(FS, NOMEM);
     }
     UNREF_DEFER(vnode);
 
     dentry_make_positive(target, vnode);
     tmpfs_dentry_add(target);
 
-    return 0;
+    return OK;
 }
 
 static void tmpfs_truncate(vnode_t* vnode)
@@ -118,49 +121,49 @@ static void tmpfs_truncate(vnode_t* vnode)
     vnode->size = 0;
 }
 
-static uint64_t tmpfs_link(vnode_t* dir, dentry_t* old, dentry_t* target)
+static status_t tmpfs_link(vnode_t* dir, dentry_t* old, dentry_t* target)
 {
     MUTEX_SCOPE(&dir->mutex);
 
     dentry_make_positive(target, old->vnode);
     tmpfs_dentry_add(target);
 
-    return 0;
+    return OK;
 }
 
-static uint64_t tmpfs_readlink(vnode_t* vnode, char* buffer, uint64_t count)
+static status_t tmpfs_readlink(vnode_t* vnode, char* buffer, size_t count, size_t* bytesRead)
 {
     MUTEX_SCOPE(&vnode->mutex);
 
     if (vnode->data == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(FS, INVAL);
     }
 
     uint64_t copySize = MIN(count, vnode->size);
     memcpy(buffer, vnode->data, copySize);
-    return copySize;
+    *bytesRead = copySize;
+    return OK;
 }
 
-static uint64_t tmpfs_symlink(vnode_t* dir, dentry_t* target, const char* dest)
+static status_t tmpfs_symlink(vnode_t* dir, dentry_t* target, const char* dest)
 {
     MUTEX_SCOPE(&dir->mutex);
 
     vnode_t* vnode = tmpfs_vnode_new(dir->superblock, VSYMLINK, (void*)dest, strlen(dest));
     if (vnode == NULL)
     {
-        return _FAIL;
+        return ERR(FS, NOMEM);
     }
     UNREF_DEFER(vnode);
 
     dentry_make_positive(target, vnode);
     tmpfs_dentry_add(target);
 
-    return 0;
+    return OK;
 }
 
-static uint64_t tmpfs_remove(vnode_t* dir, dentry_t* target)
+static status_t tmpfs_remove(vnode_t* dir, dentry_t* target)
 {
     MUTEX_SCOPE(&dir->mutex);
 
@@ -172,14 +175,13 @@ static uint64_t tmpfs_remove(vnode_t* dir, dentry_t* target)
     {
         if (!list_is_empty(&target->children))
         {
-            errno = ENOTEMPTY;
-            return _FAIL;
+            return ERR(FS, NOTEMPTY);
         }
 
         tmpfs_dentry_remove(target);
     }
 
-    return 0;
+    return OK;
 }
 
 static void tmpfs_vnode_cleanup(vnode_t* vnode)
@@ -276,20 +278,19 @@ static dentry_t* tmpfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     return REF(dentry);
 }
 
-static dentry_t* tmpfs_mount(filesystem_t* fs, const char* options, void* data)
+static status_t tmpfs_mount(filesystem_t* fs, dentry_t** out, const char* options, void* data)
 {
     UNUSED(data);
 
     if (options != NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(FS, INVAL);
     }
 
     superblock_t* superblock = superblock_new(fs, &superOps, &dentryOps);
     if (superblock == NULL)
     {
-        return NULL;
+        return ERR(FS, NOMEM);
     }
     UNREF_DEFER(superblock);
 
@@ -299,7 +300,7 @@ static dentry_t* tmpfs_mount(filesystem_t* fs, const char* options, void* data)
     tmpfs_superblock_data_t* tmpfsData = malloc(sizeof(tmpfs_superblock_data_t));
     if (tmpfsData == NULL)
     {
-        return NULL;
+        return ERR(FS, NOMEM);
     }
     list_init(&tmpfsData->dentrys);
     lock_init(&tmpfsData->lock);
@@ -313,24 +314,25 @@ static dentry_t* tmpfs_mount(filesystem_t* fs, const char* options, void* data)
         dentry_t* root = tmpfs_load_dir(superblock, NULL, NULL, disk->root);
         if (root == NULL)
         {
-            return NULL;
+            return ERR(FS, NOMEM);
         }
 
         superblock->root = root;
-        return REF(superblock->root);
+        *out = REF(superblock->root);
+        return OK;
     }
 
     dentry_t* dentry = dentry_new(superblock, NULL, NULL);
     if (dentry == NULL)
     {
-        return NULL;
+        return ERR(FS, NOMEM);
     }
     UNREF_DEFER(dentry);
 
     vnode_t* vnode = tmpfs_vnode_new(superblock, VDIR, NULL, 0);
     if (vnode == NULL)
     {
-        return NULL;
+        return ERR(FS, NOMEM);
     }
     UNREF_DEFER(vnode);
 
@@ -338,7 +340,8 @@ static dentry_t* tmpfs_mount(filesystem_t* fs, const char* options, void* data)
     dentry_make_positive(dentry, vnode);
 
     superblock->root = dentry;
-    return REF(superblock->root);
+    *out = REF(superblock->root);
+    return OK;
 }
 
 static vnode_t* tmpfs_vnode_new(superblock_t* superblock, vtype_t type, void* buffer, uint64_t size)
@@ -377,7 +380,7 @@ static filesystem_t tmpfs = {
 void tmpfs_init(void)
 {
     LOG_INFO("registering tmpfs\n");
-    if (filesystem_register(&tmpfs) == _FAIL)
+    if (IS_ERR(filesystem_register(&tmpfs)))
     {
         panic(NULL, "Failed to register tmpfs");
     }
@@ -393,12 +396,11 @@ void tmpfs_init(void)
     }
     UNREF_DEFER(ns);
 
-    mount_t* temp = namespace_mount(ns, NULL, &tmpfs, NULL, MODE_PROPAGATE | MODE_ALL_PERMS, NULL);
-    if (temp == NULL)
+    status_t status = namespace_mount(ns, NULL, &tmpfs, NULL, MODE_PROPAGATE | MODE_ALL_PERMS, NULL, NULL);
+    if (IS_ERR(status))
     {
         panic(NULL, "Failed to mount tmpfs");
     }
-    UNREF(temp);
     LOG_INFO("tmpfs initialized\n");
 
     initialized = true;

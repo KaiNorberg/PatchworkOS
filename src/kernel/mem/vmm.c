@@ -51,7 +51,7 @@ void vmm_init(void)
     const boot_gop_t* gop = &bootInfo->gop;
     const boot_kernel_t* kernel = &bootInfo->kernel;
 
-    if (IS_FAIL(space_init(&kernelSpace, VMM_KERNEL_HEAP_MIN, VMM_KERNEL_HEAP_MAX, SPACE_USE_PMM_BITMAP)))
+    if (IS_ERR(space_init(&kernelSpace, VMM_KERNEL_HEAP_MIN, VMM_KERNEL_HEAP_MAX, SPACE_USE_PMM_BITMAP)))
     {
         panic(NULL, "Failed to initialize kernel address space");
     }
@@ -234,7 +234,7 @@ status_t vmm_alloc(space_t* space, void** addr, size_t length, size_t alignment,
 
     if (*addr + length > *addr)
     {
-        return ERR(MMU, OVERFLOW);
+        return ERR(MMU, TOOBIG);
     }
 
     if (pmlFlags & PML_USER && (*addr < (void*)VMM_USER_SPACE_MIN || *addr + length > (void*)VMM_USER_SPACE_MAX))
@@ -331,12 +331,12 @@ status_t vmm_map(space_t* space, void** addr, phys_addr_t phys, size_t length, p
 
     if (*addr + length < *addr)
     {
-        return ERR(MMU, OVERFLOW);
+        return ERR(MMU, TOOBIG);
     }
 
     if (phys + length < phys)
     {
-        return ERR(MMU, OVERFLOW);
+        return ERR(MMU, TOOBIG);
     }
 
     if (flags & PML_USER && (*addr < (void*)VMM_USER_SPACE_MIN || *addr + length > (void*)VMM_USER_SPACE_MAX))
@@ -412,7 +412,7 @@ status_t vmm_map_pages(space_t* space, void** addr, pfn_t* pfns, size_t amount, 
 
     if (*addr + amount * PAGE_SIZE < *addr)
     {
-        return ERR(MMU, OVERFLOW);
+        return ERR(MMU, TOOBIG);
     }
 
     if (flags & PML_USER &&

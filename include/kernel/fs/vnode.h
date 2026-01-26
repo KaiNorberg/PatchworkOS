@@ -4,13 +4,13 @@
 #include <kernel/io/irp.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/sync/rcu.h>
-#include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 
 #include <stdatomic.h>
 #include <stdint.h>
 #include <sys/fs.h>
 #include <sys/proc.h>
+#include <sys/map.h>
 #include <time.h>
 
 typedef struct vnode vnode_t;
@@ -75,9 +75,9 @@ typedef struct vnode_ops
      *
      * @param dir The directory vnode to look in.
      * @param target The dentry to look up.
-     * @return On success, `0`. On failure, returns `_FAIL` and `errno` is set.
+     * @return An appropriate status value.
      */
-    uint64_t (*lookup)(vnode_t* dir, dentry_t* target);
+    status_t (*lookup)(vnode_t* dir, dentry_t* target);
     /**
      * @brief Handles both directories and files depending on mode.
      *
@@ -86,9 +86,9 @@ typedef struct vnode_ops
      * @param dir The directory vnode to create the entry in.
      * @param target The negative dentry to create.
      * @param mode The mode to create the entry with.
-     * @return On success, `0`. On failure, returns `_FAIL` and `errno` is set.
+     * @return An appropriate status value.
      */
-    uint64_t (*create)(vnode_t* dir, dentry_t* target, mode_t mode);
+    status_t (*create)(vnode_t* dir, dentry_t* target, mode_t mode);
     /**
      * @brief Set the vnode size to zero.
      *
@@ -101,35 +101,35 @@ typedef struct vnode_ops
      * @param dir The directory vnode to create the link in.
      * @param old The existing dentry containing the vnode to link to.
      * @param new The negative dentry to store the same vnode as old.
-     * @return On success, `0`. On failure, returns `_FAIL` and `errno` is set.
+     * @return An appropriate status value.
      */
-    uint64_t (*link)(vnode_t* dir, dentry_t* old, dentry_t* new);
+    status_t (*link)(vnode_t* dir, dentry_t* old, dentry_t* new);
     /**
      * @brief Retrieve the path of the symbolic link.
      *
      * @param vnode The symbolic link vnode.
      * @param buffer The buffer to store the path in.
      * @param size The size of the buffer.
-     * @return On success, the number of bytes read. On failure, returns `_FAIL` and `errno` is set.
+     * @return An appropriate status value.
      */
-    uint64_t (*readlink)(vnode_t* vnode, char* buffer, uint64_t size);
+    status_t (*readlink)(vnode_t* vnode, char* buffer, size_t size, size_t* bytesRead);
     /**
      * @brief Create a symbolic link.
      *
      * @param dir The directory vnode to create the symbolic link in.
      * @param target The negative dentry to create.
      * @param dest The path to which the symbolic link will point.
-     * @return On success, `0`. On failure, returns `_FAIL` and `errno` is set.
+     * @return An appropriate status value.
      */
-    uint64_t (*symlink)(vnode_t* dir, dentry_t* target, const char* dest);
+    status_t (*symlink)(vnode_t* dir, dentry_t* target, const char* dest);
     /**
      * @brief Remove a file or directory.
      *
      * @param dir The directory vnode containing the target.
      * @param target The dentry to remove.
-     * @return On success, `0`. On failure, returns `_FAIL` and `errno` is set.
+     * @return An appropriate status value.
      */
-    uint64_t (*remove)(vnode_t* dir, dentry_t* target);
+    status_t (*remove)(vnode_t* dir, dentry_t* target);
     /**
      * @brief Cleanup function called when the vnode is being freed.
      *

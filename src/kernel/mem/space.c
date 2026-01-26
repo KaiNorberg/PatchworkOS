@@ -9,8 +9,8 @@
 #include <kernel/mem/space.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/sched/clock.h>
-#include <kernel/utils/map.h>
 
+#include <sys/map.h>
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -62,6 +62,12 @@ static inline void space_unmap_kernel_space_region(space_t* space, uintptr_t sta
     }
 }
 
+static bool space_pinned_page_cmp(map_entry_t* entry, const void* key)
+{
+    space_pinned_page_t* page = CONTAINER_OF(entry, space_pinned_page_t, mapEntry);
+    return page->address == (uintptr_t)key;
+}
+
 status_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress, space_flags_t flags)
 {
     if (space == NULL)
@@ -86,7 +92,7 @@ status_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress
         }
     }
 
-    map_init(&space->pinnedPages);
+    MAP_DEFINE_INIT(space->pinnedPages, space_pinned_page_cmp);
     space->startAddress = startAddress;
     space->endAddress = endAddress;
     space->freeAddress = startAddress;
@@ -205,8 +211,8 @@ static void space_pin_depth_dec(space_t* space, const void* address, uint64_t am
             continue;
         }
 
-        map_key_t key = map_key_uint64((uintptr_t)addr);
-        map_entry_t* entry = map_get(&space->pinnedPages, &key);
+        uint64_t hash = hash_uint64((uintptr_t)addr);
+        map_entry_t* entry = map_find(&space->pinnedPages, addr, hash);
         if (entry == NULL) // Not pinned more then once
         {
             traverse.entry->pinned = false;
@@ -217,7 +223,7 @@ static void space_pin_depth_dec(space_t* space, const void* address, uint64_t am
         pinnedPage->pinCount--;
         if (pinnedPage->pinCount == 0)
         {
-            map_remove(&space->pinnedPages, &pinnedPage->mapEntry);
+            map_remove(&space->pinnedPages, &pinnedPage->mapEntry, hash);
             free(pinnedPage);
             traverse.entry->pinned = false;
         }
@@ -248,8 +254,8 @@ static inline status_t space_pin_depth_inc(space_t* space, const void* address, 
             continue;
         }
 
-        map_key_t key = map_key_uint64((uintptr_t)addr);
-        map_entry_t* entry = map_get(&space->pinnedPages, &key);
+        uint64_t hash = hash_uint64((uintptr_t)addr);
+        map_entry_t* entry = map_find(&space->pinnedPages, addr, hash);
         if (entry != NULL) // Already pinned more than once
         {
             space_pinned_page_t* pinnedPage = CONTAINER_OF(entry, space_pinned_page_t, mapEntry);
@@ -264,13 +270,9 @@ static inline status_t space_pin_depth_inc(space_t* space, const void* address, 
             return ERR(MMU, NOMEM);
         }
         map_entry_init(&newPinnedPage->mapEntry);
+        newPinnedPage->address = (uintptr_t)addr;
         newPinnedPage->pinCount = 2; // One for the page table, one for the map
-        if (map_insert(&space->pinnedPages, &key, &newPinnedPage->mapEntry) == _FAIL)
-        {
-            free(newPinnedPage);
-            space_pin_depth_dec(space, address, i);
-            return ERR(MMU, NOMEM);
-        }
+        map_insert(&space->pinnedPages, &newPinnedPage->mapEntry, hash);
     }
 
     return OK;
@@ -291,7 +293,7 @@ status_t space_pin(space_t* space, const void* buffer, size_t length, stack_poin
     uintptr_t bufferOverflow = (uintptr_t)buffer + length;
     if (bufferOverflow < (uintptr_t)buffer)
     {
-        return ERR(MMU, OVERFLOW);
+        return ERR(MMU, TOOBIG);
     }
 
     LOCK_SCOPE(&space->lock);
@@ -307,14 +309,14 @@ status_t space_pin(space_t* space, const void* buffer, size_t length, stack_poin
         }
 
         status_t status = space_populate_user_region(space, buffer, pageAmount);
-        if (IS_FAIL(status))
+        if (IS_ERR(status))
         {
             return status;
         }
     }
 
     status_t status = space_pin_depth_inc(space, buffer, pageAmount);
-    if (IS_FAIL(status))
+    if (IS_ERR(status))
     {
         return status;
     }
@@ -339,7 +341,7 @@ status_t space_pin_terminated(size_t* outPinned, space_t* space, const void* add
     uintptr_t end = (uintptr_t)address + (maxCount * objectSize);
     if (end < (uintptr_t)address)
     {
-        return ERR(MMU, OVERFLOW);
+        return ERR(MMU, TOOBIG);
     }
 
     LOCK_SCOPE(&space->lock);
@@ -357,14 +359,14 @@ status_t space_pin_terminated(size_t* outPinned, space_t* space, const void* add
             }
 
             status = space_populate_user_region(space, (void*)ROUND_DOWN(current, PAGE_SIZE), 1);
-            if (IS_FAIL(status))
+            if (IS_ERR(status))
             {
                 goto error;
             }
         }
 
         status = space_pin_depth_inc(space, (void*)current, 1);
-        if (IS_FAIL(status))
+        if (IS_ERR(status))
         {
             goto error;
         }

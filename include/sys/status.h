@@ -1,5 +1,5 @@
-#ifndef _SRC_STATUS_H
-#define _SRC_STATUS_H 1
+#ifndef _SYS_STATUS_H
+#define _SYS_STATUS_H 1
 
 #include <stdint.h>
 
@@ -7,6 +7,19 @@
  * @brief System status codes.
  * @defgroup libstd_sys_status Status
  * @ingroup libstd
+ *
+ * The status system is used to report errors, warnings, and informational messages from various functions and subsystems.
+ * 
+ * ## Format
+ *
+ * A status is made up of a severity, customer bit, source and code values. Included is a table describing the bit format of a status value:
+ * 
+ * | Bit(s) | Description  |
+ * | :----- | :----------- |
+ * | 31     | Severity bit |
+ * | 30     | Customer bit |
+ * | 29-16  | Source       |
+ * | 15-0   | Code         |
  *
  * @{
  */
@@ -17,88 +30,216 @@
  */
 typedef uint32_t status_t;
 
+/**
+ * @brief Status severity.
+ * @enum st_sev_t
+ * 
+ * Specifies the severity of a status.
+ */
 typedef enum
 {
-    ST_SEV_OK,
-    ST_SEV_INFO,
-    ST_SEV_WARN,
-    ST_SEV_ERR,
+    ST_SEV_OK = 0, ///< Success/Informational.
+    ST_SEV_ERR = 1,  ///< Error.
 } st_sev_t;
 
+/**
+ * @brief Status source.
+ * @enum st_src_t
+ * 
+ * Specifies they layer of an operation or subsystem, that generated the status.
+ * 
+ * @note This is not used to group status values, a `ST_CODE_NOMEM` does not necessarily have a `ST_CODE_MEM` source.
+ */
 typedef enum
 {
-    ST_SRC_NONE,
-    ST_SRC_IO,
-    ST_SRC_MEM,
-    ST_SRC_MMU,
-    ST_SRC_SIMD,
-    ST_SRC_SCHED,
-    ST_SRC_INT,
-    ST_SRC_SYNC,
-    ST_SRC_DRIVER,
-    ST_SRC_FS,
-    ST_SRC_VFS,
-    ST_SRC_IPC
+    ST_SRC_NONE,     ///< No specific source.
+    ST_SRC_IO,       ///< Input/Output.
+    ST_SRC_MEM,      ///< Memory management, primarily the Physical Memory Manager.
+    ST_SRC_MMU,      ///< Memory Management Unit, used by subsystems related to virtual memory.
+    ST_SRC_SIMD,     ///< SIMD operations.
+    ST_SRC_SCHED,    ///< Scheduler.
+    ST_SRC_INT,      ///< Interrupts.
+    ST_SRC_SYNC,     ///< Synchronization primitives.
+    ST_SRC_DRIVER,   ///< Device drivers.
+    ST_SRC_FS,       ///< Filesystem.
+    ST_SRC_VFS,      ///< Virtual Filesystem.
+    ST_SRC_IPC,       ///< Inter-Process Communication.
+    ST_SRC_LIBSTD,    ///< Userspace Standard Library.
 } st_src_t;
 
+/**
+ * @brief Status code.
+ * @enum st_code_t
+ * 
+ * Specifies the specific error or status condition.
+ */
 typedef enum
 {
-    ST_CODE_NONE,
-    ST_CODE_UNKNOWN,
-    ST_CODE_INVAL,
-    ST_CODE_OVERFLOW,
-    ST_CODE_TOOBIG,
-    ST_CODE_NOMEM,
-    ST_CODE_TIMEOUT,
-    ST_CODE_NOSPACE,
-    ST_CODE_MJ_OVERFLOW,
-    ST_CODE_MJ_NOSYS,
-    ST_CODE_CANCELLED,
-    ST_CODE_NOT_CANCELLABLE,
-    ST_CODE_FAULT,
-    ST_CODE_DYING,
-    ST_CODE_ACCESS,
-    ST_CODE_ALIGN,
-    ST_CODE_MAPPED,
-    ST_CODE_UNMAPPED,
-    ST_CODE_PINNED,
-    ST_CODE_SHARED_LIMIT,
-    ST_CODE_IN_STACK,
-    ST_CODE_IMPL,
-    ST_CODE_AGAIN,
-    ST_CODE_INTR,
-    ST_CODE_PATHTOOLONG,
-    ST_CODE_NAMETOOLONG,
-    ST_CODE_INVALCHAR,
-    ST_CODE_INVALFLAG,
-    ST_CODE_CHANGED,
-    ST_CODE_FULL,
+    ST_CODE_NONE,            ///< No specific code.
+    ST_CODE_UNKNOWN,         ///< Unknown error.
+    ST_CODE_INVAL,           ///< Invalid argument.
+    ST_CODE_OVERFLOW,        ///< Buffer overflow.
+    ST_CODE_TOOBIG,          ///< Value too big.
+    ST_CODE_NOMEM,           ///< Out of memory.
+    ST_CODE_TIMEOUT,         ///< Operation timed out.
+    ST_CODE_NOSPACE,         ///< No space left.
+    ST_CODE_MJ_OVERFLOW,     ///< Major number overflow.
+    ST_CODE_MJ_NOSYS,        ///< Major number not found.
+    ST_CODE_CANCELLED,       ///< Operation cancelled.
+    ST_CODE_NOT_CANCELLABLE, ///< Operation cannot be cancelled.
+    ST_CODE_FAULT,           ///< Bad address.
+    ST_CODE_DYING,           ///< Process is dying.
+    ST_CODE_ACCESS,          ///< Permission denied.
+    ST_CODE_ALIGN,           ///< Alignment error.
+    ST_CODE_MAPPED,          ///< Already mapped.
+    ST_CODE_UNMAPPED,        ///< Not mapped.
+    ST_CODE_PINNED,          ///< Page pinned.
+    ST_CODE_SHARED_LIMIT,    ///< Shared memory limit reached.
+    ST_CODE_IN_STACK,        ///< Address in stack.
+    ST_CODE_IMPL,            ///< Implementation error.
+    ST_CODE_AGAIN,           ///< Resource temporarily unavailable.
+    ST_CODE_INTR,            ///< Interrupted system call.
+    ST_CODE_PATHTOOLONG,     ///< Path too long.
+    ST_CODE_NAMETOOLONG,     ///< Name too long.
+    ST_CODE_INVALCHAR,       ///< Invalid character.
+    ST_CODE_INVALFLAG,       ///< Invalid flag.
+    ST_CODE_CHANGED,         ///< State changed.
+    ST_CODE_FULL,            ///< Buffer full.
+    ST_CODE_MORE,            ///< More data is available then what was returned.
+    ST_CODE_FD_OVERFLOW,     ///< File descriptor is over the maximum value.
+    ST_CODE_MFILE,           ///< Too many file descriptors open.
+    ST_CODE_BADFD,           ///< File descriptor is not open.
+    ST_CODE_RAND,           ///< Hardware random number generator error.
+    ST_CODE_NOENT,           ///< No such file or directory.
+    ST_CODE_NOTDIR,          ///< Not a directory.
+    ST_CODE_ISDIR,           ///< Is a directory.
+    ST_CODE_BUSY,            ///< Device or resource busy.
+    ST_CODE_EXIST,           ///< File exists.
+    ST_CODE_XDEV,            ///< Cross-device link.
+    ST_CODE_NOTEMPTY,        ///< Directory not empty.
+    ST_CODE_NODEV,           ///< No such device.
+    ST_CODE_IO,              ///< I/O error.
+    ST_CODE_SHADOW_LIMIT,    ///< Maximum shadow mount depth reached.
+    ST_CODE_LOOP,            ///< Too many levels of symbolic links.
+    ST_CODE_NOFS,            ///< No filesystem found.
+    ST_CODE_NEGATIVE,        ///< Path component does not exist.
+    ST_CODE_ARGC,       ///< Invalid argument count.
+    ST_CODE_INVALCTL,   ///< Invalid control command.
+    ST_CODE_NOGROUP,    ///< Not within a group.
+    ST_CODE_PERM,       ///< Operation not permitted.
+    ST_CODE_NOTTY,      ///< Inappropriate ioctl for device.
+    ST_CODE_SPIPE,      ///< Invalid seek.
 } st_code_t;
 
+/**
+ * @brief Create a status value.
+ *
+ * @param _severity The severity of the status.
+ * @param _source The source of the status.
+ * @param _code The specific code of the status.
+ * @return The constructed status value.
+ */
 #define STATUS(_severity, _source, _code) \
-    ((status_t)(((uint32_t)(_severity) & 0x3) << 30) | (((uint32_t)(_source) & 0x1FFF) << 16) | ((uint32_t)(_code) & 0xFFFF))
+    ((status_t)(((uint32_t)(_severity) & 0x1) << 31) | (((uint32_t)(_source) & 0x3FFF) << 16) | ((uint32_t)(_code) & 0xFFFF))
 
-#define ST_SEV(_status) (((_status) >> 30) & 0x3)
-#define ST_CUST(_status) (((_status) >> 29) & 0x1)
-#define ST_SRC(_status)   (((_status) >> 16) & 0x1FFF)
+/**
+ * @brief Extract the severity from a status value.
+ *
+ * @param _status The status value.
+ * @return The severity.
+ */
+#define ST_SEV(_status) (((_status) >> 31) & 0x1)
+
+/**
+ * @brief Extract the customer bit from a status value.
+ *
+ * @param _status The status value.
+ * @return The customer bit.
+ */
+#define ST_CUST(_status) (((_status) >> 30) & 0x1)
+
+/**
+ * @brief Extract the source from a status value.
+ *
+ * @param _status The status value.
+ * @return The source.
+ */
+#define ST_SRC(_status)   (((_status) >> 16) & 0x3FFF)
+
+/**
+ * @brief Extract the code from a status value.
+ *
+ * @param _status The status value.
+ * @return The code.
+ */
 #define ST_CODE(_status)     ((_status) & 0xFFFF)
 
+/**
+ * @brief Check if a status indicates success.
+ *
+ * @param _status The status value.
+ * @return True if success, false otherwise.
+ */
 #define IS_OK(_status) (ST_SEV(_status) == ST_SEV_OK)
-#define IS_FAIL(_status) (ST_SEV(_status) != ST_SEV_OK)
-#define IS_INFO(_status)    (ST_SEV(_status) == ST_SEV_INFO)
-#define IS_WARN(_status) (ST_SEV(_status) == ST_SEV_WARN)
+
+/**
+ * @brief Check if a status indicates an error.
+ *
+ * @param _status The status value.
+ * @return True if error, false otherwise.
+ */
 #define IS_ERR(_status)   (ST_SEV(_status) == ST_SEV_ERR)
 
+/**
+ * @brief Check if a status matches a specific code.
+ *
+ * @param _status The status value.
+ * @param _code The code to check against (without ST_CODE_ prefix).
+ * @return True if match, false otherwise.
+ */
+#define IS_CODE(_status, _code) (ST_CODE(_status) == ST_CODE_##_code)
+
+/**
+ * @brief Check if a status matches a specific severity.
+ *
+ * @param _status The status value.
+ * @param _sev The severity to check against (without ST_SEV_ prefix).
+ * @return True if match, false otherwise.
+ */
+#define IS_SEV(_status, _sev) (ST_SEV(_status) == ST_SEV_##_sev)
+
+/**
+ * @brief Check if a status matches a specific source.
+ *
+ * @param _status The status value.
+ * @param _src The source to check against (without ST_SRC_ prefix).
+ * @return True if match, false otherwise.
+ */
+#define IS_SRC(_status, _src) (ST_SRC(_status) == ST_SRC_##_src)
+
+/**
+ * @brief Retry an expression while it returns an error.
+ *
+ * @param _expr The expression to evaluate.
+ * @return The final status.
+ */
 #define RETRY(_expr) \
     ({ \
         status_t _retry; \
         do \
         { \
             _retry = (_expr); \
-        } while (IS_FAIL(_retry)); \
+        } while (IS_ERR(_retry)); \
         _retry; \
     })
 
+/**
+ * @brief Retry an expression a specific number of times while it returns an error.
+ *
+ * @param _expr The expression to evaluate.
+ * @param _n The maximum number of retries.
+ * @return The final status.
+ */
 #define RETRY_N(_expr, _n) \
     ({ \
         status_t _retry; \
@@ -106,20 +247,34 @@ typedef enum
         do \
         { \
             _retry = (_expr); \
-        } while (IS_FAIL(_retry) && (_count > 1 ? (--_count, 1) : 0)); \
+        } while (IS_ERR(_retry) && (_count > 1 ? (--_count, 1) : 0)); \
         _retry; \
     })
 
+/**
+ * @brief Retry an expression while it returns a specific error code.
+ *
+ * @param _expr The expression to evaluate.
+ * @param _code The error code to retry on.
+ * @return The final status.
+ */
 #define RETRY_ON_CODE(_expr, _code) \
     ({ \
         status_t _retry; \
         do \
         { \
             _retry = (_expr); \
-        } while (IS_FAIL(_retry) && ST_CODE(_retry) == (_code)); \
+        } while (IS_ERR(_retry) && ST_CODE(_retry) == (_code)); \
         _retry; \
     })
 
+/**
+ * @brief Retry an expression while it returns a specific severity.
+ *
+ * @param _expr The expression to evaluate.
+ * @param _sev The severity to retry on.
+ * @return The final status.
+ */
 #define RETRY_ON_SEV(_expr, _sev) \
     ({ \
         status_t _retry; \
@@ -130,9 +285,25 @@ typedef enum
         _retry; \
     })
 
+/**
+ * @brief Status OK constant.
+ */
 #define OK              STATUS(ST_SEV_OK, ST_SRC_NONE, ST_CODE_NONE)
-#define INFO(_source, _code) STATUS(ST_SEV_INFO, ST_SRC_##_source, ST_CODE_##_code)
-#define WARN(_source, _code) STATUS(ST_SEV_WARN, ST_SRC_##_source, ST_CODE_##_code)
+
+/**
+ * @brief Create an information status.
+ *
+ * @param _source The source of the status (without ST_SRC_ prefix).
+ * @param _code The code of the status (without ST_CODE_ prefix).
+ */
+#define INFO(_source, _code) STATUS(ST_SEV_OK, ST_SRC_##_source, ST_CODE_##_code)
+
+/**
+ * @brief Create an error status.
+ *
+ * @param _source The source of the status (without ST_SRC_ prefix).
+ * @param _code The code of the status (without ST_CODE_ prefix).
+ */
 #define ERR(_source, _code)  STATUS(ST_SEV_ERR, ST_SRC_##_source, ST_CODE_##_code)
 
 /** @} */

@@ -15,10 +15,10 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rwlock.h>
-#include <kernel/utils/map.h>
 
 #include <stdatomic.h>
 #include <stdint.h>
+#include <sys/map.h>
 #include <sys/list.h>
 
 cpu_t* _cpus[CPU_MAX] = {0};

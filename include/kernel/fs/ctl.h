@@ -3,6 +3,7 @@
 #include <kernel/fs/file.h>
 
 #include <stdint.h>
+#include <sys/status.h>
 
 /**
  * @brief Helpers to implement control file operations.
@@ -37,10 +38,15 @@
  */
 #define CTL_STANDARD_WRITE_DEFINE(name, ...) \
     static ctl_t name##ctls[] = __VA_ARGS__; \
-    static size_t name(file_t* file, const void* buffer, size_t count, size_t* offset) \
+    static status_t name(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten) \
     { \
         UNUSED(offset); \
-        return ctl_dispatch(name##ctls, file, buffer, count); \
+        status_t status = ctl_dispatch(name##ctls, file, buffer, count); \
+        if (IS_OK(status) && bytesWritten != NULL) \
+        { \
+            *bytesWritten = count; \
+        } \
+        return status; \
     }
 
 /**
@@ -60,7 +66,7 @@
 /**
  * @brief Type definition for a ctl function.
  */
-typedef uint64_t (*ctl_func_t)(file_t* file, uint64_t, const char**);
+typedef status_t (*ctl_func_t)(file_t* file, uint64_t, const char**);
 
 /**
  * @brief Structure defining a ctl command.
@@ -81,8 +87,8 @@ typedef struct
  * @param file The file the ctl command was sent to.
  * @param buffer The buffer containing the command and its arguments.
  * @param count The number of bytes in the buffer.
- * @return On success, the number of bytes processed (count). On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t ctl_dispatch(ctl_t ctls[], file_t* file, const void* buffer, size_t count);
+status_t ctl_dispatch(ctl_t ctls[], file_t* file, const void* buffer, size_t count);
 
 /** @} */

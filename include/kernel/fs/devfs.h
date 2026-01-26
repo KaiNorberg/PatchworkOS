@@ -83,7 +83,7 @@ typedef struct devfs_file_desc
  * @param out Output list to store created dentries, can be `NULL`. The dentries use the `otherEntry` list entry.
  * @param parent The parent directory, if `NULL` then the root is used.
  * @param descs Array of file descriptors, terminated by an entry with `name == NULL`.
- * @return On success, the number of files created. On failure, `_FAIL` and `errno` is set.
+ * @return `true` on success, `false` on failure.
  */
 bool devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t* descs);
 

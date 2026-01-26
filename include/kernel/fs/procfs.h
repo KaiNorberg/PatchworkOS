@@ -142,7 +142,7 @@
  * Note that specifying `-1` as `maxfd` will close all file descriptors from `minfd` to the maximum allowed file
  * descriptor.
  *
- * ### dup2 <oldfd> <newfd>
+ * ### dup <oldfd> <newfd>
  *
  * Duplicates the specified old file descriptor to the new file descriptor in the process.
  *

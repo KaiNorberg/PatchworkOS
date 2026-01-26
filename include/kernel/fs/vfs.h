@@ -9,8 +9,8 @@
 #include <kernel/fs/vnode.h>
 #include <kernel/proc/process.h>
 #include <kernel/sync/rwlock.h>
-#include <kernel/utils/map.h>
 
+#include <sys/map.h>
 #include <sys/fs.h>
 #include <sys/list.h>
 #include <sys/math.h>
@@ -33,11 +33,12 @@
 /**
  * @brief Open a file.
  *
+ * @param out Output pointer for the opened file.
  * @param pathname The pathname of the file to open.
  * @param process The process opening the file.
- * @return On success, the opened file. On failure, returns `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-file_t* vfs_open(const pathname_t* pathname, process_t* process);
+status_t vfs_open(file_t** out, const pathname_t* pathname, process_t* process);
 
 /**
  * @brief Open one file, returning two file handles.
@@ -47,19 +48,20 @@ file_t* vfs_open(const pathname_t* pathname, process_t* process);
  * @param pathname The pathname of the file to open.
  * @param files The output array of two file pointers.
  * @param process The process opening the file.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* process);
+status_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* process);
 
 /**
  * @brief Open a file relative to another path.
  *
+ * @param out Output pointer for the opened file.
  * @param from The path to open the file relative to, or `NULL` to use the process's current working directory.
  * @param pathname The pathname of the file to open.
  * @param process The process opening the file.
- * @return On success, the opened file. On failure, returns `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* process);
+status_t vfs_openat(file_t** out, const path_t* from, const pathname_t* pathname, process_t* process);
 
 /**
  * @brief Read from a file.
@@ -69,9 +71,10 @@ file_t* vfs_openat(const path_t* from, const pathname_t* pathname, process_t* pr
  * @param file The file to read from.
  * @param buffer The buffer to read into.
  * @param count The number of bytes to read.
- * @return On success, the number of bytes read. On failure, `ERR` and `errno` is set.
+ * @param bytesRead Output pointer for the number of bytes read.
+ * @return An appropriate status value.
  */
-size_t vfs_read(file_t* file, void* buffer, size_t count);
+status_t vfs_read(file_t* file, void* buffer, size_t count, size_t* bytesRead);
 
 /**
  * @brief Write to a file.
@@ -81,9 +84,10 @@ size_t vfs_read(file_t* file, void* buffer, size_t count);
  * @param file The file to write to.
  * @param buffer The buffer to write from.
  * @param count The number of bytes to write.
- * @return On success, the number of bytes written. On failure, `ERR` and `errno` is set.
+ * @param bytesWritten Output pointer for the number of bytes written.
+ * @return An appropriate status value.
  */
-size_t vfs_write(file_t* file, const void* buffer, size_t count);
+status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* bytesWritten);
 
 /**
  * @brief Seek in a file.
@@ -93,9 +97,10 @@ size_t vfs_write(file_t* file, const void* buffer, size_t count);
  * @param file The file to seek in.
  * @param offset The offset to seek to.
  * @param origin The origin to seek from.
- * @return On success, the new file position. On failure, `ERR` and `errno` is set.
+ * @param newPos Output pointer for the new file position.
+ * @return An appropriate status value.
  */
-size_t vfs_seek(file_t* file, ssize_t offset, seek_origin_t origin);
+status_t vfs_seek(file_t* file, ssize_t offset, seek_origin_t origin, size_t* newPos);
 
 /**
  * @brief Perform an ioctl operation on a file.
@@ -104,20 +109,21 @@ size_t vfs_seek(file_t* file, ssize_t offset, seek_origin_t origin);
  * @param request The ioctl request.
  * @param argp The argument pointer.
  * @param size The size of the argument.
- * @return On success, the result of the ioctl. On failure, `ERR` and `errno` is set.
+ * @param result Output pointer for the result of the ioctl.
+ * @return An appropriate status value.
  */
-uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, size_t size);
+status_t vfs_ioctl(file_t* file, uint64_t request, void* argp, size_t size, uint64_t* result);
 
 /**
  * @brief Memory map a file.
  *
  * @param file The file to memory map.
- * @param address The address to map to, or `NULL` to let the kernel choose.
+ * @param addr The output pointer to store the virtual address, the value it currently points to is used as the desired virtual address. If it points to `NULL`, the kernel chooses an address.
  * @param length The length to map.
  * @param flags The page table flags for the mapping.
- * @return On success, the mapped address. On failure, returns `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-void* vfs_mmap(file_t* file, void* address, size_t length, pml_flags_t flags);
+status_t vfs_mmap(file_t* file, void** addr, size_t length, pml_flags_t flags);
 
 /**
  * @brief Poll multiple files.
@@ -125,9 +131,10 @@ void* vfs_mmap(file_t* file, void* address, size_t length, pml_flags_t flags);
  * @param files The array of files to poll.
  * @param amount The number of files in the array.
  * @param timeout The timeout in clock ticks, or `CLOCKS_NEVER` to wait indefinitely.
- * @return On success, the number of files that are ready. On failure, `ERR` and `errno` is set.
+ * @param readyCount Output pointer for the number of files that are ready.
+ * @return An appropriate status value.
  */
-uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout);
+status_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout, size_t* readyCount);
 
 /**
  * @brief Get directory entries from a directory file.
@@ -135,9 +142,10 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout);
  * @param file The directory file to read from.
  * @param buffer The buffer to read into.
  * @param count The number of bytes to read.
- * @return On success, the number of bytes read. On failure, `ERR` and `errno` is set.
+ * @param bytesWritten Output pointer for the number of bytes written.
+ * @return An appropriate status value.
  */
-size_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count);
+status_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count, size_t* bytesWritten);
 
 /**
  * @brief Get file information.
@@ -145,9 +153,9 @@ size_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count);
  * @param pathname The pathname of the file to get information about.
  * @param buffer The buffer to store the file information in.
  * @param process The process performing the stat.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process);
+status_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process);
 
 /**
  * @brief Make the same file appear twice in the filesystem.
@@ -155,9 +163,9 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
  * @param oldPathname The existing file.
  * @param newPathname The new link to create, must not exist and be in the same filesystem as the oldPathname.
  * @param process The process performing the linking.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, process_t* process);
+status_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, process_t* process);
 
 /**
  * @brief Read the path in a symbolic link.
@@ -165,10 +173,10 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
  * @param symlink The symbolic link vnode.
  * @param buffer The buffer to store the path in.
  * @param size The size of the buffer.
- * @param process The process performing the readlink.
- * @return On success, the number of bytes read. On failure, `ERR` and `errno` is set.
+ * @param bytesRead Output pointer for the number of bytes read.
+ * @return An appropriate status value.
  */
-size_t vfs_readlink(vnode_t* symlink, char* buffer, size_t size);
+status_t vfs_readlink(vnode_t* symlink, char* buffer, size_t size, size_t* bytesRead);
 
 /**
  * @brief Create a symbolic link.
@@ -176,18 +184,18 @@ size_t vfs_readlink(vnode_t* symlink, char* buffer, size_t size);
  * @param target The pathname to which the symbolic link will point.
  * @param linkpath The pathname of the symbolic link to create.
  * @param process The process performing the symlink creation.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t vfs_symlink(const pathname_t* target, const pathname_t* linkpath, process_t* process);
+status_t vfs_symlink(const pathname_t* target, const pathname_t* linkpath, process_t* process);
 
 /**
  * @brief Remove a file or directory.
  *
  * @param pathname The pathname of the file or directory to remove.
  * @param process The process performing the removal.
- * @return On success, `0`. On failure, `ERR` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t vfs_remove(const pathname_t* pathname, process_t* process);
+status_t vfs_remove(const pathname_t* pathname, process_t* process);
 
 /**
  * @brief Generates a new unique ID, to be used for any VFS object.
@@ -195,24 +203,6 @@ uint64_t vfs_remove(const pathname_t* pathname, process_t* process);
  * @return A new unique ID.
  */
 uint64_t vfs_id_get(void);
-
-/**
- * @brief Helper macros for implementing file operations dealing with simple buffers.
- *
- * @param buffer The destination buffer.
- * @param count The number of bytes to read.
- * @param offset A pointer to the current offset, will be updated.
- * @param src The source buffer.
- * @param size The size of the source buffer.
- * @return The number of bytes read/written.
- */
-#define BUFFER_READ(buffer, count, offset, src, size) \
-    ({ \
-        size_t readCount = (*(offset) <= (size)) ? MIN((count), (size) - *(offset)) : 0; \
-        memcpy((buffer), (src) + *(offset), readCount); \
-        *(offset) += readCount; \
-        readCount; \
-    })
 
 /**
  * @brief Helper macro for implementing file operations dealing with simple buffer writes.
@@ -231,5 +221,40 @@ uint64_t vfs_id_get(void);
         *(offset) += writeCount; \
         writeCount; \
     })
+
+/**
+ * @brief Helper function for implementing file reads dealing with simple buffers.
+ *
+ * @param buffer The destination buffer.
+ * @param count The number of bytes to read.
+ * @param offset A pointer to the current offset, will be updated.
+ * @param bytesRead Output pointer for the amount of bytes read.
+ * @param source The source buffer.
+ * @param sourceLen The size of the source buffer.
+ * @return An appropriate status value.
+ */
+static status_t buffer_read(void* buffer, size_t count, size_t* offset, size_t* bytesRead, const void* source,
+    size_t sourceLen)
+{
+    if (*offset >= sourceLen)
+    {
+        *bytesRead = 0;
+        return OK;
+    }
+
+    size_t remaining = sourceLen - *offset;
+    size_t toRead = count < remaining ? count : remaining;
+
+    memcpy(buffer, (const char*)source + *offset, toRead);
+    *offset += toRead;
+    *bytesRead = toRead;
+
+    if (*offset < sourceLen)
+    {
+        return INFO(VFS, MORE);
+    }
+
+    return OK;
+}
 
 /** @} */

@@ -363,10 +363,10 @@ pid_t child = spawn(argv, SPAWN_SUSPENDED);
 
 At this point, the process exists but its stuck blocking before it is can load its executable. Additionally, the child process has inherited all file descriptors and environment variables from the parent process.
 
-Now we can redirect the stdio file descriptors in the child process using the `/proc/[pid]/ctl` file, which just like the socket ctl file, allows us to send commands to control the process. In this case, we want to use two commands, `dup2` to redirect the stdio file descriptors and `close` to close the unneeded file descriptors.
+Now we can redirect the stdio file descriptors in the child process using the `/proc/[pid]/ctl` file, which just like the socket ctl file, allows us to send commands to control the process. In this case, we want to use two commands, `dup` to redirect the stdio file descriptors and `close` to close the unneeded file descriptors.
 
 ```c
-writefiles(F("/proc/%d/ctl", child), F("dup2 %d 0 && dup2 %d 1 && dup2 %d 2 && close 3 -1", stdin, stdout, stderr));
+writefiles(F("/proc/%d/ctl", child), F("dup %d 0 && dup %d 1 && dup %d 2 && close 3 -1", stdin, stdout, stderr));
 ```
 
 > Note that `close` can either take one or two arguments. When two arguments are provided, it closes all file descriptors in the specified range. In our case `-1` causes a underflow to the maximum file descriptor value, closing all file descriptors higher than or equal to the first argument.

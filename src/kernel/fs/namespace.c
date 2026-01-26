@@ -12,59 +12,45 @@
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rwlock.h>
-#include <kernel/utils/map.h>
 
 #include <errno.h>
 #include <stdlib.h>
+#include <sys/map.h>
 #include <sys/fs.h>
 #include <sys/list.h>
 
-static map_key_t mount_key(mount_id_t parentId, dentry_id_t mountpointId)
+typedef struct
 {
-    struct
-    {
-        mount_id_t parentId;
-        dentry_id_t mountpointId;
-    } buffer;
-    buffer.parentId = parentId;
-    buffer.mountpointId = mountpointId;
+    mount_id_t parentId;
+    dentry_id_t mountpointId;
+} mount_key_t;
 
-    return map_key_buffer(&buffer, sizeof(buffer));
+static bool mount_map_cmp(map_entry_t* entry, const void* key)
+{
+    mount_stack_t* stack = CONTAINER_OF(entry, mount_stack_t, mapEntry);
+    const mount_key_t* k = key;
+    return stack->parentId == k->parentId && stack->mountpointId == k->mountpointId;
 }
 
-static map_key_t root_key(void)
+static uint64_t mount_hash(mount_id_t parentId, dentry_id_t mountpointId)
 {
-    struct
-    {
-        mount_id_t parentId;
-        dentry_id_t mountpointId;
-    } buffer = {.parentId = UINT64_MAX, .mountpointId = UINT64_MAX};
-
-    return map_key_buffer(&buffer, sizeof(buffer));
+    mount_key_t key;
+    key.parentId = parentId;
+    key.mountpointId = mountpointId;
+    return hash_buffer(&key, sizeof(key));
 }
 
-static map_key_t mount_key_from_mount(mount_t* mount)
-{
-    if (mount->parent == NULL)
-    {
-        return root_key();
-    }
-
-    return mount_key(mount->parent->id, mount->target->id);
-}
-
-static uint64_t mount_stack_push(mount_stack_t* stack, mount_t* mount)
+static status_t mount_stack_push(mount_stack_t* stack, mount_t* mount)
 {
     if (stack->count >= ARRAY_SIZE(stack->mounts))
     {
-        errno = ENOMEM;
-        return _FAIL;
+        return ERR(VFS, SHADOW_LIMIT);
     }
 
     stack->mounts[stack->count] = REF(mount);
     stack->count++;
 
-    return 0;
+    return OK;
 }
 
 static void mount_stack_remove(mount_stack_t* stack, mount_t* mount)
@@ -85,18 +71,17 @@ static void mount_stack_remove(mount_stack_t* stack, mount_t* mount)
     }
 }
 
-static uint64_t mount_stack_init(namespace_t* ns, mount_stack_t* stack, map_key_t* key)
+static void mount_stack_init(namespace_t* ns, mount_stack_t* stack, mount_id_t parentId, dentry_id_t mountpointId)
 {
     list_entry_init(&stack->entry);
     map_entry_init(&stack->mapEntry);
+    stack->parentId = parentId;
+    stack->mountpointId = mountpointId;
     stack->count = 0;
 
-    if (map_insert(&ns->mountMap, key, &stack->mapEntry) == _FAIL)
-    {
-        return _FAIL;
-    }
+    uint64_t hash = mount_hash(parentId, mountpointId);
+    map_insert(&ns->mountMap, &stack->mapEntry, hash);
     list_push_back(&ns->stacks, &stack->entry);
-    return 0;
 }
 
 static void mount_stack_free(namespace_t* ns, mount_stack_t* stack)
@@ -114,7 +99,8 @@ static void mount_stack_free(namespace_t* ns, mount_stack_t* stack)
     stack->count = 0;
 
     list_remove(&stack->entry);
-    map_remove(&ns->mountMap, &stack->mapEntry);
+    uint64_t hash = mount_hash(stack->parentId, stack->mountpointId);
+    map_remove(&ns->mountMap, &stack->mapEntry, hash);
 
     if (&ns->root == stack)
     {
@@ -124,43 +110,44 @@ static void mount_stack_free(namespace_t* ns, mount_stack_t* stack)
     free(stack);
 }
 
-static mount_stack_t* namespace_get_stack(namespace_t* ns, const map_key_t* key)
+static mount_stack_t* namespace_get_stack(namespace_t* ns, mount_id_t parentId, dentry_id_t mountpointId)
 {
-    return CONTAINER_OF_SAFE(map_get(&ns->mountMap, key), mount_stack_t, mapEntry);
+    mount_key_t key = {parentId, mountpointId};
+    uint64_t hash = mount_hash(parentId, mountpointId);
+    return CONTAINER_OF_SAFE(map_find(&ns->mountMap, &key, hash), mount_stack_t, mapEntry);
 }
 
-static uint64_t namespace_add(namespace_t* ns, mount_t* mount)
+static status_t namespace_add(namespace_t* ns, mount_t* mount)
 {
     if (MOUNT_IS_ROOT(mount))
     {
-        if (mount_stack_push(&ns->root, mount) == _FAIL)
+        status_t status = mount_stack_push(&ns->root, mount);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
         goto propagate;
     }
 
-    map_key_t key = mount_key_from_mount(mount);
-    mount_stack_t* stack = namespace_get_stack(ns, &key);
+    mount_id_t parentId = mount->parent->id;
+    dentry_id_t mountpointId = mount->target->id;
+
+    mount_stack_t* stack = namespace_get_stack(ns, parentId, mountpointId);
     if (stack == NULL)
     {
         stack = malloc(sizeof(mount_stack_t));
         if (stack == NULL)
         {
-            errno = ENOMEM;
-            return _FAIL;
+            return ERR(VFS, NOMEM);
         }
 
-        if (mount_stack_init(ns, stack, &key) == _FAIL)
-        {
-            free(stack);
-            return _FAIL;
-        }
+        mount_stack_init(ns, stack, parentId, mountpointId);
     }
 
-    if (mount_stack_push(stack, mount) == _FAIL)
+    status_t status = mount_stack_push(stack, mount);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
 propagate:
@@ -171,14 +158,15 @@ propagate:
         {
             RWLOCK_WRITE_SCOPE(&child->lock);
 
-            if (namespace_add(child, mount) == _FAIL)
+            status = namespace_add(child, mount);
+            if (IS_ERR(status))
             {
-                return _FAIL;
+                return status;
             }
         }
     }
 
-    return 0;
+    return OK;
 }
 
 static void namespace_remove(namespace_t* ns, mount_t* mount, mode_t mode)
@@ -194,8 +182,10 @@ static void namespace_remove(namespace_t* ns, mount_t* mount, mode_t mode)
         goto propagate;
     }
 
-    map_key_t key = mount_key_from_mount(mount);
-    mount_stack_t* stack = namespace_get_stack(ns, &key);
+    mount_id_t parentId = mount->parent->id;
+    dentry_id_t mountpointId = mount->target->id;
+
+    mount_stack_t* stack = namespace_get_stack(ns, parentId, mountpointId);
     if (stack != NULL)
     {
         mount_stack_remove(stack, mount);
@@ -243,8 +233,6 @@ static void namespace_free(namespace_t* ns)
         mount_stack_free(ns, stack);
     }
 
-    map_deinit(&ns->mountMap);
-
     rwlock_write_release(&ns->lock);
 
     free(ns);
@@ -255,7 +243,6 @@ namespace_t* namespace_new(namespace_t* parent)
     namespace_t* ns = malloc(sizeof(namespace_t));
     if (ns == NULL)
     {
-        errno = ENOMEM;
         return NULL;
     }
     ref_init(&ns->ref, namespace_free);
@@ -263,14 +250,9 @@ namespace_t* namespace_new(namespace_t* parent)
     list_init(&ns->children);
     ns->parent = NULL;
     list_init(&ns->stacks);
-    map_init(&ns->mountMap);
+    MAP_DEFINE_INIT(ns->mountMap, mount_map_cmp);
 
-    map_key_t key = root_key();
-    if (mount_stack_init(ns, &ns->root, &key) == _FAIL)
-    {
-        free(ns);
-        return NULL;
-    }
+    mount_stack_init(ns, &ns->root, UINT64_MAX, UINT64_MAX);
 
     rwlock_init(&ns->lock);
 
@@ -284,12 +266,11 @@ namespace_t* namespace_new(namespace_t* parent)
     return ns;
 }
 
-uint64_t namespace_copy(namespace_t* dest, namespace_t* src)
+status_t namespace_copy(namespace_t* dest, namespace_t* src)
 {
     if (dest == NULL || src == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     RWLOCK_WRITE_SCOPE(&dest->lock);
@@ -305,14 +286,15 @@ uint64_t namespace_copy(namespace_t* dest, namespace_t* src)
                 continue;
             }
 
-            if (namespace_add(dest, stack->mounts[i]) == _FAIL)
+            status_t status = namespace_add(dest, stack->mounts[i]);
+            if (IS_ERR(status))
             {
-                return _FAIL;
+                return status;
             }
         }
     }
 
-    return 0;
+    return OK;
 }
 
 static bool namespace_is_descendant(namespace_t* ancestor, namespace_t* descendant)
@@ -366,8 +348,7 @@ bool namespace_rcu_traverse(namespace_t* ns, mount_t** mount, dentry_t** dentry)
             return traversed;
         }
 
-        map_key_t key = mount_key((*mount)->id, (*dentry)->id);
-        mount_stack_t* stack = namespace_get_stack(ns, &key);
+        mount_stack_t* stack = namespace_get_stack(ns, (*mount)->id, (*dentry)->id);
         if (stack == NULL)
         {
             return traversed;
@@ -384,76 +365,104 @@ bool namespace_rcu_traverse(namespace_t* ns, mount_t** mount, dentry_t** dentry)
     return traversed;
 }
 
-mount_t* namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, const char* options, mode_t mode,
-    void* data)
+status_t namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, const char* options, mode_t mode,
+    void* data, mount_t** out)
 {
     if (ns == NULL || fs == NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(VFS, INVAL);
     }
 
-    dentry_t* root = fs->mount(fs, options, data);
+    dentry_t* root;
+    status_t status = fs->mount(fs, &root, options, data);
     if (root == NULL)
     {
-        return NULL;
+        return status;
     }
     UNREF_DEFER(root);
 
     if (root->superblock->root != root)
     {
-        errno = EIO;
-        return NULL;
+        return ERR(VFS, IMPL);
     }
 
     RWLOCK_WRITE_SCOPE(&ns->lock);
+
+    if (!DENTRY_IS_POSITIVE(root) || (target != NULL && !DENTRY_IS_POSITIVE(target->dentry)))
+    {
+        return ERR(VFS, NOENT);
+    }
 
     mount_t* mount = mount_new(root->superblock, root, target != NULL ? target->dentry : NULL,
         target != NULL ? target->mount : NULL, mode);
     if (mount == NULL)
     {
-        return NULL;
+        return ERR(VFS, NOMEM);
     }
 
-    if (namespace_add(ns, mount) == _FAIL)
+    status = namespace_add(ns, mount);
+    if (IS_ERR(status))
     {
         UNREF(mount);
-        return NULL;
+        return status;
     }
 
-    return mount;
+    if (out != NULL)
+    {
+        *out = mount;
+    }
+    else
+    {
+        UNREF(mount);
+    }
+
+    return OK;
 }
 
-mount_t* namespace_bind(namespace_t* ns, path_t* target, path_t* source, mode_t mode)
+status_t namespace_bind(namespace_t* ns, path_t* target, path_t* source, mode_t mode, mount_t** out)
 {
     if (ns == NULL || !PATH_IS_VALID(source))
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(VFS, INVAL);
     }
 
-    if (mode_check(&mode, source->mount->mode) == _FAIL)
+    status_t status = mode_check(&mode, source->mount->mode);
+    if (IS_ERR(status))
     {
-        return NULL;
+        return status;
     }
 
     RWLOCK_WRITE_SCOPE(&ns->lock);
+
+    if (!DENTRY_IS_POSITIVE(source->dentry) || (target != NULL && !DENTRY_IS_POSITIVE(target->dentry)))
+    {
+        return ERR(VFS, NOENT);
+    }
 
     mount_t* mount = mount_new(source->dentry->superblock, source->dentry, target != NULL ? target->dentry : NULL,
         target != NULL ? target->mount : NULL, mode);
     if (mount == NULL)
     {
-        return NULL;
+        return ERR(VFS, NOMEM);
     }
 
-    if (namespace_add(ns, mount) == _FAIL)
+    status = namespace_add(ns, mount);
+    if (IS_ERR(status))
     {
         UNREF(mount);
-        errno = ENOMEM;
-        return NULL;
+        return status;
     }
 
-    return mount;
+    if (out != NULL)
+    {
+        *out = mount;
+    }
+    else
+    {
+        UNREF(mount);
+    }
+
+    return OK;
 }
 
 void namespace_unmount(namespace_t* ns, mount_t* mount, mode_t mode)
@@ -516,128 +525,114 @@ void namespace_rcu_get_root(namespace_t* ns, mount_t** mount, dentry_t** dentry)
     *dentry = mnt->source;
 }
 
-SYSCALL_DEFINE(SYS_MOUNT, uint64_t, const char* mountpoint, const char* fs, const char* options)
+SYSCALL_DEFINE(SYS_MOUNT, const char* mountpoint, const char* fs, const char* options)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t mountname;
-    if (thread_copy_from_user_pathname(thread, &mountname, mountpoint) == _FAIL)
+    status_t status = thread_copy_from_user_pathname(thread, &mountname, mountpoint);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     namespace_t* ns = process_get_ns(process);
-    if (ns == NULL)
-    {
-        return _FAIL;
-    }
     UNREF_DEFER(ns);
 
     path_t mountpath = cwd_get(&process->cwd, ns);
     PATH_DEFER(&mountpath);
 
-    if (path_walk(&mountpath, &mountname, ns) == _FAIL)
+    status = path_walk(&mountpath, &mountname, ns);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     char fsCopy[MAX_PATH];
-    if (thread_copy_from_user_string(thread, fsCopy, fs, MAX_PATH) == _FAIL)
+    status = thread_copy_from_user_string(thread, fsCopy, fs, MAX_PATH);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     char optionsCopy[MAX_PATH];
-    if (options != NULL && thread_copy_from_user_string(thread, optionsCopy, options, MAX_PATH) == _FAIL)
+    if (options != NULL)
     {
-        return _FAIL;
+        status = thread_copy_from_user_string(thread, optionsCopy, options, MAX_PATH);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
     }
 
     filesystem_t* filesystem = filesystem_get_by_path(fsCopy, process);
     if (filesystem == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, NOFS);
     }
 
-    mount_t* mount =
-        namespace_mount(ns, &mountpath, filesystem, options != NULL ? optionsCopy : NULL, mountname.mode, NULL);
-    if (mount == NULL)
-    {
-        return _FAIL;
-    }
-    UNREF(mount);
-    return 0;
+    return namespace_mount(ns, &mountpath, filesystem, options != NULL ? optionsCopy : NULL, mountname.mode, NULL, NULL);
 }
 
-SYSCALL_DEFINE(SYS_UNMOUNT, uint64_t, const char* mountpoint)
+SYSCALL_DEFINE(SYS_UNMOUNT, const char* mountpoint)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t mountname;
-    if (thread_copy_from_user_pathname(thread, &mountname, mountpoint) == _FAIL)
+    status_t status = thread_copy_from_user_pathname(thread, &mountname, mountpoint);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     namespace_t* ns = process_get_ns(process);
-    if (ns == NULL)
-    {
-        return _FAIL;
-    }
     UNREF_DEFER(ns);
 
     path_t mountpath = cwd_get(&process->cwd, ns);
     PATH_DEFER(&mountpath);
 
-    if (path_walk(&mountpath, &mountname, ns) == _FAIL)
+    status = path_walk(&mountpath, &mountname, ns);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     namespace_unmount(ns, mountpath.mount, mountname.mode);
-    return 0;
+    return OK;
 }
 
-SYSCALL_DEFINE(SYS_BIND, uint64_t, const char* mountpoint, fd_t source)
+SYSCALL_DEFINE(SYS_BIND, const char* mountpoint, fd_t source)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     pathname_t mountname;
-    if (thread_copy_from_user_pathname(thread, &mountname, mountpoint) == _FAIL)
+    status_t status = thread_copy_from_user_pathname(thread, &mountname, mountpoint);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     namespace_t* ns = process_get_ns(process);
-    if (ns == NULL)
-    {
-        return _FAIL;
-    }
     UNREF_DEFER(ns);
 
     path_t mountpath = cwd_get(&process->cwd, ns);
     PATH_DEFER(&mountpath);
 
-    if (path_walk(&mountpath, &mountname, ns) == _FAIL)
+    status = path_walk(&mountpath, &mountname, ns);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     file_t* sourceFile = file_table_get(&process->files, source);
     if (sourceFile == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, BADFD);
     }
     UNREF_DEFER(sourceFile);
 
-    mount_t* bind = namespace_bind(ns, &mountpath, &sourceFile->path, mountname.mode);
-    if (bind == NULL)
-    {
-        return _FAIL;
-    }
-    UNREF(bind);
-    return 0;
+    return namespace_bind(ns, &mountpath, &sourceFile->path, mountname.mode, NULL);
 }

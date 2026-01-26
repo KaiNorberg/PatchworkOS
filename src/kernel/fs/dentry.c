@@ -17,41 +17,53 @@
 #include <stdlib.h>
 #include <sys/list.h>
 
+typedef struct
+{
+    const dentry_t* parent;
+    const char* name;
+    size_t length;
+} dentry_key_t;
+
+static bool dentry_cmp(map_entry_t* entry, const void* key)
+{
+    dentry_t* dentry = CONTAINER_OF(entry, dentry_t, mapEntry);
+    const dentry_key_t* k = key;
+    return dentry->parent == k->parent && dentry->name[k->length] == '\0' &&
+           memcmp(dentry->name, k->name, k->length) == 0;
+}
+
 #define DENTRY_MAP_SIZE 4096
-static dentry_t* map[DENTRY_MAP_SIZE] = {NULL};
+static MAP_CREATE(dentryMap, DENTRY_MAP_SIZE, dentry_cmp);
 static seqlock_t lock = SEQLOCK_CREATE();
 
 static uint64_t dentry_hash(dentry_id_t parentId, const char* name, size_t length)
 {
-    uint64_t hash = hash_object(name, length);
+    uint64_t hash = hash_buffer(name, length);
     hash ^= parentId;
-    return hash % DENTRY_MAP_SIZE;
+    return hash;
 }
 
-static uint64_t dentry_map_add(dentry_t* dentry)
+static bool dentry_map_add(dentry_t* dentry)
 {
     size_t length = strlen(dentry->name);
     uint64_t hash = dentry_hash(dentry->parent->id, dentry->name, length);
+    dentry_key_t key = {.parent = dentry->parent, .name = dentry->name, .length = length};
 
     seqlock_write_acquire(&lock);
-    for (dentry_t* iter = map[hash]; iter != NULL; iter = iter->next)
+    map_entry_t* entry = map_find(&dentryMap, &key, hash);
+    if (entry != NULL)
     {
-        if (iter->parent == dentry->parent && iter->name[length] == '\0' &&
-            memcmp(iter->name, dentry->name, length) == 0)
+        dentry_t* existing = CONTAINER_OF(entry, dentry_t, mapEntry);
+        if (REF_COUNT(existing) > 0)
         {
-            if (REF_COUNT(iter) > 0)
-            {
-                seqlock_write_release(&lock);
-                errno = EEXIST;
-                return _FAIL;
-            }
+            seqlock_write_release(&lock);
+            return false;
         }
     }
-    dentry->next = map[hash];
-    map[hash] = dentry;
+    map_insert(&dentryMap, &dentry->mapEntry, hash);
     seqlock_write_release(&lock);
 
-    return 0;
+    return true;
 }
 
 static void dentry_map_remove(dentry_t* dentry)
@@ -59,17 +71,7 @@ static void dentry_map_remove(dentry_t* dentry)
     uint64_t hash = dentry_hash(dentry->parent->id, dentry->name, strlen(dentry->name));
 
     seqlock_write_acquire(&lock);
-    dentry_t** curr = &map[hash];
-    while (*curr != NULL)
-    {
-        if (*curr == dentry)
-        {
-            *curr = dentry->next;
-            dentry->next = NULL;
-            break;
-        }
-        curr = &(*curr)->next;
-    }
+    map_remove(&dentryMap, &dentry->mapEntry, hash);
     seqlock_write_release(&lock);
 }
 
@@ -123,7 +125,7 @@ static void dentry_ctor(void* ptr)
     dentry->superblock = NULL;
     dentry->ops = NULL;
     dentry->data = NULL;
-    dentry->next = NULL;
+    map_entry_init(&dentry->mapEntry);
     atomic_init(&dentry->mountCount, 0);
     dentry->rcu = (rcu_entry_t){0};
     list_entry_init(&dentry->otherEntry);
@@ -146,7 +148,7 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     dentry->name[MAX_NAME - 1] = '\0';
     dentry->parent = parent != NULL ? REF(parent) : dentry;
 
-    if (dentry_map_add(dentry) == _FAIL)
+    if (!dentry_map_add(dentry))
     {
         UNREF(dentry);
         return NULL;
@@ -174,23 +176,26 @@ dentry_t* dentry_rcu_get(const dentry_t* parent, const char* name, size_t length
 
     uint64_t hash = dentry_hash(parent->id, name, length);
     dentry_t* dentry = NULL;
+    dentry_key_t key = {.parent = parent, .name = name, .length = length};
 
     uint64_t seq;
     do
     {
         seq = seqlock_read_begin(&lock);
-        for (dentry = map[hash]; dentry != NULL; dentry = dentry->next)
+        map_entry_t* entry = map_find(&dentryMap, &key, hash);
+        if (entry != NULL)
         {
-            if (dentry->parent == parent && dentry->name[length] == '\0' && memcmp(dentry->name, name, length) == 0)
-            {
-                break;
-            }
+            dentry = CONTAINER_OF(entry, dentry_t, mapEntry);
+        }
+        else
+        {
+            dentry = NULL;
         }
     } while (seqlock_read_retry(&lock, seq));
 
     if (dentry != NULL && dentry->ops != NULL && dentry->ops->revalidate != NULL)
     {
-        if (dentry->ops->revalidate(dentry) == _FAIL)
+        if (!dentry->ops->revalidate(dentry))
         {
             return NULL;
         }
@@ -206,24 +211,23 @@ static dentry_t* dentry_get(const dentry_t* parent, const char* name, size_t len
     return REF_TRY(dentry_rcu_get(parent, name, length));
 }
 
-dentry_t* dentry_lookup(dentry_t* parent, const char* name, size_t length)
+status_t dentry_lookup(dentry_t** out, dentry_t* parent, const char* name, size_t length)
 {
-    if (parent == NULL || name == NULL || length == 0)
+    if (out == NULL || parent == NULL || name == NULL || length == 0)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(VFS, INVAL);
     }
 
     dentry_t* dentry = dentry_get(parent, name, length);
     if (dentry != NULL)
     {
-        return dentry;
+        *out = dentry;
+        return OK;
     }
 
     if (!DENTRY_IS_DIR(parent))
     {
-        errno = ENOENT;
-        return NULL;
+        return ERR(VFS, NOTDIR);
     }
 
     char buffer[MAX_NAME];
@@ -233,11 +237,8 @@ dentry_t* dentry_lookup(dentry_t* parent, const char* name, size_t length)
     dentry = dentry_new(parent->superblock, parent, buffer);
     if (dentry == NULL)
     {
-        if (errno == EEXIST)
-        {
-            return dentry_get(parent, name, length);
-        }
-        return NULL;
+        /// @todo Is there a race condition here?
+        return ERR(VFS, NOMEM);
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
@@ -245,25 +246,28 @@ dentry_t* dentry_lookup(dentry_t* parent, const char* name, size_t length)
     vnode_t* dir = parent->vnode;
     if (dir->ops == NULL || dir->ops->lookup == NULL)
     {
-        return dentry; // Leave it as negative.
+        *out = dentry;  // Leave it as negative.
+        return OK;
     }
 
-    if (dir->ops->lookup(dir, dentry) == _FAIL)
+    status_t status = dir->ops->lookup(dir, dentry);
+    if (IS_ERR(status))
     {
         UNREF(dentry);
-        return NULL;
+        return status;
     }
 
     if (dentry->ops != NULL && dentry->ops->revalidate != NULL)
     {
-        if (dentry->ops->revalidate(dentry) == _FAIL)
+        if (!dentry->ops->revalidate(dentry))
         {
             UNREF(dentry);
-            return NULL;
+            return ERR(VFS, NOENT);
         }
     }
 
-    return dentry;
+    *out = dentry;
+    return OK;
 }
 
 void dentry_make_positive(dentry_t* dentry, vnode_t* vnode)
@@ -302,11 +306,11 @@ bool dentry_iterate_dots(dentry_t* dentry, dir_ctx_t* ctx)
     return true;
 }
 
-uint64_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx)
+status_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 {
     if (!dentry_iterate_dots(dentry, ctx))
     {
-        return 0;
+        return OK;
     }
 
     dentry_t* child;
@@ -322,5 +326,5 @@ uint64_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         }
     }
 
-    return 0;
+    return OK;
 }

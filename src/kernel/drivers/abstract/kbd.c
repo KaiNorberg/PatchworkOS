@@ -28,8 +28,7 @@ static status_t kbd_name_read(file_t* file, void* buffer, size_t count, size_t* 
     assert(kbd != NULL);
 
     size_t length = strlen(kbd->name);
-    *bytesRead = BUFFER_READ(buffer, count, offset, kbd->name, length);
-    return OK;
+    return buffer_read(buffer, count, offset, bytesRead, kbd->name, length);
 }
 
 static file_ops_t nameOps = {

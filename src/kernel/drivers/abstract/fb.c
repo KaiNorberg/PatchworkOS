@@ -21,8 +21,7 @@ static status_t fb_name_read(file_t* file, void* buffer, size_t count, size_t* o
     assert(fb != NULL);
 
     uint64_t length = strlen(fb->name);
-    *bytesRead = BUFFER_READ(buffer, count, offset, fb->name, length);
-    return OK;
+    return buffer_read(buffer, count, offset, bytesRead, fb->name, length);
 }
 
 static file_ops_t nameOps = {
@@ -86,7 +85,7 @@ static status_t fb_info_read(file_t* file, void* buffer, size_t count, size_t* o
 
     fb_info_t info = {0};
     status_t status = fb->info(fb, &info);
-    if (IS_FAIL(status))
+    if (IS_ERR(status))
     {
         return status;
     }
@@ -97,11 +96,10 @@ static status_t fb_info_read(file_t* file, void* buffer, size_t count, size_t* o
 
     if ((size_t)length >= sizeof(string))
     {
-        return ERR(DRIVER, OVERFLOW);
+        return ERR(DRIVER, IMPL);
     }
 
-    *bytesRead = BUFFER_READ(buffer, count, offset, string, (size_t)length);
-    return OK;
+    return buffer_read(buffer, count, offset, bytesRead, string, length);
 }
 
 static file_ops_t infoOps = {

@@ -1,9 +1,9 @@
 #pragma once
 
 #include <kernel/acpi/aml/encoding/name.h>
-#include <kernel/utils/map.h>
 
 #include <stdint.h>
+#include <sys/map.h>
 #include <sys/defs.h>
 #include <sys/list.h>
 

@@ -89,7 +89,7 @@ void dwm_init(void)
         abort();
     }
 
-    if (dup2(klog, STDOUT_FILENO) == _FAIL)
+    if (dup(klog, STDOUT_FILENO) == _FAIL)
     {
         close(klog);
         abort();

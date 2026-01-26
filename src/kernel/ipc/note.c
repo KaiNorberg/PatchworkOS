@@ -126,7 +126,7 @@ void note_handle_pending(interrupt_frame_t* frame)
 
     // func(note->buffer)
     frame->rsp = ROUND_DOWN(frame->rsp - (RED_ZONE_SIZE + NOTE_MAX), 16);
-    if (IS_FAIL(thread_copy_to_user(thread, (void*)frame->rsp, note->buffer, NOTE_MAX)))
+    if (IS_ERR(thread_copy_to_user(thread, (void*)frame->rsp, note->buffer, NOTE_MAX)))
     {
         atomic_store(&thread->state, THREAD_DYING);
         return;

@@ -1,9 +1,9 @@
 #pragma once
 
 #include <kernel/fs/file.h>
-#include <kernel/utils/map.h>
 
 #include <sys/fs.h>
+#include <sys/map.h>
 #include <sys/list.h>
 
 /**
@@ -39,16 +39,17 @@ typedef struct
  * @param size The size of the output buffer.
  * @param file The file to share.
  * @param timeout The time until the shared file expires. If `CLOCKS_NEVER`, it never expires.
- * @return On success, a key that can be used to claim the file. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout);
+status_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout);
 
 /**
  * @brief Claims a shared file using the provided key.
  *
+ * @param out Output pointer to store the claimed file.
  * @param key The key identifying the shared file.
- * @return On success, the claimed file. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-file_t* key_claim(const char* key);
+status_t key_claim(file_t** out, const char* key);
 
 /** @} */

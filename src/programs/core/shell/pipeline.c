@@ -316,8 +316,8 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
         return _FAIL;
     }
 
-    if (dup2(cmd->stdin, STDIN_FILENO) == _FAIL || dup2(cmd->stdout, STDOUT_FILENO) == _FAIL ||
-        dup2(cmd->stderr, STDERR_FILENO) == _FAIL)
+    if (dup(cmd->stdin, STDIN_FILENO) == _FAIL || dup(cmd->stdout, STDOUT_FILENO) == _FAIL ||
+        dup(cmd->stderr, STDERR_FILENO) == _FAIL)
     {
         close(originalStdin);
         close(originalStdout);
@@ -395,8 +395,8 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
         }
     }
 
-    if (dup2(originalStdin, STDIN_FILENO) == _FAIL || dup2(originalStdout, STDOUT_FILENO) == _FAIL ||
-        dup2(originalStderr, STDERR_FILENO) == _FAIL)
+    if (dup(originalStdin, STDIN_FILENO) == _FAIL || dup(originalStdout, STDOUT_FILENO) == _FAIL ||
+        dup(originalStderr, STDERR_FILENO) == _FAIL)
     {
         result = _FAIL;
     }

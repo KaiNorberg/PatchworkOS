@@ -55,7 +55,7 @@ typedef struct wait wait_t;
         { \
             wait_queue_t* temp = queue; \
             status = wait_block_prepare(&temp, 1, CLOCKS_NEVER); \
-            if (IS_FAIL(status)) \
+            if (IS_ERR(status)) \
             { \
                 break; \
             } \
@@ -86,7 +86,7 @@ typedef struct wait wait_t;
             clock_t remaining = CLOCKS_REMAINING(deadline, uptime); \
             wait_queue_t* temp = queue; \
             status = wait_block_prepare(&temp, 1, remaining); \
-            if (IS_FAIL(status)) \
+            if (IS_ERR(status)) \
             { \
                 break; \
             } \
@@ -110,7 +110,7 @@ typedef struct wait wait_t;
         { \
             wait_queue_t* temp = queue; \
             status = wait_block_prepare(&temp, 1, CLOCKS_NEVER); \
-            if (IS_FAIL(status)) \
+            if (IS_ERR(status)) \
             { \
                 break; \
             } \
@@ -144,7 +144,7 @@ typedef struct wait wait_t;
             clock_t remaining = CLOCKS_REMAINING(deadline, uptime); \
             wait_queue_t* temp = queue; \
             status = wait_block_prepare(&temp, 1, remaining); \
-            if (IS_FAIL(status)) \
+            if (IS_ERR(status)) \
             { \
                 break; \
             } \

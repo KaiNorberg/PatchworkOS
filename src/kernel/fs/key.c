@@ -10,7 +10,6 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/rwlock.h>
-#include <kernel/utils/map.h>
 
 #include <errno.h>
 #include <stdlib.h>
@@ -18,7 +17,13 @@
 #include <sys/list.h>
 #include <time.h>
 
-static map_t keyMap = MAP_CREATE();
+static bool key_entry_cmp(map_entry_t* entry, const void* key)
+{
+    key_entry_t* e = CONTAINER_OF(entry, key_entry_t, mapEntry);
+    return strcmp(e->key, key) == 0;
+}
+
+static MAP_CREATE(keyMap, 1024, key_entry_cmp);
 static list_t keyList = LIST_CREATE(keyList);
 static lock_t keyLock = LOCK_CREATE();
 
@@ -42,21 +47,22 @@ static void key_base64_encode(const uint8_t* src, size_t len, char* dest)
     *dest = '\0';
 }
 
-static uint64_t key_generate(char* buffer, uint64_t size)
+static status_t key_generate(char* buffer, uint64_t size)
 {
-    map_key_t mapKey;
+    uint64_t hash;
     do
     {
         assert(size <= KEY_MAX);
         uint8_t bytes[((size - 1) / 4) * 3];
-        if (rand_gen(bytes, sizeof(bytes)) == _FAIL)
+        status_t status = rand_gen(bytes, sizeof(bytes));
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
         key_base64_encode(bytes, sizeof(bytes), buffer);
-        mapKey = map_key_string(buffer);
-    } while (map_get(&keyMap, &mapKey) != NULL);
-    return 0;
+        hash = hash_buffer(buffer, strlen(buffer));
+    } while (map_find(&keyMap, buffer, hash) != NULL);
+    return OK;
 }
 
 static void key_timer_handler(interrupt_frame_t* frame, cpu_t* self)
@@ -77,25 +83,24 @@ static void key_timer_handler(interrupt_frame_t* frame, cpu_t* self)
             break;
         }
 
-        map_remove(&keyMap, &entry->mapEntry);
+        map_remove(&keyMap, &entry->mapEntry, hash_buffer(entry->key, strlen(entry->key)));
         list_remove(&entry->entry);
         UNREF(entry->file);
         free(entry);
     }
 }
 
-uint64_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout)
+status_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout)
 {
     if (key == NULL || size == 0 || size > KEY_MAX || file == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(VFS, INVAL);
     }
 
     key_entry_t* entry = malloc(sizeof(key_entry_t));
     if (entry == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, NOMEM);
     }
     list_entry_init(&entry->entry);
     map_entry_init(&entry->mapEntry);
@@ -104,27 +109,23 @@ uint64_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout)
 
     LOCK_SCOPE(&keyLock);
 
-    if (key_generate(entry->key, size) == _FAIL)
+    status_t status = key_generate(entry->key, size);
+    if (IS_ERR(status))
     {
         UNREF(entry->file);
         free(entry);
-        return _FAIL;
+        return status;
     }
 
-    map_key_t mapKey = map_key_string(entry->key);
-    if (map_insert(&keyMap, &mapKey, &entry->mapEntry) == _FAIL)
-    {
-        UNREF(entry->file);
-        free(entry);
-        return _FAIL;
-    }
+    uint64_t hash = hash_buffer(entry->key, size);
+    map_insert(&keyMap, &entry->mapEntry, hash);
 
     memcpy(key, entry->key, size);
     if (list_is_empty(&keyList))
     {
         list_push_back(&keyList, &entry->entry);
         timer_set(clock_uptime(), entry->expiry);
-        return 0;
+        return OK;
     }
 
     bool first = true;
@@ -135,42 +136,42 @@ uint64_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout)
         {
             list_prepend(&other->entry, &entry->entry);
             if (first)
+            {
                 timer_set(clock_uptime(), entry->expiry);
-            return 0;
+            }
+            return OK;
         }
         first = false;
     }
 
     list_push_back(&keyList, &entry->entry);
-    return 0;
+    return OK;
 }
 
-file_t* key_claim(const char* key)
+status_t key_claim(file_t** out, const char* key)
 {
-    if (key == NULL)
+    if (out == NULL || key == NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(VFS, INVAL);
     }
 
     LOCK_SCOPE(&keyLock);
-    map_key_t mapKey = map_key_string(key);
-    map_entry_t* mapEntry = map_get_and_remove(&keyMap, &mapKey);
-    if (mapEntry == NULL)
+    uint64_t hash = hash_buffer(key, strlen(key));
+    key_entry_t* entry = CONTAINER_OF_SAFE(map_find(&keyMap, key, hash), key_entry_t, mapEntry);
+    if (entry == NULL)
     {
-        errno = ENOENT;
-        return NULL;
+        return ERR(VFS, NOENT);
     }
 
-    key_entry_t* entry = CONTAINER_OF(mapEntry, key_entry_t, mapEntry);
     list_remove(&entry->entry);
 
     file_t* file = entry->file;
     free(entry);
-    return file;
+    *out = file;
+    return OK;
 }
 
-SYSCALL_DEFINE(SYS_SHARE, uint64_t, char* key, uint64_t size, fd_t fd, clock_t timeout)
+SYSCALL_DEFINE(SYS_SHARE, char* key, uint64_t size, fd_t fd, clock_t timeout)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
@@ -178,41 +179,56 @@ SYSCALL_DEFINE(SYS_SHARE, uint64_t, char* key, uint64_t size, fd_t fd, clock_t t
     file_t* file = file_table_get(&process->files, fd);
     if (file == NULL)
     {
-        return _FAIL;
+        return ERR(VFS, BADFD);
     }
     UNREF_DEFER(file);
 
     char keyCopy[KEY_MAX] = {0};
-    if (key_share(keyCopy, size, file, timeout) == _FAIL)
+    status_t status = key_share(keyCopy, size, file, timeout);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
-    if (thread_copy_to_user(thread, key, keyCopy, size) == _FAIL)
+    status = thread_copy_to_user(thread, key, keyCopy, size);
+    if (IS_ERR(status))
     {
-        UNREF(key_claim(keyCopy));
-        return _FAIL;
+        file_t* ignored = NULL;
+        key_claim(&ignored, keyCopy);
+        if (ignored != NULL)
+        {
+            UNREF(ignored);
+        }
+        return status;
     }
-    return 0;
+    return OK;
 }
 
-SYSCALL_DEFINE(SYS_CLAIM, fd_t, const char* key)
+SYSCALL_DEFINE(SYS_CLAIM, const char* key)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
     char keyCopy[KEY_MAX];
-    if (thread_copy_from_user_string(thread, keyCopy, key, KEY_MAX) == _FAIL)
+    status_t status = thread_copy_from_user_string(thread, keyCopy, key, KEY_MAX);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
-    file_t* file = key_claim(keyCopy);
-    if (file == NULL)
+    file_t* file;
+    status = key_claim(&file, keyCopy);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     UNREF_DEFER(file);
 
-    return file_table_open(&process->files, file);
+    fd_t fd = file_table_open(&process->files, file);
+    if (fd == FD_NONE)
+    {
+        return ERR(VFS, MFILE);
+    }
+    *_result = fd;
+    return OK;
 }

@@ -2,13 +2,13 @@
 #include <stdlib.h>
 #include <sys/fs.h>
 
-char* reads(fd_t fd)
+status_t reads(char** out, fd_t fd)
 {
     uint64_t size = 4096;
     char* buffer = malloc(size);
     if (buffer == NULL)
     {
-        return NULL;
+        return ERR(LIBSTD, NOMEM);
     }
 
     uint64_t totalRead = 0;
@@ -21,23 +21,24 @@ char* reads(fd_t fd)
             if (newBuffer == NULL)
             {
                 free(buffer);
-                return NULL;
+                return ERR(LIBSTD, NOMEM);
             }
             buffer = newBuffer;
         }
 
-        uint64_t bytesRead = read(fd, buffer + totalRead, size - totalRead);
-        if (bytesRead == _FAIL)
+        uint64_t bytesRead;
+        status_t status = read(fd, buffer + totalRead, size - totalRead, &bytesRead);
+        if (IS_ERR(status))
         {
             free(buffer);
-            return NULL;
+            return status;
         }
 
-        if (bytesRead == 0)
+        totalRead += bytesRead;
+        if (!IS_CODE(status, MORE))
         {
             break;
         }
-        totalRead += bytesRead;
     }
 
     if (totalRead + 1 < size)
@@ -50,5 +51,6 @@ char* reads(fd_t fd)
     }
 
     buffer[totalRead] = '\0';
-    return buffer;
+    *out = buffer;
+    return OK;
 }

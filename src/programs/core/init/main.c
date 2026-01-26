@@ -219,7 +219,7 @@ int main(void)
     {
         return EXIT_FAILURE;
     }
-    if (dup2(klog, STDOUT_FILENO) == _FAIL || dup2(klog, STDERR_FILENO) == _FAIL)
+    if (dup(klog, STDOUT_FILENO) == _FAIL || dup(klog, STDERR_FILENO) == _FAIL)
     {
         close(klog);
         return EXIT_FAILURE;

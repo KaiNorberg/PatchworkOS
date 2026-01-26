@@ -41,20 +41,12 @@ mount_t* mount_new(superblock_t* superblock, dentry_t* source, dentry_t* target,
 {
     if (superblock == NULL || source == NULL || (target != NULL && parent == NULL))
     {
-        errno = EINVAL;
-        return NULL;
-    }
-
-    if (!DENTRY_IS_POSITIVE(source) || (target != NULL && !DENTRY_IS_POSITIVE(target)))
-    {
-        errno = ENOENT;
         return NULL;
     }
 
     mount_t* mount = malloc(sizeof(mount_t));
     if (mount == NULL)
     {
-        errno = ENOMEM;
         return NULL;
     }
 

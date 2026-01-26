@@ -29,5 +29,5 @@
 uint64_t vscan(fd_t fd, const char* format, va_list args)
 {
     int result = _scan(format, args, (void*)(uintptr_t)fd);
-    return result < 0 ? _FAIL : (uint64_t)result;
+    return result < 0 ? 0 : (uint64_t)result;
 }

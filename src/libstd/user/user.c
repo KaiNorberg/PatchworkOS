@@ -19,7 +19,7 @@ static void _populate_std_descriptors(void)
             fd_t nullFd = open("/dev/const/null");
             if (nullFd != i)
             {
-                dup2(nullFd, i);
+                dup(nullFd, i);
                 close(nullFd);
             }
         }

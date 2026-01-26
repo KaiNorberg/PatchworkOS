@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/status.h>
 
 /**
  * @brief Random Number Generator
@@ -32,17 +33,17 @@ typedef struct
  *
  * @param buffer A pointer to the buffer to fill.
  * @param size The number of bytes to fill.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t rand_gen(void* buffer, uint64_t size);
+status_t rand_gen(void* buffer, uint64_t size);
 
 /**
  * @brief Generates a random 32-bit unsigned integer using the RDRAND instruction.
  *
  * @param value A pointer to store the generated random value.
  * @param retries The number of retries to attempt if RDRAND fails.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return `true` on success, `false` otherwise.
  */
-extern uint64_t rdrand_do(uint32_t* value, uint8_t retries);
+extern bool rdrand_do(uint32_t* value, uint8_t retries);
 
 /** @} */

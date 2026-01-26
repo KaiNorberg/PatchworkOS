@@ -2,10 +2,10 @@
 
 #include <kernel/fs/path.h>
 #include <kernel/sync/rcu.h>
-#include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
-#include <sys/list.h>
 
+#include <sys/map.h>
+#include <sys/list.h>
 #include <stdatomic.h>
 #include <stdint.h>
 
@@ -69,10 +69,7 @@ typedef struct mount
  * @param target The dentry which the source is mounted to, can be `NULL` for the root filesystem.
  * @param parent The parent mount, can be `NULL` for the root filesystem.
  * @param mode Specifies the maximum permissions for this mount and if it is a directory or a file.
- * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `ENOENT`: Source or target dentry is negative.
- * - `ENOMEM`: Out of memory.
+ * @return On success, the new mount. On failure, returns `NULL`.
  */
 mount_t* mount_new(superblock_t* superblock, dentry_t* source, dentry_t* target, mount_t* parent, mode_t mode);
 

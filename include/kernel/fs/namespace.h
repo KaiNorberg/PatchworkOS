@@ -3,9 +3,11 @@
 #include <kernel/fs/path.h>
 #include <kernel/fs/superblock.h>
 #include <kernel/sync/rwlock.h>
-#include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
+
+#include <sys/status.h>
 #include <stdint.h>
+#include <sys/map.h>
 #include <sys/fs.h>
 #include <sys/list.h>
 
@@ -45,6 +47,8 @@ typedef struct mount_stack
 {
     list_entry_t entry;
     map_entry_t mapEntry;
+    uint64_t parentId;
+    uint64_t mountpointId;
     mount_t* mounts[MOUNT_STACK_MAX_MOUNTS];
     uint64_t count;
 } mount_stack_t;
@@ -60,7 +64,7 @@ typedef struct namespace
     list_t children;     ///< List of child namespaces.
     namespace_t* parent; ///< The parent namespace, can be `NULL`.
     list_t stacks;       ///< List of `mount_stack_t` in this namespace.
-    map_t mountMap;      ///< Map used to go from source dentries to namespace mount stacks.
+    MAP_DEFINE(mountMap, 64); ///< Map used to go from source dentries to namespace mount stacks.
     mount_stack_t root;  ///< The root mount stack.
     rwlock_t lock;
     // clang-format off
@@ -73,8 +77,7 @@ typedef struct namespace
  * There is no `namespace_free()` instead use `UNREF()`.
  *
  * @param parent The parent namespace, or `NULL` to create a root namespace.
- * @return On success, the new namespace. On failure, `NULL` and `errno` is set to:
- * - `ENOMEM`: Out of memory.
+ * @return On success, the new namespace. On failure, `NULL`.
  */
 namespace_t* namespace_new(namespace_t* parent);
 
@@ -83,9 +86,9 @@ namespace_t* namespace_new(namespace_t* parent);
  *
  * @param dest The destination namespace.
  * @param src The source namespace.
- * @return On success, `0`. On failure, `_FAIL` and `errno`
+ * @return An appropriate status value.
  */
-uint64_t namespace_copy(namespace_t* dest, namespace_t* src);
+status_t namespace_copy(namespace_t* dest, namespace_t* src);
 
 /**
  * @brief Check if mounts in a namespace can be propagated to another namespace.
@@ -124,19 +127,12 @@ bool namespace_rcu_traverse(namespace_t* ns, mount_t** mount, dentry_t** dentry)
  * or `NULL`.
  * @param flags Mount flags.
  * @param mode The mode specifying permissions and mount behaviour.
- * @param private Private data for the filesystem's mount function.
- * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EIO`: The filesystem returned a invalid root dentry.
- * - `EXDEV`: The target path is not visible in the namespace.
- * - `ENODEV`: The specified filesystem does not exist.
- * - `EBUSY`: Attempt to mount to already existing root.
- * - `ENOMEM`: Out of memory.
- * - `ENOENT`: The root does not exist or the target is negative.
- * - Other errors as returned by the filesystem's `mount()` operation or `mount_new()`.
+ * @param data Private data for the filesystem's mount function.
+ * @param out Output pointer to store the new mount, can be `NULL`.
+ * @return An appropriate status value.
  */
-mount_t* namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, const char* options, mode_t mode,
-    void* data);
+status_t namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, const char* options, mode_t mode,
+    void* data, mount_t** out);
 
 /**
  * @brief Bind a source path to a target path in a namespace.
@@ -145,13 +141,10 @@ mount_t* namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, cons
  * @param target The target path to bind to, can be `NULL` to bind to root.
  * @param source The source path to bind from, could be either a file or directory and from any filesystem.
  * @param mode The mode specifying permissions and mount behaviour.
- * @return On success, the new mount. On failure, returns `NULL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EACCES`: The requested mode exceeds the maximum allowed permissions.
- * - `ENOMEM`: Out of memory.
- * - Other errors as returned by `mount_new()`.
+ * @param out Output pointer to store the new mount, can be `NULL`.
+ * @return An appropriate status value.
  */
-mount_t* namespace_bind(namespace_t* ns, path_t* target, path_t* source, mode_t mode);
+status_t namespace_bind(namespace_t* ns, path_t* target, path_t* source, mode_t mode, mount_t** out);
 
 /**
  * @brief Remove a mount in a namespace.

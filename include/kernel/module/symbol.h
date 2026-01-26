@@ -1,9 +1,8 @@
 #pragma once
 
-#include <kernel/utils/map.h>
-
 #include <boot/boot_info.h>
 
+#include <sys/map.h>
 #include <sys/elf.h>
 #include <sys/list.h>
 
@@ -54,7 +53,7 @@
 /**
  * @brief Maximum length of a symbol name.
  */
-#define SYMBOL_MAX_NAME MAP_KEY_MAX_LENGTH
+#define SYMBOL_MAX_NAME MAX_NAME
 
 /**
  * @brief Symbol group identifier type.

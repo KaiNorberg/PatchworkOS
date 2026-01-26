@@ -95,9 +95,9 @@ static status_t perf_cpu_read(file_t* file, void* buffer, size_t count, size_t* 
     }
 
     size_t length = strlen(string);
-    *bytesRead = BUFFER_READ(buffer, count, offset, string, length);
+    status_t status = buffer_read(buffer, count, offset, bytesRead, string, length);
     free(string);
-    return OK;
+    return status;
 }
 
 static file_ops_t cpuOps = {
@@ -122,9 +122,9 @@ static status_t perf_mem_read(file_t* file, void* buffer, size_t count, size_t* 
         return ERR(DRIVER, IMPL);
     }
 
-    *bytesRead = BUFFER_READ(buffer, count, offset, string, (uint64_t)length);
+    status_t status = buffer_read(buffer, count, offset, bytesRead, string, length);
     free(string);
-    return OK;
+    return status;
 }
 
 static file_ops_t memOps = {

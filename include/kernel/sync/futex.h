@@ -1,8 +1,8 @@
 #pragma once
 
 #include <kernel/sched/wait.h>
-#include <kernel/utils/map.h>
 
+#include <sys/map.h>
 #include <sys/proc.h>
 
 /**
@@ -24,7 +24,10 @@ typedef struct
 {
     map_entry_t entry;
     wait_queue_t queue;
+    uintptr_t addr;
 } futex_t;
+
+#define FUTEX_FUTEXES_BUCKETS 16 ///< The amount of buckets in a futexes map.
 
 /**
  * @brief Per-process futex context.
@@ -32,7 +35,7 @@ typedef struct
  */
 typedef struct
 {
-    map_t futexes;
+    MAP_DEFINE(futexes, FUTEX_FUTEXES_BUCKETS);
     lock_t lock;
 } futex_ctx_t;
 

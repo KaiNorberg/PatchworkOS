@@ -9,9 +9,9 @@
 #include <kernel/fs/vnode.h>
 #include <kernel/proc/process.h>
 #include <kernel/sync/rwlock.h>
-#include <kernel/utils/map.h>
 
 #include <sys/fs.h>
+#include <sys/map.h>
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>
@@ -60,12 +60,13 @@ typedef struct filesystem
      * @brief Mount a filesystem.
      *
      * @param fs The filesystem to mount.
+     * @param out pointer to store the root dentry of the mounted filesystem.
      * @param details A string containing filesystem defined `key=value` pairs, with multiple options separated by
      * commas, or `NULL`.
      * @param private Private data for the filesystem's mount function.
-     * @return On success, the root dentry of the mounted filesystem. On failure, `NULL` and `errno` is set.
+     * @return An appropriate status value.
      */
-    dentry_t* (*mount)(filesystem_t* fs, const char* details, void* data);
+    status_t (*mount)(filesystem_t* fs, dentry_t** out, const char* details, void* data);
 } filesystem_t;
 
 /**s
@@ -79,11 +80,9 @@ void filesystem_expose(void);
  * @brief Registers a filesystem.
  *
  * @param fs The filesystem to register.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - Other values from `map_insert()`.
+ * @return An appropriate status code.
  */
-uint64_t filesystem_register(filesystem_t* fs);
+status_t filesystem_register(filesystem_t* fs);
 
 /**
  * @brief Unregisters a filesystem.
@@ -107,10 +106,7 @@ filesystem_t* filesystem_get_by_name(const char* name);
  *
  * @param path The path to check.
  * @param process The process whose namespace to use.
- * @return On success, the filesystem. On failure, returns `NULL` and `errno` is set to:
- * - `ENOENT`: The path does not exist.
- * - `ENOMEM`: Out of memory.
- * - `EINVAL`: The path is not a directory in the `fs` sysfs directory.
+ * @return On success, the filesystem. On failure, returns `NULL`.
  */
 filesystem_t* filesystem_get_by_path(const char* path, process_t* process);
 
@@ -124,7 +120,7 @@ filesystem_t* filesystem_get_by_path(const char* path, process_t* process);
  * @param size Size of the buffer.
  * @param key Pointer to store the key of the current option.
  * @param value Pointer to store the value of the current option.
- * @return `1` if an option was found, `0` if no more options are available.
+ * @return `true` if an option was found, `false` if no more options are available.
  */
 bool options_next(const char** iter, char* buffer, size_t size, char** key, char** value);
 

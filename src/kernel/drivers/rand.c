@@ -11,7 +11,7 @@
 
 static atomic_uint64_t seed = ATOMIC_VAR_INIT(0x123456789ABCDEF0);
 
-static uint64_t rand_gen_fallback(void* buffer, uint64_t size)
+static void rand_gen_fallback(void* buffer, uint64_t size)
 {
     for (uint64_t i = 0; i < size; i++)
     {
@@ -22,8 +22,6 @@ static uint64_t rand_gen_fallback(void* buffer, uint64_t size)
         atomic_store(&seed, currentSeed);
         ((uint8_t*)buffer)[i] = (uint8_t)(currentSeed & 0xFF);
     }
-
-    return 0;
 }
 
 PERCPU_DEFINE_CTOR(rand_cpu_t, pcpu_rand)
@@ -44,7 +42,7 @@ PERCPU_DEFINE_CTOR(rand_cpu_t, pcpu_rand)
     uint32_t test;
     for (uint64_t i = 0; i < 10; i++)
     {
-        if (rdrand_do(&test, 100) == _FAIL)
+        if (!rdrand_do(&test, 100))
         {
             LOG_WARN("cpu%d rdrand instruction failed, disabling\n", SELF->id);
             ctx->rdrandAvail = false;
@@ -61,13 +59,14 @@ PERCPU_DEFINE_CTOR(rand_cpu_t, pcpu_rand)
     }
 }
 
-uint64_t rand_gen(void* buffer, uint64_t size)
+status_t rand_gen(void* buffer, uint64_t size)
 {
     CLI_SCOPE();
 
     if (!pcpu_rand->rdrandAvail)
     {
-        return rand_gen_fallback(buffer, size);
+        rand_gen_fallback(buffer, size);
+        return OK;
     }
 
     uint8_t* ptr = (uint8_t*)buffer;
@@ -75,9 +74,9 @@ uint64_t rand_gen(void* buffer, uint64_t size)
     while (remaining >= sizeof(uint32_t))
     {
         uint32_t value;
-        if (rdrand_do(&value, 100) == _FAIL)
+        if (!rdrand_do(&value, 100))
         {
-            return _FAIL;
+            return ERR(DRIVER, RAND);
         }
         memcpy(ptr, &value, sizeof(uint32_t));
         ptr += sizeof(uint32_t);
@@ -87,12 +86,12 @@ uint64_t rand_gen(void* buffer, uint64_t size)
     if (remaining > 0)
     {
         uint32_t value;
-        if (rdrand_do(&value, 100) == _FAIL)
+        if (!rdrand_do(&value, 100))
         {
-            return _FAIL;
+            return ERR(DRIVER, RAND);
         }
         memcpy(ptr, &value, remaining);
     }
 
-    return 0;
+    return OK;
 }

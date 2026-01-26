@@ -28,18 +28,18 @@ static dentry_ops_t dentryOps = {
     .iterate = dentry_generic_iterate,
 };
 
-static dentry_t* sysfs_mount(filesystem_t* fs, const char* options, void* data)
+static status_t sysfs_mount(filesystem_t* fs, dentry_t** out, const char* options, void* data)
 {
     UNUSED(fs);
     UNUSED(data);
 
     if (options != NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(FS, INVAL);
     }
 
-    return REF(root);
+    *out = REF(root);
+    return OK;
 }
 
 static filesystem_t sysfs = {
@@ -49,7 +49,8 @@ static filesystem_t sysfs = {
 
 void sysfs_init(void)
 {
-    if (filesystem_register(&sysfs) == _FAIL)
+    status_t status = filesystem_register(&sysfs);
+    if (IS_ERR(status))
     {
         panic(NULL, "Failed to register sysfs");
     }
@@ -92,22 +93,23 @@ void sysfs_init(void)
     PATH_DEFER(&target);
 
     pathname_t pathname;
-    if (pathname_init(&pathname, "/sys") == _FAIL)
+    status = pathname_init(&pathname, "/sys");
+    if (IS_ERR(status))
     {
         panic(NULL, "Failed to init pathname for /sys");
     }
 
-    if (path_walk(&target, &pathname, ns) == _FAIL)
+    status = path_walk(&target, &pathname, ns);
+    if (IS_ERR(status))
     {
         panic(NULL, "Failed to walk to /sys");
     }
 
-    mount_t* temp = namespace_mount(ns, &target, &sysfs, NULL, MODE_PROPAGATE | MODE_ALL_PERMS, NULL);
-    if (temp == NULL)
+    status = namespace_mount(ns, &target, &sysfs, NULL, MODE_PROPAGATE | MODE_ALL_PERMS, NULL, NULL);
+    if (IS_ERR(status))
     {
         panic(NULL, "Failed to mount sysfs");
     }
-    UNREF(temp);
     LOG_INFO("sysfs mounted to '/sys'\n");
 }
 
@@ -224,12 +226,11 @@ dentry_t* sysfs_symlink_new(dentry_t* parent, const char* name, const vnode_ops_
     return REF(dentry);
 }
 
-uint64_t sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t* descs)
+bool sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t* descs)
 {
     if (out == NULL || descs == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return false;
     }
 
     if (parent == NULL)
@@ -239,13 +240,11 @@ uint64_t sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t*
 
     if (parent->superblock->fs != &sysfs)
     {
-        errno = EXDEV;
-        return _FAIL;
+        return false;
     }
 
     list_t createdList = LIST_CREATE(createdList);
 
-    uint64_t count = 0;
     for (const sysfs_file_desc_t* desc = descs; desc->name != NULL; desc++)
     {
         dentry_t* file = sysfs_file_new(parent, desc->name, desc->vnodeOps, desc->fileOps, desc->data);
@@ -255,11 +254,10 @@ uint64_t sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t*
             {
                 UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry));
             }
-            return _FAIL;
+            return false;
         }
 
         list_push_back(&createdList, &file->otherEntry);
-        count++;
     }
 
     if (out == NULL)
@@ -268,7 +266,7 @@ uint64_t sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t*
         {
             UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry));
         }
-        return count;
+        return true;
     }
 
     while (!list_is_empty(&createdList))
@@ -276,7 +274,7 @@ uint64_t sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t*
         dentry_t* file = CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry);
         list_push_back(out, &file->otherEntry);
     }
-    return count;
+    return true;
 }
 
 void sysfs_files_free(list_t* files)

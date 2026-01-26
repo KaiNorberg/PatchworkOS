@@ -4,7 +4,7 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/sync/lock.h>
 
-#include <kernel/utils/map.h>
+#include <sys/map.h>
 #include <sys/fs.h>
 #include <sys/proc.h>
 

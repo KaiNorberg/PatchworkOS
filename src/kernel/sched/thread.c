@@ -199,7 +199,7 @@ status_t thread_copy_from_user(thread_t* thread, void* dest, const void* userSrc
     }
 
     status_t status = space_pin(&thread->process->space, userSrc, length, &thread->userStack);
-    if (IS_FAIL(status))
+    if (IS_ERR(status))
     {
         return status;
     }
@@ -217,7 +217,7 @@ status_t thread_copy_to_user(thread_t* thread, void* userDest, const void* src, 
     }
 
     status_t status = space_pin(&thread->process->space, userDest, length, &thread->userStack);
-    if (IS_FAIL(status))
+    if (IS_ERR(status))
     {
         return status;
     }
@@ -239,7 +239,7 @@ status_t thread_copy_from_user_terminated(thread_t* thread, const void* userArra
     size_t arraySize;
     status_t status = space_pin_terminated(&arraySize, &thread->process->space, userArray, terminator, objectSize,
         maxCount, &thread->userStack);
-    if (IS_FAIL(status))
+    if (IS_ERR(status))
     {
         return status;
     }
@@ -277,7 +277,7 @@ status_t thread_copy_from_user_string(thread_t* thread, char* dest, const char* 
     size_t strLength;
     status_t status = space_pin_terminated(&strLength, &thread->process->space, userSrc, &terminator, sizeof(char),
         size - 1, &thread->userStack);
-    if (IS_FAIL(status))
+    if (IS_ERR(status))
     {
         return status;
     }
@@ -299,7 +299,7 @@ status_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, 
     size_t pathLength;
     status_t status = space_pin_terminated(&pathLength, &thread->process->space, userPath, &terminator, sizeof(char),
         MAX_PATH, &thread->userStack);
-    if (IS_FAIL(status))
+    if (IS_ERR(status))
     {
         return status;
     }
@@ -309,7 +309,7 @@ status_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, 
     space_unpin(&thread->process->space, userPath, pathLength);
 
     status = pathname_init(pathname, copy);
-    if (IS_FAIL(status))
+    if (IS_ERR(status))
     {
         return status;
     }
@@ -329,7 +329,7 @@ status_t thread_copy_from_user_string_array(thread_t* thread, const char** user,
     char* terminator = NULL;
     status_t status = thread_copy_from_user_terminated(thread, (void*)user, (void*)&terminator, sizeof(char*),
         CONFIG_MAX_ARGC, (void**)&copy, &amount);
-    if (IS_FAIL(status))
+    if (IS_ERR(status))
     {
         return status;
     }
@@ -341,7 +341,7 @@ status_t thread_copy_from_user_string_array(thread_t* thread, const char** user,
         char strTerminator = '\0';
         status = thread_copy_from_user_terminated(thread, copy[i], &strTerminator, sizeof(char), MAX_PATH,
             (void**)&strCopy, &strLen);
-        if (IS_FAIL(status))
+        if (IS_ERR(status))
         {
             for (uint64_t j = 0; j < i; j++)
             {
@@ -371,7 +371,7 @@ status_t thread_load_atomic_from_user(thread_t* thread, atomic_uint64_t* userObj
     }
 
     status_t status = space_pin(&thread->process->space, userObj, sizeof(atomic_uint64_t), &thread->userStack);
-    if (IS_FAIL(status))
+    if (IS_ERR(status))
     {
         return status;
     }
@@ -392,7 +392,7 @@ SYSCALL_DEFINE(SYS_ARCH_PRCTL, uint64_t, arch_prctl_t op, uintptr_t addr)
         msr_write(MSR_FS_BASE, addr);
         return 0;
     case ARCH_GET_FS:
-        if (IS_FAIL(thread_copy_to_user(thread, (void*)addr, &thread->fsBase, sizeof(uintptr_t))))
+        if (IS_ERR(thread_copy_to_user(thread, (void*)addr, &thread->fsBase, sizeof(uintptr_t))))
         {
             return _FAIL;
         }

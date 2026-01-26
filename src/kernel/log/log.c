@@ -42,7 +42,7 @@ static const char* levelNames[] = {
     [LOG_LEVEL_PANIC] = "P",
 };
 
-static size_t klog_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t klog_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     UNUSED(file);
 
@@ -50,29 +50,39 @@ static size_t klog_read(file_t* file, void* buffer, size_t count, size_t* offset
 
     if (*offset >= klogHead)
     {
-        return 0;
+        *bytesRead = 0;
+        return OK;
     }
 
-    for (size_t i = 0; i < count; i++)
+    size_t i = 0;
+    for (; i < count; i++)
     {
         if (*offset >= klogHead)
         {
-            return i;
+            break;
         }
 
         ((char*)buffer)[i] = klogBuffer[(*offset)++ % CONFIG_KLOG_SIZE];
     }
 
-    return count;
+    *bytesRead = i;
+
+    if (*offset < klogHead)
+    {
+        return INFO(DRIVER, MORE);
+    }
+
+    return OK;
 }
 
-static size_t klog_write(file_t* file, const void* buffer, size_t count, size_t* offset)
+static status_t klog_write(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
 {
     UNUSED(file);
     UNUSED(offset);
 
     log_nprint(LOG_LEVEL_INFO, buffer, count);
-    return count;
+    *bytesWritten = count;
+    return OK;
 }
 
 static file_ops_t klogOps = {

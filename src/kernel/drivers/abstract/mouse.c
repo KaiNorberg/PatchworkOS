@@ -22,8 +22,7 @@ static status_t mouse_name_read(file_t* file, void* buffer, size_t count, size_t
     assert(mouse != NULL);
 
     size_t length = strlen(mouse->name);
-    *bytesRead = BUFFER_READ(buffer, count, offset, mouse->name, length);
-    return OK;
+    return buffer_read(buffer, count, offset, bytesRead, mouse->name, length);
 }
 
 static file_ops_t nameOps = {

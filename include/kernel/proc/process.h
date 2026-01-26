@@ -15,10 +15,10 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/futex.h>
 #include <kernel/sync/rcu.h>
-#include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 
 #include <stdatomic.h>
+#include <sys/map.h>
 
 /**
  * @brief Process management.
@@ -163,8 +163,7 @@ process_t* process_get(pid_t id);
  * It is the responsibility of the caller to `UNREF()` the returned namespace.
  *
  * @param process The process to get the namespace of.
- * @return On success, a reference to the namespace of the process. On failure, `NULL` and `errno` is set:
- * - `EINVAL`: Invalid parameters.
+ * @return A reference to the namespace of the process.
  */
 namespace_t* process_get_ns(process_t* process);
 

@@ -5,11 +5,12 @@
 #include <kernel/sync/mutex.h>
 #include <kernel/sync/rcu.h>
 #include <kernel/sync/seqlock.h>
-#include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 
 #include <stdatomic.h>
 #include <stdint.h>
+#include <sys/map.h>
+#include <sys/map.h>
 #include <sys/fs.h>
 #include <sys/list.h>
 
@@ -125,17 +126,17 @@ typedef struct dentry_ops
      *
      * Used for security by hiding files or directories based on filesystem defined logic.
      *
-     * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+     * @return `true` if the access should be allowed, `false` otherwise.
      */
-    uint64_t (*revalidate)(dentry_t* dentry);
+    bool (*revalidate)(dentry_t* dentry);
     /**
      * @brief Iterate over the entries in a directory dentry.
      *
      * @param dentry The directory dentry to iterate over.
      * @param ctx The directory context to use for iteration.
-     * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+     * @return An appropriate status value.
      */
-    uint64_t (*iterate)(dentry_t* dentry, dir_ctx_t* ctx);
+    status_t (*iterate)(dentry_t* dentry, dir_ctx_t* ctx);
     /**
      * @brief Called when the dentry is being freed.
      *
@@ -163,7 +164,7 @@ typedef struct dentry
     superblock_t* superblock;
     const dentry_ops_t* ops;
     void* data;
-    struct dentry* next;          ///< Next dentry in the dentry cache hash bucket.
+    map_entry_t mapEntry;         ///< Entry in the dentry cache hash map.
     _Atomic(uint64_t) mountCount; ///< Number of mounts targeting this dentry.
     rcu_entry_t rcu;              ///< RCU entry for deferred cleanup.
     list_entry_t otherEntry;      ///< Made available for use by any other subsystems for convenience.
@@ -207,7 +208,7 @@ void dentry_remove(dentry_t* dentry);
  * @param parent The parent path.
  * @param name The name of the dentry.
  * @param length The length of the name.
- * @return On success, the dentry, might be negative. On failure, returns `NULL` and `errno` is set.
+ * @return On success, the dentry, might be negative. On failure, returns `NULL`.
  */
 dentry_t* dentry_rcu_get(const dentry_t* parent, const char* name, size_t length);
 
@@ -216,12 +217,13 @@ dentry_t* dentry_rcu_get(const dentry_t* parent, const char* name, size_t length
  *
  * If the dentry is not found in the dentry cache, the filesystem's lookup function will be called to try to find it.
  *
+ * @param out Output pointer to store the looked up dentry.
  * @param parent The parent dentry.
  * @param name The name of the dentry.
  * @param length The length of the name.
- * @return On success, a reference to the dentry, might be negative. On failure, returns `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-dentry_t* dentry_lookup(dentry_t* parent, const char* name, size_t length);
+status_t dentry_lookup(dentry_t** out, dentry_t* parent, const char* name, size_t length);
 
 /**
  * @brief Make a dentry positive by associating it with an vnode.
@@ -252,6 +254,6 @@ bool dentry_iterate_dots(dentry_t* dentry, dir_ctx_t* ctx);
 /**
  * @brief Helper function for a basic iterate.
  */
-uint64_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx);
+status_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx);
 
 /** @} */

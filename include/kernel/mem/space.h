@@ -7,6 +7,7 @@
 
 #include <boot/boot_info.h>
 
+#include <sys/map.h>
 #include <sys/bitmap.h>
 #include <sys/list.h>
 #include <sys/proc.h>
@@ -63,6 +64,7 @@ typedef struct
 {
     map_entry_t mapEntry;
     uint64_t pinCount; ///< The number of times this page is pinned, will be unpinned when it reaches 0.
+    uintptr_t address; ///< The virtual address of the pinned page.
 } space_pinned_page_t;
 
 /**
@@ -78,7 +80,7 @@ typedef struct
 typedef struct space
 {
     page_table_t pageTable; ///< The page table associated with the address space.
-    map_t pinnedPages;      ///< Map of pages with a pin depth greater than 1.
+    MAP_DEFINE(pinnedPages, 64); ///< Map of pages with a pin depth greater than 1.
     uintptr_t startAddress; ///< The start address for allocations in this address space.
     uintptr_t endAddress;   ///< The end address for allocations in this address space.
     uintptr_t freeAddress;  ///< The next available free virtual address in this address space.

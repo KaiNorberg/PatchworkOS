@@ -68,7 +68,7 @@ bool mutex_acquire_timeout(mutex_t* mtx, clock_t timeout)
     {
         lock_acquire(&mtx->lock);
         status_t status = WAIT_BLOCK_LOCK(&mtx->waitQueue, &mtx->lock, mtx->owner == NULL);
-        if (IS_FAIL(status))
+        if (IS_ERR(status))
         {
             lock_release(&mtx->lock);
             return false;
@@ -92,7 +92,7 @@ bool mutex_acquire_timeout(mutex_t* mtx, clock_t timeout)
 
         clock_t waitTime = end - now;
         status_t status = WAIT_BLOCK_LOCK_TIMEOUT(&mtx->waitQueue, &mtx->lock, mtx->owner == NULL, waitTime);
-        if (IS_FAIL(status))
+        if (IS_ERR(status))
         {
             lock_release(&mtx->lock);
             return false;
