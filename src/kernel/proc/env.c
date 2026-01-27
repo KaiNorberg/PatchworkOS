@@ -1,9 +1,9 @@
 #include <kernel/proc/env.h>
 #include <kernel/sync/mutex.h>
 
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/status.h>
 
 void env_init(env_t* env)
 {
@@ -23,25 +23,25 @@ void env_deinit(env_t* env)
     free(env->vars);
 }
 
-uint64_t env_copy(env_t* dest, env_t* src)
+status_t env_copy(env_t* dest, env_t* src)
 {
     if (dest == NULL || src == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(PROC, INVAL);
     }
 
     MUTEX_SCOPE(&src->mutex);
 
     for (size_t i = 0; i < src->count; i++)
     {
-        if (env_set(dest, src->vars[i].key, src->vars[i].value) == _FAIL)
+        status_t status = env_set(dest, src->vars[i].key, src->vars[i].value);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
     }
 
-    return 0;
+    return OK;
 }
 
 const char* env_get(env_t* env, const char* key)
@@ -64,12 +64,11 @@ const char* env_get(env_t* env, const char* key)
     return NULL;
 }
 
-uint64_t env_set(env_t* env, const char* key, const char* value)
+status_t env_set(env_t* env, const char* key, const char* value)
 {
     if (env == NULL || key == NULL || value == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(PROC, INVAL);
     }
 
     MUTEX_SCOPE(&env->mutex);
@@ -84,27 +83,24 @@ uint64_t env_set(env_t* env, const char* key, const char* value)
         char* newValue = strdup(value);
         if (newValue == NULL)
         {
-            errno = ENOMEM;
-            return _FAIL;
+            return ERR(PROC, NOMEM);
         }
         free(env->vars[i].value);
         env->vars[i].value = newValue;
-        return 0;
+        return OK;
     }
 
     char* newKey = strdup(key);
     if (newKey == NULL)
     {
-        errno = ENOMEM;
-        return _FAIL;
+        return ERR(PROC, NOMEM);
     }
 
     char* newValue = strdup(value);
     if (newValue == NULL)
     {
         free(newKey);
-        errno = ENOMEM;
-        return _FAIL;
+        return ERR(PROC, NOMEM);
     }
 
     env_var_t* newVars = realloc(env->vars, sizeof(env_var_t) * (env->count + 1));
@@ -112,8 +108,7 @@ uint64_t env_set(env_t* env, const char* key, const char* value)
     {
         free(newKey);
         free(newValue);
-        errno = ENOMEM;
-        return _FAIL;
+        return ERR(PROC, NOMEM);
     }
     env->vars = newVars;
 
@@ -121,15 +116,14 @@ uint64_t env_set(env_t* env, const char* key, const char* value)
     env->vars[env->count].value = newValue;
     env->count++;
 
-    return 0;
+    return OK;
 }
 
-uint64_t env_unset(env_t* env, const char* key)
+status_t env_unset(env_t* env, const char* key)
 {
     if (env == NULL || key == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(PROC, INVAL);
     }
 
     MUTEX_SCOPE(&env->mutex);
@@ -164,8 +158,8 @@ uint64_t env_unset(env_t* env, const char* key)
             }
         }
 
-        return 0;
+        return OK;
     }
 
-    return 0;
+    return OK;
 }

@@ -142,10 +142,10 @@ status_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout, size_t* 
  * @param file The directory file to read from.
  * @param buffer The buffer to read into.
  * @param count The number of bytes to read.
- * @param bytesWritten Output pointer for the number of bytes written.
+ * @param bytesRead Output pointer for the number of bytes read.
  * @return An appropriate status value.
  */
-status_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count, size_t* bytesWritten);
+status_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count, size_t* bytesRead);
 
 /**
  * @brief Get file information.
@@ -251,7 +251,11 @@ static status_t buffer_read(void* buffer, size_t count, size_t* offset, size_t* 
 
     if (*offset < sourceLen)
     {
-        return INFO(VFS, MORE);
+        return INFO(FS, MORE);
+    }
+    if (toRead < count)
+    {
+        return INFO(FS, LESS);
     }
 
     return OK;

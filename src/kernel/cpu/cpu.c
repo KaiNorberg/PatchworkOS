@@ -1,4 +1,3 @@
-#include <errno.h>
 #include <kernel/cpu/cpu.h>
 
 #include <kernel/cpu/gdt.h>
@@ -111,13 +110,9 @@ static void cpu_halt_ipi_handler(ipi_func_data_t* data)
     __builtin_unreachable();
 }
 
-uint64_t cpu_halt_others(void)
+status_t cpu_halt_others(void)
 {
-    if (ipi_send(SELF->self, IPI_OTHERS, cpu_halt_ipi_handler, NULL) == _FAIL)
-    {
-        return _FAIL;
-    }
-    return 0;
+    return ipi_send(SELF->self, IPI_OTHERS, cpu_halt_ipi_handler, NULL);
 }
 
 uintptr_t cpu_interrupt_stack_top(void)

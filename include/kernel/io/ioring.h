@@ -97,17 +97,6 @@
  *
  * @todo Decide if partial failures are a good idea or not.
  *
- * ## Errors
- *
- * The majority of errors are returned in the CQEs, certain errors (such as `ENOMEM`) may be
- * reported directly from the `ioring_enter()` call.
- *
- * Error values that may be returned in a CQE include:
- * - `EOK`: Success.
- * - `ECANCELED`: The operation was cancelled.
- * - `ETIMEDOUT`: The operation timed out.
- * - Other values may be returned depending on the verb.
- *
  * @{
  */
 
@@ -157,8 +146,9 @@ void ioring_ctx_deinit(ioring_ctx_t* ctx);
  * @param ctx Pointer to the context.
  * @param amount The number of SQEs to process.
  * @param wait The minimum number of CQEs to wait for.
- * @return On success, the number of SQEs processed. On failure, `_FAIL` and `errno` is set.
+ * @param processed Output pointer for the number of SQEs processed, can be `NULL`.
+ * @return An appropriate status code.
  */
-uint64_t ioring_ctx_notify(ioring_ctx_t* ctx, size_t amount, size_t wait);
+status_t ioring_ctx_notify(ioring_ctx_t* ctx, size_t amount, size_t wait, size_t* processed);
 
 /** @} */

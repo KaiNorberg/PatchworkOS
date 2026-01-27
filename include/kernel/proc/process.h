@@ -19,6 +19,7 @@
 
 #include <stdatomic.h>
 #include <sys/map.h>
+#include <sys/status.h>
 
 /**
  * @brief Process management.
@@ -113,12 +114,13 @@ extern list_t _processes;
  *
  * It is the responsibility of the caller to `UNREF()` the returned process.
  *
+ * @param out Output pointer to store the new process.
  * @param priority The priority of the new process.
  * @param group A member of the group to add the new process to, or `NULL` to create a new group for the process.
  * @param ns The namespace to use for the new process.
- * @return On success, the newly created process. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-process_t* process_new(priority_t priority, group_member_t* group, namespace_t* ns);
+status_t process_new(process_t** out, priority_t priority, group_member_t* group, namespace_t* ns);
 
 /**
  * @brief Retrieves the process of the currently running thread.
@@ -247,11 +249,9 @@ static inline uint64_t process_rcu_thread_count(process_t* process)
  * @param process The process to set the cmdline for.
  * @param argv The array of argument strings.
  * @param argc The number of arguments.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `ENOMEM`: Out of memory.
+ * @return An appropriate status value.
  */
-uint64_t process_set_cmdline(process_t* process, char** argv, uint64_t argc);
+status_t process_set_cmdline(process_t* process, char** argv, uint64_t argc);
 
 /**
  * @brief Checks if a process has a thread with the specified thread ID.

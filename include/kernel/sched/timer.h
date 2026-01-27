@@ -77,12 +77,9 @@ void timer_ack_eoi(interrupt_frame_t* frame);
  * @brief Register a timer source.
  *
  * @param source The timer source to register.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `ENOSPC`: No more timer sources can be registered.
- * - Other errors as returned by `irq_handler_register()`.
+ * @return An appropriate status value.
  */
-uint64_t timer_source_register(const timer_source_t* source);
+status_t timer_source_register(const timer_source_t* source);
 
 /**
  * @brief Unregister a timer source.

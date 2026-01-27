@@ -19,7 +19,6 @@
 #include <boot/boot_info.h>
 
 #include <assert.h>
-#include <errno.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 
@@ -679,7 +678,7 @@ void vmm_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount)
         shootdown->pageAmount = pageAmount;
         lock_release(&cpu->lock);
 
-        if (ipi_send(cpu_get_by_id(id), IPI_SINGLE, vmm_tlb_shootdown_ipi, NULL) == _FAIL)
+        if (IS_ERR(ipi_send(cpu_get_by_id(id), IPI_SINGLE, vmm_tlb_shootdown_ipi, NULL)))
         {
             panic(NULL, "Failed to send TLB shootdown IPI to CPU %d", id);
         }

@@ -5,6 +5,7 @@
 #include <sys/map.h>
 #include <sys/elf.h>
 #include <sys/list.h>
+#include <sys/status.h>
 
 /**
  * @brief Kernel Symbol Resolution and Management.
@@ -146,9 +147,9 @@ symbol_group_id_t symbol_generate_group_id(void);
  * @param groupId The group identifier of the symbol.
  * @param binding The binding of the symbol, specifies visibility and linkage.
  * @param type The type of the symbol, specifies what the symbol represents.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf64_Symbol_Binding binding,
+status_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf64_Symbol_Binding binding,
     Elf64_Symbol_Type type);
 
 /**
@@ -169,17 +170,17 @@ void symbol_remove_group(symbol_group_id_t groupId);
  *
  * @param outSymbol Output pointer to store the resolved symbol information.
  * @param addr The address of the symbol to resolve.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t symbol_resolve_addr(symbol_info_t* outSymbol, void* addr);
+status_t symbol_resolve_addr(symbol_info_t* outSymbol, void* addr);
 
 /**
  * @brief Resolve a symbol by name.
  *
  * @param outSymbol Output pointer to store the resolved symbol information.
  * @param name The name of the symbol to resolve.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t symbol_resolve_name(symbol_info_t* outSymbol, const char* name);
+status_t symbol_resolve_name(symbol_info_t* outSymbol, const char* name);
 
 /** @} */

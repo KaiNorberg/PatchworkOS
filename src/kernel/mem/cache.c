@@ -4,7 +4,6 @@
 #include <kernel/mem/cache.h>
 #include <kernel/mem/pmm.h>
 
-#include <errno.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/sync/lock.h>
 #include <stdlib.h>

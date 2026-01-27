@@ -14,7 +14,6 @@
 #include <kernel/utils/ref.h>
 
 #include <sys/status.h>
-#include <errno.h>
 #include <stdlib.h>
 
 static void file_free(file_t* file)

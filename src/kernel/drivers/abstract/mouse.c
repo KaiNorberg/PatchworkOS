@@ -7,7 +7,6 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
 
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/math.h>

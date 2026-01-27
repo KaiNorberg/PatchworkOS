@@ -72,7 +72,7 @@ static void panic_registers(const interrupt_frame_t* frame)
     LOG_PANIC("rip: %04llx:0x%016llx ", frame->cs, frame->rip);
 
     symbol_info_t symbol;
-    if (symbol_resolve_addr(&symbol, (void*)frame->rip) != _FAIL)
+    if (IS_OK(symbol_resolve_addr(&symbol, (void*)frame->rip)))
     {
         LOG_PANIC("<%s+0x%llx>", symbol.name, frame->rip - (uintptr_t)symbol.addr);
     }
@@ -202,23 +202,23 @@ static void panic_print_stack_dump(const interrupt_frame_t* frame)
     }
 }
 
-static uint64_t panic_print_trace_address(uintptr_t addr)
+static bool panic_print_trace_address(uintptr_t addr)
 {
     if (addr >= VMM_USER_SPACE_MIN && addr < VMM_USER_SPACE_MAX)
     {
         LOG_PANIC("  [0x%016llx] <user space address>\n", addr);
-        return _FAIL;
+        return false;
     }
 
     symbol_info_t symbol;
-    if (symbol_resolve_addr(&symbol, (void*)addr) == _FAIL)
+    if (IS_OK(symbol_resolve_addr(&symbol, (void*)addr)))
     {
         LOG_PANIC("  [0x%016llx] <unknown>\n", addr);
-        return _FAIL;
+        return false;
     }
 
     LOG_PANIC("  [0x%016llx] <%s+0x%llx>\n", addr, symbol.name, addr - (uintptr_t)symbol.addr);
-    return 0;
+    return true;
 }
 
 static void panic_unwind_stack(uintptr_t* rbp)
@@ -248,7 +248,7 @@ static void panic_unwind_stack(uintptr_t* rbp)
             break;
         }
 
-        if (panic_print_trace_address(returnAddress) == _FAIL)
+        if (!panic_print_trace_address(returnAddress))
         {
             LOG_PANIC("  [0x%016llx] <failed to resolve>\n", returnAddress);
             break;
@@ -311,16 +311,15 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
     thread_t* currentThread = thread_current();
     process_t* currentProcess = process_current();
 
-    errno_t err = currentThread != NULL ? currentThread->error : 0;
-
     va_list args;
     va_start(args, format);
     vsnprintf(panicBuffer, sizeof(panicBuffer), format, args);
     va_end(args);
 
-    if (cpu_halt_others() == _FAIL)
+    status_t status = cpu_halt_others();
+    if (IS_ERR(status))
     {
-        LOG_PANIC("failed to halt other CPUs due to '%s'\n", strerror(errno));
+        LOG_PANIC("failed to halt other CPUs due to '%s'\n", codetostr(status));
     }
 
     screen_panic();
@@ -340,8 +339,6 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
     {
         LOG_PANIC("thread: cpu=%d pid=%d tid=%d\n", SELF->id, currentProcess->id, currentThread->id);
     }
-
-    LOG_PANIC("last errno: %d (%s)\n", err, strerror(err));
 
     uint64_t freePages = pmm_avail_pages();
     uint64_t reservedPages = pmm_used_pages();

@@ -45,8 +45,7 @@ percpu_t percpu_alloc(size_t size)
     uint64_t offset = bitmap_find_clear_region_and_set(&allocated, 0, allocated.length, size / PERCPU_ALIGNMENT, 1);
     if (offset == allocated.length)
     {
-        errno = ENOMEM;
-        return _FAIL;
+        return PERCPU_INVALID;
     }
 
     cpu_t* cpu;
@@ -62,7 +61,7 @@ percpu_t percpu_alloc(size_t size)
 
 void percpu_free(percpu_t ptr, size_t size)
 {
-    if (ptr == _FAIL)
+    if (ptr == PERCPU_INVALID)
     {
         return;
     }
@@ -132,7 +131,7 @@ void percpu_section_init(percpu_def_t* start, percpu_def_t* end)
     for (percpu_def_t* percpu = start; percpu < end; percpu++)
     {
         *percpu->ptr = percpu_alloc(percpu->size);
-        if (*percpu->ptr == (percpu_t)_FAIL)
+        if (*percpu->ptr == PERCPU_INVALID)
         {
             panic(NULL, "failed to allocate percpu variable");
         }

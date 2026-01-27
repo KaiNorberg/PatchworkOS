@@ -7,7 +7,6 @@
 #include <kernel/proc/process.h>
 #include <kernel/sched/thread.h>
 
-#include <errno.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rcu.h>
 #include <stdlib.h>
@@ -29,7 +28,6 @@ static group_t* group_new(void)
     group_t* group = malloc(sizeof(group_t));
     if (group == NULL)
     {
-        errno = ENOMEM;
         return NULL;
     }
     ref_init(&group->ref, group_free);
@@ -39,7 +37,7 @@ static group_t* group_new(void)
     return group;
 }
 
-uint64_t group_member_init(group_member_t* member, group_member_t* group)
+status_t group_member_init(group_member_t* member, group_member_t* group)
 {
     list_entry_init(&member->entry);
     member->group = NULL;
@@ -50,7 +48,7 @@ uint64_t group_member_init(group_member_t* member, group_member_t* group)
         group_t* grp = group_get(group);
         if (grp == NULL)
         {
-            return _FAIL;
+            return ERR(PROC, NOGROUP);
         }
 
         group_add(grp, member);
@@ -60,7 +58,7 @@ uint64_t group_member_init(group_member_t* member, group_member_t* group)
     group_t* newGroup = group_new();
     if (newGroup == NULL)
     {
-        return _FAIL;
+        return ERR(PROC, NOMEM);
     }
 
     lock_acquire(&newGroup->lock);
@@ -68,7 +66,7 @@ uint64_t group_member_init(group_member_t* member, group_member_t* group)
     member->group = newGroup;
     lock_release(&newGroup->lock);
 
-    return 0;
+    return OK;
 }
 
 void group_member_deinit(group_member_t* member)
@@ -80,15 +78,12 @@ group_t* group_get(group_member_t* member)
 {
     if (member == NULL)
     {
-        errno = EINVAL;
         return NULL;
     }
 
     LOCK_SCOPE(&member->lock);
-
     if (member->group == NULL)
     {
-        errno = ESRCH;
         return NULL;
     }
 
@@ -139,19 +134,17 @@ void group_remove(group_member_t* member)
     member->group = NULL;
 }
 
-uint64_t group_send_note(group_member_t* member, const char* note)
+status_t group_send_note(group_member_t* member, const char* note)
 {
     if (member == NULL || note == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(PROC, INVAL);
     }
 
     group_t* group = member->group;
     if (group == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(PROC, NOGROUP);
     }
 
     LOCK_SCOPE(&group->lock);
@@ -167,11 +160,12 @@ uint64_t group_send_note(group_member_t* member, const char* note)
             continue;
         }
 
-        if (thread_send_note(thread, note) == _FAIL)
+        status_t status = thread_send_note(thread, note);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
     }
 
-    return 0;
+    return OK;
 }

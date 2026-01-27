@@ -4,12 +4,11 @@
 #include <kernel/log/panic.h>
 #include <kernel/sync/rwlock.h>
 
-#include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/list.h>
-#include <sys/proc.h>
+#include <sys/status.h>
 
 static symbol_addr_t** addrArray = NULL;
 static size_t addrAmount = 0;
@@ -119,19 +118,17 @@ static symbol_addr_t* symbol_insert_address(void* addr, symbol_group_id_t groupI
     return addrEntry;
 }
 
-static uint64_t symbol_resolve_addr_unlocked(symbol_info_t* outSymbol, void* addr)
+static status_t symbol_resolve_addr_unlocked(symbol_info_t* outSymbol, void* addr)
 {
     if (outSymbol == NULL || addr == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(MODULE, INVAL);
     }
 
     size_t index = symbol_get_floor_index_for_addr(addr);
     if (index == addrAmount)
     {
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(MODULE, NOENT);
     }
 
     symbol_addr_t* addrEntry = addrArray[index];
@@ -144,15 +141,14 @@ static uint64_t symbol_resolve_addr_unlocked(symbol_info_t* outSymbol, void* add
     outSymbol->binding = addrEntry->binding;
     outSymbol->type = addrEntry->type;
 
-    return 0;
+    return OK;
 }
 
-static uint64_t symbol_resolve_name_unlocked(symbol_info_t* outSymbol, const char* name)
+static status_t symbol_resolve_name_unlocked(symbol_info_t* outSymbol, const char* name)
 {
     if (outSymbol == NULL || name == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(MODULE, INVAL);
     }
 
     uint64_t hash = hash_buffer(name, strlen(name));
@@ -160,8 +156,7 @@ static uint64_t symbol_resolve_name_unlocked(symbol_info_t* outSymbol, const cha
     symbol_name_t* nameEntry = entry ? CONTAINER_OF(entry, symbol_name_t, mapEntry) : NULL;
     if (nameEntry == NULL || list_is_empty(&nameEntry->addrs))
     {
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(MODULE, NOENT);
     }
     symbol_addr_t* addrEntry = CONTAINER_OF(list_first(&nameEntry->addrs), symbol_addr_t, nameEntry);
 
@@ -172,21 +167,20 @@ static uint64_t symbol_resolve_name_unlocked(symbol_info_t* outSymbol, const cha
     outSymbol->binding = addrEntry->binding;
     outSymbol->type = addrEntry->type;
 
-    return 0;
+    return OK;
 }
 
-uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf64_Symbol_Binding binding,
+status_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf64_Symbol_Binding binding,
     Elf64_Symbol_Type type)
 {
     if (type != STT_OBJECT && type != STT_FUNC)
     {
-        return 0;
+        return OK;
     }
 
     if (name == NULL || addr == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(MODULE, INVAL);
     }
 
     RWLOCK_WRITE_SCOPE(&lock);
@@ -194,11 +188,10 @@ uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf
     if (binding == STB_GLOBAL)
     {
         symbol_info_t existingSymbol;
-        if (symbol_resolve_name_unlocked(&existingSymbol, name) != _FAIL)
+        if (IS_OK(symbol_resolve_name_unlocked(&existingSymbol, name)))
         {
             LOG_DEBUG("global symbol name conflict for '%s'\n", name);
-            errno = EEXIST;
-            return _FAIL;
+            return ERR(MODULE, EXIST);
         }
     }
 
@@ -207,6 +200,7 @@ uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf
     symbol_addr_t* symbolAddr = NULL;
     bool groupWasCreated = false;
     bool nameWasCreated = false;
+    status_t status = OK;
 
     uint64_t groupHash = hash_uint64(groupId);
     map_entry_t* groupEntry = map_find(&groupMap, &groupId, groupHash);
@@ -216,6 +210,7 @@ uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf
         symbolGroup = malloc(sizeof(symbol_group_t));
         if (symbolGroup == NULL)
         {
+            status = ERR(MODULE, NOMEM);
             goto error;
         }
         map_entry_init(&symbolGroup->mapEntry);
@@ -234,6 +229,7 @@ uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf
         symbolName = malloc(sizeof(symbol_name_t));
         if (symbolName == NULL)
         {
+            status = ERR(MODULE, NOMEM);
             goto error;
         }
         list_entry_init(&symbolName->groupEntry);
@@ -250,10 +246,11 @@ uint64_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf
     symbolAddr = symbol_insert_address(addr, groupId, binding, type, symbolName);
     if (symbolAddr == NULL)
     {
+        status = ERR(MODULE, NOMEM);
         goto error;
     }
 
-    return 0;
+    return OK;
 
 error:
     if (symbolAddr == NULL)
@@ -277,8 +274,8 @@ error:
         }
     }
 
-    LOG_DEBUG("failed to add symbol '%s' at address %p (%s)\n", name, addr, strerror(errno));
-    return _FAIL;
+    LOG_DEBUG("failed to add symbol '%s' at address %p (status=%d)\n", name, addr, status);
+    return status;
 }
 
 void symbol_remove_group(symbol_group_id_t groupId)
@@ -350,13 +347,13 @@ void symbol_remove_group(symbol_group_id_t groupId)
     }
 }
 
-uint64_t symbol_resolve_addr(symbol_info_t* outSymbol, void* addr)
+status_t symbol_resolve_addr(symbol_info_t* outSymbol, void* addr)
 {
     RWLOCK_READ_SCOPE(&lock);
     return symbol_resolve_addr_unlocked(outSymbol, addr);
 }
 
-uint64_t symbol_resolve_name(symbol_info_t* outSymbol, const char* name)
+status_t symbol_resolve_name(symbol_info_t* outSymbol, const char* name)
 {
     RWLOCK_READ_SCOPE(&lock);
     return symbol_resolve_name_unlocked(outSymbol, name);

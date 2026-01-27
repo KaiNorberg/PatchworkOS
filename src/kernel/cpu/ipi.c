@@ -7,8 +7,8 @@
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rwlock.h>
 
-#include <errno.h>
 #include <string.h>
+#include <sys/status.h>
 
 static ipi_chip_t* registeredChip = NULL;
 static rwlock_t chipLock = RWLOCK_CREATE();
@@ -62,25 +62,23 @@ void ipi_handle_pending(interrupt_frame_t* frame)
     rwlock_read_release(&chipLock);
 }
 
-uint64_t ipi_chip_register(ipi_chip_t* chip)
+status_t ipi_chip_register(ipi_chip_t* chip)
 {
     if (chip == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(INT, INVAL);
     }
 
     RWLOCK_WRITE_SCOPE(&chipLock);
 
     if (registeredChip != NULL)
     {
-        errno = EBUSY;
-        return _FAIL;
+        return ERR(INT, BUSY);
     }
 
     registeredChip = chip;
     LOG_INFO("registered IPI chip '%s'\n", chip->name);
-    return 0;
+    return OK;
 }
 
 void ipi_chip_unregister(ipi_chip_t* chip)
@@ -107,18 +105,16 @@ uint64_t ipi_chip_amount(void)
     return registeredChip != NULL ? 1 : 0;
 }
 
-static uint64_t ipi_push(cpu_t* cpu, ipi_func_t func, void* data)
+static status_t ipi_push(cpu_t* cpu, ipi_func_t func, void* data)
 {
     if (registeredChip == NULL)
     {
-        errno = ENODEV;
-        return _FAIL;
+        return ERR(INT, NODEV);
     }
 
     if (registeredChip->interrupt == NULL)
     {
-        errno = ENOSYS;
-        return _FAIL;
+        return ERR(INT, IMPL);
     }
 
     ipi_cpu_t* ctx = CPU_PTR(cpu->id, pcpu_ipi);
@@ -127,22 +123,20 @@ static uint64_t ipi_push(cpu_t* cpu, ipi_func_t func, void* data)
     size_t nextWriteIndex = (ctx->writeIndex + 1) % IPI_QUEUE_SIZE;
     if (nextWriteIndex == ctx->readIndex)
     {
-        errno = EBUSY;
-        return _FAIL;
+        return ERR(INT, BUSY);
     }
 
     ctx->queue[ctx->writeIndex].func = func;
     ctx->queue[ctx->writeIndex].data = data;
     ctx->writeIndex = nextWriteIndex;
-    return 0;
+    return OK;
 }
 
-uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* data)
+status_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* data)
 {
     if (func == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(INT, INVAL);
     }
 
     RWLOCK_READ_SCOPE(&chipLock);
@@ -153,13 +147,13 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* data)
     {
         if (cpu == NULL)
         {
-            errno = EINVAL;
-            return _FAIL;
+            return ERR(INT, INVAL);
         }
 
-        if (ipi_push(cpu, func, data) == _FAIL)
+        status_t status = ipi_push(cpu, func, data);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
         registeredChip->interrupt(cpu, VECTOR_IPI);
@@ -170,9 +164,10 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* data)
         cpu_t* cpu;
         CPU_FOR_EACH(cpu)
         {
-            if (ipi_push(cpu, func, data) == _FAIL)
+            status_t status = ipi_push(cpu, func, data);
+            if (IS_ERR(status))
             {
-                return _FAIL;
+                return status;
             }
 
             registeredChip->interrupt(cpu, VECTOR_IPI);
@@ -183,8 +178,7 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* data)
     {
         if (cpu == NULL)
         {
-            errno = EINVAL;
-            return _FAIL;
+            return ERR(INT, INVAL);
         }
 
         cpu_t* iter;
@@ -195,9 +189,10 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* data)
                 continue;
             }
 
-            if (ipi_push(iter, func, data) == _FAIL)
+            status_t status = ipi_push(iter, func, data);
+            if (IS_ERR(status))
             {
-                return _FAIL;
+                return status;
             }
 
             registeredChip->interrupt(iter, VECTOR_IPI);
@@ -205,11 +200,10 @@ uint64_t ipi_send(cpu_t* cpu, ipi_flags_t flags, ipi_func_t func, void* data)
     }
     break;
     default:
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(INT, INVAL);
     }
 
-    return 0;
+    return OK;
 }
 
 void ipi_wake_up(cpu_t* cpu, ipi_flags_t flags)

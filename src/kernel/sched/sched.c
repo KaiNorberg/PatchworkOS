@@ -108,8 +108,8 @@ PERCPU_DEFINE_CTOR(sched_t, _pcpu_sched)
     lock_init(&sched->lock);
     atomic_init(&sched->preemptCount, 0);
 
-    sched->idleThread = thread_new(process_get_kernel());
-    if (sched->idleThread == NULL)
+    status_t status = thread_new((thread_t**)&sched->idleThread, process_get_kernel());
+    if (IS_ERR(status))
     {
         panic(NULL, "Failed to create idle thread");
     }
@@ -625,7 +625,7 @@ bool sched_is_idle(cpu_t* cpu)
     return sched->runThread == sched->idleThread;
 }
 
-uint64_t sched_nanosleep(clock_t timeout)
+status_t sched_nanosleep(clock_t timeout)
 {
     return WAIT_BLOCK_TIMEOUT(&sleepQueue, false, timeout);
 }
@@ -669,19 +669,19 @@ void sched_thread_exit(void)
     panic(NULL, "Return to sched_thread_exit");
 }
 
-SYSCALL_DEFINE(SYS_NANOSLEEP, uint64_t, clock_t nanoseconds)
+SYSCALL_DEFINE(SYS_NANOSLEEP, clock_t nanoseconds)
 {
     return sched_nanosleep(nanoseconds);
 }
 
-SYSCALL_DEFINE(SYS_EXITS, void, const char* status)
+SYSCALL_DEFINE(SYS_EXITS, const char* status)
 {
     sched_exits(status);
 
     panic(NULL, "Return to syscall_exits");
 }
 
-SYSCALL_DEFINE(SYS_THREAD_EXIT, void)
+SYSCALL_DEFINE(SYS_THREAD_EXIT)
 {
     sched_thread_exit();
 

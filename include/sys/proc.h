@@ -81,9 +81,13 @@ typedef enum
  *
  * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable.
  * @param flags Spawn behaviour flags.
- * @return On success, the childs pid. On failure, `_FAIL` and `errno` is set.
+ * @param pid Optional ouput pointer for the childs pid.
+ * @return 
  */
-pid_t spawn(const char** argv, spawn_flags_t flags);
+static inline status_t spawn(const char** argv, spawn_flags_t flags, pid_t* pid)
+{
+    return syscall2(SYS_SPAWN, pid, (uint64_t)argv, flags);
+}
 
 /**
  * @brief System call to retrieve the current pid.
@@ -236,7 +240,12 @@ static inline status_t futex(uint64_t* result, atomic_uint64_t* addr, uint64_t v
  *
  * @return The system uptime in clock ticks.
  */
-clock_t uptime(void);
+static inline clock_t uptime(void)
+{
+    clock_t result;
+    syscall0(SYS_UPTIME, &result);
+    return result;
+}
 
 /**
  * @brief System call for sleeping.

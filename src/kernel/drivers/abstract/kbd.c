@@ -10,7 +10,6 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 
-#include <errno.h>
 #include <kernel/utils/fifo.h>
 #include <stdio.h>
 #include <stdlib.h>

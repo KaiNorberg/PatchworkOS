@@ -57,7 +57,7 @@ static void reaper_thread(void* arg)
 
 void reaper_init(void)
 {
-    if (thread_kernel_create(reaper_thread, NULL) == _FAIL)
+    if (IS_ERR(thread_kernel_create(reaper_thread, NULL, NULL)))
     {
         panic(NULL, "Failed to create process reaper thread");
     }

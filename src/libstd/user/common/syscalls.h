@@ -1,4 +1,4 @@
-#pragma once
+/*#pragma once
 
 #include <kernel/cpu/syscall.h>
 
@@ -128,7 +128,7 @@ static inline clock_t _syscall_uptime(void)
 
 static inline time_t _syscall_unix_epoch(void)
 {
-    return _SYSCALL0(time_t, SYS_EPOCH);
+    return _SYSCALL0(time_t, SYS_TIME);
 }
 
 static inline fd_t _syscall_open(const char* path)
@@ -302,4 +302,4 @@ static inline uint64_t _syscall_ioring_teardown(ioring_id_t id)
 static inline uint64_t _syscall_ioring_enter(ioring_id_t id, size_t amount, size_t wait)
 {
     return _SYSCALL3(uint64_t, SYS_IORING_ENTER, ioring_id_t, id, size_t, amount, size_t, wait);
-}
+}*/

@@ -15,7 +15,6 @@
 #include <kernel/sync/lock.h>
 
 #include <assert.h>
-#include <errno.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
@@ -117,7 +116,6 @@ dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const vnode_ops_t* v
 {
     if (name == NULL)
     {
-        errno = EINVAL;
         return NULL;
     }
 
@@ -126,11 +124,7 @@ dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const vnode_ops_t* v
         parent = root;
     }
 
-    if (parent->superblock->fs != &sysfs)
-    {
-        errno = EXDEV;
-        return NULL;
-    }
+    assert(parent->superblock->fs != &sysfs);
 
     dentry_t* dir = dentry_new(parent->superblock, parent, name);
     if (dir == NULL)
@@ -157,7 +151,6 @@ dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const vnode_ops_t* 
 {
     if (name == NULL)
     {
-        errno = EINVAL;
         return NULL;
     }
 
@@ -166,11 +159,7 @@ dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const vnode_ops_t* 
         parent = root;
     }
 
-    if (parent->superblock->fs != &sysfs)
-    {
-        errno = EXDEV;
-        return NULL;
-    }
+    assert(parent->superblock->fs != &sysfs);
 
     dentry_t* dentry = dentry_new(parent->superblock, parent, name);
     if (dentry == NULL)
@@ -196,15 +185,10 @@ dentry_t* sysfs_symlink_new(dentry_t* parent, const char* name, const vnode_ops_
 {
     if (parent == NULL || name == NULL || vnodeOps == NULL)
     {
-        errno = EINVAL;
         return NULL;
     }
 
-    if (parent->superblock->fs != &sysfs)
-    {
-        errno = EXDEV;
-        return NULL;
-    }
+    assert(parent->superblock->fs != &sysfs);
 
     dentry_t* dentry = dentry_new(parent->superblock, parent, name);
     if (dentry == NULL)

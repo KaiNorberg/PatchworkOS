@@ -3,6 +3,7 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/sync/rwlock.h>
 
+#include <sys/status.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/list.h>
@@ -141,7 +142,7 @@ typedef struct irq_domain
 typedef struct irq_chip
 {
     const char* name;
-    uint64_t (*enable)(irq_t* irq); ///< Enable the given IRQ, must be defined.
+    status_t (*enable)(irq_t* irq); ///< Enable the given IRQ, must be defined.
     void (*disable)(irq_t* irq);    ///< Disable the given IRQ, must be defined.
     void (*ack)(irq_t* irq);        ///< Send a acknowledge for the given IRQ.
     void (*eoi)(irq_t* irq);        ///< Send End-Of-Interrupt for the given IRQ.
@@ -184,13 +185,9 @@ void irq_dispatch(interrupt_frame_t* frame);
  * @param phys The physical IRQ number.
  * @param flags The IRQ flags.
  * @param cpu The target CPU for the IRQ, or `NULL` for the current CPU.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EBUSY`: The IRQ is already allocated with incompatible flags, or is exclusive.
- * - `ENOSPC`: No more virtual IRQs can be allocated.
- * - Other errors as returned by the IRQ chip's `enable` function.
+ * @return An appropriate status value.
  */
-uint64_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu_t* cpu);
+status_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu_t* cpu);
 
 /**
  * @brief Free a previously allocated virtual IRQ.
@@ -206,13 +203,9 @@ void irq_virt_free(irq_virt_t virt);
  *
  * @param virt The virtual IRQ to set the affinity for.
  * @param cpu The target CPU for the IRQ.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `ENOENT`: The given virtual IRQ is not a external vector.
- * - `ENODEV`: The IRQ has no associated IRQ chip.
- * - Other  errors as returned by the IRQ chip's `enable` functions.
+ * @return An appropriate status value.
  */
-uint64_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu);
+status_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu);
 
 /**
  * @brief Register an IRQ chip for a range of physical IRQs.
@@ -223,13 +216,9 @@ uint64_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu);
  * @param start The start of the physical IRQ range.
  * @param end The end of the physical IRQ range.
  * @param private Private data for the IRQ chip, will be found in `irq_t->domain->data`.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EEXIST`: A chip with a domain overlapping the given range is already registered.
- * - `ENOMEM`: Memory allocation failed.
- * - Other errors as returned by the IRQ chip's `enable` function.
+ * @return An appropriate status value.
  */
-uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, void* data);
+status_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, void* data);
 
 /**
  * @brief Unregister all instances of the given IRQ chip within the specified range.
@@ -258,14 +247,9 @@ uint64_t irq_chip_amount(void);
  * @param virt The virtual IRQ to register the handler for.
  * @param func The handler function to register.
  * @param private The private data to pass to the handler function.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `ENOENT`: The given virtual IRQ is not a external vector.
- * - `EEXIST`: The given handler is already registered for the given virtual IRQ.
- * - `ENOMEM`: Memory allocation failed.
- * - Other errors as returned by the IRQ chip's `enable` function.
+ * @return An appropriate status value.
  */
-uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* data);
+status_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* data);
 
 /**
  * @brief Unregister an IRQ handler.

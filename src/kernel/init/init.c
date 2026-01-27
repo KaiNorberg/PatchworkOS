@@ -111,9 +111,10 @@ static void init_finalize(void)
 
     if (bootInfo->gop.virtAddr != NULL)
     {
-        if (module_device_attach("BOOT_GOP", "BOOT_GOP", MODULE_LOAD_ALL) == _FAIL)
+        status_t status = module_device_attach("BOOT_GOP", "BOOT_GOP", MODULE_LOAD_ALL, NULL);
+        if (IS_ERR(status))
         {
-            panic(NULL, "Failed to load modules with BOOT_GOP");
+            panic(NULL, "Failed to load modules with BOOT_GOP due to %s", codetostr(status));
         }
     }
     else
@@ -122,10 +123,11 @@ static void init_finalize(void)
     }
 
     if (bootInfo->rsdp != NULL)
-    {
-        if (module_device_attach("BOOT_RSDP", "BOOT_RSDP", MODULE_LOAD_ALL) == _FAIL)
+    {        
+        status_t status = module_device_attach("BOOT_RSDP", "BOOT_RSDP", MODULE_LOAD_ALL, NULL);
+        if (IS_ERR(status))
         {
-            panic(NULL, "Failed to load modules with BOOT_RSDP");
+            panic(NULL, "Failed to load modules with BOOT_RSDP due to %s", codetostr(status));
         }
     }
     else
@@ -133,9 +135,10 @@ static void init_finalize(void)
         LOG_WARN("no RSDP provided by bootloader\n");
     }
 
-    if (module_device_attach("BOOT_ALWAYS", "BOOT_ALWAYS", MODULE_LOAD_ALL) == _FAIL)
+    status_t status = module_device_attach("BOOT_ALWAYS", "BOOT_ALWAYS", MODULE_LOAD_ALL, NULL);
+    if (IS_ERR(status))
     {
-        panic(NULL, "Failed to load modules with BOOT_ALWAYS");
+        panic(NULL, "Failed to load modules with BOOT_ALWAYS due to %s", codetostr(status));
     }
 
     boot_info_free();
@@ -180,8 +183,9 @@ static inline void init_process_spawn(void)
         panic(NULL, "Failed to copy kernel namespace to root namespace");
     }
 
-    process_t* initProcess = process_new(PRIORITY_MAX_USER, NULL, rootNs);
-    if (initProcess == NULL)
+    process_t* initProcess;
+    status = process_new(&initProcess, PRIORITY_MAX_USER, NULL, rootNs);
+    if (IS_ERR(status))
     {
         panic(NULL, "Failed to create init process");
     }
@@ -195,7 +199,8 @@ static inline void init_process_spawn(void)
     }
 
     char* argv[] = {"/sbin/init", NULL};
-    if (process_set_cmdline(initProcess, argv, 1) == _FAIL)
+    status = process_set_cmdline(initProcess, argv, 1);
+    if (IS_ERR(status))
     {
         panic(NULL, "Failed to set init process cmdline");
     }

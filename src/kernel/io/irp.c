@@ -257,9 +257,9 @@ status_t irp_get(irp_t** out, irp_pool_t* pool)
     return OK;
 }
 
-status_t irp_get_mdl(mdl_t** out, irp_t* irp, const void* addr, size_t size)
+status_t irp_get_mdl(irp_t* irp, mdl_t** out, const void* addr, size_t size)
 {
-    if (out == NULL || irp == NULL || addr == NULL || size == 0)
+    if (irp == NULL || out == NULL || addr == NULL || size == 0)
     {
         return ERR(IO, INVAL);
     }
@@ -303,23 +303,20 @@ void irp_call(irp_t* irp, vnode_t* vnode)
     irp_frame_t* frame = irp_current(irp);
     if (UNLIKELY(frame->major >= IRP_MJ_MAX))
     {
-        irp->status = ERR(IO, MJ_OVERFLOW);
-        irp_complete(irp);
+        irp_complete(irp, ERR(IO, MJ_OVERFLOW));
         return;
     }
 
     if (vnode == NULL || vnode->vtable == NULL)
     {
-        irp->status = ERR(IO, MJ_NOSYS);
-        irp_complete(irp);
+        irp_complete(irp, ERR(IO, MJ_NOSYS));
         return;
     }
 
     irp_func_t func = vnode->vtable->funcs[frame->major];
     if (func == NULL)
     {
-        irp->status = ERR(IO, MJ_NOSYS);
-        irp_complete(irp);
+        irp_complete(irp, ERR(IO, MJ_NOSYS));
         return;
     }
 
@@ -368,11 +365,15 @@ status_t irp_cancel(irp_t* irp)
     return status;
 }
 
-void irp_complete(irp_t* irp)
+void irp_complete(irp_t* irp, status_t status)
 {
     if (irp_set_cancel(irp, NULL) == IRP_CANCELLED)
     {
         return;
+    }
+    if (status != OK)
+    {
+        irp->status = status;
     }
     irp_perform_completion(irp);
 }

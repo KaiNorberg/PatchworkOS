@@ -129,7 +129,7 @@ static inline void pml_free(page_table_t* table, pml_t* pml, pml_level_t level)
  * @param freePages The function to use for freeing pages.
  * @return `true` on success, `false` otherwise.
  */
-static inline uint64_t page_table_init(page_table_t* table, pml_alloc_pages_t allocPages, pml_free_pages_t freePages)
+static inline bool page_table_init(page_table_t* table, pml_alloc_pages_t allocPages, pml_free_pages_t freePages)
 {
     table->allocPages = allocPages;
     table->freePages = freePages;

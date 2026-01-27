@@ -5,7 +5,6 @@
 #include <kernel/sync/lock.h>
 
 #include <assert.h>
-#include <errno.h>
 
 void rwmutex_init(rwmutex_t* mtx)
 {

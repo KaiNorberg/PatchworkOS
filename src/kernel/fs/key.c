@@ -11,7 +11,6 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/rwlock.h>
 
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/list.h>

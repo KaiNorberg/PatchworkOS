@@ -11,7 +11,6 @@
 #include <sys/defs.h>
 
 #include <assert.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <sys/syscall.h>
 
@@ -79,8 +78,7 @@ void syscall_handler(interrupt_frame_t* frame)
     if (desc == NULL)
     {
         LOG_DEBUG("Unknown syscall %u\n", frame->rax);
-        errno = ENOSYS;
-        frame->rax = _FAIL;
+        frame->rax = ERR(SYSCALL, INVAL);
         return;
     }
 

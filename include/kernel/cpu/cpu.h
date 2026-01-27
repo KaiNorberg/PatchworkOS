@@ -145,9 +145,9 @@ void cpu_stacks_overflow_check(void);
 /**
  * @brief Halts all other CPUs.
  *
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t cpu_halt_others(void);
+status_t cpu_halt_others(void);
 
 /**
  * @brief Gets the top of the interrupt stack for the current CPU.

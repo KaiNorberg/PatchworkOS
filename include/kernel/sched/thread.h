@@ -116,9 +116,10 @@ typedef void (*thread_kernel_entry_t)(void* arg);
  *
  * @param entry The entry point function for the thread.
  * @param arg An argument to pass to the entry point function.
+ * @param out Output pointer to store the thread ID, can be `NULL`.
  * @return An appropriate status value.
  */
-status_t thread_kernel_create(tid_t* tid, thread_kernel_entry_t entry, void* arg);
+status_t thread_kernel_create(thread_kernel_entry_t entry, void* arg, tid_t* out);
 
 /**
  * @brief Retrieves the currently running thread.
@@ -196,10 +197,9 @@ bool thread_is_note_pending(thread_t* thread);
  *
  * @param thread The destination thread.
  * @param string The note string to send, should be a null-terminated string.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - See `note_send()` for possible error codes.
+ * @return An appropriate status value.
  */
-uint64_t thread_send_note(thread_t* thread, const char* string);
+status_t thread_send_note(thread_t* thread, const char* string);
 
 /**
  * @brief Safely copy data from user space.

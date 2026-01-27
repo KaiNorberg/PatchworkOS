@@ -12,6 +12,7 @@
 #include <sys/map.h>
 #include <sys/fs.h>
 #include <sys/list.h>
+#include <sys/status.h>
 
 typedef struct module module_t;
 
@@ -284,7 +285,7 @@ typedef struct module_event
  * @brief Module procedure and entry point.
  * @typedef module_procedure_t
  */
-typedef uint64_t (*module_procedure_t)(const module_event_t* event);
+typedef status_t (*module_procedure_t)(const module_event_t* event);
 
 /**
  * @brief Module device structure.
@@ -366,6 +367,7 @@ typedef struct module
 typedef struct
 {
     map_entry_t mapEntry;
+    char* name;       ///< The name of the symbol.
     char* modulePath; ///< Path to the module defining the symbol.
 } module_cached_symbol_t;
 
@@ -386,6 +388,7 @@ typedef struct
 typedef struct
 {
     map_entry_t mapEntry;
+    char* type;     ///< The device type string.
     list_t entries; ///< List of `module_cached_device_entry_t`.
 } module_cached_device_t;
 
@@ -406,7 +409,7 @@ typedef enum
  *
  * Used for symbol grouping.
  */
-void module_init_fake_kernel_module();
+status_t module_init_fake_kernel_module(void);
 
 /**
  * @brief Notify the module system of a device being attached.
@@ -419,9 +422,10 @@ void module_init_fake_kernel_module();
  * @param type The device type string.
  * @param name The unique device name string.
  * @param flags Load flags, see `module_load_flags_t`.
- * @return On success, the amount of modules loaded. On failure, `_FAIL` and `errno` is set.
+ * @param loadedCount Output pointer for the amount of modules loaded, can be `NULL`.
+ * @return An appropriate status value.
  */
-uint64_t module_device_attach(const char* type, const char* name, module_load_flags_t flags);
+status_t module_device_attach(const char* type, const char* name, module_load_flags_t flags, uint64_t* loadedCount);
 
 /**
  * @brief Notify the module system of a device being detached.

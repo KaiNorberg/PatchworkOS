@@ -12,7 +12,6 @@
 
 #include <sys/map.h>
 #include <assert.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/math.h>
@@ -77,7 +76,7 @@ status_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress
 
     if (flags & SPACE_USE_PMM_BITMAP)
     {
-        if (page_table_init(&space->pageTable, space_pmm_bitmap_alloc_pages, pmm_free_pages) == _FAIL)
+        if (!page_table_init(&space->pageTable, space_pmm_bitmap_alloc_pages, pmm_free_pages))
         {
             return ERR(MMU, NOMEM);
         }
@@ -86,7 +85,7 @@ status_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress
     }
     else
     {
-        if (page_table_init(&space->pageTable, pmm_alloc_pages, pmm_free_pages) == _FAIL)
+        if (!page_table_init(&space->pageTable, pmm_alloc_pages, pmm_free_pages))
         {
             return ERR(MMU, NOMEM);
         }
@@ -177,7 +176,7 @@ static status_t space_populate_user_region(space_t* space, const void* buffer, s
         }
 
         pfn_t pfn = pmm_alloc();
-        if (pfn == _FAIL)
+        if (pfn == PFN_INVALID)
         {
             return ERR(MMU, NOMEM);
         }

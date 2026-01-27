@@ -51,20 +51,18 @@ void timer_ack_eoi(interrupt_frame_t* frame)
     }
 }
 
-uint64_t timer_source_register(const timer_source_t* source)
+status_t timer_source_register(const timer_source_t* source)
 {
     if (source == NULL || source->set == NULL || source->precision == 0 || source->name == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(SCHED, INVAL);
     }
 
     rwlock_write_acquire(&sourcesLock);
     if (sourceCount >= TIMER_MAX_SOURCES)
     {
         rwlock_write_release(&sourcesLock);
-        errno = ENOSPC;
-        return _FAIL;
+        return ERR(SCHED, MTIMER);
     }
 
     for (uint32_t i = 0; i < sourceCount; i++)
@@ -72,7 +70,7 @@ uint64_t timer_source_register(const timer_source_t* source)
         if (sources[i] == source)
         {
             rwlock_write_release(&sourcesLock);
-            return 0;
+            return OK;
         }
     }
 
@@ -87,7 +85,7 @@ uint64_t timer_source_register(const timer_source_t* source)
     rwlock_write_release(&sourcesLock);
 
     LOG_INFO("registered timer source '%s'%s\n", source->name, bestSourceUpdated ? " (best source)" : "");
-    return 0;
+    return OK;
 }
 
 void timer_source_unregister(const timer_source_t* source)

@@ -56,6 +56,17 @@ static inline uint64_t hash_uint64(uint64_t x)
 }
 
 /**
+ * @brief Hash a null-terminated string.
+ * 
+ * @param str The string to hash.
+ * @return The hash.
+ */
+static inline uint64_t hash_string(const char* str)
+{
+    return hash_buffer(str, strlen(str));
+}
+
+/**
  * @brief Intrusive map entry structure.
  * @struct map_entry_t
  */

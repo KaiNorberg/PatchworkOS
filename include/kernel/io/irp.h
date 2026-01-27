@@ -295,13 +295,13 @@ status_t irp_get(irp_t** out, irp_pool_t* pool);
  *
  * All MDLs associated with a IRP will be cleaned up when finished.
  *
- * @param out Output pointer for the MDL.
  * @param irp The IRP to associate the MDL with.
+ * @param out Output pointer for the MDL.
  * @param addr The virtual address of the memory region to add to the MDL, or `NULL` for a blank MDL.
  * @param size The size of the memory region.
  * @return An appropriate status value.
  */
-status_t irp_get_mdl(mdl_t** out, irp_t* irp, const void* addr, size_t size);
+status_t irp_get_mdl(irp_t* irp, mdl_t** out, const void* addr, size_t size);
 
 /**
  * @brief Retrieve the IRP pool that an IRP was allocated from.
@@ -479,8 +479,9 @@ void irp_call_direct(irp_t* irp, irp_func_t func);
  * the IRP to be returned to its pool.
  *
  * @param irp The IRP to complete.
+ * @param status The status of the completed operation, if `OK` then the previous status is kept.
  */
-void irp_complete(irp_t* irp);
+void irp_complete(irp_t* irp, status_t status);
 
 /**
  * @brief Set the completion callback and context for the next frame in the IRP stack.

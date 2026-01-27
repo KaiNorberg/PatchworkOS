@@ -6,6 +6,8 @@ extern "C"
 {
 #endif
 
+#include "_libstd/config.h"
+
 /* 7.18.1.1 Exact-width integer types */
 typedef __INT8_TYPE__ int8_t;
 typedef __UINT8_TYPE__ uint8_t;

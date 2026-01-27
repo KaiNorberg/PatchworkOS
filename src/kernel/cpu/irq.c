@@ -9,11 +9,11 @@
 #include <kernel/sync/rwlock.h>
 
 #include <assert.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <sys/bitmap.h>
 #include <sys/list.h>
 #include <sys/math.h>
+#include <sys/status.h>
 
 static irq_t irqs[VECTOR_EXTERNAL_AMOUNT] = {0};
 
@@ -31,11 +31,11 @@ static irq_t* irq_get(irq_virt_t virt)
     return &irqs[virt - VECTOR_EXTERNAL_START];
 }
 
-static uint64_t irq_update(irq_t* irq)
+static status_t irq_update(irq_t* irq)
 {
     if (irq->domain == NULL || irq->domain->chip == NULL)
     {
-        return 0; // Nothing to do
+        return OK; // Nothing to do
     }
 
     if (!list_is_empty(&irq->handlers))
@@ -44,7 +44,7 @@ static uint64_t irq_update(irq_t* irq)
     }
 
     irq->domain->chip->disable(irq);
-    return 0;
+    return OK;
 }
 
 // Must be called with domainsLock held
@@ -62,7 +62,7 @@ static irq_domain_t* irq_domain_lookup(irq_phys_t phys)
     return NULL;
 }
 
-static uint64_t irq_domain_rebind_orphaned_irqs(irq_domain_t* newDomain)
+static status_t irq_domain_rebind_orphaned_irqs(irq_domain_t* newDomain)
 {
     for (irq_virt_t virt = VECTOR_EXTERNAL_START; virt < VECTOR_EXTERNAL_END; virt++)
     {
@@ -77,7 +77,8 @@ static uint64_t irq_domain_rebind_orphaned_irqs(irq_domain_t* newDomain)
         }
 
         irq->domain = newDomain;
-        if (irq_update(irq) == _FAIL)
+        status_t status = irq_update(irq);
+        if (IS_ERR(status))
         {
             irq->domain = NULL;
             rwlock_write_release(&irq->lock);
@@ -99,14 +100,14 @@ static uint64_t irq_domain_rebind_orphaned_irqs(irq_domain_t* newDomain)
                 }
                 revIrq->domain = NULL;
             }
-            return _FAIL;
+            return status;
         }
 
         LOG_INFO("mapped IRQ 0x%02x to 0x%02x while adding '%s'\n", irq->phys, virt, irq->domain->chip->name);
         rwlock_write_release(&irq->lock);
     }
 
-    return 0;
+    return OK;
 }
 
 void irq_init(void)
@@ -167,12 +168,11 @@ void irq_dispatch(interrupt_frame_t* frame)
     }
 }
 
-uint64_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu_t* cpu)
+status_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu_t* cpu)
 {
     if (out == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(INT, INVAL);
     }
 
     RWLOCK_READ_SCOPE(&domainsLock);
@@ -194,8 +194,7 @@ uint64_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu
             if (irq->flags != flags || irq->flags & IRQ_EXCLUSIVE)
             {
                 rwlock_write_release(&irq->lock);
-                errno = EBUSY;
-                return _FAIL;
+                return ERR(INT, BUSY);
             }
 
             targetVirt = virt;
@@ -223,8 +222,7 @@ uint64_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu
 
     if (targetVirt == 0)
     {
-        errno = ENOSPC;
-        return _FAIL;
+        return ERR(INT, NOSPACE);
     }
 
     irq_t* irq = irq_get(targetVirt);
@@ -236,17 +234,18 @@ uint64_t irq_virt_alloc(irq_virt_t* out, irq_phys_t phys, irq_flags_t flags, cpu
     irq->cpu = cpu;
     irq->domain = irq_domain_lookup(phys);
 
-    if (irq_update(irq) == _FAIL)
+    status_t status = irq_update(irq);
+    if (IS_ERR(status))
     {
         rwlock_write_release(&irq->lock);
-        return _FAIL;
+        return status;
     }
 
     irq->refCount++;
     rwlock_write_release(&irq->lock);
 
     *out = targetVirt;
-    return 0;
+    return OK;
 }
 
 void irq_virt_free(irq_virt_t virt)
@@ -286,35 +285,33 @@ void irq_virt_free(irq_virt_t virt)
     }
 }
 
-uint64_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu)
+status_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu)
 {
     if (cpu == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(INT, INVAL);
     }
 
     irq_t* irq = irq_get(virt);
     if (irq == NULL)
     {
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(INT, NOENT);
     }
     RWLOCK_WRITE_SCOPE(&irq->lock);
 
     if (irq->domain == NULL || irq->domain->chip == NULL)
     {
-        errno = ENODEV;
-        return _FAIL;
+        return ERR(INT, NODEV);
     }
 
     if (!list_is_empty(&irq->handlers))
     {
         irq->domain->chip->disable(irq);
         irq->cpu = cpu;
-        if (irq->domain->chip->enable(irq) == _FAIL)
+        status_t status = irq->domain->chip->enable(irq);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
     }
     else
@@ -322,15 +319,14 @@ uint64_t irq_virt_set_affinity(irq_virt_t virt, cpu_t* cpu)
         irq->cpu = cpu;
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, void* data)
+status_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, void* data)
 {
     if (chip == NULL || chip->enable == NULL || chip->disable == NULL || start >= end)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(INT, INVAL);
     }
 
     RWLOCK_WRITE_SCOPE(&domainsLock);
@@ -340,16 +336,14 @@ uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, v
     {
         if (MAX(start, existing->start) < MIN(end, existing->end))
         {
-            errno = EEXIST;
-            return _FAIL;
+            return ERR(INT, EXIST);
         }
     }
 
     irq_domain_t* domain = malloc(sizeof(irq_domain_t));
     if (domain == NULL)
     {
-        errno = ENOMEM;
-        return _FAIL;
+        return ERR(INT, NOMEM);
     }
     list_entry_init(&domain->entry);
     domain->chip = chip;
@@ -359,14 +353,15 @@ uint64_t irq_chip_register(irq_chip_t* chip, irq_phys_t start, irq_phys_t end, v
 
     list_push_back(&domains, &domain->entry);
 
-    if (irq_domain_rebind_orphaned_irqs(domain) == _FAIL)
+    status_t status = irq_domain_rebind_orphaned_irqs(domain);
+    if (IS_ERR(status))
     {
         list_remove(&domain->entry);
         free(domain);
-        return _FAIL;
+        return status;
     }
 
-    return 0;
+    return OK;
 }
 
 void irq_chip_unregister(irq_chip_t* chip, irq_phys_t start, irq_phys_t end)
@@ -420,19 +415,17 @@ uint64_t irq_chip_amount(void)
     return list_size(&domains);
 }
 
-uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* data)
+status_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* data)
 {
     if (func == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(INT, INVAL);
     }
 
     irq_t* irq = irq_get(virt);
     if (irq == NULL)
     {
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(INT, NOENT);
     }
 
     RWLOCK_WRITE_SCOPE(&irq->lock);
@@ -442,16 +435,14 @@ uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* data)
     {
         if (iter->func == func)
         {
-            errno = EEXIST;
-            return _FAIL;
+            return ERR(INT, EXIST);
         }
     }
 
     irq_handler_t* handler = malloc(sizeof(irq_handler_t));
     if (handler == NULL)
     {
-        errno = ENOMEM;
-        return _FAIL;
+        return ERR(INT, NOMEM);
     }
     list_entry_init(&handler->entry);
     handler->func = func;
@@ -460,13 +451,14 @@ uint64_t irq_handler_register(irq_virt_t virt, irq_func_t func, void* data)
 
     list_push_back(&irq->handlers, &handler->entry);
 
-    if (irq_update(irq) == _FAIL)
+    status_t status = irq_update(irq);
+    if (IS_ERR(status))
     {
         free(handler);
-        return _FAIL;
+        return status;
     }
 
-    return 0;
+    return OK;
 }
 
 void irq_handler_unregister(irq_func_t func, irq_virt_t virt)

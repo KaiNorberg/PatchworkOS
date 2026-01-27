@@ -9,7 +9,6 @@
 #include <kernel/sync/futex.h>
 #include <kernel/sync/lock.h>
 
-#include <errno.h>
 #include <stdlib.h>
 #include <sys/map.h>
 

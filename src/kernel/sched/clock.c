@@ -44,20 +44,18 @@ static void clock_update_best_sources(void)
     }
 }
 
-uint64_t clock_source_register(const clock_source_t* source)
+status_t clock_source_register(const clock_source_t* source)
 {
     if (source == NULL || (source->read_ns == NULL && source->read_epoch == NULL) || source->precision == 0)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(SCHED, INVAL);
     }
 
     rwlock_write_acquire(&sourcesLock);
     if (sourceCount >= CLOCK_MAX_SOURCES)
     {
         rwlock_write_release(&sourcesLock);
-        errno = ENOSPC;
-        return _FAIL;
+        return ERR(SCHED, MCLOCK);
     }
 
     sources[sourceCount++] = source;
@@ -66,7 +64,7 @@ uint64_t clock_source_register(const clock_source_t* source)
     rwlock_write_release(&sourcesLock);
 
     LOG_INFO("registered system timer source '%s' with precision %lu ns\n", source->name, source->precision);
-    return 0;
+    return OK;
 }
 
 void clock_source_unregister(const clock_source_t* source)
@@ -137,21 +135,14 @@ void clock_wait(clock_t nanoseconds)
     }
 }
 
-SYSCALL_DEFINE(SYS_UPTIME, clock_t)
+SYSCALL_DEFINE(SYS_UPTIME)
 {
-    return clock_uptime();
+    *_result = clock_uptime();
+    return OK;
 }
 
-SYSCALL_DEFINE(SYS_EPOCH, time_t, time_t* timePtr)
+SYSCALL_DEFINE(SYS_TIME)
 {
-    time_t epoch = clock_epoch();
-    if (timePtr != NULL)
-    {
-        if (thread_copy_to_user(thread_current(), timePtr, &epoch, sizeof(epoch)) == _FAIL)
-        {
-            return _FAIL;
-        }
-    }
-
-    return epoch;
+    *_result = clock_epoch();
+    return OK;
 }

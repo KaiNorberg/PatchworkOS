@@ -23,7 +23,8 @@
 static void exception_handle_user(interrupt_frame_t* frame, const char* note)
 {
     thread_t* thread = thread_current_unsafe();
-    if (thread_send_note(thread, note) == _FAIL)
+    status_t status = thread_send_note(thread, note);
+    if (IS_ERR(status))
     {
         atomic_store(&thread->state, THREAD_DYING);
         process_kill(thread->process, note);
@@ -137,8 +138,6 @@ static void exception_user_page_fault_handler(interrupt_frame_t* frame)
 
 static void exception_handler(interrupt_frame_t* frame)
 {
-    errno_t err = errno;
-
     switch (frame->vector)
     {
     case VECTOR_DIVIDE_ERROR:
@@ -178,8 +177,6 @@ static void exception_handler(interrupt_frame_t* frame)
     default:
         panic(frame, "unhandled exception vector 0x%x", frame->vector);
     }
-
-    errno = err;
 }
 
 void interrupt_handler(interrupt_frame_t* frame)

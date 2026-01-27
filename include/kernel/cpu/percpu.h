@@ -69,6 +69,11 @@ typedef struct
 } percpu_def_t;
 
 /**
+ * @brief Invalid percpu value.
+ */
+#define PERCPU_INVALID ((percpu_t)-1)
+
+/**
  * @brief Attribute specifying that the variable is an offset into the `GS` segment register.
  * @def PERCPU
  */
@@ -159,7 +164,7 @@ void percpu_init(cpu_t* cpu);
  * @brief Allocates a percpu variable.
  *
  * @param size The size of the percpu variable.
- * @return The offset into the `GS` segment register, or `_FAIL` on failure.
+ * @return On success, the offset into the `GS` segment register. On failure, `PERCPU_INVALID`.
  */
 percpu_t percpu_alloc(size_t size);
 

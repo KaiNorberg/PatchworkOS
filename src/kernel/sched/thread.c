@@ -115,7 +115,7 @@ void thread_free(thread_t* thread)
     rcu_call(&thread->rcu, rcu_call_cache_free, thread);
 }
 
-status_t thread_kernel_create(tid_t* out, thread_kernel_entry_t entry, void* arg)
+status_t thread_kernel_create(thread_kernel_entry_t entry, void* arg, tid_t* out)
 {
     if (out == NULL || entry == NULL)
     {
@@ -137,7 +137,10 @@ status_t thread_kernel_create(tid_t* out, thread_kernel_entry_t entry, void* arg
     thread->frame.ss = GDT_SS_RING0;
     thread->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
 
-    *out = thread->id;
+    if (out != NULL)
+    {
+        *out = thread->id;
+    }
     sched_submit(thread);
     return OK;
 }
@@ -165,11 +168,12 @@ bool thread_is_note_pending(thread_t* thread)
     return note_amount(&thread->notes) != 0;
 }
 
-uint64_t thread_send_note(thread_t* thread, const char* string)
+status_t thread_send_note(thread_t* thread, const char* string)
 {
-    if (note_send(&thread->notes, string) == _FAIL)
+    status_t status = note_send(&thread->notes, string);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     thread_state_t expected = THREAD_BLOCKED;
@@ -178,17 +182,13 @@ uint64_t thread_send_note(thread_t* thread, const char* string)
         wait_unblock_thread(thread, EINTR);
     }
 
-    return 0;
+    return OK;
 }
 
-SYSCALL_DEFINE(SYS_ERRNO, errno_t)
+SYSCALL_DEFINE(SYS_GETTID)
 {
-    return errno;
-}
-
-SYSCALL_DEFINE(SYS_GETTID, tid_t)
-{
-    return thread_current()->id;
+    *_result = thread_current()->id;
+    return OK;
 }
 
 status_t thread_copy_from_user(thread_t* thread, void* dest, const void* userSrc, uint64_t length)
@@ -381,24 +381,23 @@ status_t thread_load_atomic_from_user(thread_t* thread, atomic_uint64_t* userObj
     return OK;
 }
 
-SYSCALL_DEFINE(SYS_ARCH_PRCTL, uint64_t, arch_prctl_t op, uintptr_t addr)
+SYSCALL_DEFINE(SYS_ARCH_PRCTL, arch_prctl_t op, uintptr_t addr)
 {
     thread_t* thread = thread_current();
 
+    status_t status = OK;
     switch (op)
     {
     case ARCH_SET_FS:
         thread->fsBase = addr;
         msr_write(MSR_FS_BASE, addr);
-        return 0;
+    break;
     case ARCH_GET_FS:
-        if (IS_ERR(thread_copy_to_user(thread, (void*)addr, &thread->fsBase, sizeof(uintptr_t))))
-        {
-            return _FAIL;
-        }
-        return 0;
+        status = thread_copy_to_user(thread, (void*)addr, &thread->fsBase, sizeof(uintptr_t));
+    break;
     default:
-        errno = EINVAL;
-        return _FAIL;
+        status = ERR(SCHED, INVAL);
     }
+
+    return status;
 }

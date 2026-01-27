@@ -7,6 +7,7 @@
 #include <sys/defs.h>
 #include <sys/list.h>
 #include <sys/status.h>
+#include <sys/syscall.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -254,27 +255,37 @@ typedef struct ioring
  * @param address Desired address to allocate the ring, or `NULL` to let the kernel choose.
  * @param sentries Number of entires to allocate for the submission queue, must be a power of two.
  * @param centries Number of entries to allocate for the completion queue, must be a power of two.
- * @return On success, the ID of the new I/O ring. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-ioring_id_t ioring_setup(ioring_t* ring, void* address, size_t sentries, size_t centries);
+static inline status_t ioring_setup(ioring_t* ring, void* address, size_t sentries, size_t centries)
+{
+    return syscall4(SYS_IORING_SETUP, NULL, (uintptr_t)ring, (uintptr_t)address, sentries, centries);
+}
 
 /**
  * @brief System call to deinitialize the I/O ring.
  *
- * @param id The ID of the I/O ring to teardown.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @param ring The ring to deinitialize.
+ * @return An appropriate status value.
  */
-uint64_t ioring_teardown(ioring_id_t id);
+static inline status_t ioring_teardown(ioring_t* ring)
+{
+    return syscall1(SYS_IORING_TEARDOWN, NULL, ring->id);
+}
 
 /**
  * @brief System call to notify the kernel of new submission queue entries (SQEs).
  *
- * @param id The ID of the I/O ring to notify.
+ * @param ring The ring to enter.
  * @param amount The number of SQEs that the kernel should process.
  * @param wait The minimum number of completion queue entries (CQEs) to wait for.
- * @return On success, the number of SQEs successfully processed. On failure, `_FAIL` and `errno` is set.
+ * @param processed Output pointer for the number of SQEs processed.
+ * @return An appropriate status value.
  */
-uint64_t ioring_enter(ioring_id_t id, size_t amount, size_t wait);
+static inline status_t ioring_enter(ioring_t* ring, size_t amount, size_t wait, size_t* processed)
+{
+    return syscall3(SYS_IORING_ENTER, processed, ring->id, (uintptr_t)amount, (uintptr_t)wait);
+}
 
 /**
  * @brief Retrieve the next available submission queue entry (SQE) from the ring.

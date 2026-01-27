@@ -2,6 +2,7 @@
 #include "syscalls.h"
 
 #include <stdlib.h>
+#include <sys/syscall.h>
 
 static _thread_t thread0;
 
@@ -69,7 +70,7 @@ void _threading_init(void)
     mtx_init(&entryMutex, mtx_recursive);
 
     _thread_init(&thread0);
-    thread0.id = _syscall_gettid();
+    thread0.id = gettid();
 
     _thread_insert(&thread0);
 
@@ -97,10 +98,10 @@ _thread_t* _thread_new(thrd_start_t func, void* arg)
 
     mtx_lock(&entryMutex);
 
-    thread->id = _syscall_thread_create(_thread_entry, thread);
-    if (thread->id == _FAIL)
+    status_t status = syscall2(SYS_THREAD_CREATE, &thread->id, (uintptr_t)_thread_entry, (uintptr_t)thread);
+    if (IS_ERR(status))
     {
-        errno = _syscall_errno();
+        errno = ENOMEM;
         mtx_unlock(&entryMutex);
         free(thread);
         return NULL;

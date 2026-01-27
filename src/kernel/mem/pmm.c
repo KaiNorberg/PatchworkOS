@@ -12,7 +12,6 @@
 #include <stdint.h>
 #include <sys/bitmap.h>
 
-#include <errno.h>
 #include <string.h>
 #include <sys/math.h>
 #include <sys/proc.h>
@@ -278,12 +277,12 @@ bool pmm_alloc_pages(pfn_t* pfns, size_t count)
     for (size_t i = 0; i < count; i++)
     {
         pfns[i] = pmm_stack_pop();
-        if (pfns[i] == _FAIL)
+        if (pfns[i] == PFN_INVALID)
         {
             pfns[i] = pmm_bitmap_set(1, CONFIG_PMM_BITMAP_MAX_ADDR / PAGE_SIZE, 1);
         }
 
-        if (pfns[i] == _FAIL)
+        if (pfns[i] == PFN_INVALID)
         {
             LOG_WARN("out of memory in pmm_alloc_pages()\n");
             for (size_t j = 0; j < i; j++)

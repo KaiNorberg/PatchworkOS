@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <sys/defs.h>
+#include <sys/status.h>
 
 /**
  * @brief I/O port operations and reservations
@@ -47,12 +48,9 @@ typedef uint16_t port_t;
  * @param alignment The alignment of the I/O ports to reserve.
  * @param length The amount of contiguous I/O ports to reserve.
  * @param owner A string identifying the owner of the reservation, for debugging purposes, can be `NULL`.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `EOVERFLOW`: The requested range overflows.
- * - `ENOSPC`: No suitable range of I/O ports available.
+ * @return An appropriate status value.
  */
-uint64_t port_reserve(port_t* out, port_t minBase, port_t maxBase, uint64_t alignment, uint64_t length,
+status_t port_reserve(port_t* out, port_t minBase, port_t maxBase, uint64_t alignment, uint64_t length,
     const char* owner);
 
 /**

@@ -26,7 +26,6 @@
 #include <kernel/utils/ref.h>
 
 #include <assert.h>
-#include <errno.h>
 #include <sys/map.h>
 #include <stdatomic.h>
 #include <stdint.h>
@@ -36,12 +35,19 @@
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>
+#include <sys/status.h>
 
 static process_t* kernelProcess = NULL;
 
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 
-static map_t pidMap = MAP_CREATE();
+static bool pid_map_cmp(map_entry_t* entry, const void* key)
+{
+    process_t* process = CONTAINER_OF(entry, process_t, mapEntry);
+    return process->id == (pid_t)(uintptr_t)key;
+}
+
+static MAP_CREATE(pidMap, 64, pid_map_cmp);
 
 list_t _processes = LIST_CREATE(_processes);
 static lock_t processesLock = LOCK_CREATE();
@@ -122,19 +128,17 @@ static void process_free(process_t* process)
     rcu_call(&process->rcu, rcu_call_cache_free, process);
 }
 
-process_t* process_new(priority_t priority, group_member_t* group, namespace_t* ns)
+status_t process_new(process_t** out, priority_t priority, group_member_t* group, namespace_t* ns)
 {
-    if (ns == NULL)
+    if (out == NULL || ns == NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(PROC, INVAL);
     }
 
     process_t* process = cache_alloc(&cache);
     if (process == NULL)
     {
-        errno = ENOMEM;
-        return NULL;
+        return ERR(PROC, NOMEM);
     }
 
     ref_init(&process->ref, process_free);
@@ -142,11 +146,12 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
     atomic_store(&process->priority, priority);
     process->status.buffer[0] = '\0';
 
-    if (space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
-            SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY) == _FAIL)
+    status_t status = space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
+            SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY);
+    if (IS_ERR(status))
     {
         cache_free(process);
-        return NULL;
+        return status;
     }
 
     process->nspace = REF(ns);
@@ -166,35 +171,30 @@ process_t* process_new(priority_t priority, group_member_t* group, namespace_t* 
     lock_init(&process->threads.lock);
     env_init(&process->env);
 
-    if (group_member_init(&process->group, group) == _FAIL)
+    status = group_member_init(&process->group, group);
+    if (IS_ERR(status))
     {
         process_free(process);
-        return NULL;
+        return status;
     }
 
     lock_acquire(&processesLock);
 
-    map_key_t mapKey = map_key_uint64(process->id);
-    if (map_insert(&pidMap, &mapKey, &process->mapEntry) == _FAIL)
-    {
-        lock_release(&processesLock);
-        process_free(process);
-        return NULL;
-    }
+    map_insert(&pidMap, &process->mapEntry, hash_uint64(process->id));
 
     LOG_DEBUG("created process pid=%d\n", process->id);
 
     list_push_back_rcu(&_processes, &process->entry);
     lock_release(&processesLock);
-    return REF(process);
+    *out = REF(process);
+    return OK;
 }
 
 process_t* process_get(pid_t id)
 {
     RCU_READ_SCOPE();
 
-    map_key_t mapKey = map_key_uint64(id);
-    map_entry_t* entry = map_get(&pidMap, &mapKey);
+    map_entry_t* entry = map_find(&pidMap, (void*)(uintptr_t)id, hash_uint64(id));
     if (entry == NULL)
     {
         return NULL;
@@ -268,7 +268,7 @@ void process_kill(process_t* process, const char* status)
 
     group_remove(&process->group);
 
-    wait_unblock(&process->dyingQueue, WAIT_ALL, EOK);
+    wait_unblock(&process->dyingQueue, WAIT_ALL, OK);
 
     reaper_push(process);
 }
@@ -276,33 +276,31 @@ void process_kill(process_t* process, const char* status)
 void process_remove(process_t* process)
 {
     lock_acquire(&processesLock);
-    map_remove(&pidMap, &process->mapEntry);
+    map_remove(&pidMap, &process->mapEntry, hash_uint64(process->id));
     list_remove_rcu(&process->entry);
     lock_release(&processesLock);
 
     UNREF(process);
 }
 
-uint64_t process_set_cmdline(process_t* process, char** argv, uint64_t argc)
+status_t process_set_cmdline(process_t* process, char** argv, uint64_t argc)
 {
     if (process == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(PROC, INVAL);
     }
 
     if (argv == NULL || argc == 0)
     {
         process->argv = NULL;
         process->argc = 0;
-        return 0;
+        return OK;
     }
 
     char** newArgv = malloc(sizeof(char*) * (argc + 1));
     if (newArgv == NULL)
     {
-        errno = ENOMEM;
-        return _FAIL;
+        return ERR(PROC, NOMEM);
     }
 
     uint64_t i = 0;
@@ -321,8 +319,7 @@ uint64_t process_set_cmdline(process_t* process, char** argv, uint64_t argc)
                 free(newArgv[j]);
             }
             free(newArgv);
-            errno = ENOMEM;
-            return _FAIL;
+            return ERR(PROC, NOMEM);
         }
         memcpy(newArgv[i], argv[i], len);
     }
@@ -344,7 +341,7 @@ uint64_t process_set_cmdline(process_t* process, char** argv, uint64_t argc)
     process->argv = newArgv;
     process->argc = newArgc;
 
-    return 0;
+    return OK;
 }
 
 bool process_has_thread(process_t* process, tid_t tid)
@@ -374,8 +371,7 @@ process_t* process_get_kernel(void)
         }
         UNREF_DEFER(ns);
 
-        kernelProcess = process_new(PRIORITY_MAX, NULL, ns);
-        if (kernelProcess == NULL)
+        if (IS_ERR(process_new(&kernelProcess, PRIORITY_MAX, NULL, ns)))
         {
             panic(NULL, "Failed to create kernel process");
         }
@@ -385,7 +381,8 @@ process_t* process_get_kernel(void)
     return kernelProcess;
 }
 
-SYSCALL_DEFINE(SYS_GETPID, pid_t)
+SYSCALL_DEFINE(SYS_GETPID)
 {
-    return process_current()->id;
+    *_result = process_current()->id;
+    return OK;
 }

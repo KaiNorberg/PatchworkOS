@@ -12,7 +12,6 @@
 #include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
 
-#include <errno.h>
 #include <sys/ioring.h>
 #include <sys/list.h>
 #include <time.h>
@@ -62,23 +61,24 @@ static inline status_t ioring_ctx_map(ioring_ctx_t* ctx, process_t* process, ior
     }
 
     // PML_OWNED means that the pages will be freed when unmapped.
-    void* kernelAddr = vmm_map_pages(NULL, NULL, pages, pageAmount, PML_WRITE | PML_PRESENT | PML_OWNED, NULL, NULL);
-    if (kernelAddr == NULL)
+    void* kernelAddr = NULL;
+    status_t status = vmm_map_pages(NULL, &kernelAddr, pages, pageAmount, PML_WRITE | PML_PRESENT | PML_OWNED, NULL, NULL);
+    if (IS_ERR(status))
     {
         pmm_free_pages(pages, pageAmount);
-        return _FAIL;
+        return status;
     }
 
-    void* userAddr =
-        vmm_map_pages(&process->space, address, pages, pageAmount, PML_WRITE | PML_PRESENT | PML_USER, NULL, NULL);
-    if (userAddr == NULL)
+    void* userAddr = address;
+    status = vmm_map_pages(&process->space, &userAddr, pages, pageAmount, PML_WRITE | PML_PRESENT | PML_USER, NULL, NULL);
+    if (IS_ERR(status))
     {
         vmm_unmap(NULL, kernelAddr, pageAmount * PAGE_SIZE);
-        return _FAIL;
+        return status;
     }
 
     irp_pool_t* pool;
-    status_t status = irp_pool_new(&pool, centries, process, ctx);
+    status = irp_pool_new(&pool, centries, process, ctx);
     if (IS_ERR(status))
     {
         vmm_unmap(&process->space, userAddr, pageAmount * PAGE_SIZE);
@@ -114,16 +114,16 @@ static inline status_t ioring_ctx_map(ioring_ctx_t* ctx, process_t* process, ior
     kernelRing->centries = centries;
     kernelRing->cmask = centries - 1;
 
-    ctx->irps = irps;
+    ctx->irps = pool;
     ctx->userAddr = userAddr;
     ctx->kernelAddr = kernelAddr;
     ctx->pageAmount = pageAmount;
 
     atomic_fetch_or(&ctx->flags, IORING_CTX_MAPPED);
-    return 0;
+    return OK;
 }
 
-static inline uint64_t ioring_ctx_unmap(ioring_ctx_t* ctx)
+static inline void ioring_ctx_unmap(ioring_ctx_t* ctx)
 {
     vmm_unmap(&ctx->irps->process->space, ctx->userAddr, ctx->pageAmount * PAGE_SIZE);
     vmm_unmap(NULL, ctx->kernelAddr, ctx->pageAmount * PAGE_SIZE);
@@ -132,7 +132,6 @@ static inline uint64_t ioring_ctx_unmap(ioring_ctx_t* ctx)
     ctx->irps = NULL;
 
     atomic_fetch_and(&ctx->flags, ~IORING_CTX_MAPPED);
-    return 0;
 }
 
 static inline uint64_t ioring_ctx_avail_cqes(ioring_ctx_t* ctx)
@@ -166,17 +165,14 @@ void ioring_ctx_deinit(ioring_ctx_t* ctx)
         return;
     }
 
-    if (ioring_ctx_acquire(ctx) == _FAIL)
+    if (!ioring_ctx_acquire(ctx))
     {
         panic(NULL, "failed to acquire async context for deinitialization");
     }
 
     if (atomic_load(&ctx->flags) & IORING_CTX_MAPPED)
     {
-        if (ioring_ctx_unmap(ctx) == _FAIL)
-        {
-            panic(NULL, "failed to deinitialize async context");
-        }
+        ioring_ctx_unmap(ctx);
     }
 
     ioring_ctx_release(ctx);
@@ -207,14 +203,14 @@ static void ioring_ctx_complete(irp_t* irp, void* _ptr)
 
     cqe_t* cqe = &ring->cqueue[tail & ring->cmask];
     cqe->op = irp->sqe.op;
-    cqe->error = irp->err;
+    cqe->status = irp->status;
     cqe->data = irp->sqe.data;
     cqe->_result = irp->res._raw;
 
     atomic_store_explicit(&ring->ctrl->ctail, tail + 1, memory_order_release);
     wait_unblock(&ctx->waitQueue, WAIT_ALL, EOK);
 
-    if (irp->err != EOK && !(irp->sqe.flags & SQE_HARDLINK))
+    if (IS_ERR(irp->status) && !(irp->sqe.flags & SQE_HARDLINK))
     {
         while (true)
         {
@@ -224,7 +220,7 @@ static void ioring_ctx_complete(irp_t* irp, void* _ptr)
                 break;
             }
 
-            irp_complete(next);
+            irp_complete(next, ERR(IO, CANCELLED));
         }
     }
     else
@@ -237,13 +233,7 @@ static void ioring_ctx_complete(irp_t* irp, void* _ptr)
         }
     }
 
-    irp_complete(irp);
-}
-
-static errno_t nop_cancel(irp_t* irp)
-{
-    irp_complete(irp);
-    return EOK;
+    irp_complete(irp, OK);
 }
 
 typedef struct
@@ -252,7 +242,7 @@ typedef struct
     irp_t* link;
 } ioring_ctx_notify_ctx_t;
 
-static uint64_t ioring_ctx_sqe_pop(ioring_ctx_t* ctx, ioring_ctx_notify_ctx_t* notify)
+static status_t ioring_ctx_sqe_pop(ioring_ctx_t* ctx, ioring_ctx_notify_ctx_t* notify)
 {
     ioring_t* ring = &ctx->ring;
 
@@ -261,14 +251,14 @@ static uint64_t ioring_ctx_sqe_pop(ioring_ctx_t* ctx, ioring_ctx_notify_ctx_t* n
 
     if (shead == stail)
     {
-        errno = EAGAIN;
-        return _FAIL;
+        return ERR(IO, AGAIN);
     }
 
-    irp_t* irp = irp_get(ctx->irps);
-    if (irp == NULL)
+    irp_t* irp;
+    status_t status = irp_get(&irp, ctx->irps);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     irp->sqe = ring->squeue[shead & ring->smask];
 
@@ -289,27 +279,25 @@ static uint64_t ioring_ctx_sqe_pop(ioring_ctx_t* ctx, ioring_ctx_notify_ctx_t* n
         notify->link = irp;
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t ioring_ctx_notify(ioring_ctx_t* ctx, size_t amount, size_t wait)
+status_t ioring_ctx_notify(ioring_ctx_t* ctx, size_t amount, size_t wait, size_t* processed)
 {
     if (amount == 0)
     {
-        return 0;
+        return OK;
     }
 
-    if (ioring_ctx_acquire(ctx) == _FAIL)
+    if (!ioring_ctx_acquire(ctx))
     {
-        errno = EBUSY;
-        return _FAIL;
+        return ERR(IO, ACQUIRED);
     }
 
     if (!(atomic_load(&ctx->flags) & IORING_CTX_MAPPED))
     {
         ioring_ctx_release(ctx);
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(IO, NOT_INIT);
     }
 
     ioring_ctx_notify_ctx_t notify = {
@@ -317,14 +305,16 @@ uint64_t ioring_ctx_notify(ioring_ctx_t* ctx, size_t amount, size_t wait)
         .link = NULL,
     };
 
-    size_t processed = 0;
-    while (processed < amount)
+    status_t status = OK;
+    size_t count = 0;
+    while (count < amount)
     {
-        if (ioring_ctx_sqe_pop(ctx, &notify) == _FAIL)
+        status = ioring_ctx_sqe_pop(ctx, &notify);
+        if (IS_ERR(status))
         {
             break;
         }
-        processed++;
+        count++;
     }
 
     while (!list_is_empty(&notify.irps))
@@ -335,28 +325,33 @@ uint64_t ioring_ctx_notify(ioring_ctx_t* ctx, size_t amount, size_t wait)
         irp_call_direct(irp, io_op_dispatch);
     }
 
+    if (processed != NULL)
+    {
+        *processed = count;
+    }
+
     if (wait == 0)
     {
         ioring_ctx_release(ctx);
-        return processed;
+        return status;
     }
 
-    if (WAIT_BLOCK(&ctx->waitQueue, ioring_ctx_avail_cqes(ctx) >= wait) == _FAIL)
+    status_t waitStatus = WAIT_BLOCK(&ctx->waitQueue, ioring_ctx_avail_cqes(ctx) >= wait);
+    if (IS_ERR(waitStatus))
     {
         ioring_ctx_release(ctx);
-        return processed > 0 ? processed : _FAIL;
+        return waitStatus;
     }
 
     ioring_ctx_release(ctx);
-    return processed;
+    return status;
 }
 
-SYSCALL_DEFINE(SYS_IORING_SETUP, ioring_id_t, ioring_t* userRing, void* address, size_t sentries, size_t centries)
+SYSCALL_DEFINE(SYS_IORING_SETUP, ioring_t* userRing, void* address, size_t sentries, size_t centries)
 {
     if (userRing == NULL || sentries == 0 || centries == 0 || !IS_POW2(sentries) || !IS_POW2(centries))
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(IO, INVAL);
     }
 
     process_t* process = process_current();
@@ -375,41 +370,32 @@ SYSCALL_DEFINE(SYS_IORING_SETUP, ioring_id_t, ioring_t* userRing, void* address,
 
     if (ctx == NULL)
     {
-        errno = EMFILE;
-        return _FAIL;
+        return ERR(IO, NOSPACE);
     }
 
-    if (ioring_ctx_map(ctx, process, id, userRing, address, sentries, centries) == _FAIL)
-    {
-        ioring_ctx_release(ctx);
-        return _FAIL;
-    }
-
+    status_t status = ioring_ctx_map(ctx, process, id, userRing, address, sentries, centries);
     ioring_ctx_release(ctx);
-    return id;
+    return status;
 }
 
-SYSCALL_DEFINE(SYS_IORING_TEARDOWN, uint64_t, ioring_id_t id)
+SYSCALL_DEFINE(SYS_IORING_TEARDOWN, ioring_id_t id)
 {
     process_t* process = process_current();
     if (id >= ARRAY_SIZE(process->rings))
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(IO, INVAL);
     }
 
     ioring_ctx_t* ctx = &process->rings[id];
-    if (ioring_ctx_acquire(ctx) == _FAIL)
+    if (!ioring_ctx_acquire(ctx))
     {
-        errno = EBUSY;
-        return _FAIL;
+        return ERR(IO, ACQUIRED);
     }
 
     if (!(atomic_load(&ctx->flags) & IORING_CTX_MAPPED))
     {
         ioring_ctx_release(ctx);
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(IO, NOT_INIT);
     }
 
     if (ctx->irps != NULL && atomic_load(&ctx->irps->pool.used) != 0)
@@ -420,30 +406,23 @@ SYSCALL_DEFINE(SYS_IORING_TEARDOWN, uint64_t, ioring_id_t id)
         if (atomic_load(&ctx->irps->pool.used) != 0)
         {
             ioring_ctx_release(ctx);
-            errno = EBUSY;
-            return _FAIL;
+            return ERR(IO, NOT_CANCELLABLE);
         }
     }
 
-    if (ioring_ctx_unmap(ctx) == _FAIL)
-    {
-        ioring_ctx_release(ctx);
-        return _FAIL;
-    }
-
+    ioring_ctx_unmap(ctx);
     ioring_ctx_release(ctx);
-    return 0;
+    return OK;
 }
 
-SYSCALL_DEFINE(SYS_IORING_ENTER, uint64_t, ioring_id_t id, size_t amount, size_t wait)
+SYSCALL_DEFINE(SYS_IORING_ENTER, ioring_id_t id, size_t amount, size_t wait)
 {
     process_t* process = process_current();
     if (id >= ARRAY_SIZE(process->rings))
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(IO, INVAL);
     }
 
     ioring_ctx_t* ctx = &process->rings[id];
-    return ioring_ctx_notify(ctx, amount, wait);
+    return ioring_ctx_notify(ctx, amount, wait, _result);
 }

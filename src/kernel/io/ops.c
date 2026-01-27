@@ -3,13 +3,13 @@
 #include <kernel/io/irp.h>
 #include <kernel/proc/process.h>
 
-#include <errno.h>
 #include <sys/ioring.h>
 
-static errno_t nop_cancel(irp_t* irp)
+static status_t nop_cancel(irp_t* irp)
 {
-    irp_complete(irp);
-    return EOK;
+    UNUSED(irp);
+
+    return OK;
 }
 
 static void io_op_nop(irp_t* irp)
@@ -47,8 +47,7 @@ static void io_op_cancel(irp_t* irp)
     }
 
     irp->res._raw = count;
-    irp->err = (count == 0) ? ENOENT : EOK;
-    irp_complete(irp);
+    irp_complete(irp, OK);
 }
 
 static void io_op_read(irp_t* irp)
@@ -58,15 +57,16 @@ static void io_op_read(irp_t* irp)
     file_t* file = file_table_get(&process->files, irp->sqe.fd);
     if (file == NULL)
     {
-        irp_error(irp, EINVAL);
+        irp_complete(irp, EBADF);
         return;
     }
 
     mdl_t* mdl;
-    if (irp_get_mdl(irp, irp->sqe.buffer, irp->sqe.count, &mdl) != EOK)
+    status_t status = irp_get_mdl(irp, &mdl, irp->sqe.buffer, irp->sqe.count);
+    if (IS_ERR(status))
     {
         UNREF(file);
-        irp_error(irp, EINVAL);
+        irp_complete(irp, status);
         return;
     }
 
@@ -81,15 +81,16 @@ static void io_op_write(irp_t* irp)
     file_t* file = file_table_get(&process->files, irp->sqe.fd);
     if (file == NULL)
     {
-        irp_error(irp, EINVAL);
+        irp_complete(irp, EBADF);
         return;
     }
 
     mdl_t* mdl;
-    if (irp_get_mdl(irp, irp->sqe.buffer, irp->sqe.count, &mdl) != EOK)
+    status_t status = irp_get_mdl(irp, &mdl, irp->sqe.buffer, irp->sqe.count);
+    if (IS_ERR(status))
     {
         UNREF(file);
-        irp_error(irp, EINVAL);
+        irp_complete(irp, status);
         return;
     }
 
@@ -104,7 +105,7 @@ static void io_op_poll(irp_t* irp)
     file_t* file = file_table_get(&process->files, irp->sqe.fd);
     if (file == NULL)
     {
-        irp_error(irp, EINVAL);
+        irp_complete(irp, ERR(IO, INVAL));
         return;
     }
 
@@ -159,7 +160,7 @@ void io_op_dispatch(irp_t* irp)
 
     if (irp->sqe.op >= ARRAY_SIZE(ops) || ops[irp->sqe.op] == NULL)
     {
-        irp_error(irp, EINVAL);
+        irp_complete(irp, ERR(IO, INVAL));
         return;
     }
 

@@ -13,7 +13,6 @@
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rwlock.h>
 
-#include <errno.h>
 #include <stdlib.h>
 #include <sys/map.h>
 #include <sys/fs.h>

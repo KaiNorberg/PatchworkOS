@@ -4,6 +4,7 @@
 #include <kernel/sync/lock.h>
 
 #include <sys/proc.h>
+#include <sys/status.h>
 #include <time.h>
 
 typedef struct cpu cpu_t;
@@ -43,11 +44,9 @@ typedef struct
  * @brief Register a system timer source.
  *
  * @param source The timer source to register.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `ENOSPC`: No more timer sources can be registered.
+ * @return An appropriate status value.
  */
-uint64_t clock_source_register(const clock_source_t* source);
+status_t clock_source_register(const clock_source_t* source);
 
 /**
  * @brief Unregister a system timer source.

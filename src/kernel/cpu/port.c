@@ -3,7 +3,6 @@
 
 #include <kernel/log/log.h>
 
-#include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <sys/bitmap.h>
@@ -12,29 +11,26 @@
 static BITMAP_CREATE(ports, PORT_MAX + 1);
 static lock_t lock = LOCK_CREATE();
 
-uint64_t port_reserve(port_t* out, port_t minBase, port_t maxBase, uint64_t alignment, uint64_t length,
+status_t port_reserve(port_t* out, port_t minBase, port_t maxBase, uint64_t alignment, uint64_t length,
     const char* owner)
 {
     UNUSED(owner);
 
     if (out == NULL || length == 0 || minBase > maxBase)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(PORT, INVAL);
     }
     LOCK_SCOPE(&lock);
 
     if (maxBase + length < maxBase || maxBase + length > ports.length)
     {
-        errno = EOVERFLOW;
-        return _FAIL;
+        return ERR(PORT, TOOBIG);
     }
 
     uint64_t base = bitmap_find_clear_region_and_set(&ports, minBase, maxBase + length, length, alignment);
     if (base == ports.length)
     {
-        errno = ENOSPC;
-        return _FAIL;
+        return ERR(PORT, NOSPACE);
     }
 
     *out = (port_t)base;

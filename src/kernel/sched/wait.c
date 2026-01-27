@@ -13,7 +13,6 @@
 #include <kernel/sync/lock.h>
 
 #include <assert.h>
-#include <errno.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <sys/list.h>

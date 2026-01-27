@@ -844,9 +844,9 @@ static status_t vfs_remove_recursive(path_t* path, process_t* process)
     return dir->ops->remove(dir, path->dentry);
 }
 
-status_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count, size_t* bytesWritten)
+status_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count, size_t* bytesRead)
 {
-    if (file == NULL || (buffer == NULL && count > 0) || bytesWritten == NULL)
+    if (file == NULL || (buffer == NULL && count > 0) || bytesRead == NULL)
     {
         return ERR(VFS, INVAL);
     }
@@ -898,7 +898,7 @@ status_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count, size_t* byte
             return status;
         }
         file->pos = ctx.skip + ctx.pos;
-        *bytesWritten = ctx.pos;
+        *bytesRead = ctx.pos;
         return OK;
     }
 
@@ -916,7 +916,7 @@ status_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count, size_t* byte
 
     if (IS_OK(status))
     {
-        *bytesWritten = ctx.written;
+        *bytesRead = ctx.written;
     }
     return status;
 }
@@ -1264,15 +1264,15 @@ SYSCALL_DEFINE(SYS_OPEN2, const char* pathString, fd_t fds[2])
 
     fd_t fdsLocal[2];
     fdsLocal[0] = file_table_open(&process->files, files[0]);
-    if (fdsLocal[0] == _FAIL)
+    if (fdsLocal[0] == FD_NONE)
     {
-        return ERR(VFS, NOMEM);
+        return ERR(VFS, BADFD);
     }
     fdsLocal[1] = file_table_open(&process->files, files[1]);
-    if (fdsLocal[1] == _FAIL)
+    if (fdsLocal[1] == FD_NONE)
     {
         file_table_close(&process->files, fdsLocal[0]);
-        return ERR(VFS, NOMEM);
+        return ERR(VFS, BADFD);
     }
 
     status = thread_copy_to_user(thread, fds, fdsLocal, sizeof(fd_t) * 2);
