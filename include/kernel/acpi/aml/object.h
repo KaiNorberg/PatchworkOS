@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 
-typedef struct acpi_device_cfg acpi_device_cfg_t;
+typedef struct acpi_dev acpi_dev_t;
 
 typedef struct aml_state aml_state_t;
 typedef struct aml_object aml_object_t;
@@ -244,9 +244,9 @@ typedef struct aml_device
      *
      * This pointer is managed by the devices system found in `devices.h` or @ref modules_acpi_devices.
      *
-     * @see acpi_device_cfg_t for more details.
+     * @see acpi_dev_t for more details.
      */
-    acpi_device_cfg_t* cfg;
+    acpi_dev_t* cfg;
 } aml_device_t;
 
 /**

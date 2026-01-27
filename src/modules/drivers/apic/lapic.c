@@ -11,7 +11,7 @@
 #include <assert.h>
 #include <sys/defs.h>
 
-static uintptr_t lapicBase = 0;
+static void* lapicBase = NULL;
 
 PERCPU_DEFINE_CTOR(lapic_t, _pcpu_lapic)
 {
@@ -77,43 +77,45 @@ void lapic_send_sipi(lapic_id_t id, void* entryPoint)
     lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_STARTUP | ((uintptr_t)entryPoint / PAGE_SIZE));
 }
 
-uint64_t lapic_global_init(void)
+status_t lapic_global_init(void)
 {
     madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, sizeof(madt_t), 0);
     if (madt == NULL)
     {
         LOG_ERR("no MADT table found\n");
-        return _FAIL;
+        return ERR(DRIVER, NO_ACPI_TABLE);
     }
 
     if (madt->header.length < sizeof(madt_t))
     {
         LOG_ERR("madt table too small\n");
-        return _FAIL;
+        return ERR(DRIVER, INVAL);
     }
 
     if (madt->localInterruptControllerAddress == (uintptr_t)NULL)
     {
         LOG_ERR("madt has invalid lapic address\n");
-        return _FAIL;
+        return ERR(DRIVER, INVAL);
     }
 
-    lapicBase = PML_LOWER_TO_HIGHER(madt->localInterruptControllerAddress);
-    if (vmm_map(NULL, (void*)lapicBase, madt->localInterruptControllerAddress, PAGE_SIZE,
-            PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) == NULL)
+    lapicBase = (void*)PML_LOWER_TO_HIGHER(madt->localInterruptControllerAddress);
+    status_t status = vmm_map(NULL, &lapicBase, madt->localInterruptControllerAddress, PAGE_SIZE,
+            PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL);
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to map local apic\n");
-        return _FAIL;
+        return status;
     }
 
     LOG_INFO("local apic mapped base=%p phys=%p\n", lapicBase, (uintptr_t)madt->localInterruptControllerAddress);
 
-    if (ipi_chip_register(&lapicIpiChip) == _FAIL)
+    status = ipi_chip_register(&lapicIpiChip);
+    if (IS_ERR(status))
     {
-        vmm_unmap(NULL, (void*)lapicBase, PAGE_SIZE);
+        vmm_unmap(NULL, lapicBase, PAGE_SIZE);
         LOG_ERR("failed to register lapic ipi chip\n");
-        return _FAIL;
+        return status;
     }
 
-    return 0;
+    return OK;
 }

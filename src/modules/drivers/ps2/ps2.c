@@ -14,7 +14,6 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
 
-#include <errno.h>
 #include <string.h>
 #include <time.h>
 
@@ -147,45 +146,46 @@ static const char* ps2_device_to_string(ps2_device_t device)
     }
 }
 
-static uint64_t ps2_controller_init(void)
+static status_t ps2_controller_init(void)
 {
     if (controllerInitialized)
     {
-        return 0;
+        return OK;
     }
     controllerInitialized = true;
 
-    if (ps2_cmd(PS2_CMD_FIRST_DISABLE) == _FAIL)
+    if (!ps2_cmd(PS2_CMD_FIRST_DISABLE))
     {
         LOG_ERR("ps2 first device disable failed during controller init\n");
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
-    if (ps2_cmd(PS2_CMD_SECOND_DISABLE) == _FAIL)
+    if (!ps2_cmd(PS2_CMD_SECOND_DISABLE))
     {
         LOG_ERR("ps2 second device disable failed during controller init\n");
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
     ps2_drain();
 
-    currentConfig = ps2_cmd_and_read(PS2_CMD_CFG_READ);
-    if (currentConfig == _FAIL)
+    uint8_t configByte;
+    if (!ps2_cmd_and_read(PS2_CMD_CFG_READ, &configByte))
     {
         LOG_ERR("ps2 failed to read initial config\n");
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
+    currentConfig = configByte;
 
     LOG_DEBUG("ps2 initial config byte: 0x%02x\n", currentConfig);
     currentConfig &=
         ~(PS2_CFG_FIRST_IRQ | PS2_CFG_FIRST_CLOCK_DISABLE | PS2_CFG_FIRST_TRANSLATION | PS2_CFG_SECOND_IRQ);
     LOG_DEBUG("ps2 setting config byte to: 0x%02x\n", currentConfig);
 
-    if (ps2_cmd_and_write(PS2_CMD_CFG_WRITE, currentConfig) == _FAIL)
+    if (!ps2_cmd_and_write(PS2_CMD_CFG_WRITE, currentConfig))
     {
         LOG_ERR("ps2 failed to write initial config\n");
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
-    return 0;
+    return OK;
 }
 
 static void ps2_controller_deinit(void)
@@ -206,70 +206,69 @@ static void ps2_controller_deinit(void)
         ps2_mouse_deinit(&devices[PS2_DEV_SECOND]);
     }
 
-    if (ps2_cmd(PS2_CMD_FIRST_DISABLE) == _FAIL)
+    if (!ps2_cmd(PS2_CMD_FIRST_DISABLE))
     {
         LOG_WARN("ps2 first device disable failed during deinit\n");
     }
 
-    if (ps2_cmd(PS2_CMD_SECOND_DISABLE) == _FAIL)
+    if (!ps2_cmd(PS2_CMD_SECOND_DISABLE))
     {
         LOG_WARN("ps2 second device disable failed during deinit\n");
     }
 }
 
-static uint64_t ps2_self_test(void)
+static status_t ps2_self_test(void)
 {
-    uint64_t cfg = ps2_cmd_and_read(PS2_CMD_CFG_READ);
-    if (cfg == _FAIL)
+    uint8_t cfg;
+    if (!ps2_cmd_and_read(PS2_CMD_CFG_READ, &cfg))
     {
         LOG_ERR("ps2 failed to read config byte.\n");
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
-    uint64_t response = ps2_cmd_and_read(PS2_CMD_SELF_TEST);
-    if (response == _FAIL)
+    uint8_t response;
+    if (!ps2_cmd_and_read(PS2_CMD_SELF_TEST, &response))
     {
         LOG_ERR("ps2 failed to send self test command\n");
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
     if (response != PS2_SELF_TEST_PASS)
     {
         LOG_ERR("ps2 self test failed %s", ps2_self_test_response_to_string(response));
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
-    if (ps2_cmd_and_write(PS2_CMD_CFG_WRITE, cfg) == _FAIL)
+    if (!ps2_cmd_and_write(PS2_CMD_CFG_WRITE, cfg))
     {
         LOG_ERR("ps2 failed to write config byte.\n");
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
-    return 0;
+    return OK;
 }
 
-static uint64_t ps2_check_if_dual_channel(void)
+static status_t ps2_check_if_dual_channel(void)
 {
-    uint64_t cfg = ps2_cmd_and_read(PS2_CMD_CFG_READ);
-    if (cfg == _FAIL)
+    uint8_t cfg;
+    if (!ps2_cmd_and_read(PS2_CMD_CFG_READ, &cfg))
     {
         LOG_ERR("ps2 failed to read config for dual channel check\n");
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
     if (cfg & PS2_CFG_SECOND_CLOCK_DISABLE)
     {
-        if (ps2_cmd(PS2_CMD_SECOND_ENABLE) == _FAIL)
+        if (!ps2_cmd(PS2_CMD_SECOND_ENABLE))
         {
             LOG_ERR("ps2 failed to send second port enable command\n");
-            return _FAIL;
+            return ERR(DRIVER, IO);
         }
 
-        cfg = ps2_cmd_and_read(PS2_CMD_CFG_READ);
-        if (cfg == _FAIL)
+        if (!ps2_cmd_and_read(PS2_CMD_CFG_READ, &cfg))
         {
             LOG_ERR("ps2 failed to read config after second port enable\n");
-            return _FAIL;
+            return ERR(DRIVER, IO);
         }
 
         if (!(cfg & PS2_CFG_SECOND_CLOCK_DISABLE))
@@ -277,10 +276,10 @@ static uint64_t ps2_check_if_dual_channel(void)
             isDualChannel = true;
             LOG_INFO("dual channel PS/2 controller detected\n");
 
-            if (ps2_cmd(PS2_CMD_SECOND_DISABLE) == _FAIL)
+            if (!ps2_cmd(PS2_CMD_SECOND_DISABLE))
             {
                 LOG_ERR("ps2 failed to disable second port after detection\n");
-                return _FAIL;
+                return ERR(DRIVER, IO);
             }
         }
         else
@@ -295,31 +294,30 @@ static uint64_t ps2_check_if_dual_channel(void)
         LOG_INFO("single channel PS/2 controller detected (second port clock not disabled)\n");
     }
 
-    return 0;
+    return OK;
 }
 
-static uint64_t ps2_devices_test(void)
+static status_t ps2_devices_test(void)
 {
-    uint64_t response = ps2_cmd_and_read(PS2_CMD_FIRST_TEST);
-    if (response == _FAIL || response != PS2_DEV_TEST_PASS)
+    uint8_t response;
+    if (!ps2_cmd_and_read(PS2_CMD_FIRST_TEST, &response) || response != PS2_DEV_TEST_PASS)
     {
         LOG_ERR("first port test failed with response %s.\n", ps2_device_test_response_to_string(response));
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
     if (!isDualChannel)
     {
-        return 0;
+        return OK;
     }
 
-    response = ps2_cmd_and_read(PS2_CMD_SECOND_TEST);
-    if (response == _FAIL || response != PS2_DEV_TEST_PASS)
+    if (!ps2_cmd_and_read(PS2_CMD_SECOND_TEST, &response) || response != PS2_DEV_TEST_PASS)
     {
         LOG_ERR("second port test failed with response %s.\n", ps2_device_test_response_to_string(response));
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
-    return 0;
+    return OK;
 }
 
 void ps2_drain(void)
@@ -332,184 +330,182 @@ void ps2_drain(void)
     }
 }
 
-uint64_t ps2_wait_until_set(ps2_status_bits_t status)
+bool ps2_wait_until_set(ps2_status_bits_t status)
 {
     uint64_t startTime = clock_uptime();
     while ((in8(statusPort) & status) == 0)
     {
         if ((clock_uptime() - startTime) > PS2_WAIT_TIMEOUT)
         {
-            errno = ETIMEDOUT;
-            return _FAIL;
+            return false;
         }
         ASM("pause");
     }
-    return 0;
+    return true;
 }
 
-uint64_t ps2_wait_until_clear(ps2_status_bits_t status)
+bool ps2_wait_until_clear(ps2_status_bits_t status)
 {
     uint64_t startTime = clock_uptime();
     while ((in8(statusPort) & status) != 0)
     {
         if ((clock_uptime() - startTime) > PS2_WAIT_TIMEOUT)
         {
-            errno = ETIMEDOUT;
-            return _FAIL;
+            return false;
         }
         ASM("pause");
     }
-    return 0;
+    return true;
 }
 
-uint64_t ps2_read(void)
+bool ps2_read(uint8_t* data)
 {
-    if (ps2_wait_until_set(PS2_STATUS_OUT_FULL) == _FAIL)
+    if (!ps2_wait_until_set(PS2_STATUS_OUT_FULL))
     {
-        errno = ETIMEDOUT;
-        return _FAIL;
+        return false;
     }
-    return in8(dataPort);
+    *data = in8(dataPort);
+    return true;
 }
 
-uint64_t ps2_read_no_wait(void)
+bool ps2_read_no_wait(uint8_t* data)
 {
     if (!(in8(statusPort) & PS2_STATUS_OUT_FULL))
     {
-        errno = EAGAIN;
-        return _FAIL;
+        return false;
     }
 
-    return in8(dataPort);
+    *data = in8(dataPort);
+    return true;
 }
 
-uint64_t ps2_write(uint8_t data)
+bool ps2_write(uint8_t data)
 {
-    if (ps2_wait_until_clear(PS2_STATUS_IN_FULL) == _FAIL)
+    if (!ps2_wait_until_clear(PS2_STATUS_IN_FULL))
     {
-        errno = ETIMEDOUT;
-        return _FAIL;
+        return false;
     }
     out8(dataPort, data);
-    return 0;
+    return true;
 }
 
-uint64_t ps2_cmd(ps2_cmd_t command)
+bool ps2_cmd(ps2_cmd_t command)
 {
-    if (ps2_wait_until_clear(PS2_STATUS_IN_FULL) == _FAIL)
+    if (!ps2_wait_until_clear(PS2_STATUS_IN_FULL))
     {
-        errno = ETIMEDOUT;
-        return _FAIL;
+        return false;
     }
     out8(commandPort, command);
-    return 0;
+    return true;
 }
 
-uint64_t ps2_cmd_and_read(ps2_cmd_t command)
+bool ps2_cmd_and_read(ps2_cmd_t command, uint8_t* data)
 {
-    if (ps2_cmd(command) == _FAIL)
+    if (!ps2_cmd(command))
     {
-        return _FAIL;
+        return false;
     }
-    return ps2_read();
+    return ps2_read(data);
 }
 
-uint64_t ps2_cmd_and_write(ps2_cmd_t command, uint8_t data)
+bool ps2_cmd_and_write(ps2_cmd_t command, uint8_t data)
 {
-    if (ps2_cmd(command) == _FAIL)
+    if (!ps2_cmd(command))
     {
-        return _FAIL;
+        return false;
     }
     return ps2_write(data);
 }
 
-static uint64_t ps2_device_init(ps2_device_t device)
+static status_t ps2_device_init(ps2_device_t device)
 {
     ps2_device_info_t* info = &devices[device];
 
-    if (ps2_device_cmd(device, PS2_DEV_CMD_RESET) == _FAIL)
+    if (!ps2_device_cmd(device, PS2_DEV_CMD_RESET))
     {
         LOG_ERR("%s port reset failed\n", ps2_device_to_string(device));
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
     clock_wait(PS2_LARGE_DELAY);
 
-    uint64_t response = ps2_read();
-    if (response == _FAIL)
+    uint8_t response;
+    if (!ps2_read(&response))
     {
         LOG_ERR("ps2 %s device reset failed to read response\n", ps2_device_to_string(device));
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
     if (response != PS2_DEV_RESPONSE_BAT_OK)
     {
         LOG_ERR("ps2 %s device reset failed, invalid response 0x%02x\n", ps2_device_to_string(device), response);
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
     // The device might send its id bytes here, but we don't care about them.
     ps2_drain();
 
-    if (ps2_device_cmd(device, PS2_DEV_CMD_DISABLE_SCANNING) == _FAIL)
+    if (!ps2_device_cmd(device, PS2_DEV_CMD_DISABLE_SCANNING))
     {
         LOG_ERR("ps2 %s device disable scanning failed\n", ps2_device_to_string(device));
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
     if (device == PS2_DEV_FIRST)
     {
         LOG_INFO("found PS/2 keyboard '%s' on IRQ %u\n", info->name, info->irq);
-        if (ps2_kbd_init(info) == _FAIL)
+        status_t status = ps2_kbd_init(info);
+        if (IS_ERR(status))
         {
             LOG_ERR("ps2 %s device keyboard initialization failed\n", ps2_device_to_string(device));
-            return _FAIL;
+            return status;
         }
     }
     else
     {
         LOG_INFO("found PS/2 mouse '%s' on IRQ %u\n", info->name, info->irq);
-        if (ps2_mouse_init(info) == _FAIL)
+        status_t status = ps2_mouse_init(info);
+        if (IS_ERR(status))
         {
             LOG_ERR("ps2 %s device mouse initialization failed\n", ps2_device_to_string(device));
-            return _FAIL;
+            return status;
         }
     }
 
-    if (ps2_device_cmd(device, PS2_DEV_CMD_ENABLE_SCANNING) == _FAIL)
+    if (!ps2_device_cmd(device, PS2_DEV_CMD_ENABLE_SCANNING))
     {
         LOG_ERR("ps2 %s device enable scanning failed\n", ps2_device_to_string(device));
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
     info->initialized = true;
-    return 0;
+    return OK;
 }
 
-uint64_t ps2_device_cmd(ps2_device_t device, ps2_device_cmd_t command)
+bool ps2_device_cmd(ps2_device_t device, ps2_device_cmd_t command)
 {
     for (uint8_t i = 0; i < PS2_COMMAND_RETRIES; i++)
     {
         if (device == PS2_DEV_SECOND)
         {
-            if (ps2_cmd(PS2_CMD_SECOND_WRITE) == _FAIL)
+            if (!ps2_cmd(PS2_CMD_SECOND_WRITE))
             {
-                return _FAIL;
+                return false;
             }
         }
-        if (ps2_write(command) == _FAIL)
+        if (!ps2_write(command))
         {
-            return _FAIL;
+            return false;
         }
 
-        uint64_t response = ps2_read();
-        if (response == _FAIL)
+        uint8_t response;
+        if (!ps2_read(&response))
         {
             continue;
         }
 
         if (response == PS2_DEV_RESPONSE_ACK)
         {
-            return 0;
+            return true;
         }
 
         if (response == PS2_DEV_RESPONSE_RESEND)
@@ -519,41 +515,41 @@ uint64_t ps2_device_cmd(ps2_device_t device, ps2_device_cmd_t command)
 
         LOG_WARN("%s device cmd 0x%02x got unexpected response 0x%02x\n", ps2_device_to_string(device), command,
             response);
-        return _FAIL;
+        return false;
     }
 
     LOG_ERR("%s device cmd 0x%02x failed after %d retries\n", ps2_device_to_string(device), command,
         PS2_COMMAND_RETRIES);
-    return _FAIL;
+    return false;
 }
 
-uint64_t ps2_device_cmd_and_read(ps2_device_t device, ps2_device_cmd_t command)
+bool ps2_device_cmd_and_read(ps2_device_t device, ps2_device_cmd_t command, uint8_t* data)
 {
-    if (ps2_device_cmd(device, command) == _FAIL)
+    if (!ps2_device_cmd(device, command))
     {
-        return _FAIL;
+        return false;
     }
-    return ps2_read();
+    return ps2_read(data);
 }
 
-uint64_t ps2_device_sub_cmd(ps2_device_t device, ps2_device_cmd_t command, uint8_t subCommand)
+bool ps2_device_sub_cmd(ps2_device_t device, ps2_device_cmd_t command, uint8_t subCommand)
 {
-    if (ps2_device_cmd(device, command) == _FAIL)
+    if (!ps2_device_cmd(device, command))
     {
-        return _FAIL;
+        return false;
     }
     return ps2_device_cmd(device, subCommand);
 }
 
-static uint64_t ps2_attach_device(const char* type, const char* name)
+static status_t ps2_attach_device(const char* type, const char* name)
 {
     LOCK_SCOPE(&attachLock);
 
-    acpi_device_cfg_t* acpiCfg = acpi_device_cfg_lookup(name);
+    acpi_dev_t* acpiCfg = acpi_dev_lookup(name);
     if (acpiCfg == NULL)
     {
         LOG_ERR("ps2 failed to get ACPI device config for '%s'\n", name);
-        return _FAIL;
+        return ERR(DRIVER, NO_ACPI_TABLE);
     }
 
     // We dont know if the controllers resources will be specified on the first device or the second device,
@@ -563,44 +559,57 @@ static uint64_t ps2_attach_device(const char* type, const char* name)
         if (controllerInitialized)
         {
             LOG_ERR("ps2 device '%s' cannot initialize controller (already initialized)\n", name);
-            return _FAIL;
+            return ERR(DRIVER, ALREADY_INIT);
         }
         controllerInitialized = true;
 
-        if (acpi_device_cfg_get_port(acpiCfg, 0, &dataPort) == _FAIL ||
-            acpi_device_cfg_get_port(acpiCfg, 1, &statusPort) == _FAIL)
+        status_t status = acpi_dev_get_port(acpiCfg, 0, &dataPort);
+        if (IS_ERR(status))
         {
             LOG_ERR("ps2 device '%s' has invalid status port resource\n", name);
-            return _FAIL;
+            return ERR(DRIVER, INVAL);
+        }
+        status = acpi_dev_get_port(acpiCfg, 1, &statusPort);
+        if (IS_ERR(status))
+        {
+            LOG_ERR("ps2 device '%s' has invalid command port resource\n", name);
+            return ERR(DRIVER, INVAL);
         }
         commandPort = statusPort; // Command port is the same as status port
 
-        if (ps2_controller_init() == _FAIL)
+        status = ps2_controller_init();
+        if (IS_ERR(status))
         {
             LOG_ERR("ps2 controller initialization failed\n");
-            return _FAIL;
+            return status;
         }
-        if (ps2_self_test() == _FAIL)
+
+        status = ps2_self_test();
+        if (IS_ERR(status))
         {
             LOG_ERR("ps2 controller self test failed\n");
-            return _FAIL;
+            return status;
         }
-        if (ps2_check_if_dual_channel() == _FAIL)
+
+        status = ps2_check_if_dual_channel();
+        if (IS_ERR(status))
         {
             LOG_ERR("ps2 controller dual channel check failed\n");
-            return _FAIL;
+            return status;
         }
-        if (ps2_devices_test() == _FAIL)
+
+        status = ps2_devices_test();
+        if (IS_ERR(status))
         {
             LOG_ERR("ps2 controller devices test failed\n");
-            return _FAIL;
+            return status;
         }
     }
 
     if (acpiCfg->irqCount != 1)
     {
         LOG_ERR("ps2 device '%s' has invalid IRQ resource count %d\n", name, acpiCfg->irqCount);
-        return _FAIL;
+        return ERR(DRIVER, INVAL);
     }
 
     ps2_device_t targetDevice;
@@ -615,21 +624,21 @@ static uint64_t ps2_attach_device(const char* type, const char* name)
     else
     {
         LOG_ERR("ps2 device '%s' has unknown type '%s'\n", name, type);
-        return _FAIL;
+        return ERR(DRIVER, INVAL);
     }
 
     if (devices[targetDevice].attached)
     {
         LOG_ERR("ps2 device '%s' cannot be attached to %s port (port already attached)\n", name,
             ps2_device_to_string(targetDevice));
-        return _FAIL;
+        return ERR(DRIVER, ACQUIRED);
     }
 
     if (devices[targetDevice].initialized)
     {
         LOG_ERR("ps2 device '%s' cannot be attached to %s port (port already in use by %s)\n", name,
             ps2_device_to_string(targetDevice), devices[targetDevice].name);
-        return _FAIL;
+        return ERR(DRIVER, ACQUIRED);
     }
 
     devices[targetDevice].pnpId = type;
@@ -670,24 +679,25 @@ static uint64_t ps2_attach_device(const char* type, const char* name)
     if (!controllerInitialized)
     {
         LOG_INFO("delaying ps2 device '%s' initialization (controller not initialized)\n", name);
-        return 0;
+        return OK;
     }
 
     uint64_t attachedAmount = devices[PS2_DEV_FIRST].attached + devices[PS2_DEV_SECOND].attached;
     if (isDualChannel && attachedAmount < PS2_DEV_COUNT)
     {
         LOG_INFO("delaying ps2 device '%s' initialization (waiting for other device)\n", name);
-        return 0;
+        return OK;
     }
 
     for (ps2_device_t dev = 0; dev < PS2_DEV_COUNT; dev++)
     {
         if (devices[dev].attached && !devices[dev].initialized)
         {
-            if (ps2_device_init(dev) == _FAIL)
+            status_t status = ps2_device_init(dev);
+            if (IS_ERR(status))
             {
                 LOG_ERR("ps2 failed to initialize device '%s' on %s port\n", name, ps2_device_to_string(dev));
-                return _FAIL;
+                return status;
             }
             devices[dev].initialized = true;
         }
@@ -697,10 +707,11 @@ static uint64_t ps2_attach_device(const char* type, const char* name)
 
     if (devices[PS2_DEV_FIRST].initialized)
     {
-        if (ps2_kbd_irq_register(&devices[PS2_DEV_FIRST]) == _FAIL)
+        status_t status = ps2_kbd_irq_register(&devices[PS2_DEV_FIRST]);
+        if (IS_ERR(status))
         {
             LOG_ERR("ps2 failed to register IRQ for keyboard device\n");
-            return _FAIL;
+            return status;
         }
 
         currentConfig |= PS2_CFG_FIRST_IRQ;
@@ -712,10 +723,11 @@ static uint64_t ps2_attach_device(const char* type, const char* name)
 
     if (devices[PS2_DEV_SECOND].initialized)
     {
-        if (ps2_mouse_irq_register(&devices[PS2_DEV_SECOND]) == _FAIL)
+        status_t status = ps2_mouse_irq_register(&devices[PS2_DEV_SECOND]);
+        if (IS_ERR(status))
         {
             LOG_ERR("ps2 failed to register IRQ for mouse device\n");
-            return _FAIL;
+            return status;
         }
         currentConfig |= PS2_CFG_SECOND_IRQ;
     }
@@ -724,44 +736,47 @@ static uint64_t ps2_attach_device(const char* type, const char* name)
         currentConfig |= PS2_CFG_SECOND_CLOCK_DISABLE;
     }
 
-    if (ps2_cmd_and_write(PS2_CMD_CFG_WRITE, currentConfig) == _FAIL)
+    if (!ps2_cmd_and_write(PS2_CMD_CFG_WRITE, currentConfig))
     {
         LOG_ERR("ps2 failed to write final config byte\n");
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
     if (devices[PS2_DEV_FIRST].initialized)
     {
-        if (ps2_cmd(PS2_CMD_FIRST_ENABLE) == _FAIL)
+        if (!ps2_cmd(PS2_CMD_FIRST_ENABLE))
         {
             LOG_ERR("ps2 failed to enable first port\n");
-            return _FAIL;
+            return ERR(DRIVER, IO);
         }
     }
 
     if (devices[PS2_DEV_SECOND].initialized)
     {
-        if (ps2_cmd(PS2_CMD_SECOND_ENABLE) == _FAIL)
+        if (!ps2_cmd(PS2_CMD_SECOND_ENABLE))
         {
             LOG_ERR("ps2 failed to enable second port\n");
-            return _FAIL;
+            return ERR(DRIVER, IO);
         }
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t _module_procedure(const module_event_t* event)
+status_t _module_procedure(const module_event_t* event)
 {
     switch (event->type)
     {
     case MODULE_EVENT_DEVICE_ATTACH:
-        if (ps2_attach_device(event->deviceAttach.type, event->deviceAttach.name) == _FAIL)
+    {
+        status_t status = ps2_attach_device(event->deviceAttach.type, event->deviceAttach.name);
+        if (IS_ERR(status))
         {
             ps2_controller_deinit();
-            return _FAIL;
+            return status;
         }
-        break;
+    }
+    break;
     case MODULE_EVENT_UNLOAD:
         ps2_controller_deinit();
         break;
@@ -769,7 +784,7 @@ uint64_t _module_procedure(const module_event_t* event)
         break;
     }
 
-    return 0;
+    return OK;
 }
 
 MODULE_INFO("PS2 Driver", "Kai Norberg", "A PS/2 keyboard and mouse driver", OS_VERSION, "MIT",

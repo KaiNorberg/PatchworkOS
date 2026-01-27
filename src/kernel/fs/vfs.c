@@ -599,6 +599,7 @@ typedef struct
     uint64_t written;
     path_t path;
     namespace_t* ns;
+    bool more;
 } vfs_dir_ctx_t;
 
 static bool vfs_dir_emit(dir_ctx_t* ctx, const char* name, vtype_t type)
@@ -606,6 +607,7 @@ static bool vfs_dir_emit(dir_ctx_t* ctx, const char* name, vtype_t type)
     vfs_dir_ctx_t* vctx = (vfs_dir_ctx_t*)ctx;
     if (vctx->written + sizeof(dirent_t) > vctx->count)
     {
+        vctx->more = true;
         return false;
     }
 
@@ -660,6 +662,7 @@ static status_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_
             .written = 0,
             .path = *path,
             .ns = ns,
+            .more = false,
         };
 
         path->dentry->ops->iterate(path->dentry, &vctx.ctx);
@@ -680,7 +683,8 @@ static status_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_
             {
                 if (ctx->pos + sizeof(dirent_t) > ctx->count)
                 {
-                    return OK;
+                    free(buf);
+                    return INFO(FS, MORE);
                 }
 
                 dirent_t* out = (dirent_t*)((uint8_t*)ctx->buffer + ctx->pos);
@@ -732,7 +736,7 @@ static status_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_
                 }
 
                 status = vfs_getdents_recursive_step(&childPath, mode, ctx, newPrefix, ns);
-                if (IS_ERR(status))
+                if (IS_ERR(status) || status == INFO(FS, MORE))
                 {
                     free(buf);
                     return status;
@@ -899,7 +903,7 @@ status_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count, size_t* byte
         }
         file->pos = ctx.skip + ctx.pos;
         *bytesRead = ctx.pos;
-        return OK;
+        return status;
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
@@ -909,7 +913,8 @@ status_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count, size_t* byte
         .count = count,
         .written = 0,
         .path = file->path,
-        .ns = ns};
+        .ns = ns,
+        .more = false};
 
     status_t status = file->path.dentry->ops->iterate(file->path.dentry, &ctx.ctx);
     file->pos = ctx.ctx.pos;
@@ -917,6 +922,10 @@ status_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count, size_t* byte
     if (IS_OK(status))
     {
         *bytesRead = ctx.written;
+        if (ctx.more)
+        {
+            return INFO(FS, MORE);
+        }
     }
     return status;
 }

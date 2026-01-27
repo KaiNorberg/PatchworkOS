@@ -220,35 +220,35 @@ void ps2_drain(void);
  * @brief Wait until status bit(s) are set.
  *
  * @param status Status bit(s) to wait for.
- * @return On success, `0`. On timeout, `_FAIL`.
+ * @return `true` on success, `false` on timeout.
  */
-uint64_t ps2_wait_until_set(ps2_status_bits_t status);
+bool ps2_wait_until_set(ps2_status_bits_t status);
 
 /**
  * @brief Wait until status bit(s) are clear.
  *
  * @param status Status bit(s) to wait for.
- * @return On success, `0`. On timeout, `_FAIL`.
+ * @return `true` on success, `false` on timeout.
  */
-uint64_t ps2_wait_until_clear(ps2_status_bits_t status);
+bool ps2_wait_until_clear(ps2_status_bits_t status);
 
 /**
  * @brief Read from the PS/2 controllers data port.
  *
  * Waits for the output buffer to be full, then reads a byte from the data port.
  *
- * @return On success, the response byte. On failure, `_FAIL` and `errno` is set to:
- * - `ETIMEOUT`: Timeout occurred while waiting for data.
+ * @param data Output pointer for the read byte.
+ * @return `true` on success, `false` on failure.
  */
-uint64_t ps2_read(void);
+bool ps2_read(uint8_t* data);
 
 /**
  * @brief Read from the PS/2 controllers data port without waiting.
  *
- * @return On success, the response byte. On failure, `_FAIL` and `errno` is set to:
- * - `EAGAIN`: No data available to read.
+ * @param data Output pointer for the read byte.
+ * @return `true` on success, `false` on failure. 
  */
-uint64_t ps2_read_no_wait(void);
+bool ps2_read_no_wait(uint8_t* data);
 
 /**
  * @brief Write to the PS/2 controllers data port.
@@ -256,58 +256,54 @@ uint64_t ps2_read_no_wait(void);
  * Waits for the input buffer to be empty, then writes a byte to the data port.
  *
  * @param data Byte to write.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `ETIMEOUT`: Timeout occurred while waiting to write.
+ * @return `true` on success, `false` on failure.
  */
-uint64_t ps2_write(uint8_t data);
+bool ps2_write(uint8_t data);
 
 /**
  * @brief Send a command to the PS/2 controller without reading response.
  *
  * @param command Command to send.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `ETIMEOUT`: Timeout occurred while waiting to send command.
+ * @return `true` on success, `false` on failure.
  */
-uint64_t ps2_cmd(ps2_cmd_t command);
+bool ps2_cmd(ps2_cmd_t command);
 
 /**
  * @brief Send a command to the PS/2 controller and read response.
  *
  * @param command Command to send.
- * @return On success, the response byte. On failure, `_FAIL` and `errno` is set to:
- * - `ETIMEOUT`: Timeout occurred while waiting to send command or read data.
+ * @param data Output pointer for the response byte.
+ * @return `true` on success, `false` on failure. 
  */
-uint64_t ps2_cmd_and_read(ps2_cmd_t command);
+bool ps2_cmd_and_read(ps2_cmd_t command, uint8_t* data);
 
 /**
  * @brief Send a command to the PS/2 controller and write data
  *
  * @param command Command to send.
  * @param data Data to write.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `ETIMEOUT`: Timeout occurred while waiting to send command or write data.
+ * @return `true` on success, `false` on failure. 
  */
-uint64_t ps2_cmd_and_write(ps2_cmd_t command, uint8_t data);
+bool ps2_cmd_and_write(ps2_cmd_t command, uint8_t data);
 
 /**
  * @brief Send a command to a PS/2 device without reading response.
  *
  * @param device Device to send command to.
  * @param command Command to send.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `ETIMEOUT`: Timeout occurred while waiting to send command.
+ * @return `true` on success, `false` on failure.
  */
-uint64_t ps2_device_cmd(ps2_device_t device, ps2_device_cmd_t command);
+bool ps2_device_cmd(ps2_device_t device, ps2_device_cmd_t command);
 
 /**
  * @brief Send a command to a PS/2 device and read response.
  *
  * @param device Device to send command to, specified by its port.
  * @param command Command to send.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `ETIMEOUT`: Timeout occurred while waiting to send command or read data.
+ * @param data Output pointer for the response byte.
+ * @return `true` on success, `false` on failure. 
  */
-uint64_t ps2_device_cmd_and_read(ps2_device_t device, ps2_device_cmd_t command);
+bool ps2_device_cmd_and_read(ps2_device_t device, ps2_device_cmd_t command, uint8_t* data);
 
 /**
  * @brief Send a command and a subcommand to a PS/2 device.
@@ -315,9 +311,8 @@ uint64_t ps2_device_cmd_and_read(ps2_device_t device, ps2_device_cmd_t command);
  * @param device Device to send command to, specified by its port.
  * @param command Command to send.
  * @param subCommand Subcommand to send.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `ETIMEOUT`: Timeout occurred while waiting to send command or subcommand.
+ * @return `true` on success, `false` on failure.
  */
-uint64_t ps2_device_sub_cmd(ps2_device_t device, ps2_device_cmd_t command, uint8_t subCommand);
+bool ps2_device_sub_cmd(ps2_device_t device, ps2_device_cmd_t command, uint8_t subCommand);
 
 /** @} */

@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <sys/status.h>
 
 /**
  * @brief Constant devices
@@ -31,28 +32,29 @@ static dentry_t* oneFile;
 static dentry_t* zeroFile;
 static dentry_t* nullFile;
 
-static uint64_t const_one_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t const_one_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     UNUSED(file);
 
     memset(buffer, -1, count);
     *offset += count;
-    return count;
+    *bytesRead = count;
+    return INFO(DRIVER, MORE);
 }
 
-static void* const_one_mmap(file_t* file, void* addr, size_t length, size_t* offset, pml_flags_t flags)
+static status_t const_one_mmap(file_t* file, void** addr, size_t length, size_t* offset, pml_flags_t flags)
 {
     UNUSED(file); // Unused
     UNUSED(offset);
 
-    addr = vmm_alloc(&process_current()->space, addr, length, PAGE_SIZE, flags, VMM_ALLOC_OVERWRITE);
-    if (addr == NULL)
+    status_t status = vmm_alloc(&process_current()->space, addr, length, PAGE_SIZE, flags, VMM_ALLOC_OVERWRITE);
+    if (IS_ERR(status))
     {
-        return NULL;
+        return status;
     }
 
-    memset(addr, -1, length);
-    return addr;
+    memset(*addr, -1, length);
+    return OK;
 }
 
 static file_ops_t oneOps = {
@@ -60,28 +62,29 @@ static file_ops_t oneOps = {
     .mmap = const_one_mmap,
 };
 
-static uint64_t const_zero_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t const_zero_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     UNUSED(file);
 
     memset(buffer, 0, count);
     *offset += count;
-    return count;
+    *bytesRead = count;
+    return INFO(DRIVER, MORE);
 }
 
-static void* const_zero_mmap(file_t* file, void* addr, size_t length, size_t* offset, pml_flags_t flags)
+static status_t const_zero_mmap(file_t* file, void** addr, size_t length, size_t* offset, pml_flags_t flags)
 {
     UNUSED(file); // Unused
     UNUSED(offset);
 
-    addr = vmm_alloc(&process_current()->space, addr, length, PAGE_SIZE, flags, VMM_ALLOC_OVERWRITE);
-    if (addr == NULL)
+    status_t status = vmm_alloc(&process_current()->space, addr, length, PAGE_SIZE, flags, VMM_ALLOC_OVERWRITE);
+    if (IS_ERR(status))
     {
-        return NULL;
+        return status;
     }
 
-    memset(addr, 0, length);
-    return addr;
+    memset(*addr, 0, length);
+    return OK;
 }
 
 static file_ops_t zeroOps = {
@@ -89,22 +92,24 @@ static file_ops_t zeroOps = {
     .mmap = const_zero_mmap,
 };
 
-static uint64_t const_null_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t const_null_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     UNUSED(file); // Unused
     UNUSED(buffer);
 
     *offset += count;
-    return 0;
+    *bytesRead = 0;
+    return INFO(DRIVER, MORE);
 }
 
-static uint64_t const_null_write(file_t* file, const void* buffer, size_t count, size_t* offset)
+static status_t const_null_write(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
 {
     UNUSED(file); // Unused
     UNUSED(buffer);
 
     *offset += count;
-    return count;
+    *bytesWritten = count;
+    return OK;
 }
 
 static file_ops_t nullOps = {
@@ -112,13 +117,13 @@ static file_ops_t nullOps = {
     .write = const_null_write,
 };
 
-static uint64_t const_init(void)
+static status_t const_init(void)
 {
     constDir = devfs_dir_new(NULL, "const", NULL, NULL);
     if (constDir == NULL)
     {
         LOG_ERR("failed to init const directory\n");
-        return _FAIL;
+        return ERR(DRIVER, NOMEM);
     }
 
     oneFile = devfs_file_new(constDir, "one", NULL, &oneOps, NULL);
@@ -126,7 +131,7 @@ static uint64_t const_init(void)
     {
         UNREF(constDir);
         LOG_ERR("failed to init one file\n");
-        return _FAIL;
+        return ERR(DRIVER, NOMEM);
     }
 
     zeroFile = devfs_file_new(constDir, "zero", NULL, &zeroOps, NULL);
@@ -135,7 +140,7 @@ static uint64_t const_init(void)
         UNREF(constDir);
         UNREF(oneFile);
         LOG_ERR("failed to init zero file\n");
-        return _FAIL;
+        return ERR(DRIVER, NOMEM);
     }
 
     nullFile = devfs_file_new(constDir, "null", NULL, &nullOps, NULL);
@@ -145,10 +150,10 @@ static uint64_t const_init(void)
         UNREF(oneFile);
         UNREF(zeroFile);
         LOG_ERR("failed to init null file\n");
-        return _FAIL;
+        return ERR(DRIVER, NOMEM);
     }
 
-    return 0;
+    return OK;
 }
 
 static void const_deinit(void)
@@ -161,13 +166,12 @@ static void const_deinit(void)
 
 /** @} */
 
-uint64_t _module_procedure(const module_event_t* event)
+status_t _module_procedure(const module_event_t* event)
 {
     switch (event->type)
     {
     case MODULE_EVENT_LOAD:
-        const_init();
-        break;
+        return const_init();
     case MODULE_EVENT_UNLOAD:
         const_deinit();
         break;
@@ -175,7 +179,7 @@ uint64_t _module_procedure(const module_event_t* event)
         break;
     }
 
-    return 0;
+    return OK;
 }
 
 MODULE_INFO("Const Driver", "Kai Norberg", "A constant device driver", OS_VERSION, "MIT", "BOOT_ALWAYS");

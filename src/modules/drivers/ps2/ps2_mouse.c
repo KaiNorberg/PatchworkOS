@@ -59,8 +59,8 @@ static void ps2_mouse_handle_packet(mouse_t* mouse, ps2_mouse_t* ps2)
 static void ps2_mouse_irq(irq_func_data_t* data)
 {
     ps2_mouse_t* mouse = data->data;
-    uint64_t byte = ps2_read_no_wait();
-    if (byte == _FAIL)
+    uint8_t byte;
+    if (!ps2_read_no_wait(&byte))
     {
         return;
     }
@@ -101,60 +101,61 @@ static void ps2_mouse_irq(irq_func_data_t* data)
     {
         mouse->current.deltaY = (int8_t)byte;
         mouse->index = PS2_PACKET_FLAGS;
-        ps2_mouse_handle_packet(mouse->mouse, mouse);
+        ps2_mouse_handle_packet(&mouse->mouse, mouse);
     }
     break;
     }
 }
 
-uint64_t ps2_mouse_init(ps2_device_info_t* info)
+status_t ps2_mouse_init(ps2_device_info_t* info)
 {
     ps2_mouse_t* mouse = calloc(1, sizeof(ps2_mouse_t));
     if (mouse == NULL)
     {
         LOG_ERR("failed to allocate memory for PS/2 mouse data\n");
-        return _FAIL;
+        return ERR(DRIVER, NOMEM);
     }
 
-    mouse->mouse = mouse_new(info->name);
-    if (mouse->mouse == NULL)
+    mouse->mouse.name = info->name;
+    status_t status = mouse_register(&mouse->mouse);
+    if (IS_ERR(status))
     {
         free(mouse);
-        LOG_ERR("failed to create PS/2 mouse\n");
-        return _FAIL;
+        LOG_ERR("failed to register PS/2 mouse\n");
+        return status;
     }
 
     mouse->index = 0;
 
-    if (ps2_device_cmd(info->device, PS2_DEV_CMD_SET_DEFAULTS) == _FAIL)
+    if (!ps2_device_cmd(info->device, PS2_DEV_CMD_SET_DEFAULTS))
     {
-        mouse_free(mouse->mouse);
+        mouse_unregister(&mouse->mouse);
         free(mouse);
         LOG_ERR("failed to set default PS/2 mouse settings\n");
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
     info->data = mouse;
-    return 0;
+    return OK;
 }
 
-uint64_t ps2_mouse_irq_register(ps2_device_info_t* info)
+status_t ps2_mouse_irq_register(ps2_device_info_t* info)
 {
     ps2_mouse_t* mouse = info->data;
     if (mouse == NULL)
     {
         LOG_ERR("PS/2 mouse data is NULL during IRQ registration\n");
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(DRIVER, INVAL);
     }
 
-    if (irq_handler_register(info->irq, ps2_mouse_irq, mouse) == _FAIL)
+    status_t status = irq_handler_register(info->irq, ps2_mouse_irq, mouse);
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to register PS/2 mouse IRQ handler\n");
-        return _FAIL;
+        return status;
     }
 
-    return 0;
+    return OK;
 }
 
 void ps2_mouse_deinit(ps2_device_info_t* info)
@@ -167,7 +168,7 @@ void ps2_mouse_deinit(ps2_device_info_t* info)
     ps2_mouse_t* mouse = info->data;
 
     irq_handler_unregister(ps2_mouse_irq, info->irq);
-    mouse_free(mouse->mouse);
+    mouse_unregister(&mouse->mouse);
     free(mouse);
 
     info->data = NULL;

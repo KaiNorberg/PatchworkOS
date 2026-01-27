@@ -322,7 +322,7 @@ static int acpi_id_compare(const void* left, const void* right)
     return numA - numB;
 }
 
-static void acpi_device_cfg_free(acpi_device_cfg_t* cfg)
+static void acpi_dev_free(acpi_dev_t* cfg)
 {
     if (cfg == NULL)
     {
@@ -373,7 +373,7 @@ static uint64_t acpi_device_configure(const char* name)
         return 0;
     }
 
-    acpi_device_cfg_t* cfg = calloc(1, sizeof(acpi_device_cfg_t));
+    acpi_dev_t* cfg = calloc(1, sizeof(acpi_dev_t));
     if (cfg == NULL)
     {
         return _FAIL;
@@ -473,7 +473,7 @@ static uint64_t acpi_device_configure(const char* name)
 
 error:
     free(resources);
-    acpi_device_cfg_free(cfg);
+    acpi_dev_free(cfg);
     return _FAIL;
 }
 
@@ -564,7 +564,7 @@ uint64_t acpi_devices_init(void)
     return 0;
 }
 
-acpi_device_cfg_t* acpi_device_cfg_lookup(const char* name)
+acpi_dev_t* acpi_dev_lookup(const char* name)
 {
     if (name == NULL)
     {
@@ -600,7 +600,7 @@ acpi_device_cfg_t* acpi_device_cfg_lookup(const char* name)
     return device->device.cfg;
 }
 
-uint64_t acpi_device_cfg_get_port(acpi_device_cfg_t* cfg, uint64_t index, port_t* out)
+uint64_t acpi_dev_get_port(acpi_dev_t* cfg, uint64_t index, port_t* out)
 {
     if (cfg == NULL)
     {

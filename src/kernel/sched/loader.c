@@ -83,7 +83,7 @@ void loader_exec(void)
         goto cleanup;
     }
 
-    if (IS_CODE(status, LESS))
+    if (readSize != fileSize)
     {
         status = ERR(SCHED, TOCTOU);
         goto cleanup;

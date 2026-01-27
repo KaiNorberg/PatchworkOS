@@ -253,10 +253,6 @@ static status_t buffer_read(void* buffer, size_t count, size_t* offset, size_t* 
     {
         return INFO(FS, MORE);
     }
-    if (toRead < count)
-    {
-        return INFO(FS, LESS);
-    }
 
     return OK;
 }

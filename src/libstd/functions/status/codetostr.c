@@ -32,7 +32,6 @@ const char* _codeStrings[] = {
     [ST_CODE_CHANGED] = "state changed",
     [ST_CODE_FULL] = "buffer full",
     [ST_CODE_MORE] = "more data available",
-    [ST_CODE_LESS] = "less data available",
     [ST_CODE_FD_OVERFLOW] = "file descriptor overflow",
     [ST_CODE_MFILE] = "too many open files",
     [ST_CODE_BADFD] = "bad file descriptor",
@@ -60,9 +59,12 @@ const char* _codeStrings[] = {
     [ST_CODE_TOCTOU] = "time-of-check to time-of-use race condition",
     [ST_CODE_INVALELF] = "invalid elf executable",
     [ST_CODE_NOT_INIT] = "resource is not initialized",
+    [ST_CODE_ALREADY_INIT] = "resource is already initialized",
     [ST_CODE_ACQUIRED] = "resource is already acquired",
     [ST_CODE_MTIMER] = "to many timer sources",
     [ST_CODE_ILSEQ] = "invalid byte sequence",
+    [ST_CODE_NO_ACPI_TABLE] = "unable to locate acpu table",
+    [ST_CODE_INVAL_ACPI_TABLE] = "invalid acpi table",
 };
 
 const char* codetostr(st_code_t code)

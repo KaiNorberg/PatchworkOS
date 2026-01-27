@@ -20,28 +20,33 @@
  * @see [ACPI Specification Version 6.6](https://uefi.org/sites/default/files/resources/ACPI_Spec_6.6.pdf)
  */
 
-uint64_t _module_procedure(const module_event_t* event)
+status_t _module_procedure(const module_event_t* event)
 {
     switch (event->type)
     {
     case MODULE_EVENT_DEVICE_ATTACH:
-        if (lapic_global_init() == _FAIL)
+    {
+        status_t status = lapic_global_init();
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to initialize local APICs\n");
-            return _FAIL;
+            return status;
         }
-        if (apic_timer_init() == _FAIL)
+        status = apic_timer_init();
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to initialize APIC timer\n");
-            return _FAIL;
+            return status;
         }
-        if (ioapic_all_init() == _FAIL)
+        status = ioapic_all_init();
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to initialize IO APICs\n");
-            return _FAIL;
+            return status;
         }
         PERCPU_INIT();
-        break;
+    }
+    break;
     case MODULE_EVENT_DEVICE_DETACH:
         PERCPU_DEINIT();
         break;
@@ -49,7 +54,7 @@ uint64_t _module_procedure(const module_event_t* event)
         break;
     }
 
-    return 0;
+    return OK;
 }
 
 MODULE_INFO("APIC Driver", "Kai Norberg", "A driver for the APIC, local APIC and IOAPIC", OS_VERSION, "MIT", "PNP0003");

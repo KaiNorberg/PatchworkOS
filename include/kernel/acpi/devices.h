@@ -102,13 +102,13 @@ typedef struct acpi_device_io
 
 /**
  * @brief ACPI device configuration structure.
- * @struct acpi_device_cfg_t
+ * @struct acpi_dev_t
  *
  * Stores the resources assigned to an ACPI device, like IRQs and IO ports.
  *
  * @todo Add more config stuff like memory ranges, DMA etc.
  */
-typedef struct acpi_device_cfg
+typedef struct acpi_dev
 {
     char hid[MAX_NAME];
     char cid[MAX_NAME];
@@ -116,7 +116,7 @@ typedef struct acpi_device_cfg
     uint64_t irqCount;
     acpi_device_io_t* ios;
     uint64_t ioCount;
-} acpi_device_cfg_t;
+} acpi_dev_t;
 
 /**
  * @brief Enumerate, configure and load modules for ACPI devices.
@@ -148,20 +148,16 @@ uint64_t acpi_devices_init(void);
  * - `ENOTTY`: The specified name is not a device.
  * - `ENODEV`: The specified device has no configuration.
  */
-acpi_device_cfg_t* acpi_device_cfg_lookup(const char* name);
+acpi_dev_t* acpi_dev_lookup(const char* name);
 
 /**
- * @brief Retrieves an the nth IO port assigned to an ACPI device.
- *
- * Useful as each IO entry contains a base and length, making it rather complex to just, for example, get the 5th port.
+ * @brief Retrieves the nth I/O port assigned to an ACPI device.
  *
  * @param cfg The device configuration to retrieve the port from.
  * @param index The index of the IO port to retrieve.
  * @param out Output pointer to store the retrieved port.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `ENOSPC`: The specified index is out of bounds.
+ * @return An appropriate status value.
  */
-uint64_t acpi_device_cfg_get_port(acpi_device_cfg_t* cfg, uint64_t index, port_t* out);
+status_t acpi_dev_get_port(acpi_dev_t* cfg, uint64_t index, port_t* out);
 
 /** @} */

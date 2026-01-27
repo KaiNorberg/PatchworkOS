@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <sys/defs.h>
+#include <sys/status.h>
 
 /**
  * @brief Input / Output Advanced Programmable Interrupt Controller.
@@ -153,8 +154,8 @@ typedef union {
 /**
  * @brief Initialize all IO APICs found in the system.
  *
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t ioapic_all_init(void);
+status_t ioapic_all_init(void);
 
 /** @} */

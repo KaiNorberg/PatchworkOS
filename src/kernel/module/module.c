@@ -658,6 +658,10 @@ static status_t module_cache_build(void)
             module_cache_clear();
             return status;
         }
+        if (bytesRead == 0)
+        {
+            break;
+        }
 
         for (uint64_t i = 0; i < bytesRead / sizeof(dirent_t); i++)
         {
@@ -667,7 +671,7 @@ static status_t module_cache_build(void)
             }
 
             module_file_t file;
-            status_t status = module_file_read(&file, &dir->path, process, buffer[i].path);
+            status = module_file_read(&file, &dir->path, process, buffer[i].path);
             if (IS_ERR(status))
             {
                 LOG_ERR("skipping invalid module file '%s' (%s)\n", buffer[i].path, codetostr(status));
@@ -692,11 +696,6 @@ static status_t module_cache_build(void)
 
             LOG_DEBUG("built cache entry for module '%s'\n", file.info->name);
             module_file_deinit(&file);
-        }
-
-        if (!IS_CODE(status, MORE))
-        {
-            break;
         }
     }
 

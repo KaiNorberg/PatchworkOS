@@ -200,30 +200,31 @@ static clock_source_t source = {
 /**
  * @brief Initialize the HPET.
  *
- * @return On success, `0`. On failure, `_FAIL`.
+ * @return An appropriate status value.
  */
-static uint64_t hpet_init(void)
+static status_t hpet_init(void)
 {
     hpet = (hpet_t*)acpi_tables_lookup("HPET", sizeof(hpet_t), 0);
     if (hpet == NULL)
     {
         LOG_ERR("failed to locate HPET table\n");
-        return _FAIL;
+        return ERR(DRIVER, NO_ACPI_TABLE);
     }
 
     if (hpet->addressSpaceId != HPET_ADDRESS_SPACE_MEMORY)
     {
         LOG_ERR("HPET address space is not memory (id=%u) which is not supported\n", hpet->addressSpaceId);
-        return _FAIL;
+        return ERR(DRIVER, INVAL);
     }
 
-    address = (uintptr_t)PML_LOWER_TO_HIGHER(hpet->address);
-    if (vmm_map(NULL, (void*)address, hpet->address, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL) ==
-        NULL)
+    void* mapAddr = (void*)PML_LOWER_TO_HIGHER(hpet->address);
+    status_t status = vmm_map(NULL, &mapAddr, hpet->address, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL);
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to map HPET memory at %p\n", hpet->address);
-        return _FAIL;
+        return status;
     }
+    address = (uintptr_t)mapAddr;
 
     uint64_t capabilities = hpet_read(HPET_REG_GENERAL_CAPABILITIES_ID);
     period = capabilities >> HPET_CAP_COUNTER_CLK_PERIOD_SHIFT;
@@ -231,7 +232,7 @@ static uint64_t hpet_init(void)
     if (period == 0 || period >= 0x05F5E100)
     {
         LOG_ERR("HPET reported an invalid counter period %llu fs\n", period);
-        return _FAIL;
+        return ERR(DRIVER, INVAL);
     }
 
     LOG_INFO("started HPET timer phys=%p virt=%p period=%lluns timers=%u %s-bit\n", hpet->address, address,
@@ -241,21 +242,22 @@ static uint64_t hpet_init(void)
     hpet_reset_counter();
 
     source.precision = hpet_ns_per_tick();
-    if (clock_source_register(&source) == _FAIL)
+    status = clock_source_register(&source);
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to register HPET as system time source\n");
-        return _FAIL;
+        return status;
     }
 
-    overflowThreadTid = thread_kernel_create(hpet_overflow_thread, NULL);
-    if (overflowThreadTid == _FAIL)
+    status = thread_kernel_create(hpet_overflow_thread, NULL, &overflowThreadTid);
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to create HPET overflow thread\n");
         clock_source_unregister(&source);
-        return _FAIL;
+        return status;
     }
 
-    return 0;
+    return OK;
 }
 
 /**
@@ -277,12 +279,14 @@ static void hpet_deinit(void)
 
 /** @} */
 
-uint64_t _module_procedure(const module_event_t* event)
+status_t _module_procedure(const module_event_t* event)
 {
+    status_t status;
     switch (event->type)
     {
     case MODULE_EVENT_DEVICE_ATTACH:
-        if (hpet_init() == _FAIL)
+        status = hpet_init();
+        if (IS_ERR(status))
         {
             panic(NULL, "Failed to initialize HPET module");
         }
@@ -294,7 +298,7 @@ uint64_t _module_procedure(const module_event_t* event)
         break;
     }
 
-    return 0;
+    return OK;
 }
 
 MODULE_INFO("HPET Driver", "Kai Norberg", "A High Precision Event Timer driver", OS_VERSION, "MIT", "PNP0103");

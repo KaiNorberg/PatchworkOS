@@ -70,6 +70,7 @@ typedef enum
     ST_SRC_MODULE,    ///< Module Loader.
     ST_SRC_PORT,      ///< CPU Port I/O.
     ST_SRC_SYSCALL,   ///< Syscall.
+    ST_SRC_ACPI,      ///< ACPI.
 } st_src_t;
 
 /**
@@ -111,7 +112,6 @@ typedef enum
     ST_CODE_CHANGED,         ///< State changed.
     ST_CODE_FULL,            ///< Buffer full.
     ST_CODE_MORE,            ///< More data is available then what was returned.
-    ST_CODE_LESS,            ///< Less data is available then what was requested.
     ST_CODE_FD_OVERFLOW,     ///< File descriptor is over the maximum value.
     ST_CODE_MFILE,           ///< Too many file descriptors open.
     ST_CODE_BADFD,           ///< File descriptor is not open.
@@ -139,9 +139,12 @@ typedef enum
     ST_CODE_TOCTOU,      ///< Time-of-check to time-of-use race condition.
     ST_CODE_INVALELF,     ///< Invalid ELF executable.
     ST_CODE_NOT_INIT,     ///< Resource is not initialized.   
+    ST_CODE_ALREADY_INIT, ///< Resource is already initialized.
     ST_CODE_ACQUIRED,     ///< Resource is already acquired.
     ST_CODE_MTIMER,       ///< To many timer sources.
     ST_CODE_ILSEQ,        ///< Invalid byte sequence.
+    ST_CODE_NO_ACPI_TABLE, ///< Unable to locate ACPI table.
+    ST_CODE_INVAL_ACPI_TABLE, ///< Invalid ACPI table.
 } st_code_t;
 
 /**

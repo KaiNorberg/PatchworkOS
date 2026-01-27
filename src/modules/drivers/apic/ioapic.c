@@ -43,7 +43,7 @@ static void ioapic_redirect_write(ioapic_t* ioapic, ioapic_gsi_t gsi, ioapic_red
     ioapic_write(ioapic, IOAPIC_REG_REDIRECTION_BASE + (pin * 2) + 1, entry.raw.high);
 }
 
-static uint64_t ioapic_enable(irq_t* irq)
+static status_t ioapic_enable(irq_t* irq)
 {
     CLI_SCOPE();
 
@@ -62,7 +62,7 @@ static uint64_t ioapic_enable(irq_t* irq)
     };
 
     ioapic_redirect_write(ioapic, irq->phys, redirect);
-    return 0;
+    return OK;
 }
 
 static void ioapic_disable(irq_t* irq)
@@ -89,13 +89,13 @@ static irq_chip_t ioApicChip = {
     .eoi = ioapic_eoi,
 };
 
-uint64_t ioapic_all_init(void)
+status_t ioapic_all_init(void)
 {
     madt_t* madt = (madt_t*)acpi_tables_lookup(MADT_SIGNATURE, sizeof(madt_t), 0);
     if (madt == NULL)
     {
         LOG_ERR("no MADT table found\n");
-        return _FAIL;
+        return ERR(DRIVER, NO_ACPI_TABLE);
     }
 
     ioapic_t* ioapic;
@@ -107,11 +107,12 @@ uint64_t ioapic_all_init(void)
         }
 
         void* virtAddr = (void*)PML_LOWER_TO_HIGHER(ioapic->ioApicAddress);
-        if (vmm_map(NULL, virtAddr, ioapic->ioApicAddress, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL,
-                NULL) == NULL)
+        status_t status = vmm_map(NULL, &virtAddr, ioapic->ioApicAddress, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL,
+                NULL);
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to map io apic\n");
-            return _FAIL;
+            return status;
         }
 
         uint32_t maxRedirs = ioapic_version_read(ioapic).maxRedirs;
@@ -126,13 +127,14 @@ uint64_t ioapic_all_init(void)
             ioapic_redirect_write(ioapic, i, maskedEntry);
         }
 
-        if (irq_chip_register(&ioApicChip, ioapic->globalSystemInterruptBase,
-                ioapic->globalSystemInterruptBase + maxRedirs, ioapic) == _FAIL)
+        status = irq_chip_register(&ioApicChip, ioapic->globalSystemInterruptBase,
+                ioapic->globalSystemInterruptBase + maxRedirs, ioapic);
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to register io apic irq chip\n");
-            return _FAIL;
+            return status;
         }
     }
 
-    return 0;
+    return OK;
 }

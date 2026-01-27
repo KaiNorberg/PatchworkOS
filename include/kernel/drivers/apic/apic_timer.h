@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <sys/status.h>
 
 /**
  * @brief Advanced Programmable Interrupt Controller Timer.
@@ -42,8 +43,8 @@ typedef enum
 /**
  * @brief Initialize the APIC timer.
  *
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t apic_timer_init(void);
+status_t apic_timer_init(void);
 
 /** @} */

@@ -88,22 +88,29 @@ static clock_source_t source = {
     .read_epoch = rtc_read_epoch,
 };
 
-static uint64_t rtc_init(const char* deviceName)
+static status_t rtc_init(const char* deviceName)
 {
     LOCK_SCOPE(&lock);
 
-    acpi_device_cfg_t* acpiCfg = acpi_device_cfg_lookup(deviceName);
+    acpi_dev_t* acpiCfg = acpi_dev_lookup(deviceName);
     if (acpiCfg == NULL)
     {
         LOG_ERR("rtc failed to get ACPI device config for '%s'\n", deviceName);
-        return _FAIL;
+        return ERR(DRIVER, NOENT);
     }
 
-    if (acpi_device_cfg_get_port(acpiCfg, 0, &addressPort) == _FAIL ||
-        acpi_device_cfg_get_port(acpiCfg, 1, &dataPort) == _FAIL)
+    status_t status = acpi_dev_get_port(acpiCfg, 0, &addressPort);
+    if (IS_ERR(status))
+    {
+        LOG_ERR("rtc device '%s' has no port resources\n", deviceName);
+        return status;
+    }
+
+    status = acpi_dev_get_port(acpiCfg, 1, &dataPort);
+    if (IS_ERR(status))
     {
         LOG_ERR("rtc device '%s' has invalid port resources\n", deviceName);
-        return _FAIL;
+        return status;
     }
 
     fadt_t* fadt = (fadt_t*)acpi_tables_lookup(FADT_SIGNATURE, sizeof(fadt_t), 0);
@@ -112,32 +119,36 @@ static uint64_t rtc_init(const char* deviceName)
         centuryRegister = fadt->century;
     }
 
-    if (clock_source_register(&source) == _FAIL)
+    status = clock_source_register(&source);
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to register RTC\n");
-        return _FAIL;
+        return status;
     }
 
-    return 0;
+    return OK;
 }
 
 /** @} */
 
-uint64_t _module_procedure(const module_event_t* event)
+status_t _module_procedure(const module_event_t* event)
 {
     switch (event->type)
     {
     case MODULE_EVENT_DEVICE_ATTACH:
-        if (rtc_init(event->deviceAttach.name) == _FAIL)
+    {
+        status_t status = rtc_init(event->deviceAttach.name);
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to initialize RTC\n");
-            return _FAIL;
+            return status;
         }
-        break;
+    }
+    break;
     default:
         break;
     }
-    return 0;
+    return OK;
 }
 
 MODULE_INFO("RTC Driver", "Kai Norberg", "A driver for the CMOS Real Time Clock", OS_VERSION, "MIT", "PNP0B00");
