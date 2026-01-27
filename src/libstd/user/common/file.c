@@ -97,15 +97,15 @@ void _file_free(FILE* stream)
     }
 }
 
-uint64_t _file_init(FILE* stream, fd_t fd, _file_flags_t flags, void* buffer, uint64_t bufferSize)
+int _file_init(FILE* stream, fd_t fd, _file_flags_t flags, void* buffer, size_t size)
 {
     if (buffer == NULL)
     {
         void* oldBuf = stream->buf;
-        stream->buf = malloc(bufferSize);
+        stream->buf = malloc(size);
         if (stream->buf == NULL)
         {
-            return _FAIL;
+            return EOF;
         }
         if (stream->flags & _FILE_OWNS_BUFFER)
         {
@@ -124,7 +124,7 @@ uint64_t _file_init(FILE* stream, fd_t fd, _file_flags_t flags, void* buffer, ui
     }
 
     stream->fd = fd;
-    stream->bufSize = bufferSize;
+    stream->bufSize = size;
     stream->bufIndex = 0;
     stream->bufEnd = 0;
     stream->pos.offset = 0;
@@ -137,7 +137,7 @@ uint64_t _file_init(FILE* stream, fd_t fd, _file_flags_t flags, void* buffer, ui
         {
             free(stream->buf);
         }
-        return _FAIL;
+        return EOF;
     }
 
     return 0;
@@ -155,18 +155,19 @@ void _file_deinit(FILE* stream)
     mtx_destroy(&stream->mtx);
 }
 
-uint64_t _file_flush_buffer(FILE* stream)
+int _file_flush_buffer(FILE* stream)
 {
     if (!(stream->flags & _FILE_BIN))
     {
         /// @todo Text stream conversion here
     }
 
-    uint64_t count = write(stream->fd, stream->buf, stream->bufIndex);
-    if (count == _FAIL)
+    size_t count;
+    status_t status = write(stream->fd, stream->buf, stream->bufIndex, &count);
+    if (IS_ERR(status))
     {
         stream->flags |= _FILE_ERROR;
-        return _FAIL;
+        return EOF;
     }
 
     stream->pos.offset += count;
@@ -174,18 +175,19 @@ uint64_t _file_flush_buffer(FILE* stream)
     return 0;
 }
 
-uint64_t _file_fill_buffer(FILE* stream)
+int _file_fill_buffer(FILE* stream)
 {
-    uint64_t count = read(stream->fd, stream->buf, stream->bufSize);
-    if (count == _FAIL)
+    uint64_t count;
+    status_t status = read(stream->fd, stream->buf, stream->bufSize, &count);
+    if (IS_ERR(status))
     {
         stream->flags |= _FILE_ERROR;
-        return _FAIL;
+        return EOF;
     }
     if (count == 0)
     {
         stream->flags |= _FILE_EOF;
-        return _FAIL;
+        return EOF;
     }
 
     if (!(stream->flags & _FILE_BIN))
@@ -199,29 +201,29 @@ uint64_t _file_fill_buffer(FILE* stream)
     return 0;
 }
 
-uint64_t _file_seek(FILE* stream, int64_t offset, int whence)
+int _file_seek(FILE* stream, int64_t offset, int whence)
 {
     if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END)
     {
         errno = EINVAL;
-        return _FAIL;
+        return EOF;
     }
 
-    uint64_t result = seek(stream->fd, offset, whence);
-
-    if (result == _FAIL)
+    size_t newPos;
+    status_t status = seek(stream->fd, offset, whence, &newPos);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return EOF;
     }
 
     stream->ungetIndex = 0;
     stream->bufIndex = 0;
     stream->bufEnd = 0;
-    stream->pos.offset = result;
-    return result;
+    stream->pos.offset = newPos;
+    return 0;
 }
 
-uint64_t _file_prepare_read(FILE* stream)
+int _file_prepare_read(FILE* stream)
 {
     if ((stream->bufIndex > stream->bufEnd) ||
         (stream->flags & (_FILE_WRITE | _FILE_APPEND | _FILE_ERROR | _FILE_WIDESTREAM | _FILE_EOF)) ||
@@ -229,14 +231,14 @@ uint64_t _file_prepare_read(FILE* stream)
     {
         errno = EBADF;
         stream->flags |= _FILE_ERROR;
-        return _FAIL;
+        return EOF;
     }
 
     stream->flags |= _FILE_READ | _FILE_BYTESTREAM;
     return 0;
 }
 
-uint64_t _file_prepare_write(FILE* stream)
+int _file_prepare_write(FILE* stream)
 {
     if ((stream->bufIndex < stream->bufEnd) || (stream->ungetIndex > 0) ||
         (stream->flags & (_FILE_READ | _FILE_ERROR | _FILE_WIDESTREAM | _FILE_EOF)) ||
@@ -244,7 +246,7 @@ uint64_t _file_prepare_write(FILE* stream)
     {
         errno = EBADF;
         stream->flags |= _FILE_ERROR;
-        return _FAIL;
+        return EOF;
     }
 
     stream->flags |= _FILE_WRITE | _FILE_BYTESTREAM;
@@ -289,9 +291,9 @@ void _files_close(void)
     mtx_unlock(&filesMtx);
 }
 
-uint64_t _files_flush(void)
+int _files_flush(void)
 {
-    uint64_t result = 0;
+    int result = 0;
     mtx_lock(&filesMtx);
 
     FILE* stream;
@@ -299,7 +301,7 @@ uint64_t _files_flush(void)
     {
         if (fflush(stream) == EOF)
         {
-            result = _FAIL;
+            result = EOF;
         }
     }
 

@@ -11,7 +11,6 @@ extern "C"
 {
 #endif
 
-#include "_libstd/_FAIL.h"
 #include "_libstd/NULL.h"
 #include "_libstd/PAGE_SIZE.h"
 #include "_libstd/clock_t.h"
@@ -94,14 +93,24 @@ static inline status_t spawn(const char** argv, spawn_flags_t flags, pid_t* pid)
  *
  * @return The running processes pid.
  */
-pid_t getpid(void);
+static inline pid_t getpid(void)
+{
+    pid_t pid;
+    syscall0(SYS_GETPID, &pid);
+    return pid;
+}
 
 /**
  * @brief System call to retrieve the current tid.
  *
  * @return The running threads tid.
  */
-tid_t gettid(void);
+static inline tid_t gettid(void)
+{
+    tid_t tid;
+    syscall0(SYS_GETTID, &tid);
+    return tid;
+}
 
 /**
  * @brief Convert a size in bytes to pages.
@@ -225,10 +234,10 @@ typedef enum
  * @param val The value used by the futex operation, its meaning depends on the operation.
  * @param op The futex operation to perform (e.g., `FUTEX_WAIT` or `FUTEX_WAKE`).
  * @param timeout An optional timeout for `FUTEX_WAIT`. If `CLOCKS_NEVER`, it waits forever.
- * @param result Optional output pointer for the result.
+ * @param result Output pointer for the result, can be `NULL`.
  * @return An appropriate status value.
  */
-static inline status_t futex(uint64_t* result, atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
+static inline status_t futex(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout, uint64_t* result)
 {
     return syscall4(SYS_FUTEX, result, (uintptr_t)addr, val, op, timeout);
 }
@@ -254,9 +263,12 @@ static inline clock_t uptime(void)
  *
  * @param timeout The duration in nanoseconds for which to sleep, if equal to `CLOCKS_NEVER` then it will sleep forever,
  * not sure why you would want to do that but you can.
- * @return On success, `0`. On failure, `_FAIL` and errno is set.
+ * @return An appropriate status value.
  */
-uint64_t nanosleep(clock_t timeout);
+static inline status_t nanosleep(clock_t timeout)
+{
+    return syscall1(SYS_NANOSLEEP, NULL, timeout);
+}
 
 /**
  * @brief Synchronization object.
@@ -289,9 +301,12 @@ typedef void (*note_func_t)(char* note);
  * @see kernel_ipc_note
  *
  * @param handler The handler function to be called on notes, can be `NULL` to unregister the current handler.
- * @return On success, `0`. On failure, `_FAIL` and errno is set.
+ * @return An appropriate status value.
  */
-uint64_t notify(note_func_t handler);
+static inline status_t notify(note_func_t handler)
+{
+    return syscall1(SYS_NOTIFY, NULL, (uintptr_t)handler);
+}
 
 /**
  * @brief System call that notifies the kernel that the current note has been handled.
@@ -304,7 +319,11 @@ uint64_t notify(note_func_t handler);
  *
  * @return Never returns, instead resumes execution of the thread where it left off before the note was delivered.
  */
-_NORETURN void noted(void);
+static inline _NORETURN void noted(void)
+{
+    syscall0(SYS_NOTED, NULL);
+    __builtin_unreachable();
+}
 
 /**
  * @brief Helper for comparing the first word of a string.
@@ -328,28 +347,21 @@ typedef enum
 /**
  * @brief User space `atnotify()` handler function type.
  */
-typedef uint64_t (*atnotify_func_t)(char* note);
+typedef void (*atnotify_func_t)(char* note);
 
 /**
  * @brief Adds or removes a handler to be called in user space when a note is received.
  *
- * If the return value of a handler is `_FAIL`, the process will exit.
- *
  * @param handler The handler function to be modified.
  * @param action The action to perform.
- * @return On success, `0`. On failure, `_FAIL` and errno is set.
+ * @return An appropriate status value.
  */
-uint64_t atnotify(atnotify_func_t handler, atnotify_t action);
+status_t atnotify(atnotify_func_t handler, atnotify_t action);
 
 /**
- * @brief System call that handles pending notes for the current thread.
- *
- * Should only be called from an interrupt context.
- *
- * If the frame is not from user space, this function will return immediately.
- *
- * @param frame The interrupt frame of the current interrupt.
- * @return On success, `true` if a note was handled, `false` otherwise.
+ * @brief System call that exists the current process.
+ * 
+ * @param status The string exit status of the process.
  */
 _NORETURN void exits(const char* status);
 
@@ -357,9 +369,9 @@ _NORETURN void exits(const char* status);
  * @brief Helper for sending the "kill" command to a process.
  *
  * @param pid The PID of the process to send the command to.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t kill(pid_t pid);
+status_t kill(pid_t pid);
 
 /**
  * @brief Architecture specific thread data codes.
@@ -376,9 +388,12 @@ typedef enum
  *
  * @param op The operation to perform.
  * @param addr If getting data, a pointer to store the retrieved address. If setting data, the address to set.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t arch_prctl(arch_prctl_t op, uintptr_t addr);
+static inline status_t arch_prctl(arch_prctl_t op, uintptr_t addr)
+{
+    return syscall2(SYS_ARCH_PRCTL, NULL, op, addr);
+}
 
 #if defined(__cplusplus)
 }

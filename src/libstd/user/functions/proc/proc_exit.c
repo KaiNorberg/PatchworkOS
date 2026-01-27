@@ -8,5 +8,6 @@ void exits(const char* status)
 {
     _exit_stack_dispatch();
     _files_close();
-    _syscall_exits(status);
+    syscall1(SYS_EXITS, NULL, (uintptr_t)status);
+    __builtin_unreachable();
 }

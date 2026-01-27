@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/proc.h>
+#include <sys/syscall.h>
 #include <threads.h>
 
 #include "user/common/syscalls.h"
@@ -26,8 +27,9 @@ void thrd_exit(int res)
     }
     else
     {
-        futex(&thread->state, FUTEX_ALL, FUTEX_WAKE, CLOCKS_NEVER);
+        futex(&thread->state, FUTEX_ALL, FUTEX_WAKE, CLOCKS_NEVER, NULL);
     }
 
-    _syscall_thread_exit();
+    syscall0(SYS_THREAD_EXIT, NULL);
+    __builtin_unreachable();
 }

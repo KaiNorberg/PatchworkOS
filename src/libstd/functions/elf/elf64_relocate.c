@@ -1,6 +1,6 @@
 #include "common/elf.h"
 
-uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset,
+bool elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset,
     void* (*resolve_symbol)(const char* name, void* data), void* data)
 {
     for (uint64_t i = 0; i < elf->header->e_shnum; i++)
@@ -26,7 +26,7 @@ uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset
 
             if (symIndex >= symCount)
             {
-                return _FAIL;
+                return false;
             }
             Elf64_Sym* sym = (Elf64_Sym*)((uintptr_t)symTableBase + (symIndex * symtabShdr->sh_entsize));
             const char* symName = elf64_get_string(elf, symtabShdr->sh_link, sym->st_name);
@@ -52,7 +52,7 @@ uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset
                 *patchAddr = (uint64_t)resolve_symbol(symName, data);
                 if (*patchAddr == 0)
                 {
-                    return _FAIL;
+                    return false;
                 }
                 break;
             case R_X86_64_RELATIVE:
@@ -62,10 +62,10 @@ uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset
 #ifdef _KERNEL_
                 LOG_ERR("unsupported relocation type %llu for symbol '%s'\n", type, symName);
 #endif
-                return _FAIL;
+                return false;
             }
         }
     }
 
-    return 0;
+    return true;
 }

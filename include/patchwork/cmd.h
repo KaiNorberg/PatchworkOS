@@ -16,6 +16,8 @@ extern "C"
 {
 #endif
 
+#define PFAIL (UINT64_MAX)
+
 // Note: Commands will only let you access a surface owned by the client the command is called by unless that command
 // has a "bool isGlobal" member and that member is true.
 

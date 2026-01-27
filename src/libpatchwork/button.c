@@ -156,7 +156,7 @@ static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* 
         if (button == NULL)
         {
             errno = ENOMEM;
-            return _FAIL;
+            return PFAIL;
         }
         button->mouseButtons = 0;
         button->isPressed = false;

@@ -128,14 +128,6 @@ static inline void _heap_release(void)
 }
 
 /**
- * @brief Get the bin index for a given size.
- *
- * @param size The size to get the bin index for.
- * @return The bin index, or `_FAIL` if the size is should be treated as a large allocation.
- */
-uint64_t _heap_get_bin_index(uint64_t size);
-
-/**
  * @brief Directly maps a new heap block of at least `minSize` bytes.
  *
  * Must be called with the heap acquired.

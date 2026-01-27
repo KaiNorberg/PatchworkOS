@@ -6,12 +6,13 @@
 
 #include "user/common/syscalls.h"
 
-uint64_t mkdir(const char* path)
+int mkdir(const char* path)
 {
-    fd_t fd = open(F("%s:create:directory", path));
-    if (fd == _FAIL)
+    fd_t fd;
+    status_t status = open(&fd, F("%s:create:directory", path));
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return EOF;
     }
     close(fd);
     return 0;

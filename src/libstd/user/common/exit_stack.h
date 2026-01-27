@@ -6,6 +6,6 @@
 
 void _exit_stack_init(void);
 
-uint64_t _exit_stack_push(void (*func)(void));
+int _exit_stack_push(void (*func)(void));
 
 void _exit_stack_dispatch(void);

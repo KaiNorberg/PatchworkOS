@@ -58,19 +58,19 @@ FILE* _file_new(void);
 
 void _file_free(FILE* stream);
 
-uint64_t _file_init(FILE* stream, fd_t fd, _file_flags_t flags, void* buffer, uint64_t bufferSize);
+int _file_init(FILE* stream, fd_t fd, _file_flags_t flags, void* buffer, size_t size);
 
 void _file_deinit(FILE* stream);
 
-uint64_t _file_flush_buffer(FILE* stream);
+int _file_flush_buffer(FILE* stream);
 
-uint64_t _file_fill_buffer(FILE* stream);
+int _file_fill_buffer(FILE* stream);
 
-uint64_t _file_seek(FILE* stream, int64_t offset, int whence);
+int _file_seek(FILE* stream, int64_t offset, int whence);
 
-uint64_t _file_prepare_read(FILE* stream);
+int _file_prepare_read(FILE* stream);
 
-uint64_t _file_prepare_write(FILE* stream);
+int _file_prepare_write(FILE* stream);
 
 void _files_init(void);
 
@@ -80,4 +80,4 @@ void _files_remove(FILE* file);
 
 void _files_close(void);
 
-uint64_t _files_flush(void);
+int _files_flush(void);

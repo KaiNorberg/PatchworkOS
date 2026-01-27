@@ -8,7 +8,7 @@
 
 void _note_init(void);
 
-uint64_t _note_handler_add(atnotify_func_t func);
+bool _note_handler_add(atnotify_func_t func);
 
 void _note_handler_remove(atnotify_func_t func);
 

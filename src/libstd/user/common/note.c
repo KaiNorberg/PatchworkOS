@@ -1,4 +1,5 @@
 #include <sys/proc.h>
+#include <sys/fs.h>
 #include <user/common/note.h>
 #include <user/common/syscalls.h>
 
@@ -33,11 +34,7 @@ _NORETURN static void _note_kernel_handler(char* note)
         atnotify_func_t func = atomic_load(&noteHandlers[i]);
         if (func != NULL)
         {
-            uint64_t result = func(note);
-            if (result == _FAIL)
-            {
-                exits(note);
-            }
+            func(note);
         }
     }
 
@@ -67,24 +64,24 @@ _NORETURN static void _note_kernel_handler(char* note)
 
 void _note_init(void)
 {
-    if (notify(_note_kernel_handler) == _FAIL)
+    if (IS_ERR(notify(_note_kernel_handler)))
     {
         exits("notify failed");
     }
 }
 
-uint64_t _note_handler_add(atnotify_func_t func)
+bool _note_handler_add(atnotify_func_t func)
 {
     for (uint64_t i = 0; i < _NOTE_MAX_HANDLERS; i++)
     {
         atnotify_func_t expected = NULL;
         if (atomic_compare_exchange_strong(&noteHandlers[i], &expected, func))
         {
-            return 0;
+            return true;
         }
     }
 
-    return _FAIL;
+    return false;
 }
 
 void _note_handler_remove(atnotify_func_t func)

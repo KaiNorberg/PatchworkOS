@@ -889,7 +889,7 @@ static status_t module_load_and_relocate_elf(module_t* module, Elf64_File* elf, 
 
     module_t* previous = ctx->current;
     ctx->current = module;
-    if (elf64_relocate(elf, (Elf64_Addr)module->baseAddr, minVaddr, module_resolve_symbol_callback, ctx) != 0)
+    if (!elf64_relocate(elf, (Elf64_Addr)module->baseAddr, minVaddr, module_resolve_symbol_callback, ctx))
     {
         return ERR(MODULE, INVALELF);
     }

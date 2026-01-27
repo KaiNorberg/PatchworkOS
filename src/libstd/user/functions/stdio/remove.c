@@ -5,10 +5,9 @@
 
 int remove(const char* pathname)
 {
-    uint64_t result = _syscall_remove(pathname);
-    if (result == _FAIL)
+    status_t status = syscall1(SYS_REMOVE, NULL, (uintptr_t)pathname);
+    if (IS_ERR(status))
     {
-        errno = _syscall_errno();
         return EOF;
     }
 

@@ -893,9 +893,9 @@ void elf64_load_segments(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offse
  * @param offset The offset in bytes that was subtracted from each segment's virtual address when loading
  * @param resolve_symbol Callback function to resolve symbol names to addresses
  * @param private Private data pointer passed to the `resolve_symbol` callback
- * @return On success, `0`. On failure, `_FAIL`.
+ * @return `true` if the relocations were successful, false otherwise.
  */
-uint64_t elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset,
+bool elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset,
     void* (*resolve_symbol)(const char* name, void* data), void* data);
 
 /**

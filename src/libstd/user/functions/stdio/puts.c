@@ -6,7 +6,7 @@ int puts(const char* _RESTRICT s)
 {
     mtx_lock(&stdout->mtx);
 
-    if (_file_prepare_write(stdout) == _FAIL)
+    if (_file_prepare_write(stdout) == EOF)
     {
         mtx_unlock(&stdout->mtx);
         return EOF;
@@ -18,7 +18,7 @@ int puts(const char* _RESTRICT s)
 
         if (stdout->bufIndex == stdout->bufSize)
         {
-            if (_file_flush_buffer(stdout) == _FAIL)
+            if (_file_flush_buffer(stdout) == EOF)
             {
                 mtx_unlock(&stdout->mtx);
                 return EOF;
@@ -30,13 +30,11 @@ int puts(const char* _RESTRICT s)
 
     if ((stdout->bufIndex == stdout->bufSize) || (stdout->flags & (_FILE_LINE_BUFFERED | _FILE_UNBUFFERED)))
     {
-        uint64_t result = _file_flush_buffer(stdout);
+        int result = _file_flush_buffer(stdout);
         mtx_unlock(&stdout->mtx);
-        return result == _FAIL ? EOF : 0;
+        return result;
     }
-    else
-    {
-        mtx_unlock(&stdout->mtx);
-        return 0;
-    }
+
+    mtx_unlock(&stdout->mtx);
+    return 0;
 }

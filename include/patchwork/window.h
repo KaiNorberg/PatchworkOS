@@ -130,7 +130,7 @@ element_t* window_get_client_element(window_t* win);
  *
  * @param win The window.
  * @param rect The new screen rectangle for the window.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return On success, `0`. On failure, `PFAIL` and `errno` is set.
  */
 uint64_t window_move(window_t* win, const rect_t* rect);
 
@@ -143,7 +143,7 @@ uint64_t window_move(window_t* win, const rect_t* rect);
  * @param flags The timer flags.
  * @param timeout The timer timeout in clock ticks, or `CLOCKS_NEVER` to disable the timer. Setting a new timer will
  * overide the previous timer if one is set.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return On success, `0`. On failure, `PFAIL` and `errno` is set.
  */
 uint64_t window_set_timer(window_t* win, timer_flags_t flags, clock_t timeout);
 
@@ -168,7 +168,7 @@ void window_invalidate(window_t* win, const rect_t* rect);
  * `display_cmds_flush()`.
  *
  * @param win The window.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return On success, `0`. On failure, `PFAIL` and `errno` is set.
  */
 uint64_t window_invalidate_flush(window_t* win);
 
@@ -192,7 +192,7 @@ uint64_t window_dispatch(window_t* win, const event_t* event);
  * Causes the window to be moved to the front and to, for example, receive keyboard input.
  *
  * @param win The window.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return On success, `0`. On failure, `PFAIL` and `errno` is set.
  */
 uint64_t window_set_focus(window_t* win);
 
@@ -205,7 +205,7 @@ uint64_t window_set_focus(window_t* win);
  *
  * @param win The window.
  * @param isVisible Whether the window should be visible.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return On success, `0`. On failure, `PFAIL` and `errno` is set.
  */
 uint64_t window_set_visible(window_t* win, bool isVisible);
 

@@ -9,20 +9,26 @@
 
 #include <sys/fs.h>
 #include <sys/proc.h>
+#include <sys/status.h>
 
 static void _populate_std_descriptors(void)
 {
     for (uint64_t i = 0; i <= STDERR_FILENO; i++)
     {
-        if (write(i, NULL, 0) == _FAIL && errno == EBADF)
+        status_t status = write(i, NULL, 0, NULL);
+        if (!(IS_ERR(status) && ST_CODE(status) == ST_CODE_BADFD))
         {
-            fd_t nullFd = open("/dev/const/null");
-            if (nullFd != i)
-            {
-                dup(nullFd, i);
-                close(nullFd);
-            }
+            continue;
         }
+        fd_t nullFd;
+        status = open(&nullFd, "/dev/const/null");
+        if (IS_ERR(status))
+        {
+            continue;
+        }
+        fd_t newFd = i;
+        dup(nullFd, &newFd);
+        close(nullFd);
     }
 }
 

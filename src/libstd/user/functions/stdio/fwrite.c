@@ -9,7 +9,7 @@ size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTR
 {
     mtx_lock(&stream->mtx);
 
-    if (_file_prepare_write(stream) == _FAIL)
+    if (_file_prepare_write(stream) == EOF)
     {
         mtx_unlock(&stream->mtx);
         return 0;
@@ -21,19 +21,17 @@ size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTR
     {
         for (uint64_t i = 0; i < size; i++)
         {
-            /// @todo For better performance, write block-wise, not byte-wise.
             uint8_t byte = ((uint8_t*)ptr)[n * size + i];
             stream->buf[stream->bufIndex++] = byte;
 
             if (byte == '\n')
             {
-                // Remember last newline, in case we have to do a partial line-buffered flush
                 newLineOffset = stream->bufIndex;
             }
 
             if (stream->bufIndex == stream->bufSize)
             {
-                if (_file_flush_buffer(stream) == _FAIL)
+                if (_file_flush_buffer(stream) == EOF)
                 {
                     mtx_unlock(&stream->mtx);
                     return n;
@@ -46,15 +44,8 @@ size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTR
 
     if (stream->flags & _FILE_UNBUFFERED)
     {
-        if (_file_flush_buffer(stream) == _FAIL)
+        if (_file_flush_buffer(stream) == EOF)
         {
-            /* We are in a pinch here. We have an error, which requires a
-               return value < nmemb. On the other hand, all objects have
-               been written to buffer, which means all the caller had to
-               do was removing the error cause, and re-flush the stream...
-               Catch 22. We'll return a value one short, to indicate the
-               error, and can't really do anything about the inconsistency.
-            */
             mtx_unlock(&stream->mtx);
             return n - 1;
         }
@@ -66,7 +57,7 @@ size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTR
             size_t bufIndex = stream->bufIndex;
             stream->bufIndex = newLineOffset;
 
-            if (_file_flush_buffer(stream) == _FAIL)
+            if (_file_flush_buffer(stream) == EOF)
             {
                 /* See comment above. */
                 stream->bufIndex = bufIndex;

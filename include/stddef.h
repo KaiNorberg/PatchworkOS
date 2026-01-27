@@ -6,7 +6,6 @@ extern "C"
 {
 #endif
 
-#include "_libstd/_FAIL.h"
 #include "_libstd/NULL.h"
 #include "_libstd/config.h"
 #include "_libstd/ptrdiff_t.h"

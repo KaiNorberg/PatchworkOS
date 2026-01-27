@@ -8,7 +8,9 @@
         fd_t fd = (fd_t)(ctx)->data; \
         int res = EOF; \
         char c; \
-        if (read(fd, &c, 1) == 1) \
+        size_t count; \
+        status_t status = read(fd, &c, 1, &count); \
+        if (IS_OK(status) && count == 1) \
         { \
             res = c; \
         } \
@@ -20,7 +22,7 @@
         fd_t fd = (fd_t)(ctx)->data; \
         if ((c) != EOF) \
         { \
-            seek(fd, -1, SEEK_CUR); \
+            seek(fd, -1, SEEK_CUR, NULL); \
         } \
     })
 

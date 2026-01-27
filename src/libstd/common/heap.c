@@ -37,22 +37,22 @@ void _heap_unmap_memory(void* addr, uint64_t size)
 
 mtx_t _heapLock;
 
-static fd_t zeroDev = _FAIL;
+static fd_t zeroDev = FD_NONE;
 
 void* _heap_map_memory(uint64_t size)
 {
-    if (zeroDev == _FAIL)
+    if (zeroDev == FD_NONE)
     {
-        zeroDev = open("/dev/const/zero:rw");
-        if (zeroDev == _FAIL)
+        status_t status = open(&zeroDev, "/dev/const/zero:rw");
+        if (IS_ERR(status))
         {
-            errno = ENOMEM;
             return NULL;
         }
     }
 
-    void* addr = mmap(zeroDev, NULL, size, PROT_READ | PROT_WRITE);
-    if (addr == NULL)
+    void* addr = NULL;
+    status_t status = mmap(zeroDev, &addr, size, PROT_READ | PROT_WRITE);
+    if (IS_ERR(status))
     {
         return NULL;
     }
@@ -72,6 +72,16 @@ static BITMAP_CREATE_ZERO(freeBitmap, _HEAP_NUM_BINS);
 
 list_t _heapList = LIST_CREATE(_heapList);
 
+static inline uint64_t _heap_get_bin_index(uint64_t size)
+{
+    if (size < _HEAP_ALIGNMENT)
+    {
+        return 0;
+    }
+
+    return (size / _HEAP_ALIGNMENT) - 1;
+}
+
 void _heap_init(void)
 {
 #ifdef _KERNEL_
@@ -83,21 +93,6 @@ void _heap_init(void)
     {
         list_init(&freeLists[i]);
     }
-}
-
-uint64_t _heap_get_bin_index(uint64_t size)
-{
-    if (size > _HEAP_LARGE_ALLOC_THRESHOLD)
-    {
-        return _FAIL;
-    }
-
-    if (size < _HEAP_ALIGNMENT)
-    {
-        return 0;
-    }
-
-    return (size / _HEAP_ALIGNMENT) - 1;
 }
 
 _heap_header_t* _heap_block_new(uint64_t minSize)
@@ -172,11 +167,11 @@ void _heap_add_to_free_list(_heap_header_t* block)
         return;
     }
 
-    uint64_t binIndex = _heap_get_bin_index(block->size);
-    if (binIndex == _FAIL)
+    if (block->size > _HEAP_LARGE_ALLOC_THRESHOLD)
     {
         return;
     }
+    uint64_t binIndex = _heap_get_bin_index(block->size);
     list_push_back(&freeLists[binIndex], &block->freeEntry);
     bitmap_set(&freeBitmap, binIndex);
 }
@@ -188,11 +183,11 @@ void _heap_remove_from_free_list(_heap_header_t* block)
         return;
     }
 
-    uint64_t binIndex = _heap_get_bin_index(block->size);
-    if (binIndex == _FAIL)
+    if (block->size > _HEAP_LARGE_ALLOC_THRESHOLD)
     {
         return;
     }
+    uint64_t binIndex = _heap_get_bin_index(block->size);
     list_remove(&block->freeEntry);
     if (list_is_empty(&freeLists[binIndex]))
     {

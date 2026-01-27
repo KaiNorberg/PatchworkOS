@@ -22,14 +22,16 @@ font_t* font_new(display_t* disp, const char* family, const char* weight, uint64
         family = theme->defaultFont;
     }
 
-    fd_t file = open(F("%s/%s-%s%d.grf", theme->fontsDir, family, weight, size));
-    if (file == _FAIL)
+    fd_t file;
+    status_t status = open(&file, F("%s/%s-%s%d.grf", theme->fontsDir, family, weight, size));
+    if (IS_ERR(status))
     {
         return NULL;
     }
 
-    uint64_t fileSize = seek(file, 0, SEEK_END);
-    seek(file, 0, SEEK_SET);
+    uint64_t fileSize;
+    seek(file, 0, SEEK_END, &fileSize);
+    seek(file, 0, SEEK_SET, NULL);
 
     if (fileSize <= sizeof(font_t))
     {
@@ -45,7 +47,8 @@ font_t* font_new(display_t* disp, const char* family, const char* weight, uint64
     }
 
     grf_t grf;
-    if (read(file, &font->grf, fileSize) != fileSize)
+    status = read(file, &font->grf, fileSize, NULL);
+    if (IS_ERR(status))
     {
         free(font);
         close(file);

@@ -3,7 +3,7 @@
 #include <string.h>
 #include <sys/fs.h>
 
-uint64_t rmdir(const char* path)
+int rmdir(const char* path)
 {
     return remove(F("%s:directory", path));
 }

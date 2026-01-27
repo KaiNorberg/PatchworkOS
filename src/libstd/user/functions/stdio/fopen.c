@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <errno.h>
+#include <sys/fs.h>
 
 #include "user/common/file.h"
 #include "user/common/syscalls.h"
@@ -39,9 +41,11 @@ FILE* fopen(const char* _RESTRICT filename, const char* _RESTRICT mode)
         return NULL;
     }
 
-    fd_t fd = open(F("%s%s", filename, _flags_to_string(flags)));
-    if (fd == _FAIL)
+    fd_t fd;
+    status_t status = open(&fd, F("%s%s", filename, _flags_to_string(flags)));
+    if (IS_ERR(status))
     {
+        errno = ENOENT;
         return NULL;
     }
 
@@ -53,7 +57,7 @@ FILE* fopen(const char* _RESTRICT filename, const char* _RESTRICT mode)
         return NULL;
     }
 
-    if (_file_init(stream, fd, flags | _FILE_FULLY_BUFFERED, NULL, BUFSIZ) == _FAIL)
+    if (_file_init(stream, fd, flags | _FILE_FULLY_BUFFERED, NULL, BUFSIZ) == EOF)
     {
         errno = ENOMEM;
         close(fd);

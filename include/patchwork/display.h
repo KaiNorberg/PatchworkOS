@@ -92,7 +92,7 @@ void display_cmds_flush(display_t* disp);
  * @param disp The display connection.
  * @param event Output pointer to store the retrieved event.
  * @param timeout Maximum time to wait for an event, if `CLOCKS_NEVER` will wait indefinitely.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return On success, `0`. On failure, `PFAIL` and `errno` is set.
  */
 uint64_t display_next(display_t* disp, event_t* event, clock_t timeout);
 
@@ -104,7 +104,7 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout);
  * @param nfds Number of file descriptors in the array.
  * @param timeout Maximum time to wait for an event, if `CLOCKS_NEVER` will wait indefinitely.
  * @return On success, number of file descriptors with events (not including the display connection). On failure,
- * returns `_FAIL` and `errno` is set.
+ * returns `PFAIL` and `errno` is set.
  */
 uint64_t display_poll(display_t* disp, pollfd_t* fds, uint64_t nfds, clock_t timeout);
 
@@ -132,7 +132,7 @@ void display_push(display_t* disp, surface_id_t target, event_type_t type, void*
  * @param disp The display connection.
  * @param event Output pointer to store the retrieved event.
  * @param expected The expected event type to wait for.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return On success, `0`. On failure, `PFAIL` and `errno` is set.
  */
 uint64_t display_wait(display_t* disp, event_t* event, event_type_t expected);
 
@@ -146,7 +146,7 @@ uint64_t display_wait(display_t* disp, event_t* event, event_type_t expected);
  * @param type Type of event.
  * @param data Pointer to the event data, can be `NULL` if `size` is `0`.
  * @param size Size of the event data, must be less than `EVENT_MAX_DATA`.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return On success, `0`. On failure, `PFAIL` and `errno` is set.
  */
 uint64_t display_emit(display_t* disp, surface_id_t target, event_type_t type, void* data, uint64_t size);
 
@@ -157,7 +157,7 @@ uint64_t display_emit(display_t* disp, surface_id_t target, event_type_t type, v
  *
  * @param disp The display connection.
  * @param event The event to dispatch.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return On success, `0`. On failure, `PFAIL` and `errno` is set.
  */
 uint64_t display_dispatch(display_t* disp, const event_t* event);
 
@@ -167,7 +167,7 @@ uint64_t display_dispatch(display_t* disp, const event_t* event);
  * @param disp The display connection.
  * @param type The event type to check for.
  * @param target The target surface ID for the events, if `SURFACE_ID_NONE` all events are dispatched.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return On success, `0`. On failure, `PFAIL` and `errno` is set.
  */
 uint64_t display_dispatch_pending(display_t* disp, event_type_t type, surface_id_t target);
 
@@ -199,7 +199,7 @@ uint64_t display_unsubscribe(display_t* disp, event_type_t type);
  * @param disp The display connection.
  * @param id The surface ID to query.
  * @param info Output pointer to store the surface information.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return On success, `0`. On failure, `PFAIL` and `errno` is set.
  */
 uint64_t display_get_surface_info(display_t* disp, surface_id_t id, surface_info_t* info);
 
@@ -230,7 +230,7 @@ uint64_t display_set_is_visible(display_t* disp, surface_id_t id, bool isVisible
  * @param disp The display connection.
  * @param rect Output pointer to store the rectangle of the screen.
  * @param index Index of the screen to query, only `0` is supported currently.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return On success, `0`. On failure, `PFAIL` and `errno` is set.
  */
 uint64_t display_get_screen(display_t* disp, rect_t* rect, uint64_t index);
 

@@ -14,7 +14,7 @@ int mtx_init(mtx_t* mutex, int type)
                   // just say that it works.
 
     atomic_init(&mutex->state, _MTX_UNLOCKED);
-    mutex->owner = _FAIL;
+    mutex->owner = -1;
     mutex->depth = 0;
 
     return thrd_success;

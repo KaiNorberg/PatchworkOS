@@ -4,30 +4,29 @@
 
 #include <errno.h>
 
-uint64_t atnotify(atnotify_func_t func, atnotify_t action)
+status_t atnotify(atnotify_func_t func, atnotify_t action)
 {
     if (func == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(LIBSTD, INVAL);
     }
 
     switch (action)
     {
     case ATNOTIFY_ADD:
-        if (_note_handler_add(func) == _FAIL)
+    {
+        if (!_note_handler_add(func))
         {
-            errno = ENOMEM;
-            return _FAIL;
+            return ERR(LIBSTD, NOSPACE);
         }
-        break;
+    }
+    break;
     case ATNOTIFY_REMOVE:
         _note_handler_remove(func);
         break;
     default:
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(LIBSTD, INVAL);
     }
 
-    return 0;
+    return OK;
 }

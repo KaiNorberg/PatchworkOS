@@ -43,6 +43,6 @@ int mtx_lock(mtx_t* mutex)
         {
             atomic_compare_exchange_strong(&(mutex->state), &expected, _MTX_CONTESTED);
         }
-        futex(&(mutex->state), _MTX_CONTESTED, FUTEX_WAIT, CLOCKS_NEVER);
+        futex(&(mutex->state), _MTX_CONTESTED, FUTEX_WAIT, CLOCKS_NEVER, NULL);
     } while (1);
 }

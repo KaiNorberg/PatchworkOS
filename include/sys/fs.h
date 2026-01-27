@@ -15,7 +15,6 @@ extern "C"
 {
 #endif
 
-#include "_libstd/_FAIL.h"
 #include "_libstd/MAX_NAME.h"
 #include "_libstd/MAX_PATH.h"
 #include "_libstd/NULL.h"
@@ -563,17 +562,17 @@ status_t readdir(fd_t fd, dirent_t** buffer, uint64_t* count);
  * @brief Wrapper for creating a directory.
  *
  * @param path The path of the directory to create.
- * @return An appropriate status value.
+ * @return On success, `0`. On failure, `EOF`.
  */
-status_t mkdir(const char* path);
+int mkdir(const char* path);
 
 /**
  * @brief Wrapper for removing a directory.
  *
  * @param path The path of the directory to remove.
- * @return An appropriate status value.
+ * @return On success, `0`. On failure, `EOF`.
  */
-status_t rmdir(const char* path);
+int rmdir(const char* path);
 
 /**
  * @brief Wrapper for removing a file.

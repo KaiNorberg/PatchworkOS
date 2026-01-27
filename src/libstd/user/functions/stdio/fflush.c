@@ -4,7 +4,7 @@
 
 int fflush(FILE* stream)
 {
-    uint64_t result = 0;
+    int result = 0;
     if (stream == NULL)
     {
         result = _files_flush();
@@ -16,5 +16,5 @@ int fflush(FILE* stream)
         mtx_unlock(&stream->mtx);
     }
 
-    return result == _FAIL ? EOF : 0;
+    return result;
 }

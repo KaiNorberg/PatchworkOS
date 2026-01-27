@@ -6,7 +6,7 @@ int fputs(const char* _RESTRICT s, FILE* _RESTRICT stream)
 {
     mtx_lock(&stream->mtx);
 
-    if (_file_prepare_write(stream) == _FAIL)
+    if (_file_prepare_write(stream) == EOF)
     {
         mtx_unlock(&stream->mtx);
         return EOF;
@@ -18,7 +18,7 @@ int fputs(const char* _RESTRICT s, FILE* _RESTRICT stream)
 
         if ((stream->bufIndex == stream->bufSize) || ((stream->flags & _FILE_LINE_BUFFERED) && *s == '\n'))
         {
-            if (_file_flush_buffer(stream) == _FAIL)
+            if (_file_flush_buffer(stream) == EOF)
             {
                 mtx_unlock(&stream->mtx);
                 return EOF;
@@ -30,7 +30,7 @@ int fputs(const char* _RESTRICT s, FILE* _RESTRICT stream)
 
     if (stream->flags & _FILE_UNBUFFERED)
     {
-        if (_file_flush_buffer(stream) == _FAIL)
+        if (_file_flush_buffer(stream) == EOF)
         {
             mtx_unlock(&stream->mtx);
             return EOF;

@@ -23,7 +23,7 @@ static void _std_stream_init(fd_t fd, FILE* stream, FILE** streamPtr, void* buff
     memset(stream, 0, sizeof(FILE));
     list_entry_init(&stream->entry);
 
-    if (_file_init(stream, fd, flags, buffer, BUFSIZ) == _FAIL)
+    if (_file_init(stream, fd, flags, buffer, BUFSIZ) == EOF)
     {
         fprintf(stderr, "libstd: failed to initialize standard stream (fd=%d)\n", fd);
         abort();

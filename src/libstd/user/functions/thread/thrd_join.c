@@ -33,7 +33,7 @@ int thrd_join(thrd_t thr, int* res)
             break;
         }
 
-        futex(&thread->state, state, FUTEX_WAIT, CLOCKS_NEVER);
+        futex(&thread->state, state, FUTEX_WAIT, CLOCKS_NEVER, NULL);
     }
 
     if (res != NULL)

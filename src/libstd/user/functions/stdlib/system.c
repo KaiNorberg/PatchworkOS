@@ -6,20 +6,23 @@
 int system(const char* command)
 {
     const char* argv[] = {"/bin/shell", command, NULL};
-    pid_t shell = spawn(argv, SPAWN_DEFAULT);
-    if (shell == _FAIL)
+    pid_t shell;
+    status_t status = spawn(argv, SPAWN_DEFAULT, &shell);
+    if (IS_ERR(status))
     {
         return -1;
     }
 
-    fd_t wait = open(F("/proc/%d/wait", shell));
-    if (wait == _FAIL)
+    fd_t wait;
+    status = open(&wait, F("/proc/%d/wait", shell));
+    if (IS_ERR(status))
     {
         return -1;
     }
 
     char buf[MAX_PATH];
-    if (read(wait, buf, MAX_PATH) == _FAIL)
+    status = read(wait, buf, MAX_PATH, NULL);
+    if (IS_ERR(status))
     {
         close(wait);
         return -1;

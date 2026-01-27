@@ -15,7 +15,7 @@ static uint64_t _thread_hash(tid_t id)
     return id % _THREADS_MAX;
 }
 
-static uint64_t _thread_insert(_thread_t* thread)
+static bool _thread_insert(_thread_t* thread)
 {
     uint64_t index = _thread_hash(thread->id);
     for (uint64_t i = 0; i < _THREADS_MAX; i++)
@@ -25,10 +25,10 @@ static uint64_t _thread_insert(_thread_t* thread)
         if (atomic_compare_exchange_strong_explicit(&threads[probe], &expected, thread, memory_order_release,
                 memory_order_relaxed))
         {
-            return 0;
+            return false;
         }
     }
-    return _FAIL;
+    return true;
 }
 
 static void _thread_remove(_thread_t* thread)
@@ -107,7 +107,7 @@ _thread_t* _thread_new(thrd_start_t func, void* arg)
         return NULL;
     }
 
-    if (_thread_insert(thread) == _FAIL)
+    if (!_thread_insert(thread))
     {
         errno = ENOSPC;
         mtx_unlock(&entryMutex);

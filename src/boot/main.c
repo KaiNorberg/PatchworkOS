@@ -437,7 +437,7 @@ static void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boo
     basicAllocator.gop = gop;
     basicAllocator.map = map;
 
-    if (page_table_init(table, basic_allocator_alloc_pages, NULL) == _FAIL)
+    if (!page_table_init(table, basic_allocator_alloc_pages, NULL))
     {
         panic_halt(PANIC_PAGE_TABLE_INIT);
     }
@@ -453,8 +453,7 @@ static void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boo
         }
     }
 
-    if (page_table_map(table, 0, 0, BYTES_TO_PAGES(maxPhysicalAddress), PML_WRITE | PML_PRESENT, PML_CALLBACK_NONE) ==
-        _FAIL)
+    if (!page_table_map(table, 0, 0, BYTES_TO_PAGES(maxPhysicalAddress), PML_WRITE | PML_PRESENT, PML_CALLBACK_NONE))
     {
         panic_halt(PANIC_IDENTITY_MAP);
     }
@@ -468,8 +467,8 @@ static void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boo
             panic_halt(PANIC_HIGHER_HALF_INVALID);
         }
 
-        if (page_table_map(table, (void*)desc->VirtualStart, desc->PhysicalStart, desc->NumberOfPages,
-                PML_WRITE | PML_PRESENT, PML_CALLBACK_NONE) == _FAIL)
+        if (!page_table_map(table, (void*)desc->VirtualStart, desc->PhysicalStart, desc->NumberOfPages,
+                PML_WRITE | PML_PRESENT, PML_CALLBACK_NONE))
         {
             panic_halt(PANIC_HIGHER_HALF_MAP);
         }
@@ -480,14 +479,14 @@ static void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boo
     elf64_get_loadable_bounds(&kernel->elf, &minVaddr, &maxVaddr);
     size_t kernelPageCount = BYTES_TO_PAGES(maxVaddr - minVaddr);
 
-    if (page_table_map(table, (void*)minVaddr, kernel->physAddr, kernelPageCount, PML_WRITE | PML_PRESENT,
-            PML_CALLBACK_NONE) == _FAIL)
+    if (!page_table_map(table, (void*)minVaddr, kernel->physAddr, kernelPageCount, PML_WRITE | PML_PRESENT,
+            PML_CALLBACK_NONE))
     {
         panic_halt(PANIC_KERNEL_MAP);
     }
 
-    if (page_table_map(table, (void*)gop->virtAddr, gop->physAddr, BYTES_TO_PAGES(gop->size),
-            PML_WRITE | PML_PRESENT | PML_WRITE_THROUGH, PML_CALLBACK_NONE) == _FAIL)
+    if (!page_table_map(table, (void*)gop->virtAddr, gop->physAddr, BYTES_TO_PAGES(gop->size),
+            PML_WRITE | PML_PRESENT | PML_WRITE_THROUGH, PML_CALLBACK_NONE))
     {
         panic_halt(PANIC_GOP_MAP);
     }

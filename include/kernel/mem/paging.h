@@ -604,7 +604,7 @@ static inline void page_table_clear(page_table_t* table, void* addr, size_t amou
     {
         page_table_clear_pml1_pml2_pml3(table, &prevTraverse, &traverse, &pageBuffer);
 
-        if (page_table_traverse(table, &traverse, addr + i * PAGE_SIZE, PML_NONE) == _FAIL)
+        if (!page_table_traverse(table, &traverse, addr + i * PAGE_SIZE, PML_NONE))
         {
             prevTraverse.pml1Valid = false;
             prevTraverse.pml2Valid = false;
@@ -644,7 +644,7 @@ static inline void page_table_collect_callbacks(page_table_t* table, void* addr,
 
     for (uint64_t i = 0; i < amount; i++)
     {
-        if (page_table_traverse(table, &traverse, addr + i * PAGE_SIZE, PML_NONE) == _FAIL)
+        if (!page_table_traverse(table, &traverse, addr + i * PAGE_SIZE, PML_NONE))
         {
             continue;
         }
