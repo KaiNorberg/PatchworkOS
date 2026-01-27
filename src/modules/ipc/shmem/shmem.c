@@ -97,20 +97,20 @@ static void shmem_vmm_callback(void* data)
     UNREF(shmem);
 }
 
-static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmount, space_t* space, void* address,
+static status_t shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmount, space_t* space, void** address,
     pml_flags_t flags)
 {
     shmem->pages = malloc(sizeof(pfn_t) * pageAmount);
     if (shmem->pages == NULL)
     {
-        return NULL;
+        return ERR(DRIVER, NOMEM);
     }
     shmem->pageAmount = pageAmount;
 
     for (uint64_t i = 0; i < pageAmount; i++)
     {
         shmem->pages[i] = pmm_alloc();
-        if (shmem->pages[i] == _FAIL)
+        if (shmem->pages[i] == PFN_INVALID)
         {
             for (uint64_t j = 0; j < i; j++)
             {
@@ -120,13 +120,12 @@ static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmo
             free(shmem->pages);
             shmem->pages = NULL;
             shmem->pageAmount = 0;
-            return NULL;
+            return ERR(DRIVER, NOMEM);
         }
     }
 
-    void* virtAddr =
-        vmm_map_pages(space, address, shmem->pages, shmem->pageAmount, flags, shmem_vmm_callback, REF(shmem));
-    if (virtAddr == NULL)
+    status_t status = vmm_map_pages(space, address, shmem->pages, shmem->pageAmount, flags, shmem_vmm_callback, REF(shmem));
+    if (IS_ERR(status))
     {
         for (uint64_t i = 0; i < shmem->pageAmount; i++)
         {
@@ -136,22 +135,22 @@ static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmo
         free(shmem->pages);
         shmem->pages = NULL;
         shmem->pageAmount = 0;
-        return NULL;
+        return status;
     }
 
-    return virtAddr;
+    return OK;
 }
 
-static uint64_t shmem_open(file_t* file)
+static status_t shmem_open(file_t* file)
 {
     shmem_object_t* shmem = shmem_object_new();
     if (shmem == NULL)
     {
-        return _FAIL;
+        return ERR(DRIVER, NOMEM);
     }
 
     file->data = shmem;
-    return 0;
+    return OK;
 }
 
 static void shmem_close(file_t* file)
@@ -165,13 +164,12 @@ static void shmem_close(file_t* file)
     UNREF(shmem);
 }
 
-static void* shmem_mmap(file_t* file, void* address, size_t length, size_t* offset, pml_flags_t flags)
+static status_t shmem_mmap(file_t* file, void** address, size_t length, size_t* offset, pml_flags_t flags)
 {
     shmem_object_t* shmem = file->data;
     if (shmem == NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(DRIVER, INVAL);
     }
 
     LOCK_SCOPE(&shmem->lock);
@@ -182,16 +180,14 @@ static void* shmem_mmap(file_t* file, void* address, size_t length, size_t* offs
     uint64_t pageAmount = BYTES_TO_PAGES(length);
     if (pageAmount == 0)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(DRIVER, INVAL);
     }
 
     if (shmem->pageAmount == 0) // First call to mmap()
     {
         if (*offset != 0)
         {
-            errno = EINVAL;
-            return NULL;
+            return ERR(DRIVER, INVAL);
         }
 
         assert(shmem->pages == NULL);
@@ -202,14 +198,12 @@ static void* shmem_mmap(file_t* file, void* address, size_t length, size_t* offs
 
     if (*offset >= shmem->pageAmount * PAGE_SIZE)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(DRIVER, INVAL);
     }
 
     if (*offset % PAGE_SIZE != 0)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(DRIVER, INVAL);
     }
 
     uint64_t pageOffset = *offset / PAGE_SIZE;
@@ -224,13 +218,13 @@ static file_ops_t fileOps = {
     .mmap = shmem_mmap,
 };
 
-static uint64_t shmem_init(void)
+static status_t shmem_init(void)
 {
     shmemDir = devfs_dir_new(NULL, "shmem", NULL, NULL);
     if (shmemDir == NULL)
     {
         LOG_ERR("failed to create /dev/shmem directory");
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
     newFile = devfs_file_new(shmemDir, "new", NULL, &fileOps, NULL);
@@ -238,10 +232,10 @@ static uint64_t shmem_init(void)
     {
         UNREF(shmemDir);
         LOG_ERR("failed to create /dev/shmem/new file");
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
-    return 0;
+    return OK;
 }
 
 static void shmem_deinit(void)
@@ -254,16 +248,12 @@ static void shmem_deinit(void)
 
 /** @} */
 
-uint64_t _module_procedure(const module_event_t* event)
+status_t _module_procedure(const module_event_t* event)
 {
     switch (event->type)
     {
     case MODULE_EVENT_LOAD:
-        if (shmem_init() == _FAIL)
-        {
-            return _FAIL;
-        }
-        break;
+        return shmem_init();
     case MODULE_EVENT_UNLOAD:
         shmem_deinit();
         break;
@@ -271,7 +261,7 @@ uint64_t _module_procedure(const module_event_t* event)
         break;
     }
 
-    return 0;
+    return OK;
 }
 
 MODULE_INFO("Shared Memory", "Kai Norberg", "Implements shared memory for inter-process communication", OS_VERSION,

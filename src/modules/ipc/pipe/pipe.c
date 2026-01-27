@@ -52,18 +52,18 @@ typedef struct
 static dentry_t* pipeDir = NULL;
 static dentry_t* newFile = NULL;
 
-static uint64_t pipe_open(file_t* file)
+static status_t pipe_open(file_t* file)
 {
     pipe_t* data = malloc(sizeof(pipe_t));
     if (data == NULL)
     {
-        return _FAIL;
+        return ERR(DRIVER, NOMEM);
     }
     data->buffer = malloc(PAGE_SIZE);
     if (data->buffer == NULL)
     {
         free(data);
-        return _FAIL;
+        return ERR(DRIVER, NOMEM);
     }
     fifo_init(&data->ring, data->buffer, PAGE_SIZE);
     data->isReadClosed = false;
@@ -74,21 +74,21 @@ static uint64_t pipe_open(file_t* file)
     data->writeEnd = file;
 
     file->data = data;
-    return 0;
+    return OK;
 }
 
-static uint64_t pipe_open2(file_t* files[2])
+static status_t pipe_open2(file_t* files[2])
 {
     pipe_t* data = malloc(sizeof(pipe_t));
     if (data == NULL)
     {
-        return _FAIL;
+        return ERR(DRIVER, NOMEM);
     }
     data->buffer = malloc(PAGE_SIZE);
     if (data->buffer == NULL)
     {
         free(data);
-        return _FAIL;
+        return ERR(DRIVER, NOMEM);
     }
     fifo_init(&data->ring, data->buffer, PAGE_SIZE);
     data->isReadClosed = false;
@@ -101,7 +101,7 @@ static uint64_t pipe_open2(file_t* files[2])
 
     files[0]->data = data;
     files[1]->data = data;
-    return 0;
+    return OK;
 }
 
 static void pipe_close(file_t* file)
@@ -117,7 +117,7 @@ static void pipe_close(file_t* file)
         data->isWriteClosed = true;
     }
 
-    wait_unblock(&data->waitQueue, WAIT_ALL, EOK);
+    wait_unblock(&data->waitQueue, WAIT_ALL, OK);
     if (data->isWriteClosed && data->isReadClosed)
     {
         lock_release(&data->lock);
@@ -130,26 +130,25 @@ static void pipe_close(file_t* file)
     lock_release(&data->lock);
 }
 
-static uint64_t pipe_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t pipe_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     UNUSED(offset);
 
     if (count == 0)
     {
-        return 0;
+        *bytesRead = 0;
+        return OK;
     }
 
     pipe_t* data = file->data;
     if (data->readEnd != file)
     {
-        errno = ENOSYS;
-        return _FAIL;
+        return ERR(DRIVER, INVAL);
     }
 
     if (count >= PAGE_SIZE)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(DRIVER, INVAL);
     }
 
     LOCK_SCOPE(&data->lock);
@@ -158,37 +157,35 @@ static uint64_t pipe_read(file_t* file, void* buffer, size_t count, size_t* offs
     {
         if (file->mode & MODE_NONBLOCK)
         {
-            errno = EAGAIN;
-            return _FAIL;
+            return ERR(DRIVER, AGAIN);
         }
 
-        if (WAIT_BLOCK_LOCK(&data->waitQueue, &data->lock,
-                fifo_bytes_readable(&data->ring) != 0 || data->isWriteClosed) == _FAIL)
+        status_t status = WAIT_BLOCK_LOCK(&data->waitQueue, &data->lock,
+            fifo_bytes_readable(&data->ring) != 0 || data->isWriteClosed);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
     }
 
-    uint64_t result = fifo_read(&data->ring, buffer, count);
-    wait_unblock(&data->waitQueue, WAIT_ALL, EOK);
-    return result;
+    *bytesRead = fifo_read(&data->ring, buffer, count);
+    wait_unblock(&data->waitQueue, WAIT_ALL, OK);
+    return OK;
 }
 
-static uint64_t pipe_write(file_t* file, const void* buffer, size_t count, size_t* offset)
+static status_t pipe_write(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
 {
     UNUSED(offset);
 
     pipe_t* data = file->data;
     if (data->writeEnd != file)
     {
-        errno = ENOSYS;
-        return _FAIL;
+        return ERR(DRIVER, INVAL);
     }
 
     if (count >= PAGE_SIZE)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(DRIVER, INVAL);
     }
 
     LOCK_SCOPE(&data->lock);
@@ -197,30 +194,29 @@ static uint64_t pipe_write(file_t* file, const void* buffer, size_t count, size_
     {
         if (file->mode & MODE_NONBLOCK)
         {
-            errno = EAGAIN;
-            return _FAIL;
+            return ERR(DRIVER, AGAIN);
         }
 
-        if (WAIT_BLOCK_LOCK(&data->waitQueue, &data->lock,
-                fifo_bytes_writeable(&data->ring) != 0 || data->isReadClosed) == _FAIL)
+        status_t status = WAIT_BLOCK_LOCK(&data->waitQueue, &data->lock,
+            fifo_bytes_writeable(&data->ring) != 0 || data->isReadClosed);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
     }
 
     if (data->isReadClosed)
     {
-        wait_unblock(&data->waitQueue, WAIT_ALL, EOK);
-        errno = EPIPE;
-        return _FAIL;
+        wait_unblock(&data->waitQueue, WAIT_ALL, OK);
+        return ERR(DRIVER, IO);
     }
 
-    uint64_t result = fifo_write(&data->ring, buffer, count);
-    wait_unblock(&data->waitQueue, WAIT_ALL, EOK);
-    return result;
+    *bytesWritten = fifo_write(&data->ring, buffer, count);
+    wait_unblock(&data->waitQueue, WAIT_ALL, OK);
+    return OK;
 }
 
-static wait_queue_t* pipe_poll(file_t* file, poll_events_t* revents)
+static status_t pipe_poll(file_t* file, poll_events_t* revents, wait_queue_t** queue)
 {
     pipe_t* data = file->data;
     LOCK_SCOPE(&data->lock);
@@ -238,7 +234,8 @@ static wait_queue_t* pipe_poll(file_t* file, poll_events_t* revents)
         *revents |= POLLHUP;
     }
 
-    return &data->waitQueue;
+    *queue = &data->waitQueue;
+    return OK;
 }
 
 static file_ops_t fileOps = {
@@ -250,13 +247,13 @@ static file_ops_t fileOps = {
     .poll = pipe_poll,
 };
 
-uint64_t pipe_init(void)
+status_t pipe_init(void)
 {
     pipeDir = devfs_dir_new(NULL, "pipe", NULL, NULL);
     if (pipeDir == NULL)
     {
         LOG_ERR("failed to initialize pipe directory");
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
     newFile = devfs_file_new(pipeDir, "new", NULL, &fileOps, NULL);
@@ -264,10 +261,10 @@ uint64_t pipe_init(void)
     {
         UNREF(pipeDir);
         LOG_ERR("failed to initialize pipe new file");
-        return _FAIL;
+        return ERR(DRIVER, IO);
     }
 
-    return 0;
+    return OK;
 }
 
 void pipe_deinit(void)
@@ -280,16 +277,12 @@ void pipe_deinit(void)
 
 /** @} */
 
-uint64_t _module_procedure(const module_event_t* event)
+status_t _module_procedure(const module_event_t* event)
 {
     switch (event->type)
     {
     case MODULE_EVENT_LOAD:
-        if (pipe_init() == _FAIL)
-        {
-            return _FAIL;
-        }
-        break;
+        return pipe_init();
     case MODULE_EVENT_UNLOAD:
         pipe_deinit();
         break;
@@ -297,7 +290,7 @@ uint64_t _module_procedure(const module_event_t* event)
         break;
     }
 
-    return 0;
+    return OK;
 }
 
 MODULE_INFO("Pipes", "Kai Norberg", "Implements pipes for inter-process communication", OS_VERSION, "MIT",

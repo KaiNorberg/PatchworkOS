@@ -24,14 +24,14 @@ static atomic_bool cpuReadyFlag = ATOMIC_VAR_INIT(false);
 void trampoline_init(void)
 {
     pfn_t pfn = pmm_alloc();
-    if (pfn == _FAIL)
+    if (pfn == PFN_INVALID)
     {
         panic(NULL, "Failed to allocate memory for trampoline backup");
     }
     backupBuffer = PFN_TO_VIRT(pfn);
 
     pfn = pmm_alloc();
-    if (pfn == _FAIL)
+    if (pfn == PFN_INVALID)
     {
         panic(NULL, "Failed to allocate memory for trampoline stack");
     }
@@ -39,8 +39,10 @@ void trampoline_init(void)
 
     assert(TRAMPOLINE_SIZE < PAGE_SIZE);
 
-    if (vmm_map(NULL, (void*)TRAMPOLINE_BASE_ADDR, TRAMPOLINE_BASE_ADDR, PAGE_SIZE, PML_WRITE | PML_PRESENT, NULL,
-            NULL) == NULL)
+    void* addr = (void*)TRAMPOLINE_BASE_ADDR;
+    status_t status = vmm_map(NULL, &addr, TRAMPOLINE_BASE_ADDR, PAGE_SIZE, PML_WRITE | PML_PRESENT, NULL,
+            NULL);
+    if (IS_ERR(status))
     {
         panic(NULL, "Failed to map trampoline");
     }
@@ -86,7 +88,7 @@ void trampoline_send_startup_ipi(cpu_t* cpu, lapic_id_t lapicId)
     lapic_send_sipi(lapicId, (void*)TRAMPOLINE_BASE_ADDR);
 }
 
-uint64_t trampoline_wait_ready(clock_t timeout)
+bool trampoline_wait_ready(clock_t timeout)
 {
     clock_t elapsed = 0;
 
@@ -94,14 +96,14 @@ uint64_t trampoline_wait_ready(clock_t timeout)
     {
         if (atomic_load(&cpuReadyFlag))
         {
-            return 0;
+            return true;
         }
 
         clock_wait(CLOCKS_PER_SEC / 10000);
         elapsed += CLOCKS_PER_SEC / 10000;
     }
 
-    return _FAIL;
+    return false;
 }
 
 static void trampoline_after_jump(void)

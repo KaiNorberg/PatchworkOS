@@ -20,10 +20,14 @@ int* _errno_get(void);
  * @{
  */
 
+#ifndef _KERNEL_
+#ifndef _KERNEL_MODULE_
 /**
  * @brief Error number variable.
  */
 #define errno (*_errno_get())
+#endif
+#endif
 
 /**
  * @brief No error

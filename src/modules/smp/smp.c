@@ -65,9 +65,9 @@ static void smp_start_others(void)
             continue;
         }
 
-        cpu_t* cpu =
-            vmm_alloc(NULL, NULL, sizeof(cpu_t), PAGE_SIZE, PML_WRITE | PML_PRESENT | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
-        if (cpu == NULL)
+        cpu_t* cpu = NULL;
+        status_t status = vmm_alloc(NULL, (void**)&cpu, sizeof(cpu_t), PAGE_SIZE, PML_WRITE | PML_PRESENT | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
+        if (IS_ERR(status))
         {
             panic(NULL, "Failed to allocate memory for cpu with lapicid %d", (uint64_t)lapic->apicId);
         }
@@ -76,7 +76,7 @@ static void smp_start_others(void)
         LOG_DEBUG("starting cpu with lapicid %d\n", (uint64_t)lapic->apicId);
         trampoline_send_startup_ipi(cpu, lapic->apicId);
 
-        if (trampoline_wait_ready(CLOCKS_PER_SEC) == _FAIL)
+        if (!trampoline_wait_ready(CLOCKS_PER_SEC))
         {
             panic(NULL, "Timeout waiting for cpu with lapicid %d to start", (uint64_t)lapic->apicId);
         }
@@ -91,7 +91,7 @@ static void smp_start_others(void)
 
 /** @} */
 
-uint64_t _module_procedure(const module_event_t* event)
+status_t _module_procedure(const module_event_t* event)
 {
     switch (event->type)
     {
@@ -102,7 +102,7 @@ uint64_t _module_procedure(const module_event_t* event)
         break;
     }
 
-    return 0;
+    return OK;
 }
 
 MODULE_INFO("SMP Bootstrap", "Kai Norberg", "Symmetric Multiprocessing support via APIC", OS_VERSION, "MIT",
