@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <sys/defs.h>
+#include <sys/status.h>
 
 /**
  * @brief Integer revision handling
@@ -32,9 +33,9 @@ typedef uint64_t aml_uint_t;
 /**
  * @brief Initialize integer handling.
  *
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_integer_handling_init(void);
+status_t aml_integer_handling_init(void);
 
 /**
  * @brief Get the byte size of an AML integer.

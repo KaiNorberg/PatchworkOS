@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kernel/acpi/aml/aml.h>
+#include <sys/status.h>
 
 /**
  * @brief Extract Portion of Buffer or String
@@ -19,7 +20,9 @@
  * @param bufferString The buffer or string object to extract from.
  * @param index The starting index for the extraction.
  * @param length The length of the portion to extract.
- * @return On success, the new buffer or string object containing the extracted portion. On failure, `NULL` and `errno`
- * is set.
+ * @param out Output pointer for the new buffer or string object containing the extracted portion.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_mid(aml_state_t* state, aml_object_t* bufferString, aml_uint_t index, aml_uint_t length);
+status_t aml_mid(aml_state_t* state, aml_object_t* bufferString, aml_uint_t index, aml_uint_t length, aml_object_t** out);
+
+/** @} */

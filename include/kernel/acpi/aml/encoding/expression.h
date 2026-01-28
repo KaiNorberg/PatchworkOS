@@ -43,9 +43,9 @@ typedef struct aml_term_arg_list
  * @param ctx The TermList context.
  * @param out Output pointer to be filled with the object pointer storing the result.
  * @param allowedTypes The allowed types that the TermArg can evaluate to.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_operand_read(aml_term_list_ctx_t* ctx, aml_type_t allowedTypes);
+status_t aml_operand_read(aml_term_list_ctx_t* ctx, aml_type_t allowedTypes, aml_object_t** out);
 
 /**
  * @brief Reads a BufferSize structure from the AML byte stream.
@@ -56,9 +56,9 @@ aml_object_t* aml_operand_read(aml_term_list_ctx_t* ctx, aml_type_t allowedTypes
  *
  * @param ctx The TermList context.
  * @param out Output pointer where the buffer size will be stored.
- * @return On success, the buffer size. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status code.
  */
-uint64_t aml_buffer_size_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
+status_t aml_buffer_size_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a DefBuffer structure from the AML byte stream.
@@ -69,9 +69,9 @@ uint64_t aml_buffer_size_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
  *
  * @param ctx The TermList context.
  * @param out Output pointer to the object to store the result.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_def_buffer_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
+status_t aml_def_buffer_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
 
 /**
  * @brief Reads a TermArgList structure from the AML byte stream.
@@ -83,9 +83,9 @@ uint64_t aml_def_buffer_read(aml_term_list_ctx_t* ctx, aml_object_t* out);
  * @param ctx The TermList context.
  * @param argCount The number of arguments to read.
  * @param out Pointer to the buffer where the TermArgList will be stored.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_term_arg_list_read(aml_term_list_ctx_t* ctx, uint64_t argCount, aml_term_arg_list_t* out);
+status_t aml_term_arg_list_read(aml_term_list_ctx_t* ctx, uint64_t argCount, aml_term_arg_list_t* out);
 
 /**
  * @brief Reads a MethodInvocation structure from the AML byte stream.
@@ -102,9 +102,9 @@ uint64_t aml_term_arg_list_read(aml_term_list_ctx_t* ctx, uint64_t argCount, aml
  * The result may have the `AML_OBJECT_EXCEPTION_ON_USE` flag set.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_method_invocation_read(aml_term_list_ctx_t* ctx);
+status_t aml_method_invocation_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefCondRefOf structure from the AML byte stream.
@@ -114,9 +114,9 @@ aml_object_t* aml_method_invocation_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.14 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_cond_ref_of_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_cond_ref_of_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefStore structure from the AML byte stream.
@@ -126,9 +126,9 @@ aml_object_t* aml_def_cond_ref_of_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.132 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_store_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_store_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a Dividend structure from the AML byte stream.
@@ -137,9 +137,9 @@ aml_object_t* aml_def_store_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The TermList context.
  * @param out Output pointer where the integer value of the dividend will be stored.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_dividend_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
+status_t aml_dividend_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a Divisor structure from the AML byte stream.
@@ -148,9 +148,9 @@ uint64_t aml_dividend_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
  *
  * @param ctx The TermList context.
  * @param out Output pointer where the integer value of the divisor will be stored.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_divisor_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
+status_t aml_divisor_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a Remainder structure from the AML byte stream.
@@ -158,9 +158,9 @@ uint64_t aml_divisor_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
  * A Remainder structure is defined as `Remainder := Target`.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_remainder_read(aml_term_list_ctx_t* ctx);
+status_t aml_remainder_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a Quotient structure from the AML byte stream.
@@ -168,9 +168,9 @@ aml_object_t* aml_remainder_read(aml_term_list_ctx_t* ctx);
  * A Quotient structure is defined as `Quotient := Target`.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_quotient_read(aml_term_list_ctx_t* ctx);
+status_t aml_quotient_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefAdd structure from the AML byte stream.
@@ -180,9 +180,9 @@ aml_object_t* aml_quotient_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.3 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_add_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_add_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefSubtract structure from the AML byte stream.
@@ -192,9 +192,9 @@ aml_object_t* aml_def_add_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.133 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_subtract_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_subtract_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefMultiply structure from the AML byte stream.
@@ -204,9 +204,9 @@ aml_object_t* aml_def_subtract_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.88 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_multiply_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_multiply_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefDivide structure from the AML byte stream.
@@ -219,9 +219,9 @@ aml_object_t* aml_def_multiply_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.32 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_divide_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_divide_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefMod structure from the AML byte stream.
@@ -234,9 +234,9 @@ aml_object_t* aml_def_divide_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.87 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_mod_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_mod_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefAnd structure from the AML byte stream.
@@ -246,9 +246,9 @@ aml_object_t* aml_def_mod_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.5 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_and_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_and_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefNAnd structure from the AML byte stream.
@@ -258,9 +258,9 @@ aml_object_t* aml_def_and_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.69 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_nand_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_nand_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefOr structure from the AML byte stream.
@@ -270,9 +270,9 @@ aml_object_t* aml_def_nand_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.100 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_or_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_or_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefNOr structure from the AML byte stream.
@@ -282,9 +282,9 @@ aml_object_t* aml_def_or_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.93 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_nor_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_nor_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefXOr structure from the AML byte stream.
@@ -294,9 +294,9 @@ aml_object_t* aml_def_nor_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.155 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_xor_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_xor_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefNot structure from the AML byte stream.
@@ -306,9 +306,9 @@ aml_object_t* aml_def_xor_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.94 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_not_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_not_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a ShiftCount structure from the AML byte stream.
@@ -317,9 +317,9 @@ aml_object_t* aml_def_not_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The TermList context.
  * @param out Output pointer where the integer result will be stored.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_shift_count_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
+status_t aml_shift_count_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a DefShiftLeft structure from the AML byte stream.
@@ -329,9 +329,9 @@ uint64_t aml_shift_count_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
  * @see Section 19.6.123 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_shift_left_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_shift_left_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefShiftRight structure from the AML byte stream.
@@ -341,9 +341,9 @@ aml_object_t* aml_def_shift_left_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.124 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_shift_right_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_shift_right_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefIncrement structure from the AML byte stream.
@@ -353,9 +353,9 @@ aml_object_t* aml_def_shift_right_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.62 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_increment_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_increment_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefDecrement structure from the AML byte stream.
@@ -365,9 +365,9 @@ aml_object_t* aml_def_increment_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.27 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_decrement_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_decrement_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads an ObjReference structure from the AML byte stream.
@@ -377,9 +377,9 @@ aml_object_t* aml_def_decrement_read(aml_term_list_ctx_t* ctx);
  * If a String is read then it is considered a path to an object and will be resolved to an ObjectReference.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_obj_reference_read(aml_term_list_ctx_t* ctx);
+status_t aml_obj_reference_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefDerefOf structure from the AML byte stream.
@@ -389,9 +389,9 @@ aml_object_t* aml_obj_reference_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.30 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_deref_of_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_deref_of_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a BuffPkgStrObj structure from the AML byte stream.
@@ -403,9 +403,9 @@ aml_object_t* aml_def_deref_of_read(aml_term_list_ctx_t* ctx);
  * allowed.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_buff_pkg_str_obj_read(aml_term_list_ctx_t* ctx);
+status_t aml_buff_pkg_str_obj_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads an IndexValue structure from the AML byte stream.
@@ -414,9 +414,9 @@ aml_object_t* aml_buff_pkg_str_obj_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The TermList context.
  * @param out Output pointer where the integer result will be stored.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_index_value_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
+status_t aml_index_value_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a DefIndex structure from the AML byte stream.
@@ -429,9 +429,9 @@ uint64_t aml_index_value_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
  * @see Section 19.6.63 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_index_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_index_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefLAnd structure from the AML byte stream.
@@ -441,9 +441,9 @@ aml_object_t* aml_def_index_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.69 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_land_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_land_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefLEqual structure from the AML byte stream.
@@ -453,9 +453,9 @@ aml_object_t* aml_def_land_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.70 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_lequal_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_lequal_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefLGreater structure from the AML byte stream.
@@ -465,9 +465,9 @@ aml_object_t* aml_def_lequal_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.71 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_lgreater_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_lgreater_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefLGreaterEqual structure from the AML byte stream.
@@ -477,9 +477,9 @@ aml_object_t* aml_def_lgreater_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.72 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_lgreater_equal_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_lgreater_equal_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefLLess structure from the AML byte stream.
@@ -489,9 +489,9 @@ aml_object_t* aml_def_lgreater_equal_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.73 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_lless_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_lless_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefLLessEqual structure from the AML byte stream.
@@ -501,9 +501,9 @@ aml_object_t* aml_def_lless_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.74 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_lless_equal_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_lless_equal_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefLNot structure from the AML byte stream.
@@ -513,9 +513,9 @@ aml_object_t* aml_def_lless_equal_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.75 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_lnot_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_lnot_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefLNotEqual structure from the AML byte stream.
@@ -525,9 +525,9 @@ aml_object_t* aml_def_lnot_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.76 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_lnot_equal_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_lnot_equal_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefLOr structure from the AML byte stream.
@@ -537,9 +537,9 @@ aml_object_t* aml_def_lnot_equal_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.80 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_lor_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_lor_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a MutexObject structure from the AML byte stream.
@@ -547,9 +547,9 @@ aml_object_t* aml_def_lor_read(aml_term_list_ctx_t* ctx);
  * A MutexObject structure is defined as `MutexObject := SuperName`.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_mutex_object_read(aml_term_list_ctx_t* ctx);
+status_t aml_mutex_object_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a Timeout structure from the AML byte stream.
@@ -558,9 +558,9 @@ aml_object_t* aml_mutex_object_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The TermList context.
  * @param out Output pointer where the integer result will be stored.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_timeout_read(aml_term_list_ctx_t* ctx, uint16_t* out);
+status_t aml_timeout_read(aml_term_list_ctx_t* ctx, uint16_t* out);
 
 /**
  * @brief Reads a DefAcquire structure from the AML byte stream.
@@ -571,9 +571,9 @@ uint64_t aml_timeout_read(aml_term_list_ctx_t* ctx, uint16_t* out);
  * @see Section 19.6.89 of the ACPI specification for details about SyncLevel handling.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_acquire_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_acquire_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefToBcd structure from the AML byte stream.
@@ -583,9 +583,9 @@ aml_object_t* aml_def_acquire_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.137 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_to_bcd_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_to_bcd_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefToBuffer structure from the AML byte stream.
@@ -595,9 +595,9 @@ aml_object_t* aml_def_to_bcd_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.138 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_to_buffer_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_to_buffer_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefToDecimalString structure from the AML byte stream.
@@ -607,9 +607,9 @@ aml_object_t* aml_def_to_buffer_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.139 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_to_decimal_string_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_to_decimal_string_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefToHexString structure from the AML byte stream.
@@ -619,9 +619,9 @@ aml_object_t* aml_def_to_decimal_string_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.140 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_to_hex_string_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_to_hex_string_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefToInteger structure from the AML byte stream.
@@ -631,9 +631,9 @@ aml_object_t* aml_def_to_hex_string_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.141 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_to_integer_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_to_integer_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a LengthArg structure from the AML byte stream.
@@ -642,9 +642,9 @@ aml_object_t* aml_def_to_integer_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The TermList context.
  * @param out Output pointer where the integer result will be stored.
- * @return On success, the integer value. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status code.
  */
-uint64_t aml_length_arg_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
+status_t aml_length_arg_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a DefToString structure from the AML byte stream.
@@ -654,9 +654,9 @@ uint64_t aml_length_arg_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
  * @see Section 19.6.143 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_to_string_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_to_string_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefTimer structure from the AML byte stream.
@@ -666,9 +666,9 @@ aml_object_t* aml_def_to_string_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.136 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_timer_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_timer_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefCopyObject structure from the AML byte stream.
@@ -678,9 +678,9 @@ aml_object_t* aml_def_timer_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.17 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_copy_object_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_copy_object_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a Data structure from the AML byte stream.
@@ -688,9 +688,9 @@ aml_object_t* aml_def_copy_object_read(aml_term_list_ctx_t* ctx);
  * A Data structure is defined as `Data := TermArg => ComputationalData`.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_data_read(aml_term_list_ctx_t* ctx);
+status_t aml_data_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefConcat structure from the AML byte stream.
@@ -700,9 +700,9 @@ aml_object_t* aml_data_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.20 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_concat_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_concat_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefSizeOf structure from the AML byte stream.
@@ -712,9 +712,9 @@ aml_object_t* aml_def_concat_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.126 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_size_of_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_size_of_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefRefOf structure from the AML byte stream.
@@ -724,9 +724,9 @@ aml_object_t* aml_def_size_of_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.115 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_ref_of_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_ref_of_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefObjectType structure from the AML byte stream.
@@ -737,9 +737,9 @@ aml_object_t* aml_def_ref_of_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.97 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_object_type_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_object_type_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /*
  * @brief Reads a ReferenceTypeOpcode structure from the AML byte stream.
@@ -750,9 +750,9 @@ aml_object_t* aml_def_object_type_read(aml_term_list_ctx_t* ctx);
  * I have no idea what the `UserTermObj` is supposed to be, so its currently unimplemented.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_reference_type_opcode_read(aml_term_list_ctx_t* ctx);
+status_t aml_reference_type_opcode_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefFindSetLeftBit structure from the AML byte stream.
@@ -762,9 +762,9 @@ aml_object_t* aml_reference_type_opcode_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.49 the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_find_set_left_bit_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_find_set_left_bit_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefFindSetRightBit structure from the AML byte stream.
@@ -774,9 +774,9 @@ aml_object_t* aml_def_find_set_left_bit_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.50 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_find_set_right_bit_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_find_set_right_bit_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a SearchPkg structure from the AML byte stream.
@@ -784,9 +784,9 @@ aml_object_t* aml_def_find_set_right_bit_read(aml_term_list_ctx_t* ctx);
  * A SearchPkg structure is defined as `SearchPkg := TermArg => Package`.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_package_t* aml_search_pkg_read(aml_term_list_ctx_t* ctx);
+status_t aml_search_pkg_read(aml_term_list_ctx_t* ctx, aml_package_t** out);
 
 /**
  * @brief Match opcodes for DefMatch.
@@ -815,9 +815,9 @@ typedef enum
  *
  * @param ctx The TermList context.
  * @param out Output pointer where the match opcode will be stored.
- * @return On success, the match opcode. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status code.
  */
-uint64_t aml_match_opcode_read(aml_term_list_ctx_t* ctx, aml_match_opcode_t* out);
+status_t aml_match_opcode_read(aml_term_list_ctx_t* ctx, aml_match_opcode_t* out);
 
 /**
  * @brief Reads a StartIndex structure from the AML byte stream.
@@ -826,9 +826,9 @@ uint64_t aml_match_opcode_read(aml_term_list_ctx_t* ctx, aml_match_opcode_t* out
  *
  * @param ctx The TermList context.
  * @param out Output pointer where the integer result will be stored.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_start_index_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
+status_t aml_start_index_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Reads a DefMatch structure from the AML byte stream.
@@ -839,9 +839,9 @@ uint64_t aml_start_index_read(aml_term_list_ctx_t* ctx, aml_uint_t* out);
  * @see Section 19.6.81 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_match_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a MidObj structure from the AML byte stream.
@@ -849,9 +849,9 @@ aml_object_t* aml_def_match_read(aml_term_list_ctx_t* ctx);
  * A MidObj structure is defined as `MidObj := TermArg => Buffer | String`.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_mid_obj_read(aml_term_list_ctx_t* ctx);
+status_t aml_mid_obj_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a DefMid structure from the AML byte stream.
@@ -861,9 +861,9 @@ aml_object_t* aml_mid_obj_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.86 of the ACPI specification for more details.
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_def_mid_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_mid_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.
@@ -884,8 +884,8 @@ aml_object_t* aml_def_mid_read(aml_term_list_ctx_t* ctx);
  * - `DefWait`
  *
  * @param ctx The TermList context.
- * @return On success, the object pointer storing the result. On failure, `NULL` and `errno` is set.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_expression_opcode_read(aml_term_list_ctx_t* ctx);
+status_t aml_expression_opcode_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /** @} */

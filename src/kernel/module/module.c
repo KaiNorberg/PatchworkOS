@@ -13,7 +13,6 @@
 #include <kernel/sync/lock.h>
 #include <kernel/version.h>
 
-#include <sys/map.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -22,6 +21,7 @@
 #include <sys/elf.h>
 #include <sys/fs.h>
 #include <sys/list.h>
+#include <sys/map.h>
 #include <sys/status.h>
 
 static module_info_t fakeKernelModuleInfo = {
@@ -262,7 +262,7 @@ static inline status_t module_handler_add(module_device_handler_t** out, module_
 
     list_push_back(&device->handlers, &handler->deviceEntry);
     list_push_back(&module->deviceHandlers, &handler->moduleEntry);
-    
+
     *out = handler;
     return OK;
 }
@@ -460,7 +460,8 @@ static status_t module_file_read(module_file_t* outFile, const path_t* dirPath, 
         return ERR(MODULE, INVALELF);
     }
 
-    status = module_info_parse(&outFile->info, (const char*)((uintptr_t)outFile->elf.header + moduleInfoShdr->sh_offset));
+    status =
+        module_info_parse(&outFile->info, (const char*)((uintptr_t)outFile->elf.header + moduleInfoShdr->sh_offset));
     if (outFile->info == NULL)
     {
         free(fileData);
@@ -845,7 +846,8 @@ static status_t module_load_and_relocate_elf(module_t* module, Elf64_File* elf, 
 
     // Will be unmapped in module_free
     module->baseAddr = NULL;
-    status_t status = vmm_alloc(NULL, &module->baseAddr, moduleMemSize, PAGE_SIZE, PML_PRESENT | PML_WRITE | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
+    status_t status = vmm_alloc(NULL, &module->baseAddr, moduleMemSize, PAGE_SIZE, PML_PRESENT | PML_WRITE | PML_GLOBAL,
+        VMM_ALLOC_OVERWRITE);
     if (IS_ERR(status))
     {
         return status;

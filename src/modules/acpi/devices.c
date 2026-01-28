@@ -15,7 +15,6 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/module/module.h>
-#include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
 
 #include <errno.h>
@@ -23,8 +22,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/status.h>
 
-static uint64_t acpi_id_object_to_string(aml_object_t* idObject, char* out, size_t outSize)
+static status_t acpi_id_object_to_string(aml_object_t* idObject, char* out, size_t outSize)
 {
     if (idObject->type == AML_STRING)
     {
@@ -34,37 +34,38 @@ static uint64_t acpi_id_object_to_string(aml_object_t* idObject, char* out, size
     }
     else if (idObject->type == AML_INTEGER)
     {
-        if (aml_eisa_id_to_string(idObject->integer.value, out, outSize) == _FAIL)
+        status_t status = aml_eisa_id_to_string(idObject->integer.value, out, outSize);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
     }
     else
     {
         LOG_ERR("id object '%s' is of invalid type '%s'\n", AML_NAME_TO_STRING(idObject->name),
             aml_type_to_string(idObject->type));
-        errno = EILSEQ;
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
-    return 0;
+    return OK;
 }
 
-static uint64_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t* out)
+static status_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t* out)
 {
     aml_object_t* sta = aml_namespace_find_child(NULL, device, AML_NAME('_', 'S', 'T', 'A'));
     if (sta == NULL)
     {
         *out = ACPI_STA_FLAGS_DEFAULT;
-        return 0;
+        return OK;
     }
     UNREF_DEFER(sta);
 
-    aml_object_t* staResult = aml_evaluate(NULL, sta, AML_INTEGER);
-    if (staResult == NULL)
+    aml_object_t* staResult = NULL;
+    status_t status = aml_evaluate(NULL, sta, AML_INTEGER, &staResult);
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to evaluate %s._STA\n", AML_NAME_TO_STRING(device->name));
-        return _FAIL;
+        return status;
     }
     aml_uint_t value = staResult->integer.value;
     UNREF(staResult);
@@ -73,12 +74,11 @@ static uint64_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t* out)
         ~(ACPI_STA_PRESENT | ACPI_STA_ENABLED | ACPI_STA_SHOW_IN_UI | ACPI_STA_FUNCTIONAL | ACPI_STA_BATTERY_PRESENT))
     {
         LOG_ERR("%s._STA returned invalid value 0x%llx\n", AML_NAME_TO_STRING(device->name), value);
-        errno = EILSEQ;
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
     *out = (acpi_sta_flags_t)value;
-    return 0;
+    return OK;
 }
 
 typedef struct
@@ -94,17 +94,17 @@ typedef struct
     uint64_t length;
 } acpi_ids_t;
 
-static uint64_t acpi_ids_push(acpi_ids_t* ids, const char* hid, const char* cid, const char* path)
+static status_t acpi_ids_push(acpi_ids_t* ids, const char* hid, const char* cid, const char* path)
 {
     if (hid == NULL || hid[0] == '\0')
     {
-        return 0;
+        return OK;
     }
 
     acpi_id_t* newArray = realloc(ids->array, sizeof(acpi_id_t) * (ids->length + 1));
     if (newArray == NULL)
     {
-        return _FAIL;
+        return ERR(ACPI, NOMEM);
     }
     ids->array = newArray;
 
@@ -120,48 +120,50 @@ static uint64_t acpi_ids_push(acpi_ids_t* ids, const char* hid, const char* cid,
     strncpy_s(ids->array[ids->length].path, MAX_PATH, path, MAX_PATH);
     ids->length++;
 
-    return 0;
+    return OK;
 }
 
-static uint64_t acpi_ids_push_if_absent(acpi_ids_t* ids, const char* hid, const char* path)
+static status_t acpi_ids_push_if_absent(acpi_ids_t* ids, const char* hid, const char* path)
 {
     for (uint64_t i = 0; i < ids->length; i++)
     {
         if (strcmp(ids->array[i].hid, hid) == 0)
         {
-            return 0;
+            return OK;
         }
     }
 
     return acpi_ids_push(ids, hid, NULL, path);
 }
 
-static uint64_t acpi_ids_push_device(acpi_ids_t* ids, aml_object_t* device, const char* path)
+static status_t acpi_ids_push_device(acpi_ids_t* ids, aml_object_t* device, const char* path)
 {
     acpi_id_t deviceId = {0};
 
     aml_object_t* hid = aml_namespace_find_child(NULL, device, AML_NAME('_', 'H', 'I', 'D'));
     if (hid == NULL)
     {
-        return 0; // Nothing to do
+        return OK; // Nothing to do
     }
     UNREF_DEFER(hid);
 
-    aml_object_t* hidResult = aml_evaluate(NULL, hid, AML_STRING | AML_INTEGER);
-    if (hidResult == NULL)
+    aml_object_t* hidResult = NULL;
+    status_t status = aml_evaluate(NULL, hid, AML_STRING | AML_INTEGER, &hidResult);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     UNREF_DEFER(hidResult);
 
-    if (acpi_id_object_to_string(hidResult, deviceId.hid, MAX_NAME) == _FAIL)
+    status = acpi_id_object_to_string(hidResult, deviceId.hid, MAX_NAME);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     if (strcmp(deviceId.hid, "ACPI0010") == 0) // Ignore Processor Container Device
     {
-        return 0;
+        return OK;
     }
 
     aml_object_t* cid = aml_namespace_find_child(NULL, device, AML_NAME('_', 'C', 'I', 'D'));
@@ -169,25 +171,28 @@ static uint64_t acpi_ids_push_device(acpi_ids_t* ids, aml_object_t* device, cons
     {
         UNREF_DEFER(cid);
 
-        aml_object_t* cidResult = aml_evaluate(NULL, cid, AML_STRING | AML_INTEGER);
-        if (cidResult == NULL)
+        aml_object_t* cidResult = NULL;
+        status = aml_evaluate(NULL, cid, AML_STRING | AML_INTEGER, &cidResult);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
         UNREF_DEFER(cidResult);
 
-        if (acpi_id_object_to_string(cidResult, deviceId.cid, MAX_NAME) == _FAIL)
+        status = acpi_id_object_to_string(cidResult, deviceId.cid, MAX_NAME);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
     }
 
-    if (acpi_ids_push(ids, deviceId.hid, deviceId.cid, path) == _FAIL)
+    status = acpi_ids_push(ids, deviceId.hid, deviceId.cid, path);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
-    return 0;
+    return OK;
 }
 
 static aml_object_t* acpi_sb_init(void)
@@ -201,7 +206,7 @@ static aml_object_t* acpi_sb_init(void)
     UNREF_DEFER(sb);
 
     acpi_sta_flags_t sta;
-    if (acpi_sta_get_flags(sb, &sta) == _FAIL)
+    if (IS_ERR(acpi_sta_get_flags(sb, &sta)))
     {
         return NULL;
     }
@@ -217,8 +222,9 @@ static aml_object_t* acpi_sb_init(void)
     {
         UNREF_DEFER(ini);
         LOG_INFO("found \\_SB_._INI\n");
-        aml_object_t* iniResult = aml_evaluate(NULL, ini, AML_ALL_TYPES);
-        if (iniResult == NULL)
+        aml_object_t* iniResult = NULL;
+        status_t status = aml_evaluate(NULL, ini, AML_ALL_TYPES, &iniResult);
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to evaluate \\_SB_._INI\n");
             return NULL;
@@ -229,7 +235,7 @@ static aml_object_t* acpi_sb_init(void)
     return REF(sb);
 }
 
-static uint64_t acpi_device_init_children(acpi_ids_t* ids, aml_object_t* device, const char* path)
+static status_t acpi_device_init_children(acpi_ids_t* ids, aml_object_t* device, const char* path)
 {
     aml_object_t* child = NULL;
     LIST_FOR_EACH(child, &device->children, siblingsEntry)
@@ -248,9 +254,10 @@ static uint64_t acpi_device_init_children(acpi_ids_t* ids, aml_object_t* device,
         }
 
         acpi_sta_flags_t sta;
-        if (acpi_sta_get_flags(child, &sta) == _FAIL)
+        status_t status = acpi_sta_get_flags(child, &sta);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
         if (sta & ACPI_STA_PRESENT)
@@ -259,30 +266,33 @@ static uint64_t acpi_device_init_children(acpi_ids_t* ids, aml_object_t* device,
             if (ini != NULL)
             {
                 UNREF_DEFER(ini);
-                aml_object_t* iniResult = aml_evaluate(NULL, ini, AML_ALL_TYPES);
-                if (iniResult == NULL)
+                aml_object_t* iniResult = NULL;
+                status = aml_evaluate(NULL, ini, AML_ALL_TYPES, &iniResult);
+                if (IS_ERR(status))
                 {
                     LOG_ERR("failed to evaluate %s._INI\n", childPath);
-                    return _FAIL;
+                    return status;
                 }
                 UNREF(iniResult);
             }
 
-            if (acpi_ids_push_device(ids, child, childPath) == _FAIL)
+            status = acpi_ids_push_device(ids, child, childPath);
+            if (IS_ERR(status))
             {
-                return _FAIL;
+                return status;
             }
         }
 
         if (sta & (ACPI_STA_PRESENT | ACPI_STA_FUNCTIONAL))
         {
-            if (acpi_device_init_children(ids, child, childPath) == _FAIL)
+            status = acpi_device_init_children(ids, child, childPath);
+            if (IS_ERR(status))
             {
-                return _FAIL;
+                return status;
             }
         }
     }
-    return 0;
+    return OK;
 }
 
 static int acpi_id_compare(const void* left, const void* right)
@@ -344,52 +354,52 @@ static void acpi_dev_free(acpi_dev_t* cfg)
     free(cfg);
 }
 
-static uint64_t acpi_device_configure(const char* name)
+static status_t acpi_device_configure(const char* name)
 {
     if (name[0] == '.')
     {
         LOG_DEBUG("skipping configuration for fake ACPI device '%s'\n", name);
-        return 0;
+        return OK;
     }
 
     aml_object_t* device = aml_namespace_find_by_path(NULL, NULL, name);
     if (device == NULL)
     {
         LOG_ERR("failed to find ACPI device '%s' in namespace for configuration\n", name);
-        return _FAIL;
+        return ERR(ACPI, NOENT);
     }
     UNREF_DEFER(device);
 
     if (device->type != AML_DEVICE)
     {
         LOG_ERR("ACPI object '%s' is not a device, cannot configure\n", name);
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (device->device.cfg != NULL)
     {
         LOG_DEBUG("ACPI device '%s' is already configured, skipping\n", name);
-        return 0;
+        return OK;
     }
 
     acpi_dev_t* cfg = calloc(1, sizeof(acpi_dev_t));
     if (cfg == NULL)
     {
-        return _FAIL;
+        return ERR(ACPI, NOMEM);
     }
 
-    acpi_resources_t* resources = acpi_resources_current(device);
-    if (resources == NULL)
+    acpi_resources_t* resources = NULL;
+    status_t status = acpi_resources_current(device, &resources);
+    if (IS_ERR(status))
     {
-        if (errno == ENOENT) // No resources exist, assign empty config
+        if (ST_CODE(status) == ST_CODE_NOENT) // No resources exist, assign empty config
         {
             device->device.cfg = cfg;
-            return 0;
+            return OK;
         }
-        LOG_ERR("failed to get current resources for ACPI device '%s' due to '%s'\n", name, strerror(errno));
+        LOG_ERR("failed to get current resources for ACPI device '%s' due to '%s'\n", name, codetostr(ST_CODE(status)));
         free(cfg);
-        return _FAIL;
+        return status;
     }
 
     acpi_resource_t* resource;
@@ -415,17 +425,17 @@ static uint64_t acpi_device_configure(const char* name)
                 }
 
                 irq_virt_t virt;
-                if (irq_virt_alloc(&virt, phys, flags, NULL) == _FAIL)
+                status = irq_virt_alloc(&virt, phys, flags, NULL);
+                if (IS_ERR(status))
                 {
-                    LOG_ERR("failed to allocate virtual IRQ for ACPI device '%s' due to '%s'\n", name, strerror(errno));
+                    LOG_ERR("failed to allocate virtual IRQ for ACPI device '%s' due to '%s'\n", name, codetostr(ST_CODE(status)));
                     goto error;
                 }
 
                 acpi_device_irq_t* newIrqs = realloc(cfg->irqs, sizeof(acpi_device_irq_t) * (cfg->irqCount + 1));
                 if (newIrqs == NULL)
                 {
-                    LOG_ERR("failed to allocate memory for IRQs for ACPI device '%s' due to '%s'\n", name,
-                        strerror(errno));
+                    LOG_ERR("failed to allocate memory for IRQs for ACPI device '%s'\n", name);
                     irq_virt_free(virt);
                     goto error;
                 }
@@ -444,16 +454,16 @@ static uint64_t acpi_device_configure(const char* name)
             acpi_device_io_t* newIos = realloc(cfg->ios, sizeof(acpi_device_io_t) * (cfg->ioCount + 1));
             if (newIos == NULL)
             {
-                LOG_ERR("failed to allocate memory for IO ports for ACPI device '%s' due to '%s'\n", name,
-                    strerror(errno));
+                LOG_ERR("failed to allocate memory for IO ports for ACPI device '%s'\n", name);
                 goto error;
             }
             cfg->ios = newIos;
 
             port_t base;
-            if (port_reserve(&base, desc->minBase, desc->maxBase, desc->alignment, desc->length, name) == _FAIL)
+            status = port_reserve(&base, desc->minBase, desc->maxBase, desc->alignment, desc->length, name);
+            if (IS_ERR(status))
             {
-                LOG_ERR("failed to reserve IO ports for ACPI device '%s' due to '%s'\n", name, strerror(errno));
+                LOG_ERR("failed to reserve IO ports for ACPI device '%s' due to '%s'\n", name, codetostr(ST_CODE(status)));
                 goto error;
             }
 
@@ -469,15 +479,15 @@ static uint64_t acpi_device_configure(const char* name)
 
     free(resources);
     device->device.cfg = cfg;
-    return 0;
+    return OK;
 
 error:
     free(resources);
     acpi_dev_free(cfg);
-    return _FAIL;
+    return status;
 }
 
-uint64_t acpi_devices_init(void)
+status_t acpi_devices_init(void)
 {
     MUTEX_SCOPE(aml_big_mutex_get());
 
@@ -490,15 +500,16 @@ uint64_t acpi_devices_init(void)
     if (sb == NULL)
     {
         LOG_ERR("failed to initialize ACPI devices\n");
-        return _FAIL;
+        return ERR(ACPI, NOENT);
     }
     UNREF_DEFER(sb);
 
     LOG_DEBUG("initializing ACPI devices under \\_SB_\n");
-    if (acpi_device_init_children(&ids, sb, "\\_SB_") == _FAIL)
+    status_t status = acpi_device_init_children(&ids, sb, "\\_SB_");
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to initialize ACPI devices\n");
-        return _FAIL;
+        return status;
     }
 
     // Because of... reasons some hardware wont report certain devices via ACPI
@@ -506,19 +517,21 @@ uint64_t acpi_devices_init(void)
 
     if (acpi_tables_lookup("HPET", sizeof(sdt_header_t), 0) != NULL) // HPET
     {
-        if (acpi_ids_push_if_absent(&ids, "PNP0103", ".HPET") == _FAIL)
+        status = acpi_ids_push_if_absent(&ids, "PNP0103", ".HPET");
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to initialize ACPI devices\n");
-            return _FAIL;
+            return status;
         }
     }
 
     if (acpi_tables_lookup("APIC", sizeof(sdt_header_t), 0) != NULL) // APIC
     {
-        if (acpi_ids_push_if_absent(&ids, "PNP0003", ".APIC") == _FAIL)
+        status = acpi_ids_push_if_absent(&ids, "PNP0003", ".APIC");
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to initialize ACPI devices\n");
-            return _FAIL;
+            return status;
         }
     }
 
@@ -529,7 +542,7 @@ uint64_t acpi_devices_init(void)
 
     for (size_t i = 0; i < ids.length; i++)
     {
-        if (acpi_device_configure(ids.array[i].path) == _FAIL)
+        if (IS_ERR(acpi_device_configure(ids.array[i].path)))
         {
             // Dont load module for unconfigurable device
             memmove(&ids.array[i], &ids.array[i + 1], sizeof(acpi_id_t) * (ids.length - i - 1));
@@ -541,10 +554,11 @@ uint64_t acpi_devices_init(void)
 
     for (size_t i = 0; i < ids.length; i++)
     {
-        uint64_t loadedModules = module_device_attach(ids.array[i].hid, ids.array[i].path, MODULE_LOAD_ONE);
-        if (loadedModules == _FAIL)
+        uint64_t loadedModules;
+        status_t status = module_device_attach(ids.array[i].hid, ids.array[i].path, MODULE_LOAD_ONE, &loadedModules);
+        if (IS_ERR(status))
         {
-            LOG_ERR("failed to load module for HID '%s' due to '%s'\n", ids.array[i].hid, strerror(errno));
+            LOG_ERR("failed to load module for HID '%s' due to '%s'\n", ids.array[i].hid, codetostr(status));
             continue;
         }
 
@@ -553,23 +567,22 @@ uint64_t acpi_devices_init(void)
             continue;
         }
 
-        loadedModules = module_device_attach(ids.array[i].cid, ids.array[i].path, MODULE_LOAD_ONE);
-        if (loadedModules == _FAIL)
+        status = module_device_attach(ids.array[i].cid, ids.array[i].path, MODULE_LOAD_ONE, NULL);
+        if (IS_ERR(status))
         {
-            LOG_ERR("failed to load module for CID '%s' due to '%s'\n", ids.array[i].cid, strerror(errno));
+            LOG_ERR("failed to load module for CID '%s' due to '%s'\n", ids.array[i].cid, codetostr(status));
         }
     }
 
     free(ids.array);
-    return 0;
+    return OK;
 }
 
-acpi_dev_t* acpi_dev_lookup(const char* name)
+status_t acpi_dev_lookup(const char* name, acpi_dev_t** out)
 {
-    if (name == NULL)
+    if (name == NULL || out == NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(ACPI, INVAL);
     }
 
     MUTEX_SCOPE(aml_big_mutex_get());
@@ -578,34 +591,31 @@ acpi_dev_t* acpi_dev_lookup(const char* name)
     if (device == NULL)
     {
         LOG_ERR("failed to find ACPI device '%s' in namespace for configuration retrieval\n", name);
-        errno = ENOENT;
-        return NULL;
+        return ERR(ACPI, NOENT);
     }
     UNREF_DEFER(device);
 
     if (device->type != AML_DEVICE)
     {
         LOG_ERR("ACPI object '%s' is not a device, cannot retrieve configuration\n", name);
-        errno = ENOTTY;
-        return NULL;
+        return ERR(ACPI, NOTTY);
     }
 
     if (device->device.cfg == NULL)
     {
         LOG_ERR("ACPI device '%s' is not configured\n", name);
-        errno = ENODEV;
-        return NULL;
+        return ERR(ACPI, NODEV);
     }
 
-    return device->device.cfg;
+    *out = device->device.cfg;
+    return OK;
 }
 
-uint64_t acpi_dev_get_port(acpi_dev_t* cfg, uint64_t index, port_t* out)
+status_t acpi_dev_get_port(acpi_dev_t* cfg, uint64_t index, port_t* out)
 {
     if (cfg == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     for (uint64_t i = 0; i < cfg->ioCount; i++)
@@ -613,11 +623,10 @@ uint64_t acpi_dev_get_port(acpi_dev_t* cfg, uint64_t index, port_t* out)
         if (cfg->ios[i].length > index)
         {
             *out = cfg->ios[i].base + index;
-            return 0;
+            return OK;
         }
         index -= cfg->ios[i].length;
     }
 
-    errno = ENOSPC;
-    return _FAIL;
+    return ERR(ACPI, NOSPACE);
 }

@@ -4,7 +4,6 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 
-#include <errno.h>
 #include <stdlib.h>
 #include <sys/list.h>
 
@@ -21,7 +20,7 @@ static list_t mutexStack;
 
 static atomic_int32_t newMutexId = ATOMIC_VAR_INIT(1);
 
-static inline uint64_t aml_mutex_stack_push(aml_mutex_id_t id, aml_sync_level_t syncLevel)
+static inline status_t aml_mutex_stack_push(aml_mutex_id_t id, aml_sync_level_t syncLevel)
 {
     if (!initialized)
     {
@@ -32,14 +31,13 @@ static inline uint64_t aml_mutex_stack_push(aml_mutex_id_t id, aml_sync_level_t 
     if (syncLevel < currentSyncLevel)
     {
         LOG_ERR("Attempted to acquire a mutex with a lower SyncLevel than the current SyncLevel\n");
-        errno = EDEADLK;
-        return _FAIL;
+        return ERR(ACPI, DEADLOCK);
     }
 
     aml_mutex_entry_t* entry = malloc(sizeof(aml_mutex_entry_t));
     if (entry == NULL)
     {
-        return _FAIL;
+        return ERR(ACPI, DEADLOCK);
     }
     list_entry_init(&entry->entry);
     entry->id = id;
@@ -47,24 +45,22 @@ static inline uint64_t aml_mutex_stack_push(aml_mutex_id_t id, aml_sync_level_t 
 
     list_push_back(&mutexStack, &entry->entry);
     currentSyncLevel = syncLevel;
-    return 0;
+    return OK;
 }
 
-static inline uint64_t aml_mutex_stack_pop(aml_mutex_id_t id)
+static inline status_t aml_mutex_stack_pop(aml_mutex_id_t id)
 {
     if (list_is_empty(&mutexStack))
     {
         LOG_ERR("Attempted to release a mutex when none are held\n");
-        errno = EDEADLK;
-        return _FAIL;
+        return ERR(ACPI, DEADLOCK);
     }
 
     aml_mutex_entry_t* topEntry = CONTAINER_OF(list_last(&mutexStack), aml_mutex_entry_t, entry);
     if (topEntry->id != id)
     {
         LOG_ERR("Mutex release not in LIFO order\n");
-        errno = EDEADLK;
-        return _FAIL;
+        return ERR(ACPI, DEADLOCK);
     }
 
     list_remove(&topEntry->entry);
@@ -79,7 +75,7 @@ static inline uint64_t aml_mutex_stack_pop(aml_mutex_id_t id)
         aml_mutex_entry_t* newTopEntry = CONTAINER_OF(list_last(&mutexStack), aml_mutex_entry_t, entry);
         currentSyncLevel = newTopEntry->syncLevel;
     }
-    return 0;
+    return OK;
 }
 
 void aml_mutex_id_init(aml_mutex_id_t* mutex)
@@ -92,37 +88,27 @@ void aml_mutex_id_deinit(aml_mutex_id_t* mutex)
     *mutex = 0;
 }
 
-uint64_t aml_mutex_acquire(aml_mutex_id_t* mutex, aml_sync_level_t syncLevel, clock_t timeout)
+status_t aml_mutex_acquire(aml_mutex_id_t* mutex, aml_sync_level_t syncLevel, clock_t timeout)
 {
     UNUSED(timeout); // We ignore timeouts since we have the big mutex.
 
     if (mutex == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     // As mentioned, mutexes arent implemented since we have the big mutex, so we just pretend that
     // we acquired it immediately.
 
-    if (aml_mutex_stack_push(*mutex, syncLevel) == _FAIL)
-    {
-        return _FAIL;
-    }
-    return 0;
+    return aml_mutex_stack_push(*mutex, syncLevel);
 }
 
-uint64_t aml_mutex_release(aml_mutex_id_t* mutex)
+status_t aml_mutex_release(aml_mutex_id_t* mutex)
 {
     if (mutex == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_mutex_stack_pop(*mutex) == _FAIL)
-    {
-        return _FAIL;
-    }
-    return 0;
+    return aml_mutex_stack_pop(*mutex);
 }

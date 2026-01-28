@@ -8,23 +8,22 @@
 #include <kernel/acpi/aml/token.h>
 #include <kernel/log/log.h>
 
-#include <errno.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/list.h>
 
-uint64_t aml_seg_count_read(aml_term_list_ctx_t* ctx, uint8_t* out)
+status_t aml_seg_count_read(aml_term_list_ctx_t* ctx, uint8_t* out)
 {
-    if (aml_byte_data_read(ctx, out) == _FAIL)
+    status_t status = aml_byte_data_read(ctx, out);
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read ByteData");
-        return _FAIL;
+        return status;
     }
-    return 0;
+    return OK;
 }
 
-uint64_t aml_name_seg_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out)
+status_t aml_name_seg_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out)
 {
     const uint8_t* start = ctx->current;
 
@@ -34,8 +33,7 @@ uint64_t aml_name_seg_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out)
     if (!AML_IS_LEAD_NAME_CHAR(&leadnamechar))
     {
         AML_DEBUG_ERROR(ctx, "Invalid LeadNameChar 0x%04x in NameSeg", leadnamechar.num);
-        errno = EILSEQ;
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
     for (uint8_t i = 0; i < 3; i++)
@@ -46,50 +44,57 @@ uint64_t aml_name_seg_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out)
         if (!AML_IS_NAME_CHAR(&namechar))
         {
             AML_DEBUG_ERROR(ctx, "Invalid char 0x%04x in NameSeg", namechar.num);
-            errno = EILSEQ;
-            return _FAIL;
+            return ERR(ACPI, ILSEQ);
         }
     }
 
     *out = (aml_name_seg_t*)start;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_dual_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out)
+status_t aml_dual_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out)
 {
-    if (aml_token_expect(ctx, AML_DUAL_NAME_PREFIX) == _FAIL)
+    if (!aml_token_expect(ctx, AML_DUAL_NAME_PREFIX))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DualNamePrefix");
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
     const uint8_t* start = ctx->current;
 
     // We just read the two NameSegs to verify they are valid.
     aml_name_seg_t* temp;
-    if (aml_name_seg_read(ctx, &temp) == _FAIL || aml_name_seg_read(ctx, &temp) == _FAIL)
+    status_t status = aml_name_seg_read(ctx, &temp);
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NameSeg");
-        return _FAIL;
+        return status;
+    }
+    status = aml_name_seg_read(ctx, &temp);
+    if (IS_ERR(status))
+    {
+        AML_DEBUG_ERROR(ctx, "Failed to read NameSeg");
+        return status;
     }
 
     *out = (aml_name_seg_t*)start;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_multi_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** outSegments, uint64_t* outSegCount)
+status_t aml_multi_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** outSegments, uint64_t* outSegCount)
 {
-    if (aml_token_expect(ctx, AML_MULTI_NAME_PREFIX) == _FAIL)
+    if (!aml_token_expect(ctx, AML_MULTI_NAME_PREFIX))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read MultiNamePrefix");
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
     uint8_t segCount;
-    if (aml_seg_count_read(ctx, &segCount) == _FAIL)
+    status_t status = aml_seg_count_read(ctx, &segCount);
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read SegCount");
-        return _FAIL;
+        return status;
     }
 
     const uint8_t* start = ctx->current;
@@ -98,30 +103,31 @@ uint64_t aml_multi_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out
     aml_name_seg_t* temp;
     for (size_t i = 0; i < segCount; i++)
     {
-        if (aml_name_seg_read(ctx, &temp) == _FAIL)
+        status = aml_name_seg_read(ctx, &temp);
+        if (IS_ERR(status))
         {
             AML_DEBUG_ERROR(ctx, "Failed to read NameSeg");
-            return _FAIL;
+            return status;
         }
     }
 
     *outSegments = (aml_name_seg_t*)start;
     *outSegCount = segCount;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_null_name_read(aml_term_list_ctx_t* ctx)
+status_t aml_null_name_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_NULL_NAME) == _FAIL)
+    if (!aml_token_expect(ctx, AML_NULL_NAME))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NullName");
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t aml_name_path_read(aml_term_list_ctx_t* ctx, aml_name_path_t* out)
+status_t aml_name_path_read(aml_term_list_ctx_t* ctx, aml_name_path_t* out)
 {
     aml_token_t firstToken;
     aml_token_peek(ctx, &firstToken);
@@ -149,14 +155,13 @@ uint64_t aml_name_path_read(aml_term_list_ctx_t* ctx, aml_name_path_t* out)
     else
     {
         AML_DEBUG_ERROR(ctx, "Invalid name that starts with 0x%x", firstToken.num);
-        errno = EILSEQ;
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t aml_prefix_path_read(aml_term_list_ctx_t* ctx, aml_prefix_path_t* out)
+status_t aml_prefix_path_read(aml_term_list_ctx_t* ctx, aml_prefix_path_t* out)
 {
     out->depth = 0;
     while (true)
@@ -166,7 +171,7 @@ uint64_t aml_prefix_path_read(aml_term_list_ctx_t* ctx, aml_prefix_path_t* out)
 
         if (chr.num != AML_PARENT_PREFIX_CHAR)
         {
-            return 0;
+            return OK;
         }
 
         ctx->current += chr.length;
@@ -174,39 +179,42 @@ uint64_t aml_prefix_path_read(aml_term_list_ctx_t* ctx, aml_prefix_path_t* out)
     }
 }
 
-uint64_t aml_root_char_read(aml_term_list_ctx_t* ctx, aml_root_char_t* out)
+status_t aml_root_char_read(aml_term_list_ctx_t* ctx, aml_root_char_t* out)
 {
-    if (aml_token_expect(ctx, AML_ROOT_CHAR) == _FAIL)
+    if (!aml_token_expect(ctx, AML_ROOT_CHAR))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read RootChar");
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
     out->present = true;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_stioring_t* out)
+status_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_string_t* out)
 {
     aml_token_t token;
     aml_token_peek(ctx, &token);
 
-    aml_name_stioring_t nameString = {0};
+    aml_name_string_t nameString = {0};
+    status_t status = OK;
     // Starts with either rootchar or prefixpath.
     switch (token.num)
     {
     case AML_ROOT_CHAR:
-        if (aml_root_char_read(ctx, &nameString.rootChar) == _FAIL)
+        status = aml_root_char_read(ctx, &nameString.rootChar);
+        if (IS_ERR(status))
         {
             AML_DEBUG_ERROR(ctx, "Failed to read root char");
-            return _FAIL;
+            return status;
         }
         break;
     case AML_PARENT_PREFIX_CHAR:
-        if (aml_prefix_path_read(ctx, &nameString.prefixPath) == _FAIL)
+        status = aml_prefix_path_read(ctx, &nameString.prefixPath);
+        if (IS_ERR(status))
         {
             AML_DEBUG_ERROR(ctx, "Failed to read prefix path");
-            return _FAIL;
+            return status;
         }
         break;
     default:
@@ -214,120 +222,122 @@ uint64_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_stioring_t* out
         break;
     }
 
-    if (aml_name_path_read(ctx, &nameString.namePath) == _FAIL)
+    status = aml_name_path_read(ctx, &nameString.namePath);
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read name path");
-        return _FAIL;
+        return status;
     }
 
     *out = nameString;
-    return 0;
+    return OK;
 }
 
-aml_object_t* aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx)
+status_t aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx, aml_object_t** out)
 {
-    aml_name_stioring_t nameStringLocal;
-    if (aml_name_string_read(ctx, &nameStringLocal) == _FAIL)
+    aml_name_string_t nameStringLocal;
+    status_t status = aml_name_string_read(ctx, &nameStringLocal);
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NameString");
-        return NULL;
+        return status;
     }
 
-    aml_object_t* out = aml_namespace_find_by_name_string(&ctx->state->overlay, ctx->scope, &nameStringLocal);
-    if (out == NULL)
+    aml_object_t* obj = aml_namespace_find_by_name_string(&ctx->state->overlay, ctx->scope, &nameStringLocal);
+    if (obj == NULL)
     {
-        out = aml_object_new();
-        if (out == NULL)
+        obj = aml_object_new();
+        if (obj == NULL)
         {
-            return NULL;
+            return ERR(ACPI, NOMEM);
         }
 
-        if (aml_integer_set(out, 0) == _FAIL)
+        status = aml_integer_set(obj, 0);
+        if (IS_ERR(status))
         {
-            UNREF(out);
-            return NULL;
+            UNREF(obj);
+            return status;
         }
 
-        return out; // Transfer ownership
+        *out = obj; // Transfer ownership
+        return OK;
     }
 
-    if (out->type == AML_UNINITIALIZED)
+    if (obj->type == AML_UNINITIALIZED)
     {
-        errno = ENOENT;
-        UNREF(out);
-        return NULL;
+        UNREF(obj);
+        return ERR(ACPI, NOENT);
     }
 
-    return out; // Transfer ownership
+    *out = obj; // Transfer ownership
+    return OK;
 }
 
-aml_object_t* aml_simple_name_read_and_resolve(aml_term_list_ctx_t* ctx)
+status_t aml_simple_name_read_and_resolve(aml_term_list_ctx_t* ctx, aml_object_t** out)
 {
     aml_token_t token;
     aml_token_peek(ctx, &token);
 
-    aml_object_t* out = NULL;
+    status_t status = OK;
     switch (token.props->type)
     {
     case AML_TOKEN_TYPE_NAME:
-        out = aml_name_string_read_and_resolve(ctx);
+        status = aml_name_string_read_and_resolve(ctx, out);
         break;
     case AML_TOKEN_TYPE_ARG:
-        out = aml_arg_obj_read(ctx);
+        status = aml_arg_obj_read(ctx, out);
         break;
     case AML_TOKEN_TYPE_LOCAL:
-        out = aml_local_obj_read(ctx);
+        status = aml_local_obj_read(ctx, out);
         break;
     default:
         AML_DEBUG_ERROR(ctx, "Invalid token type '%s'", aml_token_type_to_string(token.props->type));
-        errno = EILSEQ;
-        return NULL;
+        return ERR(ACPI, ILSEQ);
     }
 
-    if (out == NULL)
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read '%s'", token.props->name);
-        return NULL;
+        return status;
     }
 
-    return out; // Transfer ownership
+    return OK; // Transfer ownership
 }
 
-aml_object_t* aml_super_name_read_and_resolve(aml_term_list_ctx_t* ctx)
+status_t aml_super_name_read_and_resolve(aml_term_list_ctx_t* ctx, aml_object_t** out)
 {
     aml_token_t token;
     aml_token_peek(ctx, &token);
 
-    aml_object_t* out = NULL;
+    status_t status = OK;
     switch (token.props->type)
     {
     case AML_TOKEN_TYPE_NAME:
     case AML_TOKEN_TYPE_ARG:
     case AML_TOKEN_TYPE_LOCAL:
-        out = aml_simple_name_read_and_resolve(ctx);
+        status = aml_simple_name_read_and_resolve(ctx, out);
         break;
     case AML_TOKEN_TYPE_DEBUG:
-        out = aml_debug_obj_read(ctx);
+        status = aml_debug_obj_read(ctx, out);
         break;
     case AML_TOKEN_TYPE_EXPRESSION:
-        out = aml_reference_type_opcode_read(ctx);
+        status = aml_reference_type_opcode_read(ctx, out);
         break;
     default:
         AML_DEBUG_ERROR(ctx, "Invalid token type '%s'", aml_token_type_to_string(token.props->type));
-        errno = EILSEQ;
-        return NULL;
+        return ERR(ACPI, ILSEQ);
     }
 
-    if (out == NULL)
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read '%s'", token.props->name);
-        return NULL;
+        return status;
     }
 
-    return out; // Transfer ownership
+    return OK; // Transfer ownership
 }
 
-uint64_t aml_target_read_and_resolve(aml_term_list_ctx_t* ctx, aml_object_t** out)
+status_t aml_target_read_and_resolve(aml_term_list_ctx_t* ctx, aml_object_t** out)
 {
     aml_token_t token;
     aml_token_peek(ctx, &token);
@@ -335,21 +345,22 @@ uint64_t aml_target_read_and_resolve(aml_term_list_ctx_t* ctx, aml_object_t** ou
     if (token.num == AML_NULL_NAME)
     {
         *out = NULL;
-        if (aml_null_name_read(ctx) == _FAIL)
+        status_t status = aml_null_name_read(ctx);
+        if (IS_ERR(status))
         {
             AML_DEBUG_ERROR(ctx, "Failed to read null name");
-            return _FAIL;
+            return status;
         }
     }
     else
     {
-        *out = aml_super_name_read_and_resolve(ctx); // Transfer ownership
-        if (*out == NULL)
+        status_t status = aml_super_name_read_and_resolve(ctx, out); // Transfer ownership
+        if (IS_ERR(status))
         {
             AML_DEBUG_ERROR(ctx, "Failed to read or resolve SuperName");
-            return _FAIL;
+            return status;
         }
     }
 
-    return 0;
+    return OK;
 }

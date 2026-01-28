@@ -187,9 +187,9 @@ static_assert(sizeof(sqe_t) == 64, "sqe_t is not 64 bytes");
  */
 typedef struct cqe
 {
-    io_op_t op;     ///< The operation that was performed.
-    status_t status;  ///< The status of the operation.
-    uintptr_t data; ///< Private data from the submission entry.
+    io_op_t op;      ///< The operation that was performed.
+    status_t status; ///< The status of the operation.
+    uintptr_t data;  ///< Private data from the submission entry.
     union {
         fd_t fd;
         size_t count;

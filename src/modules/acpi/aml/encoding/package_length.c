@@ -4,16 +4,16 @@
 #include <kernel/acpi/aml/encoding/data.h>
 #include <kernel/acpi/aml/state.h>
 
-#include <errno.h>
 #include <stdint.h>
 
-uint64_t aml_pkg_lead_byte_read(aml_term_list_ctx_t* ctx, aml_pkg_lead_byte_t* out)
+status_t aml_pkg_lead_byte_read(aml_term_list_ctx_t* ctx, aml_pkg_lead_byte_t* out)
 {
     uint8_t pkgLeadByte;
-    if (aml_byte_data_read(ctx, &pkgLeadByte) == _FAIL)
+    status_t status = aml_byte_data_read(ctx, &pkgLeadByte);
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read ByteData");
-        return _FAIL;
+        return status;
     }
 
     out->byteDataCount = (pkgLeadByte >> 6) & 0x03;   // bits (7-6)
@@ -24,29 +24,29 @@ uint64_t aml_pkg_lead_byte_read(aml_term_list_ctx_t* ctx, aml_pkg_lead_byte_t* o
     if (out->byteDataCount != 0 && ((pkgLeadByte >> 4) & 0x03) != 0)
     {
         AML_DEBUG_ERROR(ctx, "Invalid PkgLeadByte '0x%x'", pkgLeadByte);
-        errno = EILSEQ;
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t aml_pkg_length_read(aml_term_list_ctx_t* ctx, aml_pkg_length_t* out)
+status_t aml_pkg_length_read(aml_term_list_ctx_t* ctx, aml_pkg_length_t* out)
 {
     const uint8_t* start = ctx->current;
 
     aml_pkg_lead_byte_t pkgLeadByte;
-    if (aml_pkg_lead_byte_read(ctx, &pkgLeadByte) == _FAIL)
+    status_t status = aml_pkg_lead_byte_read(ctx, &pkgLeadByte);
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read PkgLeadByte");
-        return _FAIL;
+        return status;
     }
 
     // If no bytes follow, then the smallLengthBits store the package length.
     if (pkgLeadByte.byteDataCount == 0)
     {
         *out = pkgLeadByte.smallLengthBits;
-        return 0;
+        return OK;
     }
 
     // Bits 0 to 3 in pkgLeadByte becomes the least significant bits in the length, followed by the next bytes.
@@ -54,10 +54,11 @@ uint64_t aml_pkg_length_read(aml_term_list_ctx_t* ctx, aml_pkg_length_t* out)
     for (uint32_t i = 0; i < pkgLeadByte.byteDataCount; i++)
     {
         uint8_t byte;
-        if (aml_byte_data_read(ctx, &byte) == _FAIL)
+        status = aml_byte_data_read(ctx, &byte);
+        if (IS_ERR(status))
         {
             AML_DEBUG_ERROR(ctx, "Failed to read ByteData");
-            return _FAIL;
+            return status;
         }
         length |= ((uint32_t)byte) << (4 + i * 8);
     }
@@ -66,10 +67,9 @@ uint64_t aml_pkg_length_read(aml_term_list_ctx_t* ctx, aml_pkg_length_t* out)
     if (length > (1ULL << 28))
     {
         AML_DEBUG_ERROR(ctx, "Package length out of range: %lu", length);
-        errno = ERANGE;
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
     *out = length;
-    return 0;
+    return OK;
 }

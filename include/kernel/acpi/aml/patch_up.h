@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/list.h>
+#include <sys/status.h>
 
 typedef struct aml_unresolved aml_unresolved_t;
 typedef struct aml_object aml_object_t;
@@ -22,7 +23,7 @@ typedef struct aml_state aml_state_t;
  * Takes the now matched object and the previously unresolved object as parameters. The callback should patch
  * the unresolved object in whatever way it wants, for example performing type conversion or similar.
  */
-typedef uint64_t (*aml_patch_up_resolve_callback_t)(aml_state_t* state, aml_object_t* match, aml_object_t* unresolved);
+typedef status_t (*aml_patch_up_resolve_callback_t)(aml_state_t* state, aml_object_t* match, aml_object_t* unresolved);
 
 /**
  * @brief Entry in the global list of unresolved references.
@@ -37,9 +38,9 @@ typedef struct aml_patch_up_entry
 /**
  * @brief Initialize the patch-up system.
  *
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_patch_up_init(void);
+status_t aml_patch_up_init(void);
 
 /**
  * @brief Adds a unresolved reference to the global list.
@@ -48,9 +49,9 @@ uint64_t aml_patch_up_init(void);
  * freed.
  *
  * @param unresolved The unresolved object to add, must be of type `AML_UNRESOLVED`.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_patch_up_add_unresolved(aml_unresolved_t* unresolved);
+status_t aml_patch_up_add_unresolved(aml_unresolved_t* unresolved);
 
 /**
  * @brief Removes an unresolved reference from the global list.
@@ -69,9 +70,9 @@ void aml_patch_up_remove_unresolved(aml_unresolved_t* unresolved);
  * Note that a failure to resolve a object is not considered an error, the function will just continue
  * to the next unresolved reference.
  *
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_patch_up_resolve_all(void);
+status_t aml_patch_up_resolve_all(void);
 
 /**
  * @brief Get the number of unresolved references in the global list.

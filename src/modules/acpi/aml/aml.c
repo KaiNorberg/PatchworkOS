@@ -12,23 +12,21 @@
 
 #include <kernel/log/log.h>
 
-#include <errno.h>
 #include <sys/math.h>
 
 static mutex_t bigMutex;
 
-static inline uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
+static inline status_t aml_parse(const uint8_t* start, const uint8_t* end)
 {
     if (start == NULL || end == NULL || start > end)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (start == end)
     {
         // Im not sure why but some firmwares have empty SSDTs.
-        return 0;
+        return OK;
     }
 
     // In section 20.2.1, we see the definition AMLCode := DefBlockHeader TermList.
@@ -36,41 +34,43 @@ static inline uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
     // So the entire code is a termlist.
 
     aml_state_t state;
-    if (aml_state_init(&state, NULL) == _FAIL)
+    status_t status = aml_state_init(&state, NULL);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     aml_object_t* root = aml_namespace_get_root();
     UNREF_DEFER(root);
 
-    uint64_t result = aml_term_list_read(&state, root, start, end, NULL);
+    status = aml_term_list_read(&state, root, start, end, NULL);
 
-    if (result != _FAIL)
+    if (IS_OK(status))
     {
         aml_namespace_commit(&state.overlay);
     }
 
     aml_state_deinit(&state);
-    return result;
+    return status;
 }
 
-static inline uint64_t aml_init_parse_all(void)
+static inline status_t aml_init_parse_all(void)
 {
     dsdt_t* dsdt = (dsdt_t*)acpi_tables_lookup(DSDT_SIGNATURE, sizeof(dsdt_t), 0);
     if (dsdt == NULL)
     {
         LOG_ERR("failed to retrieve DSDT\n");
-        return _FAIL;
+        return ERR(ACPI, NO_ACPI_TABLE);
     }
 
     LOG_INFO("DSDT found containing %llu bytes of AML code\n", dsdt->header.length - sizeof(dsdt_t));
 
     const uint8_t* dsdtEnd = (const uint8_t*)dsdt + dsdt->header.length;
-    if (aml_parse(dsdt->definitionBlock, dsdtEnd) == _FAIL)
+    status_t status = aml_parse(dsdt->definitionBlock, dsdtEnd);
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to parse DSDT\n");
-        return _FAIL;
+        return status;
     }
 
     uint64_t index = 0;
@@ -86,10 +86,11 @@ static inline uint64_t aml_init_parse_all(void)
         LOG_INFO("SSDT%llu found containing %llu bytes of AML code\n", index, ssdt->header.length - sizeof(ssdt_t));
 
         const uint8_t* ssdtEnd = (const uint8_t*)ssdt + ssdt->header.length;
-        if (aml_parse(ssdt->definitionBlock, ssdtEnd) == _FAIL)
+        status = aml_parse(ssdt->definitionBlock, ssdtEnd);
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to parse SSDT%llu\n", index);
-            return _FAIL;
+            return status;
         }
 
         index++;
@@ -97,10 +98,10 @@ static inline uint64_t aml_init_parse_all(void)
 
     LOG_INFO("parsed 1 DSDT and %llu SSDTs\n", index);
 
-    return 0;
+    return OK;
 }
 
-uint64_t aml_init(void)
+status_t aml_init(void)
 {
     LOG_INFO("AML revision %d, init and parse all\n", AML_CURRENT_REVISION);
 
@@ -111,57 +112,63 @@ uint64_t aml_init(void)
     if (root == NULL)
     {
         LOG_ERR("failed to create root AML object\n");
-        return _FAIL;
+        return ERR(ACPI, NOMEM);
     }
     UNREF_DEFER(root);
 
     // We dont need to add the root to the namespace map as it has no name.
-    if (aml_predefined_scope_set(root) == _FAIL)
+    status_t status = aml_predefined_scope_set(root);
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to set predefined scope for root object\n");
-        return _FAIL;
+        return status;
     }
 
     aml_namespace_init(root);
 
-    if (aml_integer_handling_init() == _FAIL)
+    status = aml_integer_handling_init();
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to initialize AML integer handling\n");
-        return _FAIL;
+        return status;
     }
 
-    if (aml_predefined_init() == _FAIL)
+    status = aml_predefined_init();
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to initialize AML predefined names\n");
-        return _FAIL;
+        return status;
     }
 
-    if (aml_patch_up_init() == _FAIL)
+    status = aml_patch_up_init();
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to initialize AML patch up\n");
-        return _FAIL;
+        return status;
     }
 
-    if (aml_init_parse_all() == _FAIL)
+    status = aml_init_parse_all();
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to parse all AML code\n");
-        return _FAIL;
+        return status;
     }
 
     LOG_INFO("resolving %llu unresolved objects\n", aml_patch_up_unresolved_count());
-    if (aml_patch_up_resolve_all() == _FAIL)
+    status = aml_patch_up_resolve_all();
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to resolve all unresolved objects\n");
-        return _FAIL;
+        return status;
     }
 
     if (aml_patch_up_unresolved_count() > 0)
     {
         LOG_ERR("there are still %llu unresolved objects after patch up\n", aml_patch_up_unresolved_count());
-        return _FAIL;
+        return ERR(ACPI, UNKNOWN);
     }
 
-    return 0;
+    return OK;
 }
 
 mutex_t* aml_big_mutex_get(void)

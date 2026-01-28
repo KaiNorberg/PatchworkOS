@@ -253,16 +253,16 @@ typedef struct
  * @brief Initialize ACPI tables and call their init handlers.
  *
  * @param rsdp Pointer to the RSDP structure.
- * @return On success, `0`. On failure, `_FAIL`.
+ * @return An appropriate status code.
  */
-uint64_t acpi_tables_init(rsdp_t* rsdp);
+status_t acpi_tables_init(rsdp_t* rsdp);
 
 /**
  * @brief Expose ACPI tables to devfs.
  *
- * @return On success, `0`. On failure, `_FAIL`.
+ * @return An appropriate status code.
  */
-uint64_t acpi_tables_expose(void);
+status_t acpi_tables_expose(void);
 
 /**
  * @brief Lookup the n'th table matching the signature.
@@ -270,11 +270,7 @@ uint64_t acpi_tables_expose(void);
  * @param signature The signature of the table to look up.
  * @param minSize The minimum size of the table to look up, should usually be `sizeof()` of the table struct.
  * @param n The index of the table to look up (0 indexed).
- * @return On success, a pointer to the table. On error, `NULL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `ENOENT`: No table matching the signature was found.
- * - `ERANGE`: A table was found, but not enough matching tables to satisfy `n`.
- * - `EILSEQ`: The table found was smaller than `minSize`.
+ * @return On success, a pointer to the table. On error, `NULL`.
  */
 sdt_header_t* acpi_tables_lookup(const char* signature, uint64_t minSize, uint64_t n);
 

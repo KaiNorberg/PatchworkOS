@@ -57,7 +57,7 @@ static inline uint64_t hash_uint64(uint64_t x)
 
 /**
  * @brief Hash a null-terminated string.
- * 
+ *
  * @param str The string to hash.
  * @return The hash.
  */
@@ -107,7 +107,7 @@ typedef struct map
 
 /**
  * @brief Define a map and its buffer.
- * 
+ *
  * @param _name The name of the map variable.
  * @param _size The size of the buckets buffer for the map.
  * @param _cmp The comparision function to use.
@@ -140,7 +140,7 @@ typedef struct map
 
 /**
  * @brief Initialize a buffer structure.
- * 
+ *
  * @param map The map to initialize.
  * @param buckets The buffer to store the map buckets.
  * @param size The size of the buckets buffer.
@@ -155,7 +155,7 @@ static inline void map_init(map_t* map, map_entry_t** buckets, size_t size, map_
 
 /**
  * @brief Finds an entry in the map.
- * 
+ *
  * @param map The map to search.
  * @param key The key of the entry to find.
  * @param hash The hashed key.
@@ -177,7 +177,7 @@ static inline map_entry_t* map_find(map_t* map, const void* key, uint64_t hash)
 
 /**
  * @brief Insert an entry into the map-
- * 
+ *
  * @param map The map to insert into.
  * @param entry The entry to add.
  * @param hash The hash of the entry.
@@ -211,7 +211,7 @@ static inline void map_remove(map_t* map, map_entry_t* entry, uint64_t hash)
 
 /**
  * @brief Finds an entry in the map and removes it.
- * 
+ *
  * @param map The map to search.
  * @param key The key of the entry to find.
  * @param hash The hashed key.
@@ -237,8 +237,8 @@ static inline map_entry_t* map_find_and_remove(map_t* map, const void* key, uint
 #define MAP_FOR_EACH(_elem, _map, _member) \
     for (size_t _i = 0; _i < (_map)->size; ++_i) \
         for (map_entry_t* _entry = (_map)->buckets[_i]; \
-             _entry != NULL && ((_elem) = CONTAINER_OF(_entry, typeof(*(_elem)), _member), true); \
-             _entry = _entry->next)
+            _entry != NULL && ((_elem) = CONTAINER_OF(_entry, typeof(*(_elem)), _member), true); \
+            _entry = _entry->next)
 
 /**
  * @brief Safely iterates over a map, allowing for element removal during iteration.
@@ -250,10 +250,9 @@ static inline map_entry_t* map_find_and_remove(map_t* map, const void* key, uint
  */
 #define MAP_FOR_EACH_SAFE(_elem, _temp, _map, _member) \
     for (size_t _i = 0; _i < (_map)->size; ++_i) \
-        for (map_entry_t *_entry = (_map)->buckets[_i], *_next = _entry ? _entry->next : NULL; \
-             _entry != NULL && \
-             ((_elem) = CONTAINER_OF(_entry, typeof(*(_elem)), _member), true) && \
-             ((_temp) = _next ? CONTAINER_OF(_next, typeof(*(_elem)), _member) : NULL, true); \
-             _entry = _next, _next = _entry ? _entry->next : NULL)
+        for (map_entry_t* _entry = (_map)->buckets[_i], *_next = _entry ? _entry->next : NULL; \
+            _entry != NULL && ((_elem) = CONTAINER_OF(_entry, typeof(*(_elem)), _member), true) && \
+            ((_temp) = _next ? CONTAINER_OF(_next, typeof(*(_elem)), _member) : NULL, true); \
+            _entry = _next, _next = _entry ? _entry->next : NULL)
 
 /** @} */

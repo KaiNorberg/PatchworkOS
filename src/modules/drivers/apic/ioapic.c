@@ -107,8 +107,8 @@ status_t ioapic_all_init(void)
         }
 
         void* virtAddr = (void*)PML_LOWER_TO_HIGHER(ioapic->ioApicAddress);
-        status_t status = vmm_map(NULL, &virtAddr, ioapic->ioApicAddress, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL,
-                NULL);
+        status_t status = vmm_map(NULL, &virtAddr, ioapic->ioApicAddress, PAGE_SIZE,
+            PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL);
         if (IS_ERR(status))
         {
             LOG_ERR("failed to map io apic\n");
@@ -128,7 +128,7 @@ status_t ioapic_all_init(void)
         }
 
         status = irq_chip_register(&ioApicChip, ioapic->globalSystemInterruptBase,
-                ioapic->globalSystemInterruptBase + maxRedirs, ioapic);
+            ioapic->globalSystemInterruptBase + maxRedirs, ioapic);
         if (IS_ERR(status))
         {
             LOG_ERR("failed to register io apic irq chip\n");

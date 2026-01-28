@@ -43,6 +43,8 @@ typedef struct irp irp_t;
  *
  * ## Cancellation
  *
+ * @todo Update IRP documentation for the new status system.
+ * 
  * Cancelling an IRP can intuitively be considered equivalent to forcing the last completion to fail, thus resulting in
  * all the other completions to fail as well.
  *

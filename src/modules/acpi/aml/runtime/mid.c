@@ -1,32 +1,33 @@
 #include <kernel/acpi/aml/runtime/mid.h>
 
-aml_object_t* aml_mid(aml_state_t* state, aml_object_t* bufferString, aml_uint_t index, aml_uint_t length)
+status_t aml_mid(aml_state_t* state, aml_object_t* bufferString, aml_uint_t index, aml_uint_t length, aml_object_t** out)
 {
     if (state == NULL || bufferString == NULL || (bufferString->type != AML_BUFFER && bufferString->type != AML_STRING))
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(ACPI, INVAL);
     }
 
     aml_object_t* result = aml_object_new();
     if (result == NULL)
     {
-        return NULL;
+        return ERR(ACPI, NOMEM);
     }
     UNREF_DEFER(result);
 
     if (bufferString->type == AML_BUFFER)
     {
-        if (aml_buffer_set_empty(result, length) == _FAIL)
+        status_t status = aml_buffer_set_empty(result, length);
+        if (IS_ERR(status))
         {
-            return NULL;
+            return status;
         }
     }
     else
     {
-        if (aml_string_set_empty(result, length) == _FAIL)
+        status_t status = aml_string_set_empty(result, length);
+        if (IS_ERR(status))
         {
-            return NULL;
+            return status;
         }
     }
 
@@ -34,7 +35,8 @@ aml_object_t* aml_mid(aml_state_t* state, aml_object_t* bufferString, aml_uint_t
         bufferString->type == AML_BUFFER ? bufferString->buffer.length : bufferString->string.length;
     if (index >= objectLength)
     {
-        return REF(result);
+        *out = REF(result);
+        return OK;
     }
 
     if (index + length > objectLength)
@@ -52,5 +54,6 @@ aml_object_t* aml_mid(aml_state_t* state, aml_object_t* bufferString, aml_uint_t
         result->string.content[length] = '\0';
     }
 
-    return REF(result);
+    *out = REF(result);
+    return OK;
 }

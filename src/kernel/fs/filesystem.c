@@ -28,8 +28,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/fs.h>
-#include <sys/map.h>
 #include <sys/list.h>
+#include <sys/map.h>
 
 static dentry_t* dir = NULL;
 

@@ -2,9 +2,9 @@
 
 #include <boot/boot_info.h>
 
-#include <sys/map.h>
 #include <sys/elf.h>
 #include <sys/list.h>
+#include <sys/map.h>
 #include <sys/status.h>
 
 /**

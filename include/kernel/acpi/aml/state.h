@@ -35,9 +35,9 @@ typedef struct aml_state
  *
  * @param state Pointer to the state to initialize.
  * @param args Array of pointers to the objects to pass as arguments, or `NULL`. Must be null-terminated.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_state_init(aml_state_t* state, aml_object_t** args);
+status_t aml_state_init(aml_state_t* state, aml_object_t** args);
 
 /**
  * @brief Deinitialize an AML state.
@@ -54,9 +54,10 @@ void aml_state_deinit(aml_state_t* state);
  * @see aml_method_invoke() for more details.
  *
  * @param state Pointer to the state.
- * @return On success, a copy of the result object. On failure, `NULL` and `errno` is set.
+ * @param out Output pointer for the result object.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_state_result_get(aml_state_t* state);
+status_t aml_state_result_get(aml_state_t* state, aml_object_t** out);
 
 /**
  * @brief Set the result object of the state.

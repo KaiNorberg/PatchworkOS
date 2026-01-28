@@ -13,8 +13,8 @@
 #include <kernel/sync/mutex.h>
 #include <kernel/utils/ref.h>
 
-#include <sys/status.h>
 #include <stdlib.h>
+#include <sys/status.h>
 
 static void file_free(file_t* file)
 {

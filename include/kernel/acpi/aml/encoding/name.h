@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <sys/list.h>
+#include <sys/status.h>
 
 typedef struct aml_term_list_ctx aml_term_list_ctx_t;
 typedef struct aml_object aml_object_t;
@@ -81,14 +82,14 @@ typedef struct
 
 /**
  * @brief A NameString structure.
- * @struct aml_name_stioring_t
+ * @struct aml_name_string_t
  */
 typedef struct
 {
     aml_root_char_t rootChar;
     aml_prefix_path_t prefixPath;
     aml_name_path_t namePath;
-} aml_name_stioring_t;
+} aml_name_string_t;
 
 /**
  * @brief Reads the next data as a SegCount structure from the AML bytecode stream.
@@ -97,9 +98,9 @@ typedef struct
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the SegCount will be stored.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_seg_count_read(aml_term_list_ctx_t* ctx, uint8_t* out);
+status_t aml_seg_count_read(aml_term_list_ctx_t* ctx, uint8_t* out);
 
 /**
  * @brief Reads the next data as a NameSeg from the AML bytecode stream.
@@ -109,9 +110,9 @@ uint64_t aml_seg_count_read(aml_term_list_ctx_t* ctx, uint8_t* out);
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to the destination where the pointer to the NameSeg will be stored. Will be located within the AML
  * bytecode stream.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_name_seg_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out);
+status_t aml_name_seg_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out);
 
 /**
  * @brief Reads the next data as a DualNamePath structure from the AML bytecode stream.
@@ -121,9 +122,9 @@ uint64_t aml_name_seg_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out);
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the pointer to the array of two NameSeg will be stored. Will be located
  * within the AML bytecode stream.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_dual_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out);
+status_t aml_dual_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out);
 
 /**
  * @brief Reads the next data as a MultiNamePath structure from the AML bytecode stream.
@@ -134,9 +135,9 @@ uint64_t aml_dual_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out)
  * @param outSegments Pointer to destination where the pointer to the array of NameSeg will be stored. Will be located
  * within the AML bytecode stream.
  * @param outSegCount Pointer to destination where the number of segments will be stored.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_multi_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** outSegments, uint64_t* outSegCount);
+status_t aml_multi_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** outSegments, uint64_t* outSegCount);
 
 /**
  * Reads the next data as a NullName structure from the AML bytecode stream.
@@ -144,9 +145,9 @@ uint64_t aml_multi_name_path_read(aml_term_list_ctx_t* ctx, aml_name_seg_t** out
  * A NullName structure is defined as `NullName := 0x00`.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_null_name_read(aml_term_list_ctx_t* ctx);
+status_t aml_null_name_read(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Reads the next data as a NamePath structure from the AML bytecode stream.
@@ -155,9 +156,9 @@ uint64_t aml_null_name_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the NamePath will be stored.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_name_path_read(aml_term_list_ctx_t* ctx, aml_name_path_t* out);
+status_t aml_name_path_read(aml_term_list_ctx_t* ctx, aml_name_path_t* out);
 
 /**
  * @brief Reads the next data as a PrefixPath structure from the AML bytecode stream.
@@ -168,9 +169,9 @@ uint64_t aml_name_path_read(aml_term_list_ctx_t* ctx, aml_name_path_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the PrefixPath will be stored.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_prefix_path_read(aml_term_list_ctx_t* ctx, aml_prefix_path_t* out);
+status_t aml_prefix_path_read(aml_term_list_ctx_t* ctx, aml_prefix_path_t* out);
 
 /**
  * @brief Reads the next data as a RootChar from the AML bytecode stream.
@@ -179,9 +180,9 @@ uint64_t aml_prefix_path_read(aml_term_list_ctx_t* ctx, aml_prefix_path_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the RootChar will be stored.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_root_char_read(aml_term_list_ctx_t* ctx, aml_root_char_t* out);
+status_t aml_root_char_read(aml_term_list_ctx_t* ctx, aml_root_char_t* out);
 
 /**
  * @brief Reads the next data as a NameString structure from the AML bytecode stream.
@@ -190,9 +191,9 @@ uint64_t aml_root_char_read(aml_term_list_ctx_t* ctx, aml_root_char_t* out);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to destination where the NameString will be stored.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_stioring_t* out);
+status_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_string_t* out);
 
 /**
  * @brief Reads the next data as a NameString structure from the AML bytecode stream and resolves it to a object.
@@ -207,9 +208,10 @@ uint64_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_stioring_t* out
  * @see aml_name_string_find_by_name_string() for details on how the resolution is performed.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, a pointer to the resolved object. On failure, `NULL` and `errno` is set.
+ * @param out Output pointer for the object.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx);
+status_t aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a SimpleName structure from the AML byte stream and resolves it to a object.
@@ -220,9 +222,10 @@ aml_object_t* aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx);
  * might be set in other cases.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, a pointer to the resolved object. On failure, `NULL` and `errno` is set.
+ * @param out Output pointer for the object.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_simple_name_read_and_resolve(aml_term_list_ctx_t* ctx);
+status_t aml_simple_name_read_and_resolve(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a SuperName structure from the AML byte stream and resolves it to a object.
@@ -230,9 +233,10 @@ aml_object_t* aml_simple_name_read_and_resolve(aml_term_list_ctx_t* ctx);
  * A SuperName structure is defined as `SuperName := SimpleName | DebugObj | ReferenceTypeOpcode`.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, a pointer to the resolved object. On failure, `NULL` and `errno` is set.
+ * @param out Output pointer for the object.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_super_name_read_and_resolve(aml_term_list_ctx_t* ctx);
+status_t aml_super_name_read_and_resolve(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /**
  * @brief Reads a Target structure from the AML byte stream and resolves it to a object.
@@ -243,8 +247,8 @@ aml_object_t* aml_super_name_read_and_resolve(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out Pointer to where the pointer to the resolved object will be stored, might be set to point to `NULL`.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_target_read_and_resolve(aml_term_list_ctx_t* ctx, aml_object_t** out);
+status_t aml_target_read_and_resolve(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /** @} */

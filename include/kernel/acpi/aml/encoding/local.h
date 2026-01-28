@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <sys/status.h>
 
 typedef struct aml_object aml_object_t;
 typedef struct aml_term_list_ctx aml_term_list_ctx_t;
@@ -39,9 +40,10 @@ typedef struct aml_term_list_ctx aml_term_list_ctx_t;
  *
  * @see Section 19.3.5.8.2 of the ACPI specification for more details.
  *
- * @param state Pointer to the AML state.
- * @return On success, the LocalObj. On failure, `NULL` and `errno` is set.
+ * @param ctx The context of the TermList that this structure is part of.
+ * @param out The output pointer to store the local object.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_local_obj_read(aml_term_list_ctx_t* ctx);
+status_t aml_local_obj_read(aml_term_list_ctx_t* ctx, aml_object_t** out);
 
 /** @} */

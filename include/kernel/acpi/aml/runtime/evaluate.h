@@ -19,8 +19,9 @@
  * @param state The AML state to use for evaluation, can be `NULL` to use a temporary state.
  * @param object The AML object to evaluate.
  * @param targetTypes A bitmask of desired target types.
- * @return On success, the evaluated AML object. On failure, `NULL` and `errno` is set.
+ * @param out Output pointer for the evaluated object.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_evaluate(aml_state_t* state, aml_object_t* object, aml_type_t targetTypes);
+status_t aml_evaluate(aml_state_t* state, aml_object_t* object, aml_type_t targetTypes, aml_object_t** out);
 
 /** @} */

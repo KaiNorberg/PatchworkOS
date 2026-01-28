@@ -102,7 +102,7 @@ void loader_exec(void)
     uint64_t loadSize = maxAddr - minAddr;
 
     status = vmm_alloc(&process->space, (void**)&minAddr, loadSize, PAGE_SIZE, PML_USER | PML_WRITE | PML_PRESENT,
-            VMM_ALLOC_OVERWRITE);
+        VMM_ALLOC_OVERWRITE);
     if (IS_ERR(status))
     {
         goto cleanup;
@@ -224,7 +224,8 @@ SYSCALL_DEFINE(SYS_SPAWN, const char** argv, spawn_flags_t flags)
     UNREF_DEFER(childNs);
 
     process_t* child;
-    status_t status = process_new(&child, atomic_load(&process->priority), flags & SPAWN_EMPTY_GROUP ? NULL : &process->group, childNs);
+    status_t status = process_new(&child, atomic_load(&process->priority),
+        flags & SPAWN_EMPTY_GROUP ? NULL : &process->group, childNs);
     if (IS_ERR(status))
     {
         return status;

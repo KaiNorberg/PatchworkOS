@@ -3,10 +3,10 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/sync/rwlock.h>
 
-#include <sys/status.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/list.h>
+#include <sys/status.h>
 
 typedef struct cpu cpu_t;
 

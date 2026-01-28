@@ -62,7 +62,8 @@ static inline status_t ioring_ctx_map(ioring_ctx_t* ctx, process_t* process, ior
 
     // PML_OWNED means that the pages will be freed when unmapped.
     void* kernelAddr = NULL;
-    status_t status = vmm_map_pages(NULL, &kernelAddr, pages, pageAmount, PML_WRITE | PML_PRESENT | PML_OWNED, NULL, NULL);
+    status_t status =
+        vmm_map_pages(NULL, &kernelAddr, pages, pageAmount, PML_WRITE | PML_PRESENT | PML_OWNED, NULL, NULL);
     if (IS_ERR(status))
     {
         pmm_free_pages(pages, pageAmount);
@@ -70,7 +71,8 @@ static inline status_t ioring_ctx_map(ioring_ctx_t* ctx, process_t* process, ior
     }
 
     void* userAddr = address;
-    status = vmm_map_pages(&process->space, &userAddr, pages, pageAmount, PML_WRITE | PML_PRESENT | PML_USER, NULL, NULL);
+    status =
+        vmm_map_pages(&process->space, &userAddr, pages, pageAmount, PML_WRITE | PML_PRESENT | PML_USER, NULL, NULL);
     if (IS_ERR(status))
     {
         vmm_unmap(NULL, kernelAddr, pageAmount * PAGE_SIZE);

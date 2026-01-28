@@ -3,8 +3,8 @@
 #include <kernel/fs/file.h>
 
 #include <sys/fs.h>
-#include <sys/map.h>
 #include <sys/list.h>
+#include <sys/map.h>
 
 /**
  * @brief Keys for sharing file descriptors between processes.

@@ -2,142 +2,114 @@
 
 #include <kernel/acpi/aml/runtime/convert.h>
 #include <kernel/log/log.h>
+#include <sys/status.h>
 
-#include <errno.h>
-
-static uint64_t aml_concat_resolve_to_integer(aml_state_t* state, aml_object_t* source, aml_uint_t* out)
+static status_t aml_concat_resolve_to_integer(aml_state_t* state, aml_object_t* source, aml_uint_t* out)
 {
     if (source->type == AML_INTEGER)
     {
         *out = source->integer.value;
-        return 0;
+        return OK;
     }
-    else if (source->type == AML_STRING || source->type == AML_BUFFER)
+    
+    if (source->type == AML_STRING || source->type == AML_BUFFER)
     {
         aml_object_t* temp = NULL;
-        if (aml_convert_source(state, source, &temp, AML_INTEGER) == _FAIL)
+        status_t status = aml_convert_source(state, source, &temp, AML_INTEGER);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
         *out = temp->integer.value;
         UNREF(temp);
-        return 0;
+        return OK;
     }
-    else
-    {
-        errno = EINVAL;
-        return _FAIL;
-    }
+
+    return ERR(ACPI, INVAL);
 }
 
-static uint64_t aml_concat_resolve_to_string(aml_state_t* state, aml_object_t* source, const char** outStr,
+static status_t aml_concat_resolve_to_string(aml_state_t* state, aml_object_t* source, const char** outStr,
     aml_object_t** outTemp)
 {
-    if (source->type == AML_STRING)
+    switch (source->type)
     {
+    case AML_STRING:
         *outStr = source->string.content;
         *outTemp = NULL;
-        return 0;
-    }
-    else if (source->type == AML_INTEGER || source->type == AML_BUFFER)
+        return OK;
+    case AML_INTEGER:
+    case AML_BUFFER:
     {
         aml_object_t* temp = NULL;
-        if (aml_convert_source(state, source, &temp, AML_STRING) == _FAIL)
+        status_t status = aml_convert_source(state, source, &temp, AML_STRING);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
         *outStr = temp->string.content;
         *outTemp = temp; // Caller must deref
-        return 0;
+        return OK;
     }
-    else if (source->type == AML_UNINITIALIZED)
-    {
+    case AML_UNINITIALIZED:
         *outStr = "Uninitialized Object";
         *outTemp = NULL;
-        return 0;
-    }
-    else if (source->type == AML_PACKAGE)
-    {
+        return OK;
+    case AML_PACKAGE:
         *outStr = "Package";
         *outTemp = NULL;
-        return 0;
-    }
-    else if (source->type == AML_FIELD_UNIT)
-    {
+        return OK;
+    case AML_FIELD_UNIT:
         *outStr = "Field Unit";
         *outTemp = NULL;
-        return 0;
-    }
-    else if (source->type == AML_DEVICE)
-    {
+        return OK;
+    case AML_DEVICE:
         *outStr = "Device";
         *outTemp = NULL;
-        return 0;
-    }
-    else if (source->type == AML_EVENT)
-    {
+        return OK;
+    case AML_EVENT:
         *outStr = "Event";
         *outTemp = NULL;
-        return 0;
-    }
-    else if (source->type == AML_METHOD)
-    {
+        return OK;
+    case AML_METHOD:
         *outStr = "Control Method";
         *outTemp = NULL;
-        return 0;
-    }
-    else if (source->type == AML_MUTEX)
-    {
+        return OK;
+    case AML_MUTEX:
         *outStr = "Mutex";
         *outTemp = NULL;
-        return 0;
-    }
-    else if (source->type == AML_OPERATION_REGION)
-    {
+        return OK;
+    case AML_OPERATION_REGION:
         *outStr = "Operation Region";
         *outTemp = NULL;
-        return 0;
-    }
-    else if (source->type == AML_POWER_RESOURCE)
-    {
+        return OK;
+    case AML_POWER_RESOURCE:
         *outStr = "Power Resource";
         *outTemp = NULL;
-        return 0;
-    }
-    else if (source->type == AML_PROCESSOR)
-    {
+        return OK;
+    case AML_PROCESSOR:
         *outStr = "Processor";
         *outTemp = NULL;
-        return 0;
-    }
-    else if (source->type == AML_THERMAL_ZONE)
-    {
+        return OK;
+    case AML_THERMAL_ZONE:
         *outStr = "Thermal Zone";
         *outTemp = NULL;
-        return 0;
-    }
-    else if (source->type == AML_BUFFER_FIELD)
-    {
+        return OK;
+    case AML_BUFFER_FIELD:
         *outStr = "Buffer Field";
         *outTemp = NULL;
-        return 0;
-    }
-    else if (source->type == AML_DEBUG_OBJECT)
-    {
+        return OK;
+    case AML_DEBUG_OBJECT:
         *outStr = "Debug Object";
         *outTemp = NULL;
-        return 0;
-    }
-    else
-    {
-        errno = EINVAL;
-        return _FAIL;
+        return OK;
+    default:
+        return ERR(ACPI, INVAL);
     }
 }
 
-static uint64_t aml_concat_resolve_to_buffer(aml_state_t* state, aml_object_t* source, uint8_t** outBuf,
+static status_t aml_concat_resolve_to_buffer(aml_state_t* state, aml_object_t* source, uint8_t** outBuf,
     uint64_t* outLen, aml_object_t** outTemp)
 {
     if (source->type == AML_BUFFER)
@@ -145,85 +117,90 @@ static uint64_t aml_concat_resolve_to_buffer(aml_state_t* state, aml_object_t* s
         *outBuf = source->buffer.content;
         *outLen = source->buffer.length;
         *outTemp = NULL;
-        return 0;
+        return OK;
     }
-    else if (source->type == AML_INTEGER || source->type == AML_STRING)
+    
+    if (source->type == AML_INTEGER || source->type == AML_STRING)
     {
         aml_object_t* temp = NULL;
-        if (aml_convert_source(state, source, &temp, AML_BUFFER) == _FAIL)
+        status_t status = aml_convert_source(state, source, &temp, AML_BUFFER);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
         *outBuf = temp->buffer.content;
         *outLen = temp->buffer.length;
         *outTemp = temp; // Caller must deref
-        return 0;
+        return OK;
     }
-    else
-    {
-        // The spec seems a bit vague on this. But my assumption is that when resolving other types to a buffer,
-        // we first convert them to a string, then take the string's bytes as the buffer content.
-        const char* str;
-        if (aml_concat_resolve_to_string(state, source, &str, outTemp) == _FAIL)
-        {
-            return _FAIL;
-        }
 
-        *outBuf = (uint8_t*)str;
-        *outLen = strlen(str);
-        return 0;
+    // The spec seems a bit vague on this. But my assumption is that when resolving other types to a buffer,
+    // we first convert them to a string, then take the string's bytes as the buffer content.
+    const char* str;
+    status_t status = aml_concat_resolve_to_string(state, source, &str, outTemp);
+    if (IS_ERR(status))
+    {
+        return status;
     }
+
+    *outBuf = (uint8_t*)str;
+    *outLen = strlen(str);
+    return OK;
 }
 
-static uint64_t aml_concat_integer(aml_state_t* state, aml_object_t* source1, aml_object_t* source2,
+static status_t aml_concat_integer(aml_state_t* state, aml_object_t* source1, aml_object_t* source2,
     aml_object_t* result)
 {
     assert(source1->type == AML_INTEGER);
     aml_uint_t value1 = source1->integer.value;
     aml_uint_t value2;
-    if (aml_concat_resolve_to_integer(state, source2, &value2) == _FAIL)
+    status_t status = aml_concat_resolve_to_integer(state, source2, &value2);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
-    if (aml_buffer_set_empty(result, aml_integer_byte_size() * 2) == _FAIL)
+    status = aml_buffer_set_empty(result, aml_integer_byte_size() * 2);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     memcpy(result->buffer.content, &value1, aml_integer_byte_size());
     memcpy(result->buffer.content + aml_integer_byte_size(), &value2, aml_integer_byte_size());
 
-    return 0;
+    return OK;
 }
 
-static uint64_t aml_concat_string(aml_state_t* state, aml_object_t* source1, aml_object_t* source2,
+static status_t aml_concat_string(aml_state_t* state, aml_object_t* source1, aml_object_t* source2,
     aml_object_t* result)
 {
     assert(source1->type == AML_STRING);
     const char* str1 = source1->string.content;
     const char* str2;
     aml_object_t* temp2 = NULL;
-    if (aml_concat_resolve_to_string(state, source2, &str2, &temp2) == _FAIL)
+    status_t status = aml_concat_resolve_to_string(state, source2, &str2, &temp2);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     UNREF_DEFER(temp2);
 
     size_t len1 = strlen(str1);
     size_t len2 = strlen(str2);
 
-    if (aml_string_set_empty(result, len1 + len2) == _FAIL)
+    status = aml_string_set_empty(result, len1 + len2);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     memcpy(result->string.content, str1, len1);
     memcpy(result->string.content + len1, str2, len2);
 
-    return 0;
+    return OK;
 }
 
-static uint64_t aml_concat_buffer(aml_state_t* state, aml_object_t* source1, aml_object_t* source2,
+static status_t aml_concat_buffer(aml_state_t* state, aml_object_t* source1, aml_object_t* source2,
     aml_object_t* result)
 {
     assert(source1->type == AML_BUFFER);
@@ -232,66 +209,69 @@ static uint64_t aml_concat_buffer(aml_state_t* state, aml_object_t* source1, aml
     uint8_t* buf2;
     uint64_t len2;
     aml_object_t* temp2 = NULL;
-    if (aml_concat_resolve_to_buffer(state, source2, &buf2, &len2, &temp2) == _FAIL)
+    status_t status = aml_concat_resolve_to_buffer(state, source2, &buf2, &len2, &temp2);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     UNREF_DEFER(temp2);
 
-    if (aml_buffer_set_empty(result, len1 + len2) == _FAIL)
+    status = aml_buffer_set_empty(result, len1 + len2);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     memcpy(result->buffer.content, buf1, len1);
     memcpy(result->buffer.content + len1, buf2, len2);
 
-    return 0;
+    return OK;
 }
 
-static uint64_t aml_concat_other_types(aml_state_t* state, aml_object_t* source1, aml_object_t* source2,
+static status_t aml_concat_other_types(aml_state_t* state, aml_object_t* source1, aml_object_t* source2,
     aml_object_t* result)
 {
     const char* str1;
     aml_object_t* temp1 = NULL;
-    if (aml_concat_resolve_to_string(state, source1, &str1, &temp1) == _FAIL)
+    status_t status = aml_concat_resolve_to_string(state, source1, &str1, &temp1);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     UNREF_DEFER(temp1);
 
     const char* str2;
     aml_object_t* temp2 = NULL;
-    if (aml_concat_resolve_to_string(state, source2, &str2, &temp2) == _FAIL)
+    status = aml_concat_resolve_to_string(state, source2, &str2, &temp2);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     UNREF_DEFER(temp2);
 
     size_t len1 = strlen(str1);
     size_t len2 = strlen(str2);
 
-    if (aml_string_set_empty(result, len1 + len2) == _FAIL)
+    status = aml_string_set_empty(result, len1 + len2);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     memcpy(result->string.content, str1, len1);
     memcpy(result->string.content + len1, str2, len2);
 
-    return 0;
+    return OK;
 }
 
-uint64_t aml_concat(aml_state_t* state, aml_object_t* source1, aml_object_t* source2, aml_object_t* result)
+status_t aml_concat(aml_state_t* state, aml_object_t* source1, aml_object_t* source2, aml_object_t* result)
 {
     if (source1 == NULL || source2 == NULL || result == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (source1->type == AML_UNINITIALIZED || source2->type == AML_UNINITIALIZED)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     switch (source1->type)

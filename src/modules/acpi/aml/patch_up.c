@@ -12,30 +12,29 @@
 
 static list_t unresolvedObjects;
 
-uint64_t aml_patch_up_init(void)
+status_t aml_patch_up_init(void)
 {
     list_init(&unresolvedObjects);
-    return 0;
+    return OK;
 }
 
-uint64_t aml_patch_up_add_unresolved(aml_unresolved_t* unresolved)
+status_t aml_patch_up_add_unresolved(aml_unresolved_t* unresolved)
 {
     if (unresolved == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     aml_patch_up_entry_t* entry = malloc(sizeof(aml_patch_up_entry_t));
     if (entry == NULL)
     {
-        return _FAIL;
+        return ERR(ACPI, NOMEM);
     }
 
     list_entry_init(&entry->entry);
     entry->unresolved = unresolved;
     list_push_back(&unresolvedObjects, &entry->entry);
-    return 0;
+    return OK;
 }
 
 void aml_patch_up_remove_unresolved(aml_unresolved_t* unresolved)
@@ -57,13 +56,14 @@ void aml_patch_up_remove_unresolved(aml_unresolved_t* unresolved)
     }
 }
 
-uint64_t aml_patch_up_resolve_all(void)
+status_t aml_patch_up_resolve_all(void)
 {
     aml_state_t state;
-    if (aml_state_init(&state, NULL) == _FAIL)
+    status_t status = aml_state_init(&state, NULL);
+    if (IS_ERR(status))
     {
         LOG_PANIC("Failed to init AML state\n");
-        return _FAIL;
+        return status;
     }
 
     aml_patch_up_entry_t* entry = NULL;
@@ -74,18 +74,18 @@ uint64_t aml_patch_up_resolve_all(void)
             aml_namespace_find_by_name_string(&state.overlay, entry->unresolved->from, &entry->unresolved->nameString);
         if (match == NULL)
         {
-            LOG_DEBUG("Still could not resolve '%s'\n", aml_name_stioring_to_string(&entry->unresolved->nameString));
-            errno = EOK;
+            LOG_DEBUG("Still could not resolve '%s'\n", aml_name_string_to_string(&entry->unresolved->nameString));
             continue;
         }
 
         aml_unresolved_t* unresolved = entry->unresolved;
         aml_object_t* obj = CONTAINER_OF(unresolved, aml_object_t, unresolved);
-        if (unresolved->callback(&state, match, obj) == _FAIL)
+        status_t status = unresolved->callback(&state, match, obj);
+        if (IS_ERR(status))
         {
             aml_state_deinit(&state);
             LOG_ERR("Failed to patch up unresolved object\n");
-            return _FAIL;
+            return status;
         }
 
         // When a unresolved object changes type it will call aml_patch_up_remove_unresolved itself.
@@ -93,13 +93,12 @@ uint64_t aml_patch_up_resolve_all(void)
         {
             aml_state_deinit(&state);
             LOG_ERR("Unresolved object did not change type\n");
-            errno = EILSEQ;
-            return _FAIL;
+            return ERR(ACPI, ILSEQ);
         }
     }
 
     aml_state_deinit(&state);
-    return 0;
+    return OK;
 }
 
 uint64_t aml_patch_up_unresolved_count(void)

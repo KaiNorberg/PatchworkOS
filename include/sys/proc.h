@@ -81,7 +81,7 @@ typedef enum
  * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable.
  * @param flags Spawn behaviour flags.
  * @param pid Optional ouput pointer for the childs pid.
- * @return 
+ * @return
  */
 static inline status_t spawn(const char** argv, spawn_flags_t flags, pid_t* pid)
 {
@@ -148,8 +148,9 @@ typedef enum
  * allocate zeroed memory.
  *
  * @param fd The open file descriptor of the file to be mapped.
- * @param addr The output pointer to store the virtual address, the value it currently points to is used as the desired virtual address. If it points to `NULL`, the kernel chooses an address.
- * address, will be rounded down to the nearest page multiple.
+ * @param addr The output pointer to store the virtual address, the value it currently points to is used as the desired
+ * virtual address. If it points to `NULL`, the kernel chooses an address. address, will be rounded down to the nearest
+ * page multiple.
  * @param length The length of the segment to be mapped, note that this length will be rounded up to the nearest page
  * multiple by the kernel factoring in page boundaries.
  * @param prot Protection flags, must have at least `PROT_READ` set.
@@ -360,7 +361,7 @@ status_t atnotify(atnotify_func_t handler, atnotify_t action);
 
 /**
  * @brief System call that exists the current process.
- * 
+ *
  * @param status The string exit status of the process.
  */
 _NORETURN void exits(const char* status);

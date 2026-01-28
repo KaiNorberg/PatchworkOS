@@ -1,8 +1,8 @@
 #pragma once
 
-#include <sys/list.h>
-
 #include <stdint.h>
+#include <sys/list.h>
+#include <sys/status.h>
 
 typedef struct aml_object aml_object_t;
 typedef struct aml_term_list_ctx aml_term_list_ctx_t;
@@ -25,9 +25,9 @@ typedef struct aml_term_list_ctx aml_term_list_ctx_t;
  * @see Section 19.6.4 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_def_alias_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_alias_read(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Reads a DefName structure from the AML byte stream.
@@ -37,9 +37,9 @@ uint64_t aml_def_alias_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.90 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_def_name_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_name_read(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Reads a DefScope structure from the AML byte stream.
@@ -49,9 +49,9 @@ uint64_t aml_def_name_read(aml_term_list_ctx_t* ctx);
  * @see Section 19.6.122 of the ACPI specification for more details.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_def_scope_read(aml_term_list_ctx_t* ctx);
+status_t aml_def_scope_read(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Reads a NameSpaceModifierObj structure from the AML byte stream.
@@ -60,8 +60,8 @@ uint64_t aml_def_scope_read(aml_term_list_ctx_t* ctx);
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param op The AML op, should have been read by the caller.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_namespace_modifier_obj_read(aml_term_list_ctx_t* ctx);
+status_t aml_namespace_modifier_obj_read(aml_term_list_ctx_t* ctx);
 
 /** @} */

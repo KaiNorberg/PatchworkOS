@@ -39,7 +39,7 @@ static status_t exception_grow_stack(thread_t* thread, uintptr_t faultAddr, stac
     if (stack_pointer_is_in_stack(stack, alignedFaultAddr, 1))
     {
         status_t status = vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PAGE_SIZE, flags,
-                VMM_ALLOC_FAIL_IF_MAPPED);
+            VMM_ALLOC_FAIL_IF_MAPPED);
         if (IS_ERR(status))
         {
             if (ST_CODE(status) == ST_CODE_MAPPED)

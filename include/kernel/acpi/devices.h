@@ -134,21 +134,18 @@ typedef struct acpi_dev
  *  - If the device is present and functional, the device's _INI is evaluated and its children are enumerated.
  *
  * @see Section 6.5.1 of the ACPI specification for more details.
- * @return On success, 0. On failure, `_FAIL`.
+ * @return An appropriate status code.
  */
-uint64_t acpi_devices_init(void);
+status_t acpi_devices_init(void);
 
 /**
  * @brief Retrieves the ACPI device configuration for a device by its name.
  *
  * @param name The name of the device to retrieve the configuration for.
- * @return On success, a pointer to the device configuration. On failure, `NULL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `ENOENT`: The specified name does not exist in the ACPI namespace.
- * - `ENOTTY`: The specified name is not a device.
- * - `ENODEV`: The specified device has no configuration.
+ * @param out Output pointer for the device configuration structure.
+ * @return An appropriate status value.
  */
-acpi_dev_t* acpi_dev_lookup(const char* name);
+status_t acpi_dev_lookup(const char* name, acpi_dev_t** out);
 
 /**
  * @brief Retrieves the nth I/O port assigned to an ACPI device.

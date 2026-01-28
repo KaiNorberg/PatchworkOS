@@ -47,8 +47,7 @@ static dentry_ops_t hideDentryOps = {
     .revalidate = procfs_revalidate_hide,
 };
 
-static status_t procfs_prio_read(
-    file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static status_t procfs_prio_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     process_t* process = file->vnode->data;
 
@@ -59,8 +58,7 @@ static status_t procfs_prio_read(
     return buffer_read(buffer, count, offset, bytesRead, prioStr, length);
 }
 
-static status_t procfs_prio_write(
-    file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
+static status_t procfs_prio_write(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
 {
     UNUSED(offset);
 
@@ -116,8 +114,7 @@ static status_t procfs_cwd_read(file_t* file, void* buffer, size_t count, size_t
     return buffer_read(buffer, count, offset, bytesRead, cwdName.string, length);
 }
 
-static status_t procfs_cwd_write(
-    file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
+static status_t procfs_cwd_write(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
 {
     UNUSED(offset);
 
@@ -171,8 +168,7 @@ static file_ops_t cwdOps = {
     .write = procfs_cwd_write,
 };
 
-static status_t procfs_cmdline_read(
-    file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static status_t procfs_cmdline_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     process_t* process = file->vnode->data;
 
@@ -217,8 +213,7 @@ static file_ops_t cmdlineOps = {
     .read = procfs_cmdline_read,
 };
 
-static status_t procfs_note_write(
-    file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
+static status_t procfs_note_write(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
 {
     UNUSED(offset);
 
@@ -259,8 +254,8 @@ static file_ops_t noteOps = {
     .write = procfs_note_write,
 };
 
-static status_t procfs_notegroup_write(
-    file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
+static status_t procfs_notegroup_write(file_t* file, const void* buffer, size_t count, size_t* offset,
+    size_t* bytesWritten)
 {
     UNUSED(offset);
 
@@ -336,8 +331,7 @@ static file_ops_t pidOps = {
     .read = procfs_pid_read,
 };
 
-static status_t procfs_wait_read(
-    file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static status_t procfs_wait_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     process_t* process = file->vnode->data;
 
@@ -348,8 +342,7 @@ static status_t procfs_wait_read(
     }
 
     lock_acquire(&process->status.lock);
-    status = buffer_read(
-        buffer, count, offset, bytesRead, process->status.buffer, strlen(process->status.buffer));
+    status = buffer_read(buffer, count, offset, bytesRead, process->status.buffer, strlen(process->status.buffer));
     lock_release(&process->status.lock);
     return status;
 }
@@ -373,8 +366,7 @@ static file_ops_t waitOps = {
     .poll = procfs_wait_poll,
 };
 
-static status_t procfs_perf_read(
-    file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static status_t procfs_perf_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     process_t* process = file->vnode->data;
     size_t userPages = space_user_page_count(&process->space);
@@ -389,8 +381,8 @@ static status_t procfs_perf_read(
 
     char statStr[MAX_PATH];
     int length = snprintf(statStr, sizeof(statStr),
-        "user_clocks %llu\nkernel_sched_clocks %llu\nstart_clocks %llu\nuser_pages %llu\nthread_count %llu",
-        userClocks, kernelClocks, startTime, userPages, threadCount);
+        "user_clocks %llu\nkernel_sched_clocks %llu\nstart_clocks %llu\nuser_pages %llu\nthread_count %llu", userClocks,
+        kernelClocks, startTime, userPages, threadCount);
     if (length < 0)
     {
         return ERR(FS, IMPL);
@@ -741,8 +733,7 @@ static status_t procfs_env_read(file_t* file, void* buffer, size_t count, size_t
     return buffer_read(buffer, count, offset, bytesRead, value, length);
 }
 
-static status_t procfs_env_write(
-    file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
+static status_t procfs_env_write(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
 {
     UNUSED(offset);
 
@@ -1176,7 +1167,7 @@ static dentry_ops_t procDentryOps = {
     .iterate = procfs_iterate,
 };
 
-static status_t procfs_mount(filesystem_t* fs,  dentry_t** out, const char* options, void* data)
+static status_t procfs_mount(filesystem_t* fs, dentry_t** out, const char* options, void* data)
 {
     UNUSED(data);
 

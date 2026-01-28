@@ -124,7 +124,8 @@ static status_t shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t page
         }
     }
 
-    status_t status = vmm_map_pages(space, address, shmem->pages, shmem->pageAmount, flags, shmem_vmm_callback, REF(shmem));
+    status_t status =
+        vmm_map_pages(space, address, shmem->pages, shmem->pageAmount, flags, shmem_vmm_callback, REF(shmem));
     if (IS_ERR(status))
     {
         for (uint64_t i = 0; i < shmem->pageAmount; i++)

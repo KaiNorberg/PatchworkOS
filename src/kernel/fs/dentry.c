@@ -29,7 +29,7 @@ static bool dentry_cmp(map_entry_t* entry, const void* key)
     dentry_t* dentry = CONTAINER_OF(entry, dentry_t, mapEntry);
     const dentry_key_t* k = key;
     return dentry->parent == k->parent && dentry->name[k->length] == '\0' &&
-           memcmp(dentry->name, k->name, k->length) == 0;
+        memcmp(dentry->name, k->name, k->length) == 0;
 }
 
 #define DENTRY_MAP_SIZE 4096
@@ -246,7 +246,7 @@ status_t dentry_lookup(dentry_t** out, dentry_t* parent, const char* name, size_
     vnode_t* dir = parent->vnode;
     if (dir->ops == NULL || dir->ops->lookup == NULL)
     {
-        *out = dentry;  // Leave it as negative.
+        *out = dentry; // Leave it as negative.
         return OK;
     }
 

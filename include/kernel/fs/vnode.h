@@ -9,8 +9,8 @@
 #include <stdatomic.h>
 #include <stdint.h>
 #include <sys/fs.h>
-#include <sys/proc.h>
 #include <sys/map.h>
+#include <sys/proc.h>
 #include <time.h>
 
 typedef struct vnode vnode_t;

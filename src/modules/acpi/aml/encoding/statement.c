@@ -7,33 +7,33 @@
 #include <kernel/acpi/aml/token.h>
 #include <kernel/log/log.h>
 
-#include <errno.h>
-
-uint64_t aml_predicate_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
+status_t aml_predicate_read(aml_term_list_ctx_t* ctx, aml_uint_t* out)
 {
-    if (aml_term_arg_read_integer(ctx, out) == _FAIL)
+    status_t status = aml_term_arg_read_integer(ctx, out);
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
-        return _FAIL;
+        return status;
     }
-    return 0;
+    return OK;
 }
 
-uint64_t aml_def_else_read(aml_term_list_ctx_t* ctx, bool shouldExecute)
+status_t aml_def_else_read(aml_term_list_ctx_t* ctx, bool shouldExecute)
 {
-    if (aml_token_expect(ctx, AML_ELSE_OP) == _FAIL)
+    if (!aml_token_expect(ctx, AML_ELSE_OP))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read ElseOp");
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
     const uint8_t* start = ctx->current;
 
     aml_pkg_length_t pkgLength;
-    if (aml_pkg_length_read(ctx, &pkgLength) == _FAIL)
+    status_t status = aml_pkg_length_read(ctx, &pkgLength);
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read PkgLength");
-        return _FAIL;
+        return status;
     }
 
     const uint8_t* end = start + pkgLength;
@@ -41,33 +41,35 @@ uint64_t aml_def_else_read(aml_term_list_ctx_t* ctx, bool shouldExecute)
     if (shouldExecute)
     {
         // Execute the TermList in the same scope
-        if (aml_term_list_read(ctx->state, ctx->scope, ctx->current, end, ctx) == _FAIL)
+        status = aml_term_list_read(ctx->state, ctx->scope, ctx->current, end, ctx);
+        if (IS_ERR(status))
         {
             AML_DEBUG_ERROR(ctx, "Failed to read TermList");
-            return _FAIL;
+            return status;
         }
     }
 
     ctx->current = end;
 
-    return 0;
+    return OK;
 }
 
-uint64_t aml_def_if_else_read(aml_term_list_ctx_t* ctx)
+status_t aml_def_if_else_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_IF_OP) == _FAIL)
+    if (!aml_token_expect(ctx, AML_IF_OP))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read IfOp");
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
     const uint8_t* start = ctx->current;
 
     aml_pkg_length_t pkgLength;
-    if (aml_pkg_length_read(ctx, &pkgLength) == _FAIL)
+    status_t status = aml_pkg_length_read(ctx, &pkgLength);
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read PkgLength");
-        return _FAIL;
+        return status;
     }
 
     // The end of the If statement, the "Else" part is not included in this length, see section 5.4.1 figure 5.17 of
@@ -75,26 +77,28 @@ uint64_t aml_def_if_else_read(aml_term_list_ctx_t* ctx)
     const uint8_t* end = start + pkgLength;
 
     aml_uint_t predicate;
-    if (aml_predicate_read(ctx, &predicate) == _FAIL)
+    status = aml_predicate_read(ctx, &predicate);
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read Predicate");
-        return _FAIL;
+        return status;
     }
 
     bool isTrue = predicate != AML_FALSE;
     if (isTrue)
     {
         // Execute the TermList in the same scope
-        if (aml_term_list_read(ctx->state, ctx->scope, ctx->current, end, ctx) == _FAIL)
+        status = aml_term_list_read(ctx->state, ctx->scope, ctx->current, end, ctx);
+        if (IS_ERR(status))
         {
             AML_DEBUG_ERROR(ctx, "Failed to read TermList");
-            return _FAIL;
+            return status;
         }
     }
 
     if (ctx->stopReason != AML_STOP_REASON_NONE)
     {
-        return 0;
+        return OK;
     }
 
     ctx->current = end;
@@ -104,127 +108,132 @@ uint64_t aml_def_if_else_read(aml_term_list_ctx_t* ctx)
 
     if (elseOp.num == AML_ELSE_OP) // Optional
     {
-        if (aml_def_else_read(ctx, !isTrue) == _FAIL)
+        status = aml_def_else_read(ctx, !isTrue);
+        if (IS_ERR(status))
         {
             AML_DEBUG_ERROR(ctx, "Failed to read ElseOp");
-            return _FAIL;
+            return status;
         }
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t aml_def_noop_read(aml_term_list_ctx_t* ctx)
+status_t aml_def_noop_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_NOOP_OP) == _FAIL)
+    if (!aml_token_expect(ctx, AML_NOOP_OP))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NoopOp");
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
-    return 0;
+    return OK;
 }
 
-aml_object_t* aml_arg_object_read(aml_term_list_ctx_t* ctx)
+status_t aml_arg_object_read(aml_term_list_ctx_t* ctx, aml_object_t** out)
 {
-    aml_object_t* result = aml_term_arg_read(ctx, AML_DATA_REF_OBJECTS);
-    if (result == NULL)
+    status_t status = aml_term_arg_read(ctx, AML_DATA_REF_OBJECTS, out);
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read TermArg");
-        return NULL;
+        return status;
     }
 
-    return result; // Transfer ownership
+    return OK; // Transfer ownership
 }
 
-uint64_t aml_def_return_read(aml_term_list_ctx_t* ctx)
+status_t aml_def_return_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_RETURN_OP) == _FAIL)
+    if (!aml_token_expect(ctx, AML_RETURN_OP))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read ReturnOp");
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
-    aml_object_t* argObject = aml_arg_object_read(ctx);
-    if (argObject == NULL)
+    aml_object_t* argObject = NULL;
+    status_t status = aml_arg_object_read(ctx, &argObject);
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read ArgObject");
-        return _FAIL;
+        return status;
     }
     UNREF_DEFER(argObject);
 
     ctx->stopReason = AML_STOP_REASON_RETURN;
     aml_state_result_set(ctx->state, argObject);
 
-    return 0;
+    return OK;
 }
 
-uint64_t aml_def_release_read(aml_term_list_ctx_t* ctx)
+status_t aml_def_release_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_RELEASE_OP) == _FAIL)
+    if (!aml_token_expect(ctx, AML_RELEASE_OP))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read ReleaseOp");
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
-    aml_object_t* mutexObject = aml_mutex_object_read(ctx);
-    if (mutexObject == NULL)
+    aml_object_t* mutexObject = NULL;
+    status_t status = aml_mutex_object_read(ctx, &mutexObject);
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read MutexObject");
-        return _FAIL;
+        return status;
     }
     UNREF_DEFER(mutexObject);
 
     assert(mutexObject->type == AML_MUTEX);
 
-    if (aml_mutex_release(&mutexObject->mutex.mutex) == _FAIL)
+    status = aml_mutex_release(&mutexObject->mutex.mutex);
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to release mutex");
-        return _FAIL;
+        return status;
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t aml_def_break_read(aml_term_list_ctx_t* ctx)
+status_t aml_def_break_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_BREAK_OP) == _FAIL)
+    if (!aml_token_expect(ctx, AML_BREAK_OP))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read BreakOp");
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
     ctx->stopReason = AML_STOP_REASON_BREAK;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_def_continue_read(aml_term_list_ctx_t* ctx)
+status_t aml_def_continue_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_CONTINUE_OP) == _FAIL)
+    if (!aml_token_expect(ctx, AML_CONTINUE_OP))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read ContinueOp");
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
     ctx->stopReason = AML_STOP_REASON_CONTINUE;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_def_while_read(aml_term_list_ctx_t* ctx)
+status_t aml_def_while_read(aml_term_list_ctx_t* ctx)
 {
-    if (aml_token_expect(ctx, AML_WHILE_OP) == _FAIL)
+    if (!aml_token_expect(ctx, AML_WHILE_OP))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read WhileOp");
-        return _FAIL;
+        return ERR(ACPI, ILSEQ);
     }
 
     const uint8_t* start = ctx->current;
 
     aml_pkg_length_t pkgLength;
-    if (aml_pkg_length_read(ctx, &pkgLength) == _FAIL)
+    status_t status = aml_pkg_length_read(ctx, &pkgLength);
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read PkgLength");
-        return _FAIL;
+        return status;
     }
 
     const uint8_t* end = start + pkgLength;
@@ -235,10 +244,11 @@ uint64_t aml_def_while_read(aml_term_list_ctx_t* ctx)
         ctx->current = loopStart;
 
         aml_uint_t predicate;
-        if (aml_predicate_read(ctx, &predicate) == _FAIL)
+        status = aml_predicate_read(ctx, &predicate);
+        if (IS_ERR(status))
         {
             AML_DEBUG_ERROR(ctx, "Failed to read Predicate");
-            return _FAIL;
+            return status;
         }
 
         if (predicate == AML_FALSE)
@@ -247,81 +257,79 @@ uint64_t aml_def_while_read(aml_term_list_ctx_t* ctx)
         }
 
         // Execute the TermList in the same scope, might change flow control
-        if (aml_term_list_read(ctx->state, ctx->scope, ctx->current, end, ctx) == _FAIL)
+        status = aml_term_list_read(ctx->state, ctx->scope, ctx->current, end, ctx);
+        if (IS_ERR(status))
         {
             AML_DEBUG_ERROR(ctx, "Failed to read TermList");
-            return _FAIL;
+            return status;
         }
 
         if (ctx->stopReason == AML_STOP_REASON_NONE)
         {
             continue;
         }
-        else if (ctx->stopReason == AML_STOP_REASON_RETURN)
+        if (ctx->stopReason == AML_STOP_REASON_RETURN)
         {
             break;
         }
-        else if (ctx->stopReason == AML_STOP_REASON_BREAK)
+        if (ctx->stopReason == AML_STOP_REASON_BREAK)
         {
             ctx->stopReason = AML_STOP_REASON_NONE;
             break;
         }
-        else if (ctx->stopReason == AML_STOP_REASON_CONTINUE)
+        if (ctx->stopReason == AML_STOP_REASON_CONTINUE)
         {
             ctx->stopReason = AML_STOP_REASON_NONE;
+            continue;
         }
-        else
-        {
-            AML_DEBUG_ERROR(ctx, "Invalid flow control state in while loop");
-            errno = EILSEQ;
-            return _FAIL;
-        }
+
+        AML_DEBUG_ERROR(ctx, "Invalid flow control state in while loop");
+        return ERR(ACPI, ILSEQ);
     }
 
     ctx->current = end;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_statement_opcode_read(aml_term_list_ctx_t* ctx)
+status_t aml_statement_opcode_read(aml_term_list_ctx_t* ctx)
 {
     aml_token_t op;
     aml_token_peek(ctx, &op);
 
-    uint64_t result = 0;
+    status_t status = OK;
     switch (op.num)
     {
     case AML_IF_OP:
-        result = aml_def_if_else_read(ctx);
+        status = aml_def_if_else_read(ctx);
         break;
     case AML_NOOP_OP:
-        result = aml_def_noop_read(ctx);
+        status = aml_def_noop_read(ctx);
         break;
     case AML_RETURN_OP:
-        result = aml_def_return_read(ctx);
+        status = aml_def_return_read(ctx);
         break;
     case AML_RELEASE_OP:
-        result = aml_def_release_read(ctx);
+        status = aml_def_release_read(ctx);
         break;
     case AML_WHILE_OP:
-        result = aml_def_while_read(ctx);
+        status = aml_def_while_read(ctx);
         break;
     case AML_BREAK_OP:
-        result = aml_def_break_read(ctx);
+        status = aml_def_break_read(ctx);
         break;
     case AML_CONTINUE_OP:
-        result = aml_def_continue_read(ctx);
+        status = aml_def_continue_read(ctx);
         break;
     default:
         AML_DEBUG_ERROR(ctx, "Unknown StatementOpcode '%s' (0x%x)", op.props->name, op.num);
-        errno = ENOSYS;
-        return _FAIL;
+        return ERR(ACPI, IMPL);
     }
 
-    if (result == _FAIL)
+    if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read StatementOpcode '%s' (0x%x)", op.props->name, op.num);
-        return _FAIL;
+        return status;
     }
 
-    return 0;
+    return OK;
 }

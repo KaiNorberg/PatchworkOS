@@ -7,9 +7,6 @@
 #include <kernel/fs/sysfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <kernel/utils/map.h>
-
-#include <errno.h>
 
 static aml_overlay_t globalOverlay;
 
@@ -17,17 +14,26 @@ static aml_object_t* namespaceRoot = NULL;
 
 static dentry_t* namespaceDir = NULL;
 
-static inline map_key_t aml_object_map_key(aml_object_id_t parentId, aml_name_t name)
+typedef struct
 {
-    // Pack the parentId and name into a single buffer for the map key
-    struct PACKED
-    {
-        aml_object_id_t parentId;
-        aml_name_t name;
-    } buffer;
-    buffer.parentId = parentId;
-    buffer.name = name;
-    return map_key_buffer(&buffer, sizeof(buffer));
+    aml_object_id_t parentId;
+    aml_name_t name;
+} aml_namespace_key_t;
+
+static bool aml_namespace_cmp(map_entry_t* entry, const void* key)
+{
+    aml_object_t* obj = CONTAINER_OF(entry, aml_object_t, mapEntry);
+    const aml_namespace_key_t* k = key;
+
+    aml_object_id_t objParentId = obj->parent ? obj->parent->id : AML_OBJECT_ID_NONE;
+
+    return objParentId == k->parentId && obj->name == k->name;
+}
+
+static inline uint64_t aml_namespace_hash(aml_object_id_t parentId, aml_name_t name)
+{
+    aml_namespace_key_t key = {.parentId = parentId, .name = name};
+    return hash_buffer(&key, sizeof(key));
 }
 
 static inline aml_object_t* aml_namespace_traverse_parents(aml_object_t* current, uint64_t depth)
@@ -79,11 +85,11 @@ void aml_namespace_init(aml_object_t* root)
     namespaceRoot = REF(root);
 }
 
-static uint64_t aml_namespace_expose_object(aml_object_t* object, dentry_t* parentDir)
+static status_t aml_namespace_expose_object(aml_object_t* object, dentry_t* parentDir)
 {
     if (object == NULL || parentDir == NULL)
     {
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (!(object->flags & AML_OBJECT_NAMED))
@@ -91,14 +97,14 @@ static uint64_t aml_namespace_expose_object(aml_object_t* object, dentry_t* pare
         // Something is very wrong if we have an unnamed object in the namespace heirarchy
         LOG_ERR("unnamed object %s of type %s found in the namespace heirarchy\n", AML_NAME_TO_STRING(object->name),
             aml_type_to_string(object->type));
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     object->dir = sysfs_dir_new(parentDir, AML_NAME_TO_STRING(object->name), NULL, NULL);
     if (object->dir == NULL)
     {
         LOG_ERR("Failed to create sysfs directory %s\n", AML_NAME_TO_STRING(object->name));
-        return _FAIL;
+        return ERR(ACPI, IMPL);
     }
 
     if (object->type & AML_NAMESPACES)
@@ -106,19 +112,20 @@ static uint64_t aml_namespace_expose_object(aml_object_t* object, dentry_t* pare
         aml_object_t* child = NULL;
         LIST_FOR_EACH(child, &object->children, siblingsEntry)
         {
-            if (aml_namespace_expose_object(child, object->dir) == _FAIL)
+            status_t status = aml_namespace_expose_object(child, object->dir);
+            if (IS_ERR(status))
             {
                 LOG_ERR("Failed to expose child %s of %s in sysfs\n", AML_NAME_TO_STRING(child->name),
                     AML_NAME_TO_STRING(object->name));
-                return _FAIL;
+                return status;
             }
         }
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t aml_namespace_expose(void)
+status_t aml_namespace_expose(void)
 {
     dentry_t* acpiDir = acpi_get_dir();
     assert(acpiDir != NULL);
@@ -128,22 +135,23 @@ uint64_t aml_namespace_expose(void)
     if (namespaceDir == NULL)
     {
         LOG_ERR("Failed to create ACPI namespace sysfs directory");
-        return _FAIL;
+        return ERR(ACPI, NOMEM);
     }
 
     aml_object_t* child = NULL;
     LIST_FOR_EACH(child, &namespaceRoot->children, siblingsEntry)
     {
-        if (aml_namespace_expose_object(child, namespaceDir) == _FAIL)
+        status_t status = aml_namespace_expose_object(child, namespaceDir);
+        if (IS_ERR(status))
         {
             UNREF(namespaceDir);
             namespaceDir = NULL;
             LOG_ERR("Failed to expose ACPI namespace in sysfs");
-            return _FAIL;
+            return status;
         }
     }
 
-    return 0;
+    return OK;
 }
 
 aml_object_t* aml_namespace_get_root(void)
@@ -163,11 +171,12 @@ aml_object_t* aml_namespace_find_child(aml_overlay_t* overlay, aml_object_t* par
         overlay = &globalOverlay;
     }
 
-    map_key_t key = aml_object_map_key(parent->id, name);
+    aml_namespace_key_t key = {.parentId = parent->id, .name = name};
+    uint64_t hash = hash_buffer(&key, sizeof(key));
     aml_object_t* child = NULL;
     while (overlay != NULL)
     {
-        child = CONTAINER_OF_SAFE(map_get(&overlay->map, &key), aml_object_t, mapEntry);
+        child = CONTAINER_OF_SAFE(map_find(&overlay->map, &key, hash), aml_object_t, mapEntry);
         if (child != NULL)
         {
             break;
@@ -235,7 +244,7 @@ aml_object_t* aml_namespace_find(aml_overlay_t* overlay, aml_object_t* start, ui
 }
 
 aml_object_t* aml_namespace_find_by_name_string(aml_overlay_t* overlay, aml_object_t* start,
-    const aml_name_stioring_t* nameString)
+    const aml_name_string_t* nameString)
 {
     if (nameString == NULL)
     {
@@ -289,7 +298,6 @@ aml_object_t* aml_namespace_find_by_path(aml_overlay_t* overlay, aml_object_t* s
 {
     if (path == NULL || path[0] == '\0')
     {
-        errno = EINVAL;
         return NULL;
     }
 
@@ -304,7 +312,6 @@ aml_object_t* aml_namespace_find_by_path(aml_overlay_t* overlay, aml_object_t* s
     {
         if (start == NULL)
         {
-            errno = EINVAL;
             return NULL;
         }
 
@@ -392,25 +399,22 @@ aml_object_t* aml_namespace_find_by_path(aml_overlay_t* overlay, aml_object_t* s
     return current; // Transfer ownership
 }
 
-uint64_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, aml_name_t name, aml_object_t* object)
+status_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, aml_name_t name, aml_object_t* object)
 {
     if (object == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (object->type == AML_UNINITIALIZED)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     parent = parent != NULL ? parent : namespaceRoot;
     if (!(parent->flags & AML_OBJECT_NAMED) || (object->flags & AML_OBJECT_NAMED))
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (overlay == NULL)
@@ -418,22 +422,20 @@ uint64_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, a
         overlay = &globalOverlay;
     }
 
-    map_key_t key = aml_object_map_key(parent->id, name);
+    aml_namespace_key_t key = {.parentId = parent->id, .name = name};
+    uint64_t hash = hash_buffer(&key, sizeof(key));
+
     aml_overlay_t* currentOverlay = overlay;
     while (currentOverlay != NULL)
     {
-        if (map_get(&currentOverlay->map, &key) != NULL)
+        if (map_find(&currentOverlay->map, &key, hash) != NULL)
         {
-            errno = EEXIST;
-            return _FAIL;
+            return ERR(ACPI, EXIST);
         }
         currentOverlay = currentOverlay->parent;
     }
 
-    if (map_insert(&overlay->map, &key, &object->mapEntry) == _FAIL)
-    {
-        return _FAIL;
-    }
+    map_insert(&overlay->map, &object->mapEntry, hash);
     list_push_back(&overlay->objects, &object->listEntry);
     list_push_back(&parent->children, &object->siblingsEntry);
 
@@ -443,16 +445,15 @@ uint64_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, a
     object->name = name;
 
     REF(object);
-    return 0;
+    return OK;
 }
 
-uint64_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* start,
-    const aml_name_stioring_t* nameString, aml_object_t* object)
+status_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* start,
+    const aml_name_string_t* nameString, aml_object_t* object)
 {
     if (nameString == NULL || nameString->namePath.segmentCount == 0)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     aml_name_t targetName = nameString->namePath.segments[nameString->namePath.segmentCount - 1];
@@ -463,21 +464,20 @@ uint64_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* 
         parent = aml_namespace_traverse_parents(parent, nameString->prefixPath.depth);
         if (parent == NULL)
         {
-            return _FAIL;
+            return ERR(ACPI, NOENT);
         }
         UNREF_DEFER(parent);
 
         return aml_namespace_add_child(overlay, parent, targetName, object);
     }
 
-    aml_name_stioring_t parentNameString = *nameString;
+    aml_name_string_t parentNameString = *nameString;
     parentNameString.namePath.segmentCount--;
 
     aml_object_t* parent = aml_namespace_find_by_name_string(overlay, start, &parentNameString);
     if (parent == NULL)
     {
-        errno = ENOENT;
-        return _FAIL;
+        return ERR(ACPI, NOENT);
     }
     UNREF_DEFER(parent);
 
@@ -491,7 +491,10 @@ void aml_namespace_remove(aml_object_t* object)
         return;
     }
 
-    map_remove(&object->overlay->map, &object->mapEntry);
+    aml_object_id_t parentId = object->parent ? object->parent->id : AML_OBJECT_ID_NONE;
+    uint64_t hash = aml_namespace_hash(parentId, object->name);
+
+    map_remove(&object->overlay->map, &object->mapEntry, hash);
     list_remove(&object->listEntry);
     list_remove(&object->siblingsEntry);
 
@@ -503,26 +506,23 @@ void aml_namespace_remove(aml_object_t* object)
     UNREF(object);
 }
 
-uint64_t aml_namespace_commit(aml_overlay_t* overlay)
+status_t aml_namespace_commit(aml_overlay_t* overlay)
 {
     if (overlay == NULL || overlay->parent == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     aml_object_t* object;
     aml_object_t* temp;
     LIST_FOR_EACH_SAFE(object, temp, &overlay->objects, listEntry)
     {
-        map_remove(&overlay->map, &object->mapEntry);
+        aml_object_id_t parentId = object->parent ? object->parent->id : AML_OBJECT_ID_NONE;
+        uint64_t hash = aml_namespace_hash(parentId, object->name);
 
-        map_key_t key =
-            aml_object_map_key(object->parent != NULL ? object->parent->id : AML_OBJECT_ID_NONE, object->name);
-        if (map_insert(&overlay->parent->map, &key, &object->mapEntry) == _FAIL)
-        {
-            return _FAIL;
-        }
+        map_remove(&overlay->map, &object->mapEntry, hash);
+
+        map_insert(&overlay->parent->map, &object->mapEntry, hash);
 
         list_remove(&object->listEntry);
         list_push_back(&overlay->parent->objects, &object->listEntry);
@@ -531,9 +531,8 @@ uint64_t aml_namespace_commit(aml_overlay_t* overlay)
     }
 
     assert(list_is_empty(&overlay->objects));
-    assert(map_is_empty(&overlay->map));
 
-    return 0;
+    return OK;
 }
 
 void aml_overlay_init(aml_overlay_t* overlay)
@@ -543,7 +542,8 @@ void aml_overlay_init(aml_overlay_t* overlay)
         return;
     }
 
-    map_init(&overlay->map);
+    map_init(&overlay->map, overlay->mapBuckets, ARRAY_SIZE(overlay->mapBuckets), aml_namespace_cmp);
+    memset(overlay->mapBuckets, 0, sizeof(overlay->mapBuckets));
     list_init(&overlay->objects);
     overlay->parent = overlay != &globalOverlay ? &globalOverlay : NULL;
 }
@@ -560,8 +560,6 @@ void aml_overlay_deinit(aml_overlay_t* overlay)
         aml_object_t* obj = CONTAINER_OF(list_pop_front(&overlay->objects), aml_object_t, listEntry);
         aml_namespace_remove(obj);
     }
-
-    map_deinit(&overlay->map);
 }
 
 void aml_overlay_set_parent(aml_overlay_t* overlay, aml_overlay_t* parent)
@@ -582,12 +580,13 @@ aml_overlay_t* aml_overlay_find_containing(aml_overlay_t* overlay, aml_object_t*
     }
 
     aml_object_id_t parentId = object->parent != NULL ? object->parent->id : AML_OBJECT_ID_NONE;
-    map_key_t key = aml_object_map_key(parentId, object->name);
+    aml_namespace_key_t key = {.parentId = parentId, .name = object->name};
+    uint64_t hash = hash_buffer(&key, sizeof(key));
 
     aml_overlay_t* currentOverlay = overlay;
     while (currentOverlay != NULL)
     {
-        if (map_get(&currentOverlay->map, &key) != NULL)
+        if (map_find(&currentOverlay->map, &key, hash) != NULL)
         {
             return currentOverlay;
         }

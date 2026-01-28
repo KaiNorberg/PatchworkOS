@@ -100,7 +100,7 @@ status_t lapic_global_init(void)
 
     lapicBase = (void*)PML_LOWER_TO_HIGHER(madt->localInterruptControllerAddress);
     status_t status = vmm_map(NULL, &lapicBase, madt->localInterruptControllerAddress, PAGE_SIZE,
-            PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL);
+        PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL);
     if (IS_ERR(status))
     {
         LOG_ERR("failed to map local apic\n");

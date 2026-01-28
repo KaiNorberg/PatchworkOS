@@ -246,7 +246,7 @@ bool ps2_read(uint8_t* data);
  * @brief Read from the PS/2 controllers data port without waiting.
  *
  * @param data Output pointer for the read byte.
- * @return `true` on success, `false` on failure. 
+ * @return `true` on success, `false` on failure.
  */
 bool ps2_read_no_wait(uint8_t* data);
 
@@ -273,7 +273,7 @@ bool ps2_cmd(ps2_cmd_t command);
  *
  * @param command Command to send.
  * @param data Output pointer for the response byte.
- * @return `true` on success, `false` on failure. 
+ * @return `true` on success, `false` on failure.
  */
 bool ps2_cmd_and_read(ps2_cmd_t command, uint8_t* data);
 
@@ -282,7 +282,7 @@ bool ps2_cmd_and_read(ps2_cmd_t command, uint8_t* data);
  *
  * @param command Command to send.
  * @param data Data to write.
- * @return `true` on success, `false` on failure. 
+ * @return `true` on success, `false` on failure.
  */
 bool ps2_cmd_and_write(ps2_cmd_t command, uint8_t data);
 
@@ -301,7 +301,7 @@ bool ps2_device_cmd(ps2_device_t device, ps2_device_cmd_t command);
  * @param device Device to send command to, specified by its port.
  * @param command Command to send.
  * @param data Output pointer for the response byte.
- * @return `true` on success, `false` on failure. 
+ * @return `true` on success, `false` on failure.
  */
 bool ps2_device_cmd_and_read(ps2_device_t device, ps2_device_cmd_t command, uint8_t* data);
 

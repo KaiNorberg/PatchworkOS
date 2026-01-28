@@ -76,7 +76,7 @@ void acpi_reclaim_memory(const boot_memory_map_t* map)
     }
 }
 
-uint64_t _module_procedure(const module_event_t* event)
+status_t _module_procedure(const module_event_t* event)
 {
     switch (event->type)
     {
@@ -86,19 +86,21 @@ uint64_t _module_procedure(const module_event_t* event)
         if (bootInfo == NULL || bootInfo->rsdp == NULL)
         {
             LOG_ERR("no RSDP provided by bootloader\n");
-            return _FAIL;
+            return ERR(ACPI, NO_BOOT_INFO);
         }
 
-        if (acpi_tables_init(bootInfo->rsdp) == _FAIL)
+        status_t status = acpi_tables_init(bootInfo->rsdp);
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to initialize ACPI tables\n");
-            return _FAIL;
+            return status;
         }
 
-        if (aml_init() == _FAIL)
+        status = aml_init();
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to initialize AML subsystem\n");
-            return _FAIL;
+            return status;
         }
 
 #ifdef _TESTING_
@@ -107,24 +109,26 @@ uint64_t _module_procedure(const module_event_t* event)
 #endif
 #endif
 
-        if (acpi_devices_init() == _FAIL)
+        status = acpi_devices_init();
         {
             LOG_ERR("failed to initialize ACPI devices\n");
-            return _FAIL;
+            return status;
         }
 
         acpi_reclaim_memory(&bootInfo->memory.map);
 
-        if (acpi_tables_expose() == _FAIL)
+        status = acpi_tables_expose();
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to expose ACPI tables via sysfs\n");
-            return _FAIL;
+            return status;
         }
 
-        if (aml_namespace_expose() == _FAIL)
+        status = aml_namespace_expose();
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to expose ACPI devices via sysfs\n");
-            return _FAIL;
+            return status;
         }
     }
     break;
@@ -132,7 +136,7 @@ uint64_t _module_procedure(const module_event_t* event)
         break;
     }
 
-    return 0;
+    return OK;
 }
 
 MODULE_INFO("ACPI Module", "Kai Norberg",

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <kernel/mem/paging_types.h>
 #include <boot/boot_info.h>
+#include <kernel/mem/paging_types.h>
 
 #include <sys/proc.h>
 

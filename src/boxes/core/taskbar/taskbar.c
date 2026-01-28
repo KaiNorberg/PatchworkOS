@@ -357,7 +357,8 @@ window_t* taskbar_new(display_t* disp)
     display_get_screen(disp, &rect, 0);
     rect.top = rect.bottom - theme_global_get()->panelSize;
 
-    if (display_subscribe(disp, EVENT_GLOBAL_ATTACH) == _FAIL || display_subscribe(disp, EVENT_GLOBAL_DETACH) == _FAIL ||
+    if (display_subscribe(disp, EVENT_GLOBAL_ATTACH) == _FAIL ||
+        display_subscribe(disp, EVENT_GLOBAL_DETACH) == _FAIL ||
         display_subscribe(disp, EVENT_GLOBAL_REPORT) == _FAIL || display_subscribe(disp, EVENT_GLOBAL_KBD) == _FAIL)
     {
         printf("taskbar: failed to subscribe to global events\n");

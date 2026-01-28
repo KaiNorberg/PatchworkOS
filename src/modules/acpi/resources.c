@@ -17,45 +17,41 @@
 #include <kernel/module/module.h>
 #include <kernel/utils/ref.h>
 
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-acpi_resources_t* acpi_resources_current(aml_object_t* device)
+status_t acpi_resources_current(aml_object_t* device, acpi_resources_t** out)
 {
-    if (device == NULL)
+    if (device == NULL || out == NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(ACPI, INVAL);
     }
 
     aml_object_t* crs = aml_namespace_find_child(NULL, device, AML_NAME('_', 'C', 'R', 'S'));
     if (crs == NULL)
     {
-        errno = ENOENT;
-        return NULL;
+        return ERR(ACPI, NOENT);
     }
     UNREF_DEFER(crs);
 
-    aml_object_t* crsResult = aml_evaluate(NULL, crs, AML_BUFFER);
-    if (crsResult == NULL)
+    aml_object_t* crsResult = NULL;
+    status_t status = aml_evaluate(NULL, crs, AML_BUFFER, &crsResult);
+    if (IS_ERR(status))
     {
-        return NULL;
+        return status;
     }
     UNREF_DEFER(crsResult);
 
     if (crsResult->type != AML_BUFFER)
     {
-        errno = EILSEQ;
-        return NULL;
+        return ERR(ACPI, ILSEQ);
     }
 
     acpi_resources_t* resources = malloc(sizeof(acpi_resources_t) + crsResult->buffer.length);
     if (resources == NULL)
     {
-        errno = ENOMEM;
-        return NULL;
+        return ERR(ACPI, NOMEM);
     }
 
     resources->length = crsResult->buffer.length;
@@ -67,6 +63,7 @@ acpi_resources_t* acpi_resources_current(aml_object_t* device)
     {
         if (endTagFound)
         {
+            status = ERR(ACPI, ILSEQ);
             goto error;
         }
 
@@ -80,6 +77,7 @@ acpi_resources_t* acpi_resources_current(aml_object_t* device)
             if (size != sizeof(acpi_irq_descriptor_t) &&
                 size != sizeof(acpi_irq_descriptor_t) + 1) // The last byte is optional
             {
+                status = ERR(ACPI, ILSEQ);
                 goto error;
             }
         }
@@ -88,6 +86,7 @@ acpi_resources_t* acpi_resources_current(aml_object_t* device)
         {
             if (size != sizeof(acpi_io_port_descriptor_t))
             {
+                status = ERR(ACPI, ILSEQ);
                 goto error;
             }
         }
@@ -103,14 +102,15 @@ acpi_resources_t* acpi_resources_current(aml_object_t* device)
     if (!endTagFound)
     {
         LOG_ERR("device '%s' _CRS missing end tag\n", AML_NAME_TO_STRING(device->name));
+        status = ERR(ACPI, ILSEQ);
         goto error;
     }
 
-    return resources;
+    *out = resources;
+    return OK;
 error:
     free(resources);
-    errno = EILSEQ;
-    return NULL;
+    return status;
 }
 
 void acpi_resources_free(acpi_resources_t* resources)

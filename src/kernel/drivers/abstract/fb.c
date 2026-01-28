@@ -91,7 +91,8 @@ static status_t fb_info_read(file_t* file, void* buffer, size_t count, size_t* o
     }
 
     char string[256];
-    int length = snprintf(string, sizeof(string), "%llu %llu %llu %s", info.width, info.height, info.pitch, info.format);
+    int length =
+        snprintf(string, sizeof(string), "%llu %llu %llu %s", info.width, info.height, info.pitch, info.format);
     assert(length > 0);
 
     if ((size_t)length >= sizeof(string))

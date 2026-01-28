@@ -7,9 +7,9 @@
 
 #include <boot/boot_info.h>
 
-#include <sys/map.h>
 #include <sys/bitmap.h>
 #include <sys/list.h>
+#include <sys/map.h>
 #include <sys/proc.h>
 #include <sys/status.h>
 
@@ -79,11 +79,11 @@ typedef struct
  */
 typedef struct space
 {
-    page_table_t pageTable; ///< The page table associated with the address space.
+    page_table_t pageTable;      ///< The page table associated with the address space.
     MAP_DEFINE(pinnedPages, 64); ///< Map of pages with a pin depth greater than 1.
-    uintptr_t startAddress; ///< The start address for allocations in this address space.
-    uintptr_t endAddress;   ///< The end address for allocations in this address space.
-    uintptr_t freeAddress;  ///< The next available free virtual address in this address space.
+    uintptr_t startAddress;      ///< The start address for allocations in this address space.
+    uintptr_t endAddress;        ///< The end address for allocations in this address space.
+    uintptr_t freeAddress;       ///< The next available free virtual address in this address space.
     space_flags_t flags;
     /**
      * Array of callbacks for this address space, indexed by the callback ID.
@@ -169,8 +169,8 @@ status_t space_pin(space_t* space, const void* address, size_t length, stack_poi
  * @param userStack Pointer to the user stack of the calling thread, can be `NULL`, see `space_pin()`.
  * @return An appropriate status value.
  */
-status_t space_pin_terminated(size_t* outPinned, space_t* space, const void* address, const void* terminator, size_t objectSize,
-    size_t maxCount, stack_pointer_t* userStack);
+status_t space_pin_terminated(size_t* outPinned, space_t* space, const void* address, const void* terminator,
+    size_t objectSize, size_t maxCount, stack_pointer_t* userStack);
 
 /**
  * @brief Unpins pages in a region previously pinned with `space_pin()` or `space_pin_string()`.

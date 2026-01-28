@@ -40,8 +40,7 @@ void trampoline_init(void)
     assert(TRAMPOLINE_SIZE < PAGE_SIZE);
 
     void* addr = (void*)TRAMPOLINE_BASE_ADDR;
-    status_t status = vmm_map(NULL, &addr, TRAMPOLINE_BASE_ADDR, PAGE_SIZE, PML_WRITE | PML_PRESENT, NULL,
-            NULL);
+    status_t status = vmm_map(NULL, &addr, TRAMPOLINE_BASE_ADDR, PAGE_SIZE, PML_WRITE | PML_PRESENT, NULL, NULL);
     if (IS_ERR(status))
     {
         panic(NULL, "Failed to map trampoline");

@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/status.h>
 
 /**
  * @brief EISA ID to string and vice versa conversion
@@ -17,9 +18,10 @@
  * The conversion rules for EISA were derived from section 19.3.4 ASL Macros of the ACPI specification.
  *
  * @param str Pointer to the string EISA ID. Must be 7 characters long.
- * @return On success, the numeric EISA ID. On failure, `_FAIL` and `errno` is set.
+ * @param out Pointer to the variable where the numeric EISA ID will be stored.
+ * @return An appropriate status value.
  */
-uint64_t aml_eisa_id_from_string(const char* str);
+status_t aml_eisa_id_from_string(const char* str, uint32_t* out);
 
 /**
  * @brief Convert a numeric EISA ID to a string EISA ID.
@@ -29,8 +31,8 @@ uint64_t aml_eisa_id_from_string(const char* str);
  * @param eisaId The numeric EISA ID.
  * @param buffer Pointer to a buffer to write the string EISA ID to. Must be at least 8 bytes long.
  * @param bufferSize The size of the buffer in bytes.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_eisa_id_to_string(uint32_t eisaId, char* buffer, size_t bufferSize);
+status_t aml_eisa_id_to_string(uint32_t eisaId, char* buffer, size_t bufferSize);
 
 /** @} */

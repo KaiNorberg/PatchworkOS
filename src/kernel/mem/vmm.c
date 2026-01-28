@@ -188,16 +188,16 @@ static void vmm_free_callback(space_t* space, pml_callback_id_t callbackId)
 static void* vmm_find_free_region(space_t* space, size_t pageAmount, size_t alignment)
 {
     void* addr;
-    if (page_table_find_unmapped_region(&space->pageTable, space->freeAddress, space->endAddress,
-            pageAmount, alignment, &addr))
+    if (page_table_find_unmapped_region(&space->pageTable, space->freeAddress, space->endAddress, pageAmount, alignment,
+            &addr))
     {
         space->freeAddress = (uintptr_t)addr + (pageAmount * PAGE_SIZE);
         assert(page_table_is_unmapped(&space->pageTable, addr, pageAmount));
         return addr;
     }
 
-    if (page_table_find_unmapped_region(&space->pageTable, space->startAddress, space->freeAddress,
-            pageAmount, alignment, &addr))
+    if (page_table_find_unmapped_region(&space->pageTable, space->startAddress, space->freeAddress, pageAmount,
+            alignment, &addr))
     {
         assert(page_table_is_unmapped(&space->pageTable, addr, pageAmount));
         return addr;
@@ -226,7 +226,7 @@ static inline void vmm_page_table_unmap_with_shootdown(space_t* space, void* vir
 status_t vmm_alloc(space_t* space, void** addr, size_t length, size_t alignment, pml_flags_t pmlFlags,
     vmm_alloc_flags_t allocFlags)
 {
-    if (addr == NULL ||length == 0 || !(pmlFlags & PML_PRESENT))
+    if (addr == NULL || length == 0 || !(pmlFlags & PML_PRESENT))
     {
         return ERR(MMU, INVAL);
     }
@@ -307,8 +307,7 @@ status_t vmm_alloc(space_t* space, void** addr, size_t length, size_t alignment,
             }
         }
 
-        if (!page_table_map_pages(&space->pageTable, current, pages, batchSize, pmlFlags,
-                PML_CALLBACK_NONE))
+        if (!page_table_map_pages(&space->pageTable, current, pages, batchSize, pmlFlags, PML_CALLBACK_NONE))
         {
             vmm_page_table_unmap_with_shootdown(space, *addr, pageAmount - remainingPages);
             return ERR(MMU, NOMEM);

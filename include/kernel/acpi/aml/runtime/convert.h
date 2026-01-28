@@ -27,9 +27,9 @@
  * @param src Pointer to the source object to convert.
  * @param dest Pointer to the destination object where the converted value will be stored, can be of type
  * `AML_UNINITIALIZED`.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_convert(aml_state_t* state, aml_object_t* src, aml_object_t* dest, aml_type_t allowedTypes);
+status_t aml_convert(aml_state_t* state, aml_object_t* src, aml_object_t* dest, aml_type_t allowedTypes);
 
 /**
  * @brief Performs a "Implicit Result Object Conversion" acording to the rules in section 19.3.5.5 of the ACPI
@@ -41,9 +41,9 @@ uint64_t aml_convert(aml_state_t* state, aml_object_t* src, aml_object_t* dest, 
  * @param result Pointer to the result object to convert.
  * @param target Pointer to the target object to store the result in. For convenience this can be `NULL`, in which case
  * this does nothing.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_convert_result(aml_state_t* state, aml_object_t* result, aml_object_t* target);
+status_t aml_convert_result(aml_state_t* state, aml_object_t* result, aml_object_t* target);
 
 /**
  * @brief Performs a "Implicit Source Operand Conversion" acording to the rules in section 19.3.5.4 of the ACPI
@@ -66,9 +66,9 @@ uint64_t aml_convert_result(aml_state_t* state, aml_object_t* result, aml_object
  * @param src Pointer to the source object to convert, if `AML_ARG` or `AML_LOCAL`, the value object will be used.
  * @param dest Pointer to the object pointer where the converted value will be stored, see above for details.
  * @param allowedTypes Bitmask of allowed destination types.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_convert_source(aml_state_t* state, aml_object_t* src, aml_object_t** dest, aml_type_t allowedTypes);
+status_t aml_convert_source(aml_state_t* state, aml_object_t* src, aml_object_t** dest, aml_type_t allowedTypes);
 
 /**
  * @brief Converts a Integer, String or Buffer source object to a Buffer destination object.
@@ -82,9 +82,9 @@ uint64_t aml_convert_source(aml_state_t* state, aml_object_t* src, aml_object_t*
  * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
  * @param dest Pointer to the object pointer where the converted value will be stored, see `aml_convert_source` for
  * details.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_convert_to_buffer(aml_state_t* state, aml_object_t* src, aml_object_t** dest);
+status_t aml_convert_to_buffer(aml_state_t* state, aml_object_t* src, aml_object_t** dest);
 
 /**
  * @brief Converts a Integer, String or Buffer source object to a String destination object in decimal format.
@@ -98,9 +98,9 @@ uint64_t aml_convert_to_buffer(aml_state_t* state, aml_object_t* src, aml_object
  * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
  * @param dest Pointer to the object pointer where the converted value will be stored, see `aml_convert_source` for
  * details.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, aml_object_t** dest);
+status_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, aml_object_t** dest);
 
 /**
  * @brief Converts a Integer, String or Buffer source object to a String destination object in hexadecimal format.
@@ -114,9 +114,9 @@ uint64_t aml_convert_to_decimal_string(aml_state_t* state, aml_object_t* src, am
  * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
  * @param dest Pointer to the object pointer where the converted value will be stored, see `aml_convert_source` for
  * details.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_object_t** dest);
+status_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_object_t** dest);
 
 /**
  * @brief Converts a Integer, String or Buffer source object to an Integer destination object.
@@ -130,9 +130,9 @@ uint64_t aml_convert_to_hex_string(aml_state_t* state, aml_object_t* src, aml_ob
  * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
  * @param dest Pointer to the object pointer where the converted value will be stored, see `aml_convert_source` for
  * details.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_object_t** dest);
+status_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_object_t** dest);
 
 /**
  * @brief Converts an integer to its Binary-Coded Decimal (BCD) representation.
@@ -148,8 +148,8 @@ uint64_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_objec
  *
  * @param value The integer value to convert.
  * @param out Pointer to the output buffer where the BCD representation will be stored.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_convert_integer_to_bcd(aml_uint_t value, aml_uint_t* out);
+status_t aml_convert_integer_to_bcd(aml_uint_t value, aml_uint_t* out);
 
 /** @} */

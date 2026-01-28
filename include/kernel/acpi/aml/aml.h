@@ -48,9 +48,9 @@
 /**
  * @brief Initialize the AML subsystem.
  *
- * @return On success, `0`. On failure, `_FAIL`.
+ * @return An appropriate status value.
  */
-uint64_t aml_init(void);
+status_t aml_init(void);
 
 /**
  * @brief Get the mutex for the entire AML subsystem.

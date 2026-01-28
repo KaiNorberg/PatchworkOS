@@ -11,14 +11,13 @@
 #include <kernel/mem/paging_types.h>
 #include <kernel/mem/vmm.h>
 
-#include <errno.h>
 #include <stdint.h>
 
 typedef struct aml_region_handler
 {
-    uint64_t (*read)(aml_state_t* state, aml_opregion_t* opregion, uint64_t address, aml_bit_size_t accessSize,
+    status_t (*read)(aml_state_t* state, aml_opregion_t* opregion, uint64_t address, aml_bit_size_t accessSize,
         uint64_t* out);
-    uint64_t (*write)(aml_state_t* state, aml_opregion_t* opregion, uint64_t address, aml_bit_size_t accessSize,
+    status_t (*write)(aml_state_t* state, aml_opregion_t* opregion, uint64_t address, aml_bit_size_t accessSize,
         uint64_t value);
 } aml_region_handler_t;
 
@@ -30,12 +29,12 @@ static void* aml_ensure_mem_is_mapped(uint64_t address, aml_bit_size_t accessSiz
 
     for (uint64_t page = 0; page < (crossesBoundary ? 2 : 1); page++)
     {
-        phys_addr_t physAddr = (phys_addr_t)address + page * PAGE_SIZE;
-        void* virtAddt = (void*)PML_LOWER_TO_HIGHER(physAddr);
-        if (vmm_map(NULL, virtAddt, physAddr, PAGE_SIZE, PML_GLOBAL | PML_WRITE | PML_PRESENT, NULL, NULL) == NULL)
+        phys_addr_t physAddr = (phys_addr_t)((address & ~(PAGE_SIZE - 1)) + page * PAGE_SIZE);
+        void* virtAddr = (void*)PML_LOWER_TO_HIGHER(physAddr);
+        status_t status = vmm_map(NULL, &virtAddr, physAddr, PAGE_SIZE, PML_GLOBAL | PML_WRITE | PML_PRESENT, NULL, NULL);
+        if (IS_ERR(status))
         {
-            LOG_ERR("failed to map physical address %p for opregion access\n", physAddr);
-            errno = EIO;
+            LOG_ERR("failed to map physical address %p for opregion access: %s\n", physAddr, codetostr(ST_CODE(status)));
             return NULL;
         }
     }
@@ -43,7 +42,7 @@ static void* aml_ensure_mem_is_mapped(uint64_t address, aml_bit_size_t accessSiz
     return (void*)PML_LOWER_TO_HIGHER(address);
 }
 
-static uint64_t aml_system_mem_read(aml_state_t* state, aml_opregion_t* opregion, uintptr_t address,
+static status_t aml_system_mem_read(aml_state_t* state, aml_opregion_t* opregion, uintptr_t address,
     aml_bit_size_t accessSize, uint64_t* out)
 {
     UNUSED(state);
@@ -59,7 +58,7 @@ static uint64_t aml_system_mem_read(aml_state_t* state, aml_opregion_t* opregion
         virtAddr = aml_ensure_mem_is_mapped(address, accessSize);
         if (virtAddr == NULL)
         {
-            return _FAIL;
+            return ERR(ACPI, IO);
         }
     }
 
@@ -79,13 +78,12 @@ static uint64_t aml_system_mem_read(aml_state_t* state, aml_opregion_t* opregion
         break;
     default:
         LOG_ERR("invalid opregion read with access size %u\n", accessSize);
-        errno = ENOSYS;
-        return _FAIL;
+        return ERR(ACPI, IMPL);
     }
-    return 0;
+    return OK;
 }
 
-static uint64_t aml_system_mem_write(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
+static status_t aml_system_mem_write(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t value)
 {
     UNUSED(state);
@@ -101,7 +99,7 @@ static uint64_t aml_system_mem_write(aml_state_t* state, aml_opregion_t* opregio
         virtAddr = aml_ensure_mem_is_mapped(address, accessSize);
         if (virtAddr == NULL)
         {
-            return _FAIL;
+            return ERR(ACPI, IO);
         }
     }
 
@@ -121,13 +119,12 @@ static uint64_t aml_system_mem_write(aml_state_t* state, aml_opregion_t* opregio
         break;
     default:
         LOG_ERR("invalid opregion write with access size %u\n", accessSize);
-        errno = ENOSYS;
-        return _FAIL;
+        return ERR(ACPI, IMPL);
     }
-    return 0;
+    return OK;
 }
 
-static uint64_t aml_system_io_read(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
+static status_t aml_system_io_read(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t* out)
 {
     UNUSED(state);
@@ -146,13 +143,12 @@ static uint64_t aml_system_io_read(aml_state_t* state, aml_opregion_t* opregion,
         break;
     default:
         LOG_ERR("unable to read opregion with access size %u\n", accessSize);
-        errno = ENOSYS;
-        return _FAIL;
+        return ERR(ACPI, IMPL);
     }
-    return 0;
+    return OK;
 }
 
-static uint64_t aml_system_io_write(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
+static status_t aml_system_io_write(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t value)
 {
     UNUSED(state);
@@ -171,13 +167,12 @@ static uint64_t aml_system_io_write(aml_state_t* state, aml_opregion_t* opregion
         break;
     default:
         LOG_ERR("unable to write opregion with access size %u\n", accessSize);
-        errno = ENOSYS;
-        return _FAIL;
+        return ERR(ACPI, IMPL);
     }
-    return 0;
+    return OK;
 }
 
-static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_t* opregion, pci_segment_group_t* segmentGroup,
+static status_t aml_pci_get_params(aml_state_t* state, aml_opregion_t* opregion, pci_segment_group_t* segmentGroup,
     pci_bus_t* bus, pci_slot_t* slot, pci_function_t* function)
 {
     UNUSED(state);
@@ -197,11 +192,12 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_t* opregion,
     {
         UNREF_DEFER(adrObject);
 
-        aml_object_t* adrResult = aml_evaluate(state, adrObject, AML_INTEGER);
-        if (adrResult == NULL)
+        aml_object_t* adrResult = NULL;
+        status_t status = aml_evaluate(state, adrObject, AML_INTEGER, &adrResult);
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to evaluate _ADR for opregion '%s'\n", AML_NAME_TO_STRING(location->name));
-            return _FAIL;
+            return status;
         }
         aml_uint_t adrValue = adrResult->integer.value;
         UNREF(adrResult);
@@ -216,11 +212,12 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_t* opregion,
     {
         UNREF_DEFER(bbnObject);
 
-        aml_object_t* bbnResult = aml_evaluate(state, bbnObject, AML_INTEGER);
-        if (bbnResult == NULL)
+        aml_object_t* bbnResult = NULL;
+        status_t status = aml_evaluate(state, bbnObject, AML_INTEGER, &bbnResult);
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to evaluate _BBN for opregion '%s'\n", AML_NAME_TO_STRING(location->name));
-            return _FAIL;
+            return status;
         }
         aml_uint_t bbnValue = bbnResult->integer.value;
         UNREF(bbnResult);
@@ -235,11 +232,12 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_t* opregion,
     {
         UNREF_DEFER(segObject);
 
-        aml_object_t* segResult = aml_evaluate(state, segObject, AML_INTEGER);
-        if (segResult == NULL)
+        aml_object_t* segResult = NULL;
+        status_t status = aml_evaluate(state, segObject, AML_INTEGER, &segResult);
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to evaluate _SEG for opregion '%s'\n", AML_NAME_TO_STRING(location->name));
-            return _FAIL;
+            return status;
         }
         aml_uint_t segValue = segResult->integer.value;
         UNREF(segResult);
@@ -248,10 +246,10 @@ static uint64_t aml_pci_get_params(aml_state_t* state, aml_opregion_t* opregion,
         *segmentGroup = segValue & 0xFFFF;
     }
 
-    return 0;
+    return OK;
 }
 
-static uint64_t aml_pci_config_read(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
+static status_t aml_pci_config_read(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t* out)
 {
     UNUSED(state);
@@ -260,9 +258,10 @@ static uint64_t aml_pci_config_read(aml_state_t* state, aml_opregion_t* opregion
     pci_bus_t bus;
     pci_slot_t slot;
     pci_function_t function;
-    if (aml_pci_get_params(state, opregion, &segmentGroup, &bus, &slot, &function) == _FAIL)
+    status_t status = aml_pci_get_params(state, opregion, &segmentGroup, &bus, &slot, &function);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     switch (accessSize)
@@ -278,22 +277,22 @@ static uint64_t aml_pci_config_read(aml_state_t* state, aml_opregion_t* opregion
         break;
     default:
         LOG_ERR("unable to read PCI config opregion with access size %u\n", accessSize);
-        errno = ENOSYS;
-        return _FAIL;
+        return ERR(ACPI, IMPL);
     }
-    return 0;
+    return OK;
 }
 
-static uint64_t aml_pci_config_write(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
+static status_t aml_pci_config_write(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t value)
 {
     pci_segment_group_t segmentGroup;
     pci_bus_t bus;
     pci_slot_t slot;
     pci_function_t function;
-    if (aml_pci_get_params(state, opregion, &segmentGroup, &bus, &slot, &function) == _FAIL)
+    status_t status = aml_pci_get_params(state, opregion, &segmentGroup, &bus, &slot, &function);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     switch (accessSize)
@@ -309,10 +308,9 @@ static uint64_t aml_pci_config_write(aml_state_t* state, aml_opregion_t* opregio
         break;
     default:
         LOG_ERR("unable to write PCI config opregion with access size %u\n", accessSize);
-        errno = ENOSYS;
-        return _FAIL;
+        return ERR(ACPI, IMPL);
     }
-    return 0;
+    return OK;
 }
 
 static aml_region_handler_t regionHandlers[] = {
@@ -321,32 +319,29 @@ static aml_region_handler_t regionHandlers[] = {
     [AML_REGION_PCI_CONFIG] = {.read = aml_pci_config_read, .write = aml_pci_config_write},
 };
 
-static inline uint64_t aml_opregion_read(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
+static inline status_t aml_opregion_read(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t* out)
 {
     if (out == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (opregion->space >= ARRAY_SIZE(regionHandlers) || regionHandlers[opregion->space].read == NULL)
     {
         LOG_ERR("unimplemented opregion read with opregion space '%s'\n", aml_region_space_to_string(opregion->space));
-        errno = ENOSYS;
-        return _FAIL;
+        return ERR(ACPI, IMPL);
     }
     return regionHandlers[opregion->space].read(state, opregion, address, accessSize, out);
 }
 
-static inline uint64_t aml_opregion_write(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
+static inline status_t aml_opregion_write(aml_state_t* state, aml_opregion_t* opregion, uint64_t address,
     aml_bit_size_t accessSize, uint64_t value)
 {
     if (opregion->space >= ARRAY_SIZE(regionHandlers) || regionHandlers[opregion->space].write == NULL)
     {
         LOG_ERR("unimplemented opregion write with opregion space '%s'\n", aml_region_space_to_string(opregion->space));
-        errno = ENOSYS;
-        return _FAIL;
+        return ERR(ACPI, IMPL);
     }
     return regionHandlers[opregion->space].write(state, opregion, address, accessSize, value);
 }
@@ -363,7 +358,7 @@ typedef enum aml_access_direction
     AML_ACCESS_WRITE
 } aml_access_direction_t;
 
-static uint64_t aml_generic_field_read_at(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_bit_size_t accessSize,
+static status_t aml_generic_field_read_at(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_bit_size_t accessSize,
     uint64_t byteOffset, uint64_t* out)
 {
     switch (fieldUnit->fieldType)
@@ -380,40 +375,42 @@ static uint64_t aml_generic_field_read_at(aml_state_t* state, aml_field_unit_t* 
         aml_object_t* temp = aml_object_new();
         if (temp == NULL)
         {
-            return _FAIL;
+            return ERR(MEM, NOMEM);
         }
         UNREF_DEFER(temp);
 
-        if (aml_integer_set(temp, byteOffset) == _FAIL)
+        status_t status = aml_integer_set(temp, byteOffset);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
-        if (aml_field_unit_store(state, fieldUnit->index, temp) == _FAIL)
+        status = aml_field_unit_store(state, fieldUnit->index, temp);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
         aml_object_clear(temp);
 
-        if (aml_field_unit_load(state, fieldUnit->data, temp) == _FAIL)
+        status = aml_field_unit_load(state, fieldUnit->data, temp);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
         assert(temp->type == AML_INTEGER);
 
         *out = temp->integer.value;
-        return 0;
+        return OK;
     }
     default:
         LOG_ERR("invalid field object type %d\n", fieldUnit->type);
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 }
 
-static uint64_t aml_generic_field_write_at(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_bit_size_t accessSize,
+static status_t aml_generic_field_write_at(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_bit_size_t accessSize,
     uint64_t byteOffset, uint64_t value)
 {
     switch (fieldUnit->fieldType)
@@ -430,54 +427,58 @@ static uint64_t aml_generic_field_write_at(aml_state_t* state, aml_field_unit_t*
         aml_object_t* temp = aml_object_new();
         if (temp == NULL)
         {
-            return _FAIL;
+            return ERR(MEM, NOMEM);
         }
         UNREF_DEFER(temp);
 
-        if (aml_integer_set(temp, byteOffset) == _FAIL)
+        status_t status = aml_integer_set(temp, byteOffset);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
-        if (aml_field_unit_store(state, fieldUnit->index, temp) == _FAIL)
+        status = aml_field_unit_store(state, fieldUnit->index, temp);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
         aml_object_clear(temp);
 
-        if (aml_integer_set(temp, value) == _FAIL)
+        status = aml_integer_set(temp, value);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
-        if (aml_field_unit_store(state, fieldUnit->data, temp) == _FAIL)
+        status = aml_field_unit_store(state, fieldUnit->data, temp);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
-        return 0;
+        return OK;
     }
     default:
         LOG_ERR("invalid field object type %d\n", fieldUnit->type);
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 }
 
-static uint64_t aml_field_unit_access(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_object_t* data,
+static status_t aml_field_unit_access(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_object_t* data,
     aml_access_direction_t direction)
 {
     // The integer revision handling is enterily done by the aml_get_access_size function, so we dont need to
     // do anything special here.
 
-    uint64_t result = 0;
+    status_t status = OK;
     aml_mutex_t* globalMutex = NULL;
     if (fieldUnit->fieldFlags.lockRule == AML_LOCK_RULE_LOCK)
     {
         globalMutex = aml_gl_get();
-        if (aml_mutex_acquire(&globalMutex->mutex, globalMutex->syncLevel, CLOCKS_NEVER) == _FAIL)
+        status = aml_mutex_acquire(&globalMutex->mutex, globalMutex->syncLevel, CLOCKS_NEVER);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
     }
 
@@ -486,9 +487,9 @@ static uint64_t aml_field_unit_access(aml_state_t* state, aml_field_unit_t* fiel
 
     if (fieldUnit->fieldType == AML_FIELD_UNIT_BANK_FIELD)
     {
-        if (aml_field_unit_store(state, fieldUnit->bank, fieldUnit->bankValue) == _FAIL)
+        status = aml_field_unit_store(state, fieldUnit->bank, fieldUnit->bankValue);
+        if (IS_ERR(status))
         {
-            result = _FAIL;
             goto cleanup;
         }
     }
@@ -503,12 +504,7 @@ static uint64_t aml_field_unit_access(aml_state_t* state, aml_field_unit_t* fiel
         regionSpace = fieldUnit->opregion->space;
     }
 
-    aml_bit_size_t accessSize;
-    if (aml_get_access_size(fieldUnit->bitSize, fieldUnit->fieldFlags.accessType, regionSpace, &accessSize) == _FAIL)
-    {
-        result = _FAIL;
-        goto cleanup;
-    }
+    aml_bit_size_t accessSize = aml_get_access_size(fieldUnit->bitSize, fieldUnit->fieldFlags.accessType, regionSpace);
 
     uint64_t byteOffset = aml_get_aligned_byte_offset(fieldUnit->bitOffset, accessSize);
 
@@ -524,18 +520,18 @@ static uint64_t aml_field_unit_access(aml_state_t* state, aml_field_unit_t* fiel
         case AML_ACCESS_READ:
         {
             uint64_t value = 0;
-            if (aml_generic_field_read_at(state, fieldUnit, accessSize, byteOffset, &value) == _FAIL)
+            status = aml_generic_field_read_at(state, fieldUnit, accessSize, byteOffset, &value);
+            if (IS_ERR(status))
             {
-                result = _FAIL;
                 goto cleanup;
             }
 
             value = (value >> inAccessOffset) & mask;
 
             // We treat value as a buffer of 8 bytes.
-            if (aml_object_set_bits_at(data, currentPos, bitsToAccess, (uint8_t*)&value) == _FAIL)
+            status = aml_object_set_bits_at(data, currentPos, bitsToAccess, (uint8_t*)&value);
+            if (IS_ERR(status))
             {
-                result = _FAIL;
                 goto cleanup;
             }
         }
@@ -547,9 +543,9 @@ static uint64_t aml_field_unit_access(aml_state_t* state, aml_field_unit_t* fiel
             {
             case AML_UPDATE_RULE_PRESERVE:
             {
-                if (aml_generic_field_read_at(state, fieldUnit, accessSize, byteOffset, &value) == _FAIL)
+                status = aml_generic_field_read_at(state, fieldUnit, accessSize, byteOffset, &value);
+                if (IS_ERR(status))
                 {
-                    result = _FAIL;
                     goto cleanup;
                 }
             }
@@ -562,8 +558,7 @@ static uint64_t aml_field_unit_access(aml_state_t* state, aml_field_unit_t* fiel
                 break;
             default:
                 LOG_ERR("invalid field update rule %d\n", fieldUnit->fieldFlags.updateRule);
-                errno = EINVAL;
-                result = _FAIL;
+                status = ERR(ACPI, INVAL);
                 goto cleanup;
             }
 
@@ -571,24 +566,23 @@ static uint64_t aml_field_unit_access(aml_state_t* state, aml_field_unit_t* fiel
 
             uint64_t newValue;
             // We treat newValue as a buffer of 8 bytes.
-            if (aml_object_get_bits_at(data, currentPos, bitsToAccess, (uint8_t*)&newValue) == _FAIL)
+            status = aml_object_get_bits_at(data, currentPos, bitsToAccess, (uint8_t*)&newValue);
+            if (IS_ERR(status))
             {
-                result = _FAIL;
                 goto cleanup;
             }
             value |= (newValue & mask) << inAccessOffset;
 
-            if (aml_generic_field_write_at(state, fieldUnit, accessSize, byteOffset, value) == _FAIL)
+            status = aml_generic_field_write_at(state, fieldUnit, accessSize, byteOffset, value);
+            if (IS_ERR(status))
             {
-                result = _FAIL;
                 goto cleanup;
             }
         }
         break;
         default:
             LOG_ERR("invalid field access direction %d\n", direction);
-            errno = EINVAL;
-            result = _FAIL;
+            status = ERR(ACPI, INVAL);
             goto cleanup;
         }
 
@@ -599,55 +593,55 @@ static uint64_t aml_field_unit_access(aml_state_t* state, aml_field_unit_t* fiel
 cleanup:
     if (globalMutex != NULL)
     {
-        if (aml_mutex_release(&globalMutex->mutex) == _FAIL)
+        status_t release_status = aml_mutex_release(&globalMutex->mutex);
+        if (IS_OK(status) && IS_ERR(release_status))
         {
-            result = _FAIL;
+            status = release_status;
         }
     }
-    return result;
+    return status;
 }
 
-uint64_t aml_field_unit_load(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_object_t* out)
+status_t aml_field_unit_load(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_object_t* out)
 {
     if (fieldUnit == NULL || out == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     uint64_t byteSize = (fieldUnit->bitSize + 7) / 8;
     if (byteSize > aml_integer_byte_size())
     {
-        if (aml_buffer_set_empty(out, byteSize) == _FAIL)
+        status_t status = aml_buffer_set_empty(out, byteSize);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
     }
     else
     {
-        if (aml_integer_set(out, 0) == _FAIL)
+        status_t status = aml_integer_set(out, 0);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
     }
 
     return aml_field_unit_access(state, fieldUnit, out, AML_ACCESS_READ);
 }
 
-uint64_t aml_field_unit_store(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_object_t* in)
+status_t aml_field_unit_store(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_object_t* in)
 {
     if (fieldUnit == NULL || in == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     aml_type_t type = in->type;
     if (type != AML_INTEGER && type != AML_BUFFER)
     {
         LOG_ERR("cannot write to field unit with data of type '%s'\n", aml_type_to_string(type));
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     return aml_field_unit_access(state, fieldUnit, in, AML_ACCESS_WRITE);

@@ -7,8 +7,8 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <sys/syscall.h>
 #include <sys/status.h>
+#include <sys/syscall.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -502,7 +502,8 @@ static inline status_t symlink(const char* target, const char* linkpath)
  * @brief System call for duplicating file descriptors.
  *
  * @param oldFd The open file descriptor to duplicate.
- * @param newFd Output pointer for the new file descriptor, if `FD_NONE` any free file descriptor will be used, otherwise the specified file descriptor will be used.
+ * @param newFd Output pointer for the new file descriptor, if `FD_NONE` any free file descriptor will be used,
+ * otherwise the specified file descriptor will be used.
  * @return An appropriate status value.
  */
 static inline status_t dup(fd_t oldFd, fd_t* newFd)
@@ -637,7 +638,7 @@ static inline status_t sharefile(char* key, uint64_t size, const char* path, clo
  *
  * After claiming a shared file descriptor, the key is no longer valid and cannot be used again.
  *
- * @param out Output pointer to store the claimed file descriptor. 
+ * @param out Output pointer to store the claimed file descriptor.
  * @param key The key identifying the shared file descriptor.
  * @return An appropriate status value.
  */

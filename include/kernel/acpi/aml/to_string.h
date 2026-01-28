@@ -65,6 +65,6 @@ const char* aml_object_to_string(aml_object_t* object);
  * @param nameString ACPI AML NameString.
  * @return String representation of the NameString or "Unknown" if it is invalid.
  */
-const char* aml_name_stioring_to_string(const aml_name_stioring_t* nameString);
+const char* aml_name_string_to_string(const aml_name_string_t* nameString);
 
 /** @} */

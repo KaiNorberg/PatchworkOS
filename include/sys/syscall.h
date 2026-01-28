@@ -11,7 +11,7 @@
  * @ingroup libstd
  *
  * @todo Write documentation for libstd_sys_math
- * 
+ *
  * @{
  */
 
@@ -67,28 +67,22 @@ typedef enum
 
 typedef struct
 {
-    union
-    {
+    union {
         uint64_t rax;
         status_t status;
     };
-    union
-    {
+    union {
         uint64_t rdx;
         uint64_t result;
     };
 } syscall_result_t;
 
-#define SYSCALL_RESULT(_result, _status) \
-    ((syscall_result_t){.result = (uint64_t)(_result), .status = (_status)})
+#define SYSCALL_RESULT(_result, _status) ((syscall_result_t){.result = (uint64_t)(_result), .status = (_status)})
 
 static inline status_t syscall0(syscall_number_t number, uint64_t* result)
 {
     syscall_result_t res;
-    ASM("syscall"
-        : "=a"(res.rax), "=d"(res.rdx)
-        : "a"(number)
-        : "rcx", "r11", "memory");
+    ASM("syscall" : "=a"(res.rax), "=d"(res.rdx) : "a"(number) : "rcx", "r11", "memory");
     if (result != NULL)
     {
         *result = res.result;
@@ -99,10 +93,7 @@ static inline status_t syscall0(syscall_number_t number, uint64_t* result)
 static inline status_t syscall1(syscall_number_t number, uint64_t* result, uint64_t arg1)
 {
     syscall_result_t res;
-    ASM("syscall"
-        : "=a"(res.rax), "=d"(res.rdx)
-        : "a"(number), "D"(arg1)
-        : "rcx", "r11", "memory");
+    ASM("syscall" : "=a"(res.rax), "=d"(res.rdx) : "a"(number), "D"(arg1) : "rcx", "r11", "memory");
     if (result != NULL)
     {
         *result = res.result;
@@ -110,13 +101,10 @@ static inline status_t syscall1(syscall_number_t number, uint64_t* result, uint6
     return res.status;
 }
 
-static inline status_t syscall2(syscall_number_t number,  uint64_t* result, uint64_t arg1, uint64_t arg2)
+static inline status_t syscall2(syscall_number_t number, uint64_t* result, uint64_t arg1, uint64_t arg2)
 {
     syscall_result_t res;
-    ASM("syscall"
-        : "=a"(res.rax), "=d"(res.rdx)
-        : "a"(number), "D"(arg1), "S"(arg2)
-        : "rcx", "r11", "memory");
+    ASM("syscall" : "=a"(res.rax), "=d"(res.rdx) : "a"(number), "D"(arg1), "S"(arg2) : "rcx", "r11", "memory");
     if (result != NULL)
     {
         *result = res.result;
@@ -128,10 +116,7 @@ static inline status_t syscall3(syscall_number_t number, uint64_t* result, uint6
 {
     syscall_result_t res;
     res.rdx = arg3;
-    ASM("syscall"
-        : "=a"(res.rax), "+d"(res.rdx)
-        : "a"(number), "D"(arg1), "S"(arg2)
-        : "rcx", "r11", "memory");
+    ASM("syscall" : "=a"(res.rax), "+d"(res.rdx) : "a"(number), "D"(arg1), "S"(arg2) : "rcx", "r11", "memory");
     if (result != NULL)
     {
         *result = res.result;
@@ -139,15 +124,14 @@ static inline status_t syscall3(syscall_number_t number, uint64_t* result, uint6
     return res.status;
 }
 
-static inline status_t syscall4(syscall_number_t number, uint64_t* result, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4)
+static inline status_t syscall4(syscall_number_t number, uint64_t* result, uint64_t arg1, uint64_t arg2, uint64_t arg3,
+    uint64_t arg4)
 {
     syscall_result_t res;
     res.rdx = arg3;
     register uint64_t r10 asm("r10") = arg4;
-    ASM("syscall"
-        : "=a"(res.rax), "+d"(res.rdx)
-        : "a"(number), "D"(arg1), "S"(arg2), "r"(r10)
-        : "rcx", "r11", "memory");
+    ASM("syscall" : "=a"(res.rax), "+d"(res.rdx) : "a"(number), "D"(arg1), "S"(arg2), "r"(r10) : "rcx", "r11",
+        "memory");
     if (result != NULL)
     {
         *result = res.result;
@@ -155,17 +139,15 @@ static inline status_t syscall4(syscall_number_t number, uint64_t* result, uint6
     return res.status;
 }
 
-static inline status_t syscall5(syscall_number_t number, uint64_t* result, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4,
-    uint64_t arg5)
+static inline status_t syscall5(syscall_number_t number, uint64_t* result, uint64_t arg1, uint64_t arg2, uint64_t arg3,
+    uint64_t arg4, uint64_t arg5)
 {
     syscall_result_t res;
     res.rdx = arg3;
     register uint64_t r10 asm("r10") = arg4;
     register uint64_t r8 asm("r8") = arg5;
-    ASM("syscall"
-        : "=a"(res.rax), "+d"(res.rdx)
-        : "a"(number), "D"(arg1), "S"(arg2), "r"(r10), "r"(r8)
-        : "rcx", "r11", "memory");
+    ASM("syscall" : "=a"(res.rax), "+d"(res.rdx) : "a"(number), "D"(arg1), "S"(arg2), "r"(r10), "r"(r8) : "rcx", "r11",
+        "memory");
     if (result != NULL)
     {
         *result = res.result;
@@ -173,18 +155,16 @@ static inline status_t syscall5(syscall_number_t number, uint64_t* result, uint6
     return res.status;
 }
 
-static inline status_t syscall6(syscall_number_t number, uint64_t* result, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4,
-    uint64_t arg5, uint64_t arg6)
+static inline status_t syscall6(syscall_number_t number, uint64_t* result, uint64_t arg1, uint64_t arg2, uint64_t arg3,
+    uint64_t arg4, uint64_t arg5, uint64_t arg6)
 {
     syscall_result_t res;
     res.rdx = arg3;
     register uint64_t r10 asm("r10") = arg4;
     register uint64_t r8 asm("r8") = arg5;
     register uint64_t r9 asm("r9") = arg6;
-    ASM("syscall"
-        : "=a"(res.rax), "+d"(res.rdx)
-        : "a"(number), "D"(arg1), "S"(arg2), "r"(r10), "r"(r8), "r"(r9)
-        : "rcx", "r11", "memory");
+    ASM("syscall" : "=a"(res.rax), "+d"(res.rdx) : "a"(number), "D"(arg1), "S"(arg2), "r"(r10), "r"(r8),
+        "r"(r9) : "rcx", "r11", "memory");
     if (result != NULL)
     {
         *result = res.result;

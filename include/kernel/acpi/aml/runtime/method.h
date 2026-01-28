@@ -3,6 +3,7 @@
 #include <kernel/acpi/aml/object.h>
 
 #include <stdint.h>
+#include <sys/status.h>
 
 /**
  * @brief Method Evaluation
@@ -38,8 +39,9 @@
  * @param parentState The current AML state, this will not be used for anything other than getting the parent overlay.
  * @param method Pointer to the method to invoke.
  * @param args Array of pointers to the argument objects, can be `NULL`, must be null-terminated.
- * @return On success, the return value of the method. On failure, `_FAIL` and `errno` is set.
+ * @param out Output pointer for the return value of the method.
+ * @return An appropriate status value.
  */
-aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_t* method, aml_object_t** args);
+status_t aml_method_invoke(aml_state_t* parentState, aml_method_t* method, aml_object_t** args, aml_object_t** out);
 
 /** @} */

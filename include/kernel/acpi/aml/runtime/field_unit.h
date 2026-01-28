@@ -34,9 +34,9 @@
  * @param state Pointer to the current AML state.
  * @param field The field to read from.
  * @param out Pointer to the buffer where the result will be stored, will be an integer or a buffer.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_field_unit_load(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_object_t* out);
+status_t aml_field_unit_load(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_object_t* out);
 
 /**
  * @brief Write a value to a FieldUnit. FieldUnits include Fields, IndexFields and BankFields.
@@ -49,8 +49,8 @@ uint64_t aml_field_unit_load(aml_state_t* state, aml_field_unit_t* fieldUnit, am
  * @param state Pointer to the current AML state.
  * @param field The field to write to.
  * @param in Pointer to the object containing the value to write, must be an integer or a buffer.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_field_unit_store(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_object_t* in);
+status_t aml_field_unit_store(aml_state_t* state, aml_field_unit_t* fieldUnit, aml_object_t* in);
 
 /** @} */

@@ -1,32 +1,29 @@
 #include <kernel/acpi/aml/runtime/eisa_id.h>
 
-#include <errno.h>
 #include <string.h>
+#include <sys/status.h>
 
 #define AML_EISA_ID_BYTE(c) ((uint32_t)(((c) - 0x40) & 0x1F))
 
-uint64_t aml_eisa_id_from_string(const char* str)
+status_t aml_eisa_id_from_string(const char* str, uint32_t* out)
 {
-    if (str == NULL || strnlen_s(str, 8) != 7)
+    if (str == NULL || out == NULL || strnlen_s(str, 8) != 7)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     for (uint64_t i = 0; i < 3; i++)
     {
         if (str[i] < 'A' || str[i] > 'Z')
         {
-            errno = EINVAL;
-            return _FAIL;
+            return ERR(ACPI, INVAL);
         }
     }
     for (uint64_t i = 3; i < 7; i++)
     {
         if ((str[i] < '0' || str[i] > '9') && (str[i] < 'A' || str[i] > 'F'))
         {
-            errno = EINVAL;
-            return _FAIL;
+            return ERR(ACPI, INVAL);
         }
     }
 
@@ -48,17 +45,17 @@ uint64_t aml_eisa_id_from_string(const char* str)
         }
     }
 
-    return value;
+    *out = value;
+    return OK;
 }
 
 #define AML_EISA_ID_CHAR(b) ((char)(((b) & 0x1F) + 0x40))
 
-uint64_t aml_eisa_id_to_string(uint32_t eisaId, char* buffer, size_t bufferSize)
+status_t aml_eisa_id_to_string(uint32_t eisaId, char* buffer, size_t bufferSize)
 {
     if (buffer == NULL || bufferSize < 8)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     buffer[0] = AML_EISA_ID_CHAR((eisaId >> 2) & 0x1F);
@@ -81,5 +78,5 @@ uint64_t aml_eisa_id_to_string(uint32_t eisaId, char* buffer, size_t bufferSize)
     }
     buffer[7] = '\0';
 
-    return 0;
+    return OK;
 }

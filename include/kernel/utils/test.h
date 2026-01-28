@@ -44,9 +44,9 @@ typedef struct test
         { \
             LOG_INFO("running test '%s'\n", test->name); \
             clock_t start = clock_uptime(); \
-            uint64_t result = test->func(); \
+            status_t status = test->func(); \
             clock_t end = clock_uptime(); \
-            if (result == _FAIL) \
+            if (IS_ERR(status)) \
             { \
                 LOG_ERR("test '%s' FAILED in %llu ms\n", test->name, (end - start) / (CLOCKS_PER_MS)); \
                 panic(NULL, "test failure"); \
@@ -85,7 +85,7 @@ typedef struct test
         if (!(cond)) \
         { \
             LOG_ERR("TEST_ASSERT failed '%s' at %s:%d\n", #cond, __FILE__, __LINE__); \
-            return _FAIL; \
+            return ERR(TEST, ASSERT); \
         } \
     } while (0)
 

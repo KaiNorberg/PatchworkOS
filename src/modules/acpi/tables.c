@@ -1,5 +1,6 @@
 #include <kernel/acpi/tables.h>
 #include <kernel/mem/paging_types.h>
+#include <sys/status.h>
 
 #include <kernel/acpi/acpi.h>
 #include <kernel/fs/file.h>
@@ -10,7 +11,6 @@
 
 #include <boot/boot_info.h>
 
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,22 +21,20 @@ static acpi_cached_table_t* cachedTables = NULL;
 
 static dentry_t* tablesDir = NULL;
 
-static uint64_t acpi_table_read(file_t* file, void* buffer, size_t count, size_t* offset)
+static status_t acpi_table_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
-    if (file == NULL || buffer == NULL || offset == NULL)
+    if (file == NULL || buffer == NULL || offset == NULL || bytesRead == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     sdt_header_t* table = file->vnode->data;
     if (table == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    return BUFFER_READ(buffer, count, offset, table, table->length);
+    return buffer_read(buffer, count, offset, bytesRead, table, table->length);
 }
 
 static file_ops_t tableFileOps = {
@@ -107,19 +105,19 @@ static bool acpi_is_rsdp_valid(rsdp_t* rsdp)
     return true;
 }
 
-static uint64_t acpi_tables_push(sdt_header_t* table)
+static status_t acpi_tables_push(sdt_header_t* table)
 {
     if (!acpi_is_table_valid(table))
     {
         LOG_ERR("invalid table %.*s\n", SDT_SIGNATURE_LENGTH, table->signature);
-        return _FAIL;
+        return ERR(ACPI, INVAL_ACPI_TABLE);
     }
 
     sdt_header_t* cachedTable = malloc(table->length);
     if (cachedTable == NULL)
     {
         LOG_ERR("failed to allocate memory for ACPI table\n");
-        return _FAIL;
+        return ERR(ACPI, NOMEM);
     }
     memcpy(cachedTable, table, table->length);
 
@@ -128,96 +126,100 @@ static uint64_t acpi_tables_push(sdt_header_t* table)
     {
         LOG_ERR("failed to allocate memory for ACPI table cache\n");
         free(cachedTable);
-        return _FAIL;
+        return ERR(ACPI, NOMEM);
     }
     cachedTables[tableAmount++].table = cachedTable;
 
     LOG_INFO("%.*s %p 0x%06x v%02X %.*s\n", SDT_SIGNATURE_LENGTH, cachedTable->signature, cachedTable,
         cachedTable->length, cachedTable->revision, SDT_OEM_ID_LENGTH, cachedTable->oemId);
-    return 0;
+    return OK;
 }
 
-static uint64_t acpi_tables_load_from_xsdt(xsdt_t* xsdt)
+static status_t acpi_tables_load_from_xsdt(xsdt_t* xsdt)
 {
     if (!acpi_is_xsdt_valid(xsdt))
     {
-        return _FAIL;
+        return ERR(ACPI, INVAL_ACPI_TABLE);
     }
 
     uint64_t amountOfTablesInXsdt = (xsdt->header.length - sizeof(sdt_header_t)) / sizeof(sdt_header_t*);
     for (uint64_t i = 0; i < amountOfTablesInXsdt; i++)
     {
         sdt_header_t* table = (sdt_header_t*)PML_ENSURE_HIGHER_HALF(xsdt->tables[i]);
-        if (acpi_tables_push(table) == _FAIL)
+        status_t status = acpi_tables_push(table);
+        if (IS_ERR(status))
         {
             LOG_ERR("failed to cache table %.4s\n", table->signature);
-            return _FAIL;
+            return status;
         }
     }
 
-    return 0;
+    return OK;
 }
 
-static uint64_t acpi_tables_load_from_fadt(void)
+static status_t acpi_tables_load_from_fadt(void)
 {
     fadt_t* fadt = (fadt_t*)acpi_tables_lookup(FADT_SIGNATURE, sizeof(fadt_t), 0);
     if (fadt == NULL)
     {
         LOG_ERR("failed to find FACP table\n");
-        return _FAIL;
+        return ERR(ACPI, NO_ACPI_TABLE);
     }
 
     if (fadt->dsdt == 0 && fadt->xDsdt == 0)
     {
         LOG_ERR("FADT has no DSDT pointer\n");
-        return _FAIL;
+        return ERR(ACPI, INVAL_ACPI_TABLE);
     }
 
+    status_t status;
     if (fadt->dsdt == 0)
     {
-        if (acpi_tables_push((void*)PML_ENSURE_HIGHER_HALF(fadt->xDsdt)) == _FAIL)
-        {
-            LOG_ERR("failed to cache DSDT table from fadt_t::xDsdt\n");
-            return _FAIL;
-        }
+        status = acpi_tables_push((void*)PML_ENSURE_HIGHER_HALF(fadt->xDsdt));
     }
-
-    if (acpi_tables_push((void*)PML_ENSURE_HIGHER_HALF(fadt->dsdt)) == _FAIL)
+    else
     {
-        LOG_ERR("failed to cache DSDT table from fadt_t::dsdt\n");
-        return _FAIL;
+        status = acpi_tables_push((void*)PML_ENSURE_HIGHER_HALF(fadt->dsdt));
     }
 
-    return 0;
+    if (IS_ERR(status))
+    {
+        LOG_ERR("failed to cache DSDT table\n");
+        return status;
+    }
+
+    return OK;
 }
 
-uint64_t acpi_tables_init(rsdp_t* rsdp)
+status_t acpi_tables_init(rsdp_t* rsdp)
 {
     if (!acpi_is_rsdp_valid(rsdp))
     {
         LOG_ERR("invalid RSDP provided to ACPI tables init\n");
-        return _FAIL;
+        return ERR(ACPI, INVAL_ACPI_TABLE);
     }
 
     xsdt_t* xsdt = (xsdt_t*)PML_ENSURE_HIGHER_HALF(rsdp->xsdtAddress);
     LOG_INFO("located XSDT at %p\n", rsdp->xsdtAddress);
 
-    if (acpi_tables_load_from_xsdt(xsdt) == _FAIL)
+    status_t status = acpi_tables_load_from_xsdt(xsdt);
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to load ACPI tables from XSDT\n");
-        return _FAIL;
+        return status;
     }
 
-    if (acpi_tables_load_from_fadt() == _FAIL)
+    status = acpi_tables_load_from_fadt();
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to load ACPI tables from FADT\n");
-        return _FAIL;
+        return status;
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t acpi_tables_expose(void)
+status_t acpi_tables_expose(void)
 {
     dentry_t* acpiRoot = acpi_get_dir();
     assert(acpiRoot != NULL);
@@ -227,7 +229,7 @@ uint64_t acpi_tables_expose(void)
     if (tablesDir == NULL)
     {
         LOG_ERR("failed to create ACPI tables sysfs directory");
-        return _FAIL;
+        return ERR(ACPI, NOMEM);
     }
 
     for (uint64_t i = 0; i < tableAmount; i++)
@@ -249,18 +251,17 @@ uint64_t acpi_tables_expose(void)
         if (cachedTables[i].file == NULL)
         {
             LOG_ERR("failed to create ACPI table sysfs file for %.*s", SDT_SIGNATURE_LENGTH, table->signature);
-            return _FAIL;
+            return ERR(ACPI, NOMEM);
         }
     }
 
-    return 0;
+    return OK;
 }
 
 sdt_header_t* acpi_tables_lookup(const char* signature, uint64_t minSize, uint64_t n)
 {
     if (signature == NULL || strlen(signature) != SDT_SIGNATURE_LENGTH)
     {
-        errno = EINVAL;
         return NULL;
     }
 
@@ -273,7 +274,6 @@ sdt_header_t* acpi_tables_lookup(const char* signature, uint64_t minSize, uint64
             {
                 if (cachedTables[i].table->length < minSize)
                 {
-                    errno = EILSEQ;
                     return NULL;
                 }
 
@@ -282,13 +282,5 @@ sdt_header_t* acpi_tables_lookup(const char* signature, uint64_t minSize, uint64
         }
     }
 
-    if (depth != 0)
-    {
-        errno = ERANGE;
-    }
-    else
-    {
-        errno = ENOENT;
-    }
     return NULL;
 }

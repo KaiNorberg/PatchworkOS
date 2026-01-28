@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/math.h>
+#include <sys/status.h>
 
 /**
  * @brief Tokens
@@ -348,20 +349,19 @@ static inline void aml_token_read(aml_term_list_ctx_t* ctx, aml_token_t* out)
  *
  * @param ctx The AML term list context to parse from.
  * @param expected The expected token number.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return `true` if the token matches, `false` otherwise.
  */
-static inline uint64_t aml_token_expect(aml_term_list_ctx_t* ctx, aml_token_num_t expected)
+static inline bool aml_token_expect(aml_term_list_ctx_t* ctx, aml_token_num_t expected)
 {
     aml_token_t token;
     aml_token_read(ctx, &token);
 
     if (token.num != expected)
     {
-        errno = EILSEQ;
-        return _FAIL;
+        return false;
     }
 
-    return 0;
+    return true;
 }
 
 /** @} */

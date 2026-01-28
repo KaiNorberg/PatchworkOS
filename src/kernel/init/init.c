@@ -123,7 +123,7 @@ static void init_finalize(void)
     }
 
     if (bootInfo->rsdp != NULL)
-    {        
+    {
         status_t status = module_device_attach("BOOT_RSDP", "BOOT_RSDP", MODULE_LOAD_ALL, NULL);
         if (IS_ERR(status))
         {

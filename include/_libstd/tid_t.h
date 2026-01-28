@@ -11,6 +11,6 @@
  */
 typedef __UINT64_TYPE__ tid_t;
 
-#define TID_INVALID ((tid_t)-1)
+#define TID_INVALID ((tid_t) - 1)
 
 #endif

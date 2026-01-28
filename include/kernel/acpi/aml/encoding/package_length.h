@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <sys/status.h>
 
 typedef struct aml_object aml_object_t;
 typedef struct aml_term_list_ctx aml_term_list_ctx_t;
@@ -42,9 +43,9 @@ typedef struct
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the lead byte.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_pkg_lead_byte_read(aml_term_list_ctx_t* ctx, aml_pkg_lead_byte_t* out);
+status_t aml_pkg_lead_byte_read(aml_term_list_ctx_t* ctx, aml_pkg_lead_byte_t* out);
 
 /**
  * @brief Reads a PkgLength structure from the AML byte stream.
@@ -59,8 +60,8 @@ uint64_t aml_pkg_lead_byte_read(aml_term_list_ctx_t* ctx, aml_pkg_lead_byte_t* o
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param out The output buffer to store the package length.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_pkg_length_read(aml_term_list_ctx_t* ctx, aml_pkg_length_t* out);
+status_t aml_pkg_length_read(aml_term_list_ctx_t* ctx, aml_pkg_length_t* out);
 
 /** @} */

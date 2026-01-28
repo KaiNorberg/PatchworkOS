@@ -252,7 +252,7 @@ status_t irp_get(irp_t** out, irp_pool_t* pool)
     irp->cpu = CPU_ID_INVALID;
     irp->status = OK;
     irp->frame = IRP_FRAME_MAX;
-    
+
     *out = irp;
     return OK;
 }

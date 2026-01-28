@@ -157,7 +157,8 @@ pml_flags_t vmm_prot_to_flags(prot_t prot);
  * @see `vmm_map()` for details on TLB shootdowns.
  *
  * @param space The target address space, if `NULL`, the kernel space is used.
- * @param addr The output pointer to store the virtual address, the value it currently points to is used as the desired virtual address. If it points to `NULL`, the kernel chooses an address.
+ * @param addr The output pointer to store the virtual address, the value it currently points to is used as the desired
+ * virtual address. If it points to `NULL`, the kernel chooses an address.
  * @param length The length of the virtual memory region to allocate, in bytes.
  * @param alignment The required alignment for the virtual memory region in bytes.
  * @param pmlFlags The page table flags for the mapping, will always include `PML_OWNED`, must have `PML_PRESENT` set.
@@ -176,7 +177,8 @@ status_t vmm_alloc(space_t* space, void** addr, size_t length, size_t alignment,
  * page fault. However if the page is already mapped then it must first be unmapped as described in `vmm_unmap()`.
  *
  * @param space The target address space, if `NULL`, the kernel space is used.
- * @param addr The output pointer to store the virtual address, the value it currently points to is used as the desired virtual address. If it points to `NULL`, the kernel chooses an address.
+ * @param addr The output pointer to store the virtual address, the value it currently points to is used as the desired
+ * virtual address. If it points to `NULL`, the kernel chooses an address.
  * @param phys The physical address to map from.
  * @param length The length of the memory region to map, in bytes.
  * @param flags The page table flags for the mapping, must have `PML_PRESENT` set.
@@ -196,7 +198,8 @@ status_t vmm_map(space_t* space, void** addr, phys_addr_t phys, size_t length, p
  * @see `vmm_map()` for details on TLB shootdowns.
  *
  * @param space The target address space, if `NULL`, the kernel space is used.
- * @param virtAddr The output pointer to store the virtual address, the value it currently points to is used as the desired virtual address. If it points to `NULL`, the kernel chooses an address.
+ * @param virtAddr The output pointer to store the virtual address, the value it currently points to is used as the
+ * desired virtual address. If it points to `NULL`, the kernel chooses an address.
  * @param pfns An array of page frame numbers to map from.
  * @param amount The number of pages to map.
  * @param flags The page table flags for the mapping, must have `PML_PRESENT` set.

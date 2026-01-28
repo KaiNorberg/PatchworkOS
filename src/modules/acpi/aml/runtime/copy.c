@@ -6,107 +6,95 @@
 #include <kernel/acpi/aml/to_string.h>
 #include <kernel/log/log.h>
 
-#include <errno.h>
-
-uint64_t aml_copy_data_and_type(aml_object_t* src, aml_object_t* dest)
+status_t aml_copy_data_and_type(aml_object_t* src, aml_object_t* dest)
 {
     if (src == NULL || dest == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (!(src->type & AML_DATA_REF_OBJECTS))
     {
         LOG_ERR("cannot copy object of type '%s'\n", aml_type_to_string(src->type));
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
+
+    status_t status = OK;
 
     switch (src->type)
     {
     case AML_INTEGER:
-        if (aml_integer_set(dest, src->integer.value) == _FAIL)
-        {
-            return _FAIL;
-        }
+        status = aml_integer_set(dest, src->integer.value);
         break;
     case AML_STRING:
-        if (aml_string_set(dest, src->string.content) == _FAIL)
-        {
-            return _FAIL;
-        }
+        status = aml_string_set(dest, src->string.content);
         break;
     case AML_BUFFER:
-        if (aml_buffer_set(dest, src->buffer.content, src->buffer.length, src->buffer.length) == _FAIL)
-        {
-            return _FAIL;
-        }
+        status = aml_buffer_set(dest, src->buffer.content, src->buffer.length, src->buffer.length);
         break;
     case AML_PACKAGE:
-        if (aml_package_set(dest, src->package.length) == _FAIL)
+        status = aml_package_set(dest, src->package.length);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            break;
         }
 
         for (uint64_t i = 0; i < src->package.length; i++)
         {
-            if (aml_copy_data_and_type(src->package.elements[i], dest->package.elements[i]) == _FAIL)
+            status = aml_copy_data_and_type(src->package.elements[i], dest->package.elements[i]);
+            if (IS_ERR(status))
             {
                 aml_object_clear(dest);
-                return _FAIL;
+                break;
             }
         }
         break;
     case AML_OBJECT_REFERENCE:
-        if (aml_object_reference_set(dest, src->objectReference.target) == _FAIL)
-        {
-            return _FAIL;
-        }
+        status = aml_object_reference_set(dest, src->objectReference.target);
         break;
     default:
         LOG_ERR("cannot copy object of type '%s'\n", aml_type_to_string(src->type));
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    // To make debugging easier we copy the name of the object to if the dest is not already named.
-    // The copied name would be overwritten if the dest is named later.
-    if (!(dest->flags & AML_OBJECT_NAMED) && (src->flags & AML_OBJECT_NAMED))
+    if (IS_OK(status))
     {
-        dest->name = src->name;
+        // To make debugging easier we copy the name of the object to if the dest is not already named.
+        // The copied name would be overwritten if the dest is named later.
+        if (!(dest->flags & AML_OBJECT_NAMED) && (src->flags & AML_OBJECT_NAMED))
+        {
+            dest->name = src->name;
+        }
+
+        // Inherits the `AML_OBJECT_EXCEPTION_ON_USE` flag.
+        if (src->flags & AML_OBJECT_EXCEPTION_ON_USE)
+        {
+            dest->flags |= AML_OBJECT_EXCEPTION_ON_USE;
+        }
+        else
+        {
+            dest->flags &= ~AML_OBJECT_EXCEPTION_ON_USE;
+        }
     }
 
-    // Inherits the `AML_OBJECT_EXCEPTION_ON_USE` flag.
-    if (src->flags & AML_OBJECT_EXCEPTION_ON_USE)
-    {
-        dest->flags |= AML_OBJECT_EXCEPTION_ON_USE;
-    }
-    else
-    {
-        dest->flags &= ~AML_OBJECT_EXCEPTION_ON_USE;
-    }
-
-    return 0;
+    return status;
 }
 
-uint64_t aml_copy_object(aml_state_t* state, aml_object_t* src, aml_object_t* dest)
+status_t aml_copy_object(aml_state_t* state, aml_object_t* src, aml_object_t* dest)
 {
     if (src == NULL || dest == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (src->type == AML_UNINITIALIZED)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (src == dest)
     {
-        return 0;
+        return OK;
     }
 
     if (dest->type == AML_ARG)
@@ -116,7 +104,7 @@ uint64_t aml_copy_object(aml_state_t* state, aml_object_t* src, aml_object_t* de
             aml_object_t* newValue = aml_object_new();
             if (newValue == NULL)
             {
-                return _FAIL;
+                return ERR(MEM, NOMEM);
             }
 
             dest->arg.value = newValue; // Transfer ownership
@@ -159,6 +147,5 @@ uint64_t aml_copy_object(aml_state_t* state, aml_object_t* src, aml_object_t* de
 
     LOG_ERR("illegal copy operation from type '%s' to type '%s'\n", aml_type_to_string(src->type),
         aml_type_to_string(dest->type));
-    errno = ENOSYS;
-    return _FAIL;
+    return ERR(ACPI, IMPL);
 }

@@ -126,8 +126,7 @@ typedef struct wait wait_t;
  * @brief Blocks until the condition is true, condition will be tested on every wakeup. Will release the lock before
  * blocking and acquire it again after waking up. Reaching the timeout will always unblock.
  *
- * @return On success, `0`. On error, `_FAIL` and `errno` is set to:
- * - Check `wait_block_commit()`.
+ * @return An appropriate status value.
  */
 #define WAIT_BLOCK_LOCK_TIMEOUT(queue, lock, condition, timeout) \
     ({ \
@@ -193,7 +192,7 @@ typedef struct wait_client
 {
     list_entry_t entry;
     list_t entries;   ///< List of wait entries, one for each wait queue the thread is waiting on.
-    status_t status;      ///< The status to return when unblocking the thread.
+    status_t status;  ///< The status to return when unblocking the thread.
     clock_t deadline; ///< Deadline for timeout, `CLOCKS_NEVER` for no timeout.
     wait_t* owner;    ///< The wait cpu context of the cpu the thread is blocked on.
 } wait_client_t;

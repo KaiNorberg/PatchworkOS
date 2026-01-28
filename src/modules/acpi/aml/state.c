@@ -3,9 +3,9 @@
 #include <kernel/acpi/aml/object.h>
 #include <kernel/acpi/aml/runtime/copy.h>
 
-#include <errno.h>
 
-uint64_t aml_state_init(aml_state_t* state, aml_object_t** args)
+
+status_t aml_state_init(aml_state_t* state, aml_object_t** args)
 {
     for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)
     {
@@ -27,17 +27,12 @@ uint64_t aml_state_init(aml_state_t* state, aml_object_t** args)
                 {
                     UNREF(state->args[k]);
                 }
-                errno = E2BIG;
-                return _FAIL;
+                return ERR(ACPI, TOOBIG);
             }
 
             aml_object_t* arg = aml_object_new();
-            if (arg == NULL || aml_arg_set(arg, args[argIndex]) == _FAIL)
+            if (arg == NULL)
             {
-                if (arg != NULL)
-                {
-                    UNREF(arg);
-                }
                 for (uint8_t j = 0; j < AML_MAX_LOCALS; j++)
                 {
                     UNREF(state->locals[j]);
@@ -46,7 +41,22 @@ uint64_t aml_state_init(aml_state_t* state, aml_object_t** args)
                 {
                     UNREF(state->args[k]);
                 }
-                return _FAIL;
+                return ERR(MEM, NOMEM);
+            }
+
+            status_t status = aml_arg_set(arg, args[argIndex]);
+            if (IS_ERR(status))
+            {
+                UNREF(arg);
+                for (uint8_t j = 0; j < AML_MAX_LOCALS; j++)
+                {
+                    UNREF(state->locals[j]);
+                }
+                for (uint8_t k = 0; k < argIndex; k++)
+                {
+                    UNREF(state->args[k]);
+                }
+                return status;
             }
 
             state->args[argIndex] = &arg->arg;
@@ -62,7 +72,7 @@ uint64_t aml_state_init(aml_state_t* state, aml_object_t** args)
     state->result = NULL;
     state->errorDepth = 0;
     aml_overlay_init(&state->overlay);
-    return 0;
+    return OK;
 }
 
 void aml_state_deinit(aml_state_t* state)
@@ -84,37 +94,41 @@ void aml_state_deinit(aml_state_t* state)
     aml_overlay_deinit(&state->overlay);
 }
 
-aml_object_t* aml_state_result_get(aml_state_t* state)
+status_t aml_state_result_get(aml_state_t* state, aml_object_t** out)
 {
-    if (state == NULL)
+    if (state == NULL || out == NULL)
     {
-        return NULL;
+        return ERR(ACPI, INVAL);
     }
 
     aml_object_t* result = aml_object_new();
     if (result == NULL)
     {
-        return NULL;
+        return ERR(ACPI, NOMEM);
     }
 
     if (state->result == NULL)
     {
         // The method never had any expressions evaluated or explicitly returned a value.
-        if (aml_integer_set(result, 0) == _FAIL)
+        status_t status = aml_integer_set(result, 0);
+        if (IS_ERR(status))
         {
             UNREF(result);
-            return NULL;
+            return status;
         }
         result->flags |= AML_OBJECT_EXCEPTION_ON_USE;
-        return result; // Transfer ownership
+        *out = result;
+        return OK;
     }
 
-    if (aml_copy_object(state, state->result, result) == _FAIL)
+    status_t status = aml_copy_object(state, state->result, result);
+    if (IS_ERR(status))
     {
         UNREF(result);
-        return NULL;
+        return status;
     }
-    return result; // Transfer ownership
+    *out = result;
+    return OK;
 }
 
 void aml_state_result_set(aml_state_t* state, aml_object_t* result)

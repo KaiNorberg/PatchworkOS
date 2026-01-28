@@ -10,10 +10,10 @@
 #include <kernel/mem/vmm.h>
 #include <kernel/sched/clock.h>
 
-#include <sys/map.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/map.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 
@@ -323,8 +323,8 @@ status_t space_pin(space_t* space, const void* buffer, size_t length, stack_poin
     return OK;
 }
 
-status_t space_pin_terminated(size_t* outPinned, space_t* space, const void* address, const void* terminator, size_t objectSize,
-    size_t maxCount, stack_pointer_t* userStack)
+status_t space_pin_terminated(size_t* outPinned, space_t* space, const void* address, const void* terminator,
+    size_t objectSize, size_t maxCount, stack_pointer_t* userStack)
 {
     if (outPinned != NULL)
     {

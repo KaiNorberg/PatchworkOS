@@ -545,11 +545,12 @@ static status_t ps2_attach_device(const char* type, const char* name)
 {
     LOCK_SCOPE(&attachLock);
 
-    acpi_dev_t* acpiCfg = acpi_dev_lookup(name);
-    if (acpiCfg == NULL)
+    acpi_dev_t* acpiCfg;
+    status_t status = acpi_dev_lookup(name, &acpiCfg);
+    if (IS_ERR(status))
     {
         LOG_ERR("ps2 failed to get ACPI device config for '%s'\n", name);
-        return ERR(DRIVER, NO_ACPI_TABLE);
+        return status;
     }
 
     // We dont know if the controllers resources will be specified on the first device or the second device,
@@ -563,7 +564,7 @@ static status_t ps2_attach_device(const char* type, const char* name)
         }
         controllerInitialized = true;
 
-        status_t status = acpi_dev_get_port(acpiCfg, 0, &dataPort);
+        status = acpi_dev_get_port(acpiCfg, 0, &dataPort);
         if (IS_ERR(status))
         {
             LOG_ERR("ps2 device '%s' has invalid status port resource\n", name);

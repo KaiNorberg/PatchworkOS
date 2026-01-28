@@ -71,7 +71,7 @@ typedef struct
 /**
  * @brief Invalid percpu value.
  */
-#define PERCPU_INVALID ((percpu_t)-1)
+#define PERCPU_INVALID ((percpu_t) - 1)
 
 /**
  * @brief Attribute specifying that the variable is an offset into the `GS` segment register.

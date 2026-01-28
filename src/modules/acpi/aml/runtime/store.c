@@ -7,17 +7,16 @@
 
 #include <errno.h>
 
-uint64_t aml_store(aml_state_t* state, aml_object_t* src, aml_object_t* dest)
+status_t aml_store(aml_state_t* state, aml_object_t* src, aml_object_t* dest)
 {
     if (src == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (dest == NULL)
     {
-        return 0;
+        return OK;
     }
 
     if (dest->type == AML_ARG)
@@ -27,7 +26,7 @@ uint64_t aml_store(aml_state_t* state, aml_object_t* src, aml_object_t* dest)
             aml_object_t* newValue = aml_object_new();
             if (newValue == NULL)
             {
-                return _FAIL;
+                return ERR(ACPI, NOMEM);
             }
 
             dest->arg.value = newValue; // Transfer ownership
@@ -38,10 +37,8 @@ uint64_t aml_store(aml_state_t* state, aml_object_t* src, aml_object_t* dest)
         {
             return aml_copy_object(state, src, dest->arg.value->objectReference.target);
         }
-        else
-        {
-            return aml_copy_data_and_type(src, dest->arg.value);
-        }
+
+        return aml_copy_data_and_type(src, dest->arg.value);
     }
 
     if (dest->type == AML_LOCAL)

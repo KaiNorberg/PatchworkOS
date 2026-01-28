@@ -1,5 +1,6 @@
 #pragma once
 
+#include <kernel/acpi/aml/encoding/name.h>
 #include <kernel/acpi/aml/object.h>
 
 #include <stdint.h>
@@ -50,42 +51,46 @@ typedef struct aml_term_list_ctx
  *
  * @param ctx The context of the TermList that this structure is part of.
  * @param allowedTypes Bitmask of allowed types for the TermArg, the  will be evaluated to one of these types.
- * @return On success, the TermArg object. On failure, `NULL` and `errno` is set.
+ * @param out Output pointer for the term arg
+ * @return An appropriate status value.
  */
-aml_object_t* aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedTypes);
+status_t aml_term_arg_read(aml_term_list_ctx_t* ctx, aml_type_t allowedTypes, aml_object_t** out);
 
 /**
  * @brief Wrapper around `aml_term_arg_read()` that converts the result to an integer.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @param out The output buffer to store the integer value of the TermArg.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @param out Output pointer for the integer.
+ * @return An appropriate status value.
  */
-uint64_t aml_term_arg_read_integer(aml_term_list_ctx_t* ctx, aml_uint_t* out);
+status_t aml_term_arg_read_integer(aml_term_list_ctx_t* ctx, aml_uint_t* out);
 
 /**
  * @brief Wrapper around `aml_term_arg_read()` that converts the result to a string.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, the string. On failure, `NULL` and `errno` is set.
+ * @param out Output pointer for the string.
+ * @return An appropriate status code.
  */
-aml_stioring_t* aml_term_arg_read_string(aml_term_list_ctx_t* ctx);
+status_t aml_term_arg_read_string(aml_term_list_ctx_t* ctx, aml_string_t** out);
 
 /**
  * @brief Wrapper around `aml_term_arg_read()` that converts the result to a buffer.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, the buffer. On failure, `NULL` and `errno` is set.
+ * @param out Output pointer for the buffer.
+ * @return An appropriate status code.
  */
-aml_buffer_t* aml_term_arg_read_buffer(aml_term_list_ctx_t* ctx);
+status_t aml_term_arg_read_buffer(aml_term_list_ctx_t* ctx, aml_buffer_t** out);
 
 /**
  * @brief Wrapper around `aml_term_arg_read()` that converts the result to a package.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, the package. On failure, `NULL` and `errno` is set.
+ * @param out Output pointer for the package.
+ * @return An appropriate status code.
  */
-aml_package_t* aml_term_arg_read_package(aml_term_list_ctx_t* ctx);
+status_t aml_term_arg_read_package(aml_term_list_ctx_t* ctx, aml_package_t** out);
 
 /**
  * @brief Reads an Object structure from the AML byte stream.
@@ -93,9 +98,9 @@ aml_package_t* aml_term_arg_read_package(aml_term_list_ctx_t* ctx);
  * An Object is defined as `Object := NameSpaceModifierObj | NamedObj`.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status code.
  */
-uint64_t aml_object_read(aml_term_list_ctx_t* ctx);
+status_t aml_object_read(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Reads a TermObj structure from the AML byte stream.
@@ -103,9 +108,9 @@ uint64_t aml_object_read(aml_term_list_ctx_t* ctx);
  * A TermObj is defined as `TermObj := Object | StatementOpcode | ExpressionOpcode`.
  *
  * @param ctx The context of the TermList that this structure is part of.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status code.
  */
-uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx);
+status_t aml_term_obj_read(aml_term_list_ctx_t* ctx);
 
 /**
  * @brief Reads a TermList structure from the AML byte stream.
@@ -122,9 +127,9 @@ uint64_t aml_term_obj_read(aml_term_list_ctx_t* ctx);
  * @param end Pointer to the end of the TermList in the AML byte stream.
  * @param parentCtx The previous TermList context, or `NULL` if this is the top-level TermList, used to propagate stop
  * reasons.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status code.
  */
-uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* scope, const uint8_t* start, const uint8_t* end,
+status_t aml_term_list_read(aml_state_t* state, aml_object_t* scope, const uint8_t* start, const uint8_t* end,
     aml_term_list_ctx_t* parentCtx);
 
 /** @} */

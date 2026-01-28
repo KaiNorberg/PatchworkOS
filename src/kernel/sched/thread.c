@@ -72,11 +72,10 @@ status_t thread_new(thread_t** out, process_t* process)
     atomic_store(&thread->state, THREAD_PARKED);
     thread->error = 0;
     stack_pointer_init(&thread->kernelStack,
-            VMM_KERNEL_STACKS_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_KERNEL_STACK_PAGES),
-            CONFIG_MAX_KERNEL_STACK_PAGES);
+        VMM_KERNEL_STACKS_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_KERNEL_STACK_PAGES),
+        CONFIG_MAX_KERNEL_STACK_PAGES);
     stack_pointer_init(&thread->userStack,
-            VMM_USER_SPACE_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_USER_STACK_PAGES),
-            CONFIG_MAX_USER_STACK_PAGES);
+        VMM_USER_SPACE_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_USER_STACK_PAGES), CONFIG_MAX_USER_STACK_PAGES);
     wait_client_init(&thread->wait);
     status_t status = simd_ctx_init(&thread->simd);
     if (IS_ERR(status))
@@ -391,10 +390,10 @@ SYSCALL_DEFINE(SYS_ARCH_PRCTL, arch_prctl_t op, uintptr_t addr)
     case ARCH_SET_FS:
         thread->fsBase = addr;
         msr_write(MSR_FS_BASE, addr);
-    break;
+        break;
     case ARCH_GET_FS:
         status = thread_copy_to_user(thread, (void*)addr, &thread->fsBase, sizeof(uintptr_t));
-    break;
+        break;
     default:
         status = ERR(SCHED, INVAL);
     }

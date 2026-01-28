@@ -3,9 +3,10 @@
 #include <kernel/acpi/aml/encoding/name.h>
 
 #include <stdint.h>
-#include <sys/map.h>
 #include <sys/defs.h>
 #include <sys/list.h>
+#include <sys/map.h>
+#include <sys/status.h>
 
 /**
  * @brief Namespace and Namespace Overlays
@@ -85,7 +86,7 @@
  */
 typedef struct aml_overlay
 {
-    map_t map;                  ///< Used to find the children of namespaces using their id and the name of the child.
+    MAP_DEFINE(map, 32); ///< Used to find the children of namespaces using their id and the name of the child.
     list_t objects;             ///< List of all objects in this namespace. Used for fast iteration.
     struct aml_overlay* parent; ///< The parent overlay, or `NULL` if none.
 } aml_overlay_t;
@@ -139,9 +140,9 @@ void aml_namespace_init(aml_object_t* root);
 /**
  * @brief Expose the entire namespace heirarchy to devfs.
  *
- * @return On success, `0`. On failure, `_FAIL`.
+ * @return An appropriate status code.
  */
-uint64_t aml_namespace_expose(void);
+status_t aml_namespace_expose(void);
 
 /**
  * @brief Get the root object of the namespace heirarchy.
@@ -207,7 +208,7 @@ aml_object_t* aml_namespace_find(aml_overlay_t* overlay, aml_object_t* start, ui
  * @return The object reference or `NULL` if it could not be found.
  */
 aml_object_t* aml_namespace_find_by_name_string(aml_overlay_t* overlay, aml_object_t* start,
-    const aml_name_stioring_t* nameString);
+    const aml_name_string_t* nameString);
 
 /**
  * @brief Find an object in the namespace heirarchy by a path string.
@@ -240,9 +241,9 @@ aml_object_t* aml_namespace_find_by_path(aml_overlay_t* overlay, aml_object_t* s
  * @param parent The parent scope to add the object to, if `NULL` the object is added to the root object.
  * @param name The name to give the object.
  * @param object The object to add to the namespace.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, aml_name_t name, aml_object_t* object);
+status_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, aml_name_t name, aml_object_t* object);
 
 /**
  * @brief Add an object to the namespace heirarchy using a name string.
@@ -252,10 +253,10 @@ uint64_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, a
  * object.
  * @param nameString The name string to use to find the parent scope and name of the object.
  * @param object The object to add to the namespace.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* start,
-    const aml_name_stioring_t* nameString, aml_object_t* object);
+status_t aml_namespace_add_by_name_string(aml_overlay_t* overlay, aml_object_t* start,
+    const aml_name_string_t* nameString, aml_object_t* object);
 
 /**
  * @brief Remove an object from the namespace heirarchy it was added to.
@@ -274,9 +275,9 @@ void aml_namespace_remove(aml_object_t* object);
  * After this call the overlay will be empty.
  *
  * @param overlay The overlay to commit.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_namespace_commit(aml_overlay_t* overlay);
+status_t aml_namespace_commit(aml_overlay_t* overlay);
 
 /**
  * @brief Initialize a namespace overlay.

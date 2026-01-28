@@ -77,7 +77,7 @@ SYSCALL_DEFINE(SYS_FUTEX, atomic_uint64_t* addr, uint64_t val, futex_op_t op, cl
     case FUTEX_WAIT:
     {
         wait_queue_t* queue = &futex->queue;
-        
+
         status_t status = wait_block_prepare(&queue, 1, timeout);
         if (IS_ERR(status))
         {

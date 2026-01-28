@@ -66,7 +66,8 @@ static void smp_start_others(void)
         }
 
         cpu_t* cpu = NULL;
-        status_t status = vmm_alloc(NULL, (void**)&cpu, sizeof(cpu_t), PAGE_SIZE, PML_WRITE | PML_PRESENT | PML_GLOBAL, VMM_ALLOC_OVERWRITE);
+        status_t status = vmm_alloc(NULL, (void**)&cpu, sizeof(cpu_t), PAGE_SIZE, PML_WRITE | PML_PRESENT | PML_GLOBAL,
+            VMM_ALLOC_OVERWRITE);
         if (IS_ERR(status))
         {
             panic(NULL, "Failed to allocate memory for cpu with lapicid %d", (uint64_t)lapic->apicId);

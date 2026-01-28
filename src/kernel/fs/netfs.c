@@ -170,7 +170,7 @@ static status_t netfs_accept_open(file_t* file)
         return ERR(FS, INVAL);
     }
 
-    socket_t* newSock; 
+    socket_t* newSock;
     status_t status = socket_new(&newSock, sock->family, sock->type);
     if (IS_ERR(status))
     {

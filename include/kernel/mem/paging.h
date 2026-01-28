@@ -166,7 +166,7 @@ static inline void page_table_load(page_table_t* table)
  * If the entry at the specified index is present, it retrieves the corresponding page table level.
  * If the entry is not present and the `PML_PRESENT` flag is set in `flags`, it allocates a new page table level, and
  * initializes it with the provided flags and callback ID. If the entry is not present and the `PML_PRESENT` flag is not
- * set, it returns `_FAIL`.
+ * set, it returns `false`.
  *
  * @param table The page table.
  * @param current The current page table level.
@@ -296,7 +296,7 @@ static inline bool page_table_traverse(page_table_t* table, page_table_traverse_
  * @param addr The virtual address to look up.
  * @return `true`if the address is mapped and the physical address was retrieved, `false` otherwise.
  */
-static inline bool page_table_get_phys_addr(phys_addr_t* out,page_table_t* table, void* addr)
+static inline bool page_table_get_phys_addr(phys_addr_t* out, page_table_t* table, void* addr)
 {
     size_t offset = ((uintptr_t)addr) % PAGE_SIZE;
     addr = (void*)ROUND_DOWN(addr, PAGE_SIZE);
@@ -379,7 +379,7 @@ static inline bool page_table_is_unmapped(page_table_t* table, void* addr, size_
 /**
  * @brief Maps a range of virtual addresses to physical addresses in the page table.
  *
- * If any page in the range is already mapped, the function will fail and return `_FAIL`.
+ * If any page in the range is already mapped, the function will fail and return `false`.
  *
  * @param table The page table.
  * @param addr The starting virtual address.
@@ -389,8 +389,8 @@ static inline bool page_table_is_unmapped(page_table_t* table, void* addr, size_
  * @param callbackId The callback ID to associate with the mapped pages or `PML_CALLBACK_NONE`.
  * @return `true` if the pages were mapped, `false` otherwise.
  */
-static inline bool page_table_map(page_table_t* table, void* addr, phys_addr_t phys, size_t amount,
-    pml_flags_t flags, pml_callback_id_t callbackId)
+static inline bool page_table_map(page_table_t* table, void* addr, phys_addr_t phys, size_t amount, pml_flags_t flags,
+    pml_callback_id_t callbackId)
 {
     if (!(flags & PML_PRESENT))
     {

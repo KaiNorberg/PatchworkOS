@@ -3,6 +3,7 @@
 #include <kernel/acpi/aml/encoding/arg.h>
 #include <stdint.h>
 #include <sys/defs.h>
+#include <sys/status.h>
 
 /**
  * @brief ACPI resource settings.
@@ -277,14 +278,10 @@ typedef enum
  * Will ensure the data return by the device's `_CRS` method is valid, no need for the caller to do so.
  *
  * @param device The device object in the AML namespace.
- * @return On success, a allocated resources structure. On failure, `NULL` and `errno` is set to:
- * - `EINVAL`: Invalid parameters.
- * - `ENOENT`: The device has no `_CRS` method.
- * - `EILSEQ`: Unexpected data from the `_CRS` method.
- * - `ENOMEM`: Out of memory.
- * - Other values from `aml_evaluate()`.
+ * @param out Output pointer for the allocated resources structure.
+ * @return An appropriate status value.
  */
-acpi_resources_t* acpi_resources_current(aml_object_t* device);
+status_t acpi_resources_current(aml_object_t* device, acpi_resources_t** out);
 
 /**
  * @brief Free an ACPI resources structure.

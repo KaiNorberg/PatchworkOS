@@ -8,12 +8,11 @@
 
 #include <errno.h>
 
-aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_t* method, aml_object_t** args)
+status_t aml_method_invoke(aml_state_t* parentState, aml_method_t* method, aml_object_t** args, aml_object_t** out)
 {
-    if (method == NULL || parentState == NULL)
+    if (method == NULL || parentState == NULL || out == NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(ACPI, INVAL);
     }
 
     uint8_t argCount = 0;
@@ -27,8 +26,7 @@ aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_t* method, 
         if (argCount == AML_MAX_ARGS + 1)
         {
             LOG_ERR("too many arguments, max is %u\n", AML_MAX_ARGS);
-            errno = E2BIG;
-            return NULL;
+            return ERR(ACPI, INVAL);
         }
     }
 
@@ -36,16 +34,16 @@ aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_t* method, 
     {
         LOG_ERR("method '%s' expects %u arguments, got %u\n", AML_NAME_TO_STRING(method->name),
             method->methodFlags.argCount, argCount);
-        errno = EINVAL;
-        return NULL;
+        return ERR(ACPI, INVAL);
     }
 
     if (method->methodFlags.isSerialized)
     {
-        if (aml_mutex_acquire(&method->mutex, method->methodFlags.syncLevel, CLOCKS_NEVER) == _FAIL)
+        status_t status = aml_mutex_acquire(&method->mutex, method->methodFlags.syncLevel, CLOCKS_NEVER);
+        if (IS_ERR(status))
         {
             LOG_ERR("could not acquire method mutex\n");
-            return NULL;
+            return status;
         }
     }
 
@@ -54,29 +52,32 @@ aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_t* method, 
         aml_object_t* temp = method->implementation(method, args, argCount);
         if (method->methodFlags.isSerialized)
         {
-            if (aml_mutex_release(&method->mutex) == _FAIL)
+            status_t status = aml_mutex_release(&method->mutex);
+            if (IS_ERR(status))
             {
                 LOG_ERR("could not release method mutex\n");
-                return NULL;
+                return status;
             }
         }
-        return temp;
+        *out = temp;
+        return OK;
     }
 
     aml_state_t state;
-    if (aml_state_init(&state, args) == _FAIL)
+    status_t status = aml_state_init(&state, args);
+    if (IS_ERR(status))
     {
         LOG_ERR("could not initialize AML state\n");
         if (method->methodFlags.isSerialized)
         {
             aml_mutex_release(&method->mutex); // Ignore errors
         }
-        return NULL;
+        return status;
     }
 
     aml_object_t* methodObj = CONTAINER_OF(method, aml_object_t, method);
 
-    // This shit is a mess. Just check namespace.h for details.
+    // This is a mess. Just check namespace.h for details.
     aml_overlay_t* highestThatContainsMethod = aml_overlay_find_containing(&parentState->overlay, methodObj);
     if (highestThatContainsMethod == NULL)
     {
@@ -85,8 +86,7 @@ aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_t* method, 
         {
             aml_mutex_release(&method->mutex); // Ignore errors
         }
-        errno = EIO;
-        return NULL;
+        return ERR(ACPI, IMPL);
     }
     aml_overlay_set_parent(&state.overlay, highestThatContainsMethod);
 
@@ -94,7 +94,8 @@ aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_t* method, 
     // control method execution for this package are relative to that location." - Section 19.6.85
 
     // The method body is just a TermList.
-    if (aml_term_list_read(&state, methodObj, method->start, method->end, NULL) == _FAIL)
+    status = aml_term_list_read(&state, methodObj, method->start, method->end, NULL);
+    if (IS_ERR(status))
     {
         LOG_ERR("failed to read method body for method '%s'\n", AML_NAME_TO_STRING(method->name));
         aml_state_deinit(&state);
@@ -102,20 +103,21 @@ aml_object_t* aml_method_invoke(aml_state_t* parentState, aml_method_t* method, 
         {
             aml_mutex_release(&method->mutex); // Ignore errors
         }
-        return NULL;
+        return status;
     }
 
     if (method->methodFlags.isSerialized)
     {
-        if (aml_mutex_release(&method->mutex) == _FAIL)
+        status = aml_mutex_release(&method->mutex);
+        if (IS_ERR(status))
         {
             LOG_ERR("could not release method mutex\n");
             aml_state_deinit(&state);
-            return NULL;
+            return status;
         }
     }
 
-    aml_object_t* result = aml_state_result_get(&state);
+    status = aml_state_result_get(&state, out);
     aml_state_deinit(&state);
-    return result; // Transfer ownership
+    return status;
 }

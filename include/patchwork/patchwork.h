@@ -4,7 +4,7 @@
 /**
  * @brief User space system library.
  * @defgroup libpatchwork Libpatchwork
- * 
+ *
  * @todo Pretty much the entire systems library will need to be redone for the new async system.
  */
 

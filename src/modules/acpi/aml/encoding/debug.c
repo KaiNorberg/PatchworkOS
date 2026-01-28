@@ -3,25 +3,27 @@
 #include <kernel/acpi/aml/debug.h>
 #include <kernel/acpi/aml/token.h>
 
-aml_object_t* aml_debug_obj_read(aml_term_list_ctx_t* ctx)
+status_t aml_debug_obj_read(aml_term_list_ctx_t* ctx, aml_object_t** out)
 {
-    if (aml_token_expect(ctx, AML_DEBUG_OP) == _FAIL)
+    if (!aml_token_expect(ctx, AML_DEBUG_OP))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read DebugOp");
-        return NULL;
+        return ERR(ACPI, ILSEQ);
     }
 
     aml_object_t* obj = aml_object_new();
     if (obj == NULL)
     {
-        return NULL;
+        return ERR(ACPI, NOMEM);
     }
 
-    if (aml_debug_object_set(obj) == _FAIL)
+    status_t status = aml_debug_object_set(obj);
+    if (IS_ERR(status))
     {
         UNREF(obj);
-        return NULL;
+        return status;
     }
 
-    return obj; // Transfer ownership
+    *out = obj;
+    return status;
 }

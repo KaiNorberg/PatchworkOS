@@ -5,55 +5,62 @@
 #include <kernel/acpi/aml/runtime/method.h>
 #include <kernel/acpi/aml/state.h>
 
-aml_object_t* aml_evaluate(aml_state_t* state, aml_object_t* object, aml_type_t targetTypes)
+status_t aml_evaluate(aml_state_t* state, aml_object_t* object, aml_type_t targetTypes, aml_object_t** out)
 {
-    if (object == NULL)
+    if (state == NULL || object == NULL || out == NULL)
     {
-        errno = EINVAL;
-        return NULL;
+        return ERR(ACPI, INVAL);
     }
 
     if (state == NULL)
     {
         aml_state_t tempState;
-        if (aml_state_init(&tempState, NULL) == _FAIL)
+        status_t status = aml_state_init(&tempState, NULL);
+        if (IS_ERR(status))
         {
-            return NULL;
+            return status;
         }
 
-        aml_object_t* result = aml_evaluate(&tempState, object, targetTypes);
+        aml_object_t* result = NULL;
+        status = aml_evaluate(&tempState, object, targetTypes, &result);
         aml_state_deinit(&tempState);
-        return result;
+        return status;
     }
 
     if (object->type & targetTypes)
     {
-        return REF(object);
+        *out = REF(object);
+        return OK;
     }
 
     if (object->type == AML_METHOD)
     {
-        aml_object_t* result = aml_method_invoke(state, &object->method, NULL);
-        if (result == NULL)
+        aml_object_t* result = NULL;
+        status_t status = aml_method_invoke(state, &object->method, NULL, &result);
+        if (IS_ERR(status))
         {
-            return NULL;
+            return status;
         }
         UNREF_DEFER(result);
 
         aml_object_t* converted = NULL;
-        if (aml_convert_source(state, result, &converted, targetTypes) == _FAIL)
+        status = aml_convert_source(state, result, &converted, targetTypes);
+        if (IS_ERR(status))
         {
-            return NULL;
+            return status;
         }
 
-        return converted;
+        *out = converted;
+        return OK;
     }
 
     aml_object_t* converted = NULL;
-    if (aml_convert_source(state, object, &converted, targetTypes) == _FAIL)
+    status_t status = aml_convert_source(state, object, &converted, targetTypes);
+    if (IS_ERR(status))
     {
-        return NULL;
+        return status;
     }
 
-    return converted;
+    *out = converted;
+    return OK;
 }

@@ -10,9 +10,9 @@
 #include <kernel/proc/process.h>
 #include <kernel/sync/rwlock.h>
 
-#include <sys/map.h>
 #include <sys/fs.h>
 #include <sys/list.h>
+#include <sys/map.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 
@@ -118,7 +118,8 @@ status_t vfs_ioctl(file_t* file, uint64_t request, void* argp, size_t size, uint
  * @brief Memory map a file.
  *
  * @param file The file to memory map.
- * @param addr The output pointer to store the virtual address, the value it currently points to is used as the desired virtual address. If it points to `NULL`, the kernel chooses an address.
+ * @param addr The output pointer to store the virtual address, the value it currently points to is used as the desired
+ * virtual address. If it points to `NULL`, the kernel chooses an address.
  * @param length The length to map.
  * @param flags The page table flags for the mapping.
  * @return An appropriate status value.

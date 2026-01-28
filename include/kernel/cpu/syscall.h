@@ -32,10 +32,8 @@
  * syscall number is passed in the `RAX` register.
  *
  * After the registers are setup the `syscall` instruction should be called, with the status value being placed in
- * the `RAX` register and some system calls may place a result in the `RDX` register, to avoid passing output pointers to the kernel.
- *
- * @deprecated If the return value is `_FAIL` for a system call that returns an integer or `NULL` for a system call that returns a
- * pointer. Then the `SYS_ERRNO` syscall can be used to retrieve the associated error code.
+ * the `RAX` register and some system calls may place a result in the `RDX` register, to avoid passing output pointers
+ * to the kernel.
  *
  * @see [SYSCALL instruction](https://www.felixcloutier.com/x86/syscall)
  * @see [SYSRET instruction](https://www.felixcloutier.com/x86/sysret)
@@ -115,19 +113,20 @@ extern syscall_descriptor_t _syscall_table_end[];
  *
  * Uses the `._syscall_table` linker section to store the syscall descriptor.
  *
- * The defined handler will be provided a `_result` pointer which should be used to store the result, the handler should directly return its status.
- * 
+ * The defined handler will be provided a `_result` pointer which should be used to store the result, the handler should
+ * directly return its status.
+ *
  * @param num The syscall number, must be unique, check `syscall_number_t`.
  * @param ... The arguments of the syscall handler, can be no more than 6 arguments (Such that we only use registers to
  * pass them).
  */
 #define SYSCALL_DEFINE(num, ...) \
-    status_t syscall_handler_##num(uint64_t* _result __VA_OPT__(,) __VA_ARGS__); \
+    status_t syscall_handler_##num(uint64_t* _result __VA_OPT__(, ) __VA_ARGS__); \
     const syscall_descriptor_t __syscall_##num __attribute__((used, section("._syscall_table"))) = { \
         .number = (num), \
         .handler = (void*)syscall_handler_##num, \
     }; \
-    status_t syscall_handler_##num(uint64_t* _result __VA_OPT__(,) __VA_ARGS__)
+    status_t syscall_handler_##num(uint64_t* _result __VA_OPT__(, ) __VA_ARGS__)
 
 /**
  * @brief Initialize a syscall context.

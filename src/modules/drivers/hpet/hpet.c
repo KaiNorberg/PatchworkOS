@@ -218,7 +218,8 @@ static status_t hpet_init(void)
     }
 
     void* mapAddr = (void*)PML_LOWER_TO_HIGHER(hpet->address);
-    status_t status = vmm_map(NULL, &mapAddr, hpet->address, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL);
+    status_t status =
+        vmm_map(NULL, &mapAddr, hpet->address, PAGE_SIZE, PML_WRITE | PML_GLOBAL | PML_PRESENT, NULL, NULL);
     if (IS_ERR(status))
     {
         LOG_ERR("failed to map HPET memory at %p\n", hpet->address);

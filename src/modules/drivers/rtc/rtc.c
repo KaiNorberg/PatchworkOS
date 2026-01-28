@@ -92,14 +92,15 @@ static status_t rtc_init(const char* deviceName)
 {
     LOCK_SCOPE(&lock);
 
-    acpi_dev_t* acpiCfg = acpi_dev_lookup(deviceName);
-    if (acpiCfg == NULL)
+    acpi_dev_t* acpiCfg;
+    status_t status = acpi_dev_lookup(deviceName, &acpiCfg);
+    if (IS_ERR(status))
     {
         LOG_ERR("rtc failed to get ACPI device config for '%s'\n", deviceName);
         return ERR(DRIVER, NOENT);
     }
 
-    status_t status = acpi_dev_get_port(acpiCfg, 0, &addressPort);
+    status = acpi_dev_get_port(acpiCfg, 0, &addressPort);
     if (IS_ERR(status))
     {
         LOG_ERR("rtc device '%s' has no port resources\n", deviceName);

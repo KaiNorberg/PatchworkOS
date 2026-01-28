@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kernel/acpi/aml/object.h>
+#include <sys/status.h>
 
 /**
  * @brief Object Concatenation
@@ -13,10 +14,10 @@
  *
  * @param state Pointer to the current AML state.
  * @param source1 Pointer to the first source object to concatenate, can be `AML_UNINITIALIZED`.
- * @param source2 Pointer to the second source object to concatenate. Can be `AML_UNINITIALIZED`.
+ * @param source2 Pointer to the second source object to concatenate, can be `AML_UNINITIALIZED`.
  * @param result Pointer to the object where the result will be stored.
- * @return On success, `0`. On failure, `_FAIL` and `errno` is set.
+ * @return An appropriate status value.
  */
-uint64_t aml_concat(aml_state_t* state, aml_object_t* source1, aml_object_t* source2, aml_object_t* result);
+status_t aml_concat(aml_state_t* state, aml_object_t* source1, aml_object_t* source2, aml_object_t* result);
 
 /** @} */

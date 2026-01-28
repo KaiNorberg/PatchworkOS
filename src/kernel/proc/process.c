@@ -26,13 +26,13 @@
 #include <kernel/utils/ref.h>
 
 #include <assert.h>
-#include <sys/map.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/fs.h>
 #include <sys/list.h>
+#include <sys/map.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 #include <sys/status.h>
@@ -147,7 +147,7 @@ status_t process_new(process_t** out, priority_t priority, group_member_t* group
     process->status.buffer[0] = '\0';
 
     status_t status = space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
-            SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY);
+        SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY);
     if (IS_ERR(status))
     {
         cache_free(process);

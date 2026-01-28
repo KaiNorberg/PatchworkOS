@@ -5,11 +5,11 @@
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/ref.h>
 
-#include <sys/status.h>
 #include <stdint.h>
-#include <sys/map.h>
 #include <sys/fs.h>
 #include <sys/list.h>
+#include <sys/map.h>
+#include <sys/status.h>
 
 typedef struct namespace namespace_t;
 typedef struct mount mount_t;
@@ -60,12 +60,12 @@ typedef struct mount_stack
 typedef struct namespace
 {
     ref_t ref;
-    list_entry_t entry;  ///< The entry for the parent's children list.
-    list_t children;     ///< List of child namespaces.
-    namespace_t* parent; ///< The parent namespace, can be `NULL`.
-    list_t stacks;       ///< List of `mount_stack_t` in this namespace.
+    list_entry_t entry;       ///< The entry for the parent's children list.
+    list_t children;          ///< List of child namespaces.
+    namespace_t* parent;      ///< The parent namespace, can be `NULL`.
+    list_t stacks;            ///< List of `mount_stack_t` in this namespace.
     MAP_DEFINE(mountMap, 64); ///< Map used to go from source dentries to namespace mount stacks.
-    mount_stack_t root;  ///< The root mount stack.
+    mount_stack_t root;       ///< The root mount stack.
     rwlock_t lock;
     // clang-format off
 } namespace_t;

@@ -9,9 +9,9 @@
 #include <kernel/version.h>
 
 #include <stdint.h>
-#include <sys/map.h>
 #include <sys/fs.h>
 #include <sys/list.h>
+#include <sys/map.h>
 #include <sys/status.h>
 
 typedef struct module module_t;
@@ -235,7 +235,7 @@ typedef enum module_event_type
     /**
      * Received when the module is loaded.
      *
-     * If the module returns `_FAIL`, the module load will fail.
+     * If the module returns an error status, the module load will fail.
      */
     MODULE_EVENT_LOAD,
     /**
@@ -247,7 +247,7 @@ typedef enum module_event_type
     /**
      * This event is sent when a device is attached that the module specified it supports.
      *
-     * A return value of `_FAIL` can be used to specify that the module is unable to handle the device.
+     * An error status can be used to specify that the module is unable to handle the device.
      */
     MODULE_EVENT_DEVICE_ATTACH,
     /**

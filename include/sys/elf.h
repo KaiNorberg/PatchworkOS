@@ -829,7 +829,7 @@ typedef struct
  * @param elf Pointer to the structure to initialize
  * @param data Pointer to the ELF file data in memory, caller retains ownership
  * @param size Size of the ELF file data in bytes
- * @return On success, `0`. On failure, a non-zero error code. Check the implementation. Does not use `_FAIL` or `errno`.
+ * @return On success, `0`. On failure, a non-zero error code. Check the implementation.
  */
 uint64_t elf64_validate(Elf64_File* elf, void* data, uint64_t size);
 

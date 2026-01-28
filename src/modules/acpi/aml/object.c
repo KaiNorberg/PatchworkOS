@@ -6,8 +6,8 @@
 #include <kernel/acpi/aml/token.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <sys/status.h>
 
-#include <errno.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <sys/math.h>
@@ -227,7 +227,7 @@ void aml_object_clear(aml_object_t* object)
             UNREF(object->unresolved.from);
         }
         object->unresolved.from = NULL;
-        object->unresolved.nameString = (aml_name_stioring_t){0};
+        object->unresolved.nameString = (aml_name_string_t){0};
         object->unresolved.callback = NULL;
         break;
     case AML_PREDEFINED_SCOPE:
@@ -328,12 +328,11 @@ static inline void aml_copy_bits(uint8_t* dst, uint64_t dstOffset, const uint8_t
     }
 }
 
-uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, uint8_t* data)
+status_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, uint8_t* data)
 {
     if (object == NULL || data == NULL || bitSize == 0)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     switch (object->type)
@@ -349,7 +348,7 @@ uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
         uint64_t effectiveBitSize = bitSize;
         if (bitOffset >= aml_integer_bit_size())
         {
-            return 0;
+            return OK;
         }
         if (bitOffset + bitSize > aml_integer_bit_size())
         {
@@ -371,7 +370,7 @@ uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
 
         if (bitOffset >= totalBits)
         {
-            return 0;
+            return OK;
         }
         if (bitOffset + bitSize > totalBits)
         {
@@ -382,19 +381,17 @@ uint64_t aml_object_set_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
         break;
     }
     default:
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, uint8_t* out)
+status_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, uint8_t* out)
 {
     if (object == NULL || out == NULL || bitSize == 0)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     memset(out, 0, (bitSize + 7) / 8);
@@ -405,7 +402,7 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
     {
         if (bitOffset >= aml_integer_bit_size())
         {
-            return 0;
+            return OK;
         }
 
         uint64_t effectiveBitSize = bitSize;
@@ -433,7 +430,7 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
 
         if (bitOffset >= totalBits)
         {
-            return 0;
+            return OK;
         }
         if (bitOffset + bitSize > totalBits)
         {
@@ -444,19 +441,17 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
         break;
     }
     default:
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    return 0;
+    return OK;
 }
 
-static inline uint64_t aml_object_check_clear(aml_object_t* object)
+static inline status_t aml_object_check_clear(aml_object_t* object)
 {
     if (object == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (object->type != AML_UNINITIALIZED)
@@ -464,15 +459,14 @@ static inline uint64_t aml_object_check_clear(aml_object_t* object)
         aml_object_clear(object);
     }
 
-    return 0;
+    return OK;
 }
 
-uint64_t aml_buffer_resize(aml_buffer_t* buffer, uint64_t newLength)
+status_t aml_buffer_resize(aml_buffer_t* buffer, uint64_t newLength)
 {
     if (buffer == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (newLength <= AML_SMALL_BUFFER_SIZE)
@@ -484,7 +478,7 @@ uint64_t aml_buffer_resize(aml_buffer_t* buffer, uint64_t newLength)
             buffer->content = buffer->smallBuffer;
         }
         buffer->length = newLength;
-        return 0;
+        return OK;
     }
 
     if (buffer->content == buffer->smallBuffer)
@@ -492,7 +486,7 @@ uint64_t aml_buffer_resize(aml_buffer_t* buffer, uint64_t newLength)
         buffer->content = calloc(1, newLength);
         if (buffer->content == NULL)
         {
-            return _FAIL;
+            return ERR(ACPI, NOMEM);
         }
         memcpy(buffer->content, buffer->smallBuffer, buffer->length);
     }
@@ -501,35 +495,36 @@ uint64_t aml_buffer_resize(aml_buffer_t* buffer, uint64_t newLength)
         uint8_t* newContent = realloc(buffer->content, newLength);
         if (newContent == NULL)
         {
-            return _FAIL;
+            return ERR(ACPI, NOMEM);
         }
         buffer->content = newContent;
         memset(&buffer->content[buffer->length], 0, newLength - buffer->length);
     }
     buffer->length = newLength;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_buffer_set_empty(aml_object_t* object, uint64_t length)
+status_t aml_buffer_set_empty(aml_object_t* object, uint64_t length)
 {
     if (object == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (object->type == AML_BUFFER)
     {
-        if (aml_buffer_resize(&object->buffer, length) == _FAIL)
+        status_t status = aml_buffer_resize(&object->buffer, length);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
     }
     else
     {
-        if (aml_object_check_clear(object) == _FAIL)
+        status_t status = aml_object_check_clear(object);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
         if (length <= AML_SMALL_BUFFER_SIZE)
@@ -542,7 +537,7 @@ uint64_t aml_buffer_set_empty(aml_object_t* object, uint64_t length)
             object->buffer.content = calloc(1, length);
             if (object->buffer.content == NULL)
             {
-                return _FAIL;
+                return ERR(ACPI, NOMEM);
             }
         }
         object->buffer.length = length;
@@ -550,47 +545,46 @@ uint64_t aml_buffer_set_empty(aml_object_t* object, uint64_t length)
 
     object->buffer.length = length;
     object->type = AML_BUFFER;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_buffer_set(aml_object_t* object, const uint8_t* buffer, uint64_t bytesToCopy, uint64_t length)
+status_t aml_buffer_set(aml_object_t* object, const uint8_t* buffer, uint64_t bytesToCopy, uint64_t length)
 {
     if (object == NULL || buffer == NULL || bytesToCopy > length)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_buffer_set_empty(object, length) == _FAIL)
+    status_t status = aml_buffer_set_empty(object, length);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     memcpy(object->buffer.content, buffer, bytesToCopy);
     memset(&object->buffer.content[bytesToCopy], 0, length - bytesToCopy);
-    return 0;
+    return OK;
 }
 
-uint64_t aml_buffer_field_set(aml_object_t* object, aml_object_t* target, aml_bit_size_t bitOffset,
+status_t aml_buffer_field_set(aml_object_t* object, aml_object_t* target, aml_bit_size_t bitOffset,
     aml_bit_size_t bitSize)
 {
     if (object == NULL || target == NULL || bitSize == 0)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (target->type != AML_BUFFER && target->type != AML_STRING)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (object->type != AML_BUFFER_FIELD)
     {
-        if (aml_object_check_clear(object) == _FAIL)
+        status_t status = aml_object_check_clear(object);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
     }
     else
@@ -602,73 +596,73 @@ uint64_t aml_buffer_field_set(aml_object_t* object, aml_object_t* target, aml_bi
     object->bufferField.bitOffset = bitOffset;
     object->bufferField.bitSize = bitSize;
     object->type = AML_BUFFER_FIELD;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_debug_object_set(aml_object_t* object)
+status_t aml_debug_object_set(aml_object_t* object)
 {
     if (object == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->type = AML_DEBUG_OBJECT;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_device_set(aml_object_t* object)
+status_t aml_device_set(aml_object_t* object)
 {
     if (object == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->type = AML_DEVICE;
     object->device.cfg = NULL;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_event_set(aml_object_t* object)
+status_t aml_event_set(aml_object_t* object)
 {
     if (object == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->type = AML_EVENT;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_field_unit_field_set(aml_object_t* object, aml_opregion_t* opregion, aml_field_flags_t flags,
+status_t aml_field_unit_field_set(aml_object_t* object, aml_opregion_t* opregion, aml_field_flags_t flags,
     aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
 {
     if (object == NULL || opregion == NULL || bitSize == 0)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->fieldUnit.fieldType = AML_FIELD_UNIT_FIELD;
@@ -681,21 +675,21 @@ uint64_t aml_field_unit_field_set(aml_object_t* object, aml_opregion_t* opregion
     object->fieldUnit.bitOffset = bitOffset;
     object->fieldUnit.bitSize = bitSize;
     object->type = AML_FIELD_UNIT;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_field_unit_index_field_set(aml_object_t* object, aml_field_unit_t* index, aml_field_unit_t* data,
+status_t aml_field_unit_index_field_set(aml_object_t* object, aml_field_unit_t* index, aml_field_unit_t* data,
     aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
 {
     if (object == NULL || index == NULL || data == NULL || bitSize == 0)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->fieldUnit.fieldType = AML_FIELD_UNIT_INDEX_FIELD;
@@ -708,32 +702,33 @@ uint64_t aml_field_unit_index_field_set(aml_object_t* object, aml_field_unit_t* 
     object->fieldUnit.bitOffset = bitOffset;
     object->fieldUnit.bitSize = bitSize;
     object->type = AML_FIELD_UNIT;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_t* opregion, aml_field_unit_t* bank,
+status_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_t* opregion, aml_field_unit_t* bank,
     uint64_t bankValue, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
 {
     if (object == NULL || opregion == NULL || bank == NULL || bitSize == 0)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     aml_object_t* bankValueObj = aml_object_new();
     if (bankValueObj == NULL)
     {
-        return _FAIL;
+        return ERR(ACPI, NOMEM);
     }
     UNREF_DEFER(bankValueObj);
-    if (aml_integer_set(bankValueObj, bankValue) == _FAIL)
+    status_t status = aml_integer_set(bankValueObj, bankValue);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->fieldUnit.fieldType = AML_FIELD_UNIT_BANK_FIELD;
@@ -746,45 +741,45 @@ uint64_t aml_field_unit_bank_field_set(aml_object_t* object, aml_opregion_t* opr
     object->fieldUnit.bitOffset = bitOffset;
     object->fieldUnit.bitSize = bitSize;
     object->type = AML_FIELD_UNIT;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_integer_set(aml_object_t* object, aml_uint_t value)
+status_t aml_integer_set(aml_object_t* object, aml_uint_t value)
 {
     if (object == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (object->type == AML_INTEGER)
     {
         object->integer.value = value & aml_integer_ones();
-        return 0;
+        return OK;
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->integer.value = value & aml_integer_ones();
     object->type = AML_INTEGER;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_method_set(aml_object_t* object, aml_method_flags_t flags, const uint8_t* start, const uint8_t* end,
+status_t aml_method_set(aml_object_t* object, aml_method_flags_t flags, const uint8_t* start, const uint8_t* end,
     aml_method_implementation_t implementation)
 {
     if (object == NULL || ((start == 0 || end == 0 || start > end) && implementation == NULL))
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->method.implementation = implementation;
@@ -839,7 +834,6 @@ aml_method_t* aml_method_find(const uint8_t* addr)
 {
     if (addr == NULL)
     {
-        errno = EINVAL;
         return NULL;
     }
 
@@ -853,81 +847,81 @@ aml_method_t* aml_method_find(const uint8_t* addr)
     return aml_method_find_recursive(root, addr); // Transfer ownership
 }
 
-uint64_t aml_mutex_set(aml_object_t* object, aml_sync_level_t syncLevel)
+status_t aml_mutex_set(aml_object_t* object, aml_sync_level_t syncLevel)
 {
     if (object == NULL || syncLevel > 15)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->mutex.syncLevel = syncLevel;
     aml_mutex_id_init(&object->mutex.mutex);
     object->type = AML_MUTEX;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_object_reference_set(aml_object_t* object, aml_object_t* target)
+status_t aml_object_reference_set(aml_object_t* object, aml_object_t* target)
 {
     if (object == NULL || target == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (object->type == AML_OBJECT_REFERENCE)
     {
         UNREF(object->objectReference.target);
         object->objectReference.target = REF(target);
-        return 0;
+        return OK;
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->objectReference.target = REF(target);
     object->type = AML_OBJECT_REFERENCE;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_operation_region_set(aml_object_t* object, aml_region_space_t space, uintptr_t offset, uint32_t length)
+status_t aml_operation_region_set(aml_object_t* object, aml_region_space_t space, uintptr_t offset, uint32_t length)
 {
     if (object == NULL || length == 0)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->opregion.space = space;
     object->opregion.offset = offset;
     object->opregion.length = length;
     object->type = AML_OPERATION_REGION;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_package_set(aml_object_t* object, uint64_t length)
+status_t aml_package_set(aml_object_t* object, uint64_t length)
 {
     if (object == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     if (length <= AML_SMALL_PACKAGE_SIZE)
@@ -939,7 +933,7 @@ uint64_t aml_package_set(aml_object_t* object, uint64_t length)
         object->package.elements = malloc(sizeof(aml_object_t*) * length);
         if (object->package.elements == NULL)
         {
-            return _FAIL;
+            return ERR(ACPI, NOMEM);
         }
     }
     memset(object->package.elements, 0, sizeof(aml_object_t*) * length);
@@ -955,74 +949,75 @@ uint64_t aml_package_set(aml_object_t* object, uint64_t length)
             }
             free(object->package.elements);
             object->package.elements = NULL;
-            return _FAIL;
+            return ERR(ACPI, NOMEM);
         }
     }
     object->package.length = length;
     object->type = AML_PACKAGE;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_power_resource_set(aml_object_t* object, aml_system_level_t systemLevel,
+status_t aml_power_resource_set(aml_object_t* object, aml_system_level_t systemLevel,
     aml_resource_order_t resourceOrder)
 {
     if (object == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->powerResource.systemLevel = systemLevel;
     object->powerResource.resourceOrder = resourceOrder;
     object->type = AML_POWER_RESOURCE;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_processor_set(aml_object_t* object, aml_proc_id_t procId, aml_pblk_addr_t pblkAddr, aml_pblk_len_t pblkLen)
+status_t aml_processor_set(aml_object_t* object, aml_proc_id_t procId, aml_pblk_addr_t pblkAddr, aml_pblk_len_t pblkLen)
 {
     if (object == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->processor.procId = procId;
     object->processor.pblkAddr = pblkAddr;
     object->processor.pblkLen = pblkLen;
     object->type = AML_PROCESSOR;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_string_set_empty(aml_object_t* object, uint64_t length)
+status_t aml_string_set_empty(aml_object_t* object, uint64_t length)
 {
     if (object == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (object->type == AML_STRING)
     {
-        if (aml_string_resize(&object->string, length) == _FAIL)
+        status_t status = aml_string_resize(&object->string, length);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
     }
     else
     {
-        if (aml_object_check_clear(object) == _FAIL)
+        status_t status = aml_object_check_clear(object);
+        if (IS_ERR(status))
         {
-            return _FAIL;
+            return status;
         }
 
         if (length <= AML_SMALL_STRING_SIZE)
@@ -1035,44 +1030,43 @@ uint64_t aml_string_set_empty(aml_object_t* object, uint64_t length)
             object->string.content = calloc(1, length + 1);
             if (object->string.content == NULL)
             {
-                return _FAIL;
+                return ERR(ACPI, NOMEM);
             }
         }
         object->string.length = length;
     }
 
     object->type = AML_STRING;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_string_set(aml_object_t* object, const char* str)
+status_t aml_string_set(aml_object_t* object, const char* str)
 {
     if (object == NULL || str == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     size_t length = strlen(str);
-    if (aml_string_set_empty(object, length) == _FAIL)
+    status_t status = aml_string_set_empty(object, length);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
     memcpy(object->string.content, str, length);
-    return 0;
+    return OK;
 }
 
-uint64_t aml_string_resize(aml_stioring_t* string, uint64_t newLength)
+status_t aml_string_resize(aml_string_t* string, uint64_t newLength)
 {
     if (string == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
     if (newLength == string->length)
     {
-        return 0;
+        return OK;
     }
 
     if (newLength <= AML_SMALL_STRING_SIZE)
@@ -1085,7 +1079,7 @@ uint64_t aml_string_resize(aml_stioring_t* string, uint64_t newLength)
         }
         string->length = newLength;
         string->smallString[newLength] = '\0';
-        return 0;
+        return OK;
     }
 
     if (string->content == string->smallString)
@@ -1093,7 +1087,7 @@ uint64_t aml_string_resize(aml_stioring_t* string, uint64_t newLength)
         string->content = calloc(1, newLength + 1);
         if (string->content == NULL)
         {
-            return _FAIL;
+            return ERR(ACPI, NOMEM);
         }
         memcpy(string->content, string->smallString, MIN(string->length, newLength));
     }
@@ -1102,7 +1096,7 @@ uint64_t aml_string_resize(aml_stioring_t* string, uint64_t newLength)
         char* newContent = realloc(string->content, newLength + 1);
         if (newContent == NULL)
         {
-            return _FAIL;
+            return ERR(ACPI, NOMEM);
         }
         string->content = newContent;
         memset(&string->content[string->length], 0, newLength - string->length + 1);
@@ -1110,42 +1104,42 @@ uint64_t aml_string_resize(aml_stioring_t* string, uint64_t newLength)
 
     string->length = newLength;
     string->content[newLength] = '\0';
-    return 0;
+    return OK;
 }
 
-uint64_t aml_thermal_zone_set(aml_object_t* object)
+status_t aml_thermal_zone_set(aml_object_t* object)
 {
     if (object == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->type = AML_THERMAL_ZONE;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_alias_set(aml_object_t* object, aml_object_t* target)
+status_t aml_alias_set(aml_object_t* object, aml_object_t* target)
 {
     if (object == NULL || target == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->alias.target = REF(target);
     object->type = AML_ALIAS;
-    return 0;
+    return OK;
 }
 
 aml_object_t* aml_alias_traverse(aml_alias_t* alias)
@@ -1169,18 +1163,18 @@ aml_object_t* aml_alias_traverse(aml_alias_t* alias)
     return current;
 }
 
-uint64_t aml_unresolved_set(aml_object_t* object, const aml_name_stioring_t* nameString, aml_object_t* from,
+status_t aml_unresolved_set(aml_object_t* object, const aml_name_string_t* nameString, aml_object_t* from,
     aml_patch_up_resolve_callback_t callback)
 {
     if (object == NULL || nameString == NULL || callback == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->unresolved.nameString = *nameString;
@@ -1188,74 +1182,75 @@ uint64_t aml_unresolved_set(aml_object_t* object, const aml_name_stioring_t* nam
     object->unresolved.callback = callback;
     object->type = AML_UNRESOLVED;
 
-    if (aml_patch_up_add_unresolved(&object->unresolved) == _FAIL)
+    status = aml_patch_up_add_unresolved(&object->unresolved);
+    if (IS_ERR(status))
     {
         object->type = AML_UNINITIALIZED;
-        return _FAIL;
+        return status;
     }
-    return 0;
+    return OK;
 }
 
-uint64_t aml_predefined_scope_set(aml_object_t* object)
+status_t aml_predefined_scope_set(aml_object_t* object)
 {
     if (object == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->type = AML_PREDEFINED_SCOPE;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_arg_set(aml_object_t* object, aml_object_t* value)
+status_t aml_arg_set(aml_object_t* object, aml_object_t* value)
 {
     if (object == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     if (value == NULL)
     {
         object->arg.value = NULL;
         object->type = AML_ARG;
-        return 0;
+        return OK;
     }
 
     object->arg.value = REF(value);
     object->type = AML_ARG;
-    return 0;
+    return OK;
 }
 
-uint64_t aml_local_set(aml_object_t* object)
+status_t aml_local_set(aml_object_t* object)
 {
     if (object == NULL)
     {
-        errno = EINVAL;
-        return _FAIL;
+        return ERR(ACPI, INVAL);
     }
 
-    if (aml_object_check_clear(object) == _FAIL)
+    status_t status = aml_object_check_clear(object);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
 
     object->local.value = aml_object_new();
     if (object->local.value == NULL)
     {
-        return _FAIL;
+        return ERR(ACPI, NOMEM);
     }
     object->type = AML_LOCAL;
-    return 0;
+    return OK;
 }

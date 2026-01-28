@@ -65,6 +65,8 @@ const char* _codeStrings[] = {
     [ST_CODE_ILSEQ] = "invalid byte sequence",
     [ST_CODE_NO_ACPI_TABLE] = "unable to locate acpu table",
     [ST_CODE_INVAL_ACPI_TABLE] = "invalid acpi table",
+    [ST_CODE_DEADLOCK] = "deadlock detected",
+    [ST_CODE_NO_BOOT_INFO] = "bootloader did not provide needed info",
 };
 
 const char* codetostr(st_code_t code)

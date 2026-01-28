@@ -18,23 +18,18 @@ static inline uint64_t aml_round_up_to_power_of_two(uint64_t x)
     return x + 1;
 }
 
-uint64_t aml_get_access_size(aml_bit_size_t bitSize, aml_access_type_t accessType, aml_region_space_t regionSpace,
-    aml_bit_size_t* out)
+aml_bit_size_t aml_get_access_size(aml_bit_size_t bitSize, aml_access_type_t accessType, aml_region_space_t regionSpace)
 {
     switch (accessType)
     {
     case AML_ACCESS_TYPE_BYTE:
-        *out = 8;
-        return 0;
+        return 8;
     case AML_ACCESS_TYPE_WORD:
-        *out = 16;
-        return 0;
+        return 16;
     case AML_ACCESS_TYPE_DWORD:
-        *out = 32;
-        return 0;
+        return 32;
     case AML_ACCESS_TYPE_QWORD:
-        *out = 64;
-        return 0;
+        return 64;
     case AML_ACCESS_TYPE_ANY:
     {
         // Unsure about this one, the spec is not very clear. The only section that seems to attempt to define the
@@ -69,11 +64,9 @@ uint64_t aml_get_access_size(aml_bit_size_t bitSize, aml_access_type_t accessTyp
             size = 8;
         }
 
-        *out = size;
-        return 0;
+        return size;
     }
     default:
-        errno = EINVAL;
-        return _FAIL;
+        return 8;
     }
 }

@@ -16,7 +16,8 @@ lock_t _heapLock;
 void* _heap_map_memory(uint64_t size)
 {
     void* addr = NULL;
-    status_t status = vmm_alloc(NULL, &addr, size, PAGE_SIZE, PML_PRESENT | PML_WRITE | PML_GLOBAL, VMM_ALLOC_OVERWRITE | VMM_ALLOC_ZERO);
+    status_t status = vmm_alloc(NULL, &addr, size, PAGE_SIZE, PML_PRESENT | PML_WRITE | PML_GLOBAL,
+        VMM_ALLOC_OVERWRITE | VMM_ALLOC_ZERO);
     if (IS_ERR(status))
     {
         return NULL;

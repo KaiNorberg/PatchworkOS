@@ -14,9 +14,9 @@
 #include <kernel/sync/rwlock.h>
 
 #include <stdlib.h>
-#include <sys/map.h>
 #include <sys/fs.h>
 #include <sys/list.h>
+#include <sys/map.h>
 
 typedef struct
 {
@@ -571,7 +571,8 @@ SYSCALL_DEFINE(SYS_MOUNT, const char* mountpoint, const char* fs, const char* op
         return ERR(VFS, NOFS);
     }
 
-    return namespace_mount(ns, &mountpath, filesystem, options != NULL ? optionsCopy : NULL, mountname.mode, NULL, NULL);
+    return namespace_mount(ns, &mountpath, filesystem, options != NULL ? optionsCopy : NULL, mountname.mode, NULL,
+        NULL);
 }
 
 SYSCALL_DEFINE(SYS_UNMOUNT, const char* mountpoint)
